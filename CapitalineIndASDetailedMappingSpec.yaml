@@ -1,0 +1,162 @@
+version: 1.0
+dataset: Capitaline_IndAS_Detailed
+principles:
+  reject_generic_total: true
+  statement_aware_lookup: true
+  consolidated_detect_keys:
+    - Minority Interest
+    - Non-Controlling Interests
+
+balance_sheet:
+  TA:
+    keys: ["Total Assets"]
+  CSE:
+    primary: ["Total Stockholders' Equity"]
+    fallback: ["Total Equity"]
+  MI:
+    keys: ["Minority Interest"]
+
+  FA:
+    cash_bank:
+      - Cash and Cash Equivalents
+      - Bank Balances Other Than Cash and Cash Equivalents
+      - Earmarked Balances with Bank
+      - Margin Money Balances
+    investments_current:
+      - Current Investments
+      - Investments Carried at Fair Value Through Profit Or Loss (FVTPL)
+      - Investments Carried at Fair Value Through Other Comprehensive Income(FVTOCI)
+      - Investments Carried at Amortized Cost
+    investments_long_term:
+      - Investments - Long-term
+      - Non-current Investments
+      - Total Investments
+    deposits_restricted:
+      - Investment in Fixed Deposits
+      - Investment in Certificate of Deposits
+      - Investment in Certificate of Deposits with Scheduled Banks
+      - Restricted Cash
+      - Restricted Deposits
+    other_financial_assets:
+      - Others Financial Assets - Long-term
+      - Others Financial Assets - Short-term
+      - Interest Receivable
+      - Total Interest Receivable
+      - Dividend Receivable
+      - Derivative Receivables / Forward Contract Receivable
+      - Forward Contract Receivable
+
+  FO:
+    keys:
+      - Long Term Borrowings
+      - Short Term Borrowings
+      - Lease Liabilities
+      - Others Financial Liabilities - Long-term
+      - Others Financial Liabilities - Short-term
+      - Hybrid Perpetual Securities
+
+  OL_components:
+    trade_payables: ["Trade Payables"]
+    other_current_liabilities: ["Other Current Liabilities"]
+    provisions_current: ["Provisions"]
+    provisions_long_term: ["Long-term Provisions"]
+    current_tax_liabilities: ["Current Tax Liabilities - Short-term"]
+    non_current_tax_liabilities: ["Non Current Tax Liabilities - Long-term"]
+    deferred_tax_liabilities_net: ["Deferred Tax Liabilities (Net)"]
+    other_non_current_liabilities: ["Other Non-Current Liabilities"]
+
+income:
+  sales:
+    - Revenue From Operations(Net)
+    - Revenue From Operations
+    - Total Revenue
+  cni:
+    tci_group: ["Total Comprehensive Income for the Year"]
+    nci: ["Non-Controlling Interests"]
+    preferred_dividend: ["Preference Dividend"]
+  finance_cost:
+    top: ["Finance Cost"]
+    granular:
+      - Interest
+      - Interest on Bank Borrowings
+      - Interest on Bonds and Debentures
+      - Interest on Commercial Paper
+      - Interest on Deposits
+      - Interest on External Commercial Borrowings
+      - Interest on Finance Lease
+      - Interest on Foreign Currency Loans
+      - Interest on Other Borrowings
+      - Interest on Other Loans
+      - Interest on Term / Fixed Loans
+      - Interest on Working Capital Loans
+      - Interest - Related Parties
+      - Interest and Finance Charges on Financial Liabilities
+      - Financial Charges on Financial Liabilities at Amortised Cost
+      - Bill Discounting Charges
+      - Amotisation of Borrowing Costs
+      - Other Borrowing Costs
+      - Redemption Premium
+      - Other Interest Expenses
+  finance_income_direct:
+    - Interest Income
+    - Finance Income
+    - Prior Year Interest Income
+    - Investment Income
+  quality_inputs:
+    cogs:
+      material: ["Cost of Material Consumed"]
+      purchases: ["Purchases of Stock-in-Trade"]
+      inv_change: ["Changes in Inventories of Finished Goods, Work-in-Progress and Stock-in-Trade"]
+    expense_buckets:
+      employee: ["Employee Benefits / Salaries & other Staff Cost"]
+      other: ["Other Expenses"]
+      total: ["Total Expenses"]
+      depreciation:
+        - Depreciation and Amortization
+        - Depreciation on Tangible Assets
+        - Depreciation for the current year
+    sga_aliases:
+      ads: ["Advertisement, Marketing and Business Development", "Advertisements"]
+      legal: ["Legal and Professional Fees", "Professional Fees", "Legal Expenses"]
+      rent: ["Rent", "Rent, rates & Taxes", "Lease Rent / Hire Charges Paid"]
+      freight: ["Freight Outwards and Forwarding Expenses", "Transportation"]
+      repairs:
+        - Repairs and Maintenance
+        - Repairs to Building
+        - Repairs to Machinery
+        - Repairs to Other Assets
+      power: ["Power, Fuel and Water", "Power, Oil & Fuel"]
+  other_items_aliases:
+    - Share of profit/loss of associates
+    - Share of profit / (loss) of associates
+    - Share of Loss in Partnership Firm
+    - Equity accounted income
+    - Share of profit/(loss) in associate companies / joint ventures
+
+cashflow:
+  cfo: ["Net Cash from Operating Activities"]
+  capex: ["Purchased of Fixed Assets"]
+  debt_proceeds:
+    - Proceed from 0ther Long Term Borrowings
+    - Proceed from Other Long Term Borrowings
+    - Proceed from Bank Borrowings
+    - Proceed from Short Tem Borrowings
+    - Proceed from Short Term Borrowings
+    - Proceed from Issue of Debentures
+  debt_repayment:
+    - Of the Long Tem Borrowings
+    - Of the Long Term Borrowings
+    - Of the short term Borrowings
+    - Of the Short Term Borrowings
+    - Of financial Liabilities
+    - On Redemption of Debenture
+  diagnostics:
+    sale_fixed_assets: ["Sale of Fixed Assets"]
+    purchase_investments: ["Purchase of Investments"]
+    sale_investments: ["Sale of Investments"]
+  finance_income_proxies:
+    interest_received: ["Interest Received"]
+    dividend_received: ["Dividend Received"]
+    interest_net: ["Interest (Net)"]
+  nfe_unusual:
+    pl_sale_invest: ["P/L on Sales of Invest"]
