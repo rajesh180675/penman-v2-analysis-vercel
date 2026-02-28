@@ -603,11 +603,11 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           <div>
             <h3 className="font-semibold text-slate-800 mb-1">2.4 Valuation Models</h3>
             <p>
-              <b>RE model (Eq. 1a):</b> V = CSE₀ + Σ PV(RE_t) + PV(CV_RE), where RE_t = CNI_t − k_e × CSE_{t-1}.
+              <b>RE model (Eq. 1a):</b> V = CSE₀ + Σ PV(RE_t) + PV(CV_RE), where RE_t = CNI_t − k_e × CSE_(t-1).
               Three continuing values: CV1 (zero), CV2 (perpetuity), CV3 (Gordon growth at rate g).
             </p>
             <p className="mt-1">
-              <b>ReOI model (Eq. 9):</b> EV = NOA₀ + Σ PV(ReOI_t) + PV(CV_ReOI), where ReOI_t = OI_t − k_w × NOA_{t-1}.
+              <b>ReOI model (Eq. 9):</b> EV = NOA₀ + Σ PV(ReOI_t) + PV(CV_ReOI), where ReOI_t = OI_t − k_w × NOA_(t-1).
               Equity value = EV − NFO_latest. Preferred when FA/FO separation is reliable.
             </p>
             <p className="mt-1">
@@ -616,7 +616,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             </p>
             <p className="mt-1">
               <b>AEG (Ohlson-Juettner 2005):</b> Short-cut proxy: V = CNI₁/k_e + Σ PV(AEG_t),
-              where AEG_t = CNI_t − ρ_e × CNI_{t-1}. This implements the historical-data version of the OJ model.
+              where AEG_t = CNI_t − ρ_e × CNI_(t-1). This implements the historical-data version of the OJ model.
             </p>
             <p className="mt-1">
               <b>Reverse DCF:</b> Bisection search over the RE Gordon CV formula to back-solve for the growth rate

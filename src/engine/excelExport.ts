@@ -92,11 +92,6 @@ function updateRef(ws: WorkSheet) {
   ws["!ref"] = utils.encode_range({ s: { r: minR, c: minC }, e: { r: maxR, c: maxC } });
 }
 
-const fmt = (n: number | null | undefined, dp = 0) =>
-  n == null ? "—" : n.toLocaleString("en-IN", { minimumFractionDigits: dp, maximumFractionDigits: dp });
-const pct = (n: number | null | undefined, dp = 1) =>
-  n == null ? "—" : (n * 100).toFixed(dp) + "%";
-
 // ── Sheet 1: Cover ─────────────────────────────────────────────────────────────
 function buildCoverSheet(config: EngineConfig, periodCount: number): WorkSheet {
   const ws: WorkSheet = {};
@@ -322,7 +317,7 @@ function buildForecastSheet(scenarios: ForecastScenario[]): WorkSheet {
     headers.forEach((h, c) => setCell(ws, row, c, cell(h, SUBHEADER)));
     row++;
 
-    const fRows: [string, (p: typeof sc.periods[0]) => number][] = [
+    const fRows: [string, (p: NonNullable<ForecastScenario["periods"]>[number]) => number][] = [
       ["Sales Growth Assumption", p => p.sales_growth_assumption],
       ["Core Sales PM", p => p.core_sales_pm_assumption],
       ["Asset Turnover (ATO)", p => p.ato_assumption],
