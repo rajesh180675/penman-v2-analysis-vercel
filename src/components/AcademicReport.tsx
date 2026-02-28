@@ -448,6 +448,34 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const ato5 = median(trailing.map((d) => d.ratios?.ATO));
   const accrual5 = avg(trailing.map((d) => d.ratios?.accrual_ratio_bs));
   const ccr5 = avg(trailing.map((d) => d.ratios?.cash_conversion_ratio));
+  const steadyState = data.slice(Math.max(0, data.length - 2));
+  const steadyRnoa = avg(steadyState.map((d) => d.ratios?.RNOA));
+  const steadyAto = avg(steadyState.map((d) => d.ratios?.ATO));
+
+  const noaDiagnostics = data.map((d) => ({
+    period: d.period_end,
+    noa: d.bs.NOA,
+    sales: d.is.Sales,
+    noaToSales: d.is.Sales > 0 ? Math.abs(d.bs.NOA) / d.is.Sales : null,
+    flagged: d.is.Sales > 0 ? Math.abs(d.bs.NOA) < 0.1 * d.is.Sales : false,
+    indAs116Era: Number.parseInt(d.period_end.slice(0, 4), 10) >= 2020,
+  }));
+  const noaFlagCount = noaDiagnostics.filter((d) => d.flagged).length;
+  const noaShiftSeries = data.slice(1).map((d, idx) => {
+    const prev = data[idx];
+    return {
+      period: d.period_end,
+      deltaNOA: d.bs.NOA - prev.bs.NOA,
+      deltaOA: d.bs.OA - prev.bs.OA,
+      deltaFA: d.bs.FA - prev.bs.FA,
+      deltaOL: d.bs.OL - prev.bs.OL,
+      deltaFO: d.bs.FO - prev.bs.FO,
+    };
+  });
+  const largestNoaShift = noaShiftSeries.reduce((best, row) =>
+    Math.abs(row.deltaNOA) > Math.abs(best.deltaNOA) ? row : best,
+    noaShiftSeries[0] ?? { period: latest.period_end, deltaNOA: 0, deltaOA: 0, deltaFA: 0, deltaOL: 0, deltaFO: 0 },
+  );
 
   const noaDiagnostics = data.map((d) => ({
     period: d.period_end,
@@ -496,8 +524,10 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const accrualDeltaOtherOL = (latest.bs.OL - prevLatest.bs.OL) - accrualDeltaPayables;
   const accrualOtherProxy = accrualDeltaOtherOA - accrualDeltaOtherOL;
   const accrualTotalProxy = accrualWorkingCapitalProxy + accrualOtherProxy;
+  const accrualSeries = data.slice(1).map((d) => ({ period: d.period_end, accrual: d.ratios?.accrual_ratio_bs ?? null }));
 
   const fScore = latest.quality?.piotroski_total ?? null;
+  const dilutionRecent = data.slice(Math.max(0, data.length - 5)).reduce((sum, d) => sum + Math.max(0, d.cf.EquityIssued || 0), 0);
   const mScore = latest.quality?.beneish_mscore ?? null;
   const zScore = latest.quality?.altman_zprime ?? null;
 
@@ -582,7 +612,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             CNI CAGR = <b>{pct(cniCagr)}</b>, and book equity CAGR = <b>{pct(cseCagr)}</b>.
           </li>
           <li>
-            Five-period central-tendency profitability (median for NOA-sensitive ratios): ROCE <b>{pct(roce5)}</b>, RNOA <b>{pct(rnoa5)}</b>, Spread <b>{pct(spread5)}</b>.
+            Five-period central-tendency profitability (median for NOA-sensitive ratios): ROCE <b>{pct(roce5)}</b>, RNOA <b>{pct(rnoa5)}</b>, Spread <b>{pct(spread5)}</b>; steady-state (latest 2y) RNOA <b>{pct(steadyRnoa)}</b>.
           </li>
           <li>
             Operations profile: PM <b>{pct(pm5)}</b> and ATO <b>{num(ato5, 2)}x</b> (median), benchmarked versus N&amp;P medians
@@ -728,6 +758,8 @@ export default function AcademicReport({ data, config, rawData }: Props) {
               <Row metric="Spread" latest={pct(latest.ratios?.SPREAD)} avg5={pct(spread5)} bm={`${(NP_BENCHMARKS.SPREAD.median * 100).toFixed(1)}%`} note="Value creation wedge between operating return and financing cost." />
               <Row metric="PM" latest={pct(latest.ratios?.PM)} avg5={pct(pm5)} bm={`${(NP_BENCHMARKS.PM.median * 100).toFixed(1)}%`} note="Operating margin after comprehensive classification." />
               <Row metric="ATO" latest={`${num(latest.ratios?.ATO, 2)}x`} avg5={`${num(ato5, 2)}x`} bm={`${NP_BENCHMARKS.ATO.median.toFixed(2)}x`} note="Operating asset productivity / turnover." />
+              <Row metric="Steady-state RNOA (2Y avg)" latest={pct(steadyRnoa)} avg5="—" bm={`${(NP_BENCHMARKS.RNOA.median * 100).toFixed(1)}%`} note="Use for post-transition anchoring when NOA regime shifts." />
+              <Row metric="Steady-state ATO (2Y avg)" latest={`${num(steadyAto, 2)}x`} avg5="—" bm={`${NP_BENCHMARKS.ATO.median.toFixed(2)}x`} note="Recent capital-intensity regime productivity." />
               <Row metric="Sales CAGR" latest={pct(salesCagr)} avg5="—" bm="—" note="Top-line growth trajectory over full sample." />
               <Row metric="CNI CAGR" latest={pct(cniCagr)} avg5="—" bm="—" note="Growth in comprehensive earnings available to common." />
             </tbody>
@@ -760,6 +792,41 @@ export default function AcademicReport({ data, config, rawData }: Props) {
                   <td className="px-2 py-1 text-right">{pct(row.noaToSales, 1)}</td>
                   <td className="px-2 py-1">{row.flagged ? "⚠️ small NOA" : "OK"}</td>
                   <td className="px-2 py-1">{row.indAs116Era ? "FY2020+" : "Pre-FY2020"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">3B) NOA structural-break diagnostics</h2>
+        <p className="text-sm text-slate-700 mb-3">
+          Largest year-on-year NOA shift occurred in <b>{largestNoaShift.period.slice(0, 10)}</b>: ΔNOA <b>₹{num(largestNoaShift.deltaNOA)} Cr</b>,
+          decomposed into ΔOA <b>₹{num(largestNoaShift.deltaOA)} Cr</b>, ΔOL <b>₹{num(largestNoaShift.deltaOL)} Cr</b>,
+          ΔFA <b>₹{num(largestNoaShift.deltaFA)} Cr</b>, ΔFO <b>₹{num(largestNoaShift.deltaFO)} Cr</b>.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-2 py-1 text-left">Period</th>
+                <th className="px-2 py-1 text-right">ΔNOA</th>
+                <th className="px-2 py-1 text-right">ΔOA</th>
+                <th className="px-2 py-1 text-right">ΔOL</th>
+                <th className="px-2 py-1 text-right">ΔFA</th>
+                <th className="px-2 py-1 text-right">ΔFO</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {noaShiftSeries.map((row) => (
+                <tr key={row.period}>
+                  <td className="px-2 py-1">{row.period.slice(0, 10)}</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.deltaNOA)} Cr</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.deltaOA)} Cr</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.deltaOL)} Cr</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.deltaFA)} Cr</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.deltaFO)} Cr</td>
                 </tr>
               ))}
             </tbody>
@@ -808,6 +875,31 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             Cumulative dirty-surplus check Σ(ΔCSE − CNI + d) = <b>₹{num(cumulativeDirtySurplus)} Cr</b>.
           </li>
         </ul>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">5A) Accrual-ratio time series</h2>
+        <p className="text-xs text-slate-500 mb-3">This series helps separate transition-year accrual spikes from current-period earnings quality.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-2 py-1 text-left">Period</th>
+                <th className="px-2 py-1 text-right">BS accrual ratio</th>
+                <th className="px-2 py-1 text-left">Flag</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {accrualSeries.map((row) => (
+                <tr key={row.period}>
+                  <td className="px-2 py-1">{row.period.slice(0, 10)}</td>
+                  <td className="px-2 py-1 text-right">{pct(row.accrual, 1)}</td>
+                  <td className="px-2 py-1">{row.accrual != null && Math.abs(row.accrual) > 0.1 ? "⚠️ >10%" : "OK"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -888,6 +980,11 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           <MiniBox label="Market price input" value={config.market_price != null ? `₹${num(config.market_price, 2)}` : "—"} />
           <MiniBox label="Shares outstanding" value={config.shares_outstanding != null ? num(config.shares_outstanding, 0) : "—"} />
         </div>
+        {(config.market_price == null || config.shares_outstanding == null) && (
+          <p className="text-xs text-amber-700 mt-3">
+            Section 6B requires market price and shares outstanding inputs to compute per-share value, margin of safety, and implied growth.
+          </p>
+        )}
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -902,7 +999,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
               <li>CFO &gt; NI: <b>{latest.quality?.piotroski_accrual ?? "—"}</b></li>
               <li>Leverage down: <b>{latest.quality?.piotroski_leverage ?? "—"}</b></li>
               <li>Liquidity up: <b>{latest.quality?.piotroski_liquidity ?? "—"}</b></li>
-              <li>No dilution: <b>{latest.quality?.piotroski_dilution ?? "—"}</b></li>
+              <li>No dilution: <b>{latest.quality?.piotroski_dilution ?? "—"}</b> (recent 5Y equity issuance: ₹{num(dilutionRecent)} Cr)</li>
               <li>Margin up: <b>{latest.quality?.piotroski_margin ?? "—"}</b></li>
               <li>Turnover up: <b>{latest.quality?.piotroski_turnover ?? "—"}</b></li>
             </ul>
@@ -916,6 +1013,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
               <li>BVE / TL: <b>{num(latest.quality?.altman_bve_tl, 3)}</b></li>
               <li>Sales / TA: <b>{num(latest.quality?.altman_s_ta, 3)}</b></li>
             </ul>
+            <p className="text-xs text-slate-500 mt-2">Altman Z' can understate safety for cash-rich firms because large financial assets raise total assets but do not proportionally raise EBIT.</p>
           </div>
         </div>
       </section>
