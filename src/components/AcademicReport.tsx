@@ -516,6 +516,25 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const accrualOtherProxy = accrualDeltaOtherOA - accrualDeltaOtherOL;
   const accrualTotalProxy = accrualWorkingCapitalProxy + accrualOtherProxy;
   const accrualSeries = data.slice(1).map((d) => ({ period: d.period_end, accrual: d.ratios?.accrual_ratio_bs ?? null }));
+  const latestAccrual = latest.ratios?.accrual_ratio_bs ?? null;
+
+  const oaBreakdownSeries = data.slice(1).map((d, idx) => {
+    const prev = data[idx];
+    const deltaPPE = d.bs.PPE - prev.bs.PPE;
+    const deltaInventory = d.bs.Inventory - prev.bs.Inventory;
+    const deltaReceivables = d.bs.TradeReceivables - prev.bs.TradeReceivables;
+    const deltaGoodwill = d.bs.Goodwill - prev.bs.Goodwill;
+    const deltaOtherOA = (d.bs.OA - prev.bs.OA) - deltaPPE - deltaInventory - deltaReceivables - deltaGoodwill;
+    return {
+      period: d.period_end,
+      deltaPPE,
+      deltaInventory,
+      deltaReceivables,
+      deltaGoodwill,
+      deltaOtherOA,
+    };
+  });
+  const largestNoaBreakdown = oaBreakdownSeries.find((d) => d.period === largestNoaShift.period);
 
   const fScore = latest.quality?.piotroski_total ?? null;
   const dilutionRecent = data.slice(Math.max(0, data.length - 5)).reduce((sum, d) => sum + Math.max(0, d.cf.EquityIssued || 0), 0);
@@ -622,7 +641,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             ({(NP_BENCHMARKS.PM.median * 100).toFixed(1)}% and {NP_BENCHMARKS.ATO.median.toFixed(2)}x).
           </li>
           <li>
-            Earnings quality: accrual ratio (BS) average = <b>{pct(accrual5)}</b>, cash conversion ratio average = <b>{num(ccr5, 2)}x</b>.
+            Earnings quality: accrual ratio (BS) latest = <b>{pct(latestAccrual)}</b>, cash conversion ratio average = <b>{num(ccr5, 2)}x</b>; historical 5Y average accrual ({pct(accrual5)}) is transition-driven by NOA regime shifts.
           </li>
           <li>
             Quality diagnostics: Piotroski F-score <b>{fScore ?? "—"}/9</b>, Beneish M-score <b>{mScore?.toFixed(2) ?? "—"}</b>
@@ -714,7 +733,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
               Forecast drivers (Sales growth, Core PM, ATO, FLEV, NBC) are faded from their latest historical values
               toward N&amp;P (2001) Table 1 long-run medians using AR(1) fade parameters from N&amp;P Table 3:
               FADE_CoreSalesPM = 0.87, FADE_ATO = 0.95, FADE_Sales_growth = 0.70. Bull/Bear scenarios scale
-              drivers proportionally. Probability-weighted expected value uses entered scenario probabilities.
+              drivers proportionally. Probability-weighted expected value uses entered scenario probabilities. Compare this mechanical fade with the observed PM trajectory in Section 5B before finalizing valuation anchors.
             </p>
           </div>
           <div>
@@ -835,6 +854,33 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             </tbody>
           </table>
         </div>
+        {largestNoaBreakdown && (
+          <div className="mt-4">
+            <div className="text-xs font-semibold text-slate-600 mb-2">Largest-shift OA decomposition ({largestNoaBreakdown.period.slice(0, 10)})</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="px-2 py-1 text-right">ΔPPE</th>
+                    <th className="px-2 py-1 text-right">ΔInventory</th>
+                    <th className="px-2 py-1 text-right">ΔReceivables</th>
+                    <th className="px-2 py-1 text-right">ΔGoodwill</th>
+                    <th className="px-2 py-1 text-right">ΔOther OA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="px-2 py-1 text-right">₹{num(largestNoaBreakdown.deltaPPE)} Cr</td>
+                    <td className="px-2 py-1 text-right">₹{num(largestNoaBreakdown.deltaInventory)} Cr</td>
+                    <td className="px-2 py-1 text-right">₹{num(largestNoaBreakdown.deltaReceivables)} Cr</td>
+                    <td className="px-2 py-1 text-right">₹{num(largestNoaBreakdown.deltaGoodwill)} Cr</td>
+                    <td className="px-2 py-1 text-right">₹{num(largestNoaBreakdown.deltaOtherOA)} Cr</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -863,8 +909,18 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             <b> ₹{num(latest.cf.d_t_formula)} Cr</b>; discrepancy = <b>₹{num(latest.cf.d_t_discrepancy)} Cr</b>.
           </li>
           <li>
-            Accrual discipline: average BS accrual ratio <b>{pct(accrual5)}</b>; sustained levels above 10% should be treated as
-            a persistence-risk signal.
+            Accrual discipline: latest BS accrual ratio <b>{pct(latestAccrual)}</b> and 5Y average <b>{pct(accrual5)}</b>; interpret historical spikes with the NOA transition context in Sections 3A/3B.
+          </li>
+          <li>
+            Latest accrual decomposition proxy: ΔReceivables <b>₹{num(accrualDeltaReceivables)} Cr</b>, ΔInventory <b>₹{num(accrualDeltaInventory)} Cr</b>,
+            ΔPayables <b>₹{num(accrualDeltaPayables)} Cr</b>, net working-capital accrual proxy <b>₹{num(accrualWorkingCapitalProxy)} Cr</b>.
+          </li>
+          <li>
+            Other accrual proxy: ΔOther OA <b>₹{num(accrualDeltaOtherOA)} Cr</b>, ΔOther OL <b>₹{num(accrualDeltaOtherOL)} Cr</b>,
+            net other accrual proxy <b>₹{num(accrualOtherProxy)} Cr</b>; total accrual proxy <b>₹{num(accrualTotalProxy)} Cr</b>.
+          </li>
+          <li>
+            Cumulative dirty-surplus check Σ(ΔCSE − CNI + d) = <b>₹{num(cumulativeDirtySurplus)} Cr</b>.
           </li>
           <li>
             Latest accrual decomposition proxy: ΔReceivables <b>₹{num(accrualDeltaReceivables)} Cr</b>, ΔInventory <b>₹{num(accrualDeltaInventory)} Cr</b>,
@@ -975,6 +1031,105 @@ export default function AcademicReport({ data, config, rawData }: Props) {
         <p className="text-xs text-slate-500 mt-1">
           Explicit residual-income horizon used in valuation: <b>{explicitHorizonYears}</b> yearly steps. Terminal-value share of RE CV3: <b>{pct(terminalWeightRE, 1)}</b>.
         </p>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">6A) RE sensitivity matrix (ke × g)</h2>
+        <p className="text-xs text-slate-500 mb-3">Rows vary cost of equity; columns vary terminal growth. Values are V(RE, CV3) in ₹ Cr using derived kw for ReOI consistency checks.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-3 py-2 text-left">ke \ g</th>
+                {sensitivityG.map((gCase, idx) => (
+                  <th key={idx} className="px-3 py-2 text-right">{pct(gCase, 2)}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {sensitivityMatrix.map((row) => (
+                <tr key={row.ke}>
+                  <td className="px-3 py-2">{pct(row.ke, 1)}</td>
+                  {row.values.map((v, idx) => (
+                    <td key={idx} className="px-3 py-2 text-right">₹{num(v)} Cr</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">6A.1) Explicit residual-income stream</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-2 py-1 text-left">Period</th>
+                <th className="px-2 py-1 text-right">RE</th>
+                <th className="px-2 py-1 text-right">ReOI</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {valuation.reSeries.map((row) => (
+                <tr key={row.period}>
+                  <td className="px-2 py-1">{row.period.slice(0, 10)}</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.RE)} Cr</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.ReOI)} Cr</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">6B) Per-share and market-implied checks</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <MiniBox label="RE intrinsic per share" value={valuation.perShare?.intrinsic_re_per_share != null ? `₹${num(valuation.perShare.intrinsic_re_per_share, 2)}` : "—"} />
+          <MiniBox label="Margin of safety vs market" value={pct(valuation.perShare?.margin_of_safety_re, 1)} />
+          <MiniBox label="Implied growth g*" value={pct(valuation.perShare?.implied_growth_rate, 2)} />
+          <MiniBox label="Market cap input" value={marketCap != null ? `₹${num(marketCap)} Cr` : "—"} />
+          <MiniBox label="Market price input" value={config.market_price != null ? `₹${num(config.market_price, 2)}` : "—"} />
+          <MiniBox label="Shares outstanding" value={config.shares_outstanding != null ? num(config.shares_outstanding, 0) : "—"} />
+        </div>
+        {(config.market_price == null || config.shares_outstanding == null) && (
+          <p className="text-xs text-amber-700 mt-3">
+            Section 6B requires market price and shares outstanding inputs to compute per-share value, margin of safety, and implied growth.
+          </p>
+        )}
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">6C) Quality Score Decomposition</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <h3 className="font-semibold text-slate-700 mb-2">Piotroski components</h3>
+            <ul className="space-y-1 text-slate-700">
+              <li>ROA positive: <b>{latest.quality?.piotroski_roa ?? "—"}</b></li>
+              <li>ΔROA positive: <b>{latest.quality?.piotroski_delta_roa ?? "—"}</b></li>
+              <li>CFO positive: <b>{latest.quality?.piotroski_cfo ?? "—"}</b></li>
+              <li>CFO &gt; NI: <b>{latest.quality?.piotroski_accrual ?? "—"}</b></li>
+              <li>Leverage down: <b>{latest.quality?.piotroski_leverage ?? "—"}</b></li>
+              <li>Liquidity up: <b>{latest.quality?.piotroski_liquidity ?? "—"}</b></li>
+              <li>No dilution: <b>{latest.quality?.piotroski_dilution ?? "—"}</b> (recent 5Y equity issuance: ₹{num(dilutionRecent)} Cr)</li>
+              <li>Margin up: <b>{latest.quality?.piotroski_margin ?? "—"}</b></li>
+              <li>Turnover up: <b>{latest.quality?.piotroski_turnover ?? "—"}</b></li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-700 mb-2">Altman Z' components</h3>
+            <ul className="space-y-1 text-slate-700">
+              <li>WC / TA: <b>{num(latest.quality?.altman_wc_ta, 3)}</b></li>
+              <li>RE / TA: <b>{num(latest.quality?.altman_re_ta, 3)}</b></li>
+              <li>EBIT / TA: <b>{num(latest.quality?.altman_ebit_ta, 3)}</b></li>
+              <li>BVE / TL: <b>{num(latest.quality?.altman_bve_tl, 3)}</b></li>
+              <li>Sales / TA: <b>{num(latest.quality?.altman_s_ta, 3)}</b></li>
+            </ul>
+            <p className="text-xs text-slate-500 mt-2">Altman Z' can understate safety for cash-rich firms because large financial assets raise total assets but do not proportionally raise EBIT.</p>
+          </div>
+        </div>
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
