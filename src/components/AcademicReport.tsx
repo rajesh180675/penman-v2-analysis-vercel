@@ -449,6 +449,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const ato5 = median(trailing.map((d) => d.ratios?.ATO));
   const accrual5 = avg(trailing.map((d) => d.ratios?.accrual_ratio_bs));
   const ccr5 = avg(trailing.map((d) => d.ratios?.cash_conversion_ratio));
+  const ccrLatest = latest.ratios?.cash_conversion_ratio ?? null;
   const steadyState = data.slice(Math.max(0, data.length - 2));
   const steadyRnoa = avg(steadyState.map((d) => d.ratios?.RNOA));
   const steadyAto = avg(steadyState.map((d) => d.ratios?.ATO));
@@ -491,7 +492,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const reoiIdentityGap = Math.abs(valuation.V_RE_CV3 - valuation.V_ReOI_CV03);
   const reoiIdentityGapPct = valuation.V_RE_CV3 !== 0 ? reoiIdentityGap / Math.abs(valuation.V_RE_CV3) : null;
 
-  const sensitivityKe = [0.11, 0.13, 0.15];
+  const sensitivityKe = [0.09, 0.10, 0.11, 0.13, 0.15];
   const sensitivityG = [0.02, g, 0.04];
   const sensitivityMatrix = sensitivityKe.map((keCase) => ({
     ke: keCase,
@@ -549,6 +550,10 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const terminalWeightRE = valuation.V_RE_CV3 !== 0
     ? ((valuation.CV_RE / Math.pow(1 + valuation.ke, explicitHorizonYears)) / valuation.V_RE_CV3)
     : null;
+  const latestEq16Residual = latest.ratios?.ROCE_eq16_error ?? null;
+  const latestRe = valuation.reSeries.length ? valuation.reSeries[valuation.reSeries.length - 1].RE : null;
+  const dividendCashGap = latest.cf.DividendPaid - latest.cf.FCF_cash;
+  const faRunwayYears = dividendCashGap > 0 ? latest.bs.FA / dividendCashGap : null;
   const mScore = latest.quality?.beneish_mscore ?? null;
   const zScore = latest.quality?.altman_zprime ?? null;
 
@@ -641,7 +646,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             ({(NP_BENCHMARKS.PM.median * 100).toFixed(1)}% and {NP_BENCHMARKS.ATO.median.toFixed(2)}x).
           </li>
           <li>
-            Earnings quality: accrual ratio (BS) latest = <b>{pct(latestAccrual)}</b>, cash conversion ratio average = <b>{num(ccr5, 2)}x</b>; historical 5Y average accrual ({pct(accrual5)}) is transition-driven by NOA regime shifts.
+            Earnings quality: accrual ratio (BS) latest = <b>{pct(latestAccrual)}</b>, cash conversion ratio latest = <b>{num(ccrLatest, 2)}x</b> (5Y average {num(ccr5, 2)}x); historical 5Y average accrual ({pct(accrual5)}) is transition-driven by NOA regime shifts.
           </li>
           <li>
             Quality diagnostics: Piotroski F-score <b>{fScore ?? "—"}/9</b>, Beneish M-score <b>{mScore?.toFixed(2) ?? "—"}</b>
@@ -922,17 +927,6 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           <li>
             Cumulative dirty-surplus check Σ(ΔCSE − CNI + d) = <b>₹{num(cumulativeDirtySurplus)} Cr</b>.
           </li>
-          <li>
-            Latest accrual decomposition proxy: ΔReceivables <b>₹{num(accrualDeltaReceivables)} Cr</b>, ΔInventory <b>₹{num(accrualDeltaInventory)} Cr</b>,
-            ΔPayables <b>₹{num(accrualDeltaPayables)} Cr</b>, net working-capital accrual proxy <b>₹{num(accrualWorkingCapitalProxy)} Cr</b>.
-          </li>
-          <li>
-            Other accrual proxy: ΔOther OA <b>₹{num(accrualDeltaOtherOA)} Cr</b>, ΔOther OL <b>₹{num(accrualDeltaOtherOL)} Cr</b>,
-            net other accrual proxy <b>₹{num(accrualOtherProxy)} Cr</b>; total accrual proxy <b>₹{num(accrualTotalProxy)} Cr</b>.
-          </li>
-          <li>
-            Cumulative dirty-surplus check Σ(ΔCSE − CNI + d) = <b>₹{num(cumulativeDirtySurplus)} Cr</b>.
-          </li>
         </ul>
       </section>
 
@@ -994,7 +988,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
           <MiniBox label="ke assumption" value={pct(ke, 2)} />
           <MiniBox label="kw (derived, latest)" value={pct(kw, 2)} />
-          <MiniBox label="kw (derived, median)" value={pct(kwMedian, 2)} />
+          <MiniBox label="kw (derived, median, historical artifact)" value={pct(kwMedian, 2)} />
           <MiniBox label="kw (legacy rf proxy)" value={pct(config.risk_free_rate, 2)} />
           <MiniBox label="Terminal growth g" value={pct(g, 2)} />
           <MiniBox label="Separation confidence" value={`${valuation.separationScore}/100`} />
@@ -1029,107 +1023,8 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           Interpretation: when separation confidence is low, the RE line should be treated as primary and ReOI as corroborative only. Identity check (CV3): |RE−ReOI| = ₹{num(reoiIdentityGap)} Cr ({pct(reoiIdentityGapPct)}). Legacy rf-based ReOI CV3 was ₹{num(valuationLegacyKw.V_ReOI_CV03)} Cr.
         </p>
         <p className="text-xs text-slate-500 mt-1">
-          Explicit residual-income horizon used in valuation: <b>{explicitHorizonYears}</b> yearly steps. Terminal-value share of RE CV3: <b>{pct(terminalWeightRE, 1)}</b>.
+          Explicit residual-income horizon used in valuation: <b>{explicitHorizonYears}</b> yearly steps. Terminal-value share of RE CV3: <b>{pct(terminalWeightRE, 1)}</b>. Eq.16 reconstruction residual (latest): <b>{pct(latestEq16Residual, 2)}</b>.
         </p>
-      </section>
-
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">6A) RE sensitivity matrix (ke × g)</h2>
-        <p className="text-xs text-slate-500 mb-3">Rows vary cost of equity; columns vary terminal growth. Values are V(RE, CV3) in ₹ Cr using derived kw for ReOI consistency checks.</p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-3 py-2 text-left">ke \ g</th>
-                {sensitivityG.map((gCase, idx) => (
-                  <th key={idx} className="px-3 py-2 text-right">{pct(gCase, 2)}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {sensitivityMatrix.map((row) => (
-                <tr key={row.ke}>
-                  <td className="px-3 py-2">{pct(row.ke, 1)}</td>
-                  {row.values.map((v, idx) => (
-                    <td key={idx} className="px-3 py-2 text-right">₹{num(v)} Cr</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">6A.1) Explicit residual-income stream</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-2 py-1 text-left">Period</th>
-                <th className="px-2 py-1 text-right">RE</th>
-                <th className="px-2 py-1 text-right">ReOI</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {valuation.reSeries.map((row) => (
-                <tr key={row.period}>
-                  <td className="px-2 py-1">{row.period.slice(0, 10)}</td>
-                  <td className="px-2 py-1 text-right">₹{num(row.RE)} Cr</td>
-                  <td className="px-2 py-1 text-right">₹{num(row.ReOI)} Cr</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">6B) Per-share and market-implied checks</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <MiniBox label="RE intrinsic per share" value={valuation.perShare?.intrinsic_re_per_share != null ? `₹${num(valuation.perShare.intrinsic_re_per_share, 2)}` : "—"} />
-          <MiniBox label="Margin of safety vs market" value={pct(valuation.perShare?.margin_of_safety_re, 1)} />
-          <MiniBox label="Implied growth g*" value={pct(valuation.perShare?.implied_growth_rate, 2)} />
-          <MiniBox label="Market cap input" value={marketCap != null ? `₹${num(marketCap)} Cr` : "—"} />
-          <MiniBox label="Market price input" value={config.market_price != null ? `₹${num(config.market_price, 2)}` : "—"} />
-          <MiniBox label="Shares outstanding" value={config.shares_outstanding != null ? num(config.shares_outstanding, 0) : "—"} />
-        </div>
-        {(config.market_price == null || config.shares_outstanding == null) && (
-          <p className="text-xs text-amber-700 mt-3">
-            Section 6B requires market price and shares outstanding inputs to compute per-share value, margin of safety, and implied growth.
-          </p>
-        )}
-      </section>
-
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">6C) Quality Score Decomposition</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <h3 className="font-semibold text-slate-700 mb-2">Piotroski components</h3>
-            <ul className="space-y-1 text-slate-700">
-              <li>ROA positive: <b>{latest.quality?.piotroski_roa ?? "—"}</b></li>
-              <li>ΔROA positive: <b>{latest.quality?.piotroski_delta_roa ?? "—"}</b></li>
-              <li>CFO positive: <b>{latest.quality?.piotroski_cfo ?? "—"}</b></li>
-              <li>CFO &gt; NI: <b>{latest.quality?.piotroski_accrual ?? "—"}</b></li>
-              <li>Leverage down: <b>{latest.quality?.piotroski_leverage ?? "—"}</b></li>
-              <li>Liquidity up: <b>{latest.quality?.piotroski_liquidity ?? "—"}</b></li>
-              <li>No dilution: <b>{latest.quality?.piotroski_dilution ?? "—"}</b> (recent 5Y equity issuance: ₹{num(dilutionRecent)} Cr)</li>
-              <li>Margin up: <b>{latest.quality?.piotroski_margin ?? "—"}</b></li>
-              <li>Turnover up: <b>{latest.quality?.piotroski_turnover ?? "—"}</b></li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="font-semibold text-slate-700 mb-2">Altman Z' components</h3>
-            <ul className="space-y-1 text-slate-700">
-              <li>WC / TA: <b>{num(latest.quality?.altman_wc_ta, 3)}</b></li>
-              <li>RE / TA: <b>{num(latest.quality?.altman_re_ta, 3)}</b></li>
-              <li>EBIT / TA: <b>{num(latest.quality?.altman_ebit_ta, 3)}</b></li>
-              <li>BVE / TL: <b>{num(latest.quality?.altman_bve_tl, 3)}</b></li>
-              <li>Sales / TA: <b>{num(latest.quality?.altman_s_ta, 3)}</b></li>
-            </ul>
-            <p className="text-xs text-slate-500 mt-2">Altman Z' can understate safety for cash-rich firms because large financial assets raise total assets but do not proportionally raise EBIT.</p>
-          </div>
-        </div>
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -1241,6 +1136,18 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           <p>
             <b>Primary downside triggers</b>: (i) spread compression via declining PM or rising NBC, (ii) accrual ratio drift above
             10%, (iii) Beneish flag migration above -1.78, (iv) Altman Z' migration toward distress band.
+          </p>
+          <p>
+            <b>VST-specific trigger — PM path</b>: PM has trended from post-peak levels toward <b>{pct(latest.ratios?.PM)}</b>. If PM falls below <b>18%</b>,
+            re-underwrite with ke stress and a steeper fade path; below <b>15%</b>, valuation tends toward lower sensitivity bounds.
+          </p>
+          <p>
+            <b>VST-specific trigger — dividend sustainability</b>: Dividend vs cash FCF gap is <b>₹{num(dividendCashGap)} Cr</b>
+            ({dividendCashGap > 0 ? `FA runway ~${num(faRunwayYears, 1)} years at current gap.` : "covered by cash FCF."}).
+          </p>
+          <p>
+            <b>VST-specific trigger — capacity return realization</b>: Monitor whether RNOA remains above <b>25%</b> and RE above
+            <b> ₹100 Cr</b> (latest RE: <b>₹{num(latestRe)} Cr</b>) as post-capex assets season.
           </p>
           <p>
             <b>Process recommendation</b>: update this report each filing cycle; monitor Eq.(4)/(7)/(15) residuals and mapping quality
