@@ -1,4 +1,5 @@
 import { RecastPeriod, NP_BENCHMARKS } from "../engine/types";
+import { useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   Legend, BarChart, Bar, ReferenceLine, Cell,
@@ -14,6 +15,7 @@ const days = (v:number|null|undefined) => v!=null?v.toFixed(0)+"d" : "—";
 const NP_COLORS = {median:"#6366f1"};
 
 export default function RatioReport({data}:Props) {
+  const [view, setView] = useState<"core"|"wc"|"trend">("core");
   if (!data||data.length<=1) return (
     <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
       <p className="font-semibold text-amber-800 text-lg">Need ≥ 2 periods</p>
@@ -22,6 +24,31 @@ export default function RatioReport({data}:Props) {
 
   const rd = data.filter(d=>d.ratios);
   const latest = rd[rd.length-1];
+
+  const dupont5 = rd.map((d, i) => {
+    const prev = i > 0 ? rd[i - 1] : d;
+    const avgTA = (d.bs.TA + prev.bs.TA) / 2;
+    const avgCSE = (d.bs.CSE + prev.bs.CSE) / 2;
+    const ebt = d.is.PAT + d.is.TaxExpense;
+    const ebit = ebt + d.is.FinanceCost;
+    const taxBurden = ebt !== 0 ? d.is.PAT / ebt : null;
+    const intBurden = ebit !== 0 ? ebt / ebit : null;
+    const opm = d.is.Sales !== 0 ? ebit / d.is.Sales : null;
+    const at = avgTA !== 0 ? d.is.Sales / avgTA : null;
+    const eqMult = avgCSE !== 0 ? avgTA / avgCSE : null;
+    const roe5 = taxBurden != null && intBurden != null && opm != null && at != null && eqMult != null
+      ? taxBurden * intBurden * opm * at * eqMult
+      : null;
+    return {
+      period: d.period_end.slice(0, 7),
+      taxBurden,
+      intBurden,
+      opm,
+      at,
+      eqMult,
+      roe5,
+    };
+  });
 
   const chart = rd.map(d=>({
     period: d.period_end.slice(0,7),
@@ -40,6 +67,18 @@ export default function RatioReport({data}:Props) {
 
   return (
     <div className="space-y-8">
+
+      <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-between">
+        <div className="text-sm text-slate-700 font-medium">Analysis View</div>
+        <div className="inline-flex rounded-lg overflow-hidden border border-slate-300">
+          <button onClick={() => setView("core")} className={`px-3 py-1.5 text-xs ${view === "core" ? "bg-indigo-600 text-white" : "bg-white text-slate-600"}`}>Core Ratios</button>
+          <button onClick={() => setView("wc")} className={`px-3 py-1.5 text-xs ${view === "wc" ? "bg-indigo-600 text-white" : "bg-white text-slate-600"}`}>WC Deep Dive</button>
+          <button onClick={() => setView("trend")} className={`px-3 py-1.5 text-xs ${view === "trend" ? "bg-indigo-600 text-white" : "bg-white text-slate-600"}`}>Trend (C-03)</button>
+        </div>
+      </div>
+
+      {view === "core" && (
+      <>
 
       {/* ── Summary Cards ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -312,6 +351,168 @@ export default function RatioReport({data}:Props) {
           </ResponsiveContainer>
         </ChartCard>
       </Section>
+
+      <Section title="Extended 5-Factor DuPont (C-04)" subtitle="ROE = (NI/EBT) × (EBT/EBIT) × (EBIT/Sales) × (Sales/Assets) × (Assets/Equity)">
+        <div className="overflow-x-auto mb-4">
+          <table className="w-full text-sm">
+            <thead><tr className="bg-slate-50 border-b border-slate-200">
+              <Th left>Factor</Th>
+              {dupont5.map(d => <Th key={d.period}>{d.period}</Th>)}
+            </tr></thead>
+            <tbody className="divide-y divide-slate-100">
+              <TR label="Tax burden (NI/EBT)" vals={dupont5.map(d => pct(d.taxBurden))} />
+              <TR label="Interest burden (EBT/EBIT)" vals={dupont5.map(d => pct(d.intBurden))} />
+              <TR label="Operating margin (EBIT/Sales)" vals={dupont5.map(d => pct(d.opm))} />
+              <TR label="Asset turnover (Sales/Assets)" vals={dupont5.map(d => mult(d.at))} />
+              <TR label="Equity multiplier (Assets/Equity)" vals={dupont5.map(d => mult(d.eqMult))} />
+              <TR label="Reconstructed ROE (5-factor)" vals={dupont5.map(d => pct(d.roe5))} bold accent="indigo" />
+              <TR label="Reported ROCE (anchor)" vals={rd.map(d => pct(d.ratios?.ROCE))} bold />
+            </tbody>
+          </table>
+        </div>
+        <ChartCard title="5-Factor ROE reconstruction vs ROCE">
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={dupont5.map((d, i) => ({ period: d.period, ROE5: d.roe5 != null ? +(d.roe5 * 100).toFixed(2) : null, ROCE: rd[i]?.ratios?.ROCE != null ? +(rd[i].ratios!.ROCE! * 100).toFixed(2) : null }))}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+              <XAxis dataKey="period" tick={{fontSize:10}}/>
+              <YAxis tick={{fontSize:10}} unit="%"/>
+              <Tooltip formatter={(v:unknown)=>[`${v}%`]}/>
+              <Legend wrapperStyle={{fontSize:11}}/>
+              <Line type="monotone" dataKey="ROE5" stroke="#7c3aed" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="ROCE" stroke="#2563eb" strokeWidth={2} dot={false} strokeDasharray="5 3" />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </Section>
+      </>
+      )}
+
+      {view === "wc" && (
+        <Section title="Working Capital Deep Dive (C-06)" subtitle="DIO, DSO, DPO, CCC with qualitative flags">
+          <div className="overflow-x-auto mb-5">
+            <table className="w-full text-sm">
+              <thead><tr className="bg-slate-50 border-b border-slate-200">
+                <Th left>Metric</Th>
+                {rd.map(d => <Th key={d.period_end}>{d.period_end.slice(0,7)}</Th>)}
+              </tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                <TR label="DSO (days receivable)" vals={rd.map(d => days(d.ratios?.days_receivable))} />
+                <TR label="DIO (days inventory)" vals={rd.map(d => days(d.ratios?.days_inventory))} />
+                <TR label="DPO (days payable)" vals={rd.map(d => days(d.ratios?.days_payable))} />
+                <TR label="CCC (DSO + DIO - DPO)" vals={rd.map(d => days(d.ratios?.cash_conversion_cycle))} bold accent="indigo" />
+                <TR label="Current Ratio" vals={rd.map(d => mult(d.ratios?.current_ratio))} />
+                <TR label="Quick Ratio" vals={rd.map(d => mult(d.ratios?.quick_ratio))} />
+              </tbody>
+            </table>
+          </div>
+          <ChartGrid>
+            <ChartCard title="DSO/DIO/DPO (days)">
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={rd.map(d => ({ period: d.period_end.slice(0,7), DSO: d.ratios?.days_receivable != null ? +d.ratios.days_receivable.toFixed(1) : null, DIO: d.ratios?.days_inventory != null ? +d.ratios.days_inventory.toFixed(1) : null, DPO: d.ratios?.days_payable != null ? +d.ratios.days_payable.toFixed(1) : null }))}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+                  <XAxis dataKey="period" tick={{fontSize:10}}/>
+                  <YAxis tick={{fontSize:10}}/>
+                  <Tooltip/>
+                  <Legend wrapperStyle={{fontSize:11}}/>
+                  <Line type="monotone" dataKey="DSO" stroke="#2563eb" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="DIO" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="DPO" stroke="#10b981" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+            <ChartCard title="CCC trend (days)">
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={rd.map(d => ({ period: d.period_end.slice(0,7), CCC: d.ratios?.cash_conversion_cycle != null ? +d.ratios.cash_conversion_cycle.toFixed(1) : 0 }))}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+                  <XAxis dataKey="period" tick={{fontSize:10}}/>
+                  <YAxis tick={{fontSize:10}}/>
+                  <Tooltip/>
+                  <ReferenceLine y={0} stroke="#94a3b8"/>
+                  <Bar dataKey="CCC" fill="#6366f1" />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </ChartGrid>
+          <div className="mt-4 space-y-2 text-xs">
+            {rd.map((d, i) => {
+              if (i === 0) return null;
+              const prev = rd[i - 1];
+              const dsoUp = (d.ratios?.days_receivable ?? 0) - (prev.ratios?.days_receivable ?? 0);
+              const salesG = d.ratios?.Sales_growth ?? 0;
+              const ccc = d.ratios?.cash_conversion_cycle ?? null;
+              const warn = dsoUp > 7 && salesG < 0.1;
+              return (
+                <div key={d.period_end} className={`rounded-lg border p-2 ${warn ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                  <b>{d.period_end.slice(0,7)}:</b> DSO delta {dsoUp.toFixed(1)}d, Sales growth {pct(salesG)}{ccc != null ? `, CCC ${ccc.toFixed(1)}d` : ""}
+                  {warn ? "  -> Flag: receivables rising faster than sales." : ""}
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+      )}
+
+      {/* ── Trend / Horizontal Analysis (C-03) ── */}
+      {view === "trend" && (
+        <Section title="Horizontal & Trend Analysis (C-03)" subtitle="YoY % change | 3-year CAGR | N&P Table 3 context">
+          <div className="overflow-x-auto mb-5">
+            <table className="w-full text-sm">
+              <thead><tr className="bg-slate-50 border-b border-slate-200">
+                <Th left>Line Item</Th>
+                {rd.slice(1).map(d => <Th key={d.period_end}>{d.period_end.slice(0,7)} YoY</Th>)}
+                {rd.length >= 3 && <Th>3Y CAGR</Th>}
+              </tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                {[
+                  { label: "Sales", fn: (d: typeof rd[0]) => d.is.Sales },
+                  { label: "Operating Income (OI)", fn: (d: typeof rd[0]) => d.is.OI },
+                  { label: "Core OI", fn: (d: typeof rd[0]) => d.cu.CoreOI },
+                  { label: "CNI", fn: (d: typeof rd[0]) => d.is.CNI },
+                  { label: "CFO", fn: (d: typeof rd[0]) => d.cf.CFO },
+                  { label: "Total Assets", fn: (d: typeof rd[0]) => d.bs.TA },
+                  { label: "NOA", fn: (d: typeof rd[0]) => d.bs.NOA },
+                  { label: "CSE", fn: (d: typeof rd[0]) => d.bs.CSE },
+                  { label: "NFO", fn: (d: typeof rd[0]) => d.bs.NFO },
+                  { label: "Trade Receivables", fn: (d: typeof rd[0]) => d.bs.TradeReceivables },
+                  { label: "Inventories", fn: (d: typeof rd[0]) => d.bs.Inventory },
+                  { label: "PPE", fn: (d: typeof rd[0]) => d.bs.PPE },
+                ].map(({ label, fn }) => {
+                  const vals = rd.map(fn);
+                  const yoys = rd.slice(1).map((d, i) => {
+                    const prev = vals[i], cur = vals[i + 1];
+                    if (!prev || prev === 0) return null;
+                    return (cur - prev) / Math.abs(prev);
+                  });
+                  const first = vals[0], last = vals[vals.length - 1];
+                  const years = rd.length - 1;
+                  const cagr3 = first > 0 && last > 0 && years >= 2
+                    ? Math.pow(last / first, 1 / years) - 1 : null;
+                  return (
+                    <tr key={label} className="hover:bg-slate-50">
+                      <td className="px-3 py-2 text-xs text-slate-700 whitespace-nowrap">{label}</td>
+                      {yoys.map((v, i) => (
+                        <td key={i} className={`px-3 py-2 text-right font-mono text-xs ${v == null ? "text-slate-400" : v >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                          {v == null ? "—" : `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)}%`}
+                        </td>
+                      ))}
+                      {rd.length >= 3 && (
+                        <td className={`px-3 py-2 text-right font-mono text-xs font-semibold ${cagr3 == null ? "text-slate-400" : cagr3 >= 0 ? "text-indigo-700" : "text-red-600"}`}>
+                          {cagr3 == null ? "—" : `${cagr3 >= 0 ? "+" : ""}${(cagr3 * 100).toFixed(1)}%`}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="text-xs text-slate-500 bg-slate-50 rounded-lg p-3 border">
+            <strong>Reading Guide:</strong> YoY column shows (Current − Prior) / |Prior|. A consistently positive
+            OI CAGR exceeding Sales CAGR suggests margin expansion. Rising NOA growth vs Sales growth may indicate
+            asset-intensity risk (N&P 2001 §4 — high NOA growth dilutes RNOA if PM doesn't increase commensurately).
+          </div>
+        </Section>
+      )}
     </div>
   );
 }

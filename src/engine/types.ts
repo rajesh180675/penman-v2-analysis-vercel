@@ -9,6 +9,18 @@ export interface RawPeriodData {
   raw_metric_values: Record<string, number | null>;
 }
 
+export type TraceStatement = "BalanceSheet" | "ProfitLoss" | "CashFlow" | "Derived" | "Fallback";
+
+export interface TraceEntry {
+  statement: TraceStatement;
+  key: string;
+  value: number;
+  matchType: "exact_composite" | "exact_base" | "fuzzy" | "derived";
+  note?: string;
+}
+
+export type TraceMap = Record<string, TraceEntry[]>;
+
 export interface CanonicalBalanceSheet {
   TA: number; CSE: number; MI: number;
   FA: number; FO: number;
@@ -39,6 +51,7 @@ export interface CanonicalIncome {
   PreferredDividend: number;
   NFE: number; OI: number;
   OtherItems: number; OI_from_sales: number; MII: number;
+  COGS: number;
 }
 
 export interface CoreUnusual {
@@ -106,6 +119,31 @@ export interface QualityMetrics {
   beneish_lvgi: number; beneish_tata: number; beneish_mscore: number;
   altman_wc_ta: number; altman_re_ta: number; altman_ebit_ta: number;
   altman_bve_tl: number; altman_s_ta: number; altman_zprime: number;
+  altman_re_proxy_low_confidence?: boolean;
+  // Zmijewski (1984)
+  zmijewski_roa?: number;
+  zmijewski_leverage?: number;
+  zmijewski_liquidity?: number;
+  zmijewski_xscore?: number;
+  zmijewski_prob_distress?: number;
+  // Ohlson (1980)
+  ohlson_size?: number;
+  ohlson_leverage?: number;
+  ohlson_liquidity?: number;
+  ohlson_roe_neg?: boolean;
+  ohlson_chin?: number;
+  ohlson_oscore?: number;
+  ohlson_prob_distress?: number;
+  // Sloan / Richardson accrual decomposition
+  sloan_wc_accruals?: number;
+  sloan_lt_accruals?: number;
+  sloan_total_accruals?: number;
+  accrual_reliability_score?: number;
+  // Additional quality overlays
+  operating_leverage?: number | null;
+  cash_earnings_quality_index?: number | null;
+  conservative_accounting_score?: number | null;
+  revenue_quality_flags?: string[];
 }
 
 export interface ResidualIncome {
@@ -121,6 +159,7 @@ export interface RecastPeriod {
   ratios?: Ratios;
   ri?: ResidualIncome;
   quality?: QualityMetrics;
+  trace?: TraceMap;
 }
 
 export interface ValuationResult {
@@ -133,6 +172,49 @@ export interface ValuationResult {
   ke: number; kw: number; g: number;
   separationScore: number; lowConfidence: boolean;
   impliedGrowthRE?: number;
+  fcf?: FCFValuation;
+  aeg?: AEGValuation;
+  perShare?: PerShareResult;
+}
+
+export interface PerShareResult {
+  intrinsic_re_per_share: number | null;
+  intrinsic_reoi_per_share: number | null;
+  intrinsic_fcff_per_share: number | null;
+  intrinsic_fcfe_per_share: number | null;
+  intrinsic_ddm_per_share: number | null;
+  intrinsic_aeg_per_share: number | null;
+  implied_pb_re: number | null;
+  implied_pe_re: number | null;
+  margin_of_safety_re: number | null;
+  implied_growth_rate: number | null;
+}
+
+export interface FCFValuation {
+  fcff_series: Array<{ period: string; NOPAT: number; dNOA: number; FCFF: number; PV_FCFF: number }>;
+  fcfe_series: Array<{ period: string; CNI: number; dCSE: number; FCFE: number; PV_FCFE: number }>;
+  EV_FCFF: number;
+  V_FCFE: number;
+  CV_FCFF: number;
+  CV_FCFE: number;
+}
+
+export interface AEGValuation {
+  aeg_series: Array<{ period: string; CNI: number; AEG: number; PV_AEG: number }>;
+  V_AEG: number;
+  implied_pe: number | null;
+  normalised_pe: number | null;
+}
+
+export interface MultiCompanyRecord {
+  id: string;
+  label: string;
+  rawData: RawPeriodData[];
+  recastData: RecastPeriod[];
+}
+
+export interface CompanyRegistry {
+  companies: Record<string, MultiCompanyRecord>;
 }
 
 export interface ForecastPeriod {
@@ -143,7 +225,7 @@ export interface ForecastPeriod {
   flev_assumption: number;
   nbc_assumption: number;
   Sales_f: number; NOA_f: number; OI_f: number;
-  NFE_f: number; CNI_f: number; CSE_f: number;
+  NFE_f: number; CNI_f: number; CSE_f: number; NFO_f: number;
   ΔNOA_f: number; FCF_f: number; RE_f: number; ReOI_f: number;
   source: 'user'|'fade'|'mean_reversion'|'flat';
 }

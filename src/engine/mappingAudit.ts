@@ -66,6 +66,13 @@ const criticalKeys = {
   ],
 } as const;
 
+function isCriticalMissing(byStmt: Record<Statement, Set<string>>, stmt: "BalanceSheet" | "ProfitLoss" | "CashFlow", key: string) {
+  if (stmt === "CashFlow" && key === "Purchased of Fixed Assets") {
+    return !hasAny(byStmt, "CashFlow", ["Purchased of Fixed Assets", "Purchase of Fixed Assets"]);
+  }
+  return !byStmt[stmt].has(key);
+}
+
 function addAll(target: Set<string>, keys: readonly string[]) {
   for (const k of keys) target.add(k);
 }
@@ -140,6 +147,7 @@ function flattenSpecKeys(): Set<string> {
   addAll(out, SPEC.cashFlow.capex);
   addAll(out, SPEC.cashFlow.dividendPaid);
   addAll(out, SPEC.cashFlow.equityIssued);
+  addAll(out, SPEC.cashFlow.shareBuybacks);
   addAll(out, SPEC.cashFlow.interestReceived);
   addAll(out, SPEC.cashFlow.dividendReceived);
   addAll(out, SPEC.cashFlow.interestNet);
@@ -360,6 +368,7 @@ function buildChecklistSpecs(): ChecklistSpec[] {
         ...SPEC.cashFlow.saleInvestments.map((key) => ({ stmt: "CashFlow" as const, key })),
         ...SPEC.cashFlow.debtProceeds.map((key) => ({ stmt: "CashFlow" as const, key })),
         ...SPEC.cashFlow.debtRepayments.map((key) => ({ stmt: "CashFlow" as const, key })),
+        ...SPEC.cashFlow.shareBuybacks.map((key) => ({ stmt: "CashFlow" as const, key })),
       ],
       critical: [
         { stmt: "CashFlow", key: "Sale of Fixed Assets" },
@@ -429,9 +438,9 @@ export function auditMappingCoverage(periods: RawPeriodData[]): MappingAuditRepo
   const yamlKeysNotInDataset = Array.from(yamlKeys).filter((k) => !datasetUnion.has(k)).sort();
 
   const unresolvedCriticalByStatement = {
-    BalanceSheet: criticalKeys.BalanceSheet.filter((k) => !byStmt.BalanceSheet.has(k)),
-    ProfitLoss: criticalKeys.ProfitLoss.filter((k) => !byStmt.ProfitLoss.has(k)),
-    CashFlow: criticalKeys.CashFlow.filter((k) => !byStmt.CashFlow.has(k)),
+    BalanceSheet: criticalKeys.BalanceSheet.filter((k) => isCriticalMissing(byStmt, "BalanceSheet", k)),
+    ProfitLoss: criticalKeys.ProfitLoss.filter((k) => isCriticalMissing(byStmt, "ProfitLoss", k)),
+    CashFlow: criticalKeys.CashFlow.filter((k) => isCriticalMissing(byStmt, "CashFlow", k)),
   };
 
   return {
@@ -491,7 +500,7 @@ export function evaluateQualityGate(periods: RawPeriodData[]): QualityGateReport
   if (!hasKey(byStmt, "CashFlow", "Net Cash from Operating Activities")) {
     missingCore.push("Net Cash from Operating Activities (CashFlow)");
   }
-  if (!hasKey(byStmt, "CashFlow", "Purchased of Fixed Assets")) {
+  if (!hasAny(byStmt, "CashFlow", ["Purchased of Fixed Assets", "Purchase of Fixed Assets"])) {
     missingCore.push("Purchased of Fixed Assets (CashFlow)");
   }
   if (!hasKey(byStmt, "ProfitLoss", "Finance Cost")) {
@@ -510,7 +519,7 @@ export function evaluateQualityGate(periods: RawPeriodData[]): QualityGateReport
     tier = "Tier 3";
   }
 
-  const valuationBlocked = unresolvedCriticalCount > 0 || missingMinimum.length > 0 || missingCore.length > 0;
+  const valuationBlocked = missingMinimum.length > 0 || missingCore.length > 0;
   const blockingReasons: string[] = [];
   if (unresolvedCriticalCount > 0) {
     blockingReasons.push(

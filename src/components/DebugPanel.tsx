@@ -2,12 +2,56 @@ import { useState, useMemo } from "react";
 import { CapitalineParseDebug } from "../engine/capitalineParser";
 import { RawPeriodData, RecastPeriod } from "../engine/types";
 import { auditMappingCoverage, evaluateGranularityChecklist, QualityGateReport } from "../engine/mappingAudit";
+import { runIdentityAssertions } from "../engine/identityTests";
 
 interface Props {
   debugInfo: CapitalineParseDebug | null;
   recastData?: RecastPeriod[] | null;
   rawData?: RawPeriodData[] | null;
   qualityGate?: QualityGateReport | null;
+}
+
+type ManifestSignature = {
+  mode: "hmac-sha256" | "unsigned";
+  keyId: string | null;
+  inputSha256: string;
+  hmacSha256: string | null;
+};
+
+type BundleManifest = {
+  generatedAt: string;
+  bundle: string;
+  periodRange: { start: string | null; end: string | null; count: number };
+  rowCounts: Record<string, number>;
+  checksums: Array<{ file: string; mime: string; bytes: number; sha256: string }>;
+  algorithm: string;
+  signature?: ManifestSignature;
+  [k: string]: unknown;
+};
+
+async function sha256HexString(input: string): Promise<string> {
+  const enc = new TextEncoder();
+  const digest = await crypto.subtle.digest("SHA-256", enc.encode(input));
+  const bytes = new Uint8Array(digest);
+  let out = "";
+  for (const b of bytes) out += b.toString(16).padStart(2, "0");
+  return out;
+}
+
+async function hmacSha256Hex(message: string, secret: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(message));
+  const bytes = new Uint8Array(sig);
+  let out = "";
+  for (const b of bytes) out += b.toString(16).padStart(2, "0");
+  return out;
 }
 
 export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate }: Props) {
@@ -17,6 +61,18 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
   const [showSample, setShowSample]     = useState(true);
   const [selectedPeriodIdx, setSelectedPeriodIdx] = useState<number>(0);
   const [metricSearch, setMetricSearch] = useState("");
+  const [selectedTraceLine, setSelectedTraceLine] = useState<string>("");
+  const [manifestFileName, setManifestFileName] = useState("");
+  const [manifestObj, setManifestObj] = useState<BundleManifest | null>(null);
+  const [manifestSecret, setManifestSecret] = useState("");
+  const [manifestVerifyBusy, setManifestVerifyBusy] = useState(false);
+  const [manifestVerifyResult, setManifestVerifyResult] = useState<{
+    ok: boolean;
+    inputDigestMatch: boolean;
+    hmacMatch: boolean | null;
+    mode: "hmac-sha256" | "unsigned" | "missing";
+    details: string[];
+  } | null>(null);
 
   const mappingAudit = useMemo(() => {
     if (!rawData || rawData.length === 0) return null;
@@ -27,6 +83,94 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
     if (!rawData || rawData.length === 0) return null;
     return evaluateGranularityChecklist(rawData);
   }, [rawData]);
+
+  const identitySuite = useMemo(() => {
+    if (!recastData || recastData.length < 1) return null;
+    return runIdentityAssertions(recastData);
+  }, [recastData]);
+
+  const onManifestUpload = async (file: File | null) => {
+    setManifestVerifyResult(null);
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as BundleManifest;
+      setManifestObj(parsed);
+      setManifestFileName(file.name);
+    } catch {
+      setManifestObj(null);
+      setManifestFileName(file.name);
+      setManifestVerifyResult({
+        ok: false,
+        inputDigestMatch: false,
+        hmacMatch: null,
+        mode: "missing",
+        details: ["Invalid JSON file. Please upload a valid manifest.json."],
+      });
+    }
+  };
+
+  const verifyManifest = async () => {
+    if (!manifestObj) {
+      setManifestVerifyResult({
+        ok: false,
+        inputDigestMatch: false,
+        hmacMatch: null,
+        mode: "missing",
+        details: ["Upload manifest.json first."],
+      });
+      return;
+    }
+
+    setManifestVerifyBusy(true);
+    try {
+      const details: string[] = [];
+      const { signature, ...manifestCore } = manifestObj;
+      const payload = JSON.stringify(manifestCore, null, 2);
+      const payloadSha = await sha256HexString(payload);
+
+      const mode: "hmac-sha256" | "unsigned" | "missing" = signature?.mode ?? "missing";
+      const inputDigestExpected = signature?.inputSha256 ?? "";
+      const inputDigestMatch = Boolean(inputDigestExpected) && payloadSha === inputDigestExpected;
+
+      if (!signature) {
+        details.push("Signature block is missing from manifest.");
+      } else {
+        details.push(`Mode: ${signature.mode}${signature.keyId ? ` (keyId: ${signature.keyId})` : ""}`);
+      }
+
+      if (inputDigestMatch) {
+        details.push("inputSha256 matches manifest payload.");
+      } else {
+        details.push("inputSha256 mismatch: payload may be tampered or canonicalization changed.");
+        details.push(`Expected: ${inputDigestExpected || "(none)"}`);
+        details.push(`Computed: ${payloadSha}`);
+      }
+
+      let hmacMatch: boolean | null = null;
+      if (signature?.mode === "hmac-sha256") {
+        if (!manifestSecret.trim()) {
+          hmacMatch = false;
+          details.push("HMAC mode detected but no secret provided.");
+        } else {
+          const computedHmac = await hmacSha256Hex(payload, manifestSecret);
+          hmacMatch = computedHmac === (signature.hmacSha256 ?? "");
+          if (hmacMatch) {
+            details.push("hmacSha256 matches provided secret.");
+          } else {
+            details.push("hmacSha256 mismatch for provided secret.");
+            details.push(`Expected: ${signature.hmacSha256 || "(none)"}`);
+            details.push(`Computed: ${computedHmac}`);
+          }
+        }
+      }
+
+      const ok = inputDigestMatch && (signature?.mode !== "hmac-sha256" || hmacMatch === true);
+      setManifestVerifyResult({ ok, inputDigestMatch, hmacMatch, mode, details });
+    } finally {
+      setManifestVerifyBusy(false);
+    }
+  };
 
   const downloadTextFile = (filename: string, content: string, mime: string) => {
     const blob = new Blob([content], { type: mime });
@@ -90,6 +234,82 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
       .join("\n");
 
     downloadTextFile("granularity_checklist_audit.csv", csv, "text/csv;charset=utf-8");
+  };
+
+  const traceRecords = useMemo(() => {
+    if (!recastData || recastData.length === 0) return [] as Array<{
+      period: string;
+      line: string;
+      statement: string;
+      key: string;
+      value: number;
+      matchType: string;
+      note: string;
+    }>;
+
+    const rows: Array<{
+      period: string;
+      line: string;
+      statement: string;
+      key: string;
+      value: number;
+      matchType: string;
+      note: string;
+    }> = [];
+
+    for (const p of recastData) {
+      if (!p.trace) continue;
+      for (const [line, entries] of Object.entries(p.trace)) {
+        for (const e of entries) {
+          rows.push({
+            period: p.period_end,
+            line,
+            statement: e.statement,
+            key: e.key,
+            value: e.value,
+            matchType: e.matchType,
+            note: e.note ?? "",
+          });
+        }
+      }
+    }
+    return rows;
+  }, [recastData]);
+
+  const exportTraceJSON = () => {
+    if (traceRecords.length === 0) return;
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      periods: recastData?.map((p) => p.period_end) ?? [],
+      rows: traceRecords,
+    };
+    downloadTextFile(
+      "traceability_appendix.json",
+      JSON.stringify(payload, null, 2),
+      "application/json"
+    );
+  };
+
+  const exportTraceCSV = () => {
+    if (traceRecords.length === 0) return;
+    const escapeCell = (v: string | number) => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ["period", "line", "statement", "key", "value", "matchType", "note"];
+    const rows = traceRecords.map((r) => [
+      r.period,
+      r.line,
+      r.statement,
+      r.key,
+      r.value,
+      r.matchType,
+      r.note,
+    ]);
+    const csv = [header, ...rows]
+      .map((row) => row.map((cell) => escapeCell(cell)).join(","))
+      .join("\n");
+    downloadTextFile("traceability_appendix.csv", csv, "text/csv;charset=utf-8");
   };
 
   // Metric search — find a key across all periods and show its values
@@ -248,6 +468,162 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      <Card title="Verify Manifest (HMAC / SHA-256)">
+        <p className="text-xs text-slate-500 mb-3">
+          Upload <span className="font-mono">manifest.json</span> from IC bundle and verify its
+          <span className="font-mono"> inputSha256</span> and optional
+          <span className="font-mono"> hmacSha256</span> in-browser.
+        </p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-3">
+          <div className="lg:col-span-2">
+            <label className="block text-xs font-medium text-slate-600 mb-1">manifest.json</label>
+            <input
+              type="file"
+              accept="application/json,.json"
+              onChange={(e) => onManifestUpload(e.target.files?.[0] ?? null)}
+              className="w-full border border-slate-300 rounded-md px-2 py-1.5 text-xs"
+            />
+            {manifestFileName && <div className="text-xs text-slate-500 mt-1">Loaded: {manifestFileName}</div>}
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">HMAC secret (optional)</label>
+            <input
+              type="password"
+              value={manifestSecret}
+              onChange={(e) => setManifestSecret(e.target.value)}
+              placeholder="Required only for hmac-sha256"
+              className="w-full border border-slate-300 rounded-md px-2 py-1.5 text-xs"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 mb-3">
+          <button
+            onClick={verifyManifest}
+            disabled={manifestVerifyBusy || !manifestObj}
+            className="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {manifestVerifyBusy ? "Verifying..." : "Verify Manifest"}
+          </button>
+          {manifestObj?.signature?.mode && (
+            <span className="text-xs text-slate-500">Signature mode: {manifestObj.signature.mode}</span>
+          )}
+        </div>
+
+        {manifestVerifyResult && (
+          <div
+            className={`rounded-lg border p-3 text-xs ${
+              manifestVerifyResult.ok ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"
+            }`}
+          >
+            <div className={`font-semibold mb-2 ${manifestVerifyResult.ok ? "text-green-700" : "text-red-700"}`}>
+              {manifestVerifyResult.ok ? "Verification PASSED" : "Verification FAILED"}
+            </div>
+            <div className="text-slate-600 space-y-1 font-mono">
+              <div>mode: {manifestVerifyResult.mode}</div>
+              <div>inputSha256: {manifestVerifyResult.inputDigestMatch ? "match" : "mismatch"}</div>
+              <div>
+                hmacSha256: {manifestVerifyResult.hmacMatch == null ? "not-applicable" : manifestVerifyResult.hmacMatch ? "match" : "mismatch"}
+              </div>
+            </div>
+            <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-700">
+              {manifestVerifyResult.details.map((d) => (
+                <li key={d}>{d}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Card>
+
+      {/* ── Identity Test Suite A1–A9 ── */}
+      {identitySuite && (
+        <Card title="Unit Test Suite — Accounting Identities (A1–A9)">
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <StatBox label="Assertions" value={identitySuite.total} />
+            <StatBox label="Passed" value={identitySuite.passed} />
+            <StatBox label="Failed" value={identitySuite.failed} highlight={identitySuite.failed > 0} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+            {Object.entries(identitySuite.byAssertion).map(([id, s]) => (
+              <div key={id} className="border border-slate-200 rounded-lg p-2 text-xs">
+                <div className="font-semibold text-slate-700">{id}</div>
+                <div className="text-green-700">Pass: {s.passed}</div>
+                <div className={`${s.failed > 0 ? "text-red-700" : "text-slate-500"}`}>Fail: {s.failed}</div>
+              </div>
+            ))}
+          </div>
+          {identitySuite.failed > 0 && (
+            <div className="max-h-56 overflow-auto border border-red-200 bg-red-50 rounded-lg p-3 text-xs font-mono space-y-1">
+              {identitySuite.results.filter((r) => !r.pass).slice(0, 120).map((r, i) => (
+                <div key={`${r.id}-${r.period}-${i}`}>
+                  {r.period} {r.id} diff={r.diff.toFixed(4)} (tol={r.tolerance.toFixed(4)})
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* ── Traceability Panel ── */}
+      {verifyPeriod?.trace && (
+        <Card title="Traceability Panel — Source key → statement → value">
+          <p className="text-xs text-slate-500 mb-3">
+            Audit trail for computed lines in selected period. Click a line to inspect exact source metric keys and matched statement.
+          </p>
+          <div className="flex flex-wrap gap-2 mb-3">
+            <button
+              onClick={exportTraceCSV}
+              disabled={traceRecords.length === 0}
+              className="px-3 py-1.5 rounded-md bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Export Trace CSV
+            </button>
+            <button
+              onClick={exportTraceJSON}
+              disabled={traceRecords.length === 0}
+              className="px-3 py-1.5 rounded-md bg-slate-700 text-white text-xs font-medium hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Export Trace JSON
+            </button>
+            <span className="text-xs text-slate-500 self-center">
+              {traceRecords.length.toLocaleString()} trace rows across all periods.
+            </span>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="border border-slate-200 rounded-lg p-2 max-h-80 overflow-auto">
+              {Object.keys(verifyPeriod.trace).sort().map((line) => (
+                <button
+                  key={line}
+                  onClick={() => setSelectedTraceLine(line)}
+                  className={`w-full text-left px-2 py-1 rounded text-xs font-mono ${
+                    selectedTraceLine === line ? "bg-indigo-100 text-indigo-800" : "hover:bg-slate-100 text-slate-700"
+                  }`}
+                >
+                  {line}
+                </button>
+              ))}
+            </div>
+            <div className="border border-slate-200 rounded-lg p-3 max-h-80 overflow-auto">
+              {selectedTraceLine && verifyPeriod.trace[selectedTraceLine] ? (
+                <div className="space-y-2">
+                  <div className="font-semibold text-sm text-slate-700">{selectedTraceLine}</div>
+                  {verifyPeriod.trace[selectedTraceLine].map((t, i) => (
+                    <div key={i} className="text-xs border border-slate-100 rounded p-2 bg-slate-50">
+                      <div><span className="text-slate-500">statement:</span> <span className="font-mono">{t.statement}</span></div>
+                      <div><span className="text-slate-500">key:</span> <span className="font-mono">{t.key}</span></div>
+                      <div><span className="text-slate-500">value:</span> <span className="font-mono">{t.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span></div>
+                      <div><span className="text-slate-500">match:</span> <span className="font-mono">{t.matchType}</span></div>
+                      {t.note ? <div className="text-amber-700">{t.note}</div> : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-400">Select a line to inspect trace entries.</div>
+              )}
             </div>
           </div>
         </Card>

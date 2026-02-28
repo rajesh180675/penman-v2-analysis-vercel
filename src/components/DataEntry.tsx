@@ -1,6 +1,10 @@
 import { useState, useCallback } from "react";
 import { RawPeriodData, EngineConfig } from "../engine/types";
 import { parseCapitalineZip, CapitalineParseDebug } from "../engine/capitalineParser";
+import { parseScreenerTabDelimited } from "../engine/screenerParser";
+import { parseRawPeriodsJson } from "../engine/jsonIngestion";
+import { parseXbrlXml } from "../engine/xbrlParser";
+import ManualEntryWizard from "./ManualEntryWizard";
 
 interface Props {
   onDataSubmit: (data: RawPeriodData[], debug?: CapitalineParseDebug) => void;
@@ -10,11 +14,14 @@ interface Props {
 }
 
 export default function DataEntry({ onDataSubmit, currentData, config, onConfigChange }: Props) {
+  const [mode, setMode] = useState<"capitaline" | "screener" | "json" | "xbrl" | "manual">("capitaline");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError]     = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [companyId, setCompanyId] = useState("VST");
   const [lastFile, setLastFile] = useState<string | null>(null);
+  const [screenerText, setScreenerText] = useState("");
+  const [jsonText, setJsonText] = useState("");
 
   const processZip = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith(".zip")) {
@@ -57,6 +64,24 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      <div className="bg-white rounded-xl border border-slate-200 p-2 inline-flex gap-2">
+        {([
+          ["capitaline", "Capitaline ZIP"],
+          ["screener", "Screener Paste"],
+          ["json", "Raw JSON"],
+          ["xbrl", "XBRL XML"],
+          ["manual", "Manual Wizard"],
+        ] as const).map(([k, lbl]) => (
+          <button
+            key={k}
+            onClick={() => setMode(k)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium ${mode === k ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700"}`}
+          >
+            {lbl}
+          </button>
+        ))}
+      </div>
+
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-start">
           <div>
@@ -105,38 +130,109 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
           </div>
         </div>
 
-        {/* Drop zone */}
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          className={`m-6 border-2 border-dashed rounded-xl p-10 text-center transition-colors ${
-            dragOver ? "border-indigo-400 bg-indigo-50"
-            : isProcessing ? "border-slate-200 bg-slate-50"
-            : "border-slate-300 bg-white hover:border-indigo-300"
-          }`}
-        >
-          <input type="file" accept=".zip" onChange={async (e) => { const f = e.target.files?.[0]; if (f) await processZip(f); e.target.value = ""; }}
-            className="hidden" id="zip-upload" disabled={isProcessing} />
-          <label htmlFor="zip-upload" className="cursor-pointer flex flex-col items-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center">
-              {isProcessing ? (
-                <svg className="w-7 h-7 text-indigo-600 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-              ) : (
-                <svg className="w-7 h-7 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-              )}
-            </div>
-            <div>
-              <div className="font-semibold text-slate-700">{isProcessing ? "Processing…" : "Drop ZIP here or click to browse"}</div>
-              <div className="text-xs text-slate-500 mt-0.5">{lastFile ? `Last: ${lastFile}` : "Capitaline XLS exports bundled in a .zip"}</div>
-            </div>
-          </label>
-        </div>
+        {mode === "capitaline" && (
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            className={`m-6 border-2 border-dashed rounded-xl p-10 text-center transition-colors ${
+              dragOver ? "border-indigo-400 bg-indigo-50"
+              : isProcessing ? "border-slate-200 bg-slate-50"
+              : "border-slate-300 bg-white hover:border-indigo-300"
+            }`}
+          >
+            <input type="file" accept=".zip" onChange={async (e) => { const f = e.target.files?.[0]; if (f) await processZip(f); e.target.value = ""; }}
+              className="hidden" id="zip-upload" disabled={isProcessing} />
+            <label htmlFor="zip-upload" className="cursor-pointer flex flex-col items-center gap-3">
+              <div className="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center">
+                {isProcessing ? (
+                  <svg className="w-7 h-7 text-indigo-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg className="w-7 h-7 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                )}
+              </div>
+              <div>
+                <div className="font-semibold text-slate-700">{isProcessing ? "Processing…" : "Drop ZIP here or click to browse"}</div>
+                <div className="text-xs text-slate-500 mt-0.5">{lastFile ? `Last: ${lastFile}` : "Capitaline XLS exports bundled in a .zip"}</div>
+              </div>
+            </label>
+          </div>
+        )}
+
+        {mode === "screener" && (
+          <div className="m-6 space-y-3">
+            <p className="text-xs text-slate-500">Paste Screener.in tab-delimited 10Y table (copied from browser).</p>
+            <textarea value={screenerText} onChange={(e) => setScreenerText(e.target.value)} className="w-full h-48 p-3 border rounded-lg font-mono text-xs" placeholder="Metric\t2016\t2017 ..." />
+            <button
+              onClick={() => {
+                try {
+                  const periods = parseScreenerTabDelimited(screenerText, { companyId });
+                  if (!periods.length) setError("Screener parse returned 0 periods.");
+                  else onDataSubmit(periods);
+                } catch (e) {
+                  setError(`Screener parse failed: ${e instanceof Error ? e.message : String(e)}`);
+                }
+              }}
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
+            >
+              Parse Screener Data
+            </button>
+          </div>
+        )}
+
+        {mode === "json" && (
+          <div className="m-6 space-y-3">
+            <p className="text-xs text-slate-500">Paste RawPeriodData[] JSON for direct API ingestion.</p>
+            <textarea value={jsonText} onChange={(e) => setJsonText(e.target.value)} className="w-full h-48 p-3 border rounded-lg font-mono text-xs" placeholder='[{"company_id":"...","period_end":"2025-03-31","raw_metric_values":{...}}]' />
+            <button
+              onClick={() => {
+                try {
+                  const periods = parseRawPeriodsJson(jsonText);
+                  onDataSubmit(periods);
+                } catch (e) {
+                  setError(`JSON ingestion failed: ${e instanceof Error ? e.message : String(e)}`);
+                }
+              }}
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
+            >
+              Parse JSON Data
+            </button>
+          </div>
+        )}
+
+        {mode === "xbrl" && (
+          <div className="m-6 space-y-3">
+            <p className="text-xs text-slate-500">Upload MCA iXBRL / XBRL XML file (best-effort parser with canonical mapping).</p>
+            <input
+              type="file"
+              accept=".xml,.xbrl,.txt"
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                try {
+                  const txt = await f.text();
+                  const periods = parseXbrlXml(txt, companyId);
+                  if (!periods.length) setError("XBRL parse returned 0 periods. Check taxonomy labels/contexts.");
+                  else onDataSubmit(periods);
+                } catch (err) {
+                  setError(`XBRL parse failed: ${err instanceof Error ? err.message : String(err)}`);
+                }
+              }}
+              className="block w-full text-sm border border-slate-300 rounded-lg p-2 bg-white"
+            />
+          </div>
+        )}
+
+        {mode === "manual" && (
+          <div className="m-6">
+            <ManualEntryWizard onSubmit={(rows) => onDataSubmit(rows)} />
+          </div>
+        )}
 
         {error && (
           <div className="mx-6 mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">

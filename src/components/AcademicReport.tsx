@@ -1,12 +1,19 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
-import { EngineConfig, NP_BENCHMARKS, RecastPeriod } from "../engine/types";
+import JSZip from "jszip";
+import katex from "katex";
+import "katex/dist/katex.min.css";
+import { EngineConfig, NP_BENCHMARKS, RawPeriodData, RecastPeriod } from "../engine/types";
 import { computeValuation } from "../engine/PenmanNissimEngine";
+import { evaluateGranularityChecklist } from "../engine/mappingAudit";
+import { generateValuationWorkbook } from "../engine/excelExport";
+import { buildProvenanceAuditRows } from "../engine/provenanceAudit";
 
 interface Props {
   data: RecastPeriod[];
   config: EngineConfig;
+  rawData?: RawPeriodData[] | null;
 }
 
 const pct = (v: number | null | undefined, d = 1) => (v == null ? "—" : `${(v * 100).toFixed(d)}%`);
@@ -18,51 +25,393 @@ function cagr(first: number, last: number, years: number): number | null {
   return Math.pow(last / first, 1 / years) - 1;
 }
 
+async function sha256Hex(input: string | Blob): Promise<string> {
+  const buffer = typeof input === "string" ? new TextEncoder().encode(input).buffer : await input.arrayBuffer();
+  const digest = await crypto.subtle.digest("SHA-256", buffer);
+  const bytes = new Uint8Array(digest);
+  let out = "";
+  for (const b of bytes) out += b.toString(16).padStart(2, "0");
+  return out;
+}
+
+async function hmacSha256Hex(message: string, secret: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(message));
+  const bytes = new Uint8Array(sig);
+  let out = "";
+  for (const b of bytes) out += b.toString(16).padStart(2, "0");
+  return out;
+}
+
+async function bytesLength(input: string | Blob): Promise<number> {
+  if (typeof input === "string") return new TextEncoder().encode(input).length;
+  return input.size;
+}
+
 function avg(vals: Array<number | null | undefined>): number | null {
   const f = vals.filter((v): v is number => v != null && Number.isFinite(v));
   if (!f.length) return null;
   return f.reduce((s, v) => s + v, 0) / f.length;
 }
 
-export default function AcademicReport({ data, config }: Props) {
+export default function AcademicReport({ data, config, rawData }: Props) {
+  const eqROCE = katex.renderToString(String.raw`\mathrm{ROCE}_t = \frac{\mathrm{CNI}_t}{\overline{\mathrm{CSE}}}`,
+    { throwOnError: false, displayMode: true });
+  const eqRNOA = katex.renderToString(String.raw`\mathrm{RNOA}_t = \frac{\mathrm{OI}_t}{\overline{\mathrm{NOA}}}`,
+    { throwOnError: false, displayMode: true });
+  const eqRE = katex.renderToString(String.raw`\mathrm{RE}_t = \mathrm{CNI}_t - k_e\,\mathrm{CSE}_{t-1}`,
+    { throwOnError: false, displayMode: true });
+  const eqReOI = katex.renderToString(String.raw`\mathrm{ReOI}_t = \mathrm{OI}_t - k_w\,\mathrm{NOA}_{t-1}`,
+    { throwOnError: false, displayMode: true });
+
   const reportRef = useRef<HTMLDivElement | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingBundle, setExportingBundle] = useState(false);
+  const [exportingXlsx, setExportingXlsx] = useState(false);
+  const [hmacKeyId, setHmacKeyId] = useState("IC-LOCAL-KEY");
+  const [hmacSecret, setHmacSecret] = useState("");
+
+  const granularityChecklist = useMemo(() => {
+    if (!rawData || rawData.length === 0) return null;
+    return evaluateGranularityChecklist(rawData);
+  }, [rawData]);
+
+  const traceRecords = useMemo(() => {
+    const rows: Array<{
+      period: string;
+      line: string;
+      statement: string;
+      key: string;
+      value: number;
+      matchType: string;
+      note: string;
+    }> = [];
+    for (const p of data) {
+      if (!p.trace) continue;
+      for (const [line, entries] of Object.entries(p.trace)) {
+        for (const e of entries) {
+          rows.push({
+            period: p.period_end,
+            line,
+            statement: e.statement,
+            key: e.key,
+            value: e.value,
+            matchType: e.matchType,
+            note: e.note ?? "",
+          });
+        }
+      }
+    }
+    return rows;
+  }, [data]);
+
+  const provenanceRows = useMemo(() => buildProvenanceAuditRows(data), [data]);
+
+  const escapeCsvCell = (v: string | number) => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  const getChecklistCsv = () => {
+    if (!granularityChecklist) return "";
+    const header = [
+      "id",
+      "title",
+      "status",
+      "coveragePct",
+      "matchedCount",
+      "missingCount",
+      "matchedKeys",
+      "missingKeys",
+      "note",
+    ];
+    const rows = granularityChecklist.items.map((item) => [
+      item.id,
+      item.title,
+      item.status,
+      item.coveragePct.toFixed(2),
+      item.matchedKeys.length,
+      item.missingKeys.length,
+      item.matchedKeys.join(" | "),
+      item.missingKeys.join(" | "),
+      item.note,
+    ]);
+    return [header, ...rows].map((r) => r.map((c) => escapeCsvCell(c)).join(",")).join("\n");
+  };
+
+  const getTraceCsv = () => {
+    const header = ["period", "line", "statement", "key", "value", "matchType", "note"];
+    const rows = traceRecords.map((r) => [
+      r.period,
+      r.line,
+      r.statement,
+      r.key,
+      r.value,
+      r.matchType,
+      r.note,
+    ]);
+    return [header, ...rows].map((r) => r.map((c) => escapeCsvCell(c)).join(",")).join("\n");
+  };
+
+  const getProvenanceAuditCsv = () => {
+    const header = ["line", "statement", "key", "matchType", "occurrences", "avgValue", "minValue", "maxValue"];
+    const rows = provenanceRows.map((g) => [
+      g.line,
+      g.statement,
+      g.key,
+      g.matchType,
+      g.occurrences,
+      g.avgValue,
+      g.minValue,
+      g.maxValue,
+    ]);
+    return [header, ...rows].map((r) => r.map((c) => escapeCsvCell(c as string | number)).join(",")).join("\n");
+  };
+
+  const getProvenanceAuditMarkdown = () => {
+    const lines = [
+      "# Mapping Provenance Audit Report",
+      "",
+      `Generated At: ${new Date().toISOString()}`,
+      `Periods Covered: ${data[0]?.period_end ?? "N/A"} -> ${data[data.length - 1]?.period_end ?? "N/A"}`,
+      `Trace Rows: ${traceRecords.length}`,
+      "",
+      "## Method",
+      "This report aggregates line-level trace evidence from canonical variables to raw mapped keys.",
+      "For each canonical line, it records statement, key selected, match mode, and observed value range.",
+      "",
+      "## Key Coverage Snapshot",
+      "",
+    ];
+
+    const topLines = new Map<string, number>();
+    for (const r of traceRecords) {
+      topLines.set(r.line, (topLines.get(r.line) ?? 0) + 1);
+    }
+    const top = Array.from(topLines.entries()).sort((a, b) => b[1] - a[1]).slice(0, 20);
+    lines.push("| Canonical Line | Trace Count |", "|---|---:|");
+    for (const [line, n] of top) lines.push(`| ${line} | ${n} |`);
+
+    lines.push("", "## Provenance Aggregation (Top 20 Rows)", "", "| Line | Statement | Key | Match | N | Avg | Min | Max |", "|---|---|---|---|---:|---:|---:|---:|");
+    for (const row of provenanceRows.slice(0, 20)) {
+      lines.push(
+        `| ${row.line} | ${row.statement} | ${row.key} | ${row.matchType} | ${row.occurrences} | ${row.avgValue.toFixed(2)} | ${row.minValue.toFixed(2)} | ${row.maxValue.toFixed(2)} |`,
+      );
+    }
+
+    lines.push("", "## Reproducibility Note", "Use traceability_appendix.csv/json for full row-level provenance.");
+    return lines.join("\n");
+  };
+
+  const generatePdfBlob = async () => {
+    if (!reportRef.current) return null;
+    const canvas = await html2canvas(reportRef.current, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#f8fafc",
+    });
+
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const margin = 8;
+    const printWidth = pageWidth - margin * 2;
+    const imgHeight = (canvas.height * printWidth) / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = margin;
+
+    pdf.addImage(imgData, "PNG", margin, position, printWidth, imgHeight, undefined, "FAST");
+    heightLeft -= pageHeight - margin * 2;
+
+    while (heightLeft > 0) {
+      position = margin - (imgHeight - heightLeft);
+      pdf.addPage();
+      pdf.addImage(imgData, "PNG", margin, position, printWidth, imgHeight, undefined, "FAST");
+      heightLeft -= pageHeight - margin * 2;
+    }
+
+    return pdf.output("blob");
+  };
 
   const exportPdf = async () => {
     if (!reportRef.current || exportingPdf) return;
     setExportingPdf(true);
     try {
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#f8fafc",
-      });
-
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const margin = 8;
-      const printWidth = pageWidth - margin * 2;
-      const imgHeight = (canvas.height * printWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = margin;
-
-      pdf.addImage(imgData, "PNG", margin, position, printWidth, imgHeight, undefined, "FAST");
-      heightLeft -= pageHeight - margin * 2;
-
-      while (heightLeft > 0) {
-        position = margin - (imgHeight - heightLeft);
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", margin, position, printWidth, imgHeight, undefined, "FAST");
-        heightLeft -= pageHeight - margin * 2;
-      }
-
+      const blob = await generatePdfBlob();
+      if (!blob) return;
       const latestPeriod = data[data.length - 1]?.period_end?.slice(0, 10) ?? "latest";
-      pdf.save(`academic_report_${latestPeriod}.pdf`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `academic_report_${latestPeriod}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
     } finally {
       setExportingPdf(false);
+    }
+  };
+
+  const exportIcBundle = async () => {
+    if (exportingBundle || exportingPdf) return;
+    setExportingBundle(true);
+    try {
+      const zip = new JSZip();
+      const latestPeriod = data[data.length - 1]?.period_end?.slice(0, 10) ?? "latest";
+
+      const generatedAt = new Date().toISOString();
+      const files: Array<{ name: string; content: string | Blob; mime: string }> = [];
+
+      const pdfBlob = await generatePdfBlob();
+      if (pdfBlob) {
+        files.push({
+          name: `academic_report_${latestPeriod}.pdf`,
+          content: pdfBlob,
+          mime: "application/pdf",
+        });
+      }
+
+      if (granularityChecklist) {
+        const checklistCsv = getChecklistCsv();
+        const checklistJson = JSON.stringify(
+          {
+            generatedAt,
+            summary: granularityChecklist.summary,
+            items: granularityChecklist.items,
+          },
+          null,
+          2
+        );
+        files.push({ name: "granularity_checklist_audit.csv", content: checklistCsv, mime: "text/csv" });
+        files.push({ name: "granularity_checklist_audit.json", content: checklistJson, mime: "application/json" });
+      }
+
+      const traceCsv = getTraceCsv();
+      const traceJson = JSON.stringify(
+        {
+          generatedAt,
+          periods: data.map((p) => p.period_end),
+          rows: traceRecords,
+        },
+        null,
+        2
+      );
+      files.push({ name: "traceability_appendix.csv", content: traceCsv, mime: "text/csv" });
+      files.push({ name: "traceability_appendix.json", content: traceJson, mime: "application/json" });
+
+      const provCsv = getProvenanceAuditCsv();
+      const provMd = getProvenanceAuditMarkdown();
+      files.push({ name: "provenance_audit_report.csv", content: provCsv, mime: "text/csv" });
+      files.push({ name: "provenance_audit_report.md", content: provMd, mime: "text/markdown" });
+
+      for (const f of files) {
+        zip.file(f.name, f.content);
+      }
+
+      const fileChecksums = await Promise.all(
+        files.map(async (f) => ({
+          file: f.name,
+          mime: f.mime,
+          bytes: await bytesLength(f.content),
+          sha256: await sha256Hex(f.content),
+        }))
+      );
+
+      const manifestCore = {
+        generatedAt,
+        bundle: `ic_bundle_${latestPeriod}.zip`,
+        periodRange: {
+          start: data[0]?.period_end ?? null,
+          end: data[data.length - 1]?.period_end ?? null,
+          count: data.length,
+        },
+        rowCounts: {
+          recastPeriods: data.length,
+          traceRows: traceRecords.length,
+          granularityItems: granularityChecklist?.items.length ?? 0,
+          granularityPass: granularityChecklist?.summary.pass ?? 0,
+          granularityPartial: granularityChecklist?.summary.partial ?? 0,
+          granularityFail: granularityChecklist?.summary.fail ?? 0,
+        },
+        checksums: fileChecksums,
+        algorithm: "SHA-256",
+      };
+
+      const manifestCoreString = JSON.stringify(manifestCore, null, 2);
+      const manifestPayloadSha256 = await sha256Hex(manifestCoreString);
+
+      let signature: {
+        mode: "hmac-sha256" | "unsigned";
+        keyId: string | null;
+        inputSha256: string;
+        hmacSha256: string | null;
+      } = {
+        mode: "unsigned",
+        keyId: null,
+        inputSha256: manifestPayloadSha256,
+        hmacSha256: null,
+      };
+
+      if (hmacSecret.trim()) {
+        const hmac = await hmacSha256Hex(manifestCoreString, hmacSecret);
+        signature = {
+          mode: "hmac-sha256",
+          keyId: hmacKeyId.trim() || "IC-LOCAL-KEY",
+          inputSha256: manifestPayloadSha256,
+          hmacSha256: hmac,
+        };
+      }
+
+      const manifest = {
+        ...manifestCore,
+        signature,
+      };
+
+      zip.file("manifest.json", JSON.stringify(manifest, null, 2));
+
+      const bundleBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(bundleBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ic_bundle_${latestPeriod}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExportingBundle(false);
+    }
+  };
+
+  const exportWorkbook = async () => {
+    if (exportingXlsx) return;
+    setExportingXlsx(true);
+    try {
+      const wbArray = generateValuationWorkbook(data, [], valuation, config);
+      const blob = new Blob([wbArray], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const latestPeriod = data[data.length - 1]?.period_end?.slice(0, 10) ?? "latest";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `institutional_workbook_${latestPeriod}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExportingXlsx(false);
     }
   };
 
@@ -106,19 +455,59 @@ export default function AcademicReport({ data, config }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <div className="mr-auto grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto">
+          <input
+            value={hmacKeyId}
+            onChange={(e) => setHmacKeyId(e.target.value)}
+            placeholder="HMAC Key ID"
+            className="px-3 py-2 rounded-lg text-xs border border-slate-300 bg-white"
+          />
+          <input
+            type="password"
+            value={hmacSecret}
+            onChange={(e) => setHmacSecret(e.target.value)}
+            placeholder="HMAC Secret (optional)"
+            className="px-3 py-2 rounded-lg text-xs border border-slate-300 bg-white"
+          />
+        </div>
+        <button
+          onClick={exportWorkbook}
+          disabled={exportingBundle || exportingPdf || exportingXlsx}
+          className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+            exportingBundle || exportingPdf || exportingXlsx
+              ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+              : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+          }`}
+        >
+          {exportingXlsx ? "Building XLSX..." : "Export Institutional XLSX"}
+        </button>
         <button
           onClick={exportPdf}
-          disabled={exportingPdf}
+          disabled={exportingPdf || exportingBundle}
           className={`px-4 py-2 rounded-lg text-sm font-medium border ${
-            exportingPdf
+            exportingPdf || exportingBundle
               ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
               : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
           }`}
         >
           {exportingPdf ? "Generating PDF..." : "Export Report as PDF"}
         </button>
+        <button
+          onClick={exportIcBundle}
+          disabled={exportingBundle || exportingPdf}
+          className={`px-4 py-2 rounded-lg text-sm font-semibold border ${
+            exportingBundle || exportingPdf
+              ? "bg-indigo-200 text-indigo-100 border-indigo-200 cursor-not-allowed"
+              : "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700"
+          }`}
+        >
+          {exportingBundle ? "Building IC Bundle..." : "Export IC Bundle (ZIP)"}
+        </button>
       </div>
+      <p className="text-xs text-slate-500 -mt-2">
+        If HMAC Secret is provided, manifest.json includes tamper-evident HMAC-SHA256 signature over the manifest payload.
+      </p>
 
       <div ref={reportRef} className="space-y-6">
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -159,20 +548,112 @@ export default function AcademicReport({ data, config }: Props) {
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">2) Methodological Notes (Paper Mapping)</h2>
-        <div className="text-sm text-slate-700 space-y-2">
-          <p>
-            <b>Recast identities</b>: CSE + MI = NOA - NFO and CNI = OI - NFE (with MII handling for consolidated entities).
-            Statements are partitioned into operating versus financing buckets before ratio analysis.
-          </p>
-          <p>
-            <b>Profitability bridge</b>: ROCE = RNOA + FLEV x SPREAD, with DuPont layer PM x ATO and supplementary
-            diagnostics for OLLEV/OLSPREAD and Eq.(16)-style core-vs-unusual disaggregation.
-          </p>
-          <p>
-            <b>Valuation</b>: RE model (Eq.1/1a) and operations-only ReOI model (Eq.9), each with zero, no-growth,
-            and Gordon-growth continuing values.
-          </p>
+        <h2 className="font-bold text-lg text-slate-800 mb-3">2) Methodology — Nissim & Penman (2001) Framework</h2>
+        <div className="text-sm text-slate-700 space-y-4">
+          <div>
+            <h3 className="font-semibold text-slate-800 mb-1">2.1 Operating / Financing Separation</h3>
+            <p>
+              The engine implements the N&amp;P (2001) separation of all assets and liabilities into operating (OA, OL)
+              and financing (FA, FO) categories. Financial assets include cash, short-term investments, long-term
+              investments, deposits, and interest/dividend receivables. Financial obligations include all borrowings,
+              lease liabilities (Ind AS 116), hybrid perpetual securities (when classified as debt per user config),
+              and other financial liabilities. Operating assets (OA = TA − FA) and operating liabilities (OL =
+              TotalLiabilities − FO) are derived by difference. All identities are enforced: NOA = OA − OL =
+              CSE + MI + NFO; OI = CNI + NFE + MII. The separation confidence score (0–100) reflects how many
+              granular sub-components were successfully mapped vs. derived by difference.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-800 mb-1">2.2 India-Specific Adjustments (Ind AS)</h3>
+            <p>
+              (a) <b>Ind AS 116 Leases:</b> Right-of-use assets and lease liabilities are automatically included in
+              OA and FO respectively (effective from FY2020 for listed Indian entities). This increases both NOA and
+              NFO relative to pre-Ind AS 116 periods, creating a time-series discontinuity. The engine flags this.
+            </p>
+            <p className="mt-1">
+              (b) <b>Deferred Tax:</b> DTL is classified within OL; DTA in OA. The engine provides a DTA/DTL flag
+              when DTA exceeds 3% of TA.
+            </p>
+            <p className="mt-1">
+              (c) <b>Exceptional Items:</b> Ind AS does not permit "exceptional items below the line" (unlike old
+              Indian GAAP). The engine classifies pre-tax exceptional items tagged in Capitaline as UOI
+              (Unusual OI), taxed at the effective rate, and excludes them from Core OI.
+            </p>
+            <p className="mt-1">
+              (d) <b>OCI Treatment:</b> Under current config, OCI is treated as unusual and excluded from Core OI.
+              This is configurable. For companies with significant actuarial gains/losses or fair-value changes,
+              treating OCI as operating may be more appropriate.
+            </p>
+            <p className="mt-1">
+              (e) <b>No LIFO:</b> Indian GAAP and Ind AS do not permit LIFO inventory costing. The LIFO reserve
+              adjustment that US-focused N&amp;P analyses apply is inapplicable here; LIFO_reserve = 0 throughout.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-800 mb-1">2.3 Profitability Decomposition (Eq.1–16)</h3>
+            <p>
+              The engine implements the full N&amp;P profitability bridge. ROCE = RNOA + FLEV × SPREAD
+              (Eq. 4/5, N&amp;P 2001). Operating profitability decomposes as RNOA = PM × ATO (Eq. 7/8).
+              Operating liability leverage adds: RNOA = ROOA + OLLEV × OLSPREAD (Eq. 11, N&amp;P 2001).
+              The full Eq. 16 bridge decomposes ROCE into: CoreSalesPM × ATO + CoreOtherItems/NOA +
+              UOI/NOA + OLLEV × OLSPREAD + FLEV × CoreSPREAD + FLEV × (UOI/NOA − UFE/NFO).
+              The reconstruction residual (ROCE − ROCE_eq16) quantifies the bridge closure error.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-800 mb-1">2.4 Valuation Models</h3>
+            <p>
+              <b>RE model (Eq. 1a):</b> V = CSE₀ + Σ PV(RE_t) + PV(CV_RE), where RE_t = CNI_t − k_e × CSE_{t-1}.
+              Three continuing values: CV1 (zero), CV2 (perpetuity), CV3 (Gordon growth at rate g).
+            </p>
+            <p className="mt-1">
+              <b>ReOI model (Eq. 9):</b> EV = NOA₀ + Σ PV(ReOI_t) + PV(CV_ReOI), where ReOI_t = OI_t − k_w × NOA_{t-1}.
+              Equity value = EV − NFO_latest. Preferred when FA/FO separation is reliable.
+            </p>
+            <p className="mt-1">
+              <b>FCFF/FCFE:</b> FCFF_t = NOPAT_t − ΔNOA_t; FCFE_t = CNI_t − ΔCSE_t. Discounted at k_w and k_e
+              respectively. Under clean-surplus and consistent assumptions, FCFF converges with ReOI (algebraic identity).
+            </p>
+            <p className="mt-1">
+              <b>AEG (Ohlson-Juettner 2005):</b> Short-cut proxy: V = CNI₁/k_e + Σ PV(AEG_t),
+              where AEG_t = CNI_t − ρ_e × CNI_{t-1}. This implements the historical-data version of the OJ model.
+            </p>
+            <p className="mt-1">
+              <b>Reverse DCF:</b> Bisection search over the RE Gordon CV formula to back-solve for the growth rate
+              g* implied by the entered market capitalisation (market_price × shares_outstanding).
+            </p>
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-800 mb-1">2.5 Forecasting (Fade Analysis)</h3>
+            <p>
+              Forecast drivers (Sales growth, Core PM, ATO, FLEV, NBC) are faded from their latest historical values
+              toward N&amp;P (2001) Table 1 long-run medians using AR(1) fade parameters from N&amp;P Table 3:
+              FADE_CoreSalesPM = 0.87, FADE_ATO = 0.95, FADE_Sales_growth = 0.70. Bull/Bear scenarios scale
+              drivers proportionally. Probability-weighted expected value uses entered scenario probabilities.
+            </p>
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-800 mb-1">2.6 Data Source Mapping</h3>
+            <p>
+              This analysis used {rawData ? `${rawData.length} period(s) of data` : "uploaded financial data"}
+              processed through the Capitaline Ind AS CSV parser with 350+ line-item mapping rules.
+              The Provenance Audit tab lists every canonical variable with its source mapping, match type
+              (exact/fuzzy/derived), and value. The separation confidence score is{" "}
+              {data.length > 0 ? `${data[data.length - 1].bs.separationScore}/100` : "—"}.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+          <div>
+            <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Core Equations (N&amp;P 2001)</div>
+            <div dangerouslySetInnerHTML={{ __html: eqROCE }} className="mb-2" />
+            <div dangerouslySetInnerHTML={{ __html: eqRNOA }} />
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Residual Income Definitions</div>
+            <div dangerouslySetInnerHTML={{ __html: eqRE }} className="mb-2" />
+            <div dangerouslySetInnerHTML={{ __html: eqReOI }} />
+          </div>
         </div>
       </section>
 

@@ -20,7 +20,6 @@ export const CapitalineMappingSpec = {
       longTermInvestments: [
         "Investments - Long-term",
         "Non-current Investments",
-        "Total Investments",
       ],
       depositsAndRestricted: [
         "Investment in Fixed Deposits",
@@ -32,11 +31,10 @@ export const CapitalineMappingSpec = {
       otherFinancialAssets: [
         "Others Financial Assets - Long-term",
         "Others Financial Assets - Short-term",
-        "Interest Receivable",
         "Total Interest Receivable",
+        "Interest Receivable",
         "Dividend Receivable",
         "Derivative Receivables / Forward Contract Receivable",
-        "Forward Contract Receivable",
       ],
     },
     dtl: ["Deferred Tax Liabilities (Net)", "Deferred Tax Liability"],
@@ -101,7 +99,6 @@ export const CapitalineMappingSpec = {
     financeIncomeDirect: [
       "Interest Income",
       "Finance Income",
-      "Prior Year Interest Income",
       "Investment Income",
     ],
     otherIncome: ["Other Income"],
@@ -132,7 +129,6 @@ export const CapitalineMappingSpec = {
     discontinuedItems: [
       "Profit / (Loss) from Discontinuing Operations",
       "Discontinued Operations",
-      "Tax Expense of Discontinuing Operations",
     ],
     cogsMaterial: ["Cost of Material Consumed"],
     cogsPurchases: ["Purchases of Stock-in-Trade"],
@@ -156,7 +152,11 @@ export const CapitalineMappingSpec = {
       "Repairs to Other Assets",
     ],
     sgaPower: ["Power, Fuel and Water", "Power, Oil & Fuel"],
-    retainedEarningsProxy: ["Other Equity"],
+    retainedEarningsProxy: [
+      "Unappropriated Profits Carried Forward",
+      "Unappropriated Profits Brought Forward",
+      "Other Equity",
+    ],
     otherItemsAliases: [
       "Share of profit/loss of associates",
       "Share of profit / (loss) of associates",
@@ -167,9 +167,20 @@ export const CapitalineMappingSpec = {
   },
   cashFlow: {
     cfo: ["Net Cash from Operating Activities"],
-    capex: ["Purchased of Fixed Assets"],
+    capex: [
+      "Purchased of Fixed Assets",
+      "Purchase of Fixed Assets",
+      "Capital Expenditure",
+      "Purchase of Project Materials",
+    ],
     dividendPaid: ["Dividend Paid"],
     equityIssued: ["Proceeds from Issue of shares (incl share premium)"],
+    shareBuybacks: [
+      "Buyback of Shares",
+      "Share Buyback",
+      "Repurchase of Shares",
+      "Purchase of treasury shares",
+    ],
     interestReceived: ["Interest Received"],
     dividendReceived: ["Dividend Received"],
     interestNet: ["Interest (Net)"],

@@ -47,8 +47,8 @@ export function buildForecastPeriod(
   const ΔNOA_f  = NOA_f - prevForecast.NOA_f;
   const OI_f    = drivers.core_sales_pm * Sales_f;
   const FCF_f   = OI_f - ΔNOA_f;
-  const NFO_f   = NOA_f / (1 + (drivers.flev > -1 ? drivers.flev : 0));
-  const CSE_f   = NOA_f - NFO_f;
+  const CSE_f   = drivers.flev > -1 ? NOA_f / (1 + drivers.flev) : NOA_f;
+  const NFO_f   = NOA_f - CSE_f;
   const NFE_f   = drivers.nbc * (prevForecast.NFO_f + NFO_f) / 2;
   const CNI_f   = OI_f - NFE_f;
   const RE_f    = CNI_f - ke * prevForecast.CSE_f;
@@ -62,7 +62,7 @@ export function buildForecastPeriod(
     ato_assumption: drivers.ato,
     flev_assumption: drivers.flev,
     nbc_assumption: drivers.nbc,
-    Sales_f, NOA_f, OI_f, NFE_f, CNI_f, CSE_f, ΔNOA_f, FCF_f, RE_f, ReOI_f,
+    Sales_f, NOA_f, OI_f, NFE_f, CNI_f, CSE_f, NFO_f, ΔNOA_f, FCF_f, RE_f, ReOI_f,
     source,
   };
 }
@@ -97,7 +97,7 @@ export function buildScenario(
       'fade',
     );
     periods.push(fp);
-    prev = { Sales_f: fp.Sales_f, NOA_f: fp.NOA_f, CSE_f: fp.CSE_f, NFO_f: fp.NOA_f - fp.CSE_f };
+    prev = { Sales_f: fp.Sales_f, NOA_f: fp.NOA_f, CSE_f: fp.CSE_f, NFO_f: fp.NFO_f };
   }
   return periods;
 }

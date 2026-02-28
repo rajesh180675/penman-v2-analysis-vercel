@@ -1,4 +1,5 @@
 import { RecastPeriod } from "../engine/types";
+import { useMemo, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 
 interface Props { data: RecastPeriod[] }
@@ -7,9 +8,11 @@ const f  = (n: number | undefined | null) => n == null ? "—" : n.toLocaleStrin
 const fp = (n: number | undefined | null) => n == null ? "—" : (n * 100).toFixed(1) + "%";
 
 export default function RecastStatements({ data }: Props) {
+  const [mode, setMode] = useState<"abs" | "common">("abs");
   if (!data || data.length === 0) return <div className="text-center py-20 text-slate-400"><div className="text-5xl mb-3">📊</div><p>No data</p></div>;
 
   const years = data.map((d) => d.period_end.slice(0, 7));
+  const yoySales = useMemo(() => data.map((d, i) => i === 0 ? null : (data[i - 1].is.Sales !== 0 ? (d.is.Sales - data[i - 1].is.Sales) / Math.abs(data[i - 1].is.Sales) : null)), [data]);
   const cd = data.map((d, i) => ({
     period: years[i], OA: d.bs.OA, OL: d.bs.OL, NOA: d.bs.NOA,
     FA: d.bs.FA, CSE: d.bs.CSE, Sales: d.is.Sales,
@@ -18,6 +21,13 @@ export default function RecastStatements({ data }: Props) {
 
   return (
     <div className="space-y-8">
+      <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
+        <div className="text-sm text-slate-700 font-medium">Display Mode</div>
+        <div className="inline-flex rounded-lg overflow-hidden border border-slate-300">
+          <button onClick={() => setMode("abs")} className={`px-3 py-1.5 text-xs ${mode === "abs" ? "bg-indigo-600 text-white" : "bg-white text-slate-600"}`}>₹ Cr</button>
+          <button onClick={() => setMode("common")} className={`px-3 py-1.5 text-xs ${mode === "common" ? "bg-indigo-600 text-white" : "bg-white text-slate-600"}`}>Common-size</button>
+        </div>
+      </div>
 
       {/* Balance Sheet */}
       <Section title="Recast Balance Sheet" subtitle="§3.2 Operating vs Financing partition · OA+FA=TA · OL=TotalLiab−FO">
@@ -28,10 +38,10 @@ export default function RecastStatements({ data }: Props) {
             </tr></thead>
             <tbody className="divide-y divide-slate-100">
               <TR label="Total Assets (TA)"          vals={data.map((d) => f(d.bs.TA))} />
-              <TR label="Financial Assets (FA)"      vals={data.map((d) => f(d.bs.FA))} accent="blue" />
-              <TR label="Operating Assets (OA=TA−FA)" vals={data.map((d) => f(d.bs.OA))} />
+              <TR label="Financial Assets (FA)"      vals={data.map((d) => mode === "common" ? fp(d.bs.TA > 0 ? d.bs.FA / d.bs.TA : null) : f(d.bs.FA))} accent="blue" />
+              <TR label="Operating Assets (OA=TA−FA)" vals={data.map((d) => mode === "common" ? fp(d.bs.TA > 0 ? d.bs.OA / d.bs.TA : null) : f(d.bs.OA))} />
               <TR label="Financial Obligations (FO)" vals={data.map((d) => f(d.bs.FO))} accent="blue" />
-              <TR label="Operating Liabilities (OL)" vals={data.map((d) => f(d.bs.OL))} />
+              <TR label="Operating Liabilities (OL)" vals={data.map((d) => mode === "common" ? fp(d.bs.TA > 0 ? d.bs.OL / d.bs.TA : null) : f(d.bs.OL))} />
               <TR label="  ↳ Trade Payables" vals={data.map((d) => f(d.bs.OL_TradePayables))} />
               <TR label="  ↳ Other Current Liabilities" vals={data.map((d) => f(d.bs.OL_OtherCurrentLiabilities))} />
               <TR label="  ↳ Provisions (Current)" vals={data.map((d) => f(d.bs.OL_ProvisionsCurrent))} />
@@ -40,7 +50,7 @@ export default function RecastStatements({ data }: Props) {
               <TR label="  ↳ Non-Current Tax Liabilities" vals={data.map((d) => f(d.bs.OL_NonCurrentTaxLiabilities))} />
               <TR label="  ↳ Deferred Tax Liabilities (Net)" vals={data.map((d) => f(d.bs.OL_DeferredTaxLiabilitiesNet))} />
               <TR label="  ↳ Other Non-Current Liabilities" vals={data.map((d) => f(d.bs.OL_OtherNonCurrentLiabilities))} />
-              <TR label="Net Operating Assets (NOA)" vals={data.map((d) => f(d.bs.NOA))} bold />
+              <TR label="Net Operating Assets (NOA)" vals={data.map((d) => mode === "common" ? fp(d.bs.TA > 0 ? d.bs.NOA / d.bs.TA : null) : f(d.bs.NOA))} bold />
               <TR label="Net Financial Obl. (NFO)"   vals={data.map((d) => f(d.bs.NFO))} bold accent="blue" />
               <TR label="Common Equity (CSE)"        vals={data.map((d) => f(d.bs.CSE))} bold accent="green" />
               <TR label="Minority Interest (MI)"     vals={data.map((d) => f(d.bs.MI))} />
@@ -83,6 +93,7 @@ export default function RecastStatements({ data }: Props) {
             </tr></thead>
             <tbody className="divide-y divide-slate-100">
               <TR label="Sales (Revenue)"               vals={data.map((d) => f(d.is.Sales))} />
+              <TR label="  ↳ Sales YoY %"               vals={yoySales.map((v) => fp(v))} />
               <TR label="Profit After Tax (PAT)"        vals={data.map((d) => f(d.is.PAT))} />
               <TR label="OCI (after-tax)"               vals={data.map((d) => f(d.is.OCI))} />
               <TR label="TCI (group)"                   vals={data.map((d) => f(d.is.TCI))} />
@@ -91,7 +102,7 @@ export default function RecastStatements({ data }: Props) {
               <TR label="Finance Cost (PL)"             vals={data.map((d) => f(d.is.FinanceCost))} />
               <TR label="Finance Income (rung)"         vals={data.map((d) => `${f(d.is.FinanceIncome)} [R${d.is.FinanceIncomeRung}]`)} />
               <TR label="Net Fin. Expense NFE"          vals={data.map((d) => f(d.is.NFE))} accent="blue" />
-              <TR label="Operating Income OI"           vals={data.map((d) => f(d.is.OI))} bold />
+              <TR label="Operating Income OI"           vals={data.map((d) => mode === "common" ? fp(d.is.Sales > 0 ? d.is.OI / d.is.Sales : null) : f(d.is.OI))} bold />
               <TR label="OI_from_sales"                 vals={data.map((d) => f(d.is.OI_from_sales))} />
               <TR label="OtherItems (assoc./JV)"        vals={data.map((d) => f(d.is.OtherItems))} />
               <TR label="Core OI (persistent)"         vals={data.map((d) => f(d.cu.CoreOI))} bold accent="green" />

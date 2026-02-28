@@ -6,6 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   LineChart, Line, Legend, ReferenceLine, Cell,
 } from "recharts";
+import { runMonteCarlo } from "../engine/monteCarloClient";
 
 interface Props { data: RecastPeriod[]; config: { risk_free_rate: number; equity_risk_premium: number; statutory_tax_rate: number; separation_confidence_threshold: number } }
 
@@ -65,6 +66,12 @@ export default function ForecastReport({data,config}:Props) {
   const [kw_inp,  setKw]  = useState(+(kw*100).toFixed(1));
   const [g_inp,   setG]   = useState(5.0);
   const [horizon, setH]   = useState(5);
+  const [pBull, setPBull] = useState(0.25);
+  const [pBase, setPBase] = useState(0.5);
+  const [pBear, setPBear] = useState(0.25);
+  const [mcBusy, setMcBusy] = useState(false);
+  const [mcProgress, setMcProgress] = useState(0);
+  const [mcOut, setMcOut] = useState<any | null>(null);
 
   const scenarios = useMemo(():ForecastScenario[]=>{
     const kei=ke_inp/100, kwi=kw_inp/100;
@@ -84,6 +91,10 @@ export default function ForecastReport({data,config}:Props) {
       fadeATO.slice(0,horizon),
     );
 
+    bull.probability = pBull;
+    base.probability = pBase;
+    bear.probability = pBear;
+
     return [bull,base,bear].map(sc=>{
       const fps = buildScenario(sc, latest);
       sc.periods = fps;
@@ -101,7 +112,7 @@ export default function ForecastReport({data,config}:Props) {
       } catch(_e){/**/}
       return sc;
     });
-  },[latest,ke_inp,kw_inp,g_inp,horizon]);
+  },[latest,ke_inp,kw_inp,g_inp,horizon,pBull,pBase,pBear]);
 
   const baseScenario = scenarios.find(s=>s.name==="base");
   const fcPeriods = baseScenario?.periods ?? [];
@@ -145,6 +156,46 @@ export default function ForecastReport({data,config}:Props) {
   }));
 
   const SCENARIO_COLORS:{[k:string]:string}={bull:"#10b981",base:"#6366f1",bear:"#ef4444"};
+  const probSum = pBull + pBase + pBear;
+
+  const runMc = async () => {
+    setMcBusy(true);
+    setMcProgress(0);
+    try {
+      const out = await runMonteCarlo(
+        {
+          basePeriods: data,
+          config,
+          N: 10000,
+          horizonT: horizon,
+          paramDistributions: {
+            ke: { mean: ke_inp / 100, std: 0.01 },
+            kw: { mean: kw_inp / 100, std: 0.008 },
+            g: { mean: g_inp / 100, std: 0.01 },
+          },
+        },
+        (p) => setMcProgress(p),
+      );
+      setMcOut(out);
+    } finally {
+      setMcBusy(false);
+    }
+  };
+
+  const mcHistogram = useMemo(() => {
+    if (!mcOut?.V_RE_samples?.length) return [] as Array<{ bucket: string; n: number }>;
+    const vals: number[] = mcOut.V_RE_samples;
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const bins = 20;
+    const step = (max - min) / bins || 1;
+    const counts = new Array<number>(bins).fill(0);
+    for (const v of vals) {
+      const idx = Math.min(bins - 1, Math.max(0, Math.floor((v - min) / step)));
+      counts[idx] += 1;
+    }
+    return counts.map((n, i) => ({ bucket: `${cr(min + i * step)}–${cr(min + (i + 1) * step)}`, n }));
+  }, [mcOut]);
 
   return (
     <div className="space-y-8">
@@ -168,9 +219,26 @@ export default function ForecastReport({data,config}:Props) {
             <label className="block text-xs font-medium text-slate-600 mb-1">Horizon (years)</label>
             <select value={horizon} onChange={e=>setH(Number(e.target.value))}
               className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
-              {[3,5,7,10].map(n=><option key={n} value={n}>{n}</option>)}
+              {[1,3,5,7,10,12,15].map(n=><option key={n} value={n}>{n}</option>)}
             </select>
           </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">P(Bull)</label>
+              <input type="number" step={0.05} value={pBull} onChange={(e) => setPBull(Number(e.target.value))} className="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">P(Base)</label>
+              <input type="number" step={0.05} value={pBase} onChange={(e) => setPBase(Number(e.target.value))} className="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">P(Bear)</label>
+              <input type="number" step={0.05} value={pBear} onChange={(e) => setPBear(Number(e.target.value))} className="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm" />
+            </div>
+          </div>
+        </div>
+        <div className={`mt-3 text-xs ${Math.abs(probSum - 1) < 0.001 ? "text-emerald-700" : "text-amber-700"}`}>
+          Probability sum = {probSum.toFixed(2)} {Math.abs(probSum - 1) < 0.001 ? "(valid)" : "(must equal 1.00)"}
         </div>
       </div>
 
@@ -280,6 +348,39 @@ export default function ForecastReport({data,config}:Props) {
         )}
       </div>
 
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">Monte Carlo Simulation — §4.1.1</h2>
+            <p className="text-xs text-slate-500">N=10,000 simulations in Web Worker. Outputs valuation distribution percentiles.</p>
+          </div>
+          <button onClick={runMc} disabled={mcBusy} className={`px-4 py-2 rounded-lg text-sm font-medium ${mcBusy?"bg-slate-300 text-slate-100":"bg-indigo-600 text-white hover:bg-indigo-700"}`}>
+            {mcBusy ? `Running... ${(mcProgress * 100).toFixed(0)}%` : "Run Monte Carlo"}
+          </button>
+        </div>
+        {mcOut && (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-sm mb-4">
+              <Mini title="P10 RE" value={`₹${cr(mcOut.p10_RE)}`} />
+              <Mini title="P50 RE" value={`₹${cr(mcOut.p50_RE)}`} />
+              <Mini title="P90 RE" value={`₹${cr(mcOut.p90_RE)}`} />
+              <Mini title="P10 ReOI" value={`₹${cr(mcOut.p10_ReOI)}`} />
+              <Mini title="P50 ReOI" value={`₹${cr(mcOut.p50_ReOI)}`} />
+              <Mini title="P90 ReOI" value={`₹${cr(mcOut.p90_ReOI)}`} />
+            </div>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={mcHistogram}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+                <XAxis dataKey="bucket" hide />
+                <YAxis tick={{fontSize:10}} />
+                <Tooltip />
+                <Bar dataKey="n" fill="#6366f1" />
+              </BarChart>
+            </ResponsiveContainer>
+          </>
+        )}
+      </div>
+
       {/* Sensitivity Tornado */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
         <h2 className="text-lg font-bold text-slate-800 mb-2">Sensitivity Analysis — §4.3.4</h2>
@@ -343,6 +444,15 @@ export default function ForecastReport({data,config}:Props) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function Mini({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="border border-slate-200 rounded-lg p-2 bg-slate-50">
+      <div className="text-[11px] text-slate-500 uppercase">{title}</div>
+      <div className="font-semibold text-slate-800">{value}</div>
     </div>
   );
 }

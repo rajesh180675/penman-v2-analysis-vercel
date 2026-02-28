@@ -107,6 +107,107 @@ export default function ValuationReport({ data, config }: Props) {
         </div>
       </div>
 
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+          <h2 className="text-lg font-bold text-slate-800">Valuation Triangulation (v3)</h2>
+          <p className="text-xs text-slate-500 mt-0.5">RE, ReOI, FCFF, FCFE, DDM, AEG (all in ₹ Cr; per-share when share count provided)</p>
+        </div>
+        <div className="p-6 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b">
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Model</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Value</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Per Share</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {[
+                ["RE (CV3)", val.V_RE_CV3, val.perShare?.intrinsic_re_per_share ?? null],
+                ["ReOI (CV03)", val.V_ReOI_CV03, val.perShare?.intrinsic_reoi_per_share ?? null],
+                ["FCFF", val.fcf?.EV_FCFF != null ? (val.fcf.EV_FCFF - val.NFO_latest) : null, val.perShare?.intrinsic_fcff_per_share ?? null],
+                ["FCFE", val.fcf?.V_FCFE ?? null, val.perShare?.intrinsic_fcfe_per_share ?? null],
+                ["DDM", val.perShare?.intrinsic_ddm_per_share != null && config.shares_outstanding ? val.perShare.intrinsic_ddm_per_share * config.shares_outstanding : null, val.perShare?.intrinsic_ddm_per_share ?? null],
+                ["AEG", val.aeg?.V_AEG ?? null, val.perShare?.intrinsic_aeg_per_share ?? null],
+              ].map(([name, v, ps]) => (
+                <tr key={name as string}>
+                  <td className="px-3 py-2 text-slate-700">{name as string}</td>
+                  <td className="px-3 py-2 text-right font-mono">{typeof v === "number" ? `₹${fmt(v)}` : "—"}</td>
+                  <td className="px-3 py-2 text-right font-mono">{typeof ps === "number" ? `₹${ps.toFixed(2)}` : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {val.perShare?.implied_growth_rate != null && (
+            <p className="text-xs text-slate-500 mt-3">
+              Reverse DCF implied growth (RE-CV3 vs market cap input): <b>{(val.perShare.implied_growth_rate * 100).toFixed(2)}%</b>
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+          <h2 className="text-lg font-bold text-slate-800">OJ / AEG Integration (A-05)</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Abnormal Earnings Growth series and implied P/E diagnostics.</p>
+        </div>
+        <div className="p-6">
+          {val.aeg?.aeg_series?.length ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="rounded-xl border border-slate-200 p-3 bg-slate-50">
+                  <div className="text-xs uppercase text-slate-500">V_AEG</div>
+                  <div className="text-xl font-bold text-slate-800">₹{fmt(val.aeg.V_AEG)} Cr</div>
+                </div>
+                <div className="rounded-xl border border-slate-200 p-3 bg-slate-50">
+                  <div className="text-xs uppercase text-slate-500">Implied P/E</div>
+                  <div className="text-xl font-bold text-slate-800">{val.aeg.implied_pe != null ? `${val.aeg.implied_pe.toFixed(2)}x` : "—"}</div>
+                </div>
+                <div className="rounded-xl border border-slate-200 p-3 bg-slate-50">
+                  <div className="text-xs uppercase text-slate-500">Normalised P/E</div>
+                  <div className="text-xl font-bold text-slate-800">{val.aeg.normalised_pe != null ? `${val.aeg.normalised_pe.toFixed(2)}x` : "—"}</div>
+                </div>
+              </div>
+              <div className="overflow-x-auto mb-4">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b">
+                      <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Period</th>
+                      <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">CNI</th>
+                      <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">AEG</th>
+                      <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">PV(AEG)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {val.aeg.aeg_series.map((r) => (
+                      <tr key={r.period}>
+                        <td className="px-3 py-2 font-mono text-xs text-slate-600">{r.period.slice(0, 7)}</td>
+                        <td className="px-3 py-2 text-right font-mono">{fmt(r.CNI)}</td>
+                        <td className={`px-3 py-2 text-right font-mono ${r.AEG >= 0 ? "text-emerald-700" : "text-red-700"}`}>{fmt(r.AEG)}</td>
+                        <td className={`px-3 py-2 text-right font-mono ${r.PV_AEG >= 0 ? "text-emerald-700" : "text-red-700"}`}>{fmt(r.PV_AEG)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={val.aeg.aeg_series.map((r) => ({ period: r.period.slice(0, 7), AEG: +r.AEG.toFixed(0), PV: +r.PV_AEG.toFixed(0) }))}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="period" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip />
+                  <ReferenceLine y={0} stroke="#94a3b8" />
+                  <Bar dataKey="AEG" fill="#7c3aed" />
+                  <Bar dataKey="PV" fill="#2563eb" />
+                </BarChart>
+              </ResponsiveContainer>
+            </>
+          ) : (
+            <div className="text-sm text-slate-500">Insufficient periods for AEG series (needs at least 3 periods).</div>
+          )}
+        </div>
+      </div>
+
       {/* Residual Income Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
@@ -169,6 +270,53 @@ export default function ValuationReport({ data, config }: Props) {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Sensitivity Grid (G-06) */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+          <h2 className="text-lg font-bold text-slate-800">Sensitivity Grid — V_RE_CV3</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Equity value (₹ Cr) across ke × g combinations. Base highlighted.</p>
+        </div>
+        <div className="p-6 overflow-x-auto">
+          {(() => {
+            const KES = [0.08, 0.10, 0.12, 0.14];
+            const GS  = [0.02, 0.03, 0.04, 0.05, 0.06];
+            const T   = val.reSeries.length;
+            const lastRE = T > 0 ? val.reSeries[T - 1].RE : 0;
+            return (
+              <table className="text-sm border-collapse">
+                <thead>
+                  <tr>
+                    <th className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-left border">ke \\ g →</th>
+                    {GS.map(gv => (
+                      <th key={gv} className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-right border">{(gv*100).toFixed(0)}%</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {KES.map(keV => (
+                    <tr key={keV}>
+                      <td className="px-3 py-2 text-xs font-semibold text-slate-600 border">ke = {(keV*100).toFixed(0)}%</td>
+                      {GS.map(gv => {
+                        if (keV - gv <= 0.001) return <td key={gv} className="px-3 py-2 text-center text-xs text-slate-400 border">—</td>;
+                        const cv3 = lastRE * (1 + gv) / (keV - gv);
+                        const disc = Math.pow(1 + keV, T);
+                        const v = val.CSE0 + val.pvRE + cv3 / disc;
+                        const isBase = Math.abs(keV - ke) < 0.001 && Math.abs(gv - gRate) < 0.001;
+                        return (
+                          <td key={gv} className={`px-3 py-2 text-right font-mono text-xs border ${isBase ? "bg-indigo-100 font-bold text-indigo-800" : v > 0 ? "text-slate-700" : "text-red-500"}`}>
+                            {fmt(v)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            );
+          })()}
         </div>
       </div>
 

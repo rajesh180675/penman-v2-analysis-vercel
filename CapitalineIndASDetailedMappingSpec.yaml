@@ -30,7 +30,6 @@ balance_sheet:
     investments_long_term:
       - Investments - Long-term
       - Non-current Investments
-      - Total Investments
     deposits_restricted:
       - Investment in Fixed Deposits
       - Investment in Certificate of Deposits
@@ -40,11 +39,10 @@ balance_sheet:
     other_financial_assets:
       - Others Financial Assets - Long-term
       - Others Financial Assets - Short-term
-      - Interest Receivable
       - Total Interest Receivable
+      - Interest Receivable
       - Dividend Receivable
       - Derivative Receivables / Forward Contract Receivable
-      - Forward Contract Receivable
 
   FO:
     keys:
@@ -100,9 +98,12 @@ income:
   finance_income_direct:
     - Interest Income
     - Finance Income
-    - Prior Year Interest Income
     - Investment Income
   quality_inputs:
+    retained_earnings_proxy:
+      - Unappropriated Profits Carried Forward
+      - Unappropriated Profits Brought Forward
+      - Other Equity
     cogs:
       material: ["Cost of Material Consumed"]
       purchases: ["Purchases of Stock-in-Trade"]
@@ -136,6 +137,15 @@ income:
 cashflow:
   cfo: ["Net Cash from Operating Activities"]
   capex: ["Purchased of Fixed Assets"]
+  share_buybacks:
+    - Buyback of Shares
+    - Share Buyback
+    - Repurchase of Shares
+    - Purchase of treasury shares
+  capex_alt:
+    - Purchase of Fixed Assets
+    - Capital Expenditure
+    - Purchase of Project Materials
   debt_proceeds:
     - Proceed from 0ther Long Term Borrowings
     - Proceed from Other Long Term Borrowings

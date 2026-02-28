@@ -331,6 +331,17 @@ function gridViaRegex(text: string): string[][] {
   return grid;
 }
 
+function gridScore(g: string[][]): number {
+  if (!g.length) return 0;
+  const rows = g.length;
+  const cols = Math.max(...g.map((r) => r.length), 0);
+  const nonEmpty = g.reduce((s, r) => s + r.filter((c) => c && c.trim() !== "").length, 0);
+  const total = Math.max(1, rows * Math.max(1, cols));
+  const density = nonEmpty / total;
+  const headerBonus = detectHeader(g) ? 250 : 0;
+  return headerBonus + rows * cols * density;
+}
+
 /* ══════════════════════════════════════════════════════════════════
    Header detection
 ══════════════════════════════════════════════════════════════════ */
@@ -492,13 +503,16 @@ export async function parseCapitalineZip(
       text.includes("<Workbook") && text.includes("<Worksheet");
 
     let grid: string[][] = [];
+    let bestScore = 0;
 
     /* Strategy A: SheetJS */
     try {
       const g = gridViaXlsx(buffer);
       gd.methods.push(`xlsx→${g.length}r`);
-      if (g.length > grid.length) {
+      const s = gridScore(g);
+      if (s > bestScore) {
         grid = g;
+        bestScore = s;
         gd.bestMethod = "xlsx";
       }
     } catch (e) {
@@ -510,8 +524,10 @@ export async function parseCapitalineZip(
       try {
         const g = gridViaHtml(text);
         gd.methods.push(`html-dom→${g.length}r`);
-        if (g.length > grid.length) {
+        const s = gridScore(g);
+        if (s > bestScore) {
           grid = g;
+          bestScore = s;
           gd.bestMethod = "html-dom";
         }
       } catch (e) {
@@ -522,8 +538,10 @@ export async function parseCapitalineZip(
       try {
         const g = gridViaRegex(text);
         gd.methods.push(`regex→${g.length}r`);
-        if (g.length > grid.length) {
+        const s = gridScore(g);
+        if (s > bestScore) {
           grid = g;
+          bestScore = s;
           gd.bestMethod = "regex";
         }
       } catch (e) {
@@ -536,8 +554,10 @@ export async function parseCapitalineZip(
       try {
         const g = gridViaSpreadsheetML(text);
         gd.methods.push(`ssml→${g.length}r`);
-        if (g.length > grid.length) {
+        const s = gridScore(g);
+        if (s > bestScore) {
           grid = g;
+          bestScore = s;
           gd.bestMethod = "ssml";
         }
       } catch (e) {

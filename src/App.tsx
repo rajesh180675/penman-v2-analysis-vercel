@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from "react";
-import { RawPeriodData, RecastPeriod, DEFAULT_CONFIG, EngineConfig } from "./engine/types";
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { RawPeriodData, RecastPeriod, DEFAULT_CONFIG, EngineConfig, CompanyRegistry } from "./engine/types";
 import { processCompanyData } from "./engine/pipeline";
 import { CapitalineParseDebug } from "./engine/capitalineParser";
 import { evaluateQualityGate } from "./engine/mappingAudit";
@@ -11,9 +11,11 @@ import ValuationReport from "./components/ValuationReport";
 import QualityReport from "./components/QualityReport";
 import ForecastReport from "./components/ForecastReport";
 import AcademicReport from "./components/AcademicReport";
+import RegressionReport from "./components/RegressionReport";
+import ComparisonReport from "./components/ComparisonReport";
 import DebugPanel from "./components/DebugPanel";
 
-type TabId = "upload"|"statements"|"ratios"|"forecast"|"valuation"|"quality"|"report"|"debug";
+type TabId = "upload"|"statements"|"ratios"|"forecast"|"valuation"|"quality"|"comparison"|"report"|"regression"|"debug";
 
 const TABS: {id:TabId;label:string;icon:string;needsData?:boolean}[] = [
   {id:"upload",     label:"Data",       icon:"📂"},
@@ -22,7 +24,9 @@ const TABS: {id:TabId;label:string;icon:string;needsData?:boolean}[] = [
   {id:"forecast",   label:"Forecast",   icon:"📈", needsData:true},
   {id:"valuation",  label:"Valuation",  icon:"💰", needsData:true},
   {id:"quality",    label:"Quality",    icon:"🔍", needsData:true},
+  {id:"comparison", label:"Comparison", icon:"👥", needsData:true},
   {id:"report",     label:"Report",     icon:"📚", needsData:true},
+  {id:"regression", label:"Regression", icon:"🧪", needsData:true},
   {id:"debug",      label:"Debug",      icon:"🛠"},
 ];
 
@@ -32,6 +36,40 @@ export function App() {
   const [debugInfo,  setDebugInfo]  = useState<CapitalineParseDebug|null>(null);
   const [activeTab,  setActiveTab]  = useState<TabId>("upload");
   const [config,     setConfig]     = useState<EngineConfig>(DEFAULT_CONFIG);
+  const [darkMode, setDarkMode] = useState(false);
+  const [registry, setRegistry] = useState<CompanyRegistry>({ companies: {} });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const rf = Number(params.get("rf"));
+    const erp = Number(params.get("erp"));
+    const company = params.get("company");
+    const tab = params.get("tab") as TabId | null;
+    const dark = params.get("dark");
+    setConfig((prev) => ({
+      ...prev,
+      risk_free_rate: Number.isFinite(rf) && rf > 0 ? rf / 100 : prev.risk_free_rate,
+      equity_risk_premium: Number.isFinite(erp) && erp > 0 ? erp / 100 : prev.equity_risk_premium,
+      ticker: company || prev.ticker,
+    }));
+    if (tab && TABS.some((t) => t.id === tab)) setActiveTab(tab);
+    if (dark === "1") setDarkMode(true);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+  }, [darkMode]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set("rf", (config.risk_free_rate * 100).toFixed(2));
+    params.set("erp", (config.equity_risk_premium * 100).toFixed(2));
+    if (config.ticker) params.set("company", config.ticker);
+    params.set("tab", activeTab);
+    params.set("dark", darkMode ? "1" : "0");
+    const next = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState({}, "", next);
+  }, [config.risk_free_rate, config.equity_risk_premium, config.ticker, activeTab, darkMode]);
 
   const qualityGate = useMemo(() => {
     if (!rawData || rawData.length === 0) return null;
@@ -46,6 +84,15 @@ export function App() {
       try {
         const processed = processCompanyData(data,config);
         setRecastData(processed.length>0 ? processed : null);
+        if (processed.length > 0) {
+          const id = data[0]?.company_id || `CO-${Object.keys(registry.companies).length + 1}`;
+          setRegistry((prev) => ({
+            companies: {
+              ...prev.companies,
+              [id]: { id, label: id, rawData: data, recastData: processed },
+            },
+          }));
+        }
         setActiveTab(processed.length>0 ? "statements" : "debug");
       } catch(err) {
         console.error("[App] engine error:",err);
@@ -53,7 +100,7 @@ export function App() {
         setActiveTab("debug");
       }
     },
-    [config]
+    [config, registry.companies]
   );
 
   const hasRecast = (recastData?.length??0)>0;
@@ -61,6 +108,7 @@ export function App() {
 
   const visibleTabs = TABS.filter(t=>{
     if (t.id==="debug") return hasDebug;
+    if (t.id === "comparison") return Object.keys(registry.companies).length >= 2;
     if (t.needsData) return hasRecast;
     return true;
   });
@@ -76,8 +124,8 @@ export function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-slate-50 text-slate-900">
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+        <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-sm">
           <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-0 flex items-center justify-between h-14">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">PN</div>
@@ -108,6 +156,24 @@ export function App() {
                 </button>
               ))}
             </nav>
+            <div className="ml-3 flex items-center gap-2">
+              <button
+                onClick={() => setDarkMode((v) => !v)}
+                className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                title="Toggle dark mode"
+              >
+                {darkMode ? "☀️" : "🌙"}
+              </button>
+              <button
+                onClick={async () => {
+                  await navigator.clipboard.writeText(window.location.href);
+                }}
+                className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+                title="Copy shareable link"
+              >
+                🔗
+              </button>
+            </div>
           </div>
         </header>
 
@@ -147,9 +213,11 @@ export function App() {
             </div>
           )}
           {activeTab==="quality"    && hasRecast && <QualityReport data={recastData!}/>}
-          {activeTab==="report"     && hasRecast && <AcademicReport data={recastData!} config={config} />}
+          {activeTab==="comparison" && <ComparisonReport registry={registry} config={config} />}
+          {activeTab==="report"     && hasRecast && <AcademicReport data={recastData!} config={config} rawData={rawData} />}
+          {activeTab==="regression" && hasRecast && <RegressionReport rawData={rawData} recastData={recastData} config={config} />}
           {activeTab==="debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate}/>}
-          {(["statements","ratios","forecast","valuation","quality","report"] as TabId[]).includes(activeTab) && !hasRecast && (
+          {(["statements","ratios","forecast","valuation","quality","report","regression"] as TabId[]).includes(activeTab) && !hasRecast && (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="text-6xl mb-4">📂</div>
               <p className="text-xl font-semibold text-slate-600">No data loaded</p>

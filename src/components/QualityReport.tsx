@@ -1,5 +1,5 @@
 import { RecastPeriod } from "../engine/types";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell, Legend } from "recharts";
 
 interface Props { data: RecastPeriod[] }
 
@@ -36,6 +36,11 @@ export default function QualityReport({data}:Props) {
     F:d.quality!.piotroski_total,
     Z:+d.quality!.altman_zprime.toFixed(2),
     M:+d.quality!.beneish_mscore.toFixed(2),
+    ZmP:d.quality!.zmijewski_prob_distress!=null?+(d.quality!.zmijewski_prob_distress!*100).toFixed(1):null,
+    OhlP:d.quality!.ohlson_prob_distress!=null?+(d.quality!.ohlson_prob_distress!*100).toFixed(1):null,
+    CEQI:d.quality!.cash_earnings_quality_index!=null?+d.quality!.cash_earnings_quality_index!.toFixed(2):null,
+    DOL:d.quality!.operating_leverage!=null?+d.quality!.operating_leverage!.toFixed(2):null,
+    CONS:d.quality!.conservative_accounting_score!=null?+d.quality!.conservative_accounting_score!.toFixed(1):null,
   }));
 
   const latest = rd[rd.length-1].quality!;
@@ -81,6 +86,26 @@ export default function QualityReport({data}:Props) {
             </span>
           </div>
           <div className="text-xs text-slate-400">M &gt; −1.78 = possible manipulation</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Zmijewski Distress Prob.</div>
+          <div className="text-3xl font-bold text-slate-800 mb-2">{latest.zmijewski_prob_distress!=null?(latest.zmijewski_prob_distress*100).toFixed(1)+"%":"—"}</div>
+          <div className="text-xs text-slate-500">Probit probability from X-Score (1984).</div>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Ohlson Distress Prob.</div>
+          <div className="text-3xl font-bold text-slate-800 mb-2">{latest.ohlson_prob_distress!=null?(latest.ohlson_prob_distress*100).toFixed(1)+"%":"—"}</div>
+          <div className="text-xs text-slate-500">Logit probability from O-Score (1980, adapted).</div>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Cash Earnings Quality Index</div>
+          <div className={`text-3xl font-bold mb-2 ${(latest.cash_earnings_quality_index??1) < 0.7 ? "text-red-600" : "text-emerald-700"}`}>
+            {latest.cash_earnings_quality_index!=null?latest.cash_earnings_quality_index.toFixed(2):"—"}
+          </div>
+          <div className="text-xs text-slate-500">CEQI = CFO/PAT (rolling); &lt;0.7 indicates weak cash confirmation.</div>
         </div>
       </div>
 
@@ -131,6 +156,63 @@ export default function QualityReport({data}:Props) {
               </LineChart>
             </ResponsiveContainer>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <h2 className="text-lg font-bold text-slate-800 mb-4">Quality Overlays (D-06 / D-07 / D-09)</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-5">
+          <div>
+            <div className="text-xs font-semibold text-slate-500 mb-2">Distress Probability (%)</div>
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={pChart}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+                <XAxis dataKey="period" tick={{fontSize:9}}/>
+                <YAxis tick={{fontSize:9}} unit="%"/>
+                <Tooltip/>
+                <Legend wrapperStyle={{fontSize:11}}/>
+                <Line type="monotone" dataKey="ZmP" stroke="#7c3aed" strokeWidth={2} dot={false} name="Zmijewski"/>
+                <Line type="monotone" dataKey="OhlP" stroke="#db2777" strokeWidth={2} dot={false} name="Ohlson"/>
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-slate-500 mb-2">CEQI trend</div>
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={pChart}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+                <XAxis dataKey="period" tick={{fontSize:9}}/>
+                <YAxis tick={{fontSize:9}}/>
+                <Tooltip/>
+                <ReferenceLine y={1.0} stroke="#10b981" strokeDasharray="4 2"/>
+                <ReferenceLine y={0.7} stroke="#ef4444" strokeDasharray="4 2"/>
+                <Line type="monotone" dataKey="CEQI" stroke="#2563eb" strokeWidth={2} dot={false}/>
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div>
+            <div className="text-xs font-semibold text-slate-500 mb-2">Conservative Accounting Score</div>
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={pChart}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+                <XAxis dataKey="period" tick={{fontSize:9}}/>
+                <YAxis tick={{fontSize:9}} domain={[0,100]}/>
+                <Tooltip/>
+                <Line type="monotone" dataKey="CONS" stroke="#0f766e" strokeWidth={2} dot={false}/>
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="space-y-2 text-xs">
+          {rd.slice(-5).map((d) => {
+            const flags = d.quality?.revenue_quality_flags ?? [];
+            return (
+              <div key={d.period_end} className={`rounded-lg border p-2 ${flags.length ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                <b>{d.period_end.slice(0,7)}:</b> {flags.length ? flags.join(" ") : "No major revenue-recognition warnings from current rule-set."}
+                {d.quality?.operating_leverage != null ? `  DOL=${d.quality.operating_leverage.toFixed(2)}.` : ""}
+              </div>
+            );
+          })}
         </div>
       </div>
 
