@@ -166,14 +166,6 @@ export default function ManualEntryWizard({ onSubmit }: { onSubmit: (rows: RawPe
   const ap = state.activePeriodIdx;
   const pd = state.periods[ap] ?? blankPeriod();
 
-  const periodLabels = useMemo(() =>
-    Array.from({ length: state.numPeriods }, (_, i) => {
-      const pe = getPeriodEnd(state.latestPeriodEnd, i, state.numPeriods);
-      return `FY${pe.slice(2, 4)}`;
-    }),
-    [state.latestPeriodEnd, state.numPeriods]
-  );
-
   const bsChecks = useMemo(() => {
     const TA = num(pd.bs.TA), FA = num(pd.bs.FA), FO = num(pd.bs.FO);
     const OL = num(pd.bs.OL), CSE = num(pd.bs.CSE), MI = num(pd.bs.MI);

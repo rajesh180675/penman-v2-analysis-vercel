@@ -478,7 +478,7 @@ export default function RatioReport({data}:Props) {
                   { label: "PPE", fn: (d: typeof rd[0]) => d.bs.PPE },
                 ].map(({ label, fn }) => {
                   const vals = rd.map(fn);
-                  const yoys = rd.slice(1).map((d, i) => {
+                  const yoys = rd.slice(1).map((_, i) => {
                     const prev = vals[i], cur = vals[i + 1];
                     if (!prev || prev === 0) return null;
                     return (cur - prev) / Math.abs(prev);
