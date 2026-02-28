@@ -455,6 +455,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
     sales: d.is.Sales,
     noaToSales: d.is.Sales > 0 ? Math.abs(d.bs.NOA) / d.is.Sales : null,
     flagged: d.is.Sales > 0 ? Math.abs(d.bs.NOA) < 0.1 * d.is.Sales : false,
+    indAs116Era: Number.parseInt(d.period_end.slice(0, 4), 10) >= 2020,
   }));
   const noaFlagCount = noaDiagnostics.filter((d) => d.flagged).length;
 
@@ -463,12 +464,24 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   for (let i = 1; i < data.length; i++) {
     kwSeries.push(deriveKwFromStructure(data[i], data[i - 1], ke, config.risk_free_rate));
   }
-  const kw = median(kwSeries) ?? ke;
+  const kw = kwSeries.length ? kwSeries[kwSeries.length - 1] : ke;
+  const kwMedian = median(kwSeries);
   const g = Math.min(0.05, Math.max(0.02, (salesCagr ?? 0.04) * 0.5));
   const valuation = computeValuation(data, ke, kw, g, config);
   const valuationLegacyKw = computeValuation(data, ke, config.risk_free_rate, g, config);
   const reoiIdentityGap = Math.abs(valuation.V_RE_CV3 - valuation.V_ReOI_CV03);
   const reoiIdentityGapPct = valuation.V_RE_CV3 !== 0 ? reoiIdentityGap / Math.abs(valuation.V_RE_CV3) : null;
+
+  const sensitivityKe = [0.11, 0.13, 0.15];
+  const sensitivityG = [0.02, g, 0.04];
+  const sensitivityMatrix = sensitivityKe.map((keCase) => ({
+    ke: keCase,
+    values: sensitivityG.map((gCase) => computeValuation(data, keCase, kw, gCase, config).V_RE_CV3),
+  }));
+
+  const marketCap = config.market_price != null && config.shares_outstanding != null
+    ? config.market_price * config.shares_outstanding
+    : null;
 
   const cumulativeDirtySurplus = data.slice(1).reduce((sum, d, idx) => {
     const prev = data[idx];
@@ -479,6 +492,10 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const accrualDeltaInventory = latest.bs.Inventory - prevLatest.bs.Inventory;
   const accrualDeltaPayables = latest.bs.TradePayables - prevLatest.bs.TradePayables;
   const accrualWorkingCapitalProxy = accrualDeltaReceivables + accrualDeltaInventory - accrualDeltaPayables;
+  const accrualDeltaOtherOA = (latest.bs.OA - prevLatest.bs.OA) - accrualDeltaReceivables - accrualDeltaInventory;
+  const accrualDeltaOtherOL = (latest.bs.OL - prevLatest.bs.OL) - accrualDeltaPayables;
+  const accrualOtherProxy = accrualDeltaOtherOA - accrualDeltaOtherOL;
+  const accrualTotalProxy = accrualWorkingCapitalProxy + accrualOtherProxy;
 
   const fScore = latest.quality?.piotroski_total ?? null;
   const mScore = latest.quality?.beneish_mscore ?? null;
@@ -731,6 +748,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
                 <th className="px-2 py-1 text-right">Sales (₹ Cr)</th>
                 <th className="px-2 py-1 text-right">|NOA|/Sales</th>
                 <th className="px-2 py-1 text-left">Flag</th>
+                <th className="px-2 py-1 text-left">Lease era</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -741,6 +759,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
                   <td className="px-2 py-1 text-right">{num(row.sales)}</td>
                   <td className="px-2 py-1 text-right">{pct(row.noaToSales, 1)}</td>
                   <td className="px-2 py-1">{row.flagged ? "⚠️ small NOA" : "OK"}</td>
+                  <td className="px-2 py-1">{row.indAs116Era ? "FY2020+" : "Pre-FY2020"}</td>
                 </tr>
               ))}
             </tbody>
@@ -782,6 +801,10 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             ΔPayables <b>₹{num(accrualDeltaPayables)} Cr</b>, net working-capital accrual proxy <b>₹{num(accrualWorkingCapitalProxy)} Cr</b>.
           </li>
           <li>
+            Other accrual proxy: ΔOther OA <b>₹{num(accrualDeltaOtherOA)} Cr</b>, ΔOther OL <b>₹{num(accrualDeltaOtherOL)} Cr</b>,
+            net other accrual proxy <b>₹{num(accrualOtherProxy)} Cr</b>; total accrual proxy <b>₹{num(accrualTotalProxy)} Cr</b>.
+          </li>
+          <li>
             Cumulative dirty-surplus check Σ(ΔCSE − CNI + d) = <b>₹{num(cumulativeDirtySurplus)} Cr</b>.
           </li>
         </ul>
@@ -791,7 +814,8 @@ export default function AcademicReport({ data, config, rawData }: Props) {
         <h2 className="font-bold text-lg text-slate-800 mb-3">6) Valuation Synthesis (Residual Income Framework)</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
           <MiniBox label="ke assumption" value={pct(ke, 2)} />
-          <MiniBox label="kw (derived, median)" value={pct(kw, 2)} />
+          <MiniBox label="kw (derived, latest)" value={pct(kw, 2)} />
+          <MiniBox label="kw (derived, median)" value={pct(kwMedian, 2)} />
           <MiniBox label="kw (legacy rf proxy)" value={pct(config.risk_free_rate, 2)} />
           <MiniBox label="Terminal growth g" value={pct(g, 2)} />
           <MiniBox label="Separation confidence" value={`${valuation.separationScore}/100`} />
@@ -828,7 +852,46 @@ export default function AcademicReport({ data, config, rawData }: Props) {
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">6A) Quality Score Decomposition</h2>
+        <h2 className="font-bold text-lg text-slate-800 mb-3">6A) RE sensitivity matrix (ke × g)</h2>
+        <p className="text-xs text-slate-500 mb-3">Rows vary cost of equity; columns vary terminal growth. Values are V(RE, CV3) in ₹ Cr using derived kw for ReOI consistency checks.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-3 py-2 text-left">ke \ g</th>
+                {sensitivityG.map((gCase, idx) => (
+                  <th key={idx} className="px-3 py-2 text-right">{pct(gCase, 2)}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {sensitivityMatrix.map((row) => (
+                <tr key={row.ke}>
+                  <td className="px-3 py-2">{pct(row.ke, 1)}</td>
+                  {row.values.map((v, idx) => (
+                    <td key={idx} className="px-3 py-2 text-right">₹{num(v)} Cr</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">6B) Per-share and market-implied checks</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <MiniBox label="RE intrinsic per share" value={valuation.perShare?.intrinsic_re_per_share != null ? `₹${num(valuation.perShare.intrinsic_re_per_share, 2)}` : "—"} />
+          <MiniBox label="Margin of safety vs market" value={pct(valuation.perShare?.margin_of_safety_re, 1)} />
+          <MiniBox label="Implied growth g*" value={pct(valuation.perShare?.implied_growth_rate, 2)} />
+          <MiniBox label="Market cap input" value={marketCap != null ? `₹${num(marketCap)} Cr` : "—"} />
+          <MiniBox label="Market price input" value={config.market_price != null ? `₹${num(config.market_price, 2)}` : "—"} />
+          <MiniBox label="Shares outstanding" value={config.shares_outstanding != null ? num(config.shares_outstanding, 0) : "—"} />
+        </div>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">6C) Quality Score Decomposition</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
             <h3 className="font-semibold text-slate-700 mb-2">Piotroski components</h3>

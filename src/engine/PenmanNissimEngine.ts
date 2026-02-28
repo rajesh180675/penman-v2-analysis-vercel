@@ -467,7 +467,7 @@ export function deriveKwFromStructure(cur: RecastPeriod, prev: RecastPeriod, ke:
 
   const avgFO = (Math.abs(cur.bs.FO) + Math.abs(prev.bs.FO)) / 2;
   const avgFA = (Math.abs(cur.bs.FA) + Math.abs(prev.bs.FA)) / 2;
-  const avgCSE = (Math.abs(cur.bs.CSE) + Math.abs(prev.bs.CSE)) / 2;
+  const avgCSE = (cur.bs.CSE + prev.bs.CSE) / 2;
 
   const kdPretax = avgFO > 1
     ? Math.max(0, cur.is.FinanceCost / avgFO)
@@ -475,6 +475,8 @@ export function deriveKwFromStructure(cur: RecastPeriod, prev: RecastPeriod, ke:
   const kdAfterTax = kdPretax * (1 - cur.is.taxRate);
   const ki = avgFA > 1 ? Math.max(0, cur.is.FinanceIncome / avgFA) : riskFreeRate;
 
+  // Approximate operating discount rate from financing structure:
+  // kw*NOA ≈ ke*CSE + kd*FO - ki*FA
   const kwRaw = (ke * avgCSE + kdAfterTax * avgFO - ki * avgFA) / avgNOA;
   return Math.max(riskFreeRate, kwRaw);
 }
