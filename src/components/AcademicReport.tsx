@@ -477,6 +477,16 @@ export default function AcademicReport({ data, config, rawData }: Props) {
     noaShiftSeries[0] ?? { period: latest.period_end, deltaNOA: 0, deltaOA: 0, deltaFA: 0, deltaOL: 0, deltaFO: 0 },
   );
 
+  const noaDiagnostics = data.map((d) => ({
+    period: d.period_end,
+    noa: d.bs.NOA,
+    sales: d.is.Sales,
+    noaToSales: d.is.Sales > 0 ? Math.abs(d.bs.NOA) / d.is.Sales : null,
+    flagged: d.is.Sales > 0 ? Math.abs(d.bs.NOA) < 0.1 * d.is.Sales : false,
+    indAs116Era: Number.parseInt(d.period_end.slice(0, 4), 10) >= 2020,
+  }));
+  const noaFlagCount = noaDiagnostics.filter((d) => d.flagged).length;
+
   const ke = config.risk_free_rate + config.equity_risk_premium;
   const kwSeries: number[] = [];
   for (let i = 1; i < data.length; i++) {
