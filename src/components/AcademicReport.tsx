@@ -435,6 +435,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const latest = data[data.length - 1];
   const first = data[0];
   const years = Math.max(data.length - 1, 1);
+  const companyId = rawData?.[rawData.length - 1]?.company_id ?? rawData?.[0]?.company_id ?? "Unknown";
   const trailing = data.slice(Math.max(0, data.length - 5));
 
   const salesCagr = cagr(first.is.Sales, latest.is.Sales, years);
@@ -477,16 +478,6 @@ export default function AcademicReport({ data, config, rawData }: Props) {
     noaShiftSeries[0] ?? { period: latest.period_end, deltaNOA: 0, deltaOA: 0, deltaFA: 0, deltaOL: 0, deltaFO: 0 },
   );
 
-  const noaDiagnostics = data.map((d) => ({
-    period: d.period_end,
-    noa: d.bs.NOA,
-    sales: d.is.Sales,
-    noaToSales: d.is.Sales > 0 ? Math.abs(d.bs.NOA) / d.is.Sales : null,
-    flagged: d.is.Sales > 0 ? Math.abs(d.bs.NOA) < 0.1 * d.is.Sales : false,
-    indAs116Era: Number.parseInt(d.period_end.slice(0, 4), 10) >= 2020,
-  }));
-  const noaFlagCount = noaDiagnostics.filter((d) => d.flagged).length;
-
   const ke = config.risk_free_rate + config.equity_risk_premium;
   const kwSeries: number[] = [];
   for (let i = 1; i < data.length; i++) {
@@ -528,6 +519,17 @@ export default function AcademicReport({ data, config, rawData }: Props) {
 
   const fScore = latest.quality?.piotroski_total ?? null;
   const dilutionRecent = data.slice(Math.max(0, data.length - 5)).reduce((sum, d) => sum + Math.max(0, d.cf.EquityIssued || 0), 0);
+  const ratioTimeline = data.map((d) => ({
+    period: d.period_end,
+    PM: d.ratios?.PM ?? null,
+    ROCE: d.ratios?.ROCE ?? null,
+    FLEV: d.ratios?.FLEV ?? null,
+    payout: d.is.CNI !== 0 ? d.cf.DividendPaid / d.is.CNI : null,
+  }));
+  const explicitHorizonYears = Math.max(valuation.reSeries.length, 0);
+  const terminalWeightRE = valuation.V_RE_CV3 !== 0
+    ? ((valuation.CV_RE / Math.pow(1 + valuation.ke, explicitHorizonYears)) / valuation.V_RE_CV3)
+    : null;
   const mScore = latest.quality?.beneish_mscore ?? null;
   const zScore = latest.quality?.altman_zprime ?? null;
 
@@ -596,6 +598,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
         <p className="text-sm text-slate-500 mt-1">
           Framework: Nissim &amp; Penman (2001), residual-income valuation with operating/financing recast under Ind AS.
         </p>
+        <p className="text-xs text-slate-600 mt-2">Company ID: <b>{companyId}</b> · Sample window: <b>{first.period_end.slice(0, 10)}</b> to <b>{latest.period_end.slice(0, 10)}</b>.</p>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-5">
           <Kpi label="Latest ROCE" value={pct(latest.ratios?.ROCE)} />
           <Kpi label="Latest RNOA" value={pct(latest.ratios?.RNOA)} />
@@ -903,6 +906,34 @@ export default function AcademicReport({ data, config, rawData }: Props) {
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">5B) Operating trajectory timeline (full sample)</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-2 py-1 text-left">Period</th>
+                <th className="px-2 py-1 text-right">PM</th>
+                <th className="px-2 py-1 text-right">ROCE</th>
+                <th className="px-2 py-1 text-right">FLEV</th>
+                <th className="px-2 py-1 text-right">Dividend/CNI</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {ratioTimeline.map((row) => (
+                <tr key={row.period}>
+                  <td className="px-2 py-1">{row.period.slice(0, 10)}</td>
+                  <td className="px-2 py-1 text-right">{pct(row.PM, 1)}</td>
+                  <td className="px-2 py-1 text-right">{pct(row.ROCE, 1)}</td>
+                  <td className="px-2 py-1 text-right">{num(row.FLEV, 2)}x</td>
+                  <td className="px-2 py-1 text-right">{pct(row.payout, 1)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">6) Valuation Synthesis (Residual Income Framework)</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
           <MiniBox label="ke assumption" value={pct(ke, 2)} />
@@ -941,6 +972,9 @@ export default function AcademicReport({ data, config, rawData }: Props) {
         <p className="text-xs text-slate-500 mt-3">
           Interpretation: when separation confidence is low, the RE line should be treated as primary and ReOI as corroborative only. Identity check (CV3): |RE−ReOI| = ₹{num(reoiIdentityGap)} Cr ({pct(reoiIdentityGapPct)}). Legacy rf-based ReOI CV3 was ₹{num(valuationLegacyKw.V_ReOI_CV03)} Cr.
         </p>
+        <p className="text-xs text-slate-500 mt-1">
+          Explicit residual-income horizon used in valuation: <b>{explicitHorizonYears}</b> yearly steps. Terminal-value share of RE CV3: <b>{pct(terminalWeightRE, 1)}</b>.
+        </p>
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -963,6 +997,30 @@ export default function AcademicReport({ data, config, rawData }: Props) {
                   {row.values.map((v, idx) => (
                     <td key={idx} className="px-3 py-2 text-right">₹{num(v)} Cr</td>
                   ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">6A.1) Explicit residual-income stream</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-2 py-1 text-left">Period</th>
+                <th className="px-2 py-1 text-right">RE</th>
+                <th className="px-2 py-1 text-right">ReOI</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {valuation.reSeries.map((row) => (
+                <tr key={row.period}>
+                  <td className="px-2 py-1">{row.period.slice(0, 10)}</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.RE)} Cr</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.ReOI)} Cr</td>
                 </tr>
               ))}
             </tbody>
