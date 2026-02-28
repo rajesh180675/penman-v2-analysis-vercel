@@ -1,7 +1,7 @@
 import { RawPeriodData, RecastPeriod, EngineConfig } from "./types";
 import {
   computeRecastPeriod, computeRatios,
-  computeResidualIncome, computeQuality,
+  computeResidualIncome, computeQuality, deriveKwFromStructure,
 } from "./PenmanNissimEngine";
 
 export function processCompanyData(
@@ -33,16 +33,7 @@ export function processCompanyData(
       const prevRaw = sorted[i - 1];
       try {
         recast.ratios = computeRatios(recast, prev, config);
-        const avgFO = (Math.abs(recast.bs.FO) + Math.abs(prev.bs.FO)) / 2;
-        const avgFA = (Math.abs(recast.bs.FA) + Math.abs(prev.bs.FA)) / 2;
-        const avgNOA = Math.abs((recast.bs.NOA + prev.bs.NOA) / 2);
-        const kdPretax = avgFO > 1 ? Math.max(0, recast.is.FinanceCost / avgFO) : Math.max(config.risk_free_rate * 1.1, 0.04);
-        const kdAfterTax = kdPretax * (1 - recast.is.taxRate);
-        const ki = avgFA > 1 ? Math.max(0, recast.is.FinanceIncome / avgFA) : config.risk_free_rate;
-        const kwRaw = avgNOA > 1
-          ? (ke * Math.abs(recast.bs.CSE) + kdAfterTax * avgFO - ki * avgFA) / avgNOA
-          : ke;
-        const kwDerived = Math.max(config.risk_free_rate, Math.min(ke, kwRaw));
+        const kwDerived = deriveKwFromStructure(recast, prev, ke, config.risk_free_rate);
 
         recast.ri = computeResidualIncome(recast, prev, ke, kwDerived);
         // computeQuality needs raw data for Beneish/Piotroski metric access

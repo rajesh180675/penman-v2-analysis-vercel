@@ -461,6 +461,24 @@ export function computeResidualIncome(cur: RecastPeriod, prev: RecastPeriod, ke:
   };
 }
 
+export function deriveKwFromStructure(cur: RecastPeriod, prev: RecastPeriod, ke: number, riskFreeRate: number): number {
+  const avgNOA = Math.abs((cur.bs.NOA + prev.bs.NOA) / 2);
+  if (avgNOA <= 1) return ke;
+
+  const avgFO = (Math.abs(cur.bs.FO) + Math.abs(prev.bs.FO)) / 2;
+  const avgFA = (Math.abs(cur.bs.FA) + Math.abs(prev.bs.FA)) / 2;
+  const avgCSE = (Math.abs(cur.bs.CSE) + Math.abs(prev.bs.CSE)) / 2;
+
+  const kdPretax = avgFO > 1
+    ? Math.max(0, cur.is.FinanceCost / avgFO)
+    : Math.max(riskFreeRate * 1.1, 0.04);
+  const kdAfterTax = kdPretax * (1 - cur.is.taxRate);
+  const ki = avgFA > 1 ? Math.max(0, cur.is.FinanceIncome / avgFA) : riskFreeRate;
+
+  const kwRaw = (ke * avgCSE + kdAfterTax * avgFO - ki * avgFA) / avgNOA;
+  return Math.max(riskFreeRate, kwRaw);
+}
+
 export function computeValuation(periods: RecastPeriod[], ke: number, kw: number, g: number, cfg: EngineConfig) {
   const rhoE = 1 + ke;
   const rhoW = 1 + kw;
