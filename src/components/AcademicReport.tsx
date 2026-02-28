@@ -5,7 +5,7 @@ import JSZip from "jszip";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import { EngineConfig, NP_BENCHMARKS, RawPeriodData, RecastPeriod } from "../engine/types";
-import { computeValuation } from "../engine/PenmanNissimEngine";
+import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { evaluateGranularityChecklist } from "../engine/mappingAudit";
 import { generateValuationWorkbook } from "../engine/excelExport";
 import { buildProvenanceAuditRows } from "../engine/provenanceAudit";
@@ -59,6 +59,14 @@ function avg(vals: Array<number | null | undefined>): number | null {
   const f = vals.filter((v): v is number => v != null && Number.isFinite(v));
   if (!f.length) return null;
   return f.reduce((s, v) => s + v, 0) / f.length;
+}
+
+
+function median(vals: Array<number | null | undefined>): number | null {
+  const f = vals.filter((v): v is number => v != null && Number.isFinite(v)).sort((a, b) => a - b);
+  if (!f.length) return null;
+  const m = Math.floor(f.length / 2);
+  return f.length % 2 === 0 ? (f[m - 1] + f[m]) / 2 : f[m];
 }
 
 export default function AcademicReport({ data, config, rawData }: Props) {
@@ -427,6 +435,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const latest = data[data.length - 1];
   const first = data[0];
   const years = Math.max(data.length - 1, 1);
+  const companyId = rawData?.[rawData.length - 1]?.company_id ?? rawData?.[0]?.company_id ?? "Unknown";
   const trailing = data.slice(Math.max(0, data.length - 5));
 
   const salesCagr = cagr(first.is.Sales, latest.is.Sales, years);
@@ -434,19 +443,93 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const cseCagr = cagr(first.bs.CSE, latest.bs.CSE, years);
 
   const roce5 = avg(trailing.map((d) => d.ratios?.ROCE));
-  const rnoa5 = avg(trailing.map((d) => d.ratios?.RNOA));
-  const spread5 = avg(trailing.map((d) => d.ratios?.SPREAD));
+  const rnoa5 = median(trailing.map((d) => d.ratios?.RNOA));
+  const spread5 = median(trailing.map((d) => d.ratios?.SPREAD));
   const pm5 = avg(trailing.map((d) => d.ratios?.PM));
-  const ato5 = avg(trailing.map((d) => d.ratios?.ATO));
+  const ato5 = median(trailing.map((d) => d.ratios?.ATO));
   const accrual5 = avg(trailing.map((d) => d.ratios?.accrual_ratio_bs));
   const ccr5 = avg(trailing.map((d) => d.ratios?.cash_conversion_ratio));
+  const steadyState = data.slice(Math.max(0, data.length - 2));
+  const steadyRnoa = avg(steadyState.map((d) => d.ratios?.RNOA));
+  const steadyAto = avg(steadyState.map((d) => d.ratios?.ATO));
+
+  const noaDiagnostics = data.map((d) => ({
+    period: d.period_end,
+    noa: d.bs.NOA,
+    sales: d.is.Sales,
+    noaToSales: d.is.Sales > 0 ? Math.abs(d.bs.NOA) / d.is.Sales : null,
+    flagged: d.is.Sales > 0 ? Math.abs(d.bs.NOA) < 0.1 * d.is.Sales : false,
+    indAs116Era: Number.parseInt(d.period_end.slice(0, 4), 10) >= 2020,
+  }));
+  const noaFlagCount = noaDiagnostics.filter((d) => d.flagged).length;
+  const noaShiftSeries = data.slice(1).map((d, idx) => {
+    const prev = data[idx];
+    return {
+      period: d.period_end,
+      deltaNOA: d.bs.NOA - prev.bs.NOA,
+      deltaOA: d.bs.OA - prev.bs.OA,
+      deltaFA: d.bs.FA - prev.bs.FA,
+      deltaOL: d.bs.OL - prev.bs.OL,
+      deltaFO: d.bs.FO - prev.bs.FO,
+    };
+  });
+  const largestNoaShift = noaShiftSeries.reduce((best, row) =>
+    Math.abs(row.deltaNOA) > Math.abs(best.deltaNOA) ? row : best,
+    noaShiftSeries[0] ?? { period: latest.period_end, deltaNOA: 0, deltaOA: 0, deltaFA: 0, deltaOL: 0, deltaFO: 0 },
+  );
 
   const ke = config.risk_free_rate + config.equity_risk_premium;
-  const kw = config.risk_free_rate;
+  const kwSeries: number[] = [];
+  for (let i = 1; i < data.length; i++) {
+    kwSeries.push(deriveKwFromStructure(data[i], data[i - 1], ke, config.risk_free_rate));
+  }
+  const kw = kwSeries.length ? kwSeries[kwSeries.length - 1] : ke;
+  const kwMedian = median(kwSeries);
   const g = Math.min(0.05, Math.max(0.02, (salesCagr ?? 0.04) * 0.5));
   const valuation = computeValuation(data, ke, kw, g, config);
+  const valuationLegacyKw = computeValuation(data, ke, config.risk_free_rate, g, config);
+  const reoiIdentityGap = Math.abs(valuation.V_RE_CV3 - valuation.V_ReOI_CV03);
+  const reoiIdentityGapPct = valuation.V_RE_CV3 !== 0 ? reoiIdentityGap / Math.abs(valuation.V_RE_CV3) : null;
+
+  const sensitivityKe = [0.11, 0.13, 0.15];
+  const sensitivityG = [0.02, g, 0.04];
+  const sensitivityMatrix = sensitivityKe.map((keCase) => ({
+    ke: keCase,
+    values: sensitivityG.map((gCase) => computeValuation(data, keCase, kw, gCase, config).V_RE_CV3),
+  }));
+
+  const marketCap = config.market_price != null && config.shares_outstanding != null
+    ? config.market_price * config.shares_outstanding
+    : null;
+
+  const cumulativeDirtySurplus = data.slice(1).reduce((sum, d, idx) => {
+    const prev = data[idx];
+    return sum + ((d.bs.CSE - prev.bs.CSE) - d.is.CNI + d.cf.d_t);
+  }, 0);
+  const prevLatest = data[data.length - 2];
+  const accrualDeltaReceivables = latest.bs.TradeReceivables - prevLatest.bs.TradeReceivables;
+  const accrualDeltaInventory = latest.bs.Inventory - prevLatest.bs.Inventory;
+  const accrualDeltaPayables = latest.bs.TradePayables - prevLatest.bs.TradePayables;
+  const accrualWorkingCapitalProxy = accrualDeltaReceivables + accrualDeltaInventory - accrualDeltaPayables;
+  const accrualDeltaOtherOA = (latest.bs.OA - prevLatest.bs.OA) - accrualDeltaReceivables - accrualDeltaInventory;
+  const accrualDeltaOtherOL = (latest.bs.OL - prevLatest.bs.OL) - accrualDeltaPayables;
+  const accrualOtherProxy = accrualDeltaOtherOA - accrualDeltaOtherOL;
+  const accrualTotalProxy = accrualWorkingCapitalProxy + accrualOtherProxy;
+  const accrualSeries = data.slice(1).map((d) => ({ period: d.period_end, accrual: d.ratios?.accrual_ratio_bs ?? null }));
 
   const fScore = latest.quality?.piotroski_total ?? null;
+  const dilutionRecent = data.slice(Math.max(0, data.length - 5)).reduce((sum, d) => sum + Math.max(0, d.cf.EquityIssued || 0), 0);
+  const ratioTimeline = data.map((d) => ({
+    period: d.period_end,
+    PM: d.ratios?.PM ?? null,
+    ROCE: d.ratios?.ROCE ?? null,
+    FLEV: d.ratios?.FLEV ?? null,
+    payout: d.is.CNI !== 0 ? d.cf.DividendPaid / d.is.CNI : null,
+  }));
+  const explicitHorizonYears = Math.max(valuation.reSeries.length, 0);
+  const terminalWeightRE = valuation.V_RE_CV3 !== 0
+    ? ((valuation.CV_RE / Math.pow(1 + valuation.ke, explicitHorizonYears)) / valuation.V_RE_CV3)
+    : null;
   const mScore = latest.quality?.beneish_mscore ?? null;
   const zScore = latest.quality?.altman_zprime ?? null;
 
@@ -515,6 +598,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
         <p className="text-sm text-slate-500 mt-1">
           Framework: Nissim &amp; Penman (2001), residual-income valuation with operating/financing recast under Ind AS.
         </p>
+        <p className="text-xs text-slate-600 mt-2">Company ID: <b>{companyId}</b> · Sample window: <b>{first.period_end.slice(0, 10)}</b> to <b>{latest.period_end.slice(0, 10)}</b>.</p>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-5">
           <Kpi label="Latest ROCE" value={pct(latest.ratios?.ROCE)} />
           <Kpi label="Latest RNOA" value={pct(latest.ratios?.RNOA)} />
@@ -531,10 +615,10 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             CNI CAGR = <b>{pct(cniCagr)}</b>, and book equity CAGR = <b>{pct(cseCagr)}</b>.
           </li>
           <li>
-            Five-period average profitability: ROCE <b>{pct(roce5)}</b>, RNOA <b>{pct(rnoa5)}</b>, Spread <b>{pct(spread5)}</b>.
+            Five-period central-tendency profitability (median for NOA-sensitive ratios): ROCE <b>{pct(roce5)}</b>, RNOA <b>{pct(rnoa5)}</b>, Spread <b>{pct(spread5)}</b>; steady-state (latest 2y) RNOA <b>{pct(steadyRnoa)}</b>.
           </li>
           <li>
-            Operations profile: PM <b>{pct(pm5)}</b> and ATO <b>{num(ato5, 2)}x</b>, benchmarked versus N&amp;P medians
+            Operations profile: PM <b>{pct(pm5)}</b> and ATO <b>{num(ato5, 2)}x</b> (median), benchmarked versus N&amp;P medians
             ({(NP_BENCHMARKS.PM.median * 100).toFixed(1)}% and {NP_BENCHMARKS.ATO.median.toFixed(2)}x).
           </li>
           <li>
@@ -542,7 +626,8 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           </li>
           <li>
             Quality diagnostics: Piotroski F-score <b>{fScore ?? "—"}/9</b>, Beneish M-score <b>{mScore?.toFixed(2) ?? "—"}</b>
-            {mFlag ? " (watchlist)" : " (clean threshold)"}, Altman Z' <b>{zScore?.toFixed(2) ?? "—"}</b> ({zZone}).
+            {mFlag ? " (watchlist)" : " (clean threshold)"}, Altman Z' <b>{zScore?.toFixed(2) ?? "—"}</b> ({zZone});
+            valuation identity gap |RE−ReOI| = <b>₹{num(reoiIdentityGap)} Cr</b> ({pct(reoiIdentityGapPct)}).
           </li>
         </ul>
       </section>
@@ -665,7 +750,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="px-3 py-2 text-left">Metric</th>
                 <th className="px-3 py-2 text-right">Latest</th>
-                <th className="px-3 py-2 text-right">5Y Avg</th>
+                <th className="px-3 py-2 text-right">5Y Robust</th>
                 <th className="px-3 py-2 text-right">N&amp;P Median</th>
                 <th className="px-3 py-2 text-left">Interpretation</th>
               </tr>
@@ -676,8 +761,77 @@ export default function AcademicReport({ data, config, rawData }: Props) {
               <Row metric="Spread" latest={pct(latest.ratios?.SPREAD)} avg5={pct(spread5)} bm={`${(NP_BENCHMARKS.SPREAD.median * 100).toFixed(1)}%`} note="Value creation wedge between operating return and financing cost." />
               <Row metric="PM" latest={pct(latest.ratios?.PM)} avg5={pct(pm5)} bm={`${(NP_BENCHMARKS.PM.median * 100).toFixed(1)}%`} note="Operating margin after comprehensive classification." />
               <Row metric="ATO" latest={`${num(latest.ratios?.ATO, 2)}x`} avg5={`${num(ato5, 2)}x`} bm={`${NP_BENCHMARKS.ATO.median.toFixed(2)}x`} note="Operating asset productivity / turnover." />
+              <Row metric="Steady-state RNOA (2Y avg)" latest={pct(steadyRnoa)} avg5="—" bm={`${(NP_BENCHMARKS.RNOA.median * 100).toFixed(1)}%`} note="Use for post-transition anchoring when NOA regime shifts." />
+              <Row metric="Steady-state ATO (2Y avg)" latest={`${num(steadyAto, 2)}x`} avg5="—" bm={`${NP_BENCHMARKS.ATO.median.toFixed(2)}x`} note="Recent capital-intensity regime productivity." />
               <Row metric="Sales CAGR" latest={pct(salesCagr)} avg5="—" bm="—" note="Top-line growth trajectory over full sample." />
               <Row metric="CNI CAGR" latest={pct(cniCagr)} avg5="—" bm="—" note="Growth in comprehensive earnings available to common." />
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-slate-500 mt-3">NOA-sensitive ratios (RNOA, Spread, ATO) use 5Y median to prevent denominator-driven explosions when NOA is near zero.</p>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">3A) NOA denominator diagnostics (all periods)</h2>
+        <p className="text-sm text-slate-700 mb-3">Flag rule: |NOA| &lt; 10% of Sales. Flagged periods: <b>{noaFlagCount}</b> / {noaDiagnostics.length}.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-2 py-1 text-left">Period</th>
+                <th className="px-2 py-1 text-right">NOA (₹ Cr)</th>
+                <th className="px-2 py-1 text-right">Sales (₹ Cr)</th>
+                <th className="px-2 py-1 text-right">|NOA|/Sales</th>
+                <th className="px-2 py-1 text-left">Flag</th>
+                <th className="px-2 py-1 text-left">Lease era</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {noaDiagnostics.map((row) => (
+                <tr key={row.period}>
+                  <td className="px-2 py-1">{row.period.slice(0, 10)}</td>
+                  <td className="px-2 py-1 text-right">{num(row.noa)}</td>
+                  <td className="px-2 py-1 text-right">{num(row.sales)}</td>
+                  <td className="px-2 py-1 text-right">{pct(row.noaToSales, 1)}</td>
+                  <td className="px-2 py-1">{row.flagged ? "⚠️ small NOA" : "OK"}</td>
+                  <td className="px-2 py-1">{row.indAs116Era ? "FY2020+" : "Pre-FY2020"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">3B) NOA structural-break diagnostics</h2>
+        <p className="text-sm text-slate-700 mb-3">
+          Largest year-on-year NOA shift occurred in <b>{largestNoaShift.period.slice(0, 10)}</b>: ΔNOA <b>₹{num(largestNoaShift.deltaNOA)} Cr</b>,
+          decomposed into ΔOA <b>₹{num(largestNoaShift.deltaOA)} Cr</b>, ΔOL <b>₹{num(largestNoaShift.deltaOL)} Cr</b>,
+          ΔFA <b>₹{num(largestNoaShift.deltaFA)} Cr</b>, ΔFO <b>₹{num(largestNoaShift.deltaFO)} Cr</b>.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-2 py-1 text-left">Period</th>
+                <th className="px-2 py-1 text-right">ΔNOA</th>
+                <th className="px-2 py-1 text-right">ΔOA</th>
+                <th className="px-2 py-1 text-right">ΔOL</th>
+                <th className="px-2 py-1 text-right">ΔFA</th>
+                <th className="px-2 py-1 text-right">ΔFO</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {noaShiftSeries.map((row) => (
+                <tr key={row.period}>
+                  <td className="px-2 py-1">{row.period.slice(0, 10)}</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.deltaNOA)} Cr</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.deltaOA)} Cr</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.deltaOL)} Cr</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.deltaFA)} Cr</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.deltaFO)} Cr</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -712,14 +866,80 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             Accrual discipline: average BS accrual ratio <b>{pct(accrual5)}</b>; sustained levels above 10% should be treated as
             a persistence-risk signal.
           </li>
+          <li>
+            Latest accrual decomposition proxy: ΔReceivables <b>₹{num(accrualDeltaReceivables)} Cr</b>, ΔInventory <b>₹{num(accrualDeltaInventory)} Cr</b>,
+            ΔPayables <b>₹{num(accrualDeltaPayables)} Cr</b>, net working-capital accrual proxy <b>₹{num(accrualWorkingCapitalProxy)} Cr</b>.
+          </li>
+          <li>
+            Other accrual proxy: ΔOther OA <b>₹{num(accrualDeltaOtherOA)} Cr</b>, ΔOther OL <b>₹{num(accrualDeltaOtherOL)} Cr</b>,
+            net other accrual proxy <b>₹{num(accrualOtherProxy)} Cr</b>; total accrual proxy <b>₹{num(accrualTotalProxy)} Cr</b>.
+          </li>
+          <li>
+            Cumulative dirty-surplus check Σ(ΔCSE − CNI + d) = <b>₹{num(cumulativeDirtySurplus)} Cr</b>.
+          </li>
         </ul>
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">5A) Accrual-ratio time series</h2>
+        <p className="text-xs text-slate-500 mb-3">This series helps separate transition-year accrual spikes from current-period earnings quality.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-2 py-1 text-left">Period</th>
+                <th className="px-2 py-1 text-right">BS accrual ratio</th>
+                <th className="px-2 py-1 text-left">Flag</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {accrualSeries.map((row) => (
+                <tr key={row.period}>
+                  <td className="px-2 py-1">{row.period.slice(0, 10)}</td>
+                  <td className="px-2 py-1 text-right">{pct(row.accrual, 1)}</td>
+                  <td className="px-2 py-1">{row.accrual != null && Math.abs(row.accrual) > 0.1 ? "⚠️ >10%" : "OK"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">5B) Operating trajectory timeline (full sample)</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-2 py-1 text-left">Period</th>
+                <th className="px-2 py-1 text-right">PM</th>
+                <th className="px-2 py-1 text-right">ROCE</th>
+                <th className="px-2 py-1 text-right">FLEV</th>
+                <th className="px-2 py-1 text-right">Dividend/CNI</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {ratioTimeline.map((row) => (
+                <tr key={row.period}>
+                  <td className="px-2 py-1">{row.period.slice(0, 10)}</td>
+                  <td className="px-2 py-1 text-right">{pct(row.PM, 1)}</td>
+                  <td className="px-2 py-1 text-right">{pct(row.ROCE, 1)}</td>
+                  <td className="px-2 py-1 text-right">{num(row.FLEV, 2)}x</td>
+                  <td className="px-2 py-1 text-right">{pct(row.payout, 1)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">6) Valuation Synthesis (Residual Income Framework)</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
           <MiniBox label="ke assumption" value={pct(ke, 2)} />
-          <MiniBox label="kw assumption" value={pct(kw, 2)} />
+          <MiniBox label="kw (derived, latest)" value={pct(kw, 2)} />
+          <MiniBox label="kw (derived, median)" value={pct(kwMedian, 2)} />
+          <MiniBox label="kw (legacy rf proxy)" value={pct(config.risk_free_rate, 2)} />
           <MiniBox label="Terminal growth g" value={pct(g, 2)} />
           <MiniBox label="Separation confidence" value={`${valuation.separationScore}/100`} />
         </div>
@@ -750,8 +970,110 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           </table>
         </div>
         <p className="text-xs text-slate-500 mt-3">
-          Interpretation: when separation confidence is low, the RE line should be treated as primary and ReOI as corroborative only.
+          Interpretation: when separation confidence is low, the RE line should be treated as primary and ReOI as corroborative only. Identity check (CV3): |RE−ReOI| = ₹{num(reoiIdentityGap)} Cr ({pct(reoiIdentityGapPct)}). Legacy rf-based ReOI CV3 was ₹{num(valuationLegacyKw.V_ReOI_CV03)} Cr.
         </p>
+        <p className="text-xs text-slate-500 mt-1">
+          Explicit residual-income horizon used in valuation: <b>{explicitHorizonYears}</b> yearly steps. Terminal-value share of RE CV3: <b>{pct(terminalWeightRE, 1)}</b>.
+        </p>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">6A) RE sensitivity matrix (ke × g)</h2>
+        <p className="text-xs text-slate-500 mb-3">Rows vary cost of equity; columns vary terminal growth. Values are V(RE, CV3) in ₹ Cr using derived kw for ReOI consistency checks.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-3 py-2 text-left">ke \ g</th>
+                {sensitivityG.map((gCase, idx) => (
+                  <th key={idx} className="px-3 py-2 text-right">{pct(gCase, 2)}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {sensitivityMatrix.map((row) => (
+                <tr key={row.ke}>
+                  <td className="px-3 py-2">{pct(row.ke, 1)}</td>
+                  {row.values.map((v, idx) => (
+                    <td key={idx} className="px-3 py-2 text-right">₹{num(v)} Cr</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">6A.1) Explicit residual-income stream</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-2 py-1 text-left">Period</th>
+                <th className="px-2 py-1 text-right">RE</th>
+                <th className="px-2 py-1 text-right">ReOI</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {valuation.reSeries.map((row) => (
+                <tr key={row.period}>
+                  <td className="px-2 py-1">{row.period.slice(0, 10)}</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.RE)} Cr</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.ReOI)} Cr</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">6B) Per-share and market-implied checks</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <MiniBox label="RE intrinsic per share" value={valuation.perShare?.intrinsic_re_per_share != null ? `₹${num(valuation.perShare.intrinsic_re_per_share, 2)}` : "—"} />
+          <MiniBox label="Margin of safety vs market" value={pct(valuation.perShare?.margin_of_safety_re, 1)} />
+          <MiniBox label="Implied growth g*" value={pct(valuation.perShare?.implied_growth_rate, 2)} />
+          <MiniBox label="Market cap input" value={marketCap != null ? `₹${num(marketCap)} Cr` : "—"} />
+          <MiniBox label="Market price input" value={config.market_price != null ? `₹${num(config.market_price, 2)}` : "—"} />
+          <MiniBox label="Shares outstanding" value={config.shares_outstanding != null ? num(config.shares_outstanding, 0) : "—"} />
+        </div>
+        {(config.market_price == null || config.shares_outstanding == null) && (
+          <p className="text-xs text-amber-700 mt-3">
+            Section 6B requires market price and shares outstanding inputs to compute per-share value, margin of safety, and implied growth.
+          </p>
+        )}
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">6C) Quality Score Decomposition</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <h3 className="font-semibold text-slate-700 mb-2">Piotroski components</h3>
+            <ul className="space-y-1 text-slate-700">
+              <li>ROA positive: <b>{latest.quality?.piotroski_roa ?? "—"}</b></li>
+              <li>ΔROA positive: <b>{latest.quality?.piotroski_delta_roa ?? "—"}</b></li>
+              <li>CFO positive: <b>{latest.quality?.piotroski_cfo ?? "—"}</b></li>
+              <li>CFO &gt; NI: <b>{latest.quality?.piotroski_accrual ?? "—"}</b></li>
+              <li>Leverage down: <b>{latest.quality?.piotroski_leverage ?? "—"}</b></li>
+              <li>Liquidity up: <b>{latest.quality?.piotroski_liquidity ?? "—"}</b></li>
+              <li>No dilution: <b>{latest.quality?.piotroski_dilution ?? "—"}</b> (recent 5Y equity issuance: ₹{num(dilutionRecent)} Cr)</li>
+              <li>Margin up: <b>{latest.quality?.piotroski_margin ?? "—"}</b></li>
+              <li>Turnover up: <b>{latest.quality?.piotroski_turnover ?? "—"}</b></li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-700 mb-2">Altman Z' components</h3>
+            <ul className="space-y-1 text-slate-700">
+              <li>WC / TA: <b>{num(latest.quality?.altman_wc_ta, 3)}</b></li>
+              <li>RE / TA: <b>{num(latest.quality?.altman_re_ta, 3)}</b></li>
+              <li>EBIT / TA: <b>{num(latest.quality?.altman_ebit_ta, 3)}</b></li>
+              <li>BVE / TL: <b>{num(latest.quality?.altman_bve_tl, 3)}</b></li>
+              <li>Sales / TA: <b>{num(latest.quality?.altman_s_ta, 3)}</b></li>
+            </ul>
+            <p className="text-xs text-slate-500 mt-2">Altman Z' can understate safety for cash-rich firms because large financial assets raise total assets but do not proportionally raise EBIT.</p>
+          </div>
+        </div>
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
