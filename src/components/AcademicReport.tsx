@@ -5,7 +5,7 @@ import JSZip from "jszip";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import { EngineConfig, NP_BENCHMARKS, RawPeriodData, RecastPeriod } from "../engine/types";
-import { computeValuation } from "../engine/PenmanNissimEngine";
+import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { evaluateGranularityChecklist } from "../engine/mappingAudit";
 import { generateValuationWorkbook } from "../engine/excelExport";
 import { buildProvenanceAuditRows } from "../engine/provenanceAudit";
@@ -59,6 +59,14 @@ function avg(vals: Array<number | null | undefined>): number | null {
   const f = vals.filter((v): v is number => v != null && Number.isFinite(v));
   if (!f.length) return null;
   return f.reduce((s, v) => s + v, 0) / f.length;
+}
+
+
+function median(vals: Array<number | null | undefined>): number | null {
+  const f = vals.filter((v): v is number => v != null && Number.isFinite(v)).sort((a, b) => a - b);
+  if (!f.length) return null;
+  const m = Math.floor(f.length / 2);
+  return f.length % 2 === 0 ? (f[m - 1] + f[m]) / 2 : f[m];
 }
 
 export default function AcademicReport({ data, config, rawData }: Props) {
@@ -434,17 +442,43 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const cseCagr = cagr(first.bs.CSE, latest.bs.CSE, years);
 
   const roce5 = avg(trailing.map((d) => d.ratios?.ROCE));
-  const rnoa5 = avg(trailing.map((d) => d.ratios?.RNOA));
-  const spread5 = avg(trailing.map((d) => d.ratios?.SPREAD));
+  const rnoa5 = median(trailing.map((d) => d.ratios?.RNOA));
+  const spread5 = median(trailing.map((d) => d.ratios?.SPREAD));
   const pm5 = avg(trailing.map((d) => d.ratios?.PM));
-  const ato5 = avg(trailing.map((d) => d.ratios?.ATO));
+  const ato5 = median(trailing.map((d) => d.ratios?.ATO));
   const accrual5 = avg(trailing.map((d) => d.ratios?.accrual_ratio_bs));
   const ccr5 = avg(trailing.map((d) => d.ratios?.cash_conversion_ratio));
 
+  const noaDiagnostics = data.map((d) => ({
+    period: d.period_end,
+    noa: d.bs.NOA,
+    sales: d.is.Sales,
+    noaToSales: d.is.Sales > 0 ? Math.abs(d.bs.NOA) / d.is.Sales : null,
+    flagged: d.is.Sales > 0 ? Math.abs(d.bs.NOA) < 0.1 * d.is.Sales : false,
+  }));
+  const noaFlagCount = noaDiagnostics.filter((d) => d.flagged).length;
+
   const ke = config.risk_free_rate + config.equity_risk_premium;
-  const kw = config.risk_free_rate;
+  const kwSeries: number[] = [];
+  for (let i = 1; i < data.length; i++) {
+    kwSeries.push(deriveKwFromStructure(data[i], data[i - 1], ke, config.risk_free_rate));
+  }
+  const kw = median(kwSeries) ?? ke;
   const g = Math.min(0.05, Math.max(0.02, (salesCagr ?? 0.04) * 0.5));
   const valuation = computeValuation(data, ke, kw, g, config);
+  const valuationLegacyKw = computeValuation(data, ke, config.risk_free_rate, g, config);
+  const reoiIdentityGap = Math.abs(valuation.V_RE_CV3 - valuation.V_ReOI_CV03);
+  const reoiIdentityGapPct = valuation.V_RE_CV3 !== 0 ? reoiIdentityGap / Math.abs(valuation.V_RE_CV3) : null;
+
+  const cumulativeDirtySurplus = data.slice(1).reduce((sum, d, idx) => {
+    const prev = data[idx];
+    return sum + ((d.bs.CSE - prev.bs.CSE) - d.is.CNI + d.cf.d_t);
+  }, 0);
+  const prevLatest = data[data.length - 2];
+  const accrualDeltaReceivables = latest.bs.TradeReceivables - prevLatest.bs.TradeReceivables;
+  const accrualDeltaInventory = latest.bs.Inventory - prevLatest.bs.Inventory;
+  const accrualDeltaPayables = latest.bs.TradePayables - prevLatest.bs.TradePayables;
+  const accrualWorkingCapitalProxy = accrualDeltaReceivables + accrualDeltaInventory - accrualDeltaPayables;
 
   const fScore = latest.quality?.piotroski_total ?? null;
   const mScore = latest.quality?.beneish_mscore ?? null;
@@ -531,10 +565,10 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             CNI CAGR = <b>{pct(cniCagr)}</b>, and book equity CAGR = <b>{pct(cseCagr)}</b>.
           </li>
           <li>
-            Five-period average profitability: ROCE <b>{pct(roce5)}</b>, RNOA <b>{pct(rnoa5)}</b>, Spread <b>{pct(spread5)}</b>.
+            Five-period central-tendency profitability (median for NOA-sensitive ratios): ROCE <b>{pct(roce5)}</b>, RNOA <b>{pct(rnoa5)}</b>, Spread <b>{pct(spread5)}</b>.
           </li>
           <li>
-            Operations profile: PM <b>{pct(pm5)}</b> and ATO <b>{num(ato5, 2)}x</b>, benchmarked versus N&amp;P medians
+            Operations profile: PM <b>{pct(pm5)}</b> and ATO <b>{num(ato5, 2)}x</b> (median), benchmarked versus N&amp;P medians
             ({(NP_BENCHMARKS.PM.median * 100).toFixed(1)}% and {NP_BENCHMARKS.ATO.median.toFixed(2)}x).
           </li>
           <li>
@@ -542,7 +576,8 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           </li>
           <li>
             Quality diagnostics: Piotroski F-score <b>{fScore ?? "—"}/9</b>, Beneish M-score <b>{mScore?.toFixed(2) ?? "—"}</b>
-            {mFlag ? " (watchlist)" : " (clean threshold)"}, Altman Z' <b>{zScore?.toFixed(2) ?? "—"}</b> ({zZone}).
+            {mFlag ? " (watchlist)" : " (clean threshold)"}, Altman Z' <b>{zScore?.toFixed(2) ?? "—"}</b> ({zZone});
+            valuation identity gap |RE−ReOI| = <b>₹{num(reoiIdentityGap)} Cr</b> ({pct(reoiIdentityGapPct)}).
           </li>
         </ul>
       </section>
@@ -665,7 +700,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="px-3 py-2 text-left">Metric</th>
                 <th className="px-3 py-2 text-right">Latest</th>
-                <th className="px-3 py-2 text-right">5Y Avg</th>
+                <th className="px-3 py-2 text-right">5Y Robust</th>
                 <th className="px-3 py-2 text-right">N&amp;P Median</th>
                 <th className="px-3 py-2 text-left">Interpretation</th>
               </tr>
@@ -678,6 +713,36 @@ export default function AcademicReport({ data, config, rawData }: Props) {
               <Row metric="ATO" latest={`${num(latest.ratios?.ATO, 2)}x`} avg5={`${num(ato5, 2)}x`} bm={`${NP_BENCHMARKS.ATO.median.toFixed(2)}x`} note="Operating asset productivity / turnover." />
               <Row metric="Sales CAGR" latest={pct(salesCagr)} avg5="—" bm="—" note="Top-line growth trajectory over full sample." />
               <Row metric="CNI CAGR" latest={pct(cniCagr)} avg5="—" bm="—" note="Growth in comprehensive earnings available to common." />
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-slate-500 mt-3">NOA-sensitive ratios (RNOA, Spread, ATO) use 5Y median to prevent denominator-driven explosions when NOA is near zero.</p>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">3A) NOA denominator diagnostics (all periods)</h2>
+        <p className="text-sm text-slate-700 mb-3">Flag rule: |NOA| &lt; 10% of Sales. Flagged periods: <b>{noaFlagCount}</b> / {noaDiagnostics.length}.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-2 py-1 text-left">Period</th>
+                <th className="px-2 py-1 text-right">NOA (₹ Cr)</th>
+                <th className="px-2 py-1 text-right">Sales (₹ Cr)</th>
+                <th className="px-2 py-1 text-right">|NOA|/Sales</th>
+                <th className="px-2 py-1 text-left">Flag</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {noaDiagnostics.map((row) => (
+                <tr key={row.period}>
+                  <td className="px-2 py-1">{row.period.slice(0, 10)}</td>
+                  <td className="px-2 py-1 text-right">{num(row.noa)}</td>
+                  <td className="px-2 py-1 text-right">{num(row.sales)}</td>
+                  <td className="px-2 py-1 text-right">{pct(row.noaToSales, 1)}</td>
+                  <td className="px-2 py-1">{row.flagged ? "⚠️ small NOA" : "OK"}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -712,14 +777,22 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             Accrual discipline: average BS accrual ratio <b>{pct(accrual5)}</b>; sustained levels above 10% should be treated as
             a persistence-risk signal.
           </li>
+          <li>
+            Latest accrual decomposition proxy: ΔReceivables <b>₹{num(accrualDeltaReceivables)} Cr</b>, ΔInventory <b>₹{num(accrualDeltaInventory)} Cr</b>,
+            ΔPayables <b>₹{num(accrualDeltaPayables)} Cr</b>, net working-capital accrual proxy <b>₹{num(accrualWorkingCapitalProxy)} Cr</b>.
+          </li>
+          <li>
+            Cumulative dirty-surplus check Σ(ΔCSE − CNI + d) = <b>₹{num(cumulativeDirtySurplus)} Cr</b>.
+          </li>
         </ul>
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">6) Valuation Synthesis (Residual Income Framework)</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
           <MiniBox label="ke assumption" value={pct(ke, 2)} />
-          <MiniBox label="kw assumption" value={pct(kw, 2)} />
+          <MiniBox label="kw (derived, median)" value={pct(kw, 2)} />
+          <MiniBox label="kw (legacy rf proxy)" value={pct(config.risk_free_rate, 2)} />
           <MiniBox label="Terminal growth g" value={pct(g, 2)} />
           <MiniBox label="Separation confidence" value={`${valuation.separationScore}/100`} />
         </div>
@@ -750,8 +823,38 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           </table>
         </div>
         <p className="text-xs text-slate-500 mt-3">
-          Interpretation: when separation confidence is low, the RE line should be treated as primary and ReOI as corroborative only.
+          Interpretation: when separation confidence is low, the RE line should be treated as primary and ReOI as corroborative only. Identity check (CV3): |RE−ReOI| = ₹{num(reoiIdentityGap)} Cr ({pct(reoiIdentityGapPct)}). Legacy rf-based ReOI CV3 was ₹{num(valuationLegacyKw.V_ReOI_CV03)} Cr.
         </p>
+      </section>
+
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">6A) Quality Score Decomposition</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <h3 className="font-semibold text-slate-700 mb-2">Piotroski components</h3>
+            <ul className="space-y-1 text-slate-700">
+              <li>ROA positive: <b>{latest.quality?.piotroski_roa ?? "—"}</b></li>
+              <li>ΔROA positive: <b>{latest.quality?.piotroski_delta_roa ?? "—"}</b></li>
+              <li>CFO positive: <b>{latest.quality?.piotroski_cfo ?? "—"}</b></li>
+              <li>CFO &gt; NI: <b>{latest.quality?.piotroski_accrual ?? "—"}</b></li>
+              <li>Leverage down: <b>{latest.quality?.piotroski_leverage ?? "—"}</b></li>
+              <li>Liquidity up: <b>{latest.quality?.piotroski_liquidity ?? "—"}</b></li>
+              <li>No dilution: <b>{latest.quality?.piotroski_dilution ?? "—"}</b></li>
+              <li>Margin up: <b>{latest.quality?.piotroski_margin ?? "—"}</b></li>
+              <li>Turnover up: <b>{latest.quality?.piotroski_turnover ?? "—"}</b></li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-700 mb-2">Altman Z' components</h3>
+            <ul className="space-y-1 text-slate-700">
+              <li>WC / TA: <b>{num(latest.quality?.altman_wc_ta, 3)}</b></li>
+              <li>RE / TA: <b>{num(latest.quality?.altman_re_ta, 3)}</b></li>
+              <li>EBIT / TA: <b>{num(latest.quality?.altman_ebit_ta, 3)}</b></li>
+              <li>BVE / TL: <b>{num(latest.quality?.altman_bve_tl, 3)}</b></li>
+              <li>Sales / TA: <b>{num(latest.quality?.altman_s_ta, 3)}</b></li>
+            </ul>
+          </div>
+        </div>
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
