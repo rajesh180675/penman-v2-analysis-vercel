@@ -69,6 +69,31 @@ function median(vals: Array<number | null | undefined>): number | null {
   return f.length % 2 === 0 ? (f[m - 1] + f[m]) / 2 : f[m];
 }
 
+function madSigma(vals: number[]): number {
+  if (vals.length < 2) return 0;
+  const med = median(vals);
+  if (med == null) return 0;
+  const deviations = vals.map((v) => Math.abs(v - med));
+  const mad = median(deviations);
+  return (mad ?? 0) * 1.4826;
+}
+
+function pickFaceValue(shareCapital: number | null | undefined, shareCount: number | null | undefined): number | null {
+  if (shareCapital == null || shareCount == null || shareCount === 0) return null;
+  const implied = Math.abs(shareCapital / shareCount);
+  const common = [1, 2, 5, 10];
+  let best: number | null = null;
+  let bestErr = Number.POSITIVE_INFINITY;
+  for (const fv of common) {
+    const err = Math.abs(implied - fv);
+    if (err < bestErr) {
+      bestErr = err;
+      best = fv;
+    }
+  }
+  return bestErr <= 1 ? best : null;
+}
+
 export default function AcademicReport({ data, config, rawData }: Props) {
   const eqROCE = katex.renderToString(String.raw`\mathrm{ROCE}_t = \frac{\mathrm{CNI}_t}{\overline{\mathrm{CSE}}}`,
     { throwOnError: false, displayMode: true });
@@ -486,14 +511,24 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   }
   const kw = kwSeries.length ? kwSeries[kwSeries.length - 1] : ke;
   const kwMedian = median(kwSeries);
-  const g = Math.min(0.05, Math.max(0.02, (salesCagr ?? 0.04) * 0.5));
+  const gInput = Math.min(0.05, Math.max(0.02, (salesCagr ?? 0.04) * 0.5));
+  const nominalGdpProxy = 0.06;
+  const gCapCandidates = [
+    { label: "75% of Sales CAGR", value: Math.max(0, (salesCagr ?? 0.04) * 0.75) },
+    { label: "nominal GDP proxy", value: nominalGdpProxy },
+    { label: "ke - 2% floor", value: Math.max(0, ke - 0.02) },
+  ];
+  const bindingGCap = gCapCandidates.reduce((a, b) => (a.value < b.value ? a : b));
+  const g = Math.max(0, Math.min(gInput, bindingGCap.value));
   const valuation = computeValuation(data, ke, kw, g, config);
   const valuationLegacyKw = computeValuation(data, ke, config.risk_free_rate, g, config);
   const reoiIdentityGap = Math.abs(valuation.V_RE_CV3 - valuation.V_ReOI_CV03);
   const reoiIdentityGapPct = valuation.V_RE_CV3 !== 0 ? reoiIdentityGap / Math.abs(valuation.V_RE_CV3) : null;
 
   const sensitivityKe = [0.09, 0.10, 0.11, 0.13, 0.15];
-  const sensitivityG = [0.02, g, 0.04];
+  const gLow = Math.max(0, Math.floor(g * 100) / 100);
+  const gHigh = Math.min(Math.max(g + 0.005, Math.ceil(g * 100) / 100), Math.max(g + 0.01, ke - 0.02));
+  const sensitivityG = Array.from(new Set([gLow, g, gHigh])).sort((a, b) => a - b);
   const sensitivityMatrix = sensitivityKe.map((keCase) => ({
     ke: keCase,
     values: sensitivityG.map((gCase) => computeValuation(data, keCase, kw, gCase, config).V_RE_CV3),
@@ -507,6 +542,34 @@ export default function AcademicReport({ data, config, rawData }: Props) {
     const prev = data[idx];
     return sum + ((d.bs.CSE - prev.bs.CSE) - d.is.CNI + d.cf.d_t);
   }, 0);
+  const periodDiagnostics = data.slice(1).map((d, idx) => {
+    const prev = data[idx];
+    const ds = (d.bs.CSE - prev.bs.CSE) - d.is.CNI + d.cf.d_t;
+    const dsWarnThreshold = Math.max(0.05 * prev.bs.CSE, 0.03 * prev.bs.TA);
+    const dsCritical = Math.abs(ds) > 0.1 * prev.bs.CSE;
+    const dsWarn = Math.abs(ds) > dsWarnThreshold;
+    const dDisc = d.cf.d_t_discrepancy;
+    const capitalTxLikely = Math.abs(dDisc) > Math.max(Math.abs(d.is.CNI) * 0.2, 0.05 * prev.bs.CSE);
+    const pmHist = data.slice(0, idx + 1).map((p) => p.ratios?.PM).filter((v): v is number => v != null);
+    const pmMed = median(pmHist) ?? 0;
+    const pmSigma = madSigma(pmHist);
+    const pmZ = pmSigma > 0 ? ((d.ratios?.PM ?? 0) - pmMed) / pmSigma : 0;
+    const largeComponentDecline = (
+      (d.bs.OA - prev.bs.OA < -0.15 * prev.bs.OA && Math.abs(d.bs.OA - prev.bs.OA) > 0.02 * prev.bs.TA)
+      || (d.bs.FA - prev.bs.FA < -0.15 * prev.bs.FA && Math.abs(d.bs.FA - prev.bs.FA) > 0.02 * prev.bs.TA)
+      || (d.bs.OL - prev.bs.OL < -0.15 * prev.bs.OL && Math.abs(d.bs.OL - prev.bs.OL) > 0.02 * prev.bs.TA)
+      || (d.bs.FO - prev.bs.FO < -0.15 * prev.bs.FO && Math.abs(d.bs.FO - prev.bs.FO) > 0.02 * prev.bs.TA)
+    );
+    const flags: string[] = [];
+    if (dsCritical) flags.push("STRUCTURAL_EVENT_CRITICAL");
+    else if (dsWarn) flags.push("STRUCTURAL_EVENT");
+    if (capitalTxLikely) flags.push("CAPITAL_TRANSACTION_LIKELY");
+    if (Math.abs(pmZ) > 3) flags.push("PM_OUTLIER_CRITICAL");
+    else if (Math.abs(pmZ) > 2) flags.push("PM_OUTLIER_WARNING");
+    if (largeComponentDecline) flags.push("LARGE_COMPONENT_DECLINE");
+    return { period: d.period_end, ds, dDisc, pmZ, flags };
+  });
+  const latestDiag = periodDiagnostics[periodDiagnostics.length - 1];
   const prevLatest = data[data.length - 2];
   const accrualDeltaReceivables = latest.bs.TradeReceivables - prevLatest.bs.TradeReceivables;
   const accrualDeltaInventory = latest.bs.Inventory - prevLatest.bs.Inventory;
@@ -545,6 +608,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
     ROCE: d.ratios?.ROCE ?? null,
     FLEV: d.ratios?.FLEV ?? null,
     payout: d.is.CNI !== 0 ? d.cf.DividendPaid / d.is.CNI : null,
+    flags: periodDiagnostics.find((x) => x.period === d.period_end)?.flags ?? [],
   }));
   const explicitHorizonYears = Math.max(valuation.reSeries.length, 0);
   const terminalWeightRE = valuation.V_RE_CV3 !== 0
@@ -559,6 +623,36 @@ export default function AcademicReport({ data, config, rawData }: Props) {
 
   const zZone = zScore == null ? "N/A" : zScore > 2.9 ? "Safe" : zScore > 1.23 ? "Grey" : "Distress";
   const mFlag = mScore != null && mScore > -1.78;
+  const eq16ResidualPp = latestEq16Residual != null ? latestEq16Residual * 100 : null;
+  const eq16Tier = eq16ResidualPp == null ? "N/A" : Math.abs(eq16ResidualPp) > 15 ? "CRITICAL" : Math.abs(eq16ResidualPp) > 5 ? "ELEVATED" : Math.abs(eq16ResidualPp) >= 2 ? "WARNING" : "OK";
+  const reSeriesVals = valuation.reSeries.map((r) => r.RE);
+  const rePrev = reSeriesVals.length >= 2 ? reSeriesVals[reSeriesVals.length - 2] : null;
+  const reMedian = median(reSeriesVals);
+  const terminalReAnomaly = latestRe != null && ((rePrev != null && latestRe > 2 * rePrev) || (reMedian != null && latestRe > 2.5 * reMedian));
+  const terminalFlagCount = (latestDiag?.flags.length ?? 0)
+    + (terminalReAnomaly ? 1 : 0)
+    + (Math.abs(eq16ResidualPp ?? 0) > 15 ? 1 : 0)
+    + ((reoiIdentityGapPct ?? 0) > 0.2 ? 1 : 0);
+  const confidenceTier = terminalFlagCount >= 3 ? "structurally compromised" : terminalFlagCount === 2 ? "multiple anomalies" : terminalFlagCount === 1 ? "one anomaly" : "clean";
+  const explicitPV = valuation.V_RE_CV3 - ((valuation.CV_RE / Math.pow(1 + valuation.ke, explicitHorizonYears)) || 0);
+  const reAlt1 = rePrev != null ? rePrev * (1 + g) : latestRe;
+  const reAlt2 = median(reSeriesVals.slice(-4, -1));
+  const reAlt3 = latestRe;
+  const reToValue = (anchor: number | null) => anchor == null ? null : explicitPV + (anchor / Math.max(valuation.ke - g, 0.02)) / Math.pow(1 + valuation.ke, explicitHorizonYears);
+  const vReported = reToValue(reAlt3);
+  const vAlt1 = reToValue(reAlt1);
+  const vAlt2 = reToValue(reAlt2);
+  const tvContaminated = terminalReAnomaly && ((latestDiag?.flags.length ?? 0) > 0);
+  const primaryValuation = tvContaminated ? vAlt1 : valuation.V_RE_CV3;
+  const tvShare = terminalWeightRE;
+  const tvGrade = tvShare == null ? "N/A" : tvShare < 0.25 ? "GRADE_A" : tvShare < 0.4 ? "GRADE_B" : tvShare < 0.6 ? "GRADE_C" : "GRADE_D";
+
+  const sharesFromConfig = config.shares_outstanding ?? null;
+  const rawLatest = rawData?.[rawData.length - 1]?.raw_metric_values;
+  const shareCapital = rawLatest?.["Share Capital"] ?? rawLatest?.["Equity Share Capital"] ?? null;
+  const inferredFaceValue = pickFaceValue(shareCapital, sharesFromConfig);
+  const inferredShares = shareCapital != null && inferredFaceValue != null ? shareCapital / inferredFaceValue : null;
+  const sharesToUse = sharesFromConfig ?? inferredShares;
 
   return (
     <div className="space-y-4">
@@ -652,6 +746,9 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             Quality diagnostics: Piotroski F-score <b>{fScore ?? "—"}/9</b>, Beneish M-score <b>{mScore?.toFixed(2) ?? "—"}</b>
             {mFlag ? " (watchlist)" : " (clean threshold)"}, Altman Z' <b>{zScore?.toFixed(2) ?? "—"}</b> ({zZone});
             valuation identity gap |RE−ReOI| = <b>₹{num(reoiIdentityGap)} Cr</b> ({pct(reoiIdentityGapPct)}).
+          </li>
+          <li>
+            Valuation confidence: <b>{confidenceTier}</b> ({terminalFlagCount} terminal-period flags). Terminal-value dependence tier: <b>{tvGrade}</b> at <b>{pct(tvShare, 1)}</b>.
           </li>
         </ul>
       </section>
@@ -966,6 +1063,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
                 <th className="px-2 py-1 text-right">ROCE</th>
                 <th className="px-2 py-1 text-right">FLEV</th>
                 <th className="px-2 py-1 text-right">Dividend/CNI</th>
+                <th className="px-2 py-1 text-left">Flags</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -976,6 +1074,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
                   <td className="px-2 py-1 text-right">{pct(row.ROCE, 1)}</td>
                   <td className="px-2 py-1 text-right">{num(row.FLEV, 2)}x</td>
                   <td className="px-2 py-1 text-right">{pct(row.payout, 1)}</td>
+                  <td className="px-2 py-1">{row.flags.length ? row.flags.join(", ") : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -990,7 +1089,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           <MiniBox label="kw (derived, latest)" value={pct(kw, 2)} />
           <MiniBox label="kw (derived, median, historical artifact)" value={pct(kwMedian, 2)} />
           <MiniBox label="kw (legacy rf proxy)" value={pct(config.risk_free_rate, 2)} />
-          <MiniBox label="Terminal growth g" value={pct(g, 2)} />
+          <MiniBox label="Terminal growth g (effective)" value={pct(g, 2)} />
           <MiniBox label="Separation confidence" value={`${valuation.separationScore}/100`} />
         </div>
         <div className="overflow-x-auto">
@@ -1023,8 +1122,18 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           Interpretation: when separation confidence is low, the RE line should be treated as primary and ReOI as corroborative only. Identity check (CV3): |RE−ReOI| = ₹{num(reoiIdentityGap)} Cr ({pct(reoiIdentityGapPct)}). Legacy rf-based ReOI CV3 was ₹{num(valuationLegacyKw.V_ReOI_CV03)} Cr.
         </p>
         <p className="text-xs text-slate-500 mt-1">
-          Explicit residual-income horizon used in valuation: <b>{explicitHorizonYears}</b> yearly steps. Terminal-value share of RE CV3: <b>{pct(terminalWeightRE, 1)}</b>. Eq.16 reconstruction residual (latest): <b>{pct(latestEq16Residual, 2)}</b>.
+          Explicit residual-income horizon used in valuation: <b>{explicitHorizonYears}</b> yearly steps. Terminal-value share of RE CV3: <b>{pct(terminalWeightRE, 1)}</b> ({tvGrade}). Eq.16 residual (latest): <b>{eq16ResidualPp != null ? `${eq16ResidualPp.toFixed(2)}pp` : "—"}</b> [{eq16Tier}].
         </p>
+        {g < gInput && (
+          <p className="text-xs text-amber-700 mt-1">
+            Terminal growth capped at <b>{pct(g, 2)}</b> (input was {pct(gInput, 2)}). Binding constraint: <b>{bindingGCap.label}</b>.
+          </p>
+        )}
+        {tvContaminated && (
+          <p className="text-xs text-amber-700 mt-1">
+            ⚠ Terminal period ({latest.period_end.slice(0, 4)}) shows structural-event indicators. Primary valuation uses RE_(T-1)+growth anchor; as-reported anchor is shown for reference.
+          </p>
+        )}
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -1063,6 +1172,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
                 <th className="px-2 py-1 text-left">Period</th>
                 <th className="px-2 py-1 text-right">RE</th>
                 <th className="px-2 py-1 text-right">ReOI</th>
+                <th className="px-2 py-1 text-right">DS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1071,12 +1181,37 @@ export default function AcademicReport({ data, config, rawData }: Props) {
                   <td className="px-2 py-1">{row.period.slice(0, 10)}</td>
                   <td className="px-2 py-1 text-right">₹{num(row.RE)} Cr</td>
                   <td className="px-2 py-1 text-right">₹{num(row.ReOI)} Cr</td>
+                  <td className="px-2 py-1 text-right">₹{num(periodDiagnostics.find((p) => p.period === row.period)?.ds)} Cr</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </section>
+
+
+      {tvContaminated && (
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">6A.2) Terminal sensitivity (alternate RE anchors)</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-2 py-1 text-left">RE anchor</th>
+                <th className="px-2 py-1 text-right">Value</th>
+                <th className="px-2 py-1 text-right">TV share</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              <tr><td className="px-2 py-1">RE_T (as reported)</td><td className="px-2 py-1 text-right">₹{num(vReported)} Cr</td><td className="px-2 py-1 text-right">{vReported ? pct(((reAlt3 ?? 0) / Math.max(valuation.ke - g, 0.02)) / Math.pow(1 + valuation.ke, explicitHorizonYears) / vReported, 1) : "—"}</td></tr>
+              <tr><td className="px-2 py-1">RE_(T-1) + growth</td><td className="px-2 py-1 text-right">₹{num(vAlt1)} Cr</td><td className="px-2 py-1 text-right">{vAlt1 ? pct(((reAlt1 ?? 0) / Math.max(valuation.ke - g, 0.02)) / Math.pow(1 + valuation.ke, explicitHorizonYears) / vAlt1, 1) : "—"}</td></tr>
+              <tr><td className="px-2 py-1">3Y median RE</td><td className="px-2 py-1 text-right">₹{num(vAlt2)} Cr</td><td className="px-2 py-1 text-right">{vAlt2 ? pct(((reAlt2 ?? 0) / Math.max(valuation.ke - g, 0.02)) / Math.pow(1 + valuation.ke, explicitHorizonYears) / vAlt2, 1) : "—"}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-slate-500 mt-2">Primary value (contamination guard): <b>₹{num(primaryValuation)} Cr</b>. Reference as-reported CV3 value: <b>₹{num(valuation.V_RE_CV3)} Cr</b>.</p>
+      </section>
+      )}
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">6B) Per-share and market-implied checks</h2>
@@ -1086,13 +1221,19 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           <MiniBox label="Implied growth g*" value={pct(valuation.perShare?.implied_growth_rate, 2)} />
           <MiniBox label="Market cap input" value={marketCap != null ? `₹${num(marketCap)} Cr` : "—"} />
           <MiniBox label="Market price input" value={config.market_price != null ? `₹${num(config.market_price, 2)}` : "—"} />
-          <MiniBox label="Shares outstanding" value={config.shares_outstanding != null ? num(config.shares_outstanding, 0) : "—"} />
+          <MiniBox label="Shares outstanding" value={sharesToUse != null ? num(sharesToUse, 0) : "—"} />
         </div>
-        {(config.market_price == null || config.shares_outstanding == null) && (
+        {(config.market_price == null || sharesToUse == null) && (
           <p className="text-xs text-amber-700 mt-3">
-            Section 6B requires market price and shares outstanding inputs to compute per-share value, margin of safety, and implied growth.
+            Section 6B requires market price input and shares outstanding to compute per-share value, margin of safety, and implied growth.
           </p>
         )}
+        {inferredShares != null && inferredFaceValue != null && (
+          <p className="text-xs text-slate-600 mt-2">
+            Shares outstanding derived from share capital ₹{num(shareCapital)} Cr ÷ face value ₹{num(inferredFaceValue, 0)} = {num(inferredShares, 0)} Cr. Verify against latest filing.
+          </p>
+        )}
+        <p className="text-xs text-slate-500 mt-1">Diluted share count not available from balance-sheet data; material ESOP/warrant overhang may overstate per-share value.</p>
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -1138,16 +1279,16 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             10%, (iii) Beneish flag migration above -1.78, (iv) Altman Z' migration toward distress band.
           </p>
           <p>
-            <b>VST-specific trigger — PM path</b>: PM has trended from post-peak levels toward <b>{pct(latest.ratios?.PM)}</b>. If PM falls below <b>18%</b>,
-            re-underwrite with ke stress and a steeper fade path; below <b>15%</b>, valuation tends toward lower sensitivity bounds.
+            <b>{companyId}-specific trigger — PM path</b>: PM is currently <b>{pct(latest.ratios?.PM)}</b>. If PM falls below <b>{pct((latest.ratios?.PM ?? 0) * 0.85, 0)}</b>,
+            re-underwrite with ke stress and steeper fade; below <b>{pct((latest.ratios?.PM ?? 0) * 0.7, 0)}</b>, valuation approaches lower sensitivity bounds.
           </p>
           <p>
-            <b>VST-specific trigger — dividend sustainability</b>: Dividend vs cash FCF gap is <b>₹{num(dividendCashGap)} Cr</b>
+            <b>{companyId}-specific trigger — dividend sustainability</b>: Dividend vs cash FCF gap is <b>₹{num(dividendCashGap)} Cr</b>
             ({dividendCashGap > 0 ? `FA runway ~${num(faRunwayYears, 1)} years at current gap.` : "covered by cash FCF."}).
           </p>
           <p>
-            <b>VST-specific trigger — capacity return realization</b>: Monitor whether RNOA remains above <b>25%</b> and RE above
-            <b> ₹100 Cr</b> (latest RE: <b>₹{num(latestRe)} Cr</b>) as post-capex assets season.
+            <b>{companyId}-specific trigger — capacity return realization</b>: Monitor whether RNOA remains above <b>{pct(Math.max(ke + 0.05, (latest.ratios?.RNOA ?? 0) * 0.5), 0)}</b> and RE above
+            <b> ₹{num(Math.max(ke * latest.bs.CSE * 0.05, (latestRe ?? 0) * 0.5))} Cr</b> (latest RE: <b>₹{num(latestRe)} Cr</b>).
           </p>
           <p>
             <b>Process recommendation</b>: update this report each filing cycle; monitor Eq.(4)/(7)/(15) residuals and mapping quality
