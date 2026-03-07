@@ -93,7 +93,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
           </button>
         </div>
 
-        {/* Config row */}
+        {/* Config row — Basic */}
         <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex flex-wrap gap-4 items-end">
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Company ID</label>
@@ -127,6 +127,46 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                 {label}
               </label>
             ))}
+          </div>
+        </div>
+
+        {/* Config row — Cost of Capital (S-9.4: ke, kd_pretax, tax_rate_for_kd; kw is NEVER a direct input) */}
+        <div className="px-6 py-3 bg-blue-50 border-b border-blue-100 flex flex-wrap gap-4 items-end">
+          <div className="text-xs font-semibold text-blue-700 w-full mb-1">
+            Cost of Capital (S-9.4) — kw is derived automatically; never a direct input
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-blue-700 mb-1">
+              ke — Cost of Equity %
+              <span className="text-blue-400 ml-1">(0 = use rf+erp)</span>
+            </label>
+            <input type="number" step={0.5} min={0} max={50}
+              value={config.ke > 0 ? (config.ke * 100).toFixed(1) : ""}
+              placeholder={`${((config.risk_free_rate + config.equity_risk_premium) * 100).toFixed(1)}`}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                onConfigChange({ ...config, ke: v > 0 ? v / 100 : 0 });
+              }}
+              className="w-28 px-3 py-1.5 border border-blue-300 rounded-lg text-sm bg-white" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-blue-700 mb-1">kd pre-tax %</label>
+            <input type="number" step={0.25} min={0} max={30}
+              value={(config.kd_pretax * 100).toFixed(2)}
+              onChange={(e) => onConfigChange({ ...config, kd_pretax: Number(e.target.value) / 100 })}
+              className="w-28 px-3 py-1.5 border border-blue-300 rounded-lg text-sm bg-white" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-blue-700 mb-1">Tax rate for kd %</label>
+            <input type="number" step={0.5} min={0} max={50}
+              value={(config.tax_rate_for_kd * 100).toFixed(2)}
+              onChange={(e) => onConfigChange({ ...config, tax_rate_for_kd: Number(e.target.value) / 100 })}
+              className="w-28 px-3 py-1.5 border border-blue-300 rounded-lg text-sm bg-white" />
+          </div>
+          <div className="text-xs text-blue-600 bg-white rounded-lg border border-blue-200 px-3 py-2">
+            kd after-tax = kd_pretax × (1 − τ_kd)<br />
+            = <b>{((config.kd_pretax * (1 - config.tax_rate_for_kd)) * 100).toFixed(2)}%</b>
+            &nbsp;(computed, not stored)
           </div>
         </div>
 

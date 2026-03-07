@@ -273,7 +273,7 @@ export default function RatioReport({data}:Props) {
       </Section>
 
       {/* ── Earnings Quality ── */}
-      <Section title="Earnings Quality — Accruals & Cash Conversion" subtitle="Accrual ratio BS = ΔNOA/avg(TA) | CCR = CFO/OI | Paper Eq.12 basis">
+      <Section title="Earnings Quality — Accruals & Cash Conversion" subtitle="Accrual ratio BS = ΔNOA/avg(TA) | CCR = CFO/OI | Accrual regime (S-6.3) | Dirty surplus (S-5.1)">
         <div className="overflow-x-auto mb-4">
           <table className="w-full text-sm">
             <thead><tr className="bg-slate-50 border-b border-slate-200">
@@ -284,6 +284,11 @@ export default function RatioReport({data}:Props) {
               <TR label="BS Accrual Ratio (ΔNOA/avg TA)" vals={rd.map(d=>pct(d.ratios?.accrual_ratio_bs))}/>
               <TR label="CF Accrual Ratio ((NI-CFO)/avg TA)" vals={rd.map(d=>pct(d.ratios?.accrual_ratio_cf))}/>
               <TR label="Cash Conversion Ratio (CFO/OI)" vals={rd.map(d=>mult(d.ratios?.cash_conversion_ratio))} bold/>
+              {/* S-6.3: Accrual regime classification */}
+              <TR label="Accrual Regime (S-6.3)" vals={rd.map(d=>d.ratios?.accrual_regime ?? "—")}/>
+              {/* S-5.1: Dirty surplus per period */}
+              <TR label="Dirty Surplus (₹ Cr)" vals={rd.map(d=>d.ratios?.dirty_surplus!=null?num(d.ratios.dirty_surplus):"—")}/>
+              <TR label="Dirty Surplus / CSE (%)" vals={rd.map(d=>pct(d.ratios?.dirty_surplus_pct_cse))}/>
             </tbody>
           </table>
         </div>

@@ -188,6 +188,18 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
     + (externalEquityOk ? 25 : 10)
   );
 
+  // S-2.4 OA sub-component decomposition
+  const OA_PPE   = PPE;
+  const OA_ROU   = bs("BS.OA.ROU", ["Right of Use Assets", "Right-of-Use Assets"]);
+  const OA_Goodwill = Goodwill;
+  const OA_OtherIntangibles = bs("BS.OA.OtherIntangibles", ["Other Intangible Assets", "Intangible Assets"]);
+  const OA_Inventory = Inventory;
+  const OA_TradeReceivables = TradeReceivables;
+  const OA_DTA   = bs("BS.OA.DTA", ["Deferred Tax Assets", "Net Deferred Tax Assets"]);
+  const OA_CWIP  = bs("BS.OA.CWIP", ["Capital Work in Progress", "Capital Work-in-Progress"]);
+  const OA_Other = OA - OA_PPE - OA_ROU - OA_Goodwill - OA_OtherIntangibles
+                  - OA_Inventory - OA_TradeReceivables - OA_DTA - OA_CWIP;
+
   return {
     TA, CSE, MI, FA, FO, OA, OL, NOA, NFO,
     OL_TradePayables: bs("BS.OLComp.TradePayablesOut", M.balanceSheet.olComponents.tradePayables),
@@ -202,6 +214,8 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
     Goodwill, CurrentAssets, CurrentLiabilities, Inventory, TradeReceivables, TradePayables,
     PPE, LIFO_reserve: 0,
     separationScore: score,
+    OA_PPE, OA_ROU, OA_Goodwill, OA_OtherIntangibles,
+    OA_Inventory, OA_TradeReceivables, OA_DTA, OA_CWIP, OA_Other,
   };
 }
 
@@ -335,9 +349,11 @@ export function recastCashFlow(data: RawPeriodData, is_: CanonicalIncome, bs: Ca
     d_t,
     d_t_formula,
     d_t_discrepancy,
+    // EBITDA: OI is NOPAT (after-tax), so EBIT = OI/(1-t), then EBITDA = EBIT + D&A.
+    // Adding NFE here was wrong — OI is already the full after-tax operating income.
     EBITDA: is_.taxRate < 0.99
-      ? ((is_.OI + Math.abs(is_.NFE)) / (1 - is_.taxRate) + da)
-      : (is_.OI + Math.abs(is_.NFE) + da),
+      ? (is_.OI / (1 - is_.taxRate) + da)
+      : (is_.OI + da),
   };
 }
 
@@ -371,15 +387,16 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
   const SalesPM = cur.is.Sales > 0 ? cur.is.OI_from_sales / cur.is.Sales : null;
   const OtherItemsRatio = !noaSmall ? cur.is.OtherItems / avgNOA : null;
   const ROCE_bridge_residual =
-    ROCE != null && SalesPM != null && ATO != null && OtherItemsRatio != null && FLEV != null && SPREAD != null
-      ? ROCE - (SalesPM * ATO + OtherItemsRatio + FLEV * SPREAD)
+    ROCE != null && SalesPM != null && ATO != null && OtherItemsRatio != null && FLEV_bridge != null && SPREAD != null
+      ? ROCE - (SalesPM * ATO + OtherItemsRatio + FLEV_bridge * SPREAD)
       : null;
 
   const avgOLexDTL = avg(cur.bs.OL_ex_DTL, prev.bs.OL_ex_DTL);
   const io = cfg.risk_free_rate * avgOLexDTL;
   const ROOA = avgOA > 0 ? (cur.is.OI + io) / avgOA : null;
-  const OLLEV = !noaSmall && avgNOA !== 0 ? cur.bs.OL / avgNOA : null;
-  const OLLEV_OA = avgOA > 0 ? cur.bs.OL / avgOA : null;
+  const avgOL = (cur.bs.OL + prev.bs.OL) / 2;
+  const OLLEV = !noaSmall && avgNOA !== 0 ? avgOL / avgNOA : null;
+  const OLLEV_OA = avgOA > 0 ? avgOL / avgOA : null;
   const OLSPREAD = ROOA != null && cur.bs.OL > 0 ? ROOA - cfg.risk_free_rate : null;
   const RNOA_check = ROOA != null && OLLEV_OA != null && OLSPREAD != null ? ROOA + OLLEV_OA * OLSPREAD : null;
 
@@ -399,17 +416,49 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
   const CoreRNOA = !noaSmall ? cur.cu.CoreOI / avgNOA : null;
   const CoreSPREAD = CoreRNOA != null && CoreNBC != null ? CoreRNOA - CoreNBC : null;
   let ROCE_eq16_reconstructed: number | null = null;
-  if (CoreSalesPM != null && ATO != null && CoreOtherItems_OA != null && UOI_OA != null && OLLEV != null && OLSPREAD != null && FLEV_bridge != null && CoreSPREAD != null && UFE_NFO != null) {
+  if (CoreSalesPM != null && ATO != null && CoreOtherItems_OA != null && UOI_OA != null && FLEV_bridge != null && CoreSPREAD != null && UFE_NFO != null) {
     const msrBridge = MSR ?? 1;
+    // Eq.16 (NOA-based decomposition):
+    // RNOA = CoreSalesPM*ATO + CoreOtherItems/NOA + UOI/NOA
+    // ROCE = RNOA + FLEV*(SPREAD) = RNOA + FLEV*(CoreSPREAD + UOI/NOA - UFE/NFO)
+    // NOTE: OLLEV×OLSPREAD is an *alternative* decomposition of RNOA (OA-based), not additive here.
     ROCE_eq16_reconstructed = msrBridge * (
       (CoreSalesPM * ATO)
       + CoreOtherItems_OA
       + UOI_OA
-      + (OLLEV * OLSPREAD)
       + (FLEV_bridge * (CoreSPREAD + UOI_OA - UFE_NFO))
     );
   }
   const ROCE_eq16_error = ROCE != null && ROCE_eq16_reconstructed != null ? ROCE - ROCE_eq16_reconstructed : null;
+
+  // §5.7 Stepped Eq.16 residual diagnosis
+  const eq16ResidualThresholdWarn = cfg.eq16_residual_warning ?? 0.05;
+  const eq16ResidualThresholdCrit = cfg.eq16_residual_critical ?? 0.15;
+  const eq16_flag: "OK" | "WARNING" | "CRITICAL" =
+    ROCE_eq16_error == null ? "OK"
+    : Math.abs(ROCE_eq16_error) < eq16ResidualThresholdWarn ? "OK"
+    : Math.abs(ROCE_eq16_error) < eq16ResidualThresholdCrit ? "WARNING"
+    : "CRITICAL";
+
+  // step1: RNOA − PM×ATO (DuPont closure)
+  const eq16_step1 = RNOA != null && PM != null && ATO != null ? RNOA - (PM * ATO) : null;
+  // step2: ROCE − (RNOA + FLEV×SPREAD) (leverage closure)
+  const eq16_step2 = ROCE != null && RNOA != null && FLEV_bridge != null && SPREAD != null
+    ? ROCE - (RNOA + FLEV_bridge * SPREAD) : null;
+  // step3: (RNOA + FLEV×SPREAD) − ROCE_eq16 (full decomposition residual)
+  const eq16_step3 = ROCE_eq16_reconstructed != null && RNOA != null && FLEV_bridge != null && SPREAD != null
+    ? (RNOA + FLEV_bridge * SPREAD) - ROCE_eq16_reconstructed : null;
+
+  let eq16_diagnosis: string | null = null;
+  if (eq16_flag === "CRITICAL" && eq16_step1 != null && eq16_step2 != null && eq16_step3 != null) {
+    const steps = [Math.abs(eq16_step1), Math.abs(eq16_step2), Math.abs(eq16_step3)];
+    const maxIdx = steps.indexOf(Math.max(...steps));
+    eq16_diagnosis = [
+      "PM × ATO does not reproduce RNOA — likely averaging mismatch between Sales/NOA and OI/NOA",
+      "RNOA + FLEV × SPREAD does not reproduce ROCE — cross-product terms from within-period balance sheet changes",
+      "Full Eq.16 decomposition introduces additional error — unusual items or OL leverage interaction terms",
+    ][maxIdx];
+  }
 
   const required_return_per_sales = ATO != null && ATO !== 0 ? cfg.risk_free_rate / ATO : null;
   const value_creating_margin = PM != null && required_return_per_sales != null ? PM - required_return_per_sales : null;
@@ -435,13 +484,43 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
   const OI_growth = prev.is.OI !== 0 ? (cur.is.OI - prev.is.OI) / Math.abs(prev.is.OI) : null;
   const Sales_growth = prev.is.Sales !== 0 ? (cur.is.Sales - prev.is.Sales) / Math.abs(prev.is.Sales) : null;
 
+  // S-5.1: Dirty surplus for this period (requires prev CSE)
+  const ΔCSE_t = cur.bs.CSE - prev.bs.CSE;
+  const dirty_surplus = ΔCSE_t - cur.is.CNI + cur.cf.DividendPaid;
+  const dirty_surplus_pct_cse = Math.abs(prev.bs.CSE) > 1
+    ? Math.abs(dirty_surplus) / Math.abs(prev.bs.CSE)
+    : null;
+
+  // S-6.3: Accrual regime classification
+  let accrual_regime: Ratios["accrual_regime"] = null;
+  if (accrual_ratio_bs != null) {
+    const ΔNOA_pct = Math.abs(prev.bs.NOA) > 1 ? (cur.bs.NOA - prev.bs.NOA) / Math.abs(prev.bs.NOA) : 0;
+    const ΔFA_pct  = prev.bs.FA > 1 ? (cur.bs.FA - prev.bs.FA) / prev.bs.FA : 0;
+    if (Math.abs(accrual_ratio_bs) <= 0.10) {
+      accrual_regime = "NORMAL";
+    } else if (accrual_ratio_bs > 0.10) {
+      accrual_regime = ΔNOA_pct > 0.10 ? "GROWTH_ACCRUAL" : "QUALITY_ACCRUAL";
+    } else {
+      if (ΔFA_pct > 0.10) accrual_regime = "CASH_ACCUMULATION";
+      else if (ΔNOA_pct < -0.10) accrual_regime = "ASSET_DISPOSAL";
+      else accrual_regime = "CASH_GENERATION";
+    }
+  }
+
   return {
     ROCE, RNOA, NBC, SPREAD, FLEV,
     PM, ATO, ATO_star, SalesPM, OtherItemsRatio, ROCE_bridge_residual,
     io, ROOA, OLLEV, OLSPREAD, RNOA_check,
+    ROOA_spec: ROOA_spec_val,
+    imputed_io_spec,
     ROTCE, MSR,
     CoreSalesPM, CoreOtherItems_OA, UOI_OA, CoreNBC, UFE_NFO, CoreSPREAD,
     ROCE_eq16_reconstructed, ROCE_eq16_error,
+    eq16_step1_residual: eq16_step1,
+    eq16_step2_residual: eq16_step2,
+    eq16_step3_residual: eq16_step3,
+    eq16_flag,
+    eq16_diagnosis,
     required_return_per_sales, value_creating_margin,
     CSE_eq8_check, CSE_eq8_error_pct,
     current_ratio, quick_ratio,
@@ -451,6 +530,9 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
     NOA_growth, CNI_growth, OI_growth, Sales_growth,
     noaSmall,
     separationScore: cur.bs.separationScore,
+    accrual_regime,
+    dirty_surplus,
+    dirty_surplus_pct_cse,
   };
 }
 
@@ -461,27 +543,41 @@ export function computeResidualIncome(cur: RecastPeriod, prev: RecastPeriod, ke:
   };
 }
 
-export function deriveKwFromStructure(cur: RecastPeriod, prev: RecastPeriod, ke: number, riskFreeRate: number): number {
-  const avgNOA = Math.abs((cur.bs.NOA + prev.bs.NOA) / 2);
-  if (avgNOA <= 1) return ke;
+export function deriveKwFromStructure(cur: RecastPeriod, prev: RecastPeriod, ke: number, riskFreeRate: number, cfg?: EngineConfig): number {
+  // S-9.4: kw = ke × (CSE+MI)/NOA + kd_aftertax × NFO/NOA
+  // kw is ALWAYS derived from balance-sheet weights — NEVER a config input (Invariant 5)
+  const NOA_latest = Math.abs(cur.bs.NOA);
+  if (NOA_latest <= 0) return ke;
 
-  const avgFO = (Math.abs(cur.bs.FO) + Math.abs(prev.bs.FO)) / 2;
-  const avgFA = (Math.abs(cur.bs.FA) + Math.abs(prev.bs.FA)) / 2;
-  const avgCSE = (cur.bs.CSE + prev.bs.CSE) / 2;
+  const weight_CSE_MI = (cur.bs.CSE + cur.bs.MI) / NOA_latest;
+  const weight_NFO    = cur.bs.NFO / NOA_latest;
 
-  const kdPretax = avgFO > 1
-    ? Math.max(0, cur.is.FinanceCost / avgFO)
-    : Math.max(riskFreeRate * 1.1, 0.04);
-  const kdAfterTax = kdPretax * (1 - cur.is.taxRate);
-  const ki = avgFA > 1 ? Math.max(0, cur.is.FinanceIncome / avgFA) : riskFreeRate;
+  // kd_aftertax: prefer config (S-9.4 compliance), then infer from finance cost
+  let kdAfterTax: number;
+  if (cfg && cfg.kd_pretax > 0) {
+    kdAfterTax = cfg.kd_pretax * (1 - (cfg.tax_rate_for_kd ?? cfg.statutory_tax_rate ?? 0.2517));
+  } else {
+    const avgFO = (Math.abs(cur.bs.FO) + Math.abs(prev.bs.FO)) / 2;
+    const kdPretax = avgFO > 1
+      ? Math.max(0.03, Math.min(0.25, cur.is.FinanceCost / Math.max(avgFO, 1)))
+      : Math.max(riskFreeRate * 1.3, 0.04);
+    kdAfterTax = kdPretax * (1 - (cur.is.taxRate > 0.01 ? cur.is.taxRate : 0.2517));
+  }
 
-  // Approximate operating discount rate from financing structure:
-  // kw*NOA ≈ ke*CSE + kd*FO - ki*FA
-  const kwRaw = (ke * avgCSE + kdAfterTax * avgFO - ki * avgFA) / avgNOA;
-  return Math.max(riskFreeRate, kwRaw);
+  // For net-cash firms (NFO < 0), weight_NFO < 0 => kw > ke. Correct per spec.
+  const kwSpec = ke * weight_CSE_MI + kdAfterTax * weight_NFO;
+
+  // Safety: kw must be positive; floor at risk-free rate
+  return Math.max(riskFreeRate, kwSpec);
 }
 
-export function computeValuation(periods: RecastPeriod[], ke: number, kw: number, g: number, cfg: EngineConfig) {
+export function computeValuation(
+  periods: RecastPeriod[], ke: number, kw: number, g: number, cfg: EngineConfig,
+  /** §11 terminal RE anchor — if provided, overrides the as-reported lastRE in CV3 computation */
+  terminalREAnchor?: number | null,
+  /** §11 terminal ReOI anchor */
+  terminalReOIAnchor?: number | null,
+) {
   const rhoE = 1 + ke;
   const rhoW = 1 + kw;
   const reSeries: Array<{ period: string; RE: number; ReOI: number }> = [];
@@ -500,10 +596,13 @@ export function computeValuation(periods: RecastPeriod[], ke: number, kw: number
 
   const CV_RE_1 = 0;
   const CV_RE_2 = rhoE > 1 ? lastRE / (rhoE - 1) : 0;
-  const CV_RE_3 = rhoE - 1 - g > 0 ? (lastRE * (1 + g)) / (rhoE - 1 - g) : 0;
+  // §11: use provided terminal anchor if available, fall back to as-reported lastRE
+  const RE_terminal_anchor = terminalREAnchor != null && Number.isFinite(terminalREAnchor) ? terminalREAnchor : lastRE;
+  const ReOI_terminal_anchor = terminalReOIAnchor != null && Number.isFinite(terminalReOIAnchor) ? terminalReOIAnchor : lastReOI;
+  const CV_RE_3 = rhoE - 1 - g > 0 ? (RE_terminal_anchor * (1 + g)) / (rhoE - 1 - g) : 0;
   const CV_W_1 = 0;
   const CV_W_2 = rhoW > 1 ? lastReOI / (rhoW - 1) : 0;
-  const CV_W_3 = rhoW - 1 - g > 0 ? (lastReOI * (1 + g)) / (rhoW - 1 - g) : 0;
+  const CV_W_3 = rhoW - 1 - g > 0 ? (ReOI_terminal_anchor * (1 + g)) / (rhoW - 1 - g) : 0;
 
   const CSE0 = periods[0].bs.CSE;
   const NOA0 = periods[0].bs.NOA;
@@ -684,7 +783,14 @@ export function computeQuality(cur: RecastPeriod, prev: RecastPeriod, data: RawP
     prev.bs.PPE > 0 ? valPL(prevData, M.profitLoss.depreciationAmortization) / prev.bs.PPE : 0,
     cur.bs.PPE > 0 ? valPL(data, M.profitLoss.depreciationAmortization) / cur.bs.PPE : 0
   );
-  const sgai = safe(safe(sga(data), cur.is.Sales), safe(sga(prevData), prev.is.Sales));
+  // SGAI: SGA intensity ratio. Default to 1.0 (neutral) when SGA not measurable to avoid biasing M-Score.
+  const sgaCur = sga(data);
+  const sgaPrev = sga(prevData);
+  const sgaRatioCur = sgaCur > 0 && cur.is.Sales > 0 ? sgaCur / cur.is.Sales : null;
+  const sgaRatioPrev = sgaPrev > 0 && prev.is.Sales > 0 ? sgaPrev / prev.is.Sales : null;
+  const sgai = sgaRatioCur != null && sgaRatioPrev != null && sgaRatioPrev > 0
+    ? sgaRatioCur / sgaRatioPrev
+    : 1.0; // neutral when data unavailable
   const lvgi = safe(TL_cur / Math.max(cur.bs.TA, 1), TL_prev / Math.max(prev.bs.TA, 1));
   const tata = prev.bs.TA > 0 ? ((cur.is.PAT - cur.cu.ExceptionalItemsAfterTax) - cur.cf.CFO) / prev.bs.TA : 0;
   const beneish_mscore = -4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi + 0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi;

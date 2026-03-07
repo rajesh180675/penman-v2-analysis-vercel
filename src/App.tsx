@@ -14,8 +14,9 @@ import AcademicReport from "./components/AcademicReport";
 import RegressionReport from "./components/RegressionReport";
 import ComparisonReport from "./components/ComparisonReport";
 import DebugPanel from "./components/DebugPanel";
+import V3AnalyticsPanel from "./components/V3AnalyticsPanel";
 
-type TabId = "upload"|"statements"|"ratios"|"forecast"|"valuation"|"quality"|"comparison"|"report"|"regression"|"debug";
+type TabId = "upload"|"statements"|"ratios"|"forecast"|"valuation"|"quality"|"comparison"|"report"|"regression"|"v3analytics"|"debug";
 
 const TABS: {id:TabId;label:string;icon:string;needsData?:boolean}[] = [
   {id:"upload",     label:"Data",       icon:"📂"},
@@ -27,17 +28,30 @@ const TABS: {id:TabId;label:string;icon:string;needsData?:boolean}[] = [
   {id:"comparison", label:"Comparison", icon:"👥", needsData:true},
   {id:"report",     label:"Report",     icon:"📚", needsData:true},
   {id:"regression", label:"Regression", icon:"🧪", needsData:true},
+  {id:"v3analytics",label:"V3 Analytics",icon:"🔬", needsData:true},
   {id:"debug",      label:"Debug",      icon:"🛠"},
 ];
 
 export function App() {
   const [rawData,    setRawData]    = useState<RawPeriodData[]|null>(null);
-  const [recastData, setRecastData] = useState<RecastPeriod[]|null>(null);
   const [debugInfo,  setDebugInfo]  = useState<CapitalineParseDebug|null>(null);
   const [activeTab,  setActiveTab]  = useState<TabId>("upload");
   const [config,     setConfig]     = useState<EngineConfig>(DEFAULT_CONFIG);
   const [darkMode, setDarkMode] = useState(false);
   const [registry, setRegistry] = useState<CompanyRegistry>({ companies: {} });
+
+  // Derive recastData reactively from rawData + config so any config change (tax rate,
+  // OCI treatment, hybrid-debt flag, etc.) immediately re-computes the analysis.
+  const recastData = useMemo<RecastPeriod[] | null>(() => {
+    if (!rawData || rawData.length === 0) return null;
+    try {
+      const processed = processCompanyData(rawData, config);
+      return processed.length > 0 ? processed : null;
+    } catch (err) {
+      console.error("[App] engine error:", err);
+      return null;
+    }
+  }, [rawData, config]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -71,6 +85,31 @@ export function App() {
     window.history.replaceState({}, "", next);
   }, [config.risk_free_rate, config.equity_risk_premium, config.ticker, activeTab, darkMode]);
 
+  // Keep the registry entry's recastData in sync whenever the memo re-derives it
+  // (i.e. when config changes or new data is uploaded).
+  useEffect(() => {
+    if (!rawData || !recastData) return;
+    const id = rawData[0]?.company_id || "";
+    if (!id) return;
+    setRegistry((prev) => {
+      const existing = prev.companies[id];
+      if (!existing) return prev;
+      return {
+        companies: {
+          ...prev.companies,
+          [id]: { ...existing, recastData },
+        },
+      };
+    });
+  }, [rawData, recastData]);
+
+  // If rawData was submitted but recastData comes back null, navigate to debug tab.
+  useEffect(() => {
+    if (rawData && rawData.length > 0 && recastData === null) {
+      setActiveTab("debug");
+    }
+  }, [rawData, recastData]);
+
   const qualityGate = useMemo(() => {
     if (!rawData || rawData.length === 0) return null;
     return evaluateQualityGate(rawData);
@@ -80,27 +119,21 @@ export function App() {
     (data:RawPeriodData[], debug?:CapitalineParseDebug) => {
       setRawData(data);
       if (debug) setDebugInfo(debug);
-      if (data.length===0) { setRecastData(null); setActiveTab("debug"); return; }
-      try {
-        const processed = processCompanyData(data,config);
-        setRecastData(processed.length>0 ? processed : null);
-        if (processed.length > 0) {
-          const id = data[0]?.company_id || `CO-${Object.keys(registry.companies).length + 1}`;
-          setRegistry((prev) => ({
-            companies: {
-              ...prev.companies,
-              [id]: { id, label: id, rawData: data, recastData: processed },
-            },
-          }));
-        }
-        setActiveTab(processed.length>0 ? "statements" : "debug");
-      } catch(err) {
-        console.error("[App] engine error:",err);
-        setRecastData(null);
-        setActiveTab("debug");
-      }
+      if (data.length === 0) { setActiveTab("debug"); return; }
+      // recastData is now derived reactively via useMemo(rawData, config).
+      // We just store rawData; the memo takes care of processing.
+      const id = data[0]?.company_id || `CO-${Date.now()}`;
+      setRegistry((prev) => ({
+        companies: {
+          ...prev.companies,
+          // recastData placeholder — ComparisonReport reads from registry, so we
+          // also update registry when recastData memo resolves (see useEffect below).
+          [id]: { id, label: id, rawData: data, recastData: [] },
+        },
+      }));
+      setActiveTab("statements");
     },
-    [config, registry.companies]
+    [config]
   );
 
   const hasRecast = (recastData?.length??0)>0;
@@ -115,12 +148,10 @@ export function App() {
 
   const valuationBlocked = Boolean(qualityGate?.valuationBlocked);
 
-  const forecastConfig = {
-    risk_free_rate: config.risk_free_rate,
-    equity_risk_premium: config.equity_risk_premium,
-    statutory_tax_rate: config.statutory_tax_rate,
-    separation_confidence_threshold: config.separation_confidence_threshold,
-  };
+  // Pass the full config — ForecastReport (and any engine calls it triggers) may
+  // access fields like tax_rate_mode, oci_treated_as_unusual, etc. Passing a
+  // partial object caused silent undefined accesses for those fields.
+  const forecastConfig = config;
 
   return (
     <ErrorBoundary>
@@ -130,7 +161,7 @@ export function App() {
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">PN</div>
               <div>
-                <span className="font-bold text-slate-800 text-sm">Penman–Nissim V2</span>
+                <span className="font-bold text-slate-800 text-sm">Penman–Nissim V3</span>
                 <span className="hidden sm:inline text-xs text-slate-400 ml-2">Residual-Income Valuation · Capitaline Ind AS</span>
               </div>
             </div>
@@ -216,8 +247,9 @@ export function App() {
           {activeTab==="comparison" && <ComparisonReport registry={registry} config={config} />}
           {activeTab==="report"     && hasRecast && <AcademicReport data={recastData!} config={config} rawData={rawData} />}
           {activeTab==="regression" && hasRecast && <RegressionReport rawData={rawData} recastData={recastData} config={config} />}
+          {activeTab==="v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config}/>}
           {activeTab==="debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate}/>}
-          {(["statements","ratios","forecast","valuation","quality","report","regression"] as TabId[]).includes(activeTab) && !hasRecast && (
+          {(["statements","ratios","forecast","valuation","quality","report","regression","v3analytics"] as TabId[]).includes(activeTab) && !hasRecast && (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="text-6xl mb-4">📂</div>
               <p className="text-xl font-semibold text-slate-600">No data loaded</p>

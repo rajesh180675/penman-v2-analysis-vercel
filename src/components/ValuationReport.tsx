@@ -1,6 +1,7 @@
 import { RecastPeriod, EngineConfig } from "../engine/types";
 import { useState, useMemo } from "react";
-import { computeValuation } from "../engine/PenmanNissimEngine";
+import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
+import { ke_from_config } from "../engine/types";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell } from "recharts";
 
 interface Props { data: RecastPeriod[]; config: EngineConfig }
@@ -8,9 +9,10 @@ interface Props { data: RecastPeriod[]; config: EngineConfig }
 type CVMethod = "CV1" | "CV2" | "CV3";
 
 export default function ValuationReport({ data, config }: Props) {
-  const [Ke, setKe] = useState(10.0);
-  const [Kw, setKw] = useState(8.0);
-  const [g,  setG]  = useState(3.0);
+  // S-9.4: ke from config (prefer explicit config.ke over rf+erp)
+  const keFromConfig = ke_from_config(config);
+  const [keOverride, setKeOverride] = useState<number | null>(null);
+  const [g, setG] = useState(config.g_terminal_override != null ? config.g_terminal_override * 100 : 4.0);
   const [cv, setCv] = useState<CVMethod>("CV3");
 
   if (data.length < 2) {
@@ -20,11 +22,21 @@ export default function ValuationReport({ data, config }: Props) {
     </div>;
   }
 
-  const ke = Ke / 100, kw = Kw / 100, gRate = g / 100;
+  const ke = keOverride != null ? keOverride / 100 : keFromConfig;
+  const gRate = g / 100;
 
+  // S-9.4: kw ALWAYS derived — never a user input
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const kwDerived = useMemo(() => {
+    const cur = data[data.length - 1];
+    const prev = data[data.length - 2];
+    return deriveKwFromStructure(cur, prev, ke, config.risk_free_rate, config);
+  }, [data, ke, config]);
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const val = useMemo(() =>
-    computeValuation(data, ke, kw, gRate, config),
-    [data, ke, kw, gRate, config]
+    computeValuation(data, ke, kwDerived, gRate, config),
+    [data, ke, kwDerived, gRate, config]
   );
 
   const cvSel = (v1: number, v2: number, v3: number) => cv === "CV1" ? v1 : cv === "CV2" ? v2 : v3;
@@ -32,6 +44,9 @@ export default function ValuationReport({ data, config }: Props) {
   const V_ReOI = cvSel(val.V_ReOI_CV01, val.V_ReOI_CV02, val.V_ReOI_CV03);
 
   const fmt = (n: number) => n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+
+  // S-9.8: per-share
+  const sharesOut = config.shares_outstanding ?? null;
 
   const barData = val.reSeries.map((r) => ({
     period: r.period.slice(0, 7),
@@ -41,13 +56,40 @@ export default function ValuationReport({ data, config }: Props) {
 
   return (
     <div className="space-y-8">
-      {/* Inputs */}
+      {/* Inputs — S-9.4: kw is derived, not user input */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
         <h2 className="text-lg font-bold text-slate-800 mb-5">Valuation Inputs (§6)</h2>
         <div className="flex flex-wrap gap-6 items-end">
-          <NumInput label="Cost of Equity ke (%)" value={Ke} onChange={setKe} />
-          <NumInput label="WACC kw (%)"           value={Kw} onChange={setKw} />
-          <NumInput label="Growth g (%)"          value={g}  onChange={setG}  />
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Cost of Equity ke (%)</label>
+            <div className="flex items-center gap-2">
+              <input type="number" step={0.5}
+                value={keOverride != null ? keOverride : +(keFromConfig * 100).toFixed(1)}
+                onChange={(e) => setKeOverride(Number(e.target.value))}
+                className="w-28 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 bg-white" />
+              {keOverride != null && (
+                <button onClick={() => setKeOverride(null)}
+                  className="text-xs text-slate-400 hover:text-indigo-600 underline">reset</button>
+              )}
+            </div>
+            {keOverride == null && (
+              <p className="text-xs text-slate-400 mt-0.5">
+                {config.ke > 0 ? `explicit: ${(config.ke*100).toFixed(1)}%` : `rf+erp = ${(keFromConfig*100).toFixed(1)}%`}
+              </p>
+            )}
+          </div>
+
+          {/* S-9.4: kw DERIVED — read-only */}
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">WACC kw — derived (S-9.4)</label>
+            <div className="w-28 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-700 font-mono font-semibold">
+              {(kwDerived * 100).toFixed(2)}%
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">NOA-weighted · kd_at=kd×(1−τ)</p>
+          </div>
+
+          <NumInput label="Growth g (%)" value={g} onChange={setG} />
+
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Continuing Value</label>
             <select value={cv} onChange={(e) => setCv(e.target.value as CVMethod)}
@@ -58,6 +100,13 @@ export default function ValuationReport({ data, config }: Props) {
             </select>
           </div>
         </div>
+
+        {sharesOut != null && (
+          <div className="mt-3 text-xs text-slate-500">
+            Shares outstanding: <b>{sharesOut.toLocaleString("en-IN")} Lakh</b>
+          </div>
+        )}
+
         {val.lowConfidence && (
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
             ⚠ Separation Confidence Score = {val.separationScore}/100 &lt; threshold.
@@ -73,14 +122,18 @@ export default function ValuationReport({ data, config }: Props) {
             { l: "CSE₀ (base book value)", v: val.CSE0 },
             { l: "PV of RE series", v: val.pvRE },
             { l: `CV PV (${cv})`, v: V_RE - val.CSE0 - val.pvRE },
-          ]} fmt={fmt} />
+          ]} fmt={fmt}
+          perShare={sharesOut ? V_RE * 100 / sharesOut : null}
+        />
         <ValCard color="emerald" title={`V (ReOI · ${cv === "CV1" ? "CV01" : cv === "CV2" ? "CV02" : "CV03"})`}
           subtitle="Eq.(9) · Ops-only · EV−NFO" value={V_ReOI}
           items={[
             { l: "EV (NOA₀ + PV ReOI + CV)", v: val.EV_ReOI },
             { l: "Less: NFO (latest)", v: -val.NFO_latest },
             { l: "PV ReOI", v: val.pvReOI },
-          ]} fmt={fmt} />
+          ]} fmt={fmt}
+          perShare={sharesOut ? V_ReOI * 100 / sharesOut : null}
+        />
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">All CV Methods — RE</div>
           {[
@@ -107,18 +160,19 @@ export default function ValuationReport({ data, config }: Props) {
         </div>
       </div>
 
+      {/* Triangulation */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
           <h2 className="text-lg font-bold text-slate-800">Valuation Triangulation (v3)</h2>
-          <p className="text-xs text-slate-500 mt-0.5">RE, ReOI, FCFF, FCFE, DDM, AEG (all in ₹ Cr; per-share when share count provided)</p>
+          <p className="text-xs text-slate-500 mt-0.5">RE, ReOI, FCFF, FCFE, DDM, AEG (₹ Cr; per-share when share count provided)</p>
         </div>
         <div className="p-6 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b">
                 <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Model</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Value</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Per Share</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Value (₹ Cr)</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Per Share (₹)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -127,7 +181,7 @@ export default function ValuationReport({ data, config }: Props) {
                 ["ReOI (CV03)", val.V_ReOI_CV03, val.perShare?.intrinsic_reoi_per_share ?? null],
                 ["FCFF", val.fcf?.EV_FCFF != null ? (val.fcf.EV_FCFF - val.NFO_latest) : null, val.perShare?.intrinsic_fcff_per_share ?? null],
                 ["FCFE", val.fcf?.V_FCFE ?? null, val.perShare?.intrinsic_fcfe_per_share ?? null],
-                ["DDM", val.perShare?.intrinsic_ddm_per_share != null && config.shares_outstanding ? val.perShare.intrinsic_ddm_per_share * config.shares_outstanding : null, val.perShare?.intrinsic_ddm_per_share ?? null],
+                ["DDM", val.perShare?.intrinsic_ddm_per_share != null && sharesOut ? val.perShare.intrinsic_ddm_per_share * sharesOut / 100 : null, val.perShare?.intrinsic_ddm_per_share ?? null],
                 ["AEG", val.aeg?.V_AEG ?? null, val.perShare?.intrinsic_aeg_per_share ?? null],
               ].map(([name, v, ps]) => (
                 <tr key={name as string}>
@@ -140,33 +194,31 @@ export default function ValuationReport({ data, config }: Props) {
           </table>
           {val.perShare?.implied_growth_rate != null && (
             <p className="text-xs text-slate-500 mt-3">
-              Reverse DCF implied growth (RE-CV3 vs market cap input): <b>{(val.perShare.implied_growth_rate * 100).toFixed(2)}%</b>
+              Reverse DCF implied growth: <b>{(val.perShare.implied_growth_rate * 100).toFixed(2)}%</b>
             </p>
           )}
         </div>
       </div>
 
+      {/* OJ / AEG */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
           <h2 className="text-lg font-bold text-slate-800">OJ / AEG Integration (A-05)</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Abnormal Earnings Growth series and implied P/E diagnostics.</p>
         </div>
         <div className="p-6">
           {val.aeg?.aeg_series?.length ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div className="rounded-xl border border-slate-200 p-3 bg-slate-50">
-                  <div className="text-xs uppercase text-slate-500">V_AEG</div>
-                  <div className="text-xl font-bold text-slate-800">₹{fmt(val.aeg.V_AEG)} Cr</div>
-                </div>
-                <div className="rounded-xl border border-slate-200 p-3 bg-slate-50">
-                  <div className="text-xs uppercase text-slate-500">Implied P/E</div>
-                  <div className="text-xl font-bold text-slate-800">{val.aeg.implied_pe != null ? `${val.aeg.implied_pe.toFixed(2)}x` : "—"}</div>
-                </div>
-                <div className="rounded-xl border border-slate-200 p-3 bg-slate-50">
-                  <div className="text-xs uppercase text-slate-500">Normalised P/E</div>
-                  <div className="text-xl font-bold text-slate-800">{val.aeg.normalised_pe != null ? `${val.aeg.normalised_pe.toFixed(2)}x` : "—"}</div>
-                </div>
+                {[
+                  { l: "V_AEG", v: `₹${fmt(val.aeg.V_AEG)} Cr` },
+                  { l: "Implied P/E", v: val.aeg.implied_pe != null ? `${val.aeg.implied_pe.toFixed(2)}x` : "—" },
+                  { l: "Normalised P/E", v: val.aeg.normalised_pe != null ? `${val.aeg.normalised_pe.toFixed(2)}x` : "—" },
+                ].map(({ l, v }) => (
+                  <div key={l} className="rounded-xl border border-slate-200 p-3 bg-slate-50">
+                    <div className="text-xs uppercase text-slate-500">{l}</div>
+                    <div className="text-xl font-bold text-slate-800">{v}</div>
+                  </div>
+                ))}
               </div>
               <div className="overflow-x-auto mb-4">
                 <table className="w-full text-sm">
@@ -238,7 +290,7 @@ export default function ValuationReport({ data, config }: Props) {
                       <td className="px-4 py-2 text-right font-mono text-sm text-slate-400">{(ke * prev.bs.CSE).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
                       <td className="px-4 py-2 text-right font-mono font-bold text-indigo-700 text-sm">{fmt(r.RE)}</td>
                       <td className="px-4 py-2 text-right font-mono text-sm">{cur.is.OI.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
-                      <td className="px-4 py-2 text-right font-mono text-sm text-slate-400">{(kw * prev.bs.NOA).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
+                      <td className="px-4 py-2 text-right font-mono text-sm text-slate-400">{(kwDerived * prev.bs.NOA).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
                       <td className="px-4 py-2 text-right font-mono font-bold text-emerald-700 text-sm">{fmt(r.ReOI)}</td>
                     </tr>
                   );
@@ -273,61 +325,17 @@ export default function ValuationReport({ data, config }: Props) {
         </div>
       </div>
 
-      {/* Sensitivity Grid (G-06) */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-          <h2 className="text-lg font-bold text-slate-800">Sensitivity Grid — V_RE_CV3</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Equity value (₹ Cr) across ke × g combinations. Base highlighted.</p>
-        </div>
-        <div className="p-6 overflow-x-auto">
-          {(() => {
-            const KES = [0.08, 0.10, 0.12, 0.14];
-            const GS  = [0.02, 0.03, 0.04, 0.05, 0.06];
-            const T   = val.reSeries.length;
-            const lastRE = T > 0 ? val.reSeries[T - 1].RE : 0;
-            return (
-              <table className="text-sm border-collapse">
-                <thead>
-                  <tr>
-                    <th className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-left border">ke \\ g →</th>
-                    {GS.map(gv => (
-                      <th key={gv} className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-right border">{(gv*100).toFixed(0)}%</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {KES.map(keV => (
-                    <tr key={keV}>
-                      <td className="px-3 py-2 text-xs font-semibold text-slate-600 border">ke = {(keV*100).toFixed(0)}%</td>
-                      {GS.map(gv => {
-                        if (keV - gv <= 0.001) return <td key={gv} className="px-3 py-2 text-center text-xs text-slate-400 border">—</td>;
-                        const cv3 = lastRE * (1 + gv) / (keV - gv);
-                        const disc = Math.pow(1 + keV, T);
-                        const v = val.CSE0 + val.pvRE + cv3 / disc;
-                        const isBase = Math.abs(keV - ke) < 0.001 && Math.abs(gv - gRate) < 0.001;
-                        return (
-                          <td key={gv} className={`px-3 py-2 text-right font-mono text-xs border ${isBase ? "bg-indigo-100 font-bold text-indigo-800" : v > 0 ? "text-slate-700" : "text-red-500"}`}>
-                            {fmt(v)}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            );
-          })()}
-        </div>
-      </div>
+      {/* S-9.7: Sensitivity Grid — columns strictly ascending by g */}
+      <SensitivityGrid ke={ke} gRate={gRate} val={val} sharesOut={sharesOut} fmt={fmt} />
 
-      {/* CV formulae */}
+      {/* CV formulae + kw note */}
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-sm">
-        <h3 className="font-semibold text-slate-800 mb-3">Continuing Value Formulae (paper §6.1–6.2)</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs">
+        <h3 className="font-semibold text-slate-800 mb-3">Continuing Value Formulae (§6.1–6.2)</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs mb-3">
           {[
             { t: "CV1 / CV01 — Zero", f: "CV = 0", d: "Conservative. No terminal value." },
             { t: "CV2 / CV02 — Perpetuity", f: "CV = RE₍T₎ / (ρ−1)", d: "Steady state, zero growth." },
-            { t: "CV3 / CV03 — Gordon Growth", f: "CV = RE₍T₎×(1+g) / (ρ−1−g)", d: `g = ${g}% | Sensitive to g.` },
+            { t: "CV3 / CV03 — Gordon Growth", f: "CV = RE₍T₎×(1+g) / (ρ−1−g)", d: `g = ${g.toFixed(1)}%` },
           ].map((c) => (
             <div key={c.t} className="bg-white p-3 rounded-lg border border-slate-100">
               <div className="font-bold text-slate-700 mb-1 font-sans text-xs">{c.t}</div>
@@ -336,6 +344,112 @@ export default function ValuationReport({ data, config }: Props) {
             </div>
           ))}
         </div>
+        <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800">
+          <b>S-9.4 — kw derivation:</b> kw = (NOA/EV)×ke + (NFO/EV)×kd_aftertax, where kd_aftertax = kd_pretax×(1−τ_kd).
+          Derived kw = <b>{(kwDerived * 100).toFixed(2)}%</b>. kw is never a user input.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** S-9.7: Sensitivity grid with columns strictly sorted ascending by g */
+function SensitivityGrid({
+  ke, gRate, val, sharesOut, fmt
+}: {
+  ke: number; gRate: number;
+  val: ReturnType<typeof computeValuation>;
+  sharesOut: number | null;
+  fmt: (n: number) => string;
+}) {
+  // S-9.7: columns must be monotonically ascending by g
+  const KES = [0.08, 0.10, 0.12, 0.14, 0.16];
+  const GS  = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]; // already ascending
+  const T   = val.reSeries.length;
+  const lastRE = T > 0 ? val.reSeries[T - 1].RE : 0;
+
+  const computeV = (keV: number, gv: number): number | null => {
+    if (keV - gv <= 0.001) return null;
+    const cv3 = lastRE * (1 + gv) / (keV - gv);
+    const disc = Math.pow(1 + keV, T);
+    return val.CSE0 + val.pvRE + cv3 / disc;
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+        <h2 className="text-lg font-bold text-slate-800">Sensitivity Grid — V_RE_CV3 (S-9.7)</h2>
+        <p className="text-xs text-slate-500 mt-0.5">
+          ₹ Cr across ke × g. Columns strictly ascending by g (S-9.7). Base highlighted.
+          {sharesOut != null && " Per-share rows below."}
+        </p>
+      </div>
+      <div className="p-6 overflow-x-auto space-y-5">
+        <div>
+          <div className="text-xs font-semibold text-slate-500 mb-2 uppercase">Value (₹ Cr)</div>
+          <table className="text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-left border">ke ↓ / g →</th>
+                {GS.map(gv => (
+                  <th key={gv} className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-right border">{(gv*100).toFixed(0)}%</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {KES.map(keV => (
+                <tr key={keV}>
+                  <td className="px-3 py-2 text-xs font-semibold text-slate-600 border bg-slate-50">ke={(keV*100).toFixed(0)}%</td>
+                  {GS.map(gv => {
+                    const v = computeV(keV, gv);
+                    const isBase = Math.abs(keV - ke) < 0.005 && Math.abs(gv - gRate) < 0.005;
+                    if (v == null) return <td key={gv} className="px-3 py-2 text-center text-xs text-slate-400 border">—</td>;
+                    return (
+                      <td key={gv} className={`px-3 py-2 text-right font-mono text-xs border ${isBase ? "bg-indigo-100 font-bold text-indigo-800" : v > 0 ? "text-slate-700" : "text-red-500"}`}>
+                        {fmt(v)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* S-9.8: per-share sensitivity */}
+        {sharesOut != null && sharesOut > 0 && (
+          <div>
+            <div className="text-xs font-semibold text-slate-500 mb-2 uppercase">Per Share (₹) — {sharesOut.toLocaleString("en-IN")} Lakh shares</div>
+            <table className="text-sm border-collapse">
+              <thead>
+                <tr>
+                  <th className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-left border">ke ↓ / g →</th>
+                  {GS.map(gv => (
+                    <th key={gv} className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-right border">{(gv*100).toFixed(0)}%</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {KES.map(keV => (
+                  <tr key={keV}>
+                    <td className="px-3 py-2 text-xs font-semibold text-slate-600 border bg-slate-50">ke={(keV*100).toFixed(0)}%</td>
+                    {GS.map(gv => {
+                      const v = computeV(keV, gv);
+                      const isBase = Math.abs(keV - ke) < 0.005 && Math.abs(gv - gRate) < 0.005;
+                      if (v == null) return <td key={gv} className="px-3 py-2 text-center text-xs text-slate-400 border">—</td>;
+                      const ps = v * 100 / sharesOut; // Cr to per-Lakh-share conversion
+                      return (
+                        <td key={gv} className={`px-3 py-2 text-right font-mono text-xs border ${isBase ? "bg-indigo-100 font-bold text-indigo-800" : "text-slate-700"}`}>
+                          ₹{ps.toFixed(2)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -352,13 +466,14 @@ function NumInput({ label, value, onChange }: { label: string; value: number; on
   );
 }
 
-function ValCard({ color, title, subtitle, value, items, fmt }: {
+function ValCard({ color, title, subtitle, value, items, fmt, perShare }: {
   color: "indigo" | "emerald"; title: string; subtitle: string; value: number;
   items: Array<{ l: string; v: number }>; fmt: (n: number) => string;
+  perShare?: number | null;
 }) {
   const bg  = color === "indigo" ? "bg-indigo-50 border-indigo-200" : "bg-emerald-50 border-emerald-200";
   const hdr = color === "indigo" ? "bg-indigo-100 text-indigo-900" : "bg-emerald-100 text-emerald-900";
-  const val = color === "indigo" ? "text-indigo-700" : "text-emerald-700";
+  const vc  = color === "indigo" ? "text-indigo-700" : "text-emerald-700";
   return (
     <div className={`rounded-2xl border ${bg} overflow-hidden`}>
       <div className={`px-5 py-4 ${hdr}`}>
@@ -366,7 +481,10 @@ function ValCard({ color, title, subtitle, value, items, fmt }: {
         <p className="text-xs opacity-70 mt-0.5">{subtitle}</p>
       </div>
       <div className="p-5">
-        <div className={`text-3xl font-bold ${val} mb-4`}>₹{fmt(value)} Cr</div>
+        <div className={`text-3xl font-bold ${vc} mb-1`}>₹{fmt(value)} Cr</div>
+        {perShare != null && (
+          <div className="text-sm text-slate-500 mb-3">≈ ₹{perShare.toFixed(2)} / share</div>
+        )}
         {items.map((b, i) => (
           <div key={i} className="flex justify-between py-1.5 border-b border-slate-100 text-sm">
             <span className="text-slate-600 text-xs">{b.l}</span>

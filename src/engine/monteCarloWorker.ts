@@ -68,9 +68,17 @@ self.onmessage = (ev: MessageEvent<MCInput>) => {
 
   const rs = [...reSamples].sort((a, b) => a - b);
   const ws = [...reoiSamples].sort((a, b) => a - b);
-  const tail = rs.slice(Math.max(0, rs.length - 1000));
-  const meanTail = tail.reduce((s, x) => s + x, 0) / Math.max(tail.length, 1);
-  const stdTail = Math.sqrt(tail.reduce((s, x) => s + (x - meanTail) ** 2, 0) / Math.max(tail.length, 1));
+
+  // Convergence: compare mean of first half vs second half of simulation draws.
+  // The previous check (std/mean of the 1000 largest sorted values) was checking
+  // tail volatility, not convergence of the estimator.
+  const halfN = Math.floor(n / 2);
+  const meanFirst = reSamples.slice(0, halfN).reduce((s, v) => s + v, 0) / halfN;
+  const meanSecond = reSamples.slice(halfN).reduce((s, v) => s + v, 0) / halfN;
+  const meanAll = reSamples.reduce((s, v) => s + v, 0) / n;
+  const convergenceCheck = meanAll !== 0
+    ? Math.abs(meanFirst - meanSecond) / Math.abs(meanAll) < 0.02
+    : false;
 
   const out: MCOutput = {
     V_RE_samples: reSamples,
@@ -81,7 +89,7 @@ self.onmessage = (ev: MessageEvent<MCInput>) => {
     p10_ReOI: quantile(ws, 0.1),
     p50_ReOI: quantile(ws, 0.5),
     p90_ReOI: quantile(ws, 0.9),
-    convergenceCheck: meanTail !== 0 ? stdTail / Math.abs(meanTail) < 0.005 : false,
+    convergenceCheck,
   };
   (self as unknown as Worker).postMessage(out);
 };

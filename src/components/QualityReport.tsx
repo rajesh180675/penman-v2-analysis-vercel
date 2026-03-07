@@ -76,6 +76,18 @@ export default function QualityReport({data}:Props) {
             <ZoneTag zone={zZone}/>
           </div>
           <div className="text-xs text-slate-400">Z' &gt;2.9 Safe · 1.23–2.9 Grey · &lt;1.23 Distress</div>
+          {/* S-7.3: Cash-rich caveat */}
+          {(() => {
+            const latestPeriod = data[data.length - 1];
+            const noa = latestPeriod?.bs?.NOA;
+            const ta  = latestPeriod?.bs?.TA;
+            const cashRich = noa != null && ta != null && ta > 0 && noa / ta < 0.3;
+            return cashRich ? (
+              <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
+                ⚠ <b>S-7.3 cash-rich caveat:</b> NOA/TA &lt; 30%. Altman Z' may overstate distress risk for asset-light/cash-heavy firms. Treat with caution.
+              </div>
+            ) : null;
+          })()}
         </div>
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
           <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Beneish M-Score</div>
@@ -86,6 +98,12 @@ export default function QualityReport({data}:Props) {
             </span>
           </div>
           <div className="text-xs text-slate-400">M &gt; −1.78 = possible manipulation</div>
+          {/* S-7.2: Beneish contextual flag — note which driver is responsible */}
+          {mFlag && (
+            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+              <b>S-7.2:</b> M-Score exceeds −1.78 threshold. Review revenue accrual quality (DSRI, GMI, AQI) and any debt issuance / asset-write ratio. Cross-check with dirty surplus and accrual regime classifications for corroboration.
+            </div>
+          )}
         </div>
       </div>
 

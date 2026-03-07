@@ -1,0 +1,677 @@
+/**
+ * V3 Analytics Panel
+ * Renders: §6 Dirty Surplus, §11 Terminal Anchoring, §13 Event Flags,
+ *          §12 Sensitivity Matrix, §14 Confidence Score
+ */
+import { useMemo, useState } from "react";
+import { RecastPeriod, EngineConfig } from "../engine/types";
+import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
+import {
+  computeV3Analytics,
+  computeSensitivityMatrix,
+  computeAnchorTable,
+  classifyTVShare,
+  V3AnalyticsBundle,
+  DirtySurplusRecord,
+  PeriodEventFlags,
+  ConfidenceComponent,
+} from "../engine/v3Analytics";
+
+interface Props {
+  data: RecastPeriod[];
+  config: EngineConfig;
+}
+
+const pct = (v: number | null | undefined, d = 1) =>
+  v == null || !Number.isFinite(v) ? "—" : `${(v * 100).toFixed(d)}%`;
+const cr = (v: number | null | undefined) =>
+  v == null || !Number.isFinite(v)
+    ? "—"
+    : `₹${Math.abs(v) >= 10 ? v.toLocaleString("en-IN", { maximumFractionDigits: 0 }) : v.toFixed(1)} Cr`;
+const sign = (v: number) => (v >= 0 ? "+" : "");
+
+const DS_COLORS: Record<string, string> = {
+  NEGLIGIBLE: "text-emerald-700 bg-emerald-50",
+  MINOR: "text-amber-700 bg-amber-50",
+  MATERIAL: "text-orange-700 bg-orange-50",
+  CRITICAL: "text-red-700 bg-red-50",
+};
+
+const CONF_COLORS: Record<string, string> = {
+  HIGH: "text-emerald-700 bg-emerald-50 border-emerald-200",
+  MODERATE: "text-blue-700 bg-blue-50 border-blue-200",
+  LOW: "text-amber-700 bg-amber-50 border-amber-200",
+  VERY_LOW: "text-red-700 bg-red-50 border-red-200",
+};
+
+const GRADE_COLORS: Record<string, string> = {
+  GRADE_A: "text-emerald-700 bg-emerald-50",
+  GRADE_B: "text-blue-700 bg-blue-50",
+  GRADE_C: "text-amber-700 bg-amber-50",
+  GRADE_D: "text-red-700 bg-red-50",
+};
+
+export default function V3AnalyticsPanel({ data, config }: Props) {
+  const [activeSection, setActiveSection] = useState<"overview" | "dirty" | "events" | "terminal" | "sensitivity" | "confidence" | "triggers">("overview");
+
+  // S-9.4: use explicit ke from config
+  const ke = config.ke > 0 ? config.ke : (config.risk_free_rate + config.equity_risk_premium);
+
+  const { valuation, kw } = useMemo(() => {
+    if (data.length < 2) return { valuation: null, kw: ke };
+    const cur = data[data.length - 1];
+    const prev = data[data.length - 2];
+    const kw_derived = deriveKwFromStructure(cur, prev, ke, config.risk_free_rate, config);
+    const g = config.g_terminal_override ?? 0.04;
+    // First pass: compute without anchor to get RE series for terminal anchor computation
+    const val0 = computeValuation(data, ke, kw_derived, g, config);
+    return { valuation: val0, kw: kw_derived };
+  }, [data, config, ke]);
+
+  // Second pass: recompute with §11 terminal anchor once we have the bundle
+  const valuationWithAnchor = useMemo(() => {
+    if (!valuation || !bundle) return valuation;
+    const cur = data[data.length - 1];
+    const prev = data[data.length - 2];
+    const g = bundle.anchorResult.g_terminal;
+    return computeValuation(
+      data, ke, kw, g, config,
+      bundle.anchorResult.selected_RE_anchor,
+      bundle.anchorResult.selected_ReOI_anchor
+    );
+  }, [valuation, bundle, data, ke, kw, config]);
+
+  const bundle: V3AnalyticsBundle | null = useMemo(() => {
+    if (!valuation) return null;
+    return computeV3Analytics(
+      data, config,
+      valuation.V_RE_CV3, valuation.V_ReOI_CV03,
+      config.g_terminal_override
+    );
+  }, [data, config, valuation]);
+
+  // Effective valuation uses anchor-adjusted result when available
+  const effectiveValuation = valuationWithAnchor ?? valuation;
+
+  const sensMatrix = useMemo(() => {
+    if (!valuation || !bundle) return [];
+    const T = valuation.reSeries.length;
+    return computeSensitivityMatrix(
+      valuation.CSE0,
+      valuation.pvRE,
+      valuation.reSeries,
+      bundle.anchorResult.selected_RE_anchor,
+      ke,
+      bundle.anchorResult.g_terminal,
+      T,
+      config.g_terminal_floor ?? 0.02
+    );
+  }, [valuation, bundle, ke, config]);
+
+  const anchorTable = useMemo(() => {
+    if (!effectiveValuation || !bundle) return [];
+    const T = effectiveValuation.reSeries.length;
+    return computeAnchorTable(
+      effectiveValuation.CSE0, effectiveValuation.pvRE,
+      bundle.anchorResult, ke, T
+    );
+  }, [effectiveValuation, bundle, ke]);
+
+  const tvClassification = useMemo(() => {
+    if (!valuation) return null;
+    return classifyTVShare(valuation.V_RE_CV3, valuation.V_RE_CV1);
+  }, [valuation]);
+
+  if (data.length < 2) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-amber-900">
+        <p className="font-semibold">Need ≥ 2 periods for V3 analytics</p>
+      </div>
+    );
+  }
+
+  const tabs: Array<{ id: typeof activeSection; label: string; icon: string }> = [
+    { id: "overview", label: "Overview", icon: "📊" },
+    { id: "dirty", label: "Dirty Surplus §6", icon: "🧮" },
+    { id: "events", label: "Event Flags §13", icon: "🚩" },
+    { id: "terminal", label: "Terminal Anchor §11", icon: "⚓" },
+    { id: "sensitivity", label: "Sensitivity §12", icon: "📉" },
+    { id: "confidence", label: "Confidence §14", icon: "🎯" },
+    { id: "triggers", label: "Triggers §15", icon: "🔔" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Tab bar */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="flex overflow-x-auto border-b border-slate-200">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveSection(t.id)}
+              className={`px-4 py-3 text-xs font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-1.5 ${
+                activeSection === t.id
+                  ? "border-indigo-600 text-indigo-700 bg-indigo-50"
+                  : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+              }`}
+            >
+              <span>{t.icon}</span>
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="p-6">
+          {activeSection === "overview" && bundle && effectiveValuation && tvClassification && (
+            <OverviewSection bundle={bundle} valuation={effectiveValuation} tvClass={tvClassification} ke={ke} kw={kw} />
+          )}
+          {activeSection === "dirty" && bundle && (
+            <DirtySurplusSection ds={bundle.dirtySurplus} />
+          )}
+          {activeSection === "events" && bundle && (
+            <EventFlagsSection flags={bundle.periodFlags} periods={data} />
+          )}
+          {activeSection === "terminal" && bundle && effectiveValuation && anchorTable && (
+            <TerminalAnchorSection anchor={bundle.anchorResult} anchorTable={anchorTable} valuation={effectiveValuation} ke={ke} />
+          )}
+          {activeSection === "sensitivity" && sensMatrix.length > 0 && bundle && (
+            <SensitivitySection matrix={sensMatrix} baseKe={ke} baseG={bundle.anchorResult.g_terminal} />
+          )}
+          {activeSection === "confidence" && bundle && (
+            <ConfidenceSection conf={bundle.confidence} validation={bundle.validation} />
+          )}
+          {activeSection === "triggers" && bundle && (
+            <TriggersSection triggers={bundle.triggers} fadeParams={bundle.fadeParams} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Overview ─────────────────────────────────────────────────── */
+function OverviewSection({ bundle, valuation, tvClass, ke, kw }: {
+  bundle: V3AnalyticsBundle;
+  valuation: ReturnType<typeof computeValuation>;
+  tvClass: ReturnType<typeof classifyTVShare>;
+  ke: number; kw: number;
+}) {
+  const { confidence, anchorResult, dirtySurplus, periodFlags } = bundle;
+  const totalFlags = periodFlags.reduce((s, p) => s + p.flags.length, 0);
+  const identityGap = Math.abs(valuation.V_RE_CV3 - valuation.V_ReOI_CV03);
+  const identityGapPct = valuation.V_RE_CV3 !== 0 ? identityGap / Math.abs(valuation.V_RE_CV3) : 0;
+  const identityFlag = identityGapPct < 0.05 ? "CONVERGED" : identityGapPct < 0.15 ? "WARNING" : "CRITICAL";
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">V3 Analytics — Executive Overview</h3>
+        <p className="text-xs text-slate-500">Full implementation of Penman–Nissim V3 specification §6, §9, §11–§15</p>
+      </div>
+
+      {/* Key metric cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MetricCard
+          label="Confidence Score"
+          value={`${confidence.composite.toFixed(0)}/100`}
+          badge={confidence.classification}
+          color={CONF_COLORS[confidence.classification]}
+        />
+        <MetricCard
+          label="TV Share (RE CV3)"
+          value={pct(tvClass.tv_share)}
+          badge={tvClass.tv_grade}
+          color={GRADE_COLORS[tvClass.tv_grade]}
+        />
+        <MetricCard
+          label="Anchor Method"
+          value={anchorResult.anchor_method}
+          badge={anchorResult.terminal_event_flags.length > 0 ? "Adjusted" : "As-reported"}
+          color={anchorResult.terminal_event_flags.length > 0 ? "text-amber-700 bg-amber-50" : "text-emerald-700 bg-emerald-50"}
+        />
+        <MetricCard
+          label="RE–ReOI Gap"
+          value={pct(identityGapPct)}
+          badge={identityFlag}
+          color={identityFlag === "CONVERGED" ? "text-emerald-700 bg-emerald-50" : identityFlag === "WARNING" ? "text-amber-700 bg-amber-50" : "text-red-700 bg-red-50"}
+        />
+      </div>
+
+      {/* Summary diagnostics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <InfoBlock title="Terminal Value">
+          <InfoRow label="Terminal growth g" value={pct(anchorResult.g_terminal)} />
+          <InfoRow label="g source" value={anchorResult.g_source.slice(0, 60) + (anchorResult.g_source.length > 60 ? "…" : "")} />
+          <InfoRow label="Selected anchor" value={cr(anchorResult.selected_RE_anchor)} />
+          <InfoRow label="Anchor method" value={anchorResult.anchor_method} />
+          <InfoRow label="TV grade" value={tvClass.tv_label} />
+        </InfoBlock>
+        <InfoBlock title="Data Quality">
+          <InfoRow label="Cumulative dirty surplus" value={cr(dirtySurplus.cumulative_dirty_surplus)} />
+          <InfoRow label="Dirty surplus % of equity" value={pct(dirtySurplus.cum_ds_pct)} />
+          <InfoRow label="Clean surplus compromised" value={dirtySurplus.clean_surplus_compromised ? "⚠ YES" : "✓ No"} />
+          <InfoRow label="Total event flags" value={`${totalFlags} across all periods`} />
+          <InfoRow label="Terminal period flags" value={anchorResult.terminal_event_flags.length > 0 ? anchorResult.terminal_event_flags.join(", ") : "None"} />
+        </InfoBlock>
+      </div>
+
+      {/* Validation warnings */}
+      {bundle.validation.errors + bundle.validation.warnings > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <p className="text-xs font-semibold text-amber-800 mb-2">Data Validation Issues</p>
+          {bundle.validation.checks.filter((c) => !c.passed).map((c, i) => (
+            <p key={i} className={`text-xs ${c.severity === "ERROR" ? "text-red-700" : "text-amber-700"}`}>
+              [{c.severity}] {c.id}: {c.description}{c.period ? ` (${c.period.slice(0, 7)})` : ""}{c.detail ? ` — ${c.detail}` : ""}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Dirty Surplus §6 ─────────────────────────────────────────── */
+function DirtySurplusSection({ ds }: { ds: V3AnalyticsBundle["dirtySurplus"] }) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">§6 Clean-Surplus Accounting</h3>
+        <p className="text-xs text-slate-500 mb-3">Dirty surplus = ΔCSE − CNI + Dividends paid. Material values indicate capital transactions or OCI events not captured in CNI.</p>
+      </div>
+
+      {/* Summary banner */}
+      <div className={`rounded-lg border p-3 text-sm ${ds.clean_surplus_compromised ? "bg-red-50 border-red-200 text-red-800" : "bg-emerald-50 border-emerald-200 text-emerald-800"}`}>
+        <strong>Cumulative dirty surplus:</strong> {cr(ds.cumulative_dirty_surplus)} ({pct(ds.cum_ds_pct)} of latest equity)
+        {ds.clean_surplus_compromised && " — ⚠ CLEAN SURPLUS COMPROMISED: Cumulative DS exceeds 20% of equity. RE valuation model reliability is reduced."}
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="bg-slate-50">
+            <tr>
+              {["Period", "CSE_t", "CSE_{t-1}", "CNI", "Dividends", "Dirty Surplus", "% of CSE", "Class", "CSE_adj"].map((h) => (
+                <th key={h} className="px-2 py-2 text-left text-slate-500 font-medium whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {ds.records.map((r: DirtySurplusRecord) => (
+              <tr key={r.period_end} className="hover:bg-slate-50">
+                <td className="px-2 py-1.5 font-mono">{r.period_end.slice(0, 7)}</td>
+                <td className="px-2 py-1.5 text-right font-mono">{cr(r.CSE_t)}</td>
+                <td className="px-2 py-1.5 text-right font-mono">{cr(r.CSE_t1)}</td>
+                <td className="px-2 py-1.5 text-right font-mono">{cr(r.CNI_t)}</td>
+                <td className="px-2 py-1.5 text-right font-mono">{cr(r.d_reported_t)}</td>
+                <td className={`px-2 py-1.5 text-right font-mono font-semibold ${Math.abs(r.dirty_surplus) > 100 ? "text-amber-700" : "text-slate-700"}`}>
+                  {cr(r.dirty_surplus)}
+                </td>
+                <td className="px-2 py-1.5 text-right">{pct(r.DS_pct_of_CSE)}</td>
+                <td className="px-2 py-1.5">
+                  <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${DS_COLORS[r.ds_class]}`}>
+                    {r.ds_class}
+                  </span>
+                </td>
+                <td className="px-2 py-1.5 text-right font-mono text-slate-500">{cr(r.CSE_adj)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-xs text-slate-400">
+        CSE_adj = clean-surplus-adjusted equity enforcing CNI − dividends identity. Divergence from actual CSE accumulates as cumulative dirty surplus.
+      </p>
+    </div>
+  );
+}
+
+/* ── Event Flags §13 ──────────────────────────────────────────── */
+function EventFlagsSection({ flags, periods }: { flags: PeriodEventFlags[]; periods: RecastPeriod[] }) {
+  const flagged = flags.filter((f) => f.flags.length > 0);
+  const FLAG_COLORS: Record<string, string> = {
+    STRUCTURAL_EVENT_CRITICAL: "bg-red-100 text-red-800",
+    STRUCTURAL_EVENT: "bg-orange-100 text-orange-800",
+    CAPITAL_TRANSACTION_LIKELY: "bg-purple-100 text-purple-800",
+    PM_OUTLIER_CRITICAL: "bg-red-100 text-red-800",
+    PM_OUTLIER_WARNING: "bg-amber-100 text-amber-800",
+    LARGE_COMPONENT_DECLINE: "bg-amber-100 text-amber-800",
+    PAYOUT_EXCEEDS_EARNINGS: "bg-orange-100 text-orange-800",
+    IND_AS_116_TRANSITION: "bg-blue-100 text-blue-800",
+    SMALL_NOA_DENOMINATOR: "bg-slate-100 text-slate-700",
+    ROCE_OUTLIER_CRITICAL: "bg-red-100 text-red-800",
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">§13 Period Event Flags</h3>
+        <p className="text-xs text-slate-500">
+          {flagged.length > 0
+            ? `${flagged.length} of ${flags.length} periods have event flags. Terminal period flags affect anchor selection (§11.5).`
+            : "No event flags detected across all periods."}
+        </p>
+      </div>
+
+      {flagged.length === 0 && (
+        <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-emerald-800 text-sm">
+          ✓ All periods are clean. Terminal anchor uses as-reported RE.
+        </div>
+      )}
+
+      {flagged.map((pf) => {
+        const period = periods.find((p) => p.period_end === pf.period_end);
+        return (
+          <div key={pf.period_end} className="border border-slate-200 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="font-mono text-sm font-semibold text-slate-700">{pf.period_end.slice(0, 7)}</span>
+              {period?.ratios?.PM != null && (
+                <span className="text-xs text-slate-500">PM: {pct(period.ratios.PM)} | ROCE: {pct(period.ratios.ROCE)}</span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {pf.flags.map((flag) => (
+                <span key={flag} className={`text-xs px-2 py-0.5 rounded-full font-medium ${FLAG_COLORS[flag] ?? "bg-slate-100 text-slate-700"}`}>
+                  {flag}
+                </span>
+              ))}
+            </div>
+            {pf.pm_zscore != null && (
+              <p className="text-xs text-slate-400 mt-1">PM z-score: {pf.pm_zscore.toFixed(2)} | ΔNOA%: {pf.noa_change_pct != null ? pct(pf.noa_change_pct) : "—"}</p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Terminal Anchor §11 ──────────────────────────────────────── */
+function TerminalAnchorSection({ anchor, anchorTable, valuation, ke }: {
+  anchor: V3AnalyticsBundle["anchorResult"];
+  anchorTable: ReturnType<typeof computeAnchorTable>;
+  valuation: ReturnType<typeof computeValuation>;
+  ke: number;
+}) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">§11 Terminal Value Anchoring</h3>
+        <p className="text-xs text-slate-500">Anchor selection: three candidate RE values derived from the explicit series; selection driven by terminal period event flags.</p>
+      </div>
+
+      {/* Selected anchor banner */}
+      <div className={`rounded-lg border p-3 text-sm ${anchor.terminal_event_flags.length === 0 ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-amber-50 border-amber-200 text-amber-800"}`}>
+        <strong>Selected: {anchor.anchor_method}</strong> — RE anchor = {cr(anchor.selected_RE_anchor)}
+        {anchor.terminal_event_flags.length > 0 && (
+          <span className="ml-2 text-xs">({anchor.terminal_event_flags.join(", ")})</span>
+        )}
+      </div>
+
+      {/* Terminal g */}
+      <div className="bg-slate-50 rounded-lg p-3">
+        <p className="text-xs font-semibold text-slate-600 mb-1">Terminal Growth Rate</p>
+        <p className="text-lg font-bold text-slate-800">{pct(anchor.g_terminal)}</p>
+        <p className="text-xs text-slate-500 mt-1">{anchor.g_source}</p>
+        {anchor.g_terminal >= ke - 0.015 && (
+          <p className="text-xs text-red-600 mt-1">⚠ g is close to ke ({pct(ke)}). Gordon formula becomes highly sensitive.</p>
+        )}
+      </div>
+
+      {/* Anchor candidates table */}
+      <div>
+        <p className="text-xs font-semibold text-slate-600 mb-2">§12.2 Anchor Sensitivity Table</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50">
+              <tr>
+                {["Anchor", "RE Level", "V(RE, CV3)", "TV Share"].map((h) => (
+                  <th key={h} className="px-3 py-2 text-left text-slate-500 font-medium">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {anchorTable.map((row) => (
+                <tr
+                  key={row.label}
+                  className={`hover:bg-slate-50 ${row.anchor === anchor.selected_RE_anchor ? "bg-indigo-50 font-semibold" : ""}`}
+                >
+                  <td className="px-3 py-2 text-slate-700">
+                    {row.anchor === anchor.selected_RE_anchor && <span className="text-indigo-600 mr-1">→</span>}
+                    {row.label}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono">{cr(row.anchor)}</td>
+                  <td className="px-3 py-2 text-right font-mono">{cr(row.V_RE_CV3)}</td>
+                  <td className="px-3 py-2 text-right">{pct(row.tv_share)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Implied steady-state ROCE */}
+      {valuation.CSE0 > 0 && (
+        <div className="bg-slate-50 rounded-lg p-3">
+          <p className="text-xs font-semibold text-slate-600 mb-1">§11.7 Implied Steady-State ROCE</p>
+          <p className="text-xs text-slate-500">ROCE_ss = ke + RE_anchor / CSE_latest</p>
+          <p className="text-base font-bold text-slate-800 mt-1">
+            {pct(ke + anchor.selected_RE_anchor / Math.max(valuation.CSE0, 1))}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Sensitivity Matrix §12 ───────────────────────────────────── */
+function SensitivitySection({ matrix, baseKe, baseG }: {
+  matrix: ReturnType<typeof computeSensitivityMatrix>;
+  baseKe: number;
+  baseG: number;
+}) {
+  const keVals = Array.from(new Set(matrix.map((r) => r.ke))).sort((a, b) => a - b);
+  const gVals = Array.from(new Set(matrix.map((r) => r.g))).sort((a, b) => a - b);
+
+  const lookup = (ke: number, g: number) =>
+    matrix.find((r) => Math.abs(r.ke - ke) < 0.0001 && Math.abs(r.g - g) < 0.0001)?.V_RE_CV3 ?? null;
+
+  const allVals = matrix.map((r) => r.V_RE_CV3);
+  const minV = Math.min(...allVals);
+  const maxV = Math.max(...allVals);
+
+  const heatColor = (v: number | null) => {
+    if (v == null) return "bg-slate-100";
+    const t = maxV > minV ? (v - minV) / (maxV - minV) : 0.5;
+    if (t > 0.75) return "bg-emerald-100 text-emerald-800";
+    if (t > 0.5) return "bg-blue-100 text-blue-800";
+    if (t > 0.25) return "bg-amber-100 text-amber-800";
+    return "bg-red-100 text-red-800";
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">§12.1 RE Sensitivity Matrix</h3>
+        <p className="text-xs text-slate-500">V(RE, CV3) in ₹ Cr. Rows = cost of equity (ke); columns = terminal growth (g). Base case highlighted.</p>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs border border-slate-200 rounded-lg overflow-hidden">
+          <thead>
+            <tr className="bg-slate-50">
+              <th className="px-3 py-2 text-left text-slate-500 font-medium">ke \ g</th>
+              {gVals.map((g) => (
+                <th key={g} className={`px-3 py-2 text-center font-medium ${Math.abs(g - baseG) < 0.0001 ? "text-indigo-700 bg-indigo-50" : "text-slate-500"}`}>
+                  {pct(g)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {keVals.map((ke_i) => (
+              <tr key={ke_i} className={Math.abs(ke_i - baseKe) < 0.0001 ? "bg-indigo-50" : "hover:bg-slate-50"}>
+                <td className={`px-3 py-2 font-medium border-r border-slate-200 ${Math.abs(ke_i - baseKe) < 0.0001 ? "text-indigo-700" : "text-slate-600"}`}>
+                  {pct(ke_i)}
+                </td>
+                {gVals.map((g_j) => {
+                  const v = lookup(ke_i, g_j);
+                  const isBase = Math.abs(ke_i - baseKe) < 0.0001 && Math.abs(g_j - baseG) < 0.0001;
+                  return (
+                    <td key={g_j} className={`px-3 py-2 text-center font-mono font-semibold ${isBase ? "ring-2 ring-indigo-400 ring-inset" : ""} ${heatColor(v)}`}>
+                      {v != null ? `₹${Math.round(v).toLocaleString("en-IN")}` : "—"}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-slate-400">Highlighted cell = base case. Heat: green = high, red = low relative to matrix range.</p>
+    </div>
+  );
+}
+
+/* ── Confidence Score §14 ─────────────────────────────────────── */
+function ConfidenceSection({ conf, validation }: {
+  conf: V3AnalyticsBundle["confidence"];
+  validation: V3AnalyticsBundle["validation"];
+}) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">§14 Composite Confidence Score</h3>
+        <p className="text-xs text-slate-500">Weighted across 6 dimensions: separation quality, clean surplus, RE–ReOI convergence, Eq.16 closure, earnings persistence, terminal cleanliness.</p>
+      </div>
+
+      {/* Score header */}
+      <div className={`rounded-xl border p-4 ${CONF_COLORS[conf.classification]}`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold">{conf.composite.toFixed(1)}/100</p>
+            <p className="text-sm font-semibold capitalize">{conf.classification.replace("_", " ")}</p>
+          </div>
+          <div className="text-4xl">
+            {conf.classification === "HIGH" ? "✓" : conf.classification === "MODERATE" ? "◎" : conf.classification === "LOW" ? "⚠" : "✗"}
+          </div>
+        </div>
+      </div>
+
+      {/* Component bars */}
+      <div className="space-y-3">
+        {conf.components.map((c: ConfidenceComponent) => (
+          <div key={c.name}>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="font-medium text-slate-700">{c.name} <span className="text-slate-400 font-normal">(weight {c.weight})</span></span>
+              <span className="text-slate-600 font-mono">{c.score.toFixed(0)}/100</span>
+            </div>
+            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${c.score >= 80 ? "bg-emerald-500" : c.score >= 60 ? "bg-blue-500" : c.score >= 40 ? "bg-amber-500" : "bg-red-500"}`}
+                style={{ width: `${Math.max(2, c.score)}%` }}
+              />
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">{c.detail}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Data validation summary */}
+      {(validation.errors > 0 || validation.warnings > 0) && (
+        <div className="border border-amber-200 rounded-lg p-3">
+          <p className="text-xs font-semibold text-amber-800 mb-1">§2.5 Data Validation: {validation.errors} error(s), {validation.warnings} warning(s)</p>
+          {validation.checks.filter((c) => !c.passed).map((c, i) => (
+            <p key={i} className={`text-xs ${c.severity === "ERROR" ? "text-red-700" : "text-amber-600"}`}>
+              • [{c.severity}] {c.description}{c.detail ? `: ${c.detail}` : ""}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Triggers §15 ─────────────────────────────────────────────── */
+function TriggersSection({ triggers, fadeParams }: {
+  triggers: V3AnalyticsBundle["triggers"];
+  fadeParams: V3AnalyticsBundle["fadeParams"];
+}) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">§15.3 Monitoring Triggers</h3>
+        <p className="text-xs text-slate-500">Auto-generated investment monitoring triggers derived from the analysis.</p>
+      </div>
+
+      <div className="space-y-3">
+        {triggers.map((t) => (
+          <div key={t.id} className="border border-slate-200 rounded-lg p-3">
+            <p className="text-xs font-semibold text-indigo-700 mb-1">{t.title}</p>
+            <p className="text-sm text-slate-700">{t.body}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* §9.1 Fade parameter estimates */}
+      <div>
+        <p className="text-sm font-semibold text-slate-700 mb-2">§9.1 Fade Parameter Estimates</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="bg-slate-50">
+              <tr>
+                {["Driver", "φ (fade)", "Target", "Source", "R²"].map((h) => (
+                  <th key={h} className="px-3 py-2 text-left text-slate-500 font-medium">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {fadeParams.map((fp) => (
+                <tr key={fp.driver} className="hover:bg-slate-50">
+                  <td className="px-3 py-2 font-medium text-slate-700">{fp.driver}</td>
+                  <td className="px-3 py-2 font-mono">{fp.phi.toFixed(3)}</td>
+                  <td className="px-3 py-2 font-mono">{fp.driver === "PM" || fp.driver === "ATO" ? (fp.driver === "PM" ? pct(fp.target) : fp.target.toFixed(2) + "×") : pct(fp.target)}</td>
+                  <td className="px-3 py-2">
+                    <span className={`px-1.5 py-0.5 rounded text-xs ${fp.source === "COMPANY_SPECIFIC" ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-600"}`}>
+                      {fp.source === "COMPANY_SPECIFIC" ? "Company AR(1)" : "N&P Default"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 font-mono text-slate-500">{fp.r_squared > 0 ? fp.r_squared.toFixed(2) : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-slate-400 mt-1">Company-specific AR(1) estimation requires ≥10 periods and R² &gt; 0.30, φ in (0.50, 0.98).</p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Shared subcomponents ─────────────────────────────────────── */
+function MetricCard({ label, value, badge, color }: { label: string; value: string; badge: string; color: string }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+      <p className="text-xs text-slate-500 mb-1">{label}</p>
+      <p className="text-sm font-bold text-slate-800 mb-1 truncate">{value}</p>
+      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${color}`}>{badge}</span>
+    </div>
+  );
+}
+
+function InfoBlock({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-slate-50 rounded-lg p-3">
+      <p className="text-xs font-semibold text-slate-600 mb-2">{title}</p>
+      <div className="space-y-1">{children}</div>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between text-xs">
+      <span className="text-slate-500">{label}</span>
+      <span className="text-slate-800 font-medium text-right max-w-[60%] truncate">{value}</span>
+    </div>
+  );
+}

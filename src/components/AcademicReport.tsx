@@ -4,11 +4,12 @@ import { jsPDF } from "jspdf";
 import JSZip from "jszip";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import { EngineConfig, NP_BENCHMARKS, RawPeriodData, RecastPeriod } from "../engine/types";
+import { EngineConfig, NP_BENCHMARKS, RawPeriodData, RecastPeriod, ke_from_config } from "../engine/types";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { evaluateGranularityChecklist } from "../engine/mappingAudit";
 import { generateValuationWorkbook } from "../engine/excelExport";
 import { buildProvenanceAuditRows } from "../engine/provenanceAudit";
+import { computeV3Analytics, classifyTVShare, V3AnalyticsBundle } from "../engine/v3Analytics";
 
 interface Props {
   data: RecastPeriod[];
@@ -504,10 +505,11 @@ export default function AcademicReport({ data, config, rawData }: Props) {
     noaShiftSeries[0] ?? { period: latest.period_end, deltaNOA: 0, deltaOA: 0, deltaFA: 0, deltaOL: 0, deltaFO: 0 },
   );
 
-  const ke = config.risk_free_rate + config.equity_risk_premium;
+  // S-9.4: ke from config — prefer explicit config.ke over rf+erp
+  const ke = ke_from_config(config);
   const kwSeries: number[] = [];
   for (let i = 1; i < data.length; i++) {
-    kwSeries.push(deriveKwFromStructure(data[i], data[i - 1], ke, config.risk_free_rate));
+    kwSeries.push(deriveKwFromStructure(data[i], data[i - 1], ke, config.risk_free_rate, config));
   }
   const kw = kwSeries.length ? kwSeries[kwSeries.length - 1] : ke;
   const kwMedian = median(kwSeries);
@@ -525,10 +527,21 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const reoiIdentityGap = Math.abs(valuation.V_RE_CV3 - valuation.V_ReOI_CV03);
   const reoiIdentityGapPct = valuation.V_RE_CV3 !== 0 ? reoiIdentityGap / Math.abs(valuation.V_RE_CV3) : null;
 
+  // §14 V3 Composite Confidence Score
+  const v3Bundle: V3AnalyticsBundle | null = (() => {
+    try {
+      return computeV3Analytics(data, config, valuation.V_RE_CV3, valuation.V_ReOI_CV03, config.g_terminal_override);
+    } catch { return null; }
+  })();
+  const v3ConfidenceScore = v3Bundle?.confidence.composite ?? null;
+  const v3ConfidenceClass = v3Bundle?.confidence.classification ?? null;
+  const v3TVClass = classifyTVShare(valuation.V_RE_CV3, valuation.V_RE_CV1);
+  const v3TerminalAnchor = v3Bundle?.anchorResult;
+  const v3DirtySurplus = v3Bundle?.dirtySurplus;
+
   const sensitivityKe = [0.09, 0.10, 0.11, 0.13, 0.15];
-  const gLow = Math.max(0, Math.floor(g * 100) / 100);
-  const gHigh = Math.min(Math.max(g + 0.005, Math.ceil(g * 100) / 100), Math.max(g + 0.01, ke - 0.02));
-  const sensitivityG = Array.from(new Set([gLow, g, gHigh])).sort((a, b) => a - b);
+  // S-9.7: g columns must be strictly ascending (monotone)
+  const sensitivityG = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06].filter(gv => gv < ke - 0.005);
   const sensitivityMatrix = sensitivityKe.map((keCase) => ({
     ke: keCase,
     values: sensitivityG.map((gCase) => computeValuation(data, keCase, kw, gCase, config).V_RE_CV3),
@@ -716,11 +729,15 @@ export default function AcademicReport({ data, config, rawData }: Props) {
         <p className="text-sm text-slate-500 mt-1">
           Framework: Nissim &amp; Penman (2001), residual-income valuation with operating/financing recast under Ind AS.
         </p>
-        <p className="text-xs text-slate-600 mt-2">Company ID: <b>{companyId}</b> · Sample window: <b>{first.period_end.slice(0, 10)}</b> to <b>{latest.period_end.slice(0, 10)}</b>.</p>
+        <p className="text-xs text-slate-600 mt-2">Company ID: <b>{companyId}</b> · Sample window: <b>{first.period_end.slice(0, 10)}</b> to <b>{latest.period_end.slice(0, 10)}</b>.
+          {/* S-11.1: contamination guard — display ke/kw derivation info */}
+          {tvContaminated && <span className="ml-2 text-amber-700 font-semibold">⚠ Terminal period anomaly detected — guarded value used.</span>}
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-5">
           <Kpi label="Latest ROCE" value={pct(latest.ratios?.ROCE)} />
           <Kpi label="Latest RNOA" value={pct(latest.ratios?.RNOA)} />
-          <Kpi label="V(RE, CV3)" value={`₹${num(valuation.V_RE_CV3)} Cr`} />
+          {/* S-11.5: use guarded (primaryValuation) when contamination tier is GUARDED/COMPROMISED */}
+          <Kpi label={tvContaminated ? "V(RE,CV3) [guarded]" : "V(RE, CV3)"} value={`₹${num(primaryValuation ?? valuation.V_RE_CV3)} Cr`} />
           <Kpi label="Separation Confidence" value={`${latest.bs.separationScore}/100`} />
         </div>
       </section>
@@ -749,6 +766,10 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           </li>
           <li>
             Valuation confidence: <b>{confidenceTier}</b> ({terminalFlagCount} terminal-period flags). Terminal-value dependence tier: <b>{tvGrade}</b> at <b>{pct(tvShare, 1)}</b>.
+            {v3ConfidenceScore != null && (
+              <> — <b>V3 §14 Composite Confidence: {v3ConfidenceScore.toFixed(0)}/100 ({v3ConfidenceClass})</b>
+              {v3TerminalAnchor && <> | Terminal anchor: <b>{v3TerminalAnchor.anchor_method}</b> (g = {pct(v3TerminalAnchor.g_terminal)})</>}</>
+            )}
           </li>
         </ul>
       </section>
@@ -1023,6 +1044,11 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           </li>
           <li>
             Cumulative dirty-surplus check Σ(ΔCSE − CNI + d) = <b>₹{num(cumulativeDirtySurplus)} Cr</b>.
+            {v3DirtySurplus && (
+              <> V3 §6.4: cumulative DS = <b>₹{num(v3DirtySurplus.cumulative_dirty_surplus)} Cr</b>
+                ({pct(v3DirtySurplus.cum_ds_pct)} of latest equity
+                {v3DirtySurplus.clean_surplus_compromised ? " ⚠ CLEAN SURPLUS COMPROMISED" : " ✓ intact"}).</>
+            )}
           </li>
         </ul>
       </section>
@@ -1123,6 +1149,10 @@ export default function AcademicReport({ data, config, rawData }: Props) {
         </p>
         <p className="text-xs text-slate-500 mt-1">
           Explicit residual-income horizon used in valuation: <b>{explicitHorizonYears}</b> yearly steps. Terminal-value share of RE CV3: <b>{pct(terminalWeightRE, 1)}</b> ({tvGrade}). Eq.16 residual (latest): <b>{eq16ResidualPp != null ? `${eq16ResidualPp.toFixed(2)}pp` : "—"}</b> [{eq16Tier}].
+          {v3TVClass && <> — V3 TV grade: <b>{v3TVClass.tv_grade}</b> ({v3TVClass.tv_label})</>}.
+          {data[data.length-1]?.ratios?.eq16_diagnosis && (
+            <span className="text-amber-700"> §5.7 Eq.16 diagnosis: {data[data.length-1].ratios!.eq16_diagnosis}</span>
+          )}
         </p>
         {g < gInput && (
           <p className="text-xs text-amber-700 mt-1">
