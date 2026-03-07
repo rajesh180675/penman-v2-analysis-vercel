@@ -3,6 +3,7 @@ import {
   CanonicalOutputRegistry, ConsistencyViolation,
   computeDirtySurplus, detectPeriodEventFlags,
   calibrateMonitoringTriggers, firewallCheck,
+  enforceMetadataFirewall, computeDirtySurplusFramework,
   deriveShareCount, computeMarketImplied,
   decomposeReReOIGap, runCrossSectionAssertions,
   selectTerminalAnchor, selectOADecompositionPeriods,
@@ -79,6 +80,14 @@ describe("Supplementary Path A controls", () => {
   it("detects audit marker leakage", () => {
     const violations = firewallCheck("Summary: V3 §14 Composite Confidence: 48/100 ✓ intact");
     expect(violations.length).toBeGreaterThan(0);
+  });
+
+  it("S-13.2: metadata firewall redacts leaked audit markers", () => {
+    const raw = "Section text. V3 §14 Composite Confidence: 48/100 ✓ intact.";
+    const out = enforceMetadataFirewall(raw, ["Internal audit note that should never leak into report output"]);
+    expect(out.violations.length).toBeGreaterThan(0);
+    expect(out.rendered).toContain("[REDACTED: internal audit content removed]");
+    expect(out.rendered).toContain("Internal audit markers were detected and redacted");
   });
 
   it("derives share count and computes market-implied analytics", () => {
@@ -250,5 +259,50 @@ describe("Supplementary Path A controls", () => {
       section1: "Terminal anchor: RE_(T-1) + growth; g = 5.0%; TV GRADE_B",
     });
     expect(issues.some((i) => i.includes("V_primary equals"))).toBe(true);
+  });
+
+  it("S-13.3: flags header/trigger/sensitivity inconsistencies", () => {
+    const r = new CanonicalOutputRegistry();
+    r.register("primary_anchor_label", "RE_(T-1) + growth", "test");
+    r.register("tv_grade", "GRADE_B", "test");
+    r.register("g_effective", 0.05, "test");
+    r.register("pm_warning_threshold", 0.2, "test");
+    r.register("period_count", 4, "test");
+    r.register("V_primary", 5000, "test");
+    r.register("company_id", "ITC", "test");
+    const issues = runCrossSectionAssertions(r, {
+      header: "Primary value: 4000",
+      section1: "Terminal anchor: RE_T (as reported); g = 7.0%; TV GRADE_C",
+      section7: "ABC-specific trigger — PM path: If PM falls below 30%",
+      section6A1RowCount: 1,
+      sensitivity: [
+        { ke: 0.1, g: [0.02, 0.03], values: [100, 90] },
+        { ke: 0.12, g: [0.02, 0.03], values: [110, 95] },
+      ],
+    });
+    expect(issues.some((i) => i.includes("Header V mismatch"))).toBe(true);
+    expect(issues.some((i) => i.includes("trigger label"))).toBe(true);
+    expect(issues.some((i) => i.includes("decreasing in ke"))).toBe(true);
+  });
+
+  it("S-15.4: dirty surplus framework registers display and clean cumulative fields", () => {
+    const periods = [mkPeriod(2023, 0.25, 80, 500), mkPeriod(2024, 0.25, 85, 550), mkPeriod(2025, 0.25, 90, 600)];
+    const ds = computeDirtySurplus(periods, 0.13);
+    const flags = detectPeriodEventFlags(periods, ds, 10, 20); // suppress outlier flags
+    const r = new CanonicalOutputRegistry();
+    computeDirtySurplusFramework(periods, flags, r);
+    expect(r.get<number>("DS_cumulative_all")).not.toBeUndefined();
+    expect(r.get<number>("DS_cumulative_clean")).not.toBeUndefined();
+    expect(r.get<number>("DS_display")).toBe(r.get<number>("DS_cumulative_all"));
+    expect(r.get<string>("DS_display_label")).toBe("all periods, reported dividends");
+  });
+
+  it("S-14.3: computeV3Analytics registers composite components and contamination tier", () => {
+    const periods = Array.from({ length: 6 }, (_, i) => mkPeriod(2020 + i, 0.25, 80 + i, 500 + i * 20));
+    const out = computeV3Analytics(periods, DEFAULT_CONFIG, 5000, 4800, 0.04, 0.10);
+    expect(out.registry.get("composite_components")).toBeTruthy();
+    expect(out.registry.get("composite_tier_message")).toBeTruthy();
+    expect(out.registry.get("contamination_tier")).toBeTruthy();
+    expect(out.confidence.classification === "HIGH" || out.confidence.classification === "MODERATE" || out.confidence.classification === "LOW").toBe(true);
   });
 });

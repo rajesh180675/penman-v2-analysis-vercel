@@ -290,6 +290,12 @@ export function computeDirtySurplusFramework(
     else by_category.steady_state += ds;
   }
   const cumulative = Object.values(perPeriod).reduce((s, v) => s + v, 0);
+  const cumulative_clean = Object.entries(perPeriod)
+    .filter(([period]) => {
+      const flags = periodFlags.find((f) => f.period_end === period)?.flags ?? [];
+      return !flags.includes("STRUCTURAL_EVENT_CRITICAL");
+    })
+    .reduce((s, [, ds]) => s + ds, 0);
   const latestCSE = Math.max(Math.abs(periods[periods.length - 1]?.bs.CSE ?? 0), 1);
   const pct_cse = cumulative / latestCSE;
   const steady = Object.entries(perPeriod)
@@ -303,6 +309,9 @@ export function computeDirtySurplusFramework(
     : 0;
   registry?.register("DS_per_period", perPeriod, "S-15.4");
   registry?.register("DS_cumulative_all", cumulative, "S-15.4");
+  registry?.register("DS_cumulative_clean", cumulative_clean, "S-15.4");
+  registry?.register("DS_display", cumulative, "S-15.4");
+  registry?.register("DS_display_label", "all periods, reported dividends", "S-15.4");
   registry?.register("DS_by_category", by_category, "S-15.4");
   registry?.register("DS_pct_CSE", pct_cse, "S-15.4");
   registry?.register("DS_steady_state_annual", steady_state_annual, "S-15.4");
@@ -740,8 +749,15 @@ export interface ConfidenceComponent {
 export interface ConfidenceResult {
   components: ConfidenceComponent[];
   composite: number; // 0–100
-  classification: "HIGH" | "MODERATE" | "LOW" | "VERY_LOW";
+  classification: "HIGH" | "MODERATE" | "LOW";
+  tier_message: string;
   separation_score: number;
+}
+function inferContaminationTier(nCrit: number, nWarn: number): "CLEAN" | "CAUTION" | "GUARDED" | "COMPROMISED" {
+  if (nCrit >= 2) return "COMPROMISED";
+  if (nCrit >= 1) return "GUARDED";
+  if (nWarn >= 1) return "CAUTION";
+  return "CLEAN";
 }
 export function computeConfidenceScore(
   periods: RecastPeriod[],
@@ -800,22 +816,33 @@ export function computeConfidenceScore(
     0.15 * eqScore +
     0.15 * healthScore
   );
-  let classification: ConfidenceResult["classification"] = "VERY_LOW";
+  let classification: ConfidenceResult["classification"] = "LOW";
   if (composite >= 70) classification = "HIGH";
   else if (composite >= 50) classification = "MODERATE";
-  else if (composite >= 30) classification = "LOW";
+  const tier_message = classification === "HIGH"
+    ? "Valuation has high analytical confidence."
+    : classification === "MODERATE"
+    ? "Valuation has moderate confidence; use sensitivity range over point estimate."
+    : "Valuation has low analytical confidence; treat as indicative only.";
+  const components: ConfidenceComponent[] = [
+    { name: "Data quality", score: dataScore, weight: 20, detail: `Separation score = ${dataScore.toFixed(0)}/100` },
+    { name: "Terminal integrity", score: terminalScore, weight: 25, detail: `${nCrit} critical and ${nWarn} warning terminal flags` },
+    { name: "Valuation robustness", score: robustnessScore, weight: 25, detail: `TV share ${pctStr(tv)} | RE/ReOI gap ${pctStr(gap)} | DS ${pctStr(dsPct)}` },
+    { name: "Earnings quality", score: eqScore, weight: 15, detail: `Accrual ${pctStr(latest.ratios?.accrual_ratio_bs)} | cash conversion ${numStr(cc)}` },
+    { name: "Financial health", score: healthScore, weight: 15, detail: `Piotroski ${p}/9 | Altman Z' ${numStr(z)}` },
+  ];
+  const contaminationTier = inferContaminationTier(nCrit, nWarn);
   registry?.register("composite_confidence", composite, "S-14.3");
   registry?.register("composite_tier", classification, "S-14.3");
+  registry?.register("composite_components", components, "S-14.3");
+  registry?.register("composite_tier_message", tier_message, "S-14.3");
+  registry?.register("terminal_flag_score", nCrit * 3 + nWarn, "S-14.3");
+  registry?.register("contamination_tier", contaminationTier, "S-14.3");
   return {
-    components: [
-      { name: "Data quality", score: dataScore, weight: 20, detail: `Separation score = ${dataScore.toFixed(0)}/100` },
-      { name: "Terminal integrity", score: terminalScore, weight: 25, detail: `${nCrit} critical and ${nWarn} warning terminal flags` },
-      { name: "Valuation robustness", score: robustnessScore, weight: 25, detail: `TV share ${pctStr(tv)} | RE/ReOI gap ${pctStr(gap)} | DS ${pctStr(dsPct)}` },
-      { name: "Earnings quality", score: eqScore, weight: 15, detail: `Accrual ${pctStr(latest.ratios?.accrual_ratio_bs)} | cash conversion ${numStr(cc)}` },
-      { name: "Financial health", score: healthScore, weight: 15, detail: `Piotroski ${p}/9 | Altman Z' ${numStr(z)}` },
-    ],
+    components,
     composite,
     classification,
+    tier_message,
     separation_score: dataScore,
   };
 }
@@ -1318,6 +1345,8 @@ export function computeMarketImplied(
     keNote = `Market cap exceeds model value even at low ke (${(keLo*100).toFixed(1)}%).`;
   }
   registry.register("market_intrinsic_per_share", intrinsic_per_share, "S-16.2");
+  registry.register("market_cap", market_cap, "S-16.2");
+  registry.register("market_price", marketPrice, "S-16.2");
   registry.register("market_margin_of_safety", margin_of_safety, "S-16.2");
   if (implied_g != null) registry.register("market_implied_g", implied_g, "S-16.2");
   if (implied_ke != null) registry.register("market_implied_ke", implied_ke, "S-16.2");
@@ -1382,6 +1411,17 @@ export interface CrossSectionRenderedBundle {
   /** For assertion 9: per-ke row with g values ascending and corresponding valuations */
   sensitivity?: Array<{ ke: number; values: number[]; g: number[] }>;
 }
+function parseFirstNumber(text: string): number | null {
+  const m = text.replace(/,/g, "").match(/-?\d+(\.\d+)?/);
+  if (!m) return null;
+  const v = Number(m[0]);
+  return Number.isFinite(v) ? v : null;
+}
+function extractAfterToken(text: string, token: string): number | null {
+  const idx = text.toLowerCase().indexOf(token.toLowerCase());
+  if (idx < 0) return null;
+  return parseFirstNumber(text.slice(idx + token.length));
+}
 export function runCrossSectionAssertions(registry: CanonicalOutputRegistry, rendered: CrossSectionRenderedBundle): string[] {
   const issues: string[] = [];
 
@@ -1392,6 +1432,14 @@ export function runCrossSectionAssertions(registry: CanonicalOutputRegistry, ren
   // ASSERTION 2: §1 TV grade matches primary (guarded) grade
   const tvGrade = registry.get<string>("tv_grade");
   if (tvGrade && rendered.section1.includes("GRADE_") && !rendered.section1.includes(tvGrade)) issues.push(`§1 TV grade mismatch: expected '${tvGrade}'.`);
+
+  // ASSERTION 3: Header V matches registry V_primary
+  const vPrimaryHeader = registry.get<number>("V_primary");
+  const headerV = parseFirstNumber(rendered.header);
+  if (vPrimaryHeader != null && headerV != null) {
+    const rel = Math.abs(headerV - vPrimaryHeader) / Math.max(Math.abs(vPrimaryHeader), 1);
+    if (rel > 0.001) issues.push(`Header V mismatch: header=${headerV}, registry=${vPrimaryHeader}.`);
+  }
 
   // ASSERTION 4: §1 g_effective matches registry
   const g = registry.get<number>("g_effective");
@@ -1410,14 +1458,20 @@ export function runCrossSectionAssertions(registry: CanonicalOutputRegistry, ren
   // ASSERTION 6: §1 DS figure matches §5 DS figure (S-13.3)
   const dsAll = registry.get<number>("DS_cumulative_all");
   if (dsAll != null && rendered.section5 && rendered.section1) {
-    // Extract ₹X Cr patterns — simple heuristic check: both sections should reference the same magnitude
-    const dsAbs = Math.round(Math.abs(dsAll));
-    const dsToken = dsAbs.toLocaleString("en-IN");
-    if (
-      rendered.section1.includes("dirty") && rendered.section5.includes("dirty") &&
-      !rendered.section1.includes(dsToken) && !rendered.section5.includes(dsToken)
-    ) {
-      issues.push(`§1/§5 DS value '${dsToken}' not found in either section — possible mismatch.`);
+    const ds1 = extractAfterToken(rendered.section1, "dirty");
+    const ds5 = extractAfterToken(rendered.section5, "dirty");
+    if (ds1 != null && ds5 != null) {
+      const rel = Math.abs(ds1 - ds5) / Math.max(Math.abs(ds1), 1);
+      if (rel > 0.01) issues.push(`§1 DS=${ds1} differs from §5 DS=${ds5}.`);
+    }
+  }
+
+  // ASSERTION 7: Company ID in trigger labels matches header company ID
+  const companyId = registry.get<string>("company_id");
+  if (companyId && rendered.section7) {
+    const labels = Array.from(rendered.section7.matchAll(/([A-Za-z0-9_.-]+)-specific trigger/g)).map((m) => m[1]);
+    for (const label of labels) {
+      if (label !== companyId) issues.push(`§7 trigger label '${label}-specific' does not match company_id '${companyId}'.`);
     }
   }
 
@@ -1436,18 +1490,31 @@ export function runCrossSectionAssertions(registry: CanonicalOutputRegistry, ren
         }
       }
     }
+    const colCount = rendered.sensitivity[0].values.length;
+    const rowsByKe = [...rendered.sensitivity].sort((a, b) => a.ke - b.ke);
+    for (let c = 0; c < colCount; c++) {
+      for (let i = 0; i < rowsByKe.length - 1; i++) {
+        if (rowsByKe[i].values[c] < rowsByKe[i + 1].values[c] - 0.01) {
+          issues.push(`Sensitivity matrix not decreasing in ke for g-column ${c}.`);
+          break;
+        }
+      }
+    }
   }
 
   // ASSERTION 10: If contamination is GUARDED/COMPROMISED, V_primary ≠ V_RE_CV3_reported (S-13.3)
   const vPrimary = registry.get<number>("V_primary");
   const vReported = registry.get<number>("V_RE_CV3_reported");
+  const contaminationTier = registry.get<string>("contamination_tier");
   const anchorLabel = registry.get<string>("primary_anchor_label");
   if (
-    vPrimary != null && vReported != null && anchorLabel != null &&
-    anchorLabel !== "RE_T (as reported)" && anchorLabel !== "RE_T (as reported, with warnings)"
+    vPrimary != null && vReported != null &&
+    (contaminationTier === "GUARDED" || contaminationTier === "COMPROMISED" || (
+      anchorLabel != null && anchorLabel !== "RE_T (as reported)" && anchorLabel !== "RE_T (as reported, with warnings)"
+    ))
   ) {
     if (Math.abs(vPrimary - vReported) < 1) {
-      issues.push(`V_primary equals V_RE_CV3_reported despite non-as-reported anchor ('${anchorLabel}'). Anchor selection may not be applied.`);
+      issues.push(`V_primary equals V_RE_CV3_reported despite contamination guard (tier='${contaminationTier ?? "N/A"}', anchor='${anchorLabel ?? "N/A"}').`);
     }
   }
 
@@ -1477,6 +1544,16 @@ export function firewallCheck(renderedText: string, auditLog: string[] = []): st
     }
   }
   return violations;
+}
+export function enforceMetadataFirewall(renderedText: string, auditLog: string[] = []): { rendered: string; violations: string[] } {
+  const violations = firewallCheck(renderedText, auditLog);
+  if (!violations.length) return { rendered: renderedText, violations };
+  let sanitized = renderedText;
+  for (const pattern of AUDIT_MARKERS) {
+    sanitized = sanitized.replace(new RegExp(`[^.\\n]*${pattern.source}[^.\\n]*\\.?`, "gi"), "[REDACTED: internal audit content removed]");
+  }
+  sanitized += "\n\nNote: Internal audit markers were detected and redacted from this report. See compliance log.";
+  return { rendered: sanitized, violations };
 }
 /* ══════════════════════════════════════════════════════════════════
    S-15.3 — Accrual Regime Classification in Report
@@ -1677,20 +1754,34 @@ export function computeV3Analytics(
   const kw = kwDerived ?? (ke * 0.75); // Prefer derived kw; approximate if not supplied
   const registry = new CanonicalOutputRegistry();
   registry.register("period_count", periods.length, "S-13.3");
+  registry.register("company_id", cfg.ticker ?? "Company", "S-13.3");
   registry.register("kw_derived_latest", kw, "S-13.4");
+  registry.register("kw_derived_median", kw, "S-13.4");
   const validation = runDataValidation(periods);
   const dirtySurplus = computeDirtySurplus(periods, ke);
   // NOTE: DS_cumulative_all is registered by computeDirtySurplusFramework (S-15.4 single source of truth)
   // Do NOT register it here to avoid double-registration ConsistencyViolation (S-13.1)
   const periodFlags = detectPeriodEventFlags(periods, dirtySurplus);
   const anchorResult = selectTerminalAnchor(periods, periodFlags, ke, kw, gTerminalOverride);
+  const pvREExplicit = periods.slice(1).reduce((acc, p, idx) => acc + (p.ri?.RE ?? 0) / Math.pow(1 + ke, idx + 1), 0);
+  const cse0 = periods[0]?.bs.CSE ?? 0;
+  const explicitPeriods = Math.max(1, periods.length - 1);
+  const conservativeV = (() => {
+    if (anchorResult.RE_anchor_3 == null || ke <= anchorResult.g_applied) return anchorResult.V_total;
+    const cv = (anchorResult.RE_anchor_3 * (1 + anchorResult.g_applied)) / (ke - anchorResult.g_applied);
+    return cse0 + pvREExplicit + cv / Math.pow(1 + ke, explicitPeriods);
+  })();
   registry.register("V_primary", anchorResult.V_total, "S-14.1");
+  registry.register("V_RE_CV3_guarded", anchorResult.V_total, "S-14.1");
+  registry.register("V_RE_CV3_conservative", conservativeV, "S-14.1");
   registry.register("V_RE_CV3_reported", anchorResult.reference_V, "S-14.1");
   registry.register("primary_anchor_label", anchorResult.label, "S-14.1");
   registry.register("primary_anchor_source", anchorResult.anchor_method, "S-14.1");
   registry.register("tv_share_primary", anchorResult.TV_share ?? 0, "S-14.1");
   registry.register("tv_grade", anchorResult.TV_grade, "S-14.1");
   registry.register("g_effective", anchorResult.g_applied, "S-14.1");
+  registry.register("g_input", gTerminalOverride ?? anchorResult.g_applied, "S-14.1");
+  registry.register("g_cap_binding", anchorResult.g_source, "S-14.1");
   registry.register("tv_share_reported", anchorResult.TV_share_raw ?? 0, "S-14.1");
   registry.register("n_terminal_flags", anchorResult.terminal_event_flags.length, "S-14.1");
   const dirtySurplusFramework = computeDirtySurplusFramework(periods, periodFlags, registry);
@@ -1730,9 +1821,9 @@ export function computeV3Analytics(
       V_primary: anchorResult.V_total,
       ke,
       g_effective: anchorResult.g_applied,
-      CSE0: periods[0]?.bs.CSE ?? 0,
-      pvRE: periods.slice(1).reduce((acc, p, idx) => acc + (p.ri?.RE ?? 0) / Math.pow(1 + ke, idx + 1), 0),
-      explicit_periods: Math.max(1, periods.length - 1),
+      CSE0: cse0,
+      pvRE: pvREExplicit,
+      explicit_periods: explicitPeriods,
       RE_anchor: anchorResult.selected_RE_anchor,
       periods,
     },
