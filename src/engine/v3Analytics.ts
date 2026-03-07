@@ -203,7 +203,8 @@ export function computeDirtySurplus(
     // Adjusted CSE: mechanically enforce clean surplus
     CSE_adj = CSE_adj + CNI_t - d_reported;
 
-    const RE_adj = ke > 0 && i >= 1 ? CNI_t - ke * records[i - 1]?.CSE_adj ?? ke * CSE_t1 : null;
+    const priorCSEAdj = records[i - 1]?.CSE_adj ?? CSE_t1;
+    const RE_adj = ke > 0 ? CNI_t - ke * priorCSEAdj : null;
 
     records.push({
       period_end: cur.period_end,
