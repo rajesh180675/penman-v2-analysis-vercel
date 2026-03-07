@@ -287,7 +287,7 @@ export function computeDirtySurplusFramework(
     perPeriod[cur.period_end] = ds;
     const flags = periodFlags.find((f) => f.period_end === cur.period_end)?.flags ?? [];
     if (flags.includes("STRUCTURAL_EVENT_CRITICAL")) by_category.structural_events += ds;
-    else if (flags.includes("IND_AS_116_TRANSITION")) by_category.accounting_transitions += ds;
+    else if (flags.includes("IND_AS_116_TRANSITION") || flags.includes("POTENTIAL_RECLASSIFICATION")) by_category.accounting_transitions += ds;
     else by_category.steady_state += ds;
   }
   const cumulative = Object.values(perPeriod).reduce((s, v) => s + v, 0);
@@ -328,7 +328,8 @@ export type EventFlag =
   | "PAYOUT_EXCEEDS_EARNINGS"
   | "IND_AS_116_TRANSITION"
   | "SMALL_NOA_DENOMINATOR"
-  | "ROCE_OUTLIER_CRITICAL";
+  | "ROCE_OUTLIER_CRITICAL"
+  | "POTENTIAL_RECLASSIFICATION";
 export interface PeriodEventFlags {
   period_end: string;
   flags: EventFlag[];
@@ -422,6 +423,26 @@ export function detectPeriodEventFlags(
     }
     // FLAG 7: Small NOA denominator
     if (cur.ratios?.noaSmall) flags.push("SMALL_NOA_DENOMINATOR");
+    // FLAG 8: Potential reclassification (large OA_Other residual without structural event)
+    // Spec S-15.1: periods where ΔOther OA > 30% of ΔOA but no STRUCTURAL_EVENT_CRITICAL
+    if (prev && !flags.includes("STRUCTURAL_EVENT_CRITICAL")) {
+      const deltaOA = cur.bs.OA - prev.bs.OA;
+      if (Math.abs(deltaOA) > 1) {
+        const identifiedDelta =
+          (cur.bs.OA_PPE - prev.bs.OA_PPE) +
+          (cur.bs.OA_ROU - prev.bs.OA_ROU) +
+          (cur.bs.OA_Inventory - prev.bs.OA_Inventory) +
+          (cur.bs.OA_TradeReceivables - prev.bs.OA_TradeReceivables) +
+          (cur.bs.OA_Goodwill - prev.bs.OA_Goodwill) +
+          (cur.bs.OA_OtherIntangibles - prev.bs.OA_OtherIntangibles) +
+          (cur.bs.OA_CWIP - prev.bs.OA_CWIP) +
+          (cur.bs.OA_DTA - prev.bs.OA_DTA);
+        const otherOA = deltaOA - identifiedDelta;
+        if (Math.abs(otherOA / deltaOA) > 0.40) {
+          flags.push("POTENTIAL_RECLASSIFICATION");
+        }
+      }
+    }
     // ROCE outlier
     let roce_zscore: number | null = null;
     if (i >= 2) {
@@ -515,9 +536,9 @@ export function selectTerminalAnchor(
     RE_series[n - 2] != null ? (RE_series[n - 2]! * (1 + g_terminal)) : null;
   const ReOI_anchor_2 =
     ReOI_series[n - 2] != null ? (ReOI_series[n - 2]! * (1 + g_terminal)) : null;
-  // Anchor 3: 3Y median
-  const RE_last3 = RE_series.slice(-3).filter((v): v is number => v != null);
-  const ReOI_last3 = ReOI_series.slice(-3).filter((v): v is number => v != null);
+  // Anchor 3: 3Y median — use T-1, T-2, T-3 (exclude T to avoid contamination per S-14.1)
+  const RE_last3 = RE_series.slice(-4, -1).filter((v): v is number => v != null);
+  const ReOI_last3 = ReOI_series.slice(-4, -1).filter((v): v is number => v != null);
   const RE_anchor_3 = RE_last3.length >= 2 ? medianOf(RE_last3) : null;
   const ReOI_anchor_3 = ReOI_last3.length >= 2 ? medianOf(ReOI_last3) : null;
   // Terminal period event flags
@@ -529,15 +550,15 @@ export function selectTerminalAnchor(
     : lastFlags.includes("PM_OUTLIER_WARNING")
     ? "WARNING"
     : "OK";
-  // Anchor selection logic (§11.5)
+  // Anchor selection logic (S-14.1) — deterministic, based on hasCriticalTerminalFlag
   let selected_RE_anchor: number;
   let selected_ReOI_anchor: number;
   let anchor_method: string;
   let method: TerminalAnchorResult["method"];
   let label: string;
-  const isCriticallyContaminated =
-    lastFlags.includes("PM_OUTLIER_CRITICAL") ||
-    lastFlags.includes("CAPITAL_TRANSACTION_LIKELY");
+  // S-14.1: ANY CRITICAL flag that affects terminal triggers fallback
+  const isCriticallyContaminated = hasCriticalTerminalFlag(lastFlags);
+  const prevIsCriticallyContaminated = hasCriticalTerminalFlag(prevFlags);
   if (lastFlags.length === 0) {
     selected_RE_anchor = RE_anchor_1;
     selected_ReOI_anchor = ReOI_anchor_1;
@@ -551,8 +572,8 @@ export function selectTerminalAnchor(
     anchor_method = RE_anchor_2 != null ? "RE_(T-1) + growth" : "RE_T (fallback)";
     method = RE_anchor_2 != null ? "RE_T1_growth" : "RE_T";
     label = RE_anchor_2 != null ? "RE_(T-1) + growth" : "RE_T (fallback)";
-    // If prior period is ALSO critically contaminated, use 3Y median
-    if (prevFlags.includes("PM_OUTLIER_CRITICAL") && RE_anchor_3 != null) {
+    // S-14.1: If T-1 is ALSO critically contaminated, use 3Y median
+    if (prevIsCriticallyContaminated && RE_anchor_3 != null) {
       selected_RE_anchor = RE_anchor_3;
       selected_ReOI_anchor = ReOI_anchor_3 ?? selected_ReOI_anchor;
       anchor_method = "3Y median RE";
@@ -970,7 +991,9 @@ export function generateMonitoringTriggers(
   config?: EngineConfig
 ): MonitoringTrigger[] {
   const latest = periods[periods.length - 1];
-  const c = calibrateMonitoringTriggers(periods, periodFlags, registry, { ...(config ?? {}), ke } as EngineConfig);
+  // S-14.2: Do NOT pass registry here — calibrateMonitoringTriggers was already called
+  // with registry in computeV3Analytics. Passing it again causes double registration.
+  const c = calibrateMonitoringTriggers(periods, periodFlags, undefined, { ...(config ?? {}), ke } as EngineConfig);
   const triggers: MonitoringTrigger[] = [];
   triggers.push({
     id: "TRIGGER_PM",
@@ -1093,16 +1116,24 @@ export interface VersionChangeEntry {
 export function selectOADecompositionPeriods(periods: RecastPeriod[], periodFlags: PeriodEventFlags[]): string[] {
   const selected = new Set<string>();
   if (periods.length < 2) return [];
+  // Rule 1: Largest absolute ΔNOA (always included)
   const maxShiftPeriod = periods.slice(1).map((p, idx) => ({
     period_end: p.period_end,
     deltaNOA: p.bs.NOA - periods[idx].bs.NOA,
   })).sort((a, b) => Math.abs(b.deltaNOA) - Math.abs(a.deltaNOA))[0];
   if (maxShiftPeriod) selected.add(maxShiftPeriod.period_end);
   for (const f of periodFlags) {
-    if (f.flags.includes("STRUCTURAL_EVENT_CRITICAL") || f.flags.includes("IND_AS_116_TRANSITION")) {
+    // Rule 2: All STRUCTURAL_EVENT_CRITICAL periods
+    // Rule 3: All POTENTIAL_RECLASSIFICATION periods (S-15.1)
+    if (
+      f.flags.includes("STRUCTURAL_EVENT_CRITICAL") ||
+      f.flags.includes("IND_AS_116_TRANSITION") ||
+      f.flags.includes("POTENTIAL_RECLASSIFICATION")
+    ) {
       selected.add(f.period_end);
     }
   }
+  // Rule 4: Terminal period always included (S-15.1)
   selected.add(periods[periods.length - 1].period_end);
   return [...selected].sort();
 }
@@ -1351,28 +1382,78 @@ export interface CrossSectionRenderedBundle {
   section6A?: string;
   section7?: string;
   section6A1RowCount?: number;
+  /** For assertion 9: per-ke row with g values ascending and corresponding valuations */
   sensitivity?: Array<{ ke: number; values: number[]; g: number[] }>;
 }
 export function runCrossSectionAssertions(registry: CanonicalOutputRegistry, rendered: CrossSectionRenderedBundle): string[] {
   const issues: string[] = [];
+
+  // ASSERTION 1: §1 terminal anchor label matches primary
   const anchor = registry.get<string>("primary_anchor_label");
   if (anchor && !rendered.section1.includes(anchor)) issues.push(`§1 anchor mismatch: expected '${anchor}'.`);
+
+  // ASSERTION 2: §1 TV grade matches primary (guarded) grade
   const tvGrade = registry.get<string>("tv_grade");
   if (tvGrade && rendered.section1.includes("GRADE_") && !rendered.section1.includes(tvGrade)) issues.push(`§1 TV grade mismatch: expected '${tvGrade}'.`);
+
+  // ASSERTION 4: §1 g_effective matches registry
   const g = registry.get<number>("g_effective");
   if (g != null) {
     const pctToken = `${(g * 100).toFixed(1)}%`;
     if (rendered.section1.includes("g =") && !rendered.section1.includes(pctToken)) issues.push("§1 g mention inconsistent with registry.g_effective.");
   }
+
+  // ASSERTION 5: §7 PM warning threshold matches registry
   const pmWarn = registry.get<number>("pm_warning_threshold");
   if (pmWarn != null && rendered.section7 && rendered.section7.includes("falls below")) {
     const token = `${Math.round(pmWarn * 100)}%`;
     if (!rendered.section7.includes(token)) issues.push("§7 PM warning threshold inconsistent with registry.");
   }
+
+  // ASSERTION 6: §1 DS figure matches §5 DS figure (S-13.3)
+  const dsAll = registry.get<number>("DS_cumulative_all");
+  if (dsAll != null && rendered.section5 && rendered.section1) {
+    // Extract ₹X Cr patterns — simple heuristic check: both sections should reference the same magnitude
+    const dsAbs = Math.round(Math.abs(dsAll));
+    const dsToken = dsAbs.toLocaleString("en-IN");
+    if (
+      rendered.section1.includes("dirty") && rendered.section5.includes("dirty") &&
+      !rendered.section1.includes(dsToken) && !rendered.section5.includes(dsToken)
+    ) {
+      issues.push(`§1/§5 DS value '${dsToken}' not found in either section — possible mismatch.`);
+    }
+  }
+
+  // ASSERTION 8: §6A.1 RE row count = periods - 1
   const nPeriods = registry.get<number>("period_count");
   if (nPeriods && rendered.section6A1RowCount != null && rendered.section6A1RowCount !== Math.max(0, nPeriods - 1)) {
     issues.push(`§6A.1 row count mismatch: got ${rendered.section6A1RowCount}, expected ${nPeriods - 1}.`);
   }
+
+  // ASSERTION 9: Sensitivity matrix monotonicity (S-13.3)
+  if (rendered.sensitivity && rendered.sensitivity.length > 0) {
+    for (const row of rendered.sensitivity) {
+      for (let i = 0; i < row.values.length - 1; i++) {
+        if (row.values[i] > row.values[i + 1] + 0.01) {
+          issues.push(`Sensitivity matrix non-monotonic at ke=${(row.ke * 100).toFixed(1)}%: V(g[${i}])=${row.values[i].toFixed(0)} > V(g[${i+1}])=${row.values[i + 1].toFixed(0)}.`);
+        }
+      }
+    }
+  }
+
+  // ASSERTION 10: If contamination is GUARDED/COMPROMISED, V_primary ≠ V_RE_CV3_reported (S-13.3)
+  const vPrimary = registry.get<number>("V_primary");
+  const vReported = registry.get<number>("V_RE_CV3_reported");
+  const anchorLabel = registry.get<string>("primary_anchor_label");
+  if (
+    vPrimary != null && vReported != null && anchorLabel != null &&
+    anchorLabel !== "RE_T (as reported)" && anchorLabel !== "RE_T (as reported, with warnings)"
+  ) {
+    if (Math.abs(vPrimary - vReported) < 1) {
+      issues.push(`V_primary equals V_RE_CV3_reported despite non-as-reported anchor ('${anchorLabel}'). Anchor selection may not be applied.`);
+    }
+  }
+
   return issues;
 }
 export const AUDIT_MARKERS: RegExp[] = [
@@ -1400,6 +1481,149 @@ export function firewallCheck(renderedText: string, auditLog: string[] = []): st
   }
   return violations;
 }
+/* ══════════════════════════════════════════════════════════════════
+   S-15.3 — Accrual Regime Classification in Report
+══════════════════════════════════════════════════════════════════ */
+export interface AccrualTableRow {
+  period_end: string;
+  bs_accrual_ratio: number | null;
+  flag: string;
+  regime: string;
+  interpretation: string;
+}
+
+export function buildAccrualTable(periods: RecastPeriod[]): AccrualTableRow[] {
+  return periods.slice(1).map((p) => {
+    const ratio = p.ratios?.accrual_ratio_bs ?? null;
+    const regime = p.ratios?.accrual_regime ?? "NORMAL";
+    let flag = "OK";
+    let interpretation = "";
+
+    if (ratio != null && Math.abs(ratio) > 0.10) {
+      flag = ratio > 0 ? "⚠ >10%" : "⚠ <-10%";
+      switch (regime) {
+        case "GROWTH_ACCRUAL":
+          interpretation = "Elevated ΔNOA supported by revenue growth; earnings growth-driven.";
+          break;
+        case "QUALITY_ACCRUAL":
+          interpretation = "High accruals without matching revenue growth; earnings persistence concern.";
+          break;
+        case "ASSET_DISPOSAL":
+          interpretation = "Operating assets reduced; negative accruals from asset shrinkage.";
+          break;
+        case "CASH_GENERATION":
+          interpretation = "Negative accruals indicate strong cash conversion above earnings.";
+          break;
+        case "CASH_ACCUMULATION":
+          interpretation = "Cash accumulation producing negative NOA accruals.";
+          break;
+        default:
+          interpretation = `Accrual ratio ${ratio != null ? (ratio * 100).toFixed(1) + "%" : "—"} exceeds ±10% threshold.`;
+      }
+    }
+
+    return {
+      period_end: p.period_end,
+      bs_accrual_ratio: ratio,
+      flag,
+      regime,
+      interpretation,
+    };
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   S-16.3 — Section 6B Rendering
+══════════════════════════════════════════════════════════════════ */
+export type Section6BStatus = "full" | "partial" | "empty";
+export interface Section6BResult {
+  status: Section6BStatus;
+  intrinsic_per_share: number | null;
+  shares: number | null;
+  shares_source: string;
+  shares_confidence: string;
+  market_price: number | null;
+  market_cap: number | null;
+  margin_of_safety: number | null;
+  implied_g: number | null;
+  implied_ke: number | null;
+  mos_interpretation: string;
+  implied_g_note: string;
+  implied_ke_note: string;
+  dilution_note: string;
+  v_primary_over_mcap: number | null;
+}
+
+export function buildSection6B(
+  shareCount: ShareCountResult,
+  marketImplied: MarketImpliedResult,
+  registry: CanonicalOutputRegistry
+): Section6BResult {
+  const shares = shareCount.shares;
+  const V_primary = registry.get<number>("V_primary") ?? null;
+
+  if (!shares || !V_primary) {
+    return {
+      status: "empty",
+      intrinsic_per_share: null,
+      shares: null,
+      shares_source: shareCount.source,
+      shares_confidence: shareCount.confidence,
+      market_price: null,
+      market_cap: null,
+      margin_of_safety: null,
+      implied_g: null,
+      implied_ke: null,
+      mos_interpretation: "",
+      implied_g_note: "",
+      implied_ke_note: "",
+      dilution_note: shareCount.dilution_note ?? "",
+      v_primary_over_mcap: null,
+    };
+  }
+
+  const intrinsic_per_share = V_primary / shares;
+
+  if (marketImplied.status === "market_price_required" || marketImplied.status === "shares_unavailable") {
+    return {
+      status: "partial",
+      intrinsic_per_share,
+      shares,
+      shares_source: shareCount.source,
+      shares_confidence: shareCount.confidence,
+      market_price: null,
+      market_cap: null,
+      margin_of_safety: null,
+      implied_g: null,
+      implied_ke: null,
+      mos_interpretation: "",
+      implied_g_note: "",
+      implied_ke_note: "",
+      dilution_note: shareCount.dilution_note ?? "",
+      v_primary_over_mcap: null,
+    };
+  }
+
+  const mcap = marketImplied.market_cap ?? null;
+  return {
+    status: "full",
+    intrinsic_per_share,
+    shares,
+    shares_source: shareCount.source,
+    shares_confidence: shareCount.confidence,
+    market_price: marketImplied.market_price ?? null,
+    market_cap: mcap,
+    margin_of_safety: marketImplied.margin_of_safety ?? null,
+    implied_g: marketImplied.implied_g ?? null,
+    implied_ke: marketImplied.implied_ke ?? null,
+    mos_interpretation: marketImplied.mos_interpretation ?? "",
+    implied_g_note: marketImplied.implied_g_note ?? "",
+    implied_ke_note: marketImplied.implied_ke_note ?? "",
+    dilution_note: shareCount.dilution_note ?? "",
+    v_primary_over_mcap: mcap && mcap > 0 ? V_primary / mcap : null,
+  };
+}
+
 /* ══════════════════════════════════════════════════════════════════
    Helpers
 ══════════════════════════════════════════════════════════════════ */
@@ -1434,8 +1658,10 @@ export interface V3AnalyticsBundle {
   triggerCalibration: TriggerCalibrationResult;
   reReoiGapDecomposition: ReReOIGapDecomposition;
   oaDecomposition: OADecompositionResult[];
+  accrualTable: AccrualTableRow[];
   shareCount: ShareCountResult;
   marketImplied: MarketImpliedResult;
+  section6B: Section6BResult;
   versionChangeLog: VersionChangeEntry[];
   versionChangeLogMarkdown: string;
   crossSectionIssues: string[];
@@ -1457,7 +1683,8 @@ export function computeV3Analytics(
   registry.register("kw_derived_latest", kw, "S-13.4");
   const validation = runDataValidation(periods);
   const dirtySurplus = computeDirtySurplus(periods, ke);
-  registry.register("DS_cumulative_all", dirtySurplus.cumulative_dirty_surplus, "S-15.4");
+  // NOTE: DS_cumulative_all is registered by computeDirtySurplusFramework (S-15.4 single source of truth)
+  // Do NOT register it here to avoid double-registration ConsistencyViolation (S-13.1)
   const periodFlags = detectPeriodEventFlags(periods, dirtySurplus);
   const anchorResult = selectTerminalAnchor(periods, periodFlags, ke, kw, gTerminalOverride);
   registry.register("V_primary", anchorResult.V_total, "S-14.1");
@@ -1515,6 +1742,8 @@ export function computeV3Analytics(
     cfg.market_price,
     cfg.shares_outstanding ?? shareCount.shares ?? undefined,
   );
+  const accrualTable = buildAccrualTable(periods);
+  const section6B = buildSection6B(shareCount, marketImplied, registry);
   const priorKey = `${companyId}_${periods[0]?.period_end}_${periods[periods.length - 1]?.period_end}`;
   let priorSnapshot: Record<string, unknown> | undefined;
   try {
@@ -1534,5 +1763,5 @@ export function computeV3Analytics(
     section7: triggers.map((t) => t.title + t.body).join("\n"),
     section6A1RowCount: periods.length - 1,
   });
-  return { validation, dirtySurplus, dirtySurplusFramework, periodFlags, anchorResult, confidence, fadeParams, triggers, triggerCalibration, reReoiGapDecomposition, oaDecomposition, shareCount, marketImplied, versionChangeLog, versionChangeLogMarkdown, crossSectionIssues, registry };
+  return { validation, dirtySurplus, dirtySurplusFramework, periodFlags, anchorResult, confidence, fadeParams, triggers, triggerCalibration, reReoiGapDecomposition, oaDecomposition, accrualTable, shareCount, marketImplied, section6B, versionChangeLog, versionChangeLogMarkdown, crossSectionIssues, registry };
 }

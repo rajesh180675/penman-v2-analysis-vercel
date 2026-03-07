@@ -15,6 +15,10 @@ import {
   DirtySurplusRecord,
   PeriodEventFlags,
   ConfidenceComponent,
+  AccrualTableRow,
+  Section6BResult,
+  OADecompositionResult,
+  ReReOIGapDecomposition,
 } from "../engine/v3Analytics";
 
 interface Props {
@@ -50,7 +54,7 @@ const GRADE_COLORS: Record<string, string> = {
 };
 
 export default function V3AnalyticsPanel({ data, config }: Props) {
-  const [activeSection, setActiveSection] = useState<"overview" | "dirty" | "events" | "terminal" | "sensitivity" | "confidence" | "triggers">("overview");
+  const [activeSection, setActiveSection] = useState<"overview" | "dirty" | "events" | "terminal" | "sensitivity" | "confidence" | "triggers" | "accruals" | "oa_decomp" | "gap_decomp" | "section6b">("overview");
 
   // S-9.4: use explicit ke from config
   const ke = config.ke > 0 ? config.ke : (config.risk_free_rate + config.equity_risk_premium);
@@ -134,6 +138,10 @@ export default function V3AnalyticsPanel({ data, config }: Props) {
     { id: "sensitivity", label: "Sensitivity §12", icon: "📉" },
     { id: "confidence", label: "Confidence §14", icon: "🎯" },
     { id: "triggers", label: "Triggers §15", icon: "🔔" },
+    { id: "accruals", label: "Accruals §5A", icon: "📋" },
+    { id: "oa_decomp", label: "OA Decomp §3B", icon: "🏗" },
+    { id: "gap_decomp", label: "RE/ReOI Gap §6", icon: "🔍" },
+    { id: "section6b", label: "§6B Per-Share", icon: "💹" },
   ];
 
   return (
@@ -178,6 +186,18 @@ export default function V3AnalyticsPanel({ data, config }: Props) {
           )}
           {activeSection === "triggers" && bundle && (
             <TriggersSection triggers={bundle.triggers} fadeParams={bundle.fadeParams} />
+          )}
+          {activeSection === "accruals" && bundle && (
+            <AccrualsSection rows={bundle.accrualTable} />
+          )}
+          {activeSection === "oa_decomp" && bundle && (
+            <OADecompSection decompositions={bundle.oaDecomposition} />
+          )}
+          {activeSection === "gap_decomp" && bundle && (
+            <GapDecompSection gap={bundle.reReoiGapDecomposition} />
+          )}
+          {activeSection === "section6b" && bundle && (
+            <Section6BPanel s6b={bundle.section6B} />
           )}
         </div>
       </div>
@@ -638,6 +658,227 @@ function TriggersSection({ triggers, fadeParams }: {
         </div>
         <p className="text-xs text-slate-400 mt-1">Company-specific AR(1) estimation requires ≥10 periods and R² &gt; 0.30, φ in (0.50, 0.98).</p>
       </div>
+    </div>
+  );
+}
+
+/* ── Accruals §5A (S-15.3) ────────────────────────────────────── */
+function AccrualsSection({ rows }: { rows: AccrualTableRow[] }) {
+  const REGIME_COLORS: Record<string, string> = {
+    GROWTH_ACCRUAL: "text-blue-700 bg-blue-50",
+    QUALITY_ACCRUAL: "text-red-700 bg-red-50",
+    ASSET_DISPOSAL: "text-amber-700 bg-amber-50",
+    CASH_GENERATION: "text-emerald-700 bg-emerald-50",
+    CASH_ACCUMULATION: "text-purple-700 bg-purple-50",
+    NORMAL: "text-slate-500 bg-slate-50",
+  };
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">§5A Accrual Regime Classification (S-15.3)</h3>
+        <p className="text-xs text-slate-500">Balance sheet accrual ratios with regime context. Distinguishes growth accruals from quality concerns.</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="bg-slate-50">
+            <tr>
+              {["Period", "BS Accrual Ratio", "Flag", "Regime", "Interpretation"].map((h) => (
+                <th key={h} className="px-3 py-2 text-left text-slate-500 font-medium">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((row) => (
+              <tr key={row.period_end} className="hover:bg-slate-50">
+                <td className="px-3 py-2 font-mono text-slate-600">{row.period_end.slice(0, 7)}</td>
+                <td className={`px-3 py-2 font-mono font-semibold ${row.bs_accrual_ratio != null && Math.abs(row.bs_accrual_ratio) > 0.10 ? "text-amber-700" : "text-slate-700"}`}>
+                  {row.bs_accrual_ratio != null ? `${(row.bs_accrual_ratio * 100).toFixed(1)}%` : "—"}
+                </td>
+                <td className="px-3 py-2">{row.flag}</td>
+                <td className="px-3 py-2">
+                  <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${REGIME_COLORS[row.regime] ?? "text-slate-500 bg-slate-50"}`}>
+                    {row.regime}
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-slate-500 max-w-xs truncate">{row.interpretation}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-slate-400">GROWTH_ACCRUAL = NOA expansion with revenue support (not a quality concern). QUALITY_ACCRUAL = elevated accruals without revenue backing (persistence risk).</p>
+    </div>
+  );
+}
+
+/* ── OA Decomposition §3B (S-15.1) ───────────────────────────── */
+function OADecompSection({ decompositions }: { decompositions: OADecompositionResult[] }) {
+  if (!decompositions.length) {
+    return (
+      <div className="text-sm text-slate-500 py-4">No OA decomposition periods selected (need ≥2 periods with structural events or terminal period).</div>
+    );
+  }
+  const COMP_LABELS: Record<string, string> = {
+    deltaPPE: "ΔPPE", deltaROU: "ΔROU", deltaInventory: "ΔInventory",
+    deltaReceivables: "ΔReceivables", deltaGoodwill: "ΔGoodwill",
+    deltaIntangibles: "ΔIntangibles", deltaCWIP: "ΔCWIP",
+    deltaDTA: "ΔDTA", deltaOtherOA: "ΔOther OA",
+  };
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">§3B OA Sub-Component Decomposition (S-15.1)</h3>
+        <p className="text-xs text-slate-500">Decomposed for all structurally flagged periods and terminal period.</p>
+      </div>
+      {decompositions.map((d) => (
+        <div key={d.period_end} className="border border-slate-200 rounded-lg p-4">
+          <p className="text-sm font-semibold text-slate-700 mb-3">{d.period_end.slice(0, 7)}</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50">
+                <tr>
+                  {Object.keys(COMP_LABELS).map((k) => (
+                    <th key={k} className={`px-2 py-1 text-center font-medium ${k === "deltaOtherOA" ? "text-amber-600" : "text-slate-500"}`}>
+                      {COMP_LABELS[k]}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  {Object.keys(COMP_LABELS).map((k) => {
+                    const v = d.components[k as keyof typeof d.components];
+                    return (
+                      <td key={k} className={`px-2 py-1 text-center font-mono ${k === "deltaOtherOA" && Math.abs(v) > 500 ? "font-bold text-amber-700" : "text-slate-700"}`}>
+                        {Math.abs(v) >= 1 ? `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "₹0"}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          {d.interpretation && (
+            <p className="text-xs text-amber-700 mt-2 bg-amber-50 rounded px-2 py-1">{d.interpretation}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── RE/ReOI Gap Decomposition §6 (S-15.2) ───────────────────── */
+function GapDecompSection({ gap }: { gap: ReReOIGapDecomposition }) {
+  const rows = [
+    { label: "Dirty surplus (PV)", value: gap.dirty_surplus },
+    { label: "NFO timing", value: gap.nfo_timing },
+    { label: "TV divergence (ke vs kw)", value: gap.tv_divergence },
+    { label: "Explicit-period discounting", value: gap.explicit_period_discounting },
+    { label: "Residual", value: gap.residual },
+    { label: "Total gap", value: gap.total, bold: true },
+  ];
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">§6 RE ↔ ReOI Gap Decomposition (S-15.2)</h3>
+        <p className="text-xs text-slate-500">Exact four-component decomposition of the V_RE − V_ReOI valuation gap.</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="px-3 py-2 text-left text-slate-500 font-medium">Component</th>
+              <th className="px-3 py-2 text-right text-slate-500 font-medium">₹ Crore</th>
+              <th className="px-3 py-2 text-right text-slate-500 font-medium">% of total</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.map((r) => (
+              <tr key={r.label} className={r.bold ? "bg-slate-50 font-semibold" : "hover:bg-slate-50"}>
+                <td className={`px-3 py-2 ${r.label === "Dominant driver" || r.label === gap.dominant_driver.replace(/_/g, " ") ? "text-indigo-700" : "text-slate-700"}`}>
+                  {r.label}
+                  {r.label.replace(/ /g, "_").toLowerCase() === gap.dominant_driver ? " ★" : ""}
+                </td>
+                <td className="px-3 py-2 text-right font-mono">
+                  {r.value != null ? `₹${r.value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}
+                </td>
+                <td className="px-3 py-2 text-right font-mono text-slate-500">
+                  {gap.total !== 0 && r.value != null ? `${((r.value / gap.total) * 100).toFixed(1)}%` : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+        <p className="text-xs font-semibold text-indigo-700">Primary driver: <span className="font-bold">{gap.dominant_driver.replace(/_/g, " ")}</span></p>
+        <p className="text-xs text-indigo-600 mt-1">
+          Under clean surplus, V_RE ≡ V_ReOI. The gap arises from: dirty surplus (OCI bypass), NFO timing,
+          different discount rates (ke vs kw) in terminal and explicit periods.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Section 6B Per-Share (S-16.3) ───────────────────────────── */
+function Section6BPanel({ s6b }: { s6b: Section6BResult }) {
+  const fmt = (v: number | null) => v != null ? `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 1 })}` : "—";
+  const pctFmt = (v: number | null) => v != null ? `${(v * 100).toFixed(1)}%` : "—";
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">§6B Per-Share &amp; Market-Implied Checks (S-16.1–16.3)</h3>
+        <p className="text-xs text-slate-500">
+          {s6b.status === "empty" && "Share count unavailable from canonical data. Provide shares_outstanding in config."}
+          {s6b.status === "partial" && `Shares derived: ${s6b.shares?.toLocaleString("en-IN")} Cr (${s6b.shares_source}). Provide market_price in config for full analytics.`}
+          {s6b.status === "full" && `Full market-implied analytics. Shares: ${s6b.shares?.toLocaleString("en-IN")} Cr.`}
+        </p>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="px-3 py-2 text-left text-slate-500 font-medium">Metric</th>
+              <th className="px-3 py-2 text-right text-slate-500 font-medium">Value</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            <tr><td className="px-3 py-2 text-slate-700">Shares outstanding</td><td className="px-3 py-2 text-right font-mono">{s6b.shares != null ? `${s6b.shares.toLocaleString("en-IN")} Cr` : "—"}</td></tr>
+            <tr><td className="px-3 py-2 text-slate-700">Share count source</td><td className="px-3 py-2 text-right text-xs text-slate-500 max-w-xs">{s6b.shares_source || "—"}</td></tr>
+            <tr><td className="px-3 py-2 text-slate-700">Share count confidence</td><td className="px-3 py-2 text-right"><span className={`px-1.5 py-0.5 rounded text-xs font-medium ${s6b.shares_confidence === "HIGH" ? "bg-emerald-50 text-emerald-700" : s6b.shares_confidence === "MEDIUM" ? "bg-blue-50 text-blue-700" : s6b.shares_confidence === "LOW" ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>{s6b.shares_confidence}</span></td></tr>
+            <tr className="font-semibold bg-indigo-50"><td className="px-3 py-2 text-indigo-700">RE intrinsic per share</td><td className="px-3 py-2 text-right font-mono text-indigo-800">{fmt(s6b.intrinsic_per_share)}</td></tr>
+            <tr><td className="px-3 py-2 text-slate-700">Market price</td><td className="px-3 py-2 text-right font-mono">{fmt(s6b.market_price)}</td></tr>
+            <tr><td className="px-3 py-2 text-slate-700">Market capitalisation</td><td className="px-3 py-2 text-right font-mono">{s6b.market_cap != null ? `₹${s6b.market_cap.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr` : "—"}</td></tr>
+            <tr><td className="px-3 py-2 text-slate-700">Margin of safety</td><td className={`px-3 py-2 text-right font-mono font-semibold ${s6b.margin_of_safety != null && s6b.margin_of_safety > 0 ? "text-emerald-700" : "text-red-700"}`}>{pctFmt(s6b.margin_of_safety)}</td></tr>
+            <tr><td className="px-3 py-2 text-slate-700">V(primary) / Market cap</td><td className="px-3 py-2 text-right font-mono">{pctFmt(s6b.v_primary_over_mcap)}</td></tr>
+            <tr><td className="px-3 py-2 text-slate-700">Implied terminal growth g*</td><td className="px-3 py-2 text-right font-mono">{pctFmt(s6b.implied_g)}</td></tr>
+            <tr><td className="px-3 py-2 text-slate-700">Implied ke</td><td className="px-3 py-2 text-right font-mono">{pctFmt(s6b.implied_ke)}</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      {s6b.mos_interpretation && (
+        <div className="bg-slate-50 rounded-lg p-3 text-xs text-slate-600">{s6b.mos_interpretation}</div>
+      )}
+      {s6b.implied_g_note && (
+        <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">{s6b.implied_g_note}</div>
+      )}
+      {s6b.implied_ke_note && (
+        <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">{s6b.implied_ke_note}</div>
+      )}
+      {s6b.dilution_note && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
+          <span className="font-semibold">Dilution note: </span>{s6b.dilution_note}
+        </div>
+      )}
+      {s6b.status !== "full" && (
+        <div className="bg-slate-100 rounded-lg p-3 text-xs text-slate-500">
+          To complete this section, set <code className="bg-white px-1 rounded">market_price</code> in analysis configuration.
+        </div>
+      )}
     </div>
   );
 }
