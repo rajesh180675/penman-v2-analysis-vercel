@@ -1,14 +1,14 @@
 import { useState, useMemo } from "react";
-import { RecastPeriod, ForecastScenario, ForecastPeriod, FADE_PARAMS, NP_BENCHMARKS } from "../engine/types";
+import { RecastPeriod, ForecastScenario, ForecastPeriod, FADE_PARAMS, NP_BENCHMARKS, EngineConfig, ke_from_config } from "../engine/types";
 import { buildScenario, sensitivityAnalysis } from "../engine/forecastingEngine";
-import { computeValuation } from "../engine/PenmanNissimEngine";
+import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   LineChart, Line, Legend, ReferenceLine, Cell,
 } from "recharts";
 import { runMonteCarlo } from "../engine/monteCarloClient";
 
-interface Props { data: RecastPeriod[]; config: { risk_free_rate: number; equity_risk_premium: number; statutory_tax_rate: number; separation_confidence_threshold: number } }
+interface Props { data: RecastPeriod[]; config: EngineConfig }
 
 const pct = (v:number,d=1) => (v*100).toFixed(d)+"%";
 const cr  = (v:number) => v.toLocaleString("en-IN",{maximumFractionDigits:0});
@@ -33,8 +33,7 @@ function makeDefaultScenario(
 }
 
 export default function ForecastReport({data,config}:Props) {
-  const ke  = config.risk_free_rate + config.equity_risk_premium;
-  const kw  = config.risk_free_rate;
+  const keBase = ke_from_config(config);
 
   const latest = data[data.length-1];
   const latestRatios = latest?.ratios;
@@ -62,8 +61,7 @@ export default function ForecastReport({data,config}:Props) {
   const fadeATO = fadeArr(baseATO, FADE_ATO, NP_ATO, horizonT);
   const fadeSG  = fadeArr(baseSG, FADE_SG, NP_SG, horizonT);
 
-  const [ke_inp,  setKe]  = useState(+(ke*100).toFixed(1));
-  const [kw_inp,  setKw]  = useState(+(kw*100).toFixed(1));
+  const [ke_inp,  setKe]  = useState(+(keBase*100).toFixed(1));
   const [g_inp,   setG]   = useState(5.0);
   const [horizon, setH]   = useState(5);
   const [pBull, setPBull] = useState(0.25);
@@ -73,8 +71,15 @@ export default function ForecastReport({data,config}:Props) {
   const [mcProgress, setMcProgress] = useState(0);
   const [mcOut, setMcOut] = useState<any | null>(null);
 
+  const kwDerived = useMemo(() => {
+    if (data.length < 2) return config.risk_free_rate;
+    const cur = data[data.length - 1];
+    const prev = data[data.length - 2];
+    return deriveKwFromStructure(cur, prev, ke_inp / 100, config.risk_free_rate, config);
+  }, [data, ke_inp, config]);
+
   const scenarios = useMemo(():ForecastScenario[]=>{
-    const kei=ke_inp/100, kwi=kw_inp/100;
+    const kei=ke_inp/100, kwi=kwDerived;
     const bull = makeDefaultScenario(latest,"bull",kei,kwi,
       fadeSG.map(v=>v*1.5).slice(0,horizon),
       fadePM.map(v=>v*1.2).slice(0,horizon),
@@ -108,11 +113,11 @@ export default function ForecastReport({data,config}:Props) {
       } as RecastPeriod))];
 
       try {
-        sc.valuationResult = computeValuation(fakePeriods, kei, kwi, g_inp/100, config as any);
+        sc.valuationResult = computeValuation(fakePeriods, kei, kwi, g_inp/100, config);
       } catch(_e){/**/}
       return sc;
     });
-  },[latest,ke_inp,kw_inp,g_inp,horizon,pBull,pBase,pBear]);
+  },[latest,ke_inp,kwDerived,g_inp,horizon,pBull,pBase,pBear,fadeSG,fadePM,fadeATO,config]);
 
   const baseScenario = scenarios.find(s=>s.name==="base");
   const fcPeriods = baseScenario?.periods ?? [];
@@ -121,7 +126,7 @@ export default function ForecastReport({data,config}:Props) {
   const baseV = baseScenario?.valuationResult?.V_RE_CV3 ?? 0;
   const sensResults = useMemo(()=>sensitivityAnalysis(
     baseV,
-    {ke:ke_inp/100,kw:kw_inp/100,g:g_inp/100,core_pm:basePM,ato:baseATO,sales_growth:baseSG},
+    {ke:ke_inp/100,kw:kwDerived,g:g_inp/100,core_pm:basePM,ato:baseATO,sales_growth:baseSG},
     (p)=>{
       try {
         if (!baseScenario?.periods) return baseV;
@@ -131,11 +136,11 @@ export default function ForecastReport({data,config}:Props) {
           is:{...latest.is,CNI:fp.CNI_f,OI:fp.OI_f,Sales:fp.Sales_f,NFE:fp.NFE_f},
           cu:latest.cu,cf:latest.cf,
         } as RecastPeriod))];
-        const r = computeValuation(fakePeriods,p.ke,p.kw,p.g,config as any);
+        const r = computeValuation(fakePeriods,p.ke,p.kw,p.g,config);
         return r.V_RE_CV3;
       } catch(_e){return baseV;}
     }
-  ),[baseV,baseScenario,latest,ke_inp,kw_inp,g_inp,basePM,baseATO,baseSG]);
+  ),[baseV,baseScenario,latest,ke_inp,kwDerived,g_inp,basePM,baseATO,baseSG,config]);
 
   const chartFade = Array.from({length:horizonT},((_,i)=>({
     year:`Y+${i+1}`,
@@ -170,7 +175,7 @@ export default function ForecastReport({data,config}:Props) {
           horizonT: horizon,
           paramDistributions: {
             ke: { mean: ke_inp / 100, std: 0.01 },
-            kw: { mean: kw_inp / 100, std: 0.008 },
+            kw: { mean: kwDerived, std: 0.008 },
             g: { mean: g_inp / 100, std: 0.01 },
           },
         },
@@ -205,7 +210,6 @@ export default function ForecastReport({data,config}:Props) {
         <div className="flex flex-wrap gap-4 items-end">
           {[
             {label:"ke % (Cost of Equity)",val:ke_inp,set:setKe},
-            {label:"kw % (WACC)",val:kw_inp,set:setKw},
             {label:"g % (Terminal Growth)",val:g_inp,set:setG},
           ].map(({label,val,set})=>(
             <div key={label}>
@@ -215,6 +219,12 @@ export default function ForecastReport({data,config}:Props) {
                 className="w-28 px-3 py-2 border border-slate-300 rounded-lg text-sm"/>
             </div>
           ))}
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">kw % (Derived, S-9.4)</label>
+            <div className="w-28 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-700 font-mono font-semibold">
+              {(kwDerived * 100).toFixed(2)}
+            </div>
+          </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Horizon (years)</label>
             <select value={horizon} onChange={e=>setH(Number(e.target.value))}
