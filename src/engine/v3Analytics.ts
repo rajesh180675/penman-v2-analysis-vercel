@@ -365,6 +365,8 @@ export function detectPeriodEventFlags(
 ══════════════════════════════════════════════════════════════════ */
 
 export interface TerminalAnchorResult {
+  method: "RE_T" | "RE_T1_growth" | "3Y_median";
+  label: string;
   RE_anchor_1: number; // as-reported latest
   RE_anchor_2: number | null; // prior + growth
   RE_anchor_3: number | null; // 3Y median
@@ -374,6 +376,17 @@ export interface TerminalAnchorResult {
   selected_RE_anchor: number;
   selected_ReOI_anchor: number;
   anchor_method: string;
+  g_applied: number;
+  CV3_value: number;
+  V_total: number;
+  TV_share: number | null;
+  TV_grade: TVGrade;
+  RE_value: number;
+  reference_RE_T: number;
+  reference_V: number;
+  V_as_reported: number;
+  TV_share_raw: number | null;
+  TV_grade_raw: TVGrade;
   terminal_event_flags: EventFlag[];
   pm_outlier_flag: "OK" | "WARNING" | "CRITICAL";
   g_terminal: number;
@@ -455,6 +468,8 @@ export function selectTerminalAnchor(
   let selected_RE_anchor: number;
   let selected_ReOI_anchor: number;
   let anchor_method: string;
+  let method: TerminalAnchorResult["method"];
+  let label: string;
 
   const isCriticallyContaminated =
     lastFlags.includes("PM_OUTLIER_CRITICAL") ||
@@ -464,25 +479,49 @@ export function selectTerminalAnchor(
     selected_RE_anchor = RE_anchor_1;
     selected_ReOI_anchor = ReOI_anchor_1;
     anchor_method = "RE_T (as reported)";
+    method = "RE_T";
+    label = "RE_T (as reported)";
   } else if (isCriticallyContaminated) {
     // Fall back to prior + growth
     selected_RE_anchor = RE_anchor_2 ?? RE_anchor_1;
     selected_ReOI_anchor = ReOI_anchor_2 ?? ReOI_anchor_1;
     anchor_method = RE_anchor_2 != null ? "RE_(T-1) + growth" : "RE_T (fallback)";
+    method = RE_anchor_2 != null ? "RE_T1_growth" : "RE_T";
+    label = RE_anchor_2 != null ? "RE_(T-1) + growth" : "RE_T (fallback)";
 
     // If prior period is ALSO critically contaminated, use 3Y median
     if (prevFlags.includes("PM_OUTLIER_CRITICAL") && RE_anchor_3 != null) {
       selected_RE_anchor = RE_anchor_3;
       selected_ReOI_anchor = ReOI_anchor_3 ?? selected_ReOI_anchor;
       anchor_method = "3Y median RE";
+      method = "3Y_median";
+      label = "3Y median RE";
     }
   } else {
     selected_RE_anchor = RE_anchor_1;
     selected_ReOI_anchor = ReOI_anchor_1;
     anchor_method = "RE_T (as reported, with warnings)";
+    method = "RE_T";
+    label = "RE_T (as reported)";
   }
 
+  const T = Math.max(1, n - 1);
+  const CSE0 = periods[0]?.bs.CSE ?? 0;
+  const sumPVRE = periods.slice(1).reduce((acc, p, idx) => {
+    const re = p.ri?.RE ?? 0;
+    return acc + re / Math.pow(1 + ke, idx + 1);
+  }, 0);
+  const cvFromAnchor = (anchor: number) => (ke - g_terminal > 0 ? (anchor * (1 + g_terminal)) / (ke - g_terminal) : 0);
+  const CV3_value = cvFromAnchor(selected_RE_anchor);
+  const referenceCV3 = cvFromAnchor(RE_anchor_1);
+  const V_total = CSE0 + sumPVRE + CV3_value / Math.pow(1 + ke, T);
+  const V_as_reported = CSE0 + sumPVRE + referenceCV3 / Math.pow(1 + ke, T);
+  const tvGuarded = classifyTVShare(V_total, CSE0 + sumPVRE);
+  const tvRaw = classifyTVShare(V_as_reported, CSE0 + sumPVRE);
+
   return {
+    method,
+    label,
     RE_anchor_1,
     RE_anchor_2,
     RE_anchor_3,
@@ -492,6 +531,17 @@ export function selectTerminalAnchor(
     selected_RE_anchor,
     selected_ReOI_anchor,
     anchor_method,
+    g_applied: g_terminal,
+    CV3_value,
+    V_total,
+    TV_share: tvGuarded.tv_share,
+    TV_grade: tvGuarded.tv_grade,
+    RE_value: selected_RE_anchor,
+    reference_RE_T: RE_anchor_1,
+    reference_V: V_as_reported,
+    V_as_reported,
+    TV_share_raw: tvRaw.tv_share,
+    TV_grade_raw: tvRaw.tv_grade,
     terminal_event_flags,
     pm_outlier_flag,
     g_terminal,
