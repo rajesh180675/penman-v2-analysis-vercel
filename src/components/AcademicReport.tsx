@@ -63,6 +63,91 @@ function avg(vals: Array<number | null | undefined>): number | null {
 }
 
 
+
+function computeSection6BLocal(params: {
+  primaryValue: number;
+  ke: number;
+  g: number;
+  cse0: number;
+  pvRE: number;
+  reAnchor: number;
+  explicitPeriods: number;
+  periods: RecastPeriod[];
+  shares: number | null;
+  marketPrice: number | null | undefined;
+  sharesSource: string;
+}) {
+  const { primaryValue, ke, g, cse0, pvRE, reAnchor, explicitPeriods, periods, shares, marketPrice, sharesSource } = params;
+  if (!shares || shares <= 0) return { status: "shares_unavailable" as const };
+
+  const intrinsic = primaryValue / shares;
+  if (marketPrice == null || marketPrice <= 0) {
+    return {
+      status: "market_price_required" as const,
+      shares,
+      sharesSource,
+      intrinsic,
+      prompt: `Intrinsic value per share: ₹${intrinsic.toFixed(1)}. Enter market price to compute margin of safety and implied values.`,
+    };
+  }
+
+  const marketCap = marketPrice * shares;
+  const mos = (intrinsic - marketPrice) / marketPrice;
+
+  const vAtG = (gt: number) => {
+    if (gt >= ke - 0.001) return Number.POSITIVE_INFINITY;
+    const cv = reAnchor * (1 + gt) / (ke - gt);
+    return cse0 + pvRE + cv / Math.pow(1 + ke, explicitPeriods);
+  };
+
+  let impliedG: number | null = null;
+  let lo = -0.10;
+  let hi = ke - 0.005;
+  if (vAtG(hi) >= marketCap && vAtG(lo) <= marketCap) {
+    for (let i = 0; i < 100; i++) {
+      const mid = (lo + hi) / 2;
+      const vm = vAtG(mid);
+      impliedG = mid;
+      if (Math.abs(vm - marketCap) / Math.max(1, marketCap) < 0.001) break;
+      if (vm < marketCap) lo = mid;
+      else hi = mid;
+    }
+  }
+
+  const vAtKe = (ket: number) => {
+    if (ket <= g + 0.001) return Number.POSITIVE_INFINITY;
+    const pv = periods.slice(1).reduce((acc, p, idx) => acc + (p.ri?.RE ?? 0) / Math.pow(1 + ket, idx + 1), 0);
+    const cv = reAnchor * (1 + g) / (ket - g);
+    return cse0 + pv + cv / Math.pow(1 + ket, explicitPeriods);
+  };
+
+  let impliedKe: number | null = null;
+  let keLo = g + 0.005;
+  let keHi = 0.25;
+  if (vAtKe(keLo) >= marketCap) {
+    for (let i = 0; i < 100; i++) {
+      const mid = (keLo + keHi) / 2;
+      const vm = vAtKe(mid);
+      impliedKe = mid;
+      if (Math.abs(vm - marketCap) / Math.max(1, marketCap) < 0.001) break;
+      if (vm > marketCap) keLo = mid;
+      else keHi = mid;
+    }
+  }
+
+  return {
+    status: "full" as const,
+    shares,
+    sharesSource,
+    intrinsic,
+    marketPrice,
+    marketCap,
+    mos,
+    impliedG,
+    impliedKe,
+  };
+}
+
 function median(vals: Array<number | null | undefined>): number | null {
   const f = vals.filter((v): v is number => v != null && Number.isFinite(v)).sort((a, b) => a - b);
   if (!f.length) return null;
@@ -664,6 +749,19 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const inferredFaceValue = pickFaceValue(shareCapital, sharesFromConfig);
   const inferredShares = shareCapital != null && inferredFaceValue != null ? shareCapital / inferredFaceValue : null;
   const sharesToUse = sharesFromConfig ?? inferredShares;
+  const local6B = computeSection6BLocal({
+    primaryValue: primaryValuation,
+    ke,
+    g: gBase,
+    cse0: valuation.CSE0,
+    pvRE: valuation.pvRE,
+    reAnchor: v3TerminalAnchor?.RE_value ?? (latestRe ?? 0),
+    explicitPeriods: Math.max(explicitHorizonYears, 1),
+    periods: data,
+    shares: sharesToUse,
+    marketPrice: config.market_price,
+    sharesSource: sharesFromConfig != null ? "user input" : (inferredShares != null ? `share capital ÷ FV ₹${num(inferredFaceValue,0)}` : "unavailable"),
+  });
 
   return (
     <div className="space-y-4">
@@ -765,11 +863,19 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           <li>
             Valuation confidence: <b>{confidenceTier}</b> ({terminalFlagCount} terminal-period flags). Terminal-value dependence tier: <b>{tvGrade}</b> at <b>{pct(tvShare, 1)}</b>.
             {v3ConfidenceScore != null && (
-              <> — <b>V3 §14 Composite Confidence: {v3ConfidenceScore.toFixed(0)}/100 ({v3ConfidenceClass})</b>
+              <> — <b>Composite Confidence: {v3ConfidenceScore.toFixed(0)}/100 ({v3ConfidenceClass})</b>
               {v3TerminalAnchor && <> | Terminal anchor: <b>{v3TerminalAnchor.label}</b> (g = {pct(v3TerminalAnchor.g_applied)})</>}</>
             )}
           </li>
         </ul>
+        {v3Bundle?.crossSectionIssues?.length ? (
+          <div className="mt-3 text-xs text-amber-700">
+            <b>Consistency warnings:</b>
+            <ul className="list-disc pl-5 mt-1">
+              {v3Bundle.crossSectionIssues.map((issue, idx) => <li key={idx}>{issue}</li>)}
+            </ul>
+          </div>
+        ) : null}
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -911,6 +1017,36 @@ export default function AcademicReport({ data, config, rawData }: Props) {
         <p className="text-xs text-slate-500 mt-3">NOA-sensitive ratios (RNOA, Spread, ATO) use 5Y median to prevent denominator-driven explosions when NOA is near zero.</p>
       </section>
 
+      {v3Bundle?.versionChangeLog.length ? (
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="font-bold text-lg text-slate-800 mb-3">2.6A) Methodology Changes from Prior Version</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-2 py-1 text-left">Variable</th>
+                <th className="px-2 py-1 text-right">Prior</th>
+                <th className="px-2 py-1 text-right">Current</th>
+                <th className="px-2 py-1 text-right">Δ</th>
+                <th className="px-2 py-1 text-left">Reason</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {v3Bundle.versionChangeLog.map((c, i) => (
+                <tr key={`${c.variable}_${i}`}>
+                  <td className="px-2 py-1">{c.variable}</td>
+                  <td className="px-2 py-1 text-right">{num(c.old_value, 4)}</td>
+                  <td className="px-2 py-1 text-right">{num(c.new_value, 4)}</td>
+                  <td className="px-2 py-1 text-right">{pct(c.delta_pct, 1)}</td>
+                  <td className="px-2 py-1 text-amber-700">{c.reason}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      ) : null}
+
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">3A) NOA denominator diagnostics (all periods)</h2>
         <p className="text-sm text-slate-700 mb-3">Flag rule: |NOA| &lt; 10% of Sales. Flagged periods: <b>{noaFlagCount}</b> / {noaDiagnostics.length}.</p>
@@ -975,33 +1111,47 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             </tbody>
           </table>
         </div>
-        {largestNoaBreakdown && (
-          <div className="mt-4">
-            <div className="text-xs font-semibold text-slate-600 mb-2">Largest-shift OA decomposition ({largestNoaBreakdown.period.slice(0, 10)})</div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="px-2 py-1 text-right">ΔPPE</th>
-                    <th className="px-2 py-1 text-right">ΔInventory</th>
-                    <th className="px-2 py-1 text-right">ΔReceivables</th>
-                    <th className="px-2 py-1 text-right">ΔGoodwill</th>
-                    <th className="px-2 py-1 text-right">ΔOther OA</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="px-2 py-1 text-right">₹{num(largestNoaBreakdown.deltaPPE)} Cr</td>
-                    <td className="px-2 py-1 text-right">₹{num(largestNoaBreakdown.deltaInventory)} Cr</td>
-                    <td className="px-2 py-1 text-right">₹{num(largestNoaBreakdown.deltaReceivables)} Cr</td>
-                    <td className="px-2 py-1 text-right">₹{num(largestNoaBreakdown.deltaGoodwill)} Cr</td>
-                    <td className="px-2 py-1 text-right">₹{num(largestNoaBreakdown.deltaOtherOA)} Cr</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+        {v3Bundle?.oaDecomposition?.length ? (
+          <div className="mt-4 space-y-4">
+            <div className="text-xs font-semibold text-slate-600 mb-2">OA decomposition for selected structural periods</div>
+            {v3Bundle.oaDecomposition.map((d) => (
+              <div key={d.period_end} className="border border-slate-200 rounded-lg p-3">
+                <div className="text-xs font-semibold text-slate-700 mb-2">{d.period_end.slice(0, 10)}</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="px-2 py-1 text-right">ΔPPE</th>
+                        <th className="px-2 py-1 text-right">ΔROU</th>
+                        <th className="px-2 py-1 text-right">ΔInventory</th>
+                        <th className="px-2 py-1 text-right">ΔReceivables</th>
+                        <th className="px-2 py-1 text-right">ΔGoodwill</th>
+                        <th className="px-2 py-1 text-right">ΔIntangibles</th>
+                        <th className="px-2 py-1 text-right">ΔCWIP</th>
+                        <th className="px-2 py-1 text-right">ΔDTA</th>
+                        <th className="px-2 py-1 text-right">ΔOther OA</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="px-2 py-1 text-right">₹{num(d.components.deltaPPE)} Cr</td>
+                        <td className="px-2 py-1 text-right">₹{num(d.components.deltaROU)} Cr</td>
+                        <td className="px-2 py-1 text-right">₹{num(d.components.deltaInventory)} Cr</td>
+                        <td className="px-2 py-1 text-right">₹{num(d.components.deltaReceivables)} Cr</td>
+                        <td className="px-2 py-1 text-right">₹{num(d.components.deltaGoodwill)} Cr</td>
+                        <td className="px-2 py-1 text-right">₹{num(d.components.deltaIntangibles)} Cr</td>
+                        <td className="px-2 py-1 text-right">₹{num(d.components.deltaCWIP)} Cr</td>
+                        <td className="px-2 py-1 text-right">₹{num(d.components.deltaDTA)} Cr</td>
+                        <td className="px-2 py-1 text-right">₹{num(d.components.deltaOtherOA)} Cr</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                {d.interpretation && <p className="text-xs text-slate-500 mt-2">{d.interpretation}</p>}
+              </div>
+            ))}
           </div>
-        )}
+        ) : null}
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -1041,11 +1191,12 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             net other accrual proxy <b>₹{num(accrualOtherProxy)} Cr</b>; total accrual proxy <b>₹{num(accrualTotalProxy)} Cr</b>.
           </li>
           <li>
-            Cumulative dirty-surplus check Σ(ΔCSE − CNI + d) = <b>₹{num(cumulativeDirtySurplus)} Cr</b>.
-            {v3DirtySurplus && (
-              <> V3 §6.4: cumulative DS = <b>₹{num(v3DirtySurplus.cumulative_dirty_surplus)} Cr</b>
-                ({pct(v3DirtySurplus.cum_ds_pct)} of latest equity
-                {v3DirtySurplus.clean_surplus_compromised ? " ⚠ CLEAN SURPLUS COMPROMISED" : " ✓ intact"}).</>
+            Cumulative dirty-surplus check Σ(ΔCSE − CNI + d) = <b>₹{num(v3Bundle?.dirtySurplusFramework.cumulative ?? cumulativeDirtySurplus)} Cr</b>
+            ({pct(v3Bundle?.dirtySurplusFramework.pct_cse ?? null)} of latest equity).
+            {v3Bundle?.dirtySurplusFramework && (
+              <> Decomposition — Structural events: <b>₹{num(v3Bundle.dirtySurplusFramework.by_category.structural_events)} Cr</b>,
+              Accounting transitions: <b>₹{num(v3Bundle.dirtySurplusFramework.by_category.accounting_transitions)} Cr</b>,
+              Steady-state: <b>₹{num(v3Bundle.dirtySurplusFramework.by_category.steady_state)} Cr</b>.</>
             )}
           </li>
         </ul>
@@ -1061,6 +1212,8 @@ export default function AcademicReport({ data, config, rawData }: Props) {
                 <th className="px-2 py-1 text-left">Period</th>
                 <th className="px-2 py-1 text-right">BS accrual ratio</th>
                 <th className="px-2 py-1 text-left">Flag</th>
+                <th className="px-2 py-1 text-left">Regime</th>
+                <th className="px-2 py-1 text-left">Interpretation</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1068,7 +1221,17 @@ export default function AcademicReport({ data, config, rawData }: Props) {
                 <tr key={row.period}>
                   <td className="px-2 py-1">{row.period.slice(0, 10)}</td>
                   <td className="px-2 py-1 text-right">{pct(row.accrual, 1)}</td>
-                  <td className="px-2 py-1">{row.accrual != null && Math.abs(row.accrual) > 0.1 ? "⚠️ >10%" : "OK"}</td>
+                  <td className="px-2 py-1">{row.accrual != null && Math.abs(row.accrual) > 0.1 ? `⚠️ ${row.accrual > 0 ? ">" : "<"}10%` : "OK"}</td>
+                  <td className="px-2 py-1">{data.find((d) => d.period_end === row.period)?.ratios?.accrual_regime ?? "NORMAL"}</td>
+                  <td className="px-2 py-1 text-slate-600">{(() => {
+                    const p = data.find((d) => d.period_end === row.period);
+                    const regime = p?.ratios?.accrual_regime;
+                    if (regime === "QUALITY_ACCRUAL") return "Earnings persistence concern.";
+                    if (regime === "GROWTH_ACCRUAL") return "Accruals consistent with growth in operating assets.";
+                    if (regime === "ASSET_DISPOSAL") return "Asset reduction / disposal period.";
+                    if (row.accrual == null) return "Accrual ratio undefined.";
+                    return "";
+                  })()}</td>
                 </tr>
               ))}
             </tbody>
@@ -1143,7 +1306,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           </table>
         </div>
         <p className="text-xs text-slate-500 mt-3">
-          Interpretation: when separation confidence is low, the RE line should be treated as primary and ReOI as corroborative only. Identity check (CV3): |RE−ReOI| = ₹{num(reoiIdentityGap)} Cr ({pct(reoiIdentityGapPct)}). Legacy rf-based ReOI CV3 was ₹{num(valuationLegacyKw.V_ReOI_CV03)} Cr.
+          Interpretation: when separation confidence is low, the RE line should be treated as primary and ReOI as corroborative only. Identity check (CV3): |RE−ReOI| = ₹{num(reoiIdentityGap)} Cr ({pct(reoiIdentityGapPct)}). Gap decomposition — Dirty surplus PV: ₹{num(v3Bundle?.reReoiGapDecomposition.dirty_surplus)} Cr, NFO timing: ₹{num(v3Bundle?.reReoiGapDecomposition.nfo_timing)} Cr, TV divergence: ₹{num(v3Bundle?.reReoiGapDecomposition.tv_divergence)} Cr, Explicit-period discounting: ₹{num(v3Bundle?.reReoiGapDecomposition.explicit_period_discounting)} Cr, Residual: ₹{num(v3Bundle?.reReoiGapDecomposition.residual)} Cr. Primary driver: {v3Bundle?.reReoiGapDecomposition.dominant_driver ?? "—"}. Legacy rf-based ReOI CV3 was ₹{num(valuationLegacyKw.V_ReOI_CV03)} Cr.
         </p>
         <p className="text-xs text-slate-500 mt-1">
           Explicit residual-income horizon used in valuation: <b>{explicitHorizonYears}</b> yearly steps. Terminal-value share of guarded RE CV3: <b>{pct(tvShare, 1)}</b> ({tvGrade}). Eq.16 residual (latest): <b>{eq16ResidualPp != null ? `${eq16ResidualPp.toFixed(2)}pp` : "—"}</b> [{eq16Tier}].
@@ -1253,25 +1416,33 @@ export default function AcademicReport({ data, config, rawData }: Props) {
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">6B) Per-share and market-implied checks</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <MiniBox label="RE intrinsic per share" value={valuation.perShare?.intrinsic_re_per_share != null ? `₹${num(valuation.perShare.intrinsic_re_per_share, 2)}` : "—"} />
-          <MiniBox label="Margin of safety vs market" value={pct(valuation.perShare?.margin_of_safety_re, 1)} />
-          <MiniBox label="Implied growth g*" value={pct(valuation.perShare?.implied_growth_rate, 2)} />
-          <MiniBox label="Market cap input" value={marketCap != null ? `₹${num(marketCap)} Cr` : "—"} />
-          <MiniBox label="Market price input" value={config.market_price != null ? `₹${num(config.market_price, 2)}` : "—"} />
-          <MiniBox label="Shares outstanding" value={sharesToUse != null ? num(sharesToUse, 0) : "—"} />
-        </div>
-        {(config.market_price == null || sharesToUse == null) && (
-          <p className="text-xs text-amber-700 mt-3">
-            Section 6B requires market price input and shares outstanding to compute per-share value, margin of safety, and implied growth.
-          </p>
+        {local6B.status === "shares_unavailable" && (
+          <p className="text-sm text-amber-700">Share count could not be derived from available data. Enter shares outstanding and market price to complete this section.</p>
         )}
-        {inferredShares != null && inferredFaceValue != null && (
-          <p className="text-xs text-slate-600 mt-2">
-            Shares outstanding derived from share capital ₹{num(shareCapital)} Cr ÷ face value ₹{num(inferredFaceValue, 0)} = {num(inferredShares, 0)} Cr. Verify against latest filing.
-          </p>
+        {local6B.status !== "shares_unavailable" && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-slate-100">
+                <tr><td className="px-2 py-1">RE intrinsic per share</td><td className="px-2 py-1 text-right">{local6B.status !== "shares_unavailable" ? `₹${num(local6B.intrinsic, 1)}` : "—"}</td></tr>
+                <tr><td className="px-2 py-1">Market price</td><td className="px-2 py-1 text-right">{local6B.status === "full" ? `₹${num(local6B.marketPrice, 1)}` : "—"}</td></tr>
+                <tr><td className="px-2 py-1">Margin of safety</td><td className="px-2 py-1 text-right">{pct(local6B.status === "full" ? local6B.mos : null, 1)}</td></tr>
+                <tr><td className="px-2 py-1">Implied growth g*</td><td className="px-2 py-1 text-right">{pct(local6B.status === "full" ? local6B.impliedG : null, 2)}</td></tr>
+                <tr><td className="px-2 py-1">Implied ke</td><td className="px-2 py-1 text-right">{pct(local6B.status === "full" ? local6B.impliedKe : null, 2)}</td></tr>
+                <tr><td className="px-2 py-1">Market cap</td><td className="px-2 py-1 text-right">{local6B.status === "full" ? `₹${num(local6B.marketCap)} Cr` : "—"}</td></tr>
+                <tr><td className="px-2 py-1">Shares outstanding</td><td className="px-2 py-1 text-right">{local6B.status !== "shares_unavailable" ? `${num(local6B.shares, 0)} Cr` : "—"}</td></tr>
+              </tbody>
+            </table>
+          </div>
         )}
-        <p className="text-xs text-slate-500 mt-1">Diluted share count not available from balance-sheet data; material ESOP/warrant overhang may overstate per-share value.</p>
+        {local6B.status === "market_price_required" && (
+          <p className="text-xs text-amber-700 mt-3">{local6B.prompt}</p>
+        )}
+        {local6B.status === "full" && (
+          <p className="text-xs text-slate-600 mt-2">{local6B.mos > 0.2 ? "Substantial margin of safety." : local6B.mos > 0 ? "Modest margin of safety." : "Market price exceeds intrinsic estimate."}</p>
+        )}
+        {v3Bundle?.shareCount?.dilution_note && (
+          <p className="text-xs text-slate-500 mt-1">Dilution note: {v3Bundle.shareCount.dilution_note}</p>
+        )}
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -1317,16 +1488,16 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             10%, (iii) Beneish flag migration above -1.78, (iv) Altman Z' migration toward distress band.
           </p>
           <p>
-            <b>{companyId}-specific trigger — PM path</b>: PM is currently <b>{pct(latest.ratios?.PM)}</b>. If PM falls below <b>{pct((latest.ratios?.PM ?? 0) * 0.85, 0)}</b>,
-            re-underwrite with ke stress and steeper fade; below <b>{pct((latest.ratios?.PM ?? 0) * 0.7, 0)}</b>, valuation approaches lower sensitivity bounds.
+            <b>{companyId}-specific trigger — PM path</b>: PM is currently <b>{pct(latest.ratios?.PM)}</b>. Calibration base: <b>{pct(v3Bundle?.triggerCalibration.pm_base)}</b> ({v3Bundle?.triggerCalibration.pm_base_source ?? "latest"}). If PM falls below <b>{pct(v3Bundle?.triggerCalibration.pm_warning, 0)}</b>,
+            re-underwrite with ke stress and steeper fade; below <b>{pct(v3Bundle?.triggerCalibration.pm_critical, 0)}</b>, valuation approaches lower sensitivity bounds.
           </p>
           <p>
             <b>{companyId}-specific trigger — dividend sustainability</b>: Dividend vs cash FCF gap is <b>₹{num(dividendCashGap)} Cr</b>
             ({dividendCashGap > 0 ? `FA runway ~${num(faRunwayYears, 1)} years at current gap.` : "covered by cash FCF."}).
           </p>
           <p>
-            <b>{companyId}-specific trigger — capacity return realization</b>: Monitor whether RNOA remains above <b>{pct(Math.max(ke + 0.05, (latest.ratios?.RNOA ?? 0) * 0.5), 0)}</b> and RE above
-            <b> ₹{num(Math.max(ke * latest.bs.CSE * 0.05, (latestRe ?? 0) * 0.5))} Cr</b> (latest RE: <b>₹{num(latestRe)} Cr</b>).
+            <b>{companyId}-specific trigger — capacity return realization</b>: Monitor whether RNOA remains above <b>{pct(v3Bundle?.triggerCalibration.rnoa_threshold, 0)}</b> and RE above
+            <b> ₹{num(v3Bundle?.triggerCalibration.re_threshold)} Cr</b> (latest RE: <b>₹{num(latestRe)} Cr</b>).
           </p>
           <p>
             <b>Process recommendation</b>: update this report each filing cycle; monitor Eq.(4)/(7)/(15) residuals and mapping quality
