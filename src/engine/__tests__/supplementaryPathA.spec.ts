@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CanonicalOutputRegistry, ConsistencyViolation, computeDirtySurplus, detectPeriodEventFlags, calibrateMonitoringTriggers, firewallCheck } from "../v3Analytics";
+import { CanonicalOutputRegistry, ConsistencyViolation, computeDirtySurplus, detectPeriodEventFlags, calibrateMonitoringTriggers, firewallCheck, deriveShareCount, computeMarketImplied, decomposeReReOIGap, runCrossSectionAssertions } from "../v3Analytics";
 import { DEFAULT_CONFIG, RecastPeriod } from "../types";
 
 const mkPeriod = (year: number, pm: number, re: number, cse: number): RecastPeriod => ({
@@ -71,5 +71,61 @@ describe("Supplementary Path A controls", () => {
   it("detects audit marker leakage", () => {
     const violations = firewallCheck("Summary: V3 §14 Composite Confidence: 48/100 ✓ intact");
     expect(violations.length).toBeGreaterThan(0);
+  });
+
+
+  it("derives share count and computes market-implied analytics", () => {
+    const periods = [mkPeriod(2024, 0.25, 80, 1246), mkPeriod(2025, 0.27, 85, 1246)];
+    const r = new CanonicalOutputRegistry();
+    const share = deriveShareCount(periods, r, 90000);
+    expect(share.shares).not.toBeNull();
+    r.register("shares_outstanding", share.shares!, "test");
+    r.register("shares_source", share.source, "test");
+    const market = computeMarketImplied(r, {
+      V_primary: 90000,
+      ke: 0.13,
+      g_effective: 0.04,
+      CSE0: 50000,
+      pvRE: 20000,
+      explicit_periods: 1,
+      RE_anchor: 85,
+      periods,
+    }, 70, share.shares!);
+    expect(market.status).toBe("full");
+    expect(market.margin_of_safety).not.toBeUndefined();
+  });
+
+  it("decomposes RE-ReOI valuation gap and returns dominant driver", () => {
+    const periods = [mkPeriod(2023, 0.24, 70, 500), mkPeriod(2024, 0.25, 75, 560), mkPeriod(2025, 0.26, 80, 620)];
+    const out = decomposeReReOIGap(periods, {
+      V_RE_CV3: 1000,
+      V_ReOI_CV03: 800,
+      CSE0: 500,
+      pvRE: 200,
+      CV_RE: 300,
+      CV_ReOI: 220,
+      ke: 0.13,
+      kw: 0.10,
+    }, 0.04);
+    expect(out.total).toBeCloseTo(200, 8);
+    expect(out.dominant_driver.length).toBeGreaterThan(0);
+  });
+
+  it("flags cross-section inconsistency", () => {
+    const r = new CanonicalOutputRegistry();
+    r.register("primary_anchor_label", "RE_(T-1) + growth", "test");
+    r.register("tv_grade", "GRADE_B", "test");
+    r.register("g_effective", 0.05, "test");
+    r.register("pm_warning_threshold", 0.2, "test");
+    r.register("period_count", 6, "test");
+
+    const issues = runCrossSectionAssertions(r, {
+      header: "X",
+      section1: "Terminal anchor: 3Y median RE; g = 7.0%; TV GRADE_C",
+      section7: "If PM falls below 30%",
+      section6A1RowCount: 3,
+    });
+
+    expect(issues.length).toBeGreaterThan(0);
   });
 });
