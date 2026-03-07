@@ -9,7 +9,7 @@ import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimE
 import { evaluateGranularityChecklist } from "../engine/mappingAudit";
 import { generateValuationWorkbook } from "../engine/excelExport";
 import { buildProvenanceAuditRows } from "../engine/provenanceAudit";
-import { computeV3Analytics, classifyTVShare, V3AnalyticsBundle } from "../engine/v3Analytics";
+import { computeV3Analytics, V3AnalyticsBundle, computeAnchorTable } from "../engine/v3Analytics";
 
 interface Props {
   data: RecastPeriod[];
@@ -530,21 +530,24 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   // §14 V3 Composite Confidence Score
   const v3Bundle: V3AnalyticsBundle | null = (() => {
     try {
-      return computeV3Analytics(data, config, valuation.V_RE_CV3, valuation.V_ReOI_CV03, config.g_terminal_override);
+      return computeV3Analytics(data, config, valuation.V_RE_CV3, valuation.V_ReOI_CV03, config.g_terminal_override, kw);
     } catch { return null; }
   })();
   const v3ConfidenceScore = v3Bundle?.confidence.composite ?? null;
   const v3ConfidenceClass = v3Bundle?.confidence.classification ?? null;
-  const v3TVClass = classifyTVShare(valuation.V_RE_CV3, valuation.V_RE_CV1);
   const v3TerminalAnchor = v3Bundle?.anchorResult;
   const v3DirtySurplus = v3Bundle?.dirtySurplus;
 
-  const sensitivityKe = [0.09, 0.10, 0.11, 0.13, 0.15];
+  const sensitivityKe = [Math.max(0.05, ke - 0.04), Math.max(0.05, ke - 0.02), ke, ke + 0.02];
   // S-9.7: g columns must be strictly ascending (monotone)
-  const sensitivityG = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06].filter(gv => gv < ke - 0.005);
+  const gBase = v3TerminalAnchor?.g_applied ?? g;
+  const sensitivityG = [Math.max(0.01, gBase - 0.02), Math.max(0.01, gBase - 0.01), gBase]
+    .filter((gv, i, arr) => gv < ke - 0.005 && arr.indexOf(gv) === i)
+    .sort((a, b) => a - b);
+  const matrixREAnchor = v3TerminalAnchor?.RE_value;
   const sensitivityMatrix = sensitivityKe.map((keCase) => ({
     ke: keCase,
-    values: sensitivityG.map((gCase) => computeValuation(data, keCase, kw, gCase, config).V_RE_CV3),
+    values: sensitivityG.map((gCase) => computeValuation(data, keCase, kw, gCase, config, matrixREAnchor).V_RE_CV3),
   }));
 
   const marketCap = config.market_price != null && config.shares_outstanding != null
@@ -647,18 +650,13 @@ export default function AcademicReport({ data, config, rawData }: Props) {
     + (Math.abs(eq16ResidualPp ?? 0) > 15 ? 1 : 0)
     + ((reoiIdentityGapPct ?? 0) > 0.2 ? 1 : 0);
   const confidenceTier = terminalFlagCount >= 3 ? "structurally compromised" : terminalFlagCount === 2 ? "multiple anomalies" : terminalFlagCount === 1 ? "one anomaly" : "clean";
-  const explicitPV = valuation.V_RE_CV3 - ((valuation.CV_RE / Math.pow(1 + valuation.ke, explicitHorizonYears)) || 0);
-  const reAlt1 = rePrev != null ? rePrev * (1 + g) : latestRe;
-  const reAlt2 = median(reSeriesVals.slice(-4, -1));
-  const reAlt3 = latestRe;
-  const reToValue = (anchor: number | null) => anchor == null ? null : explicitPV + (anchor / Math.max(valuation.ke - g, 0.02)) / Math.pow(1 + valuation.ke, explicitHorizonYears);
-  const vReported = reToValue(reAlt3);
-  const vAlt1 = reToValue(reAlt1);
-  const vAlt2 = reToValue(reAlt2);
   const tvContaminated = terminalReAnomaly && ((latestDiag?.flags.length ?? 0) > 0);
-  const primaryValuation = tvContaminated ? vAlt1 : valuation.V_RE_CV3;
-  const tvShare = terminalWeightRE;
-  const tvGrade = tvShare == null ? "N/A" : tvShare < 0.25 ? "GRADE_A" : tvShare < 0.4 ? "GRADE_B" : tvShare < 0.6 ? "GRADE_C" : "GRADE_D";
+  const primaryValuation = v3TerminalAnchor?.V_total ?? (tvContaminated ? valuation.V_RE_CV2 : valuation.V_RE_CV3);
+  const tvShare = v3TerminalAnchor?.TV_share ?? terminalWeightRE;
+  const tvGrade = v3TerminalAnchor?.TV_grade ?? (tvShare == null ? "N/A" : tvShare < 0.25 ? "GRADE_A" : tvShare < 0.4 ? "GRADE_B" : tvShare < 0.6 ? "GRADE_C" : "GRADE_D");
+  const anchorTable = v3TerminalAnchor
+    ? computeAnchorTable(valuation.CSE0, valuation.pvRE, v3TerminalAnchor, ke, explicitHorizonYears)
+    : [];
 
   const sharesFromConfig = config.shares_outstanding ?? null;
   const rawLatest = rawData?.[rawData.length - 1]?.raw_metric_values;
@@ -768,7 +766,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             Valuation confidence: <b>{confidenceTier}</b> ({terminalFlagCount} terminal-period flags). Terminal-value dependence tier: <b>{tvGrade}</b> at <b>{pct(tvShare, 1)}</b>.
             {v3ConfidenceScore != null && (
               <> — <b>V3 §14 Composite Confidence: {v3ConfidenceScore.toFixed(0)}/100 ({v3ConfidenceClass})</b>
-              {v3TerminalAnchor && <> | Terminal anchor: <b>{v3TerminalAnchor.anchor_method}</b> (g = {pct(v3TerminalAnchor.g_terminal)})</>}</>
+              {v3TerminalAnchor && <> | Terminal anchor: <b>{v3TerminalAnchor.label}</b> (g = {pct(v3TerminalAnchor.g_applied)})</>}</>
             )}
           </li>
         </ul>
@@ -1115,7 +1113,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           <MiniBox label="kw (derived, latest)" value={pct(kw, 2)} />
           <MiniBox label="kw (derived, median, historical artifact)" value={pct(kwMedian, 2)} />
           <MiniBox label="kw (legacy rf proxy)" value={pct(config.risk_free_rate, 2)} />
-          <MiniBox label="Terminal growth g (effective)" value={pct(g, 2)} />
+          <MiniBox label="Terminal growth g (effective)" value={pct(gBase, 2)} />
           <MiniBox label="Separation confidence" value={`${valuation.separationScore}/100`} />
         </div>
         <div className="overflow-x-auto">
@@ -1148,8 +1146,8 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           Interpretation: when separation confidence is low, the RE line should be treated as primary and ReOI as corroborative only. Identity check (CV3): |RE−ReOI| = ₹{num(reoiIdentityGap)} Cr ({pct(reoiIdentityGapPct)}). Legacy rf-based ReOI CV3 was ₹{num(valuationLegacyKw.V_ReOI_CV03)} Cr.
         </p>
         <p className="text-xs text-slate-500 mt-1">
-          Explicit residual-income horizon used in valuation: <b>{explicitHorizonYears}</b> yearly steps. Terminal-value share of RE CV3: <b>{pct(terminalWeightRE, 1)}</b> ({tvGrade}). Eq.16 residual (latest): <b>{eq16ResidualPp != null ? `${eq16ResidualPp.toFixed(2)}pp` : "—"}</b> [{eq16Tier}].
-          {v3TVClass && <> — V3 TV grade: <b>{v3TVClass.tv_grade}</b> ({v3TVClass.tv_label})</>}.
+          Explicit residual-income horizon used in valuation: <b>{explicitHorizonYears}</b> yearly steps. Terminal-value share of guarded RE CV3: <b>{pct(tvShare, 1)}</b> ({tvGrade}). Eq.16 residual (latest): <b>{eq16ResidualPp != null ? `${eq16ResidualPp.toFixed(2)}pp` : "—"}</b> [{eq16Tier}].
+          {v3TerminalAnchor && <> [As-reported TV share: <b>{pct(v3TerminalAnchor.TV_share_raw, 1)}</b> ({v3TerminalAnchor.TV_grade_raw}).]</>}.
           {data[data.length-1]?.ratios?.eq16_diagnosis && (
             <span className="text-amber-700"> §5.7 Eq.16 diagnosis: {data[data.length-1].ratios!.eq16_diagnosis}</span>
           )}
@@ -1191,6 +1189,12 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             </tbody>
           </table>
         </div>
+        {v3TerminalAnchor && (
+          <p className="text-xs text-slate-500 mt-2">
+            Matrix uses guarded terminal anchor ({v3TerminalAnchor.label}, RE = ₹{num(v3TerminalAnchor.RE_value)} Cr).
+            As-reported anchor (RE_T = ₹{num(v3TerminalAnchor.reference_RE_T)} Cr) would produce values approximately {(v3TerminalAnchor.V_total > 0 ? (v3TerminalAnchor.reference_V / v3TerminalAnchor.V_total) : 1).toFixed(2)}× higher across the grid.
+          </p>
+        )}
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -1233,13 +1237,17 @@ export default function AcademicReport({ data, config, rawData }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              <tr><td className="px-2 py-1">RE_T (as reported)</td><td className="px-2 py-1 text-right">₹{num(vReported)} Cr</td><td className="px-2 py-1 text-right">{vReported ? pct(((reAlt3 ?? 0) / Math.max(valuation.ke - g, 0.02)) / Math.pow(1 + valuation.ke, explicitHorizonYears) / vReported, 1) : "—"}</td></tr>
-              <tr><td className="px-2 py-1">RE_(T-1) + growth</td><td className="px-2 py-1 text-right">₹{num(vAlt1)} Cr</td><td className="px-2 py-1 text-right">{vAlt1 ? pct(((reAlt1 ?? 0) / Math.max(valuation.ke - g, 0.02)) / Math.pow(1 + valuation.ke, explicitHorizonYears) / vAlt1, 1) : "—"}</td></tr>
-              <tr><td className="px-2 py-1">3Y median RE</td><td className="px-2 py-1 text-right">₹{num(vAlt2)} Cr</td><td className="px-2 py-1 text-right">{vAlt2 ? pct(((reAlt2 ?? 0) / Math.max(valuation.ke - g, 0.02)) / Math.pow(1 + valuation.ke, explicitHorizonYears) / vAlt2, 1) : "—"}</td></tr>
+              {anchorTable.map((row) => (
+                <tr key={row.label} className={v3TerminalAnchor?.label === row.label ? "bg-indigo-50" : ""}>
+                  <td className="px-2 py-1">{row.label}{v3TerminalAnchor?.label === row.label ? " (selected)" : ""}</td>
+                  <td className="px-2 py-1 text-right">₹{num(row.V_RE_CV3)} Cr</td>
+                  <td className="px-2 py-1 text-right">{pct(row.tv_share, 1)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-slate-500 mt-2">Primary value (contamination guard): <b>₹{num(primaryValuation)} Cr</b>. Reference as-reported CV3 value: <b>₹{num(valuation.V_RE_CV3)} Cr</b>.</p>
+        <p className="text-xs text-slate-500 mt-2">Primary value (contamination guard): <b>₹{num(primaryValuation)} Cr</b>. Reference as-reported CV3 value: <b>₹{num(v3TerminalAnchor?.reference_V ?? valuation.V_RE_CV3)} Cr</b>.</p>
       </section>
       )}
 
