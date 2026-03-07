@@ -63,6 +63,91 @@ function avg(vals: Array<number | null | undefined>): number | null {
 }
 
 
+
+function computeSection6BLocal(params: {
+  primaryValue: number;
+  ke: number;
+  g: number;
+  cse0: number;
+  pvRE: number;
+  reAnchor: number;
+  explicitPeriods: number;
+  periods: RecastPeriod[];
+  shares: number | null;
+  marketPrice: number | null | undefined;
+  sharesSource: string;
+}) {
+  const { primaryValue, ke, g, cse0, pvRE, reAnchor, explicitPeriods, periods, shares, marketPrice, sharesSource } = params;
+  if (!shares || shares <= 0) return { status: "shares_unavailable" as const };
+
+  const intrinsic = primaryValue / shares;
+  if (marketPrice == null || marketPrice <= 0) {
+    return {
+      status: "market_price_required" as const,
+      shares,
+      sharesSource,
+      intrinsic,
+      prompt: `Intrinsic value per share: ₹${intrinsic.toFixed(1)}. Enter market price to compute margin of safety and implied values.`,
+    };
+  }
+
+  const marketCap = marketPrice * shares;
+  const mos = (intrinsic - marketPrice) / marketPrice;
+
+  const vAtG = (gt: number) => {
+    if (gt >= ke - 0.001) return Number.POSITIVE_INFINITY;
+    const cv = reAnchor * (1 + gt) / (ke - gt);
+    return cse0 + pvRE + cv / Math.pow(1 + ke, explicitPeriods);
+  };
+
+  let impliedG: number | null = null;
+  let lo = -0.10;
+  let hi = ke - 0.005;
+  if (vAtG(hi) >= marketCap && vAtG(lo) <= marketCap) {
+    for (let i = 0; i < 100; i++) {
+      const mid = (lo + hi) / 2;
+      const vm = vAtG(mid);
+      impliedG = mid;
+      if (Math.abs(vm - marketCap) / Math.max(1, marketCap) < 0.001) break;
+      if (vm < marketCap) lo = mid;
+      else hi = mid;
+    }
+  }
+
+  const vAtKe = (ket: number) => {
+    if (ket <= g + 0.001) return Number.POSITIVE_INFINITY;
+    const pv = periods.slice(1).reduce((acc, p, idx) => acc + (p.ri?.RE ?? 0) / Math.pow(1 + ket, idx + 1), 0);
+    const cv = reAnchor * (1 + g) / (ket - g);
+    return cse0 + pv + cv / Math.pow(1 + ket, explicitPeriods);
+  };
+
+  let impliedKe: number | null = null;
+  let keLo = g + 0.005;
+  let keHi = 0.25;
+  if (vAtKe(keLo) >= marketCap) {
+    for (let i = 0; i < 100; i++) {
+      const mid = (keLo + keHi) / 2;
+      const vm = vAtKe(mid);
+      impliedKe = mid;
+      if (Math.abs(vm - marketCap) / Math.max(1, marketCap) < 0.001) break;
+      if (vm > marketCap) keLo = mid;
+      else keHi = mid;
+    }
+  }
+
+  return {
+    status: "full" as const,
+    shares,
+    sharesSource,
+    intrinsic,
+    marketPrice,
+    marketCap,
+    mos,
+    impliedG,
+    impliedKe,
+  };
+}
+
 function median(vals: Array<number | null | undefined>): number | null {
   const f = vals.filter((v): v is number => v != null && Number.isFinite(v)).sort((a, b) => a - b);
   if (!f.length) return null;
@@ -664,6 +749,19 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const inferredFaceValue = pickFaceValue(shareCapital, sharesFromConfig);
   const inferredShares = shareCapital != null && inferredFaceValue != null ? shareCapital / inferredFaceValue : null;
   const sharesToUse = sharesFromConfig ?? inferredShares;
+  const local6B = computeSection6BLocal({
+    primaryValue: primaryValuation,
+    ke,
+    g: gBase,
+    cse0: valuation.CSE0,
+    pvRE: valuation.pvRE,
+    reAnchor: v3TerminalAnchor?.RE_value ?? (latestRe ?? 0),
+    explicitPeriods: Math.max(explicitHorizonYears, 1),
+    periods: data,
+    shares: sharesToUse,
+    marketPrice: config.market_price,
+    sharesSource: sharesFromConfig != null ? "user input" : (inferredShares != null ? `share capital ÷ FV ₹${num(inferredFaceValue,0)}` : "unavailable"),
+  });
 
   return (
     <div className="space-y-4">
@@ -770,6 +868,14 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             )}
           </li>
         </ul>
+        {v3Bundle?.crossSectionIssues?.length ? (
+          <div className="mt-3 text-xs text-amber-700">
+            <b>Consistency warnings:</b>
+            <ul className="list-disc pl-5 mt-1">
+              {v3Bundle.crossSectionIssues.map((issue, idx) => <li key={idx}>{issue}</li>)}
+            </ul>
+          </div>
+        ) : null}
       </section>
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -1312,29 +1418,29 @@ export default function AcademicReport({ data, config, rawData }: Props) {
 
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">6B) Per-share and market-implied checks</h2>
-        {v3Bundle?.marketImplied.status === "shares_unavailable" && (
+        {local6B.status === "shares_unavailable" && (
           <p className="text-sm text-amber-700">Share count could not be derived from available data. Enter shares outstanding and market price to complete this section.</p>
         )}
-        {v3Bundle?.marketImplied.status !== "shares_unavailable" && (
+        {local6B.status !== "shares_unavailable" && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <tbody className="divide-y divide-slate-100">
-                <tr><td className="px-2 py-1">RE intrinsic per share</td><td className="px-2 py-1 text-right">{v3Bundle?.marketImplied.intrinsic_per_share != null ? `₹${num(v3Bundle.marketImplied.intrinsic_per_share, 1)}` : "—"}</td></tr>
-                <tr><td className="px-2 py-1">Market price</td><td className="px-2 py-1 text-right">{v3Bundle?.marketImplied.market_price != null ? `₹${num(v3Bundle.marketImplied.market_price, 1)}` : "—"}</td></tr>
-                <tr><td className="px-2 py-1">Margin of safety</td><td className="px-2 py-1 text-right">{pct(v3Bundle?.marketImplied.margin_of_safety, 1)}</td></tr>
-                <tr><td className="px-2 py-1">Implied growth g*</td><td className="px-2 py-1 text-right">{pct(v3Bundle?.marketImplied.implied_g, 2)}</td></tr>
-                <tr><td className="px-2 py-1">Implied ke</td><td className="px-2 py-1 text-right">{pct(v3Bundle?.marketImplied.implied_ke, 2)}</td></tr>
-                <tr><td className="px-2 py-1">Market cap</td><td className="px-2 py-1 text-right">{v3Bundle?.marketImplied.market_cap != null ? `₹${num(v3Bundle.marketImplied.market_cap)} Cr` : "—"}</td></tr>
-                <tr><td className="px-2 py-1">Shares outstanding</td><td className="px-2 py-1 text-right">{v3Bundle?.marketImplied.shares != null ? `${num(v3Bundle.marketImplied.shares, 0)} Cr` : "—"}</td></tr>
+                <tr><td className="px-2 py-1">RE intrinsic per share</td><td className="px-2 py-1 text-right">{local6B.status !== "shares_unavailable" ? `₹${num(local6B.intrinsic, 1)}` : "—"}</td></tr>
+                <tr><td className="px-2 py-1">Market price</td><td className="px-2 py-1 text-right">{local6B.status === "full" ? `₹${num(local6B.marketPrice, 1)}` : "—"}</td></tr>
+                <tr><td className="px-2 py-1">Margin of safety</td><td className="px-2 py-1 text-right">{pct(local6B.status === "full" ? local6B.mos : null, 1)}</td></tr>
+                <tr><td className="px-2 py-1">Implied growth g*</td><td className="px-2 py-1 text-right">{pct(local6B.status === "full" ? local6B.impliedG : null, 2)}</td></tr>
+                <tr><td className="px-2 py-1">Implied ke</td><td className="px-2 py-1 text-right">{pct(local6B.status === "full" ? local6B.impliedKe : null, 2)}</td></tr>
+                <tr><td className="px-2 py-1">Market cap</td><td className="px-2 py-1 text-right">{local6B.status === "full" ? `₹${num(local6B.marketCap)} Cr` : "—"}</td></tr>
+                <tr><td className="px-2 py-1">Shares outstanding</td><td className="px-2 py-1 text-right">{local6B.status !== "shares_unavailable" ? `${num(local6B.shares, 0)} Cr` : "—"}</td></tr>
               </tbody>
             </table>
           </div>
         )}
-        {v3Bundle?.marketImplied.status === "market_price_required" && (
-          <p className="text-xs text-amber-700 mt-3">{v3Bundle.marketImplied.prompt}</p>
+        {local6B.status === "market_price_required" && (
+          <p className="text-xs text-amber-700 mt-3">{local6B.prompt}</p>
         )}
-        {v3Bundle?.marketImplied.mos_interpretation && (
-          <p className="text-xs text-slate-600 mt-2">{v3Bundle.marketImplied.mos_interpretation}</p>
+        {local6B.status === "full" && (
+          <p className="text-xs text-slate-600 mt-2">{local6B.mos > 0.2 ? "Substantial margin of safety." : local6B.mos > 0 ? "Modest margin of safety." : "Market price exceeds intrinsic estimate."}</p>
         )}
         {v3Bundle?.shareCount?.dilution_note && (
           <p className="text-xs text-slate-500 mt-1">Dilution note: {v3Bundle.shareCount.dilution_note}</p>
