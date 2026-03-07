@@ -17,7 +17,7 @@ function percentileRank(values: number[], x: number) {
 }
 
 export default function ComparisonReport({ registry, config }: Props) {
-  const companies = Object.values(registry.companies);
+  const companies = Object.values(registry.companies).filter((c) => c.recastData.length > 0);
   if (companies.length < 2) {
     return <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center text-amber-800">Load at least 2 companies to enable peer comparison.</div>;
   }

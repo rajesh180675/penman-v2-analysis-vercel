@@ -519,7 +519,11 @@ export function evaluateQualityGate(periods: RawPeriodData[]): QualityGateReport
     tier = "Tier 3";
   }
 
-  const valuationBlocked = missingMinimum.length > 0 || missingCore.length > 0;
+  // Fail-fast: unresolved critical mapping gaps must also block valuation.
+  const valuationBlocked =
+    missingMinimum.length > 0 ||
+    missingCore.length > 0 ||
+    unresolvedCriticalCount > 0;
   const blockingReasons: string[] = [];
   if (unresolvedCriticalCount > 0) {
     blockingReasons.push(

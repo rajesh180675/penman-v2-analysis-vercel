@@ -581,6 +581,10 @@ export function computeValuation(
   /** §11 terminal ReOI anchor */
   terminalReOIAnchor?: number | null,
 ) {
+  if (!periods.length) {
+    throw new Error("computeValuation requires at least one period.");
+  }
+
   const rhoE = 1 + ke;
   const rhoW = 1 + kw;
   const reSeries: Array<{ period: string; RE: number; ReOI: number }> = [];

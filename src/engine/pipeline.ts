@@ -48,7 +48,7 @@ export function processCompanyDataFull(
       recast = computeRecastPeriod(raw, config, prev);
     } catch (err) {
       console.error(`[pipeline] recast error @ ${raw.period_end}:`, err);
-      continue;
+      throw new Error(`Failed to recast period ${raw.period_end}: ${err instanceof Error ? err.message : String(err)}`);
     }
 
     if (i > 0 && results.length > 0) {
@@ -62,6 +62,7 @@ export function processCompanyDataFull(
         recast.quality = computeQuality(recast, prev, raw, prevRaw);
       } catch (err) {
         console.error(`[pipeline] ratio/quality error @ ${raw.period_end}:`, err);
+        throw new Error(`Failed to derive ratios/quality for period ${raw.period_end}: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
     results.push(recast);
