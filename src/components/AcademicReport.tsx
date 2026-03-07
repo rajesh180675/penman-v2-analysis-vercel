@@ -1059,6 +1059,8 @@ export default function AcademicReport({ data, config, rawData }: Props) {
                 <th className="px-2 py-1 text-right">Sales (₹ Cr)</th>
                 <th className="px-2 py-1 text-right">|NOA|/Sales</th>
                 <th className="px-2 py-1 text-left">Flag</th>
+                <th className="px-2 py-1 text-left">Regime</th>
+                <th className="px-2 py-1 text-left">Interpretation</th>
                 <th className="px-2 py-1 text-left">Lease era</th>
               </tr>
             </thead>
