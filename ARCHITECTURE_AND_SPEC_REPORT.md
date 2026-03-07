@@ -91,3 +91,24 @@
 - Restores a single source of truth for capital-cost logic.
 - Improves type safety and reduces silent drift risk from `any` casting.
 - Keeps forecasting UX consistent with existing S-9.4 governance language across the app.
+
+## 6) Additional Critical Fixes (End-to-End pass)
+
+### 6.1 `ComparisonReport` valuation mispricing bug
+- File: `src/components/ComparisonReport.tsx`
+- Issue:
+  - Cross-company valuation used `ke = rf + erp` and `kw = rf` hardcoded.
+  - This materially misprices and can invert peer ranking/upside ordering.
+- Fix:
+  - Switched to `ke_from_config(config)`.
+  - Derived `kw` per company using `deriveKwFromStructure(latest, prev, ke, rf, config)`.
+  - Fallback to `risk_free_rate` only when a company has fewer than 2 periods.
+
+### 6.2 Silent error swallowing in `ForecastReport`
+- File: `src/components/ForecastReport.tsx`
+- Issue:
+  - Scenario valuation and sensitivity wrapped in `try/catch` blocks that suppressed failures.
+  - Hidden failures can ship stale/invalid valuation output without visibility.
+- Fix:
+  - Removed silent `catch` swallowing for valuation path.
+  - Forecast computation now fails loud through normal React error boundaries/stack traces.

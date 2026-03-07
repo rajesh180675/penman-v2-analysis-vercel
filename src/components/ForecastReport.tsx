@@ -111,10 +111,7 @@ export default function ForecastReport({data,config}:Props) {
         is: {...latest.is, CNI:fp.CNI_f, OI:fp.OI_f, Sales:fp.Sales_f, NFE:fp.NFE_f},
         cu: latest.cu, cf: latest.cf,
       } as RecastPeriod))];
-
-      try {
-        sc.valuationResult = computeValuation(fakePeriods, kei, kwi, g_inp/100, config);
-      } catch(_e){/**/}
+      sc.valuationResult = computeValuation(fakePeriods, kei, kwi, g_inp/100, config);
       return sc;
     });
   },[latest,ke_inp,kwDerived,g_inp,horizon,pBull,pBase,pBear,fadeSG,fadePM,fadeATO,config]);
@@ -128,17 +125,15 @@ export default function ForecastReport({data,config}:Props) {
     baseV,
     {ke:ke_inp/100,kw:kwDerived,g:g_inp/100,core_pm:basePM,ato:baseATO,sales_growth:baseSG},
     (p)=>{
-      try {
-        if (!baseScenario?.periods) return baseV;
-        const fakePeriods: RecastPeriod[] = [latest, ...(baseScenario.periods).map((fp,i)=>({
-          period_end:`${parseInt(latest.period_end.slice(0,4))+(i+1)}-03-31`,
-          bs:{...latest.bs,CSE:fp.CSE_f,NOA:fp.NOA_f,NFO:fp.NOA_f-fp.CSE_f},
-          is:{...latest.is,CNI:fp.CNI_f,OI:fp.OI_f,Sales:fp.Sales_f,NFE:fp.NFE_f},
-          cu:latest.cu,cf:latest.cf,
-        } as RecastPeriod))];
-        const r = computeValuation(fakePeriods,p.ke,p.kw,p.g,config);
-        return r.V_RE_CV3;
-      } catch(_e){return baseV;}
+      if (!baseScenario?.periods) return baseV;
+      const fakePeriods: RecastPeriod[] = [latest, ...(baseScenario.periods).map((fp,i)=>({
+        period_end:`${parseInt(latest.period_end.slice(0,4))+(i+1)}-03-31`,
+        bs:{...latest.bs,CSE:fp.CSE_f,NOA:fp.NOA_f,NFO:fp.NOA_f-fp.CSE_f},
+        is:{...latest.is,CNI:fp.CNI_f,OI:fp.OI_f,Sales:fp.Sales_f,NFE:fp.NFE_f},
+        cu:latest.cu,cf:latest.cf,
+      } as RecastPeriod))];
+      const r = computeValuation(fakePeriods,p.ke,p.kw,p.g,config);
+      return r.V_RE_CV3;
     }
   ),[baseV,baseScenario,latest,ke_inp,kwDerived,g_inp,basePM,baseATO,baseSG,config]);
 

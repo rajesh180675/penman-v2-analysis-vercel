@@ -1,5 +1,5 @@
-import { CompanyRegistry, EngineConfig, NP_BENCHMARKS } from "../engine/types";
-import { computeValuation } from "../engine/PenmanNissimEngine";
+import { CompanyRegistry, EngineConfig, NP_BENCHMARKS, ke_from_config } from "../engine/types";
+import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { useMemo, useState } from "react";
 
 interface Props {
@@ -27,10 +27,13 @@ export default function ComparisonReport({ registry, config }: Props) {
   const [sortByUpside, setSortByUpside] = useState(true);
 
   const valuationRows = useMemo(() => {
-    const ke = config.risk_free_rate + config.equity_risk_premium;
-    const kw = config.risk_free_rate;
+    const ke = ke_from_config(config);
     const g = 0.05;
     return latestByCo.map((c) => {
+      const n = c.series.length;
+      const kw = n >= 2
+        ? deriveKwFromStructure(c.series[n - 1], c.series[n - 2], ke, config.risk_free_rate, config)
+        : config.risk_free_rate;
       const inp = marketInputs[c.id] ?? { price: 0, shares: 0 };
       const localCfg: EngineConfig = { ...config, market_price: inp.price || undefined, shares_outstanding: inp.shares || undefined };
       const v = computeValuation(c.series, ke, kw, g, localCfg);
