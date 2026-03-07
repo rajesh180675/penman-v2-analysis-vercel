@@ -16,6 +16,10 @@ import JSZip from "jszip";
 import * as XLSX from "xlsx";
 import { RawPeriodData } from "./types";
 
+const MAX_ZIP_BYTES = 25 * 1024 * 1024; // 25 MB archive upload cap
+const MAX_ZIP_ENTRIES = 64;
+const MAX_ENTRY_UNCOMPRESSED_BYTES = 20 * 1024 * 1024; // 20 MB per file
+
 /* ══════════════════════════════════════════════════════════════════
    Public types
 ══════════════════════════════════════════════════════════════════ */
@@ -439,6 +443,10 @@ export async function parseCapitalineZip(
   zipFile: File,
   opts?: { companyId?: string }
 ): Promise<{ periods: RawPeriodData[]; debug: CapitalineParseDebug }> {
+  if (zipFile.size > MAX_ZIP_BYTES) {
+    throw new Error(`ZIP exceeds size limit (${Math.round(MAX_ZIP_BYTES / (1024 * 1024))} MB).`);
+  }
+
   const companyId = (opts?.companyId ?? "COMPANY").trim() || "COMPANY";
   const warnings: ParseWarning[] = [];
 
@@ -458,6 +466,10 @@ export async function parseCapitalineZip(
       /\.(xls|xlsx|html?|xml|csv)$/i.test(f.name.split("/").pop() ?? "")
   );
 
+  if (fileEntries.length > MAX_ZIP_ENTRIES) {
+    throw new Error(`ZIP contains too many candidate files (${fileEntries.length}); max allowed is ${MAX_ZIP_ENTRIES}.`);
+  }
+
   const filesMeta = fileEntries.map((f) => ({
     name: f.name.split("/").pop() || f.name,
     statementGuess: stmtFromFilename(f.name.split("/").pop() || f.name),
@@ -473,6 +485,13 @@ export async function parseCapitalineZip(
   for (const entry of fileEntries) {
     const fileName = entry.name.split("/").pop() || entry.name;
     const stmtGuess = stmtFromFilename(fileName);
+
+    const entryUncompressedSize = (entry as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize;
+    if (entryUncompressedSize != null && entryUncompressedSize > MAX_ENTRY_UNCOMPRESSED_BYTES) {
+      throw new Error(
+        `File ${fileName} exceeds per-file size limit (${Math.round(MAX_ENTRY_UNCOMPRESSED_BYTES / (1024 * 1024))} MB).`
+      );
+    }
 
     let buffer: ArrayBuffer;
     try {

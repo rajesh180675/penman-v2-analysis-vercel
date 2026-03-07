@@ -139,9 +139,11 @@ export function App() {
   const hasRecast = (recastData?.length??0)>0;
   const hasDebug  = debugInfo!==null;
 
+  const readyCompanyCount = Object.values(registry.companies).filter((c) => c.recastData.length > 0).length;
+
   const visibleTabs = TABS.filter(t=>{
     if (t.id==="debug") return hasDebug;
-    if (t.id === "comparison") return Object.keys(registry.companies).length >= 2;
+    if (t.id === "comparison") return readyCompanyCount >= 2;
     if (t.needsData) return hasRecast;
     return true;
   });
@@ -221,7 +223,7 @@ export function App() {
               <span className="ml-2">
                 {qualityGate.valuationBlocked
                   ? "Valuation tab is blocked until critical mapping gaps are resolved."
-                  : "All critical mappings resolved; valuation is enabled."}
+                  : "Valuation is enabled."}
               </span>
             </div>
           )}
