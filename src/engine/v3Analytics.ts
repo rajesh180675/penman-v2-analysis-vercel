@@ -120,7 +120,6 @@ export function runDataValidation(periods: RecastPeriod[]): DataValidationResult
   }
   // CHECK_1: Balance sheet approximate balance
   for (const p of periods) {
-    const TL = p.bs.TA - p.bs.CSE - p.bs.MI;
     const totalFinancing = p.bs.CSE + p.bs.MI + p.bs.FO + p.bs.OL;
     const gap = Math.abs(p.bs.TA - totalFinancing);
     if (p.bs.TA > 0 && gap / p.bs.TA > 0.05) {
@@ -359,7 +358,6 @@ function hasCriticalTerminalFlag(flags: EventFlag[]): boolean {
   return flags.some((f) => [
     "STRUCTURAL_EVENT_CRITICAL",
     "PM_OUTLIER_CRITICAL",
-    "CAPITAL_TRANSACTION_LIKELY",
     "ROCE_OUTLIER_CRITICAL",
   ].includes(f));
 }
@@ -414,7 +412,6 @@ export function detectPeriodEventFlags(
     if (cni > 0 && cur.cf.DividendPaid > cni) flags.push("PAYOUT_EXCEEDS_EARNINGS");
     // FLAG 6: Ind AS 116 transition detection (FY2020)
     if (cur.period_end.startsWith("2020") && prev) {
-      const prevLease = 0; // we don't track separately yet — approximate with FO change
       const foIncrease = cur.bs.FO - prev.bs.FO;
       const oaIncrease = cur.bs.OA - prev.bs.OA;
       if (foIncrease > 0.05 * prev.bs.TA && oaIncrease > 0.05 * prev.bs.TA) {
@@ -654,7 +651,7 @@ export interface SensMatrixEntry {
 }
 export function computeSensitivityMatrix(
   CSE0: number,
-  sum_PV_RE: number, // already discounted at base ke; we must recompute at grid ke
+  _sum_PV_RE: number, // already discounted at base ke; we must recompute at grid ke
   RE_stream: Array<{ RE: number; period: string }>,
   selected_RE_anchor: number,
   base_ke: number,
@@ -987,7 +984,7 @@ export function generateMonitoringTriggers(
   companyId: string,
   ke: number,
   periodFlags: PeriodEventFlags[],
-  registry?: CanonicalOutputRegistry,
+  _registry?: CanonicalOutputRegistry,
   config?: EngineConfig
 ): MonitoringTrigger[] {
   const latest = periods[periods.length - 1];
@@ -1289,7 +1286,7 @@ export function computeMarketImplied(
       else hi = mid;
       implied_g = mid;
     }
-    gNote = `Implied terminal RE growth at current ke is ${(implied_g * 100).toFixed(2)}%.`;
+    gNote = `Implied terminal RE growth at current ke is ${((implied_g ?? 0) * 100).toFixed(2)}%.`;
   } else {
     gNote = "No plausible g in bounded search range reconciles to market cap.";
   }
@@ -1316,7 +1313,7 @@ export function computeMarketImplied(
       else keHi = mid;
       implied_ke = mid;
     }
-    keNote = `Implied ke at fixed g is ${(implied_ke * 100).toFixed(2)}%.`;
+    keNote = `Implied ke at fixed g is ${((implied_ke ?? 0) * 100).toFixed(2)}%.`;
   } else {
     keNote = `Market cap exceeds model value even at low ke (${(keLo*100).toFixed(1)}%).`;
   }

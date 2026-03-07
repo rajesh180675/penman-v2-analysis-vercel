@@ -621,7 +621,6 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const v3ConfidenceScore = v3Bundle?.confidence.composite ?? null;
   const v3ConfidenceClass = v3Bundle?.confidence.classification ?? null;
   const v3TerminalAnchor = v3Bundle?.anchorResult;
-  const v3DirtySurplus = v3Bundle?.dirtySurplus;
 
   const sensitivityKe = [Math.max(0.05, ke - 0.04), Math.max(0.05, ke - 0.02), ke, ke + 0.02];
   // S-9.7: g columns must be strictly ascending (monotone)
@@ -634,10 +633,6 @@ export default function AcademicReport({ data, config, rawData }: Props) {
     ke: keCase,
     values: sensitivityG.map((gCase) => computeValuation(data, keCase, kw, gCase, config, matrixREAnchor).V_RE_CV3),
   }));
-
-  const marketCap = config.market_price != null && config.shares_outstanding != null
-    ? config.market_price * config.shares_outstanding
-    : null;
 
   const cumulativeDirtySurplus = data.slice(1).reduce((sum, d, idx) => {
     const prev = data[idx];
@@ -682,24 +677,6 @@ export default function AcademicReport({ data, config, rawData }: Props) {
   const accrualTotalProxy = accrualWorkingCapitalProxy + accrualOtherProxy;
   const accrualSeries = data.slice(1).map((d) => ({ period: d.period_end, accrual: d.ratios?.accrual_ratio_bs ?? null }));
   const latestAccrual = latest.ratios?.accrual_ratio_bs ?? null;
-
-  const oaBreakdownSeries = data.slice(1).map((d, idx) => {
-    const prev = data[idx];
-    const deltaPPE = d.bs.PPE - prev.bs.PPE;
-    const deltaInventory = d.bs.Inventory - prev.bs.Inventory;
-    const deltaReceivables = d.bs.TradeReceivables - prev.bs.TradeReceivables;
-    const deltaGoodwill = d.bs.Goodwill - prev.bs.Goodwill;
-    const deltaOtherOA = (d.bs.OA - prev.bs.OA) - deltaPPE - deltaInventory - deltaReceivables - deltaGoodwill;
-    return {
-      period: d.period_end,
-      deltaPPE,
-      deltaInventory,
-      deltaReceivables,
-      deltaGoodwill,
-      deltaOtherOA,
-    };
-  });
-  const largestNoaBreakdown = oaBreakdownSeries.find((d) => d.period === largestNoaShift.period);
 
   const fScore = latest.quality?.piotroski_total ?? null;
   const dilutionRecent = data.slice(Math.max(0, data.length - 5)).reduce((sum, d) => sum + Math.max(0, d.cf.EquityIssued || 0), 0);
@@ -1425,13 +1402,13 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <tbody className="divide-y divide-slate-100">
-                <tr><td className="px-2 py-1">RE intrinsic per share</td><td className="px-2 py-1 text-right">{local6B.status !== "shares_unavailable" ? `₹${num(local6B.intrinsic, 1)}` : "—"}</td></tr>
+                <tr><td className="px-2 py-1">RE intrinsic per share</td><td className="px-2 py-1 text-right">{`₹${num(local6B.intrinsic, 1)}`}</td></tr>
                 <tr><td className="px-2 py-1">Market price</td><td className="px-2 py-1 text-right">{local6B.status === "full" ? `₹${num(local6B.marketPrice, 1)}` : "—"}</td></tr>
                 <tr><td className="px-2 py-1">Margin of safety</td><td className="px-2 py-1 text-right">{pct(local6B.status === "full" ? local6B.mos : null, 1)}</td></tr>
                 <tr><td className="px-2 py-1">Implied growth g*</td><td className="px-2 py-1 text-right">{pct(local6B.status === "full" ? local6B.impliedG : null, 2)}</td></tr>
                 <tr><td className="px-2 py-1">Implied ke</td><td className="px-2 py-1 text-right">{pct(local6B.status === "full" ? local6B.impliedKe : null, 2)}</td></tr>
                 <tr><td className="px-2 py-1">Market cap</td><td className="px-2 py-1 text-right">{local6B.status === "full" ? `₹${num(local6B.marketCap)} Cr` : "—"}</td></tr>
-                <tr><td className="px-2 py-1">Shares outstanding</td><td className="px-2 py-1 text-right">{local6B.status !== "shares_unavailable" ? `${num(local6B.shares, 0)} Cr` : "—"}</td></tr>
+                <tr><td className="px-2 py-1">Shares outstanding</td><td className="px-2 py-1 text-right">{`${num(local6B.shares, 0)} Cr`}</td></tr>
               </tbody>
             </table>
           </div>
