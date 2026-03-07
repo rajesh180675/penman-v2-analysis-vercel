@@ -18,6 +18,50 @@
 
 import { RecastPeriod, EngineConfig } from "./types";
 
+export enum OutputChannel {
+  REPORT = "report",
+  AUDIT = "audit",
+}
+
+export class ConsistencyViolation extends Error {}
+
+export class CanonicalOutputRegistry {
+  private values = new Map<string, unknown>();
+  private sources = new Map<string, string>();
+
+  register<T>(key: string, value: T, sourceSpec: string): T {
+    if (this.values.has(key)) {
+      const existing = this.values.get(key);
+      if (typeof existing === "number" && typeof value === "number") {
+        const denom = Math.max(Math.abs(existing), 1);
+        const delta = Math.abs(existing - value) / denom;
+        if (delta > 0.001) {
+          throw new ConsistencyViolation(
+            `Conflicting values for '${key}': ${existing} (from ${this.sources.get(key)}) vs ${value} (from ${sourceSpec})`
+          );
+        }
+      } else if (JSON.stringify(existing) !== JSON.stringify(value)) {
+        throw new ConsistencyViolation(
+          `Conflicting values for '${key}': ${JSON.stringify(existing)} (from ${this.sources.get(key)}) vs ${JSON.stringify(value)} (from ${sourceSpec})`
+        );
+      }
+      return existing as T;
+    }
+
+    this.values.set(key, value);
+    this.sources.set(key, sourceSpec);
+    return value;
+  }
+
+  get<T>(key: string): T | undefined {
+    return this.values.get(key) as T | undefined;
+  }
+
+  snapshot(): Record<string, unknown> {
+    return Object.fromEntries(this.values.entries());
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════════
    §2.5 Data Validation
 ══════════════════════════════════════════════════════════════════ */
@@ -168,6 +212,32 @@ export interface DirtySurplusSummary {
   clean_surplus_compromised: boolean;
   CSE_adj_latest: number;
 }
+export interface DirtySurplusFramework {
+  per_period: Record<string, number>;
+  cumulative: number;
+  by_category: {
+    structural_events: number;
+    accounting_transitions: number;
+    steady_state: number;
+  };
+  pct_cse: number;
+  steady_state_annual: number;
+}
+
+export interface TriggerCalibrationResult {
+  pm_base: number;
+  pm_base_source: string;
+  pm_warning: number;
+  pm_critical: number;
+  rnoa_threshold: number;
+  re_threshold: number;
+  div_gap: number;
+  fa_runway: number | null;
+  consecutive_re_declines: number;
+  re_peak: number | null;
+  re_peak_year: number | null;
+}
+
 
 export function computeDirtySurplus(
   periods: RecastPeriod[],
@@ -233,6 +303,60 @@ export function computeDirtySurplus(
   };
 }
 
+
+export function computeDirtySurplusFramework(
+  periods: RecastPeriod[],
+  periodFlags: PeriodEventFlags[],
+  registry?: CanonicalOutputRegistry
+): DirtySurplusFramework {
+  const perPeriod: Record<string, number> = {};
+  const by_category = {
+    structural_events: 0,
+    accounting_transitions: 0,
+    steady_state: 0,
+  };
+
+  for (let i = 1; i < periods.length; i++) {
+    const cur = periods[i];
+    const prev = periods[i - 1];
+    const ds = (cur.bs.CSE - prev.bs.CSE) - cur.is.CNI + cur.cf.DividendPaid;
+    perPeriod[cur.period_end] = ds;
+
+    const flags = periodFlags.find((f) => f.period_end === cur.period_end)?.flags ?? [];
+    if (flags.includes("STRUCTURAL_EVENT_CRITICAL")) by_category.structural_events += ds;
+    else if (flags.includes("IND_AS_116_TRANSITION")) by_category.accounting_transitions += ds;
+    else by_category.steady_state += ds;
+  }
+
+  const cumulative = Object.values(perPeriod).reduce((s, v) => s + v, 0);
+  const latestCSE = Math.max(Math.abs(periods[periods.length - 1]?.bs.CSE ?? 0), 1);
+  const pct_cse = cumulative / latestCSE;
+
+  const steady = Object.entries(perPeriod)
+    .filter(([period]) => {
+      const flags = periodFlags.find((f) => f.period_end === period)?.flags ?? [];
+      return !hasCriticalTerminalFlag(flags);
+    })
+    .map(([, ds]) => ds);
+  const steady_state_annual = steady.length
+    ? steady.reduce((s, v) => s + v, 0) / steady.length
+    : 0;
+
+  registry?.register("DS_per_period", perPeriod, "S-15.4");
+  registry?.register("DS_cumulative_all", cumulative, "S-15.4");
+  registry?.register("DS_by_category", by_category, "S-15.4");
+  registry?.register("DS_pct_CSE", pct_cse, "S-15.4");
+  registry?.register("DS_steady_state_annual", steady_state_annual, "S-15.4");
+
+  return {
+    per_period: perPeriod,
+    cumulative,
+    by_category,
+    pct_cse,
+    steady_state_annual,
+  };
+}
+
 /* ══════════════════════════════════════════════════════════════════
    §13 Event Detection and Period Flags
 ══════════════════════════════════════════════════════════════════ */
@@ -274,6 +398,15 @@ function trailingStats(
   const mean = slice.reduce((s, v) => s + v, 0) / slice.length;
   const stdev = Math.sqrt(slice.reduce((s, v) => s + (v - mean) ** 2, 0) / (slice.length - 1));
   return { median: med, stdev };
+}
+
+function hasCriticalTerminalFlag(flags: EventFlag[]): boolean {
+  return flags.some((f) => [
+    "STRUCTURAL_EVENT_CRITICAL",
+    "PM_OUTLIER_CRITICAL",
+    "CAPITAL_TRANSACTION_LIKELY",
+    "ROCE_OUTLIER_CRITICAL",
+  ].includes(f));
 }
 
 export function detectPeriodEventFlags(
@@ -689,71 +822,85 @@ export function computeConfidenceScore(
   anchorResult: TerminalAnchorResult,
   V_RE_CV3: number,
   V_ReOI_CV03: number,
-  eq16_residual_latest: number | null
+  _eq16_residual_latest: number | null,
+  registry?: CanonicalOutputRegistry
 ): ConfidenceResult {
   const n = periods.length;
   const latest = periods[n - 1];
 
-  // C1: Separation confidence (from latest period separationScore)
-  const C1 = Math.min(100, latest.bs.separationScore);
-  const W1 = 20;
+  const dataScore = Math.min(100, latest.bs.separationScore);
 
-  // C2: Clean surplus integrity
-  const C2 = Math.max(0, 100 - dsSummary.cum_ds_pct * 500);
-  const W2 = 20;
+  const nCrit = anchorResult.terminal_event_flags.filter((f) =>
+    ["STRUCTURAL_EVENT_CRITICAL", "PM_OUTLIER_CRITICAL", "CAPITAL_TRANSACTION_LIKELY", "ROCE_OUTLIER_CRITICAL"].includes(f)
+  ).length;
+  const nWarn = anchorResult.terminal_event_flags.filter((f) => f.includes("WARNING") || f === "STRUCTURAL_EVENT").length;
+  const terminalScore = Math.max(0, 100 - nCrit * 20 - nWarn * 8);
 
-  // C3: RE–ReOI convergence
-  const identity_gap_pct =
-    V_RE_CV3 !== 0 ? Math.abs(V_RE_CV3 - V_ReOI_CV03) / Math.abs(V_RE_CV3) : 1;
-  const C3 = Math.max(0, 100 - identity_gap_pct * 500);
-  const W3 = 15;
+  let robustnessScore = 100;
+  const tv = anchorResult.TV_share ?? 1;
+  if (tv > 0.6) robustnessScore -= 40;
+  else if (tv > 0.4) robustnessScore -= 25;
+  else if (tv > 0.25) robustnessScore -= 10;
 
-  // C4: Eq.16 bridge closure
-  const eq16_residual_abs = eq16_residual_latest != null ? Math.abs(eq16_residual_latest) : 0.5;
-  const C4 = Math.max(0, 100 - eq16_residual_abs * 400);
-  const W4 = 15;
+  const gap = V_RE_CV3 !== 0 ? Math.abs(V_RE_CV3 - V_ReOI_CV03) / Math.abs(V_RE_CV3) : 1;
+  if (gap > 0.30) robustnessScore -= 30;
+  else if (gap > 0.20) robustnessScore -= 20;
+  else if (gap > 0.10) robustnessScore -= 10;
 
-  // C5: Earnings persistence (CV of ROCE)
-  const roce_vals = periods
-    .map((p) => p.ratios?.ROCE)
-    .filter((v): v is number => v != null && Number.isFinite(v));
-  let C5 = 50;
-  if (roce_vals.length >= 3) {
-    const mean_roce = roce_vals.reduce((s, v) => s + v, 0) / roce_vals.length;
-    const std_roce = Math.sqrt(
-      roce_vals.reduce((s, v) => s + (v - mean_roce) ** 2, 0) / (roce_vals.length - 1)
-    );
-    const cv_roce = Math.abs(mean_roce) > 0.001 ? std_roce / Math.abs(mean_roce) : 1;
-    C5 = Math.max(0, 100 - cv_roce * 200);
-  }
-  const W5 = 15;
+  const dsPct = Math.abs(dsSummary.cumulative_dirty_surplus) / Math.max(Math.abs(latest.bs.CSE), 1);
+  if (dsPct > 0.20) robustnessScore -= 20;
+  else if (dsPct > 0.10) robustnessScore -= 10;
+  else if (dsPct > 0.05) robustnessScore -= 5;
+  robustnessScore = Math.max(0, robustnessScore);
 
-  // C6: Terminal period cleanliness
-  const n_terminal_flags = anchorResult.terminal_event_flags.length;
-  const C6 = Math.max(0, 100 - n_terminal_flags * 25);
-  const W6 = 15;
+  let eqScore = 100;
+  const latestAccrual = Math.abs(latest.ratios?.accrual_ratio_bs ?? 0);
+  if (latestAccrual > 0.20) eqScore -= 25;
+  else if (latestAccrual > 0.10) eqScore -= 15;
+  if (latest.ratios?.accrual_regime === "QUALITY_ACCRUAL") eqScore -= 20;
+  const cc = latest.ratios?.cash_conversion_ratio ?? 0;
+  if (cc < 0.5) eqScore -= 20;
+  else if (cc < 0.7) eqScore -= 10;
+  if ((latest.quality?.beneish_mscore ?? -3) > -1.78) eqScore -= 30;
+  eqScore = Math.max(0, eqScore);
 
-  const total_weight = W1 + W2 + W3 + W4 + W5 + W6;
-  const composite =
-    (C1 * W1 + C2 * W2 + C3 * W3 + C4 * W4 + C5 * W5 + C6 * W6) / total_weight;
+  let healthScore = 100;
+  const p = latest.quality?.piotroski_total ?? 0;
+  if (p <= 3) healthScore -= 30;
+  else if (p <= 5) healthScore -= 15;
+  else if (p <= 6) healthScore -= 5;
+  const z = latest.quality?.altman_zprime ?? 0;
+  if (z < 1.81) healthScore -= 30;
+  else if (z < 2.99) healthScore -= 10;
+  healthScore = Math.max(0, healthScore);
+
+  const composite = Math.round(
+    0.20 * dataScore +
+    0.25 * terminalScore +
+    0.25 * robustnessScore +
+    0.15 * eqScore +
+    0.15 * healthScore
+  );
 
   let classification: ConfidenceResult["classification"] = "VERY_LOW";
-  if (composite >= 80) classification = "HIGH";
-  else if (composite >= 60) classification = "MODERATE";
-  else if (composite >= 40) classification = "LOW";
+  if (composite >= 70) classification = "HIGH";
+  else if (composite >= 50) classification = "MODERATE";
+  else if (composite >= 30) classification = "LOW";
+
+  registry?.register("composite_confidence", composite, "S-14.3");
+  registry?.register("composite_tier", classification, "S-14.3");
 
   return {
     components: [
-      { name: "Separation Quality", score: C1, weight: W1, detail: `Separation score = ${C1.toFixed(0)}/100` },
-      { name: "Clean Surplus Integrity", score: C2, weight: W2, detail: `Cumulative dirty surplus = ${(dsSummary.cum_ds_pct * 100).toFixed(1)}% of equity` },
-      { name: "RE–ReOI Convergence", score: C3, weight: W3, detail: `Identity gap = ${(identity_gap_pct * 100).toFixed(1)}%` },
-      { name: "Eq.16 Bridge Closure", score: C4, weight: W4, detail: `|Eq.16 residual| = ${(eq16_residual_abs * 100).toFixed(1)}%` },
-      { name: "Earnings Persistence", score: C5, weight: W5, detail: `ROCE coefficient of variation` },
-      { name: "Terminal Period Cleanliness", score: C6, weight: W6, detail: `${n_terminal_flags} terminal-period flag(s)` },
+      { name: "Data quality", score: dataScore, weight: 20, detail: `Separation score = ${dataScore.toFixed(0)}/100` },
+      { name: "Terminal integrity", score: terminalScore, weight: 25, detail: `${nCrit} critical and ${nWarn} warning terminal flags` },
+      { name: "Valuation robustness", score: robustnessScore, weight: 25, detail: `TV share ${pctStr(tv)} | RE/ReOI gap ${pctStr(gap)} | DS ${pctStr(dsPct)}` },
+      { name: "Earnings quality", score: eqScore, weight: 15, detail: `Accrual ${pctStr(latest.ratios?.accrual_ratio_bs)} | cash conversion ${numStr(cc)}` },
+      { name: "Financial health", score: healthScore, weight: 15, detail: `Piotroski ${p}/9 | Altman Z' ${numStr(z)}` },
     ],
     composite,
     classification,
-    separation_score: C1,
+    separation_score: dataScore,
   };
 }
 
@@ -851,76 +998,142 @@ export interface MonitoringTrigger {
   body: string;
 }
 
+export function calibrateMonitoringTriggers(
+  periods: RecastPeriod[],
+  periodFlags: PeriodEventFlags[],
+  registry?: CanonicalOutputRegistry,
+  config?: EngineConfig
+): TriggerCalibrationResult {
+  const latest = periods[periods.length - 1];
+
+  const cleanPeriod = [...periods].reverse().find((p) => {
+    const flags = periodFlags.find((f) => f.period_end === p.period_end)?.flags ?? [];
+    const hasCritical = hasCriticalTerminalFlag(flags);
+    const hasPmOutlier = flags.includes("PM_OUTLIER_CRITICAL") || flags.includes("PM_OUTLIER_WARNING");
+    return !hasCritical && !hasPmOutlier && p.ratios?.PM != null;
+  });
+
+  const fallbackPms = periods
+    .filter((p) => {
+      const flags = periodFlags.find((f) => f.period_end === p.period_end)?.flags ?? [];
+      return !hasCriticalTerminalFlag(flags) && p.ratios?.PM != null;
+    })
+    .map((p) => p.ratios?.PM as number);
+
+  const pm_base = cleanPeriod?.ratios?.PM
+    ?? (fallbackPms.length ? (medianOf(fallbackPms) ?? latest.ratios?.PM ?? 0) : latest.ratios?.PM ?? 0);
+  const pm_base_source = cleanPeriod
+    ? `${cleanPeriod.period_end.slice(0, 4)} (most recent clean period)`
+    : "median of unflagged periods";
+
+  const pm_warning = pm_base * 0.85;
+  const pm_critical = pm_base * 0.7;
+
+  const rnoaBase = [...periods].reverse().find((p) => {
+    const flags = periodFlags.find((f) => f.period_end === p.period_end)?.flags ?? [];
+    return !hasCriticalTerminalFlag(flags) && !p.ratios?.noaSmall && p.ratios?.RNOA != null;
+  })?.ratios?.RNOA ?? (medianOf(periods.map((p) => p.ratios?.RNOA ?? null).filter((v): v is number => v != null)) ?? 0);
+
+  const ke = config?.ke ?? 0.13;
+  const rnoa_threshold = Math.max(ke + 0.05, rnoaBase * 0.5);
+
+  const reBase = [...periods].reverse().find((p) => {
+    const flags = periodFlags.find((f) => f.period_end === p.period_end)?.flags ?? [];
+    return !hasCriticalTerminalFlag(flags) && p.ri?.RE != null;
+  })?.ri?.RE ?? (medianOf(periods.map((p) => p.ri?.RE ?? null).filter((v): v is number => v != null)) ?? 0);
+
+  const re_threshold = Math.max(ke * (latest.bs.CSE || 0) * 0.05, reBase * 0.5);
+
+  const div_gap = latest.cf.DividendPaid - latest.cf.FCF_cash;
+  const fa_runway = div_gap > 0 && latest.bs.FA > 0 ? latest.bs.FA / div_gap : null;
+
+  const cleanREs = periods
+    .filter((p) => {
+      const flags = periodFlags.find((f) => f.period_end === p.period_end)?.flags ?? [];
+      return !hasCriticalTerminalFlag(flags) && p.ri?.RE != null;
+    })
+    .map((p) => ({ period_end: p.period_end, RE: p.ri?.RE as number }));
+
+  let consecutive_re_declines = 0;
+  let streak = 0;
+  let re_peak: number | null = null;
+  let re_peak_year: number | null = null;
+  for (let i = 1; i < cleanREs.length; i++) {
+    if (cleanREs[i].RE < cleanREs[i - 1].RE) {
+      streak += 1;
+      consecutive_re_declines = Math.max(consecutive_re_declines, streak);
+    } else streak = 0;
+    if (re_peak == null || cleanREs[i].RE > re_peak) {
+      re_peak = cleanREs[i].RE;
+      re_peak_year = Number.parseInt(cleanREs[i].period_end.slice(0, 4), 10);
+    }
+  }
+
+  registry?.register("pm_calibration_base", pm_base, "S-14.2");
+  registry?.register("pm_calibration_source", pm_base_source, "S-14.2");
+  registry?.register("pm_warning_threshold", pm_warning, "S-14.2");
+  registry?.register("pm_critical_threshold", pm_critical, "S-14.2");
+  registry?.register("rnoa_threshold", rnoa_threshold, "S-14.2");
+  registry?.register("re_threshold", re_threshold, "S-14.2");
+
+  return {
+    pm_base,
+    pm_base_source,
+    pm_warning,
+    pm_critical,
+    rnoa_threshold,
+    re_threshold,
+    div_gap,
+    fa_runway,
+    consecutive_re_declines,
+    re_peak,
+    re_peak_year,
+  };
+}
+
 export function generateMonitoringTriggers(
   periods: RecastPeriod[],
   companyId: string,
-  ke: number
+  ke: number,
+  periodFlags: PeriodEventFlags[],
+  registry?: CanonicalOutputRegistry,
+  config?: EngineConfig
 ): MonitoringTrigger[] {
-  const n = periods.length;
-  const latest = periods[n - 1];
-  const prev = n >= 2 ? periods[n - 2] : null;
+  const latest = periods[periods.length - 1];
+  const c = calibrateMonitoringTriggers(periods, periodFlags, registry, { ...(config ?? {}), ke } as EngineConfig);
   const triggers: MonitoringTrigger[] = [];
 
-  // PM trigger
-  const pm_vals = periods.map((p) => p.ratios?.PM ?? null).filter((v): v is number => v != null);
-  if (pm_vals.length >= 3) {
-    const pm_latest = pm_vals[pm_vals.length - 1];
-    const pm_5y_min = Math.min(...pm_vals.slice(-5));
-    const pm_hist_min = Math.min(...pm_vals);
-    const threshold_warn = Math.max(pm_5y_min * 0.95, pm_latest * 0.85);
-    triggers.push({
-      id: "TRIGGER_PM",
-      title: `${companyId} — PM path`,
-      body: `PM is currently ${pctStr(pm_latest)}. If PM falls below ${pctStr(threshold_warn)}, re-underwrite with ke stress and steeper fade; below ${pctStr(pm_hist_min)}, valuation approaches lower sensitivity bounds.`,
-    });
-  }
+  triggers.push({
+    id: "TRIGGER_PM",
+    title: `${companyId}-specific trigger — PM path`,
+    body: `PM is currently ${pctStr(latest.ratios?.PM)}. Calibration base: ${pctStr(c.pm_base)} (${c.pm_base_source}). If PM falls below ${pctStr(c.pm_warning)}, re-underwrite with ke stress and steeper fade; below ${pctStr(c.pm_critical)}, valuation approaches lower sensitivity bounds.`,
+  });
 
-  // Dividend sustainability trigger
-  const div = latest.cf.DividendPaid;
-  const fcf_cash = latest.cf.FCF_cash;
-  const gap = div - fcf_cash;
-  const fa = latest.bs.FA;
-  if (gap > 0 && fa > 0) {
-    const runway = fa / gap;
+  if (c.div_gap > 0 && c.fa_runway != null) {
     triggers.push({
       id: "TRIGGER_DIVIDEND",
-      title: `${companyId} — dividend sustainability`,
-      body: `Dividend vs cash FCF gap is ₹${gap.toFixed(0)} Cr (FA runway ~${runway.toFixed(1)} years at current gap).`,
+      title: `${companyId}-specific trigger — dividend sustainability`,
+      body: `Dividend vs cash FCF gap is ₹${c.div_gap.toFixed(0)} Cr (FA runway ~${c.fa_runway.toFixed(1)} years at current gap).`,
     });
   } else {
     triggers.push({
       id: "TRIGGER_DIVIDEND",
-      title: `${companyId} — dividend sustainability`,
-      body: `Cash FCF covers dividend with ₹${Math.abs(gap).toFixed(0)} Cr surplus.`,
+      title: `${companyId}-specific trigger — dividend sustainability`,
+      body: `Cash FCF covers dividend with ₹${Math.abs(c.div_gap).toFixed(0)} Cr surplus.`,
     });
   }
 
-  // RE momentum trigger
-  const re_vals = periods.map((p) => p.ri?.RE ?? null).filter((v): v is number => v != null);
-  if (re_vals.length >= 5) {
-    const re_latest = re_vals[re_vals.length - 1];
-    const re_prev_val = re_vals[re_vals.length - 2];
-    const re_5y_median = medianOf(re_vals.slice(-5)) ?? re_latest;
-    const re_floor = re_5y_median * 0.5;
-    const re_growth_1y = re_prev_val !== 0 ? (re_latest - re_prev_val) / Math.abs(re_prev_val) : null;
-    triggers.push({
-      id: "TRIGGER_RE",
-      title: `${companyId} — RE momentum`,
-      body: `Monitor RE above ₹${re_floor.toFixed(0)} Cr. Latest RE: ₹${re_latest.toFixed(0)} Cr (${re_growth_1y != null ? `${(re_growth_1y >= 0 ? "+" : "")}${(re_growth_1y * 100).toFixed(1)}% YoY` : "—"}).`,
-    });
-  }
+  triggers.push({
+    id: "TRIGGER_RNOA",
+    title: `${companyId}-specific trigger — RNOA floor`,
+    body: `RNOA warning threshold: ${pctStr(c.rnoa_threshold)} (calibrated to clean-period base).`,
+  });
 
-  // Spread compression trigger
-  const spread_vals = periods.map((p) => p.ratios?.SPREAD ?? null).filter((v): v is number => v != null);
-  if (spread_vals.length >= 3) {
-    const spread_latest = spread_vals[spread_vals.length - 1];
-    const spread_5y_min = Math.min(...spread_vals.slice(-5));
-    triggers.push({
-      id: "TRIGGER_SPREAD",
-      title: `${companyId} — spread compression`,
-      body: `Current spread ${pctStr(spread_latest)}, 5Y floor ${pctStr(spread_5y_min)}. Watch for NBC increase or RNOA decline.`,
-    });
-  }
+  triggers.push({
+    id: "TRIGGER_RE",
+    title: `${companyId}-specific trigger — RE trajectory`,
+    body: `RE warning threshold: ₹${c.re_threshold.toFixed(0)} Cr. Clean-period decline streak: ${c.consecutive_re_declines}.`,
+  });
 
   return triggers;
 }
@@ -962,6 +1175,34 @@ export function buildRatioSummary(
   };
 }
 
+
+export const AUDIT_MARKERS: RegExp[] = [
+  /V\d+ §\d+/g,
+  /✓|✗/g,
+  /\bintact\b/gi,
+  /COMPLIANCE_CHECK/g,
+  /__debug__/g,
+];
+
+export function firewallCheck(renderedText: string, auditLog: string[] = []): string[] {
+  const violations: string[] = [];
+  for (const pattern of AUDIT_MARKERS) {
+    const matches = renderedText.match(pattern);
+    if (matches?.length) {
+      violations.push(`Audit marker '${pattern.source}' found in rendered output: ${matches.slice(0, 3).join(', ')}`);
+    }
+  }
+  for (const entry of auditLog) {
+    const chunks = entry.split(/[.;]/).map((x) => x.trim()).filter((x) => x.length >= 20);
+    for (const chunk of chunks) {
+      if (renderedText.includes(chunk)) {
+        violations.push(`Audit log content leaked: '${chunk.slice(0, 50)}...'`);
+      }
+    }
+  }
+  return violations;
+}
+
 /* ══════════════════════════════════════════════════════════════════
    Helpers
 ══════════════════════════════════════════════════════════════════ */
@@ -978,6 +1219,11 @@ function computeCagr(first: number, last: number, years: number): number | null 
   return Math.pow(last / first, 1 / years) - 1;
 }
 
+function numStr(v: number | null | undefined, d = 2): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  return v.toFixed(d);
+}
+
 function pctStr(v: number | null | undefined): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return `${(v * 100).toFixed(1)}%`;
@@ -987,11 +1233,14 @@ function pctStr(v: number | null | undefined): string {
 export interface V3AnalyticsBundle {
   validation: DataValidationResult;
   dirtySurplus: DirtySurplusSummary;
+  dirtySurplusFramework: DirtySurplusFramework;
   periodFlags: PeriodEventFlags[];
   anchorResult: TerminalAnchorResult;
   confidence: ConfidenceResult;
   fadeParams: FadeParamEstimate[];
   triggers: MonitoringTrigger[];
+  triggerCalibration: TriggerCalibrationResult;
+  registry: CanonicalOutputRegistry;
 }
 
 export function computeV3Analytics(
@@ -1006,11 +1255,22 @@ export function computeV3Analytics(
   const ke = cfg.ke > 0 ? cfg.ke : (cfg.risk_free_rate + cfg.equity_risk_premium);
   const kw = kwDerived ?? (ke * 0.75); // Prefer derived kw; approximate if not supplied
 
+  const registry = new CanonicalOutputRegistry();
   const validation = runDataValidation(periods);
   const dirtySurplus = computeDirtySurplus(periods, ke);
+  registry.register("DS_cumulative_all", dirtySurplus.cumulative_dirty_surplus, "S-15.4");
   const periodFlags = detectPeriodEventFlags(periods, dirtySurplus);
 
   const anchorResult = selectTerminalAnchor(periods, periodFlags, ke, kw, gTerminalOverride);
+  registry.register("V_primary", anchorResult.V_total, "S-14.1");
+  registry.register("V_RE_CV3_reported", anchorResult.reference_V, "S-14.1");
+  registry.register("primary_anchor_label", anchorResult.label, "S-14.1");
+  registry.register("tv_share_primary", anchorResult.TV_share ?? 0, "S-14.1");
+  registry.register("tv_grade", anchorResult.TV_grade, "S-14.1");
+  registry.register("g_effective", anchorResult.g_applied, "S-14.1");
+  registry.register("tv_share_reported", anchorResult.TV_share_raw ?? 0, "S-14.1");
+
+  const dirtySurplusFramework = computeDirtySurplusFramework(periods, periodFlags, registry);
 
   // Get eq16 residual from latest period with ratios
   const eq16_residual_latest = (() => {
@@ -1022,11 +1282,12 @@ export function computeV3Analytics(
   })();
 
   const confidence = computeConfidenceScore(
-    periods, dirtySurplus, anchorResult, V_RE_CV3, V_ReOI_CV03, eq16_residual_latest
+    periods, dirtySurplus, anchorResult, V_RE_CV3, V_ReOI_CV03, eq16_residual_latest, registry
   );
   const fadeParams = estimateFadeParams(periods);
   const companyId = periods[0]?.period_end ? (cfg.ticker ?? "Company") : "Company";
-  const triggers = generateMonitoringTriggers(periods, companyId, ke);
+  const triggerCalibration = calibrateMonitoringTriggers(periods, periodFlags, registry, cfg);
+  const triggers = generateMonitoringTriggers(periods, companyId, ke, periodFlags, registry, cfg);
 
-  return { validation, dirtySurplus, periodFlags, anchorResult, confidence, fadeParams, triggers };
+  return { validation, dirtySurplus, dirtySurplusFramework, periodFlags, anchorResult, confidence, fadeParams, triggers, triggerCalibration, registry };
 }
