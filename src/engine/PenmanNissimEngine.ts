@@ -400,6 +400,9 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
   const OLSPREAD = ROOA != null && cur.bs.OL > 0 ? ROOA - cfg.risk_free_rate : null;
   const RNOA_check = ROOA != null && OLLEV_OA != null && OLSPREAD != null ? ROOA + OLLEV_OA * OLSPREAD : null;
 
+  const ROOA_spec_val = ROOA;
+  const imputed_io_spec = io;
+
   const avgTCE = avg(cur.bs.NOA + cur.bs.MI, prev.bs.NOA + prev.bs.MI);
   const ROTCE = avgTCE > 0 ? cur.is.OI / avgTCE : null;
   const MSR = cur.bs.CSE > 0 && (cur.is.CNI + cur.is.MII) !== 0

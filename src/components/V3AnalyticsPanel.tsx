@@ -28,8 +28,6 @@ const cr = (v: number | null | undefined) =>
   v == null || !Number.isFinite(v)
     ? "—"
     : `₹${Math.abs(v) >= 10 ? v.toLocaleString("en-IN", { maximumFractionDigits: 0 }) : v.toFixed(1)} Cr`;
-const sign = (v: number) => (v >= 0 ? "+" : "");
-
 const DS_COLORS: Record<string, string> = {
   NEGLIGIBLE: "text-emerald-700 bg-emerald-50",
   MINOR: "text-amber-700 bg-amber-50",
@@ -68,19 +66,6 @@ export default function V3AnalyticsPanel({ data, config }: Props) {
     return { valuation: val0, kw: kw_derived };
   }, [data, config, ke]);
 
-  // Second pass: recompute with §11 terminal anchor once we have the bundle
-  const valuationWithAnchor = useMemo(() => {
-    if (!valuation || !bundle) return valuation;
-    const cur = data[data.length - 1];
-    const prev = data[data.length - 2];
-    const g = bundle.anchorResult.g_terminal;
-    return computeValuation(
-      data, ke, kw, g, config,
-      bundle.anchorResult.selected_RE_anchor,
-      bundle.anchorResult.selected_ReOI_anchor
-    );
-  }, [valuation, bundle, data, ke, kw, config]);
-
   const bundle: V3AnalyticsBundle | null = useMemo(() => {
     if (!valuation) return null;
     return computeV3Analytics(
@@ -89,6 +74,17 @@ export default function V3AnalyticsPanel({ data, config }: Props) {
       config.g_terminal_override
     );
   }, [data, config, valuation]);
+
+  // Second pass: recompute with §11 terminal anchor once we have the bundle
+  const valuationWithAnchor = useMemo(() => {
+    if (!valuation || !bundle) return valuation;
+    const g = bundle.anchorResult.g_terminal;
+    return computeValuation(
+      data, ke, kw, g, config,
+      bundle.anchorResult.selected_RE_anchor,
+      bundle.anchorResult.selected_ReOI_anchor
+    );
+  }, [valuation, bundle, data, ke, kw, config]);
 
   // Effective valuation uses anchor-adjusted result when available
   const effectiveValuation = valuationWithAnchor ?? valuation;
@@ -163,7 +159,7 @@ export default function V3AnalyticsPanel({ data, config }: Props) {
 
         <div className="p-6">
           {activeSection === "overview" && bundle && effectiveValuation && tvClassification && (
-            <OverviewSection bundle={bundle} valuation={effectiveValuation} tvClass={tvClassification} ke={ke} kw={kw} />
+            <OverviewSection bundle={bundle} valuation={effectiveValuation} tvClass={tvClassification} />
           )}
           {activeSection === "dirty" && bundle && (
             <DirtySurplusSection ds={bundle.dirtySurplus} />
@@ -190,11 +186,10 @@ export default function V3AnalyticsPanel({ data, config }: Props) {
 }
 
 /* ── Overview ─────────────────────────────────────────────────── */
-function OverviewSection({ bundle, valuation, tvClass, ke, kw }: {
+function OverviewSection({ bundle, valuation, tvClass }: {
   bundle: V3AnalyticsBundle;
   valuation: ReturnType<typeof computeValuation>;
   tvClass: ReturnType<typeof classifyTVShare>;
-  ke: number; kw: number;
 }) {
   const { confidence, anchorResult, dirtySurplus, periodFlags } = bundle;
   const totalFlags = periodFlags.reduce((s, p) => s + p.flags.length, 0);
