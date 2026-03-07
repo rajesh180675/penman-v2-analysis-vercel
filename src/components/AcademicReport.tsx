@@ -765,7 +765,7 @@ export default function AcademicReport({ data, config, rawData }: Props) {
           <li>
             Valuation confidence: <b>{confidenceTier}</b> ({terminalFlagCount} terminal-period flags). Terminal-value dependence tier: <b>{tvGrade}</b> at <b>{pct(tvShare, 1)}</b>.
             {v3ConfidenceScore != null && (
-              <> — <b>V3 §14 Composite Confidence: {v3ConfidenceScore.toFixed(0)}/100 ({v3ConfidenceClass})</b>
+              <> — <b>Composite Confidence: {v3ConfidenceScore.toFixed(0)}/100 ({v3ConfidenceClass})</b>
               {v3TerminalAnchor && <> | Terminal anchor: <b>{v3TerminalAnchor.label}</b> (g = {pct(v3TerminalAnchor.g_applied)})</>}</>
             )}
           </li>
@@ -923,6 +923,8 @@ export default function AcademicReport({ data, config, rawData }: Props) {
                 <th className="px-2 py-1 text-right">Sales (₹ Cr)</th>
                 <th className="px-2 py-1 text-right">|NOA|/Sales</th>
                 <th className="px-2 py-1 text-left">Flag</th>
+                <th className="px-2 py-1 text-left">Regime</th>
+                <th className="px-2 py-1 text-left">Interpretation</th>
                 <th className="px-2 py-1 text-left">Lease era</th>
               </tr>
             </thead>
@@ -1041,11 +1043,12 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             net other accrual proxy <b>₹{num(accrualOtherProxy)} Cr</b>; total accrual proxy <b>₹{num(accrualTotalProxy)} Cr</b>.
           </li>
           <li>
-            Cumulative dirty-surplus check Σ(ΔCSE − CNI + d) = <b>₹{num(cumulativeDirtySurplus)} Cr</b>.
-            {v3DirtySurplus && (
-              <> V3 §6.4: cumulative DS = <b>₹{num(v3DirtySurplus.cumulative_dirty_surplus)} Cr</b>
-                ({pct(v3DirtySurplus.cum_ds_pct)} of latest equity
-                {v3DirtySurplus.clean_surplus_compromised ? " ⚠ CLEAN SURPLUS COMPROMISED" : " ✓ intact"}).</>
+            Cumulative dirty-surplus check Σ(ΔCSE − CNI + d) = <b>₹{num(v3Bundle?.dirtySurplusFramework.cumulative ?? cumulativeDirtySurplus)} Cr</b>
+            ({pct(v3Bundle?.dirtySurplusFramework.pct_cse ?? null)} of latest equity).
+            {v3Bundle?.dirtySurplusFramework && (
+              <> Decomposition — Structural events: <b>₹{num(v3Bundle.dirtySurplusFramework.by_category.structural_events)} Cr</b>,
+              Accounting transitions: <b>₹{num(v3Bundle.dirtySurplusFramework.by_category.accounting_transitions)} Cr</b>,
+              Steady-state: <b>₹{num(v3Bundle.dirtySurplusFramework.by_category.steady_state)} Cr</b>.</>
             )}
           </li>
         </ul>
@@ -1061,6 +1064,8 @@ export default function AcademicReport({ data, config, rawData }: Props) {
                 <th className="px-2 py-1 text-left">Period</th>
                 <th className="px-2 py-1 text-right">BS accrual ratio</th>
                 <th className="px-2 py-1 text-left">Flag</th>
+                <th className="px-2 py-1 text-left">Regime</th>
+                <th className="px-2 py-1 text-left">Interpretation</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1068,7 +1073,17 @@ export default function AcademicReport({ data, config, rawData }: Props) {
                 <tr key={row.period}>
                   <td className="px-2 py-1">{row.period.slice(0, 10)}</td>
                   <td className="px-2 py-1 text-right">{pct(row.accrual, 1)}</td>
-                  <td className="px-2 py-1">{row.accrual != null && Math.abs(row.accrual) > 0.1 ? "⚠️ >10%" : "OK"}</td>
+                  <td className="px-2 py-1">{row.accrual != null && Math.abs(row.accrual) > 0.1 ? `⚠️ ${row.accrual > 0 ? ">" : "<"}10%` : "OK"}</td>
+                  <td className="px-2 py-1">{data.find((d) => d.period_end === row.period)?.ratios?.accrual_regime ?? "NORMAL"}</td>
+                  <td className="px-2 py-1 text-slate-600">{(() => {
+                    const p = data.find((d) => d.period_end === row.period);
+                    const regime = p?.ratios?.accrual_regime;
+                    if (regime === "QUALITY_ACCRUAL") return "Earnings persistence concern.";
+                    if (regime === "GROWTH_ACCRUAL") return "Accruals consistent with growth in operating assets.";
+                    if (regime === "ASSET_DISPOSAL") return "Asset reduction / disposal period.";
+                    if (row.accrual == null) return "Accrual ratio undefined.";
+                    return "";
+                  })()}</td>
                 </tr>
               ))}
             </tbody>
@@ -1317,8 +1332,8 @@ export default function AcademicReport({ data, config, rawData }: Props) {
             10%, (iii) Beneish flag migration above -1.78, (iv) Altman Z' migration toward distress band.
           </p>
           <p>
-            <b>{companyId}-specific trigger — PM path</b>: PM is currently <b>{pct(latest.ratios?.PM)}</b>. If PM falls below <b>{pct((latest.ratios?.PM ?? 0) * 0.85, 0)}</b>,
-            re-underwrite with ke stress and steeper fade; below <b>{pct((latest.ratios?.PM ?? 0) * 0.7, 0)}</b>, valuation approaches lower sensitivity bounds.
+            <b>{companyId}-specific trigger — PM path</b>: PM is currently <b>{pct(latest.ratios?.PM)}</b>. Calibration base: <b>{pct(v3Bundle?.triggerCalibration.pm_base)}</b> ({v3Bundle?.triggerCalibration.pm_base_source ?? "latest"}). If PM falls below <b>{pct(v3Bundle?.triggerCalibration.pm_warning, 0)}</b>,
+            re-underwrite with ke stress and steeper fade; below <b>{pct(v3Bundle?.triggerCalibration.pm_critical, 0)}</b>, valuation approaches lower sensitivity bounds.
           </p>
           <p>
             <b>{companyId}-specific trigger — dividend sustainability</b>: Dividend vs cash FCF gap is <b>₹{num(dividendCashGap)} Cr</b>
