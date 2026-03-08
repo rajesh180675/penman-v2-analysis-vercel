@@ -9,6 +9,7 @@ interface Props {
   recastData?: RecastPeriod[] | null;
   rawData?: RawPeriodData[] | null;
   qualityGate?: QualityGateReport | null;
+  engineError?: string | null;
 }
 
 type ManifestSignature = {
@@ -54,7 +55,7 @@ async function hmacSha256Hex(message: string, secret: string): Promise<string> {
   return out;
 }
 
-export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate }: Props) {
+export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate, engineError }: Props) {
   const [expandedGrid, setExpandedGrid] = useState<string | null>(null);
   const [showAllKeys, setShowAllKeys]   = useState(false);
   const [showCollisions, setShowCollisions] = useState(false);
@@ -330,6 +331,9 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
       <div className="bg-white rounded-xl border border-slate-200 p-10 text-center text-slate-400">
         <div className="text-5xl mb-3">🔍</div>
         <p className="text-lg font-medium text-slate-600">No debug info yet</p>
+        {engineError && (
+          <p className="text-sm mt-2 text-red-700">Engine error: {engineError}</p>
+        )}
         <p className="text-sm mt-1">Upload a Capitaline ZIP to see parsing diagnostics here.</p>
       </div>
     );

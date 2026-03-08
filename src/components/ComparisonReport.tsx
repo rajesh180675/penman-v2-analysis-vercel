@@ -26,7 +26,7 @@ export default function ComparisonReport({ registry, config }: Props) {
   const [marketInputs, setMarketInputs] = useState<Record<string, { price: number; shares: number }>>({});
   const [sortByUpside, setSortByUpside] = useState(true);
 
-  const valuationRows = useMemo(() => {
+  const baseValuationRows = useMemo(() => {
     const ke = ke_from_config(config);
     const g = 0.05;
     return latestByCo.map((c) => {
@@ -34,25 +34,32 @@ export default function ComparisonReport({ registry, config }: Props) {
       const kw = n >= 2
         ? deriveKwFromStructure(c.series[n - 1], c.series[n - 2], ke, config.risk_free_rate, config)
         : config.risk_free_rate;
-      const inp = marketInputs[c.id] ?? { price: 0, shares: 0 };
-      const localCfg: EngineConfig = { ...config, market_price: inp.price || undefined, shares_outstanding: inp.shares || undefined };
+      const localCfg: EngineConfig = { ...config };
       const v = computeValuation(c.series, ke, kw, g, localCfg);
       const re = v.V_RE_CV3;
       const reoi = v.V_ReOI_CV03;
       const fcff = v.fcf ? v.fcf.EV_FCFF - v.NFO_latest : null;
       const fcfe = v.fcf?.V_FCFE ?? null;
-      const ddm = v.perShare?.intrinsic_ddm_per_share != null && inp.shares > 0 ? v.perShare.intrinsic_ddm_per_share * inp.shares : null;
+      const ddmPerShare = v.perShare?.intrinsic_ddm_per_share ?? null;
       const aeg = v.aeg?.V_AEG ?? null;
       const intrinsicPerShare = v.perShare?.intrinsic_re_per_share ?? null;
-      const upside = intrinsicPerShare != null && inp.price > 0 ? (intrinsicPerShare / inp.price - 1) : null;
-      return { id: c.id, company: c.company, re, reoi, fcff, fcfe, ddm, aeg, price: inp.price, shares: inp.shares, intrinsicPerShare, upside };
+      return { id: c.id, company: c.company, re, reoi, fcff, fcfe, ddmPerShare, aeg, intrinsicPerShare };
+    });
+  }, [latestByCo, config]);
+
+  const valuationRows = useMemo(() => {
+    return baseValuationRows.map((base) => {
+      const inp = marketInputs[base.id] ?? { price: 0, shares: 0 };
+      const ddm = base.ddmPerShare != null && inp.shares > 0 ? base.ddmPerShare * inp.shares : null;
+      const upside = base.intrinsicPerShare != null && inp.price > 0 ? (base.intrinsicPerShare / inp.price - 1) : null;
+      return { ...base, ddm, price: inp.price, shares: inp.shares, upside };
     }).sort((a, b) => {
       if (!sortByUpside) return a.company.localeCompare(b.company);
       const av = a.upside ?? -Infinity;
       const bv = b.upside ?? -Infinity;
       return bv - av;
     });
-  }, [latestByCo, marketInputs, sortByUpside, config]);
+  }, [baseValuationRows, marketInputs, sortByUpside]);
 
   const exportPanelCsv = () => {
     const header = ["company_id", "company_label", "period_end", "ROCE", "RNOA", "PM", "ATO", "FLEV", "SPREAD", "NBC", "OLLEV", "OLSPREAD", "current_ratio", "quick_ratio"];

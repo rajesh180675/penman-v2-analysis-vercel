@@ -22,6 +22,7 @@ This project is configured as a Vite static app and is ready for Vercel.
 
 - Node.js version: `22.x` (or `20.x` minimum)
 - Build cache: enabled
+- Optional single-file build: set env var `VITE_SINGLE_FILE=1` only if you explicitly need inlined JS/CSS output
 
 ## Local pre-check
 

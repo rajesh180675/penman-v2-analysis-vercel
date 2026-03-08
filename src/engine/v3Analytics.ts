@@ -1848,7 +1848,10 @@ export function computeV3Analytics(
       priorSnapshot = raw ? JSON.parse(raw) : undefined;
       globalThis.localStorage.setItem(`v3_registry_${priorKey}`, JSON.stringify(registry.snapshot()));
     }
-  } catch {
+  } catch (err) {
+    if (typeof console !== "undefined" && typeof console.warn === "function") {
+      console.warn("[v3Analytics] registry snapshot persistence skipped:", err);
+    }
     priorSnapshot = undefined;
   }
   const versionChangeLog = compareWithPriorRegistry(registry, priorSnapshot);

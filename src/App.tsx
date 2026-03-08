@@ -42,16 +42,21 @@ export function App() {
 
   // Derive recastData reactively from rawData + config so any config change (tax rate,
   // OCI treatment, hybrid-debt flag, etc.) immediately re-computes the analysis.
-  const recastData = useMemo<RecastPeriod[] | null>(() => {
-    if (!rawData || rawData.length === 0) return null;
+  const recastOutcome = useMemo<{ data: RecastPeriod[] | null; error: string | null }>(() => {
+    if (!rawData || rawData.length === 0) return { data: null, error: null };
     try {
       const processed = processCompanyData(rawData, config);
-      return processed.length > 0 ? processed : null;
+      return { data: processed.length > 0 ? processed : null, error: null };
     } catch (err) {
       console.error("[App] engine error:", err);
-      return null;
+      return {
+        data: null,
+        error: err instanceof Error ? err.message : String(err),
+      };
     }
   }, [rawData, config]);
+  const recastData = recastOutcome.data;
+  const engineError = recastOutcome.error;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -108,7 +113,7 @@ export function App() {
     if (rawData && rawData.length > 0 && recastData === null) {
       setActiveTab("debug");
     }
-  }, [rawData, recastData]);
+  }, [rawData, recastData, engineError]);
 
   const qualityGate = useMemo(() => {
     if (!rawData || rawData.length === 0) return null;
@@ -227,6 +232,11 @@ export function App() {
               </span>
             </div>
           )}
+          {engineError && (
+            <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              <strong>Engine Error:</strong> {engineError}
+            </div>
+          )}
           {activeTab==="upload" && (
             <DataEntry onDataSubmit={handleDataSubmit} currentData={rawData} config={config} onConfigChange={setConfig}/>
           )}
@@ -250,7 +260,7 @@ export function App() {
           {activeTab==="report"     && hasRecast && <AcademicReport data={recastData!} config={config} rawData={rawData} />}
           {activeTab==="regression" && hasRecast && <RegressionReport rawData={rawData} recastData={recastData} config={config} />}
           {activeTab==="v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config}/>}
-          {activeTab==="debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate}/>}
+          {activeTab==="debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError}/>}
           {(["statements","ratios","forecast","valuation","quality","report","regression","v3analytics"] as TabId[]).includes(activeTab) && !hasRecast && (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="text-6xl mb-4">📂</div>
