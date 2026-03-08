@@ -7,6 +7,7 @@ import {
   LineChart, Line, Legend, ReferenceLine, Cell,
 } from "recharts";
 import { runMonteCarlo } from "../engine/monteCarloClient";
+import { MonteCarloOutput } from "../engine/monteCarloTypes";
 
 interface Props { data: RecastPeriod[]; config: EngineConfig }
 
@@ -69,7 +70,7 @@ export default function ForecastReport({data,config}:Props) {
   const [pBear, setPBear] = useState(0.25);
   const [mcBusy, setMcBusy] = useState(false);
   const [mcProgress, setMcProgress] = useState(0);
-  const [mcOut, setMcOut] = useState<any | null>(null);
+  const [mcOut, setMcOut] = useState<MonteCarloOutput | null>(null);
 
   const kwDerived = useMemo(() => {
     if (data.length < 2) return config.risk_free_rate;

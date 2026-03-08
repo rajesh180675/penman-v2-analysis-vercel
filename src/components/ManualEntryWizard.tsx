@@ -202,6 +202,18 @@ export default function ManualEntryWizard({ onSubmit }: { onSubmit: (rows: RawPe
   };
 
   const goStep = (s: 1|2|3|4|5) => dispatch({ type: "step", step: s });
+  const goPrevStep = () => {
+    if (state.step === 2) goStep(1);
+    else if (state.step === 3) goStep(2);
+    else if (state.step === 4) goStep(3);
+    else if (state.step === 5) goStep(4);
+  };
+  const goNextStep = () => {
+    if (state.step === 1) goStep(2);
+    else if (state.step === 2) goStep(3);
+    else if (state.step === 3) goStep(4);
+    else if (state.step === 4) goStep(5);
+  };
 
   return (
     <div className="border border-slate-200 rounded-xl p-5 bg-slate-50 space-y-4">
@@ -409,13 +421,13 @@ export default function ManualEntryWizard({ onSubmit }: { onSubmit: (rows: RawPe
 
       {/* Navigation */}
       {state.step < 5 && (
-        <div className="flex justify-between pt-2 border-t border-slate-200">
-          {state.step > 1 ? (
-            <button onClick={() => goStep((state.step - 1) as any)} className="text-xs text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded hover:bg-white">
+          <div className="flex justify-between pt-2 border-t border-slate-200">
+            {state.step > 1 ? (
+            <button onClick={goPrevStep} className="text-xs text-slate-500 hover:text-slate-700 px-3 py-1.5 rounded hover:bg-white">
               ← Previous
             </button>
           ) : <div />}
-          <button onClick={() => goStep((state.step + 1) as any)}
+          <button onClick={goNextStep}
             className="px-4 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-medium hover:bg-indigo-100">
             Next →
           </button>

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parseCapitalineZip } from "../capitalineParser";
 import { parseScreenerTabDelimited } from "../screenerParser";
 import { parseRawPeriodsJson } from "../jsonIngestion";
 
@@ -35,5 +36,10 @@ describe("parser robustness", () => {
     const out = parseRawPeriodsJson(json);
     expect(out.length).toBe(1);
     expect(out[0].period_end).toBe("2025-03-31");
+  });
+
+  it("fails loud on invalid Capitaline zip payload", async () => {
+    const invalidZip = new File(["not-a-zip"], "bad.zip", { type: "application/zip" });
+    await expect(parseCapitalineZip(invalidZip, { companyId: "BAD" })).rejects.toThrow("Failed to open ZIP");
   });
 });

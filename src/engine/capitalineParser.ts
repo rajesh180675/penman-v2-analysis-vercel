@@ -456,8 +456,7 @@ export async function parseCapitalineZip(
     zip = await JSZip.loadAsync(zipFile);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    warnings.push({ message: `Failed to open ZIP: ${msg}` });
-    return { periods: [], debug: emptyDebug(companyId, warnings) };
+    throw new Error(`Failed to open ZIP: ${msg}`);
   }
 
   const fileEntries = Object.values(zip.files).filter(
@@ -497,11 +496,7 @@ export async function parseCapitalineZip(
     try {
       buffer = await entry.async("arraybuffer");
     } catch (e) {
-      warnings.push({
-        file: fileName,
-        message: `Could not read: ${e instanceof Error ? e.message : e}`,
-      });
-      continue;
+      throw new Error(`Could not read '${fileName}': ${e instanceof Error ? e.message : String(e)}`);
     }
 
     const gd: RawGridDebug = {
@@ -791,29 +786,4 @@ function gridViaSpreadsheetML(text: string): string[][] {
     if (grid.length > best.length) best = grid;
   }
   return best;
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   Empty debug helper
-══════════════════════════════════════════════════════════════════ */
-
-function emptyDebug(
-  companyId: string,
-  warnings: ParseWarning[]
-): CapitalineParseDebug {
-  return {
-    companyId,
-    files: [],
-    detectedPeriods: [],
-    rawGrids: [],
-    metrics: {
-      totalCompositeKeys: 0,
-      totalBaseKeys: 0,
-      baseKeyCollisions: [],
-      byStatement: { BalanceSheet: 0, ProfitLoss: 0, CashFlow: 0, Unknown: 0 },
-    },
-    warnings,
-    sample: { firstRows: [] },
-    rawMetricKeys: [],
-  };
 }

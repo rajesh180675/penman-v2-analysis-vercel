@@ -271,7 +271,7 @@ export function detectComponentDisappearance(
     }
 
     // Sub-component level (OA decomposition)
-    const subComponents: Array<{key: keyof typeof cur.bs; label: string}> = [
+    const subComponents: Array<{key: keyof RecastPeriod["bs"]; label: string}> = [
       { key: "OA_PPE",           label: "PPE" },
       { key: "OA_Inventory",     label: "Inventory" },
       { key: "OA_TradeReceivables", label: "TradeReceivables" },
@@ -280,8 +280,8 @@ export function detectComponentDisappearance(
     ];
 
     for (const { key, label } of subComponents) {
-      const prev_val = (prev.bs as any)[key] as number ?? 0;
-      const cur_val  = (cur.bs as any)[key]  as number ?? 0;
+      const prev_val = prev.bs[key] ?? 0;
+      const cur_val  = cur.bs[key] ?? 0;
       const Δsub = cur_val - prev_val;
       if (
         Δsub < -(decline_pct * Math.max(prev_val, 1)) &&
