@@ -118,3 +118,51 @@ describe("applyDriverSensitivityToScenario", () => {
     expect(scaledBuilt[0].NOA_f).toBeLessThan(baseBuilt[0].NOA_f);
   });
 });
+
+describe("buildScenario validation", () => {
+  it("throws when any required driver series is empty", () => {
+    const latest = mkLatest("2024-03-31");
+    const malformed: ForecastScenario = {
+      name: "base",
+      probability: 1,
+      horizonT: 2,
+      drivers: {
+        sales_growth: [],
+        core_sales_pm: [0.12, 0.12],
+        ato: [1.2, 1.2],
+        flev: [0.2, 0.2],
+        nbc: [0.04, 0.04],
+        g_terminal: 0.05,
+        ke: 0.12,
+        kw: 0.10,
+      },
+    };
+
+    expect(() => buildScenario(malformed, latest)).toThrow(
+      "Scenario driver 'sales_growth' must be a non-empty array",
+    );
+  });
+
+  it("throws when driver series contains non-finite value", () => {
+    const latest = mkLatest("2024-03-31");
+    const malformed: ForecastScenario = {
+      name: "base",
+      probability: 1,
+      horizonT: 1,
+      drivers: {
+        sales_growth: [Number.NaN],
+        core_sales_pm: [0.12],
+        ato: [1.2],
+        flev: [0.2],
+        nbc: [0.04],
+        g_terminal: 0.05,
+        ke: 0.12,
+        kw: 0.10,
+      },
+    };
+
+    expect(() => buildScenario(malformed, latest)).toThrow(
+      "Scenario driver 'sales_growth' contains non-finite value at index 0",
+    );
+  });
+});
