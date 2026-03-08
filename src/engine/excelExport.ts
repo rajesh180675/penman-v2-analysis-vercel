@@ -8,7 +8,7 @@
 import { utils, write } from "xlsx";
 import type { WorkBook, WorkSheet, CellObject } from "xlsx";
 import { EngineConfig, ForecastScenario, RecastPeriod, ValuationResult, NP_BENCHMARKS, ke_from_config } from "./types";
-import { buildProvenanceAuditRows } from "./provenanceAudit";
+import { buildMappingDiscrepancyRows, buildProvenanceAuditRows } from "./provenanceAudit";
 
 // ── Style helpers ──────────────────────────────────────────────────────────────
 type Fill = { fgColor: { rgb: string } };
@@ -529,6 +529,10 @@ export function generateValuationWorkbook(
   const provenanceRows = buildProvenanceAuditRows(recastData);
   if (provenanceRows.length > 0) {
     utils.book_append_sheet(wb, utils.json_to_sheet(provenanceRows), "Provenance Audit");
+  }
+  const discrepancyRows = buildMappingDiscrepancyRows(recastData);
+  if (discrepancyRows.length > 0) {
+    utils.book_append_sheet(wb, utils.json_to_sheet(discrepancyRows), "Mapping Discrepancies");
   }
 
   return write(wb, { type: "array", bookType: "xlsx", cellStyles: true }) as ArrayBuffer;
