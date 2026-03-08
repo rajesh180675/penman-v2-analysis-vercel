@@ -11,6 +11,13 @@ export interface ProvenanceAuditRow {
   maxValue: number;
 }
 
+export interface MappingDiscrepancyRow {
+  line: string;
+  issueType: "duplicate_source_ignored" | "unmatched" | "fuzzy_match";
+  key: string;
+  occurrences: number;
+}
+
 export function buildProvenanceAuditRows(periods: RecastPeriod[]): ProvenanceAuditRow[] {
   const grouped = new Map<
     string,
@@ -65,4 +72,43 @@ export function buildProvenanceAuditRows(periods: RecastPeriod[]): ProvenanceAud
       minValue: g.min,
       maxValue: g.max,
     }));
+}
+
+export function buildMappingDiscrepancyRows(periods: RecastPeriod[]): MappingDiscrepancyRow[] {
+  const grouped = new Map<string, MappingDiscrepancyRow>();
+
+  const upsert = (line: string, issueType: MappingDiscrepancyRow["issueType"], key: string) => {
+    const id = `${line}||${issueType}||${key}`;
+    const row = grouped.get(id);
+    if (!row) {
+      grouped.set(id, { line, issueType, key, occurrences: 1 });
+      return;
+    }
+    row.occurrences += 1;
+  };
+
+  for (const p of periods) {
+    if (!p.trace) continue;
+    for (const [line, entries] of Object.entries(p.trace)) {
+      for (const e of entries) {
+        if (e.note?.startsWith("duplicate_source_ignored:")) {
+          upsert(line, "duplicate_source_ignored", e.key);
+        }
+        if (e.note === "unmatched") {
+          upsert(line, "unmatched", e.key);
+        }
+        if (e.matchType === "fuzzy") {
+          upsert(line, "fuzzy_match", e.key);
+        }
+      }
+    }
+  }
+
+  return Array.from(grouped.values()).sort(
+    (a, b) =>
+      a.line.localeCompare(b.line)
+      || a.issueType.localeCompare(b.issueType)
+      || b.occurrences - a.occurrences
+      || a.key.localeCompare(b.key),
+  );
 }
