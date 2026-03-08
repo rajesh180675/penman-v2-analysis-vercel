@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { RecastPeriod, ForecastScenario, ForecastPeriod, FADE_PARAMS, NP_BENCHMARKS, EngineConfig, ke_from_config } from "../engine/types";
-import { buildScenario, sensitivityAnalysis } from "../engine/forecastingEngine";
+import { buildScenario, sensitivityAnalysis, buildValuationPeriodsFromForecast } from "../engine/forecastingEngine";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -103,21 +103,18 @@ export default function ForecastReport({data,config}:Props) {
     return [bull,base,bear].map(sc=>{
       const fps = buildScenario(sc, latest);
       sc.periods = fps;
-
-      // Build fake RecastPeriod[] from forecast for valuation
-      const fakePeriods: RecastPeriod[] = [latest, ...fps.map((fp,i)=>({
-        period_end: `${parseInt(latest.period_end.slice(0,4))+(i+1)}-03-31`,
-        bs: {...latest.bs, CSE:fp.CSE_f, NOA:fp.NOA_f, NFO:fp.NOA_f-fp.CSE_f},
-        is: {...latest.is, CNI:fp.CNI_f, OI:fp.OI_f, Sales:fp.Sales_f, NFE:fp.NFE_f},
-        cu: latest.cu, cf: latest.cf,
-      } as RecastPeriod))];
-      sc.valuationResult = computeValuation(fakePeriods, kei, kwi, g_inp/100, config);
+      const valuationPeriods = buildValuationPeriodsFromForecast(latest, fps);
+      sc.valuationResult = computeValuation(valuationPeriods, kei, kwi, g_inp/100, config);
       return sc;
     });
   },[latest,ke_inp,kwDerived,g_inp,horizon,pBull,pBase,pBear,fadeSG,fadePM,fadeATO,config]);
 
   const baseScenario = scenarios.find(s=>s.name==="base");
   const fcPeriods = baseScenario?.periods ?? [];
+  const baseValuationPeriods = useMemo(
+    () => baseScenario?.periods ? buildValuationPeriodsFromForecast(latest, baseScenario.periods) : data,
+    [baseScenario, latest, data],
+  );
 
   // Sensitivity
   const baseV = baseScenario?.valuationResult?.V_RE_CV3 ?? 0;
@@ -126,13 +123,8 @@ export default function ForecastReport({data,config}:Props) {
     {ke:ke_inp/100,kw:kwDerived,g:g_inp/100,core_pm:basePM,ato:baseATO,sales_growth:baseSG},
     (p)=>{
       if (!baseScenario?.periods) return baseV;
-      const fakePeriods: RecastPeriod[] = [latest, ...(baseScenario.periods).map((fp,i)=>({
-        period_end:`${parseInt(latest.period_end.slice(0,4))+(i+1)}-03-31`,
-        bs:{...latest.bs,CSE:fp.CSE_f,NOA:fp.NOA_f,NFO:fp.NOA_f-fp.CSE_f},
-        is:{...latest.is,CNI:fp.CNI_f,OI:fp.OI_f,Sales:fp.Sales_f,NFE:fp.NFE_f},
-        cu:latest.cu,cf:latest.cf,
-      } as RecastPeriod))];
-      const r = computeValuation(fakePeriods,p.ke,p.kw,p.g,config);
+      const valuationPeriods = buildValuationPeriodsFromForecast(latest, baseScenario.periods);
+      const r = computeValuation(valuationPeriods,p.ke,p.kw,p.g,config);
       return r.V_RE_CV3;
     }
   ),[baseV,baseScenario,latest,ke_inp,kwDerived,g_inp,basePM,baseATO,baseSG,config]);
@@ -164,7 +156,7 @@ export default function ForecastReport({data,config}:Props) {
     try {
       const out = await runMonteCarlo(
         {
-          basePeriods: data,
+          basePeriods: baseValuationPeriods,
           config,
           N: 10000,
           horizonT: horizon,

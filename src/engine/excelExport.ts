@@ -7,7 +7,7 @@
  */
 import { utils, write } from "xlsx";
 import type { WorkBook, WorkSheet, CellObject } from "xlsx";
-import { EngineConfig, ForecastScenario, RecastPeriod, ValuationResult, NP_BENCHMARKS } from "./types";
+import { EngineConfig, ForecastScenario, RecastPeriod, ValuationResult, NP_BENCHMARKS, ke_from_config } from "./types";
 import { buildProvenanceAuditRows } from "./provenanceAudit";
 
 // ── Style helpers ──────────────────────────────────────────────────────────────
@@ -95,6 +95,7 @@ function updateRef(ws: WorkSheet) {
 // ── Sheet 1: Cover ─────────────────────────────────────────────────────────────
 function buildCoverSheet(config: EngineConfig, periodCount: number): WorkSheet {
   const ws: WorkSheet = {};
+  const ke = ke_from_config(config);
   const rows: CellObject[][] = [
     [cell("PENMAN–NISSIM VALUATION ENGINE v2", { font: { bold: true, sz: 14, color: { rgb: "1F3864" } } })],
     [cell("Institutional Equity Valuation Workbook", { font: { sz: 11, color: { rgb: "4472C4" } } })],
@@ -103,7 +104,7 @@ function buildCoverSheet(config: EngineConfig, periodCount: number): WorkSheet {
     [cell("")],
     [cell("Company", LABEL_BOLD), cell(config.ticker ?? "—", LABEL)],
     [cell("Periods Analysed", LABEL_BOLD), cell(periodCount, NUM_INR)],
-    [cell("Cost of Equity (ke)", LABEL_BOLD), cell((config.risk_free_rate + config.equity_risk_premium), NUM_PCT)],
+    [cell("Cost of Equity (ke)", LABEL_BOLD), cell(ke, NUM_PCT)],
     [cell("Risk-Free Rate", LABEL_BOLD), cell(config.risk_free_rate, NUM_PCT)],
     [cell("Equity Risk Premium", LABEL_BOLD), cell(config.equity_risk_premium, NUM_PCT)],
     [cell("Statutory Tax Rate", LABEL_BOLD), cell(config.statutory_tax_rate, NUM_PCT)],

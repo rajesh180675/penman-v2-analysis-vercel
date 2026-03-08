@@ -10,6 +10,7 @@ import {
   buildAccrualTable, buildSection6B, computeV3Analytics,
 } from "../v3Analytics";
 import { DEFAULT_CONFIG, RecastPeriod } from "../types";
+import { deriveKwFromStructure } from "../PenmanNissimEngine";
 
 const mkPeriod = (year: number, pm: number, re: number, cse: number): RecastPeriod => ({
   period_end: `${year}-03-31`,
@@ -304,5 +305,15 @@ describe("Supplementary Path A controls", () => {
     expect(out.registry.get("composite_tier_message")).toBeTruthy();
     expect(out.registry.get("contamination_tier")).toBeTruthy();
     expect(out.confidence.classification === "HIGH" || out.confidence.classification === "MODERATE" || out.confidence.classification === "LOW").toBe(true);
+  });
+
+  it("S-9.4: computeV3Analytics derives kw from structure when kw is not provided", () => {
+    const periods = [mkPeriod(2024, 0.25, 80, 1246), mkPeriod(2025, 0.27, 85, 1246)];
+    const expectedKw = deriveKwFromStructure(periods[1], periods[0], DEFAULT_CONFIG.ke, DEFAULT_CONFIG.risk_free_rate, DEFAULT_CONFIG);
+
+    const out = computeV3Analytics(periods, DEFAULT_CONFIG, 5000, 4800, 0.04);
+
+    expect(out.registry.get<number>("kw_derived_latest")).toBeCloseTo(expectedKw, 10);
+    expect(out.registry.get<number>("kw_derived_latest")).not.toBeCloseTo(DEFAULT_CONFIG.ke * 0.75, 3);
   });
 });

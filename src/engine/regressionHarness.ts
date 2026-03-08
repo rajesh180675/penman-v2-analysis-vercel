@@ -1,7 +1,7 @@
 import { computeRatios, computeValuation } from "./PenmanNissimEngine";
 import { runIdentityAssertions } from "./identityTests";
 import { CapitalineMappingSpec as M } from "./mappingSpec";
-import { EngineConfig, RawPeriodData, RecastPeriod } from "./types";
+import { EngineConfig, RawPeriodData, RecastPeriod, ke_from_config } from "./types";
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
 
@@ -36,7 +36,7 @@ function deriveKw(periods: RecastPeriod[], cfg: EngineConfig): number {
   if (periods.length < 2) return cfg.risk_free_rate;
   const cur = periods[periods.length - 1];
   const prev = periods[periods.length - 2];
-  const ke = cfg.risk_free_rate + cfg.equity_risk_premium;
+  const ke = ke_from_config(cfg);
   const avgFO = (Math.abs(cur.bs.FO) + Math.abs(prev.bs.FO)) / 2;
   const avgFA = (Math.abs(cur.bs.FA) + Math.abs(prev.bs.FA)) / 2;
   const avgNOA = Math.abs((cur.bs.NOA + prev.bs.NOA) / 2);
@@ -200,7 +200,7 @@ export function runRegressionHarness(rawData: RawPeriodData[], afterPeriods: Rec
   const latestAfter = afterSorted[afterSorted.length - 1];
   const latestBefore = beforePeriods[beforePeriods.length - 1];
 
-  const ke = cfg.risk_free_rate + cfg.equity_risk_premium;
+  const ke = ke_from_config(cfg);
   const kwAfter = deriveKw(afterSorted, cfg);
   const kwBefore = cfg.risk_free_rate;
   const g = 0.05;

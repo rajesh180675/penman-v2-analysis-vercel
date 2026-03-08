@@ -102,6 +102,28 @@ export function buildScenario(
   return periods;
 }
 
+/* §4.3.x Forecast -> valuation bridge used by scenario, sensitivity, and MC */
+export function buildValuationPeriodsFromForecast(
+  latestPeriod: RecastPeriod,
+  forecastPeriods: ForecastPeriod[],
+): RecastPeriod[] {
+  const baseYear = Number.parseInt(latestPeriod.period_end.slice(0, 4), 10);
+  if (!Number.isFinite(baseYear)) {
+    throw new Error(`Invalid period_end year in latestPeriod: ${latestPeriod.period_end}`);
+  }
+
+  return [
+    latestPeriod,
+    ...forecastPeriods.map((fp, i) => ({
+      period_end: `${baseYear + i + 1}-03-31`,
+      bs: { ...latestPeriod.bs, CSE: fp.CSE_f, NOA: fp.NOA_f, NFO: fp.NOA_f - fp.CSE_f },
+      is: { ...latestPeriod.is, CNI: fp.CNI_f, OI: fp.OI_f, Sales: fp.Sales_f, NFE: fp.NFE_f },
+      cu: latestPeriod.cu,
+      cf: latestPeriod.cf,
+    })),
+  ];
+}
+
 /* §4.3.3 Expected value across scenarios */
 export function expectedValue(
   scenarios: ForecastScenario[],
