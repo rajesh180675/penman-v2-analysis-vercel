@@ -14,7 +14,15 @@ import {
 } from "./types";
 import { CapitalineMappingSpec as M } from "./mappingSpec";
 
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
+const normalizeText = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/0ther/g, "other")
+    .replace(/shorttem/g, "shortterm")
+    .replace(/longtem/g, "longterm")
+    .replace(/\btem\b/g, "term")
+    .replace(/amotisation/g, "amortisation");
+const norm = (s: string) => normalizeText(s).replace(/[^a-z0-9]/g, "").trim();
 const stdNormCdf = (x: number) => {
   const t = 1 / (1 + 0.2316419 * Math.abs(x));
   const d = 0.3989423 * Math.exp((-x * x) / 2);
@@ -28,6 +36,7 @@ type PickResult = {
   statement: "BalanceSheet" | "ProfitLoss" | "CashFlow" | "Fallback";
   matchType: "exact_composite" | "exact_base" | "fuzzy";
 };
+type PickResultWithSource = PickResult & { sourceId: string };
 
 function pushTrace(trace: TraceMap | undefined, line: string | undefined, entry: TraceEntry) {
   if (!trace || !line) return;
@@ -35,44 +44,101 @@ function pushTrace(trace: TraceMap | undefined, line: string | undefined, entry:
   trace[line].push(entry);
 }
 
-function pickWithSource(data: RawPeriodData, keys: readonly string[], stmt?: "BalanceSheet" | "ProfitLoss" | "CashFlow"): PickResult {
+function pickOneWithSource(data: RawPeriodData, key: string, stmt?: "BalanceSheet" | "ProfitLoss" | "CashFlow"): PickResultWithSource | null {
   const rv = data.raw_metric_values;
-  for (const key of keys) {
-    if (stmt) {
-      const direct = rv[`${key}__${stmt}`];
-      if (direct != null && Number.isFinite(direct)) {
-        return { value: direct, key, statement: stmt, matchType: "exact_composite" };
-      }
+  if (stmt) {
+    const compositeKey = `${key}__${stmt}`;
+    const direct = rv[compositeKey];
+    if (direct != null && Number.isFinite(direct)) {
+      return { value: direct, key, statement: stmt, matchType: "exact_composite", sourceId: compositeKey };
     }
-    const base = rv[key];
-    if (base != null && Number.isFinite(base)) {
-      return { value: base, key, statement: "Fallback", matchType: "exact_base" };
-    }
+  }
+  const base = rv[key];
+  if (base != null && Number.isFinite(base)) {
+    return { value: base, key, statement: "Fallback", matchType: "exact_base", sourceId: key };
+  }
 
-    const nk = norm(key);
-    let best: number | null = null;
-    let bestKey = key;
-    let bestStmt: "BalanceSheet" | "ProfitLoss" | "CashFlow" | "Fallback" = "Fallback";
-    let bestP = -1;
-    for (const [k, v] of Object.entries(rv)) {
-      if (v == null || !Number.isFinite(v)) continue;
-      const i = k.lastIndexOf("__");
-      const b = i >= 0 ? k.slice(0, i) : k;
-      const st = i >= 0 ? (k.slice(i + 2) as "BalanceSheet" | "ProfitLoss" | "CashFlow") : undefined;
-      if (norm(b) !== nk) continue;
-      const p = stmt && st === stmt ? 10 : st === "BalanceSheet" ? 3 : st === "ProfitLoss" ? 2 : st === "CashFlow" ? 1 : 0;
-      if (p > bestP) {
-        bestP = p;
-        best = v;
-        bestKey = b;
-        bestStmt = st ?? "Fallback";
-      }
+  const nk = norm(key);
+  let best: number | null = null;
+  let bestKey = key;
+  let bestStmt: "BalanceSheet" | "ProfitLoss" | "CashFlow" | "Fallback" = "Fallback";
+  let bestRawKey = key;
+  let bestP = -1;
+  for (const [k, v] of Object.entries(rv)) {
+    if (v == null || !Number.isFinite(v)) continue;
+    const i = k.lastIndexOf("__");
+    const b = i >= 0 ? k.slice(0, i) : k;
+    const st = i >= 0 ? (k.slice(i + 2) as "BalanceSheet" | "ProfitLoss" | "CashFlow") : undefined;
+    if (norm(b) !== nk) continue;
+    const p = stmt && st === stmt ? 10 : st === "BalanceSheet" ? 3 : st === "ProfitLoss" ? 2 : st === "CashFlow" ? 1 : 0;
+    if (p > bestP) {
+      bestP = p;
+      best = v;
+      bestKey = b;
+      bestStmt = st ?? "Fallback";
+      bestRawKey = k;
     }
-    if (best != null) {
-      return { value: best, key: bestKey, statement: bestStmt, matchType: "fuzzy" };
+  }
+  if (best != null) {
+    return { value: best, key: bestKey, statement: bestStmt, matchType: "fuzzy", sourceId: bestRawKey };
+  }
+  return null;
+}
+
+function pickWithSource(data: RawPeriodData, keys: readonly string[], stmt?: "BalanceSheet" | "ProfitLoss" | "CashFlow"): PickResult {
+  for (const key of keys) {
+    const picked = pickOneWithSource(data, key, stmt);
+    if (picked) {
+      return picked;
     }
   }
   return { value: 0, key: keys[0] ?? "", statement: stmt ?? "Fallback", matchType: "exact_base" };
+}
+
+function sumWithDistinctSource(
+  data: RawPeriodData,
+  keys: readonly string[],
+  stmt: "BalanceSheet" | "ProfitLoss" | "CashFlow",
+  line?: string,
+  trace?: TraceMap,
+) {
+  let total = 0;
+  const usedSource = new Set<string>();
+  for (const key of keys) {
+    const picked = pickOneWithSource(data, key, stmt);
+    if (!picked) {
+      pushTrace(trace, line, {
+        statement: stmt,
+        key,
+        value: 0,
+        matchType: "exact_base",
+        note: "unmatched",
+      });
+      continue;
+    }
+    if (usedSource.has(picked.sourceId)) {
+      pushTrace(trace, line, {
+        statement: picked.statement,
+        key: picked.key,
+        value: 0,
+        matchType: picked.matchType,
+        note: `duplicate_source_ignored:${picked.sourceId}`,
+      });
+      continue;
+    }
+    usedSource.add(picked.sourceId);
+    total += picked.value;
+    pushTrace(trace, line, {
+      statement: picked.statement,
+      key: picked.key,
+      value: picked.value,
+      matchType: picked.matchType,
+    });
+  }
+  if (line) {
+    pushTrace(trace, line, { statement: "Derived", key: "SUM", value: total, matchType: "derived" });
+  }
+  return total;
 }
 
 const valBS = (d: RawPeriodData, k: readonly string[], line?: string, trace?: TraceMap) => {
@@ -92,16 +158,12 @@ const valCF = (d: RawPeriodData, k: readonly string[], line?: string, trace?: Tr
 };
 
 function sumPL(d: RawPeriodData, keys: readonly string[]) {
-  return keys.reduce((s, k) => s + valPL(d, [k]), 0);
+  return sumWithDistinctSource(d, keys, "ProfitLoss");
 }
 
 export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace?: TraceMap): CanonicalBalanceSheet {
   const bs = (line: string, keys: readonly string[]) => valBS(data, keys, line, trace);
-  const sumBs = (line: string, keys: readonly string[]) => {
-    const total = keys.reduce((s, k) => s + bs(line, [k]), 0);
-    pushTrace(trace, line, { statement: "Derived", key: "SUM", value: total, matchType: "derived" });
-    return total;
-  };
+  const sumBs = (line: string, keys: readonly string[]) => sumWithDistinctSource(data, keys, "BalanceSheet", line, trace);
 
   const TA = bs("BS.TA", M.balanceSheet.totalAssets);
   const totalSE = bs("BS.TotalStockholdersEquity", M.balanceSheet.totalStockholdersEquity);
@@ -306,11 +368,7 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
 
 export function recastCashFlow(data: RawPeriodData, is_: CanonicalIncome, bs: CanonicalBalanceSheet, prev?: CanonicalBalanceSheet, trace?: TraceMap): CashFlowData {
   const cf = (line: string, keys: readonly string[]) => valCF(data, keys, line, trace);
-  const sumCf = (line: string, keys: readonly string[]) => {
-    const total = keys.reduce((s, k) => s + cf(line, [k]), 0);
-    pushTrace(trace, line, { statement: "Derived", key: "SUM", value: total, matchType: "derived" });
-    return total;
-  };
+  const sumCf = (line: string, keys: readonly string[]) => sumWithDistinctSource(data, keys, "CashFlow", line, trace);
 
   const CFO = cf("CF.CFO", M.cashFlow.cfo);
   const Capex = Math.abs(sumCf("CF.Capex", M.cashFlow.capex));
