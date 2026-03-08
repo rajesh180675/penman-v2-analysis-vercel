@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { RecastPeriod, ForecastScenario, ForecastPeriod, FADE_PARAMS, NP_BENCHMARKS, EngineConfig, ke_from_config } from "../engine/types";
-import { buildScenario, sensitivityAnalysis, buildValuationPeriodsFromForecast } from "../engine/forecastingEngine";
+import { buildScenario, sensitivityAnalysis, buildValuationPeriodsFromForecast, applyDriverSensitivityToScenario } from "../engine/forecastingEngine";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -123,7 +123,21 @@ export default function ForecastReport({data,config}:Props) {
     {ke:ke_inp/100,kw:kwDerived,g:g_inp/100,core_pm:basePM,ato:baseATO,sales_growth:baseSG},
     (p)=>{
       if (!baseScenario?.periods) return baseV;
-      const valuationPeriods = buildValuationPeriodsFromForecast(latest, baseScenario.periods);
+      const scenarioForSensitivity = applyDriverSensitivityToScenario(
+        {
+          ...baseScenario,
+          drivers: {
+            ...baseScenario.drivers,
+            ke: p.ke,
+            kw: p.kw,
+            g_terminal: p.g,
+          },
+        },
+        { core_pm: basePM, ato: baseATO, sales_growth: baseSG },
+        { core_pm: p.core_pm, ato: p.ato, sales_growth: p.sales_growth },
+      );
+      const sensitivityPeriods = buildScenario(scenarioForSensitivity, latest);
+      const valuationPeriods = buildValuationPeriodsFromForecast(latest, sensitivityPeriods);
       const r = computeValuation(valuationPeriods,p.ke,p.kw,p.g,config);
       return r.V_RE_CV3;
     }

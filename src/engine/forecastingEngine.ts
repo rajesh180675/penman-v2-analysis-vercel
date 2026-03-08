@@ -124,6 +124,27 @@ export function buildValuationPeriodsFromForecast(
   ];
 }
 
+export function applyDriverSensitivityToScenario(
+  scenario: ForecastScenario,
+  baseDrivers: Pick<Record<SensParam, number>, "core_pm" | "ato" | "sales_growth">,
+  targetDrivers: Pick<Record<SensParam, number>, "core_pm" | "ato" | "sales_growth">,
+): ForecastScenario {
+  const scale = (target: number, base: number) => (base !== 0 ? target / base : 1);
+  const pmScale = scale(targetDrivers.core_pm, baseDrivers.core_pm);
+  const atoScale = scale(targetDrivers.ato, baseDrivers.ato);
+  const salesScale = scale(targetDrivers.sales_growth, baseDrivers.sales_growth);
+
+  return {
+    ...scenario,
+    drivers: {
+      ...scenario.drivers,
+      core_sales_pm: scenario.drivers.core_sales_pm.map((v) => v * pmScale),
+      ato: scenario.drivers.ato.map((v) => v * atoScale),
+      sales_growth: scenario.drivers.sales_growth.map((v) => v * salesScale),
+    },
+  };
+}
+
 /* §4.3.3 Expected value across scenarios */
 export function expectedValue(
   scenarios: ForecastScenario[],

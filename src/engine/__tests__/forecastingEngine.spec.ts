@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildValuationPeriodsFromForecast } from "../forecastingEngine";
-import { ForecastPeriod, RecastPeriod } from "../types";
+import { applyDriverSensitivityToScenario, buildScenario, buildValuationPeriodsFromForecast } from "../forecastingEngine";
+import { ForecastPeriod, ForecastScenario, RecastPeriod } from "../types";
 
 function mkLatest(period_end = "2024-03-31"): RecastPeriod {
   return {
@@ -79,5 +79,42 @@ describe("buildValuationPeriodsFromForecast", () => {
     expect(() => buildValuationPeriodsFromForecast(latest, [mkForecast(0)])).toThrow(
       "Invalid period_end year in latestPeriod: bad-date",
     );
+  });
+});
+
+describe("applyDriverSensitivityToScenario", () => {
+  it("scales operational driver arrays and changes built scenario outputs", () => {
+    const latest = mkLatest("2024-03-31");
+    const baseScenario: ForecastScenario = {
+      name: "base",
+      probability: 1,
+      horizonT: 2,
+      drivers: {
+        sales_growth: [0.10, 0.10],
+        core_sales_pm: [0.12, 0.12],
+        ato: [1.20, 1.20],
+        flev: [0.2, 0.2],
+        nbc: [0.04, 0.04],
+        g_terminal: 0.05,
+        ke: 0.12,
+        kw: 0.10,
+      },
+    };
+
+    const scaled = applyDriverSensitivityToScenario(
+      baseScenario,
+      { core_pm: 0.12, ato: 1.20, sales_growth: 0.10 },
+      { core_pm: 0.15, ato: 1.44, sales_growth: 0.12 },
+    );
+
+    expect(scaled.drivers.core_sales_pm[0]).toBeCloseTo(0.15, 8);
+    expect(scaled.drivers.ato[0]).toBeCloseTo(1.44, 8);
+    expect(scaled.drivers.sales_growth[0]).toBeCloseTo(0.12, 8);
+
+    const baseBuilt = buildScenario(baseScenario, latest);
+    const scaledBuilt = buildScenario(scaled, latest);
+    expect(scaledBuilt[0].Sales_f).toBeGreaterThan(baseBuilt[0].Sales_f);
+    expect(scaledBuilt[0].OI_f).toBeGreaterThan(baseBuilt[0].OI_f);
+    expect(scaledBuilt[0].NOA_f).toBeLessThan(baseBuilt[0].NOA_f);
   });
 });
