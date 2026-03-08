@@ -15,7 +15,8 @@
  * All monetary values: ₹ Crore (float64)
  * All ratios: dimensionless float64 (0.25 = 25%)
  */
-import { RecastPeriod, EngineConfig } from "./types";
+import { RecastPeriod, EngineConfig, ke_from_config } from "./types";
+import { deriveKwFromStructure } from "./PenmanNissimEngine";
 export enum OutputChannel {
   REPORT = "report",
   AUDIT = "audit",
@@ -1749,9 +1750,16 @@ export function computeV3Analytics(
   gTerminalOverride?: number | null,
   kwDerived?: number
 ): V3AnalyticsBundle {
-  // S-9.4: use explicit ke from config, fall back to rf+erp
-  const ke = cfg.ke > 0 ? cfg.ke : (cfg.risk_free_rate + cfg.equity_risk_premium);
-  const kw = kwDerived ?? (ke * 0.75); // Prefer derived kw; approximate if not supplied
+  const ke = ke_from_config(cfg);
+  const kw = (() => {
+    if (kwDerived != null && Number.isFinite(kwDerived) && kwDerived > 0) return kwDerived;
+    if (periods.length >= 2) {
+      const cur = periods[periods.length - 1];
+      const prev = periods[periods.length - 2];
+      return deriveKwFromStructure(cur, prev, ke, cfg.risk_free_rate, cfg);
+    }
+    return ke * 0.75;
+  })();
   const registry = new CanonicalOutputRegistry();
   registry.register("period_count", periods.length, "S-13.3");
   registry.register("company_id", cfg.ticker ?? "Company", "S-13.3");

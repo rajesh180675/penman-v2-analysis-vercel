@@ -4,7 +4,7 @@
  *          §12 Sensitivity Matrix, §14 Confidence Score
  */
 import { useMemo, useState } from "react";
-import { RecastPeriod, EngineConfig } from "../engine/types";
+import { RecastPeriod, EngineConfig, ke_from_config } from "../engine/types";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import {
   computeV3Analytics,
@@ -56,8 +56,7 @@ const GRADE_COLORS: Record<string, string> = {
 export default function V3AnalyticsPanel({ data, config }: Props) {
   const [activeSection, setActiveSection] = useState<"overview" | "dirty" | "events" | "terminal" | "sensitivity" | "confidence" | "triggers" | "accruals" | "oa_decomp" | "gap_decomp" | "section6b">("overview");
 
-  // S-9.4: use explicit ke from config
-  const ke = config.ke > 0 ? config.ke : (config.risk_free_rate + config.equity_risk_premium);
+  const ke = ke_from_config(config);
 
   const { valuation, kw } = useMemo(() => {
     if (data.length < 2) return { valuation: null, kw: ke };
@@ -75,9 +74,10 @@ export default function V3AnalyticsPanel({ data, config }: Props) {
     return computeV3Analytics(
       data, config,
       valuation.V_RE_CV3, valuation.V_ReOI_CV03,
-      config.g_terminal_override
+      config.g_terminal_override,
+      kw
     );
-  }, [data, config, valuation]);
+  }, [data, config, valuation, kw]);
 
   // Second pass: recompute with §11 terminal anchor once we have the bundle
   const valuationWithAnchor = useMemo(() => {
