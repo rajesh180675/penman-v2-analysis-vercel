@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import { RecastPeriod } from "./types";
 import { computeValuation } from "./PenmanNissimEngine";
+import { convergenceByHalfMeans } from "./monteCarloMath";
 
 interface Dist {
   mean: number;
@@ -72,13 +73,7 @@ self.onmessage = (ev: MessageEvent<MCInput>) => {
   // Convergence: compare mean of first half vs second half of simulation draws.
   // The previous check (std/mean of the 1000 largest sorted values) was checking
   // tail volatility, not convergence of the estimator.
-  const halfN = Math.floor(n / 2);
-  const meanFirst = reSamples.slice(0, halfN).reduce((s, v) => s + v, 0) / halfN;
-  const meanSecond = reSamples.slice(halfN).reduce((s, v) => s + v, 0) / halfN;
-  const meanAll = reSamples.reduce((s, v) => s + v, 0) / n;
-  const convergenceCheck = meanAll !== 0
-    ? Math.abs(meanFirst - meanSecond) / Math.abs(meanAll) < 0.02
-    : false;
+  const convergenceCheck = convergenceByHalfMeans(reSamples, 0.02);
 
   const out: MCOutput = {
     V_RE_samples: reSamples,

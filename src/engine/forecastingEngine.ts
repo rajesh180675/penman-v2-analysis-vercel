@@ -72,6 +72,27 @@ export function buildScenario(
   scenario: ForecastScenario,
   latestPeriod: RecastPeriod,
 ): ForecastPeriod[] {
+  const requireNonEmptySeries = (name: string, values: number[]) => {
+    if (!Array.isArray(values) || values.length === 0) {
+      throw new Error(`Scenario driver '${name}' must be a non-empty array`);
+    }
+  };
+
+  const pickDriverValue = (name: string, values: number[], idx: number): number => {
+    const value = values[Math.min(idx, values.length - 1)];
+    if (!Number.isFinite(value)) {
+      throw new Error(`Scenario driver '${name}' contains non-finite value at index ${Math.min(idx, values.length - 1)}`);
+    }
+    return value;
+  };
+
+  const d = scenario.drivers;
+  requireNonEmptySeries("sales_growth", d.sales_growth);
+  requireNonEmptySeries("core_sales_pm", d.core_sales_pm);
+  requireNonEmptySeries("ato", d.ato);
+  requireNonEmptySeries("flev", d.flev);
+  requireNonEmptySeries("nbc", d.nbc);
+
   const periods: ForecastPeriod[] = [];
   let prev = {
     Sales_f: latestPeriod.is.Sales,
@@ -79,19 +100,18 @@ export function buildScenario(
     CSE_f:   latestPeriod.bs.CSE,
     NFO_f:   latestPeriod.bs.NFO,
   };
-  const d = scenario.drivers;
   const baseYear = latestPeriod.period_end;
 
   for (let t = 1; t <= scenario.horizonT; t++) {
-    const idx = Math.min(t - 1, d.sales_growth.length - 1);
+    const idx = t - 1;
     const fp = buildForecastPeriod(
       t, baseYear, prev,
       {
-        sales_growth:    d.sales_growth[idx]    ?? d.sales_growth[d.sales_growth.length - 1],
-        core_sales_pm:   d.core_sales_pm[idx]   ?? d.core_sales_pm[d.core_sales_pm.length - 1],
-        ato:             d.ato[idx]              ?? d.ato[d.ato.length - 1],
-        flev:            d.flev[idx]             ?? d.flev[d.flev.length - 1],
-        nbc:             d.nbc[idx]              ?? d.nbc[d.nbc.length - 1],
+        sales_growth: pickDriverValue("sales_growth", d.sales_growth, idx),
+        core_sales_pm: pickDriverValue("core_sales_pm", d.core_sales_pm, idx),
+        ato: pickDriverValue("ato", d.ato, idx),
+        flev: pickDriverValue("flev", d.flev, idx),
+        nbc: pickDriverValue("nbc", d.nbc, idx),
       },
       d.ke, d.kw,
       'fade',
