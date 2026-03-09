@@ -1,6 +1,7 @@
-import { computeRatios, computeValuation } from "./PenmanNissimEngine";
+import { computeRatios, computeValuation, deriveKwFromStructure } from "./PenmanNissimEngine";
 import { runIdentityAssertions } from "./identityTests";
 import { CapitalineMappingSpec as M } from "./mappingSpec";
+import { buildPhase0BaselineSnapshot, Phase0BaselineSnapshot } from "./baselineGuardrails";
 import { EngineConfig, RawPeriodData, RecastPeriod, ke_from_config } from "./types";
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
@@ -37,16 +38,7 @@ function deriveKw(periods: RecastPeriod[], cfg: EngineConfig): number {
   const cur = periods[periods.length - 1];
   const prev = periods[periods.length - 2];
   const ke = ke_from_config(cfg);
-  const avgFO = (Math.abs(cur.bs.FO) + Math.abs(prev.bs.FO)) / 2;
-  const avgFA = (Math.abs(cur.bs.FA) + Math.abs(prev.bs.FA)) / 2;
-  const avgNOA = Math.abs((cur.bs.NOA + prev.bs.NOA) / 2);
-  const kdPretax = avgFO > 1 ? Math.max(0, cur.is.FinanceCost / avgFO) : Math.max(cfg.risk_free_rate * 1.1, 0.04);
-  const kdAfterTax = kdPretax * (1 - cur.is.taxRate);
-  const ki = avgFA > 1 ? Math.max(0, cur.is.FinanceIncome / avgFA) : cfg.risk_free_rate;
-  const kwRaw = avgNOA > 1
-    ? (ke * Math.abs(cur.bs.CSE) + kdAfterTax * avgFO - ki * avgFA) / avgNOA
-    : ke;
-  return Math.max(cfg.risk_free_rate, Math.min(ke, kwRaw));
+  return deriveKwFromStructure(cur, prev, ke, cfg.risk_free_rate, cfg);
 }
 
 function buildLegacyEmulation(raw: RawPeriodData[], after: RecastPeriod[], cfg: EngineConfig): RecastPeriod[] {
@@ -188,6 +180,11 @@ export interface RegressionHarnessReport {
   bugImpactTable: Array<{ bugClass: string; metric: string; before: number; after: number; delta: number }>;
 }
 
+export interface Phase0BaselineReport {
+  snapshot: Phase0BaselineSnapshot;
+  regression: RegressionHarnessReport;
+}
+
 export function runRegressionHarness(rawData: RawPeriodData[], afterPeriods: RecastPeriod[], cfg: EngineConfig): RegressionHarnessReport | null {
   if (!rawData.length || afterPeriods.length < 2) return null;
   const rawSorted = [...rawData].sort((a, b) => a.period_end.localeCompare(b.period_end));
@@ -285,4 +282,16 @@ export function runRegressionHarness(rawData: RawPeriodData[], afterPeriods: Rec
     },
     bugImpactTable,
   };
+}
+
+export function runPhase0BaselineReport(
+  rawData: RawPeriodData[],
+  recastData: RecastPeriod[],
+  cfg: EngineConfig,
+): Phase0BaselineReport | null {
+  if (!rawData?.length || !recastData?.length) return null;
+  const regression = runRegressionHarness(rawData, recastData, cfg);
+  const snapshot = buildPhase0BaselineSnapshot(rawData[0].company_id, recastData, cfg);
+  if (!regression || !snapshot) return null;
+  return { snapshot, regression };
 }

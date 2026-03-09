@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { CompanyRegistry, EngineConfig, RawPeriodData, RecastPeriod } from "../engine/types";
-import { runRegressionHarness } from "../engine/regressionHarness";
-import { buildPhase0BaselineSnapshot, PHASE0_BENCHMARK_SET } from "../engine/baselineGuardrails";
+import { runPhase0BaselineReport } from "../engine/regressionHarness";
+import { PHASE0_BENCHMARK_SET } from "../engine/baselineGuardrails";
 
 interface Props {
   rawData: RawPeriodData[] | null;
@@ -14,14 +14,12 @@ const pct = (v: number | null | undefined) => (v == null ? "—" : `${(v * 100).
 const num = (v: number | null | undefined) => (v == null ? "—" : v.toLocaleString("en-IN", { maximumFractionDigits: 0 }));
 
 export default function RegressionReport({ rawData, recastData, config, registry }: Props) {
-  const report = useMemo(() => {
+  const baseline = useMemo(() => {
     if (!rawData || !recastData) return null;
-    return runRegressionHarness(rawData, recastData, config);
+    return runPhase0BaselineReport(rawData, recastData, config);
   }, [rawData, recastData, config]);
-  const snapshot = useMemo(() => {
-    if (!rawData || !recastData?.length) return null;
-    return buildPhase0BaselineSnapshot(rawData[0]?.company_id ?? "UNKNOWN", recastData, config);
-  }, [rawData, recastData, config]);
+  const report = baseline?.regression ?? null;
+  const snapshot = baseline?.snapshot ?? null;
 
   if (!report) {
     return (
