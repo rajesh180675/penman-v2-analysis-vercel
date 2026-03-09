@@ -1,20 +1,26 @@
 import { useMemo } from "react";
-import { EngineConfig, RawPeriodData, RecastPeriod } from "../engine/types";
+import { CompanyRegistry, EngineConfig, RawPeriodData, RecastPeriod } from "../engine/types";
 import { runRegressionHarness } from "../engine/regressionHarness";
+import { buildPhase0BaselineSnapshot, PHASE0_BENCHMARK_SET } from "../engine/baselineGuardrails";
 
 interface Props {
   rawData: RawPeriodData[] | null;
   recastData: RecastPeriod[] | null;
   config: EngineConfig;
+  registry: CompanyRegistry;
 }
 
 const pct = (v: number | null | undefined) => (v == null ? "—" : `${(v * 100).toFixed(2)}%`);
 const num = (v: number | null | undefined) => (v == null ? "—" : v.toLocaleString("en-IN", { maximumFractionDigits: 0 }));
 
-export default function RegressionReport({ rawData, recastData, config }: Props) {
+export default function RegressionReport({ rawData, recastData, config, registry }: Props) {
   const report = useMemo(() => {
     if (!rawData || !recastData) return null;
     return runRegressionHarness(rawData, recastData, config);
+  }, [rawData, recastData, config]);
+  const snapshot = useMemo(() => {
+    if (!rawData || !recastData?.length) return null;
+    return buildPhase0BaselineSnapshot(rawData[0]?.company_id ?? "UNKNOWN", recastData, config);
   }, [rawData, recastData, config]);
 
   if (!report) {
@@ -34,6 +40,68 @@ export default function RegressionReport({ rawData, recastData, config }: Props)
           Company run-through on {report.latestPeriod.slice(0, 10)} with legacy-emulation (before) vs fixed engine (after).
         </p>
       </section>
+      {snapshot && (
+        <>
+          <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="font-semibold text-slate-800 mb-3">Phase 0 Baseline Universe (Frozen)</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="px-3 py-2 text-left">Ticker</th>
+                    <th className="px-3 py-2 text-left">Company</th>
+                    <th className="px-3 py-2 text-left">Sector</th>
+                    <th className="px-3 py-2 text-left">Loaded in session</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {PHASE0_BENCHMARK_SET.map((c) => {
+                    const loaded = Object.prototype.hasOwnProperty.call(registry.companies, c.id);
+                    return (
+                      <tr key={c.id}>
+                        <td className="px-3 py-2 font-mono">{c.ticker}</td>
+                        <td className="px-3 py-2 text-slate-700">{c.name}</td>
+                        <td className="px-3 py-2 text-slate-600">{c.sector}</td>
+                        <td className="px-3 py-2">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${loaded ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+                            {loaded ? "Yes" : "No"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="font-semibold text-slate-800 mb-3">Phase 0 Guardrails KPI Dashboard</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Box label="RE↔ReOI identity gap" value={pct(snapshot.guardrails.identityGapPct)} />
+              <Box label="% Other OA" value={pct(snapshot.guardrails.otherOAPct)} />
+              <Box label="Terminal-anchor stability" value={pct(snapshot.guardrails.terminalAnchorStabilityPct)} />
+              <Box
+                label="Valuation error band"
+                value={`${pct(snapshot.guardrails.valuationErrorBand.downsidePct)} / +${(snapshot.guardrails.valuationErrorBand.upsidePct * 100).toFixed(2)}%`}
+              />
+            </div>
+          </section>
+          <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 className="font-semibold text-slate-800 mb-3">Reproducible Baseline Snapshot</h3>
+            <p className="text-xs text-slate-500 mb-3">
+              Deterministic snapshot ID for regression harness baselining and CI comparisons.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <Box label="Snapshot ID" value={snapshot.snapshotId} />
+              <Box label="Config fingerprint" value={snapshot.configFingerprint} />
+              <Box label="Benchmark members" value={String(snapshot.benchmarkUniverse.length)} />
+            </div>
+            <pre className="text-xs bg-slate-50 border border-slate-200 rounded-lg p-3 overflow-x-auto">
+              {JSON.stringify(snapshot, null, 2)}
+            </pre>
+          </section>
+        </>
+      )}
 
       <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <h3 className="font-semibold text-slate-800 mb-3">1) Before vs After Ratio Deltas (latest period)</h3>
