@@ -1,6 +1,7 @@
 import { computeRatios, computeValuation } from "./PenmanNissimEngine";
 import { runIdentityAssertions } from "./identityTests";
 import { CapitalineMappingSpec as M } from "./mappingSpec";
+import { buildPhase0BaselineSnapshot, Phase0BaselineSnapshot } from "./baselineGuardrails";
 import { EngineConfig, RawPeriodData, RecastPeriod, ke_from_config } from "./types";
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
@@ -188,6 +189,11 @@ export interface RegressionHarnessReport {
   bugImpactTable: Array<{ bugClass: string; metric: string; before: number; after: number; delta: number }>;
 }
 
+export interface Phase0BaselineReport {
+  snapshot: Phase0BaselineSnapshot;
+  regression: RegressionHarnessReport;
+}
+
 export function runRegressionHarness(rawData: RawPeriodData[], afterPeriods: RecastPeriod[], cfg: EngineConfig): RegressionHarnessReport | null {
   if (!rawData.length || afterPeriods.length < 2) return null;
   const rawSorted = [...rawData].sort((a, b) => a.period_end.localeCompare(b.period_end));
@@ -285,4 +291,16 @@ export function runRegressionHarness(rawData: RawPeriodData[], afterPeriods: Rec
     },
     bugImpactTable,
   };
+}
+
+export function runPhase0BaselineReport(
+  rawData: RawPeriodData[],
+  recastData: RecastPeriod[],
+  cfg: EngineConfig,
+): Phase0BaselineReport | null {
+  if (!rawData?.length || !recastData?.length) return null;
+  const regression = runRegressionHarness(rawData, recastData, cfg);
+  const snapshot = buildPhase0BaselineSnapshot(rawData[0].company_id, recastData, cfg);
+  if (!regression || !snapshot) return null;
+  return { snapshot, regression };
 }

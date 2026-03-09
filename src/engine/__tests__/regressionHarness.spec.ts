@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { processCompanyData } from "../pipeline";
 import { DEFAULT_CONFIG, EngineConfig, RawPeriodData } from "../types";
-import { runRegressionHarness } from "../regressionHarness";
+import { runPhase0BaselineReport, runRegressionHarness } from "../regressionHarness";
 
 const sample: RawPeriodData[] = [
   {
@@ -70,5 +70,14 @@ describe("runRegressionHarness", () => {
     const report = runRegressionHarness(sample, recast, cfg);
     expect(report).not.toBeNull();
     expect(report?.valuationDelta.ke).toBeCloseTo(0.16, 8);
+  });
+
+  it("builds a combined deterministic phase0 baseline report payload", () => {
+    const recast = processCompanyData(sample, DEFAULT_CONFIG);
+    const out = runPhase0BaselineReport(sample, recast, DEFAULT_CONFIG);
+    expect(out).not.toBeNull();
+    expect(out?.snapshot.phase).toBe("phase0-week1-baseline");
+    expect(out?.snapshot.snapshotId).toMatch(/^fnv1a-/);
+    expect(out?.regression.latestPeriod).toBe("2025-03-31");
   });
 });
