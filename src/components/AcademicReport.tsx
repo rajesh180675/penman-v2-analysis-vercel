@@ -10,11 +10,13 @@ import { evaluateGranularityChecklist } from "../engine/mappingAudit";
 import { generateValuationWorkbook } from "../engine/excelExport";
 import { buildProvenanceAuditRows } from "../engine/provenanceAudit";
 import { computeV3Analytics, V3AnalyticsBundle, computeAnchorTable } from "../engine/v3Analytics";
+import { AuditSubmissionMeta, persistAuditBlob, persistAuditEvent } from "../lib/audit";
 
 interface Props {
   data: RecastPeriod[];
   config: EngineConfig;
   rawData?: RawPeriodData[] | null;
+  auditMeta?: AuditSubmissionMeta | null;
 }
 
 const pct = (v: number | null | undefined, d = 1) => (v == null ? "—" : `${(v * 100).toFixed(d)}%`);
@@ -180,7 +182,7 @@ function pickFaceValue(shareCapital: number | null | undefined, shareCount: numb
   return bestErr <= 1 ? best : null;
 }
 
-export default function AcademicReport({ data, config, rawData }: Props) {
+export default function AcademicReport({ data, config, rawData, auditMeta }: Props) {
   const eqROCE = katex.renderToString(String.raw`\mathrm{ROCE}_t = \frac{\mathrm{CNI}_t}{\overline{\mathrm{CSE}}}`,
     { throwOnError: false, displayMode: true });
   const eqRNOA = katex.renderToString(String.raw`\mathrm{RNOA}_t = \frac{\mathrm{OI}_t}{\overline{\mathrm{NOA}}}`,
@@ -368,6 +370,18 @@ export default function AcademicReport({ data, config, rawData }: Props) {
       const blob = await generatePdfBlob();
       if (!blob) return;
       const latestPeriod = data[data.length - 1]?.period_end?.slice(0, 10) ?? "latest";
+      if (auditMeta) {
+        await persistAuditBlob({
+          runId: auditMeta.runId,
+          kind: "artifacts",
+          eventType: "report-pdf-exported",
+          file: blob,
+          filename: `academic_report_${latestPeriod}.pdf`,
+          companyId: auditMeta.companyId,
+          sourceMode: auditMeta.sourceMode,
+          contentType: "application/pdf",
+        });
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -499,6 +513,25 @@ export default function AcademicReport({ data, config, rawData }: Props) {
       zip.file("manifest.json", JSON.stringify(manifest, null, 2));
 
       const bundleBlob = await zip.generateAsync({ type: "blob" });
+      if (auditMeta) {
+        await persistAuditBlob({
+          runId: auditMeta.runId,
+          kind: "artifacts",
+          eventType: "ic-bundle-exported",
+          file: bundleBlob,
+          filename: `ic_bundle_${latestPeriod}.zip`,
+          companyId: auditMeta.companyId,
+          sourceMode: auditMeta.sourceMode,
+          contentType: "application/zip",
+        });
+        await persistAuditEvent({
+          runId: auditMeta.runId,
+          eventType: "ic-bundle-manifest",
+          companyId: auditMeta.companyId,
+          sourceMode: auditMeta.sourceMode,
+          payload: manifest,
+        });
+      }
       const url = URL.createObjectURL(bundleBlob);
       const a = document.createElement("a");
       a.href = url;
@@ -521,6 +554,18 @@ export default function AcademicReport({ data, config, rawData }: Props) {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
       const latestPeriod = data[data.length - 1]?.period_end?.slice(0, 10) ?? "latest";
+      if (auditMeta) {
+        await persistAuditBlob({
+          runId: auditMeta.runId,
+          kind: "artifacts",
+          eventType: "workbook-exported",
+          file: blob,
+          filename: `institutional_workbook_${latestPeriod}.xlsx`,
+          companyId: auditMeta.companyId,
+          sourceMode: auditMeta.sourceMode,
+          contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { RawPeriodData, RecastPeriod, DEFAULT_CONFIG, EngineConfig, CompanyRegistry } from "./engine/types";
 import { processCompanyData } from "./engine/pipeline";
 import { CapitalineParseDebug } from "./engine/capitalineParser";
@@ -15,6 +15,8 @@ import RegressionReport from "./components/RegressionReport";
 import ComparisonReport from "./components/ComparisonReport";
 import DebugPanel from "./components/DebugPanel";
 import V3AnalyticsPanel from "./components/V3AnalyticsPanel";
+import { AuditSubmissionMeta, createAuditRunId, isAuditEnabled, persistAuditEvent } from "./lib/audit";
+import { buildAnalysisSnapshot } from "./lib/auditSnapshot";
 
 type TabId = "upload"|"statements"|"ratios"|"forecast"|"valuation"|"quality"|"comparison"|"report"|"regression"|"v3analytics"|"debug";
 
@@ -39,6 +41,8 @@ export function App() {
   const [config,     setConfig]     = useState<EngineConfig>(DEFAULT_CONFIG);
   const [darkMode, setDarkMode] = useState(false);
   const [registry, setRegistry] = useState<CompanyRegistry>({ companies: {} });
+  const [auditMeta, setAuditMeta] = useState<AuditSubmissionMeta | null>(null);
+  const lastAuditSignatureRef = useRef<string | null>(null);
 
   // Derive recastData reactively from rawData + config so any config change (tax rate,
   // OCI treatment, hybrid-debt flag, etc.) immediately re-computes the analysis.
@@ -121,7 +125,15 @@ export function App() {
   }, [rawData]);
 
   const handleDataSubmit = useCallback(
-    (data:RawPeriodData[], debug?:CapitalineParseDebug) => {
+    (data:RawPeriodData[], debug?:CapitalineParseDebug, meta?: AuditSubmissionMeta) => {
+      const nextMeta = meta ?? {
+        runId: createAuditRunId(),
+        sourceMode: "manual",
+        companyId: data[0]?.company_id || `CO-${Date.now()}`,
+        fileName: null,
+      };
+      setAuditMeta(nextMeta);
+      lastAuditSignatureRef.current = null;
       setRawData(data);
       if (debug) setDebugInfo(debug);
       if (data.length === 0) { setActiveTab("debug"); return; }
@@ -138,8 +150,46 @@ export function App() {
       }));
       setActiveTab("statements");
     },
-    [config]
+    []
   );
+
+  useEffect(() => {
+    if (!auditMeta || !rawData) return;
+
+    const snapshot = buildAnalysisSnapshot({
+      rawData,
+      recastData,
+      config,
+      debugInfo,
+      qualityGate,
+      engineError,
+    });
+    const signature = JSON.stringify(snapshot);
+    if (signature === lastAuditSignatureRef.current) return;
+    lastAuditSignatureRef.current = signature;
+
+    void persistAuditEvent({
+      runId: auditMeta.runId,
+      eventType: "analysis-snapshot",
+      companyId: auditMeta.companyId,
+      sourceMode: auditMeta.sourceMode,
+      payload: snapshot,
+    });
+  }, [auditMeta, config, debugInfo, engineError, qualityGate, rawData, recastData]);
+
+  useEffect(() => {
+    if (!auditMeta || !engineError) return;
+
+    void persistAuditEvent({
+      runId: auditMeta.runId,
+      eventType: "engine-error",
+      companyId: auditMeta.companyId,
+      sourceMode: auditMeta.sourceMode,
+      payload: {
+        error: engineError,
+      },
+    });
+  }, [auditMeta, engineError]);
 
   const hasRecast = (recastData?.length??0)>0;
   const hasDebug  = debugInfo!==null;
@@ -195,6 +245,11 @@ export function App() {
               ))}
             </nav>
             <div className="ml-3 flex items-center gap-2">
+              {isAuditEnabled() && auditMeta && (
+                <span className="hidden lg:inline-flex px-2 py-1 text-[11px] rounded border border-emerald-200 bg-emerald-50 text-emerald-700">
+                  Audit run {auditMeta.runId.slice(0, 8)}
+                </span>
+              )}
               <button
                 onClick={() => setDarkMode((v) => !v)}
                 className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
@@ -257,7 +312,7 @@ export function App() {
           )}
           {activeTab==="quality"    && hasRecast && <QualityReport data={recastData!}/>}
           {activeTab==="comparison" && <ComparisonReport registry={registry} config={config} />}
-          {activeTab==="report"     && hasRecast && <AcademicReport data={recastData!} config={config} rawData={rawData} />}
+          {activeTab==="report"     && hasRecast && <AcademicReport data={recastData!} config={config} rawData={rawData} auditMeta={auditMeta} />}
           {activeTab==="regression" && hasRecast && <RegressionReport rawData={rawData} recastData={recastData} config={config} registry={registry} />}
           {activeTab==="v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config}/>}
           {activeTab==="debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError}/>}

@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@faker-js/faker": "^10.3.0",
+    "@vercel/blob": "^2.3.2",
     "clsx": "2.1.1",
     "dompurify": "^3.3.3",
     "html2canvas": "^1.4.1",

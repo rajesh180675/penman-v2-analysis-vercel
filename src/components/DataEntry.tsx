@@ -4,10 +4,11 @@ import { parseCapitalineZip, CapitalineParseDebug } from "../engine/capitalinePa
 import { parseScreenerTabDelimited } from "../engine/screenerParser";
 import { parseRawPeriodsJson } from "../engine/jsonIngestion";
 import { parseXbrlXml } from "../engine/xbrlParser";
+import { AuditSubmissionMeta, createAuditRunId, persistAuditEvent, persistAuditFile } from "../lib/audit";
 import ManualEntryWizard from "./ManualEntryWizard";
 
 interface Props {
-  onDataSubmit: (data: RawPeriodData[], debug?: CapitalineParseDebug) => void;
+  onDataSubmit: (data: RawPeriodData[], debug?: CapitalineParseDebug, meta?: AuditSubmissionMeta) => void;
   currentData: RawPeriodData[] | null;
   config: EngineConfig;
   onConfigChange: (cfg: EngineConfig) => void;
@@ -23,20 +24,66 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
   const [screenerText, setScreenerText] = useState("");
   const [jsonText, setJsonText] = useState("");
 
+  const buildMeta = useCallback(
+    (sourceMode: AuditSubmissionMeta["sourceMode"], overrides?: Partial<AuditSubmissionMeta>): AuditSubmissionMeta => ({
+      runId: overrides?.runId ?? createAuditRunId(),
+      sourceMode,
+      companyId: overrides?.companyId ?? companyId,
+      fileName: overrides?.fileName ?? null,
+    }),
+    [companyId]
+  );
+
   const processZip = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith(".zip")) {
       setError("Please upload a .zip file containing Capitaline XLS exports.");
       return;
     }
     setIsProcessing(true); setError(""); setLastFile(file.name);
+    const meta = buildMeta("capitaline", { fileName: file.name });
     try {
+      await persistAuditFile({
+        runId: meta.runId,
+        kind: "inputs",
+        eventType: "input-file-uploaded",
+        file,
+        filename: file.name,
+        companyId: meta.companyId,
+        sourceMode: meta.sourceMode,
+      });
       const { periods, debug } = await parseCapitalineZip(file, { companyId });
-      onDataSubmit(periods, debug);
+      await persistAuditEvent({
+        runId: meta.runId,
+        eventType: "input-ingested",
+        companyId: meta.companyId,
+        sourceMode: meta.sourceMode,
+        payload: {
+          fileName: file.name,
+          periodCount: periods.length,
+          debugSummary: debug
+            ? {
+                files: debug.files.length,
+                rawMetricKeys: debug.rawMetricKeys.length,
+              }
+            : null,
+        },
+      });
+      onDataSubmit(periods, debug, meta);
       if (periods.length === 0) setError("Parsed 0 periods. Check Debug tab for details.");
     } catch (err: unknown) {
+      await persistAuditEvent({
+        runId: meta.runId,
+        eventType: "input-ingest-failed",
+        companyId: meta.companyId,
+        sourceMode: meta.sourceMode,
+        payload: {
+          fileName: file.name,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      });
       setError(`Failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally { setIsProcessing(false); }
-  }, [companyId, onDataSubmit]);
+  }, [buildMeta, companyId, onDataSubmit]);
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
@@ -45,6 +92,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
   };
 
   const handleLoadSample = () => {
+    const meta = buildMeta("sample", { fileName: "embedded-vst-sample" });
     // VST Industries — 15 years of real data
     const sample: RawPeriodData[] = [
       { company_id: "VST", period_end: "2011-03-31", raw_metric_values: { "Total Assets": 639, "Total Equity": 264, "Minority Interest": 0, "Cash and Cash Equivalents": 29, "Bank Balances Other Than Cash and Cash Equivalents": 0, "Current Investments": 149, "Investments - Long-term": 0, "Others Financial Assets - Short-term": 0, "Long Term Borrowings": 0, "Short Term Borrowings": 0, "Lease Liabilities": 0, "Others Financial Liabilities - Long-term": 0, "Others Financial Liabilities - Short-term": 0, "Revenue From Operations(Net)": 0, "Other Income": 0, "Total Comprehensive Income for the Year": 0, "Non-Controlling Interests": 0, "Profit After Tax": 0, "Finance Cost": 0, "Tax Expenses": 0, "Profit Before Tax": 0, "Net Cash from Operating Activities": 85, "Purchased of Fixed Assets": 44, "Dividend Paid": 54, "Exceptional Items Before Tax": 0, "Other Comprehensive Income That Will Not Be Reclassified to Profit Or Loss": 0, "Interest Received": 2, "Dividend Received": 5, "P/L on Sales of Invest": -7 } },
@@ -59,7 +107,18 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
       { company_id: "VST", period_end: "2024-03-31", raw_metric_values: { "Total Assets": 1720, "Total Equity": 1252, "Minority Interest": 0, "Cash and Cash Equivalents": 24, "Bank Balances Other Than Cash and Cash Equivalents": 11, "Current Investments": 247, "Investments - Long-term": 200, "Others Financial Assets - Short-term": 3, "Long Term Borrowings": 0, "Short Term Borrowings": 0, "Lease Liabilities": 0, "Others Financial Liabilities - Long-term": 0, "Others Financial Liabilities - Short-term": 48, "Revenue From Operations(Net)": 1258, "Other Income": 34, "Total Comprehensive Income for the Year": 754, "Non-Controlling Interests": 0, "Profit After Tax": 753, "Finance Cost": 0, "Tax Expenses": 165, "Profit Before Tax": 919, "Net Cash from Operating Activities": 167, "Purchased of Fixed Assets": 94, "Dividend Paid": 231, "Exceptional Items Before Tax": 504, "Other Comprehensive Income That Will Not Be Reclassified to Profit Or Loss": 1, "Interest Received": 13, "Dividend Received": 0, "P/L on Sales of Invest": 0 } },
       { company_id: "VST", period_end: "2025-03-31", raw_metric_values: { "Total Assets": 1816, "Total Equity": 1323, "Minority Interest": 0, "Cash and Cash Equivalents": 6, "Bank Balances Other Than Cash and Cash Equivalents": 11, "Current Investments": 332, "Investments - Long-term": 199, "Others Financial Assets - Short-term": 3, "Long Term Borrowings": 0, "Short Term Borrowings": 0, "Lease Liabilities": 0, "Others Financial Liabilities - Long-term": 0, "Others Financial Liabilities - Short-term": 50, "Revenue From Operations(Net)": 2883, "Other Income": 29, "Total Comprehensive Income for the Year": 1110, "Non-Controlling Interests": 0, "Profit After Tax": 1112, "Finance Cost": 0, "Tax Expenses": 363, "Profit Before Tax": 1475, "Net Cash from Operating Activities": 193, "Purchased of Fixed Assets": 41, "Dividend Paid": 231, "Exceptional Items Before Tax": -90, "Other Comprehensive Income That Will Not Be Reclassified to Profit Or Loss": -3, "Interest Received": 15, "Dividend Received": 0, "P/L on Sales of Invest": 0 } },
     ];
-    onDataSubmit(sample);
+    void persistAuditEvent({
+      runId: meta.runId,
+      eventType: "sample-loaded",
+      companyId: meta.companyId,
+      sourceMode: meta.sourceMode,
+      payload: {
+        fileName: meta.fileName,
+        periodCount: sample.length,
+        periods: sample.map((period) => period.period_end),
+      },
+    });
+    onDataSubmit(sample, undefined, meta);
   };
 
   return (
@@ -212,8 +271,19 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
               onClick={() => {
                 try {
                   const periods = parseScreenerTabDelimited(screenerText, { companyId });
+                  const meta = buildMeta("screener");
+                  void persistAuditEvent({
+                    runId: meta.runId,
+                    eventType: "text-input-ingested",
+                    companyId: meta.companyId,
+                    sourceMode: meta.sourceMode,
+                    payload: {
+                      sourceText: screenerText,
+                      periodCount: periods.length,
+                    },
+                  });
                   if (!periods.length) setError("Screener parse returned 0 periods.");
-                  else onDataSubmit(periods);
+                  else onDataSubmit(periods, undefined, meta);
                 } catch (e) {
                   setError(`Screener parse failed: ${e instanceof Error ? e.message : String(e)}`);
                 }
@@ -233,7 +303,18 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
               onClick={() => {
                 try {
                   const periods = parseRawPeriodsJson(jsonText);
-                  onDataSubmit(periods);
+                  const meta = buildMeta("json");
+                  void persistAuditEvent({
+                    runId: meta.runId,
+                    eventType: "json-input-ingested",
+                    companyId: meta.companyId,
+                    sourceMode: meta.sourceMode,
+                    payload: {
+                      sourceJson: jsonText,
+                      periodCount: periods.length,
+                    },
+                  });
+                  onDataSubmit(periods, undefined, meta);
                 } catch (e) {
                   setError(`JSON ingestion failed: ${e instanceof Error ? e.message : String(e)}`);
                 }
@@ -257,8 +338,20 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                 try {
                   const txt = await f.text();
                   const periods = parseXbrlXml(txt, companyId);
+                  const meta = buildMeta("xbrl", { fileName: f.name });
+                  void persistAuditEvent({
+                    runId: meta.runId,
+                    eventType: "xbrl-input-ingested",
+                    companyId: meta.companyId,
+                    sourceMode: meta.sourceMode,
+                    payload: {
+                      fileName: f.name,
+                      sourceXml: txt,
+                      periodCount: periods.length,
+                    },
+                  });
                   if (!periods.length) setError("XBRL parse returned 0 periods. Check taxonomy labels/contexts.");
-                  else onDataSubmit(periods);
+                  else onDataSubmit(periods, undefined, meta);
                 } catch (err) {
                   setError(`XBRL parse failed: ${err instanceof Error ? err.message : String(err)}`);
                 }
@@ -270,7 +363,22 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
 
         {mode === "manual" && (
           <div className="m-6">
-            <ManualEntryWizard onSubmit={(rows) => onDataSubmit(rows)} />
+            <ManualEntryWizard
+              onSubmit={(rows) => {
+                const meta = buildMeta("manual");
+                void persistAuditEvent({
+                  runId: meta.runId,
+                  eventType: "manual-input-ingested",
+                  companyId: meta.companyId,
+                  sourceMode: meta.sourceMode,
+                  payload: {
+                    rows,
+                    periodCount: rows.length,
+                  },
+                });
+                onDataSubmit(rows, undefined, meta);
+              }}
+            />
           </div>
         )}
 
