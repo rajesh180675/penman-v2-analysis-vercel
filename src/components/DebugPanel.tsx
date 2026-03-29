@@ -457,6 +457,54 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
             <StatBox label="Unknown keys" value={mappingAudit.datasetKeyCounts.Unknown} highlight={mappingAudit.datasetKeyCounts.Unknown > 0} />
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
+            <StatBox label="Add to spec" value={mappingAudit.backlogSummary.totalsByAction["add-to-spec"]} highlight={mappingAudit.backlogSummary.totalsByAction["add-to-spec"] > 0} />
+            <StatBox label="Group existing" value={mappingAudit.backlogSummary.totalsByAction["group-to-existing"]} />
+            <StatBox label="Review" value={mappingAudit.backlogSummary.totalsByAction.review} highlight={mappingAudit.backlogSummary.totalsByAction.review > 0} />
+            <StatBox label="Ignored" value={mappingAudit.backlogSummary.totalsByAction["ignore-non-core"]} />
+            <StatBox label="Actionable" value={mappingAudit.backlogSummary.actionableCount} highlight={mappingAudit.backlogSummary.actionableCount > 0} />
+          </div>
+
+          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <div className="font-semibold text-sm text-slate-700 mb-2">Ranked backlog triage</div>
+            <div className="text-xs text-slate-500 mb-3">
+              Out-of-spec labels are now triaged into spec additions, existing-bucket grouping, ignored disclosure noise, or manual review.
+            </div>
+            {mappingAudit.backlogSummary.topActionable.length === 0 ? (
+              <div className="text-xs text-green-700">No actionable backlog labels remain in this dataset.</div>
+            ) : (
+              <div className="max-h-64 overflow-auto space-y-2 text-xs">
+                {mappingAudit.backlogSummary.topActionable.slice(0, 12).map((entry) => (
+                  <div key={`${entry.statement}:${entry.key}`} className="rounded-md border border-slate-200 bg-white px-3 py-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-slate-800">{entry.statement}:{entry.key}</span>
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
+                        entry.triage.action === "add-to-spec"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : entry.triage.action === "group-to-existing"
+                            ? "bg-blue-100 text-blue-800"
+                            : entry.triage.action === "review"
+                              ? "bg-amber-100 text-amber-900"
+                              : "bg-slate-100 text-slate-700"
+                      }`}>
+                        {entry.triage.action}
+                      </span>
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-700">
+                        {entry.triage.priority}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-slate-600">{entry.triage.rationale}</div>
+                    <div className="mt-1 text-slate-500">
+                      periods {entry.periodsObserved} · non-zero {entry.nonZeroPeriods} · latest {entry.latestValue ?? "—"}
+                      {entry.triage.suggestedSpecPath ? ` · spec ${entry.triage.suggestedSpecPath}` : ""}
+                      {entry.triage.targetLine ? ` · target ${entry.triage.targetLine}` : ""}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="border border-slate-200 rounded-lg p-3">
               <div className="font-semibold text-sm text-slate-700 mb-2">Used keys not present in YAML</div>

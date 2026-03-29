@@ -80,6 +80,11 @@ function classifyCandidate(statement, key) {
   return { businessImpact: "optional-detail", suggestedTier: "Tier D", impactScore: 1 };
 }
 
+function classifyLegacyAction(entry) {
+  if (entry?.triage?.action) return entry.triage.action;
+  return "review";
+}
+
 async function listSnapshotBlobs(limit, runId = null) {
   const result = await list({
     prefix: runId ? `audit-runs/${runId}/events/` : "audit-runs/",
@@ -125,10 +130,17 @@ export default async function handler(request, response) {
     typeof query.limit === "string" && Number.isFinite(Number(query.limit))
       ? Math.min(Math.max(Number(query.limit), 1), 100)
       : 25;
+  const includeIgnored = query.includeIgnored === "1" || query.includeIgnored === "true" || query.includeIgnored === "yes";
 
   const snapshotBlobs = await listSnapshotBlobs(limit, runId);
   const aggregated = new Map();
   let policyVersions = null;
+  const totalsByAction = {
+    "add-to-spec": 0,
+    "group-to-existing": 0,
+    "ignore-non-core": 0,
+    review: 0,
+  };
 
   for (const blob of snapshotBlobs) {
     const parsed = await readBlobJson(blob.pathname);
@@ -141,10 +153,17 @@ export default async function handler(request, response) {
       const statement = label.statement ?? "Unknown";
       const key = label.key ?? "";
       const classification = classifyCandidate(statement, key);
+      const action = classifyLegacyAction(label);
+      totalsByAction[action] += 1;
       const id = `${statement}||${key}`;
       const existing = aggregated.get(id) ?? {
         statement,
         key,
+        action,
+        priority: label?.triage?.priority ?? "optional",
+        rationale: label?.triage?.rationale ?? classification.businessImpact,
+        targetLine: label?.triage?.targetLine ?? null,
+        suggestedSpecPath: label?.triage?.suggestedSpecPath ?? null,
         businessImpact: classification.businessImpact,
         suggestedTier: classification.suggestedTier,
         impactScore: classification.impactScore,
@@ -164,12 +183,14 @@ export default async function handler(request, response) {
       if (parsed?.runId && !existing.sampleRunIds.includes(parsed.runId)) {
         existing.sampleRunIds.push(parsed.runId);
       }
-      existing.rankScore = existing.runCount * 8 + existing.companyCount * 10 + existing.periodsObserved + existing.impactScore * 5;
+      const actionWeight = action === "review" ? 15 : action === "add-to-spec" ? 12 : action === "group-to-existing" ? 6 : 0;
+      existing.rankScore = existing.runCount * 8 + existing.companyCount * 10 + existing.periodsObserved + existing.impactScore * 5 + actionWeight;
       aggregated.set(id, existing);
     }
   }
 
   const entries = Array.from(aggregated.values())
+    .filter((entry) => includeIgnored || entry.action !== "ignore-non-core")
     .sort((a, b) => b.rankScore - a.rankScore || b.periodsObserved - a.periodsObserved || a.statement.localeCompare(b.statement) || a.key.localeCompare(b.key))
     .map((entry) => ({
       ...entry,
@@ -182,6 +203,7 @@ export default async function handler(request, response) {
     scannedRuns: snapshotBlobs.length,
     runId: runId ?? null,
     policyVersions,
+    totalsByAction,
     entries,
   });
 }

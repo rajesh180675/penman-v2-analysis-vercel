@@ -54,7 +54,7 @@ export const CapitalineMappingSpec = {
       "Goods in Transit",
     ],
     tradeReceivables: ["Trade Receivables", "Total Trade Receivables", "Total Trade Debtors"],
-    tradePayables: ["Trade Payables"],
+    tradePayables: ["Trade Payables", "Sundry Creditors"],
     ppe: [
       "Net Property, plant and equipment",
       "Total Net Property, plant and equipment (not under Lease)",
@@ -70,7 +70,7 @@ export const CapitalineMappingSpec = {
       "Hybrid Perpetual Securities",
     ],
     olComponents: {
-      tradePayables: ["Trade Payables"],
+      tradePayables: ["Trade Payables", "Sundry Creditors"],
       otherCurrentLiabilities: ["Other Current Liabilities"],
       provisionsCurrent: ["Provisions"],
       provisionsLongTerm: ["Long-term Provisions"],
@@ -81,7 +81,7 @@ export const CapitalineMappingSpec = {
     },
   },
   profitLoss: {
-    sales: ["Revenue From Operations(Net)", "Revenue From Operations", "Total Revenue"],
+    sales: ["Revenue From Operations(Net)", "Revenue From Operations", "Total Revenue from Operations", "Total Revenue"],
     taxExpense: ["Tax Expenses"],
     pbt: ["Profit Before Tax"],
     pat: [
@@ -90,12 +90,12 @@ export const CapitalineMappingSpec = {
       "Profit Attributable to Shareholders",
     ],
     ociNotReclass: ["Other Comprehensive Income That Will Not Be Reclassified to Profit Or Loss"],
-    ociReclass: ["Other Comprehensive Income That Will Be Reclassified to Profit Or Loss"],
-    ociUnspecified: ["Other Comprehensive Income no Specification"],
+    ociReclass: ["Other Comprehensive Income That Will Be Reclassified to Profit Or Loss", "Other Comprehensive Income That Will Be Reclassified to Profit Or Loss :"],
+    ociUnspecified: ["Other Comprehensive Income no Specification", "Other Comprehensive Income no Specification :"],
     tciGroup: ["Total Comprehensive Income for the Year"],
     tciNci: ["Non-Controlling Interests"],
     preferredDividend: ["Preference Dividend"],
-    financeCostTop: ["Finance Cost"],
+    financeCostTop: ["Finance Cost", "Total Interest Expenses"],
     financeIncomeDirect: [
       "Interest Income",
       "Finance Income",
@@ -156,6 +156,7 @@ export const CapitalineMappingSpec = {
       "Unappropriated Profits Carried Forward",
       "Unappropriated Profits Brought Forward",
       "Other Equity",
+      "Profit and Loss Account Closing Balance",
     ],
     otherItemsAliases: [
       "Share of profit/loss of associates",

@@ -54,7 +54,7 @@ balance_sheet:
       - Hybrid Perpetual Securities
 
   OL_components:
-    trade_payables: ["Trade Payables"]
+    trade_payables: ["Trade Payables", "Sundry Creditors"]
     other_current_liabilities: ["Other Current Liabilities"]
     provisions_current: ["Provisions"]
     provisions_long_term: ["Long-term Provisions"]
@@ -67,13 +67,14 @@ income:
   sales:
     - Revenue From Operations(Net)
     - Revenue From Operations
+    - Total Revenue from Operations
     - Total Revenue
   cni:
     tci_group: ["Total Comprehensive Income for the Year"]
     nci: ["Non-Controlling Interests"]
     preferred_dividend: ["Preference Dividend"]
   finance_cost:
-    top: ["Finance Cost"]
+    top: ["Finance Cost", "Total Interest Expenses"]
     granular:
       - Interest
       - Interest on Bank Borrowings
@@ -99,11 +100,19 @@ income:
     - Interest Income
     - Finance Income
     - Investment Income
+  oci_aliases:
+    reclass:
+      - Other Comprehensive Income That Will Be Reclassified to Profit Or Loss
+      - "Other Comprehensive Income That Will Be Reclassified to Profit Or Loss :"
+    unspecified:
+      - Other Comprehensive Income no Specification
+      - "Other Comprehensive Income no Specification :"
   quality_inputs:
     retained_earnings_proxy:
       - Unappropriated Profits Carried Forward
       - Unappropriated Profits Brought Forward
       - Other Equity
+      - Profit and Loss Account Closing Balance
     cogs:
       material: ["Cost of Material Consumed"]
       purchases: ["Purchases of Stock-in-Trade"]

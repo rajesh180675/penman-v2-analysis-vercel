@@ -1,17 +1,19 @@
 import { EngineConfig, RawPeriodData } from "./types";
 import { CapitalineMappingSpec as SPEC } from "./mappingSpec";
 import { evaluateMappingCoverageSummary, MappingCoverageSummary } from "./mappingPolicy";
+import {
+  MappingBacklogEntry,
+  MappingBacklogSummary,
+  summarizeMappingBacklog,
+  triageOutOfSpecLabel,
+} from "./mappingBacklogPolicy";
 import { CAPITALINE_MAPPING_SPEC_VERSION, MAPPING_POLICY_VERSION } from "./policyVersions";
 import { assessAnalysisScope, ScopeAssessment } from "./scopePolicy";
 import mappingYamlRaw from "../../CapitalineIndASDetailedMappingSpec.yaml?raw";
 
 type Statement = "BalanceSheet" | "ProfitLoss" | "CashFlow" | "Unknown";
 
-export interface OutOfSpecLabel {
-  statement: Statement;
-  key: string;
-  periodsObserved: number;
-}
+export type OutOfSpecLabel = MappingBacklogEntry;
 
 export interface MappingAuditReport {
   mappingSpecVersion: string;
@@ -22,6 +24,7 @@ export interface MappingAuditReport {
   datasetKeyCounts: Record<Statement, number>;
   coverageSummary: MappingCoverageSummary;
   outOfSpecLabels: OutOfSpecLabel[];
+  backlogSummary: MappingBacklogSummary;
 }
 
 export interface QualityGateReport {
@@ -223,15 +226,37 @@ export function datasetKeysByStatement(periods: RawPeriodData[]) {
 }
 
 function countDatasetKeysByStatement(periods: RawPeriodData[]) {
-  const counts = new Map<string, number>();
-  for (const period of periods) {
+  const counts = new Map<string, {
+    periodsObserved: number;
+    nonZeroPeriods: number;
+    latestValue: number | null;
+    maxAbsValue: number;
+  }>();
+  for (let i = 0; i < periods.length; i += 1) {
+    const period = periods[i];
+    const isLatest = i === periods.length - 1;
     for (const compositeKey of Object.keys(period.raw_metric_values)) {
       const idx = compositeKey.lastIndexOf("__");
       if (idx < 0) continue;
       const base = compositeKey.slice(0, idx);
       const statement = compositeKey.slice(idx + 2) as Statement;
       const scopedKey = `${statement}||${base}`;
-      counts.set(scopedKey, (counts.get(scopedKey) ?? 0) + 1);
+      const value = period.raw_metric_values[compositeKey];
+      const existing = counts.get(scopedKey) ?? {
+        periodsObserved: 0,
+        nonZeroPeriods: 0,
+        latestValue: null,
+        maxAbsValue: 0,
+      };
+      existing.periodsObserved += 1;
+      if (value != null && Number.isFinite(value) && value !== 0) {
+        existing.nonZeroPeriods += 1;
+        existing.maxAbsValue = Math.max(existing.maxAbsValue, Math.abs(value));
+      }
+      if (isLatest) {
+        existing.latestValue = value != null && Number.isFinite(value) ? value : null;
+      }
+      counts.set(scopedKey, existing);
     }
   }
   return counts;
@@ -473,16 +498,39 @@ export function auditMappingCoverage(periods: RawPeriodData[]): MappingAuditRepo
   const usedKeysNotInYaml = Array.from(specKeys).filter((k) => !yamlKeys.has(k)).sort();
   const yamlKeysNotInDataset = Array.from(yamlKeys).filter((k) => !datasetUnion.has(k)).sort();
   const outOfSpecLabels = Array.from(datasetCounts.entries())
-    .map(([scopedKey, periodsObserved]) => {
+    .map(([scopedKey, stats]) => {
       const [statement, key] = scopedKey.split("||");
-      return {
+      const candidate = {
         statement: statement as Statement,
         key,
-        periodsObserved,
+        periodsObserved: stats.periodsObserved,
+        nonZeroPeriods: stats.nonZeroPeriods,
+        latestValue: stats.latestValue,
+        maxAbsValue: stats.maxAbsValue,
+      };
+      return {
+        ...candidate,
+        triage: triageOutOfSpecLabel(candidate),
       };
     })
     .filter((entry) => !specKeys.has(entry.key) && !yamlKeys.has(entry.key))
-    .sort((a, b) => b.periodsObserved - a.periodsObserved || a.statement.localeCompare(b.statement) || a.key.localeCompare(b.key));
+    .sort((a, b) => {
+      const actionRank = {
+        review: 3,
+        "add-to-spec": 2,
+        "group-to-existing": 1,
+        "ignore-non-core": 0,
+      } as const;
+      return (
+        actionRank[b.triage.action] - actionRank[a.triage.action]
+        || b.nonZeroPeriods - a.nonZeroPeriods
+        || b.periodsObserved - a.periodsObserved
+        || b.maxAbsValue - a.maxAbsValue
+        || a.statement.localeCompare(b.statement)
+        || a.key.localeCompare(b.key)
+      );
+    });
+  const backlogSummary = summarizeMappingBacklog(outOfSpecLabels);
 
   const unresolvedCriticalByStatement = {
     BalanceSheet: criticalKeys.BalanceSheet.filter((k) => isCriticalMissing(byStmt, "BalanceSheet", k)),
@@ -504,6 +552,7 @@ export function auditMappingCoverage(periods: RawPeriodData[]): MappingAuditRepo
     },
     coverageSummary,
     outOfSpecLabels,
+    backlogSummary,
   };
 }
 

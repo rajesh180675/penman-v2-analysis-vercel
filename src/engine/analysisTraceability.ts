@@ -23,6 +23,8 @@ export interface AnalysisTraceabilityEnvelope {
     unresolvedBySeverity: Record<"critical" | "warning" | "info", number>;
     unresolvedByTier: Record<"Tier A" | "Tier B" | "Tier C" | "Tier D", number>;
     outOfSpecLabelCount: number;
+    actionableOutOfSpecLabelCount: number;
+    backlogByAction: Record<"add-to-spec" | "group-to-existing" | "ignore-non-core" | "review", number>;
   };
 }
 
@@ -72,6 +74,13 @@ export function buildAnalysisTraceability(params: {
         "Tier D": coverageSummary?.unresolvedByTier?.["Tier D"]?.length ?? 0,
       },
       outOfSpecLabelCount: params.mappingAudit?.outOfSpecLabels?.length ?? 0,
+      actionableOutOfSpecLabelCount: params.mappingAudit?.backlogSummary?.actionableCount ?? 0,
+      backlogByAction: {
+        "add-to-spec": params.mappingAudit?.backlogSummary?.totalsByAction?.["add-to-spec"] ?? 0,
+        "group-to-existing": params.mappingAudit?.backlogSummary?.totalsByAction?.["group-to-existing"] ?? 0,
+        "ignore-non-core": params.mappingAudit?.backlogSummary?.totalsByAction?.["ignore-non-core"] ?? 0,
+        review: params.mappingAudit?.backlogSummary?.totalsByAction?.review ?? 0,
+      },
     },
   };
 }
