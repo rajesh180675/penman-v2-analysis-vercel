@@ -10,7 +10,7 @@ function mkPeriod(period_end: string, trace: RecastPeriod["trace"]): RecastPerio
 }
 
 describe("buildMappingDiscrepancyRows", () => {
-  it("aggregates duplicate, unmatched and fuzzy discrepancies", () => {
+  it("suppresses unmatched alias noise when the line resolved successfully", () => {
     const periods = [
       mkPeriod("2024-03-31", {
         "CF.DebtRepayment": [
@@ -38,17 +38,31 @@ describe("buildMappingDiscrepancyRows", () => {
         },
         {
           line: "CF.DebtRepayment",
-          issueType: "unmatched",
-          key: "Of the Long Term Borrowings",
-          occurrences: 1,
-        },
-        {
-          line: "CF.DebtRepayment",
           issueType: "fuzzy_match",
           key: "Of the short term Borrowings",
           occurrences: 2,
         },
       ]),
     );
+    expect(rows.find((row) => row.issueType === "unmatched")).toBeUndefined();
+  });
+
+  it("still reports unresolved lines when nothing matched", () => {
+    const periods = [
+      mkPeriod("2025-03-31", {
+        "BS.FA.CashBank": [
+          { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 0, matchType: "exact_base", note: "unmatched" },
+        ],
+      }),
+    ];
+
+    expect(buildMappingDiscrepancyRows(periods)).toEqual([
+      {
+        line: "BS.FA.CashBank",
+        issueType: "unmatched",
+        key: "Cash and Cash Equivalents",
+        occurrences: 1,
+      },
+    ]);
   });
 });

@@ -9,6 +9,7 @@ import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimE
 import { evaluateGranularityChecklist } from "../engine/mappingAudit";
 import { generateValuationWorkbook } from "../engine/excelExport";
 import { buildProvenanceAuditRows } from "../engine/provenanceAudit";
+import { deriveCompanyLabel, resolveValuationReadiness } from "../engine/valuationPolicy";
 import { computeV3Analytics, V3AnalyticsBundle, computeAnchorTable } from "../engine/v3Analytics";
 import { AuditSubmissionMeta, persistAuditBlob, persistAuditEvent } from "../lib/audit";
 
@@ -234,6 +235,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
   }, [data]);
 
   const provenanceRows = useMemo(() => buildProvenanceAuditRows(data), [data]);
+  const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
 
   const escapeCsvCell = (v: string | number) => {
     const s = String(v ?? "");
@@ -463,10 +465,18 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
       const manifestCore = {
         generatedAt,
         bundle: `ic_bundle_${latestPeriod}.zip`,
+        companyId,
         periodRange: {
           start: data[0]?.period_end ?? null,
           end: data[data.length - 1]?.period_end ?? null,
           count: data.length,
+        },
+        valuation: {
+          status: valuationReadiness.status,
+          anchorPeriod: valuationReadiness.anchorPeriod,
+          latestSourcePeriod: valuationReadiness.latestPeriod,
+          terminalFlags: valuationReadiness.terminalFlagLabels,
+          reasons: valuationReadiness.reasons,
         },
         rowCounts: {
           recastPeriods: data.length,
@@ -549,7 +559,13 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
     if (exportingXlsx) return;
     setExportingXlsx(true);
     try {
-      const wbArray = generateValuationWorkbook(data, [], valuation, config);
+      const wbArray = generateValuationWorkbook(data, [], valuation, config, {
+        companyLabel: companyId,
+        valuationStatus: valuationReadiness.status,
+        valuationReasons: valuationReadiness.reasons,
+        valuationAnchorPeriod: valuationReadiness.anchorPeriod,
+        valuationSourcePeriod: valuationReadiness.latestPeriod,
+      });
       const blob = new Blob([wbArray], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
@@ -591,8 +607,10 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
   const latest = data[data.length - 1];
   const first = data[0];
   const years = Math.max(data.length - 1, 1);
-  const companyId = rawData?.[rawData.length - 1]?.company_id ?? rawData?.[0]?.company_id ?? "Unknown";
+  const companyId = deriveCompanyLabel(rawData, config.ticker, auditMeta?.companyId);
   const trailing = data.slice(Math.max(0, data.length - 5));
+  const valuationData = data.slice(0, Math.max(2, valuationReadiness.anchorIndex + 1));
+  const valuationLatest = valuationData[valuationData.length - 1];
 
   const salesCagr = cagr(first.is.Sales, latest.is.Sales, years);
   const cniCagr = cagr(first.is.CNI, latest.is.CNI, years);
@@ -638,8 +656,8 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
   // S-9.4: ke from config — prefer explicit config.ke over rf+erp
   const ke = ke_from_config(config);
   const kwSeries: number[] = [];
-  for (let i = 1; i < data.length; i++) {
-    kwSeries.push(deriveKwFromStructure(data[i], data[i - 1], ke, config.risk_free_rate, config));
+  for (let i = 1; i < valuationData.length; i++) {
+    kwSeries.push(deriveKwFromStructure(valuationData[i], valuationData[i - 1], ke, config.risk_free_rate, config));
   }
   const kw = kwSeries.length ? kwSeries[kwSeries.length - 1] : ke;
   const kwMedian = median(kwSeries);
@@ -652,15 +670,15 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
   ];
   const bindingGCap = gCapCandidates.reduce((a, b) => (a.value < b.value ? a : b));
   const g = Math.max(0, Math.min(gInput, bindingGCap.value));
-  const valuation = computeValuation(data, ke, kw, g, config);
-  const valuationLegacyKw = computeValuation(data, ke, config.risk_free_rate, g, config);
+  const valuation = computeValuation(valuationData, ke, kw, g, config);
+  const valuationLegacyKw = computeValuation(valuationData, ke, config.risk_free_rate, g, config);
   const reoiIdentityGap = Math.abs(valuation.V_RE_CV3 - valuation.V_ReOI_CV03);
   const reoiIdentityGapPct = valuation.V_RE_CV3 !== 0 ? reoiIdentityGap / Math.abs(valuation.V_RE_CV3) : null;
 
   // §14 V3 Composite Confidence Score
   const v3Bundle: V3AnalyticsBundle | null = (() => {
     try {
-      return computeV3Analytics(data, config, valuation.V_RE_CV3, valuation.V_ReOI_CV03, config.g_terminal_override, kw);
+      return computeV3Analytics(valuationData, config, valuation.V_RE_CV3, valuation.V_ReOI_CV03, config.g_terminal_override, kw);
     } catch { return null; }
   })();
   const v3ConfidenceScore = v3Bundle?.confidence.composite ?? null;
@@ -676,7 +694,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
   const matrixREAnchor = v3TerminalAnchor?.RE_value;
   const sensitivityMatrix = sensitivityKe.map((keCase) => ({
     ke: keCase,
-    values: sensitivityG.map((gCase) => computeValuation(data, keCase, kw, gCase, config, matrixREAnchor).V_RE_CV3),
+    values: sensitivityG.map((gCase) => computeValuation(valuationData, keCase, kw, gCase, config, matrixREAnchor).V_RE_CV3),
   }));
 
   const cumulativeDirtySurplus = data.slice(1).reduce((sum, d, idx) => {
@@ -758,7 +776,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
     + ((reoiIdentityGapPct ?? 0) > 0.2 ? 1 : 0);
   const confidenceTier = terminalFlagCount >= 3 ? "structurally compromised" : terminalFlagCount === 2 ? "multiple anomalies" : terminalFlagCount === 1 ? "one anomaly" : "clean";
   const tvContaminated = terminalReAnomaly && ((latestDiag?.flags.length ?? 0) > 0);
-  const primaryValuation = v3TerminalAnchor?.V_total ?? (tvContaminated ? valuation.V_RE_CV2 : valuation.V_RE_CV3);
+  const primaryValuation = v3TerminalAnchor?.V_total ?? valuation.V_RE_CV3;
   const tvShare = v3TerminalAnchor?.TV_share ?? terminalWeightRE;
   const tvGrade = v3TerminalAnchor?.TV_grade ?? (tvShare == null ? "N/A" : tvShare < 0.25 ? "GRADE_A" : tvShare < 0.4 ? "GRADE_B" : tvShare < 0.6 ? "GRADE_C" : "GRADE_D");
   const anchorTable = v3TerminalAnchor
@@ -779,7 +797,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
     pvRE: valuation.pvRE,
     reAnchor: v3TerminalAnchor?.RE_value ?? (latestRe ?? 0),
     explicitPeriods: Math.max(explicitHorizonYears, 1),
-    periods: data,
+    periods: valuationData,
     shares: sharesToUse,
     marketPrice: config.market_price,
     sharesSource: sharesFromConfig != null ? "user input" : (inferredShares != null ? `share capital ÷ FV ₹${num(inferredFaceValue,0)}` : "unavailable"),
@@ -849,13 +867,28 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
         </p>
         <p className="text-xs text-slate-600 mt-2">Company ID: <b>{companyId}</b> · Sample window: <b>{first.period_end.slice(0, 10)}</b> to <b>{latest.period_end.slice(0, 10)}</b>.
           {/* S-11.1: contamination guard — display ke/kw derivation info */}
-          {tvContaminated && <span className="ml-2 text-amber-700 font-semibold">⚠ Terminal period anomaly detected — guarded value used.</span>}
+          {valuationReadiness.status !== "production-ready" && (
+            <span className="ml-2 text-amber-700 font-semibold">
+              Guarded valuation mode — anchor period {valuationReadiness.anchorPeriod?.slice(0, 10) ?? "n/a"}.
+            </span>
+          )}
         </p>
+        {valuationReadiness.status !== "production-ready" && (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <div className="font-semibold">Valuation status: {valuationReadiness.status}</div>
+            <div className="mt-1">{valuationReadiness.reasons[0]}</div>
+            {valuationReadiness.terminalFlagLabels.length > 0 && (
+              <div className="mt-2 text-xs">
+                Terminal flags: <b>{valuationReadiness.terminalFlagLabels.join(", ")}</b>
+              </div>
+            )}
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-5">
           <Kpi label="Latest ROCE" value={pct(latest.ratios?.ROCE)} />
           <Kpi label="Latest RNOA" value={pct(latest.ratios?.RNOA)} />
           {/* S-11.5: use guarded (primaryValuation) when contamination tier is GUARDED/COMPROMISED */}
-          <Kpi label={tvContaminated ? "V(RE,CV3) [guarded]" : "V(RE, CV3)"} value={`₹${num(primaryValuation ?? valuation.V_RE_CV3)} Cr`} />
+          <Kpi label={valuationReadiness.status !== "production-ready" ? "V(RE,CV3) [guarded]" : "V(RE, CV3)"} value={`₹${num(primaryValuation ?? valuation.V_RE_CV3)} Cr`} />
           <Kpi label="Separation Confidence" value={`${latest.bs.separationScore}/100`} />
         </div>
       </section>
@@ -884,6 +917,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
           </li>
           <li>
             Valuation confidence: <b>{confidenceTier}</b> ({terminalFlagCount} terminal-period flags). Terminal-value dependence tier: <b>{tvGrade}</b> at <b>{pct(tvShare, 1)}</b>.
+            {" "}Valuation status: <b>{valuationReadiness.status}</b> with anchor period <b>{valuationLatest.period_end.slice(0, 10)}</b>.
             {v3ConfidenceScore != null && (
               <> — <b>Composite Confidence: {v3ConfidenceScore.toFixed(0)}/100 ({v3ConfidenceClass})</b>
               {v3TerminalAnchor && <> | Terminal anchor: <b>{v3TerminalAnchor.label}</b> (g = {pct(v3TerminalAnchor.g_applied)})</>}</>

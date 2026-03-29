@@ -138,6 +138,10 @@ export function App() {
       lastAuditSignatureRef.current = null;
       lastAuditStatusRef.current = null;
       lastTabAuditRef.current = null;
+      setConfig((prev) => ({
+        ...prev,
+        ticker: nextMeta.companyId || data[0]?.company_id || prev.ticker,
+      }));
       setRawData(data);
       if (debug) setDebugInfo(debug);
       if (data.length === 0) { setActiveTab("debug"); return; }

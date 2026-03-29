@@ -10,6 +10,14 @@ import type { WorkBook, WorkSheet, CellObject } from "xlsx";
 import { EngineConfig, ForecastScenario, RecastPeriod, ValuationResult, NP_BENCHMARKS, ke_from_config } from "./types";
 import { buildMappingDiscrepancyRows, buildProvenanceAuditRows } from "./provenanceAudit";
 
+export interface WorkbookExportMetadata {
+  companyLabel?: string;
+  valuationStatus?: "production-ready" | "warning" | "guarded";
+  valuationReasons?: string[];
+  valuationAnchorPeriod?: string | null;
+  valuationSourcePeriod?: string | null;
+}
+
 // ── Style helpers ──────────────────────────────────────────────────────────────
 type Fill = { fgColor: { rgb: string } };
 type Font = { bold?: boolean; color?: { rgb: string }; sz?: number; name?: string };
@@ -93,16 +101,21 @@ function updateRef(ws: WorkSheet) {
 }
 
 // ── Sheet 1: Cover ─────────────────────────────────────────────────────────────
-function buildCoverSheet(config: EngineConfig, periodCount: number): WorkSheet {
+function buildCoverSheet(config: EngineConfig, periodCount: number, metadata?: WorkbookExportMetadata): WorkSheet {
   const ws: WorkSheet = {};
   const ke = ke_from_config(config);
+  const valuationReason = metadata?.valuationReasons?.[0] ?? "—";
   const rows: CellObject[][] = [
     [cell("PENMAN–NISSIM VALUATION ENGINE v2", { font: { bold: true, sz: 14, color: { rgb: "1F3864" } } })],
     [cell("Institutional Equity Valuation Workbook", { font: { sz: 11, color: { rgb: "4472C4" } } })],
     [cell("")],
     [cell("Nissim & Penman (2001) — Review of Accounting Studies, Vol. 6", { font: { sz: 9 } })],
     [cell("")],
-    [cell("Company", LABEL_BOLD), cell(config.ticker ?? "—", LABEL)],
+    [cell("Company", LABEL_BOLD), cell(metadata?.companyLabel ?? config.ticker ?? "—", LABEL)],
+    [cell("Valuation Status", LABEL_BOLD), cell(metadata?.valuationStatus ?? "production-ready", LABEL)],
+    [cell("Valuation Anchor Period", LABEL_BOLD), cell(metadata?.valuationAnchorPeriod ?? "—", LABEL)],
+    [cell("Latest Source Period", LABEL_BOLD), cell(metadata?.valuationSourcePeriod ?? "—", LABEL)],
+    [cell("Valuation Note", LABEL_BOLD), cell(valuationReason, { font: { sz: 8 }, alignment: { wrapText: true } })],
     [cell("Periods Analysed", LABEL_BOLD), cell(periodCount, NUM_INR)],
     [cell("Cost of Equity (ke)", LABEL_BOLD), cell(ke, NUM_PCT)],
     [cell("Risk-Free Rate", LABEL_BOLD), cell(config.risk_free_rate, NUM_PCT)],
@@ -365,11 +378,23 @@ function buildForecastSheet(scenarios: ForecastScenario[]): WorkSheet {
 }
 
 // ── Sheet 5: Valuation Summary ─────────────────────────────────────────────────
-function buildValuationSheet(valuation: ValuationResult, config: EngineConfig): WorkSheet {
+function buildValuationSheet(valuation: ValuationResult, config: EngineConfig, metadata?: WorkbookExportMetadata): WorkSheet {
   const ws: WorkSheet = {};
   let row = 0;
 
   setCell(ws, row, 0, cell("VALUATION SUMMARY — Model Triangulation", HEADER_BLUE));
+  row++;
+  setCell(ws, row, 0, cell("Valuation Status", LABEL_BOLD));
+  setCell(ws, row, 1, cell(metadata?.valuationStatus ?? "production-ready", LABEL));
+  row++;
+  setCell(ws, row, 0, cell("Anchor Period", LABEL_BOLD));
+  setCell(ws, row, 1, cell(metadata?.valuationAnchorPeriod ?? "—", LABEL));
+  row++;
+  setCell(ws, row, 0, cell("Latest Source Period", LABEL_BOLD));
+  setCell(ws, row, 1, cell(metadata?.valuationSourcePeriod ?? "—", LABEL));
+  row++;
+  setCell(ws, row, 0, cell("Status Note", LABEL_BOLD));
+  setCell(ws, row, 1, cell(metadata?.valuationReasons?.[0] ?? "—", { font: { sz: 8 }, alignment: { wrapText: true } }));
   row += 2;
 
   setCell(ws, row, 0, cell("Assumptions", LABEL_BOLD));
@@ -512,10 +537,11 @@ export function generateValuationWorkbook(
   forecastScenarios: ForecastScenario[],
   valuation: ValuationResult,
   config: EngineConfig,
+  metadata?: WorkbookExportMetadata,
 ): ArrayBuffer {
   const wb: WorkBook = utils.book_new();
 
-  utils.book_append_sheet(wb, buildCoverSheet(config, recastData.length), "Cover");
+  utils.book_append_sheet(wb, buildCoverSheet(config, recastData.length, metadata), "Cover");
   utils.book_append_sheet(wb, buildRecastSheet(recastData), "Recast Statements");
   utils.book_append_sheet(wb, buildRatioSheet(recastData), "N&P Ratios");
 
@@ -523,7 +549,7 @@ export function generateValuationWorkbook(
     utils.book_append_sheet(wb, buildForecastSheet(forecastScenarios), "Forecast Model");
   }
 
-  utils.book_append_sheet(wb, buildValuationSheet(valuation, config), "Valuation");
+  utils.book_append_sheet(wb, buildValuationSheet(valuation, config, metadata), "Valuation");
   utils.book_append_sheet(wb, buildQualitySheet(recastData), "Quality Scores");
 
   const provenanceRows = buildProvenanceAuditRows(recastData);

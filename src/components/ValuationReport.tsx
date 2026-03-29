@@ -2,6 +2,7 @@ import { RecastPeriod, EngineConfig } from "../engine/types";
 import { useState, useMemo } from "react";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { ke_from_config } from "../engine/types";
+import { resolveValuationReadiness } from "../engine/valuationPolicy";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell } from "recharts";
 
 interface Props { data: RecastPeriod[]; config: EngineConfig }
@@ -11,6 +12,7 @@ type CVMethod = "CV1" | "CV2" | "CV3";
 export default function ValuationReport({ data, config }: Props) {
   // S-9.4: ke from config (prefer explicit config.ke over rf+erp)
   const keFromConfig = ke_from_config(config);
+  const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
   const [keOverride, setKeOverride] = useState<number | null>(null);
   const [g, setG] = useState(config.g_terminal_override != null ? config.g_terminal_override * 100 : 4.0);
   const [cv, setCv] = useState<CVMethod>("CV3");
@@ -24,19 +26,23 @@ export default function ValuationReport({ data, config }: Props) {
 
   const ke = keOverride != null ? keOverride / 100 : keFromConfig;
   const gRate = g / 100;
+  const valuationData = useMemo(
+    () => data.slice(0, Math.max(2, valuationReadiness.anchorIndex + 1)),
+    [data, valuationReadiness.anchorIndex]
+  );
 
   // S-9.4: kw ALWAYS derived — never a user input
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const kwDerived = useMemo(() => {
-    const cur = data[data.length - 1];
-    const prev = data[data.length - 2];
+    const cur = valuationData[valuationData.length - 1];
+    const prev = valuationData[valuationData.length - 2];
     return deriveKwFromStructure(cur, prev, ke, config.risk_free_rate, config);
-  }, [data, ke, config]);
+  }, [valuationData, ke, config]);
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const val = useMemo(() =>
-    computeValuation(data, ke, kwDerived, gRate, config),
-    [data, ke, kwDerived, gRate, config]
+    computeValuation(valuationData, ke, kwDerived, gRate, config),
+    [valuationData, ke, kwDerived, gRate, config]
   );
 
   const cvSel = (v1: number, v2: number, v3: number) => cv === "CV1" ? v1 : cv === "CV2" ? v2 : v3;
@@ -111,6 +117,16 @@ export default function ValuationReport({ data, config }: Props) {
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
             ⚠ Separation Confidence Score = {val.separationScore}/100 &lt; threshold.
             Operating/Financing separation may be unreliable. Prefer RE approach (not ReOI).
+          </div>
+        )}
+
+        {valuationReadiness.status !== "production-ready" && (
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900">
+            <b>Guarded valuation mode.</b> {valuationReadiness.reasons[0]}
+            <div className="mt-1">
+              Anchor period: <b>{valuationReadiness.anchorPeriod?.slice(0, 10) ?? "n/a"}</b>
+              {" "}· Latest source period: <b>{valuationReadiness.latestPeriod?.slice(0, 10) ?? "n/a"}</b>
+            </div>
           </div>
         )}
       </div>

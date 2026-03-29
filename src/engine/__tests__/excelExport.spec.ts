@@ -118,7 +118,7 @@ const valuation: ValuationResult = {
 function coverKeCellValue(config: EngineConfig): number {
   const workbookBuf = generateValuationWorkbook([mkPeriod("2025-03-31")], [], valuation, config);
   const wb = read(workbookBuf, { type: "array" });
-  const cell = wb.Sheets["Cover"]["B8"];
+  const cell = wb.Sheets["Cover"]["B12"];
   return cell?.v as number;
 }
 
@@ -141,5 +141,28 @@ describe("generateValuationWorkbook", () => {
       equity_risk_premium: 0.06,
     };
     expect(coverKeCellValue(cfg)).toBeCloseTo(0.1, 8);
+  });
+
+  it("writes company and valuation metadata to the workbook", () => {
+    const workbookBuf = generateValuationWorkbook(
+      [mkPeriod("2025-03-31")],
+      [],
+      valuation,
+      DEFAULT_CONFIG,
+      {
+        companyLabel: "ITC",
+        valuationStatus: "guarded",
+        valuationReasons: ["Using prior anchor period 2024-03-31 because 2025-03-31 is compromised."],
+        valuationAnchorPeriod: "2024-03-31",
+        valuationSourcePeriod: "2025-03-31",
+      },
+    );
+    const wb = read(workbookBuf, { type: "array" });
+
+    expect(wb.Sheets.Cover.B6?.v).toBe("ITC");
+    expect(wb.Sheets.Cover.B7?.v).toBe("guarded");
+    expect(wb.Sheets.Cover.B8?.v).toBe("2024-03-31");
+    expect(wb.Sheets.Valuation.B2?.v).toBe("guarded");
+    expect(wb.Sheets.Valuation.B3?.v).toBe("2024-03-31");
   });
 });

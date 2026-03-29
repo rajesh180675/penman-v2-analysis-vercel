@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { RecastPeriod, ForecastScenario, ForecastPeriod, FADE_PARAMS, NP_BENCHMARKS, EngineConfig, ke_from_config } from "../engine/types";
 import { buildScenario, sensitivityAnalysis, buildValuationPeriodsFromForecast, applyDriverSensitivityToScenario } from "../engine/forecastingEngine";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
+import { resolveValuationReadiness } from "../engine/valuationPolicy";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   LineChart, Line, Legend, ReferenceLine, Cell,
@@ -35,6 +36,7 @@ function makeDefaultScenario(
 
 export default function ForecastReport({data,config}:Props) {
   const keBase = ke_from_config(config);
+  const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
 
   const latest = data[data.length-1];
   const latestRatios = latest?.ratios;
@@ -206,6 +208,11 @@ export default function ForecastReport({data,config}:Props) {
 
   return (
     <div className="space-y-8">
+      {valuationReadiness.status !== "production-ready" && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">
+          <b>Guarded forecast valuation.</b> {valuationReadiness.reasons[0]} Forecast scenarios still start from the latest reported period, so treat scenario values as review-only until the terminal period is normalized.
+        </div>
+      )}
       {/* Controls */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
         <h2 className="text-lg font-bold text-slate-800 mb-4">Forecast Assumptions — §4.3</h2>

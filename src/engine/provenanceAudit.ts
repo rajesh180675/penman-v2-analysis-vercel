@@ -90,11 +90,18 @@ export function buildMappingDiscrepancyRows(periods: RecastPeriod[]): MappingDis
   for (const p of periods) {
     if (!p.trace) continue;
     for (const [line, entries] of Object.entries(p.trace)) {
+      const hasResolvedSource = entries.some(
+        (entry) =>
+          entry.statement !== "Derived"
+          && entry.note !== "unmatched"
+          && !entry.note?.startsWith("duplicate_source_ignored:")
+      );
+
       for (const e of entries) {
         if (e.note?.startsWith("duplicate_source_ignored:")) {
           upsert(line, "duplicate_source_ignored", e.key);
         }
-        if (e.note === "unmatched") {
+        if (e.note === "unmatched" && !hasResolvedSource) {
           upsert(line, "unmatched", e.key);
         }
         if (e.matchType === "fuzzy") {
