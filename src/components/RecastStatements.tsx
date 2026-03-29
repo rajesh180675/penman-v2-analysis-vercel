@@ -17,6 +17,7 @@ export default function RecastStatements({ data }: Props) {
     period: years[i], OA: d.bs.OA, OL: d.bs.OL, NOA: d.bs.NOA,
     FA: d.bs.FA, CSE: d.bs.CSE, Sales: d.is.Sales,
     OI: d.is.OI, CNI: d.is.CNI, CoreOI: d.cu.CoreOI, UOI: d.cu.UOI,
+    BridgeCoreOI: d.is.operatingCostBridge?.bridgeCoreOI ?? null,
   }));
 
   return (
@@ -105,12 +106,21 @@ export default function RecastStatements({ data }: Props) {
               <TR label="Operating Income OI"           vals={data.map((d) => mode === "common" ? fp(d.is.Sales > 0 ? d.is.OI / d.is.Sales : null) : f(d.is.OI))} bold />
               <TR label="OI_from_sales"                 vals={data.map((d) => f(d.is.OI_from_sales))} />
               <TR label="OtherItems (assoc./JV)"        vals={data.map((d) => f(d.is.OtherItems))} />
+              <TR label="Cost of Material"              vals={data.map((d) => f(d.is.operatingCostBridge?.materialCost))} />
+              <TR label="Employee Cost"                 vals={data.map((d) => f(d.is.operatingCostBridge?.employeeCost))} />
+              <TR label="Depreciation"                  vals={data.map((d) => f(d.is.operatingCostBridge?.depreciation))} />
+              <TR label="SG&A (detailed)"               vals={data.map((d) => f(d.is.operatingCostBridge?.sgaTotal))} />
+              <TR label="Other Operating Expense"       vals={data.map((d) => f(d.is.operatingCostBridge?.otherOperatingExpense))} />
+              <TR label="Other Operating Income"        vals={data.map((d) => f(d.is.operatingCostBridge?.otherOperatingIncome))} />
+              <TR label="Bridge Core OI (sales-driven)" vals={data.map((d) => f(d.is.operatingCostBridge?.bridgeCoreOI))} accent="blue" />
               <TR label="Core OI (persistent)"         vals={data.map((d) => f(d.cu.CoreOI))} bold accent="green" />
               <TR label="Unusual OI (UOI)"              vals={data.map((d) => f(d.cu.UOI))} accent="amber" />
-              <TR label="  ↳ Exceptional (after-tax)"  vals={data.map((d) => f(d.cu.ExceptionalItemsAfterTax))} />
+              <TR label="  ↳ Exceptional (after-tax)"  vals={data.map((d) => f(d.cu.ExceptionalOperatingItemsAfterTax ?? d.cu.ExceptionalItemsAfterTax))} />
+              <TR label="  ↳ Discontinued (after-tax)" vals={data.map((d) => f(d.cu.DiscontinuedOperationsAfterTax))} />
               <TR label="  ↳ OCI (treated unusual)"    vals={data.map((d) => f(d.cu.OCITotal))} />
               <TR label="Core NFE"                      vals={data.map((d) => f(d.cu.CoreNFE))} />
               <TR label="UFE (unusual fin. expense)"    vals={data.map((d) => f(d.cu.UFE))} accent="amber" />
+              <TR label="Unusual Policy"                vals={data.map((d) => d.cu.policy?.terminalBlocker ? "terminal blocker" : d.cu.policy ? "diagnostic only" : "—")} />
               <TR label="Effective Tax Rate"            vals={data.map((d) => fp(d.is.taxRate))} />
             </tbody>
           </table>
@@ -134,6 +144,7 @@ export default function RecastStatements({ data }: Props) {
                 <Tooltip /><Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line type="monotone" dataKey="CoreOI" stroke="#10b981" strokeWidth={2} dot={false} name="Core OI" />
                 <Line type="monotone" dataKey="UOI"    stroke="#f59e0b" strokeWidth={2} dot={false} name="UOI" />
+                <Line type="monotone" dataKey="BridgeCoreOI" stroke="#2563eb" strokeWidth={2} dot={false} name="Bridge Core OI" />
               </LineChart>
             </ResponsiveContainer>
           </ChartBox>

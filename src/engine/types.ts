@@ -92,12 +92,75 @@ export interface CanonicalIncome {
   NFE: number; OI: number;
   OtherItems: number; OI_from_sales: number; MII: number;
   COGS: number;
+  operatingCostBridge?: OperatingCostBridge;
 }
 
 export interface CoreUnusual {
   UOI: number; CoreOI: number;
   UFE: number; CoreNFE: number;
   ExceptionalItemsAfterTax: number; OCITotal: number;
+  ExceptionalOperatingItemsAfterTax?: number;
+  DiscontinuedOperationsAfterTax?: number;
+  policy?: UnusualItemPolicySummary;
+}
+
+export interface OperatingCostBridge {
+  materialCost: number;
+  employeeCost: number;
+  depreciation: number;
+  sgaAdvertising: number;
+  sgaLegalProfessional: number;
+  sgaRent: number;
+  sgaFreight: number;
+  sgaRepairs: number;
+  sgaPowerFuel: number;
+  sgaDetailed: number;
+  sgaResidual: number;
+  sgaTotal: number;
+  otherOperatingExpense: number;
+  otherOperatingIncome: number;
+  grossProfit: number;
+  operatingCosts: number;
+  bridgeCoreOI: number;
+  bridgeGapToReportedCoreOI: number;
+  coverageRatio: number | null;
+  driverRatios: {
+    materialCostPct: number | null;
+    employeeCostPct: number | null;
+    depreciationPct: number | null;
+    sgaPct: number | null;
+    otherOperatingExpensePct: number | null;
+    otherOperatingIncomePct: number | null;
+    bridgeCoreSalesPm: number | null;
+  };
+}
+
+export type UnusualBucketType =
+  | "operating_exceptional"
+  | "discontinued_operations"
+  | "oci_reclassified"
+  | "financial_unusual"
+  | "capital_transaction_signal";
+
+export interface UnusualItemBucket {
+  type: UnusualBucketType;
+  label: string;
+  amount: number;
+  recurring: boolean;
+  affectsCoreOI: boolean;
+  affectsCoreNFE: boolean;
+  blocksTerminalValuation: boolean;
+  reason: string;
+}
+
+export interface UnusualItemPolicySummary {
+  policyVersion: string;
+  operatingBuckets: UnusualItemBucket[];
+  financialBuckets: UnusualItemBucket[];
+  operatingTotal: number;
+  financialTotal: number;
+  terminalBlocker: boolean;
+  blockerReasons: string[];
 }
 
 /* ── Cash Flow ──────────────────────────────────────────────────── */
@@ -257,6 +320,21 @@ export interface ForecastPeriod {
   NFE_f: number; CNI_f: number; CSE_f: number; NFO_f: number;
   ΔNOA_f: number; FCF_f: number; RE_f: number; ReOI_f: number;
   source: 'user'|'fade'|'mean_reversion'|'flat';
+  bridge_mode?: 'margin'|'cost_bridge';
+  material_cost_ratio_assumption?: number | null;
+  employee_cost_ratio_assumption?: number | null;
+  depreciation_ratio_assumption?: number | null;
+  sga_ratio_assumption?: number | null;
+  other_opex_ratio_assumption?: number | null;
+  other_operating_income_ratio_assumption?: number | null;
+  MaterialCost_f?: number | null;
+  EmployeeCost_f?: number | null;
+  Depreciation_f?: number | null;
+  SGA_f?: number | null;
+  OtherOperatingExpense_f?: number | null;
+  OtherOperatingIncome_f?: number | null;
+  GrossProfit_f?: number | null;
+  CoreOI_bridge_f?: number | null;
 }
 
 export interface ForecastScenario {
@@ -266,6 +344,12 @@ export interface ForecastScenario {
   drivers: {
     sales_growth: number[]; core_sales_pm: number[];
     ato: number[]; flev: number[]; nbc: number[];
+    material_cost_ratio?: number[];
+    employee_cost_ratio?: number[];
+    depreciation_ratio?: number[];
+    sga_ratio?: number[];
+    other_opex_ratio?: number[];
+    other_operating_income_ratio?: number[];
     g_terminal: number; ke: number; kw: number;
   };
   periods?: ForecastPeriod[];

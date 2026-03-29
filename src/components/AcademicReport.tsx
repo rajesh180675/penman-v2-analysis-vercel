@@ -967,6 +967,12 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
               (Unusual OI), taxed at the effective rate, and excludes them from Core OI.
             </p>
             <p className="mt-1">
+              (c.1) <b>Formal unusual-item policy:</b> unusual items are now bucketed into exceptional operating items,
+              discontinued operations, OCI reclassifications, unusual financing items, and capital-transaction signals.
+              That policy determines whether an item is excluded from Core OI, excluded from Core NFE, or treated as
+              a terminal-valuation blocker.
+            </p>
+            <p className="mt-1">
               (d) <b>OCI Treatment:</b> Under current config, OCI is treated as unusual and excluded from Core OI.
               This is configurable. For companies with significant actuarial gains/losses or fair-value changes,
               treating OCI as operating may be more appropriate.
@@ -985,6 +991,11 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
               The full Eq. 16 bridge decomposes ROCE into: CoreSalesPM × ATO + CoreOtherItems/NOA +
               UOI/NOA + OLLEV × OLSPREAD + FLEV × CoreSPREAD + FLEV × (UOI/NOA − UFE/NFO).
               The reconstruction residual (ROCE − ROCE_eq16) quantifies the bridge closure error.
+            </p>
+            <p className="mt-1">
+              The forecast layer now also carries a detailed operating-cost bridge from sales through material cost,
+              employee cost, depreciation, SG&amp;A, other operating expense, and other operating income. When that
+              bridge has enough coverage, forward Core OI is built from those drivers instead of a single black-box margin.
             </p>
           </div>
           <div>

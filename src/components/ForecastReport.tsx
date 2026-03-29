@@ -14,10 +14,26 @@ interface Props { data: RecastPeriod[]; config: EngineConfig }
 
 const pct = (v:number,d=1) => (v*100).toFixed(d)+"%";
 const cr  = (v:number) => v.toLocaleString("en-IN",{maximumFractionDigits:0});
+const clampNonNegative = (v:number) => Math.max(0, v);
+
+function median(values: Array<number | null | undefined>): number | null {
+  const filtered = values.filter((v): v is number => v != null && Number.isFinite(v)).sort((a, b) => a - b);
+  if (!filtered.length) return null;
+  const mid = Math.floor(filtered.length / 2);
+  return filtered.length % 2 === 0 ? (filtered[mid - 1] + filtered[mid]) / 2 : filtered[mid];
+}
 
 function makeDefaultScenario(
   latest: RecastPeriod, name: ForecastScenario["name"], ke: number, kw: number,
   salesGrowth: number[], corePM: number[], ato: number[],
+  bridgeDrivers?: {
+    material: number[];
+    employee: number[];
+    depreciation: number[];
+    sga: number[];
+    otherOpex: number[];
+    otherOperatingIncome: number[];
+  },
 ): ForecastScenario {
   return {
     name, probability: name==="base"?0.5:name==="bull"?0.25:0.25,
@@ -28,6 +44,12 @@ function makeDefaultScenario(
       ato,
       flev:  Array(salesGrowth.length).fill(latest.bs.NFO/Math.max(latest.bs.CSE,1)),
       nbc:   Array(salesGrowth.length).fill(latest.is.NFE/Math.max(Math.abs(latest.bs.NFO),1)||0.05),
+      material_cost_ratio: bridgeDrivers?.material,
+      employee_cost_ratio: bridgeDrivers?.employee,
+      depreciation_ratio: bridgeDrivers?.depreciation,
+      sga_ratio: bridgeDrivers?.sga,
+      other_opex_ratio: bridgeDrivers?.otherOpex,
+      other_operating_income_ratio: bridgeDrivers?.otherOperatingIncome,
       g_terminal: 0.05,
       ke, kw,
     },
@@ -63,6 +85,29 @@ export default function ForecastReport({data,config}:Props) {
   const fadePM  = fadeArr(basePM, FADE_PM, NP_PM, horizonT);
   const fadeATO = fadeArr(baseATO, FADE_ATO, NP_ATO, horizonT);
   const fadeSG  = fadeArr(baseSG, FADE_SG, NP_SG, horizonT);
+  const operatingBridge = latest?.is.operatingCostBridge;
+  const bridgeReady = (operatingBridge?.coverageRatio ?? 0) >= 0.25;
+  const recentBridge = data.slice(-3).map((period) => period.is.operatingCostBridge?.driverRatios);
+  const bridgeTargets = useMemo(() => ({
+    material: median(recentBridge.map((r) => r?.materialCostPct)) ?? operatingBridge?.driverRatios.materialCostPct ?? null,
+    employee: median(recentBridge.map((r) => r?.employeeCostPct)) ?? operatingBridge?.driverRatios.employeeCostPct ?? null,
+    depreciation: median(recentBridge.map((r) => r?.depreciationPct)) ?? operatingBridge?.driverRatios.depreciationPct ?? null,
+    sga: median(recentBridge.map((r) => r?.sgaPct)) ?? operatingBridge?.driverRatios.sgaPct ?? null,
+    otherOpex: median(recentBridge.map((r) => r?.otherOperatingExpensePct)) ?? operatingBridge?.driverRatios.otherOperatingExpensePct ?? null,
+    otherOperatingIncome: median(recentBridge.map((r) => r?.otherOperatingIncomePct)) ?? operatingBridge?.driverRatios.otherOperatingIncomePct ?? null,
+  }), [recentBridge, operatingBridge]);
+  const fadeBridgeDriver = (base: number | null | undefined, target: number | null | undefined, alpha: number, t: number) => {
+    if (base == null || target == null) return undefined;
+    return fadeArr(base, alpha, target, t).map((value) => clampNonNegative(value));
+  };
+  const bridgeFade = useMemo(() => bridgeReady ? {
+    material: fadeBridgeDriver(operatingBridge?.driverRatios.materialCostPct, bridgeTargets.material, 0.92, horizonT),
+    employee: fadeBridgeDriver(operatingBridge?.driverRatios.employeeCostPct, bridgeTargets.employee, 0.95, horizonT),
+    depreciation: fadeBridgeDriver(operatingBridge?.driverRatios.depreciationPct, bridgeTargets.depreciation, 0.96, horizonT),
+    sga: fadeBridgeDriver(operatingBridge?.driverRatios.sgaPct, bridgeTargets.sga, 0.92, horizonT),
+    otherOpex: fadeBridgeDriver(operatingBridge?.driverRatios.otherOperatingExpensePct, bridgeTargets.otherOpex, 0.88, horizonT),
+    otherOperatingIncome: fadeBridgeDriver(operatingBridge?.driverRatios.otherOperatingIncomePct, bridgeTargets.otherOperatingIncome, 0.85, horizonT),
+  } : null, [bridgeReady, operatingBridge, bridgeTargets]);
 
   const [ke_inp,  setKe]  = useState(+(keBase*100).toFixed(1));
   const [g_inp,   setG]   = useState(5.0);
@@ -83,20 +128,48 @@ export default function ForecastReport({data,config}:Props) {
 
   const scenarios = useMemo(():ForecastScenario[]=>{
     const kei=ke_inp/100, kwi=kwDerived;
+    const baseBridge = bridgeFade?.material && bridgeFade?.employee && bridgeFade?.depreciation && bridgeFade?.sga && bridgeFade?.otherOpex && bridgeFade?.otherOperatingIncome
+      ? {
+          material: bridgeFade.material.slice(0, horizon),
+          employee: bridgeFade.employee.slice(0, horizon),
+          depreciation: bridgeFade.depreciation.slice(0, horizon),
+          sga: bridgeFade.sga.slice(0, horizon),
+          otherOpex: bridgeFade.otherOpex.slice(0, horizon),
+          otherOperatingIncome: bridgeFade.otherOperatingIncome.slice(0, horizon),
+        }
+      : undefined;
+    const scaleArray = (arr: number[] | undefined, factor: number, floor = 0) => arr?.map((v) => Math.max(floor, v * factor));
     const bull = makeDefaultScenario(latest,"bull",kei,kwi,
       fadeSG.map(v=>v*1.5).slice(0,horizon),
       fadePM.map(v=>v*1.2).slice(0,horizon),
       fadeATO.slice(0,horizon),
+      baseBridge ? {
+        material: scaleArray(baseBridge.material, 0.97) ?? [],
+        employee: scaleArray(baseBridge.employee, 0.99) ?? [],
+        depreciation: scaleArray(baseBridge.depreciation, 1.00) ?? [],
+        sga: scaleArray(baseBridge.sga, 0.96) ?? [],
+        otherOpex: scaleArray(baseBridge.otherOpex, 0.94) ?? [],
+        otherOperatingIncome: scaleArray(baseBridge.otherOperatingIncome, 1.05) ?? [],
+      } : undefined,
     );
     const base = makeDefaultScenario(latest,"base",kei,kwi,
       fadeSG.slice(0,horizon),
       fadePM.slice(0,horizon),
       fadeATO.slice(0,horizon),
+      baseBridge,
     );
     const bear = makeDefaultScenario(latest,"bear",kei,kwi,
       fadeSG.map(v=>v*0.5).slice(0,horizon),
       fadePM.map(v=>v*0.7).slice(0,horizon),
       fadeATO.slice(0,horizon),
+      baseBridge ? {
+        material: scaleArray(baseBridge.material, 1.03) ?? [],
+        employee: scaleArray(baseBridge.employee, 1.01) ?? [],
+        depreciation: scaleArray(baseBridge.depreciation, 1.00) ?? [],
+        sga: scaleArray(baseBridge.sga, 1.05) ?? [],
+        otherOpex: scaleArray(baseBridge.otherOpex, 1.08) ?? [],
+        otherOperatingIncome: scaleArray(baseBridge.otherOperatingIncome, 0.90) ?? [],
+      } : undefined,
     );
 
     bull.probability = pBull;
@@ -110,7 +183,7 @@ export default function ForecastReport({data,config}:Props) {
       sc.valuationResult = computeValuation(valuationPeriods, kei, kwi, g_inp/100, config);
       return sc;
     });
-  },[latest,ke_inp,kwDerived,g_inp,horizon,pBull,pBase,pBear,fadeSG,fadePM,fadeATO,config]);
+  },[latest,ke_inp,kwDerived,g_inp,horizon,pBull,pBase,pBear,fadeSG,fadePM,fadeATO,bridgeFade,config]);
 
   const baseScenario = scenarios.find(s=>s.name==="base");
   const fcPeriods = baseScenario?.periods ?? [];
@@ -259,6 +332,21 @@ export default function ForecastReport({data,config}:Props) {
         <div className={`mt-3 text-xs ${Math.abs(probSum - 1) < 0.001 ? "text-emerald-700" : "text-amber-700"}`}>
           Probability sum = {probSum.toFixed(2)} {Math.abs(probSum - 1) < 0.001 ? "(valid)" : "(must equal 1.00)"}
         </div>
+        {bridgeReady && operatingBridge && (
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-sm font-semibold text-slate-800 mb-2">Operating cost bridge is driving the forecast margin</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-slate-600">
+              <div>Material / Sales: <span className="font-mono text-slate-800">{pct(operatingBridge.driverRatios.materialCostPct ?? 0)}</span></div>
+              <div>Employee / Sales: <span className="font-mono text-slate-800">{pct(operatingBridge.driverRatios.employeeCostPct ?? 0)}</span></div>
+              <div>Depreciation / Sales: <span className="font-mono text-slate-800">{pct(operatingBridge.driverRatios.depreciationPct ?? 0)}</span></div>
+              <div>SG&A / Sales: <span className="font-mono text-slate-800">{pct(operatingBridge.driverRatios.sgaPct ?? 0)}</span></div>
+              <div>Other opex / Sales: <span className="font-mono text-slate-800">{pct(operatingBridge.driverRatios.otherOperatingExpensePct ?? 0)}</span></div>
+              <div>Other op income / Sales: <span className="font-mono text-slate-800">{pct(operatingBridge.driverRatios.otherOperatingIncomePct ?? 0)}</span></div>
+              <div>Bridge PM: <span className="font-mono text-slate-800">{pct(operatingBridge.driverRatios.bridgeCoreSalesPm ?? 0)}</span></div>
+              <div>Coverage: <span className="font-mono text-slate-800">{pct(operatingBridge.coverageRatio ?? 0)}</span></div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Fade Model */}
@@ -329,6 +417,9 @@ export default function ForecastReport({data,config}:Props) {
                     Sales g Y1: {pct(sc.drivers.sales_growth[0])} → Y{sc.horizonT}: {pct(sc.drivers.sales_growth[sc.horizonT-1]??sc.drivers.sales_growth[0])}
                   </div>
                   <div className="text-xs text-slate-500">Core PM Y1: {pct(sc.drivers.core_sales_pm[0])}</div>
+                  {sc.drivers.material_cost_ratio?.length ? (
+                    <div className="text-xs text-slate-500">Material / Sales Y1: {pct(sc.drivers.material_cost_ratio[0])}</div>
+                  ) : null}
                 </div>
               )}
             </div>

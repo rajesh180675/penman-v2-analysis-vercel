@@ -19,6 +19,36 @@ function mkLatest(period_end = "2024-03-31"): RecastPeriod {
       Sales: 900, TaxExpense: 20, taxRate: 0.25, PAT: 120, OCI: 0, TCI: 120, TCI_NCI: 0,
       CNI: 120, FinanceCost: 8, FinanceIncome: 2, FinanceIncomeRung: 1,
       PreferredDividend: 0, NFE: 6, OI: 126, OtherItems: 0, OI_from_sales: 126, MII: 0, COGS: 500,
+      operatingCostBridge: {
+        materialCost: 500,
+        employeeCost: 100,
+        depreciation: 20,
+        sgaAdvertising: 10,
+        sgaLegalProfessional: 5,
+        sgaRent: 4,
+        sgaFreight: 6,
+        sgaRepairs: 5,
+        sgaPowerFuel: 8,
+        sgaDetailed: 38,
+        sgaResidual: 0,
+        sgaTotal: 38,
+        otherOperatingExpense: 40,
+        otherOperatingIncome: 24,
+        grossProfit: 400,
+        operatingCosts: 198,
+        bridgeCoreOI: 226,
+        bridgeGapToReportedCoreOI: 100,
+        coverageRatio: 0.8,
+        driverRatios: {
+          materialCostPct: 500 / 900,
+          employeeCostPct: 100 / 900,
+          depreciationPct: 20 / 900,
+          sgaPct: 38 / 900,
+          otherOperatingExpensePct: 40 / 900,
+          otherOperatingIncomePct: 24 / 900,
+          bridgeCoreSalesPm: 226 / 900,
+        },
+      },
     },
     cu: { UOI: 0, CoreOI: 126, UFE: 0, CoreNFE: 6, ExceptionalItemsAfterTax: 0, OCITotal: 0 },
     cf: {
@@ -70,6 +100,7 @@ describe("buildValuationPeriodsFromForecast", () => {
     expect(out[1].is.OI).toBe(forecasts[0].OI_f);
     expect(out[1].is.CNI).toBe(forecasts[0].CNI_f);
     expect(out[1].is.NFE).toBe(forecasts[0].NFE_f);
+    expect(out[1].cu.CoreOI).toBe(forecasts[0].OI_f);
 
     expect(out[2].period_end).toBe("2026-03-31");
   });
@@ -164,5 +195,40 @@ describe("buildScenario validation", () => {
     expect(() => buildScenario(malformed, latest)).toThrow(
       "Scenario driver 'sales_growth' contains non-finite value at index 0",
     );
+  });
+
+  it("uses detailed operating cost bridge drivers when provided", () => {
+    const latest = mkLatest("2024-03-31");
+    const scenario: ForecastScenario = {
+      name: "base",
+      probability: 1,
+      horizonT: 1,
+      drivers: {
+        sales_growth: [0.10],
+        core_sales_pm: [0.10],
+        ato: [1.2],
+        flev: [0.2],
+        nbc: [0.04],
+        material_cost_ratio: [0.50],
+        employee_cost_ratio: [0.10],
+        depreciation_ratio: [0.02],
+        sga_ratio: [0.04],
+        other_opex_ratio: [0.05],
+        other_operating_income_ratio: [0.03],
+        g_terminal: 0.05,
+        ke: 0.12,
+        kw: 0.10,
+      },
+    };
+
+    const [fp] = buildScenario(scenario, latest);
+
+    expect(fp.bridge_mode).toBe("cost_bridge");
+    expect(fp.MaterialCost_f).toBeCloseTo(495, 6);
+    expect(fp.EmployeeCost_f).toBeCloseTo(99, 6);
+    expect(fp.GrossProfit_f).toBeCloseTo(495, 6);
+    expect(fp.CoreOI_bridge_f).toBeCloseTo(316.8, 6);
+    expect(fp.core_sales_pm_assumption).toBeCloseTo(0.32, 6);
+    expect(fp.OI_f).toBeCloseTo(316.8, 6);
   });
 });

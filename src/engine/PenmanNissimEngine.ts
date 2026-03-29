@@ -157,8 +157,8 @@ const valCF = (d: RawPeriodData, k: readonly string[], line?: string, trace?: Tr
   return r.value;
 };
 
-function sumPL(d: RawPeriodData, keys: readonly string[]) {
-  return sumWithDistinctSource(d, keys, "ProfitLoss");
+function sumPLWithTrace(d: RawPeriodData, keys: readonly string[], line: string, trace?: TraceMap) {
+  return sumWithDistinctSource(d, keys, "ProfitLoss", line, trace);
 }
 
 export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace?: TraceMap): CanonicalBalanceSheet {
@@ -304,10 +304,11 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   pushTrace(trace, "IS.CNI", { statement: "Derived", key: "TCI-TCI_NCI-PrefDiv or PAT+OCI-PrefDiv", value: CNI, matchType: "derived" });
 
   const financeCostTop = pl("IS.FinanceCost.Top", M.profitLoss.financeCostTop);
-  const FinanceCost = financeCostTop || sumPL(data, M.profitLoss.financeCostGranular);
+  const FinanceCost = financeCostTop || sumPLWithTrace(data, M.profitLoss.financeCostGranular, "IS.FinanceCost.Granular", trace);
   if (!financeCostTop) {
     pushTrace(trace, "IS.FinanceCost", { statement: "Derived", key: "sum(financeCostGranular)", value: FinanceCost, matchType: "derived" });
   }
+  const OtherIncome = pl("IS.OtherIncome", M.profitLoss.otherIncome);
   let FinanceIncome = pl("IS.FinanceIncome.Direct", M.profitLoss.financeIncomeDirect);
   let FinanceIncomeRung: 1 | 2 | 3 | 4 = 1;
   if (!FinanceIncome) {
@@ -322,9 +323,8 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
     }
   }
   if (!FinanceIncome) {
-    const oi = pl("IS.OtherIncome", M.profitLoss.otherIncome);
     const faRatio = bs.TA > 0 ? Math.max(0.2, Math.min(0.85, bs.FA / bs.TA)) : 0.2;
-    FinanceIncome = oi * faRatio;
+    FinanceIncome = OtherIncome * faRatio;
     FinanceIncomeRung = 4;
   }
 
@@ -347,13 +347,50 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
     discontinuedTax !== 0 && Math.abs(discontinuedTax) <= Math.abs(discontinuedRaw)
       ? (discontinuedRaw - discontinuedTax)
       : discontinuedRaw;
-  const ExceptionalItemsAfterTax = exceptionalPretax * (1 - taxRate) + discontinuedAfterTax;
+  const exceptionalOperatingAfterTax = exceptionalPretax * (1 - taxRate);
+  const ExceptionalItemsAfterTax = exceptionalOperatingAfterTax + discontinuedAfterTax;
   const COGS = pl("IS.COGS.Material", M.profitLoss.cogsMaterial)
     + pl("IS.COGS.Purchases", M.profitLoss.cogsPurchases)
     - pl("IS.COGS.InventoryChange", M.profitLoss.cogsInventoryChange);
+  const employeeCost = pl("IS.EmployeeCost", M.profitLoss.employeeExpense);
+  const depreciation = pl("IS.Depreciation", M.profitLoss.depreciationAmortization) || Math.abs(cf("IS.Depreciation.CF", M.cashFlow.depreciation));
+  const sgaAdvertising = pl("IS.SGA.Advertising", M.profitLoss.sgaAds);
+  const sgaLegalProfessional = pl("IS.SGA.Legal", M.profitLoss.sgaLegal);
+  const sgaRent = pl("IS.SGA.Rent", M.profitLoss.sgaRent);
+  const sgaFreight = pl("IS.SGA.Freight", M.profitLoss.sgaFreight);
+  const sgaRepairs = sumPLWithTrace(data, M.profitLoss.sgaRepairs, "IS.SGA.Repairs", trace);
+  const sgaPowerFuel = pl("IS.SGA.Power", M.profitLoss.sgaPower);
+  const sgaDetailed =
+    sgaAdvertising
+    + sgaLegalProfessional
+    + sgaRent
+    + sgaFreight
+    + sgaRepairs
+    + sgaPowerFuel;
+  const otherExpenses = pl("IS.OtherExpenses", M.profitLoss.otherExpenses);
+  const sgaResidual = sgaDetailed > 0 && otherExpenses > sgaDetailed ? otherExpenses - sgaDetailed : 0;
+  const sgaTotal = sgaDetailed;
+  const otherOperatingExpense = sgaDetailed > 0
+    ? Math.max(0, otherExpenses - sgaDetailed)
+    : Math.max(0, otherExpenses);
+  const otherOperatingIncome = Math.max(0, OtherIncome - (FinanceIncomeRung === 4 ? Math.min(OtherIncome, FinanceIncome) : 0));
+  const grossProfit = Sales - COGS;
+  const operatingCosts = employeeCost + depreciation + sgaTotal + otherOperatingExpense;
   const OCITotal = cfg.oci_treated_as_unusual ? OCI : 0;
   const UOI = ExceptionalItemsAfterTax + OCITotal;
   const CoreOI = OI - UOI;
+  const bridgeCoreOI = grossProfit - employeeCost - depreciation - sgaTotal - otherOperatingExpense + otherOperatingIncome;
+  const bridgeCoverageDenominator = Math.abs(OI_from_sales) > 1 ? Math.abs(OI_from_sales) : Math.abs(Sales);
+  const coverageNumerator = Math.abs(COGS) + Math.abs(employeeCost) + Math.abs(depreciation) + Math.abs(sgaTotal) + Math.abs(otherOperatingExpense) + Math.abs(otherOperatingIncome);
+  const bridgeCoverageRatio = bridgeCoverageDenominator > 0
+    ? Math.min(1, coverageNumerator / Math.max(Math.abs(Sales), 1))
+    : null;
+  pushTrace(trace, "IS.Bridge.CoreOIFromBridge", {
+    statement: "Derived",
+    key: "Sales-COGS-Employee-Depreciation-SGA-OtherOpex+OtherOperatingIncome",
+    value: bridgeCoreOI,
+    matchType: "derived",
+  });
 
   return {
     is_: {
@@ -361,8 +398,47 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
       CNI, FinanceCost, FinanceIncome, FinanceIncomeRung,
       PreferredDividend, NFE, OI, OtherItems, OI_from_sales, MII,
       COGS,
+      operatingCostBridge: {
+        materialCost: COGS,
+        employeeCost,
+        depreciation,
+        sgaAdvertising,
+        sgaLegalProfessional,
+        sgaRent,
+        sgaFreight,
+        sgaRepairs,
+        sgaPowerFuel,
+        sgaDetailed,
+        sgaResidual,
+        sgaTotal,
+        otherOperatingExpense,
+        otherOperatingIncome,
+        grossProfit,
+        operatingCosts,
+        bridgeCoreOI,
+        bridgeGapToReportedCoreOI: bridgeCoreOI - (CoreOI - OtherItems),
+        coverageRatio: bridgeCoverageRatio,
+        driverRatios: {
+          materialCostPct: Sales !== 0 ? COGS / Sales : null,
+          employeeCostPct: Sales !== 0 ? employeeCost / Sales : null,
+          depreciationPct: Sales !== 0 ? depreciation / Sales : null,
+          sgaPct: Sales !== 0 ? sgaTotal / Sales : null,
+          otherOperatingExpensePct: Sales !== 0 ? otherOperatingExpense / Sales : null,
+          otherOperatingIncomePct: Sales !== 0 ? otherOperatingIncome / Sales : null,
+          bridgeCoreSalesPm: Sales !== 0 ? bridgeCoreOI / Sales : null,
+        },
+      },
     },
-    cu: { UOI, CoreOI, UFE, CoreNFE, ExceptionalItemsAfterTax, OCITotal },
+    cu: {
+      UOI,
+      CoreOI,
+      UFE,
+      CoreNFE,
+      ExceptionalItemsAfterTax,
+      OCITotal,
+      ExceptionalOperatingItemsAfterTax: exceptionalOperatingAfterTax,
+      DiscontinuedOperationsAfterTax: discontinuedAfterTax,
+    },
   };
 }
 
@@ -814,8 +890,8 @@ export function computeQuality(cur: RecastPeriod, prev: RecastPeriod, data: RawP
     return detailed > 0 ? detailed : valPL(d, M.profitLoss.employeeExpense) + valPL(d, M.profitLoss.otherExpenses);
   };
 
-  const cogsCur = cur.is.COGS !== 0 ? cur.is.COGS : cogs(data);
-  const cogsPrev = prev.is.COGS !== 0 ? prev.is.COGS : cogs(prevData);
+  const cogsCur = cur.is.operatingCostBridge?.materialCost ?? (cur.is.COGS !== 0 ? cur.is.COGS : cogs(data));
+  const cogsPrev = prev.is.operatingCostBridge?.materialCost ?? (prev.is.COGS !== 0 ? prev.is.COGS : cogs(prevData));
   const gmCur = cur.is.Sales > 0 ? (cur.is.Sales - cogsCur) / cur.is.Sales : 0;
   const gmPrev = prev.is.Sales > 0 ? (prev.is.Sales - cogsPrev) / prev.is.Sales : 0;
 
@@ -849,8 +925,8 @@ export function computeQuality(cur: RecastPeriod, prev: RecastPeriod, data: RawP
     cur.bs.PPE > 0 ? valPL(data, M.profitLoss.depreciationAmortization) / cur.bs.PPE : 0
   );
   // SGAI: SGA intensity ratio. Default to 1.0 (neutral) when SGA not measurable to avoid biasing M-Score.
-  const sgaCur = sga(data);
-  const sgaPrev = sga(prevData);
+  const sgaCur = cur.is.operatingCostBridge?.sgaTotal ?? sga(data);
+  const sgaPrev = prev.is.operatingCostBridge?.sgaTotal ?? sga(prevData);
   const sgaRatioCur = sgaCur > 0 && cur.is.Sales > 0 ? sgaCur / cur.is.Sales : null;
   const sgaRatioPrev = sgaPrev > 0 && prev.is.Sales > 0 ? sgaPrev / prev.is.Sales : null;
   const sgai = sgaRatioCur != null && sgaRatioPrev != null && sgaRatioPrev > 0

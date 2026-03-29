@@ -9,6 +9,7 @@ import {
   computeResidualIncome, computeQuality, deriveKwFromStructure,
 } from "./PenmanNissimEngine";
 import { runAnomalyDetection, AnomalyBundle } from "./anomalyDetection";
+import { buildUnusualItemPolicy } from "./unusualItemPolicy";
 
 export interface PipelineResult {
   periods  : RecastPeriod[];
@@ -81,6 +82,7 @@ export function processCompanyDataFull(
     period.spec_flags = anomalies.periodSummaries
       .find(s => s.period_end === period.period_end)
       ?.all_flags ?? [];
+    period.cu.policy = buildUnusualItemPolicy(period);
   }
 
   return { periods: results, anomalies };
