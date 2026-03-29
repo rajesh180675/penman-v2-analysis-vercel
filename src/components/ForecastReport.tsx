@@ -3,6 +3,7 @@ import { RecastPeriod, ForecastScenario, ForecastPeriod, FADE_PARAMS, NP_BENCHMA
 import { buildScenario, sensitivityAnalysis, buildValuationPeriodsFromForecast, applyDriverSensitivityToScenario } from "../engine/forecastingEngine";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { resolveValuationReadiness } from "../engine/valuationPolicy";
+import { resolveShareBasis, toPerShare } from "../engine/shareCountTools";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   LineChart, Line, Legend, ReferenceLine, Cell,
@@ -14,6 +15,7 @@ interface Props { data: RecastPeriod[]; config: EngineConfig }
 
 const pct = (v:number,d=1) => (v*100).toFixed(d)+"%";
 const cr  = (v:number) => v.toLocaleString("en-IN",{maximumFractionDigits:0});
+const share = (v:number | null | undefined, d=2) => v == null ? "—" : `₹${v.toFixed(d)}`;
 const clampNonNegative = (v:number) => Math.max(0, v);
 
 function median(values: Array<number | null | undefined>): number | null {
@@ -59,6 +61,9 @@ function makeDefaultScenario(
 export default function ForecastReport({data,config}:Props) {
   const keBase = ke_from_config(config);
   const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
+  const shareBasis = useMemo(() => resolveShareBasis(data, config), [data, config]);
+  const valuationConfig = useMemo(() => shareBasis.valuationConfig, [shareBasis]);
+  const sharesOut = shareBasis.shares ?? null;
 
   const latest = data[data.length-1];
   const latestRatios = latest?.ratios;
@@ -180,10 +185,10 @@ export default function ForecastReport({data,config}:Props) {
       const fps = buildScenario(sc, latest);
       sc.periods = fps;
       const valuationPeriods = buildValuationPeriodsFromForecast(latest, fps);
-      sc.valuationResult = computeValuation(valuationPeriods, kei, kwi, g_inp/100, config);
+      sc.valuationResult = computeValuation(valuationPeriods, kei, kwi, g_inp/100, valuationConfig);
       return sc;
     });
-  },[latest,ke_inp,kwDerived,g_inp,horizon,pBull,pBase,pBear,fadeSG,fadePM,fadeATO,bridgeFade,config]);
+  },[latest,ke_inp,kwDerived,g_inp,horizon,pBull,pBase,pBear,fadeSG,fadePM,fadeATO,bridgeFade,valuationConfig]);
 
   const baseScenario = scenarios.find(s=>s.name==="base");
   const fcPeriods = baseScenario?.periods ?? [];
@@ -193,7 +198,9 @@ export default function ForecastReport({data,config}:Props) {
   );
 
   // Sensitivity
-  const baseV = baseScenario?.valuationResult?.V_RE_CV3 ?? 0;
+  const baseV = sharesOut
+    ? toPerShare(baseScenario?.valuationResult?.V_RE_CV3 ?? null, sharesOut) ?? 0
+    : baseScenario?.valuationResult?.V_RE_CV3 ?? 0;
   const sensResults = useMemo(()=>sensitivityAnalysis(
     baseV,
     {ke:ke_inp/100,kw:kwDerived,g:g_inp/100,core_pm:basePM,ato:baseATO,sales_growth:baseSG},
@@ -214,10 +221,10 @@ export default function ForecastReport({data,config}:Props) {
       );
       const sensitivityPeriods = buildScenario(scenarioForSensitivity, latest);
       const valuationPeriods = buildValuationPeriodsFromForecast(latest, sensitivityPeriods);
-      const r = computeValuation(valuationPeriods,p.ke,p.kw,p.g,config);
-      return r.V_RE_CV3;
+      const r = computeValuation(valuationPeriods,p.ke,p.kw,p.g,valuationConfig);
+      return sharesOut ? toPerShare(r.V_RE_CV3, sharesOut) ?? 0 : r.V_RE_CV3;
     }
-  ),[baseV,baseScenario,latest,ke_inp,kwDerived,g_inp,basePM,baseATO,baseSG,config]);
+  ),[baseV,baseScenario,latest,ke_inp,kwDerived,g_inp,basePM,baseATO,baseSG,valuationConfig,sharesOut]);
 
   const chartFade = Array.from({length:horizonT},((_,i)=>({
     year:`Y+${i+1}`,
@@ -230,11 +237,11 @@ export default function ForecastReport({data,config}:Props) {
 
   const chartScen = fcPeriods.map(fp=>({
     year: fp.period_label,
-    RE:   +fp.RE_f.toFixed(0),
-    ReOI: +fp.ReOI_f.toFixed(0),
-    OI:   +fp.OI_f.toFixed(0),
-    Sales:+fp.Sales_f.toFixed(0),
-    FCF:  +fp.FCF_f.toFixed(0),
+    RE:   +(toPerShare(fp.RE_f, sharesOut) ?? fp.RE_f).toFixed(2),
+    ReOI: +(toPerShare(fp.ReOI_f, sharesOut) ?? fp.ReOI_f).toFixed(2),
+    OI:   +(toPerShare(fp.OI_f, sharesOut) ?? fp.OI_f).toFixed(2),
+    Sales:+(toPerShare(fp.Sales_f, sharesOut) ?? fp.Sales_f).toFixed(2),
+    FCF:  +(toPerShare(fp.FCF_f, sharesOut) ?? fp.FCF_f).toFixed(2),
   }));
 
   const SCENARIO_COLORS:{[k:string]:string}={bull:"#10b981",base:"#6366f1",bear:"#ef4444"};
@@ -247,7 +254,7 @@ export default function ForecastReport({data,config}:Props) {
       const out = await runMonteCarlo(
         {
           basePeriods: baseValuationPeriods,
-          config,
+          config: valuationConfig,
           N: 10000,
           horizonT: horizon,
           paramDistributions: {
@@ -266,7 +273,7 @@ export default function ForecastReport({data,config}:Props) {
 
   const mcHistogram = useMemo(() => {
     if (!mcOut?.V_RE_samples?.length) return [] as Array<{ bucket: string; n: number }>;
-    const vals: number[] = mcOut.V_RE_samples;
+    const vals: number[] = sharesOut ? mcOut.V_RE_samples.map((v) => toPerShare(v, sharesOut) ?? 0) : mcOut.V_RE_samples;
     const min = Math.min(...vals);
     const max = Math.max(...vals);
     const bins = 20;
@@ -332,6 +339,12 @@ export default function ForecastReport({data,config}:Props) {
         <div className={`mt-3 text-xs ${Math.abs(probSum - 1) < 0.001 ? "text-emerald-700" : "text-amber-700"}`}>
           Probability sum = {probSum.toFixed(2)} {Math.abs(probSum - 1) < 0.001 ? "(valid)" : "(must equal 1.00)"}
         </div>
+        {sharesOut != null && (
+          <div className="mt-3 text-xs text-slate-500 space-y-1">
+            <div>Per-share base: <b>{sharesOut.toLocaleString("en-IN", { maximumFractionDigits: 2 })} Cr shares</b></div>
+            <div>Source: <b>{shareBasis.source}</b> · Confidence: <b>{shareBasis.confidence}</b></div>
+          </div>
+        )}
         {bridgeReady && operatingBridge && (
           <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-sm font-semibold text-slate-800 mb-2">Operating cost bridge is driving the forecast margin</div>
@@ -410,9 +423,14 @@ export default function ForecastReport({data,config}:Props) {
               {sc.valuationResult&&(
                 <div>
                   <div className="text-2xl font-bold" style={{color:SCENARIO_COLORS[sc.name]}}>
-                    ₹{cr(sc.valuationResult.V_RE_CV3)}
+                    {sharesOut ? share(sc.valuationResult.perShare?.intrinsic_re_per_share) : `₹${cr(sc.valuationResult.V_RE_CV3)}`}
                   </div>
-                  <div className="text-xs text-slate-400 mt-1">V (RE·CV3) Cr</div>
+                  <div className="text-xs text-slate-400 mt-1">
+                    {sharesOut ? "V (RE·CV3) per share" : "V (RE·CV3) Cr"}
+                  </div>
+                  {sharesOut && (
+                    <div className="text-xs text-slate-500 mt-1">Total equity value: ₹{cr(sc.valuationResult.V_RE_CV3)} Cr</div>
+                  )}
                   <div className="mt-2 text-xs text-slate-500">
                     Sales g Y1: {pct(sc.drivers.sales_growth[0])} → Y{sc.horizonT}: {pct(sc.drivers.sales_growth[sc.horizonT-1]??sc.drivers.sales_growth[0])}
                   </div>
@@ -427,17 +445,22 @@ export default function ForecastReport({data,config}:Props) {
         </div>
         <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4">
           <div className="text-sm font-semibold text-indigo-800">
-            Expected Value (probability-weighted): ₹{cr(
-              scenarios.reduce((s,sc)=>s+(sc.probability*(sc.valuationResult?.V_RE_CV3??0)),0)/
-              Math.max(scenarios.reduce((s,sc)=>s+sc.probability,0),1)
-            )} Cr
+            Expected Value (probability-weighted): {sharesOut
+              ? share(
+                  scenarios.reduce((s,sc)=>s+(sc.probability*(sc.valuationResult?.perShare?.intrinsic_re_per_share??0)),0)/
+                  Math.max(scenarios.reduce((s,sc)=>s+sc.probability,0),1)
+                )
+              : `₹${cr(
+                  scenarios.reduce((s,sc)=>s+(sc.probability*(sc.valuationResult?.V_RE_CV3??0)),0)/
+                  Math.max(scenarios.reduce((s,sc)=>s+sc.probability,0),1)
+                )} Cr`}
           </div>
         </div>
 
         {/* Base case Pro Forma */}
         {chartScen.length>0&&(
           <div>
-            <div className="text-sm font-semibold text-slate-600 mb-3">Base Case Pro Forma — RE & ReOI Series</div>
+            <div className="text-sm font-semibold text-slate-600 mb-3">Base Case Pro Forma — RE & ReOI Series {sharesOut ? "(₹ / share)" : "(₹ Cr)"}</div>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={chartScen}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
@@ -462,7 +485,7 @@ export default function ForecastReport({data,config}:Props) {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-bold text-slate-800">Monte Carlo Simulation — §4.1.1</h2>
-            <p className="text-xs text-slate-500">N=10,000 simulations in Web Worker. Outputs valuation distribution percentiles.</p>
+            <p className="text-xs text-slate-500">N=10,000 simulations in Web Worker. Outputs valuation distribution percentiles{sharesOut ? " on a per-share basis" : ""}.</p>
           </div>
           <button onClick={runMc} disabled={mcBusy} className={`px-4 py-2 rounded-lg text-sm font-medium ${mcBusy?"bg-slate-300 text-slate-100":"bg-indigo-600 text-white hover:bg-indigo-700"}`}>
             {mcBusy ? `Running... ${(mcProgress * 100).toFixed(0)}%` : "Run Monte Carlo"}
@@ -471,12 +494,12 @@ export default function ForecastReport({data,config}:Props) {
         {mcOut && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-sm mb-4">
-              <Mini title="P10 RE" value={`₹${cr(mcOut.p10_RE)}`} />
-              <Mini title="P50 RE" value={`₹${cr(mcOut.p50_RE)}`} />
-              <Mini title="P90 RE" value={`₹${cr(mcOut.p90_RE)}`} />
-              <Mini title="P10 ReOI" value={`₹${cr(mcOut.p10_ReOI)}`} />
-              <Mini title="P50 ReOI" value={`₹${cr(mcOut.p50_ReOI)}`} />
-              <Mini title="P90 ReOI" value={`₹${cr(mcOut.p90_ReOI)}`} />
+              <Mini title="P10 RE" value={sharesOut ? share(toPerShare(mcOut.p10_RE, sharesOut)) : `₹${cr(mcOut.p10_RE)}`} />
+              <Mini title="P50 RE" value={sharesOut ? share(toPerShare(mcOut.p50_RE, sharesOut)) : `₹${cr(mcOut.p50_RE)}`} />
+              <Mini title="P90 RE" value={sharesOut ? share(toPerShare(mcOut.p90_RE, sharesOut)) : `₹${cr(mcOut.p90_RE)}`} />
+              <Mini title="P10 ReOI" value={sharesOut ? share(toPerShare(mcOut.p10_ReOI, sharesOut)) : `₹${cr(mcOut.p10_ReOI)}`} />
+              <Mini title="P50 ReOI" value={sharesOut ? share(toPerShare(mcOut.p50_ReOI, sharesOut)) : `₹${cr(mcOut.p50_ReOI)}`} />
+              <Mini title="P90 ReOI" value={sharesOut ? share(toPerShare(mcOut.p90_ReOI, sharesOut)) : `₹${cr(mcOut.p90_ReOI)}`} />
             </div>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={mcHistogram}>
@@ -494,7 +517,7 @@ export default function ForecastReport({data,config}:Props) {
       {/* Sensitivity Tornado */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
         <h2 className="text-lg font-bold text-slate-800 mb-2">Sensitivity Analysis — §4.3.4</h2>
-        <p className="text-xs text-slate-500 mb-4">Each parameter varied ±20% from base. Impact = V_high − V_low (₹ Cr). Sorted by magnitude.</p>
+        <p className="text-xs text-slate-500 mb-4">Each parameter varied ±20% from base. Impact = V_high − V_low {sharesOut ? "(₹ / share)" : "(₹ Cr)"}. Sorted by magnitude.</p>
         {sensResults.map(r=>{
           const maxImpact = Math.max(...sensResults.map(x=>x.impact),1);
           const pctW = r.impact/maxImpact*100;
@@ -505,9 +528,9 @@ export default function ForecastReport({data,config}:Props) {
                 <div className="h-5 bg-blue-200 rounded-l" style={{width:`${pctW/2}%`}}/>
                 <div className="h-5 bg-indigo-500 rounded-r" style={{width:`${pctW/2}%`}}/>
               </div>
-              <div className="w-28 text-xs font-mono text-slate-500">±₹{cr(r.impact/2)}</div>
+              <div className="w-28 text-xs font-mono text-slate-500">{sharesOut ? `±₹${(r.impact/2).toFixed(2)}` : `±₹${cr(r.impact/2)}`}</div>
               <div className="w-36 text-xs text-slate-400">
-                [{cr(r.low)} – {cr(r.high)}]
+                {sharesOut ? `[₹${r.low.toFixed(2)} – ₹${r.high.toFixed(2)}]` : `[${cr(r.low)} – ${cr(r.high)}]`}
               </div>
             </div>
           );
@@ -519,7 +542,7 @@ export default function ForecastReport({data,config}:Props) {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
             <h2 className="text-lg font-bold text-slate-800">Pro Forma Statement (Base Case)</h2>
-            <p className="text-xs text-slate-500">Derived from accounting identities Eq.2,3,12,14</p>
+            <p className="text-xs text-slate-500">Derived from accounting identities Eq.2,3,12,14 {sharesOut ? `· displayed as ₹ per share on the current ${sharesOut.toLocaleString("en-IN", { maximumFractionDigits: 2 })} Cr share base` : ""}</p>
           </div>
           <div className="p-6 overflow-x-auto">
             <table className="w-full text-sm">
@@ -544,7 +567,7 @@ export default function ForecastReport({data,config}:Props) {
                     <td className={`px-3 py-2 text-slate-700 text-xs ${bold?"font-semibold":""}`}>{label}</td>
                     {fcPeriods.map(fp=>(
                       <td key={fp.period_label} className={`px-3 py-2 text-right font-mono text-xs ${bold?"font-semibold":""} ${(fp[key] as number)<0?"text-red-600":"text-slate-700"}`}>
-                        ₹{cr(fp[key] as number)}
+                        {sharesOut ? share(toPerShare(fp[key] as number, sharesOut)) : `₹${cr(fp[key] as number)}`}
                       </td>
                     ))}
                   </tr>

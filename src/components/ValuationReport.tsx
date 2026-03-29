@@ -3,6 +3,7 @@ import { useState, useMemo } from "react";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { ke_from_config } from "../engine/types";
 import { resolveValuationReadiness } from "../engine/valuationPolicy";
+import { resolveShareBasis, toPerShare } from "../engine/shareCountTools";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell } from "recharts";
 
 interface Props { data: RecastPeriod[]; config: EngineConfig }
@@ -26,9 +27,14 @@ export default function ValuationReport({ data, config }: Props) {
 
   const ke = keOverride != null ? keOverride / 100 : keFromConfig;
   const gRate = g / 100;
+  const shareBasis = useMemo(() => resolveShareBasis(data, config), [data, config]);
   const valuationData = useMemo(
     () => data.slice(0, Math.max(2, valuationReadiness.anchorIndex + 1)),
     [data, valuationReadiness.anchorIndex]
+  );
+  const valuationConfig = useMemo(
+    () => shareBasis.valuationConfig,
+    [shareBasis]
   );
 
   // S-9.4: kw ALWAYS derived — never a user input
@@ -41,8 +47,8 @@ export default function ValuationReport({ data, config }: Props) {
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const val = useMemo(() =>
-    computeValuation(valuationData, ke, kwDerived, gRate, config),
-    [valuationData, ke, kwDerived, gRate, config]
+    computeValuation(valuationData, ke, kwDerived, gRate, valuationConfig),
+    [valuationData, ke, kwDerived, gRate, valuationConfig]
   );
 
   const cvSel = (v1: number, v2: number, v3: number) => cv === "CV1" ? v1 : cv === "CV2" ? v2 : v3;
@@ -50,14 +56,15 @@ export default function ValuationReport({ data, config }: Props) {
   const V_ReOI = cvSel(val.V_ReOI_CV01, val.V_ReOI_CV02, val.V_ReOI_CV03);
 
   const fmt = (n: number) => n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+  const fmtPerShare = (n: number | null | undefined) => n == null ? "—" : `₹${n.toFixed(2)}`;
 
   // S-9.8: per-share
-  const sharesOut = config.shares_outstanding ?? null;
+  const sharesOut = shareBasis.shares ?? null;
 
   const barData = val.reSeries.map((r) => ({
     period: r.period.slice(0, 7),
-    RE:   +r.RE.toFixed(0),
-    ReOI: +r.ReOI.toFixed(0),
+    RE:   +(toPerShare(r.RE, sharesOut) ?? r.RE).toFixed(2),
+    ReOI: +(toPerShare(r.ReOI, sharesOut) ?? r.ReOI).toFixed(2),
   }));
 
   return (
@@ -108,8 +115,9 @@ export default function ValuationReport({ data, config }: Props) {
         </div>
 
         {sharesOut != null && (
-          <div className="mt-3 text-xs text-slate-500">
-            Shares outstanding: <b>{sharesOut.toLocaleString("en-IN")} Lakh</b>
+          <div className="mt-3 text-xs text-slate-500 space-y-1">
+            <div>Share basis: <b>{sharesOut.toLocaleString("en-IN", { maximumFractionDigits: 2 })} Cr shares</b></div>
+            <div>Source: <b>{shareBasis.source}</b> · Confidence: <b>{shareBasis.confidence}</b></div>
           </div>
         )}
 
@@ -139,7 +147,7 @@ export default function ValuationReport({ data, config }: Props) {
             { l: "PV of RE series", v: val.pvRE },
             { l: `CV PV (${cv})`, v: V_RE - val.CSE0 - val.pvRE },
           ]} fmt={fmt}
-          perShare={sharesOut ? V_RE * 100 / sharesOut : null}
+          perShare={toPerShare(V_RE, sharesOut)}
         />
         <ValCard color="emerald" title={`V (ReOI · ${cv === "CV1" ? "CV01" : cv === "CV2" ? "CV02" : "CV03"})`}
           subtitle="Eq.(9) · Ops-only · EV−NFO" value={V_ReOI}
@@ -148,7 +156,7 @@ export default function ValuationReport({ data, config }: Props) {
             { l: "Less: NFO (latest)", v: -val.NFO_latest },
             { l: "PV ReOI", v: val.pvReOI },
           ]} fmt={fmt}
-          perShare={sharesOut ? V_ReOI * 100 / sharesOut : null}
+          perShare={toPerShare(V_ReOI, sharesOut)}
         />
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">All CV Methods — RE</div>
@@ -159,7 +167,9 @@ export default function ValuationReport({ data, config }: Props) {
           ].map((row) => (
             <div key={row.label} className="flex justify-between py-1.5 border-b border-slate-100 text-sm">
               <span className="text-slate-600">{row.label}</span>
-              <span className="font-mono font-semibold text-indigo-700">₹{fmt(row.v)}</span>
+              <span className="font-mono font-semibold text-indigo-700">
+                {sharesOut ? `${fmtPerShare(toPerShare(row.v, sharesOut))} / share` : `₹${fmt(row.v)} Cr`}
+              </span>
             </div>
           ))}
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mt-4 mb-3">All CV Methods — ReOI</div>
@@ -170,7 +180,9 @@ export default function ValuationReport({ data, config }: Props) {
           ].map((row) => (
             <div key={row.label} className="flex justify-between py-1.5 border-b border-slate-100 text-sm">
               <span className="text-slate-600">{row.label}</span>
-              <span className="font-mono font-semibold text-emerald-700">₹{fmt(row.v)}</span>
+              <span className="font-mono font-semibold text-emerald-700">
+                {sharesOut ? `${fmtPerShare(toPerShare(row.v, sharesOut))} / share` : `₹${fmt(row.v)} Cr`}
+              </span>
             </div>
           ))}
         </div>
@@ -180,15 +192,15 @@ export default function ValuationReport({ data, config }: Props) {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
           <h2 className="text-lg font-bold text-slate-800">Valuation Triangulation (v3)</h2>
-          <p className="text-xs text-slate-500 mt-0.5">RE, ReOI, FCFF, FCFE, DDM, AEG (₹ Cr; per-share when share count provided)</p>
+          <p className="text-xs text-slate-500 mt-0.5">Per-share value is primary. Company totals remain as context in ₹ Cr.</p>
         </div>
         <div className="p-6 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b">
                 <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Model</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Value (₹ Cr)</th>
                 <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Per Share (₹)</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Value (₹ Cr)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -197,13 +209,13 @@ export default function ValuationReport({ data, config }: Props) {
                 ["ReOI (CV03)", val.V_ReOI_CV03, val.perShare?.intrinsic_reoi_per_share ?? null],
                 ["FCFF", val.fcf?.EV_FCFF != null ? (val.fcf.EV_FCFF - val.NFO_latest) : null, val.perShare?.intrinsic_fcff_per_share ?? null],
                 ["FCFE", val.fcf?.V_FCFE ?? null, val.perShare?.intrinsic_fcfe_per_share ?? null],
-                ["DDM", val.perShare?.intrinsic_ddm_per_share != null && sharesOut ? val.perShare.intrinsic_ddm_per_share * sharesOut / 100 : null, val.perShare?.intrinsic_ddm_per_share ?? null],
+                ["DDM", val.perShare?.intrinsic_ddm_per_share != null && sharesOut ? val.perShare.intrinsic_ddm_per_share * sharesOut : null, val.perShare?.intrinsic_ddm_per_share ?? null],
                 ["AEG", val.aeg?.V_AEG ?? null, val.perShare?.intrinsic_aeg_per_share ?? null],
               ].map(([name, v, ps]) => (
                 <tr key={name as string}>
                   <td className="px-3 py-2 text-slate-700">{name as string}</td>
-                  <td className="px-3 py-2 text-right font-mono">{typeof v === "number" ? `₹${fmt(v)}` : "—"}</td>
                   <td className="px-3 py-2 text-right font-mono">{typeof ps === "number" ? `₹${ps.toFixed(2)}` : "—"}</td>
+                  <td className="px-3 py-2 text-right font-mono">{typeof v === "number" ? `₹${fmt(v)}` : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -226,7 +238,7 @@ export default function ValuationReport({ data, config }: Props) {
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 {[
-                  { l: "V_AEG", v: `₹${fmt(val.aeg.V_AEG)} Cr` },
+                  { l: "V_AEG", v: sharesOut ? `${fmtPerShare(toPerShare(val.aeg.V_AEG, sharesOut))} / share` : `₹${fmt(val.aeg.V_AEG)} Cr` },
                   { l: "Implied P/E", v: val.aeg.implied_pe != null ? `${val.aeg.implied_pe.toFixed(2)}x` : "—" },
                   { l: "Normalised P/E", v: val.aeg.normalised_pe != null ? `${val.aeg.normalised_pe.toFixed(2)}x` : "—" },
                 ].map(({ l, v }) => (
@@ -250,9 +262,9 @@ export default function ValuationReport({ data, config }: Props) {
                     {val.aeg.aeg_series.map((r) => (
                       <tr key={r.period}>
                         <td className="px-3 py-2 font-mono text-xs text-slate-600">{r.period.slice(0, 7)}</td>
-                        <td className="px-3 py-2 text-right font-mono">{fmt(r.CNI)}</td>
-                        <td className={`px-3 py-2 text-right font-mono ${r.AEG >= 0 ? "text-emerald-700" : "text-red-700"}`}>{fmt(r.AEG)}</td>
-                        <td className={`px-3 py-2 text-right font-mono ${r.PV_AEG >= 0 ? "text-emerald-700" : "text-red-700"}`}>{fmt(r.PV_AEG)}</td>
+                        <td className="px-3 py-2 text-right font-mono">{sharesOut ? fmtPerShare(toPerShare(r.CNI, sharesOut)) : fmt(r.CNI)}</td>
+                        <td className={`px-3 py-2 text-right font-mono ${r.AEG >= 0 ? "text-emerald-700" : "text-red-700"}`}>{sharesOut ? fmtPerShare(toPerShare(r.AEG, sharesOut)) : fmt(r.AEG)}</td>
+                        <td className={`px-3 py-2 text-right font-mono ${r.PV_AEG >= 0 ? "text-emerald-700" : "text-red-700"}`}>{sharesOut ? fmtPerShare(toPerShare(r.PV_AEG, sharesOut)) : fmt(r.PV_AEG)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -280,34 +292,43 @@ export default function ValuationReport({ data, config }: Props) {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
           <h2 className="text-lg font-bold text-slate-800">Residual Income Series</h2>
-          <p className="text-xs text-slate-500 mt-0.5">RE = CNI − ke×CSE₍t−1₎  |  ReOI = OI − kw×NOA₍t−1₎  |  §6.1–6.2</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            RE = CNI − ke×CSE₍t−1₎  |  ReOI = OI − kw×NOA₍t−1₎  |  §6.1–6.2
+            {sharesOut ? ` · Rendered on a per-share basis using ${sharesOut.toLocaleString("en-IN", { maximumFractionDigits: 2 })} Cr shares.` : " · Rendered in ₹ Cr until a share basis is available."}
+          </p>
         </div>
         <div className="p-6">
           <div className="overflow-x-auto mb-6">
             <table className="w-full text-sm">
               <thead><tr className="bg-slate-50 border-b">
                 <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Period</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">CNI</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">ke×CSE₋₁</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-indigo-500 uppercase">RE</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">OI</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">kw×NOA₋₁</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-emerald-500 uppercase">ReOI</th>
+                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">{sharesOut ? "CNI / share" : "CNI"}</th>
+                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">{sharesOut ? "ke×CSE₋₁ / share" : "ke×CSE₋₁"}</th>
+                <th className="px-4 py-2 text-right text-xs font-semibold text-indigo-500 uppercase">{sharesOut ? "RE / share" : "RE"}</th>
+                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">{sharesOut ? "OI / share" : "OI"}</th>
+                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">{sharesOut ? "kw×NOA₋₁ / share" : "kw×NOA₋₁"}</th>
+                <th className="px-4 py-2 text-right text-xs font-semibold text-emerald-500 uppercase">{sharesOut ? "ReOI / share" : "ReOI"}</th>
               </tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {val.reSeries.map((r, i) => {
                   const cur  = data[i + 1];
                   const prev = data[i];
                   if (!cur || !prev) return null;
+                  const cni = toPerShare(cur.is.CNI, sharesOut) ?? cur.is.CNI;
+                  const equityCharge = toPerShare(ke * prev.bs.CSE, sharesOut) ?? (ke * prev.bs.CSE);
+                  const re = toPerShare(r.RE, sharesOut) ?? r.RE;
+                  const oi = toPerShare(cur.is.OI, sharesOut) ?? cur.is.OI;
+                  const noaCharge = toPerShare(kwDerived * prev.bs.NOA, sharesOut) ?? (kwDerived * prev.bs.NOA);
+                  const reoi = toPerShare(r.ReOI, sharesOut) ?? r.ReOI;
                   return (
                     <tr key={i} className="hover:bg-slate-50">
                       <td className="px-4 py-2 font-mono text-slate-600 text-sm">{r.period.slice(0, 7)}</td>
-                      <td className="px-4 py-2 text-right font-mono text-sm">{cur.is.CNI.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
-                      <td className="px-4 py-2 text-right font-mono text-sm text-slate-400">{(ke * prev.bs.CSE).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
-                      <td className="px-4 py-2 text-right font-mono font-bold text-indigo-700 text-sm">{fmt(r.RE)}</td>
-                      <td className="px-4 py-2 text-right font-mono text-sm">{cur.is.OI.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
-                      <td className="px-4 py-2 text-right font-mono text-sm text-slate-400">{(kwDerived * prev.bs.NOA).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
-                      <td className="px-4 py-2 text-right font-mono font-bold text-emerald-700 text-sm">{fmt(r.ReOI)}</td>
+                      <td className="px-4 py-2 text-right font-mono text-sm">{sharesOut ? fmtPerShare(cni) : cur.is.CNI.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
+                      <td className="px-4 py-2 text-right font-mono text-sm text-slate-400">{sharesOut ? fmtPerShare(equityCharge) : (ke * prev.bs.CSE).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
+                      <td className="px-4 py-2 text-right font-mono font-bold text-indigo-700 text-sm">{sharesOut ? fmtPerShare(re) : fmt(r.RE)}</td>
+                      <td className="px-4 py-2 text-right font-mono text-sm">{sharesOut ? fmtPerShare(oi) : cur.is.OI.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
+                      <td className="px-4 py-2 text-right font-mono text-sm text-slate-400">{sharesOut ? fmtPerShare(noaCharge) : (kwDerived * prev.bs.NOA).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
+                      <td className="px-4 py-2 text-right font-mono font-bold text-emerald-700 text-sm">{sharesOut ? fmtPerShare(reoi) : fmt(r.ReOI)}</td>
                     </tr>
                   );
                 })}
@@ -315,14 +336,14 @@ export default function ValuationReport({ data, config }: Props) {
             </table>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[
-              { key: "RE" as const, label: "Residual Earnings (RE)", color: "#6366f1" },
-              { key: "ReOI" as const, label: "Residual Op. Income (ReOI)", color: "#10b981" },
-            ].map(({ key, label, color }) => (
-              <div key={key} className="border border-slate-100 rounded-xl p-4">
-                <div className="text-xs font-semibold text-slate-500 mb-3 uppercase">{label} (₹ Cr)</div>
-                <ResponsiveContainer width="100%" height={190}>
-                  <BarChart data={barData}>
+              {[
+                { key: "RE" as const, label: "Residual Earnings (RE)", color: "#6366f1" },
+                { key: "ReOI" as const, label: "Residual Op. Income (ReOI)", color: "#10b981" },
+              ].map(({ key, label, color }) => (
+                <div key={key} className="border border-slate-100 rounded-xl p-4">
+                  <div className="text-xs font-semibold text-slate-500 mb-3 uppercase">{label} {sharesOut ? "(₹ / share)" : "(₹ Cr)"}</div>
+                  <ResponsiveContainer width="100%" height={190}>
+                    <BarChart data={barData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="period" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
@@ -396,11 +417,46 @@ function SensitivityGrid({
       <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
         <h2 className="text-lg font-bold text-slate-800">Sensitivity Grid — V_RE_CV3 (S-9.7)</h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          ₹ Cr across ke × g. Columns strictly ascending by g (S-9.7). Base highlighted.
-          {sharesOut != null && " Per-share rows below."}
+          {sharesOut != null
+            ? "Per-share values across ke × g using the resolved share basis. Company totals are shown below for context."
+            : "₹ Cr across ke × g. Columns strictly ascending by g (S-9.7). Base highlighted."}
         </p>
       </div>
       <div className="p-6 overflow-x-auto space-y-5">
+        {sharesOut != null && sharesOut > 0 && (
+          <div>
+            <div className="text-xs font-semibold text-slate-500 mb-2 uppercase">Per Share (₹) — {sharesOut.toLocaleString("en-IN", { maximumFractionDigits: 2 })} Cr shares</div>
+            <table className="text-sm border-collapse">
+              <thead>
+                <tr>
+                  <th className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-left border">ke ↓ / g →</th>
+                  {GS.map(gv => (
+                    <th key={gv} className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-right border">{(gv*100).toFixed(0)}%</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {KES.map(keV => (
+                  <tr key={keV}>
+                    <td className="px-3 py-2 text-xs font-semibold text-slate-600 border bg-slate-50">ke={(keV*100).toFixed(0)}%</td>
+                    {GS.map(gv => {
+                      const v = computeV(keV, gv);
+                      const ps = toPerShare(v, sharesOut);
+                      const isBase = Math.abs(keV - ke) < 0.005 && Math.abs(gv - gRate) < 0.005;
+                      if (ps == null) return <td key={gv} className="px-3 py-2 text-center text-xs text-slate-400 border">—</td>;
+                      return (
+                        <td key={gv} className={`px-3 py-2 text-right font-mono text-xs border ${isBase ? "bg-indigo-100 font-bold text-indigo-800" : "text-slate-700"}`}>
+                          ₹{ps.toFixed(2)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         <div>
           <div className="text-xs font-semibold text-slate-500 mb-2 uppercase">Value (₹ Cr)</div>
           <table className="text-sm border-collapse">
@@ -431,41 +487,6 @@ function SensitivityGrid({
             </tbody>
           </table>
         </div>
-
-        {/* S-9.8: per-share sensitivity */}
-        {sharesOut != null && sharesOut > 0 && (
-          <div>
-            <div className="text-xs font-semibold text-slate-500 mb-2 uppercase">Per Share (₹) — {sharesOut.toLocaleString("en-IN")} Lakh shares</div>
-            <table className="text-sm border-collapse">
-              <thead>
-                <tr>
-                  <th className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-left border">ke ↓ / g →</th>
-                  {GS.map(gv => (
-                    <th key={gv} className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-right border">{(gv*100).toFixed(0)}%</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {KES.map(keV => (
-                  <tr key={keV}>
-                    <td className="px-3 py-2 text-xs font-semibold text-slate-600 border bg-slate-50">ke={(keV*100).toFixed(0)}%</td>
-                    {GS.map(gv => {
-                      const v = computeV(keV, gv);
-                      const isBase = Math.abs(keV - ke) < 0.005 && Math.abs(gv - gRate) < 0.005;
-                      if (v == null) return <td key={gv} className="px-3 py-2 text-center text-xs text-slate-400 border">—</td>;
-                      const ps = v * 100 / sharesOut; // Cr to per-Lakh-share conversion
-                      return (
-                        <td key={gv} className={`px-3 py-2 text-right font-mono text-xs border ${isBase ? "bg-indigo-100 font-bold text-indigo-800" : "text-slate-700"}`}>
-                          ₹{ps.toFixed(2)}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -497,9 +518,13 @@ function ValCard({ color, title, subtitle, value, items, fmt, perShare }: {
         <p className="text-xs opacity-70 mt-0.5">{subtitle}</p>
       </div>
       <div className="p-5">
-        <div className={`text-3xl font-bold ${vc} mb-1`}>₹{fmt(value)} Cr</div>
-        {perShare != null && (
-          <div className="text-sm text-slate-500 mb-3">≈ ₹{perShare.toFixed(2)} / share</div>
+        {perShare != null ? (
+          <>
+            <div className={`text-3xl font-bold ${vc} mb-1`}>₹{perShare.toFixed(2)} / share</div>
+            <div className="text-sm text-slate-500 mb-3">₹{fmt(value)} Cr total equity value</div>
+          </>
+        ) : (
+          <div className={`text-3xl font-bold ${vc} mb-3`}>₹{fmt(value)} Cr</div>
         )}
         {items.map((b, i) => (
           <div key={i} className="flex justify-between py-1.5 border-b border-slate-100 text-sm">
