@@ -1,6 +1,10 @@
 import { get, list, put } from "@vercel/blob";
 import {
+  assertContentLength,
   buildAuditPath,
+  enforceAuditRateLimit,
+  getAuditGovernanceConfig,
+  hashAuditToken,
   isAuditConfigured,
   logAudit,
   nowStamp,
@@ -23,11 +27,30 @@ export default async function handler(request, response) {
   }
 
   if (request.method === "POST") {
+    const governance = getAuditGovernanceConfig();
+    if (!assertContentLength(request, response, governance.maxEventBytes)) return;
+    if (!enforceAuditRateLimit(request, response, "events", governance.maxEventsPerMinute)) return;
+
     const body = await readJsonBody(request);
     const runId = sanitizePathSegment(body.runId, `run-${Date.now()}`);
     const eventType = sanitizePathSegment(body.eventType, "event");
-    const filename = `${nowStamp()}-${eventType}.json`;
+    const idempotencyKey = body.idempotencyKey ? sanitizePathSegment(body.idempotencyKey) : null;
+    const filename = idempotencyKey ? `${eventType}-${idempotencyKey}.json` : `${nowStamp()}-${eventType}.json`;
     const pathname = buildAuditPath(runId, "events", filename);
+
+    if (idempotencyKey) {
+      const existing = await get(pathname, { access: "private" });
+      if (existing?.statusCode === 200) {
+        response.status(200).json({
+          ok: true,
+          deduped: true,
+          runId,
+          pathname,
+          url: existing.blob?.url ?? null,
+        });
+        return;
+      }
+    }
 
     const payload = {
       runId,
@@ -35,6 +58,10 @@ export default async function handler(request, response) {
       companyId: body.companyId ?? null,
       sourceMode: body.sourceMode ?? null,
       createdAt: new Date().toISOString(),
+      idempotencyKey,
+      runAccessHash: hashAuditToken(body.runAccessToken ?? null),
+      contentClass: body.contentClass ?? governance.contentClass,
+      retentionDays: Number(body.retentionDays) || governance.retentionDays,
       payload: body.payload ?? {},
     };
 
@@ -51,6 +78,8 @@ export default async function handler(request, response) {
       pathname: blob.pathname,
       companyId: payload.companyId,
       sourceMode: payload.sourceMode,
+      contentClass: payload.contentClass,
+      retentionDays: payload.retentionDays,
     });
 
     response.status(200).json({

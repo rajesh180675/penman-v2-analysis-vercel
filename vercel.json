@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/monitor-audit",
       "schedule": "17 2 * * *"
+    },
+    {
+      "path": "/api/cron/prune-audit",
+      "schedule": "47 2 * * *"
     }
   ]
 }

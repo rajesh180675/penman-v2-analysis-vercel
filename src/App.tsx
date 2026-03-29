@@ -1,27 +1,41 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { Suspense, lazy, useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { RawPeriodData, RecastPeriod, DEFAULT_CONFIG, EngineConfig, CompanyRegistry } from "./engine/types";
 import { processCompanyData } from "./engine/pipeline";
+import { deriveAnalysisStatus } from "./engine/analysisStatus";
 import { CapitalineParseDebug } from "./engine/capitalineParser";
 import { auditMappingCoverage, evaluateQualityGate } from "./engine/mappingAudit";
+import { resolveValuationReadiness } from "./engine/valuationPolicy";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { AnalysisStatusBadge } from "./components/AnalysisStatusBadge";
 import DataEntry from "./components/DataEntry";
 import RecastStatements from "./components/RecastStatements";
 import RatioReport from "./components/RatioReport";
-import ValuationReport from "./components/ValuationReport";
 import QualityReport from "./components/QualityReport";
-import ForecastReport from "./components/ForecastReport";
-import AcademicReport from "./components/AcademicReport";
-import RegressionReport from "./components/RegressionReport";
-import ComparisonReport from "./components/ComparisonReport";
-import DebugPanel from "./components/DebugPanel";
-import V3AnalyticsPanel from "./components/V3AnalyticsPanel";
-import { AuditSubmissionMeta, createAuditRunId, isAuditEnabled, persistAuditEvent } from "./lib/audit";
+import {
+  AuditSubmissionMeta,
+  createAuditAccessToken,
+  createAuditRunId,
+  getAuditClientGovernance,
+  isAuditEnabled,
+  persistAuditEvent,
+  rememberAuditRun,
+} from "./lib/audit";
 import { buildAnalysisSnapshot } from "./lib/auditSnapshot";
 
-type TabId = "upload"|"statements"|"ratios"|"forecast"|"valuation"|"quality"|"comparison"|"report"|"regression"|"v3analytics"|"debug";
+const ValuationReport = lazy(() => import("./components/ValuationReport"));
+const ForecastReport = lazy(() => import("./components/ForecastReport"));
+const AcademicReport = lazy(() => import("./components/AcademicReport"));
+const RegressionReport = lazy(() => import("./components/RegressionReport"));
+const ComparisonReport = lazy(() => import("./components/ComparisonReport"));
+const DebugPanel = lazy(() => import("./components/DebugPanel"));
+const V3AnalyticsPanel = lazy(() => import("./components/V3AnalyticsPanel"));
+const RunInspector = lazy(() => import("./components/RunInspector"));
+
+type TabId = "upload"|"inspector"|"statements"|"ratios"|"forecast"|"valuation"|"quality"|"comparison"|"report"|"regression"|"v3analytics"|"debug";
 
 const TABS: {id:TabId;label:string;icon:string;needsData?:boolean}[] = [
   {id:"upload",     label:"Data",       icon:"📂"},
+  {id:"inspector",  label:"Runs",       icon:"🛰️"},
   {id:"statements", label:"Statements", icon:"📊", needsData:true},
   {id:"ratios",     label:"Ratios",     icon:"📐", needsData:true},
   {id:"forecast",   label:"Forecast",   icon:"📈", needsData:true},
@@ -35,6 +49,7 @@ const TABS: {id:TabId;label:string;icon:string;needsData?:boolean}[] = [
 ];
 
 export function App() {
+  const auditGovernance = getAuditClientGovernance();
   const [rawData,    setRawData]    = useState<RawPeriodData[]|null>(null);
   const [debugInfo,  setDebugInfo]  = useState<CapitalineParseDebug|null>(null);
   const [activeTab,  setActiveTab]  = useState<TabId>("upload");
@@ -79,6 +94,8 @@ export function App() {
   }, [config, qualityGate, rawData]);
   const recastData = recastOutcome.data;
   const engineError = recastOutcome.error;
+  const valuationReadiness = useMemo(() => (recastData?.length ? resolveValuationReadiness(recastData) : null), [recastData]);
+  const analysisStatus = useMemo(() => deriveAnalysisStatus(qualityGate, valuationReadiness), [qualityGate, valuationReadiness]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -144,7 +161,11 @@ export function App() {
         sourceMode: "manual",
         companyId: data[0]?.company_id || `CO-${Date.now()}`,
         fileName: null,
+        runAccessToken: createAuditAccessToken(),
+        contentClass: auditGovernance.contentClass,
+        retentionDays: auditGovernance.retentionDays,
       };
+      rememberAuditRun(nextMeta);
       setAuditMeta(nextMeta);
       lastAuditSignatureRef.current = null;
       lastAuditStatusRef.current = null;
@@ -169,7 +190,7 @@ export function App() {
       }));
       setActiveTab("statements");
     },
-    []
+    [auditGovernance.contentClass, auditGovernance.retentionDays]
   );
 
   useEffect(() => {
@@ -183,6 +204,8 @@ export function App() {
       qualityGate,
       mappingAudit,
       engineError,
+      analysisStatus,
+      auditMeta,
     });
     const signature = JSON.stringify(snapshot);
     if (signature === lastAuditSignatureRef.current) return;
@@ -195,7 +218,7 @@ export function App() {
       sourceMode: auditMeta.sourceMode,
       payload: snapshot,
     });
-  }, [auditMeta, config, debugInfo, engineError, mappingAudit, qualityGate, rawData, recastData]);
+  }, [analysisStatus, auditMeta, config, debugInfo, engineError, mappingAudit, qualityGate, rawData, recastData]);
 
   useEffect(() => {
     if (!auditMeta || !engineError) return;
@@ -263,6 +286,7 @@ export function App() {
   const visibleTabs = TABS.filter(t=>{
     if (t.id==="debug") return hasDebug;
     if (t.id === "comparison") return readyCompanyCount >= 2;
+    if (t.id === "inspector") return isAuditEnabled() && Boolean(auditMeta);
     if (t.needsData) return hasRecast;
     return true;
   });
@@ -321,6 +345,7 @@ export function App() {
                   Audit run {auditMeta.runId.slice(0, 8)}
                 </span>
               )}
+              {rawData && <AnalysisStatusBadge status={analysisStatus} compact />}
               <button
                 onClick={() => setDarkMode((v) => !v)}
                 className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
@@ -343,23 +368,8 @@ export function App() {
 
         <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
           {qualityGate && (
-            <div className={`mb-5 rounded-lg border p-3 text-sm ${
-              scopeBlocked
-                ? "bg-red-50 border-red-200 text-red-800"
-                : qualityGate.tier === "Tier 1"
-                ? "bg-green-50 border-green-200 text-green-800"
-                : qualityGate.tier === "Tier 2"
-                  ? "bg-amber-50 border-amber-200 text-amber-900"
-                  : "bg-red-50 border-red-200 text-red-800"
-            }`}>
-              <strong>Quality Gate: {qualityGate.tier}</strong>
-              <span className="ml-2">
-                {scopeBlocked
-                  ? `${qualityGate.scopeAssessment.label}. Industrial analysis is blocked for this dataset.`
-                  : qualityGate.valuationBlocked
-                  ? "Valuation tab is blocked until critical mapping gaps are resolved."
-                  : "Valuation is enabled."}
-              </span>
+            <div className="mb-5">
+              <AnalysisStatusBadge status={analysisStatus} />
             </div>
           )}
           {engineError && (
@@ -367,48 +377,65 @@ export function App() {
               <strong>Engine Error:</strong> {engineError}
             </div>
           )}
-          {activeTab==="upload" && (
-            <DataEntry onDataSubmit={handleDataSubmit} currentData={rawData} config={config} onConfigChange={setConfig}/>
-          )}
-          {activeTab==="statements" && hasRecast && <RecastStatements data={recastData!}/>}
-          {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!}/>}
-          {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} config={forecastConfig}/>}
-          {activeTab==="valuation"  && hasRecast && !valuationBlocked && <ValuationReport data={recastData!} config={config}/>}
-          {activeTab === "valuation" && hasRecast && valuationBlocked && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
-              <h3 className="font-semibold text-lg">
-                {scopeBlocked ? "Industrial analysis blocked for unsupported scope" : "Valuation blocked by Fail-fast Quality Gate"}
-              </h3>
-              <p className="text-sm mt-1">
-                {scopeBlocked
-                  ? "This dataset looks like a bank, NBFC, or insurance company. Use the Debug tab to inspect scope signals and route it to a sector-specific framework."
-                  : "Resolve critical mapping gaps first. Open the Debug tab to see unresolved critical keys by statement."}
-              </p>
-              {qualityGate?.blockingReasons?.length ? (
-                <ul className="list-disc pl-5 mt-3 text-sm space-y-1">
-                  {qualityGate.blockingReasons.map((r) => <li key={r}>{r}</li>)}
-                </ul>
-              ) : null}
-            </div>
-          )}
-          {activeTab==="quality"    && hasRecast && <QualityReport data={recastData!}/>}
-          {activeTab==="comparison" && <ComparisonReport registry={registry} config={config} />}
-          {activeTab==="report"     && hasRecast && <AcademicReport data={recastData!} config={config} rawData={rawData} auditMeta={auditMeta} />}
-          {activeTab==="regression" && hasRecast && <RegressionReport rawData={rawData} recastData={recastData} config={config} registry={registry} />}
-          {activeTab==="v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config}/>}
-          {activeTab==="debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError}/>}
-          {(["statements","ratios","forecast","valuation","quality","report","regression","v3analytics"] as TabId[]).includes(activeTab) && !hasRecast && (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="text-6xl mb-4">📂</div>
-              <p className="text-xl font-semibold text-slate-600">No data loaded</p>
-              <button onClick={()=>setActiveTab("upload")}
-                className="mt-6 px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700">
-                Go to Upload
-              </button>
-            </div>
-          )}
+          <Suspense fallback={<TabSkeleton />}>
+            {activeTab==="inspector" && <RunInspector auditMeta={auditMeta} analysisStatus={analysisStatus} />}
+            {activeTab==="upload" && (
+              <DataEntry onDataSubmit={handleDataSubmit} currentData={rawData} config={config} onConfigChange={setConfig}/>
+            )}
+            {activeTab==="statements" && hasRecast && <RecastStatements data={recastData!}/>}
+            {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!}/>}
+            {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} config={forecastConfig}/>}
+            {activeTab==="valuation"  && hasRecast && !valuationBlocked && <ValuationReport data={recastData!} config={config}/>}
+            {activeTab === "valuation" && hasRecast && valuationBlocked && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
+                <h3 className="font-semibold text-lg">
+                  {scopeBlocked ? "Industrial analysis blocked for unsupported scope" : "Valuation blocked by Fail-fast Quality Gate"}
+                </h3>
+                <p className="text-sm mt-1">
+                  {scopeBlocked
+                    ? "This dataset looks like a bank, NBFC, or insurance company. Use the Debug tab to inspect scope signals and route it to a sector-specific framework."
+                    : "Resolve critical mapping gaps first. Open the Debug tab to see unresolved critical keys by statement."}
+                </p>
+                {qualityGate?.blockingReasons?.length ? (
+                  <ul className="list-disc pl-5 mt-3 text-sm space-y-1">
+                    {qualityGate.blockingReasons.map((r) => <li key={r}>{r}</li>)}
+                  </ul>
+                ) : null}
+              </div>
+            )}
+            {activeTab==="quality"    && hasRecast && <QualityReport data={recastData!}/>}
+            {activeTab==="comparison" && <ComparisonReport registry={registry} config={config} />}
+            {activeTab==="report"     && hasRecast && <AcademicReport data={recastData!} config={config} rawData={rawData} auditMeta={auditMeta} />}
+            {activeTab==="regression" && hasRecast && <RegressionReport rawData={rawData} recastData={recastData} config={config} registry={registry} />}
+            {activeTab==="v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config}/>}
+            {activeTab==="debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError}/>}
+            {(["statements","ratios","forecast","valuation","quality","report","regression","v3analytics"] as TabId[]).includes(activeTab) && !hasRecast && (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="text-6xl mb-4">📂</div>
+                <p className="text-xl font-semibold text-slate-600">No data loaded</p>
+                <button onClick={()=>setActiveTab("upload")}
+                  className="mt-6 px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700">
+                  Go to Upload
+                </button>
+              </div>
+            )}
+          </Suspense>
         </main>
       </div>
     </ErrorBoundary>
+  );
+}
+
+function TabSkeleton() {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+      <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
+      <div className="mt-4 h-3 w-72 animate-pulse rounded bg-slate-100" />
+      <div className="mt-8 grid gap-4 md:grid-cols-3">
+        <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
+        <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
+        <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
+      </div>
+    </div>
   );
 }

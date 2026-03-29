@@ -69,12 +69,15 @@ income:
     - Revenue From Operations
     - Total Revenue from Operations
     - Total Revenue
+    - Net Revenue from Operations
+    - Income from Operations
+    - Revenue from Sale of Products
   cni:
     tci_group: ["Total Comprehensive Income for the Year"]
     nci: ["Non-Controlling Interests"]
     preferred_dividend: ["Preference Dividend"]
   finance_cost:
-    top: ["Finance Cost", "Total Interest Expenses"]
+    top: ["Finance Cost", "Total Interest Expenses", "Finance Costs", "Interest and Finance Charges"]
     granular:
       - Interest
       - Interest on Bank Borrowings
@@ -114,28 +117,50 @@ income:
       - Other Equity
       - Profit and Loss Account Closing Balance
     cogs:
-      material: ["Cost of Material Consumed"]
-      purchases: ["Purchases of Stock-in-Trade"]
-      inv_change: ["Changes in Inventories of Finished Goods, Work-in-Progress and Stock-in-Trade"]
+      material: ["Cost of Material Consumed", "Cost of Materials Consumed", "Consumption of Raw Materials"]
+      purchases: ["Purchases of Stock-in-Trade", "Purchase of Stock-in-Trade", "Purchase of Traded Goods", "Purchase of Finished Goods"]
+      inv_change:
+        - Changes in Inventories of Finished Goods, Work-in-Progress and Stock-in-Trade
+        - Changes in Inventories
+        - Change in Inventory of Finished Goods, Work-in-Progress and Stock-in-Trade
     expense_buckets:
-      employee: ["Employee Benefits / Salaries & other Staff Cost"]
-      other: ["Other Expenses"]
+      employee: ["Employee Benefits / Salaries & other Staff Cost", "Employee Benefit Expenses", "Employee Benefits Expense", "Employee Cost"]
+      other: ["Other Expenses", "Other Operating Expenses", "Operating and Other Expenses"]
       total: ["Total Expenses"]
       depreciation:
         - Depreciation and Amortization
         - Depreciation on Tangible Assets
         - Depreciation for the current year
+        - Depreciation and Amortisation Expense
+        - Depreciation / Amortisation
     sga_aliases:
-      ads: ["Advertisement, Marketing and Business Development", "Advertisements"]
-      legal: ["Legal and Professional Fees", "Professional Fees", "Legal Expenses"]
-      rent: ["Rent", "Rent, rates & Taxes", "Lease Rent / Hire Charges Paid"]
-      freight: ["Freight Outwards and Forwarding Expenses", "Transportation"]
+      ads:
+        - Advertisement, Marketing and Business Development
+        - Advertisements
+        - Advertisement and Sales Promotion
+        - Sales Promotion Expenses
+        - Business Promotion Expenses
+        - Selling and Distribution Expenses
+        - Sales and Distribution Expenses
+      legal: ["Legal and Professional Fees", "Professional Fees", "Legal Expenses", "Consultancy Charges", "Auditors Remuneration"]
+      rent: ["Rent", "Rent, rates & Taxes", "Lease Rent / Hire Charges Paid", "Rates and Taxes", "Lease Rentals"]
+      freight:
+        - Freight Outwards and Forwarding Expenses
+        - Transportation
+        - Freight and Forwarding
+        - Packing and Forwarding
+        - Clearing and Forwarding
+        - Commission on Sales
       repairs:
         - Repairs and Maintenance
         - Repairs to Building
         - Repairs to Machinery
         - Repairs to Other Assets
-      power: ["Power, Fuel and Water", "Power, Oil & Fuel"]
+        - Maintenance Expenses
+        - Travelling and Conveyance
+        - CSR Expenditure
+        - Royalty
+      power: ["Power, Fuel and Water", "Power, Oil & Fuel", "Fuel and Power", "Power and Fuel"]
   other_items_aliases:
     - Share of profit/loss of associates
     - Share of profit / (loss) of associates

@@ -4,6 +4,7 @@ import { jsPDF } from "jspdf";
 import JSZip from "jszip";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import { deriveAnalysisStatus } from "../engine/analysisStatus";
 import { EngineConfig, NP_BENCHMARKS, RawPeriodData, RecastPeriod, ke_from_config } from "../engine/types";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { auditMappingCoverage, evaluateGranularityChecklist, evaluateQualityGate } from "../engine/mappingAudit";
@@ -225,6 +226,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
   const policyVersions = useMemo(() => getAnalysisPolicyVersions(), []);
   const qualityGate = useMemo(() => (rawData?.length ? evaluateQualityGate(rawData, config) : null), [config, rawData]);
   const mappingAudit = useMemo(() => (rawData?.length ? auditMappingCoverage(rawData) : null), [rawData]);
+  const analysisStatus = useMemo(() => deriveAnalysisStatus(qualityGate, valuationReadiness), [qualityGate, valuationReadiness]);
   const latestRawPeriod = rawData && rawData.length > 0 ? rawData[rawData.length - 1].period_end : null;
   const traceability = useMemo(() => buildAnalysisTraceability({
     runId: auditMeta?.runId ?? null,
@@ -235,7 +237,11 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
     qualityGate,
     mappingAudit,
     policyVersions,
-  }), [auditMeta, config.ticker, data, latestRawPeriod, mappingAudit, policyVersions, qualityGate, rawData]);
+    analysisStatus,
+    contentClass: auditMeta?.contentClass ?? null,
+    retentionDays: auditMeta?.retentionDays ?? null,
+    runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
+  }), [analysisStatus, auditMeta, config.ticker, data, latestRawPeriod, mappingAudit, policyVersions, qualityGate, rawData]);
 
   const escapeCsvCell = (v: string | number) => {
     const s = String(v ?? "");
@@ -489,6 +495,10 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
           qualityGate,
           mappingAudit,
           policyVersions,
+          analysisStatus,
+          contentClass: auditMeta?.contentClass ?? null,
+          retentionDays: auditMeta?.retentionDays ?? null,
+          runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
         }),
         rowCounts: {
           recastPeriods: data.length,

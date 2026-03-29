@@ -40,10 +40,11 @@ describe("buildUnusualItemPolicy", () => {
       "operating_exceptional",
       "discontinued_operations",
       "oci_reclassified",
+      "material_operating_noise",
       "capital_transaction_signal",
     ]);
     expect(policy.financialBuckets.map((bucket) => bucket.type)).toEqual(["financial_unusual"]);
-    expect(policy.operatingTotal).toBe(42);
+    expect(policy.operatingTotal).toBe(84);
     expect(policy.financialTotal).toBe(-5);
     expect(policy.terminalBlocker).toBe(true);
     expect(policy.blockerReasons[0]).toContain("CAPITAL_TRANSACTION_LIKELY");

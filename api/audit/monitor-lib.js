@@ -3,6 +3,7 @@ import {
   extractEventTypeFromPath,
   extractKindFromPath,
   extractRunIdFromPath,
+  getAuditGovernanceConfig,
   getAuditReadToken,
   isAuditConfigured,
   sanitizePathSegment,
@@ -95,7 +96,7 @@ function minuteDiff(iso) {
   return (Date.now() - new Date(iso).getTime()) / 60000;
 }
 
-async function getRunTimeline(runId, limit = 40) {
+export async function getRunTimeline(runId, limit = 40) {
   const result = await list({
     prefix: `audit-runs/${runId}/`,
     limit,
@@ -128,6 +129,9 @@ async function getRunTimeline(runId, limit = 40) {
         eventType: parsed?.eventType ?? extractEventTypeFromPath(blob.pathname),
         companyId: parsed?.companyId ?? null,
         sourceMode: parsed?.sourceMode ?? null,
+        runAccessHash: parsed?.runAccessHash ?? null,
+        contentClass: parsed?.contentClass ?? null,
+        retentionDays: parsed?.retentionDays ?? null,
         payloadSummary: summarizePayload(parsed?.payload),
         analysisSnapshot,
       });
@@ -407,6 +411,7 @@ export async function runAuditMonitor(options = {}) {
   }
 
   const config = getMonitorConfig();
+  const governance = getAuditGovernanceConfig();
   const limit = Math.min(Math.max(Number(options.limit) || config.lookbackLimit, 1), 100);
   const runIds = options.runId ? [sanitizePathSegment(options.runId)] : await listRecentRunIds(limit);
 
@@ -430,6 +435,7 @@ export async function runAuditMonitor(options = {}) {
       findings: health.findings,
       recommendations: health.recommendations,
       derived: health.derived,
+      governance,
       timeline: run.timeline.slice(0, 10),
       inputs: run.inputs,
       artifacts: run.artifacts,

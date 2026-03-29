@@ -1,8 +1,10 @@
+import { AnalysisStatusSummary } from "../engine/analysisStatus";
 import { EngineConfig, RawPeriodData, RecastPeriod } from "../engine/types";
 import { CapitalineParseDebug } from "../engine/capitalineParser";
 import { MappingAuditReport, QualityGateReport } from "../engine/mappingAudit";
 import { getAnalysisPolicyVersions } from "../engine/policyVersions";
 import { buildAnalysisTraceability } from "../engine/analysisTraceability";
+import { AuditSubmissionMeta } from "./audit";
 
 export function buildAnalysisSnapshot(params: {
   rawData: RawPeriodData[] | null;
@@ -12,8 +14,10 @@ export function buildAnalysisSnapshot(params: {
   qualityGate: QualityGateReport | null;
   mappingAudit: MappingAuditReport | null;
   engineError: string | null;
+  analysisStatus?: AnalysisStatusSummary | null;
+  auditMeta?: AuditSubmissionMeta | null;
 }) {
-  const { rawData, recastData, config, debugInfo, qualityGate, mappingAudit, engineError } = params;
+  const { rawData, recastData, config, debugInfo, qualityGate, mappingAudit, engineError, analysisStatus, auditMeta } = params;
   const policyVersions = getAnalysisPolicyVersions();
   const latestPeriod = rawData && rawData.length > 0 ? rawData[rawData.length - 1].period_end : null;
 
@@ -29,6 +33,10 @@ export function buildAnalysisSnapshot(params: {
       qualityGate,
       mappingAudit,
       policyVersions,
+      analysisStatus,
+      contentClass: auditMeta?.contentClass ?? null,
+      retentionDays: auditMeta?.retentionDays ?? null,
+      runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
     }),
     config,
     qualityGate,

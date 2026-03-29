@@ -23,6 +23,20 @@ function packageChunkName(id: string) {
   return `vendor-${packageName.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
 }
 
+function appChunkName(id: string) {
+  const normalized = id.split(path.sep).join("/");
+  if (normalized.includes("/src/engine/__fixtures__/") || normalized.includes("/src/engine/goldenCompanySuite.ts") || normalized.includes("/src/engine/releaseGate.ts")) {
+    return "engine-golden-suite";
+  }
+  if (normalized.includes("/src/engine/regressionHarness.ts") || normalized.includes("/src/engine/baselineGuardrails.ts") || normalized.includes("/src/components/RegressionReport.tsx")) {
+    return "engine-regression";
+  }
+  if (normalized.includes("/src/engine/v3Analytics.ts") || normalized.includes("/src/components/V3AnalyticsPanel.tsx")) {
+    return "engine-v3-analytics";
+  }
+  return undefined;
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -36,8 +50,8 @@ export default defineConfig({
       : {
           output: {
             manualChunks(id) {
-              if (!id.includes("node_modules")) return undefined;
-              return packageChunkName(id);
+              if (id.includes("node_modules")) return packageChunkName(id);
+              return appChunkName(id);
             },
           },
         },

@@ -1,5 +1,36 @@
 import { handleUpload } from "@vercel/blob/client";
-import { isAuditConfigured, logAudit, readJsonBody, sanitizePathSegment } from "./_lib.js";
+import {
+  enforceAuditRateLimit,
+  getAuditGovernanceConfig,
+  hashAuditToken,
+  isAuditConfigured,
+  logAudit,
+  readJsonBody,
+  sanitizePathSegment,
+} from "./_lib.js";
+
+function resolveAllowedContentTypes(kind) {
+  if (kind === "inputs") {
+    return [
+      "application/zip",
+      "application/json",
+      "application/xml",
+      "text/xml",
+      "text/plain",
+      "application/octet-stream",
+    ];
+  }
+
+  return [
+    "application/json",
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/csv",
+    "text/plain",
+    "application/zip",
+    "application/octet-stream",
+  ];
+}
 
 export default async function handler(request, response) {
   if (!isAuditConfigured()) {
@@ -16,6 +47,9 @@ export default async function handler(request, response) {
   }
 
   const body = await readJsonBody(request);
+  const governance = getAuditGovernanceConfig();
+
+  if (!enforceAuditRateLimit(request, response, "uploads", governance.maxUploadsPerMinute)) return;
 
   try {
     const json = await handleUpload({
@@ -26,18 +60,14 @@ export default async function handler(request, response) {
         const runId = sanitizePathSegment(payload.runId, `run-${Date.now()}`);
         const kind = sanitizePathSegment(payload.kind, "artifacts");
         const filename = sanitizePathSegment(payload.filename || pathname, "blob.bin");
+        const maximumSizeInBytes = Math.min(
+          Number(payload.maximumSizeInBytes) || governance.maxUploadBytes,
+          governance.maxUploadBytes,
+        );
 
         return {
-          allowedContentTypes: payload.allowedContentTypes ?? [
-            "application/zip",
-            "application/json",
-            "application/pdf",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "text/csv",
-            "text/plain",
-            "application/octet-stream",
-          ],
-          maximumSizeInBytes: Number(payload.maximumSizeInBytes) || 1024 * 1024 * 1024,
+          allowedContentTypes: payload.allowedContentTypes ?? resolveAllowedContentTypes(kind),
+          maximumSizeInBytes,
           addRandomSuffix: false,
           allowOverwrite: true,
           tokenPayload: JSON.stringify({
@@ -47,6 +77,10 @@ export default async function handler(request, response) {
             eventType: payload.eventType ?? "blob-upload",
             companyId: payload.companyId ?? null,
             sourceMode: payload.sourceMode ?? null,
+            idempotencyKey: payload.idempotencyKey ?? null,
+            runAccessHash: hashAuditToken(payload.runAccessToken ?? null),
+            contentClass: payload.contentClass ?? governance.contentClass,
+            retentionDays: Number(payload.retentionDays) || governance.retentionDays,
           }),
           callbackUrl: payload.callbackUrl,
         };
@@ -60,6 +94,8 @@ export default async function handler(request, response) {
           eventType: payload.eventType ?? null,
           companyId: payload.companyId ?? null,
           sourceMode: payload.sourceMode ?? null,
+          contentClass: payload.contentClass ?? governance.contentClass,
+          retentionDays: payload.retentionDays ?? governance.retentionDays,
         });
       },
     });

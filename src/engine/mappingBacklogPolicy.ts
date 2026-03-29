@@ -187,6 +187,22 @@ const GROUP_RULES: PatternRule[] = [
   },
   {
     statement: "ProfitLoss",
+    pattern: /selling and distribution|sales promotion|business promotion|advertising|commission on sales|packing and forwarding|clearing and forwarding|royalty|csr expenditure|travelling and conveyance/i,
+    action: "group-to-existing",
+    rationale: "Company-specific selling and administrative disclosures should land inside the SGA bridge instead of remaining as unmapped noise.",
+    targetLine: "IS.OpBridge.SGA",
+    targetGroupId: "is-sga-detail",
+  },
+  {
+    statement: "ProfitLoss",
+    pattern: /export incentive|government grant|operating subsidy|duty drawback|scrap sales|miscellaneous operating income/i,
+    action: "group-to-existing",
+    rationale: "Operating-support income should be grouped into other operating income rather than treated as an unmapped disclosure.",
+    targetLine: "IS.OpBridge.OtherOperatingIncome",
+    targetGroupId: "is-other-expenses",
+  },
+  {
+    statement: "ProfitLoss",
     pattern: /income from investment activities|other non operating income|dividend income|other interest income|fvtpl|fvtoci|amortised cost - financial assets/i,
     action: "group-to-existing",
     rationale: "These are finance-income support lines that should feed the existing finance-income ladder, not sit in the review queue.",
@@ -236,7 +252,7 @@ const IGNORE_RULES: PatternRule[] = [
 ];
 
 function buildDecision(
-  candidate: MappingBacklogCandidate,
+  _candidate: MappingBacklogCandidate,
   action: BacklogTriageAction,
   rationale: string,
   targetLine?: string,

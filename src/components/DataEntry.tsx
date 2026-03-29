@@ -4,7 +4,15 @@ import { parseCapitalineZip, CapitalineParseDebug } from "../engine/capitalinePa
 import { parseScreenerTabDelimited } from "../engine/screenerParser";
 import { parseRawPeriodsJson } from "../engine/jsonIngestion";
 import { parseXbrlXml } from "../engine/xbrlParser";
-import { AuditSubmissionMeta, createAuditRunId, persistAuditEvent, persistAuditFile } from "../lib/audit";
+import {
+  AuditSubmissionMeta,
+  createAuditAccessToken,
+  createAuditRunId,
+  getAuditClientGovernance,
+  persistAuditEvent,
+  persistAuditFile,
+  rememberAuditRun,
+} from "../lib/audit";
 import ManualEntryWizard from "./ManualEntryWizard";
 
 interface Props {
@@ -23,15 +31,23 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
   const [lastFile, setLastFile] = useState<string | null>(null);
   const [screenerText, setScreenerText] = useState("");
   const [jsonText, setJsonText] = useState("");
+  const auditGovernance = getAuditClientGovernance();
 
   const buildMeta = useCallback(
-    (sourceMode: AuditSubmissionMeta["sourceMode"], overrides?: Partial<AuditSubmissionMeta>): AuditSubmissionMeta => ({
-      runId: overrides?.runId ?? createAuditRunId(),
-      sourceMode,
-      companyId: overrides?.companyId ?? companyId,
-      fileName: overrides?.fileName ?? null,
-    }),
-    [companyId]
+    (sourceMode: AuditSubmissionMeta["sourceMode"], overrides?: Partial<AuditSubmissionMeta>): AuditSubmissionMeta => {
+      const meta = {
+        runId: overrides?.runId ?? createAuditRunId(),
+        sourceMode,
+        companyId: overrides?.companyId ?? companyId,
+        fileName: overrides?.fileName ?? null,
+        runAccessToken: overrides?.runAccessToken ?? createAuditAccessToken(),
+        contentClass: overrides?.contentClass ?? auditGovernance.contentClass,
+        retentionDays: overrides?.retentionDays ?? auditGovernance.retentionDays,
+      } satisfies AuditSubmissionMeta;
+      rememberAuditRun(meta);
+      return meta;
+    },
+    [auditGovernance.contentClass, auditGovernance.retentionDays, companyId]
   );
 
   const processZip = useCallback(async (file: File) => {
@@ -60,6 +76,9 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         filename: file.name,
         companyId: meta.companyId,
         sourceMode: meta.sourceMode,
+        maximumSizeInBytes: auditGovernance.maximumUploadBytes,
+        contentClass: meta.contentClass,
+        retentionDays: meta.retentionDays,
       });
       const { periods, debug } = await parseCapitalineZip(file, { companyId });
       await persistAuditEvent({
@@ -93,7 +112,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
       });
       setError(`Failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally { setIsProcessing(false); }
-  }, [buildMeta, companyId, onDataSubmit]);
+  }, [auditGovernance.maximumUploadBytes, buildMeta, companyId, onDataSubmit]);
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);

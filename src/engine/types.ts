@@ -140,7 +140,8 @@ export type UnusualBucketType =
   | "discontinued_operations"
   | "oci_reclassified"
   | "financial_unusual"
-  | "capital_transaction_signal";
+  | "capital_transaction_signal"
+  | "material_operating_noise";
 
 export interface UnusualItemBucket {
   type: UnusualBucketType;

@@ -1,4 +1,5 @@
 import { AnalysisPolicyVersions, getAnalysisPolicyVersions } from "./policyVersions";
+import { AnalysisStatusSummary } from "./analysisStatus";
 import { MappingAuditReport, QualityGateReport } from "./mappingAudit";
 
 export interface AnalysisTraceabilityEnvelope {
@@ -19,12 +20,25 @@ export interface AnalysisTraceabilityEnvelope {
     scopeClassification: string | null;
     scopeBlocked: boolean;
   };
+  confidence: {
+    status: "production-ready" | "guarded" | "blocked";
+    headline: string;
+    tone: "emerald" | "amber" | "red";
+    blockingCount: number;
+    diagnosticCount: number;
+    optionalCount: number;
+  };
   mappingCoverage: {
     unresolvedBySeverity: Record<"critical" | "warning" | "info", number>;
     unresolvedByTier: Record<"Tier A" | "Tier B" | "Tier C" | "Tier D", number>;
     outOfSpecLabelCount: number;
     actionableOutOfSpecLabelCount: number;
     backlogByAction: Record<"add-to-spec" | "group-to-existing" | "ignore-non-core" | "review", number>;
+  };
+  governance: {
+    contentClass: string | null;
+    retentionDays: number | null;
+    runInspectorEnabled: boolean | null;
   };
 }
 
@@ -38,10 +52,18 @@ export function buildAnalysisTraceability(params: {
   qualityGate?: QualityGateReport | null;
   mappingAudit?: MappingAuditReport | null;
   policyVersions?: AnalysisPolicyVersions | null;
+  analysisStatus?: AnalysisStatusSummary | null;
+  contentClass?: string | null;
+  retentionDays?: number | null;
+  runInspectorEnabled?: boolean | null;
 }): AnalysisTraceabilityEnvelope {
   const qualityGate = params.qualityGate;
   const coverageSummary = qualityGate?.coverageSummary ?? params.mappingAudit?.coverageSummary ?? null;
   const policyVersions = params.policyVersions ?? getAnalysisPolicyVersions();
+  const analysisStatus = params.analysisStatus;
+  const blockingCount = coverageSummary?.unresolvedBySeverity?.critical?.length ?? 0;
+  const diagnosticCount = coverageSummary?.unresolvedBySeverity?.warning?.length ?? 0;
+  const optionalCount = coverageSummary?.unresolvedBySeverity?.info?.length ?? 0;
 
   return {
     schemaVersion: policyVersions.traceabilitySchemaVersion,
@@ -61,11 +83,19 @@ export function buildAnalysisTraceability(params: {
       scopeClassification: qualityGate?.scopeAssessment?.classification ?? null,
       scopeBlocked: Boolean(qualityGate?.scopeAssessment?.blocked),
     },
+    confidence: {
+      status: analysisStatus?.status ?? "guarded",
+      headline: analysisStatus?.headline ?? "Traceability confidence status unavailable.",
+      tone: analysisStatus?.tone ?? "amber",
+      blockingCount: analysisStatus?.blockingCount ?? blockingCount,
+      diagnosticCount: analysisStatus?.diagnosticCount ?? diagnosticCount,
+      optionalCount: analysisStatus?.optionalCount ?? optionalCount,
+    },
     mappingCoverage: {
       unresolvedBySeverity: {
-        critical: coverageSummary?.unresolvedBySeverity?.critical?.length ?? 0,
-        warning: coverageSummary?.unresolvedBySeverity?.warning?.length ?? 0,
-        info: coverageSummary?.unresolvedBySeverity?.info?.length ?? 0,
+        critical: blockingCount,
+        warning: diagnosticCount,
+        info: optionalCount,
       },
       unresolvedByTier: {
         "Tier A": coverageSummary?.unresolvedByTier?.["Tier A"]?.length ?? 0,
@@ -81,6 +111,11 @@ export function buildAnalysisTraceability(params: {
         "ignore-non-core": params.mappingAudit?.backlogSummary?.totalsByAction?.["ignore-non-core"] ?? 0,
         review: params.mappingAudit?.backlogSummary?.totalsByAction?.review ?? 0,
       },
+    },
+    governance: {
+      contentClass: params.contentClass ?? null,
+      retentionDays: params.retentionDays ?? null,
+      runInspectorEnabled: params.runInspectorEnabled ?? null,
     },
   };
 }
