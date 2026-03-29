@@ -76,6 +76,20 @@ function summarizePayload(payload) {
   return summary;
 }
 
+function summarizeAnalysisSnapshot(payload) {
+  if (!payload || typeof payload !== "object") return null;
+  return {
+    companyId: payload.companyId ?? null,
+    latestPeriod: payload.latestPeriod ?? null,
+    qualityGate: payload.qualityGate ?? null,
+    policyVersions: payload.policyVersions ?? null,
+    coverageSummary: payload.mappingAudit?.coverageSummary ?? null,
+    outOfSpecTop: Array.isArray(payload.mappingAudit?.outOfSpecLabels)
+      ? payload.mappingAudit.outOfSpecLabels.slice(0, 10)
+      : [],
+  };
+}
+
 function minuteDiff(iso) {
   return (Date.now() - new Date(iso).getTime()) / 60000;
 }
@@ -96,9 +110,16 @@ async function getRunTimeline(runId, limit = 40) {
   const inputBlobs = blobs.filter((blob) => extractKindFromPath(blob.pathname) === "inputs");
 
   const timeline = [];
+  let latestAnalysisSnapshot = null;
   for (const blob of eventBlobs.slice(0, Math.min(eventBlobs.length, 25))) {
     try {
       const parsed = await readBlobJson(blob.pathname);
+      const analysisSnapshot = parsed?.eventType === "analysis-snapshot"
+        ? summarizeAnalysisSnapshot(parsed?.payload)
+        : null;
+      if (analysisSnapshot && !latestAnalysisSnapshot) {
+        latestAnalysisSnapshot = analysisSnapshot;
+      }
       timeline.push({
         pathname: blob.pathname,
         uploadedAt: blob.uploadedAt,
@@ -107,6 +128,7 @@ async function getRunTimeline(runId, limit = 40) {
         companyId: parsed?.companyId ?? null,
         sourceMode: parsed?.sourceMode ?? null,
         payloadSummary: summarizePayload(parsed?.payload),
+        analysisSnapshot,
       });
     } catch {
       timeline.push({
@@ -140,6 +162,7 @@ async function getRunTimeline(runId, limit = 40) {
       size: blob.size,
     })),
     timeline,
+    latestAnalysisSnapshot,
   };
 }
 
@@ -166,7 +189,7 @@ async function listRecentRunIds(limit) {
     .map((entry) => entry.runId);
 }
 
-function buildRecommendations({ hasError, hasAnalysisReady, hasArtifacts, hasInputs, latestError }) {
+function buildRecommendations({ hasError, hasAnalysisReady, hasArtifacts, hasInputs, latestError, qualityGate }) {
   const recommendations = [];
 
   if (hasError) {
@@ -181,6 +204,9 @@ function buildRecommendations({ hasError, hasAnalysisReady, hasArtifacts, hasInp
   }
   if (latestError) {
     recommendations.push(`Triage error signature: ${latestError.slice(0, 180)}`);
+  }
+  if (qualityGate?.valuationBlocked) {
+    recommendations.push("Resolve valuation-critical mapping gaps before trusting valuation outputs.");
   }
   if (recommendations.length === 0) {
     recommendations.push("No immediate action required.");
@@ -200,6 +226,8 @@ export function evaluateRunHealth(run, config = getMonitorConfig()) {
   const hasArtifacts = run.counts.artifacts > 0;
   const hasInputs = run.counts.inputs > 0;
   const ageMinutes = run.latestAt ? minuteDiff(run.latestAt) : null;
+  const coverageSummary = run.latestAnalysisSnapshot?.coverageSummary ?? null;
+  const qualityGate = run.latestAnalysisSnapshot?.qualityGate ?? null;
 
   const findings = [];
   let severity = "ok";
@@ -219,6 +247,19 @@ export function evaluateRunHealth(run, config = getMonitorConfig()) {
     findings.push("Analysis completed but no persisted report artifacts were found yet.");
   }
 
+  if (coverageSummary?.unresolvedBySeverity?.critical?.length) {
+    severity = "critical";
+    findings.push(`Valuation-critical mapping gaps remain: ${coverageSummary.unresolvedBySeverity.critical.map((issue) => issue.title).join(", ")}.`);
+  } else if (coverageSummary?.unresolvedBySeverity?.warning?.length) {
+    if (severity === "ok") severity = "warning";
+    findings.push(`Ratio-critical mapping gaps remain: ${coverageSummary.unresolvedBySeverity.warning.map((issue) => issue.title).join(", ")}.`);
+  }
+
+  if (qualityGate?.valuationBlocked && !hasError) {
+    severity = severity === "ok" ? "warning" : severity;
+    findings.push("Quality gate marked valuation as blocked for this run.");
+  }
+
   if (severity === "ok") {
     findings.push("Run completed without monitor-detected issues.");
   }
@@ -232,6 +273,7 @@ export function evaluateRunHealth(run, config = getMonitorConfig()) {
       hasArtifacts,
       hasInputs,
       latestError,
+      qualityGate,
     }),
     derived: {
       ageMinutes,
@@ -240,6 +282,8 @@ export function evaluateRunHealth(run, config = getMonitorConfig()) {
       hasArtifacts,
       hasInputs,
       latestError,
+      qualityGate,
+      policyVersions: run.latestAnalysisSnapshot?.policyVersions ?? null,
     },
   };
 }
@@ -360,6 +404,10 @@ export async function runAuditMonitor(options = {}) {
       latestAt: run.latestAt,
       companyId: run.timeline[0]?.companyId ?? null,
       sourceMode: run.timeline[0]?.sourceMode ?? null,
+      latestPeriod: run.latestAnalysisSnapshot?.latestPeriod ?? null,
+      policyVersions: run.latestAnalysisSnapshot?.policyVersions ?? null,
+      qualityGate: run.latestAnalysisSnapshot?.qualityGate ?? null,
+      coverageSummary: run.latestAnalysisSnapshot?.coverageSummary ?? null,
       counts: run.counts,
       severity: health.severity,
       findings: health.findings,

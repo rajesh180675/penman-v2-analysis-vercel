@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { RawPeriodData, RecastPeriod, DEFAULT_CONFIG, EngineConfig, CompanyRegistry } from "./engine/types";
 import { processCompanyData } from "./engine/pipeline";
 import { CapitalineParseDebug } from "./engine/capitalineParser";
-import { evaluateQualityGate } from "./engine/mappingAudit";
+import { auditMappingCoverage, evaluateQualityGate } from "./engine/mappingAudit";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import DataEntry from "./components/DataEntry";
 import RecastStatements from "./components/RecastStatements";
@@ -126,6 +126,11 @@ export function App() {
     return evaluateQualityGate(rawData);
   }, [rawData]);
 
+  const mappingAudit = useMemo(() => {
+    if (!rawData || rawData.length === 0) return null;
+    return auditMappingCoverage(rawData);
+  }, [rawData]);
+
   const handleDataSubmit = useCallback(
     (data:RawPeriodData[], debug?:CapitalineParseDebug, meta?: AuditSubmissionMeta) => {
       const nextMeta = meta ?? {
@@ -170,6 +175,7 @@ export function App() {
       config,
       debugInfo,
       qualityGate,
+      mappingAudit,
       engineError,
     });
     const signature = JSON.stringify(snapshot);
@@ -183,7 +189,7 @@ export function App() {
       sourceMode: auditMeta.sourceMode,
       payload: snapshot,
     });
-  }, [auditMeta, config, debugInfo, engineError, qualityGate, rawData, recastData]);
+  }, [auditMeta, config, debugInfo, engineError, mappingAudit, qualityGate, rawData, recastData]);
 
   useEffect(() => {
     if (!auditMeta || !engineError) return;

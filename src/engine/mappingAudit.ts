@@ -1,14 +1,26 @@
 import { RawPeriodData } from "./types";
 import { CapitalineMappingSpec as SPEC } from "./mappingSpec";
+import { evaluateMappingCoverageSummary, MappingCoverageSummary } from "./mappingPolicy";
+import { CAPITALINE_MAPPING_SPEC_VERSION, MAPPING_POLICY_VERSION } from "./policyVersions";
 import mappingYamlRaw from "../../CapitalineIndASDetailedMappingSpec.yaml?raw";
 
 type Statement = "BalanceSheet" | "ProfitLoss" | "CashFlow" | "Unknown";
 
+export interface OutOfSpecLabel {
+  statement: Statement;
+  key: string;
+  periodsObserved: number;
+}
+
 export interface MappingAuditReport {
+  mappingSpecVersion: string;
+  policyVersion: string;
   usedKeysNotInYaml: string[];
   yamlKeysNotInDataset: string[];
   unresolvedCriticalByStatement: Record<"BalanceSheet" | "ProfitLoss" | "CashFlow", string[]>;
   datasetKeyCounts: Record<Statement, number>;
+  coverageSummary: MappingCoverageSummary;
+  outOfSpecLabels: OutOfSpecLabel[];
 }
 
 export interface QualityGateReport {
@@ -17,6 +29,10 @@ export interface QualityGateReport {
   missingMinimum: string[];
   missingCore: string[];
   blockingReasons: string[];
+  policyVersion: string;
+  coverageSummary: MappingCoverageSummary;
+  valuationCriticalGaps: string[];
+  ratioCriticalGaps: string[];
 }
 
 export interface GranularityChecklistItem {
@@ -47,7 +63,6 @@ const criticalKeys = {
     "Current Investments",
     "Long Term Borrowings",
     "Short Term Borrowings",
-    "Total Current Liabilities",
   ],
   ProfitLoss: [
     "Revenue From Operations(Net)",
@@ -56,17 +71,20 @@ const criticalKeys = {
     "Profit Before Tax",
     "Tax Expenses",
     "Finance Cost",
-    "Total Comprehensive Income for the Year",
   ],
   CashFlow: [
     "Net Cash from Operating Activities",
     "Purchased of Fixed Assets",
-    "Dividend Paid",
-    "Proceeds from Issue of shares (incl share premium)",
   ],
 } as const;
 
 function isCriticalMissing(byStmt: Record<Statement, Set<string>>, stmt: "BalanceSheet" | "ProfitLoss" | "CashFlow", key: string) {
+  if (stmt === "BalanceSheet" && (key === "Total Stockholders' Equity" || key === "Total Equity")) {
+    return !hasAny(byStmt, "BalanceSheet", ["Total Stockholders' Equity", "Total Equity"]);
+  }
+  if (stmt === "ProfitLoss" && (key === "Revenue From Operations(Net)" || key === "Revenue From Operations")) {
+    return !hasAny(byStmt, "ProfitLoss", ["Revenue From Operations(Net)", "Revenue From Operations", "Total Revenue"]);
+  }
   if (stmt === "CashFlow" && key === "Purchased of Fixed Assets") {
     return !hasAny(byStmt, "CashFlow", ["Purchased of Fixed Assets", "Purchase of Fixed Assets"]);
   }
@@ -77,7 +95,7 @@ function addAll(target: Set<string>, keys: readonly string[]) {
   for (const k of keys) target.add(k);
 }
 
-function flattenSpecKeys(): Set<string> {
+export function flattenSpecKeys(): Set<string> {
   const out = new Set<string>();
 
   addAll(out, SPEC.balanceSheet.totalAssets);
@@ -162,7 +180,7 @@ function flattenSpecKeys(): Set<string> {
   return out;
 }
 
-function extractYamlKeys(yamlText: string): Set<string> {
+export function extractYamlKeys(yamlText: string): Set<string> {
   const out = new Set<string>();
 
   const quoted = yamlText.match(/"([^"]+)"/g) ?? [];
@@ -181,7 +199,7 @@ function extractYamlKeys(yamlText: string): Set<string> {
   return out;
 }
 
-function datasetKeysByStatement(periods: RawPeriodData[]) {
+export function datasetKeysByStatement(periods: RawPeriodData[]) {
   const byStmt: Record<Statement, Set<string>> = {
     BalanceSheet: new Set<string>(),
     ProfitLoss: new Set<string>(),
@@ -200,6 +218,21 @@ function datasetKeysByStatement(periods: RawPeriodData[]) {
     }
   }
   return byStmt;
+}
+
+function countDatasetKeysByStatement(periods: RawPeriodData[]) {
+  const counts = new Map<string, number>();
+  for (const period of periods) {
+    for (const compositeKey of Object.keys(period.raw_metric_values)) {
+      const idx = compositeKey.lastIndexOf("__");
+      if (idx < 0) continue;
+      const base = compositeKey.slice(0, idx);
+      const statement = compositeKey.slice(idx + 2) as Statement;
+      const scopedKey = `${statement}||${base}`;
+      counts.set(scopedKey, (counts.get(scopedKey) ?? 0) + 1);
+    }
+  }
+  return counts;
 }
 
 type ChecklistSpec = {
@@ -427,15 +460,27 @@ export function evaluateGranularityChecklist(periods: RawPeriodData[]): Granular
 export function auditMappingCoverage(periods: RawPeriodData[]): MappingAuditReport {
   const specKeys = flattenSpecKeys();
   const yamlKeys = extractYamlKeys(mappingYamlRaw);
-
   const byStmt = datasetKeysByStatement(periods);
+  const datasetCounts = countDatasetKeysByStatement(periods);
   const datasetUnion = new Set<string>();
   for (const set of Object.values(byStmt)) {
     for (const k of set) datasetUnion.add(k);
   }
+  const coverageSummary = evaluateMappingCoverageSummary(periods);
 
   const usedKeysNotInYaml = Array.from(specKeys).filter((k) => !yamlKeys.has(k)).sort();
   const yamlKeysNotInDataset = Array.from(yamlKeys).filter((k) => !datasetUnion.has(k)).sort();
+  const outOfSpecLabels = Array.from(datasetCounts.entries())
+    .map(([scopedKey, periodsObserved]) => {
+      const [statement, key] = scopedKey.split("||");
+      return {
+        statement: statement as Statement,
+        key,
+        periodsObserved,
+      };
+    })
+    .filter((entry) => !specKeys.has(entry.key) && !yamlKeys.has(entry.key))
+    .sort((a, b) => b.periodsObserved - a.periodsObserved || a.statement.localeCompare(b.statement) || a.key.localeCompare(b.key));
 
   const unresolvedCriticalByStatement = {
     BalanceSheet: criticalKeys.BalanceSheet.filter((k) => isCriticalMissing(byStmt, "BalanceSheet", k)),
@@ -444,6 +489,8 @@ export function auditMappingCoverage(periods: RawPeriodData[]): MappingAuditRepo
   };
 
   return {
+    mappingSpecVersion: CAPITALINE_MAPPING_SPEC_VERSION,
+    policyVersion: MAPPING_POLICY_VERSION,
     usedKeysNotInYaml,
     yamlKeysNotInDataset,
     unresolvedCriticalByStatement,
@@ -453,6 +500,8 @@ export function auditMappingCoverage(periods: RawPeriodData[]): MappingAuditRepo
       CashFlow: byStmt.CashFlow.size,
       Unknown: byStmt.Unknown.size,
     },
+    coverageSummary,
+    outOfSpecLabels,
   };
 }
 
@@ -473,6 +522,10 @@ export function evaluateQualityGate(periods: RawPeriodData[]): QualityGateReport
       missingMinimum: ["No periods parsed"],
       missingCore: ["No periods parsed"],
       blockingReasons: ["Dataset is empty."],
+      policyVersion: MAPPING_POLICY_VERSION,
+      coverageSummary: evaluateMappingCoverageSummary([]),
+      valuationCriticalGaps: [],
+      ratioCriticalGaps: [],
     };
   }
 
@@ -511,20 +564,28 @@ export function evaluateQualityGate(periods: RawPeriodData[]): QualityGateReport
     audit.unresolvedCriticalByStatement.BalanceSheet.length +
     audit.unresolvedCriticalByStatement.ProfitLoss.length +
     audit.unresolvedCriticalByStatement.CashFlow.length;
+  const valuationCriticalGaps = audit.coverageSummary.unresolvedBySeverity.critical.map((issue) => issue.title);
+  const ratioCriticalGaps = audit.coverageSummary.unresolvedBySeverity.warning.map((issue) => issue.title);
 
   let tier: QualityGateReport["tier"] = "Tier 3";
-  if (missingMinimum.length === 0 && missingCore.length === 0) {
-    tier = unresolvedCriticalCount === 0 ? "Tier 1" : "Tier 2";
+  if (missingMinimum.length === 0 && missingCore.length === 0 && valuationCriticalGaps.length === 0 && ratioCriticalGaps.length === 0) {
+    tier = "Tier 1";
+  } else if (missingMinimum.length === 0 && valuationCriticalGaps.length === 0) {
+    tier = "Tier 2";
   } else if (missingMinimum.length === 0) {
     tier = "Tier 3";
   }
 
-  // Fail-fast: unresolved critical mapping gaps must also block valuation.
+  // Fail-fast: valuation-critical mapping gaps must block valuation.
   const valuationBlocked =
     missingMinimum.length > 0 ||
     missingCore.length > 0 ||
-    unresolvedCriticalCount > 0;
+    unresolvedCriticalCount > 0 ||
+    valuationCriticalGaps.length > 0;
   const blockingReasons: string[] = [];
+  if (valuationCriticalGaps.length > 0) {
+    blockingReasons.push(`Valuation-critical coverage gaps: ${valuationCriticalGaps.join(", ")}`);
+  }
   if (unresolvedCriticalCount > 0) {
     blockingReasons.push(
       `Critical key gaps: BS ${audit.unresolvedCriticalByStatement.BalanceSheet.length}, PL ${audit.unresolvedCriticalByStatement.ProfitLoss.length}, CF ${audit.unresolvedCriticalByStatement.CashFlow.length}`
@@ -543,5 +604,9 @@ export function evaluateQualityGate(periods: RawPeriodData[]): QualityGateReport
     missingMinimum,
     missingCore,
     blockingReasons,
+    policyVersion: MAPPING_POLICY_VERSION,
+    coverageSummary: audit.coverageSummary,
+    valuationCriticalGaps,
+    ratioCriticalGaps,
   };
 }

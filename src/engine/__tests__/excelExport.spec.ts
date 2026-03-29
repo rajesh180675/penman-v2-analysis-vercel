@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { read } from "xlsx";
 import { generateValuationWorkbook } from "../excelExport";
+import { getAnalysisPolicyVersions } from "../policyVersions";
 import { DEFAULT_CONFIG, EngineConfig, RecastPeriod, ValuationResult } from "../types";
 
 function mkPeriod(period_end: string): RecastPeriod {
@@ -118,8 +119,19 @@ const valuation: ValuationResult = {
 function coverKeCellValue(config: EngineConfig): number {
   const workbookBuf = generateValuationWorkbook([mkPeriod("2025-03-31")], [], valuation, config);
   const wb = read(workbookBuf, { type: "array" });
-  const cell = wb.Sheets["Cover"]["B12"];
-  return cell?.v as number;
+  const sheet = wb.Sheets.Cover;
+  const entries = Object.entries(sheet);
+  const labelCell = entries.find(([, cell]) => cell && typeof cell === "object" && "v" in cell && cell.v === "Cost of Equity (ke)");
+  expect(labelCell).toBeTruthy();
+  const row = Number(labelCell![0].replace(/^[A-Z]+/, "")) - 1;
+  return sheet[`B${row + 1}`]?.v as number;
+}
+
+function sheetValueByLabel(sheet: Record<string, { v?: unknown }>, label: string) {
+  const match = Object.entries(sheet).find(([, cell]) => cell && typeof cell === "object" && "v" in cell && cell.v === label);
+  expect(match).toBeTruthy();
+  const row = Number(match![0].replace(/^[A-Z]+/, ""));
+  return sheet[`B${row}`]?.v;
 }
 
 describe("generateValuationWorkbook", () => {
@@ -151,18 +163,24 @@ describe("generateValuationWorkbook", () => {
       DEFAULT_CONFIG,
       {
         companyLabel: "ITC",
+        auditRunId: "run-123",
         valuationStatus: "guarded",
         valuationReasons: ["Using prior anchor period 2024-03-31 because 2025-03-31 is compromised."],
         valuationAnchorPeriod: "2024-03-31",
         valuationSourcePeriod: "2025-03-31",
+        policyVersions: getAnalysisPolicyVersions(),
       },
     );
     const wb = read(workbookBuf, { type: "array" });
 
     expect(wb.Sheets.Cover.B6?.v).toBe("ITC");
-    expect(wb.Sheets.Cover.B7?.v).toBe("guarded");
-    expect(wb.Sheets.Cover.B8?.v).toBe("2024-03-31");
-    expect(wb.Sheets.Valuation.B2?.v).toBe("guarded");
-    expect(wb.Sheets.Valuation.B3?.v).toBe("2024-03-31");
+    expect(sheetValueByLabel(wb.Sheets.Cover, "Audit Run ID")).toBe("run-123");
+    expect(sheetValueByLabel(wb.Sheets.Cover, "Valuation Status")).toBe("guarded");
+    expect(sheetValueByLabel(wb.Sheets.Cover, "Valuation Anchor Period")).toBe("2024-03-31");
+    expect(sheetValueByLabel(wb.Sheets.Cover, "Engine Version")).toBe(getAnalysisPolicyVersions().engineVersion);
+    expect(sheetValueByLabel(wb.Sheets.Cover, "Mapping Spec Version")).toBe(getAnalysisPolicyVersions().mappingSpecVersion);
+    expect(sheetValueByLabel(wb.Sheets.Valuation, "Audit Run ID")).toBe("run-123");
+    expect(sheetValueByLabel(wb.Sheets.Valuation, "Valuation Status")).toBe("guarded");
+    expect(sheetValueByLabel(wb.Sheets.Valuation, "Anchor Period")).toBe("2024-03-31");
   });
 });

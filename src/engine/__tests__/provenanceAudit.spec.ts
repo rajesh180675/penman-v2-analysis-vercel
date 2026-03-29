@@ -35,12 +35,20 @@ describe("buildMappingDiscrepancyRows", () => {
           issueType: "duplicate_source_ignored",
           key: "Of the short term Borrowings",
           occurrences: 1,
+          tier: "Tier B",
+          severity: "warning",
+          groupId: "cf-debt-movements",
+          groupTitle: "Debt proceeds and repayments",
         },
         {
           line: "CF.DebtRepayment",
           issueType: "fuzzy_match",
           key: "Of the short term Borrowings",
           occurrences: 2,
+          tier: "Tier B",
+          severity: "warning",
+          groupId: "cf-debt-movements",
+          groupTitle: "Debt proceeds and repayments",
         },
       ]),
     );
@@ -62,6 +70,10 @@ describe("buildMappingDiscrepancyRows", () => {
         issueType: "unmatched",
         key: "Cash and Cash Equivalents",
         occurrences: 1,
+        tier: "Tier A",
+        severity: "critical",
+        groupId: "bs-cash-bank",
+        groupTitle: "Cash and bank balances",
       },
     ]);
   });

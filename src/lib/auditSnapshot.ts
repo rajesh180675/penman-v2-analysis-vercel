@@ -1,6 +1,7 @@
 import { EngineConfig, RawPeriodData, RecastPeriod } from "../engine/types";
 import { CapitalineParseDebug } from "../engine/capitalineParser";
-import { QualityGateReport } from "../engine/mappingAudit";
+import { MappingAuditReport, QualityGateReport } from "../engine/mappingAudit";
+import { getAnalysisPolicyVersions } from "../engine/policyVersions";
 
 export function buildAnalysisSnapshot(params: {
   rawData: RawPeriodData[] | null;
@@ -8,16 +9,19 @@ export function buildAnalysisSnapshot(params: {
   config: EngineConfig;
   debugInfo: CapitalineParseDebug | null;
   qualityGate: QualityGateReport | null;
+  mappingAudit: MappingAuditReport | null;
   engineError: string | null;
 }) {
-  const { rawData, recastData, config, debugInfo, qualityGate, engineError } = params;
+  const { rawData, recastData, config, debugInfo, qualityGate, mappingAudit, engineError } = params;
 
   return {
     companyId: rawData?.[0]?.company_id ?? null,
     periodCount: rawData?.length ?? 0,
     latestPeriod: rawData?.[rawData.length - 1]?.period_end ?? null,
+    policyVersions: getAnalysisPolicyVersions(),
     config,
     qualityGate,
+    mappingAudit,
     engineError,
     debugInfo,
     rawData,

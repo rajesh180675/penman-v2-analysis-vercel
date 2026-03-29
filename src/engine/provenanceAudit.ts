@@ -1,4 +1,5 @@
 import { RecastPeriod } from "./types";
+import { classifyMappingIssue, MappingSeverity, MappingTier } from "./mappingPolicy";
 
 export interface ProvenanceAuditRow {
   line: string;
@@ -16,6 +17,10 @@ export interface MappingDiscrepancyRow {
   issueType: "duplicate_source_ignored" | "unmatched" | "fuzzy_match";
   key: string;
   occurrences: number;
+  tier: MappingTier;
+  severity: MappingSeverity;
+  groupId: string | null;
+  groupTitle: string;
 }
 
 export function buildProvenanceAuditRows(periods: RecastPeriod[]): ProvenanceAuditRow[] {
@@ -77,11 +82,26 @@ export function buildProvenanceAuditRows(periods: RecastPeriod[]): ProvenanceAud
 export function buildMappingDiscrepancyRows(periods: RecastPeriod[]): MappingDiscrepancyRow[] {
   const grouped = new Map<string, MappingDiscrepancyRow>();
 
-  const upsert = (line: string, issueType: MappingDiscrepancyRow["issueType"], key: string) => {
+  const upsert = (
+    line: string,
+    issueType: MappingDiscrepancyRow["issueType"],
+    key: string,
+    statement?: string | null,
+  ) => {
     const id = `${line}||${issueType}||${key}`;
     const row = grouped.get(id);
     if (!row) {
-      grouped.set(id, { line, issueType, key, occurrences: 1 });
+      const classification = classifyMappingIssue(key, statement);
+      grouped.set(id, {
+        line,
+        issueType,
+        key,
+        occurrences: 1,
+        tier: classification.tier,
+        severity: classification.severity,
+        groupId: classification.groupId,
+        groupTitle: classification.groupTitle,
+      });
       return;
     }
     row.occurrences += 1;
@@ -99,21 +119,28 @@ export function buildMappingDiscrepancyRows(periods: RecastPeriod[]): MappingDis
 
       for (const e of entries) {
         if (e.note?.startsWith("duplicate_source_ignored:")) {
-          upsert(line, "duplicate_source_ignored", e.key);
+          upsert(line, "duplicate_source_ignored", e.key, e.statement);
         }
         if (e.note === "unmatched" && !hasResolvedSource) {
-          upsert(line, "unmatched", e.key);
+          upsert(line, "unmatched", e.key, e.statement);
         }
         if (e.matchType === "fuzzy") {
-          upsert(line, "fuzzy_match", e.key);
+          upsert(line, "fuzzy_match", e.key, e.statement);
         }
       }
     }
   }
 
+  const severityRank: Record<MappingSeverity, number> = {
+    critical: 0,
+    warning: 1,
+    info: 2,
+  };
+
   return Array.from(grouped.values()).sort(
     (a, b) =>
-      a.line.localeCompare(b.line)
+      severityRank[a.severity] - severityRank[b.severity]
+      || a.line.localeCompare(b.line)
       || a.issueType.localeCompare(b.issueType)
       || b.occurrences - a.occurrences
       || a.key.localeCompare(b.key),

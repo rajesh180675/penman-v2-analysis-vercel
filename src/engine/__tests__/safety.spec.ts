@@ -22,7 +22,7 @@ describe("fail-fast safety guards", () => {
     ];
 
     const report = evaluateQualityGate(periods);
-    expect(report.tier).toBe("Tier 2");
+    expect(report.tier).toBe("Tier 3");
     expect(report.valuationBlocked).toBe(true);
     expect(report.blockingReasons.some((r) => r.includes("Critical key gaps"))).toBe(true);
   });

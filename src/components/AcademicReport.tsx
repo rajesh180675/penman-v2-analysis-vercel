@@ -8,6 +8,7 @@ import { EngineConfig, NP_BENCHMARKS, RawPeriodData, RecastPeriod, ke_from_confi
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { evaluateGranularityChecklist } from "../engine/mappingAudit";
 import { generateValuationWorkbook } from "../engine/excelExport";
+import { getAnalysisPolicyVersions } from "../engine/policyVersions";
 import { buildProvenanceAuditRows } from "../engine/provenanceAudit";
 import { deriveCompanyLabel, resolveValuationReadiness } from "../engine/valuationPolicy";
 import { computeV3Analytics, V3AnalyticsBundle, computeAnchorTable } from "../engine/v3Analytics";
@@ -236,6 +237,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
 
   const provenanceRows = useMemo(() => buildProvenanceAuditRows(data), [data]);
   const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
+  const policyVersions = useMemo(() => getAnalysisPolicyVersions(), []);
 
   const escapeCsvCell = (v: string | number) => {
     const s = String(v ?? "");
@@ -478,6 +480,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
           terminalFlags: valuationReadiness.terminalFlagLabels,
           reasons: valuationReadiness.reasons,
         },
+        policyVersions,
         rowCounts: {
           recastPeriods: data.length,
           traceRows: traceRecords.length,
@@ -561,10 +564,12 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
     try {
       const wbArray = generateValuationWorkbook(data, [], valuation, config, {
         companyLabel: companyId,
+        auditRunId: auditMeta?.runId ?? null,
         valuationStatus: valuationReadiness.status,
         valuationReasons: valuationReadiness.reasons,
         valuationAnchorPeriod: valuationReadiness.anchorPeriod,
         valuationSourcePeriod: valuationReadiness.latestPeriod,
+        policyVersions,
       });
       const blob = new Blob([wbArray], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
