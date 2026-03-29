@@ -11,6 +11,7 @@ import {
   EngineConfig,
   TraceMap,
   TraceEntry,
+  ShareCountInputSnapshot,
 } from "./types";
 import { CapitalineMappingSpec as M } from "./mappingSpec";
 
@@ -159,6 +160,85 @@ const valCF = (d: RawPeriodData, k: readonly string[], line?: string, trace?: Tr
 
 function sumPLWithTrace(d: RawPeriodData, keys: readonly string[], line: string, trace?: TraceMap) {
   return sumWithDistinctSource(d, keys, "ProfitLoss", line, trace);
+}
+
+function normalizeShareCountToCrore(value: number): number {
+  return value > 1_000_000 ? value / 10_000_000 : value;
+}
+
+function extractShareCountInput(data: RawPeriodData): ShareCountInputSnapshot {
+  const firstValid = (keys: readonly string[], stmt: "BalanceSheet" | "ProfitLoss") => {
+    for (const key of keys) {
+      const picked = pickOneWithSource(data, key, stmt);
+      if (picked && picked.value > 0) return picked;
+    }
+    return null;
+  };
+
+  const shareCapitalPick = firstValid(["Share Capital", "Equity Share Capital"], "BalanceSheet");
+  const faceValuePick = firstValid([
+    "Face Value of Subscribed Shares Fully Paid up",
+    "Face Value of Ordinary Shares A - Subscribed Fully Paid up",
+    "Face Value of Equity Shares",
+  ], "BalanceSheet");
+  const shareCapital = shareCapitalPick?.value ?? null;
+  const faceValue = faceValuePick?.value ?? null;
+  const capitalDerivedShares = shareCapital != null && faceValue != null && faceValue > 0
+    ? shareCapital / faceValue
+    : null;
+
+  const countCandidates = [
+    firstValid(["Number of Equity Shares - Subscribed Fully Paid up"], "BalanceSheet"),
+    firstValid(["Number of Equity Shares - Paid Up"], "BalanceSheet"),
+    firstValid(["Number of Equity Shares - Issued"], "BalanceSheet"),
+    firstValid(["Total Number of Equity Shares - Subscribed"], "BalanceSheet"),
+  ].filter((picked): picked is NonNullable<typeof picked> => Boolean(picked));
+
+  const bestCandidate = countCandidates
+    .map((picked) => {
+      const shares = normalizeShareCountToCrore(picked.value);
+      const relErr = capitalDerivedShares && capitalDerivedShares > 0
+        ? Math.abs(shares - capitalDerivedShares) / capitalDerivedShares
+        : null;
+      let score = 0;
+      if (/subscribed fully paid up|paid up/i.test(picked.key)) score += 3;
+      else if (/issued/i.test(picked.key)) score += 1;
+      if (picked.value > 1_000_000) score += 1;
+      if (relErr != null) {
+        if (relErr <= 0.02) score += 5;
+        else if (relErr <= 0.10) score += 3;
+        else if (relErr <= 0.25) score += 1;
+        else score -= 3;
+      }
+      const normalizedSource = picked.value > 1_000_000
+        ? `${picked.key} (absolute count normalised to crore shares)`
+        : `${picked.key} (reported share-count units)`;
+      return { shares, source: normalizedSource, score, relErr: relErr ?? Number.POSITIVE_INFINITY };
+    })
+    .sort((a, b) => (b.score - a.score) || (a.relErr - b.relErr))[0];
+
+  const weightedAverageBasicPick = firstValid(["Weighted Average Number of Shares in Issue - Basic"], "ProfitLoss");
+  const weightedAverageDilutedPick = firstValid(["Weighted Average Number of Shares in Issue - Diluted"], "ProfitLoss");
+
+  const endPeriodShares = bestCandidate && bestCandidate.score >= 0
+    ? bestCandidate.shares
+    : capitalDerivedShares;
+  const endPeriodSharesSource = bestCandidate && bestCandidate.score >= 0
+    ? bestCandidate.source
+    : capitalDerivedShares != null && faceValue != null
+    ? `Share Capital ÷ face value ₹${faceValue}`
+    : "";
+
+  return {
+    endPeriodShares: endPeriodShares ?? null,
+    endPeriodSharesSource,
+    weightedAverageBasicShares: weightedAverageBasicPick ? normalizeShareCountToCrore(weightedAverageBasicPick.value) : null,
+    weightedAverageBasicSource: weightedAverageBasicPick?.key ?? "",
+    weightedAverageDilutedShares: weightedAverageDilutedPick ? normalizeShareCountToCrore(weightedAverageDilutedPick.value) : null,
+    weightedAverageDilutedSource: weightedAverageDilutedPick?.key ?? "",
+    faceValue,
+    shareCapital,
+  };
 }
 
 export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace?: TraceMap): CanonicalBalanceSheet {
@@ -496,7 +576,15 @@ export function computeRecastPeriod(data: RawPeriodData, cfg: EngineConfig, prev
   const bs = recastBalanceSheet(data, cfg, trace);
   const { is_, cu } = recastIncome(data, bs, cfg, trace);
   const cf = recastCashFlow(data, is_, bs, prevPeriod?.bs, trace);
-  return { period_end: data.period_end, bs, is: is_, cu, cf, trace };
+  return {
+    period_end: data.period_end,
+    bs,
+    is: is_,
+    cu,
+    cf,
+    trace,
+    shareCountInput: extractShareCountInput(data),
+  };
 }
 
 export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: EngineConfig): Ratios {

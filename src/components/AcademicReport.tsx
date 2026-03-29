@@ -169,22 +169,6 @@ function madSigma(vals: number[]): number {
   return (mad ?? 0) * 1.4826;
 }
 
-function pickFaceValue(shareCapital: number | null | undefined, shareCount: number | null | undefined): number | null {
-  if (shareCapital == null || shareCount == null || shareCount === 0) return null;
-  const implied = Math.abs(shareCapital / shareCount);
-  const common = [1, 2, 5, 10];
-  let best: number | null = null;
-  let bestErr = Number.POSITIVE_INFINITY;
-  for (const fv of common) {
-    const err = Math.abs(implied - fv);
-    if (err < bestErr) {
-      bestErr = err;
-      best = fv;
-    }
-  }
-  return bestErr <= 1 ? best : null;
-}
-
 export default function AcademicReport({ data, config, rawData, auditMeta }: Props) {
   const eqROCE = katex.renderToString(String.raw`\mathrm{ROCE}_t = \frac{\mathrm{CNI}_t}{\overline{\mathrm{CSE}}}`,
     { throwOnError: false, displayMode: true });
@@ -815,11 +799,8 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
     : [];
 
   const sharesFromConfig = config.shares_outstanding ?? null;
-  const rawLatest = rawData?.[rawData.length - 1]?.raw_metric_values;
-  const shareCapital = rawLatest?.["Share Capital"] ?? rawLatest?.["Equity Share Capital"] ?? null;
-  const inferredFaceValue = pickFaceValue(shareCapital, sharesFromConfig);
-  const inferredShares = shareCapital != null && inferredFaceValue != null ? shareCapital / inferredFaceValue : null;
-  const sharesToUse = sharesFromConfig ?? inferredShares;
+  const derivedShareCount = v3Bundle?.shareCount ?? null;
+  const sharesToUse = sharesFromConfig ?? derivedShareCount?.shares ?? null;
   const local6B = computeSection6BLocal({
     primaryValue: primaryValuation,
     ke,
@@ -831,7 +812,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
     periods: valuationData,
     shares: sharesToUse,
     marketPrice: config.market_price,
-    sharesSource: sharesFromConfig != null ? "user input" : (inferredShares != null ? `share capital ÷ FV ₹${num(inferredFaceValue,0)}` : "unavailable"),
+    sharesSource: sharesFromConfig != null ? "user input" : (derivedShareCount?.source ?? "unavailable"),
   });
   const blockingIssues = qualityGate?.coverageSummary.unresolvedBySeverity.critical ?? [];
   const diagnosticIssues = qualityGate?.coverageSummary.unresolvedBySeverity.warning ?? [];
@@ -1573,6 +1554,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
                 <tr><td className="px-2 py-1">Implied ke</td><td className="px-2 py-1 text-right">{pct(local6B.status === "full" ? local6B.impliedKe : null, 2)}</td></tr>
                 <tr><td className="px-2 py-1">Market cap</td><td className="px-2 py-1 text-right">{local6B.status === "full" ? `₹${num(local6B.marketCap)} Cr` : "—"}</td></tr>
                 <tr><td className="px-2 py-1">Shares outstanding</td><td className="px-2 py-1 text-right">{`${num(local6B.shares, 0)} Cr`}</td></tr>
+                <tr><td className="px-2 py-1">Share count source</td><td className="px-2 py-1 text-right text-slate-500">{local6B.sharesSource}</td></tr>
               </tbody>
             </table>
           </div>

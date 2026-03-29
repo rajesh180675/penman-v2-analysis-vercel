@@ -259,6 +259,18 @@ export interface RecastPeriod {
   quality     ?: QualityMetrics;
   trace       ?: TraceMap;
   spec_flags  ?: SpecFlag[];
+  shareCountInput?: ShareCountInputSnapshot;
+}
+
+export interface ShareCountInputSnapshot {
+  endPeriodShares: number | null;
+  endPeriodSharesSource: string;
+  weightedAverageBasicShares: number | null;
+  weightedAverageBasicSource: string;
+  weightedAverageDilutedShares: number | null;
+  weightedAverageDilutedSource: string;
+  faceValue: number | null;
+  shareCapital: number | null;
 }
 
 /* ── Valuation ──────────────────────────────────────────────────── */
