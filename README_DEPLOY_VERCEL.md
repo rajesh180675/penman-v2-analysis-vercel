@@ -65,12 +65,30 @@ AUDIT_ADMIN_TOKEN=choose-a-long-random-secret
 - `GET /api/audit/events?runId=<runId>&kind=events`
 - `GET /api/audit/events?runId=<runId>&kind=artifacts`
 - `GET /api/audit/events?pathname=<full-blob-path>`
+- `GET /api/audit/runs`
+- `GET /api/audit/runs?runId=<runId>`
 
 When `AUDIT_ADMIN_TOKEN` is set, send:
 
 ```bash
 x-audit-token: <AUDIT_ADMIN_TOKEN>
 ```
+
+### Near real-time inspection
+
+`/api/audit/runs` is a pollable run index.
+
+- `GET /api/audit/runs` returns recent run IDs with input, event, and artifact counts.
+- `GET /api/audit/runs?runId=<runId>` returns the latest timeline entries plus referenced input and artifact blobs for that run.
+- The app now emits lifecycle events including `run-started`, `input-ingested`, `run-status-data-loaded`, `run-status-analysis-ready`, `run-status-error`, and `ui-tab-changed`.
+
+For terminal polling, you can also run:
+
+```bash
+AUDIT_ADMIN_TOKEN=... node scripts/audit-tail.mjs https://<your-deployment-url> <runId>
+```
+
+This gives near real-time visibility, not autonomous agent execution. I can inspect these runs quickly when asked, but I do not independently monitor future executions or modify code without a new request in a live session.
 
 ### Security note
 

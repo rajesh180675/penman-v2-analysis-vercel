@@ -37,6 +37,33 @@ export function buildAuditPath(runId, kind, filename) {
   return `${AUDIT_PREFIX}/${runId}/${kind}/${filename}`;
 }
 
+export function extractRunIdFromPath(pathname) {
+  if (typeof pathname !== "string") return null;
+  const parts = pathname.split("/");
+  if (parts[0] !== AUDIT_PREFIX || parts.length < 2) return null;
+  return parts[1] || null;
+}
+
+export function extractKindFromPath(pathname) {
+  if (typeof pathname !== "string") return null;
+  const parts = pathname.split("/");
+  if (parts[0] !== AUDIT_PREFIX || parts.length < 3) return null;
+  return parts[2] || null;
+}
+
+export function extractFilenameFromPath(pathname) {
+  if (typeof pathname !== "string") return null;
+  const parts = pathname.split("/");
+  return parts[parts.length - 1] || null;
+}
+
+export function extractEventTypeFromPath(pathname) {
+  const filename = extractFilenameFromPath(pathname);
+  if (!filename) return null;
+  const match = filename.match(/^\d{4}-\d{2}-\d{2}T.+?-(.+)\.json$/);
+  return match?.[1] ?? null;
+}
+
 export function sanitizePathSegment(value, fallback = "unknown") {
   const normalized = String(value || fallback)
     .trim()

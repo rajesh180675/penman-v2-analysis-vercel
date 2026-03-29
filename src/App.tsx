@@ -43,6 +43,8 @@ export function App() {
   const [registry, setRegistry] = useState<CompanyRegistry>({ companies: {} });
   const [auditMeta, setAuditMeta] = useState<AuditSubmissionMeta | null>(null);
   const lastAuditSignatureRef = useRef<string | null>(null);
+  const lastAuditStatusRef = useRef<string | null>(null);
+  const lastTabAuditRef = useRef<string | null>(null);
 
   // Derive recastData reactively from rawData + config so any config change (tax rate,
   // OCI treatment, hybrid-debt flag, etc.) immediately re-computes the analysis.
@@ -134,6 +136,8 @@ export function App() {
       };
       setAuditMeta(nextMeta);
       lastAuditSignatureRef.current = null;
+      lastAuditStatusRef.current = null;
+      lastTabAuditRef.current = null;
       setRawData(data);
       if (debug) setDebugInfo(debug);
       if (data.length === 0) { setActiveTab("debug"); return; }
@@ -190,6 +194,50 @@ export function App() {
       },
     });
   }, [auditMeta, engineError]);
+
+  useEffect(() => {
+    if (!auditMeta || !rawData) return;
+
+    const nextStatus = engineError
+      ? `analysis-error:${engineError}`
+      : recastData && recastData.length > 0
+        ? `analysis-ready:${recastData.length}`
+        : "data-loaded";
+
+    if (lastAuditStatusRef.current === nextStatus) return;
+    lastAuditStatusRef.current = nextStatus;
+
+    void persistAuditEvent({
+      runId: auditMeta.runId,
+      eventType: engineError ? "run-status-error" : recastData && recastData.length > 0 ? "run-status-analysis-ready" : "run-status-data-loaded",
+      companyId: auditMeta.companyId,
+      sourceMode: auditMeta.sourceMode,
+      payload: {
+        activeTab,
+        periodCount: rawData.length,
+        recastPeriodCount: recastData?.length ?? 0,
+        error: engineError ?? null,
+      },
+    });
+  }, [activeTab, auditMeta, engineError, rawData, recastData]);
+
+  useEffect(() => {
+    if (!auditMeta) return;
+
+    const tabKey = `${auditMeta.runId}:${activeTab}`;
+    if (lastTabAuditRef.current === tabKey) return;
+    lastTabAuditRef.current = tabKey;
+
+    void persistAuditEvent({
+      runId: auditMeta.runId,
+      eventType: "ui-tab-changed",
+      companyId: auditMeta.companyId,
+      sourceMode: auditMeta.sourceMode,
+      payload: {
+        activeTab,
+      },
+    });
+  }, [activeTab, auditMeta]);
 
   const hasRecast = (recastData?.length??0)>0;
   const hasDebug  = debugInfo!==null;

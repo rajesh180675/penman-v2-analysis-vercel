@@ -42,6 +42,16 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
     setIsProcessing(true); setError(""); setLastFile(file.name);
     const meta = buildMeta("capitaline", { fileName: file.name });
     try {
+      await persistAuditEvent({
+        runId: meta.runId,
+        eventType: "run-started",
+        companyId: meta.companyId,
+        sourceMode: meta.sourceMode,
+        payload: {
+          fileName: file.name,
+          ingestionMode: "capitaline",
+        },
+      });
       await persistAuditFile({
         runId: meta.runId,
         kind: "inputs",
@@ -93,6 +103,16 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
 
   const handleLoadSample = () => {
     const meta = buildMeta("sample", { fileName: "embedded-vst-sample" });
+    void persistAuditEvent({
+      runId: meta.runId,
+      eventType: "run-started",
+      companyId: meta.companyId,
+      sourceMode: meta.sourceMode,
+      payload: {
+        fileName: meta.fileName,
+        ingestionMode: "sample",
+      },
+    });
     // VST Industries — 15 years of real data
     const sample: RawPeriodData[] = [
       { company_id: "VST", period_end: "2011-03-31", raw_metric_values: { "Total Assets": 639, "Total Equity": 264, "Minority Interest": 0, "Cash and Cash Equivalents": 29, "Bank Balances Other Than Cash and Cash Equivalents": 0, "Current Investments": 149, "Investments - Long-term": 0, "Others Financial Assets - Short-term": 0, "Long Term Borrowings": 0, "Short Term Borrowings": 0, "Lease Liabilities": 0, "Others Financial Liabilities - Long-term": 0, "Others Financial Liabilities - Short-term": 0, "Revenue From Operations(Net)": 0, "Other Income": 0, "Total Comprehensive Income for the Year": 0, "Non-Controlling Interests": 0, "Profit After Tax": 0, "Finance Cost": 0, "Tax Expenses": 0, "Profit Before Tax": 0, "Net Cash from Operating Activities": 85, "Purchased of Fixed Assets": 44, "Dividend Paid": 54, "Exceptional Items Before Tax": 0, "Other Comprehensive Income That Will Not Be Reclassified to Profit Or Loss": 0, "Interest Received": 2, "Dividend Received": 5, "P/L on Sales of Invest": -7 } },
@@ -270,8 +290,17 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
             <button
               onClick={() => {
                 try {
-                  const periods = parseScreenerTabDelimited(screenerText, { companyId });
                   const meta = buildMeta("screener");
+                  void persistAuditEvent({
+                    runId: meta.runId,
+                    eventType: "run-started",
+                    companyId: meta.companyId,
+                    sourceMode: meta.sourceMode,
+                    payload: {
+                      ingestionMode: "screener",
+                    },
+                  });
+                  const periods = parseScreenerTabDelimited(screenerText, { companyId });
                   void persistAuditEvent({
                     runId: meta.runId,
                     eventType: "text-input-ingested",
@@ -285,6 +314,16 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                   if (!periods.length) setError("Screener parse returned 0 periods.");
                   else onDataSubmit(periods, undefined, meta);
                 } catch (e) {
+                  const meta = buildMeta("screener");
+                  void persistAuditEvent({
+                    runId: meta.runId,
+                    eventType: "input-ingest-failed",
+                    companyId: meta.companyId,
+                    sourceMode: meta.sourceMode,
+                    payload: {
+                      error: e instanceof Error ? e.message : String(e),
+                    },
+                  });
                   setError(`Screener parse failed: ${e instanceof Error ? e.message : String(e)}`);
                 }
               }}
@@ -302,8 +341,17 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
             <button
               onClick={() => {
                 try {
-                  const periods = parseRawPeriodsJson(jsonText);
                   const meta = buildMeta("json");
+                  void persistAuditEvent({
+                    runId: meta.runId,
+                    eventType: "run-started",
+                    companyId: meta.companyId,
+                    sourceMode: meta.sourceMode,
+                    payload: {
+                      ingestionMode: "json",
+                    },
+                  });
+                  const periods = parseRawPeriodsJson(jsonText);
                   void persistAuditEvent({
                     runId: meta.runId,
                     eventType: "json-input-ingested",
@@ -316,6 +364,16 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                   });
                   onDataSubmit(periods, undefined, meta);
                 } catch (e) {
+                  const meta = buildMeta("json");
+                  void persistAuditEvent({
+                    runId: meta.runId,
+                    eventType: "input-ingest-failed",
+                    companyId: meta.companyId,
+                    sourceMode: meta.sourceMode,
+                    payload: {
+                      error: e instanceof Error ? e.message : String(e),
+                    },
+                  });
                   setError(`JSON ingestion failed: ${e instanceof Error ? e.message : String(e)}`);
                 }
               }}
@@ -336,9 +394,19 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                 const f = e.target.files?.[0];
                 if (!f) return;
                 try {
+                  const meta = buildMeta("xbrl", { fileName: f.name });
+                  void persistAuditEvent({
+                    runId: meta.runId,
+                    eventType: "run-started",
+                    companyId: meta.companyId,
+                    sourceMode: meta.sourceMode,
+                    payload: {
+                      fileName: f.name,
+                      ingestionMode: "xbrl",
+                    },
+                  });
                   const txt = await f.text();
                   const periods = parseXbrlXml(txt, companyId);
-                  const meta = buildMeta("xbrl", { fileName: f.name });
                   void persistAuditEvent({
                     runId: meta.runId,
                     eventType: "xbrl-input-ingested",
@@ -353,6 +421,17 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                   if (!periods.length) setError("XBRL parse returned 0 periods. Check taxonomy labels/contexts.");
                   else onDataSubmit(periods, undefined, meta);
                 } catch (err) {
+                  const meta = buildMeta("xbrl", { fileName: f.name });
+                  void persistAuditEvent({
+                    runId: meta.runId,
+                    eventType: "input-ingest-failed",
+                    companyId: meta.companyId,
+                    sourceMode: meta.sourceMode,
+                    payload: {
+                      fileName: f.name,
+                      error: err instanceof Error ? err.message : String(err),
+                    },
+                  });
                   setError(`XBRL parse failed: ${err instanceof Error ? err.message : String(err)}`);
                 }
               }}
@@ -366,6 +445,15 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
             <ManualEntryWizard
               onSubmit={(rows) => {
                 const meta = buildMeta("manual");
+                void persistAuditEvent({
+                  runId: meta.runId,
+                  eventType: "run-started",
+                  companyId: meta.companyId,
+                  sourceMode: meta.sourceMode,
+                  payload: {
+                    ingestionMode: "manual",
+                  },
+                });
                 void persistAuditEvent({
                   runId: meta.runId,
                   eventType: "manual-input-ingested",
