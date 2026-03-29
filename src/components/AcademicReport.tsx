@@ -6,7 +6,8 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 import { EngineConfig, NP_BENCHMARKS, RawPeriodData, RecastPeriod, ke_from_config } from "../engine/types";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
-import { evaluateGranularityChecklist } from "../engine/mappingAudit";
+import { auditMappingCoverage, evaluateGranularityChecklist, evaluateQualityGate } from "../engine/mappingAudit";
+import { buildAnalysisTraceability } from "../engine/analysisTraceability";
 import { generateValuationWorkbook } from "../engine/excelExport";
 import { getAnalysisPolicyVersions } from "../engine/policyVersions";
 import { buildProvenanceAuditRows } from "../engine/provenanceAudit";
@@ -238,6 +239,19 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
   const provenanceRows = useMemo(() => buildProvenanceAuditRows(data), [data]);
   const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
   const policyVersions = useMemo(() => getAnalysisPolicyVersions(), []);
+  const qualityGate = useMemo(() => (rawData?.length ? evaluateQualityGate(rawData, config) : null), [config, rawData]);
+  const mappingAudit = useMemo(() => (rawData?.length ? auditMappingCoverage(rawData) : null), [rawData]);
+  const latestRawPeriod = rawData && rawData.length > 0 ? rawData[rawData.length - 1].period_end : null;
+  const traceability = useMemo(() => buildAnalysisTraceability({
+    runId: auditMeta?.runId ?? null,
+    companyId: auditMeta?.companyId ?? rawData?.[0]?.company_id ?? config.ticker ?? null,
+    sourceMode: auditMeta?.sourceMode ?? null,
+    periodCount: rawData?.length ?? data.length,
+    latestPeriod: latestRawPeriod ?? data[data.length - 1]?.period_end ?? null,
+    qualityGate,
+    mappingAudit,
+    policyVersions,
+  }), [auditMeta, config.ticker, data, latestRawPeriod, mappingAudit, policyVersions, qualityGate, rawData]);
 
   const escapeCsvCell = (v: string | number) => {
     const s = String(v ?? "");
@@ -481,6 +495,17 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
           reasons: valuationReadiness.reasons,
         },
         policyVersions,
+        traceability: buildAnalysisTraceability({
+          generatedAt,
+          runId: auditMeta?.runId ?? null,
+          companyId,
+          sourceMode: auditMeta?.sourceMode ?? null,
+          periodCount: rawData?.length ?? data.length,
+          latestPeriod: latestRawPeriod ?? data[data.length - 1]?.period_end ?? null,
+          qualityGate,
+          mappingAudit,
+          policyVersions,
+        }),
         rowCounts: {
           recastPeriods: data.length,
           traceRows: traceRecords.length,
@@ -570,6 +595,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
         valuationAnchorPeriod: valuationReadiness.anchorPeriod,
         valuationSourcePeriod: valuationReadiness.latestPeriod,
         policyVersions,
+        traceability,
       });
       const blob = new Blob([wbArray], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -807,6 +833,9 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
     marketPrice: config.market_price,
     sharesSource: sharesFromConfig != null ? "user input" : (inferredShares != null ? `share capital ÷ FV ₹${num(inferredFaceValue,0)}` : "unavailable"),
   });
+  const blockingIssues = qualityGate?.coverageSummary.unresolvedBySeverity.critical ?? [];
+  const diagnosticIssues = qualityGate?.coverageSummary.unresolvedBySeverity.warning ?? [];
+  const optionalIssues = qualityGate?.coverageSummary.unresolvedBySeverity.info ?? [];
 
   return (
     <div className="space-y-4">
@@ -878,6 +907,46 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
             </span>
           )}
         </p>
+        {qualityGate && (
+          <div className={`mt-4 rounded-xl border p-4 text-sm ${
+            qualityGate.scopeAssessment.blocked
+              ? "border-red-200 bg-red-50 text-red-900"
+              : qualityGate.valuationBlocked
+                ? "border-amber-200 bg-amber-50 text-amber-900"
+                : "border-green-200 bg-green-50 text-green-900"
+          }`}>
+            <div className="font-semibold">
+              Mapping / scope status: {qualityGate.scopeAssessment.blocked ? "blocking" : qualityGate.valuationBlocked ? "guarded" : "clear"}
+            </div>
+            <div className="mt-1 text-xs">
+              {qualityGate.scopeAssessment.blocked
+                ? `${qualityGate.scopeAssessment.label}. ${qualityGate.scopeAssessment.recommendedAction}`
+                : qualityGate.valuationBlocked
+                  ? qualityGate.blockingReasons[0] ?? "Valuation is blocked until critical issues are resolved."
+                  : "Valuation-critical mapping coverage is clear for this dataset."}
+            </div>
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="rounded-lg border border-red-200 bg-white/70 p-3">
+                <div className="text-[11px] uppercase tracking-wide text-red-700">Blocking</div>
+                <div className="mt-1 text-lg font-bold">{blockingIssues.length}</div>
+                <div className="mt-1 text-xs">{blockingIssues.slice(0, 2).map((issue) => issue.title).join(", ") || "None"}</div>
+              </div>
+              <div className="rounded-lg border border-amber-200 bg-white/70 p-3">
+                <div className="text-[11px] uppercase tracking-wide text-amber-700">Diagnostic</div>
+                <div className="mt-1 text-lg font-bold">{diagnosticIssues.length}</div>
+                <div className="mt-1 text-xs">{diagnosticIssues.slice(0, 2).map((issue) => issue.title).join(", ") || "None"}</div>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white/70 p-3">
+                <div className="text-[11px] uppercase tracking-wide text-slate-600">Optional</div>
+                <div className="mt-1 text-lg font-bold">{optionalIssues.length}</div>
+                <div className="mt-1 text-xs">{optionalIssues.slice(0, 2).map((issue) => issue.title).join(", ") || "None"}</div>
+              </div>
+            </div>
+            <div className="mt-3 text-[11px] text-slate-600">
+              Traceability schema {traceability.schemaVersion} · engine {traceability.policyVersions.engineVersion} · scope policy {traceability.policyVersions.scopePolicyVersion}
+            </div>
+          </div>
+        )}
         {valuationReadiness.status !== "production-ready" && (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             <div className="font-semibold">Valuation status: {valuationReadiness.status}</div>

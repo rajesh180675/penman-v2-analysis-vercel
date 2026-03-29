@@ -46,10 +46,26 @@ export function App() {
   const lastAuditStatusRef = useRef<string | null>(null);
   const lastTabAuditRef = useRef<string | null>(null);
 
+  const qualityGate = useMemo(() => {
+    if (!rawData || rawData.length === 0) return null;
+    return evaluateQualityGate(rawData, config);
+  }, [config, rawData]);
+
+  const mappingAudit = useMemo(() => {
+    if (!rawData || rawData.length === 0) return null;
+    return auditMappingCoverage(rawData);
+  }, [rawData]);
+
   // Derive recastData reactively from rawData + config so any config change (tax rate,
   // OCI treatment, hybrid-debt flag, etc.) immediately re-computes the analysis.
   const recastOutcome = useMemo<{ data: RecastPeriod[] | null; error: string | null }>(() => {
     if (!rawData || rawData.length === 0) return { data: null, error: null };
+    if (qualityGate?.scopeAssessment.blocked) {
+      return {
+        data: null,
+        error: qualityGate.scopeAssessment.reasons[0] ?? "Unsupported dataset scope for the industrial Penman-Nissim engine.",
+      };
+    }
     try {
       const processed = processCompanyData(rawData, config);
       return { data: processed.length > 0 ? processed : null, error: null };
@@ -60,7 +76,7 @@ export function App() {
         error: err instanceof Error ? err.message : String(err),
       };
     }
-  }, [rawData, config]);
+  }, [config, qualityGate, rawData]);
   const recastData = recastOutcome.data;
   const engineError = recastOutcome.error;
 
@@ -120,16 +136,6 @@ export function App() {
       setActiveTab("debug");
     }
   }, [rawData, recastData, engineError]);
-
-  const qualityGate = useMemo(() => {
-    if (!rawData || rawData.length === 0) return null;
-    return evaluateQualityGate(rawData);
-  }, [rawData]);
-
-  const mappingAudit = useMemo(() => {
-    if (!rawData || rawData.length === 0) return null;
-    return auditMappingCoverage(rawData);
-  }, [rawData]);
 
   const handleDataSubmit = useCallback(
     (data:RawPeriodData[], debug?:CapitalineParseDebug, meta?: AuditSubmissionMeta) => {
@@ -262,6 +268,7 @@ export function App() {
   });
 
   const valuationBlocked = Boolean(qualityGate?.valuationBlocked);
+  const scopeBlocked = Boolean(qualityGate?.scopeAssessment.blocked);
 
   // Pass the full config — ForecastReport (and any engine calls it triggers) may
   // access fields like tax_rate_mode, oci_treated_as_unusual, etc. Passing a
@@ -288,7 +295,13 @@ export function App() {
                     if (tab.id === "valuation" && valuationBlocked) return;
                     setActiveTab(tab.id);
                   }}
-                  title={tab.id === "valuation" && valuationBlocked ? "Valuation blocked by quality gate. See Debug tab." : undefined}
+                  title={
+                    tab.id === "valuation" && valuationBlocked
+                      ? scopeBlocked
+                        ? "Unsupported financial-company scope. See Debug tab."
+                        : "Valuation blocked by quality gate. See Debug tab."
+                      : undefined
+                  }
                   disabled={tab.id === "valuation" && valuationBlocked}
                   className={`px-3 h-full text-xs font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
                     activeTab===tab.id
@@ -331,7 +344,9 @@ export function App() {
         <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
           {qualityGate && (
             <div className={`mb-5 rounded-lg border p-3 text-sm ${
-              qualityGate.tier === "Tier 1"
+              scopeBlocked
+                ? "bg-red-50 border-red-200 text-red-800"
+                : qualityGate.tier === "Tier 1"
                 ? "bg-green-50 border-green-200 text-green-800"
                 : qualityGate.tier === "Tier 2"
                   ? "bg-amber-50 border-amber-200 text-amber-900"
@@ -339,7 +354,9 @@ export function App() {
             }`}>
               <strong>Quality Gate: {qualityGate.tier}</strong>
               <span className="ml-2">
-                {qualityGate.valuationBlocked
+                {scopeBlocked
+                  ? `${qualityGate.scopeAssessment.label}. Industrial analysis is blocked for this dataset.`
+                  : qualityGate.valuationBlocked
                   ? "Valuation tab is blocked until critical mapping gaps are resolved."
                   : "Valuation is enabled."}
               </span>
@@ -359,8 +376,14 @@ export function App() {
           {activeTab==="valuation"  && hasRecast && !valuationBlocked && <ValuationReport data={recastData!} config={config}/>}
           {activeTab === "valuation" && hasRecast && valuationBlocked && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
-              <h3 className="font-semibold text-lg">Valuation blocked by Fail-fast Quality Gate</h3>
-              <p className="text-sm mt-1">Resolve critical mapping gaps first. Open the Debug tab to see unresolved critical keys by statement.</p>
+              <h3 className="font-semibold text-lg">
+                {scopeBlocked ? "Industrial analysis blocked for unsupported scope" : "Valuation blocked by Fail-fast Quality Gate"}
+              </h3>
+              <p className="text-sm mt-1">
+                {scopeBlocked
+                  ? "This dataset looks like a bank, NBFC, or insurance company. Use the Debug tab to inspect scope signals and route it to a sector-specific framework."
+                  : "Resolve critical mapping gaps first. Open the Debug tab to see unresolved critical keys by statement."}
+              </p>
               {qualityGate?.blockingReasons?.length ? (
                 <ul className="list-disc pl-5 mt-3 text-sm space-y-1">
                   {qualityGate.blockingReasons.map((r) => <li key={r}>{r}</li>)}

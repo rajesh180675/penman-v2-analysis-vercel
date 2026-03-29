@@ -8,6 +8,7 @@
 import { utils, write } from "xlsx";
 import type { WorkBook, WorkSheet, CellObject } from "xlsx";
 import { EngineConfig, ForecastScenario, RecastPeriod, ValuationResult, NP_BENCHMARKS, ke_from_config } from "./types";
+import { AnalysisTraceabilityEnvelope } from "./analysisTraceability";
 import { buildMappingDiscrepancyRows, buildProvenanceAuditRows } from "./provenanceAudit";
 import { AnalysisPolicyVersions } from "./policyVersions";
 
@@ -19,6 +20,7 @@ export interface WorkbookExportMetadata {
   valuationAnchorPeriod?: string | null;
   valuationSourcePeriod?: string | null;
   policyVersions?: AnalysisPolicyVersions;
+  traceability?: AnalysisTraceabilityEnvelope;
 }
 
 // ── Style helpers ──────────────────────────────────────────────────────────────
@@ -109,6 +111,7 @@ function buildCoverSheet(config: EngineConfig, periodCount: number, metadata?: W
   const ke = ke_from_config(config);
   const valuationReason = metadata?.valuationReasons?.[0] ?? "—";
   const versions = metadata?.policyVersions;
+  const traceability = metadata?.traceability;
   const rows: CellObject[][] = [
     [cell("PENMAN–NISSIM VALUATION ENGINE v2", { font: { bold: true, sz: 14, color: { rgb: "1F3864" } } })],
     [cell("Institutional Equity Valuation Workbook", { font: { sz: 11, color: { rgb: "4472C4" } } })],
@@ -126,6 +129,9 @@ function buildCoverSheet(config: EngineConfig, periodCount: number, metadata?: W
     [cell("Mapping Policy Version", LABEL_BOLD), cell(versions?.mappingPolicyVersion ?? "—", LABEL)],
     [cell("Anomaly Policy Version", LABEL_BOLD), cell(versions?.anomalyPolicyVersion ?? "—", LABEL)],
     [cell("Valuation Policy Version", LABEL_BOLD), cell(versions?.valuationPolicyVersion ?? "—", LABEL)],
+    [cell("Scope Policy Version", LABEL_BOLD), cell(versions?.scopePolicyVersion ?? "—", LABEL)],
+    [cell("Traceability Schema", LABEL_BOLD), cell(traceability?.schemaVersion ?? versions?.traceabilitySchemaVersion ?? "—", LABEL)],
+    [cell("Scope Classification", LABEL_BOLD), cell(traceability?.qualityGate?.scopeClassification ?? "supported-industrial", LABEL)],
     [cell("Periods Analysed", LABEL_BOLD), cell(periodCount, NUM_INR)],
     [cell("Cost of Equity (ke)", LABEL_BOLD), cell(ke, NUM_PCT)],
     [cell("Risk-Free Rate", LABEL_BOLD), cell(config.risk_free_rate, NUM_PCT)],
@@ -145,6 +151,34 @@ function buildCoverSheet(config: EngineConfig, periodCount: number, metadata?: W
   ];
   setRange(ws, rows);
   ws["!cols"] = [{ wch: 30 }, { wch: 50 }];
+  updateRef(ws);
+  return ws;
+}
+
+function buildTraceabilitySheet(metadata?: WorkbookExportMetadata): WorkSheet {
+  const ws: WorkSheet = {};
+  const traceability = metadata?.traceability;
+  const rows: CellObject[][] = [
+    [cell("TRACEABILITY", { font: { bold: true, sz: 14, color: { rgb: "1F3864" } } })],
+    [cell("")],
+    [cell("Schema Version", LABEL_BOLD), cell(traceability?.schemaVersion ?? "—", LABEL)],
+    [cell("Generated At", LABEL_BOLD), cell(traceability?.generatedAt ?? "—", LABEL)],
+    [cell("Run ID", LABEL_BOLD), cell(traceability?.runContext?.runId ?? metadata?.auditRunId ?? "—", LABEL)],
+    [cell("Company ID", LABEL_BOLD), cell(traceability?.runContext?.companyId ?? metadata?.companyLabel ?? "—", LABEL)],
+    [cell("Source Mode", LABEL_BOLD), cell(traceability?.runContext?.sourceMode ?? "—", LABEL)],
+    [cell("Latest Period", LABEL_BOLD), cell(traceability?.runContext?.latestPeriod ?? metadata?.valuationSourcePeriod ?? "—", LABEL)],
+    [cell("Quality Gate Tier", LABEL_BOLD), cell(traceability?.qualityGate?.tier ?? "—", LABEL)],
+    [cell("Valuation Blocked", LABEL_BOLD), cell(traceability?.qualityGate?.valuationBlocked ? "yes" : "no", LABEL)],
+    [cell("Scope Classification", LABEL_BOLD), cell(traceability?.qualityGate?.scopeClassification ?? "—", LABEL)],
+    [cell("Blocking Issues", LABEL_BOLD), cell(traceability?.mappingCoverage?.unresolvedBySeverity?.critical ?? 0, NUM_INR)],
+    [cell("Diagnostic Issues", LABEL_BOLD), cell(traceability?.mappingCoverage?.unresolvedBySeverity?.warning ?? 0, NUM_INR)],
+    [cell("Optional Issues", LABEL_BOLD), cell(traceability?.mappingCoverage?.unresolvedBySeverity?.info ?? 0, NUM_INR)],
+    [cell("Out-of-spec Labels", LABEL_BOLD), cell(traceability?.mappingCoverage?.outOfSpecLabelCount ?? 0, NUM_INR)],
+    [cell("")],
+    [cell("Blocking Reasons", LABEL_BOLD), cell(traceability?.qualityGate?.blockingReasons?.join(" | ") || "—", { font: { sz: 8 }, alignment: { wrapText: true } })],
+  ];
+  setRange(ws, rows);
+  ws["!cols"] = [{ wch: 28 }, { wch: 80 }];
   updateRef(ws);
   return ws;
 }
@@ -613,6 +647,7 @@ export function generateValuationWorkbook(
 
   utils.book_append_sheet(wb, buildValuationSheet(valuation, config, metadata), "Valuation");
   utils.book_append_sheet(wb, buildQualitySheet(recastData), "Quality Scores");
+  utils.book_append_sheet(wb, buildTraceabilitySheet(metadata), "Traceability");
 
   const provenanceRows = buildProvenanceAuditRows(recastData);
   if (provenanceRows.length > 0) {

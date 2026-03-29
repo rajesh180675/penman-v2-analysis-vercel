@@ -20,6 +20,8 @@ describe("golden company acceptance suite", () => {
       expect(result.policyVersions.engineVersion).toBeTruthy();
       expect(result.policyVersions.mappingPolicyVersion).toBeTruthy();
       expect(result.policyVersions.valuationPolicyVersion).toBeTruthy();
+      expect(result.policyVersions.scopePolicyVersion).toBeTruthy();
+      expect(result.qualityGate.scopeAssessment.blocked).toBe(false);
 
       for (const requiredFlag of testCase.expectation.requiredTerminalFlags ?? []) {
         expect(latestFlags).toContain(requiredFlag);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { read } from "xlsx";
+import { buildAnalysisTraceability } from "../analysisTraceability";
 import { generateValuationWorkbook } from "../excelExport";
 import { getAnalysisPolicyVersions } from "../policyVersions";
 import { DEFAULT_CONFIG, EngineConfig, RecastPeriod, ValuationResult } from "../types";
@@ -156,6 +157,15 @@ describe("generateValuationWorkbook", () => {
   });
 
   it("writes company and valuation metadata to the workbook", () => {
+    const traceability = buildAnalysisTraceability({
+      generatedAt: "2026-03-29T19:00:00.000Z",
+      runId: "run-123",
+      companyId: "ITC",
+      sourceMode: "capitaline",
+      periodCount: 1,
+      latestPeriod: "2025-03-31",
+      policyVersions: getAnalysisPolicyVersions(),
+    });
     const workbookBuf = generateValuationWorkbook(
       [mkPeriod("2025-03-31")],
       [],
@@ -169,6 +179,7 @@ describe("generateValuationWorkbook", () => {
         valuationAnchorPeriod: "2024-03-31",
         valuationSourcePeriod: "2025-03-31",
         policyVersions: getAnalysisPolicyVersions(),
+        traceability,
       },
     );
     const wb = read(workbookBuf, { type: "array" });
@@ -179,8 +190,12 @@ describe("generateValuationWorkbook", () => {
     expect(sheetValueByLabel(wb.Sheets.Cover, "Valuation Anchor Period")).toBe("2024-03-31");
     expect(sheetValueByLabel(wb.Sheets.Cover, "Engine Version")).toBe(getAnalysisPolicyVersions().engineVersion);
     expect(sheetValueByLabel(wb.Sheets.Cover, "Mapping Spec Version")).toBe(getAnalysisPolicyVersions().mappingSpecVersion);
+    expect(sheetValueByLabel(wb.Sheets.Cover, "Scope Policy Version")).toBe(getAnalysisPolicyVersions().scopePolicyVersion);
+    expect(sheetValueByLabel(wb.Sheets.Cover, "Traceability Schema")).toBe(getAnalysisPolicyVersions().traceabilitySchemaVersion);
     expect(sheetValueByLabel(wb.Sheets.Valuation, "Audit Run ID")).toBe("run-123");
     expect(sheetValueByLabel(wb.Sheets.Valuation, "Valuation Status")).toBe("guarded");
     expect(sheetValueByLabel(wb.Sheets.Valuation, "Anchor Period")).toBe("2024-03-31");
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Run ID")).toBe("run-123");
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Schema Version")).toBe(getAnalysisPolicyVersions().traceabilitySchemaVersion);
   });
 });

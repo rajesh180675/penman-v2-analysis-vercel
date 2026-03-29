@@ -64,6 +64,10 @@ export default async function handler(request, response) {
 
   const query = request.query ?? {};
   const runId = typeof query.runId === "string" ? sanitizePathSegment(query.runId) : null;
+  const includePayload =
+    typeof query.includePayload === "string"
+      ? ["1", "true", "yes"].includes(query.includePayload.toLowerCase())
+      : false;
   const limit =
     typeof query.limit === "string" && Number.isFinite(Number(query.limit))
       ? Math.min(Math.max(Number(query.limit), 1), 200)
@@ -131,6 +135,7 @@ export default async function handler(request, response) {
         sourceMode: parsed?.sourceMode ?? null,
         createdAt: parsed?.createdAt ?? blob.uploadedAt,
         payloadSummary: summarizePayload(parsed?.payload),
+        ...(includePayload ? { payload: parsed?.payload ?? null } : {}),
       });
     } catch {
       timeline.push({

@@ -1,7 +1,8 @@
-import { RawPeriodData } from "./types";
+import { EngineConfig, RawPeriodData } from "./types";
 import { CapitalineMappingSpec as SPEC } from "./mappingSpec";
 import { evaluateMappingCoverageSummary, MappingCoverageSummary } from "./mappingPolicy";
 import { CAPITALINE_MAPPING_SPEC_VERSION, MAPPING_POLICY_VERSION } from "./policyVersions";
+import { assessAnalysisScope, ScopeAssessment } from "./scopePolicy";
 import mappingYamlRaw from "../../CapitalineIndASDetailedMappingSpec.yaml?raw";
 
 type Statement = "BalanceSheet" | "ProfitLoss" | "CashFlow" | "Unknown";
@@ -33,6 +34,7 @@ export interface QualityGateReport {
   coverageSummary: MappingCoverageSummary;
   valuationCriticalGaps: string[];
   ratioCriticalGaps: string[];
+  scopeAssessment: ScopeAssessment;
 }
 
 export interface GranularityChecklistItem {
@@ -514,7 +516,11 @@ function hasKey(byStmt: Record<Statement, Set<string>>, stmt: Statement, key: st
   return byStmt[stmt].has(key);
 }
 
-export function evaluateQualityGate(periods: RawPeriodData[]): QualityGateReport {
+export function evaluateQualityGate(
+  periods: RawPeriodData[],
+  config?: Pick<EngineConfig, "financial_institution_mode"> | null,
+): QualityGateReport {
+  const scopeAssessment = assessAnalysisScope(periods, config ?? null);
   if (!periods || periods.length === 0) {
     return {
       tier: "Tier 3",
@@ -526,6 +532,7 @@ export function evaluateQualityGate(periods: RawPeriodData[]): QualityGateReport
       coverageSummary: evaluateMappingCoverageSummary([]),
       valuationCriticalGaps: [],
       ratioCriticalGaps: [],
+      scopeAssessment,
     };
   }
 
@@ -575,6 +582,9 @@ export function evaluateQualityGate(periods: RawPeriodData[]): QualityGateReport
   } else if (missingMinimum.length === 0) {
     tier = "Tier 3";
   }
+  if (scopeAssessment.blocked) {
+    tier = "Tier 3";
+  }
 
   // Fail-fast: valuation-critical mapping gaps must block valuation.
   const valuationBlocked =
@@ -597,10 +607,13 @@ export function evaluateQualityGate(periods: RawPeriodData[]): QualityGateReport
   if (missingCore.length > 0) {
     blockingReasons.push(`Core set missing (${missingCore.length}).`);
   }
+  if (scopeAssessment.blocked) {
+    blockingReasons.push(...scopeAssessment.reasons);
+  }
 
   return {
     tier,
-    valuationBlocked,
+    valuationBlocked: valuationBlocked || scopeAssessment.blocked,
     missingMinimum,
     missingCore,
     blockingReasons,
@@ -608,5 +621,6 @@ export function evaluateQualityGate(periods: RawPeriodData[]): QualityGateReport
     coverageSummary: audit.coverageSummary,
     valuationCriticalGaps,
     ratioCriticalGaps,
+    scopeAssessment,
   };
 }

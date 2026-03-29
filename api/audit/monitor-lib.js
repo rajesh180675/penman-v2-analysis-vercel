@@ -84,6 +84,7 @@ function summarizeAnalysisSnapshot(payload) {
     qualityGate: payload.qualityGate ?? null,
     policyVersions: payload.policyVersions ?? null,
     coverageSummary: payload.mappingAudit?.coverageSummary ?? null,
+    traceability: payload.traceability ?? null,
     outOfSpecTop: Array.isArray(payload.mappingAudit?.outOfSpecLabels)
       ? payload.mappingAudit.outOfSpecLabels.slice(0, 10)
       : [],
@@ -208,6 +209,9 @@ function buildRecommendations({ hasError, hasAnalysisReady, hasArtifacts, hasInp
   if (qualityGate?.valuationBlocked) {
     recommendations.push("Resolve valuation-critical mapping gaps before trusting valuation outputs.");
   }
+  if (qualityGate?.scopeAssessment?.blocked) {
+    recommendations.push("Route this run to a financial-company-specific framework instead of the industrial engine.");
+  }
   if (recommendations.length === 0) {
     recommendations.push("No immediate action required.");
   }
@@ -228,6 +232,7 @@ export function evaluateRunHealth(run, config = getMonitorConfig()) {
   const ageMinutes = run.latestAt ? minuteDiff(run.latestAt) : null;
   const coverageSummary = run.latestAnalysisSnapshot?.coverageSummary ?? null;
   const qualityGate = run.latestAnalysisSnapshot?.qualityGate ?? null;
+  const traceability = run.latestAnalysisSnapshot?.traceability ?? null;
 
   const findings = [];
   let severity = "ok";
@@ -259,6 +264,10 @@ export function evaluateRunHealth(run, config = getMonitorConfig()) {
     severity = severity === "ok" ? "warning" : severity;
     findings.push("Quality gate marked valuation as blocked for this run.");
   }
+  if (qualityGate?.scopeAssessment?.blocked || traceability?.qualityGate?.scopeBlocked) {
+    severity = "critical";
+    findings.push("Dataset is outside the supported industrial-company scope.");
+  }
 
   if (severity === "ok") {
     findings.push("Run completed without monitor-detected issues.");
@@ -284,6 +293,7 @@ export function evaluateRunHealth(run, config = getMonitorConfig()) {
       latestError,
       qualityGate,
       policyVersions: run.latestAnalysisSnapshot?.policyVersions ?? null,
+      traceability,
     },
   };
 }
@@ -318,6 +328,7 @@ async function maybeCreateGitHubIssue(report) {
   }
 
   const title = `[audit-monitor] ${report.severity.toUpperCase()} run ${report.runId.slice(0, 8)} for ${report.companyId || "unknown-company"}`;
+  const traceabilityJson = JSON.stringify(report.traceability ?? {}, null, 2);
   const body = [
     "Automated audit monitor detected a problematic run.",
     "",
@@ -332,6 +343,11 @@ async function maybeCreateGitHubIssue(report) {
     "",
     "Recommendations:",
     ...report.recommendations.map((item) => `- ${item}`),
+    "",
+    "Traceability:",
+    "```json",
+    traceabilityJson,
+    "```",
     "",
     "Latest timeline:",
     ...report.timeline.slice(0, 5).map((item) => `- ${item.createdAt}: ${item.eventType}`),
@@ -406,6 +422,7 @@ export async function runAuditMonitor(options = {}) {
       sourceMode: run.timeline[0]?.sourceMode ?? null,
       latestPeriod: run.latestAnalysisSnapshot?.latestPeriod ?? null,
       policyVersions: run.latestAnalysisSnapshot?.policyVersions ?? null,
+      traceability: run.latestAnalysisSnapshot?.traceability ?? null,
       qualityGate: run.latestAnalysisSnapshot?.qualityGate ?? null,
       coverageSummary: run.latestAnalysisSnapshot?.coverageSummary ?? null,
       counts: run.counts,

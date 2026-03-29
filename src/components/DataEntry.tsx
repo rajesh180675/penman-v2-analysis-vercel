@@ -197,7 +197,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
           <div className="flex gap-3 flex-wrap items-center">
             {[
               { key: "oci_treated_as_unusual" as const, label: "OCI = Unusual" },
-              { key: "financial_institution_mode" as const, label: "Fin Institution" },
+              { key: "financial_institution_mode" as const, label: "Fin Institution (blocked)" },
             ].map(({ key, label }) => (
               <label key={key} className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
                 <input type="checkbox" checked={config[key] as boolean}

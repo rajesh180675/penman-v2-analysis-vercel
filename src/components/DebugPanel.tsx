@@ -26,6 +26,18 @@ type BundleManifest = {
   rowCounts: Record<string, number>;
   checksums: Array<{ file: string; mime: string; bytes: number; sha256: string }>;
   algorithm: string;
+  traceability?: {
+    schemaVersion?: string;
+    qualityGate?: {
+      tier?: string;
+      valuationBlocked?: boolean;
+      scopeClassification?: string | null;
+      scopeBlocked?: boolean;
+    };
+    mappingCoverage?: {
+      unresolvedBySeverity?: Record<string, number>;
+    };
+  };
   signature?: ManifestSignature;
   [k: string]: unknown;
 };
@@ -403,13 +415,15 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
         <Card title="Mapping Coverage Audit">
           {qualityGate && (
             <div className={`mb-4 rounded-md border px-3 py-2 text-sm ${
-              qualityGate.tier === "Tier 1"
+              qualityGate.scopeAssessment.blocked
+                ? "bg-red-50 border-red-200 text-red-800"
+                : qualityGate.tier === "Tier 1"
                 ? "bg-green-50 border-green-200 text-green-800"
                 : qualityGate.tier === "Tier 2"
                   ? "bg-amber-50 border-amber-200 text-amber-900"
                   : "bg-red-50 border-red-200 text-red-800"
             }`}>
-              <strong>{qualityGate.tier}</strong> · {qualityGate.valuationBlocked ? "Valuation blocked" : "Valuation enabled"}
+              <strong>{qualityGate.tier}</strong> · {qualityGate.scopeAssessment.blocked ? "Unsupported scope blocked" : qualityGate.valuationBlocked ? "Valuation blocked" : "Valuation enabled"}
               {qualityGate.blockingReasons.length > 0 && (
                 <ul className="list-disc pl-5 mt-2 text-xs space-y-0.5">
                   {qualityGate.blockingReasons.map((r) => <li key={r}>{r}</li>)}
@@ -417,6 +431,25 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
               )}
             </div>
           )}
+          {qualityGate?.scopeAssessment.signals.length ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+              <StatBox label="Blocking" value={qualityGate.coverageSummary.unresolvedBySeverity.critical.length} highlight={qualityGate.coverageSummary.unresolvedBySeverity.critical.length > 0 || qualityGate.scopeAssessment.blocked} />
+              <StatBox label="Diagnostic" value={qualityGate.coverageSummary.unresolvedBySeverity.warning.length} highlight={qualityGate.coverageSummary.unresolvedBySeverity.warning.length > 0} />
+              <StatBox label="Optional" value={qualityGate.coverageSummary.unresolvedBySeverity.info.length} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+              <StatBox label="Blocking" value={qualityGate?.coverageSummary.unresolvedBySeverity.critical.length ?? 0} highlight={(qualityGate?.coverageSummary.unresolvedBySeverity.critical.length ?? 0) > 0} />
+              <StatBox label="Diagnostic" value={qualityGate?.coverageSummary.unresolvedBySeverity.warning.length ?? 0} highlight={(qualityGate?.coverageSummary.unresolvedBySeverity.warning.length ?? 0) > 0} />
+              <StatBox label="Optional" value={qualityGate?.coverageSummary.unresolvedBySeverity.info.length ?? 0} />
+            </div>
+          )}
+          {qualityGate?.scopeAssessment.signals.length ? (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-900">
+              <div className="font-semibold mb-1">Scope signals</div>
+              <div>{qualityGate.scopeAssessment.signals.slice(0, 6).map((signal) => `${signal.kind}: ${signal.key}`).join(" · ")}</div>
+            </div>
+          ) : null}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
             <StatBox label="BS keys in dataset" value={mappingAudit.datasetKeyCounts.BalanceSheet} />
             <StatBox label="PL keys in dataset" value={mappingAudit.datasetKeyCounts.ProfitLoss} />
