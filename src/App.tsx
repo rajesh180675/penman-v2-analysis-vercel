@@ -21,6 +21,7 @@ import {
   rememberAuditRun,
 } from "./lib/audit";
 import { buildAnalysisSnapshot } from "./lib/auditSnapshot";
+import { listWorkspaceCompanies, rememberWorkspaceAnalysis } from "./lib/researchWorkspace";
 
 const ValuationReport = lazy(() => import("./components/ValuationReport"));
 const ForecastReport = lazy(() => import("./components/ForecastReport"));
@@ -30,11 +31,13 @@ const ComparisonReport = lazy(() => import("./components/ComparisonReport"));
 const DebugPanel = lazy(() => import("./components/DebugPanel"));
 const V3AnalyticsPanel = lazy(() => import("./components/V3AnalyticsPanel"));
 const RunInspector = lazy(() => import("./components/RunInspector"));
+const CompanyWorkspace = lazy(() => import("./components/CompanyWorkspace"));
 
-type TabId = "upload"|"inspector"|"statements"|"ratios"|"forecast"|"valuation"|"quality"|"comparison"|"report"|"regression"|"v3analytics"|"debug";
+type TabId = "upload"|"workspace"|"inspector"|"statements"|"ratios"|"forecast"|"valuation"|"quality"|"comparison"|"report"|"regression"|"v3analytics"|"debug";
 
 const TABS: {id:TabId;label:string;icon:string;needsData?:boolean}[] = [
   {id:"upload",     label:"Data",       icon:"📂"},
+  {id:"workspace",  label:"Workspace",  icon:"🧭"},
   {id:"inspector",  label:"Runs",       icon:"🛰️"},
   {id:"statements", label:"Statements", icon:"📊", needsData:true},
   {id:"ratios",     label:"Ratios",     icon:"📐", needsData:true},
@@ -283,6 +286,7 @@ export function App() {
 
   const hasRecast = (recastData?.length??0)>0;
   const hasDebug  = debugInfo!==null;
+  const hasWorkspace = hasRecast || Boolean(rawData?.length) || listWorkspaceCompanies().length > 0;
 
   const readyCompanyCount = Object.values(registry.companies).filter((c) => c.recastData.length > 0).length;
 
@@ -290,6 +294,7 @@ export function App() {
     if (t.id==="debug") return hasDebug;
     if (t.id === "comparison") return readyCompanyCount >= 2;
     if (t.id === "inspector") return isAuditEnabled() && Boolean(auditMeta);
+    if (t.id === "workspace") return hasWorkspace;
     if (t.needsData) return hasRecast;
     return true;
   });
@@ -301,6 +306,17 @@ export function App() {
   // access fields like tax_rate_mode, oci_treated_as_unusual, etc. Passing a
   // partial object caused silent undefined accesses for those fields.
   const forecastConfig = config;
+
+  useEffect(() => {
+    if (!rawData && !recastData) return;
+    rememberWorkspaceAnalysis({
+      rawData,
+      recastData,
+      config,
+      analysisStatus,
+      auditMeta,
+    });
+  }, [analysisStatus, auditMeta, config, rawData, recastData]);
 
   return (
     <ErrorBoundary>
@@ -384,6 +400,16 @@ export function App() {
             {activeTab==="inspector" && <RunInspector auditMeta={auditMeta} analysisStatus={analysisStatus} />}
             {activeTab==="upload" && (
               <DataEntry onDataSubmit={handleDataSubmit} currentData={rawData} config={config} onConfigChange={setConfig}/>
+            )}
+            {activeTab==="workspace" && (
+              <CompanyWorkspace
+                rawData={rawData}
+                recastData={recastData}
+                config={config}
+                analysisStatus={analysisStatus}
+                auditMeta={auditMeta}
+                registry={registry}
+              />
             )}
             {activeTab==="statements" && hasRecast && <RecastStatements data={recastData!}/>}
             {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!}/>}
