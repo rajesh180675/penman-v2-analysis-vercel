@@ -22,6 +22,7 @@ import {
 } from "./lib/audit";
 import { buildAnalysisSnapshot } from "./lib/auditSnapshot";
 import { listWorkspaceCompanies, rememberWorkspaceAnalysis } from "./lib/researchWorkspace";
+import { syncWorkspaceProfile } from "./lib/sharedResearchApi";
 
 const ValuationReport = lazy(() => import("./components/ValuationReport"));
 const ForecastReport = lazy(() => import("./components/ForecastReport"));
@@ -33,6 +34,7 @@ const V3AnalyticsPanel = lazy(() => import("./components/V3AnalyticsPanel"));
 const RunInspector = lazy(() => import("./components/RunInspector"));
 const CompanyWorkspace = lazy(() => import("./components/CompanyWorkspace"));
 const WatchlistDashboard = lazy(() => import("./components/WatchlistDashboard"));
+const FinancialInstitutionReport = lazy(() => import("./components/FinancialInstitutionReport"));
 
 type TabId = "upload"|"watchlist"|"workspace"|"inspector"|"statements"|"ratios"|"forecast"|"valuation"|"quality"|"comparison"|"report"|"regression"|"v3analytics"|"debug";
 
@@ -324,6 +326,15 @@ export function App() {
     });
   }, [analysisStatus, auditMeta, config, rawData, recastData]);
 
+  useEffect(() => {
+    const companyId = auditMeta?.companyId ?? rawData?.[0]?.company_id ?? null;
+    if (!companyId) return;
+    const workspaceCompanies = listWorkspaceCompanies();
+    const record = workspaceCompanies.find((item) => item.companyId === companyId) ?? null;
+    if (!record) return;
+    void syncWorkspaceProfile(record);
+  }, [analysisStatus, auditMeta?.companyId, rawData]);
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
@@ -434,6 +445,9 @@ export function App() {
             {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} config={forecastConfig}/>}
             {activeTab==="valuation"  && hasRecast && !valuationBlocked && (
               <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} />
+            )}
+            {activeTab === "valuation" && !hasRecast && scopeBlocked && rawData && rawData.length > 0 && (
+              <FinancialInstitutionReport rawData={rawData} config={config} />
             )}
             {activeTab === "valuation" && hasRecast && valuationBlocked && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">

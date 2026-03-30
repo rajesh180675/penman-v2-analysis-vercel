@@ -1,7 +1,10 @@
 import { useState, useMemo } from "react";
 import { RecastPeriod, ForecastScenario, ForecastPeriod, FADE_PARAMS, NP_BENCHMARKS, EngineConfig, ke_from_config } from "../engine/types";
+import { buildCyclicalNormalization } from "../engine/cyclicalNormalization";
+import { buildDriverForecastModel } from "../engine/forecastDriverModel";
 import { buildScenario, sensitivityAnalysis, buildValuationPeriodsFromForecast, applyDriverSensitivityToScenario } from "../engine/forecastingEngine";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
+import { buildTerminalEconomics } from "../engine/terminalEconomics";
 import { resolveValuationReadiness } from "../engine/valuationPolicy";
 import { resolveShareBasis, toPerShare } from "../engine/shareCountTools";
 import {
@@ -130,6 +133,17 @@ export default function ForecastReport({data,config}:Props) {
     const prev = data[data.length - 2];
     return deriveKwFromStructure(cur, prev, ke_inp / 100, config.risk_free_rate, config);
   }, [data, ke_inp, config]);
+  const cyclicalNormalization = useMemo(() => buildCyclicalNormalization(data), [data]);
+  const driverModel = useMemo(() => buildDriverForecastModel(data, cyclicalNormalization), [data, cyclicalNormalization]);
+  const terminalEconomics = useMemo(
+    () => buildTerminalEconomics({
+      latest,
+      normalized: cyclicalNormalization,
+      requiredReturn: ke_inp / 100,
+      sectorTerminalGrowth: g_inp / 100,
+    }),
+    [cyclicalNormalization, g_inp, ke_inp, latest],
+  );
 
   const scenarios = useMemo(():ForecastScenario[]=>{
     const kei=ke_inp/100, kwi=kwDerived;
@@ -360,6 +374,37 @@ export default function ForecastReport({data,config}:Props) {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h3 className="text-base font-bold text-slate-800 mb-2">Driver-Based Forecast</h3>
+          <div className="text-sm text-slate-700">{driverModel.narrative}</div>
+          <div className="mt-4 grid gap-2 text-sm text-slate-700">
+            <div>Year 1 sales growth: <strong>{driverModel.year1.salesGrowth != null ? pct(driverModel.year1.salesGrowth) : "—"}</strong></div>
+            <div>Year 1 core margin: <strong>{driverModel.year1.coreMargin != null ? pct(driverModel.year1.coreMargin) : "—"}</strong></div>
+            <div>Year 1 ATO: <strong>{driverModel.year1.ato != null ? `${driverModel.year1.ato.toFixed(2)}x` : "—"}</strong></div>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h3 className="text-base font-bold text-slate-800 mb-2">Cyclical Normalization</h3>
+          <div className="grid gap-2 text-sm text-slate-700">
+            <div>Status: <strong>{cyclicalNormalization.label}</strong></div>
+            <div>Volatility score: <strong>{cyclicalNormalization.volatilityScore.toFixed(0)}</strong></div>
+            <div>Normalized growth: <strong>{cyclicalNormalization.normalizedSalesGrowth != null ? pct(cyclicalNormalization.normalizedSalesGrowth) : "—"}</strong></div>
+            <div>Normalized margin: <strong>{cyclicalNormalization.normalizedMargin != null ? pct(cyclicalNormalization.normalizedMargin) : "—"}</strong></div>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h3 className="text-base font-bold text-slate-800 mb-2">Terminal Economics</h3>
+          <div className="grid gap-2 text-sm text-slate-700">
+            <div>Terminal ROIC: <strong>{terminalEconomics.terminalRoic != null ? pct(terminalEconomics.terminalRoic) : "—"}</strong></div>
+            <div>Terminal growth: <strong>{pct(terminalEconomics.terminalGrowth)}</strong></div>
+            <div>Terminal reinvestment: <strong>{terminalEconomics.terminalReinvestmentRate != null ? pct(terminalEconomics.terminalReinvestmentRate) : "—"}</strong></div>
+            <div>Competition pressure: <strong>{terminalEconomics.competitionPressure}</strong></div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{terminalEconomics.summary}</div>
+          </div>
+        </div>
       </div>
 
       {/* Fade Model */}

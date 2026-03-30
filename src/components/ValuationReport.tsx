@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RecastPeriod, EngineConfig } from "../engine/types";
+import { buildCyclicalNormalization } from "../engine/cyclicalNormalization";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { ke_from_config } from "../engine/types";
+import { buildRegimeContext } from "../engine/regimeModel";
+import { calibrateSignalBacktest } from "../engine/signalBacktest";
+import { buildTerminalEconomics } from "../engine/terminalEconomics";
 import { resolveValuationReadiness } from "../engine/valuationPolicy";
 import { resolveShareBasis, toPerShare } from "../engine/shareCountTools";
 import { AnalysisStatusSummary } from "../engine/analysisStatus";
@@ -14,7 +18,9 @@ import {
 } from "../engine/valuationCommandCenter";
 import { useLiveMarketData } from "../hooks/useLiveMarketData";
 import { AuditSubmissionMeta, persistAuditEvent } from "../lib/audit";
+import ExpectationBridgePanel from "./ExpectationBridgePanel";
 import { rememberWorkspaceValuation } from "../lib/researchWorkspace";
+import { syncWorkspaceAlert, syncWorkspaceValuation } from "../lib/sharedResearchApi";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell, LineChart, Line,
 } from "recharts";
@@ -89,6 +95,21 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
     }),
     [analysisStatus, data, effectiveConfig, liveMarketData],
   );
+  const cyclicalNormalization = useMemo(() => buildCyclicalNormalization(data), [data]);
+  const regimeContext = useMemo(
+    () => buildRegimeContext(commandCenter.riskFreeRate, liveMarketData?.history?.currentPricePercentile ?? null),
+    [commandCenter.riskFreeRate, liveMarketData?.history?.currentPricePercentile],
+  );
+  const terminalEconomics = useMemo(
+    () => buildTerminalEconomics({
+      latest: data[data.length - 1],
+      normalized: cyclicalNormalization,
+      requiredReturn: ke,
+      sectorTerminalGrowth: commandCenter.scenarios.find((item) => item.key === "base")?.assumptions.g ?? gRate,
+    }),
+    [commandCenter.scenarios, cyclicalNormalization, data, gRate, ke],
+  );
+  const calibration = useMemo(() => calibrateSignalBacktest(commandCenter.backtest), [commandCenter.backtest]);
 
   useEffect(() => {
     if (!auditMeta || !liveMarketData) return;
@@ -145,6 +166,28 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
       commandCenter,
       marketSymbol,
       runId: auditMeta?.runId ?? null,
+    });
+    void syncWorkspaceValuation(companyId, {
+      id: `${auditMeta?.runId ?? "workspace"}:${commandCenter.asOf ?? "latest"}`,
+      runId: auditMeta?.runId ?? null,
+      recordedAt: new Date().toISOString(),
+      asOf: commandCenter.asOf,
+      marketPrice: commandCenter.marketPrice,
+      signalState: commandCenter.signal.state,
+      signalLabel: commandCenter.signal.label,
+      confidenceState: commandCenter.signal.confidenceState,
+      opportunityScore: commandCenter.opportunity.opportunityScore,
+      qualityScore: commandCenter.opportunity.qualityScore,
+      expectedCagrStress: commandCenter.opportunity.expectedCagrStress,
+      expectedCagrBase: commandCenter.opportunity.expectedCagrBase,
+      stressUpsidePct: commandCenter.signal.stressUpsidePct,
+      baseUpsidePct: commandCenter.signal.baseUpsidePct,
+      requiredMarginOfSafetyPct: commandCenter.opportunity.requiredMarginOfSafetyPct,
+      convictionBucket: commandCenter.opportunity.convictionBucket,
+      sectorTemplate: commandCenter.sectorTemplate.label,
+      thesis: commandCenter.opportunity.thesis,
+      reverseDcfSummary: commandCenter.reverseDcf.expectationLabel,
+      marketSymbol,
     });
   }, [auditMeta?.runId, auditMeta?.companyId, commandCenter, config.ticker, marketSymbol]);
 
@@ -207,6 +250,10 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
       companyId: auditMeta.companyId,
       sourceMode: auditMeta.sourceMode,
       payload: alertPayload,
+    });
+    void syncWorkspaceAlert(auditMeta.companyId, {
+      id: `${auditMeta.runId}:${commandCenter.signal.state}:${commandCenter.asOf ?? "latest"}`,
+      ...alertPayload,
     });
   }, [auditMeta, commandCenter]);
 
@@ -354,15 +401,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Reverse DCF</div>
-          <div className="mt-3 space-y-3 text-sm text-slate-700">
-            <div>Market-implied owner-earnings growth: <strong>{formatPct(commandCenter.reverseDcf.impliedOwnerEarningsGrowth, 2)}</strong></div>
-            <div>Sector-normal growth anchor: <strong>{formatPct(commandCenter.reverseDcf.normalizedGrowthAnchor, 2)}</strong></div>
-            <div>Spread vs normalized: <strong>{formatPct(commandCenter.reverseDcf.spreadVsNormalizedGrowth, 2)}</strong></div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-800">
-              {commandCenter.reverseDcf.expectationLabel}
-            </div>
-          </div>
+          <ExpectationBridgePanel reverseDcf={commandCenter.reverseDcf} />
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -408,6 +447,41 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               Reverse DCF keeps the valuation honest by checking whether the market is already pricing an aggressive owner-earnings path.
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cyclical Normalization</div>
+          <div className="mt-3 space-y-2 text-sm text-slate-700">
+            <div>Status: <strong>{cyclicalNormalization.label}</strong></div>
+            <div>Volatility score: <strong>{cyclicalNormalization.volatilityScore.toFixed(0)}</strong></div>
+            <div>Normalized sales growth: <strong>{formatPct(cyclicalNormalization.normalizedSalesGrowth, 1)}</strong></div>
+            <div>Normalized margin: <strong>{formatPct(cyclicalNormalization.normalizedMargin, 1)}</strong></div>
+            <div>Normalized ATO: <strong>{cyclicalNormalization.normalizedAto != null ? `${cyclicalNormalization.normalizedAto.toFixed(2)}x` : "—"}</strong></div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Terminal Economics</div>
+          <div className="mt-3 space-y-2 text-sm text-slate-700">
+            <div>Terminal ROIC: <strong>{formatPct(terminalEconomics.terminalRoic, 1)}</strong></div>
+            <div>Terminal growth: <strong>{formatPct(terminalEconomics.terminalGrowth, 1)}</strong></div>
+            <div>Terminal reinvestment: <strong>{formatPct(terminalEconomics.terminalReinvestmentRate, 1)}</strong></div>
+            <div>Fade years: <strong>{terminalEconomics.fadeYears}</strong></div>
+            <div>Competition pressure: <strong>{terminalEconomics.competitionPressure}</strong></div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{terminalEconomics.summary}</div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Regime And Calibration</div>
+          <div className="mt-3 space-y-2 text-sm text-slate-700">
+            <div>Regime: <strong>{regimeContext.label}</strong></div>
+            <div>Discount-rate adj: <strong>{formatPct(regimeContext.discountRateAdjustment, 1)}</strong></div>
+            <div>Strongest replay state: <strong>{calibration.strongestState ?? "—"}</strong></div>
+            <div>Weakest replay state: <strong>{calibration.weakestState ?? "—"}</strong></div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{regimeContext.summary}</div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{calibration.recommendation}</div>
           </div>
         </div>
       </section>
