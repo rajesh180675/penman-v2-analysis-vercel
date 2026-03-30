@@ -124,9 +124,44 @@ function summarizeValuationSignal(payload) {
     baseUpsidePct: payload.baseUpsidePct ?? null,
     historicalPercentile: payload.historicalPercentile ?? null,
     reverseDcfImpliedGrowth: payload.reverseDcfImpliedGrowth ?? null,
+    requiredMarginOfSafetyPct: payload.requiredMarginOfSafetyPct ?? null,
+    qualityScore: payload.qualityScore ?? null,
+    opportunityScore: payload.opportunityScore ?? null,
+    convictionBucket: payload.convictionBucket ?? null,
+    expectedCagrStress: payload.expectedCagrStress ?? null,
     killSwitches: Array.isArray(payload.killSwitches) ? payload.killSwitches.slice(0, 6) : [],
     supportingFlags: Array.isArray(payload.supportingFlags) ? payload.supportingFlags.slice(0, 6) : [],
     scenarios: Array.isArray(payload.scenarios) ? payload.scenarios.slice(0, 5) : [],
+    marketPrice: payload.marketPrice ?? null,
+    asOf: payload.asOf ?? null,
+  };
+}
+
+function summarizeValuationManifest(payload) {
+  if (!payload || typeof payload !== "object") return null;
+  return {
+    asOf: payload.asOf ?? null,
+    marketPrice: payload.marketPrice ?? null,
+    riskFreeRate: payload.riskFreeRate ?? null,
+    sectorTemplate: payload.sectorTemplate ?? null,
+    diagnostics: payload.diagnostics ?? null,
+    reverseDcf: payload.reverseDcf ?? null,
+    opportunity: payload.opportunity ?? null,
+    checklist: payload.checklist ?? null,
+    marketContext: payload.marketContext ?? null,
+    backtest: payload.backtest ?? null,
+  };
+}
+
+function summarizeValuationAlert(payload) {
+  if (!payload || typeof payload !== "object") return null;
+  return {
+    state: payload.state ?? null,
+    label: payload.label ?? null,
+    summary: payload.summary ?? null,
+    opportunityScore: payload.opportunityScore ?? null,
+    convictionBucket: payload.convictionBucket ?? null,
+    expectedCagrStress: payload.expectedCagrStress ?? null,
     marketPrice: payload.marketPrice ?? null,
     asOf: payload.asOf ?? null,
   };
@@ -155,6 +190,8 @@ export async function getRunTimeline(runId, limit = 40) {
   let latestAnalysisSnapshot = null;
   let latestMarketSnapshot = null;
   let latestValuationSignal = null;
+  let latestValuationManifest = null;
+  let latestValuationAlert = null;
   for (const blob of eventBlobs.slice(0, Math.min(eventBlobs.length, 25))) {
     try {
       const parsed = await readBlobJson(blob.pathname);
@@ -167,6 +204,12 @@ export async function getRunTimeline(runId, limit = 40) {
       const valuationSignal = parsed?.eventType === "valuation-signal-updated"
         ? summarizeValuationSignal(parsed?.payload)
         : null;
+      const valuationManifest = parsed?.eventType === "valuation-manifest-updated"
+        ? summarizeValuationManifest(parsed?.payload)
+        : null;
+      const valuationAlert = parsed?.eventType === "valuation-alert-triggered"
+        ? summarizeValuationAlert(parsed?.payload)
+        : null;
       if (analysisSnapshot && !latestAnalysisSnapshot) {
         latestAnalysisSnapshot = analysisSnapshot;
       }
@@ -175,6 +218,12 @@ export async function getRunTimeline(runId, limit = 40) {
       }
       if (valuationSignal && !latestValuationSignal) {
         latestValuationSignal = valuationSignal;
+      }
+      if (valuationManifest && !latestValuationManifest) {
+        latestValuationManifest = valuationManifest;
+      }
+      if (valuationAlert && !latestValuationAlert) {
+        latestValuationAlert = valuationAlert;
       }
       timeline.push({
         pathname: blob.pathname,
@@ -190,6 +239,8 @@ export async function getRunTimeline(runId, limit = 40) {
         analysisSnapshot,
         marketSnapshot,
         valuationSignal,
+        valuationManifest,
+        valuationAlert,
       });
     } catch {
       timeline.push({
@@ -226,6 +277,8 @@ export async function getRunTimeline(runId, limit = 40) {
     latestAnalysisSnapshot,
     latestMarketSnapshot,
     latestValuationSignal,
+    latestValuationManifest,
+    latestValuationAlert,
   };
 }
 

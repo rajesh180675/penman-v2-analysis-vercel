@@ -61,6 +61,8 @@ export default async function handler(request, response) {
     latestAnalysisSnapshot: run.latestAnalysisSnapshot,
     latestMarketSnapshot: run.latestMarketSnapshot,
     latestValuationSignal: run.latestValuationSignal,
+    latestValuationManifest: run.latestValuationManifest,
+    latestValuationAlert: run.latestValuationAlert,
     health,
     persistedMonitorReport,
     governance: getAuditGovernanceConfig(),

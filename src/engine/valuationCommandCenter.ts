@@ -1,5 +1,5 @@
 import { computeValuation, deriveKwFromStructure } from "./PenmanNissimEngine";
-import { LiveMarketDataSnapshot } from "./marketData";
+import { LiveMarketDataSnapshot, MarketHistoryPoint, summarizeHistoricalPrices } from "./marketData";
 import { buildScenario, buildValuationPeriodsFromForecast } from "./forecastingEngine";
 import { AnalysisStatusSummary } from "./analysisStatus";
 import { NP_BENCHMARKS, RecastPeriod, EngineConfig, ForecastScenario, ValuationResult, ke_from_config } from "./types";
@@ -68,6 +68,45 @@ export interface ValuationOpportunityAssessment {
   thesis: string;
 }
 
+export interface ValuationChecklist {
+  whatMustGoRight: string[];
+  thesisBreakers: string[];
+}
+
+export interface ValuationMarketContext {
+  expectedReturnSpreadVsRf: number | null;
+  marketCapFromPrice: number | null;
+  enterpriseValueFromPrice: number | null;
+  priceToStressValueRatio: number | null;
+}
+
+export interface ValuationBacktestPoint {
+  periodEnd: string;
+  state: ValuationSignalState;
+  convictionBucket: ValuationOpportunityAssessment["convictionBucket"];
+  marketPrice: number | null;
+  baseIntrinsicPerShare: number | null;
+  stressIntrinsicPerShare: number | null;
+  expectedCagrStress: number | null;
+  realized1Y: number | null;
+  realized3Y: number | null;
+  realized5Y: number | null;
+}
+
+export interface ValuationBacktestSummary {
+  available: boolean;
+  points: ValuationBacktestPoint[];
+  countsByState: Record<ValuationSignalState, number>;
+  investableCount: number;
+  highConvictionCount: number;
+  screamingBuyCount: number;
+  forwardWinRate1Y: number | null;
+  forwardWinRate3Y: number | null;
+  median1Y: number | null;
+  median3Y: number | null;
+  latestComparedToHistory: string;
+}
+
 export interface ValuationSignal {
   state: ValuationSignalState;
   label: string;
@@ -101,6 +140,9 @@ export interface ValuationCommandCenterOutput {
   diagnostics: DcfCashFlowDiagnostics;
   reverseDcf: ReverseDcfDiagnostics;
   opportunity: ValuationOpportunityAssessment;
+  checklist: ValuationChecklist;
+  marketContext: ValuationMarketContext;
+  backtest: ValuationBacktestSummary;
   signal: ValuationSignal;
   range: {
     floorPerShare: number | null;
@@ -289,13 +331,110 @@ function describeExpectations(impliedGrowth: number | null, normalizedGrowth: nu
   };
 }
 
-export function buildValuationCommandCenter(params: {
+type CoreBuildContext = {
   data: RecastPeriod[];
   config: EngineConfig;
   marketData?: LiveMarketDataSnapshot | null;
   analysisStatus?: AnalysisStatusSummary | null;
-}): ValuationCommandCenterOutput {
-  const { data, config, marketData, analysisStatus } = params;
+};
+
+type CoreBuildResult = Omit<ValuationCommandCenterOutput, "backtest">;
+
+function emptyBacktest(reason: string): ValuationBacktestSummary {
+  return {
+    available: false,
+    points: [],
+    countsByState: {
+      blocked: 0,
+      guarded: 0,
+      watchlist: 0,
+      interesting: 0,
+      "high-conviction": 0,
+      "screaming-buy": 0,
+    },
+    investableCount: 0,
+    highConvictionCount: 0,
+    screamingBuyCount: 0,
+    forwardWinRate1Y: null,
+    forwardWinRate3Y: null,
+    median1Y: null,
+    median3Y: null,
+    latestComparedToHistory: reason,
+  };
+}
+
+function closestHistoricalPrice(points: MarketHistoryPoint[], isoDate: string) {
+  const sorted = [...points].sort((a, b) => a.date.localeCompare(b.date));
+  let candidate: MarketHistoryPoint | null = null;
+  for (const point of sorted) {
+    if (point.date <= isoDate.slice(0, 10)) {
+      candidate = point;
+    } else {
+      break;
+    }
+  }
+  return candidate;
+}
+
+function futureHistoricalPrice(points: MarketHistoryPoint[], isoDate: string, daysForward: number) {
+  const sorted = [...points].sort((a, b) => a.date.localeCompare(b.date));
+  const target = new Date(isoDate);
+  target.setUTCDate(target.getUTCDate() + daysForward);
+  const targetDay = target.toISOString().slice(0, 10);
+  return sorted.find((point) => point.date >= targetDay) ?? null;
+}
+
+function summarizeReturns(points: ValuationBacktestPoint[], key: "realized1Y" | "realized3Y") {
+  const values = points.map((point) => point[key]).filter((value): value is number => value != null && Number.isFinite(value));
+  if (!values.length) {
+    return {
+      winRate: null,
+      medianValue: null,
+    };
+  }
+  return {
+    winRate: values.filter((value) => value > 0).length / values.length,
+    medianValue: median(values) ?? null,
+  };
+}
+
+function buildChecklist(args: {
+  opportunity: ValuationOpportunityAssessment;
+  diagnostics: DcfCashFlowDiagnostics;
+  reverseDcf: ReverseDcfDiagnostics;
+  marketContext: ValuationMarketContext;
+  stressCard: ValuationScenarioCard | null;
+  analysisStatus?: AnalysisStatusSummary | null;
+}) {
+  const { opportunity, diagnostics, reverseDcf, marketContext, stressCard, analysisStatus } = args;
+  const whatMustGoRight = [
+    `Reinvestment must stay disciplined enough to preserve a stress-case margin of safety near ${formatPct(stressCard?.marginOfSafetyPct, 1)}.`,
+    `Owner-earnings conversion needs to hold above the current cash conversion regime of ${formatPct(diagnostics.cashConversionRatio, 1)}.`,
+    `The market cannot already be right about a weak long-term trajectory; current reverse DCF still needs to remain below the sector-normal anchor.`,
+  ];
+  if ((opportunity.expectedCagrBase ?? 0) > 0.15) {
+    whatMustGoRight.push("The company needs to compound closer to the base case than the panic case over the next three years.");
+  }
+
+  const thesisBreakers = [
+    ...(analysisStatus?.status === "guarded" ? ["Confidence degrades from production-ready into guarded or blocked."] : []),
+    ...(marketContext.priceToStressValueRatio != null && marketContext.priceToStressValueRatio > 1
+      ? ["Current market price already exceeds the stressed intrinsic value."] : []),
+    ...(reverseDcf.spreadVsNormalizedGrowth != null && reverseDcf.spreadVsNormalizedGrowth > 0
+      ? ["Reverse DCF flips from pessimistic to aggressive market expectations."] : []),
+    ...(diagnostics.incrementalRoic != null && diagnostics.incrementalRoic < 0.08
+      ? ["Incremental ROIC slips below an acceptable capital-creation threshold."] : []),
+    "Dilution, balance-sheet stress, or a renewed accounting-quality warning would invalidate the aggressive buy case.",
+  ];
+
+  return {
+    whatMustGoRight,
+    thesisBreakers,
+  } satisfies ValuationChecklist;
+}
+
+function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
+  const { data, config, marketData, analysisStatus } = context;
   const shareBasis = resolveShareBasis(data, config);
   const shares = shareBasis.shares ?? null;
   const marketPrice = marketData?.price ?? config.market_price ?? null;
@@ -396,7 +535,7 @@ export function buildValuationCommandCenter(params: {
     } satisfies ValuationScenarioCard;
   };
 
-  const scenarioCards: ValuationScenarioCard[] = [
+  const scenarios: ValuationScenarioCard[] = [
     makeScenario(
       "stress",
       "bear",
@@ -443,8 +582,8 @@ export function buildValuationCommandCenter(params: {
     ),
   ];
 
-  const stressCard = scenarioCards.find((card) => card.key === "stress") ?? null;
-  const baseCard = scenarioCards.find((card) => card.key === "base") ?? null;
+  const stressCard = scenarios.find((card) => card.key === "stress") ?? null;
+  const baseCard = scenarios.find((card) => card.key === "base") ?? null;
   const stressUpsidePct = stressCard?.upsidePct ?? null;
   const baseUpsidePct = baseCard?.upsidePct ?? null;
   const historicalPercentile = marketData?.history?.currentPricePercentile ?? null;
@@ -516,6 +655,24 @@ export function buildValuationCommandCenter(params: {
               : "The setup is analytically usable, but it does not yet qualify as a rare market-led opportunity.",
   };
 
+  const marketContext: ValuationMarketContext = {
+    expectedReturnSpreadVsRf: opportunity.expectedCagrStress != null ? opportunity.expectedCagrStress - riskFreeRate : null,
+    marketCapFromPrice: marketPrice != null && shares != null ? marketPrice * shares : null,
+    enterpriseValueFromPrice: marketPrice != null && shares != null ? marketPrice * shares + latest.bs.NFO : null,
+    priceToStressValueRatio: marketPrice != null && (stressCard?.intrinsicPerShare ?? null) != null && (stressCard?.intrinsicPerShare ?? 0) > 0
+      ? marketPrice / (stressCard?.intrinsicPerShare ?? 1)
+      : null,
+  };
+
+  const checklist = buildChecklist({
+    opportunity,
+    diagnostics,
+    reverseDcf,
+    marketContext,
+    stressCard,
+    analysisStatus,
+  });
+
   const killSwitches = [
     ...(analysisStatus?.status === "blocked" ? [analysisStatus.summary] : []),
     ...(marketPrice == null ? ["Current market price is unavailable."] : []),
@@ -569,7 +726,7 @@ export function buildValuationCommandCenter(params: {
     summary = "The base case is attractive and the stress case still preserves enough upside to stay actionable.";
   }
 
-  const intrinsicValues = scenarioCards
+  const intrinsicValues = scenarios
     .map((card) => card.intrinsicPerShare)
     .filter((value): value is number => value != null && Number.isFinite(value));
 
@@ -584,10 +741,12 @@ export function buildValuationCommandCenter(params: {
       description: sectorTemplate.description,
       source: sectorTemplateSource,
     },
-    scenarios: scenarioCards,
+    scenarios,
     diagnostics,
     reverseDcf,
     opportunity,
+    checklist,
+    marketContext,
     signal: {
       state,
       label:
@@ -620,6 +779,126 @@ export function buildValuationCommandCenter(params: {
       floorPerShare: intrinsicValues.length ? Math.min(...intrinsicValues) : null,
       ceilingPerShare: intrinsicValues.length ? Math.max(...intrinsicValues) : null,
     },
+  };
+}
+
+function buildBacktest(context: CoreBuildContext): ValuationBacktestSummary {
+  const historyPoints = context.marketData?.history?.points ?? [];
+  if (historyPoints.length < 120 || context.data.length < 4) {
+    return emptyBacktest("Historical replay requires a meaningful price history and at least four accounting periods.");
+  }
+
+  const points: ValuationBacktestPoint[] = [];
+  for (let index = 2; index < context.data.length; index += 1) {
+    const subset = context.data.slice(0, index + 1);
+    const periodEnd = subset[subset.length - 1].period_end;
+    const asOfPrice = closestHistoricalPrice(historyPoints, periodEnd);
+    if (!asOfPrice) continue;
+    const historySubset = historyPoints.filter((point) => point.date <= asOfPrice.date);
+    const historicalSnapshot: LiveMarketDataSnapshot = {
+      ...(context.marketData ?? {
+        symbol: context.config.market_data_symbol ?? context.config.ticker ?? null,
+        provider: "Historical replay",
+        fetchedAt: asOfPrice.date,
+        price: asOfPrice.close,
+        previousClose: null,
+        changePct: null,
+        marketCap: null,
+        enterpriseValue: null,
+        sharesOutstanding: null,
+        riskFreeRate: context.config.risk_free_rate,
+        priceAsOf: asOfPrice.date,
+        rateAsOf: asOfPrice.date,
+        freshness: "fallback" as const,
+        sourceSummary: "Historical replay",
+        warnings: [],
+        history: null,
+      }),
+      price: asOfPrice.close,
+      priceAsOf: asOfPrice.date,
+      history: summarizeHistoricalPrices(historySubset, asOfPrice.close),
+    };
+
+    const core = buildCoreCommandCenter({
+      ...context,
+      data: subset,
+      marketData: historicalSnapshot,
+      config: {
+        ...context.config,
+        market_price: asOfPrice.close,
+      },
+    });
+
+    const realized1YPrice = futureHistoricalPrice(historyPoints, periodEnd, 365);
+    const realized3YPrice = futureHistoricalPrice(historyPoints, periodEnd, 365 * 3);
+    const realized5YPrice = futureHistoricalPrice(historyPoints, periodEnd, 365 * 5);
+
+    points.push({
+      periodEnd,
+      state: core.signal.state,
+      convictionBucket: core.opportunity.convictionBucket,
+      marketPrice: asOfPrice.close,
+      baseIntrinsicPerShare: core.scenarios.find((scenario) => scenario.key === "base")?.intrinsicPerShare ?? null,
+      stressIntrinsicPerShare: core.scenarios.find((scenario) => scenario.key === "stress")?.intrinsicPerShare ?? null,
+      expectedCagrStress: core.opportunity.expectedCagrStress,
+      realized1Y: annualizedReturn(asOfPrice.close, realized1YPrice?.close ?? null, 1),
+      realized3Y: annualizedReturn(asOfPrice.close, realized3YPrice?.close ?? null, 3),
+      realized5Y: annualizedReturn(asOfPrice.close, realized5YPrice?.close ?? null, 5),
+    });
+  }
+
+  if (!points.length) {
+    return emptyBacktest("Historical price points could not be aligned to fiscal period-end dates.");
+  }
+
+  const countsByState: Record<ValuationSignalState, number> = {
+    blocked: 0,
+    guarded: 0,
+    watchlist: 0,
+    interesting: 0,
+    "high-conviction": 0,
+    "screaming-buy": 0,
+  };
+  for (const point of points) countsByState[point.state] += 1;
+
+  const investablePoints = points.filter((point) => ["interesting", "high-conviction", "screaming-buy"].includes(point.state));
+  const highConvictionPoints = points.filter((point) => ["high-conviction", "screaming-buy"].includes(point.state));
+  const screamingBuyPoints = points.filter((point) => point.state === "screaming-buy");
+  const oneYear = summarizeReturns(investablePoints, "realized1Y");
+  const threeYear = summarizeReturns(highConvictionPoints.length ? highConvictionPoints : investablePoints, "realized3Y");
+  const latestState = points[points.length - 1]?.state ?? "watchlist";
+  const strongestHistoricalState = screamingBuyPoints.length
+    ? "screaming-buy"
+    : highConvictionPoints.length
+      ? "high-conviction"
+      : investablePoints.length
+        ? "interesting"
+        : "watchlist";
+
+  return {
+    available: true,
+    points,
+    countsByState,
+    investableCount: investablePoints.length,
+    highConvictionCount: highConvictionPoints.length,
+    screamingBuyCount: screamingBuyPoints.length,
+    forwardWinRate1Y: oneYear.winRate,
+    forwardWinRate3Y: threeYear.winRate,
+    median1Y: oneYear.medianValue,
+    median3Y: threeYear.medianValue,
+    latestComparedToHistory:
+      latestState === strongestHistoricalState
+        ? "The current signal matches the strongest historical state seen in the replay window."
+        : `The current signal is ${latestState}; the strongest historical state seen was ${strongestHistoricalState}.`,
+  };
+}
+
+export function buildValuationCommandCenter(params: CoreBuildContext): ValuationCommandCenterOutput {
+  const core = buildCoreCommandCenter(params);
+  const backtest = buildBacktest(params);
+  return {
+    ...core,
+    backtest,
   };
 }
 

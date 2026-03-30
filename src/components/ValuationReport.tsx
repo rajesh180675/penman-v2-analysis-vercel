@@ -49,6 +49,8 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
   const [cv, setCv] = useState<CVMethod>("CV3");
   const lastMarketAuditRef = useRef<string | null>(null);
   const lastSignalAuditRef = useRef<string | null>(null);
+  const lastManifestAuditRef = useRef<string | null>(null);
+  const lastAlertAuditRef = useRef<string | null>(null);
 
   if (data.length < 2) {
     return <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
@@ -131,6 +133,68 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
       companyId: auditMeta.companyId,
       sourceMode: auditMeta.sourceMode,
       payload: signalPayload,
+    });
+  }, [auditMeta, commandCenter]);
+
+  useEffect(() => {
+    if (!auditMeta) return;
+    const manifestPayload = {
+      asOf: commandCenter.asOf,
+      marketPrice: commandCenter.marketPrice,
+      riskFreeRate: commandCenter.riskFreeRate,
+      sectorTemplate: commandCenter.sectorTemplate,
+      diagnostics: commandCenter.diagnostics,
+      reverseDcf: commandCenter.reverseDcf,
+      opportunity: commandCenter.opportunity,
+      checklist: commandCenter.checklist,
+      marketContext: commandCenter.marketContext,
+      backtest: {
+        available: commandCenter.backtest.available,
+        investableCount: commandCenter.backtest.investableCount,
+        highConvictionCount: commandCenter.backtest.highConvictionCount,
+        screamingBuyCount: commandCenter.backtest.screamingBuyCount,
+        forwardWinRate1Y: commandCenter.backtest.forwardWinRate1Y,
+        forwardWinRate3Y: commandCenter.backtest.forwardWinRate3Y,
+        median1Y: commandCenter.backtest.median1Y,
+        median3Y: commandCenter.backtest.median3Y,
+        latestComparedToHistory: commandCenter.backtest.latestComparedToHistory,
+        points: commandCenter.backtest.points,
+      },
+    };
+    const signature = JSON.stringify(manifestPayload);
+    if (signature === lastManifestAuditRef.current) return;
+    lastManifestAuditRef.current = signature;
+    void persistAuditEvent({
+      runId: auditMeta.runId,
+      eventType: "valuation-manifest-updated",
+      companyId: auditMeta.companyId,
+      sourceMode: auditMeta.sourceMode,
+      payload: manifestPayload,
+    });
+  }, [auditMeta, commandCenter]);
+
+  useEffect(() => {
+    if (!auditMeta) return;
+    if (!["high-conviction", "screaming-buy"].includes(commandCenter.signal.state)) return;
+    const alertPayload = {
+      state: commandCenter.signal.state,
+      label: commandCenter.signal.label,
+      summary: commandCenter.signal.summary,
+      opportunityScore: commandCenter.signal.opportunityScore,
+      convictionBucket: commandCenter.signal.convictionBucket,
+      expectedCagrStress: commandCenter.signal.expectedCagrStress,
+      marketPrice: commandCenter.marketPrice,
+      asOf: commandCenter.asOf,
+    };
+    const signature = JSON.stringify(alertPayload);
+    if (signature === lastAlertAuditRef.current) return;
+    lastAlertAuditRef.current = signature;
+    void persistAuditEvent({
+      runId: auditMeta.runId,
+      eventType: "valuation-alert-triggered",
+      companyId: auditMeta.companyId,
+      sourceMode: auditMeta.sourceMode,
+      payload: alertPayload,
     });
   }, [auditMeta, commandCenter]);
 
@@ -332,6 +396,105 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               Reverse DCF keeps the valuation honest by checking whether the market is already pricing an aggressive owner-earnings path.
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Thesis Checklist</div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div>
+              <div className="mb-2 font-semibold text-slate-800">What Must Go Right</div>
+              <ul className="space-y-2 text-sm text-slate-700">
+                {commandCenter.checklist.whatMustGoRight.map((item) => (
+                  <li key={item} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">{item}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="mb-2 font-semibold text-slate-800">What Breaks The Thesis</div>
+              <ul className="space-y-2 text-sm text-slate-700">
+                {commandCenter.checklist.thesisBreakers.map((item) => (
+                  <li key={item} className="rounded-xl border border-red-200 bg-red-50 px-3 py-2">{item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Market Context</div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 text-sm text-slate-700">
+            <StatTile label="Expected return spread vs risk-free" value={formatPct(commandCenter.marketContext.expectedReturnSpreadVsRf, 1)} />
+            <StatTile label="Price / stress value" value={commandCenter.marketContext.priceToStressValueRatio != null ? `${commandCenter.marketContext.priceToStressValueRatio.toFixed(2)}x` : "—"} />
+            <StatTile label="Implied market cap" value={commandCenter.marketContext.marketCapFromPrice != null ? `₹${fmt(commandCenter.marketContext.marketCapFromPrice)} Cr` : "—"} />
+            <StatTile label="Implied enterprise value" value={commandCenter.marketContext.enterpriseValueFromPrice != null ? `₹${fmt(commandCenter.marketContext.enterpriseValueFromPrice)} Cr` : "—"} />
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.1fr,0.9fr]">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Historical Signal Replay</div>
+              <div className="mt-1 text-sm text-slate-600">{commandCenter.backtest.latestComparedToHistory}</div>
+            </div>
+            <div className="text-right text-sm text-slate-700">
+              <div>Investable points: <strong>{commandCenter.backtest.investableCount}</strong></div>
+              <div>High-conviction+: <strong>{commandCenter.backtest.highConvictionCount}</strong></div>
+            </div>
+          </div>
+          {commandCenter.backtest.available ? (
+            <>
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                <StatTile label="1Y forward win rate" value={formatPct(commandCenter.backtest.forwardWinRate1Y, 0)} />
+                <StatTile label="3Y forward win rate" value={formatPct(commandCenter.backtest.forwardWinRate3Y, 0)} />
+                <StatTile label="Median 1Y return" value={formatPct(commandCenter.backtest.median1Y, 1)} />
+                <StatTile label="Median 3Y CAGR" value={formatPct(commandCenter.backtest.median3Y, 1)} />
+              </div>
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b">
+                      <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Period</th>
+                      <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">State</th>
+                      <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Stress CAGR</th>
+                      <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Realized 1Y</th>
+                      <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Realized 3Y</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {commandCenter.backtest.points.slice(-8).reverse().map((point) => (
+                      <tr key={point.periodEnd}>
+                        <td className="px-3 py-2 text-slate-700">{point.periodEnd.slice(0, 10)}</td>
+                        <td className="px-3 py-2 text-slate-700">{point.state}</td>
+                        <td className="px-3 py-2 text-right font-mono">{formatPct(point.expectedCagrStress, 1)}</td>
+                        <td className="px-3 py-2 text-right font-mono">{formatPct(point.realized1Y, 1)}</td>
+                        <td className="px-3 py-2 text-right font-mono">{formatPct(point.realized3Y, 1)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <div className="mt-4 rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+              {commandCenter.backtest.latestComparedToHistory}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Signal Distribution</div>
+          <div className="mt-4 space-y-2 text-sm text-slate-700">
+            {Object.entries(commandCenter.backtest.countsByState).map(([state, count]) => (
+              <div key={state} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <span>{state}</span>
+                <strong>{count}</strong>
+              </div>
+            ))}
           </div>
         </div>
       </section>

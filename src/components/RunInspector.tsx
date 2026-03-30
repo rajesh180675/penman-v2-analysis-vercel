@@ -115,6 +115,11 @@ type InspectorPayload = {
     baseUpsidePct?: number | null;
     historicalPercentile?: number | null;
     reverseDcfImpliedGrowth?: number | null;
+    requiredMarginOfSafetyPct?: number | null;
+    qualityScore?: number | null;
+    opportunityScore?: number | null;
+    convictionBucket?: string | null;
+    expectedCagrStress?: number | null;
     killSwitches?: string[];
     supportingFlags?: string[];
     scenarios?: Array<{
@@ -126,11 +131,82 @@ type InspectorPayload = {
     marketPrice?: number | null;
     asOf?: string | null;
   } | null;
+  latestValuationManifest?: {
+    asOf?: string | null;
+    marketPrice?: number | null;
+    riskFreeRate?: number | null;
+    sectorTemplate?: { label?: string | null; source?: string | null } | null;
+    diagnostics?: {
+      ownerEarningsPerShare?: number | null;
+      reinvestmentRate?: number | null;
+      incrementalRoic?: number | null;
+    } | null;
+    reverseDcf?: {
+      impliedOwnerEarningsGrowth?: number | null;
+      expectationLabel?: string | null;
+    } | null;
+    opportunity?: {
+      qualityScore?: number | null;
+      requiredMarginOfSafetyPct?: number | null;
+      expectedCagrStress?: number | null;
+      opportunityScore?: number | null;
+      convictionBucket?: string | null;
+      thesis?: string | null;
+    } | null;
+    checklist?: {
+      whatMustGoRight?: string[];
+      thesisBreakers?: string[];
+    } | null;
+    marketContext?: {
+      expectedReturnSpreadVsRf?: number | null;
+      marketCapFromPrice?: number | null;
+      enterpriseValueFromPrice?: number | null;
+      priceToStressValueRatio?: number | null;
+    } | null;
+    backtest?: {
+      available?: boolean;
+      investableCount?: number;
+      highConvictionCount?: number;
+      screamingBuyCount?: number;
+      forwardWinRate1Y?: number | null;
+      forwardWinRate3Y?: number | null;
+      median1Y?: number | null;
+      median3Y?: number | null;
+      latestComparedToHistory?: string | null;
+      points?: Array<{
+        periodEnd?: string;
+        state?: string;
+        realized1Y?: number | null;
+        realized3Y?: number | null;
+      }>;
+    } | null;
+  } | null;
+  latestValuationAlert?: {
+    state?: string | null;
+    label?: string | null;
+    summary?: string | null;
+    opportunityScore?: number | null;
+    convictionBucket?: string | null;
+    expectedCagrStress?: number | null;
+    marketPrice?: number | null;
+    asOf?: string | null;
+  } | null;
   governance?: {
     retentionDays?: number;
     contentClass?: string;
     adminTokenVersion?: string;
   } | null;
+};
+
+type WatchlistRow = {
+  runId: string;
+  companyId: string;
+  sourceMode: string;
+  signalLabel: string;
+  convictionBucket: string;
+  opportunityScore: number | null;
+  expectedCagrStress: number | null;
+  latestAt: string | null;
 };
 
 function formatBytes(bytes: number | null | undefined) {
@@ -146,6 +222,7 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
   const [payload, setPayload] = useState<InspectorPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [watchlistRows, setWatchlistRows] = useState<WatchlistRow[]>([]);
 
   useEffect(() => {
     if (!auditMeta) return;
@@ -163,6 +240,8 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
   const traceability = payload?.latestAnalysisSnapshot?.traceability ?? null;
   const marketSnapshot = payload?.latestMarketSnapshot ?? null;
   const valuationSignal = payload?.latestValuationSignal ?? null;
+  const valuationManifest = payload?.latestValuationManifest ?? null;
+  const valuationAlert = payload?.latestValuationAlert ?? null;
 
   useEffect(() => {
     if (!selectedRun) {
@@ -204,6 +283,54 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
       window.clearInterval(timer);
     };
   }, [selectedRun]);
+
+  useEffect(() => {
+    if (!knownRuns.length) {
+      setWatchlistRows([]);
+      return;
+    }
+    let cancelled = false;
+    const loadWatchlist = async () => {
+      const rows = await Promise.all(knownRuns.map(async (run) => {
+        try {
+          const response = await fetch(`/api/audit/inspector?runId=${encodeURIComponent(run.runId)}`, {
+            headers: { "x-audit-run-token": run.runAccessToken },
+          });
+          if (!response.ok) return null;
+          const item = await response.json() as InspectorPayload;
+          return {
+            runId: run.runId,
+            companyId: run.companyId,
+            sourceMode: run.sourceMode,
+            signalLabel: item.latestValuationSignal?.label ?? item.latestValuationSignal?.state ?? "—",
+            convictionBucket: item.latestValuationManifest?.opportunity?.convictionBucket ?? "—",
+            opportunityScore: item.latestValuationManifest?.opportunity?.opportunityScore ?? null,
+            expectedCagrStress: item.latestValuationManifest?.opportunity?.expectedCagrStress ?? null,
+            latestAt: item.latestAt ?? null,
+          } satisfies WatchlistRow;
+        } catch {
+          return null;
+        }
+      }));
+      if (!cancelled) {
+        const filteredRows: WatchlistRow[] = rows.filter((item) => item != null) as WatchlistRow[];
+        filteredRows.sort((a, b) => {
+          const scoreDiff = (b.opportunityScore ?? -1) - (a.opportunityScore ?? -1);
+          if (scoreDiff !== 0) return scoreDiff;
+          return (b.expectedCagrStress ?? -1) - (a.expectedCagrStress ?? -1);
+        });
+        setWatchlistRows(filteredRows);
+      }
+    };
+    void loadWatchlist();
+    const timer = window.setInterval(() => {
+      void loadWatchlist();
+    }, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [knownRuns]);
 
   if (!knownRuns.length) {
     return (
@@ -260,6 +387,46 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
         />
       </section>
 
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-bold text-slate-800">Opportunity Watchlist</h3>
+            <p className="mt-1 text-sm text-slate-500">Local portfolio-style ranking across remembered audited runs using the persisted valuation manifest.</p>
+          </div>
+          <div className="text-xs text-slate-500">{watchlistRows.length} tracked runs</div>
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b">
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Company</th>
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Signal</th>
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Bucket</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Score</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Stress CAGR</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Latest</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {watchlistRows.map((row) => (
+                <tr key={row.runId} className={row.runId === selectedRunId ? "bg-indigo-50" : ""}>
+                  <td className="px-3 py-2">
+                    <button className="font-medium text-slate-800 hover:text-indigo-700" onClick={() => setSelectedRunId(row.runId)}>
+                      {row.companyId}
+                    </button>
+                  </td>
+                  <td className="px-3 py-2 text-slate-700">{row.signalLabel}</td>
+                  <td className="px-3 py-2 text-slate-700">{row.convictionBucket}</td>
+                  <td className="px-3 py-2 text-right font-mono">{row.opportunityScore != null ? row.opportunityScore.toFixed(0) : "—"}</td>
+                  <td className="px-3 py-2 text-right font-mono">{row.expectedCagrStress != null ? `${(row.expectedCagrStress * 100).toFixed(1)}%` : "—"}</td>
+                  <td className="px-3 py-2 text-right text-xs text-slate-500">{row.latestAt ? new Date(row.latestAt).toLocaleString("en-IN") : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-base font-bold text-slate-800">Latest Market Snapshot</h3>
@@ -295,6 +462,10 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
               <div>Stress upside: <strong>{valuationSignal.stressUpsidePct != null ? `${(valuationSignal.stressUpsidePct * 100).toFixed(1)}%` : "—"}</strong></div>
               <div>Historical percentile: <strong>{valuationSignal.historicalPercentile != null ? `${(valuationSignal.historicalPercentile * 100).toFixed(0)}th` : "—"}</strong></div>
               <div>Reverse DCF implied growth: <strong>{valuationSignal.reverseDcfImpliedGrowth != null ? `${(valuationSignal.reverseDcfImpliedGrowth * 100).toFixed(2)}%` : "—"}</strong></div>
+              <div>Required margin of safety: <strong>{valuationSignal.requiredMarginOfSafetyPct != null ? `${(valuationSignal.requiredMarginOfSafetyPct * 100).toFixed(1)}%` : "—"}</strong></div>
+              <div>Opportunity score: <strong>{valuationSignal.opportunityScore != null ? `${valuationSignal.opportunityScore.toFixed(0)}/100` : "—"}</strong></div>
+              <div>Stress CAGR: <strong>{valuationSignal.expectedCagrStress != null ? `${(valuationSignal.expectedCagrStress * 100).toFixed(1)}%` : "—"}</strong></div>
+              <div>Conviction bucket: <strong>{valuationSignal.convictionBucket ?? "—"}</strong></div>
               {valuationSignal.killSwitches?.length ? (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                   Kill-switches: {valuationSignal.killSwitches.join(" · ")}
@@ -309,6 +480,40 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
           ) : (
             <p className="mt-4 text-sm text-slate-500">{loading ? "Loading valuation signal…" : "No valuation signal event has been persisted for this run yet."}</p>
           )}
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-base font-bold text-slate-800">Latest Valuation Manifest</h3>
+          {valuationManifest ? (
+            <div className="mt-4 space-y-3 text-sm text-slate-700">
+              <div>Sector template: <strong>{valuationManifest.sectorTemplate?.label ?? "—"}</strong></div>
+              <div>Owner earnings / share: <strong>{valuationManifest.diagnostics?.ownerEarningsPerShare != null ? `₹${valuationManifest.diagnostics.ownerEarningsPerShare.toFixed(2)}` : "—"}</strong></div>
+              <div>Reinvestment rate: <strong>{valuationManifest.diagnostics?.reinvestmentRate != null ? `${(valuationManifest.diagnostics.reinvestmentRate * 100).toFixed(1)}%` : "—"}</strong></div>
+              <div>Incremental ROIC: <strong>{valuationManifest.diagnostics?.incrementalRoic != null ? `${(valuationManifest.diagnostics.incrementalRoic * 100).toFixed(1)}%` : "—"}</strong></div>
+              <div>Expected return spread vs risk-free: <strong>{valuationManifest.marketContext?.expectedReturnSpreadVsRf != null ? `${(valuationManifest.marketContext.expectedReturnSpreadVsRf * 100).toFixed(1)}%` : "—"}</strong></div>
+              <div>Implied market cap: <strong>{valuationManifest.marketContext?.marketCapFromPrice != null ? `₹${valuationManifest.marketContext.marketCapFromPrice.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr` : "—"}</strong></div>
+              <div>Price / stress value: <strong>{valuationManifest.marketContext?.priceToStressValueRatio != null ? `${valuationManifest.marketContext.priceToStressValueRatio.toFixed(2)}x` : "—"}</strong></div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                {valuationManifest.reverseDcf?.expectationLabel ?? valuationManifest.opportunity?.thesis ?? "No manifest commentary yet."}
+              </div>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-slate-500">{loading ? "Loading valuation manifest…" : "No valuation manifest has been persisted for this run yet."}</p>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-base font-bold text-slate-800">Alerts and Backtest</h3>
+          <div className="mt-4 space-y-3 text-sm text-slate-700">
+            <div>Latest alert: <strong>{valuationAlert?.label ?? valuationAlert?.state ?? "—"}</strong></div>
+            <div>Alert summary: <strong>{valuationAlert?.summary ?? "—"}</strong></div>
+            <div>1Y forward win rate: <strong>{valuationManifest?.backtest?.forwardWinRate1Y != null ? `${(valuationManifest.backtest.forwardWinRate1Y * 100).toFixed(0)}%` : "—"}</strong></div>
+            <div>3Y forward win rate: <strong>{valuationManifest?.backtest?.forwardWinRate3Y != null ? `${(valuationManifest.backtest.forwardWinRate3Y * 100).toFixed(0)}%` : "—"}</strong></div>
+            <div>Median 3Y CAGR: <strong>{valuationManifest?.backtest?.median3Y != null ? `${(valuationManifest.backtest.median3Y * 100).toFixed(1)}%` : "—"}</strong></div>
+            <div>Historical note: <strong>{valuationManifest?.backtest?.latestComparedToHistory ?? "—"}</strong></div>
+          </div>
         </div>
       </section>
 

@@ -3,6 +3,21 @@ import { buildValuationCommandCenter } from "../valuationCommandCenter";
 import { DEFAULT_CONFIG, RecastPeriod } from "../types";
 import { AnalysisStatusSummary } from "../analysisStatus";
 
+function buildHistorySeries(startDate: string, startPrice: number, count: number) {
+  const points: Array<{ date: string; close: number }> = [];
+  const date = new Date(`${startDate}T00:00:00.000Z`);
+  let price = startPrice;
+  for (let i = 0; i < count; i += 1) {
+    points.unshift({
+      date: date.toISOString().slice(0, 10),
+      close: Number(price.toFixed(2)),
+    });
+    date.setUTCDate(date.getUTCDate() - 7);
+    price *= i % 9 === 0 ? 0.97 : 1.006;
+  }
+  return points.sort((left, right) => right.date.localeCompare(left.date));
+}
+
 function mkPeriod(year: number, sales: number, oi: number, cni: number, cse: number, noa: number): RecastPeriod {
   return {
     period_end: `${year}-03-31`,
@@ -394,5 +409,56 @@ describe("valuation command center", () => {
 
     expect(weak.opportunity.qualityScore).toBeLessThan(strong.opportunity.qualityScore);
     expect(weak.opportunity.requiredMarginOfSafetyPct).toBeGreaterThan(strong.opportunity.requiredMarginOfSafetyPct);
+  });
+
+  it("builds a historical replay when price history is available", () => {
+    const data = [
+      mkPeriod(2021, 900, 150, 105, 470, 700),
+      mkPeriod(2022, 980, 166, 118, 500, 740),
+      mkPeriod(2023, 1060, 185, 132, 545, 790),
+      mkPeriod(2024, 1140, 210, 151, 610, 845),
+      mkPeriod(2025, 1210, 232, 172, 665, 885),
+    ];
+    const history = buildHistorySeries("2026-03-30", 1.1, 300);
+    const out = buildValuationCommandCenter({
+      data,
+      config: {
+        ...DEFAULT_CONFIG,
+        sector_template: "paint",
+        shares_outstanding: 620,
+        market_price: 1.1,
+      },
+      marketData: {
+        symbol: "ASIANPAINT.BSE",
+        provider: "Manual",
+        fetchedAt: "2026-03-30T16:00:00.000Z",
+        price: 1.1,
+        previousClose: 1.08,
+        changePct: 0.02,
+        marketCap: null,
+        enterpriseValue: null,
+        sharesOutstanding: null,
+        riskFreeRate: 0.07,
+        priceAsOf: "2026-03-30T15:59:00.000Z",
+        rateAsOf: "2026-03-29",
+        freshness: "live",
+        sourceSummary: "Manual",
+        warnings: [],
+        history: {
+          points: history,
+          currentPricePercentile: 0.2,
+          low52Week: 0.9,
+          high52Week: 1.3,
+          distanceFrom52WeekLowPct: 0.22,
+          drawdownFrom52WeekHighPct: -0.15,
+        },
+      },
+      analysisStatus: productionReadyStatus,
+    });
+
+    expect(out.backtest.available).toBe(true);
+    expect(out.backtest.points.length).toBeGreaterThan(0);
+    expect(out.checklist.whatMustGoRight.length).toBeGreaterThan(0);
+    expect(out.marketContext.expectedReturnSpreadVsRf).not.toBeNull();
   });
 });
