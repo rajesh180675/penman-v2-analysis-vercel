@@ -122,6 +122,45 @@ const EXACT_RULES: ExactRule[] = [
     targetLine: "IS.OCI.Unspecified",
     suggestedSpecPath: "profitLoss.ociUnspecified",
   },
+  {
+    statement: "BalanceSheet",
+    key: "Total Equity and Liabilities",
+    action: "ignore-non-core",
+    rationale: "Presentation total duplicates the balance-sheet identity and should not enter actionable mapping review.",
+  },
+  {
+    statement: "BalanceSheet",
+    key: "Total Non-Current and Other Assets",
+    action: "ignore-non-core",
+    rationale: "Presentation subtotal is informational but not a canonical reformulation line.",
+  },
+  {
+    statement: "BalanceSheet",
+    key: "Total Reported Non-current Assets",
+    action: "ignore-non-core",
+    rationale: "Presentation subtotal is informational but not a canonical reformulation line.",
+  },
+  {
+    statement: "BalanceSheet",
+    key: "Gross Property, plant and equipment",
+    action: "group-to-existing",
+    rationale: "Gross PPE is a bridge-support line already used in quality diagnostics and should not stay in the manual review queue.",
+    targetLine: "Quality.PPE.GrossSupport",
+  },
+  {
+    statement: "ProfitLoss",
+    key: "Profit Before Exceptional Items and Tax",
+    action: "group-to-existing",
+    rationale: "Pre-exceptional PBT is a derived subtotal that supports exceptional-item interpretation rather than a new canonical line.",
+    targetLine: "IS.PBT.PreExceptional",
+  },
+  {
+    statement: "CashFlow",
+    key: "Net Profit before Tax & Extraordinary Items",
+    action: "group-to-existing",
+    rationale: "Cash-flow bridge subtotal should be treated as CFO bridge support, not unmapped review debt.",
+    targetLine: "CF.CFOBridge",
+  },
 ];
 
 const GROUP_RULES: PatternRule[] = [
@@ -210,6 +249,22 @@ const GROUP_RULES: PatternRule[] = [
     targetGroupId: "is-finance-income-support",
   },
   {
+    statement: "ProfitLoss",
+    pattern: /net sale of products|revenue from sale of products|sales less excise/i,
+    action: "group-to-existing",
+    rationale: "Revenue presentation variants belong under the sales anchor and should not remain in manual review.",
+    targetLine: "IS.Sales",
+    targetGroupId: "is-sales",
+  },
+  {
+    statement: "ProfitLoss",
+    pattern: /selling and administration expenses|total selling [&/] administrative expenses|total selling and distribution expenses|warehousing charges|marketing expenses|brokerage and commission on sales/i,
+    action: "group-to-existing",
+    rationale: "Company-specific SG&A presentation totals belong in the existing SG&A bridge, not the manual review queue.",
+    targetLine: "IS.OpBridge.SGA",
+    targetGroupId: "is-sga-detail",
+  },
+  {
     statement: "CashFlow",
     pattern: /cash generated from\/\(used in\) operations|op\. profit before working capital changes|trade & 0th receivables|total adjustments \(pbt & extraordinary items\)/i,
     action: "group-to-existing",
@@ -248,6 +303,11 @@ const IGNORE_RULES: PatternRule[] = [
     pattern: /:$|^a\) owners of the company$|^b\) non controlling interest$/i,
     action: "ignore-non-core",
     rationale: "Section headers and presentation-only rows should not enter the actionable mapping backlog.",
+  },
+  {
+    pattern: /total equity and liabilities|total reported non-current assets|total non-current and other assets|gross property, plant and equipment/i,
+    action: "ignore-non-core",
+    rationale: "Presentation totals and gross-support lines should not inflate the unmapped review queue when not directly canonicalized.",
   },
 ];
 

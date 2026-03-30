@@ -95,7 +95,10 @@ export function App() {
   const recastData = recastOutcome.data;
   const engineError = recastOutcome.error;
   const valuationReadiness = useMemo(() => (recastData?.length ? resolveValuationReadiness(recastData) : null), [recastData]);
-  const analysisStatus = useMemo(() => deriveAnalysisStatus(qualityGate, valuationReadiness), [qualityGate, valuationReadiness]);
+  const analysisStatus = useMemo(
+    () => deriveAnalysisStatus(qualityGate, valuationReadiness, mappingAudit),
+    [mappingAudit, qualityGate, valuationReadiness],
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

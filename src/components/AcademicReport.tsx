@@ -226,13 +226,17 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
   const policyVersions = useMemo(() => getAnalysisPolicyVersions(), []);
   const qualityGate = useMemo(() => (rawData?.length ? evaluateQualityGate(rawData, config) : null), [config, rawData]);
   const mappingAudit = useMemo(() => (rawData?.length ? auditMappingCoverage(rawData) : null), [rawData]);
-  const analysisStatus = useMemo(() => deriveAnalysisStatus(qualityGate, valuationReadiness), [qualityGate, valuationReadiness]);
+  const analysisStatus = useMemo(
+    () => deriveAnalysisStatus(qualityGate, valuationReadiness, mappingAudit),
+    [mappingAudit, qualityGate, valuationReadiness],
+  );
   const latestRawPeriod = rawData && rawData.length > 0 ? rawData[rawData.length - 1].period_end : null;
   const traceability = useMemo(() => buildAnalysisTraceability({
     runId: auditMeta?.runId ?? null,
     companyId: auditMeta?.companyId ?? rawData?.[0]?.company_id ?? config.ticker ?? null,
     sourceMode: auditMeta?.sourceMode ?? null,
     periodCount: rawData?.length ?? data.length,
+    recastPeriodCount: data.length,
     latestPeriod: latestRawPeriod ?? data[data.length - 1]?.period_end ?? null,
     qualityGate,
     mappingAudit,
@@ -491,6 +495,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
           companyId,
           sourceMode: auditMeta?.sourceMode ?? null,
           periodCount: rawData?.length ?? data.length,
+          recastPeriodCount: data.length,
           latestPeriod: latestRawPeriod ?? data[data.length - 1]?.period_end ?? null,
           qualityGate,
           mappingAudit,
@@ -935,6 +940,9 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
             </div>
             <div className="mt-3 text-[11px] text-slate-600">
               Traceability schema {traceability.schemaVersion} · engine {traceability.policyVersions.engineVersion} · scope policy {traceability.policyVersions.scopePolicyVersion}
+            </div>
+            <div className="mt-1 text-[11px] text-slate-600">
+              Run {traceability.runContext.runId ? traceability.runContext.runId.slice(0, 8) : "—"} · source {traceability.runContext.sourceMode ?? "—"} · actionable backlog {traceability.mappingCoverage.actionableOutOfSpecLabelCount} · review queue {traceability.mappingCoverage.backlogByAction.review}
             </div>
           </div>
         )}

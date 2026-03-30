@@ -1,4 +1,4 @@
-import { QualityGateReport } from "./mappingAudit";
+import { MappingAuditReport, QualityGateReport } from "./mappingAudit";
 import { ValuationReadiness } from "./valuationPolicy";
 
 export type AnalysisBadgeTone = "emerald" | "amber" | "red";
@@ -23,6 +23,7 @@ export interface AnalysisStatusSummary {
 export function deriveAnalysisStatus(
   qualityGate?: QualityGateReport | null,
   valuationReadiness?: ValuationReadiness | null,
+  mappingAudit?: MappingAuditReport | null,
 ): AnalysisStatusSummary {
   const blockingCount = qualityGate?.coverageSummary.unresolvedBySeverity.critical.length ?? 0;
   const diagnosticCount = qualityGate?.coverageSummary.unresolvedBySeverity.warning.length ?? 0;
@@ -30,6 +31,9 @@ export function deriveAnalysisStatus(
   const scopeBlocked = Boolean(qualityGate?.scopeAssessment.blocked);
   const valuationBlocked = Boolean(qualityGate?.valuationBlocked);
   const qualityTier = qualityGate?.tier ?? "Unknown";
+  const actionableBacklogCount = mappingAudit?.backlogSummary.actionableCount ?? 0;
+  const reviewBacklogCount = mappingAudit?.backlogSummary.totalsByAction.review ?? 0;
+  const denseBacklogReview = actionableBacklogCount >= 150 || reviewBacklogCount >= 100;
 
   if (scopeBlocked) {
     return {
@@ -85,15 +89,16 @@ export function deriveAnalysisStatus(
     };
   }
 
-  if (valuationReadiness?.status === "warning" || diagnosticCount > 0 || qualityTier === "Tier 2") {
+  if (valuationReadiness?.status === "warning" || diagnosticCount > 0 || qualityTier === "Tier 2" || denseBacklogReview) {
     const reasons = [
       ...(valuationReadiness?.reasons ?? []),
       ...(diagnosticCount > 0 ? [`${diagnosticCount} diagnostic mapping gaps remain.`] : []),
+      ...(denseBacklogReview ? [`Backlog review volume remains high (${actionableBacklogCount} actionable / ${reviewBacklogCount} manual-review labels).`] : []),
     ];
     return {
       status: "guarded",
       label: "Guarded",
-      headline: "Review diagnostics before relying on output",
+      headline: denseBacklogReview ? "Coverage breadth still needs review" : "Review diagnostics before relying on output",
       summary: reasons[0] ?? "Analysis is usable but still has diagnostic-quality caveats.",
       reasons,
       tone: "amber",

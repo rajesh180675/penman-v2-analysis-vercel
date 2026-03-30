@@ -46,6 +46,49 @@ type InspectorPayload = {
     severity?: string;
     actions?: Array<{ type: string; created?: boolean; issueUrl?: string; reason?: string }>;
   } | null;
+  latestAnalysisSnapshot?: {
+    latestPeriod?: string | null;
+    traceability?: {
+      schemaVersion?: string;
+      generatedAt?: string | null;
+      runContext?: {
+        runId?: string | null;
+        companyId?: string | null;
+        sourceMode?: string | null;
+        periodCount?: number;
+        latestPeriod?: string | null;
+      } | null;
+      confidence?: {
+        status?: string;
+        headline?: string;
+        blockingCount?: number;
+        diagnosticCount?: number;
+        optionalCount?: number;
+      } | null;
+      mappingCoverage?: {
+        outOfSpecLabelCount?: number;
+        actionableOutOfSpecLabelCount?: number;
+        backlogByAction?: Record<string, number>;
+      } | null;
+      analysisContext?: {
+        rawPeriodCount?: number;
+        recastPeriodCount?: number;
+        hasRecastData?: boolean;
+        hasDebugInfo?: boolean;
+        debugFiles?: number;
+        rawMetricKeyCount?: number;
+        engineError?: string | null;
+      } | null;
+      backlogPreview?: Array<{
+        statement: string;
+        key: string;
+        action: string;
+        priority: string;
+        periodsObserved: number;
+        latestValue: number | null;
+      }>;
+    } | null;
+  } | null;
   governance?: {
     retentionDays?: number;
     contentClass?: string;
@@ -80,6 +123,7 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
   }, [knownRuns, selectedRunId]);
 
   const recovery = useMemo(() => getAuditRecoveryState(), [payload, selectedRunId]);
+  const traceability = payload?.latestAnalysisSnapshot?.traceability ?? null;
 
   useEffect(() => {
     if (!selectedRun) {
@@ -226,6 +270,68 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
                 <p className="text-slate-500">{loading ? "Loading persisted blobs…" : "No persisted inputs or artifacts found yet."}</p>
               )}
             </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="font-semibold text-slate-800">Traceability</h3>
+            {traceability ? (
+              <div className="mt-3 space-y-4 text-sm text-slate-700">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Schema: <strong>{traceability.schemaVersion ?? "—"}</strong>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Generated: <strong>{traceability.generatedAt ? new Date(traceability.generatedAt).toLocaleString("en-IN") : "—"}</strong>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Source mode: <strong>{traceability.runContext?.sourceMode ?? "—"}</strong>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Confidence: <strong>{traceability.confidence?.status ?? "—"}</strong>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Raw/Recast periods: <strong>{traceability.analysisContext?.rawPeriodCount ?? 0} / {traceability.analysisContext?.recastPeriodCount ?? 0}</strong>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Debug files / keys: <strong>{traceability.analysisContext?.debugFiles ?? 0} / {traceability.analysisContext?.rawMetricKeyCount ?? 0}</strong>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Out-of-spec / actionable: <strong>{traceability.mappingCoverage?.outOfSpecLabelCount ?? 0} / {traceability.mappingCoverage?.actionableOutOfSpecLabelCount ?? 0}</strong>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Review backlog: <strong>{traceability.mappingCoverage?.backlogByAction?.review ?? 0}</strong>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-slate-200 px-3 py-3">
+                  <div className="font-medium text-slate-800">{traceability.confidence?.headline ?? "Traceability confidence"}</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    Blocking {traceability.confidence?.blockingCount ?? 0} · Diagnostic {traceability.confidence?.diagnosticCount ?? 0} · Optional {traceability.confidence?.optionalCount ?? 0}
+                  </div>
+                  {traceability.analysisContext?.engineError && (
+                    <div className="mt-2 text-xs text-red-700">Engine error: {traceability.analysisContext.engineError}</div>
+                  )}
+                </div>
+                <div>
+                  <div className="mb-2 font-medium text-slate-800">Backlog preview</div>
+                  {traceability.backlogPreview?.length ? (
+                    <div className="space-y-2">
+                      {traceability.backlogPreview.map((entry) => (
+                        <div key={`${entry.statement}:${entry.key}`} className="rounded-lg border border-slate-200 px-3 py-2">
+                          <div className="font-medium text-slate-800">{entry.key}</div>
+                          <div className="mt-1 text-xs text-slate-500">
+                            {entry.statement} · {entry.action} · {entry.priority} · periods {entry.periodsObserved} · latest {entry.latestValue ?? "—"}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-slate-500">No backlog preview for this run.</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-slate-500">{loading ? "Loading traceability…" : "No traceability payload found yet."}</p>
+            )}
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

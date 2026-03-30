@@ -69,6 +69,8 @@ income:
     - Revenue From Operations
     - Total Revenue from Operations
     - Total Revenue
+    - Net Sale of Products
+    - Net Sales
     - Net Revenue from Operations
     - Income from Operations
     - Revenue from Sale of Products
@@ -116,6 +118,8 @@ income:
       - Unappropriated Profits Brought Forward
       - Other Equity
       - Profit and Loss Account Closing Balance
+      - Total Reserve & Surplus
+      - Total Reserves Excluding Revaluation Reserve
     cogs:
       material: ["Cost of Material Consumed", "Cost of Materials Consumed", "Consumption of Raw Materials"]
       purchases: ["Purchases of Stock-in-Trade", "Purchase of Stock-in-Trade", "Purchase of Traded Goods", "Purchase of Finished Goods"]

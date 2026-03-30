@@ -1,3 +1,4 @@
+import asianPaintsAuditedFixture from "./__fixtures__/asian-paints-capitaline-audited.json";
 import itcAuditedFixture from "./__fixtures__/itc-capitaline-audited.json";
 import { processCompanyData } from "./pipeline";
 import { evaluateQualityGate } from "./mappingAudit";
@@ -606,6 +607,24 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
         ROCE: [0.4, 0.6],
         RNOA: [0.8, 1.0],
         NBC: [0.02, 0.05],
+      },
+    },
+  },
+  {
+    id: "asian-paints-audited-run",
+    companyId: "ASIAN PAINTS",
+    source: "audited-run",
+    note: "Real audited Capitaline run for a clean supported industrial issuer with complete artifact capture.",
+    rawData: asianPaintsAuditedFixture.rawData as RawPeriodData[],
+    expectation: {
+      qualityGateTier: "Tier 1",
+      valuationBlocked: false,
+      valuationStatus: "production-ready",
+      minPeriods: 10,
+      forbiddenTerminalFlags: ["STRUCTURAL_EVENT", "CAPITAL_TRANSACTION_LIKELY"],
+      ratioRanges: {
+        ROCE: [0.12, 0.6],
+        RNOA: [0.12, 0.5],
       },
     },
   },

@@ -86,6 +86,8 @@ export const CapitalineMappingSpec = {
       "Revenue From Operations",
       "Total Revenue from Operations",
       "Total Revenue",
+      "Net Sale of Products",
+      "Net Sales",
       "Net Revenue from Operations",
       "Income from Operations",
       "Revenue from Sale of Products",
@@ -196,6 +198,8 @@ export const CapitalineMappingSpec = {
       "Unappropriated Profits Brought Forward",
       "Other Equity",
       "Profit and Loss Account Closing Balance",
+      "Total Reserve & Surplus",
+      "Total Reserves Excluding Revaluation Reserve",
     ],
     otherItemsAliases: [
       "Share of profit/loss of associates",

@@ -54,6 +54,37 @@ describe("mapping backlog triage policy", () => {
     expect(shareCount.action).toBe("ignore-non-core");
   });
 
+  it("de-noises ASIAN PAINTS style presentation totals and derived subtotals", () => {
+    const totalLiabilities = triageOutOfSpecLabel({
+      statement: "BalanceSheet",
+      key: "Total Equity and Liabilities",
+      periodsObserved: 15,
+      nonZeroPeriods: 15,
+      latestValue: 26653.11,
+      maxAbsValue: 26653.11,
+    });
+    const preExceptionalPbt = triageOutOfSpecLabel({
+      statement: "ProfitLoss",
+      key: "Profit Before Exceptional Items and Tax",
+      periodsObserved: 15,
+      nonZeroPeriods: 15,
+      latestValue: 5276.81,
+      maxAbsValue: 6998.72,
+    });
+    const grossPpe = triageOutOfSpecLabel({
+      statement: "BalanceSheet",
+      key: "Gross Property, plant and equipment",
+      periodsObserved: 15,
+      nonZeroPeriods: 15,
+      latestValue: 10278.58,
+      maxAbsValue: 10278.58,
+    });
+
+    expect(totalLiabilities.action).toBe("ignore-non-core");
+    expect(preExceptionalPbt.action).toBe("group-to-existing");
+    expect(grossPpe.action).toBe("group-to-existing");
+  });
+
   it("summarizes actionable backlog separately from ignored noise", () => {
     const summary = summarizeMappingBacklog([
       {
