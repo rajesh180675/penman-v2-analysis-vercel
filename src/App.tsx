@@ -32,11 +32,13 @@ const DebugPanel = lazy(() => import("./components/DebugPanel"));
 const V3AnalyticsPanel = lazy(() => import("./components/V3AnalyticsPanel"));
 const RunInspector = lazy(() => import("./components/RunInspector"));
 const CompanyWorkspace = lazy(() => import("./components/CompanyWorkspace"));
+const WatchlistDashboard = lazy(() => import("./components/WatchlistDashboard"));
 
-type TabId = "upload"|"workspace"|"inspector"|"statements"|"ratios"|"forecast"|"valuation"|"quality"|"comparison"|"report"|"regression"|"v3analytics"|"debug";
+type TabId = "upload"|"watchlist"|"workspace"|"inspector"|"statements"|"ratios"|"forecast"|"valuation"|"quality"|"comparison"|"report"|"regression"|"v3analytics"|"debug";
 
 const TABS: {id:TabId;label:string;icon:string;needsData?:boolean}[] = [
   {id:"upload",     label:"Data",       icon:"📂"},
+  {id:"watchlist",  label:"Watchlist",  icon:"🗂"},
   {id:"workspace",  label:"Workspace",  icon:"🧭"},
   {id:"inspector",  label:"Runs",       icon:"🛰️"},
   {id:"statements", label:"Statements", icon:"📊", needsData:true},
@@ -60,6 +62,7 @@ export function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [registry, setRegistry] = useState<CompanyRegistry>({ companies: {} });
   const [auditMeta, setAuditMeta] = useState<AuditSubmissionMeta | null>(null);
+  const [workspaceCompanyId, setWorkspaceCompanyId] = useState<string | null>(null);
   const lastAuditSignatureRef = useRef<string | null>(null);
   const lastAuditStatusRef = useRef<string | null>(null);
   const lastTabAuditRef = useRef<string | null>(null);
@@ -180,6 +183,7 @@ export function App() {
         ...prev,
         ticker: nextMeta.companyId || data[0]?.company_id || prev.ticker,
       }));
+      setWorkspaceCompanyId(nextMeta.companyId || data[0]?.company_id || null);
       setRawData(data);
       if (debug) setDebugInfo(debug);
       if (data.length === 0) { setActiveTab("debug"); return; }
@@ -286,7 +290,8 @@ export function App() {
 
   const hasRecast = (recastData?.length??0)>0;
   const hasDebug  = debugInfo!==null;
-  const hasWorkspace = hasRecast || Boolean(rawData?.length) || listWorkspaceCompanies().length > 0;
+  const workspaceCompanies = listWorkspaceCompanies();
+  const hasWorkspace = hasRecast || Boolean(rawData?.length) || workspaceCompanies.length > 0;
 
   const readyCompanyCount = Object.values(registry.companies).filter((c) => c.recastData.length > 0).length;
 
@@ -294,6 +299,7 @@ export function App() {
     if (t.id==="debug") return hasDebug;
     if (t.id === "comparison") return readyCompanyCount >= 2;
     if (t.id === "inspector") return isAuditEnabled() && Boolean(auditMeta);
+    if (t.id === "watchlist") return hasWorkspace;
     if (t.id === "workspace") return hasWorkspace;
     if (t.needsData) return hasRecast;
     return true;
@@ -401,6 +407,16 @@ export function App() {
             {activeTab==="upload" && (
               <DataEntry onDataSubmit={handleDataSubmit} currentData={rawData} config={config} onConfigChange={setConfig}/>
             )}
+            {activeTab==="watchlist" && (
+              <WatchlistDashboard
+                companies={workspaceCompanies}
+                activeCompanyId={workspaceCompanyId}
+                onSelectCompany={(companyId) => {
+                  setWorkspaceCompanyId(companyId);
+                  setActiveTab("workspace");
+                }}
+              />
+            )}
             {activeTab==="workspace" && (
               <CompanyWorkspace
                 rawData={rawData}
@@ -409,6 +425,8 @@ export function App() {
                 analysisStatus={analysisStatus}
                 auditMeta={auditMeta}
                 registry={registry}
+                selectedCompanyId={workspaceCompanyId}
+                onSelectCompanyId={setWorkspaceCompanyId}
               />
             )}
             {activeTab==="statements" && hasRecast && <RecastStatements data={recastData!}/>}

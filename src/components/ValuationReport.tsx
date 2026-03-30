@@ -14,6 +14,7 @@ import {
 } from "../engine/valuationCommandCenter";
 import { useLiveMarketData } from "../hooks/useLiveMarketData";
 import { AuditSubmissionMeta, persistAuditEvent } from "../lib/audit";
+import { rememberWorkspaceValuation } from "../lib/researchWorkspace";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell, LineChart, Line,
 } from "recharts";
@@ -135,6 +136,17 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
       payload: signalPayload,
     });
   }, [auditMeta, commandCenter]);
+
+  useEffect(() => {
+    const companyId = auditMeta?.companyId ?? config.ticker ?? null;
+    if (!companyId) return;
+    rememberWorkspaceValuation({
+      companyId,
+      commandCenter,
+      marketSymbol,
+      runId: auditMeta?.runId ?? null,
+    });
+  }, [auditMeta?.runId, auditMeta?.companyId, commandCenter, config.ticker, marketSymbol]);
 
   useEffect(() => {
     if (!auditMeta) return;
