@@ -118,6 +118,8 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
         label: scenario.label,
         intrinsicPerShare: scenario.intrinsicPerShare,
         upsidePct: scenario.upsidePct,
+        marginOfSafetyPct: scenario.marginOfSafetyPct,
+        expectedCagr: scenario.expectedCagr,
       })),
     };
     const signature = JSON.stringify(signalPayload);
@@ -180,6 +182,11 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
                 <div>Stress upside: <strong>{formatPct(commandCenter.signal.stressUpsidePct)}</strong></div>
                 <div>Historical setup: <strong>{formatHistoricalPercentile(commandCenter.signal.historicalPercentile)}</strong></div>
                 <div>Reverse DCF implied growth: <strong>{formatPct(commandCenter.signal.reverseDcfImpliedGrowth, 2)}</strong></div>
+                <div>Required margin of safety: <strong>{formatPct(commandCenter.signal.requiredMarginOfSafetyPct, 1)}</strong></div>
+                <div>Quality score: <strong>{commandCenter.signal.qualityScore.toFixed(0)}/100</strong></div>
+                <div>Opportunity score: <strong>{commandCenter.signal.opportunityScore.toFixed(0)}/100</strong></div>
+                <div>Stress expected CAGR: <strong>{formatPct(commandCenter.signal.expectedCagrStress, 1)}</strong></div>
+                <div>Sizing bucket: <strong>{commandCenter.signal.convictionBucket}</strong></div>
               </div>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -243,13 +250,90 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
             label={scenario.label}
             intrinsicPerShare={scenario.intrinsicPerShare}
             upsidePct={scenario.upsidePct}
+            marginOfSafetyPct={scenario.marginOfSafetyPct}
+            expectedCagr={scenario.expectedCagr}
             ke={scenario.assumptions.ke}
             kw={scenario.assumptions.kw}
             g={scenario.assumptions.g}
             salesGrowth={scenario.assumptions.salesGrowthYear1}
             corePm={scenario.assumptions.corePmYear1}
+            reinvestmentRate={scenario.assumptions.reinvestmentRateYear1}
+            incrementalRoic={scenario.assumptions.incrementalRoicYear1}
           />
         ))}
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sector Template</div>
+          <div className="mt-2 text-xl font-bold text-slate-900">{commandCenter.sectorTemplate.label}</div>
+          <div className="mt-2 text-sm text-slate-600">{commandCenter.sectorTemplate.description}</div>
+          <div className="mt-4 grid gap-3 text-sm text-slate-700">
+            <div>Selection source: <strong>{commandCenter.sectorTemplate.source}</strong></div>
+            <div>Quality-adjusted margin of safety: <strong>{formatPct(commandCenter.opportunity.requiredMarginOfSafetyPct, 1)}</strong></div>
+            <div>Quality score: <strong>{commandCenter.opportunity.qualityScore.toFixed(0)}/100</strong></div>
+            <div>Opportunity score: <strong>{commandCenter.opportunity.opportunityScore.toFixed(0)}/100</strong></div>
+            <div>Sizing bucket: <strong>{commandCenter.opportunity.convictionBucket}</strong></div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Reverse DCF</div>
+          <div className="mt-3 space-y-3 text-sm text-slate-700">
+            <div>Market-implied owner-earnings growth: <strong>{formatPct(commandCenter.reverseDcf.impliedOwnerEarningsGrowth, 2)}</strong></div>
+            <div>Sector-normal growth anchor: <strong>{formatPct(commandCenter.reverseDcf.normalizedGrowthAnchor, 2)}</strong></div>
+            <div>Spread vs normalized: <strong>{formatPct(commandCenter.reverseDcf.spreadVsNormalizedGrowth, 2)}</strong></div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-800">
+              {commandCenter.reverseDcf.expectationLabel}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Opportunity Protocol</div>
+          <div className="mt-3 grid gap-3 text-sm text-slate-700">
+            <div>Base margin of safety: <strong>{formatPct(commandCenter.opportunity.baseMarginOfSafetyPct, 1)}</strong></div>
+            <div>Stress margin of safety: <strong>{formatPct(commandCenter.opportunity.stressMarginOfSafetyPct, 1)}</strong></div>
+            <div>Base expected CAGR: <strong>{formatPct(commandCenter.opportunity.expectedCagrBase, 1)}</strong></div>
+            <div>Stress expected CAGR: <strong>{formatPct(commandCenter.opportunity.expectedCagrStress, 1)}</strong></div>
+            <div>Historical cheapness score: <strong>{commandCenter.opportunity.historicalCheapnessScore != null ? `${commandCenter.opportunity.historicalCheapnessScore.toFixed(0)}/100` : "—"}</strong></div>
+            <div>Reverse-DCF pessimism score: <strong>{commandCenter.opportunity.reverseDcfPessimismScore != null ? `${commandCenter.opportunity.reverseDcfPessimismScore.toFixed(0)}/100` : "—"}</strong></div>
+          </div>
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
+            {commandCenter.opportunity.thesis}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">DCF Cash-Flow Lens</div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 text-sm text-slate-700">
+            <StatTile label="Owner earnings / share" value={formatPerShare(commandCenter.diagnostics.ownerEarningsPerShare)} />
+            <StatTile label="NOPAT" value={commandCenter.diagnostics.nopat != null ? `₹${fmt(commandCenter.diagnostics.nopat)} Cr` : "—"} />
+            <StatTile label="Maintenance capex" value={`₹${fmt(commandCenter.diagnostics.maintenanceCapex)} Cr`} />
+            <StatTile label="Growth capex" value={`₹${fmt(commandCenter.diagnostics.growthCapex)} Cr`} />
+            <StatTile label="Working-capital investment" value={`₹${fmt(commandCenter.diagnostics.workingCapitalInvestment)} Cr`} />
+            <StatTile label="Reinvestment rate" value={formatPct(commandCenter.diagnostics.reinvestmentRate, 1)} />
+            <StatTile label="Incremental ROIC" value={formatPct(commandCenter.diagnostics.incrementalRoic, 1)} />
+            <StatTile label="Maintenance share of capex" value={formatPct(commandCenter.diagnostics.maintenanceCapexShareOfCapex, 1)} />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Professional Decision Rules</div>
+          <div className="mt-4 space-y-3 text-sm text-slate-700">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              `Truck-load zone` only appears when the stress case clears the required margin of safety, the current price is historically washed out, and the analysis is still production-ready.
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              Quality adjusts the hurdle: weaker accounting quality and more cyclical templates widen the required margin of safety before the buy signal is allowed to escalate.
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              Reverse DCF keeps the valuation honest by checking whether the market is already pricing an aggressive owner-earnings path.
+            </div>
+          </div>
+        </div>
       </section>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
@@ -297,6 +381,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
             <div className="font-semibold text-slate-700">Live market overlay</div>
             <div className="mt-1">Mode: <b>{config.market_data_provider ?? "manual"}</b></div>
+            <div className="mt-1">Sector template: <b>{commandCenter.sectorTemplate.label}</b></div>
             <div className="mt-1">Price: <b>{commandCenter.marketPrice != null ? `₹${commandCenter.marketPrice.toFixed(2)}` : "—"}</b></div>
             <div>Risk-free: <b>{(commandCenter.riskFreeRate * 100).toFixed(2)}%</b></div>
             <div>Freshness: <b>{liveMarketData?.freshness ?? "fallback"}</b></div>
@@ -555,10 +640,11 @@ function ValuationCommandCenterHero({
         </div>
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-4">
+      <div className="mt-6 grid gap-4 lg:grid-cols-5">
         <HeroMetric label="Current price" value={commandCenter.marketPrice != null ? `₹${commandCenter.marketPrice.toFixed(2)}` : "—"} sublabel={`${liveMarketData?.freshness ?? "fallback"}${marketSymbol ? ` · ${marketSymbol}` : ""}`} />
         <HeroMetric label="Stress value" value={formatPerShare(stress?.intrinsicPerShare)} sublabel={`Upside ${formatPct(stress?.upsidePct)}`} />
         <HeroMetric label="Base value" value={formatPerShare(base?.intrinsicPerShare)} sublabel={`Upside ${formatPct(base?.upsidePct)}`} />
+        <HeroMetric label="Expected CAGR (stress)" value={formatPct(commandCenter.opportunity.expectedCagrStress, 1)} sublabel={commandCenter.opportunity.convictionBucket} />
         <HeroMetric label="Valuation range" value={`${formatPerShare(commandCenter.range.floorPerShare)} to ${formatPerShare(commandCenter.range.ceilingPerShare)}`} sublabel={`As of ${commandCenter.asOf ? new Date(commandCenter.asOf).toLocaleString("en-IN") : "—"}`} />
       </div>
 
@@ -591,20 +677,28 @@ function ScenarioCard({
   label,
   intrinsicPerShare,
   upsidePct,
+  marginOfSafetyPct,
+  expectedCagr,
   ke,
   kw,
   g,
   salesGrowth,
   corePm,
+  reinvestmentRate,
+  incrementalRoic,
 }: {
   label: string;
   intrinsicPerShare: number | null;
   upsidePct: number | null;
+  marginOfSafetyPct: number | null;
+  expectedCagr: number | null;
   ke: number;
   kw: number;
   g: number;
   salesGrowth: number;
   corePm: number;
+  reinvestmentRate: number | null;
+  incrementalRoic: number | null;
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -619,6 +713,10 @@ function ScenarioCard({
         <div>g <strong className="text-slate-700">{formatPct(g, 2)}</strong></div>
         <div>Y1 sales growth <strong className="text-slate-700">{formatPct(salesGrowth, 2)}</strong></div>
         <div>Y1 core PM <strong className="text-slate-700">{formatPct(corePm, 2)}</strong></div>
+        <div>Margin of safety <strong className="text-slate-700">{formatPct(marginOfSafetyPct, 1)}</strong></div>
+        <div>Expected CAGR <strong className="text-slate-700">{formatPct(expectedCagr, 1)}</strong></div>
+        <div>Reinvestment rate <strong className="text-slate-700">{formatPct(reinvestmentRate, 1)}</strong></div>
+        <div>Incremental ROIC <strong className="text-slate-700">{formatPct(incrementalRoic, 1)}</strong></div>
       </div>
     </div>
   );

@@ -208,6 +208,25 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
             />
           </div>
           <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">DCF Sector Template</label>
+            <select
+              value={config.sector_template ?? "auto"}
+              onChange={(e) => onConfigChange({
+                ...config,
+                sector_template: e.target.value as EngineConfig["sector_template"],
+              })}
+              className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+            >
+              <option value="auto">Auto detect</option>
+              <option value="consumer-staples">Consumer staples</option>
+              <option value="paint">Paint / coatings</option>
+              <option value="industrials">Industrials</option>
+              <option value="commodities">Commodities</option>
+              <option value="retail">Retail</option>
+              <option value="services">Services</option>
+            </select>
+          </div>
+          <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Market Data Mode</label>
             <select
               value={config.market_data_provider ?? "manual"}

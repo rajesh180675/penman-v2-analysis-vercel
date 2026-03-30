@@ -86,6 +86,24 @@ Build a valuation tab that answers five questions clearly:
 
 The output should not merely produce numbers. It should produce a disciplined conclusion state.
 
+## Implemented Through March 30, 2026
+
+The roadmap is no longer speculative. The repository now implements the core command-center architecture described here:
+
+- sector-aware valuation templates with `auto` detection plus explicit overrides,
+- owner-earnings and reformulated-DCF diagnostics that separate maintenance capex, growth capex, and working-capital reinvestment,
+- reverse DCF using owner-earnings to infer what the current market price is assuming,
+- quality-adjusted margin-of-safety thresholds instead of one flat hurdle,
+- expected `3Y` CAGR outputs under both base and stressed cases,
+- opportunity scoring and sizing buckets from `research-only` through `truck-load zone`,
+- valuation-tab surfaces for sector template, reverse DCF, DCF cash-flow diagnostics, and opportunity protocol.
+
+What remains after this tranche is not architectural groundwork. It is calibration breadth:
+
+- more real-company historical validation,
+- more sector-specific tuning based on audited runs,
+- and release-grade empirical backtesting of the rare-dislocation thresholds.
+
 ## Target End State
 
 The valuation tab becomes a command center with six pillars:
@@ -258,6 +276,16 @@ These should be tuned empirically, not hard-coded from day one, but a good initi
   - base-case upside > `60%`
   - stressed-case upside > `35%`
   - current valuation in bottom decile of company history
+
+### Implemented signal refinement
+
+The current codebase goes beyond the first draft above and now also requires:
+
+- a quality-adjusted required margin of safety,
+- a minimum opportunity score,
+- no active kill-switches,
+- reverse DCF expectations that are not already aggressive,
+- and a `production-ready` analysis state before the signal can escalate into the most aggressive bucket.
   - reverse DCF implies pessimism near historical extremes
   - no major solvency or governance kill-switch
 

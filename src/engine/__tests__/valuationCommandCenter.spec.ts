@@ -263,6 +263,10 @@ describe("valuation command center", () => {
     expect(out.scenarios.find((scenario) => scenario.key === "base")?.intrinsicPerShare).toBeGreaterThan(0);
     expect(out.scenarios.find((scenario) => scenario.key === "stress")?.intrinsicPerShare).toBeGreaterThan(0);
     expect(["interesting", "high-conviction", "screaming-buy"]).toContain(out.signal.state);
+    expect(out.reverseDcf.impliedOwnerEarningsGrowth).not.toBeNull();
+    expect(out.opportunity.qualityScore).toBeGreaterThan(60);
+    expect(out.opportunity.requiredMarginOfSafetyPct).toBeGreaterThan(0.15);
+    expect(out.scenarios.find((scenario) => scenario.key === "stress")?.expectedCagr).not.toBeNull();
   });
 
   it("blocks the signal when the broader analysis is blocked", () => {
@@ -290,5 +294,105 @@ describe("valuation command center", () => {
     expect(out.signal.state).toBe("blocked");
     expect(out.signal.killSwitches[0]).toContain("outside the supported industrial-company scope");
   });
-});
 
+  it("applies the selected sector template and exposes a professional opportunity protocol", () => {
+    const data = [
+      mkPeriod(2023, 1000, 180, 130, 520, 760),
+      mkPeriod(2024, 1100, 205, 150, 590, 820),
+      mkPeriod(2025, 1210, 232, 172, 665, 885),
+    ];
+    const out = buildValuationCommandCenter({
+      data,
+      config: {
+        ...DEFAULT_CONFIG,
+        sector_template: "paint",
+        shares_outstanding: 620,
+        market_price: 0.8,
+      },
+      marketData: {
+        symbol: "ASIANPAINT.BSE",
+        provider: "Manual",
+        fetchedAt: "2026-03-30T16:00:00.000Z",
+        price: 0.8,
+        previousClose: 0.82,
+        changePct: -0.02,
+        marketCap: null,
+        enterpriseValue: null,
+        sharesOutstanding: null,
+        riskFreeRate: 0.07,
+        priceAsOf: "2026-03-30T15:59:00.000Z",
+        rateAsOf: "2026-03-29",
+        freshness: "live",
+        sourceSummary: "Manual",
+        warnings: [],
+        history: {
+          points: [],
+          currentPricePercentile: 0.04,
+          low52Week: 0.75,
+          high52Week: 2.1,
+          distanceFrom52WeekLowPct: 0.06,
+          drawdownFrom52WeekHighPct: -0.62,
+        },
+      },
+      analysisStatus: productionReadyStatus,
+    });
+
+    expect(out.sectorTemplate.id).toBe("paint");
+    expect(["accumulate", "high-conviction", "truck-load zone"]).toContain(out.opportunity.convictionBucket);
+    expect(out.opportunity.requiredMarginOfSafetyPct).toBeGreaterThanOrEqual(0.18);
+    expect(out.reverseDcf.expectationLabel.length).toBeGreaterThan(10);
+    expect(out.diagnostics.maintenanceCapex).toBeGreaterThan(0);
+  });
+
+  it("widens the required margin of safety when quality deteriorates", () => {
+    const baseData = [
+      mkPeriod(2023, 1000, 180, 130, 520, 760),
+      mkPeriod(2024, 1100, 205, 150, 590, 820),
+      mkPeriod(2025, 1210, 232, 172, 665, 885),
+    ];
+    const strong = buildValuationCommandCenter({
+      data: baseData,
+      config: {
+        ...DEFAULT_CONFIG,
+        sector_template: "industrials",
+        shares_outstanding: 620,
+        market_price: 1,
+      },
+      analysisStatus: productionReadyStatus,
+    });
+
+    const weakData = [...baseData];
+    weakData[2] = {
+      ...weakData[2],
+      quality: {
+        ...weakData[2].quality!,
+        piotroski_total: 3,
+        altman_zprime: 1.8,
+        beneish_mscore: -1.6,
+      },
+      ratios: {
+        ...weakData[2].ratios!,
+        cash_conversion_ratio: 0.55,
+        FLEV: 0.9,
+      },
+      bs: {
+        ...weakData[2].bs,
+        separationScore: 58,
+      },
+    };
+
+    const weak = buildValuationCommandCenter({
+      data: weakData,
+      config: {
+        ...DEFAULT_CONFIG,
+        sector_template: "industrials",
+        shares_outstanding: 620,
+        market_price: 1,
+      },
+      analysisStatus: productionReadyStatus,
+    });
+
+    expect(weak.opportunity.qualityScore).toBeLessThan(strong.opportunity.qualityScore);
+    expect(weak.opportunity.requiredMarginOfSafetyPct).toBeGreaterThan(strong.opportunity.requiredMarginOfSafetyPct);
+  });
+});

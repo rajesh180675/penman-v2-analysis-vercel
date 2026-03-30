@@ -371,6 +371,15 @@ export interface ForecastScenario {
 
 /* ── Engine Config (S-0.1) ──────────────────────────────────────── */
 
+export type ValuationSectorTemplate =
+  | "auto"
+  | "consumer-staples"
+  | "paint"
+  | "industrials"
+  | "commodities"
+  | "retail"
+  | "services";
+
 export interface EngineConfig {
   ke                  : number;
   kd_pretax           : number;
@@ -398,6 +407,7 @@ export interface EngineConfig {
   shares_outstanding  ?: number;
   market_price        ?: number;
   ticker              ?: string;
+  sector_template     ?: ValuationSectorTemplate;
   market_data_symbol  ?: string;
   market_data_instrument_key?: string;
   market_data_provider?: "manual" | "upstox-readonly" | "alphavantage" | "disabled";
@@ -495,6 +505,7 @@ export const DEFAULT_CONFIG: EngineConfig = {
   np_RNOA_median: 0.100,
   np_SPREAD_median: 0.040,
   np_SalesGrowth_median: 0.038,
+  sector_template: "auto",
   market_data_symbol: undefined,
   market_data_instrument_key: undefined,
   market_data_provider: "manual",
