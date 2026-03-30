@@ -1,4 +1,10 @@
-import { WorkspaceCompanyRecord, WorkspacePortfolioPlan, WorkspaceResearchJournalEntry, WorkspaceValuationSnapshot } from "./researchWorkspace";
+import {
+  WorkspaceAnalysisSnapshot,
+  WorkspaceCompanyRecord,
+  WorkspacePortfolioPlan,
+  WorkspaceResearchJournalEntry,
+  WorkspaceValuationSnapshot,
+} from "./researchWorkspace";
 
 async function postJson(path: string, payload: unknown) {
   try {
@@ -16,6 +22,32 @@ async function postJson(path: string, payload: unknown) {
   }
 }
 
+async function getJson(path: string) {
+  try {
+    const response = await fetch(path);
+    if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+export interface SharedResearchBundle {
+  companyId: string;
+  profile?: {
+    companyId?: string;
+    updatedAt?: string | null;
+    issuer?: WorkspaceCompanyRecord["issuer"] | null;
+    notebook?: WorkspaceCompanyRecord["notes"] | null;
+    portfolio?: WorkspaceCompanyRecord["portfolio"] | null;
+  } | null;
+  filings: WorkspaceCompanyRecord["filings"];
+  valuations: WorkspaceValuationSnapshot[];
+  journal: WorkspaceResearchJournalEntry[];
+  alerts: Array<Record<string, unknown>>;
+  analysis: WorkspaceAnalysisSnapshot[];
+}
+
 export async function syncWorkspaceProfile(company: WorkspaceCompanyRecord | null) {
   if (!company) return null;
   return postJson("/api/companies", {
@@ -23,6 +55,14 @@ export async function syncWorkspaceProfile(company: WorkspaceCompanyRecord | nul
     issuer: company.issuer,
     notebook: company.notes,
     portfolio: company.portfolio,
+  });
+}
+
+export async function syncWorkspaceAnalysis(companyId: string, analysis: WorkspaceAnalysisSnapshot | null) {
+  if (!companyId || !analysis) return null;
+  return postJson("/api/research", {
+    companyId,
+    analysis,
   });
 }
 
@@ -65,4 +105,9 @@ export async function syncWorkspaceAlert(companyId: string, alert: Record<string
     companyId,
     alert,
   });
+}
+
+export async function fetchSharedResearchBundle(companyId: string) {
+  if (!companyId) return null;
+  return getJson(`/api/research?companyId=${encodeURIComponent(companyId)}`) as Promise<SharedResearchBundle | null>;
 }

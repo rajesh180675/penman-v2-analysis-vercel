@@ -22,7 +22,7 @@ import {
 } from "./lib/audit";
 import { buildAnalysisSnapshot } from "./lib/auditSnapshot";
 import { listWorkspaceCompanies, rememberWorkspaceAnalysis } from "./lib/researchWorkspace";
-import { syncWorkspaceProfile } from "./lib/sharedResearchApi";
+import { syncWorkspaceAnalysis, syncWorkspaceProfile } from "./lib/sharedResearchApi";
 
 const ValuationReport = lazy(() => import("./components/ValuationReport"));
 const ForecastReport = lazy(() => import("./components/ForecastReport"));
@@ -333,6 +333,7 @@ export function App() {
     const record = workspaceCompanies.find((item) => item.companyId === companyId) ?? null;
     if (!record) return;
     void syncWorkspaceProfile(record);
+    if (record.analysisHistory[0]) void syncWorkspaceAnalysis(companyId, record.analysisHistory[0]);
   }, [analysisStatus, auditMeta?.companyId, rawData]);
 
   return (
@@ -442,7 +443,7 @@ export function App() {
             )}
             {activeTab==="statements" && hasRecast && <RecastStatements data={recastData!}/>}
             {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!}/>}
-            {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} config={forecastConfig}/>}
+            {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig}/>}
             {activeTab==="valuation"  && hasRecast && !valuationBlocked && (
               <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} />
             )}

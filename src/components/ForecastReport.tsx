@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
-import { RecastPeriod, ForecastScenario, ForecastPeriod, FADE_PARAMS, NP_BENCHMARKS, EngineConfig, ke_from_config } from "../engine/types";
+import { RecastPeriod, ForecastScenario, ForecastPeriod, FADE_PARAMS, NP_BENCHMARKS, EngineConfig, RawPeriodData, ke_from_config } from "../engine/types";
 import { buildCyclicalNormalization } from "../engine/cyclicalNormalization";
 import { buildDriverForecastModel } from "../engine/forecastDriverModel";
+import { buildQuarterlyDriverSummary } from "../engine/quarterlyDriverModel";
 import { buildScenario, sensitivityAnalysis, buildValuationPeriodsFromForecast, applyDriverSensitivityToScenario } from "../engine/forecastingEngine";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { buildTerminalEconomics } from "../engine/terminalEconomics";
@@ -15,6 +16,7 @@ import { runMonteCarlo } from "../engine/monteCarloClient";
 import { MonteCarloOutput } from "../engine/monteCarloTypes";
 
 interface Props { data: RecastPeriod[]; config: EngineConfig }
+interface ExtendedProps extends Props { rawData?: RawPeriodData[] | null }
 
 const pct = (v:number,d=1) => (v*100).toFixed(d)+"%";
 const cr  = (v:number) => v.toLocaleString("en-IN",{maximumFractionDigits:0});
@@ -61,7 +63,7 @@ function makeDefaultScenario(
   };
 }
 
-export default function ForecastReport({data,config}:Props) {
+export default function ForecastReport({data,config, rawData = null}:ExtendedProps) {
   const keBase = ke_from_config(config);
   const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
   const shareBasis = useMemo(() => resolveShareBasis(data, config), [data, config]);
@@ -144,6 +146,7 @@ export default function ForecastReport({data,config}:Props) {
     }),
     [cyclicalNormalization, g_inp, ke_inp, latest],
   );
+  const quarterlySummary = useMemo(() => buildQuarterlyDriverSummary(rawData, data), [rawData, data]);
 
   const scenarios = useMemo(():ForecastScenario[]=>{
     const kei=ke_inp/100, kwi=kwDerived;
@@ -376,7 +379,7 @@ export default function ForecastReport({data,config}:Props) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
           <h3 className="text-base font-bold text-slate-800 mb-2">Driver-Based Forecast</h3>
           <div className="text-sm text-slate-700">{driverModel.narrative}</div>
@@ -403,6 +406,18 @@ export default function ForecastReport({data,config}:Props) {
             <div>Terminal reinvestment: <strong>{terminalEconomics.terminalReinvestmentRate != null ? pct(terminalEconomics.terminalReinvestmentRate) : "—"}</strong></div>
             <div>Competition pressure: <strong>{terminalEconomics.competitionPressure}</strong></div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{terminalEconomics.summary}</div>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h3 className="text-base font-bold text-slate-800 mb-2">Quarterly And TTM Driver View</h3>
+          <div className="grid gap-2 text-sm text-slate-700">
+            <div>Cadence: <strong>{quarterlySummary.filingCadence}</strong></div>
+            <div>Latest filing: <strong>{quarterlySummary.latestQuarterLabel?.slice(0, 10) ?? "—"}</strong></div>
+            <div>TTM revenue proxy: <strong>{quarterlySummary.ttmRevenueProxy != null ? `₹${cr(quarterlySummary.ttmRevenueProxy)}` : "—"}</strong></div>
+            <div>TTM PAT proxy: <strong>{quarterlySummary.ttmPatProxy != null ? `₹${cr(quarterlySummary.ttmPatProxy)}` : "—"}</strong></div>
+            <div>Run-rate margin: <strong>{quarterlySummary.drivers.marginRunRate != null ? pct(quarterlySummary.drivers.marginRunRate) : "—"}</strong></div>
+            <div>Capacity read: <strong>{quarterlySummary.capacitySignal}</strong></div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{quarterlySummary.priceVolumeMixSignal}</div>
           </div>
         </div>
       </div>

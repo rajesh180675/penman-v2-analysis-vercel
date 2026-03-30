@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { summarizeConceptCoverage } from "../conceptOntology";
 import { detectCorporateActions } from "../corporateActions";
 import { buildFinancialInstitutionValuation } from "../financialInstitutionFramework";
+import { buildPeerValuationSnapshot } from "../peerValuation";
+import { buildQuarterlyDriverSummary } from "../quarterlyDriverModel";
+import { calibrateSignalBacktest } from "../signalBacktest";
 import { buildStatementDiagnostics } from "../statementDiagnostics";
+import { buildStatementLineage } from "../statementLineage";
 import { DEFAULT_CONFIG, RawPeriodData } from "../types";
 
 describe("institutional expansion modules", () => {
@@ -70,5 +74,61 @@ describe("institutional expansion modules", () => {
     const valuation = buildFinancialInstitutionValuation(financialPeriods, DEFAULT_CONFIG);
     expect(valuation?.bookValuePerShare).toBeCloseTo(12.5, 4);
     expect(valuation?.roe).toBeGreaterThan(0.1);
+    expect(valuation?.institutionKind).toBe("nbfc");
+    expect(valuation?.keyMetrics.length).toBeGreaterThan(2);
+  });
+
+  it("builds statement lineage, quarterly drivers, peers, and calibration summaries", () => {
+    const lineage = buildStatementLineage(industrialPeriods);
+    expect(lineage.versions).toHaveLength(2);
+    expect(lineage.filingMix.annual).toBe(2);
+
+    const quarterly = buildQuarterlyDriverSummary(industrialPeriods, []);
+    expect(quarterly.filingCadence).toBe("annual-only");
+    expect(quarterly.capacitySignal.length).toBeGreaterThan(10);
+
+    const peers = buildPeerValuationSnapshot({
+      registry: { companies: {} },
+      sector: "consumer",
+      workspaceCompanies: [
+        {
+          companyId: "A",
+          label: "A",
+          issuer: { sector: "consumer" },
+          valuations: [{ signalLabel: "Interesting", marketPrice: 100, expectedCagrStress: 0.18, stressUpsidePct: 0.25, opportunityScore: 72 }],
+        },
+        {
+          companyId: "B",
+          label: "B",
+          issuer: { sector: "consumer" },
+          valuations: [{ signalLabel: "Watch", marketPrice: 90, expectedCagrStress: 0.1, stressUpsidePct: 0.12, opportunityScore: 55 }],
+        },
+      ],
+    });
+    expect(peers.medians.expectedCagrStress).toBeGreaterThan(0.1);
+    expect(peers.peers[0].historyPoints).toBeGreaterThan(0);
+
+    const calibration = calibrateSignalBacktest({
+      available: true,
+      points: [],
+      countsByState: {
+        blocked: 0,
+        guarded: 1,
+        watchlist: 2,
+        interesting: 2,
+        "high-conviction": 1,
+        "screaming-buy": 0,
+      },
+      investableCount: 3,
+      highConvictionCount: 1,
+      screamingBuyCount: 0,
+      forwardWinRate1Y: 0.6,
+      forwardWinRate3Y: 0.75,
+      median1Y: 0.12,
+      median3Y: 0.32,
+      latestComparedToHistory: "better-than-median",
+    });
+    expect(calibration.calibrationBand).toBe("thin");
+    expect(calibration.hitRateSummary).toContain("1Y");
   });
 });

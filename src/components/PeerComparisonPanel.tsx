@@ -26,6 +26,7 @@ export default function PeerComparisonPanel({ snapshot }: Props) {
               <th className="px-3 py-2 text-left text-xs uppercase tracking-wide text-slate-500">Signal</th>
               <th className="px-3 py-2 text-right text-xs uppercase tracking-wide text-slate-500">Stress CAGR</th>
               <th className="px-3 py-2 text-right text-xs uppercase tracking-wide text-slate-500">Stress value</th>
+              <th className="px-3 py-2 text-right text-xs uppercase tracking-wide text-slate-500">Vs sector median</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -35,10 +36,25 @@ export default function PeerComparisonPanel({ snapshot }: Props) {
                 <td className="px-3 py-2 text-slate-700">{peer.signalLabel ?? "—"}</td>
                 <td className="px-3 py-2 text-right font-mono">{pct(peer.expectedCagrStress)}</td>
                 <td className="px-3 py-2 text-right font-mono">{peer.intrinsicPerShare != null ? `₹${peer.intrinsicPerShare.toFixed(2)}` : "—"}</td>
+                <td className="px-3 py-2 text-right font-mono">{pct(peer.relativeStressCagrVsMedian, 1)}</td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-3 text-sm text-slate-700">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div className="text-xs uppercase tracking-wide text-slate-500">Median stress CAGR</div>
+          <div className="mt-1 font-semibold text-slate-900">{pct(snapshot.medians.expectedCagrStress)}</div>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div className="text-xs uppercase tracking-wide text-slate-500">Median stress value</div>
+          <div className="mt-1 font-semibold text-slate-900">{snapshot.medians.intrinsicPerShare != null ? `₹${snapshot.medians.intrinsicPerShare.toFixed(2)}` : "—"}</div>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div className="text-xs uppercase tracking-wide text-slate-500">Median score</div>
+          <div className="mt-1 font-semibold text-slate-900">{snapshot.medians.opportunityScore != null ? `${snapshot.medians.opportunityScore.toFixed(0)}/100` : "—"}</div>
+        </div>
       </div>
     </div>
   );

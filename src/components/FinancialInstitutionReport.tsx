@@ -10,6 +10,14 @@ function pct(value: number | null | undefined, digits = 1) {
   return value == null || !Number.isFinite(value) ? "—" : `${(value * 100).toFixed(digits)}%`;
 }
 
+function fmtMetric(value: number | null | undefined, format: "pct" | "multiple" | "currency" | "number") {
+  if (value == null || !Number.isFinite(value)) return "—";
+  if (format === "pct") return pct(value, 2);
+  if (format === "multiple") return `${value.toFixed(2)}x`;
+  if (format === "currency") return `₹${value.toFixed(2)}`;
+  return value.toFixed(2);
+}
+
 export default function FinancialInstitutionReport({ rawData, config }: Props) {
   const output = buildFinancialInstitutionValuation(rawData, config);
 
@@ -27,6 +35,9 @@ export default function FinancialInstitutionReport({ rawData, config }: Props) {
       <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6 text-blue-900">
         <h3 className="text-lg font-semibold">Financial Institution Framework</h3>
         <p className="mt-2 text-sm">{output.summary}</p>
+        <div className="mt-3 inline-flex rounded-full border border-blue-300 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
+          {output.institutionKind} · {output.priceTargetMethod}
+        </div>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
         <Metric label="Book value / share" value={output.bookValuePerShare != null ? `₹${output.bookValuePerShare.toFixed(2)}` : "—"} />
@@ -36,12 +47,17 @@ export default function FinancialInstitutionReport({ rawData, config }: Props) {
         <Metric label="Justified value / share" value={output.justifiedValuePerShare != null ? `₹${output.justifiedValuePerShare.toFixed(2)}` : "—"} />
         <Metric label="Confidence" value={output.confidence} />
       </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        {output.keyMetrics.map((metric) => (
+          <Metric key={metric.label} label={metric.label} value={fmtMetric(metric.value, metric.format)} />
+        ))}
+      </div>
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm text-sm text-slate-700">
         <div className="font-semibold text-slate-900">How to use this</div>
         <ul className="mt-3 space-y-2">
           <li>Use this path for banks, NBFCs, and insurers instead of the industrial NOA/NFO valuation stack.</li>
-          <li>Book value and normalized ROE matter more than industrial-style margin and asset-turnover logic.</li>
-          <li>This is a first-pass financials framework; refine it with NIM, credit-cost, capital adequacy, and book-quality analysis before sizing a position.</li>
+          <li>The framework first classifies the institution type, then changes the anchor metrics so the investor is not applying industrial logic to financial balance sheets.</li>
+          <li>Book value and normalized ROE remain central, but the decisive cross-checks now depend on the institution family: NIM and credit cost for banks, lending yield and leverage for NBFCs, and float/claims discipline for insurers.</li>
         </ul>
       </div>
     </div>

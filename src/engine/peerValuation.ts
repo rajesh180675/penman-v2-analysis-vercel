@@ -8,6 +8,10 @@ export interface PeerValuationRow {
   intrinsicPerShare: number | null;
   marketPrice: number | null;
   expectedCagrStress: number | null;
+  opportunityScore: number | null;
+  relativeStressCagrVsMedian: number | null;
+  relativeValueVsMedian: number | null;
+  historyPoints: number;
 }
 
 export interface PeerValuationSnapshot {
@@ -15,6 +19,8 @@ export interface PeerValuationSnapshot {
   medians: {
     intrinsicPerShare: number | null;
     expectedCagrStress: number | null;
+    opportunityScore: number | null;
+    marketPrice: number | null;
   };
 }
 
@@ -31,12 +37,12 @@ export function buildPeerValuationSnapshot(args: {
     companyId: string;
     label: string;
     issuer?: { sector?: string | null } | null;
-    valuations?: Array<{ signalLabel: string; marketPrice: number | null; expectedCagrStress: number | null; stressUpsidePct: number | null }>;
+    valuations?: Array<{ signalLabel: string; marketPrice: number | null; expectedCagrStress: number | null; stressUpsidePct: number | null; opportunityScore?: number | null }>;
   }>;
   sector?: string | null;
 }) {
   const { registry, workspaceCompanies = [], sector } = args;
-  const rows: PeerValuationRow[] = workspaceCompanies
+  const baseRows: PeerValuationRow[] = workspaceCompanies
     .filter((company) => !sector || company.issuer?.sector === sector || company.issuer?.sector == null)
     .map((company) => ({
       companyId: company.companyId,
@@ -48,6 +54,10 @@ export function buildPeerValuationSnapshot(args: {
         : null,
       marketPrice: company.valuations?.[0]?.marketPrice ?? null,
       expectedCagrStress: company.valuations?.[0]?.expectedCagrStress ?? null,
+      opportunityScore: company.valuations?.[0]?.opportunityScore ?? null,
+      relativeStressCagrVsMedian: null,
+      relativeValueVsMedian: null,
+      historyPoints: company.valuations?.length ?? 0,
     }));
 
   const fallbackRows = Object.values(registry.companies)
@@ -60,14 +70,31 @@ export function buildPeerValuationSnapshot(args: {
       intrinsicPerShare: null,
       marketPrice: null,
       expectedCagrStress: null,
+      opportunityScore: null,
+      relativeStressCagrVsMedian: null,
+      relativeValueVsMedian: null,
+      historyPoints: 0,
     }));
 
-  const peers = rows.length ? rows : fallbackRows;
+  const peers = baseRows.length ? baseRows : fallbackRows;
+  const medians = {
+    intrinsicPerShare: median(peers.map((peer) => peer.intrinsicPerShare)),
+    expectedCagrStress: median(peers.map((peer) => peer.expectedCagrStress)),
+    opportunityScore: median(peers.map((peer) => peer.opportunityScore)),
+    marketPrice: median(peers.map((peer) => peer.marketPrice)),
+  };
   return {
-    peers,
-    medians: {
-      intrinsicPerShare: median(peers.map((peer) => peer.intrinsicPerShare)),
-      expectedCagrStress: median(peers.map((peer) => peer.expectedCagrStress)),
-    },
+    peers: peers.map((peer) => ({
+      ...peer,
+      relativeStressCagrVsMedian:
+        peer.expectedCagrStress != null && medians.expectedCagrStress != null
+          ? peer.expectedCagrStress - medians.expectedCagrStress
+          : null,
+      relativeValueVsMedian:
+        peer.intrinsicPerShare != null && medians.intrinsicPerShare != null
+          ? peer.intrinsicPerShare - medians.intrinsicPerShare
+          : null,
+    })),
+    medians,
   } satisfies PeerValuationSnapshot;
 }

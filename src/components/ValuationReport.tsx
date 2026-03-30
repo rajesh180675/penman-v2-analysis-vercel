@@ -480,7 +480,10 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
             <div>Discount-rate adj: <strong>{formatPct(regimeContext.discountRateAdjustment, 1)}</strong></div>
             <div>Strongest replay state: <strong>{calibration.strongestState ?? "—"}</strong></div>
             <div>Weakest replay state: <strong>{calibration.weakestState ?? "—"}</strong></div>
+            <div>Calibration band: <strong>{calibration.calibrationBand}</strong></div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{regimeContext.summary}</div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{calibration.hitRateSummary}</div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{calibration.alertDiscipline}</div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{calibration.recommendation}</div>
           </div>
         </div>

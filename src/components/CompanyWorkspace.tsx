@@ -3,6 +3,7 @@ import { AnalysisStatusSummary } from "../engine/analysisStatus";
 import { summarizeConceptCoverage, rankUnmappedLabels } from "../engine/conceptOntology";
 import { detectCorporateActions } from "../engine/corporateActions";
 import { buildPeerValuationSnapshot } from "../engine/peerValuation";
+import { buildStatementLineage } from "../engine/statementLineage";
 import { buildStatementDiagnostics } from "../engine/statementDiagnostics";
 import { CompanyRegistry, EngineConfig, RawPeriodData, RecastPeriod } from "../engine/types";
 import { AuditSubmissionMeta, listRememberedAuditRuns } from "../lib/audit";
@@ -16,13 +17,22 @@ import {
   WorkspaceAnalysisSnapshot,
   WorkspaceCompanyRecord,
 } from "../lib/researchWorkspace";
-import { syncWorkspaceFilings, syncWorkspaceJournal, syncWorkspacePortfolio, syncWorkspaceProfile } from "../lib/sharedResearchApi";
+import {
+  fetchSharedResearchBundle,
+  SharedResearchBundle,
+  syncWorkspaceFilings,
+  syncWorkspaceJournal,
+  syncWorkspacePortfolio,
+  syncWorkspaceProfile,
+} from "../lib/sharedResearchApi";
 import AssumptionManifestPanel from "./AssumptionManifestPanel";
+import CalibrationDashboardPanel from "./CalibrationDashboardPanel";
 import FilingHistoryPanel from "./FilingHistoryPanel";
 import PeerComparisonPanel from "./PeerComparisonPanel";
 import PortfolioAllocator from "./PortfolioAllocator";
 import ResearchJournalPanel from "./ResearchJournalPanel";
 import SignalHistoryTimeline from "./SignalHistoryTimeline";
+import StatementLineagePanel from "./StatementLineagePanel";
 import ValuationAssumptionDiff from "./ValuationAssumptionDiff";
 import ValuationWorkbench from "./ValuationWorkbench";
 import WatchlistDashboard from "./WatchlistDashboard";
@@ -178,6 +188,7 @@ export default function CompanyWorkspace({
   const [workspaceRecord, setWorkspaceRecord] = useState<WorkspaceCompanyRecord | null>(effectiveCompanyId ? getWorkspaceCompany(effectiveCompanyId) : null);
   const [runHistory, setRunHistory] = useState<InspectorRunPayload[]>([]);
   const [loadingRuns, setLoadingRuns] = useState(false);
+  const [sharedBundle, setSharedBundle] = useState<SharedResearchBundle | null>(null);
 
   const setCompanyId = (companyId: string) => {
     setInternalCompanyId(companyId);
@@ -247,6 +258,22 @@ export default function CompanyWorkspace({
     };
   }, [effectiveCompanyId]);
 
+  useEffect(() => {
+    if (!effectiveCompanyId) {
+      setSharedBundle(null);
+      return;
+    }
+    let cancelled = false;
+    const loadSharedBundle = async () => {
+      const next = await fetchSharedResearchBundle(effectiveCompanyId);
+      if (!cancelled) setSharedBundle(next);
+    };
+    void loadSharedBundle();
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveCompanyId, workspaceRecord?.journal?.length, workspaceRecord?.valuations?.length, workspaceRecord?.analysisHistory?.length]);
+
   const currentNotebook = workspaceRecord?.notes ?? {
     businessSummary: "",
     thesis: "",
@@ -270,10 +297,19 @@ export default function CompanyWorkspace({
   const conceptCoverage = useMemo(() => summarizeConceptCoverage(rawData), [rawData]);
   const statementDiagnostics = useMemo(() => buildStatementDiagnostics(rawData), [rawData]);
   const corporateActions = useMemo(() => detectCorporateActions(rawData), [rawData]);
+  const statementLineage = useMemo(() => buildStatementLineage(rawData), [rawData]);
   const peerSnapshot = useMemo(
     () => buildPeerValuationSnapshot({ registry, workspaceCompanies: listWorkspaceCompanies(), sector: workspaceRecord?.issuer?.sector ?? config.sector_template ?? null }),
     [config.sector_template, registry, workspaceRecord?.issuer?.sector],
   );
+  const sharedAlerts = sharedBundle?.alerts ?? [];
+  const sharedCounts = {
+    filings: sharedBundle?.filings?.length ?? 0,
+    valuations: sharedBundle?.valuations?.length ?? 0,
+    journal: sharedBundle?.journal?.length ?? 0,
+    alerts: sharedAlerts.length,
+    analysis: sharedBundle?.analysis?.length ?? 0,
+  };
   const guidance = investorGuidance({
     status: latestLocalSnapshot?.analysisStatus ?? analysisStatus?.status ?? "unknown",
     signalState: latestRun?.latestValuationSignal?.state ?? latestSignal?.state ?? null,
@@ -385,6 +421,14 @@ export default function CompanyWorkspace({
         <MetricCard label="Filing memory" value={String(workspaceRecord?.filings.length ?? 0)} />
         <MetricCard label="Signal history" value={String(workspaceRecord?.signalHistory.length ?? 0)} />
         <MetricCard label="Latest signal" value={latestValuation?.signalLabel ?? latestRun?.latestValuationSignal?.label ?? latestSignal?.label ?? "—"} />
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-5">
+        <MetricCard label="Shared filings" value={String(sharedCounts.filings)} />
+        <MetricCard label="Shared valuations" value={String(sharedCounts.valuations)} />
+        <MetricCard label="Shared analysis" value={String(sharedCounts.analysis)} />
+        <MetricCard label="Shared notes" value={String(sharedCounts.journal)} />
+        <MetricCard label="Alerts" value={String(sharedCounts.alerts)} />
       </section>
 
       <ValuationWorkbench
@@ -503,6 +547,32 @@ export default function CompanyWorkspace({
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
+        <StatementLineagePanel lineage={statementLineage} />
+        <CalibrationDashboardPanel
+          calibration={{
+            stateRankings: Object.entries(
+              runHistory.reduce<Record<string, number>>((acc, run) => {
+                const key = run.latestValuationSignal?.state ?? "unknown";
+                acc[key] = (acc[key] ?? 0) + 1;
+                return acc;
+              }, {}),
+            ).map(([state, count]) => ({ state, count })),
+            strongestState: latestRun?.latestValuationSignal?.state ?? latestSignal?.state ?? null,
+            weakestState: null,
+            calibrationBand: runHistory.length >= 5 ? "robust" : runHistory.length >= 2 ? "usable" : "thin",
+            hitRateSummary: latestRun?.latestValuationManifest?.backtest?.available
+              ? `1Y win rate ${pct(latestRun.latestValuationManifest.backtest.forwardWinRate1Y)} · 3Y win rate ${pct(latestRun.latestValuationManifest.backtest.forwardWinRate3Y)}`
+              : "No run-level replay statistics are stored for this company yet.",
+            alertDiscipline: sharedAlerts.length > 2
+              ? "Multiple persisted alerts exist. Review whether the strongest state is too frequent."
+              : "Alert history is still sparse, which is good if strong states are meant to stay rare.",
+            recommendation: latestRun?.latestValuationManifest?.backtest?.latestComparedToHistory ?? "Run more audited cycles to make the calibration layer statistically stronger.",
+          }}
+          alerts={sharedAlerts}
+        />
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-base font-bold text-slate-800">Concept Ontology Coverage</h3>
           <p className="mt-1 text-sm text-slate-500">This shows whether the loaded statements cover the analytical concepts the model cares about, not just raw line counts.</p>
@@ -521,7 +591,6 @@ export default function CompanyWorkspace({
             )}
           </div>
         </div>
-
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-base font-bold text-slate-800">Statement Diagnostics And Corporate Actions</h3>
           <div className="mt-4 space-y-2 text-sm text-slate-700">
