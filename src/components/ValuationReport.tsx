@@ -1,22 +1,52 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import { RecastPeriod, EngineConfig } from "../engine/types";
-import { useState, useMemo } from "react";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { ke_from_config } from "../engine/types";
 import { resolveValuationReadiness } from "../engine/valuationPolicy";
 import { resolveShareBasis, toPerShare } from "../engine/shareCountTools";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell } from "recharts";
+import { AnalysisStatusSummary } from "../engine/analysisStatus";
+import {
+  buildValuationCommandCenter,
+  formatHistoricalPercentile,
+  formatPct,
+  formatPerShare,
+  ValuationSignalState,
+} from "../engine/valuationCommandCenter";
+import { useLiveMarketData } from "../hooks/useLiveMarketData";
+import { AuditSubmissionMeta, persistAuditEvent } from "../lib/audit";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell, LineChart, Line,
+} from "recharts";
 
-interface Props { data: RecastPeriod[]; config: EngineConfig }
+interface Props {
+  data: RecastPeriod[];
+  config: EngineConfig;
+  analysisStatus?: AnalysisStatusSummary | null;
+  auditMeta?: AuditSubmissionMeta | null;
+}
 
 type CVMethod = "CV1" | "CV2" | "CV3";
 
-export default function ValuationReport({ data, config }: Props) {
-  // S-9.4: ke from config (prefer explicit config.ke over rf+erp)
-  const keFromConfig = ke_from_config(config);
+export default function ValuationReport({ data, config, analysisStatus, auditMeta }: Props) {
   const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
+  const marketSymbol = config.market_data_symbol ?? config.ticker ?? null;
+  const { snapshot: liveMarketData, loading: marketDataLoading, error: marketDataError, refresh } = useLiveMarketData({
+    symbol: marketSymbol,
+    fallbackPrice: config.market_price ?? null,
+    fallbackRiskFreeRate: config.risk_free_rate ?? null,
+    refreshSeconds: config.market_data_refresh_seconds ?? 300,
+  });
+  const effectiveConfig = useMemo<EngineConfig>(() => ({
+    ...config,
+    market_price: liveMarketData?.price ?? config.market_price,
+    risk_free_rate: liveMarketData?.riskFreeRate ?? config.risk_free_rate,
+  }), [config, liveMarketData]);
+  const keFromConfig = ke_from_config(effectiveConfig);
   const [keOverride, setKeOverride] = useState<number | null>(null);
-  const [g, setG] = useState(config.g_terminal_override != null ? config.g_terminal_override * 100 : 4.0);
+  const [g, setG] = useState(effectiveConfig.g_terminal_override != null ? effectiveConfig.g_terminal_override * 100 : 4.0);
   const [cv, setCv] = useState<CVMethod>("CV3");
+  const lastMarketAuditRef = useRef<string | null>(null);
+  const lastSignalAuditRef = useRef<string | null>(null);
 
   if (data.length < 2) {
     return <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
@@ -27,7 +57,7 @@ export default function ValuationReport({ data, config }: Props) {
 
   const ke = keOverride != null ? keOverride / 100 : keFromConfig;
   const gRate = g / 100;
-  const shareBasis = useMemo(() => resolveShareBasis(data, config), [data, config]);
+  const shareBasis = useMemo(() => resolveShareBasis(data, effectiveConfig), [data, effectiveConfig]);
   const valuationData = useMemo(
     () => data.slice(0, Math.max(2, valuationReadiness.anchorIndex + 1)),
     [data, valuationReadiness.anchorIndex]
@@ -36,40 +66,190 @@ export default function ValuationReport({ data, config }: Props) {
     () => shareBasis.valuationConfig,
     [shareBasis]
   );
-
-  // S-9.4: kw ALWAYS derived — never a user input
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const kwDerived = useMemo(() => {
     const cur = valuationData[valuationData.length - 1];
     const prev = valuationData[valuationData.length - 2];
-    return deriveKwFromStructure(cur, prev, ke, config.risk_free_rate, config);
-  }, [valuationData, ke, config]);
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+    return deriveKwFromStructure(cur, prev, ke, effectiveConfig.risk_free_rate, effectiveConfig);
+  }, [valuationData, ke, effectiveConfig]);
   const val = useMemo(() =>
     computeValuation(valuationData, ke, kwDerived, gRate, valuationConfig),
     [valuationData, ke, kwDerived, gRate, valuationConfig]
   );
+  const commandCenter = useMemo(
+    () => buildValuationCommandCenter({
+      data,
+      config: effectiveConfig,
+      marketData: liveMarketData,
+      analysisStatus,
+    }),
+    [analysisStatus, data, effectiveConfig, liveMarketData],
+  );
+
+  useEffect(() => {
+    if (!auditMeta || !liveMarketData) return;
+    const signature = JSON.stringify({
+      symbol: liveMarketData.symbol,
+      fetchedAt: liveMarketData.fetchedAt,
+      price: liveMarketData.price,
+      riskFreeRate: liveMarketData.riskFreeRate,
+      freshness: liveMarketData.freshness,
+    });
+    if (signature === lastMarketAuditRef.current) return;
+    lastMarketAuditRef.current = signature;
+    void persistAuditEvent({
+      runId: auditMeta.runId,
+      eventType: "market-data-refreshed",
+      companyId: auditMeta.companyId,
+      sourceMode: auditMeta.sourceMode,
+      payload: liveMarketData,
+    });
+  }, [auditMeta, liveMarketData]);
+
+  useEffect(() => {
+    if (!auditMeta) return;
+    const signalPayload = {
+      ...commandCenter.signal,
+      marketPrice: commandCenter.marketPrice,
+      asOf: commandCenter.asOf,
+      scenarios: commandCenter.scenarios.map((scenario) => ({
+        key: scenario.key,
+        label: scenario.label,
+        intrinsicPerShare: scenario.intrinsicPerShare,
+        upsidePct: scenario.upsidePct,
+      })),
+    };
+    const signature = JSON.stringify(signalPayload);
+    if (signature === lastSignalAuditRef.current) return;
+    lastSignalAuditRef.current = signature;
+    void persistAuditEvent({
+      runId: auditMeta.runId,
+      eventType: "valuation-signal-updated",
+      companyId: auditMeta.companyId,
+      sourceMode: auditMeta.sourceMode,
+      payload: signalPayload,
+    });
+  }, [auditMeta, commandCenter]);
 
   const cvSel = (v1: number, v2: number, v3: number) => cv === "CV1" ? v1 : cv === "CV2" ? v2 : v3;
-  const V_RE   = cvSel(val.V_RE_CV1,   val.V_RE_CV2,   val.V_RE_CV3);
+  const V_RE = cvSel(val.V_RE_CV1, val.V_RE_CV2, val.V_RE_CV3);
   const V_ReOI = cvSel(val.V_ReOI_CV01, val.V_ReOI_CV02, val.V_ReOI_CV03);
 
   const fmt = (n: number) => n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
   const fmtPerShare = (n: number | null | undefined) => n == null ? "—" : `₹${n.toFixed(2)}`;
-
-  // S-9.8: per-share
   const sharesOut = shareBasis.shares ?? null;
-
   const barData = val.reSeries.map((r) => ({
     period: r.period.slice(0, 7),
-    RE:   +(toPerShare(r.RE, sharesOut) ?? r.RE).toFixed(2),
+    RE: +(toPerShare(r.RE, sharesOut) ?? r.RE).toFixed(2),
     ReOI: +(toPerShare(r.ReOI, sharesOut) ?? r.ReOI).toFixed(2),
   }));
+  const sparklineData = liveMarketData?.history?.points.slice(0, 90).reverse().map((point) => ({
+    date: point.date.slice(5),
+    close: point.close,
+  })) ?? [];
 
   return (
     <div className="space-y-8">
-      {/* Inputs — S-9.4: kw is derived, not user input */}
+      <ValuationCommandCenterHero
+        marketSymbol={marketSymbol}
+        commandCenter={commandCenter}
+        liveMarketData={liveMarketData}
+        marketDataLoading={marketDataLoading}
+        marketDataError={marketDataError}
+        onRefresh={refresh}
+      />
+
+      <section className="grid gap-4 xl:grid-cols-3">
+        <div className="xl:col-span-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">Signal Engine</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                The tab leads with the stressed case and only elevates a buy state when both valuation and historical context are unusually strong.
+              </p>
+            </div>
+            <SignalPill state={commandCenter.signal.state} label={commandCenter.signal.label} />
+          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Why it qualifies</div>
+              <div className="mt-2 text-sm font-medium text-slate-800">{commandCenter.signal.summary}</div>
+              <div className="mt-4 space-y-2 text-sm text-slate-700">
+                <div>Base upside: <strong>{formatPct(commandCenter.signal.baseUpsidePct)}</strong></div>
+                <div>Stress upside: <strong>{formatPct(commandCenter.signal.stressUpsidePct)}</strong></div>
+                <div>Historical setup: <strong>{formatHistoricalPercentile(commandCenter.signal.historicalPercentile)}</strong></div>
+                <div>Reverse DCF implied growth: <strong>{formatPct(commandCenter.signal.reverseDcfImpliedGrowth, 2)}</strong></div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Kill Switches</div>
+              <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                {commandCenter.signal.killSwitches.length ? commandCenter.signal.killSwitches.map((item) => (
+                  <li key={item} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700">{item}</li>
+                )) : (
+                  <li className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
+                    No active kill-switches are blocking the valuation command center.
+                  </li>
+                )}
+              </ul>
+              <div className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">Supporting Flags</div>
+              <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                {commandCenter.signal.supportingFlags.length ? commandCenter.signal.supportingFlags.map((item) => (
+                  <li key={item} className="rounded-lg border border-slate-200 bg-white px-3 py-2">{item}</li>
+                )) : (
+                  <li className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-500">
+                    No exceptional supporting flags are active yet.
+                  </li>
+                )}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Historical Dislocation</div>
+          <div className="mt-3 grid gap-3">
+            <StatTile label="Current price percentile" value={formatHistoricalPercentile(liveMarketData?.history?.currentPricePercentile)} />
+            <StatTile label="52-week low" value={liveMarketData?.history?.low52Week != null ? `₹${liveMarketData.history.low52Week.toFixed(2)}` : "—"} />
+            <StatTile label="52-week high" value={liveMarketData?.history?.high52Week != null ? `₹${liveMarketData.history.high52Week.toFixed(2)}` : "—"} />
+            <StatTile label="Distance from 52-week low" value={formatPct(liveMarketData?.history?.distanceFrom52WeekLowPct)} />
+            <StatTile label="Drawdown from 52-week high" value={formatPct(liveMarketData?.history?.drawdownFrom52WeekHighPct)} />
+          </div>
+          <div className="mt-5 h-40">
+            {sparklineData.length ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={sparklineData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="date" hide />
+                  <YAxis tick={{ fontSize: 10 }} width={56} />
+                  <Tooltip />
+                  <Line dataKey="close" stroke="#0f172a" dot={false} strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500">
+                Historical price series unavailable for this symbol/provider.
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-4">
+        {commandCenter.scenarios.map((scenario) => (
+          <ScenarioCard
+            key={scenario.key}
+            label={scenario.label}
+            intrinsicPerShare={scenario.intrinsicPerShare}
+            upsidePct={scenario.upsidePct}
+            ke={scenario.assumptions.ke}
+            kw={scenario.assumptions.kw}
+            g={scenario.assumptions.g}
+            salesGrowth={scenario.assumptions.salesGrowthYear1}
+            corePm={scenario.assumptions.corePmYear1}
+          />
+        ))}
+      </section>
+
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
         <h2 className="text-lg font-bold text-slate-800 mb-5">Valuation Inputs (§6)</h2>
         <div className="flex flex-wrap gap-6 items-end">
@@ -87,12 +267,11 @@ export default function ValuationReport({ data, config }: Props) {
             </div>
             {keOverride == null && (
               <p className="text-xs text-slate-400 mt-0.5">
-                {config.ke > 0 ? `explicit: ${(config.ke*100).toFixed(1)}%` : `rf+erp = ${(keFromConfig*100).toFixed(1)}%`}
+                {effectiveConfig.ke > 0 ? `explicit: ${(effectiveConfig.ke * 100).toFixed(1)}%` : `rf+erp = ${(keFromConfig * 100).toFixed(1)}%`}
               </p>
             )}
           </div>
 
-          {/* S-9.4: kw DERIVED — read-only */}
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">WACC kw — derived (S-9.4)</label>
             <div className="w-28 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-700 font-mono font-semibold">
@@ -112,6 +291,13 @@ export default function ValuationReport({ data, config }: Props) {
               <option value="CV3">CV3 — Gordon growth</option>
             </select>
           </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+            <div className="font-semibold text-slate-700">Live market overlay</div>
+            <div className="mt-1">Price: <b>{commandCenter.marketPrice != null ? `₹${commandCenter.marketPrice.toFixed(2)}` : "—"}</b></div>
+            <div>Risk-free: <b>{(commandCenter.riskFreeRate * 100).toFixed(2)}%</b></div>
+            <div>Freshness: <b>{liveMarketData?.freshness ?? "fallback"}</b></div>
+          </div>
         </div>
 
         {sharesOut != null && (
@@ -123,8 +309,8 @@ export default function ValuationReport({ data, config }: Props) {
 
         {val.lowConfidence && (
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-            ⚠ Separation Confidence Score = {val.separationScore}/100 &lt; threshold.
-            Operating/Financing separation may be unreliable. Prefer RE approach (not ReOI).
+            Separation Confidence Score = {val.separationScore}/100 &lt; threshold.
+            Operating/Financing separation may be unreliable. Prefer RE approach over ReOI-heavy conclusions.
           </div>
         )}
 
@@ -139,7 +325,6 @@ export default function ValuationReport({ data, config }: Props) {
         )}
       </div>
 
-      {/* Value Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <ValCard color="indigo" title={`V (RE · ${cv})`} subtitle="Eq.(1a) · Clean surplus" value={V_RE}
           items={[
@@ -188,7 +373,6 @@ export default function ValuationReport({ data, config }: Props) {
         </div>
       </div>
 
-      {/* Triangulation */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
           <h2 className="text-lg font-bold text-slate-800">Valuation Triangulation (v3)</h2>
@@ -228,67 +412,6 @@ export default function ValuationReport({ data, config }: Props) {
         </div>
       </div>
 
-      {/* OJ / AEG */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-          <h2 className="text-lg font-bold text-slate-800">OJ / AEG Integration (A-05)</h2>
-        </div>
-        <div className="p-6">
-          {val.aeg?.aeg_series?.length ? (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                {[
-                  { l: "V_AEG", v: sharesOut ? `${fmtPerShare(toPerShare(val.aeg.V_AEG, sharesOut))} / share` : `₹${fmt(val.aeg.V_AEG)} Cr` },
-                  { l: "Implied P/E", v: val.aeg.implied_pe != null ? `${val.aeg.implied_pe.toFixed(2)}x` : "—" },
-                  { l: "Normalised P/E", v: val.aeg.normalised_pe != null ? `${val.aeg.normalised_pe.toFixed(2)}x` : "—" },
-                ].map(({ l, v }) => (
-                  <div key={l} className="rounded-xl border border-slate-200 p-3 bg-slate-50">
-                    <div className="text-xs uppercase text-slate-500">{l}</div>
-                    <div className="text-xl font-bold text-slate-800">{v}</div>
-                  </div>
-                ))}
-              </div>
-              <div className="overflow-x-auto mb-4">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 border-b">
-                      <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Period</th>
-                      <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">CNI</th>
-                      <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">AEG</th>
-                      <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">PV(AEG)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {val.aeg.aeg_series.map((r) => (
-                      <tr key={r.period}>
-                        <td className="px-3 py-2 font-mono text-xs text-slate-600">{r.period.slice(0, 7)}</td>
-                        <td className="px-3 py-2 text-right font-mono">{sharesOut ? fmtPerShare(toPerShare(r.CNI, sharesOut)) : fmt(r.CNI)}</td>
-                        <td className={`px-3 py-2 text-right font-mono ${r.AEG >= 0 ? "text-emerald-700" : "text-red-700"}`}>{sharesOut ? fmtPerShare(toPerShare(r.AEG, sharesOut)) : fmt(r.AEG)}</td>
-                        <td className={`px-3 py-2 text-right font-mono ${r.PV_AEG >= 0 ? "text-emerald-700" : "text-red-700"}`}>{sharesOut ? fmtPerShare(toPerShare(r.PV_AEG, sharesOut)) : fmt(r.PV_AEG)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={val.aeg.aeg_series.map((r) => ({ period: r.period.slice(0, 7), AEG: +r.AEG.toFixed(0), PV: +r.PV_AEG.toFixed(0) }))}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip />
-                  <ReferenceLine y={0} stroke="#94a3b8" />
-                  <Bar dataKey="AEG" fill="#7c3aed" />
-                  <Bar dataKey="PV" fill="#2563eb" />
-                </BarChart>
-              </ResponsiveContainer>
-            </>
-          ) : (
-            <div className="text-sm text-slate-500">Insufficient periods for AEG series (needs at least 3 periods).</div>
-          )}
-        </div>
-      </div>
-
-      {/* Residual Income Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
           <h2 className="text-lg font-bold text-slate-800">Residual Income Series</h2>
@@ -311,7 +434,7 @@ export default function ValuationReport({ data, config }: Props) {
               </tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {val.reSeries.map((r, i) => {
-                  const cur  = data[i + 1];
+                  const cur = data[i + 1];
                   const prev = data[i];
                   if (!cur || !prev) return null;
                   const cni = toPerShare(cur.is.CNI, sharesOut) ?? cur.is.CNI;
@@ -336,14 +459,14 @@ export default function ValuationReport({ data, config }: Props) {
             </table>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[
-                { key: "RE" as const, label: "Residual Earnings (RE)", color: "#6366f1" },
-                { key: "ReOI" as const, label: "Residual Op. Income (ReOI)", color: "#10b981" },
-              ].map(({ key, label, color }) => (
-                <div key={key} className="border border-slate-100 rounded-xl p-4">
-                  <div className="text-xs font-semibold text-slate-500 mb-3 uppercase">{label} {sharesOut ? "(₹ / share)" : "(₹ Cr)"}</div>
-                  <ResponsiveContainer width="100%" height={190}>
-                    <BarChart data={barData}>
+            {[
+              { key: "RE" as const, label: "Residual Earnings (RE)", color: "#6366f1" },
+              { key: "ReOI" as const, label: "Residual Op. Income (ReOI)", color: "#10b981" },
+            ].map(({ key, label, color }) => (
+              <div key={key} className="border border-slate-100 rounded-xl p-4">
+                <div className="text-xs font-semibold text-slate-500 mb-3 uppercase">{label} {sharesOut ? "(₹ / share)" : "(₹ Cr)"}</div>
+                <ResponsiveContainer width="100%" height={190}>
+                  <BarChart data={barData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="period" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
@@ -362,10 +485,8 @@ export default function ValuationReport({ data, config }: Props) {
         </div>
       </div>
 
-      {/* S-9.7: Sensitivity Grid — columns strictly ascending by g */}
       <SensitivityGrid ke={ke} gRate={gRate} val={val} sharesOut={sharesOut} fmt={fmt} />
 
-      {/* CV formulae + kw note */}
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-sm">
         <h3 className="font-semibold text-slate-800 mb-3">Continuing Value Formulae (§6.1–6.2)</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs mb-3">
@@ -390,7 +511,144 @@ export default function ValuationReport({ data, config }: Props) {
   );
 }
 
-/** S-9.7: Sensitivity grid with columns strictly sorted ascending by g */
+function ValuationCommandCenterHero({
+  marketSymbol,
+  commandCenter,
+  liveMarketData,
+  marketDataLoading,
+  marketDataError,
+  onRefresh,
+}: {
+  marketSymbol: string | null;
+  commandCenter: ReturnType<typeof buildValuationCommandCenter>;
+  liveMarketData: ReturnType<typeof useLiveMarketData>["snapshot"];
+  marketDataLoading: boolean;
+  marketDataError: string | null;
+  onRefresh: () => Promise<void>;
+}) {
+  const stress = commandCenter.scenarios.find((scenario) => scenario.key === "stress");
+  const base = commandCenter.scenarios.find((scenario) => scenario.key === "base");
+
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.06),_transparent_35%),linear-gradient(135deg,_#ffffff,_#f8fafc)] p-6 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Valuation Command Center
+          </div>
+          <h1 className="mt-3 text-2xl font-bold text-slate-900">Lead with the stressed case, not the optimistic one.</h1>
+          <p className="mt-2 max-w-3xl text-sm text-slate-600">
+            The command center keeps the live market layer separate from the audited accounting base, then asks whether the current setup is merely cheap or genuinely rare.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <SignalPill state={commandCenter.signal.state} label={commandCenter.signal.label} />
+          <button
+            onClick={() => { void onRefresh(); }}
+            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
+          >
+            {marketDataLoading ? "Refreshing…" : "Refresh live data"}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-4">
+        <HeroMetric label="Current price" value={commandCenter.marketPrice != null ? `₹${commandCenter.marketPrice.toFixed(2)}` : "—"} sublabel={`${liveMarketData?.freshness ?? "fallback"}${marketSymbol ? ` · ${marketSymbol}` : ""}`} />
+        <HeroMetric label="Stress value" value={formatPerShare(stress?.intrinsicPerShare)} sublabel={`Upside ${formatPct(stress?.upsidePct)}`} />
+        <HeroMetric label="Base value" value={formatPerShare(base?.intrinsicPerShare)} sublabel={`Upside ${formatPct(base?.upsidePct)}`} />
+        <HeroMetric label="Valuation range" value={`${formatPerShare(commandCenter.range.floorPerShare)} to ${formatPerShare(commandCenter.range.ceilingPerShare)}`} sublabel={`As of ${commandCenter.asOf ? new Date(commandCenter.asOf).toLocaleString("en-IN") : "—"}`} />
+      </div>
+
+      {(marketDataError || liveMarketData?.warnings?.length) && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="font-semibold">Live market overlay warnings</div>
+          {marketDataError && <div className="mt-1">{marketDataError}</div>}
+          {liveMarketData?.warnings?.length ? (
+            <ul className="mt-2 space-y-1">
+              {liveMarketData.warnings.map((item) => <li key={item}>• {item}</li>)}
+            </ul>
+          ) : null}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function HeroMetric({ label, value, sublabel }: { label: string; value: string; sublabel: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="mt-2 text-2xl font-bold text-slate-900">{value}</div>
+      <div className="mt-1 text-xs text-slate-500">{sublabel}</div>
+    </div>
+  );
+}
+
+function ScenarioCard({
+  label,
+  intrinsicPerShare,
+  upsidePct,
+  ke,
+  kw,
+  g,
+  salesGrowth,
+  corePm,
+}: {
+  label: string;
+  intrinsicPerShare: number | null;
+  upsidePct: number | null;
+  ke: number;
+  kw: number;
+  g: number;
+  salesGrowth: number;
+  corePm: number;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="mt-2 text-3xl font-bold text-slate-900">{formatPerShare(intrinsicPerShare)}</div>
+      <div className={`mt-1 text-sm font-semibold ${upsidePct != null && upsidePct >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+        {formatPct(upsidePct)} vs market
+      </div>
+      <div className="mt-4 grid gap-2 text-xs text-slate-500">
+        <div>ke <strong className="text-slate-700">{formatPct(ke, 2)}</strong></div>
+        <div>kw <strong className="text-slate-700">{formatPct(kw, 2)}</strong></div>
+        <div>g <strong className="text-slate-700">{formatPct(g, 2)}</strong></div>
+        <div>Y1 sales growth <strong className="text-slate-700">{formatPct(salesGrowth, 2)}</strong></div>
+        <div>Y1 core PM <strong className="text-slate-700">{formatPct(corePm, 2)}</strong></div>
+      </div>
+    </div>
+  );
+}
+
+function SignalPill({ state, label }: { state: ValuationSignalState; label: string }) {
+  const classes = state === "blocked"
+    ? "border-red-200 bg-red-50 text-red-700"
+    : state === "guarded"
+      ? "border-amber-200 bg-amber-50 text-amber-700"
+      : state === "watchlist"
+        ? "border-slate-200 bg-slate-100 text-slate-700"
+        : state === "interesting"
+          ? "border-blue-200 bg-blue-50 text-blue-700"
+          : state === "high-conviction"
+            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+            : "border-emerald-300 bg-emerald-100 text-emerald-900";
+  return (
+    <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${classes}`}>
+      {label}
+    </span>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-slate-900">{value}</div>
+    </div>
+  );
+}
+
 function SensitivityGrid({
   ke, gRate, val, sharesOut, fmt
 }: {
@@ -399,10 +657,9 @@ function SensitivityGrid({
   sharesOut: number | null;
   fmt: (n: number) => string;
 }) {
-  // S-9.7: columns must be monotonically ascending by g
   const KES = [0.08, 0.10, 0.12, 0.14, 0.16];
-  const GS  = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07]; // already ascending
-  const T   = val.reSeries.length;
+  const GS = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07];
+  const T = val.reSeries.length;
   const lastRE = T > 0 ? val.reSeries[T - 1].RE : 0;
 
   const computeV = (keV: number, gv: number): number | null => {
@@ -431,14 +688,14 @@ function SensitivityGrid({
                 <tr>
                   <th className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-left border">ke ↓ / g →</th>
                   {GS.map(gv => (
-                    <th key={gv} className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-right border">{(gv*100).toFixed(0)}%</th>
+                    <th key={gv} className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-right border">{(gv * 100).toFixed(0)}%</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {KES.map(keV => (
                   <tr key={keV}>
-                    <td className="px-3 py-2 text-xs font-semibold text-slate-600 border bg-slate-50">ke={(keV*100).toFixed(0)}%</td>
+                    <td className="px-3 py-2 text-xs font-semibold text-slate-600 border bg-slate-50">ke={(keV * 100).toFixed(0)}%</td>
                     {GS.map(gv => {
                       const v = computeV(keV, gv);
                       const ps = toPerShare(v, sharesOut);
@@ -464,14 +721,14 @@ function SensitivityGrid({
               <tr>
                 <th className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-left border">ke ↓ / g →</th>
                 {GS.map(gv => (
-                  <th key={gv} className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-right border">{(gv*100).toFixed(0)}%</th>
+                  <th key={gv} className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-right border">{(gv * 100).toFixed(0)}%</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {KES.map(keV => (
                 <tr key={keV}>
-                  <td className="px-3 py-2 text-xs font-semibold text-slate-600 border bg-slate-50">ke={(keV*100).toFixed(0)}%</td>
+                  <td className="px-3 py-2 text-xs font-semibold text-slate-600 border bg-slate-50">ke={(keV * 100).toFixed(0)}%</td>
                   {GS.map(gv => {
                     const v = computeV(keV, gv);
                     const isBase = Math.abs(keV - ke) < 0.005 && Math.abs(gv - gRate) < 0.005;
@@ -508,9 +765,9 @@ function ValCard({ color, title, subtitle, value, items, fmt, perShare }: {
   items: Array<{ l: string; v: number }>; fmt: (n: number) => string;
   perShare?: number | null;
 }) {
-  const bg  = color === "indigo" ? "bg-indigo-50 border-indigo-200" : "bg-emerald-50 border-emerald-200";
+  const bg = color === "indigo" ? "bg-indigo-50 border-indigo-200" : "bg-emerald-50 border-emerald-200";
   const hdr = color === "indigo" ? "bg-indigo-100 text-indigo-900" : "bg-emerald-100 text-emerald-900";
-  const vc  = color === "indigo" ? "text-indigo-700" : "text-emerald-700";
+  const vc = color === "indigo" ? "text-indigo-700" : "text-emerald-700";
   return (
     <div className={`rounded-2xl border ${bg} overflow-hidden`}>
       <div className={`px-5 py-4 ${hdr}`}>
@@ -536,3 +793,4 @@ function ValCard({ color, title, subtitle, value, items, fmt, perShare }: {
     </div>
   );
 }
+

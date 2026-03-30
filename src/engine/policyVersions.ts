@@ -1,11 +1,11 @@
-export const ENGINE_VERSION = "2026-03-phase7";
+export const ENGINE_VERSION = "2026-03-phase8-valuation-command-center";
 export const CAPITALINE_MAPPING_SPEC_VERSION = "2026-03-capitaline-indas-v2";
 export const MAPPING_POLICY_VERSION = "2026-03-phase8";
-export const ANOMALY_POLICY_VERSION = "2026-03-phase7";
-export const VALUATION_POLICY_VERSION = "2026-03-phase7";
+export const ANOMALY_POLICY_VERSION = "2026-03-phase8";
+export const VALUATION_POLICY_VERSION = "2026-03-phase8-dcf";
 export const GOLDEN_COMPANY_SUITE_VERSION = "2026-03-phase8";
 export const SCOPE_POLICY_VERSION = "2026-03-phase7";
-export const TRACEABILITY_SCHEMA_VERSION = "2026-03-traceability-v4";
+export const TRACEABILITY_SCHEMA_VERSION = "2026-03-traceability-v5";
 
 export interface AnalysisPolicyVersions {
   engineVersion: string;

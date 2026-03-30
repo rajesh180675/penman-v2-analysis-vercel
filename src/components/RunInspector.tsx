@@ -89,6 +89,43 @@ type InspectorPayload = {
       }>;
     } | null;
   } | null;
+  latestMarketSnapshot?: {
+    symbol?: string | null;
+    provider?: string | null;
+    fetchedAt?: string | null;
+    price?: number | null;
+    riskFreeRate?: number | null;
+    freshness?: string | null;
+    sourceSummary?: string | null;
+    warnings?: string[];
+    history?: {
+      currentPricePercentile?: number | null;
+      low52Week?: number | null;
+      high52Week?: number | null;
+      distanceFrom52WeekLowPct?: number | null;
+      drawdownFrom52WeekHighPct?: number | null;
+    } | null;
+  } | null;
+  latestValuationSignal?: {
+    state?: string | null;
+    label?: string | null;
+    summary?: string | null;
+    confidenceState?: string | null;
+    stressUpsidePct?: number | null;
+    baseUpsidePct?: number | null;
+    historicalPercentile?: number | null;
+    reverseDcfImpliedGrowth?: number | null;
+    killSwitches?: string[];
+    supportingFlags?: string[];
+    scenarios?: Array<{
+      key?: string;
+      label?: string;
+      intrinsicPerShare?: number | null;
+      upsidePct?: number | null;
+    }>;
+    marketPrice?: number | null;
+    asOf?: string | null;
+  } | null;
   governance?: {
     retentionDays?: number;
     contentClass?: string;
@@ -124,6 +161,8 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
 
   const recovery = useMemo(() => getAuditRecoveryState(), [payload, selectedRunId]);
   const traceability = payload?.latestAnalysisSnapshot?.traceability ?? null;
+  const marketSnapshot = payload?.latestMarketSnapshot ?? null;
+  const valuationSignal = payload?.latestValuationSignal ?? null;
 
   useEffect(() => {
     if (!selectedRun) {
@@ -219,6 +258,58 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
           value={payload ? payload.health.severity.toUpperCase() : loading ? "…" : "—"}
           tone={payload?.health.severity === "critical" ? "red" : payload?.health.severity === "warning" ? "amber" : "emerald"}
         />
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-base font-bold text-slate-800">Latest Market Snapshot</h3>
+          {marketSnapshot ? (
+            <div className="mt-4 space-y-2 text-sm text-slate-700">
+              <div>Symbol: <strong>{marketSnapshot.symbol ?? "—"}</strong></div>
+              <div>Provider: <strong>{marketSnapshot.provider ?? "—"}</strong></div>
+              <div>Price: <strong>{marketSnapshot.price != null ? `₹${marketSnapshot.price.toFixed(2)}` : "—"}</strong></div>
+              <div>Risk-free rate: <strong>{marketSnapshot.riskFreeRate != null ? `${(marketSnapshot.riskFreeRate * 100).toFixed(2)}%` : "—"}</strong></div>
+              <div>Freshness: <strong>{marketSnapshot.freshness ?? "—"}</strong></div>
+              <div>Fetched: <strong>{marketSnapshot.fetchedAt ? new Date(marketSnapshot.fetchedAt).toLocaleString("en-IN") : "—"}</strong></div>
+              <div>Current price percentile: <strong>{marketSnapshot.history?.currentPricePercentile != null ? `${(marketSnapshot.history.currentPricePercentile * 100).toFixed(0)}th` : "—"}</strong></div>
+              <div>52-week range: <strong>{marketSnapshot.history?.low52Week != null ? `₹${marketSnapshot.history.low52Week.toFixed(2)}` : "—"}</strong> to <strong>{marketSnapshot.history?.high52Week != null ? `₹${marketSnapshot.history.high52Week.toFixed(2)}` : "—"}</strong></div>
+              {marketSnapshot.warnings?.length ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {marketSnapshot.warnings.join(" ")}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-slate-500">{loading ? "Loading market snapshot…" : "No live market snapshot has been persisted for this run yet."}</p>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-base font-bold text-slate-800">Latest Valuation Signal</h3>
+          {valuationSignal ? (
+            <div className="mt-4 space-y-3 text-sm text-slate-700">
+              <div>State: <strong>{valuationSignal.label ?? valuationSignal.state ?? "—"}</strong></div>
+              <div>Summary: <strong>{valuationSignal.summary ?? "—"}</strong></div>
+              <div>Confidence: <strong>{valuationSignal.confidenceState ?? "—"}</strong></div>
+              <div>Base upside: <strong>{valuationSignal.baseUpsidePct != null ? `${(valuationSignal.baseUpsidePct * 100).toFixed(1)}%` : "—"}</strong></div>
+              <div>Stress upside: <strong>{valuationSignal.stressUpsidePct != null ? `${(valuationSignal.stressUpsidePct * 100).toFixed(1)}%` : "—"}</strong></div>
+              <div>Historical percentile: <strong>{valuationSignal.historicalPercentile != null ? `${(valuationSignal.historicalPercentile * 100).toFixed(0)}th` : "—"}</strong></div>
+              <div>Reverse DCF implied growth: <strong>{valuationSignal.reverseDcfImpliedGrowth != null ? `${(valuationSignal.reverseDcfImpliedGrowth * 100).toFixed(2)}%` : "—"}</strong></div>
+              {valuationSignal.killSwitches?.length ? (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                  Kill-switches: {valuationSignal.killSwitches.join(" · ")}
+                </div>
+              ) : null}
+              {valuationSignal.supportingFlags?.length ? (
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                  Supporting flags: {valuationSignal.supportingFlags.join(" · ")}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-slate-500">{loading ? "Loading valuation signal…" : "No valuation signal event has been persisted for this run yet."}</p>
+          )}
+        </div>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.35fr,0.95fr]">

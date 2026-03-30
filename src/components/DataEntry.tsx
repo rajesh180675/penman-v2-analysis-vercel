@@ -199,6 +199,15 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
               className="w-24 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white" placeholder="VST" />
           </div>
           <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Market Symbol</label>
+            <input
+              value={config.market_data_symbol ?? config.ticker ?? ""}
+              onChange={(e) => onConfigChange({ ...config, market_data_symbol: e.target.value.toUpperCase().trim() || undefined })}
+              className="w-36 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+              placeholder="ASIANPAINT.BSE"
+            />
+          </div>
+          <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Risk-Free Rate %</label>
             <input type="number" step={0.5} value={(config.risk_free_rate * 100).toFixed(1)}
               onChange={(e) => onConfigChange({ ...config, risk_free_rate: Number(e.target.value) / 100 })}

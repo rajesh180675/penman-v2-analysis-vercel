@@ -388,7 +388,9 @@ export function App() {
             {activeTab==="statements" && hasRecast && <RecastStatements data={recastData!}/>}
             {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!}/>}
             {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} config={forecastConfig}/>}
-            {activeTab==="valuation"  && hasRecast && !valuationBlocked && <ValuationReport data={recastData!} config={config}/>}
+            {activeTab==="valuation"  && hasRecast && !valuationBlocked && (
+              <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} />
+            )}
             {activeTab === "valuation" && hasRecast && valuationBlocked && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
                 <h3 className="font-semibold text-lg">

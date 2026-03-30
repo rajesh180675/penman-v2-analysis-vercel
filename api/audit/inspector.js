@@ -59,6 +59,8 @@ export default async function handler(request, response) {
     artifacts: run.artifacts,
     timeline: run.timeline.slice(0, 20).map(({ runAccessHash, ...item }) => item),
     latestAnalysisSnapshot: run.latestAnalysisSnapshot,
+    latestMarketSnapshot: run.latestMarketSnapshot,
+    latestValuationSignal: run.latestValuationSignal,
     health,
     persistedMonitorReport,
     governance: getAuditGovernanceConfig(),

@@ -92,6 +92,46 @@ function summarizeAnalysisSnapshot(payload) {
   };
 }
 
+function summarizeMarketSnapshot(payload) {
+  if (!payload || typeof payload !== "object") return null;
+  return {
+    symbol: payload.symbol ?? null,
+    provider: payload.provider ?? null,
+    fetchedAt: payload.fetchedAt ?? null,
+    price: payload.price ?? null,
+    riskFreeRate: payload.riskFreeRate ?? null,
+    freshness: payload.freshness ?? null,
+    sourceSummary: payload.sourceSummary ?? null,
+    warnings: Array.isArray(payload.warnings) ? payload.warnings.slice(0, 5) : [],
+    history: payload.history ? {
+      currentPricePercentile: payload.history.currentPricePercentile ?? null,
+      low52Week: payload.history.low52Week ?? null,
+      high52Week: payload.history.high52Week ?? null,
+      distanceFrom52WeekLowPct: payload.history.distanceFrom52WeekLowPct ?? null,
+      drawdownFrom52WeekHighPct: payload.history.drawdownFrom52WeekHighPct ?? null,
+    } : null,
+  };
+}
+
+function summarizeValuationSignal(payload) {
+  if (!payload || typeof payload !== "object") return null;
+  return {
+    state: payload.state ?? null,
+    label: payload.label ?? null,
+    summary: payload.summary ?? null,
+    confidenceState: payload.confidenceState ?? null,
+    stressUpsidePct: payload.stressUpsidePct ?? null,
+    baseUpsidePct: payload.baseUpsidePct ?? null,
+    historicalPercentile: payload.historicalPercentile ?? null,
+    reverseDcfImpliedGrowth: payload.reverseDcfImpliedGrowth ?? null,
+    killSwitches: Array.isArray(payload.killSwitches) ? payload.killSwitches.slice(0, 6) : [],
+    supportingFlags: Array.isArray(payload.supportingFlags) ? payload.supportingFlags.slice(0, 6) : [],
+    scenarios: Array.isArray(payload.scenarios) ? payload.scenarios.slice(0, 5) : [],
+    marketPrice: payload.marketPrice ?? null,
+    asOf: payload.asOf ?? null,
+  };
+}
+
 function minuteDiff(iso) {
   return (Date.now() - new Date(iso).getTime()) / 60000;
 }
@@ -113,14 +153,28 @@ export async function getRunTimeline(runId, limit = 40) {
 
   const timeline = [];
   let latestAnalysisSnapshot = null;
+  let latestMarketSnapshot = null;
+  let latestValuationSignal = null;
   for (const blob of eventBlobs.slice(0, Math.min(eventBlobs.length, 25))) {
     try {
       const parsed = await readBlobJson(blob.pathname);
       const analysisSnapshot = parsed?.eventType === "analysis-snapshot"
         ? summarizeAnalysisSnapshot(parsed?.payload)
         : null;
+      const marketSnapshot = parsed?.eventType === "market-data-refreshed"
+        ? summarizeMarketSnapshot(parsed?.payload)
+        : null;
+      const valuationSignal = parsed?.eventType === "valuation-signal-updated"
+        ? summarizeValuationSignal(parsed?.payload)
+        : null;
       if (analysisSnapshot && !latestAnalysisSnapshot) {
         latestAnalysisSnapshot = analysisSnapshot;
+      }
+      if (marketSnapshot && !latestMarketSnapshot) {
+        latestMarketSnapshot = marketSnapshot;
+      }
+      if (valuationSignal && !latestValuationSignal) {
+        latestValuationSignal = valuationSignal;
       }
       timeline.push({
         pathname: blob.pathname,
@@ -134,6 +188,8 @@ export async function getRunTimeline(runId, limit = 40) {
         retentionDays: parsed?.retentionDays ?? null,
         payloadSummary: summarizePayload(parsed?.payload),
         analysisSnapshot,
+        marketSnapshot,
+        valuationSignal,
       });
     } catch {
       timeline.push({
@@ -168,6 +224,8 @@ export async function getRunTimeline(runId, limit = 40) {
     })),
     timeline,
     latestAnalysisSnapshot,
+    latestMarketSnapshot,
+    latestValuationSignal,
   };
 }
 
