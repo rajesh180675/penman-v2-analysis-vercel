@@ -50,8 +50,9 @@ export interface SharedResearchBundle {
 
 export async function syncWorkspaceProfile(company: WorkspaceCompanyRecord | null) {
   if (!company) return null;
-  return postJson("/api/companies", {
+  return postJson("/api/research", {
     companyId: company.companyId,
+    kind: "profile",
     issuer: company.issuer,
     notebook: company.notes,
     portfolio: company.portfolio,
@@ -62,6 +63,7 @@ export async function syncWorkspaceAnalysis(companyId: string, analysis: Workspa
   if (!companyId || !analysis) return null;
   return postJson("/api/research", {
     companyId,
+    kind: "analysis",
     analysis,
   });
 }
@@ -69,24 +71,27 @@ export async function syncWorkspaceAnalysis(companyId: string, analysis: Workspa
 export async function syncWorkspaceFilings(companyId: string, filings: WorkspaceCompanyRecord["filings"]) {
   const latest = filings[0];
   if (!companyId || !latest) return null;
-  return postJson("/api/filings", {
+  return postJson("/api/research", {
     companyId,
+    kind: "filing",
     filing: latest,
   });
 }
 
 export async function syncWorkspaceValuation(companyId: string, valuation: WorkspaceValuationSnapshot | null) {
   if (!companyId || !valuation) return null;
-  return postJson("/api/valuations", {
+  return postJson("/api/research", {
     companyId,
+    kind: "valuation",
     valuation,
   });
 }
 
 export async function syncWorkspacePortfolio(companyId: string, portfolio: WorkspacePortfolioPlan) {
   if (!companyId) return null;
-  return postJson("/api/watchlist", {
+  return postJson("/api/research", {
     companyId,
+    kind: "portfolio",
     portfolio,
   });
 }
@@ -95,14 +100,16 @@ export async function syncWorkspaceJournal(companyId: string, journal: Workspace
   if (!companyId || !journal) return null;
   return postJson("/api/research", {
     companyId,
+    kind: "journal",
     journal,
   });
 }
 
 export async function syncWorkspaceAlert(companyId: string, alert: Record<string, unknown> | null) {
   if (!companyId || !alert) return null;
-  return postJson("/api/alerts", {
+  return postJson("/api/research", {
     companyId,
+    kind: "alert",
     alert,
   });
 }

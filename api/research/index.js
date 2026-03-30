@@ -40,30 +40,77 @@ export default async function handler(request, response) {
     const body = await readResearchBody(request, response, 2 * 1024 * 1024);
     if (!body) return;
     const companyId = sanitizePathSegment(body.companyId);
+    const kind = typeof body.kind === "string" ? body.kind : (
+      body.profile ? "profile"
+      : body.filing ? "filing"
+      : body.valuation ? "valuation"
+      : body.portfolio ? "portfolio"
+      : body.alert ? "alert"
+      : body.analysis ? "analysis"
+      : body.journal ? "journal"
+      : null
+    );
+    if (!kind) {
+      response.status(400).json({ error: "Research write kind is required." });
+      return;
+    }
     const writes = [];
-    if (body.profile) {
+    if (kind === "profile") {
       writes.push(writeJsonBlob(researchPath("companies", companyId, "profile.json"), {
         companyId,
-        ...body.profile,
+        issuer: body.issuer ?? body.profile?.issuer ?? null,
+        notebook: body.notebook ?? body.profile?.notebook ?? null,
+        portfolio: body.portfolio ?? body.profile?.portfolio ?? body.portfolio ?? null,
         updatedAt: new Date().toISOString(),
       }));
     }
-    if (body.analysis) {
+    if (kind === "analysis" && body.analysis) {
       writes.push(writeJsonBlob(buildTimestampedPath(companyId, "analysis", body.analysis.id ?? `${Date.now()}`), {
         companyId,
         ...body.analysis,
         storedAt: new Date().toISOString(),
       }));
     }
-    if (body.journal) {
+    if (kind === "journal" && body.journal) {
       writes.push(writeJsonBlob(buildTimestampedPath(companyId, "journal", body.journal.id ?? `${Date.now()}`), {
         companyId,
         ...body.journal,
         storedAt: new Date().toISOString(),
       }));
     }
+    if (kind === "filing" && body.filing) {
+      writes.push(writeJsonBlob(buildTimestampedPath(companyId, "filings", body.filing.filingId ?? `${Date.now()}`), {
+        companyId,
+        ...body.filing,
+        storedAt: new Date().toISOString(),
+      }));
+    }
+    if (kind === "valuation" && body.valuation) {
+      writes.push(writeJsonBlob(buildTimestampedPath(companyId, "valuations", body.valuation.id ?? `${Date.now()}`), {
+        companyId,
+        ...body.valuation,
+        storedAt: new Date().toISOString(),
+      }));
+    }
+    if (kind === "alert" && body.alert) {
+      writes.push(writeJsonBlob(buildTimestampedPath(companyId, "alerts", body.alert.id ?? `${Date.now()}`), {
+        companyId,
+        ...body.alert,
+        storedAt: new Date().toISOString(),
+      }));
+    }
+    if (kind === "portfolio" && body.portfolio) {
+      const existingProfile = await readJsonBlob(researchPath("companies", companyId, "profile.json")).catch(() => null);
+      writes.push(writeJsonBlob(researchPath("companies", companyId, "profile.json"), {
+        companyId,
+        issuer: existingProfile?.issuer ?? null,
+        notebook: existingProfile?.notebook ?? null,
+        portfolio: body.portfolio,
+        updatedAt: new Date().toISOString(),
+      }));
+    }
     await Promise.all(writes);
-    response.status(200).json({ ok: true, companyId });
+    response.status(200).json({ ok: true, companyId, kind });
     return;
   }
 
