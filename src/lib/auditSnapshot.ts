@@ -20,6 +20,7 @@ export function buildAnalysisSnapshot(params: {
   const { rawData, recastData, config, debugInfo, qualityGate, mappingAudit, engineError, analysisStatus, auditMeta } = params;
   const policyVersions = getAnalysisPolicyVersions();
   const latestPeriod = rawData && rawData.length > 0 ? rawData[rawData.length - 1].period_end : null;
+  const generatedAt = new Date().toISOString();
 
   return {
     companyId: rawData?.[0]?.company_id ?? null,
@@ -27,13 +28,21 @@ export function buildAnalysisSnapshot(params: {
     latestPeriod,
     policyVersions,
     traceability: buildAnalysisTraceability({
+      generatedAt,
+      runId: auditMeta?.runId ?? null,
       companyId: rawData?.[0]?.company_id ?? null,
+      sourceMode: auditMeta?.sourceMode ?? null,
       periodCount: rawData?.length ?? 0,
+      recastPeriodCount: recastData?.length ?? 0,
       latestPeriod,
       qualityGate,
       mappingAudit,
       policyVersions,
       analysisStatus,
+      hasDebugInfo: Boolean(debugInfo),
+      debugFiles: debugInfo?.files?.length ?? 0,
+      rawMetricKeyCount: debugInfo?.rawMetricKeys?.length ?? 0,
+      engineError,
       contentClass: auditMeta?.contentClass ?? null,
       retentionDays: auditMeta?.retentionDays ?? null,
       runInspectorEnabled: Boolean(auditMeta?.runAccessToken),

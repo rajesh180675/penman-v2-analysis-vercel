@@ -1,6 +1,16 @@
 import { AnalysisPolicyVersions, getAnalysisPolicyVersions } from "./policyVersions";
 import { AnalysisStatusSummary } from "./analysisStatus";
 import { MappingAuditReport, QualityGateReport } from "./mappingAudit";
+import { BacklogPriority, BacklogTriageAction } from "./mappingBacklogPolicy";
+
+export interface TraceabilityBacklogPreview {
+  statement: string;
+  key: string;
+  action: BacklogTriageAction;
+  priority: BacklogPriority;
+  periodsObserved: number;
+  latestValue: number | null;
+}
 
 export interface AnalysisTraceabilityEnvelope {
   schemaVersion: string;
@@ -40,6 +50,16 @@ export interface AnalysisTraceabilityEnvelope {
     retentionDays: number | null;
     runInspectorEnabled: boolean | null;
   };
+  analysisContext: {
+    rawPeriodCount: number;
+    recastPeriodCount: number;
+    hasRecastData: boolean;
+    hasDebugInfo: boolean;
+    debugFiles: number;
+    rawMetricKeyCount: number;
+    engineError: string | null;
+  };
+  backlogPreview: TraceabilityBacklogPreview[];
 }
 
 export function buildAnalysisTraceability(params: {
@@ -56,6 +76,11 @@ export function buildAnalysisTraceability(params: {
   contentClass?: string | null;
   retentionDays?: number | null;
   runInspectorEnabled?: boolean | null;
+  recastPeriodCount?: number;
+  hasDebugInfo?: boolean;
+  debugFiles?: number;
+  rawMetricKeyCount?: number;
+  engineError?: string | null;
 }): AnalysisTraceabilityEnvelope {
   const qualityGate = params.qualityGate;
   const coverageSummary = qualityGate?.coverageSummary ?? params.mappingAudit?.coverageSummary ?? null;
@@ -64,10 +89,20 @@ export function buildAnalysisTraceability(params: {
   const blockingCount = coverageSummary?.unresolvedBySeverity?.critical?.length ?? 0;
   const diagnosticCount = coverageSummary?.unresolvedBySeverity?.warning?.length ?? 0;
   const optionalCount = coverageSummary?.unresolvedBySeverity?.info?.length ?? 0;
+  const backlogPreview = (params.mappingAudit?.backlogSummary?.topActionable ?? [])
+    .slice(0, 5)
+    .map((entry) => ({
+      statement: entry.statement,
+      key: entry.key,
+      action: entry.triage.action,
+      priority: entry.triage.priority,
+      periodsObserved: entry.periodsObserved,
+      latestValue: entry.latestValue,
+    }));
 
   return {
     schemaVersion: policyVersions.traceabilitySchemaVersion,
-    generatedAt: params.generatedAt ?? null,
+    generatedAt: params.generatedAt ?? new Date().toISOString(),
     runContext: {
       runId: params.runId ?? null,
       companyId: params.companyId ?? null,
@@ -117,5 +152,15 @@ export function buildAnalysisTraceability(params: {
       retentionDays: params.retentionDays ?? null,
       runInspectorEnabled: params.runInspectorEnabled ?? null,
     },
+    analysisContext: {
+      rawPeriodCount: params.periodCount ?? 0,
+      recastPeriodCount: params.recastPeriodCount ?? 0,
+      hasRecastData: (params.recastPeriodCount ?? 0) > 0,
+      hasDebugInfo: Boolean(params.hasDebugInfo),
+      debugFiles: params.debugFiles ?? 0,
+      rawMetricKeyCount: params.rawMetricKeyCount ?? 0,
+      engineError: params.engineError ?? null,
+    },
+    backlogPreview,
   };
 }
