@@ -23,6 +23,10 @@ This project is configured as a Vite static app and is ready for Vercel.
 - Node.js version: `22.x` (or `20.x` minimum)
 - Build cache: enabled
 - Optional single-file build: set env var `VITE_SINGLE_FILE=1` only if you explicitly need inlined JS/CSS output
+- Live market data is optional. The app now supports:
+  - `manual` mode: no vendor API, uses entered `market_price` and `risk_free_rate`
+  - `upstox-readonly` mode: uses a server-side Upstox token for Indian quote refresh
+  - `alphavantage` mode: optional fallback provider
 - To persist uploaded inputs and generated outputs, add `BLOB_READ_WRITE_TOKEN`
 - To protect audit reads, add `AUDIT_ADMIN_TOKEN`
 - To allow scheduled monitoring, add `CRON_SECRET`
@@ -32,6 +36,10 @@ This project is configured as a Vite static app and is ready for Vercel.
 - Optional: set `AUDIT_MONITOR_ARTIFACT_GRACE_MINUTES=3`
 - Optional for automatic GitHub issue creation: `GITHUB_MONITOR_REPO` and `GITHUB_MONITOR_TOKEN`
 - Optional: set `VITE_AUDIT_CAPTURE_ENABLED=false` to disable capture in the browser
+- Optional for live market data:
+  - `MARKET_DATA_PROVIDER=manual|upstox-readonly|alphavantage|disabled`
+  - `UPSTOX_ACCESS_TOKEN=...` for Upstox read-only quote refresh
+  - `ALPHAVANTAGE_API_KEY=...` only if you still want Alpha Vantage fallback
 
 ## Local pre-check
 
@@ -72,6 +80,28 @@ AUDIT_MONITOR_ARTIFACT_GRACE_MINUTES=3
 GITHUB_MONITOR_REPO=owner/repo
 GITHUB_MONITOR_TOKEN=github_pat_...
 ```
+
+### Optional live market data
+
+The valuation command center works without any vendor API. In `manual` mode it uses:
+
+- entered `market_price`
+- entered or configured `risk_free_rate`
+
+If you want live Indian price refresh with Upstox:
+
+```bash
+MARKET_DATA_PROVIDER=upstox-readonly
+UPSTOX_ACCESS_TOKEN=...
+```
+
+In the UI, set:
+
+- `Market Data Mode = Upstox Read-only`
+- `Market Symbol =` a display symbol such as `ASIANPAINT`
+- `Upstox Instrument Key =` the actual Upstox instrument key such as `NSE_EQ|...`
+
+If you do not configure a live vendor, the app safely falls back to manual/config inputs instead of breaking valuation.
 
 ### Readback endpoints
 

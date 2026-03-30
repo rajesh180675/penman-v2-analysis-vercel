@@ -2,14 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { LiveMarketDataSnapshot } from "../engine/marketData";
 
 interface Params {
+  provider?: "manual" | "upstox-readonly" | "alphavantage" | "disabled";
   symbol?: string | null;
+  instrumentKey?: string | null;
   fallbackPrice?: number | null;
   fallbackRiskFreeRate?: number | null;
   refreshSeconds?: number | null;
 }
 
 export function useLiveMarketData({
+  provider,
   symbol,
+  instrumentKey,
   fallbackPrice,
   fallbackRiskFreeRate,
   refreshSeconds,
@@ -20,14 +24,20 @@ export function useLiveMarketData({
 
   const query = useMemo(() => {
     const params = new URLSearchParams();
+    if (provider) params.set("provider", provider);
     if (symbol) params.set("symbol", symbol);
+    if (instrumentKey) params.set("instrumentKey", instrumentKey);
     if (fallbackPrice != null && Number.isFinite(fallbackPrice)) params.set("fallbackPrice", String(fallbackPrice));
     if (fallbackRiskFreeRate != null && Number.isFinite(fallbackRiskFreeRate)) params.set("fallbackRiskFreeRate", String(fallbackRiskFreeRate));
     return params.toString();
-  }, [fallbackPrice, fallbackRiskFreeRate, symbol]);
+  }, [fallbackPrice, fallbackRiskFreeRate, instrumentKey, provider, symbol]);
 
   const load = useCallback(async () => {
-    if (!symbol && fallbackPrice == null && fallbackRiskFreeRate == null) {
+    if (provider === "disabled") {
+      setSnapshot(null);
+      return;
+    }
+    if (!symbol && !instrumentKey && fallbackPrice == null && fallbackRiskFreeRate == null) {
       setSnapshot(null);
       return;
     }
@@ -43,7 +53,7 @@ export function useLiveMarketData({
     } finally {
       setLoading(false);
     }
-  }, [fallbackPrice, fallbackRiskFreeRate, query, symbol]);
+  }, [fallbackPrice, fallbackRiskFreeRate, instrumentKey, provider, query, symbol]);
 
   useEffect(() => {
     void load();
@@ -63,4 +73,3 @@ export function useLiveMarketData({
     refresh: load,
   };
 }
-

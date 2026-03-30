@@ -208,6 +208,61 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
             />
           </div>
           <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Market Data Mode</label>
+            <select
+              value={config.market_data_provider ?? "manual"}
+              onChange={(e) => onConfigChange({
+                ...config,
+                market_data_provider: e.target.value as EngineConfig["market_data_provider"],
+              })}
+              className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+            >
+              <option value="manual">Manual / Fallback</option>
+              <option value="upstox-readonly">Upstox Read-only</option>
+              <option value="alphavantage">Alpha Vantage</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Manual Market Price</label>
+            <input
+              type="number"
+              step={0.01}
+              value={config.market_price ?? ""}
+              onChange={(e) => {
+                const value = e.target.value.trim();
+                onConfigChange({ ...config, market_price: value ? Number(value) : undefined });
+              }}
+              className="w-28 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+              placeholder="₹"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Shares (Cr)</label>
+            <input
+              type="number"
+              step={0.01}
+              value={config.shares_outstanding ?? ""}
+              onChange={(e) => {
+                const value = e.target.value.trim();
+                onConfigChange({ ...config, shares_outstanding: value ? Number(value) : undefined });
+              }}
+              className="w-28 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+              placeholder="auto if blank"
+            />
+          </div>
+          {(config.market_data_provider ?? "manual") === "upstox-readonly" && (
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Upstox Instrument Key</label>
+              <input
+                value={config.market_data_instrument_key ?? ""}
+                onChange={(e) => onConfigChange({ ...config, market_data_instrument_key: e.target.value.trim() || undefined })}
+                className="w-52 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+                placeholder="NSE_EQ|INE021A01026"
+              />
+            </div>
+          )}
+          <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Risk-Free Rate %</label>
             <input type="number" step={0.5} value={(config.risk_free_rate * 100).toFixed(1)}
               onChange={(e) => onConfigChange({ ...config, risk_free_rate: Number(e.target.value) / 100 })}
@@ -235,6 +290,11 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
               </label>
             ))}
           </div>
+        </div>
+
+        <div className="px-6 py-3 border-b border-slate-100 bg-amber-50 text-xs text-amber-900">
+          Live price is optional. Manual mode uses the entered market price and risk-free rate without any vendor API.
+          Upstox read-only mode needs a server-side `UPSTOX_ACCESS_TOKEN` and an instrument key. If no live vendor works, valuation still runs safely from the audited data plus manual inputs.
         </div>
 
         {/* Config row — Cost of Capital (S-9.4: ke, kd_pretax, tax_rate_for_kd; kw is NEVER a direct input) */}

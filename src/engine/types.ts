@@ -399,7 +399,8 @@ export interface EngineConfig {
   market_price        ?: number;
   ticker              ?: string;
   market_data_symbol  ?: string;
-  market_data_provider?: "alphavantage" | "custom" | "disabled";
+  market_data_instrument_key?: string;
+  market_data_provider?: "manual" | "upstox-readonly" | "alphavantage" | "disabled";
   market_data_refresh_seconds?: number;
   DS_warning_pct      ?: number;
   DS_critical_pct     ?: number;
@@ -495,7 +496,8 @@ export const DEFAULT_CONFIG: EngineConfig = {
   np_SPREAD_median: 0.040,
   np_SalesGrowth_median: 0.038,
   market_data_symbol: undefined,
-  market_data_provider: "alphavantage",
+  market_data_instrument_key: undefined,
+  market_data_provider: "manual",
   market_data_refresh_seconds: 300,
   DS_warning_pct: 0.05,
   DS_critical_pct: 0.10,

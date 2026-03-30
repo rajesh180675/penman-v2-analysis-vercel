@@ -31,7 +31,9 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
   const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
   const marketSymbol = config.market_data_symbol ?? config.ticker ?? null;
   const { snapshot: liveMarketData, loading: marketDataLoading, error: marketDataError, refresh } = useLiveMarketData({
+    provider: config.market_data_provider ?? "manual",
     symbol: marketSymbol,
+    instrumentKey: config.market_data_instrument_key ?? null,
     fallbackPrice: config.market_price ?? null,
     fallbackRiskFreeRate: config.risk_free_rate ?? null,
     refreshSeconds: config.market_data_refresh_seconds ?? 300,
@@ -294,6 +296,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
             <div className="font-semibold text-slate-700">Live market overlay</div>
+            <div className="mt-1">Mode: <b>{config.market_data_provider ?? "manual"}</b></div>
             <div className="mt-1">Price: <b>{commandCenter.marketPrice != null ? `₹${commandCenter.marketPrice.toFixed(2)}` : "—"}</b></div>
             <div>Risk-free: <b>{(commandCenter.riskFreeRate * 100).toFixed(2)}%</b></div>
             <div>Freshness: <b>{liveMarketData?.freshness ?? "fallback"}</b></div>
@@ -793,4 +796,3 @@ function ValCard({ color, title, subtitle, value, items, fmt, perShare }: {
     </div>
   );
 }
-
