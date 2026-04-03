@@ -43,6 +43,7 @@ Current focus now implemented:
 - the quality tab now carries that same trust gate before any quality-factor scores, so strong-looking scorecards are not read out of context when parser or reconciliation trust is weak
 - the ratios tab now carries that same trust gate before decomposition tables and trend charts, so ratio analysis does not present standalone confidence
 - the regression tab now carries that same trust gate before before/after deltas and baseline-harness output, so regression evidence is read in the same trust context as the run it is benchmarking
+- the comparison tab now carries a peer-trust gate plus per-company trust rows, so cross-company rankings do not stand alone without parser, reconciliation, and rigor context for each loaded peer
 
 ## How To Iterate
 
@@ -64,7 +65,7 @@ Baseline validation for any rigor change:
 Validated in this iteration:
 
 - `npm run typecheck`
-- `npm test` (`32` files, `99` tests)
+- `npm test` (`33` files, `100` tests)
 - `npm run build`
 
 Still not validated in this iteration:
@@ -90,11 +91,12 @@ Still not validated in this iteration:
 - surfaced the same traceability trust gate in the quality tab so Piotroski/distress/fraud scorecards do not drift from the shared envelope
 - surfaced the same traceability trust gate in the ratios tab so decomposition and trend analysis do not drift from the shared envelope
 - surfaced the same traceability trust gate in the regression tab so before/after harness deltas do not drift from the shared envelope
+- persisted per-company traceability in the comparison registry and surfaced a comparison-tab trust gate plus per-company trust rows before peer ranking output
 - re-ran typecheck, full tests, and build
 
 ## Next Good Problems
 
 - extend reconciliation thresholds further into income-statement bridges so structural reconciliation is not balance-sheet and cash-flow only
 - make parser fidelity richer for non-Capitaline inputs by capturing source-specific parse diagnostics instead of only post-parse density heuristics
-- add per-company traceability state to the multi-company registry so the comparison tab can disclose confidence honestly instead of borrowing single-run context
+- extend the comparison trust contract beyond the in-memory registry into persisted multi-company/session surfaces so peer context survives reloads and cross-workspace flows
 - feed the same rigor ladder and reconciliation summary into the remaining report/export surfaces beyond valuation, forecast, quality, ratios, and regression so all artifacts agree

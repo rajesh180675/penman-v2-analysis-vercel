@@ -1,3 +1,5 @@
+import type { AnalysisTraceabilityEnvelope } from "./analysisTraceability";
+
 /* ================================================================
    Penman–Nissim Engine — Canonical Type Definitions V2-FINAL
    Nissim & Penman (2001) — Full V2 Design Specification
@@ -319,6 +321,7 @@ export interface MultiCompanyRecord {
   id: string; label: string;
   rawData: RawPeriodData[];
   recastData: RecastPeriod[];
+  traceability?: AnalysisTraceabilityEnvelope | null;
 }
 
 export interface CompanyRegistry {

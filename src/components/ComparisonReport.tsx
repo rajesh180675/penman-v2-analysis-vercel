@@ -1,6 +1,8 @@
 import { CompanyRegistry, EngineConfig, NP_BENCHMARKS, ke_from_config } from "../engine/types";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { useMemo, useState } from "react";
+import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
+import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 
 interface Props {
   registry: CompanyRegistry;
@@ -22,6 +24,33 @@ export default function ComparisonReport({ registry, config }: Props) {
     return <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center text-amber-800">Load at least 2 companies to enable peer comparison.</div>;
   }
 
+  const companiesWithTraceability = companies.filter((company) => company.traceability);
+  const weakestCompany = companiesWithTraceability
+    .slice()
+    .sort((left, right) => compareTrustRank(left.traceability?.confidence.status ?? null, right.traceability?.confidence.status ?? null))[0] ?? null;
+  const weakestSummary = buildValuationTraceabilitySurfaceSummary(weakestCompany?.traceability ?? null);
+  const missingTraceabilityCount = companies.length - companiesWithTraceability.length;
+  const blockedCount = companies.filter((company) => company.traceability?.confidence.status === "blocked").length;
+  const guardedCount = companies.filter((company) => company.traceability?.confidence.status === "guarded").length;
+  const comparisonSummary = weakestSummary
+    ? {
+        ...weakestSummary,
+        headline: `Peer comparison inherits the weakest company trust state: ${weakestCompany?.label || weakestCompany?.id}`,
+        detail: missingTraceabilityCount > 0
+          ? `${missingTraceabilityCount} loaded peer(s) do not have persisted traceability yet, so comparison output should be treated as incomplete until each company has been processed in the current rigor-aware flow.`
+          : `${blockedCount} blocked / ${guardedCount} guarded / ${companies.length - blockedCount - guardedCount} production-ready peers are currently loaded. Review the per-company trust table before using cross-sectional rankings or upside ordering.`,
+        blockers: Array.from(
+          new Set(
+            [
+              missingTraceabilityCount > 0
+                ? `${missingTraceabilityCount} peer(s) are missing persisted traceability and therefore do not disclose parser or reconciliation confidence yet.`
+                : null,
+              ...weakestSummary.blockers,
+            ].filter((item): item is string => Boolean(item))
+          )
+        ).slice(0, 3),
+      }
+    : null;
   const latestByCo = companies.map((c) => ({ company: c.label || c.id, id: c.id, latest: c.recastData[c.recastData.length - 1], series: c.recastData }));
   const [marketInputs, setMarketInputs] = useState<Record<string, { price: number; shares: number }>>({});
   const [sortByUpside, setSortByUpside] = useState(true);
@@ -98,6 +127,70 @@ export default function ComparisonReport({ registry, config }: Props) {
 
   return (
     <div className="space-y-6">
+      {comparisonSummary && (
+        <TraceabilityTrustPanel
+          title="Comparison Trust Gate"
+          summary={comparisonSummary}
+          confidenceStatus={weakestCompany?.traceability?.confidence.status ?? null}
+          rigorLabel={weakestCompany?.traceability?.rigor.currentLabel ?? null}
+          parserStatus={weakestCompany?.traceability?.parserFidelity.status ?? null}
+          reconciliationStatus={weakestCompany?.traceability?.reconciliation.status ?? null}
+          cautionHeading="Review these peer-level trust blockers before using the comparison output as a ranking or valuation decision surface."
+          aside={(
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
+              <div className="font-semibold uppercase tracking-wide text-slate-500">Peer trust counts</div>
+              <div className="mt-2 space-y-1">
+                <div>{companies.length} peers loaded</div>
+                <div>{companiesWithTraceability.length} with persisted traceability</div>
+                <div>{blockedCount} blocked</div>
+                <div>{guardedCount} guarded</div>
+              </div>
+            </div>
+          )}
+        />
+      )}
+
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-slate-800 mb-2">Per-Company Trust State</h2>
+        <p className="text-xs text-slate-500 mb-4">Cross-company rankings inherit the trust level of each loaded peer. Review parser fidelity, reconciliation status, and the next unresolved gate before comparing upside or percentile ranks.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b">
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Company</th>
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Confidence</th>
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Rigor level</th>
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Parser fidelity</th>
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Reconciliation</th>
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Next unresolved gate</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {companies.map((company) => {
+                const traceability = company.traceability ?? null;
+                const summary = buildValuationTraceabilitySurfaceSummary(traceability);
+                return (
+                  <tr key={company.id}>
+                    <td className="px-3 py-2 font-medium text-slate-700">{company.label || company.id}</td>
+                    <td className="px-3 py-2">
+                      <StatusPill tone={traceability?.confidence.tone ?? "amber"}>{traceability?.confidence.status ?? "missing"}</StatusPill>
+                    </td>
+                    <td className="px-3 py-2 text-slate-700">{traceability?.rigor.currentLabel ?? "Traceability missing"}</td>
+                    <td className="px-3 py-2 text-slate-700">
+                      {traceability ? `${traceability.parserFidelity.status} · ${traceability.parserFidelity.score}/100` : "Traceability missing"}
+                    </td>
+                    <td className="px-3 py-2 text-slate-700">
+                      {traceability ? `${traceability.reconciliation.status} · ${formatPct(traceability.reconciliation.maxResidualRatio)}` : "Traceability missing"}
+                    </td>
+                    <td className="px-3 py-2 text-slate-700">{summary?.nextGateLine ?? "Reprocess this company in the current rigor-aware flow."}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div className="flex justify-end gap-2">
         <button onClick={() => setSortByUpside((v) => !v)} className="px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50">
           Sort: {sortByUpside ? "Upside ↓" : "Company A→Z"}
@@ -244,4 +337,28 @@ export default function ComparisonReport({ registry, config }: Props) {
       </div>
     </div>
   );
+}
+
+function formatPct(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? `${(value * 100).toFixed(2)}%` : "—";
+}
+
+function compareTrustRank(left: string | null, right: string | null) {
+  return trustRank(left) - trustRank(right);
+}
+
+function trustRank(status: string | null) {
+  if (status === "blocked") return 0;
+  if (status === "guarded") return 1;
+  if (status === "production-ready") return 2;
+  return -1;
+}
+
+function StatusPill({ children, tone }: { children: string; tone: string }) {
+  const className = tone === "red"
+    ? "border-red-200 bg-red-50 text-red-700"
+    : tone === "emerald"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : "border-amber-200 bg-amber-50 text-amber-700";
+  return <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${className}`}>{children}</span>;
 }

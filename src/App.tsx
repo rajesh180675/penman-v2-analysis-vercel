@@ -182,11 +182,11 @@ export function App() {
       return {
         companies: {
           ...prev.companies,
-          [id]: { ...existing, recastData },
+          [id]: { ...existing, recastData, traceability },
         },
       };
     });
-  }, [rawData, recastData]);
+  }, [rawData, recastData, traceability]);
 
   // If rawData was submitted but recastData comes back null, navigate to debug tab.
   useEffect(() => {
@@ -227,7 +227,7 @@ export function App() {
           ...prev.companies,
           // recastData placeholder — ComparisonReport reads from registry, so we
           // also update registry when recastData memo resolves (see useEffect below).
-          [id]: { id, label: id, rawData: data, recastData: [] },
+          [id]: { id, label: id, rawData: data, recastData: [], traceability: null },
         },
       }));
       setActiveTab("statements");
