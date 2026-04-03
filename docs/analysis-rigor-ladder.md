@@ -30,6 +30,7 @@ That envelope is consumed in:
 - [`src/components/RunInspector.tsx`](../src/components/RunInspector.tsx)
 - [`src/components/ValuationReport.tsx`](../src/components/ValuationReport.tsx)
 - [`src/components/ForecastReport.tsx`](../src/components/ForecastReport.tsx)
+- [`src/components/QualityReport.tsx`](../src/components/QualityReport.tsx)
 
 ## Current Heuristic
 
@@ -70,6 +71,7 @@ Capitaline runs also still have richer parser-fidelity evidence than other modes
 - snapshot tests: [`src/engine/__tests__/auditSnapshot.spec.ts`](../src/engine/__tests__/auditSnapshot.spec.ts)
 - workbook export tests: [`src/engine/__tests__/excelExport.spec.ts`](../src/engine/__tests__/excelExport.spec.ts)
 - surface summary tests: [`src/engine/__tests__/valuationTraceabilitySummary.spec.ts`](../src/engine/__tests__/valuationTraceabilitySummary.spec.ts)
+- quality-surface smoke test: [`src/components/__tests__/QualityReport.spec.tsx`](../src/components/__tests__/QualityReport.spec.tsx)
 - full test suite: `npm test`
 - typecheck: `npm run typecheck`
 - production build: `npm run build`
@@ -78,4 +80,4 @@ Capitaline runs also still have richer parser-fidelity evidence than other modes
 
 - extend reconciliation thresholds into cash-flow and share-data packs
 - deepen parser fidelity for screener, XBRL, manual, and JSON inputs with source-native anomaly counts
-- carry the same ladder and reconciliation summary into other report surfaces beyond valuation and forecast so no artifact drifts from traceability
+- carry the same ladder and reconciliation summary into other report surfaces beyond valuation, forecast, and quality so no artifact drifts from traceability
