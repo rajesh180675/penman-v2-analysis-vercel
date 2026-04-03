@@ -28,6 +28,10 @@ That envelope is consumed in:
 - [`src/lib/auditSnapshot.ts`](../src/lib/auditSnapshot.ts)
 - [`src/engine/excelExport.ts`](../src/engine/excelExport.ts)
 - [`src/components/RunInspector.tsx`](../src/components/RunInspector.tsx)
+- [`src/components/ValuationReport.tsx`](../src/components/ValuationReport.tsx)
+- [`src/components/ForecastReport.tsx`](../src/components/ForecastReport.tsx)
+- [`src/components/QualityReport.tsx`](../src/components/QualityReport.tsx)
+- [`src/components/RatioReport.tsx`](../src/components/RatioReport.tsx)
 
 ## Current Heuristic
 
@@ -55,24 +59,39 @@ The traceability envelope now includes:
 - `reconciliation.maxResidualRatio`
 - `reconciliation.checks`
 
-This is a real improvement in clarity, but it is still only a first reconciliation slice. Structural reconciliation currently thresholds recast identity residuals for:
+Comparison trust no longer disappears on reload in the current browser session. The app now persists the multi-company registry, including per-company traceability envelopes, in local storage so the comparison trust gate can survive reloads and the local workspace flow. See [`docs/comparison-registry-persistence.md`](./comparison-registry-persistence.md).
+
+This is a real improvement in clarity, but it is still only a partial reconciliation slice. Structural reconciliation currently thresholds recast identity residuals for:
 
 - `OA + FA = TA`
 - `CSE + MI + FO + OL = TA`
 - `NOA - NFO - CSE - MI = 0`
+- `PAT + OCI = TCI` when traced comprehensive-income evidence exists
+- `CNI = OI - NFE - MII`
+- `Core OI + UOI = OI`
+- `Core NFE + UFE = NFE`
+- `d_t = FCF - NFE + ΔNFO`
+- `Share Capital ÷ Face Value = End-Period Shares`
+- `Δ Gross Borrowings = Debt Proceeds + Debt Repayment` when traced borrowing lines exist
+- `Δ Cash and Bank = CFO - Capex - Distributions + Equity/Financing/Investment Flows` when traced cash balances and core cash-flow lines exist
 
 Capitaline runs also still have richer parser-fidelity evidence than other modes because they use parse-debug signals such as file presence, header detection, period consistency, and parser noise. Other source modes still rely on lighter post-parse density heuristics rather than rich source-native diagnostics.
 
 ## What Was Validated
 
 - snapshot tests: [`src/engine/__tests__/auditSnapshot.spec.ts`](../src/engine/__tests__/auditSnapshot.spec.ts)
+- focused reconciliation residual tests: [`src/engine/__tests__/reconciliationResiduals.spec.ts`](../src/engine/__tests__/reconciliationResiduals.spec.ts)
 - workbook export tests: [`src/engine/__tests__/excelExport.spec.ts`](../src/engine/__tests__/excelExport.spec.ts)
-- full test suite: `npm test`
+- surface summary tests: [`src/engine/__tests__/valuationTraceabilitySummary.spec.ts`](../src/engine/__tests__/valuationTraceabilitySummary.spec.ts)
+- quality-surface smoke test: [`src/components/__tests__/QualityReport.spec.tsx`](../src/components/__tests__/QualityReport.spec.tsx)
+- ratio-surface smoke test: [`src/components/__tests__/RatioReport.spec.tsx`](../src/components/__tests__/RatioReport.spec.tsx)
+- full reconciliation residual contract: [`src/engine/__tests__/reconciliationResiduals.spec.ts`](../src/engine/__tests__/reconciliationResiduals.spec.ts)
+- full test suite: `npm test` (`36` files, `109` tests)
 - typecheck: `npm run typecheck`
 - production build: `npm run build`
 
 ## Follow-On Work
 
-- extend reconciliation thresholds into cash-flow and share-data packs
 - deepen parser fidelity for screener, XBRL, manual, and JSON inputs with source-native anomaly counts
-- carry the same ladder and reconciliation summary into other export/report surfaces so no artifact drifts from traceability
+- carry the same ladder and reconciliation summary into other report surfaces beyond valuation, forecast, quality, and ratios so no artifact drifts from traceability
+- move persisted comparison trust beyond local browser storage into shared/server-backed workspace surfaces

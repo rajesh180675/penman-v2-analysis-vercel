@@ -14,8 +14,11 @@ import {
 } from "recharts";
 import { runMonteCarlo } from "../engine/monteCarloClient";
 import { MonteCarloOutput } from "../engine/monteCarloTypes";
+import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
+import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
+import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 
-interface Props { data: RecastPeriod[]; config: EngineConfig }
+interface Props { data: RecastPeriod[]; config: EngineConfig; traceability?: AnalysisTraceabilityEnvelope | null }
 interface ExtendedProps extends Props { rawData?: RawPeriodData[] | null }
 
 const pct = (v:number,d=1) => (v*100).toFixed(d)+"%";
@@ -63,9 +66,13 @@ function makeDefaultScenario(
   };
 }
 
-export default function ForecastReport({data,config, rawData = null}:ExtendedProps) {
+export default function ForecastReport({data,config, rawData = null, traceability = null}:ExtendedProps) {
   const keBase = ke_from_config(config);
   const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
+  const traceabilitySummary = useMemo(
+    () => buildValuationTraceabilitySurfaceSummary(traceability),
+    [traceability],
+  );
   const shareBasis = useMemo(() => resolveShareBasis(data, config), [data, config]);
   const valuationConfig = useMemo(() => shareBasis.valuationConfig, [shareBasis]);
   const sharesOut = shareBasis.shares ?? null;
@@ -309,6 +316,17 @@ export default function ForecastReport({data,config, rawData = null}:ExtendedPro
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">
           <b>Guarded forecast valuation.</b> {valuationReadiness.reasons[0]} Forecast scenarios still start from the latest reported period, so treat scenario values as review-only until the terminal period is normalized.
         </div>
+      )}
+      {traceabilitySummary && (
+        <TraceabilityTrustPanel
+          title="Forecast Trust Gate"
+          summary={traceabilitySummary}
+          confidenceStatus={traceability?.confidence.status}
+          rigorLabel={traceability?.rigor.currentLabel}
+          parserStatus={traceability?.parserFidelity.status}
+          reconciliationStatus={traceability?.reconciliation.status}
+          cautionHeading="Why this forecast should be treated cautiously"
+        />
       )}
       {/* Controls */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">

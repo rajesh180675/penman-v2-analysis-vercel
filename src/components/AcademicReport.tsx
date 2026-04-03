@@ -8,19 +8,22 @@ import { deriveAnalysisStatus } from "../engine/analysisStatus";
 import { EngineConfig, NP_BENCHMARKS, RawPeriodData, RecastPeriod, ke_from_config } from "../engine/types";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { auditMappingCoverage, evaluateGranularityChecklist, evaluateQualityGate } from "../engine/mappingAudit";
-import { buildAnalysisTraceability } from "../engine/analysisTraceability";
+import { AnalysisTraceabilityEnvelope, buildAnalysisTraceability } from "../engine/analysisTraceability";
 import { generateValuationWorkbook } from "../engine/excelExport";
 import { getAnalysisPolicyVersions } from "../engine/policyVersions";
 import { buildProvenanceAuditRows } from "../engine/provenanceAudit";
 import { deriveCompanyLabel, resolveValuationReadiness } from "../engine/valuationPolicy";
+import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import { computeV3Analytics, V3AnalyticsBundle, computeAnchorTable } from "../engine/v3Analytics";
 import { AuditSubmissionMeta, persistAuditBlob, persistAuditEvent } from "../lib/audit";
+import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 
 interface Props {
   data: RecastPeriod[];
   config: EngineConfig;
   rawData?: RawPeriodData[] | null;
   auditMeta?: AuditSubmissionMeta | null;
+  traceability?: AnalysisTraceabilityEnvelope | null;
 }
 
 const pct = (v: number | null | undefined, d = 1) => (v == null ? "—" : `${(v * 100).toFixed(d)}%`);
@@ -170,7 +173,7 @@ function madSigma(vals: number[]): number {
   return (mad ?? 0) * 1.4826;
 }
 
-export default function AcademicReport({ data, config, rawData, auditMeta }: Props) {
+export default function AcademicReport({ data, config, rawData, auditMeta, traceability: sharedTraceability = null }: Props) {
   const eqROCE = katex.renderToString(String.raw`\mathrm{ROCE}_t = \frac{\mathrm{CNI}_t}{\overline{\mathrm{CSE}}}`,
     { throwOnError: false, displayMode: true });
   const eqRNOA = katex.renderToString(String.raw`\mathrm{RNOA}_t = \frac{\mathrm{OI}_t}{\overline{\mathrm{NOA}}}`,
@@ -231,7 +234,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
     [mappingAudit, qualityGate, valuationReadiness],
   );
   const latestRawPeriod = rawData && rawData.length > 0 ? rawData[rawData.length - 1].period_end : null;
-  const traceability = useMemo(() => buildAnalysisTraceability({
+  const derivedTraceability = useMemo(() => buildAnalysisTraceability({
     runId: auditMeta?.runId ?? null,
     companyId: auditMeta?.companyId ?? rawData?.[0]?.company_id ?? config.ticker ?? null,
     sourceMode: auditMeta?.sourceMode ?? null,
@@ -246,9 +249,14 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
     policyVersions,
     analysisStatus,
     contentClass: auditMeta?.contentClass ?? null,
-    retentionDays: auditMeta?.retentionDays ?? null,
-    runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
+      retentionDays: auditMeta?.retentionDays ?? null,
+      runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
   }), [analysisStatus, auditMeta, config.ticker, data, latestRawPeriod, mappingAudit, policyVersions, qualityGate, rawData]);
+  const traceability = sharedTraceability ?? derivedTraceability;
+  const traceabilitySummary = useMemo(
+    () => buildValuationTraceabilitySurfaceSummary(traceability),
+    [traceability],
+  );
 
   const escapeCsvCell = (v: string | number) => {
     const s = String(v ?? "");
@@ -492,25 +500,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
           reasons: valuationReadiness.reasons,
         },
         policyVersions,
-        traceability: buildAnalysisTraceability({
-          generatedAt,
-          runId: auditMeta?.runId ?? null,
-          companyId,
-          sourceMode: auditMeta?.sourceMode ?? null,
-          rawData,
-          recastData: data,
-          config,
-          periodCount: rawData?.length ?? data.length,
-          recastPeriodCount: data.length,
-          latestPeriod: latestRawPeriod ?? data[data.length - 1]?.period_end ?? null,
-          qualityGate,
-          mappingAudit,
-          policyVersions,
-          analysisStatus,
-          contentClass: auditMeta?.contentClass ?? null,
-          retentionDays: auditMeta?.retentionDays ?? null,
-          runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
-        }),
+        traceability,
         rowCounts: {
           recastPeriods: data.length,
           traceRows: traceRecords.length,
@@ -896,6 +886,17 @@ export default function AcademicReport({ data, config, rawData, auditMeta }: Pro
       </p>
 
       <div ref={reportRef} className="space-y-6">
+      {traceabilitySummary && (
+        <TraceabilityTrustPanel
+          title="Report Trust Gate"
+          summary={traceabilitySummary}
+          confidenceStatus={traceability.confidence.status}
+          rigorLabel={traceability.rigor.currentLabel}
+          parserStatus={traceability.parserFidelity.status}
+          reconciliationStatus={traceability.reconciliation.status}
+          cautionHeading="Read the memo and exported artifacts in the context of these unresolved gates"
+        />
+      )}
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <h1 className="text-2xl font-bold text-slate-800">Investor Research Memorandum (Academic Format)</h1>
         <p className="text-sm text-slate-500 mt-1">

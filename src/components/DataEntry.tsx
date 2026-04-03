@@ -1,9 +1,11 @@
 import { useState, useCallback } from "react";
 import { RawPeriodData, EngineConfig } from "../engine/types";
 import { parseCapitalineZip, CapitalineParseDebug } from "../engine/capitalineParser";
-import { parseScreenerTabDelimited } from "../engine/screenerParser";
-import { parseRawPeriodsJson } from "../engine/jsonIngestion";
-import { parseXbrlXml } from "../engine/xbrlParser";
+import { parseScreenerTabDelimitedDetailed } from "../engine/screenerParser";
+import { parseRawPeriodsJsonDetailed } from "../engine/jsonIngestion";
+import { parseXbrlXmlDetailed } from "../engine/xbrlParser";
+import { diagnoseManualRawPeriods } from "../engine/manualEntryParser";
+import { SourceParserDiagnostics } from "../engine/parserDiagnostics";
 import {
   AuditSubmissionMeta,
   createAuditAccessToken,
@@ -16,7 +18,7 @@ import {
 import ManualEntryWizard from "./ManualEntryWizard";
 
 interface Props {
-  onDataSubmit: (data: RawPeriodData[], debug?: CapitalineParseDebug, meta?: AuditSubmissionMeta) => void;
+  onDataSubmit: (data: RawPeriodData[], debug?: CapitalineParseDebug, meta?: AuditSubmissionMeta, parserDiagnostics?: SourceParserDiagnostics | null) => void;
   currentData: RawPeriodData[] | null;
   config: EngineConfig;
   onConfigChange: (cfg: EngineConfig) => void;
@@ -407,7 +409,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                       ingestionMode: "screener",
                     },
                   });
-                  const periods = parseScreenerTabDelimited(screenerText, { companyId });
+                  const { periods, diagnostics } = parseScreenerTabDelimitedDetailed(screenerText, { companyId });
                   void persistAuditEvent({
                     runId: meta.runId,
                     eventType: "text-input-ingested",
@@ -416,10 +418,11 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                     payload: {
                       sourceText: screenerText,
                       periodCount: periods.length,
+                      parserDiagnostics: diagnostics,
                     },
                   });
                   if (!periods.length) setError("Screener parse returned 0 periods.");
-                  else onDataSubmit(periods, undefined, meta);
+                  else onDataSubmit(periods, undefined, meta, diagnostics);
                 } catch (e) {
                   const meta = buildMeta("screener");
                   void persistAuditEvent({
@@ -458,7 +461,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                       ingestionMode: "json",
                     },
                   });
-                  const periods = parseRawPeriodsJson(jsonText);
+                  const { periods, diagnostics } = parseRawPeriodsJsonDetailed(jsonText);
                   void persistAuditEvent({
                     runId: meta.runId,
                     eventType: "json-input-ingested",
@@ -467,9 +470,10 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                     payload: {
                       sourceJson: jsonText,
                       periodCount: periods.length,
+                      parserDiagnostics: diagnostics,
                     },
                   });
-                  onDataSubmit(periods, undefined, meta);
+                  onDataSubmit(periods, undefined, meta, diagnostics);
                 } catch (e) {
                   const meta = buildMeta("json");
                   void persistAuditEvent({
@@ -513,7 +517,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                     },
                   });
                   const txt = await f.text();
-                  const periods = parseXbrlXml(txt, companyId);
+                  const { periods, diagnostics } = parseXbrlXmlDetailed(txt, companyId);
                   void persistAuditEvent({
                     runId: meta.runId,
                     eventType: "xbrl-input-ingested",
@@ -523,10 +527,11 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                       fileName: f.name,
                       sourceXml: txt,
                       periodCount: periods.length,
+                      parserDiagnostics: diagnostics,
                     },
                   });
                   if (!periods.length) setError("XBRL parse returned 0 periods. Check taxonomy labels/contexts.");
-                  else onDataSubmit(periods, undefined, meta);
+                  else onDataSubmit(periods, undefined, meta, diagnostics);
                 } catch (err) {
                   const meta = buildMeta("xbrl", { fileName: f.name });
                   void persistAuditEvent({
@@ -569,9 +574,10 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                   payload: {
                     rows,
                     periodCount: rows.length,
+                    parserDiagnostics: diagnoseManualRawPeriods(rows),
                   },
                 });
-                onDataSubmit(rows, undefined, meta);
+                onDataSubmit(rows, undefined, meta, diagnoseManualRawPeriods(rows));
               }}
             />
           </div>

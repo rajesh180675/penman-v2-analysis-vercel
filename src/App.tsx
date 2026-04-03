@@ -23,6 +23,10 @@ import {
 import { buildAnalysisSnapshot } from "./lib/auditSnapshot";
 import { listWorkspaceCompanies, rememberWorkspaceAnalysis } from "./lib/researchWorkspace";
 import { syncWorkspaceAnalysis, syncWorkspaceProfile } from "./lib/sharedResearchApi";
+import { persistCompanyRegistry, readPersistedCompanyRegistry } from "./lib/companyRegistryStore";
+import { buildAnalysisTraceability } from "./engine/analysisTraceability";
+import { getAnalysisPolicyVersions } from "./engine/policyVersions";
+import { SourceParserDiagnostics } from "./engine/parserDiagnostics";
 
 const ValuationReport = lazy(() => import("./components/ValuationReport"));
 const ForecastReport = lazy(() => import("./components/ForecastReport"));
@@ -59,10 +63,11 @@ export function App() {
   const auditGovernance = getAuditClientGovernance();
   const [rawData,    setRawData]    = useState<RawPeriodData[]|null>(null);
   const [debugInfo,  setDebugInfo]  = useState<CapitalineParseDebug|null>(null);
+  const [parserDiagnostics, setParserDiagnostics] = useState<SourceParserDiagnostics | null>(null);
   const [activeTab,  setActiveTab]  = useState<TabId>("upload");
   const [config,     setConfig]     = useState<EngineConfig>(DEFAULT_CONFIG);
   const [darkMode, setDarkMode] = useState(false);
-  const [registry, setRegistry] = useState<CompanyRegistry>({ companies: {} });
+  const [registry, setRegistry] = useState<CompanyRegistry>(() => readPersistedCompanyRegistry());
   const [auditMeta, setAuditMeta] = useState<AuditSubmissionMeta | null>(null);
   const [workspaceCompanyId, setWorkspaceCompanyId] = useState<string | null>(null);
   const lastAuditSignatureRef = useRef<string | null>(null);
@@ -107,6 +112,35 @@ export function App() {
     () => deriveAnalysisStatus(qualityGate, valuationReadiness, mappingAudit),
     [mappingAudit, qualityGate, valuationReadiness],
   );
+  const policyVersions = useMemo(() => getAnalysisPolicyVersions(), []);
+  const latestPeriod = rawData && rawData.length > 0 ? rawData[rawData.length - 1].period_end : null;
+  const traceability = useMemo(
+    () => buildAnalysisTraceability({
+      runId: auditMeta?.runId ?? null,
+      companyId: rawData?.[0]?.company_id ?? null,
+      sourceMode: auditMeta?.sourceMode ?? null,
+      rawData,
+      recastData,
+      config,
+      periodCount: rawData?.length ?? 0,
+      recastPeriodCount: recastData?.length ?? 0,
+      latestPeriod,
+      qualityGate,
+      mappingAudit,
+      policyVersions,
+      analysisStatus,
+      hasDebugInfo: Boolean(debugInfo),
+      debugFiles: debugInfo?.files?.length ?? 0,
+      rawMetricKeyCount: debugInfo?.rawMetricKeys?.length ?? 0,
+      engineError,
+      debugInfo,
+      parserDiagnostics,
+      contentClass: auditMeta?.contentClass ?? null,
+      retentionDays: auditMeta?.retentionDays ?? null,
+      runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
+    }),
+    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, policyVersions, qualityGate, rawData, recastData],
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -128,6 +162,10 @@ export function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
+
+  useEffect(() => {
+    persistCompanyRegistry(registry);
+  }, [registry]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -152,11 +190,11 @@ export function App() {
       return {
         companies: {
           ...prev.companies,
-          [id]: { ...existing, recastData },
+          [id]: { ...existing, recastData, traceability },
         },
       };
     });
-  }, [rawData, recastData]);
+  }, [rawData, recastData, traceability]);
 
   // If rawData was submitted but recastData comes back null, navigate to debug tab.
   useEffect(() => {
@@ -166,7 +204,7 @@ export function App() {
   }, [rawData, recastData, engineError]);
 
   const handleDataSubmit = useCallback(
-    (data:RawPeriodData[], debug?:CapitalineParseDebug, meta?: AuditSubmissionMeta) => {
+    (data:RawPeriodData[], debug?:CapitalineParseDebug, meta?: AuditSubmissionMeta, nextParserDiagnostics?: SourceParserDiagnostics | null) => {
       const nextMeta = meta ?? {
         runId: createAuditRunId(),
         sourceMode: "manual",
@@ -187,7 +225,9 @@ export function App() {
       }));
       setWorkspaceCompanyId(nextMeta.companyId || data[0]?.company_id || null);
       setRawData(data);
+      setParserDiagnostics(nextParserDiagnostics ?? null);
       if (debug) setDebugInfo(debug);
+      else setDebugInfo(null);
       if (data.length === 0) { setActiveTab("debug"); return; }
       // recastData is now derived reactively via useMemo(rawData, config).
       // We just store rawData; the memo takes care of processing.
@@ -197,7 +237,7 @@ export function App() {
           ...prev.companies,
           // recastData placeholder — ComparisonReport reads from registry, so we
           // also update registry when recastData memo resolves (see useEffect below).
-          [id]: { id, label: id, rawData: data, recastData: [] },
+          [id]: { id, label: id, rawData: data, recastData: [], traceability: null },
         },
       }));
       setActiveTab("statements");
@@ -213,6 +253,7 @@ export function App() {
       recastData,
       config,
       debugInfo,
+      parserDiagnostics,
       qualityGate,
       mappingAudit,
       engineError,
@@ -230,7 +271,7 @@ export function App() {
       sourceMode: auditMeta.sourceMode,
       payload: snapshot,
     });
-  }, [analysisStatus, auditMeta, config, debugInfo, engineError, mappingAudit, qualityGate, rawData, recastData]);
+  }, [analysisStatus, auditMeta, config, debugInfo, engineError, mappingAudit, parserDiagnostics, qualityGate, rawData, recastData]);
 
   useEffect(() => {
     if (!auditMeta || !engineError) return;
@@ -442,10 +483,10 @@ export function App() {
               />
             )}
             {activeTab==="statements" && hasRecast && <RecastStatements data={recastData!}/>}
-            {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!}/>}
-            {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig}/>}
+            {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!} traceability={traceability} />}
+            {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig} traceability={traceability} />}
             {activeTab==="valuation"  && hasRecast && !valuationBlocked && (
-              <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} />
+              <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} />
             )}
             {activeTab === "valuation" && !hasRecast && scopeBlocked && rawData && rawData.length > 0 && (
               <FinancialInstitutionReport rawData={rawData} config={config} />
@@ -467,11 +508,27 @@ export function App() {
                 ) : null}
               </div>
             )}
-            {activeTab==="quality"    && hasRecast && <QualityReport data={recastData!}/>}
+            {activeTab==="quality"    && hasRecast && <QualityReport data={recastData!} traceability={traceability} />}
             {activeTab==="comparison" && <ComparisonReport registry={registry} config={config} />}
-            {activeTab==="report"     && hasRecast && <AcademicReport data={recastData!} config={config} rawData={rawData} auditMeta={auditMeta} />}
-            {activeTab==="regression" && hasRecast && <RegressionReport rawData={rawData} recastData={recastData} config={config} registry={registry} />}
-            {activeTab==="v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config}/>}
+            {activeTab==="report"     && hasRecast && (
+              <AcademicReport
+                data={recastData!}
+                config={config}
+                rawData={rawData}
+                auditMeta={auditMeta}
+                traceability={traceability}
+              />
+            )}
+            {activeTab==="regression" && hasRecast && (
+              <RegressionReport
+                rawData={rawData}
+                recastData={recastData}
+                config={config}
+                registry={registry}
+                traceability={traceability}
+              />
+            )}
+            {activeTab==="v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config} traceability={traceability} />}
             {activeTab==="debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError}/>}
             {(["statements","ratios","forecast","valuation","quality","report","regression","v3analytics"] as TabId[]).includes(activeTab) && !hasRecast && (
               <div className="flex flex-col items-center justify-center py-24 text-center">

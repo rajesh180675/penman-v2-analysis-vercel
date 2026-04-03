@@ -1,11 +1,17 @@
 import { RecastPeriod, NP_BENCHMARKS } from "../engine/types";
+import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
+import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
+import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import { useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   Legend, BarChart, Bar, ReferenceLine, Cell,
 } from "recharts";
 
-interface Props { data: RecastPeriod[] }
+interface Props {
+  data: RecastPeriod[];
+  traceability?: AnalysisTraceabilityEnvelope | null;
+}
 
 const pct  = (v:number|null|undefined,d=1) => v!=null?(v*100).toFixed(d)+"%" : "—";
 const mult = (v:number|null|undefined,d=2) => v!=null?v.toFixed(d)+"×" : "—";
@@ -14,8 +20,9 @@ const days = (v:number|null|undefined) => v!=null?v.toFixed(0)+"d" : "—";
 
 const NP_COLORS = {median:"#6366f1"};
 
-export default function RatioReport({data}:Props) {
+export default function RatioReport({data, traceability = null}:Props) {
   const [view, setView] = useState<"core"|"wc"|"trend">("core");
+  const traceabilitySummary = buildValuationTraceabilitySurfaceSummary(traceability);
   if (!data||data.length<=1) return (
     <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
       <p className="font-semibold text-amber-800 text-lg">Need ≥ 2 periods</p>
@@ -67,6 +74,17 @@ export default function RatioReport({data}:Props) {
 
   return (
     <div className="space-y-8">
+      {traceabilitySummary && (
+        <TraceabilityTrustPanel
+          title="Ratio Trust Gate"
+          summary={traceabilitySummary}
+          confidenceStatus={traceability?.confidence.status}
+          rigorLabel={traceability?.rigor.currentLabel}
+          parserStatus={traceability?.parserFidelity.status}
+          reconciliationStatus={traceability?.reconciliation.status}
+          cautionHeading="Read ratio outputs in the context of these unresolved gates"
+        />
+      )}
 
       <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-between">
         <div className="text-sm text-slate-700 font-medium">Analysis View</div>

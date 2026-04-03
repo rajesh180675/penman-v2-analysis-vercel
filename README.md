@@ -35,7 +35,24 @@ Current focus now implemented:
 - parser fidelity is now a first-class traceability signal with a status, score, and summary
 - `syntactically-valid` now requires parser fidelity to clear a minimum threshold instead of relying only on raw-period presence
 - reconciliation is now a first-class traceability signal with a status, summary, max residual, and check list
-- `structurally-reconciled` now requires explicit recast identity residuals to stay under critical thresholds instead of relying only on recast presence and blocker counts
+- `structurally-reconciled` now requires explicit balance-sheet, cash-distribution, share-capital, debt-flow, and income-statement residuals to stay under critical thresholds instead of relying only on recast presence and blocker counts
+- the structural pack now includes a gross-borrowings debt-flow bridge backed by traced long-term and short-term borrowing lines versus `DebtProceeds + DebtRepayment`
+- the structural pack now also includes an ending-cash bridge backed by traced `BS.FA.CashBank` balances versus the recast cash-flow movement implied by `CFO`, `Capex`, distributions, financing flows, and investment flows
+- the structural pack now also includes income-statement bridges for `PAT + OCI = TCI`, `CNI = OI - NFE - MII`, `Core OI + UOI = OI`, and `Core NFE + UFE = NFE`
+- the structural pack now also thresholds the detailed operating-cost bridge when `bridgeCoreOI` has at least `60%` source coverage, so high-coverage sales-to-Core-OI decompositions become part of structural clearance instead of staying informational only
+- the valuation tab now carries the same trust gate into the user-facing surface, showing rigor level, parser fidelity, reconciliation status, and the next unresolved gate instead of relying on the signal card alone
+- the forecast tab now carries that same trust gate before any scenario output, so forward-looking cases inherit the shared parser, reconciliation, and rigor disclosure instead of presenting a separate confidence language
+- the quality tab now carries that same trust gate before any quality-factor scores, so strong-looking scorecards are not read out of context when parser or reconciliation trust is weak
+- the ratios tab now carries that same trust gate before decomposition tables and trend charts, so ratio analysis does not present standalone confidence
+- the regression tab now carries that same trust gate before before/after deltas and baseline-harness output, so regression evidence is read in the same trust context as the run it is benchmarking
+- the comparison tab now carries a peer-trust gate plus per-company trust rows, so cross-company rankings do not stand alone without parser, reconciliation, and rigor context for each loaded peer
+- the multi-company comparison registry now persists to local storage, so loaded peers and their trust state survive reloads instead of disappearing with React memory
+- the academic report tab now carries that same trust gate before the memo body and exported-artifact controls, so the offline/audit-facing report surface does not present stronger confidence than the shared traceability envelope
+- the V3 analytics tab now carries that same trust gate before dirty-surplus, anchor, sensitivity, and confidence interpretation, so this interpretation-heavy surface no longer drifts from the shared parser/reconciliation/rigor envelope
+- non-Capitaline parser fidelity now consumes source-native parser diagnostics from Screener, JSON, manual, and XBRL ingestion instead of relying only on post-parse density heuristics
+- JSON ingestion now fails loud on invalid metric value types instead of silently accepting non-numeric payload contamination
+- XBRL parser diagnostics now have focused automated coverage in Vitest by mocking the minimal `DOMParser` surface the parser consumes, so the XBRL path is no longer an unvalidated exception inside the non-Capitaline parser-fidelity contract
+- the Vite manual chunk plan no longer forces a circular `engine-regression` ↔ `engine-v3-analytics` edge; regression, V3 analytics, and the academic report now ship in one shared `engine-advanced-analytics` chunk so production builds validate without that warning
 
 ## How To Iterate
 
@@ -57,8 +74,13 @@ Baseline validation for any rigor change:
 Validated in this iteration:
 
 - `npm run typecheck`
-- `npm test` (`27` files, `87` tests)
+- `npm test` (`38` files, `116` tests)
 - `npm run build`
+- `npm test -- src/engine/__tests__/reconciliationResiduals.spec.ts`
+- `npm test -- src/components/__tests__/V3AnalyticsPanel.spec.tsx`
+- `npm test -- src/engine/__tests__/parserFidelity.spec.ts`
+- `npm test -- src/engine/__tests__/xbrlParser.spec.ts`
+- `npm run build` after consolidating the regression/V3/academic chunk mapping, with the prior circular chunk warning removed
 
 Still not validated in this iteration:
 
@@ -68,17 +90,35 @@ Still not validated in this iteration:
 
 ## Last Units Of Work
 
-- added explicit analysis rigor levels to the traceability envelope and later bumped the schema version to `2026-04-traceability-v7`
+- added explicit analysis rigor levels to the traceability envelope and later bumped the schema version to `2026-04-traceability-v8`
 - exported rigor level and ladder state into workbook metadata
 - surfaced rigor level and remaining ladder steps in the run inspector
 - added parser-fidelity scoring to traceability and wired it into the `syntactically-valid` gate
 - added reconciliation-residual scoring to traceability and wired it into the `structurally-reconciled` gate
+- extended reconciliation residual scoring beyond balance-sheet identities with a cash-distribution bridge check and a share-capital tie-out check
+- extended reconciliation residual scoring again with a gross-borrowings debt-flow bridge backed by traced borrowing lines
+- extended reconciliation residual scoring again with an ending-cash bridge backed by traced cash balances and the recast cash-flow movement
+- extended reconciliation residual scoring into the income statement with comprehensive-income, CNI, core-OI, and core-NFE bridges
+- extended reconciliation residual scoring into the detailed operating-cost bridge so high-coverage `bridgeCoreOI` support now participates in structural clearance
 - fixed the ladder so structural failure prevents downstream economic/valuation levels from clearing
 - surfaced reconciliation status and summary in workbook and run inspector
+- surfaced the same traceability trust gate in the valuation tab so that valuation presentation does not drift from the shared envelope
+- surfaced the same traceability trust gate in the forecast tab so scenario outputs do not drift from the shared envelope
+- surfaced the same traceability trust gate in the quality tab so Piotroski/distress/fraud scorecards do not drift from the shared envelope
+- surfaced the same traceability trust gate in the ratios tab so decomposition and trend analysis do not drift from the shared envelope
+- surfaced the same traceability trust gate in the regression tab so before/after harness deltas do not drift from the shared envelope
+- persisted per-company traceability in the comparison registry and surfaced a comparison-tab trust gate plus per-company trust rows before peer ranking output
+- persisted the comparison registry itself to local storage so peer comparison survives reloads in the same workspace/browser
+- surfaced the same traceability trust gate in the academic report tab so the memo/export surface does not drift from the shared envelope
+- surfaced the same traceability trust gate in the V3 analytics tab so dirty-surplus, terminal-anchor, sensitivity, and confidence sections do not drift from the shared envelope
+- added source-native parser diagnostics for Screener, JSON, manual, and XBRL ingestion and wired them into parser fidelity scoring
+- tightened JSON ingestion so invalid non-numeric metric values fail during parse instead of entering the analytical object
+- added a focused `src/engine/__tests__/xbrlParser.spec.ts` suite that validates clean XBRL diagnostics, degraded XBRL diagnostics, and parser-error fail-loud behavior without requiring a browser test runtime
+- removed the Vite circular chunk warning by consolidating regression, V3 analytics, and academic-report manual chunking into one `engine-advanced-analytics` bundle
 - re-ran typecheck, full tests, and build
 
 ## Next Good Problems
 
-- extend reconciliation thresholds into cash-flow and share-data packs instead of only recast balance-sheet identities
-- make parser fidelity richer for non-Capitaline inputs by capturing source-specific parse diagnostics instead of only post-parse density heuristics
-- feed the same rigor ladder and reconciliation summary into the remaining export/report surfaces so all artifacts agree
+- extend comparison trust persistence beyond local browser storage into shared multi-workspace/server-backed surfaces so peer context survives beyond one browser environment
+- review whether the larger shared `engine-advanced-analytics` chunk should later be split again through actual dependency extraction instead of manual chunk forcing
+- see the current local-persistence slice in [`docs/comparison-registry-persistence.md`](./docs/comparison-registry-persistence.md)

@@ -28,11 +28,18 @@ function appChunkName(id: string) {
   if (normalized.includes("/src/engine/__fixtures__/") || normalized.includes("/src/engine/goldenCompanySuite.ts") || normalized.includes("/src/engine/releaseGate.ts")) {
     return "engine-golden-suite";
   }
-  if (normalized.includes("/src/engine/regressionHarness.ts") || normalized.includes("/src/engine/baselineGuardrails.ts") || normalized.includes("/src/components/RegressionReport.tsx")) {
-    return "engine-regression";
-  }
-  if (normalized.includes("/src/engine/v3Analytics.ts") || normalized.includes("/src/components/V3AnalyticsPanel.tsx")) {
-    return "engine-v3-analytics";
+  if (
+    normalized.includes("/src/engine/regressionHarness.ts")
+    || normalized.includes("/src/engine/baselineGuardrails.ts")
+    || normalized.includes("/src/components/RegressionReport.tsx")
+    || normalized.includes("/src/engine/v3Analytics.ts")
+    || normalized.includes("/src/components/V3AnalyticsPanel.tsx")
+    || normalized.includes("/src/components/AcademicReport.tsx")
+  ) {
+    // These surfaces share valuation and analytics dependencies. Keep them in one
+    // chunk so Rollup does not have to synthesize a circular edge between
+    // manually split regression and V3 analytics chunks.
+    return "engine-advanced-analytics";
   }
   return undefined;
 }

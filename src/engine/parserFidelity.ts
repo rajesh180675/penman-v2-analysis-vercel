@@ -1,14 +1,8 @@
 import { CapitalineParseDebug } from "./capitalineParser";
 import { RawPeriodData } from "./types";
+import { ParserFidelityCheck, SourceParserDiagnostics } from "./parserDiagnostics";
 
 export type ParserFidelityStatus = "confirmed" | "degraded" | "failed";
-
-export interface ParserFidelityCheck {
-  id: string;
-  label: string;
-  passed: boolean;
-  detail: string;
-}
 
 export interface ParserFidelitySummary {
   status: ParserFidelityStatus;
@@ -65,10 +59,12 @@ export function evaluateParserFidelity(params: {
   debugInfo?: CapitalineParseDebug | null;
   periodCount?: number;
   rawMetricKeyCount?: number;
+  parserDiagnostics?: SourceParserDiagnostics | null;
 }): ParserFidelitySummary {
   const sourceMode = params.sourceMode ?? null;
   const rawData = params.rawData ?? null;
   const debugInfo = params.debugInfo ?? null;
+  const parserDiagnostics = params.parserDiagnostics ?? null;
   const periodCount = rawData?.length ?? params.periodCount ?? 0;
   const metricKeyCount = unionMetricKeyCount(rawData) || params.rawMetricKeyCount || 0;
   const perPeriodMetricDensity = metricDensity(rawData);
@@ -137,10 +133,10 @@ export function evaluateParserFidelity(params: {
     };
   }
 
-  const warningCount = 0;
-  const errorCount = 0;
   const hasPeriods = periodCount > 0;
   const denseEnough = perPeriodMetricDensity >= (sourceMode === "manual" ? 2 : sourceMode === "json" ? 3 : 4);
+  const warningCount = parserDiagnostics?.warningCount ?? 0;
+  const errorCount = parserDiagnostics?.errorCount ?? 0;
 
   checks.push(
     {
@@ -167,16 +163,15 @@ export function evaluateParserFidelity(params: {
     },
   );
 
-  if (sourceMode === "xbrl") {
+  if (parserDiagnostics?.checks?.length) checks.push(...parserDiagnostics.checks);
+  else if (sourceMode === "xbrl") {
     checks.push({
       id: "xbrl-fact-coverage",
       label: "Mapped XBRL facts",
       passed: metricKeyCount >= 4,
       detail: `Mapped ${metricKeyCount} canonical facts from XBRL contexts.`,
     });
-  }
-
-  if (sourceMode === "json") {
+  } else if (sourceMode === "json") {
     checks.push({
       id: "json-schema-density",
       label: "JSON payload density",
@@ -186,10 +181,10 @@ export function evaluateParserFidelity(params: {
   }
 
   const passRate = checks.filter((check) => check.passed).length / checks.length;
-  const score = clampScore(passRate * 100);
+  const score = clampScore((passRate * 100) - (warningCount * 5) - (errorCount * 8));
   const status: ParserFidelityStatus = !hasPeriods || score < 60
     ? "failed"
-    : score < 85
+    : score < 85 || warningCount > 0 || errorCount > 0
       ? "degraded"
       : "confirmed";
 

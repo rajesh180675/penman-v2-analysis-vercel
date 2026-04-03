@@ -1,7 +1,13 @@
 import { RecastPeriod } from "../engine/types";
+import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
+import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
+import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell, Legend } from "recharts";
 
-interface Props { data: RecastPeriod[] }
+interface Props {
+  data: RecastPeriod[];
+  traceability?: AnalysisTraceabilityEnvelope | null;
+}
 
 const fix = (v:number,d=2) => v.toFixed(d);
 
@@ -23,8 +29,9 @@ function ZoneTag({zone}:{zone:"Safe"|"Grey"|"Distress"}) {
   return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${c}`}>{zone}</span>;
 }
 
-export default function QualityReport({data}:Props) {
+export default function QualityReport({data, traceability = null}:Props) {
   const rd = data.filter(d=>d.quality);
+  const traceabilitySummary = buildValuationTraceabilitySurfaceSummary(traceability);
   if (rd.length===0) return (
     <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
       <p className="font-semibold text-amber-800">Need ≥ 2 periods for quality metrics</p>
@@ -61,6 +68,17 @@ export default function QualityReport({data}:Props) {
 
   return (
     <div className="space-y-8">
+      {traceabilitySummary && (
+        <TraceabilityTrustPanel
+          title="Quality Trust Gate"
+          summary={traceabilitySummary}
+          confidenceStatus={traceability?.confidence.status}
+          rigorLabel={traceability?.rigor.currentLabel}
+          parserStatus={traceability?.parserFidelity.status}
+          reconciliationStatus={traceability?.reconciliation.status}
+          cautionHeading="Read quality factors in the context of these unresolved gates"
+        />
+      )}
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">

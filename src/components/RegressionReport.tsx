@@ -2,24 +2,32 @@ import { useMemo } from "react";
 import { CompanyRegistry, EngineConfig, RawPeriodData, RecastPeriod } from "../engine/types";
 import { runPhase0BaselineReport } from "../engine/regressionHarness";
 import { PHASE0_BENCHMARK_SET } from "../engine/baselineGuardrails";
+import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
+import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
+import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 
 interface Props {
   rawData: RawPeriodData[] | null;
   recastData: RecastPeriod[] | null;
   config: EngineConfig;
   registry: CompanyRegistry;
+  traceability?: AnalysisTraceabilityEnvelope | null;
 }
 
 const pct = (v: number | null | undefined) => (v == null ? "—" : `${(v * 100).toFixed(2)}%`);
 const num = (v: number | null | undefined) => (v == null ? "—" : v.toLocaleString("en-IN", { maximumFractionDigits: 0 }));
 
-export default function RegressionReport({ rawData, recastData, config, registry }: Props) {
+export default function RegressionReport({ rawData, recastData, config, registry, traceability = null }: Props) {
   const baseline = useMemo(() => {
     if (!rawData || !recastData) return null;
     return runPhase0BaselineReport(rawData, recastData, config);
   }, [rawData, recastData, config]);
   const report = baseline?.regression ?? null;
   const snapshot = baseline?.snapshot ?? null;
+  const traceabilitySummary = useMemo(
+    () => buildValuationTraceabilitySurfaceSummary(traceability),
+    [traceability],
+  );
 
   if (!report) {
     return (
@@ -32,6 +40,17 @@ export default function RegressionReport({ rawData, recastData, config, registry
 
   return (
     <div className="space-y-6">
+      {traceabilitySummary && (
+        <TraceabilityTrustPanel
+          title="Regression Trust Gate"
+          summary={traceabilitySummary}
+          confidenceStatus={traceability?.confidence.status}
+          rigorLabel={traceability?.rigor.currentLabel}
+          parserStatus={traceability?.parserFidelity.status}
+          reconciliationStatus={traceability?.reconciliation.status}
+          cautionHeading="Read regression deltas in the context of these unresolved gates"
+        />
+      )}
       <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
         <h2 className="text-lg font-bold text-slate-800">Post-Fix Regression Harness</h2>
         <p className="text-xs text-slate-500 mt-1">

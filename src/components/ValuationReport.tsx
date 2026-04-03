@@ -21,6 +21,9 @@ import { AuditSubmissionMeta, persistAuditEvent } from "../lib/audit";
 import ExpectationBridgePanel from "./ExpectationBridgePanel";
 import { rememberWorkspaceValuation } from "../lib/researchWorkspace";
 import { syncWorkspaceAlert, syncWorkspaceValuation } from "../lib/sharedResearchApi";
+import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
+import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
+import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell, LineChart, Line,
 } from "recharts";
@@ -30,12 +33,17 @@ interface Props {
   config: EngineConfig;
   analysisStatus?: AnalysisStatusSummary | null;
   auditMeta?: AuditSubmissionMeta | null;
+  traceability?: AnalysisTraceabilityEnvelope | null;
 }
 
 type CVMethod = "CV1" | "CV2" | "CV3";
 
-export default function ValuationReport({ data, config, analysisStatus, auditMeta }: Props) {
+export default function ValuationReport({ data, config, analysisStatus, auditMeta, traceability }: Props) {
   const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
+  const traceabilitySummary = useMemo(
+    () => buildValuationTraceabilitySurfaceSummary(traceability),
+    [traceability],
+  );
   const marketSymbol = config.market_data_symbol ?? config.ticker ?? null;
   const { snapshot: liveMarketData, loading: marketDataLoading, error: marketDataError, refresh } = useLiveMarketData({
     provider: config.market_data_provider ?? "manual",
@@ -284,6 +292,19 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
         marketDataError={marketDataError}
         onRefresh={refresh}
       />
+
+      {traceabilitySummary && (
+        <TraceabilityTrustPanel
+          title="Valuation Trust Gate"
+          summary={traceabilitySummary}
+          confidenceStatus={traceability?.confidence.status}
+          rigorLabel={traceability?.rigor.currentLabel}
+          parserStatus={traceability?.parserFidelity.status}
+          reconciliationStatus={traceability?.reconciliation.status}
+          cautionHeading="Why this valuation should be trusted cautiously"
+          aside={<SignalPill state={commandCenter.signal.state} label={commandCenter.signal.label} />}
+        />
+      )}
 
       <section className="grid gap-4 xl:grid-cols-3">
         <div className="xl:col-span-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
