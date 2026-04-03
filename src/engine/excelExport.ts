@@ -478,6 +478,7 @@ function buildForecastSheet(scenarios: ForecastScenario[]): WorkSheet {
 
 // ── Sheet 5: Valuation Summary ─────────────────────────────────────────────────
 function buildValuationSheet(valuation: ValuationResult, config: EngineConfig, metadata?: WorkbookExportMetadata): WorkSheet {
+  const valuationBlocked = metadata?.valuationStatus === "guarded";
   const ws: WorkSheet = {};
   let row = 0;
   const versions = metadata?.policyVersions;
@@ -534,14 +535,23 @@ function buildValuationSheet(valuation: ValuationResult, config: EngineConfig, m
   setCell(ws, row, 3, cell("Notes", SUBHEADER));
   row++;
 
-  const models: [string, number | null | undefined, number | null | undefined, string][] = [
-    ["RE (CV3 — Gordon Growth)", valuation.V_RE_CV3, valuation.perShare?.intrinsic_re_per_share, "N&P Eq.(1a) — Clean surplus accounting"],
-    ["ReOI (CV03 — Gordon Growth)", valuation.V_ReOI_CV03, valuation.perShare?.intrinsic_reoi_per_share, "N&P Eq.(9) — Operating focus; EV − NFO"],
-    ["FCFF", valuation.fcf?.EV_FCFF != null ? valuation.fcf.EV_FCFF - valuation.NFO_latest : null, valuation.perShare?.intrinsic_fcff_per_share, "FCFF = NOPAT − ΔNOA; EV at WACC; less NFO"],
-    ["FCFE", valuation.fcf?.V_FCFE, valuation.perShare?.intrinsic_fcfe_per_share, "FCFE = CNI − ΔCSE; discounted at ke"],
-    ["DDM", valuation.perShare?.intrinsic_ddm_per_share != null && config.shares_outstanding ? valuation.perShare.intrinsic_ddm_per_share * config.shares_outstanding : null, valuation.perShare?.intrinsic_ddm_per_share, "Gordon DDM; requires stable dividend payout"],
-    ["AEG (Ohlson-Juettner)", valuation.aeg?.V_AEG, valuation.perShare?.intrinsic_aeg_per_share, "OJ (2005) abnormal earnings growth model"],
-  ];
+  const models: [string, number | null | undefined, number | null | undefined, string][] = valuationBlocked
+    ? [
+        ["RE (CV3 — Gordon Growth)", null, null, "Suppressed because valuation is guarded; latest period is not safe for full-confidence terminal valuation."],
+        ["ReOI (CV03 — Gordon Growth)", null, null, "Suppressed because valuation is guarded; latest period is not safe for full-confidence terminal valuation."],
+        ["FCFF", null, null, "Suppressed because valuation is guarded; latest period is not safe for full-confidence terminal valuation."],
+        ["FCFE", null, null, "Suppressed because valuation is guarded; latest period is not safe for full-confidence terminal valuation."],
+        ["DDM", null, null, "Suppressed because valuation is guarded; latest period is not safe for full-confidence terminal valuation."],
+        ["AEG (Ohlson-Juettner)", null, null, "Suppressed because valuation is guarded; latest period is not safe for full-confidence terminal valuation."],
+      ]
+    : [
+        ["RE (CV3 — Gordon Growth)", valuation.V_RE_CV3, valuation.perShare?.intrinsic_re_per_share, "N&P Eq.(1a) — Clean surplus accounting"],
+        ["ReOI (CV03 — Gordon Growth)", valuation.V_ReOI_CV03, valuation.perShare?.intrinsic_reoi_per_share, "N&P Eq.(9) — Operating focus; EV − NFO"],
+        ["FCFF", valuation.fcf?.EV_FCFF != null ? valuation.fcf.EV_FCFF - valuation.NFO_latest : null, valuation.perShare?.intrinsic_fcff_per_share, "FCFF = NOPAT − ΔNOA; EV at WACC; less NFO"],
+        ["FCFE", valuation.fcf?.V_FCFE, valuation.perShare?.intrinsic_fcfe_per_share, "FCFE = CNI − ΔCSE; discounted at ke"],
+        ["DDM", valuation.perShare?.intrinsic_ddm_per_share != null && config.shares_outstanding ? valuation.perShare.intrinsic_ddm_per_share * config.shares_outstanding : null, valuation.perShare?.intrinsic_ddm_per_share, "Gordon DDM; requires stable dividend payout"],
+        ["AEG (Ohlson-Juettner)", valuation.aeg?.V_AEG, valuation.perShare?.intrinsic_aeg_per_share, "OJ (2005) abnormal earnings growth model"],
+      ];
 
   models.forEach(([name, equity, perShare, note]) => {
     setCell(ws, row, 0, cell(name, LABEL_BOLD));
@@ -552,39 +562,47 @@ function buildValuationSheet(valuation: ValuationResult, config: EngineConfig, m
   });
 
   row++;
-  setCell(ws, row, 0, cell("SENSITIVITY TABLE — V_RE_CV3 vs ke × g", HEADER_BLUE));
   row++;
+  if (valuationBlocked) {
+    setCell(ws, row, 0, cell("VALUATION SENSITIVITY AND REVERSE DCF", HEADER_BLUE));
+    row++;
+    setCell(ws, row, 0, cell("Guarded mode", LABEL_BOLD));
+    setCell(ws, row, 1, cell("Sensitivity grids and reverse DCF are suppressed until the valuation anchor is clean enough for terminal-value work.", { font: { sz: 8 }, alignment: { wrapText: true } }));
+  } else {
+    setCell(ws, row, 0, cell("SENSITIVITY TABLE — V_RE_CV3 vs ke × g", HEADER_BLUE));
+    row++;
 
-  const kes = [0.08, 0.10, 0.12, 0.14];
-  const gs = [0.02, 0.03, 0.04, 0.05, 0.06];
-  setCell(ws, row, 0, cell("ke \\ g →", SUBHEADER));
-  gs.forEach((g, c) => setCell(ws, row, c + 1, cell(`${(g * 100).toFixed(0)}%`, SUBHEADER)));
-  row++;
+    const kes = [0.08, 0.10, 0.12, 0.14];
+    const gs = [0.02, 0.03, 0.04, 0.05, 0.06];
+    setCell(ws, row, 0, cell("ke \\ g →", SUBHEADER));
+    gs.forEach((g, c) => setCell(ws, row, c + 1, cell(`${(g * 100).toFixed(0)}%`, SUBHEADER)));
+    row++;
 
-  kes.forEach(ke => {
-    setCell(ws, row, 0, cell(`ke = ${(ke * 100).toFixed(0)}%`, LABEL_BOLD));
-    gs.forEach((g, c) => {
-      if (ke - g > 0.001 && valuation.pvRE != null) {
-        const cv = (valuation.reSeries.length ? valuation.reSeries[valuation.reSeries.length - 1].RE : 0) * (1 + g) / (ke - g);
-        const T = valuation.reSeries.length;
-        const disc = Math.pow(1 + ke, T);
-        const v = valuation.CSE0 + valuation.pvRE + cv / disc;
-        const isBase = Math.abs(ke - valuation.ke) < 0.001 && Math.abs(g - valuation.g) < 0.001;
-        setCell(ws, row, c + 1, cell(v, isBase ? { ...GREEN_FILL, font: { bold: true, sz: 9 } } : NUM_INR));
-      } else {
-        setCell(ws, row, c + 1, cell("N/A", LABEL));
-      }
+    kes.forEach(ke => {
+      setCell(ws, row, 0, cell(`ke = ${(ke * 100).toFixed(0)}%`, LABEL_BOLD));
+      gs.forEach((g, c) => {
+        if (ke - g > 0.001 && valuation.pvRE != null) {
+          const cv = (valuation.reSeries.length ? valuation.reSeries[valuation.reSeries.length - 1].RE : 0) * (1 + g) / (ke - g);
+          const T = valuation.reSeries.length;
+          const disc = Math.pow(1 + ke, T);
+          const v = valuation.CSE0 + valuation.pvRE + cv / disc;
+          const isBase = Math.abs(ke - valuation.ke) < 0.001 && Math.abs(g - valuation.g) < 0.001;
+          setCell(ws, row, c + 1, cell(v, isBase ? { ...GREEN_FILL, font: { bold: true, sz: 9 } } : NUM_INR));
+        } else {
+          setCell(ws, row, c + 1, cell("N/A", LABEL));
+        }
+      });
+      row++;
     });
-    row++;
-  });
 
-  if (valuation.perShare?.implied_growth_rate != null) {
-    row++;
-    setCell(ws, row, 0, cell("Reverse DCF — Implied Growth Rate (RE vs Market Price)", LABEL_BOLD));
-    setCell(ws, row, 1, cell(valuation.perShare.implied_growth_rate, { ...AMBER_FILL, numFmt: "0.0%" }));
-    row++;
-    setCell(ws, row, 0, cell("Margin of Safety (RE-CV3 vs Market Price)", LABEL_BOLD));
-    setCell(ws, row, 1, cell(valuation.perShare.margin_of_safety_re, { numFmt: "0.0%", font: { sz: 9 } }));
+    if (valuation.perShare?.implied_growth_rate != null) {
+      row++;
+      setCell(ws, row, 0, cell("Reverse DCF — Implied Growth Rate (RE vs Market Price)", LABEL_BOLD));
+      setCell(ws, row, 1, cell(valuation.perShare.implied_growth_rate, { ...AMBER_FILL, numFmt: "0.0%" }));
+      row++;
+      setCell(ws, row, 0, cell("Margin of Safety (RE-CV3 vs Market Price)", LABEL_BOLD));
+      setCell(ws, row, 1, cell(valuation.perShare.margin_of_safety_re, { numFmt: "0.0%", font: { sz: 9 } }));
+    }
   }
 
   ws["!cols"] = [{ wch: 40 }, { wch: 18 }, { wch: 14 }, { wch: 50 }];

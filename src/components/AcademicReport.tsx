@@ -227,7 +227,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   const provenanceRows = useMemo(() => buildProvenanceAuditRows(data), [data]);
   const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
   const policyVersions = useMemo(() => getAnalysisPolicyVersions(), []);
-  const qualityGate = useMemo(() => (rawData?.length ? evaluateQualityGate(rawData, config) : null), [config, rawData]);
+  const qualityGate = useMemo(() => (rawData?.length ? evaluateQualityGate(rawData, config, data) : null), [config, data, rawData]);
   const mappingAudit = useMemo(() => (rawData?.length ? auditMappingCoverage(rawData) : null), [rawData]);
   const analysisStatus = useMemo(
     () => deriveAnalysisStatus(qualityGate, valuationReadiness, mappingAudit),

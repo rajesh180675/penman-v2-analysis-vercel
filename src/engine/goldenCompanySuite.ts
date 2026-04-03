@@ -594,7 +594,7 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
     rawData: (itcAuditedFixture as { rawData: RawPeriodData[] }).rawData,
     expectation: {
       qualityGateTier: "Tier 1",
-      valuationBlocked: false,
+      valuationBlocked: true,
       valuationStatus: "guarded",
       minPeriods: 15,
       requiredTerminalFlags: [
@@ -636,7 +636,7 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
     rawData: vstRealCompanySample,
     expectation: {
       qualityGateTier: "Tier 2",
-      valuationBlocked: false,
+      valuationBlocked: true,
       valuationStatus: "guarded",
       minPeriods: 5,
       ratioRanges: {
@@ -691,7 +691,7 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
     rawData: exceptionalEventIssuer,
     expectation: {
       qualityGateTier: "Tier 2",
-      valuationBlocked: false,
+      valuationBlocked: true,
       valuationStatus: "guarded",
       minPeriods: 3,
       requiredTerminalFlags: ["STRUCTURAL_EVENT"],
@@ -705,7 +705,7 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
 
 export function runGoldenCompanyCase(testCase: GoldenCompanyCase, config: EngineConfig = DEFAULT_CONFIG): GoldenCompanyResult {
   const periods = processCompanyData(testCase.rawData, config);
-  const qualityGate = evaluateQualityGate(testCase.rawData);
+  const qualityGate = evaluateQualityGate(testCase.rawData, null, periods);
   const valuationReadiness = resolveValuationReadiness(periods);
   const latestPeriod = periods[periods.length - 1];
 

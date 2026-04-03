@@ -166,6 +166,26 @@ describe("generateValuationWorkbook", () => {
     expect(coverKeCellValue(cfg)).toBeCloseTo(0.1, 8);
   });
 
+  it("suppresses valuation outputs when workbook metadata is guarded", () => {
+    const workbookBuf = generateValuationWorkbook(
+      [mkBalancedPeriod("2025-03-31")],
+      [],
+      valuation,
+      DEFAULT_CONFIG,
+      {
+        companyLabel: "ITC",
+        valuationStatus: "guarded",
+        valuationReasons: ["Using prior anchor period 2024-03-31 because 2025-03-31 is compromised."],
+        valuationAnchorPeriod: "2024-03-31",
+        valuationSourcePeriod: "2025-03-31",
+      },
+    );
+    const wb = read(workbookBuf, { type: "array" });
+    expect(sheetValueByLabel(wb.Sheets.Valuation, "Valuation Status")).toBe("guarded");
+    expect(sheetValueByLabel(wb.Sheets.Valuation, "RE (CV3 — Gordon Growth)")).toBe("");
+    expect(sheetValueByLabel(wb.Sheets.Valuation, "Guarded mode")).toContain("suppressed");
+  });
+
   it("writes company and valuation metadata to the workbook", () => {
     const traceability = buildAnalysisTraceability({
       generatedAt: "2026-03-29T19:00:00.000Z",

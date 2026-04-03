@@ -81,6 +81,8 @@ export function App() {
     return evaluateQualityGate(rawData, config);
   }, [config, rawData]);
 
+  const scopeGate = qualityGate;
+
   const mappingAudit = useMemo(() => {
     if (!rawData || rawData.length === 0) return null;
     return auditMappingCoverage(rawData);
@@ -90,10 +92,10 @@ export function App() {
   // OCI treatment, hybrid-debt flag, etc.) immediately re-computes the analysis.
   const recastOutcome = useMemo<{ data: RecastPeriod[] | null; error: string | null }>(() => {
     if (!rawData || rawData.length === 0) return { data: null, error: null };
-    if (qualityGate?.scopeAssessment.blocked) {
+    if (scopeGate?.scopeAssessment.blocked) {
       return {
         data: null,
-        error: qualityGate.scopeAssessment.reasons[0] ?? "Unsupported dataset scope for the industrial Penman-Nissim engine.",
+        error: scopeGate.scopeAssessment.reasons[0] ?? "Unsupported dataset scope for the industrial Penman-Nissim engine.",
       };
     }
     try {
@@ -106,13 +108,17 @@ export function App() {
         error: err instanceof Error ? err.message : String(err),
       };
     }
-  }, [config, qualityGate, rawData]);
+  }, [config, rawData, scopeGate]);
   const recastData = recastOutcome.data;
   const engineError = recastOutcome.error;
+  const qualityGateWithRecast = useMemo(() => {
+    if (!rawData || rawData.length === 0) return null;
+    return evaluateQualityGate(rawData, config, recastData);
+  }, [config, rawData, recastData]);
   const valuationReadiness = useMemo(() => (recastData?.length ? resolveValuationReadiness(recastData) : null), [recastData]);
   const analysisStatus = useMemo(
-    () => deriveAnalysisStatus(qualityGate, valuationReadiness, mappingAudit),
-    [mappingAudit, qualityGate, valuationReadiness],
+    () => deriveAnalysisStatus(qualityGateWithRecast, valuationReadiness, mappingAudit),
+    [mappingAudit, qualityGateWithRecast, valuationReadiness],
   );
   const policyVersions = useMemo(() => getAnalysisPolicyVersions(), []);
   const latestPeriod = rawData && rawData.length > 0 ? rawData[rawData.length - 1].period_end : null;
@@ -127,7 +133,7 @@ export function App() {
       periodCount: rawData?.length ?? 0,
       recastPeriodCount: recastData?.length ?? 0,
       latestPeriod,
-      qualityGate,
+      qualityGate: qualityGateWithRecast,
       mappingAudit,
       policyVersions,
       analysisStatus,
@@ -279,7 +285,7 @@ export function App() {
       config,
       debugInfo,
       parserDiagnostics,
-      qualityGate,
+      qualityGate: qualityGateWithRecast,
       mappingAudit,
       engineError,
       analysisStatus,
@@ -528,7 +534,7 @@ export function App() {
                 </p>
                 {qualityGate?.blockingReasons?.length ? (
                   <ul className="list-disc pl-5 mt-3 text-sm space-y-1">
-                    {qualityGate.blockingReasons.map((r) => <li key={r}>{r}</li>)}
+                    {qualityGate.blockingReasons.map((r: string) => <li key={r}>{r}</li>)}
                   </ul>
                 ) : null}
               </div>

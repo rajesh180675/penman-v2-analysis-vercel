@@ -1,6 +1,7 @@
-import { EngineConfig, RawPeriodData } from "./types";
+import { EngineConfig, RawPeriodData, RecastPeriod } from "./types";
 import { CapitalineMappingSpec as SPEC } from "./mappingSpec";
 import { evaluateMappingCoverageSummary, MappingCoverageSummary } from "./mappingPolicy";
+import { resolveValuationReadiness } from "./valuationPolicy";
 import {
   MappingBacklogEntry,
   MappingBacklogSummary,
@@ -568,6 +569,7 @@ function hasKey(byStmt: Record<Statement, Set<string>>, stmt: Statement, key: st
 export function evaluateQualityGate(
   periods: RawPeriodData[],
   config?: Pick<EngineConfig, "financial_institution_mode"> | null,
+  recastPeriods?: RecastPeriod[] | null,
 ): QualityGateReport {
   const scopeAssessment = assessAnalysisScope(periods, config ?? null);
   if (!periods || periods.length === 0) {
@@ -636,11 +638,13 @@ export function evaluateQualityGate(
   }
 
   // Fail-fast: valuation-critical mapping gaps must block valuation.
+  const valuationReadiness = recastPeriods?.length ? resolveValuationReadiness(recastPeriods) : null;
   const valuationBlocked =
     missingMinimum.length > 0 ||
     missingCore.length > 0 ||
     unresolvedCriticalCount > 0 ||
-    valuationCriticalGaps.length > 0;
+    valuationCriticalGaps.length > 0 ||
+    valuationReadiness?.status === "guarded";
   const blockingReasons: string[] = [];
   if (valuationCriticalGaps.length > 0) {
     blockingReasons.push(`Valuation-critical coverage gaps: ${valuationCriticalGaps.join(", ")}`);
@@ -658,6 +662,9 @@ export function evaluateQualityGate(
   }
   if (scopeAssessment.blocked) {
     blockingReasons.push(...scopeAssessment.reasons);
+  }
+  if (valuationReadiness?.status === "guarded") {
+    blockingReasons.push(valuationReadiness.reasons[0] ?? "Latest period is not safe for terminal valuation.");
   }
 
   return {

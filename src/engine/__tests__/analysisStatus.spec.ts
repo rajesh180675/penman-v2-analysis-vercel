@@ -1,10 +1,137 @@
 import { describe, expect, it } from "vitest";
 import { deriveAnalysisStatus } from "../analysisStatus";
+import { evaluateQualityGate } from "../mappingAudit";
 import { getAnalysisPolicyVersions } from "../policyVersions";
+import { RawPeriodData, RecastPeriod, Severity } from "../types";
+import { resolveValuationReadiness } from "../valuationPolicy";
+
+function guardedRawPeriod(period_end: string): RawPeriodData {
+  return {
+    company_id: "ITC",
+    period_end,
+    raw_metric_values: {
+      "Total Assets__BalanceSheet": 1000,
+      "Total Equity__BalanceSheet": 600,
+      "Revenue From Operations(Net)__ProfitLoss": 900,
+      "Profit Before Tax__ProfitLoss": 120,
+      "Tax Expenses__ProfitLoss": 30,
+      "Profit After Tax__ProfitLoss": 90,
+      "Finance Cost__ProfitLoss": 10,
+      "Net Cash from Operating Activities__CashFlow": 110,
+      "Purchased of Fixed Assets__CashFlow": 45,
+    },
+  };
+}
+
+function guardedRecastPeriod(period_end: string, contaminated = false): RecastPeriod {
+  return {
+    period_end,
+    bs: {
+      TA: 1000,
+      CSE: 600,
+      MI: 0,
+      FA: 120,
+      FO: 180,
+      OA: 880,
+      OL: 280,
+      OL_TradePayables: 70,
+      OL_OtherCurrentLiabilities: 60,
+      OL_ProvisionsCurrent: 10,
+      OL_ProvisionsLongTerm: 10,
+      OL_CurrentTaxLiabilities: 10,
+      OL_NonCurrentTaxLiabilities: 10,
+      OL_DeferredTaxLiabilitiesNet: 5,
+      OL_OtherNonCurrentLiabilities: 105,
+      NOA: 600,
+      NFO: 0,
+      DTL: 5,
+      PensionObl: 0,
+      OL_ex_DTL: 275,
+      Goodwill: 0,
+      CurrentAssets: 420,
+      CurrentLiabilities: 240,
+      Inventory: 90,
+      TradeReceivables: 100,
+      TradePayables: 70,
+      PPE: 320,
+      LIFO_reserve: 0,
+      separationScore: 92,
+      OA_PPE: 320,
+      OA_ROU: 0,
+      OA_Goodwill: 0,
+      OA_OtherIntangibles: 0,
+      OA_Inventory: 90,
+      OA_TradeReceivables: 100,
+      OA_DTA: 0,
+      OA_CWIP: 0,
+      OA_Other: 370,
+    },
+    is: {
+      Sales: 900,
+      TaxExpense: 30,
+      taxRate: 0.25,
+      PAT: 90,
+      OCI: 0,
+      TCI: 90,
+      TCI_NCI: 0,
+      CNI: 90,
+      FinanceCost: 15,
+      FinanceIncome: 2,
+      FinanceIncomeRung: 1,
+      PreferredDividend: 0,
+      NFE: 13,
+      OI: 103,
+      OtherItems: 0,
+      OI_from_sales: 103,
+      MII: 0,
+      COGS: 560,
+    },
+    cu: {
+      UOI: 0,
+      CoreOI: 103,
+      UFE: 0,
+      CoreNFE: 13,
+      ExceptionalItemsAfterTax: 0,
+      OCITotal: 0,
+    },
+    cf: {
+      CFO: 110,
+      Capex: 45,
+      DividendPaid: 20,
+      EquityIssued: 0,
+      ShareBuybacks: 0,
+      InterestReceived: 0,
+      DividendReceived: 0,
+      FCF_accounting: 45,
+      FCF_cash: 65,
+      d_t: 20,
+      d_t_formula: 20,
+      d_t_discrepancy: 0,
+      EBITDA: 140,
+    },
+    spec_flags: contaminated ? [
+      { spec_id: "S-5.1", severity: Severity.CRITICAL, label: "STRUCTURAL_EVENT", message: "Dirty surplus event.", affects_terminal: true, period: period_end },
+      { spec_id: "S-5.3", severity: Severity.CRITICAL, label: "RNOA_OUTLIER_CRITICAL", message: "RNOA outlier.", affects_terminal: true, period: period_end },
+    ] : [],
+  };
+}
 
 const versions = getAnalysisPolicyVersions();
 
 describe("analysis status confidence gating", () => {
+  it("marks valuation blocked when recast valuation readiness is guarded", () => {
+    const raw = [guardedRawPeriod("2024-03-31"), guardedRawPeriod("2025-03-31")];
+    const recast = [guardedRecastPeriod("2024-03-31"), guardedRecastPeriod("2025-03-31", true)];
+    const qualityGate = evaluateQualityGate(raw, null, recast);
+    const readiness = resolveValuationReadiness(recast);
+    const status = deriveAnalysisStatus(qualityGate, readiness, null);
+
+    expect(readiness.status).toBe("guarded");
+    expect(qualityGate.valuationBlocked).toBe(true);
+    expect(qualityGate.blockingReasons.some((reason) => reason.includes("latest period".slice(0, 6)) || reason.includes("Terminal") || reason.includes("anchor"))).toBe(true);
+    expect(status.status).toBe("blocked");
+  });
+
   it("downgrades to guarded when actionable backlog review remains high", () => {
     const status = deriveAnalysisStatus(
       {
