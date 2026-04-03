@@ -46,7 +46,7 @@ function mkRecastPeriod(period_end: string): RecastPeriod {
       OL_DeferredTaxLiabilitiesNet: 5,
       OL_OtherNonCurrentLiabilities: 105,
       NOA: 600,
-      NFO: 60,
+      NFO: 0,
       DTL: 5,
       PensionObl: 0,
       OL_ex_DTL: 275,
@@ -257,6 +257,8 @@ describe("traceability snapshot", () => {
       rawMetricKeys: ["Revenue From Operations(Net)", "Profit Before Tax"],
     };
 
+    recastData[0].bs.FO = 120;
+
     const analysisStatus: AnalysisStatusSummary = {
       status: "production-ready",
       label: "Production-ready",
@@ -294,10 +296,42 @@ describe("traceability snapshot", () => {
     expect(snapshot.traceability.analysisContext.rawMetricKeyCount).toBe(2);
     expect(snapshot.traceability.parserFidelity.status).toBe("confirmed");
     expect(snapshot.traceability.parserFidelity.score).toBe(100);
+    expect(snapshot.traceability.reconciliation.status).toBe("confirmed");
+    expect(snapshot.traceability.reconciliation.maxResidualRatio).toBe(0);
     expect(snapshot.traceability.rigor.currentLevel).toBe("production-ready");
     expect(snapshot.traceability.rigor.currentLabel).toBe("Production-ready");
     expect(snapshot.traceability.rigor.pendingLevels).toHaveLength(0);
     expect(snapshot.traceability.backlogPreview).toHaveLength(1);
     expect(snapshot.traceability.backlogPreview[0]?.key).toBe("Selling and Distribution Expenses");
+  });
+
+  it("blocks structural reconciliation when residual thresholds are breached", () => {
+    const snapshot = buildAnalysisSnapshot({
+      rawData: [mkRawPeriod("2025-03-31")],
+      recastData: [
+        {
+          ...mkRecastPeriod("2025-03-31"),
+          bs: {
+            ...mkRecastPeriod("2025-03-31").bs,
+            FO: 120,
+            OA: 840,
+            NFO: 0,
+          },
+        },
+      ],
+      config: DEFAULT_CONFIG,
+      debugInfo: null,
+      qualityGate: null,
+      mappingAudit: null,
+      engineError: null,
+      analysisStatus: null,
+      auditMeta: null,
+    });
+
+    expect(snapshot.traceability.reconciliation.status).toBe("failed");
+    expect(snapshot.traceability.rigor.currentLevel).toBe("syntactically-valid");
+    expect(snapshot.traceability.rigor.pendingLevels).toContain("structurally-reconciled");
+    expect(snapshot.traceability.rigor.checkpoints.find((checkpoint) => checkpoint.level === "structurally-reconciled")?.detail)
+      .toContain("Structural residual thresholds did not clear");
   });
 });

@@ -25,7 +25,7 @@ function mkPeriod(period_end: string): RecastPeriod {
       OL_DeferredTaxLiabilitiesNet: 5,
       OL_OtherNonCurrentLiabilities: 75,
       NOA: 600,
-      NFO: 50,
+      NFO: 0,
       DTL: 5,
       PensionObl: 0,
       OL_ex_DTL: 245,
@@ -90,6 +90,16 @@ function mkPeriod(period_end: string): RecastPeriod {
       d_t_formula: 20,
       d_t_discrepancy: 0,
       EBITDA: 140,
+    },
+  };
+}
+
+function mkBalancedPeriod(period_end: string): RecastPeriod {
+  return {
+    ...mkPeriod(period_end),
+    bs: {
+      ...mkPeriod(period_end).bs,
+      FO: 150,
     },
   };
 }
@@ -162,6 +172,8 @@ describe("generateValuationWorkbook", () => {
       runId: "run-123",
       companyId: "ITC",
       sourceMode: "json",
+      recastData: [mkBalancedPeriod("2025-03-31")],
+      config: DEFAULT_CONFIG,
       rawData: [
         {
           company_id: "ITC",
@@ -179,7 +191,7 @@ describe("generateValuationWorkbook", () => {
       policyVersions: getAnalysisPolicyVersions(),
     });
     const workbookBuf = generateValuationWorkbook(
-      [mkPeriod("2025-03-31")],
+      [mkBalancedPeriod("2025-03-31")],
       [],
       valuation,
       DEFAULT_CONFIG,
@@ -204,16 +216,19 @@ describe("generateValuationWorkbook", () => {
     expect(sheetValueByLabel(wb.Sheets.Cover, "Mapping Spec Version")).toBe(getAnalysisPolicyVersions().mappingSpecVersion);
     expect(sheetValueByLabel(wb.Sheets.Cover, "Scope Policy Version")).toBe(getAnalysisPolicyVersions().scopePolicyVersion);
     expect(sheetValueByLabel(wb.Sheets.Cover, "Traceability Schema")).toBe(getAnalysisPolicyVersions().traceabilitySchemaVersion);
-    expect(sheetValueByLabel(wb.Sheets.Cover, "Rigor Level")).toBe("Syntactically valid");
+    expect(sheetValueByLabel(wb.Sheets.Cover, "Rigor Level")).toBe("Economically plausible");
     expect(sheetValueByLabel(wb.Sheets.Cover, "Parser Fidelity")).toBe("confirmed");
+    expect(sheetValueByLabel(wb.Sheets.Cover, "Reconciliation Status")).toBe("confirmed");
     expect(sheetValueByLabel(wb.Sheets.Valuation, "Audit Run ID")).toBe("run-123");
     expect(sheetValueByLabel(wb.Sheets.Valuation, "Valuation Status")).toBe("guarded");
     expect(sheetValueByLabel(wb.Sheets.Valuation, "Anchor Period")).toBe("2024-03-31");
     expect(sheetValueByLabel(wb.Sheets.Traceability, "Run ID")).toBe("run-123");
     expect(sheetValueByLabel(wb.Sheets.Traceability, "Schema Version")).toBe(getAnalysisPolicyVersions().traceabilitySchemaVersion);
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Rigor Level")).toBe("Syntactically valid");
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Rigor Level")).toBe("Economically plausible");
     expect(sheetValueByLabel(wb.Sheets.Traceability, "Parser Fidelity Status")).toBe("confirmed");
     expect(sheetValueByLabel(wb.Sheets.Traceability, "Parser Fidelity Score")).toBe(100);
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Achieved Levels")).toBe("syntactically-valid");
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Reconciliation Status")).toBe("confirmed");
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Max Reconciliation Residual")).toBe(0);
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Achieved Levels")).toBe("syntactically-valid | structurally-reconciled | economically-plausible");
   });
 });

@@ -70,6 +70,13 @@ type InspectorPayload = {
         score?: number;
         summary?: string;
       } | null;
+      reconciliation?: {
+        status?: string;
+        summary?: string;
+        warningCount?: number;
+        errorCount?: number;
+        maxResidualRatio?: number;
+      } | null;
       rigor?: {
         currentLevel?: string;
         currentLabel?: string;
@@ -602,6 +609,12 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
                     {typeof traceability.parserFidelity?.score === "number" ? ` (${traceability.parserFidelity.score}/100)` : ""}
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Reconciliation: <strong>{traceability.reconciliation?.status ?? "—"}</strong>
+                    {typeof traceability.reconciliation?.maxResidualRatio === "number"
+                      ? ` (${(traceability.reconciliation.maxResidualRatio * 100).toFixed(2)}%)`
+                      : ""}
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
                     Rigor level: <strong>{traceability.rigor?.currentLabel ?? "—"}</strong>
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
@@ -630,6 +643,11 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
                   {traceability.parserFidelity?.summary && (
                     <div className="mt-2 text-xs text-slate-600">
                       {traceability.parserFidelity.summary}
+                    </div>
+                  )}
+                  {traceability.reconciliation?.summary && (
+                    <div className="mt-2 text-xs text-slate-600">
+                      {traceability.reconciliation.summary}
                     </div>
                   )}
                   {traceability.analysisContext?.engineError && (
