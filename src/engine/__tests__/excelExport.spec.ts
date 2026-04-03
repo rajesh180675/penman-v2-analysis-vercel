@@ -161,7 +161,19 @@ describe("generateValuationWorkbook", () => {
       generatedAt: "2026-03-29T19:00:00.000Z",
       runId: "run-123",
       companyId: "ITC",
-      sourceMode: "capitaline",
+      sourceMode: "json",
+      rawData: [
+        {
+          company_id: "ITC",
+          period_end: "2025-03-31",
+          raw_metric_values: {
+            "Total Assets__BalanceSheet": 1000,
+            "Total Equity__BalanceSheet": 600,
+            "Revenue From Operations(Net)__ProfitLoss": 900,
+            "Profit After Tax__ProfitLoss": 90,
+          },
+        },
+      ],
       periodCount: 1,
       latestPeriod: "2025-03-31",
       policyVersions: getAnalysisPolicyVersions(),
@@ -193,12 +205,15 @@ describe("generateValuationWorkbook", () => {
     expect(sheetValueByLabel(wb.Sheets.Cover, "Scope Policy Version")).toBe(getAnalysisPolicyVersions().scopePolicyVersion);
     expect(sheetValueByLabel(wb.Sheets.Cover, "Traceability Schema")).toBe(getAnalysisPolicyVersions().traceabilitySchemaVersion);
     expect(sheetValueByLabel(wb.Sheets.Cover, "Rigor Level")).toBe("Syntactically valid");
+    expect(sheetValueByLabel(wb.Sheets.Cover, "Parser Fidelity")).toBe("confirmed");
     expect(sheetValueByLabel(wb.Sheets.Valuation, "Audit Run ID")).toBe("run-123");
     expect(sheetValueByLabel(wb.Sheets.Valuation, "Valuation Status")).toBe("guarded");
     expect(sheetValueByLabel(wb.Sheets.Valuation, "Anchor Period")).toBe("2024-03-31");
     expect(sheetValueByLabel(wb.Sheets.Traceability, "Run ID")).toBe("run-123");
     expect(sheetValueByLabel(wb.Sheets.Traceability, "Schema Version")).toBe(getAnalysisPolicyVersions().traceabilitySchemaVersion);
     expect(sheetValueByLabel(wb.Sheets.Traceability, "Rigor Level")).toBe("Syntactically valid");
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Parser Fidelity Status")).toBe("confirmed");
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Parser Fidelity Score")).toBe(100);
     expect(sheetValueByLabel(wb.Sheets.Traceability, "Achieved Levels")).toBe("syntactically-valid");
   });
 });

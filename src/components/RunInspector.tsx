@@ -65,6 +65,11 @@ type InspectorPayload = {
         diagnosticCount?: number;
         optionalCount?: number;
       } | null;
+      parserFidelity?: {
+        status?: string;
+        score?: number;
+        summary?: string;
+      } | null;
       rigor?: {
         currentLevel?: string;
         currentLabel?: string;
@@ -593,6 +598,10 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
                     Confidence: <strong>{traceability.confidence?.status ?? "—"}</strong>
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Parser fidelity: <strong>{traceability.parserFidelity?.status ?? "—"}</strong>
+                    {typeof traceability.parserFidelity?.score === "number" ? ` (${traceability.parserFidelity.score}/100)` : ""}
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
                     Rigor level: <strong>{traceability.rigor?.currentLabel ?? "—"}</strong>
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
@@ -616,6 +625,11 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
                   {traceability.rigor?.summary && (
                     <div className="mt-2 text-xs text-slate-600">
                       {traceability.rigor.summary}
+                    </div>
+                  )}
+                  {traceability.parserFidelity?.summary && (
+                    <div className="mt-2 text-xs text-slate-600">
+                      {traceability.parserFidelity.summary}
                     </div>
                   )}
                   {traceability.analysisContext?.engineError && (

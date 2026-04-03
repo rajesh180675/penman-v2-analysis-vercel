@@ -2,6 +2,9 @@ import { AnalysisPolicyVersions, getAnalysisPolicyVersions } from "./policyVersi
 import { AnalysisStatusSummary } from "./analysisStatus";
 import { MappingAuditReport, QualityGateReport } from "./mappingAudit";
 import { BacklogPriority, BacklogTriageAction } from "./mappingBacklogPolicy";
+import { CapitalineParseDebug } from "./capitalineParser";
+import { evaluateParserFidelity, ParserFidelitySummary } from "./parserFidelity";
+import { RawPeriodData } from "./types";
 
 export interface TraceabilityBacklogPreview {
   statement: string;
@@ -52,6 +55,7 @@ export interface AnalysisTraceabilityEnvelope {
     diagnosticCount: number;
     optionalCount: number;
   };
+  parserFidelity: ParserFidelitySummary;
   rigor: {
     currentLevel: AnalysisRigorLevel;
     currentLabel: string;
@@ -103,6 +107,8 @@ export function buildAnalysisTraceability(params: {
   debugFiles?: number;
   rawMetricKeyCount?: number;
   engineError?: string | null;
+  rawData?: RawPeriodData[] | null;
+  debugInfo?: CapitalineParseDebug | null;
 }): AnalysisTraceabilityEnvelope {
   const qualityGate = params.qualityGate;
   const coverageSummary = qualityGate?.coverageSummary ?? params.mappingAudit?.coverageSummary ?? null;
@@ -128,16 +134,25 @@ export function buildAnalysisTraceability(params: {
   const valuationBlocked = Boolean(qualityGate?.valuationBlocked);
   const scopeBlocked = Boolean(qualityGate?.scopeAssessment?.blocked);
   const valuationStatus = analysisStatus?.valuationStatus ?? "unknown";
+  const parserFidelity = evaluateParserFidelity({
+    sourceMode: params.sourceMode ?? null,
+    rawData: params.rawData ?? null,
+    debugInfo: params.debugInfo ?? null,
+    periodCount: params.periodCount ?? 0,
+    rawMetricKeyCount: params.rawMetricKeyCount ?? 0,
+  });
   const checkpoints: AnalysisRigorCheckpoint[] = [
     {
       level: "syntactically-valid",
       label: "Syntactically valid",
-      achieved: hasRawData && !hasEngineError,
-      detail: hasRawData
-        ? hasEngineError
+      achieved: hasRawData && !hasEngineError && parserFidelity.status !== "failed" && parserFidelity.score >= 60,
+      detail: !hasRawData
+        ? "No raw periods were persisted for this run."
+        : hasEngineError
           ? "Raw periods exist, but the engine still raised an execution error."
-          : "Raw periods were captured and no engine error was recorded."
-        : "No raw periods were persisted for this run.",
+          : parserFidelity.status === "failed" || parserFidelity.score < 60
+            ? `Parser fidelity did not clear the syntactic threshold (${parserFidelity.score}/100). ${parserFidelity.summary}`
+            : `Parser fidelity cleared the syntactic threshold (${parserFidelity.score}/100) and no engine error was recorded.`,
     },
     {
       level: "structurally-reconciled",
@@ -210,6 +225,7 @@ export function buildAnalysisTraceability(params: {
       diagnosticCount: analysisStatus?.diagnosticCount ?? diagnosticCount,
       optionalCount: analysisStatus?.optionalCount ?? optionalCount,
     },
+    parserFidelity,
     rigor: {
       currentLevel: currentCheckpoint.level,
       currentLabel: currentCheckpoint.label,

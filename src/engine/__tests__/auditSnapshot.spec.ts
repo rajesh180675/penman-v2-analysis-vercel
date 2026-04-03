@@ -204,9 +204,41 @@ describe("traceability snapshot", () => {
       files: [
         { name: "BalanceSheetINDAS_.xls", statementGuess: "BalanceSheet" },
         { name: "ProfitLossINDAS_.xls", statementGuess: "ProfitLoss" },
+        { name: "CashFlowINDAS_.xls", statementGuess: "CashFlow" },
       ],
       detectedPeriods: ["2025-03-31"],
-      rawGrids: [],
+      rawGrids: [
+        {
+          file: "BalanceSheetINDAS_.xls",
+          methods: ["xlsx"],
+          bestMethod: "xlsx",
+          rowCount: 20,
+          colCount: 4,
+          firstRows: [],
+          headerDetected: true,
+          errors: [],
+        },
+        {
+          file: "ProfitLossINDAS_.xls",
+          methods: ["xlsx"],
+          bestMethod: "xlsx",
+          rowCount: 20,
+          colCount: 4,
+          firstRows: [],
+          headerDetected: true,
+          errors: [],
+        },
+        {
+          file: "CashFlowINDAS_.xls",
+          methods: ["xlsx"],
+          bestMethod: "xlsx",
+          rowCount: 20,
+          colCount: 4,
+          firstRows: [],
+          headerDetected: true,
+          errors: [],
+        },
+      ],
       metrics: {
         totalCompositeKeys: 8,
         totalBaseKeys: 8,
@@ -258,8 +290,10 @@ describe("traceability snapshot", () => {
     expect(snapshot.traceability.runContext.sourceMode).toBe("capitaline");
     expect(snapshot.traceability.analysisContext.rawPeriodCount).toBe(1);
     expect(snapshot.traceability.analysisContext.recastPeriodCount).toBe(1);
-    expect(snapshot.traceability.analysisContext.debugFiles).toBe(2);
+    expect(snapshot.traceability.analysisContext.debugFiles).toBe(3);
     expect(snapshot.traceability.analysisContext.rawMetricKeyCount).toBe(2);
+    expect(snapshot.traceability.parserFidelity.status).toBe("confirmed");
+    expect(snapshot.traceability.parserFidelity.score).toBe(100);
     expect(snapshot.traceability.rigor.currentLevel).toBe("production-ready");
     expect(snapshot.traceability.rigor.currentLabel).toBe("Production-ready");
     expect(snapshot.traceability.rigor.pendingLevels).toHaveLength(0);

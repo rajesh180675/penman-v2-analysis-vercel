@@ -31,10 +31,10 @@ That envelope is consumed in:
 
 ## Current Heuristic
 
-The ladder is intentionally conservative and uses existing signals only:
+The ladder is intentionally conservative, but it now uses an explicit parser-fidelity summary instead of treating "raw periods exist" as enough.
 
 - `syntactically-valid`
-  - raw periods exist and no engine error was recorded
+  - parser fidelity clears a minimum threshold and no engine error was recorded
 - `structurally-reconciled`
   - recast data exists, scope is supported, and no blocking issues remain
 - `economically-plausible`
@@ -44,7 +44,14 @@ The ladder is intentionally conservative and uses existing signals only:
 - `production-ready`
   - `analysisStatus.status === "production-ready"`
 
-This is a real improvement in clarity, but it is still a heuristic layer. It does not yet use explicit parser-fidelity scoring or reconciliation residual thresholds from the full rigor plan.
+The traceability envelope now includes:
+
+- `parserFidelity.status`
+- `parserFidelity.score`
+- `parserFidelity.summary`
+- `parserFidelity.checks`
+
+This is a real improvement in clarity, but it is still only a first parser-fidelity slice. Capitaline runs use parse-debug signals such as file presence, header detection, period consistency, and parser noise. Other source modes still rely on lighter post-parse density heuristics rather than rich source-native diagnostics.
 
 ## What Was Validated
 
@@ -56,6 +63,6 @@ This is a real improvement in clarity, but it is still a heuristic layer. It doe
 
 ## Follow-On Work
 
-- replace raw-period presence with parser-fidelity quality as the entry condition for `syntactically-valid`
 - replace blocking-count heuristics with reconciliation-pack residual thresholds for `structurally-reconciled`
+- deepen parser fidelity for screener, XBRL, manual, and JSON inputs with source-native anomaly counts
 - carry the same ladder into other export/report surfaces so no artifact drifts from traceability
