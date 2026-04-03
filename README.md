@@ -35,7 +35,7 @@ Current focus now implemented:
 - parser fidelity is now a first-class traceability signal with a status, score, and summary
 - `syntactically-valid` now requires parser fidelity to clear a minimum threshold instead of relying only on raw-period presence
 - reconciliation is now a first-class traceability signal with a status, summary, max residual, and check list
-- `structurally-reconciled` now requires explicit recast identity residuals to stay under critical thresholds instead of relying only on recast presence and blocker counts
+- `structurally-reconciled` now requires explicit balance-sheet, cash-distribution, and share-capital residuals to stay under critical thresholds instead of relying only on recast presence and blocker counts
 - the valuation tab now carries the same trust gate into the user-facing surface, showing rigor level, parser fidelity, reconciliation status, and the next unresolved gate instead of relying on the signal card alone
 - the forecast tab now carries that same trust gate before any scenario output, so forward-looking cases inherit the shared parser, reconciliation, and rigor disclosure instead of presenting a separate confidence language
 - the quality tab now carries that same trust gate before any quality-factor scores, so strong-looking scorecards are not read out of context when parser or reconciliation trust is weak
@@ -61,7 +61,7 @@ Baseline validation for any rigor change:
 Validated in this iteration:
 
 - `npm run typecheck`
-- `npm test` (`30` files, `91` tests)
+- `npm test` (`31` files, `94` tests)
 - `npm run build`
 
 Still not validated in this iteration:
@@ -72,11 +72,12 @@ Still not validated in this iteration:
 
 ## Last Units Of Work
 
-- added explicit analysis rigor levels to the traceability envelope and later bumped the schema version to `2026-04-traceability-v7`
+- added explicit analysis rigor levels to the traceability envelope and later bumped the schema version to `2026-04-traceability-v8`
 - exported rigor level and ladder state into workbook metadata
 - surfaced rigor level and remaining ladder steps in the run inspector
 - added parser-fidelity scoring to traceability and wired it into the `syntactically-valid` gate
 - added reconciliation-residual scoring to traceability and wired it into the `structurally-reconciled` gate
+- extended reconciliation residual scoring beyond balance-sheet identities with a cash-distribution bridge check and a share-capital tie-out check
 - fixed the ladder so structural failure prevents downstream economic/valuation levels from clearing
 - surfaced reconciliation status and summary in workbook and run inspector
 - surfaced the same traceability trust gate in the valuation tab so that valuation presentation does not drift from the shared envelope
@@ -87,6 +88,6 @@ Still not validated in this iteration:
 
 ## Next Good Problems
 
-- extend reconciliation thresholds into cash-flow and share-data packs instead of only recast balance-sheet identities
+- extend reconciliation thresholds further into richer cash-flow bridges such as ending-cash tie-outs and debt-flow sub-bridges instead of stopping at the distribution bridge
 - make parser fidelity richer for non-Capitaline inputs by capturing source-specific parse diagnostics instead of only post-parse density heuristics
 - feed the same rigor ladder and reconciliation summary into the remaining report surfaces beyond valuation, forecast, quality, and ratios so all artifacts agree

@@ -61,6 +61,34 @@ function buildCheck(params: {
   };
 }
 
+function buildOptionalCheck(params: {
+  key: string;
+  label: string;
+  periodEnd: string;
+  residual: number | null;
+  denominator: number | null;
+  warningThreshold: number;
+  criticalThreshold: number;
+}): ReconciliationResidualCheck | null {
+  if (
+    params.residual == null ||
+    params.denominator == null ||
+    !Number.isFinite(params.residual) ||
+    !Number.isFinite(params.denominator)
+  ) {
+    return null;
+  }
+  return buildCheck({
+    key: params.key,
+    label: params.label,
+    periodEnd: params.periodEnd,
+    residual: params.residual,
+    denominator: params.denominator,
+    warningThreshold: params.warningThreshold,
+    criticalThreshold: params.criticalThreshold,
+  });
+}
+
 export function evaluateReconciliationResiduals(params: {
   recastData?: RecastPeriod[] | null;
   config?: EngineConfig | null;
@@ -68,10 +96,23 @@ export function evaluateReconciliationResiduals(params: {
   const recastData = params.recastData ?? [];
   const warningThreshold = params.config?.structural_residual_warning ?? 0.005;
   const criticalThreshold = params.config?.structural_residual_critical ?? 0.02;
-  const checks = recastData.flatMap((period) => {
+  const checks = recastData.flatMap((period, index) => {
+    const previous = index > 0 ? recastData[index - 1] : null;
     const assetResidual = (period.bs.OA + period.bs.FA) - period.bs.TA;
     const capitalResidual = (period.bs.CSE + period.bs.MI + period.bs.FO + period.bs.OL) - period.bs.TA;
     const noaResidual = period.bs.NOA - period.bs.NFO - period.bs.CSE - period.bs.MI;
+    const shareCapital = period.shareCountInput?.shareCapital ?? null;
+    const faceValue = period.shareCountInput?.faceValue ?? null;
+    const endPeriodShares = period.shareCountInput?.endPeriodShares ?? null;
+    const capitalDerivedShares = shareCapital != null && faceValue != null && faceValue > 0
+      ? shareCapital / faceValue
+      : null;
+    const cashDistributionResidual = previous
+      ? period.cf.d_t - period.cf.d_t_formula
+      : null;
+    const cashDistributionBasis = previous
+      ? Math.max(Math.abs(period.cf.d_t), Math.abs(period.cf.d_t_formula), 1)
+      : null;
 
     return [
       buildCheck({
@@ -101,7 +142,29 @@ export function evaluateReconciliationResiduals(params: {
         warningThreshold,
         criticalThreshold,
       }),
-    ];
+      buildOptionalCheck({
+        key: "cash-distribution-bridge",
+        label: "d_t = FCF - NFE + ΔNFO",
+        periodEnd: period.period_end,
+        residual: cashDistributionResidual,
+        denominator: cashDistributionBasis,
+        warningThreshold,
+        criticalThreshold,
+      }),
+      buildOptionalCheck({
+        key: "share-capital-face-value",
+        label: "Share Capital ÷ Face Value = End-Period Shares",
+        periodEnd: period.period_end,
+        residual: capitalDerivedShares != null && endPeriodShares != null
+          ? capitalDerivedShares - endPeriodShares
+          : null,
+        denominator: capitalDerivedShares != null && endPeriodShares != null
+          ? Math.max(Math.abs(capitalDerivedShares), Math.abs(endPeriodShares), 1)
+          : null,
+        warningThreshold,
+        criticalThreshold,
+      }),
+    ].filter((check): check is ReconciliationResidualCheck => Boolean(check));
   });
 
   if (checks.length === 0) {
