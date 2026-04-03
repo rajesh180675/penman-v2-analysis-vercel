@@ -44,6 +44,7 @@ Current focus now implemented:
 - the forecast tab now carries that same trust gate before any scenario output, so forward-looking cases inherit the shared parser, reconciliation, and rigor disclosure instead of presenting a separate confidence language
 - the quality tab now carries that same trust gate before any quality-factor scores, so strong-looking scorecards are not read out of context when parser or reconciliation trust is weak
 - the ratios tab now carries that same trust gate before decomposition tables and trend charts, so ratio analysis does not present standalone confidence
+- the statements tab now carries that same trust gate before recast balance-sheet, income-statement, and free-cash-flow tables, so the core recast pack does not present structural output without parser, reconciliation, and rigor context
 - the regression tab now carries that same trust gate before before/after deltas and baseline-harness output, so regression evidence is read in the same trust context as the run it is benchmarking
 - the comparison tab now carries a peer-trust gate plus per-company trust rows, so cross-company rankings do not stand alone without parser, reconciliation, and rigor context for each loaded peer
 - the multi-company comparison registry now persists to local storage, so loaded peers and their trust state survive reloads instead of disappearing with React memory
@@ -75,12 +76,14 @@ Validated in this iteration:
 
 - `npm run typecheck`
 - `npm test` (`38` files, `116` tests)
+- `npm test` (`39` files, `117` tests) after adding statements-surface trust-gate coverage
 - `npm run build`
 - `npm test -- src/engine/__tests__/reconciliationResiduals.spec.ts`
 - `npm test -- src/components/__tests__/V3AnalyticsPanel.spec.tsx`
 - `npm test -- src/engine/__tests__/parserFidelity.spec.ts`
 - `npm test -- src/engine/__tests__/xbrlParser.spec.ts`
 - `npm run build` after consolidating the regression/V3/academic chunk mapping, with the prior circular chunk warning removed
+- `npm test -- src/components/__tests__/RecastStatements.spec.tsx`
 
 Still not validated in this iteration:
 
@@ -106,6 +109,7 @@ Still not validated in this iteration:
 - surfaced the same traceability trust gate in the forecast tab so scenario outputs do not drift from the shared envelope
 - surfaced the same traceability trust gate in the quality tab so Piotroski/distress/fraud scorecards do not drift from the shared envelope
 - surfaced the same traceability trust gate in the ratios tab so decomposition and trend analysis do not drift from the shared envelope
+- surfaced the same traceability trust gate in the statements tab so the recast balance-sheet, income-statement, and cash-flow pack do not drift from the shared envelope
 - surfaced the same traceability trust gate in the regression tab so before/after harness deltas do not drift from the shared envelope
 - persisted per-company traceability in the comparison registry and surfaced a comparison-tab trust gate plus per-company trust rows before peer ranking output
 - persisted the comparison registry itself to local storage so peer comparison survives reloads in the same workspace/browser
@@ -115,10 +119,12 @@ Still not validated in this iteration:
 - tightened JSON ingestion so invalid non-numeric metric values fail during parse instead of entering the analytical object
 - added a focused `src/engine/__tests__/xbrlParser.spec.ts` suite that validates clean XBRL diagnostics, degraded XBRL diagnostics, and parser-error fail-loud behavior without requiring a browser test runtime
 - removed the Vite circular chunk warning by consolidating regression, V3 analytics, and academic-report manual chunking into one `engine-advanced-analytics` bundle
+- added a focused `src/components/__tests__/RecastStatements.spec.tsx` server-render spec so the statements trust gate is covered alongside the other shared-envelope surfaces
 - re-ran typecheck, full tests, and build
 
 ## Next Good Problems
 
 - extend comparison trust persistence beyond local browser storage into shared multi-workspace/server-backed surfaces so peer context survives beyond one browser environment
+- decide whether the debug and workspace surfaces should also consume the shared traceability envelope where they present run-level conclusions rather than raw diagnostics
 - review whether the larger shared `engine-advanced-analytics` chunk should later be split again through actual dependency extraction instead of manual chunk forcing
 - see the current local-persistence slice in [`docs/comparison-registry-persistence.md`](./docs/comparison-registry-persistence.md)

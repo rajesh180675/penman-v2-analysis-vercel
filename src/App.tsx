@@ -482,7 +482,7 @@ export function App() {
                 onSelectCompanyId={setWorkspaceCompanyId}
               />
             )}
-            {activeTab==="statements" && hasRecast && <RecastStatements data={recastData!}/>}
+            {activeTab==="statements" && hasRecast && <RecastStatements data={recastData!} traceability={traceability} />}
             {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!} traceability={traceability} />}
             {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig} traceability={traceability} />}
             {activeTab==="valuation"  && hasRecast && !valuationBlocked && (
