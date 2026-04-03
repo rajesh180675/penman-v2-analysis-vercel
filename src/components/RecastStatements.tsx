@@ -1,14 +1,24 @@
 import { RecastPeriod } from "../engine/types";
 import { useMemo, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
+import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
+import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 
-interface Props { data: RecastPeriod[] }
+interface Props {
+  data: RecastPeriod[];
+  traceability?: AnalysisTraceabilityEnvelope | null;
+}
 
 const f  = (n: number | undefined | null) => n == null ? "—" : n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
 const fp = (n: number | undefined | null) => n == null ? "—" : (n * 100).toFixed(1) + "%";
 
-export default function RecastStatements({ data }: Props) {
+export default function RecastStatements({ data, traceability = null }: Props) {
   const [mode, setMode] = useState<"abs" | "common">("abs");
+  const traceabilitySummary = useMemo(
+    () => buildValuationTraceabilitySurfaceSummary(traceability),
+    [traceability],
+  );
   if (!data || data.length === 0) return <div className="text-center py-20 text-slate-400"><div className="text-5xl mb-3">📊</div><p>No data</p></div>;
 
   const years = data.map((d) => d.period_end.slice(0, 7));
@@ -22,6 +32,17 @@ export default function RecastStatements({ data }: Props) {
 
   return (
     <div className="space-y-8">
+      {traceabilitySummary && (
+        <TraceabilityTrustPanel
+          title="Statements Trust Gate"
+          summary={traceabilitySummary}
+          confidenceStatus={traceability?.confidence.status}
+          rigorLabel={traceability?.rigor.currentLabel}
+          parserStatus={traceability?.parserFidelity.status}
+          reconciliationStatus={traceability?.reconciliation.status}
+          cautionHeading="Read the recast statements and bridge outputs in the context of these upstream trust limits."
+        />
+      )}
       <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
         <div className="text-sm text-slate-700 font-medium">Display Mode</div>
         <div className="inline-flex rounded-lg overflow-hidden border border-slate-300">
