@@ -65,6 +65,13 @@ type InspectorPayload = {
         diagnosticCount?: number;
         optionalCount?: number;
       } | null;
+      rigor?: {
+        currentLevel?: string;
+        currentLabel?: string;
+        summary?: string;
+        achievedLevels?: string[];
+        pendingLevels?: string[];
+      } | null;
       mappingCoverage?: {
         outOfSpecLabelCount?: number;
         actionableOutOfSpecLabelCount?: number;
@@ -586,6 +593,9 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
                     Confidence: <strong>{traceability.confidence?.status ?? "—"}</strong>
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Rigor level: <strong>{traceability.rigor?.currentLabel ?? "—"}</strong>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
                     Raw/Recast periods: <strong>{traceability.analysisContext?.rawPeriodCount ?? 0} / {traceability.analysisContext?.recastPeriodCount ?? 0}</strong>
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
@@ -603,9 +613,23 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
                   <div className="mt-1 text-xs text-slate-500">
                     Blocking {traceability.confidence?.blockingCount ?? 0} · Diagnostic {traceability.confidence?.diagnosticCount ?? 0} · Optional {traceability.confidence?.optionalCount ?? 0}
                   </div>
+                  {traceability.rigor?.summary && (
+                    <div className="mt-2 text-xs text-slate-600">
+                      {traceability.rigor.summary}
+                    </div>
+                  )}
                   {traceability.analysisContext?.engineError && (
                     <div className="mt-2 text-xs text-red-700">Engine error: {traceability.analysisContext.engineError}</div>
                   )}
+                </div>
+                <div className="rounded-lg border border-slate-200 px-3 py-3">
+                  <div className="font-medium text-slate-800">Rigor ladder</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    Achieved {traceability.rigor?.achievedLevels?.join(" -> ") || "—"}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    Remaining {traceability.rigor?.pendingLevels?.join(" -> ") || "none"}
+                  </div>
                 </div>
                 <div>
                   <div className="mb-2 font-medium text-slate-800">Backlog preview</div>

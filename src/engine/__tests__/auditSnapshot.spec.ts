@@ -260,6 +260,9 @@ describe("traceability snapshot", () => {
     expect(snapshot.traceability.analysisContext.recastPeriodCount).toBe(1);
     expect(snapshot.traceability.analysisContext.debugFiles).toBe(2);
     expect(snapshot.traceability.analysisContext.rawMetricKeyCount).toBe(2);
+    expect(snapshot.traceability.rigor.currentLevel).toBe("production-ready");
+    expect(snapshot.traceability.rigor.currentLabel).toBe("Production-ready");
+    expect(snapshot.traceability.rigor.pendingLevels).toHaveLength(0);
     expect(snapshot.traceability.backlogPreview).toHaveLength(1);
     expect(snapshot.traceability.backlogPreview[0]?.key).toBe("Selling and Distribution Expenses");
   });
