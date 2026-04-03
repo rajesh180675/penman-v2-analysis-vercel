@@ -2,6 +2,8 @@ import { EngineConfig, RecastPeriod } from "./types";
 
 export type ReconciliationResidualStatus = "confirmed" | "degraded" | "failed";
 
+const MIN_OPERATING_COST_BRIDGE_COVERAGE = 0.6;
+
 export interface ReconciliationResidualCheck {
   key: string;
   label: string;
@@ -207,6 +209,17 @@ export function evaluateReconciliationResiduals(params: {
     const cniResidual = period.is.CNI - (period.is.OI - period.is.NFE - period.is.MII);
     const coreOiResidual = period.cu.CoreOI + period.cu.UOI - period.is.OI;
     const coreNfeResidual = period.cu.CoreNFE + period.cu.UFE - period.is.NFE;
+    const operatingCostBridge = period.is.operatingCostBridge;
+    const hasOperatingCostBridgeInputs = (operatingCostBridge?.coverageRatio ?? 0) >= MIN_OPERATING_COST_BRIDGE_COVERAGE;
+    const reportedBridgeCoreOi = operatingCostBridge != null
+      ? period.cu.CoreOI - period.is.OtherItems
+      : null;
+    const operatingCostBridgeResidual = hasOperatingCostBridgeInputs && operatingCostBridge != null && reportedBridgeCoreOi != null
+      ? operatingCostBridge.bridgeCoreOI - reportedBridgeCoreOi
+      : null;
+    const operatingCostBridgeBasis = operatingCostBridgeResidual != null && operatingCostBridge != null && reportedBridgeCoreOi != null
+      ? Math.max(Math.abs(operatingCostBridge.bridgeCoreOI), Math.abs(reportedBridgeCoreOi), 1)
+      : null;
 
     return [
       buildCheck({
@@ -287,6 +300,15 @@ export function evaluateReconciliationResiduals(params: {
         periodEnd: period.period_end,
         residual: coreOiResidual,
         denominator: Math.max(Math.abs(period.cu.CoreOI), Math.abs(period.is.OI), 1),
+        warningThreshold,
+        criticalThreshold,
+      }),
+      buildOptionalCheck({
+        key: "operating-cost-bridge",
+        label: `Bridge Core OI = Reported Core OI ex Other Items (coverage >= ${formatPct(MIN_OPERATING_COST_BRIDGE_COVERAGE)})`,
+        periodEnd: period.period_end,
+        residual: operatingCostBridgeResidual,
+        denominator: operatingCostBridgeBasis,
         warningThreshold,
         criticalThreshold,
       }),

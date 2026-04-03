@@ -39,6 +39,7 @@ Current focus now implemented:
 - the structural pack now includes a gross-borrowings debt-flow bridge backed by traced long-term and short-term borrowing lines versus `DebtProceeds + DebtRepayment`
 - the structural pack now also includes an ending-cash bridge backed by traced `BS.FA.CashBank` balances versus the recast cash-flow movement implied by `CFO`, `Capex`, distributions, financing flows, and investment flows
 - the structural pack now also includes income-statement bridges for `PAT + OCI = TCI`, `CNI = OI - NFE - MII`, `Core OI + UOI = OI`, and `Core NFE + UFE = NFE`
+- the structural pack now also thresholds the detailed operating-cost bridge when `bridgeCoreOI` has at least `60%` source coverage, so high-coverage sales-to-Core-OI decompositions become part of structural clearance instead of staying informational only
 - the valuation tab now carries the same trust gate into the user-facing surface, showing rigor level, parser fidelity, reconciliation status, and the next unresolved gate instead of relying on the signal card alone
 - the forecast tab now carries that same trust gate before any scenario output, so forward-looking cases inherit the shared parser, reconciliation, and rigor disclosure instead of presenting a separate confidence language
 - the quality tab now carries that same trust gate before any quality-factor scores, so strong-looking scorecards are not read out of context when parser or reconciliation trust is weak
@@ -69,8 +70,9 @@ Baseline validation for any rigor change:
 Validated in this iteration:
 
 - `npm run typecheck`
-- `npm test` (`36` files, `106` tests)
+- `npm test` (`36` files, `109` tests)
 - `npm run build`
+- `npm test -- src/engine/__tests__/reconciliationResiduals.spec.ts`
 - `npm test -- src/components/__tests__/V3AnalyticsPanel.spec.tsx`
 
 Still not validated in this iteration:
@@ -90,6 +92,7 @@ Still not validated in this iteration:
 - extended reconciliation residual scoring again with a gross-borrowings debt-flow bridge backed by traced borrowing lines
 - extended reconciliation residual scoring again with an ending-cash bridge backed by traced cash balances and the recast cash-flow movement
 - extended reconciliation residual scoring into the income statement with comprehensive-income, CNI, core-OI, and core-NFE bridges
+- extended reconciliation residual scoring into the detailed operating-cost bridge so high-coverage `bridgeCoreOI` support now participates in structural clearance
 - fixed the ladder so structural failure prevents downstream economic/valuation levels from clearing
 - surfaced reconciliation status and summary in workbook and run inspector
 - surfaced the same traceability trust gate in the valuation tab so that valuation presentation does not drift from the shared envelope
@@ -105,7 +108,6 @@ Still not validated in this iteration:
 
 ## Next Good Problems
 
-- add a richer operating-cost bridge threshold when source coverage is strong, so structural reconciliation can distinguish algebraic income identities from detailed operating-bridge support
 - make parser fidelity richer for non-Capitaline inputs by capturing source-specific parse diagnostics instead of only post-parse density heuristics
 - extend comparison trust persistence beyond local browser storage into shared multi-workspace/server-backed surfaces so peer context survives beyond one browser environment
 - see the current local-persistence slice in [`docs/comparison-registry-persistence.md`](./docs/comparison-registry-persistence.md)

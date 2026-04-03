@@ -130,6 +130,39 @@ function mkPeriod(period_end: string, overrides?: Partial<RecastPeriod>): Recast
 describe("evaluateReconciliationResiduals", () => {
   it("includes cash-distribution and share-capital tie-out checks when data is available", () => {
     const current = mkPeriod("2025-03-31", {
+      is: {
+        ...mkPeriod("2025-03-31").is,
+        operatingCostBridge: {
+          materialCost: 600,
+          employeeCost: 100,
+          depreciation: 20,
+          sgaAdvertising: 5,
+          sgaLegalProfessional: 5,
+          sgaRent: 5,
+          sgaFreight: 5,
+          sgaRepairs: 5,
+          sgaPowerFuel: 5,
+          sgaDetailed: 30,
+          sgaResidual: 0,
+          sgaTotal: 30,
+          otherOperatingExpense: 50,
+          otherOperatingIncome: 0,
+          grossProfit: 300,
+          operatingCosts: 200,
+          bridgeCoreOI: 100,
+          bridgeGapToReportedCoreOI: 0,
+          coverageRatio: 0.8,
+          driverRatios: {
+            materialCostPct: 600 / 900,
+            employeeCostPct: 100 / 900,
+            depreciationPct: 20 / 900,
+            sgaPct: 30 / 900,
+            otherOperatingExpensePct: 50 / 900,
+            otherOperatingIncomePct: 0,
+            bridgeCoreSalesPm: 100 / 900,
+          },
+        },
+      },
       trace: {
         ...mkPeriod("2025-03-31").trace,
         "BS.FA.CashBank": [
@@ -149,8 +182,170 @@ describe("evaluateReconciliationResiduals", () => {
     expect(summary.checks.some((check) => check.key === "comprehensive-income-bridge")).toBe(true);
     expect(summary.checks.some((check) => check.key === "cni-operating-financing-bridge")).toBe(true);
     expect(summary.checks.some((check) => check.key === "core-oi-unusual-bridge")).toBe(true);
+    expect(summary.checks.some((check) => check.key === "operating-cost-bridge")).toBe(true);
     expect(summary.checks.some((check) => check.key === "core-nfe-unusual-bridge")).toBe(true);
     expect(summary.checks.some((check) => check.key === "share-capital-face-value")).toBe(true);
+  });
+
+  it("skips the operating-cost bridge when coverage is below the structural threshold", () => {
+    const summary = evaluateReconciliationResiduals({
+      recastData: [
+        mkPeriod("2024-03-31"),
+        mkPeriod("2025-03-31", {
+          is: {
+            ...mkPeriod("2025-03-31").is,
+            operatingCostBridge: {
+              materialCost: 600,
+              employeeCost: 100,
+              depreciation: 20,
+              sgaAdvertising: 5,
+              sgaLegalProfessional: 5,
+              sgaRent: 5,
+              sgaFreight: 5,
+              sgaRepairs: 5,
+              sgaPowerFuel: 5,
+              sgaDetailed: 30,
+              sgaResidual: 0,
+              sgaTotal: 30,
+              otherOperatingExpense: 50,
+              otherOperatingIncome: 0,
+              grossProfit: 300,
+              operatingCosts: 200,
+              bridgeCoreOI: 110,
+              bridgeGapToReportedCoreOI: 10,
+              coverageRatio: 0.4,
+              driverRatios: {
+                materialCostPct: 600 / 900,
+                employeeCostPct: 100 / 900,
+                depreciationPct: 20 / 900,
+                sgaPct: 30 / 900,
+                otherOperatingExpensePct: 50 / 900,
+                otherOperatingIncomePct: 0,
+                bridgeCoreSalesPm: 110 / 900,
+              },
+            },
+          },
+          trace: {
+            ...mkPeriod("2025-03-31").trace,
+            "BS.FA.CashBank": [
+              { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 160, matchType: "exact_base" },
+            ],
+          },
+        }),
+      ],
+      config: DEFAULT_CONFIG,
+    });
+
+    expect(summary.checks.some((check) => check.key === "operating-cost-bridge")).toBe(false);
+    expect(summary.status).toBe("confirmed");
+  });
+
+  it("degrades when a high-coverage operating-cost bridge breaches the warning threshold", () => {
+    const summary = evaluateReconciliationResiduals({
+      recastData: [
+        mkPeriod("2024-03-31"),
+        mkPeriod("2025-03-31", {
+          is: {
+            ...mkPeriod("2025-03-31").is,
+            operatingCostBridge: {
+              materialCost: 600,
+              employeeCost: 100,
+              depreciation: 20,
+              sgaAdvertising: 5,
+              sgaLegalProfessional: 5,
+              sgaRent: 5,
+              sgaFreight: 5,
+              sgaRepairs: 5,
+              sgaPowerFuel: 5,
+              sgaDetailed: 30,
+              sgaResidual: 0,
+              sgaTotal: 30,
+              otherOperatingExpense: 50,
+              otherOperatingIncome: 0,
+              grossProfit: 300,
+              operatingCosts: 200,
+              bridgeCoreOI: 100.6,
+              bridgeGapToReportedCoreOI: 0.6,
+              coverageRatio: 0.8,
+              driverRatios: {
+                materialCostPct: 600 / 900,
+                employeeCostPct: 100 / 900,
+                depreciationPct: 20 / 900,
+                sgaPct: 30 / 900,
+                otherOperatingExpensePct: 50 / 900,
+                otherOperatingIncomePct: 0,
+                bridgeCoreSalesPm: 100.6 / 900,
+              },
+            },
+          },
+          trace: {
+            ...mkPeriod("2025-03-31").trace,
+            "BS.FA.CashBank": [
+              { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 160, matchType: "exact_base" },
+            ],
+          },
+        }),
+      ],
+      config: DEFAULT_CONFIG,
+    });
+
+    const bridgeCheck = summary.checks.find((check) => check.key === "operating-cost-bridge" && check.periodEnd === "2025-03-31");
+    expect(bridgeCheck?.status).toBe("degraded");
+    expect(summary.status).toBe("degraded");
+  });
+
+  it("fails when a high-coverage operating-cost bridge breaches the critical threshold", () => {
+    const summary = evaluateReconciliationResiduals({
+      recastData: [
+        mkPeriod("2024-03-31"),
+        mkPeriod("2025-03-31", {
+          is: {
+            ...mkPeriod("2025-03-31").is,
+            operatingCostBridge: {
+              materialCost: 600,
+              employeeCost: 100,
+              depreciation: 20,
+              sgaAdvertising: 5,
+              sgaLegalProfessional: 5,
+              sgaRent: 5,
+              sgaFreight: 5,
+              sgaRepairs: 5,
+              sgaPowerFuel: 5,
+              sgaDetailed: 30,
+              sgaResidual: 0,
+              sgaTotal: 30,
+              otherOperatingExpense: 50,
+              otherOperatingIncome: 0,
+              grossProfit: 300,
+              operatingCosts: 200,
+              bridgeCoreOI: 110,
+              bridgeGapToReportedCoreOI: 10,
+              coverageRatio: 0.8,
+              driverRatios: {
+                materialCostPct: 600 / 900,
+                employeeCostPct: 100 / 900,
+                depreciationPct: 20 / 900,
+                sgaPct: 30 / 900,
+                otherOperatingExpensePct: 50 / 900,
+                otherOperatingIncomePct: 0,
+                bridgeCoreSalesPm: 110 / 900,
+              },
+            },
+          },
+          trace: {
+            ...mkPeriod("2025-03-31").trace,
+            "BS.FA.CashBank": [
+              { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 160, matchType: "exact_base" },
+            ],
+          },
+        }),
+      ],
+      config: DEFAULT_CONFIG,
+    });
+
+    const bridgeCheck = summary.checks.find((check) => check.key === "operating-cost-bridge" && check.periodEnd === "2025-03-31");
+    expect(bridgeCheck?.status).toBe("failed");
+    expect(summary.status).toBe("failed");
   });
 
   it("degrades when the comprehensive-income bridge breaches the warning threshold", () => {

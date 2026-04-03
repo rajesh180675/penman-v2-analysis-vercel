@@ -85,13 +85,13 @@ Capitaline runs also still have richer parser-fidelity evidence than other modes
 - surface summary tests: [`src/engine/__tests__/valuationTraceabilitySummary.spec.ts`](../src/engine/__tests__/valuationTraceabilitySummary.spec.ts)
 - quality-surface smoke test: [`src/components/__tests__/QualityReport.spec.tsx`](../src/components/__tests__/QualityReport.spec.tsx)
 - ratio-surface smoke test: [`src/components/__tests__/RatioReport.spec.tsx`](../src/components/__tests__/RatioReport.spec.tsx)
-- full test suite: `npm test` (`33` files, `102` tests)
+- full reconciliation residual contract: [`src/engine/__tests__/reconciliationResiduals.spec.ts`](../src/engine/__tests__/reconciliationResiduals.spec.ts)
+- full test suite: `npm test` (`36` files, `109` tests)
 - typecheck: `npm run typecheck`
 - production build: `npm run build`
 
 ## Follow-On Work
 
-- add a richer operating-cost bridge threshold when source coverage is strong enough to make `bridgeCoreOI` reviewable rather than purely indicative
 - deepen parser fidelity for screener, XBRL, manual, and JSON inputs with source-native anomaly counts
 - carry the same ladder and reconciliation summary into other report surfaces beyond valuation, forecast, quality, and ratios so no artifact drifts from traceability
 - move persisted comparison trust beyond local browser storage into shared/server-backed workspace surfaces
