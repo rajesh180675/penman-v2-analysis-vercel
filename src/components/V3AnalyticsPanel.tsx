@@ -4,8 +4,11 @@
  *          §12 Sensitivity Matrix, §14 Confidence Score
  */
 import { useMemo, useState } from "react";
+import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { RecastPeriod, EngineConfig, ke_from_config } from "../engine/types";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
+import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
+import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import {
   computeV3Analytics,
   computeSensitivityMatrix,
@@ -24,6 +27,7 @@ import {
 interface Props {
   data: RecastPeriod[];
   config: EngineConfig;
+  traceability?: AnalysisTraceabilityEnvelope | null;
 }
 
 const pct = (v: number | null | undefined, d = 1) =>
@@ -53,8 +57,12 @@ const GRADE_COLORS: Record<string, string> = {
   GRADE_D: "text-red-700 bg-red-50",
 };
 
-export default function V3AnalyticsPanel({ data, config }: Props) {
+export default function V3AnalyticsPanel({ data, config, traceability = null }: Props) {
   const [activeSection, setActiveSection] = useState<"overview" | "dirty" | "events" | "terminal" | "sensitivity" | "confidence" | "triggers" | "accruals" | "oa_decomp" | "gap_decomp" | "section6b">("overview");
+  const traceabilitySummary = useMemo(
+    () => buildValuationTraceabilitySurfaceSummary(traceability),
+    [traceability],
+  );
 
   const ke = ke_from_config(config);
 
@@ -146,6 +154,17 @@ export default function V3AnalyticsPanel({ data, config }: Props) {
 
   return (
     <div className="space-y-4">
+      {traceabilitySummary && (
+        <TraceabilityTrustPanel
+          title="V3 Analytics Trust Gate"
+          summary={traceabilitySummary}
+          confidenceStatus={traceability?.confidence.status}
+          rigorLabel={traceability?.rigor.currentLabel}
+          parserStatus={traceability?.parserFidelity.status}
+          reconciliationStatus={traceability?.reconciliation.status}
+          cautionHeading="Interpret the V3 decomposition, anchor, and confidence sections in the context of these upstream trust limits."
+        />
+      )}
       {/* Tab bar */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="flex overflow-x-auto border-b border-slate-200">

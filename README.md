@@ -47,6 +47,7 @@ Current focus now implemented:
 - the comparison tab now carries a peer-trust gate plus per-company trust rows, so cross-company rankings do not stand alone without parser, reconciliation, and rigor context for each loaded peer
 - the multi-company comparison registry now persists to local storage, so loaded peers and their trust state survive reloads instead of disappearing with React memory
 - the academic report tab now carries that same trust gate before the memo body and exported-artifact controls, so the offline/audit-facing report surface does not present stronger confidence than the shared traceability envelope
+- the V3 analytics tab now carries that same trust gate before dirty-surplus, anchor, sensitivity, and confidence interpretation, so this interpretation-heavy surface no longer drifts from the shared parser/reconciliation/rigor envelope
 
 ## How To Iterate
 
@@ -68,8 +69,9 @@ Baseline validation for any rigor change:
 Validated in this iteration:
 
 - `npm run typecheck`
-- `npm test` (`35` files, `105` tests)
+- `npm test` (`36` files, `106` tests)
 - `npm run build`
+- `npm test -- src/components/__tests__/V3AnalyticsPanel.spec.tsx`
 
 Still not validated in this iteration:
 
@@ -98,6 +100,7 @@ Still not validated in this iteration:
 - persisted per-company traceability in the comparison registry and surfaced a comparison-tab trust gate plus per-company trust rows before peer ranking output
 - persisted the comparison registry itself to local storage so peer comparison survives reloads in the same workspace/browser
 - surfaced the same traceability trust gate in the academic report tab so the memo/export surface does not drift from the shared envelope
+- surfaced the same traceability trust gate in the V3 analytics tab so dirty-surplus, terminal-anchor, sensitivity, and confidence sections do not drift from the shared envelope
 - re-ran typecheck, full tests, and build
 
 ## Next Good Problems
@@ -105,5 +108,4 @@ Still not validated in this iteration:
 - add a richer operating-cost bridge threshold when source coverage is strong, so structural reconciliation can distinguish algebraic income identities from detailed operating-bridge support
 - make parser fidelity richer for non-Capitaline inputs by capturing source-specific parse diagnostics instead of only post-parse density heuristics
 - extend comparison trust persistence beyond local browser storage into shared multi-workspace/server-backed surfaces so peer context survives beyond one browser environment
-- feed the same rigor ladder and reconciliation summary into the remaining user-facing analytics surfaces such as V3 analytics so all tabs agree before interpretation
 - see the current local-persistence slice in [`docs/comparison-registry-persistence.md`](./docs/comparison-registry-persistence.md)

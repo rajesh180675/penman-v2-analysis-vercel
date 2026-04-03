@@ -522,7 +522,7 @@ export function App() {
                 traceability={traceability}
               />
             )}
-            {activeTab==="v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config}/>}
+            {activeTab==="v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config} traceability={traceability} />}
             {activeTab==="debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError}/>}
             {(["statements","ratios","forecast","valuation","quality","report","regression","v3analytics"] as TabId[]).includes(activeTab) && !hasRecast && (
               <div className="flex flex-col items-center justify-center py-24 text-center">
