@@ -20,7 +20,7 @@ Primary references:
 
 ## Current Position
 
-The repo already had broad phase-8 coverage: golden-company fixtures, release gates, workbook traceability, audit snapshots, valuation-readiness policy, and an explicit rigor ladder. The gap closed in this iteration was that `syntactically-valid` still relied on a weak proxy instead of explicit parser fidelity.
+The repo already had broad phase-8 coverage: golden-company fixtures, release gates, workbook traceability, audit snapshots, valuation-readiness policy, and an explicit rigor ladder. The gap closed in this iteration was that `structurally-reconciled` still relied on a weak proxy instead of explicit reconciliation residual thresholds.
 
 Current focus now implemented:
 
@@ -34,6 +34,8 @@ Current focus now implemented:
 - the run inspector now shows the achieved and remaining levels explicitly
 - parser fidelity is now a first-class traceability signal with a status, score, and summary
 - `syntactically-valid` now requires parser fidelity to clear a minimum threshold instead of relying only on raw-period presence
+- reconciliation is now a first-class traceability signal with a status, summary, max residual, and check list
+- `structurally-reconciled` now requires explicit recast identity residuals to stay under critical thresholds instead of relying only on recast presence and blocker counts
 
 ## How To Iterate
 
@@ -55,7 +57,7 @@ Baseline validation for any rigor change:
 Validated in this iteration:
 
 - `npm run typecheck`
-- `npm test` (`27` files, `86` tests)
+- `npm test` (`27` files, `87` tests)
 - `npm run build`
 
 Still not validated in this iteration:
@@ -69,13 +71,14 @@ Still not validated in this iteration:
 - added explicit analysis rigor levels to the traceability envelope and later bumped the schema version to `2026-04-traceability-v7`
 - exported rigor level and ladder state into workbook metadata
 - surfaced rigor level and remaining ladder steps in the run inspector
-- extended snapshot/export tests to lock the new contract
 - added parser-fidelity scoring to traceability and wired it into the `syntactically-valid` gate
-- surfaced parser-fidelity status/score in workbook and run inspector
+- added reconciliation-residual scoring to traceability and wired it into the `structurally-reconciled` gate
+- fixed the ladder so structural failure prevents downstream economic/valuation levels from clearing
+- surfaced reconciliation status and summary in workbook and run inspector
 - re-ran typecheck, full tests, and build
 
 ## Next Good Problems
 
-- tighten `structurally-reconciled` with explicit identity residual thresholds instead of coverage/blocking proxies
+- extend reconciliation thresholds into cash-flow and share-data packs instead of only recast balance-sheet identities
 - make parser fidelity richer for non-Capitaline inputs by capturing source-specific parse diagnostics instead of only post-parse density heuristics
-- feed the same rigor ladder into the academic/debug export surfaces so all artifacts agree
+- feed the same rigor ladder and reconciliation summary into the remaining export/report surfaces so all artifacts agree

@@ -33,6 +33,8 @@ export function buildAnalysisSnapshot(params: {
       companyId: rawData?.[0]?.company_id ?? null,
       sourceMode: auditMeta?.sourceMode ?? null,
       rawData,
+      recastData,
+      config,
       periodCount: rawData?.length ?? 0,
       recastPeriodCount: recastData?.length ?? 0,
       latestPeriod,

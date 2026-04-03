@@ -31,14 +31,14 @@ That envelope is consumed in:
 
 ## Current Heuristic
 
-The ladder is intentionally conservative, but it now uses an explicit parser-fidelity summary instead of treating "raw periods exist" as enough.
+The ladder is intentionally conservative, and it now uses explicit parser-fidelity and reconciliation summaries instead of treating raw-period or recast presence as enough.
 
 - `syntactically-valid`
   - parser fidelity clears a minimum threshold and no engine error was recorded
 - `structurally-reconciled`
-  - recast data exists, scope is supported, and no blocking issues remain
+  - recast data exists, scope is supported, no blocking issues remain, and explicit recast identity residuals stay below critical thresholds
 - `economically-plausible`
-  - structural blockers are cleared and valuation-critical issues are not blocking
+  - structural reconciliation is actually achieved and valuation-critical issues are not blocking
 - `valuation-eligible`
   - the run is not guarded and valuation status is `warning` or `production-ready`
 - `production-ready`
@@ -50,8 +50,18 @@ The traceability envelope now includes:
 - `parserFidelity.score`
 - `parserFidelity.summary`
 - `parserFidelity.checks`
+- `reconciliation.status`
+- `reconciliation.summary`
+- `reconciliation.maxResidualRatio`
+- `reconciliation.checks`
 
-This is a real improvement in clarity, but it is still only a first parser-fidelity slice. Capitaline runs use parse-debug signals such as file presence, header detection, period consistency, and parser noise. Other source modes still rely on lighter post-parse density heuristics rather than rich source-native diagnostics.
+This is a real improvement in clarity, but it is still only a first reconciliation slice. Structural reconciliation currently thresholds recast identity residuals for:
+
+- `OA + FA = TA`
+- `CSE + MI + FO + OL = TA`
+- `NOA - NFO - CSE - MI = 0`
+
+Capitaline runs also still have richer parser-fidelity evidence than other modes because they use parse-debug signals such as file presence, header detection, period consistency, and parser noise. Other source modes still rely on lighter post-parse density heuristics rather than rich source-native diagnostics.
 
 ## What Was Validated
 
@@ -63,6 +73,6 @@ This is a real improvement in clarity, but it is still only a first parser-fidel
 
 ## Follow-On Work
 
-- replace blocking-count heuristics with reconciliation-pack residual thresholds for `structurally-reconciled`
+- extend reconciliation thresholds into cash-flow and share-data packs
 - deepen parser fidelity for screener, XBRL, manual, and JSON inputs with source-native anomaly counts
-- carry the same ladder into other export/report surfaces so no artifact drifts from traceability
+- carry the same ladder and reconciliation summary into other export/report surfaces so no artifact drifts from traceability

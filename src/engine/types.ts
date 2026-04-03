@@ -435,6 +435,8 @@ export interface EngineConfig {
   tv_grade_c          ?: number;
   dirty_surplus_material    ?: number;
   dirty_surplus_compromised ?: number;
+  structural_residual_warning?: number;
+  structural_residual_critical?: number;
   pm_zscore_warning   ?: number;
   pm_zscore_critical  ?: number;
 }
@@ -533,6 +535,8 @@ export const DEFAULT_CONFIG: EngineConfig = {
   tv_grade_c: 0.60,
   dirty_surplus_material: 0.10,
   dirty_surplus_compromised: 0.20,
+  structural_residual_warning: 0.005,
+  structural_residual_critical: 0.02,
 };
 
 /** Derive kd_aftertax — NEVER a config parameter (Invariant 5) */

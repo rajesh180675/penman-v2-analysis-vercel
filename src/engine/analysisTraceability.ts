@@ -4,7 +4,8 @@ import { MappingAuditReport, QualityGateReport } from "./mappingAudit";
 import { BacklogPriority, BacklogTriageAction } from "./mappingBacklogPolicy";
 import { CapitalineParseDebug } from "./capitalineParser";
 import { evaluateParserFidelity, ParserFidelitySummary } from "./parserFidelity";
-import { RawPeriodData } from "./types";
+import { EngineConfig, RawPeriodData, RecastPeriod } from "./types";
+import { evaluateReconciliationResiduals, ReconciliationResidualSummary } from "./reconciliationResiduals";
 
 export interface TraceabilityBacklogPreview {
   statement: string;
@@ -56,6 +57,7 @@ export interface AnalysisTraceabilityEnvelope {
     optionalCount: number;
   };
   parserFidelity: ParserFidelitySummary;
+  reconciliation: ReconciliationResidualSummary;
   rigor: {
     currentLevel: AnalysisRigorLevel;
     currentLabel: string;
@@ -108,6 +110,8 @@ export function buildAnalysisTraceability(params: {
   rawMetricKeyCount?: number;
   engineError?: string | null;
   rawData?: RawPeriodData[] | null;
+  recastData?: RecastPeriod[] | null;
+  config?: EngineConfig | null;
   debugInfo?: CapitalineParseDebug | null;
 }): AnalysisTraceabilityEnvelope {
   const qualityGate = params.qualityGate;
@@ -127,8 +131,10 @@ export function buildAnalysisTraceability(params: {
       periodsObserved: entry.periodsObserved,
       latestValue: entry.latestValue,
     }));
-  const hasRawData = (params.periodCount ?? 0) > 0;
-  const hasRecastData = (params.recastPeriodCount ?? 0) > 0;
+  const rawPeriodCount = params.periodCount ?? params.rawData?.length ?? 0;
+  const recastPeriodCount = params.recastPeriodCount ?? params.recastData?.length ?? 0;
+  const hasRawData = rawPeriodCount > 0;
+  const hasRecastData = recastPeriodCount > 0;
   const hasEngineError = Boolean(params.engineError);
   const hasBlockingIssues = blockingCount > 0;
   const valuationBlocked = Boolean(qualityGate?.valuationBlocked);
@@ -141,6 +147,11 @@ export function buildAnalysisTraceability(params: {
     periodCount: params.periodCount ?? 0,
     rawMetricKeyCount: params.rawMetricKeyCount ?? 0,
   });
+  const reconciliation = evaluateReconciliationResiduals({
+    recastData: params.recastData ?? null,
+    config: params.config ?? null,
+  });
+  const structuralAchieved = hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues && reconciliation.status !== "failed";
   const checkpoints: AnalysisRigorCheckpoint[] = [
     {
       level: "syntactically-valid",
@@ -157,29 +168,33 @@ export function buildAnalysisTraceability(params: {
     {
       level: "structurally-reconciled",
       label: "Structurally reconciled",
-      achieved: hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues,
+      achieved: structuralAchieved,
       detail: scopeBlocked
         ? "Scope policy blocked this dataset before structural reconciliation could clear."
         : hasBlockingIssues
           ? `${blockingCount} blocking mapping or identity issues remain unresolved.`
+          : reconciliation.status === "failed"
+            ? `Structural residual thresholds did not clear. ${reconciliation.summary}`
+            : reconciliation.status === "degraded"
+              ? `Structural residual thresholds cleared without critical breaches, but warning-level residuals remain. ${reconciliation.summary}`
           : hasRecastData
-            ? "Recast statements exist and no blocking structural issues remain."
+            ? `Recast statements exist and structural residual checks cleared. ${reconciliation.summary}`
             : "No recast statements were produced yet.",
     },
     {
       level: "economically-plausible",
       label: "Economically plausible",
-      achieved: hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues && !valuationBlocked,
+      achieved: structuralAchieved && !valuationBlocked,
       detail: valuationBlocked
         ? "Valuation-critical issues still block the run, so economic plausibility is not established."
-        : hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues
+        : structuralAchieved
           ? "The run cleared structural blockers and no valuation-critical issues remain."
           : "Economic plausibility cannot be asserted until structural reconciliation clears.",
     },
     {
       level: "valuation-eligible",
       label: "Valuation eligible",
-      achieved: hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues && !valuationBlocked && valuationStatus !== "guarded" && valuationStatus !== "unknown",
+      achieved: structuralAchieved && !valuationBlocked && valuationStatus !== "guarded" && valuationStatus !== "unknown",
       detail: valuationStatus === "guarded"
         ? "Valuation still depends on a guarded fallback anchor."
         : valuationStatus === "warning" || valuationStatus === "production-ready"
@@ -206,7 +221,7 @@ export function buildAnalysisTraceability(params: {
       runId: params.runId ?? null,
       companyId: params.companyId ?? null,
       sourceMode: params.sourceMode ?? null,
-      periodCount: params.periodCount ?? 0,
+      periodCount: rawPeriodCount,
       latestPeriod: params.latestPeriod ?? null,
     },
     policyVersions,
@@ -226,6 +241,7 @@ export function buildAnalysisTraceability(params: {
       optionalCount: analysisStatus?.optionalCount ?? optionalCount,
     },
     parserFidelity,
+    reconciliation,
     rigor: {
       currentLevel: currentCheckpoint.level,
       currentLabel: currentCheckpoint.label,
@@ -261,12 +277,12 @@ export function buildAnalysisTraceability(params: {
       runInspectorEnabled: params.runInspectorEnabled ?? null,
     },
     analysisContext: {
-      rawPeriodCount: params.periodCount ?? 0,
-      recastPeriodCount: params.recastPeriodCount ?? 0,
+      rawPeriodCount,
+      recastPeriodCount,
       hasRecastData,
-      hasDebugInfo: Boolean(params.hasDebugInfo),
-      debugFiles: params.debugFiles ?? 0,
-      rawMetricKeyCount: params.rawMetricKeyCount ?? 0,
+      hasDebugInfo: params.hasDebugInfo ?? Boolean(params.debugInfo),
+      debugFiles: params.debugFiles ?? params.debugInfo?.files?.length ?? 0,
+      rawMetricKeyCount: params.rawMetricKeyCount ?? params.debugInfo?.rawMetricKeys?.length ?? 0,
       engineError: params.engineError ?? null,
     },
     backlogPreview,
