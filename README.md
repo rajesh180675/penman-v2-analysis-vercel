@@ -51,6 +51,7 @@ Current focus now implemented:
 - the V3 analytics tab now carries that same trust gate before dirty-surplus, anchor, sensitivity, and confidence interpretation, so this interpretation-heavy surface no longer drifts from the shared parser/reconciliation/rigor envelope
 - non-Capitaline parser fidelity now consumes source-native parser diagnostics from Screener, JSON, manual, and XBRL ingestion instead of relying only on post-parse density heuristics
 - JSON ingestion now fails loud on invalid metric value types instead of silently accepting non-numeric payload contamination
+- XBRL parser diagnostics now have focused automated coverage in Vitest by mocking the minimal `DOMParser` surface the parser consumes, so the XBRL path is no longer an unvalidated exception inside the non-Capitaline parser-fidelity contract
 
 ## How To Iterate
 
@@ -72,11 +73,12 @@ Baseline validation for any rigor change:
 Validated in this iteration:
 
 - `npm run typecheck`
-- `npm test` (`37` files, `113` tests)
+- `npm test` (`38` files, `116` tests)
 - `npm run build`
 - `npm test -- src/engine/__tests__/reconciliationResiduals.spec.ts`
 - `npm test -- src/components/__tests__/V3AnalyticsPanel.spec.tsx`
 - `npm test -- src/engine/__tests__/parserFidelity.spec.ts`
+- `npm test -- src/engine/__tests__/xbrlParser.spec.ts`
 
 Still not validated in this iteration:
 
@@ -109,10 +111,11 @@ Still not validated in this iteration:
 - surfaced the same traceability trust gate in the V3 analytics tab so dirty-surplus, terminal-anchor, sensitivity, and confidence sections do not drift from the shared envelope
 - added source-native parser diagnostics for Screener, JSON, manual, and XBRL ingestion and wired them into parser fidelity scoring
 - tightened JSON ingestion so invalid non-numeric metric values fail during parse instead of entering the analytical object
+- added a focused `src/engine/__tests__/xbrlParser.spec.ts` suite that validates clean XBRL diagnostics, degraded XBRL diagnostics, and parser-error fail-loud behavior without requiring a browser test runtime
 - re-ran typecheck, full tests, and build
 
 ## Next Good Problems
 
-- add focused automated coverage for XBRL parser diagnostics; the implementation exists, but the current Vitest/node environment lacks `DOMParser`
 - extend comparison trust persistence beyond local browser storage into shared multi-workspace/server-backed surfaces so peer context survives beyond one browser environment
+- resolve the build-time circular chunk warning between `engine-regression` and `engine-v3-analytics` so validation no longer passes with a known bundling caveat
 - see the current local-persistence slice in [`docs/comparison-registry-persistence.md`](./docs/comparison-registry-persistence.md)
