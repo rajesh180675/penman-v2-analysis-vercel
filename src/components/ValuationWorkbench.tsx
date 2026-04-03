@@ -81,7 +81,17 @@ export default function ValuationWorkbench({ analysisStatus, latestSignal, lates
         <WorkbenchStat label="Stress CAGR" value={pct(latestValuation?.expectedCagrStress ?? latestSignal?.expectedCagrStress)} />
         <WorkbenchStat label="Stress upside" value={pct(latestValuation?.stressUpsidePct)} />
         <WorkbenchStat label="Opportunity score" value={latestValuation?.opportunityScore != null ? `${latestValuation.opportunityScore.toFixed(0)}/100` : "—"} />
+        <WorkbenchStat label="Market freshness" value={latestValuation?.marketFreshness ?? latestSignal?.marketFreshness ?? "—"} />
+        <WorkbenchStat label="Anchor period" value={latestValuation?.valuationAnchorPeriod?.slice(0, 10) ?? latestSignal?.valuationAnchorPeriod?.slice(0, 10) ?? "—"} />
+        <WorkbenchStat label="Live price as-of" value={latestValuation?.livePriceAsOf ? new Date(latestValuation.livePriceAsOf).toLocaleDateString("en-IN") : "—"} />
+        <WorkbenchStat label="Reported period" value={latestValuation?.latestReportedPeriod?.slice(0, 10) ?? "—"} />
       </div>
+      {latestValuation?.marketSourceSummary && (
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Market overlay provenance</div>
+          <div className="mt-1">{latestValuation.marketSourceSummary}</div>
+        </div>
+      )}
     </div>
   );
 }

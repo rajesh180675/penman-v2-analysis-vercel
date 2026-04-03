@@ -26,6 +26,12 @@ export default function AssumptionManifestPanel({ valuation }: Props) {
           <ManifestStat label="Quality score" value={valuation.qualityScore != null ? `${valuation.qualityScore.toFixed(0)}/100` : "—"} />
           <ManifestStat label="Sizing bucket" value={valuation.convictionBucket ?? "—"} />
           <ManifestStat label="Sector template" value={valuation.sectorTemplate ?? "—"} />
+          <ManifestStat label="Market freshness" value={valuation.marketFreshness ?? "—"} />
+          <ManifestStat label="Anchor period" value={valuation.valuationAnchorPeriod?.slice(0, 10) ?? "—"} />
+          <ManifestStat label="Latest reported" value={valuation.latestReportedPeriod?.slice(0, 10) ?? "—"} />
+          <ManifestStat label="Live price as-of" value={valuation.livePriceAsOf?.slice(0, 10) ?? "—"} />
+          <ManifestStat label="Live rate as-of" value={valuation.liveRateAsOf?.slice(0, 10) ?? "—"} />
+          <ManifestStat label="Market source" value={valuation.marketSourceSummary ?? "—"} />
           <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Stored thesis</div>
             <div className="mt-1 text-slate-800">{valuation.thesis || "No persisted thesis commentary yet."}</div>

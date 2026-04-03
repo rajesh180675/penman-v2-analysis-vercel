@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildValuationCommandCenter } from "../valuationCommandCenter";
-import { DEFAULT_CONFIG, RecastPeriod } from "../types";
+import { DEFAULT_CONFIG, RecastPeriod, Severity } from "../types";
 import { AnalysisStatusSummary } from "../analysisStatus";
 
 function buildHistorySeries(startDate: string, startPrice: number, count: number) {
@@ -460,5 +460,148 @@ describe("valuation command center", () => {
     expect(out.backtest.points.length).toBeGreaterThan(0);
     expect(out.checklist.whatMustGoRight.length).toBeGreaterThan(0);
     expect(out.marketContext.expectedReturnSpreadVsRf).not.toBeNull();
+  });
+
+  it("caps the signal and exposes provenance when market data is fallback-only", () => {
+    const data = [
+      mkPeriod(2023, 1000, 180, 130, 520, 760),
+      mkPeriod(2024, 1100, 205, 150, 590, 820),
+      mkPeriod(2025, 1210, 232, 172, 665, 885),
+    ];
+    const out = buildValuationCommandCenter({
+      data,
+      config: {
+        ...DEFAULT_CONFIG,
+        shares_outstanding: 620,
+        market_price: 0.8,
+      },
+      marketData: {
+        symbol: "ASIANPAINT.BSE",
+        provider: "Manual",
+        fetchedAt: "2026-03-30T16:00:00.000Z",
+        price: 0.8,
+        previousClose: null,
+        changePct: null,
+        marketCap: null,
+        enterpriseValue: null,
+        sharesOutstanding: null,
+        riskFreeRate: 0.07,
+        priceAsOf: null,
+        rateAsOf: null,
+        freshness: "fallback",
+        sourceSummary: "Manual fallback inputs only",
+        warnings: ["Using fallback market inputs."],
+        history: null,
+      },
+      analysisStatus: productionReadyStatus,
+    });
+
+    expect(["watchlist", "interesting"]).toContain(out.signal.state);
+    expect(out.signal.summary).toContain("fallback");
+    expect(out.marketContext.freshness).toBe("fallback");
+    expect(out.marketContext.sourceSummary).toContain("fallback");
+  });
+
+  it("falls back to the prior clean anchor and guards the signal when the latest period is contaminated", () => {
+    const data = [
+      mkPeriod(2023, 1000, 180, 130, 520, 760),
+      mkPeriod(2024, 1100, 205, 150, 590, 820),
+      {
+        ...mkPeriod(2025, 1210, 232, 172, 665, 885),
+        spec_flags: [
+          {
+            spec_id: "S-5.1",
+            severity: Severity.CRITICAL,
+            label: "STRUCTURAL_EVENT",
+            message: "Dirty surplus event.",
+            affects_terminal: true,
+            period: "2025-03-31",
+          },
+          {
+            spec_id: "S-5.3",
+            severity: Severity.CRITICAL,
+            label: "RNOA_OUTLIER_CRITICAL",
+            message: "RNOA outlier.",
+            affects_terminal: true,
+            period: "2025-03-31",
+          },
+        ],
+      },
+    ];
+    const out = buildValuationCommandCenter({
+      data,
+      config: {
+        ...DEFAULT_CONFIG,
+        shares_outstanding: 620,
+        market_price: 0.8,
+      },
+      marketData: {
+        symbol: "ASIANPAINT.BSE",
+        provider: "Manual",
+        fetchedAt: "2026-03-30T16:00:00.000Z",
+        price: 0.8,
+        previousClose: 0.82,
+        changePct: -0.02,
+        marketCap: null,
+        enterpriseValue: null,
+        sharesOutstanding: null,
+        riskFreeRate: 0.07,
+        priceAsOf: "2026-03-30T15:59:00.000Z",
+        rateAsOf: "2026-03-29",
+        freshness: "live",
+        sourceSummary: "Manual",
+        warnings: [],
+        history: null,
+      },
+      analysisStatus: productionReadyStatus,
+    });
+
+    expect(out.valuationReadiness.fallbackUsed).toBe(true);
+    expect(out.valuationReadiness.anchorPeriod).toBe("2024-03-31");
+    expect(out.marketContext.valuationAnchorPeriod).toBe("2024-03-31");
+    expect(out.signal.state).toBe("guarded");
+    expect(out.signal.summary).toContain("anchor period 2024-03-31");
+  });
+
+  it("keeps conservative scenarios ordered below the base case", () => {
+    const data = [
+      mkPeriod(2023, 1000, 180, 130, 520, 760),
+      mkPeriod(2024, 1100, 205, 150, 590, 820),
+      mkPeriod(2025, 1210, 232, 172, 665, 885),
+    ];
+    const out = buildValuationCommandCenter({
+      data,
+      config: {
+        ...DEFAULT_CONFIG,
+        shares_outstanding: 620,
+        market_price: 0.9,
+      },
+      marketData: {
+        symbol: "ASIANPAINT.BSE",
+        provider: "Manual",
+        fetchedAt: "2026-03-30T16:00:00.000Z",
+        price: 0.9,
+        previousClose: 0.92,
+        changePct: -0.02,
+        marketCap: null,
+        enterpriseValue: null,
+        sharesOutstanding: null,
+        riskFreeRate: 0.07,
+        priceAsOf: "2026-03-30T15:59:00.000Z",
+        rateAsOf: "2026-03-29",
+        freshness: "live",
+        sourceSummary: "Manual",
+        warnings: [],
+        history: null,
+      },
+      analysisStatus: productionReadyStatus,
+    });
+
+    const base = out.scenarios.find((scenario) => scenario.key === "base")!;
+    const stress = out.scenarios.find((scenario) => scenario.key === "stress")!;
+    const panic = out.scenarios.find((scenario) => scenario.key === "historical-panic")!;
+
+    expect(stress.intrinsicPerShare).toBeLessThanOrEqual(base.intrinsicPerShare ?? Number.POSITIVE_INFINITY);
+    expect(panic.intrinsicPerShare).toBeLessThanOrEqual(stress.intrinsicPerShare ?? Number.POSITIVE_INFINITY);
   });
 });

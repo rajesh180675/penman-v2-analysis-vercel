@@ -35,11 +35,13 @@ export default function SignalHistoryTimeline({ signals }: Props) {
               <div className="text-xs">{new Date(signal.recordedAt).toLocaleString("en-IN")}</div>
             </div>
             <div className="mt-2 text-sm">{signal.summary}</div>
-            <div className="mt-3 grid gap-2 text-xs md:grid-cols-4">
+            <div className="mt-3 grid gap-2 text-xs md:grid-cols-3 xl:grid-cols-6">
               <div>Confidence: <strong>{signal.confidenceState}</strong></div>
               <div>Stress CAGR: <strong>{pct(signal.expectedCagrStress)}</strong></div>
               <div>Opportunity: <strong>{signal.opportunityScore != null ? `${signal.opportunityScore.toFixed(0)}/100` : "—"}</strong></div>
               <div>Market price: <strong>{signal.marketPrice != null ? `₹${signal.marketPrice.toFixed(2)}` : "—"}</strong></div>
+              <div>Freshness: <strong>{signal.marketFreshness ?? "—"}</strong></div>
+              <div>Anchor: <strong>{signal.valuationAnchorPeriod?.slice(0, 10) ?? "—"}</strong></div>
             </div>
           </div>
         ))}

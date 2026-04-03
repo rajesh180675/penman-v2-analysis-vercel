@@ -91,6 +91,12 @@ export interface WorkspaceValuationSnapshot {
   thesis: string;
   reverseDcfSummary: string;
   marketSymbol: string | null;
+  marketFreshness?: string | null;
+  marketSourceSummary?: string | null;
+  livePriceAsOf?: string | null;
+  liveRateAsOf?: string | null;
+  valuationAnchorPeriod?: string | null;
+  latestReportedPeriod?: string | null;
 }
 
 export interface WorkspaceSignalHistoryEntry {
@@ -105,6 +111,8 @@ export interface WorkspaceSignalHistoryEntry {
   marketPrice: number | null;
   opportunityScore: number | null;
   convictionBucket: string | null;
+  marketFreshness?: string | null;
+  valuationAnchorPeriod?: string | null;
 }
 
 export interface WorkspaceResearchJournalEntry {
@@ -401,6 +409,12 @@ export function rememberWorkspaceValuation(params: {
     thesis: commandCenter.opportunity.thesis,
     reverseDcfSummary: commandCenter.reverseDcf.expectationLabel,
     marketSymbol: marketSymbol ?? null,
+    marketFreshness: commandCenter.marketContext.freshness,
+    marketSourceSummary: commandCenter.marketContext.sourceSummary,
+    livePriceAsOf: commandCenter.marketContext.livePriceAsOf,
+    liveRateAsOf: commandCenter.marketContext.liveRateAsOf,
+    valuationAnchorPeriod: commandCenter.marketContext.valuationAnchorPeriod,
+    latestReportedPeriod: commandCenter.marketContext.latestReportedPeriod,
   };
 
   const signalSnapshot: WorkspaceSignalHistoryEntry = {
@@ -415,6 +429,8 @@ export function rememberWorkspaceValuation(params: {
     marketPrice: commandCenter.marketPrice,
     opportunityScore: commandCenter.signal.opportunityScore,
     convictionBucket: commandCenter.signal.convictionBucket,
+    marketFreshness: commandCenter.marketContext.freshness,
+    valuationAnchorPeriod: commandCenter.marketContext.valuationAnchorPeriod,
   };
 
   const nextValuations = record.valuations.filter((item) => item.id !== valuationSnapshot.id);

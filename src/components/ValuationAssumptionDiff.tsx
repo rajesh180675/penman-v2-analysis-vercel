@@ -26,6 +26,9 @@ export default function ValuationAssumptionDiff({ current, previous }: Props) {
     { label: "Stress upside", current: pct(current.stressUpsidePct), previous: pct(previous.stressUpsidePct) },
     { label: "Required margin of safety", current: pct(current.requiredMarginOfSafetyPct), previous: pct(previous.requiredMarginOfSafetyPct) },
     { label: "Opportunity score", current: current.opportunityScore != null ? `${current.opportunityScore.toFixed(0)}/100` : "—", previous: previous.opportunityScore != null ? `${previous.opportunityScore.toFixed(0)}/100` : "—" },
+    { label: "Market freshness", current: current.marketFreshness ?? "—", previous: previous.marketFreshness ?? "—" },
+    { label: "Anchor period", current: current.valuationAnchorPeriod?.slice(0, 10) ?? "—", previous: previous.valuationAnchorPeriod?.slice(0, 10) ?? "—" },
+    { label: "Latest reported period", current: current.latestReportedPeriod?.slice(0, 10) ?? "—", previous: previous.latestReportedPeriod?.slice(0, 10) ?? "—" },
   ];
 
   return (

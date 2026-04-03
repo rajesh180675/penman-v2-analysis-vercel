@@ -914,24 +914,81 @@ function ValuationCommandCenterHero({
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-5">
-        <HeroMetric label="Current price" value={commandCenter.marketPrice != null ? `₹${commandCenter.marketPrice.toFixed(2)}` : "—"} sublabel={`${liveMarketData?.freshness ?? "fallback"}${marketSymbol ? ` · ${marketSymbol}` : ""}`} />
+        <HeroMetric label="Current price" value={commandCenter.marketPrice != null ? `₹${commandCenter.marketPrice.toFixed(2)}` : "—"} sublabel={`${commandCenter.marketContext.freshness}${marketSymbol ? ` · ${marketSymbol}` : ""}`} />
         <HeroMetric label="Stress value" value={formatPerShare(stress?.intrinsicPerShare)} sublabel={`Upside ${formatPct(stress?.upsidePct)}`} />
         <HeroMetric label="Base value" value={formatPerShare(base?.intrinsicPerShare)} sublabel={`Upside ${formatPct(base?.upsidePct)}`} />
         <HeroMetric label="Expected CAGR (stress)" value={formatPct(commandCenter.opportunity.expectedCagrStress, 1)} sublabel={commandCenter.opportunity.convictionBucket} />
-        <HeroMetric label="Valuation range" value={`${formatPerShare(commandCenter.range.floorPerShare)} to ${formatPerShare(commandCenter.range.ceilingPerShare)}`} sublabel={`As of ${commandCenter.asOf ? new Date(commandCenter.asOf).toLocaleString("en-IN") : "—"}`} />
+        <HeroMetric label="Valuation range" value={`${formatPerShare(commandCenter.range.floorPerShare)} to ${formatPerShare(commandCenter.range.ceilingPerShare)}`} sublabel={`Anchor ${commandCenter.valuationReadiness.anchorPeriod?.slice(0, 10) ?? "—"} · As of ${commandCenter.asOf ? new Date(commandCenter.asOf).toLocaleString("en-IN") : "—"}`} />
       </div>
 
-      {(marketDataError || liveMarketData?.warnings?.length) && (
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Audited accounting anchor</div>
+          <div className="mt-2 text-sm text-slate-800">
+            Latest reported period <strong>{commandCenter.marketContext.latestReportedPeriod?.slice(0, 10) ?? "—"}</strong>
+          </div>
+          <div className="mt-1 text-sm text-slate-800">
+            Valuation anchor <strong>{commandCenter.marketContext.valuationAnchorPeriod?.slice(0, 10) ?? "—"}</strong>
+          </div>
+          <div className="mt-2 text-xs text-slate-500">{commandCenter.valuationReadiness.reasons[0] ?? "Latest reported period is usable as the valuation anchor."}</div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Live market overlay</div>
+          <div className="mt-2 text-sm text-slate-800">{commandCenter.marketContext.sourceSummary}</div>
+          <div className="mt-2 text-xs text-slate-500">
+            Price as-of {commandCenter.marketContext.livePriceAsOf ? new Date(commandCenter.marketContext.livePriceAsOf).toLocaleString("en-IN") : "—"}
+            {" · "}
+            Rate as-of {commandCenter.marketContext.liveRateAsOf ? new Date(commandCenter.marketContext.liveRateAsOf).toLocaleDateString("en-IN") : "—"}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Trust posture</div>
+          <div className="mt-2 text-sm text-slate-800">Confidence <strong>{commandCenter.signal.confidenceState}</strong></div>
+          <div className="mt-1 text-sm text-slate-800">Warnings <strong>{commandCenter.marketContext.warningCount}</strong></div>
+          <div className="mt-2 text-xs text-slate-500">Aggressive signals now require both a clean accounting anchor and sufficiently current market inputs.</div>
+        </div>
+      </div>
+
+      {liveMarketData?.warnings?.length ? (
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <div className="font-semibold">Live market overlay warnings</div>
-          {marketDataError && <div className="mt-1">{marketDataError}</div>}
-          {liveMarketData?.warnings?.length ? (
-            <ul className="mt-2 space-y-1">
-              {liveMarketData.warnings.map((item) => <li key={item}>• {item}</li>)}
-            </ul>
-          ) : null}
+          <div className="font-semibold">Provider warnings</div>
+          <ul className="mt-2 space-y-1">
+            {liveMarketData.warnings.map((item) => <li key={item}>• {item}</li>)}
+          </ul>
+        </div>
+      ) : null}
+
+      {commandCenter.valuationReadiness.status !== "production-ready" && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="font-semibold">Guarded accounting anchor</div>
+          <div className="mt-1">{commandCenter.valuationReadiness.reasons[0]}</div>
         </div>
       )}
+
+      {marketDataError && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="font-semibold">Live market overlay warning</div>
+          <div className="mt-1">{marketDataError}</div>
+        </div>
+      )}
+
+      {(commandCenter.marketContext.freshness === "stale" || commandCenter.marketContext.freshness === "fallback" || commandCenter.marketContext.freshness === "missing") && (
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+          Freshness state <strong>{commandCenter.marketContext.freshness}</strong> is now part of signal discipline, so rare or aggressive labels may be capped until the market overlay improves.
+        </div>
+      )}
+
+      {commandCenter.marketContext.warningCount > 0 && !liveMarketData?.warnings?.length && (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          The market overlay includes {commandCenter.marketContext.warningCount} provider warning{commandCenter.marketContext.warningCount === 1 ? "" : "s"}.
+        </div>
+      )}
+
+      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Decision protocol</div>
+        <div className="mt-1">Audited/recast accounting defines the anchor period. Live market data defines the overlay. The signal only escalates when both layers are trustworthy enough together.</div>
+      </div>
+
     </section>
   );
 }

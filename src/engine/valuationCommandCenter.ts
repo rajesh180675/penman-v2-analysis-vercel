@@ -1,9 +1,10 @@
 import { computeValuation, deriveKwFromStructure } from "./PenmanNissimEngine";
-import { LiveMarketDataSnapshot, MarketHistoryPoint, summarizeHistoricalPrices } from "./marketData";
+import { LiveMarketDataFreshness, LiveMarketDataSnapshot, MarketHistoryPoint, summarizeHistoricalPrices } from "./marketData";
 import { buildScenario, buildValuationPeriodsFromForecast } from "./forecastingEngine";
 import { AnalysisStatusSummary } from "./analysisStatus";
 import { NP_BENCHMARKS, RecastPeriod, EngineConfig, ForecastScenario, ValuationResult, ke_from_config } from "./types";
 import { resolveShareBasis } from "./shareCountTools";
+import { ValuationReadiness, resolveValuationReadiness } from "./valuationPolicy";
 import { resolveValuationSectorTemplate } from "./valuationSectorTemplates";
 
 export type ValuationSignalState =
@@ -45,6 +46,7 @@ export interface DcfCashFlowDiagnostics {
   incrementalRoic: number | null;
   cashConversionRatio: number | null;
   maintenanceCapexShareOfCapex: number | null;
+  maintenanceCapexShareAssumption: number;
 }
 
 export interface ReverseDcfDiagnostics {
@@ -78,6 +80,13 @@ export interface ValuationMarketContext {
   marketCapFromPrice: number | null;
   enterpriseValueFromPrice: number | null;
   priceToStressValueRatio: number | null;
+  freshness: LiveMarketDataFreshness;
+  sourceSummary: string;
+  livePriceAsOf: string | null;
+  liveRateAsOf: string | null;
+  warningCount: number;
+  valuationAnchorPeriod: string | null;
+  latestReportedPeriod: string | null;
 }
 
 export interface ValuationBacktestPoint {
@@ -127,6 +136,7 @@ export interface ValuationSignal {
 
 export interface ValuationCommandCenterOutput {
   shareBasis: ReturnType<typeof resolveShareBasis>;
+  valuationReadiness: ValuationReadiness;
   marketPrice: number | null;
   riskFreeRate: number;
   asOf: string | null;
@@ -216,7 +226,16 @@ function computeCashFlowDiagnostics(latest: RecastPeriod, prev: RecastPeriod | n
   const cfo = latest.cf.CFO ?? 0;
   const depreciation = latest.is.operatingCostBridge?.depreciation ?? 0;
   const capex = Math.abs(latest.cf.Capex ?? 0);
-  const maintenanceCapex = Math.min(capex, Math.max(depreciation * maintenanceDepFloor, capex * maintenanceCapexShare));
+  const salesGrowth = latest.ratios?.Sales_growth ?? 0;
+  const cashConversionRatio = latest.ratios?.cash_conversion_ratio ?? null;
+  const normalizedMaintenanceShare = clamp(
+    maintenanceCapexShare
+      + (cashConversionRatio != null && cashConversionRatio < 0.75 ? 0.08 : 0)
+      + (salesGrowth > 0.12 ? -0.04 : salesGrowth < 0.03 ? 0.04 : 0),
+    0.45,
+    0.92,
+  );
+  const maintenanceCapex = Math.min(capex, Math.max(depreciation * maintenanceDepFloor, capex * normalizedMaintenanceShare));
   const growthCapex = Math.max(capex - maintenanceCapex, 0);
   const ownerEarningsTotal = cfo - maintenanceCapex;
   const ownerEarningsPerShare = shares && shares > 0 ? ownerEarningsTotal / shares : null;
@@ -243,8 +262,9 @@ function computeCashFlowDiagnostics(latest: RecastPeriod, prev: RecastPeriod | n
     totalReinvestment,
     reinvestmentRate,
     incrementalRoic,
-    cashConversionRatio: latest.ratios?.cash_conversion_ratio ?? null,
+    cashConversionRatio,
     maintenanceCapexShareOfCapex,
+    maintenanceCapexShareAssumption: normalizedMaintenanceShare,
   };
 }
 
@@ -339,6 +359,31 @@ type CoreBuildContext = {
 };
 
 type CoreBuildResult = Omit<ValuationCommandCenterOutput, "backtest">;
+
+function normalizeHistoricalSeries(points: MarketHistoryPoint[] | null | undefined) {
+  if (!points?.length) return [];
+  return [...points].sort((left, right) => right.date.localeCompare(left.date));
+}
+
+function scoreFreshness(freshness: LiveMarketDataFreshness | null | undefined) {
+  if (freshness === "live") return 1;
+  if (freshness === "stale") return 0.6;
+  if (freshness === "fallback") return 0.35;
+  return 0;
+}
+
+function scenarioOrderingPenalty(args: {
+  stress: ValuationScenarioCard | null;
+  base: ValuationScenarioCard | null;
+  panic: ValuationScenarioCard | null;
+}) {
+  const { stress, base, panic } = args;
+  let penalty = 0;
+  if ((stress?.intrinsicPerShare ?? Number.POSITIVE_INFINITY) > (base?.intrinsicPerShare ?? Number.POSITIVE_INFINITY)) penalty += 10;
+  if ((panic?.intrinsicPerShare ?? Number.POSITIVE_INFINITY) > (stress?.intrinsicPerShare ?? Number.POSITIVE_INFINITY)) penalty += 8;
+  if ((stress?.expectedCagr ?? Number.POSITIVE_INFINITY) > (base?.expectedCagr ?? Number.POSITIVE_INFINITY)) penalty += 5;
+  return penalty;
+}
 
 function emptyBacktest(reason: string): ValuationBacktestSummary {
   return {
@@ -436,13 +481,21 @@ function buildChecklist(args: {
 function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   const { data, config, marketData, analysisStatus } = context;
   const shareBasis = resolveShareBasis(data, config);
+  const valuationReadiness = resolveValuationReadiness(data);
+  const valuationData = data.slice(0, Math.max(2, valuationReadiness.anchorIndex + 1));
+  const latest = valuationData[valuationData.length - 1];
+  const prev = valuationData.length >= 2 ? valuationData[valuationData.length - 2] : null;
+  const latestReported = data[data.length - 1];
   const shares = shareBasis.shares ?? null;
   const marketPrice = marketData?.price ?? config.market_price ?? null;
   const riskFreeRate = marketData?.riskFreeRate ?? config.risk_free_rate;
-  const latest = data[data.length - 1];
-  const prev = data.length >= 2 ? data[data.length - 2] : null;
   const latestRatios = latest.ratios ?? null;
-  const { template: sectorTemplate, source: sectorTemplateSource } = resolveValuationSectorTemplate(data, config.sector_template);
+  const marketFreshness = marketData?.freshness ?? (marketPrice != null || marketData?.riskFreeRate != null ? "fallback" : "missing");
+  const freshnessScore = scoreFreshness(marketFreshness);
+  const marketWarnings = marketData?.warnings ?? [];
+  const orderedHistory = normalizeHistoricalSeries(marketData?.history?.points);
+  const historySummary = orderedHistory.length ? summarizeHistoricalPrices(orderedHistory, marketPrice) : marketData?.history ?? null;
+  const { template: sectorTemplate, source: sectorTemplateSource } = resolveValuationSectorTemplate(valuationData, config.sector_template);
   const horizon = 5;
 
   const diagnostics = computeCashFlowDiagnostics(
@@ -459,14 +512,16 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
       + (sectorTemplate.cyclical ? 0.04 : 0)
       + (qualityScore < 55 ? 0.1 : qualityScore < 70 ? 0.05 : qualityScore > 85 ? -0.03 : 0)
       + (confidenceState === "guarded" ? 0.04 : 0)
-      + (confidenceState === "blocked" ? 0.1 : 0),
+      + (confidenceState === "blocked" ? 0.1 : 0)
+      + (valuationReadiness.status !== "production-ready" ? 0.04 : 0)
+      + (marketFreshness === "stale" ? 0.03 : marketFreshness === "fallback" ? 0.05 : marketFreshness === "missing" ? 0.08 : 0),
     0.18,
-    0.55,
+    0.6,
   );
 
   const keBase = config.ke > 0 ? config.ke : ke_from_config({ ...config, risk_free_rate: riskFreeRate });
-  const kwBase = data.length >= 2
-    ? deriveKwFromStructure(data[data.length - 1], data[data.length - 2], keBase, riskFreeRate, config)
+  const kwBase = valuationData.length >= 2
+    ? deriveKwFromStructure(valuationData[valuationData.length - 1], valuationData[valuationData.length - 2], keBase, riskFreeRate, config)
     : riskFreeRate;
   const baseSalesGrowth = latestRatios?.Sales_growth ?? config.np_SalesGrowth_median ?? NP_BENCHMARKS.Sales_growth.median;
   const basePm = latestRatios?.CoreSalesPM ?? latestRatios?.PM ?? config.np_PM_median ?? NP_BENCHMARKS.PM.median;
@@ -584,9 +639,54 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
 
   const stressCard = scenarios.find((card) => card.key === "stress") ?? null;
   const baseCard = scenarios.find((card) => card.key === "base") ?? null;
+  const panicCard = scenarios.find((card) => card.key === "historical-panic") ?? null;
+  const scenarioPenalty = scenarioOrderingPenalty({ stress: stressCard, base: baseCard, panic: panicCard });
   const stressUpsidePct = stressCard?.upsidePct ?? null;
   const baseUpsidePct = baseCard?.upsidePct ?? null;
-  const historicalPercentile = marketData?.history?.currentPricePercentile ?? null;
+  const historicalPercentile = historySummary?.currentPricePercentile ?? null;
+  const replayCoverageScore = orderedHistory.length >= 260 ? 1 : orderedHistory.length >= 120 ? 0.6 : 0.2;
+  const ownerEarningsResolved = diagnostics.ownerEarningsPerShare != null;
+  const confidencePenalty = (analysisStatus?.status === "guarded" ? 8 : analysisStatus?.status === "blocked" ? 25 : 0)
+    + (valuationReadiness.status !== "production-ready" ? 10 : 0)
+    + (ownerEarningsResolved ? 0 : 10)
+    + (1 - freshnessScore) * 18
+    + scenarioPenalty;
+  const rareSignalSupport = freshnessScore >= 0.6 && replayCoverageScore >= 0.6;
+  const strongSignalSupport = freshnessScore >= 0.35;
+  const confidenceCeilingState: ValuationSignalState =
+    analysisStatus?.status === "blocked"
+      ? "blocked"
+      : analysisStatus?.status === "guarded" || valuationReadiness.status !== "production-ready"
+        ? "guarded"
+        : freshnessScore < 0.35
+          ? "watchlist"
+          : "screaming-buy";
+  const confidenceCeilingRank = confidenceCeilingState === "blocked"
+    ? 0
+    : confidenceCeilingState === "guarded"
+      ? 1
+      : confidenceCeilingState === "watchlist"
+        ? 2
+        : 5;
+  const rankToState = (rank: number): ValuationSignalState => (rank <= 0
+    ? "blocked"
+    : rank === 1
+      ? "guarded"
+      : rank === 2
+        ? "watchlist"
+        : rank === 3
+          ? "interesting"
+          : rank === 4
+            ? "high-conviction"
+            : "screaming-buy");
+  const clampStateRank = (rank: number) => rankToState(Math.min(rank, confidenceCeilingRank));
+  const staleOrFallbackMessage = marketFreshness === "stale"
+    ? "Live market inputs are stale, so aggressive signal states stay capped until refreshed."
+    : marketFreshness === "fallback"
+      ? "Live market inputs are running on fallback values, so the valuation remains research-grade only."
+      : marketFreshness === "missing"
+        ? "Live market inputs are unavailable, so the command center cannot escalate beyond guarded research."
+        : null;
 
   const impliedOwnerEarningsGrowth = solveImpliedGrowthForTarget({
     ownerEarningsPerShare: diagnostics.ownerEarningsPerShare,
@@ -614,9 +714,11 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     (qualityScore * 0.28)
       + ((stressCard?.marginOfSafetyPct != null ? scoreFromRange(stressCard.marginOfSafetyPct, 0, requiredMarginOfSafetyPct + 0.12) : 0) * 28)
       + ((baseCard?.marginOfSafetyPct != null ? scoreFromRange(baseCard.marginOfSafetyPct, 0, requiredMarginOfSafetyPct + 0.18) : 0) * 20)
-      + ((historicalCheapnessScore ?? 40) * 0.12)
-      + ((reverseDcfPessimismScore ?? 35) * 0.12)
-      - (analysisStatus?.status === "guarded" ? 8 : analysisStatus?.status === "blocked" ? 25 : 0),
+      + ((historicalCheapnessScore ?? 40) * 0.08)
+      + ((reverseDcfPessimismScore ?? 35) * 0.08)
+      + (freshnessScore * 10)
+      + (replayCoverageScore * 6)
+      - confidencePenalty,
     0,
     100,
   );
@@ -662,7 +764,31 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     priceToStressValueRatio: marketPrice != null && (stressCard?.intrinsicPerShare ?? null) != null && (stressCard?.intrinsicPerShare ?? 0) > 0
       ? marketPrice / (stressCard?.intrinsicPerShare ?? 1)
       : null,
+    freshness: marketFreshness,
+    sourceSummary: marketData?.sourceSummary ?? "Using manual/config market inputs.",
+    livePriceAsOf: marketData?.priceAsOf ?? null,
+    liveRateAsOf: marketData?.rateAsOf ?? null,
+    warningCount: marketWarnings.length,
+    valuationAnchorPeriod: valuationReadiness.anchorPeriod,
+    latestReportedPeriod: latestReported.period_end,
   };
+
+  const replaySummary = orderedHistory.length >= 260
+    ? "Historical replay has enough price history to help discipline rare-signal labels."
+    : orderedHistory.length >= 120
+      ? "Historical replay is usable but still thin for aggressive-signal calibration."
+      : "Historical replay coverage is thin, so rare-signal calibration remains provisional.";
+
+  const valuationReadinessSummary = valuationReadiness.status === "production-ready"
+    ? `Valuation uses the latest reported anchor period ${valuationReadiness.anchorPeriod ?? latest.period_end}.`
+    : valuationReadiness.fallbackUsed
+      ? `Valuation falls back to anchor period ${valuationReadiness.anchorPeriod ?? latest.period_end} because the latest reported period is not clean enough for full-confidence terminal assumptions.`
+      : valuationReadiness.reasons[0] ?? "Valuation remains guarded because the current anchor is not fully clean.";
+
+  const marketFreshnessSummary = staleOrFallbackMessage
+    ?? (marketWarnings.length
+      ? `Market overlay includes ${marketWarnings.length} provider warning${marketWarnings.length === 1 ? "" : "s"}.`
+      : "Live market overlay is current enough to support signal evaluation.");
 
   const checklist = buildChecklist({
     opportunity,
@@ -673,10 +799,14 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     analysisStatus,
   });
 
+  checklist.whatMustGoRight.unshift(valuationReadinessSummary, marketFreshnessSummary);
+  checklist.thesisBreakers.unshift(replaySummary);
+
   const killSwitches = [
     ...(analysisStatus?.status === "blocked" ? [analysisStatus.summary] : []),
+    ...(valuationReadiness.status !== "production-ready" && confidenceState === "blocked" ? [valuationReadiness.reasons[0] ?? "Valuation anchor is not production-ready."] : []),
     ...(marketPrice == null ? ["Current market price is unavailable."] : []),
-    ...(marketData?.freshness === "missing" ? ["Live market data is unavailable."] : []),
+    ...(marketFreshness === "missing" ? ["Live market data is unavailable."] : []),
     ...(diagnostics.ownerEarningsPerShare == null ? ["Owner earnings per share could not be resolved from current data."] : []),
   ];
 
@@ -694,6 +824,8 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
       ? ["Reverse DCF shows the market is pricing a subdued owner-earnings path."]
       : []),
     ...(qualityScore >= 80 ? ["Accounting quality, balance-sheet resilience, and cash conversion remain strong."] : []),
+    ...(valuationReadiness.fallbackUsed ? [`Valuation is anchored to prior clean period ${valuationReadiness.anchorPeriod ?? "—"}.`] : []),
+    ...(marketFreshness === "live" ? ["Live market overlay is current and timestamped."] : []),
   ];
 
   let state: ValuationSignalState = "watchlist";
@@ -704,26 +836,51 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     summary = killSwitches[0];
   } else if (
     confidenceState === "production-ready"
-    && opportunityScore >= 90
+    && rareSignalSupport
+    && opportunityScore >= 92
     && (stressCard?.marginOfSafetyPct ?? -1) >= requiredMarginOfSafetyPct
     && (baseCard?.marginOfSafetyPct ?? -1) >= requiredMarginOfSafetyPct + 0.12
     && (historicalPercentile ?? 1) <= sectorTemplate.historicalExtremePercentile
+    && (reverseDcf.impliedOwnerEarningsGrowth ?? Infinity) <= sectorTemplate.normalizedGrowth * 0.8
   ) {
-    state = "screaming-buy";
-    summary = "This qualifies as a rare dislocation: even the stressed case clears the hurdle and the market setup is historically extreme.";
+    state = clampStateRank(5);
+    summary = state === "screaming-buy"
+      ? "This qualifies as a rare dislocation: even the stressed case clears the hurdle and the market setup is historically extreme."
+      : valuationReadinessSummary;
   } else if (
-    opportunityScore >= 78
+    strongSignalSupport
+    && opportunityScore >= 80
     && (stressCard?.marginOfSafetyPct ?? -1) >= requiredMarginOfSafetyPct * 0.8
     && (baseCard?.marginOfSafetyPct ?? -1) >= requiredMarginOfSafetyPct
+    && (reverseDcf.impliedOwnerEarningsGrowth ?? Infinity) <= sectorTemplate.normalizedGrowth * 1.05
   ) {
-    state = "high-conviction";
-    summary = "The setup clears the quality-adjusted hurdle in both the base and stress cases with attractive expected returns.";
+    state = clampStateRank(4);
+    summary = state === "high-conviction"
+      ? "The setup clears the quality-adjusted hurdle in both the base and stress cases with attractive expected returns."
+      : marketFreshnessSummary;
   } else if (
     (baseUpsidePct ?? -1) > sectorTemplate.stressBaseUpside
     && (stressUpsidePct ?? -1) > sectorTemplate.stressProtectedUpside
   ) {
-    state = "interesting";
-    summary = "The base case is attractive and the stress case still preserves enough upside to stay actionable.";
+    state = clampStateRank(3);
+    summary = state === "interesting"
+      ? "The base case is attractive and the stress case still preserves enough upside to stay actionable."
+      : replaySummary;
+  }
+
+  if (scenarioPenalty > 0 && state !== "blocked" && state !== "guarded") {
+    state = clampStateRank(Math.max((state === "screaming-buy" ? 5 : state === "high-conviction" ? 4 : state === "interesting" ? 3 : 2) - 1, 2));
+    summary = "Scenario ordering needs review because the conservative cases are not sufficiently below the base case.";
+  }
+
+  if (valuationReadiness.status !== "production-ready" && state !== "blocked") {
+    state = clampStateRank(Math.min(state === "screaming-buy" ? 5 : state === "high-conviction" ? 4 : state === "interesting" ? 3 : 2, 1));
+    summary = valuationReadinessSummary;
+  }
+
+  if (staleOrFallbackMessage && state !== "blocked" && state !== "guarded") {
+    state = clampStateRank(Math.min(state === "screaming-buy" ? 5 : state === "high-conviction" ? 4 : state === "interesting" ? 3 : 2, marketFreshness === "stale" ? 3 : 2));
+    summary = staleOrFallbackMessage;
   }
 
   const intrinsicValues = scenarios
@@ -732,6 +889,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
 
   return {
     shareBasis,
+    valuationReadiness,
     marketPrice,
     riskFreeRate,
     asOf: marketData?.priceAsOf ?? marketData?.fetchedAt ?? null,
@@ -780,6 +938,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
       ceilingPerShare: intrinsicValues.length ? Math.max(...intrinsicValues) : null,
     },
   };
+
 }
 
 function buildBacktest(context: CoreBuildContext): ValuationBacktestSummary {
