@@ -472,7 +472,7 @@ export function App() {
               />
             )}
             {activeTab==="statements" && hasRecast && <RecastStatements data={recastData!}/>}
-            {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!}/>}
+            {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!} traceability={traceability} />}
             {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig} traceability={traceability} />}
             {activeTab==="valuation"  && hasRecast && !valuationBlocked && (
               <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} />

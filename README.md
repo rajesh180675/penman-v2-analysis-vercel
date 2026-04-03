@@ -39,6 +39,7 @@ Current focus now implemented:
 - the valuation tab now carries the same trust gate into the user-facing surface, showing rigor level, parser fidelity, reconciliation status, and the next unresolved gate instead of relying on the signal card alone
 - the forecast tab now carries that same trust gate before any scenario output, so forward-looking cases inherit the shared parser, reconciliation, and rigor disclosure instead of presenting a separate confidence language
 - the quality tab now carries that same trust gate before any quality-factor scores, so strong-looking scorecards are not read out of context when parser or reconciliation trust is weak
+- the ratios tab now carries that same trust gate before decomposition tables and trend charts, so ratio analysis does not present standalone confidence
 
 ## How To Iterate
 
@@ -60,7 +61,7 @@ Baseline validation for any rigor change:
 Validated in this iteration:
 
 - `npm run typecheck`
-- `npm test` (`29` files, `90` tests)
+- `npm test` (`30` files, `91` tests)
 - `npm run build`
 
 Still not validated in this iteration:
@@ -81,10 +82,11 @@ Still not validated in this iteration:
 - surfaced the same traceability trust gate in the valuation tab so that valuation presentation does not drift from the shared envelope
 - surfaced the same traceability trust gate in the forecast tab so scenario outputs do not drift from the shared envelope
 - surfaced the same traceability trust gate in the quality tab so Piotroski/distress/fraud scorecards do not drift from the shared envelope
+- surfaced the same traceability trust gate in the ratios tab so decomposition and trend analysis do not drift from the shared envelope
 - re-ran typecheck, full tests, and build
 
 ## Next Good Problems
 
 - extend reconciliation thresholds into cash-flow and share-data packs instead of only recast balance-sheet identities
 - make parser fidelity richer for non-Capitaline inputs by capturing source-specific parse diagnostics instead of only post-parse density heuristics
-- feed the same rigor ladder and reconciliation summary into the remaining report surfaces beyond valuation, forecast, and quality so all artifacts agree
+- feed the same rigor ladder and reconciliation summary into the remaining report surfaces beyond valuation, forecast, quality, and ratios so all artifacts agree
