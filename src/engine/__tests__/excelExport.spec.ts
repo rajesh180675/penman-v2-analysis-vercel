@@ -192,10 +192,13 @@ describe("generateValuationWorkbook", () => {
     expect(sheetValueByLabel(wb.Sheets.Cover, "Mapping Spec Version")).toBe(getAnalysisPolicyVersions().mappingSpecVersion);
     expect(sheetValueByLabel(wb.Sheets.Cover, "Scope Policy Version")).toBe(getAnalysisPolicyVersions().scopePolicyVersion);
     expect(sheetValueByLabel(wb.Sheets.Cover, "Traceability Schema")).toBe(getAnalysisPolicyVersions().traceabilitySchemaVersion);
+    expect(sheetValueByLabel(wb.Sheets.Cover, "Rigor Level")).toBe("Syntactically valid");
     expect(sheetValueByLabel(wb.Sheets.Valuation, "Audit Run ID")).toBe("run-123");
     expect(sheetValueByLabel(wb.Sheets.Valuation, "Valuation Status")).toBe("guarded");
     expect(sheetValueByLabel(wb.Sheets.Valuation, "Anchor Period")).toBe("2024-03-31");
     expect(sheetValueByLabel(wb.Sheets.Traceability, "Run ID")).toBe("run-123");
     expect(sheetValueByLabel(wb.Sheets.Traceability, "Schema Version")).toBe(getAnalysisPolicyVersions().traceabilitySchemaVersion);
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Rigor Level")).toBe("Syntactically valid");
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Achieved Levels")).toBe("syntactically-valid");
   });
 });

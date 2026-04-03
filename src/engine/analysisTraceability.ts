@@ -12,6 +12,20 @@ export interface TraceabilityBacklogPreview {
   latestValue: number | null;
 }
 
+export type AnalysisRigorLevel =
+  | "syntactically-valid"
+  | "structurally-reconciled"
+  | "economically-plausible"
+  | "valuation-eligible"
+  | "production-ready";
+
+export interface AnalysisRigorCheckpoint {
+  level: AnalysisRigorLevel;
+  label: string;
+  achieved: boolean;
+  detail: string;
+}
+
 export interface AnalysisTraceabilityEnvelope {
   schemaVersion: string;
   generatedAt: string | null;
@@ -37,6 +51,14 @@ export interface AnalysisTraceabilityEnvelope {
     blockingCount: number;
     diagnosticCount: number;
     optionalCount: number;
+  };
+  rigor: {
+    currentLevel: AnalysisRigorLevel;
+    currentLabel: string;
+    summary: string;
+    achievedLevels: AnalysisRigorLevel[];
+    pendingLevels: AnalysisRigorLevel[];
+    checkpoints: AnalysisRigorCheckpoint[];
   };
   mappingCoverage: {
     unresolvedBySeverity: Record<"critical" | "warning" | "info", number>;
@@ -99,6 +121,68 @@ export function buildAnalysisTraceability(params: {
       periodsObserved: entry.periodsObserved,
       latestValue: entry.latestValue,
     }));
+  const hasRawData = (params.periodCount ?? 0) > 0;
+  const hasRecastData = (params.recastPeriodCount ?? 0) > 0;
+  const hasEngineError = Boolean(params.engineError);
+  const hasBlockingIssues = blockingCount > 0;
+  const valuationBlocked = Boolean(qualityGate?.valuationBlocked);
+  const scopeBlocked = Boolean(qualityGate?.scopeAssessment?.blocked);
+  const valuationStatus = analysisStatus?.valuationStatus ?? "unknown";
+  const checkpoints: AnalysisRigorCheckpoint[] = [
+    {
+      level: "syntactically-valid",
+      label: "Syntactically valid",
+      achieved: hasRawData && !hasEngineError,
+      detail: hasRawData
+        ? hasEngineError
+          ? "Raw periods exist, but the engine still raised an execution error."
+          : "Raw periods were captured and no engine error was recorded."
+        : "No raw periods were persisted for this run.",
+    },
+    {
+      level: "structurally-reconciled",
+      label: "Structurally reconciled",
+      achieved: hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues,
+      detail: scopeBlocked
+        ? "Scope policy blocked this dataset before structural reconciliation could clear."
+        : hasBlockingIssues
+          ? `${blockingCount} blocking mapping or identity issues remain unresolved.`
+          : hasRecastData
+            ? "Recast statements exist and no blocking structural issues remain."
+            : "No recast statements were produced yet.",
+    },
+    {
+      level: "economically-plausible",
+      label: "Economically plausible",
+      achieved: hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues && !valuationBlocked,
+      detail: valuationBlocked
+        ? "Valuation-critical issues still block the run, so economic plausibility is not established."
+        : hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues
+          ? "The run cleared structural blockers and no valuation-critical issues remain."
+          : "Economic plausibility cannot be asserted until structural reconciliation clears.",
+    },
+    {
+      level: "valuation-eligible",
+      label: "Valuation eligible",
+      achieved: hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues && !valuationBlocked && valuationStatus !== "guarded" && valuationStatus !== "unknown",
+      detail: valuationStatus === "guarded"
+        ? "Valuation still depends on a guarded fallback anchor."
+        : valuationStatus === "warning" || valuationStatus === "production-ready"
+          ? `Valuation status is ${valuationStatus}, so the run remains eligible for valuation use.`
+          : "Valuation readiness has not been established yet.",
+    },
+    {
+      level: "production-ready",
+      label: "Production-ready",
+      achieved: analysisStatus?.status === "production-ready",
+      detail: analysisStatus?.status === "production-ready"
+        ? "All currently wired release checks passed."
+        : analysisStatus?.headline ?? "Production-ready status was not reached.",
+    },
+  ];
+  const achievedLevels = checkpoints.filter((checkpoint) => checkpoint.achieved).map((checkpoint) => checkpoint.level);
+  const pendingLevels = checkpoints.filter((checkpoint) => !checkpoint.achieved).map((checkpoint) => checkpoint.level);
+  const currentCheckpoint = [...checkpoints].reverse().find((checkpoint) => checkpoint.achieved) ?? checkpoints[0];
 
   return {
     schemaVersion: policyVersions.traceabilitySchemaVersion,
@@ -125,6 +209,14 @@ export function buildAnalysisTraceability(params: {
       blockingCount: analysisStatus?.blockingCount ?? blockingCount,
       diagnosticCount: analysisStatus?.diagnosticCount ?? diagnosticCount,
       optionalCount: analysisStatus?.optionalCount ?? optionalCount,
+    },
+    rigor: {
+      currentLevel: currentCheckpoint.level,
+      currentLabel: currentCheckpoint.label,
+      summary: currentCheckpoint.detail,
+      achievedLevels,
+      pendingLevels,
+      checkpoints,
     },
     mappingCoverage: {
       unresolvedBySeverity: {
@@ -155,7 +247,7 @@ export function buildAnalysisTraceability(params: {
     analysisContext: {
       rawPeriodCount: params.periodCount ?? 0,
       recastPeriodCount: params.recastPeriodCount ?? 0,
-      hasRecastData: (params.recastPeriodCount ?? 0) > 0,
+      hasRecastData,
       hasDebugInfo: Boolean(params.hasDebugInfo),
       debugFiles: params.debugFiles ?? 0,
       rawMetricKeyCount: params.rawMetricKeyCount ?? 0,
