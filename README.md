@@ -20,7 +20,7 @@ Primary references:
 
 ## Current Position
 
-The repo already had broad phase-8 coverage: golden-company fixtures, release gates, workbook traceability, audit snapshots, and valuation-readiness policy. The gap closed in this iteration was that the plan defined explicit rigor levels, but the product only exposed a coarse blocked/guarded/production-ready badge.
+The repo already had broad phase-8 coverage: golden-company fixtures, release gates, workbook traceability, audit snapshots, valuation-readiness policy, and an explicit rigor ladder. The gap closed in this iteration was that `syntactically-valid` still relied on a weak proxy instead of explicit parser fidelity.
 
 Current focus now implemented:
 
@@ -32,6 +32,8 @@ Current focus now implemented:
   - `production-ready`
 - the workbook cover and traceability sheet now export that level
 - the run inspector now shows the achieved and remaining levels explicitly
+- parser fidelity is now a first-class traceability signal with a status, score, and summary
+- `syntactically-valid` now requires parser fidelity to clear a minimum threshold instead of relying only on raw-period presence
 
 ## How To Iterate
 
@@ -64,14 +66,16 @@ Still not validated in this iteration:
 
 ## Last Units Of Work
 
-- added explicit analysis rigor levels to the traceability envelope and bumped the schema version to `2026-04-traceability-v6`
+- added explicit analysis rigor levels to the traceability envelope and later bumped the schema version to `2026-04-traceability-v7`
 - exported rigor level and ladder state into workbook metadata
 - surfaced rigor level and remaining ladder steps in the run inspector
 - extended snapshot/export tests to lock the new contract
-- installed dependencies locally and re-ran typecheck, tests, and build
+- added parser-fidelity scoring to traceability and wired it into the `syntactically-valid` gate
+- surfaced parser-fidelity status/score in workbook and run inspector
+- re-ran typecheck, full tests, and build
 
 ## Next Good Problems
 
-- connect the rigor ladder to parser-fidelity metrics so `syntactically-valid` is not inferred only from raw-period presence
 - tighten `structurally-reconciled` with explicit identity residual thresholds instead of coverage/blocking proxies
+- make parser fidelity richer for non-Capitaline inputs by capturing source-specific parse diagnostics instead of only post-parse density heuristics
 - feed the same rigor ladder into the academic/debug export surfaces so all artifacts agree
