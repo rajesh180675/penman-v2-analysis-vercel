@@ -504,7 +504,15 @@ export function App() {
             )}
             {activeTab==="quality"    && hasRecast && <QualityReport data={recastData!} traceability={traceability} />}
             {activeTab==="comparison" && <ComparisonReport registry={registry} config={config} />}
-            {activeTab==="report"     && hasRecast && <AcademicReport data={recastData!} config={config} rawData={rawData} auditMeta={auditMeta} />}
+            {activeTab==="report"     && hasRecast && (
+              <AcademicReport
+                data={recastData!}
+                config={config}
+                rawData={rawData}
+                auditMeta={auditMeta}
+                traceability={traceability}
+              />
+            )}
             {activeTab==="regression" && hasRecast && (
               <RegressionReport
                 rawData={rawData}
