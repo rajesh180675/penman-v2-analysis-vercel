@@ -67,6 +67,7 @@ This is a real improvement in clarity, but it is still only a partial reconcilia
 - `d_t = FCF - NFE + ΔNFO`
 - `Share Capital ÷ Face Value = End-Period Shares`
 - `Δ Gross Borrowings = Debt Proceeds + Debt Repayment` when traced borrowing lines exist
+- `Δ Cash and Bank = CFO - Capex - Distributions + Equity/Financing/Investment Flows` when traced cash balances and core cash-flow lines exist
 
 Capitaline runs also still have richer parser-fidelity evidence than other modes because they use parse-debug signals such as file presence, header detection, period consistency, and parser noise. Other source modes still rely on lighter post-parse density heuristics rather than rich source-native diagnostics.
 
@@ -83,6 +84,6 @@ Capitaline runs also still have richer parser-fidelity evidence than other modes
 
 ## Follow-On Work
 
-- extend reconciliation thresholds into the remaining ending-cash cash-flow pack
+- extend reconciliation thresholds into the remaining income-statement reconciliation pack
 - deepen parser fidelity for screener, XBRL, manual, and JSON inputs with source-native anomaly counts
 - carry the same ladder and reconciliation summary into other report surfaces beyond valuation, forecast, quality, and ratios so no artifact drifts from traceability

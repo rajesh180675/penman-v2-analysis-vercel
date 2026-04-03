@@ -47,6 +47,16 @@ function readTraceValue(period: RecastPeriod, line: string): number | null {
   return null;
 }
 
+function hasTraceEvidence(period: RecastPeriod | null | undefined, line: string): boolean {
+  const entries = period?.trace?.[line];
+  if (!entries?.length) return false;
+  return entries.some((entry) =>
+    entry.statement !== "Derived"
+    && entry.note !== "unmatched"
+    && !entry.note?.startsWith("duplicate_source_ignored:")
+  );
+}
+
 function buildCheck(params: {
   key: string;
   label: string;
@@ -145,6 +155,49 @@ export function evaluateReconciliationResiduals(params: {
         || (previous ? readTraceValue(previous, "BS.FO.LongBorrow") != null : false)
         || (previous ? readTraceValue(previous, "BS.FO.ShortBorrow") != null : false)
       );
+    const currentCashBank = readTraceValue(period, "BS.FA.CashBank");
+    const previousCashBank = previous ? readTraceValue(previous, "BS.FA.CashBank") : null;
+    const endingCashResidual = currentCashBank != null && previousCashBank != null
+      ? (currentCashBank - previousCashBank) - (
+        period.cf.CFO
+        - period.cf.Capex
+        - period.cf.DividendPaid
+        + period.cf.EquityIssued
+        - period.cf.ShareBuybacks
+        + period.cf.InterestReceived
+        + period.cf.DividendReceived
+        + (period.cf.DebtProceeds ?? 0)
+        + (period.cf.DebtRepayment ?? 0)
+        + (period.cf.SaleFixedAssets ?? 0)
+        + (period.cf.PurchaseInvestments ?? 0)
+        + (period.cf.SaleInvestments ?? 0)
+      )
+      : null;
+    const endingCashBasis = currentCashBank != null && previousCashBank != null
+      ? Math.max(
+        Math.abs(currentCashBank - previousCashBank),
+        Math.abs(
+          period.cf.CFO
+          - period.cf.Capex
+          - period.cf.DividendPaid
+          + period.cf.EquityIssued
+          - period.cf.ShareBuybacks
+          + period.cf.InterestReceived
+          + period.cf.DividendReceived
+          + (period.cf.DebtProceeds ?? 0)
+          + (period.cf.DebtRepayment ?? 0)
+          + (period.cf.SaleFixedAssets ?? 0)
+          + (period.cf.PurchaseInvestments ?? 0)
+          + (period.cf.SaleInvestments ?? 0),
+        ),
+        1,
+      )
+      : null;
+    const hasEndingCashInputs = previous != null
+      && hasTraceEvidence(period, "BS.FA.CashBank")
+      && hasTraceEvidence(previous, "BS.FA.CashBank")
+      && hasTraceEvidence(period, "CF.CFO")
+      && hasTraceEvidence(period, "CF.Capex");
 
     return [
       buildCheck({
@@ -189,6 +242,15 @@ export function evaluateReconciliationResiduals(params: {
         periodEnd: period.period_end,
         residual: hasDebtFlowInputs ? debtFlowResidual : null,
         denominator: hasDebtFlowInputs ? debtFlowBasis : null,
+        warningThreshold,
+        criticalThreshold,
+      }),
+      buildOptionalCheck({
+        key: "ending-cash-bridge",
+        label: "Δ Cash and Bank = CFO - Capex - Distributions + Equity/Financing/Investment Flows",
+        periodEnd: period.period_end,
+        residual: hasEndingCashInputs ? endingCashResidual : null,
+        denominator: hasEndingCashInputs ? endingCashBasis : null,
         warningThreshold,
         criticalThreshold,
       }),

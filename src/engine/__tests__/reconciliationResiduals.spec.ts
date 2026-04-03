@@ -101,6 +101,18 @@ function mkPeriod(period_end: string, overrides?: Partial<RecastPeriod>): Recast
       shareCapital: 600,
     },
     trace: {
+      "BS.FA.CashBank": [
+        { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 100, matchType: "exact_base" },
+      ],
+      "CF.CFO": [
+        { statement: "CashFlow", key: "Net Cash from Operating Activities", value: 120, matchType: "exact_base" },
+      ],
+      "CF.Capex": [
+        { statement: "CashFlow", key: "Purchased of Fixed Assets", value: -40, matchType: "exact_base" },
+      ],
+      "CF.DividendPaid": [
+        { statement: "CashFlow", key: "Dividend Paid", value: -20, matchType: "exact_base" },
+      ],
       "BS.FO.LongBorrow": [
         { statement: "BalanceSheet", key: "Long Term Borrowings", value: 100, matchType: "exact_base" },
       ],
@@ -114,28 +126,47 @@ function mkPeriod(period_end: string, overrides?: Partial<RecastPeriod>): Recast
 
 describe("evaluateReconciliationResiduals", () => {
   it("includes cash-distribution and share-capital tie-out checks when data is available", () => {
+    const current = mkPeriod("2025-03-31", {
+      trace: {
+        ...mkPeriod("2025-03-31").trace,
+        "BS.FA.CashBank": [
+          { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 160, matchType: "exact_base" },
+        ],
+      },
+    });
     const summary = evaluateReconciliationResiduals({
-      recastData: [mkPeriod("2024-03-31"), mkPeriod("2025-03-31")],
+      recastData: [mkPeriod("2024-03-31"), current],
       config: DEFAULT_CONFIG,
     });
 
     expect(summary.status).toBe("confirmed");
     expect(summary.checks.some((check) => check.key === "cash-distribution-bridge")).toBe(true);
     expect(summary.checks.some((check) => check.key === "gross-debt-flow-bridge")).toBe(true);
+    expect(summary.checks.some((check) => check.key === "ending-cash-bridge")).toBe(true);
     expect(summary.checks.some((check) => check.key === "share-capital-face-value")).toBe(true);
   });
 
   it("degrades when the gross-debt-flow bridge breaches the warning threshold", () => {
+    const current = mkPeriod("2025-03-31", {
+      trace: {
+        ...mkPeriod("2025-03-31").trace,
+        "BS.FA.CashBank": [
+          { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 260.6, matchType: "exact_base" },
+        ],
+      },
+    });
     const summary = evaluateReconciliationResiduals({
       recastData: [
         mkPeriod("2024-03-31"),
-        mkPeriod("2025-03-31", {
+        {
+          ...current,
           cf: {
-            ...mkPeriod("2025-03-31").cf,
+            ...current.cf,
             DebtProceeds: 100,
             DebtRepayment: 0,
           },
           trace: {
+            ...current.trace,
             "BS.FO.LongBorrow": [
               { statement: "BalanceSheet", key: "Long Term Borrowings", value: 200.6, matchType: "exact_base" },
             ],
@@ -143,7 +174,7 @@ describe("evaluateReconciliationResiduals", () => {
               { statement: "BalanceSheet", key: "Short Term Borrowings", value: 50, matchType: "exact_base" },
             ],
           },
-        }),
+        },
       ],
       config: DEFAULT_CONFIG,
     });
@@ -154,16 +185,26 @@ describe("evaluateReconciliationResiduals", () => {
   });
 
   it("fails when the gross-debt-flow bridge breaches the critical threshold", () => {
+    const current = mkPeriod("2025-03-31", {
+      trace: {
+        ...mkPeriod("2025-03-31").trace,
+        "BS.FA.CashBank": [
+          { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 190, matchType: "exact_base" },
+        ],
+      },
+    });
     const summary = evaluateReconciliationResiduals({
       recastData: [
         mkPeriod("2024-03-31"),
-        mkPeriod("2025-03-31", {
+        {
+          ...current,
           cf: {
-            ...mkPeriod("2025-03-31").cf,
+            ...current.cf,
             DebtProceeds: 30,
             DebtRepayment: 0,
           },
           trace: {
+            ...current.trace,
             "BS.FO.LongBorrow": [
               { statement: "BalanceSheet", key: "Long Term Borrowings", value: 100, matchType: "exact_base" },
             ],
@@ -171,7 +212,7 @@ describe("evaluateReconciliationResiduals", () => {
               { statement: "BalanceSheet", key: "Short Term Borrowings", value: 50, matchType: "exact_base" },
             ],
           },
-        }),
+        },
       ],
       config: DEFAULT_CONFIG,
     });
@@ -186,6 +227,12 @@ describe("evaluateReconciliationResiduals", () => {
       recastData: [
         mkPeriod("2024-03-31"),
         mkPeriod("2025-03-31", {
+          trace: {
+            ...mkPeriod("2025-03-31").trace,
+            "BS.FA.CashBank": [
+              { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 160, matchType: "exact_base" },
+            ],
+          },
           shareCountInput: {
             endPeriodShares: 59,
             endPeriodSharesSource: "Number of Equity Shares - Subscribed Fully Paid up",
@@ -204,6 +251,44 @@ describe("evaluateReconciliationResiduals", () => {
     const shareCheck = summary.checks.find((check) => check.key === "share-capital-face-value" && check.periodEnd === "2025-03-31");
     expect(shareCheck?.status).toBe("degraded");
     expect(summary.status).toBe("degraded");
+  });
+
+  it("degrades when the ending-cash bridge breaches the warning threshold", () => {
+    const current = mkPeriod("2025-03-31", {
+      trace: {
+        ...mkPeriod("2025-03-31").trace,
+        "BS.FA.CashBank": [
+          { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 160.6, matchType: "exact_base" },
+        ],
+      },
+    });
+    const summary = evaluateReconciliationResiduals({
+      recastData: [mkPeriod("2024-03-31"), current],
+      config: DEFAULT_CONFIG,
+    });
+
+    const endingCashCheck = summary.checks.find((check) => check.key === "ending-cash-bridge" && check.periodEnd === "2025-03-31");
+    expect(endingCashCheck?.status).toBe("degraded");
+    expect(summary.status).toBe("degraded");
+  });
+
+  it("fails when the ending-cash bridge breaches the critical threshold", () => {
+    const current = mkPeriod("2025-03-31", {
+      trace: {
+        ...mkPeriod("2025-03-31").trace,
+        "BS.FA.CashBank": [
+          { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 170, matchType: "exact_base" },
+        ],
+      },
+    });
+    const summary = evaluateReconciliationResiduals({
+      recastData: [mkPeriod("2024-03-31"), current],
+      config: DEFAULT_CONFIG,
+    });
+
+    const endingCashCheck = summary.checks.find((check) => check.key === "ending-cash-bridge" && check.periodEnd === "2025-03-31");
+    expect(endingCashCheck?.status).toBe("failed");
+    expect(summary.status).toBe("failed");
   });
 
   it("fails when the cash-distribution bridge breaches the critical threshold", () => {
