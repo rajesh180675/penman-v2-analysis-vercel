@@ -500,7 +500,15 @@ export function App() {
             {activeTab==="quality"    && hasRecast && <QualityReport data={recastData!} traceability={traceability} />}
             {activeTab==="comparison" && <ComparisonReport registry={registry} config={config} />}
             {activeTab==="report"     && hasRecast && <AcademicReport data={recastData!} config={config} rawData={rawData} auditMeta={auditMeta} />}
-            {activeTab==="regression" && hasRecast && <RegressionReport rawData={rawData} recastData={recastData} config={config} registry={registry} />}
+            {activeTab==="regression" && hasRecast && (
+              <RegressionReport
+                rawData={rawData}
+                recastData={recastData}
+                config={config}
+                registry={registry}
+                traceability={traceability}
+              />
+            )}
             {activeTab==="v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config}/>}
             {activeTab==="debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError}/>}
             {(["statements","ratios","forecast","valuation","quality","report","regression","v3analytics"] as TabId[]).includes(activeTab) && !hasRecast && (

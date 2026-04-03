@@ -42,6 +42,7 @@ Current focus now implemented:
 - the forecast tab now carries that same trust gate before any scenario output, so forward-looking cases inherit the shared parser, reconciliation, and rigor disclosure instead of presenting a separate confidence language
 - the quality tab now carries that same trust gate before any quality-factor scores, so strong-looking scorecards are not read out of context when parser or reconciliation trust is weak
 - the ratios tab now carries that same trust gate before decomposition tables and trend charts, so ratio analysis does not present standalone confidence
+- the regression tab now carries that same trust gate before before/after deltas and baseline-harness output, so regression evidence is read in the same trust context as the run it is benchmarking
 
 ## How To Iterate
 
@@ -63,7 +64,7 @@ Baseline validation for any rigor change:
 Validated in this iteration:
 
 - `npm run typecheck`
-- `npm test` (`31` files, `98` tests)
+- `npm test` (`32` files, `99` tests)
 - `npm run build`
 
 Still not validated in this iteration:
@@ -88,10 +89,12 @@ Still not validated in this iteration:
 - surfaced the same traceability trust gate in the forecast tab so scenario outputs do not drift from the shared envelope
 - surfaced the same traceability trust gate in the quality tab so Piotroski/distress/fraud scorecards do not drift from the shared envelope
 - surfaced the same traceability trust gate in the ratios tab so decomposition and trend analysis do not drift from the shared envelope
+- surfaced the same traceability trust gate in the regression tab so before/after harness deltas do not drift from the shared envelope
 - re-ran typecheck, full tests, and build
 
 ## Next Good Problems
 
 - extend reconciliation thresholds further into income-statement bridges so structural reconciliation is not balance-sheet and cash-flow only
 - make parser fidelity richer for non-Capitaline inputs by capturing source-specific parse diagnostics instead of only post-parse density heuristics
-- feed the same rigor ladder and reconciliation summary into the remaining report surfaces beyond valuation, forecast, quality, and ratios so all artifacts agree
+- add per-company traceability state to the multi-company registry so the comparison tab can disclose confidence honestly instead of borrowing single-run context
+- feed the same rigor ladder and reconciliation summary into the remaining report/export surfaces beyond valuation, forecast, quality, ratios, and regression so all artifacts agree
