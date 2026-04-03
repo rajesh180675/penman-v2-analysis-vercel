@@ -52,6 +52,7 @@ Current focus now implemented:
 - non-Capitaline parser fidelity now consumes source-native parser diagnostics from Screener, JSON, manual, and XBRL ingestion instead of relying only on post-parse density heuristics
 - JSON ingestion now fails loud on invalid metric value types instead of silently accepting non-numeric payload contamination
 - XBRL parser diagnostics now have focused automated coverage in Vitest by mocking the minimal `DOMParser` surface the parser consumes, so the XBRL path is no longer an unvalidated exception inside the non-Capitaline parser-fidelity contract
+- the Vite manual chunk plan no longer forces a circular `engine-regression` ↔ `engine-v3-analytics` edge; regression, V3 analytics, and the academic report now ship in one shared `engine-advanced-analytics` chunk so production builds validate without that warning
 
 ## How To Iterate
 
@@ -79,6 +80,7 @@ Validated in this iteration:
 - `npm test -- src/components/__tests__/V3AnalyticsPanel.spec.tsx`
 - `npm test -- src/engine/__tests__/parserFidelity.spec.ts`
 - `npm test -- src/engine/__tests__/xbrlParser.spec.ts`
+- `npm run build` after consolidating the regression/V3/academic chunk mapping, with the prior circular chunk warning removed
 
 Still not validated in this iteration:
 
@@ -112,10 +114,11 @@ Still not validated in this iteration:
 - added source-native parser diagnostics for Screener, JSON, manual, and XBRL ingestion and wired them into parser fidelity scoring
 - tightened JSON ingestion so invalid non-numeric metric values fail during parse instead of entering the analytical object
 - added a focused `src/engine/__tests__/xbrlParser.spec.ts` suite that validates clean XBRL diagnostics, degraded XBRL diagnostics, and parser-error fail-loud behavior without requiring a browser test runtime
+- removed the Vite circular chunk warning by consolidating regression, V3 analytics, and academic-report manual chunking into one `engine-advanced-analytics` bundle
 - re-ran typecheck, full tests, and build
 
 ## Next Good Problems
 
 - extend comparison trust persistence beyond local browser storage into shared multi-workspace/server-backed surfaces so peer context survives beyond one browser environment
-- resolve the build-time circular chunk warning between `engine-regression` and `engine-v3-analytics` so validation no longer passes with a known bundling caveat
+- review whether the larger shared `engine-advanced-analytics` chunk should later be split again through actual dependency extraction instead of manual chunk forcing
 - see the current local-persistence slice in [`docs/comparison-registry-persistence.md`](./docs/comparison-registry-persistence.md)
