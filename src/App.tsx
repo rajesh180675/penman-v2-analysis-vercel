@@ -23,6 +23,8 @@ import {
 import { buildAnalysisSnapshot } from "./lib/auditSnapshot";
 import { listWorkspaceCompanies, rememberWorkspaceAnalysis } from "./lib/researchWorkspace";
 import { syncWorkspaceAnalysis, syncWorkspaceProfile } from "./lib/sharedResearchApi";
+import { buildAnalysisTraceability } from "./engine/analysisTraceability";
+import { getAnalysisPolicyVersions } from "./engine/policyVersions";
 
 const ValuationReport = lazy(() => import("./components/ValuationReport"));
 const ForecastReport = lazy(() => import("./components/ForecastReport"));
@@ -106,6 +108,34 @@ export function App() {
   const analysisStatus = useMemo(
     () => deriveAnalysisStatus(qualityGate, valuationReadiness, mappingAudit),
     [mappingAudit, qualityGate, valuationReadiness],
+  );
+  const policyVersions = useMemo(() => getAnalysisPolicyVersions(), []);
+  const latestPeriod = rawData && rawData.length > 0 ? rawData[rawData.length - 1].period_end : null;
+  const traceability = useMemo(
+    () => buildAnalysisTraceability({
+      runId: auditMeta?.runId ?? null,
+      companyId: rawData?.[0]?.company_id ?? null,
+      sourceMode: auditMeta?.sourceMode ?? null,
+      rawData,
+      recastData,
+      config,
+      periodCount: rawData?.length ?? 0,
+      recastPeriodCount: recastData?.length ?? 0,
+      latestPeriod,
+      qualityGate,
+      mappingAudit,
+      policyVersions,
+      analysisStatus,
+      hasDebugInfo: Boolean(debugInfo),
+      debugFiles: debugInfo?.files?.length ?? 0,
+      rawMetricKeyCount: debugInfo?.rawMetricKeys?.length ?? 0,
+      engineError,
+      debugInfo,
+      contentClass: auditMeta?.contentClass ?? null,
+      retentionDays: auditMeta?.retentionDays ?? null,
+      runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
+    }),
+    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, policyVersions, qualityGate, rawData, recastData],
   );
 
   useEffect(() => {
@@ -445,7 +475,7 @@ export function App() {
             {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!}/>}
             {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig}/>}
             {activeTab==="valuation"  && hasRecast && !valuationBlocked && (
-              <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} />
+              <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} />
             )}
             {activeTab === "valuation" && !hasRecast && scopeBlocked && rawData && rawData.length > 0 && (
               <FinancialInstitutionReport rawData={rawData} config={config} />

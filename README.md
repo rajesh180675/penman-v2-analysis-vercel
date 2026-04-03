@@ -36,6 +36,7 @@ Current focus now implemented:
 - `syntactically-valid` now requires parser fidelity to clear a minimum threshold instead of relying only on raw-period presence
 - reconciliation is now a first-class traceability signal with a status, summary, max residual, and check list
 - `structurally-reconciled` now requires explicit recast identity residuals to stay under critical thresholds instead of relying only on recast presence and blocker counts
+- the valuation tab now carries the same trust gate into the user-facing surface, showing rigor level, parser fidelity, reconciliation status, and the next unresolved gate instead of relying on the signal card alone
 
 ## How To Iterate
 
@@ -57,7 +58,7 @@ Baseline validation for any rigor change:
 Validated in this iteration:
 
 - `npm run typecheck`
-- `npm test` (`27` files, `87` tests)
+- `npm test` (`28` files, `89` tests)
 - `npm run build`
 
 Still not validated in this iteration:
@@ -75,10 +76,11 @@ Still not validated in this iteration:
 - added reconciliation-residual scoring to traceability and wired it into the `structurally-reconciled` gate
 - fixed the ladder so structural failure prevents downstream economic/valuation levels from clearing
 - surfaced reconciliation status and summary in workbook and run inspector
+- surfaced the same traceability trust gate in the valuation tab so that valuation presentation does not drift from the shared envelope
 - re-ran typecheck, full tests, and build
 
 ## Next Good Problems
 
 - extend reconciliation thresholds into cash-flow and share-data packs instead of only recast balance-sheet identities
 - make parser fidelity richer for non-Capitaline inputs by capturing source-specific parse diagnostics instead of only post-parse density heuristics
-- feed the same rigor ladder and reconciliation summary into the remaining export/report surfaces so all artifacts agree
+- feed the same rigor ladder and reconciliation summary into the remaining report surfaces beyond the valuation tab so all artifacts agree
