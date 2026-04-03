@@ -23,6 +23,7 @@ import { rememberWorkspaceValuation } from "../lib/researchWorkspace";
 import { syncWorkspaceAlert, syncWorkspaceValuation } from "../lib/sharedResearchApi";
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
+import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell, LineChart, Line,
 } from "recharts";
@@ -293,30 +294,16 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
       />
 
       {traceabilitySummary && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Valuation Trust Gate</div>
-              <h2 className="mt-1 text-lg font-bold text-slate-900">{traceabilitySummary.headline}</h2>
-              <p className="mt-2 max-w-3xl text-sm text-slate-600">{traceabilitySummary.detail}</p>
-            </div>
-            <SignalPill state={commandCenter.signal.state} label={commandCenter.signal.label} />
-          </div>
-          <div className="mt-5 grid gap-4 md:grid-cols-4">
-            <HeroMetric label="Confidence" value={traceability?.confidence.status ?? "—"} sublabel={traceabilitySummary.confidenceLine} />
-            <HeroMetric label="Rigor level" value={traceability?.rigor.currentLabel ?? "—"} sublabel={traceabilitySummary.nextGateLine} />
-            <HeroMetric label="Parser fidelity" value={traceability?.parserFidelity.status ?? "—"} sublabel={traceabilitySummary.parserLine} />
-            <HeroMetric label="Reconciliation" value={traceability?.reconciliation.status ?? "—"} sublabel={traceabilitySummary.reconciliationLine} />
-          </div>
-          {traceabilitySummary.blockers.length > 0 && (
-            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-              <div className="font-semibold">Why this valuation should be trusted cautiously</div>
-              <ul className="mt-2 space-y-1">
-                {traceabilitySummary.blockers.map((item) => <li key={item}>• {item}</li>)}
-              </ul>
-            </div>
-          )}
-        </section>
+        <TraceabilityTrustPanel
+          title="Valuation Trust Gate"
+          summary={traceabilitySummary}
+          confidenceStatus={traceability?.confidence.status}
+          rigorLabel={traceability?.rigor.currentLabel}
+          parserStatus={traceability?.parserFidelity.status}
+          reconciliationStatus={traceability?.reconciliation.status}
+          cautionHeading="Why this valuation should be trusted cautiously"
+          aside={<SignalPill state={commandCenter.signal.state} label={commandCenter.signal.label} />}
+        />
       )}
 
       <section className="grid gap-4 xl:grid-cols-3">
