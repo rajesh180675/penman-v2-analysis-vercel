@@ -85,7 +85,18 @@ export default function ValuationWorkbench({ analysisStatus, latestSignal, lates
         <WorkbenchStat label="Anchor period" value={latestValuation?.valuationAnchorPeriod?.slice(0, 10) ?? latestSignal?.valuationAnchorPeriod?.slice(0, 10) ?? "—"} />
         <WorkbenchStat label="Live price as-of" value={latestValuation?.livePriceAsOf ? new Date(latestValuation.livePriceAsOf).toLocaleDateString("en-IN") : "—"} />
         <WorkbenchStat label="Reported period" value={latestValuation?.latestReportedPeriod?.slice(0, 10) ?? "—"} />
+        <WorkbenchStat label="Persistence" value={latestValuation?.persistenceScore != null ? `${latestValuation.persistenceScore.toFixed(0)}/100` : "—"} />
+        <WorkbenchStat label="Margin durability" value={latestValuation?.marginDurabilityScore != null ? `${latestValuation.marginDurabilityScore.toFixed(0)}/100` : "—"} />
+        <WorkbenchStat label="WC discipline" value={latestValuation?.workingCapitalDisciplineScore != null ? `${latestValuation.workingCapitalDisciplineScore.toFixed(0)}/100` : "—"} />
       </div>
+      {latestValuation?.businessModelEvidence?.length ? (
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Business-model evidence</div>
+          <ul className="mt-2 space-y-1">
+            {latestValuation.businessModelEvidence.slice(0, 3).map((item) => <li key={item}>• {item}</li>)}
+          </ul>
+        </div>
+      ) : null}
       {latestValuation?.marketSourceSummary && (
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Market overlay provenance</div>

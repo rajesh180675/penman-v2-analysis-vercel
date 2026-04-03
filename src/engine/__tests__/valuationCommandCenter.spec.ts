@@ -604,4 +604,201 @@ describe("valuation command center", () => {
     expect(stress.intrinsicPerShare).toBeLessThanOrEqual(base.intrinsicPerShare ?? Number.POSITIVE_INFINITY);
     expect(panic.intrinsicPerShare).toBeLessThanOrEqual(stress.intrinsicPerShare ?? Number.POSITIVE_INFINITY);
   });
+
+  it("leans on multi-year business evidence instead of a one-period spike", () => {
+    const data = [
+      mkPeriod(2021, 1000, 120, 84, 500, 760),
+      mkPeriod(2022, 1040, 126, 88, 530, 790),
+      mkPeriod(2023, 1080, 132, 93, 560, 820),
+      mkPeriod(2024, 1120, 138, 97, 590, 850),
+      {
+        ...mkPeriod(2025, 1420, 320, 235, 665, 885),
+        ratios: {
+          ...mkPeriod(2025, 1420, 320, 235, 665, 885).ratios!,
+          Sales_growth: 0.27,
+          CoreSalesPM: 320 / 1420,
+          PM: 320 / 1420,
+          cash_conversion_ratio: 0.49,
+          NOA_growth: 0.23,
+          SPREAD: 0.19,
+          FLEV: 0.72,
+        },
+        bs: {
+          ...mkPeriod(2025, 1420, 320, 235, 665, 885).bs,
+          separationScore: 61,
+        },
+        quality: {
+          ...mkPeriod(2025, 1420, 320, 235, 665, 885).quality!,
+          piotroski_total: 5,
+          altman_zprime: 2.2,
+          beneish_mscore: -1.7,
+        },
+      },
+    ];
+
+    const out = buildValuationCommandCenter({
+      data,
+      config: {
+        ...DEFAULT_CONFIG,
+        shares_outstanding: 620,
+        market_price: 0.75,
+      },
+      analysisStatus: productionReadyStatus,
+    });
+
+    const base = out.scenarios.find((scenario) => scenario.key === "base")!;
+
+    expect(out.businessModel.persistenceScore).toBeLessThan(60);
+    expect(out.businessModel.marginDurabilityScore).toBeLessThan(60);
+    expect(base.assumptions.salesGrowthYear1).toBeLessThan(0.2);
+    expect(base.assumptions.corePmYear1).toBeLessThan(0.2);
+    expect(out.businessModel.evidence.some((item) => item.toLowerCase().includes("latest"))).toBe(true);
+  });
+
+  it("caps conviction when persistence is weak even if upside looks large", () => {
+    const stableData = [
+      mkPeriod(2021, 1000, 170, 122, 500, 760),
+      mkPeriod(2022, 1060, 182, 131, 540, 800),
+      mkPeriod(2023, 1120, 195, 141, 585, 840),
+      mkPeriod(2024, 1180, 210, 152, 630, 880),
+      mkPeriod(2025, 1240, 226, 164, 680, 920),
+    ];
+    const weakPersistenceData = [
+      {
+        ...mkPeriod(2021, 1000, 170, 122, 500, 760),
+        ratios: {
+          ...mkPeriod(2021, 1000, 170, 122, 500, 760).ratios!,
+          cash_conversion_ratio: 0.58,
+          SPREAD: 0.06,
+          NOA_growth: 0.15,
+        },
+      },
+      {
+        ...mkPeriod(2022, 1080, 205, 149, 530, 840),
+        ratios: {
+          ...mkPeriod(2022, 1080, 205, 149, 530, 840).ratios!,
+          cash_conversion_ratio: 0.54,
+          SPREAD: 0.07,
+          NOA_growth: 0.18,
+        },
+      },
+      {
+        ...mkPeriod(2023, 1180, 245, 178, 565, 930),
+        ratios: {
+          ...mkPeriod(2023, 1180, 245, 178, 565, 930).ratios!,
+          cash_conversion_ratio: 0.5,
+          SPREAD: 0.08,
+          NOA_growth: 0.2,
+        },
+      },
+      {
+        ...mkPeriod(2024, 1260, 255, 186, 610, 1020),
+        ratios: {
+          ...mkPeriod(2024, 1260, 255, 186, 610, 1020).ratios!,
+          cash_conversion_ratio: 0.47,
+          SPREAD: 0.075,
+          NOA_growth: 0.22,
+        },
+      },
+      {
+        ...mkPeriod(2025, 1350, 280, 205, 660, 1120),
+        ratios: {
+          ...mkPeriod(2025, 1350, 280, 205, 660, 1120).ratios!,
+          Sales_growth: 0.18,
+          CoreSalesPM: 280 / 1350,
+          PM: 280 / 1350,
+          cash_conversion_ratio: 0.45,
+          SPREAD: 0.07,
+          NOA_growth: 0.24,
+          FLEV: 0.78,
+        },
+        bs: {
+          ...mkPeriod(2025, 1350, 280, 205, 660, 1120).bs,
+          separationScore: 60,
+        },
+        quality: {
+          ...mkPeriod(2025, 1350, 280, 205, 660, 1120).quality!,
+          piotroski_total: 4,
+          altman_zprime: 2.1,
+          beneish_mscore: -1.65,
+        },
+      },
+    ];
+
+    const stable = buildValuationCommandCenter({
+      data: stableData,
+      config: {
+        ...DEFAULT_CONFIG,
+        shares_outstanding: 620,
+        market_price: 0.8,
+      },
+      marketData: {
+        symbol: "ASIANPAINT.BSE",
+        provider: "Manual",
+        fetchedAt: "2026-03-30T16:00:00.000Z",
+        price: 0.8,
+        previousClose: 0.82,
+        changePct: -0.02,
+        marketCap: null,
+        enterpriseValue: null,
+        sharesOutstanding: null,
+        riskFreeRate: 0.07,
+        priceAsOf: "2026-03-30T15:59:00.000Z",
+        rateAsOf: "2026-03-29",
+        freshness: "live",
+        sourceSummary: "Manual",
+        warnings: [],
+        history: {
+          points: [],
+          currentPricePercentile: 0.05,
+          low52Week: 0.75,
+          high52Week: 2.1,
+          distanceFrom52WeekLowPct: 0.06,
+          drawdownFrom52WeekHighPct: -0.62,
+        },
+      },
+      analysisStatus: productionReadyStatus,
+    });
+
+    const weak = buildValuationCommandCenter({
+      data: weakPersistenceData,
+      config: {
+        ...DEFAULT_CONFIG,
+        shares_outstanding: 620,
+        market_price: 0.55,
+      },
+      marketData: {
+        symbol: "ASIANPAINT.BSE",
+        provider: "Manual",
+        fetchedAt: "2026-03-30T16:00:00.000Z",
+        price: 0.55,
+        previousClose: 0.57,
+        changePct: -0.03,
+        marketCap: null,
+        enterpriseValue: null,
+        sharesOutstanding: null,
+        riskFreeRate: 0.07,
+        priceAsOf: "2026-03-30T15:59:00.000Z",
+        rateAsOf: "2026-03-29",
+        freshness: "live",
+        sourceSummary: "Manual",
+        warnings: [],
+        history: {
+          points: [],
+          currentPricePercentile: 0.04,
+          low52Week: 0.5,
+          high52Week: 1.9,
+          distanceFrom52WeekLowPct: 0.1,
+          drawdownFrom52WeekHighPct: -0.7,
+        },
+      },
+      analysisStatus: productionReadyStatus,
+    });
+
+    expect(weak.businessModel.persistenceScore).toBeLessThan(stable.businessModel.persistenceScore);
+    expect(weak.opportunity.requiredMarginOfSafetyPct).toBeGreaterThan(stable.opportunity.requiredMarginOfSafetyPct);
+    expect(["research-only", "starter", "accumulate"]).toContain(weak.opportunity.convictionBucket);
+    expect(["watchlist", "interesting", "guarded"]).toContain(weak.signal.state);
+    expect(weak.signal.summary.toLowerCase()).toContain("persistence");
+  });
 });

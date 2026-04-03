@@ -97,6 +97,10 @@ export interface WorkspaceValuationSnapshot {
   liveRateAsOf?: string | null;
   valuationAnchorPeriod?: string | null;
   latestReportedPeriod?: string | null;
+  persistenceScore?: number | null;
+  marginDurabilityScore?: number | null;
+  workingCapitalDisciplineScore?: number | null;
+  businessModelEvidence?: string[] | null;
 }
 
 export interface WorkspaceSignalHistoryEntry {
@@ -415,6 +419,10 @@ export function rememberWorkspaceValuation(params: {
     liveRateAsOf: commandCenter.marketContext.liveRateAsOf,
     valuationAnchorPeriod: commandCenter.marketContext.valuationAnchorPeriod,
     latestReportedPeriod: commandCenter.marketContext.latestReportedPeriod,
+    persistenceScore: commandCenter.businessModel.persistenceScore,
+    marginDurabilityScore: commandCenter.businessModel.marginDurabilityScore,
+    workingCapitalDisciplineScore: commandCenter.businessModel.workingCapitalDisciplineScore,
+    businessModelEvidence: commandCenter.businessModel.evidence,
   };
 
   const signalSnapshot: WorkspaceSignalHistoryEntry = {

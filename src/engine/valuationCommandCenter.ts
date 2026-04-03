@@ -89,6 +89,23 @@ export interface ValuationMarketContext {
   latestReportedPeriod: string | null;
 }
 
+export interface BusinessModelProfile {
+  persistenceScore: number;
+  demandStabilityScore: number;
+  marginDurabilityScore: number;
+  capitalIntensityScore: number;
+  workingCapitalDisciplineScore: number;
+  reinvestmentQualityScore: number;
+  evidence: string[];
+  historicalAnchors: {
+    salesGrowth: number | null;
+    corePm: number | null;
+    ato: number | null;
+    spread: number | null;
+    cashConversion: number | null;
+  };
+}
+
 export interface ValuationBacktestPoint {
   periodEnd: string;
   state: ValuationSignalState;
@@ -146,6 +163,7 @@ export interface ValuationCommandCenterOutput {
     description: string;
     source: "user" | "auto";
   };
+  businessModel: BusinessModelProfile;
   scenarios: ValuationScenarioCard[];
   diagnostics: DcfCashFlowDiagnostics;
   reverseDcf: ReverseDcfDiagnostics;
@@ -289,6 +307,161 @@ function computeQualityScore(latest: RecastPeriod, analysisStatus?: AnalysisStat
   if (analysisStatus?.status === "guarded") score -= 6;
   if (analysisStatus?.status === "blocked") score -= 20;
   return clamp(score, 0, 100);
+}
+
+function spreadValues(values: Array<number | null | undefined>) {
+  const filtered = values.filter((value): value is number => value != null && Number.isFinite(value));
+  if (!filtered.length) return null;
+  return Math.max(...filtered) - Math.min(...filtered);
+}
+
+function latestFinite(values: Array<number | null | undefined>) {
+  for (let i = values.length - 1; i >= 0; i -= 1) {
+    const value = values[i];
+    if (value != null && Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function buildBusinessModelProfile(data: RecastPeriod[]): BusinessModelProfile {
+  const salesGrowthSeries = data.map((period) => period.ratios?.Sales_growth ?? null);
+  const corePmSeries = data.map((period) => period.ratios?.CoreSalesPM ?? period.ratios?.PM ?? null);
+  const atoSeries = data.map((period) => period.ratios?.ATO ?? null);
+  const spreadSeries = data.map((period) => period.ratios?.SPREAD ?? period.ratios?.CoreSPREAD ?? null);
+  const cashConversionSeries = data.map((period) => period.ratios?.cash_conversion_ratio ?? null);
+  const noaGrowthSeries = data.map((period) => period.ratios?.NOA_growth ?? null);
+  const separationSeries = data.map((period) => period.bs.separationScore ?? period.ratios?.separationScore ?? null);
+  const leverageSeries = data.map((period) => period.ratios?.FLEV ?? null);
+
+  const historicalSalesGrowth = median(salesGrowthSeries.slice(0, -1));
+  const historicalCorePm = median(corePmSeries.slice(0, -1));
+  const historicalAto = median(atoSeries.slice(0, -1));
+  const historicalSpread = median(spreadSeries.slice(0, -1));
+  const historicalCashConversion = median(cashConversionSeries.slice(0, -1));
+
+  const latestSalesGrowth = latestFinite(salesGrowthSeries);
+  const latestCorePm = latestFinite(corePmSeries);
+  const latestCashConversion = latestFinite(cashConversionSeries);
+  const latestSpread = latestFinite(spreadSeries);
+  const latestNoaGrowth = latestFinite(noaGrowthSeries);
+  const latestSeparation = latestFinite(separationSeries) ?? 70;
+  const latestLeverage = latestFinite(leverageSeries) ?? 0.3;
+
+  const demandStabilityScore = clamp(
+    scoreFromRange(0.12 - (spreadValues(salesGrowthSeries) ?? 0.12), 0, 0.12) * 100,
+    0,
+    100,
+  );
+  const marginDurabilityScore = clamp(
+    (
+      scoreFromRange(0.12 - (spreadValues(corePmSeries) ?? 0.12), 0, 0.12) * 0.55
+      + scoreFromRange((historicalCorePm ?? latestCorePm ?? 0) - Math.max((latestCorePm ?? 0) - (historicalCorePm ?? latestCorePm ?? 0), 0), 0.03, 0.18) * 0.25
+      + scoreFromRange(latestSeparation, 55, 95) * 0.2
+    ) * 100,
+    0,
+    100,
+  );
+  const workingCapitalDisciplineScore = clamp(
+    (
+      scoreFromRange(historicalCashConversion ?? latestCashConversion ?? 0.6, 0.5, 1.05) * 0.65
+      + scoreFromRange(0.22 - Math.max((latestNoaGrowth ?? 0) - (historicalSalesGrowth ?? latestSalesGrowth ?? 0), 0), 0, 0.22) * 0.35
+    ) * 100,
+    0,
+    100,
+  );
+  const reinvestmentQualityScore = clamp(
+    (
+      scoreFromRange(historicalSpread ?? latestSpread ?? 0.02, 0.01, 0.14) * 0.45
+      + scoreFromRange(historicalCashConversion ?? latestCashConversion ?? 0.6, 0.5, 1.05) * 0.25
+      + scoreFromRange(0.95 - latestLeverage, 0.1, 0.8) * 0.15
+      + scoreFromRange(latestSeparation, 55, 95) * 0.15
+    ) * 100,
+    0,
+    100,
+  );
+  const capitalIntensityScore = clamp(
+    (
+      scoreFromRange(historicalAto ?? latestFinite(atoSeries) ?? 0.6, 0.35, 2.3) * 0.6
+      + scoreFromRange(0.95 - latestLeverage, 0.1, 0.8) * 0.4
+    ) * 100,
+    0,
+    100,
+  );
+
+  const onePeriodSpikePenalty = clamp(
+    Math.max((latestCorePm ?? historicalCorePm ?? 0) - (historicalCorePm ?? latestCorePm ?? 0), 0) * 220
+      + Math.max((latestSalesGrowth ?? historicalSalesGrowth ?? 0) - (historicalSalesGrowth ?? latestSalesGrowth ?? 0), 0) * 120
+      + Math.max(0.7 - (latestCashConversion ?? historicalCashConversion ?? 0.7), 0) * 90,
+    0,
+    45,
+  );
+
+  const persistenceScore = clamp(
+    demandStabilityScore * 0.2
+      + marginDurabilityScore * 0.28
+      + capitalIntensityScore * 0.14
+      + workingCapitalDisciplineScore * 0.18
+      + reinvestmentQualityScore * 0.2
+      - onePeriodSpikePenalty,
+    0,
+    100,
+  );
+
+  const evidence: string[] = [];
+  if (latestCorePm != null && historicalCorePm != null && latestCorePm > historicalCorePm * 1.35) {
+    evidence.push(`Latest margin looks above the multi-year base (${(latestCorePm * 100).toFixed(1)}% vs ${(historicalCorePm * 100).toFixed(1)}%), so persistence is capped.`);
+  }
+  if (latestSalesGrowth != null && historicalSalesGrowth != null && latestSalesGrowth > historicalSalesGrowth * 1.5) {
+    evidence.push(`Latest growth is running ahead of the multi-year base (${(latestSalesGrowth * 100).toFixed(1)}% vs ${(historicalSalesGrowth * 100).toFixed(1)}%).`);
+  }
+  if ((latestCashConversion ?? 1) < 0.65) {
+    evidence.push(`Latest cash conversion is weak at ${((latestCashConversion ?? 0) * 100).toFixed(0)}%, which reduces persistence confidence.`);
+  }
+  if ((latestSeparation ?? 70) < 65) {
+    evidence.push(`Latest operating-cost bridge coverage is soft, so margin persistence is treated conservatively.`);
+  }
+  if (!evidence.length) {
+    evidence.push("Multi-year margins, reinvestment, and cash conversion appear stable enough to support slower fade assumptions.");
+  }
+
+  return {
+    persistenceScore,
+    demandStabilityScore,
+    marginDurabilityScore,
+    capitalIntensityScore,
+    workingCapitalDisciplineScore,
+    reinvestmentQualityScore,
+    evidence,
+    historicalAnchors: {
+      salesGrowth: historicalSalesGrowth,
+      corePm: historicalCorePm,
+      ato: historicalAto,
+      spread: historicalSpread,
+      cashConversion: historicalCashConversion,
+    },
+  };
+}
+
+function blendAnchor(latest: number | null, historical: number | null, persistenceScore: number, minWeightOnHistory = 0.35) {
+  if (latest == null) return historical;
+  if (historical == null) return latest;
+  const persistence = clamp(persistenceScore / 100, 0, 1);
+  const latestWeight = clamp(0.25 + persistence * 0.5, 1 - minWeightOnHistory, 0.8);
+  return latest * latestWeight + historical * (1 - latestWeight);
+}
+
+function persistencePenalty(persistenceScore: number) {
+  if (persistenceScore >= 75) return 0;
+  if (persistenceScore >= 60) return 0.03;
+  if (persistenceScore >= 45) return 0.07;
+  return 0.12;
+}
+
+function persistenceConvictionCap(persistenceScore: number): ValuationSignalState {
+  if (persistenceScore >= 75) return "screaming-buy";
+  if (persistenceScore >= 60) return "high-conviction";
+  if (persistenceScore >= 45) return "interesting";
+  return "watchlist";
 }
 
 function solveImpliedGrowthForTarget(params: {
@@ -505,12 +678,15 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     sectorTemplate.maintenanceCapexShare,
     sectorTemplate.maintenanceDepFloor,
   );
+  const businessModel = buildBusinessModelProfile(valuationData);
   const qualityScore = computeQualityScore(latest, analysisStatus);
   const confidenceState = analysisStatus?.status ?? "unknown";
+  const persistencePenaltyPct = persistencePenalty(businessModel.persistenceScore);
   const requiredMarginOfSafetyPct = clamp(
     sectorTemplate.baseRequiredMarginOfSafety
       + (sectorTemplate.cyclical ? 0.04 : 0)
       + (qualityScore < 55 ? 0.1 : qualityScore < 70 ? 0.05 : qualityScore > 85 ? -0.03 : 0)
+      + persistencePenaltyPct
       + (confidenceState === "guarded" ? 0.04 : 0)
       + (confidenceState === "blocked" ? 0.1 : 0)
       + (valuationReadiness.status !== "production-ready" ? 0.04 : 0)
@@ -523,13 +699,33 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   const kwBase = valuationData.length >= 2
     ? deriveKwFromStructure(valuationData[valuationData.length - 1], valuationData[valuationData.length - 2], keBase, riskFreeRate, config)
     : riskFreeRate;
-  const baseSalesGrowth = latestRatios?.Sales_growth ?? config.np_SalesGrowth_median ?? NP_BENCHMARKS.Sales_growth.median;
-  const basePm = latestRatios?.CoreSalesPM ?? latestRatios?.PM ?? config.np_PM_median ?? NP_BENCHMARKS.PM.median;
-  const baseAto = latestRatios?.ATO ?? config.np_ATO_median ?? NP_BENCHMARKS.ATO.median;
+  const blendedSalesGrowth = blendAnchor(
+    latestRatios?.Sales_growth ?? null,
+    businessModel.historicalAnchors.salesGrowth ?? config.np_SalesGrowth_median ?? NP_BENCHMARKS.Sales_growth.median,
+    businessModel.persistenceScore,
+  );
+  const blendedPm = blendAnchor(
+    latestRatios?.CoreSalesPM ?? latestRatios?.PM ?? null,
+    businessModel.historicalAnchors.corePm ?? config.np_PM_median ?? NP_BENCHMARKS.PM.median,
+    businessModel.persistenceScore,
+  );
+  const blendedAto = blendAnchor(
+    latestRatios?.ATO ?? null,
+    businessModel.historicalAnchors.ato ?? config.np_ATO_median ?? NP_BENCHMARKS.ATO.median,
+    businessModel.persistenceScore,
+  );
+  const baseSalesGrowth = blendedSalesGrowth ?? config.np_SalesGrowth_median ?? NP_BENCHMARKS.Sales_growth.median;
+  const basePm = blendedPm ?? config.np_PM_median ?? NP_BENCHMARKS.PM.median;
+  const baseAto = blendedAto ?? config.np_ATO_median ?? NP_BENCHMARKS.ATO.median;
   const flevBase = Math.max(latest.bs.NFO / Math.max(latest.bs.CSE, 1), -0.2);
   const nbcBase = Math.max(latest.is.NFE / Math.max(Math.abs(latest.bs.NFO), 1), 0.01);
+  const normalizedTerminalGrowth = clamp(
+    sectorTemplate.normalizedGrowth * (businessModel.persistenceScore >= 70 ? 0.55 : businessModel.persistenceScore >= 55 ? 0.45 : 0.35),
+    sectorTemplate.terminalGrowthFloor,
+    sectorTemplate.terminalGrowthCap,
+  );
   const terminalBase = clamp(
-    config.g_terminal_override ?? sectorTemplate.normalizedGrowth * 0.5,
+    config.g_terminal_override ?? normalizedTerminalGrowth,
     sectorTemplate.terminalGrowthFloor,
     sectorTemplate.terminalGrowthCap,
   );
@@ -550,9 +746,24 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
       probability: name === "base" ? 0.4 : name === "bull" ? 0.15 : 0.25,
       horizonT: horizon,
       drivers: {
-        sales_growth: makeFadeArray(growthStart, sectorTemplate.growthFadeAlpha, sectorTemplate.normalizedGrowth, horizon),
-        core_sales_pm: makeFadeArray(pmStart, sectorTemplate.marginFadeAlpha, NP_BENCHMARKS.PM.median, horizon),
-        ato: makeFadeArray(atoStart, sectorTemplate.atoFadeAlpha, NP_BENCHMARKS.ATO.median, horizon),
+        sales_growth: makeFadeArray(
+          growthStart,
+          clamp(sectorTemplate.growthFadeAlpha - (businessModel.persistenceScore < 45 ? 0.12 : businessModel.persistenceScore < 60 ? 0.07 : 0), 0.45, 0.96),
+          clamp(businessModel.historicalAnchors.salesGrowth ?? sectorTemplate.normalizedGrowth, -0.02, sectorTemplate.normalizedGrowth + 0.03),
+          horizon,
+        ),
+        core_sales_pm: makeFadeArray(
+          pmStart,
+          clamp(sectorTemplate.marginFadeAlpha - (businessModel.persistenceScore < 45 ? 0.12 : businessModel.persistenceScore < 60 ? 0.06 : 0), 0.5, 0.97),
+          clamp(businessModel.historicalAnchors.corePm ?? NP_BENCHMARKS.PM.median, 0.03, 0.18),
+          horizon,
+        ),
+        ato: makeFadeArray(
+          atoStart,
+          clamp(sectorTemplate.atoFadeAlpha - (businessModel.persistenceScore < 45 ? 0.08 : businessModel.persistenceScore < 60 ? 0.04 : 0), 0.6, 0.98),
+          clamp(businessModel.historicalAnchors.ato ?? NP_BENCHMARKS.ATO.median, 0.35, 2.1),
+          horizon,
+        ),
         flev: Array(horizon).fill(flevBase),
         nbc: Array(horizon).fill(nbcBase),
         g_terminal: gTerminal,
@@ -649,6 +860,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   const confidencePenalty = (analysisStatus?.status === "guarded" ? 8 : analysisStatus?.status === "blocked" ? 25 : 0)
     + (valuationReadiness.status !== "production-ready" ? 10 : 0)
     + (ownerEarningsResolved ? 0 : 10)
+    + (100 - businessModel.persistenceScore) * 0.18
     + (1 - freshnessScore) * 18
     + scenarioPenalty;
   const rareSignalSupport = freshnessScore >= 0.6 && replayCoverageScore >= 0.6;
@@ -723,14 +935,30 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     100,
   );
 
+  const persistenceConvictionCeiling = businessModel.persistenceScore >= 75
+    ? 4
+    : businessModel.persistenceScore >= 60
+      ? 3
+      : businessModel.persistenceScore >= 45
+        ? 2
+        : 1;
+  const convictionBucketRank = opportunityScore >= 90 && (stressCard?.marginOfSafetyPct ?? -1) >= requiredMarginOfSafetyPct && (historicalPercentile ?? 1) <= sectorTemplate.historicalExtremePercentile
+    ? 4
+    : opportunityScore >= 78
+      ? 3
+      : opportunityScore >= 62
+        ? 2
+        : opportunityScore >= 45
+          ? 1
+          : 0;
   const convictionBucket: ValuationOpportunityAssessment["convictionBucket"] =
-    opportunityScore >= 90 && (stressCard?.marginOfSafetyPct ?? -1) >= requiredMarginOfSafetyPct && (historicalPercentile ?? 1) <= sectorTemplate.historicalExtremePercentile
+    Math.min(convictionBucketRank, persistenceConvictionCeiling) >= 4
       ? "truck-load zone"
-      : opportunityScore >= 78
+      : Math.min(convictionBucketRank, persistenceConvictionCeiling) >= 3
         ? "high-conviction"
-        : opportunityScore >= 62
+        : Math.min(convictionBucketRank, persistenceConvictionCeiling) >= 2
           ? "accumulate"
-          : opportunityScore >= 45
+          : Math.min(convictionBucketRank, persistenceConvictionCeiling) >= 1
             ? "starter"
             : "research-only";
 
@@ -873,6 +1101,24 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     summary = "Scenario ordering needs review because the conservative cases are not sufficiently below the base case.";
   }
 
+  const persistenceCeilingState = persistenceConvictionCap(businessModel.persistenceScore);
+  const persistenceCeilingRank = persistenceCeilingState === "watchlist"
+    ? 2
+    : persistenceCeilingState === "interesting"
+      ? 3
+      : persistenceCeilingState === "high-conviction"
+        ? 4
+        : 5;
+  if (state !== "blocked" && state !== "guarded") {
+    const currentRank = state === "screaming-buy" ? 5 : state === "high-conviction" ? 4 : state === "interesting" ? 3 : 2;
+    if (currentRank > persistenceCeilingRank) {
+      state = rankToState(persistenceCeilingRank);
+      summary = businessModel.persistenceScore < 45
+        ? "Business-model persistence is weak, so conviction stays capped until margins, cash conversion, and reinvestment quality prove more durable."
+        : "Persistence evidence is mixed, so aggressive conviction stays capped despite apparent upside.";
+    }
+  }
+
   if (valuationReadiness.status !== "production-ready" && state !== "blocked") {
     state = clampStateRank(Math.min(state === "screaming-buy" ? 5 : state === "high-conviction" ? 4 : state === "interesting" ? 3 : 2, 1));
     summary = valuationReadinessSummary;
@@ -899,6 +1145,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
       description: sectorTemplate.description,
       source: sectorTemplateSource,
     },
+    businessModel,
     scenarios,
     diagnostics,
     reverseDcf,
