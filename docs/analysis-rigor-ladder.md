@@ -59,6 +59,8 @@ The traceability envelope now includes:
 - `reconciliation.maxResidualRatio`
 - `reconciliation.checks`
 
+Comparison trust no longer disappears on reload in the current browser session. The app now persists the multi-company registry, including per-company traceability envelopes, in local storage so the comparison trust gate can survive reloads and the local workspace flow. See [`docs/comparison-registry-persistence.md`](./comparison-registry-persistence.md).
+
 This is a real improvement in clarity, but it is still only a partial reconciliation slice. Structural reconciliation currently thresholds recast identity residuals for:
 
 - `OA + FA = TA`
@@ -92,3 +94,4 @@ Capitaline runs also still have richer parser-fidelity evidence than other modes
 - add a richer operating-cost bridge threshold when source coverage is strong enough to make `bridgeCoreOI` reviewable rather than purely indicative
 - deepen parser fidelity for screener, XBRL, manual, and JSON inputs with source-native anomaly counts
 - carry the same ladder and reconciliation summary into other report surfaces beyond valuation, forecast, quality, and ratios so no artifact drifts from traceability
+- move persisted comparison trust beyond local browser storage into shared/server-backed workspace surfaces

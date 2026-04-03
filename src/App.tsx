@@ -23,6 +23,7 @@ import {
 import { buildAnalysisSnapshot } from "./lib/auditSnapshot";
 import { listWorkspaceCompanies, rememberWorkspaceAnalysis } from "./lib/researchWorkspace";
 import { syncWorkspaceAnalysis, syncWorkspaceProfile } from "./lib/sharedResearchApi";
+import { persistCompanyRegistry, readPersistedCompanyRegistry } from "./lib/companyRegistryStore";
 import { buildAnalysisTraceability } from "./engine/analysisTraceability";
 import { getAnalysisPolicyVersions } from "./engine/policyVersions";
 
@@ -64,7 +65,7 @@ export function App() {
   const [activeTab,  setActiveTab]  = useState<TabId>("upload");
   const [config,     setConfig]     = useState<EngineConfig>(DEFAULT_CONFIG);
   const [darkMode, setDarkMode] = useState(false);
-  const [registry, setRegistry] = useState<CompanyRegistry>({ companies: {} });
+  const [registry, setRegistry] = useState<CompanyRegistry>(() => readPersistedCompanyRegistry());
   const [auditMeta, setAuditMeta] = useState<AuditSubmissionMeta | null>(null);
   const [workspaceCompanyId, setWorkspaceCompanyId] = useState<string | null>(null);
   const lastAuditSignatureRef = useRef<string | null>(null);
@@ -158,6 +159,10 @@ export function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
+
+  useEffect(() => {
+    persistCompanyRegistry(registry);
+  }, [registry]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
