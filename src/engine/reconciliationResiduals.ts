@@ -198,6 +198,15 @@ export function evaluateReconciliationResiduals(params: {
       && hasTraceEvidence(previous, "BS.FA.CashBank")
       && hasTraceEvidence(period, "CF.CFO")
       && hasTraceEvidence(period, "CF.Capex");
+    const comprehensiveIncomeResidual = hasTraceEvidence(period, "IS.TCI")
+      ? period.is.TCI - (period.is.PAT + period.is.OCI)
+      : null;
+    const comprehensiveIncomeBasis = comprehensiveIncomeResidual != null
+      ? Math.max(Math.abs(period.is.TCI), Math.abs(period.is.PAT + period.is.OCI), 1)
+      : null;
+    const cniResidual = period.is.CNI - (period.is.OI - period.is.NFE - period.is.MII);
+    const coreOiResidual = period.cu.CoreOI + period.cu.UOI - period.is.OI;
+    const coreNfeResidual = period.cu.CoreNFE + period.cu.UFE - period.is.NFE;
 
     return [
       buildCheck({
@@ -251,6 +260,42 @@ export function evaluateReconciliationResiduals(params: {
         periodEnd: period.period_end,
         residual: hasEndingCashInputs ? endingCashResidual : null,
         denominator: hasEndingCashInputs ? endingCashBasis : null,
+        warningThreshold,
+        criticalThreshold,
+      }),
+      buildOptionalCheck({
+        key: "comprehensive-income-bridge",
+        label: "PAT + OCI = TCI",
+        periodEnd: period.period_end,
+        residual: comprehensiveIncomeResidual,
+        denominator: comprehensiveIncomeBasis,
+        warningThreshold,
+        criticalThreshold,
+      }),
+      buildCheck({
+        key: "cni-operating-financing-bridge",
+        label: "CNI = OI - NFE - MII",
+        periodEnd: period.period_end,
+        residual: cniResidual,
+        denominator: Math.max(Math.abs(period.is.CNI), Math.abs(period.is.OI), 1),
+        warningThreshold,
+        criticalThreshold,
+      }),
+      buildCheck({
+        key: "core-oi-unusual-bridge",
+        label: "Core OI + UOI = OI",
+        periodEnd: period.period_end,
+        residual: coreOiResidual,
+        denominator: Math.max(Math.abs(period.cu.CoreOI), Math.abs(period.is.OI), 1),
+        warningThreshold,
+        criticalThreshold,
+      }),
+      buildCheck({
+        key: "core-nfe-unusual-bridge",
+        label: "Core NFE + UFE = NFE",
+        periodEnd: period.period_end,
+        residual: coreNfeResidual,
+        denominator: Math.max(Math.abs(period.cu.CoreNFE), Math.abs(period.is.NFE), 1),
         warningThreshold,
         criticalThreshold,
       }),

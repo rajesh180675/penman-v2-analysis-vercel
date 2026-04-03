@@ -64,6 +64,10 @@ This is a real improvement in clarity, but it is still only a partial reconcilia
 - `OA + FA = TA`
 - `CSE + MI + FO + OL = TA`
 - `NOA - NFO - CSE - MI = 0`
+- `PAT + OCI = TCI` when traced comprehensive-income evidence exists
+- `CNI = OI - NFE - MII`
+- `Core OI + UOI = OI`
+- `Core NFE + UFE = NFE`
 - `d_t = FCF - NFE + ΔNFO`
 - `Share Capital ÷ Face Value = End-Period Shares`
 - `Δ Gross Borrowings = Debt Proceeds + Debt Repayment` when traced borrowing lines exist
@@ -74,16 +78,17 @@ Capitaline runs also still have richer parser-fidelity evidence than other modes
 ## What Was Validated
 
 - snapshot tests: [`src/engine/__tests__/auditSnapshot.spec.ts`](../src/engine/__tests__/auditSnapshot.spec.ts)
+- focused reconciliation residual tests: [`src/engine/__tests__/reconciliationResiduals.spec.ts`](../src/engine/__tests__/reconciliationResiduals.spec.ts)
 - workbook export tests: [`src/engine/__tests__/excelExport.spec.ts`](../src/engine/__tests__/excelExport.spec.ts)
 - surface summary tests: [`src/engine/__tests__/valuationTraceabilitySummary.spec.ts`](../src/engine/__tests__/valuationTraceabilitySummary.spec.ts)
 - quality-surface smoke test: [`src/components/__tests__/QualityReport.spec.tsx`](../src/components/__tests__/QualityReport.spec.tsx)
 - ratio-surface smoke test: [`src/components/__tests__/RatioReport.spec.tsx`](../src/components/__tests__/RatioReport.spec.tsx)
-- full test suite: `npm test` (`31` files, `96` tests)
+- full test suite: `npm test` (`33` files, `102` tests)
 - typecheck: `npm run typecheck`
 - production build: `npm run build`
 
 ## Follow-On Work
 
-- extend reconciliation thresholds into the remaining income-statement reconciliation pack
+- add a richer operating-cost bridge threshold when source coverage is strong enough to make `bridgeCoreOI` reviewable rather than purely indicative
 - deepen parser fidelity for screener, XBRL, manual, and JSON inputs with source-native anomaly counts
 - carry the same ladder and reconciliation summary into other report surfaces beyond valuation, forecast, quality, and ratios so no artifact drifts from traceability

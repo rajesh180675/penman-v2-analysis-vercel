@@ -35,9 +35,10 @@ Current focus now implemented:
 - parser fidelity is now a first-class traceability signal with a status, score, and summary
 - `syntactically-valid` now requires parser fidelity to clear a minimum threshold instead of relying only on raw-period presence
 - reconciliation is now a first-class traceability signal with a status, summary, max residual, and check list
-- `structurally-reconciled` now requires explicit balance-sheet, cash-distribution, share-capital, and debt-flow residuals to stay under critical thresholds instead of relying only on recast presence and blocker counts
+- `structurally-reconciled` now requires explicit balance-sheet, cash-distribution, share-capital, debt-flow, and income-statement residuals to stay under critical thresholds instead of relying only on recast presence and blocker counts
 - the structural pack now includes a gross-borrowings debt-flow bridge backed by traced long-term and short-term borrowing lines versus `DebtProceeds + DebtRepayment`
 - the structural pack now also includes an ending-cash bridge backed by traced `BS.FA.CashBank` balances versus the recast cash-flow movement implied by `CFO`, `Capex`, distributions, financing flows, and investment flows
+- the structural pack now also includes income-statement bridges for `PAT + OCI = TCI`, `CNI = OI - NFE - MII`, `Core OI + UOI = OI`, and `Core NFE + UFE = NFE`
 - the valuation tab now carries the same trust gate into the user-facing surface, showing rigor level, parser fidelity, reconciliation status, and the next unresolved gate instead of relying on the signal card alone
 - the forecast tab now carries that same trust gate before any scenario output, so forward-looking cases inherit the shared parser, reconciliation, and rigor disclosure instead of presenting a separate confidence language
 - the quality tab now carries that same trust gate before any quality-factor scores, so strong-looking scorecards are not read out of context when parser or reconciliation trust is weak
@@ -65,7 +66,7 @@ Baseline validation for any rigor change:
 Validated in this iteration:
 
 - `npm run typecheck`
-- `npm test` (`33` files, `100` tests)
+- `npm test` (`33` files, `102` tests)
 - `npm run build`
 
 Still not validated in this iteration:
@@ -84,6 +85,7 @@ Still not validated in this iteration:
 - extended reconciliation residual scoring beyond balance-sheet identities with a cash-distribution bridge check and a share-capital tie-out check
 - extended reconciliation residual scoring again with a gross-borrowings debt-flow bridge backed by traced borrowing lines
 - extended reconciliation residual scoring again with an ending-cash bridge backed by traced cash balances and the recast cash-flow movement
+- extended reconciliation residual scoring into the income statement with comprehensive-income, CNI, core-OI, and core-NFE bridges
 - fixed the ladder so structural failure prevents downstream economic/valuation levels from clearing
 - surfaced reconciliation status and summary in workbook and run inspector
 - surfaced the same traceability trust gate in the valuation tab so that valuation presentation does not drift from the shared envelope
@@ -96,7 +98,7 @@ Still not validated in this iteration:
 
 ## Next Good Problems
 
-- extend reconciliation thresholds further into income-statement bridges so structural reconciliation is not balance-sheet and cash-flow only
+- add a richer operating-cost bridge threshold when source coverage is strong, so structural reconciliation can distinguish algebraic income identities from detailed operating-bridge support
 - make parser fidelity richer for non-Capitaline inputs by capturing source-specific parse diagnostics instead of only post-parse density heuristics
 - extend the comparison trust contract beyond the in-memory registry into persisted multi-company/session surfaces so peer context survives reloads and cross-workspace flows
 - feed the same rigor ladder and reconciliation summary into the remaining report/export surfaces beyond valuation, forecast, quality, ratios, and regression so all artifacts agree

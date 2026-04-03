@@ -101,6 +101,9 @@ function mkPeriod(period_end: string, overrides?: Partial<RecastPeriod>): Recast
       shareCapital: 600,
     },
     trace: {
+      "IS.TCI": [
+        { statement: "ProfitLoss", key: "Total Comprehensive Income for the Year", value: 90, matchType: "exact_base" },
+      ],
       "BS.FA.CashBank": [
         { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 100, matchType: "exact_base" },
       ],
@@ -143,7 +146,58 @@ describe("evaluateReconciliationResiduals", () => {
     expect(summary.checks.some((check) => check.key === "cash-distribution-bridge")).toBe(true);
     expect(summary.checks.some((check) => check.key === "gross-debt-flow-bridge")).toBe(true);
     expect(summary.checks.some((check) => check.key === "ending-cash-bridge")).toBe(true);
+    expect(summary.checks.some((check) => check.key === "comprehensive-income-bridge")).toBe(true);
+    expect(summary.checks.some((check) => check.key === "cni-operating-financing-bridge")).toBe(true);
+    expect(summary.checks.some((check) => check.key === "core-oi-unusual-bridge")).toBe(true);
+    expect(summary.checks.some((check) => check.key === "core-nfe-unusual-bridge")).toBe(true);
     expect(summary.checks.some((check) => check.key === "share-capital-face-value")).toBe(true);
+  });
+
+  it("degrades when the comprehensive-income bridge breaches the warning threshold", () => {
+    const summary = evaluateReconciliationResiduals({
+      recastData: [
+        mkPeriod("2024-03-31"),
+        mkPeriod("2025-03-31", {
+          is: {
+            ...mkPeriod("2025-03-31").is,
+            TCI: 90.6,
+          },
+          trace: {
+            ...mkPeriod("2025-03-31").trace,
+            "IS.TCI": [
+              { statement: "ProfitLoss", key: "Total Comprehensive Income for the Year", value: 90.6, matchType: "exact_base" },
+            ],
+            "BS.FA.CashBank": [
+              { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 160, matchType: "exact_base" },
+            ],
+          },
+        }),
+      ],
+      config: DEFAULT_CONFIG,
+    });
+
+    const check = summary.checks.find((item) => item.key === "comprehensive-income-bridge" && item.periodEnd === "2025-03-31");
+    expect(check?.status).toBe("degraded");
+    expect(summary.status).toBe("degraded");
+  });
+
+  it("fails when the CNI operating/financing bridge breaches the critical threshold", () => {
+    const summary = evaluateReconciliationResiduals({
+      recastData: [
+        mkPeriod("2024-03-31"),
+        mkPeriod("2025-03-31", {
+          is: {
+            ...mkPeriod("2025-03-31").is,
+            CNI: 80,
+          },
+        }),
+      ],
+      config: DEFAULT_CONFIG,
+    });
+
+    const check = summary.checks.find((item) => item.key === "cni-operating-financing-bridge" && item.periodEnd === "2025-03-31");
+    expect(check?.status).toBe("failed");
+    expect(summary.status).toBe("failed");
   });
 
   it("degrades when the gross-debt-flow bridge breaches the warning threshold", () => {
