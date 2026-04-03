@@ -15,3 +15,8 @@ yarn-error.log*
 
 # OS/editor noise
 .DS_Store
+
+# Local agent/tool state
+.codex
+.vercel/
+.ralph-wiggum/
