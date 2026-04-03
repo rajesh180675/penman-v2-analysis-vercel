@@ -49,6 +49,8 @@ Current focus now implemented:
 - the multi-company comparison registry now persists to local storage, so loaded peers and their trust state survive reloads instead of disappearing with React memory
 - the academic report tab now carries that same trust gate before the memo body and exported-artifact controls, so the offline/audit-facing report surface does not present stronger confidence than the shared traceability envelope
 - the V3 analytics tab now carries that same trust gate before dirty-surplus, anchor, sensitivity, and confidence interpretation, so this interpretation-heavy surface no longer drifts from the shared parser/reconciliation/rigor envelope
+- non-Capitaline parser fidelity now consumes source-native parser diagnostics from Screener, JSON, manual, and XBRL ingestion instead of relying only on post-parse density heuristics
+- JSON ingestion now fails loud on invalid metric value types instead of silently accepting non-numeric payload contamination
 
 ## How To Iterate
 
@@ -70,10 +72,11 @@ Baseline validation for any rigor change:
 Validated in this iteration:
 
 - `npm run typecheck`
-- `npm test` (`36` files, `109` tests)
+- `npm test` (`37` files, `113` tests)
 - `npm run build`
 - `npm test -- src/engine/__tests__/reconciliationResiduals.spec.ts`
 - `npm test -- src/components/__tests__/V3AnalyticsPanel.spec.tsx`
+- `npm test -- src/engine/__tests__/parserFidelity.spec.ts`
 
 Still not validated in this iteration:
 
@@ -104,10 +107,12 @@ Still not validated in this iteration:
 - persisted the comparison registry itself to local storage so peer comparison survives reloads in the same workspace/browser
 - surfaced the same traceability trust gate in the academic report tab so the memo/export surface does not drift from the shared envelope
 - surfaced the same traceability trust gate in the V3 analytics tab so dirty-surplus, terminal-anchor, sensitivity, and confidence sections do not drift from the shared envelope
+- added source-native parser diagnostics for Screener, JSON, manual, and XBRL ingestion and wired them into parser fidelity scoring
+- tightened JSON ingestion so invalid non-numeric metric values fail during parse instead of entering the analytical object
 - re-ran typecheck, full tests, and build
 
 ## Next Good Problems
 
-- make parser fidelity richer for non-Capitaline inputs by capturing source-specific parse diagnostics instead of only post-parse density heuristics
+- add focused automated coverage for XBRL parser diagnostics; the implementation exists, but the current Vitest/node environment lacks `DOMParser`
 - extend comparison trust persistence beyond local browser storage into shared multi-workspace/server-backed surfaces so peer context survives beyond one browser environment
 - see the current local-persistence slice in [`docs/comparison-registry-persistence.md`](./docs/comparison-registry-persistence.md)

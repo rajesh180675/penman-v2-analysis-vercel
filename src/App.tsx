@@ -26,6 +26,7 @@ import { syncWorkspaceAnalysis, syncWorkspaceProfile } from "./lib/sharedResearc
 import { persistCompanyRegistry, readPersistedCompanyRegistry } from "./lib/companyRegistryStore";
 import { buildAnalysisTraceability } from "./engine/analysisTraceability";
 import { getAnalysisPolicyVersions } from "./engine/policyVersions";
+import { SourceParserDiagnostics } from "./engine/parserDiagnostics";
 
 const ValuationReport = lazy(() => import("./components/ValuationReport"));
 const ForecastReport = lazy(() => import("./components/ForecastReport"));
@@ -62,6 +63,7 @@ export function App() {
   const auditGovernance = getAuditClientGovernance();
   const [rawData,    setRawData]    = useState<RawPeriodData[]|null>(null);
   const [debugInfo,  setDebugInfo]  = useState<CapitalineParseDebug|null>(null);
+  const [parserDiagnostics, setParserDiagnostics] = useState<SourceParserDiagnostics | null>(null);
   const [activeTab,  setActiveTab]  = useState<TabId>("upload");
   const [config,     setConfig]     = useState<EngineConfig>(DEFAULT_CONFIG);
   const [darkMode, setDarkMode] = useState(false);
@@ -132,11 +134,12 @@ export function App() {
       rawMetricKeyCount: debugInfo?.rawMetricKeys?.length ?? 0,
       engineError,
       debugInfo,
+      parserDiagnostics,
       contentClass: auditMeta?.contentClass ?? null,
       retentionDays: auditMeta?.retentionDays ?? null,
       runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
     }),
-    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, policyVersions, qualityGate, rawData, recastData],
+    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, policyVersions, qualityGate, rawData, recastData],
   );
 
   useEffect(() => {
@@ -201,7 +204,7 @@ export function App() {
   }, [rawData, recastData, engineError]);
 
   const handleDataSubmit = useCallback(
-    (data:RawPeriodData[], debug?:CapitalineParseDebug, meta?: AuditSubmissionMeta) => {
+    (data:RawPeriodData[], debug?:CapitalineParseDebug, meta?: AuditSubmissionMeta, nextParserDiagnostics?: SourceParserDiagnostics | null) => {
       const nextMeta = meta ?? {
         runId: createAuditRunId(),
         sourceMode: "manual",
@@ -222,7 +225,9 @@ export function App() {
       }));
       setWorkspaceCompanyId(nextMeta.companyId || data[0]?.company_id || null);
       setRawData(data);
+      setParserDiagnostics(nextParserDiagnostics ?? null);
       if (debug) setDebugInfo(debug);
+      else setDebugInfo(null);
       if (data.length === 0) { setActiveTab("debug"); return; }
       // recastData is now derived reactively via useMemo(rawData, config).
       // We just store rawData; the memo takes care of processing.
@@ -248,6 +253,7 @@ export function App() {
       recastData,
       config,
       debugInfo,
+      parserDiagnostics,
       qualityGate,
       mappingAudit,
       engineError,
@@ -265,7 +271,7 @@ export function App() {
       sourceMode: auditMeta.sourceMode,
       payload: snapshot,
     });
-  }, [analysisStatus, auditMeta, config, debugInfo, engineError, mappingAudit, qualityGate, rawData, recastData]);
+  }, [analysisStatus, auditMeta, config, debugInfo, engineError, mappingAudit, parserDiagnostics, qualityGate, rawData, recastData]);
 
   useEffect(() => {
     if (!auditMeta || !engineError) return;

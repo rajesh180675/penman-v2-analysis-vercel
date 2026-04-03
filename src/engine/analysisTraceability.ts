@@ -6,6 +6,7 @@ import { CapitalineParseDebug } from "./capitalineParser";
 import { evaluateParserFidelity, ParserFidelitySummary } from "./parserFidelity";
 import { EngineConfig, RawPeriodData, RecastPeriod } from "./types";
 import { evaluateReconciliationResiduals, ReconciliationResidualSummary } from "./reconciliationResiduals";
+import { SourceParserDiagnostics } from "./parserDiagnostics";
 
 export interface TraceabilityBacklogPreview {
   statement: string;
@@ -113,6 +114,7 @@ export function buildAnalysisTraceability(params: {
   recastData?: RecastPeriod[] | null;
   config?: EngineConfig | null;
   debugInfo?: CapitalineParseDebug | null;
+  parserDiagnostics?: SourceParserDiagnostics | null;
 }): AnalysisTraceabilityEnvelope {
   const qualityGate = params.qualityGate;
   const coverageSummary = qualityGate?.coverageSummary ?? params.mappingAudit?.coverageSummary ?? null;
@@ -146,6 +148,7 @@ export function buildAnalysisTraceability(params: {
     debugInfo: params.debugInfo ?? null,
     periodCount: params.periodCount ?? 0,
     rawMetricKeyCount: params.rawMetricKeyCount ?? 0,
+    parserDiagnostics: params.parserDiagnostics ?? null,
   });
   const reconciliation = evaluateReconciliationResiduals({
     recastData: params.recastData ?? null,
