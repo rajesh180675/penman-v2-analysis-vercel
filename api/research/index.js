@@ -1,6 +1,8 @@
 import { buildTimestampedPath, isResearchConfigured, listJsonBlobs, maybeRequireResearchReadAuth, readJsonBlob, readResearchBody, researchPath, writeJsonBlob } from "./_store.js";
 import { sanitizePathSegment } from "../audit/_lib.js";
 
+const COMPARISON_REGISTRY_SCHEMA_VERSION = "2026-04-comparison-registry-v1";
+
 export default async function handler(request, response) {
   if (!isResearchConfigured()) {
     response.status(503).json({ error: "Research storage is not configured. Set BLOB_READ_WRITE_TOKEN on Vercel." });
@@ -9,6 +11,16 @@ export default async function handler(request, response) {
 
   if (request.method === "GET") {
     if (!maybeRequireResearchReadAuth(request, response)) return;
+    const kind = typeof request.query?.kind === "string" ? request.query.kind : null;
+    if (kind === "comparison-registry") {
+      const comparisonRegistry = await readJsonBlob(researchPath("comparison-registry", "latest.json"));
+      response.status(200).json(comparisonRegistry ?? {
+        schemaVersion: COMPARISON_REGISTRY_SCHEMA_VERSION,
+        storedAt: null,
+        companies: {},
+      });
+      return;
+    }
     const companyId = typeof request.query?.companyId === "string" ? sanitizePathSegment(request.query.companyId) : null;
     if (!companyId) {
       response.status(400).json({ error: "companyId is required." });
@@ -39,7 +51,6 @@ export default async function handler(request, response) {
   if (request.method === "POST") {
     const body = await readResearchBody(request, response, 2 * 1024 * 1024);
     if (!body) return;
-    const companyId = sanitizePathSegment(body.companyId);
     const kind = typeof body.kind === "string" ? body.kind : (
       body.profile ? "profile"
       : body.filing ? "filing"
@@ -48,12 +59,25 @@ export default async function handler(request, response) {
       : body.alert ? "alert"
       : body.analysis ? "analysis"
       : body.journal ? "journal"
+      : body.comparisonRegistry ? "comparison-registry"
       : null
     );
     if (!kind) {
       response.status(400).json({ error: "Research write kind is required." });
       return;
     }
+    if (kind === "comparison-registry") {
+      const comparisonRegistry = body.comparisonRegistry && typeof body.comparisonRegistry === "object" ? body.comparisonRegistry : null;
+      await writeJsonBlob(researchPath("comparison-registry", "latest.json"), {
+        schemaVersion: comparisonRegistry?.schemaVersion ?? COMPARISON_REGISTRY_SCHEMA_VERSION,
+        storedAt: new Date().toISOString(),
+        companies: comparisonRegistry?.companies ?? {},
+      });
+      response.status(200).json({ ok: true, kind });
+      return;
+    }
+
+    const companyId = sanitizePathSegment(body.companyId);
     const writes = [];
     if (kind === "profile") {
       writes.push(writeJsonBlob(researchPath("companies", companyId, "profile.json"), {

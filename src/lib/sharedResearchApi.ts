@@ -1,3 +1,5 @@
+import { CompanyRegistry } from "../engine/types";
+import { buildCompanyRegistrySnapshot, readCompanyRegistrySnapshot } from "./companyRegistrySnapshot";
 import {
   WorkspaceAnalysisSnapshot,
   WorkspaceCompanyRecord,
@@ -114,7 +116,21 @@ export async function syncWorkspaceAlert(companyId: string, alert: Record<string
   });
 }
 
+export async function syncSharedComparisonRegistry(registry: CompanyRegistry) {
+  if (!Object.keys(registry.companies).length) return null;
+  return postJson("/api/research", {
+    kind: "comparison-registry",
+    comparisonRegistry: buildCompanyRegistrySnapshot(registry),
+  });
+}
+
 export async function fetchSharedResearchBundle(companyId: string) {
   if (!companyId) return null;
   return getJson(`/api/research?companyId=${encodeURIComponent(companyId)}`) as Promise<SharedResearchBundle | null>;
+}
+
+export async function fetchSharedComparisonRegistry() {
+  const payload = await getJson("/api/research?kind=comparison-registry");
+  if (!payload) return null;
+  return readCompanyRegistrySnapshot(payload);
 }

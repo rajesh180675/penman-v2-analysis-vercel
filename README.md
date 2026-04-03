@@ -47,7 +47,7 @@ Current focus now implemented:
 - the statements tab now carries that same trust gate before recast balance-sheet, income-statement, and free-cash-flow tables, so the core recast pack does not present structural output without parser, reconciliation, and rigor context
 - the regression tab now carries that same trust gate before before/after deltas and baseline-harness output, so regression evidence is read in the same trust context as the run it is benchmarking
 - the comparison tab now carries a peer-trust gate plus per-company trust rows, so cross-company rankings do not stand alone without parser, reconciliation, and rigor context for each loaded peer
-- the multi-company comparison registry now persists to local storage, so loaded peers and their trust state survive reloads instead of disappearing with React memory
+- the multi-company comparison registry now persists through both local storage and the shared research API, so loaded peers and their trust state survive reloads and can hydrate across shared/server-backed workspace flows instead of disappearing with React memory
 - the academic report tab now carries that same trust gate before the memo body and exported-artifact controls, so the offline/audit-facing report surface does not present stronger confidence than the shared traceability envelope
 - the V3 analytics tab now carries that same trust gate before dirty-surplus, anchor, sensitivity, and confidence interpretation, so this interpretation-heavy surface no longer drifts from the shared parser/reconciliation/rigor envelope
 - non-Capitaline parser fidelity now consumes source-native parser diagnostics from Screener, JSON, manual, and XBRL ingestion instead of relying only on post-parse density heuristics
@@ -75,15 +75,9 @@ Baseline validation for any rigor change:
 Validated in this iteration:
 
 - `npm run typecheck`
-- `npm test` (`38` files, `116` tests)
-- `npm test` (`39` files, `117` tests) after adding statements-surface trust-gate coverage
+- `npm test` (`39` files, `120` tests)
 - `npm run build`
-- `npm test -- src/engine/__tests__/reconciliationResiduals.spec.ts`
-- `npm test -- src/components/__tests__/V3AnalyticsPanel.spec.tsx`
-- `npm test -- src/engine/__tests__/parserFidelity.spec.ts`
-- `npm test -- src/engine/__tests__/xbrlParser.spec.ts`
-- `npm run build` after consolidating the regression/V3/academic chunk mapping, with the prior circular chunk warning removed
-- `npm test -- src/components/__tests__/RecastStatements.spec.tsx`
+- `npm test -- src/lib/__tests__/companyRegistryStore.spec.ts` (`1` file, `5` tests)
 
 Still not validated in this iteration:
 
@@ -112,7 +106,8 @@ Still not validated in this iteration:
 - surfaced the same traceability trust gate in the statements tab so the recast balance-sheet, income-statement, and cash-flow pack do not drift from the shared envelope
 - surfaced the same traceability trust gate in the regression tab so before/after harness deltas do not drift from the shared envelope
 - persisted per-company traceability in the comparison registry and surfaced a comparison-tab trust gate plus per-company trust rows before peer ranking output
-- persisted the comparison registry itself to local storage so peer comparison survives reloads in the same workspace/browser
+- persisted the comparison registry itself through a versioned local snapshot plus a shared research-API snapshot so peer comparison survives reloads and can hydrate beyond a single browser environment
+- tightened comparison-registry sanitation so persisted trust only restores when the per-company traceability payload still matches the `2026-04-traceability-v8` envelope shape
 - surfaced the same traceability trust gate in the academic report tab so the memo/export surface does not drift from the shared envelope
 - surfaced the same traceability trust gate in the V3 analytics tab so dirty-surplus, terminal-anchor, sensitivity, and confidence sections do not drift from the shared envelope
 - added source-native parser diagnostics for Screener, JSON, manual, and XBRL ingestion and wired them into parser fidelity scoring
@@ -124,7 +119,7 @@ Still not validated in this iteration:
 
 ## Next Good Problems
 
-- extend comparison trust persistence beyond local browser storage into shared multi-workspace/server-backed surfaces so peer context survives beyond one browser environment
 - decide whether the debug and workspace surfaces should also consume the shared traceability envelope where they present run-level conclusions rather than raw diagnostics
 - review whether the larger shared `engine-advanced-analytics` chunk should later be split again through actual dependency extraction instead of manual chunk forcing
-- see the current local-persistence slice in [`docs/comparison-registry-persistence.md`](./docs/comparison-registry-persistence.md)
+- extend the shared comparison registry beyond the current single shared snapshot into explicit workspace/user scoping if multiple independent peer sets need to coexist
+- see the current persistence slice in [`docs/comparison-registry-persistence.md`](./docs/comparison-registry-persistence.md)

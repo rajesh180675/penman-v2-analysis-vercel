@@ -22,8 +22,9 @@ import {
 } from "./lib/audit";
 import { buildAnalysisSnapshot } from "./lib/auditSnapshot";
 import { listWorkspaceCompanies, rememberWorkspaceAnalysis } from "./lib/researchWorkspace";
-import { syncWorkspaceAnalysis, syncWorkspaceProfile } from "./lib/sharedResearchApi";
+import { fetchSharedComparisonRegistry, syncSharedComparisonRegistry, syncWorkspaceAnalysis, syncWorkspaceProfile } from "./lib/sharedResearchApi";
 import { persistCompanyRegistry, readPersistedCompanyRegistry } from "./lib/companyRegistryStore";
+import { mergeCompanyRegistries } from "./lib/companyRegistrySnapshot";
 import { buildAnalysisTraceability } from "./engine/analysisTraceability";
 import { getAnalysisPolicyVersions } from "./engine/policyVersions";
 import { SourceParserDiagnostics } from "./engine/parserDiagnostics";
@@ -68,6 +69,7 @@ export function App() {
   const [config,     setConfig]     = useState<EngineConfig>(DEFAULT_CONFIG);
   const [darkMode, setDarkMode] = useState(false);
   const [registry, setRegistry] = useState<CompanyRegistry>(() => readPersistedCompanyRegistry());
+  const [comparisonRegistryHydrated, setComparisonRegistryHydrated] = useState(false);
   const [auditMeta, setAuditMeta] = useState<AuditSubmissionMeta | null>(null);
   const [workspaceCompanyId, setWorkspaceCompanyId] = useState<string | null>(null);
   const lastAuditSignatureRef = useRef<string | null>(null);
@@ -164,8 +166,31 @@ export function App() {
   }, [darkMode]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const hydrateSharedComparisonRegistry = async () => {
+      const sharedRegistry = await fetchSharedComparisonRegistry();
+      if (cancelled) return;
+      if (sharedRegistry) {
+        setRegistry((prev) => mergeCompanyRegistries(prev, sharedRegistry));
+      }
+      setComparisonRegistryHydrated(true);
+    };
+
+    void hydrateSharedComparisonRegistry();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     persistCompanyRegistry(registry);
   }, [registry]);
+
+  useEffect(() => {
+    if (!comparisonRegistryHydrated || Object.keys(registry.companies).length === 0) return;
+    void syncSharedComparisonRegistry(registry);
+  }, [comparisonRegistryHydrated, registry]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
