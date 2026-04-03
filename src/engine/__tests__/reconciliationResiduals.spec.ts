@@ -100,6 +100,14 @@ function mkPeriod(period_end: string, overrides?: Partial<RecastPeriod>): Recast
       faceValue: 10,
       shareCapital: 600,
     },
+    trace: {
+      "BS.FO.LongBorrow": [
+        { statement: "BalanceSheet", key: "Long Term Borrowings", value: 100, matchType: "exact_base" },
+      ],
+      "BS.FO.ShortBorrow": [
+        { statement: "BalanceSheet", key: "Short Term Borrowings", value: 50, matchType: "exact_base" },
+      ],
+    },
     ...overrides,
   };
 }
@@ -113,7 +121,64 @@ describe("evaluateReconciliationResiduals", () => {
 
     expect(summary.status).toBe("confirmed");
     expect(summary.checks.some((check) => check.key === "cash-distribution-bridge")).toBe(true);
+    expect(summary.checks.some((check) => check.key === "gross-debt-flow-bridge")).toBe(true);
     expect(summary.checks.some((check) => check.key === "share-capital-face-value")).toBe(true);
+  });
+
+  it("degrades when the gross-debt-flow bridge breaches the warning threshold", () => {
+    const summary = evaluateReconciliationResiduals({
+      recastData: [
+        mkPeriod("2024-03-31"),
+        mkPeriod("2025-03-31", {
+          cf: {
+            ...mkPeriod("2025-03-31").cf,
+            DebtProceeds: 100,
+            DebtRepayment: 0,
+          },
+          trace: {
+            "BS.FO.LongBorrow": [
+              { statement: "BalanceSheet", key: "Long Term Borrowings", value: 200.6, matchType: "exact_base" },
+            ],
+            "BS.FO.ShortBorrow": [
+              { statement: "BalanceSheet", key: "Short Term Borrowings", value: 50, matchType: "exact_base" },
+            ],
+          },
+        }),
+      ],
+      config: DEFAULT_CONFIG,
+    });
+
+    const debtCheck = summary.checks.find((check) => check.key === "gross-debt-flow-bridge" && check.periodEnd === "2025-03-31");
+    expect(debtCheck?.status).toBe("degraded");
+    expect(summary.status).toBe("degraded");
+  });
+
+  it("fails when the gross-debt-flow bridge breaches the critical threshold", () => {
+    const summary = evaluateReconciliationResiduals({
+      recastData: [
+        mkPeriod("2024-03-31"),
+        mkPeriod("2025-03-31", {
+          cf: {
+            ...mkPeriod("2025-03-31").cf,
+            DebtProceeds: 30,
+            DebtRepayment: 0,
+          },
+          trace: {
+            "BS.FO.LongBorrow": [
+              { statement: "BalanceSheet", key: "Long Term Borrowings", value: 100, matchType: "exact_base" },
+            ],
+            "BS.FO.ShortBorrow": [
+              { statement: "BalanceSheet", key: "Short Term Borrowings", value: 50, matchType: "exact_base" },
+            ],
+          },
+        }),
+      ],
+      config: DEFAULT_CONFIG,
+    });
+
+    const debtCheck = summary.checks.find((check) => check.key === "gross-debt-flow-bridge" && check.periodEnd === "2025-03-31");
+    expect(debtCheck?.status).toBe("failed");
+    expect(summary.status).toBe("failed");
   });
 
   it("degrades when the share-capital tie-out breaches the warning threshold", () => {

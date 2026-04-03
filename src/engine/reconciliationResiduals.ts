@@ -37,6 +37,16 @@ function formatPct(value: number) {
   return `${(value * 100).toFixed(2)}%`;
 }
 
+function readTraceValue(period: RecastPeriod, line: string): number | null {
+  const entries = period.trace?.[line];
+  if (!entries?.length) return null;
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const value = entries[index]?.value;
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
 function buildCheck(params: {
   key: string;
   label: string;
@@ -113,6 +123,28 @@ export function evaluateReconciliationResiduals(params: {
     const cashDistributionBasis = previous
       ? Math.max(Math.abs(period.cf.d_t), Math.abs(period.cf.d_t_formula), 1)
       : null;
+    const currentGrossBorrowings = (readTraceValue(period, "BS.FO.LongBorrow") ?? 0)
+      + (readTraceValue(period, "BS.FO.ShortBorrow") ?? 0);
+    const previousGrossBorrowings = previous
+      ? (readTraceValue(previous, "BS.FO.LongBorrow") ?? 0) + (readTraceValue(previous, "BS.FO.ShortBorrow") ?? 0)
+      : null;
+    const debtFlowResidual = previousGrossBorrowings != null
+      ? (currentGrossBorrowings - previousGrossBorrowings) - ((period.cf.DebtProceeds ?? 0) + (period.cf.DebtRepayment ?? 0))
+      : null;
+    const debtFlowBasis = previousGrossBorrowings != null
+      ? Math.max(
+        Math.abs(currentGrossBorrowings - previousGrossBorrowings),
+        Math.abs((period.cf.DebtProceeds ?? 0) + (period.cf.DebtRepayment ?? 0)),
+        1,
+      )
+      : null;
+    const hasDebtFlowInputs = previousGrossBorrowings != null
+      && (
+        readTraceValue(period, "BS.FO.LongBorrow") != null
+        || readTraceValue(period, "BS.FO.ShortBorrow") != null
+        || (previous ? readTraceValue(previous, "BS.FO.LongBorrow") != null : false)
+        || (previous ? readTraceValue(previous, "BS.FO.ShortBorrow") != null : false)
+      );
 
     return [
       buildCheck({
@@ -148,6 +180,15 @@ export function evaluateReconciliationResiduals(params: {
         periodEnd: period.period_end,
         residual: cashDistributionResidual,
         denominator: cashDistributionBasis,
+        warningThreshold,
+        criticalThreshold,
+      }),
+      buildOptionalCheck({
+        key: "gross-debt-flow-bridge",
+        label: "Δ Gross Borrowings = Debt Proceeds + Debt Repayment",
+        periodEnd: period.period_end,
+        residual: hasDebtFlowInputs ? debtFlowResidual : null,
+        denominator: hasDebtFlowInputs ? debtFlowBasis : null,
         warningThreshold,
         criticalThreshold,
       }),

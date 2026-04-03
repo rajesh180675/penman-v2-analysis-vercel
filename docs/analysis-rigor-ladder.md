@@ -59,11 +59,14 @@ The traceability envelope now includes:
 - `reconciliation.maxResidualRatio`
 - `reconciliation.checks`
 
-This is a real improvement in clarity, but it is still only a first reconciliation slice. Structural reconciliation currently thresholds recast identity residuals for:
+This is a real improvement in clarity, but it is still only a partial reconciliation slice. Structural reconciliation currently thresholds recast identity residuals for:
 
 - `OA + FA = TA`
 - `CSE + MI + FO + OL = TA`
 - `NOA - NFO - CSE - MI = 0`
+- `d_t = FCF - NFE + ΔNFO`
+- `Share Capital ÷ Face Value = End-Period Shares`
+- `Δ Gross Borrowings = Debt Proceeds + Debt Repayment` when traced borrowing lines exist
 
 Capitaline runs also still have richer parser-fidelity evidence than other modes because they use parse-debug signals such as file presence, header detection, period consistency, and parser noise. Other source modes still rely on lighter post-parse density heuristics rather than rich source-native diagnostics.
 
@@ -74,12 +77,12 @@ Capitaline runs also still have richer parser-fidelity evidence than other modes
 - surface summary tests: [`src/engine/__tests__/valuationTraceabilitySummary.spec.ts`](../src/engine/__tests__/valuationTraceabilitySummary.spec.ts)
 - quality-surface smoke test: [`src/components/__tests__/QualityReport.spec.tsx`](../src/components/__tests__/QualityReport.spec.tsx)
 - ratio-surface smoke test: [`src/components/__tests__/RatioReport.spec.tsx`](../src/components/__tests__/RatioReport.spec.tsx)
-- full test suite: `npm test`
+- full test suite: `npm test` (`31` files, `96` tests)
 - typecheck: `npm run typecheck`
 - production build: `npm run build`
 
 ## Follow-On Work
 
-- extend reconciliation thresholds into cash-flow and share-data packs
+- extend reconciliation thresholds into the remaining ending-cash cash-flow pack
 - deepen parser fidelity for screener, XBRL, manual, and JSON inputs with source-native anomaly counts
 - carry the same ladder and reconciliation summary into other report surfaces beyond valuation, forecast, quality, and ratios so no artifact drifts from traceability
