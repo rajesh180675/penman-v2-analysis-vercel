@@ -28,11 +28,13 @@ export function evaluateGoldenReleaseGate(config: EngineConfig = DEFAULT_CONFIG)
     const notes = [
       `tier=${result.qualityGate.tier}`,
       `valuation=${result.valuationReadiness.status}`,
+      `persistence=${result.valuationReadiness.persistenceStatus}`,
     ];
     const passed =
       result.qualityGate.tier === testCase.expectation.qualityGateTier
       && result.qualityGate.valuationBlocked === testCase.expectation.valuationBlocked
-      && result.valuationReadiness.status === testCase.expectation.valuationStatus;
+      && result.valuationReadiness.status === testCase.expectation.valuationStatus
+      && (!testCase.expectation.persistenceStatus || result.valuationReadiness.persistenceStatus === testCase.expectation.persistenceStatus);
 
     return {
       id: testCase.id,

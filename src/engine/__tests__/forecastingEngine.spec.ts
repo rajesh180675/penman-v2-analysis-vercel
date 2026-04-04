@@ -207,9 +207,13 @@ describe("derivePersistenceForecastScenario", () => {
 
     expect(businessModel.persistenceScore).toBeLessThan(45);
     expect(scenario.forecastPolicy?.companyEvidenceWeight).toBeLessThanOrEqual(0.5);
+    expect(scenario.forecastPolicy?.workingCapitalPressure).toBe("high");
+    expect(scenario.forecastPolicy?.reinvestmentBurden).toBe("heavy");
+    expect(scenario.forecastPolicy?.balanceSheetFlexibility).toBe("tight");
     expect(scenario.drivers.sales_growth[0]).toBeLessThan(0.2);
     expect(scenario.drivers.core_sales_pm[0]).toBeLessThan(0.2);
     expect(scenario.drivers.sales_growth[0]).toBeGreaterThan(scenario.drivers.sales_growth[4]);
+    expect((scenario.forecastPolicy?.narrative ?? []).some((item) => item.toLowerCase().includes("working-capital"))).toBe(true);
   });
 });
 

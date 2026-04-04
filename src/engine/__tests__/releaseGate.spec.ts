@@ -10,5 +10,6 @@ describe("golden release gate", () => {
     expect(summary.passed).toBe(true);
     expect(summary.policyVersions.engineVersion).toBeTruthy();
     expect(summary.policyVersions.traceabilitySchemaVersion).toBeTruthy();
+    expect(summary.cases.some((item) => item.notes.some((note) => note.startsWith("persistence=")))).toBe(true);
   }, 60000);
 });

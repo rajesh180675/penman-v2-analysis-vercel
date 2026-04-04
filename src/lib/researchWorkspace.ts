@@ -89,6 +89,7 @@ export interface WorkspaceValuationSnapshot {
   convictionBucket: string | null;
   sectorTemplate: string | null;
   thesis: string;
+  persistenceNarrative?: string | null;
   reverseDcfSummary: string;
   marketSymbol: string | null;
   marketFreshness?: string | null;
@@ -100,6 +101,7 @@ export interface WorkspaceValuationSnapshot {
   persistenceScore?: number | null;
   marginDurabilityScore?: number | null;
   workingCapitalDisciplineScore?: number | null;
+  forecastDiscipline?: string[] | null;
   businessModelEvidence?: string[] | null;
 }
 
@@ -411,6 +413,7 @@ export function rememberWorkspaceValuation(params: {
     convictionBucket: commandCenter.opportunity.convictionBucket,
     sectorTemplate: commandCenter.sectorTemplate.label,
     thesis: commandCenter.opportunity.thesis,
+    persistenceNarrative: commandCenter.opportunity.persistenceNarrative,
     reverseDcfSummary: commandCenter.reverseDcf.expectationLabel,
     marketSymbol: marketSymbol ?? null,
     marketFreshness: commandCenter.marketContext.freshness,
@@ -422,6 +425,7 @@ export function rememberWorkspaceValuation(params: {
     persistenceScore: commandCenter.businessModel.persistenceScore,
     marginDurabilityScore: commandCenter.businessModel.marginDurabilityScore,
     workingCapitalDisciplineScore: commandCenter.businessModel.workingCapitalDisciplineScore,
+    forecastDiscipline: commandCenter.checklist.forecastDiscipline,
     businessModelEvidence: commandCenter.businessModel.evidence,
   };
 

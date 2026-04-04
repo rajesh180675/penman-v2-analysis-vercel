@@ -29,6 +29,13 @@ export default function ValuationAssumptionDiff({ current, previous }: Props) {
     { label: "Market freshness", current: current.marketFreshness ?? "—", previous: previous.marketFreshness ?? "—" },
     { label: "Anchor period", current: current.valuationAnchorPeriod?.slice(0, 10) ?? "—", previous: previous.valuationAnchorPeriod?.slice(0, 10) ?? "—" },
     { label: "Latest reported period", current: current.latestReportedPeriod?.slice(0, 10) ?? "—", previous: previous.latestReportedPeriod?.slice(0, 10) ?? "—" },
+    { label: "Persistence score", current: current.persistenceScore != null ? `${current.persistenceScore.toFixed(0)}/100` : "—", previous: previous.persistenceScore != null ? `${previous.persistenceScore.toFixed(0)}/100` : "—" },
+    { label: "Margin durability", current: current.marginDurabilityScore != null ? `${current.marginDurabilityScore.toFixed(0)}/100` : "—", previous: previous.marginDurabilityScore != null ? `${previous.marginDurabilityScore.toFixed(0)}/100` : "—" },
+    { label: "WC discipline", current: current.workingCapitalDisciplineScore != null ? `${current.workingCapitalDisciplineScore.toFixed(0)}/100` : "—", previous: previous.workingCapitalDisciplineScore != null ? `${previous.workingCapitalDisciplineScore.toFixed(0)}/100` : "—" },
+  ];
+
+  const forecastDiff = [
+    { label: "Persistence narrative", current: current.persistenceNarrative ?? "—", previous: previous.persistenceNarrative ?? "—" },
   ];
 
   return (
@@ -54,6 +61,22 @@ export default function ValuationAssumptionDiff({ current, previous }: Props) {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {forecastDiff.map((row) => (
+          <div key={row.label} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{row.label}</div>
+            <div className="mt-2 text-slate-800"><strong>Current:</strong> {row.current}</div>
+            <div className="mt-1 text-slate-600"><strong>Previous:</strong> {row.previous}</div>
+          </div>
+        ))}
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 md:col-span-2">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Forecast discipline diff</div>
+          <div className="mt-2"><strong>Current:</strong></div>
+          <ul className="mt-1 space-y-1">{(current.forecastDiscipline ?? []).map((item) => <li key={`c:${item}`}>• {item}</li>)}</ul>
+          <div className="mt-3"><strong>Previous:</strong></div>
+          <ul className="mt-1 space-y-1">{(previous.forecastDiscipline ?? []).map((item) => <li key={`p:${item}`}>• {item}</li>)}</ul>
+        </div>
       </div>
     </div>
   );

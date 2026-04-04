@@ -17,6 +17,9 @@ describe("golden company acceptance suite", () => {
       expect(result.qualityGate.tier).toBe(testCase.expectation.qualityGateTier);
       expect(result.qualityGate.valuationBlocked).toBe(testCase.expectation.valuationBlocked);
       expect(result.valuationReadiness.status).toBe(testCase.expectation.valuationStatus);
+      if (testCase.expectation.persistenceStatus) {
+        expect(result.valuationReadiness.persistenceStatus).toBe(testCase.expectation.persistenceStatus);
+      }
       expect(result.policyVersions.engineVersion).toBeTruthy();
       expect(result.policyVersions.mappingPolicyVersion).toBeTruthy();
       expect(result.policyVersions.valuationPolicyVersion).toBeTruthy();

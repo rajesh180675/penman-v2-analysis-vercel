@@ -97,6 +97,17 @@ export default function ValuationWorkbench({ analysisStatus, latestSignal, lates
           </ul>
         </div>
       ) : null}
+      {latestValuation?.persistenceNarrative ? (
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Persistence narrative</div>
+          <div className="mt-2">{latestValuation.persistenceNarrative}</div>
+          {latestValuation.forecastDiscipline?.length ? (
+            <ul className="mt-2 space-y-1">
+              {latestValuation.forecastDiscipline.map((item) => <li key={item}>• {item}</li>)}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
       {latestValuation?.marketSourceSummary && (
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Market overlay provenance</div>

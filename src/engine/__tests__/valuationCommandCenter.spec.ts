@@ -800,5 +800,9 @@ describe("valuation command center", () => {
     expect(["research-only", "starter", "accumulate"]).toContain(weak.opportunity.convictionBucket);
     expect(["watchlist", "interesting", "guarded"]).toContain(weak.signal.state);
     expect(weak.signal.summary.toLowerCase()).toContain("persistence");
+    expect(weak.scenarios.find((scenario) => scenario.key === "stress")?.forecastPolicy?.workingCapitalPressure).toBe("high");
+    expect(weak.scenarios.find((scenario) => scenario.key === "stress")?.forecastPolicy?.reinvestmentBurden).toBe("heavy");
+    expect(weak.opportunity.persistenceNarrative.toLowerCase()).toContain("working-capital");
+    expect(weak.checklist.forecastDiscipline.length).toBeGreaterThan(0);
   });
 });

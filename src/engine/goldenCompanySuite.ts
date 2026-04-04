@@ -10,6 +10,7 @@ export interface GoldenCompanyExpectation {
   qualityGateTier: "Tier 1" | "Tier 2" | "Tier 3";
   valuationBlocked: boolean;
   valuationStatus: "production-ready" | "warning" | "guarded";
+  persistenceStatus?: "durable" | "mixed" | "fragile" | "unknown";
   minPeriods: number;
   requiredTerminalFlags?: string[];
   forbiddenTerminalFlags?: string[];
@@ -620,6 +621,7 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
       qualityGateTier: "Tier 1",
       valuationBlocked: false,
       valuationStatus: "production-ready",
+      persistenceStatus: "durable",
       minPeriods: 10,
       forbiddenTerminalFlags: ["STRUCTURAL_EVENT", "CAPITAL_TRANSACTION_LIKELY"],
       ratioRanges: {
@@ -655,6 +657,7 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
       qualityGateTier: "Tier 2",
       valuationBlocked: false,
       valuationStatus: "production-ready",
+      persistenceStatus: "durable",
       minPeriods: 3,
       forbiddenTerminalFlags: ["STRUCTURAL_EVENT", "CAPITAL_TRANSACTION_LIKELY"],
       ratioRanges: {
@@ -674,6 +677,7 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
       qualityGateTier: "Tier 1",
       valuationBlocked: false,
       valuationStatus: "warning",
+      persistenceStatus: "durable",
       minPeriods: 3,
       forbiddenTerminalFlags: ["STRUCTURAL_EVENT"],
       ratioRanges: {
@@ -693,6 +697,7 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
       qualityGateTier: "Tier 2",
       valuationBlocked: true,
       valuationStatus: "guarded",
+      persistenceStatus: "mixed",
       minPeriods: 3,
       requiredTerminalFlags: ["STRUCTURAL_EVENT"],
       ratioRanges: {

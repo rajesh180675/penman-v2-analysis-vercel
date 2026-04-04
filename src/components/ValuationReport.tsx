@@ -145,6 +145,8 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
       ...commandCenter.signal,
       marketPrice: commandCenter.marketPrice,
       asOf: commandCenter.asOf,
+      persistenceNarrative: commandCenter.opportunity.persistenceNarrative,
+      forecastDiscipline: commandCenter.checklist.forecastDiscipline,
       scenarios: commandCenter.scenarios.map((scenario) => ({
         key: scenario.key,
         label: scenario.label,
@@ -152,6 +154,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
         upsidePct: scenario.upsidePct,
         marginOfSafetyPct: scenario.marginOfSafetyPct,
         expectedCagr: scenario.expectedCagr,
+        forecastPolicy: scenario.forecastPolicy,
       })),
     };
     const signature = JSON.stringify(signalPayload);
@@ -194,8 +197,14 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
       convictionBucket: commandCenter.opportunity.convictionBucket,
       sectorTemplate: commandCenter.sectorTemplate.label,
       thesis: commandCenter.opportunity.thesis,
+      persistenceNarrative: commandCenter.opportunity.persistenceNarrative,
       reverseDcfSummary: commandCenter.reverseDcf.expectationLabel,
       marketSymbol,
+      forecastDiscipline: commandCenter.checklist.forecastDiscipline,
+      businessModelEvidence: commandCenter.businessModel.evidence,
+      persistenceScore: commandCenter.businessModel.persistenceScore,
+      marginDurabilityScore: commandCenter.businessModel.marginDurabilityScore,
+      workingCapitalDisciplineScore: commandCenter.businessModel.workingCapitalDisciplineScore,
     });
   }, [auditMeta?.runId, auditMeta?.companyId, commandCenter, config.ticker, marketSymbol]);
 
@@ -403,6 +412,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
             corePm={scenario.assumptions.corePmYear1}
             reinvestmentRate={scenario.assumptions.reinvestmentRateYear1}
             incrementalRoic={scenario.assumptions.incrementalRoicYear1}
+            forecastPolicy={scenario.forecastPolicy}
           />
         ))}
       </section>
@@ -571,6 +581,17 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
                 ))}
               </ul>
             </div>
+          </div>
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Forecast discipline</div>
+            <div className="mt-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-800">
+              {commandCenter.opportunity.persistenceNarrative}
+            </div>
+            <ul className="mt-3 space-y-2">
+              {commandCenter.checklist.forecastDiscipline.map((item) => (
+                <li key={item} className="rounded-lg border border-slate-200 bg-white px-3 py-2">{item}</li>
+              ))}
+            </ul>
           </div>
         </div>
 
@@ -1057,6 +1078,7 @@ function ScenarioCard({
   corePm,
   reinvestmentRate,
   incrementalRoic,
+  forecastPolicy,
 }: {
   label: string;
   intrinsicPerShare: number | null;
@@ -1070,6 +1092,12 @@ function ScenarioCard({
   corePm: number;
   reinvestmentRate: number | null;
   incrementalRoic: number | null;
+  forecastPolicy?: {
+    terminalAnchorSource?: string;
+    workingCapitalPressure?: string;
+    reinvestmentBurden?: string;
+    balanceSheetFlexibility?: string;
+  };
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -1088,6 +1116,10 @@ function ScenarioCard({
         <div>Expected CAGR <strong className="text-slate-700">{formatPct(expectedCagr, 1)}</strong></div>
         <div>Reinvestment rate <strong className="text-slate-700">{formatPct(reinvestmentRate, 1)}</strong></div>
         <div>Incremental ROIC <strong className="text-slate-700">{formatPct(incrementalRoic, 1)}</strong></div>
+        <div>Terminal anchor <strong className="text-slate-700">{forecastPolicy?.terminalAnchorSource ?? "—"}</strong></div>
+        <div>WC pressure <strong className="text-slate-700">{forecastPolicy?.workingCapitalPressure ?? "—"}</strong></div>
+        <div>Reinvestment burden <strong className="text-slate-700">{forecastPolicy?.reinvestmentBurden ?? "—"}</strong></div>
+        <div>Balance-sheet flexibility <strong className="text-slate-700">{forecastPolicy?.balanceSheetFlexibility ?? "—"}</strong></div>
       </div>
     </div>
   );

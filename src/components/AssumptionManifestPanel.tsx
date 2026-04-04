@@ -37,9 +37,21 @@ export default function AssumptionManifestPanel({ valuation }: Props) {
             <div className="mt-1 text-slate-800">{valuation.thesis || "No persisted thesis commentary yet."}</div>
           </div>
           <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Persistence note</div>
+            <div className="mt-1 text-slate-800">{valuation.persistenceNarrative || "No persistence narrative saved yet."}</div>
+          </div>
+          <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Reverse DCF note</div>
             <div className="mt-1 text-slate-800">{valuation.reverseDcfSummary || "No reverse-DCF narrative saved yet."}</div>
           </div>
+          {valuation.forecastDiscipline?.length ? (
+            <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Forecast discipline</div>
+              <ul className="mt-2 space-y-1 text-slate-800">
+                {valuation.forecastDiscipline.map((item) => <li key={item}>• {item}</li>)}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : (
         <p className="mt-4 text-sm text-slate-500">Run the valuation tab first. This panel is where the investor sees the stored assumptions behind the recommendation.</p>

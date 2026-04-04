@@ -29,7 +29,8 @@ function isAcceptableAnchor(period: RecastPeriod | null | undefined): boolean {
 }
 
 function derivePersistenceReadiness(periods: RecastPeriod[]) {
-  if (!periods.length || periods.some((period) => !period.bs || !period.ratios)) {
+  const usablePeriods = periods.filter((period) => period.bs && period.ratios);
+  if (usablePeriods.length < 2) {
     return {
       persistenceStatus: "unknown" as const,
       persistenceScore: null,
@@ -37,7 +38,7 @@ function derivePersistenceReadiness(periods: RecastPeriod[]) {
     };
   }
 
-  const profile = buildBusinessModelProfile(periods);
+  const profile = buildBusinessModelProfile(usablePeriods);
   if (profile.persistenceScore >= 65) {
     return {
       persistenceStatus: "durable" as const,

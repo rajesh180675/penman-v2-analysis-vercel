@@ -370,6 +370,18 @@ export interface ForecastPeriod {
   CoreOI_bridge_f?: number | null;
 }
 
+export interface ForecastPolicySurface {
+  companyEvidenceWeight?: number;
+  persistenceScore?: number;
+  templateGuardrailStrength?: number;
+  terminalAnchorSource?: 'company-evidence'|'blended'|'template';
+  workingCapitalPressure?: 'low' | 'medium' | 'high';
+  reinvestmentBurden?: 'light' | 'moderate' | 'heavy';
+  balanceSheetFlexibility?: 'strong' | 'adequate' | 'tight';
+  operatingMode?: 'cost-bridge' | 'margin';
+  narrative?: string[];
+}
+
 export interface ForecastScenario {
   name: 'bull'|'base'|'bear'|'custom';
   probability: number;
@@ -385,13 +397,7 @@ export interface ForecastScenario {
     other_operating_income_ratio?: number[];
     g_terminal: number; ke: number; kw: number;
   };
-  forecastPolicy?: {
-    companyEvidenceWeight?: number;
-    persistenceScore?: number;
-    templateGuardrailStrength?: number;
-    terminalAnchorSource?: 'company-evidence'|'blended'|'template';
-    narrative?: string[];
-  };
+  forecastPolicy?: ForecastPolicySurface;
   periods?: ForecastPeriod[];
   valuationResult?: ValuationResult;
 }

@@ -42,6 +42,9 @@ export default function PortfolioAllocator({ plan, latestValuation, onChange }: 
       </p>
       <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
         Recommendation: <strong>{recommendedWeight(latestValuation?.signalState)}</strong>
+        {latestValuation?.persistenceNarrative ? (
+          <div className="mt-2 text-slate-600">Persistence lens: {latestValuation.persistenceNarrative}</div>
+        ) : null}
       </div>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <div>

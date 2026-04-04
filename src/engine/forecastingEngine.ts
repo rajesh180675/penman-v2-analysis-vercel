@@ -186,6 +186,42 @@ export function buildBusinessModelProfile(data: RecastPeriod[]): BusinessModelPr
   };
 }
 
+function buildForecastPolicyNarrative(args: {
+  persistenceScore: number;
+  companyEvidenceWeight: number;
+  templateGuardrailStrength: number;
+  workingCapitalPressure: "low" | "medium" | "high";
+  reinvestmentBurden: "light" | "moderate" | "heavy";
+  balanceSheetFlexibility: "strong" | "adequate" | "tight";
+  terminalAnchorSource: "company-evidence" | "blended" | "template";
+  businessModel: BusinessModelProfile;
+}) {
+  const {
+    persistenceScore,
+    companyEvidenceWeight,
+    templateGuardrailStrength,
+    workingCapitalPressure,
+    reinvestmentBurden,
+    balanceSheetFlexibility,
+    terminalAnchorSource,
+    businessModel,
+  } = args;
+  const narrative = [...businessModel.evidence];
+  narrative.unshift(
+    persistenceScore < 45
+      ? "Forecast policy assumes fragility: growth, margin, and capital efficiency fade quickly toward anchored history."
+      : persistenceScore < 65
+        ? "Forecast policy assumes mixed persistence: recent economics matter, but only inside historical guardrails."
+        : "Forecast policy assumes durable economics: company evidence can dominate template priors within bounded guardrails.",
+  );
+  narrative.push(
+    `Company evidence weight is ${(companyEvidenceWeight * 100).toFixed(0)}% while template guardrails contribute ${(templateGuardrailStrength * 100).toFixed(0)}%.`,
+    `Working-capital pressure is ${workingCapitalPressure}; reinvestment burden is ${reinvestmentBurden}; balance-sheet flexibility is ${balanceSheetFlexibility}.`,
+    `Terminal anchor is driven by ${terminalAnchorSource}.`,
+  );
+  return narrative;
+}
+
 export function derivePersistenceForecastScenario(params: {
   scenarioKey: "stress" | "base" | "bull" | "historical-panic";
   latest: RecastPeriod;
@@ -212,8 +248,41 @@ export function derivePersistenceForecastScenario(params: {
   const { scenarioKey, latest, businessModel, horizon, template, riskInputs } = params;
   const latestRatios = latest.ratios;
   const persistence = clamp(businessModel.persistenceScore / 100, 0, 1);
-  const companyEvidenceWeight = clamp(0.25 + persistence * 0.55, 0.3, template.companyEvidenceMaxWeight ?? 0.8);
-  const templateGuardrailStrength = clamp(1 - companyEvidenceWeight, 0.2, 0.7);
+  const bridgeCoverage = latest.is.operatingCostBridge?.coverageRatio ?? null;
+  const cashConversion = latest.ratios?.cash_conversion_ratio ?? businessModel.historicalAnchors.cashConversion ?? null;
+  const noaGrowth = latest.ratios?.NOA_growth ?? null;
+  const salesGrowth = latest.ratios?.Sales_growth ?? null;
+  const leverage = latest.ratios?.FLEV ?? null;
+  const workingCapitalPressure = cashConversion != null && cashConversion < 0.65
+    ? "high"
+    : cashConversion != null && cashConversion < 0.82
+      ? "medium"
+      : "low";
+  const reinvestmentBurden = noaGrowth != null && salesGrowth != null && (
+    noaGrowth > salesGrowth + 0.08
+    || ((cashConversion ?? 1) < 0.55 && noaGrowth > salesGrowth + 0.02)
+    || ((cashConversion ?? 1) < 0.6 && noaGrowth > 0.22)
+  )
+    ? "heavy"
+    : noaGrowth != null && salesGrowth != null && noaGrowth > salesGrowth + 0.02
+      ? "moderate"
+      : "light";
+  const balanceSheetFlexibility = leverage != null && leverage > 0.7
+    ? "tight"
+    : leverage != null && leverage > 0.35
+      ? "adequate"
+      : "strong";
+  const companyEvidenceWeight = clamp(
+    0.25
+      + persistence * 0.55
+      - (workingCapitalPressure === "high" ? 0.08 : workingCapitalPressure === "medium" ? 0.03 : 0)
+      - (reinvestmentBurden === "heavy" ? 0.05 : reinvestmentBurden === "moderate" ? 0.02 : 0)
+      - (balanceSheetFlexibility === "tight" ? 0.05 : balanceSheetFlexibility === "adequate" ? 0.02 : 0)
+      + ((bridgeCoverage ?? 0.75) >= 0.8 ? 0.03 : (bridgeCoverage ?? 0.75) < 0.65 ? -0.05 : 0),
+    0.25,
+    template.companyEvidenceMaxWeight ?? 0.8,
+  );
+  const templateGuardrailStrength = clamp(1 - companyEvidenceWeight, 0.2, 0.75);
 
   const blendedSalesGrowth = blendAnchor(
     latestRatios?.Sales_growth ?? null,
@@ -256,6 +325,19 @@ export function derivePersistenceForecastScenario(params: {
 
   const flevBase = Math.max(latest.bs.NFO / Math.max(latest.bs.CSE, 1), -0.2);
   const nbcBase = Math.max(latest.is.NFE / Math.max(Math.abs(latest.bs.NFO), 1), 0.01);
+
+  const operatingMode = bridgeCoverage != null && bridgeCoverage >= 0.72 ? "cost-bridge" : "margin";
+  const terminalAnchorSource = companyEvidenceWeight >= 0.65 ? "company-evidence" : companyEvidenceWeight >= 0.45 ? "blended" : "template";
+  const narrative = buildForecastPolicyNarrative({
+    persistenceScore: businessModel.persistenceScore,
+    companyEvidenceWeight,
+    templateGuardrailStrength,
+    workingCapitalPressure,
+    reinvestmentBurden,
+    balanceSheetFlexibility,
+    terminalAnchorSource,
+    businessModel,
+  });
 
   const scenarioPresets = {
     stress: {
@@ -318,8 +400,12 @@ export function derivePersistenceForecastScenario(params: {
       companyEvidenceWeight,
       persistenceScore: businessModel.persistenceScore,
       templateGuardrailStrength,
-      terminalAnchorSource: companyEvidenceWeight >= 0.65 ? "company-evidence" : companyEvidenceWeight >= 0.45 ? "blended" : "template",
-      narrative: businessModel.evidence,
+      terminalAnchorSource,
+      workingCapitalPressure,
+      reinvestmentBurden,
+      balanceSheetFlexibility,
+      operatingMode,
+      narrative,
     },
     drivers: {
       sales_growth: makeFadeArray(

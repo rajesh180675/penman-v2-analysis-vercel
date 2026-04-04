@@ -2,7 +2,7 @@ import { computeValuation, deriveKwFromStructure } from "./PenmanNissimEngine";
 import { LiveMarketDataFreshness, LiveMarketDataSnapshot, MarketHistoryPoint, summarizeHistoricalPrices } from "./marketData";
 import { buildBusinessModelProfile, buildScenario, buildValuationPeriodsFromForecast, derivePersistenceForecastScenario } from "./forecastingEngine";
 import { AnalysisStatusSummary } from "./analysisStatus";
-import { RecastPeriod, EngineConfig, ForecastScenario, ValuationResult, ke_from_config, BusinessModelProfile } from "./types";
+import { RecastPeriod, EngineConfig, ForecastScenario, ForecastPolicySurface, ValuationResult, ke_from_config, BusinessModelProfile } from "./types";
 import { resolveShareBasis } from "./shareCountTools";
 import { ValuationReadiness, resolveValuationReadiness } from "./valuationPolicy";
 import { resolveValuationSectorTemplate } from "./valuationSectorTemplates";
@@ -23,6 +23,7 @@ export interface ValuationScenarioCard {
   marginOfSafetyPct: number | null;
   expectedCagr: number | null;
   valuation: ValuationResult;
+  forecastPolicy?: ForecastPolicySurface;
   assumptions: {
     ke: number;
     kw: number;
@@ -68,11 +69,13 @@ export interface ValuationOpportunityAssessment {
   opportunityScore: number;
   convictionBucket: "research-only" | "starter" | "accumulate" | "high-conviction" | "truck-load zone";
   thesis: string;
+  persistenceNarrative: string;
 }
 
 export interface ValuationChecklist {
   whatMustGoRight: string[];
   thesisBreakers: string[];
+  forecastDiscipline: string[];
 }
 
 export interface ValuationMarketContext {
@@ -467,10 +470,22 @@ function buildChecklist(args: {
   analysisStatus?: AnalysisStatusSummary | null;
 }) {
   const { opportunity, diagnostics, reverseDcf, marketContext, stressCard, analysisStatus } = args;
+  const stressForecastPolicy = stressCard?.forecastPolicy;
   const whatMustGoRight = [
     `Reinvestment must stay disciplined enough to preserve a stress-case margin of safety near ${formatPct(stressCard?.marginOfSafetyPct, 1)}.`,
     `Owner-earnings conversion needs to hold above the current cash conversion regime of ${formatPct(diagnostics.cashConversionRatio, 1)}.`,
     `The market cannot already be right about a weak long-term trajectory; current reverse DCF still needs to remain below the sector-normal anchor.`,
+  ];
+  const forecastDiscipline = [
+    stressForecastPolicy?.workingCapitalPressure === "high"
+      ? "Working-capital pressure is elevated, so any upside case requires materially better cash conversion than the current regime."
+      : "Working-capital drag is not currently the main fragility in the forecast path.",
+    stressForecastPolicy?.reinvestmentBurden === "heavy"
+      ? "Incremental capital needs are heavy, so forecast upside should be judged against reinvestment strain, not revenue alone."
+      : "Reinvestment burden remains manageable enough that growth can be judged with normal fade discipline.",
+    stressForecastPolicy?.balanceSheetFlexibility === "tight"
+      ? "Balance-sheet flexibility is tight, so the business cannot be valued as if financing is frictionless."
+      : "Balance-sheet flexibility is adequate enough that execution, not financing, remains the main forecast variable.",
   ];
   if ((opportunity.expectedCagrBase ?? 0) > 0.15) {
     whatMustGoRight.push("The company needs to compound closer to the base case than the panic case over the next three years.");
@@ -490,6 +505,7 @@ function buildChecklist(args: {
   return {
     whatMustGoRight,
     thesisBreakers,
+    forecastDiscipline,
   } satisfies ValuationChecklist;
 }
 
@@ -577,6 +593,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
       marginOfSafetyPct,
       expectedCagr: annualizedReturn(marketPrice, intrinsicPerShare, 3),
       valuation,
+      forecastPolicy: scenarioWithTerminal.forecastPolicy,
       assumptions: {
         ke: scenarioWithTerminal.drivers.ke,
         kw: scenarioWithTerminal.drivers.kw,
@@ -770,6 +787,16 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
             : convictionBucket === "starter"
               ? "The setup is worth building a starter position only after monitoring execution and valuation drift."
               : "The setup is analytically usable, but it does not yet qualify as a rare market-led opportunity.",
+    persistenceNarrative:
+      stressCard?.forecastPolicy?.workingCapitalPressure === "high"
+        ? "Persistence remains constrained by weak cash conversion and working-capital drag, so upside depends on a real improvement in business discipline rather than multiple expansion alone."
+        : stressCard?.forecastPolicy?.reinvestmentBurden === "heavy"
+          ? "Persistence remains constrained by heavy reinvestment needs, so growth only deserves credit if it compounds without consuming disproportionate capital."
+          : stressCard?.forecastPolicy?.balanceSheetFlexibility === "tight"
+            ? "Persistence remains constrained by financing tightness, so valuation assumes the business cannot extend an aggressive path for long."
+            : businessModel.persistenceScore >= 65
+              ? "Persistence looks durable enough that company evidence, not just template priors, can drive the valuation within guardrails."
+              : "Persistence remains mixed, so valuation still assumes measured fade toward anchored economics.",
   };
 
   const marketContext: ValuationMarketContext = {
@@ -816,6 +843,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
 
   checklist.whatMustGoRight.unshift(valuationReadinessSummary, marketFreshnessSummary);
   checklist.thesisBreakers.unshift(replaySummary);
+  checklist.forecastDiscipline.unshift(opportunity.persistenceNarrative);
 
   const killSwitches = [
     ...(analysisStatus?.status === "blocked" ? [analysisStatus.summary] : []),
@@ -826,6 +854,18 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   ];
 
   const supportingFlags = [
+    ...(baseCard?.forecastPolicy?.terminalAnchorSource === "company-evidence"
+      ? ["Base-case terminal assumptions are being led by company evidence rather than template priors."]
+      : []),
+    ...(stressCard?.forecastPolicy?.workingCapitalPressure === "high"
+      ? ["Forecast policy detects high working-capital pressure and keeps downside assumptions tight."]
+      : []),
+    ...(stressCard?.forecastPolicy?.reinvestmentBurden === "heavy"
+      ? ["Forecast policy penalizes heavy reinvestment burden before allowing conviction to rise."]
+      : []),
+    ...(stressCard?.forecastPolicy?.balanceSheetFlexibility === "tight"
+      ? ["Forecast policy recognizes tight balance-sheet flexibility and prevents frictionless upside assumptions."]
+      : []),
     ...(historicalPercentile != null && historicalPercentile <= sectorTemplate.historicalExtremePercentile
       ? ["Current price sits in a historically dislocated range for this company."]
       : []),
