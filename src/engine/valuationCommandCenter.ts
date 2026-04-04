@@ -18,6 +18,7 @@ export type ValuationSignalState =
 export interface ValuationScenarioCard {
   key: "stress" | "base" | "bull" | "historical-panic";
   label: string;
+  scenario: ForecastScenario;
   intrinsicPerShare: number | null;
   upsidePct: number | null;
   marginOfSafetyPct: number | null;
@@ -588,6 +589,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     return {
       key,
       label: key === "stress" ? "Stress case" : key === "base" ? "Base case" : key === "bull" ? "Bull case" : "Historical panic",
+      scenario: scenarioWithTerminal,
       intrinsicPerShare,
       upsidePct: intrinsicPerShare != null && marketPrice != null && marketPrice > 0 ? (intrinsicPerShare - marketPrice) / marketPrice : null,
       marginOfSafetyPct,

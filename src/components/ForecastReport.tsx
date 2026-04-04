@@ -3,7 +3,7 @@ import { RecastPeriod, ForecastScenario, ForecastPeriod, FADE_PARAMS, NP_BENCHMA
 import { buildCyclicalNormalization } from "../engine/cyclicalNormalization";
 import { buildDriverForecastModel } from "../engine/forecastDriverModel";
 import { buildQuarterlyDriverSummary } from "../engine/quarterlyDriverModel";
-import { buildScenario, sensitivityAnalysis, buildValuationPeriodsFromForecast, applyDriverSensitivityToScenario, buildBusinessModelProfile } from "../engine/forecastingEngine";
+import { buildScenario, sensitivityAnalysis, buildValuationPeriodsFromForecast, applyDriverSensitivityToScenario, buildBusinessModelProfile, derivePersistenceForecastScenario } from "../engine/forecastingEngine";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { buildTerminalEconomics } from "../engine/terminalEconomics";
 import { resolveValuationReadiness } from "../engine/valuationPolicy";
@@ -129,9 +129,6 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
   const [ke_inp,  setKe]  = useState(+(keBase*100).toFixed(1));
   const [g_inp,   setG]   = useState(5.0);
   const [horizon, setH]   = useState(5);
-  const [pBull, setPBull] = useState(0.25);
-  const [pBase, setPBase] = useState(0.5);
-  const [pBear, setPBear] = useState(0.25);
   const [mcBusy, setMcBusy] = useState(false);
   const [mcProgress, setMcProgress] = useState(0);
   const [mcOut, setMcOut] = useState<MonteCarloOutput | null>(null);
@@ -144,29 +141,49 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
   }, [data, ke_inp, config]);
   const cyclicalNormalization = useMemo(() => buildCyclicalNormalization(data), [data]);
   const businessModel = useMemo(() => buildBusinessModelProfile(data), [data]);
+  const persistenceTemplate = useMemo(() => ({
+    normalizedGrowth: cyclicalNormalization.normalizedSalesGrowth ?? NP_SG,
+    terminalGrowthFloor: 0.02,
+    terminalGrowthCap: 0.05,
+    growthFadeAlpha: 0.8,
+    marginFadeAlpha: 0.9,
+    atoFadeAlpha: 0.95,
+  }), [cyclicalNormalization, NP_SG]);
   const driverModel = useMemo(() => buildDriverForecastModel({
     data,
     latest,
     businessModel,
     normalized: cyclicalNormalization,
     scenarioKey: "base",
-    template: {
-      normalizedGrowth: cyclicalNormalization.normalizedSalesGrowth ?? NP_SG,
-      terminalGrowthFloor: 0.02,
-      terminalGrowthCap: 0.05,
-      growthFadeAlpha: 0.8,
-      marginFadeAlpha: 0.9,
-      atoFadeAlpha: 0.95,
-    },
-  }), [data, latest, businessModel, cyclicalNormalization, NP_SG]);
+    template: persistenceTemplate,
+  }), [data, latest, businessModel, cyclicalNormalization, persistenceTemplate]);
+  const persistenceScenario = useMemo(() => derivePersistenceForecastScenario({
+    scenarioKey: "base",
+    periods: data,
+    latest,
+    businessModel,
+    horizon,
+    template: persistenceTemplate,
+    riskInputs: { ke: ke_inp / 100, kw: kwDerived, riskFreeRate: config.risk_free_rate },
+  }), [data, latest, businessModel, horizon, persistenceTemplate, ke_inp, kwDerived, config.risk_free_rate]);
+  const policyWeights = persistenceScenario.forecastPolicy?.scenarioWeighting;
+  const [pBull, setPBull] = useState<number | null>(null);
+  const [pBase, setPBase] = useState<number | null>(null);
+  const [pBear, setPBear] = useState<number | null>(null);
+  const resolvedPBull = pBull ?? policyWeights?.bull ?? 0.25;
+  const resolvedPBase = pBase ?? policyWeights?.base ?? 0.5;
+  const resolvedPBear = pBear ?? policyWeights?.stress ?? 0.25;
   const terminalEconomics = useMemo(
     () => buildTerminalEconomics({
       latest,
       normalized: cyclicalNormalization,
-      requiredReturn: ke_inp / 100,
-      sectorTerminalGrowth: g_inp / 100,
+      businessModel,
+      driverPlan: driverModel,
+      requiredReturn: kwDerived,
+      terminalGrowthFloor: persistenceTemplate.terminalGrowthFloor,
+      terminalGrowthCap: persistenceTemplate.terminalGrowthCap,
     }),
-    [cyclicalNormalization, g_inp, ke_inp, latest],
+    [latest, cyclicalNormalization, businessModel, driverModel, kwDerived, persistenceTemplate],
   );
   const quarterlySummary = useMemo(() => buildQuarterlyDriverSummary(rawData, data), [rawData, data]);
 
@@ -216,9 +233,9 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
       } : undefined,
     );
 
-    bull.probability = pBull;
-    base.probability = pBase;
-    bear.probability = pBear;
+    bull.probability = resolvedPBull;
+    base.probability = resolvedPBase;
+    bear.probability = resolvedPBear;
 
     return [bull,base,bear].map(sc=>{
       const fps = buildScenario(sc, latest);
@@ -227,7 +244,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
       sc.valuationResult = computeValuation(valuationPeriods, kei, kwi, g_inp/100, valuationConfig);
       return sc;
     });
-  },[latest,ke_inp,kwDerived,g_inp,horizon,pBull,pBase,pBear,fadeSG,fadePM,fadeATO,bridgeFade,valuationConfig]);
+  },[latest,ke_inp,kwDerived,g_inp,horizon,resolvedPBull,resolvedPBase,resolvedPBear,fadeSG,fadePM,fadeATO,bridgeFade,valuationConfig]);
 
   const baseScenario = scenarios.find(s=>s.name==="base");
   const fcPeriods = baseScenario?.periods ?? [];
@@ -284,7 +301,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
   }));
 
   const SCENARIO_COLORS:{[k:string]:string}={bull:"#10b981",base:"#6366f1",bear:"#ef4444"};
-  const probSum = pBull + pBase + pBear;
+  const probSum = resolvedPBull + resolvedPBase + resolvedPBear;
 
   const runMc = async () => {
     setMcBusy(true);
@@ -374,20 +391,23 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
           <div className="grid grid-cols-3 gap-2">
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">P(Bull)</label>
-              <input type="number" step={0.05} value={pBull} onChange={(e) => setPBull(Number(e.target.value))} className="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm" />
+              <input type="number" step={0.05} value={resolvedPBull} onChange={(e) => setPBull(Number(e.target.value))} className="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">P(Base)</label>
-              <input type="number" step={0.05} value={pBase} onChange={(e) => setPBase(Number(e.target.value))} className="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm" />
+              <input type="number" step={0.05} value={resolvedPBase} onChange={(e) => setPBase(Number(e.target.value))} className="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm" />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">P(Bear)</label>
-              <input type="number" step={0.05} value={pBear} onChange={(e) => setPBear(Number(e.target.value))} className="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm" />
+              <input type="number" step={0.05} value={resolvedPBear} onChange={(e) => setPBear(Number(e.target.value))} className="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm" />
             </div>
           </div>
         </div>
         <div className={`mt-3 text-xs ${Math.abs(probSum - 1) < 0.001 ? "text-emerald-700" : "text-amber-700"}`}>
           Probability sum = {probSum.toFixed(2)} {Math.abs(probSum - 1) < 0.001 ? "(valid)" : "(must equal 1.00)"}
+        </div>
+        <div className="mt-2 text-xs text-slate-500">
+          Policy default weighting: Stress {(policyWeights?.stress ?? 0).toFixed(2)} · Base {(policyWeights?.base ?? 0).toFixed(2)} · Bull {(policyWeights?.bull ?? 0).toFixed(2)} · Panic {(policyWeights?.historicalPanic ?? 0).toFixed(2)}
         </div>
         {sharesOut != null && (
           <div className="mt-3 text-xs text-slate-500 space-y-1">
@@ -439,6 +459,20 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
             <div>Terminal reinvestment: <strong>{terminalEconomics.terminalReinvestmentRate != null ? pct(terminalEconomics.terminalReinvestmentRate) : "—"}</strong></div>
             <div>Competition pressure: <strong>{terminalEconomics.competitionPressure}</strong></div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{terminalEconomics.summary}</div>
+          </div>
+        </div>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h3 className="text-base font-bold text-slate-800 mb-2">Scenario Policy</h3>
+          <div className="grid gap-2 text-sm text-slate-700">
+            <div>Spread posture: <strong>{persistenceScenario.forecastPolicy?.scenarioSpread ?? "—"}</strong></div>
+            <div>
+              Default weighting: <strong>
+                Stress {(policyWeights?.stress ?? 0).toFixed(2)} · Base {(policyWeights?.base ?? 0).toFixed(2)} · Bull {(policyWeights?.bull ?? 0).toFixed(2)} · Panic {(policyWeights?.historicalPanic ?? 0).toFixed(2)}
+              </strong>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              {(persistenceScenario.forecastPolicy?.scenarioWeightRationale ?? []).join(" ")}
+            </div>
           </div>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">

@@ -284,6 +284,58 @@ describe("valuation command center", () => {
     expect(out.scenarios.find((scenario) => scenario.key === "stress")?.expectedCagr).not.toBeNull();
   });
 
+  it("uses persistence-led scenario weighting in the command center", () => {
+    const data = [
+      mkPeriod(2023, 1000, 180, 130, 520, 760),
+      mkPeriod(2024, 1100, 205, 150, 590, 820),
+      mkPeriod(2025, 1210, 232, 172, 665, 885),
+    ];
+
+    const out = buildValuationCommandCenter({
+      data,
+      config: {
+        ...DEFAULT_CONFIG,
+        shares_outstanding: 620,
+        market_price: 1,
+      },
+      marketData: {
+        symbol: "ASIANPAINT.BSE",
+        provider: "Alpha Vantage",
+        fetchedAt: "2026-03-30T16:00:00.000Z",
+        price: 1,
+        previousClose: 1.1,
+        changePct: -0.09,
+        marketCap: null,
+        enterpriseValue: null,
+        sharesOutstanding: null,
+        riskFreeRate: 0.07,
+        priceAsOf: "2026-03-30T15:59:00.000Z",
+        rateAsOf: "2026-03-29",
+        freshness: "live",
+        sourceSummary: "Alpha Vantage",
+        warnings: [],
+        history: {
+          points: buildHistorySeries("2026-03-28", 1.05, 260),
+          currentPricePercentile: 0.05,
+          low52Week: 0.9,
+          high52Week: 2.1,
+          distanceFrom52WeekLowPct: 0.11,
+          drawdownFrom52WeekHighPct: -0.52,
+        },
+      },
+      analysisStatus: productionReadyStatus,
+    });
+
+    const stress = out.scenarios.find((card) => card.key === "stress");
+    const base = out.scenarios.find((card) => card.key === "base");
+    const bull = out.scenarios.find((card) => card.key === "bull");
+
+    expect(base?.scenario.probability ?? 0).toBeGreaterThan(stress?.scenario.probability ?? 0);
+    expect(base?.scenario.probability ?? 0).toBeGreaterThan(bull?.scenario.probability ?? 0);
+    expect(base?.forecastPolicy?.scenarioSpread).toBeDefined();
+    expect((base?.forecastPolicy?.scenarioWeightRationale ?? []).length).toBeGreaterThan(0);
+  });
+
   it("blocks the signal when the broader analysis is blocked", () => {
     const data = [
       mkPeriod(2024, 1100, 205, 150, 590, 820),

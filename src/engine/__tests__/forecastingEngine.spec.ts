@@ -277,6 +277,66 @@ describe("derivePersistenceForecastScenario", () => {
     expect(scenario.drivers.sales_growth[0]).toBeGreaterThan(scenario.drivers.sales_growth[4]);
     expect(scenario.drivers.g_terminal).toBeLessThanOrEqual(0.05);
   });
+
+  it("derives persistence-led scenario probabilities and spread posture", () => {
+    const data: RecastPeriod[] = [
+      {
+        ...mkLatest("2021-03-31"),
+        ratios: {
+          ...(mkLatest("2021-03-31").ratios ?? {} as Ratios),
+          Sales_growth: 0.07, CoreSalesPM: 0.14, PM: 0.14, ATO: 1.28, SPREAD: 0.09, cash_conversion_ratio: 0.89, NOA_growth: 0.07, FLEV: 0.16,
+        } as Ratios,
+      },
+      {
+        ...mkLatest("2022-03-31"),
+        ratios: {
+          ...(mkLatest("2022-03-31").ratios ?? {} as Ratios),
+          Sales_growth: 0.08, CoreSalesPM: 0.145, PM: 0.145, ATO: 1.29, SPREAD: 0.095, cash_conversion_ratio: 0.90, NOA_growth: 0.08, FLEV: 0.17,
+        } as Ratios,
+      },
+      {
+        ...mkLatest("2023-03-31"),
+        ratios: {
+          ...(mkLatest("2023-03-31").ratios ?? {} as Ratios),
+          Sales_growth: 0.08, CoreSalesPM: 0.148, PM: 0.148, ATO: 1.30, SPREAD: 0.10, cash_conversion_ratio: 0.91, NOA_growth: 0.08, FLEV: 0.18,
+        } as Ratios,
+      },
+      {
+        ...mkLatest("2024-03-31"),
+        ratios: {
+          ...(mkLatest("2024-03-31").ratios ?? {} as Ratios),
+          Sales_growth: 0.09, CoreSalesPM: 0.15, PM: 0.15, ATO: 1.31, SPREAD: 0.105, cash_conversion_ratio: 0.92, NOA_growth: 0.08, FLEV: 0.18,
+        } as Ratios,
+      },
+    ];
+
+    const businessModel = buildBusinessModelProfile(data);
+    const scenario = derivePersistenceForecastScenario({
+      scenarioKey: "base",
+      periods: data,
+      latest: data[data.length - 1],
+      businessModel,
+      horizon: 5,
+      template: {
+        normalizedGrowth: 0.08,
+        terminalGrowthFloor: 0.03,
+        terminalGrowthCap: 0.05,
+        growthFadeAlpha: 0.82,
+        marginFadeAlpha: 0.9,
+        atoFadeAlpha: 0.94,
+        companyEvidenceMaxWeight: 0.8,
+        growthGuardrailBand: 0.03,
+        marginGuardrailBand: 0.04,
+        atoGuardrailBand: 0.35,
+      },
+      riskInputs: { ke: 0.12, kw: 0.1, riskFreeRate: 0.07 },
+    } as never);
+
+    expect(scenario.probability).toBeGreaterThanOrEqual(0.4);
+    expect(scenario.forecastPolicy?.scenarioWeighting?.base).toBeGreaterThan(scenario.forecastPolicy?.scenarioWeighting?.stress ?? 0);
+    expect(scenario.forecastPolicy?.scenarioSpread).toBe("contained");
+    expect(scenario.forecastPolicy?.scenarioWeightRationale?.length).toBeGreaterThan(0);
+  });
 });
 
 describe("buildScenario validation", () => {

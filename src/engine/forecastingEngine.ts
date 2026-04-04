@@ -219,6 +219,59 @@ function buildForecastPolicyNarrative(args: {
   return narrative;
 }
 
+function buildScenarioWeighting(args: {
+  scenarioKey: "stress" | "base" | "bull" | "historical-panic";
+  persistenceScore: number;
+  companyEvidenceWeight: number;
+  workingCapitalPressure: "low" | "medium" | "high";
+  reinvestmentBurden: "light" | "moderate" | "heavy";
+  terminalFadeYears: number;
+}) {
+  const fragilityPenalty = args.persistenceScore < 45 ? 0.08 : args.persistenceScore < 65 ? 0.03 : 0;
+  const evidenceLift = args.companyEvidenceWeight >= 0.65 ? 0.05 : args.companyEvidenceWeight >= 0.45 ? 0.02 : -0.02;
+  const pressurePenalty = args.workingCapitalPressure === "high" ? 0.04 : args.workingCapitalPressure === "medium" ? 0.02 : 0;
+  const reinvestmentPenalty = args.reinvestmentBurden === "heavy" ? 0.04 : args.reinvestmentBurden === "moderate" ? 0.02 : 0;
+  const fadeLift = args.terminalFadeYears >= 5 ? 0.03 : args.terminalFadeYears === 4 ? 0 : -0.02;
+
+  const base = clamp(0.4 + evidenceLift + fadeLift - fragilityPenalty - pressurePenalty - reinvestmentPenalty, 0.3, 0.6);
+  const stress = clamp(0.24 + fragilityPenalty + pressurePenalty + reinvestmentPenalty - evidenceLift * 0.4, 0.15, 0.4);
+  const bull = clamp(0.16 + evidenceLift + fadeLift - fragilityPenalty * 0.6, 0.08, 0.28);
+  const historicalPanicRaw = 1 - base - stress - bull;
+  const historicalPanic = clamp(historicalPanicRaw, 0.08, 0.22);
+  const total = base + stress + bull + historicalPanic;
+  const weighting = {
+    stress: stress / total,
+    base: base / total,
+    bull: bull / total,
+    historicalPanic: historicalPanic / total,
+  };
+  const spread: "contained" | "balanced" | "wide" = weighting.base >= 0.45 && weighting.stress <= 0.25
+    ? "contained"
+    : weighting.stress >= 0.3 || weighting.historicalPanic >= 0.18
+      ? "wide"
+      : "balanced";
+  const probability = args.scenarioKey === "historical-panic"
+    ? weighting.historicalPanic
+    : weighting[args.scenarioKey];
+
+  return {
+    probability,
+    weighting,
+    spread,
+    rationale: [
+      weighting.base >= 0.45
+        ? "Base weight stays elevated because persistence evidence supports a narrower outcome range."
+        : "Base weight is capped because persistence evidence does not support a narrow central case.",
+      args.workingCapitalPressure === "high"
+        ? "Working-capital stress shifts weight toward downside scenarios."
+        : "Working-capital discipline does not force extra downside weighting.",
+      args.reinvestmentBurden === "heavy"
+        ? "Heavy reinvestment burden widens scenario dispersion."
+        : "Reinvestment burden does not materially widen scenario dispersion.",
+    ],
+  };
+}
+
 export function derivePersistenceForecastScenario(params: {
   scenarioKey: "stress" | "base" | "bull" | "historical-panic";
   periods?: RecastPeriod[];
@@ -260,33 +313,39 @@ export function derivePersistenceForecastScenario(params: {
       ? "blended"
       : "template";
 
+  const scenarioWeighting = buildScenarioWeighting({
+    scenarioKey,
+    persistenceScore: businessModel.persistenceScore,
+    companyEvidenceWeight: driverPlan.companyEvidenceWeight,
+    workingCapitalPressure: driverPlan.workingCapitalPressure,
+    reinvestmentBurden: driverPlan.reinvestmentPosture,
+    terminalFadeYears: terminalEconomics.fadeYears,
+  });
+  const spreadRiskAddOn = scenarioWeighting.spread === "wide" ? 0.005 : scenarioWeighting.spread === "balanced" ? 0.0025 : 0;
+
   const scenarioPresets = {
     stress: {
       name: "bear" as const,
-      probability: 0.25,
-      ke: riskInputs.ke + 0.02,
-      kw: riskInputs.kw + 0.015,
+      ke: riskInputs.ke + 0.02 + spreadRiskAddOn,
+      kw: riskInputs.kw + 0.015 + spreadRiskAddOn,
       terminalGrowth: clamp(terminalEconomics.terminalGrowth, 0.015, 0.03),
     },
     base: {
       name: "base" as const,
-      probability: 0.4,
       ke: riskInputs.ke,
       kw: riskInputs.kw,
       terminalGrowth: terminalEconomics.terminalGrowth,
     },
     bull: {
       name: "bull" as const,
-      probability: 0.15,
-      ke: Math.max(riskInputs.ke - 0.01, riskInputs.riskFreeRate + 0.04),
-      kw: Math.max(riskInputs.kw - 0.008, riskInputs.riskFreeRate + 0.03),
-      terminalGrowth: clamp(terminalEconomics.terminalGrowth * 1.1, template.terminalGrowthFloor, template.terminalGrowthCap),
+      ke: Math.max(riskInputs.ke - (0.01 - spreadRiskAddOn * 0.5), riskInputs.riskFreeRate + 0.04),
+      kw: Math.max(riskInputs.kw - (0.008 - spreadRiskAddOn * 0.4), riskInputs.riskFreeRate + 0.03),
+      terminalGrowth: clamp(terminalEconomics.terminalGrowth * (scenarioWeighting.spread === "contained" ? 1.06 : 1.1), template.terminalGrowthFloor, template.terminalGrowthCap),
     },
     "historical-panic": {
       name: "bear" as const,
-      probability: 0.2,
-      ke: riskInputs.ke + 0.03,
-      kw: riskInputs.kw + 0.0225,
+      ke: riskInputs.ke + 0.03 + spreadRiskAddOn,
+      kw: riskInputs.kw + 0.0225 + spreadRiskAddOn,
       terminalGrowth: clamp(template.terminalGrowthFloor, 0.01, 0.025),
     },
   } as const;
@@ -295,7 +354,7 @@ export function derivePersistenceForecastScenario(params: {
 
   return {
     name: preset.name,
-    probability: preset.probability,
+    probability: scenarioWeighting.probability,
     horizonT: horizon,
     forecastPolicy: {
       companyEvidenceWeight: driverPlan.companyEvidenceWeight,
@@ -308,6 +367,9 @@ export function derivePersistenceForecastScenario(params: {
       operatingMode: driverPlan.operatingMode,
       terminalFadeYears: terminalEconomics.fadeYears,
       terminalEconomicsRationale: terminalEconomics.rationale,
+      scenarioWeighting: scenarioWeighting.weighting,
+      scenarioSpread: scenarioWeighting.spread,
+      scenarioWeightRationale: scenarioWeighting.rationale,
       narrative: buildForecastPolicyNarrative({
         persistenceScore: businessModel.persistenceScore,
         companyEvidenceWeight: driverPlan.companyEvidenceWeight,

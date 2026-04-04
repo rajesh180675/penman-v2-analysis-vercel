@@ -420,6 +420,15 @@ export interface TerminalEconomicsOutput {
   rationale: string[];
 }
 
+export interface ScenarioWeightingSurface {
+  stress: number;
+  base: number;
+  bull: number;
+  historicalPanic: number;
+}
+
+export type ScenarioSpreadPosture = "contained" | "balanced" | "wide";
+
 export interface ForecastPolicySurface {
   companyEvidenceWeight?: number;
   persistenceScore?: number;
@@ -431,6 +440,9 @@ export interface ForecastPolicySurface {
   operatingMode?: 'cost-bridge' | 'margin';
   terminalFadeYears?: number;
   terminalEconomicsRationale?: string[];
+  scenarioWeighting?: ScenarioWeightingSurface;
+  scenarioSpread?: ScenarioSpreadPosture;
+  scenarioWeightRationale?: string[];
   narrative?: string[];
 }
 
