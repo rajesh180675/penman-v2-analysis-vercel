@@ -132,6 +132,60 @@ describe("analysis status confidence gating", () => {
     expect(status.status).toBe("blocked");
   });
 
+  it("downgrades to guarded when persistence is fragile despite a clean anchor", () => {
+    const status = deriveAnalysisStatus(
+      {
+        tier: "Tier 1",
+        valuationBlocked: false,
+        missingMinimum: [],
+        missingCore: [],
+        blockingReasons: [],
+        policyVersion: versions.mappingPolicyVersion,
+        coverageSummary: {
+          policyVersion: versions.mappingPolicyVersion,
+          issues: [],
+          unresolvedBySeverity: { critical: [], warning: [], info: [] },
+          unresolvedByTier: { "Tier A": [], "Tier B": [], "Tier C": [], "Tier D": [] },
+          totalsByTier: {
+            "Tier A": { total: 0, resolved: 0, unresolved: 0 },
+            "Tier B": { total: 0, resolved: 0, unresolved: 0 },
+            "Tier C": { total: 0, resolved: 0, unresolved: 0 },
+            "Tier D": { total: 0, resolved: 0, unresolved: 0 },
+          },
+        },
+        valuationCriticalGaps: [],
+        ratioCriticalGaps: [],
+        scopeAssessment: {
+          policyVersion: versions.scopePolicyVersion,
+          classification: "supported-industrial",
+          blocked: false,
+          label: "Supported industrial/company scope",
+          reasons: [],
+          recommendedAction: "Proceed",
+          signals: [],
+        },
+      },
+      {
+        status: "production-ready",
+        latestPeriod: "2025-03-31",
+        anchorPeriod: "2025-03-31",
+        anchorIndex: 0,
+        fallbackUsed: false,
+        contaminationTier: "CLEAN",
+        persistenceStatus: "fragile",
+        persistenceScore: 38,
+        terminalFlags: [],
+        terminalFlagLabels: [],
+        reasons: ["Terminal period is clean.", "Business-model persistence is fragile (38/100); treat upside as lower-confidence even if accounting contamination is clean."],
+      },
+      null,
+    );
+
+    expect(status.status).toBe("guarded");
+    expect(status.persistenceStatus).toBe("fragile");
+    expect(status.summary.toLowerCase()).toContain("terminal period is clean");
+  });
+
   it("downgrades to guarded when actionable backlog review remains high", () => {
     const status = deriveAnalysisStatus(
       {
@@ -172,6 +226,8 @@ describe("analysis status confidence gating", () => {
         anchorIndex: 0,
         fallbackUsed: false,
         contaminationTier: "CLEAN",
+        persistenceStatus: "durable",
+        persistenceScore: 72,
         terminalFlags: [],
         terminalFlagLabels: [],
         reasons: ["Terminal period is clean."],

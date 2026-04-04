@@ -41,6 +41,33 @@ describe("resolveValuationReadiness", () => {
     expect(readiness.anchorPeriod).toBe("2024-03-31");
     expect(readiness.contaminationTier).toBe("GUARDED");
   });
+
+  it("marks fragile persistence separately from contamination", () => {
+    const fragilePeriods = [
+      {
+        ...mkPeriod("2023-03-31"),
+        bs: { separationScore: 62 },
+        ratios: { Sales_growth: 0.16, CoreSalesPM: 0.16, PM: 0.16, ATO: 1.2, SPREAD: 0.05, cash_conversion_ratio: 0.58, NOA_growth: 0.2, FLEV: 0.7 },
+      },
+      {
+        ...mkPeriod("2024-03-31"),
+        bs: { separationScore: 61 },
+        ratios: { Sales_growth: 0.2, CoreSalesPM: 0.19, PM: 0.19, ATO: 1.15, SPREAD: 0.06, cash_conversion_ratio: 0.52, NOA_growth: 0.24, FLEV: 0.76 },
+      },
+      {
+        ...mkPeriod("2025-03-31"),
+        bs: { separationScore: 60 },
+        ratios: { Sales_growth: 0.28, CoreSalesPM: 0.24, PM: 0.24, ATO: 1.1, SPREAD: 0.06, cash_conversion_ratio: 0.46, NOA_growth: 0.29, FLEV: 0.82 },
+      },
+    ] as RecastPeriod[];
+
+    const readiness = resolveValuationReadiness(fragilePeriods);
+
+    expect(readiness.status).toBe("production-ready");
+    expect(readiness.persistenceStatus).toBe("fragile");
+    expect(readiness.persistenceScore).toBeLessThan(45);
+    expect(readiness.reasons.some((reason) => reason.toLowerCase().includes("persistence"))).toBe(true);
+  });
 });
 
 describe("deriveCompanyLabel", () => {

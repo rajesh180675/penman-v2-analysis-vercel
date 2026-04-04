@@ -265,6 +265,23 @@ export interface RecastPeriod {
   shareCountInput?: ShareCountInputSnapshot;
 }
 
+export interface BusinessModelProfile {
+  persistenceScore: number;
+  demandStabilityScore: number;
+  marginDurabilityScore: number;
+  capitalIntensityScore: number;
+  workingCapitalDisciplineScore: number;
+  reinvestmentQualityScore: number;
+  evidence: string[];
+  historicalAnchors: {
+    salesGrowth: number | null;
+    corePm: number | null;
+    ato: number | null;
+    spread: number | null;
+    cashConversion: number | null;
+  };
+}
+
 export interface ShareCountInputSnapshot {
   endPeriodShares: number | null;
   endPeriodSharesSource: string;
@@ -367,6 +384,13 @@ export interface ForecastScenario {
     other_opex_ratio?: number[];
     other_operating_income_ratio?: number[];
     g_terminal: number; ke: number; kw: number;
+  };
+  forecastPolicy?: {
+    companyEvidenceWeight?: number;
+    persistenceScore?: number;
+    templateGuardrailStrength?: number;
+    terminalAnchorSource?: 'company-evidence'|'blended'|'template';
+    narrative?: string[];
   };
   periods?: ForecastPeriod[];
   valuationResult?: ValuationResult;

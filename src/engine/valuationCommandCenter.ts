@@ -1,8 +1,8 @@
 import { computeValuation, deriveKwFromStructure } from "./PenmanNissimEngine";
 import { LiveMarketDataFreshness, LiveMarketDataSnapshot, MarketHistoryPoint, summarizeHistoricalPrices } from "./marketData";
-import { buildScenario, buildValuationPeriodsFromForecast } from "./forecastingEngine";
+import { buildBusinessModelProfile, buildScenario, buildValuationPeriodsFromForecast, derivePersistenceForecastScenario } from "./forecastingEngine";
 import { AnalysisStatusSummary } from "./analysisStatus";
-import { NP_BENCHMARKS, RecastPeriod, EngineConfig, ForecastScenario, ValuationResult, ke_from_config } from "./types";
+import { RecastPeriod, EngineConfig, ForecastScenario, ValuationResult, ke_from_config, BusinessModelProfile } from "./types";
 import { resolveShareBasis } from "./shareCountTools";
 import { ValuationReadiness, resolveValuationReadiness } from "./valuationPolicy";
 import { resolveValuationSectorTemplate } from "./valuationSectorTemplates";
@@ -87,23 +87,6 @@ export interface ValuationMarketContext {
   warningCount: number;
   valuationAnchorPeriod: string | null;
   latestReportedPeriod: string | null;
-}
-
-export interface BusinessModelProfile {
-  persistenceScore: number;
-  demandStabilityScore: number;
-  marginDurabilityScore: number;
-  capitalIntensityScore: number;
-  workingCapitalDisciplineScore: number;
-  reinvestmentQualityScore: number;
-  evidence: string[];
-  historicalAnchors: {
-    salesGrowth: number | null;
-    corePm: number | null;
-    ato: number | null;
-    spread: number | null;
-    cashConversion: number | null;
-  };
 }
 
 export interface ValuationBacktestPoint {
@@ -307,147 +290,6 @@ function computeQualityScore(latest: RecastPeriod, analysisStatus?: AnalysisStat
   if (analysisStatus?.status === "guarded") score -= 6;
   if (analysisStatus?.status === "blocked") score -= 20;
   return clamp(score, 0, 100);
-}
-
-function spreadValues(values: Array<number | null | undefined>) {
-  const filtered = values.filter((value): value is number => value != null && Number.isFinite(value));
-  if (!filtered.length) return null;
-  return Math.max(...filtered) - Math.min(...filtered);
-}
-
-function latestFinite(values: Array<number | null | undefined>) {
-  for (let i = values.length - 1; i >= 0; i -= 1) {
-    const value = values[i];
-    if (value != null && Number.isFinite(value)) return value;
-  }
-  return null;
-}
-
-function buildBusinessModelProfile(data: RecastPeriod[]): BusinessModelProfile {
-  const salesGrowthSeries = data.map((period) => period.ratios?.Sales_growth ?? null);
-  const corePmSeries = data.map((period) => period.ratios?.CoreSalesPM ?? period.ratios?.PM ?? null);
-  const atoSeries = data.map((period) => period.ratios?.ATO ?? null);
-  const spreadSeries = data.map((period) => period.ratios?.SPREAD ?? period.ratios?.CoreSPREAD ?? null);
-  const cashConversionSeries = data.map((period) => period.ratios?.cash_conversion_ratio ?? null);
-  const noaGrowthSeries = data.map((period) => period.ratios?.NOA_growth ?? null);
-  const separationSeries = data.map((period) => period.bs.separationScore ?? period.ratios?.separationScore ?? null);
-  const leverageSeries = data.map((period) => period.ratios?.FLEV ?? null);
-
-  const historicalSalesGrowth = median(salesGrowthSeries.slice(0, -1));
-  const historicalCorePm = median(corePmSeries.slice(0, -1));
-  const historicalAto = median(atoSeries.slice(0, -1));
-  const historicalSpread = median(spreadSeries.slice(0, -1));
-  const historicalCashConversion = median(cashConversionSeries.slice(0, -1));
-
-  const latestSalesGrowth = latestFinite(salesGrowthSeries);
-  const latestCorePm = latestFinite(corePmSeries);
-  const latestCashConversion = latestFinite(cashConversionSeries);
-  const latestSpread = latestFinite(spreadSeries);
-  const latestNoaGrowth = latestFinite(noaGrowthSeries);
-  const latestSeparation = latestFinite(separationSeries) ?? 70;
-  const latestLeverage = latestFinite(leverageSeries) ?? 0.3;
-
-  const demandStabilityScore = clamp(
-    scoreFromRange(0.12 - (spreadValues(salesGrowthSeries) ?? 0.12), 0, 0.12) * 100,
-    0,
-    100,
-  );
-  const marginDurabilityScore = clamp(
-    (
-      scoreFromRange(0.12 - (spreadValues(corePmSeries) ?? 0.12), 0, 0.12) * 0.55
-      + scoreFromRange((historicalCorePm ?? latestCorePm ?? 0) - Math.max((latestCorePm ?? 0) - (historicalCorePm ?? latestCorePm ?? 0), 0), 0.03, 0.18) * 0.25
-      + scoreFromRange(latestSeparation, 55, 95) * 0.2
-    ) * 100,
-    0,
-    100,
-  );
-  const workingCapitalDisciplineScore = clamp(
-    (
-      scoreFromRange(historicalCashConversion ?? latestCashConversion ?? 0.6, 0.5, 1.05) * 0.65
-      + scoreFromRange(0.22 - Math.max((latestNoaGrowth ?? 0) - (historicalSalesGrowth ?? latestSalesGrowth ?? 0), 0), 0, 0.22) * 0.35
-    ) * 100,
-    0,
-    100,
-  );
-  const reinvestmentQualityScore = clamp(
-    (
-      scoreFromRange(historicalSpread ?? latestSpread ?? 0.02, 0.01, 0.14) * 0.45
-      + scoreFromRange(historicalCashConversion ?? latestCashConversion ?? 0.6, 0.5, 1.05) * 0.25
-      + scoreFromRange(0.95 - latestLeverage, 0.1, 0.8) * 0.15
-      + scoreFromRange(latestSeparation, 55, 95) * 0.15
-    ) * 100,
-    0,
-    100,
-  );
-  const capitalIntensityScore = clamp(
-    (
-      scoreFromRange(historicalAto ?? latestFinite(atoSeries) ?? 0.6, 0.35, 2.3) * 0.6
-      + scoreFromRange(0.95 - latestLeverage, 0.1, 0.8) * 0.4
-    ) * 100,
-    0,
-    100,
-  );
-
-  const onePeriodSpikePenalty = clamp(
-    Math.max((latestCorePm ?? historicalCorePm ?? 0) - (historicalCorePm ?? latestCorePm ?? 0), 0) * 220
-      + Math.max((latestSalesGrowth ?? historicalSalesGrowth ?? 0) - (historicalSalesGrowth ?? latestSalesGrowth ?? 0), 0) * 120
-      + Math.max(0.7 - (latestCashConversion ?? historicalCashConversion ?? 0.7), 0) * 90,
-    0,
-    45,
-  );
-
-  const persistenceScore = clamp(
-    demandStabilityScore * 0.2
-      + marginDurabilityScore * 0.28
-      + capitalIntensityScore * 0.14
-      + workingCapitalDisciplineScore * 0.18
-      + reinvestmentQualityScore * 0.2
-      - onePeriodSpikePenalty,
-    0,
-    100,
-  );
-
-  const evidence: string[] = [];
-  if (latestCorePm != null && historicalCorePm != null && latestCorePm > historicalCorePm * 1.35) {
-    evidence.push(`Latest margin looks above the multi-year base (${(latestCorePm * 100).toFixed(1)}% vs ${(historicalCorePm * 100).toFixed(1)}%), so persistence is capped.`);
-  }
-  if (latestSalesGrowth != null && historicalSalesGrowth != null && latestSalesGrowth > historicalSalesGrowth * 1.5) {
-    evidence.push(`Latest growth is running ahead of the multi-year base (${(latestSalesGrowth * 100).toFixed(1)}% vs ${(historicalSalesGrowth * 100).toFixed(1)}%).`);
-  }
-  if ((latestCashConversion ?? 1) < 0.65) {
-    evidence.push(`Latest cash conversion is weak at ${((latestCashConversion ?? 0) * 100).toFixed(0)}%, which reduces persistence confidence.`);
-  }
-  if ((latestSeparation ?? 70) < 65) {
-    evidence.push(`Latest operating-cost bridge coverage is soft, so margin persistence is treated conservatively.`);
-  }
-  if (!evidence.length) {
-    evidence.push("Multi-year margins, reinvestment, and cash conversion appear stable enough to support slower fade assumptions.");
-  }
-
-  return {
-    persistenceScore,
-    demandStabilityScore,
-    marginDurabilityScore,
-    capitalIntensityScore,
-    workingCapitalDisciplineScore,
-    reinvestmentQualityScore,
-    evidence,
-    historicalAnchors: {
-      salesGrowth: historicalSalesGrowth,
-      corePm: historicalCorePm,
-      ato: historicalAto,
-      spread: historicalSpread,
-      cashConversion: historicalCashConversion,
-    },
-  };
-}
-
-function blendAnchor(latest: number | null, historical: number | null, persistenceScore: number, minWeightOnHistory = 0.35) {
-  if (latest == null) return historical;
-  if (historical == null) return latest;
-  const persistence = clamp(persistenceScore / 100, 0, 1);
-  const latestWeight = clamp(0.25 + persistence * 0.5, 1 - minWeightOnHistory, 0.8);
-  return latest * latestWeight + historical * (1 - latestWeight);
 }
 
 function persistencePenalty(persistenceScore: number) {
@@ -662,7 +504,6 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   const shares = shareBasis.shares ?? null;
   const marketPrice = marketData?.price ?? config.market_price ?? null;
   const riskFreeRate = marketData?.riskFreeRate ?? config.risk_free_rate;
-  const latestRatios = latest.ratios ?? null;
   const marketFreshness = marketData?.freshness ?? (marketPrice != null || marketData?.riskFreeRate != null ? "fallback" : "missing");
   const freshnessScore = scoreFreshness(marketFreshness);
   const marketWarnings = marketData?.warnings ?? [];
@@ -699,82 +540,33 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   const kwBase = valuationData.length >= 2
     ? deriveKwFromStructure(valuationData[valuationData.length - 1], valuationData[valuationData.length - 2], keBase, riskFreeRate, config)
     : riskFreeRate;
-  const blendedSalesGrowth = blendAnchor(
-    latestRatios?.Sales_growth ?? null,
-    businessModel.historicalAnchors.salesGrowth ?? config.np_SalesGrowth_median ?? NP_BENCHMARKS.Sales_growth.median,
-    businessModel.persistenceScore,
-  );
-  const blendedPm = blendAnchor(
-    latestRatios?.CoreSalesPM ?? latestRatios?.PM ?? null,
-    businessModel.historicalAnchors.corePm ?? config.np_PM_median ?? NP_BENCHMARKS.PM.median,
-    businessModel.persistenceScore,
-  );
-  const blendedAto = blendAnchor(
-    latestRatios?.ATO ?? null,
-    businessModel.historicalAnchors.ato ?? config.np_ATO_median ?? NP_BENCHMARKS.ATO.median,
-    businessModel.persistenceScore,
-  );
-  const baseSalesGrowth = blendedSalesGrowth ?? config.np_SalesGrowth_median ?? NP_BENCHMARKS.Sales_growth.median;
-  const basePm = blendedPm ?? config.np_PM_median ?? NP_BENCHMARKS.PM.median;
-  const baseAto = blendedAto ?? config.np_ATO_median ?? NP_BENCHMARKS.ATO.median;
-  const flevBase = Math.max(latest.bs.NFO / Math.max(latest.bs.CSE, 1), -0.2);
-  const nbcBase = Math.max(latest.is.NFE / Math.max(Math.abs(latest.bs.NFO), 1), 0.01);
-  const normalizedTerminalGrowth = clamp(
-    sectorTemplate.normalizedGrowth * (businessModel.persistenceScore >= 70 ? 0.55 : businessModel.persistenceScore >= 55 ? 0.45 : 0.35),
-    sectorTemplate.terminalGrowthFloor,
-    sectorTemplate.terminalGrowthCap,
-  );
-  const terminalBase = clamp(
-    config.g_terminal_override ?? normalizedTerminalGrowth,
-    sectorTemplate.terminalGrowthFloor,
-    sectorTemplate.terminalGrowthCap,
-  );
-
   const makeScenario = (
     key: ValuationScenarioCard["key"],
-    name: ForecastScenario["name"],
-    growthStart: number,
-    pmStart: number,
-    atoStart: number,
-    ke: number,
-    kw: number,
-    gTerminal: number,
+    scenario: ForecastScenario,
     reinvestmentLift: number,
   ) => {
-    const scenario: ForecastScenario = {
-      name,
-      probability: name === "base" ? 0.4 : name === "bull" ? 0.15 : 0.25,
-      horizonT: horizon,
+    const terminalGrowth = clamp(
+      config.g_terminal_override ?? scenario.drivers.g_terminal,
+      sectorTemplate.terminalGrowthFloor,
+      sectorTemplate.terminalGrowthCap,
+    );
+    const scenarioWithTerminal = {
+      ...scenario,
       drivers: {
-        sales_growth: makeFadeArray(
-          growthStart,
-          clamp(sectorTemplate.growthFadeAlpha - (businessModel.persistenceScore < 45 ? 0.12 : businessModel.persistenceScore < 60 ? 0.07 : 0), 0.45, 0.96),
-          clamp(businessModel.historicalAnchors.salesGrowth ?? sectorTemplate.normalizedGrowth, -0.02, sectorTemplate.normalizedGrowth + 0.03),
-          horizon,
-        ),
-        core_sales_pm: makeFadeArray(
-          pmStart,
-          clamp(sectorTemplate.marginFadeAlpha - (businessModel.persistenceScore < 45 ? 0.12 : businessModel.persistenceScore < 60 ? 0.06 : 0), 0.5, 0.97),
-          clamp(businessModel.historicalAnchors.corePm ?? NP_BENCHMARKS.PM.median, 0.03, 0.18),
-          horizon,
-        ),
-        ato: makeFadeArray(
-          atoStart,
-          clamp(sectorTemplate.atoFadeAlpha - (businessModel.persistenceScore < 45 ? 0.08 : businessModel.persistenceScore < 60 ? 0.04 : 0), 0.6, 0.98),
-          clamp(businessModel.historicalAnchors.ato ?? NP_BENCHMARKS.ATO.median, 0.35, 2.1),
-          horizon,
-        ),
-        flev: Array(horizon).fill(flevBase),
-        nbc: Array(horizon).fill(nbcBase),
-        g_terminal: gTerminal,
-        ke,
-        kw,
+        ...scenario.drivers,
+        g_terminal: terminalGrowth,
       },
-    };
-    const periods = buildScenario(scenario, latest);
+    } satisfies ForecastScenario;
+    const periods = buildScenario(scenarioWithTerminal, latest);
     const valuationPeriods = buildValuationPeriodsFromForecast(latest, periods);
-    const valuation = computeValuation(valuationPeriods, ke, kw, gTerminal, shareBasis.valuationConfig);
-    const ownerDcf = computeOwnerEarningsDcf(diagnostics.ownerEarningsPerShare, scenario.drivers.sales_growth, ke, gTerminal);
+    const valuation = computeValuation(
+      valuationPeriods,
+      scenarioWithTerminal.drivers.ke,
+      scenarioWithTerminal.drivers.kw,
+      terminalGrowth,
+      shareBasis.valuationConfig,
+    );
+    const ownerDcf = computeOwnerEarningsDcf(diagnostics.ownerEarningsPerShare, scenarioWithTerminal.drivers.sales_growth, scenarioWithTerminal.drivers.ke, terminalGrowth);
     const intrinsicPerShare = computeScenarioIntrinsicPerShare(valuation, ownerDcf);
     const marginOfSafetyPct = marginOfSafety(intrinsicPerShare, marketPrice);
     return {
@@ -786,11 +578,11 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
       expectedCagr: annualizedReturn(marketPrice, intrinsicPerShare, 3),
       valuation,
       assumptions: {
-        ke,
-        kw,
-        g: gTerminal,
-        salesGrowthYear1: scenario.drivers.sales_growth[0] ?? 0,
-        corePmYear1: scenario.drivers.core_sales_pm[0] ?? 0,
+        ke: scenarioWithTerminal.drivers.ke,
+        kw: scenarioWithTerminal.drivers.kw,
+        g: terminalGrowth,
+        salesGrowthYear1: scenarioWithTerminal.drivers.sales_growth[0] ?? 0,
+        corePmYear1: scenarioWithTerminal.drivers.core_sales_pm[0] ?? 0,
         reinvestmentRateYear1: diagnostics.reinvestmentRate != null
           ? clamp(diagnostics.reinvestmentRate * reinvestmentLift, 0, 1.2)
           : null,
@@ -801,51 +593,46 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     } satisfies ValuationScenarioCard;
   };
 
+  const derivedScenarios = {
+    stress: derivePersistenceForecastScenario({
+      scenarioKey: "stress",
+      latest,
+      businessModel,
+      horizon,
+      template: sectorTemplate,
+      riskInputs: { ke: keBase, kw: kwBase, riskFreeRate },
+    }),
+    base: derivePersistenceForecastScenario({
+      scenarioKey: "base",
+      latest,
+      businessModel,
+      horizon,
+      template: sectorTemplate,
+      riskInputs: { ke: keBase, kw: kwBase, riskFreeRate },
+    }),
+    bull: derivePersistenceForecastScenario({
+      scenarioKey: "bull",
+      latest,
+      businessModel,
+      horizon,
+      template: sectorTemplate,
+      riskInputs: { ke: keBase, kw: kwBase, riskFreeRate },
+    }),
+    historicalPanic: derivePersistenceForecastScenario({
+      scenarioKey: "historical-panic",
+      latest,
+      businessModel,
+      horizon,
+      template: sectorTemplate,
+      riskInputs: { ke: keBase, kw: kwBase, riskFreeRate },
+    }),
+  };
+
   const scenarios: ValuationScenarioCard[] = [
-    makeScenario(
-      "stress",
-      "bear",
-      clamp(baseSalesGrowth * 0.35 - 0.01, -0.04, 0.08),
-      clamp(basePm * 0.65, 0.02, 0.2),
-      clamp(baseAto * 0.88, 0.35, 2),
-      keBase + 0.02,
-      kwBase + 0.015,
-      clamp(sectorTemplate.terminalGrowthFloor, 0.015, 0.03),
-      1.15,
-    ),
-    makeScenario(
-      "base",
-      "base",
-      clamp(baseSalesGrowth, 0.02, Math.max(0.18, sectorTemplate.normalizedGrowth + 0.03)),
-      clamp(basePm, 0.04, 0.35),
-      clamp(baseAto, 0.4, 2.5),
-      keBase,
-      kwBase,
-      terminalBase,
-      1,
-    ),
-    makeScenario(
-      "bull",
-      "bull",
-      clamp(baseSalesGrowth * 1.2, 0.03, Math.max(0.24, sectorTemplate.normalizedGrowth + 0.08)),
-      clamp(basePm * 1.08, 0.05, 0.38),
-      clamp(baseAto * 1.02, 0.45, 2.8),
-      Math.max(keBase - 0.01, riskFreeRate + 0.04),
-      Math.max(kwBase - 0.008, riskFreeRate + 0.03),
-      clamp(terminalBase + 0.005, sectorTemplate.terminalGrowthFloor, sectorTemplate.terminalGrowthCap),
-      0.9,
-    ),
-    makeScenario(
-      "historical-panic",
-      "bear",
-      clamp(baseSalesGrowth * 0.15 - 0.02, -0.08, 0.04),
-      clamp(basePm * 0.55, 0.01, 0.16),
-      clamp(baseAto * 0.82, 0.3, 1.8),
-      keBase + 0.03,
-      kwBase + 0.0225,
-      clamp(sectorTemplate.terminalGrowthFloor, 0.01, 0.025),
-      1.2,
-    ),
+    makeScenario("stress", derivedScenarios.stress, 1.15),
+    makeScenario("base", derivedScenarios.base, 1),
+    makeScenario("bull", derivedScenarios.bull, 0.9),
+    makeScenario("historical-panic", derivedScenarios.historicalPanic, 1.2),
   ];
 
   const stressCard = scenarios.find((card) => card.key === "stress") ?? null;
@@ -904,7 +691,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     ownerEarningsPerShare: diagnostics.ownerEarningsPerShare,
     targetPrice: marketPrice,
     ke: baseCard?.assumptions.ke ?? keBase,
-    terminalGrowth: baseCard?.assumptions.g ?? terminalBase,
+    terminalGrowth: baseCard?.assumptions.g ?? derivedScenarios.base.drivers.g_terminal,
     normalizedGrowth: sectorTemplate.normalizedGrowth,
     horizon,
     growthFadeAlpha: sectorTemplate.growthFadeAlpha,

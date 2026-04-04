@@ -16,6 +16,10 @@ export interface ValuationSectorTemplateDefinition {
   growthFadeAlpha: number;
   marginFadeAlpha: number;
   atoFadeAlpha: number;
+  companyEvidenceMaxWeight: number;
+  growthGuardrailBand: number;
+  marginGuardrailBand: number;
+  atoGuardrailBand: number;
   cyclical: boolean;
 }
 
@@ -36,6 +40,10 @@ export const VALUATION_SECTOR_TEMPLATES: Record<Exclude<ValuationSectorTemplate,
     growthFadeAlpha: 0.78,
     marginFadeAlpha: 0.9,
     atoFadeAlpha: 0.94,
+    companyEvidenceMaxWeight: 0.82,
+    growthGuardrailBand: 0.035,
+    marginGuardrailBand: 0.04,
+    atoGuardrailBand: 0.4,
     cyclical: false,
   },
   paint: {
@@ -54,6 +62,10 @@ export const VALUATION_SECTOR_TEMPLATES: Record<Exclude<ValuationSectorTemplate,
     growthFadeAlpha: 0.8,
     marginFadeAlpha: 0.92,
     atoFadeAlpha: 0.95,
+    companyEvidenceMaxWeight: 0.84,
+    growthGuardrailBand: 0.04,
+    marginGuardrailBand: 0.05,
+    atoGuardrailBand: 0.45,
     cyclical: false,
   },
   industrials: {
@@ -72,6 +84,10 @@ export const VALUATION_SECTOR_TEMPLATES: Record<Exclude<ValuationSectorTemplate,
     growthFadeAlpha: 0.72,
     marginFadeAlpha: 0.88,
     atoFadeAlpha: 0.92,
+    companyEvidenceMaxWeight: 0.72,
+    growthGuardrailBand: 0.03,
+    marginGuardrailBand: 0.035,
+    atoGuardrailBand: 0.35,
     cyclical: true,
   },
   commodities: {
@@ -90,6 +106,10 @@ export const VALUATION_SECTOR_TEMPLATES: Record<Exclude<ValuationSectorTemplate,
     growthFadeAlpha: 0.68,
     marginFadeAlpha: 0.84,
     atoFadeAlpha: 0.9,
+    companyEvidenceMaxWeight: 0.68,
+    growthGuardrailBand: 0.025,
+    marginGuardrailBand: 0.03,
+    atoGuardrailBand: 0.3,
     cyclical: true,
   },
   retail: {
@@ -108,6 +128,10 @@ export const VALUATION_SECTOR_TEMPLATES: Record<Exclude<ValuationSectorTemplate,
     growthFadeAlpha: 0.74,
     marginFadeAlpha: 0.86,
     atoFadeAlpha: 0.95,
+    companyEvidenceMaxWeight: 0.78,
+    growthGuardrailBand: 0.04,
+    marginGuardrailBand: 0.035,
+    atoGuardrailBand: 0.4,
     cyclical: false,
   },
   services: {
@@ -126,6 +150,10 @@ export const VALUATION_SECTOR_TEMPLATES: Record<Exclude<ValuationSectorTemplate,
     growthFadeAlpha: 0.78,
     marginFadeAlpha: 0.9,
     atoFadeAlpha: 0.96,
+    companyEvidenceMaxWeight: 0.85,
+    growthGuardrailBand: 0.045,
+    marginGuardrailBand: 0.05,
+    atoGuardrailBand: 0.5,
     cyclical: false,
   },
 };

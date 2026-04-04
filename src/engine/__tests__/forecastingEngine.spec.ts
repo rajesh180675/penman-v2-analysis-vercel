@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { applyDriverSensitivityToScenario, buildScenario, buildValuationPeriodsFromForecast } from "../forecastingEngine";
-import { ForecastPeriod, ForecastScenario, RecastPeriod } from "../types";
+import { applyDriverSensitivityToScenario, buildBusinessModelProfile, buildScenario, buildValuationPeriodsFromForecast, derivePersistenceForecastScenario } from "../forecastingEngine";
+import { ForecastPeriod, ForecastScenario, Ratios, RecastPeriod } from "../types";
 
 function mkLatest(period_end = "2024-03-31"): RecastPeriod {
   return {
@@ -147,6 +147,69 @@ describe("applyDriverSensitivityToScenario", () => {
     expect(scaledBuilt[0].Sales_f).toBeGreaterThan(baseBuilt[0].Sales_f);
     expect(scaledBuilt[0].OI_f).toBeGreaterThan(baseBuilt[0].OI_f);
     expect(scaledBuilt[0].NOA_f).toBeLessThan(baseBuilt[0].NOA_f);
+  });
+});
+
+describe("derivePersistenceForecastScenario", () => {
+  it("leans away from one-period spikes when persistence is weak", () => {
+    const data: RecastPeriod[] = [
+      {
+        ...mkLatest("2021-03-31"),
+        ratios: {
+          ...(mkLatest("2021-03-31").ratios ?? {} as Ratios),
+          Sales_growth: 0.05, CoreSalesPM: 0.12, PM: 0.12, ATO: 1.35, SPREAD: 0.08, cash_conversion_ratio: 0.82, NOA_growth: 0.07, FLEV: 0.2,
+        } as Ratios,
+      },
+      {
+        ...mkLatest("2022-03-31"),
+        ratios: {
+          ...(mkLatest("2022-03-31").ratios ?? {} as Ratios),
+          Sales_growth: 0.06, CoreSalesPM: 0.125, PM: 0.125, ATO: 1.33, SPREAD: 0.08, cash_conversion_ratio: 0.8, NOA_growth: 0.08, FLEV: 0.22,
+        } as Ratios,
+      },
+      {
+        ...mkLatest("2023-03-31"),
+        ratios: {
+          ...(mkLatest("2023-03-31").ratios ?? {} as Ratios),
+          Sales_growth: 0.06, CoreSalesPM: 0.13, PM: 0.13, ATO: 1.31, SPREAD: 0.08, cash_conversion_ratio: 0.78, NOA_growth: 0.09, FLEV: 0.25,
+        } as Ratios,
+      },
+      {
+        ...mkLatest("2024-03-31"),
+        bs: { ...mkLatest("2024-03-31").bs, separationScore: 61 },
+        ratios: {
+          ...(mkLatest("2024-03-31").ratios ?? {} as Ratios),
+          Sales_growth: 0.24, CoreSalesPM: 0.24, PM: 0.24, ATO: 1.22, SPREAD: 0.07, cash_conversion_ratio: 0.48, NOA_growth: 0.27, FLEV: 0.78,
+        } as Ratios,
+      },
+    ];
+
+    const businessModel = buildBusinessModelProfile(data);
+    const scenario = derivePersistenceForecastScenario({
+      scenarioKey: "base",
+      latest: data[data.length - 1],
+      businessModel,
+      horizon: 5,
+      template: {
+        normalizedGrowth: 0.09,
+        terminalGrowthFloor: 0.03,
+        terminalGrowthCap: 0.05,
+        growthFadeAlpha: 0.8,
+        marginFadeAlpha: 0.9,
+        atoFadeAlpha: 0.95,
+        companyEvidenceMaxWeight: 0.8,
+        growthGuardrailBand: 0.035,
+        marginGuardrailBand: 0.04,
+        atoGuardrailBand: 0.4,
+      },
+      riskInputs: { ke: 0.12, kw: 0.1, riskFreeRate: 0.07 },
+    });
+
+    expect(businessModel.persistenceScore).toBeLessThan(45);
+    expect(scenario.forecastPolicy?.companyEvidenceWeight).toBeLessThanOrEqual(0.5);
+    expect(scenario.drivers.sales_growth[0]).toBeLessThan(0.2);
+    expect(scenario.drivers.core_sales_pm[0]).toBeLessThan(0.2);
+    expect(scenario.drivers.sales_growth[0]).toBeGreaterThan(scenario.drivers.sales_growth[4]);
   });
 });
 

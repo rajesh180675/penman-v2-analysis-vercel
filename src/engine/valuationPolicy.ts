@@ -1,4 +1,5 @@
 import { computeContaminationTier } from "./anomalyDetection";
+import { buildBusinessModelProfile } from "./forecastingEngine";
 import { RawPeriodData, RecastPeriod, SpecFlag } from "./types";
 
 export type ValuationReadinessStatus = "production-ready" | "warning" | "guarded";
@@ -10,6 +11,8 @@ export interface ValuationReadiness {
   anchorIndex: number;
   fallbackUsed: boolean;
   contaminationTier: ReturnType<typeof computeContaminationTier>["tier"];
+  persistenceStatus: "durable" | "mixed" | "fragile" | "unknown";
+  persistenceScore: number | null;
   terminalFlags: SpecFlag[];
   terminalFlagLabels: string[];
   reasons: string[];
@@ -25,6 +28,37 @@ function isAcceptableAnchor(period: RecastPeriod | null | undefined): boolean {
   return contamination.tier === "CLEAN" || contamination.tier === "CAUTION";
 }
 
+function derivePersistenceReadiness(periods: RecastPeriod[]) {
+  if (!periods.length || periods.some((period) => !period.bs || !period.ratios)) {
+    return {
+      persistenceStatus: "unknown" as const,
+      persistenceScore: null,
+      reason: null,
+    };
+  }
+
+  const profile = buildBusinessModelProfile(periods);
+  if (profile.persistenceScore >= 65) {
+    return {
+      persistenceStatus: "durable" as const,
+      persistenceScore: profile.persistenceScore,
+      reason: null,
+    };
+  }
+  if (profile.persistenceScore >= 45) {
+    return {
+      persistenceStatus: "mixed" as const,
+      persistenceScore: profile.persistenceScore,
+      reason: `Business-model persistence is mixed (${profile.persistenceScore.toFixed(0)}/100), so valuation confidence should stay conservative even with a clean parser state.`,
+    };
+  }
+  return {
+    persistenceStatus: "fragile" as const,
+    persistenceScore: profile.persistenceScore,
+    reason: `Business-model persistence is fragile (${profile.persistenceScore.toFixed(0)}/100); treat upside as lower-confidence even if accounting contamination is clean.`,
+  };
+}
+
 export function resolveValuationReadiness(periods: RecastPeriod[]): ValuationReadiness {
   if (periods.length === 0) {
     return {
@@ -34,6 +68,8 @@ export function resolveValuationReadiness(periods: RecastPeriod[]): ValuationRea
       anchorIndex: -1,
       fallbackUsed: false,
       contaminationTier: "CLEAN",
+      persistenceStatus: "unknown",
+      persistenceScore: null,
       terminalFlags: [],
       terminalFlagLabels: [],
       reasons: ["No recast periods available."],
@@ -45,7 +81,8 @@ export function resolveValuationReadiness(periods: RecastPeriod[]): ValuationRea
   const terminalFlags = getTerminalFlags(latest);
   const contamination = computeContaminationTier(terminalFlags);
   const terminalFlagLabels = terminalFlags.map((flag) => flag.label);
-  const reasons = [contamination.message];
+  const persistence = derivePersistenceReadiness(periods);
+  const reasons = [contamination.message, ...(persistence.reason ? [persistence.reason] : [])];
 
   if (contamination.tier === "CLEAN") {
     return {
@@ -55,6 +92,8 @@ export function resolveValuationReadiness(periods: RecastPeriod[]): ValuationRea
       anchorIndex: latestIndex,
       fallbackUsed: false,
       contaminationTier: contamination.tier,
+      persistenceStatus: persistence.persistenceStatus,
+      persistenceScore: persistence.persistenceScore,
       terminalFlags,
       terminalFlagLabels,
       reasons,
@@ -70,6 +109,8 @@ export function resolveValuationReadiness(periods: RecastPeriod[]): ValuationRea
       anchorIndex: latestIndex,
       fallbackUsed: false,
       contaminationTier: contamination.tier,
+      persistenceStatus: persistence.persistenceStatus,
+      persistenceScore: persistence.persistenceScore,
       terminalFlags,
       terminalFlagLabels,
       reasons,
@@ -86,6 +127,8 @@ export function resolveValuationReadiness(periods: RecastPeriod[]): ValuationRea
       anchorIndex: i,
       fallbackUsed: true,
       contaminationTier: contamination.tier,
+      persistenceStatus: persistence.persistenceStatus,
+      persistenceScore: persistence.persistenceScore,
       terminalFlags,
       terminalFlagLabels,
       reasons,
@@ -107,6 +150,8 @@ export function resolveValuationReadiness(periods: RecastPeriod[]): ValuationRea
     anchorIndex: fallbackIndex,
     fallbackUsed: fallbackIndex !== latestIndex,
     contaminationTier: contamination.tier,
+    persistenceStatus: persistence.persistenceStatus,
+    persistenceScore: persistence.persistenceScore,
     terminalFlags,
     terminalFlagLabels,
     reasons,

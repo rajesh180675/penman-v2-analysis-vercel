@@ -13,6 +13,7 @@ export interface AnalysisStatusSummary {
   tone: AnalysisBadgeTone;
   qualityTier: "Tier 1" | "Tier 2" | "Tier 3" | "Unknown";
   valuationStatus: ValuationReadiness["status"] | "unknown";
+  persistenceStatus?: ValuationReadiness["persistenceStatus"] | "unknown";
   scopeBlocked: boolean;
   valuationBlocked: boolean;
   blockingCount: number;
@@ -45,6 +46,7 @@ export function deriveAnalysisStatus(
       tone: "red",
       qualityTier,
       valuationStatus: valuationReadiness?.status ?? "unknown",
+      persistenceStatus: valuationReadiness?.persistenceStatus ?? "unknown",
       scopeBlocked,
       valuationBlocked,
       blockingCount,
@@ -63,6 +65,7 @@ export function deriveAnalysisStatus(
       tone: "red",
       qualityTier,
       valuationStatus: valuationReadiness?.status ?? "unknown",
+      persistenceStatus: valuationReadiness?.persistenceStatus ?? "unknown",
       scopeBlocked,
       valuationBlocked,
       blockingCount,
@@ -89,9 +92,10 @@ export function deriveAnalysisStatus(
     };
   }
 
-  if (valuationReadiness?.status === "warning" || diagnosticCount > 0 || qualityTier === "Tier 2" || denseBacklogReview) {
+  if (valuationReadiness?.status === "warning" || valuationReadiness?.persistenceStatus === "fragile" || diagnosticCount > 0 || qualityTier === "Tier 2" || denseBacklogReview) {
     const reasons = [
       ...(valuationReadiness?.reasons ?? []),
+      ...(valuationReadiness?.persistenceStatus === "fragile" ? ["Business-model persistence remains fragile even though the accounting anchor is usable."] : []),
       ...(diagnosticCount > 0 ? [`${diagnosticCount} diagnostic mapping gaps remain.`] : []),
       ...(denseBacklogReview ? [`Backlog review volume remains high (${actionableBacklogCount} actionable / ${reviewBacklogCount} manual-review labels).`] : []),
     ];
@@ -104,6 +108,7 @@ export function deriveAnalysisStatus(
       tone: "amber",
       qualityTier,
       valuationStatus: valuationReadiness?.status ?? "unknown",
+      persistenceStatus: valuationReadiness?.persistenceStatus ?? "unknown",
       scopeBlocked,
       valuationBlocked,
       blockingCount,
