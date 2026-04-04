@@ -19,6 +19,25 @@ export interface AnalysisStatusSummary {
   blockingCount: number;
   diagnosticCount: number;
   optionalCount: number;
+  effectiveBlockingCount?: number;
+  effectiveDiagnosticCount?: number;
+  effectiveOptionalCount?: number;
+}
+
+function buildEffectiveCounts(args: {
+  blockingCount: number;
+  diagnosticCount: number;
+  optionalCount: number;
+  scopeBlocked: boolean;
+  valuationBlocked: boolean;
+}) {
+  return {
+    effectiveBlockingCount: args.scopeBlocked || args.valuationBlocked
+      ? Math.max(args.blockingCount, 1)
+      : args.blockingCount,
+    effectiveDiagnosticCount: args.diagnosticCount,
+    effectiveOptionalCount: args.optionalCount,
+  };
 }
 
 export function deriveAnalysisStatus(
@@ -52,6 +71,13 @@ export function deriveAnalysisStatus(
       blockingCount,
       diagnosticCount,
       optionalCount,
+      ...buildEffectiveCounts({
+        blockingCount,
+        diagnosticCount,
+        optionalCount,
+        scopeBlocked,
+        valuationBlocked,
+      }),
     };
   }
 
@@ -71,6 +97,13 @@ export function deriveAnalysisStatus(
       blockingCount,
       diagnosticCount,
       optionalCount,
+      ...buildEffectiveCounts({
+        blockingCount,
+        diagnosticCount,
+        optionalCount,
+        scopeBlocked,
+        valuationBlocked,
+      }),
     };
   }
 
@@ -89,8 +122,24 @@ export function deriveAnalysisStatus(
       blockingCount,
       diagnosticCount,
       optionalCount,
+      ...buildEffectiveCounts({
+        blockingCount,
+        diagnosticCount,
+        optionalCount,
+        scopeBlocked,
+        valuationBlocked,
+      }),
     };
   }
+
+  const effectiveCounts = buildEffectiveCounts({
+    blockingCount,
+    diagnosticCount,
+    optionalCount,
+    scopeBlocked,
+    valuationBlocked,
+  });
+
 
   if (valuationReadiness?.status === "warning" || valuationReadiness?.persistenceStatus === "fragile" || diagnosticCount > 0 || qualityTier === "Tier 2" || denseBacklogReview) {
     const reasons = [
@@ -114,6 +163,7 @@ export function deriveAnalysisStatus(
       blockingCount,
       diagnosticCount,
       optionalCount,
+      ...effectiveCounts,
     };
   }
 
@@ -131,5 +181,6 @@ export function deriveAnalysisStatus(
     blockingCount,
     diagnosticCount,
     optionalCount,
+    ...effectiveCounts,
   };
 }

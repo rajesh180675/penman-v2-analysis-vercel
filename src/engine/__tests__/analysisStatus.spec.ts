@@ -130,6 +130,104 @@ describe("analysis status confidence gating", () => {
     expect(qualityGate.valuationBlocked).toBe(true);
     expect(qualityGate.blockingReasons.some((reason) => reason.includes("latest period".slice(0, 6)) || reason.includes("Terminal") || reason.includes("anchor"))).toBe(true);
     expect(status.status).toBe("blocked");
+    expect(status.effectiveBlockingCount).toBeGreaterThanOrEqual(status.blockingCount);
+    expect(status.effectiveBlockingCount).toBeGreaterThan(0);
+  });
+
+  it("floors blocked display counters for valuation blocks even when mapping blockers are zero", () => {
+    const status = deriveAnalysisStatus(
+      {
+        tier: "Tier 1",
+        valuationBlocked: true,
+        missingMinimum: [],
+        missingCore: [],
+        blockingReasons: ["Terminal anchor remains guarded."],
+        policyVersion: versions.mappingPolicyVersion,
+        coverageSummary: {
+          policyVersion: versions.mappingPolicyVersion,
+          issues: [],
+          unresolvedBySeverity: { critical: [], warning: [], info: [] },
+          unresolvedByTier: { "Tier A": [], "Tier B": [], "Tier C": [], "Tier D": [] },
+          totalsByTier: {
+            "Tier A": { total: 0, resolved: 0, unresolved: 0 },
+            "Tier B": { total: 0, resolved: 0, unresolved: 0 },
+            "Tier C": { total: 0, resolved: 0, unresolved: 0 },
+            "Tier D": { total: 0, resolved: 0, unresolved: 0 },
+          },
+        },
+        valuationCriticalGaps: [],
+        ratioCriticalGaps: [],
+        scopeAssessment: {
+          policyVersion: versions.scopePolicyVersion,
+          classification: "supported-industrial",
+          blocked: false,
+          label: "Supported industrial/company scope",
+          reasons: [],
+          recommendedAction: "Proceed",
+          signals: [],
+        },
+      },
+      {
+        status: "guarded",
+        latestPeriod: "2025-03-31",
+        anchorPeriod: "2024-03-31",
+        anchorIndex: 1,
+        fallbackUsed: true,
+        contaminationTier: "COMPROMISED",
+        persistenceStatus: "fragile",
+        persistenceScore: 38,
+        terminalFlags: [],
+        terminalFlagLabels: [],
+        reasons: ["Terminal anchor remains guarded."],
+      },
+      null,
+    );
+
+    expect(status.status).toBe("blocked");
+    expect(status.blockingCount).toBe(0);
+    expect(status.effectiveBlockingCount).toBe(1);
+  });
+
+  it("keeps blocked display counters non-zero for unsupported scope even without mapping blockers", () => {
+    const status = deriveAnalysisStatus(
+      {
+        tier: "Tier 1",
+        valuationBlocked: false,
+        missingMinimum: [],
+        missingCore: [],
+        blockingReasons: [],
+        policyVersion: versions.mappingPolicyVersion,
+        coverageSummary: {
+          policyVersion: versions.mappingPolicyVersion,
+          issues: [],
+          unresolvedBySeverity: { critical: [], warning: [], info: [] },
+          unresolvedByTier: { "Tier A": [], "Tier B": [], "Tier C": [], "Tier D": [] },
+          totalsByTier: {
+            "Tier A": { total: 0, resolved: 0, unresolved: 0 },
+            "Tier B": { total: 0, resolved: 0, unresolved: 0 },
+            "Tier C": { total: 0, resolved: 0, unresolved: 0 },
+            "Tier D": { total: 0, resolved: 0, unresolved: 0 },
+          },
+        },
+        valuationCriticalGaps: [],
+        ratioCriticalGaps: [],
+        scopeAssessment: {
+          policyVersion: versions.scopePolicyVersion,
+          classification: "unsupported-financial-company",
+          blocked: true,
+          label: "Unsupported scope",
+          reasons: ["Banking issuer is outside current supported scope."],
+          recommendedAction: "Do not proceed",
+          signals: [],
+        },
+      },
+      null,
+      null,
+    );
+
+    expect(status.status).toBe("blocked");
+    expect(status.blockingCount).toBe(0);
+    expect(status.effectiveBlockingCount).toBe(1);
   });
 
   it("downgrades to guarded when persistence is fragile despite a clean anchor", () => {

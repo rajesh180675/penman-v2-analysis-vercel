@@ -39,9 +39,9 @@ export function AnalysisStatusBadge({ status, compact = false }: { status: Analy
       </div>
       <p className="mt-2 text-sm font-medium">{status.summary}</p>
       <div className="mt-3 flex flex-wrap gap-2 text-xs opacity-80">
-        <span>Blocking: {status.blockingCount}</span>
-        <span>Diagnostic: {status.diagnosticCount}</span>
-        <span>Optional: {status.optionalCount}</span>
+        <span>Blocking: {status.effectiveBlockingCount ?? status.blockingCount}</span>
+        <span>Diagnostic: {status.effectiveDiagnosticCount ?? status.diagnosticCount}</span>
+        <span>Optional: {status.effectiveOptionalCount ?? status.optionalCount}</span>
         <span>Valuation: {status.valuationStatus}</span>
       </div>
     </div>

@@ -142,6 +142,9 @@ export function buildAnalysisTraceability(params: {
   const valuationBlocked = Boolean(qualityGate?.valuationBlocked);
   const scopeBlocked = Boolean(qualityGate?.scopeAssessment?.blocked);
   const valuationStatus = analysisStatus?.valuationStatus ?? "unknown";
+  const statusBlockingCount = analysisStatus?.effectiveBlockingCount ?? analysisStatus?.blockingCount ?? blockingCount;
+  const statusDiagnosticCount = analysisStatus?.effectiveDiagnosticCount ?? analysisStatus?.diagnosticCount ?? diagnosticCount;
+  const statusOptionalCount = analysisStatus?.effectiveOptionalCount ?? analysisStatus?.optionalCount ?? optionalCount;
   const parserFidelity = evaluateParserFidelity({
     sourceMode: params.sourceMode ?? null,
     rawData: params.rawData ?? null,
@@ -216,6 +219,12 @@ export function buildAnalysisTraceability(params: {
   const achievedLevels = checkpoints.filter((checkpoint) => checkpoint.achieved).map((checkpoint) => checkpoint.level);
   const pendingLevels = checkpoints.filter((checkpoint) => !checkpoint.achieved).map((checkpoint) => checkpoint.level);
   const currentCheckpoint = [...checkpoints].reverse().find((checkpoint) => checkpoint.achieved) ?? checkpoints[0];
+  const valuationGateFailures = [
+    scopeBlocked,
+    valuationBlocked,
+    reconciliation.status === "failed",
+    parserFidelity.status === "failed",
+  ].filter(Boolean).length;
 
   return {
     schemaVersion: policyVersions.traceabilitySchemaVersion,
@@ -239,9 +248,9 @@ export function buildAnalysisTraceability(params: {
       status: analysisStatus?.status ?? "guarded",
       headline: analysisStatus?.headline ?? "Traceability confidence status unavailable.",
       tone: analysisStatus?.tone ?? "amber",
-      blockingCount: analysisStatus?.blockingCount ?? blockingCount,
-      diagnosticCount: analysisStatus?.diagnosticCount ?? diagnosticCount,
-      optionalCount: analysisStatus?.optionalCount ?? optionalCount,
+      blockingCount: Math.max(statusBlockingCount, valuationGateFailures),
+      diagnosticCount: statusDiagnosticCount,
+      optionalCount: statusOptionalCount,
     },
     parserFidelity,
     reconciliation,

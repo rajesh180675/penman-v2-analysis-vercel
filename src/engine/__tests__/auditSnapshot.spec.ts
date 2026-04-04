@@ -329,9 +329,83 @@ describe("traceability snapshot", () => {
     });
 
     expect(snapshot.traceability.reconciliation.status).toBe("failed");
+    expect(snapshot.traceability.confidence.blockingCount).toBe(1);
     expect(snapshot.traceability.rigor.currentLevel).toBe("syntactically-valid");
     expect(snapshot.traceability.rigor.pendingLevels).toContain("structurally-reconciled");
     expect(snapshot.traceability.rigor.checkpoints.find((checkpoint) => checkpoint.level === "structurally-reconciled")?.detail)
       .toContain("Structural residual thresholds did not clear");
+  });
+
+  it("persists gate-aware blocking counts from analysis status when mapping blockers are zero", () => {
+    const snapshot = buildAnalysisSnapshot({
+      rawData: [mkRawPeriod("2025-03-31")],
+      recastData: [
+        {
+          ...mkRecastPeriod("2025-03-31"),
+          bs: {
+            ...mkRecastPeriod("2025-03-31").bs,
+            FO: 120,
+          },
+        },
+      ],
+      config: DEFAULT_CONFIG,
+      debugInfo: null,
+      qualityGate: {
+        tier: "Tier 1",
+        valuationBlocked: true,
+        missingMinimum: [],
+        missingCore: [],
+        blockingReasons: ["Terminal anchor remains guarded."],
+        policyVersion: traceabilityVersions.mappingPolicyVersion,
+        coverageSummary: {
+          policyVersion: traceabilityVersions.mappingPolicyVersion,
+          issues: [],
+          unresolvedBySeverity: { critical: [], warning: [], info: [] },
+          unresolvedByTier: { "Tier A": [], "Tier B": [], "Tier C": [], "Tier D": [] },
+          totalsByTier: {
+            "Tier A": { total: 0, resolved: 0, unresolved: 0 },
+            "Tier B": { total: 0, resolved: 0, unresolved: 0 },
+            "Tier C": { total: 0, resolved: 0, unresolved: 0 },
+            "Tier D": { total: 0, resolved: 0, unresolved: 0 },
+          },
+        },
+        valuationCriticalGaps: [],
+        ratioCriticalGaps: [],
+        scopeAssessment: {
+          policyVersion: traceabilityVersions.scopePolicyVersion,
+          classification: "supported-industrial",
+          blocked: false,
+          label: "Supported industrial/company scope",
+          reasons: [],
+          recommendedAction: "Proceed",
+          signals: [],
+        },
+      },
+      mappingAudit: null,
+      engineError: null,
+      analysisStatus: {
+        status: "blocked",
+        label: "Blocked",
+        headline: "Valuation blocked",
+        summary: "Terminal anchor remains guarded.",
+        reasons: ["Terminal anchor remains guarded."],
+        tone: "red",
+        qualityTier: "Tier 1",
+        valuationStatus: "guarded",
+        scopeBlocked: false,
+        valuationBlocked: true,
+        blockingCount: 0,
+        diagnosticCount: 0,
+        optionalCount: 0,
+        effectiveBlockingCount: 1,
+        effectiveDiagnosticCount: 0,
+        effectiveOptionalCount: 0,
+      },
+      auditMeta: null,
+    });
+
+    expect(snapshot.traceability.confidence.status).toBe("blocked");
+    expect(snapshot.traceability.confidence.blockingCount).toBe(1);
+    expect(snapshot.traceability.mappingCoverage.unresolvedBySeverity.critical).toBe(0);
   });
 });
