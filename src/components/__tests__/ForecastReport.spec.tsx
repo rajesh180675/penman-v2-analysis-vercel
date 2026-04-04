@@ -1,7 +1,107 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import ForecastReport from "../ForecastReport";
+import { AnalysisTraceabilityEnvelope } from "../../engine/analysisTraceability";
 import { DEFAULT_CONFIG, RecastPeriod } from "../../engine/types";
+
+function mkTraceability(status: "production-ready" | "guarded" | "blocked"): AnalysisTraceabilityEnvelope {
+  return {
+    schemaVersion: "2026-04-traceability-v8",
+    generatedAt: "2026-04-04T12:00:00.000Z",
+    runContext: {
+      runId: "run-1",
+      companyId: "ITC",
+      sourceMode: "json",
+      periodCount: 3,
+      latestPeriod: "2025-03-31",
+    },
+    policyVersions: {
+      engineVersion: "2026-03-phase8-valuation-command-center",
+      mappingSpecVersion: "2026-03-capitaline-indas-v2",
+      mappingPolicyVersion: "2026-03-phase8",
+      anomalyPolicyVersion: "2026-03-phase8",
+      valuationPolicyVersion: "2026-03-phase8-dcf",
+      goldenCompanySuiteVersion: "2026-03-phase8",
+      scopePolicyVersion: "2026-03-phase7",
+      traceabilitySchemaVersion: "2026-04-traceability-v8",
+    },
+    qualityGate: {
+      tier: "Tier 1",
+      valuationBlocked: status === "blocked",
+      blockingReasons: status === "blocked" ? ["Reconciliation still blocks valuation trust."] : [],
+      scopeClassification: "supported-industrial",
+      scopeBlocked: false,
+    },
+    confidence: {
+      status,
+      headline: status === "blocked" ? "Valuation blocked" : status === "guarded" ? "Review diagnostics before relying on output" : "Analysis cleared current release checks",
+      tone: status === "blocked" ? "red" : status === "guarded" ? "amber" : "emerald",
+      blockingCount: status === "blocked" ? 1 : 0,
+      diagnosticCount: 0,
+      optionalCount: 0,
+    },
+    parserFidelity: {
+      status: "confirmed",
+      score: 100,
+      summary: "Parser fidelity cleared the syntactic threshold.",
+      warningCount: 0,
+      errorCount: 0,
+      checks: [],
+    },
+    reconciliation: {
+      status: status === "blocked" ? "failed" : "confirmed",
+      summary: status === "blocked"
+        ? "1 reconciliation residual check breached the critical threshold."
+        : "All reconciliation checks stayed within threshold.",
+      warningCount: 0,
+      errorCount: status === "blocked" ? 1 : 0,
+      maxResidualRatio: status === "blocked" ? 0.1551 : 0,
+      checks: [],
+    },
+    rigor: {
+      currentLevel: status === "blocked" ? "syntactically-valid" : "production-ready",
+      currentLabel: status === "blocked" ? "Syntactically valid" : "Production-ready",
+      summary: status === "blocked"
+        ? "Structural residual thresholds did not clear."
+        : "All currently wired release checks passed.",
+      achievedLevels: status === "blocked" ? ["syntactically-valid"] : ["syntactically-valid", "structurally-reconciled", "economically-plausible", "valuation-eligible", "production-ready"],
+      pendingLevels: status === "blocked" ? ["structurally-reconciled", "economically-plausible", "valuation-eligible", "production-ready"] : [],
+      checkpoints: [],
+    },
+    mappingCoverage: {
+      unresolvedBySeverity: { critical: 0, warning: 0, info: 0 },
+      unresolvedByTier: { "Tier A": 0, "Tier B": 0, "Tier C": 0, "Tier D": 0 },
+      outOfSpecLabelCount: 0,
+      actionableOutOfSpecLabelCount: 0,
+      backlogByAction: { "add-to-spec": 0, "group-to-existing": 0, "ignore-non-core": 0, review: 0 },
+    },
+    governance: {
+      contentClass: null,
+      retentionDays: null,
+      runInspectorEnabled: null,
+    },
+    analysisContext: {
+      rawPeriodCount: 3,
+      recastPeriodCount: 3,
+      hasRecastData: true,
+      hasDebugInfo: false,
+      debugFiles: 0,
+      rawMetricKeyCount: 0,
+      engineError: null,
+    },
+    backlogPreview: [],
+  };
+}
+
+const blockedTraceability = mkTraceability("blocked");
+
+const data = [
+  mkPeriod(2023, 1000, 180, 130, 520, 760),
+  mkPeriod(2024, 1100, 205, 150, 590, 820),
+  mkPeriod(2025, 1210, 232, 172, 665, 885),
+];
+
+const config = { ...DEFAULT_CONFIG, market_price: 100, shares_outstanding: 10 };
 
 function mkPeriod(year: number, sales: number, oi: number, cni: number, cse: number, noa: number): RecastPeriod {
   return {
@@ -203,16 +303,10 @@ function mkPeriod(year: number, sales: number, oi: number, cni: number, cse: num
 
 describe("ForecastReport", () => {
   it("renders persistence-led scenario policy guidance", () => {
-    const data = [
-      mkPeriod(2023, 1000, 180, 130, 520, 760),
-      mkPeriod(2024, 1100, 205, 150, 590, 820),
-      mkPeriod(2025, 1210, 232, 172, 665, 885),
-    ];
-
     const html = renderToStaticMarkup(
       <ForecastReport
         data={data}
-        config={{ ...DEFAULT_CONFIG, market_price: 100, shares_outstanding: 10 }}
+        config={config}
       />,
     );
 
@@ -220,4 +314,32 @@ describe("ForecastReport", () => {
     expect(html).toContain("Default weighting");
     expect(html).toContain("Spread posture");
   });
+
+  it("shows four scenario weights that match policy defaults", () => {
+    const html = renderToStaticMarkup(
+      <ForecastReport
+        data={data}
+        config={config}
+        traceability={blockedTraceability}
+      />,
+    );
+
+    expect(html).toContain("P(Stress)");
+    expect(html).toContain("P(Panic)");
+    expect(html).not.toContain("0.38000000000000006");
+  });
+
+  it("renders blocked forecast outputs as diagnostic-only", () => {
+    const html = renderToStaticMarkup(
+      <ForecastReport
+        data={data}
+        config={config}
+        traceability={blockedTraceability}
+      />,
+    );
+
+    expect(html).toContain("Diagnostic preview only");
+    expect(html).not.toContain("Run Monte Carlo");
+  });
+
 });

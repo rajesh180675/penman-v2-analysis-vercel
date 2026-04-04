@@ -1,9 +1,27 @@
-import { useState, useMemo } from "react";
-import { RecastPeriod, ForecastScenario, ForecastPeriod, FADE_PARAMS, NP_BENCHMARKS, EngineConfig, RawPeriodData, ke_from_config } from "../engine/types";
+import { useMemo, useState } from "react";
+import {
+  RecastPeriod,
+  ForecastPeriod,
+  FADE_PARAMS,
+  NP_BENCHMARKS,
+  EngineConfig,
+  RawPeriodData,
+  ke_from_config,
+  ForecastScenarioKey,
+  ForecastScenarioWeighting,
+} from "../engine/types";
 import { buildCyclicalNormalization } from "../engine/cyclicalNormalization";
 import { buildDriverForecastModel } from "../engine/forecastDriverModel";
 import { buildQuarterlyDriverSummary } from "../engine/quarterlyDriverModel";
-import { buildScenario, sensitivityAnalysis, buildValuationPeriodsFromForecast, applyDriverSensitivityToScenario, buildBusinessModelProfile, derivePersistenceForecastScenario } from "../engine/forecastingEngine";
+import {
+  buildPersistenceForecastScenarioSet,
+  buildScenario,
+  sensitivityAnalysis,
+  buildValuationPeriodsFromForecast,
+  applyDriverSensitivityToScenario,
+  buildBusinessModelProfile,
+  derivePersistenceForecastScenario,
+} from "../engine/forecastingEngine";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { buildTerminalEconomics } from "../engine/terminalEconomics";
 import { resolveValuationReadiness } from "../engine/valuationPolicy";
@@ -16,6 +34,10 @@ import { runMonteCarlo } from "../engine/monteCarloClient";
 import { MonteCarloOutput } from "../engine/monteCarloTypes";
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
+import {
+  buildForecastDisplayMode,
+  buildForecastProbabilityState,
+} from "../engine/forecastPresentation";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 
 interface Props { data: RecastPeriod[]; config: EngineConfig; traceability?: AnalysisTraceabilityEnvelope | null }
@@ -33,37 +55,53 @@ function median(values: Array<number | null | undefined>): number | null {
   return filtered.length % 2 === 0 ? (filtered[mid - 1] + filtered[mid]) / 2 : filtered[mid];
 }
 
-function makeDefaultScenario(
-  latest: RecastPeriod, name: ForecastScenario["name"], ke: number, kw: number,
-  salesGrowth: number[], corePM: number[], ato: number[],
-  bridgeDrivers?: {
-    material: number[];
-    employee: number[];
-    depreciation: number[];
-    sga: number[];
-    otherOpex: number[];
-    otherOperatingIncome: number[];
-  },
-): ForecastScenario {
-  return {
-    name, probability: name==="base"?0.5:name==="bull"?0.25:0.25,
-    horizonT: salesGrowth.length,
-    drivers: {
-      sales_growth: salesGrowth,
-      core_sales_pm: corePM,
-      ato,
-      flev:  Array(salesGrowth.length).fill(latest.bs.NFO/Math.max(latest.bs.CSE,1)),
-      nbc:   Array(salesGrowth.length).fill(latest.is.NFE/Math.max(Math.abs(latest.bs.NFO),1)||0.05),
-      material_cost_ratio: bridgeDrivers?.material,
-      employee_cost_ratio: bridgeDrivers?.employee,
-      depreciation_ratio: bridgeDrivers?.depreciation,
-      sga_ratio: bridgeDrivers?.sga,
-      other_opex_ratio: bridgeDrivers?.otherOpex,
-      other_operating_income_ratio: bridgeDrivers?.otherOperatingIncome,
-      g_terminal: 0.05,
-      ke, kw,
-    },
-  };
+function fadeArr(base:number,alpha:number,target:number,t:number):number[] {
+  const arr:number[]=[];let prev=base;
+  for(let i=0;i<t;i++){const n=alpha*prev+(1-alpha)*target;arr.push(n);prev=n;}
+  return arr;
+}
+
+function scenarioWeightForKey(weights: ForecastScenarioWeighting, key: ForecastScenarioKey) {
+  switch (key) {
+    case "stress":
+      return weights.stress;
+    case "base":
+      return weights.base;
+    case "bull":
+      return weights.bull;
+    case "historical-panic":
+      return weights.historicalPanic;
+  }
+}
+
+function scenarioColor(key: ForecastScenarioKey) {
+  switch (key) {
+    case "stress":
+      return "#f59e0b";
+    case "base":
+      return "#6366f1";
+    case "bull":
+      return "#10b981";
+    case "historical-panic":
+      return "#ef4444";
+  }
+}
+
+function updateWeightsForKey(
+  weights: ForecastScenarioWeighting,
+  key: ForecastScenarioKey,
+  value: number,
+): ForecastScenarioWeighting {
+  switch (key) {
+    case "stress":
+      return { ...weights, stress: value };
+    case "base":
+      return { ...weights, base: value };
+    case "bull":
+      return { ...weights, bull: value };
+    case "historical-panic":
+      return { ...weights, historicalPanic: value };
+  }
 }
 
 export default function ForecastReport({data,config, rawData = null, traceability = null}:ExtendedProps) {
@@ -90,13 +128,6 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
   const FADE_ATO = FADE_PARAMS.ATO          ?? 0.95;
   const FADE_SG  = FADE_PARAMS.Sales_growth ?? 0.70;
   const NP_SG    = NP_BENCHMARKS.Sales_growth?.median ?? 0.072;
-
-  // Generate 5-year fade arrays
-  function fadeArr(base:number,alpha:number,target:number,t:number):number[] {
-    const arr:number[]=[];let prev=base;
-    for(let i=0;i<t;i++){const n=alpha*prev+(1-alpha)*target;arr.push(n);prev=n;}
-    return arr;
-  }
 
   const horizonT = 5;
   const fadePM  = fadeArr(basePM, FADE_PM, NP_PM, horizonT);
@@ -166,13 +197,17 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
     template: persistenceTemplate,
     riskInputs: { ke: ke_inp / 100, kw: kwDerived, riskFreeRate: config.risk_free_rate },
   }), [data, latest, businessModel, horizon, persistenceTemplate, ke_inp, kwDerived, config.risk_free_rate]);
-  const policyWeights = persistenceScenario.forecastPolicy?.scenarioWeighting;
-  const [pBull, setPBull] = useState<number | null>(null);
-  const [pBase, setPBase] = useState<number | null>(null);
-  const [pBear, setPBear] = useState<number | null>(null);
-  const resolvedPBull = pBull ?? policyWeights?.bull ?? 0.25;
-  const resolvedPBase = pBase ?? policyWeights?.base ?? 0.5;
-  const resolvedPBear = pBear ?? policyWeights?.stress ?? 0.25;
+  const defaultWeights = persistenceScenario.forecastPolicy?.scenarioWeighting ?? {
+    stress: 0.25,
+    base: 0.4,
+    bull: 0.2,
+    historicalPanic: 0.15,
+  };
+  const [manualWeights, setManualWeights] = useState<ForecastScenarioWeighting | null>(null);
+  const probabilityState = useMemo(
+    () => buildForecastProbabilityState(manualWeights ?? defaultWeights),
+    [manualWeights, defaultWeights],
+  );
   const terminalEconomics = useMemo(
     () => buildTerminalEconomics({
       latest,
@@ -187,86 +222,85 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
   );
   const quarterlySummary = useMemo(() => buildQuarterlyDriverSummary(rawData, data), [rawData, data]);
 
-  const scenarios = useMemo(():ForecastScenario[]=>{
-    const kei=ke_inp/100, kwi=kwDerived;
-    const baseBridge = bridgeFade?.material && bridgeFade?.employee && bridgeFade?.depreciation && bridgeFade?.sga && bridgeFade?.otherOpex && bridgeFade?.otherOperatingIncome
-      ? {
-          material: bridgeFade.material.slice(0, horizon),
-          employee: bridgeFade.employee.slice(0, horizon),
-          depreciation: bridgeFade.depreciation.slice(0, horizon),
-          sga: bridgeFade.sga.slice(0, horizon),
-          otherOpex: bridgeFade.otherOpex.slice(0, horizon),
-          otherOperatingIncome: bridgeFade.otherOperatingIncome.slice(0, horizon),
-        }
-      : undefined;
-    const scaleArray = (arr: number[] | undefined, factor: number, floor = 0) => arr?.map((v) => Math.max(floor, v * factor));
-    const bull = makeDefaultScenario(latest,"bull",kei,kwi,
-      fadeSG.map(v=>v*1.5).slice(0,horizon),
-      fadePM.map(v=>v*1.2).slice(0,horizon),
-      fadeATO.slice(0,horizon),
-      baseBridge ? {
-        material: scaleArray(baseBridge.material, 0.97) ?? [],
-        employee: scaleArray(baseBridge.employee, 0.99) ?? [],
-        depreciation: scaleArray(baseBridge.depreciation, 1.00) ?? [],
-        sga: scaleArray(baseBridge.sga, 0.96) ?? [],
-        otherOpex: scaleArray(baseBridge.otherOpex, 0.94) ?? [],
-        otherOperatingIncome: scaleArray(baseBridge.otherOperatingIncome, 1.05) ?? [],
-      } : undefined,
-    );
-    const base = makeDefaultScenario(latest,"base",kei,kwi,
-      fadeSG.slice(0,horizon),
-      fadePM.slice(0,horizon),
-      fadeATO.slice(0,horizon),
-      baseBridge,
-    );
-    const bear = makeDefaultScenario(latest,"bear",kei,kwi,
-      fadeSG.map(v=>v*0.5).slice(0,horizon),
-      fadePM.map(v=>v*0.7).slice(0,horizon),
-      fadeATO.slice(0,horizon),
-      baseBridge ? {
-        material: scaleArray(baseBridge.material, 1.03) ?? [],
-        employee: scaleArray(baseBridge.employee, 1.01) ?? [],
-        depreciation: scaleArray(baseBridge.depreciation, 1.00) ?? [],
-        sga: scaleArray(baseBridge.sga, 1.05) ?? [],
-        otherOpex: scaleArray(baseBridge.otherOpex, 1.08) ?? [],
-        otherOperatingIncome: scaleArray(baseBridge.otherOperatingIncome, 0.90) ?? [],
-      } : undefined,
-    );
+  const valuationStatus = useMemo(() => {
+    if (traceability) {
+      if (
+        traceability.confidence.status === "blocked"
+        || traceability.qualityGate.scopeBlocked
+        || traceability.qualityGate.valuationBlocked
+        || traceability.reconciliation.status === "failed"
+        || traceability.parserFidelity.status === "failed"
+      ) {
+        return "blocked" as const;
+      }
+      return traceability.confidence.status;
+    }
+    return valuationReadiness.status === "guarded" ? "guarded" : "production-ready";
+  }, [traceability, valuationReadiness.status]);
 
-    bull.probability = resolvedPBull;
-    base.probability = resolvedPBase;
-    bear.probability = resolvedPBear;
+  const displayMode = useMemo(() => buildForecastDisplayMode({
+    valuationStatus,
+    probabilityValid: probabilityState.isValid,
+  }), [valuationStatus, probabilityState.isValid]);
 
-    return [bull,base,bear].map(sc=>{
-      const fps = buildScenario(sc, latest);
-      sc.periods = fps;
-      const valuationPeriods = buildValuationPeriodsFromForecast(latest, fps);
-      sc.valuationResult = computeValuation(valuationPeriods, kei, kwi, g_inp/100, valuationConfig);
-      return sc;
+  const scenarioCards = useMemo(() => {
+    const kei = ke_inp / 100;
+    const kwi = kwDerived;
+    const scenarioSet = buildPersistenceForecastScenarioSet({
+      periods: data,
+      latest,
+      businessModel,
+      horizon,
+      template: persistenceTemplate,
+      riskInputs: { ke: kei, kw: kwi, riskFreeRate: config.risk_free_rate },
     });
-  },[latest,ke_inp,kwDerived,g_inp,horizon,resolvedPBull,resolvedPBase,resolvedPBear,fadeSG,fadePM,fadeATO,bridgeFade,valuationConfig]);
 
-  const baseScenario = scenarios.find(s=>s.name==="base");
-  const fcPeriods = baseScenario?.periods ?? [];
+    return [
+      { key: "stress" as const, label: "Stress", forecast: scenarioSet.stress },
+      { key: "base" as const, label: "Base", forecast: scenarioSet.base },
+      { key: "bull" as const, label: "Bull", forecast: scenarioSet.bull },
+      { key: "historical-panic" as const, label: "Panic", forecast: scenarioSet.historicalPanic },
+    ].map((card) => {
+      const probability = scenarioWeightForKey(probabilityState.weights, card.key);
+      const forecast = {
+        ...card.forecast,
+        probability,
+      };
+      const periods = buildScenario(forecast, latest);
+      const valuationPeriods = buildValuationPeriodsFromForecast(latest, periods);
+      const valuationResult = computeValuation(valuationPeriods, kei, kwi, g_inp / 100, valuationConfig);
+      return {
+        ...card,
+        probability,
+        forecast: {
+          ...forecast,
+          periods,
+          valuationResult,
+        },
+      };
+    });
+  }, [data, latest, businessModel, horizon, persistenceTemplate, ke_inp, kwDerived, config.risk_free_rate, probabilityState.weights, g_inp, valuationConfig]);
+
+  const baseScenarioCard = scenarioCards.find((card) => card.key === "base");
+  const fcPeriods = baseScenarioCard?.forecast.periods ?? [];
   const baseValuationPeriods = useMemo(
-    () => baseScenario?.periods ? buildValuationPeriodsFromForecast(latest, baseScenario.periods) : data,
-    [baseScenario, latest, data],
+    () => baseScenarioCard?.forecast.periods ? buildValuationPeriodsFromForecast(latest, baseScenarioCard.forecast.periods) : data,
+    [baseScenarioCard, latest, data],
   );
 
-  // Sensitivity
   const baseV = sharesOut
-    ? toPerShare(baseScenario?.valuationResult?.V_RE_CV3 ?? null, sharesOut) ?? 0
-    : baseScenario?.valuationResult?.V_RE_CV3 ?? 0;
+    ? toPerShare(baseScenarioCard?.forecast.valuationResult?.V_RE_CV3 ?? null, sharesOut) ?? 0
+    : baseScenarioCard?.forecast.valuationResult?.V_RE_CV3 ?? 0;
   const sensResults = useMemo(()=>sensitivityAnalysis(
     baseV,
     {ke:ke_inp/100,kw:kwDerived,g:g_inp/100,core_pm:basePM,ato:baseATO,sales_growth:baseSG},
     (p)=>{
-      if (!baseScenario?.periods) return baseV;
+      if (!baseScenarioCard?.forecast.periods) return baseV;
       const scenarioForSensitivity = applyDriverSensitivityToScenario(
         {
-          ...baseScenario,
+          ...baseScenarioCard.forecast,
           drivers: {
-            ...baseScenario.drivers,
+            ...baseScenarioCard.forecast.drivers,
             ke: p.ke,
             kw: p.kw,
             g_terminal: p.g,
@@ -280,7 +314,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
       const r = computeValuation(valuationPeriods,p.ke,p.kw,p.g,valuationConfig);
       return sharesOut ? toPerShare(r.V_RE_CV3, sharesOut) ?? 0 : r.V_RE_CV3;
     }
-  ),[baseV,baseScenario,latest,ke_inp,kwDerived,g_inp,basePM,baseATO,baseSG,valuationConfig,sharesOut]);
+  ),[baseV,baseScenarioCard,latest,ke_inp,kwDerived,g_inp,basePM,baseATO,baseSG,valuationConfig,sharesOut]);
 
   const chartFade = Array.from({length:horizonT},((_,i)=>({
     year:`Y+${i+1}`,
@@ -300,8 +334,15 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
     FCF:  +(toPerShare(fp.FCF_f, sharesOut) ?? fp.FCF_f).toFixed(2),
   }));
 
-  const SCENARIO_COLORS:{[k:string]:string}={bull:"#10b981",base:"#6366f1",bear:"#ef4444"};
-  const probSum = resolvedPBull + resolvedPBase + resolvedPBear;
+  const expectedValue = displayMode.showExpectedValue
+    ? scenarioCards.reduce((sum, card) => sum + card.probability * (card.forecast.valuationResult?.V_RE_CV3 ?? 0), 0)
+    : null;
+
+  const setManualWeight = (key: ForecastScenarioKey, rawValue: string) => {
+    const nextValue = Number(rawValue);
+    if (!Number.isFinite(nextValue)) return;
+    setManualWeights((current) => updateWeightsForKey(current ?? defaultWeights, key, nextValue));
+  };
 
   const runMc = async () => {
     setMcBusy(true);
@@ -340,7 +381,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
       counts[idx] += 1;
     }
     return counts.map((n, i) => ({ bucket: `${cr(min + i * step)}–${cr(min + (i + 1) * step)}`, n }));
-  }, [mcOut]);
+  }, [mcOut, sharesOut]);
 
   return (
     <div className="space-y-8">
@@ -349,18 +390,22 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
           <b>Guarded forecast valuation.</b> {valuationReadiness.reasons[0]} Forecast scenarios still start from the latest reported period, so treat scenario values as review-only until the terminal period is normalized.
         </div>
       )}
+      {displayMode.mode === "diagnostic-only" && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <b>Diagnostic preview only.</b> Scenario values are shown only to help review assumptions; they are not eligible for point-estimate use while trust gates are blocked.
+        </div>
+      )}
       {traceabilitySummary && (
         <TraceabilityTrustPanel
           title="Forecast Trust Gate"
           summary={traceabilitySummary}
-          confidenceStatus={traceability?.confidence.status}
+          confidenceStatus={valuationStatus}
           rigorLabel={traceability?.rigor.currentLabel}
           parserStatus={traceability?.parserFidelity.status}
           reconciliationStatus={traceability?.reconciliation.status}
           cautionHeading="Why this forecast should be treated cautiously"
         />
       )}
-      {/* Controls */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
         <h2 className="text-lg font-bold text-slate-800 mb-4">Forecast Assumptions — §4.3</h2>
         <div className="flex flex-wrap gap-4 items-end">
@@ -388,26 +433,33 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
               {[1,3,5,7,10,12,15].map(n=><option key={n} value={n}>{n}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">P(Bull)</label>
-              <input type="number" step={0.05} value={resolvedPBull} onChange={(e) => setPBull(Number(e.target.value))} className="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">P(Base)</label>
-              <input type="number" step={0.05} value={resolvedPBase} onChange={(e) => setPBase(Number(e.target.value))} className="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">P(Bear)</label>
-              <input type="number" step={0.05} value={resolvedPBear} onChange={(e) => setPBear(Number(e.target.value))} className="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm" />
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {([
+              { key: "stress", label: "Stress" },
+              { key: "base", label: "Base" },
+              { key: "bull", label: "Bull" },
+              { key: "historical-panic", label: "Panic" },
+            ] as Array<{ key: ForecastScenarioKey; label: string }>).map(({ key, label }) => (
+              <div key={key}>
+                <label className="block text-xs font-medium text-slate-600 mb-1">{`P(${label})`}</label>
+                <input
+                  type="number"
+                  step={0.05}
+                  value={scenarioWeightForKey(probabilityState.weights, key).toFixed(2)}
+                  onChange={(e) => setManualWeight(key, e.target.value)}
+                  className="w-20 px-2 py-2 border border-slate-300 rounded-lg text-sm"
+                />
+              </div>
+            ))}
           </div>
         </div>
-        <div className={`mt-3 text-xs ${Math.abs(probSum - 1) < 0.001 ? "text-emerald-700" : "text-amber-700"}`}>
-          Probability sum = {probSum.toFixed(2)} {Math.abs(probSum - 1) < 0.001 ? "(valid)" : "(must equal 1.00)"}
+        <div className={`mt-3 text-xs ${probabilityState.isValid ? "text-emerald-700" : "text-amber-700"}`}>
+          {probabilityState.reason == null
+            ? `Probability sum = ${probabilityState.total.toFixed(2)} (valid)`
+            : probabilityState.reason}
         </div>
         <div className="mt-2 text-xs text-slate-500">
-          Policy default weighting: Stress {(policyWeights?.stress ?? 0).toFixed(2)} · Base {(policyWeights?.base ?? 0).toFixed(2)} · Bull {(policyWeights?.bull ?? 0).toFixed(2)} · Panic {(policyWeights?.historicalPanic ?? 0).toFixed(2)}
+          Policy default weighting: Stress {defaultWeights.stress.toFixed(2)} · Base {defaultWeights.base.toFixed(2)} · Bull {defaultWeights.bull.toFixed(2)} · Panic {defaultWeights.historicalPanic.toFixed(2)}
         </div>
         {sharesOut != null && (
           <div className="mt-3 text-xs text-slate-500 space-y-1">
@@ -467,7 +519,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
             <div>Spread posture: <strong>{persistenceScenario.forecastPolicy?.scenarioSpread ?? "—"}</strong></div>
             <div>
               Default weighting: <strong>
-                Stress {(policyWeights?.stress ?? 0).toFixed(2)} · Base {(policyWeights?.base ?? 0).toFixed(2)} · Bull {(policyWeights?.bull ?? 0).toFixed(2)} · Panic {(policyWeights?.historicalPanic ?? 0).toFixed(2)}
+                Stress {defaultWeights.stress.toFixed(2)} · Base {defaultWeights.base.toFixed(2)} · Bull {defaultWeights.bull.toFixed(2)} · Panic {defaultWeights.historicalPanic.toFixed(2)}
               </strong>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -489,7 +541,6 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
         </div>
       </div>
 
-      {/* Fade Model */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
         <h2 className="text-lg font-bold text-slate-800 mb-2">Fade Analysis — N&P Table 3</h2>
         <p className="text-xs text-slate-500 mb-4">Ratios mean-revert toward N&P historical medians (R<sub>t+1</sub> = α×R<sub>t</sub> + (1−α)×R̄ median)</p>
@@ -536,55 +587,58 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
         </div>
       </div>
 
-      {/* Scenario Valuation */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
         <h2 className="text-lg font-bold text-slate-800 mb-4">Scenario Valuation — §4.3.3</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {scenarios.map(sc=>(
-            <div key={sc.name} className="border rounded-xl p-4" style={{borderColor:SCENARIO_COLORS[sc.name]+"44"}}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-3 h-3 rounded-full" style={{backgroundColor:SCENARIO_COLORS[sc.name]}}/>
-                <span className="font-bold text-slate-800 capitalize">{sc.name}</span>
-                <span className="text-xs text-slate-400">({(sc.probability*100).toFixed(0)}%)</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+          {scenarioCards.map((card)=>(
+            <div key={card.key} className="border rounded-xl p-4" style={{borderColor:`${scenarioColor(card.key)}44`}}>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <span className="w-3 h-3 rounded-full" style={{backgroundColor:scenarioColor(card.key)}}/>
+                <span className="font-bold text-slate-800">{card.label}</span>
+                <span className="text-xs text-slate-400">({(card.probability*100).toFixed(0)}%)</span>
+                {displayMode.mode !== "interactive" && (
+                  <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${displayMode.mode === "diagnostic-only" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                    {displayMode.mode === "diagnostic-only" ? "Blocked" : "Review-only"}
+                  </span>
+                )}
               </div>
-              {sc.valuationResult&&(
+              {card.forecast.valuationResult&&(
                 <div>
-                  <div className="text-2xl font-bold" style={{color:SCENARIO_COLORS[sc.name]}}>
-                    {sharesOut ? share(sc.valuationResult.perShare?.intrinsic_re_per_share) : `₹${cr(sc.valuationResult.V_RE_CV3)}`}
+                  <div className="text-2xl font-bold" style={{color:scenarioColor(card.key)}}>
+                    {sharesOut ? share(card.forecast.valuationResult.perShare?.intrinsic_re_per_share) : `₹${cr(card.forecast.valuationResult.V_RE_CV3)}`}
                   </div>
                   <div className="text-xs text-slate-400 mt-1">
                     {sharesOut ? "V (RE·CV3) per share" : "V (RE·CV3) Cr"}
                   </div>
                   {sharesOut && (
-                    <div className="text-xs text-slate-500 mt-1">Total equity value: ₹{cr(sc.valuationResult.V_RE_CV3)} Cr</div>
+                    <div className="text-xs text-slate-500 mt-1">Total equity value: ₹{cr(card.forecast.valuationResult.V_RE_CV3)} Cr</div>
                   )}
                   <div className="mt-2 text-xs text-slate-500">
-                    Sales g Y1: {pct(sc.drivers.sales_growth[0])} → Y{sc.horizonT}: {pct(sc.drivers.sales_growth[sc.horizonT-1]??sc.drivers.sales_growth[0])}
+                    Sales g Y1: {pct(card.forecast.drivers.sales_growth[0])} → Y{card.forecast.horizonT}: {pct(card.forecast.drivers.sales_growth[card.forecast.horizonT-1]??card.forecast.drivers.sales_growth[0])}
                   </div>
-                  <div className="text-xs text-slate-500">Core PM Y1: {pct(sc.drivers.core_sales_pm[0])}</div>
-                  {sc.drivers.material_cost_ratio?.length ? (
-                    <div className="text-xs text-slate-500">Material / Sales Y1: {pct(sc.drivers.material_cost_ratio[0])}</div>
+                  <div className="text-xs text-slate-500">Core PM Y1: {pct(card.forecast.drivers.core_sales_pm[0])}</div>
+                  {card.forecast.drivers.material_cost_ratio?.length ? (
+                    <div className="text-xs text-slate-500">Material / Sales Y1: {pct(card.forecast.drivers.material_cost_ratio[0])}</div>
                   ) : null}
                 </div>
               )}
             </div>
           ))}
         </div>
-        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4">
-          <div className="text-sm font-semibold text-indigo-800">
-            Expected Value (probability-weighted): {sharesOut
-              ? share(
-                  scenarios.reduce((s,sc)=>s+(sc.probability*(sc.valuationResult?.perShare?.intrinsic_re_per_share??0)),0)/
-                  Math.max(scenarios.reduce((s,sc)=>s+sc.probability,0),1)
-                )
-              : `₹${cr(
-                  scenarios.reduce((s,sc)=>s+(sc.probability*(sc.valuationResult?.V_RE_CV3??0)),0)/
-                  Math.max(scenarios.reduce((s,sc)=>s+sc.probability,0),1)
-                )} Cr`}
+        {expectedValue == null ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+            <div className="text-sm font-semibold text-amber-800">
+              Expected value unavailable until scenario probabilities sum to 1.00 and valuation trust is not blocked.
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4">
+            <div className="text-sm font-semibold text-indigo-800">
+              Expected Value (probability-weighted): {sharesOut ? share(toPerShare(expectedValue, sharesOut)) : `₹${cr(expectedValue)} Cr`}
+            </div>
+          </div>
+        )}
 
-        {/* Base case Pro Forma */}
         {chartScen.length>0&&(
           <div>
             <div className="text-sm font-semibold text-slate-600 mb-3">Base Case Pro Forma — RE & ReOI Series {sharesOut ? "(₹ / share)" : "(₹ Cr)"}</div>
@@ -597,10 +651,10 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
                 <Legend wrapperStyle={{fontSize:11}}/>
                 <ReferenceLine y={0} stroke="#94a3b8"/>
                 <Bar dataKey="RE" name="RE" fill="#6366f1">
-                  {chartScen.map((e,i)=><Cell key={i} fill={e.RE>=0?"#6366f1":"#ef4444"}/>)}
+                  {chartScen.map((e,i)=><Cell key={i} fill={e.RE>=0?"#6366f1":"#ef4444"}/>) }
                 </Bar>
                 <Bar dataKey="ReOI" name="ReOI" fill="#10b981">
-                  {chartScen.map((e,i)=><Cell key={i} fill={e.ReOI>=0?"#10b981":"#ef4444"}/>)}
+                  {chartScen.map((e,i)=><Cell key={i} fill={e.ReOI>=0?"#10b981":"#ef4444"}/>) }
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -608,63 +662,65 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
         )}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-800">Monte Carlo Simulation — §4.1.1</h2>
-            <p className="text-xs text-slate-500">N=10,000 simulations in Web Worker. Outputs valuation distribution percentiles{sharesOut ? " on a per-share basis" : ""}.</p>
+      {displayMode.showMonteCarlo && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">Monte Carlo Simulation — §4.1.1</h2>
+              <p className="text-xs text-slate-500">N=10,000 simulations in Web Worker. Outputs valuation distribution percentiles{sharesOut ? " on a per-share basis" : ""}.</p>
+            </div>
+            <button onClick={runMc} disabled={mcBusy} className={`px-4 py-2 rounded-lg text-sm font-medium ${mcBusy?"bg-slate-300 text-slate-100":"bg-indigo-600 text-white hover:bg-indigo-700"}`}>
+              {mcBusy ? `Running... ${(mcProgress * 100).toFixed(0)}%` : "Run Monte Carlo"}
+            </button>
           </div>
-          <button onClick={runMc} disabled={mcBusy} className={`px-4 py-2 rounded-lg text-sm font-medium ${mcBusy?"bg-slate-300 text-slate-100":"bg-indigo-600 text-white hover:bg-indigo-700"}`}>
-            {mcBusy ? `Running... ${(mcProgress * 100).toFixed(0)}%` : "Run Monte Carlo"}
-          </button>
+          {mcOut && (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-sm mb-4">
+                <Mini title="P10 RE" value={sharesOut ? share(toPerShare(mcOut.p10_RE, sharesOut)) : `₹${cr(mcOut.p10_RE)}`} />
+                <Mini title="P50 RE" value={sharesOut ? share(toPerShare(mcOut.p50_RE, sharesOut)) : `₹${cr(mcOut.p50_RE)}`} />
+                <Mini title="P90 RE" value={sharesOut ? share(toPerShare(mcOut.p90_RE, sharesOut)) : `₹${cr(mcOut.p90_RE)}`} />
+                <Mini title="P10 ReOI" value={sharesOut ? share(toPerShare(mcOut.p10_ReOI, sharesOut)) : `₹${cr(mcOut.p10_ReOI)}`} />
+                <Mini title="P50 ReOI" value={sharesOut ? share(toPerShare(mcOut.p50_ReOI, sharesOut)) : `₹${cr(mcOut.p50_ReOI)}`} />
+                <Mini title="P90 ReOI" value={sharesOut ? share(toPerShare(mcOut.p90_ReOI, sharesOut)) : `₹${cr(mcOut.p90_ReOI)}`} />
+              </div>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={mcHistogram}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+                  <XAxis dataKey="bucket" hide />
+                  <YAxis tick={{fontSize:10}} />
+                  <Tooltip />
+                  <Bar dataKey="n" fill="#6366f1" />
+                </BarChart>
+              </ResponsiveContainer>
+            </>
+          )}
         </div>
-        {mcOut && (
-          <>
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-sm mb-4">
-              <Mini title="P10 RE" value={sharesOut ? share(toPerShare(mcOut.p10_RE, sharesOut)) : `₹${cr(mcOut.p10_RE)}`} />
-              <Mini title="P50 RE" value={sharesOut ? share(toPerShare(mcOut.p50_RE, sharesOut)) : `₹${cr(mcOut.p50_RE)}`} />
-              <Mini title="P90 RE" value={sharesOut ? share(toPerShare(mcOut.p90_RE, sharesOut)) : `₹${cr(mcOut.p90_RE)}`} />
-              <Mini title="P10 ReOI" value={sharesOut ? share(toPerShare(mcOut.p10_ReOI, sharesOut)) : `₹${cr(mcOut.p10_ReOI)}`} />
-              <Mini title="P50 ReOI" value={sharesOut ? share(toPerShare(mcOut.p50_ReOI, sharesOut)) : `₹${cr(mcOut.p50_ReOI)}`} />
-              <Mini title="P90 ReOI" value={sharesOut ? share(toPerShare(mcOut.p90_ReOI, sharesOut)) : `₹${cr(mcOut.p90_ReOI)}`} />
-            </div>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={mcHistogram}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
-                <XAxis dataKey="bucket" hide />
-                <YAxis tick={{fontSize:10}} />
-                <Tooltip />
-                <Bar dataKey="n" fill="#6366f1" />
-              </BarChart>
-            </ResponsiveContainer>
-          </>
-        )}
-      </div>
+      )}
 
-      {/* Sensitivity Tornado */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-        <h2 className="text-lg font-bold text-slate-800 mb-2">Sensitivity Analysis — §4.3.4</h2>
-        <p className="text-xs text-slate-500 mb-4">Each parameter varied ±20% from base. Impact = V_high − V_low {sharesOut ? "(₹ / share)" : "(₹ Cr)"}. Sorted by magnitude.</p>
-        {sensResults.map(r=>{
-          const maxImpact = Math.max(...sensResults.map(x=>x.impact),1);
-          const pctW = r.impact/maxImpact*100;
-          return (
-            <div key={r.param} className="flex items-center gap-3 mb-2">
-              <div className="w-40 text-xs text-slate-600 text-right truncate">{r.label}</div>
-              <div className="flex-1 flex items-center gap-1">
-                <div className="h-5 bg-blue-200 rounded-l" style={{width:`${pctW/2}%`}}/>
-                <div className="h-5 bg-indigo-500 rounded-r" style={{width:`${pctW/2}%`}}/>
+      {displayMode.mode !== "diagnostic-only" && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <h2 className="text-lg font-bold text-slate-800 mb-2">Sensitivity Analysis — §4.3.4</h2>
+          <p className="text-xs text-slate-500 mb-4">Each parameter varied ±20% from base. Impact = V_high − V_low {sharesOut ? "(₹ / share)" : "(₹ Cr)"}. Sorted by magnitude.</p>
+          {sensResults.map(r=>{
+            const maxImpact = Math.max(...sensResults.map(x=>x.impact),1);
+            const pctW = r.impact/maxImpact*100;
+            return (
+              <div key={r.param} className="flex items-center gap-3 mb-2">
+                <div className="w-40 text-xs text-slate-600 text-right truncate">{r.label}</div>
+                <div className="flex-1 flex items-center gap-1">
+                  <div className="h-5 bg-blue-200 rounded-l" style={{width:`${pctW/2}%`}}/>
+                  <div className="h-5 bg-indigo-500 rounded-r" style={{width:`${pctW/2}%`}}/>
+                </div>
+                <div className="w-28 text-xs font-mono text-slate-500">{sharesOut ? `±₹${(r.impact/2).toFixed(2)}` : `±₹${cr(r.impact/2)}`}</div>
+                <div className="w-36 text-xs text-slate-400">
+                  {sharesOut ? `[₹${r.low.toFixed(2)} – ₹${r.high.toFixed(2)}]` : `[${cr(r.low)} – ${cr(r.high)}]`}
+                </div>
               </div>
-              <div className="w-28 text-xs font-mono text-slate-500">{sharesOut ? `±₹${(r.impact/2).toFixed(2)}` : `±₹${cr(r.impact/2)}`}</div>
-              <div className="w-36 text-xs text-slate-400">
-                {sharesOut ? `[₹${r.low.toFixed(2)} – ₹${r.high.toFixed(2)}]` : `[${cr(r.low)} – ${cr(r.high)}]`}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
-      {/* Pro Forma Table */}
       {fcPeriods.length>0&&(
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
