@@ -561,4 +561,72 @@ describe("evaluateReconciliationResiduals", () => {
     expect(summary.status).toBe("failed");
     expect(summary.summary).toContain("breached the critical threshold");
   });
+
+  it("ignores broad financial-liability cash-flow lines in the borrowings bridge", () => {
+    const previous = mkPeriod("2024-03-31", {
+      bs: {
+        ...mkPeriod("2024-03-31").bs,
+        BridgeDebtLongTerm: 100,
+        BridgeDebtShortTerm: 50,
+        BridgeDebtDebentures: 0,
+        BridgeDebtCurrentMaturities: 0,
+        BridgeDebtTotal: 150,
+      },
+      cf: {
+        ...mkPeriod("2024-03-31").cf,
+        BridgeDebtProceeds: 0,
+        BridgeDebtRepayment: 0,
+      },
+      trace: {
+        ...mkPeriod("2024-03-31").trace,
+        "BS.BridgeDebt.Total": [
+          { statement: "Derived", key: "long+short+debentures+currentMaturities", value: 150, matchType: "derived" },
+        ],
+        "CF.BridgeDebtProceeds": [
+          { statement: "Derived", key: "SUM", value: 0, matchType: "derived" },
+        ],
+        "CF.BridgeDebtRepayment": [
+          { statement: "Derived", key: "SUM", value: 0, matchType: "derived" },
+        ],
+      },
+    });
+
+    const current = mkPeriod("2025-03-31", {
+      bs: {
+        ...mkPeriod("2025-03-31").bs,
+        BridgeDebtLongTerm: 100,
+        BridgeDebtShortTerm: 50,
+        BridgeDebtDebentures: 0,
+        BridgeDebtCurrentMaturities: 0,
+        BridgeDebtTotal: 150,
+      },
+      cf: {
+        ...mkPeriod("2025-03-31").cf,
+        DebtRepayment: -80,
+        BridgeDebtProceeds: 0,
+        BridgeDebtRepayment: 0,
+      },
+      trace: {
+        ...mkPeriod("2025-03-31").trace,
+        "BS.BridgeDebt.Total": [
+          { statement: "Derived", key: "long+short+debentures+currentMaturities", value: 150, matchType: "derived" },
+        ],
+        "CF.BridgeDebtProceeds": [
+          { statement: "Derived", key: "SUM", value: 0, matchType: "derived" },
+        ],
+        "CF.BridgeDebtRepayment": [
+          { statement: "Derived", key: "SUM", value: 0, matchType: "derived" },
+        ],
+      },
+    });
+
+    const summary = evaluateReconciliationResiduals({
+      recastData: [previous, current],
+      config: DEFAULT_CONFIG,
+    });
+
+    const debtCheck = summary.checks.find((check) => check.key === "gross-debt-flow-bridge");
+    expect(debtCheck?.status).toBe("confirmed");
+    expect(debtCheck?.residual).toBe(0);
+  });
 });
