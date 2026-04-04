@@ -433,15 +433,15 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
           )}
           {qualityGate?.scopeAssessment.signals.length ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-              <StatBox label="Blocking" value={qualityGate.coverageSummary.unresolvedBySeverity.critical.length} highlight={qualityGate.coverageSummary.unresolvedBySeverity.critical.length > 0 || qualityGate.scopeAssessment.blocked} />
-              <StatBox label="Diagnostic" value={qualityGate.coverageSummary.unresolvedBySeverity.warning.length} highlight={qualityGate.coverageSummary.unresolvedBySeverity.warning.length > 0} />
-              <StatBox label="Optional" value={qualityGate.coverageSummary.unresolvedBySeverity.info.length} />
+              <StatBox label="Mapping blocking" value={qualityGate.coverageSummary.unresolvedBySeverity.critical.length} highlight={qualityGate.coverageSummary.unresolvedBySeverity.critical.length > 0 || qualityGate.scopeAssessment.blocked} />
+              <StatBox label="Mapping diagnostic" value={qualityGate.coverageSummary.unresolvedBySeverity.warning.length} highlight={qualityGate.coverageSummary.unresolvedBySeverity.warning.length > 0} />
+              <StatBox label="Mapping optional" value={qualityGate.coverageSummary.unresolvedBySeverity.info.length} />
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-              <StatBox label="Blocking" value={qualityGate?.coverageSummary.unresolvedBySeverity.critical.length ?? 0} highlight={(qualityGate?.coverageSummary.unresolvedBySeverity.critical.length ?? 0) > 0} />
-              <StatBox label="Diagnostic" value={qualityGate?.coverageSummary.unresolvedBySeverity.warning.length ?? 0} highlight={(qualityGate?.coverageSummary.unresolvedBySeverity.warning.length ?? 0) > 0} />
-              <StatBox label="Optional" value={qualityGate?.coverageSummary.unresolvedBySeverity.info.length ?? 0} />
+              <StatBox label="Mapping blocking" value={qualityGate?.coverageSummary.unresolvedBySeverity.critical.length ?? 0} highlight={(qualityGate?.coverageSummary.unresolvedBySeverity.critical.length ?? 0) > 0} />
+              <StatBox label="Mapping diagnostic" value={qualityGate?.coverageSummary.unresolvedBySeverity.warning.length ?? 0} highlight={(qualityGate?.coverageSummary.unresolvedBySeverity.warning.length ?? 0) > 0} />
+              <StatBox label="Mapping optional" value={qualityGate?.coverageSummary.unresolvedBySeverity.info.length ?? 0} />
             </div>
           )}
           {qualityGate?.scopeAssessment.signals.length ? (
