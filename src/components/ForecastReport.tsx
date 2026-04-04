@@ -47,15 +47,6 @@ interface ExtendedProps extends Props { rawData?: RawPeriodData[] | null }
 const pct = (v:number,d=1) => (v*100).toFixed(d)+"%";
 const cr  = (v:number) => v.toLocaleString("en-IN",{maximumFractionDigits:0});
 const share = (v:number | null | undefined, d=2) => v == null ? "—" : `₹${v.toFixed(d)}`;
-const clampNonNegative = (v:number) => Math.max(0, v);
-
-function median(values: Array<number | null | undefined>): number | null {
-  const filtered = values.filter((v): v is number => v != null && Number.isFinite(v)).sort((a, b) => a - b);
-  if (!filtered.length) return null;
-  const mid = Math.floor(filtered.length / 2);
-  return filtered.length % 2 === 0 ? (filtered[mid - 1] + filtered[mid]) / 2 : filtered[mid];
-}
-
 function fadeArr(base:number,alpha:number,target:number,t:number):number[] {
   const arr:number[]=[];let prev=base;
   for(let i=0;i<t;i++){const n=alpha*prev+(1-alpha)*target;arr.push(n);prev=n;}
@@ -136,27 +127,6 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
   const fadeSG  = fadeArr(baseSG, FADE_SG, NP_SG, horizonT);
   const operatingBridge = latest?.is.operatingCostBridge;
   const bridgeReady = (operatingBridge?.coverageRatio ?? 0) >= 0.25;
-  const recentBridge = data.slice(-3).map((period) => period.is.operatingCostBridge?.driverRatios);
-  const bridgeTargets = useMemo(() => ({
-    material: median(recentBridge.map((r) => r?.materialCostPct)) ?? operatingBridge?.driverRatios.materialCostPct ?? null,
-    employee: median(recentBridge.map((r) => r?.employeeCostPct)) ?? operatingBridge?.driverRatios.employeeCostPct ?? null,
-    depreciation: median(recentBridge.map((r) => r?.depreciationPct)) ?? operatingBridge?.driverRatios.depreciationPct ?? null,
-    sga: median(recentBridge.map((r) => r?.sgaPct)) ?? operatingBridge?.driverRatios.sgaPct ?? null,
-    otherOpex: median(recentBridge.map((r) => r?.otherOperatingExpensePct)) ?? operatingBridge?.driverRatios.otherOperatingExpensePct ?? null,
-    otherOperatingIncome: median(recentBridge.map((r) => r?.otherOperatingIncomePct)) ?? operatingBridge?.driverRatios.otherOperatingIncomePct ?? null,
-  }), [recentBridge, operatingBridge]);
-  const fadeBridgeDriver = (base: number | null | undefined, target: number | null | undefined, alpha: number, t: number) => {
-    if (base == null || target == null) return undefined;
-    return fadeArr(base, alpha, target, t).map((value) => clampNonNegative(value));
-  };
-  const bridgeFade = useMemo(() => bridgeReady ? {
-    material: fadeBridgeDriver(operatingBridge?.driverRatios.materialCostPct, bridgeTargets.material, 0.92, horizonT),
-    employee: fadeBridgeDriver(operatingBridge?.driverRatios.employeeCostPct, bridgeTargets.employee, 0.95, horizonT),
-    depreciation: fadeBridgeDriver(operatingBridge?.driverRatios.depreciationPct, bridgeTargets.depreciation, 0.96, horizonT),
-    sga: fadeBridgeDriver(operatingBridge?.driverRatios.sgaPct, bridgeTargets.sga, 0.92, horizonT),
-    otherOpex: fadeBridgeDriver(operatingBridge?.driverRatios.otherOperatingExpensePct, bridgeTargets.otherOpex, 0.88, horizonT),
-    otherOperatingIncome: fadeBridgeDriver(operatingBridge?.driverRatios.otherOperatingIncomePct, bridgeTargets.otherOperatingIncome, 0.85, horizonT),
-  } : null, [bridgeReady, operatingBridge, bridgeTargets]);
 
   const [ke_inp,  setKe]  = useState(+(keBase*100).toFixed(1));
   const [g_inp,   setG]   = useState(5.0);
