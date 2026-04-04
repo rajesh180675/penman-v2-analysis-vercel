@@ -613,6 +613,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   const derivedScenarios = {
     stress: derivePersistenceForecastScenario({
       scenarioKey: "stress",
+      periods: valuationData,
       latest,
       businessModel,
       horizon,
@@ -621,6 +622,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     }),
     base: derivePersistenceForecastScenario({
       scenarioKey: "base",
+      periods: valuationData,
       latest,
       businessModel,
       horizon,
@@ -629,6 +631,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     }),
     bull: derivePersistenceForecastScenario({
       scenarioKey: "bull",
+      periods: valuationData,
       latest,
       businessModel,
       horizon,
@@ -637,6 +640,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     }),
     historicalPanic: derivePersistenceForecastScenario({
       scenarioKey: "historical-panic",
+      periods: valuationData,
       latest,
       businessModel,
       horizon,

@@ -3,7 +3,10 @@
  * §4.3 Pro Forma, Fade Analysis, Scenario Analysis
  * Nissim & Penman (2001) §2.6, Table 3
  */
-import { RecastPeriod, ForecastPeriod, ForecastScenario, FADE_PARAMS, NP_BENCHMARKS, BusinessModelProfile } from "./types";
+import { RecastPeriod, ForecastPeriod, ForecastScenario, FADE_PARAMS, NP_BENCHMARKS, BusinessModelProfile, PersistenceScenarioTemplate } from "./types";
+import { buildCyclicalNormalization } from "./cyclicalNormalization";
+import { buildDriverForecastModel } from "./forecastDriverModel";
+import { buildTerminalEconomics } from "./terminalEconomics";
 
 /* §4.3.1 Fade-adjusted single ratio forecast */
 export function fadeRatio(
@@ -60,12 +63,6 @@ function makeFadeArray(base: number, alpha: number, target: number, horizon: num
   return values;
 }
 
-function blendAnchor(latest: number | null, historical: number | null, evidenceWeight: number, minWeightOnHistory = 0.3) {
-  if (latest == null) return historical;
-  if (historical == null) return latest;
-  const latestWeight = clamp(evidenceWeight, 1 - minWeightOnHistory, 0.85);
-  return latest * latestWeight + historical * (1 - latestWeight);
-}
 
 export function buildBusinessModelProfile(data: RecastPeriod[]): BusinessModelProfile {
   const salesGrowthSeries = data.map((period) => period.ratios?.Sales_growth ?? null);
@@ -224,169 +221,73 @@ function buildForecastPolicyNarrative(args: {
 
 export function derivePersistenceForecastScenario(params: {
   scenarioKey: "stress" | "base" | "bull" | "historical-panic";
+  periods?: RecastPeriod[];
   latest: RecastPeriod;
   businessModel: BusinessModelProfile;
   horizon: number;
-  template: {
-    normalizedGrowth: number;
-    terminalGrowthFloor: number;
-    terminalGrowthCap: number;
-    growthFadeAlpha: number;
-    marginFadeAlpha: number;
-    atoFadeAlpha: number;
-    companyEvidenceMaxWeight?: number;
-    growthGuardrailBand?: number;
-    marginGuardrailBand?: number;
-    atoGuardrailBand?: number;
-  };
+  template: PersistenceScenarioTemplate;
   riskInputs: {
     ke: number;
     kw: number;
     riskFreeRate: number;
   };
 }): ForecastScenario {
-  const { scenarioKey, latest, businessModel, horizon, template, riskInputs } = params;
-  const latestRatios = latest.ratios;
-  const persistence = clamp(businessModel.persistenceScore / 100, 0, 1);
-  const bridgeCoverage = latest.is.operatingCostBridge?.coverageRatio ?? null;
-  const cashConversion = latest.ratios?.cash_conversion_ratio ?? businessModel.historicalAnchors.cashConversion ?? null;
-  const noaGrowth = latest.ratios?.NOA_growth ?? null;
-  const salesGrowth = latest.ratios?.Sales_growth ?? null;
-  const leverage = latest.ratios?.FLEV ?? null;
-  const workingCapitalPressure = cashConversion != null && cashConversion < 0.65
-    ? "high"
-    : cashConversion != null && cashConversion < 0.82
-      ? "medium"
-      : "low";
-  const reinvestmentBurden = noaGrowth != null && salesGrowth != null && (
-    noaGrowth > salesGrowth + 0.08
-    || ((cashConversion ?? 1) < 0.55 && noaGrowth > salesGrowth + 0.02)
-    || ((cashConversion ?? 1) < 0.6 && noaGrowth > 0.22)
-  )
-    ? "heavy"
-    : noaGrowth != null && salesGrowth != null && noaGrowth > salesGrowth + 0.02
-      ? "moderate"
-      : "light";
-  const balanceSheetFlexibility = leverage != null && leverage > 0.7
-    ? "tight"
-    : leverage != null && leverage > 0.35
-      ? "adequate"
-      : "strong";
-  const companyEvidenceWeight = clamp(
-    0.25
-      + persistence * 0.55
-      - (workingCapitalPressure === "high" ? 0.08 : workingCapitalPressure === "medium" ? 0.03 : 0)
-      - (reinvestmentBurden === "heavy" ? 0.05 : reinvestmentBurden === "moderate" ? 0.02 : 0)
-      - (balanceSheetFlexibility === "tight" ? 0.05 : balanceSheetFlexibility === "adequate" ? 0.02 : 0)
-      + ((bridgeCoverage ?? 0.75) >= 0.8 ? 0.03 : (bridgeCoverage ?? 0.75) < 0.65 ? -0.05 : 0),
-    0.25,
-    template.companyEvidenceMaxWeight ?? 0.8,
-  );
-  const templateGuardrailStrength = clamp(1 - companyEvidenceWeight, 0.2, 0.75);
-
-  const blendedSalesGrowth = blendAnchor(
-    latestRatios?.Sales_growth ?? null,
-    businessModel.historicalAnchors.salesGrowth ?? template.normalizedGrowth,
-    companyEvidenceWeight,
-    0.35,
-  ) ?? template.normalizedGrowth;
-  const blendedPm = blendAnchor(
-    latestRatios?.CoreSalesPM ?? latestRatios?.PM ?? null,
-    businessModel.historicalAnchors.corePm ?? NP_BENCHMARKS.PM.median,
-    companyEvidenceWeight,
-    0.4,
-  ) ?? NP_BENCHMARKS.PM.median;
-  const blendedAto = blendAnchor(
-    latestRatios?.ATO ?? null,
-    businessModel.historicalAnchors.ato ?? NP_BENCHMARKS.ATO.median,
-    companyEvidenceWeight,
-    0.35,
-  ) ?? NP_BENCHMARKS.ATO.median;
-
-  const fadePenalty = businessModel.persistenceScore < 45 ? 0.12 : businessModel.persistenceScore < 60 ? 0.07 : 0.03;
-  const growthGuardrailBand = template.growthGuardrailBand ?? 0.04;
-  const marginGuardrailBand = template.marginGuardrailBand ?? 0.05;
-  const atoGuardrailBand = template.atoGuardrailBand ?? 0.45;
-  const growthTarget = clamp(
-    (businessModel.historicalAnchors.salesGrowth ?? template.normalizedGrowth) * (0.75 + persistence * 0.35),
-    Math.max(template.normalizedGrowth - growthGuardrailBand, -0.02),
-    template.normalizedGrowth + growthGuardrailBand,
-  );
-  const marginTarget = clamp(
-    (businessModel.historicalAnchors.corePm ?? NP_BENCHMARKS.PM.median) * (0.85 + persistence * 0.2),
-    Math.max((businessModel.historicalAnchors.corePm ?? NP_BENCHMARKS.PM.median) - marginGuardrailBand, 0.03),
-    Math.min((businessModel.historicalAnchors.corePm ?? NP_BENCHMARKS.PM.median) + marginGuardrailBand, 0.2),
-  );
-  const atoTarget = clamp(
-    (businessModel.historicalAnchors.ato ?? NP_BENCHMARKS.ATO.median) * (0.9 + persistence * 0.15),
-    Math.max((businessModel.historicalAnchors.ato ?? NP_BENCHMARKS.ATO.median) - atoGuardrailBand, 0.35),
-    Math.min((businessModel.historicalAnchors.ato ?? NP_BENCHMARKS.ATO.median) + atoGuardrailBand, 2.2),
-  );
-
+  const { scenarioKey, periods, latest, businessModel, horizon, template, riskInputs } = params;
+  const history = periods?.length ? periods : [latest];
+  const normalized = buildCyclicalNormalization(history);
+  const driverPlan = buildDriverForecastModel({
+    data: history,
+    latest,
+    businessModel,
+    normalized,
+    scenarioKey,
+    template,
+  });
+  const terminalEconomics = buildTerminalEconomics({
+    latest,
+    normalized,
+    businessModel,
+    driverPlan,
+    requiredReturn: riskInputs.kw,
+    terminalGrowthFloor: template.terminalGrowthFloor,
+    terminalGrowthCap: template.terminalGrowthCap,
+  });
   const flevBase = Math.max(latest.bs.NFO / Math.max(latest.bs.CSE, 1), -0.2);
   const nbcBase = Math.max(latest.is.NFE / Math.max(Math.abs(latest.bs.NFO), 1), 0.01);
-
-  const operatingMode = bridgeCoverage != null && bridgeCoverage >= 0.72 ? "cost-bridge" : "margin";
-  const terminalAnchorSource = companyEvidenceWeight >= 0.65 ? "company-evidence" : companyEvidenceWeight >= 0.45 ? "blended" : "template";
-  const narrative = buildForecastPolicyNarrative({
-    persistenceScore: businessModel.persistenceScore,
-    companyEvidenceWeight,
-    templateGuardrailStrength,
-    workingCapitalPressure,
-    reinvestmentBurden,
-    balanceSheetFlexibility,
-    terminalAnchorSource,
-    businessModel,
-  });
+  const terminalAnchorSource = driverPlan.companyEvidenceWeight >= 0.65
+    ? "company-evidence"
+    : driverPlan.companyEvidenceWeight >= 0.45
+      ? "blended"
+      : "template";
 
   const scenarioPresets = {
     stress: {
       name: "bear" as const,
       probability: 0.25,
-      growthStart: clamp(blendedSalesGrowth * (0.35 + persistence * 0.05) - 0.01, -0.04, 0.08),
-      pmStart: clamp(blendedPm * (0.62 + persistence * 0.08), 0.02, 0.2),
-      atoStart: clamp(blendedAto * (0.86 + persistence * 0.04), 0.35, 2),
       ke: riskInputs.ke + 0.02,
       kw: riskInputs.kw + 0.015,
-      terminal: clamp(template.terminalGrowthFloor, 0.015, 0.03),
+      terminalGrowth: clamp(terminalEconomics.terminalGrowth, 0.015, 0.03),
     },
     base: {
       name: "base" as const,
       probability: 0.4,
-      growthStart: clamp(blendedSalesGrowth, 0.01, Math.max(0.18, template.normalizedGrowth + 0.03)),
-      pmStart: clamp(blendedPm, 0.04, 0.3),
-      atoStart: clamp(blendedAto, 0.4, 2.5),
       ke: riskInputs.ke,
       kw: riskInputs.kw,
-      terminal: clamp(
-        template.normalizedGrowth * (0.35 + persistence * 0.2),
-        template.terminalGrowthFloor,
-        template.terminalGrowthCap,
-      ),
+      terminalGrowth: terminalEconomics.terminalGrowth,
     },
     bull: {
       name: "bull" as const,
       probability: 0.15,
-      growthStart: clamp(blendedSalesGrowth * (1.08 + persistence * 0.12), 0.03, Math.max(0.24, template.normalizedGrowth + 0.08)),
-      pmStart: clamp(blendedPm * (1.03 + persistence * 0.07), 0.05, 0.34),
-      atoStart: clamp(blendedAto * (0.99 + persistence * 0.04), 0.45, 2.8),
       ke: Math.max(riskInputs.ke - 0.01, riskInputs.riskFreeRate + 0.04),
       kw: Math.max(riskInputs.kw - 0.008, riskInputs.riskFreeRate + 0.03),
-      terminal: clamp(
-        template.normalizedGrowth * (0.45 + persistence * 0.25),
-        template.terminalGrowthFloor,
-        template.terminalGrowthCap,
-      ),
+      terminalGrowth: clamp(terminalEconomics.terminalGrowth * 1.1, template.terminalGrowthFloor, template.terminalGrowthCap),
     },
     "historical-panic": {
       name: "bear" as const,
       probability: 0.2,
-      growthStart: clamp(blendedSalesGrowth * 0.12 - 0.02, -0.08, 0.04),
-      pmStart: clamp(blendedPm * 0.5, 0.01, 0.16),
-      atoStart: clamp(blendedAto * 0.82, 0.3, 1.8),
       ke: riskInputs.ke + 0.03,
       kw: riskInputs.kw + 0.0225,
-      terminal: clamp(template.terminalGrowthFloor, 0.01, 0.025),
+      terminalGrowth: clamp(template.terminalGrowthFloor, 0.01, 0.025),
     },
   } as const;
 
@@ -397,38 +298,34 @@ export function derivePersistenceForecastScenario(params: {
     probability: preset.probability,
     horizonT: horizon,
     forecastPolicy: {
-      companyEvidenceWeight,
+      companyEvidenceWeight: driverPlan.companyEvidenceWeight,
       persistenceScore: businessModel.persistenceScore,
-      templateGuardrailStrength,
+      templateGuardrailStrength: driverPlan.templateGuardrailStrength,
       terminalAnchorSource,
-      workingCapitalPressure,
-      reinvestmentBurden,
-      balanceSheetFlexibility,
-      operatingMode,
-      narrative,
+      workingCapitalPressure: driverPlan.workingCapitalPressure,
+      reinvestmentBurden: driverPlan.reinvestmentPosture,
+      balanceSheetFlexibility: driverPlan.balanceSheetFlexibility,
+      operatingMode: driverPlan.operatingMode,
+      terminalFadeYears: terminalEconomics.fadeYears,
+      terminalEconomicsRationale: terminalEconomics.rationale,
+      narrative: buildForecastPolicyNarrative({
+        persistenceScore: businessModel.persistenceScore,
+        companyEvidenceWeight: driverPlan.companyEvidenceWeight,
+        templateGuardrailStrength: driverPlan.templateGuardrailStrength,
+        workingCapitalPressure: driverPlan.workingCapitalPressure,
+        reinvestmentBurden: driverPlan.reinvestmentPosture,
+        balanceSheetFlexibility: driverPlan.balanceSheetFlexibility,
+        terminalAnchorSource,
+        businessModel,
+      }),
     },
     drivers: {
-      sales_growth: makeFadeArray(
-        preset.growthStart,
-        clamp(template.growthFadeAlpha - fadePenalty, 0.45, 0.96),
-        growthTarget,
-        horizon,
-      ),
-      core_sales_pm: makeFadeArray(
-        preset.pmStart,
-        clamp(template.marginFadeAlpha - fadePenalty, 0.5, 0.97),
-        marginTarget,
-        horizon,
-      ),
-      ato: makeFadeArray(
-        preset.atoStart,
-        clamp(template.atoFadeAlpha - fadePenalty * 0.7, 0.6, 0.98),
-        atoTarget,
-        horizon,
-      ),
+      sales_growth: makeFadeArray(driverPlan.year1.salesGrowth, driverPlan.fade.growthAlpha, driverPlan.targets.salesGrowth, horizon),
+      core_sales_pm: makeFadeArray(driverPlan.year1.coreMargin, driverPlan.fade.marginAlpha, driverPlan.targets.coreMargin, horizon),
+      ato: makeFadeArray(driverPlan.year1.ato, driverPlan.fade.atoAlpha, driverPlan.targets.ato, horizon),
       flev: Array(horizon).fill(flevBase),
       nbc: Array(horizon).fill(nbcBase),
-      g_terminal: preset.terminal,
+      g_terminal: preset.terminalGrowth,
       ke: preset.ke,
       kw: preset.kw,
     },

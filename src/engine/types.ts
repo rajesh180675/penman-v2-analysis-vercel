@@ -282,6 +282,46 @@ export interface BusinessModelProfile {
   };
 }
 
+export interface PersistenceScenarioTemplate {
+  normalizedGrowth: number;
+  terminalGrowthFloor: number;
+  terminalGrowthCap: number;
+  growthFadeAlpha: number;
+  marginFadeAlpha: number;
+  atoFadeAlpha: number;
+  companyEvidenceMaxWeight?: number;
+  growthGuardrailBand?: number;
+  marginGuardrailBand?: number;
+  atoGuardrailBand?: number;
+}
+
+export interface DriverForecastPlan {
+  persistenceBand: "durable" | "mixed" | "fragile";
+  companyEvidenceWeight: number;
+  templateGuardrailStrength: number;
+  operatingMode: "cost-bridge" | "margin";
+  workingCapitalPressure: "low" | "medium" | "high";
+  reinvestmentPosture: "light" | "moderate" | "heavy";
+  balanceSheetFlexibility: "strong" | "adequate" | "tight";
+  year1: {
+    salesGrowth: number;
+    coreMargin: number;
+    ato: number;
+  };
+  targets: {
+    salesGrowth: number;
+    coreMargin: number;
+    ato: number;
+  };
+  fade: {
+    growthAlpha: number;
+    marginAlpha: number;
+    atoAlpha: number;
+  };
+  capitalIntensityNarrative: string[];
+  narrative: string[];
+}
+
 export interface ShareCountInputSnapshot {
   endPeriodShares: number | null;
   endPeriodSharesSource: string;
@@ -370,6 +410,16 @@ export interface ForecastPeriod {
   CoreOI_bridge_f?: number | null;
 }
 
+export interface TerminalEconomicsOutput {
+  terminalRoic: number | null;
+  terminalGrowth: number;
+  terminalReinvestmentRate: number | null;
+  fadeYears: number;
+  competitionPressure: "low" | "medium" | "high";
+  summary: string;
+  rationale: string[];
+}
+
 export interface ForecastPolicySurface {
   companyEvidenceWeight?: number;
   persistenceScore?: number;
@@ -379,6 +429,8 @@ export interface ForecastPolicySurface {
   reinvestmentBurden?: 'light' | 'moderate' | 'heavy';
   balanceSheetFlexibility?: 'strong' | 'adequate' | 'tight';
   operatingMode?: 'cost-bridge' | 'margin';
+  terminalFadeYears?: number;
+  terminalEconomicsRationale?: string[];
   narrative?: string[];
 }
 

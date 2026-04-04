@@ -3,7 +3,7 @@ import { RecastPeriod, ForecastScenario, ForecastPeriod, FADE_PARAMS, NP_BENCHMA
 import { buildCyclicalNormalization } from "../engine/cyclicalNormalization";
 import { buildDriverForecastModel } from "../engine/forecastDriverModel";
 import { buildQuarterlyDriverSummary } from "../engine/quarterlyDriverModel";
-import { buildScenario, sensitivityAnalysis, buildValuationPeriodsFromForecast, applyDriverSensitivityToScenario } from "../engine/forecastingEngine";
+import { buildScenario, sensitivityAnalysis, buildValuationPeriodsFromForecast, applyDriverSensitivityToScenario, buildBusinessModelProfile } from "../engine/forecastingEngine";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { buildTerminalEconomics } from "../engine/terminalEconomics";
 import { resolveValuationReadiness } from "../engine/valuationPolicy";
@@ -143,7 +143,22 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
     return deriveKwFromStructure(cur, prev, ke_inp / 100, config.risk_free_rate, config);
   }, [data, ke_inp, config]);
   const cyclicalNormalization = useMemo(() => buildCyclicalNormalization(data), [data]);
-  const driverModel = useMemo(() => buildDriverForecastModel(data, cyclicalNormalization), [data, cyclicalNormalization]);
+  const businessModel = useMemo(() => buildBusinessModelProfile(data), [data]);
+  const driverModel = useMemo(() => buildDriverForecastModel({
+    data,
+    latest,
+    businessModel,
+    normalized: cyclicalNormalization,
+    scenarioKey: "base",
+    template: {
+      normalizedGrowth: cyclicalNormalization.normalizedSalesGrowth ?? NP_SG,
+      terminalGrowthFloor: 0.02,
+      terminalGrowthCap: 0.05,
+      growthFadeAlpha: 0.8,
+      marginFadeAlpha: 0.9,
+      atoFadeAlpha: 0.95,
+    },
+  }), [data, latest, businessModel, cyclicalNormalization, NP_SG]);
   const terminalEconomics = useMemo(
     () => buildTerminalEconomics({
       latest,
@@ -400,7 +415,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
           <h3 className="text-base font-bold text-slate-800 mb-2">Driver-Based Forecast</h3>
-          <div className="text-sm text-slate-700">{driverModel.narrative}</div>
+          <div className="text-sm text-slate-700">{driverModel.narrative.join(" ")}</div>
           <div className="mt-4 grid gap-2 text-sm text-slate-700">
             <div>Year 1 sales growth: <strong>{driverModel.year1.salesGrowth != null ? pct(driverModel.year1.salesGrowth) : "—"}</strong></div>
             <div>Year 1 core margin: <strong>{driverModel.year1.coreMargin != null ? pct(driverModel.year1.coreMargin) : "—"}</strong></div>
