@@ -48,10 +48,30 @@ export function buildValuationTraceabilitySurfaceSummary(
     )
   ).slice(0, 3);
 
+  const valuationGateFailures = [
+    traceability.qualityGate.scopeBlocked,
+    traceability.qualityGate.valuationBlocked,
+    traceability.reconciliation.status === "failed",
+    traceability.parserFidelity.status === "failed",
+  ].filter(Boolean).length;
+
+  const effectiveBlockingCount = Math.max(
+    traceability.confidence.blockingCount,
+    valuationGateFailures,
+  );
+
+  const effectiveConfidenceStatus = traceability.confidence.status === "blocked" || valuationGateFailures > 0
+    ? "blocked"
+    : traceability.confidence.status;
+
+  const confidenceLine = effectiveConfidenceStatus === "blocked"
+    ? `${effectiveConfidenceStatus} · ${effectiveBlockingCount} gate issue${effectiveBlockingCount === 1 ? "" : "s"}`
+    : `${effectiveConfidenceStatus} · ${traceability.confidence.blockingCount} blocking / ${traceability.confidence.diagnosticCount} diagnostic`;
+
   return {
     headline: `${traceability.rigor.currentLabel} · ${traceability.confidence.headline}`,
     detail: traceability.rigor.summary,
-    confidenceLine: `${traceability.confidence.status} · ${traceability.confidence.blockingCount} blocking / ${traceability.confidence.diagnosticCount} diagnostic`,
+    confidenceLine,
     parserLine: `${traceability.parserFidelity.status}${typeof traceability.parserFidelity.score === "number" ? ` · ${traceability.parserFidelity.score}/100` : ""}`,
     reconciliationLine: `${traceability.reconciliation.status} · max residual ${formatPct(traceability.reconciliation.maxResidualRatio)}`,
     nextGateLine: pendingLevel

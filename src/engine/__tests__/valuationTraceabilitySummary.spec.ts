@@ -167,5 +167,8 @@ describe("buildValuationTraceabilitySurfaceSummary", () => {
     expect(summary?.headline).toContain("Syntactically valid");
     expect(summary?.nextGateLine).toBe("Next unresolved gate: Structurally reconciled.");
     expect(summary?.blockers.some((item) => item.includes("reconciliation residual check(s) breached the critical threshold"))).toBe(true);
+    expect(summary?.confidenceLine).toContain("blocked");
+    expect(summary?.confidenceLine).not.toContain("0 blocking / 0 diagnostic");
+    expect(summary?.blockers.some((item) => item.includes("reconciliation"))).toBe(true);
   });
 });
