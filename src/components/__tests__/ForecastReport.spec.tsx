@@ -342,4 +342,40 @@ describe("ForecastReport", () => {
     expect(html).not.toContain("Run Monte Carlo");
   });
 
+  it("shows forecast provenance when traceability is available", () => {
+    const html = renderToStaticMarkup(
+      <ForecastReport
+        data={data}
+        config={config}
+        traceability={mkTraceability("production-ready")}
+      />,
+    );
+
+    expect(html).toContain("Forecast provenance");
+    expect(html).toContain("Engine version");
+    expect(html).toContain("Valuation policy");
+    expect(html).toContain("Traceability schema");
+    expect(html).toContain("Anchor period");
+    expect(html).toContain("2026-03-phase8-valuation-command-center");
+    expect(html).toContain("2026-04-traceability-v8");
+  });
+
+  it("flags incomplete provenance metadata as unverified", () => {
+    const traceability = mkTraceability("guarded");
+    traceability.policyVersions.engineVersion = "";
+    traceability.policyVersions.valuationPolicyVersion = "";
+    traceability.policyVersions.traceabilitySchemaVersion = "";
+
+    const html = renderToStaticMarkup(
+      <ForecastReport
+        data={data}
+        config={config}
+        traceability={traceability}
+      />,
+    );
+
+    expect(html).toContain("Version metadata is incomplete; treat this forecast as unverified against the current valuation rule set.");
+    expect(html).toContain("unversioned");
+  });
+
 });
