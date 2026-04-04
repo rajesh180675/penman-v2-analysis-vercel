@@ -61,6 +61,11 @@ export interface CanonicalBalanceSheet {
   TA: number; CSE: number; MI: number;
   FA: number; FO: number;
   OA: number; OL: number;
+  BridgeDebtLongTerm: number;
+  BridgeDebtShortTerm: number;
+  BridgeDebtDebentures: number;
+  BridgeDebtCurrentMaturities: number;
+  BridgeDebtTotal: number;
   OL_TradePayables: number;
   OL_OtherCurrentLiabilities: number;
   OL_ProvisionsCurrent: number;
@@ -173,6 +178,7 @@ export interface CashFlowData {
   DividendPaid: number; EquityIssued: number; ShareBuybacks: number;
   InterestReceived: number; DividendReceived: number;
   DebtProceeds?: number; DebtRepayment?: number;
+  BridgeDebtProceeds?: number; BridgeDebtRepayment?: number;
   SaleFixedAssets?: number; PurchaseInvestments?: number; SaleInvestments?: number;
   FCF_accounting: number; FCF_cash: number;
   d_t: number; d_t_formula: number; d_t_discrepancy: number;
