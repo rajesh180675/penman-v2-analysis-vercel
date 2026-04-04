@@ -251,4 +251,105 @@ describe("generateValuationWorkbook", () => {
     expect(sheetValueByLabel(wb.Sheets.Traceability, "Max Reconciliation Residual")).toBe(0);
     expect(sheetValueByLabel(wb.Sheets.Traceability, "Achieved Levels")).toBe("syntactically-valid | structurally-reconciled | economically-plausible");
   });
+
+  it("exports effective confidence counters separately from mapping coverage counters", () => {
+    const versions = getAnalysisPolicyVersions();
+    const traceability = buildAnalysisTraceability({
+      generatedAt: "2026-04-04T10:00:00.000Z",
+      runId: "run-blocked",
+      companyId: "ITC",
+      sourceMode: "json",
+      rawData: [
+        {
+          company_id: "ITC",
+          period_end: "2025-03-31",
+          raw_metric_values: {
+            "Total Assets__BalanceSheet": 1000,
+            "Total Equity__BalanceSheet": 600,
+            "Revenue From Operations(Net)__ProfitLoss": 900,
+            "Profit After Tax__ProfitLoss": 90,
+          },
+        },
+      ],
+      recastData: [mkBalancedPeriod("2025-03-31")],
+      config: DEFAULT_CONFIG,
+      periodCount: 1,
+      latestPeriod: "2025-03-31",
+      policyVersions: versions,
+      qualityGate: {
+        tier: "Tier 1",
+        valuationBlocked: true,
+        missingMinimum: [],
+        missingCore: [],
+        blockingReasons: ["Terminal anchor remains guarded."],
+        policyVersion: versions.mappingPolicyVersion,
+        coverageSummary: {
+          policyVersion: versions.mappingPolicyVersion,
+          issues: [],
+          unresolvedBySeverity: { critical: [], warning: [], info: [] },
+          unresolvedByTier: { "Tier A": [], "Tier B": [], "Tier C": [], "Tier D": [] },
+          totalsByTier: {
+            "Tier A": { total: 0, resolved: 0, unresolved: 0 },
+            "Tier B": { total: 0, resolved: 0, unresolved: 0 },
+            "Tier C": { total: 0, resolved: 0, unresolved: 0 },
+            "Tier D": { total: 0, resolved: 0, unresolved: 0 },
+          },
+        },
+        valuationCriticalGaps: [],
+        ratioCriticalGaps: [],
+        scopeAssessment: {
+          policyVersion: versions.scopePolicyVersion,
+          classification: "supported-industrial",
+          blocked: false,
+          label: "Supported industrial/company scope",
+          reasons: [],
+          recommendedAction: "Proceed",
+          signals: [],
+        },
+      },
+      analysisStatus: {
+        status: "blocked",
+        label: "Blocked",
+        headline: "Valuation blocked",
+        summary: "Terminal anchor remains guarded.",
+        reasons: ["Terminal anchor remains guarded."],
+        tone: "red",
+        qualityTier: "Tier 1",
+        valuationStatus: "guarded",
+        scopeBlocked: false,
+        valuationBlocked: true,
+        blockingCount: 0,
+        diagnosticCount: 0,
+        optionalCount: 0,
+        effectiveBlockingCount: 1,
+        effectiveDiagnosticCount: 0,
+        effectiveOptionalCount: 0,
+      },
+    });
+
+    const workbookBuf = generateValuationWorkbook(
+      [mkBalancedPeriod("2025-03-31")],
+      [],
+      valuation,
+      DEFAULT_CONFIG,
+      {
+        companyLabel: "ITC",
+        auditRunId: "run-blocked",
+        valuationStatus: "guarded",
+        valuationReasons: ["Terminal anchor remains guarded."],
+        valuationAnchorPeriod: "2024-03-31",
+        valuationSourcePeriod: "2025-03-31",
+        policyVersions: versions,
+        traceability,
+      },
+    );
+    const wb = read(workbookBuf, { type: "array" });
+
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Confidence Blocking Issues")).toBe(1);
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Confidence Diagnostic Issues")).toBe(0);
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Confidence Optional Issues")).toBe(0);
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Mapping Blocking Issues")).toBe(0);
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Mapping Diagnostic Issues")).toBe(0);
+    expect(sheetValueByLabel(wb.Sheets.Traceability, "Mapping Optional Issues")).toBe(0);
+  });
 });
