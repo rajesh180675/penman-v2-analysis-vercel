@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyDriverSensitivityToScenario, buildBusinessModelProfile, buildScenario, buildValuationPeriodsFromForecast, derivePersistenceForecastScenario } from "../forecastingEngine";
+import { applyDriverSensitivityToScenario, buildBusinessModelProfile, buildPersistenceForecastScenarioSet, buildScenario, buildValuationPeriodsFromForecast, derivePersistenceForecastScenario } from "../forecastingEngine";
 import { ForecastPeriod, ForecastScenario, Ratios, RecastPeriod } from "../types";
 
 function mkLatest(period_end = "2024-03-31"): RecastPeriod {
@@ -311,31 +311,49 @@ describe("derivePersistenceForecastScenario", () => {
     ];
 
     const businessModel = buildBusinessModelProfile(data);
+    const template = {
+      normalizedGrowth: 0.08,
+      terminalGrowthFloor: 0.03,
+      terminalGrowthCap: 0.05,
+      growthFadeAlpha: 0.82,
+      marginFadeAlpha: 0.9,
+      atoFadeAlpha: 0.94,
+      companyEvidenceMaxWeight: 0.8,
+      growthGuardrailBand: 0.03,
+      marginGuardrailBand: 0.04,
+      atoGuardrailBand: 0.35,
+    };
+    const riskInputs = { ke: 0.12, kw: 0.1, riskFreeRate: 0.07 };
     const scenario = derivePersistenceForecastScenario({
       scenarioKey: "base",
       periods: data,
       latest: data[data.length - 1],
       businessModel,
       horizon: 5,
-      template: {
-        normalizedGrowth: 0.08,
-        terminalGrowthFloor: 0.03,
-        terminalGrowthCap: 0.05,
-        growthFadeAlpha: 0.82,
-        marginFadeAlpha: 0.9,
-        atoFadeAlpha: 0.94,
-        companyEvidenceMaxWeight: 0.8,
-        growthGuardrailBand: 0.03,
-        marginGuardrailBand: 0.04,
-        atoGuardrailBand: 0.35,
-      },
-      riskInputs: { ke: 0.12, kw: 0.1, riskFreeRate: 0.07 },
+      template,
+      riskInputs,
     } as never);
 
     expect(scenario.probability).toBeGreaterThanOrEqual(0.4);
     expect(scenario.forecastPolicy?.scenarioWeighting?.base).toBeGreaterThan(scenario.forecastPolicy?.scenarioWeighting?.stress ?? 0);
     expect(scenario.forecastPolicy?.scenarioSpread).toBe("contained");
     expect(scenario.forecastPolicy?.scenarioWeightRationale?.length).toBeGreaterThan(0);
+
+    const scenarioSet = buildPersistenceForecastScenarioSet({
+      periods: data,
+      latest: data[data.length - 1],
+      businessModel,
+      horizon: 5,
+      template,
+      riskInputs,
+    });
+
+    expect(scenarioSet.stress.forecastPolicy?.scenarioWeighting).toEqual(scenarioSet.base.forecastPolicy?.scenarioWeighting);
+    expect(scenarioSet.bull.forecastPolicy?.scenarioWeighting).toEqual(scenarioSet.base.forecastPolicy?.scenarioWeighting);
+    expect(scenarioSet.historicalPanic.forecastPolicy?.scenarioWeighting).toEqual(scenarioSet.base.forecastPolicy?.scenarioWeighting);
+    const weights = scenarioSet.base.forecastPolicy?.scenarioWeighting;
+    expect(weights).toBeDefined();
+    expect((weights?.stress ?? 0) + (weights?.base ?? 0) + (weights?.bull ?? 0) + (weights?.historicalPanic ?? 0)).toBeCloseTo(1, 6);
   });
 });
 

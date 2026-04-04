@@ -426,12 +426,30 @@ export interface TerminalEconomicsOutput {
   rationale: string[];
 }
 
-export interface ScenarioWeightingSurface {
+export type ForecastScenarioKey = "stress" | "base" | "bull" | "historical-panic";
+
+export interface ForecastScenarioWeighting {
   stress: number;
   base: number;
   bull: number;
   historicalPanic: number;
 }
+
+export interface ForecastProbabilityState {
+  weights: ForecastScenarioWeighting;
+  total: number;
+  isValid: boolean;
+  reason: string | null;
+}
+
+export interface ForecastScenarioCardSurface {
+  key: ForecastScenarioKey;
+  label: string;
+  probability: number;
+  forecast: ForecastScenario;
+}
+
+export type ScenarioWeightingSurface = ForecastScenarioWeighting;
 
 export type ScenarioSpreadPosture = "contained" | "balanced" | "wide";
 

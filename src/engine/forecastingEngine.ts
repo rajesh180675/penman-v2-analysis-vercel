@@ -272,6 +272,26 @@ function buildScenarioWeighting(args: {
   };
 }
 
+export function buildPersistenceForecastScenarioSet(params: {
+  periods?: RecastPeriod[];
+  latest: RecastPeriod;
+  businessModel: BusinessModelProfile;
+  horizon: number;
+  template: PersistenceScenarioTemplate;
+  riskInputs: {
+    ke: number;
+    kw: number;
+    riskFreeRate: number;
+  };
+}) {
+  return {
+    stress: derivePersistenceForecastScenario({ ...params, scenarioKey: "stress" }),
+    base: derivePersistenceForecastScenario({ ...params, scenarioKey: "base" }),
+    bull: derivePersistenceForecastScenario({ ...params, scenarioKey: "bull" }),
+    historicalPanic: derivePersistenceForecastScenario({ ...params, scenarioKey: "historical-panic" }),
+  };
+}
+
 export function derivePersistenceForecastScenario(params: {
   scenarioKey: "stress" | "base" | "bull" | "historical-panic";
   periods?: RecastPeriod[];
