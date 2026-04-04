@@ -340,6 +340,23 @@ describe("ForecastReport", () => {
 
     expect(html).toContain("Diagnostic preview only");
     expect(html).not.toContain("Run Monte Carlo");
+    expect(html).not.toContain("Sensitivity Analysis — §4.3.4");
+  });
+
+  it("keeps guarded runs in review-only mode", () => {
+    const html = renderToStaticMarkup(
+      <ForecastReport
+        data={data}
+        config={config}
+        traceability={mkTraceability("guarded")}
+      />,
+    );
+
+    expect(html).toContain("Review-only");
+    expect(html).not.toContain("Run Monte Carlo");
+    expect(html).toContain("Expected value unavailable until scenario probabilities sum to 1.00 and valuation trust supports point-estimate use.");
+    expect(html).toContain("Sensitivity Analysis — §4.3.4");
+    expect(html).toContain("inactive in current valuation path");
   });
 
   it("shows forecast provenance when traceability is available", () => {

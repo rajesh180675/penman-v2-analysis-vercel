@@ -647,7 +647,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
         {expectedValue == null ? (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
             <div className="text-sm font-semibold text-amber-800">
-              Expected value unavailable until scenario probabilities sum to 1.00 and valuation trust is not blocked.
+              Expected value unavailable until scenario probabilities sum to 1.00 and valuation trust supports point-estimate use.
             </div>
           </div>
         ) : (
@@ -732,7 +732,9 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
                 </div>
                 <div className="w-28 text-xs font-mono text-slate-500">{sharesOut ? `±₹${(r.impact/2).toFixed(2)}` : `±₹${cr(r.impact/2)}`}</div>
                 <div className="w-36 text-xs text-slate-400">
-                  {sharesOut ? `[₹${r.low.toFixed(2)} – ₹${r.high.toFixed(2)}]` : `[${cr(r.low)} – ${cr(r.high)}]`}
+                  {r.impact === 0
+                    ? "inactive in current valuation path"
+                    : sharesOut ? `[₹${r.low.toFixed(2)} – ₹${r.high.toFixed(2)}]` : `[${cr(r.low)} – ${cr(r.high)}]`}
                 </div>
               </div>
             );

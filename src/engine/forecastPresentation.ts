@@ -36,7 +36,7 @@ export function buildForecastDisplayMode(args: {
       showActionableScenarioCards: false,
     };
   }
-  if (!args.probabilityValid) {
+  if (args.valuationStatus === "guarded" || !args.probabilityValid) {
     return {
       mode: "review-only" as const,
       showExpectedValue: false,
