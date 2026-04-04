@@ -274,6 +274,17 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   const leaseLiab = bs("BS.FO.LeaseLiabilities", ["Lease Liabilities"]);
   const otherFinLiab = bs("BS.FO.OtherFinLiabLT", ["Others Financial Liabilities - Long-term"]) + bs("BS.FO.OtherFinLiabST", ["Others Financial Liabilities - Short-term"]);
   const hybrid = cfg.hybrid_perpetual_as_debt ? bs("BS.FO.Hybrid", ["Hybrid Perpetual Securities"]) : 0;
+  const bridgeDebtLongTerm = sumBs("BS.BridgeDebt.LongTerm", M.balanceSheet.bridgeDebt.longTermBorrowings);
+  const bridgeDebtShortTerm = sumBs("BS.BridgeDebt.ShortTerm", M.balanceSheet.bridgeDebt.shortTermBorrowings);
+  const bridgeDebtDebentures = sumBs("BS.BridgeDebt.Debentures", M.balanceSheet.bridgeDebt.debentures);
+  const bridgeDebtCurrentMaturities = sumBs("BS.BridgeDebt.CurrentMaturities", M.balanceSheet.bridgeDebt.currentMaturities);
+  const bridgeDebtTotal = bridgeDebtLongTerm + bridgeDebtShortTerm + bridgeDebtDebentures + bridgeDebtCurrentMaturities;
+  pushTrace(trace, "BS.BridgeDebt.Total", {
+    statement: "Derived",
+    key: "long+short+debentures+currentMaturities",
+    value: bridgeDebtTotal,
+    matchType: "derived",
+  });
   const FO_uncapped = longBorrow + shortBorrow + otherFinLiab + hybrid + leaseLiab;
 
   const OA = TA - FA;
@@ -344,6 +355,11 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
 
   return {
     TA, CSE, MI, FA, FO, OA, OL, NOA, NFO,
+    BridgeDebtLongTerm: bridgeDebtLongTerm,
+    BridgeDebtShortTerm: bridgeDebtShortTerm,
+    BridgeDebtDebentures: bridgeDebtDebentures,
+    BridgeDebtCurrentMaturities: bridgeDebtCurrentMaturities,
+    BridgeDebtTotal: bridgeDebtTotal,
     OL_TradePayables: bs("BS.OLComp.TradePayablesOut", M.balanceSheet.olComponents.tradePayables),
     OL_OtherCurrentLiabilities: bs("BS.OLComp.OtherCurrentLiabilitiesOut", M.balanceSheet.olComponents.otherCurrentLiabilities),
     OL_ProvisionsCurrent: bs("BS.OLComp.ProvisionsCurrentOut", M.balanceSheet.olComponents.provisionsCurrent),
@@ -555,6 +571,8 @@ export function recastCashFlow(data: RawPeriodData, is_: CanonicalIncome, bs: Ca
     DividendReceived,
     DebtProceeds: sumCf("CF.DebtProceeds", M.cashFlow.debtProceeds),
     DebtRepayment: sumCf("CF.DebtRepayment", M.cashFlow.debtRepayments),
+    BridgeDebtProceeds: sumCf("CF.BridgeDebtProceeds", M.cashFlow.bridgeDebtProceeds),
+    BridgeDebtRepayment: sumCf("CF.BridgeDebtRepayment", M.cashFlow.bridgeDebtRepayments),
     SaleFixedAssets: cf("CF.SaleFixedAssets", M.cashFlow.saleFixedAssets),
     PurchaseInvestments: cf("CF.PurchaseInvestments", M.cashFlow.purchaseInvestments),
     SaleInvestments: cf("CF.SaleInvestments", M.cashFlow.saleInvestments),

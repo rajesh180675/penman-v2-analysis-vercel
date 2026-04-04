@@ -13,6 +13,11 @@ function mkPeriod(period_end: string, overrides?: Partial<RecastPeriod>): Recast
       FO: 150,
       OA: 850,
       OL: 250,
+      BridgeDebtLongTerm: 100,
+      BridgeDebtShortTerm: 50,
+      BridgeDebtDebentures: 0,
+      BridgeDebtCurrentMaturities: 0,
+      BridgeDebtTotal: 150,
       OL_TradePayables: 80,
       OL_OtherCurrentLiabilities: 50,
       OL_ProvisionsCurrent: 10,
@@ -83,6 +88,8 @@ function mkPeriod(period_end: string, overrides?: Partial<RecastPeriod>): Recast
       DividendReceived: 0,
       DebtProceeds: 0,
       DebtRepayment: 0,
+      BridgeDebtProceeds: 0,
+      BridgeDebtRepayment: 0,
       FCF_accounting: 60,
       FCF_cash: 80,
       d_t: 20,
@@ -121,6 +128,15 @@ function mkPeriod(period_end: string, overrides?: Partial<RecastPeriod>): Recast
       ],
       "BS.FO.ShortBorrow": [
         { statement: "BalanceSheet", key: "Short Term Borrowings", value: 50, matchType: "exact_base" },
+      ],
+      "BS.BridgeDebt.Total": [
+        { statement: "Derived", key: "long+short+debentures+currentMaturities", value: 150, matchType: "derived" },
+      ],
+      "CF.BridgeDebtProceeds": [
+        { statement: "Derived", key: "SUM", value: 0, matchType: "derived" },
+      ],
+      "CF.BridgeDebtRepayment": [
+        { statement: "Derived", key: "SUM", value: 0, matchType: "derived" },
       ],
     },
     ...overrides,
@@ -400,7 +416,7 @@ describe("evaluateReconciliationResiduals", () => {
       trace: {
         ...mkPeriod("2025-03-31").trace,
         "BS.FA.CashBank": [
-          { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 260.6, matchType: "exact_base" },
+          { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 160, matchType: "exact_base" },
         ],
       },
     });
@@ -411,16 +427,19 @@ describe("evaluateReconciliationResiduals", () => {
           ...current,
           cf: {
             ...current.cf,
-            DebtProceeds: 100,
-            DebtRepayment: 0,
+            BridgeDebtProceeds: 100,
+            BridgeDebtRepayment: 0,
           },
           trace: {
             ...current.trace,
-            "BS.FO.LongBorrow": [
-              { statement: "BalanceSheet", key: "Long Term Borrowings", value: 200.6, matchType: "exact_base" },
+            "BS.BridgeDebt.Total": [
+              { statement: "Derived", key: "long+short+debentures+currentMaturities", value: 250.6, matchType: "derived" },
             ],
-            "BS.FO.ShortBorrow": [
-              { statement: "BalanceSheet", key: "Short Term Borrowings", value: 50, matchType: "exact_base" },
+            "CF.BridgeDebtProceeds": [
+              { statement: "Derived", key: "SUM", value: 100, matchType: "derived" },
+            ],
+            "CF.BridgeDebtRepayment": [
+              { statement: "Derived", key: "SUM", value: 0, matchType: "derived" },
             ],
           },
         },
@@ -449,16 +468,19 @@ describe("evaluateReconciliationResiduals", () => {
           ...current,
           cf: {
             ...current.cf,
-            DebtProceeds: 30,
-            DebtRepayment: 0,
+            BridgeDebtProceeds: 30,
+            BridgeDebtRepayment: 0,
           },
           trace: {
             ...current.trace,
-            "BS.FO.LongBorrow": [
-              { statement: "BalanceSheet", key: "Long Term Borrowings", value: 100, matchType: "exact_base" },
+            "BS.BridgeDebt.Total": [
+              { statement: "Derived", key: "long+short+debentures+currentMaturities", value: 150, matchType: "derived" },
             ],
-            "BS.FO.ShortBorrow": [
-              { statement: "BalanceSheet", key: "Short Term Borrowings", value: 50, matchType: "exact_base" },
+            "CF.BridgeDebtProceeds": [
+              { statement: "Derived", key: "SUM", value: 30, matchType: "derived" },
+            ],
+            "CF.BridgeDebtRepayment": [
+              { statement: "Derived", key: "SUM", value: 0, matchType: "derived" },
             ],
           },
         },

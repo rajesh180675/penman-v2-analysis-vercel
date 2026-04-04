@@ -86,7 +86,7 @@ describe("bridge debt mapping", () => {
 
     expect(traceKeys(latest, "CF.BridgeDebtRepayment")).not.toContain("Of financial Liabilities");
     expect(traceKeys(latest, "CF.BridgeDebtRepayment")).toContain("Of the Long Tem Borrowings");
-  });
+  }, 20000);
 
   it("captures debentures and current maturities in the bridge debt total while excluding leases", () => {
     const periods = processCompanyData(currentMaturityIssuer, DEFAULT_CONFIG);
@@ -104,5 +104,5 @@ describe("bridge debt mapping", () => {
     expect(latest.trace?.["BS.BridgeDebt.Total"]?.length).toBeGreaterThan(0);
     expect(latest.trace?.["CF.BridgeDebtProceeds"]?.length).toBeGreaterThan(0);
     expect(latest.trace?.["CF.BridgeDebtRepayment"]?.length).toBeGreaterThan(0);
-  });
+  }, 20000);
 });

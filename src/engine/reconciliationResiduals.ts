@@ -135,27 +135,24 @@ export function evaluateReconciliationResiduals(params: {
     const cashDistributionBasis = previous
       ? Math.max(Math.abs(period.cf.d_t), Math.abs(period.cf.d_t_formula), 1)
       : null;
-    const currentGrossBorrowings = (readTraceValue(period, "BS.FO.LongBorrow") ?? 0)
-      + (readTraceValue(period, "BS.FO.ShortBorrow") ?? 0);
-    const previousGrossBorrowings = previous
-      ? (readTraceValue(previous, "BS.FO.LongBorrow") ?? 0) + (readTraceValue(previous, "BS.FO.ShortBorrow") ?? 0)
+    const currentBridgeDebt = readTraceValue(period, "BS.BridgeDebt.Total");
+    const previousBridgeDebt = previous ? readTraceValue(previous, "BS.BridgeDebt.Total") : null;
+    const debtFlowResidual = previousBridgeDebt != null && currentBridgeDebt != null
+      ? (currentBridgeDebt - previousBridgeDebt) - ((period.cf.BridgeDebtProceeds ?? 0) + (period.cf.BridgeDebtRepayment ?? 0))
       : null;
-    const debtFlowResidual = previousGrossBorrowings != null
-      ? (currentGrossBorrowings - previousGrossBorrowings) - ((period.cf.DebtProceeds ?? 0) + (period.cf.DebtRepayment ?? 0))
-      : null;
-    const debtFlowBasis = previousGrossBorrowings != null
+    const debtFlowBasis = previousBridgeDebt != null && currentBridgeDebt != null
       ? Math.max(
-        Math.abs(currentGrossBorrowings - previousGrossBorrowings),
-        Math.abs((period.cf.DebtProceeds ?? 0) + (period.cf.DebtRepayment ?? 0)),
+        Math.abs(currentBridgeDebt - previousBridgeDebt),
+        Math.abs((period.cf.BridgeDebtProceeds ?? 0) + (period.cf.BridgeDebtRepayment ?? 0)),
         1,
       )
       : null;
-    const hasDebtFlowInputs = previousGrossBorrowings != null
+    const hasDebtFlowInputs = previousBridgeDebt != null
       && (
-        readTraceValue(period, "BS.FO.LongBorrow") != null
-        || readTraceValue(period, "BS.FO.ShortBorrow") != null
-        || (previous ? readTraceValue(previous, "BS.FO.LongBorrow") != null : false)
-        || (previous ? readTraceValue(previous, "BS.FO.ShortBorrow") != null : false)
+        readTraceValue(period, "BS.BridgeDebt.Total") != null
+        || (previous ? readTraceValue(previous, "BS.BridgeDebt.Total") != null : false)
+        || hasTraceEvidence(period, "CF.BridgeDebtProceeds")
+        || hasTraceEvidence(period, "CF.BridgeDebtRepayment")
       );
     const currentCashBank = readTraceValue(period, "BS.FA.CashBank");
     const previousCashBank = previous ? readTraceValue(previous, "BS.FA.CashBank") : null;
@@ -260,7 +257,7 @@ export function evaluateReconciliationResiduals(params: {
       }),
       buildOptionalCheck({
         key: "gross-debt-flow-bridge",
-        label: "Δ Gross Borrowings = Debt Proceeds + Debt Repayment",
+        label: "Δ Bridge Debt = Bridge Debt Proceeds + Bridge Debt Repayment",
         periodEnd: period.period_end,
         residual: hasDebtFlowInputs ? debtFlowResidual : null,
         denominator: hasDebtFlowInputs ? debtFlowBasis : null,
