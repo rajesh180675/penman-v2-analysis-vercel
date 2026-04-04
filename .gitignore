@@ -20,3 +20,4 @@ yarn-error.log*
 .codex
 .vercel/
 .ralph-wiggum/
+.worktrees/
