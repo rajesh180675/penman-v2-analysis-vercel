@@ -55,15 +55,16 @@ export async function listJsonBlobs(prefix, limit = 100) {
     limit,
     mode: "expanded",
   });
-  const items = [];
-  for (const blob of result.blobs) {
-    const parsed = await readJsonBlob(blob.pathname).catch(() => null);
-    items.push({
-      pathname: blob.pathname,
-      uploadedAt: blob.uploadedAt,
-      payload: parsed,
-    });
-  }
+  const items = await Promise.all(
+    result.blobs.map(async (blob) => {
+      const parsed = await readJsonBlob(blob.pathname).catch(() => null);
+      return {
+        pathname: blob.pathname,
+        uploadedAt: blob.uploadedAt,
+        payload: parsed,
+      };
+    })
+  );
   return items.sort((left, right) => new Date(right.uploadedAt).getTime() - new Date(left.uploadedAt).getTime());
 }
 
