@@ -9,6 +9,7 @@ import { resolveValuationSectorTemplate } from "./valuationSectorTemplates";
 import { buildSOTPValuation, SOTP_PRESETS, SOTPResult } from "./sotpValuation";
 import { computeEvEbitdaCrossCheck, updateEvEbitdaWithMarketPrice, EvEbitdaCrossCheck } from "./evEbitdaCrossCheck";
 import { computeIndiaQualitySignals, IndiaQualitySignals } from "./indiaQualitySignals";
+import { buildEarningsQualityCard, EarningsQualityCard } from "./earningsQuality";
 
 export type ValuationSignalState =
   | "blocked"
@@ -175,6 +176,7 @@ export interface ValuationCommandCenterOutput {
   marketContext: ValuationMarketContext;
   backtest: ValuationBacktestSummary;
   signal: ValuationSignal;
+  earningsQuality: EarningsQualityCard;
   range: {
     floorPerShare: number | null;
     ceilingPerShare: number | null;
@@ -901,6 +903,15 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   // ── India Quality Signals (Phase 2.3) ────────────────────────
   const indiaQuality = computeIndiaQualitySignals({ current: latest, previous: prev });
 
+  // ── Earnings Quality (Phase 5.1-5.3) ─────────────────────────
+  const earningsQuality = buildEarningsQualityCard(
+    null,  // Dechow-Dichev: requires CFO/WCA history; defer until multi-period data available
+    null,  // Roychowdhury REM: requires discretionary expense / production cost history
+    latest.ratios?.dirty_surplus_pct_cse ?? null,
+    latest.ratios?.cash_conversion_ratio ?? null,
+    latest.ratios?.accrual_ratio_bs ?? null,
+  );
+
   const historicalCheapnessScore = historicalPercentile != null ? (1 - clamp(historicalPercentile, 0, 1)) * 100 : null;
   const reverseDcfPessimismScore = reverseDcf.spreadVsNormalizedGrowth != null
     ? clamp((sectorTemplate.normalizedGrowth - (sectorTemplate.normalizedGrowth + reverseDcf.spreadVsNormalizedGrowth)) / Math.max(sectorTemplate.normalizedGrowth, 0.01), 0, 1) * 100
@@ -1159,6 +1170,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     sotp: sotpResult,
     evEbitda: evEbitdaWithMarket,
     indiaQuality,
+    earningsQuality,
     opportunity,
     checklist,
     marketContext,
