@@ -85,6 +85,9 @@ export interface CanonicalBalanceSheet {
   OA_OtherIntangibles: number; OA_Inventory: number;
   OA_TradeReceivables: number; OA_DTA: number;
   OA_CWIP: number; OA_Other: number;
+  /* India-specific fields (Phase 2.3) */
+  promoterHolding?: number | null;
+  pledgedPromoterShares?: number | null;
 }
 
 /* ── Income ─────────────────────────────────────────────────────── */
@@ -96,6 +99,10 @@ export interface CanonicalIncome {
   FinanceCost: number; FinanceIncome: number;
   FinanceIncomeRung: 1|2|3|4;
   PreferredDividend: number;
+  /* India-specific fields (Phase 2.3) */
+  relatedPartyTransactions?: number;
+  auditorChange?: boolean;
+  qualifiedOpinion?: boolean;
   NFE: number; OI: number;
   OtherItems: number; OI_from_sales: number; MII: number;
   COGS: number;
