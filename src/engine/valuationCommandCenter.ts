@@ -6,6 +6,9 @@ import { RecastPeriod, EngineConfig, ForecastScenario, ForecastPolicySurface, Va
 import { resolveShareBasis } from "./shareCountTools";
 import { ValuationReadiness, resolveValuationReadiness } from "./valuationPolicy";
 import { resolveValuationSectorTemplate } from "./valuationSectorTemplates";
+import { buildSOTPValuation, SOTP_PRESETS, SOTPResult } from "./sotpValuation";
+import { computeEvEbitdaCrossCheck, updateEvEbitdaWithMarketPrice, EvEbitdaCrossCheck } from "./evEbitdaCrossCheck";
+import { computeIndiaQualitySignals, IndiaQualitySignals } from "./indiaQualitySignals";
 
 export type ValuationSignalState =
   | "blocked"
@@ -164,6 +167,9 @@ export interface ValuationCommandCenterOutput {
   scenarios: ValuationScenarioCard[];
   diagnostics: DcfCashFlowDiagnostics;
   reverseDcf: ReverseDcfDiagnostics;
+  sotp: SOTPResult | null;
+  evEbitda: EvEbitdaCrossCheck;
+  indiaQuality: IndiaQualitySignals;
   opportunity: ValuationOpportunityAssessment;
   checklist: ValuationChecklist;
   marketContext: ValuationMarketContext;
@@ -880,6 +886,21 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     spreadVsNormalizedGrowth: reverseDcfDescription.spreadVsNormalizedGrowth,
   };
 
+  // ── SOTP Valuation (Phase 2.2) ──────────────────────────────
+  const sotpPresetKey = config.sotp_preset ?? null;
+  const sotpResult: SOTPResult | null = sotpPresetKey && sotpPresetKey in SOTP_PRESETS
+    ? buildSOTPValuation(latest, SOTP_PRESETS[sotpPresetKey], keBase)
+    : null;
+
+  // ── EV/EBITDA Cross-Check (Phase 2.4) ────────────────────────
+  const evEbitda = computeEvEbitdaCrossCheck(latest, config.ev_ebitda_peers ?? []);
+  const evEbitdaWithMarket = marketPrice != null && shares != null && shares > 0
+    ? updateEvEbitdaWithMarketPrice(evEbitda, marketPrice * shares, latest.bs.NFO)
+    : evEbitda;
+
+  // ── India Quality Signals (Phase 2.3) ────────────────────────
+  const indiaQuality = computeIndiaQualitySignals({ current: latest, previous: prev });
+
   const historicalCheapnessScore = historicalPercentile != null ? (1 - clamp(historicalPercentile, 0, 1)) * 100 : null;
   const reverseDcfPessimismScore = reverseDcf.spreadVsNormalizedGrowth != null
     ? clamp((sectorTemplate.normalizedGrowth - (sectorTemplate.normalizedGrowth + reverseDcf.spreadVsNormalizedGrowth)) / Math.max(sectorTemplate.normalizedGrowth, 0.01), 0, 1) * 100
@@ -1135,6 +1156,9 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     scenarios,
     diagnostics,
     reverseDcf,
+    sotp: sotpResult,
+    evEbitda: evEbitdaWithMarket,
+    indiaQuality,
     opportunity,
     checklist,
     marketContext,

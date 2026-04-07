@@ -603,6 +603,9 @@ export interface EngineConfig {
   structural_residual_critical?: number;
   pm_zscore_warning   ?: number;
   pm_zscore_critical  ?: number;
+  // Phase 2 extensions
+  sotp_preset          ?: string;
+  ev_ebitda_peers      ?: Array<{ company: string; evEbitda: number | null }>;
 }
 
 /* ── V3 Valuation Extension ─────────────────────────────────────── */
