@@ -2,6 +2,8 @@ import { RecastPeriod } from "../engine/types";
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
+import { computeIndiaQualitySignals } from "../engine/indiaQualitySignals";
+import { buildEarningsQualityCard } from "../engine/earningsQuality";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell, Legend } from "recharts";
 
 interface Props {
@@ -51,8 +53,25 @@ export default function QualityReport({data, traceability = null}:Props) {
   }));
 
   const latest = rd[rd.length-1].quality!;
-  const zZone:("Safe"|"Grey"|"Distress") = latest.altman_zprime>2.9?"Safe":latest.altman_zprime>1.23?"Grey":"Distress";
+  const prevPeriod = rd.length >= 2 ? rd[rd.length - 2] : null;
+  const latestPeriod = rd[rd.length - 1];
+  const zZone: ("Safe"|"Grey"|"Distress") = latest.altman_zprime>2.9?"Safe":latest.altman_zprime>1.23?"Grey":"Distress";
   const mFlag = latest.beneish_mscore > -1.78;
+
+  // India Quality Signals
+  const indiaQuality = rd.length >= 2
+    ? computeIndiaQualitySignals({ current: latestPeriod, previous: prevPeriod })
+    : null;
+
+  // Earnings Quality Card
+  const earningsQuality = rd.length >= 2
+    ? buildEarningsQualityCard(
+        null, null,
+        latestPeriod.ratios?.dirty_surplus_pct_cse ?? null,
+        latestPeriod.ratios?.cash_conversion_ratio ?? null,
+        latestPeriod.ratios?.accrual_ratio_bs ?? null,
+      )
+    : null;
 
   const PIOTROSKI_SIGNALS = [
     {key:"piotroski_roa",label:"ROA > 0",cat:"Profitability"},
@@ -383,6 +402,109 @@ export default function QualityReport({data, traceability = null}:Props) {
           </table>
         </div>
       </div>
+
+      {/* ── India Quality Signals ──────────────────────────────────── */}
+      {indiaQuality && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+            <h2 className="text-lg font-bold text-slate-800">India-Specific Governance &amp; Market Quality</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Promoter holding, pledged shares, RPT intensity, tax avoidance, and governance events.</p>
+          </div>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Promoter Holding</div>
+              <div className="text-2xl font-bold text-slate-800">
+                {indiaQuality.promoterHolding != null ? `${indiaQuality.promoterHolding.toFixed(1)}%` : "—"}
+              </div>
+              {indiaQuality.pledgedPromoterShares != null && (
+                <div className="text-xs text-slate-500 mt-1">
+                  Pledged: <strong className={indiaQuality.pledgedPromoterShares > 10 ? "text-red-600" : ""}>{indiaQuality.pledgedPromoterShares.toFixed(1)}%</strong>
+                </div>
+              )}
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Related Party Transactions</div>
+              <div className="text-2xl font-bold text-slate-800">
+                {indiaQuality.rptIntensity != null ? indiaQuality.rptIntensity.toFixed(1) : "—"}
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                {indiaQuality.rptIntensity != null && indiaQuality.rptIntensity > 50
+                  ? "Elevated RPT — review governance risk."
+                  : "RPT levels within normal range."}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Tax Avoidance Intensity</div>
+              <div className="text-2xl font-bold text-slate-800">
+                {indiaQuality.taxAvoidanceIntensity != null ? indiaQuality.taxAvoidanceIntensity.toFixed(1) : "—"}
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                {indiaQuality.taxAvoidanceIntensity != null && indiaQuality.taxAvoidanceIntensity > 40
+                  ? "Effective tax rate significantly below statutory."
+                  : "Tax treatment close to statutory norm."}
+              </div>
+            </div>
+            {indiaQuality.auditorChange && (
+              <div className="md:col-span-3 p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                <strong>⚠ Auditor Change Detected</strong> — Review reason for auditor rotation and any qualified opinions.
+              </div>
+            )}
+          </div>
+          {indiaQuality.indiaGovernanceScore != null && (
+            <div className="px-6 pb-4">
+              <div className="text-xs font-semibold text-slate-500 uppercase mb-2">India Governance Score</div>
+              <div className="text-2xl font-bold text-indigo-700">{indiaQuality.indiaGovernanceScore.toFixed(0)}/100</div>
+              <ScoreBar score={Math.round(indiaQuality.indiaGovernanceScore)} max={100} thresholds={[30, 60]} colors={["#ef4444","#f59e0b","#10b981"]}/>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Earnings Quality — Dechow-Dichev &amp; Roychowdhury ─────── */}
+      {earningsQuality && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+            <h2 className="text-lg font-bold text-slate-800">Earnings Quality — Dechow-Dichev &amp; Roychowdhury REM</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Accrual quality via CFO regression (DD) and real earnings management detection (REM).</p>
+          </div>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Timeliness / DD Quality</div>
+              <div className="text-2xl font-bold text-slate-800">{earningsQuality.timeliness.toFixed(0)}/25</div>
+              <div className="text-xs text-slate-400 mt-1">Dechow-Dichev accrual quality via CFO-WCA relationship.</div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Neutrality</div>
+              <div className="text-2xl font-bold text-slate-800">{earningsQuality.neutrality.toFixed(0)}/25</div>
+              <div className="text-xs text-slate-400 mt-1">
+                {earningsQuality.remFlag ? "⚠ Real earnings management detected." : "No REM signals detected."}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Completeness</div>
+              <div className="text-2xl font-bold text-slate-800">{earningsQuality.completeness.toFixed(0)}/25</div>
+              <div className="text-xs text-slate-400 mt-1">Dirty surplus and OCI events coverage.</div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Realization</div>
+              <div className="text-2xl font-bold text-slate-800">{earningsQuality.realization.toFixed(0)}/25</div>
+              <div className="text-xs text-slate-400 mt-1">Cash conversion and accrual realization.</div>
+            </div>
+          </div>
+          <div className="px-6 pb-4">
+            <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Composite Score</div>
+            <div className="text-3xl font-bold text-indigo-700">{earningsQuality.totalScore.toFixed(0)}/100</div>
+            <ScoreBar score={Math.round(earningsQuality.totalScore)} max={100} thresholds={[30, 65]} colors={["#ef4444","#f59e0b","#10b981"]}/>
+            {earningsQuality.flags.length > 0 && (
+              <ul className="mt-3 space-y-1 text-xs text-amber-800">
+                {earningsQuality.flags.map((flag) => (
+                  <li key={flag} className="bg-amber-50 border border-amber-200 rounded px-2 py-1">{flag}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
