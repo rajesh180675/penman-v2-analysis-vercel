@@ -166,6 +166,10 @@ function mkV3Period(period_end: string): RecastPeriod {
       accrual_regime: "NORMAL",
       dirty_surplus: 0,
       dirty_surplus_pct_cse: 0,
+      freeOL: 0,
+      interestBearingOL: 0,
+      OLLEV_check: 0,
+      RNOA_vs_OLLEV_residual: 0,
     },
   };
 }

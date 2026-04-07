@@ -631,17 +631,62 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
       ? ROCE - (SalesPM * ATO + OtherItemsRatio + FLEV_bridge * SPREAD)
       : null;
 
+  // S-17.1: OLLEV decomposition — split OL into free vs. interest-bearing
+  // Free OL (trade payables, provisions, deferred revenue) has ~0 implicit cost
+  // Interest-bearing OL (pensions, lease payables) carries financing cost like debt
+  const explicitOL = cur.bs.OL_TradePayables
+    + cur.bs.OL_OtherCurrentLiabilities
+    + cur.bs.OL_ProvisionsCurrent
+    + cur.bs.OL_ProvisionsLongTerm
+    + cur.bs.OL_CurrentTaxLiabilities
+    + cur.bs.OL_NonCurrentTaxLiabilities
+    + cur.bs.OL_DeferredTaxLiabilitiesNet
+    + cur.bs.OL_OtherNonCurrentLiabilities;
+
+  // Interest-bearing OL: Pensions + lease liabilities (currently PensionObl=0, lease=0)
+  const leaseLiab = 0; // TODO: map from Right-of-Use / lease liability line items
+  const pensionObl = cur.bs.PensionObl ?? 0;
+  const prevLeaseLiab = 0;
+  const prevPensionObl = prev.bs.PensionObl ?? 0;
+  const avgInterestBearingOL = (leaseLiab + pensionObl + prevLeaseLiab + prevPensionObl) / 2;
+  const avgExplicitOL = explicitOL > 0 ? explicitOL : cur.bs.OL;
+  const prevExplicitOL = (() => {
+    const ex = prev.bs.OL_TradePayables + prev.bs.OL_OtherCurrentLiabilities
+      + prev.bs.OL_ProvisionsCurrent + prev.bs.OL_ProvisionsLongTerm
+      + prev.bs.OL_CurrentTaxLiabilities + prev.bs.OL_NonCurrentTaxLiabilities
+      + prev.bs.OL_DeferredTaxLiabilitiesNet + prev.bs.OL_OtherNonCurrentLiabilities;
+    return ex > 0 ? ex : prev.bs.OL;
+  })();
+  const avgFreeOL = (avgExplicitOL + prevExplicitOL) / 2 - avgInterestBearingOL;
+  const freeOL_val = Math.max(0, avgFreeOL);
+  const interestBearingOL_val = Math.max(0, avgInterestBearingOL);
+
+  // S-17.1: OLLEV decomposition closure identity
+  // Pure ROOA without imputed interest add-back — this is the OI/avgOA baseline
+  // that closes with OLLEV when combined with the free-OL leverage effect.
+  const ROOA_pure = avgOA > 0 ? cur.is.OI / avgOA : null;
+  const avgOL_total = (cur.bs.OL + prev.bs.OL) / 2;
+  const OLLEV = !noaSmall && avgNOA !== 0 ? avgOL_total / avgNOA : null;
+
+  // Leverage decomposition: free OL as a source of operating leverage
+  const OLLEV_OA = avgNOA !== 0 ? freeOL_val / avgNOA : null;
+  const OLSPREAD = ROOA_pure != null ? ROOA_pure - 0 : null; // free OL implicit rate ≈ 0
+  const OLLEV_check = ROOA_pure != null && OLLEV_OA != null && OLSPREAD != null
+    ? ROOA_pure + OLLEV_OA * OLSPREAD
+    : null;
+  const RNOA_check = OLLEV_check;
+
+  // Diagnostic: imputed interest on OL (for reporting, not used in closure)
   const avgOLexDTL = avg(cur.bs.OL_ex_DTL, prev.bs.OL_ex_DTL);
   const io = cfg.risk_free_rate * avgOLexDTL;
-  const ROOA = avgOA > 0 ? (cur.is.OI + io) / avgOA : null;
-  const avgOL = (cur.bs.OL + prev.bs.OL) / 2;
-  const OLLEV = !noaSmall && avgNOA !== 0 ? avgOL / avgNOA : null;
-  const OLLEV_OA = avgOA > 0 ? avgOL / avgOA : null;
-  const OLSPREAD = ROOA != null && cur.bs.OL > 0 ? ROOA - cfg.risk_free_rate : null;
-  const RNOA_check = ROOA != null && OLLEV_OA != null && OLSPREAD != null ? ROOA + OLLEV_OA * OLSPREAD : null;
-
-  const ROOA_spec_val = ROOA;
+  const ROOA_spec = ROOA_pure;
   const imputed_io_spec = io;
+
+  // S-17.1: Report residual when interestBearingOL > 0 (identity won't close exactly)
+  // When interestBearingOL = 0, this residual should be ~0 (within 0.1%)
+  const RNOA_vs_OLLEV_residual = RNOA != null && RNOA_check != null
+    ? RNOA - RNOA_check
+    : null;
 
   const avgTCE = avg(cur.bs.NOA + cur.bs.MI, prev.bs.NOA + prev.bs.MI);
   const ROTCE = avgTCE > 0 ? cur.is.OI / avgTCE : null;
@@ -753,9 +798,13 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
   return {
     ROCE, RNOA, NBC, SPREAD, FLEV,
     PM, ATO, ATO_star, SalesPM, OtherItemsRatio, ROCE_bridge_residual,
-    io, ROOA, OLLEV, OLSPREAD, RNOA_check,
-    ROOA_spec: ROOA_spec_val,
+    io, ROOA: ROOA_pure, OLLEV, OLSPREAD, RNOA_check,
+    ROOA_spec,
     imputed_io_spec,
+    freeOL: freeOL_val,
+    interestBearingOL: interestBearingOL_val,
+    OLLEV_check,
+    RNOA_vs_OLLEV_residual,
     ROTCE, MSR,
     CoreSalesPM, CoreOtherItems_OA, UOI_OA, CoreNBC, UFE_NFO, CoreSPREAD,
     ROCE_eq16_reconstructed, ROCE_eq16_error,
@@ -784,6 +833,37 @@ export function computeResidualIncome(cur: RecastPeriod, prev: RecastPeriod, ke:
     RE: cur.is.CNI - ke * prev.bs.CSE,
     ReOI: cur.is.OI - kw * prev.bs.NOA,
   };
+}
+
+/** Estimate AR(1) persistence coefficient on a numeric series.
+ *  Uses OLS: y_t = alpha + phi * y_{t-1} + eps
+ *  Returns { phi, r_squared, n }. Falls back to { phi: 0.8, r_squared: 0, n } for short series.
+ */
+export function estimateArPhi(series: number[]): { phi: number; alpha: number; r_squared: number; n: number } {
+  if (series.length < 3) return { phi: 0.8, alpha: 0, r_squared: 0, n: series.length };
+  const X = series.slice(0, -1);
+  const Y = series.slice(1);
+  const n = X.length;
+  const meanX = X.reduce((s, v) => s + v, 0) / n;
+  const meanY = Y.reduce((s, v) => s + v, 0) / n;
+  const cov = X.reduce((s, v, i) => s + (v - meanX) * (Y[i] - meanY), 0) / n;
+  const varX = X.reduce((s, v) => s + (v - meanX) ** 2, 0) / n;
+  const phi = varX > 0 ? Math.max(0, Math.min(0.98, cov / varX)) : 0.8;
+  const alpha = meanY - phi * meanX;
+  const ss_res = Y.reduce((s, y, i) => s + (y - (alpha + phi * X[i])) ** 2, 0);
+  const ss_tot = Y.reduce((s, y) => s + (y - meanY) ** 2, 0);
+  const r2 = ss_tot > 0 ? Math.max(0, 1 - ss_res / ss_tot) : 0;
+  return { phi, alpha, r_squared: r2, n };
+}
+
+/** S-11.1: AR(1) Ohlson reversion-based continuing value.
+ *  CV_reversion = RE_T * phi / (1 + ke - phi)
+ *  More defensible than Gordon growth when growth rate g is uncertain.
+ */
+export function cvReversion(RE_T: number, phi: number, ke: number): number {
+  const denom = 1 + ke - phi;
+  if (denom <= 0.01 || RE_T === 0) return 0;
+  return RE_T * phi / denom;
 }
 
 export function deriveKwFromStructure(cur: RecastPeriod, prev: RecastPeriod, ke: number, riskFreeRate: number, cfg?: EngineConfig): number {
@@ -853,7 +933,40 @@ export function computeValuation(
 
   const CSE0 = periods[0].bs.CSE;
   const NOA0 = periods[0].bs.NOA;
+  const NOA_T = periods[periods.length - 1].bs.NOA;
   const NFO_latest = periods[periods.length - 1].bs.NFO;
+  const RNOA_T = periods[periods.length - 1].ratios?.RNOA ?? (NOA_T !== 0 ? periods[periods.length - 1].is.OI / NOA_T : 0);
+
+  // §1.2: AR(1) phi-based reversion continuing value
+  // Estimate phi on the RE and ReOI series separately for more defensible terminal value
+  const RE_phi = estimateArPhi(reSeries.map((r) => r.RE));
+  const ReOI_phi = estimateArPhi(reSeries.map((r) => r.ReOI));
+  const CV_RE_reversion = cvReversion(
+    RE_terminal_anchor,
+    RE_phi.phi,
+    ke,
+  );
+  const CV_ReOI_reversion = cvReversion(
+    ReOI_terminal_anchor,
+    ReOI_phi.phi,
+    kw,
+  );
+  // Compute both Gordon and reversion CV side-by-side, flag when they diverge > 20%
+  const gordonVsReversionFlag = (gordon: number, reversion: number) => {
+    const base = Math.max(Math.abs(gordon), 1);
+    return Math.abs(gordon - reversion) / base;
+  };
+  const RE_CV_divergence = gordonVsReversionFlag(CV_RE_3, CV_RE_reversion);
+  const ReOI_CV_divergence = gordonVsReversionFlag(CV_W_3, CV_ReOI_reversion);
+
+  // §1.3: Growth accounting decomposition (Penman's preferred anchor)
+  // No-growth value: value from existing assets at current profitability
+  // V_no_growth = CSE0 + (RNOA_T - kw) * NOA_T / kw
+  const V_no_growth = CSE0 + (RNOA_T - kw) * NOA_T / kw;
+  // Use primary valuation (RE CV3) as total value
+  const V_total = CSE0 + pvRE + CV_RE_3 / discE;
+  const growthValue = V_total - V_no_growth;
+  const growthFraction = V_total !== 0 ? growthValue / V_total : 0;
 
   // FCFF / FCFE triangulation
   const fcff_series: Array<{ period: string; NOPAT: number; dNOA: number; FCFF: number; PV_FCFF: number }> = [];
@@ -935,6 +1048,18 @@ export function computeValuation(
     };
   })();
 
+  // Per-share growth accounting
+  const growthAccountingPerShare = (() => {
+    if (!cfg.shares_outstanding || cfg.shares_outstanding <= 0) return undefined;
+    const sh = cfg.shares_outstanding;
+    return {
+      vNoGrowthPerShare: V_no_growth / sh,
+      growthValuePerShare: growthValue / sh,
+      growthFraction,
+      noGrowthFraction: V_total !== 0 ? 1 - growthFraction : 0,
+    };
+  })();
+
   return {
     reSeries,
     pvRE,
@@ -957,6 +1082,20 @@ export function computeValuation(
     separationScore: periods[periods.length - 1].bs.separationScore,
     lowConfidence: periods[periods.length - 1].bs.separationScore < (cfg.separation_confidence_threshold ?? 70),
     impliedGrowthRE,
+    // S-11.1: AR(1) reversion continuing values
+    CV_RE_reversion,
+    CV_ReOI_reversion,
+    RE_phi: RE_phi.phi,
+    ReOI_phi: ReOI_phi.phi,
+    RE_phi_r_squared: RE_phi.r_squared,
+    ReOI_phi_r_squared: ReOI_phi.r_squared,
+    RE_CV_divergence,
+    ReOI_CV_divergence,
+    // S-17.2: Growth accounting decomposition
+    V_no_growth,
+    growthValue,
+    growthFraction,
+    growthAccountingPerShare,
     fcf: {
       fcff_series,
       fcfe_series,

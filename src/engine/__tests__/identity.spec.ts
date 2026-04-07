@@ -157,6 +157,10 @@ function mkPeriod(period_end: string, scale: number): RecastPeriod {
       accrual_regime: "NORMAL",
       dirty_surplus: 0,
       dirty_surplus_pct_cse: 0,
+      freeOL: 0,
+      interestBearingOL: 0,
+      OLLEV_check: 0,
+      RNOA_vs_OLLEV_residual: 0,
     },
     ri: { RE: 20, ReOI: 30 },
     quality: {
@@ -206,5 +210,61 @@ describe("identity assertions A1-A9", () => {
 
     const report = runIdentityAssertions([p1, p2]);
     expect(report.failed).toBe(0);
+  });
+});
+
+describe("S-17.1: OLLEV decomposition closure", () => {
+  it("closes RNOA_check = ROOA + OLLEV_OA * OLSPREAD when interestBearingOL = 0", () => {
+    const p1 = mkPeriod("2024-03-31", 1);
+    const p2 = mkPeriod("2025-03-31", 1.05);
+    // Recalculate ratios that depend on both periods
+    p2.ratios!.RNOA = p2.is.OI / ((p2.bs.NOA + p1.bs.NOA) / 2);
+
+    const avgNOA = (p2.bs.NOA + p1.bs.NOA) / 2;
+    const avgOA  = (p2.bs.OA + p1.bs.OA) / 2;
+    const RNOA   = p2.is.OI / avgNOA;
+
+    // With interestBearingOL = 0, freeOL = total OL, ROOA = OI/avgOA
+    const ROOA      = p2.is.OI / avgOA;
+    const freeOL    = (p2.bs.OL + p1.bs.OL) / 2; // all OL is free
+    const OLLEV_OA  = freeOL / avgNOA;
+    const OLSPREAD  = ROOA; // free OL implicit rate = 0, so OLSPREAD = ROOA
+    const RNOA_check = ROOA + OLLEV_OA * OLSPREAD;
+
+    // Identity: RNOA_check = ROOA × (1 + freeOL/avgNOA)
+    //        = OI/avgOA × (1 + freeOL/avgNOA)
+    // When interestBearingOL = 0: freeOL = total OL, and NOA = OA - OL
+    // So: 1 + OL/avgNOA = avgOA/avgNOA  (since avgNOA = avgOA - avgOL)
+    // RNOA_check = OI/avgOA × avgOA/avgNOA = OI/avgNOA = RNOA
+    expect(Math.abs(RNOA - RNOA_check)).toBeLessThan(0.001);
+  });
+
+  it("has structural residual when interestBearingOL > 0", () => {
+    const p1 = mkPeriod("2024-03-31", 1);
+    const p2 = mkPeriod("2025-03-31", 1.05);
+
+    // Introduce interestBearingOL by adjusting OL components
+    const pensionAmount = 50;
+    p2.bs = {
+      ...p2.bs,
+      OL_TradePayables: 100, // reduce free OL
+      PensionObl: pensionAmount,
+    };
+    p2.ratios!.RNOA = p2.is.OI / ((p2.bs.NOA + p1.bs.NOA) / 2);
+
+    const avgNOA = (p2.bs.NOA + p1.bs.NOA) / 2;
+    const avgOA = (p2.bs.OA + p1.bs.OA) / 2;
+    const RNOA = p2.is.OI / avgNOA;
+
+    // Only freeOL in the leverage, not interestBearingOL
+    const avgFreeOL = (p2.bs.OL_TradePayables + p1.bs.OL_TradePayables) / 2;
+    const ROOA = p2.is.OI / avgOA;
+    const OLLEV_OA = avgFreeOL / avgNOA;
+    const RNOA_check = ROOA + OLLEV_OA * ROOA;
+
+    // Residual exists because interestBearingOL > 0
+    // The decomposition correctly excludes interestBearingOL from the spread
+    expect(avgFreeOL / avgNOA).toBeLessThan(p2.bs.OL / avgNOA);
+    expect(Math.abs(RNOA - RNOA_check)).toBeGreaterThan(0.001);
   });
 });

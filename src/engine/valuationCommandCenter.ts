@@ -51,11 +51,21 @@ export interface DcfCashFlowDiagnostics {
   maintenanceCapexShareAssumption: number;
 }
 
+export interface NarrativeBandEntry {
+  terminalROIC: number;
+  impliedGrowth: number;
+  intrinsicValue: number;
+}
+
 export interface ReverseDcfDiagnostics {
   impliedOwnerEarningsGrowth: number | null;
+  impliedTerminalROIC: number | null;
+  impliedKE: number | null;
   normalizedGrowthAnchor: number;
   expectationLabel: string;
+  narrativeSpace: NarrativeBandEntry[];
   spreadVsNormalizedGrowth: number | null;
+  marketExpectationLabel: string;
 }
 
 export interface ValuationOpportunityAssessment {
@@ -368,6 +378,107 @@ function describeExpectations(impliedGrowth: number | null, normalizedGrowth: nu
     expectationLabel: "Market already prices an aggressive execution path.",
     spreadVsNormalizedGrowth: spread,
   };
+}
+
+/** Solve for implied terminal ROIC given target price, fixed growth and ke.
+ *  Uses the RE identity: V = CSE0 + (ROIC_terminal - kw) * NOA_T / kw
+ *  so: implied ROIC = kw × (1 + (V - CSE0) / NOA_T)
+ */
+function solveImpliedTerminalROIC(params: {
+  targetPrice: number | null;
+  cse0: number;
+  noaT: number;
+  kw: number;
+  ke: number;
+  ownerEarningsPerShare: number | null;
+  shares: number | null;
+  g: number;
+  horizon: number;
+  growthFadeAlpha: number;
+}) {
+  const { targetPrice, cse0, noaT, kw, shares } = params;
+  if (targetPrice == null || targetPrice <= 0 || noaT <= 0 || shares == null) return null;
+  // Market cap = targetPrice × shares
+  const marketCap = targetPrice * shares;
+  // From RE: marketCap = CSE0 + (ROIC - kw) * NOA_T / kw
+  // Rearranging: ROIC = kw × (1 + (marketCap - CSE0) / NOA_T)
+  // But we need to account for the explicit period PV first
+  // Approximation: ROIC_terminal = kw × (1 + (marketCap - CSE0) / NOA_T)
+  const impliedRoe = kw * (1 + (marketCap - cse0) / noaT);
+  // Cap at reasonable bounds
+  if (impliedRoe < -0.1 || impliedRoe > 2.0) return null;
+  return impliedRoe;
+}
+
+/** Solve for implied ke given target price, fixed growth and terminal ROIC.
+ *  From RE: V = CSE0 + (ROIC_T - ke) * NOA_T / ke
+ *  ke = ROIC_T × NOA_T / (CSE0 + NOA_T - V)
+ */
+function solveImpliedKE(params: {
+  targetPrice: number | null;
+  cse0: number;
+  noaT: number;
+  roicT: number;
+  shares: number | null;
+}) {
+  const { targetPrice, cse0, noaT, roicT, shares } = params;
+  if (targetPrice == null || targetPrice <= 0 || noaT <= 0 || shares == null) return null;
+  const marketCap = targetPrice * shares;
+  const denom = cse0 + noaT - marketCap;
+  if (denom <= 0) return null;
+  const impliedKe = roicT * noaT / denom;
+  if (impliedKe < 0.03 || impliedKe > 0.40) return null;
+  return impliedKe;
+}
+
+/** Build narrative space: a grid of (terminalROIC, impliedGrowth) pairs
+ *  that are within 10% of the target price, showing the set of plausible
+ *  joint assumptions the market could be pricing.
+ */
+function buildNarrativeSpace(params: {
+  targetPrice: number | null;
+  ownerEarningsPerShare: number | null;
+  ke: number;
+  kw: number;
+  cse0: number;
+  noaT: number;
+  shares: number | null;
+  normalizedGrowth: number;
+  terminalGrowth: number;
+}): NarrativeBandEntry[] {
+  const { targetPrice, kw, cse0, noaT, normalizedGrowth } = params;
+  if (targetPrice == null || targetPrice <= 0 || noaT == 0) return [];
+  const results: NarrativeBandEntry[] = [];
+  // Terminal ROIC range: [kw - 5%, 40%]
+  const roicMin = Math.max(kw - 0.05, -0.05);
+  const roicMax = Math.max(kw + 0.30, 0.15);
+  const roicStep = Math.min(0.05, (roicMax - roicMin) / 12);
+  for (let roic = roicMin; roic <= roicMax; roic += roicStep) {
+    // For each ROIC, compute the implied value
+    // V ≈ CSE0 + (ROIC - kw) * NOA_T / kw (no-growth approximation)
+    const vTerminal = cse0 + (roic - kw) * noaT / kw;
+    if (vTerminal <= 0) continue;
+    const relDiff = Math.abs(vTerminal - targetPrice) / Math.max(targetPrice, 1);
+    if (relDiff <= 0.10) {
+      results.push({
+        terminalROIC: Math.round(roic * 1000) / 1000,
+        impliedGrowth: normalizedGrowth,
+        intrinsicValue: Math.round(vTerminal),
+      });
+    }
+  }
+  return results;
+}
+
+/** Generate high-level label describing what the market is pricing. */
+function marketExpectationLabel(impliedGrowth: number | null, impliedROIC: number | null, impliedKE: number | null, ke: number, normalizedGrowth: number) {
+  if (impliedGrowth == null) return "Insufficient data";
+  if (impliedGrowth < 0 && impliedROIC != null && impliedROIC < ke) return "Value trap — declining growth with poor returns";
+  if (impliedGrowth > normalizedGrowth * 1.5 && impliedROIC != null && impliedROIC > 0.25) return "Aggressive growth + quality priced in";
+  if (impliedGrowth <= normalizedGrowth * 0.5 && impliedKE != null && impliedKE > ke + 0.05) return "Market prices high risk, low growth";
+  if (impliedGrowth > normalizedGrowth * 1.2) return "Growth priced in — execution risk high";
+  if (impliedGrowth < normalizedGrowth * 0.8) return "Pessimistic — market assumes deterioration";
+  return "Normalization priced — close to sector anchor";
 }
 
 type CoreBuildContext = {
@@ -719,11 +830,53 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     horizon,
     growthFadeAlpha: sectorTemplate.growthFadeAlpha,
   });
+
+  const impliedTerminalROIC = solveImpliedTerminalROIC({
+    targetPrice: marketPrice,
+    cse0: latest.bs.CSE,
+    noaT: latest.bs.NOA,
+    kw: kwBase,
+    ke: keBase,
+    ownerEarningsPerShare: diagnostics.ownerEarningsPerShare,
+    shares,
+    g: baseCard?.assumptions.g ?? derivedScenarios.base.drivers.g_terminal,
+    horizon,
+    growthFadeAlpha: sectorTemplate.growthFadeAlpha,
+  });
+
+  const impliedKE = solveImpliedKE({
+    targetPrice: marketPrice,
+    cse0: latest.bs.CSE,
+    noaT: latest.bs.NOA,
+    roicT: impliedTerminalROIC ?? latest.ratios?.RNOA ?? kwBase * 1.3,
+    shares,
+  });
+
+  const narrativeSpace = buildNarrativeSpace({
+    targetPrice: marketPrice,
+    ownerEarningsPerShare: diagnostics.ownerEarningsPerShare,
+    ke: keBase,
+    kw: kwBase,
+    cse0: latest.bs.CSE,
+    noaT: latest.bs.NOA,
+    shares,
+    normalizedGrowth: sectorTemplate.normalizedGrowth,
+    terminalGrowth: baseCard?.assumptions.g ?? derivedScenarios.base.drivers.g_terminal,
+  });
+
   const reverseDcfDescription = describeExpectations(impliedOwnerEarningsGrowth, sectorTemplate.normalizedGrowth);
+  const expectationLabel = marketExpectationLabel(
+    impliedOwnerEarningsGrowth, impliedTerminalROIC, impliedKE, keBase, sectorTemplate.normalizedGrowth,
+  );
+
   const reverseDcf: ReverseDcfDiagnostics = {
     impliedOwnerEarningsGrowth,
+    impliedTerminalROIC,
+    impliedKE,
     normalizedGrowthAnchor: sectorTemplate.normalizedGrowth,
     expectationLabel: reverseDcfDescription.expectationLabel,
+    narrativeSpace,
+    marketExpectationLabel: expectationLabel,
     spreadVsNormalizedGrowth: reverseDcfDescription.spreadVsNormalizedGrowth,
   };
 

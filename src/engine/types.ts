@@ -218,6 +218,11 @@ export interface Ratios {
   accrual_regime: "GROWTH_ACCRUAL"|"QUALITY_ACCRUAL"|"CASH_ACCUMULATION"|"ASSET_DISPOSAL"|"CASH_GENERATION"|"NORMAL"|null;
   dirty_surplus: number|null;
   dirty_surplus_pct_cse: number|null;
+  // S-17.1: OLLEV decomposition correctness
+  freeOL: number|null;
+  interestBearingOL: number|null;
+  OLLEV_check: number|null;
+  RNOA_vs_OLLEV_residual: number|null;
 }
 
 /* ── Quality Metrics ────────────────────────────────────────────── */
@@ -339,6 +344,18 @@ export interface ShareCountInputSnapshot {
   shareCapital: number | null;
 }
 
+/* ── S-17.2: Growth Accounting ──────────────────────────────────── */
+
+export interface GrowthAccounting {
+  /** No-growth value: CSE0 + (RNOA_T - kw)*NOA_T / kw — value from existing assets */
+  noGrowthValue: number;
+  /** Growth value: totalValue - noGrowthValue */
+  growthValue: number;
+  /** Fraction of total value attributable to growth: growthValue / totalValue */
+  growthFromExistingAssets: number;  // % from existing assets
+  growthFromReinvestment: number;     // % from growth/reinvestment
+}
+
 /* ── Valuation ──────────────────────────────────────────────────── */
 
 export interface ValuationResult {
@@ -351,6 +368,25 @@ export interface ValuationResult {
   ke: number; kw: number; g: number;
   separationScore: number; lowConfidence: boolean;
   impliedGrowthRE?: number;
+  // S-11.1: AR(1) reversion continuing values
+  CV_RE_reversion?: number;
+  CV_ReOI_reversion?: number;
+  RE_phi?: number;
+  ReOI_phi?: number;
+  RE_phi_r_squared?: number;
+  ReOI_phi_r_squared?: number;
+  RE_CV_divergence?: number;
+  ReOI_CV_divergence?: number;
+  // S-17.2: Growth accounting decomposition
+  V_no_growth?: number;
+  growthValue?: number;
+  growthFraction?: number;
+  growthAccountingPerShare?: {
+    vNoGrowthPerShare: number;
+    growthValuePerShare: number;
+    growthFraction: number;
+    noGrowthFraction: number;
+  };
   fcf?: FCFValuation;
   aeg?: AEGValuation;
   perShare?: PerShareResult;
