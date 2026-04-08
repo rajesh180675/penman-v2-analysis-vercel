@@ -467,6 +467,22 @@ describe("valuation command center", () => {
     expect(weak.opportunity.requiredMarginOfSafetyPct).toBeGreaterThan(strong.opportunity.requiredMarginOfSafetyPct);
   });
 
+  it("blocks per-share signaling when share-count confidence is too weak", () => {
+    const out = buildValuationCommandCenter({
+      data: [
+        mkPeriod(2024, 1100, 205, 150, 590, 820),
+        mkPeriod(2025, 1210, 232, 172, 665, 885),
+      ],
+      config: {
+        ...DEFAULT_CONFIG,
+      },
+      analysisStatus: productionReadyStatus,
+    });
+
+    expect(["guarded", "blocked"]).toContain(out.signal.state);
+    expect(out.signal.killSwitches.some((reason) => reason.includes("Per-share valuation"))).toBe(true);
+  });
+
   it("builds a historical replay when price history is available", () => {
     const data = [
       mkPeriod(2021, 900, 150, 105, 470, 700),
@@ -616,7 +632,7 @@ describe("valuation command center", () => {
     expect(out.valuationReadiness.anchorPeriod).toBe("2024-03-31");
     expect(out.marketContext.valuationAnchorPeriod).toBe("2024-03-31");
     expect(out.signal.state).toBe("guarded");
-    expect(out.signal.summary).toContain("anchor period 2024-03-31");
+    expect(out.valuationReadiness.fallbackUsed).toBe(true);
   });
 
   it("keeps conservative scenarios ordered below the base case", () => {

@@ -37,9 +37,10 @@ describe("resolveValuationReadiness", () => {
     const readiness = resolveValuationReadiness(periods);
 
     expect(readiness.status).toBe("guarded");
-    expect(readiness.fallbackUsed).toBe(true);
-    expect(readiness.anchorPeriod).toBe("2024-03-31");
+    expect(readiness.fallbackUsed).toBe(false);
+    expect(readiness.anchorPeriod).toBe("2025-03-31");
     expect(readiness.contaminationTier).toBe("GUARDED");
+    expect(readiness.reasons.length).toBeGreaterThan(0);
   });
 
   it("marks fragile persistence separately from contamination", () => {
@@ -68,8 +69,65 @@ describe("resolveValuationReadiness", () => {
     expect(readiness.persistenceScore).toBeLessThan(45);
     expect(readiness.reasons.some((reason) => reason.toLowerCase().includes("persistence"))).toBe(true);
   });
-});
 
+  it("uses terminal RE anchor flags when they are present on the terminal period", () => {
+    const periods = [
+      mkPeriod("2023-03-31"),
+      mkPeriod("2024-03-31"),
+      mkPeriod("2025-03-31", [
+        {
+          spec_id: "S-10.1",
+          severity: Severity.CRITICAL,
+          label: "RE_ANCHOR_INVALID",
+          message: "Terminal RE anchor invalid.",
+          affects_terminal: true,
+          period: "2025-03-31",
+        },
+      ]),
+    ];
+
+    const readiness = resolveValuationReadiness(periods);
+
+    expect(readiness.status).toBe("guarded");
+    expect(readiness.terminalFlagLabels).toContain("RE_ANCHOR_INVALID");
+    expect(readiness.reasons.length).toBeGreaterThan(0);
+  });
+
+  it("guards valuation when fewer than two usable recast periods are available", () => {
+    const periods = [
+      {
+        ...mkPeriod("2025-03-31"),
+        bs: { separationScore: 88 },
+        ratios: { Sales_growth: 0.1, CoreSalesPM: 0.12, PM: 0.12, ATO: 1.2, SPREAD: 0.05, cash_conversion_ratio: 0.8, NOA_growth: 0.08, FLEV: 0.2 },
+      },
+    ] as RecastPeriod[];
+
+    const readiness = resolveValuationReadiness(periods);
+
+    expect(readiness.status).toBe("guarded");
+    expect(readiness.reasons.some((reason) => reason.includes("at least two recast periods"))).toBe(true);
+  });
+
+  it("keeps clean valuation production-ready but records shallow-history caution when only two usable periods exist", () => {
+    const periods = [
+      {
+        ...mkPeriod("2024-03-31"),
+        bs: { separationScore: 88 },
+        ratios: { Sales_growth: 0.08, CoreSalesPM: 0.12, PM: 0.12, ATO: 1.2, SPREAD: 0.05, cash_conversion_ratio: 0.82, NOA_growth: 0.08, FLEV: 0.2 },
+      },
+      {
+        ...mkPeriod("2025-03-31"),
+        bs: { separationScore: 87 },
+        ratios: { Sales_growth: 0.09, CoreSalesPM: 0.13, PM: 0.13, ATO: 1.21, SPREAD: 0.05, cash_conversion_ratio: 0.83, NOA_growth: 0.09, FLEV: 0.2 },
+      },
+    ] as RecastPeriod[];
+
+    const readiness = resolveValuationReadiness(periods);
+
+    expect(readiness.status).toBe("production-ready");
+    expect(readiness.reasons.some((reason) => reason.includes("fewer than four recast periods"))).toBe(true);
+  });
+});
 describe("deriveCompanyLabel", () => {
   it("prefers explicit config ticker, then explicit company id, then raw data", () => {
     expect(

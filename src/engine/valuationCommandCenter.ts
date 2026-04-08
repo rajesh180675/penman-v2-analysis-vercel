@@ -238,13 +238,247 @@ function computeScenarioIntrinsicPerShare(valuation: ValuationResult, ownerEarni
   const modelValues = [
     valuation.perShare?.intrinsic_re_per_share ?? null,
     valuation.perShare?.intrinsic_reoi_per_share ?? null,
-    valuation.perShare?.intrinsic_fcff_per_share ?? null,
-    valuation.perShare?.intrinsic_fcfe_per_share ?? null,
     ownerEarningsDcf,
   ];
   return median(modelValues);
 }
 
+function computeCrossCheckSpread(valuation: ValuationResult) {
+  const primaryValues = [
+    valuation.perShare?.intrinsic_re_per_share ?? null,
+    valuation.perShare?.intrinsic_reoi_per_share ?? null,
+  ].filter((value): value is number => value != null && Number.isFinite(value));
+
+  const crossCheckValues = [
+    valuation.perShare?.intrinsic_fcff_per_share ?? null,
+    valuation.perShare?.intrinsic_fcfe_per_share ?? null,
+  ].filter((value): value is number => value != null && Number.isFinite(value));
+
+  if (!primaryValues.length || !crossCheckValues.length) return null;
+  return median(crossCheckValues)! - median(primaryValues)!;
+}
+
+function buildNarrativeSpacePerShare(params: {
+  targetPrice: number | null;
+  kw: number;
+  cse0: number;
+  noaT: number;
+  shares: number | null;
+  normalizedGrowth: number;
+}): NarrativeBandEntry[] {
+  const { targetPrice, kw, cse0, noaT, shares, normalizedGrowth } = params;
+  if (targetPrice == null || targetPrice <= 0 || noaT === 0 || shares == null || shares <= 0) return [];
+  const results: NarrativeBandEntry[] = [];
+  const roicMin = Math.max(kw - 0.05, -0.05);
+  const roicMax = Math.max(kw + 0.30, 0.15);
+  const roicStep = Math.min(0.05, (roicMax - roicMin) / 12);
+  for (let roic = roicMin; roic <= roicMax; roic += roicStep) {
+    const equityValue = cse0 + (roic - kw) * noaT / kw;
+    const perShareValue = equityValue / shares;
+    if (!Number.isFinite(perShareValue) || perShareValue <= 0) continue;
+    if (Math.abs(perShareValue - targetPrice) / Math.max(targetPrice, 1) <= 0.10) {
+      results.push({
+        terminalROIC: Math.round(roic * 1000) / 1000,
+        impliedGrowth: normalizedGrowth,
+        intrinsicValue: Math.round(perShareValue * 100) / 100,
+      });
+    }
+  }
+  return results;
+}
+
+function describeKeExpectation(impliedKe: number | null, ke: number) {
+  if (impliedKe == null) return null;
+  if (impliedKe > ke + 0.05) return "Market pricing implies a materially higher required return than the base cost of equity.";
+  if (impliedKe < ke - 0.03) return "Market pricing implies a lower required return than the base cost of equity.";
+  return "Market pricing implies a required return close to the base cost of equity.";
+}
+
+function describeTerminalRoicExpectation(impliedTerminalROIC: number | null, kw: number) {
+  if (impliedTerminalROIC == null) return null;
+  if (impliedTerminalROIC > kw + 0.08) return "Market pricing assumes terminal returns meaningfully above the operating capital charge.";
+  if (impliedTerminalROIC < kw) return "Market pricing assumes terminal returns below the operating capital charge.";
+  return "Market pricing implies terminal returns close to the operating capital charge.";
+}
+
+function extendExpectationLabel(base: string, additions: Array<string | null>) {
+  const cleanAdditions = additions.filter((value): value is string => Boolean(value));
+  return cleanAdditions.length ? `${base} ${cleanAdditions.join(" ")}` : base;
+}
+
+function solveImpliedKeFromOwnerEarnings(params: {
+  targetPrice: number | null;
+  ownerEarningsPerShare: number | null;
+  growthPath: number[];
+  terminalGrowth: number;
+  low?: number;
+  high?: number;
+}) {
+  const { targetPrice, ownerEarningsPerShare, growthPath, terminalGrowth } = params;
+  if (targetPrice == null || targetPrice <= 0 || ownerEarningsPerShare == null || ownerEarningsPerShare <= 0) return null;
+  let low = params.low ?? Math.max(terminalGrowth + 0.01, 0.04);
+  let high = params.high ?? 0.40;
+  let lowValue = computeOwnerEarningsDcf(ownerEarningsPerShare, growthPath, low, terminalGrowth);
+  let highValue = computeOwnerEarningsDcf(ownerEarningsPerShare, growthPath, high, terminalGrowth);
+  if (lowValue == null || highValue == null) return null;
+  if (lowValue < targetPrice || highValue > targetPrice) return null;
+  for (let i = 0; i < 60; i += 1) {
+    const mid = (low + high) / 2;
+    const value = computeOwnerEarningsDcf(ownerEarningsPerShare, growthPath, mid, terminalGrowth);
+    if (value == null) return null;
+    if (value > targetPrice) low = mid;
+    else high = mid;
+  }
+  return (low + high) / 2;
+}
+
+function solveImpliedTerminalRoicFromValue(params: {
+  targetPrice: number | null;
+  shares: number | null;
+  cse0: number;
+  noaT: number;
+  kw: number;
+}) {
+  const { targetPrice, shares, cse0, noaT, kw } = params;
+  if (targetPrice == null || targetPrice <= 0 || shares == null || shares <= 0 || noaT <= 0) return null;
+  const equityValue = targetPrice * shares;
+  const impliedRoic = kw + ((equityValue - cse0) * kw) / noaT;
+  if (!Number.isFinite(impliedRoic) || impliedRoic < -0.1 || impliedRoic > 2.0) return null;
+  return impliedRoic;
+}
+
+function primaryValuationPerShare(valuation: ValuationResult) {
+  return median([
+    valuation.perShare?.intrinsic_re_per_share ?? null,
+    valuation.perShare?.intrinsic_reoi_per_share ?? null,
+  ]);
+}
+
+function isSuspiciousCrossCheckSpread(spread: number | null) {
+  return spread != null && Math.abs(spread) > 0.5;
+}
+
+function crossCheckGuardSummary() {
+  return "FCFF/FCFE cross-checks remain diagnostic only because they diverge materially from the primary RE / ReOI valuation family.";
+}
+
+function deriveBaseGrowthPath(card: ValuationScenarioCard | null, fallback: number) {
+  if (card?.scenario.drivers.sales_growth?.length) return card.scenario.drivers.sales_growth;
+  return Array.from({ length: 5 }, () => fallback);
+}
+
+function applyPrimaryScenarioMetrics(card: ValuationScenarioCard, marketPrice: number | null) {
+  const primaryValue = primaryValuationPerShare(card.valuation);
+  return {
+    ...card,
+    intrinsicPerShare: primaryValue,
+    upsidePct: primaryValue != null && marketPrice != null && marketPrice > 0 ? (primaryValue - marketPrice) / marketPrice : null,
+    marginOfSafetyPct: marginOfSafety(primaryValue, marketPrice),
+    expectedCagr: annualizedReturn(marketPrice, primaryValue, 3),
+  } satisfies ValuationScenarioCard;
+}
+
+function normalizeScenarioCards(cards: ValuationScenarioCard[], marketPrice: number | null) {
+  return cards.map((card) => applyPrimaryScenarioMetrics(card, marketPrice));
+}
+
+function buildReverseDcfExpectation(args: {
+  marketPrice: number | null;
+  diagnostics: DcfCashFlowDiagnostics;
+  baseCard: ValuationScenarioCard | null;
+  keBase: number;
+  kwBase: number;
+  cse0: number;
+  noaT: number;
+  shares: number | null;
+  normalizedGrowth: number;
+  terminalGrowth: number;
+}) {
+  const impliedOwnerEarningsGrowth = solveImpliedGrowthForTarget({
+    ownerEarningsPerShare: args.diagnostics.ownerEarningsPerShare,
+    targetPrice: args.marketPrice,
+    ke: args.keBase,
+    terminalGrowth: args.terminalGrowth,
+    normalizedGrowth: args.normalizedGrowth,
+    horizon: deriveBaseGrowthPath(args.baseCard, args.normalizedGrowth).length,
+    growthFadeAlpha: 0.7,
+  });
+
+  const impliedTerminalROIC = solveImpliedTerminalRoicFromValue({
+    targetPrice: args.marketPrice,
+    shares: args.shares,
+    cse0: args.cse0,
+    noaT: args.noaT,
+    kw: args.kwBase,
+  });
+
+  const impliedKE = solveImpliedKeFromOwnerEarnings({
+    targetPrice: args.marketPrice,
+    ownerEarningsPerShare: args.diagnostics.ownerEarningsPerShare,
+    growthPath: deriveBaseGrowthPath(args.baseCard, args.normalizedGrowth),
+    terminalGrowth: args.terminalGrowth,
+  });
+
+  const reverseDcfDescription = describeExpectations(impliedOwnerEarningsGrowth, args.normalizedGrowth);
+  const crossCheckSpread = args.baseCard ? computeCrossCheckSpread(args.baseCard.valuation) : null;
+  const expectationLabel = extendExpectationLabel(
+    reverseDcfDescription.expectationLabel,
+    [
+      describeTerminalRoicExpectation(impliedTerminalROIC, args.kwBase),
+      describeKeExpectation(impliedKE, args.keBase),
+      isSuspiciousCrossCheckSpread(crossCheckSpread) ? crossCheckGuardSummary() : null,
+    ],
+  );
+
+  return {
+    impliedOwnerEarningsGrowth,
+    impliedTerminalROIC,
+    impliedKE,
+    normalizedGrowthAnchor: args.normalizedGrowth,
+    expectationLabel,
+    narrativeSpace: buildNarrativeSpacePerShare({
+      targetPrice: args.marketPrice,
+      kw: args.kwBase,
+      cse0: args.cse0,
+      noaT: args.noaT,
+      shares: args.shares,
+      normalizedGrowth: args.normalizedGrowth,
+    }),
+    marketExpectationLabel: marketExpectationLabel(impliedOwnerEarningsGrowth, impliedTerminalROIC, impliedKE, args.keBase, args.normalizedGrowth),
+    spreadVsNormalizedGrowth: reverseDcfDescription.spreadVsNormalizedGrowth,
+  } satisfies ReverseDcfDiagnostics;
+}
+
+function primaryValueRange(cards: ValuationScenarioCard[]) {
+  const values = cards.map((card) => card.intrinsicPerShare).filter((value): value is number => value != null && Number.isFinite(value));
+  return {
+    floorPerShare: values.length ? Math.min(...values) : null,
+    ceilingPerShare: values.length ? Math.max(...values) : null,
+  };
+}
+
+function appendCrossCheckWarning(flags: string[], cards: ValuationScenarioCard[]) {
+  const warnings = cards
+    .map((card) => ({ key: card.key, spread: computeCrossCheckSpread(card.valuation) }))
+    .filter((entry) => isSuspiciousCrossCheckSpread(entry.spread))
+    .map((entry) => `${entry.key} FCFF/FCFE cross-checks diverge materially from primary RE / ReOI valuation.`);
+  return warnings.length ? [...flags, ...warnings] : flags;
+}
+
+function summaryWithCrossCheckWarning(summary: string, cards: ValuationScenarioCard[]) {
+  return cards.some((card) => isSuspiciousCrossCheckSpread(computeCrossCheckSpread(card.valuation)))
+    ? `${summary} ${crossCheckGuardSummary()}`
+    : summary;
+}
+
+function opportunityMetrics(card: ValuationScenarioCard | null, marketPrice: number | null) {
+  const primaryValue = card ? primaryValuationPerShare(card.valuation) : null;
+  return {
+    upsidePct: primaryValue != null && marketPrice != null && marketPrice > 0 ? (primaryValue - marketPrice) / marketPrice : null,
+    marginOfSafetyPct: marginOfSafety(primaryValue, marketPrice),
+    expectedCagr: annualizedReturn(marketPrice, primaryValue, 3),
+  };
+}
 function computeCashFlowDiagnostics(latest: RecastPeriod, prev: RecastPeriod | null, shares: number | null, maintenanceCapexShare: number, maintenanceDepFloor: number): DcfCashFlowDiagnostics {
   const cfo = latest.cf.CFO ?? 0;
   const depreciation = latest.is.operatingCostBridge?.depreciation ?? 0;
@@ -265,10 +499,10 @@ function computeCashFlowDiagnostics(latest: RecastPeriod, prev: RecastPeriod | n
   const owcLatest = (latest.bs.Inventory ?? 0) + (latest.bs.TradeReceivables ?? 0) - (latest.bs.TradePayables ?? 0);
   const owcPrev = prev ? (prev.bs.Inventory ?? 0) + (prev.bs.TradeReceivables ?? 0) - (prev.bs.TradePayables ?? 0) : owcLatest;
   const workingCapitalInvestment = Math.max(owcLatest - owcPrev, 0);
-  const nopat = latest.is.OI * (1 - latest.is.taxRate);
+  const nopat = latest.is.OI;
   const totalReinvestment = growthCapex + workingCapitalInvestment;
   const reinvestmentRate = nopat > 0 ? totalReinvestment / nopat : null;
-  const prevNopat = prev ? prev.is.OI * (1 - prev.is.taxRate) : null;
+  const prevNopat = prev ? prev.is.OI : null;
   const deltaNoa = prev ? latest.bs.NOA - prev.bs.NOA : null;
   const incrementalRoic = prev && prevNopat != null && deltaNoa != null && Math.abs(deltaNoa) > 1
     ? (nopat - prevNopat) / deltaNoa
@@ -388,95 +622,6 @@ function describeExpectations(impliedGrowth: number | null, normalizedGrowth: nu
   };
 }
 
-/** Solve for implied terminal ROIC given target price, fixed growth and ke.
- *  Uses the RE identity: V = CSE0 + (ROIC_terminal - kw) * NOA_T / kw
- *  so: implied ROIC = kw × (1 + (V - CSE0) / NOA_T)
- */
-function solveImpliedTerminalROIC(params: {
-  targetPrice: number | null;
-  cse0: number;
-  noaT: number;
-  kw: number;
-  ke: number;
-  ownerEarningsPerShare: number | null;
-  shares: number | null;
-  g: number;
-  horizon: number;
-  growthFadeAlpha: number;
-}) {
-  const { targetPrice, cse0, noaT, kw, shares } = params;
-  if (targetPrice == null || targetPrice <= 0 || noaT <= 0 || shares == null) return null;
-  // Market cap = targetPrice × shares
-  const marketCap = targetPrice * shares;
-  // From RE: marketCap = CSE0 + (ROIC - kw) * NOA_T / kw
-  // Rearranging: ROIC = kw × (1 + (marketCap - CSE0) / NOA_T)
-  // But we need to account for the explicit period PV first
-  // Approximation: ROIC_terminal = kw × (1 + (marketCap - CSE0) / NOA_T)
-  const impliedRoe = kw * (1 + (marketCap - cse0) / noaT);
-  // Cap at reasonable bounds
-  if (impliedRoe < -0.1 || impliedRoe > 2.0) return null;
-  return impliedRoe;
-}
-
-/** Solve for implied ke given target price, fixed growth and terminal ROIC.
- *  From RE: V = CSE0 + (ROIC_T - ke) * NOA_T / ke
- *  ke = ROIC_T × NOA_T / (CSE0 + NOA_T - V)
- */
-function solveImpliedKE(params: {
-  targetPrice: number | null;
-  cse0: number;
-  noaT: number;
-  roicT: number;
-  shares: number | null;
-}) {
-  const { targetPrice, cse0, noaT, roicT, shares } = params;
-  if (targetPrice == null || targetPrice <= 0 || noaT <= 0 || shares == null) return null;
-  const marketCap = targetPrice * shares;
-  const denom = cse0 + noaT - marketCap;
-  if (denom <= 0) return null;
-  const impliedKe = roicT * noaT / denom;
-  if (impliedKe < 0.03 || impliedKe > 0.40) return null;
-  return impliedKe;
-}
-
-/** Build narrative space: a grid of (terminalROIC, impliedGrowth) pairs
- *  that are within 10% of the target price, showing the set of plausible
- *  joint assumptions the market could be pricing.
- */
-function buildNarrativeSpace(params: {
-  targetPrice: number | null;
-  ownerEarningsPerShare: number | null;
-  ke: number;
-  kw: number;
-  cse0: number;
-  noaT: number;
-  shares: number | null;
-  normalizedGrowth: number;
-  terminalGrowth: number;
-}): NarrativeBandEntry[] {
-  const { targetPrice, kw, cse0, noaT, normalizedGrowth } = params;
-  if (targetPrice == null || targetPrice <= 0 || noaT == 0) return [];
-  const results: NarrativeBandEntry[] = [];
-  // Terminal ROIC range: [kw - 5%, 40%]
-  const roicMin = Math.max(kw - 0.05, -0.05);
-  const roicMax = Math.max(kw + 0.30, 0.15);
-  const roicStep = Math.min(0.05, (roicMax - roicMin) / 12);
-  for (let roic = roicMin; roic <= roicMax; roic += roicStep) {
-    // For each ROIC, compute the implied value
-    // V ≈ CSE0 + (ROIC - kw) * NOA_T / kw (no-growth approximation)
-    const vTerminal = cse0 + (roic - kw) * noaT / kw;
-    if (vTerminal <= 0) continue;
-    const relDiff = Math.abs(vTerminal - targetPrice) / Math.max(targetPrice, 1);
-    if (relDiff <= 0.10) {
-      results.push({
-        terminalROIC: Math.round(roic * 1000) / 1000,
-        impliedGrowth: normalizedGrowth,
-        intrinsicValue: Math.round(vTerminal),
-      });
-    }
-  }
-  return results;
-}
 
 /** Generate high-level label describing what the market is pricing. */
 function marketExpectationLabel(impliedGrowth: number | null, impliedROIC: number | null, impliedKE: number | null, ke: number, normalizedGrowth: number) {
@@ -633,6 +778,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   const { data, config, marketData, analysisStatus } = context;
   const shareBasis = resolveShareBasis(data, config);
   const valuationReadiness = resolveValuationReadiness(data);
+  const weakShareBasis = shareBasis.confidence === "LOW" || shareBasis.confidence === "FAILED";
   const valuationData = data.slice(0, Math.max(2, valuationReadiness.anchorIndex + 1));
   const latest = valuationData[valuationData.length - 1];
   const prev = valuationData.length >= 2 ? valuationData[valuationData.length - 2] : null;
@@ -770,23 +916,271 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     }),
   };
 
-  const scenarios: ValuationScenarioCard[] = [
+  const scenarios: ValuationScenarioCard[] = normalizeScenarioCards([
     makeScenario("stress", derivedScenarios.stress, 1.15),
     makeScenario("base", derivedScenarios.base, 1),
     makeScenario("bull", derivedScenarios.bull, 0.9),
     makeScenario("historical-panic", derivedScenarios.historicalPanic, 1.2),
-  ];
+  ], marketPrice);
 
   const stressCard = scenarios.find((card) => card.key === "stress") ?? null;
   const baseCard = scenarios.find((card) => card.key === "base") ?? null;
   const panicCard = scenarios.find((card) => card.key === "historical-panic") ?? null;
   const scenarioPenalty = scenarioOrderingPenalty({ stress: stressCard, base: baseCard, panic: panicCard });
-  const stressUpsidePct = stressCard?.upsidePct ?? null;
-  const baseUpsidePct = baseCard?.upsidePct ?? null;
+  const stressUpsidePct = opportunityMetrics(stressCard, marketPrice).upsidePct;
+  const baseUpsidePct = opportunityMetrics(baseCard, marketPrice).upsidePct;
   const historicalPercentile = historySummary?.currentPricePercentile ?? null;
   const replayCoverageScore = orderedHistory.length >= 260 ? 1 : orderedHistory.length >= 120 ? 0.6 : 0.2;
-  const ownerEarningsResolved = diagnostics.ownerEarningsPerShare != null;
+  const ownerEarningsResolved = diagnostics.ownerEarningsPerShare != null && !weakShareBasis;
   const confidencePenalty = (analysisStatus?.status === "guarded" ? 8 : analysisStatus?.status === "blocked" ? 25 : 0)
+    + (valuationReadiness.status !== "production-ready" ? 10 : 0)
+    + (ownerEarningsResolved ? 0 : 10)
+    + (weakShareBasis ? 14 : 0)
+    + (data.length < 4 ? 8 : 0)
+    + (data.length < 3 ? 10 : 0)
+    + (data.length < 2 ? 25 : 0)
+    + (100 - businessModel.persistenceScore) * 0.18
+    + (1 - freshnessScore) * 18
+    + scenarioPenalty;
+
+  const perShareBlocked = weakShareBasis || data.length < 2;
+  const perShareGuarded = !perShareBlocked && (shareBasis.confidence === "MEDIUM" || data.length < 4);
+    + (shareBasis.shares == null ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (shareBasis.confidence === "MEDIUM" ? 1 : 0)
+    + (shareBasis.confidence === "LOW" ? 1 : 0)
+    + (shareBasis.confidence === "FAILED" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.confidence === "FAILED" ? 1 : 0)
+    + (shareBasis.confidence === "LOW" ? 1 : 0)
+    + (shareBasis.confidence === "MEDIUM" ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
+    + (weakShareBasis ? 1 : 0)
+    + (data.length < 4 ? 1 : 0)
+    + (data.length < 3 ? 1 : 0)
+    + (data.length < 2 ? 1 : 0)
+    + (shareBasis.shares == null ? 1 : 0)
+    + (diagnostics.ownerEarningsPerShare == null ? 1 : 0)
+    + (valuationReadiness.status === "warning" ? 1 : 0)
+    + (valuationReadiness.status === "guarded" ? 1 : 0)
     + (valuationReadiness.status !== "production-ready" ? 10 : 0)
     + (ownerEarningsResolved ? 0 : 10)
     + (100 - businessModel.persistenceScore) * 0.18
@@ -829,64 +1223,18 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
         ? "Live market inputs are unavailable, so the command center cannot escalate beyond guarded research."
         : null;
 
-  const impliedOwnerEarningsGrowth = solveImpliedGrowthForTarget({
-    ownerEarningsPerShare: diagnostics.ownerEarningsPerShare,
-    targetPrice: marketPrice,
-    ke: baseCard?.assumptions.ke ?? keBase,
-    terminalGrowth: baseCard?.assumptions.g ?? derivedScenarios.base.drivers.g_terminal,
-    normalizedGrowth: sectorTemplate.normalizedGrowth,
-    horizon,
-    growthFadeAlpha: sectorTemplate.growthFadeAlpha,
-  });
-
-  const impliedTerminalROIC = solveImpliedTerminalROIC({
-    targetPrice: marketPrice,
-    cse0: latest.bs.CSE,
-    noaT: latest.bs.NOA,
-    kw: kwBase,
-    ke: keBase,
-    ownerEarningsPerShare: diagnostics.ownerEarningsPerShare,
-    shares,
-    g: baseCard?.assumptions.g ?? derivedScenarios.base.drivers.g_terminal,
-    horizon,
-    growthFadeAlpha: sectorTemplate.growthFadeAlpha,
-  });
-
-  const impliedKE = solveImpliedKE({
-    targetPrice: marketPrice,
-    cse0: latest.bs.CSE,
-    noaT: latest.bs.NOA,
-    roicT: impliedTerminalROIC ?? latest.ratios?.RNOA ?? kwBase * 1.3,
-    shares,
-  });
-
-  const narrativeSpace = buildNarrativeSpace({
-    targetPrice: marketPrice,
-    ownerEarningsPerShare: diagnostics.ownerEarningsPerShare,
-    ke: keBase,
-    kw: kwBase,
+  const reverseDcf = buildReverseDcfExpectation({
+    marketPrice,
+    diagnostics,
+    baseCard,
+    keBase,
+    kwBase,
     cse0: latest.bs.CSE,
     noaT: latest.bs.NOA,
     shares,
     normalizedGrowth: sectorTemplate.normalizedGrowth,
     terminalGrowth: baseCard?.assumptions.g ?? derivedScenarios.base.drivers.g_terminal,
   });
-
-  const reverseDcfDescription = describeExpectations(impliedOwnerEarningsGrowth, sectorTemplate.normalizedGrowth);
-  const expectationLabel = marketExpectationLabel(
-    impliedOwnerEarningsGrowth, impliedTerminalROIC, impliedKE, keBase, sectorTemplate.normalizedGrowth,
-  );
-
-  const reverseDcf: ReverseDcfDiagnostics = {
-    impliedOwnerEarningsGrowth,
-    impliedTerminalROIC,
-    impliedKE,
-    normalizedGrowthAnchor: sectorTemplate.normalizedGrowth,
-    expectationLabel: reverseDcfDescription.expectationLabel,
-    narrativeSpace,
-    marketExpectationLabel: expectationLabel,
-    spreadVsNormalizedGrowth: reverseDcfDescription.spreadVsNormalizedGrowth,
-  };
 
   // ── SOTP Valuation (Phase 2.2) ──────────────────────────────
   const sotpPresetKey = config.sotp_preset ?? null;
@@ -961,10 +1309,10 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   const opportunity: ValuationOpportunityAssessment = {
     qualityScore,
     requiredMarginOfSafetyPct,
-    baseMarginOfSafetyPct: baseCard?.marginOfSafetyPct ?? null,
-    stressMarginOfSafetyPct: stressCard?.marginOfSafetyPct ?? null,
-    expectedCagrBase: baseCard?.expectedCagr ?? null,
-    expectedCagrStress: stressCard?.expectedCagr ?? null,
+    baseMarginOfSafetyPct: opportunityMetrics(baseCard, marketPrice).marginOfSafetyPct,
+    stressMarginOfSafetyPct: opportunityMetrics(stressCard, marketPrice).marginOfSafetyPct,
+    expectedCagrBase: opportunityMetrics(baseCard, marketPrice).expectedCagr,
+    expectedCagrStress: opportunityMetrics(stressCard, marketPrice).expectedCagr,
     historicalCheapnessScore,
     reverseDcfPessimismScore,
     opportunityScore,
@@ -1013,11 +1361,15 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
       ? "Historical replay is usable but still thin for aggressive-signal calibration."
       : "Historical replay coverage is thin, so rare-signal calibration remains provisional.";
 
-  const valuationReadinessSummary = valuationReadiness.status === "production-ready"
-    ? `Valuation uses the latest reported anchor period ${valuationReadiness.anchorPeriod ?? latest.period_end}.`
-    : valuationReadiness.fallbackUsed
-      ? `Valuation falls back to anchor period ${valuationReadiness.anchorPeriod ?? latest.period_end} because the latest reported period is not clean enough for full-confidence terminal assumptions.`
-      : valuationReadiness.reasons[0] ?? "Valuation remains guarded because the current anchor is not fully clean.";
+  const valuationReadinessSummary = perShareBlocked
+    ? "Per-share valuation is blocked because share-count evidence or history depth is not defensible enough yet."
+    : perShareGuarded
+      ? `Per-share valuation remains guarded because share-count confidence is ${shareBasis.confidence.toLowerCase()} and/or history depth is still thin.`
+      : valuationReadiness.status === "production-ready"
+        ? `Valuation uses the latest reported anchor period ${valuationReadiness.anchorPeriod ?? latest.period_end}.`
+        : valuationReadiness.fallbackUsed
+          ? `Valuation falls back to anchor period ${valuationReadiness.anchorPeriod ?? latest.period_end} because the latest reported period is not clean enough for full-confidence terminal assumptions.`
+          : valuationReadiness.reasons[0] ?? "Valuation remains guarded because the current anchor is not fully clean.";
 
   const marketFreshnessSummary = staleOrFallbackMessage
     ?? (marketWarnings.length
@@ -1039,6 +1391,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
 
   const killSwitches = [
     ...(analysisStatus?.status === "blocked" ? [analysisStatus.summary] : []),
+    ...(perShareBlocked ? [valuationReadinessSummary] : []),
     ...(valuationReadiness.status !== "production-ready" && confidenceState === "blocked" ? [valuationReadiness.reasons[0] ?? "Valuation anchor is not production-ready."] : []),
     ...(marketPrice == null ? ["Current market price is unavailable."] : []),
     ...(marketFreshness === "missing" ? ["Live market data is unavailable."] : []),
@@ -1064,6 +1417,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     ...(baseCard?.expectedCagr != null && baseCard.expectedCagr > 0.18
       ? ["Base-case rerating implies an attractive three-year expected CAGR."]
       : []),
+    ...appendCrossCheckWarning([], scenarios),
     ...(stressCard?.marginOfSafetyPct != null && stressCard.marginOfSafetyPct >= requiredMarginOfSafetyPct
       ? ["Stress-case value still clears the quality-adjusted margin-of-safety hurdle."]
       : []),
@@ -1103,7 +1457,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   ) {
     state = clampStateRank(4);
     summary = state === "high-conviction"
-      ? "The setup clears the quality-adjusted hurdle in both the base and stress cases with attractive expected returns."
+      ? summaryWithCrossCheckWarning("The setup clears the quality-adjusted hurdle in both the base and stress cases with attractive expected returns.", scenarios)
       : marketFreshnessSummary;
   } else if (
     (baseUpsidePct ?? -1) > sectorTemplate.stressBaseUpside
@@ -1111,7 +1465,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   ) {
     state = clampStateRank(3);
     summary = state === "interesting"
-      ? "The base case is attractive and the stress case still preserves enough upside to stay actionable."
+      ? summaryWithCrossCheckWarning("The base case is attractive and the stress case still preserves enough upside to stay actionable.", scenarios)
       : replaySummary;
   }
 
@@ -1147,10 +1501,6 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     state = clampStateRank(Math.min(state === "screaming-buy" ? 5 : state === "high-conviction" ? 4 : state === "interesting" ? 3 : 2, marketFreshness === "stale" ? 3 : 2));
     summary = staleOrFallbackMessage;
   }
-
-  const intrinsicValues = scenarios
-    .map((card) => card.intrinsicPerShare)
-    .filter((value): value is number => value != null && Number.isFinite(value));
 
   return {
     shareBasis,
@@ -1189,7 +1539,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
                 : state === "guarded"
                   ? "Guarded"
                   : "Blocked",
-      summary,
+      summary: summaryWithCrossCheckWarning(summary, scenarios),
       confidenceState,
       stressUpsidePct,
       baseUpsidePct,
@@ -1200,13 +1550,10 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
       opportunityScore,
       convictionBucket,
       expectedCagrStress: opportunity.expectedCagrStress,
-      supportingFlags,
+      supportingFlags: appendCrossCheckWarning(supportingFlags, scenarios),
       killSwitches,
     },
-    range: {
-      floorPerShare: intrinsicValues.length ? Math.min(...intrinsicValues) : null,
-      ceilingPerShare: intrinsicValues.length ? Math.max(...intrinsicValues) : null,
-    },
+    range: primaryValueRange(scenarios),
   };
 
 }

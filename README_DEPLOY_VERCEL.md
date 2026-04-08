@@ -120,6 +120,35 @@ When `AUDIT_ADMIN_TOKEN` is set, send:
 x-audit-token: <AUDIT_ADMIN_TOKEN>
 ```
 
+### Shared research API auth defaults
+
+`/api/research` now defaults to **authenticated writes** whenever `AUDIT_ADMIN_TOKEN` (or its previous token) is configured.
+
+That means production deployments fail closed by default for shared research mutations.
+
+You can still override behavior explicitly:
+
+```bash
+RESEARCH_REQUIRE_WRITE_AUTH=true   # force authenticated writes
+RESEARCH_REQUIRE_WRITE_AUTH=false  # allow unauthenticated writes (local/dev only)
+RESEARCH_REQUIRE_READ_AUTH=true    # protect shared research reads too
+```
+
+Recommended production posture:
+
+```bash
+AUDIT_ADMIN_TOKEN=choose-a-long-random-secret
+RESEARCH_REQUIRE_WRITE_AUTH=true
+RESEARCH_REQUIRE_READ_AUTH=true
+```
+
+Recommended local/dev posture:
+
+```bash
+RESEARCH_REQUIRE_WRITE_AUTH=false
+RESEARCH_REQUIRE_READ_AUTH=false
+```
+
 ### Near real-time inspection
 
 `/api/audit/runs` is a pollable run index.

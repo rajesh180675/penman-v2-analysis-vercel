@@ -145,8 +145,14 @@ function mkQualityPeriod(period_end: string, overrides: Partial<RecastPeriod> = 
 describe("QualityReport", () => {
   it("renders the shared traceability trust gate ahead of quality metrics", () => {
     const data = [
-      mkQualityPeriod("2024-03-31"),
-      mkQualityPeriod("2025-03-31"),
+      mkQualityPeriod("2021-03-31", { is: { ...mkQualityPeriod("2021-03-31").is, relatedPartyTransactions: 9 } as RecastPeriod["is"] }),
+      mkQualityPeriod("2022-03-31", { is: { ...mkQualityPeriod("2022-03-31").is, relatedPartyTransactions: 18 } as RecastPeriod["is"] }),
+      mkQualityPeriod("2023-03-31", { is: { ...mkQualityPeriod("2023-03-31").is, relatedPartyTransactions: 27 } as RecastPeriod["is"] }),
+      mkQualityPeriod("2024-03-31", { is: { ...mkQualityPeriod("2024-03-31").is, relatedPartyTransactions: 36 } as RecastPeriod["is"] }),
+      mkQualityPeriod("2025-03-31", {
+        bs: { ...mkQualityPeriod("2025-03-31").bs, promoterHolding: 52, pledgedPromoterShares: 12 } as RecastPeriod["bs"],
+        is: { ...mkQualityPeriod("2025-03-31").is, relatedPartyTransactions: 54, auditorChange: true } as RecastPeriod["is"],
+      }),
     ];
     const traceability = buildAnalysisTraceability({
       generatedAt: "2026-04-03T11:00:00.000Z",
@@ -187,5 +193,11 @@ describe("QualityReport", () => {
     expect(html).toContain("Quality Trust Gate");
     expect(html).toContain("Economically plausible");
     expect(html).toContain("Quality Score Trends");
+    expect(html).toContain("Earnings Quality — DD / REM Signals");
+    expect(html).toContain("Related Party Transactions");
+    expect(html).toContain("Tax Avoidance Intensity");
+    expect(html).toContain("Elevated RPT — review governance risk.");
+    expect(html).toContain("pp");
+    expect(html).toContain("%");
   });
 });

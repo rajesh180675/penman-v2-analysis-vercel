@@ -608,7 +608,8 @@ export function runAnomalyDetection(
       metricOutliers.flatMap(r => r.flags),
       componentDecline,
       reclassification,
-      payoutAnomaly
+      payoutAnomaly,
+      reAnchorFlags,
     )
   );
 

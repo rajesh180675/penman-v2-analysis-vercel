@@ -83,7 +83,34 @@ export function resolveValuationReadiness(periods: RecastPeriod[]): ValuationRea
   const contamination = computeContaminationTier(terminalFlags);
   const terminalFlagLabels = terminalFlags.map((flag) => flag.label);
   const persistence = derivePersistenceReadiness(periods);
+  const usablePeriods = periods.filter((period) => period.bs && period.ratios);
   const reasons = [contamination.message, ...(persistence.reason ? [persistence.reason] : [])];
+
+  if (usablePeriods.length < 2) {
+    reasons.push("Valuation requires at least two recast periods with ratio context.");
+    return {
+      status: "guarded",
+      latestPeriod: latest.period_end,
+      anchorPeriod: latest.period_end,
+      anchorIndex: latestIndex,
+      fallbackUsed: false,
+      contaminationTier: contamination.tier,
+      persistenceStatus: persistence.persistenceStatus,
+      persistenceScore: persistence.persistenceScore,
+      terminalFlags,
+      terminalFlagLabels,
+      reasons,
+    };
+  }
+
+  if (usablePeriods.length < 4 && contamination.tier === "CLEAN") {
+    reasons.push("Terminal confidence is being formed on fewer than four recast periods.");
+  }
+
+  const twoPeriodWarning = usablePeriods.length < 3 && contamination.tier === "CAUTION";
+  if (twoPeriodWarning) {
+    reasons.push("Valuation remains warning-grade because only two recast periods are available and the terminal period is not fully clean.");
+  }
 
   if (contamination.tier === "CLEAN") {
     return {

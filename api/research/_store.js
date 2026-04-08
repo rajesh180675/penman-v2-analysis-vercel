@@ -22,8 +22,20 @@ export function shouldRequireResearchReadAuth() {
   return (process.env.RESEARCH_REQUIRE_READ_AUTH ?? "false").toLowerCase() === "true";
 }
 
+export function shouldRequireResearchWriteAuth() {
+  if (process.env.RESEARCH_REQUIRE_WRITE_AUTH != null) {
+    return (process.env.RESEARCH_REQUIRE_WRITE_AUTH ?? "false").toLowerCase() === "true";
+  }
+  return Boolean(process.env.AUDIT_ADMIN_TOKEN || process.env.AUDIT_ADMIN_TOKEN_PREVIOUS);
+}
+
 export function maybeRequireResearchReadAuth(request, response) {
   if (!shouldRequireResearchReadAuth()) return true;
+  return requireAuditReadAuth(request, response);
+}
+
+export function maybeRequireResearchWriteAuth(request, response) {
+  if (!shouldRequireResearchWriteAuth()) return true;
   return requireAuditReadAuth(request, response);
 }
 

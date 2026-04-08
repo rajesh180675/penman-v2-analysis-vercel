@@ -3,7 +3,7 @@ import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import { computeIndiaQualitySignals } from "../engine/indiaQualitySignals";
-import { buildEarningsQualityCard } from "../engine/earningsQuality";
+import { buildDechowDichevAndRem, buildEarningsQualityCard } from "../engine/earningsQuality";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell, Legend } from "recharts";
 
 interface Props {
@@ -64,14 +64,19 @@ export default function QualityReport({data, traceability = null}:Props) {
     : null;
 
   // Earnings Quality Card
+  const earningsQualityInputs = buildDechowDichevAndRem(rd);
   const earningsQuality = rd.length >= 2
     ? buildEarningsQualityCard(
-        null, null,
+        earningsQualityInputs.ddResult,
+        earningsQualityInputs.remResult,
         latestPeriod.ratios?.dirty_surplus_pct_cse ?? null,
         latestPeriod.ratios?.cash_conversion_ratio ?? null,
         latestPeriod.ratios?.accrual_ratio_bs ?? null,
       )
     : null;
+
+  const rptIntensityPct = indiaQuality?.rptIntensity != null ? indiaQuality.rptIntensity * 100 : null;
+  const taxAvoidanceIntensityPct = indiaQuality?.taxAvoidanceIntensity != null ? indiaQuality.taxAvoidanceIntensity * 100 : null;
 
   const PIOTROSKI_SIGNALS = [
     {key:"piotroski_roa",label:"ROA > 0",cat:"Profitability"},
@@ -425,10 +430,10 @@ export default function QualityReport({data, traceability = null}:Props) {
             <div>
               <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Related Party Transactions</div>
               <div className="text-2xl font-bold text-slate-800">
-                {indiaQuality.rptIntensity != null ? indiaQuality.rptIntensity.toFixed(1) : "—"}
+                {rptIntensityPct != null ? `${rptIntensityPct.toFixed(1)}%` : "—"}
               </div>
               <div className="text-xs text-slate-500 mt-1">
-                {indiaQuality.rptIntensity != null && indiaQuality.rptIntensity > 50
+                {rptIntensityPct != null && rptIntensityPct > 5
                   ? "Elevated RPT — review governance risk."
                   : "RPT levels within normal range."}
               </div>
@@ -436,10 +441,10 @@ export default function QualityReport({data, traceability = null}:Props) {
             <div>
               <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Tax Avoidance Intensity</div>
               <div className="text-2xl font-bold text-slate-800">
-                {indiaQuality.taxAvoidanceIntensity != null ? indiaQuality.taxAvoidanceIntensity.toFixed(1) : "—"}
+                {taxAvoidanceIntensityPct != null ? `${taxAvoidanceIntensityPct.toFixed(1)}pp` : "—"}
               </div>
               <div className="text-xs text-slate-500 mt-1">
-                {indiaQuality.taxAvoidanceIntensity != null && indiaQuality.taxAvoidanceIntensity > 40
+                {taxAvoidanceIntensityPct != null && taxAvoidanceIntensityPct > 8
                   ? "Effective tax rate significantly below statutory."
                   : "Tax treatment close to statutory norm."}
               </div>
@@ -464,8 +469,8 @@ export default function QualityReport({data, traceability = null}:Props) {
       {earningsQuality && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-            <h2 className="text-lg font-bold text-slate-800">Earnings Quality — Dechow-Dichev &amp; Roychowdhury REM</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Accrual quality via CFO regression (DD) and real earnings management detection (REM).</p>
+            <h2 className="text-lg font-bold text-slate-800">Earnings Quality — DD / REM Signals</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Signal-level accrual quality and real earnings management diagnostics using the currently available multi-period series.</p>
           </div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>

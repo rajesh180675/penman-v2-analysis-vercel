@@ -60,41 +60,19 @@ export interface GranularityChecklistReport {
   };
 }
 
-const criticalKeys = {
-  BalanceSheet: [
-    "Total Assets",
-    "Total Stockholders' Equity",
-    "Total Equity",
-    "Cash and Cash Equivalents",
-    "Current Investments",
-    "Long Term Borrowings",
-    "Short Term Borrowings",
-  ],
-  ProfitLoss: [
-    "Revenue From Operations(Net)",
-    "Revenue From Operations",
-    "Profit After Tax",
-    "Profit Before Tax",
-    "Tax Expenses",
-    "Finance Cost",
-  ],
-  CashFlow: [
-    "Net Cash from Operating Activities",
-    "Purchased of Fixed Assets",
-  ],
-} as const;
-
-function isCriticalMissing(byStmt: Record<Statement, Set<string>>, stmt: "BalanceSheet" | "ProfitLoss" | "CashFlow", key: string) {
-  if (stmt === "BalanceSheet" && (key === "Total Stockholders' Equity" || key === "Total Equity")) {
-    return !hasAny(byStmt, "BalanceSheet", ["Total Stockholders' Equity", "Total Equity"]);
-  }
-  if (stmt === "ProfitLoss" && (key === "Revenue From Operations(Net)" || key === "Revenue From Operations")) {
-    return !hasAny(byStmt, "ProfitLoss", ["Revenue From Operations(Net)", "Revenue From Operations", "Total Revenue"]);
-  }
-  if (stmt === "CashFlow" && key === "Purchased of Fixed Assets") {
-    return !hasAny(byStmt, "CashFlow", ["Purchased of Fixed Assets", "Purchase of Fixed Assets"]);
-  }
-  return !byStmt[stmt].has(key);
+function unresolvedCriticalKeysByStatement(coverageSummary: MappingCoverageSummary) {
+  return coverageSummary.issues.reduce<Record<"BalanceSheet" | "ProfitLoss" | "CashFlow", string[]>>((acc, issue) => {
+    if (issue.tier !== "Tier A" || issue.severity !== "critical" || issue.status !== "unresolved") {
+      return acc;
+    }
+    const statement = issue.statement as "BalanceSheet" | "ProfitLoss" | "CashFlow";
+    acc[statement].push(...issue.missingKeys);
+    return acc;
+  }, {
+    BalanceSheet: [],
+    ProfitLoss: [],
+    CashFlow: [],
+  });
 }
 
 function addAll(target: Set<string>, keys: readonly string[]) {
@@ -533,11 +511,7 @@ export function auditMappingCoverage(periods: RawPeriodData[]): MappingAuditRepo
     });
   const backlogSummary = summarizeMappingBacklog(outOfSpecLabels);
 
-  const unresolvedCriticalByStatement = {
-    BalanceSheet: criticalKeys.BalanceSheet.filter((k) => isCriticalMissing(byStmt, "BalanceSheet", k)),
-    ProfitLoss: criticalKeys.ProfitLoss.filter((k) => isCriticalMissing(byStmt, "ProfitLoss", k)),
-    CashFlow: criticalKeys.CashFlow.filter((k) => isCriticalMissing(byStmt, "CashFlow", k)),
-  };
+  const unresolvedCriticalByStatement = unresolvedCriticalKeysByStatement(coverageSummary);
 
   return {
     mappingSpecVersion: CAPITALINE_MAPPING_SPEC_VERSION,

@@ -22,7 +22,7 @@ import {
 } from "./lib/audit";
 import { buildAnalysisSnapshot } from "./lib/auditSnapshot";
 import { listWorkspaceCompanies, rememberWorkspaceAnalysis } from "./lib/researchWorkspace";
-import { fetchSharedComparisonRegistry, syncSharedComparisonRegistry, syncWorkspaceAnalysis, syncWorkspaceProfile } from "./lib/sharedResearchApi";
+import { fetchSharedComparisonRegistryWithStatus, formatSharedApiStatus, SharedApiResult, syncSharedComparisonRegistryWithStatus, syncWorkspaceAnalysis, syncWorkspaceProfile } from "./lib/sharedResearchApi";
 import { persistCompanyRegistry, readPersistedCompanyRegistry } from "./lib/companyRegistryStore";
 import { mergeCompanyRegistries } from "./lib/companyRegistrySnapshot";
 import { buildAnalysisTraceability } from "./engine/analysisTraceability";
@@ -72,6 +72,7 @@ export function App() {
   const [comparisonRegistryHydrated, setComparisonRegistryHydrated] = useState(false);
   const [auditMeta, setAuditMeta] = useState<AuditSubmissionMeta | null>(null);
   const [workspaceCompanyId, setWorkspaceCompanyId] = useState<string | null>(null);
+  const [sharedRegistryStatus, setSharedRegistryStatus] = useState<SharedApiResult<CompanyRegistry> | null>(null);
   const lastAuditSignatureRef = useRef<string | null>(null);
   const lastAuditStatusRef = useRef<string | null>(null);
   const lastTabAuditRef = useRef<string | null>(null);
@@ -175,10 +176,11 @@ export function App() {
     let cancelled = false;
 
     const hydrateSharedComparisonRegistry = async () => {
-      const sharedRegistry = await fetchSharedComparisonRegistry();
+      const result = await fetchSharedComparisonRegistryWithStatus();
       if (cancelled) return;
-      if (sharedRegistry) {
-        setRegistry((prev) => mergeCompanyRegistries(prev, sharedRegistry));
+      setSharedRegistryStatus(result as SharedApiResult<CompanyRegistry>);
+      if (result.data) {
+        setRegistry((prev) => mergeCompanyRegistries(prev, result.data as CompanyRegistry));
       }
       setComparisonRegistryHydrated(true);
     };
@@ -195,7 +197,7 @@ export function App() {
 
   useEffect(() => {
     if (!comparisonRegistryHydrated || Object.keys(registry.companies).length === 0) return;
-    void syncSharedComparisonRegistry(registry);
+    void syncSharedComparisonRegistryWithStatus(registry).then((result) => setSharedRegistryStatus(result as SharedApiResult<CompanyRegistry>));
   }, [comparisonRegistryHydrated, registry]);
 
   useEffect(() => {
@@ -229,10 +231,11 @@ export function App() {
 
   // If rawData was submitted but recastData comes back null, navigate to debug tab.
   useEffect(() => {
-    if (rawData && rawData.length > 0 && recastData === null) {
+    const fallbackAvailable = Boolean(scopeGate?.scopeAssessment.blocked && rawData && rawData.length > 0 && recastData === null);
+    if (rawData && rawData.length > 0 && recastData === null && !fallbackAvailable) {
       setActiveTab("debug");
     }
-  }, [rawData, recastData, engineError]);
+  }, [rawData, recastData, engineError, scopeGate]);
 
   const handleDataSubmit = useCallback(
     (data:RawPeriodData[], debug?:CapitalineParseDebug, meta?: AuditSubmissionMeta, nextParserDiagnostics?: SourceParserDiagnostics | null) => {
@@ -375,12 +378,15 @@ export function App() {
     if (t.id === "inspector") return isAuditEnabled() && Boolean(auditMeta);
     if (t.id === "watchlist") return hasWorkspace;
     if (t.id === "workspace") return hasWorkspace;
+    if (t.id === "valuation") return valuationTabEnabled;
     if (t.needsData) return hasRecast;
     return true;
   });
 
   const valuationBlocked = Boolean(qualityGate?.valuationBlocked);
   const scopeBlocked = Boolean(qualityGate?.scopeAssessment.blocked);
+  const financialFallbackAvailable = Boolean(scopeBlocked && rawData && rawData.length > 0 && !hasRecast);
+  const valuationTabEnabled = hasRecast || financialFallbackAvailable;
 
   // Pass the full config — ForecastReport (and any engine calls it triggers) may
   // access fields like tax_rate_mode, oci_treated_as_unusual, etc. Passing a
@@ -425,17 +431,17 @@ export function App() {
                 <button
                   key={tab.id}
                   onClick={() => {
-                    if (tab.id === "valuation" && valuationBlocked) return;
+                    if (tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable) return;
                     setActiveTab(tab.id);
                   }}
                   title={
-                    tab.id === "valuation" && valuationBlocked
+                    tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable
                       ? scopeBlocked
                         ? "Unsupported financial-company scope. See Debug tab."
                         : "Valuation blocked by quality gate. See Debug tab."
                       : undefined
                   }
-                  disabled={tab.id === "valuation" && valuationBlocked}
+                  disabled={tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable}
                   className={`px-3 h-full text-xs font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
                     activeTab===tab.id
                       ? "border-indigo-600 text-indigo-600"
@@ -479,6 +485,11 @@ export function App() {
           {qualityGate && (
             <div className="mb-5">
               <AnalysisStatusBadge status={analysisStatus} />
+            </div>
+          )}
+          {sharedRegistryStatus && !sharedRegistryStatus.ok && (
+            <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              <strong>Shared comparison sync:</strong> {formatSharedApiStatus(sharedRegistryStatus, "Shared comparison registry synced.")}
             </div>
           )}
           {engineError && (

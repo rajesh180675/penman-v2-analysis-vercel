@@ -18,12 +18,14 @@ import {
   WorkspaceCompanyRecord,
 } from "../lib/researchWorkspace";
 import {
-  fetchSharedResearchBundle,
+  fetchSharedResearchBundleWithStatus,
+  formatSharedApiStatus,
+  SharedApiResult,
   SharedResearchBundle,
-  syncWorkspaceFilings,
-  syncWorkspaceJournal,
-  syncWorkspacePortfolio,
-  syncWorkspaceProfile,
+  syncWorkspaceFilingsWithStatus,
+  syncWorkspaceJournalWithStatus,
+  syncWorkspacePortfolioWithStatus,
+  syncWorkspaceProfileWithStatus,
 } from "../lib/sharedResearchApi";
 import AssumptionManifestPanel from "./AssumptionManifestPanel";
 import CalibrationDashboardPanel from "./CalibrationDashboardPanel";
@@ -189,6 +191,8 @@ export default function CompanyWorkspace({
   const [runHistory, setRunHistory] = useState<InspectorRunPayload[]>([]);
   const [loadingRuns, setLoadingRuns] = useState(false);
   const [sharedBundle, setSharedBundle] = useState<SharedResearchBundle | null>(null);
+  const [sharedLoadStatus, setSharedLoadStatus] = useState<SharedApiResult<SharedResearchBundle> | null>(null);
+  const [sharedWriteStatus, setSharedWriteStatus] = useState<SharedApiResult<Record<string, unknown>> | null>(null);
 
   const setCompanyId = (companyId: string) => {
     setInternalCompanyId(companyId);
@@ -265,9 +269,15 @@ export default function CompanyWorkspace({
     }
     let cancelled = false;
     const loadSharedBundle = async () => {
-      const next = await fetchSharedResearchBundle(effectiveCompanyId);
-      if (!cancelled) setSharedBundle(next);
+      const result = await fetchSharedResearchBundleWithStatus(effectiveCompanyId);
+      if (!cancelled) {
+        setSharedLoadStatus(result as SharedApiResult<SharedResearchBundle>);
+        setSharedBundle(result.data as SharedResearchBundle | null);
+      }
     };
+    if (!cancelled) {
+      setSharedLoadStatus(null);
+    }
     void loadSharedBundle();
     return () => {
       cancelled = true;
@@ -348,13 +358,15 @@ export default function CompanyWorkspace({
     updateWorkspaceNotebook(effectiveCompanyId, { [key]: value } as Partial<ResearchNotebook>);
     const next = getWorkspaceCompany(effectiveCompanyId);
     setWorkspaceRecord(next);
-    void syncWorkspaceProfile(next);
+    void syncWorkspaceProfileWithStatus(next).then((result) => setSharedWriteStatus(result as SharedApiResult<Record<string, unknown>>));
   };
 
   useEffect(() => {
     if (!workspaceRecord) return;
-    void syncWorkspaceProfile(workspaceRecord);
-    void syncWorkspaceFilings(workspaceRecord.companyId, workspaceRecord.filings);
+    void syncWorkspaceProfileWithStatus(workspaceRecord).then((result) => setSharedWriteStatus(result as SharedApiResult<Record<string, unknown>>));
+    void syncWorkspaceFilingsWithStatus(workspaceRecord.companyId, workspaceRecord.filings).then((result) => {
+      if (!result.ok) setSharedWriteStatus(result as SharedApiResult<Record<string, unknown>>);
+    });
   }, [workspaceRecord]);
 
   if (!companyOptions.length) {
@@ -430,6 +442,17 @@ export default function CompanyWorkspace({
         <MetricCard label="Shared notes" value={String(sharedCounts.journal)} />
         <MetricCard label="Alerts" value={String(sharedCounts.alerts)} />
       </section>
+
+      {(sharedLoadStatus || sharedWriteStatus) && (
+        <section className={`rounded-2xl border p-4 shadow-sm ${sharedWriteStatus?.ok || sharedLoadStatus?.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+          <div className="text-xs font-semibold uppercase tracking-wide opacity-75">Shared Research Sync</div>
+          <div className="mt-2 text-sm">
+            {sharedWriteStatus
+              ? formatSharedApiStatus(sharedWriteStatus, "Latest shared write succeeded.")
+              : formatSharedApiStatus(sharedLoadStatus, "Shared research loaded successfully.")}
+          </div>
+        </section>
+      )}
 
       <ValuationWorkbench
         analysisStatus={analysisStatus ?? null}
@@ -536,7 +559,7 @@ export default function CompanyWorkspace({
             updateWorkspacePortfolio(effectiveCompanyId, patch);
             const next = getWorkspaceCompany(effectiveCompanyId);
             setWorkspaceRecord(next);
-            if (next) void syncWorkspacePortfolio(effectiveCompanyId, next.portfolio);
+            if (next) void syncWorkspacePortfolioWithStatus(effectiveCompanyId, next.portfolio).then((result) => setSharedWriteStatus(result as SharedApiResult<Record<string, unknown>>));
           }}
         />
       </section>
@@ -643,7 +666,7 @@ export default function CompanyWorkspace({
           addWorkspaceJournalEntry(effectiveCompanyId, entry);
           const next = getWorkspaceCompany(effectiveCompanyId);
           setWorkspaceRecord(next);
-          if (next?.journal?.[0]) void syncWorkspaceJournal(effectiveCompanyId, next.journal[0]);
+          if (next?.journal?.[0]) void syncWorkspaceJournalWithStatus(effectiveCompanyId, next.journal[0]).then((result) => setSharedWriteStatus(result as SharedApiResult<Record<string, unknown>>));
         }}
       />
 

@@ -935,6 +935,7 @@ export function computeValuation(
   const NOA0 = periods[0].bs.NOA;
   const NOA_T = periods[periods.length - 1].bs.NOA;
   const NFO_latest = periods[periods.length - 1].bs.NFO;
+  const NFO0 = periods[0].bs.NFO;
   const RNOA_T = periods[periods.length - 1].ratios?.RNOA ?? (NOA_T !== 0 ? periods[periods.length - 1].is.OI / NOA_T : 0);
 
   // §1.2: AR(1) phi-based reversion continuing value
@@ -992,8 +993,8 @@ export function computeValuation(
   const lastFCFE = fcfe_series.length ? fcfe_series[fcfe_series.length - 1].FCFE : 0;
   const CV_FCFF = rhoW - 1 - g > 0 ? (lastFCFF * (1 + g)) / (rhoW - 1 - g) : 0;
   const CV_FCFE = rhoE - 1 - g > 0 ? (lastFCFE * (1 + g)) / (rhoE - 1 - g) : 0;
-  const EV_FCFF = NOA0 + pvFCFF + (CV_FCFF / discW);
-  const V_FCFE = CSE0 + pvFCFE + (CV_FCFE / discE);
+  const EV_FCFF = pvFCFF + (CV_FCFF / discW);
+  const V_FCFE = pvFCFE + (CV_FCFE / discE);
 
   // AEG valuation (Ohlson-Juettner style short-form proxy)
   const aeg_series: Array<{ period: string; CNI: number; AEG: number; PV_AEG: number }> = [];
@@ -1029,8 +1030,8 @@ export function computeValuation(
     if (!cfg.shares_outstanding || cfg.shares_outstanding <= 0) return undefined;
     const sh = cfg.shares_outstanding;
     const rePer = (CSE0 + pvRE + CV_RE_3 / discE) / sh;
-    const reoiPer = ((NOA0 + pvReOI + CV_W_3 / discW) - NFO_latest) / sh;
-    const fcffPer = (EV_FCFF - NFO_latest) / sh;
+    const reoiPer = ((NOA0 + pvReOI + CV_W_3 / discW) - NFO0) / sh;
+    const fcffPer = (EV_FCFF - NFO0) / sh;
     const fcfePer = V_FCFE / sh;
     const ddmPer = rhoE - 1 - g > 0 ? ((periods[periods.length - 1].cf.DividendPaid * (1 + g)) / (rhoE - 1 - g)) / sh : null;
     const aegPer = V_AEG / sh;
@@ -1070,9 +1071,9 @@ export function computeValuation(
     V_RE_CV1: CSE0 + pvRE + CV_RE_1 / discE,
     V_RE_CV2: CSE0 + pvRE + CV_RE_2 / discE,
     V_RE_CV3: CSE0 + pvRE + CV_RE_3 / discE,
-    V_ReOI_CV01: (NOA0 + pvReOI + CV_W_1 / discW) - NFO_latest,
-    V_ReOI_CV02: (NOA0 + pvReOI + CV_W_2 / discW) - NFO_latest,
-    V_ReOI_CV03: (NOA0 + pvReOI + CV_W_3 / discW) - NFO_latest,
+    V_ReOI_CV01: (NOA0 + pvReOI + CV_W_1 / discW) - NFO0,
+    V_ReOI_CV02: (NOA0 + pvReOI + CV_W_2 / discW) - NFO0,
+    V_ReOI_CV03: (NOA0 + pvReOI + CV_W_3 / discW) - NFO0,
     CSE0,
     NOA0,
     NFO_latest,
