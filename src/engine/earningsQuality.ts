@@ -10,6 +10,8 @@
  * and Dechow-Dichev (2002) accrual quality regression.
  */
 
+import type { RecastPeriod } from "./types";
+
 /* ================================================================
    Dechow-Dichev Accrual Quality (2002)
    Regress working capital accruals on current, lag, and lead CFO.
@@ -293,6 +295,87 @@ export function buildEarningsQualityCard(
     label,
     flags,
   };
+}
+
+/* ================================================================
+   Builder: Extract series from RecastPeriod[] and run DD + REM
+=============================================================== */
+
+export interface DechowDichevAndRemResults {
+  ddResult: DechowDichevResult | null;
+  remResult: RoychowdhuryResult | null;
+}
+
+/**
+ * Extract multi-period time series from RecastPeriod[] and run
+ * both Dechow-Dichev accrual quality and Roychowdhury REM tests.
+ *
+ * CFO = period.cf.CFO
+ * WCA = d(Inventory + TradeReceivables) - d(TradePayables + ProvisionsCurrent)
+ * DiscretionaryExpense = sgaAdvertising + sgaLegalProfessional (SG&A)
+ * ProductionCost = COGS + dInventory (inventory build-up proxy for overproduction)
+ */
+export function buildDechowDichevAndRem(
+  periods: RecastPeriod[],
+): DechowDichevAndRemResults {
+  if (!periods || periods.length < 5) {
+    return { ddResult: null, remResult: null };
+  }
+
+  // Sort chronologically (oldest first)
+  const sorted = [...periods].sort(
+    (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime(),
+  );
+
+  // Build CFO, WCA, and REM series
+  const cfoSeries: number[] = [];
+  const wcaSeries: number[] = [];
+  const salesSeries: number[] = [];
+  const discExpenseSeries: number[] = [];
+  const prodCostSeries: number[] = [];
+
+  let prevOperatingWC: number | null = null;
+
+  for (let i = 0; i < sorted.length; i += 1) {
+    const p = sorted[i];
+    cfoSeries.push(p.cf.CFO ?? 0);
+    salesSeries.push(p.is.Sales ?? 0);
+
+    // Operating working capital = Inventory + Receivables - Payables - Provisions
+    const inv = p.bs.Inventory ?? 0;
+    const rec = p.bs.TradeReceivables ?? 0;
+    const pay = p.bs.TradePayables ?? 0;
+    const prov = p.bs.OL_ProvisionsCurrent ?? 0;
+    const operatingWC = inv + rec - pay - prov;
+
+    // WCA = change in operating working capital
+    if (prevOperatingWC != null) {
+      wcaSeries.push(operatingWC - prevOperatingWC);
+    } else {
+      wcaSeries.push(operatingWC);
+    }
+    prevOperatingWC = operatingWC;
+
+    // Discretionary expense: SG&A advertising or total SG&A
+    const sgaAdv = p.is.operatingCostBridge?.sgaAdvertising ?? 0;
+    const sgaTotal = p.is.operatingCostBridge?.sgaDetailed ?? 0;
+    discExpenseSeries.push(sgaAdv > 0 ? sgaAdv : sgaTotal > 0 ? sgaTotal : 0);
+
+    // Production cost: COGS + increase in inventory
+    const prevInv = i > 0 ? sorted[i - 1].bs.Inventory ?? 0 : inv;
+    prodCostSeries.push(p.is.COGS + Math.max(inv - prevInv, 0));
+  }
+
+  const ddResult = dechowDichevQuality(cfoSeries, wcaSeries);
+
+  const remResult = roychowdhuryREM(
+    salesSeries,
+    cfoSeries,
+    discExpenseSeries,
+    prodCostSeries,
+  );
+
+  return { ddResult, remResult };
 }
 
 /* ================================================================

@@ -9,7 +9,7 @@ import { resolveValuationSectorTemplate } from "./valuationSectorTemplates";
 import { buildSOTPValuation, SOTP_PRESETS, SOTPResult } from "./sotpValuation";
 import { computeEvEbitdaCrossCheck, updateEvEbitdaWithMarketPrice, EvEbitdaCrossCheck } from "./evEbitdaCrossCheck";
 import { computeIndiaQualitySignals, IndiaQualitySignals } from "./indiaQualitySignals";
-import { buildEarningsQualityCard, EarningsQualityCard } from "./earningsQuality";
+import { buildEarningsQualityCard, buildDechowDichevAndRem, EarningsQualityCard } from "./earningsQuality";
 
 export type ValuationSignalState =
   | "blocked"
@@ -904,9 +904,10 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   const indiaQuality = computeIndiaQualitySignals({ current: latest, previous: prev });
 
   // ── Earnings Quality (Phase 5.1-5.3) ─────────────────────────
+  const { ddResult, remResult } = buildDechowDichevAndRem(data);
   const earningsQuality = buildEarningsQualityCard(
-    null,  // Dechow-Dichev: requires CFO/WCA history; defer until multi-period data available
-    null,  // Roychowdhury REM: requires discretionary expense / production cost history
+    ddResult,
+    remResult,
     latest.ratios?.dirty_surplus_pct_cse ?? null,
     latest.ratios?.cash_conversion_ratio ?? null,
     latest.ratios?.accrual_ratio_bs ?? null,
