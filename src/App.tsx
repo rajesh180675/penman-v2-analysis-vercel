@@ -148,7 +148,7 @@ export function App() {
       retentionDays: auditMeta?.retentionDays ?? null,
       runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
     }),
-    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, policyVersions, qualityGate, rawData, recastData],
+    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, policyVersions, qualityGateWithRecast, rawData, recastData],
   );
 
   useEffect(() => {
@@ -369,6 +369,10 @@ export function App() {
   const hasDebug  = debugInfo!==null;
   const workspaceCompanies = listWorkspaceCompanies();
   const hasWorkspace = hasRecast || Boolean(rawData?.length) || workspaceCompanies.length > 0;
+  const valuationBlocked = Boolean(qualityGate?.valuationBlocked);
+  const scopeBlocked = Boolean(qualityGate?.scopeAssessment.blocked);
+  const financialFallbackAvailable = Boolean(scopeBlocked && rawData && rawData.length > 0 && !hasRecast);
+  const valuationTabEnabled = hasRecast || financialFallbackAvailable;
 
   const readyCompanyCount = Object.values(registry.companies).filter((c) => c.recastData.length > 0).length;
 
@@ -383,10 +387,6 @@ export function App() {
     return true;
   });
 
-  const valuationBlocked = Boolean(qualityGate?.valuationBlocked);
-  const scopeBlocked = Boolean(qualityGate?.scopeAssessment.blocked);
-  const financialFallbackAvailable = Boolean(scopeBlocked && rawData && rawData.length > 0 && !hasRecast);
-  const valuationTabEnabled = hasRecast || financialFallbackAvailable;
 
   // Pass the full config — ForecastReport (and any engine calls it triggers) may
   // access fields like tax_rate_mode, oci_treated_as_unusual, etc. Passing a
