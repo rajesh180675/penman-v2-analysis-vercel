@@ -72,4 +72,36 @@ describe("golden master regression", () => {
     expect(Math.round((latest.ratios?.ROCE ?? 0) * 1000) / 1000).toBeGreaterThan(0);
     expect(Math.round((latest.ratios?.RNOA ?? 0) * 1000) / 1000).toBeGreaterThan(0);
   });
+
+  it("preserves negative common equity instead of clamping it to zero", () => {
+    const distressed: RawPeriodData[] = [
+      {
+        company_id: "DISTRESSED",
+        period_end: "2025-03-31",
+        raw_metric_values: {
+          "Total Assets__BalanceSheet": 500,
+          "Total Equity__BalanceSheet": 20,
+          "Minority Interest__BalanceSheet": 60,
+          "Cash and Cash Equivalents__BalanceSheet": 20,
+          "Long Term Borrowings__BalanceSheet": 180,
+          "Short Term Borrowings__BalanceSheet": 120,
+          "Trade Payables__BalanceSheet": 90,
+          "Other Current Liabilities__BalanceSheet": 70,
+          "Revenue From Operations(Net)__ProfitLoss": 300,
+          "Profit Before Tax__ProfitLoss": -25,
+          "Tax Expenses__ProfitLoss": 0,
+          "Profit After Tax__ProfitLoss": -25,
+          "Total Comprehensive Income for the Year__ProfitLoss": -25,
+          "Finance Cost__ProfitLoss": 22,
+          "Net Cash from Operating Activities__CashFlow": 15,
+          "Purchased of Fixed Assets__CashFlow": -10,
+          "Dividend Paid__CashFlow": 0,
+        },
+      },
+    ];
+
+    const out = processCompanyData(distressed, DEFAULT_CONFIG);
+    expect(out).toHaveLength(1);
+    expect(out[0].bs.CSE).toBe(-40);
+  });
 });

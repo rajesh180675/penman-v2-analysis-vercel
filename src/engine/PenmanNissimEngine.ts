@@ -249,7 +249,7 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   const totalSE = bs("BS.TotalStockholdersEquity", M.balanceSheet.totalStockholdersEquity);
   const totalEq = bs("BS.TotalEquity", M.balanceSheet.totalEquity);
   const MI = bs("BS.MI", M.balanceSheet.minorityInterest);
-  const CSE = totalSE > 0 ? totalSE : Math.max(0, totalEq - MI);
+  const CSE = totalSE > 0 ? totalSE : totalEq - MI;
   pushTrace(trace, "BS.CSE", { statement: "Derived", key: "TotalSE or TotalEq-MI", value: CSE, matchType: "derived" });
 
   const cashBank = sumBs("BS.FA.CashBank", M.balanceSheet.financialAssets.cashAndBank);

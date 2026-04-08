@@ -91,4 +91,35 @@ describe("mapping coverage tiers", () => {
     expect(audit.backlogSummary.totalsByAction["ignore-non-core"]).toBe(1);
     expect(audit.backlogSummary.actionableCount).toBe(0);
   });
+
+  it("computes cluster suggestions from runtime out-of-spec labels", () => {
+    const periods: RawPeriodData[] = [
+      {
+        company_id: "CLUSTER-RUNTIME",
+        period_end: "2025-03-31",
+        raw_metric_values: {
+          "Total Assets__BalanceSheet": 1000,
+          "Total Equity__BalanceSheet": 600,
+          "Cash and Cash Equivalents__BalanceSheet": 120,
+          "Current Investments__BalanceSheet": 90,
+          "Long Term Borrowings__BalanceSheet": 40,
+          "Short Term Borrowings__BalanceSheet": 10,
+          "Revenue From Operations(Net)__ProfitLoss": 850,
+          "Profit Before Tax__ProfitLoss": 130,
+          "Tax Expenses__ProfitLoss": 32,
+          "Profit After Tax__ProfitLoss": 98,
+          "Net Cash from Operating Activities__CashFlow": 145,
+          "Purchased of Fixed Assets__CashFlow": -42,
+          "Advertising Sales Promotion__ProfitLoss": 18,
+          "Advertisement And Sales Promotion__ProfitLoss": 17,
+        },
+      },
+    ];
+
+    const audit = auditMappingCoverage(periods);
+
+    expect(audit.clusterSuggestions.stats.totalUnknown).toBeGreaterThan(0);
+    expect(audit.clusterSuggestions.clusters.length + audit.clusterSuggestions.unclustered.length).toBeGreaterThan(0);
+    expect(audit.correlationSuggestions).toEqual([]);
+  });
 });

@@ -350,6 +350,8 @@ describe("analysis status confidence gating", () => {
           },
         },
         outOfSpecLabels: [],
+        clusterSuggestions: { clusters: [], unclustered: [], stats: { totalUnknown: 0, clusteredCount: 0, aliasRecommendation: 0, reviewCount: 0 } },
+        correlationSuggestions: [],
         backlogSummary: {
           policyVersion: versions.mappingPolicyVersion,
           totalsByAction: { "add-to-spec": 2, "group-to-existing": 46, "ignore-non-core": 900, review: 180 },

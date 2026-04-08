@@ -149,6 +149,8 @@ describe("traceability snapshot", () => {
         },
       },
       outOfSpecLabels: [],
+      clusterSuggestions: { clusters: [], unclustered: [], stats: { totalUnknown: 0, clusteredCount: 0, aliasRecommendation: 0, reviewCount: 0 } },
+      correlationSuggestions: [],
       backlogSummary: {
         policyVersion: traceabilityVersions.mappingPolicyVersion,
         totalsByAction: { "add-to-spec": 0, "group-to-existing": 1, "ignore-non-core": 0, review: 0 },

@@ -1,5 +1,14 @@
-import { maybeRequireResearchReadAuth, readJsonBlob, readResearchBody, researchPath, writeJsonBlob } from "../research/_store.js";
+import {
+  isResearchConfigured,
+  maybeRequireResearchReadAuth,
+  maybeRequireResearchWriteAuth,
+  readJsonBlob,
+  readResearchBody,
+  researchPath,
+  writeJsonBlob,
+} from "../research/_store.js";
 import { sanitizePathSegment } from "../audit/_lib.js";
+import { readLocalBlackboard, writeLocalBlackboard } from "./_localStore.js";
 
 const AFES_BLACKBOARD_SCHEMA_VERSION = "2026-04-afes-blackboard-v1";
 
@@ -66,6 +75,7 @@ function sanitizeCodeState(value) {
       last_commit: null,
     };
   }
+
   return {
     typescript_check: readNullableString(value.typescript_check),
     test_suite: readNullableString(value.test_suite),
@@ -105,9 +115,55 @@ function getEventPath(session, operation) {
   return researchPath("afes-blackboard", session, "events", `${stamp}-${sanitizePathSegment(operation)}.json`);
 }
 
+function canUseLocalFallback() {
+  return process.env.VERCEL !== "1";
+}
+
+function assertBlackboardConfigured(response) {
+  if (isResearchConfigured() || canUseLocalFallback()) return true;
+  response.status(503).json({ error: "Blackboard storage is not configured. Set BLOB_READ_WRITE_TOKEN or use local development mode." });
+  return false;
+}
+
 async function readSnapshot(session) {
-  const current = await readJsonBlob(getLatestPath(session)).catch(() => null);
-  return normalizeSnapshot(current, session);
+  const [blobCurrent, localCurrent] = await Promise.all([
+    isResearchConfigured() ? readJsonBlob(getLatestPath(session)).catch(() => null) : Promise.resolve(null),
+    canUseLocalFallback() ? readLocalBlackboard(session) : Promise.resolve(null),
+  ]);
+
+  const blobSnapshot = blobCurrent ? normalizeSnapshot(blobCurrent, session) : null;
+  const localSnapshot = localCurrent ? normalizeSnapshot(localCurrent, session) : null;
+
+  if (blobSnapshot && localSnapshot) {
+    const blobTs = Date.parse(blobSnapshot.last_updated ?? "") || 0;
+    const localTs = Date.parse(localSnapshot.last_updated ?? "") || 0;
+    return localTs > blobTs
+      ? { snapshot: localSnapshot, mode: "local-only" }
+      : { snapshot: blobSnapshot, mode: "blob" };
+  }
+
+  if (blobSnapshot) return { snapshot: blobSnapshot, mode: "blob" };
+  if (localSnapshot) return { snapshot: localSnapshot, mode: "local-only" };
+  return { snapshot: buildDefaultSnapshot(session), mode: "empty" };
+}
+
+function appendUniqueDebateEntry(existingEntries, entry) {
+  const entryKey = JSON.stringify(entry);
+  return existingEntries.some((candidate) => JSON.stringify(candidate) === entryKey)
+    ? existingEntries
+    : [...existingEntries, entry];
+}
+
+function mergeFindings(existingFindings, key, finding) {
+  const previous = existingFindings[key];
+  if (!isRecord(previous)) return { ...existingFindings, [key]: finding };
+  return {
+    ...existingFindings,
+    [key]: {
+      ...previous,
+      ...finding,
+    },
+  };
 }
 
 function mergeSnapshot(snapshot, operation, payload) {
@@ -119,16 +175,13 @@ function mergeSnapshot(snapshot, operation, payload) {
   if (operation === "upsert-finding") {
     const key = sanitizePathSegment(payload.findingKey || payload.agentId || "unknown-agent");
     if (!isRecord(payload.finding)) return null;
-    next.findings = {
-      ...snapshot.findings,
-      [key]: payload.finding,
-    };
+    next.findings = mergeFindings(snapshot.findings, key, payload.finding);
     return next;
   }
 
   if (operation === "append-debate-log") {
     if (!isRecord(payload.entry)) return null;
-    next.debate_log = [...snapshot.debate_log, payload.entry];
+    next.debate_log = appendUniqueDebateEntry(snapshot.debate_log, payload.entry);
     return next;
   }
 
@@ -160,7 +213,59 @@ function mergeSnapshot(snapshot, operation, payload) {
   return null;
 }
 
+async function persistSnapshot(session, operation, body, next, response) {
+  const eventPayload = {
+    session,
+    operation,
+    agentId: typeof body.agentId === "string" ? body.agentId : null,
+    storedAt: new Date().toISOString(),
+    payload: body,
+  };
+
+  let wroteBlob = false;
+  if (isResearchConfigured()) {
+    try {
+      await Promise.all([
+        writeJsonBlob(getLatestPath(session), next),
+        writeJsonBlob(getEventPath(session, operation), eventPayload),
+      ]);
+      wroteBlob = true;
+    } catch {
+      wroteBlob = false;
+    }
+  }
+
+  let wroteLocal = false;
+  if (canUseLocalFallback()) {
+    try {
+      await writeLocalBlackboard(session, next);
+      wroteLocal = true;
+    } catch {
+      wroteLocal = false;
+    }
+  }
+
+  const mode = wroteBlob && wroteLocal ? "blob+local"
+    : wroteBlob ? "blob"
+      : wroteLocal ? "local-only"
+        : "failed";
+
+  if (mode === "failed") {
+    response.status(503).json({ error: "Blackboard write failed in all configured storage modes." });
+    return null;
+  }
+
+  if (mode === "local-only" && !canUseLocalFallback()) {
+    response.status(503).json({ error: "Local-only blackboard persistence is not allowed in deployed runtime." });
+    return null;
+  }
+
+  return mode;
+}
+
 export default async function handler(request, response) {
+  if (!assertBlackboardConfigured(response)) return;
+
   const sessionQuery = typeof request.query?.session === "string" ? sanitizePathSegment(request.query.session) : null;
 
   if (request.method === "GET") {
@@ -169,12 +274,13 @@ export default async function handler(request, response) {
       response.status(400).json({ error: "session is required." });
       return;
     }
-    const snapshot = await readSnapshot(sessionQuery);
-    response.status(200).json(snapshot);
+    const { snapshot, mode } = await readSnapshot(sessionQuery);
+    response.status(200).json({ ...snapshot, mode });
     return;
   }
 
   if (request.method === "POST") {
+    if (!maybeRequireResearchWriteAuth(request, response)) return;
     const body = await readResearchBody(request, response, 2 * 1024 * 1024);
     if (!body) return;
 
@@ -189,25 +295,17 @@ export default async function handler(request, response) {
       return;
     }
 
-    const current = await readSnapshot(session);
+    const { snapshot: current } = await readSnapshot(session);
     const next = mergeSnapshot(current, operation, body);
     if (!next) {
       response.status(400).json({ error: "Invalid blackboard operation payload.", operation });
       return;
     }
 
-    await Promise.all([
-      writeJsonBlob(getLatestPath(session), next),
-      writeJsonBlob(getEventPath(session, operation), {
-        session,
-        operation,
-        agentId: typeof body.agentId === "string" ? body.agentId : null,
-        storedAt: new Date().toISOString(),
-        payload: body,
-      }),
-    ]);
+    const mode = await persistSnapshot(session, operation, body, next, response);
+    if (!mode) return;
 
-    response.status(200).json({ ok: true, session, operation, snapshot: next });
+    response.status(200).json({ ok: true, session, operation, mode, snapshot: next });
     return;
   }
 
