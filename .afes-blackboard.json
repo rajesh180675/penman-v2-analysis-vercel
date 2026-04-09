@@ -1,10 +1,10 @@
 {
-  "session": "2026-04-08",
-  "round": 1,
-  "agents_completed": 1,
+  "session": "2026-04-08-round2",
+  "round": 2,
+  "agents_completed": 0,
   "agents_pending": 4,
   "consensus_score": 0,
-  "last_updated": "2026-04-08T00:00:00Z",
+  "last_updated": "2026-04-09T11:34:23.947Z",
   "environment": {
     "platform": "firebase-cloud-terminal",
     "deployment": "vercel",
@@ -56,5 +56,48 @@
     "test_suite": "215/215",
     "deployment_status": "unknown",
     "last_commit": "d5fb0b1"
+  },
+  "schemaVersion": "2026-04-afes-blackboard-v2",
+  "wave": 1,
+  "agents_expected": 12,
+  "preflight": {
+    "passed": false,
+    "timestamp": "2026-04-09T11:34:23.947Z",
+    "go_nogo": "NO-GO",
+    "PF-001_blackboard_post": "pass",
+    "PF-001_persistence_mode": "blob+local",
+    "PF-002_typescript": "pass",
+    "PF-002_error_count": 0,
+    "PF-003_tests": "pass",
+    "PF-003_test_count": 54,
+    "PF-004_env_vars": "pass",
+    "PF-005_git_clean": "fail",
+    "PF-006_schema_match": "pass",
+    "PF-007_yaml_path": "./CapitalineIndASDetailedMappingSpec.yaml",
+    "PF-008_build": "pass",
+    "blocking_failures": []
+  },
+  "baseline": {
+    "typescript_check": "passed",
+    "test_suite": "54/54",
+    "test_count": 54,
+    "last_commit": "233555c",
+    "deployment_status": "unverified"
+  },
+  "wave1_findings": {},
+  "wave2_synthesis": {},
+  "fix_batches": [],
+  "round_complete": false,
+  "production_run_evidence": {
+    "company": "VST",
+    "ticker": "VST.NSE",
+    "periods": 15,
+    "latest_period": "2025-03-31",
+    "issues_identified": 7,
+    "reconciliation_residual_pct": 193.14,
+    "re_reoi_gap_pct": 16.4,
+    "a9_failures": 9,
+    "mapping_backlog": 131,
+    "trust_gate_status": "production-ready-with-warnings"
   }
 }

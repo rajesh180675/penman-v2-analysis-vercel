@@ -23,3 +23,6 @@ yarn-error.log*
 .worktrees/
 .idx/
 .openclaude-profile.json
+.vercel
+.env*.local
+.afes-local/
