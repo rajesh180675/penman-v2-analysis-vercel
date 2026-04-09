@@ -16,6 +16,19 @@ export interface SharedApiResult<T> {
   status: number | null;
 }
 
+function sharedApiErrorForStatus(status: number, path: string) {
+  if (status === 401) {
+    if (path.startsWith("/api/research")) {
+      return "Shared sync disabled (configure admin token to enable). Current analysis unaffected.";
+    }
+    if (path.startsWith("/api/blackboard")) {
+      return "Shared AFES state is protected (configure admin token to enable shared persistence).";
+    }
+    return "Authentication required for shared sync. Current analysis unaffected.";
+  }
+  return `Request failed: ${status}`;
+}
+
 async function postJsonWithStatus<T>(path: string, payload: unknown): Promise<SharedApiResult<T>> {
   try {
     const response = await fetch(path, {
@@ -29,7 +42,7 @@ async function postJsonWithStatus<T>(path: string, payload: unknown): Promise<Sh
       return {
         ok: false,
         data: null,
-        error: `Request failed: ${response.status}`,
+        error: sharedApiErrorForStatus(response.status, path),
         status: response.status,
       };
     }
@@ -56,7 +69,7 @@ async function getJsonWithStatus<T>(path: string): Promise<SharedApiResult<T>> {
       return {
         ok: false,
         data: null,
-        error: `Request failed: ${response.status}`,
+        error: sharedApiErrorForStatus(response.status, path),
         status: response.status,
       };
     }
@@ -167,7 +180,9 @@ export function sharedApiStatusTone(result: SharedApiResult<unknown> | null | un
 
 export function readResultOrNull<T>(result: SharedApiResult<T> | null | undefined) {
   return result?.data ?? null;
-}export interface SharedResearchBundle {
+}
+
+export interface SharedResearchBundle {
   companyId: string;
   profile?: {
     companyId?: string;

@@ -27,6 +27,7 @@ export default async function handler(request, response) {
   }
 
   if (request.method === "POST") {
+    if (!requireAuditReadAuth(request, response)) return;
     const governance = getAuditGovernanceConfig();
     if (!assertContentLength(request, response, governance.maxEventBytes)) return;
     if (!enforceAuditRateLimit(request, response, "events", governance.maxEventsPerMinute)) return;

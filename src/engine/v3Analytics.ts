@@ -1201,7 +1201,11 @@ export function decomposeReReOIGap(
     const ds = (p.bs.CSE - prev.bs.CSE) - p.is.CNI + p.cf.DividendPaid;
     return acc + ds / Math.pow(1 + ke, idx + 1);
   }, 0);
-  const nfo_timing = ((periods[periods.length - 1]?.bs.NFO ?? 0) - (periods[0]?.bs.NFO ?? 0)) * (1 - 1 / Math.pow(1 + ke, T));
+  const nfo_timing = periods.slice(1).reduce((acc, period, idx) => {
+    const prev = periods[idx];
+    const deltaNfo = (period.bs.NFO ?? 0) - (prev.bs.NFO ?? 0);
+    return acc + deltaNfo / Math.pow(1 + ke, idx + 1);
+  }, 0);
   const reT = periods[periods.length - 1]?.ri?.RE ?? 0;
   const reoiT = periods[periods.length - 1]?.ri?.ReOI ?? 0;
   const pvReTV = (ke > gEffective) ? (reT * (1 + gEffective) / (ke - gEffective)) / Math.pow(1 + ke, T) : 0;

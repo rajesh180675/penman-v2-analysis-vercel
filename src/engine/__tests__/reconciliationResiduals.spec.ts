@@ -562,6 +562,63 @@ describe("evaluateReconciliationResiduals", () => {
     expect(summary.status).toBe("failed");
   });
 
+  it("does not fail the ending-cash bridge for investment-heavy liquid-asset rotation", () => {
+    const previous = mkPeriod("2024-03-31", {
+      bs: {
+        ...mkPeriod("2024-03-31").bs,
+        FA: 500,
+      },
+      trace: {
+        ...mkPeriod("2024-03-31").trace,
+        "BS.FA.CashBank": [
+          { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 32.8, matchType: "exact_base" },
+        ],
+        "BS.FA.CurrentInvestmentsTop": [
+          { statement: "BalanceSheet", key: "Current Investments", value: 467.2, matchType: "exact_base" },
+        ],
+      },
+    });
+    const current = mkPeriod("2025-03-31", {
+      bs: {
+        ...mkPeriod("2025-03-31").bs,
+        FA: 496,
+      },
+      cf: {
+        ...mkPeriod("2025-03-31").cf,
+        CFO: 277,
+        Capex: 49,
+        DividendPaid: 176,
+        PurchaseInvestments: -2836,
+        SaleInvestments: 2780,
+        EquityIssued: 0,
+        ShareBuybacks: 0,
+        InterestReceived: 0,
+        DividendReceived: 0,
+        DebtProceeds: 0,
+        DebtRepayment: 0,
+        SaleFixedAssets: 0,
+      },
+      trace: {
+        ...mkPeriod("2025-03-31").trace,
+        "BS.FA.CashBank": [
+          { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 26.3, matchType: "exact_base" },
+        ],
+        "BS.FA.CurrentInvestmentsTop": [
+          { statement: "BalanceSheet", key: "Current Investments", value: 469.7, matchType: "exact_base" },
+        ],
+      },
+    });
+
+    const summary = evaluateReconciliationResiduals({
+      recastData: [previous, current],
+      config: DEFAULT_CONFIG,
+    });
+
+    const endingCashCheck = summary.checks.find((check) => check.key === "ending-cash-bridge" && check.periodEnd === "2025-03-31");
+    expect(endingCashCheck?.residual).not.toBeNull();
+    expect(endingCashCheck?.status).not.toBe("failed");
+  });
+
   it("fails when the cash-distribution bridge breaches the critical threshold", () => {
     const summary = evaluateReconciliationResiduals({
       recastData: [

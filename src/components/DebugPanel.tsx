@@ -645,7 +645,7 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
             <div className="max-h-56 overflow-auto border border-red-200 bg-red-50 rounded-lg p-3 text-xs font-mono space-y-1">
               {identitySuite.results.filter((r) => !r.pass).slice(0, 120).map((r, i) => (
                 <div key={`${r.id}-${r.period}-${i}`}>
-                  {r.period} {r.id} diff={r.diff.toFixed(4)} (tol={r.tolerance.toFixed(4)})
+                  {r.period} {r.id} diff={r.diff.toFixed(4)} (tol={r.tolerance.toFixed(4)}){r.reasonCode ? ` [${r.reasonCode}]` : ""}
                 </div>
               ))}
             </div>

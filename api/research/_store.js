@@ -19,7 +19,10 @@ export function researchPath(...parts) {
 }
 
 export function shouldRequireResearchReadAuth() {
-  return (process.env.RESEARCH_REQUIRE_READ_AUTH ?? "false").toLowerCase() === "true";
+  if (process.env.RESEARCH_REQUIRE_READ_AUTH != null) {
+    return (process.env.RESEARCH_REQUIRE_READ_AUTH ?? "false").toLowerCase() === "true";
+  }
+  return Boolean(process.env.AUDIT_ADMIN_TOKEN || process.env.AUDIT_ADMIN_TOKEN_PREVIOUS);
 }
 
 export function shouldRequireResearchWriteAuth() {

@@ -1175,7 +1175,15 @@ function ScenarioCard({
         <div>Margin of safety <strong className="text-slate-700">{formatPct(marginOfSafetyPct, 1)}</strong></div>
         <div>Expected CAGR <strong className="text-slate-700">{formatPct(expectedCagr, 1)}</strong></div>
         <div>Reinvestment rate <strong className="text-slate-700">{formatPct(reinvestmentRate, 1)}</strong></div>
-        <div>Incremental ROIC <strong className="text-slate-700">{formatPct(incrementalRoic, 1)}</strong></div>
+        <div>
+          Incremental ROIC <strong className="text-slate-700">{formatPct(incrementalRoic, 1)}</strong>
+          {(incrementalRoic == null || incrementalRoic <= -0.1) ? (
+            <span className="ml-1 text-amber-700">(guarded floor)</span>
+          ) : null}
+        </div>
+        {(incrementalRoic == null || incrementalRoic <= -0.1) ? (
+          <div className="text-amber-700">Shown as a guarded value because incremental capital turns unstable when ΔNOA is near zero.</div>
+        ) : null}
         <div>Terminal anchor <strong className="text-slate-700">{forecastPolicy?.terminalAnchorSource ?? "—"}</strong></div>
         <div>WC pressure <strong className="text-slate-700">{forecastPolicy?.workingCapitalPressure ?? "—"}</strong></div>
         <div>Reinvestment burden <strong className="text-slate-700">{forecastPolicy?.reinvestmentBurden ?? "—"}</strong></div>

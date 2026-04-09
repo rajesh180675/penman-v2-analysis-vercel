@@ -6,6 +6,7 @@ import {
   isAuditConfigured,
   logAudit,
   readJsonBody,
+  requireAuditReadAuth,
   sanitizePathSegment,
 } from "./_lib.js";
 
@@ -45,6 +46,8 @@ export default async function handler(request, response) {
     response.status(405).json({ error: "Method not allowed." });
     return;
   }
+
+  if (!requireAuditReadAuth(request, response)) return;
 
   const body = await readJsonBody(request);
   const governance = getAuditGovernanceConfig();

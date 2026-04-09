@@ -156,45 +156,69 @@ export function evaluateReconciliationResiduals(params: {
       );
     const currentCashBank = readTraceValue(period, "BS.FA.CashBank");
     const previousCashBank = previous ? readTraceValue(previous, "BS.FA.CashBank") : null;
-    const endingCashResidual = currentCashBank != null && previousCashBank != null
-      ? (currentCashBank - previousCashBank) - (
-        period.cf.CFO
-        - period.cf.Capex
-        - period.cf.DividendPaid
-        + period.cf.EquityIssued
-        - period.cf.ShareBuybacks
-        + period.cf.InterestReceived
-        + period.cf.DividendReceived
-        + (period.cf.DebtProceeds ?? 0)
-        + (period.cf.DebtRepayment ?? 0)
-        + (period.cf.SaleFixedAssets ?? 0)
-        + (period.cf.PurchaseInvestments ?? 0)
-        + (period.cf.SaleInvestments ?? 0)
-      )
+    const currentCashInvestments = (readTraceValue(period, "BS.FA.CashBank") ?? 0)
+      + (readTraceValue(period, "BS.FA.CurrentInvestmentsTop") ?? 0)
+      + (readTraceValue(period, "BS.FA.CurrentInvestmentsAlt") ?? 0)
+      + (readTraceValue(period, "BS.FA.LongTermInvestmentsDirect") ?? 0)
+      + (readTraceValue(period, "BS.FA.TotalInvestmentsFallback") ?? 0);
+    const previousCashInvestments = previous
+      ? (readTraceValue(previous, "BS.FA.CashBank") ?? 0)
+        + (readTraceValue(previous, "BS.FA.CurrentInvestmentsTop") ?? 0)
+        + (readTraceValue(previous, "BS.FA.CurrentInvestmentsAlt") ?? 0)
+        + (readTraceValue(previous, "BS.FA.LongTermInvestmentsDirect") ?? 0)
+        + (readTraceValue(previous, "BS.FA.TotalInvestmentsFallback") ?? 0)
       : null;
-    const endingCashBasis = currentCashBank != null && previousCashBank != null
+    const investmentFlow = (period.cf.PurchaseInvestments ?? 0) + (period.cf.SaleInvestments ?? 0);
+    const hasMaterialInvestmentFlow = Math.abs(investmentFlow) > 1;
+    const hasInvestmentBalanceEvidence = previous != null && (
+      hasTraceEvidence(period, "BS.FA.CurrentInvestmentsTop")
+      || hasTraceEvidence(period, "BS.FA.CurrentInvestmentsAlt")
+      || hasTraceEvidence(period, "BS.FA.LongTermInvestmentsDirect")
+      || hasTraceEvidence(period, "BS.FA.TotalInvestmentsFallback")
+      || hasTraceEvidence(previous, "BS.FA.CurrentInvestmentsTop")
+      || hasTraceEvidence(previous, "BS.FA.CurrentInvestmentsAlt")
+      || hasTraceEvidence(previous, "BS.FA.LongTermInvestmentsDirect")
+      || hasTraceEvidence(previous, "BS.FA.TotalInvestmentsFallback")
+    );
+    const endingCashExpected =
+      period.cf.CFO
+      - period.cf.Capex
+      - period.cf.DividendPaid
+      + period.cf.EquityIssued
+      - period.cf.ShareBuybacks
+      + period.cf.InterestReceived
+      + period.cf.DividendReceived
+      + (period.cf.DebtProceeds ?? 0)
+      + (period.cf.DebtRepayment ?? 0)
+      + (period.cf.SaleFixedAssets ?? 0)
+      + investmentFlow;
+    const endingCashResidual = hasMaterialInvestmentFlow && hasInvestmentBalanceEvidence && previousCashInvestments != null
+      ? (currentCashInvestments - previousCashInvestments) - endingCashExpected
+      : currentCashBank != null && previousCashBank != null
+        ? (currentCashBank - previousCashBank) - endingCashExpected
+        : null;
+    const endingCashBasis = hasMaterialInvestmentFlow && hasInvestmentBalanceEvidence && previousCashInvestments != null
       ? Math.max(
-        Math.abs(currentCashBank - previousCashBank),
-        Math.abs(
-          period.cf.CFO
-          - period.cf.Capex
-          - period.cf.DividendPaid
-          + period.cf.EquityIssued
-          - period.cf.ShareBuybacks
-          + period.cf.InterestReceived
-          + period.cf.DividendReceived
-          + (period.cf.DebtProceeds ?? 0)
-          + (period.cf.DebtRepayment ?? 0)
-          + (period.cf.SaleFixedAssets ?? 0)
-          + (period.cf.PurchaseInvestments ?? 0)
-          + (period.cf.SaleInvestments ?? 0),
-        ),
+        Math.abs(currentCashInvestments - previousCashInvestments),
+        Math.abs(endingCashExpected),
         1,
       )
-      : null;
+      : currentCashBank != null && previousCashBank != null
+        ? Math.max(
+          Math.abs(currentCashBank - previousCashBank),
+          Math.abs(endingCashExpected),
+          1,
+        )
+        : null;
+    const hasInvestmentTraceEvidence = hasTraceEvidence(period, "CF.PurchaseInvestments") || hasTraceEvidence(period, "CF.SaleInvestments");
     const hasEndingCashInputs = previous != null
-      && hasTraceEvidence(period, "BS.FA.CashBank")
-      && hasTraceEvidence(previous, "BS.FA.CashBank")
+      && (
+        (hasMaterialInvestmentFlow && hasInvestmentTraceEvidence && hasInvestmentBalanceEvidence)
+        || (
+          (hasTraceEvidence(period, "BS.FA.CashBank") || readTraceValue(period, "BS.FA.CashBank") != null)
+          && (hasTraceEvidence(previous, "BS.FA.CashBank") || (previous ? readTraceValue(previous, "BS.FA.CashBank") != null : false))
+        )
+      )
       && hasTraceEvidence(period, "CF.CFO")
       && hasTraceEvidence(period, "CF.Capex");
     const comprehensiveIncomeResidual = hasTraceEvidence(period, "IS.TCI")

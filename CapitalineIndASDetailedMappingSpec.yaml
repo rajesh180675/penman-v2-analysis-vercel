@@ -24,6 +24,7 @@ balance_sheet:
       - Margin Money Balances
     investments_current:
       - Current Investments
+      - Investments in Mutual Funds
       - Investments Carried at Fair Value Through Profit Or Loss (FVTPL)
       - Investments Carried at Fair Value Through Other Comprehensive Income(FVTOCI)
       - Investments Carried at Amortized Cost
@@ -74,6 +75,7 @@ income:
     - Net Revenue from Operations
     - Income from Operations
     - Revenue from Sale of Products
+    - Less: Excise Duty
   cni:
     tci_group: ["Total Comprehensive Income for the Year"]
     nci: ["Non-Controlling Interests"]
@@ -173,7 +175,7 @@ income:
     - Share of profit/(loss) in associate companies / joint ventures
 
 cashflow:
-  cfo: ["Net Cash from Operating Activities"]
+  cfo: ["Net Cash from Operating Activities", "Cash Flow before Extraordinary"]
   capex: ["Purchased of Fixed Assets"]
   share_buybacks:
     - Buyback of Shares

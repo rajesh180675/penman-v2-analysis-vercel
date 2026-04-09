@@ -16,6 +16,7 @@ export const CapitalineMappingSpec = {
         "Investments Carried at Fair Value Through Profit Or Loss (FVTPL)",
         "Investments Carried at Fair Value Through Other Comprehensive Income(FVTOCI)",
         "Investments Carried at Amortized Cost",
+        "Investments in Mutual Funds",
       ],
       longTermInvestments: [
         "Investments - Long-term",
@@ -58,6 +59,7 @@ export const CapitalineMappingSpec = {
     ppe: [
       "Net Property, plant and equipment",
       "Total Net Property, plant and equipment (not under Lease)",
+      "Total PPE (not under Lease)",
       "Property, Plant and Equipment",
       "Fixed Assets",
     ],
@@ -119,7 +121,7 @@ export const CapitalineMappingSpec = {
       "Revenue from Sale of Products",
     ],
     taxExpense: ["Tax Expenses"],
-    pbt: ["Profit Before Tax"],
+    pbt: ["Profit Before Tax", "Profit Before Extraordinary"],
     pat: [
       "Profit After Tax",
       "Profit/(Loss) for the period from Continuing Operations",

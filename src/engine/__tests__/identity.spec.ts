@@ -211,6 +211,45 @@ describe("identity assertions A1-A9", () => {
     const report = runIdentityAssertions([p1, p2]);
     expect(report.failed).toBe(0);
   });
+
+  it("assigns A9 ind-as-transition reason for 2017 failures", () => {
+    const p1 = mkPeriod("2016-03-31", 1);
+    const p2 = mkPeriod("2017-03-31", 1.05);
+    p2.ratios!.ROCE = 0.5;
+    p2.ratios!.RNOA = 0.1;
+    p2.ratios!.FLEV = 1;
+    p2.ratios!.SPREAD = 0.1;
+    const report = runIdentityAssertions([p1, p2]);
+    const failedA9 = report.results.find((r) => r.id === "A9" && !r.pass);
+    expect(failedA9?.reasonCode).toBe("ind-as-transition");
+    expect(report.a9ReasonCounts["ind-as-transition"]).toBe(1);
+  });
+
+  it("assigns A9 structural-event reason when structural flags are present", () => {
+    const p1 = mkPeriod("2024-03-31", 1);
+    const p2 = mkPeriod("2025-03-31", 1.05);
+    p2.spec_flags = [{ spec_id: "S-5B", severity: 3 as never, label: "STRUCTURAL_EVENT_CRITICAL", message: "structural", affects_terminal: true, period: "2025-03-31" }];
+    p2.ratios!.ROCE = 0.5;
+    p2.ratios!.RNOA = 0.1;
+    p2.ratios!.FLEV = 1;
+    p2.ratios!.SPREAD = 0.1;
+    const report = runIdentityAssertions([p1, p2]);
+    const failedA9 = report.results.find((r) => r.id === "A9" && !r.pass);
+    expect(failedA9?.reasonCode).toBe("structural-event");
+  });
+
+  it("assigns A9 unexplained when no other reason applies", () => {
+    const p1 = mkPeriod("2024-03-31", 1);
+    const p2 = mkPeriod("2025-03-31", 1.05);
+    p2.ratios!.ROCE = 0.215;
+    p2.ratios!.RNOA = 0.1;
+    p2.ratios!.FLEV = 1;
+    p2.ratios!.SPREAD = 0.1;
+    p2.ratios!.dirty_surplus_pct_cse = 0.01;
+    const report = runIdentityAssertions([p1, p2]);
+    const failedA9 = report.results.find((r) => r.id === "A9" && !r.pass);
+    expect(failedA9?.reasonCode).toBe("unexplained");
+  });
 });
 
 describe("S-17.1: OLLEV decomposition closure", () => {

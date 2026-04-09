@@ -127,6 +127,27 @@ describe("Supplementary Path A controls", () => {
     }, 0.04);
     expect(out.total).toBeCloseTo(200, 8);
     expect(out.dominant_driver.length).toBeGreaterThan(0);
+    expect(Number.isFinite(out.nfo_timing)).toBe(true);
+  });
+
+  it("uses period-by-period NFO movement in RE-ReOI gap decomposition", () => {
+    const periods = [mkPeriod(2023, 0.24, 70, 500), mkPeriod(2024, 0.25, 75, 560), mkPeriod(2025, 0.26, 80, 620)];
+    periods[0].bs.NFO = 0;
+    periods[1].bs.NFO = 100;
+    periods[2].bs.NFO = 0;
+
+    const out = decomposeReReOIGap(periods, {
+      V_RE_CV3: 950,
+      V_ReOI_CV03: 900,
+      CSE0: 500,
+      pvRE: 200,
+      CV_RE: 250,
+      CV_ReOI: 240,
+      ke: 0.13,
+      kw: 0.10,
+    }, 0.04);
+
+    expect(Math.abs(out.nfo_timing)).toBeGreaterThan(0);
   });
 
   it("flags cross-section inconsistency", () => {
