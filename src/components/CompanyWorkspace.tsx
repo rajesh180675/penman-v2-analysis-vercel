@@ -235,6 +235,7 @@ export default function CompanyWorkspace({
         const payloads = await Promise.all(
           relevantRuns.map(async (run) => {
             try {
+              if (!run.runAccessToken) return null;
               const response = await fetch(`/api/audit/inspector?runId=${encodeURIComponent(run.runId)}`, {
                 headers: { "x-audit-run-token": run.runAccessToken },
               });
@@ -363,7 +364,6 @@ export default function CompanyWorkspace({
 
   useEffect(() => {
     if (!workspaceRecord) return;
-    void syncWorkspaceProfileWithStatus(workspaceRecord).then((result) => setSharedWriteStatus(result as SharedApiResult<Record<string, unknown>>));
     void syncWorkspaceFilingsWithStatus(workspaceRecord.companyId, workspaceRecord.filings).then((result) => {
       if (!result.ok) setSharedWriteStatus(result as SharedApiResult<Record<string, unknown>>);
     });

@@ -273,6 +273,9 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
       setLoading(true);
       setError(null);
       try {
+        if (!selectedRun.runAccessToken) {
+          throw new Error("Run inspector token not available in this browser session.");
+        }
         const response = await fetch(`/api/audit/inspector?runId=${encodeURIComponent(selectedRun.runId)}`, {
           headers: {
             "x-audit-run-token": selectedRun.runAccessToken,
@@ -312,6 +315,7 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
     const loadWatchlist = async () => {
       const rows = await Promise.all(knownRuns.map(async (run) => {
         try {
+          if (!run.runAccessToken) return null;
           const response = await fetch(`/api/audit/inspector?runId=${encodeURIComponent(run.runId)}`, {
             headers: { "x-audit-run-token": run.runAccessToken },
           });

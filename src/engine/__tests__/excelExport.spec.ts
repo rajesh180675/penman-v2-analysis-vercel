@@ -127,8 +127,8 @@ const valuation: ValuationResult = {
   lowConfidence: false,
 };
 
-function coverKeCellValue(config: EngineConfig): number {
-  const workbookBuf = generateValuationWorkbook([mkPeriod("2025-03-31")], [], valuation, config);
+async function coverKeCellValue(config: EngineConfig): Promise<number> {
+  const workbookBuf = await generateValuationWorkbook([mkPeriod("2025-03-31")], [], valuation, config);
   const wb = read(workbookBuf, { type: "array" });
   const sheet = wb.Sheets.Cover;
   const entries = Object.entries(sheet);
@@ -146,28 +146,28 @@ function sheetValueByLabel(sheet: Record<string, { v?: unknown }>, label: string
 }
 
 describe("generateValuationWorkbook", () => {
-  it("exports explicit config.ke to the Cover ke field", () => {
+  it("exports explicit config.ke to the Cover ke field", async () => {
     const cfg: EngineConfig = {
       ...DEFAULT_CONFIG,
       ke: 0.18,
       risk_free_rate: 0.03,
       equity_risk_premium: 0.05,
     };
-    expect(coverKeCellValue(cfg)).toBeCloseTo(0.18, 8);
+    expect(await coverKeCellValue(cfg)).toBeCloseTo(0.18, 8);
   });
 
-  it("falls back to rf+erp when config.ke is non-positive", () => {
+  it("falls back to rf+erp when config.ke is non-positive", async () => {
     const cfg: EngineConfig = {
       ...DEFAULT_CONFIG,
       ke: 0,
       risk_free_rate: 0.04,
       equity_risk_premium: 0.06,
     };
-    expect(coverKeCellValue(cfg)).toBeCloseTo(0.1, 8);
+    expect(await coverKeCellValue(cfg)).toBeCloseTo(0.1, 8);
   });
 
-  it("suppresses valuation outputs when workbook metadata is guarded", () => {
-    const workbookBuf = generateValuationWorkbook(
+  it("suppresses valuation outputs when workbook metadata is guarded", async () => {
+    const workbookBuf = await generateValuationWorkbook(
       [mkBalancedPeriod("2025-03-31")],
       [],
       valuation,
@@ -186,7 +186,7 @@ describe("generateValuationWorkbook", () => {
     expect(sheetValueByLabel(wb.Sheets.Valuation, "Guarded mode")).toContain("suppressed");
   });
 
-  it("writes company and valuation metadata to the workbook", () => {
+  it("writes company and valuation metadata to the workbook", async () => {
     const traceability = buildAnalysisTraceability({
       generatedAt: "2026-03-29T19:00:00.000Z",
       runId: "run-123",
@@ -210,7 +210,7 @@ describe("generateValuationWorkbook", () => {
       latestPeriod: "2025-03-31",
       policyVersions: getAnalysisPolicyVersions(),
     });
-    const workbookBuf = generateValuationWorkbook(
+    const workbookBuf = await generateValuationWorkbook(
       [mkBalancedPeriod("2025-03-31")],
       [],
       valuation,
@@ -252,7 +252,7 @@ describe("generateValuationWorkbook", () => {
     expect(sheetValueByLabel(wb.Sheets.Traceability, "Achieved Levels")).toBe("syntactically-valid | structurally-reconciled | economically-plausible");
   });
 
-  it("exports effective confidence counters separately from mapping coverage counters", () => {
+  it("exports effective confidence counters separately from mapping coverage counters", async () => {
     const versions = getAnalysisPolicyVersions();
     const traceability = buildAnalysisTraceability({
       generatedAt: "2026-04-04T10:00:00.000Z",
@@ -327,7 +327,7 @@ describe("generateValuationWorkbook", () => {
       },
     });
 
-    const workbookBuf = generateValuationWorkbook(
+    const workbookBuf = await generateValuationWorkbook(
       [mkBalancedPeriod("2025-03-31")],
       [],
       valuation,

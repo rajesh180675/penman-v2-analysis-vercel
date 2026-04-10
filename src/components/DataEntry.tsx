@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { RawPeriodData, EngineConfig } from "../engine/types";
-import { parseCapitalineZip, CapitalineParseDebug } from "../engine/capitalineParser";
+import type { CapitalineParseDebug } from "../engine/capitalineParser";
 import { parseScreenerTabDelimitedDetailed } from "../engine/screenerParser";
 import { parseRawPeriodsJsonDetailed } from "../engine/jsonIngestion";
 import { parseXbrlXmlDetailed } from "../engine/xbrlParser";
@@ -82,6 +82,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         contentClass: meta.contentClass,
         retentionDays: meta.retentionDays,
       });
+      const { parseCapitalineZip } = await import("../engine/capitalineParser");
       const { periods, debug } = await parseCapitalineZip(file, { companyId });
       await persistAuditEvent({
         runId: meta.runId,

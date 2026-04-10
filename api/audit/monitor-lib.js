@@ -33,7 +33,10 @@ export function requireMonitorAuth(request, response) {
 
   if (adminToken && auditToken === adminToken) return true;
   if (authHeaderMatches(request, cronSecret)) return true;
-  if (!adminToken && !cronSecret) return true;
+  if (!adminToken && !cronSecret) {
+    response.status(503).json({ error: "Monitor auth is not configured." });
+    return false;
+  }
 
   response.status(401).json({ error: "Unauthorized monitor access." });
   return false;
@@ -41,7 +44,10 @@ export function requireMonitorAuth(request, response) {
 
 export function requireCronAuth(request, response) {
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return true;
+  if (!cronSecret) {
+    response.status(503).json({ error: "CRON_SECRET is not configured." });
+    return false;
+  }
   if (authHeaderMatches(request, cronSecret)) return true;
   response.status(401).json({ error: "Unauthorized cron invocation." });
   return false;

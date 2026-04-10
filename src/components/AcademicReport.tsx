@@ -4,15 +4,11 @@ import { jsPDF } from "jspdf";
 import JSZip from "jszip";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import { deriveAnalysisStatus } from "../engine/analysisStatus";
 import { EngineConfig, NP_BENCHMARKS, RawPeriodData, RecastPeriod, ke_from_config } from "../engine/types";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
-import { auditMappingCoverage, evaluateGranularityChecklist, evaluateQualityGate } from "../engine/mappingAudit";
-import { AnalysisTraceabilityEnvelope, buildAnalysisTraceability } from "../engine/analysisTraceability";
-import { generateValuationWorkbook } from "../engine/excelExport";
-import { getAnalysisPolicyVersions } from "../engine/policyVersions";
-import { buildProvenanceAuditRows } from "../engine/provenanceAudit";
-import { deriveCompanyLabel, resolveValuationReadiness } from "../engine/valuationPolicy";
+import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
+import { buildAnalysisPublicationSnapshot } from "../lib/publication/analysisPublicationSnapshot";
+import { deriveCompanyLabel } from "../engine/valuationPolicy";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import { computeV3Analytics, V3AnalyticsBundle, computeAnchorTable } from "../engine/v3Analytics";
 import { AuditSubmissionMeta, persistAuditBlob, persistAuditEvent } from "../lib/audit";
@@ -190,11 +186,6 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   const [hmacKeyId, setHmacKeyId] = useState("IC-LOCAL-KEY");
   const [hmacSecret, setHmacSecret] = useState("");
 
-  const granularityChecklist = useMemo(() => {
-    if (!rawData || rawData.length === 0) return null;
-    return evaluateGranularityChecklist(rawData);
-  }, [rawData]);
-
   const traceRecords = useMemo(() => {
     const rows: Array<{
       period: string;
@@ -224,35 +215,19 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
     return rows;
   }, [data]);
 
-  const provenanceRows = useMemo(() => buildProvenanceAuditRows(data), [data]);
-  const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
-  const policyVersions = useMemo(() => getAnalysisPolicyVersions(), []);
-  const qualityGate = useMemo(() => (rawData?.length ? evaluateQualityGate(rawData, config, data) : null), [config, data, rawData]);
-  const mappingAudit = useMemo(() => (rawData?.length ? auditMappingCoverage(rawData) : null), [rawData]);
-  const analysisStatus = useMemo(
-    () => deriveAnalysisStatus(qualityGate, valuationReadiness, mappingAudit),
-    [mappingAudit, qualityGate, valuationReadiness],
-  );
-  const latestRawPeriod = rawData && rawData.length > 0 ? rawData[rawData.length - 1].period_end : null;
-  const derivedTraceability = useMemo(() => buildAnalysisTraceability({
-    runId: auditMeta?.runId ?? null,
-    companyId: auditMeta?.companyId ?? rawData?.[0]?.company_id ?? config.ticker ?? null,
-    sourceMode: auditMeta?.sourceMode ?? null,
-    rawData,
-    recastData: data,
+  const publication = useMemo(() => buildAnalysisPublicationSnapshot({
+    data,
     config,
-    periodCount: rawData?.length ?? data.length,
-    recastPeriodCount: data.length,
-    latestPeriod: latestRawPeriod ?? data[data.length - 1]?.period_end ?? null,
-    qualityGate,
-    mappingAudit,
-    policyVersions,
-    analysisStatus,
-    contentClass: auditMeta?.contentClass ?? null,
-      retentionDays: auditMeta?.retentionDays ?? null,
-      runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
-  }), [analysisStatus, auditMeta, config.ticker, data, latestRawPeriod, mappingAudit, policyVersions, qualityGate, rawData]);
-  const traceability = sharedTraceability ?? derivedTraceability;
+    rawData,
+    auditMeta,
+    sharedTraceability,
+  }), [data, config, rawData, auditMeta, sharedTraceability]);
+  const provenanceRows = publication.provenanceRows;
+  const valuationReadiness = publication.valuationReadiness;
+  const policyVersions = publication.policyVersions;
+  const qualityGate = publication.qualityGate;
+  const traceability = publication.traceability;
+  const granularityChecklist = publication.granularityChecklist;
   const traceabilitySummary = useMemo(
     () => buildValuationTraceabilitySurfaceSummary(traceability),
     [traceability],
@@ -582,15 +557,19 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
     if (exportingXlsx) return;
     setExportingXlsx(true);
     try {
-      const wbArray = generateValuationWorkbook(data, [], valuation, config, {
-        companyLabel: companyId,
-        auditRunId: auditMeta?.runId ?? null,
-        valuationStatus: valuationReadiness.status,
-        valuationReasons: valuationReadiness.reasons,
-        valuationAnchorPeriod: valuationReadiness.anchorPeriod,
-        valuationSourcePeriod: valuationReadiness.latestPeriod,
-        policyVersions,
-        traceability,
+      const { generateValuationWorkbookFromPublicationSnapshot } = await import("../engine/excelExport");
+      const wbArray = await generateValuationWorkbookFromPublicationSnapshot({
+        snapshot: {
+          companyId: companyId ?? null,
+          valuationReadiness,
+          policyVersions,
+          traceability,
+          auditMeta,
+        },
+        recastData: data,
+        forecastScenarios: [],
+        valuation,
+        config,
       });
       const blob = new Blob([wbArray], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

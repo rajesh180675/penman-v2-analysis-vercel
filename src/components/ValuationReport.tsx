@@ -24,6 +24,7 @@ import { syncWorkspaceAlert, syncWorkspaceValuation } from "../lib/sharedResearc
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
+import type { AnalysisPublicationSnapshot } from "../lib/publication/analysisPublicationSnapshot";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell, LineChart, Line,
 } from "recharts";
@@ -34,15 +35,18 @@ interface Props {
   analysisStatus?: AnalysisStatusSummary | null;
   auditMeta?: AuditSubmissionMeta | null;
   traceability?: AnalysisTraceabilityEnvelope | null;
+  publication?: AnalysisPublicationSnapshot | null;
 }
 
 type CVMethod = "CV1" | "CV2" | "CV3";
 
-export default function ValuationReport({ data, config, analysisStatus, auditMeta, traceability }: Props) {
-  const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
+export default function ValuationReport({ data, config, analysisStatus, auditMeta, traceability, publication = null }: Props) {
+  const derivedValuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
+  const valuationReadiness = publication?.valuationReadiness ?? derivedValuationReadiness;
+  const resolvedTraceability = publication?.traceability ?? traceability;
   const traceabilitySummary = useMemo(
-    () => buildValuationTraceabilitySurfaceSummary(traceability),
-    [traceability],
+    () => buildValuationTraceabilitySurfaceSummary(resolvedTraceability),
+    [resolvedTraceability],
   );
   const marketSymbol = config.market_data_symbol ?? config.ticker ?? null;
   const { snapshot: liveMarketData, loading: marketDataLoading, error: marketDataError, refresh } = useLiveMarketData({

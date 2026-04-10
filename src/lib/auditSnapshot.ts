@@ -1,11 +1,11 @@
 import { AnalysisStatusSummary } from "../engine/analysisStatus";
+import { buildAnalysisTraceability } from "../engine/analysisTraceability";
 import { EngineConfig, RawPeriodData, RecastPeriod } from "../engine/types";
 import { CapitalineParseDebug } from "../engine/capitalineParser";
 import { MappingAuditReport, QualityGateReport } from "../engine/mappingAudit";
-import { getAnalysisPolicyVersions } from "../engine/policyVersions";
-import { buildAnalysisTraceability } from "../engine/analysisTraceability";
 import { AuditSubmissionMeta } from "./audit";
 import { SourceParserDiagnostics } from "../engine/parserDiagnostics";
+import { buildAnalysisPublicationSnapshot } from "./publication/analysisPublicationSnapshot";
 
 export function buildAnalysisSnapshot(params: {
   rawData: RawPeriodData[] | null;
@@ -20,46 +20,58 @@ export function buildAnalysisSnapshot(params: {
   auditMeta?: AuditSubmissionMeta | null;
 }) {
   const { rawData, recastData, config, debugInfo, parserDiagnostics, qualityGate, mappingAudit, engineError, analysisStatus, auditMeta } = params;
-  const policyVersions = getAnalysisPolicyVersions();
+  const publication = buildAnalysisPublicationSnapshot({
+    data: recastData ?? [],
+    config,
+    rawData,
+    auditMeta,
+    sharedTraceability: null,
+  });
+
   const latestPeriod = rawData && rawData.length > 0 ? rawData[rawData.length - 1].period_end : null;
-  const generatedAt = new Date().toISOString();
+  const traceability = buildAnalysisTraceability({
+    generatedAt: new Date().toISOString(),
+    runId: auditMeta?.runId ?? null,
+    companyId: rawData?.[0]?.company_id ?? null,
+    sourceMode: auditMeta?.sourceMode ?? null,
+    rawData,
+    recastData,
+    config,
+    periodCount: rawData?.length ?? 0,
+    recastPeriodCount: recastData?.length ?? 0,
+    latestPeriod,
+    qualityGate,
+    mappingAudit,
+    policyVersions: publication.policyVersions,
+    analysisStatus,
+    hasDebugInfo: Boolean(debugInfo),
+    debugFiles: debugInfo?.files?.length ?? 0,
+    rawMetricKeyCount: debugInfo?.rawMetricKeys?.length ?? 0,
+    engineError,
+    debugInfo,
+    parserDiagnostics,
+    contentClass: auditMeta?.contentClass ?? null,
+    retentionDays: auditMeta?.retentionDays ?? null,
+    runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
+  });
 
   return {
     companyId: rawData?.[0]?.company_id ?? null,
     periodCount: rawData?.length ?? 0,
-    latestPeriod,
-    policyVersions,
-    traceability: buildAnalysisTraceability({
-      generatedAt,
-      runId: auditMeta?.runId ?? null,
-      companyId: rawData?.[0]?.company_id ?? null,
-      sourceMode: auditMeta?.sourceMode ?? null,
-      rawData,
-      recastData,
-      config,
-      periodCount: rawData?.length ?? 0,
-      recastPeriodCount: recastData?.length ?? 0,
-      latestPeriod,
-      qualityGate,
-      mappingAudit,
-      policyVersions,
-      analysisStatus,
-      hasDebugInfo: Boolean(debugInfo),
-      debugFiles: debugInfo?.files?.length ?? 0,
-      rawMetricKeyCount: debugInfo?.rawMetricKeys?.length ?? 0,
-      engineError,
-      debugInfo,
-      parserDiagnostics,
-      contentClass: auditMeta?.contentClass ?? null,
-      retentionDays: auditMeta?.retentionDays ?? null,
-      runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
-    }),
+    latestPeriod: publication.latestRawPeriod ?? latestPeriod,
+    policyVersions: publication.policyVersions,
+    traceability,
     config,
-    qualityGate,
-    mappingAudit,
+    qualityGate: publication.qualityGate ?? qualityGate,
+    mappingAudit: publication.mappingAudit ?? mappingAudit,
     engineError,
     debugInfo,
     rawData,
     recastData,
+    parserDiagnostics,
+    analysisStatus: publication.analysisStatus ?? analysisStatus ?? null,
+    valuationReadiness: publication.valuationReadiness,
+    provenanceRows: publication.provenanceRows,
+    granularityChecklist: publication.granularityChecklist,
   };
 }

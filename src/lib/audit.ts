@@ -64,7 +64,7 @@ type StoredAuditRun = {
   companyId: string;
   sourceMode: AuditSubmissionMeta["sourceMode"];
   fileName: string | null;
-  runAccessToken: string;
+  runAccessToken: string | null;
   contentClass: string;
   retentionDays: number;
   createdAt: string;
@@ -204,7 +204,7 @@ export function rememberAuditRun(meta: AuditSubmissionMeta) {
     companyId: meta.companyId,
     sourceMode: meta.sourceMode,
     fileName: meta.fileName ?? null,
-    runAccessToken: meta.runAccessToken,
+    runAccessToken: null,
     contentClass: meta.contentClass,
     retentionDays: meta.retentionDays,
     createdAt: new Date().toISOString(),
@@ -248,7 +248,7 @@ export async function persistAuditEvent(input: AuditEventInput) {
   const payload: AuditEventInput = {
     ...input,
     idempotencyKey: input.idempotencyKey ?? createIdempotencyKey(`${input.runId}-${input.eventType}`),
-    runAccessToken: input.runAccessToken ?? storedRun?.runAccessToken ?? null,
+    runAccessToken: input.runAccessToken ?? null,
     contentClass: input.contentClass ?? storedRun?.contentClass ?? AUDIT_CONTENT_CLASS,
     retentionDays: input.retentionDays ?? storedRun?.retentionDays ?? AUDIT_RETENTION_DAYS,
   };

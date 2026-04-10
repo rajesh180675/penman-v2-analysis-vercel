@@ -13,7 +13,6 @@
  */
 
 import JSZip from "jszip";
-import * as XLSX from "xlsx";
 import { RawPeriodData } from "./types";
 
 const MAX_ZIP_BYTES = 25 * 1024 * 1024; // 25 MB archive upload cap
@@ -239,9 +238,10 @@ function stmtFromFilename(name: string): CapitalineStatement {
    Parse Strategy A: SheetJS XLSX
 ══════════════════════════════════════════════════════════════════ */
 
-function gridViaXlsx(buffer: ArrayBuffer): string[][] {
+async function gridViaXlsx(buffer: ArrayBuffer): Promise<string[][]> {
+  const { default: XLSX } = await import("xlsx");
   const uint8 = new Uint8Array(buffer);
-  let wb: XLSX.WorkBook;
+  let wb: any;
   try {
     wb = XLSX.read(uint8, {
       type: "array",
@@ -462,7 +462,7 @@ export async function parseCapitalineZip(
   const fileEntries = Object.values(zip.files).filter(
     (f) =>
       !f.dir &&
-      /\.(xls|xlsx|html?|xml|csv)$/i.test(f.name.split("/").pop() ?? "")
+      /\.(xls|html?|xml|csv)$/i.test(f.name.split("/").pop() ?? "")
   );
 
   if (fileEntries.length > MAX_ZIP_ENTRIES) {
@@ -519,21 +519,7 @@ export async function parseCapitalineZip(
     let grid: string[][] = [];
     let bestScore = 0;
 
-    /* Strategy A: SheetJS */
-    try {
-      const g = gridViaXlsx(buffer);
-      gd.methods.push(`xlsx→${g.length}r`);
-      const s = gridScore(g);
-      if (s > bestScore) {
-        grid = g;
-        bestScore = s;
-        gd.bestMethod = "xlsx";
-      }
-    } catch (e) {
-      gd.errors.push(`xlsx: ${e instanceof Error ? e.message : String(e)}`);
-    }
-
-    /* Strategy B: HTML DOM */
+    /* Strategy A: HTML DOM */
     if (hasHtmlTable) {
       try {
         const g = gridViaHtml(text);
@@ -548,7 +534,7 @@ export async function parseCapitalineZip(
         gd.errors.push(`html-dom: ${e instanceof Error ? e.message : String(e)}`);
       }
 
-      /* Strategy C: Regex */
+      /* Strategy B: Regex */
       try {
         const g = gridViaRegex(text);
         gd.methods.push(`regex→${g.length}r`);
@@ -563,7 +549,7 @@ export async function parseCapitalineZip(
       }
     }
 
-    /* Strategy D: SpreadsheetML — only for real XML workbooks */
+    /* Strategy C: SpreadsheetML — only for real XML workbooks */
     if (isSpreadsheetML) {
       try {
         const g = gridViaSpreadsheetML(text);
@@ -579,9 +565,22 @@ export async function parseCapitalineZip(
       }
     }
 
-    gd.rowCount = grid.length;
-    gd.colCount = grid.length > 0 ? Math.max(...grid.map((r) => r.length)) : 0;
-    gd.firstRows = grid.slice(0, 30);
+    /* Strategy D: SheetJS fallback */
+    const shouldTryXlsx = !hasHtmlTable && !isSpreadsheetML;
+    if (shouldTryXlsx) {
+      try {
+        const g = await gridViaXlsx(buffer);
+        gd.methods.push(`xlsx→${g.length}r`);
+        const s = gridScore(g);
+        if (s > bestScore) {
+          grid = g;
+          bestScore = s;
+          gd.bestMethod = "xlsx";
+        }
+      } catch (e) {
+        gd.errors.push(`xlsx: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
 
     /* Header detection */
     const header = detectHeader(grid);
@@ -600,12 +599,10 @@ export async function parseCapitalineZip(
         if (!allPeriods.has(pe)) allPeriods.set(pe, new Map());
         const target = allPeriods.get(pe)!;
         for (const [k, v] of mmap) {
-          // Add composite key regardless of collisions — engine will pick right one
           target.set(k, v);
         }
       }
 
-      // Sample rows for debug display
       for (
         let r = header.rowIndex + 1;
         r < Math.min(grid.length, header.rowIndex + 15);
@@ -640,6 +637,10 @@ export async function parseCapitalineZip(
     }
 
     rawGrids.push(gd);
+  }
+
+  if (!allPeriods.size) {
+    throw new Error("No usable Capitaline tables found in ZIP. Ensure filenames contain balance/profit/cash and sheets include fiscal year headers.");
   }
 
   /* 3. Build RawPeriodData[] */

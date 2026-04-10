@@ -1,12 +1,115 @@
 /**
  * Excel Workbook Generator — Institutional Grade (G-02)
  * 7-sheet workbook: Cover + Raw Data + Reformulated Statements +
- * N&P Ratio Decomposition + Forecast Model + Valuation Summary + Quality Scores
- * Uses SheetJS (xlsx) with cell styles.
+ * N&P Ratio Decomposition + Forecast Model + Valuation Summary + Quality Scores.
+ *
+ * Runtime export now uses an ExcelJS-backed writer behind an internal workbook adapter.
+ * This module is part of the publication/export architecture and should evolve toward
+ * a canonical publication snapshot input instead of independently assembling report context.
  * Spec: Module G, Feature G-02
  */
-import { utils, write } from "xlsx";
-import type { WorkBook, WorkSheet, CellObject } from "xlsx";
+import ExcelJS from "exceljs";
+
+type CellObject = {
+  v: string | number;
+  t: "n" | "s";
+  s?: CellStyle;
+};
+
+type WorkSheet = Record<string, CellObject | Array<{ wch: number }> | string>;
+
+type WorkBook = {
+  Sheets: Record<string, WorkSheet>;
+  SheetNames: string[];
+};
+
+function encodeColumn(col: number) {
+  let n = col + 1;
+  let s = "";
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+function encodeCellAddr(row: number, col: number) {
+  return `${encodeColumn(col)}${row + 1}`;
+}
+
+function decodeCellAddr(addr: string) {
+  const match = addr.match(/^([A-Z]+)(\d+)$/);
+  if (!match) return { r: 0, c: 0 };
+  const [, letters, digits] = match;
+  let c = 0;
+  for (const ch of letters) c = c * 26 + (ch.charCodeAt(0) - 64);
+  return { r: Number(digits) - 1, c: c - 1 };
+}
+
+function encodeRangeAddr(args: { s: { r: number; c: number }; e: { r: number; c: number } }) {
+  return `${encodeCellAddr(args.s.r, args.s.c)}:${encodeCellAddr(args.e.r, args.e.c)}`;
+}
+
+function bookNew(): WorkBook {
+  return { Sheets: {}, SheetNames: [] };
+}
+
+function bookAppendSheet(wb: WorkBook, ws: WorkSheet, name: string) {
+  wb.Sheets[name] = ws;
+  wb.SheetNames.push(name);
+}
+
+function jsonToSheet(rows: Array<Record<string, unknown> | object>): WorkSheet {
+  const ws: WorkSheet = {};
+  if (!rows.length) return ws;
+  const headers = Object.keys(rows[0]);
+  headers.forEach((header, col) => {
+    ws[encodeCellAddr(0, col)] = { v: header, t: "s" };
+  });
+  rows.forEach((row, rowIndex) => {
+    const record = row as Record<string, unknown>;
+    headers.forEach((header, col) => {
+      const value = record[header];
+      ws[encodeCellAddr(rowIndex + 1, col)] = {
+        v: typeof value === "number" ? value : String(value ?? ""),
+        t: typeof value === "number" ? "n" : "s",
+      };
+    });
+  });
+  return ws;
+}
+
+async function writeWorkbookArray(wb: WorkBook) {
+  const workbook = new ExcelJS.Workbook();
+  for (const name of wb.SheetNames) {
+    const source = wb.Sheets[name];
+    const sheet = workbook.addWorksheet(name);
+    const entries = Object.entries(source).filter(([key]) => !key.startsWith("!"));
+    for (const [addr, cell] of entries) {
+      const excelCell = sheet.getCell(addr);
+      excelCell.value = (cell as CellObject).v as string | number;
+    }
+    const cols = source["!cols"] as Array<{ wch: number }> | undefined;
+    if (cols) {
+      cols.forEach((col, index) => {
+        const width = Math.max(8, Math.round(col.wch));
+        sheet.getColumn(index + 1).width = width;
+      });
+    }
+  }
+  return await workbook.xlsx.writeBuffer();
+}
+
+const utils = {
+  encode_cell: ({ r, c }: { r: number; c: number }) => encodeCellAddr(r, c),
+  decode_cell: (addr: string) => decodeCellAddr(addr),
+  encode_range: (args: { s: { r: number; c: number }; e: { r: number; c: number } }) => encodeRangeAddr(args),
+  book_new: bookNew,
+  book_append_sheet: bookAppendSheet,
+  json_to_sheet: jsonToSheet,
+};
+
 import { EngineConfig, ForecastScenario, RecastPeriod, ValuationResult, NP_BENCHMARKS, ke_from_config } from "./types";
 import { AnalysisTraceabilityEnvelope } from "./analysisTraceability";
 import { buildMappingDiscrepancyRows, buildProvenanceAuditRows } from "./provenanceAudit";
@@ -23,6 +126,29 @@ export interface WorkbookExportMetadata {
   traceability?: AnalysisTraceabilityEnvelope;
 }
 
+export function workbookMetadataFromPublicationSnapshot(snapshot: {
+  companyId: string | null;
+  valuationReadiness: {
+    status: "production-ready" | "warning" | "guarded";
+    reasons: string[];
+    anchorPeriod: string | null;
+    latestPeriod: string | null;
+  };
+  policyVersions: AnalysisPolicyVersions;
+  traceability: AnalysisTraceabilityEnvelope;
+  auditMeta?: { runId?: string | null } | null;
+}): WorkbookExportMetadata {
+  return {
+    companyLabel: snapshot.companyId ?? undefined,
+    auditRunId: snapshot.auditMeta?.runId ?? undefined,
+    valuationStatus: snapshot.valuationReadiness.status,
+    valuationReasons: snapshot.valuationReadiness.reasons,
+    valuationAnchorPeriod: snapshot.valuationReadiness.anchorPeriod,
+    valuationSourcePeriod: snapshot.valuationReadiness.latestPeriod,
+    policyVersions: snapshot.policyVersions,
+    traceability: snapshot.traceability,
+  };
+}
 // ── Style helpers ──────────────────────────────────────────────────────────────
 type Fill = { fgColor: { rgb: string } };
 type Font = { bold?: boolean; color?: { rgb: string }; sz?: number; name?: string };
@@ -669,13 +795,13 @@ function buildQualitySheet(recastData: RecastPeriod[]): WorkSheet {
 }
 
 // ── Main export function ───────────────────────────────────────────────────────
-export function generateValuationWorkbook(
+export async function generateValuationWorkbook(
   recastData: RecastPeriod[],
   forecastScenarios: ForecastScenario[],
   valuation: ValuationResult,
   config: EngineConfig,
   metadata?: WorkbookExportMetadata,
-): ArrayBuffer {
+): Promise<ArrayBuffer> {
   const wb: WorkBook = utils.book_new();
 
   utils.book_append_sheet(wb, buildCoverSheet(config, recastData.length, metadata), "Cover");
@@ -699,5 +825,32 @@ export function generateValuationWorkbook(
     utils.book_append_sheet(wb, utils.json_to_sheet(discrepancyRows), "Mapping Discrepancies");
   }
 
-  return write(wb, { type: "array", bookType: "xlsx", cellStyles: true }) as ArrayBuffer;
+  return await writeWorkbookArray(wb) as ArrayBuffer;
+}
+
+export async function generateValuationWorkbookFromPublicationSnapshot(params: {
+  snapshot: {
+    companyId: string | null;
+    valuationReadiness: {
+      status: "production-ready" | "warning" | "guarded";
+      reasons: string[];
+      anchorPeriod: string | null;
+      latestPeriod: string | null;
+    };
+    policyVersions: AnalysisPolicyVersions;
+    traceability: AnalysisTraceabilityEnvelope;
+    auditMeta?: { runId?: string | null } | null;
+  };
+  recastData: RecastPeriod[];
+  forecastScenarios: ForecastScenario[];
+  valuation: ValuationResult;
+  config: EngineConfig;
+}): Promise<ArrayBuffer> {
+  return generateValuationWorkbook(
+    params.recastData,
+    params.forecastScenarios,
+    params.valuation,
+    params.config,
+    workbookMetadataFromPublicationSnapshot(params.snapshot),
+  );
 }

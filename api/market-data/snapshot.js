@@ -1,3 +1,5 @@
+import { enforceAuditRateLimit, requireAuditReadAuth } from "../audit/_lib.js";
+
 function toNumber(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
@@ -321,6 +323,11 @@ export default async function handler(request, response) {
     || "manual";
   const warnings = [];
   const fetchedAt = new Date().toISOString();
+
+  if (provider === "upstox-readonly" || provider === "alphavantage") {
+    if (!requireAuditReadAuth(request, response)) return;
+    if (!enforceAuditRateLimit(request, response, "market-data", 60)) return;
+  }
 
   let snapshot;
   if (provider === "disabled") {

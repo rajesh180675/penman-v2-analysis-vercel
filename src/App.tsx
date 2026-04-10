@@ -197,7 +197,10 @@ export function App() {
 
   useEffect(() => {
     if (!comparisonRegistryHydrated || Object.keys(registry.companies).length === 0) return;
-    void syncSharedComparisonRegistryWithStatus(registry).then((result) => setSharedRegistryStatus(result as SharedApiResult<CompanyRegistry>));
+    const timer = window.setTimeout(() => {
+      void syncSharedComparisonRegistryWithStatus(registry).then((result) => setSharedRegistryStatus(result as SharedApiResult<CompanyRegistry>));
+    }, 600);
+    return () => window.clearTimeout(timer);
   }, [comparisonRegistryHydrated, registry]);
 
   useEffect(() => {

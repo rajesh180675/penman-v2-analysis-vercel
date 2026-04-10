@@ -6,9 +6,20 @@ This project is configured as a Vite static app and is ready for Vercel.
 
 - `vercel.json` with explicit:
   - `framework: "vite"`
-  - `installCommand: "npm install"`
+  - `installCommand: "npm ci"`
   - `buildCommand: "npm run build"`
   - `outputDirectory: "dist"`
+
+Important: production behavior is intentionally fail-closed for protected server routes. If auth/storage secrets are missing, those routes return controlled 401/503 responses instead of silently allowing access.
+
+Protected-by-default server concerns now include:
+- audit event writes
+- audit upload token minting
+- blackboard writes
+- shared research writes
+- shared research / blackboard reads when admin auth exists
+- vendor-backed market-data proxy modes
+- cron maintenance routes when `CRON_SECRET` is configured
 
 ## Deploy steps
 
@@ -20,7 +31,7 @@ This project is configured as a Vite static app and is ready for Vercel.
 
 ## Recommended Vercel project settings
 
-- Node.js version: `22.x` (or `20.x` minimum)
+- Node.js version: `22.12+` preferred, or `20.19+` minimum (must satisfy `package.json` engines)
 - Build cache: enabled
 - Optional single-file build: set env var `VITE_SINGLE_FILE=1` only if you explicitly need inlined JS/CSS output
 - Live market data is optional. The app now supports:
