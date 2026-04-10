@@ -44,10 +44,11 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
   const derivedValuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
   const valuationReadiness = publication?.valuationReadiness ?? derivedValuationReadiness;
   const resolvedTraceability = publication?.traceability ?? traceability;
-  const traceabilitySummary = useMemo(
+  const derivedTraceabilitySummary = useMemo(
     () => buildValuationTraceabilitySurfaceSummary(resolvedTraceability),
     [resolvedTraceability],
   );
+  const traceabilitySummary = publication?.traceabilitySummary ?? derivedTraceabilitySummary;
   const marketSymbol = config.market_data_symbol ?? config.ticker ?? null;
   const { snapshot: liveMarketData, loading: marketDataLoading, error: marketDataError, refresh } = useLiveMarketData({
     provider: config.market_data_provider ?? "manual",

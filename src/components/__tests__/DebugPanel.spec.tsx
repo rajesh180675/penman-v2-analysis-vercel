@@ -55,6 +55,7 @@ function mkQualityGate(): QualityGateReport {
     scopeAssessment: {
       policyVersion: versions.scopePolicyVersion,
       classification: "unsupported-financial-company",
+      analysisFamily: "financial-institution",
       blocked: true,
       label: "Unsupported scope",
       reasons: ["Banking issuer is outside current supported scope."],

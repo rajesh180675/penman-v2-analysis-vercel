@@ -11,6 +11,7 @@ import {
 interface Props {
   data: RecastPeriod[];
   traceability?: AnalysisTraceabilityEnvelope | null;
+  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
 }
 
 const pct  = (v:number|null|undefined,d=1) => v!=null?(v*100).toFixed(d)+"%" : "—";
@@ -20,9 +21,9 @@ const days = (v:number|null|undefined) => v!=null?v.toFixed(0)+"d" : "—";
 
 const NP_COLORS = {median:"#6366f1"};
 
-export default function RatioReport({data, traceability = null}:Props) {
+export default function RatioReport({data, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null}:Props) {
   const [view, setView] = useState<"core"|"wc"|"trend">("core");
-  const traceabilitySummary = buildValuationTraceabilitySurfaceSummary(traceability);
+  const traceabilitySummary = precomputedTraceabilitySummary ?? buildValuationTraceabilitySurfaceSummary(traceability);
   if (!data||data.length<=1) return (
     <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
       <p className="font-semibold text-amber-800 text-lg">Need ≥ 2 periods</p>

@@ -406,5 +406,42 @@ Trigger met: all major agent reports are persisted in the blackboard.
 
 ---
 
-*Report last updated: 2026-04-08*
-*Next update: After CRIT fixes or next agent returns*
+## Architecture Round — 2026-04-10 Checkpoint
+
+### Completed This Checkpoint
+- [x] Removed a hook-order regression introduced during the publication rollout by avoiding conditional `useMemo` execution in report surfaces
+- [x] Updated `buildAnalysisPublicationSnapshot(...)` to accept precomputed analysis artifacts from App/audit paths instead of recomputing the same quality-gate, mapping-audit, policy-version, analysis-status, and family state
+- [x] Wired App-level publication construction to pass precomputed trust/family artifacts into the publication builder
+- [x] Wired audit snapshot construction to reuse precomputed trust/family artifacts instead of rebuilding them inside the publication layer
+- [x] TypeScript passed after the architecture cleanup
+- [x] Focused snapshot/status tests passed after the architecture cleanup
+
+### Files Modified in This Checkpoint
+| File | Change |
+|------|--------|
+| src/lib/publication/analysisPublicationSnapshot.ts | Publication builder now accepts precomputed analysis artifacts and family context |
+| src/App.tsx | App publication memo now passes precomputed quality gate, mapping audit, policy versions, analysis status, and family |
+| src/lib/auditSnapshot.ts | Audit snapshot now reuses precomputed quality gate, mapping audit, analysis status, and family when building publication state |
+| src/components/ForecastReport.tsx | Fixed hook-order regression from conditional precomputed-summary fallback |
+| src/components/RecastStatements.tsx | Fixed hook-order regression from conditional precomputed-summary fallback |
+| src/components/RegressionReport.tsx | Fixed hook-order regression from conditional precomputed-summary fallback |
+| src/components/V3AnalyticsPanel.tsx | Fixed hook-order regression from conditional precomputed-summary fallback |
+| src/components/ValuationReport.tsx | Fixed hook-order regression from conditional precomputed-summary fallback |
+
+### Validation State
+- [x] TypeScript passing
+- [x] Focused audit snapshot / analysis status tests passing
+- [x] Focused comparison/debug-adjacent architecture tests passing
+- [ ] Publication snapshot rollout still in progress
+- [ ] Analysis family boundary rollout still in progress
+
+### Additional Architecture Progress
+- [x] Centralized per-company comparison trust summaries inside `buildComparisonPublicationSnapshot(...)`
+- [x] Removed remaining local comparison trust-summary assembly in `ComparisonReport`
+- [x] Kept App-level comparison publication as the canonical source for comparison trust surfaces
+- [x] Audited the remaining `AcademicReport` fallback path and kept it only as an isolated/test fallback while App remains the canonical publication provider
+- [x] Exposed `family` directly on the audit snapshot contract so downstream consumers can rely on the publication boundary rather than re-inferring family later
+- [x] Surfaced snapshot `family` in `RunInspector` so downstream audit consumers can see the explicit industrial vs financial-institution boundary
+
+*Report last updated: 2026-04-10*
+*Next update: After next architecture checkpoint*

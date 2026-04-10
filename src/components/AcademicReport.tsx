@@ -9,7 +9,6 @@ import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimE
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildAnalysisPublicationSnapshot } from "../lib/publication/analysisPublicationSnapshot";
 import { deriveCompanyLabel } from "../engine/valuationPolicy";
-import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import { computeV3Analytics, V3AnalyticsBundle, computeAnchorTable } from "../engine/v3Analytics";
 import { AuditSubmissionMeta, persistAuditBlob, persistAuditEvent } from "../lib/audit";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
@@ -20,6 +19,7 @@ interface Props {
   rawData?: RawPeriodData[] | null;
   auditMeta?: AuditSubmissionMeta | null;
   traceability?: AnalysisTraceabilityEnvelope | null;
+  publication?: ReturnType<typeof buildAnalysisPublicationSnapshot> | null;
 }
 
 const pct = (v: number | null | undefined, d = 1) => (v == null ? "—" : `${(v * 100).toFixed(d)}%`);
@@ -169,7 +169,7 @@ function madSigma(vals: number[]): number {
   return (mad ?? 0) * 1.4826;
 }
 
-export default function AcademicReport({ data, config, rawData, auditMeta, traceability: sharedTraceability = null }: Props) {
+export default function AcademicReport({ data, config, rawData, auditMeta, traceability: sharedTraceability = null, publication: precomputedPublication = null }: Props) {
   const eqROCE = katex.renderToString(String.raw`\mathrm{ROCE}_t = \frac{\mathrm{CNI}_t}{\overline{\mathrm{CSE}}}`,
     { throwOnError: false, displayMode: true });
   const eqRNOA = katex.renderToString(String.raw`\mathrm{RNOA}_t = \frac{\mathrm{OI}_t}{\overline{\mathrm{NOA}}}`,
@@ -215,23 +215,21 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
     return rows;
   }, [data]);
 
-  const publication = useMemo(() => buildAnalysisPublicationSnapshot({
+  const fallbackPublication = useMemo(() => buildAnalysisPublicationSnapshot({
     data,
     config,
     rawData,
     auditMeta,
     sharedTraceability,
   }), [data, config, rawData, auditMeta, sharedTraceability]);
+  const publication = precomputedPublication ?? fallbackPublication;
   const provenanceRows = publication.provenanceRows;
   const valuationReadiness = publication.valuationReadiness;
   const policyVersions = publication.policyVersions;
   const qualityGate = publication.qualityGate;
   const traceability = publication.traceability;
   const granularityChecklist = publication.granularityChecklist;
-  const traceabilitySummary = useMemo(
-    () => buildValuationTraceabilitySurfaceSummary(traceability),
-    [traceability],
-  );
+  const traceabilitySummary = publication.traceabilitySummary;
 
   const escapeCsvCell = (v: string | number) => {
     const s = String(v ?? "");

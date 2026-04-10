@@ -26,6 +26,10 @@ export function buildAnalysisSnapshot(params: {
     rawData,
     auditMeta,
     sharedTraceability: null,
+    qualityGate,
+    mappingAudit,
+    analysisStatus,
+    family: qualityGate?.scopeAssessment.analysisFamily ?? null,
   });
 
   const latestPeriod = rawData && rawData.length > 0 ? rawData[rawData.length - 1].period_end : null;
@@ -57,6 +61,7 @@ export function buildAnalysisSnapshot(params: {
 
   return {
     companyId: rawData?.[0]?.company_id ?? null,
+    family: publication.family,
     periodCount: rawData?.length ?? 0,
     latestPeriod: publication.latestRawPeriod ?? latestPeriod,
     policyVersions: publication.policyVersions,

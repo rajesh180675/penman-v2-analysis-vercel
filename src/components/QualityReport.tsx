@@ -9,6 +9,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 interface Props {
   data: RecastPeriod[];
   traceability?: AnalysisTraceabilityEnvelope | null;
+  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
 }
 
 const fix = (v:number,d=2) => v.toFixed(d);
@@ -31,9 +32,9 @@ function ZoneTag({zone}:{zone:"Safe"|"Grey"|"Distress"}) {
   return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${c}`}>{zone}</span>;
 }
 
-export default function QualityReport({data, traceability = null}:Props) {
+export default function QualityReport({data, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null}:Props) {
   const rd = data.filter(d=>d.quality);
-  const traceabilitySummary = buildValuationTraceabilitySurfaceSummary(traceability);
+  const traceabilitySummary = precomputedTraceabilitySummary ?? buildValuationTraceabilitySurfaceSummary(traceability);
   if (rd.length===0) return (
     <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
       <p className="font-semibold text-amber-800">Need ≥ 2 periods for quality metrics</p>

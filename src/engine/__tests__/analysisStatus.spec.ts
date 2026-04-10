@@ -160,6 +160,7 @@ describe("analysis status confidence gating", () => {
         scopeAssessment: {
           policyVersion: versions.scopePolicyVersion,
           classification: "supported-industrial",
+          analysisFamily: "industrial",
           blocked: false,
           label: "Supported industrial/company scope",
           reasons: [],
@@ -214,6 +215,7 @@ describe("analysis status confidence gating", () => {
         scopeAssessment: {
           policyVersion: versions.scopePolicyVersion,
           classification: "unsupported-financial-company",
+          analysisFamily: "financial-institution",
           blocked: true,
           label: "Unsupported scope",
           reasons: ["Banking issuer is outside current supported scope."],
@@ -256,6 +258,7 @@ describe("analysis status confidence gating", () => {
         scopeAssessment: {
           policyVersion: versions.scopePolicyVersion,
           classification: "supported-industrial",
+          analysisFamily: "industrial",
           blocked: false,
           label: "Supported industrial/company scope",
           reasons: [],
@@ -310,6 +313,7 @@ describe("analysis status confidence gating", () => {
         scopeAssessment: {
           policyVersion: versions.scopePolicyVersion,
           classification: "supported-industrial",
+          analysisFamily: "industrial",
           blocked: false,
           label: "Supported industrial/company scope",
           reasons: [],
@@ -352,6 +356,7 @@ describe("analysis status confidence gating", () => {
         outOfSpecLabels: [],
         clusterSuggestions: { clusters: [], unclustered: [], stats: { totalUnknown: 0, clusteredCount: 0, aliasRecommendation: 0, reviewCount: 0 } },
         correlationSuggestions: [],
+        promotionCandidates: [],
         backlogSummary: {
           policyVersion: versions.mappingPolicyVersion,
           totalsByAction: { "add-to-spec": 2, "group-to-existing": 46, "ignore-non-core": 900, review: 180 },

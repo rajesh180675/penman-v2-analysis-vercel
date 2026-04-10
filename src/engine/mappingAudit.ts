@@ -11,6 +11,7 @@ import {
 import { CAPITALINE_MAPPING_SPEC_VERSION, MAPPING_POLICY_VERSION } from "./policyVersions";
 import { assessAnalysisScope, ScopeAssessment } from "./scopePolicy";
 import { clusterUnknownLabels, findCorrelationMatches, UnmappedLabel } from "./mappingClusterEngine";
+import { buildMappingPromotionCandidates, MappingPromotionCandidate } from "./mappingPromotion";
 import mappingYamlRaw from "../../CapitalineIndASDetailedMappingSpec.yaml?raw";
 
 type Statement = "BalanceSheet" | "ProfitLoss" | "CashFlow" | "Unknown";
@@ -29,6 +30,7 @@ export interface MappingAuditReport {
   backlogSummary: MappingBacklogSummary;
   clusterSuggestions: ReturnType<typeof clusterUnknownLabels>;
   correlationSuggestions: ReturnType<typeof findCorrelationMatches>;
+  promotionCandidates: MappingPromotionCandidate[];
 }
 export interface QualityGateReport {
   tier: "Tier 1" | "Tier 2" | "Tier 3";
@@ -522,9 +524,12 @@ export function auditMappingCoverage(periods: RawPeriodData[]): MappingAuditRepo
     }));
   const clusterSuggestions = clusterUnknownLabels(clusterInputs);
   const correlationSuggestions = [] as ReturnType<typeof findCorrelationMatches>;
+  const promotionCandidates = buildMappingPromotionCandidates({
+    outOfSpecLabels,
+    clusterSuggestions,
+  });
 
   const unresolvedCriticalByStatement = unresolvedCriticalKeysByStatement(coverageSummary);
-
   return {
     mappingSpecVersion: CAPITALINE_MAPPING_SPEC_VERSION,
     policyVersion: MAPPING_POLICY_VERSION,
@@ -542,6 +547,7 @@ export function auditMappingCoverage(periods: RawPeriodData[]): MappingAuditRepo
     backlogSummary,
     clusterSuggestions,
     correlationSuggestions,
+    promotionCandidates,
   };
 }
 

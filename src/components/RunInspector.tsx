@@ -47,6 +47,7 @@ type InspectorPayload = {
     actions?: Array<{ type: string; created?: boolean; issueUrl?: string; reason?: string }>;
   } | null;
   latestAnalysisSnapshot?: {
+    family?: string | null;
     latestPeriod?: string | null;
     traceability?: {
       schemaVersion?: string;
@@ -604,6 +605,9 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
                     Source mode: <strong>{traceability.runContext?.sourceMode ?? "—"}</strong>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Analysis family: <strong>{payload?.latestAnalysisSnapshot?.family ?? "—"}</strong>
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
                     Confidence: <strong>{traceability.confidence?.status ?? "—"}</strong>

@@ -41,7 +41,12 @@ import {
 } from "../engine/forecastPresentation";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 
-interface Props { data: RecastPeriod[]; config: EngineConfig; traceability?: AnalysisTraceabilityEnvelope | null }
+interface Props {
+  data: RecastPeriod[];
+  config: EngineConfig;
+  traceability?: AnalysisTraceabilityEnvelope | null;
+  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
+}
 interface ExtendedProps extends Props { rawData?: RawPeriodData[] | null }
 
 const pct = (v:number,d=1) => (v*100).toFixed(d)+"%";
@@ -96,13 +101,14 @@ function updateWeightsForKey(
   }
 }
 
-export default function ForecastReport({data,config, rawData = null, traceability = null}:ExtendedProps) {
+export default function ForecastReport({data,config, rawData = null, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null}:ExtendedProps) {
   const keBase = ke_from_config(config);
   const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
-  const traceabilitySummary = useMemo(
+  const derivedTraceabilitySummary = useMemo(
     () => buildValuationTraceabilitySurfaceSummary(traceability),
     [traceability],
   );
+  const traceabilitySummary = precomputedTraceabilitySummary ?? derivedTraceabilitySummary;
   const shareBasis = useMemo(() => resolveShareBasis(data, config), [data, config]);
   const valuationConfig = useMemo(() => shareBasis.valuationConfig, [shareBasis]);
   const sharesOut = shareBasis.shares ?? null;

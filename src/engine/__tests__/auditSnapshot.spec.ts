@@ -151,6 +151,7 @@ describe("traceability snapshot", () => {
       outOfSpecLabels: [],
       clusterSuggestions: { clusters: [], unclustered: [], stats: { totalUnknown: 0, clusteredCount: 0, aliasRecommendation: 0, reviewCount: 0 } },
       correlationSuggestions: [],
+      promotionCandidates: [],
       backlogSummary: {
         policyVersion: traceabilityVersions.mappingPolicyVersion,
         totalsByAction: { "add-to-spec": 0, "group-to-existing": 1, "ignore-non-core": 0, review: 0 },
@@ -193,6 +194,7 @@ describe("traceability snapshot", () => {
       scopeAssessment: {
         policyVersion: traceabilityVersions.scopePolicyVersion,
         classification: "supported-industrial" as const,
+        analysisFamily: "industrial" as const,
         blocked: false,
         label: "Supported industrial/company scope",
         reasons: [],
@@ -289,6 +291,7 @@ describe("traceability snapshot", () => {
       auditMeta,
     });
 
+    expect(snapshot.family).toBe("industrial");
     expect(snapshot.traceability.generatedAt).toBeTruthy();
     expect(snapshot.traceability.runContext.runId).toBe("run-asian-paints");
     expect(snapshot.traceability.runContext.sourceMode).toBe("capitaline");
@@ -330,6 +333,7 @@ describe("traceability snapshot", () => {
       auditMeta: null,
     });
 
+    expect(snapshot.family).toBe("industrial");
     expect(snapshot.traceability.reconciliation.status).toBe("failed");
     expect(snapshot.traceability.confidence.blockingCount).toBe(1);
     expect(snapshot.traceability.rigor.currentLevel).toBe("syntactically-valid");
@@ -376,6 +380,7 @@ describe("traceability snapshot", () => {
         scopeAssessment: {
           policyVersion: traceabilityVersions.scopePolicyVersion,
           classification: "supported-industrial",
+          analysisFamily: "industrial",
           blocked: false,
           label: "Supported industrial/company scope",
           reasons: [],
@@ -406,6 +411,7 @@ describe("traceability snapshot", () => {
       auditMeta: null,
     });
 
+    expect(snapshot.family).toBe("industrial");
     expect(snapshot.traceability.confidence.status).toBe("blocked");
     expect(snapshot.traceability.confidence.blockingCount).toBe(1);
     expect(snapshot.traceability.mappingCoverage.unresolvedBySeverity.critical).toBe(0);

@@ -2,6 +2,7 @@ import { EngineConfig, RawPeriodData } from "./types";
 import { SCOPE_POLICY_VERSION } from "./policyVersions";
 
 type ScopeClassification = "supported-industrial" | "unsupported-financial-company";
+export type AnalysisFamily = "industrial" | "financial-institution";
 type ScopeSignalKind = "banking" | "insurance" | "nbfc" | "manual-override";
 
 export interface ScopeSignal {
@@ -13,6 +14,7 @@ export interface ScopeSignal {
 export interface ScopeAssessment {
   policyVersion: string;
   classification: ScopeClassification;
+  analysisFamily: AnalysisFamily;
   blocked: boolean;
   label: string;
   reasons: string[];
@@ -83,6 +85,10 @@ function countObservedKeys(periods: RawPeriodData[]) {
   return counts;
 }
 
+export function analysisFamilyFromScope(scope: ScopeAssessment): AnalysisFamily {
+  return scope.classification === "unsupported-financial-company" ? "financial-institution" : "industrial";
+}
+
 export function assessAnalysisScope(
   periods: RawPeriodData[] | null | undefined,
   config?: Pick<EngineConfig, "financial_institution_mode"> | null,
@@ -111,6 +117,7 @@ export function assessAnalysisScope(
     return {
       policyVersion: SCOPE_POLICY_VERSION,
       classification: "supported-industrial",
+      analysisFamily: "industrial",
       blocked: false,
       label: "Supported industrial/company scope",
       reasons: [],
@@ -143,6 +150,7 @@ export function assessAnalysisScope(
   return {
     policyVersion: SCOPE_POLICY_VERSION,
     classification: "unsupported-financial-company",
+    analysisFamily: "financial-institution",
     blocked: true,
     label: "Unsupported banking / NBFC / insurance scope",
     reasons,

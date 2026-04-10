@@ -12,22 +12,24 @@ interface Props {
   config: EngineConfig;
   registry: CompanyRegistry;
   traceability?: AnalysisTraceabilityEnvelope | null;
+  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
 }
 
 const pct = (v: number | null | undefined) => (v == null ? "—" : `${(v * 100).toFixed(2)}%`);
 const num = (v: number | null | undefined) => (v == null ? "—" : v.toLocaleString("en-IN", { maximumFractionDigits: 0 }));
 
-export default function RegressionReport({ rawData, recastData, config, registry, traceability = null }: Props) {
+export default function RegressionReport({ rawData, recastData, config, registry, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null }: Props) {
   const baseline = useMemo(() => {
     if (!rawData || !recastData) return null;
     return runPhase0BaselineReport(rawData, recastData, config);
   }, [rawData, recastData, config]);
   const report = baseline?.regression ?? null;
   const snapshot = baseline?.snapshot ?? null;
-  const traceabilitySummary = useMemo(
+  const derivedTraceabilitySummary = useMemo(
     () => buildValuationTraceabilitySurfaceSummary(traceability),
     [traceability],
   );
+  const traceabilitySummary = precomputedTraceabilitySummary ?? derivedTraceabilitySummary;
 
   if (!report) {
     return (

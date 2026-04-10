@@ -26,6 +26,8 @@ import { fetchSharedComparisonRegistryWithStatus, formatSharedApiStatus, SharedA
 import { persistCompanyRegistry, readPersistedCompanyRegistry } from "./lib/companyRegistryStore";
 import { mergeCompanyRegistries } from "./lib/companyRegistrySnapshot";
 import { buildAnalysisTraceability } from "./engine/analysisTraceability";
+import { buildAnalysisPublicationSnapshot } from "./lib/publication/analysisPublicationSnapshot";
+import { buildComparisonPublicationSnapshot } from "./lib/publication/comparisonPublicationSnapshot";
 import { getAnalysisPolicyVersions } from "./engine/policyVersions";
 import { SourceParserDiagnostics } from "./engine/parserDiagnostics";
 
@@ -149,6 +151,27 @@ export function App() {
       runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
     }),
     [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, policyVersions, qualityGateWithRecast, rawData, recastData],
+  );
+  const publication = useMemo(
+    () => (recastData?.length
+      ? buildAnalysisPublicationSnapshot({
+          data: recastData,
+          config,
+          rawData,
+          auditMeta,
+          sharedTraceability: traceability,
+          qualityGate: qualityGateWithRecast,
+          mappingAudit,
+          policyVersions,
+          analysisStatus,
+          family: qualityGateWithRecast?.scopeAssessment.analysisFamily ?? null,
+        })
+      : null),
+    [analysisStatus, auditMeta, config, mappingAudit, policyVersions, qualityGateWithRecast, rawData, recastData, traceability],
+  );
+  const comparisonPublication = useMemo(
+    () => buildComparisonPublicationSnapshot(registry),
+    [registry],
   );
 
   useEffect(() => {
@@ -527,11 +550,11 @@ export function App() {
                 onSelectCompanyId={setWorkspaceCompanyId}
               />
             )}
-            {activeTab==="statements" && hasRecast && <RecastStatements data={recastData!} traceability={traceability} />}
-            {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!} traceability={traceability} />}
-            {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig} traceability={traceability} />}
+            {activeTab==="statements" && hasRecast && <RecastStatements data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
+            {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
+            {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
             {activeTab==="valuation"  && hasRecast && !valuationBlocked && (
-              <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} />
+              <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} publication={publication} />
             )}
             {activeTab === "valuation" && !hasRecast && scopeBlocked && rawData && rawData.length > 0 && (
               <FinancialInstitutionReport rawData={rawData} config={config} />
@@ -553,8 +576,8 @@ export function App() {
                 ) : null}
               </div>
             )}
-            {activeTab==="quality"    && hasRecast && <QualityReport data={recastData!} traceability={traceability} />}
-            {activeTab==="comparison" && <ComparisonReport registry={registry} config={config} />}
+            {activeTab==="quality"    && hasRecast && <QualityReport data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
+            {activeTab==="comparison" && <ComparisonReport registry={registry} config={config} publication={comparisonPublication} />}
             {activeTab==="report"     && hasRecast && (
               <AcademicReport
                 data={recastData!}
@@ -562,6 +585,7 @@ export function App() {
                 rawData={rawData}
                 auditMeta={auditMeta}
                 traceability={traceability}
+                publication={publication}
               />
             )}
             {activeTab==="regression" && hasRecast && (
@@ -571,9 +595,10 @@ export function App() {
                 config={config}
                 registry={registry}
                 traceability={traceability}
+                traceabilitySummary={publication?.traceabilitySummary ?? null}
               />
             )}
-            {activeTab==="v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config} traceability={traceability} />}
+            {activeTab==="v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
             {activeTab==="debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError}/>}
             {(["statements","ratios","forecast","valuation","quality","report","regression","v3analytics"] as TabId[]).includes(activeTab) && !hasRecast && (
               <div className="flex flex-col items-center justify-center py-24 text-center">

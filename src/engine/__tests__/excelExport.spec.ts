@@ -300,6 +300,7 @@ describe("generateValuationWorkbook", () => {
         scopeAssessment: {
           policyVersion: versions.scopePolicyVersion,
           classification: "supported-industrial",
+          analysisFamily: "industrial",
           blocked: false,
           label: "Supported industrial/company scope",
           reasons: [],

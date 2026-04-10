@@ -3,10 +3,13 @@ import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimE
 import { useMemo, useState } from "react";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
+import { buildComparisonPublicationSnapshot, type ComparisonPublicationSnapshot } from "../lib/publication/comparisonPublicationSnapshot";
 
 interface Props {
   registry: CompanyRegistry;
   config: EngineConfig;
+  weakestTraceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
+  publication?: ComparisonPublicationSnapshot | null;
 }
 
 const METRICS = ["ROCE", "RNOA", "PM", "ATO", "FLEV", "SPREAD"] as const;
@@ -18,38 +21,20 @@ function percentileRank(values: number[], x: number) {
   return lessEq / s.length;
 }
 
-export default function ComparisonReport({ registry, config }: Props) {
+export default function ComparisonReport({ registry, config, weakestTraceabilitySummary: precomputedWeakestSummary = null, publication = null }: Props) {
   const companies = Object.values(registry.companies).filter((c) => c.recastData.length > 0);
   if (companies.length < 2) {
     return <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center text-amber-800">Load at least 2 companies to enable peer comparison.</div>;
   }
 
-  const companiesWithTraceability = companies.filter((company) => company.traceability);
-  const weakestCompany = companiesWithTraceability
-    .slice()
-    .sort((left, right) => compareTrustRank(left.traceability?.confidence.status ?? null, right.traceability?.confidence.status ?? null))[0] ?? null;
-  const weakestSummary = buildValuationTraceabilitySurfaceSummary(weakestCompany?.traceability ?? null);
-  const missingTraceabilityCount = companies.length - companiesWithTraceability.length;
-  const blockedCount = companies.filter((company) => company.traceability?.confidence.status === "blocked").length;
-  const guardedCount = companies.filter((company) => company.traceability?.confidence.status === "guarded").length;
-  const comparisonSummary = weakestSummary
-    ? {
-        ...weakestSummary,
-        headline: `Peer comparison inherits the weakest company trust state: ${weakestCompany?.label || weakestCompany?.id}`,
-        detail: missingTraceabilityCount > 0
-          ? `${missingTraceabilityCount} loaded peer(s) do not have persisted traceability yet, so comparison output should be treated as incomplete until each company has been processed in the current rigor-aware flow.`
-          : `${blockedCount} blocked / ${guardedCount} guarded / ${companies.length - blockedCount - guardedCount} production-ready peers are currently loaded. Review the per-company trust table before using cross-sectional rankings or upside ordering.`,
-        blockers: Array.from(
-          new Set(
-            [
-              missingTraceabilityCount > 0
-                ? `${missingTraceabilityCount} peer(s) are missing persisted traceability and therefore do not disclose parser or reconciliation confidence yet.`
-                : null,
-              ...weakestSummary.blockers,
-            ].filter((item): item is string => Boolean(item))
-          )
-        ).slice(0, 3),
-      }
+  const comparisonPublication = publication ?? buildComparisonPublicationSnapshot(registry);
+  const comparisonSummary = precomputedWeakestSummary
+    ? { ...comparisonPublication.comparisonSummary, ...precomputedWeakestSummary }
+    : comparisonPublication.comparisonSummary;
+  const blockedCount = comparisonPublication.blockedCount;
+  const guardedCount = comparisonPublication.guardedCount;
+  const weakestCompany = comparisonPublication.weakestCompanyId
+    ? companies.find((company) => company.id === comparisonPublication.weakestCompanyId) ?? null
     : null;
   const latestByCo = companies.map((c) => ({ company: c.label || c.id, id: c.id, latest: c.recastData[c.recastData.length - 1], series: c.recastData }));
   const [marketInputs, setMarketInputs] = useState<Record<string, { price: number; shares: number }>>({});
@@ -141,7 +126,7 @@ export default function ComparisonReport({ registry, config }: Props) {
               <div className="font-semibold uppercase tracking-wide text-slate-500">Peer trust counts</div>
               <div className="mt-2 space-y-1">
                 <div>{companies.length} peers loaded</div>
-                <div>{companiesWithTraceability.length} with persisted traceability</div>
+                <div>{companies.length - comparisonPublication.missingTraceabilityCount} with persisted traceability</div>
                 <div>{blockedCount} blocked</div>
                 <div>{guardedCount} guarded</div>
               </div>
@@ -168,7 +153,7 @@ export default function ComparisonReport({ registry, config }: Props) {
             <tbody className="divide-y divide-slate-100">
               {companies.map((company) => {
                 const traceability = company.traceability ?? null;
-                const summary = buildValuationTraceabilitySurfaceSummary(traceability);
+                const summary = comparisonPublication.companySummaries[company.id] ?? null;
                 return (
                   <tr key={company.id}>
                     <td className="px-3 py-2 font-medium text-slate-700">{company.label || company.id}</td>
@@ -343,16 +328,6 @@ function formatPct(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) ? `${(value * 100).toFixed(2)}%` : "—";
 }
 
-function compareTrustRank(left: string | null, right: string | null) {
-  return trustRank(left) - trustRank(right);
-}
-
-function trustRank(status: string | null) {
-  if (status === "blocked") return 0;
-  if (status === "guarded") return 1;
-  if (status === "production-ready") return 2;
-  return -1;
-}
 
 function StatusPill({ children, tone }: { children: string; tone: string }) {
   const className = tone === "red"

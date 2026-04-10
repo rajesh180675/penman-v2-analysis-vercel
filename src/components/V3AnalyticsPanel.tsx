@@ -28,6 +28,7 @@ interface Props {
   data: RecastPeriod[];
   config: EngineConfig;
   traceability?: AnalysisTraceabilityEnvelope | null;
+  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
 }
 
 const pct = (v: number | null | undefined, d = 1) =>
@@ -57,12 +58,13 @@ const GRADE_COLORS: Record<string, string> = {
   GRADE_D: "text-red-700 bg-red-50",
 };
 
-export default function V3AnalyticsPanel({ data, config, traceability = null }: Props) {
+export default function V3AnalyticsPanel({ data, config, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null }: Props) {
   const [activeSection, setActiveSection] = useState<"overview" | "dirty" | "events" | "terminal" | "sensitivity" | "confidence" | "triggers" | "accruals" | "oa_decomp" | "gap_decomp" | "section6b">("overview");
-  const traceabilitySummary = useMemo(
+  const derivedTraceabilitySummary = useMemo(
     () => buildValuationTraceabilitySurfaceSummary(traceability),
     [traceability],
   );
+  const traceabilitySummary = precomputedTraceabilitySummary ?? derivedTraceabilitySummary;
 
   const ke = ke_from_config(config);
 

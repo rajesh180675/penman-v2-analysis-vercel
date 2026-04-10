@@ -8,17 +8,19 @@ import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 interface Props {
   data: RecastPeriod[];
   traceability?: AnalysisTraceabilityEnvelope | null;
+  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
 }
 
 const f  = (n: number | undefined | null) => n == null ? "—" : n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
 const fp = (n: number | undefined | null) => n == null ? "—" : (n * 100).toFixed(1) + "%";
 
-export default function RecastStatements({ data, traceability = null }: Props) {
+export default function RecastStatements({ data, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null }: Props) {
   const [mode, setMode] = useState<"abs" | "common">("abs");
-  const traceabilitySummary = useMemo(
+  const derivedTraceabilitySummary = useMemo(
     () => buildValuationTraceabilitySurfaceSummary(traceability),
     [traceability],
   );
+  const traceabilitySummary = precomputedTraceabilitySummary ?? derivedTraceabilitySummary;
   if (!data || data.length === 0) return <div className="text-center py-20 text-slate-400"><div className="text-5xl mb-3">📊</div><p>No data</p></div>;
 
   const years = data.map((d) => d.period_end.slice(0, 7));
