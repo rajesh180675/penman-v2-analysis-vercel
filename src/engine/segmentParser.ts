@@ -107,12 +107,6 @@ function yearFromYYYYMM(yyyymm: string): string {
   return month <= 3 ? `FY${year}` : `FY${year + 1}`;
 }
 
-interface ParsedRow {
-  label: string;
-  section: string;
-  subSection: string;
-  values: (number | null)[];
-}
 
 /**
  * Parse a Capitaline SegmentFinance HTML file into structured segment data.
@@ -183,7 +177,6 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
 
   // Now process labeledRows in order
   const dataRows = labeledRows.map(r => r.values);
-  const rowLabels = labeledRows.map(r => r.label);
 
   // Identify segments (labels that are NOT section headers or sub-section labels)
   const segments: string[] = [];
@@ -326,7 +319,7 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
  * Detect segment file type from filename.
  * Capitaline exports: SegmentFinance_.xls (business), SegmentFinance_ (1).xls (geographic), SegmentFinance_ (2).xls (total)
  */
-export function classifySegmentFile(filename: string, segments: string[]): SegmentData["segmentationType"] {
+export function classifySegmentFile(_filename: string, segments: string[]): SegmentData["segmentationType"] {
   const segLower = segments.map(s => s.toLowerCase());
   if (segLower.some(s => s.includes("india") || s.includes("domestic") || s.includes("international"))) {
     return "geographic";

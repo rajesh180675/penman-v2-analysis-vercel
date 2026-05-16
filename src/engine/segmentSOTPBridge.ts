@@ -12,7 +12,7 @@
  */
 
 import { SegmentData, SegmentPeriodData } from "./segmentParser";
-import { SegmentDefinition, SOTPResult, buildSOTPValuation, estimateConglomerateDiscount } from "./sotpValuation";
+import { SegmentDefinition, SOTPResult, buildSOTPValuation } from "./sotpValuation";
 import { RecastPeriod, ValuationSectorTemplate } from "./types";
 
 /** Segment-level time series for trend analysis */

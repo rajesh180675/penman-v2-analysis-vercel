@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { assessAnalysisScope } from "../scopePolicy";
-import { evaluateQualityGate } from "../mappingAudit";
 
 describe("scopePolicy", () => {
   it("does not false-positive on industrial companies with zero insurance fields", () => {

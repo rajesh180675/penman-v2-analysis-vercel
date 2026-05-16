@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { processBankData, extractBankMetrics, BankPeriodMetrics } from "../bankPipeline";
+import { processBankData, extractBankMetrics } from "../bankPipeline";
 import { assessAnalysisScope } from "../scopePolicy";
 
 describe("bankPipeline", () => {
