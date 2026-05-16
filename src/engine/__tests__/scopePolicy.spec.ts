@@ -29,7 +29,7 @@ describe("scopePolicy", () => {
     expect(assessment.classification).toBe("supported-industrial");
   });
 
-  it("blocks financial-company datasets when banking signals carry value", () => {
+  it("routes financial-company datasets to financial pipeline when banking/nbfc signals carry value", () => {
     const periods = [
       {
         company_id: "NBFC_CASE",
@@ -53,12 +53,38 @@ describe("scopePolicy", () => {
     ];
 
     const assessment = assessAnalysisScope(periods);
+    expect(assessment.blocked).toBe(false);
+    expect(assessment.classification).toBe("supported-financial");
+    expect(assessment.analysisFamily).toBe("financial-institution");
+    expect(assessment.label).toBe("Supported NBFC scope");
+    expect(assessment.reasons.join(" ")).toContain("nbfc");
+  });
+
+  it("still blocks insurance-only datasets (no pipeline yet)", () => {
+    const periods = [
+      {
+        company_id: "INSURANCE_CASE",
+        period_end: "2025-03-31",
+        raw_metric_values: {
+          "Total Assets__BalanceSheet": 500,
+          "Total Equity__BalanceSheet": 80,
+          "Profit After Tax__ProfitLoss": 15,
+          "Profit Before Tax__ProfitLoss": 20,
+          "Tax Expenses__ProfitLoss": 5,
+          "Revenue From Operations(Net)__ProfitLoss": 100,
+          "Finance Cost__ProfitLoss": 2,
+          "Net Cash from Operating Activities__CashFlow": 30,
+          "Purchased of Fixed Assets__CashFlow": -3,
+          "Investments of Life Insurance Business__BalanceSheet": 350,
+          "Premium Earned (Net)__ProfitLoss": 90,
+          "Claims Expenses__ProfitLoss": 60,
+        },
+      },
+    ];
+
+    const assessment = assessAnalysisScope(periods);
     expect(assessment.blocked).toBe(true);
     expect(assessment.classification).toBe("unsupported-financial-company");
-
-    const qualityGate = evaluateQualityGate(periods);
-    expect(qualityGate.valuationBlocked).toBe(true);
-    expect(qualityGate.scopeAssessment.blocked).toBe(true);
-    expect(qualityGate.blockingReasons.join(" ")).toContain("nbfc");
+    expect(assessment.label).toBe("Unsupported insurance scope");
   });
 });

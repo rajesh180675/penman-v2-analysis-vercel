@@ -1,7 +1,7 @@
 import { EngineConfig, RawPeriodData } from "./types";
 import { SCOPE_POLICY_VERSION } from "./policyVersions";
 
-type ScopeClassification = "supported-industrial" | "unsupported-financial-company";
+type ScopeClassification = "supported-industrial" | "supported-financial" | "unsupported-financial-company";
 export type AnalysisFamily = "industrial" | "financial-institution";
 type ScopeSignalKind = "banking" | "insurance" | "nbfc" | "manual-override";
 
@@ -86,7 +86,9 @@ function countObservedKeys(periods: RawPeriodData[]) {
 }
 
 export function analysisFamilyFromScope(scope: ScopeAssessment): AnalysisFamily {
-  return scope.classification === "unsupported-financial-company" ? "financial-institution" : "industrial";
+  return scope.classification === "unsupported-financial-company" || scope.classification === "supported-financial"
+    ? "financial-institution"
+    : "industrial";
 }
 
 export function assessAnalysisScope(
@@ -135,7 +137,7 @@ export function assessAnalysisScope(
 
   const reasons: string[] = [];
   if (grouped.get("manual-override")) {
-    reasons.push("Financial-institution mode was explicitly selected, which is outside the supported industrial framework.");
+    reasons.push("Financial-institution mode was explicitly selected.");
   }
   for (const [kind, bucket] of grouped.entries()) {
     if (kind === "manual-override") continue;
@@ -147,14 +149,37 @@ export function assessAnalysisScope(
     reasons.push(`Detected ${kind} ledger signals with material values: ${preview}.`);
   }
 
+  // Determine subtype from signal kinds
+  const signalKinds = new Set(signals.map(s => s.kind).filter(k => k !== "manual-override"));
+  const isBank = signalKinds.has("banking");
+  const isInsurance = signalKinds.has("insurance");
+  const isNbfc = signalKinds.has("nbfc");
+
+  // Insurance is still unsupported (no pipeline yet)
+  if (isInsurance && !isBank && !isNbfc) {
+    return {
+      policyVersion: SCOPE_POLICY_VERSION,
+      classification: "unsupported-financial-company",
+      analysisFamily: "financial-institution",
+      blocked: true,
+      label: "Unsupported insurance scope",
+      reasons,
+      recommendedAction: "Insurance pipeline not yet implemented. Route to manual analysis.",
+      signals: signals.sort((a, b) => b.periodsObserved - a.periodsObserved || a.kind.localeCompare(b.kind) || a.key.localeCompare(b.key)),
+    };
+  }
+
+  // Banks and NBFCs are now supported — route to financial pipeline
   return {
     policyVersion: SCOPE_POLICY_VERSION,
-    classification: "unsupported-financial-company",
+    classification: "supported-financial",
     analysisFamily: "financial-institution",
-    blocked: true,
-    label: "Unsupported banking / NBFC / insurance scope",
+    blocked: false,
+    label: isBank ? "Supported banking scope" : isNbfc ? "Supported NBFC scope" : "Supported financial scope",
     reasons,
-    recommendedAction: "Route this dataset to a financial-institution-specific framework instead of the industrial engine.",
+    recommendedAction: isBank
+      ? "Route to bank analysis pipeline (NII decomposition, credit cost, P/B Gordon)."
+      : "Route to NBFC analysis pipeline (spread analysis, AUM metrics, capital adequacy).",
     signals: signals.sort((a, b) => b.periodsObserved - a.periodsObserved || a.kind.localeCompare(b.kind) || a.key.localeCompare(b.key)),
   };
 }
