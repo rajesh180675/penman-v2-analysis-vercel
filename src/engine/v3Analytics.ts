@@ -17,6 +17,10 @@
  */
 import { RecastPeriod, EngineConfig, ke_from_config } from "./types";
 import { deriveKwFromStructure } from "./PenmanNissimEngine";
+import { computeMoatScore, MoatScoreResult } from "./moatScoring";
+import { scoreCapitalAllocation, CapAllocScoreResult } from "./capitalAllocationScoring";
+import { computeEPV, EPVResult } from "./grahamDoddEPV";
+import { computeIndustrialMultiples, RelativeValuationResult } from "./relativeValuation";
 export enum OutputChannel {
   REPORT = "report",
   AUDIT = "audit",
@@ -1789,6 +1793,14 @@ export interface V3AnalyticsBundle {
   versionChangeLogMarkdown: string;
   crossSectionIssues: string[];
   registry: CanonicalOutputRegistry;
+  /** Economic moat score (null if < 3 periods) */
+  moatScore: MoatScoreResult | null;
+  /** Capital allocation quality score */
+  capitalAllocation: CapAllocScoreResult | null;
+  /** Graham-Dodd EPV (null if < 3 periods or no market data) */
+  epv: EPVResult | null;
+  /** Relative valuation multiples (null if no market cap in config) */
+  relativeValuation: RelativeValuationResult | null;
 }
 export function computeV3Analytics(
   periods: RecastPeriod[],
@@ -1927,5 +1939,17 @@ export function computeV3Analytics(
     section7: triggers.map((t) => t.title + t.body).join("\n"),
     section6A1RowCount: periods.length - 1,
   });
-  return { validation, dirtySurplus, dirtySurplusFramework, periodFlags, anchorResult, confidence, fadeParams, triggers, triggerCalibration, reReoiGapDecomposition, oaDecomposition, accrualTable, shareCount, marketImplied, section6B, versionChangeLog, versionChangeLogMarkdown, crossSectionIssues, registry };
+  const moatScore = computeMoatScore(periods, cfg);
+  const capitalAllocation = periods.length >= 3 ? scoreCapitalAllocation(periods, cfg) : null;
+  const epv = computeEPV(periods, cfg, cfg.market_price != null && cfg.shares_outstanding != null
+    ? cfg.market_price * cfg.shares_outstanding / 1e7  // price × shares → ₹ Crore
+    : null);
+  const relativeValuation = cfg.market_price != null && cfg.shares_outstanding != null
+    ? computeIndustrialMultiples(periods, {
+        marketCap: cfg.market_price * cfg.shares_outstanding / 1e7,
+        sharePrice: cfg.market_price,
+      })
+    : null;
+
+  return { validation, dirtySurplus, dirtySurplusFramework, periodFlags, anchorResult, confidence, fadeParams, triggers, triggerCalibration, reReoiGapDecomposition, oaDecomposition, accrualTable, shareCount, marketImplied, section6B, versionChangeLog, versionChangeLogMarkdown, crossSectionIssues, registry, moatScore, capitalAllocation, epv, relativeValuation };
 }

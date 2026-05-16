@@ -23,6 +23,10 @@ import {
   OADecompositionResult,
   ReReOIGapDecomposition,
 } from "../engine/v3Analytics";
+import { MoatScoreResult, MoatDimension } from "../engine/moatScoring";
+import { CapAllocScoreResult, CapAllocDimension } from "../engine/capitalAllocationScoring";
+import { EPVResult } from "../engine/grahamDoddEPV";
+import { RelativeValuationResult, MultipleBand } from "../engine/relativeValuation";
 
 interface Props {
   data: RecastPeriod[];
@@ -59,7 +63,7 @@ const GRADE_COLORS: Record<string, string> = {
 };
 
 export default function V3AnalyticsPanel({ data, config, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null }: Props) {
-  const [activeSection, setActiveSection] = useState<"overview" | "dirty" | "events" | "terminal" | "sensitivity" | "confidence" | "triggers" | "accruals" | "oa_decomp" | "gap_decomp" | "section6b">("overview");
+  const [activeSection, setActiveSection] = useState<"overview" | "dirty" | "events" | "terminal" | "sensitivity" | "confidence" | "triggers" | "accruals" | "oa_decomp" | "gap_decomp" | "section6b" | "moat" | "capital_alloc" | "epv" | "relative_val">("overview");
   const derivedTraceabilitySummary = useMemo(
     () => buildValuationTraceabilitySurfaceSummary(traceability),
     [traceability],
@@ -152,6 +156,10 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
     { id: "oa_decomp", label: "OA Decomp §3B", icon: "🏗" },
     { id: "gap_decomp", label: "RE/ReOI Gap §6", icon: "🔍" },
     { id: "section6b", label: "§6B Per-Share", icon: "💹" },
+    { id: "moat", label: "Moat Score", icon: "🏰" },
+    { id: "capital_alloc", label: "Capital Allocation", icon: "🏦" },
+    { id: "epv", label: "EPV (Graham-Dodd)", icon: "📐" },
+    { id: "relative_val", label: "Relative Valuation", icon: "⚖️" },
   ];
 
   return (
@@ -219,6 +227,18 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
           )}
           {activeSection === "section6b" && bundle && (
             <Section6BPanel s6b={bundle.section6B} />
+          )}
+          {activeSection === "moat" && bundle && (
+            <MoatSection moat={bundle.moatScore} />
+          )}
+          {activeSection === "capital_alloc" && bundle && (
+            <CapitalAllocSection ca={bundle.capitalAllocation} />
+          )}
+          {activeSection === "epv" && bundle && (
+            <EPVSection epv={bundle.epv} />
+          )}
+          {activeSection === "relative_val" && bundle && (
+            <RelativeValSection rv={bundle.relativeValuation} />
           )}
         </div>
       </div>
@@ -900,6 +920,380 @@ function Section6BPanel({ s6b }: { s6b: Section6BResult }) {
           To complete this section, set <code className="bg-white px-1 rounded">market_price</code> in analysis configuration.
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── Moat Score ───────────────────────────────────────────────── */
+function MoatSection({ moat }: { moat: MoatScoreResult | null }) {
+  if (!moat) return <NullState message="Insufficient data for moat scoring (need ≥ 3 periods with RNOA)." />;
+
+  const MOAT_COLORS: Record<string, string> = {
+    wide: "text-emerald-700 bg-emerald-50 border-emerald-200",
+    narrow: "text-blue-700 bg-blue-50 border-blue-200",
+    none: "text-red-700 bg-red-50 border-red-200",
+    "insufficient-data": "text-slate-500 bg-slate-50 border-slate-200",
+  };
+  const TREND_COLORS: Record<string, string> = {
+    strengthening: "text-emerald-700",
+    stable: "text-blue-700",
+    eroding: "text-red-700",
+    "insufficient-data": "text-slate-500",
+  };
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">Economic Moat Score</h3>
+        <p className="text-xs text-slate-500">Buffett/Munger moat analysis operationalized through Penman-Nissim ratios. No qualitative inputs — the numbers speak for themselves.</p>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MetricCard
+          label="Composite Score"
+          value={`${moat.compositeScore}/100`}
+          badge={moat.moatWidth.toUpperCase()}
+          color={MOAT_COLORS[moat.moatWidth]}
+        />
+        <MetricCard
+          label="Moat Trend"
+          value={moat.moatTrend.replace("-", " ")}
+          badge={`${moat.periodsAboveCostOfCapital}/${moat.totalPeriods} periods above kw`}
+          color={TREND_COLORS[moat.moatTrend] + " bg-slate-50"}
+        />
+        <MetricCard
+          label="Median RNOA"
+          value={moat.medianRNOA != null ? pct(moat.medianRNOA) : "—"}
+          badge={`SPREAD: ${moat.medianSPREAD != null ? pct(moat.medianSPREAD) : "—"}`}
+          color="text-slate-700 bg-slate-50"
+        />
+        <MetricCard
+          label="CAP Estimate"
+          value={moat.cap.years != null ? `${moat.cap.years.toFixed(1)} yrs` : "—"}
+          badge={moat.cap.confidence.toUpperCase()}
+          color={moat.cap.confidence === "high" ? "text-emerald-700 bg-emerald-50" : moat.cap.confidence === "medium" ? "text-amber-700 bg-amber-50" : "text-slate-500 bg-slate-50"}
+        />
+      </div>
+
+      {/* CAP detail */}
+      <InfoBlock title="Competitive Advantage Period (CAP)">
+        <InfoRow label="Method" value={moat.cap.method} />
+        <InfoRow label="AR(1) phi" value={moat.cap.phi != null ? moat.cap.phi.toFixed(3) : "—"} />
+        <InfoRow label="Latest RNOA" value={moat.cap.latestRNOA != null ? pct(moat.cap.latestRNOA) : "—"} />
+        <InfoRow label="Fade target (kw)" value={pct(moat.cap.kw)} />
+        <InfoRow label="Strong SPREAD periods (>5%)" value={`${moat.periodsWithStrongSpread} / ${moat.totalPeriods}`} />
+      </InfoBlock>
+
+      {/* Dimension breakdown */}
+      <div>
+        <p className="text-xs font-semibold text-slate-600 mb-2">Dimension Scores</p>
+        <div className="space-y-3">
+          {moat.dimensions.map((dim: MoatDimension) => (
+            <div key={dim.name} className="bg-slate-50 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-semibold text-slate-700">{dim.name}</span>
+                <span className="text-xs font-bold text-slate-800">{dim.score.toFixed(0)}/100 <span className="text-slate-400 font-normal">(wt {(dim.weight * 100).toFixed(0)}%)</span></span>
+              </div>
+              <div className="w-full bg-slate-200 rounded-full h-1.5 mb-2">
+                <div
+                  className={`h-1.5 rounded-full ${dim.score >= 70 ? "bg-emerald-500" : dim.score >= 40 ? "bg-amber-400" : "bg-red-400"}`}
+                  style={{ width: `${dim.score}%` }}
+                />
+              </div>
+              {dim.evidence.map((e, i) => (
+                <p key={i} className="text-xs text-slate-500">{e}</p>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {moat.notes.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          {moat.notes.map((n, i) => <p key={i} className="text-xs text-amber-700">{n}</p>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Capital Allocation ───────────────────────────────────────── */
+function CapitalAllocSection({ ca }: { ca: CapAllocScoreResult | null }) {
+  if (!ca) return <NullState message="Insufficient data for capital allocation scoring (need ≥ 3 periods)." />;
+
+  const GRADE_BG: Record<string, string> = {
+    A: "text-emerald-700 bg-emerald-50 border-emerald-200",
+    B: "text-blue-700 bg-blue-50 border-blue-200",
+    C: "text-amber-700 bg-amber-50 border-amber-200",
+    D: "text-red-700 bg-red-50 border-red-200",
+  };
+  const TREND_COLOR: Record<string, string> = {
+    improving: "text-emerald-700",
+    stable: "text-blue-700",
+    deteriorating: "text-red-700",
+    "insufficient-data": "text-slate-500",
+  };
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">Capital Allocation Quality</h3>
+        <p className="text-xs text-slate-500">Scores how well management deploys retained earnings — reinvestment returns, payout discipline, buyback timing, and dilution avoidance.</p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MetricCard
+          label="Composite Score"
+          value={`${ca.compositeScore}/100`}
+          badge={`Grade ${ca.grade}`}
+          color={GRADE_BG[ca.grade]}
+        />
+        <MetricCard
+          label="Trend"
+          value={ca.trend.replace("-", " ")}
+          badge={`${ca.totalPeriods} periods`}
+          color={TREND_COLOR[ca.trend] + " bg-slate-50"}
+        />
+        <MetricCard
+          label="Median FCF Conversion"
+          value={ca.medianFCFConversion != null ? pct(ca.medianFCFConversion) : "—"}
+          badge="FCF / CNI"
+          color="text-slate-700 bg-slate-50"
+        />
+        <MetricCard
+          label="Incremental ROIC"
+          value={ca.medianIncrementalROIC != null ? pct(ca.medianIncrementalROIC) : "—"}
+          badge="on new NOA"
+          color="text-slate-700 bg-slate-50"
+        />
+      </div>
+
+      <InfoBlock title="Payout & Issuance">
+        <InfoRow label="Median payout ratio" value={ca.medianPayoutRatio != null ? pct(ca.medianPayoutRatio) : "—"} />
+        <InfoRow label="Value-accretive buybacks" value={`${ca.buybacksValueAccretive} periods`} />
+        <InfoRow label="Dilutive issuances" value={`${ca.dilutiveIssuances} periods`} />
+      </InfoBlock>
+
+      <div>
+        <p className="text-xs font-semibold text-slate-600 mb-2">Dimension Scores</p>
+        <div className="space-y-3">
+          {ca.dimensions.map((dim: CapAllocDimension) => (
+            <div key={dim.name} className="bg-slate-50 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-semibold text-slate-700">{dim.name}</span>
+                <span className="text-xs font-bold text-slate-800">{dim.score.toFixed(0)}/100 <span className="text-slate-400 font-normal">(wt {(dim.weight * 100).toFixed(0)}%)</span></span>
+              </div>
+              <div className="w-full bg-slate-200 rounded-full h-1.5 mb-2">
+                <div
+                  className={`h-1.5 rounded-full ${dim.score >= 70 ? "bg-emerald-500" : dim.score >= 40 ? "bg-amber-400" : "bg-red-400"}`}
+                  style={{ width: `${dim.score}%` }}
+                />
+              </div>
+              {dim.evidence.map((e, i) => (
+                <p key={i} className="text-xs text-slate-500">{e}</p>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {ca.notes.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          {ca.notes.map((n, i) => <p key={i} className="text-xs text-amber-700">{n}</p>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── EPV (Graham-Dodd) ────────────────────────────────────────── */
+function EPVSection({ epv }: { epv: EPVResult | null }) {
+  if (!epv) return <NullState message="EPV requires ≥ 3 periods and market price + shares outstanding in config." />;
+
+  const INTERP_COLORS: Record<string, string> = {
+    "strong-franchise": "text-emerald-700 bg-emerald-50 border-emerald-200",
+    "franchise": "text-blue-700 bg-blue-50 border-blue-200",
+    "competitive": "text-amber-700 bg-amber-50 border-amber-200",
+    "depressed-earnings": "text-orange-700 bg-orange-50 border-orange-200",
+    "insufficient-data": "text-slate-500 bg-slate-50 border-slate-200",
+  };
+  const CONF_COLOR: Record<string, string> = {
+    high: "text-emerald-700 bg-emerald-50",
+    medium: "text-amber-700 bg-amber-50",
+    low: "text-red-700 bg-red-50",
+  };
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">Earnings Power Value (Graham-Dodd)</h3>
+        <p className="text-xs text-slate-500">EPV = Normalized NOPAT / WACC. Franchise value = EPV − Asset value. A strong franchise earns above its reproduction cost.</p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MetricCard
+          label="EPV (Enterprise)"
+          value={cr(epv.V_EPV)}
+          badge={epv.interpretation.replace(/-/g, " ")}
+          color={INTERP_COLORS[epv.interpretation]}
+        />
+        <MetricCard
+          label="Asset Value (NOA)"
+          value={cr(epv.V_A)}
+          badge="Reproduction cost proxy"
+          color="text-slate-700 bg-slate-50"
+        />
+        <MetricCard
+          label="Franchise Value"
+          value={cr(epv.franchiseValue)}
+          badge={`${pct(epv.franchisePct)} of EPV`}
+          color={epv.franchiseValue > 0 ? "text-emerald-700 bg-emerald-50" : "text-red-700 bg-red-50"}
+        />
+        <MetricCard
+          label="Confidence"
+          value={epv.confidence.toUpperCase()}
+          badge={`WACC: ${pct(epv.kw)}`}
+          color={CONF_COLOR[epv.confidence]}
+        />
+      </div>
+
+      {(epv.epvPerShare != null || epv.marginOfSafety != null) && (
+        <InfoBlock title="Per-Share & Market Comparison">
+          {epv.epvPerShare != null && <InfoRow label="EPV per share" value={`₹${epv.epvPerShare.toFixed(1)}`} />}
+          {epv.priceToEPV != null && <InfoRow label="Price / EPV" value={`${epv.priceToEPV.toFixed(2)}×`} />}
+          {epv.marginOfSafety != null && <InfoRow label="Margin of safety" value={pct(epv.marginOfSafety)} />}
+        </InfoBlock>
+      )}
+
+      <InfoBlock title="Normalization Details">
+        <InfoRow label="Periods used" value={`${epv.normalization.periodsUsed}`} />
+        <InfoRow label="Median CoreOI margin" value={pct(epv.normalization.medianCoreOIMargin)} />
+        <InfoRow label="Normalized NOPAT" value={cr(epv.normalization.normalizedNOPAT)} />
+        <InfoRow label="Median tax rate" value={pct(epv.normalization.medianTaxRate)} />
+        <InfoRow label="Latest sales base" value={cr(epv.normalization.latestSales)} />
+        <InfoRow label="Margin range" value={`${pct(epv.normalization.marginRange[0])} – ${pct(epv.normalization.marginRange[1])}`} />
+        <InfoRow label="High confidence" value={epv.normalization.highConfidence ? "✓ Yes" : "⚠ No"} />
+      </InfoBlock>
+
+      {epv.confidenceNotes.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          {epv.confidenceNotes.map((n, i) => <p key={i} className="text-xs text-amber-700">{n}</p>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Relative Valuation ───────────────────────────────────────── */
+function RelativeValSection({ rv }: { rv: RelativeValuationResult | null }) {
+  if (!rv) return <NullState message="Relative valuation requires market_price and shares_outstanding in config." />;
+
+  const SIGNAL_COLORS: Record<string, string> = {
+    cheap: "text-emerald-700 bg-emerald-50",
+    fair: "text-blue-700 bg-blue-50",
+    expensive: "text-red-700 bg-red-50",
+    unknown: "text-slate-500 bg-slate-50",
+  };
+
+  function bandSignal(band: MultipleBand): string {
+    if (band.currentPercentile == null) return "unknown";
+    if (band.currentPercentile <= 25) return "cheap";
+    if (band.currentPercentile >= 75) return "expensive";
+    return "fair";
+  }
+
+  function BandRow({ band }: { band: MultipleBand }) {
+    const signal = bandSignal(band);
+    return (
+      <div className="bg-slate-50 rounded-lg p-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-slate-700">{band.metric}</span>
+          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${SIGNAL_COLORS[signal]}`}>{signal.toUpperCase()}</span>
+        </div>
+        <div className="grid grid-cols-4 gap-2 text-xs text-center">
+          <div><p className="text-slate-400">Min</p><p className="font-medium text-slate-700">{band.min != null ? band.min.toFixed(1) : "—"}×</p></div>
+          <div><p className="text-slate-400">Median</p><p className="font-medium text-slate-700">{band.median != null ? band.median.toFixed(1) : "—"}×</p></div>
+          <div><p className="text-slate-400">Current</p><p className="font-bold text-slate-800">{band.current != null ? band.current.toFixed(1) : "—"}×</p></div>
+          <div><p className="text-slate-400">Max</p><p className="font-medium text-slate-700">{band.max != null ? band.max.toFixed(1) : "—"}×</p></div>
+        </div>
+        {band.currentPercentile != null && (
+          <div className="mt-2">
+            <div className="w-full bg-slate-200 rounded-full h-1.5">
+              <div className="h-1.5 rounded-full bg-blue-400" style={{ width: `${band.currentPercentile}%` }} />
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">{band.currentPercentile}th percentile of history</p>
+          </div>
+        )}
+        {band.sectorMedian != null && (
+          <p className="text-xs text-slate-500 mt-1">
+            Sector median: {band.sectorMedian.toFixed(1)}×
+            {band.premiumToSector != null && ` (${band.premiumToSector > 0 ? "+" : ""}${pct(band.premiumToSector)} vs sector)`}
+          </p>
+        )}
+        {band.impliedFairValue != null && (
+          <p className="text-xs text-slate-500">Implied fair value: {cr(band.impliedFairValue)}</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-base font-bold text-slate-800 mb-1">Relative Valuation</h3>
+        <p className="text-xs text-slate-500">Historical multiple bands + sector comparison. Current multiple vs own history and sector peers.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <MetricCard
+          label="Company Type"
+          value={rv.companyType.toUpperCase()}
+          badge="Metric selection basis"
+          color="text-slate-700 bg-slate-50"
+        />
+        {rv.impliedFairValueComposite != null && (
+          <MetricCard
+            label="Composite Implied Value"
+            value={cr(rv.impliedFairValueComposite)}
+            badge={rv.marginOfSafety != null ? `MoS: ${pct(rv.marginOfSafety)}` : "No market price"}
+            color={rv.marginOfSafety != null && rv.marginOfSafety > 0 ? "text-emerald-700 bg-emerald-50" : "text-red-700 bg-red-50"}
+          />
+        )}
+      </div>
+
+      {rv.primary.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-slate-600 mb-2">Primary Multiples</p>
+          <div className="space-y-2">
+            {rv.primary.map((b: MultipleBand) => <BandRow key={b.metric} band={b} />)}
+          </div>
+        </div>
+      )}
+
+      {rv.secondary.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-slate-600 mb-2">Secondary Multiples</p>
+          <div className="space-y-2">
+            {rv.secondary.map((b: MultipleBand) => <BandRow key={b.metric} band={b} />)}
+          </div>
+        </div>
+      )}
+
+      {rv.notes.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          {rv.notes.map((n, i) => <p key={i} className="text-xs text-amber-700">{n}</p>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Null state helper ────────────────────────────────────────── */
+function NullState({ message }: { message: string }) {
+  return (
+    <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
+      <p className="text-sm text-slate-500">{message}</p>
     </div>
   );
 }
