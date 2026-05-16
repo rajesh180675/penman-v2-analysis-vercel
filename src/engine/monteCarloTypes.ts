@@ -1,8 +1,21 @@
 import type { EngineConfig, RecastPeriod } from "./types";
+import type { SegmentDefinition } from "./sotpValuation";
+import type { SegmentData } from "./segmentParser";
 
 export interface MonteCarloDist {
   mean: number;
   std: number;
+}
+
+/**
+ * Uncertainty specification for a single segment's EBIT share.
+ * Derived from historical variance in segment EBIT contributions.
+ */
+export interface SegmentUncertainty {
+  /** Segment name (must match SegmentDefinition.name) */
+  name: string;
+  /** Mean EBIT share (0–1) */
+  meanShare: MonteCarloDist;
 }
 
 export interface MonteCarloRequest {
@@ -16,6 +29,10 @@ export interface MonteCarloRequest {
     kw: MonteCarloDist;
     g: MonteCarloDist;
   };
+  /** Optional: segment definitions for SOTP simulation */
+  segmentDefinitions?: SegmentDefinition[];
+  /** Optional: per-segment EBIT share uncertainty (derived from historical data) */
+  segmentUncertainties?: SegmentUncertainty[];
 }
 
 export interface MonteCarloInput {
@@ -29,6 +46,8 @@ export interface MonteCarloInput {
     kw: MonteCarloDist;
     g: MonteCarloDist;
   };
+  segmentDefinitions?: SegmentDefinition[];
+  segmentUncertainties?: SegmentUncertainty[];
 }
 
 export interface MonteCarloProgressMessage {
@@ -45,6 +64,11 @@ export interface MonteCarloOutput {
   p50_ReOI: number;
   p90_ReOI: number;
   convergenceCheck: boolean;
+  /** SOTP samples — only populated when segmentDefinitions + segmentUncertainties are provided */
+  V_SOTP_samples?: number[];
+  p10_SOTP?: number;
+  p50_SOTP?: number;
+  p90_SOTP?: number;
 }
 
 export function normalizeMonteCarloRequest(req: MonteCarloRequest): MonteCarloInput {
@@ -100,3 +124,70 @@ export function assertValidMonteCarloInput(v: unknown): asserts v is MonteCarloI
   validateDistribution("kw", d.kw);
   validateDistribution("g", d.g);
 }
+
+// ─── Segment Uncertainty Derivation ──────────────────────────────────────────
+
+/**
+ * Derive per-segment EBIT share uncertainty from historical SegmentData.
+ *
+ * For each segment, computes the mean and standard deviation of its share
+ * of total segment EBIT across all available years. Segments with null
+ * EBIT in a year are excluded from that year's calculation.
+ *
+ * @param segmentData  Parsed SegmentData (business segments only)
+ * @returns Array of SegmentUncertainty, one per segment with sufficient data
+ */
+export function deriveSegmentUncertainties(segmentData: SegmentData): SegmentUncertainty[] {
+  const { segments, years, data } = segmentData;
+
+  if (!segments.length || !years.length) return [];
+
+  // For each year, compute total EBIT and each segment's share
+  const sharesBySegment: Record<string, number[]> = {};
+  for (const seg of segments) {
+    sharesBySegment[seg] = [];
+  }
+
+  for (const yr of years) {
+    // Collect EBIT values for this year
+    const ebitValues: Record<string, number> = {};
+    let totalEBIT = 0;
+
+    for (const seg of segments) {
+      const periodData = data[seg]?.[yr];
+      const result = periodData?.result;
+      if (result !== null && result !== undefined && Number.isFinite(result) && result > 0) {
+        ebitValues[seg] = result;
+        totalEBIT += result;
+      }
+    }
+
+    if (totalEBIT <= 0) continue; // skip years with no positive EBIT
+
+    for (const seg of segments) {
+      if (ebitValues[seg] !== undefined) {
+        sharesBySegment[seg].push(ebitValues[seg] / totalEBIT);
+      }
+    }
+  }
+
+  // Compute mean and std for each segment
+  const result: SegmentUncertainty[] = [];
+
+  for (const seg of segments) {
+    const shares = sharesBySegment[seg];
+    if (shares.length < 2) continue; // need at least 2 observations
+
+    const mean = shares.reduce((s, v) => s + v, 0) / shares.length;
+    const variance = shares.reduce((s, v) => s + (v - mean) ** 2, 0) / shares.length;
+    const std = Math.sqrt(variance);
+
+    result.push({
+      name: seg,
+      meanShare: { mean, std },
+    });
+  }
+
+  return result;
+}
+
