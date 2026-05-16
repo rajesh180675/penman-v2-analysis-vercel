@@ -380,71 +380,125 @@ export const CapitalineMappingSpec = {
 
   // ═══════════════════════════════════════════════════════════════
   // BANK / FINANCIAL INSTITUTION SPECIFIC MAPPINGS
-  // These labels are populated for banks/NBFCs but null for industrials
+  // These labels are populated for banks/NBFCs but null for industrials.
+  // bankPipeline.ts uses these arrays directly — keep in sync.
   // ═══════════════════════════════════════════════════════════════
   bankBalanceSheet: {
-    // Core earning assets
-    totalLoans: ["Total Loans Given", "Advances :"],
+    // ── Balance sheet totals ──────────────────────────────────────
+    totalAssets: ["Total Assets", "Total Assets/Liabilities"],
+    totalEquity: [
+      "Total Equity",
+      "Total Shareholders Funds",
+      "Total Shareholders' Funds",
+      "Total Stockholders' Equity",
+      "Total Reported Stockholders' Equity",
+    ],
+
+    // ── Core earning assets ───────────────────────────────────────
+    advances: [
+      "Advances",
+      "Total Advances",
+      "Loans and Advances to Customers",
+      "Total Loans Given",
+      "Advances :",
+    ],
+    investments: [
+      "Investments",
+      "Total Investments",
+      "Investments of Banking Business",
+    ],
     investmentsGovernment: ["Investments in Government or Trust securities"],
     investmentsBonds: ["Investments in Debentures or Bonds"],
     investmentsOther: ["Other Current Investments"],
 
-    // Funding sources
-    totalDeposits: ["Total Long-term Secured Deposits"],
+    // ── Funding sources ───────────────────────────────────────────
+    deposits: ["Deposits", "Total Deposits"],
+    borrowings: ["Borrowings", "Total Borrowings"],
     nonConvertibleDebentures: ["Non Convertible Debentures"],
     termLoansFromBanks: ["Term Loans - Banks"],
     termLoansFromInstitutions: ["Term Loans - Institutions"],
     termLoansFromOthers: ["Term Loans - Others Parties"],
 
-    // Cash & liquidity
+    // ── Cash & liquidity ──────────────────────────────────────────
+    cashAndBalanceWithRBI: [
+      "Cash and Balance with RBI",
+      "Cash and Balances with Reserve Bank of India",
+    ],
     cashOnHand: ["Cash on Hand"],
     balancesWithBanks: ["Balances with Banks"],
     balancesInCurrentAccounts: ["in Current Accounts"],
 
-    // Insurance (for HDFC group)
+    // ── Insurance (HDFC group) ────────────────────────────────────
     policyHoldersLiabilities: ["Policy Holders Accounts - Liabilities"],
 
-    // Contingent liabilities (off-balance sheet)
+    // ── Contingent liabilities (off-balance sheet) ────────────────
     guaranteesGiven: ["Guarantees given on behalf of constituents - in India"],
     forwardExchangeContracts: ["Liability on Account of Outstanding Forward Exchange Contracts"],
     acceptancesEndorsements: ["Acceptances, Endorsements and Other obligations"],
     totalContingentLiabilities: ["Total Contingent Liabilities"],
 
-    // Provisions
+    // ── Provisions ────────────────────────────────────────────────
     provisionForStandardAssets: ["Provision for Standard Assets as per NHB Norms"],
   },
 
   bankProfitLoss: {
-    // Interest income (NII components)
-    interestIncome: ["Interest Income", "Total Revenue from Operations"],
+    // ── Interest income (NII components) ─────────────────────────
+    interestIncome: [
+      "Interest Earned",
+      "Interest Income",
+      "Total Revenue from Operations",
+      "Interest / Discount on Advances / Bills",
+    ],
     otherInterestIncome: ["Other Interest Income"],
     feeAndCommissionIncome: ["Fee and Commission Income"],
 
-    // Interest expense
+    // ── Interest expense ──────────────────────────────────────────
+    interestExpended: ["Interest Expended", "Interest Expense"],
     interestOnDeposits: ["Interest on Deposits"],
 
-    // Non-interest income
+    // ── Non-interest income ───────────────────────────────────────
+    otherIncome: ["Other Income", "Non-Interest Income"],
     profitOnSaleOfInvestments: ["Profit on Sale of Investments"],
     forexGainLoss: ["Net Gain / Loss on Foreign Currency Transaction"],
     otherNonOperatingIncome: ["Other Non Operating Income"],
 
-    // Operating expenses
+    // ── Operating expenses ────────────────────────────────────────
+    operatingExpenses: [
+      "Operating Expenses",
+      "Payments to and Provisions for Employees",
+      "Total Operating Expenses",
+    ],
     salariesAndIncentives: ["Salaries and Incentives"],
     totalSellingAdminExpenses: ["Total Selling & Administrative Expenses"],
     totalMiscExpenses: ["Total Miscellaneous Expenses"],
+
+    // ── Provisions & credit cost ──────────────────────────────────
+    provisions: [
+      "Provisions and Contingencies",
+      "Provision for NPA",
+      "Prov. & W/O (Net)",
+      "Other Provisions and Write-offs",
+    ],
     otherProvisionsWriteoffs: ["Other Provisions and Write-offs"],
 
-    // Profitability
-    profitBeforeTax: ["Profit Before Tax", "Profit Before Exceptional Items and Tax"],
-    profitAfterTax: ["Profit After Tax"],
-    profitAttributableToShareholders: ["Profit Attributable to Shareholders", "Profit Attributable to Ordinary Shareholders"],
+    // ── Profitability ─────────────────────────────────────────────
+    profitBeforeTax: [
+      "Profit Before Tax",
+      "Net Profit before Tax & Extraordinary Items",
+      "Profit Before Exceptional Items and Tax",
+    ],
+    profitAfterTax: ["Profit After Tax", "Net Profit"],
+    profitAttributableToShareholders: [
+      "Profit Attributable to Shareholders",
+      "Profit Attributable to Ordinary Shareholders",
+    ],
     minorityInterest: ["Minority Interest After Net Profit"],
 
-    // Per share
+    // ── Per share ─────────────────────────────────────────────────
     weightedAvgSharesBasic: ["Weighted Average Number of Shares in Issue - Basic"],
     weightedAvgSharesDiluted: ["Weighted Average Number of Shares in Issue - Diluted"],
 
-    // Dividends
+    // ── Dividends ─────────────────────────────────────────────────
     totalDividend: ["Total Dividend"],
   },
 } as const;

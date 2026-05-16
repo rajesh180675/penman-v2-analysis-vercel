@@ -1,5 +1,5 @@
 /**
- * Bank Analysis Pipeline — Phase 3 Foundation
+ * Bank Analysis Pipeline — Phase 3
  *
  * Processes financial institution data (banks, NBFCs) through a bank-specific
  * reformulation that treats loans as operating assets, deposits as operating
@@ -12,6 +12,9 @@
  * - Investments = mix of SLR requirement + treasury
  * - NII (Net Interest Income) = core revenue
  * - Provisions = credit cost (analogous to COGS for banks)
+ *
+ * Phase 3 change: all label lookups now delegate to CapitalineMappingSpec
+ * instead of maintaining a parallel hardcoded BANK_METRIC_KEYS object.
  */
 
 import { RawPeriodData } from "./types";
@@ -21,6 +24,7 @@ import {
   FinancialInstitutionSubtype,
 } from "./analysisFamily";
 import { ScopeAssessment } from "./scopePolicy";
+import { CapitalineMappingSpec } from "./mappingSpec";
 
 /** Bank-specific metrics extracted from raw data */
 export interface BankPeriodMetrics {
@@ -54,30 +58,18 @@ export interface BankPeriodMetrics {
   casaRatio: number | null;      // CASA Deposits / Total Deposits (if available)
 }
 
-/** Keys used to extract bank metrics from Capitaline raw data */
-const BANK_METRIC_KEYS = {
-  // Balance Sheet
-  totalAssets: ["Total Assets", "Total Assets/Liabilities"],
-  totalEquity: ["Total Equity", "Total Shareholders Funds", "Total Shareholders' Funds"],
-  advances: ["Advances", "Total Advances", "Loans and Advances to Customers"],
-  deposits: ["Deposits", "Total Deposits"],
-  investments: ["Investments", "Total Investments", "Investments of Banking Business"],
-  borrowings: ["Borrowings", "Total Borrowings"],
-  cashRBI: ["Cash and Balance with RBI", "Cash and Balances with Reserve Bank of India"],
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
-  // P&L
-  interestEarned: ["Interest Earned", "Interest Income", "Interest / Discount on Advances / Bills"],
-  interestExpended: ["Interest Expended", "Interest Expense"],
-  otherIncome: ["Other Income", "Non-Interest Income", "Fee and Commission Income"],
-  operatingExpenses: ["Operating Expenses", "Payments to and Provisions for Employees"],
-  provisions: ["Provisions and Contingencies", "Provision for NPA", "Prov. & W/O (Net)"],
-  pat: ["Profit After Tax", "Net Profit"],
-  pbt: ["Profit Before Tax", "Net Profit before Tax & Extraordinary Items"],
-} as const;
-
-function pickValue(raw: Record<string, number | null | undefined>, keys: readonly string[], statement?: string): number | null {
+/**
+ * Pick the first non-null, non-zero value from a list of label aliases,
+ * trying composite keys (label__Statement) first, then base keys.
+ */
+function pickValue(
+  raw: Record<string, number | null | undefined>,
+  keys: readonly string[],
+  statement?: string,
+): number | null {
   for (const key of keys) {
-    // Try composite key first
     if (statement) {
       const composite = `${key}__${statement}`;
       const val = raw[composite];
@@ -96,26 +88,47 @@ function pickValue(raw: Record<string, number | null | undefined>, keys: readonl
   return null;
 }
 
+function avg(a: number | null, b: number | null): number | null {
+  if (a == null || b == null) return a ?? b;
+  return (a + b) / 2;
+}
+
+function sum(a: number | null, b: number | null): number | null {
+  if (a == null && b == null) return null;
+  return (a ?? 0) + (b ?? 0);
+}
+
+// ─── Extraction ─────────────────────────────────────────────────────────────
+
+/**
+ * Extract bank metrics from a single period's raw data.
+ * All label lookups go through CapitalineMappingSpec.bankBalanceSheet /
+ * bankProfitLoss so there is a single source of truth for label aliases.
+ */
 function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   const raw = period.raw_metric_values ?? {};
+  const bs = CapitalineMappingSpec.bankBalanceSheet;
+  const pl = CapitalineMappingSpec.bankProfitLoss;
 
-  const totalAssets = pickValue(raw, BANK_METRIC_KEYS.totalAssets, "BalanceSheet");
-  const totalEquity = pickValue(raw, BANK_METRIC_KEYS.totalEquity, "BalanceSheet");
-  const advances = pickValue(raw, BANK_METRIC_KEYS.advances, "BalanceSheet");
-  const deposits = pickValue(raw, BANK_METRIC_KEYS.deposits, "BalanceSheet");
-  const investments = pickValue(raw, BANK_METRIC_KEYS.investments, "BalanceSheet");
-  const borrowings = pickValue(raw, BANK_METRIC_KEYS.borrowings, "BalanceSheet");
-  const cashAndBalanceWithRBI = pickValue(raw, BANK_METRIC_KEYS.cashRBI, "BalanceSheet");
+  // Balance Sheet
+  const totalAssets        = pickValue(raw, bs.totalAssets,         "BalanceSheet");
+  const totalEquity        = pickValue(raw, bs.totalEquity,         "BalanceSheet");
+  const advances           = pickValue(raw, bs.advances,            "BalanceSheet");
+  const deposits           = pickValue(raw, bs.deposits,            "BalanceSheet");
+  const investments        = pickValue(raw, bs.investments,         "BalanceSheet");
+  const borrowings         = pickValue(raw, bs.borrowings,          "BalanceSheet");
+  const cashAndBalanceWithRBI = pickValue(raw, bs.cashAndBalanceWithRBI, "BalanceSheet");
 
-  const interestEarned = pickValue(raw, BANK_METRIC_KEYS.interestEarned, "ProfitLoss");
-  const interestExpended = pickValue(raw, BANK_METRIC_KEYS.interestExpended, "ProfitLoss");
-  const otherIncome = pickValue(raw, BANK_METRIC_KEYS.otherIncome, "ProfitLoss");
-  const operatingExpenses = pickValue(raw, BANK_METRIC_KEYS.operatingExpenses, "ProfitLoss");
-  const provisions = pickValue(raw, BANK_METRIC_KEYS.provisions, "ProfitLoss");
-  const pat = pickValue(raw, BANK_METRIC_KEYS.pat, "ProfitLoss");
-  const pbt = pickValue(raw, BANK_METRIC_KEYS.pbt, "ProfitLoss");
+  // P&L
+  const interestEarned     = pickValue(raw, pl.interestIncome,      "ProfitLoss");
+  const interestExpended   = pickValue(raw, pl.interestExpended,    "ProfitLoss");
+  const otherIncome        = pickValue(raw, pl.otherIncome,         "ProfitLoss");
+  const operatingExpenses  = pickValue(raw, pl.operatingExpenses,   "ProfitLoss");
+  const provisions         = pickValue(raw, pl.provisions,          "ProfitLoss");
+  const pat                = pickValue(raw, pl.profitAfterTax,      "ProfitLoss");
+  const pbt                = pickValue(raw, pl.profitBeforeTax,     "ProfitLoss");
 
-  // Derived
+  // NII = Interest Earned − |Interest Expended|
   const nii = (interestEarned != null && interestExpended != null)
     ? interestEarned - Math.abs(interestExpended)
     : null;
@@ -147,16 +160,21 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   };
 }
 
-function computeBankRatios(current: BankPeriodMetrics, prev: BankPeriodMetrics | null): BankPeriodMetrics {
+// ─── Ratio Computation ──────────────────────────────────────────────────────
+
+function computeBankRatios(
+  current: BankPeriodMetrics,
+  prev: BankPeriodMetrics | null,
+): BankPeriodMetrics {
   const result = { ...current };
 
   if (prev) {
-    const avgAssets = avg(current.totalAssets, prev.totalAssets);
-    const avgEquity = avg(current.totalEquity, prev.totalEquity);
-    const avgAdvances = avg(current.advances, prev.advances);
+    const avgAssets   = avg(current.totalAssets,  prev.totalAssets);
+    const avgEquity   = avg(current.totalEquity,  prev.totalEquity);
+    const avgAdvances = avg(current.advances,     prev.advances);
     const earningAssets = avg(
       sum(current.advances, current.investments),
-      sum(prev.advances, prev.investments),
+      sum(prev.advances,    prev.investments),
     );
 
     // NIM = NII / Average Earning Assets
@@ -189,23 +207,16 @@ function computeBankRatios(current: BankPeriodMetrics, prev: BankPeriodMetrics |
   return result;
 }
 
-function avg(a: number | null, b: number | null): number | null {
-  if (a == null || b == null) return a ?? b;
-  return (a + b) / 2;
-}
-
-function sum(a: number | null, b: number | null): number | null {
-  if (a == null && b == null) return null;
-  return (a ?? 0) + (b ?? 0);
-}
+// ─── Subtype Detection ──────────────────────────────────────────────────────
 
 function detectSubtype(scope: ScopeAssessment): FinancialInstitutionSubtype {
   const kinds = new Set(scope.signals.map(s => s.kind));
   if (kinds.has("banking")) return "bank";
-  if (kinds.has("nbfc")) return "nbfc";
-  if (kinds.has("insurance")) return "generic-financial";
+  if (kinds.has("nbfc"))    return "nbfc";
   return "generic-financial";
 }
+
+// ─── Public API ─────────────────────────────────────────────────────────────
 
 /**
  * Process bank/NBFC data through the financial institution pipeline.
@@ -240,11 +251,11 @@ export function processBankData(
 
   // Convert to FinancialInstitutionPeriodSnapshot
   const periods: FinancialInstitutionPeriodSnapshot[] = computed.map(m => ({
-    period_end: m.period_end,
-    bookValue: m.totalEquity,
-    earnings: m.pat,
-    deposits: m.deposits,
-    advances: m.advances,
+    period_end:    m.period_end,
+    bookValue:     m.totalEquity,
+    earnings:      m.pat,
+    deposits:      m.deposits,
+    advances:      m.advances,
     premiumEarned: null,
     claimsExpense: null,
   }));
@@ -257,5 +268,5 @@ export function processBankData(
   };
 }
 
-/** Export bank metrics for UI consumption */
+/** Export internals for UI consumption and testing */
 export { extractBankMetrics, computeBankRatios, detectSubtype };
