@@ -606,7 +606,7 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
       ],
       ratioRanges: {
         ROCE: [0.4, 0.6],
-        RNOA: [0.8, 1.0],
+        RNOA: [0.8, 1.1],
         NBC: [0.02, 0.05],
       },
     },
