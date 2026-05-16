@@ -2,6 +2,7 @@
  * Processing Pipeline — V2-FINAL
  * Integrates: engine computation, anomaly detection (S-5.x),
  * kw derivation (S-9.4), and per-period flag attachment.
+ * Routes to bank pipeline when financial institution detected.
  */
 import { RawPeriodData, RecastPeriod, EngineConfig, ke_from_config } from "./types";
 import {
@@ -10,10 +11,15 @@ import {
 } from "./PenmanNissimEngine";
 import { runAnomalyDetection, AnomalyBundle } from "./anomalyDetection";
 import { buildUnusualItemPolicy } from "./unusualItemPolicy";
+import { assessAnalysisScope, analysisFamilyFromScope } from "./scopePolicy";
+import { processBankData } from "./bankPipeline";
+import { FinancialInstitutionAnalysisResult } from "./analysisFamily";
 
 export interface PipelineResult {
   periods  : RecastPeriod[];
   anomalies: AnomalyBundle;
+  analysisFamily: "industrial" | "financial-institution";
+  bankResult?: FinancialInstitutionAnalysisResult;
 }
 
 export function processCompanyData(
@@ -29,7 +35,18 @@ export function processCompanyDataFull(
 ): PipelineResult {
   if (!dataArray || dataArray.length === 0) {
     const emptyAnomalies = runAnomalyDetection([], config);
-    return { periods: [], anomalies: emptyAnomalies };
+    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "industrial" };
+  }
+
+  // Detect company type from data
+  const scope = assessAnalysisScope(dataArray, config);
+  const family = analysisFamilyFromScope(scope);
+
+  // Route to bank pipeline if financial institution
+  if (family === "financial-institution" && !scope.blocked) {
+    const bankResult = processBankData(dataArray, scope);
+    const emptyAnomalies = runAnomalyDetection([], config);
+    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult };
   }
 
   const sorted = [...dataArray].sort(
@@ -85,5 +102,5 @@ export function processCompanyDataFull(
     period.cu.policy = buildUnusualItemPolicy(period);
   }
 
-  return { periods: results, anomalies };
+  return { periods: results, anomalies, analysisFamily: "industrial" };
 }
