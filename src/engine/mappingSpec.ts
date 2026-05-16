@@ -377,4 +377,74 @@ export const CapitalineMappingSpec = {
       "On Redemption of Debenture",
     ],
   },
+
+  // ═══════════════════════════════════════════════════════════════
+  // BANK / FINANCIAL INSTITUTION SPECIFIC MAPPINGS
+  // These labels are populated for banks/NBFCs but null for industrials
+  // ═══════════════════════════════════════════════════════════════
+  bankBalanceSheet: {
+    // Core earning assets
+    totalLoans: ["Total Loans Given", "Advances :"],
+    investmentsGovernment: ["Investments in Government or Trust securities"],
+    investmentsBonds: ["Investments in Debentures or Bonds"],
+    investmentsOther: ["Other Current Investments"],
+
+    // Funding sources
+    totalDeposits: ["Total Long-term Secured Deposits"],
+    nonConvertibleDebentures: ["Non Convertible Debentures"],
+    termLoansFromBanks: ["Term Loans - Banks"],
+    termLoansFromInstitutions: ["Term Loans - Institutions"],
+    termLoansFromOthers: ["Term Loans - Others Parties"],
+
+    // Cash & liquidity
+    cashOnHand: ["Cash on Hand"],
+    balancesWithBanks: ["Balances with Banks"],
+    balancesInCurrentAccounts: ["in Current Accounts"],
+
+    // Insurance (for HDFC group)
+    policyHoldersLiabilities: ["Policy Holders Accounts - Liabilities"],
+
+    // Contingent liabilities (off-balance sheet)
+    guaranteesGiven: ["Guarantees given on behalf of constituents - in India"],
+    forwardExchangeContracts: ["Liability on Account of Outstanding Forward Exchange Contracts"],
+    acceptancesEndorsements: ["Acceptances, Endorsements and Other obligations"],
+    totalContingentLiabilities: ["Total Contingent Liabilities"],
+
+    // Provisions
+    provisionForStandardAssets: ["Provision for Standard Assets as per NHB Norms"],
+  },
+
+  bankProfitLoss: {
+    // Interest income (NII components)
+    interestIncome: ["Interest Income", "Total Revenue from Operations"],
+    otherInterestIncome: ["Other Interest Income"],
+    feeAndCommissionIncome: ["Fee and Commission Income"],
+
+    // Interest expense
+    interestOnDeposits: ["Interest on Deposits"],
+
+    // Non-interest income
+    profitOnSaleOfInvestments: ["Profit on Sale of Investments"],
+    forexGainLoss: ["Net Gain / Loss on Foreign Currency Transaction"],
+    otherNonOperatingIncome: ["Other Non Operating Income"],
+
+    // Operating expenses
+    salariesAndIncentives: ["Salaries and Incentives"],
+    totalSellingAdminExpenses: ["Total Selling & Administrative Expenses"],
+    totalMiscExpenses: ["Total Miscellaneous Expenses"],
+    otherProvisionsWriteoffs: ["Other Provisions and Write-offs"],
+
+    // Profitability
+    profitBeforeTax: ["Profit Before Tax", "Profit Before Exceptional Items and Tax"],
+    profitAfterTax: ["Profit After Tax"],
+    profitAttributableToShareholders: ["Profit Attributable to Shareholders", "Profit Attributable to Ordinary Shareholders"],
+    minorityInterest: ["Minority Interest After Net Profit"],
+
+    // Per share
+    weightedAvgSharesBasic: ["Weighted Average Number of Shares in Issue - Basic"],
+    weightedAvgSharesDiluted: ["Weighted Average Number of Shares in Issue - Diluted"],
+
+    // Dividends
+    totalDividend: ["Total Dividend"],
+  },
 } as const;
