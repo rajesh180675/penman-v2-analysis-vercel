@@ -1867,6 +1867,23 @@ export function computeV3Analytics(
     })
     .filter((x): x is OADecompositionResult => x != null);
   const fadeParams = estimateFadeParams(periods);
+
+  // §9.1b: Wire phi into terminal value — Ohlson (1995) reversion CV
+  // CV_ohlson = (phi * RE_T) / (1 + ke - phi) where phi is AR(1) persistence
+  // This provides an alternative to Gordon Growth CV that uses company-specific fade
+  const pmFade = fadeParams.find(f => f.driver === "PM");
+  const phi_effective = pmFade?.source === "COMPANY_SPECIFIC" ? pmFade.phi : (pmFade?.phi ?? 0.87);
+  const RE_T = anchorResult.selected_RE_anchor;
+  const denominator_ohlson = 1 + ke - phi_effective;
+  const CV_ohlson = denominator_ohlson > 0.01 ? (phi_effective * RE_T) / denominator_ohlson : null;
+  const V_ohlson = CV_ohlson != null
+    ? cse0 + pvREExplicit + CV_ohlson / Math.pow(1 + ke, explicitPeriods)
+    : null;
+  registry.register("V_RE_ohlson_reversion", V_ohlson ?? 0, "S-9.1b");
+  registry.register("phi_effective", phi_effective, "S-9.1b");
+  registry.register("phi_source", pmFade?.source ?? "NP_DEFAULT", "S-9.1b");
+  registry.register("CV_ohlson", CV_ohlson ?? 0, "S-9.1b");
+
   const companyId = periods[0]?.period_end ? (cfg.ticker ?? "Company") : "Company";
   const triggerCalibration = calibrateMonitoringTriggers(periods, periodFlags, registry, cfg);
   const triggers = generateMonitoringTriggers(periods, companyId, ke, periodFlags, registry, cfg);
