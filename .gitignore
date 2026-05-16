@@ -28,3 +28,6 @@ yarn-error.log*
 .afes-local/
 .claude/settings.local.json
 .claude/worktrees/
+
+# Raw data — not committed
+public/data/companies/
