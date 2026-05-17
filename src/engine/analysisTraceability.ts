@@ -7,6 +7,7 @@ import { evaluateParserFidelity, ParserFidelitySummary } from "./parserFidelity"
 import { EngineConfig, RawPeriodData, RecastPeriod } from "./types";
 import { evaluateReconciliationResiduals, ReconciliationResidualSummary } from "./reconciliationResiduals";
 import { SourceParserDiagnostics } from "./parserDiagnostics";
+import { detectDistress } from "./distressDetector";
 
 export interface TraceabilityBacklogPreview {
   statement: string;
@@ -275,6 +276,13 @@ export function buildAnalysisTraceability(params: {
     recastData: params.recastData ?? null,
     config: params.config ?? null,
   });
+  // Phase J5: distress gate. Critical or severe distress (negative net
+  // worth, going-concern stress) blocks `valuation-eligible` advancement
+  // even when structural reconciliation cleared. Equity-side intrinsic
+  // values are mathematically defined but economically meaningless on
+  // these datasets; advancing the rigor level would mislead reviewers.
+  const distress = detectDistress(params.recastData ?? null);
+  const distressBlocksValuation = distress.severity === "critical" || distress.severity === "severe";
   const structuralAchieved = hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues && reconciliation.status !== "failed";
   const checkpoints: AnalysisRigorCheckpoint[] = [
     {
@@ -318,12 +326,14 @@ export function buildAnalysisTraceability(params: {
     {
       level: "valuation-eligible",
       label: "Valuation eligible",
-      achieved: structuralAchieved && !valuationBlocked && valuationStatus !== "guarded" && valuationStatus !== "unknown",
-      detail: valuationStatus === "guarded"
-        ? "Valuation still depends on a guarded fallback anchor."
-        : valuationStatus === "warning" || valuationStatus === "production-ready"
-          ? `Valuation status is ${valuationStatus}, so the run remains eligible for valuation use.`
-          : "Valuation readiness has not been established yet.",
+      achieved: structuralAchieved && !valuationBlocked && !distressBlocksValuation && valuationStatus !== "guarded" && valuationStatus !== "unknown",
+      detail: distressBlocksValuation
+        ? `${distress.severity === "critical" ? "Critical" : "Severe"} financial distress detected (${distress.reasons[0] ?? "negative net worth"}). Equity-side valuation models cannot be trusted; the run is not valuation-eligible.`
+        : valuationStatus === "guarded"
+          ? "Valuation still depends on a guarded fallback anchor."
+          : valuationStatus === "warning" || valuationStatus === "production-ready"
+            ? `Valuation status is ${valuationStatus}, so the run remains eligible for valuation use.`
+            : "Valuation readiness has not been established yet.",
     },
     {
       level: "production-ready",
