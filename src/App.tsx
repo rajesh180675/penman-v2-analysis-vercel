@@ -1,6 +1,6 @@
 import { Suspense, lazy, useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { RawPeriodData, RecastPeriod, DEFAULT_CONFIG, EngineConfig, CompanyRegistry } from "./engine/types";
-import { processCompanyData, processCompanyDataFull } from "./engine/pipeline";
+import { processCompanyDataFull } from "./engine/pipeline";
 import type { FinancialInstitutionAnalysisResult } from "./engine/analysisFamily";
 import { deriveAnalysisStatus } from "./engine/analysisStatus";
 import { CapitalineParseDebug } from "./engine/capitalineParser";
@@ -93,23 +93,29 @@ export function App() {
     return auditMappingCoverage(rawData);
   }, [rawData]);
 
-  // Bank/NBFC pipeline result. Computed when scope routes to financial-institution
-  // and not blocked. Carries the Phase B4 valuation bundle (3 models + triangulation).
-  const bankResult = useMemo<FinancialInstitutionAnalysisResult | null>(() => {
+  // Single engine pass — produces both the industrial recast (RecastPeriod[])
+  // and the bank pipeline result. Consolidates two earlier separate calls
+  // into one for efficiency.
+  const pipelineResult = useMemo(() => {
     if (!rawData || rawData.length === 0) return null;
-    if (!scopeGate || scopeGate.scopeAssessment.blocked) return null;
-    if (scopeGate.scopeAssessment.analysisFamily !== "financial-institution") return null;
+    if (scopeGate?.scopeAssessment.blocked) return null;
     try {
-      const full = processCompanyDataFull(rawData, config);
-      return full.bankResult ?? null;
+      return processCompanyDataFull(rawData, config);
     } catch (err) {
-      console.error("[App] bank pipeline error:", err);
-      return null;
+      console.error("[App] engine error:", err);
+      return { error: err instanceof Error ? err.message : String(err) };
     }
   }, [config, rawData, scopeGate]);
 
-  // Derive recastData reactively from rawData + config so any config change (tax rate,
-  // OCI treatment, hybrid-debt flag, etc.) immediately re-computes the analysis.
+  // Bank/NBFC pipeline result. Carries Phase B4 valuation bundle.
+  const bankResult = useMemo<FinancialInstitutionAnalysisResult | null>(() => {
+    if (!pipelineResult || "error" in pipelineResult) return null;
+    if (pipelineResult.analysisFamily !== "financial-institution") return null;
+    return pipelineResult.bankResult ?? null;
+  }, [pipelineResult]);
+
+  // Derive recastData reactively. Any config change (tax rate, OCI treatment,
+  // hybrid-debt flag, etc.) immediately re-computes via pipelineResult above.
   const recastOutcome = useMemo<{ data: RecastPeriod[] | null; error: string | null }>(() => {
     if (!rawData || rawData.length === 0) return { data: null, error: null };
     if (scopeGate?.scopeAssessment.blocked) {
@@ -118,17 +124,14 @@ export function App() {
         error: scopeGate.scopeAssessment.reasons[0] ?? "Unsupported dataset scope for the industrial Penman-Nissim engine.",
       };
     }
-    try {
-      const processed = processCompanyData(rawData, config);
-      return { data: processed.length > 0 ? processed : null, error: null };
-    } catch (err) {
-      console.error("[App] engine error:", err);
-      return {
-        data: null,
-        error: err instanceof Error ? err.message : String(err),
-      };
-    }
-  }, [config, rawData, scopeGate]);
+    if (!pipelineResult) return { data: null, error: null };
+    if ("error" in pipelineResult) return { data: null, error: pipelineResult.error };
+    return {
+      data: pipelineResult.periods.length > 0 ? pipelineResult.periods : null,
+      error: null,
+    };
+  }, [pipelineResult, rawData, scopeGate]);
+
   const recastData = recastOutcome.data;
   const engineError = recastOutcome.error;
   const qualityGateWithRecast = useMemo(() => {
