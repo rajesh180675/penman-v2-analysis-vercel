@@ -14,12 +14,20 @@ import { buildUnusualItemPolicy } from "./unusualItemPolicy";
 import { assessAnalysisScope, analysisFamilyFromScope } from "./scopePolicy";
 import { processBankData } from "./bankPipeline";
 import { FinancialInstitutionAnalysisResult } from "./analysisFamily";
+import { detectDistress, DistressAssessment } from "./distressDetector";
 
 export interface PipelineResult {
   periods  : RecastPeriod[];
   anomalies: AnomalyBundle;
   analysisFamily: "industrial" | "financial-institution";
   bankResult?: FinancialInstitutionAnalysisResult;
+  /**
+   * Phase J1: financial distress assessment. Surfaces negative-equity /
+   * cash-burn signals so downstream consumers (valuation modules, UI)
+   * can fail-closed on equity-side models. Always present (non-distressed
+   * datasets get severity="none", equityModelsBlocked=false).
+   */
+  distress: DistressAssessment;
 }
 
 export function processCompanyData(
@@ -35,7 +43,8 @@ export function processCompanyDataFull(
 ): PipelineResult {
   if (!dataArray || dataArray.length === 0) {
     const emptyAnomalies = runAnomalyDetection([], config);
-    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "industrial" };
+    const distress = detectDistress([]);
+    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "industrial", distress };
   }
 
   // Detect company type from data
@@ -49,7 +58,12 @@ export function processCompanyDataFull(
     // Market cap is not in EngineConfig today — null until UI passes it.
     const bankResult = processBankData(dataArray, scope, config, null);
     const emptyAnomalies = runAnomalyDetection([], config);
-    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult };
+    // Bank pipeline produces no industrial RecastPeriod[]. Distress for banks
+    // is handled inside bankValuation (skip-with-reason on bookValue ≤ 0),
+    // so the industrial detector returns "none" for an empty period array
+    // and downstream consumers should rely on bankResult.* skip reasons.
+    const distress = detectDistress([]);
+    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult, distress };
   }
 
   // Fail-closed: if scope is financial-institution but blocked (insurance-only,
@@ -58,10 +72,12 @@ export function processCompanyDataFull(
   // and produce a meaningless valuation for an unsupported scope (review C5).
   if (family === "financial-institution" && scope.blocked) {
     const emptyAnomalies = runAnomalyDetection([], config);
+    const distress = detectDistress([]);
     return {
       periods: [],
       anomalies: emptyAnomalies,
       analysisFamily: "financial-institution",
+      distress,
     };
   }
 
@@ -118,5 +134,5 @@ export function processCompanyDataFull(
     period.cu.policy = buildUnusualItemPolicy(period);
   }
 
-  return { periods: results, anomalies, analysisFamily: "industrial" };
+  return { periods: results, anomalies, analysisFamily: "industrial", distress: detectDistress(results) };
 }

@@ -1,362 +1,266 @@
-# Session Summary — 2026-05-17
-
-End-of-session report for the comprehensive multi-sector hardening pass on
-penman-v2-analysis. 22 commits shipped to `origin/main` since the previous
-checkpoint (`2541ac7`), all builds clean, 487 tests passing.
-
-## Quick Status
-
-- **Branch**: `main`, clean, fully pushed to `origin/main`
-- **Latest commit**: `c27b3c5 feat(loss-maker): Phase I3`
-- **Tests**: 487 passing across 71 test files
-- **Typecheck**: clean (`npm run typecheck`)
-- **Build**: clean (`npm run validate`)
-- **Deployed**: Vercel auto-deploys on push, so the live app is up-to-date
-
-## What We Accomplished
-
-This session pushed beyond the ITC + HDFC Bank Ind-AS-only baseline so the
-engine handles **any Indian listed company across sectors and accounting
-standards**, with explicit skip-with-reason instead of silent NaN when
-prerequisites aren't met.
-
-Five phases shipped end-to-end:
-
-### Phase A — Multi-standard ingestion (Ind-AS + Revised Sch-VI + Old GAAP/Standard)
-
-The Capitaline parser now identifies which Indian accounting standard each
-file is rendered under and merges across formats with provenance tracking.
-
-- `standardAliases.ts` — 40 alias entries mapping REV/Standard labels to Ind-AS canonical
-- `standardFromFilename(path)` — path-aware detection (filename suffix AND folder name)
-- `STANDARD_PRECEDENCE`: ind-as=4, revised-sch-vi=3, standard=2, unknown=1
-- Every `RawPeriodData` now tagged with `accounting_standard`
-- 31 unit tests covering real Capitaline folder layouts (`revised schd/`, `standard/`)
-
-Validated against real ITC data: all 20 files in the multi-format tree
-detect correctly, 7 alias gaps closed from labels found in REV/Standard
-exports that didn't yet exist in mappingSpec.
-
-### Phase A6 — Accounting-standard confidence in traceability envelope
-
-`AnalysisTraceabilityEnvelope.accountingStandardCoverage` now exposes:
-
-- Per-standard period count
-- Missing-provenance count
-- Dominant standard (count tiebreaker, then precedence)
-- Confidence band: high (all Ind-AS) → medium → low → unknown
-
-UI can now show "13/15 periods Ind-AS, 2 Old GAAP" without users
-having to dig into raw period data. 10 unit tests.
-
-### Phase B4 — Three bank valuation models
-
-Banks can't use Penman-Nissim's OA/FA reformulation (advances ARE the
-operating asset; deposits ARE the operating liability). New equity-side
-models in `bankValuation.ts`:
-
-1. **Justified P/B Gordon** — `Value = BV × (sustainable_ROE − g) / (ke − g)`
-2. **Equity Residual Income with 5-year fade** — explicit fade window then terminal
-3. **Sustainable DDM** — payout × earnings discounted at ke
-
-Each model **independently skips with reason** when prerequisites fail
-(non-positive ROE history, ke ≤ g, missing book value, etc). Triangulated
-value is the median of computed models. 18 unit tests covering all skip
-paths.
-
-UI: new 'Bank' tab in the main TABS list, period snapshots table, three
-model cards with diagnostics, triangulation box with market-cap comparison.
-
-### Phase I — Robustness pass (the largest surface this session)
-
-The "no silent NaN" pass. Every valuation/scoring module now exposes
-`dataSufficient` + `skipReason` when prerequisites aren't met:
-
-- **Capital allocation**: skips when fewer than 3 periods of positive CNI
-  (Paytm-style loss-maker case)
-- **Moat scoring**: skips when fewer than 3 periods of positive RNOA
-- **Cyclicality detector** (new module): peak/trough/midcycle classification
-  via CV-based cycle detection + z-score extremes; surfaces "Tata Steel
-  FY22 is at peak-cycle" so users don't naïvely extrapolate peak margins
-- **Structural break detector** (new module): flags equity/revenue/NOA YoY
-  changes too large to be organic — Reliance Jio Financial demerger,
-  IFRS-16 transitions, M&A, capital raises; affected periods exposed
-  so persistence calculations can exclude them
-- **Mixed-conglomerate routing override**: `cfg.mixed_conglomerate_route_to`
-  lets users consciously route ICICI Bank / Reliance through their
-  dominant pipeline despite immaterial subsidiary signals (default fail-
-  close behaviour preserved)
-
-UI: amber banners at top of V3AnalyticsPanel surface every skip-reason and
-cycle-position warning prominently, so issues aren't buried in diagnostics.
-
-### Phase I3 — Loss-maker valuation alternative
-
-For Paytm/Zomato-style names where every earnings-based model skips,
-new module `lossMakerValuation.ts` provides three earnings-independent
-anchors: revenue-multiple (peer median or sector default 3.0×), reverse-
-DCF (solves for the year-5 revenue and steady-state margin the current
-market cap implies), and path-to-profitability flag (high growth +
-improving margins + narrowing loss → green/amber/red signal).
-
-Plus runway computation: net cash / 3y avg burn. Recommendation text
-adapts: <2y runway triggers dilution-risk language, green path triggers
-constructive framing, red path triggers waiting-for-inflection framing.
-
-13 unit tests covering profitable-rejection, multi-period classification,
-all 3 multiple sources, runway, green/red path detection, reverse-DCF
-compute and skip paths, runway-pressure recommendation. UI banner in
-V3AnalyticsPanel surfaces the full anchor set.
-
-### Cross-cutting refactor — single engine pass
-
-App.tsx was calling the engine twice (once for `recastData`, once for
-`bankResult`). Consolidated into a single `processCompanyDataFull()` pass
-driven by one `useMemo`. Roughly halves engine work on every config
-keystroke.
-
-## Current State of the Project
-
-**Sector coverage matrix (after this session):**
-
-| Company           | Routing                  | Pipeline         | Valuation models      | Status           |
-|-------------------|--------------------------|------------------|-----------------------|------------------|
-| ITC               | industrial               | Penman-Nissim    | 9 models + Ohlson     | Full (multi-std) |
-| HDFC Bank         | financial-institution    | bankPipeline     | 3 bank models         | Full             |
-| ICICI Bank        | mixed (override → bank)  | bankPipeline     | 3 bank models         | Full             |
-| LIC               | financial-institution    | fail-close       | none                  | Insurance Phase E TBD |
-| Power Grid        | industrial               | Penman-Nissim    | 9 models              | Full             |
-| TCS               | industrial               | Penman-Nissim    | 9 models              | Full             |
-| Tata Steel        | industrial               | Penman-Nissim    | 9 models + cyclicality flag | Full       |
-| Bajaj Finance     | NBFC subtype             | bankPipeline     | 3 models, NBFC labels | Functional       |
-| Paytm             | industrial               | Penman-Nissim    | none — Phase I3 anchors (revenue ×, reverse-DCF, path) | Robust skip + alt anchors |
-| Reliance          | mixed (override → industrial) | Penman-Nissim | 9 models + structural-break flag | Full       |
-
-10/10 companies in `public/data/companies/` route somewhere meaningful.
-LIC fail-closes correctly (insurance pipeline is multi-week future work).
-
-**Architectural patterns established this session:**
-
-1. **Skip-with-reason** is now the standard for any module that can't
-   compute meaningfully. Both `MoatScoreResult` and `CapAllocScoreResult`
-   carry `dataSufficient` / `skipReason` / `<gate>Periods`. Future modules
-   should follow this template.
-2. **Path-aware standard detection** — uses both filename and folder name.
-   Capitaline's actual export layout puts Standard files in a `standard/`
-   folder with no filename suffix, so folder name is the reliable signal.
-3. **Dominant standard via precedence with count tiebreaker** —
-   Ind-AS > Revised Sch-VI > Standard > Unknown.
-4. **Cycle-aware framing** doesn't normalize the recast itself, just flags
-   whether the latest period is at a cycle extreme.
-5. **Conscious routing override** for mixed-conglomerate companies —
-   default fail-close preserved as the safe path; user explicitly takes
-   responsibility by setting config.
-
-## Files Created (this session)
-
-### Engine
-
-- `src/engine/standardAliases.ts` — multi-standard infra, 40 alias entries
-- `src/engine/bankValuation.ts` — 3 bank valuation models (316 lines)
-- `src/engine/cyclicalityDetector.ts` — peak/trough/midcycle (229 lines)
-- `src/engine/structuralBreakDetector.ts` — demerger/M&A detection (~250 lines)
-- `src/engine/lossMakerValuation.ts` — Phase I3 alt anchors (~310 lines)
-
-### Tests
-
-- `src/engine/__tests__/standardAliases.spec.ts` (31 cases)
-- `src/engine/__tests__/accountingStandardCoverage.spec.ts` (10 cases)
-- `src/engine/__tests__/bankValuation.spec.ts` (18 cases)
-- `src/engine/__tests__/cyclicalityDetector.spec.ts` (9 cases)
-- `src/engine/__tests__/structuralBreakDetector.spec.ts` (9 cases)
-- `src/engine/__tests__/lossMakerValuation.spec.ts` (13 cases)
-
-### UI
-
-- `src/components/FinancialInstitutionReport.tsx` — Bank tab content (~250 lines)
-
-### Documentation
-
-- `docs/NEXT-PHASE-ROADMAP.md` (~310 lines) — Phases A–J sequenced plan
-- `docs/phase-a-validation-2026-05-17.md` (~280 lines) — real ITC validation
-- `docs/company-coverage-status-2026-05-17.md` (~150 lines) — 10-company gap analysis
-- `docs/session-summary-2026-05-17.md` (~150 lines) — mid-session checkpoint
-
-### Skill
-
-- `capitaline-multi-standard-ingestion` (data-science category) —
-  workflow for handling Ind-AS + REV + Standard exports
-
-## Files Modified (this session)
-
-### Engine
-
-- `src/engine/types.ts` — added `accounting_standard?` to RawPeriodData,
-  added `mixed_conglomerate_route_to?` to EngineConfig
-- `src/engine/capitalineParser.ts` — full-path threading through
-  gridToPeriods, multi-standard period merge with provenance
-- `src/engine/analysisTraceability.ts` — `accountingStandardCoverage`
-  field + `computeAccountingStandardCoverage()` helper
-- `src/engine/scopePolicy.ts` — mixed-conglomerate override logic
-- `src/engine/capitalAllocationScoring.ts` — `dataSufficient` /
-  `skipReason` / `profitablePeriods` fields
-- `src/engine/moatScoring.ts` — same skip-with-reason pattern
-- `src/engine/bankPipeline.ts` — Phase B4 valuation integration,
-  `subtype` field on result
-- `src/engine/analysisFamily.ts` — `borrowings` field on snapshot for NBFC
-- `src/engine/v3Analytics.ts` — wired `cyclicality` + `structuralBreaks`
-- `src/engine/pipeline.ts` — pass config to bank pipeline so it can
-  produce Phase B4 valuation
-
-### UI
-
-- `src/App.tsx` — single engine pass refactor, new 'Bank' tab,
-  pipeline result memo
-- `src/components/V3AnalyticsPanel.tsx` — Phase I robustness banners
-  (cyclicality / moat / capalloc / structural breaks)
-- `src/components/__tests__/ForecastReport.spec.tsx` — added required
-  `accountingStandardCoverage` to test fixtures
-
-### Documentation
-
-- `docs/COMPREHENSIVE-VALUATION-DESIGN.md` — pointer to companion roadmap
-
-## Files Deleted (this session)
-
-- `scripts/verify-phase-a-itc.spec.ts` — orphaned subagent leftover
-  causing a vitest worker OOM
-
-## What's Left to Do
-
-In rough priority order:
-
-### High value, small scope
-
-1. **I4 — Negative book value handling** — A handful of distressed PSUs /
-   defaulted NBFCs have negative equity. EPV and DDM blow up; need fail-
-   close. Smaller scope, similar pattern to existing skip-with-reason.
-   **Note: our 10 sample companies don't have any negative-BV cases, so
-   shipping I4 would be untested in real data.** Best deferred until a
-   user reports the bug or adds a distressed-company file.
-
-2. **Phase B5 — Bank quality flags** — NPA cycle position, deposit
-   franchise stability, loan growth vs system credit growth. Validates
-   B4 against real HDFC + ICICI cycle data. Substantial polishing.
-
-### Medium scope
-
-4. **NBFC-specific metrics** — Bajaj Finance currently routes through
-   bank pipeline. CASA / cost-to-deposits don't apply; should be
-   reinterpreted as cost-to-borrowings, NIM-on-AUM. Engine gives valid
-   numbers today but the labels are bank-shaped.
-
-5. **I5 — Single-period upload mode** — Currently might run with
-   degenerate output. Should produce a "screening only" mode with
-   explicit caveats.
-
-### Large scope (multi-week)
-
-6. **Phase E — Insurance pipeline** — LIC fail-closes correctly today.
-   A real insurance pipeline needs premium-based metrics, embedded value,
-   solvency ratios. Multi-week investment.
-
-7. **Phase J — Batch + UI polish** — Compare multiple companies side-
-   by-side, ranked watchlist, export to PDF.
-
-### Backlog (known limitations, documented)
-
-- **I7 currency detection** — Capitaline's `Curr. in` field is empty in
-  static HTML exports. Auto-detection isn't possible from file content.
-  All real workflows use Cr. Documented in roadmap; revisit only if a
-  user reports a discrepancy.
-- **I6 demerger detection beyond YoY threshold** — Current detector
-  catches the obvious cases. Edge cases (slow-burn divestitures over
-  3+ years) not yet handled.
-
-## Important Decisions / Context You Should Know
-
-### Real-world findings from ITC multi-standard validation
-
-- **Capitaline restates the SAME FY range under all 3 formats** —
-  multi-standard ingestion's value is no longer "extending the time
-  series" but "label-mapping resilience" + "Old GAAP cross-check signal"
-- **REV files produce identical numbers to INDAS** under different
-  labels — REV ingestion is purely a label-resilience play for users
-  who haven't downloaded INDAS exports
-- **Standard files materially differ from INDAS** (~19% gap in Total
-  Assets for ITC FY2025: 88,090 Cr vs 71,321 Cr) — useful as out-of-
-  Ind-AS sanity check, NOT as a primary input
-
-### HDFC Bank REV / Standard data is NOT urgent
-
-The discussion concluded HDFC's existing 9-year Ind-AS coverage is more
-than sufficient for the three Phase B4 models. Pre-Ind-AS bank data
-followed Banking Regulation Act + RBI prudential norms (not Schedule VI),
-so label translations would be much messier. **More valuable next: ICICI
-Bank Ind-AS validation, Bajaj Finance NBFC-specific metrics path.**
-
-### Data set is sufficient for comprehensive sector analysis
-
-Confirmed during the 10-company status sweep: ITC (industrial) + HDFC
-Bank + ICICI Bank (different bank profiles) + LIC (insurance fail-close)
-+ Power Grid (utility/PSU) + TCS (IT services) + Tata Steel (cyclical)
-+ Bajaj Finance (NBFC) + Paytm (loss-maker) + Reliance (mixed
-conglomerate) covers every architecturally distinct sector type. Adding
-pharma, auto, telecom, real estate, or a pure holdco wouldn't expose
-new pipeline-level distinctions — just industrial pipeline runs against
-different label sets.
-
-### Three data hygiene issues found
-
-1. **Power Grid `standalone/` has duplicate ProfitLossINDAS_.xls and
-   ProfitLossINDAS_ (1).xls** — usually harmless because values match,
-   worth deleting the (1) variant to avoid double-counting in label
-   collision stats
-2. **HDFC Bank uses capital-S `Standalone/` folder** while other companies
-   use lowercase `standalone/`. Scope detector is case-insensitive, but
-   future subfolder-listing UI should be too. Worth normalizing
-3. **LIC has only 6 files** — expected for life insurance (different
-   schedules: Form B-PL, Revenue Account, Solvency Statement). Engine
-   correctly fail-closes today
-
-### S-9.4C invariant must be preserved
-
-Single-source-of-truth for capital cost (kw): valuation modules accept
-`kwOverride` and never recompute kw internally. Phase B4 bank valuation
-follows this — `ke_from_config` is computed once at the call site and
-threaded through.
-
-### Build / test pre-existing noise
-
-- The patch tool's lint fallback flags pre-existing TS errors (jszip
-  esModuleInterop, xlsx default-import, downlevelIteration, vitest type
-  resolution). Real `npm run typecheck` is clean. Ignore the lint output
-  on patches; trust `npm run typecheck`.
-- One vitest worker OOM is pre-existing (reproduces on clean main with
-  `git stash` + `vitest run`). Other 474 tests pass.
-
-### Skill maintenance
-
-Updated `capitaline-multi-standard-ingestion` skill mid-session with the
-folder-based download workflow (Capitaline's actual export pattern, not
-the original assumed zip workflow).
-
-## Recommendation for Next Session
-
-Test the deployed app on Vercel against each of the 10 companies. The
-session shipped a lot of UI surface (Bank tab, Phase I banners, NBFC
-labels, multi-standard provenance) — real use will surface what's
-working and what needs polish before continuing engine work. Then
-prioritize I3 (loss-maker alternative) + I4 (negative book value) since
-they're small scope with high real-world value.
-
-Avoid the temptation to start Phase E (insurance) — it's multi-week
-work and LIC fail-closes correctly today, which is honest behaviour.
+# Session Summary — Penman V2 Analysis
+
+**Date:** 2026-05-17
+**Branch:** `main` (all commits pushed to `origin/main`)
+**Commits this session:** 16
+**Tests:** 471 passing across 71 files
+**Build:** clean (typecheck + Vite production build)
 
 ---
 
-Total session impact: 22 commits, 6 new modules, 5 new test files,
-4 new docs, 1 new skill update, 487 tests passing. Engine now handles
-all 10 companies in `public/data/companies/` either with full valuation,
-explicit skip-with-reason, or alternative anchors (loss-makers).
-Ready for real-world dogfooding.
+## What we accomplished
+
+### Phase A — Multi-standard ingestion (Ind-AS + Revised Sch-VI + Standard) ✅
+
+Engine now ingests Capitaline exports across all three Indian accounting standards and merges them with provenance tracking. Path-aware detection scans both filename AND folder names, so the actual Capitaline download layout (`revised schd/`, `standard/` subfolders) works without filename suffixes.
+
+- 40 alias entries mapping REV/Standard labels to Ind-AS canonical
+- Precedence: Ind-AS > Revised Sch-VI > Standard > Unknown
+- Real ITC data validation: 20 files across 3 formats all detect correctly
+- Discovery: Capitaline restates the SAME FY range across all 3 formats. REV vs INDAS values are identical, just different labels. Standard differs ~19% on Total Assets due to Ind-AS lease/intangible/investment-property additions.
+
+### Phase A6 — Accounting-standard confidence in traceability envelope ✅
+
+`AccountingStandardCoverage` field added to `AnalysisTraceabilityEnvelope`. UI can now show "13/15 periods Ind-AS, 2/15 Old GAAP" with confidence bands (high/medium/low/unknown).
+
+### Phase B4 — Three bank valuation models ✅
+
+Banks can't use Penman-Nissim's OA/FA reformulation (advances ARE the operating asset). New `bankValuation.ts` produces three equity-side models with skip-with-reason for each:
+
+- **Justified P/B Gordon** — `(ROE - g) / (ke - g) × BV`
+- **Equity Residual Income** — 5-year explicit forecast + Gordon terminal
+- **Sustainable DDM** — `(EPS × payout) / (ke - g)`
+
+Triangulated value = median of computed models. Sustainable ROE = median of last 5y, capped at 1.5× long-run (~19.5%).
+
+### Phase I — Robustness pass (skip-with-reason throughout) 🟡 partial
+
+Pattern: every valuation/scoring module returns explicit skip-with-reason instead of silently producing a misleading number on edge cases.
+
+- **I1 Capital allocation** — `dataSufficient`/`skipReason`/`profitablePeriods` for Paytm-style loss-makers
+- **I2 Scope override** — `cfg.mixed_conglomerate_route_to: "bank" | "nbfc" | "industrial" | null` lets ICICI Bank / Reliance route through dominant pipeline despite immaterial subsidiary signals; default fail-close preserved
+- **Moat skip-reason** — same pattern, triggers when fewer than 3 periods of positive RNOA
+- **Cyclicality detector** — CV-based classification with z-score peak/trough split. Tata Steel FY22 peak vs FY24 trough now flagged. Returns peak (P90) / trough (P10) / median anchors.
+- **Structural break detector** — Reliance/Jio Financial spinoff (FY2024 equity drop ~₹1.4 L Cr) now flagged with affected periods. Detects equity drops/jumps, revenue drops/jumps, NOA drops/jumps with configurable thresholds. Each break carries a reason mapping to typical Indian corporate events (demerger, IPO/QIP, IFRS-16, etc.)
+- **I7 Currency** — Documented as Cr-only assumption; Capitaline's `Curr. in` HTML field is empty in static export across all 10 sample companies, so auto-detection isn't possible.
+
+### UI wiring ✅
+
+- **Bank tab** in main TABS list with `FinancialInstitutionReport` component (period snapshots + 3 valuation cards + triangulation box + skip-reason cards)
+- **NBFC subtype labels** — Bajaj Finance shows Borrowings/Loan Book instead of Deposits/Advances with caveat note about CASA/NIM-on-deposits not applying
+- **V3 Analytics Panel banners** — Amber banners surface cyclicality (peak/trough/midcycle), moat low-confidence, capalloc low-confidence, and structural breaks at the top of the panel
+- **App.tsx engine consolidation** — Single `processCompanyDataFull()` pass drives both `recastOutcome` and `bankResult`; halves engine work on config keystrokes
+
+---
+
+## Current state of the project
+
+```
+Branch: main
+HEAD: 8c45403 (refactor(App): consolidate engine call)
+Tests: 471/471 passing
+Build: clean
+Vercel: ready to deploy
+```
+
+**Test coverage by module:**
+
+| Module                            | Tests |
+|-----------------------------------|-------|
+| standardAliases                   | 31    |
+| accountingStandardCoverage        | 10    |
+| bankValuation                     | 18    |
+| capitalAllocationScoring (Phase I)| 5     |
+| scopePolicy (mixed-conglomerate)  | 5     |
+| cyclicalityDetector               | 9     |
+| moatScoring (Phase I)             | 3     |
+| structuralBreakDetector           | 9     |
+
+---
+
+## Files created this session
+
+```
+src/engine/
+  standardAliases.ts                                   (NEW, 350 lines)
+  bankValuation.ts                                     (NEW, 316 lines)
+  cyclicalityDetector.ts                               (NEW, 229 lines)
+  structuralBreakDetector.ts                           (NEW, 220 lines)
+
+src/engine/__tests__/
+  standardAliases.spec.ts                              (NEW, 31 cases)
+  accountingStandardCoverage.spec.ts                   (NEW, 146 lines)
+  bankValuation.spec.ts                                (NEW, 243 lines)
+  cyclicalityDetector.spec.ts                          (NEW, 173 lines)
+  structuralBreakDetector.spec.ts                      (NEW, 160 lines)
+
+src/components/
+  FinancialInstitutionReport.tsx                       (NEW, 200 lines)
+
+docs/
+  NEXT-PHASE-ROADMAP.md                                (NEW companion to design doc)
+  phase-a-validation-2026-05-17.md                     (NEW real-data validation report)
+  company-coverage-status-2026-05-17.md                (NEW per-sector gap analysis)
+  session-summary-2026-05-17.md                        (NEW interim summary)
+  session-summary.md                                   (this file)
+```
+
+## Files modified this session
+
+```
+src/engine/
+  types.ts                          — accounting_standard?, mixed_conglomerate_route_to
+  capitalineParser.ts               — multi-standard ingestion with provenance
+  analysisTraceability.ts           — AccountingStandardCoverage interface + helper
+  capitalAllocationScoring.ts       — dataSufficient/skipReason/profitablePeriods
+  moatScoring.ts                    — dataSufficient/skipReason/positiveRNOAPeriods
+  scopePolicy.ts                    — mixed_conglomerate_route_to override
+  bankPipeline.ts                   — borrowings field threading + valuation hook
+  analysisFamily.ts                 — borrowings on FinancialInstitutionPeriodSnapshot
+  pipeline.ts                       — pass config to bank pipeline for valuation
+  v3Analytics.ts                    — wire cyclicality + structuralBreaks
+
+src/
+  App.tsx                           — Bank tab + bankResult + engine consolidation
+  components/V3AnalyticsPanel.tsx   — Phase I robustness banners
+
+docs/
+  COMPREHENSIVE-VALUATION-DESIGN.md — pointer to companion roadmap
+  NEXT-PHASE-ROADMAP.md             — marked Phase A/A6/B4 shipped, I7 documented
+
+scripts/                            (orphan removed)
+  verify-phase-a-itc.spec.ts        — DELETED
+```
+
+---
+
+## What's left to do
+
+In rough priority order:
+
+### High-value next session
+
+1. **I4 — Negative book value handling**
+   - **Test company:** Vodafone Idea (IDEA) — actively traded, persistent negative net worth from AGR liability + accumulated losses. Capitaline has full coverage.
+   - Other candidates: Suzlon (CDR years), Spicejet (intermittent)
+   - EPV and DDM need to fail-closed when CSE ≤ 0 with explicit "negative book value — equity-side valuation undefined" reason
+   - Justified P/B model is meaningless on negative equity (sign flip distorts ratio)
+   - Suggest replacement framing: enterprise value (EV/Sales, EV/EBITDA), recovery value, net asset realization
+
+2. **I3 — Loss-maker valuation alternative**
+   - When capalloc skips, give the user revenue-multiple or reverse-DCF anchor instead of just a skip message
+   - Real value for Paytm/Zomato/early-stage names
+   - Probably a new `lossMakerValuation.ts` with enterprise-value framing
+
+3. **Vercel deployment test of all current work**
+   - Take a fresh look at the deployed app with everything shipped this session
+   - Identify UI rough edges before adding more engine surface
+
+### Medium priority
+
+4. **Phase B5 — Bank quality flags** (NPA cycle position, deposit franchise stability, loan growth vs system credit growth)
+
+5. **NBFC-native metrics path** — true cost-to-AUM, asset-under-management disclosure parsing instead of just relabeling Deposits → Borrowings
+
+### Larger investments
+
+6. **Phase E — Insurance pipeline** — multi-week work to unblock LIC. Premium-based metrics, embedded value, solvency margins.
+
+7. **I5 — Single-period upload mode** — produce a "screening only" mode with explicit caveats
+
+---
+
+## Important decisions and context
+
+### Patterns established
+
+**Skip-with-reason is the standard pattern** for any module that can't compute meaningfully on a given dataset. Both `MoatScoreResult` and `CapAllocScoreResult` carry `dataSufficient` / `skipReason` / `<gate>Periods`. Future modules should follow.
+
+**Path-aware standard detection** uses both filename AND folder name. Capitaline's actual export layout puts Standard files in a `standard/` folder with no filename suffix. The detection function inspects every `/`-or-`\`-separated path segment.
+
+**Dominant standard via precedence with count tiebreaker** — Ind-AS (4) > Revised Sch-VI (3) > Standard (2) > Unknown (1). Used for both file routing and traceability confidence.
+
+**Cycle-aware framing doesn't normalise** the recast itself, just flags whether the latest period is at a cycle extreme so users can apply their own judgement on which anchor to trust.
+
+**Conscious routing override** for mixed-conglomerate companies — default fail-close is preserved as the safe path; user explicitly takes responsibility by setting `cfg.mixed_conglomerate_route_to`.
+
+### Hard-won discoveries
+
+- **Capitaline restates entire history under chosen format**: same FY range across all 3 formats. Multi-standard ingestion's value is "label-mapping resilience" + "Old GAAP cross-check signal", NOT "extending the time series".
+- **REV files produce identical numbers to INDAS** under different labels — REV ingestion is purely label-resilience for users who haven't downloaded INDAS exports.
+- **Standard files materially differ from INDAS** (~19% gap in Total Assets) — useful as out-of-Ind-AS sanity check, NOT as a primary input.
+- **Capitaline's `Curr. in` HTML field is empty** in static export across all 10 sample companies. Currency auto-detection from file content isn't possible. Cr is the universal assumption.
+- **Subagent + browser File API in vitest workers** blocks long-running real-file parsing; Python regex validation is faster for ad-hoc data inspection.
+- **Pre-existing patch-tool lint noise** — jszip esModuleInterop, xlsx default-import, downlevelIteration warnings should be ignored. Real `tsc --noEmit` via `npm run typecheck` is the source of truth.
+
+### 10-company data coverage
+
+Sufficient for comprehensive sector analysis — don't need more companies:
+
+| Company        | Sector type             | Pipeline route                |
+|----------------|-------------------------|-------------------------------|
+| ITC            | Industrial conglomerate | Penman-Nissim                 |
+| HDFC Bank      | Private bank            | Bank pipeline + Phase B4      |
+| ICICI Bank     | Bank with subs          | Bank (with override)          |
+| LIC            | Life insurance          | Fail-closed (insurance TBD)   |
+| Power Grid     | Utility/PSU             | Penman-Nissim                 |
+| TCS            | IT services             | Penman-Nissim                 |
+| Tata Steel     | Cyclical/commodity      | Penman-Nissim + cyclicality   |
+| Bajaj Finance  | NBFC                    | Bank pipeline + NBFC subtype  |
+| Paytm          | Loss-maker fintech      | Penman-Nissim + capalloc skip |
+| Reliance       | Mixed conglomerate      | Industrial (with override)    |
+
+### Data hygiene items noticed but not fixed
+
+- Power Grid `standalone/` has duplicate `ProfitLossINDAS_.xls` and `ProfitLossINDAS_ (1).xls`
+- HDFC Bank uses capital-S `Standalone/` while ITC/ICICI/TCS use lowercase `standalone/`
+- LIC has only 6 files (no SegmentFinance, no Investment) — expected, blocks LIC analysis until insurance pipeline ships
+
+### Project-wide constraints (preserved)
+
+- Fail-closed gating; no silent NaN
+- S-9.4C: single-source-of-truth for capital cost (kw)
+- Push directly to `origin/main` per explicit user instruction
+- Capitaline `Curr. in` field is empty; engine assumes Cr
+- User downloads files into folder structure (no zip workflow); folder names indicate format
+
+### Commit log this session
+
+```
+8c45403 refactor(App): consolidate engine call — single processCompanyDataFull pass
+ad6893a feat(structural-breaks): Phase I — detect demerger / M&A / capital raise
+838e2c9 feat(ui): NBFC subtype-aware FinancialInstitutionReport labels
+1228cbe docs(roadmap): I7 currency detection — empty Curr. field documented
+98e8d33 docs: session summary 2026-05-17 — interim
+f48be0c feat(ui): Phase I — surface cyclicality/moat/capalloc skip-reasons in V3 panel
+65617c8 feat(ui): Phase B4 — wire bank valuation into FinancialInstitutionReport
+fbfb6af feat(moat): Phase I — skip-with-reason for loss-makers
+7d7b425 feat(cyclicality): Phase I — peak/trough/midcycle detection
+d675328 feat(scope): Phase I — mixed-conglomerate routing override
+74c5f83 feat(capalloc): Phase I robustness — surface skip-with-reason for loss-makers
+342fb59 feat(bank): Phase B4 — three bank valuation models with skip-with-reason
+2e0f19b feat(traceability): Phase A6 — wire accounting-standard coverage into envelope
+f4b81e2 feat(parser): add 7 alias entries from real ITC REV/Standard data validation
+2a1f73d docs(roadmap): mark Phase A shipped, document folder-based download workflow
+30e86ad feat(parser): Phase A — multi-standard ingestion (Ind-AS + REV + Standard)
+```
+
+---
+
+## How to resume
+
+```bash
+cd C:\Users\rajesh\WindsurfAPI\penman-v2-analysis
+git pull origin main
+npm install              # if dependencies changed
+npm run validate         # baseline check (typecheck + tests + build)
+npm run dev              # start local dev server
+```
+
+**Read first:**
+- `docs/COMPREHENSIVE-VALUATION-DESIGN.md` — long-term vision
+- `docs/NEXT-PHASE-ROADMAP.md` — sequenced execution plan with shipped/pending markers
+- `docs/company-coverage-status-2026-05-17.md` — per-company status
+- `CLAUDE.md` — project conventions
+
+**Recommended next move:** I4 (negative book value) using Vodafone Idea as test fixture. Smaller scope than insurance pipeline, immediately useful for distressed-company analysis, and continues the well-established skip-with-reason pattern from this session.
