@@ -306,8 +306,12 @@ I5. Single-period upload — produce screening output only, label as
     "indicative, single-period".
 I6. Demerger / M&A detection — large jump in segment / equity / revenue,
     flag as structural break.
-I7. Currency / unit detection — most Capitaline files are Cr; some are
-    absolute. Header parser today assumes Cr.
+I7. Currency / unit detection — Capitaline's `Curr. in` HTML field is
+    empty in the static export (verified across all 10 sample
+    companies; Capitaline only renders the unit dropdown in the live
+    web view). Auto-detection from file content isn't possible. Real
+    user workflow uses Cr exclusively. Documented as engine assumption;
+    flag only if a user reports a discrepancy.
 
 ### Phase J — Batch + UI
 
