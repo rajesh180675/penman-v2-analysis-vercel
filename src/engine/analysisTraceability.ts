@@ -260,6 +260,11 @@ export function buildAnalysisTraceability(params: {
   const hasBlockingIssues = blockingCount > 0;
   const valuationBlocked = Boolean(qualityGate?.valuationBlocked);
   const scopeBlocked = Boolean(qualityGate?.scopeAssessment?.blocked);
+  // Phase I8 — single-period screening mode caps the rigor ladder at
+  // syntactically-valid. Time-series levels (structurally-reconciled,
+  // economically-plausible, valuation-eligible, production-ready) all
+  // require ≥2 periods to be meaningful.
+  const screeningOnly = Boolean(qualityGate?.scopeAssessment?.screeningOnly);
   const valuationStatus = analysisStatus?.valuationStatus ?? "unknown";
   const statusBlockingCount = analysisStatus?.effectiveBlockingCount ?? analysisStatus?.blockingCount ?? blockingCount;
   const statusDiagnosticCount = analysisStatus?.effectiveDiagnosticCount ?? analysisStatus?.diagnosticCount ?? diagnosticCount;
@@ -300,48 +305,56 @@ export function buildAnalysisTraceability(params: {
     {
       level: "structurally-reconciled",
       label: "Structurally reconciled",
-      achieved: structuralAchieved,
-      detail: scopeBlocked
-        ? "Scope policy blocked this dataset before structural reconciliation could clear."
-        : hasBlockingIssues
-          ? `${blockingCount} blocking mapping or identity issues remain unresolved.`
-          : reconciliation.status === "failed"
-            ? `Structural residual thresholds did not clear. ${reconciliation.summary}`
-            : reconciliation.status === "degraded"
-              ? `Structural residual thresholds cleared without critical breaches, but warning-level residuals remain. ${reconciliation.summary}`
-          : hasRecastData
-            ? `Recast statements exist and structural residual checks cleared. ${reconciliation.summary}`
-            : "No recast statements were produced yet.",
+      achieved: structuralAchieved && !screeningOnly,
+      detail: screeningOnly
+        ? "Single-period upload — structural reconciliation requires ≥2 periods. Results are screening-level only."
+        : scopeBlocked
+          ? "Scope policy blocked this dataset before structural reconciliation could clear."
+          : hasBlockingIssues
+            ? `${blockingCount} blocking mapping or identity issues remain unresolved.`
+            : reconciliation.status === "failed"
+              ? `Structural residual thresholds did not clear. ${reconciliation.summary}`
+              : reconciliation.status === "degraded"
+                ? `Structural residual thresholds cleared without critical breaches, but warning-level residuals remain. ${reconciliation.summary}`
+            : hasRecastData
+              ? `Recast statements exist and structural residual checks cleared. ${reconciliation.summary}`
+              : "No recast statements were produced yet.",
     },
     {
       level: "economically-plausible",
       label: "Economically plausible",
-      achieved: structuralAchieved && !valuationBlocked,
-      detail: valuationBlocked
-        ? "Valuation-critical issues still block the run, so economic plausibility is not established."
-        : structuralAchieved
-          ? "The run cleared structural blockers and no valuation-critical issues remain."
-          : "Economic plausibility cannot be asserted until structural reconciliation clears.",
+      achieved: structuralAchieved && !valuationBlocked && !screeningOnly,
+      detail: screeningOnly
+        ? "Single-period upload — economic plausibility assessment requires ≥2 periods."
+        : valuationBlocked
+          ? "Valuation-critical issues still block the run, so economic plausibility is not established."
+          : structuralAchieved
+            ? "The run cleared structural blockers and no valuation-critical issues remain."
+            : "Economic plausibility cannot be asserted until structural reconciliation clears.",
     },
     {
       level: "valuation-eligible",
       label: "Valuation eligible",
-      achieved: structuralAchieved && !valuationBlocked && !distressBlocksValuation && valuationStatus !== "guarded" && valuationStatus !== "unknown",
-      detail: distressBlocksValuation
-        ? `${distress.severity === "critical" ? "Critical" : "Severe"} financial distress detected (${distress.reasons[0] ?? "negative net worth"}). Equity-side valuation models cannot be trusted; the run is not valuation-eligible.`
-        : valuationStatus === "guarded"
-          ? "Valuation still depends on a guarded fallback anchor."
-          : valuationStatus === "warning" || valuationStatus === "production-ready"
-            ? `Valuation status is ${valuationStatus}, so the run remains eligible for valuation use.`
-            : "Valuation readiness has not been established yet.",
+      achieved: structuralAchieved && !valuationBlocked && !distressBlocksValuation && !screeningOnly && valuationStatus !== "guarded" && valuationStatus !== "unknown",
+      detail: screeningOnly
+        ? "Single-period upload — valuation eligibility requires ≥2 periods for time-series anchoring."
+        : distressBlocksValuation
+          ? `${distress.severity === "critical" ? "Critical" : "Severe"} financial distress detected (${distress.reasons[0] ?? "negative net worth"}). Equity-side valuation models cannot be trusted; the run is not valuation-eligible.`
+          : valuationStatus === "guarded"
+            ? "Valuation still depends on a guarded fallback anchor."
+            : valuationStatus === "warning" || valuationStatus === "production-ready"
+              ? `Valuation status is ${valuationStatus}, so the run remains eligible for valuation use.`
+              : "Valuation readiness has not been established yet.",
     },
     {
       level: "production-ready",
       label: "Production-ready",
-      achieved: analysisStatus?.status === "production-ready",
-      detail: analysisStatus?.status === "production-ready"
-        ? "All currently wired release checks passed."
-        : analysisStatus?.headline ?? "Production-ready status was not reached.",
+      achieved: !screeningOnly && analysisStatus?.status === "production-ready",
+      detail: screeningOnly
+        ? "Single-period upload — production-ready status requires ≥2 periods."
+        : analysisStatus?.status === "production-ready"
+          ? "All currently wired release checks passed."
+          : analysisStatus?.headline ?? "Production-ready status was not reached.",
     },
   ];
   const achievedLevels = checkpoints.filter((checkpoint) => checkpoint.achieved).map((checkpoint) => checkpoint.level);

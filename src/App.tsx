@@ -580,6 +580,18 @@ export function App() {
               <strong>Engine Error:</strong> {engineError}
             </div>
           )}
+          {/* Phase I8 — single-period screening-only banner */}
+          {qualityGate?.scopeAssessment?.screeningOnly && (
+            <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+              <div className="font-semibold mb-1">Screening mode — single period uploaded</div>
+              <div>{qualityGate.scopeAssessment.screeningReason}</div>
+              <div className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                What still works: current-period ratios, balance-sheet quality flags, point-in-time EPV/Graham-Dodd estimates, bank/NBFC metrics.
+                What is disabled: growth rates, trend signals, mean-reversion anchors, V_RE_CV* residual-income valuation, rigor ladder above syntactically-valid.
+                Upload at least 3 years of data to unlock the full analysis.
+              </div>
+            </div>
+          )}
           <Suspense fallback={<TabSkeleton />}>
             {activeTab==="inspector" && <RunInspector auditMeta={auditMeta} analysisStatus={analysisStatus} />}
             {activeTab==="upload" && (

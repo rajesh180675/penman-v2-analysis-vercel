@@ -24,6 +24,17 @@ export interface ScopeAssessment {
   reasons: string[];
   recommendedAction: string;
   signals: ScopeSignal[];
+  /**
+   * Phase I8 — single-period screening mode.
+   * True when only one period of data was uploaded. The pipeline still
+   * runs (not blocked) but time-series signals (growth rates, trend
+   * analysis, mean-reversion, V_RE_CV*) are meaningless. The rigor
+   * ladder caps at syntactically-valid and the UI surfaces an explicit
+   * "screening only" caveat banner.
+   */
+  screeningOnly?: boolean;
+  /** Human-readable explanation of why screening-only mode was triggered. */
+  screeningReason?: string;
 }
 
 const SIGNAL_GROUPS: Array<{
@@ -104,6 +115,18 @@ export function assessAnalysisScope(
   const observedCounts = countObservedKeys(periods ?? []);
   const signals: ScopeSignal[] = [];
 
+  // Phase I8 — single-period screening mode.
+  // With only one period there are no growth rates, no trend signals,
+  // no mean-reversion anchors, and no V_RE_CV* (all require ≥2 periods).
+  // We don't block — the pipeline still runs and produces current-period
+  // ratios and a point-in-time EPV/Graham-Dodd estimate — but we flag
+  // screeningOnly so the rigor ladder caps and the UI shows caveats.
+  const periodCount = periods?.length ?? 0;
+  const screeningOnly = periodCount === 1;
+  const screeningReason = screeningOnly
+    ? "Only one period of data was uploaded. Time-series signals (growth rates, trend analysis, mean-reversion, V_RE_CV*) require at least two periods. Results are screening-level only."
+    : undefined;
+
   if (config?.financial_institution_mode) {
     signals.push({
       kind: "manual-override",
@@ -131,6 +154,8 @@ export function assessAnalysisScope(
       reasons: [],
       recommendedAction: "Proceed with the industrial Penman-Nissim framework.",
       signals: [],
+      screeningOnly,
+      screeningReason,
     };
   }
 
@@ -172,6 +197,8 @@ export function assessAnalysisScope(
       reasons,
       recommendedAction: "Insurance pipeline not yet implemented. Route to manual analysis.",
       signals: signals.sort((a, b) => b.periodsObserved - a.periodsObserved || a.kind.localeCompare(b.kind) || a.key.localeCompare(b.key)),
+      screeningOnly,
+      screeningReason,
     };
   }
 
@@ -195,11 +222,6 @@ export function assessAnalysisScope(
       const override = config?.mixed_conglomerate_route_to ?? null;
 
       // Phase I — honor explicit user override.
-      // When the user has consciously chosen a sub-pipeline for this
-      // mixed-financial-conglomerate (e.g., ICICI Bank → "bank",
-      // Reliance pre-Jio Financial spinoff → "industrial"), route
-      // accordingly with the override recorded in reasons. The user
-      // takes responsibility for the consolidation distortion.
       if (override === "bank" || override === "nbfc") {
         return {
           policyVersion: SCOPE_POLICY_VERSION,
@@ -215,6 +237,8 @@ export function assessAnalysisScope(
             ? "Bank pipeline (NII decomposition, credit cost, P/B Gordon). Insurance subsidiary contribution to consolidated PAT may distort ROE."
             : "NBFC pipeline (spread analysis, AUM metrics). Insurance subsidiary contribution to consolidated PAT may distort metrics.",
           signals: signals.sort((a, b) => b.periodsObserved - a.periodsObserved || a.kind.localeCompare(b.kind) || a.key.localeCompare(b.key)),
+          screeningOnly,
+          screeningReason,
         };
       }
       if (override === "industrial") {
@@ -230,6 +254,8 @@ export function assessAnalysisScope(
           ],
           recommendedAction: "Penman-Nissim industrial framework. Financial subsidiary contribution may produce non-zero NFO; verify subsidiary materiality before relying on RNOA/SPREAD.",
           signals: signals.sort((a, b) => b.periodsObserved - a.periodsObserved || a.kind.localeCompare(b.kind) || a.key.localeCompare(b.key)),
+          screeningOnly,
+          screeningReason,
         };
       }
 
@@ -246,6 +272,8 @@ export function assessAnalysisScope(
         ],
         recommendedAction: `Choose a sub-pipeline explicitly via cfg.mixed_conglomerate_route_to ("bank", "nbfc", or "industrial"), or upload standalone ${subPipelineHint}-only data. Mixed-conglomerate auto-routing is not supported.`,
         signals: signals.sort((a, b) => b.periodsObserved - a.periodsObserved || a.kind.localeCompare(b.kind) || a.key.localeCompare(b.key)),
+        screeningOnly,
+        screeningReason,
       };
     }
     // else: insurance signals are immaterial (e.g., one stray period), fall through
@@ -265,5 +293,7 @@ export function assessAnalysisScope(
       ? "Route to bank analysis pipeline (NII decomposition, credit cost, P/B Gordon)."
       : "Route to NBFC analysis pipeline (spread analysis, AUM metrics, capital adequacy).",
     signals: signals.sort((a, b) => b.periodsObserved - a.periodsObserved || a.kind.localeCompare(b.kind) || a.key.localeCompare(b.key)),
+    screeningOnly,
+    screeningReason,
   };
 }
