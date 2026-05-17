@@ -15,19 +15,18 @@ Status legend: ✅ done · 🟡 partial · 🔴 not built · ⚠ failure mode
 
 | Layer | Status | Notes |
 |------|--------|-------|
-| HTML dual-format parser (ng-binding + td.datarow) | ✅ | `capitalineParser.ts` |
+| HTML dual-format parser (ng-binding + td.datarow) | ✅ | `capitalineParser.ts` — fixed cleanCell for nested ng-binding divs (Vodafone Idea) |
 | Ind-AS BS / PL / CF ingestion | ✅ | INDAS files only, hard-coded in `stmtFromFilename` |
 | Segment parser (industrial) | ✅ | `segmentParser.ts`, ITC 6 segments |
 | Scope detection (Consolidated / Standalone) | ✅ | `scopeDetection.ts` w/ confidence tag |
 | Scope policy (4 classifications + fail-closed) | ✅ | `scopePolicy.ts` post-C4/C5 |
 | Industrial pipeline (Penman-Nissim full) | ✅ | `pipeline.ts` → `PenmanNissimEngine.ts` |
-| Bank pipeline (NII, NIM, ROA, P/B) | 🟡 | `bankPipeline.ts` works for HDFC; mapping is heuristic, no dedicated bank label spec |
+| Bank pipeline (NII, NIM, ROA, P/B) | ✅ | `bankPipeline.ts` + Phase B5.5 quality_indicators.json for HDFC/ICICI/SBI/Kotak |
 | Moat / capital-allocation / EPV / relative valuation | ✅ | post C7-C12, all share single `kw` |
 | Monte Carlo + Ohlson reversion CV | ✅ | wired in `v3Analytics.ts` |
-| Cyclical normalization | 🟡 | `cyclicalNormalization.ts` exists, used by `forecastingEngine` & `terminalEconomics`, NOT routed by company-type |
-| Multi-standard stitching (Revised Sch-VI, Standard pre-2012) | 🔴 | parser silently ignores non-INDAS files |
-| NBFC / Insurance / Real Estate / Holdco pipelines | 🔴 | classifier emits `mixed-financial-conglomerate` then fail-closes |
-| IT-services-aware adjustments (employee cost, utilization) | 🔴 | treated as generic industrial |
+| Cyclical normalization | ✅ | `cyclicalityDetector.ts` wired into pipeline + UI banner, cycle-normalised terminal RE anchor |
+| IT-services-aware adjustments (employee cost, utilization) | ✅ | `itServicesDetector.ts` + employeeCostRatio + moat scorer awareness |
+| Loss-maker valuation (negative networth / chronic losses) | ✅ | `lossMakerValuation.ts` wired into pipeline + UI (Vodafone Idea validated) |
 | Quarterly ingestion | 🔴 | filename detection misses quarterly exports |
 | Market data (price, market cap, beta) | 🔴 | only manual `marketCap` config input |
 | Peer group / relative valuation across companies | 🟡 | `relativeValuation.ts` is intra-company time-series, no cross-company |
