@@ -184,6 +184,63 @@ describe("computeLossMakerValuation — Phase I3", () => {
     expect(result.reverseDCF.skipReason).toMatch(/market price/);
   });
 
+  // Phase J4: Vodafone Idea-shaped fixture — net-debt distressed loss-maker.
+  // The previous net-cash-only logic produced equity = EV - 2×NFO, which
+  // collapsed to a deeply negative per-share value for net-debt names.
+  it("handles net-debt loss-makers (Vodafone Idea shape) correctly", () => {
+    // Vodafone Idea FY21-FY25 silhouette (heavily simplified):
+    // - Sustained losses
+    // - High positive NFO (net debt) ~ ₹2L Cr
+    // - CFO turning negative
+    // - Sales hovering ₹40-45 K Cr
+    const periods = [
+      mkPeriod("2021-03-31", 41000, -44000, 7000, 215000),
+      mkPeriod("2022-03-31", 38000, -28000, 6000, 220000),
+      mkPeriod("2023-03-31", 42000, -29000, 8500, 225000),
+      mkPeriod("2024-03-31", 42500, -31000, 7500, 230000),
+      mkPeriod("2025-03-31", 43500, -27000, -500, 235000), // CFO flips negative
+    ];
+    const cfg = { ...baseCfg, market_price: 7.5, shares_outstanding: 65_00_00_00_000 };
+    const result = computeLossMakerValuation(periods, cfg)!;
+
+    expect(result.isLossMaker).toBe(true);
+    expect(result.lossYears).toBe(5);
+
+    // Equity value = EV - NFO. With sales 43500 × 3.0 = 130500 EV and NFO 235000,
+    // equity is correctly negative (huge net debt overwhelms enterprise value).
+    // Critically it should be EV - NFO = 130500 - 235000 = -104500, NOT
+    // EV - 2*NFO = 130500 - 470000 = -339500 (the old buggy path).
+    expect(result.revenueMultiple.impliedEVCr).toBeCloseTo(43500 * 3.0, -1);
+    const expectedEquityCr = 43500 * 3.0 - 235000;
+    const expectedPerShare = (expectedEquityCr * 1e7) / 65_00_00_00_000;
+    expect(result.revenueMultiple.perShareValue).toBeCloseTo(expectedPerShare, 2);
+
+    // Net-debt firm: no positive cash buffer → no runway, no cashPerShare
+    expect(result.cashPerShare).toBeNull();
+    expect(result.runwayYears).toBeNull();
+  });
+
+  it("net-cash loss-maker (Paytm shape) still computes runway correctly", () => {
+    // Same shape as before — verify no regression on the canonical net-cash case.
+    // ₹2400 Cr net cash, ~₹933 Cr avg burn → ~2.6y runway
+    const periods = [
+      mkPeriod("2022-03-31", 5000, -2400, -1500, -3500),
+      mkPeriod("2023-03-31", 7000, -1700, -1100, -2800),
+      mkPeriod("2024-03-31", 9000, -1400, -200, -2500),
+      mkPeriod("2025-03-31", 11000, -500, -200, -2400),
+    ];
+    const result = computeLossMakerValuation(periods, baseCfg)!;
+    expect(result.runwayYears).not.toBeNull();
+    expect(result.runwayYears!).toBeGreaterThan(2);
+    expect(result.cashPerShare).not.toBeNull();
+    expect(result.cashPerShare!).toBeGreaterThan(0);
+
+    // Equity = EV - NFO = 11000*3 - (-2400) = 33000 + 2400 = 35400
+    const expectedEquityCr = 11000 * 3.0 + 2400;
+    const expectedPerShare = (expectedEquityCr * 1e7) / 1_000_000_000;
+    expect(result.revenueMultiple.perShareValue).toBeCloseTo(expectedPerShare, 2);
+  });
+
   it("recommendation reflects runway pressure", () => {
     // Short runway: ₹500 Cr net cash, ₹600 Cr burn = <2y runway
     const periods = [

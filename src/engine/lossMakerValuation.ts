@@ -155,9 +155,15 @@ export function computeLossMakerValuation(
     ? -recentCFOs.reduce((a, b) => a + b, 0) / recentCFOs.length
     : null;
 
-  // Cash position — approximated by financial assets net of debt.
-  // We use NFO (net financial obligations); negative NFO = net cash.
-  const netCashCr = latest.bs?.NFO != null ? -latest.bs.NFO : null;
+  // Cash position — approximated by net financial position. Negative NFO
+  // means net cash (firm has more financial assets than financial obligations);
+  // positive NFO means net debt. We track netCashCr only when actually in
+  // a net-cash position (NFO < 0). For net-debt firms (Vodafone Idea, most
+  // distressed names), there is no cash buffer to fund burn — runway and
+  // cash-per-share metrics are meaningless and we null them.
+  const latestNFO = latest.bs?.NFO ?? null;
+  const isNetCash = latestNFO != null && latestNFO < 0;
+  const netCashCr = isNetCash ? -latestNFO : null;
   const sharesOutstanding = config.shares_outstanding ?? null;
   const cashPerShare =
     netCashCr != null && sharesOutstanding != null && sharesOutstanding > 0
@@ -185,10 +191,18 @@ export function computeLossMakerValuation(
     source = "config-peer-median";
   }
 
+  // Equity value = Enterprise value - Net debt
+  //              = EV(implied) - NFO   (NFO can be negative → net cash adds back)
+  // Phase J4 fix: previous version did `EV - max(0, NFO) + (-NFO)`, which
+  // double-counted debt for net-debt companies (Vodafone Idea: NFO ≈ +₹2.2L Cr
+  // produced equity = EV - 2×NFO and therefore deeply negative). Single-line
+  // `EV - NFO` is the canonical form and works for both polarities.
   const impliedEVCr =
     latestRevenueCr != null ? latestRevenueCr * multiple : 0;
-  const debtCr = latest.bs?.NFO != null ? Math.max(0, latest.bs.NFO) : 0;
-  const equityValueCr = impliedEVCr - debtCr + (netCashCr ?? 0);
+  const equityValueCr =
+    latestRevenueCr != null && latestNFO != null
+      ? impliedEVCr - latestNFO
+      : impliedEVCr;
   const perShareValue =
     sharesOutstanding != null && sharesOutstanding > 0 && latestRevenueCr != null
       ? (equityValueCr * 1e7) / sharesOutstanding
