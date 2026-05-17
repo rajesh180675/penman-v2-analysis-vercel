@@ -231,6 +231,31 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
           });
         }
 
+        // Loss-maker valuation alternative (Phase I3)
+        if (bundle.lossMakerValuation?.isLossMaker) {
+          const lmv = bundle.lossMakerValuation;
+          const pathSignal = lmv.profitabilityPath.signal;
+          const lmvBody = [
+            `${lmv.lossYears}/${lmv.totalYears} periods loss-making.`,
+            `Revenue-multiple anchor (${lmv.revenueMultiple.source}): ${lmv.revenueMultiple.multiple.toFixed(1)}x ⇒ implied EV ₹${lmv.revenueMultiple.impliedEVCr.toFixed(0)} Cr${lmv.revenueMultiple.perShareValue != null ? ` (₹${lmv.revenueMultiple.perShareValue.toFixed(0)}/share)` : ""}.`,
+            lmv.runwayYears != null
+              ? `Runway: ~${lmv.runwayYears.toFixed(1)} years at current burn.`
+              : null,
+            lmv.reverseDCF.impliedRevenueCAGR != null
+              ? `Reverse-DCF: market cap implies ${(lmv.reverseDCF.impliedRevenueCAGR * 100).toFixed(0)}% revenue CAGR for 5y.`
+              : null,
+            `Path-to-profitability: ${pathSignal.toUpperCase()} — ${lmv.profitabilityPath.summary}`,
+            `Recommendation: ${lmv.recommendation}`,
+          ]
+            .filter(Boolean)
+            .join(" ");
+          banners.push({
+            tone: pathSignal === "red" ? "warn" : "info",
+            title: `📉 Loss-maker — earnings-based models skipped, alternative anchors below`,
+            body: lmvBody,
+          });
+        }
+
         if (banners.length === 0) return null;
         return (
           <div className="space-y-2">

@@ -21,6 +21,7 @@ import { computeMoatScore, MoatScoreResult } from "./moatScoring";
 import { scoreCapitalAllocation, CapAllocScoreResult } from "./capitalAllocationScoring";
 import { assessCyclicality, CyclicalityAssessment } from "./cyclicalityDetector";
 import { detectStructuralBreaks, StructuralBreakAssessment } from "./structuralBreakDetector";
+import { computeLossMakerValuation, LossMakerValuationResult } from "./lossMakerValuation";
 import { computeEPV, EPVResult } from "./grahamDoddEPV";
 import { computeIndustrialMultiples, RelativeValuationResult } from "./relativeValuation";
 export enum OutputChannel {
@@ -1813,6 +1814,13 @@ export interface V3AnalyticsBundle {
    * can interpret persistence calculations with appropriate context.
    */
   structuralBreaks: StructuralBreakAssessment;
+  /**
+   * Phase I3 — loss-maker valuation alternative. Non-null only when the
+   * company has CNI ≤ 0 in at least half its periods. Provides revenue-
+   * multiple anchor, reverse-DCF, runway, and path-to-profitability flags
+   * for cases where standard earnings-based models all skip with reason.
+   */
+  lossMakerValuation: LossMakerValuationResult | null;
   /** Graham-Dodd EPV (null if < 3 periods or no market data) */
   epv: EPVResult | null;
   /** Relative valuation multiples (null if no market cap in config) */
@@ -2006,6 +2014,7 @@ export function computeV3Analytics(
   const capitalAllocation = periods.length >= 3 ? scoreCapitalAllocation(periods, cfg, kw) : null;
   const cyclicality = assessCyclicality(periods);
   const structuralBreaks = detectStructuralBreaks(periods);
+  const lossMakerValuation = computeLossMakerValuation(periods, cfg);
   const epv = computeEPV(
     periods,
     cfg,
@@ -2021,7 +2030,7 @@ export function computeV3Analytics(
       })
     : null;
 
-  return { validation, dirtySurplus, dirtySurplusFramework, periodFlags, anchorResult, confidence, fadeParams, triggers, triggerCalibration, reReoiGapDecomposition, oaDecomposition, accrualTable, shareCount, marketImplied, section6B, versionChangeLog, versionChangeLogMarkdown, crossSectionIssues, registry, moatScore, capitalAllocation, cyclicality, structuralBreaks, epv, relativeValuation, V_RE_ohlson_reversion: V_ohlson, phi_effective, phi_source };
+  return { validation, dirtySurplus, dirtySurplusFramework, periodFlags, anchorResult, confidence, fadeParams, triggers, triggerCalibration, reReoiGapDecomposition, oaDecomposition, accrualTable, shareCount, marketImplied, section6B, versionChangeLog, versionChangeLogMarkdown, crossSectionIssues, registry, moatScore, capitalAllocation, cyclicality, structuralBreaks, lossMakerValuation, epv, relativeValuation, V_RE_ohlson_reversion: V_ohlson, phi_effective, phi_source };
 }
 
 /**
