@@ -172,6 +172,12 @@ export function App() {
     return pipelineResult.itServices ?? null;
   }, [pipelineResult]);
 
+  // Phase F — Cyclicality assessment. Advisory banner when peak/trough detected.
+  const cyclicalitySignal = useMemo(() => {
+    if (!pipelineResult || "error" in pipelineResult) return null;
+    return pipelineResult.cyclicality ?? null;
+  }, [pipelineResult]);
+
   // True when breaks are detected and the user hasn't yet excluded any periods.
   const hasUnacknowledgedBreaks = structuralBreakPeriods.length > 0 &&
     (!config.excluded_periods || config.excluded_periods.length === 0);
@@ -679,6 +685,25 @@ export function App() {
                 The Penman-Nissim RNOA/ATO decomposition is less meaningful for human-capital businesses — NOA is structurally small (mostly receivables + cash), so RNOA looks inflated and ATO is not a useful efficiency signal.
                 The moat score and terminal value anchors may overstate durability.
                 Focus on: revenue growth, margin trend, FCFE yield, and employee cost ratio instead.
+              </div>
+            </div>
+          )}
+          {/* Phase F — Cyclicality peak/trough banner */}
+          {(cyclicalitySignal?.classification === "cyclical-peak" || cyclicalitySignal?.classification === "cyclical-trough") && (
+            <div className={`mb-5 rounded-lg border p-4 text-sm ${
+              cyclicalitySignal.classification === "cyclical-peak"
+                ? "border-orange-300 bg-orange-50 text-orange-900 dark:border-orange-700 dark:bg-orange-950/30 dark:text-orange-200"
+                : "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-700 dark:bg-sky-950/30 dark:text-sky-200"
+            }`}>
+              <div className="font-semibold mb-1">
+                {cyclicalitySignal.classification === "cyclical-peak" ? "🔺 Cyclical company at peak" : "🔻 Cyclical company at trough"}
+              </div>
+              <div className="mb-1">{cyclicalitySignal.reason}</div>
+              <div className="text-xs opacity-80">
+                {cyclicalitySignal.classification === "cyclical-peak"
+                  ? `Latest ${cyclicalitySignal.metricUsed === "core-pm" ? "margin" : "RNOA"} (${cyclicalitySignal.latestValue != null ? (cyclicalitySignal.latestValue * 100).toFixed(1) + "%" : "—"}) is above the cycle median (${cyclicalitySignal.medianValue != null ? (cyclicalitySignal.medianValue * 100).toFixed(1) + "%" : "—"}). Valuation anchored on current earnings will overstate intrinsic value. Consider using the cycle-median as the terminal anchor.`
+                  : `Latest ${cyclicalitySignal.metricUsed === "core-pm" ? "margin" : "RNOA"} (${cyclicalitySignal.latestValue != null ? (cyclicalitySignal.latestValue * 100).toFixed(1) + "%" : "—"}) is below the cycle median (${cyclicalitySignal.medianValue != null ? (cyclicalitySignal.medianValue * 100).toFixed(1) + "%" : "—"}). Valuation anchored on current earnings will understate intrinsic value. Consider using the cycle-median as the terminal anchor.`
+                }
               </div>
             </div>
           )}
