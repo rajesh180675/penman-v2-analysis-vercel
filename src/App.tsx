@@ -165,6 +165,13 @@ export function App() {
     return pipelineResult.lossMaker ?? null;
   }, [pipelineResult]);
 
+  // Phase E1 — IT-services fingerprint. Advisory only — industrial pipeline
+  // still runs, but UI surfaces a caveat when isITServices=true.
+  const itServicesSignal = useMemo(() => {
+    if (!pipelineResult || "error" in pipelineResult) return null;
+    return pipelineResult.itServices ?? null;
+  }, [pipelineResult]);
+
   // True when breaks are detected and the user hasn't yet excluded any periods.
   const hasUnacknowledgedBreaks = structuralBreakPeriods.length > 0 &&
     (!config.excluded_periods || config.excluded_periods.length === 0);
@@ -660,6 +667,18 @@ export function App() {
                 What still works: current-period ratios, balance-sheet quality flags, point-in-time EPV/Graham-Dodd estimates, bank/NBFC metrics.
                 What is disabled: growth rates, trend signals, mean-reversion anchors, V_RE_CV* residual-income valuation, rigor ladder above syntactically-valid.
                 Upload at least 3 years of data to unlock the full analysis.
+              </div>
+            </div>
+          )}
+          {/* Phase E1 — IT-services caveat banner */}
+          {itServicesSignal?.isITServices && (
+            <div className="mb-5 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-200">
+              <div className="font-semibold mb-1">💻 IT-services company detected</div>
+              <div className="mb-1">{itServicesSignal.reason}</div>
+              <div className="text-xs text-blue-700 dark:text-blue-300">
+                The Penman-Nissim RNOA/ATO decomposition is less meaningful for human-capital businesses — NOA is structurally small (mostly receivables + cash), so RNOA looks inflated and ATO is not a useful efficiency signal.
+                The moat score and terminal value anchors may overstate durability.
+                Focus on: revenue growth, margin trend, FCFE yield, and employee cost ratio instead.
               </div>
             </div>
           )}
