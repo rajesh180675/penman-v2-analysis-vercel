@@ -401,6 +401,12 @@ export const CapitalineMappingSpec = {
       "Loans and Advances to Customers",
       "Total Loans Given",
       "Advances :",
+      // NBFCs report loan books under different labels; aliasing them
+      // here means the bank pipeline picks them up regardless of subtype.
+      "Loan Assets",
+      "Finance Receivables",
+      "Hire Purchase Assets",
+      "Lease Assets",
     ],
     investments: [
       "Investments",

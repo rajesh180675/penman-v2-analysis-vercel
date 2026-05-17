@@ -2,6 +2,7 @@ import type { AnalysisTraceabilityEnvelope } from "./analysisTraceability";
 import type { RecastPeriod } from "./types";
 import type { ScopeAssessment, AnalysisFamily as ScopeAnalysisFamily } from "./scopePolicy";
 import type { BankValuationBundle } from "./bankValuation";
+import type { BankPeriodMetrics } from "./bankPipeline";
 
 export type AnalysisFamily = ScopeAnalysisFamily;
 export type FinancialInstitutionSubtype = "bank" | "nbfc" | "insurance" | "generic-financial";
@@ -31,6 +32,10 @@ export interface FinancialInstitutionAnalysisResult {
   traceability: AnalysisTraceabilityEnvelope | null;
   /** Phase B4 — bank/NBFC valuation models. null for insurance/generic until those pipelines exist. */
   valuation: BankValuationBundle | null;
+  /** Phase K — full bank/NBFC metrics with derived ratios (NIM, ROA, ROE,
+   *  spread, leverage, debt mix). Optional for back-compat with consumers
+   *  that only need the per-period snapshot. */
+  bankMetrics?: BankPeriodMetrics[];
 }
 
 export type AnalysisResult = IndustrialAnalysisResult | FinancialInstitutionAnalysisResult;

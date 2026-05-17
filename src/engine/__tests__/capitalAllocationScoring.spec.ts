@@ -344,6 +344,16 @@ function makeBankMetrics(n: number, roe = 0.15): BankPeriodMetrics[] {
     netNPA: 0.01,
     provisionCoverageRatio: 0.65,
     capitalAdequacyRatio: 0.16,
+    // Phase K — NBFC-specific fields (null for banks)
+    nonConvertibleDebentures: null,
+    termLoansFromBanks: null,
+    termLoansFromInstitutions: null,
+    termLoansFromOthers: null,
+    leverage: null,
+    costOfBorrowings: null,
+    yieldOnAdvances: null,
+    spread: null,
+    debtMix: null,
   } as BankPeriodMetrics));
 }
 

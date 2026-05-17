@@ -46,6 +46,15 @@ function bankPeriod(
     creditCost: 0.007,
     costToIncome: 0.45,
     casaRatio: null,
+    nonConvertibleDebentures: null,
+    termLoansFromBanks: null,
+    termLoansFromInstitutions: null,
+    termLoansFromOthers: null,
+    leverage: null,
+    costOfBorrowings: null,
+    yieldOnAdvances: null,
+    spread: null,
+    debtMix: null,
   };
 }
 

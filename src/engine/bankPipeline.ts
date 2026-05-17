@@ -50,13 +50,45 @@ export interface BankPeriodMetrics {
   pat: number | null;
   pbt: number | null;
 
-  // Derived Ratios
-  nim: number | null;            // NII / Avg Earning Assets
+  // Derived Ratios — common to bank and NBFC
+  nim: number | null;            // NII / Avg Earning Assets (or Advances for NBFC)
   roa: number | null;            // PAT / Avg Total Assets
   roe: number | null;            // PAT / Avg Equity
   creditCost: number | null;     // Provisions / Avg Advances
   costToIncome: number | null;   // OpEx / (NII + Other Income)
   casaRatio: number | null;      // CASA Deposits / Total Deposits (if available)
+
+  // Phase K — NBFC-specific funding mix (raw, sourced from mappingSpec).
+  // Banks: these are typically null because banks fund through deposits.
+  // NBFCs: these are the primary funding lens — leverage, NCD reliance,
+  // bank-debt vs institutional-debt mix, etc.
+  nonConvertibleDebentures: number | null;
+  termLoansFromBanks: number | null;
+  termLoansFromInstitutions: number | null;
+  termLoansFromOthers: number | null;
+
+  // Phase K — NBFC-specific derived metrics. Computed only when subtype
+  // is "nbfc" or "generic-financial" (where borrowings are material).
+  // For pure banks these stay null because the lens is wrong.
+  /** Total Borrowings / Total Equity. Canonical NBFC gearing metric. */
+  leverage: number | null;
+  /** Cost of borrowings = |Interest Expended| / Avg Borrowings. NBFC-only;
+   *  for banks this would mix deposits (cost-of-deposits) and borrowings. */
+  costOfBorrowings: number | null;
+  /** Yield on advances = Interest Earned / Avg Advances. */
+  yieldOnAdvances: number | null;
+  /** Spread = yieldOnAdvances - costOfBorrowings. Replaces "NIM" framing
+   *  for NBFCs where the SLR-investment-adjusted NIM is meaningless. */
+  spread: number | null;
+  /** Debt mix at period end as fractions of borrowings (sum may be < 1
+   *  when other components like commercial paper aren't separately
+   *  identified by Capitaline). null when borrowings is missing. */
+  debtMix: {
+    ncdShare: number | null;
+    bankLoanShare: number | null;
+    institutionLoanShare: number | null;
+    otherLoanShare: number | null;
+  } | null;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -154,6 +186,12 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   const borrowings         = pickValue(raw, bs.borrowings,          "BalanceSheet");
   const cashAndBalanceWithRBI = pickValue(raw, bs.cashAndBalanceWithRBI, "BalanceSheet");
 
+  // Phase K — NBFC funding mix breakdown
+  const nonConvertibleDebentures   = pickValue(raw, bs.nonConvertibleDebentures,   "BalanceSheet");
+  const termLoansFromBanks         = pickValue(raw, bs.termLoansFromBanks,         "BalanceSheet");
+  const termLoansFromInstitutions  = pickValue(raw, bs.termLoansFromInstitutions,  "BalanceSheet");
+  const termLoansFromOthers        = pickValue(raw, bs.termLoansFromOthers,        "BalanceSheet");
+
   // P&L
   const interestEarned     = pickValue(raw, pl.interestIncome,      "ProfitLoss");
   const interestExpended   = pickValue(raw, pl.interestExpended,    "ProfitLoss");
@@ -202,6 +240,17 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
     creditCost: null,
     costToIncome: null,
     casaRatio: null,
+    // Phase K — NBFC funding mix (raw)
+    nonConvertibleDebentures,
+    termLoansFromBanks,
+    termLoansFromInstitutions,
+    termLoansFromOthers,
+    // Phase K — NBFC derived (computed in computeBankRatios)
+    leverage: null,
+    costOfBorrowings: null,
+    yieldOnAdvances: null,
+    spread: null,
+    debtMix: null,
   };
 }
 
@@ -210,17 +259,26 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
 function computeBankRatios(
   current: BankPeriodMetrics,
   prev: BankPeriodMetrics | null,
+  subtype: FinancialInstitutionSubtype = "bank",
 ): BankPeriodMetrics {
   const result = { ...current };
+  // Phase K — NBFC framing: NIM denominator is advances-only (no SLR
+  // investments to dilute it), and we surface yield/cost/spread instead
+  // of NIM-on-earning-assets which is a bank framing.
+  const isNbfcFraming = subtype === "nbfc" || subtype === "generic-financial";
 
   if (prev) {
     const avgAssets   = avg(current.totalAssets,  prev.totalAssets);
     const avgEquity   = avg(current.totalEquity,  prev.totalEquity);
     const avgAdvances = avg(current.advances,     prev.advances);
-    const earningAssets = avg(
-      sumStrict(current.advances, current.investments),
-      sumStrict(prev.advances,    prev.investments),
-    );
+    const avgBorrowings = avg(current.borrowings, prev.borrowings);
+    // Earning assets: advances + investments for banks, advances-only for NBFCs.
+    const earningAssets = isNbfcFraming
+      ? avgAdvances
+      : avg(
+          sumStrict(current.advances, current.investments),
+          sumStrict(prev.advances,    prev.investments),
+        );
 
     // NIM = NII / Average Earning Assets
     if (current.nii != null && earningAssets != null && earningAssets > 0) {
@@ -241,12 +299,48 @@ function computeBankRatios(
     if (current.provisions != null && avgAdvances != null && avgAdvances > 0) {
       result.creditCost = Math.abs(current.provisions) / avgAdvances;
     }
+
+    // Phase K — NBFC: yield on advances, cost of borrowings, spread
+    if (isNbfcFraming) {
+      if (current.interestEarned != null && avgAdvances != null && avgAdvances > 0) {
+        result.yieldOnAdvances = current.interestEarned / avgAdvances;
+      }
+      if (current.interestExpended != null && avgBorrowings != null && avgBorrowings > 0) {
+        result.costOfBorrowings = Math.abs(current.interestExpended) / avgBorrowings;
+      }
+      if (result.yieldOnAdvances != null && result.costOfBorrowings != null) {
+        result.spread = result.yieldOnAdvances - result.costOfBorrowings;
+      }
+    }
   }
 
   // Cost to Income = Operating Expenses / (NII + Other Income)
   const totalIncome = sumLenient(current.nii, current.otherIncome);
   if (current.operatingExpenses != null && totalIncome != null && totalIncome > 0) {
     result.costToIncome = Math.abs(current.operatingExpenses) / totalIncome;
+  }
+
+  // Phase K — NBFC: leverage and debt mix (point-in-time, no averaging needed)
+  if (isNbfcFraming) {
+    // Leverage = Total Borrowings / Total Equity. Standard NBFC gearing
+    // metric. Banks fund through deposits so this number isn't comparable.
+    if (current.borrowings != null && current.totalEquity != null && current.totalEquity > 0) {
+      result.leverage = current.borrowings / current.totalEquity;
+    }
+
+    // Debt mix: fractions of total borrowings. Sum may be < 1 because
+    // Capitaline doesn't break out commercial paper / FCNRB borrowings
+    // separately — the residual is informational, not a parser bug.
+    if (current.borrowings != null && current.borrowings > 0) {
+      const safeShare = (component: number | null): number | null =>
+        component != null ? component / current.borrowings! : null;
+      result.debtMix = {
+        ncdShare: safeShare(current.nonConvertibleDebentures),
+        bankLoanShare: safeShare(current.termLoansFromBanks),
+        institutionLoanShare: safeShare(current.termLoansFromInstitutions),
+        otherLoanShare: safeShare(current.termLoansFromOthers),
+      };
+    }
   }
 
   return result;
@@ -303,6 +397,9 @@ export function processBankData(
     (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime(),
   );
 
+  // Determine subtype first so ratio computation can branch on it.
+  const subtype = detectSubtype(scope);
+
   // Extract raw metrics
   const rawMetrics = sorted.map(extractBankMetrics);
 
@@ -310,7 +407,7 @@ export function processBankData(
   const computed: BankPeriodMetrics[] = [];
   for (let i = 0; i < rawMetrics.length; i++) {
     const prev = i > 0 ? computed[i - 1] : null;
-    computed.push(computeBankRatios(rawMetrics[i], prev));
+    computed.push(computeBankRatios(rawMetrics[i], prev, subtype));
   }
 
   // Convert to FinancialInstitutionPeriodSnapshot
@@ -333,10 +430,11 @@ export function processBankData(
 
   return {
     family: "financial-institution",
-    subtype: detectSubtype(scope),
+    subtype,
     periods,
     traceability: null,
     valuation,
+    bankMetrics: computed,
   };
 }
 
