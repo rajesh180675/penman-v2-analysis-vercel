@@ -17,7 +17,7 @@
  * instead of maintaining a parallel hardcoded BANK_METRIC_KEYS object.
  */
 
-import { RawPeriodData } from "./types";
+import { RawPeriodData, EngineConfig } from "./types";
 import {
   FinancialInstitutionAnalysisResult,
   FinancialInstitutionPeriodSnapshot,
@@ -25,6 +25,7 @@ import {
 } from "./analysisFamily";
 import { ScopeAssessment } from "./scopePolicy";
 import { CapitalineMappingSpec } from "./mappingSpec";
+import { computeBankValuation, BankValuationBundle } from "./bankValuation";
 
 /** Bank-specific metrics extracted from raw data */
 export interface BankPeriodMetrics {
@@ -275,11 +276,18 @@ function detectSubtype(scope: ScopeAssessment): FinancialInstitutionSubtype {
 
 /**
  * Process bank/NBFC data through the financial institution pipeline.
- * Produces period snapshots with bank-specific metrics and ratios.
+ * Produces period snapshots with bank-specific metrics and ratios, plus
+ * (when an EngineConfig is provided) the three bank valuation models
+ * from bankValuation.ts.
+ *
+ * `cfg` is optional for back-compat with existing callers that only
+ * want metrics. When omitted, valuation is null.
  */
 export function processBankData(
   dataArray: RawPeriodData[],
   scope: ScopeAssessment,
+  cfg?: EngineConfig,
+  marketCap: number | null = null,
 ): FinancialInstitutionAnalysisResult {
   if (!dataArray || dataArray.length === 0) {
     return {
@@ -287,6 +295,7 @@ export function processBankData(
       subtype: detectSubtype(scope),
       periods: [],
       traceability: null,
+      valuation: null,
     };
   }
 
@@ -315,11 +324,18 @@ export function processBankData(
     claimsExpense: null,
   }));
 
+  // Phase B4: bank valuation. Only run when caller supplied a config —
+  // valuation needs ke and terminal growth assumptions.
+  const valuation: BankValuationBundle | null = cfg
+    ? computeBankValuation(computed, cfg, marketCap)
+    : null;
+
   return {
     family: "financial-institution",
     subtype: detectSubtype(scope),
     periods,
     traceability: null,
+    valuation,
   };
 }
 

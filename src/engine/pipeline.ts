@@ -44,7 +44,10 @@ export function processCompanyDataFull(
 
   // Route to bank pipeline only if financial institution AND not blocked.
   if (family === "financial-institution" && !scope.blocked) {
-    const bankResult = processBankData(dataArray, scope);
+    // Phase B4: pass config so the bank pipeline can also produce
+    // valuation results (justified P/B, equity residual income, DDM).
+    // Market cap is not in EngineConfig today — null until UI passes it.
+    const bankResult = processBankData(dataArray, scope, config, null);
     const emptyAnomalies = runAnomalyDetection([], config);
     return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult };
   }

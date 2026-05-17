@@ -1,6 +1,7 @@
 import type { AnalysisTraceabilityEnvelope } from "./analysisTraceability";
 import type { RecastPeriod } from "./types";
 import type { ScopeAssessment, AnalysisFamily as ScopeAnalysisFamily } from "./scopePolicy";
+import type { BankValuationBundle } from "./bankValuation";
 
 export type AnalysisFamily = ScopeAnalysisFamily;
 export type FinancialInstitutionSubtype = "bank" | "nbfc" | "insurance" | "generic-financial";
@@ -26,6 +27,8 @@ export interface FinancialInstitutionAnalysisResult {
   subtype: FinancialInstitutionSubtype;
   periods: FinancialInstitutionPeriodSnapshot[];
   traceability: AnalysisTraceabilityEnvelope | null;
+  /** Phase B4 — bank/NBFC valuation models. null for insurance/generic until those pipelines exist. */
+  valuation: BankValuationBundle | null;
 }
 
 export type AnalysisResult = IndustrialAnalysisResult | FinancialInstitutionAnalysisResult;
