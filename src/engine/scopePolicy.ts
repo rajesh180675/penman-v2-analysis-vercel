@@ -79,6 +79,10 @@ const SIGNAL_GROUPS: Array<{
       "Hire Purchase Assets",
       "Lease Assets",
       "Assets on Hire Purchase",
+      // Ind-AS NBFC labels (Bajaj Finance, Shriram, Muthoot etc.)
+      "Fee and Commission Income",
+      "Interests Income (Operating)",
+      "Loan to Customer",
     ],
   },
 ];
