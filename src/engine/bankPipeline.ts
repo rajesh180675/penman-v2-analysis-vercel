@@ -162,10 +162,20 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   const pat                = pickValue(raw, pl.profitAfterTax,      "ProfitLoss");
   const pbt                = pickValue(raw, pl.profitBeforeTax,     "ProfitLoss");
 
-  // NII = Interest Earned − |Interest Expended|
-  const nii = (interestEarned != null && interestExpended != null)
-    ? interestEarned - Math.abs(interestExpended)
-    : null;
+  // NII = Interest Earned − |Interest Expended|.
+  // Sign sanity check: a going-concern bank must have NII > 0 and < interestEarned
+  // (interest paid on deposits/borrowings cannot exceed interest earned on advances).
+  // If a parser ever delivers sign-flipped values (interestEarned < 0), the math
+  // would silently produce negative NII; we set it to null instead so downstream
+  // ratios are blocked rather than misleading (review W7).
+  let nii: number | null = null;
+  if (interestEarned != null && interestExpended != null) {
+    if (interestEarned > 0) {
+      nii = interestEarned - Math.abs(interestExpended);
+      if (nii < 0 || nii > interestEarned) nii = null;
+    }
+    // else: interestEarned <= 0 is sign-flipped raw data; leave NII null
+  }
 
   return {
     period_end: period.period_end,
@@ -244,9 +254,20 @@ function computeBankRatios(
 // ─── Subtype Detection ──────────────────────────────────────────────────────
 
 function detectSubtype(scope: ScopeAssessment): FinancialInstitutionSubtype {
-  const kinds = new Set(scope.signals.map(s => s.kind));
-  if (kinds.has("banking")) return "bank";
-  if (kinds.has("nbfc"))    return "nbfc";
+  // Count distinct signal labels per kind. A single banking-business
+  // investment line on an NBFC's books shouldn't flip the classification.
+  // Require >= 2 distinct banking labels before declaring "bank"; otherwise
+  // prefer NBFC if NBFC signals are present (review W1).
+  const counts = new Map<string, number>();
+  for (const s of scope.signals) {
+    if (s.kind === "manual-override") continue;
+    counts.set(s.kind, (counts.get(s.kind) ?? 0) + 1);
+  }
+  const bankingCount = counts.get("banking") ?? 0;
+  const nbfcCount    = counts.get("nbfc")    ?? 0;
+  if (bankingCount >= 2)              return "bank";
+  if (nbfcCount    >= 1)              return "nbfc";
+  if (bankingCount === 1)             return "bank";
   return "generic-financial";
 }
 

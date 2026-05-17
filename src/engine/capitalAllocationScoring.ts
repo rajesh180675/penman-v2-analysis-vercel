@@ -179,6 +179,17 @@ function scoreDividendConsistency(
  * - Buybacks when SPREAD > 0 → value-accretive (good)
  * - Equity issuance when SPREAD < 0 → dilutive (bad)
  * - Buybacks when SPREAD < 0 → destroys value (bad)
+ *
+ * Review notes (W2):
+ *   - Gross issuance is flagged separately from net issuance. A company that
+ *     does ₹100Cr buyback and ₹110Cr issuance in the same year is NOT clean
+ *     even though net issuance / buyback ≈ 1.1×. We track grossActivityRatio
+ *     and surface it in evidence.
+ *   - Periods with a buyback but missing SPREAD no longer silently park at
+ *     neutral 50 — they're flagged as low-confidence in evidence and excluded
+ *     from the median when the count exceeds 25% of buyback periods.
+ *   - Median hides single-year disasters. We surface `worstYearScore` so
+ *     reviewers see whether a strong median masks one ruinous decision.
  */
 function scoreBuybackQuality(
   periods: RecastPeriod[],
@@ -189,6 +200,9 @@ function scoreBuybackQuality(
   let dilutiveIssuances = 0;
   let totalBuybackPeriods = 0;
   let totalIssuancePeriods = 0;
+  let buybackWithoutSpread = 0;
+  let totalGrossBuyback = 0;
+  let totalGrossIssuance = 0;
   const periodScores: number[] = [];
 
   for (const p of periods) {
@@ -197,7 +211,10 @@ function scoreBuybackQuality(
     const spread   = p.ratios?.SPREAD ?? null;
     rawValues.push({ period: p.period_end, value: buyback - issuance });
 
-    let pScore = 50; // neutral if no activity
+    totalGrossBuyback  += Math.abs(buyback);
+    totalGrossIssuance += Math.abs(issuance);
+
+    let pScore: number | null = 50; // neutral baseline; null means "skip from median"
 
     if (buyback > 0) {
       totalBuybackPeriods++;
@@ -206,28 +223,49 @@ function scoreBuybackQuality(
         pScore = 80; // buyback with positive spread — good
       } else if (spread !== null && spread < 0) {
         pScore = 20; // buyback destroying value
+      } else {
+        // Buyback occurred but SPREAD is null — cannot judge value-accretion.
+        // Don't pollute median with a fake neutral score.
+        buybackWithoutSpread++;
+        pScore = null;
       }
     }
 
+    // Dilutive net-issuance check (existing semantics): equity issued
+    // exceeds buyback amount by 10%+ in a SPREAD-negative year.
     if (issuance > buyback * 1.1) {
       totalIssuancePeriods++;
       if (spread !== null && spread < 0) {
         dilutiveIssuances++;
-        pScore = Math.min(pScore, 15); // dilutive issuance — bad
+        pScore = pScore == null ? 15 : Math.min(pScore, 15); // dilutive issuance — bad
       }
     }
 
-    periodScores.push(pScore);
+    if (pScore != null) periodScores.push(pScore);
   }
 
+  // Gross-activity sanity check (W2a): big issuance offsetting big buybacks
+  // is suspicious even when net is small. Threshold 1.1× chosen for symmetry
+  // with the net-issuance test.
+  const grossActivityRatio = totalGrossBuyback > 0
+    ? totalGrossIssuance / totalGrossBuyback
+    : null;
+
+  const worstYearScore = periodScores.length > 0 ? Math.min(...periodScores) : null;
   const score = medianOf(periodScores) ?? 50;
 
   evidence.push(`Buyback periods: ${totalBuybackPeriods}/${periods.length}`);
   evidence.push(`Value-accretive buybacks (SPREAD > 0): ${buybacksValueAccretive}`);
   if (dilutiveIssuances > 0)
     evidence.push(`Dilutive equity issuances (SPREAD < 0): ${dilutiveIssuances}`);
+  if (buybackWithoutSpread > 0)
+    evidence.push(`Warning: ${buybackWithoutSpread} buyback period(s) with missing SPREAD — excluded from median (W2)`);
+  if (grossActivityRatio != null && grossActivityRatio > 1.1 && totalGrossBuyback > 0)
+    evidence.push(`Warning: gross issuance ${grossActivityRatio.toFixed(2)}× gross buyback — token-buyback-then-issue pattern (W2)`);
   if (totalBuybackPeriods === 0)
     evidence.push("No buyback activity detected — neutral score applied");
+  if (worstYearScore != null && worstYearScore < 25 && score >= 50)
+    evidence.push(`Warning: median ${score.toFixed(0)} masks a single-year disaster — worstYearScore = ${worstYearScore} (W2)`);
 
   return {
     dimension: {
@@ -317,6 +355,17 @@ function scoreReinvestmentROIC(
  * Score FCF conversion quality.
  * FCF conversion = FCF_cash / CNI
  * High, stable conversion → earnings are real cash.
+ *
+ * Calibration (review W8):
+ *   med = 0    → 0  (no cash conversion)
+ *   med = 0.6  → 50
+ *   med = 1.0  → 83
+ *   med = 1.2+ → 100
+ *   med < 0    → 0  (FCF actively destroyed; clamped at zero)
+ *
+ * Previous formula `linearScore(med, 0, 1.2) * 0.8 + 20` floored the score
+ * at 20, so deeply-negative-FCF firms could not score below 20. Removing the
+ * +20 lets the score reach 0 for genuine cash-burning operations.
  */
 function scoreFCFConversion(
   periods: RecastPeriod[]
@@ -342,8 +391,9 @@ function scoreFCFConversion(
 
   let score = 50;
   if (medianFCFConversion !== null) {
-    // 1.0 conversion → 80 pts, 1.2+ → 100, 0 → 20, negative → 0
-    score = clamp(linearScore(medianFCFConversion, 0, 1.2) * 0.8 + 20, 0, 100);
+    // Linear score across [0, 1.2]; floor at 0, cap at 100. No artificial
+    // +20 baseline — a structurally-cash-destroying firm scores 0.
+    score = clamp(linearScore(medianFCFConversion, 0, 1.2), 0, 100);
   }
 
   // Penalize high variance

@@ -359,6 +359,16 @@ function scoreMarginStability(periods: RecastPeriod[]): MoatDimension {
  * Dimension 4: Reinvestment Quality
  * Score based on: incremental RNOA (ΔNOA → ΔCOREOI), ROIC on new investment
  * Incremental RNOA = ΔCoreOI / ΔNOA (year-over-year)
+ *
+ * Calibration (review W7): aligned with capitalAllocationScoring.ts:scoreReinvestmentROIC.
+ *   score = clamp(med / (2*kw) * 100, 0, 100)
+ *   med = 0   → 0
+ *   med = kw  → 50  (was ~40 in the old formula)
+ *   med = 2kw → 100
+ * The previous split (level 0–60 + pctAbove 0–40) produced ~40 at iROIC=kw,
+ * disagreeing with capalloc's 50 for the same input. Both modules now share
+ * one shape so reviewers see consistent scores across the moat and capital
+ * allocation reports.
  */
 function scoreReinvestmentQuality(
   periods: RecastPeriod[],
@@ -374,8 +384,28 @@ function scoreReinvestmentQuality(
   for (let i = 1; i < sorted.length; i++) {
     const curr = sorted[i];
     const prev = sorted[i - 1];
-    const dNOA    = (curr.bs?.NOA ?? 0) - (prev.bs?.NOA ?? 0);
-    const dCoreOI = (curr.cu?.CoreOI ?? 0) - (prev.cu?.CoreOI ?? 0);
+
+    // Review W11: `?? 0` lets a NaN/undefined NOA collapse silently to 0,
+    // producing a fake dNOA = -prevNOA and a phantom incremental RNOA.
+    // Mirror the capitalAllocation C6 fix: only proceed when both endpoints
+    // are explicitly finite numbers.
+    const prevNOAraw = prev.bs?.NOA;
+    const currNOAraw = curr.bs?.NOA;
+    const prevCoreOIraw = prev.cu?.CoreOI;
+    const currCoreOIraw = curr.cu?.CoreOI;
+
+    const prevNOA = (prevNOAraw != null && Number.isFinite(prevNOAraw)) ? prevNOAraw : null;
+    const currNOA = (currNOAraw != null && Number.isFinite(currNOAraw)) ? currNOAraw : null;
+    const prevCoreOI = (prevCoreOIraw != null && Number.isFinite(prevCoreOIraw)) ? prevCoreOIraw : null;
+    const currCoreOI = (currCoreOIraw != null && Number.isFinite(currCoreOIraw)) ? currCoreOIraw : null;
+
+    if (prevNOA == null || currNOA == null || prevCoreOI == null || currCoreOI == null) {
+      rawValues.push({ period: curr.period_end, value: null });
+      continue;
+    }
+
+    const dNOA    = currNOA - prevNOA;
+    const dCoreOI = currCoreOI - prevCoreOI;
 
     if (Math.abs(dNOA) > 1) {  // avoid division by near-zero
       const incRNOA = dCoreOI / dNOA; // use signed dNOA to capture shrink/grow
@@ -398,17 +428,17 @@ function scoreReinvestmentQuality(
   const medIncRNOA = medianOf(incRNOAValues)!;
   const pctAbove   = incRNOAValues.filter(v => v > kw).length / incRNOAValues.length;
 
-  // Score: median incremental RNOA vs kw (0–60), % above kw (0–40)
-  const levelScore = clamp((medIncRNOA - kw) / 0.15 * 60, 0, 60);
-  const pctScore   = pctAbove * 40;
+  // Single-shape calibration (W7): med=kw → 50, med=2kw → 100, med<=0 → 0.
+  // Guard against a degenerate kw <= 0 (would NaN the ratio).
+  const score = (kw > 0)
+    ? clamp((medIncRNOA / (2 * kw)) * 100, 0, 100)
+    : (medIncRNOA > 0 ? 100 : 0);
 
-  const score = Math.round(levelScore + pctScore);
-
-  evidence.push(`Median incremental RNOA: ${(medIncRNOA * 100).toFixed(1)}%`);
+  evidence.push(`Median incremental RNOA: ${(medIncRNOA * 100).toFixed(1)}% vs kw: ${(kw * 100).toFixed(1)}%`);
   evidence.push(`${Math.round(pctAbove * 100)}% of reinvestment years earned above kw`);
   if (medIncRNOA > kw * 1.5) evidence.push("Reinvestment earns well above cost of capital — compounding machine");
 
-  return { name: "Reinvestment Quality", score: clamp(score, 0, 100), weight: 0.15, evidence, rawValues };
+  return { name: "Reinvestment Quality", score: clamp(Math.round(score), 0, 100), weight: 0.15, evidence, rawValues };
 }
 
 /**
@@ -451,6 +481,18 @@ function scoreATOStability(periods: RecastPeriod[]): MoatDimension {
 
 // ─── Moat Width Classification ────────────────────────────────────────────────
 
+/**
+ * Classify moat width per the doc-header rules (review W1).
+ *
+ * Minimum-period requirements protect against premature claims of durability:
+ *   - "wide"   requires totalPeriods >= 7  (full cycle observation)
+ *   - "narrow" requires totalPeriods >= 4  (multi-year confirmation)
+ *   - <3 periods returns "insufficient-data" outright
+ *
+ * Without these gates, a 3-period sample could be labelled "wide" on the
+ * back of a single boom-year SPREAD spike, contradicting the framework's
+ * intent ("durable" = sustained across years).
+ */
 function classifyMoatWidth(
   compositeScore: number,
   periodsAboveCOC: number,
@@ -462,8 +504,10 @@ function classifyMoatWidth(
   const pctAbove  = periodsAboveCOC / totalPeriods;
   const pctStrong = periodsWithStrongSpread / totalPeriods;
 
-  if (compositeScore >= 75 && pctStrong >= 0.70) return "wide";
-  if (compositeScore >= 55 && pctAbove >= 0.50)  return "narrow";
+  // "Wide" requires both score+strong-spread evidence AND >=7 periods
+  if (compositeScore >= 75 && pctStrong >= 0.70 && totalPeriods >= 7) return "wide";
+  // "Narrow" requires evidence AND >=4 periods
+  if (compositeScore >= 55 && pctAbove >= 0.50 && totalPeriods >= 4)  return "narrow";
   return "none";
 }
 
@@ -616,7 +660,11 @@ export function computeBankMoatScore(
   const moatWidth = classifyMoatWidth(
     compositeScore,
     periodsAboveKe,
-    roeValues.filter(v => v > ke + 0.05).length,
+    // Review W10: ROE-ke gradient is wider than RNOA-kw, so "strong spread"
+    // for banks is +7% above ke (vs +5% for industrial RNOA-kw). Using 0.05
+    // here would let routine ROE leakage above cost-of-equity register as
+    // strong-moat evidence and inflate bank moat-width classifications.
+    roeValues.filter(v => v > ke + 0.07).length,
     totalPeriods,
   );
 

@@ -158,12 +158,17 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
         continue; // skip year header
       }
     } else {
-      // Try td content extraction (skip first td which contains the label)
+      // Try td content extraction (skip first td which contains the label).
+      // Review W1: previous filter accepted bare empty strings, which let
+      // layout/spacer <td></td> cells slip into the value list and shift
+      // every year by one column. Require at least one digit OR an explicit
+      // "-" null marker. This still admits legitimate Capitaline rows
+      // (e.g., HOTELS post-demerger using "-" placeholders) while rejecting
+      // empty layout cells.
       const tdContents = Array.from(tr.matchAll(/<td[^>]*>([^<]*)<\/td>/g))
         .map(m => m[1].trim());
-      // Filter to value-like cells
       const tdValues = tdContents.filter(s =>
-        /^-?[\d,]+\.?\d*$/.test(s) || s === "-" || s === ""
+        /^-?[\d,]+\.?\d*$/.test(s) || s === "-"
       );
       if (tdValues.length === years.length) {
         values = tdValues.map(parseNumber);
@@ -178,7 +183,14 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
   // Now process labeledRows in order
   const dataRows = labeledRows.map(r => r.values);
 
-  // Identify segments (labels that are NOT section headers or sub-section labels)
+  // Identify segments (labels that are NOT section headers or sub-section labels).
+  // Note (review W8): this requires the label to be ALL UPPERCASE because
+  // Capitaline segment files use uppercase for segment names while keeping
+  // section headers and sub-section labels in mixed case. Geographic and
+  // business-segment files both follow this convention. If a future
+  // Capitaline export changes case conventions, this filter will silently
+  // drop segments — relax to a case-insensitive comparison only after
+  // verifying the new fixture.
   const segments: string[] = [];
   const seenSegments = new Set<string>();
   for (const label of labelMatches) {

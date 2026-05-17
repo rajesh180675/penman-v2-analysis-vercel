@@ -152,15 +152,27 @@ export function deriveSegmentUncertainties(segmentData: SegmentData): SegmentUnc
     // Collect EBIT values for this year
     const ebitValues: Record<string, number> = {};
     let totalEBIT = 0;
+    let yearHadLossPeriod = false;
 
     for (const seg of segments) {
       const periodData = data[seg]?.[yr];
       const result = periodData?.result;
-      if (result !== null && result !== undefined && Number.isFinite(result) && result > 0) {
-        ebitValues[seg] = result;
-        totalEBIT += result;
+      if (result !== null && result !== undefined && Number.isFinite(result)) {
+        if (result > 0) {
+          ebitValues[seg] = result;
+          totalEBIT += result;
+        } else {
+          // Loss-period observation — track that we saw it but exclude from
+          // share calculation (a negative share would not be a probability).
+          // For genuinely-cyclic segments (e.g., Hotels in FY21/22) this means
+          // historical drawdown volatility is *not* captured in the std (W3).
+          // Future enhancement: track loss-period flags separately and pass
+          // through to MC as a "tail risk" factor.
+          yearHadLossPeriod = true;
+        }
       }
     }
+    void yearHadLossPeriod;
 
     if (totalEBIT <= 0) continue; // skip years with no positive EBIT
 
@@ -171,15 +183,24 @@ export function deriveSegmentUncertainties(segmentData: SegmentData): SegmentUnc
     }
   }
 
-  // Compute mean and std for each segment
+  // Compute mean and std for each segment.
+  // Sample variance (Bessel's correction) — divide by (n-1), not n. With
+  // typical N = 3-5 yearly observations, population variance under-disperses
+  // the simulator's draws by ~25-40% (review W2).
   const result: SegmentUncertainty[] = [];
+  let droppedSegments = 0;
 
   for (const seg of segments) {
     const shares = sharesBySegment[seg];
-    if (shares.length < 2) continue; // need at least 2 observations
+    if (shares.length < 2) {
+      droppedSegments++;
+      continue;
+    }
 
     const mean = shares.reduce((s, v) => s + v, 0) / shares.length;
-    const variance = shares.reduce((s, v) => s + (v - mean) ** 2, 0) / shares.length;
+    const variance = shares.length > 1
+      ? shares.reduce((s, v) => s + (v - mean) ** 2, 0) / (shares.length - 1)
+      : 0;
     const std = Math.sqrt(variance);
 
     result.push({
@@ -187,6 +208,13 @@ export function deriveSegmentUncertainties(segmentData: SegmentData): SegmentUnc
       meanShare: { mean, std },
     });
   }
+
+  // The dropped-segment count is intentionally not surfaced here (caller
+  // pattern is short-circuit: skip MC for segments without uncertainty).
+  // If Monte Carlo coverage diagnostics become important, expose it via
+  // a return-shape extension. Kept silent for now to preserve the existing
+  // call signature.
+  void droppedSegments;
 
   return result;
 }

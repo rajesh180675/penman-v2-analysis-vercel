@@ -123,8 +123,20 @@ function safeDiff(a: number | null, b: number | null): number | null {
   return a - b;
 }
 
+/**
+ * Compute contribution as a fraction of consolidated. Returns null when:
+ *   - either operand is null/missing
+ *   - consolidated is exactly zero (avoid division by zero)
+ *   - consolidated is negative — a "subsidiary contribution %" is only meaningful
+ *     when the consolidated denominator is positive. For a loss year (PAT
+ *     consolidated = −500, standalone = −300, diff = −200), pct = −200/−500 = 0.40
+ *     would read as "subs contributed 40%" which is misleading (review W4).
+ *     Callers should treat null here as "denominator was non-positive — see
+ *     absolute contribution instead".
+ */
 function safePct(contribution: number | null, consolidated: number | null): number | null {
-  if (contribution == null || consolidated == null || consolidated === 0) return null;
+  if (contribution == null || consolidated == null) return null;
+  if (consolidated <= 0) return null;
   return contribution / consolidated;
 }
 
@@ -138,20 +150,33 @@ function medianOf(values: number[]): number | null {
     : sorted[mid];
 }
 
+/**
+ * Estimate trend direction from a series of percentages. Uses a least-squares
+ * slope rather than first-half vs second-half averages so a single recent
+ * outlier doesn't read as a sustained trend (review W5).
+ *
+ * Threshold: slope * length is the implied total change across the window;
+ * we declare "growing"/"shrinking" when that exceeds 2pp.
+ */
 function computeTrend(values: Array<number | null>): SubsidiaryContributionSummary["patContributionTrend"] {
   const clean = values.filter((v): v is number => v != null && Number.isFinite(v));
   if (clean.length < 3) return "insufficient-data";
 
-  // Simple linear trend: compare first half average vs second half average
-  const mid = Math.floor(clean.length / 2);
-  const firstHalf  = clean.slice(0, mid);
-  const secondHalf = clean.slice(mid);
-  const avgFirst  = firstHalf.reduce((s, v) => s + v, 0) / firstHalf.length;
-  const avgSecond = secondHalf.reduce((s, v) => s + v, 0) / secondHalf.length;
+  const n = clean.length;
+  const meanX = (n - 1) / 2;                                     // x = 0..n-1
+  const meanY = clean.reduce((s, v) => s + v, 0) / n;
+  let cov = 0;
+  let varX = 0;
+  for (let i = 0; i < n; i++) {
+    cov  += (i - meanX) * (clean[i] - meanY);
+    varX += (i - meanX) ** 2;
+  }
+  if (varX === 0) return "stable";
+  const slope = cov / varX;
+  const totalChange = slope * (n - 1); // implied change from first to last period
 
-  const delta = avgSecond - avgFirst;
-  if (delta > 0.02)  return "growing";
-  if (delta < -0.02) return "shrinking";
+  if (totalChange > 0.02)  return "growing";
+  if (totalChange < -0.02) return "shrinking";
   return "stable";
 }
 
@@ -211,9 +236,22 @@ export function processScopeAwareData(
   const standaloneOnlyPeriods   = Array.from(standalonePeriods).filter(p => !consolidatedPeriods.has(p));
 
   // ── 3. Compute contribution for aligned periods ──────────────────────────
+  // Sort by parsed date rather than alphabetical string compare. ISO-8601
+  // (YYYY-MM-DD) sorts correctly alphabetically, but if the parser ever ships
+  // quarterly data as "Q1 FY25" or "31-03-2024" the alphabetical sort would
+  // pick the wrong "latest" period (review W6).
   const alignedPeriods = Array.from(consolidatedPeriods)
     .filter(p => standalonePeriods.has(p))
-    .sort();
+    .sort((a, b) => {
+      const ta = new Date(a).getTime();
+      const tb = new Date(b).getTime();
+      // Fall back to lexical comparison only when both dates parse as NaN
+      // (preserves stable order for non-date period labels).
+      if (Number.isNaN(ta) && Number.isNaN(tb)) return a.localeCompare(b);
+      if (Number.isNaN(ta)) return -1;
+      if (Number.isNaN(tb)) return 1;
+      return ta - tb;
+    });
 
   const contributions: SubsidiaryContribution[] = [];
 

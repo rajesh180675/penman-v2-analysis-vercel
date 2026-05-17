@@ -188,8 +188,15 @@ export function segmentDataToDefinitions(
         operatingProfitShare: totalEbit > 0 ? ebit / totalEbit : 0,
         revenueShare: totalRevenue > 0 ? rev / totalRevenue : 0,
         sectorTemplate: classifySegmentSector(seg),
-        // Use segment-specific revenue CAGR as terminal growth hint (capped)
-        terminalGrowthOverride: revCagr != null
+        // Use segment-specific revenue CAGR as terminal growth hint, but
+        // refuse to publish a fabricated growth rate for a structurally
+        // declining segment (revCagr <= 0). The previous Math.max(0.02,…)
+        // floor silently inflated value for legacy/declining divisions
+        // (e.g. Paperboards in secular decline) — review W5. When the
+        // historical CAGR is non-positive we leave terminalGrowthOverride
+        // undefined so the SOTP module falls back to its sector-template
+        // default growth rate.
+        terminalGrowthOverride: (revCagr != null && revCagr > 0)
           ? Math.max(0.02, Math.min(0.07, revCagr * 0.5)) // 50% of historical CAGR, capped
           : undefined,
       };
@@ -200,6 +207,14 @@ export function segmentDataToDefinitions(
 
 /**
  * Run SOTP valuation using actual parsed segment data instead of presets.
+ *
+ * Note (review W6): segmentAssets and segmentLiabilities are captured here
+ * for diagnostic display on the EnhancedSOTPResult, but the underlying
+ * `buildSOTPValuation` allocates NOA proportionally to operatingProfitShare
+ * — it does NOT yet consume per-segment assets directly. Threading actual
+ * segment-asset disclosure through to NOA allocation is a future
+ * enhancement; at present these fields are reportable context, not
+ * valuation inputs.
  */
 export function runSOTPFromSegmentData(
   segmentData: SegmentData,

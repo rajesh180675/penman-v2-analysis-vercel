@@ -69,8 +69,12 @@ self.onmessage = (ev: MessageEvent<unknown>) => {
       for (const seg of segmentDefinitions) {
         const unc = segmentUncertainties.find(u => u.name === seg.name);
         if (unc) {
-          // Sample perturbed share, clamp to [0.001, 1]
-          const s = Math.max(0.001, sample(unc.meanShare, random));
+          // Sample perturbed share, clamp to (0.001, 0.999). Upper clamp
+          // prevents a runaway draw on the dominant segment from collapsing
+          // every other segment's normalized share to ~0 when the random
+          // tail extends past 1.0 (review W7).
+          const draw = sample(unc.meanShare, random);
+          const s = Math.max(0.001, Math.min(0.999, draw));
           perturbedShares[seg.name] = s;
           totalShare += s;
         } else {

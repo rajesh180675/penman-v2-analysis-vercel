@@ -270,6 +270,17 @@ export function computeEPV(
     : confidenceNotes.length <= 2 ? "medium"
     : "low";
 
+  // W5: Append a methodology disclaimer AFTER confidence is computed so it
+  // doesn't degrade the confidence score. EPV here is a hybrid of Greenwald
+  // (ke-capitalised earnings power against book equity) and the enterprise
+  // Penman recast: normalized NOPAT is capitalised at WACC (kw) and
+  // franchiseValue is computed against NOA, not book equity. Reviewers who
+  // expect the textbook equity-level Greenwald form should read franchiseValue
+  // at enterprise level here.
+  confidenceNotes.push(
+    "EPV uses (NormNOPAT/kw) − NOA — enterprise-level form. Not equity-level Greenwald (V_EPV_ke − bookEquity); franchiseValue interprets at enterprise level (W5)",
+  );
+
   const marginRange: [number, number] = [
     Math.min(...margins),
     Math.max(...margins),
@@ -307,9 +318,13 @@ export function computeEPV(
  * EPV = Normalized PAT / ke
  * Franchise premium = EPV − Book Value
  *
- * @param bankPeriods  Array of {period_end, pat, totalEquity} from bankPipeline
- * @param config       Engine config (provides ke)
- * @param marketCap    Optional market cap for P/B context
+ * @param bankPeriods               Array of {period_end, pat, totalEquity} from bankPipeline
+ * @param config                    Engine config (provides ke)
+ * @param marketCap                 Optional market cap for P/B context
+ * @param precomputedNormalizedROE  Optional cycle-adjusted ROE from bankPipeline.bm.roe.
+ *                                  When provided, bypasses the local PAT/avgEquity
+ *                                  recomputation so two parallel ROE series can't
+ *                                  disagree (review W6).
  */
 export function computeBankEPV(
   bankPeriods: Array<{
@@ -319,6 +334,7 @@ export function computeBankEPV(
   }>,
   config: EngineConfig,
   _marketCap?: number | null,
+  precomputedNormalizedROE?: number | null,
 ): BankEPVResult | null {
   if (!bankPeriods || bankPeriods.length < 3) return null;
 
@@ -346,8 +362,15 @@ export function computeBankEPV(
     return null;
   }
 
-  const trimmedROE = trimmedValues(roeValues);
-  const normalizedROE = median(trimmedROE)!;
+  // W6: prefer the cycle-adjusted ROE that bankPipeline already computed when
+  // available — keeps a single source of truth for the bank ROE series.
+  let normalizedROE: number;
+  if (precomputedNormalizedROE != null && Number.isFinite(precomputedNormalizedROE)) {
+    normalizedROE = precomputedNormalizedROE;
+  } else {
+    const trimmedROE = trimmedValues(roeValues);
+    normalizedROE = median(trimmedROE)!;
+  }
 
   const latestPeriod = bankPeriods[bankPeriods.length - 1];
   const bookValue = latestPeriod.totalEquity;
