@@ -588,6 +588,20 @@ export interface EngineConfig {
    *   null/unset    — default fail-close behaviour
    */
   mixed_conglomerate_route_to?: "bank" | "nbfc" | "industrial" | null;
+  /**
+   * Phase B5 — Folder name under public/data/companies/ where the
+   * bank's quality_indicators.json sidecar lives. Set this to opt the
+   * bank into the asset-quality surface (NPA, CRAR, PCR, slippage,
+   * CASA, growth signals). null/unset = no fetch attempted; the bank
+   * pipeline still runs without quality data.
+   *
+   * Example: "HDFC Bank" → fetches
+   *   /data/companies/HDFC%20Bank/quality_indicators.json
+   *
+   * Distinct from `ticker` because the URL-safe folder name differs
+   * from the symbol (ticker "HDFCBANK" vs folder "HDFC Bank").
+   */
+  quality_data_folder?: string | null;
   noa_epsilon_ratio_of_ta             : number;
   separation_confidence_threshold     : number;
   g_terminal_override ?: number | null;
@@ -695,6 +709,7 @@ export const DEFAULT_CONFIG: EngineConfig = {
   investment_in_subsidiaries_as_operating: true,
   financial_institution_mode: false,
   mixed_conglomerate_route_to: null,
+  quality_data_folder: null,
   noa_epsilon_ratio_of_ta: 0.10,
   separation_confidence_threshold: 70,
   g_terminal_override: null,

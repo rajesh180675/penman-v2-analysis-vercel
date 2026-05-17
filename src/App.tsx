@@ -2,6 +2,7 @@ import { Suspense, lazy, useState, useCallback, useMemo, useEffect, useRef } fro
 import { RawPeriodData, RecastPeriod, DEFAULT_CONFIG, EngineConfig, CompanyRegistry } from "./engine/types";
 import { processCompanyDataFull } from "./engine/pipeline";
 import type { FinancialInstitutionAnalysisResult } from "./engine/analysisFamily";
+import { fetchBankQualityIndicators, type BankQualityIndicators } from "./engine/bankQualityIndicators";
 import { deriveAnalysisStatus } from "./engine/analysisStatus";
 import { CapitalineParseDebug } from "./engine/capitalineParser";
 import { auditMappingCoverage, evaluateQualityGate } from "./engine/mappingAudit";
@@ -93,19 +94,55 @@ export function App() {
     return auditMappingCoverage(rawData);
   }, [rawData]);
 
+  // Phase B5 — Bank asset-quality sidecar. Fetched asynchronously when
+  // (a) the dataset is bank/NBFC and (b) a folder name is resolvable.
+  // The fetch is graceful: 404 / network errors yield null, the engine
+  // still runs without quality data. Schema/parse errors throw loud.
+  const [bankQuality, setBankQuality] = useState<BankQualityIndicators | null>(null);
+  const qualityFolder = useMemo(() => {
+    // Explicit override wins. Otherwise use the parser-supplied company_id
+    // when present — it usually matches the folder under public/data/companies/.
+    return config.quality_data_folder ?? rawData?.[0]?.company_id ?? null;
+  }, [config.quality_data_folder, rawData]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!qualityFolder) {
+      setBankQuality(null);
+      return;
+    }
+    void fetchBankQualityIndicators(qualityFolder)
+      .then((q) => {
+        if (!cancelled) setBankQuality(q);
+      })
+      .catch((err) => {
+        // Schema-level failures are loud; surface to console but keep the
+        // bank pipeline running with null quality so the rest of the
+        // analysis is unaffected.
+        console.error("[App] bank quality sidecar load failed:", err);
+        if (!cancelled) setBankQuality(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [qualityFolder]);
+
   // Single engine pass — produces both the industrial recast (RecastPeriod[])
   // and the bank pipeline result. Consolidates two earlier separate calls
   // into one for efficiency.
+  // Phase B5: quality sidecar (when present) flows through to the bank
+  // pipeline. The memo re-runs when quality arrives, so the asset-quality
+  // signals populate as soon as the fetch resolves.
   const pipelineResult = useMemo(() => {
     if (!rawData || rawData.length === 0) return null;
     if (scopeGate?.scopeAssessment.blocked) return null;
     try {
-      return processCompanyDataFull(rawData, config);
+      return processCompanyDataFull(rawData, config, bankQuality);
     } catch (err) {
       console.error("[App] engine error:", err);
       return { error: err instanceof Error ? err.message : String(err) };
     }
-  }, [config, rawData, scopeGate]);
+  }, [config, rawData, scopeGate, bankQuality]);
 
   // Bank/NBFC pipeline result. Carries Phase B4 valuation bundle.
   const bankResult = useMemo<FinancialInstitutionAnalysisResult | null>(() => {
