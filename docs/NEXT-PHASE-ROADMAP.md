@@ -86,28 +86,80 @@ Each phase is a separate PR. Each ends green: `npm run validate` (typecheck +
 384 baseline tests + new tests) clean. No phase is allowed to break the
 existing ITC + HDFC Bank baselines.
 
-### Phase A — Multi-standard ingestion (un-blocks 15Y history)
+### Phase A — Multi-standard ingestion (un-blocks 15Y history) ✅ shipped
 
 Goal: every Indian company that has Capitaline coverage back to FY2011 can be
 ingested as a single time series across Ind-AS + Revised Sch-VI + Standard,
 with the Standard transition flagged.
 
-A1. Extend `stmtFromFilename` to capture an `accountingStandard` tag
-    `'ind-as' | 'revised-sch-vi' | 'standard' | 'unknown'` from filename
-    suffix (`INDAS`, `REV`, default).
-A2. Add `ParsedStatement.accountingStandard` and propagate through merge.
-A3. Add `mappingSpec.standardAliases`: `Map<canonicalKey, string[]>` where
-    each entry lists the alternate labels that mean the same thing under
-    Revised Sch-VI / Standard. ~80 alias rows cover the common cases.
-A4. In `recast`, when looking up a canonical key, fall back through the
-    alias list in standard order (Ind-AS → Rev → Std).
-A5. Period stitching: when the same FY appears under two standards (FY2017
-    has both Ind-AS and Revised Sch-VI), prefer Ind-AS, attach a
-    `restatedFrom` provenance tag, surface the gap in rigor ladder.
-A6. Mark pre-Ind-AS periods with `confidence: 'medium'` in rigor envelope —
-    no fair value, no Ind AS 116 leases, no expected credit loss.
-A7. Test: feed synthetic REV + INDAS BS for the same company, assert merged
-    series is 15 years and FY2017 chooses INDAS values with provenance.
+Shipped commits:
+- `30e86ad` feat(parser): Phase A — multi-standard ingestion
+- `2541ac7` fix(parser): detect accounting standard from folder name
+
+A1. ✅ `standardFromFilename()` recognises INDAS / REV / STD / GAAP suffixes
+    AND parent folder names (`revised schd/`, `standard/`).
+A2. ✅ `RawPeriodData.accounting_standard` propagates through merge.
+A3. ✅ `standardAliases.ts` carries 32 conservative source→canonical aliases.
+    Aliases that change semantics across standards (lease classification,
+    fair-value categorisation) deliberately omitted.
+A4. ✅ Parser emits BOTH the original label and the canonical Ind-AS label
+    in parallel so existing mappingSpec lookups work transparently.
+A5. ✅ Standard-precedence merge: Ind-AS > REV > Standard > Unknown.
+A6. 🟡 Pre-Ind-AS confidence tag — type added, not yet wired into rigor
+    envelope. Follow-up patch.
+A7. ✅ 31 unit tests cover filename + folder + Windows backslash paths.
+
+#### Download workflow (real Capitaline export layout)
+
+Capitaline emits separate files per accounting standard. The user
+downloads each format from the same Capitaline screen by switching
+the format dropdown, and drops them into per-format subfolders:
+
+```
+public/data/companies/<TICKER>/
+├── BalanceSheetINDAS_.xls           Ind-AS, FY2017+ (consolidated)
+├── ProfitLossINDAS_.xls
+├── CashFlow_.xls                    universal (same format across standards)
+├── SegmentFinance_*.xls             universal
+├── Investment_.xls                  universal
+├── standalone/                      Ind-AS standalone
+│   ├── BalanceSheetINDAS_.xls
+│   ├── ProfitLossINDAS_.xls
+│   └── CashFlow_.xls
+├── revised schd/                    Revised Sch-VI, FY2012-FY2017
+│   ├── BalanceSheetRevised_.xls
+│   ├── ProfitLossRevised_.xls
+│   ├── CashFlow_.xls                inherits "revised-sch-vi" via folder
+│   ├── SegmentFinance_.xls          inherits via folder
+│   └── standalone/
+│       ├── BalanceSheetRevised_.xls
+│       └── ProfitLossRevised_.xls
+└── standard/                        Standard / Old GAAP, pre-FY2012
+    ├── BalanceSheet_.xls            no filename suffix — folder is the signal
+    ├── ProfitLoss_.xls
+    └── standalone/
+        ├── BalanceSheet_.xls
+        └── ProfitLoss_.xls
+```
+
+Key facts:
+
+1. **Cash flow and segment files are universal** across all three
+   accounting standards. Only Balance Sheet and Profit & Loss vary.
+   Capitaline therefore only emits the BS+PL pair when you switch
+   formats — the CF inside a `revised schd/` folder is the SAME file
+   you'd download under Ind-AS, just placed in the format folder for
+   period-attribution purposes.
+2. **Standard-format files often have NO filename suffix** — they
+   come out as just `BalanceSheet_.xls`. The folder name is the only
+   signal. `standardFromFilename()` reads the full path and matches
+   `/standard/` anywhere in it.
+3. **Standalone subfolder is per-format**. Each format folder has
+   its own `standalone/` subdirectory with that format's standalone
+   exports.
+4. **Period precedence** is automatic: when FY2017 appears in both
+   Ind-AS and Revised Sch-VI, Ind-AS wins. Lower-precedence values
+   only fill nulls.
 
 ### Phase B — Bank mapping spec (HDFC + ICICI + Kotak + SBI)
 
