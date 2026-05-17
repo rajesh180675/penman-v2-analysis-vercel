@@ -675,13 +675,23 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   const g = Math.max(0, Math.min(gInput, bindingGCap.value));
   const valuation = computeValuation(valuationData, ke, kw, g, config);
   const valuationLegacyKw = computeValuation(valuationData, ke, config.risk_free_rate, g, config);
-  const reoiIdentityGap = Math.abs(valuation.V_RE_CV3 - valuation.V_ReOI_CV03);
-  const reoiIdentityGapPct = valuation.V_RE_CV3 !== 0 ? reoiIdentityGap / Math.abs(valuation.V_RE_CV3) : null;
+  // Phase J2: V_RE_CV3 may be null on negative-equity companies. Fall back
+  // to V_ReOI_CV03 for the identity-gap so the report stays renderable.
+  const reAnchor = valuation.V_RE_CV3 ?? valuation.V_ReOI_CV03;
+  const reoiIdentityGap = Math.abs(reAnchor - valuation.V_ReOI_CV03);
+  const reoiIdentityGapPct = reAnchor !== 0 ? reoiIdentityGap / Math.abs(reAnchor) : null;
 
   // §14 V3 Composite Confidence Score
   const v3Bundle: V3AnalyticsBundle | null = (() => {
     try {
-      return computeV3Analytics(valuationData, config, valuation.V_RE_CV3, valuation.V_ReOI_CV03, config.g_terminal_override, kw);
+      return computeV3Analytics(
+        valuationData,
+        config,
+        valuation.V_RE_CV3 ?? valuation.V_ReOI_CV03,
+        valuation.V_ReOI_CV03,
+        config.g_terminal_override,
+        kw,
+      );
     } catch { return null; }
   })();
   const v3ConfidenceScore = v3Bundle?.confidence.composite ?? null;
@@ -697,7 +707,11 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   const matrixREAnchor = v3TerminalAnchor?.RE_value;
   const sensitivityMatrix = sensitivityKe.map((keCase) => ({
     ke: keCase,
-    values: sensitivityG.map((gCase) => computeValuation(valuationData, keCase, kw, gCase, config, matrixREAnchor).V_RE_CV3),
+    // Phase J2: V_RE_CV3 may be null when latest CSE ≤ 0; coerce to NaN
+    // so downstream rendering shows "—" rather than crashing on null.
+    values: sensitivityG.map((gCase) =>
+      computeValuation(valuationData, keCase, kw, gCase, config, matrixREAnchor).V_RE_CV3 ?? Number.NaN,
+    ),
   }));
 
   const cumulativeDirtySurplus = data.slice(1).reduce((sum, d, idx) => {
@@ -755,7 +769,8 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
     flags: periodDiagnostics.find((x) => x.period === d.period_end)?.flags ?? [],
   }));
   const explicitHorizonYears = Math.max(valuation.reSeries.length, 0);
-  const terminalWeightRE = valuation.V_RE_CV3 !== 0
+  // Phase J2: V_RE_CV3 may be null when latest CSE ≤ 0.
+  const terminalWeightRE = valuation.V_RE_CV3 != null && valuation.V_RE_CV3 !== 0
     ? ((valuation.CV_RE / Math.pow(1 + valuation.ke, explicitHorizonYears)) / valuation.V_RE_CV3)
     : null;
   const latestEq16Residual = latest.ratios?.ROCE_eq16_error ?? null;
@@ -790,7 +805,10 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   const derivedShareCount = v3Bundle?.shareCount ?? null;
   const sharesToUse = sharesFromConfig ?? derivedShareCount?.shares ?? null;
   const local6B = computeSection6BLocal({
-    primaryValue: primaryValuation,
+    // Phase J2: when the equity-side path is blocked, anchor on
+    // V_ReOI_CV03 so Section 6B still produces an intrinsic-per-share
+    // estimate (enterprise-level) rather than crashing on null.
+    primaryValue: primaryValuation ?? valuation.V_ReOI_CV03,
     ke,
     g: gBase,
     cse0: valuation.CSE0,

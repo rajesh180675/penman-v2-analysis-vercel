@@ -698,7 +698,7 @@ export function expectedValue(
   for (const sc of scenarios) {
     if (!sc.valuationResult) continue;
     const v = sc.valuationResult[method];
-    if (v === undefined) continue;
+    if (v == null) continue;
     ev += sc.probability * v;
     totalProb += sc.probability;
   }

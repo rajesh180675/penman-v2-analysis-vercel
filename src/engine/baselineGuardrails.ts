@@ -50,7 +50,13 @@ function baseInputs(periods: RecastPeriod[], cfg: EngineConfig) {
 
 function valuationBand(periods: RecastPeriod[], cfg: EngineConfig): ValuationErrorBand {
   const { ke, kw, g } = baseInputs(periods, cfg);
-  const base = computeValuation(periods, ke, kw, g, cfg).V_RE_CV3;
+  // Phase J2: V_RE_CV3 may be null on negative-equity companies. Fall back
+  // to enterprise-side V_ReOI_CV03 in that case so the guardrail band
+  // stays comparable across the benchmark universe (a Vodafone Idea-shaped
+  // company would otherwise return all-NaN bands).
+  const baseVal = computeValuation(periods, ke, kw, g, cfg);
+  const useEnterpriseAnchor = baseVal.V_RE_CV3 == null;
+  const base = (useEnterpriseAnchor ? baseVal.V_ReOI_CV03 : baseVal.V_RE_CV3) ?? 0;
   const candidates: number[] = [];
   const keShocks = [-0.01, 0, 0.01];
   const gShocks = [-0.01, 0, 0.01];
@@ -58,11 +64,13 @@ function valuationBand(periods: RecastPeriod[], cfg: EngineConfig): ValuationErr
     for (const dG of gShocks) {
       const keS = Math.max(cfg.risk_free_rate + 0.005, ke + dKe);
       const gS = Math.max(0, Math.min(keS - 0.005, g + dG));
-      candidates.push(computeValuation(periods, keS, kw, gS, cfg).V_RE_CV3);
+      const v = computeValuation(periods, keS, kw, gS, cfg);
+      const candidate = useEnterpriseAnchor ? v.V_ReOI_CV03 : v.V_RE_CV3;
+      if (candidate != null) candidates.push(candidate);
     }
   }
-  const valueLow = Math.min(...candidates);
-  const valueHigh = Math.max(...candidates);
+  const valueLow = candidates.length ? Math.min(...candidates) : 0;
+  const valueHigh = candidates.length ? Math.max(...candidates) : 0;
   return {
     valueLow,
     valueBase: base,
@@ -96,10 +104,13 @@ function terminalAnchorStability(periods: RecastPeriod[], cfg: EngineConfig): nu
   const grown = tMinus1 * (1 + growthMed);
 
   const anchors = [latestRE, medianRE, grown];
-  const vals = anchors.map((a) => computeValuation(periods, ke, kw, g, cfg, a, null).V_RE_CV3);
+  const vals = anchors
+    .map((a) => computeValuation(periods, ke, kw, g, cfg, a, null).V_RE_CV3)
+    .filter((v): v is number => v != null);
+  if (vals.length === 0) return 0;
   const lo = Math.min(...vals);
   const hi = Math.max(...vals);
-  const denom = Math.max(Math.abs(baseVal.V_RE_CV3), 1);
+  const denom = Math.max(Math.abs(baseVal.V_RE_CV3 ?? 0), 1);
   return (hi - lo) / denom;
 }
 
@@ -107,8 +118,11 @@ export function computePhase0Guardrails(periods: RecastPeriod[], cfg: EngineConf
   if (!periods || periods.length < 2) return null;
   const { ke, kw, g } = baseInputs(periods, cfg);
   const val = computeValuation(periods, ke, kw, g, cfg);
-  const identityGap = Math.abs(val.V_RE_CV3 - val.V_ReOI_CV03);
-  const identityGapPct = val.V_RE_CV3 !== 0 ? identityGap / Math.abs(val.V_RE_CV3) : 0;
+  // Phase J2: V_RE_CV3 may be null on negative-equity companies. Use
+  // V_ReOI_CV03 for the identity-gap when equity-side is blocked.
+  const reAnchor = val.V_RE_CV3 ?? val.V_ReOI_CV03;
+  const identityGap = Math.abs(reAnchor - val.V_ReOI_CV03);
+  const identityGapPct = reAnchor !== 0 ? identityGap / Math.abs(reAnchor) : 0;
   const latest = periods[periods.length - 1];
   const otherOAPct = latest.bs.OA > 0 ? latest.bs.OA_Other / latest.bs.OA : null;
 

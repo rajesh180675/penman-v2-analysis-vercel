@@ -172,12 +172,12 @@ export interface RegressionHarnessReport {
     ke: number;
     kw_before: number;
     kw_after: number;
-    V_RE_CV3_before: number;
-    V_RE_CV3_after: number;
+    V_RE_CV3_before: number | null;
+    V_RE_CV3_after: number | null;
     V_ReOI_CV03_before: number;
     V_ReOI_CV03_after: number;
   };
-  bugImpactTable: Array<{ bugClass: string; metric: string; before: number; after: number; delta: number }>;
+  bugImpactTable: Array<{ bugClass: string; metric: string; before: number | null; after: number | null; delta: number | null }>;
 }
 
 export interface Phase0BaselineReport {
@@ -244,7 +244,11 @@ export function runRegressionHarness(rawData: RawPeriodData[], afterPeriods: Rec
       metric: "V_RE_CV3",
       before: vBefore.V_RE_CV3,
       after: vAfter.V_RE_CV3,
-      delta: vAfter.V_RE_CV3 - vBefore.V_RE_CV3,
+      // Phase J2: delta is null when either side fails-closed on negative
+      // equity (e.g., regression run on Vodafone Idea-shaped data).
+      delta: vAfter.V_RE_CV3 != null && vBefore.V_RE_CV3 != null
+        ? vAfter.V_RE_CV3 - vBefore.V_RE_CV3
+        : null,
     },
   ];
 

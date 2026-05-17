@@ -87,7 +87,12 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
     if (!valuation) return null;
     return computeV3Analytics(
       data, config,
-      valuation.V_RE_CV3, valuation.V_ReOI_CV03,
+      // Phase J2: fall back to V_ReOI_CV03 / V_RE_CV1 surrogate when
+      // equity-side is blocked, so v3 analytics still produce a confidence
+      // signal instead of crashing on null. The `equityModelsBlocked`
+      // flag carries forward via the valuation object.
+      valuation.V_RE_CV3 ?? valuation.V_ReOI_CV03,
+      valuation.V_ReOI_CV03,
       config.g_terminal_override,
       kw
     );
@@ -133,6 +138,9 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
 
   const tvClassification = useMemo(() => {
     if (!valuation) return null;
+    // Phase J2: classifyTVShare requires V_RE_CV3 / V_RE_CV1; both null
+    // when latest CSE ≤ 0. Skip rather than show a misleading grade.
+    if (valuation.V_RE_CV3 == null || valuation.V_RE_CV1 == null) return null;
     return classifyTVShare(valuation.V_RE_CV3, valuation.V_RE_CV1);
   }, [valuation]);
 
@@ -355,8 +363,12 @@ function OverviewSection({ bundle, valuation, tvClass }: {
 }) {
   const { confidence, anchorResult, dirtySurplus, periodFlags } = bundle;
   const totalFlags = periodFlags.reduce((s, p) => s + p.flags.length, 0);
-  const identityGap = Math.abs(valuation.V_RE_CV3 - valuation.V_ReOI_CV03);
-  const identityGapPct = valuation.V_RE_CV3 !== 0 ? identityGap / Math.abs(valuation.V_RE_CV3) : 0;
+  // Phase J2: V_RE_CV3 may be null on negative-equity companies. Use
+  // V_ReOI_CV03 as the identity-gap reference when equity-side is blocked
+  // so the panel stays renderable instead of crashing the overview.
+  const reAnchor = valuation.V_RE_CV3 ?? valuation.V_ReOI_CV03;
+  const identityGap = Math.abs(reAnchor - valuation.V_ReOI_CV03);
+  const identityGapPct = reAnchor !== 0 ? identityGap / Math.abs(reAnchor) : 0;
   const identityFlag = identityGapPct < 0.05 ? "CONVERGED" : identityGapPct < 0.15 ? "WARNING" : "CRITICAL";
 
   return (

@@ -279,7 +279,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
     });
   }, [auditMeta, commandCenter]);
 
-  const cvSel = (v1: number, v2: number, v3: number) => cv === "CV1" ? v1 : cv === "CV2" ? v2 : v3;
+  const cvSel = <T,>(v1: T, v2: T, v3: T): T => cv === "CV1" ? v1 : cv === "CV2" ? v2 : v3;
   const V_RE = cvSel(val.V_RE_CV1, val.V_RE_CV2, val.V_RE_CV3);
   const V_ReOI = cvSel(val.V_ReOI_CV01, val.V_ReOI_CV02, val.V_ReOI_CV03);
 
@@ -815,12 +815,13 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <ValCard color="indigo" title={`V (RE · ${cv})`} subtitle="Eq.(1a) · Clean surplus" value={V_RE}
-          items={[
+          items={V_RE == null ? [] : [
             { l: "CSE₀ (base book value)", v: val.CSE0 },
             { l: "PV of RE series", v: val.pvRE },
             { l: `CV PV (${cv})`, v: V_RE - val.CSE0 - val.pvRE },
           ]} fmt={fmt}
-          perShare={toPerShare(V_RE, sharesOut)}
+          perShare={V_RE == null ? null : toPerShare(V_RE, sharesOut)}
+          skipReason={val.equityModelsBlocked ? val.equityBlockedReason ?? "Equity-side model skipped (negative net worth)." : null}
         />
         <ValCard color="emerald" title={`V (ReOI · ${cv === "CV1" ? "CV01" : cv === "CV2" ? "CV02" : "CV03"})`}
           subtitle="Eq.(9) · Ops-only · EV−NFO" value={V_ReOI}
@@ -833,7 +834,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
         />
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">All CV Methods — RE</div>
-          {[
+              {[
             { label: "CV1 (zero)", v: val.V_RE_CV1 },
             { label: "CV2 (perp.)", v: val.V_RE_CV2 },
             { label: "CV3 (growth)", v: val.V_RE_CV3 },
@@ -841,7 +842,11 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
             <div key={row.label} className="flex justify-between py-1.5 border-b border-slate-100 text-sm">
               <span className="text-slate-600">{row.label}</span>
               <span className="font-mono font-semibold text-indigo-700">
-                {sharesOut ? `${fmtPerShare(toPerShare(row.v, sharesOut))} / share` : `₹${fmt(row.v)} Cr`}
+                {row.v == null
+                  ? <span className="text-amber-600">— (skipped)</span>
+                  : sharesOut
+                    ? `${fmtPerShare(toPerShare(row.v, sharesOut))} / share`
+                    : `₹${fmt(row.v)} Cr`}
               </span>
             </div>
           ))}
@@ -1337,14 +1342,34 @@ function NumInput({ label, value, onChange }: { label: string; value: number; on
   );
 }
 
-function ValCard({ color, title, subtitle, value, items, fmt, perShare }: {
-  color: "indigo" | "emerald"; title: string; subtitle: string; value: number;
-  items: Array<{ l: string; v: number }>; fmt: (n: number) => string;
+function ValCard({ color, title, subtitle, value, items, fmt, perShare, skipReason }: {
+  color: "indigo" | "emerald" | "slate";
+  title: string;
+  subtitle: string;
+  /** Phase J2: null when the model fails-closed (e.g., negative net worth). */
+  value: number | null;
+  items: Array<{ l: string; v: number }>;
+  fmt: (n: number) => string;
   perShare?: number | null;
+  /** Phase J2: human-readable reason for skip-with-reason cards. */
+  skipReason?: string | null;
 }) {
-  const bg = color === "indigo" ? "bg-indigo-50 border-indigo-200" : "bg-emerald-50 border-emerald-200";
-  const hdr = color === "indigo" ? "bg-indigo-100 text-indigo-900" : "bg-emerald-100 text-emerald-900";
-  const vc = color === "indigo" ? "text-indigo-700" : "text-emerald-700";
+  const bg = color === "indigo"
+    ? "bg-indigo-50 border-indigo-200"
+    : color === "emerald"
+      ? "bg-emerald-50 border-emerald-200"
+      : "bg-slate-50 border-slate-200";
+  const hdr = color === "indigo"
+    ? "bg-indigo-100 text-indigo-900"
+    : color === "emerald"
+      ? "bg-emerald-100 text-emerald-900"
+      : "bg-slate-100 text-slate-700";
+  const vc = color === "indigo"
+    ? "text-indigo-700"
+    : color === "emerald"
+      ? "text-emerald-700"
+      : "text-slate-600";
+  const isSkipped = value == null;
   return (
     <div className={`rounded-2xl border ${bg} overflow-hidden`}>
       <div className={`px-5 py-4 ${hdr}`}>
@@ -1352,7 +1377,14 @@ function ValCard({ color, title, subtitle, value, items, fmt, perShare }: {
         <p className="text-xs opacity-70 mt-0.5">{subtitle}</p>
       </div>
       <div className="p-5">
-        {perShare != null ? (
+        {isSkipped ? (
+          <div>
+            <div className="text-2xl font-semibold text-amber-700 mb-2">— Skipped</div>
+            {skipReason && (
+              <div className="text-xs text-slate-600 leading-relaxed">{skipReason}</div>
+            )}
+          </div>
+        ) : perShare != null ? (
           <>
             <div className={`text-3xl font-bold ${vc} mb-1`}>₹{perShare.toFixed(2)} / share</div>
             <div className="text-sm text-slate-500 mb-3">₹{fmt(value)} Cr total equity value</div>
@@ -1360,7 +1392,7 @@ function ValCard({ color, title, subtitle, value, items, fmt, perShare }: {
         ) : (
           <div className={`text-3xl font-bold ${vc} mb-3`}>₹{fmt(value)} Cr</div>
         )}
-        {items.map((b, i) => (
+        {!isSkipped && items.map((b, i) => (
           <div key={i} className="flex justify-between py-1.5 border-b border-slate-100 text-sm">
             <span className="text-slate-600 text-xs">{b.l}</span>
             <span className="font-mono font-semibold text-slate-800">{fmt(b.v)}</span>

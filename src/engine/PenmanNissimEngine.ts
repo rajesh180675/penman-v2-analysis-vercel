@@ -938,6 +938,23 @@ export function computeValuation(
   const NFO0 = periods[0].bs.NFO;
   const RNOA_T = periods[periods.length - 1].ratios?.RNOA ?? (NOA_T !== 0 ? periods[periods.length - 1].is.OI / NOA_T : 0);
 
+  // Phase J2: equity-side fail-closed gate.
+  // Every equity-side intrinsic value is V = CSE0 + pvRE + CV/discE — the
+  // anchor is CSE_latest (or CSE0 when working backward). When latest CSE
+  // is non-positive (Vodafone Idea since FY19, distressed PSU pre-recap,
+  // post-restructuring zombies), V_RE flips deeply negative and the
+  // implied per-share value misleads reviewers. We refuse to publish
+  // equity-side values in that case but keep enterprise-side V_ReOI
+  // (anchored on NOA/NFO, no CSE dependency) so reformulation work,
+  // segment SOTP, and EV-based comparables stay usable.
+  const latestCSE = periods[periods.length - 1].bs.CSE;
+  const equityModelsBlocked = !(Number.isFinite(latestCSE) && latestCSE > 0);
+  const equityBlockedReason = equityModelsBlocked
+    ? `Latest common shareholders' equity is ${
+        Number.isFinite(latestCSE) ? latestCSE.toFixed(0) : "?"
+      } Cr (≤ 0). Equity-side residual income, AEG, DDM, and per-share intrinsic values cannot be published — anchor on enterprise-side V_ReOI, FCFF, or loss-maker valuation instead.`
+    : null;
+
   // §1.2: AR(1) phi-based reversion continuing value
   // Estimate phi on the RE and ReOI series separately for more defensible terminal value
   const RE_phi = estimateArPhi(reSeries.map((r) => r.RE));
@@ -963,11 +980,18 @@ export function computeValuation(
   // §1.3: Growth accounting decomposition (Penman's preferred anchor)
   // No-growth value: value from existing assets at current profitability
   // V_no_growth = CSE0 + (RNOA_T - kw) * NOA_T / kw
-  const V_no_growth = CSE0 + (RNOA_T - kw) * NOA_T / kw;
+  // Phase J2: gated on equity-side health since CSE0 is the anchor.
+  const V_no_growth = equityModelsBlocked ? null : CSE0 + (RNOA_T - kw) * NOA_T / kw;
   // Use primary valuation (RE CV3) as total value
-  const V_total = CSE0 + pvRE + CV_RE_3 / discE;
-  const growthValue = V_total - V_no_growth;
-  const growthFraction = V_total !== 0 ? growthValue / V_total : 0;
+  const V_total = equityModelsBlocked ? null : CSE0 + pvRE + CV_RE_3 / discE;
+  const growthValue =
+    equityModelsBlocked || V_total == null || V_no_growth == null
+      ? null
+      : V_total - V_no_growth;
+  const growthFraction =
+    equityModelsBlocked || V_total == null || V_total === 0 || growthValue == null
+      ? null
+      : growthValue / V_total;
 
   // FCFF / FCFE triangulation
   const fcff_series: Array<{ period: string; NOPAT: number; dNOA: number; FCFF: number; PV_FCFF: number }> = [];
@@ -1012,7 +1036,15 @@ export function computeValuation(
 
   // Reverse DCF / implied growth for RE CV3
   let impliedGrowthRE: number | undefined;
-  if (cfg.market_price != null && cfg.shares_outstanding && cfg.shares_outstanding > 0) {
+  // Phase J2: implied-growth bisection compares V(g) = CSE0 + pvRE + cv/discE
+  // against marketCap. With CSE0 < 0 the sign relationship inverts and the
+  // bisection no longer converges on an economic answer — skip outright.
+  if (
+    !equityModelsBlocked &&
+    cfg.market_price != null &&
+    cfg.shares_outstanding &&
+    cfg.shares_outstanding > 0
+  ) {
     const marketCap = cfg.market_price * cfg.shares_outstanding;
     let lo = 0;
     let hi = Math.max(0.0001, Math.min(ke - 1e-3, 0.15));
@@ -1029,12 +1061,25 @@ export function computeValuation(
   const perShare = (() => {
     if (!cfg.shares_outstanding || cfg.shares_outstanding <= 0) return undefined;
     const sh = cfg.shares_outstanding;
-    const rePer = (CSE0 + pvRE + CV_RE_3 / discE) / sh;
+    // Phase J2: RE / DDM / AEG / implied-PB / implied-PE / MOS / impliedGrowth
+    // all anchor on CSE — null them out when equity-side is blocked.
+    // FCFF and FCFE remain meaningful: FCFF is enterprise (NOPAT - dNOA),
+    // and FCFE uses dCSE only as the change between periods (the level
+    // CSE_T can still be read meaningfully even if it's negative — the
+    // distress signal is the user's cue).
+    const rePer = equityModelsBlocked
+      ? null
+      : ((CSE0 + pvRE + CV_RE_3 / discE) / sh);
     const reoiPer = ((NOA0 + pvReOI + CV_W_3 / discW) - NFO0) / sh;
     const fcffPer = (EV_FCFF - NFO0) / sh;
-    const fcfePer = V_FCFE / sh;
-    const ddmPer = rhoE - 1 - g > 0 ? ((periods[periods.length - 1].cf.DividendPaid * (1 + g)) / (rhoE - 1 - g)) / sh : null;
-    const aegPer = V_AEG / sh;
+    const fcfePer = equityModelsBlocked ? null : V_FCFE / sh;
+    const ddmPer = equityModelsBlocked
+      ? null
+      : rhoE - 1 - g > 0
+        ? ((periods[periods.length - 1].cf.DividendPaid * (1 + g)) / (rhoE - 1 - g)) / sh
+        : null;
+    const aegPer = equityModelsBlocked ? null : V_AEG / sh;
+    const latestCSE_T = periods[periods.length - 1].bs.CSE;
     return {
       intrinsic_re_per_share: rePer,
       intrinsic_reoi_per_share: reoiPer,
@@ -1042,9 +1087,15 @@ export function computeValuation(
       intrinsic_fcfe_per_share: fcfePer,
       intrinsic_ddm_per_share: ddmPer,
       intrinsic_aeg_per_share: aegPer,
-      implied_pb_re: periods[periods.length - 1].bs.CSE > 0 ? (rePer * sh) / periods[periods.length - 1].bs.CSE : null,
-      implied_pe_re: periods[periods.length - 1].is.CNI !== 0 ? (rePer * sh) / periods[periods.length - 1].is.CNI : null,
-      margin_of_safety_re: cfg.market_price ? (rePer - cfg.market_price) / cfg.market_price : null,
+      implied_pb_re: !equityModelsBlocked && rePer != null && latestCSE_T > 0
+        ? (rePer * sh) / latestCSE_T
+        : null,
+      implied_pe_re: !equityModelsBlocked && rePer != null && periods[periods.length - 1].is.CNI !== 0
+        ? (rePer * sh) / periods[periods.length - 1].is.CNI
+        : null,
+      margin_of_safety_re: !equityModelsBlocked && rePer != null && cfg.market_price
+        ? (rePer - cfg.market_price) / cfg.market_price
+        : null,
       implied_growth_rate: impliedGrowthRE ?? null,
     };
   })();
@@ -1053,11 +1104,19 @@ export function computeValuation(
   const growthAccountingPerShare = (() => {
     if (!cfg.shares_outstanding || cfg.shares_outstanding <= 0) return undefined;
     const sh = cfg.shares_outstanding;
+    if (equityModelsBlocked || V_no_growth == null || growthValue == null || growthFraction == null) {
+      return {
+        vNoGrowthPerShare: null,
+        growthValuePerShare: null,
+        growthFraction: null,
+        noGrowthFraction: null,
+      };
+    }
     return {
       vNoGrowthPerShare: V_no_growth / sh,
       growthValuePerShare: growthValue / sh,
       growthFraction,
-      noGrowthFraction: V_total !== 0 ? 1 - growthFraction : 0,
+      noGrowthFraction: V_total !== 0 && V_total != null ? 1 - growthFraction : 0,
     };
   })();
 
@@ -1068,9 +1127,10 @@ export function computeValuation(
     CV_RE: CV_RE_3,
     CV_ReOI: CV_W_3,
     EV_ReOI: NOA0 + pvReOI + CV_W_3 / discW,
-    V_RE_CV1: CSE0 + pvRE + CV_RE_1 / discE,
-    V_RE_CV2: CSE0 + pvRE + CV_RE_2 / discE,
-    V_RE_CV3: CSE0 + pvRE + CV_RE_3 / discE,
+    // Phase J2: equity-side values nulled when latest CSE ≤ 0.
+    V_RE_CV1: equityModelsBlocked ? null : CSE0 + pvRE + CV_RE_1 / discE,
+    V_RE_CV2: equityModelsBlocked ? null : CSE0 + pvRE + CV_RE_2 / discE,
+    V_RE_CV3: equityModelsBlocked ? null : CSE0 + pvRE + CV_RE_3 / discE,
     V_ReOI_CV01: (NOA0 + pvReOI + CV_W_1 / discW) - NFO0,
     V_ReOI_CV02: (NOA0 + pvReOI + CV_W_2 / discW) - NFO0,
     V_ReOI_CV03: (NOA0 + pvReOI + CV_W_3 / discW) - NFO0,
@@ -1082,6 +1142,8 @@ export function computeValuation(
     g,
     separationScore: periods[periods.length - 1].bs.separationScore,
     lowConfidence: periods[periods.length - 1].bs.separationScore < (cfg.separation_confidence_threshold ?? 70),
+    equityModelsBlocked,
+    equityBlockedReason,
     impliedGrowthRE,
     // S-11.1: AR(1) reversion continuing values
     CV_RE_reversion,

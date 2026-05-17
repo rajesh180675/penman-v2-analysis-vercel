@@ -293,7 +293,11 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
       const sensitivityPeriods = buildScenario(scenarioForSensitivity, latest);
       const valuationPeriods = buildValuationPeriodsFromForecast(latest, sensitivityPeriods);
       const r = computeValuation(valuationPeriods,p.ke,p.kw,p.g,valuationConfig);
-      return sharesOut ? toPerShare(r.V_RE_CV3, sharesOut) ?? 0 : r.V_RE_CV3;
+      // Phase J2: V_RE_CV3 may be null; fall back to baseV (already 0 in
+      // that case) so the sensitivity surface stays well-defined.
+      return sharesOut
+        ? toPerShare(r.V_RE_CV3, sharesOut) ?? baseV
+        : (r.V_RE_CV3 ?? baseV);
     }
   ),[baseV,baseScenarioCard,latest,ke_inp,kwDerived,g_inp,basePM,baseATO,baseSG,valuationConfig,sharesOut]);
 
@@ -600,12 +604,16 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
               {card.forecast.valuationResult&&(
                 <div>
                   <div className="text-2xl font-bold" style={{color:scenarioColor(card.key)}}>
-                    {sharesOut ? share(card.forecast.valuationResult.perShare?.intrinsic_re_per_share) : `₹${cr(card.forecast.valuationResult.V_RE_CV3)}`}
+                    {card.forecast.valuationResult.V_RE_CV3 == null
+                      ? <span className="text-amber-600">— Skipped (negative equity)</span>
+                      : sharesOut
+                        ? share(card.forecast.valuationResult.perShare?.intrinsic_re_per_share)
+                        : `₹${cr(card.forecast.valuationResult.V_RE_CV3)}`}
                   </div>
                   <div className="text-xs text-slate-400 mt-1">
                     {sharesOut ? "V (RE·CV3) per share" : "V (RE·CV3) Cr"}
                   </div>
-                  {sharesOut && (
+                  {sharesOut && card.forecast.valuationResult.V_RE_CV3 != null && (
                     <div className="text-xs text-slate-500 mt-1">Total equity value: ₹{cr(card.forecast.valuationResult.V_RE_CV3)} Cr</div>
                   )}
                   <div className="mt-2 text-xs text-slate-500">

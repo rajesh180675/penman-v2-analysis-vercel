@@ -216,7 +216,11 @@ export default function RegressionReport({ rawData, recastData, config, registry
                 <td className="px-3 py-2 text-slate-700">V_RE_CV3</td>
                 <td className="px-3 py-2 text-right">₹{num(report.valuationDelta.V_RE_CV3_before)}</td>
                 <td className="px-3 py-2 text-right text-emerald-700">₹{num(report.valuationDelta.V_RE_CV3_after)}</td>
-                <td className="px-3 py-2 text-right">₹{num(report.valuationDelta.V_RE_CV3_after - report.valuationDelta.V_RE_CV3_before)}</td>
+                <td className="px-3 py-2 text-right">
+                  {report.valuationDelta.V_RE_CV3_after != null && report.valuationDelta.V_RE_CV3_before != null
+                    ? `₹${num(report.valuationDelta.V_RE_CV3_after - report.valuationDelta.V_RE_CV3_before)}`
+                    : "—"}
+                </td>
               </tr>
               <tr>
                 <td className="px-3 py-2 text-slate-700">V_ReOI_CV03</td>
@@ -247,9 +251,15 @@ export default function RegressionReport({ rawData, recastData, config, registry
                 <tr key={`${r.bugClass}-${r.metric}`}>
                   <td className="px-3 py-2 text-slate-700">{r.bugClass}</td>
                   <td className="px-3 py-2 text-slate-600 font-mono">{r.metric}</td>
-                  <td className="px-3 py-2 text-right font-mono">{Math.abs(r.before) < 2 ? pct(r.before) : `₹${num(r.before)}`}</td>
-                  <td className="px-3 py-2 text-right font-mono text-emerald-700">{Math.abs(r.after) < 2 ? pct(r.after) : `₹${num(r.after)}`}</td>
-                  <td className="px-3 py-2 text-right font-mono">{Math.abs(r.delta) < 2 ? pct(r.delta) : `₹${num(r.delta)}`}</td>
+                  <td className="px-3 py-2 text-right font-mono">
+                    {r.before == null ? "—" : Math.abs(r.before) < 2 ? pct(r.before) : `₹${num(r.before)}`}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-emerald-700">
+                    {r.after == null ? "—" : Math.abs(r.after) < 2 ? pct(r.after) : `₹${num(r.after)}`}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono">
+                    {r.delta == null ? "—" : Math.abs(r.delta) < 2 ? pct(r.delta) : `₹${num(r.delta)}`}
+                  </td>
                 </tr>
               ))}
             </tbody>

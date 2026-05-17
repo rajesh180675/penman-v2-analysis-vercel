@@ -377,11 +377,20 @@ export interface ValuationResult {
   reSeries: Array<{period:string;RE:number;ReOI:number}>;
   pvRE: number; pvReOI: number;
   CV_RE: number; CV_ReOI: number; EV_ReOI: number;
-  V_RE_CV1: number; V_RE_CV2: number; V_RE_CV3: number;
+  /** Phase J2: equity-side values are null when latest CSE ≤ 0 (negative
+   *  net worth). Enterprise-side V_ReOI_* remain published since they
+   *  anchor on NOA/NFO, not CSE, and stay economically meaningful. */
+  V_RE_CV1: number | null; V_RE_CV2: number | null; V_RE_CV3: number | null;
   V_ReOI_CV01: number; V_ReOI_CV02: number; V_ReOI_CV03: number;
   CSE0: number; NOA0: number; NFO_latest: number;
   ke: number; kw: number; g: number;
   separationScore: number; lowConfidence: boolean;
+  /** Phase J2: true when equity-side models could not be computed due
+   *  to negative latest CSE; consumers should display skip-with-reason
+   *  cards instead of plotting V_RE_CV3 on intrinsic-value charts. */
+  equityModelsBlocked?: boolean;
+  /** Plain-language reason when equityModelsBlocked is true. */
+  equityBlockedReason?: string | null;
   impliedGrowthRE?: number;
   // S-11.1: AR(1) reversion continuing values
   CV_RE_reversion?: number;
@@ -393,14 +402,15 @@ export interface ValuationResult {
   RE_CV_divergence?: number;
   ReOI_CV_divergence?: number;
   // S-17.2: Growth accounting decomposition
-  V_no_growth?: number;
-  growthValue?: number;
-  growthFraction?: number;
+  // Phase J2: also nullable when equity-side blocked (uses CSE0).
+  V_no_growth?: number | null;
+  growthValue?: number | null;
+  growthFraction?: number | null;
   growthAccountingPerShare?: {
-    vNoGrowthPerShare: number;
-    growthValuePerShare: number;
-    growthFraction: number;
-    noGrowthFraction: number;
+    vNoGrowthPerShare: number | null;
+    growthValuePerShare: number | null;
+    growthFraction: number | null;
+    noGrowthFraction: number | null;
   };
   fcf?: FCFValuation;
   aeg?: AEGValuation;

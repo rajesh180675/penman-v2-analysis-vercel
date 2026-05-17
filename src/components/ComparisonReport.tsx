@@ -229,7 +229,7 @@ export default function ComparisonReport({ registry, config, weakestTraceability
                       placeholder="0"
                     />
                   </td>
-                  <td className="px-3 py-2 text-right font-mono">₹{Number.isFinite(r.re) ? r.re.toLocaleString("en-IN", { maximumFractionDigits: 0 }) : "—"}</td>
+                  <td className="px-3 py-2 text-right font-mono">₹{Number.isFinite(r.re) ? (r.re as number).toLocaleString("en-IN", { maximumFractionDigits: 0 }) : "—"}</td>
                   <td className="px-3 py-2 text-right font-mono">₹{Number.isFinite(r.reoi) ? r.reoi.toLocaleString("en-IN", { maximumFractionDigits: 0 }) : "—"}</td>
                   <td className="px-3 py-2 text-right font-mono">{r.fcff != null ? `₹${r.fcff.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}</td>
                   <td className="px-3 py-2 text-right font-mono">{r.fcfe != null ? `₹${r.fcfe.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}</td>

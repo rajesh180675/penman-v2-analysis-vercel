@@ -58,7 +58,10 @@ self.onmessage = (ev: MessageEvent<unknown>) => {
     const kw = Math.max(0.03, sample(paramDistributions.kw, random));
     const g = Math.min(Math.max(0, sample(paramDistributions.g, random)), Math.max(0.0001, kw - 0.001));
     const v = computeValuation(basePeriods, ke, kw, g, config);
-    reSamples[i] = v.V_RE_CV3;
+    // Phase J2: equity-side V_RE_CV3 may be null when latest CSE ≤ 0.
+    // Substitute NaN so the histogram caller's existing NaN-filter drops
+    // these draws rather than feeding null into Math.min/Math.max.
+    reSamples[i] = v.V_RE_CV3 ?? Number.NaN;
     reoiSamples[i] = v.V_ReOI_CV03;
 
     // SOTP draw: perturb each segment's EBIT share, normalize to sum=1
