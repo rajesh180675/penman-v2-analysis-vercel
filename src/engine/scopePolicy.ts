@@ -1,7 +1,11 @@
 import { EngineConfig, RawPeriodData } from "./types";
 import { SCOPE_POLICY_VERSION } from "./policyVersions";
 
-type ScopeClassification = "supported-industrial" | "supported-financial" | "unsupported-financial-company";
+type ScopeClassification =
+  | "supported-industrial"
+  | "supported-financial"
+  | "unsupported-financial-company"
+  | "mixed-financial-conglomerate";
 export type AnalysisFamily = "industrial" | "financial-institution";
 type ScopeSignalKind = "banking" | "insurance" | "nbfc" | "manual-override";
 
@@ -86,7 +90,9 @@ function countObservedKeys(periods: RawPeriodData[]) {
 }
 
 export function analysisFamilyFromScope(scope: ScopeAssessment): AnalysisFamily {
-  return scope.classification === "unsupported-financial-company" || scope.classification === "supported-financial"
+  return scope.classification === "unsupported-financial-company"
+      || scope.classification === "supported-financial"
+      || scope.classification === "mixed-financial-conglomerate"
     ? "financial-institution"
     : "industrial";
 }
@@ -167,6 +173,42 @@ export function assessAnalysisScope(
       recommendedAction: "Insurance pipeline not yet implemented. Route to manual analysis.",
       signals: signals.sort((a, b) => b.periodsObserved - a.periodsObserved || a.kind.localeCompare(b.kind) || a.key.localeCompare(b.key)),
     };
+  }
+
+  // Mixed financial conglomerate (e.g., HDFC Group consolidated: bank + insurance + NBFC).
+  // Block until the user explicitly chooses a sub-pipeline. Otherwise insurance economics
+  // would silently disappear into the bank pipeline (review C4).
+  //
+  // Heuristic: insurance signals are "material" when at least 2 distinct insurance
+  // labels are populated for at least 2 periods OR a single insurance label is
+  // populated for 4+ periods. Trivial spillover (e.g., one period with one stray
+  // insurance label) is not enough to block.
+  if (isInsurance && (isBank || isNbfc)) {
+    const insuranceSignals = signals.filter(s => s.kind === "insurance");
+    const distinctLabels = insuranceSignals.length;
+    const totalPeriodsObserved = insuranceSignals.reduce((sum, s) => sum + s.periodsObserved, 0);
+    const isMaterial = (distinctLabels >= 2 && totalPeriodsObserved >= 4)
+                    || (distinctLabels >= 1 && totalPeriodsObserved >= 4);
+
+    if (isMaterial) {
+      const subPipelineHint = isBank ? "bank" : "NBFC";
+      return {
+        policyVersion: SCOPE_POLICY_VERSION,
+        classification: "mixed-financial-conglomerate",
+        analysisFamily: "financial-institution",
+        blocked: true,
+        label: "Mixed financial conglomerate (insurance + " + (isBank ? "banking" : "NBFC") + ")",
+        reasons: [
+          ...reasons,
+          `Material insurance signals coexist with ${subPipelineHint} signals; routing is ambiguous.`,
+        ],
+        recommendedAction: `Choose a sub-pipeline explicitly (consolidated ${subPipelineHint}-only, standalone ${subPipelineHint}, or insurance-only) before running valuation. Mixed-conglomerate auto-routing is not supported.`,
+        signals: signals.sort((a, b) => b.periodsObserved - a.periodsObserved || a.kind.localeCompare(b.kind) || a.key.localeCompare(b.key)),
+      };
+    }
+    // else: insurance signals are immaterial (e.g., one stray period), fall through
+    // to the bank/NBFC pipeline. The reason list still records the insurance hits
+    // so reviewers can audit the routing decision.
   }
 
   // Banks and NBFCs are now supported — route to financial pipeline

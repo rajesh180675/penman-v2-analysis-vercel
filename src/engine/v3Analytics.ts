@@ -1801,6 +1801,17 @@ export interface V3AnalyticsBundle {
   epv: EPVResult | null;
   /** Relative valuation multiples (null if no market cap in config) */
   relativeValuation: RelativeValuationResult | null;
+  /**
+   * Ohlson (1995) reversion CV alternative to Gordon Growth (review C11).
+   * V_RE_ohlson_reversion = CSE0 + PV(RE explicit) + CV_ohlson / (1+ke)^T
+   * where CV_ohlson = phi * RE_T / (1 + ke - phi).
+   * Null when phi or RE_T is unavailable.
+   */
+  V_RE_ohlson_reversion: number | null;
+  /** AR(1) phi used in the Ohlson CV after clamping/fallback. */
+  phi_effective: number;
+  /** Source of phi: COMPANY_SPECIFIC (OLS fit succeeded) or NP_DEFAULT (Nissim-Penman 2001 default 0.87). */
+  phi_source: string;
 }
 export function computeV3Analytics(
   periods: RecastPeriod[],
@@ -1881,19 +1892,55 @@ export function computeV3Analytics(
   const fadeParams = estimateFadeParams(periods);
 
   // §9.1b: Wire phi into terminal value — Ohlson (1995) reversion CV
-  // CV_ohlson = (phi * RE_T) / (1 + ke - phi) where phi is AR(1) persistence
-  // This provides an alternative to Gordon Growth CV that uses company-specific fade
+  //   CV_ohlson = (phi * RE_T) / (1 + ke - phi)
+  //
+  // Phi is the AR(1) persistence of the *abnormal earnings (RE)* series, not PM.
+  // Prior implementation used PM phi as a proxy (review C9). PM persistence and
+  // RE persistence are not interchangeable — a stable margin coexists with
+  // declining RE when CSE grows. Estimate phi directly on the RE series when we
+  // have N≥10 observations, fall back to PM phi (clamped) when RE coverage is
+  // thin, and finally to the Nissim-Penman 2001 PM default (0.87) as a last
+  // resort with an explicit source label so reviewers can audit the path.
+  //
+  // All paths clamp phi to [0, 0.95] (review C7).
+  const NP_2001_PHI_PM_DEFAULT = 0.87;
+  const reSeriesForPhi = periods
+    .map(p => p.ri?.RE)
+    .filter((v): v is number => v != null && Number.isFinite(v));
+  const phiClamp = (v: number | null): number | null => {
+    if (v == null || !Number.isFinite(v)) return null;
+    return Math.max(0, Math.min(0.95, v));
+  };
+  const phiFromRE = reSeriesForPhi.length >= 10
+    ? phiClamp(estimatePhiInline(reSeriesForPhi))
+    : null;
   const pmFade = fadeParams.find(f => f.driver === "PM");
-  const phi_effective = pmFade?.source === "COMPANY_SPECIFIC" ? pmFade.phi : (pmFade?.phi ?? 0.87);
+  const phiFromPM = pmFade?.source === "COMPANY_SPECIFIC"
+    ? phiClamp(pmFade.phi)
+    : null;
+  let phi_effective: number;
+  let phi_source: "RE_OLS_FIT" | "PM_OLS_PROXY" | "NP_DEFAULT";
+  if (phiFromRE != null) {
+    phi_effective = phiFromRE;
+    phi_source    = "RE_OLS_FIT";
+  } else if (phiFromPM != null) {
+    phi_effective = phiFromPM;
+    phi_source    = "PM_OLS_PROXY";
+  } else {
+    phi_effective = NP_2001_PHI_PM_DEFAULT;
+    phi_source    = "NP_DEFAULT";
+  }
   const RE_T = anchorResult.selected_RE_anchor;
   const denominator_ohlson = 1 + ke - phi_effective;
-  const CV_ohlson = denominator_ohlson > 0.01 ? (phi_effective * RE_T) / denominator_ohlson : null;
+  const CV_ohlson = (denominator_ohlson > 0.01 && RE_T != null && Number.isFinite(RE_T))
+    ? (phi_effective * RE_T) / denominator_ohlson
+    : null;
   const V_ohlson = CV_ohlson != null
     ? cse0 + pvREExplicit + CV_ohlson / Math.pow(1 + ke, explicitPeriods)
     : null;
   registry.register("V_RE_ohlson_reversion", V_ohlson ?? 0, "S-9.1b");
   registry.register("phi_effective", phi_effective, "S-9.1b");
-  registry.register("phi_source", pmFade?.source ?? "NP_DEFAULT", "S-9.1b");
+  registry.register("phi_source", phi_source, "S-9.1b");
   registry.register("CV_ohlson", CV_ohlson ?? 0, "S-9.1b");
 
   const companyId = periods[0]?.period_end ? (cfg.ticker ?? "Company") : "Company";
@@ -1939,11 +1986,16 @@ export function computeV3Analytics(
     section7: triggers.map((t) => t.title + t.body).join("\n"),
     section6A1RowCount: periods.length - 1,
   });
-  const moatScore = computeMoatScore(periods, cfg);
-  const capitalAllocation = periods.length >= 3 ? scoreCapitalAllocation(periods, cfg) : null;
-  const epv = computeEPV(periods, cfg, cfg.market_price != null && cfg.shares_outstanding != null
-    ? cfg.market_price * cfg.shares_outstanding / 1e7  // price × shares → ₹ Crore
-    : null);
+  const moatScore = computeMoatScore(periods, cfg, kw);
+  const capitalAllocation = periods.length >= 3 ? scoreCapitalAllocation(periods, cfg, kw) : null;
+  const epv = computeEPV(
+    periods,
+    cfg,
+    cfg.market_price != null && cfg.shares_outstanding != null
+      ? cfg.market_price * cfg.shares_outstanding / 1e7  // price × shares → ₹ Crore
+      : null,
+    kw,  // S-9.4C: pass structurally-derived kw so EPV uses the same WACC as terminal value
+  );
   const relativeValuation = cfg.market_price != null && cfg.shares_outstanding != null
     ? computeIndustrialMultiples(periods, {
         marketCap: cfg.market_price * cfg.shares_outstanding / 1e7,
@@ -1951,5 +2003,22 @@ export function computeV3Analytics(
       })
     : null;
 
-  return { validation, dirtySurplus, dirtySurplusFramework, periodFlags, anchorResult, confidence, fadeParams, triggers, triggerCalibration, reReoiGapDecomposition, oaDecomposition, accrualTable, shareCount, marketImplied, section6B, versionChangeLog, versionChangeLogMarkdown, crossSectionIssues, registry, moatScore, capitalAllocation, epv, relativeValuation };
+  return { validation, dirtySurplus, dirtySurplusFramework, periodFlags, anchorResult, confidence, fadeParams, triggers, triggerCalibration, reReoiGapDecomposition, oaDecomposition, accrualTable, shareCount, marketImplied, section6B, versionChangeLog, versionChangeLogMarkdown, crossSectionIssues, registry, moatScore, capitalAllocation, epv, relativeValuation, V_RE_ohlson_reversion: V_ohlson, phi_effective, phi_source };
+}
+
+/**
+ * AR(1) phi via OLS, mirrors moatScoring.estimatePhi but kept inline to avoid
+ * a circular import. Returns null on insufficient data or zero variance.
+ */
+function estimatePhiInline(series: number[]): number | null {
+  if (series.length < 4) return null;
+  const x = series.slice(0, -1);
+  const y = series.slice(1);
+  const n = x.length;
+  const meanX = x.reduce((s, v) => s + v, 0) / n;
+  const meanY = y.reduce((s, v) => s + v, 0) / n;
+  const cov = x.reduce((s, v, i) => s + (v - meanX) * (y[i] - meanY), 0);
+  const varX = x.reduce((s, v) => s + (v - meanX) ** 2, 0);
+  if (varX < 1e-10) return null;
+  return cov / varX;
 }

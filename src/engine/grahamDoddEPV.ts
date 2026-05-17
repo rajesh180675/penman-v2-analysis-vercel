@@ -135,14 +135,19 @@ function interpretFranchise(franchisePct: number): EPVInterpretation {
 /**
  * Compute Graham-Dodd EPV for an industrial company.
  *
- * @param periods   Sorted (oldest→newest) recast periods
- * @param config    Engine config (provides ke, kw)
- * @param marketCap Optional market cap in ₹ Crore for margin-of-safety
+ * @param periods    Sorted (oldest→newest) recast periods
+ * @param config     Engine config (provides ke, kw)
+ * @param marketCap  Optional market cap in ₹ Crore for margin-of-safety
+ * @param kwOverride Optional structurally-derived kw to use instead of the
+ *                   80/20 fallback in `deriveKwFromConfig`. v3Analytics passes
+ *                   the same kw it uses for terminal-value math so EPV stays
+ *                   consistent across modules (review C8, S-9.4C).
  */
 export function computeEPV(
   periods: RecastPeriod[],
   config: EngineConfig,
   marketCap?: number | null,
+  kwOverride?: number | null,
 ): EPVResult | null {
   if (!periods || periods.length < 3) return null;
 
@@ -197,9 +202,12 @@ export function computeEPV(
   // ── 3. Capitalization ────────────────────────────────────────────────────
   // EPV is traditionally capitalized at ke (Greenwald) to isolate franchise
   // value from asset value. We use WACC (kw) here to align with the full
-  // capital structure visible in recast data.
-  const ke = ke_from_config(config);
-  const kw = deriveKwFromConfig(config);
+  // capital structure visible in recast data. Prefer the structurally-derived
+  // kw passed from v3Analytics (review C8); fall back to deriveKwFromConfig
+  // for direct callers (tests, ad-hoc usage).
+  const kw = (kwOverride != null && Number.isFinite(kwOverride) && kwOverride > 0)
+    ? kwOverride
+    : deriveKwFromConfig(config);
 
   if (kw <= 0.01) {
     confidenceNotes.push("WACC too low — EPV unreliable");
@@ -207,10 +215,31 @@ export function computeEPV(
   }
 
   const V_EPV = normalizedNOPAT / kw;
+
+  // EPV ≤ 0 means normalized NOPAT is non-positive (depressed cyclical, structural
+  // loss-maker, or negative median margin). Margin-of-safety and price/EPV ratios
+  // would flip sign and mislead reviewers (review C12). Refuse to publish.
+  if (V_EPV <= 0) {
+    confidenceNotes.push(
+      `Normalized EPV is non-positive (${V_EPV.toFixed(2)} ₹Cr) — depressed earnings or structural losses; cannot publish franchise/MOS ratios`,
+    );
+    return null;
+  }
+
   const V_A   = latestNOA ?? 0;
 
   const franchiseValue = V_EPV - V_A;
-  const franchisePct   = V_A > 0 ? franchiseValue / V_EPV : 0;
+  // FranchisePct denominator is V_EPV (already verified > 0). For asset-light
+  // firms (V_A ≤ 0, e.g., services with customer-funded WC), franchiseValue
+  // collapses to V_EPV itself — interpret as "100% franchise" rather than the
+  // old `V_A > 0 ? ... : 0` which forced franchisePct to 0 and silently
+  // misclassified asset-light moats as "competitive" (review C12).
+  const franchisePct   = franchiseValue / V_EPV;
+  if (V_A <= 0) {
+    confidenceNotes.push(
+      "Latest NOA ≤ 0 (asset-light or customer-funded WC) — franchise value equals EPV; interpret with care",
+    );
+  }
 
   // ── 4. Per-share and margin of safety ────────────────────────────────────
   const shareCount = latestPeriod.shareCountInput?.endPeriodShares

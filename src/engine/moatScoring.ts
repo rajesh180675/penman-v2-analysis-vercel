@@ -118,6 +118,19 @@ function clamp(v: number, lo: number, hi: number): number {
 }
 
 /**
+ * Clamp AR(1) phi to a stable, economically defensible range [0, 0.95].
+ * - Negative phi (oscillatory) is clamped to 0 — AR(1) fade math assumes monotone decay.
+ * - phi >= 1 produces infinite/non-finite CAP; cap at 0.95.
+ *
+ * Project rule (CLAUDE.md S-9.4C): phi must be clamped before any fade calc
+ * (review C7). Single source of truth here so callers can't bypass.
+ */
+function clampPhi(phi: number | null): number | null {
+  if (phi == null || !Number.isFinite(phi)) return null;
+  return Math.max(0, Math.min(0.95, phi));
+}
+
+/**
  * Estimate AR(1) phi from a time series using OLS.
  * phi = Cov(x_t, x_{t-1}) / Var(x_{t-1})
  */
@@ -150,11 +163,12 @@ function estimateCAP(
   rnoaSeries: number[],
 ): CAPEstimate {
   const spread0 = latestRNOA - kw;
+  const phiClamped = clampPhi(phi);
 
   if (spread0 <= 0) {
     return {
       years: 0,
-      phi,
+      phi: phiClamped,
       latestRNOA,
       kw,
       confidence: "high",
@@ -162,14 +176,14 @@ function estimateCAP(
     };
   }
 
-  if (phi != null && phi > 0 && phi < 1) {
+  if (phiClamped != null && phiClamped > 0 && phiClamped < 1) {
     // t = log(0.01 / spread0) / log(phi)
     const threshold = 0.01;
-    const t = Math.log(threshold / spread0) / Math.log(phi);
+    const t = Math.log(threshold / spread0) / Math.log(phiClamped);
     const years = t > 0 ? Math.round(Math.min(t, 50)) : null;
     return {
       years,
-      phi,
+      phi: phiClamped,
       latestRNOA,
       kw,
       confidence: rnoaSeries.length >= 7 ? "high" : "medium",
@@ -196,7 +210,7 @@ function estimateCAP(
 
   return {
     years: null,
-    phi,
+    phi: phiClamped,
     latestRNOA,
     kw,
     confidence: "low",
@@ -458,17 +472,27 @@ function classifyMoatWidth(
 /**
  * Compute economic moat score for an industrial company.
  *
- * @param periods  Sorted recast periods (oldest → newest)
- * @param config   Engine config (provides ke, kw)
+/**
+ * Compute composite moat score from recast periods.
+ *
+ * @param periods    Sorted recast periods (oldest → newest)
+ * @param config     Engine config (provides ke, kw)
+ * @param kwOverride Optional structurally-derived kw to use instead of the
+ *                   80/20 fallback in `deriveKwFromConfig`. v3Analytics passes
+ *                   the same kw it uses for terminal-value math so the moat
+ *                   score stays consistent across modules (review C8, S-9.4C).
  */
 export function computeMoatScore(
   periods: RecastPeriod[],
   config: EngineConfig,
+  kwOverride?: number | null,
 ): MoatScoreResult | null {
   if (!periods || periods.length < 3) return null;
 
   const notes: string[] = [];
-  const kw = deriveKwFromConfig(config);
+  const kw = (kwOverride != null && Number.isFinite(kwOverride) && kwOverride > 0)
+    ? kwOverride
+    : deriveKwFromConfig(config);
 
   const sorted = [...periods].sort(
     (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()

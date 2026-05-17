@@ -42,11 +42,24 @@ export function processCompanyDataFull(
   const scope = assessAnalysisScope(dataArray, config);
   const family = analysisFamilyFromScope(scope);
 
-  // Route to bank pipeline if financial institution
+  // Route to bank pipeline only if financial institution AND not blocked.
   if (family === "financial-institution" && !scope.blocked) {
     const bankResult = processBankData(dataArray, scope);
     const emptyAnomalies = runAnomalyDetection([], config);
     return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult };
+  }
+
+  // Fail-closed: if scope is financial-institution but blocked (insurance-only,
+  // mixed-financial-conglomerate), return an inert result. Without this guard,
+  // execution would silently fall through to the industrial Penman-Nissim path
+  // and produce a meaningless valuation for an unsupported scope (review C5).
+  if (family === "financial-institution" && scope.blocked) {
+    const emptyAnomalies = runAnomalyDetection([], config);
+    return {
+      periods: [],
+      anomalies: emptyAnomalies,
+      analysisFamily: "financial-institution",
+    };
   }
 
   const sorted = [...dataArray].sort(

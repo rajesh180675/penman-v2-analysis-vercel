@@ -260,14 +260,24 @@ function scoreReinvestmentROIC(
   for (let i = 1; i < periods.length; i++) {
     const prev = periods[i - 1];
     const curr = periods[i];
-    const dNOA     = curr.bs.NOA - prev.bs.NOA;
-    const dCoreOI  = (curr.cu.CoreOI ?? 0) - (prev.cu.CoreOI ?? 0);
-    const taxRate  = curr.is.taxRate ?? 0.25;
-    const dNOPAT   = dCoreOI * (1 - taxRate);
+    const prevNOA  = Number.isFinite(prev.bs.NOA) ? prev.bs.NOA : null;
+    const currNOA  = Number.isFinite(curr.bs.NOA) ? curr.bs.NOA : null;
+    const prevCOI  = Number.isFinite(prev.cu.CoreOI ?? NaN) ? (prev.cu.CoreOI as number) : null;
+    const currCOI  = Number.isFinite(curr.cu.CoreOI ?? NaN) ? (curr.cu.CoreOI as number) : null;
 
     let iROIC: number | null = null;
-    if (Math.abs(dNOA) > 1) {
-      iROIC = dNOPAT / Math.abs(dNOA);
+    if (prevNOA != null && currNOA != null && prevCOI != null && currCOI != null) {
+      const dNOA     = currNOA - prevNOA;
+      const dCoreOI  = currCOI - prevCOI;
+      const taxRate  = curr.is.taxRate ?? 0.25;
+      const dNOPAT   = dCoreOI * (1 - taxRate);
+
+      // Use *signed* dNOA — same fix applied to moatScoring in commit 8a796f1.
+      // When NOA shrinks (divestment), Math.abs would flip the sign of iROIC
+      // and disagree with the moat module on the same period (review C6).
+      if (Math.abs(dNOA) > 1) {
+        iROIC = dNOPAT / dNOA;
+      }
     }
     rawValues.push({ period: curr.period_end, value: iROIC });
     if (iROIC !== null && Number.isFinite(iROIC)) incrementalROICs.push(iROIC);
@@ -436,12 +446,18 @@ function scorePayoutSustainability(
 /**
  * Score capital allocation quality for an industrial company.
  *
- * @param periods  Sorted (oldest→newest) recast periods
- * @param config   Engine config (for ke/kw)
+ * @param periods    Sorted (oldest→newest) recast periods
+ * @param config     Engine config (for ke/kw)
+ * @param kwOverride Optional structurally-derived kw to use instead of the
+ *                   80/20 fallback in `deriveKwFromConfig`. v3Analytics passes
+ *                   the same kw it uses for terminal-value math so capital
+ *                   allocation scoring stays consistent across modules
+ *                   (review C8, S-9.4C).
  */
 export function scoreCapitalAllocation(
   periods: RecastPeriod[],
-  config: EngineConfig
+  config: EngineConfig,
+  kwOverride?: number | null,
 ): CapAllocScoreResult {
   const notes: string[] = [];
 
@@ -449,8 +465,9 @@ export function scoreCapitalAllocation(
     notes.push("Fewer than 3 periods — scores are low confidence");
   }
 
-  const ke = ke_from_config(config);
-  const kw = deriveKwFromConfig(config);
+  const kw = (kwOverride != null && Number.isFinite(kwOverride) && kwOverride > 0)
+    ? kwOverride
+    : deriveKwFromConfig(config);
 
   // Dimension 1: Dividend Consistency
   const divDim = scoreDividendConsistency(periods);

@@ -60,9 +60,28 @@ export interface BankPeriodMetrics {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+const STATEMENT_KINDS = ["BalanceSheet", "ProfitLoss", "CashFlow"] as const;
+
 /**
- * Pick the first non-null, non-zero value from a list of label aliases,
- * trying composite keys (label__Statement) first, then base keys.
+ * Validity test for an extracted raw value. We accept zero — a clean year
+ * with zero provisions or zero borrowings is real data, not "missing". Only
+ * null/undefined/NaN/non-finite values are rejected.
+ *
+ * Review C1: prior implementation also rejected `val !== 0`, which silently
+ * dropped legitimate zeros (e.g., creditCost would be null instead of 0%).
+ */
+function isValidValue(v: unknown): v is number {
+  return v != null && typeof v === "number" && Number.isFinite(v);
+}
+
+/**
+ * Pick the first valid value from a list of label aliases.
+ *
+ * - When `statement` is supplied, only that statement is tried for each alias
+ *   (then the bare key as a final fallback). This prevents cross-statement
+ *   leakage, where a bank PL "Other Income" miss would silently fall back to
+ *   a BalanceSheet value with the same string label (review C2).
+ * - When `statement` is omitted, all statements are tried in BS → PL → CF order.
  */
 function pickValue(
   raw: Record<string, number | null | undefined>,
@@ -71,19 +90,18 @@ function pickValue(
 ): number | null {
   for (const key of keys) {
     if (statement) {
-      const composite = `${key}__${statement}`;
-      const val = raw[composite];
-      if (val != null && Number.isFinite(val) && val !== 0) return val;
+      const val = raw[`${key}__${statement}`];
+      if (isValidValue(val)) return val;
+    } else {
+      for (const stmt of STATEMENT_KINDS) {
+        const val = raw[`${key}__${stmt}`];
+        if (isValidValue(val)) return val;
+      }
     }
-    // Try all statement variants
-    for (const stmt of ["BalanceSheet", "ProfitLoss", "CashFlow"]) {
-      const composite = `${key}__${stmt}`;
-      const val = raw[composite];
-      if (val != null && Number.isFinite(val) && val !== 0) return val;
-    }
-    // Try base key
-    const val = raw[key];
-    if (val != null && Number.isFinite(val as number) && val !== 0) return val as number;
+    // Bare key (no statement suffix) as final fallback. Mapping spec keys
+    // sometimes appear without a statement when the parser cannot classify.
+    const baseVal = raw[key];
+    if (isValidValue(baseVal)) return baseVal;
   }
   return null;
 }
@@ -93,7 +111,23 @@ function avg(a: number | null, b: number | null): number | null {
   return (a + b) / 2;
 }
 
-function sum(a: number | null, b: number | null): number | null {
+/**
+ * Strict sum: returns null if any operand is null. Use this for ratio
+ * denominators (e.g., earning assets = advances + investments) where
+ * mixing null with zero would inflate the numerator-side ratio (review C3).
+ */
+function sumStrict(a: number | null, b: number | null): number | null {
+  if (a == null || b == null) return null;
+  return a + b;
+}
+
+/**
+ * Lenient sum: treats null as zero. Use for income-statement combinations
+ * where one missing line item should not block the whole calculation
+ * (e.g., total income = NII + Other Income — if other income is genuinely
+ * absent we still want NII alone to drive cost-to-income).
+ */
+function sumLenient(a: number | null, b: number | null): number | null {
   if (a == null && b == null) return null;
   return (a ?? 0) + (b ?? 0);
 }
@@ -173,8 +207,8 @@ function computeBankRatios(
     const avgEquity   = avg(current.totalEquity,  prev.totalEquity);
     const avgAdvances = avg(current.advances,     prev.advances);
     const earningAssets = avg(
-      sum(current.advances, current.investments),
-      sum(prev.advances,    prev.investments),
+      sumStrict(current.advances, current.investments),
+      sumStrict(prev.advances,    prev.investments),
     );
 
     // NIM = NII / Average Earning Assets
@@ -199,7 +233,7 @@ function computeBankRatios(
   }
 
   // Cost to Income = Operating Expenses / (NII + Other Income)
-  const totalIncome = sum(current.nii, current.otherIncome);
+  const totalIncome = sumLenient(current.nii, current.otherIncome);
   if (current.operatingExpenses != null && totalIncome != null && totalIncome > 0) {
     result.costToIncome = Math.abs(current.operatingExpenses) / totalIncome;
   }
