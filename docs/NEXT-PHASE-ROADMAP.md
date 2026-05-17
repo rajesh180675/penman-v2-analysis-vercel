@@ -161,34 +161,30 @@ Key facts:
    Ind-AS and Revised Sch-VI, Ind-AS wins. Lower-precedence values
    only fill nulls.
 
-### Phase B — Bank mapping spec (HDFC + ICICI + Kotak + SBI)
+### Phase B — Bank mapping spec + valuation (HDFC + ICICI + Kotak + SBI) 🟡 partial
 
 Goal: `bankPipeline.ts` reads from a typed mapping spec, not raw keys; same
 spec covers all four major Indian banks. Engine produces NIM, CASA, GNPA,
-NNPA, PCR, ROA, RWA-based capital ratios.
+NNPA, PCR, ROA, RWA-based capital ratios + three valuation models.
 
-B1. New file `mappingSpec.bank.ts` with ~120 labels:
-    - BS: Cash & RBI, Balances with Banks, Money at Call, Investments
-      (HTM/AFS/FVTPL), Advances (gross/net), Deposits (CASA, term), Other
-      Liab, Borrowings, Capital, Reserves
-    - PL: Interest Earned (4 sub-buckets), Interest Expended, Other
-      Income (fees, treasury, FX), Operating Expenses, Provisions (loan,
-      investment, contingencies), Tax
-    - Disclosure: GNPA, NNPA, PCR, RWA, Tier-1, CET-1, slippage, recovery
-B2. Refactor `bankPipeline.ts` to use spec. Keep `tryAllStatements` /
-    `sumStrict` / `sumLenient` (post-C2/C3) but route through `pickByCanonical`.
-B3. Bank-specific reformulation: split equity-side assets into
-    `loan-book / investment-book / non-earning`, liabilities into
-    `deposits-CASA / deposits-term / borrowings / other`. Compute spread
-    income, NIM (on earning assets), credit cost, operating leverage.
-B4. Bank valuation models — wire three:
-    - Justified P/B Gordon: P/B = (ROE − g) / (ke − g)
-    - Equity residual income: V = BV + Σ (ROE − ke) BV / (1+ke)^t + TV
-    - DDM with sustainability (payout ≤ (1 − g/ROE))
-B5. Bank quality flags: NPA cycle position (provisions/loans rolling 3Y),
-    deposit franchise (CASA stability), loan growth vs system credit growth.
-B6. Tests: HDFC Bank golden fixture asserts NIM in 3.5-4.5%, CASA > 35%, ROA
-    > 1.5%; spec coverage on actual file ≥ 90% of populated bank-only labels.
+Shipped commits:
+- `342fb59` feat(bank): Phase B4 — three bank valuation models with skip-with-reason
+
+B1. ✅ `mappingSpec.bankBalanceSheet` and `bankProfitLoss` carry
+    ~120 labels. Pre-existing from earlier work.
+B2. ✅ Refactor `bankPipeline.ts` to use spec — done at code review C2/C3.
+B3. 🔴 Bank-specific reformulation (loan-book / investment-book /
+    non-earning split) — not started.
+B4. ✅ Bank valuation models — three shipped:
+    - Justified P/B Gordon: fair P/B = (ROE − g) / (ke − g)
+    - Equity Residual Income with 5y fade to long-run 13% ROE
+    - Sustainable DDM with payout × ROE consistency check
+    Each independently skips with reason when prerequisites fail.
+B5. 🔴 Bank quality flags: NPA cycle position (provisions/loans rolling
+    3Y), deposit franchise (CASA stability), loan growth vs system
+    credit growth.
+B6. 🟡 Tests cover the valuation math (18 new). End-to-end test on
+    HDFC Bank fixture would be ideal next step.
 
 ### Phase C — Multi-format file routing & company auto-detect
 
