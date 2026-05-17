@@ -20,6 +20,7 @@ import { deriveKwFromStructure } from "./PenmanNissimEngine";
 import { computeMoatScore, MoatScoreResult } from "./moatScoring";
 import { scoreCapitalAllocation, CapAllocScoreResult } from "./capitalAllocationScoring";
 import { assessCyclicality, CyclicalityAssessment } from "./cyclicalityDetector";
+import { detectStructuralBreaks, StructuralBreakAssessment } from "./structuralBreakDetector";
 import { computeEPV, EPVResult } from "./grahamDoddEPV";
 import { computeIndustrialMultiples, RelativeValuationResult } from "./relativeValuation";
 export enum OutputChannel {
@@ -1805,6 +1806,13 @@ export interface V3AnalyticsBundle {
    * businesses (Tata Steel, JSPL, Hindalco) and skip them on non-cyclicals.
    */
   cyclicality: CyclicalityAssessment;
+  /**
+   * Phase I — structural break detection. Flags demerger / M&A / capital
+   * raise / IFRS-16 transitions where YoY changes in equity, revenue, or
+   * NOA are too large to be organic. UI surfaces affected periods so users
+   * can interpret persistence calculations with appropriate context.
+   */
+  structuralBreaks: StructuralBreakAssessment;
   /** Graham-Dodd EPV (null if < 3 periods or no market data) */
   epv: EPVResult | null;
   /** Relative valuation multiples (null if no market cap in config) */
@@ -1997,6 +2005,7 @@ export function computeV3Analytics(
   const moatScore = computeMoatScore(periods, cfg, kw);
   const capitalAllocation = periods.length >= 3 ? scoreCapitalAllocation(periods, cfg, kw) : null;
   const cyclicality = assessCyclicality(periods);
+  const structuralBreaks = detectStructuralBreaks(periods);
   const epv = computeEPV(
     periods,
     cfg,
@@ -2012,7 +2021,7 @@ export function computeV3Analytics(
       })
     : null;
 
-  return { validation, dirtySurplus, dirtySurplusFramework, periodFlags, anchorResult, confidence, fadeParams, triggers, triggerCalibration, reReoiGapDecomposition, oaDecomposition, accrualTable, shareCount, marketImplied, section6B, versionChangeLog, versionChangeLogMarkdown, crossSectionIssues, registry, moatScore, capitalAllocation, cyclicality, epv, relativeValuation, V_RE_ohlson_reversion: V_ohlson, phi_effective, phi_source };
+  return { validation, dirtySurplus, dirtySurplusFramework, periodFlags, anchorResult, confidence, fadeParams, triggers, triggerCalibration, reReoiGapDecomposition, oaDecomposition, accrualTable, shareCount, marketImplied, section6B, versionChangeLog, versionChangeLogMarkdown, crossSectionIssues, registry, moatScore, capitalAllocation, cyclicality, structuralBreaks, epv, relativeValuation, V_RE_ohlson_reversion: V_ohlson, phi_effective, phi_source };
 }
 
 /**

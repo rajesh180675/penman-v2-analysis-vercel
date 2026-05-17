@@ -219,6 +219,18 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
           });
         }
 
+        // Structural breaks (demerger / M&A / capital raise)
+        if (bundle.structuralBreaks?.hasBreaks) {
+          const breakSummary = bundle.structuralBreaks.breaks
+            .map((b) => `${b.period_end}: ${b.kind} (${(b.yoyChange * 100).toFixed(0)}% YoY)`)
+            .join("; ");
+          banners.push({
+            tone: "warn",
+            title: "⚡ Structural break(s) detected in time series",
+            body: `${breakSummary}. ${bundle.structuralBreaks.recommendation}`,
+          });
+        }
+
         if (banners.length === 0) return null;
         return (
           <div className="space-y-2">
