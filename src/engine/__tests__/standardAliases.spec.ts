@@ -11,17 +11,33 @@ import {
 describe("standardAliases — Phase A multi-standard ingestion", () => {
   describe("standardFromFilename", () => {
     it.each<[string, AccountingStandard]>([
+      // Filename suffix (Ind-AS exports always tagged)
       ["BalanceSheetINDAS_.xls", "ind-as"],
       ["ProfitLossINDAS_.xls", "ind-as"],
+      // Filename suffix — REV variants
       ["BalanceSheetREV_.xls", "revised-sch-vi"],
       ["ProfitLossREV.xls", "revised-sch-vi"],
+      ["BalanceSheetRevised_.xls", "revised-sch-vi"],
       ["RevisedScheduleVI.xls", "revised-sch-vi"],
+      // Filename suffix — Standard variants
       ["BalanceSheetSTD_.xls", "standard"],
       ["ProfitLoss_STD.xls", "standard"],
       ["StandardBalanceSheet.xls", "standard"],
       ["GAAPBalanceSheet.xls", "standard"],
-      // Cash flow files often lack a suffix — should be unknown so the
-      // standard is inferred from co-located BS/PL files at parse time.
+      // Folder-name detection (real Capitaline export layout — Standard
+      // and Revised files often carry NO filename suffix; the folder is
+      // the only signal):
+      ["ITC/revised schd/CashFlow_.xls", "revised-sch-vi"],
+      ["ITC/revised schd/standalone/BalanceSheetRevised_.xls", "revised-sch-vi"],
+      ["ITC/standard/BalanceSheet_.xls", "standard"],
+      ["ITC/standard/standalone/ProfitLoss_.xls", "standard"],
+      ["ITC/standard/CashFlow_.xls", "standard"],
+      // Windows-style backslash paths
+      ["ITC\\standard\\BalanceSheet_.xls", "standard"],
+      ["ITC\\revised schd\\BalanceSheet_.xls", "revised-sch-vi"],
+      // Top-level Ind-AS files (no folder marker, just filename suffix)
+      ["ITC/BalanceSheetINDAS_.xls", "ind-as"],
+      // Truly ambiguous — top-level CashFlow with no parent folder hint
       ["CashFlow_.xls", "unknown"],
       ["BalanceSheet_.xls", "unknown"],
       ["nonsense.xls", "unknown"],

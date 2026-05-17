@@ -36,45 +36,57 @@ export type AccountingStandard =
   | "unknown";
 
 /**
- * Filename suffix → accounting standard.
- * Capitaline emits files like:
- *   BalanceSheetINDAS_.xls       → ind-as
- *   BalanceSheetREV_.xls         → revised-sch-vi
- *   BalanceSheet_.xls            → standard (default, pre-2012 export)
- *   ProfitLossSTD_.xls           → standard (some exports use STD suffix)
- *   CashFlow_.xls                → ambiguous; CF format barely changed
- *                                  across standards, treat as "unknown"
- *                                  unless suffix is present
+ * Detect accounting standard from a filename or full file path.
+ *
+ * Inspects BOTH the basename and any parent folder names. This matters
+ * because Capitaline Standard-format files often have NO filename suffix
+ * — they're just `BalanceSheet_.xls` — and the only signal is the folder
+ * the user puts them in. Real-world layout:
+ *
+ *   ITC/BalanceSheetINDAS_.xls            -> ind-as           (filename)
+ *   ITC/revised schd/BalanceSheetRevised_.xls
+ *                                          -> revised-sch-vi  (filename)
+ *   ITC/revised schd/CashFlow_.xls         -> revised-sch-vi  (folder)
+ *   ITC/standard/BalanceSheet_.xls         -> standard        (folder)
+ *   ITC/standard/standalone/ProfitLoss_.xls -> standard       (folder)
+ *
+ * Detection precedence (most specific wins): INDAS > REV/REVISED > STD/
+ * STANDARD/GAAP. Unknown only when no marker is found anywhere on the path.
  */
-export function standardFromFilename(name: string): AccountingStandard {
-  // Strip extension and any trailing underscores (Capitaline often emits
-  // names like `BalanceSheetINDAS_.xls`). Lowercase for stable matching.
-  const base = name
-    .toLowerCase()
+export function standardFromFilename(nameOrPath: string): AccountingStandard {
+  // Lowercase + normalise separators. Strip extension and trailing
+  // underscores from the BASENAME only (folders shouldn't have extensions
+  // stripped — `revised.schd/` would lose its detection token otherwise).
+  const lower = nameOrPath.toLowerCase().replace(/\\/g, "/");
+  const slashIdx = lower.lastIndexOf("/");
+  const folderPart = slashIdx >= 0 ? lower.slice(0, slashIdx) : "";
+  const basePart = (slashIdx >= 0 ? lower.slice(slashIdx + 1) : lower)
     .replace(/\.[a-z]+$/, "")
     .replace(/_+$/, "");
 
-  // INDAS is unambiguous and may appear anywhere in the basename.
-  if (/indas/.test(base)) return "ind-as";
+  // Check basename FIRST (more specific than folder name), then folder.
+  const haystack = `${folderPart}/${basePart}`;
 
-  // Revised Schedule VI: match "revised", "revsch", or "rev" at end of
-  // basename (e.g. `BalanceSheetREV_.xls` → base `balancesheetrev`).
-  // The end-anchor on `rev$` is enough — `revenue` ends in `e`, not `v`.
-  if (/revised|revsch/.test(base) || /rev$/.test(base)) {
+  // INDAS is unambiguous and may appear anywhere on the path.
+  if (/indas/.test(haystack)) return "ind-as";
+
+  // Revised Schedule VI: "revised", "revsch", or "rev" at end of basename
+  // / folder segment. Folder names like "revised schd" hit the first match.
+  if (/revised|revsch/.test(haystack) || /rev$/.test(basePart)) {
     return "revised-sch-vi";
   }
 
-  // Standard / Old GAAP: "standard" or "gaap" anywhere, "std" at end of
-  // basename. End-anchor on `std$` keeps middle-of-word bigrams from
-  // matching.
-  if (/standard|gaap/.test(base) || /std$/.test(base)) {
+  // Standard / Old GAAP: "standard" or "gaap" anywhere on the path,
+  // or "std" at end of basename. Folder name "standard" is the common
+  // signal because Standard-format Capitaline exports often lack any
+  // filename suffix.
+  if (/standard|gaap/.test(haystack) || /std$/.test(basePart)) {
     return "standard";
   }
 
-  // Cash flow files often have no suffix because the format barely
-  // changed across standards. Default to "unknown" rather than guessing —
-  // the parser merges across files so the BS/PL standard usually
-  // determines the period's dominant standard anyway.
+  // Cash flow files often have no suffix because the format is identical
+  // across standards. Default to "unknown" — the merge step inherits the
+  // dominant standard from co-located BS/PL files in the same folder.
   return "unknown";
 }
 

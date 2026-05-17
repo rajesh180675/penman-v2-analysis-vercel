@@ -532,7 +532,10 @@ export async function parseCapitalineZip(
   for (const entry of fileEntries) {
     const fileName = entry.name.split("/").pop() || entry.name;
     const stmtGuess = stmtFromFilename(fileName);
-    const stdGuess = standardFromFilename(fileName);
+    // Phase A: pass the FULL entry path, not just the basename. Folders
+    // like `revised schd/` and `standard/` are the only standard signal
+    // when the filename itself has no INDAS/REV/STD suffix.
+    const stdGuess = standardFromFilename(entry.name);
 
     const entryUncompressedSize = (entry as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize;
     if (entryUncompressedSize != null && entryUncompressedSize > MAX_ENTRY_UNCOMPRESSED_BYTES) {
