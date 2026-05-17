@@ -204,6 +204,7 @@ export default function RatioReport({data, traceability = null, traceabilitySumm
                   bm={rd.map(d=>d.ratios?.PM??null)} bmKey="PM"/>
               <TR label="Sales PM (OI from sales / Sales)" vals={rd.map(d=>pct(d.ratios?.SalesPM))}/>
               <TR label="Core Sales PM" vals={rd.map(d=>pct(d.ratios?.CoreSalesPM))} bold/>
+              <TR label="Employee Cost / Revenue" vals={rd.map(d=>pct(d.ratios?.employeeCostRatio))}/>
               <TR label="ATO = Sales/avg(NOA)" vals={rd.map(d=>mult(d.ratios?.ATO))} bold
                   bm={rd.map(d=>d.ratios?.ATO??null)} bmKey="ATO"/>
               <TR label="ATO* = Sales/avg(OA)" vals={rd.map(d=>mult(d.ratios?.ATO_star))}/>
