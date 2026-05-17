@@ -10,6 +10,14 @@ export interface RawPeriodData {
   company_id: string;
   period_end: string;
   raw_metric_values: Record<string, number | null>;
+  /**
+   * Phase A — Multi-standard ingestion.
+   * Dominant accounting standard for this period's source files.
+   * Optional for backward compatibility: pre-existing fixtures and
+   * synthetic test data won't carry this. When present, the rigor
+   * envelope discounts pre-Ind-AS periods.
+   */
+  accounting_standard?: "ind-as" | "revised-sch-vi" | "standard" | "unknown";
 }
 
 export type TraceStatement = "BalanceSheet" | "ProfitLoss" | "CashFlow" | "Derived" | "Fallback";

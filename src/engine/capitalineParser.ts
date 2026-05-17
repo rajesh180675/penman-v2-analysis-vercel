@@ -14,6 +14,12 @@
 
 import JSZip from "jszip";
 import { RawPeriodData } from "./types";
+import {
+  AccountingStandard,
+  STANDARD_PRECEDENCE,
+  buildAliasMap,
+  standardFromFilename,
+} from "./standardAliases";
 
 const MAX_ZIP_BYTES = 25 * 1024 * 1024; // 25 MB archive upload cap
 const MAX_ZIP_ENTRIES = 64;
@@ -33,6 +39,20 @@ export interface ParseWarning {
   file?: string;
   message: string;
   detail?: string;
+}
+
+/**
+ * Phase A — multi-standard ingestion provenance.
+ * Per-period record of which accounting-standard files contributed values.
+ */
+export interface PeriodStandardProvenance {
+  period_end: string;
+  /** Standard that won precedence (Ind-AS > REV > Standard > Unknown) */
+  dominantStandard: AccountingStandard;
+  /** All standards that contributed any value to this period */
+  contributingStandards: AccountingStandard[];
+  /** Number of composite keys whose dominant value came from a non-Ind-AS source */
+  filledFromOlderStandard: number;
 }
 
 export interface RawGridDebug {
@@ -388,15 +408,17 @@ function tryHeaderRow(row: string[], rowIndex: number): HeaderInfo | null {
 
 type PeriodMap = Map<
   string,
-  Map<string, { value: number | null; statement: CapitalineStatement }>
+  Map<string, { value: number | null; statement: CapitalineStatement; standard: AccountingStandard }>
 >;
 
 function gridToPeriods(
   grid: string[][],
   header: HeaderInfo,
-  stmt: CapitalineStatement
+  stmt: CapitalineStatement,
+  std: AccountingStandard
 ): PeriodMap {
   const out: PeriodMap = new Map();
+  const aliasMap = buildAliasMap(std);
 
   for (let r = header.rowIndex + 1; r < grid.length; r++) {
     const row = grid[r];
@@ -418,17 +440,37 @@ function gridToPeriods(
       if (isLabel) continue;
     }
 
+    // Phase A: when parsing a non-Ind-AS file, emit BOTH the original label
+    // (preserves traceability) AND the canonical Ind-AS label (so existing
+    // mappingSpec lookups find the value transparently). The canonical key
+    // is only emitted when the row has at least one non-null value AND the
+    // canonical key isn't already present from a higher-precedence source.
+    const canonicalLabel = aliasMap.get(metric);
+
     for (const pc of header.periodCols) {
       const cellText = pc.col < row.length ? row[pc.col] : "";
       const value = parseNum(cellText);
 
       if (!out.has(pc.period_end)) out.set(pc.period_end, new Map());
-      const compositeKey = `${metric}__${stmt}`;
+      const target = out.get(pc.period_end)!;
 
-      // First non-null value wins for the same composite key
-      const existing = out.get(pc.period_end)!.get(compositeKey);
+      // Original label — always written for traceability
+      const originalKey = `${metric}__${stmt}`;
+      const existing = target.get(originalKey);
       if (existing === undefined || (existing.value === null && value !== null)) {
-        out.get(pc.period_end)!.set(compositeKey, { value, statement: stmt });
+        target.set(originalKey, { value, statement: stmt, standard: std });
+      }
+
+      // Aliased canonical label — only when value present
+      if (canonicalLabel && canonicalLabel !== metric && value !== null) {
+        const canonicalKey = `${canonicalLabel}__${stmt}`;
+        const canonExisting = target.get(canonicalKey);
+        // Don't overwrite if a higher-precedence standard already wrote the
+        // canonical key (that comparison happens in the main merge loop;
+        // here we just write if absent or null).
+        if (canonExisting === undefined || canonExisting.value === null) {
+          target.set(canonicalKey, { value, statement: stmt, standard: std });
+        }
       }
     }
   }
@@ -481,9 +523,16 @@ export async function parseCapitalineZip(
   let sampleHeaderRow: string[] | undefined;
 
   /* 2. Parse each file */
+  // Phase A: track which standards contribute to which period for provenance.
+  const periodStandardCounts = new Map<
+    string,
+    Map<AccountingStandard, number>
+  >();
+
   for (const entry of fileEntries) {
     const fileName = entry.name.split("/").pop() || entry.name;
     const stmtGuess = stmtFromFilename(fileName);
+    const stdGuess = standardFromFilename(fileName);
 
     const entryUncompressedSize = (entry as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize;
     if (entryUncompressedSize != null && entryUncompressedSize > MAX_ENTRY_UNCOMPRESSED_BYTES) {
@@ -594,13 +643,43 @@ export async function parseCapitalineZip(
 
       if (!sampleHeaderRow) sampleHeaderRow = grid[header.rowIndex];
 
-      const fp = gridToPeriods(grid, header, stmtGuess);
+      const fp = gridToPeriods(grid, header, stmtGuess, stdGuess);
       for (const [pe, mmap] of fp) {
         if (!allPeriods.has(pe)) allPeriods.set(pe, new Map());
         const target = allPeriods.get(pe)!;
+
+        // Phase A: standard precedence resolution.
+        // When two files cover the same FY (e.g. INDAS + REV both report
+        // FY2017), the higher-precedence standard wins for each composite
+        // key. A non-null value from a lower-precedence standard fills
+        // gaps where the higher-precedence file had null.
         for (const [k, v] of mmap) {
-          target.set(k, v);
+          const ex = target.get(k);
+          if (!ex) {
+            target.set(k, v);
+          } else {
+            const newPrec = STANDARD_PRECEDENCE[v.standard];
+            const oldPrec = STANDARD_PRECEDENCE[ex.standard];
+            if (newPrec > oldPrec) {
+              // Higher-precedence standard always wins, even if its value is null.
+              target.set(k, v);
+            } else if (newPrec === oldPrec && ex.value === null && v.value !== null) {
+              // Same precedence, null gets filled by non-null.
+              target.set(k, v);
+            } else if (newPrec < oldPrec && ex.value === null && v.value !== null) {
+              // Lower-precedence fills null gap from higher-precedence.
+              target.set(k, v);
+            }
+            // Otherwise: keep existing.
+          }
         }
+
+        // Track which standard contributed to this period (for provenance).
+        if (!periodStandardCounts.has(pe)) {
+          periodStandardCounts.set(pe, new Map());
+        }
+        const counts = periodStandardCounts.get(pe)!;
+        counts.set(stdGuess, (counts.get(stdGuess) ?? 0) + mmap.size);
       }
 
       for (
@@ -699,10 +778,28 @@ export async function parseCapitalineZip(
       raw[m] = o.value;
     }
 
+    // Phase A: derive dominant standard for this period.
+    const stdCounts = periodStandardCounts.get(period_end);
+    let dominantStandard: AccountingStandard = "unknown";
+    if (stdCounts) {
+      let bestPrec = -1;
+      let bestCount = -1;
+      for (const [std, cnt] of stdCounts) {
+        const p = STANDARD_PRECEDENCE[std];
+        // Higher precedence wins, with count as tiebreaker.
+        if (p > bestPrec || (p === bestPrec && cnt > bestCount)) {
+          bestPrec = p;
+          bestCount = cnt;
+          dominantStandard = std;
+        }
+      }
+    }
+
     periods.push({
       company_id: companyId,
       period_end,
       raw_metric_values: raw,
+      accounting_standard: dominantStandard,
     });
   }
 
