@@ -31,6 +31,7 @@ import {
   BankQualityPeriod,
   indexQualityByPeriod,
 } from "./bankQualityIndicators";
+import { computeBankAssetQuality } from "./bankAssetQuality";
 
 /** Bank-specific metrics extracted from raw data */
 export interface BankPeriodMetrics {
@@ -440,6 +441,17 @@ export function processBankData(
     }
   }
 
+  // Phase B5.2 — Derive asset-quality signals (NPA cycle, PCR trend,
+  // slippage trajectory, loan growth vs system, deposit franchise,
+  // capital buffer) from the joined records. Always populated for
+  // bank/NBFC subtypes; signals carry skip-with-reason when their
+  // input fields are missing, so the bundle is safe to surface even
+  // when no sidecar is provided.
+  const qualityRecords: BankQualityPeriod[] = computed
+    .map((m) => m.quality)
+    .filter((q): q is BankQualityPeriod => q != null);
+  const assetQuality = computeBankAssetQuality(qualityRecords);
+
   // Convert to FinancialInstitutionPeriodSnapshot
   const periods: FinancialInstitutionPeriodSnapshot[] = computed.map(m => ({
     period_end:    m.period_end,
@@ -465,6 +477,7 @@ export function processBankData(
     traceability: null,
     valuation,
     bankMetrics: computed,
+    assetQuality,
   };
 }
 

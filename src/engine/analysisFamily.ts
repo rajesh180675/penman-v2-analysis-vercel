@@ -3,6 +3,7 @@ import type { RecastPeriod } from "./types";
 import type { ScopeAssessment, AnalysisFamily as ScopeAnalysisFamily } from "./scopePolicy";
 import type { BankValuationBundle } from "./bankValuation";
 import type { BankPeriodMetrics } from "./bankPipeline";
+import type { BankAssetQualityResult } from "./bankAssetQuality";
 
 export type AnalysisFamily = ScopeAnalysisFamily;
 export type FinancialInstitutionSubtype = "bank" | "nbfc" | "insurance" | "generic-financial";
@@ -36,6 +37,12 @@ export interface FinancialInstitutionAnalysisResult {
    *  spread, leverage, debt mix). Optional for back-compat with consumers
    *  that only need the per-period snapshot. */
   bankMetrics?: BankPeriodMetrics[];
+  /** Phase B5 — derived asset-quality signals (NPA cycle, PCR trend,
+   *  slippage trajectory, loan-growth vs system, deposit franchise,
+   *  capital buffer). Each signal is independently skip-with-reason.
+   *  Always present when subtype is "bank" or "nbfc"; carries skip-reasons
+   *  on every signal when no quality_indicators sidecar was provided. */
+  assetQuality?: BankAssetQualityResult;
 }
 
 export type AnalysisResult = IndustrialAnalysisResult | FinancialInstitutionAnalysisResult;
