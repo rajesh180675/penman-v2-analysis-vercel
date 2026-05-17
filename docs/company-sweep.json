@@ -1,0 +1,112 @@
+[
+  {
+    "company": "HDFC bank",
+    "sector": "INDUSTRIAL",
+    "years": "2011-2025 (15)",
+    "has_ie": false,
+    "has_dep": true,
+    "has_np": false,
+    "has_rev": true,
+    "rows_pl": 604,
+    "rows_bs": 2408
+  },
+  {
+    "company": "ICICI bank",
+    "sector": "UNKNOWN",
+    "years": "2011-2025 (15)",
+    "has_ie": false,
+    "has_dep": true,
+    "has_np": false,
+    "has_rev": false,
+    "rows_pl": 487,
+    "rows_bs": 2384
+  },
+  {
+    "company": "ITC",
+    "sector": "INDUSTRIAL",
+    "years": "2011-2025 (15)",
+    "has_ie": false,
+    "has_dep": true,
+    "has_np": false,
+    "has_rev": true,
+    "rows_pl": 795,
+    "rows_bs": 1869
+  },
+  {
+    "company": "Life Insurance Corporation of India",
+    "sector": "INDUSTRIAL",
+    "years": "2019-2025 (7)",
+    "has_ie": false,
+    "has_dep": true,
+    "has_np": false,
+    "has_rev": true,
+    "rows_pl": 604,
+    "rows_bs": 1903
+  },
+  {
+    "company": "Power Grid Corporation of India Ltd",
+    "sector": "INDUSTRIAL",
+    "years": "2011-2025 (15)",
+    "has_ie": false,
+    "has_dep": true,
+    "has_np": false,
+    "has_rev": true,
+    "rows_pl": 604,
+    "rows_bs": 1086
+  },
+  {
+    "company": "Tata Consultancy Services Ltd",
+    "sector": "INDUSTRIAL",
+    "years": "2012-2026 (15)",
+    "has_ie": false,
+    "has_dep": true,
+    "has_np": false,
+    "has_rev": true,
+    "rows_pl": 795,
+    "rows_bs": 1738
+  },
+  {
+    "company": "Tata steel",
+    "sector": "INDUSTRIAL",
+    "years": "2011-2025 (15)",
+    "has_ie": false,
+    "has_dep": true,
+    "has_np": false,
+    "has_rev": true,
+    "rows_pl": 604,
+    "rows_bs": 737
+  },
+  {
+    "company": "bajaj finance",
+    "sector": "INDUSTRIAL",
+    "years": "2015-2025 (11)",
+    "has_ie": false,
+    "has_dep": true,
+    "has_np": false,
+    "has_rev": true,
+    "rows_pl": 604,
+    "rows_bs": 833
+  },
+  {
+    "company": "paytm",
+    "sector": "UNKNOWN",
+    "years": "2020-2025 (6)",
+    "has_ie": false,
+    "has_dep": true,
+    "has_np": false,
+    "has_rev": false,
+    "rows_pl": 83,
+    "rows_bs": 2034
+  },
+  {
+    "company": "reliance Industries",
+    "sector": "UNKNOWN",
+    "years": "2011-2025 (15)",
+    "has_ie": false,
+    "has_dep": true,
+    "has_np": false,
+    "has_rev": false,
+    "rows_pl": 514,
+    "rows_bs": 989
+  }
+]
