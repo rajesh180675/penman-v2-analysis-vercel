@@ -564,6 +564,20 @@ export interface EngineConfig {
   hybrid_perpetual_as_debt            : boolean;
   investment_in_subsidiaries_as_operating: boolean;
   financial_institution_mode          : boolean;
+  /**
+   * Phase I — explicit override for mixed-financial-conglomerate routing.
+   * When set, companies with material insurance + bank/NBFC signals
+   * (ICICI Bank, Reliance with Jio Financial pre-spinoff, etc.) are
+   * routed to the named pipeline instead of fail-closing. The user takes
+   * responsibility for the consolidation distortion.
+   *
+   * Values:
+   *   "bank"        — route to bank pipeline (treats insurance subsidiary as immaterial)
+   *   "nbfc"        — route to NBFC pipeline
+   *   "industrial"  — route to Penman-Nissim (treats financial subs as non-core)
+   *   null/unset    — default fail-close behaviour
+   */
+  mixed_conglomerate_route_to?: "bank" | "nbfc" | "industrial" | null;
   noa_epsilon_ratio_of_ta             : number;
   separation_confidence_threshold     : number;
   g_terminal_override ?: number | null;
@@ -670,6 +684,7 @@ export const DEFAULT_CONFIG: EngineConfig = {
   hybrid_perpetual_as_debt: true,
   investment_in_subsidiaries_as_operating: true,
   financial_institution_mode: false,
+  mixed_conglomerate_route_to: null,
   noa_epsilon_ratio_of_ta: 0.10,
   separation_confidence_threshold: 70,
   g_terminal_override: null,

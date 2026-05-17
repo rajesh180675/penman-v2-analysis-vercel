@@ -99,7 +99,7 @@ export function analysisFamilyFromScope(scope: ScopeAssessment): AnalysisFamily 
 
 export function assessAnalysisScope(
   periods: RawPeriodData[] | null | undefined,
-  config?: Pick<EngineConfig, "financial_institution_mode"> | null,
+  config?: Pick<EngineConfig, "financial_institution_mode" | "mixed_conglomerate_route_to"> | null,
 ): ScopeAssessment {
   const observedCounts = countObservedKeys(periods ?? []);
   const signals: ScopeSignal[] = [];
@@ -192,6 +192,48 @@ export function assessAnalysisScope(
 
     if (isMaterial) {
       const subPipelineHint = isBank ? "bank" : "NBFC";
+      const override = config?.mixed_conglomerate_route_to ?? null;
+
+      // Phase I — honor explicit user override.
+      // When the user has consciously chosen a sub-pipeline for this
+      // mixed-financial-conglomerate (e.g., ICICI Bank → "bank",
+      // Reliance pre-Jio Financial spinoff → "industrial"), route
+      // accordingly with the override recorded in reasons. The user
+      // takes responsibility for the consolidation distortion.
+      if (override === "bank" || override === "nbfc") {
+        return {
+          policyVersion: SCOPE_POLICY_VERSION,
+          classification: "supported-financial",
+          analysisFamily: "financial-institution",
+          blocked: false,
+          label: `Mixed financial conglomerate routed to ${override} (user override)`,
+          reasons: [
+            ...reasons,
+            `User override: mixed_conglomerate_route_to="${override}". Insurance subsidiary economics will not be modelled separately.`,
+          ],
+          recommendedAction: override === "bank"
+            ? "Bank pipeline (NII decomposition, credit cost, P/B Gordon). Insurance subsidiary contribution to consolidated PAT may distort ROE."
+            : "NBFC pipeline (spread analysis, AUM metrics). Insurance subsidiary contribution to consolidated PAT may distort metrics.",
+          signals: signals.sort((a, b) => b.periodsObserved - a.periodsObserved || a.kind.localeCompare(b.kind) || a.key.localeCompare(b.key)),
+        };
+      }
+      if (override === "industrial") {
+        return {
+          policyVersion: SCOPE_POLICY_VERSION,
+          classification: "supported-industrial",
+          analysisFamily: "industrial",
+          blocked: false,
+          label: "Mixed financial conglomerate routed to industrial (user override)",
+          reasons: [
+            ...reasons,
+            `User override: mixed_conglomerate_route_to="industrial". Financial subsidiary economics will be treated as non-core; Penman-Nissim NOA/FA split assumes operating-asset reformulation suits the parent business.`,
+          ],
+          recommendedAction: "Penman-Nissim industrial framework. Financial subsidiary contribution may produce non-zero NFO; verify subsidiary materiality before relying on RNOA/SPREAD.",
+          signals: signals.sort((a, b) => b.periodsObserved - a.periodsObserved || a.kind.localeCompare(b.kind) || a.key.localeCompare(b.key)),
+        };
+      }
+
+      // Default: fail-closed (review C4).
       return {
         policyVersion: SCOPE_POLICY_VERSION,
         classification: "mixed-financial-conglomerate",
@@ -202,7 +244,7 @@ export function assessAnalysisScope(
           ...reasons,
           `Material insurance signals coexist with ${subPipelineHint} signals; routing is ambiguous.`,
         ],
-        recommendedAction: `Choose a sub-pipeline explicitly (consolidated ${subPipelineHint}-only, standalone ${subPipelineHint}, or insurance-only) before running valuation. Mixed-conglomerate auto-routing is not supported.`,
+        recommendedAction: `Choose a sub-pipeline explicitly via cfg.mixed_conglomerate_route_to ("bank", "nbfc", or "industrial"), or upload standalone ${subPipelineHint}-only data. Mixed-conglomerate auto-routing is not supported.`,
         signals: signals.sort((a, b) => b.periodsObserved - a.periodsObserved || a.kind.localeCompare(b.kind) || a.key.localeCompare(b.key)),
       };
     }
