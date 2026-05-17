@@ -1,14 +1,14 @@
 # Session Summary — 2026-05-17
 
 End-of-session report for the comprehensive multi-sector hardening pass on
-penman-v2-analysis. 20 commits shipped to `origin/main` since the previous
-checkpoint (`2541ac7`), all builds clean, 474 tests passing.
+penman-v2-analysis. 22 commits shipped to `origin/main` since the previous
+checkpoint (`2541ac7`), all builds clean, 487 tests passing.
 
 ## Quick Status
 
 - **Branch**: `main`, clean, fully pushed to `origin/main`
-- **Latest commit**: `8c45403 refactor(App): consolidate engine call`
-- **Tests**: 474 passing across 70 test files
+- **Latest commit**: `c27b3c5 feat(loss-maker): Phase I3`
+- **Tests**: 487 passing across 71 test files
 - **Typecheck**: clean (`npm run typecheck`)
 - **Build**: clean (`npm run validate`)
 - **Deployed**: Vercel auto-deploys on push, so the live app is up-to-date
@@ -90,6 +90,24 @@ The "no silent NaN" pass. Every valuation/scoring module now exposes
 UI: amber banners at top of V3AnalyticsPanel surface every skip-reason and
 cycle-position warning prominently, so issues aren't buried in diagnostics.
 
+### Phase I3 — Loss-maker valuation alternative
+
+For Paytm/Zomato-style names where every earnings-based model skips,
+new module `lossMakerValuation.ts` provides three earnings-independent
+anchors: revenue-multiple (peer median or sector default 3.0×), reverse-
+DCF (solves for the year-5 revenue and steady-state margin the current
+market cap implies), and path-to-profitability flag (high growth +
+improving margins + narrowing loss → green/amber/red signal).
+
+Plus runway computation: net cash / 3y avg burn. Recommendation text
+adapts: <2y runway triggers dilution-risk language, green path triggers
+constructive framing, red path triggers waiting-for-inflection framing.
+
+13 unit tests covering profitable-rejection, multi-period classification,
+all 3 multiple sources, runway, green/red path detection, reverse-DCF
+compute and skip paths, runway-pressure recommendation. UI banner in
+V3AnalyticsPanel surfaces the full anchor set.
+
 ### Cross-cutting refactor — single engine pass
 
 App.tsx was calling the engine twice (once for `recastData`, once for
@@ -111,7 +129,7 @@ keystroke.
 | TCS               | industrial               | Penman-Nissim    | 9 models              | Full             |
 | Tata Steel        | industrial               | Penman-Nissim    | 9 models + cyclicality flag | Full       |
 | Bajaj Finance     | NBFC subtype             | bankPipeline     | 3 models, NBFC labels | Functional       |
-| Paytm             | industrial               | Penman-Nissim    | none (skip-with-reason on capalloc + moat) | Robust skip |
+| Paytm             | industrial               | Penman-Nissim    | none — Phase I3 anchors (revenue ×, reverse-DCF, path) | Robust skip + alt anchors |
 | Reliance          | mixed (override → industrial) | Penman-Nissim | 9 models + structural-break flag | Full       |
 
 10/10 companies in `public/data/companies/` route somewhere meaningful.
@@ -142,6 +160,7 @@ LIC fail-closes correctly (insurance pipeline is multi-week future work).
 - `src/engine/bankValuation.ts` — 3 bank valuation models (316 lines)
 - `src/engine/cyclicalityDetector.ts` — peak/trough/midcycle (229 lines)
 - `src/engine/structuralBreakDetector.ts` — demerger/M&A detection (~250 lines)
+- `src/engine/lossMakerValuation.ts` — Phase I3 alt anchors (~310 lines)
 
 ### Tests
 
@@ -150,6 +169,7 @@ LIC fail-closes correctly (insurance pipeline is multi-week future work).
 - `src/engine/__tests__/bankValuation.spec.ts` (18 cases)
 - `src/engine/__tests__/cyclicalityDetector.spec.ts` (9 cases)
 - `src/engine/__tests__/structuralBreakDetector.spec.ts` (9 cases)
+- `src/engine/__tests__/lossMakerValuation.spec.ts` (13 cases)
 
 ### UI
 
@@ -212,16 +232,14 @@ In rough priority order:
 
 ### High value, small scope
 
-1. **I3 — Loss-maker valuation alternative** — When capalloc skips, give
-   users a revenue-multiple or reverse-DCF anchor instead of just a skip
-   message. Real value for Paytm/Zomato/early-stage names. Maybe 3-4
-   hours of work.
-
-2. **I4 — Negative book value handling** — A handful of distressed PSUs /
+1. **I4 — Negative book value handling** — A handful of distressed PSUs /
    defaulted NBFCs have negative equity. EPV and DDM blow up; need fail-
    close. Smaller scope, similar pattern to existing skip-with-reason.
+   **Note: our 10 sample companies don't have any negative-BV cases, so
+   shipping I4 would be untested in real data.** Best deferred until a
+   user reports the bug or adds a distressed-company file.
 
-3. **Phase B5 — Bank quality flags** — NPA cycle position, deposit
+2. **Phase B5 — Bank quality flags** — NPA cycle position, deposit
    franchise stability, loan growth vs system credit growth. Validates
    B4 against real HDFC + ICICI cycle data. Substantial polishing.
 
@@ -337,7 +355,8 @@ work and LIC fail-closes correctly today, which is honest behaviour.
 
 ---
 
-Total session impact: 20 commits, 5 new modules, 4 new test files,
-4 new docs, 1 new skill update, 474 tests passing. Engine now handles
-all 10 companies in `public/data/companies/` either with full valuation
-or explicit skip-with-reason. Ready for real-world dogfooding.
+Total session impact: 22 commits, 6 new modules, 5 new test files,
+4 new docs, 1 new skill update, 487 tests passing. Engine now handles
+all 10 companies in `public/data/companies/` either with full valuation,
+explicit skip-with-reason, or alternative anchors (loss-makers).
+Ready for real-world dogfooding.
