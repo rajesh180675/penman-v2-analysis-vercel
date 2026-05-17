@@ -1,6 +1,7 @@
 import { Suspense, lazy, useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { RawPeriodData, RecastPeriod, DEFAULT_CONFIG, EngineConfig, CompanyRegistry } from "./engine/types";
-import { processCompanyData } from "./engine/pipeline";
+import { processCompanyData, processCompanyDataFull } from "./engine/pipeline";
+import type { FinancialInstitutionAnalysisResult } from "./engine/analysisFamily";
 import { deriveAnalysisStatus } from "./engine/analysisStatus";
 import { CapitalineParseDebug } from "./engine/capitalineParser";
 import { auditMappingCoverage, evaluateQualityGate } from "./engine/mappingAudit";
@@ -32,6 +33,7 @@ import { getAnalysisPolicyVersions } from "./engine/policyVersions";
 import { SourceParserDiagnostics } from "./engine/parserDiagnostics";
 
 const ValuationReport = lazy(() => import("./components/ValuationReport"));
+const FinancialInstitutionReport = lazy(() => import("./components/FinancialInstitutionReport"));
 const ForecastReport = lazy(() => import("./components/ForecastReport"));
 const AcademicReport = lazy(() => import("./components/AcademicReport"));
 const RegressionReport = lazy(() => import("./components/RegressionReport"));
@@ -41,9 +43,8 @@ const V3AnalyticsPanel = lazy(() => import("./components/V3AnalyticsPanel"));
 const RunInspector = lazy(() => import("./components/RunInspector"));
 const CompanyWorkspace = lazy(() => import("./components/CompanyWorkspace"));
 const WatchlistDashboard = lazy(() => import("./components/WatchlistDashboard"));
-const FinancialInstitutionReport = lazy(() => import("./components/FinancialInstitutionReport"));
 
-type TabId = "upload"|"watchlist"|"workspace"|"inspector"|"statements"|"ratios"|"forecast"|"valuation"|"quality"|"comparison"|"report"|"regression"|"v3analytics"|"debug";
+type TabId = "upload"|"watchlist"|"workspace"|"inspector"|"statements"|"ratios"|"forecast"|"valuation"|"bank"|"quality"|"comparison"|"report"|"regression"|"v3analytics"|"debug";
 
 const TABS: {id:TabId;label:string;icon:string;needsData?:boolean}[] = [
   {id:"upload",     label:"Data",       icon:"📂"},
@@ -54,6 +55,7 @@ const TABS: {id:TabId;label:string;icon:string;needsData?:boolean}[] = [
   {id:"ratios",     label:"Ratios",     icon:"📐", needsData:true},
   {id:"forecast",   label:"Forecast",   icon:"📈", needsData:true},
   {id:"valuation",  label:"Valuation",  icon:"💰", needsData:true},
+  {id:"bank",       label:"Bank",       icon:"🏦", needsData:true},
   {id:"quality",    label:"Quality",    icon:"🔍", needsData:true},
   {id:"comparison", label:"Comparison", icon:"👥", needsData:true},
   {id:"report",     label:"Report",     icon:"📚", needsData:true},
@@ -90,6 +92,21 @@ export function App() {
     if (!rawData || rawData.length === 0) return null;
     return auditMappingCoverage(rawData);
   }, [rawData]);
+
+  // Bank/NBFC pipeline result. Computed when scope routes to financial-institution
+  // and not blocked. Carries the Phase B4 valuation bundle (3 models + triangulation).
+  const bankResult = useMemo<FinancialInstitutionAnalysisResult | null>(() => {
+    if (!rawData || rawData.length === 0) return null;
+    if (!scopeGate || scopeGate.scopeAssessment.blocked) return null;
+    if (scopeGate.scopeAssessment.analysisFamily !== "financial-institution") return null;
+    try {
+      const full = processCompanyDataFull(rawData, config);
+      return full.bankResult ?? null;
+    } catch (err) {
+      console.error("[App] bank pipeline error:", err);
+      return null;
+    }
+  }, [config, rawData, scopeGate]);
 
   // Derive recastData reactively from rawData + config so any config change (tax rate,
   // OCI treatment, hybrid-debt flag, etc.) immediately re-computes the analysis.
@@ -556,8 +573,27 @@ export function App() {
             {activeTab==="valuation"  && hasRecast && !valuationBlocked && (
               <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} publication={publication} />
             )}
-            {activeTab === "valuation" && !hasRecast && scopeBlocked && rawData && rawData.length > 0 && (
-              <FinancialInstitutionReport rawData={rawData} config={config} />
+            {activeTab === "valuation" && !hasRecast && scopeBlocked && rawData && rawData.length > 0 && bankResult && (
+              <FinancialInstitutionReport
+                bankResult={bankResult}
+                marketCapCr={config.market_price != null && config.shares_outstanding != null
+                  ? (config.market_price * config.shares_outstanding) / 1e7
+                  : null}
+              />
+            )}
+            {activeTab === "bank" && bankResult && (
+              <FinancialInstitutionReport
+                bankResult={bankResult}
+                marketCapCr={config.market_price != null && config.shares_outstanding != null
+                  ? (config.market_price * config.shares_outstanding) / 1e7
+                  : null}
+              />
+            )}
+            {activeTab === "bank" && !bankResult && rawData && rawData.length > 0 && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300">
+                <h3 className="font-semibold text-lg mb-1">Bank pipeline not active</h3>
+                <p>This dataset routed to the industrial Penman-Nissim pipeline, not the bank pipeline. Use the Valuation tab instead.</p>
+              </div>
             )}
             {activeTab === "valuation" && hasRecast && valuationBlocked && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
