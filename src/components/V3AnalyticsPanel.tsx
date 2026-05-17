@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { RecastPeriod, EngineConfig, ke_from_config } from "../engine/types";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
+import { detectDistress } from "../engine/distressDetector";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import {
@@ -186,7 +187,29 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
 
       {/* Phase I robustness banners — surface skip-with-reason from valuation modules */}
       {bundle && (() => {
-        const banners: Array<{ tone: "warn" | "info"; title: string; body: string }> = [];
+        const banners: Array<{ tone: "warn" | "info" | "danger"; title: string; body: string }> = [];
+
+        // Phase J: distress signal (negative net worth, going-concern stress)
+        const distress = detectDistress(data);
+        if (distress.severity === "critical") {
+          banners.push({
+            tone: "danger",
+            title: "🚨 Critical distress — going-concern stress",
+            body: distress.reasons.join(" "),
+          });
+        } else if (distress.severity === "severe") {
+          banners.push({
+            tone: "warn",
+            title: "⚠️ Negative net worth — equity-side valuation skipped",
+            body: `${distress.reasons.join(" ")} Anchor on enterprise-side V_ReOI or FCFF.`,
+          });
+        } else if (distress.severity === "warning") {
+          banners.push({
+            tone: "warn",
+            title: "⚠ Negative-equity period in history",
+            body: distress.reasons.join(" "),
+          });
+        }
 
         // Cyclicality
         if (bundle.cyclicality?.classification === "cyclical-peak") {
@@ -271,9 +294,11 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
               <div
                 key={i}
                 className={`rounded-lg border p-3 text-sm ${
-                  b.tone === "warn"
-                    ? "border-amber-300 bg-amber-50 text-amber-900"
-                    : "border-slate-200 bg-slate-50 text-slate-700"
+                  b.tone === "danger"
+                    ? "border-red-300 bg-red-50 text-red-900"
+                    : b.tone === "warn"
+                      ? "border-amber-300 bg-amber-50 text-amber-900"
+                      : "border-slate-200 bg-slate-50 text-slate-700"
                 }`}
               >
                 <div className="font-semibold mb-0.5">{b.title}</div>

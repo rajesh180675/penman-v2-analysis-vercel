@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RecastPeriod, EngineConfig } from "../engine/types";
 import { buildCyclicalNormalization } from "../engine/cyclicalNormalization";
+import { detectDistress } from "../engine/distressDetector";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { ke_from_config } from "../engine/types";
 import { buildRegimeContext } from "../engine/regimeModel";
@@ -298,6 +299,50 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
 
   return (
     <div className="space-y-8">
+      {/* Phase J3: financial distress banner — surfaces negative net worth
+          and going-concern stress at the top of the report so reviewers
+          see it before reading any equity-side numbers. */}
+      {(() => {
+        const distress = detectDistress(data);
+        if (distress.severity === "none") return null;
+        const tone =
+          distress.severity === "critical"
+            ? "border-red-300 bg-red-50 text-red-900"
+            : distress.severity === "severe"
+              ? "border-amber-400 bg-amber-50 text-amber-900"
+              : "border-amber-200 bg-amber-50 text-amber-800";
+        const icon =
+          distress.severity === "critical" ? "🚨"
+            : distress.severity === "severe" ? "⚠️"
+            : "⚠";
+        const title =
+          distress.severity === "critical"
+            ? "Critical financial distress — going-concern stress"
+            : distress.severity === "severe"
+              ? "Negative net worth — equity-side valuation skipped"
+              : "Negative-equity period in history";
+        return (
+          <div className={`rounded-lg border-2 p-4 ${tone}`}>
+            <div className="flex items-start gap-3">
+              <div className="text-2xl">{icon}</div>
+              <div className="flex-1">
+                <div className="font-semibold mb-1">{title}</div>
+                <ul className="text-sm space-y-1 list-disc pl-5">
+                  {distress.reasons.map((r, i) => <li key={i}>{r}</li>)}
+                </ul>
+                {distress.equityModelsBlocked && (
+                  <div className="text-xs mt-3 opacity-80">
+                    Equity-side intrinsic values (V_RE, DDM, per-share EPV, implied P/B) are
+                    skipped on this dataset. Anchor on enterprise-side V_ReOI or FCFF, segment
+                    SOTP, or reverse-DCF instead.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <ValuationCommandCenterHero
         marketSymbol={marketSymbol}
         commandCenter={commandCenter}
