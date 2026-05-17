@@ -54,6 +54,18 @@ export interface CapAllocScoreResult {
   trend: "improving" | "stable" | "deteriorating" | "insufficient-data";
   /** Notes on data quality or caveats */
   notes: string[];
+  /**
+   * Phase I robustness — was the underlying data sufficient to produce a
+   * meaningful score? False when company has fewer than 3 periods of
+   * positive CNI (loss-makers, turnarounds), in which case the composite
+   * score should be treated as advisory and the UI should surface the
+   * skip reason rather than displaying the score as authoritative.
+   */
+  dataSufficient: boolean;
+  /** When dataSufficient is false, the human-readable reason. null otherwise. */
+  skipReason: string | null;
+  /** Number of periods with positive CNI (profitable periods). */
+  profitablePeriods: number;
 }
 
 /** Bank-specific capital allocation result */
@@ -515,6 +527,27 @@ export function scoreCapitalAllocation(
     notes.push("Fewer than 3 periods — scores are low confidence");
   }
 
+  // Phase I robustness — count profitable periods.
+  // Capital allocation framework assumes the company earns positive
+  // returns most of the time. For loss-makers (Paytm pre-FY2024,
+  // Zomato pre-FY2024, etc.) the dimensions become meaningless:
+  //   - "Reinvestment ROIC" on negative CNI is incoherent
+  //   - "Payout sustainability" with zero dividends scores low for
+  //     correct reasons (preserving cash) but the framework reads
+  //     it as bad capital allocation
+  //   - "FCF conversion" with negative CNI inverts sign
+  // Surface this explicitly via dataSufficient/skipReason so callers
+  // can render an explanation instead of a misleading number.
+  const profitablePeriods = periods.filter(
+    (p) => p.is.CNI != null && Number.isFinite(p.is.CNI) && p.is.CNI > 0
+  ).length;
+  const dataSufficient = profitablePeriods >= 3;
+  const skipReason = dataSufficient
+    ? null
+    : profitablePeriods === 0
+      ? `No profitable periods — capital allocation framework requires ≥3 periods of positive net income`
+      : `Only ${profitablePeriods} profitable period(s) of ${periods.length} — capital allocation score low-confidence (need ≥3)`;
+
   const kw = (kwOverride != null && Number.isFinite(kwOverride) && kwOverride > 0)
     ? kwOverride
     : deriveKwFromConfig(config);
@@ -556,6 +589,8 @@ export function scoreCapitalAllocation(
   if (dilutiveIssuances > 0)
     notes.push(`${dilutiveIssuances} dilutive equity issuance(s) detected when SPREAD was negative`);
 
+  if (!dataSufficient && skipReason) notes.unshift(skipReason);
+
   return {
     compositeScore,
     grade: gradeFromScore(compositeScore),
@@ -568,6 +603,9 @@ export function scoreCapitalAllocation(
     totalPeriods: periods.length,
     trend,
     notes,
+    dataSufficient,
+    skipReason,
+    profitablePeriods,
   };
 }
 

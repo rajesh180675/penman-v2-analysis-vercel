@@ -413,3 +413,82 @@ describe("scoreBankCapitalAllocation", () => {
     expect(["improving", "stable", "deteriorating", "insufficient-data"]).toContain(result.trend);
   });
 });
+
+// ─── Phase I — robustness for loss-makers ──────────────────────────────────
+
+describe("scoreCapitalAllocation — Phase I robustness", () => {
+  it("flags dataSufficient=false when no profitable periods", () => {
+    // 5 years of losses (Paytm-like)
+    const periods = Array.from({ length: 5 }, (_, i) =>
+      makePeriod(`${2020 + i}-03-31`, {
+        cni: -50 - i * 10,
+        coreOI: -40,
+        div: 0,
+        fcf: -30,
+        rnoa: -0.05,
+        spread: -0.10,
+      }),
+    );
+    const result = scoreCapitalAllocation(periods, makeConfig());
+    expect(result.dataSufficient).toBe(false);
+    expect(result.profitablePeriods).toBe(0);
+    expect(result.skipReason).toMatch(/No profitable periods/);
+    expect(result.notes[0]).toBe(result.skipReason);
+  });
+
+  it("flags dataSufficient=false when 1-2 profitable periods only", () => {
+    // 5-year turnaround: 3 loss years then 2 profitable years (Zomato-like)
+    const losses = Array.from({ length: 3 }, (_, i) =>
+      makePeriod(`${2020 + i}-03-31`, {
+        cni: -50, coreOI: -40, div: 0, fcf: -30, rnoa: -0.05, spread: -0.10,
+      }),
+    );
+    const profits = Array.from({ length: 2 }, (_, i) =>
+      makePeriod(`${2023 + i}-03-31`, {
+        cni: 100, coreOI: 120, div: 30, fcf: 80, rnoa: 0.12, spread: 0.04,
+      }),
+    );
+    const result = scoreCapitalAllocation([...losses, ...profits], makeConfig());
+    expect(result.dataSufficient).toBe(false);
+    expect(result.profitablePeriods).toBe(2);
+    expect(result.skipReason).toMatch(/Only 2 profitable period/);
+  });
+
+  it("flags dataSufficient=true at exactly 3 profitable periods", () => {
+    const losses = Array.from({ length: 2 }, (_, i) =>
+      makePeriod(`${2020 + i}-03-31`, {
+        cni: -50, coreOI: -40, div: 0, fcf: -30, rnoa: -0.05, spread: -0.10,
+      }),
+    );
+    const profits = Array.from({ length: 3 }, (_, i) =>
+      makePeriod(`${2022 + i}-03-31`, {
+        cni: 100, coreOI: 120, div: 30, fcf: 80, rnoa: 0.12, spread: 0.04,
+      }),
+    );
+    const result = scoreCapitalAllocation([...losses, ...profits], makeConfig());
+    expect(result.dataSufficient).toBe(true);
+    expect(result.profitablePeriods).toBe(3);
+    expect(result.skipReason).toBeNull();
+  });
+
+  it("treats null/NaN CNI as not profitable", () => {
+    const periods = makeSeries(5);
+    // First 2 periods get CNI=null
+    periods[0].is.CNI = null as never;
+    periods[1].is.CNI = NaN;
+    const result = scoreCapitalAllocation(periods, makeConfig());
+    expect(result.profitablePeriods).toBe(3);
+    // Still sufficient (3 valid).
+    expect(result.dataSufficient).toBe(true);
+  });
+
+  it("preserves backwards compatibility: profitable companies unchanged", () => {
+    const periods = makeSeries(5);
+    const result = scoreCapitalAllocation(periods, makeConfig());
+    expect(result.dataSufficient).toBe(true);
+    expect(result.skipReason).toBeNull();
+    expect(result.profitablePeriods).toBe(5);
+    // The notes array shouldn't have skipReason prepended.
+    expect(result.notes.every((n) => !n.includes("profitable period"))).toBe(true);
+  });
+});
