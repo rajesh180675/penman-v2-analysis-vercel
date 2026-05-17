@@ -184,14 +184,56 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-start">
+        <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-start gap-3 flex-wrap">
           <div>
             <h2 className="text-xl font-bold text-slate-800">Upload Capitaline Data</h2>
-            <p className="text-sm text-slate-500 mt-1">ZIP file containing Balance Sheet, P&L &amp; Cash Flow .xls exports</p>
+            <p className="text-sm text-slate-500 mt-1">ZIP file containing Balance Sheet, P&amp;L &amp; Cash Flow .xls exports</p>
           </div>
-          <button onClick={handleLoadSample} className="text-sm px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium">
-            Load VST Sample (10Y)
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Phase I10 — Load from library dropdown */}
+            <select
+              className="text-sm px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-100 font-medium"
+              defaultValue=""
+              onChange={async (e) => {
+                const folder = e.target.value;
+                if (!folder) return;
+                e.target.value = "";
+                try {
+                  setIsProcessing(true); setError("");
+                  const zipUrl = `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(folder)}.zip`;
+                  const resp = await fetch(zipUrl);
+                  if (!resp.ok) throw new Error(`Library ZIP not found for "${folder}". Upload the file manually.`);
+                  const blob = await resp.blob();
+                  const file = new File([blob], `${folder}.zip`, { type: "application/zip" });
+                  setCompanyId(folder.toUpperCase().replace(/\s+/g, "_").slice(0, 20));
+                  await processZip(file);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : String(err));
+                  setIsProcessing(false);
+                }
+              }}
+            >
+              <option value="">📂 Load from library…</option>
+              {[
+                "ITC",
+                "HDFC bank",
+                "ICICI bank",
+                "bajaj finance",
+                "Life Insurance Corporation of India",
+                "paytm",
+                "Power Grid Corporation of India Ltd",
+                "reliance Industries",
+                "Tata Consultancy Services Ltd",
+                "Tata steel",
+                "Vodafone Idea Ltd",
+              ].map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+            <button onClick={handleLoadSample} className="text-sm px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium">
+              Load VST Sample (10Y)
+            </button>
+          </div>
         </div>
 
         {/* Config row — Basic */}
