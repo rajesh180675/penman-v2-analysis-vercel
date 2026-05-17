@@ -17,6 +17,8 @@ export interface FinancialInstitutionPeriodSnapshot {
   bookValue: number | null;
   earnings: number | null;
   deposits: number | null;
+  /** Phase I — surfaced for NBFC subtype where borrowings are the primary funding source. */
+  borrowings: number | null;
   advances: number | null;
   premiumEarned: number | null;
   claimsExpense: number | null;

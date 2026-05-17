@@ -319,6 +319,7 @@ export function processBankData(
     bookValue:     m.totalEquity,
     earnings:      m.pat,
     deposits:      m.deposits,
+    borrowings:    m.borrowings,
     advances:      m.advances,
     premiumEarned: null,
     claimsExpense: null,

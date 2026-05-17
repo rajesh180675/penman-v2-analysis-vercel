@@ -82,8 +82,12 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr }: 
                   <th className="text-left py-1 pr-3">Period</th>
                   <th className="text-right py-1 px-3">Book Value</th>
                   <th className="text-right py-1 px-3">Earnings</th>
-                  <th className="text-right py-1 px-3">Deposits</th>
-                  <th className="text-right py-1 px-3">Advances</th>
+                  {bankResult.subtype === "nbfc" ? (
+                    <th className="text-right py-1 px-3">Borrowings</th>
+                  ) : (
+                    <th className="text-right py-1 px-3">Deposits</th>
+                  )}
+                  <th className="text-right py-1 px-3">{bankResult.subtype === "nbfc" ? "Loan Book" : "Advances"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -92,13 +96,22 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr }: 
                     <td className="py-1 pr-3 font-mono">{p.period_end}</td>
                     <td className="text-right py-1 px-3">{fmtCr(p.bookValue)}</td>
                     <td className="text-right py-1 px-3">{fmtCr(p.earnings)}</td>
-                    <td className="text-right py-1 px-3">{fmtCr(p.deposits)}</td>
+                    <td className="text-right py-1 px-3">
+                      {fmtCr(bankResult.subtype === "nbfc" ? p.borrowings : p.deposits)}
+                    </td>
                     <td className="text-right py-1 px-3">{fmtCr(p.advances)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {bankResult.subtype === "nbfc" && (
+            <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+              NBFC subtype: showing Borrowings (primary funding source) instead of Deposits.
+              CASA / cost-to-deposits / NIM-on-deposits ratios from the bank pipeline don't apply
+              cleanly to NBFCs and should be reinterpreted as cost-to-borrowings / NIM-on-AUM equivalents.
+            </div>
+          )}
         </section>
       )}
 
