@@ -23,7 +23,7 @@
  * For banks: uses ROE-based moat (ROE vs ke) instead of RNOA/SPREAD.
  */
 
-import { RecastPeriod, EngineConfig, ke_from_config } from "./types";
+import { RecastPeriod, EngineConfig, ke_from_config, deriveKwFromConfig } from "./types";
 import { BankPeriodMetrics } from "./bankPipeline";
 
 // ─── Output Types ─────────────────────────────────────────────────────────────
@@ -131,7 +131,10 @@ function estimatePhi(series: number[]): number | null {
   const cov = x.reduce((s, v, i) => s + (v - meanX) * (y[i] - meanY), 0);
   const varX = x.reduce((s, v) => s + (v - meanX) ** 2, 0);
   if (varX < 1e-10) return null;
-  return clamp(cov / varX, 0, 0.99);
+  const phi = cov / varX;
+  // Negative phi indicates oscillatory behavior (cyclical industries).
+  // We do not clamp here; callers should check phi range before using for fade.
+  return phi;
 }
 
 /**
@@ -361,7 +364,7 @@ function scoreReinvestmentQuality(
     const dCoreOI = (curr.cu?.CoreOI ?? 0) - (prev.cu?.CoreOI ?? 0);
 
     if (Math.abs(dNOA) > 1) {  // avoid division by near-zero
-      const incRNOA = dCoreOI / Math.abs(dNOA);
+      const incRNOA = dCoreOI / dNOA; // use signed dNOA to capture shrink/grow
       if (Number.isFinite(incRNOA) && Math.abs(incRNOA) < 5) {
         incRNOAValues.push(incRNOA);
         rawValues.push({ period: curr.period_end, value: incRNOA });
@@ -445,8 +448,8 @@ function classifyMoatWidth(
   const pctAbove  = periodsAboveCOC / totalPeriods;
   const pctStrong = periodsWithStrongSpread / totalPeriods;
 
-  if (compositeScore >= 70 && pctStrong >= 0.60) return "wide";
-  if (compositeScore >= 40 && pctAbove >= 0.60)  return "narrow";
+  if (compositeScore >= 75 && pctStrong >= 0.70) return "wide";
+  if (compositeScore >= 55 && pctAbove >= 0.50)  return "narrow";
   return "none";
 }
 
@@ -465,10 +468,7 @@ export function computeMoatScore(
   if (!periods || periods.length < 3) return null;
 
   const notes: string[] = [];
-  const ke = ke_from_config(config);
-  // Approximate kw (same logic as EPV module)
-  const kd_aftertax = config.kd_pretax * (1 - config.tax_rate_for_kd);
-  const kw = ke * 0.80 + kd_aftertax * 0.20;
+  const kw = deriveKwFromConfig(config);
 
   const sorted = [...periods].sort(
     (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()

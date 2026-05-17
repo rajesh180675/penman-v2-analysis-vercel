@@ -16,7 +16,7 @@
  * Composite score 0–100. Grade: A (≥80), B (60–79), C (40–59), D (<40).
  */
 
-import { RecastPeriod, EngineConfig, ke_from_config } from "./types";
+import { RecastPeriod, EngineConfig, ke_from_config, deriveKwFromConfig } from "./types";
 import { BankPeriodMetrics } from "./bankPipeline";
 
 // ─── Output Types ─────────────────────────────────────────────────────────────
@@ -450,11 +450,7 @@ export function scoreCapitalAllocation(
   }
 
   const ke = ke_from_config(config);
-  // Derive kw same as moatScoring / grahamDoddEPV: 80% equity + 20% debt
-  const kd_pretax = config.kd_pretax ?? 0.08;
-  const tax_rate_for_kd = config.tax_rate_for_kd ?? 0.25;
-  const kd_aftertax = kd_pretax * (1 - tax_rate_for_kd);
-  const kw = ke * 0.80 + kd_aftertax * 0.20;
+  const kw = deriveKwFromConfig(config);
 
   // Dimension 1: Dividend Consistency
   const divDim = scoreDividendConsistency(periods);

@@ -25,7 +25,7 @@
  * For banks: equity-based EPV = normalized PAT / ke (book-value anchor)
  */
 
-import { RecastPeriod, EngineConfig, ke_from_config } from "./types";
+import { RecastPeriod, EngineConfig, ke_from_config, deriveKwFromConfig } from "./types";
 
 // ─── Output Types ────────────────────────────────────────────────────────────
 
@@ -195,16 +195,11 @@ export function computeEPV(
   const normalizedNOPAT  = normalizedCoreOI * (1 - medianTaxRate);
 
   // ── 3. Capitalization ────────────────────────────────────────────────────
-  // EPV uses ke as the discount rate (conservative: ignores debt tax shield).
-  // This is consistent with Greenwald's original formulation and appropriate
-  // for EPV's "no-growth" premise — using ke overstates the hurdle rate,
-  // which understates EPV, making the estimate conservative.
+  // EPV is traditionally capitalized at ke (Greenwald) to isolate franchise
+  // value from asset value. We use WACC (kw) here to align with the full
+  // capital structure visible in recast data.
   const ke = ke_from_config(config);
-  // Approximate WACC: ke × 0.85 for equity-heavy Indian companies.
-  // Proper kw requires capital structure data from deriveKwFromStructure.
-  const kd_aftertax = config.kd_pretax * (1 - config.tax_rate_for_kd);
-  // Simple WACC approximation: assume 80% equity, 20% debt weight
-  const kw = ke * 0.80 + kd_aftertax * 0.20;
+  const kw = deriveKwFromConfig(config);
 
   if (kw <= 0.01) {
     confidenceNotes.push("WACC too low — EPV unreliable");

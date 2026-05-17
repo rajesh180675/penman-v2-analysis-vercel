@@ -716,3 +716,15 @@ export function ke_from_config(cfg: EngineConfig): number {
   if (cfg.ke > 0) return cfg.ke;
   return cfg.risk_free_rate + cfg.equity_risk_premium;
 }
+
+/** Derive WACC (kw) from config using standard capital structure approximation.
+ *  Assumes 80% equity / 20% debt weighting. Used consistently across all
+ *  valuation modules (moat, EPV, capital allocation) per S-9.4C.
+ */
+export function deriveKwFromConfig(cfg: EngineConfig): number {
+  const ke = ke_from_config(cfg);
+  const kd_pretax = cfg.kd_pretax ?? 0.08;
+  const tax_rate_for_kd = cfg.tax_rate_for_kd ?? 0.25;
+  const kd_aftertax = kd_pretax * (1 - tax_rate_for_kd);
+  return ke * 0.80 + kd_aftertax * 0.20;
+}
