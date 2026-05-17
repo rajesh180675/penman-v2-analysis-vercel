@@ -58,6 +58,13 @@ function mkTraceability(status: "production-ready" | "guarded" | "blocked"): Ana
       maxResidualRatio: status === "blocked" ? 0.1551 : 0,
       checks: [],
     },
+    accountingStandardCoverage: {
+      dominantStandard: "ind-as",
+      periodsByStandard: { "ind-as": 5, "revised-sch-vi": 0, standard: 0, unknown: 0 },
+      preIndASPeriods: 0,
+      hasMultiStandardData: false,
+      confidence: "high",
+    },
     rigor: {
       currentLevel: status === "blocked" ? "syntactically-valid" : "production-ready",
       currentLabel: status === "blocked" ? "Syntactically valid" : "Production-ready",

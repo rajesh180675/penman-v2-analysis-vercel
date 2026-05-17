@@ -31,6 +31,34 @@ export interface AnalysisRigorCheckpoint {
   detail: string;
 }
 
+/**
+ * Phase A6 — multi-standard ingestion provenance surfaced in the
+ * traceability envelope. Tracks how many periods came from each
+ * accounting standard so downstream UI / rigor checks can flag runs
+ * that lean on lower-confidence (pre-Ind-AS) data.
+ */
+export type AccountingStandardLabel =
+  | "ind-as"
+  | "revised-sch-vi"
+  | "standard"
+  | "unknown";
+
+export interface AccountingStandardCoverage {
+  /** Standard with the most periods. Falls back to "unknown" when raw
+   *  data carries no provenance (legacy fixtures, screener imports). */
+  dominantStandard: AccountingStandardLabel;
+  /** Period count per standard. */
+  periodsByStandard: Record<AccountingStandardLabel, number>;
+  /** Periods whose dominant standard is non-Ind-AS (medium/low confidence). */
+  preIndASPeriods: number;
+  /** True when ≥2 distinct standards contributed periods. */
+  hasMultiStandardData: boolean;
+  /** Confidence band: "high" if all periods are Ind-AS, "medium" if any
+   *  Revised-Sch-VI, "low" if any Standard or Unknown periods, "unknown"
+   *  when raw data has no accounting_standard tag at all. */
+  confidence: "high" | "medium" | "low" | "unknown";
+}
+
 export interface AnalysisTraceabilityEnvelope {
   schemaVersion: string;
   generatedAt: string | null;
@@ -59,6 +87,8 @@ export interface AnalysisTraceabilityEnvelope {
   };
   parserFidelity: ParserFidelitySummary;
   reconciliation: ReconciliationResidualSummary;
+  /** Phase A6 — distribution of accounting standards across raw periods. */
+  accountingStandardCoverage: AccountingStandardCoverage;
   rigor: {
     currentLevel: AnalysisRigorLevel;
     currentLabel: string;
@@ -89,6 +119,94 @@ export interface AnalysisTraceabilityEnvelope {
     engineError: string | null;
   };
   backlogPreview: TraceabilityBacklogPreview[];
+}
+
+/**
+ * Phase A6 — derive accounting-standard coverage from raw period data.
+ * Returns a coverage summary even when raw data is null or carries no
+ * provenance (legacy fixtures, screener imports), in which case the
+ * confidence band defaults to "unknown".
+ */
+export function computeAccountingStandardCoverage(
+  rawData: RawPeriodData[] | null | undefined,
+): AccountingStandardCoverage {
+  const periodsByStandard: Record<AccountingStandardLabel, number> = {
+    "ind-as": 0,
+    "revised-sch-vi": 0,
+    standard: 0,
+    unknown: 0,
+  };
+
+  let taggedCount = 0;
+  for (const period of rawData ?? []) {
+    const tag = period.accounting_standard;
+    if (tag) {
+      taggedCount++;
+      periodsByStandard[tag] = (periodsByStandard[tag] ?? 0) + 1;
+    } else {
+      periodsByStandard.unknown += 1;
+    }
+  }
+
+  // Determine dominant standard by count, with precedence as tiebreaker
+  // (Ind-AS > REV > Standard > Unknown).
+  const PRECEDENCE: Record<AccountingStandardLabel, number> = {
+    "ind-as": 4,
+    "revised-sch-vi": 3,
+    standard: 2,
+    unknown: 1,
+  };
+  let dominantStandard: AccountingStandardLabel = "unknown";
+  let bestCount = -1;
+  let bestPrec = -1;
+  for (const std of ["ind-as", "revised-sch-vi", "standard", "unknown"] as const) {
+    const cnt = periodsByStandard[std];
+    if (cnt > bestCount || (cnt === bestCount && PRECEDENCE[std] > bestPrec)) {
+      bestCount = cnt;
+      bestPrec = PRECEDENCE[std];
+      dominantStandard = std;
+    }
+  }
+
+  const distinctContributing = (
+    Object.keys(periodsByStandard) as AccountingStandardLabel[]
+  ).filter((k) => periodsByStandard[k] > 0).length;
+
+  const preIndASPeriods =
+    periodsByStandard["revised-sch-vi"] +
+    periodsByStandard.standard +
+    // Untagged periods (legacy fixtures) count as pre-Ind-AS only when
+    // there was no tagging at all — otherwise they're indistinguishable
+    // from genuinely-Ind-AS periods that simply weren't reflagged.
+    (taggedCount === 0 ? periodsByStandard.unknown : 0);
+
+  // Confidence band:
+  // - "unknown" when no period carries a tag at all
+  // - "high" when 100% of tagged periods are Ind-AS
+  // - "medium" when any Revised-Sch-VI period exists (but no Standard/Unknown)
+  // - "low" when any Standard or tagged-Unknown periods contribute
+  let confidence: "high" | "medium" | "low" | "unknown";
+  if (taggedCount === 0) {
+    confidence = "unknown";
+  } else if (
+    periodsByStandard.standard > 0 ||
+    // Tagged "unknown" — parser couldn't determine standard
+    (taggedCount > 0 && periodsByStandard.unknown > 0)
+  ) {
+    confidence = "low";
+  } else if (periodsByStandard["revised-sch-vi"] > 0) {
+    confidence = "medium";
+  } else {
+    confidence = "high";
+  }
+
+  return {
+    dominantStandard,
+    periodsByStandard,
+    preIndASPeriods,
+    hasMultiStandardData: distinctContributing >= 2,
+    confidence,
+  };
 }
 
 export function buildAnalysisTraceability(params: {
@@ -254,6 +372,7 @@ export function buildAnalysisTraceability(params: {
     },
     parserFidelity,
     reconciliation,
+    accountingStandardCoverage: computeAccountingStandardCoverage(params.rawData),
     rigor: {
       currentLevel: currentCheckpoint.level,
       currentLabel: currentCheckpoint.label,
