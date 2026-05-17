@@ -30,4 +30,9 @@ yarn-error.log*
 .claude/worktrees/
 
 # Raw data — not committed
-public/data/companies/
+public/data/companies/**/*.xls
+public/data/companies/**/*.xlsx
+public/data/companies/**/*.html
+public/data/companies/**/standalone/
+# Allow pre-built library ZIPs so Vercel serves them for the "Load from library" dropdown
+!public/data/companies/**/*.zip
