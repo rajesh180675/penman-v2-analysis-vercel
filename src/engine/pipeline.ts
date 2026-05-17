@@ -16,6 +16,7 @@ import { processBankData } from "./bankPipeline";
 import { FinancialInstitutionAnalysisResult } from "./analysisFamily";
 import { detectDistress, DistressAssessment } from "./distressDetector";
 import type { BankQualityIndicators } from "./bankQualityIndicators";
+import { computeLossMakerValuation, LossMakerValuationResult } from "./lossMakerValuation";
 
 export interface PipelineResult {
   periods  : RecastPeriod[];
@@ -29,10 +30,14 @@ export interface PipelineResult {
   /**
    * Phase I9 — structural break periods.
    * Period_ends where S-5.1 STRUCTURAL_EVENT (dirty surplus spike) fired.
-   * Empty when no breaks detected. UI uses this to offer the
-   * "exclude pre-break periods" confirmation flow.
+   * Empty array when no breaks detected.
    */
   structuralBreakPeriods: string[];
+  /**
+   * Phase I3 — loss-maker valuation anchors.
+   * Populated when ≥50% of periods have CNI ≤ 0. Null for profitable companies.
+   */
+  lossMaker: LossMakerValuationResult | null;
 }
 
 export function processCompanyData(
@@ -61,7 +66,7 @@ export function processCompanyDataFull(
   if (!dataArray || dataArray.length === 0) {
     const emptyAnomalies = runAnomalyDetection([], config);
     const distress = detectDistress([]);
-    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "industrial", distress, structuralBreakPeriods: [] };
+    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "industrial", distress, structuralBreakPeriods: [], lossMaker: null };
   }
 
   // Phase I9 — apply user-confirmed period exclusions before any processing.
@@ -84,7 +89,7 @@ export function processCompanyDataFull(
     const bankResult = processBankData(filteredData, scope, config, null, quality);
     const emptyAnomalies = runAnomalyDetection([], config);
     const distress = detectDistress([]);
-    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult, distress, structuralBreakPeriods: [] };
+    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult, distress, structuralBreakPeriods: [], lossMaker: null };
   }
 
   // Fail-closed for blocked financial-institution scope.
@@ -97,6 +102,7 @@ export function processCompanyDataFull(
       analysisFamily: "financial-institution",
       distress,
       structuralBreakPeriods: [],
+      lossMaker: null,
     };
   }
 
@@ -158,5 +164,7 @@ export function processCompanyDataFull(
     period.cu.policy = buildUnusualItemPolicy(period);
   }
 
-  return { periods: results, anomalies, analysisFamily: "industrial", distress: detectDistress(results), structuralBreakPeriods };
+  const lossMaker = computeLossMakerValuation(results, config);
+
+  return { periods: results, anomalies, analysisFamily: "industrial", distress: detectDistress(results), structuralBreakPeriods, lossMaker };
 }

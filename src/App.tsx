@@ -158,6 +158,13 @@ export function App() {
     return pipelineResult.structuralBreakPeriods ?? [];
   }, [pipelineResult]);
 
+  // Phase I3 — loss-maker valuation anchors (revenue multiple, reverse-DCF,
+  // path-to-profitability). Populated when ≥50% of periods have CNI ≤ 0.
+  const lossMakerResult = useMemo(() => {
+    if (!pipelineResult || "error" in pipelineResult) return null;
+    return pipelineResult.lossMaker ?? null;
+  }, [pipelineResult]);
+
   // True when breaks are detected and the user hasn't yet excluded any periods.
   const hasUnacknowledgedBreaks = structuralBreakPeriods.length > 0 &&
     (!config.excluded_periods || config.excluded_periods.length === 0);
@@ -687,7 +694,7 @@ export function App() {
             {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
             {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
             {activeTab==="valuation"  && hasRecast && !valuationBlocked && (
-              <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} publication={publication} />
+              <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} publication={publication} lossMaker={lossMakerResult} />
             )}
             {activeTab === "valuation" && !hasRecast && scopeBlocked && rawData && rawData.length > 0 && bankResult && (
               <FinancialInstitutionReport
