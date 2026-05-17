@@ -18,6 +18,22 @@ export interface RawPeriodData {
    * envelope discounts pre-Ind-AS periods.
    */
   accounting_standard?: "ind-as" | "revised-sch-vi" | "standard" | "unknown";
+  /**
+   * Phase I7 — Currency unit auto-detection.
+   * Records what unit was detected in the Capitaline source file.
+   * The parser normalises ALL raw_metric_values to ₹ Crores before
+   * storing them — this field is for audit/traceability only.
+   *
+   *   "Crores"   — no scaling applied (default; most large-cap exports)
+   *   "Lakhs"    — source was in lakhs; values multiplied by 0.01
+   *   "Millions" — source was in millions; values multiplied by 0.1
+   *   "Thousands"— source was in thousands; values multiplied by 0.0001
+   *   "Absolute" — source was in absolute Rs.; values multiplied by 1e-7
+   *   "Unknown"  — header row present but unit string unrecognised
+   *
+   * When absent (legacy fixtures, synthetic test data), assume Crores.
+   */
+  currency_unit?: "Crores" | "Lakhs" | "Millions" | "Thousands" | "Absolute" | "Unknown";
 }
 
 export type TraceStatement = "BalanceSheet" | "ProfitLoss" | "CashFlow" | "Derived" | "Fallback";

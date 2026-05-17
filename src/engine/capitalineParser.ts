@@ -115,6 +115,92 @@ const MONTH_MAP: Record<string, number> = {
 };
 
 /* ══════════════════════════════════════════════════════════════════
+   Currency unit detection — Phase I7
+══════════════════════════════════════════════════════════════════ */
+
+export type CurrencyUnit =
+  | "Crores"
+  | "Lakhs"
+  | "Millions"
+  | "Thousands"
+  | "Absolute"
+  | "Unknown";
+
+/**
+ * Multiplier to convert a value in the detected unit to ₹ Crores.
+ *
+ *   Crores   × 1          = Crores  (no-op)
+ *   Lakhs    × 0.01       = Crores  (100 lakhs = 1 crore)
+ *   Millions × 0.1        = Crores  (10 millions = 1 crore)
+ *   Thousands× 0.0001     = Crores  (10,000 thousands = 1 crore)
+ *   Absolute × 1e-7       = Crores  (1 crore = 10,000,000 rupees)
+ *   Unknown  × 1          = pass-through (warn, don't corrupt)
+ */
+export const UNIT_TO_CR_MULTIPLIER: Record<CurrencyUnit, number> = {
+  Crores:    1,
+  Lakhs:     0.01,
+  Millions:  0.1,
+  Thousands: 0.0001,
+  Absolute:  1e-7,
+  Unknown:   1,       // pass-through — don't silently corrupt
+};
+
+/**
+ * Scan the first `scanRows` rows of a parsed grid for a "Curr. in"
+ * header row and return the detected unit.
+ *
+ * Capitaline HTML exports typically have a row like:
+ *   ["Curr. in", "Rs. Cr.", "Rs. Cr.", ...]
+ * or
+ *   ["Currency", "Rs. Lakh", ...]
+ *
+ * Returns null when no currency row is found (caller should assume Crores).
+ */
+export function detectCurrencyUnit(
+  grid: string[][],
+  scanRows = 10,
+): CurrencyUnit | null {
+  const limit = Math.min(grid.length, scanRows);
+
+  for (let r = 0; r < limit; r++) {
+    const row = grid[r];
+    if (!row || row.length < 2) continue;
+
+    const label = norm(row[0]).toLowerCase();
+    if (!label.includes("curr") && !label.includes("unit") && !label.includes("denomination")) {
+      continue;
+    }
+
+    // Found a currency label row — read the first non-empty value cell
+    for (let c = 1; c < row.length; c++) {
+      const cell = norm(row[c]).toLowerCase();
+      if (!cell) continue;
+
+      // Match common Capitaline patterns
+      if (/\bcr(ore)?s?\b/.test(cell) || cell === "rs. cr." || cell === "inr cr") {
+        return "Crores";
+      }
+      if (/\blakh?s?\b/.test(cell) || /\blac\b/.test(cell)) {
+        return "Lakhs";
+      }
+      if (/\bmn\b/.test(cell) || /\bmillion/.test(cell)) {
+        return "Millions";
+      }
+      if (/\bthousand/.test(cell) || /\b000s\b/.test(cell)) {
+        return "Thousands";
+      }
+      if (/\babs(olute)?\b/.test(cell) || cell === "rs." || cell === "inr") {
+        return "Absolute";
+      }
+      // Row found but value unrecognised
+      return "Unknown";
+    }
+  }
+
+  return null; // no currency row found
+}
+
+/* ══════════════════════════════════════════════════════════════════
    Cell cleaning
 ══════════════════════════════════════════════════════════════════ */
 
@@ -415,7 +501,8 @@ function gridToPeriods(
   grid: string[][],
   header: HeaderInfo,
   stmt: CapitalineStatement,
-  std: AccountingStandard
+  std: AccountingStandard,
+  multiplier: number = 1,
 ): PeriodMap {
   const out: PeriodMap = new Map();
   const aliasMap = buildAliasMap(std);
@@ -456,20 +543,21 @@ function gridToPeriods(
 
       // Original label — always written for traceability
       const originalKey = `${metric}__${stmt}`;
+      const scaledValue = value != null && multiplier !== 1 ? value * multiplier : value;
       const existing = target.get(originalKey);
-      if (existing === undefined || (existing.value === null && value !== null)) {
-        target.set(originalKey, { value, statement: stmt, standard: std });
+      if (existing === undefined || (existing.value === null && scaledValue !== null)) {
+        target.set(originalKey, { value: scaledValue, statement: stmt, standard: std });
       }
 
       // Aliased canonical label — only when value present
-      if (canonicalLabel && canonicalLabel !== metric && value !== null) {
+      if (canonicalLabel && canonicalLabel !== metric && scaledValue !== null) {
         const canonicalKey = `${canonicalLabel}__${stmt}`;
         const canonExisting = target.get(canonicalKey);
         // Don't overwrite if a higher-precedence standard already wrote the
         // canonical key (that comparison happens in the main merge loop;
         // here we just write if absent or null).
         if (canonExisting === undefined || canonExisting.value === null) {
-          target.set(canonicalKey, { value, statement: stmt, standard: std });
+          target.set(canonicalKey, { value: scaledValue, statement: stmt, standard: std });
         }
       }
     }
@@ -521,6 +609,11 @@ export async function parseCapitalineZip(
   const allPeriods: PeriodMap = new Map();
   const sampleRows: CapitalineParseDebug["sample"]["firstRows"] = [];
   let sampleHeaderRow: string[] | undefined;
+
+  // Phase I7 — track detected currency units across all files in the ZIP.
+  // All files in a Capitaline export should share the same unit, but we
+  // collect per-file detections and pick the most common non-null result.
+  const detectedUnits: CurrencyUnit[] = [];
 
   /* 2. Parse each file */
   // Phase A: track which standards contribute to which period for provenance.
@@ -637,6 +730,13 @@ export async function parseCapitalineZip(
     /* Header detection */
     const header = detectHeader(grid);
 
+    // Phase I7 — detect currency unit from this file's grid.
+    // Run detection on the full grid (before header row) so the
+    // "Curr. in" row is found even when it sits above the period header.
+    const fileUnit = detectCurrencyUnit(grid);
+    if (fileUnit !== null) detectedUnits.push(fileUnit);
+    const fileMultiplier = fileUnit !== null ? UNIT_TO_CR_MULTIPLIER[fileUnit] : 1;
+
     if (header) {
       gd.headerDetected = true;
       gd.headerRowIndex = header.rowIndex;
@@ -646,7 +746,7 @@ export async function parseCapitalineZip(
 
       if (!sampleHeaderRow) sampleHeaderRow = grid[header.rowIndex];
 
-      const fp = gridToPeriods(grid, header, stmtGuess, stdGuess);
+      const fp = gridToPeriods(grid, header, stmtGuess, stdGuess, fileMultiplier);
       for (const [pe, mmap] of fp) {
         if (!allPeriods.has(pe)) allPeriods.set(pe, new Map());
         const target = allPeriods.get(pe)!;
@@ -723,6 +823,36 @@ export async function parseCapitalineZip(
 
   if (!allPeriods.size) {
     throw new Error("No usable Capitaline tables found in ZIP. Ensure filenames contain balance/profit/cash and sheets include fiscal year headers.");
+  }
+
+  // Phase I7 — resolve dominant currency unit across all files.
+  // Pick the most common non-Unknown detection; fall back to Crores when
+  // no currency row was found in any file (the historical default).
+  let dominantUnit: CurrencyUnit = "Crores";
+  if (detectedUnits.length > 0) {
+    const unitCounts = new Map<CurrencyUnit, number>();
+    for (const u of detectedUnits) unitCounts.set(u, (unitCounts.get(u) ?? 0) + 1);
+    // Prefer the most frequent non-Unknown unit
+    let bestCount = 0;
+    for (const [u, cnt] of unitCounts) {
+      if (u !== "Unknown" && cnt > bestCount) {
+        bestCount = cnt;
+        dominantUnit = u;
+      }
+    }
+    // If all detections were Unknown, keep Unknown (pass-through, warn below)
+    if (bestCount === 0 && unitCounts.has("Unknown")) dominantUnit = "Unknown";
+  }
+
+  // Emit a warning when the unit is non-Cr so the debug panel surfaces it.
+  if (dominantUnit !== "Crores") {
+    const multiplierStr = UNIT_TO_CR_MULTIPLIER[dominantUnit].toExponential();
+    warnings.push({
+      message: `Currency unit detected: ${dominantUnit}. All values have been scaled to ₹ Crores (multiplier: ${multiplierStr}).`,
+      detail: dominantUnit === "Unknown"
+        ? "Unit string in 'Curr. in' row was not recognised. Values are passed through unscaled — verify the output."
+        : `Source values were in ${dominantUnit}. Engine always works in ₹ Crores.`,
+    });
   }
 
   /* 3. Build RawPeriodData[] */
@@ -803,6 +933,7 @@ export async function parseCapitalineZip(
       period_end,
       raw_metric_values: raw,
       accounting_standard: dominantStandard,
+      currency_unit: dominantUnit,
     });
   }
 
