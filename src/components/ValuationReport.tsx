@@ -100,9 +100,24 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
     const prev = valuationData[valuationData.length - 2];
     return deriveKwFromStructure(cur, prev, ke, effectiveConfig.risk_free_rate, effectiveConfig);
   }, [valuationData, ke, effectiveConfig]);
+
+  const cyclicalNormalization = useMemo(() => buildCyclicalNormalization(data), [data]);
+
+  const cyclicalTerminalREAnchor = useMemo(() => {
+    if (!cyclicalNormalization.cyclical) return null;
+    const lastPeriod = valuationData[valuationData.length - 1];
+    const lastRE = lastPeriod?.ri?.RE;
+    const latestRNOA = lastPeriod?.ratios?.RNOA;
+    const medianRNOA = cyclicalNormalization.normalizedRoic;
+    if (lastRE == null || !Number.isFinite(lastRE)) return null;
+    if (latestRNOA == null || !Number.isFinite(latestRNOA) || latestRNOA === 0) return null;
+    if (medianRNOA == null || !Number.isFinite(medianRNOA)) return null;
+    return lastRE * (medianRNOA / latestRNOA);
+  }, [cyclicalNormalization, valuationData]);
+
   const val = useMemo(() =>
-    computeValuation(valuationData, ke, kwDerived, gRate, valuationConfig),
-    [valuationData, ke, kwDerived, gRate, valuationConfig]
+    computeValuation(valuationData, ke, kwDerived, gRate, valuationConfig, cyclicalTerminalREAnchor),
+    [valuationData, ke, kwDerived, gRate, valuationConfig, cyclicalTerminalREAnchor]
   );
   const commandCenter = useMemo(
     () => buildValuationCommandCenter({
@@ -113,7 +128,6 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
     }),
     [analysisStatus, data, effectiveConfig, liveMarketData],
   );
-  const cyclicalNormalization = useMemo(() => buildCyclicalNormalization(data), [data]);
   const regimeContext = useMemo(
     () => buildRegimeContext(commandCenter.riskFreeRate, liveMarketData?.history?.currentPricePercentile ?? null),
     [commandCenter.riskFreeRate, liveMarketData?.history?.currentPricePercentile],
