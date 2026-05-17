@@ -180,9 +180,19 @@ B4. ✅ Bank valuation models — three shipped:
     - Equity Residual Income with 5y fade to long-run 13% ROE
     - Sustainable DDM with payout × ROE consistency check
     Each independently skips with reason when prerequisites fail.
-B5. 🔴 Bank quality flags: NPA cycle position (provisions/loans rolling
-    3Y), deposit franchise (CASA stability), loan growth vs system
-    credit growth.
+B5. ✅ Bank quality flags — shipped as Phases B5.1–B5.4:
+    - B5.1: `BankQualityIndicators` type, sidecar JSON contract,
+      schema validator, loader, wired into bankPipeline.ts
+    - B5.2: `bankAssetQuality.ts` — six derived signals: NPA cycle,
+      PCR trend, slippage trajectory, loan growth vs system, capital
+      buffer, deposit franchise stability. 340-line test suite.
+    - B5.3: `FinancialInstitutionReport.tsx` — Asset Quality section
+      with severity-coded KPI grid, trend table, distress banners.
+    - B5.4: `EngineConfig.quality_data_folder` + App.tsx sidecar fetch.
+    - Design doc: `docs/bank-quality-indicators-design.md` — full
+      sidecar JSON schema, vision-LLM extraction strategy, audit rules.
+    - B5.5 (deferred): hand-curate quality_indicators.json for
+      HDFC/ICICI/SBI/Kotak FY16-FY25. Vision-LLM extractor planned.
 B6. 🟡 Tests cover the valuation math (18 new). End-to-end test on
     HDFC Bank fixture would be ideal next step.
 
@@ -290,6 +300,28 @@ Shipped this session:
   — ICICI Bank, Reliance can be consciously routed to dominant pipeline.
 - `7d7b425` Cyclicality detector — peak/trough/midcycle classification
   flags Tata Steel-style valuation distortion when latest is at extremes.
+
+Shipped 2026-05-17 (Phases J, K, B5, I7–I10):
+- Phase J1–J5: Negative net worth / negative book value fail-closed handling
+  (Vodafone Idea). distressDetector.ts, equityModelsBlocked flag, V_RE_CV*
+  null on negative CSE, V_ReOI kept (enterprise model), distress gates
+  rigor ladder, lossMakerValuation net-debt bug fixed.
+- Phase K1–K2: NBFC-specific metrics (leverage, NIM-on-advances, spread,
+  debt mix) + FinancialInstitutionReport NBFC section.
+- Phase B5.1–B5.4: Bank asset quality flags (see Phase B above).
+- I7 ✅ Currency / unit auto-detection — `detectCurrencyUnit(grid)` scans
+  for Curr. in / Currency / Unit / Denomination labels. Returns CurrencyUnit
+  + multiplier. `gridToPeriods` scales to ₹ Crores at parse time.
+  `RawPeriodData.currency_unit` for audit. 28 tests.
+- I8 ✅ Single-period screening mode — `ScopeAssessment.screeningOnly` flag.
+  Rigor ladder capped at `syntactically-valid`. Amber banner in App.tsx.
+  15 tests.
+- I9 ✅ Demerger / M&A structural break confirmation flow —
+  `EngineConfig.excluded_periods`, `PipelineResult.structuralBreakPeriods`,
+  amber banner with "Exclude pre-break periods" / "Keep all" buttons,
+  slate info bar when exclusions active. 9 tests.
+- I10 ✅ Load from library dropdown — 11-company dropdown in DataEntry.tsx,
+  pre-built ZIPs committed to public/data/companies/, .gitignore updated.
 
 Still to ship:
 I1. (rest) Apply same skip-with-reason pattern to moat scoring on
