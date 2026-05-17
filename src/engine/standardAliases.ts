@@ -158,6 +158,9 @@ export const STANDARD_ALIASES: StandardAlias[] = [
   { source: "Loans and Advances", canonical: "Total Long-term Loans and Advances",
     appliesTo: ["standard"],
     notes: "Old GAAP single bucket; Ind-AS splits long/short-term." },
+  { source: "Long-Term Loans and Advances", canonical: "Total Long-term Loans and Advances",
+    appliesTo: ["revised-sch-vi", "standard"],
+    notes: "REV uses long-form with capital case; Ind-AS uses 'Total Long-term ...'." },
   { source: "Investments", canonical: "Total Investments",
     appliesTo: ["standard"],
     notes: "Old GAAP single bucket without FVTPL/FVTOCI categorization." },
@@ -165,8 +168,23 @@ export const STANDARD_ALIASES: StandardAlias[] = [
     appliesTo: ["revised-sch-vi", "standard"] },
   { source: "Gross Block", canonical: "Gross Property, plant and equipment",
     appliesTo: ["revised-sch-vi", "standard"] },
+  { source: "Goods-in transit", canonical: "Goods in Transit",
+    appliesTo: ["revised-sch-vi", "standard"],
+    notes: "Hyphenation variant — REV uses 'Goods-in transit', Ind-AS uses 'Goods in Transit'." },
 
   // ── Liabilities ────────────────────────────────────────────────────
+  { source: "Other Long Term Liabilities", canonical: "Total Other Non-current Liabilities",
+    appliesTo: ["revised-sch-vi", "standard"],
+    notes: "Old/REV terminology; Ind-AS catalogues as 'non-current'." },
+  { source: "Term Loans Banks", canonical: "Term Loans - Banks",
+    appliesTo: ["revised-sch-vi", "standard"],
+    notes: "Spacing/punctuation variant — REV omits the dash separator." },
+  { source: "Term Loans Institutions", canonical: "Term Loans - Institutions",
+    appliesTo: ["revised-sch-vi", "standard"] },
+  { source: "Term Loans Others", canonical: "Term Loans - Others Parties",
+    appliesTo: ["revised-sch-vi", "standard"] },
+
+  // ── Liabilities (debt structure) ──────────────────────────────────
   { source: "Secured Loans", canonical: "Long Term Borrowings",
     appliesTo: ["standard"],
     notes: "Old GAAP merged secured/unsecured — caller should sum with Unsecured Loans." },
