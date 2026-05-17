@@ -277,26 +277,37 @@ H3. Beta computation (rolling 60M vs Nifty 50).
 H4. Quarterly result deviation alerts (forecast vs actual, > 1σ → flag).
 H5. Shareholding pattern parser (promoter %, pledged, FII/DII trend).
 
-### Phase I — Robustness & graceful degradation
+### Phase I — Robustness & graceful degradation 🟡 partial
 
 Goal: no company should make the engine throw or produce nonsense. The 5-
 level data-availability ladder from the design doc must actually gate.
 
-I1. Data sufficiency gates per model — minimum periods, minimum non-null
-    keys, minimum positive earnings counts. If a model can't run on this
-    company, it must be SKIPPED with a labeled reason, not produce NaN.
-I2. Replace any silent `?? 0` defaults in valuation math with explicit
-    `null → skip-with-reason` (audit pass).
-I3. Loss-making / early-stage path: revenue-multiple + reverse-DCF break-
-    even analysis, no RE/ReOI/DCF.
-I4. Negative book value handling (post-buyback, accumulated losses) —
-    exclude P/B-Gordon, fall back to PE on normalized.
-I5. Single-period upload (only FY2025) — produce screening output only,
-    label as "indicative, single-period".
+Shipped this session:
+- `74c5f83` I1 (partial) — Capital allocation: dataSufficient/skipReason/
+  profitablePeriods. Loss-makers (Paytm) and turnaround stories (Zomato)
+  get explicit reasons instead of misleading composite scores.
+- `d675328` Mixed-conglomerate routing override (cfg.mixed_conglomerate_route_to)
+  — ICICI Bank, Reliance can be consciously routed to dominant pipeline.
+- `7d7b425` Cyclicality detector — peak/trough/midcycle classification
+  flags Tata Steel-style valuation distortion when latest is at extremes.
+
+Still to ship:
+I1. (rest) Apply same skip-with-reason pattern to moat scoring on
+    loss-makers (currently moat returns null on <3 periods but doesn't
+    flag negative-RNOA-history outright).
+I2. Audit remaining `?? 0` in valuation math; document zero-as-default
+    where intentional (anomalyDetection, monteCarloWorker — these look
+    correct but should be confirmed).
+I3. Loss-making / early-stage path: revenue-multiple + reverse-DCF
+    break-even analysis, no RE/ReOI/DCF.
+I4. Negative book value handling — exclude P/B-Gordon, fall back to PE
+    on normalized.
+I5. Single-period upload — produce screening output only, label as
+    "indicative, single-period".
 I6. Demerger / M&A detection — large jump in segment / equity / revenue,
-    flag as structural break, exclude from time-series persistence.
+    flag as structural break.
 I7. Currency / unit detection — most Capitaline files are Cr; some are
-    absolute. Header parser today assumes Cr. Add explicit unit detection.
+    absolute. Header parser today assumes Cr.
 
 ### Phase J — Batch + UI
 

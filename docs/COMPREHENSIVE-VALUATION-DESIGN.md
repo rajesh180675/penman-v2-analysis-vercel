@@ -810,17 +810,48 @@ When ready to execute:
 
 ## Update 2026-05-17 — Companion Roadmap
 
-After the code-review-2026-05-17 hardening pass, the immediate execution
-plan was extracted into `NEXT-PHASE-ROADMAP.md`. That doc:
+After the code-review-2026-05-17 hardening pass, the immediate gap surface
+is multi-format ingestion + multi-company robustness, not the original
+"V3 analytics" worklist below. See `NEXT-PHASE-ROADMAP.md` for the
+current sequenced plan covering Phases A-I.
 
-- Reflects what is actually wired in the engine today (vs aspirational here)
-- Lists the two real failure modes blocking multi-company support
-  (multi-standard ingestion + Ind-AS-only mapping spec)
-- Sequences the work into Phases A-J with a recommended PR-1 scope
-  (Phase A — multi-standard ingestion: Ind-AS + Revised Sch-VI + Standard)
-- Catalogs ~15 representative companies by failure mode and which phase
-  unblocks each
+### Status snapshot 2026-05-17 evening
 
-Read `NEXT-PHASE-ROADMAP.md` before starting any new implementation work.
-This document remains the strategic frame; the roadmap is the execution
-plan derived from it.
+Shipped this session (10 commits, 462 tests, build clean):
+- Phase A — Multi-standard ingestion (Ind-AS + REV + Standard)
+- Phase A6 — Accounting-standard confidence wired into traceability envelope
+- Phase B4 — Three bank valuation models (Justified P/B Gordon, Equity
+  Residual Income with fade, Sustainable DDM)
+- Phase I.1 — Capital allocation skip-with-reason for loss-makers
+- Phase I.2 — Mixed-conglomerate routing override (cfg.mixed_conglomerate_route_to)
+- Phase I.3 — Cyclicality detector (peak/trough/midcycle classification)
+
+Validated against real ITC data: REV/Standard files merge correctly across
+formats. 7 high-value alias entries added from real-data analysis. See
+`docs/phase-a-validation-2026-05-17.md` and
+`docs/company-coverage-status-2026-05-17.md` for details.
+
+### What's left
+
+In rough priority order:
+1. **Wire B4 valuation into UI** — `bankResult.valuation` is computed
+   but no React component renders it; HDFC Bank user sees no output.
+2. **Wire cyclicality flag into UI** — `bundle.cyclicality` is computed
+   but Tata Steel users still see latest-period valuation without
+   peak/trough warnings.
+3. **NBFC pipeline validation on Bajaj Finance** — `processBankData`
+   currently lumps NBFCs into the bank pipeline. CASA, cost-to-income
+   on deposits, and credit cost on advances may not map cleanly.
+4. **Phase B5 — Bank quality flags** — NPA cycle position, deposit
+   franchise stability, loan growth vs system credit growth.
+5. **Insurance pipeline (Phase E)** — LIC currently fail-closes
+   correctly. Building a real insurance pipeline (premium-based metrics,
+   embedded value, solvency) is a multi-week investment.
+
+---
+
+## Original V3 Analytics Plan (preserved for reference)
+
+The text below predates `NEXT-PHASE-ROADMAP.md` (and the multi-format
+hardening work shipped 2026-05-17). Kept for historical context — read
+the roadmap first before starting any new implementation work.
