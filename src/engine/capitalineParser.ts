@@ -232,13 +232,22 @@ function cleanCell(raw: string | null | undefined): string {
 
   // Check if there's any HTML/Angular residue
   if (s.includes(">") || s.includes("<")) {
-    // Take everything after the LAST `>`
-    const gIdx = s.lastIndexOf(">");
-    if (gIdx >= 0) {
-      s = s.slice(gIdx + 1);
+    // Phase I10: If content contains ng-binding divs, extract their text first.
+    // Vodafone Idea format has values inside <div class="ng-binding">43,571.30</div>
+    // nested deep within 8KB of Angular template comments and closing tags.
+    // The old "take text after last >" fails because closing tags come after the value.
+    const ngBindingMatch = s.match(/<div[^>]*class="[^"]*ng-binding[^"]*"[^>]*>\s*([^<]+)/);
+    if (ngBindingMatch) {
+      s = ngBindingMatch[1];
     } else {
-      // Strip HTML tags
-      s = s.replace(/<[^>]*>/g, "");
+      // Take everything after the LAST `>`
+      const gIdx = s.lastIndexOf(">");
+      if (gIdx >= 0) {
+        s = s.slice(gIdx + 1);
+      } else {
+        // Strip HTML tags
+        s = s.replace(/<[^>]*>/g, "");
+      }
     }
   }
 
