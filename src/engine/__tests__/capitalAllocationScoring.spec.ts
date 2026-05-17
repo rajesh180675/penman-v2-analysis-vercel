@@ -354,6 +354,7 @@ function makeBankMetrics(n: number, roe = 0.15): BankPeriodMetrics[] {
     yieldOnAdvances: null,
     spread: null,
     debtMix: null,
+    quality: null,
   } as BankPeriodMetrics));
 }
 

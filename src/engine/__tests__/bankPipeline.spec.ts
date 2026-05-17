@@ -84,4 +84,43 @@ describe("bankPipeline", () => {
     expect(result.family).toBe("financial-institution");
     expect(result.periods).toHaveLength(0);
   });
+
+  it("joins Phase B5 quality indicators by period_end", () => {
+    const scope = assessAnalysisScope(bankPeriods);
+    const quality = {
+      schema_version: "2026-05-bank-quality-v1",
+      company_name: "HDFC Bank Ltd",
+      as_of_date: "2025-03-31",
+      periods: [
+        {
+          period_end: "2025-03-31",
+          fiscal_label: "FY25",
+          gnpa_pct: 1.33,
+          nnpa_pct: 0.43,
+          pcr_pct: 67.92,
+          crar_pct: 19.6,
+          tier1_pct: 17.69,
+          casa_pct: 34.36,
+          source_doc: "HDFCBANK_AR_FY2025.pdf",
+          source_page: 198,
+        },
+        // FY24 deliberately absent — verify periods without a match stay null
+      ],
+    };
+    const result = processBankData(bankPeriods, scope, undefined, null, quality);
+    expect(result.bankMetrics).toBeDefined();
+    const fy25 = result.bankMetrics!.find((m) => m.period_end === "2025-03-31");
+    const fy24 = result.bankMetrics!.find((m) => m.period_end === "2024-03-31");
+    expect(fy25?.quality?.gnpa_pct).toBe(1.33);
+    expect(fy25?.quality?.crar_pct).toBe(19.6);
+    expect(fy24?.quality).toBeNull();
+  });
+
+  it("leaves quality null when no sidecar provided (back-compat)", () => {
+    const scope = assessAnalysisScope(bankPeriods);
+    const result = processBankData(bankPeriods, scope);
+    for (const m of result.bankMetrics ?? []) {
+      expect(m.quality).toBeNull();
+    }
+  });
 });

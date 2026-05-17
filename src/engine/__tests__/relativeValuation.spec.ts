@@ -189,6 +189,7 @@ describe("computeBankMultiples", () => {
     yieldOnAdvances: null,
     spread: null,
     debtMix: null,
+    quality: null,
   } as const;
 
   const bankMetrics = [

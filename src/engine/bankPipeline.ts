@@ -26,6 +26,11 @@ import {
 import { ScopeAssessment } from "./scopePolicy";
 import { CapitalineMappingSpec } from "./mappingSpec";
 import { computeBankValuation, BankValuationBundle } from "./bankValuation";
+import {
+  BankQualityIndicators,
+  BankQualityPeriod,
+  indexQualityByPeriod,
+} from "./bankQualityIndicators";
 
 /** Bank-specific metrics extracted from raw data */
 export interface BankPeriodMetrics {
@@ -89,6 +94,12 @@ export interface BankPeriodMetrics {
     institutionLoanShare: number | null;
     otherLoanShare: number | null;
   } | null;
+
+  // Phase B5 — Asset-quality indicators sourced from the bank's annual
+  // report (NOT Capitaline). Joined by period_end from the optional
+  // sidecar `quality_indicators.json`. null when no sidecar is provided
+  // or no record matches this period.
+  quality: BankQualityPeriod | null;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -251,6 +262,8 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
     yieldOnAdvances: null,
     spread: null,
     debtMix: null,
+    // Phase B5 — populated post-extraction by the join in processBankData
+    quality: null,
   };
 }
 
@@ -376,12 +389,18 @@ function detectSubtype(scope: ScopeAssessment): FinancialInstitutionSubtype {
  *
  * `cfg` is optional for back-compat with existing callers that only
  * want metrics. When omitted, valuation is null.
+ *
+ * `quality` is optional. When provided, asset-quality indicators
+ * (GNPA, NNPA, PCR, CRAR, slippage, CASA, growth) are joined to each
+ * `BankPeriodMetrics` by period_end and surfaced via `metrics.quality`.
+ * Periods without a matching record receive `quality: null`.
  */
 export function processBankData(
   dataArray: RawPeriodData[],
   scope: ScopeAssessment,
   cfg?: EngineConfig,
   marketCap: number | null = null,
+  quality: BankQualityIndicators | null = null,
 ): FinancialInstitutionAnalysisResult {
   if (!dataArray || dataArray.length === 0) {
     return {
@@ -408,6 +427,17 @@ export function processBankData(
   for (let i = 0; i < rawMetrics.length; i++) {
     const prev = i > 0 ? computed[i - 1] : null;
     computed.push(computeBankRatios(rawMetrics[i], prev, subtype));
+  }
+
+  // Phase B5 — Join hand-curated asset-quality indicators by period_end.
+  // Periods without a matching record stay quality: null. The join is
+  // O(n+m) — index once, lookup per period.
+  if (quality) {
+    const qualityIndex = indexQualityByPeriod(quality);
+    for (const m of computed) {
+      const match = qualityIndex.get(m.period_end);
+      if (match) m.quality = match;
+    }
   }
 
   // Convert to FinancialInstitutionPeriodSnapshot

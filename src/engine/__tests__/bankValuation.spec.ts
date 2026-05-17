@@ -55,6 +55,7 @@ function bankPeriod(
     yieldOnAdvances: null,
     spread: null,
     debtMix: null,
+    quality: null,
   };
 }
 

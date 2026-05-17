@@ -15,6 +15,7 @@ import { assessAnalysisScope, analysisFamilyFromScope } from "./scopePolicy";
 import { processBankData } from "./bankPipeline";
 import { FinancialInstitutionAnalysisResult } from "./analysisFamily";
 import { detectDistress, DistressAssessment } from "./distressDetector";
+import type { BankQualityIndicators } from "./bankQualityIndicators";
 
 export interface PipelineResult {
   periods  : RecastPeriod[];
@@ -37,9 +38,21 @@ export function processCompanyData(
   return processCompanyDataFull(dataArray, config).periods;
 }
 
+/**
+ * Process raw period data through the engine.
+ *
+ * @param dataArray  Raw period records as parsed from Capitaline / etc.
+ * @param config     Engine config (ke, kw, tax rate, etc.)
+ * @param quality    Optional Phase B5 sidecar — bank asset-quality
+ *                   indicators (GNPA, NNPA, PCR, CRAR, slippage, CASA,
+ *                   growth) joined into BankPeriodMetrics.quality when
+ *                   family is financial-institution. Ignored for
+ *                   industrial pipelines.
+ */
 export function processCompanyDataFull(
   dataArray: RawPeriodData[],
   config: EngineConfig,
+  quality: BankQualityIndicators | null = null,
 ): PipelineResult {
   if (!dataArray || dataArray.length === 0) {
     const emptyAnomalies = runAnomalyDetection([], config);
@@ -56,7 +69,8 @@ export function processCompanyDataFull(
     // Phase B4: pass config so the bank pipeline can also produce
     // valuation results (justified P/B, equity residual income, DDM).
     // Market cap is not in EngineConfig today — null until UI passes it.
-    const bankResult = processBankData(dataArray, scope, config, null);
+    // Phase B5: thread the optional quality indicators sidecar through.
+    const bankResult = processBankData(dataArray, scope, config, null, quality);
     const emptyAnomalies = runAnomalyDetection([], config);
     // Bank pipeline produces no industrial RecastPeriod[]. Distress for banks
     // is handled inside bankValuation (skip-with-reason on bookValue ≤ 0),
