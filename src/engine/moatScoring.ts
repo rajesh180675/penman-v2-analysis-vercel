@@ -78,6 +78,19 @@ export interface MoatScoreResult {
   moatTrend: "strengthening" | "stable" | "eroding" | "insufficient-data";
   /** Notes on data quality */
   notes: string[];
+  /**
+   * Phase I robustness — was the underlying data sufficient to produce a
+   * meaningful moat assessment? False when company has fewer than 3
+   * periods of positive RNOA (loss-makers, structurally unprofitable
+   * businesses). The "moat" framework's premise is RNOA durability above
+   * cost of capital — incoherent for a company that has never earned
+   * positive operating returns.
+   */
+  dataSufficient: boolean;
+  /** When dataSufficient is false, the human-readable reason. null otherwise. */
+  skipReason: string | null;
+  /** Number of periods with positive RNOA. */
+  positiveRNOAPeriods: number;
 }
 
 /** Bank-specific moat result (ROE-based) */
@@ -598,6 +611,22 @@ export function computeMoatScore(
   if (rnoaSeries.length < 5) notes.push("Fewer than 5 periods with RNOA — moat assessment less reliable");
   if (phi != null && phi > 0.95) notes.push("Very high RNOA persistence (phi > 0.95) — may reflect data quality issue");
 
+  // Phase I robustness — count periods with positive RNOA. The moat
+  // framework's premise is RNOA durability above cost of capital;
+  // for loss-makers (Paytm pre-FY2024) the score is meaningless even
+  // though the math doesn't blow up. Surface this explicitly so the UI
+  // can render a skip-with-reason instead of a misleading "narrow moat"
+  // classification.
+  const positiveRNOAPeriods = rnoaSeries.filter((r) => r > 0).length;
+  const dataSufficient = positiveRNOAPeriods >= 3;
+  const skipReason = dataSufficient
+    ? null
+    : positiveRNOAPeriods === 0
+      ? `No periods with positive RNOA — moat framework requires evidence of returns above cost of capital`
+      : `Only ${positiveRNOAPeriods} period(s) of ${rnoaSeries.length} with positive RNOA — moat assessment low-confidence (need ≥3)`;
+
+  if (!dataSufficient && skipReason) notes.unshift(skipReason);
+
   return {
     compositeScore,
     moatWidth,
@@ -611,6 +640,9 @@ export function computeMoatScore(
     medianCorePM,
     moatTrend,
     notes,
+    dataSufficient,
+    skipReason,
+    positiveRNOAPeriods,
   };
 }
 

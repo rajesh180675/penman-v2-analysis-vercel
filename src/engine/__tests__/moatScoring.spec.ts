@@ -216,6 +216,54 @@ describe("computeMoatScore — edge cases", () => {
     expect(result).toBeNull();
   });
 
+  // Phase I robustness — moat skip-with-reason for loss-makers
+  it("flags dataSufficient=false when no periods have positive RNOA", () => {
+    const lossPeriods = Array.from({ length: 5 }, (_, i) =>
+      makePeriod({
+        period_end: `${2020 + i}-03-31`,
+        RNOA: -0.05,
+        SPREAD: -0.13,
+        CoreSalesPM: -0.05,
+        ATO: 1.0,
+        CoreOI: -50,
+        NOA: 1000,
+        CSE: 800,
+      }),
+    );
+    const result = computeMoatScore(lossPeriods, BASE_CONFIG)!;
+    expect(result.dataSufficient).toBe(false);
+    expect(result.positiveRNOAPeriods).toBe(0);
+    expect(result.skipReason).toMatch(/No periods with positive RNOA/);
+    expect(result.notes[0]).toBe(result.skipReason);
+  });
+
+  it("flags dataSufficient=false when only 1-2 profitable periods", () => {
+    // Turnaround: 3 loss years, 2 profit years
+    const turnaround = [
+      ...Array.from({ length: 3 }, (_, i) => makePeriod({
+        period_end: `${2020 + i}-03-31`,
+        RNOA: -0.05, SPREAD: -0.13, CoreSalesPM: -0.05, ATO: 1.0,
+        CoreOI: -50, NOA: 1000, CSE: 800,
+      })),
+      ...Array.from({ length: 2 }, (_, i) => makePeriod({
+        period_end: `${2023 + i}-03-31`,
+        RNOA: 0.15, SPREAD: 0.07, CoreSalesPM: 0.15, ATO: 1.0,
+        CoreOI: 150, NOA: 1000, CSE: 800,
+      })),
+    ];
+    const result = computeMoatScore(turnaround, BASE_CONFIG)!;
+    expect(result.dataSufficient).toBe(false);
+    expect(result.positiveRNOAPeriods).toBe(2);
+    expect(result.skipReason).toMatch(/Only 2 period/);
+  });
+
+  it("flags dataSufficient=true when ≥3 profitable periods", () => {
+    const result = computeMoatScore(WIDE_MOAT_PERIODS, BASE_CONFIG)!;
+    expect(result.dataSufficient).toBe(true);
+    expect(result.skipReason).toBeNull();
+    expect(result.positiveRNOAPeriods).toBeGreaterThanOrEqual(3);
+  });
+
   it("scores are all in [0, 100]", () => {
     const result = computeMoatScore(WIDE_MOAT_PERIODS, BASE_CONFIG)!;
     for (const d of result.dimensions) {
