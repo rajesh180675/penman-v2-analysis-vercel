@@ -29,11 +29,15 @@ import { CapAllocScoreResult, CapAllocDimension } from "../engine/capitalAllocat
 import { EPVResult } from "../engine/grahamDoddEPV";
 import { RelativeValuationResult, MultipleBand } from "../engine/relativeValuation";
 
+import type { ITServicesSignal } from "../engine/itServicesDetector";
+
 interface Props {
   data: RecastPeriod[];
   config: EngineConfig;
   traceability?: AnalysisTraceabilityEnvelope | null;
   traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
+  /** Phase E3 — IT-services signal for moat scorer awareness. */
+  itServices?: ITServicesSignal | null;
 }
 
 const pct = (v: number | null | undefined, d = 1) =>
@@ -63,7 +67,7 @@ const GRADE_COLORS: Record<string, string> = {
   GRADE_D: "text-red-700 bg-red-50",
 };
 
-export default function V3AnalyticsPanel({ data, config, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null }: Props) {
+export default function V3AnalyticsPanel({ data, config, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null, itServices = null }: Props) {
   const [activeSection, setActiveSection] = useState<"overview" | "dirty" | "events" | "terminal" | "sensitivity" | "confidence" | "triggers" | "accruals" | "oa_decomp" | "gap_decomp" | "section6b" | "moat" | "capital_alloc" | "epv" | "relative_val">("overview");
   const derivedTraceabilitySummary = useMemo(
     () => buildValuationTraceabilitySurfaceSummary(traceability),
@@ -95,7 +99,8 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
       valuation.V_RE_CV3 ?? valuation.V_ReOI_CV03,
       valuation.V_ReOI_CV03,
       config.g_terminal_override,
-      kw
+      kw,
+      itServices,
     );
   }, [data, config, valuation, kw]);
 

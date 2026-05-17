@@ -25,6 +25,7 @@
 
 import { RecastPeriod, EngineConfig, ke_from_config, deriveKwFromConfig } from "./types";
 import { BankPeriodMetrics } from "./bankPipeline";
+import type { ITServicesSignal } from "./itServicesDetector";
 
 // ─── Output Types ─────────────────────────────────────────────────────────────
 
@@ -543,6 +544,7 @@ export function computeMoatScore(
   periods: RecastPeriod[],
   config: EngineConfig,
   kwOverride?: number | null,
+  itServices?: ITServicesSignal | null,
 ): MoatScoreResult | null {
   if (!periods || periods.length < 3) return null;
 
@@ -554,6 +556,18 @@ export function computeMoatScore(
   const sorted = [...periods].sort(
     (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()
   );
+
+  // Phase E3 — IT-services: RNOA/ATO decomposition is unreliable for
+  // human-capital businesses (NOA is structurally tiny → RNOA inflated).
+  // Surface the math but flag dataSufficient=false so the UI can warn.
+  if (itServices?.isITServices) {
+    notes.unshift(
+      `IT-services fingerprint detected (${itServices.reason}). ` +
+      `RNOA is structurally inflated (tiny NOA denominator) and ATO is not a ` +
+      `meaningful efficiency signal. Moat width classification is unreliable — ` +
+      `focus on margin durability and revenue growth instead.`
+    );
+  }
 
   // ── Compute dimensions ───────────────────────────────────────────────────
   const d1 = scoreRNOAPersistence(sorted, kw);
@@ -618,12 +632,17 @@ export function computeMoatScore(
   // can render a skip-with-reason instead of a misleading "narrow moat"
   // classification.
   const positiveRNOAPeriods = rnoaSeries.filter((r) => r > 0).length;
-  const dataSufficient = positiveRNOAPeriods >= 3;
-  const skipReason = dataSufficient
-    ? null
-    : positiveRNOAPeriods === 0
-      ? `No periods with positive RNOA — moat framework requires evidence of returns above cost of capital`
-      : `Only ${positiveRNOAPeriods} period(s) of ${rnoaSeries.length} with positive RNOA — moat assessment low-confidence (need ≥3)`;
+  // Phase E3: IT-services companies have structurally inflated RNOA —
+  // flag dataSufficient=false so the UI renders a skip-with-reason.
+  const itServicesBlocked = Boolean(itServices?.isITServices);
+  const dataSufficient = positiveRNOAPeriods >= 3 && !itServicesBlocked;
+  const skipReason = itServicesBlocked
+    ? `IT-services company — RNOA is structurally inflated (tiny NOA denominator). Moat width classification unreliable. Focus on margin durability and revenue growth.`
+    : dataSufficient
+      ? null
+      : positiveRNOAPeriods === 0
+        ? `No periods with positive RNOA — moat framework requires evidence of returns above cost of capital`
+        : `Only ${positiveRNOAPeriods} period(s) of ${rnoaSeries.length} with positive RNOA — moat assessment low-confidence (need ≥3)`;
 
   if (!dataSufficient && skipReason) notes.unshift(skipReason);
 

@@ -1843,7 +1843,8 @@ export function computeV3Analytics(
   V_RE_CV3: number,
   V_ReOI_CV03: number,
   gTerminalOverride?: number | null,
-  kwDerived?: number
+  kwDerived?: number,
+  itServices?: import("./itServicesDetector").ITServicesSignal | null,
 ): V3AnalyticsBundle {
   const ke = ke_from_config(cfg);
   const kw = (() => {
@@ -2010,7 +2011,7 @@ export function computeV3Analytics(
     section7: triggers.map((t) => t.title + t.body).join("\n"),
     section6A1RowCount: periods.length - 1,
   });
-  const moatScore = computeMoatScore(periods, cfg, kw);
+  const moatScore = computeMoatScore(periods, cfg, kw, itServices);
   const capitalAllocation = periods.length >= 3 ? scoreCapitalAllocation(periods, cfg, kw) : null;
   const cyclicality = assessCyclicality(periods);
   const structuralBreaks = detectStructuralBreaks(periods);
