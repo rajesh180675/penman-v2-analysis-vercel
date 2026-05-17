@@ -805,3 +805,22 @@ When ready to execute:
 *Document version: 1.0*
 *Created: 2026-05-16*
 *Status: PLAN MODE — no implementation yet*
+
+---
+
+## Update 2026-05-17 — Companion Roadmap
+
+After the code-review-2026-05-17 hardening pass, the immediate execution
+plan was extracted into `NEXT-PHASE-ROADMAP.md`. That doc:
+
+- Reflects what is actually wired in the engine today (vs aspirational here)
+- Lists the two real failure modes blocking multi-company support
+  (multi-standard ingestion + Ind-AS-only mapping spec)
+- Sequences the work into Phases A-J with a recommended PR-1 scope
+  (Phase A — multi-standard ingestion: Ind-AS + Revised Sch-VI + Standard)
+- Catalogs ~15 representative companies by failure mode and which phase
+  unblocks each
+
+Read `NEXT-PHASE-ROADMAP.md` before starting any new implementation work.
+This document remains the strategic frame; the roadmap is the execution
+plan derived from it.

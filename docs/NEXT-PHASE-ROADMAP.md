@@ -1,0 +1,353 @@
+# Next-Phase Roadmap — Beyond ITC + HDFC Bank Ind-AS
+
+Companion to `COMPREHENSIVE-VALUATION-DESIGN.md`. The design doc says *what* a 10/10
+tool looks like. This doc says *what to do next* given the actual state of the engine
+post code-review-2026-05-17 fixes, and given the user's stated constraint:
+
+> "data is for itc and hdfc bank, I wanted this application to work for all
+> companies and not fail … go beyond these all limitations."
+
+Status legend: ✅ done · 🟡 partial · 🔴 not built · ⚠ failure mode
+
+---
+
+## Part 0 — Where we actually are (post code-review fixes)
+
+| Layer | Status | Notes |
+|------|--------|-------|
+| HTML dual-format parser (ng-binding + td.datarow) | ✅ | `capitalineParser.ts` |
+| Ind-AS BS / PL / CF ingestion | ✅ | INDAS files only, hard-coded in `stmtFromFilename` |
+| Segment parser (industrial) | ✅ | `segmentParser.ts`, ITC 6 segments |
+| Scope detection (Consolidated / Standalone) | ✅ | `scopeDetection.ts` w/ confidence tag |
+| Scope policy (4 classifications + fail-closed) | ✅ | `scopePolicy.ts` post-C4/C5 |
+| Industrial pipeline (Penman-Nissim full) | ✅ | `pipeline.ts` → `PenmanNissimEngine.ts` |
+| Bank pipeline (NII, NIM, ROA, P/B) | 🟡 | `bankPipeline.ts` works for HDFC; mapping is heuristic, no dedicated bank label spec |
+| Moat / capital-allocation / EPV / relative valuation | ✅ | post C7-C12, all share single `kw` |
+| Monte Carlo + Ohlson reversion CV | ✅ | wired in `v3Analytics.ts` |
+| Cyclical normalization | 🟡 | `cyclicalNormalization.ts` exists, used by `forecastingEngine` & `terminalEconomics`, NOT routed by company-type |
+| Multi-standard stitching (Revised Sch-VI, Standard pre-2012) | 🔴 | parser silently ignores non-INDAS files |
+| NBFC / Insurance / Real Estate / Holdco pipelines | 🔴 | classifier emits `mixed-financial-conglomerate` then fail-closes |
+| IT-services-aware adjustments (employee cost, utilization) | 🔴 | treated as generic industrial |
+| Quarterly ingestion | 🔴 | filename detection misses quarterly exports |
+| Market data (price, market cap, beta) | 🔴 | only manual `marketCap` config input |
+| Peer group / relative valuation across companies | 🟡 | `relativeValuation.ts` is intra-company time-series, no cross-company |
+| Batch mode / company universe | 🔴 | one-company-at-a-time UI |
+
+The `mixed-financial-conglomerate` class was added defensively to fail-closed —
+that's correct behavior for now but it's a **wall** for ~25% of the Nifty 500
+(holding cos, conglomerates with NBFC arms, insurance parents). Lifting that
+wall is half of what "go beyond limitations" means.
+
+---
+
+## Part 1 — The two real failure modes today
+
+### Failure mode 1: Multi-standard data is silently dropped
+
+`stmtFromFilename(name)` in `capitalineParser.ts:226` decides statement by
+substring match on `balance` / `profit` / `cash`. It does NOT distinguish:
+
+- `BalanceSheetINDAS_.xls` (Ind-AS, FY2017-FY2025)
+- `BalanceSheetREV_.xls` (Revised Schedule VI, FY2012-FY2017)
+- `BalanceSheet_.xls` / `BalanceSheetSTD_.xls` (Standard / Old GAAP, pre-FY2012)
+
+Capitaline names the export with a standard suffix. Today the user has only
+INDAS files in `public/data/companies/`, but the user explicitly said:
+
+> "Capitaline other format Standard and Schd VI have 2011 year onward data,
+> you need those xls file to understand their data"
+
+Without REV / Standard ingestion the tool can never produce 15-year history,
+which kills cycle normalization for cyclicals (Tata Steel, JSW, auto OEMs)
+and dilutes persistence estimation for everything else.
+
+### Failure mode 2: The mapping spec is Ind-AS-only AND industrial-leaning
+
+`mappingSpec.ts` carries 380 labels, almost all Ind-AS line items. There is
+no:
+
+- **Standard-aware aliasing** — "Reserves and Surplus" (Old GAAP) ≠ "Other
+  Equity" (Ind-AS), but they're the same canonical bucket. Same for "Sundry
+  Debtors" → "Trade Receivables", "Secured Loans" → "Long-term Borrowings",
+  many CF items.
+- **Bank-only labels** — "Advances", "Deposits", "CASA", "NPA", "Provision
+  Coverage", "Risk-Weighted Assets". `bankPipeline.ts` reaches into raw keys
+  ad hoc instead of going through a spec.
+- **Insurance / NBFC / Real-estate labels** — completely absent.
+
+The signal-based classifier in `scopePolicy.ts` *detects* these company types
+but the engine has nothing to do with them once detected, except fail-closed.
+
+---
+
+## Part 2 — Phase plan (concrete, sequenced)
+
+Each phase is a separate PR. Each ends green: `npm run validate` (typecheck +
+384 baseline tests + new tests) clean. No phase is allowed to break the
+existing ITC + HDFC Bank baselines.
+
+### Phase A — Multi-standard ingestion (un-blocks 15Y history)
+
+Goal: every Indian company that has Capitaline coverage back to FY2011 can be
+ingested as a single time series across Ind-AS + Revised Sch-VI + Standard,
+with the Standard transition flagged.
+
+A1. Extend `stmtFromFilename` to capture an `accountingStandard` tag
+    `'ind-as' | 'revised-sch-vi' | 'standard' | 'unknown'` from filename
+    suffix (`INDAS`, `REV`, default).
+A2. Add `ParsedStatement.accountingStandard` and propagate through merge.
+A3. Add `mappingSpec.standardAliases`: `Map<canonicalKey, string[]>` where
+    each entry lists the alternate labels that mean the same thing under
+    Revised Sch-VI / Standard. ~80 alias rows cover the common cases.
+A4. In `recast`, when looking up a canonical key, fall back through the
+    alias list in standard order (Ind-AS → Rev → Std).
+A5. Period stitching: when the same FY appears under two standards (FY2017
+    has both Ind-AS and Revised Sch-VI), prefer Ind-AS, attach a
+    `restatedFrom` provenance tag, surface the gap in rigor ladder.
+A6. Mark pre-Ind-AS periods with `confidence: 'medium'` in rigor envelope —
+    no fair value, no Ind AS 116 leases, no expected credit loss.
+A7. Test: feed synthetic REV + INDAS BS for the same company, assert merged
+    series is 15 years and FY2017 chooses INDAS values with provenance.
+
+### Phase B — Bank mapping spec (HDFC + ICICI + Kotak + SBI)
+
+Goal: `bankPipeline.ts` reads from a typed mapping spec, not raw keys; same
+spec covers all four major Indian banks. Engine produces NIM, CASA, GNPA,
+NNPA, PCR, ROA, RWA-based capital ratios.
+
+B1. New file `mappingSpec.bank.ts` with ~120 labels:
+    - BS: Cash & RBI, Balances with Banks, Money at Call, Investments
+      (HTM/AFS/FVTPL), Advances (gross/net), Deposits (CASA, term), Other
+      Liab, Borrowings, Capital, Reserves
+    - PL: Interest Earned (4 sub-buckets), Interest Expended, Other
+      Income (fees, treasury, FX), Operating Expenses, Provisions (loan,
+      investment, contingencies), Tax
+    - Disclosure: GNPA, NNPA, PCR, RWA, Tier-1, CET-1, slippage, recovery
+B2. Refactor `bankPipeline.ts` to use spec. Keep `tryAllStatements` /
+    `sumStrict` / `sumLenient` (post-C2/C3) but route through `pickByCanonical`.
+B3. Bank-specific reformulation: split equity-side assets into
+    `loan-book / investment-book / non-earning`, liabilities into
+    `deposits-CASA / deposits-term / borrowings / other`. Compute spread
+    income, NIM (on earning assets), credit cost, operating leverage.
+B4. Bank valuation models — wire three:
+    - Justified P/B Gordon: P/B = (ROE − g) / (ke − g)
+    - Equity residual income: V = BV + Σ (ROE − ke) BV / (1+ke)^t + TV
+    - DDM with sustainability (payout ≤ (1 − g/ROE))
+B5. Bank quality flags: NPA cycle position (provisions/loans rolling 3Y),
+    deposit franchise (CASA stability), loan growth vs system credit growth.
+B6. Tests: HDFC Bank golden fixture asserts NIM in 3.5-4.5%, CASA > 35%, ROA
+    > 1.5%; spec coverage on actual file ≥ 90% of populated bank-only labels.
+
+### Phase C — Multi-format file routing & company auto-detect
+
+Goal: a folder of Capitaline exports (mixed standards, mixed scopes, possibly
+mixed companies) is ingested cleanly, with the company classifier choosing
+the right pipeline.
+
+C1. File-type detection: distinguish balance / pl / cf / segment / quarterly
+    / standalone / investment / shareholding by both filename pattern AND
+    HTML header inspection (defense in depth — Capitaline filenames
+    sometimes lose the suffix on re-export).
+C2. Scope policy already supports the 4-way classification. Strengthen the
+    signal sets: add NBFC-specific keys ("Securitisation Receivables",
+    "Off-balance Sheet Exposure"), insurance ("Solvency Margin",
+    "Linked Liabilities"), real-estate ("Inventory of Land", "Real
+    Estate Developed Inventory").
+C3. Manual override path (`config.classificationOverride`) wired through
+    UI so users can force a classification when auto-detect is wrong.
+C4. Pipeline router: `industrial → PenmanNissim`, `bank → bankPipeline`,
+    `nbfc → nbfcPipeline (new)`, `insurance → insurancePipeline (new,
+    minimal stub)`, `mixed-financial-conglomerate → SOTP-required path`.
+C5. Make `mixed-financial-conglomerate` no longer fail-closed when standalone
+    + segment data is present — instead treat parent as industrial holdco
+    and value financial subsidiaries via subsidiary financials (if available)
+    or P/B proxy (if not).
+
+### Phase D — NBFC pipeline (Bajaj Finance, Shriram, Muthoot)
+
+Goal: NBFCs produce credible analysis. They differ from banks in funding
+mix (no CASA), securitization, and finer asset-quality disclosure.
+
+D1. `nbfcPipeline.ts` parallel to `bankPipeline.ts`. Reuses bank spec where
+    overlap, adds AUM = on-book + off-book.
+D2. Spread analysis: blended yield − blended cost of funds, leverage cap.
+D3. Capital adequacy: Tier-1, CRAR, RBI minimums (15% NBFC vs 11.5% bank).
+D4. Valuation: P/B Gordon + AUM multiple as cross-check.
+D5. Test: Bajaj Finance fixture (any year), assert AUM growth, spread
+    decomposition, capital adequacy headroom.
+
+### Phase E — IT-services adjustments (TCS, Infosys)
+
+Goal: treat IT companies correctly even though they look industrial. Capital
+is human, not physical; the ratios that matter are different.
+
+E1. Detector: employee_cost / revenue > 40% AND PPE / total assets < 10%
+    → mark `companyType: 'it-services'`.
+E2. IT-aware ratio overlay: revenue per employee, employee cost ratio,
+    utilization (if disclosed), forex-hedged margin, geographic mix.
+E3. Skip RNOA/PM/ATO decomposition — replace with PE + FCFE focus.
+E4. Test: TCS fixture, assert rev/emp ≈ 50L/yr, employee cost 50-55%.
+
+### Phase F — Cyclical & utility overlays
+
+Goal: don't apply terminal-value-as-current-EPS to a cyclical at peak or a
+utility on a regulated return.
+
+F1. Cyclical detector: 5-year revenue or PAT coefficient of variation > 30%
+    AND not financial → `companyType: 'cyclical'`.
+F2. Wire `cyclicalNormalization.ts` into Penman-Nissim terminal value when
+    cyclical (it's currently used in forecasting but not as the default
+    terminal-value input for cyclicals).
+F3. Utility detector: regulated-revenue keywords + capex/sales pattern.
+F4. Utility overlay: cap ROE at regulated ceiling, value as RAB × allowed
+    return + capex pipeline.
+
+### Phase G — Cross-company peer & relative valuation
+
+Goal: comparing a company to its sector becomes possible. Today
+`relativeValuation.ts` is intra-company time series only.
+
+G1. Company universe registry — JSON/SQLite indexed by symbol, sector,
+    market cap. Stored at `public/data/universe.json` v1, migrate to Turso
+    when count > 50.
+G2. Peer group engine: by GICS-style sector + size bucket + business model.
+G3. Cross-company multiples: PE, P/B, EV/EBITDA, P/Sales, ROE — sector
+    medians + size-adjusted regressions.
+G4. Sector-appropriate primary metric per type (P/B for banks, EV/EBITDA
+    for industrials, PE for IT, P/EV for life insurance).
+G5. Output: sector-positioning chart, regression-predicted fair multiple,
+    z-score versus peers.
+
+### Phase H — Quarterly + market data + monitoring
+
+Goal: living analysis instead of point-in-time snapshot.
+
+H1. Quarterly Capitaline parser (same dual-format HTML, different layout).
+H2. NSE price feed (free public CSV from `archives.nseindia.com`) — daily
+    close, volume, market cap. Cron-refreshable.
+H3. Beta computation (rolling 60M vs Nifty 50).
+H4. Quarterly result deviation alerts (forecast vs actual, > 1σ → flag).
+H5. Shareholding pattern parser (promoter %, pledged, FII/DII trend).
+
+### Phase I — Robustness & graceful degradation
+
+Goal: no company should make the engine throw or produce nonsense. The 5-
+level data-availability ladder from the design doc must actually gate.
+
+I1. Data sufficiency gates per model — minimum periods, minimum non-null
+    keys, minimum positive earnings counts. If a model can't run on this
+    company, it must be SKIPPED with a labeled reason, not produce NaN.
+I2. Replace any silent `?? 0` defaults in valuation math with explicit
+    `null → skip-with-reason` (audit pass).
+I3. Loss-making / early-stage path: revenue-multiple + reverse-DCF break-
+    even analysis, no RE/ReOI/DCF.
+I4. Negative book value handling (post-buyback, accumulated losses) —
+    exclude P/B-Gordon, fall back to PE on normalized.
+I5. Single-period upload (only FY2025) — produce screening output only,
+    label as "indicative, single-period".
+I6. Demerger / M&A detection — large jump in segment / equity / revenue,
+    flag as structural break, exclude from time-series persistence.
+I7. Currency / unit detection — most Capitaline files are Cr; some are
+    absolute. Header parser today assumes Cr. Add explicit unit detection.
+
+### Phase J — Batch + UI
+
+Goal: 30+ companies analyzed in one run, dashboard view.
+
+J1. Drag-drop folder ingestion (each subfolder = one company).
+J2. Company-level result store with aggregate dashboard.
+J3. Sector / market-cap filtering.
+J4. PDF report per company.
+
+---
+
+## Part 3 — Likely-to-fail companies & what each one teaches us
+
+| Company | Why it breaks today | Phase that fixes it |
+|---------|--------------------| ------------------- |
+| Reliance Industries | Conglomerate (energy + telecom + retail), demerger of Jio Financial → fail-closed as `mixed-financial-conglomerate` | C5 |
+| Tata Steel | 15Y series spans Old GAAP + Rev VI + Ind-AS; commodity peak / trough swings break terminal value | A + F |
+| Bajaj Finance | NBFC labels not in bank spec; AUM concept missing | B (groundwork) + D |
+| HDFC Life | Insurance — premium / claims / EV not modelled | C2 + (future insurance pipeline) |
+| Coal India | PSU utility-like; regulated tariff not modelled; cash-rich balance sheet not recognized | F |
+| TCS / Infosys | Human-capital-driven; PPE-light reformulation looks anemic; ratios irrelevant | E |
+| DLF / Godrej Properties | Real estate — NAV-based, project pipeline | (future Phase K) |
+| Bajaj Holdings | Pure holding company — no operating business, value = sum of stakes − discount | (future Phase K) |
+| Paytm | Loss-making fintech, 3Y of data, classification ambiguous | I3 + classifier override |
+| Adani Ports | Infrastructure with leasehold land, lumpy capex, related-party scrutiny | F + Z (governance) |
+| L&T | Multi-segment conglomerate (engineering + IT + financial subsidiary) | C5 |
+| ICICI Bank | Has insurance + AMC + securities subsidiaries → mixed conglomerate | A + B + C5 |
+| ONGC | Reserve-life-based, depleting asset, oil price beta | F + (future reserve-based valuation) |
+| Maruti | Auto cyclical, working-capital-positive negative, royalty-heavy | F + I |
+| Zomato | Loss-making, GMV-based, no positive earnings | I3 |
+
+Common pattern: the engine is industrial-shaped. Anything not industrial
+either fail-closes (financials), ignores the cycle (commodities), or
+misses the value driver entirely (real estate, holdco, IT services,
+insurance). Phases B-F directly address each.
+
+---
+
+## Part 4 — Recommended next PR
+
+Smallest unit of work that moves the dial:
+
+**PR 1 — Phase A1-A7 (multi-standard ingestion).**
+
+Why first:
+1. Doesn't touch any existing pipeline output. Pure ingestion expansion.
+2. Required for cyclicals (15Y series) which are Phase F.
+3. Required for any meaningful cross-company peer set (Phase G).
+4. Cheap to validate — synthetic fixtures are sufficient before user
+   downloads REV/Standard files for ITC and HDFC Bank.
+5. Surface area: ~6 files (`capitalineParser.ts`, `mappingSpec.ts`, new
+   `standardAliases.ts`, recast lookup, type extensions, tests).
+
+After PR 1 ships, the user downloads Capitaline `BalanceSheetREV_.xls` /
+`ProfitLossREV_.xls` / `CashFlowREV_.xls` for ITC and HDFC Bank, drops them
+in the same folders, and the tool extends to FY2012 automatically.
+
+**PR 2 — Phase B (bank mapping spec).** Cleans up `bankPipeline.ts`'s
+ad-hoc key reaches and adds the three bank valuation models. Validates on
+HDFC Bank then probes ICICI by asking the user for its export.
+
+**PR 3 — Phase I (robustness pass).** No new features, just every silent
+fallback in valuation math becomes an explicit skip-with-reason. Catches
+the long tail of "engine produced a number that's actually garbage" cases.
+
+PRs 4+ are Phases C / D / E / F / G / H in that order. Phase J (batch UI)
+last because it depends on every company-type pipeline being stable.
+
+---
+
+## Part 5 — Open design questions
+
+These need user input before execution:
+
+Q1. **Manual classification override mechanism.** Today scope policy is
+    automatic. Should overrides live in a per-company JSON file, in a
+    UI form, or both? (My default: per-company JSON in
+    `public/data/companies/<TICKER>/classification.json`, optional, UI
+    surfaces the auto-detection and allows save-as-override.)
+
+Q2. **External market data — how live?** Daily NSE feed via the public
+    archive CSV is free and adequate. But it requires a server cron or
+    a build-time data fetch. Is a daily-stale build (rebuilt at 19:00 IST
+    via Vercel cron) acceptable, or do we want real-time quotes
+    (subscription needed)?
+
+Q3. **Universe size & storage.** JSON file works to ~50 companies. Beyond
+    that we need SQLite (Turso edge) or Supabase. Target Nifty 50, Nifty
+    100, or Nifty 500? That decides storage choice.
+
+Q4. **Insurance & real-estate priority.** P3 in design doc. Confirm we
+    skip these in Phases A-J and revisit in a Phase K, or pull them
+    earlier.
+
+Q5. **Pre-FY2012 Standard files.** They exist but coverage is patchy and
+    the labels are noisier. Is going back to FY2007 worth the noise, or
+    should we stop at FY2011 (Revised Sch-VI start)?
+
+---
+
+*Doc version 1.0 — 2026-05-17, plan mode, no code changes yet.*
