@@ -175,6 +175,70 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
           cautionHeading="Interpret the V3 decomposition, anchor, and confidence sections in the context of these upstream trust limits."
         />
       )}
+
+      {/* Phase I robustness banners — surface skip-with-reason from valuation modules */}
+      {bundle && (() => {
+        const banners: Array<{ tone: "warn" | "info"; title: string; body: string }> = [];
+
+        // Cyclicality
+        if (bundle.cyclicality?.classification === "cyclical-peak") {
+          banners.push({
+            tone: "warn",
+            title: "🌡️ Latest period is at peak-cycle",
+            body: `${bundle.cyclicality.reason}. Latest ${bundle.cyclicality.metricUsed === "core-pm" ? "operating margin" : "RNOA"}: ${((bundle.cyclicality.latestValue ?? 0) * 100).toFixed(1)}%; cycle median: ${((bundle.cyclicality.medianValue ?? 0) * 100).toFixed(1)}%. Naïve valuation extrapolation will be optimistic; consider median-of-cycle as a sanity anchor.`,
+          });
+        } else if (bundle.cyclicality?.classification === "cyclical-trough") {
+          banners.push({
+            tone: "warn",
+            title: "🌡️ Latest period is at trough-cycle",
+            body: `${bundle.cyclicality.reason}. Latest ${bundle.cyclicality.metricUsed === "core-pm" ? "operating margin" : "RNOA"}: ${((bundle.cyclicality.latestValue ?? 0) * 100).toFixed(1)}%; cycle median: ${((bundle.cyclicality.medianValue ?? 0) * 100).toFixed(1)}%. Naïve valuation extrapolation will be pessimistic; consider median-of-cycle as a sanity anchor.`,
+          });
+        } else if (bundle.cyclicality?.classification === "cyclical-midcycle") {
+          banners.push({
+            tone: "info",
+            title: "🌡️ Cyclical business, latest near mid-cycle",
+            body: bundle.cyclicality.reason,
+          });
+        }
+
+        // Moat skip-reason
+        if (bundle.moatScore && !bundle.moatScore.dataSufficient && bundle.moatScore.skipReason) {
+          banners.push({
+            tone: "warn",
+            title: "🏰 Moat score is low-confidence",
+            body: bundle.moatScore.skipReason,
+          });
+        }
+
+        // Capital allocation skip-reason
+        if (bundle.capitalAllocation && !bundle.capitalAllocation.dataSufficient && bundle.capitalAllocation.skipReason) {
+          banners.push({
+            tone: "warn",
+            title: "💼 Capital allocation score is low-confidence",
+            body: bundle.capitalAllocation.skipReason,
+          });
+        }
+
+        if (banners.length === 0) return null;
+        return (
+          <div className="space-y-2">
+            {banners.map((b, i) => (
+              <div
+                key={i}
+                className={`rounded-lg border p-3 text-sm ${
+                  b.tone === "warn"
+                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                    : "border-slate-200 bg-slate-50 text-slate-700"
+                }`}
+              >
+                <div className="font-semibold mb-0.5">{b.title}</div>
+                <div className="text-xs">{b.body}</div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Tab bar */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="flex overflow-x-auto border-b border-slate-200">
