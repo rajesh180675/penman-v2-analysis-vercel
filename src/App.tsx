@@ -151,6 +151,17 @@ export function App() {
     return pipelineResult.bankResult ?? null;
   }, [pipelineResult]);
 
+  // Phase I9 — structural break periods from S-5.1 STRUCTURAL_EVENT flags.
+  // Surfaced so the UI can offer the "exclude pre-break periods" confirmation.
+  const structuralBreakPeriods = useMemo<string[]>(() => {
+    if (!pipelineResult || "error" in pipelineResult) return [];
+    return pipelineResult.structuralBreakPeriods ?? [];
+  }, [pipelineResult]);
+
+  // True when breaks are detected and the user hasn't yet excluded any periods.
+  const hasUnacknowledgedBreaks = structuralBreakPeriods.length > 0 &&
+    (!config.excluded_periods || config.excluded_periods.length === 0);
+
   // Derive recastData reactively. Any config change (tax rate, OCI treatment,
   // hybrid-debt flag, etc.) immediately re-computes via pipelineResult above.
   const recastOutcome = useMemo<{ data: RecastPeriod[] | null; error: string | null }>(() => {
@@ -580,7 +591,60 @@ export function App() {
               <strong>Engine Error:</strong> {engineError}
             </div>
           )}
-          {/* Phase I8 — single-period screening-only banner */}
+          {/* Phase I9 — structural break / demerger confirmation banner */}
+          {hasUnacknowledgedBreaks && (
+            <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+              <div className="font-semibold mb-1">Structural break detected — possible demerger or M&A event</div>
+              <div className="mb-2">
+                S-5.1 (dirty surplus spike) fired on{" "}
+                <span className="font-mono">{structuralBreakPeriods.join(", ")}</span>.
+                This typically indicates a demerger, scheme of arrangement, buyback, or Ind AS transition adjustment.
+                Pre-break periods may distort growth rates, mean-reversion anchors, and terminal value.
+              </div>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <button
+                  onClick={() => {
+                    // Find the earliest break period and exclude everything before it.
+                    const sorted = [...structuralBreakPeriods].sort();
+                    const firstBreak = sorted[0];
+                    const toExclude = (rawData ?? [])
+                      .map(p => p.period_end)
+                      .filter(pe => pe < firstBreak);
+                    setConfig(prev => ({ ...prev, excluded_periods: toExclude }));
+                  }}
+                  className="px-3 py-1.5 rounded bg-amber-700 text-white text-xs font-medium hover:bg-amber-800 dark:bg-amber-600 dark:hover:bg-amber-500"
+                >
+                  Exclude pre-break periods
+                </button>
+                <button
+                  onClick={() => {
+                    // Acknowledge by setting excluded_periods to empty array —
+                    // suppresses the banner without actually excluding anything.
+                    setConfig(prev => ({ ...prev, excluded_periods: [] }));
+                  }}
+                  className="px-3 py-1.5 rounded border border-amber-400 text-amber-800 text-xs font-medium hover:bg-amber-100 dark:border-amber-600 dark:text-amber-200 dark:hover:bg-amber-900/30"
+                >
+                  Keep all periods (I understand the risk)
+                </button>
+              </div>
+            </div>
+          )}
+          {/* Phase I9 — show which periods are excluded when exclusions are active */}
+          {(config.excluded_periods?.length ?? 0) > 0 && (
+            <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400 flex items-center justify-between gap-4">
+              <span>
+                Period exclusions active:{" "}
+                <span className="font-mono">{config.excluded_periods!.join(", ")}</span>
+                {" "}excluded from the pipeline.
+              </span>
+              <button
+                onClick={() => setConfig(prev => ({ ...prev, excluded_periods: [] }))}
+                className="shrink-0 px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Clear exclusions
+              </button>
+            </div>
+          )}
           {qualityGate?.scopeAssessment?.screeningOnly && (
             <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
               <div className="font-semibold mb-1">Screening mode — single period uploaded</div>

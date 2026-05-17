@@ -618,6 +618,18 @@ export interface EngineConfig {
    * from the symbol (ticker "HDFCBANK" vs folder "HDFC Bank").
    */
   quality_data_folder?: string | null;
+  /**
+   * Phase I9 — period exclusions for demerger / M&A confirmation flow.
+   * List of period_end strings (YYYY-MM-DD) to exclude from the pipeline.
+   * Typically set by the user after the UI surfaces a structural-break
+   * warning (S-5.1 STRUCTURAL_EVENT) and they confirm "exclude pre-break
+   * periods". Applied before recast, ratios, anomaly detection, and
+   * valuation — the entire pipeline sees only the clean post-break window.
+   *
+   * Example: ["2019-03-31", "2020-03-31"] excludes the two pre-demerger
+   * periods from an ITC-style demerger in FY21.
+   */
+  excluded_periods?: string[];
   noa_epsilon_ratio_of_ta             : number;
   separation_confidence_threshold     : number;
   g_terminal_override ?: number | null;

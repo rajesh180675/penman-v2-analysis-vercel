@@ -23,12 +23,16 @@ export interface PipelineResult {
   analysisFamily: "industrial" | "financial-institution";
   bankResult?: FinancialInstitutionAnalysisResult;
   /**
-   * Phase J1: financial distress assessment. Surfaces negative-equity /
-   * cash-burn signals so downstream consumers (valuation modules, UI)
-   * can fail-closed on equity-side models. Always present (non-distressed
-   * datasets get severity="none", equityModelsBlocked=false).
+   * Phase J1: financial distress assessment.
    */
   distress: DistressAssessment;
+  /**
+   * Phase I9 — structural break periods.
+   * Period_ends where S-5.1 STRUCTURAL_EVENT (dirty surplus spike) fired.
+   * Empty when no breaks detected. UI uses this to offer the
+   * "exclude pre-break periods" confirmation flow.
+   */
+  structuralBreakPeriods: string[];
 }
 
 export function processCompanyData(
@@ -57,33 +61,33 @@ export function processCompanyDataFull(
   if (!dataArray || dataArray.length === 0) {
     const emptyAnomalies = runAnomalyDetection([], config);
     const distress = detectDistress([]);
-    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "industrial", distress };
+    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "industrial", distress, structuralBreakPeriods: [] };
   }
 
+  // Phase I9 — apply user-confirmed period exclusions before any processing.
+  // excluded_periods is a list of period_end strings the user has explicitly
+  // opted to exclude (typically pre-demerger / pre-merger periods identified
+  // by the S-5.1 STRUCTURAL_EVENT flag). Exclusion is applied here so the
+  // entire pipeline (recast, ratios, anomaly detection, valuation) sees only
+  // the clean post-break window.
+  const excluded = new Set(config.excluded_periods ?? []);
+  const filteredData = excluded.size > 0
+    ? dataArray.filter(p => !excluded.has(p.period_end))
+    : dataArray;
+
   // Detect company type from data
-  const scope = assessAnalysisScope(dataArray, config);
+  const scope = assessAnalysisScope(filteredData, config);
   const family = analysisFamilyFromScope(scope);
 
   // Route to bank pipeline only if financial institution AND not blocked.
   if (family === "financial-institution" && !scope.blocked) {
-    // Phase B4: pass config so the bank pipeline can also produce
-    // valuation results (justified P/B, equity residual income, DDM).
-    // Market cap is not in EngineConfig today — null until UI passes it.
-    // Phase B5: thread the optional quality indicators sidecar through.
-    const bankResult = processBankData(dataArray, scope, config, null, quality);
+    const bankResult = processBankData(filteredData, scope, config, null, quality);
     const emptyAnomalies = runAnomalyDetection([], config);
-    // Bank pipeline produces no industrial RecastPeriod[]. Distress for banks
-    // is handled inside bankValuation (skip-with-reason on bookValue ≤ 0),
-    // so the industrial detector returns "none" for an empty period array
-    // and downstream consumers should rely on bankResult.* skip reasons.
     const distress = detectDistress([]);
-    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult, distress };
+    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult, distress, structuralBreakPeriods: [] };
   }
 
-  // Fail-closed: if scope is financial-institution but blocked (insurance-only,
-  // mixed-financial-conglomerate), return an inert result. Without this guard,
-  // execution would silently fall through to the industrial Penman-Nissim path
-  // and produce a meaningless valuation for an unsupported scope (review C5).
+  // Fail-closed for blocked financial-institution scope.
   if (family === "financial-institution" && scope.blocked) {
     const emptyAnomalies = runAnomalyDetection([], config);
     const distress = detectDistress([]);
@@ -92,10 +96,11 @@ export function processCompanyDataFull(
       anomalies: emptyAnomalies,
       analysisFamily: "financial-institution",
       distress,
+      structuralBreakPeriods: [],
     };
   }
 
-  const sorted = [...dataArray].sort(
+  const sorted = [...filteredData].sort(
     (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()
   );
 
@@ -133,12 +138,17 @@ export function processCompanyDataFull(
   }
 
   // Run anomaly detection over all periods (S-5.x)
-  // reSeries built from ri fields
   const reSeries = results
     .filter(p => p.ri?.RE != null)
     .map(p => ({ period: p.period_end, RE: p.ri!.RE!, ReOI: p.ri!.ReOI! }));
 
   const anomalies = runAnomalyDetection(results, config, reSeries);
+
+  // Phase I9 — extract structural break periods from S-5.1 STRUCTURAL_EVENT flags.
+  // These are surfaced in PipelineResult so App.tsx can offer the confirmation flow.
+  const structuralBreakPeriods = anomalies.dsSeries
+    .filter(ds => ds.flags.some(f => f.label === "STRUCTURAL_EVENT"))
+    .map(ds => ds.period_end);
 
   // Attach per-period flags back to each RecastPeriod (S-5.7)
   for (const period of results) {
@@ -148,5 +158,5 @@ export function processCompanyDataFull(
     period.cu.policy = buildUnusualItemPolicy(period);
   }
 
-  return { periods: results, anomalies, analysisFamily: "industrial", distress: detectDistress(results) };
+  return { periods: results, anomalies, analysisFamily: "industrial", distress: detectDistress(results), structuralBreakPeriods };
 }
