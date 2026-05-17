@@ -825,6 +825,10 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
     accrual_regime,
     dirty_surplus,
     dirty_surplus_pct_cse,
+    // Phase E2 — IT-services overlay
+    employeeCostRatio: (cur.is.operatingCostBridge?.employeeCost != null && cur.is.Sales > 0)
+      ? cur.is.operatingCostBridge.employeeCost / cur.is.Sales
+      : null,
   };
 }
 

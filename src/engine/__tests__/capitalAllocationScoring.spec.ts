@@ -108,6 +108,7 @@ function makePeriod(
       dirty_surplus: 0, dirty_surplus_pct_cse: 0,
       freeOL: null, interestBearingOL: null,
       OLLEV_check: null, RNOA_vs_OLLEV_residual: null,
+    employeeCostRatio: null,
     },
   } as RecastPeriod;
 }

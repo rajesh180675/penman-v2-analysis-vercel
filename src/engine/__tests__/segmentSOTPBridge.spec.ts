@@ -59,6 +59,7 @@ const mkPeriod = (): RecastPeriod => {
       noaSmall: false, separationScore: 85, accrual_regime: "NORMAL" as const,
       dirty_surplus: 0, dirty_surplus_pct_cse: 0, freeOL: 0, interestBearingOL: 0,
       OLLEV_check: 0, RNOA_vs_OLLEV_residual: 0,
+    employeeCostRatio: null,
     },
     ri: { RE: 5000, ReOI: 6000 },
     quality: {

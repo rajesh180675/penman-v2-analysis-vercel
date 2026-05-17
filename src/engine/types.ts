@@ -254,6 +254,8 @@ export interface Ratios {
   interestBearingOL: number|null;
   OLLEV_check: number|null;
   RNOA_vs_OLLEV_residual: number|null;
+  /** Phase E2 — IT-services overlay. Employee cost as fraction of revenue. */
+  employeeCostRatio: number|null;
 }
 
 /* ── Quality Metrics ────────────────────────────────────────────── */

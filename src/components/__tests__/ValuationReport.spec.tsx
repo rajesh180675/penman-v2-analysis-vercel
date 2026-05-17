@@ -44,6 +44,7 @@ function mkPeriod(period_end: string): RecastPeriod {
       NOA_growth: 0.03, CNI_growth: 0.04, OI_growth: 0.05, Sales_growth: 0.04,
       noaSmall: false, separationScore: 90, accrual_regime: "NORMAL", dirty_surplus: 0, dirty_surplus_pct_cse: 0,
       freeOL: 0.3, interestBearingOL: 0, OLLEV_check: 0.2, RNOA_vs_OLLEV_residual: 0,
+    employeeCostRatio: null,
     },
     ri: { RE: 20, ReOI: 18 },
     quality: {

@@ -161,6 +161,7 @@ function mkPeriod(period_end: string, scale: number): RecastPeriod {
       interestBearingOL: 0,
       OLLEV_check: 0,
       RNOA_vs_OLLEV_residual: 0,
+    employeeCostRatio: null,
     },
     ri: { RE: 20, ReOI: 30 },
     quality: {

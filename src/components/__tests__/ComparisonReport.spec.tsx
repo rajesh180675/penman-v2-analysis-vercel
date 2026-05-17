@@ -170,6 +170,7 @@ function mkRecastPeriod(period_end: string, sales = 900): RecastPeriod {
       interestBearingOL: 0,
       OLLEV_check: 0,
       RNOA_vs_OLLEV_residual: 0,
+    employeeCostRatio: null,
     },
   };
 }

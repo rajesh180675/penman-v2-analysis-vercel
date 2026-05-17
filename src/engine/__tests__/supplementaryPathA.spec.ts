@@ -47,6 +47,7 @@ const mkPeriod = (year: number, pm: number, re: number, cse: number): RecastPeri
     NOA_growth: 0.05, CNI_growth: 0.04, OI_growth: 0.04, Sales_growth: 0.05, noaSmall: false, separationScore: 90,
     accrual_regime: "NORMAL", dirty_surplus: 0, dirty_surplus_pct_cse: 0,
     freeOL: 0, interestBearingOL: 0, OLLEV_check: 0, RNOA_vs_OLLEV_residual: 0,
+    employeeCostRatio: null,
   },
   ri: { RE: re, ReOI: re * 0.95 },
   quality: {
