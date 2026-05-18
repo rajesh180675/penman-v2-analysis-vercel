@@ -374,16 +374,28 @@ If success, the app **automatically navigates to the Dashboard** tab.
 
 ### Step 7.7 — Review the Dashboard
 
-Single screen with everything important:
+Single screen with everything important, top-to-bottom:
 
-- **Company header card** — confidence dots (green/amber/red), type badge
+- **Company header card** — confidence dots (green/amber/red), type badge, market cap, segment count
+- **Investment Thesis card** — single buy/hold/avoid verdict (Screaming Buy / Buy / Hold / Avoid / Distressed)
+  - Synthesizes moat + capital allocation + distress + margin of safety into one answer
+  - Shows reasoning bullets and price-vs-value comparison
+- **Narrative Card** — plain-English 3-paragraph synthesis (Business Quality / Capital Allocation / Valuation & Outlook)
+  - Auto-generated from the underlying signals
+  - Adjective swaps based on score tiers ("wide and durable" / "narrow but real" / "thin")
 - **4 KPI tiles** — ROCE, Revenue Growth, FCF Yield, Intrinsic Value (each with sparkline)
-- **Penman decomposition chart** — PM × ATO → RNOA over time (area chart)
-- **Valuation triangulation** — bar chart: EPV / RE base / RE ceiling vs market price
-- **Value Range Gauge** — horizontal gauge showing where market price sits in the intrinsic band, with Margin of Safety badge
-- **Quality signal panel** — traffic lights for: reconciliation, parser, sanity, segments, market data
+- **Main charts row**:
+  - Penman decomposition chart (PM × ATO → RNOA over time, area chart)
+  - Valuation triangulation (bar chart: EPV / RE base / RE ceiling vs market price)
+- **Value Range Gauge** — horizontal gauge showing where market price sits in the intrinsic band, with MoS badge
+- **Moat + Capital Allocation row** (side-by-side):
+  - **Moat panel** — composite score (0-100), width badge (Wide/Narrow/None), trend, 5 dimension bars (RNOA Persistence, SPREAD Durability, Margin Stability, Reinvestment Quality, ATO Stability), CAP years
+  - **Capital Allocation panel** — letter grade (A/B/C/D), trend, 5 dimension bars (Dividend Consistency, Buyback Quality, Reinvestment ROIC, FCF Conversion, Payout Sustainability), dilutive issuance warning
+- **Quality + Ratio Sanity row**:
+  - Quality signal panel — traffic lights for reconciliation, parser, sanity, segments, market data
+  - Additional KPI tiles — Profit Margin, Asset Turnover, Fin. Leverage, Earnings Quality
 
-If you only want a buy/sell answer, this tab gives it to you in 10 seconds.
+If you only want a buy/sell answer, the Investment Thesis card at the top gives it to you in 5 seconds. The Narrative Card explains why in plain English. Everything below is supporting evidence.
 
 ### Step 7.8 — Drill into the detail tabs
 
@@ -450,11 +462,15 @@ Lists every analysis run. For audit-critical workflows, every upload + every con
 ### Analysis group
 
 #### **Statements** tab
-Recast Penman-Nissim statements: NOA / FO / OL split, Operating Income vs Financing Income separation. The foundation everything else builds on.
+Recast Penman-Nissim statements: NOA / FO / OL split, Operating Income vs Financing Income separation. Now visual-first:
+- **Income Statement Waterfall** — Sales → OI → PBT → PAT bars (color-coded: blue totals, emerald subtotals, red deductions) with Op Margin and Net Margin badges
+- **Balance Sheet Composition** — stacked bars showing Operating vs Financial Assets evolution + Equity vs NFO vs Operating Liabilities mix; respects the Display Mode toggle (₹ Cr or common-size %)
+- **Cash Flow & FCF Trend** — composed chart with CFO and Capex bars + FCF line overlay; aggregate strip shows Total CFO, Capex Intensity, FCF/Dividend coverage
+- Three full statement tables (BS / IS / CF) below the charts for the precise numbers
 
 #### **Ratios** tab
-- Sparkline KPI grid (ROCE, RNOA, PM, ATO, FLEV, CCR)
-- DuPont 5-factor waterfall chart
+- Sparkline KPI grid (ROCE, RNOA, PM, ATO, FLEV, CCR) — 6 tiles with current value, trend arrow, 10Y sparkline
+- DuPont 5-factor waterfall chart (Tax Burden × Interest Burden × OPM × ATO × Leverage)
 - Three view toggles: Core Ratios / Working Capital Deep Dive / Trend (C-03)
 - Tables with NSE-500 benchmarked bands
 
@@ -473,19 +489,37 @@ Reconciliation checks (TA = E + L, Revenue → PBT → PAT ties), unusual item f
 - **Framework Radar** (5-axis spider): RE, Stress, EPV, Reverse DCF, SOTP
 - **Sensitivity Heatmap**: ke × g grid, color-coded vs market
 - **EPV Panel** (Graham-Dodd no-growth floor): NOPAT, franchise value, moat badge, MoS
+- **Moat panel** (5-dimension Buffett/Munger framework, also visible on Dashboard)
 - Scenario cards with intrinsic per share
 - Opportunity assessment with confidence rating
 
 #### **Bank** tab
-Only relevant when Company Type is Bank/NBFC/Insurance. Shows:
+Only relevant when Company Type is Bank / NBFC / Insurance. Now visual-first:
+- **Bank Health chart** — 5-tile summary (NIM, ROA, ROE, Credit Cost, Cost-to-Income) + Returns trend line chart with ke reference line + Credit Cost / Cost-Income trend
 - Excess Returns model (book value × spread)
 - Tier 1 / CAR ratios
 - Net Interest Margin decomposition
+- For NBFCs: leverage, yield on advances, cost of borrowings, debt mix tables
 
 ### Peers group
 
 #### **Comparison** tab
-Activates with 2+ companies loaded. Visual cross-section comparison + multiple-implied fair values.
+Activates with 2+ companies loaded. Now visual-first:
+- **ROCE vs P/B scatter plot** (quadrant positioning — quality vs price)
+- **PM vs ATO scatter plot** (business model map — high-margin/low-turn vs low-margin/high-turn)
+- **Percentile ranking bars** for ROCE and Upside (visual percentile band per company)
+- **Peer Relative Valuation panel** — multiple-implied fair values from peer medians with composite MoS
+- Cross-section table at the bottom for the precise numbers
+
+### Watchlist group
+
+#### **Watchlist** tab — visual-first redesign
+- **5-tile aggregate KPI strip** at top: Tracked / Buy-Conviction / Watch / Avoid / Avg Score
+- Color-coded signal badges with emojis (🚀 Screaming Buy, ✅ Buy, 👀 Watch, 🛑 Avoid)
+- Confidence as 3-dot indicator (high/medium/low)
+- Score as visual progress bar (color tiered)
+- Stress CAGR color-coded by sign
+- Active company highlighted with indigo background
 
 ### Export group
 
