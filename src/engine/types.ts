@@ -38,6 +38,23 @@ export interface RawPeriodData {
 
 export type TraceStatement = "BalanceSheet" | "ProfitLoss" | "CashFlow" | "Derived" | "Fallback";
 
+/**
+ * Phase D2 — explicit company type classification.
+ * Drives pipeline routing without fragile label heuristics.
+ */
+export type CompanyType =
+  | "auto"           // legacy: label-based heuristic detection
+  | "bank"           // scheduled commercial bank (HDFC, ICICI, SBI, Axis)
+  | "nbfc"           // non-banking financial company (Bajaj Finance, Shriram)
+  | "insurance"      // life/general insurance (LIC, HDFC Life)
+  | "industrial"     // manufacturing, infrastructure, conglomerate
+  | "it-services"    // IT/software (TCS, Infosys, Wipro)
+  | "consumer"       // FMCG, retail (ITC, HUL, Asian Paints)
+  | "utility"        // power, gas, water (Power Grid, NTPC)
+  | "telecom"        // Bharti Airtel, Vodafone Idea
+  | "cyclical";      // metals, mining, capital goods (Tata Steel, JSW)
+
+
 export interface TraceEntry {
   statement: TraceStatement;
   key: string;
@@ -593,6 +610,13 @@ export interface EngineConfig {
   investment_in_subsidiaries_as_operating: boolean;
   financial_institution_mode          : boolean;
   /**
+   * Phase D2 — explicit company type classification.
+   * When set (not "auto"), this overrides the label-based scope auto-detection
+   * and gates the company directly to the correct pipeline.
+   * "auto" or null = legacy behaviour (heuristic label detection).
+   */
+  company_type?: CompanyType | null;
+  /**
    * Phase I — explicit override for mixed-financial-conglomerate routing.
    * When set, companies with material insurance + bank/NBFC signals
    * (ICICI Bank, Reliance with Jio Financial pre-spinoff, etc.) are
@@ -738,6 +762,7 @@ export const DEFAULT_CONFIG: EngineConfig = {
   hybrid_perpetual_as_debt: true,
   investment_in_subsidiaries_as_operating: true,
   financial_institution_mode: false,
+  company_type: "auto",
   mixed_conglomerate_route_to: null,
   quality_data_folder: null,
   noa_epsilon_ratio_of_ta: 0.10,

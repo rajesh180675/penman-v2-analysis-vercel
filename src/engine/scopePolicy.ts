@@ -114,22 +114,53 @@ export function analysisFamilyFromScope(scope: ScopeAssessment): AnalysisFamily 
 
 export function assessAnalysisScope(
   periods: RawPeriodData[] | null | undefined,
-  config?: Pick<EngineConfig, "financial_institution_mode" | "mixed_conglomerate_route_to"> | null,
+  config?: Pick<EngineConfig, "financial_institution_mode" | "mixed_conglomerate_route_to" | "company_type"> | null,
 ): ScopeAssessment {
   const observedCounts = countObservedKeys(periods ?? []);
   const signals: ScopeSignal[] = [];
 
   // Phase I8 — single-period screening mode.
-  // With only one period there are no growth rates, no trend signals,
-  // no mean-reversion anchors, and no V_RE_CV* (all require ≥2 periods).
-  // We don't block — the pipeline still runs and produces current-period
-  // ratios and a point-in-time EPV/Graham-Dodd estimate — but we flag
-  // screeningOnly so the rigor ladder caps and the UI shows caveats.
   const periodCount = periods?.length ?? 0;
   const screeningOnly = periodCount === 1;
   const screeningReason = screeningOnly
     ? "Only one period of data was uploaded. Time-series signals (growth rates, trend analysis, mean-reversion, V_RE_CV*) require at least two periods. Results are screening-level only."
     : undefined;
+
+  // Phase D2 — explicit company_type override.
+  // When set to anything other than "auto"/null, skip heuristic detection
+  // and route directly to the correct pipeline.
+  const ct = config?.company_type;
+  if (ct && ct !== "auto") {
+    const financialTypes = ["bank", "nbfc", "insurance"] as const;
+    const isFinancial = (financialTypes as readonly string[]).includes(ct);
+    const kind: ScopeSignalKind = ct === "bank" ? "banking"
+      : ct === "nbfc" ? "nbfc"
+      : ct === "insurance" ? "insurance"
+      : "manual-override";
+
+    if (isFinancial) {
+      signals.push({ kind, key: `company_type:${ct}`, periodsObserved: periodCount });
+    }
+
+    const classification: ScopeClassification = isFinancial
+      ? "supported-financial"
+      : "supported-industrial";
+
+    return {
+      policyVersion: SCOPE_POLICY_VERSION,
+      classification,
+      analysisFamily: isFinancial ? "financial-institution" : "industrial",
+      blocked: false,
+      label: `Explicit company type: ${ct}`,
+      reasons: [`User classified as "${ct}" — skipping label heuristics.`],
+      recommendedAction: isFinancial
+        ? `Proceed with ${ct} pipeline.`
+        : "Proceed with the industrial Penman-Nissim framework.",
+      signals,
+      screeningOnly,
+      screeningReason,
+    };
+  }
 
   if (config?.financial_institution_mode) {
     signals.push({
