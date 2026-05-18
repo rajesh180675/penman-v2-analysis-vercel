@@ -5,6 +5,7 @@ import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import { computeIndiaQualitySignals } from "../engine/indiaQualitySignals";
 import { buildDechowDichevAndRem, buildEarningsQualityCard } from "../engine/earningsQuality";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell, Legend } from "recharts";
+import QualityScoreDashboard from "./charts/QualityScoreDashboard";
 
 interface Props {
   data: RecastPeriod[];
@@ -104,6 +105,10 @@ export default function QualityReport({data, traceability = null, traceabilitySu
           cautionHeading="Read quality factors in the context of these unresolved gates"
         />
       )}
+
+      {/* Unified Quality Score Dashboard — Piotroski / Altman / Beneish / Zmijewski / Ohlson */}
+      <QualityScoreDashboard data={data} />
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
