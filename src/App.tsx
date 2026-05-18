@@ -12,6 +12,9 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AnalysisStatusBadge } from "./components/AnalysisStatusBadge";
 import CompanySwitcher from "./components/CompanySwitcher";
 import GlossaryModal from "./components/GlossaryModal";
+import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
+import CommandPalette from "./components/CommandPalette";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import DataEntry from "./components/DataEntry";
 import RecastStatements from "./components/RecastStatements";
 import RatioReport from "./components/RatioReport";
@@ -90,7 +93,28 @@ export function App() {
   const [config, setConfig] = useState<EngineConfig>(DEFAULT_CONFIG);
   const [darkMode, setDarkMode] = useState(false);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
-  const [registry, setRegistry] = useState<CompanyRegistry>(() => readPersistedCompanyRegistry());
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // Vim-style keyboard shortcuts (g+letter for tabs, ? for help, Shift+? for glossary)
+  useKeyboardShortcuts({
+    setActiveTab: (tab) => setActiveTab(tab as TabId),
+    setGlossaryOpen,
+    setShortcutsOpen,
+    enabled: !glossaryOpen && !shortcutsOpen && !paletteOpen,
+  });
+
+  // Cmd+K / Ctrl+K opens the command palette (works even when typing)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
   const [comparisonRegistryHydrated, setComparisonRegistryHydrated] = useState(false);
   const [auditMeta, setAuditMeta] = useState<AuditSubmissionMeta | null>(null);
   const [workspaceCompanyId, setWorkspaceCompanyId] = useState<string | null>(null);
@@ -587,10 +611,10 @@ export function App() {
                         }
                         disabled={tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable}
                         className={`px-2.5 h-full text-xs font-medium border-b-2 transition-colors flex items-center gap-1 whitespace-nowrap ${activeTab === tab.id
-                            ? "border-indigo-600 text-indigo-600"
-                            : tab.id === "valuation" && valuationBlocked
-                              ? "border-transparent text-slate-300 cursor-not-allowed"
-                              : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
+                          ? "border-indigo-600 text-indigo-600"
+                          : tab.id === "valuation" && valuationBlocked
+                            ? "border-transparent text-slate-300 cursor-not-allowed"
+                            : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
                           }`}>
                         <span>{tab.icon}</span>
                         <span className="hidden sm:inline">{tab.label}</span>
@@ -626,6 +650,20 @@ export function App() {
                   Local
                 </span>
               )}
+              <button
+                onClick={() => setPaletteOpen(true)}
+                className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-1"
+                title="Command palette (Ctrl/Cmd+K)"
+              >
+                ⌘ <span className="font-mono text-[10px] text-slate-500">K</span>
+              </button>
+              <button
+                onClick={() => setShortcutsOpen(true)}
+                className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
+                title="Keyboard shortcuts (?)"
+              >
+                ⌨️
+              </button>
               <button
                 onClick={() => setGlossaryOpen(true)}
                 className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
@@ -749,8 +787,8 @@ export function App() {
           {/* Phase F — Cyclicality peak/trough banner */}
           {(cyclicalitySignal?.classification === "cyclical-peak" || cyclicalitySignal?.classification === "cyclical-trough") && (
             <div className={`mb-5 rounded-lg border p-4 text-sm ${cyclicalitySignal.classification === "cyclical-peak"
-                ? "border-orange-300 bg-orange-50 text-orange-900 dark:border-orange-700 dark:bg-orange-950/30 dark:text-orange-200"
-                : "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-700 dark:bg-sky-950/30 dark:text-sky-200"
+              ? "border-orange-300 bg-orange-50 text-orange-900 dark:border-orange-700 dark:bg-orange-950/30 dark:text-orange-200"
+              : "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-700 dark:bg-sky-950/30 dark:text-sky-200"
               }`}>
               <div className="font-semibold mb-1">
                 {cyclicalitySignal.classification === "cyclical-peak" ? "🔺 Cyclical company at peak" : "🔻 Cyclical company at trough"}
@@ -886,6 +924,20 @@ export function App() {
         </main>
       </div>
       <GlossaryModal open={glossaryOpen} onClose={() => setGlossaryOpen(false)} />
+      <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        registry={registry}
+        setActiveTab={(tab) => setActiveTab(tab as TabId)}
+        setGlossaryOpen={setGlossaryOpen}
+        setShortcutsOpen={setShortcutsOpen}
+        setDarkMode={setDarkMode}
+        onSwitchCompany={(companyId) => {
+          setWorkspaceCompanyId(companyId);
+          setActiveTab("workspace");
+        }}
+      />
     </ErrorBoundary>
   );
 }
