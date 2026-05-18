@@ -23,6 +23,8 @@ import { AuditSubmissionMeta, persistAuditEvent } from "../lib/audit";
 import ExpectationBridgePanel from "./ExpectationBridgePanel";
 import SensitivityHeatmap from "./charts/SensitivityHeatmap";
 import FrameworkRadar from "./charts/FrameworkRadar";
+import MoatPanel from "./dashboard/MoatPanel";
+import { computeMoatScore } from "../engine/moatScoring";
 import { rememberWorkspaceValuation } from "../lib/researchWorkspace";
 import { syncWorkspaceAlert, syncWorkspaceValuation } from "../lib/sharedResearchApi";
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
@@ -140,6 +142,9 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
     }),
     [analysisStatus, data, effectiveConfig, liveMarketData, segmentData],
   );
+
+  // Moat scorer (5-dimension Buffett/Munger framework)
+  const moatScore = useMemo(() => computeMoatScore(data, effectiveConfig), [data, effectiveConfig]);
   const regimeContext = useMemo(
     () => buildRegimeContext(commandCenter.riskFreeRate, liveMarketData?.history?.currentPricePercentile ?? null),
     [commandCenter.riskFreeRate, liveMarketData?.history?.currentPricePercentile],
@@ -646,6 +651,9 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <ExpectationBridgePanel reverseDcf={commandCenter.reverseDcf} />
         </div>
+
+        {/* Economic Moat Panel — 5-dimension Buffett/Munger framework */}
+        <MoatPanel moat={moatScore} title="Economic Moat (5-Dimension Score)" />
 
         {/* Phase G2: Framework Radar + Sensitivity Heatmap */}
         <div className="grid gap-4 lg:grid-cols-2">
