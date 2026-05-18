@@ -677,8 +677,52 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
           />
         </div>
 
+        {/* EPV Panel — Graham-Dodd no-growth floor anchor */}
+        {commandCenter.epv && (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Opportunity Protocol</div>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Graham-Dodd EPV (Greenwald)</div>
+              <div className="mt-1 text-sm text-slate-600">No-growth floor — what the business is worth if it never grows again</div>
+            </div>
+            <div className={`px-3 py-1.5 rounded-full text-xs font-bold ${
+              commandCenter.epv.moatSignal === "moat" ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+              : commandCenter.epv.moatSignal === "no-moat" ? "bg-red-50 text-red-700 border border-red-200"
+              : "bg-slate-50 text-slate-600 border border-slate-200"
+            }`}>
+              {commandCenter.epv.moatSignal === "moat" ? "🏰 Franchise Value Positive" : commandCenter.epv.moatSignal === "no-moat" ? "⚠️ No Moat" : "Inconclusive"}
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="rounded-xl bg-slate-50 p-3">
+              <div className="text-xs text-slate-500">Normalized NOPAT</div>
+              <div className="text-lg font-bold text-slate-900">₹{commandCenter.epv.normalizedNOPAT.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr</div>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-3">
+              <div className="text-xs text-slate-500">EPV per Share</div>
+              <div className="text-lg font-bold text-slate-900">{commandCenter.epv.epvPerShare != null ? `₹${commandCenter.epv.epvPerShare.toFixed(0)}` : "—"}</div>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-3">
+              <div className="text-xs text-slate-500">Franchise Value</div>
+              <div className={`text-lg font-bold ${commandCenter.epv.franchiseValue > 0 ? "text-emerald-700" : "text-red-700"}`}>
+                ₹{commandCenter.epv.franchiseValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr
+              </div>
+            </div>
+            <div className="rounded-xl bg-slate-50 p-3">
+              <div className="text-xs text-slate-500">MoS vs Market</div>
+              <div className={`text-lg font-bold ${(commandCenter.epv.marginOfSafety ?? 0) > 0 ? "text-emerald-700" : "text-red-700"}`}>
+                {commandCenter.epv.marginOfSafety != null ? `${(commandCenter.epv.marginOfSafety * 100).toFixed(1)}%` : "—"}
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 text-xs text-slate-500">
+            Based on {commandCenter.epv.periodsUsed} periods median CoreOI. ke={((commandCenter.epv.ke) * 100).toFixed(1)}%.
+            EPV_ops = ₹{commandCenter.epv.epvOperations.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr − NFO ₹{commandCenter.epv.nfo.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr = Equity ₹{commandCenter.epv.epvEquity.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr.
+          </div>
+        </div>
+        )}
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mt-3 grid gap-3 text-sm text-slate-700">
             <div>Base margin of safety: <strong>{formatPct(commandCenter.opportunity.baseMarginOfSafetyPct, 1)}</strong></div>
             <div>Stress margin of safety: <strong>{formatPct(commandCenter.opportunity.stressMarginOfSafetyPct, 1)}</strong></div>
