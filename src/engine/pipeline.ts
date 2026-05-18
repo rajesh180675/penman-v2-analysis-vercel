@@ -19,6 +19,7 @@ import type { BankQualityIndicators } from "./bankQualityIndicators";
 import { computeLossMakerValuation, LossMakerValuationResult } from "./lossMakerValuation";
 import { detectITServices, ITServicesSignal } from "./itServicesDetector";
 import { assessCyclicality, CyclicalityAssessment } from "./cyclicalityDetector";
+import { evaluateRatioSanity, SanityAssessment } from "./ratioSanity";
 
 export interface PipelineResult {
   periods  : RecastPeriod[];
@@ -52,6 +53,13 @@ export interface PipelineResult {
    * Classifies latest period as peak/trough/mid-cycle vs history.
    */
   cyclicality: CyclicalityAssessment | null;
+  /**
+   * Phase 9 — Economic ratio sanity assessment.
+   * Anchor ratio bands per company type catch outputs that reconcile
+   * structurally but produce economically impossible numbers (e.g. a
+   * "bank" with 60% NIM, an "IT-services" firm with 5% PM).
+   */
+  ratioSanity: SanityAssessment | null;
 }
 
 export function processCompanyData(
@@ -80,7 +88,7 @@ export function processCompanyDataFull(
   if (!dataArray || dataArray.length === 0) {
     const emptyAnomalies = runAnomalyDetection([], config);
     const distress = detectDistress([]);
-    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "industrial", distress, structuralBreakPeriods: [], lossMaker: null, itServices: null, cyclicality: null };
+    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "industrial", distress, structuralBreakPeriods: [], lossMaker: null, itServices: null, cyclicality: null, ratioSanity: null };
   }
 
   // Phase I9 — apply user-confirmed period exclusions before any processing.
@@ -103,7 +111,27 @@ export function processCompanyDataFull(
     const bankResult = processBankData(filteredData, scope, config, null, quality);
     const emptyAnomalies = runAnomalyDetection([], config);
     const distress = detectDistress([]);
-    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult, distress, structuralBreakPeriods: [], lossMaker: null, itServices: null, cyclicality: null };
+    // Phase 9 — sanity check bank/NBFC metrics
+    const latestBank = bankResult?.bankMetrics && bankResult.bankMetrics.length > 0
+      ? bankResult.bankMetrics[bankResult.bankMetrics.length - 1]
+      : null;
+    const ratioSanity = latestBank
+      ? evaluateRatioSanity({
+          companyType: config.company_type ?? "auto",
+          bank: {
+            nim: latestBank.nim,
+            roa: latestBank.roa,
+            roe: latestBank.roe,
+            costToIncome: latestBank.costToIncome,
+            creditCost: latestBank.creditCost,
+            leverage: latestBank.leverage,
+            spread: latestBank.spread,
+            yieldOnAdvances: latestBank.yieldOnAdvances,
+            costOfBorrowings: latestBank.costOfBorrowings,
+          },
+        })
+      : null;
+    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult, distress, structuralBreakPeriods: [], lossMaker: null, itServices: null, cyclicality: null, ratioSanity };
   }
 
   // Fail-closed for blocked financial-institution scope.
@@ -119,6 +147,7 @@ export function processCompanyDataFull(
       lossMaker: null,
       itServices: null,
       cyclicality: null,
+      ratioSanity: null,
     };
   }
 
@@ -184,5 +213,20 @@ export function processCompanyDataFull(
   const itServices = detectITServices(results, config.company_type);
   const cyclicality = assessCyclicality(results, config.company_type);
 
-  return { periods: results, anomalies, analysisFamily: "industrial", distress: detectDistress(results), structuralBreakPeriods, lossMaker, itServices, cyclicality };
+  // Phase 9 — sanity-check the latest period's industrial ratios
+  const latest = results.length > 0 ? results[results.length - 1] : null;
+  const ratioSanity = latest && latest.ratios
+    ? evaluateRatioSanity({
+        companyType: config.company_type ?? "auto",
+        industrial: {
+          ROCE: latest.ratios.ROCE,
+          RNOA: latest.ratios.RNOA,
+          PM: latest.ratios.PM,
+          SalesPM: latest.ratios.SalesPM,
+          FLEV: latest.ratios.FLEV,
+        },
+      })
+    : null;
+
+  return { periods: results, anomalies, analysisFamily: "industrial", distress: detectDistress(results), structuralBreakPeriods, lossMaker, itServices, cyclicality, ratioSanity };
 }
