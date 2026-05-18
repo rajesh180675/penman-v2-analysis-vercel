@@ -51,6 +51,14 @@ export default defineConfig({
     tailwindcss(),
     ...(singleFileBuild ? [viteSingleFile()] : []),
   ],
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     rollupOptions: singleFileBuild
       ? undefined
