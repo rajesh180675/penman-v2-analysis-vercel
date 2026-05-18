@@ -1,9 +1,10 @@
 import { CompanyRegistry, EngineConfig, NP_BENCHMARKS, ke_from_config } from "../engine/types";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import { buildComparisonPublicationSnapshot, type ComparisonPublicationSnapshot } from "../lib/publication/comparisonPublicationSnapshot";
+import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
 
 interface Props {
   registry: CompanyRegistry;
@@ -39,6 +40,30 @@ export default function ComparisonReport({ registry, config, weakestTraceability
   const latestByCo = companies.map((c) => ({ company: c.label || c.id, id: c.id, latest: c.recastData[c.recastData.length - 1], series: c.recastData }));
   const [marketInputs, setMarketInputs] = useState<Record<string, { price: number; shares: number }>>({});
   const [sortByUpside, setSortByUpside] = useState(true);
+  const [nseLoading, setNseLoading] = useState(false);
+
+  const fetchNsePrices = useCallback(async () => {
+    setNseLoading(true);
+    const updates: Record<string, { price: number; shares: number }> = { ...marketInputs };
+    for (const c of latestByCo) {
+      const symbol = resolveNseSymbol(c.id) ?? resolveNseSymbol(c.company);
+      if (!symbol) continue;
+      try {
+        const res = await fetch(`/api/market-data/snapshot?provider=nse&symbol=${encodeURIComponent(symbol)}`);
+        if (!res.ok) continue;
+        const payload = await res.json();
+        const snapshot = payload?.snapshot;
+        if (snapshot?.price != null) {
+          const shares = snapshot.sharesOutstanding != null
+            ? snapshot.sharesOutstanding / 1e7  // NSE returns absolute count, we need Cr
+            : updates[c.id]?.shares ?? 0;
+          updates[c.id] = { price: snapshot.price, shares };
+        }
+      } catch { /* skip failures */ }
+    }
+    setMarketInputs(updates);
+    setNseLoading(false);
+  }, [latestByCo, marketInputs]);
 
   const baseValuationRows = useMemo(() => {
     const ke = ke_from_config(config);
@@ -177,6 +202,9 @@ export default function ComparisonReport({ registry, config, weakestTraceability
       </div>
 
       <div className="flex justify-end gap-2">
+        <button onClick={fetchNsePrices} disabled={nseLoading} className="px-4 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium hover:bg-indigo-100 disabled:opacity-50">
+          {nseLoading ? "Fetching NSE…" : "Auto-fill from NSE"}
+        </button>
         <button onClick={() => setSortByUpside((v) => !v)} className="px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50">
           Sort: {sortByUpside ? "Upside ↓" : "Company A→Z"}
         </button>
