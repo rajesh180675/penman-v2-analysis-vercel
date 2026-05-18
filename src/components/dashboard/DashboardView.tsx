@@ -136,6 +136,17 @@ export default function DashboardView({ data, config, traceability = null, ratio
       />
 
       {/* Investment Thesis — single buy/hold/avoid verdict */}
+      <div className="flex items-center justify-end gap-2 no-print">
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 font-medium border border-slate-200 dark:border-slate-700 transition-colors"
+          title="Print or save as PDF"
+        >
+          🖨️ Print / Save as PDF
+        </button>
+      </div>
+
       <InvestmentThesisCard
         moat={moat}
         capAlloc={capAlloc}

@@ -1,0 +1,71 @@
+/* Print Stylesheet — print-friendly dashboard layout
+   Activated when window.print() is called or user prints from browser.
+   Hides nav/sidebar/buttons, expands cards, removes shadows. */
+
+@media print {
+  /* Hide chrome */
+  header,
+  nav,
+  .no-print,
+  button[onClick],
+  .sticky,
+  .lg\:sticky,
+  [class*="hover\\:"] {
+    display: none !important;
+  }
+
+  /* Reset backgrounds */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Card flattening for print */
+  .rounded-2xl,
+  .rounded-xl,
+  .rounded-lg {
+    border-radius: 4px !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+
+  /* Compact spacing */
+  .space-y-6 > * + *,
+  .space-y-8 > * + * {
+    margin-top: 0.75rem !important;
+  }
+
+  .p-6 { padding: 0.75rem !important; }
+  .p-5 { padding: 0.5rem !important; }
+  .p-4 { padding: 0.5rem !important; }
+
+  /* Force charts to print background colors */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Page breaks */
+  .print-page-break {
+    page-break-before: always;
+  }
+
+  /* Fit chart heights */
+  .h-64 { height: 200px !important; }
+  .h-56 { height: 180px !important; }
+  .h-48 { height: 150px !important; }
+
+  /* Hide interactive elements */
+  select,
+  input[type="number"],
+  input[type="text"] {
+    border: 1px solid #ccc !important;
+    background: white !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4;
+    margin: 1cm;
+  }
+}
