@@ -3,6 +3,7 @@ import { RecastPeriod, EngineConfig, ke_from_config } from "../../engine/types";
 import { AnalysisTraceabilityEnvelope } from "../../engine/analysisTraceability";
 import { computeEPV } from "../../engine/grahamDoddEPV";
 import { computeMoatScore } from "../../engine/moatScoring";
+import { scoreCapitalAllocation } from "../../engine/capitalAllocationScoring";
 import { resolveShareBasis } from "../../engine/shareCountTools";
 import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { SegmentData } from "../../engine/segmentParser";
@@ -13,6 +14,7 @@ import ValuationTriangulation from "./ValuationTriangulation";
 import QualitySignalPanel from "./QualitySignalPanel";
 import PenmanDecompositionChart from "./PenmanDecompositionChart";
 import MoatPanel from "./MoatPanel";
+import CapitalAllocationPanel from "./CapitalAllocationPanel";
 import ValuationRangeGauge from "../charts/ValuationRangeGauge";
 
 interface Props {
@@ -84,6 +86,9 @@ export default function DashboardView({ data, config, traceability = null, ratio
 
   // Moat scorer (5-dimension Buffett/Munger framework)
   const moat = useMemo(() => computeMoatScore(data, config), [data, config]);
+
+  // Capital Allocation scorer (5-dimension management quality)
+  const capAlloc = useMemo(() => scoreCapitalAllocation(data, config), [data, config]);
 
   // Intrinsic value range (simplified — from latest RNOA-based)
   const intrinsicRange = useMemo(() => {
@@ -169,7 +174,10 @@ export default function DashboardView({ data, config, traceability = null, ratio
       />
 
       {/* Economic Moat Panel — Buffett/Munger 5-dimension framework */}
-      <MoatPanel moat={moat} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <MoatPanel moat={moat} />
+        <CapitalAllocationPanel result={capAlloc} />
+      </div>
 
       {/* Quality + Ratio Sanity Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
