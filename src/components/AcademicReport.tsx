@@ -12,6 +12,7 @@ import { deriveCompanyLabel } from "../engine/valuationPolicy";
 import { computeV3Analytics, V3AnalyticsBundle, computeAnchorTable } from "../engine/v3Analytics";
 import { AuditSubmissionMeta, persistAuditBlob, persistAuditEvent } from "../lib/audit";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
+import type { SanityAssessment } from "../engine/ratioSanity";
 
 interface Props {
   data: RecastPeriod[];
@@ -20,6 +21,8 @@ interface Props {
   auditMeta?: AuditSubmissionMeta | null;
   traceability?: AnalysisTraceabilityEnvelope | null;
   publication?: ReturnType<typeof buildAnalysisPublicationSnapshot> | null;
+  /** Phase 9 — anchor ratio bands for export confidence stamps. */
+  ratioSanity?: SanityAssessment | null;
 }
 
 const pct = (v: number | null | undefined, d = 1) => (v == null ? "—" : `${(v * 100).toFixed(d)}%`);
@@ -169,7 +172,7 @@ function madSigma(vals: number[]): number {
   return (mad ?? 0) * 1.4826;
 }
 
-export default function AcademicReport({ data, config, rawData, auditMeta, traceability: sharedTraceability = null, publication: precomputedPublication = null }: Props) {
+export default function AcademicReport({ data, config, rawData, auditMeta, traceability: sharedTraceability = null, publication: precomputedPublication = null, ratioSanity = null }: Props) {
   const eqROCE = katex.renderToString(String.raw`\mathrm{ROCE}_t = \frac{\mathrm{CNI}_t}{\overline{\mathrm{CSE}}}`,
     { throwOnError: false, displayMode: true });
   const eqRNOA = katex.renderToString(String.raw`\mathrm{RNOA}_t = \frac{\mathrm{OI}_t}{\overline{\mathrm{NOA}}}`,
@@ -568,6 +571,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         forecastScenarios: [],
         valuation,
         config,
+        ratioSanity,
       });
       const blob = new Blob([wbArray], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

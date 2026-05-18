@@ -114,6 +114,7 @@ import { EngineConfig, ForecastScenario, RecastPeriod, ValuationResult, NP_BENCH
 import { AnalysisTraceabilityEnvelope } from "./analysisTraceability";
 import { buildMappingDiscrepancyRows, buildProvenanceAuditRows } from "./provenanceAudit";
 import { AnalysisPolicyVersions } from "./policyVersions";
+import type { SanityAssessment } from "./ratioSanity";
 
 export interface WorkbookExportMetadata {
   companyLabel?: string;
@@ -124,6 +125,8 @@ export interface WorkbookExportMetadata {
   valuationSourcePeriod?: string | null;
   policyVersions?: AnalysisPolicyVersions;
   traceability?: AnalysisTraceabilityEnvelope;
+  /** Phase 9 — anchor ratio bands (economic sanity gate). */
+  ratioSanity?: SanityAssessment | null;
 }
 
 export function workbookMetadataFromPublicationSnapshot(snapshot: {
@@ -260,6 +263,7 @@ function buildCoverSheet(config: EngineConfig, periodCount: number, metadata?: W
     [cell("Rigor Level", LABEL_BOLD), cell(traceability?.rigor?.currentLabel ?? "—", LABEL)],
     [cell("Parser Fidelity", LABEL_BOLD), cell(traceability?.parserFidelity?.status ?? "—", LABEL)],
     [cell("Reconciliation Status", LABEL_BOLD), cell(traceability?.reconciliation?.status ?? "—", LABEL)],
+    [cell("Ratio Sanity", LABEL_BOLD), cell(metadata?.ratioSanity?.status ?? "—", LABEL)],
     [cell("Scope Classification", LABEL_BOLD), cell(traceability?.qualityGate?.scopeClassification ?? "supported-industrial", LABEL)],
     [cell("Periods Analysed", LABEL_BOLD), cell(periodCount, NUM_INR)],
     [cell("Cost of Equity (ke)", LABEL_BOLD), cell(ke, NUM_PCT)],
@@ -310,6 +314,10 @@ function buildTraceabilitySheet(metadata?: WorkbookExportMetadata): WorkSheet {
     [cell("Reconciliation Status", LABEL_BOLD), cell(traceability?.reconciliation?.status ?? "—", LABEL)],
     [cell("Max Reconciliation Residual", LABEL_BOLD), cell(traceability?.reconciliation?.maxResidualRatio ?? 0, NUM_PCT)],
     [cell("Reconciliation Summary", LABEL_BOLD), cell(traceability?.reconciliation?.summary ?? "—", { font: { sz: 8 }, alignment: { wrapText: true } })],
+    [cell("Ratio Sanity Status", LABEL_BOLD), cell(metadata?.ratioSanity?.status ?? "—", LABEL)],
+    [cell("Ratio Sanity Warnings", LABEL_BOLD), cell(metadata?.ratioSanity?.warningCount ?? 0, NUM_INR)],
+    [cell("Ratio Sanity Failures", LABEL_BOLD), cell(metadata?.ratioSanity?.failCount ?? 0, NUM_INR)],
+    [cell("Ratio Sanity Summary", LABEL_BOLD), cell(metadata?.ratioSanity?.summary ?? "—", { font: { sz: 8 }, alignment: { wrapText: true } })],
     [cell("Valuation Blocked", LABEL_BOLD), cell(traceability?.qualityGate?.valuationBlocked ? "yes" : "no", LABEL)],
     [cell("Scope Classification", LABEL_BOLD), cell(traceability?.qualityGate?.scopeClassification ?? "—", LABEL)],
     [cell("Confidence Blocking Issues", LABEL_BOLD), cell(traceability?.confidence?.blockingCount ?? 0, NUM_INR)],
@@ -328,6 +336,42 @@ function buildTraceabilitySheet(metadata?: WorkbookExportMetadata): WorkSheet {
   ];
   setRange(ws, rows);
   ws["!cols"] = [{ wch: 28 }, { wch: 80 }];
+  updateRef(ws);
+  return ws;
+}
+
+// ── Sheet 7b: Ratio Sanity (Phase 9 — anchor ratio bands) ─────────────────────
+function buildRatioSanitySheet(metadata?: WorkbookExportMetadata): WorkSheet {
+  const ws: WorkSheet = {};
+  const sanity = metadata?.ratioSanity ?? null;
+  const rows: CellObject[][] = [
+    [cell("RATIO SANITY (PHASE 9)", { font: { bold: true, sz: 14, color: { rgb: "1F3864" } } })],
+    [cell("Anchor ratio bands per company type — flags economically implausible outputs", { font: { sz: 9, color: { rgb: "666666" } } })],
+    [cell("")],
+    [cell("Company Type", LABEL_BOLD), cell(sanity?.companyType ?? "—", LABEL)],
+    [cell("Overall Status", LABEL_BOLD), cell(sanity?.status ?? "n/a", LABEL)],
+    [cell("Warnings", LABEL_BOLD), cell(sanity?.warningCount ?? 0, NUM_INR)],
+    [cell("Failures", LABEL_BOLD), cell(sanity?.failCount ?? 0, NUM_INR)],
+    [cell("Summary", LABEL_BOLD), cell(sanity?.summary ?? "—", { font: { sz: 8 }, alignment: { wrapText: true } })],
+    [cell("")],
+    [cell("CHECK", HEADER_BLUE), cell("VALUE", HEADER_BLUE), cell("STATUS", HEADER_BLUE), cell("NORMAL BAND", HEADER_BLUE), cell("WARNING BAND", HEADER_BLUE), cell("DETAIL", HEADER_BLUE)],
+  ];
+  if (sanity?.checks?.length) {
+    for (const check of sanity.checks) {
+      rows.push([
+        cell(check.label, LABEL),
+        cell(check.value ?? "—", check.value != null ? NUM_PCT : LABEL),
+        cell(check.status, LABEL),
+        cell(`[${check.band.normal[0]}, ${check.band.normal[1]}]`, LABEL),
+        cell(`[${check.band.warning[0]}, ${check.band.warning[1]}]`, LABEL),
+        cell(check.detail, { font: { sz: 8 }, alignment: { wrapText: true } }),
+      ]);
+    }
+  } else {
+    rows.push([cell("(no sanity checks ran)", { font: { sz: 9, color: { rgb: "888888" } } })]);
+  }
+  setRange(ws, rows);
+  ws["!cols"] = [{ wch: 28 }, { wch: 14 }, { wch: 10 }, { wch: 18 }, { wch: 18 }, { wch: 50 }];
   updateRef(ws);
   return ws;
 }
@@ -815,6 +859,7 @@ export async function generateValuationWorkbook(
   utils.book_append_sheet(wb, buildValuationSheet(valuation, config, metadata), "Valuation");
   utils.book_append_sheet(wb, buildQualitySheet(recastData), "Quality Scores");
   utils.book_append_sheet(wb, buildTraceabilitySheet(metadata), "Traceability");
+  utils.book_append_sheet(wb, buildRatioSanitySheet(metadata), "Ratio Sanity");
 
   const provenanceRows = buildProvenanceAuditRows(recastData);
   if (provenanceRows.length > 0) {
@@ -845,12 +890,15 @@ export async function generateValuationWorkbookFromPublicationSnapshot(params: {
   forecastScenarios: ForecastScenario[];
   valuation: ValuationResult;
   config: EngineConfig;
+  ratioSanity?: SanityAssessment | null;
 }): Promise<ArrayBuffer> {
+  const metadata = workbookMetadataFromPublicationSnapshot(params.snapshot);
+  metadata.ratioSanity = params.ratioSanity ?? null;
   return generateValuationWorkbook(
     params.recastData,
     params.forecastScenarios,
     params.valuation,
     params.config,
-    workbookMetadataFromPublicationSnapshot(params.snapshot),
+    metadata,
   );
 }

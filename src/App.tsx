@@ -178,6 +178,12 @@ export function App() {
     return pipelineResult.cyclicality ?? null;
   }, [pipelineResult]);
 
+  // Phase 9 — anchor ratio bands. Surfaces economically implausible outputs.
+  const ratioSanity = useMemo(() => {
+    if (!pipelineResult || "error" in pipelineResult) return null;
+    return pipelineResult.ratioSanity ?? null;
+  }, [pipelineResult]);
+
   // True when breaks are detected and the user hasn't yet excluded any periods.
   const hasUnacknowledgedBreaks = structuralBreakPeriods.length > 0 &&
     (!config.excluded_periods || config.excluded_periods.length === 0);
@@ -738,7 +744,7 @@ export function App() {
             {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
             {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
             {activeTab==="valuation"  && hasRecast && !valuationBlocked && (
-              <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} publication={publication} lossMaker={lossMakerResult} />
+              <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} publication={publication} lossMaker={lossMakerResult} ratioSanity={ratioSanity} />
             )}
             {activeTab === "valuation" && !hasRecast && scopeBlocked && rawData && rawData.length > 0 && bankResult && (
               <FinancialInstitutionReport
@@ -789,6 +795,7 @@ export function App() {
                 auditMeta={auditMeta}
                 traceability={traceability}
                 publication={publication}
+                ratioSanity={ratioSanity}
               />
             )}
             {activeTab==="regression" && hasRecast && (
