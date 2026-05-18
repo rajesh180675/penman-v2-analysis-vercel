@@ -48,23 +48,32 @@ const DashboardView = lazy(() => import("./components/dashboard/DashboardView"))
 
 type TabId = "upload"|"dashboard"|"watchlist"|"workspace"|"inspector"|"statements"|"ratios"|"forecast"|"valuation"|"bank"|"quality"|"comparison"|"report"|"regression"|"v3analytics"|"debug";
 
-const TABS: {id:TabId;label:string;icon:string;needsData?:boolean}[] = [
-  {id:"upload",     label:"Data",       icon:"📂"},
-  {id:"dashboard",  label:"Dashboard",  icon:"📊", needsData:true},
-  {id:"watchlist",  label:"Watchlist",  icon:"🗂"},
-  {id:"workspace",  label:"Workspace",  icon:"🧭"},
-  {id:"inspector",  label:"Runs",       icon:"🛰️"},
-  {id:"statements", label:"Statements", icon:"📋", needsData:true},
-  {id:"ratios",     label:"Ratios",     icon:"📐", needsData:true},
-  {id:"forecast",   label:"Forecast",   icon:"📈", needsData:true},
-  {id:"valuation",  label:"Valuation",  icon:"💰", needsData:true},
-  {id:"bank",       label:"Bank",       icon:"🏦", needsData:true},
-  {id:"quality",    label:"Quality",    icon:"🔍", needsData:true},
-  {id:"comparison", label:"Comparison", icon:"👥", needsData:true},
-  {id:"report",     label:"Report",     icon:"📚", needsData:true},
-  {id:"regression", label:"Regression", icon:"🧪", needsData:true},
-  {id:"v3analytics",label:"V3 Analytics",icon:"🔬", needsData:true},
-  {id:"debug",      label:"Debug",      icon:"🛠"},
+const TABS: {id:TabId;label:string;icon:string;needsData?:boolean;group:string}[] = [
+  {id:"upload",     label:"Data",       icon:"📂", group:"input"},
+  {id:"dashboard",  label:"Dashboard",  icon:"📊", needsData:true, group:"input"},
+  {id:"watchlist",  label:"Watchlist",  icon:"🗂", group:"input"},
+  {id:"workspace",  label:"Workspace",  icon:"🧭", group:"input"},
+  {id:"inspector",  label:"Runs",       icon:"🛰️", group:"input"},
+  {id:"statements", label:"Statements", icon:"📋", needsData:true, group:"analysis"},
+  {id:"ratios",     label:"Ratios",     icon:"📐", needsData:true, group:"analysis"},
+  {id:"quality",    label:"Quality",    icon:"🔍", needsData:true, group:"analysis"},
+  {id:"forecast",   label:"Forecast",   icon:"📈", needsData:true, group:"analysis"},
+  {id:"valuation",  label:"Valuation",  icon:"💰", needsData:true, group:"valuation"},
+  {id:"bank",       label:"Bank",       icon:"🏦", needsData:true, group:"valuation"},
+  {id:"comparison", label:"Comparison", icon:"👥", needsData:true, group:"peers"},
+  {id:"report",     label:"Report",     icon:"📚", needsData:true, group:"export"},
+  {id:"regression", label:"Regression", icon:"🧪", needsData:true, group:"advanced"},
+  {id:"v3analytics",label:"V3 Analytics",icon:"🔬", needsData:true, group:"advanced"},
+  {id:"debug",      label:"Debug",      icon:"🛠", group:"advanced"},
+];
+
+const TAB_GROUPS: {key:string;label:string}[] = [
+  {key:"input", label:"Data & Input"},
+  {key:"analysis", label:"Analysis"},
+  {key:"valuation", label:"Valuation"},
+  {key:"peers", label:"Peers"},
+  {key:"export", label:"Export"},
+  {key:"advanced", label:"Advanced"},
 ];
 
 export function App() {
@@ -550,33 +559,43 @@ export function App() {
                 <span className="hidden sm:inline text-xs text-slate-400 ml-2">Residual-Income Valuation · Capitaline Ind AS</span>
               </div>
             </div>
-            <nav className="flex h-full overflow-x-auto">
-              {visibleTabs.map(tab=>(
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    if (tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable) return;
-                    setActiveTab(tab.id);
-                  }}
-                  title={
-                    tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable
-                      ? scopeBlocked
-                        ? "Unsupported financial-company scope. See Debug tab."
-                        : "Valuation blocked by quality gate. See Debug tab."
-                      : undefined
-                  }
-                  disabled={tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable}
-                  className={`px-3 h-full text-xs font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-                    activeTab===tab.id
-                      ? "border-indigo-600 text-indigo-600"
-                      : tab.id === "valuation" && valuationBlocked
-                        ? "border-transparent text-slate-300 cursor-not-allowed"
-                        : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
-                  }`}>
-                  <span>{tab.icon}</span>
-                  <span className="hidden sm:inline">{tab.label}</span>
-                </button>
-              ))}
+            <nav className="flex h-full overflow-x-auto gap-0.5">
+              {TAB_GROUPS.map(group => {
+                const groupTabs = visibleTabs.filter(t => t.group === group.key);
+                if (groupTabs.length === 0) return null;
+                return (
+                  <div key={group.key} className="flex items-center">
+                    <span className="text-[9px] uppercase tracking-wider text-slate-400 px-1.5 hidden lg:inline">{group.label}</span>
+                    {groupTabs.map(tab => (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          if (tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable) return;
+                          setActiveTab(tab.id);
+                        }}
+                        title={
+                          tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable
+                            ? scopeBlocked
+                              ? "Unsupported financial-company scope. See Debug tab."
+                              : "Valuation blocked by quality gate. See Debug tab."
+                            : undefined
+                        }
+                        disabled={tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable}
+                        className={`px-2.5 h-full text-xs font-medium border-b-2 transition-colors flex items-center gap-1 whitespace-nowrap ${
+                          activeTab===tab.id
+                            ? "border-indigo-600 text-indigo-600"
+                            : tab.id === "valuation" && valuationBlocked
+                              ? "border-transparent text-slate-300 cursor-not-allowed"
+                              : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
+                        }`}>
+                        <span>{tab.icon}</span>
+                        <span className="hidden sm:inline">{tab.label}</span>
+                      </button>
+                    ))}
+                    <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-1 last:hidden" />
+                  </div>
+                );
+              })}
             </nav>
             <div className="ml-3 flex items-center gap-2">
               {isAuditEnabled() && auditMeta && (
