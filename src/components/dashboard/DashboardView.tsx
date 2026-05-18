@@ -4,6 +4,7 @@ import { AnalysisTraceabilityEnvelope } from "../../engine/analysisTraceability"
 import { computeEPV } from "../../engine/grahamDoddEPV";
 import { computeMoatScore } from "../../engine/moatScoring";
 import { scoreCapitalAllocation } from "../../engine/capitalAllocationScoring";
+import { detectDistress } from "../../engine/distressDetector";
 import { resolveShareBasis } from "../../engine/shareCountTools";
 import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { SegmentData } from "../../engine/segmentParser";
@@ -15,6 +16,7 @@ import QualitySignalPanel from "./QualitySignalPanel";
 import PenmanDecompositionChart from "./PenmanDecompositionChart";
 import MoatPanel from "./MoatPanel";
 import CapitalAllocationPanel from "./CapitalAllocationPanel";
+import InvestmentThesisCard from "./InvestmentThesisCard";
 import ValuationRangeGauge from "../charts/ValuationRangeGauge";
 
 interface Props {
@@ -90,6 +92,9 @@ export default function DashboardView({ data, config, traceability = null, ratio
   // Capital Allocation scorer (5-dimension management quality)
   const capAlloc = useMemo(() => scoreCapitalAllocation(data, config), [data, config]);
 
+  // Distress detector
+  const distress = useMemo(() => detectDistress(data), [data]);
+
   // Intrinsic value range (simplified — from latest RNOA-based)
   const intrinsicRange = useMemo(() => {
     if (!rnoa || !ke || ke <= 0) return null;
@@ -118,6 +123,20 @@ export default function DashboardView({ data, config, traceability = null, ratio
         traceability={traceability}
         ratioSanity={ratioSanity}
         segmentCount={segmentData?.segments?.length ?? 0}
+      />
+
+      {/* Investment Thesis — single buy/hold/avoid verdict */}
+      <InvestmentThesisCard
+        moat={moat}
+        capAlloc={capAlloc}
+        distress={distress}
+        marginOfSafety={
+          price != null && intrinsicRange?.mid != null && price > 0
+            ? (intrinsicRange.mid - price) / price
+            : null
+        }
+        price={price}
+        intrinsic={intrinsicRange?.mid ?? null}
       />
 
       {/* KPI Tiles Row */}
