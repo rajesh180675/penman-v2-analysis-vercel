@@ -9,8 +9,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "dev:local": "concurrently \"vite\" \"npx tsx server/index.ts\"",
-    "server": "npx tsx server/index.ts",
+    "dev:local": "concurrently --kill-others-on-fail \"vite\" \"tsx server/index.ts\"",
+    "server": "tsx server/index.ts",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -45,6 +45,7 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.1",
     "tailwindcss": "4.1.17",
+    "tsx": "^4.22.2",
     "typescript": "5.9.3",
     "vite": "7.3.2",
     "vite-plugin-singlefile": "2.3.0",
