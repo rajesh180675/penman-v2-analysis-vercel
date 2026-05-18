@@ -7,6 +7,7 @@ import { buildComparisonPublicationSnapshot, type ComparisonPublicationSnapshot 
 import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
 import PeerScatterPlot from "./charts/PeerScatterPlot";
 import PercentileBar from "./charts/PercentileBar";
+import { computePeerRelativeValuation } from "../engine/peerRelativeValuation";
 
 interface Props {
   registry: CompanyRegistry;
@@ -43,6 +44,13 @@ export default function ComparisonReport({ registry, config, weakestTraceability
   const [marketInputs, setMarketInputs] = useState<Record<string, { price: number; shares: number }>>({});
   const [sortByUpside, setSortByUpside] = useState(true);
   const [nseLoading, setNseLoading] = useState(false);
+
+  // Peer relative valuation (Phase G)
+  const peerRelative = useMemo(() => {
+    const firstCompanyId = latestByCo[0]?.id;
+    if (!firstCompanyId) return null;
+    return computePeerRelativeValuation(firstCompanyId, registry, config);
+  }, [latestByCo, registry, config]);
 
   const fetchNsePrices = useCallback(async () => {
     setNseLoading(true);
@@ -353,6 +361,45 @@ export default function ComparisonReport({ registry, config, weakestTraceability
 
       {/* Visual Peer Charts */}
       <div className="grid gap-6 lg:grid-cols-2">
+
+      {/* Peer Relative Valuation Panel (Phase G) */}
+      {peerRelative && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">Peer Relative Valuation</h2>
+              <p className="text-xs text-slate-500 mt-1">{peerRelative.peerCount} peers · Multiple-implied fair values from sector medians</p>
+            </div>
+            {peerRelative.compositeMarginOfSafety != null && (
+              <span className={`text-sm font-bold px-3 py-1.5 rounded-full ${
+                peerRelative.compositeMarginOfSafety > 0.15 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : peerRelative.compositeMarginOfSafety > 0 ? "bg-amber-50 text-amber-700 border border-amber-200"
+                : "bg-red-50 text-red-700 border border-red-200"
+              }`}>
+                Composite MoS: {(peerRelative.compositeMarginOfSafety * 100).toFixed(1)}%
+              </span>
+            )}
+          </div>
+          {peerRelative.multipleImplied.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              {peerRelative.multipleImplied.map((m, i) => (
+                <div key={i} className="rounded-xl bg-slate-50 p-3">
+                  <div className="text-xs text-slate-500">{m.metric} implied</div>
+                  <div className="text-lg font-bold text-slate-900">
+                    {m.impliedValue != null ? `₹${m.impliedValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}
+                  </div>
+                  <div className="text-[10px] text-slate-400">Peer median: {m.peerMedianMultiple?.toFixed(1) ?? "—"}×</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {peerRelative.compositeFairValue != null && (
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-800">
+              Composite fair value (median of implied): <strong>₹{peerRelative.compositeFairValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</strong>
+            </div>
+          )}
+        </div>
+      )}
         <PeerScatterPlot
           companies={latestByCo.map((c, i) => ({
             name: c.company,
