@@ -19,6 +19,7 @@ import MoatPanel from "./MoatPanel";
 import CapitalAllocationPanel from "./CapitalAllocationPanel";
 import InvestmentThesisCard from "./InvestmentThesisCard";
 import NarrativeCard from "./NarrativeCard";
+import SegmentBreakdown from "./SegmentBreakdown";
 import PeriodDeltaStrip from "./PeriodDeltaStrip";
 import NextStepsPanel from "./NextStepsPanel";
 import ValuationRangeGauge from "../charts/ValuationRangeGauge";
@@ -237,6 +238,11 @@ export default function DashboardView({ data, config, traceability = null, ratio
         <MoatPanel moat={moat} />
         <CapitalAllocationPanel result={capAlloc} />
       </div>
+
+      {/* Segment Breakdown — only shows if segment data is present */}
+      {segmentData && segmentData.segments && segmentData.segments.length > 1 && (
+        <SegmentBreakdown segmentData={segmentData} />
+      )}
 
       {/* Quality + Ratio Sanity Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
