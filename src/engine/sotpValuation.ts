@@ -14,6 +14,10 @@ export interface SegmentDefinition {
   terminalGrowthOverride?: number;
   /** Optional override: fade speed (higher = faster mean reversion). */
   growthFadeAlphaOverride?: number;
+  /** Optional: actual segment assets (₹ Cr) for NOA allocation. */
+  segmentAssets?: number;
+  /** Optional: sector-specific ke adjustment (additive basis points, e.g. 0.02 = +2%). */
+  keAdjustment?: number;
 }
 
 /** One segment's standalone valuation output. */
@@ -25,6 +29,8 @@ export interface SegmentValue {
   terminalGrowth: number;
   impliedMultiple: number | null;
   segmentValue: number;
+  /** Segment-specific ke used (may differ from consolidated ke). */
+  segmentKe: number;
 }
 
 /** Full SOTP result. */
@@ -92,17 +98,29 @@ export function buildSOTPValuation(
   const totalOP = latest.is.OI;
   const totalNOA = latest.bs.NOA;
 
-  // Allocate NOA by operating profit share (simplified — segment-level NOA
-  // would require segment disclosures)
+  // Check if any segments have actual asset data for NOA allocation
+  const hasSegmentAssets = segments.some(s => s.segmentAssets != null && s.segmentAssets > 0);
+  const totalSegmentAssets = hasSegmentAssets
+    ? segments.reduce((sum, s) => sum + (s.segmentAssets ?? 0), 0)
+    : 0;
+
   const segmentValues: SegmentValue[] = segments.map((seg) => {
     const opProfit = totalOP * seg.operatingProfitShare;
-    const allocatedNOA = totalNOA * seg.operatingProfitShare;
+
+    // Phase C5: use actual segment assets when available, else proportional allocation
+    const allocatedNOA = hasSegmentAssets && totalSegmentAssets > 0
+      ? (seg.segmentAssets ?? 0) / totalSegmentAssets * totalNOA
+      : totalNOA * seg.operatingProfitShare;
+
     const template = VALUATION_SECTOR_TEMPLATES[seg.sectorTemplate];
     const g = seg.terminalGrowthOverride ?? template.terminalGrowthCap;
 
-    // Simple perpetuity: Segment Value = OP_after_tax / (ke - g)
+    // Phase C5: per-segment ke (sector-specific risk adjustment)
+    const segmentKe = ke + (seg.keAdjustment ?? 0);
+
+    // Simple perpetuity: Segment Value = OP_after_tax / (segmentKe - g)
     const opAfterTax = opProfit * (1 - latest.is.taxRate);
-    const denom = ke - g;
+    const denom = segmentKe - g;
     const segmentVal = denom > 0.01 ? opAfterTax / denom : null;
     const impliedMultiple = segmentVal != null && opProfit > 0 ? segmentVal / opProfit : null;
 
@@ -114,6 +132,7 @@ export function buildSOTPValuation(
       terminalGrowth: g,
       impliedMultiple,
       segmentValue: segmentVal ?? 0,
+      segmentKe,
     };
   });
 

@@ -188,6 +188,8 @@ export function segmentDataToDefinitions(
         operatingProfitShare: totalEbit > 0 ? ebit / totalEbit : 0,
         revenueShare: totalRevenue > 0 ? rev / totalRevenue : 0,
         sectorTemplate: classifySegmentSector(seg),
+        // Phase C5: pass actual segment assets for NOA allocation
+        segmentAssets: segmentData.data[seg]?.[year]?.assets ?? undefined,
         // Use segment-specific revenue CAGR as terminal growth hint, but
         // refuse to publish a fabricated growth rate for a structurally
         // declining segment (revCagr <= 0). The previous Math.max(0.02,…)
