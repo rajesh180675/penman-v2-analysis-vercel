@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { LiveMarketDataSnapshot } from "../engine/marketData";
 
 interface Params {
-  provider?: "manual" | "upstox-readonly" | "alphavantage" | "disabled";
+  provider?: "manual" | "upstox-readonly" | "alphavantage" | "nse" | "disabled";
   symbol?: string | null;
   instrumentKey?: string | null;
   fallbackPrice?: number | null;

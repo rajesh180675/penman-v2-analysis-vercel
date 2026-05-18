@@ -18,7 +18,7 @@ function sanitizeSymbol(value) {
 
 function sanitizeProvider(value) {
   const normalized = sanitizeText(value);
-  if (normalized === "manual" || normalized === "upstox-readonly" || normalized === "alphavantage" || normalized === "disabled") {
+  if (normalized === "manual" || normalized === "upstox-readonly" || normalized === "alphavantage" || normalized === "nse" || normalized === "disabled") {
     return normalized;
   }
   return null;
@@ -307,6 +307,135 @@ async function fetchUpstoxReadonlySnapshot({ symbol, instrumentKey, fallbackPric
   }
 }
 
+const NSE_BASE = "https://www.nseindia.com";
+const NSE_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "Accept": "application/json, text/plain, */*",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Accept-Encoding": "gzip, deflate, br",
+};
+
+let nseCookieCache = { cookie: null, ts: 0 };
+
+async function getNseCookie() {
+  // NSE requires a session cookie from the homepage before API calls work.
+  // Cache for 4 minutes (NSE sessions last ~5 min).
+  if (nseCookieCache.cookie && Date.now() - nseCookieCache.ts < 240_000) {
+    return nseCookieCache.cookie;
+  }
+  const res = await fetch(NSE_BASE, {
+    headers: NSE_HEADERS,
+    redirect: "follow",
+  });
+  const setCookie = res.headers.get("set-cookie") ?? "";
+  // Extract all cookie key=value pairs
+  const cookies = setCookie
+    .split(",")
+    .map(c => c.split(";")[0].trim())
+    .filter(c => c.includes("="))
+    .join("; ");
+  nseCookieCache = { cookie: cookies, ts: Date.now() };
+  return cookies;
+}
+
+async function fetchNseQuote(symbol) {
+  const cookie = await getNseCookie();
+  const url = `${NSE_BASE}/api/quote-equity?symbol=${encodeURIComponent(symbol)}`;
+  const res = await fetch(url, {
+    headers: { ...NSE_HEADERS, Cookie: cookie, Referer: `${NSE_BASE}/get-quotes/equity?symbol=${encodeURIComponent(symbol)}` },
+  });
+  if (!res.ok) throw new Error(`NSE quote API returned ${res.status}`);
+  return await res.json();
+}
+
+async function fetchNseHistory(symbol) {
+  // NSE historical data endpoint — returns ~1 year of daily OHLC
+  const cookie = await getNseCookie();
+  const today = new Date();
+  const oneYearAgo = new Date(today);
+  oneYearAgo.setFullYear(today.getFullYear() - 1);
+  const fmt = (d) => `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
+  const url = `${NSE_BASE}/api/historical/cm/equity?symbol=${encodeURIComponent(symbol)}&from=${fmt(oneYearAgo)}&to=${fmt(today)}`;
+  const res = await fetch(url, {
+    headers: { ...NSE_HEADERS, Cookie: cookie, Referer: `${NSE_BASE}/get-quotes/equity?symbol=${encodeURIComponent(symbol)}` },
+  });
+  if (!res.ok) return [];
+  const payload = await res.json();
+  const data = Array.isArray(payload?.data) ? payload.data : [];
+  return data
+    .map(d => ({ date: d.CH_TIMESTAMP ?? d.TIMESTAMP, close: toNumber(d.CH_CLOSING_PRICE ?? d.CLOSE_PRICE) }))
+    .filter(d => d.date && d.close != null)
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+async function fetchNseSnapshot({ symbol, fallbackPrice, fallbackRiskFreeRate, warnings, fetchedAt }) {
+  if (!symbol) {
+    warnings.push("No NSE symbol configured.");
+    return buildFallbackSnapshot({
+      provider: "NSE (fallback)",
+      symbol,
+      instrumentKey: null,
+      fallbackPrice,
+      fallbackRiskFreeRate,
+      warnings,
+      fetchedAt,
+      sourceSummary: "Using manual/config fallback because no NSE symbol is configured.",
+    });
+  }
+
+  try {
+    const [quotePayload, historyPoints] = await Promise.all([
+      fetchNseQuote(symbol),
+      fetchNseHistory(symbol).catch(err => { warnings.push(`NSE history: ${err.message}`); return []; }),
+    ]);
+
+    const priceInfo = quotePayload?.priceInfo ?? {};
+    const info = quotePayload?.info ?? {};
+    const price = toNumber(priceInfo.lastPrice) ?? toNumber(priceInfo.close) ?? fallbackPrice ?? null;
+    const previousClose = toNumber(priceInfo.previousClose) ?? null;
+    const changePct = price != null && previousClose != null && previousClose > 0
+      ? (price - previousClose) / previousClose
+      : toNumber(priceInfo.pChange) != null ? toNumber(priceInfo.pChange) / 100 : null;
+
+    // India 10Y G-Sec as risk-free proxy — fallback to config
+    const riskFreeRate = fallbackRiskFreeRate ?? 0.07; // default 7% India 10Y
+
+    return {
+      symbol,
+      instrumentKey: null,
+      provider: "NSE India",
+      fetchedAt,
+      price,
+      previousClose,
+      changePct,
+      marketCap: toNumber(info.totalMarketCap ?? quotePayload?.securityInfo?.totalMarketCap) ?? null,
+      enterpriseValue: null,
+      sharesOutstanding: toNumber(info.issuedSize ?? quotePayload?.securityInfo?.issuedSize) ?? null,
+      riskFreeRate,
+      priceAsOf: fetchedAt,
+      rateAsOf: null,
+      freshness: price != null ? "live" : (fallbackPrice != null ? "fallback" : "missing"),
+      sourceSummary: price != null
+        ? `NSE India live quote for ${symbol}.`
+        : "NSE did not return a live quote; using fallback config where available.",
+      warnings,
+      history: summarizeHistoricalPrices(historyPoints, price),
+    };
+  } catch (error) {
+    warnings.push(error instanceof Error ? error.message : String(error));
+    return buildFallbackSnapshot({
+      provider: "NSE India (fallback)",
+      symbol,
+      instrumentKey: null,
+      fallbackPrice,
+      fallbackRiskFreeRate,
+      warnings,
+      fetchedAt,
+      sourceSummary: "Using manual/config fallback because NSE request failed.",
+    });
+  }
+}
+
 export default async function handler(request, response) {
   if (request.method !== "GET") {
     response.setHeader("Allow", "GET");
@@ -324,7 +453,7 @@ export default async function handler(request, response) {
   const warnings = [];
   const fetchedAt = new Date().toISOString();
 
-  if (provider === "upstox-readonly" || provider === "alphavantage") {
+  if (provider === "upstox-readonly" || provider === "alphavantage" || provider === "nse") {
     if (!requireAuditReadAuth(request, response)) return;
     if (!enforceAuditRateLimit(request, response, "market-data", 60)) return;
   }
@@ -356,6 +485,14 @@ export default async function handler(request, response) {
     snapshot = await fetchUpstoxReadonlySnapshot({
       symbol,
       instrumentKey,
+      fallbackPrice,
+      fallbackRiskFreeRate,
+      warnings,
+      fetchedAt,
+    });
+  } else if (provider === "nse") {
+    snapshot = await fetchNseSnapshot({
+      symbol,
       fallbackPrice,
       fallbackRiskFreeRate,
       warnings,
