@@ -11,6 +11,7 @@ import KPITile from "./KPITile";
 import ValuationTriangulation from "./ValuationTriangulation";
 import QualitySignalPanel from "./QualitySignalPanel";
 import PenmanDecompositionChart from "./PenmanDecompositionChart";
+import ValuationRangeGauge from "../charts/ValuationRangeGauge";
 
 interface Props {
   data: RecastPeriod[];
@@ -153,6 +154,14 @@ export default function DashboardView({ data, config, traceability = null, ratio
           marketCap={marketCap}
         />
       </div>
+
+      {/* Value Range Gauge */}
+      <ValuationRangeGauge
+        price={price}
+        floor={epvPerShare ?? intrinsicRange?.floor ?? null}
+        ceiling={intrinsicRange?.ceiling ?? null}
+        midpoint={intrinsicRange?.mid ?? null}
+      />
 
       {/* Quality + Ratio Sanity Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
