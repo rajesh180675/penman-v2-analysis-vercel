@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
+import IncomeWaterfall from "./charts/IncomeWaterfall";
 
 interface Props {
   data: RecastPeriod[];
@@ -107,6 +108,22 @@ export default function RecastStatements({ data, traceability = null, traceabili
           </ChartBox>
         </div>
       </Section>
+
+      {/* Income Waterfall — visual decomposition of the latest period */}
+      {data.length > 0 && (() => {
+        const latest = data[data.length - 1];
+        return (
+          <IncomeWaterfall
+            sales={latest.is.Sales}
+            cogs={latest.is.COGS ?? 0}
+            operatingIncome={latest.is.OI}
+            netFinancingExpense={latest.is.NFE}
+            taxExpense={latest.is.TaxExpense}
+            pat={latest.is.PAT}
+            period={latest.period_end.slice(0, 7)}
+          />
+        );
+      })()}
 
       {/* Income Statement */}
       <Section title="Recast Income Statement" subtitle="§3.3 CNI / NFE / OI · §4 Core vs Unusual · paper Eq.(2)">
