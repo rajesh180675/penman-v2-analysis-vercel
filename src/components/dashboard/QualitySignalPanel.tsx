@@ -1,7 +1,7 @@
 import type { AnalysisTraceabilityEnvelope } from "../../engine/analysisTraceability";
 import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { SegmentData } from "../../engine/segmentParser";
-import type { LiveMarketDataSnapshot } from "../../hooks/useLiveMarketData";
+import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 
 interface Props {
   traceability?: AnalysisTraceabilityEnvelope | null;

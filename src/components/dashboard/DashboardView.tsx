@@ -5,7 +5,7 @@ import { computeEPV } from "../../engine/grahamDoddEPV";
 import { resolveShareBasis } from "../../engine/shareCountTools";
 import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { SegmentData } from "../../engine/segmentParser";
-import type { LiveMarketDataSnapshot } from "../../hooks/useLiveMarketData";
+import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 import CompanyHeaderCard from "./CompanyHeaderCard";
 import KPITile from "./KPITile";
 import ValuationTriangulation from "./ValuationTriangulation";
