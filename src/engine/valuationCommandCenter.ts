@@ -476,6 +476,20 @@ function primaryValueRange(cards: ValuationScenarioCard[]) {
   };
 }
 
+/** Phase C5: when SOTP is preferred, derive value range from SOTP EV. */
+function sotpValueRange(sotp: SOTPResult, shareBasis: ReturnType<typeof resolveShareBasis>, nfo: number) {
+  const shares = shareBasis.shares ?? null;
+  if (!shares || shares <= 0) return { floorPerShare: null, ceilingPerShare: null };
+  // Floor: discounted sum (after conglomerate discount) - NFO
+  const equityFloor = sotp.discountedSum - nfo;
+  // Ceiling: undiscounted sum (no conglomerate discount) - NFO
+  const equityCeiling = sotp.operatingSum - nfo;
+  return {
+    floorPerShare: equityFloor / shares,
+    ceilingPerShare: equityCeiling / shares,
+  };
+}
+
 function appendCrossCheckWarning(flags: string[], cards: ValuationScenarioCard[]) {
   const warnings = cards
     .map((card) => ({ key: card.key, spread: computeCrossCheckSpread(card.valuation) }))
@@ -1375,7 +1389,9 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
       supportingFlags: appendCrossCheckWarning(supportingFlags, scenarios),
       killSwitches,
     },
-    range: primaryValueRange(scenarios),
+    range: conglomerateAssessment?.sotpPreferred && sotpResult
+      ? sotpValueRange(sotpResult, shareBasis, latest.bs.NFO)
+      : primaryValueRange(scenarios),
   };
 
 }
