@@ -14,6 +14,7 @@
 import { SegmentData, SegmentPeriodData } from "./segmentParser";
 import { SegmentDefinition, SOTPResult, buildSOTPValuation } from "./sotpValuation";
 import { RecastPeriod, ValuationSectorTemplate } from "./types";
+import { VALUATION_SECTOR_TEMPLATES } from "./valuationSectorTemplates";
 
 /** Segment-level time series for trend analysis */
 export interface SegmentTimeSeries {
@@ -190,6 +191,8 @@ export function segmentDataToDefinitions(
         sectorTemplate: classifySegmentSector(seg),
         // Phase C5: pass actual segment assets for NOA allocation
         segmentAssets: segmentData.data[seg]?.[year]?.assets ?? undefined,
+        // Phase C5: per-segment ke from sector template
+        keAdjustment: VALUATION_SECTOR_TEMPLATES[classifySegmentSector(seg)].keAdjustment,
         // Use segment-specific revenue CAGR as terminal growth hint, but
         // refuse to publish a fabricated growth rate for a structurally
         // declining segment (revCagr <= 0). The previous Math.max(0.02,…)

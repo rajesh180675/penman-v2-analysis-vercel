@@ -21,6 +21,8 @@ export interface ValuationSectorTemplateDefinition {
   marginGuardrailBand: number;
   atoGuardrailBand: number;
   cyclical: boolean;
+  /** Phase C5: sector-specific ke adjustment for SOTP (additive, e.g. 0.02 = +2%). */
+  keAdjustment: number;
 }
 
 export const VALUATION_SECTOR_TEMPLATES: Record<Exclude<ValuationSectorTemplate, "auto">, ValuationSectorTemplateDefinition> = {
@@ -45,6 +47,7 @@ export const VALUATION_SECTOR_TEMPLATES: Record<Exclude<ValuationSectorTemplate,
     marginGuardrailBand: 0.04,
     atoGuardrailBand: 0.4,
     cyclical: false,
+    keAdjustment: -0.01,  // defensive sector, lower risk
   },
   paint: {
     id: "paint",
@@ -67,6 +70,7 @@ export const VALUATION_SECTOR_TEMPLATES: Record<Exclude<ValuationSectorTemplate,
     marginGuardrailBand: 0.05,
     atoGuardrailBand: 0.45,
     cyclical: false,
+    keAdjustment: -0.01,  // brand moat, lower risk
   },
   industrials: {
     id: "industrials",
@@ -89,6 +93,7 @@ export const VALUATION_SECTOR_TEMPLATES: Record<Exclude<ValuationSectorTemplate,
     marginGuardrailBand: 0.035,
     atoGuardrailBand: 0.35,
     cyclical: true,
+    keAdjustment: 0,  // baseline industrial risk
   },
   commodities: {
     id: "commodities",
@@ -111,6 +116,7 @@ export const VALUATION_SECTOR_TEMPLATES: Record<Exclude<ValuationSectorTemplate,
     marginGuardrailBand: 0.03,
     atoGuardrailBand: 0.3,
     cyclical: true,
+    keAdjustment: 0.02,  // commodity cyclicality, higher risk
   },
   retail: {
     id: "retail",
@@ -133,6 +139,7 @@ export const VALUATION_SECTOR_TEMPLATES: Record<Exclude<ValuationSectorTemplate,
     marginGuardrailBand: 0.035,
     atoGuardrailBand: 0.4,
     cyclical: false,
+    keAdjustment: -0.005,  // consumer-facing, moderate moat
   },
   services: {
     id: "services",
@@ -155,6 +162,7 @@ export const VALUATION_SECTOR_TEMPLATES: Record<Exclude<ValuationSectorTemplate,
     marginGuardrailBand: 0.05,
     atoGuardrailBand: 0.5,
     cyclical: false,
+    keAdjustment: -0.015,  // asset-light, high ROCE, lower risk
   },
 };
 
