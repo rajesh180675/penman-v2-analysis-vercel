@@ -7,6 +7,8 @@ import { resolveShareBasis } from "./shareCountTools";
 import { ValuationReadiness, resolveValuationReadiness } from "./valuationPolicy";
 import { resolveValuationSectorTemplate } from "./valuationSectorTemplates";
 import { buildSOTPValuation, SOTP_PRESETS, SOTPResult } from "./sotpValuation";
+import { runSOTPFromSegmentData, segmentDataToDefinitions, EnhancedSOTPResult } from "./segmentSOTPBridge";
+import type { SegmentData } from "./segmentParser";
 import { computeEvEbitdaCrossCheck, updateEvEbitdaWithMarketPrice, EvEbitdaCrossCheck } from "./evEbitdaCrossCheck";
 import { computeIndiaQualitySignals, IndiaQualitySignals } from "./indiaQualitySignals";
 import { buildEarningsQualityCard, buildDechowDichevAndRem, EarningsQualityCard } from "./earningsQuality";
@@ -169,6 +171,8 @@ export interface ValuationCommandCenterOutput {
   diagnostics: DcfCashFlowDiagnostics;
   reverseDcf: ReverseDcfDiagnostics;
   sotp: SOTPResult | null;
+  /** Phase C5 — conglomerate assessment from segment data or presets. */
+  conglomerate: ConglomerateAssessment | null;
   evEbitda: EvEbitdaCrossCheck;
   indiaQuality: IndiaQualitySignals;
   opportunity: ValuationOpportunityAssessment;
@@ -181,6 +185,18 @@ export interface ValuationCommandCenterOutput {
     floorPerShare: number | null;
     ceilingPerShare: number | null;
   };
+}
+
+/** Phase C5 — Conglomerate assessment derived from segment data or SOTP presets. */
+export interface ConglomerateAssessment {
+  isConglomerate: boolean;
+  segmentCount: number;
+  distinctSectorTemplates: number;
+  dominantSegmentPct: number;
+  dominantSegmentName: string;
+  dataSource: "parsed" | "preset" | "none";
+  /** Advisory: for diversified conglomerates, SOTP is preferred over single-entity V_RE. */
+  sotpPreferred: boolean;
 }
 
 function median(values: Array<number | null | undefined>) {
@@ -639,6 +655,8 @@ type CoreBuildContext = {
   config: EngineConfig;
   marketData?: LiveMarketDataSnapshot | null;
   analysisStatus?: AnalysisStatusSummary | null;
+  /** Phase C5 — parsed segment data for SOTP valuation (business segments). */
+  segmentData?: SegmentData | null;
 };
 
 type CoreBuildResult = Omit<ValuationCommandCenterOutput, "backtest">;
@@ -995,11 +1013,51 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     terminalGrowth: baseCard?.assumptions.g ?? derivedScenarios.base.drivers.g_terminal,
   });
 
-  // ── SOTP Valuation (Phase 2.2) ──────────────────────────────
-  const sotpPresetKey = config.sotp_preset ?? null;
-  const sotpResult: SOTPResult | null = sotpPresetKey && sotpPresetKey in SOTP_PRESETS
-    ? buildSOTPValuation(latest, SOTP_PRESETS[sotpPresetKey], keBase)
-    : null;
+  // ── SOTP Valuation (Phase 2.2 + C5) ──────────────────────────
+  // Priority: parsed segment data > preset > null
+  const { segmentData } = context;
+  let sotpResult: SOTPResult | null = null;
+  let conglomerateAssessment: ConglomerateAssessment | null = null;
+
+  if (segmentData && segmentData.segmentationType === "business" && segmentData.segments.length >= 2) {
+    // Phase C5: use actual parsed segment data
+    const enhanced = runSOTPFromSegmentData(segmentData, latest, keBase);
+    sotpResult = enhanced;
+    const { definitions } = segmentDataToDefinitions(segmentData);
+    const distinctTemplates = new Set(definitions.map(d => d.sectorTemplate));
+    const maxShare = definitions.length > 0 ? Math.max(...definitions.map(d => d.operatingProfitShare)) : 0;
+    const dominantDef = definitions.reduce((a, b) => a.operatingProfitShare > b.operatingProfitShare ? a : b, definitions[0]);
+    const isConglomerate = definitions.length >= 3 && distinctTemplates.size >= 2;
+    conglomerateAssessment = {
+      isConglomerate,
+      segmentCount: definitions.length,
+      distinctSectorTemplates: distinctTemplates.size,
+      dominantSegmentPct: maxShare,
+      dominantSegmentName: dominantDef?.name ?? "",
+      dataSource: "parsed",
+      sotpPreferred: isConglomerate && distinctTemplates.size >= 2,
+    };
+  } else {
+    // Fallback: preset-based SOTP
+    const sotpPresetKey = config.sotp_preset ?? null;
+    if (sotpPresetKey && sotpPresetKey in SOTP_PRESETS) {
+      const presetDefs = SOTP_PRESETS[sotpPresetKey];
+      sotpResult = buildSOTPValuation(latest, presetDefs, keBase);
+      const distinctTemplates = new Set(presetDefs.map(d => d.sectorTemplate));
+      const maxShare = Math.max(...presetDefs.map(d => d.operatingProfitShare));
+      const dominantDef = presetDefs.reduce((a, b) => a.operatingProfitShare > b.operatingProfitShare ? a : b, presetDefs[0]);
+      const isConglomerate = presetDefs.length >= 3 && distinctTemplates.size >= 2;
+      conglomerateAssessment = {
+        isConglomerate,
+        segmentCount: presetDefs.length,
+        distinctSectorTemplates: distinctTemplates.size,
+        dominantSegmentPct: maxShare,
+        dominantSegmentName: dominantDef?.name ?? "",
+        dataSource: "preset",
+        sotpPreferred: isConglomerate && distinctTemplates.size >= 2,
+      };
+    }
+  }
 
   // ── EV/EBITDA Cross-Check (Phase 2.4) ────────────────────────
   const evEbitda = computeEvEbitdaCrossCheck(latest, config.ev_ebitda_peers ?? []);
@@ -1278,6 +1336,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     diagnostics,
     reverseDcf,
     sotp: sotpResult,
+    conglomerate: conglomerateAssessment,
     evEbitda: evEbitdaWithMarket,
     indiaQuality,
     earningsQuality,

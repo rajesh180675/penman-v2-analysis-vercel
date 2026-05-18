@@ -43,6 +43,28 @@ describe("segmentParser", () => {
     expect(result!.segments).toContain("OUTSIDE INDIA");
   });
 
+  it("parses Reliance Industries business segment file", () => {
+    const relianceDir = resolve(__dirname, "../../../public/data/companies/reliance Industries");
+    const html = readFileSync(resolve(relianceDir, "SegmentFinance_.xls"), "utf-8");
+    const result = parseSegmentFinanceHTML(html);
+
+    expect(result).not.toBeNull();
+    expect(result!.segmentationType).toBe("business");
+    expect(result!.segments.length).toBeGreaterThanOrEqual(3);
+    expect(result!.years.length).toBeGreaterThanOrEqual(10);
+    expect(result!.years[0]).toBe("FY2025");
+
+    // Reliance should have Oil & Gas, Petrochemicals/Refining, Digital, Retail-type segments
+    const segNames = result!.segments.join("|").toLowerCase();
+    expect(segNames).toMatch(/oil|petro|refin|o2c/i);
+
+    // Check revenue is populated for latest year on first segment
+    const seg0 = result!.segments[0];
+    const latestData = result!.data[seg0]?.["FY2025"];
+    expect(latestData?.revenue).not.toBeNull();
+    expect(latestData!.revenue!).toBeGreaterThan(10000);
+  });
+
   it("returns null for empty/invalid HTML", () => {
     expect(parseSegmentFinanceHTML("")).toBeNull();
     expect(parseSegmentFinanceHTML("<html><body>no data</body></html>")).toBeNull();

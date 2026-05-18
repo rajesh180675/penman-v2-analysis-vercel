@@ -185,4 +185,36 @@ export const SOTP_PRESETS: Record<string, SegmentDefinition[]> = {
       sectorTemplate: "industrials",
     },
   ],
+  "Reliance Industries": [
+    {
+      name: "O2C (Oil-to-Chemicals)",
+      operatingProfitShare: 0.35,
+      revenueShare: 0.55,
+      sectorTemplate: "commodities",
+    },
+    {
+      name: "Digital Services (Jio)",
+      operatingProfitShare: 0.30,
+      revenueShare: 0.18,
+      sectorTemplate: "services",
+    },
+    {
+      name: "Retail",
+      operatingProfitShare: 0.15,
+      revenueShare: 0.20,
+      sectorTemplate: "retail",
+    },
+    {
+      name: "Oil & Gas (E&P)",
+      operatingProfitShare: 0.12,
+      revenueShare: 0.04,
+      sectorTemplate: "commodities",
+    },
+    {
+      name: "Financial Services & Others",
+      operatingProfitShare: 0.08,
+      revenueShare: 0.03,
+      sectorTemplate: "services",
+    },
+  ],
 };

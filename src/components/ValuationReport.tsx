@@ -758,6 +758,11 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
         <section className="grid gap-4 xl:grid-cols-2">
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden">
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">SOTP Valuation</div>
+            {commandCenter.conglomerate?.sotpPreferred && (
+              <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                This is a diversified conglomerate ({commandCenter.conglomerate.segmentCount} segments across {commandCenter.conglomerate.distinctSectorTemplates} sector templates). SOTP is the preferred valuation anchor — single-entity V_RE is less meaningful when business lines have structurally different economics.
+              </div>
+            )}
             <div className="mt-2 text-sm text-slate-600">Sum-of-the-parts decomposes a conglomerate into separately valued business lines. The conglomerate discount reflects the diversification penalty the market typically applies to multi-segment firms.</div>
             <div className="mt-4 overflow-x-auto">
               <table className="w-full text-xs">
