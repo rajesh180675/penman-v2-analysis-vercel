@@ -44,15 +44,17 @@ const V3AnalyticsPanel = lazy(() => import("./components/V3AnalyticsPanel"));
 const RunInspector = lazy(() => import("./components/RunInspector"));
 const CompanyWorkspace = lazy(() => import("./components/CompanyWorkspace"));
 const WatchlistDashboard = lazy(() => import("./components/WatchlistDashboard"));
+const DashboardView = lazy(() => import("./components/dashboard/DashboardView"));
 
-type TabId = "upload"|"watchlist"|"workspace"|"inspector"|"statements"|"ratios"|"forecast"|"valuation"|"bank"|"quality"|"comparison"|"report"|"regression"|"v3analytics"|"debug";
+type TabId = "upload"|"dashboard"|"watchlist"|"workspace"|"inspector"|"statements"|"ratios"|"forecast"|"valuation"|"bank"|"quality"|"comparison"|"report"|"regression"|"v3analytics"|"debug";
 
 const TABS: {id:TabId;label:string;icon:string;needsData?:boolean}[] = [
   {id:"upload",     label:"Data",       icon:"📂"},
+  {id:"dashboard",  label:"Dashboard",  icon:"📊", needsData:true},
   {id:"watchlist",  label:"Watchlist",  icon:"🗂"},
   {id:"workspace",  label:"Workspace",  icon:"🧭"},
   {id:"inspector",  label:"Runs",       icon:"🛰️"},
-  {id:"statements", label:"Statements", icon:"📊", needsData:true},
+  {id:"statements", label:"Statements", icon:"📋", needsData:true},
   {id:"ratios",     label:"Ratios",     icon:"📐", needsData:true},
   {id:"forecast",   label:"Forecast",   icon:"📈", needsData:true},
   {id:"valuation",  label:"Valuation",  icon:"💰", needsData:true},
@@ -385,7 +387,7 @@ export function App() {
       if (debug) setDebugInfo(debug);
       else setDebugInfo(null);
       if (data.length === 0) { setActiveTab("debug"); return; }
-      // recastData is now derived reactively via useMemo(rawData, config).
+      setActiveTab("dashboard");
       // We just store rawData; the memo takes care of processing.
       const id = data[0]?.company_id || `CO-${Date.now()}`;
       setRegistry((prev) => ({
@@ -719,6 +721,16 @@ export function App() {
             {activeTab==="inspector" && <RunInspector auditMeta={auditMeta} analysisStatus={analysisStatus} />}
             {activeTab==="upload" && (
               <DataEntry onDataSubmit={handleDataSubmit} currentData={rawData} config={config} onConfigChange={setConfig}/>
+            )}
+            {activeTab==="dashboard" && hasRecast && (
+              <DashboardView
+                data={recastData!}
+                config={config}
+                traceability={traceability}
+                ratioSanity={ratioSanity}
+                segmentData={segmentData}
+                onNavigate={(tab) => setActiveTab(tab as TabId)}
+              />
             )}
             {activeTab==="watchlist" && (
               <WatchlistDashboard
