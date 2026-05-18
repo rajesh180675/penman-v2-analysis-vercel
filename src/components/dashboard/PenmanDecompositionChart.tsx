@@ -48,7 +48,7 @@ export default function PenmanDecompositionChart({ data }: Props) {
             />
             <Tooltip
               contentStyle={{ fontSize: 12, borderRadius: 8 }}
-              formatter={(value: number, name: string) => {
+              formatter={(value: any, name: any) => {
                 if (name === "ATO") return [`${value}×`, name];
                 return [`${value}%`, name];
               }}

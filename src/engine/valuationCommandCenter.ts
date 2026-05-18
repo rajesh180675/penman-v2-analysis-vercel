@@ -7,7 +7,7 @@ import { resolveShareBasis } from "./shareCountTools";
 import { ValuationReadiness, resolveValuationReadiness } from "./valuationPolicy";
 import { resolveValuationSectorTemplate } from "./valuationSectorTemplates";
 import { buildSOTPValuation, SOTP_PRESETS, SOTPResult } from "./sotpValuation";
-import { runSOTPFromSegmentData, segmentDataToDefinitions, EnhancedSOTPResult } from "./segmentSOTPBridge";
+import { runSOTPFromSegmentData, segmentDataToDefinitions } from "./segmentSOTPBridge";
 import type { SegmentData } from "./segmentParser";
 import { computeEvEbitdaCrossCheck, updateEvEbitdaWithMarketPrice, EvEbitdaCrossCheck } from "./evEbitdaCrossCheck";
 import { computeIndiaQualitySignals, IndiaQualitySignals } from "./indiaQualitySignals";

@@ -11,6 +11,8 @@ import { resolveValuationReadiness } from "./engine/valuationPolicy";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AnalysisStatusBadge } from "./components/AnalysisStatusBadge";
 import CompanySwitcher from "./components/CompanySwitcher";
+import GlossaryModal from "./components/GlossaryModal";
+
 import DataEntry from "./components/DataEntry";
 import RecastStatements from "./components/RecastStatements";
 import RatioReport from "./components/RatioReport";
@@ -80,6 +82,8 @@ const TAB_GROUPS: {key:string;label:string}[] = [
 
 export function App() {
   const auditGovernance = getAuditClientGovernance();
+  void GlossaryModal;
+  void glossaryOpen;
   const serverStatus = useServerStatus();
   const [rawData,    setRawData]    = useState<RawPeriodData[]|null>(null);
   const [debugInfo,  setDebugInfo]  = useState<CapitalineParseDebug|null>(null);
@@ -88,6 +92,8 @@ export function App() {
   const [activeTab,  setActiveTab]  = useState<TabId>("upload");
   const [config,     setConfig]     = useState<EngineConfig>(DEFAULT_CONFIG);
   const [darkMode, setDarkMode] = useState(false);
+  const [glossaryOpen, setGlossaryOpen] = useState(false);
+
   const [registry, setRegistry] = useState<CompanyRegistry>(() => readPersistedCompanyRegistry());
   const [comparisonRegistryHydrated, setComparisonRegistryHydrated] = useState(false);
   const [auditMeta, setAuditMeta] = useState<AuditSubmissionMeta | null>(null);
@@ -626,6 +632,13 @@ export function App() {
                 </span>
               )}
               <button
+                onClick={() => setGlossaryOpen(true)}
+                className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
+                title="Open glossary — definitions of RNOA, NOA, EPV, Piotroski, etc."
+              >
+                📖
+              </button>
+              <button
                 onClick={() => setDarkMode((v) => !v)}
                 className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
                 title="Toggle dark mode"
@@ -878,6 +891,7 @@ export function App() {
           </Suspense>
         </main>
       </div>
+      <GlossaryModal open={glossaryOpen} onClose={() => setGlossaryOpen(false)} />
     </ErrorBoundary>
   );
 }

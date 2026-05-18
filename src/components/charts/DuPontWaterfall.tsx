@@ -62,10 +62,10 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
               domain={["auto", "auto"]}
             />
             <Tooltip
-              formatter={(value: number, _name: string, props: any) => [
+              formatter={((value: any, _name: any, props: any) => [
                 `${props.payload.raw.toFixed(3)} (${value}%)`,
                 props.payload.name,
-              ]}
+              ]) as any}
               contentStyle={{ fontSize: 11, borderRadius: 8 }}
             />
             <ReferenceLine y={100} stroke="#94a3b8" strokeDasharray="4 4" label={{ value: "1.0×", position: "right", fontSize: 9, fill: "#94a3b8" }} />

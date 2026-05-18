@@ -374,7 +374,7 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
             <CapitalAllocSection ca={bundle.capitalAllocation} />
           )}
           {activeSection === "epv" && bundle && (
-            <EPVSection epv={bundle.epv} />
+            <EPVSection epv={bundle.epv} marketPrice={config.market_price ?? null} />
           )}
           {activeSection === "relative_val" && bundle && (
             <RelativeValSection rv={bundle.relativeValuation} />
@@ -1251,21 +1251,23 @@ function CapitalAllocSection({ ca }: { ca: CapAllocScoreResult | null }) {
 }
 
 /* ── EPV (Graham-Dodd) ────────────────────────────────────────── */
-function EPVSection({ epv }: { epv: EPVResult | null }) {
+function EPVSection({ epv, marketPrice }: { epv: EPVResult | null; marketPrice: number | null }) {
   if (!epv) return <NullState message="EPV requires ≥ 3 periods and market price + shares outstanding in config." />;
 
   const INTERP_COLORS: Record<string, string> = {
-    "strong-franchise": "text-emerald-700 bg-emerald-50 border-emerald-200",
-    "franchise": "text-blue-700 bg-blue-50 border-blue-200",
-    "competitive": "text-amber-700 bg-amber-50 border-amber-200",
-    "depressed-earnings": "text-orange-700 bg-orange-50 border-orange-200",
-    "insufficient-data": "text-slate-500 bg-slate-50 border-slate-200",
+    moat: "text-emerald-700 bg-emerald-50 border-emerald-200",
+    "no-moat": "text-red-700 bg-red-50 border-red-200",
+    inconclusive: "text-slate-500 bg-slate-50 border-slate-200",
   };
   const CONF_COLOR: Record<string, string> = {
     high: "text-emerald-700 bg-emerald-50",
     medium: "text-amber-700 bg-amber-50",
     low: "text-red-700 bg-red-50",
   };
+
+  const confidence = epv.periodsUsed >= 5 ? "high" : epv.periodsUsed >= 3 ? "medium" : "low";
+  const franchisePct = epv.epvOperations > 0 ? epv.franchiseValue / epv.epvOperations : 0;
+  const priceToEPV = epv.epvPerShare && marketPrice ? marketPrice / epv.epvPerShare : null;
 
   return (
     <div className="space-y-5">
@@ -1277,51 +1279,53 @@ function EPVSection({ epv }: { epv: EPVResult | null }) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <MetricCard
           label="EPV (Enterprise)"
-          value={cr(epv.V_EPV)}
-          badge={epv.interpretation.replace(/-/g, " ")}
-          color={INTERP_COLORS[epv.interpretation]}
+          value={cr(epv.epvOperations)}
+          badge={epv.moatSignal.replace(/-/g, " ")}
+          color={INTERP_COLORS[epv.moatSignal]}
         />
         <MetricCard
           label="Asset Value (NOA)"
-          value={cr(epv.V_A)}
+          value={cr(epv.reproductionValue)}
           badge="Reproduction cost proxy"
           color="text-slate-700 bg-slate-50"
         />
         <MetricCard
           label="Franchise Value"
           value={cr(epv.franchiseValue)}
-          badge={`${pct(epv.franchisePct)} of EPV`}
+          badge={`${pct(franchisePct)} of EPV`}
           color={epv.franchiseValue > 0 ? "text-emerald-700 bg-emerald-50" : "text-red-700 bg-red-50"}
         />
         <MetricCard
           label="Confidence"
-          value={epv.confidence.toUpperCase()}
-          badge={`WACC: ${pct(epv.kw)}`}
-          color={CONF_COLOR[epv.confidence]}
+          value={confidence.toUpperCase()}
+          badge={`WACC: ${pct(epv.ke)}`}
+          color={CONF_COLOR[confidence]}
         />
       </div>
 
       {(epv.epvPerShare != null || epv.marginOfSafety != null) && (
         <InfoBlock title="Per-Share & Market Comparison">
           {epv.epvPerShare != null && <InfoRow label="EPV per share" value={`₹${epv.epvPerShare.toFixed(1)}`} />}
-          {epv.priceToEPV != null && <InfoRow label="Price / EPV" value={`${epv.priceToEPV.toFixed(2)}×`} />}
+          {priceToEPV != null && <InfoRow label="Price / EPV" value={`${priceToEPV.toFixed(2)}×`} />}
           {epv.marginOfSafety != null && <InfoRow label="Margin of safety" value={pct(epv.marginOfSafety)} />}
         </InfoBlock>
       )}
 
       <InfoBlock title="Normalization Details">
-        <InfoRow label="Periods used" value={`${epv.normalization.periodsUsed}`} />
-        <InfoRow label="Median CoreOI margin" value={pct(epv.normalization.medianCoreOIMargin)} />
-        <InfoRow label="Normalized NOPAT" value={cr(epv.normalization.normalizedNOPAT)} />
-        <InfoRow label="Median tax rate" value={pct(epv.normalization.medianTaxRate)} />
-        <InfoRow label="Latest sales base" value={cr(epv.normalization.latestSales)} />
-        <InfoRow label="Margin range" value={`${pct(epv.normalization.marginRange[0])} – ${pct(epv.normalization.marginRange[1])}`} />
-        <InfoRow label="High confidence" value={epv.normalization.highConfidence ? "✓ Yes" : "⚠ No"} />
+        <InfoRow label="Periods used" value={`${epv.periodsUsed}`} />
+        <InfoRow label="Normalized CoreOI" value={cr(epv.normalizedCoreOI)} />
+        <InfoRow label="Normalized NOPAT" value={cr(epv.normalizedNOPAT)} />
+        <InfoRow label="Statutory tax rate" value={pct(epv.taxRate)} />
+        <InfoRow label="Avg depreciation" value={cr(epv.avgDepreciation)} />
+        <InfoRow label="Avg Capex" value={cr(epv.avgCapex)} />
+        <InfoRow label="Maintenance Capex" value={cr(epv.maintenanceCapex)} />
+        <InfoRow label="Growth Capex" value={cr(epv.growthCapex)} />
+        <InfoRow label="Adjusted Earnings Power" value={cr(epv.adjustedEarningsPower)} />
       </InfoBlock>
 
-      {epv.confidenceNotes.length > 0 && (
+      {epv.explanation.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-          {epv.confidenceNotes.map((n, i) => <p key={i} className="text-xs text-amber-700">{n}</p>)}
+          {epv.explanation.map((n, i) => <p key={i} className="text-xs text-amber-700">{n}</p>)}
         </div>
       )}
     </div>

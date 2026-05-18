@@ -88,7 +88,7 @@ export default function CashFlowChart({ data }: Props) {
             <XAxis dataKey="period" fontSize={10} />
             <YAxis fontSize={10} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
             <Tooltip
-              formatter={(value: number, name: string) => [`₹${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr`, name]}
+              formatter={((value: any, name: any) => [`₹${(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr`, name]) as any}
               contentStyle={{ fontSize: 11, borderRadius: 8 }}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />

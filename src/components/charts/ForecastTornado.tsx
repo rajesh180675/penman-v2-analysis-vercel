@@ -92,10 +92,10 @@ export default function ForecastTornado({ baseValue, drivers, marketPrice }: Pro
               tick={{ fill: "#475569" }}
             />
             <Tooltip
-              formatter={(value: number, name: string, props: { payload?: { lowAbs: number; highAbs: number; range: string } }) => {
+              formatter={((_value: any, name: any, props: any) => {
                 if (name === "downside") return [`₹${(props.payload?.lowAbs ?? 0).toFixed(0)}`, "Low scenario"];
                 return [`₹${(props.payload?.highAbs ?? 0).toFixed(0)}`, "High scenario"];
-              }}
+              }) as any}
               labelFormatter={(label, payload) => {
                 const range = payload?.[0]?.payload?.range;
                 return range ? `${label} — ${range}` : label;

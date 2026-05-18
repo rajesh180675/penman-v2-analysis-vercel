@@ -663,8 +663,8 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
               { name: "Residual Earnings (base)", shortName: "V_RE", value: commandCenter.scenarios.find(s => s.key === "base")?.intrinsicPerShare ?? null },
               { name: "Residual Earnings (stress)", shortName: "V_Stress", value: commandCenter.scenarios.find(s => s.key === "stress")?.intrinsicPerShare ?? null },
               { name: "EPV (no-growth floor)", shortName: "EPV", value: commandCenter.epv?.epvPerShare ?? null },
-              { name: "Reverse DCF implied", shortName: "RevDCF", value: commandCenter.reverseDcf?.impliedGrowthValue ?? null },
-              { name: "SOTP (segment-weighted)", shortName: "SOTP", value: commandCenter.sotp?.sotpPerShare ?? null },
+              { name: "Reverse DCF implied", shortName: "RevDCF", value: commandCenter.marketPrice ?? null },
+              { name: "SOTP (segment-weighted)", shortName: "SOTP", value: commandCenter.sotp && sharesOut && sharesOut > 0 ? (commandCenter.sotp.totalEnterpriseValue - data[data.length - 1].bs.NFO) / sharesOut : null },
             ]}
             marketPrice={commandCenter.marketPrice}
           />
@@ -677,7 +677,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
               const rnoa = latest.ratios?.RNOA ?? 0;
               const noa = latest.bs.NOA;
               const cse = latest.bs.CSE;
-              const shares = commandCenter.sharesOutstanding;
+              const shares = sharesOut;
               if (!shares || shares <= 0 || keVal <= gVal) return null;
               const equity = cse + ((rnoa - keVal) * noa) / (keVal - gVal);
               return (equity / shares) * 1e7;
@@ -695,7 +695,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
           const rnoaBase = latest.ratios?.RNOA ?? 0;
           const noa = latest.bs.NOA;
           const cse = latest.bs.CSE;
-          const shares = commandCenter.sharesOutstanding;
+          const shares = sharesOut;
 
           if (!baseValue || !shares || shares <= 0) return null;
 

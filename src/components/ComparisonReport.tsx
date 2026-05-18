@@ -416,7 +416,7 @@ export default function ComparisonReport({ registry, config, weakestTraceability
                 <div key={i} className="rounded-xl bg-slate-50 p-3">
                   <div className="text-xs text-slate-500">{m.metric} implied</div>
                   <div className="text-lg font-bold text-slate-900">
-                    {m.impliedValue != null ? `₹${m.impliedValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}
+                    {m.impliedFairValue != null ? `₹${m.impliedFairValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}
                   </div>
                   <div className="text-[10px] text-slate-400">Peer median: {m.peerMedianMultiple?.toFixed(1) ?? "—"}×</div>
                 </div>

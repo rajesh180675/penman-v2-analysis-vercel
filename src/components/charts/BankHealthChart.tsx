@@ -75,7 +75,7 @@ export default function BankHealthChart({ metrics, ke }: Props) {
             <XAxis dataKey="period" fontSize={10} />
             <YAxis tickFormatter={(v) => `${v}%`} fontSize={10} />
             <Tooltip
-              formatter={(value: number, name: string) => [`${value?.toFixed(2)}%`, name]}
+              formatter={((value: any, name: any) => [`${(value || 0).toFixed(2)}%`, name]) as any}
               contentStyle={{ fontSize: 11, borderRadius: 8 }}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -98,7 +98,7 @@ export default function BankHealthChart({ metrics, ke }: Props) {
             <XAxis dataKey="period" fontSize={10} />
             <YAxis tickFormatter={(v) => `${v}%`} fontSize={10} />
             <Tooltip
-              formatter={(value: number, name: string) => [`${value?.toFixed(2)}%`, name]}
+              formatter={((value: any, name: any) => [`${(value || 0).toFixed(2)}%`, name]) as any}
               contentStyle={{ fontSize: 11, borderRadius: 8 }}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />

@@ -71,10 +71,10 @@ export default function ScenarioRangeChart({ scenarios, marketPrice, expectedVal
             <XAxis dataKey="label" fontSize={11} />
             <YAxis fontSize={10} domain={[0, max * 1.1]} tickFormatter={(v) => `₹${v}`} />
             <Tooltip
-              formatter={(value: number, _name: string, props: { payload?: { probability: number } }) => [
-                `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })} (P=${((props.payload?.probability ?? 0) * 100).toFixed(0)}%)`,
+              formatter={((value: any, _name: any, props: any) => [
+                `₹${(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })} (P=${((props.payload?.probability ?? 0) * 100).toFixed(0)}%)`,
                 "Intrinsic / share",
-              ]}
+              ]) as any}
               contentStyle={{ fontSize: 11, borderRadius: 8 }}
             />
             {marketPrice != null && (
@@ -96,7 +96,7 @@ export default function ScenarioRangeChart({ scenarios, marketPrice, expectedVal
               />
             )}
             <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-              <LabelList dataKey="value" position="top" fontSize={11} formatter={(v: number) => `₹${v}`} />
+              <LabelList dataKey="value" position="top" fontSize={11} formatter={(v: any) => `₹${v}`} />
               {data.map((entry, i) => (
                 <Cell key={i} fill={entry.color} fillOpacity={0.85} />
               ))}

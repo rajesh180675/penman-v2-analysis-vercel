@@ -21,6 +21,7 @@ function mkDebugInfo(): CapitalineParseDebug {
         BalanceSheet: 1,
         ProfitLoss: 0,
         CashFlow: 0,
+        Segment: 0,
         Unknown: 0,
       },
     },
