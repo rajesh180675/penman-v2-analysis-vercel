@@ -29,6 +29,8 @@ interface Props {
 export default function DataEntry({ onDataSubmit, currentData, config, onConfigChange }: Props) {
   const [mode, setMode] = useState<"capitaline" | "screener" | "json" | "xbrl" | "manual">("capitaline");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: number } | null>(null);
+  const [uploadStep, setUploadStep] = useState<"idle" | "unzipping" | "parsing" | "success" | "failed">("idle");
   const [error, setError]     = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [companyId, setCompanyId] = useState("VST");
@@ -59,9 +61,14 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
   const processZip = useCallback(async (file: File) => {
     if (!file.name.toLowerCase().endsWith(".zip")) {
       setError("Please upload a .zip file containing Capitaline XLS exports.");
+      setUploadStep("failed");
       return;
     }
-    setIsProcessing(true); setError(""); setLastFile(file.name);
+    setIsProcessing(true);
+    setError("");
+    setLastFile(file.name);
+    setUploadedFile({ name: file.name, size: file.size });
+    setUploadStep("unzipping");
     const meta = buildMeta("capitaline", { fileName: file.name });
     try {
       await persistAuditEvent({
@@ -87,6 +94,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         retentionDays: meta.retentionDays,
       });
       const { parseCapitalineZip } = await import("../engine/capitalineParser");
+      setUploadStep("parsing");
       const { periods, debug, segmentData } = await parseCapitalineZip(file, { companyId });
       await persistAuditEvent({
         runId: meta.runId,
@@ -105,7 +113,12 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         },
       });
       onDataSubmit(periods, debug, meta, null, segmentData);
-      if (periods.length === 0) setError("Parsed 0 periods. Check Debug tab for details.");
+      if (periods.length === 0) {
+        setError("Parsed 0 periods. Check Debug tab for details.");
+        setUploadStep("failed");
+      } else {
+        setUploadStep("success");
+      }
     } catch (err: unknown) {
       await persistAuditEvent({
         runId: meta.runId,
@@ -118,6 +131,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         },
       });
       setError(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+      setUploadStep("failed");
     } finally { setIsProcessing(false); }
   }, [auditGovernance.maximumUploadBytes, buildMeta, companyId, onDataSubmit]);
 
@@ -477,36 +491,152 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         </div>
 
         {mode === "capitaline" && (
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            className={`m-6 border-2 border-dashed rounded-xl p-10 text-center transition-colors ${
-              dragOver ? "border-indigo-400 bg-indigo-50"
-              : isProcessing ? "border-slate-200 bg-slate-50"
-              : "border-slate-300 bg-white hover:border-indigo-300"
-            }`}
-          >
-            <input type="file" accept=".zip" onChange={async (e) => { const f = e.target.files?.[0]; if (f) await processZip(f); e.target.value = ""; }}
-              className="hidden" id="zip-upload" disabled={isProcessing} />
-            <label htmlFor="zip-upload" className="cursor-pointer flex flex-col items-center gap-3">
-              <div className="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center">
-                {isProcessing ? (
-                  <svg className="w-7 h-7 text-indigo-600 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                ) : (
-                  <svg className="w-7 h-7 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
+          <div className="m-6 space-y-4">
+            {!uploadedFile ? (
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-2xl p-10 text-center transition-all cursor-pointer relative overflow-hidden group ${
+                  dragOver 
+                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-inner" 
+                    : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/40 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-sm"
+                }`}
+              >
+                <input 
+                  type="file" 
+                  accept=".zip" 
+                  onChange={async (e) => { const f = e.target.files?.[0]; if (f) await processZip(f); e.target.value = ""; }}
+                  className="hidden" 
+                  id="zip-upload" 
+                  disabled={isProcessing} 
+                />
+                <label htmlFor="zip-upload" className="cursor-pointer flex flex-col items-center gap-3">
+                  <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
+                    <svg className="w-8 h-8 text-indigo-500 dark:text-indigo-400 group-hover:bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="font-bold text-slate-800 dark:text-slate-200 text-base">Drop Capitaline ZIP here or click to browse</div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+                      Pack your Balance Sheet, P&amp;L, and Cash Flow <b>.xls exports</b> into a single .zip file. We'll unzip and align them automatically.
+                    </p>
+                  </div>
+                </label>
+              </div>
+            ) : (
+              <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6">
+                {/* File Details Grid */}
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 flex items-center justify-center shrink-0">
+                      <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-bold text-slate-800 dark:text-slate-100 truncate max-w-xs sm:max-w-md" title={uploadedFile.name}>
+                        {uploadedFile.name}
+                      </div>
+                      <div className="text-xs text-slate-400 font-mono mt-0.5">
+                        {(uploadedFile.size / 1024).toFixed(1)} KB
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => { setUploadedFile(null); setUploadStep("idle"); setError(""); }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors"
+                    >
+                      Clear &amp; Start Over
+                    </button>
+                  </div>
+                </div>
+
+                {/* Progress Timeline Stepper */}
+                <div className="relative pt-2">
+                  <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-slate-200 dark:bg-slate-800 -translate-y-1/2 z-0" />
+                  
+                  {/* Stepper items container */}
+                  <div className="relative z-10 flex justify-between">
+                    {[
+                      { step: "unzipping", label: "Extracting Files", desc: "Decompressing XLS ZIP contents" },
+                      { step: "parsing", label: "Reading Formats", desc: "Mapping sheets and columns" },
+                      { step: "reconciling", label: "Balancing NOA/NFO", desc: "Aligning asset & liability lines" },
+                      { step: "done", label: "Dataset Ready", desc: "Pipeline compilation finalized" }
+                    ].map((item, idx) => {
+                      const isCompleted = 
+                        (item.step === "unzipping" && ["parsing", "success"].includes(uploadStep)) ||
+                        (item.step === "parsing" && ["success"].includes(uploadStep)) ||
+                        (item.step === "reconciling" && ["success"].includes(uploadStep)) ||
+                        (item.step === "done" && uploadStep === "success");
+
+                      const isActive = 
+                        (item.step === "unzipping" && uploadStep === "unzipping") ||
+                        (item.step === "parsing" && uploadStep === "parsing") ||
+                        (item.step === "reconciling" && uploadStep === "parsing" && isProcessing) ||
+                        (item.step === "done" && uploadStep === "parsing" && !isProcessing);
+
+                      const isFailed = uploadStep === "failed";
+
+                      return (
+                        <div key={item.step} className="flex flex-col items-center text-center max-w-[120px] sm:max-w-[160px]">
+                          <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                            isCompleted 
+                              ? "bg-emerald-500 border-emerald-500 text-white" 
+                              : isActive 
+                              ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100 dark:shadow-none animate-pulse scale-110" 
+                              : isFailed && idx === 3
+                              ? "bg-red-500 border-red-500 text-white"
+                              : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-600"
+                          }`}>
+                            {isCompleted ? (
+                              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : isFailed && idx === 3 ? (
+                              "✕"
+                            ) : (
+                              idx + 1
+                            )}
+                          </div>
+                          <div className="mt-2">
+                            <div className={`text-xs font-bold ${isActive ? "text-indigo-600 dark:text-indigo-400" : isCompleted ? "text-emerald-600 dark:text-emerald-500" : "text-slate-700 dark:text-slate-300"}`}>
+                              {item.label}
+                            </div>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 leading-snug hidden sm:block">
+                              {item.desc}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Status Notice Banners */}
+                {uploadStep === "success" && (
+                  <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/60 rounded-xl p-4 flex items-center gap-3">
+                    <span className="text-xl">🎉</span>
+                    <div className="text-xs text-emerald-800 dark:text-emerald-400 font-medium">
+                      Excellent! <b>{uploadedFile.name}</b> was ingested successfully. The financial engine has aligned the balance sheets, reformulated operating cash flows, and generated your valuation models.
+                    </div>
+                  </div>
+                )}
+
+                {uploadStep === "failed" && (
+                  <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/60 rounded-xl p-4 flex items-center gap-3">
+                    <span className="text-xl">⚠️</span>
+                    <div className="text-xs text-red-800 dark:text-red-400 font-medium space-y-1">
+                      <div><b>Ingestion Failed:</b> Please review the spreadsheet formats inside your ZIP.</div>
+                      {error && <div className="font-mono bg-red-100/50 dark:bg-red-950/40 p-1.5 rounded mt-1 border border-red-200/50">{error}</div>}
+                    </div>
+                  </div>
                 )}
               </div>
-              <div>
-                <div className="font-semibold text-slate-700">{isProcessing ? "Processing…" : "Drop ZIP here or click to browse"}</div>
-                <div className="text-xs text-slate-500 mt-0.5">{lastFile ? `Last: ${lastFile}` : "Capitaline XLS exports bundled in a .zip"}</div>
-              </div>
-            </label>
+            )}
           </div>
         )}
 
