@@ -5,6 +5,7 @@ import { computeEPV } from "../../engine/grahamDoddEPV";
 import { computeMoatScore } from "../../engine/moatScoring";
 import { scoreCapitalAllocation } from "../../engine/capitalAllocationScoring";
 import { detectDistress } from "../../engine/distressDetector";
+import { buildValuationCommandCenter } from "../../engine/valuationCommandCenter";
 import { resolveShareBasis } from "../../engine/shareCountTools";
 import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { SegmentData } from "../../engine/segmentParser";
@@ -96,22 +97,26 @@ export default function DashboardView({ data, config, traceability = null, ratio
   // Distress detector
   const distress = useMemo(() => detectDistress(data), [data]);
 
-  // Intrinsic value range (simplified — from latest RNOA-based)
+  // Authoritative valuation — use the same command center as the Valuation tab
+  // so the Dashboard verdict and Valuation tab agree.
+  const commandCenter = useMemo(
+    () => buildValuationCommandCenter({ data, config, marketData, analysisStatus: null, segmentData }),
+    [data, config, marketData, segmentData],
+  );
+
+  // Intrinsic value range — from authoritative command center (matches Valuation tab)
   const intrinsicRange = useMemo(() => {
-    if (!rnoa || !ke || ke <= 0) return null;
-    const noa = latest.bs.NOA;
-    const cse = latest.bs.CSE;
-    // Simple RE-based: CSE + (RNOA - ke) * NOA / ke as rough ceiling
-    const reBasedEquity = cse + ((rnoa - ke) * noa) / ke;
-    const floor = epv?.epvEquity ?? cse;
-    const ceiling = Math.max(reBasedEquity, cse);
-    if (shares <= 0) return null;
+    const floor = commandCenter.range?.floorPerShare ?? null;
+    const ceiling = commandCenter.range?.ceilingPerShare ?? null;
+    if (floor == null && ceiling == null) return null;
+    const f = floor ?? ceiling ?? 0;
+    const c = ceiling ?? floor ?? 0;
     return {
-      floor: (floor / shares) * 1e7,
-      ceiling: (ceiling / shares) * 1e7,
-      mid: ((floor + ceiling) / 2 / shares) * 1e7,
+      floor: f,
+      ceiling: c,
+      mid: (f + c) / 2,
     };
-  }, [rnoa, ke, latest, epv, shares]);
+  }, [commandCenter.range]);
 
   return (
     <div className="space-y-6">
