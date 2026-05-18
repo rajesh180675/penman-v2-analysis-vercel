@@ -40,6 +40,7 @@ import {
   buildForecastProvenance,
 } from "../engine/forecastPresentation";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
+import ScenarioRangeChart from "./charts/ScenarioRangeChart";
 
 interface Props {
   data: RecastPeriod[];
@@ -405,6 +406,18 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
           </div>
         )}
       </div>
+      {/* Scenario Range visual summary */}
+      <ScenarioRangeChart
+        scenarios={scenarioCards.map(c => ({
+          label: c.label,
+          value: sharesOut ? toPerShare(c.forecast.valuationResult?.V_RE_CV3 ?? null, sharesOut) ?? null : c.forecast.valuationResult?.V_RE_CV3 ?? null,
+          probability: c.probability,
+          color: scenarioColor(c.key),
+        }))}
+        marketPrice={config.market_price ?? null}
+        expectedValue={expectedValue != null && sharesOut ? toPerShare(expectedValue, sharesOut) ?? null : expectedValue}
+      />
+
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
         <h2 className="text-lg font-bold text-slate-800 mb-4">Forecast Assumptions — §4.3</h2>
         <div className="flex flex-wrap gap-4 items-end">
