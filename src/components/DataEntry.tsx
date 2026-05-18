@@ -16,6 +16,7 @@ import {
   rememberAuditRun,
 } from "../lib/audit";
 import ManualEntryWizard from "./ManualEntryWizard";
+import OnboardingCard from "./dashboard/OnboardingCard";
 
 interface Props {
   onDataSubmit: (data: RawPeriodData[], debug?: CapitalineParseDebug, meta?: AuditSubmissionMeta, parserDiagnostics?: SourceParserDiagnostics | null, segmentData?: import("../engine/segmentParser").SegmentData | null) => void;
@@ -167,6 +168,8 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      <OnboardingCard hasData={!!(currentData && currentData.length > 0)} />
+
       <div className="bg-white rounded-xl border border-slate-200 p-2 inline-flex gap-2">
         {([
           ["capitaline", "Capitaline ZIP"],
