@@ -5,6 +5,8 @@ import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTra
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import { buildComparisonPublicationSnapshot, type ComparisonPublicationSnapshot } from "../lib/publication/comparisonPublicationSnapshot";
 import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
+import PeerScatterPlot from "./charts/PeerScatterPlot";
+import PercentileBar from "./charts/PercentileBar";
 
 interface Props {
   registry: CompanyRegistry;
@@ -347,6 +349,64 @@ export default function ComparisonReport({ registry, config, weakestTraceability
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Visual Peer Charts */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <PeerScatterPlot
+          companies={latestByCo.map((c, i) => ({
+            name: c.company,
+            x: c.latest?.ratios?.ROCE ?? 0,
+            y: (() => {
+              const inp = marketInputs[c.id];
+              if (!inp?.price || !inp?.shares || inp.shares <= 0) return 0;
+              const cse = c.latest?.bs?.CSE ?? 0;
+              return (inp.price * inp.shares * 1e7) / (cse > 0 ? cse : 1);
+            })(),
+            isTarget: i === 0,
+          }))}
+          xLabel="ROCE"
+          yLabel="P/B"
+          xFormat="pct"
+          yFormat="mult"
+        />
+        <PeerScatterPlot
+          companies={latestByCo.map((c, i) => ({
+            name: c.company,
+            x: c.latest?.ratios?.PM ?? 0,
+            y: c.latest?.ratios?.ATO ?? 0,
+            isTarget: i === 0,
+          }))}
+          xLabel="Profit Margin"
+          yLabel="Asset Turnover"
+          xFormat="pct"
+          yFormat="mult"
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <PercentileBar
+          title="ROCE Ranking"
+          format="pct"
+          entries={latestByCo.map((c, i) => {
+            const vals = latestByCo.map(x => x.latest?.ratios?.ROCE).filter((v): v is number => v != null && Number.isFinite(v));
+            const v = c.latest?.ratios?.ROCE ?? 0;
+            return { label: c.company, value: v, percentile: (percentileRank(vals, v) ?? 0) * 100, isTarget: i === 0 };
+          })}
+        />
+        <PercentileBar
+          title="Upside Ranking"
+          format="pct"
+          entries={valuationRows.map((r, i) => ({
+            label: r.company,
+            value: r.upside ?? 0,
+            percentile: (() => {
+              const upsides = valuationRows.map(x => x.upside).filter((v): v is number => v != null);
+              return (percentileRank(upsides, r.upside ?? -Infinity) ?? 0) * 100;
+            })(),
+            isTarget: i === 0,
+          }))}
+        />
       </div>
     </div>
   );
