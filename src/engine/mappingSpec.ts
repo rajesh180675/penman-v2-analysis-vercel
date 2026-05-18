@@ -451,6 +451,7 @@ export const CapitalineMappingSpec = {
     // ── Interest income (NII components) ─────────────────────────
     interestIncome: [
       "Interest Earned",
+      "Interests Income (Operating)",
       "Interest Income",
       "Total Revenue from Operations",
       "Interest / Discount on Advances / Bills",
@@ -459,11 +460,11 @@ export const CapitalineMappingSpec = {
     feeAndCommissionIncome: ["Fee and Commission Income"],
 
     // ── Interest expense ──────────────────────────────────────────
-    interestExpended: ["Interest Expended", "Interest Expense"],
+    interestExpended: ["Interest Expended", "Interest Expense", "Total Interest Expenses"],
     interestOnDeposits: ["Interest on Deposits"],
 
     // ── Non-interest income ───────────────────────────────────────
-    otherIncome: ["Other Income", "Non-Interest Income"],
+    otherIncome: ["Other Income", "Non-Interest Income", "Other Non Operating Income", "Total Other Operating Revenue"],
     profitOnSaleOfInvestments: ["Profit on Sale of Investments"],
     forexGainLoss: ["Net Gain / Loss on Foreign Currency Transaction"],
     otherNonOperatingIncome: ["Other Non Operating Income"],

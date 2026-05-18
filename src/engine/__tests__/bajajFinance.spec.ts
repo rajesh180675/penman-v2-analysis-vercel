@@ -64,7 +64,14 @@ describe("Bajaj Finance (NBFC)", () => {
     expect(latest.roa).toBeLessThan(0.10);
     expect(latest.roe).toBeGreaterThan(0.10);
     expect(latest.roe).toBeLessThan(0.35);
-    // Note: leverage/spread/NIM null until Phase D maps Ind-AS borrowings labels
+    // Phase D: leverage, spread, NIM now resolved via Ind-AS fallback
+    // Bajaj Finance: leverage ~3.7x, spread ~9%, NIM ~10%
+    expect(latest.leverage).toBeGreaterThan(2.0);
+    expect(latest.leverage).toBeLessThan(8.0);
+    expect(latest.spread).toBeGreaterThan(0.03);
+    expect(latest.spread).toBeLessThan(0.20);
+    expect(latest.nim).toBeGreaterThan(0.05);
+    expect(latest.nim).toBeLessThan(0.20);
   });
 
   it("valuation models produce results", () => {

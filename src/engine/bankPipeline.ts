@@ -281,11 +281,19 @@ function computeBankRatios(
   // of NIM-on-earning-assets which is a bank framing.
   const isNbfcFraming = subtype === "nbfc" || subtype === "generic-financial";
 
+  // Phase D — NBFC borrowings fallback: Capitaline Ind-AS for NBFCs often
+  // has no explicit "Borrowings" line item, embedding them in totals only.
+  // For NBFCs, virtually all liabilities are borrowings (no retail deposits),
+  // so totalAssets − totalEquity is a sound proxy for total borrowings.
+  if (isNbfcFraming && result.borrowings == null && result.totalAssets != null && result.totalEquity != null) {
+    result.borrowings = result.totalAssets - result.totalEquity;
+  }
+
   if (prev) {
     const avgAssets   = avg(current.totalAssets,  prev.totalAssets);
     const avgEquity   = avg(current.totalEquity,  prev.totalEquity);
     const avgAdvances = avg(current.advances,     prev.advances);
-    const avgBorrowings = avg(current.borrowings, prev.borrowings);
+    const avgBorrowings = avg(result.borrowings, prev.borrowings);
     // Earning assets: advances + investments for banks, advances-only for NBFCs.
     const earningAssets = isNbfcFraming
       ? avgAdvances
@@ -338,16 +346,16 @@ function computeBankRatios(
   if (isNbfcFraming) {
     // Leverage = Total Borrowings / Total Equity. Standard NBFC gearing
     // metric. Banks fund through deposits so this number isn't comparable.
-    if (current.borrowings != null && current.totalEquity != null && current.totalEquity > 0) {
-      result.leverage = current.borrowings / current.totalEquity;
+    if (result.borrowings != null && result.totalEquity != null && result.totalEquity > 0) {
+      result.leverage = result.borrowings / result.totalEquity;
     }
 
     // Debt mix: fractions of total borrowings. Sum may be < 1 because
     // Capitaline doesn't break out commercial paper / FCNRB borrowings
     // separately — the residual is informational, not a parser bug.
-    if (current.borrowings != null && current.borrowings > 0) {
+    if (result.borrowings != null && result.borrowings > 0) {
       const safeShare = (component: number | null): number | null =>
-        component != null ? component / current.borrowings! : null;
+        component != null ? component / result.borrowings! : null;
       result.debtMix = {
         ncdShare: safeShare(current.nonConvertibleDebentures),
         bankLoanShare: safeShare(current.termLoansFromBanks),
