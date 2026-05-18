@@ -1,4 +1,5 @@
 import { Suspense, lazy, useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useServerStatus } from "./hooks/useServerStatus";
 import { RawPeriodData, RecastPeriod, DEFAULT_CONFIG, EngineConfig, CompanyRegistry } from "./engine/types";
 import { processCompanyDataFull } from "./engine/pipeline";
 import type { FinancialInstitutionAnalysisResult } from "./engine/analysisFamily";
@@ -78,6 +79,7 @@ const TAB_GROUPS: {key:string;label:string}[] = [
 
 export function App() {
   const auditGovernance = getAuditClientGovernance();
+  const serverStatus = useServerStatus();
   const [rawData,    setRawData]    = useState<RawPeriodData[]|null>(null);
   const [debugInfo,  setDebugInfo]  = useState<CapitalineParseDebug|null>(null);
   const [parserDiagnostics, setParserDiagnostics] = useState<SourceParserDiagnostics | null>(null);
@@ -604,6 +606,16 @@ export function App() {
                 </span>
               )}
               {rawData && <AnalysisStatusBadge status={analysisStatus} compact />}
+              {serverStatus.mode === "offline" && (
+                <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700" title="Local server not running. Live NSE prices and audit persistence unavailable. Use: npm run dev:local">
+                  Offline
+                </span>
+              )}
+              {serverStatus.mode === "local" && (
+                <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700" title="Local server running — NSE prices + audit persistence active">
+                  Local
+                </span>
+              )}
               <button
                 onClick={() => setDarkMode((v) => !v)}
                 className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
