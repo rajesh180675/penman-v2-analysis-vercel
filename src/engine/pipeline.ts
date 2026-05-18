@@ -108,7 +108,10 @@ export function processCompanyDataFull(
 
   // Route to bank pipeline only if financial institution AND not blocked.
   if (family === "financial-institution" && !scope.blocked) {
-    const bankResult = processBankData(filteredData, scope, config, null, quality);
+    const marketCapCr = config.market_price != null && config.shares_outstanding != null
+      ? (config.market_price * config.shares_outstanding) / 1e7
+      : null;
+    const bankResult = processBankData(filteredData, scope, config, marketCapCr, quality);
     const emptyAnomalies = runAnomalyDetection([], config);
     const distress = detectDistress([]);
     // Phase 9 — sanity check bank/NBFC metrics

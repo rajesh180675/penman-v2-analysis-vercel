@@ -18,6 +18,7 @@ import {
 import ManualEntryWizard from "./ManualEntryWizard";
 import OnboardingCard from "./dashboard/OnboardingCard";
 import CompanyLibraryGrid from "./data-entry/CompanyLibraryGrid";
+import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
 
 interface Props {
   onDataSubmit: (data: RawPeriodData[], debug?: CapitalineParseDebug, meta?: AuditSubmissionMeta, parserDiagnostics?: SourceParserDiagnostics | null, segmentData?: import("../engine/segmentParser").SegmentData | null) => void;
@@ -58,7 +59,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
     [auditGovernance.contentClass, auditGovernance.retentionDays, companyId]
   );
 
-  const processZip = useCallback(async (file: File) => {
+  const processZip = useCallback(async (file: File, overrideCompanyId?: string) => {
     if (!file.name.toLowerCase().endsWith(".zip")) {
       setError("Please upload a .zip file containing Capitaline XLS exports.");
       setUploadStep("failed");
@@ -69,7 +70,8 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
     setLastFile(file.name);
     setUploadedFile({ name: file.name, size: file.size });
     setUploadStep("unzipping");
-    const meta = buildMeta("capitaline", { fileName: file.name });
+    const activeCompanyId = overrideCompanyId || companyId;
+    const meta = buildMeta("capitaline", { fileName: file.name, companyId: activeCompanyId });
     try {
       await persistAuditEvent({
         runId: meta.runId,
@@ -95,7 +97,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
       });
       const { parseCapitalineZip } = await import("../engine/capitalineParser");
       setUploadStep("parsing");
-      const { periods, debug, segmentData } = await parseCapitalineZip(file, { companyId });
+      const { periods, debug, segmentData } = await parseCapitalineZip(file, { companyId: activeCompanyId });
       await persistAuditEvent({
         runId: meta.runId,
         eventType: "input-ingested",
@@ -190,16 +192,26 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 dark:bg-slate-900/60 dark:border-slate-700 p-6">
           <CompanyLibraryGrid
             disabled={isProcessing}
-            onPickCompany={async (folder, ticker) => {
+            onPickCompany={async (folder, ticker, type) => {
               try {
                 setIsProcessing(true); setError("");
+                
+                // Wire chosen company parameters directly to the engine configuration
+                onConfigChange({
+                  ...config,
+                  quality_data_folder: folder,
+                  market_data_symbol: ticker,
+                  ticker: ticker,
+                  company_type: type === "bank" || type === "nbfc" || type === "insurance" ? type : "auto",
+                });
+
                 const zipUrl = `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(folder)}.zip`;
                 const resp = await fetch(zipUrl);
                 if (!resp.ok) throw new Error(`Library ZIP not found for "${folder}". Upload the file manually.`);
                 const blob = await resp.blob();
                 const file = new File([blob], `${folder}.zip`, { type: "application/zip" });
                 setCompanyId(ticker.toUpperCase().slice(0, 20));
-                await processZip(file);
+                await processZip(file, ticker.toUpperCase().slice(0, 20));
               } catch (err) {
                 setError(err instanceof Error ? err.message : String(err));
                 setIsProcessing(false);
@@ -243,24 +255,32 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
             <select
               className="text-sm px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-100 font-medium"
               defaultValue=""
-              onChange={async (e) => {
-                const folder = e.target.value;
-                if (!folder) return;
-                e.target.value = "";
-                try {
-                  setIsProcessing(true); setError("");
-                  const zipUrl = `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(folder)}.zip`;
-                  const resp = await fetch(zipUrl);
-                  if (!resp.ok) throw new Error(`Library ZIP not found for "${folder}". Upload the file manually.`);
-                  const blob = await resp.blob();
-                  const file = new File([blob], `${folder}.zip`, { type: "application/zip" });
-                  setCompanyId(folder.toUpperCase().replace(/\s+/g, "_").slice(0, 20));
-                  await processZip(file);
-                } catch (err) {
-                  setError(err instanceof Error ? err.message : String(err));
-                  setIsProcessing(false);
-                }
-              }}
+                onChange={async (e) => {
+                    const folder = e.target.value;
+                    if (!folder) return;
+                    e.target.value = "";
+                    try {
+                        setIsProcessing(true); setError("");
+                        // Resolve NSE ticker and wire config before processing
+                        const ticker = resolveNseSymbol(folder) ?? folder.toUpperCase().replace(/\s+/g, "");
+                        onConfigChange({
+                            ...config,
+                            quality_data_folder: folder,
+                            market_data_symbol: ticker,
+                            ticker: ticker,
+                        });
+                        const zipUrl = `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(folder)}.zip`;
+                        const resp = await fetch(zipUrl);
+                        if (!resp.ok) throw new Error(`Library ZIP not found for "${folder}". Upload the file manually.`);
+                        const blob = await resp.blob();
+                        const file = new File([blob], `${folder}.zip`, { type: "application/zip" });
+                        setCompanyId(ticker.toUpperCase().slice(0, 20));
+                        await processZip(file, ticker.toUpperCase().slice(0, 20));
+                    } catch (err) {
+                        setError(err instanceof Error ? err.message : String(err));
+                        setIsProcessing(false);
+                    }
+                }}
             >
               <option value="">📂 Load from library…</option>
               {[

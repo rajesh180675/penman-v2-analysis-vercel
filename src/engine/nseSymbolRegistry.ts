@@ -53,3 +53,23 @@ export function resolveNseSymbol(companyNameOrFolder: string | null | undefined)
 
   return null;
 }
+
+/**
+ * Resolve the original company folder name given an NSE symbol.
+ * Used to find the matching public/data/companies/ directory name.
+ */
+export function resolveFolderFromSymbol(symbol: string | null | undefined): string | null {
+  if (!symbol) return null;
+  const upper = symbol.toUpperCase();
+
+  // Try to find the exact match in registry values
+  for (const [key, val] of Object.entries(NSE_SYMBOL_REGISTRY)) {
+    if (val.toUpperCase() === upper) {
+      return key;
+    }
+  }
+
+  // Fallback to exact symbol name if not in registry
+  return symbol;
+}
+

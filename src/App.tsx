@@ -34,6 +34,7 @@ import { fetchSharedComparisonRegistryWithStatus, formatSharedApiStatus, SharedA
 import { persistCompanyRegistry, readPersistedCompanyRegistry } from "./lib/companyRegistryStore";
 import { mergeCompanyRegistries } from "./lib/companyRegistrySnapshot";
 import { buildAnalysisTraceability } from "./engine/analysisTraceability";
+import { resolveNseSymbol, resolveFolderFromSymbol } from "./engine/nseSymbolRegistry";
 import { buildAnalysisPublicationSnapshot } from "./lib/publication/analysisPublicationSnapshot";
 import { buildComparisonPublicationSnapshot } from "./lib/publication/comparisonPublicationSnapshot";
 import { getAnalysisPolicyVersions } from "./engine/policyVersions";
@@ -391,10 +392,12 @@ export function App() {
     });
   }, [rawData, recastData, traceability]);
 
-  // If rawData was submitted but recastData comes back null, navigate to debug tab.
+  // If rawData was submitted but recastData comes back null, navigate to an
+  // appropriate fallback tab. Bank/NBFC datasets never produce industrial
+  // recast — the bank-redirect effect below handles that case.
   useEffect(() => {
-    const fallbackAvailable = Boolean(scopeGate?.scopeAssessment.blocked && rawData && rawData.length > 0 && recastData === null);
-    if (rawData && rawData.length > 0 && recastData === null && !fallbackAvailable) {
+    const financialFallbackAvailable = Boolean(scopeGate?.scopeAssessment.blocked && rawData && rawData.length > 0 && recastData === null);
+    if (rawData && rawData.length > 0 && recastData === null && !financialFallbackAvailable) {
       setActiveTab("debug");
     }
   }, [rawData, recastData, engineError, scopeGate]);
@@ -415,29 +418,41 @@ export function App() {
       lastAuditSignatureRef.current = null;
       lastAuditStatusRef.current = null;
       lastTabAuditRef.current = null;
-      setConfig((prev) => ({
-        ...prev,
-        ticker: nextMeta.companyId || data[0]?.company_id || prev.ticker,
-      }));
+  setConfig((prev) => {
+    const companyId = nextMeta.companyId || data[0]?.company_id || prev.ticker;
+    // Resolve NSE symbol and quality-data folder if not already set.
+    // This ensures manual uploads (which skip the library grid) also get
+    // proper symbol/folder wiring so the sidecar fetch and live price work.
+    const resolvedSymbol = prev.market_data_symbol ?? resolveNseSymbol(companyId) ?? null;
+    const resolvedFolder = prev.quality_data_folder ?? resolveFolderFromSymbol(companyId) ?? companyId;
+    return {
+      ...prev,
+      ticker: companyId,
+      market_data_symbol: resolvedSymbol ?? undefined,
+      quality_data_folder: resolvedFolder,
+    };
+  });
       setWorkspaceCompanyId(nextMeta.companyId || data[0]?.company_id || null);
       setRawData(data);
       setParserDiagnostics(nextParserDiagnostics ?? null);
       setSegmentData(nextSegmentData ?? null);
       if (debug) setDebugInfo(debug);
       else setDebugInfo(null);
-      if (data.length === 0) { setActiveTab("debug"); return; }
-      setActiveTab("dashboard");
-      // We just store rawData; the memo takes care of processing.
-      const id = data[0]?.company_id || `CO-${Date.now()}`;
-      setRegistry((prev) => ({
-        companies: {
-          ...prev.companies,
-          // recastData placeholder — ComparisonReport reads from registry, so we
-          // also update registry when recastData memo resolves (see useEffect below).
-          [id]: { id, label: id, rawData: data, recastData: [], traceability: null },
-        },
-      }));
-      setActiveTab("statements");
+  if (data.length === 0) { setActiveTab("debug"); return; }
+  // We just store rawData; the memo takes care of processing.
+  const id = data[0]?.company_id || `CO-${Date.now()}`;
+  setRegistry((prev) => ({
+    companies: {
+      ...prev.companies,
+      // recastData placeholder — ComparisonReport reads from registry, so we
+      // also update registry when recastData memo resolves (see useEffect below).
+      [id]: { id, label: id, rawData: data, recastData: [], traceability: null },
+    },
+  }));
+  // Note: Bank/NBFC datasets will auto-redirect to "bank" tab via the
+  // useEffect below (which detects bankResult && !hasRecast).
+  // Industrial datasets land on "statements" which is the primary analysis view.
+  setActiveTab("statements");
     },
     [auditGovernance.contentClass, auditGovernance.retentionDays]
   );
@@ -537,6 +552,15 @@ export function App() {
   const financialFallbackAvailable = Boolean(scopeBlocked && rawData && rawData.length > 0 && !hasRecast);
   const valuationTabEnabled = hasRecast || financialFallbackAvailable;
 
+  // Bank/NBFC auto-redirect: when the pipeline produced a bankResult but no
+  // industrial recast, and the user is still on "statements" (blank), steer
+  // them to the bank tab automatically.
+  useEffect(() => {
+    if (bankResult && !hasRecast && activeTab === "statements") {
+      setActiveTab("bank");
+    }
+  }, [bankResult, hasRecast, activeTab]);
+
   const readyCompanyCount = Object.values(registry.companies).filter((c) => c.recastData.length > 0).length;
 
   const visibleTabs = TABS.filter(t => {
@@ -546,6 +570,8 @@ export function App() {
     if (t.id === "watchlist") return hasWorkspace;
     if (t.id === "workspace") return hasWorkspace;
     if (t.id === "valuation") return valuationTabEnabled;
+    // Bank/NBFC tab: show when bankResult exists, even without industrial recast
+    if (t.id === "bank") return hasRecast || bankResult !== null;
     if (t.needsData) return hasRecast;
     return true;
   });

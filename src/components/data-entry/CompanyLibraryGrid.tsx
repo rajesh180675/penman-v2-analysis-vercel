@@ -164,7 +164,7 @@ const TYPE_BADGE_STYLES: Record<LibraryCompany["type"], { bg: string; text: stri
 
 interface Props {
   /** Called when a company is picked. Receives the folder name (used by existing fetch logic). */
-  onPickCompany: (folder: string, ticker: string) => void;
+  onPickCompany: (folder: string, ticker: string, type: LibraryCompany["type"]) => void;
   /** Disabled state — used while a load is in progress */
   disabled?: boolean;
 }
@@ -225,7 +225,7 @@ export default function CompanyLibraryGrid({ onPickCompany, disabled = false }: 
             return (
               <button
                 key={c.folder}
-                onClick={() => onPickCompany(c.folder, c.ticker)}
+                onClick={() => onPickCompany(c.folder, c.ticker, c.type)}
                 disabled={disabled}
                 className="text-left rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-4 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
               >
