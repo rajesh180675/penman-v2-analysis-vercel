@@ -5,6 +5,7 @@ import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import IncomeWaterfall from "./charts/IncomeWaterfall";
+import BalanceSheetComposition from "./charts/BalanceSheetComposition";
 
 interface Props {
   data: RecastPeriod[];
@@ -53,6 +54,9 @@ export default function RecastStatements({ data, traceability = null, traceabili
           <button onClick={() => setMode("common")} className={`px-3 py-1.5 text-xs ${mode === "common" ? "bg-indigo-600 text-white" : "bg-white text-slate-600"}`}>Common-size</button>
         </div>
       </div>
+
+      {/* Balance Sheet Composition — visual evolution of asset/financing mix */}
+      {data.length >= 2 && <BalanceSheetComposition data={data} mode={mode} />}
 
       {/* Balance Sheet */}
       <Section title="Recast Balance Sheet" subtitle="§3.2 Operating vs Financing partition · OA+FA=TA · OL=TotalLiab−FO">
