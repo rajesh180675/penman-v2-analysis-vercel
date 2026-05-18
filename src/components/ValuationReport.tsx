@@ -18,6 +18,7 @@ import {
   ValuationSignalState,
 } from "../engine/valuationCommandCenter";
 import { useLiveMarketData } from "../hooks/useLiveMarketData";
+import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
 import { AuditSubmissionMeta, persistAuditEvent } from "../lib/audit";
 import ExpectationBridgePanel from "./ExpectationBridgePanel";
 import { rememberWorkspaceValuation } from "../lib/researchWorkspace";
@@ -54,9 +55,11 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
     [resolvedTraceability],
   );
   const traceabilitySummary = publication?.traceabilitySummary ?? derivedTraceabilitySummary;
-  const marketSymbol = config.market_data_symbol ?? config.ticker ?? null;
+  const resolvedNseSymbol = useMemo(() => resolveNseSymbol(config.market_data_symbol ?? config.ticker ?? config.quality_data_folder ?? null), [config.market_data_symbol, config.ticker, config.quality_data_folder]);
+  const marketProvider = config.market_data_provider ?? (resolvedNseSymbol ? "nse" : "manual");
+  const marketSymbol = config.market_data_symbol ?? config.ticker ?? resolvedNseSymbol ?? null;
   const { snapshot: liveMarketData, loading: marketDataLoading, error: marketDataError, refresh } = useLiveMarketData({
-    provider: config.market_data_provider ?? "manual",
+    provider: marketProvider,
     symbol: marketSymbol,
     instrumentKey: config.market_data_instrument_key ?? null,
     fallbackPrice: config.market_price ?? null,
