@@ -6,6 +6,7 @@ import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTra
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import IncomeWaterfall from "./charts/IncomeWaterfall";
 import BalanceSheetComposition from "./charts/BalanceSheetComposition";
+import CashFlowChart from "./charts/CashFlowChart";
 
 interface Props {
   data: RecastPeriod[];
@@ -194,6 +195,9 @@ export default function RecastStatements({ data, traceability = null, traceabili
           </ChartBox>
         </div>
       </Section>
+
+      {/* FCF visual */}
+      {data.length >= 2 && <CashFlowChart data={data} />}
 
       {/* FCF §7 */}
       <Section title="Free Cash Flow &amp; Dividends" subtitle="§7 Accounting FCF = OI − ΔNOA | Cash FCF = CFO − Capex | Eq.(14)–(15)">
