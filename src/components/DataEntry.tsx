@@ -17,6 +17,7 @@ import {
 } from "../lib/audit";
 import ManualEntryWizard from "./ManualEntryWizard";
 import OnboardingCard from "./dashboard/OnboardingCard";
+import CompanyLibraryGrid from "./data-entry/CompanyLibraryGrid";
 
 interface Props {
   onDataSubmit: (data: RawPeriodData[], debug?: CapitalineParseDebug, meta?: AuditSubmissionMeta, parserDiagnostics?: SourceParserDiagnostics | null, segmentData?: import("../engine/segmentParser").SegmentData | null) => void;
@@ -169,6 +170,35 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <OnboardingCard hasData={!!(currentData && currentData.length > 0)} />
+
+      {/* Company library grid — primary way to load data on first run */}
+      {mode === "capitaline" && !(currentData && currentData.length > 0) && (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 dark:bg-slate-900/60 dark:border-slate-700 p-6">
+          <CompanyLibraryGrid
+            disabled={isProcessing}
+            onPickCompany={async (folder, ticker) => {
+              try {
+                setIsProcessing(true); setError("");
+                const zipUrl = `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(folder)}.zip`;
+                const resp = await fetch(zipUrl);
+                if (!resp.ok) throw new Error(`Library ZIP not found for "${folder}". Upload the file manually.`);
+                const blob = await resp.blob();
+                const file = new File([blob], `${folder}.zip`, { type: "application/zip" });
+                setCompanyId(ticker.toUpperCase().slice(0, 20));
+                await processZip(file);
+              } catch (err) {
+                setError(err instanceof Error ? err.message : String(err));
+                setIsProcessing(false);
+              }
+            }}
+          />
+          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 text-center">
+            <p className="text-xs text-slate-500">
+              Or scroll down to upload your own Capitaline ZIP, paste from Screener.in, or build manually.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-slate-200 p-2 inline-flex gap-2">
         {([

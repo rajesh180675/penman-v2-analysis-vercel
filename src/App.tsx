@@ -115,6 +115,7 @@ export function App() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+  const [registry, setRegistry] = useState<CompanyRegistry>(() => readPersistedCompanyRegistry());
   const [comparisonRegistryHydrated, setComparisonRegistryHydrated] = useState(false);
   const [auditMeta, setAuditMeta] = useState<AuditSubmissionMeta | null>(null);
   const [workspaceCompanyId, setWorkspaceCompanyId] = useState<string | null>(null);
