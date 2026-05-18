@@ -10,6 +10,7 @@ import { auditMappingCoverage, evaluateQualityGate } from "./engine/mappingAudit
 import { resolveValuationReadiness } from "./engine/valuationPolicy";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AnalysisStatusBadge } from "./components/AnalysisStatusBadge";
+import CompanySwitcher from "./components/CompanySwitcher";
 import DataEntry from "./components/DataEntry";
 import RecastStatements from "./components/RecastStatements";
 import RatioReport from "./components/RatioReport";
@@ -606,6 +607,14 @@ export function App() {
                 </span>
               )}
               {rawData && <AnalysisStatusBadge status={analysisStatus} compact />}
+              <CompanySwitcher
+                registry={registry}
+                activeCompanyId={config.ticker ?? null}
+                onSwitchCompany={(companyId) => {
+                  setWorkspaceCompanyId(companyId);
+                  setActiveTab("workspace");
+                }}
+              />
               {serverStatus.mode === "offline" && (
                 <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700" title="Local server not running. Live NSE prices and audit persistence unavailable. Use: npm run dev:local">
                   Offline
