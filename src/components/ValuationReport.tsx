@@ -23,6 +23,7 @@ import { AuditSubmissionMeta, persistAuditEvent } from "../lib/audit";
 import ExpectationBridgePanel from "./ExpectationBridgePanel";
 import SensitivityHeatmap from "./charts/SensitivityHeatmap";
 import FrameworkRadar from "./charts/FrameworkRadar";
+import ForecastTornado from "./charts/ForecastTornado";
 import MoatPanel from "./dashboard/MoatPanel";
 import { computeMoatScore } from "../engine/moatScoring";
 import { rememberWorkspaceValuation } from "../lib/researchWorkspace";
@@ -684,6 +685,63 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
             marketPrice={commandCenter.marketPrice}
           />
         </div>
+
+        {/* Sensitivity Tornado — which drivers move intrinsic value the most */}
+        {(() => {
+          const baseScenario = commandCenter.scenarios.find(s => s.key === "base");
+          const baseValue = baseScenario?.intrinsicPerShare ?? null;
+          const baseG = baseScenario?.assumptions.g ?? 0.05;
+          const latest = data[data.length - 1];
+          const rnoaBase = latest.ratios?.RNOA ?? 0;
+          const noa = latest.bs.NOA;
+          const cse = latest.bs.CSE;
+          const shares = commandCenter.sharesOutstanding;
+
+          if (!baseValue || !shares || shares <= 0) return null;
+
+          const computeIV = (keV: number, gV: number, rnoaV: number, noaV: number) => {
+            if (keV <= gV) return baseValue;
+            const equity = cse + ((rnoaV - keV) * noaV) / (keV - gV);
+            return (equity / shares) * 1e7;
+          };
+
+          const drivers = [
+            {
+              driver: "Cost of Equity (ke)",
+              low: computeIV(ke + 0.01, baseG, rnoaBase, noa),
+              high: computeIV(Math.max(0.01, ke - 0.01), baseG, rnoaBase, noa),
+              range: "ke ±100 bps",
+            },
+            {
+              driver: "Terminal Growth (g)",
+              low: computeIV(ke, Math.max(0, baseG - 0.01), rnoaBase, noa),
+              high: computeIV(ke, Math.min(ke - 0.01, baseG + 0.01), rnoaBase, noa),
+              range: "g ±100 bps",
+            },
+            {
+              driver: "RNOA (operating return)",
+              low: computeIV(ke, baseG, rnoaBase * 0.8, noa),
+              high: computeIV(ke, baseG, rnoaBase * 1.2, noa),
+              range: "RNOA ±20%",
+            },
+            {
+              driver: "NOA (capital base)",
+              low: computeIV(ke, baseG, rnoaBase, noa * 0.9),
+              high: computeIV(ke, baseG, rnoaBase, noa * 1.1),
+              range: "NOA ±10%",
+            },
+          ].filter(d => Number.isFinite(d.low) && Number.isFinite(d.high));
+
+          if (drivers.length === 0) return null;
+
+          return (
+            <ForecastTornado
+              baseValue={baseValue}
+              drivers={drivers}
+              marketPrice={commandCenter.marketPrice}
+            />
+          );
+        })()}
 
         {/* EPV Panel — Graham-Dodd no-growth floor anchor */}
         {commandCenter.epv && (
