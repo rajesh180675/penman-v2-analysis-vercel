@@ -17,6 +17,7 @@ import PenmanDecompositionChart from "./PenmanDecompositionChart";
 import MoatPanel from "./MoatPanel";
 import CapitalAllocationPanel from "./CapitalAllocationPanel";
 import InvestmentThesisCard from "./InvestmentThesisCard";
+import NarrativeCard from "./NarrativeCard";
 import ValuationRangeGauge from "../charts/ValuationRangeGauge";
 
 interface Props {
@@ -137,6 +138,22 @@ export default function DashboardView({ data, config, traceability = null, ratio
         }
         price={price}
         intrinsic={intrinsicRange?.mid ?? null}
+      />
+
+      {/* Narrative Card — plain-English synthesis */}
+      <NarrativeCard
+        data={data}
+        companyId={config.ticker ?? config.quality_data_folder ?? "This company"}
+        moat={moat}
+        capAlloc={capAlloc}
+        distress={distress}
+        marginOfSafety={
+          price != null && intrinsicRange?.mid != null && price > 0
+            ? (intrinsicRange.mid - price) / price
+            : null
+        }
+        revenueGrowth={revenueGrowth}
+        fcfYield={fcfYield}
       />
 
       {/* KPI Tiles Row */}
