@@ -7,6 +7,7 @@ import type {
   NPACyclePosition,
   TrendDirection,
 } from "../engine/bankAssetQuality";
+import BankHealthChart from "./charts/BankHealthChart";
 
 interface Props {
   bankResult: FinancialInstitutionAnalysisResult;
@@ -451,6 +452,10 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr }: 
           Subtype: <span className="font-mono">{bankResult.subtype}</span> · {bankResult.periods.length} periods
         </div>
       </div>
+
+      {bankResult.bankMetrics && bankResult.bankMetrics.length >= 2 && (
+        <BankHealthChart metrics={bankResult.bankMetrics} ke={null} />
+      )}
 
       {bankResult.periods.length > 0 && (
         <section>
