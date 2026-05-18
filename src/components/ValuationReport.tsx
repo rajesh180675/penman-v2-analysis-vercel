@@ -33,6 +33,7 @@ import {
 
 import type { LossMakerValuationResult } from "../engine/lossMakerValuation";
 import type { SanityAssessment } from "../engine/ratioSanity";
+import type { SegmentData } from "../engine/segmentParser";
 
 interface Props {
   data: RecastPeriod[];
@@ -45,11 +46,13 @@ interface Props {
   lossMaker?: LossMakerValuationResult | null;
   /** Phase 9 — anchor ratio bands. Surfaces economically implausible outputs. */
   ratioSanity?: SanityAssessment | null;
+  /** Phase C5 — parsed segment data for SOTP valuation. */
+  segmentData?: SegmentData | null;
 }
 
 type CVMethod = "CV1" | "CV2" | "CV3";
 
-export default function ValuationReport({ data, config, analysisStatus, auditMeta, traceability, publication = null, lossMaker = null, ratioSanity = null }: Props) {
+export default function ValuationReport({ data, config, analysisStatus, auditMeta, traceability, publication = null, lossMaker = null, ratioSanity = null, segmentData = null }: Props) {
   const derivedValuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
   const valuationReadiness = publication?.valuationReadiness ?? derivedValuationReadiness;
   const resolvedTraceability = publication?.traceability ?? traceability;
@@ -131,8 +134,9 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
       config: effectiveConfig,
       marketData: liveMarketData,
       analysisStatus,
+      segmentData,
     }),
-    [analysisStatus, data, effectiveConfig, liveMarketData],
+    [analysisStatus, data, effectiveConfig, liveMarketData, segmentData],
   );
   const regimeContext = useMemo(
     () => buildRegimeContext(commandCenter.riskFreeRate, liveMarketData?.history?.currentPricePercentile ?? null),

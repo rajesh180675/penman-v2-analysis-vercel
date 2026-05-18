@@ -70,6 +70,7 @@ export function App() {
   const [rawData,    setRawData]    = useState<RawPeriodData[]|null>(null);
   const [debugInfo,  setDebugInfo]  = useState<CapitalineParseDebug|null>(null);
   const [parserDiagnostics, setParserDiagnostics] = useState<SourceParserDiagnostics | null>(null);
+  const [segmentData, setSegmentData] = useState<import("./engine/segmentParser").SegmentData | null>(null);
   const [activeTab,  setActiveTab]  = useState<TabId>("upload");
   const [config,     setConfig]     = useState<EngineConfig>(DEFAULT_CONFIG);
   const [darkMode, setDarkMode] = useState(false);
@@ -358,7 +359,7 @@ export function App() {
   }, [rawData, recastData, engineError, scopeGate]);
 
   const handleDataSubmit = useCallback(
-    (data:RawPeriodData[], debug?:CapitalineParseDebug, meta?: AuditSubmissionMeta, nextParserDiagnostics?: SourceParserDiagnostics | null) => {
+    (data:RawPeriodData[], debug?:CapitalineParseDebug, meta?: AuditSubmissionMeta, nextParserDiagnostics?: SourceParserDiagnostics | null, nextSegmentData?: import("./engine/segmentParser").SegmentData | null) => {
       const nextMeta = meta ?? {
         runId: createAuditRunId(),
         sourceMode: "manual",
@@ -380,6 +381,7 @@ export function App() {
       setWorkspaceCompanyId(nextMeta.companyId || data[0]?.company_id || null);
       setRawData(data);
       setParserDiagnostics(nextParserDiagnostics ?? null);
+      setSegmentData(nextSegmentData ?? null);
       if (debug) setDebugInfo(debug);
       else setDebugInfo(null);
       if (data.length === 0) { setActiveTab("debug"); return; }
@@ -744,7 +746,7 @@ export function App() {
             {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
             {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
             {activeTab==="valuation"  && hasRecast && !valuationBlocked && (
-              <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} publication={publication} lossMaker={lossMakerResult} ratioSanity={ratioSanity} />
+              <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} publication={publication} lossMaker={lossMakerResult} ratioSanity={ratioSanity} segmentData={segmentData} />
             )}
             {activeTab === "valuation" && !hasRecast && scopeBlocked && rawData && rawData.length > 0 && bankResult && (
               <FinancialInstitutionReport

@@ -18,7 +18,7 @@ import {
 import ManualEntryWizard from "./ManualEntryWizard";
 
 interface Props {
-  onDataSubmit: (data: RawPeriodData[], debug?: CapitalineParseDebug, meta?: AuditSubmissionMeta, parserDiagnostics?: SourceParserDiagnostics | null) => void;
+  onDataSubmit: (data: RawPeriodData[], debug?: CapitalineParseDebug, meta?: AuditSubmissionMeta, parserDiagnostics?: SourceParserDiagnostics | null, segmentData?: import("../engine/segmentParser").SegmentData | null) => void;
   currentData: RawPeriodData[] | null;
   config: EngineConfig;
   onConfigChange: (cfg: EngineConfig) => void;
@@ -83,7 +83,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         retentionDays: meta.retentionDays,
       });
       const { parseCapitalineZip } = await import("../engine/capitalineParser");
-      const { periods, debug } = await parseCapitalineZip(file, { companyId });
+      const { periods, debug, segmentData } = await parseCapitalineZip(file, { companyId });
       await persistAuditEvent({
         runId: meta.runId,
         eventType: "input-ingested",
@@ -100,7 +100,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
             : null,
         },
       });
-      onDataSubmit(periods, debug, meta);
+      onDataSubmit(periods, debug, meta, null, segmentData);
       if (periods.length === 0) setError("Parsed 0 periods. Check Debug tab for details.");
     } catch (err: unknown) {
       await persistAuditEvent({

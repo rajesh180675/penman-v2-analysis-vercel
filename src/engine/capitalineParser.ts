@@ -14,6 +14,7 @@
 
 import JSZip from "jszip";
 import { RawPeriodData } from "./types";
+import { parseSegmentFinanceHTML, SegmentData } from "./segmentParser";
 import {
   AccountingStandard,
   STANDARD_PRECEDENCE,
@@ -33,6 +34,7 @@ export type CapitalineStatement =
   | "BalanceSheet"
   | "ProfitLoss"
   | "CashFlow"
+  | "Segment"
   | "Unknown";
 
 export interface ParseWarning {
@@ -106,6 +108,7 @@ const STMT_PRECEDENCE: Record<CapitalineStatement, number> = {
   BalanceSheet: 3,
   ProfitLoss: 2,
   CashFlow: 1,
+  Segment: 0,
   Unknown: 0,
 };
 
@@ -346,6 +349,7 @@ function stmtFromFilename(name: string): CapitalineStatement {
     n.includes("income") || n.includes("loss") || n.includes("pnl")
   ) return "ProfitLoss";
   if (n.includes("cash")) return "CashFlow";
+  if (n.includes("segment")) return "Segment";
   return "Unknown";
 }
 
@@ -581,7 +585,7 @@ function gridToPeriods(
 export async function parseCapitalineZip(
   zipFile: File,
   opts?: { companyId?: string }
-): Promise<{ periods: RawPeriodData[]; debug: CapitalineParseDebug }> {
+): Promise<{ periods: RawPeriodData[]; debug: CapitalineParseDebug; segmentData: SegmentData | null }> {
   if (zipFile.size > MAX_ZIP_BYTES) {
     throw new Error(`ZIP exceeds size limit (${Math.round(MAX_ZIP_BYTES / (1024 * 1024))} MB).`);
   }
@@ -634,6 +638,11 @@ export async function parseCapitalineZip(
   for (const entry of fileEntries) {
     const fileName = entry.name.split("/").pop() || entry.name;
     const stmtGuess = stmtFromFilename(fileName);
+
+    // Phase C5: skip segment files from normal grid processing — they use a
+    // completely different parser (parseSegmentFinanceHTML).
+    if (stmtGuess === "Segment") continue;
+
     // Phase A: pass the FULL entry path, not just the basename. Folders
     // like `revised schd/` and `standard/` are the only standard signal
     // when the filename itself has no INDAS/REV/STD suffix.
@@ -874,7 +883,7 @@ export async function parseCapitalineZip(
   const globalKept = new Map<string, CapitalineStatement>();
   let totalComposite = 0;
   const byStmt: Record<CapitalineStatement, number> = {
-    BalanceSheet: 0, ProfitLoss: 0, CashFlow: 0, Unknown: 0,
+    BalanceSheet: 0, ProfitLoss: 0, CashFlow: 0, Segment: 0, Unknown: 0,
   };
 
   const periods: RawPeriodData[] = [];
@@ -981,7 +990,35 @@ export async function parseCapitalineZip(
     rawMetricKeys: firstPeriodKeys,
   };
 
-  return { periods, debug };
+  return { periods, debug, segmentData: await parseSegmentFilesFromZip(fileEntries as any) };
+}
+
+/** Phase C5: parse SegmentFinance files from the ZIP into SegmentData. */
+async function parseSegmentFilesFromZip(fileEntries: Array<{ name: string; async(type: "arraybuffer"): Promise<ArrayBuffer>; async(type: "text"): Promise<string> } & Record<string, unknown>>): Promise<SegmentData | null> {
+  const segmentEntries = fileEntries.filter(f => {
+    const name = (f.name as string).split("/").pop() || (f.name as string);
+    return stmtFromFilename(name) === "Segment";
+  });
+  if (segmentEntries.length === 0) return null;
+
+  // Parse each segment file; prefer business segments over geographic
+  let businessSegment: SegmentData | null = null;
+  for (const entry of segmentEntries) {
+    try {
+      const text = await (entry as any).async("text");
+      const parsed = parseSegmentFinanceHTML(text);
+      if (parsed && parsed.segmentationType === "business" && parsed.segments.length >= 2) {
+        businessSegment = parsed;
+        break; // first valid business segment file wins
+      }
+      if (parsed && !businessSegment) {
+        businessSegment = parsed; // fallback to any valid parse
+      }
+    } catch {
+      // skip unparseable segment files
+    }
+  }
+  return businessSegment;
 }
 
 /* ══════════════════════════════════════════════════════════════════
