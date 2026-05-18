@@ -21,6 +21,8 @@ import { useLiveMarketData } from "../hooks/useLiveMarketData";
 import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
 import { AuditSubmissionMeta, persistAuditEvent } from "../lib/audit";
 import ExpectationBridgePanel from "./ExpectationBridgePanel";
+import SensitivityHeatmap from "./charts/SensitivityHeatmap";
+import FrameworkRadar from "./charts/FrameworkRadar";
 import { rememberWorkspaceValuation } from "../lib/researchWorkspace";
 import { syncWorkspaceAlert, syncWorkspaceValuation } from "../lib/sharedResearchApi";
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
@@ -643,6 +645,36 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <ExpectationBridgePanel reverseDcf={commandCenter.reverseDcf} />
+        </div>
+
+        {/* Phase G2: Framework Radar + Sensitivity Heatmap */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <FrameworkRadar
+            anchors={[
+              { name: "Residual Earnings (base)", shortName: "V_RE", value: commandCenter.scenarios.find(s => s.key === "base")?.intrinsicPerShare ?? null },
+              { name: "Residual Earnings (stress)", shortName: "V_Stress", value: commandCenter.scenarios.find(s => s.key === "stress")?.intrinsicPerShare ?? null },
+              { name: "EPV (no-growth floor)", shortName: "EPV", value: commandCenter.epv?.epvPerShare ?? null },
+              { name: "Reverse DCF implied", shortName: "RevDCF", value: commandCenter.reverseDcf?.impliedGrowthValue ?? null },
+              { name: "SOTP (segment-weighted)", shortName: "SOTP", value: commandCenter.sotp?.sotpPerShare ?? null },
+            ]}
+            marketPrice={commandCenter.marketPrice}
+          />
+          <SensitivityHeatmap
+            ke={ke}
+            g={commandCenter.scenarios.find(s => s.key === "base")?.assumptions.g ?? 0.05}
+            computeValue={(keVal, gVal) => {
+              // Simple RE perpetuity: CSE + (RNOA - ke) * NOA / (ke - g)
+              const latest = data[data.length - 1];
+              const rnoa = latest.ratios?.RNOA ?? 0;
+              const noa = latest.bs.NOA;
+              const cse = latest.bs.CSE;
+              const shares = commandCenter.sharesOutstanding;
+              if (!shares || shares <= 0 || keVal <= gVal) return null;
+              const equity = cse + ((rnoa - keVal) * noa) / (keVal - gVal);
+              return (equity / shares) * 1e7;
+            }}
+            marketPrice={commandCenter.marketPrice}
+          />
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
