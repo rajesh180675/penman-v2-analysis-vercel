@@ -8,6 +8,7 @@ import {
   Legend, BarChart, Bar, ReferenceLine, Cell,
 } from "recharts";
 import KPITile from "./dashboard/KPITile";
+import DuPontWaterfall from "./charts/DuPontWaterfall";
 
 interface Props {
   data: RecastPeriod[];
@@ -129,6 +130,16 @@ export default function RatioReport({data, traceability = null, traceabilitySumm
           history={rd.map(d => ({ period: d.period_end.slice(0, 4), value: d.ratios?.cash_conversion_ratio ?? null }))}
         />
       </div>
+
+      {/* DuPont Waterfall — latest period */}
+      <DuPontWaterfall
+        taxBurden={dupont5[dupont5.length - 1]?.taxBurden ?? null}
+        interestBurden={dupont5[dupont5.length - 1]?.intBurden ?? null}
+        operatingMargin={dupont5[dupont5.length - 1]?.opm ?? null}
+        assetTurnover={dupont5[dupont5.length - 1]?.at ?? null}
+        equityMultiplier={dupont5[dupont5.length - 1]?.eqMult ?? null}
+        roe={dupont5[dupont5.length - 1]?.roe5 ?? null}
+      />
 
       <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-between">
         <div className="text-sm text-slate-700 font-medium">Analysis View</div>
