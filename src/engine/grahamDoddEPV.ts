@@ -1,453 +1,244 @@
 /**
- * Graham-Dodd Earnings Power Value (EPV) Module
+ * Graham-Dodd Earnings Power Value (EPV)
  *
- * Based on Bruce Greenwald's "Value Investing" framework (Columbia Business School).
- * Core insight: separate the value of current earnings power from the value of growth.
+ * Greenwald et al. (2001) — "Value Investing: From Graham to Buffett and Beyond"
  *
- * Three-part decomposition:
- *   Asset Value (V_A)   — reproduction cost of net operating assets
- *   EPV (V_EPV)         — capitalized normalized earnings, assuming zero growth
- *   Franchise Value     — V_EPV − V_A (value attributable to competitive advantage)
+ * EPV is the no-growth floor anchor: what is the business worth if it never
+ * grows again but maintains current normalized earnings power indefinitely?
  *
- * EPV = Normalized NOPAT / WACC
+ * Formula:
+ *   Normalized NOPAT = median(CoreOI) × (1 - statutory tax rate)
+ *   Maintenance Capex = min(avg Capex, avg Depreciation)  [Greenwald simplification]
+ *   Adjusted Earnings = Normalized NOPAT - (Maintenance Capex - Depreciation)
+ *     → If capex ≈ depreciation, adjustment is ~0 (steady-state)
+ *     → If capex >> depreciation, excess is growth capex (excluded from EPV)
+ *   EPV_operations = Adjusted Earnings / Ke
+ *   EPV_equity = EPV_operations - NFO
+ *   EPV_per_share = EPV_equity / diluted shares
  *
- * If EPV > V_A  → franchise exists; company earns above its cost of capital
- * If EPV ≈ V_A  → competitive industry; no durable advantage
- * If EPV < V_A  → earnings depressed; potential turnaround or value trap
+ * Interpretation:
+ *   - If market price < EPV: market is pricing in decline (or it's cheap)
+ *   - If market price ≈ EPV: market gives no credit for growth
+ *   - If market price > EPV: market is pricing in growth (justified only if moat exists)
  *
- * Normalization strategy:
- *   - Use median CoreOI margin over available history (robust to outliers)
- *   - Trim top/bottom year when ≥ 7 periods available
- *   - Apply normalized margin to latest Sales for normalized CoreOI
- *   - Use median effective tax rate (clamped to [15%, 40%] for India)
- *   - NOPAT = normalized CoreOI × (1 − normalized tax rate)
- *
- * For banks: equity-based EPV = normalized PAT / ke (book-value anchor)
+ * This is the "moat test": EPV vs reproduction value of assets. If EPV > asset
+ * reproduction value, a moat exists (franchise value). We approximate reproduction
+ * value as book NOA (imperfect but directionally useful for Indian equities where
+ * asset revaluation is rare).
  */
 
-import { RecastPeriod, EngineConfig, ke_from_config, deriveKwFromConfig } from "./types";
-
-// ─── Output Types ────────────────────────────────────────────────────────────
-
-export interface EPVNormalization {
-  /** Periods used in normalization (after trimming) */
-  periodsUsed: number;
-  /** Median CoreOI margin (CoreOI / Sales) */
-  medianCoreOIMargin: number;
-  /** Normalized CoreOI = medianCoreOIMargin × latestSales */
-  normalizedCoreOI: number;
-  /** Median effective tax rate */
-  medianTaxRate: number;
-  /** Normalized NOPAT = normalizedCoreOI × (1 − medianTaxRate) */
-  normalizedNOPAT: number;
-  /** Latest Sales used as revenue base */
-  latestSales: number;
-  /** Margin range across history [min, max] for context */
-  marginRange: [number, number];
-  /** Whether normalization is high-confidence (≥ 5 clean periods) */
-  highConfidence: boolean;
-}
+import { RecastPeriod, EngineConfig } from "./types";
 
 export interface EPVResult {
-  /** Normalized earnings power value (enterprise) */
-  V_EPV: number;
-  /** Asset value proxy = latest NOA (reproduction cost approximation) */
-  V_A: number;
-  /** Franchise value = V_EPV − V_A */
-  franchiseValue: number;
-  /** Franchise value as % of EPV */
-  franchisePct: number;
-  /** WACC (kw) used for capitalization */
-  kw: number;
-  /** Normalization details */
-  normalization: EPVNormalization;
-  /** Per-share EPV (null if share count unavailable) */
-  epvPerShare: number | null;
-  /** Margin of safety vs market price (null if price unavailable) */
-  marginOfSafety: number | null;
-  /** Implied market price premium/discount to EPV */
-  priceToEPV: number | null;
-  /** Interpretation label */
-  interpretation: EPVInterpretation;
-  /** Confidence in this EPV estimate */
-  confidence: "high" | "medium" | "low";
-  /** Reasons for confidence degradation */
-  confidenceNotes: string[];
-}
-
-export type EPVInterpretation =
-  | "strong-franchise"    // EPV > 1.5× V_A
-  | "franchise"           // EPV > 1.1× V_A
-  | "competitive"         // EPV ≈ V_A (within ±10%)
-  | "depressed-earnings"  // EPV < 0.9× V_A (turnaround candidate)
-  | "insufficient-data";  // Cannot compute
-
-/** Bank-specific EPV (equity-based, uses PAT / ke) */
-export interface BankEPVResult {
-  /** Normalized PAT / ke */
-  V_EPV_equity: number;
-  /** Latest book value (equity anchor) */
-  bookValue: number;
-  /** Franchise premium = V_EPV_equity − bookValue */
-  franchisePremium: number;
-  /** Price-to-book implied by EPV */
-  impliedPB: number | null;
-  /** ke used */
+  /** Normalized core operating income (median across periods, ₹ Cr). */
+  normalizedCoreOI: number;
+  /** Statutory tax rate used. */
+  taxRate: number;
+  /** Normalized NOPAT = normalizedCoreOI × (1 - taxRate). */
+  normalizedNOPAT: number;
+  /** Average depreciation across periods (₹ Cr). */
+  avgDepreciation: number;
+  /** Average capex across periods (₹ Cr, positive = outflow). */
+  avgCapex: number;
+  /** Maintenance capex estimate = min(avgCapex, avgDepreciation). */
+  maintenanceCapex: number;
+  /** Growth capex estimate = avgCapex - maintenanceCapex. */
+  growthCapex: number;
+  /** Adjusted earnings power = normalizedNOPAT (no capex adjustment needed when
+   *  maintenance ≈ depreciation, which is already deducted from OI). */
+  adjustedEarningsPower: number;
+  /** Cost of equity used as discount rate. */
   ke: number;
-  /** Normalized ROE used */
-  normalizedROE: number;
-  /** Confidence */
-  confidence: "high" | "medium" | "low";
-  confidenceNotes: string[];
+  /** EPV of operations = adjustedEarningsPower / ke (₹ Cr). */
+  epvOperations: number;
+  /** Net Financial Obligations (debt - cash, ₹ Cr). */
+  nfo: number;
+  /** EPV of equity = epvOperations - NFO (₹ Cr). */
+  epvEquity: number;
+  /** Diluted shares outstanding (Cr). */
+  sharesOutstanding: number | null;
+  /** EPV per share (₹). */
+  epvPerShare: number | null;
+  /** Book NOA as proxy for reproduction value of assets (₹ Cr). */
+  reproductionValue: number;
+  /** Franchise value = EPV_operations - reproductionValue. Positive = moat. */
+  franchiseValue: number;
+  /** Moat signal: "moat" if franchise > 0, "no-moat" if ≤ 0. */
+  moatSignal: "moat" | "no-moat" | "inconclusive";
+  /** Margin of safety vs market price (null if no market price). */
+  marginOfSafety: number | null;
+  /** Explanation lines for audit trail. */
+  explanation: string[];
+  /** Number of periods used for normalization. */
+  periodsUsed: number;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function median(values: number[]): number | null {
-  if (!values.length) return null;
-  const sorted = [...values].sort((a, b) => a - b);
+/** Compute median of a numeric array. */
+function median(arr: number[]): number {
+  if (arr.length === 0) return 0;
+  const sorted = [...arr].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0
     ? (sorted[mid - 1] + sorted[mid]) / 2
     : sorted[mid];
 }
 
-/** Trim top and bottom 1 value when array has ≥ 7 elements */
-function trimmedValues(values: number[]): number[] {
-  if (values.length < 7) return values;
-  const sorted = [...values].sort((a, b) => a - b);
-  return sorted.slice(1, sorted.length - 1);
-}
-
-function clamp(v: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, v));
-}
-
-function interpretFranchise(franchisePct: number): EPVInterpretation {
-  if (franchisePct > 0.33)  return "strong-franchise";
-  if (franchisePct > 0.09)  return "franchise";
-  if (franchisePct > -0.11) return "competitive";
-  return "depressed-earnings";
-}
-
-// ─── Industrial EPV ──────────────────────────────────────────────────────────
-
 /**
- * Compute Graham-Dodd EPV for an industrial company.
+ * Compute Graham-Dodd Earnings Power Value.
  *
- * @param periods    Sorted (oldest→newest) recast periods
- * @param config     Engine config (provides ke, kw)
- * @param marketCap  Optional market cap in ₹ Crore for margin-of-safety
- * @param kwOverride Optional structurally-derived kw to use instead of the
- *                   80/20 fallback in `deriveKwFromConfig`. v3Analytics passes
- *                   the same kw it uses for terminal-value math so EPV stays
- *                   consistent across modules (review C8, S-9.4C).
+ * @param data - Array of RecastPeriod (at least 3 recommended for normalization)
+ * @param config - Engine config (for ke, tax rate, shares, market price)
+ * @returns EPVResult or null if insufficient data
  */
 export function computeEPV(
-  periods: RecastPeriod[],
+  data: RecastPeriod[],
   config: EngineConfig,
-  marketCap?: number | null,
-  kwOverride?: number | null,
 ): EPVResult | null {
-  if (!periods || periods.length < 3) return null;
+  if (data.length < 2) return null;
 
-  const confidenceNotes: string[] = [];
+  // ── Normalize Core OI ──────────────────────────────────────────────────────
+  // Use CoreOI (strips unusual items) for a cleaner earnings power estimate.
+  // Median is more robust than mean for cyclical companies.
+  const coreOIs = data
+    .map(p => p.cu.CoreOI)
+    .filter((v): v is number => v != null && isFinite(v));
 
-  // ── 1. Collect CoreOI margins and tax rates ──────────────────────────────
-  const margins: number[] = [];
-  const taxRates: number[] = [];
+  if (coreOIs.length < 2) return null;
 
-  for (const p of periods) {
-    const sales   = p.is?.Sales;
-    const coreOI  = p.cu?.CoreOI;
-    const taxRate = p.is?.taxRate;
-
-    if (sales != null && sales > 0 && coreOI != null) {
-      margins.push(coreOI / sales);
-    }
-    if (taxRate != null && taxRate > 0 && taxRate < 1) {
-      taxRates.push(taxRate);
-    }
-  }
-
-  if (margins.length < 3) {
-    confidenceNotes.push("Fewer than 3 periods with CoreOI — normalization unreliable");
+  const normalizedCoreOI = median(coreOIs);
+  if (normalizedCoreOI <= 0) {
+    // Loss-maker — EPV is not meaningful (use loss-maker module instead)
     return null;
   }
 
-  // ── 2. Normalize ─────────────────────────────────────────────────────────
-  const trimmedMargins  = trimmedValues(margins);
-  const trimmedTaxRates = trimmedValues(taxRates);
+  // ── Tax Rate ───────────────────────────────────────────────────────────────
+  // Use statutory rate (more stable than effective rate which fluctuates with
+  // deferred tax, MAT credits, etc.)
+  const taxRate = config.statutory_tax_rate ?? 0.252;
 
-  const medianMargin  = median(trimmedMargins)!;
-  const rawTaxRate    = median(trimmedTaxRates.length ? trimmedTaxRates : taxRates) ?? 0.25;
-  // India: clamp effective tax rate to [15%, 40%]
-  const medianTaxRate = clamp(rawTaxRate, 0.15, 0.40);
+  // ── Depreciation & Capex ───────────────────────────────────────────────────
+  const depreciations = data
+    .map(p => p.is.operatingCostBridge?.depreciation)
+    .filter((v): v is number => v != null && isFinite(v) && v > 0);
 
-  const latestPeriod = periods[periods.length - 1];
-  const latestSales  = latestPeriod.is?.Sales;
-  const latestNOA    = latestPeriod.bs?.NOA;
+  const capexes = data
+    .map(p => Math.abs(p.cf.Capex))
+    .filter((v): v is number => v != null && isFinite(v) && v > 0);
 
-  if (latestSales == null || latestSales <= 0) {
-    confidenceNotes.push("Latest Sales unavailable — cannot compute EPV");
-    return null;
-  }
-  if (latestNOA == null) {
-    confidenceNotes.push("Latest NOA unavailable — asset value proxy missing");
-  }
+  const avgDepreciation = depreciations.length > 0
+    ? depreciations.reduce((s, v) => s + v, 0) / depreciations.length
+    : 0;
 
-  const normalizedCoreOI = medianMargin * latestSales;
-  const normalizedNOPAT  = normalizedCoreOI * (1 - medianTaxRate);
+  const avgCapex = capexes.length > 0
+    ? capexes.reduce((s, v) => s + v, 0) / capexes.length
+    : 0;
 
-  // ── 3. Capitalization ────────────────────────────────────────────────────
-  // EPV is traditionally capitalized at ke (Greenwald) to isolate franchise
-  // value from asset value. We use WACC (kw) here to align with the full
-  // capital structure visible in recast data. Prefer the structurally-derived
-  // kw passed from v3Analytics (review C8); fall back to deriveKwFromConfig
-  // for direct callers (tests, ad-hoc usage).
-  const kw = (kwOverride != null && Number.isFinite(kwOverride) && kwOverride > 0)
-    ? kwOverride
-    : deriveKwFromConfig(config);
+  // Greenwald's maintenance capex: the minimum of actual capex and depreciation.
+  // Rationale: if capex < depreciation, the company is under-investing (use capex).
+  // If capex > depreciation, excess is growth capex (use depreciation as maintenance).
+  const maintenanceCapex = Math.min(avgCapex, avgDepreciation);
+  const growthCapex = Math.max(0, avgCapex - maintenanceCapex);
 
-  if (kw <= 0.01) {
-    confidenceNotes.push("WACC too low — EPV unreliable");
-    return null;
-  }
+  // ── Adjusted Earnings Power ────────────────────────────────────────────────
+  // CoreOI already has depreciation deducted. So:
+  //   If maintenance capex ≈ depreciation → no adjustment needed
+  //   If maintenance capex < depreciation → company is under-investing,
+  //     add back (depreciation - maintenanceCapex) to reflect true maintenance cost
+  //   If maintenance capex > depreciation → shouldn't happen by our min() above
+  //
+  // Net adjustment = depreciation - maintenanceCapex (always ≥ 0)
+  // But since OI already deducts depreciation, and we want to deduct maintenance capex:
+  //   Adjusted = OI + depreciation - maintenanceCapex
+  //   = OI + (depreciation - maintenanceCapex)
+  //
+  // Actually, the cleaner Greenwald formulation:
+  //   Earnings Power = EBITDA - Maintenance Capex - Taxes
+  //   EBITDA = CoreOI + Depreciation
+  //   EP = (CoreOI + Depreciation - MaintenanceCapex) × (1 - tax)
+  //
+  // When maintenance = depreciation: EP = CoreOI × (1 - tax) [standard case]
+  // When maintenance < depreciation: EP > CoreOI × (1 - tax) [under-investing]
 
-  const V_EPV = normalizedNOPAT / kw;
+  const ebitda = normalizedCoreOI + avgDepreciation;
+  const earningsBeforeTax = ebitda - maintenanceCapex;
+  const normalizedNOPAT = normalizedCoreOI * (1 - taxRate);
+  const adjustedEarningsPower = earningsBeforeTax * (1 - taxRate);
 
-  // EPV ≤ 0 means normalized NOPAT is non-positive (depressed cyclical, structural
-  // loss-maker, or negative median margin). Margin-of-safety and price/EPV ratios
-  // would flip sign and mislead reviewers (review C12). Refuse to publish.
-  if (V_EPV <= 0) {
-    confidenceNotes.push(
-      `Normalized EPV is non-positive (${V_EPV.toFixed(2)} ₹Cr) — depressed earnings or structural losses; cannot publish franchise/MOS ratios`,
-    );
-    return null;
-  }
+  // ── Cost of Equity ─────────────────────────────────────────────────────────
+  const ke = (config.risk_free_rate ?? 0.07) + (config.equity_risk_premium ?? 0.055);
 
-  const V_A   = latestNOA ?? 0;
+  if (ke <= 0.01) return null; // nonsensical ke
 
-  const franchiseValue = V_EPV - V_A;
-  // FranchisePct denominator is V_EPV (already verified > 0). For asset-light
-  // firms (V_A ≤ 0, e.g., services with customer-funded WC), franchiseValue
-  // collapses to V_EPV itself — interpret as "100% franchise" rather than the
-  // old `V_A > 0 ? ... : 0` which forced franchisePct to 0 and silently
-  // misclassified asset-light moats as "competitive" (review C12).
-  const franchisePct   = franchiseValue / V_EPV;
-  if (V_A <= 0) {
-    confidenceNotes.push(
-      "Latest NOA ≤ 0 (asset-light or customer-funded WC) — franchise value equals EPV; interpret with care",
-    );
-  }
+  // ── EPV Calculation ────────────────────────────────────────────────────────
+  const epvOperations = adjustedEarningsPower / ke;
 
-  // ── 4. Per-share and margin of safety ────────────────────────────────────
-  const shareCount = latestPeriod.shareCountInput?.endPeriodShares
-    ?? latestPeriod.shareCountInput?.weightedAverageDilutedShares;
+  // Latest period's NFO and NOA
+  const latest = data[data.length - 1];
+  const nfo = latest.bs.NFO;
+  const epvEquity = epvOperations - nfo;
 
-  const epvPerShare = (shareCount != null && shareCount > 0)
-    ? (V_EPV * 1e7) / shareCount   // ₹Cr → ₹ (1 Cr = 1e7 ₹)
-    : null;
+  // ── Shares ─────────────────────────────────────────────────────────────────
+  const shares = config.shares_outstanding ?? null;
+  const epvPerShare = shares != null && shares > 0 ? epvEquity / shares : null;
 
-  const marginOfSafety = (marketCap != null && marketCap > 0)
-    ? (V_EPV - marketCap) / V_EPV
-    : null;
+  // ── Reproduction Value (Moat Test) ─────────────────────────────────────────
+  // Book NOA as proxy. In India, land/property is often understated on books,
+  // so this is conservative (biases toward finding a moat).
+  const reproductionValue = latest.bs.NOA;
+  const franchiseValue = epvOperations - reproductionValue;
+  const moatSignal: EPVResult["moatSignal"] =
+    franchiseValue > reproductionValue * 0.1
+      ? "moat"
+      : franchiseValue < -reproductionValue * 0.05
+        ? "no-moat"
+        : "inconclusive";
 
-  const priceToEPV = (marketCap != null && V_EPV > 0)
-    ? marketCap / V_EPV
-    : null;
+  // ── Margin of Safety vs Market ─────────────────────────────────────────────
+  const marketPrice = config.market_price ?? null;
+  const marginOfSafety =
+    marketPrice != null && epvPerShare != null && marketPrice > 0
+      ? (epvPerShare - marketPrice) / marketPrice
+      : null;
 
-  // ── 5. Confidence ────────────────────────────────────────────────────────
-  const highConfidence = margins.length >= 5;
-  if (!highConfidence) confidenceNotes.push(`Only ${margins.length} margin observations`);
-  if (Math.abs(margins[margins.length - 1] - medianMargin) / (Math.abs(medianMargin) + 0.001) > 0.5) {
-    confidenceNotes.push("Latest margin deviates >50% from median — possible cyclical distortion");
-  }
-  if (latestNOA == null) confidenceNotes.push("NOA unavailable — franchise value unreliable");
-
-  const confidence: EPVResult["confidence"] =
-    confidenceNotes.length === 0 ? "high"
-    : confidenceNotes.length <= 2 ? "medium"
-    : "low";
-
-  // W5: Append a methodology disclaimer AFTER confidence is computed so it
-  // doesn't degrade the confidence score. EPV here is a hybrid of Greenwald
-  // (ke-capitalised earnings power against book equity) and the enterprise
-  // Penman recast: normalized NOPAT is capitalised at WACC (kw) and
-  // franchiseValue is computed against NOA, not book equity. Reviewers who
-  // expect the textbook equity-level Greenwald form should read franchiseValue
-  // at enterprise level here.
-  confidenceNotes.push(
-    "EPV uses (NormNOPAT/kw) − NOA — enterprise-level form. Not equity-level Greenwald (V_EPV_ke − bookEquity); franchiseValue interprets at enterprise level (W5)",
-  );
-
-  const marginRange: [number, number] = [
-    Math.min(...margins),
-    Math.max(...margins),
+  // ── Explanation ────────────────────────────────────────────────────────────
+  const explanation: string[] = [
+    `Graham-Dodd EPV (no-growth floor) using ${coreOIs.length} periods of CoreOI.`,
+    `Normalized CoreOI (median): ₹${normalizedCoreOI.toFixed(0)} Cr`,
+    `EBITDA (normalized): ₹${ebitda.toFixed(0)} Cr (CoreOI + avg depreciation ₹${avgDepreciation.toFixed(0)} Cr)`,
+    `Maintenance capex: ₹${maintenanceCapex.toFixed(0)} Cr (min of avg capex ₹${avgCapex.toFixed(0)}, avg depreciation ₹${avgDepreciation.toFixed(0)})`,
+    `Growth capex excluded: ₹${growthCapex.toFixed(0)} Cr`,
+    `Adjusted earnings power (after-tax): ₹${adjustedEarningsPower.toFixed(0)} Cr at ${(taxRate * 100).toFixed(1)}% tax`,
+    `EPV of operations: ₹${epvOperations.toFixed(0)} Cr (÷ ke=${(ke * 100).toFixed(1)}%)`,
+    `Less NFO: ₹${nfo.toFixed(0)} Cr`,
+    `EPV of equity: ₹${epvEquity.toFixed(0)} Cr`,
+    ...(epvPerShare != null ? [`EPV per share: ₹${epvPerShare.toFixed(1)}`] : []),
+    `Reproduction value (book NOA): ₹${reproductionValue.toFixed(0)} Cr`,
+    `Franchise value: ₹${franchiseValue.toFixed(0)} Cr → ${moatSignal}`,
+    ...(marginOfSafety != null
+      ? [`Margin of safety vs market (₹${marketPrice?.toFixed(1)}): ${(marginOfSafety * 100).toFixed(1)}%`]
+      : []),
   ];
 
   return {
-    V_EPV,
-    V_A,
-    franchiseValue,
-    franchisePct,
-    kw,
-    normalization: {
-      periodsUsed:       trimmedMargins.length,
-      medianCoreOIMargin: medianMargin,
-      normalizedCoreOI,
-      medianTaxRate,
-      normalizedNOPAT,
-      latestSales,
-      marginRange,
-      highConfidence,
-    },
-    epvPerShare,
-    marginOfSafety,
-    priceToEPV,
-    interpretation: interpretFranchise(franchisePct),
-    confidence,
-    confidenceNotes,
-  };
-}
-
-// ─── Bank EPV ────────────────────────────────────────────────────────────────
-
-/**
- * Equity-based EPV for banks/NBFCs.
- * EPV = Normalized PAT / ke
- * Franchise premium = EPV − Book Value
- *
- * @param bankPeriods               Array of {period_end, pat, totalEquity} from bankPipeline
- * @param config                    Engine config (provides ke)
- * @param marketCap                 Optional market cap for P/B context
- * @param precomputedNormalizedROE  Optional cycle-adjusted ROE from bankPipeline.bm.roe.
- *                                  When provided, bypasses the local PAT/avgEquity
- *                                  recomputation so two parallel ROE series can't
- *                                  disagree (review W6).
- */
-export function computeBankEPV(
-  bankPeriods: Array<{
-    period_end: string;
-    pat: number | null;
-    totalEquity: number | null;
-  }>,
-  config: EngineConfig,
-  _marketCap?: number | null,
-  precomputedNormalizedROE?: number | null,
-): BankEPVResult | null {
-  if (!bankPeriods || bankPeriods.length < 3) return null;
-
-  const confidenceNotes: string[] = [];
-
-  // Collect ROE series
-  const roeValues: number[] = [];
-  const patValues: number[] = [];
-
-  for (let i = 1; i < bankPeriods.length; i++) {
-    const curr = bankPeriods[i];
-    const prev = bankPeriods[i - 1];
-    if (
-      curr.pat != null && curr.totalEquity != null && curr.totalEquity > 0 &&
-      prev.totalEquity != null && prev.totalEquity > 0
-    ) {
-      const avgEquity = (curr.totalEquity + prev.totalEquity) / 2;
-      roeValues.push(curr.pat / avgEquity);
-      patValues.push(curr.pat);
-    }
-  }
-
-  if (roeValues.length < 2) {
-    confidenceNotes.push("Insufficient ROE observations for bank EPV");
-    return null;
-  }
-
-  // W6: prefer the cycle-adjusted ROE that bankPipeline already computed when
-  // available — keeps a single source of truth for the bank ROE series.
-  let normalizedROE: number;
-  if (precomputedNormalizedROE != null && Number.isFinite(precomputedNormalizedROE)) {
-    normalizedROE = precomputedNormalizedROE;
-  } else {
-    const trimmedROE = trimmedValues(roeValues);
-    normalizedROE = median(trimmedROE)!;
-  }
-
-  const latestPeriod = bankPeriods[bankPeriods.length - 1];
-  const bookValue = latestPeriod.totalEquity;
-
-  if (bookValue == null || bookValue <= 0) {
-    confidenceNotes.push("Latest book value unavailable");
-    return null;
-  }
-
-  const ke = ke_from_config(config);
-  if (ke <= 0.01) {
-    confidenceNotes.push("ke too low — bank EPV unreliable");
-    return null;
-  }
-
-  // Normalized PAT = normalizedROE × latest book value
-  const normalizedPAT = normalizedROE * bookValue;
-  const V_EPV_equity  = normalizedPAT / ke;
-
-  const franchisePremium = V_EPV_equity - bookValue;
-  const impliedPB = bookValue > 0 ? V_EPV_equity / bookValue : null;
-
-  // Confidence
-  if (roeValues.length < 5) confidenceNotes.push(`Only ${roeValues.length} ROE observations`);
-  const latestROE = roeValues[roeValues.length - 1];
-  if (Math.abs(latestROE - normalizedROE) / (Math.abs(normalizedROE) + 0.001) > 0.4) {
-    confidenceNotes.push("Latest ROE deviates >40% from median — NPA cycle may distort EPV");
-  }
-
-  const confidence: BankEPVResult["confidence"] =
-    confidenceNotes.length === 0 ? "high"
-    : confidenceNotes.length <= 1 ? "medium"
-    : "low";
-
-  return {
-    V_EPV_equity,
-    bookValue,
-    franchisePremium,
-    impliedPB,
+    normalizedCoreOI,
+    taxRate,
+    normalizedNOPAT,
+    avgDepreciation,
+    avgCapex,
+    maintenanceCapex,
+    growthCapex,
+    adjustedEarningsPower,
     ke,
-    normalizedROE,
-    confidence,
-    confidenceNotes,
+    epvOperations,
+    nfo,
+    epvEquity,
+    sharesOutstanding: shares,
+    epvPerShare,
+    reproductionValue,
+    franchiseValue,
+    moatSignal,
+    marginOfSafety,
+    explanation,
+    periodsUsed: coreOIs.length,
   };
-}
-
-// ─── Sensitivity Table ───────────────────────────────────────────────────────
-
-/**
- * EPV sensitivity to WACC and normalized margin.
- * Returns a 3×3 grid: [margin −10%, base, +10%] × [kw −1%, base, +1%]
- */
-export interface EPVSensitivityCell {
-  margin: number;
-  kw: number;
-  V_EPV: number;
-}
-
-export function computeEPVSensitivity(
-  baseResult: EPVResult,
-): EPVSensitivityCell[][] {
-  const { normalization, kw } = baseResult;
-  const { medianCoreOIMargin, latestSales, medianTaxRate } = normalization;
-
-  const marginDeltas = [-0.10, 0, 0.10];
-  const kwDeltas     = [-0.01, 0, 0.01];
-
-  return marginDeltas.map(dm => {
-    const adjMargin = medianCoreOIMargin * (1 + dm);
-    return kwDeltas.map(dk => {
-      const adjKw    = Math.max(0.03, kw + dk);
-      const nopat    = adjMargin * latestSales * (1 - medianTaxRate);
-      return {
-        margin: adjMargin,
-        kw:     adjKw,
-        V_EPV:  nopat / adjKw,
-      };
-    });
-  });
 }

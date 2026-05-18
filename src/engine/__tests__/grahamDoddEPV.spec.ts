@@ -1,247 +1,252 @@
-/**
- * Tests for Graham-Dodd EPV module
- */
 import { describe, it, expect } from "vitest";
-import { computeEPV, computeBankEPV, computeEPVSensitivity } from "../grahamDoddEPV";
-import { DEFAULT_CONFIG } from "../types";
-import type { RecastPeriod } from "../types";
+import { computeEPV } from "../grahamDoddEPV";
+import { RecastPeriod, EngineConfig, DEFAULT_CONFIG } from "../types";
 
-// ─── Fixtures ────────────────────────────────────────────────────────────────
-
+/** Minimal RecastPeriod factory for EPV testing. */
 function makePeriod(overrides: {
-  period_end: string;
-  Sales: number;
   CoreOI: number;
-  taxRate: number;
+  depreciation?: number;
+  Capex?: number;
   NOA?: number;
-  CSE?: number;
+  NFO?: number;
+  OI?: number;
+  Sales?: number;
 }): RecastPeriod {
-  const pat = overrides.CoreOI * (1 - overrides.taxRate);
+  const { CoreOI, depreciation = 100, Capex = -120, NOA = 5000, NFO = 1000, OI = CoreOI, Sales = 10000 } = overrides;
   return {
-    period_end: overrides.period_end,
+    period_end: "2024-03-31",
     bs: {
-      TA: 1000, CSE: overrides.CSE ?? 500, MI: 0,
-      FA: 100, FO: 50, OA: 900, OL: 400,
-      OL_TradePayables: 100, OL_OtherCurrentLiabilities: 100,
-      OL_ProvisionsCurrent: 50, OL_ProvisionsLongTerm: 50,
-      OL_CurrentTaxLiabilities: 50, OL_NonCurrentTaxLiabilities: 0,
-      OL_DeferredTaxLiabilitiesNet: 50, OL_OtherNonCurrentLiabilities: 0,
-      NOA: overrides.NOA ?? 600, NFO: 100,
-      DTL: 50, PensionObl: 0, OL_ex_DTL: 350,
-      Goodwill: 0, CurrentAssets: 500, CurrentLiabilities: 300,
-      BridgeDebtTotal: 100,
-      Inventory: 100, TradeReceivables: 150, TradePayables: 100,
-      PPE: 300, LIFO_reserve: 0, separationScore: 0.8,
-      OA_PPE: 300, OA_ROU: 0, OA_Goodwill: 0, OA_OtherIntangibles: 0,
-      OA_Inventory: 100, OA_TradeReceivables: 150, OA_DTA: 0,
-      OA_CWIP: 0, OA_Other: 350,
-    } as RecastPeriod["bs"],
+      CSE: NOA - NFO,
+      NOA,
+      OA: NOA * 0.8,
+      OL: NOA * 0.2,
+      FA: NFO > 0 ? 0 : Math.abs(NFO),
+      FL: NFO > 0 ? NFO : 0,
+      NFO,
+      MI: 0,
+      TA: NOA + (NFO > 0 ? 0 : Math.abs(NFO)),
+      TL: NOA * 0.2 + (NFO > 0 ? NFO : 0),
+    } as any,
     is: {
-      Sales: overrides.Sales,
-      TaxExpense: overrides.CoreOI * overrides.taxRate,
-      taxRate: overrides.taxRate,
-      PAT: pat,
-      OCI: 0, TCI: pat, TCI_NCI: 0,
-      CNI: pat,
-      FinanceCost: 10, FinanceIncome: 2, FinanceIncomeRung: 1,
+      Sales,
+      OI,
+      CNI: CoreOI * 0.75,
+      NFE: NFO * 0.08,
+      PAT: CoreOI * 0.75,
+      TCI: CoreOI * 0.75,
+      TCI_NCI: 0,
+      TaxExpense: CoreOI * 0.25,
+      taxRate: 0.252,
+      FinanceCost: NFO > 0 ? NFO * 0.08 : 0,
+      FinanceIncome: 0,
+      FinanceIncomeRung: 1,
       PreferredDividend: 0,
-      NFE: -8, OI: overrides.CoreOI, OtherItems: 0, OI_from_sales: 0, MII: 0,
-      COGS: overrides.Sales * 0.5,
-    } as RecastPeriod["is"],
+      OCI: 0,
+      OtherItems: 0,
+      OI_from_sales: OI,
+      MII: 0,
+      COGS: Sales * 0.5,
+      operatingCostBridge: {
+        materialCost: Sales * 0.4,
+        employeeCost: Sales * 0.15,
+        depreciation,
+        sgaAdvertising: 0,
+        sgaLegalProfessional: 0,
+        sgaRent: 0,
+        sgaFreight: 0,
+        sgaRepairs: 0,
+        sgaPowerFuel: 0,
+        sgaDetailed: 0,
+        sgaResidual: 0,
+        sgaTotal: 0,
+      },
+    } as any,
     cu: {
       UOI: 0,
-      CoreOI: overrides.CoreOI,
-      UFE: 0, CoreNFE: -8,
-      ExceptionalItemsAfterTax: 0, OCITotal: 0,
-    } as RecastPeriod["cu"],
+      CoreOI,
+      UFE: 0,
+      CoreNFE: NFO * 0.08,
+      ExceptionalItemsAfterTax: 0,
+      OCITotal: 0,
+    },
     cf: {
-      CFO: overrides.CoreOI * 0.9,
-      Capex: 50,
-      DividendPaid: 20,
-      EquityIssued: 0,
-      ShareBuybacks: 0,
-      InterestReceived: 2,
-      DividendReceived: 0,
-    } as RecastPeriod["cf"],
+      CFO: CoreOI * 0.8,
+      Capex,
+      CFF: 0,
+      CFI: Capex,
+      DividendsPaid: 0,
+      NetBorrowings: 0,
+    } as any,
   };
 }
 
-// Use DEFAULT_CONFIG (has all required fields) with ke override
-const BASE_CONFIG = { ...DEFAULT_CONFIG, ke: 0.12 };
+describe("Graham-Dodd EPV", () => {
+  const baseConfig: EngineConfig = {
+    ...DEFAULT_CONFIG,
+    risk_free_rate: 0.07,
+    equity_risk_premium: 0.055,
+    statutory_tax_rate: 0.252,
+    shares_outstanding: 100, // 100 Cr shares
+    market_price: 500,
+  };
 
-// ─── Industrial EPV Tests ─────────────────────────────────────────────────────
-
-describe("computeEPV — industrial", () => {
-  const periods = [
-    makePeriod({ period_end: "2021-03-31", Sales: 10000, CoreOI: 2000, taxRate: 0.25, NOA: 8000 }),
-    makePeriod({ period_end: "2022-03-31", Sales: 11000, CoreOI: 2200, taxRate: 0.25, NOA: 8500 }),
-    makePeriod({ period_end: "2023-03-31", Sales: 12000, CoreOI: 2400, taxRate: 0.25, NOA: 9000 }),
-    makePeriod({ period_end: "2024-03-31", Sales: 13000, CoreOI: 2600, taxRate: 0.25, NOA: 9500 }),
-    makePeriod({ period_end: "2025-03-31", Sales: 14000, CoreOI: 2800, taxRate: 0.25, NOA: 10000 }),
-  ];
-
-  it("returns a result for sufficient data", () => {
-    const result = computeEPV(periods, BASE_CONFIG);
-    expect(result).not.toBeNull();
-  });
-
-  it("median CoreOI margin is ~0.20 (consistent 20% margin across all periods)", () => {
-    const result = computeEPV(periods, BASE_CONFIG)!;
-    expect(result.normalization.medianCoreOIMargin).toBeCloseTo(0.20, 2);
-  });
-
-  it("normalized NOPAT = medianMargin × latestSales × (1 − taxRate)", () => {
-    const result = computeEPV(periods, BASE_CONFIG)!;
-    const expected = 0.20 * 14000 * (1 - 0.25);
-    expect(result.normalization.normalizedNOPAT).toBeCloseTo(expected, 0);
-  });
-
-  it("V_EPV = normalizedNOPAT / kw", () => {
-    const result = computeEPV(periods, BASE_CONFIG)!;
-    expect(result.V_EPV).toBeCloseTo(result.normalization.normalizedNOPAT / result.kw, 0);
-  });
-
-  it("franchise value = V_EPV − V_A", () => {
-    const result = computeEPV(periods, BASE_CONFIG)!;
-    expect(result.franchiseValue).toBeCloseTo(result.V_EPV - result.V_A, 0);
-  });
-
-  it("interpretation is franchise when EPV > V_A", () => {
-    const result = computeEPV(periods, BASE_CONFIG)!;
-    expect(["franchise", "strong-franchise"]).toContain(result.interpretation);
-  });
-
-  it("returns null for fewer than 3 periods", () => {
-    const result = computeEPV(periods.slice(0, 2), BASE_CONFIG);
+  it("returns null for fewer than 2 periods", () => {
+    const result = computeEPV([makePeriod({ CoreOI: 1000 })], baseConfig);
     expect(result).toBeNull();
   });
 
-  it("computes margin of safety when marketCap provided", () => {
-    const result = computeEPV(periods, BASE_CONFIG, 15000);
-    expect(result?.marginOfSafety).not.toBeNull();
-  });
-
-  it("priceToEPV = marketCap / V_EPV", () => {
-    const marketCap = 20000;
-    const result = computeEPV(periods, BASE_CONFIG, marketCap)!;
-    expect(result.priceToEPV).toBeCloseTo(marketCap / result.V_EPV, 3);
-  });
-
-  it("depressed-earnings interpretation when CoreOI is very low relative to NOA", () => {
-    // Very thin margins → EPV << V_A
-    const depressedPeriods = periods.map(p => ({
-      ...p,
-      cu: { ...p.cu, CoreOI: p.is.Sales * 0.005 },
-    }));
-    const result = computeEPV(depressedPeriods, BASE_CONFIG);
-    expect(result?.interpretation).toBe("depressed-earnings");
-  });
-
-  it("confidence is high when 5+ clean periods and stable margins", () => {
-    const result = computeEPV(periods, BASE_CONFIG)!;
-    expect(result.confidence).toBe("high");
-  });
-
-  it("normalization uses trimmed values for 7+ periods", () => {
-    const manyPeriods = [
-      makePeriod({ period_end: "2019-03-31", Sales: 8000,  CoreOI: 160,  taxRate: 0.25, NOA: 6000 }), // outlier low
-      makePeriod({ period_end: "2020-03-31", Sales: 9000,  CoreOI: 1800, taxRate: 0.25, NOA: 7000 }),
-      makePeriod({ period_end: "2021-03-31", Sales: 10000, CoreOI: 2000, taxRate: 0.25, NOA: 8000 }),
-      makePeriod({ period_end: "2022-03-31", Sales: 11000, CoreOI: 2200, taxRate: 0.25, NOA: 8500 }),
-      makePeriod({ period_end: "2023-03-31", Sales: 12000, CoreOI: 2400, taxRate: 0.25, NOA: 9000 }),
-      makePeriod({ period_end: "2024-03-31", Sales: 13000, CoreOI: 2600, taxRate: 0.25, NOA: 9500 }),
-      makePeriod({ period_end: "2025-03-31", Sales: 14000, CoreOI: 28000, taxRate: 0.25, NOA: 10000 }), // outlier high
+  it("returns null for loss-maker (median CoreOI ≤ 0)", () => {
+    const periods = [
+      makePeriod({ CoreOI: -200 }),
+      makePeriod({ CoreOI: -100 }),
+      makePeriod({ CoreOI: 50 }),
     ];
-    const result = computeEPV(manyPeriods, BASE_CONFIG)!;
-    // After trimming outliers, median should be close to 0.20
-    expect(result.normalization.medianCoreOIMargin).toBeCloseTo(0.20, 1);
-  });
-});
-
-// ─── EPV Sensitivity Tests ────────────────────────────────────────────────────
-
-describe("computeEPVSensitivity", () => {
-  const periods = [
-    makePeriod({ period_end: "2021-03-31", Sales: 10000, CoreOI: 2000, taxRate: 0.25, NOA: 8000 }),
-    makePeriod({ period_end: "2022-03-31", Sales: 11000, CoreOI: 2200, taxRate: 0.25, NOA: 8500 }),
-    makePeriod({ period_end: "2023-03-31", Sales: 12000, CoreOI: 2400, taxRate: 0.25, NOA: 9000 }),
-    makePeriod({ period_end: "2024-03-31", Sales: 13000, CoreOI: 2600, taxRate: 0.25, NOA: 9500 }),
-    makePeriod({ period_end: "2025-03-31", Sales: 14000, CoreOI: 2800, taxRate: 0.25, NOA: 10000 }),
-  ];
-
-  it("returns 3×3 grid", () => {
-    const base = computeEPV(periods, BASE_CONFIG)!;
-    const grid = computeEPVSensitivity(base);
-    expect(grid).toHaveLength(3);
-    expect(grid[0]).toHaveLength(3);
-  });
-
-  it("center cell matches base V_EPV", () => {
-    const base = computeEPV(periods, BASE_CONFIG)!;
-    const grid = computeEPVSensitivity(base);
-    expect(grid[1][1].V_EPV).toBeCloseTo(base.V_EPV, 0);
-  });
-
-  it("higher kw → lower EPV (same margin row)", () => {
-    const base = computeEPV(periods, BASE_CONFIG)!;
-    const grid = computeEPVSensitivity(base);
-    expect(grid[1][2].V_EPV).toBeLessThan(grid[1][1].V_EPV);
-  });
-
-  it("higher margin → higher EPV (same kw column)", () => {
-    const base = computeEPV(periods, BASE_CONFIG)!;
-    const grid = computeEPVSensitivity(base);
-    expect(grid[2][1].V_EPV).toBeGreaterThan(grid[1][1].V_EPV);
-  });
-});
-
-// ─── Bank EPV Tests ───────────────────────────────────────────────────────────
-
-describe("computeBankEPV", () => {
-  const bankPeriods = [
-    { period_end: "2021-03-31", pat: 3000, totalEquity: 30000 },
-    { period_end: "2022-03-31", pat: 3300, totalEquity: 32000 },
-    { period_end: "2023-03-31", pat: 3600, totalEquity: 34000 },
-    { period_end: "2024-03-31", pat: 3900, totalEquity: 36000 },
-    { period_end: "2025-03-31", pat: 4200, totalEquity: 38000 },
-  ];
-
-  it("returns a result for sufficient data", () => {
-    const result = computeBankEPV(bankPeriods, BASE_CONFIG);
-    expect(result).not.toBeNull();
-  });
-
-  it("V_EPV_equity = normalizedPAT / ke", () => {
-    const result = computeBankEPV(bankPeriods, BASE_CONFIG)!;
-    const expectedPAT = result.normalizedROE * result.bookValue;
-    expect(result.V_EPV_equity).toBeCloseTo(expectedPAT / result.ke, 0);
-  });
-
-  it("franchise premium = V_EPV_equity − bookValue", () => {
-    const result = computeBankEPV(bankPeriods, BASE_CONFIG)!;
-    expect(result.franchisePremium).toBeCloseTo(result.V_EPV_equity - result.bookValue, 0);
-  });
-
-  it("implied PB > 1 for profitable bank (ROE > ke)", () => {
-    const result = computeBankEPV(bankPeriods, BASE_CONFIG)!;
-    // ROE ~10% > ke 12%? Actually ROE = 3000/31000 ≈ 9.7% < ke 12%
-    // So implied PB could be < 1 — just check it's computed
-    expect(result.impliedPB).not.toBeNull();
-    expect(result.impliedPB).toBeGreaterThan(0);
-  });
-
-  it("returns null for fewer than 3 periods", () => {
-    const result = computeBankEPV(bankPeriods.slice(0, 2), BASE_CONFIG);
+    const result = computeEPV(periods, baseConfig);
     expect(result).toBeNull();
   });
 
-  it("bookValue is latest period equity", () => {
-    const result = computeBankEPV(bankPeriods, BASE_CONFIG)!;
-    expect(result.bookValue).toBe(38000);
+  it("computes EPV for a stable industrial company", () => {
+    const periods = [
+      makePeriod({ CoreOI: 900, depreciation: 100, Capex: -120, NOA: 5000, NFO: 1000 }),
+      makePeriod({ CoreOI: 1000, depreciation: 110, Capex: -130, NOA: 5200, NFO: 1100 }),
+      makePeriod({ CoreOI: 1100, depreciation: 120, Capex: -140, NOA: 5400, NFO: 1200 }),
+      makePeriod({ CoreOI: 1050, depreciation: 115, Capex: -135, NOA: 5300, NFO: 1150 }),
+      makePeriod({ CoreOI: 950, depreciation: 105, Capex: -125, NOA: 5100, NFO: 1050 }),
+    ];
+    const result = computeEPV(periods, baseConfig);
+    expect(result).not.toBeNull();
+
+    // Median CoreOI = 1000 (sorted: 900, 950, 1000, 1050, 1100)
+    expect(result!.normalizedCoreOI).toBe(1000);
+
+    // Avg depreciation = (100+110+120+115+105)/5 = 110
+    expect(result!.avgDepreciation).toBeCloseTo(110, 0);
+
+    // Avg capex = (120+130+140+135+125)/5 = 130
+    expect(result!.avgCapex).toBeCloseTo(130, 0);
+
+    // Maintenance capex = min(130, 110) = 110
+    expect(result!.maintenanceCapex).toBeCloseTo(110, 0);
+
+    // Growth capex = 130 - 110 = 20
+    expect(result!.growthCapex).toBeCloseTo(20, 0);
+
+    // EBITDA = 1000 + 110 = 1110
+    // Adjusted earnings = (1110 - 110) × (1 - 0.252) = 1000 × 0.748 = 748
+    expect(result!.adjustedEarningsPower).toBeCloseTo(748, 0);
+
+    // ke = 0.07 + 0.055 = 0.125
+    expect(result!.ke).toBeCloseTo(0.125, 4);
+
+    // EPV operations = 748 / 0.125 = 5984
+    expect(result!.epvOperations).toBeCloseTo(5984, 0);
+
+    // EPV equity = 5984 - 1050 (latest NFO) = 4934
+    expect(result!.epvEquity).toBeCloseTo(4934, 0);
+
+    // EPV per share = 4934 / 100 = 49.34
+    expect(result!.epvPerShare).toBeCloseTo(49.34, 1);
+
+    // Reproduction value = latest NOA = 5100
+    expect(result!.reproductionValue).toBe(5100);
+
+    // Franchise value = 5984 - 5100 = 884 (positive → moat)
+    expect(result!.franchiseValue).toBeCloseTo(884, 0);
+    expect(result!.moatSignal).toBe("moat");
+
+    // Margin of safety = (49.34 - 500) / 500 = -0.9013 (overvalued vs EPV)
+    expect(result!.marginOfSafety).toBeCloseTo(-0.9013, 2);
   });
 
-  it("normalizedROE is positive for profitable bank", () => {
-    const result = computeBankEPV(bankPeriods, BASE_CONFIG)!;
-    expect(result.normalizedROE).toBeGreaterThan(0);
+  it("identifies no-moat when EPV < reproduction value", () => {
+    // Low CoreOI relative to NOA → no franchise value
+    const periods = [
+      makePeriod({ CoreOI: 200, depreciation: 300, Capex: -280, NOA: 8000, NFO: 2000 }),
+      makePeriod({ CoreOI: 180, depreciation: 310, Capex: -290, NOA: 8100, NFO: 2100 }),
+      makePeriod({ CoreOI: 220, depreciation: 320, Capex: -300, NOA: 8200, NFO: 2200 }),
+    ];
+    const result = computeEPV(periods, baseConfig);
+    expect(result).not.toBeNull();
+    expect(result!.moatSignal).toBe("no-moat");
+    expect(result!.franchiseValue).toBeLessThan(0);
+  });
+
+  it("handles company with capex < depreciation (under-investing)", () => {
+    // Capex < depreciation → maintenance capex = capex (lower)
+    const periods = [
+      makePeriod({ CoreOI: 500, depreciation: 200, Capex: -80, NOA: 3000, NFO: 500 }),
+      makePeriod({ CoreOI: 520, depreciation: 210, Capex: -90, NOA: 3100, NFO: 550 }),
+      makePeriod({ CoreOI: 480, depreciation: 190, Capex: -70, NOA: 2900, NFO: 450 }),
+    ];
+    const result = computeEPV(periods, baseConfig);
+    expect(result).not.toBeNull();
+
+    // Avg capex = (80+90+70)/3 = 80
+    // Avg depreciation = (200+210+190)/3 = 200
+    // Maintenance = min(80, 200) = 80
+    expect(result!.maintenanceCapex).toBeCloseTo(80, 0);
+    expect(result!.avgDepreciation).toBeCloseTo(200, 0);
+
+    // EBITDA = 500 + 200 = 700
+    // Adjusted = (700 - 80) × 0.748 = 620 × 0.748 = 463.76
+    expect(result!.adjustedEarningsPower).toBeCloseTo(463.76, 0);
+  });
+
+  it("returns null when ke is nonsensical", () => {
+    const periods = [
+      makePeriod({ CoreOI: 1000 }),
+      makePeriod({ CoreOI: 1100 }),
+    ];
+    // ke = 0.005 < 0.01 threshold → null
+    const badConfig = { ...baseConfig, risk_free_rate: 0, equity_risk_premium: 0.005 };
+    const result = computeEPV(periods, badConfig);
+    expect(result).toBeNull();
+
+    const veryBadConfig = { ...baseConfig, risk_free_rate: 0, equity_risk_premium: 0 };
+    const result2 = computeEPV(periods, veryBadConfig);
+    expect(result2).toBeNull();
+  });
+
+  it("produces explanation lines for audit trail", () => {
+    const periods = [
+      makePeriod({ CoreOI: 800, depreciation: 100, Capex: -150, NOA: 4000, NFO: 800 }),
+      makePeriod({ CoreOI: 900, depreciation: 110, Capex: -160, NOA: 4200, NFO: 900 }),
+      makePeriod({ CoreOI: 850, depreciation: 105, Capex: -155, NOA: 4100, NFO: 850 }),
+    ];
+    const result = computeEPV(periods, baseConfig);
+    expect(result).not.toBeNull();
+    expect(result!.explanation.length).toBeGreaterThan(5);
+    expect(result!.explanation[0]).toContain("Graham-Dodd EPV");
+    expect(result!.explanation.some(l => l.includes("Maintenance capex"))).toBe(true);
+    expect(result!.explanation.some(l => l.includes("Franchise value"))).toBe(true);
+  });
+
+  it("handles missing shares gracefully (epvPerShare = null)", () => {
+    const periods = [
+      makePeriod({ CoreOI: 1000 }),
+      makePeriod({ CoreOI: 1100 }),
+    ];
+    const noSharesConfig = { ...baseConfig, shares_outstanding: undefined };
+    const result = computeEPV(periods, noSharesConfig);
+    expect(result).not.toBeNull();
+    expect(result!.sharesOutstanding).toBeNull();
+    expect(result!.epvPerShare).toBeNull();
+    expect(result!.marginOfSafety).toBeNull();
+  });
+
+  it("IT-services company with high CoreOI and low capex shows strong moat", () => {
+    // TCS-like: high margins, low capex, moderate NOA
+    const periods = [
+      makePeriod({ CoreOI: 4000, depreciation: 200, Capex: -250, NOA: 8000, NFO: -2000 }),
+      makePeriod({ CoreOI: 4200, depreciation: 210, Capex: -260, NOA: 8500, NFO: -2200 }),
+      makePeriod({ CoreOI: 4400, depreciation: 220, Capex: -270, NOA: 9000, NFO: -2500 }),
+      makePeriod({ CoreOI: 4100, depreciation: 205, Capex: -255, NOA: 8200, NFO: -2100 }),
+    ];
+    const result = computeEPV(periods, { ...baseConfig, shares_outstanding: 366 });
+    expect(result).not.toBeNull();
+    expect(result!.moatSignal).toBe("moat");
+    // Negative NFO means cash-rich → EPV equity > EPV operations
+    expect(result!.epvEquity).toBeGreaterThan(result!.epvOperations);
+    expect(result!.franchiseValue).toBeGreaterThan(0);
   });
 });

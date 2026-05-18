@@ -12,6 +12,7 @@ import type { SegmentData } from "./segmentParser";
 import { computeEvEbitdaCrossCheck, updateEvEbitdaWithMarketPrice, EvEbitdaCrossCheck } from "./evEbitdaCrossCheck";
 import { computeIndiaQualitySignals, IndiaQualitySignals } from "./indiaQualitySignals";
 import { buildEarningsQualityCard, buildDechowDichevAndRem, EarningsQualityCard } from "./earningsQuality";
+import { computeEPV, EPVResult } from "./grahamDoddEPV";
 
 export type ValuationSignalState =
   | "blocked"
@@ -181,6 +182,8 @@ export interface ValuationCommandCenterOutput {
   backtest: ValuationBacktestSummary;
   signal: ValuationSignal;
   earningsQuality: EarningsQualityCard;
+  /** Graham-Dodd EPV — no-growth floor anchor (Greenwald). */
+  epv: EPVResult | null;
   range: {
     floorPerShare: number | null;
     ceilingPerShare: number | null;
@@ -1340,6 +1343,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     evEbitda: evEbitdaWithMarket,
     indiaQuality,
     earningsQuality,
+    epv: computeEPV(data, config),
     opportunity,
     checklist,
     marketContext,

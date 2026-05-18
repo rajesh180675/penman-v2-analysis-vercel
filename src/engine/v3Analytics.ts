@@ -2016,14 +2016,7 @@ export function computeV3Analytics(
   const cyclicality = assessCyclicality(periods);
   const structuralBreaks = detectStructuralBreaks(periods);
   const lossMakerValuation = computeLossMakerValuation(periods, cfg);
-  const epv = computeEPV(
-    periods,
-    cfg,
-    cfg.market_price != null && cfg.shares_outstanding != null
-      ? cfg.market_price * cfg.shares_outstanding / 1e7  // price × shares → ₹ Crore
-      : null,
-    kw,  // S-9.4C: pass structurally-derived kw so EPV uses the same WACC as terminal value
-  );
+  const epv = computeEPV(periods, cfg);
   const relativeValuation = cfg.market_price != null && cfg.shares_outstanding != null
     ? computeIndustrialMultiples(periods, {
         marketCap: cfg.market_price * cfg.shares_outstanding / 1e7,
