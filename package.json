@@ -9,8 +9,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "dev:local": "concurrently --kill-others-on-fail \"vite\" \"tsx server/index.ts\"",
-    "server": "tsx server/index.ts",
+    "dev:local": "concurrently --kill-others-on-fail -n vite,api -c blue,green \"vite\" \"node --import tsx/esm server/index.ts\"",
+    "server": "node --import tsx/esm server/index.ts",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
