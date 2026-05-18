@@ -34,16 +34,16 @@ export default function QualitySignalPanel({ traceability, ratioSanity, segmentD
   const reconStatus = traceability?.reconciliation?.status;
   signals.push({
     label: "BS Reconciliation",
-    status: reconStatus === "confirmed" ? "pass" : reconStatus === "degraded" ? "warning" : reconStatus === "failed" ? "fail" : "unavailable",
-    detail: reconStatus === "confirmed" ? "TA = Equity + Liabilities ✓" : reconStatus ? `Max residual: ${((traceability?.reconciliation?.maxResidualRatio ?? 0) * 100).toFixed(2)}%` : undefined,
+    status: reconStatus === "pass" ? "pass" : reconStatus === "warning" ? "warning" : reconStatus === "fail" ? "fail" : "unavailable",
+    detail: reconStatus === "pass" ? "TA = Equity + Liabilities ✓" : reconStatus ? `Max residual: ${traceability?.reconciliation?.maxResidualPct?.toFixed(1)}%` : undefined,
   });
 
   // Parser fidelity
-  const score = traceability?.parserFidelity?.score;
+  const fidelity = traceability?.parserFidelity?.fidelityPct;
   signals.push({
     label: "Parser Fidelity",
-    status: score != null ? (score >= 95 ? "pass" : score >= 80 ? "warning" : "fail") : "unavailable",
-    detail: score != null ? `Score: ${score.toFixed(0)}/100` : undefined,
+    status: fidelity != null ? (fidelity >= 95 ? "pass" : fidelity >= 80 ? "warning" : "fail") : "unavailable",
+    detail: fidelity != null ? `${fidelity.toFixed(0)}% of labels mapped` : undefined,
   });
 
   // Ratio sanity
@@ -75,7 +75,7 @@ export default function QualitySignalPanel({ traceability, ratioSanity, segmentD
   const confidence = traceability?.confidence?.status;
   signals.push({
     label: "Overall Confidence",
-    status: confidence === "production-ready" ? "pass" : confidence === "guarded" ? "warning" : confidence === "blocked" ? "fail" : "unavailable",
+    status: confidence === "production-ready" ? "pass" : confidence === "warning" ? "warning" : confidence === "guarded" ? "warning" : confidence === "blocked" ? "fail" : "unavailable",
     detail: confidence ?? "Not computed",
   });
 

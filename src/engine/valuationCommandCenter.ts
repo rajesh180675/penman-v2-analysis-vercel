@@ -7,7 +7,7 @@ import { resolveShareBasis } from "./shareCountTools";
 import { ValuationReadiness, resolveValuationReadiness } from "./valuationPolicy";
 import { resolveValuationSectorTemplate } from "./valuationSectorTemplates";
 import { buildSOTPValuation, SOTP_PRESETS, SOTPResult } from "./sotpValuation";
-import { runSOTPFromSegmentData, segmentDataToDefinitions } from "./segmentSOTPBridge";
+import { runSOTPFromSegmentData, segmentDataToDefinitions, EnhancedSOTPResult } from "./segmentSOTPBridge";
 import type { SegmentData } from "./segmentParser";
 import { computeEvEbitdaCrossCheck, updateEvEbitdaWithMarketPrice, EvEbitdaCrossCheck } from "./evEbitdaCrossCheck";
 import { computeIndiaQualitySignals, IndiaQualitySignals } from "./indiaQualitySignals";
@@ -520,8 +520,8 @@ function computeCashFlowDiagnostics(latest: RecastPeriod, prev: RecastPeriod | n
   const cashConversionRatio = latest.ratios?.cash_conversion_ratio ?? null;
   const normalizedMaintenanceShare = clamp(
     maintenanceCapexShare
-      + (cashConversionRatio != null && cashConversionRatio < 0.75 ? 0.08 : 0)
-      + (salesGrowth > 0.12 ? -0.04 : salesGrowth < 0.03 ? 0.04 : 0),
+    + (cashConversionRatio != null && cashConversionRatio < 0.75 ? 0.08 : 0)
+    + (salesGrowth > 0.12 ? -0.04 : salesGrowth < 0.03 ? 0.04 : 0),
     0.45,
     0.92,
   );
@@ -842,13 +842,13 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   const persistencePenaltyPct = persistencePenalty(businessModel.persistenceScore);
   const requiredMarginOfSafetyPct = clamp(
     sectorTemplate.baseRequiredMarginOfSafety
-      + (sectorTemplate.cyclical ? 0.04 : 0)
-      + (qualityScore < 55 ? 0.1 : qualityScore < 70 ? 0.05 : qualityScore > 85 ? -0.03 : 0)
-      + persistencePenaltyPct
-      + (confidenceState === "guarded" ? 0.04 : 0)
-      + (confidenceState === "blocked" ? 0.1 : 0)
-      + (valuationReadiness.status !== "production-ready" ? 0.04 : 0)
-      + (marketFreshness === "stale" ? 0.03 : marketFreshness === "fallback" ? 0.05 : marketFreshness === "missing" ? 0.08 : 0),
+    + (sectorTemplate.cyclical ? 0.04 : 0)
+    + (qualityScore < 55 ? 0.1 : qualityScore < 70 ? 0.05 : qualityScore > 85 ? -0.03 : 0)
+    + persistencePenaltyPct
+    + (confidenceState === "guarded" ? 0.04 : 0)
+    + (confidenceState === "blocked" ? 0.1 : 0)
+    + (valuationReadiness.status !== "production-ready" ? 0.04 : 0)
+    + (marketFreshness === "stale" ? 0.03 : marketFreshness === "fallback" ? 0.05 : marketFreshness === "missing" ? 0.08 : 0),
     0.18,
     0.6,
   );
@@ -1102,13 +1102,13 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
 
   const opportunityScore = clamp(
     (qualityScore * 0.28)
-      + ((stressCard?.marginOfSafetyPct != null ? scoreFromRange(stressCard.marginOfSafetyPct, 0, requiredMarginOfSafetyPct + 0.12) : 0) * 28)
-      + ((baseCard?.marginOfSafetyPct != null ? scoreFromRange(baseCard.marginOfSafetyPct, 0, requiredMarginOfSafetyPct + 0.18) : 0) * 20)
-      + ((historicalCheapnessScore ?? 40) * 0.08)
-      + ((reverseDcfPessimismScore ?? 35) * 0.08)
-      + (freshnessScore * 10)
-      + (replayCoverageScore * 6)
-      - confidencePenalty,
+    + ((stressCard?.marginOfSafetyPct != null ? scoreFromRange(stressCard.marginOfSafetyPct, 0, requiredMarginOfSafetyPct + 0.12) : 0) * 28)
+    + ((baseCard?.marginOfSafetyPct != null ? scoreFromRange(baseCard.marginOfSafetyPct, 0, requiredMarginOfSafetyPct + 0.18) : 0) * 20)
+    + ((historicalCheapnessScore ?? 40) * 0.08)
+    + ((reverseDcfPessimismScore ?? 35) * 0.08)
+    + (freshnessScore * 10)
+    + (replayCoverageScore * 6)
+    - confidencePenalty,
     0,
     100,
   );

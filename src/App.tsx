@@ -12,7 +12,6 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AnalysisStatusBadge } from "./components/AnalysisStatusBadge";
 import CompanySwitcher from "./components/CompanySwitcher";
 import GlossaryModal from "./components/GlossaryModal";
-
 import DataEntry from "./components/DataEntry";
 import RecastStatements from "./components/RecastStatements";
 import RatioReport from "./components/RatioReport";
@@ -50,50 +49,47 @@ const CompanyWorkspace = lazy(() => import("./components/CompanyWorkspace"));
 const WatchlistDashboard = lazy(() => import("./components/WatchlistDashboard"));
 const DashboardView = lazy(() => import("./components/dashboard/DashboardView"));
 
-type TabId = "upload"|"dashboard"|"watchlist"|"workspace"|"inspector"|"statements"|"ratios"|"forecast"|"valuation"|"bank"|"quality"|"comparison"|"report"|"regression"|"v3analytics"|"debug";
+type TabId = "upload" | "dashboard" | "watchlist" | "workspace" | "inspector" | "statements" | "ratios" | "forecast" | "valuation" | "bank" | "quality" | "comparison" | "report" | "regression" | "v3analytics" | "debug";
 
-const TABS: {id:TabId;label:string;icon:string;needsData?:boolean;group:string}[] = [
-  {id:"upload",     label:"Data",       icon:"📂", group:"input"},
-  {id:"dashboard",  label:"Dashboard",  icon:"📊", needsData:true, group:"input"},
-  {id:"watchlist",  label:"Watchlist",  icon:"🗂", group:"input"},
-  {id:"workspace",  label:"Workspace",  icon:"🧭", group:"input"},
-  {id:"inspector",  label:"Runs",       icon:"🛰️", group:"input"},
-  {id:"statements", label:"Statements", icon:"📋", needsData:true, group:"analysis"},
-  {id:"ratios",     label:"Ratios",     icon:"📐", needsData:true, group:"analysis"},
-  {id:"quality",    label:"Quality",    icon:"🔍", needsData:true, group:"analysis"},
-  {id:"forecast",   label:"Forecast",   icon:"📈", needsData:true, group:"analysis"},
-  {id:"valuation",  label:"Valuation",  icon:"💰", needsData:true, group:"valuation"},
-  {id:"bank",       label:"Bank",       icon:"🏦", needsData:true, group:"valuation"},
-  {id:"comparison", label:"Comparison", icon:"👥", needsData:true, group:"peers"},
-  {id:"report",     label:"Report",     icon:"📚", needsData:true, group:"export"},
-  {id:"regression", label:"Regression", icon:"🧪", needsData:true, group:"advanced"},
-  {id:"v3analytics",label:"V3 Analytics",icon:"🔬", needsData:true, group:"advanced"},
-  {id:"debug",      label:"Debug",      icon:"🛠", group:"advanced"},
+const TABS: { id: TabId; label: string; icon: string; needsData?: boolean; group: string }[] = [
+  { id: "upload", label: "Data", icon: "📂", group: "input" },
+  { id: "dashboard", label: "Dashboard", icon: "📊", needsData: true, group: "input" },
+  { id: "watchlist", label: "Watchlist", icon: "🗂", group: "input" },
+  { id: "workspace", label: "Workspace", icon: "🧭", group: "input" },
+  { id: "inspector", label: "Runs", icon: "🛰️", group: "input" },
+  { id: "statements", label: "Statements", icon: "📋", needsData: true, group: "analysis" },
+  { id: "ratios", label: "Ratios", icon: "📐", needsData: true, group: "analysis" },
+  { id: "quality", label: "Quality", icon: "🔍", needsData: true, group: "analysis" },
+  { id: "forecast", label: "Forecast", icon: "📈", needsData: true, group: "analysis" },
+  { id: "valuation", label: "Valuation", icon: "💰", needsData: true, group: "valuation" },
+  { id: "bank", label: "Bank", icon: "🏦", needsData: true, group: "valuation" },
+  { id: "comparison", label: "Comparison", icon: "👥", needsData: true, group: "peers" },
+  { id: "report", label: "Report", icon: "📚", needsData: true, group: "export" },
+  { id: "regression", label: "Regression", icon: "🧪", needsData: true, group: "advanced" },
+  { id: "v3analytics", label: "V3 Analytics", icon: "🔬", needsData: true, group: "advanced" },
+  { id: "debug", label: "Debug", icon: "🛠", group: "advanced" },
 ];
 
-const TAB_GROUPS: {key:string;label:string}[] = [
-  {key:"input", label:"Data & Input"},
-  {key:"analysis", label:"Analysis"},
-  {key:"valuation", label:"Valuation"},
-  {key:"peers", label:"Peers"},
-  {key:"export", label:"Export"},
-  {key:"advanced", label:"Advanced"},
+const TAB_GROUPS: { key: string; label: string }[] = [
+  { key: "input", label: "Data & Input" },
+  { key: "analysis", label: "Analysis" },
+  { key: "valuation", label: "Valuation" },
+  { key: "peers", label: "Peers" },
+  { key: "export", label: "Export" },
+  { key: "advanced", label: "Advanced" },
 ];
 
 export function App() {
   const auditGovernance = getAuditClientGovernance();
-  void GlossaryModal;
-  void glossaryOpen;
   const serverStatus = useServerStatus();
-  const [rawData,    setRawData]    = useState<RawPeriodData[]|null>(null);
-  const [debugInfo,  setDebugInfo]  = useState<CapitalineParseDebug|null>(null);
+  const [rawData, setRawData] = useState<RawPeriodData[] | null>(null);
+  const [debugInfo, setDebugInfo] = useState<CapitalineParseDebug | null>(null);
   const [parserDiagnostics, setParserDiagnostics] = useState<SourceParserDiagnostics | null>(null);
   const [segmentData, setSegmentData] = useState<import("./engine/segmentParser").SegmentData | null>(null);
-  const [activeTab,  setActiveTab]  = useState<TabId>("upload");
-  const [config,     setConfig]     = useState<EngineConfig>(DEFAULT_CONFIG);
+  const [activeTab, setActiveTab] = useState<TabId>("upload");
+  const [config, setConfig] = useState<EngineConfig>(DEFAULT_CONFIG);
   const [darkMode, setDarkMode] = useState(false);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
-
   const [registry, setRegistry] = useState<CompanyRegistry>(() => readPersistedCompanyRegistry());
   const [comparisonRegistryHydrated, setComparisonRegistryHydrated] = useState(false);
   const [auditMeta, setAuditMeta] = useState<AuditSubmissionMeta | null>(null);
@@ -270,17 +266,17 @@ export function App() {
   const publication = useMemo(
     () => (recastData?.length
       ? buildAnalysisPublicationSnapshot({
-          data: recastData,
-          config,
-          rawData,
-          auditMeta,
-          sharedTraceability: traceability,
-          qualityGate: qualityGateWithRecast,
-          mappingAudit,
-          policyVersions,
-          analysisStatus,
-          family: qualityGateWithRecast?.scopeAssessment.analysisFamily ?? null,
-        })
+        data: recastData,
+        config,
+        rawData,
+        auditMeta,
+        sharedTraceability: traceability,
+        qualityGate: qualityGateWithRecast,
+        mappingAudit,
+        policyVersions,
+        analysisStatus,
+        family: qualityGateWithRecast?.scopeAssessment.analysisFamily ?? null,
+      })
       : null),
     [analysisStatus, auditMeta, config, mappingAudit, policyVersions, qualityGateWithRecast, rawData, recastData, traceability],
   );
@@ -379,7 +375,7 @@ export function App() {
   }, [rawData, recastData, engineError, scopeGate]);
 
   const handleDataSubmit = useCallback(
-    (data:RawPeriodData[], debug?:CapitalineParseDebug, meta?: AuditSubmissionMeta, nextParserDiagnostics?: SourceParserDiagnostics | null, nextSegmentData?: import("./engine/segmentParser").SegmentData | null) => {
+    (data: RawPeriodData[], debug?: CapitalineParseDebug, meta?: AuditSubmissionMeta, nextParserDiagnostics?: SourceParserDiagnostics | null, nextSegmentData?: import("./engine/segmentParser").SegmentData | null) => {
       const nextMeta = meta ?? {
         runId: createAuditRunId(),
         sourceMode: "manual",
@@ -507,8 +503,8 @@ export function App() {
     });
   }, [activeTab, auditMeta]);
 
-  const hasRecast = (recastData?.length??0)>0;
-  const hasDebug  = debugInfo!==null;
+  const hasRecast = (recastData?.length ?? 0) > 0;
+  const hasDebug = debugInfo !== null;
   const workspaceCompanies = listWorkspaceCompanies();
   const hasWorkspace = hasRecast || Boolean(rawData?.length) || workspaceCompanies.length > 0;
   const valuationBlocked = Boolean(qualityGate?.valuationBlocked);
@@ -518,8 +514,8 @@ export function App() {
 
   const readyCompanyCount = Object.values(registry.companies).filter((c) => c.recastData.length > 0).length;
 
-  const visibleTabs = TABS.filter(t=>{
-    if (t.id==="debug") return hasDebug;
+  const visibleTabs = TABS.filter(t => {
+    if (t.id === "debug") return hasDebug;
     if (t.id === "comparison") return readyCompanyCount >= 2;
     if (t.id === "inspector") return isAuditEnabled() && Boolean(auditMeta);
     if (t.id === "watchlist") return hasWorkspace;
@@ -590,13 +586,12 @@ export function App() {
                             : undefined
                         }
                         disabled={tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable}
-                        className={`px-2.5 h-full text-xs font-medium border-b-2 transition-colors flex items-center gap-1 whitespace-nowrap ${
-                          activeTab===tab.id
+                        className={`px-2.5 h-full text-xs font-medium border-b-2 transition-colors flex items-center gap-1 whitespace-nowrap ${activeTab === tab.id
                             ? "border-indigo-600 text-indigo-600"
                             : tab.id === "valuation" && valuationBlocked
                               ? "border-transparent text-slate-300 cursor-not-allowed"
                               : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
-                        }`}>
+                          }`}>
                         <span>{tab.icon}</span>
                         <span className="hidden sm:inline">{tab.label}</span>
                       </button>
@@ -753,11 +748,10 @@ export function App() {
           )}
           {/* Phase F — Cyclicality peak/trough banner */}
           {(cyclicalitySignal?.classification === "cyclical-peak" || cyclicalitySignal?.classification === "cyclical-trough") && (
-            <div className={`mb-5 rounded-lg border p-4 text-sm ${
-              cyclicalitySignal.classification === "cyclical-peak"
+            <div className={`mb-5 rounded-lg border p-4 text-sm ${cyclicalitySignal.classification === "cyclical-peak"
                 ? "border-orange-300 bg-orange-50 text-orange-900 dark:border-orange-700 dark:bg-orange-950/30 dark:text-orange-200"
                 : "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-700 dark:bg-sky-950/30 dark:text-sky-200"
-            }`}>
+              }`}>
               <div className="font-semibold mb-1">
                 {cyclicalitySignal.classification === "cyclical-peak" ? "🔺 Cyclical company at peak" : "🔻 Cyclical company at trough"}
               </div>
@@ -771,11 +765,11 @@ export function App() {
             </div>
           )}
           <Suspense fallback={<TabSkeleton />}>
-            {activeTab==="inspector" && <RunInspector auditMeta={auditMeta} analysisStatus={analysisStatus} />}
-            {activeTab==="upload" && (
-              <DataEntry onDataSubmit={handleDataSubmit} currentData={rawData} config={config} onConfigChange={setConfig}/>
+            {activeTab === "inspector" && <RunInspector auditMeta={auditMeta} analysisStatus={analysisStatus} />}
+            {activeTab === "upload" && (
+              <DataEntry onDataSubmit={handleDataSubmit} currentData={rawData} config={config} onConfigChange={setConfig} />
             )}
-            {activeTab==="dashboard" && hasRecast && (
+            {activeTab === "dashboard" && hasRecast && (
               <DashboardView
                 data={recastData!}
                 config={config}
@@ -786,7 +780,7 @@ export function App() {
                 onNavigate={(tab) => setActiveTab(tab as TabId)}
               />
             )}
-            {activeTab==="watchlist" && (
+            {activeTab === "watchlist" && (
               <WatchlistDashboard
                 companies={workspaceCompanies}
                 activeCompanyId={workspaceCompanyId}
@@ -796,7 +790,7 @@ export function App() {
                 }}
               />
             )}
-            {activeTab==="workspace" && (
+            {activeTab === "workspace" && (
               <CompanyWorkspace
                 rawData={rawData}
                 recastData={recastData}
@@ -808,10 +802,10 @@ export function App() {
                 onSelectCompanyId={setWorkspaceCompanyId}
               />
             )}
-            {activeTab==="statements" && hasRecast && <RecastStatements data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
-            {activeTab==="ratios"     && hasRecast && <RatioReport data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
-            {activeTab==="forecast"   && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
-            {activeTab==="valuation"  && hasRecast && !valuationBlocked && (
+            {activeTab === "statements" && hasRecast && <RecastStatements data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
+            {activeTab === "ratios" && hasRecast && <RatioReport data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
+            {activeTab === "forecast" && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
+            {activeTab === "valuation" && hasRecast && !valuationBlocked && (
               <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} publication={publication} lossMaker={lossMakerResult} ratioSanity={ratioSanity} segmentData={segmentData} />
             )}
             {activeTab === "valuation" && !hasRecast && scopeBlocked && rawData && rawData.length > 0 && bankResult && (
@@ -853,9 +847,9 @@ export function App() {
                 ) : null}
               </div>
             )}
-            {activeTab==="quality"    && hasRecast && <QualityReport data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
-            {activeTab==="comparison" && <ComparisonReport registry={registry} config={config} publication={comparisonPublication} />}
-            {activeTab==="report"     && hasRecast && (
+            {activeTab === "quality" && hasRecast && <QualityReport data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
+            {activeTab === "comparison" && <ComparisonReport registry={registry} config={config} publication={comparisonPublication} />}
+            {activeTab === "report" && hasRecast && (
               <AcademicReport
                 data={recastData!}
                 config={config}
@@ -866,7 +860,7 @@ export function App() {
                 ratioSanity={ratioSanity}
               />
             )}
-            {activeTab==="regression" && hasRecast && (
+            {activeTab === "regression" && hasRecast && (
               <RegressionReport
                 rawData={rawData}
                 recastData={recastData}
@@ -876,13 +870,13 @@ export function App() {
                 traceabilitySummary={publication?.traceabilitySummary ?? null}
               />
             )}
-            {activeTab==="v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
-            {activeTab==="debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError}/>}
-            {(["statements","ratios","forecast","valuation","quality","report","regression","v3analytics"] as TabId[]).includes(activeTab) && !hasRecast && (
+            {activeTab === "v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
+            {activeTab === "debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError} />}
+            {(["statements", "ratios", "forecast", "valuation", "quality", "report", "regression", "v3analytics"] as TabId[]).includes(activeTab) && !hasRecast && (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <div className="text-6xl mb-4">📂</div>
                 <p className="text-xl font-semibold text-slate-600">No data loaded</p>
-                <button onClick={()=>setActiveTab("upload")}
+                <button onClick={() => setActiveTab("upload")}
                   className="mt-6 px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700">
                   Go to Upload
                 </button>

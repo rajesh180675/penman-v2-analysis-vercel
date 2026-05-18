@@ -85,6 +85,7 @@ function deriveVerdict(
   const moatScore = moat?.compositeScore ?? null;
   const capScore = capAlloc?.compositeScore ?? null;
   const moatWide = moat?.moatWidth === "wide";
+  const moatNarrow = moat?.moatWidth === "narrow";
 
   // 2. Compose the quality picture
   const goodBusiness = moatScore != null && moatScore >= 60;

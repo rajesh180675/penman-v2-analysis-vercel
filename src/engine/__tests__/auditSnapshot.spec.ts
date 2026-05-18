@@ -251,7 +251,6 @@ describe("traceability snapshot", () => {
           BalanceSheet: 2,
           ProfitLoss: 4,
           CashFlow: 2,
-          Segment: 0,
           Unknown: 0,
         },
       },

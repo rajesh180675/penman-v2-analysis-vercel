@@ -219,9 +219,20 @@ export function computePeerRelativeValuation(
 
   // ── Multiple-Implied Fair Values ────────────────────────────────────────
   const targetFundamentals = extractFundamentals(target.recastData, config);
+  const peerFundamentals = peers.map(p => {
+    // Use a minimal config for peers (no market price needed for ratio extraction)
+    const peerConfig: EngineConfig = {
+      ...config,
+      shares_outstanding: undefined,
+      market_price: undefined,
+    };
+    return { company: p, fundamentals: extractFundamentals(p.recastData, peerConfig) };
+  });
+
   // Collect PE, PB, PS from all companies that have market data
   const allPEs = allCompanies
     .map(c => {
+      const latest = c.recastData[c.recastData.length - 1];
       const cConfig = c.id === targetId ? config : { ...config, shares_outstanding: undefined, market_price: undefined };
       const f = extractFundamentals(c.recastData, cConfig);
       return f.pe;

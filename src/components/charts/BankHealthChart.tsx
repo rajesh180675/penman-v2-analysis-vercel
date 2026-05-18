@@ -52,9 +52,8 @@ export default function BankHealthChart({ metrics, ke }: Props) {
         </div>
         <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/30 p-2">
           <div className="text-[10px] uppercase tracking-wide text-emerald-700 dark:text-emerald-300">ROE</div>
-          <div className={`text-base font-bold ${
-            latest.ROE != null && keePct != null && latest.ROE > keePct ? "text-emerald-600" : "text-slate-900 dark:text-slate-100"
-          }`}>{latest.ROE?.toFixed(1) ?? "—"}%</div>
+          <div className={`text-base font-bold ${latest.ROE != null && keePct != null && latest.ROE > keePct ? "text-emerald-600" : "text-slate-900 dark:text-slate-100"
+            }`}>{latest.ROE?.toFixed(1) ?? "—"}%</div>
         </div>
         <div className="rounded-lg bg-amber-50 dark:bg-amber-900/30 p-2">
           <div className="text-[10px] uppercase tracking-wide text-amber-700 dark:text-amber-300">Credit Cost</div>
@@ -75,7 +74,7 @@ export default function BankHealthChart({ metrics, ke }: Props) {
             <XAxis dataKey="period" fontSize={10} />
             <YAxis tickFormatter={(v) => `${v}%`} fontSize={10} />
             <Tooltip
-              formatter={((value: any, name: any) => [`${(value || 0).toFixed(2)}%`, name]) as any}
+              formatter={(value: number, name: string) => [`${value?.toFixed(2)}%`, name]}
               contentStyle={{ fontSize: 11, borderRadius: 8 }}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -98,7 +97,7 @@ export default function BankHealthChart({ metrics, ke }: Props) {
             <XAxis dataKey="period" fontSize={10} />
             <YAxis tickFormatter={(v) => `${v}%`} fontSize={10} />
             <Tooltip
-              formatter={((value: any, name: any) => [`${(value || 0).toFixed(2)}%`, name]) as any}
+              formatter={(value: number, name: string) => [`${value?.toFixed(2)}%`, name]}
               contentStyle={{ fontSize: 11, borderRadius: 8 }}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />

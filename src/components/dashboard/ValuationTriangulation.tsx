@@ -42,11 +42,10 @@ export default function ValuationTriangulation({ price, epvPerShare, intrinsicRa
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Valuation Triangulation</h3>
         {mos != null && (
-          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-            mos > 15 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-            : mos > 0 ? "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-            : "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-          }`}>
+          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${mos > 15 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+              : mos > 0 ? "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                : "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+            }`}>
             MoS: {mos > 0 ? "+" : ""}{mos.toFixed(1)}%
           </span>
         )}
@@ -58,7 +57,7 @@ export default function ValuationTriangulation({ price, epvPerShare, intrinsicRa
             <XAxis type="number" tickFormatter={(v) => `₹${v}`} fontSize={11} />
             <YAxis type="category" dataKey="name" width={90} fontSize={11} />
             <Tooltip
-              formatter={(value: any) => [`₹${(value || 0).toLocaleString("en-IN")}`, "Implied Value"]}
+              formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, "Implied Value"]}
               contentStyle={{ fontSize: 12 }}
             />
             {price != null && (

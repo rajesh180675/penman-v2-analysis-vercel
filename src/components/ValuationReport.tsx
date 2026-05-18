@@ -350,7 +350,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
         const icon =
           distress.severity === "critical" ? "🚨"
             : distress.severity === "severe" ? "⚠️"
-            : "⚠";
+              : "⚠";
         const title =
           distress.severity === "critical"
             ? "Critical financial distress — going-concern stress"
@@ -381,21 +381,19 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
 
       {/* Phase 9 — Ratio sanity (anchor ratio bands) */}
       {ratioSanity && ratioSanity.checks.length > 0 && ratioSanity.status !== "ok" && (
-        <div className={`rounded-lg border p-5 space-y-3 ${
-          ratioSanity.status === "fail"
+        <div className={`rounded-lg border p-5 space-y-3 ${ratioSanity.status === "fail"
             ? "border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-950/30"
             : ratioSanity.status === "warning"
-            ? "border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30"
-            : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/40"
-        }`}>
+              ? "border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30"
+              : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/40"
+          }`}>
           <div className="flex items-center gap-2">
             <span className="text-lg">{ratioSanity.status === "fail" ? "🚨" : "⚠️"}</span>
             <h3 className="font-semibold text-slate-800 dark:text-slate-200">Ratio Sanity Check</h3>
-            <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium ${
-              ratioSanity.status === "fail" ? "bg-red-100 text-red-800" :
-              ratioSanity.status === "warning" ? "bg-amber-100 text-amber-800" :
-              "bg-slate-100 text-slate-700"
-            }`}>{ratioSanity.status.toUpperCase()}</span>
+            <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium ${ratioSanity.status === "fail" ? "bg-red-100 text-red-800" :
+                ratioSanity.status === "warning" ? "bg-amber-100 text-amber-800" :
+                  "bg-slate-100 text-slate-700"
+              }`}>{ratioSanity.status.toUpperCase()}</span>
           </div>
           <div className="text-xs text-slate-600 dark:text-slate-400">
             {ratioSanity.summary} <span className="text-slate-400">· company type: {ratioSanity.companyType}</span>
@@ -415,11 +413,10 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
                   <td className="py-1 font-medium">{check.label}</td>
                   <td className="py-1 text-right tabular-nums">{check.value != null ? `${(check.value * 100).toFixed(1)}%` : "—"}</td>
                   <td className="py-1 text-center">
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                      check.status === "fail" ? "bg-red-200 text-red-900" :
-                      check.status === "warning" ? "bg-amber-200 text-amber-900" :
-                      "bg-slate-200 text-slate-700"
-                    }`}>{check.status}</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${check.status === "fail" ? "bg-red-200 text-red-900" :
+                        check.status === "warning" ? "bg-amber-200 text-amber-900" :
+                          "bg-slate-200 text-slate-700"
+                      }`}>{check.status}</span>
                   </td>
                   <td className="py-1 pl-3 text-slate-600 dark:text-slate-400">{check.detail}</td>
                 </tr>
@@ -438,11 +435,10 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
           <div className="flex items-center gap-2">
             <span className="text-lg">📉</span>
             <h3 className="font-semibold text-slate-800 dark:text-slate-200">Loss-Maker Valuation Anchors</h3>
-            <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium ${
-              lossMaker.profitabilityPath.signal === "green" ? "bg-emerald-100 text-emerald-800" :
-              lossMaker.profitabilityPath.signal === "amber" ? "bg-amber-100 text-amber-800" :
-              "bg-red-100 text-red-800"
-            }`}>{lossMaker.profitabilityPath.signal.toUpperCase()}</span>
+            <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium ${lossMaker.profitabilityPath.signal === "green" ? "bg-emerald-100 text-emerald-800" :
+                lossMaker.profitabilityPath.signal === "amber" ? "bg-amber-100 text-amber-800" :
+                  "bg-red-100 text-red-800"
+              }`}>{lossMaker.profitabilityPath.signal.toUpperCase()}</span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Earnings-based models skipped — {lossMaker.lossYears}/{lossMaker.totalYears} periods have CNI ≤ 0.
@@ -663,8 +659,8 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
               { name: "Residual Earnings (base)", shortName: "V_RE", value: commandCenter.scenarios.find(s => s.key === "base")?.intrinsicPerShare ?? null },
               { name: "Residual Earnings (stress)", shortName: "V_Stress", value: commandCenter.scenarios.find(s => s.key === "stress")?.intrinsicPerShare ?? null },
               { name: "EPV (no-growth floor)", shortName: "EPV", value: commandCenter.epv?.epvPerShare ?? null },
-              { name: "Reverse DCF implied", shortName: "RevDCF", value: commandCenter.marketPrice ?? null },
-              { name: "SOTP (segment-weighted)", shortName: "SOTP", value: commandCenter.sotp && sharesOut && sharesOut > 0 ? (commandCenter.sotp.totalEnterpriseValue - data[data.length - 1].bs.NFO) / sharesOut : null },
+              { name: "Reverse DCF implied", shortName: "RevDCF", value: commandCenter.reverseDcf?.impliedGrowthValue ?? null },
+              { name: "SOTP (segment-weighted)", shortName: "SOTP", value: commandCenter.sotp?.sotpPerShare ?? null },
             ]}
             marketPrice={commandCenter.marketPrice}
           />
@@ -677,7 +673,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
               const rnoa = latest.ratios?.RNOA ?? 0;
               const noa = latest.bs.NOA;
               const cse = latest.bs.CSE;
-              const shares = sharesOut;
+              const shares = commandCenter.sharesOutstanding;
               if (!shares || shares <= 0 || keVal <= gVal) return null;
               const equity = cse + ((rnoa - keVal) * noa) / (keVal - gVal);
               return (equity / shares) * 1e7;
@@ -695,7 +691,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
           const rnoaBase = latest.ratios?.RNOA ?? 0;
           const noa = latest.bs.NOA;
           const cse = latest.bs.CSE;
-          const shares = sharesOut;
+          const shares = commandCenter.sharesOutstanding;
 
           if (!baseValue || !shares || shares <= 0) return null;
 
@@ -745,47 +741,46 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
 
         {/* EPV Panel — Graham-Dodd no-growth floor anchor */}
         {commandCenter.epv && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Graham-Dodd EPV (Greenwald)</div>
-              <div className="mt-1 text-sm text-slate-600">No-growth floor — what the business is worth if it never grows again</div>
-            </div>
-            <div className={`px-3 py-1.5 rounded-full text-xs font-bold ${
-              commandCenter.epv.moatSignal === "moat" ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-              : commandCenter.epv.moatSignal === "no-moat" ? "bg-red-50 text-red-700 border border-red-200"
-              : "bg-slate-50 text-slate-600 border border-slate-200"
-            }`}>
-              {commandCenter.epv.moatSignal === "moat" ? "🏰 Franchise Value Positive" : commandCenter.epv.moatSignal === "no-moat" ? "⚠️ No Moat" : "Inconclusive"}
-            </div>
-          </div>
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="rounded-xl bg-slate-50 p-3">
-              <div className="text-xs text-slate-500">Normalized NOPAT</div>
-              <div className="text-lg font-bold text-slate-900">₹{commandCenter.epv.normalizedNOPAT.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr</div>
-            </div>
-            <div className="rounded-xl bg-slate-50 p-3">
-              <div className="text-xs text-slate-500">EPV per Share</div>
-              <div className="text-lg font-bold text-slate-900">{commandCenter.epv.epvPerShare != null ? `₹${commandCenter.epv.epvPerShare.toFixed(0)}` : "—"}</div>
-            </div>
-            <div className="rounded-xl bg-slate-50 p-3">
-              <div className="text-xs text-slate-500">Franchise Value</div>
-              <div className={`text-lg font-bold ${commandCenter.epv.franchiseValue > 0 ? "text-emerald-700" : "text-red-700"}`}>
-                ₹{commandCenter.epv.franchiseValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Graham-Dodd EPV (Greenwald)</div>
+                <div className="mt-1 text-sm text-slate-600">No-growth floor — what the business is worth if it never grows again</div>
+              </div>
+              <div className={`px-3 py-1.5 rounded-full text-xs font-bold ${commandCenter.epv.moatSignal === "moat" ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : commandCenter.epv.moatSignal === "no-moat" ? "bg-red-50 text-red-700 border border-red-200"
+                    : "bg-slate-50 text-slate-600 border border-slate-200"
+                }`}>
+                {commandCenter.epv.moatSignal === "moat" ? "🏰 Franchise Value Positive" : commandCenter.epv.moatSignal === "no-moat" ? "⚠️ No Moat" : "Inconclusive"}
               </div>
             </div>
-            <div className="rounded-xl bg-slate-50 p-3">
-              <div className="text-xs text-slate-500">MoS vs Market</div>
-              <div className={`text-lg font-bold ${(commandCenter.epv.marginOfSafety ?? 0) > 0 ? "text-emerald-700" : "text-red-700"}`}>
-                {commandCenter.epv.marginOfSafety != null ? `${(commandCenter.epv.marginOfSafety * 100).toFixed(1)}%` : "—"}
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="rounded-xl bg-slate-50 p-3">
+                <div className="text-xs text-slate-500">Normalized NOPAT</div>
+                <div className="text-lg font-bold text-slate-900">₹{commandCenter.epv.normalizedNOPAT.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr</div>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <div className="text-xs text-slate-500">EPV per Share</div>
+                <div className="text-lg font-bold text-slate-900">{commandCenter.epv.epvPerShare != null ? `₹${commandCenter.epv.epvPerShare.toFixed(0)}` : "—"}</div>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <div className="text-xs text-slate-500">Franchise Value</div>
+                <div className={`text-lg font-bold ${commandCenter.epv.franchiseValue > 0 ? "text-emerald-700" : "text-red-700"}`}>
+                  ₹{commandCenter.epv.franchiseValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr
+                </div>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <div className="text-xs text-slate-500">MoS vs Market</div>
+                <div className={`text-lg font-bold ${(commandCenter.epv.marginOfSafety ?? 0) > 0 ? "text-emerald-700" : "text-red-700"}`}>
+                  {commandCenter.epv.marginOfSafety != null ? `${(commandCenter.epv.marginOfSafety * 100).toFixed(1)}%` : "—"}
+                </div>
               </div>
             </div>
+            <div className="mt-3 text-xs text-slate-500">
+              Based on {commandCenter.epv.periodsUsed} periods median CoreOI. ke={((commandCenter.epv.ke) * 100).toFixed(1)}%.
+              EPV_ops = ₹{commandCenter.epv.epvOperations.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr − NFO ₹{commandCenter.epv.nfo.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr = Equity ₹{commandCenter.epv.epvEquity.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr.
+            </div>
           </div>
-          <div className="mt-3 text-xs text-slate-500">
-            Based on {commandCenter.epv.periodsUsed} periods median CoreOI. ke={((commandCenter.epv.ke) * 100).toFixed(1)}%.
-            EPV_ops = ₹{commandCenter.epv.epvOperations.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr − NFO ₹{commandCenter.epv.nfo.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr = Equity ₹{commandCenter.epv.epvEquity.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr.
-          </div>
-        </div>
         )}
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -1186,7 +1181,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
         />
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">All CV Methods — RE</div>
-              {[
+          {[
             { label: "CV1 (zero)", v: val.V_RE_CV1 },
             { label: "CV2 (perp.)", v: val.V_RE_CV2 },
             { label: "CV3 (growth)", v: val.V_RE_CV3 },

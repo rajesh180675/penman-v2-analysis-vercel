@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { RecastPeriod, EngineConfig } from "../../engine/types";
+import { RecastPeriod, EngineConfig, ke_from_config } from "../../engine/types";
 import { AnalysisTraceabilityEnvelope } from "../../engine/analysisTraceability";
 import { computeEPV } from "../../engine/grahamDoddEPV";
 import { computeMoatScore } from "../../engine/moatScoring";
@@ -47,16 +47,18 @@ export default function DashboardView({ data, config, traceability = null, ratio
 
   const latest = data[data.length - 1];
   const prev = data[data.length - 2];
+  const ke = ke_from_config(config);
   const shareBasis = resolveShareBasis(data, config);
   const shares = shareBasis.shares;
   const price = marketData?.price ?? config.market_price ?? null;
-  const marketCap = price != null && shares != null && shares > 0 ? (price * shares) / 1e7 : null; // ₹ Cr
+  const marketCap = price != null && shares > 0 ? (price * shares) / 1e7 : null; // ₹ Cr
 
   // ── KPI computations ──────────────────────────────────────────────────────
   const roce = latest.ratios?.ROCE ?? null;
   const pm = latest.ratios?.PM ?? null;
   const ato = latest.ratios?.ATO ?? null;
   const flev = latest.ratios?.FLEV ?? null;
+  const rnoa = latest.ratios?.RNOA ?? null;
 
   // Revenue growth (CAGR over available periods)
   const revenueGrowth = useMemo(() => {
@@ -88,7 +90,7 @@ export default function DashboardView({ data, config, traceability = null, ratio
 
   // EPV
   const epv = useMemo(() => computeEPV(data, config), [data, config]);
-  const epvPerShare = epv && shares != null && shares > 0 ? (epv.epvEquity / shares) * 1e7 : null; // ₹ Cr → per share
+  const epvPerShare = epv && shares > 0 ? (epv.epvEquity / shares) * 1e7 : null; // ₹ Cr → per share
 
   // Moat scorer (5-dimension Buffett/Munger framework)
   const moat = useMemo(() => computeMoatScore(data, config), [data, config]);
@@ -251,7 +253,7 @@ export default function DashboardView({ data, config, traceability = null, ratio
           <KPITile label="Fin. Leverage" value={flev} format="mult" />
           <KPITile
             label="Earnings Quality"
-            value={traceability?.parserFidelity?.score != null ? traceability.parserFidelity.score / 100 : null}
+            value={traceability?.parserFidelity?.fidelityPct != null ? traceability.parserFidelity.fidelityPct / 100 : null}
             format="pct"
           />
         </div>

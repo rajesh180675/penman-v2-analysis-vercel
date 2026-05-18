@@ -71,11 +71,10 @@ export default function CashFlowChart({ data }: Props) {
         </div>
         <div className="rounded-lg bg-indigo-50 dark:bg-indigo-900/30 p-2">
           <div className="text-[10px] uppercase tracking-wide text-indigo-700 dark:text-indigo-300">FCF / Dividends</div>
-          <div className={`font-bold ${
-            fcfDivCoverage != null && fcfDivCoverage > 1.5 ? "text-emerald-600" :
-            fcfDivCoverage != null && fcfDivCoverage > 1.0 ? "text-blue-600" :
-            "text-amber-600"
-          }`}>
+          <div className={`font-bold ${fcfDivCoverage != null && fcfDivCoverage > 1.5 ? "text-emerald-600" :
+              fcfDivCoverage != null && fcfDivCoverage > 1.0 ? "text-blue-600" :
+                "text-amber-600"
+            }`}>
             {fcfDivCoverage != null ? `${fcfDivCoverage.toFixed(1)}x` : "—"}
           </div>
         </div>
@@ -88,7 +87,7 @@ export default function CashFlowChart({ data }: Props) {
             <XAxis dataKey="period" fontSize={10} />
             <YAxis fontSize={10} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
             <Tooltip
-              formatter={((value: any, name: any) => [`₹${(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr`, name]) as any}
+              formatter={(value: number, name: string) => [`₹${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr`, name]}
               contentStyle={{ fontSize: 11, borderRadius: 8 }}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
