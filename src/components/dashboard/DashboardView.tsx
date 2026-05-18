@@ -19,6 +19,7 @@ import MoatPanel from "./MoatPanel";
 import CapitalAllocationPanel from "./CapitalAllocationPanel";
 import InvestmentThesisCard from "./InvestmentThesisCard";
 import NarrativeCard from "./NarrativeCard";
+import PeriodDeltaStrip from "./PeriodDeltaStrip";
 import ValuationRangeGauge from "../charts/ValuationRangeGauge";
 
 interface Props {
@@ -160,6 +161,9 @@ export default function DashboardView({ data, config, traceability = null, ratio
         revenueGrowth={revenueGrowth}
         fcfYield={fcfYield}
       />
+
+      {/* Year-over-year delta strip — what changed since last period */}
+      <PeriodDeltaStrip data={data} />
 
       {/* KPI Tiles Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
