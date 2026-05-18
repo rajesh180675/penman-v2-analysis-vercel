@@ -136,6 +136,26 @@ function pickMetricSeries(
  */
 export function assessCyclicality(
   periods: RecastPeriod[] | null | undefined,
+  companyType?: string | null,
+): CyclicalityAssessment {
+  // Phase D2: explicit override from company_type dropdown
+  if (companyType === "cyclical") {
+    // Still compute actual stats for anchoring, but force classification
+    const fallback = assessCyclicalityInternal(periods);
+    return {
+      ...fallback,
+      classification: fallback.classification === "insufficient-data" ? "insufficient-data" : fallback.classification === "non-cyclical" ? "cyclical-midcycle" : fallback.classification,
+      reason: fallback.classification === "insufficient-data"
+        ? fallback.reason
+        : `Explicit company_type=cyclical (computed CV=${fallback.cv?.toFixed(2) ?? "n/a"})`,
+    };
+  }
+
+  return assessCyclicalityInternal(periods);
+}
+
+function assessCyclicalityInternal(
+  periods: RecastPeriod[] | null | undefined,
 ): CyclicalityAssessment {
   if (!periods || periods.length < 5) {
     return {

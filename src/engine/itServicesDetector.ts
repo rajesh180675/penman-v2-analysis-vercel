@@ -59,7 +59,18 @@ function medianOf(values: number[]): number | null {
  *
  * @param periods  Sorted recast periods (oldest → newest). Needs ≥2 periods.
  */
-export function detectITServices(periods: RecastPeriod[]): ITServicesSignal {
+export function detectITServices(periods: RecastPeriod[], companyType?: string | null): ITServicesSignal {
+  // Phase D2: explicit override from company_type dropdown
+  if (companyType === "it-services") {
+    return {
+      isITServices: true,
+      medianEmployeeCostRatio: null,
+      medianPPERatio: null,
+      reason: "Explicit company_type classification",
+      periodsAnalysed: periods?.length ?? 0,
+    };
+  }
+
   const UNKNOWN: ITServicesSignal = {
     isITServices: false,
     medianEmployeeCostRatio: null,

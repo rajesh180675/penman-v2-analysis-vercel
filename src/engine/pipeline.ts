@@ -181,8 +181,8 @@ export function processCompanyDataFull(
   }
 
   const lossMaker = computeLossMakerValuation(results, config);
-  const itServices = detectITServices(results);
-  const cyclicality = assessCyclicality(results);
+  const itServices = detectITServices(results, config.company_type);
+  const cyclicality = assessCyclicality(results, config.company_type);
 
   return { periods: results, anomalies, analysisFamily: "industrial", distress: detectDistress(results), structuralBreakPeriods, lossMaker, itServices, cyclicality };
 }
