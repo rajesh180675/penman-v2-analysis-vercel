@@ -760,6 +760,7 @@ export function App() {
                 traceability={traceability}
                 ratioSanity={ratioSanity}
                 segmentData={segmentData}
+                peerCount={readyCompanyCount}
                 onNavigate={(tab) => setActiveTab(tab as TabId)}
               />
             )}

@@ -20,6 +20,7 @@ import CapitalAllocationPanel from "./CapitalAllocationPanel";
 import InvestmentThesisCard from "./InvestmentThesisCard";
 import NarrativeCard from "./NarrativeCard";
 import PeriodDeltaStrip from "./PeriodDeltaStrip";
+import NextStepsPanel from "./NextStepsPanel";
 import ValuationRangeGauge from "../charts/ValuationRangeGauge";
 
 interface Props {
@@ -29,10 +30,12 @@ interface Props {
   ratioSanity?: SanityAssessment | null;
   segmentData?: SegmentData | null;
   marketData?: LiveMarketDataSnapshot | null;
+  /** Optional peer count for Next Steps recommendations */
+  peerCount?: number;
   onNavigate?: (tab: string) => void;
 }
 
-export default function DashboardView({ data, config, traceability = null, ratioSanity = null, segmentData = null, marketData = null, onNavigate }: Props) {
+export default function DashboardView({ data, config, traceability = null, ratioSanity = null, segmentData = null, marketData = null, peerCount = 0, onNavigate }: Props) {
   if (!data || data.length < 2) {
     return (
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-10 text-center dark:border-slate-700 dark:bg-slate-900/40">
@@ -244,6 +247,39 @@ export default function DashboardView({ data, config, traceability = null, ratio
           />
         </div>
       </div>
+
+      {/* Next Steps — actionable navigation based on the verdict */}
+      {(() => {
+        const mos = price != null && intrinsicRange?.mid != null && price > 0
+          ? (intrinsicRange.mid - price) / price
+          : null;
+        const distressed = distress?.equityModelsBlocked || distress?.severity === "severe" || distress?.severity === "critical";
+        const moatScore = moat?.compositeScore ?? null;
+        const capScore = capAlloc?.compositeScore ?? null;
+        const greatBiz = (moatScore != null && moatScore >= 75) || moat?.moatWidth === "wide";
+        const greatMgmt = capScore != null && capScore >= 75;
+        const goodBiz = moatScore != null && moatScore >= 60;
+        const goodMgmt = capScore != null && capScore >= 60;
+        const cheap = mos != null && mos > 0.25;
+        const fair = mos != null && mos > 0.0 && mos <= 0.25;
+        const expensive = mos != null && mos <= 0.0;
+
+        let verdict: "screaming-buy" | "buy" | "hold" | "avoid" | "distressed" = "hold";
+        if (distressed) verdict = "distressed";
+        else if (greatBiz && greatMgmt && cheap) verdict = "screaming-buy";
+        else if (goodBiz && goodMgmt && (fair || cheap)) verdict = "buy";
+        else if (greatBiz && (cheap || fair)) verdict = "buy";
+        else if (moatScore != null && capScore != null && (moatScore < 35 || capScore < 35)) verdict = "avoid";
+        else if (expensive && !(greatBiz && greatMgmt)) verdict = "avoid";
+
+        return (
+          <NextStepsPanel
+            verdict={verdict}
+            hasPeers={peerCount > 1}
+            onNavigate={onNavigate}
+          />
+        );
+      })()}
     </div>
   );
 }
