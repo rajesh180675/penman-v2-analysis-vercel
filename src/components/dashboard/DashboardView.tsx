@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { RecastPeriod, EngineConfig, ke_from_config } from "../../engine/types";
 import { AnalysisTraceabilityEnvelope } from "../../engine/analysisTraceability";
 import { computeEPV } from "../../engine/grahamDoddEPV";
+import { computeMoatScore } from "../../engine/moatScoring";
 import { resolveShareBasis } from "../../engine/shareCountTools";
 import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { SegmentData } from "../../engine/segmentParser";
@@ -11,6 +12,7 @@ import KPITile from "./KPITile";
 import ValuationTriangulation from "./ValuationTriangulation";
 import QualitySignalPanel from "./QualitySignalPanel";
 import PenmanDecompositionChart from "./PenmanDecompositionChart";
+import MoatPanel from "./MoatPanel";
 import ValuationRangeGauge from "../charts/ValuationRangeGauge";
 
 interface Props {
@@ -79,6 +81,9 @@ export default function DashboardView({ data, config, traceability = null, ratio
   // EPV
   const epv = useMemo(() => computeEPV(data, config), [data, config]);
   const epvPerShare = epv && shares > 0 ? (epv.epvEquity / shares) * 1e7 : null; // ₹ Cr → per share
+
+  // Moat scorer (5-dimension Buffett/Munger framework)
+  const moat = useMemo(() => computeMoatScore(data, config), [data, config]);
 
   // Intrinsic value range (simplified — from latest RNOA-based)
   const intrinsicRange = useMemo(() => {
@@ -162,6 +167,9 @@ export default function DashboardView({ data, config, traceability = null, ratio
         ceiling={intrinsicRange?.ceiling ?? null}
         midpoint={intrinsicRange?.mid ?? null}
       />
+
+      {/* Economic Moat Panel — Buffett/Munger 5-dimension framework */}
+      <MoatPanel moat={moat} />
 
       {/* Quality + Ratio Sanity Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
