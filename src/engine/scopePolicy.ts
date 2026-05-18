@@ -80,7 +80,11 @@ const SIGNAL_GROUPS: Array<{
       "Lease Assets",
       "Assets on Hire Purchase",
       // Ind-AS NBFC labels (Bajaj Finance, Shriram, Muthoot etc.)
-      "Fee and Commission Income",
+      // "Fee and Commission Income" excluded — it appears in many industrial
+  // companies (ITC, Reliance, holding companies) as immaterial incidental
+  // income. Including it caused false NBFC positives. Only true NBFC
+  // funding/advance labels remain as triggers.
+  // "Fee and Commission Income",
       "Interests Income (Operating)",
       "Loan to Customer",
     ],

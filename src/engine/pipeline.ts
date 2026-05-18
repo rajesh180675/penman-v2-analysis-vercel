@@ -4,7 +4,7 @@
  * kw derivation (S-9.4), and per-period flag attachment.
  * Routes to bank pipeline when financial institution detected.
  */
-import { RawPeriodData, RecastPeriod, EngineConfig, ke_from_config } from "./types";
+import { RawPeriodData, RecastPeriod, EngineConfig, CompanyType, ke_from_config } from "./types";
 import {
   computeRecastPeriod, computeRatios,
   computeResidualIncome, computeQuality, deriveKwFromStructure,
@@ -114,25 +114,37 @@ export function processCompanyDataFull(
     const bankResult = processBankData(filteredData, scope, config, marketCapCr, quality);
     const emptyAnomalies = runAnomalyDetection([], config);
     const distress = detectDistress([]);
-    // Phase 9 — sanity check bank/NBFC metrics
-    const latestBank = bankResult?.bankMetrics && bankResult.bankMetrics.length > 0
-      ? bankResult.bankMetrics[bankResult.bankMetrics.length - 1]
-      : null;
-    const ratioSanity = latestBank
-      ? evaluateRatioSanity({
-          companyType: config.company_type ?? "auto",
-          bank: {
-            nim: latestBank.nim,
-            roa: latestBank.roa,
-            roe: latestBank.roe,
-            costToIncome: latestBank.costToIncome,
-            creditCost: latestBank.creditCost,
-            leverage: latestBank.leverage,
-            spread: latestBank.spread,
-            yieldOnAdvances: latestBank.yieldOnAdvances,
-            costOfBorrowings: latestBank.costOfBorrowings,
-          },
-        })
+ // Phase 9 — sanity check bank/NBFC metrics
+ // When company_type is "auto" (the default), use the detected subtype
+ // from the bank pipeline instead of passing "auto" which would route
+ // to industrial sanity bands — defeating the purpose entirely.
+ // Map "generic-financial" (not a CompanyType) to "nbfc" for sanity checks.
+ const latestBank = bankResult?.bankMetrics && bankResult.bankMetrics.length > 0
+ ? bankResult.bankMetrics[bankResult.bankMetrics.length - 1]
+ : null;
+ let effectiveCompanyType: CompanyType | "auto" = config.company_type ?? "auto";
+ if (effectiveCompanyType === "auto" && bankResult?.subtype) {
+ effectiveCompanyType = bankResult.subtype === "generic-financial"
+ ? "nbfc"
+ : bankResult.subtype === "insurance"
+ ? "auto" // insurance has no sanity bands
+ : bankResult.subtype;
+ }
+ const ratioSanity = latestBank
+ ? evaluateRatioSanity({
+ companyType: effectiveCompanyType,
+ bank: {
+ nim: latestBank.nim,
+ roa: latestBank.roa,
+ roe: latestBank.roe,
+ costToIncome: latestBank.costToIncome,
+ creditCost: latestBank.creditCost,
+ leverage: latestBank.leverage,
+ spread: latestBank.spread,
+ yieldOnAdvances: latestBank.yieldOnAdvances,
+ costOfBorrowings: latestBank.costOfBorrowings,
+ },
+ })
       : null;
     return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult, distress, structuralBreakPeriods: [], lossMaker: null, itServices: null, cyclicality: null, ratioSanity };
   }

@@ -552,14 +552,19 @@ export function App() {
   const financialFallbackAvailable = Boolean(scopeBlocked && rawData && rawData.length > 0 && !hasRecast);
   const valuationTabEnabled = hasRecast || financialFallbackAvailable;
 
-  // Bank/NBFC auto-redirect: when the pipeline produced a bankResult but no
-  // industrial recast, and the user is still on "statements" (blank), steer
-  // them to the bank tab automatically.
-  useEffect(() => {
-    if (bankResult && !hasRecast && activeTab === "statements") {
-      setActiveTab("bank");
-    }
-  }, [bankResult, hasRecast, activeTab]);
+// Financial-institution auto-redirect: when the pipeline produced a
+// bankResult or identified an unsupported scope (insurance), steer
+// the user away from the blank "statements" tab.
+useEffect(() => {
+if (!hasRecast && rawData && rawData.length > 0) {
+ if (bankResult && activeTab === "statements") {
+  setActiveTab("bank");
+ } else if (scopeBlocked && !bankResult && activeTab === "statements") {
+  // Insurance / unsupported financial — redirect to debug with context
+  setActiveTab("debug");
+ }
+}
+}, [bankResult, hasRecast, activeTab, scopeBlocked, rawData]);
 
   const readyCompanyCount = Object.values(registry.companies).filter((c) => c.recastData.length > 0).length;
 
@@ -570,8 +575,10 @@ export function App() {
     if (t.id === "watchlist") return hasWorkspace;
     if (t.id === "workspace") return hasWorkspace;
     if (t.id === "valuation") return valuationTabEnabled;
-    // Bank/NBFC tab: show when bankResult exists, even without industrial recast
-    if (t.id === "bank") return hasRecast || bankResult !== null;
+ // Bank/NBFC tab: show when bankResult exists, even without industrial recast
+ if (t.id === "bank") return hasRecast || bankResult !== null;
+ // Dashboard: show for banks/NBFCs too (bankResult carries the analysis)
+ if (t.id === "dashboard") return hasRecast || bankResult !== null;
     if (t.needsData) return hasRecast;
     return true;
   });
@@ -834,17 +841,26 @@ export function App() {
             {activeTab === "upload" && (
               <DataEntry onDataSubmit={handleDataSubmit} currentData={rawData} config={config} onConfigChange={setConfig} />
             )}
-            {activeTab === "dashboard" && hasRecast && (
-              <DashboardView
-                data={recastData!}
-                config={config}
-                traceability={traceability}
-                ratioSanity={ratioSanity}
-                segmentData={segmentData}
-                peerCount={readyCompanyCount}
-                onNavigate={(tab) => setActiveTab(tab as TabId)}
-              />
-            )}
+{activeTab === "dashboard" && hasRecast && (
+<DashboardView
+data={recastData!}
+config={config}
+traceability={traceability}
+ratioSanity={ratioSanity}
+segmentData={segmentData}
+peerCount={readyCompanyCount}
+onNavigate={(tab) => setActiveTab(tab as TabId)}
+/>
+)}
+{/* Bank/NBFC dashboard: show FinancialInstitutionReport when no industrial recast */}
+{activeTab === "dashboard" && !hasRecast && bankResult && (
+<FinancialInstitutionReport
+bankResult={bankResult}
+marketCapCr={config.market_price != null && config.shares_outstanding != null
+? (config.market_price * config.shares_outstanding) / 1e7
+: null}
+/>
+)}
             {activeTab === "watchlist" && (
               <WatchlistDashboard
                 companies={workspaceCompanies}
@@ -936,8 +952,27 @@ export function App() {
               />
             )}
             {activeTab === "v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
-            {activeTab === "debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError} />}
-            {(["statements", "ratios", "forecast", "valuation", "quality", "report", "regression", "v3analytics"] as TabId[]).includes(activeTab) && !hasRecast && (
+{activeTab === "debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError} />}
+{/* Insurance / unsupported financial scope: show clear message on valuation tab */}
+{activeTab === "valuation" && !hasRecast && scopeBlocked && !bankResult && rawData && rawData.length > 0 && (
+<div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+<h3 className="font-semibold text-lg">Unsupported financial scope</h3>
+<p className="text-sm mt-1">
+This dataset was identified as an insurance company or mixed-financial conglomerate.
+The analysis pipeline does not yet support insurance economics (actuarial reserves,
+embedded value, policyholder liabilities). Use the Debug tab to inspect the scope
+signals and see why routing was blocked.
+</p>
+{qualityGate?.scopeAssessment?.signals?.length ? (
+<ul className="list-disc pl-5 mt-3 text-sm space-y-1">
+{qualityGate.scopeAssessment.signals.map((s: {kind: string; key: string; periodsObserved: number}, i: number) => (
+<li key={i}><span className="font-mono">{s.key}</span> ({s.kind}, {s.periodsObserved} periods)</li>
+))}
+</ul>
+) : null}
+</div>
+)}
+{(["statements", "ratios", "forecast", "quality", "report", "regression", "v3analytics"] as TabId[]).includes(activeTab) && !hasRecast && !bankResult && !(scopeBlocked && rawData && rawData.length > 0) && (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <div className="text-6xl mb-4">📂</div>
                 <p className="text-xl font-semibold text-slate-600">No data loaded</p>

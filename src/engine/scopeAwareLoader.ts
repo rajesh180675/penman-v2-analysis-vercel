@@ -29,6 +29,7 @@
 
 import { RawPeriodData, RecastPeriod, EngineConfig } from "./types";
 import { processCompanyDataFull, PipelineResult } from "./pipeline";
+import { BankQualityIndicators } from "./bankQualityIndicators";
 
 // ─── Output Types ─────────────────────────────────────────────────────────────
 
@@ -185,20 +186,24 @@ function computeTrend(values: Array<number | null>): SubsidiaryContributionSumma
 /**
  * Process consolidated and standalone data together.
  *
- * @param consolidatedData  RawPeriodData[] from consolidated Capitaline export
- * @param standaloneData    RawPeriodData[] from standalone Capitaline export (optional)
- * @param config            Engine config
+ * @param consolidatedData RawPeriodData[] from consolidated Capitaline export
+ * @param standaloneData RawPeriodData[] from standalone Capitaline export (optional)
+ * @param config Engine config
+ * @param quality Optional bank quality indicators (GNPA, NNPA, PCR, CRAR, etc.)
+ *   forwarded to processCompanyDataFull for financial-institution pipelines.
+ *   Ignored for industrial companies. Defaults to null.
  */
 export function processScopeAwareData(
   consolidatedData: RawPeriodData[],
   standaloneData: RawPeriodData[] | null,
   config: EngineConfig,
+  quality?: BankQualityIndicators | null,
 ): ScopeAwareResult {
   // ── 1. Run both through the pipeline ────────────────────────────────────
-  const consolidatedResult = processCompanyDataFull(consolidatedData, config);
+  const consolidatedResult = processCompanyDataFull(consolidatedData, config, quality ?? null);
 
   const standaloneResult = standaloneData && standaloneData.length > 0
-    ? processCompanyDataFull(standaloneData, config)
+    ? processCompanyDataFull(standaloneData, config, quality ?? null)
     : null;
 
   if (!standaloneResult) {
