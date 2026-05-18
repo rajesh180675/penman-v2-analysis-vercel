@@ -7,6 +7,7 @@ import { buildComparisonPublicationSnapshot, type ComparisonPublicationSnapshot 
 import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
 import PeerScatterPlot from "./charts/PeerScatterPlot";
 import PercentileBar from "./charts/PercentileBar";
+import SectorHeatmap from "./charts/SectorHeatmap";
 import { computePeerRelativeValuation } from "../engine/peerRelativeValuation";
 
 interface Props {
@@ -283,6 +284,35 @@ export default function ComparisonReport({ registry, config, weakestTraceability
           </table>
         </div>
       </div>
+      {/* Sector Heatmap — companies x ratios matrix, color-coded by quartile */}
+      {(() => {
+        const heatmapCompanies = latestByCo.map(c => ({
+          companyId: c.id,
+          label: c.company,
+          metrics: {
+            ROCE:        c.latest?.ratios?.ROCE        ?? null,
+            RNOA:        c.latest?.ratios?.RNOA        ?? null,
+            PM:          c.latest?.ratios?.PM          ?? null,
+            ATO:         c.latest?.ratios?.ATO         ?? null,
+            FLEV:        c.latest?.ratios?.FLEV        ?? null,
+            CoreSalesPM: c.latest?.ratios?.CoreSalesPM ?? null,
+          },
+        }));
+        return (
+          <SectorHeatmap
+            companies={heatmapCompanies}
+            metrics={[
+              { key: "ROCE",        label: "ROCE",     direction: "higher-better", format: "pct" },
+              { key: "RNOA",        label: "RNOA",     direction: "higher-better", format: "pct" },
+              { key: "PM",          label: "PM",       direction: "higher-better", format: "pct" },
+              { key: "ATO",         label: "ATO",      direction: "higher-better", format: "mult" },
+              { key: "FLEV",        label: "FLEV",     direction: "lower-better",  format: "mult" },
+              { key: "CoreSalesPM", label: "Core PM",  direction: "higher-better", format: "pct" },
+            ]}
+          />
+        );
+      })()}
+
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
         <h2 className="text-lg font-bold text-slate-800 mb-2">Peer Ratio Comparison (Cross-Section)</h2>
         <p className="text-xs text-slate-500 mb-4">Rows are core Nissim–Penman ratios; columns are loaded companies. N&P median shown for anchor context.</p>
