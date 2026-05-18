@@ -133,6 +133,52 @@ async function syncAndPackCompany(folderName) {
   const standalonePath = path.join(companyPath, 'standalone');
   let hasStandalone = false;
 
+  // 1a. Automatically build/check consolidated zip
+  const consolidatedZipPath = path.join(companyPath, `${folderName}.zip`);
+  const rootDirFiles = fs.readdirSync(companyPath);
+  const xlsFiles = rootDirFiles.filter(f => f.endsWith('.xls') || f.endsWith('.xlsx'));
+  
+  if (xlsFiles.length > 0) {
+    try {
+      const zip = new JSZip();
+      
+      // Add root xls files
+      for (const file of xlsFiles) {
+        zip.file(file, fs.readFileSync(path.join(companyPath, file)));
+      }
+      
+      // Add revised consolidated files
+      const revisedPath = path.join(companyPath, 'revised schd');
+      if (fs.existsSync(revisedPath) && fs.statSync(revisedPath).isDirectory()) {
+        const revFiles = fs.readdirSync(revisedPath);
+        for (const file of revFiles) {
+          const filePath = path.join(revisedPath, file);
+          if (fs.statSync(filePath).isFile()) {
+            zip.file(`revised schd/${file}`, fs.readFileSync(filePath));
+          }
+        }
+      }
+      
+      // Add standard consolidated files
+      const stdPath = path.join(companyPath, 'standard');
+      if (fs.existsSync(stdPath) && fs.statSync(stdPath).isDirectory()) {
+        const stdFiles = fs.readdirSync(stdPath);
+        for (const file of stdFiles) {
+          const filePath = path.join(stdPath, file);
+          if (fs.statSync(filePath).isFile()) {
+            zip.file(`standard/${file}`, fs.readFileSync(filePath));
+          }
+        }
+      }
+      
+      const buffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 9 } });
+      fs.writeFileSync(consolidatedZipPath, buffer);
+      console.log(`✓ Synchronized consolidated ZIP for ${folderName}`);
+    } catch (zipErr) {
+      console.error(`Warning: Failed to package consolidated files for ${folderName}:`, zipErr);
+    }
+  }
+
   // 1. Automatically build/check standalone zip
   if (fs.existsSync(standalonePath) && fs.statSync(standalonePath).isDirectory()) {
     hasStandalone = true;
