@@ -8,10 +8,10 @@
     "npm": ">=10"
   },
   "scripts": {
-    "dev": "vite",
-    "dev:local": "concurrently --kill-others-on-fail -n vite,api -c blue,green \"vite\" \"node --import tsx/esm server/index.ts\"",
+    "dev": "node sync-companies.cjs && vite",
+    "dev:local": "concurrently --kill-others-on-fail -n vite,api -c blue,green \"node sync-companies.cjs && vite\" \"node --import tsx/esm server/index.ts\"",
     "server": "node --import tsx/esm server/index.ts",
-    "build": "vite build",
+    "build": "node sync-companies.cjs && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test:golden": "vitest run src/engine/__tests__/goldenCompanySuite.spec.ts src/engine/__tests__/releaseGate.spec.ts",

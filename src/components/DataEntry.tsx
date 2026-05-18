@@ -192,7 +192,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 dark:bg-slate-900/60 dark:border-slate-700 p-6">
           <CompanyLibraryGrid
             disabled={isProcessing}
-            onPickCompany={async (folder, ticker, type) => {
+            onPickCompany={async (folder, ticker, type, scope) => {
               try {
                 setIsProcessing(true); setError("");
                 
@@ -205,11 +205,12 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                   company_type: type === "bank" || type === "nbfc" || type === "insurance" ? type : "auto",
                 });
 
-                const zipUrl = `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(folder)}.zip`;
+                const zipName = scope === "standalone" ? "standalone.zip" : `${folder}.zip`;
+                const zipUrl = `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(zipName)}`;
                 const resp = await fetch(zipUrl);
-                if (!resp.ok) throw new Error(`Library ZIP not found for "${folder}". Upload the file manually.`);
+                if (!resp.ok) throw new Error(`Library ${scope} ZIP not found for "${folder}".`);
                 const blob = await resp.blob();
-                const file = new File([blob], `${folder}.zip`, { type: "application/zip" });
+                const file = new File([blob], zipName, { type: "application/zip" });
                 setCompanyId(ticker.toUpperCase().slice(0, 20));
                 await processZip(file, ticker.toUpperCase().slice(0, 20));
               } catch (err) {
@@ -512,7 +513,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
 
         {mode === "capitaline" && (
           <div className="m-6 space-y-4">
-            {!uploadedFile ? (
+            {!uploadedFile ? (<>
               <div
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
@@ -545,7 +546,15 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                   </div>
                 </label>
               </div>
-            ) : (
+
+              {/* Warning Alert about Scope Contamination */}
+              <div className="mt-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60 rounded-xl p-3.5 flex items-start gap-3">
+                <span className="text-base shrink-0 select-none">⚠️</span>
+                <div className="text-xs text-amber-800 dark:text-amber-300 leading-normal text-left">
+                  <span className="font-bold">Important Scope Warning:</span> Do not mix Consolidated and Standalone files in the same custom ZIP. Because metrics use the same sheet structures, combining them will trigger naming collisions and overwrite your financial data. Upload separate ZIPs for each reporting scope.
+                </div>
+              </div>
+            </>) : (
               <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6">
                 {/* File Details Grid */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
