@@ -376,13 +376,18 @@ If success, the app **automatically navigates to the Dashboard** tab.
 
 Single screen with everything important, top-to-bottom:
 
+- **Print / Save as PDF button** (top-right) — one-click portfolio review export. The print stylesheet hides nav/buttons and flattens cards for clean A4 output.
 - **Company header card** — confidence dots (green/amber/red), type badge, market cap, segment count
 - **Investment Thesis card** — single buy/hold/avoid verdict (Screaming Buy / Buy / Hold / Avoid / Distressed)
   - Synthesizes moat + capital allocation + distress + margin of safety into one answer
   - Shows reasoning bullets and price-vs-value comparison
+  - Now uses the authoritative `valuationCommandCenter.range` so the verdict matches the Valuation tab exactly
 - **Narrative Card** — plain-English 3-paragraph synthesis (Business Quality / Capital Allocation / Valuation & Outlook)
   - Auto-generated from the underlying signals
   - Adjective swaps based on score tiers ("wide and durable" / "narrow but real" / "thin")
+- **Period Delta Strip** — 8 tiles showing YoY changes (Sales, OI, PAT, ROCE, RNOA, FLEV, CFO, FCF)
+  - Each tile: current value + arrow + pct change vs prior period
+  - Color-coded by direction (FLEV decrease = good; everything else, increase = good)
 - **4 KPI tiles** — ROCE, Revenue Growth, FCF Yield, Intrinsic Value (each with sparkline)
 - **Main charts row**:
   - Penman decomposition chart (PM × ATO → RNOA over time, area chart)
@@ -394,8 +399,12 @@ Single screen with everything important, top-to-bottom:
 - **Quality + Ratio Sanity row**:
   - Quality signal panel — traffic lights for reconciliation, parser, sanity, segments, market data
   - Additional KPI tiles — Profit Margin, Asset Turnover, Fin. Leverage, Earnings Quality
+- **Next Steps panel** (bottom) — verdict-aware navigation CTAs
+  - Recommends "Detailed Valuation" for Buy/Hold candidates
+  - Recommends "Quality Audit" for Avoid/Distressed candidates
+  - Shows Comparison shortcut when 2+ peers loaded
 
-If you only want a buy/sell answer, the Investment Thesis card at the top gives it to you in 5 seconds. The Narrative Card explains why in plain English. Everything below is supporting evidence.
+If you only want a buy/sell answer, the Investment Thesis card at the top gives it to you in 5 seconds. The Narrative Card explains why in plain English. Period Delta Strip shows what changed since last year. Everything below is supporting evidence. Next Steps tells you what tab to dig into next.
 
 ### Step 7.8 — Drill into the detail tabs
 
@@ -475,12 +484,14 @@ Recast Penman-Nissim statements: NOA / FO / OL split, Operating Income vs Financ
 - Tables with NSE-500 benchmarked bands
 
 #### **Quality** tab
-Reconciliation checks (TA = E + L, Revenue → PBT → PAT ties), unusual item flags, accruals analysis, ratio sanity bands.
+Reconciliation checks (TA = E + L, Revenue → PBT → PAT ties), unusual item flags, accruals analysis, ratio sanity bands. Now with:
+- **Quality Score Dashboard** at the top — 5 academic distress models in one panel (Piotroski F / Altman Z' / Beneish M / Zmijewski X / Ohlson O), each traffic-lit with interpretation. Composite verdict: STRONG / MIXED / NEUTRAL / WEAK.
 
 #### **Forecast** tab
+- **Scenario Range Chart** at top — bar chart of all 4 scenarios (Stress/Base/Bull/Panic) with intrinsic per share, market price reference line, expected value line, and probability strip
 - Fade chart (RNOA reverting to terminal)
 - Monte Carlo histogram (10,000 paths)
-- Scenario cards (base / bull / bear)
+- Scenario cards (base / bull / bear / stress)
 - Reverse DCF (what growth is the market pricing in?)
 
 ### Valuation group
@@ -488,6 +499,7 @@ Reconciliation checks (TA = E + L, Revenue → PBT → PAT ties), unusual item f
 #### **Valuation** tab (the headline tab)
 - **Framework Radar** (5-axis spider): RE, Stress, EPV, Reverse DCF, SOTP
 - **Sensitivity Heatmap**: ke × g grid, color-coded vs market
+- **Sensitivity Tornado** — horizontal bars showing which driver moves intrinsic value most (ke / g / RNOA / NOA), sorted by magnitude
 - **EPV Panel** (Graham-Dodd no-growth floor): NOPAT, franchise value, moat badge, MoS
 - **Moat panel** (5-dimension Buffett/Munger framework, also visible on Dashboard)
 - Scenario cards with intrinsic per share
@@ -507,6 +519,7 @@ Only relevant when Company Type is Bank / NBFC / Insurance. Now visual-first:
 Activates with 2+ companies loaded. Now visual-first:
 - **ROCE vs P/B scatter plot** (quadrant positioning — quality vs price)
 - **PM vs ATO scatter plot** (business model map — high-margin/low-turn vs low-margin/high-turn)
+- **Sector Heatmap** — companies × ratios matrix, color-coded by quartile rank (top-quartile emerald, bottom-quartile red)
 - **Percentile ranking bars** for ROCE and Upside (visual percentile band per company)
 - **Peer Relative Valuation panel** — multiple-implied fair values from peer medians with composite MoS
 - Cross-section table at the bottom for the precise numbers
