@@ -100,7 +100,7 @@ export default function CashFlowChart({ data, unit = "₹ Cr" }: Props) {
             <XAxis dataKey="period" fontSize={10} />
             <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} fontSize={10} />
             <Tooltip
-              formatter={(value: number) => [`${unit} ${value?.toLocaleString("en-IN")}`, ""]}
+              formatter={((value: number) => [`${unit} ${value?.toLocaleString("en-IN")}`, ""]) as any}
               contentStyle={{ fontSize: 11, borderRadius: 8 }}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -120,7 +120,7 @@ export default function CashFlowChart({ data, unit = "₹ Cr" }: Props) {
             <XAxis dataKey="period" fontSize={10} />
             <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} fontSize={10} />
             <Tooltip
-              formatter={(value: number) => [`${unit} ${value?.toLocaleString("en-IN")}`, ""]}
+              formatter={((value: number) => [`${unit} ${value?.toLocaleString("en-IN")}`, ""]) as any}
               contentStyle={{ fontSize: 11, borderRadius: 8 }}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />

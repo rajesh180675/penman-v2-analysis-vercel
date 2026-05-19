@@ -57,7 +57,7 @@ export default function ValuationTriangulation({ price, epvPerShare, intrinsicRa
             <XAxis type="number" tickFormatter={(v) => `₹${v}`} fontSize={11} />
             <YAxis type="category" dataKey="name" width={90} fontSize={11} />
             <Tooltip
-              formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, "Implied Value"]}
+              formatter={((value: number) => [`₹${value.toLocaleString("en-IN")}`, "Implied Value"]) as any}
               contentStyle={{ fontSize: 12 }}
             />
             {price != null && (

@@ -73,10 +73,10 @@ export default function FrameworkRadar({ anchors, marketPrice }: Props) {
               tickFormatter={(v: number) => `${v.toFixed(1)}×`}
             />
             <Tooltip
-              formatter={(value: number, _name: string, props: any) => [
+              formatter={((value: number, _name: string, props: any) => [
                 `₹${props.payload.value.toFixed(0)} (${(value).toFixed(2)}× market)`,
                 props.payload.fullName,
-              ]}
+              ]) as any}
               contentStyle={{ fontSize: 11, borderRadius: 8 }}
             />
             <Radar

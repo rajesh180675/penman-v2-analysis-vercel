@@ -35,7 +35,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
   const [error, setError]     = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [companyId, setCompanyId] = useState("VST");
-  const [lastFile, setLastFile] = useState<string | null>(null);
+  const [_lastFile, setLastFile] = useState<string | null>(null);
   const [screenerText, setScreenerText] = useState("");
   const [jsonText, setJsonText] = useState("");
   const [showAdvancedConfig, setShowAdvancedConfig] = useState(false);

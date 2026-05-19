@@ -252,6 +252,7 @@ describe("traceability snapshot", () => {
           ProfitLoss: 4,
           CashFlow: 2,
           Unknown: 0,
+          Segment: 0,
         },
       },
       warnings: [],

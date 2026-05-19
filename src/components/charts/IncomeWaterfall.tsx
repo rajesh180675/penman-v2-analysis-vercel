@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine, Label } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
 
 interface Props {
   /** Latest period income statement */
@@ -22,7 +22,7 @@ interface Props {
  * Income Statement Waterfall — Sales → OI → PAT decomposition.
  * Each bar shows the magnitude of each line item with running totals.
  */
-export default function IncomeWaterfall({ sales, cogs, operatingIncome, netFinancingExpense, taxExpense, pat, period, unit = "₹ Cr" }: Props) {
+export default function IncomeWaterfall({ sales, cogs: _cogs, operatingIncome, netFinancingExpense, taxExpense, pat, period, unit = "₹ Cr" }: Props) {
   // Build waterfall stages
   const operatingCosts = sales - operatingIncome; // total cost stack (incl COGS)
   const pbt = operatingIncome - netFinancingExpense;
@@ -89,7 +89,7 @@ export default function IncomeWaterfall({ sales, cogs, operatingIncome, netFinan
               fontSize={10}
             />
             <Tooltip
-              formatter={(value: number) => [`${unit} ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, ""]}
+              formatter={((value: number) => [`${unit} ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, ""]) as any}
               contentStyle={{ fontSize: 11, borderRadius: 8 }}
             />
             <ReferenceLine y={0} stroke="#94a3b8" />

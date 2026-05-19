@@ -34,12 +34,12 @@ export default function QualitySignalPanel({ traceability, ratioSanity, segmentD
   const reconStatus = traceability?.reconciliation?.status;
   signals.push({
     label: "BS Reconciliation",
-    status: reconStatus === "pass" ? "pass" : reconStatus === "warning" ? "warning" : reconStatus === "fail" ? "fail" : "unavailable",
-    detail: reconStatus === "pass" ? "TA = Equity + Liabilities ✓" : reconStatus ? `Max residual: ${traceability?.reconciliation?.maxResidualPct?.toFixed(1)}%` : undefined,
+    status: reconStatus === "confirmed" ? "pass" : reconStatus === "degraded" ? "warning" : reconStatus === "failed" ? "fail" : "unavailable",
+    detail: reconStatus === "confirmed" ? "TA = Equity + Liabilities ✓" : reconStatus ? `Max residual: ${(traceability?.reconciliation?.maxResidualRatio ?? 0 * 100).toFixed(1)}%` : undefined,
   });
 
   // Parser fidelity
-  const fidelity = traceability?.parserFidelity?.fidelityPct;
+  const fidelity = traceability?.parserFidelity?.score;
   signals.push({
     label: "Parser Fidelity",
     status: fidelity != null ? (fidelity >= 95 ? "pass" : fidelity >= 80 ? "warning" : "fail") : "unavailable",
@@ -75,7 +75,7 @@ export default function QualitySignalPanel({ traceability, ratioSanity, segmentD
   const confidence = traceability?.confidence?.status;
   signals.push({
     label: "Overall Confidence",
-    status: confidence === "production-ready" ? "pass" : confidence === "warning" ? "warning" : confidence === "guarded" ? "warning" : confidence === "blocked" ? "fail" : "unavailable",
+    status: confidence === "production-ready" ? "pass" : confidence === "guarded" ? "warning" : confidence === "blocked" ? "fail" : "unavailable",
     detail: confidence ?? "Not computed",
   });
 

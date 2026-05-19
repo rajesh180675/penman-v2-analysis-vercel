@@ -29,6 +29,16 @@
 
 import { RecastPeriod, EngineConfig } from "./types";
 
+export interface EPVNormalization {
+  periodsUsed: number;
+  medianCoreOIMargin: number;
+  normalizedNOPAT: number;
+  medianTaxRate: number;
+  latestSales: number;
+  marginRange: [number, number];
+  highConfidence: boolean;
+}
+
 export interface EPVResult {
   /** Normalized core operating income (median across periods, ₹ Cr). */
   normalizedCoreOI: number;
@@ -49,8 +59,12 @@ export interface EPVResult {
   adjustedEarningsPower: number;
   /** Cost of equity used as discount rate. */
   ke: number;
+  /** Alias for ke — WACC proxy used in EPV denominator (for UI display). */
+  kw: number;
   /** EPV of operations = adjustedEarningsPower / ke (₹ Cr). */
   epvOperations: number;
+  /** Alias for epvOperations (enterprise EPV, for UI display). */
+  V_EPV: number;
   /** Net Financial Obligations (debt - cash, ₹ Cr). */
   nfo: number;
   /** EPV of equity = epvOperations - NFO (₹ Cr). */
@@ -59,12 +73,26 @@ export interface EPVResult {
   sharesOutstanding: number | null;
   /** EPV per share (₹). */
   epvPerShare: number | null;
+  /** Price / EPV ratio (null if no market price or epvPerShare). */
+  priceToEPV: number | null;
   /** Book NOA as proxy for reproduction value of assets (₹ Cr). */
   reproductionValue: number;
+  /** Alias for reproductionValue (asset value, for UI display). */
+  V_A: number;
   /** Franchise value = EPV_operations - reproductionValue. Positive = moat. */
   franchiseValue: number;
+  /** Franchise value as fraction of EPV_operations (0–1 scale). */
+  franchisePct: number;
   /** Moat signal: "moat" if franchise > 0, "no-moat" if ≤ 0. */
   moatSignal: "moat" | "no-moat" | "inconclusive";
+  /** Qualitative interpretation of franchise strength. */
+  interpretation: "strong-franchise" | "franchise" | "competitive" | "depressed-earnings" | "insufficient-data";
+  /** Confidence level based on data quality and period count. */
+  confidence: "high" | "medium" | "low";
+  /** Notes explaining confidence deductions. */
+  confidenceNotes: string[];
+  /** Normalization details for audit display. */
+  normalization: EPVNormalization;
   /** Margin of safety vs market price (null if no market price). */
   marginOfSafety: number | null;
   /** Explanation lines for audit trail. */
@@ -200,6 +228,66 @@ export function computeEPV(
       ? (epvPerShare - marketPrice) / marketPrice
       : null;
 
+  // ── Derived UI fields ──────────────────────────────────────────────────────
+  const franchisePct = epvOperations > 0 ? franchiseValue / epvOperations : 0;
+
+  const interpretation: EPVResult["interpretation"] =
+    franchisePct > 0.5
+      ? "strong-franchise"
+      : franchisePct > 0.2
+        ? "franchise"
+        : franchisePct > 0
+          ? "competitive"
+          : "depressed-earnings";
+
+  const priceToEPV =
+    marketPrice != null && epvPerShare != null && epvPerShare > 0
+      ? marketPrice / epvPerShare
+      : null;
+
+  // ── Confidence ─────────────────────────────────────────────────────────────
+  const confidenceNotes: string[] = [];
+  if (coreOIs.length < 3) confidenceNotes.push(`Only ${coreOIs.length} periods of CoreOI — normalization less reliable.`);
+  if (depreciations.length < 2) confidenceNotes.push("Depreciation data sparse — maintenance capex estimate may be imprecise.");
+  if (capexes.length < 2) confidenceNotes.push("Capex data sparse — growth capex exclusion may be imprecise.");
+  if (franchisePct < 0) confidenceNotes.push("Negative franchise value — EPV below reproduction cost, moat absent.");
+
+  const confidence: EPVResult["confidence"] =
+    coreOIs.length >= 5 && confidenceNotes.length === 0
+      ? "high"
+      : coreOIs.length >= 3
+        ? "medium"
+        : "low";
+
+  // ── Normalization summary ──────────────────────────────────────────────────
+  const latestSales = latest.is.Sales ?? 0;
+  const coreOIMargins = data
+    .map(p => {
+      const rev = p.is.Sales;
+      const oi = p.cu.CoreOI;
+      return rev != null && rev > 0 && oi != null ? oi / rev : null;
+    })
+    .filter((v): v is number => v != null);
+
+  const medianCoreOIMargin = coreOIMargins.length > 0
+    ? median(coreOIMargins)
+    : 0;
+
+  const sortedMargins = [...coreOIMargins].sort((a, b) => a - b);
+  const marginRange: [number, number] = sortedMargins.length >= 2
+    ? [sortedMargins[0], sortedMargins[sortedMargins.length - 1]]
+    : [medianCoreOIMargin, medianCoreOIMargin];
+
+  const normalization: EPVNormalization = {
+    periodsUsed: coreOIs.length,
+    medianCoreOIMargin,
+    normalizedNOPAT,
+    medianTaxRate: taxRate,
+    latestSales,
+    marginRange,
+    highConfidence: coreOIs.length >= 5 && confidenceNotes.length === 0,
+  };
+
   // ── Explanation ────────────────────────────────────────────────────────────
   const explanation: string[] = [
     `Graham-Dodd EPV (no-growth floor) using ${coreOIs.length} periods of CoreOI.`,
@@ -229,14 +317,23 @@ export function computeEPV(
     growthCapex,
     adjustedEarningsPower,
     ke,
+    kw: ke,
     epvOperations,
+    V_EPV: epvOperations,
     nfo,
     epvEquity,
     sharesOutstanding: shares,
     epvPerShare,
+    priceToEPV,
     reproductionValue,
+    V_A: reproductionValue,
     franchiseValue,
+    franchisePct,
     moatSignal,
+    interpretation,
+    confidence,
+    confidenceNotes,
+    normalization,
     marginOfSafety,
     explanation,
     periodsUsed: coreOIs.length,
