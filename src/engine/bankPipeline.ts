@@ -255,11 +255,26 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   // (universal label universe), so we trigger on `null OR 0`. We use the
   // industrial profitLoss aliases directly because they match Bajaj's
   // exact label names.
+  //
+  // X-Detail P&L fix: In the X-Detail format, "Other Expenses" includes
+  // "Provision for Doubtful Loan / Deposit / Advances" as a sub-item.
+  // Provisions are NOT operating expenses — they're credit costs. When
+  // provisions is separately identifiable (non-null, non-zero), subtract
+  // it from "Other Expenses" to get true operating expenses. This brings
+  // cost-to-income from ~62% (with provisions) to ~33-40% (without).
   if (operatingExpenses == null || operatingExpenses === 0) {
     const indPL = CapitalineMappingSpec.profitLoss;
     const employeeExp     = pickValue(raw, indPL.employeeExpense,        "ProfitLoss");
-    const otherExp        = pickValue(raw, indPL.otherExpenses,          "ProfitLoss");
+    let   otherExp        = pickValue(raw, indPL.otherExpenses,          "ProfitLoss");
     const depAmort        = pickValue(raw, indPL.depreciationAmortization, "ProfitLoss");
+
+    // Subtract provisions from "Other Expenses" when separately identifiable.
+    // In X-Detail P&L, "Provision for Doubtful Loan / Deposit / Advances"
+    // sits INSIDE "Other Expenses" but is a credit cost, not an opex item.
+    if (otherExp != null && otherExp !== 0 && provisions != null && provisions !== 0) {
+      otherExp = otherExp - Math.abs(provisions);
+    }
+
     // Need at least two of three to consider this a meaningful sum
     const present = [employeeExp, otherExp, depAmort].filter(v => v != null && v !== 0).length;
     if (present >= 2) {
@@ -581,6 +596,14 @@ export function processBankData(
         // casaRatio with null.
         if (match.casa_pct != null) {
           m.casaRatio = match.casa_pct;
+        }
+        // Phase D2 — AR-sourced cost-to-income (Opex/NTI) overrides the computed
+        // value when available. The AR's "Total operating expenses to NTI" is the
+        // definitive figure: properly excludes provisions, credit costs, one-offs.
+        // The computed fallback (employee + other - provisions + dep) is a secondary
+        // approximation that runs 5-8pp higher due to CSR, bank charges, etc.
+        if (match.cost_to_income_pct != null) {
+          m.costToIncome = match.cost_to_income_pct / 100;
         }
       }
     }

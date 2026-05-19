@@ -505,6 +505,9 @@ export const CapitalineMappingSpec = {
       "Provision for NPA",
       "Prov. & W/O (Net)",
       "Other Provisions and Write-offs",
+      "Provision for Doubtful Loan / Deposit / Advances",
+      "Impairment on Financial Instruments",
+      "Loss Allowance on Loans",
     ],
     otherProvisionsWriteoffs: ["Other Provisions and Write-offs"],
 

@@ -113,6 +113,8 @@ export interface BankQualityPeriod {
   aum_growth_pct?: number | null;
   /** Off-book / assignment / co-lending share of AUM %. Fee-based vs spread-based mix. */
   off_book_share_pct?: number | null;
+  /** AR-reported cost-to-income ratio (Opex/NTI %). Definitive figure from management. */
+  cost_to_income_pct?: number | null;
 
   // ── Audit trail ──────────────────────────────────────────────────
   /** Source PDF filename, e.g., "HDFCBANK_AR_FY2025.pdf". */

@@ -141,14 +141,15 @@ describe("Bajaj Finance (NBFC)", () => {
   it("cost-to-income ratio is non-zero (NBFC opex fallback)", () => {
     const br = result.bankResult!;
     const latest = br.bankMetrics![br.bankMetrics!.length - 1];
-    // Bajaj's headline cost-to-income is ~33% (AR Table 6: Total operating
-    // expenses to NTI). Our computed value runs higher because Capitaline's
-    // "Other Expenses" line for IndAS NBFCs absorbs impairment / ECL items
-    // that the headline ratio excludes. The assertion's purpose is to catch
-    // the null/0 regression — when the bank-label fallback fails to fire,
-    // costToIncome is null and the UI shows 0.
+    // With X-Detail P&L: provisions ("Provision for Doubtful Loan / Deposit /
+    // Advances") are subtracted from "Other Expenses" before computing
+    // cost-to-income. This brings the ratio from ~62% (gross) down to ~30-40%
+    // which matches Bajaj's AR-reported "Total operating expenses to NTI" of ~33%.
+    // Assertion guards against both the null/0 regression AND the provisions-
+    // contamination regression.
     expect(latest.costToIncome).not.toBeNull();
     expect(latest.costToIncome).toBeGreaterThan(0.15);
-    expect(latest.costToIncome).toBeLessThan(0.85);
+    expect(latest.costToIncome).toBeLessThan(0.50);
+    console.log(`  costToIncome = ${(latest.costToIncome! * 100).toFixed(1)}%`);
   });
 });

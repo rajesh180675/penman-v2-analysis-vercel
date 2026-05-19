@@ -75,7 +75,7 @@ def _find_pages(doc, keywords):
 
 def extract_key_ratios_table(doc):
     """Bajaj-style 'Table 6: Key Ratios' page. Pulls CRAR, Tier-I, GNPA,
-    Net NPA, PCR, ROA, ROE for the latest period.
+    Net NPA, PCR, ROA, ROE, and Cost-to-Income (Opex/NTI) for the latest period.
 
     Returns a dict with the latest-FY values; backfill into the AR's own
     period record. Earlier-FY values that appear in this table belong to
@@ -114,6 +114,14 @@ def extract_key_ratios_table(doc):
     out["gnpa_pct"] = _grab(r"Gross\s+NPA", 0, 30)
     out["nnpa_pct"] = _grab(r"Net\s+NPA", 0, 30)
     out["pcr_pct"] = _grab(r"Provision(?:ing)?\s*[Cc]overage(?:\s*[Rr]atio)?\s*\(?PCR\)?", 0, 100)
+
+    # Cost-to-income: "Total operating expenses to NTI" or "Opex to NTI"
+    # FY2024+: "Total operating expenses to NTI\n 33.99%\n35.15%"
+    cost_to_income = _grab(
+        r"(?:Total\s+)?(?:operating\s+expenses|Opex)\s+to\s+NTI", 10, 80
+    )
+    if cost_to_income is not None:
+        out["cost_to_income_pct"] = cost_to_income
 
     return {k: v for k, v in out.items() if v is not None and not k.startswith("_")}, out.get("_source_page")
 
