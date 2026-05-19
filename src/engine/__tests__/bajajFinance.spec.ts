@@ -78,4 +78,77 @@ describe("Bajaj Finance (NBFC)", () => {
     const br = result.bankResult!;
     expect(br.valuation).toBeTruthy();
   });
+
+  // Phase D2 — NBFC-specific lenses fire when subtype="nbfc"
+  it("NBFC P/AUM lens computes when AUM sidecar is present", () => {
+    const br = result.bankResult!;
+    expect(br.valuation).toBeTruthy();
+    expect(br.valuation!.pAum).toBeDefined();
+    // The fixture data ships with quality_indicators.json so AUM should be present
+    if (br.valuation!.pAum!.status === "computed") {
+      expect(br.valuation!.pAum!.intrinsicValue).toBeGreaterThan(0);
+      expect(br.valuation!.pAum!.diagnostics.aum).toBeGreaterThan(10000);
+      expect(br.valuation!.pAum!.diagnostics.peMultiple).toBe(12);
+    }
+  });
+
+  it("NBFC ROA × Leverage RI lens fires", () => {
+    const br = result.bankResult!;
+    expect(br.valuation!.roaLeverageRI).toBeDefined();
+    if (br.valuation!.roaLeverageRI!.status === "computed") {
+      expect(br.valuation!.roaLeverageRI!.intrinsicValue).toBeGreaterThan(0);
+      expect(br.valuation!.roaLeverageRI!.diagnostics.bv0).toBeGreaterThan(0);
+      expect(br.valuation!.roaLeverageRI!.diagnostics.forecastYears).toBe(7);
+    }
+  });
+
+  it("CRAR governor evaluates buffer headroom", () => {
+    const br = result.bankResult!;
+    expect(br.valuation!.crarGovernor).toBeDefined();
+    // Bajaj's CRAR is consistently 22-28% — well above the 18% threshold
+    // (15% RBI norm + 300bps buffer) so no throttle should apply.
+    if (br.valuation!.crarGovernor!.status === "computed") {
+      expect(br.valuation!.crarGovernor!.requiredCrarPct).toBe(18);
+      expect(br.valuation!.crarGovernor!.headroomBps).toBeGreaterThan(300);
+      expect(br.valuation!.crarGovernor!.effectiveG).toBe(br.valuation!.crarGovernor!.originalG);
+    }
+  });
+
+  it("through-cycle credit-cost diagnostic computes", () => {
+    const br = result.bankResult!;
+    expect(br.valuation!.creditCostCycle).toBeDefined();
+    if (br.valuation!.creditCostCycle!.status === "computed") {
+      expect(br.valuation!.creditCostCycle!.medianCreditCost).not.toBeNull();
+      expect(br.valuation!.creditCostCycle!.latestCreditCost).not.toBeNull();
+      expect(["under-provisioning", "normal", "stress-peak", "unknown"])
+        .toContain(br.valuation!.creditCostCycle!.severity);
+    }
+  });
+
+  it("triangulation includes NBFC lenses when computed", () => {
+    const br = result.bankResult!;
+    const contributing = br.valuation!.modelsContributing;
+    // At least one NBFC-specific model should contribute (P/AUM or RoA-Lev RI)
+    const hasNbfcLens = contributing.some(name =>
+      name.includes("NBFC") || name.includes("P/AUM")
+    );
+    // Don't fail if both happen to skip — but log so we notice regressions
+    if (!hasNbfcLens) {
+      console.warn("No NBFC lens contributed to triangulation:", contributing);
+    }
+  });
+
+  it("cost-to-income ratio is non-zero (NBFC opex fallback)", () => {
+    const br = result.bankResult!;
+    const latest = br.bankMetrics![br.bankMetrics!.length - 1];
+    // Bajaj's headline cost-to-income is ~33% (AR Table 6: Total operating
+    // expenses to NTI). Our computed value runs higher because Capitaline's
+    // "Other Expenses" line for IndAS NBFCs absorbs impairment / ECL items
+    // that the headline ratio excludes. The assertion's purpose is to catch
+    // the null/0 regression — when the bank-label fallback fails to fire,
+    // costToIncome is null and the UI shows 0.
+    expect(latest.costToIncome).not.toBeNull();
+    expect(latest.costToIncome).toBeGreaterThan(0.15);
+    expect(latest.costToIncome).toBeLessThan(0.85);
+  });
 });

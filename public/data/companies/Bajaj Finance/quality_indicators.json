@@ -10,6 +10,8 @@
       "source_doc": "BAJFINANCE_AR_FY2014.pdf",
       "source_page": null,
       "source_notes": "",
+      "aum_cr": 24061.0,
+      "aum_growth_pct": 37.0,
       "gnpa_pct": null,
       "nnpa_pct": null,
       "pcr_pct": null,
@@ -25,8 +27,6 @@
       "stage2_pct": null,
       "ecl_coverage_pct": null,
       "total_ecl_pct": null,
-      "aum_cr": null,
-      "aum_growth_pct": null,
       "off_book_share_pct": null
     },
     {
@@ -60,6 +60,8 @@
       "source_doc": "BAJFINANCE_AR_FY2016.pdf",
       "source_page": null,
       "source_notes": "",
+      "aum_cr": 44229.0,
+      "aum_growth_pct": 36.0,
       "gnpa_pct": null,
       "nnpa_pct": null,
       "pcr_pct": null,
@@ -75,8 +77,6 @@
       "stage2_pct": null,
       "ecl_coverage_pct": null,
       "total_ecl_pct": null,
-      "aum_cr": null,
-      "aum_growth_pct": null,
       "off_book_share_pct": null
     },
     {
@@ -85,7 +85,8 @@
       "source_doc": "BAJFINANCE_AR_FY2017.pdf",
       "source_page": null,
       "source_notes": "",
-      "aum_cr": 7881.0,
+      "aum_cr": 60194.0,
+      "aum_growth_pct": 36.0,
       "gnpa_pct": null,
       "nnpa_pct": null,
       "pcr_pct": null,
@@ -101,7 +102,6 @@
       "stage2_pct": null,
       "ecl_coverage_pct": null,
       "total_ecl_pct": null,
-      "aum_growth_pct": null,
       "off_book_share_pct": null
     },
     {
@@ -110,8 +110,8 @@
       "source_doc": "BAJFINANCE_AR_FY2018.pdf",
       "source_page": null,
       "source_notes": "",
-      "aum_cr": 80444.0,
-      "aum_growth_pct": 34.0,
+      "aum_cr": 84033.0,
+      "aum_growth_pct": 40.0,
       "gnpa_pct": null,
       "nnpa_pct": null,
       "pcr_pct": null,
@@ -294,7 +294,7 @@
       "stage2_pct": 1.64,
       "ecl_coverage_pct": 53.22,
       "total_ecl_pct": 2.06,
-      "aum_cr": 330615.0,
+      "aum_cr": 416661.0,
       "aum_growth_pct": 26.0,
       "slippage_pct": null,
       "restructured_pct": null,

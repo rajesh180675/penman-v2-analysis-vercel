@@ -241,10 +241,31 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   const interestEarned     = pickValue(raw, pl.interestIncome,      "ProfitLoss");
   const interestExpended   = pickValue(raw, pl.interestExpended,    "ProfitLoss");
   const otherIncome        = pickValue(raw, pl.otherIncome,         "ProfitLoss");
-  const operatingExpenses  = pickValue(raw, pl.operatingExpenses,   "ProfitLoss");
+  let   operatingExpenses  = pickValue(raw, pl.operatingExpenses,   "ProfitLoss");
   const provisions         = pickValue(raw, pl.provisions,          "ProfitLoss");
   const pat                = pickValue(raw, pl.profitAfterTax,      "ProfitLoss");
   const pbt                = pickValue(raw, pl.profitBeforeTax,     "ProfitLoss");
+
+  // Phase D2 — NBFC operating-expenses fallback. Bajaj/Cholamandalam/Muthoot
+  // report separate IndAS line items (Employee Benefits + Other Expenses +
+  // Depreciation) instead of a single "Operating Expenses" headline. Bank-
+  // specific labels above don't match — without this fallback costToIncome
+  // stays null and renders as 0 in the UI. Note: pickValue returns 0 (not
+  // null) when Capitaline has the bank-label row but with a zero value
+  // (universal label universe), so we trigger on `null OR 0`. We use the
+  // industrial profitLoss aliases directly because they match Bajaj's
+  // exact label names.
+  if (operatingExpenses == null || operatingExpenses === 0) {
+    const indPL = CapitalineMappingSpec.profitLoss;
+    const employeeExp     = pickValue(raw, indPL.employeeExpense,        "ProfitLoss");
+    const otherExp        = pickValue(raw, indPL.otherExpenses,          "ProfitLoss");
+    const depAmort        = pickValue(raw, indPL.depreciationAmortization, "ProfitLoss");
+    // Need at least two of three to consider this a meaningful sum
+    const present = [employeeExp, otherExp, depAmort].filter(v => v != null && v !== 0).length;
+    if (present >= 2) {
+      operatingExpenses = (employeeExp ?? 0) + (otherExp ?? 0) + (depAmort ?? 0);
+    }
+  }
 
   // Cash Flow — dividend paid (for payout ratio derivation in DDM/RI models)
   const cf = CapitalineMappingSpec.cashFlow;

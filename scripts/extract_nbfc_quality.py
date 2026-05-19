@@ -200,56 +200,63 @@ def extract_aum(doc):
       "Assets under management (AUM) increased by 26% to H 416,661 crore"
       "AUM growth of 26%, rising from H 330,615 crore to H 416,661 crore"
       "consolidated AUM ... H 416,661 crore"
+
+    Strategy: scan ALL pages, collect ALL plausible AUM mentions, then
+    pick the LARGEST absolute value as the reporting-year figure.
+    Annual Reports always state the closing AUM as the largest number;
+    prior-year anchors are smaller. This avoids the FY-anchor bug where
+    "rising from H 330,615 crore in FY2024" leaked into the current FY.
     """
-    aum_cr = None
-    aum_growth = None
+    candidates = []  # list of (absolute_cr, growth_pct_or_None)
 
     for p in range(len(doc)):
         text = doc[p].get_text()
 
-        # Pattern 1: "X% to H NNN,NNN crore" — has both growth and absolute
-        m = re.search(
-            r"AUM[^\.]{0,80}?(?:grew|growth|increased|rose|up|rising)[^\.]{0,60}?"
-            r"(\d+\.?\d*)\s*%[^\.]{0,80}?(?:to|reaching|of)\s*H?\s*([\d,]+)\s*(?:crore|cr\b)",
+        # Pattern 1: "X% to/reaching H NNN,NNN crore" — has both growth AND absolute
+        # in the same sentence. Highest confidence.
+        for m in re.finditer(
+            r"(?:AUM|Assets\s+[Uu]nder\s+[Mm]anagement)[^\.]{0,80}?"
+            r"(?:grew|growth|increased|rose|up|rising|expanding)[^\.]{0,60}?"
+            r"(\d+\.?\d*)\s*%[^\.]{0,80}?(?:to|reaching|of|now\s*at)\s*H?\s*([\d,]+)\s*(?:crore|cr\b)",
             text, re.IGNORECASE,
-        )
-        if m and aum_growth is None:
+        ):
             growth = float(m.group(1))
             absolute = float(m.group(2).replace(",", ""))
             if 0 < growth < 200 and absolute > 1000:
+                candidates.append((absolute, growth))
+
+        # Pattern 2: "AUM ... H NNN,NNN crore" — absolute only
+        for m in re.finditer(
+            r"(?:consolidated\s+)?(?:Assets\s+[Uu]nder\s+[Mm]anagement\s*\(?AUM\)?|\bAUM\b)"
+            r"[^\.]{0,80}?H?\s*([\d,]{4,})\s*(?:crore|cr\b)",
+            text, re.IGNORECASE,
+        ):
+            v = float(m.group(1).replace(",", ""))
+            if 5000 < v < 5_000_000:
+                candidates.append((v, None))
+
+    if not candidates:
+        return {}
+
+    # Pick the LARGEST absolute as the reporting-year AUM. Find the
+    # growth value associated with it when available.
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    aum_cr = candidates[0][0]
+
+    # For growth, prefer the entry whose absolute matches the chosen AUM
+    aum_growth = None
+    for absolute, growth in candidates:
+        if growth is not None and abs(absolute - aum_cr) < 0.01:
+            aum_growth = growth
+            break
+    # Fallback: any growth from Pattern 1 (matches the highest-confidence pair)
+    if aum_growth is None:
+        for absolute, growth in candidates:
+            if growth is not None:
                 aum_growth = growth
-                aum_cr = absolute
-                continue
+                break
 
-        # Pattern 2: "AUM ... H NNN,NNN crore" (absolute only)
-        if aum_cr is None:
-            m = re.search(
-                r"(?:consolidated\s+)?(?:Assets\s+[Uu]nder\s+[Mm]anagement\s*\(?AUM\)?|\bAUM\b)"
-                r"[^\.]{0,80}?H?\s*([\d,]{4,})\s*(?:crore|cr\b)",
-                text, re.IGNORECASE,
-            )
-            if m:
-                v = float(m.group(1).replace(",", ""))
-                if 5000 < v < 5_000_000:  # Cr range
-                    aum_cr = v
-
-        # Pattern 3: "rising from H AAA crore in FY... to H BBB crore"
-        if aum_growth is None:
-            m = re.search(
-                r"AUM[^\.]{0,40}?from\s*H?\s*([\d,]+)\s*crore[^\.]{0,40}?to\s*H?\s*([\d,]+)\s*crore",
-                text, re.IGNORECASE,
-            )
-            if m:
-                a = float(m.group(1).replace(",", ""))
-                b = float(m.group(2).replace(",", ""))
-                if a > 0 and b > 0:
-                    aum_growth = round((b - a) / a * 100, 1)
-                    if aum_cr is None:
-                        aum_cr = b
-
-    out = {}
-    if aum_cr is not None:
-        out["aum_cr"] = aum_cr
+    out = {"aum_cr": aum_cr}
     if aum_growth is not None:
         out["aum_growth_pct"] = aum_growth
     return out
