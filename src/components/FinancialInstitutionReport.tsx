@@ -192,29 +192,42 @@ function InsuranceMetricsSection({ metrics }: { metrics: BankPeriodMetrics[] }) 
         </div>
       </div>
 
-      {/* Latest Tier-1 snapshot */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+      {/* Latest Tier-1 snapshot — 5 KPI cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
         <div className="rounded border border-slate-200 dark:border-slate-800 p-3">
           <div className="text-xs text-slate-500 dark:text-slate-400">Claims Ratio</div>
-          <div className="font-semibold text-lg">{fmtPct(latest.claimsRatio)}</div>
+          <div className="font-semibold text-lg">{fmtPct(latest.claimsRatio ?? null)}</div>
           <div className="text-xs text-slate-500 mt-0.5">Claims Incurred / Premium</div>
         </div>
         <div className="rounded border border-slate-200 dark:border-slate-800 p-3">
           <div className="text-xs text-slate-500 dark:text-slate-400">Expense Ratio</div>
-          <div className="font-semibold text-lg">{fmtPct(latest.expenseRatio)}</div>
+          <div className="font-semibold text-lg">{fmtPct(latest.expenseRatio ?? null)}</div>
           <div className="text-xs text-slate-500 mt-0.5">Operating Cost / Premium</div>
         </div>
         <div className="rounded border border-slate-200 dark:border-slate-800 p-3">
           <div className="text-xs text-slate-500 dark:text-slate-400">Combined Ratio</div>
           <div className={`font-semibold text-lg ${latest.combinedRatio != null && latest.combinedRatio > 1.0 ? "text-amber-700 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-300"}`}>
-            {fmtPct(latest.combinedRatio)}
+            {fmtPct(latest.combinedRatio ?? null)}
           </div>
           <div className="text-xs text-slate-500 mt-0.5">Claims + Expense Ratio</div>
         </div>
         <div className="rounded border border-slate-200 dark:border-slate-800 p-3">
           <div className="text-xs text-slate-500 dark:text-slate-400">Float to Equity</div>
-          <div className="font-semibold text-lg">{fmtMultiple(latest.floatToEquity)}</div>
+          <div className="font-semibold text-lg">{fmtMultiple(latest.floatToEquity ?? null)}</div>
           <div className="text-xs text-slate-500 mt-0.5">Policyholder Funds / Equity</div>
+        </div>
+        <div className="rounded border border-slate-200 dark:border-slate-800 p-3">
+          <div className="text-xs text-slate-500 dark:text-slate-400">Premium Growth</div>
+          <div className={`font-semibold text-lg ${
+            latest.premiumGrowth != null && latest.premiumGrowth > 0
+              ? "text-emerald-700 dark:text-emerald-300"
+              : latest.premiumGrowth != null && latest.premiumGrowth < 0
+              ? "text-rose-700 dark:text-rose-300"
+              : ""
+          }`}>
+            {latest.premiumGrowth != null ? fmtPct(latest.premiumGrowth) : "—"}
+          </div>
+          <div className="text-xs text-slate-500 mt-0.5">YoY Premium Growth</div>
         </div>
       </div>
 
@@ -238,16 +251,16 @@ function InsuranceMetricsSection({ metrics }: { metrics: BankPeriodMetrics[] }) 
             {metrics.map((m) => (
               <tr key={m.period_end} className="border-b border-slate-100 dark:border-slate-900">
                 <td className="py-1 pr-3 font-mono">{m.period_end}</td>
-                <td className="text-right py-1 px-3">{fmtCr(m.premiumEarned)}</td>
-                <td className="text-right py-1 px-3">{fmtCr(m.claimsExpense)}</td>
-                <td className="text-right py-1 px-3">{fmtPct(m.claimsRatio)}</td>
-                <td className="text-right py-1 px-3">{fmtPct(m.expenseRatio)}</td>
+                <td className="text-right py-1 px-3">{fmtCr(m.premiumEarned ?? null)}</td>
+                <td className="text-right py-1 px-3">{m.claimsExpense != null ? fmtCr(Math.abs(m.claimsExpense)) : "—"}</td>
+                <td className="text-right py-1 px-3">{fmtPct(m.claimsRatio ?? null)}</td>
+                <td className="text-right py-1 px-3">{fmtPct(m.expenseRatio ?? null)}</td>
                 <td className={`text-right py-1 px-3 font-medium ${m.combinedRatio != null && m.combinedRatio > 1.0 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-                  {fmtPct(m.combinedRatio)}
+                  {fmtPct(m.combinedRatio ?? null)}
                 </td>
-                <td className="text-right py-1 px-3">{fmtMultiple(m.floatToEquity)}</td>
-                <td className="text-right py-1 px-3">{fmtPct(m.investmentYield)}</td>
-                <td className="text-right py-1 px-3">{fmtPct(m.roe)}</td>
+                <td className="text-right py-1 px-3">{fmtMultiple(m.floatToEquity ?? null)}</td>
+                <td className="text-right py-1 px-3">{fmtPct(m.investmentYield ?? null)}</td>
+                <td className="text-right py-1 px-3">{fmtPct(m.roe ?? null)}</td>
               </tr>
             ))}
           </tbody>
@@ -286,8 +299,8 @@ function InsuranceMetricsSection({ metrics }: { metrics: BankPeriodMetrics[] }) 
                       <td className={`text-right py-1 px-3 font-medium ${q.solvency_ratio != null && q.solvency_ratio < 1.5 ? "text-rose-600" : "text-emerald-600"}`}>
                         {q.solvency_ratio != null ? `${q.solvency_ratio.toFixed(2)}x` : "—"}
                       </td>
-                      <td className="text-right py-1 px-3">{fmtCr(q.embedded_value)}</td>
-                      <td className="text-right py-1 px-3">{fmtCr(q.vnb)}</td>
+                      <td className="text-right py-1 px-3">{fmtCr(q.embedded_value ?? null)}</td>
+                      <td className="text-right py-1 px-3">{fmtCr(q.vnb ?? null)}</td>
                       <td className="text-right py-1 px-3">{q.nbm_pct != null ? `${q.nbm_pct.toFixed(1)}%` : "—"}</td>
                       <td className="text-right py-1 px-3">{q.persistency_13m != null ? `${q.persistency_13m.toFixed(1)}%` : "—"}</td>
                       <td className="text-right py-1 px-3">{q.persistency_61m != null ? `${q.persistency_61m.toFixed(1)}%` : "—"}</td>

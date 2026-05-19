@@ -510,11 +510,15 @@ export function processBankData(
   if (quality) {
     const qualityIndex = indexQualityByPeriod(quality);
     for (const m of computed) {
-    const match = qualityIndex.get(m.period_end);
-    if (match) m.quality = match;
-    m.casaRatio = m.quality?.casa_pct ?? null;
+      const match = qualityIndex.get(m.period_end);
+      if (match) {
+        m.quality = match;
+        // Only pull CASA from the sidecar when we have a matching quality record.
+        // Do NOT overwrite a Capitaline-derived casaRatio when no match exists.
+        m.casaRatio = match.casa_pct ?? null;
+      }
+    }
   }
-}
 
   // Phase B5.2 — Derive asset-quality signals (NPA cycle, PCR trend,
   // slippage trajectory, loan growth vs system, deposit franchise,

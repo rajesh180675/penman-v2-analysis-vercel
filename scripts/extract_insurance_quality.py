@@ -128,7 +128,11 @@ def process_insurance_quality():
             "embedded_value": curated.get("embedded_value") or scanned.get("embedded_value"),
             "vnb": curated.get("vnb") or scanned.get("vnb"),
             "nbm_pct": curated.get("nbm_pct") or scanned.get("nbm_pct"),
-            "lapse_rate": round(100 - (curated.get("persistency_13m") or 77.0), 2),
+            # lapse_rate must be hand-curated from IRDAI actuarial disclosures.
+            # It is NOT equivalent to (100 - persistency_13m). Lapse rate measures
+            # voluntary early terminations; non-persistency includes lapses, surrenders,
+            # and deaths. Setting null until verified from official IRDAI / AR disclosures.
+            "lapse_rate": None,
             "persistency_13m": curated.get("persistency_13m") or scanned.get("persistency_13m"),
             "persistency_61m": curated.get("persistency_61m") or scanned.get("persistency_61m"),
             "source_doc": pdf.name,

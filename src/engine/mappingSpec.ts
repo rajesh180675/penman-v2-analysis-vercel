@@ -2,7 +2,7 @@ export const CapitalineMappingSpec = {
   balanceSheet: {
     totalAssets: ["Total Assets", "Total Equity and Liabilities"],
     totalStockholdersEquity: ["Total Stockholders' Equity", "Total Reported Stockholders' Equity"],
-    totalEquity: ["Total Equity"],
+    totalEquity: ["Total Equity", "Total Shareholders Funds", "Shareholders Funds"],
     minorityInterest: ["Minority Interest"],
     financialAssets: {
       cashAndBank: [

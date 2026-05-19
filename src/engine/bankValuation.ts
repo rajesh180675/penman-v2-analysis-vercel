@@ -309,7 +309,7 @@ export function computeBankValuation(
       justifiedPB: skip,
       equityResidualIncome: skip,
       sustainableDDM: skip,
-      evBased: skip,
+      // evBased intentionally omitted (undefined) — no metrics to base it on.
       triangulatedValue: null,
       modelsContributing: [],
     };
@@ -347,9 +347,19 @@ export function computeBankValuation(
     computedValues.push(["EV Based Valuation", evBased.intrinsicValue]);
   }
 
-  const triangulatedValue = computedValues.length > 0
-    ? median(computedValues.map(([, v]) => v))
-    : null;
+  // For insurance: EV-based is the IRDAI-mandated actuarial primary. When it is
+  // computed we use it directly as the triangulated value; the other three models
+  // (Gordon, RI, DDM) are displayed as sanity range brackets rather than being
+  // averaged with EV (which would dramatically dilute the actuarial estimate).
+  // For banks/NBFCs the original median-of-all-computed-models is preserved.
+  let triangulatedValue: number | null = null;
+  if (isInsurance && evBased.status === "computed" && evBased.intrinsicValue != null) {
+    triangulatedValue = evBased.intrinsicValue;
+  } else {
+    triangulatedValue = computedValues.length > 0
+      ? median(computedValues.map(([, v]) => v))
+      : null;
+  }
 
   return {
     sustainableROE,

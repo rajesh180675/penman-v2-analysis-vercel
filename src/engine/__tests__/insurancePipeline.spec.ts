@@ -10,7 +10,7 @@ describe("insurancePipeline", () => {
       period_end: "2022-03-31",
       raw_metric_values: {
         "Total Assets__BalanceSheet": 4300000,
-        "Total Shareholders Funds__BalanceSheet": 8000,
+        "Total Equity__BalanceSheet": 8000,
         "Life Assurance Fund__BalanceSheet": 4100000, // Policyholder funds
         "Premium Earned (Net)__ProfitLoss": 380000,
         "Claims Incurred__ProfitLoss": -250000,
@@ -25,7 +25,7 @@ describe("insurancePipeline", () => {
       period_end: "2023-03-31",
       raw_metric_values: {
         "Total Assets__BalanceSheet": 4700000,
-        "Total Shareholders Funds__BalanceSheet": 10000,
+        "Total Equity__BalanceSheet": 10000,
         "Life Assurance Fund__BalanceSheet": 4500000, // Policyholder funds
         "Premium Earned (Net)__ProfitLoss": 420000,
         "Claims Incurred__ProfitLoss": -280000,
@@ -40,7 +40,7 @@ describe("insurancePipeline", () => {
       period_end: "2024-03-31",
       raw_metric_values: {
         "Total Assets__BalanceSheet": 5100000,
-        "Total Shareholders Funds__BalanceSheet": 12000,
+        "Total Equity__BalanceSheet": 12000,
         "Life Assurance Fund__BalanceSheet": 4900000, // Policyholder funds
         "Premium Earned (Net)__ProfitLoss": 470000,
         "Claims Incurred__ProfitLoss": -320000,
@@ -55,7 +55,7 @@ describe("insurancePipeline", () => {
       period_end: "2025-03-31",
       raw_metric_values: {
         "Total Assets__BalanceSheet": 5500000,
-        "Total Shareholders Funds__BalanceSheet": 15000,
+        "Total Equity__BalanceSheet": 15000,
         "Life Assurance Fund__BalanceSheet": 5300000, // Policyholder funds
         "Premium Earned (Net)__ProfitLoss": 520000,
         "Claims Incurred__ProfitLoss": -350000,
