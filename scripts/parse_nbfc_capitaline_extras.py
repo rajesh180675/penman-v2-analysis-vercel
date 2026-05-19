@@ -278,7 +278,7 @@ def parse_subsidiaries_file(filepath: str) -> dict | None:
     {
         "fiscal_year": "FY2024",
         "subsidiaries": [
-            {"year_end": "202403", "equity": ..., "reserves": ..., "pat": ..., "total_assets": ..., ...},
+            {"name": "Bajaj Housing Finance Ltd", "year_end": "202403", ...},
             ...
         ]
     }
@@ -286,6 +286,18 @@ def parse_subsidiaries_file(filepath: str) -> dict | None:
     rows = parse_html_table(filepath)
     if len(rows) < 5:
         return None
+
+    # Row structure:
+    #   Row 0: title ("Finance >>Subsidiaries>>Bajaj Finance Ltd...")
+    #   Row 1: header with subsidiary names ("Subsidiaries", "Bajaj Financial Securities Ltd", "Bajaj Housing Finance Ltd")
+    #   Row 2+: data rows starting with "Year End"
+
+    # Find the names row (label is "Subsidiaries" or contains subsidiary names)
+    sub_names = []
+    for row in rows:
+        if row and row[0].strip() == "Subsidiaries":
+            sub_names = [n.strip() for n in row[1:] if n.strip() and n.strip() != "-"]
+            break
 
     # Find Year End row to get the year and number of subsidiaries
     year_row = None
@@ -322,8 +334,10 @@ def parse_subsidiaries_file(filepath: str) -> dict | None:
             return parse_float(vals[idx]) if idx < len(vals) else None
 
         sub = {
+            "name": sub_names[idx] if idx < len(sub_names) else f"Subsidiary {idx + 1}",
             "year_end": years[idx] if idx < len(years) else None,
             "holding_pct": get_field("Holding -%"),
+            "investment_cost": get_field("Investment Cost"),
             "equity_subscribed": get_field("Equity Subscribed"),
             "reserves": get_field("Subsidiary 's Reserves"),
             "sales_turnover": get_field("Sales Turnover"),
@@ -487,8 +501,10 @@ def merge_into_quality_indicators(
             sub_summary = []
             for sub in subs["subsidiaries"]:
                 sub_summary.append({
+                    "name": sub.get("name"),
                     "equity_cr": sub.get("equity_subscribed"),
                     "reserves_cr": sub.get("reserves"),
+                    "investment_cost_cr": sub.get("investment_cost"),
                     "pat_cr": sub.get("pat"),
                     "total_assets_cr": sub.get("total_assets"),
                     "total_liabilities_cr": sub.get("total_liabilities"),
