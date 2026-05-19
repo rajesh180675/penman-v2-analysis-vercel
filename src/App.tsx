@@ -575,10 +575,12 @@ if (!hasRecast && rawData && rawData.length > 0) {
     if (t.id === "watchlist") return hasWorkspace;
     if (t.id === "workspace") return hasWorkspace;
     if (t.id === "valuation") return valuationTabEnabled;
- // Bank/NBFC tab: show when bankResult exists, even without industrial recast
- if (t.id === "bank") return hasRecast || bankResult !== null;
- // Dashboard: show for banks/NBFCs too (bankResult carries the analysis)
- if (t.id === "dashboard") return hasRecast || bankResult !== null;
+    // Bank/NBFC tab: show when bankResult exists, even without industrial recast
+    if (t.id === "bank") return hasRecast || bankResult !== null;
+    // Dashboard: show for banks/NBFCs too (bankResult carries the analysis)
+    if (t.id === "dashboard") return hasRecast || bankResult !== null;
+    // Report tab: show for banks too — FinancialInstitutionReport renders from bankResult
+    if (t.id === "report") return hasRecast || bankResult !== null;
     if (t.needsData) return hasRecast;
     return true;
   });
