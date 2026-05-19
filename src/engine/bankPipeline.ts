@@ -55,6 +55,8 @@ export interface BankPeriodMetrics {
   provisions: number | null;     // Credit cost
   pat: number | null;
   pbt: number | null;
+  /** Dividend paid (Cr, absolute value). Sourced from CF statement. */
+  dividendPaid: number | null;
 
   // Derived Ratios — common to bank and NBFC
   nim: number | null;            // NII / Avg Earning Assets (or Advances for NBFC)
@@ -228,6 +230,11 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   const pat                = pickValue(raw, pl.profitAfterTax,      "ProfitLoss");
   const pbt                = pickValue(raw, pl.profitBeforeTax,     "ProfitLoss");
 
+  // Cash Flow — dividend paid (for payout ratio derivation in DDM/RI models)
+  const cf = CapitalineMappingSpec.cashFlow;
+  const dividendPaidRaw    = pickValue(raw, cf.dividendPaid,        "CashFlow");
+  const dividendPaid       = dividendPaidRaw != null ? Math.abs(dividendPaidRaw) : null;
+
   // Insurance P&L fields
   const premiumEarned      = pickValue(raw, pl.premiumEarned,      "ProfitLoss");
   const claimsExpense      = pickValue(raw, pl.claimsExpense,      "ProfitLoss");
@@ -265,7 +272,7 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
     provisions,
     pat,
     pbt,
-    // Ratios computed in computeBankRatios
+    dividendPaid,
     nim: null,
     roa: null,
     roe: null,
@@ -545,8 +552,23 @@ export function processBankData(
 
   // Phase B4: bank valuation. Only run when caller supplied a config —
   // valuation needs ke and terminal growth assumptions.
+  // Derive payout ratio from CF data: median(dividendPaid / PAT) over last 5y.
+  let derivedPayoutRatio: number | null = null;
+  const payoutSamples = computed
+    .slice(-5)
+    .filter(m => m.pat != null && m.pat > 0 && m.dividendPaid != null && m.dividendPaid > 0)
+    .map(m => m.dividendPaid! / m.pat!);
+  if (payoutSamples.length >= 2) {
+    const sorted = [...payoutSamples].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    derivedPayoutRatio = sorted.length % 2 === 0
+      ? (sorted[mid - 1] + sorted[mid]) / 2
+      : sorted[mid];
+    // Clamp to [0.05, 0.95] — extreme values indicate data issues
+    derivedPayoutRatio = Math.max(0.05, Math.min(0.95, derivedPayoutRatio));
+  }
   const valuation: BankValuationBundle | null = cfg
-    ? computeBankValuation(computed, cfg, marketCap, null, subtype === "insurance")
+    ? computeBankValuation(computed, cfg, marketCap, derivedPayoutRatio, subtype === "insurance")
     : null;
 
   return {

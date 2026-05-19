@@ -124,10 +124,14 @@ export function computeLossMakerValuation(
       new Date(a.period_end).getTime() - new Date(b.period_end).getTime(),
   );
 
-  // Loss-maker test: at least half the periods have CNI ≤ 0
+  // Loss-maker test: at least half the periods have CNI ≤ 0.
+  // For cyclical companies, raise the bar to 70% to avoid triggering on
+  // normal trough years (e.g. Tata Steel with 2-3 loss years in 10).
   const lossYears = sorted.filter((p) => (p.is?.CNI ?? 0) <= 0).length;
   const totalYears = sorted.length;
-  const isLossMaker = lossYears >= Math.ceil(totalYears / 2);
+  const isCyclical = config.company_type === "cyclical";
+  const lossThreshold = isCyclical ? 0.70 : 0.50;
+  const isLossMaker = lossYears / totalYears >= lossThreshold;
 
   if (!isLossMaker) return null;
 

@@ -341,6 +341,7 @@ function makeBankMetrics(n: number, roe = 0.15): BankPeriodMetrics[] {
     creditCost: 0.008,
     costToIncome: 0.42,
     casaRatio: 0.45,
+    dividendPaid: null,
     grossNPA: 0.03,
     netNPA: 0.01,
     provisionCoverageRatio: 0.65,
