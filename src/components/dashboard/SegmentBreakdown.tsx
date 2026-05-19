@@ -87,7 +87,7 @@ export default function SegmentBreakdown({ segmentData, unit = "₹ Cr" }: Props
         <div>
           <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Revenue Mix ({latestYear})</h4>
           <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer debounce={50} width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={pieData}
@@ -121,7 +121,7 @@ export default function SegmentBreakdown({ segmentData, unit = "₹ Cr" }: Props
         <div>
           <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Revenue vs Profit by Segment</h4>
           <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer debounce={50} width="100%" height="100%">
               <BarChart data={latestBreakdown} margin={{ left: 5, right: 10, top: 5, bottom: 30 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
                 <XAxis
@@ -227,7 +227,7 @@ export default function SegmentBreakdown({ segmentData, unit = "₹ Cr" }: Props
         <div>
           <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Segment Revenue Over Time</h4>
           <div className="h-44">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer debounce={50} width="100%" height="100%">
               <BarChart data={timeSeries} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
                 <XAxis dataKey="year" fontSize={10} />

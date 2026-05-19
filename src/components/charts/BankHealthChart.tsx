@@ -68,7 +68,7 @@ export default function BankHealthChart({ metrics, ke }: Props) {
       {/* Returns chart: NIM, ROA, ROE */}
       <div className="h-56">
         <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Returns Trend (NIM / ROA / ROE)</h4>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer debounce={50} width="100%" height="100%">
           <LineChart data={data} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />
@@ -91,7 +91,7 @@ export default function BankHealthChart({ metrics, ke }: Props) {
       {/* Credit cost chart */}
       <div className="h-44">
         <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Credit Cost &amp; Cost-to-Income</h4>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer debounce={50} width="100%" height="100%">
           <LineChart data={data} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />

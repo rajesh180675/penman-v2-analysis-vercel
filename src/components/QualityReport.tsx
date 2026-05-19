@@ -181,7 +181,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <div className="text-xs font-semibold text-slate-500 mb-2">F-Score (0–9)</div>
-            <ResponsiveContainer width="100%" height={140}>
+            <ResponsiveContainer debounce={50} width="100%" height={140}>
               <LineChart data={pChart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="period" tick={{fontSize:9}}/>
@@ -195,7 +195,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
           </div>
           <div>
             <div className="text-xs font-semibold text-slate-500 mb-2">Z'-Score</div>
-            <ResponsiveContainer width="100%" height={140}>
+            <ResponsiveContainer debounce={50} width="100%" height={140}>
               <LineChart data={pChart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="period" tick={{fontSize:9}}/>
@@ -211,7 +211,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
           </div>
           <div>
             <div className="text-xs font-semibold text-slate-500 mb-2">M-Score (≤−1.78 = safe)</div>
-            <ResponsiveContainer width="100%" height={140}>
+            <ResponsiveContainer debounce={50} width="100%" height={140}>
               <LineChart data={pChart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="period" tick={{fontSize:9}}/>
@@ -230,7 +230,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-5">
           <div>
             <div className="text-xs font-semibold text-slate-500 mb-2">Distress Probability (%)</div>
-            <ResponsiveContainer width="100%" height={160}>
+            <ResponsiveContainer debounce={50} width="100%" height={160}>
               <LineChart data={pChart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="period" tick={{fontSize:9}}/>
@@ -244,7 +244,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
           </div>
           <div>
             <div className="text-xs font-semibold text-slate-500 mb-2">CEQI trend</div>
-            <ResponsiveContainer width="100%" height={160}>
+            <ResponsiveContainer debounce={50} width="100%" height={160}>
               <LineChart data={pChart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="period" tick={{fontSize:9}}/>
@@ -258,7 +258,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
           </div>
           <div>
             <div className="text-xs font-semibold text-slate-500 mb-2">Conservative Accounting Score</div>
-            <ResponsiveContainer width="100%" height={160}>
+            <ResponsiveContainer debounce={50} width="100%" height={160}>
               <LineChart data={pChart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="period" tick={{fontSize:9}}/>

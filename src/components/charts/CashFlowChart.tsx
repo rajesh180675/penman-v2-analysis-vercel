@@ -94,7 +94,7 @@ export default function CashFlowChart({ data, unit = "₹ Cr" }: Props) {
       {/* CFO vs Net Income */}
       <div className="h-56">
         <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">CFO vs Net Income — Earnings Quality Signal</h4>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer debounce={50} width="100%" height="100%">
           <ComposedChart data={series} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />
@@ -114,7 +114,7 @@ export default function CashFlowChart({ data, unit = "₹ Cr" }: Props) {
       {/* FCF + Cash Deployment stacked */}
       <div className="h-56">
         <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Cash Deployment — Capex / Dividends / Buybacks</h4>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer debounce={50} width="100%" height="100%">
           <ComposedChart data={series} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />

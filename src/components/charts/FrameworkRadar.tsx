@@ -61,7 +61,7 @@ export default function FrameworkRadar({ anchors, marketPrice }: Props) {
       </div>
 
       <div className="h-56">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer debounce={50} width="100%" height="100%">
           <RadarChart data={chartData} cx="50%" cy="50%" outerRadius="75%">
             <PolarGrid stroke="#e2e8f0" />
             <PolarAngleAxis dataKey="framework" fontSize={11} />

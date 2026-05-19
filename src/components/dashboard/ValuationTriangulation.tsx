@@ -52,7 +52,7 @@ export default function ValuationTriangulation({ price, epvPerShare, intrinsicRa
       </div>
 
       <div className="h-48">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer debounce={50} width="100%" height="100%">
           <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
             <XAxis type="number" tickFormatter={(v) => `₹${v}`} fontSize={11} />
             <YAxis type="category" dataKey="name" width={90} fontSize={11} />

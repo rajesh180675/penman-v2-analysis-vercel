@@ -91,7 +91,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
         </div>
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
           <ChartBox title="NOA / FA / CSE (₹ Cr)">
-            <ResponsiveContainer width="100%" height={210}>
+            <ResponsiveContainer debounce={50} width="100%" height={210}>
               <LineChart data={cd}><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="period" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} />
                 <Tooltip /><Legend wrapperStyle={{ fontSize: 11 }} />
@@ -102,7 +102,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
             </ResponsiveContainer>
           </ChartBox>
           <ChartBox title="OA vs OL (₹ Cr)">
-            <ResponsiveContainer width="100%" height={210}>
+            <ResponsiveContainer debounce={50} width="100%" height={210}>
               <LineChart data={cd}><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="period" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} />
                 <Tooltip /><Legend wrapperStyle={{ fontSize: 11 }} />
@@ -172,7 +172,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
         </div>
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
           <ChartBox title="Sales / OI / CNI (₹ Cr)">
-            <ResponsiveContainer width="100%" height={210}>
+            <ResponsiveContainer debounce={50} width="100%" height={210}>
               <LineChart data={cd}><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="period" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} />
                 <Tooltip /><Legend wrapperStyle={{ fontSize: 11 }} />
@@ -183,7 +183,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
             </ResponsiveContainer>
           </ChartBox>
           <ChartBox title="Core OI vs Unusual OI (₹ Cr)">
-            <ResponsiveContainer width="100%" height={210}>
+            <ResponsiveContainer debounce={50} width="100%" height={210}>
               <LineChart data={cd}><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="period" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} />
                 <Tooltip /><Legend wrapperStyle={{ fontSize: 11 }} />

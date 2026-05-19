@@ -53,7 +53,7 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
       </div>
 
       <div className="h-48">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer debounce={50} width="100%" height="100%">
           <BarChart data={chartData} margin={{ left: 10, right: 10, top: 10, bottom: 5 }}>
             <XAxis dataKey="name" fontSize={10} angle={-15} textAnchor="end" height={50} />
             <YAxis

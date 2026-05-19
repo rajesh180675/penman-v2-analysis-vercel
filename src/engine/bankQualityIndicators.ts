@@ -389,6 +389,13 @@ export async function fetchBankQualityIndicators(
       `quality_indicators fetch failed: ${res.status} ${res.statusText} for ${url}`,
     );
   }
+  // Guard against Vite SPA fallback: a missing static file may return 200 HTML
+  // instead of 404 when the dev server rewrites unknown paths to index.html.
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json") && !contentType.includes("text/json")) {
+    // Not JSON — treat as absent (no sidecar for this company).
+    return null;
+  }
   let payload: unknown;
   try {
     payload = await res.json();

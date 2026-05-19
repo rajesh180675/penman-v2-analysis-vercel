@@ -71,7 +71,7 @@ export default function ForecastTornado({ baseValue, drivers, marketPrice }: Pro
       </div>
 
       <div style={{ height: Math.max(220, data.length * 38) }}>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer debounce={50} width="100%" height="100%">
           <BarChart
             data={data}
             layout="vertical"

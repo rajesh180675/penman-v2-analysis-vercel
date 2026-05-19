@@ -64,7 +64,7 @@ export default function BalanceSheetComposition({ data, mode = "abs" }: Props) {
 
       <div className="h-56">
         <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Asset Side: Operating vs Financial Assets</h4>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer debounce={50} width="100%" height="100%">
           <BarChart data={assetSeries} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />
@@ -79,7 +79,7 @@ export default function BalanceSheetComposition({ data, mode = "abs" }: Props) {
 
       <div className="h-56">
         <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Financing Side: Equity vs Net Financial Debt vs Operating Liabilities</h4>
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer debounce={50} width="100%" height="100%">
           <BarChart data={financingSeries} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />

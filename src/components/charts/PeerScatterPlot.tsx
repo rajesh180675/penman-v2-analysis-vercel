@@ -52,7 +52,7 @@ export default function PeerScatterPlot({ companies, xLabel, yLabel, xFormat = "
     <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900/60">
       <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">{yLabel} vs {xLabel}</h3>
       <div className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer debounce={50} width="100%" height="100%">
           <ScatterChart margin={{ left: 10, right: 20, top: 10, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis

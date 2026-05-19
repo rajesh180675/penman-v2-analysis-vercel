@@ -592,7 +592,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
           </div>
           <div className="mt-5 h-40">
             {sparklineData.length ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer debounce={50} width="100%" height="100%">
                 <LineChart data={sparklineData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="date" hide />
@@ -1305,7 +1305,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
             ].map(({ key, label, color }) => (
               <div key={key} className="border border-slate-100 rounded-xl p-4">
                 <div className="text-xs font-semibold text-slate-500 mb-3 uppercase">{label} {sharesOut ? "(₹ / share)" : "(₹ Cr)"}</div>
-                <ResponsiveContainer width="100%" height={190}>
+                <ResponsiveContainer debounce={50} width="100%" height={190}>
                   <BarChart data={barData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="period" tick={{ fontSize: 10 }} />

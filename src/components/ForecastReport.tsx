@@ -559,7 +559,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <div className="text-xs font-semibold text-slate-500 mb-2">Sales Growth Fade (α={FADE_SG})</div>
-            <ResponsiveContainer width="100%" height={140}>
+            <ResponsiveContainer debounce={50} width="100%" height={140}>
               <LineChart data={chartFade}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="year" tick={{fontSize:9}}/>
@@ -572,7 +572,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
           </div>
           <div>
             <div className="text-xs font-semibold text-slate-500 mb-2">Core PM Fade (α={FADE_PM})</div>
-            <ResponsiveContainer width="100%" height={140}>
+            <ResponsiveContainer debounce={50} width="100%" height={140}>
               <LineChart data={chartFade}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="year" tick={{fontSize:9}}/>
@@ -585,7 +585,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
           </div>
           <div>
             <div className="text-xs font-semibold text-slate-500 mb-2">ATO Fade (α={FADE_ATO})</div>
-            <ResponsiveContainer width="100%" height={140}>
+            <ResponsiveContainer debounce={50} width="100%" height={140}>
               <LineChart data={chartFade}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="year" tick={{fontSize:9}}/>
@@ -658,7 +658,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
         {chartScen.length>0&&(
           <div>
             <div className="text-sm font-semibold text-slate-600 mb-3">Base Case Pro Forma — RE & ReOI Series {sharesOut ? "(₹ / share)" : "(₹ Cr)"}</div>
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer debounce={50} width="100%" height={220}>
               <BarChart data={chartScen}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="year" tick={{fontSize:10}}/>
@@ -699,7 +699,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
                 <Mini title="P50 ReOI" value={sharesOut ? share(toPerShare(mcOut.p50_ReOI, sharesOut)) : `₹${cr(mcOut.p50_ReOI)}`} />
                 <Mini title="P90 ReOI" value={sharesOut ? share(toPerShare(mcOut.p90_ReOI, sharesOut)) : `₹${cr(mcOut.p90_ReOI)}`} />
               </div>
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer debounce={50} width="100%" height={220}>
                 <BarChart data={mcHistogram}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                   <XAxis dataKey="bucket" hide />

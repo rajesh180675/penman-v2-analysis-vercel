@@ -214,7 +214,7 @@ export default function RatioReport({data, traceability = null, traceabilitySumm
         </div>
         <ChartGrid>
           <ChartCard title="ROCE vs RNOA vs NBC (%)">
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer debounce={50} width="100%" height={220}>
               <LineChart data={chart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="period" tick={{fontSize:10}}/>
@@ -229,7 +229,7 @@ export default function RatioReport({data, traceability = null, traceabilitySumm
             </ResponsiveContainer>
           </ChartCard>
           <ChartCard title="RNOA check: ROOA + OLLEV×OLSPREAD (%)">
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer debounce={50} width="100%" height={220}>
               <LineChart data={chart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="period" tick={{fontSize:10}}/>
@@ -276,7 +276,7 @@ export default function RatioReport({data, traceability = null, traceabilitySumm
         </div>
         <ChartGrid>
           <ChartCard title="Profit Margin % trend">
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer debounce={50} width="100%" height={200}>
               <LineChart data={chart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="period" tick={{fontSize:10}}/>
@@ -289,7 +289,7 @@ export default function RatioReport({data, traceability = null, traceabilitySumm
             </ResponsiveContainer>
           </ChartCard>
           <ChartCard title="Asset Turnover (ATO×)">
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer debounce={50} width="100%" height={200}>
               <LineChart data={chart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="period" tick={{fontSize:10}}/>
@@ -368,7 +368,7 @@ export default function RatioReport({data, traceability = null, traceabilitySumm
         </div>
         <ChartGrid>
           <ChartCard title="Accrual Ratio BS (%) — low = better">
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer debounce={50} width="100%" height={180}>
               <BarChart data={chart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="period" tick={{fontSize:10}}/>
@@ -384,7 +384,7 @@ export default function RatioReport({data, traceability = null, traceabilitySumm
             </ResponsiveContainer>
           </ChartCard>
           <ChartCard title="Cash Conversion Ratio (CFO/OI) — ideal ≈ 1.0">
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer debounce={50} width="100%" height={180}>
               <LineChart data={chart}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                 <XAxis dataKey="period" tick={{fontSize:10}}/>
@@ -416,7 +416,7 @@ export default function RatioReport({data, traceability = null, traceabilitySumm
           </table>
         </div>
         <ChartCard title="Growth Rates (%)">
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer debounce={50} width="100%" height={200}>
             <BarChart data={chart}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
               <XAxis dataKey="period" tick={{fontSize:10}}/>
@@ -450,7 +450,7 @@ export default function RatioReport({data, traceability = null, traceabilitySumm
           </table>
         </div>
         <ChartCard title="5-Factor ROE reconstruction vs ROCE">
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer debounce={50} width="100%" height={220}>
             <LineChart data={dupont5.map((d, i) => ({ period: d.period, ROE5: d.roe5 != null ? +(d.roe5 * 100).toFixed(2) : null, ROCE: rd[i]?.ratios?.ROCE != null ? +(rd[i].ratios!.ROCE! * 100).toFixed(2) : null }))}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
               <XAxis dataKey="period" tick={{fontSize:10}}/>
@@ -486,7 +486,7 @@ export default function RatioReport({data, traceability = null, traceabilitySumm
           </div>
           <ChartGrid>
             <ChartCard title="DSO/DIO/DPO (days)">
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer debounce={50} width="100%" height={220}>
                 <LineChart data={rd.map(d => ({ period: d.period_end.slice(0,7), DSO: d.ratios?.days_receivable != null ? +d.ratios.days_receivable.toFixed(1) : null, DIO: d.ratios?.days_inventory != null ? +d.ratios.days_inventory.toFixed(1) : null, DPO: d.ratios?.days_payable != null ? +d.ratios.days_payable.toFixed(1) : null }))}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                   <XAxis dataKey="period" tick={{fontSize:10}}/>
@@ -500,7 +500,7 @@ export default function RatioReport({data, traceability = null, traceabilitySumm
               </ResponsiveContainer>
             </ChartCard>
             <ChartCard title="CCC trend (days)">
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer debounce={50} width="100%" height={220}>
                 <BarChart data={rd.map(d => ({ period: d.period_end.slice(0,7), CCC: d.ratios?.cash_conversion_cycle != null ? +d.ratios.cash_conversion_cycle.toFixed(1) : 0 }))}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
                   <XAxis dataKey="period" tick={{fontSize:10}}/>

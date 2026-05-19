@@ -62,7 +62,7 @@ export default function KPITile({ label, value, format, subtitle, history, trend
         {/* Sparkline */}
         {hasSparkline && (
           <div className="w-20 h-10 flex-shrink-0 ml-2">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer debounce={50} width="100%" height="100%">
               <LineChart data={sparkData}>
                 <Line
                   type="monotone"

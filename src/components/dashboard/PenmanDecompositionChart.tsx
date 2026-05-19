@@ -28,7 +28,7 @@ export default function PenmanDecompositionChart({ data }: Props) {
       <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">Penman Decomposition — RNOA = PM × ATO</h3>
 
       <div className="h-56">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer debounce={50} width="100%" height="100%">
           <AreaChart data={chartData} margin={{ left: 0, right: 10, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis dataKey="period" fontSize={11} />

@@ -66,7 +66,7 @@ export default function ScenarioRangeChart({ scenarios, marketPrice, expectedVal
       </div>
 
       <div className="h-56">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer debounce={50} width="100%" height="100%">
           <BarChart data={data} margin={{ left: 5, right: 30, top: 30, bottom: 5 }}>
             <XAxis dataKey="label" fontSize={11} />
             <YAxis fontSize={10} domain={[0, max * 1.1]} tickFormatter={(v) => `₹${v}`} />

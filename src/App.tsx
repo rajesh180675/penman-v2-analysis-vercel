@@ -731,7 +731,7 @@ if (!hasRecast && rawData && rawData.length > 0) {
               <AnalysisStatusBadge status={analysisStatus} />
             </div>
           )}
-          {sharedRegistryStatus && !sharedRegistryStatus.ok && (
+          {sharedRegistryStatus && !sharedRegistryStatus.ok && sharedRegistryStatus.status !== 404 && (
             <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
               <strong>Shared comparison sync:</strong> {formatSharedApiStatus(sharedRegistryStatus, "Shared comparison registry synced.")}
             </div>
