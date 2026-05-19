@@ -98,6 +98,22 @@ export interface BankQualityPeriod {
   /** 61st month persistency %. */
   persistency_61m?: number | null;
 
+  // ── NBFC indicators (IndAS 109 ECL framework) ────────────────────
+  /** Stage 3 (credit-impaired) loans as % of gross loan book. NBFC GNPA equivalent. */
+  stage3_pct?: number | null;
+  /** Stage 2 (significant credit deterioration) loans as % of gross loan book. */
+  stage2_pct?: number | null;
+  /** Impairment loss allowance on Stage 3 / Gross Stage 3 — ECL coverage of bad book. */
+  ecl_coverage_pct?: number | null;
+  /** Total ECL provision / Gross loan book — overall provisioning intensity. */
+  total_ecl_pct?: number | null;
+  /** Assets Under Management (consolidated, ₹ Cr). NBFC-specific scale metric. */
+  aum_cr?: number | null;
+  /** YoY AUM growth %. NBFC equivalent of "loan book growth". */
+  aum_growth_pct?: number | null;
+  /** Off-book / assignment / co-lending share of AUM %. Fee-based vs spread-based mix. */
+  off_book_share_pct?: number | null;
+
   // ── Audit trail ──────────────────────────────────────────────────
   /** Source PDF filename, e.g., "HDFCBANK_AR_FY2025.pdf". */
   source_doc?: string;
@@ -217,6 +233,8 @@ export function validateBankQualityIndicators(
       "crar_pct", "tier1_pct", "cet1_pct", "casa_pct",
       "advances_growth_pct", "deposits_growth_pct",
       "solvency_ratio", "embedded_value", "nbm_pct", "vnb", "lapse_rate", "persistency_13m", "persistency_61m",
+      "stage3_pct", "stage2_pct", "ecl_coverage_pct", "total_ecl_pct",
+      "aum_cr", "aum_growth_pct", "off_book_share_pct",
     ];
     for (const f of ratioFields) {
       const v = p[f];
@@ -299,6 +317,40 @@ export function validateBankQualityIndicators(
           field: `periods[${i}].${f}`,
           period_end: periodEnd,
           message: `${f} cannot be negative`,
+        });
+      } else if (
+        ["stage3_pct", "stage2_pct"].includes(f as string) &&
+        (v < 0 || v > 30)
+      ) {
+        issues.push({
+          severity: "warning",
+          field: `periods[${i}].${f}`,
+          period_end: periodEnd,
+          message: `${f} ${v}% outside plausibility band [0, 30]`,
+        });
+      } else if (
+        ["ecl_coverage_pct", "total_ecl_pct", "off_book_share_pct"].includes(f as string) &&
+        (v < 0 || v > 100)
+      ) {
+        issues.push({
+          severity: "warning",
+          field: `periods[${i}].${f}`,
+          period_end: periodEnd,
+          message: `${f} ${v}% outside [0, 100]`,
+        });
+      } else if (f === "aum_growth_pct" && Math.abs(v) > 200) {
+        issues.push({
+          severity: "warning",
+          field: `periods[${i}].${f}`,
+          period_end: periodEnd,
+          message: `${f} ${v}% magnitude > 200% — verify against AR`,
+        });
+      } else if (f === "aum_cr" && v < 0) {
+        issues.push({
+          severity: "warning",
+          field: `periods[${i}].${f}`,
+          period_end: periodEnd,
+          message: `aum_cr cannot be negative`,
         });
       }
     }

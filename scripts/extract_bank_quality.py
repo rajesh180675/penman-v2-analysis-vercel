@@ -22,10 +22,11 @@ OUTPUT_BASE = Path(r"C:\Users\rajesh\WindsurfAPI\penman-v2-analysis\public\data\
 
 # Map ticker to company folder in penman-v2-analysis
 TICKER_TO_FOLDER = {
-    "HDFCBANK": "HDFC bank",
-    "ICICIBANK": "ICICI bank",
+    "HDFCBANK": "HDFC Bank",
+    "ICICIBANK": "ICICI Bank",
     "SBIN": "SBIN",
     "KOTAKBANK": "KOTAKBANK",
+    "BAJFINANCE": "Bajaj Finance",
 }
 
 TICKER_TO_NAME = {
@@ -33,6 +34,7 @@ TICKER_TO_NAME = {
     "ICICIBANK": "ICICI Bank Ltd",
     "SBIN": "State Bank of India",
     "KOTAKBANK": "Kotak Mahindra Bank Ltd",
+    "BAJFINANCE": "Bajaj Finance Ltd",
 }
 
 

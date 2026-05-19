@@ -606,7 +606,14 @@ export function processBankData(
     derivedPayoutRatio = Math.max(0.05, Math.min(0.95, derivedPayoutRatio));
   }
   const valuation: BankValuationBundle | null = cfg
-    ? computeBankValuation(computed, cfg, marketCap, derivedPayoutRatio, subtype === "insurance")
+    ? computeBankValuation(
+        computed,
+        cfg,
+        marketCap,
+        derivedPayoutRatio,
+        subtype === "insurance",
+        subtype === "nbfc",
+      )
     : null;
 
   return {
