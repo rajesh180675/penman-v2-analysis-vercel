@@ -477,7 +477,30 @@
         }
       ],
       "subsidiary_pat_cr": 110.99,
-      "subsidiary_assets_cr": 19278.51
+      "subsidiary_assets_cr": 19278.51,
+      "segment_aum_cr": {
+        "Two and three-wheeler": 9726,
+        "Urban sales finance": 12261,
+        "Urban B2C": 23002,
+        "Rural sales finance": 2142,
+        "Rural B2C": 7101,
+        "SME": 15759,
+        "Loans against securities": 6359,
+        "Commercial": 5668,
+        "Mortgages": 33870
+      },
+      "segment_aum_total_cr": 115888,
+      "segment_aum_mix_pct": {
+        "Two and three-wheeler": 8.4,
+        "Urban sales finance": 10.6,
+        "Urban B2C": 19.8,
+        "Rural sales finance": 1.8,
+        "Rural B2C": 6.1,
+        "SME": 13.6,
+        "Loans against securities": 5.5,
+        "Commercial": 4.9,
+        "Mortgages": 29.2
+      }
     },
     {
       "period_end": "2020-03-31",
@@ -551,7 +574,30 @@
         }
       ],
       "subsidiary_pat_cr": 423.58,
-      "subsidiary_assets_cr": 31613.66
+      "subsidiary_assets_cr": 31613.66,
+      "segment_aum_cr": {
+        "Two and three-wheeler": 13085,
+        "Urban sales finance": 12657,
+        "Urban B2C": 31256,
+        "Rural sales finance": 2669,
+        "Rural B2C": 10659,
+        "SME": 19429,
+        "Loans against securities": 4821,
+        "Commercial": 6411,
+        "Mortgages": 46166
+      },
+      "segment_aum_total_cr": 147153,
+      "segment_aum_mix_pct": {
+        "Two and three-wheeler": 8.9,
+        "Urban sales finance": 8.6,
+        "Urban B2C": 21.2,
+        "Rural sales finance": 1.8,
+        "Rural B2C": 7.2,
+        "SME": 13.2,
+        "Loans against securities": 3.3,
+        "Commercial": 4.4,
+        "Mortgages": 31.4
+      }
     },
     {
       "period_end": "2021-03-31",
@@ -625,7 +671,30 @@
         }
       ],
       "subsidiary_pat_cr": 458.74,
-      "subsidiary_assets_cr": 38521.13
+      "subsidiary_assets_cr": 38521.13,
+      "segment_aum_cr": {
+        "Two and three-wheeler": 12111,
+        "Urban sales finance": 11525,
+        "Urban B2C": 30450,
+        "Rural sales finance": 2883,
+        "Rural B2C": 11822,
+        "SME": 20217,
+        "Loans against securities": 5889,
+        "Commercial": 8293,
+        "Mortgages": 51757
+      },
+      "segment_aum_total_cr": 154947,
+      "segment_aum_mix_pct": {
+        "Two and three-wheeler": 7.8,
+        "Urban sales finance": 7.4,
+        "Urban B2C": 19.7,
+        "Rural sales finance": 1.9,
+        "Rural B2C": 7.6,
+        "SME": 13.0,
+        "Loans against securities": 3.8,
+        "Commercial": 5.4,
+        "Mortgages": 33.4
+      }
     },
     {
       "period_end": "2022-03-31",
@@ -699,7 +768,30 @@
         }
       ],
       "subsidiary_pat_cr": 726.46,
-      "subsidiary_assets_cr": 50357.270000000004
+      "subsidiary_assets_cr": 50357.270000000004,
+      "segment_aum_cr": {
+        "Two and three-wheeler": 10194,
+        "Urban sales finance": 14977,
+        "Urban B2C": 38772,
+        "Rural sales finance": 4129,
+        "Rural B2C": 15301,
+        "SME": 24979,
+        "Loans against securities": 10536,
+        "Commercial": 11498,
+        "Mortgages": 67066
+      },
+      "segment_aum_total_cr": 197452,
+      "segment_aum_mix_pct": {
+        "Two and three-wheeler": 5.2,
+        "Urban sales finance": 7.6,
+        "Urban B2C": 19.6,
+        "Rural sales finance": 2.1,
+        "Rural B2C": 7.7,
+        "SME": 12.7,
+        "Loans against securities": 5.3,
+        "Commercial": 5.8,
+        "Mortgages": 34.0
+      }
     },
     {
       "period_end": "2023-03-31",
@@ -773,7 +865,30 @@
         }
       ],
       "subsidiary_pat_cr": 1266.01,
-      "subsidiary_assets_cr": 67114.48
+      "subsidiary_assets_cr": 67114.48,
+      "segment_aum_cr": {
+        "Two and three-wheeler": 12979,
+        "Urban sales finance": 17627,
+        "Urban B2C": 50108,
+        "Rural sales finance": 4803,
+        "Rural B2C": 19457,
+        "SME": 33765,
+        "Loans against securities": 15093,
+        "Commercial": 15834,
+        "Mortgages": 77713
+      },
+      "segment_aum_total_cr": 247379,
+      "segment_aum_mix_pct": {
+        "Two and three-wheeler": 5.2,
+        "Urban sales finance": 7.1,
+        "Urban B2C": 20.3,
+        "Rural sales finance": 1.9,
+        "Rural B2C": 7.9,
+        "SME": 13.6,
+        "Loans against securities": 6.1,
+        "Commercial": 6.4,
+        "Mortgages": 31.4
+      }
     },
     {
       "period_end": "2024-03-31",
@@ -846,7 +961,34 @@
         }
       ],
       "subsidiary_pat_cr": 1787.1000000000001,
-      "subsidiary_assets_cr": 87844.70999999999
+      "subsidiary_assets_cr": 87844.70999999999,
+      "segment_aum_cr": {
+        "Two and three-wheeler": 19742,
+        "Urban sales finance": 23448,
+        "Urban B2C": 66093,
+        "Rural sales finance": 6209,
+        "Rural B2C": 17607,
+        "SME": 38470,
+        "Loans against securities": 22038,
+        "Commercial": 22006,
+        "Mortgages": 103316,
+        "Gold Loans": 4599,
+        "Car Loans": 7087
+      },
+      "segment_aum_total_cr": 330615,
+      "segment_aum_mix_pct": {
+        "Two and three-wheeler": 6.0,
+        "Urban sales finance": 7.1,
+        "Urban B2C": 20.0,
+        "Rural sales finance": 1.9,
+        "Rural B2C": 5.3,
+        "SME": 11.6,
+        "Loans against securities": 6.7,
+        "Commercial": 6.7,
+        "Mortgages": 31.2,
+        "Gold Loans": 1.4,
+        "Car Loans": 2.1
+      }
     },
     {
       "period_end": "2025-03-31",
@@ -895,7 +1037,34 @@
       "slippage_s2_to_s3_cr": 2660.98,
       "upgrades_s3_to_s1_cr": 103.01,
       "writeoffs_cr": 7063.43,
-      "new_origination_cr": 215610.04
+      "new_origination_cr": 215610.04,
+      "segment_aum_cr": {
+        "Two and three-wheeler": 17319,
+        "Urban sales finance": 29109,
+        "Urban B2C": 87696,
+        "Rural sales finance": 7944,
+        "Rural B2C": 21467,
+        "SME": 50345,
+        "Loans against securities": 25377,
+        "Commercial": 27760,
+        "Mortgages": 129461,
+        "Gold Loans": 8307,
+        "Car Loans": 11876
+      },
+      "segment_aum_total_cr": 416661,
+      "segment_aum_mix_pct": {
+        "Two and three-wheeler": 4.2,
+        "Urban sales finance": 7.0,
+        "Urban B2C": 21.0,
+        "Rural sales finance": 1.9,
+        "Rural B2C": 5.2,
+        "SME": 12.1,
+        "Loans against securities": 6.1,
+        "Commercial": 6.7,
+        "Mortgages": 31.1,
+        "Gold Loans": 2.0,
+        "Car Loans": 2.9
+      }
     }
   ]
 }
