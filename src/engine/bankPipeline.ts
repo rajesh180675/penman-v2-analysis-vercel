@@ -250,7 +250,10 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   if (interestEarned != null && interestExpended != null) {
     if (interestEarned > 0) {
       nii = interestEarned - Math.abs(interestExpended);
-      if (nii < 0 || nii > interestEarned) nii = null;
+      // Reject negative NII (interest paid > interest earned — bad data).
+      // Note: nii > interestEarned is impossible here since interestExpended
+      // is always non-negative after Math.abs, so that branch is omitted.
+      if (nii < 0) nii = null;
     }
     // else: interestEarned <= 0 is sign-flipped raw data; leave NII null
   }
