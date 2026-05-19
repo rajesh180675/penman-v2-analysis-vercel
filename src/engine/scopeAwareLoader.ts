@@ -119,6 +119,55 @@ function extractMetrics(period: RecastPeriod): ScopeMetricSnapshot {
   };
 }
 
+/**
+ * Bank/NBFC/insurance metrics → scope snapshot.
+ *
+ * Banks don't go through the Penman-Nissim recast engine, so PipelineResult.periods
+ * is empty for them. We extract from bankMetrics instead, mapping bank-native
+ * fields to the scope-snapshot shape:
+ *   - sales  ← interestEarned + otherIncome (total revenue proxy)
+ *   - pat    ← pat (direct)
+ *   - cse    ← totalEquity (capital deployed)
+ *   - noa    ← advances (loan book = operating asset base for banks)
+ *   - coreOI / cfo / nfo: null (concept doesn't apply to banks)
+ *
+ * The subsidiary contribution analysis stays meaningful: HDFC Bank consolidated
+ * adds HDB Financial + HDFC Securities, so the gap shows what those subsidiaries
+ * contribute to PAT, equity, and advances.
+ */
+function extractFromBankMetrics(m: import("./bankPipeline").BankPeriodMetrics): ScopeMetricSnapshot {
+  const interestEarned = m.interestEarned ?? null;
+  const otherIncome = m.otherIncome ?? null;
+  const sales = (interestEarned == null && otherIncome == null)
+    ? null
+    : (interestEarned ?? 0) + (otherIncome ?? 0);
+  return {
+    period_end: m.period_end,
+    sales,
+    pat: m.pat,
+    coreOI: null,
+    cse: m.totalEquity,
+    noa: m.advances,
+    cfo: null,
+    nfo: null,
+  };
+}
+
+/**
+ * Extract scope snapshots from a PipelineResult, choosing the right source:
+ *   - Industrial pipeline → result.periods (RecastPeriod[])
+ *   - Bank/NBFC/insurance pipeline → result.bankResult.bankMetrics (BankPeriodMetrics[])
+ *
+ * Returns an empty array when neither is populated.
+ */
+function snapshotsFromPipelineResult(result: PipelineResult): ScopeMetricSnapshot[] {
+  if (result.periods.length > 0) {
+    return result.periods.map(extractMetrics);
+  }
+  const bankMetrics = result.bankResult?.bankMetrics ?? [];
+  return bankMetrics.map(extractFromBankMetrics);
+}
+
 function safeDiff(a: number | null, b: number | null): number | null {
   if (a == null || b == null) return null;
   return a - b;
@@ -220,18 +269,24 @@ export function processScopeAwareData(
         latest: null,
         patContributionTrend: "insufficient-data",
       },
-      consolidatedOnlyPeriods: consolidatedResult.periods.map(p => p.period_end),
+      consolidatedOnlyPeriods: snapshotsFromPipelineResult(consolidatedResult).map(s => s.period_end),
       standaloneOnlyPeriods: [],
       scopeAwareAnalysisAvailable: false,
     };
   }
 
   // ── 2. Build period maps ─────────────────────────────────────────────────
+  // Use snapshotsFromPipelineResult so banks (whose pipeline returns periods=[]
+  // but populates bankResult.bankMetrics) get their snapshots from bankMetrics.
+  // Industrial path keeps using RecastPeriod via extractMetrics. Fixes H3.
+  const consolidatedSnapshots = snapshotsFromPipelineResult(consolidatedResult);
+  const standaloneSnapshots = snapshotsFromPipelineResult(standaloneResult);
+
   const consolidatedMap = new Map<string, ScopeMetricSnapshot>(
-    consolidatedResult.periods.map(p => [p.period_end, extractMetrics(p)])
+    consolidatedSnapshots.map(s => [s.period_end, s])
   );
   const standaloneMap = new Map<string, ScopeMetricSnapshot>(
-    standaloneResult.periods.map(p => [p.period_end, extractMetrics(p)])
+    standaloneSnapshots.map(s => [s.period_end, s])
   );
 
   const consolidatedPeriods = new Set(consolidatedMap.keys());
