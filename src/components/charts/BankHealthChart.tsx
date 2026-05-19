@@ -75,7 +75,7 @@ export default function BankHealthChart({ metrics, ke }: Props) {
             <YAxis tickFormatter={(v) => `${v}%`} fontSize={10} />
             <Tooltip
               formatter={((value: number, name: string) => [`${value?.toFixed(2)}%`, name]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8 }}
+              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             {keePct != null && (
@@ -98,7 +98,7 @@ export default function BankHealthChart({ metrics, ke }: Props) {
             <YAxis tickFormatter={(v) => `${v}%`} fontSize={10} />
             <Tooltip
               formatter={((value: number, name: string) => [`${value?.toFixed(2)}%`, name]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8 }}
+              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Line type="monotone" dataKey="CreditCost" name="Credit Cost" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />

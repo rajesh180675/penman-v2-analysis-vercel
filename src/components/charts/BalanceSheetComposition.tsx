@@ -69,7 +69,7 @@ export default function BalanceSheetComposition({ data, mode = "abs" }: Props) {
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />
             <YAxis fontSize={10} tickFormatter={(v) => mode === "common" ? `${v}%` : `${(v / 1000).toFixed(0)}k`} />
-            <Tooltip formatter={((value: number, name: string) => [fmt(value), name]) as any} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+            <Tooltip formatter={((value: number, name: string) => [fmt(value), name]) as any} contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Bar dataKey="OA" name="Operating Assets" stackId="assets" fill="#10b981" />
             <Bar dataKey="FA" name="Financial Assets" stackId="assets" fill="#3b82f6" />
@@ -84,7 +84,7 @@ export default function BalanceSheetComposition({ data, mode = "abs" }: Props) {
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />
             <YAxis fontSize={10} tickFormatter={(v) => mode === "common" ? `${v}%` : `${(v / 1000).toFixed(0)}k`} />
-            <Tooltip formatter={((value: number, name: string) => [fmt(value), name]) as any} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+            <Tooltip formatter={((value: number, name: string) => [fmt(value), name]) as any} contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Bar dataKey="CSE" name="Common Shareholders' Equity" stackId="fin" fill="#6366f1" />
             <Bar dataKey="NFO" name="Net Financial Obligations" stackId="fin" fill="#ef4444" />

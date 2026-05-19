@@ -100,7 +100,7 @@ export default function ForecastTornado({ baseValue, drivers, marketPrice }: Pro
                 const range = payload?.[0]?.payload?.range;
                 return range ? `${label} — ${range}` : label;
               }}
-              contentStyle={{ fontSize: 11, borderRadius: 8 }}
+              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
             />
             <ReferenceLine x={0} stroke="#94a3b8" strokeWidth={2} />
             <Bar dataKey="downside" stackId="impact" fill="#ef4444" radius={[4, 0, 0, 4]}>

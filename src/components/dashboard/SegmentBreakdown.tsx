@@ -109,7 +109,7 @@ export default function SegmentBreakdown({ segmentData, unit = "₹ Cr" }: Props
                   formatter={((value: number, _name: string, props: { payload?: { pct: number } }) =>
                     [`${unit} ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })} (${(props.payload?.pct ?? 0 * 100).toFixed(1)}%)`, ""]) as any
                   }
-                  contentStyle={{ fontSize: 11, borderRadius: 8 }}
+                  contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
                 />
                 <Legend wrapperStyle={{ fontSize: 10 }} verticalAlign="bottom" iconSize={8} />
               </PieChart>
@@ -135,7 +135,7 @@ export default function SegmentBreakdown({ segmentData, unit = "₹ Cr" }: Props
                 <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} fontSize={10} />
                 <Tooltip
                   formatter={((value: number) => [`${unit} ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, ""]) as any}
-                  contentStyle={{ fontSize: 11, borderRadius: 8 }}
+                  contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar dataKey="revenue" name="Revenue" fill="#3b82f6" fillOpacity={0.85} radius={[3, 3, 0, 0]} />
@@ -234,7 +234,7 @@ export default function SegmentBreakdown({ segmentData, unit = "₹ Cr" }: Props
                 <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} fontSize={10} />
                 <Tooltip
                   formatter={((value: number) => [`${unit} ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, ""]) as any}
-                  contentStyle={{ fontSize: 11, borderRadius: 8 }}
+                  contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
                 />
                 <Legend wrapperStyle={{ fontSize: 10 }} iconSize={8} />
                 {segments.map((seg, i) => (

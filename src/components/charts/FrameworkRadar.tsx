@@ -77,7 +77,7 @@ export default function FrameworkRadar({ anchors, marketPrice }: Props) {
                 `₹${props.payload.value.toFixed(0)} (${(value).toFixed(2)}× market)`,
                 props.payload.fullName,
               ]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8 }}
+              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
             />
             <Radar
               name="Implied Value"

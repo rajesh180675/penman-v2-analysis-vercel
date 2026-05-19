@@ -47,7 +47,7 @@ export default function PenmanDecompositionChart({ data }: Props) {
               domain={["auto", "auto"]}
             />
             <Tooltip
-              contentStyle={{ fontSize: 12, borderRadius: 8 }}
+              contentStyle={{ fontSize: 12, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
               formatter={((value: number, name: string) => {
                 if (name === "ATO") return [`${value}×`, name];
                 return [`${value}%`, name];

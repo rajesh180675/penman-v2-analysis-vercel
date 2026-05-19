@@ -90,7 +90,7 @@ export default function IncomeWaterfall({ sales, cogs: _cogs, operatingIncome, n
             />
             <Tooltip
               formatter={((value: number) => [`${unit} ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, ""]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8 }}
+              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
             />
             <ReferenceLine y={0} stroke="#94a3b8" />
             <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={42}>

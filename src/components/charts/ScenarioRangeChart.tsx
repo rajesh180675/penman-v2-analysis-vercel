@@ -75,7 +75,7 @@ export default function ScenarioRangeChart({ scenarios, marketPrice, expectedVal
                 `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })} (P=${((props.payload?.probability ?? 0) * 100).toFixed(0)}%)`,
                 "Intrinsic / share",
               ]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8 }}
+              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
             />
             {marketPrice != null && (
               <ReferenceLine

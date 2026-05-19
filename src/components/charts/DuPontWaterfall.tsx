@@ -66,7 +66,7 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
                 `${props.payload.raw.toFixed(3)} (${value}%)`,
                 props.payload.name,
               ]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8 }}
+              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
             />
             <ReferenceLine y={100} stroke="#94a3b8" strokeDasharray="4 4" label={{ value: "1.0×", position: "right", fontSize: 9, fill: "#94a3b8" }} />
             <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={36}>

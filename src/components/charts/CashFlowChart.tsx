@@ -101,7 +101,7 @@ export default function CashFlowChart({ data, unit = "₹ Cr" }: Props) {
             <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} fontSize={10} />
             <Tooltip
               formatter={((value: number) => [`${unit} ${value?.toLocaleString("en-IN")}`, ""]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8 }}
+              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <ReferenceLine y={0} stroke="#94a3b8" />
@@ -121,7 +121,7 @@ export default function CashFlowChart({ data, unit = "₹ Cr" }: Props) {
             <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} fontSize={10} />
             <Tooltip
               formatter={((value: number) => [`${unit} ${value?.toLocaleString("en-IN")}`, ""]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8 }}
+              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Bar dataKey="Capex" stackId="deploy" fill="#6366f1" fillOpacity={0.85} radius={[0, 0, 0, 0]} />
