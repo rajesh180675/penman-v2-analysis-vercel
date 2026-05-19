@@ -96,6 +96,18 @@ export interface BankPeriodMetrics {
     otherLoanShare: number | null;
   } | null;
 
+  // Insurance Specific Fields (Tier 1 & Tier 2)
+  premiumEarned?: number | null;
+  claimsExpense?: number | null;
+  policyholderFunds?: number | null;
+  investmentIncome?: number | null;
+  claimsRatio?: number | null;
+  expenseRatio?: number | null;
+  combinedRatio?: number | null;
+  premiumGrowth?: number | null;
+  floatToEquity?: number | null;
+  investmentYield?: number | null;
+
   // Phase B5 — Asset-quality indicators sourced from the bank's annual
   // report (NOT Capitaline). Joined by period_end from the optional
   // sidecar `quality_indicators.json`. null when no sidecar is provided
@@ -204,6 +216,9 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   const termLoansFromInstitutions  = pickValue(raw, bs.termLoansFromInstitutions,  "BalanceSheet");
   const termLoansFromOthers        = pickValue(raw, bs.termLoansFromOthers,        "BalanceSheet");
 
+  // Insurance raw fields
+  const policyholderFunds          = pickValue(raw, bs.policyholderFunds,          "BalanceSheet");
+
   // P&L
   const interestEarned     = pickValue(raw, pl.interestIncome,      "ProfitLoss");
   const interestExpended   = pickValue(raw, pl.interestExpended,    "ProfitLoss");
@@ -212,6 +227,11 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   const provisions         = pickValue(raw, pl.provisions,          "ProfitLoss");
   const pat                = pickValue(raw, pl.profitAfterTax,      "ProfitLoss");
   const pbt                = pickValue(raw, pl.profitBeforeTax,     "ProfitLoss");
+
+  // Insurance P&L fields
+  const premiumEarned      = pickValue(raw, pl.premiumEarned,      "ProfitLoss");
+  const claimsExpense      = pickValue(raw, pl.claimsExpense,      "ProfitLoss");
+  const investmentIncome   = pickValue(raw, pl.investmentIncome,   "ProfitLoss");
 
   // NII = Interest Earned − |Interest Expended|.
   // Sign sanity check: a going-concern bank must have NII > 0 and < interestEarned
@@ -263,6 +283,17 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
     yieldOnAdvances: null,
     spread: null,
     debtMix: null,
+    // Insurance raw and derived
+    policyholderFunds,
+    premiumEarned,
+    claimsExpense,
+    investmentIncome,
+    claimsRatio: null,
+    expenseRatio: null,
+    combinedRatio: null,
+    premiumGrowth: null,
+    floatToEquity: null,
+    investmentYield: null,
     // Phase B5 — populated post-extraction by the join in processBankData
     quality: null,
   };
@@ -365,6 +396,39 @@ function computeBankRatios(
     }
   }
 
+  // Insurance specific ratio calculations
+  if (subtype === "insurance") {
+    if (result.premiumEarned != null && result.premiumEarned > 0) {
+      if (result.claimsExpense != null) {
+        result.claimsRatio = Math.abs(result.claimsExpense) / result.premiumEarned;
+      }
+      if (result.operatingExpenses != null) {
+        result.expenseRatio = Math.abs(result.operatingExpenses) / result.premiumEarned;
+      }
+      if (result.claimsRatio != null && result.expenseRatio != null) {
+        result.combinedRatio = result.claimsRatio + result.expenseRatio;
+      }
+    }
+    if (result.policyholderFunds != null && result.totalEquity != null && result.totalEquity > 0) {
+      result.floatToEquity = result.policyholderFunds / result.totalEquity;
+    } else if (result.totalAssets != null && result.totalEquity != null && result.totalEquity > 0) {
+      result.floatToEquity = (result.totalAssets - result.totalEquity) / result.totalEquity;
+    }
+
+    if (prev) {
+      if (current.premiumEarned != null && prev.premiumEarned != null && prev.premiumEarned > 0) {
+        result.premiumGrowth = (current.premiumEarned - prev.premiumEarned) / prev.premiumEarned;
+      }
+
+      const currInvest = current.policyholderFunds ?? (current.totalAssets != null && current.totalEquity != null ? current.totalAssets - current.totalEquity : null);
+      const prevInvest = prev.policyholderFunds ?? (prev.totalAssets != null && prev.totalEquity != null ? prev.totalAssets - prev.totalEquity : null);
+      const avgInvest = avg(currInvest, prevInvest);
+      if (current.investmentIncome != null && avgInvest != null && avgInvest > 0) {
+        result.investmentYield = current.investmentIncome / avgInvest;
+      }
+    }
+  }
+
   return result;
 }
 
@@ -380,6 +444,8 @@ function detectSubtype(scope: ScopeAssessment): FinancialInstitutionSubtype {
     if (s.kind === "manual-override") continue;
     counts.set(s.kind, (counts.get(s.kind) ?? 0) + 1);
   }
+  const insuranceCount = counts.get("insurance") ?? 0;
+  if (insuranceCount >= 1)            return "insurance";
   const bankingCount = counts.get("banking") ?? 0;
   const nbfcCount    = counts.get("nbfc")    ?? 0;
   if (bankingCount >= 2)              return "bank";
@@ -469,14 +535,14 @@ export function processBankData(
     deposits:      m.deposits,
     borrowings:    m.borrowings,
     advances:      m.advances,
-    premiumEarned: null,
-    claimsExpense: null,
+    premiumEarned: m.premiumEarned ?? null,
+    claimsExpense: m.claimsExpense ?? null,
   }));
 
   // Phase B4: bank valuation. Only run when caller supplied a config —
   // valuation needs ke and terminal growth assumptions.
   const valuation: BankValuationBundle | null = cfg
-    ? computeBankValuation(computed, cfg, marketCap)
+    ? computeBankValuation(computed, cfg, marketCap, null, subtype === "insurance")
     : null;
 
   return {

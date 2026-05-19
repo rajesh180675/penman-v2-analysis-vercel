@@ -72,6 +72,8 @@ export interface BankValuationBundle {
   justifiedPB: BankValuationModelResult;
   equityResidualIncome: BankValuationModelResult;
   sustainableDDM: BankValuationModelResult;
+  /** Optional EV-based valuation for insurance subtype when embedded_value is present. */
+  evBased?: BankValuationModelResult;
 
   /** Triangulated central value (median of computed models). */
   triangulatedValue: number | null;
@@ -132,16 +134,27 @@ function justifiedPBGordon(
   ke: number,
   g: number,
   marketCap: number | null,
+  isInsurance: boolean = false,
 ): BankValuationModelResult {
   if (bv == null || bv <= 0) return skipped("no positive latest book value");
   if (roe == null) return skipped("sustainable ROE could not be estimated (need ≥3y positive ROE)");
   if (ke - g < MIN_KE_MINUS_G) return skipped(`ke (${ke.toFixed(3)}) − g (${g.toFixed(3)}) below ${MIN_KE_MINUS_G} guardrail`);
 
-  const fairPB = (roe - g) / (ke - g);
+  let fairPB = (roe - g) / (ke - g);
+  let floored = false;
+  if (isInsurance && fairPB < 0.7) {
+    fairPB = 0.7;
+    floored = true;
+  }
   const value = fairPB * bv;
-  const reason = roe > ke
-    ? `ROE > ke → bank earning above cost of equity, fair P/B = ${fairPB.toFixed(2)}`
-    : `ROE ≤ ke → bank below cost of equity, fair P/B = ${fairPB.toFixed(2)} (≤ 1)`;
+  let reason = "";
+  if (floored) {
+    reason = `ROE ≤ ke → floored at 0.7x P/B for insurance business`;
+  } else {
+    reason = roe > ke
+      ? `ROE > ke → business earning above cost of equity, fair P/B = ${fairPB.toFixed(2)}`
+      : `ROE ≤ ke → business below cost of equity, fair P/B = ${fairPB.toFixed(2)} (≤ 1)`;
+  }
   return computed(value, reason, { fairPB, roe, ke, g, bv }, marketCap);
 }
 
@@ -230,6 +243,39 @@ function sustainableDDM(
   }, marketCap);
 }
 
+// ─── Model 4: EV-Based Valuation ─────────────────────────────────────────────
+
+function evBasedValuation(
+  metrics: BankPeriodMetrics[],
+  marketCap: number | null,
+): BankValuationModelResult {
+  const eligible = metrics.filter(m => m.quality && m.quality.embedded_value != null);
+  if (eligible.length === 0) {
+    return skipped("Embedded Value sidecar data unavailable (quality_indicators.json must supply embedded_value)");
+  }
+  const latest = eligible[eligible.length - 1];
+  const ev = latest.quality!.embedded_value!;
+  const vnb = latest.quality!.vnb ?? null;
+
+  let fairValue = 0;
+  let reason = "";
+  const diagnostics: Record<string, number | null> = { embedded_value: ev, vnb };
+
+  if (vnb != null && vnb > 0) {
+    const multiple = 12;
+    fairValue = ev + vnb * multiple;
+    reason = `EV (${ev.toFixed(0)} Cr) + VNB (${vnb.toFixed(0)} Cr) × ${multiple}x multiple`;
+    diagnostics.vnb_multiple = multiple;
+  } else {
+    const multiple = 2.0;
+    fairValue = ev * multiple;
+    reason = `EV (${ev.toFixed(0)} Cr) × default ${multiple.toFixed(1)}x multiple (VNB missing)`;
+    diagnostics.ev_multiple = multiple;
+  }
+
+  return computed(fairValue, reason, diagnostics, marketCap);
+}
+
 // ─── Public entry ───────────────────────────────────────────────────────────
 
 /**
@@ -249,6 +295,7 @@ export function computeBankValuation(
   cfg: EngineConfig,
   marketCap: number | null = null,
   payoutRatio: number | null = null,
+  isInsurance: boolean = false,
 ): BankValuationBundle {
   if (metrics.length === 0) {
     const skip = skipped("no bank metrics provided");
@@ -262,6 +309,7 @@ export function computeBankValuation(
       justifiedPB: skip,
       equityResidualIncome: skip,
       sustainableDDM: skip,
+      evBased: skip,
       triangulatedValue: null,
       modelsContributing: [],
     };
@@ -280,9 +328,10 @@ export function computeBankValuation(
 
   const { value: sustainableROE, obsCount } = computeSustainableROE(metrics);
 
-  const justifiedPB = justifiedPBGordon(latestBV, sustainableROE, ke, g, marketCap);
+  const justifiedPB = justifiedPBGordon(latestBV, sustainableROE, ke, g, marketCap, isInsurance);
   const eri = equityResidualIncome(metrics, ke, g, marketCap);
   const ddm = sustainableDDM(latestBV, latest.pat, sustainableROE, ke, g, payoutRatio, marketCap);
+  const evBased = evBasedValuation(metrics, marketCap);
 
   const computedValues: Array<[string, number]> = [];
   if (justifiedPB.status === "computed" && justifiedPB.intrinsicValue != null) {
@@ -293,6 +342,9 @@ export function computeBankValuation(
   }
   if (ddm.status === "computed" && ddm.intrinsicValue != null) {
     computedValues.push(["Sustainable DDM", ddm.intrinsicValue]);
+  }
+  if (evBased.status === "computed" && evBased.intrinsicValue != null) {
+    computedValues.push(["EV Based Valuation", evBased.intrinsicValue]);
   }
 
   const triangulatedValue = computedValues.length > 0
@@ -309,6 +361,7 @@ export function computeBankValuation(
     justifiedPB,
     equityResidualIncome: eri,
     sustainableDDM: ddm,
+    evBased,
     triangulatedValue,
     modelsContributing: computedValues.map(([name]) => name),
   };

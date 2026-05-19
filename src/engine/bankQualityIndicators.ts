@@ -82,6 +82,22 @@ export interface BankQualityPeriod {
   /** YoY growth in total deposits %. */
   deposits_growth_pct?: number | null;
 
+  // ── Insurance indicators (Tier 2 sidecar) ────────────────────────
+  /** Solvency ratio (e.g. 1.85 means 1.85x / 185%). */
+  solvency_ratio?: number | null;
+  /** Embedded Value (EV) in Cr. */
+  embedded_value?: number | null;
+  /** New Business Margin (NBM) %. */
+  nbm_pct?: number | null;
+  /** Value of New Business (VNB) in Cr. */
+  vnb?: number | null;
+  /** Lapse rate %. */
+  lapse_rate?: number | null;
+  /** 13th month persistency %. */
+  persistency_13m?: number | null;
+  /** 61st month persistency %. */
+  persistency_61m?: number | null;
+
   // ── Audit trail ──────────────────────────────────────────────────
   /** Source PDF filename, e.g., "HDFCBANK_AR_FY2025.pdf". */
   source_doc?: string;
@@ -200,6 +216,7 @@ export function validateBankQualityIndicators(
       "gnpa_pct", "nnpa_pct", "pcr_pct", "slippage_pct", "restructured_pct",
       "crar_pct", "tier1_pct", "cet1_pct", "casa_pct",
       "advances_growth_pct", "deposits_growth_pct",
+      "solvency_ratio", "embedded_value", "nbm_pct", "vnb", "lapse_rate", "persistency_13m", "persistency_61m",
     ];
     for (const f of ratioFields) {
       const v = p[f];
@@ -258,6 +275,30 @@ export function validateBankQualityIndicators(
           field: `periods[${i}].${f}`,
           period_end: periodEnd,
           message: `${f} ${v}% magnitude > 100% — verify against AR`,
+        });
+      } else if (f === "solvency_ratio" && (v < 0 || v > 10)) {
+        issues.push({
+          severity: "warning",
+          field: `periods[${i}].${f}`,
+          period_end: periodEnd,
+          message: `Solvency ratio ${v} outside plausible range [0, 10]`,
+        });
+      } else if (
+        ["nbm_pct", "lapse_rate", "persistency_13m", "persistency_61m"].includes(f as string) &&
+        (v < 0 || v > 100)
+      ) {
+        issues.push({
+          severity: "warning",
+          field: `periods[${i}].${f}`,
+          period_end: periodEnd,
+          message: `${f} ${v}% outside [0, 100]`,
+        });
+      } else if (["embedded_value", "vnb"].includes(f as string) && v < 0) {
+        issues.push({
+          severity: "warning",
+          field: `periods[${i}].${f}`,
+          period_end: periodEnd,
+          message: `${f} cannot be negative`,
         });
       }
     }

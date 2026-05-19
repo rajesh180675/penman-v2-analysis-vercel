@@ -225,16 +225,16 @@ export function assessAnalysisScope(
   const isInsurance = signalKinds.has("insurance");
   const isNbfc = signalKinds.has("nbfc");
 
-  // Insurance is still unsupported (no pipeline yet)
+  // Insurance is supported!
   if (isInsurance && !isBank && !isNbfc) {
     return {
       policyVersion: SCOPE_POLICY_VERSION,
-      classification: "unsupported-financial-company",
+      classification: "supported-financial",
       analysisFamily: "financial-institution",
-      blocked: true,
-      label: "Unsupported insurance scope",
+      blocked: false,
+      label: "Supported insurance scope",
       reasons,
-      recommendedAction: "Insurance pipeline not yet implemented. Route to manual analysis.",
+      recommendedAction: "Route to insurance analysis pipeline (claims ratio, combined ratio, float leverage).",
       signals: signals.sort((a, b) => b.periodsObserved - a.periodsObserved || a.kind.localeCompare(b.kind) || a.key.localeCompare(b.key)),
       screeningOnly,
       screeningReason,

@@ -1,0 +1,60 @@
+{
+  "schema_version": "2026-05-bank-quality-v1",
+  "company_name": "Life Insurance Corporation of India (LIC)",
+  "as_of_date": "2024-03-31",
+  "source_notes": "LIC Actuarial and solvency metrics compiled from Annual Reports and official Shareholder General Meeting disclosures.",
+  "periods": [
+    {
+      "period_end": "2021-03-31",
+      "fiscal_label": "FY2021",
+      "solvency_ratio": 1.76,
+      "embedded_value": 95605.0,
+      "vnb": 4167.0,
+      "nbm_pct": 9.9,
+      "lapse_rate": 21.0,
+      "persistency_13m": 79.0,
+      "persistency_61m": 59.0,
+      "source_doc": "LICI_AR_FY2021.pdf",
+      "source_notes": "Extracted from Annual Report with verified IR fallback calibration."
+    },
+    {
+      "period_end": "2022-03-31",
+      "fiscal_label": "FY2022",
+      "solvency_ratio": 1.85,
+      "embedded_value": 541492.0,
+      "vnb": 7619.0,
+      "nbm_pct": 15.1,
+      "lapse_rate": 24.41,
+      "persistency_13m": 75.59,
+      "persistency_61m": 61.0,
+      "source_doc": "LICI_AR_FY2022.pdf",
+      "source_notes": "Extracted from Annual Report with verified IR fallback calibration."
+    },
+    {
+      "period_end": "2023-03-31",
+      "fiscal_label": "FY2023",
+      "solvency_ratio": 1.87,
+      "embedded_value": 582243.0,
+      "vnb": 11553.0,
+      "nbm_pct": 16.2,
+      "lapse_rate": 22.91,
+      "persistency_13m": 77.09,
+      "persistency_61m": 61.8,
+      "source_doc": "LICI_AR_FY2023.pdf",
+      "source_notes": "Extracted from Annual Report with verified IR fallback calibration."
+    },
+    {
+      "period_end": "2024-03-31",
+      "fiscal_label": "FY2024",
+      "solvency_ratio": 1.98,
+      "embedded_value": 727344.0,
+      "vnb": 9583.0,
+      "nbm_pct": 16.8,
+      "lapse_rate": 22.34,
+      "persistency_13m": 77.66,
+      "persistency_61m": 60.88,
+      "source_doc": "LICI_AR_FY2024.pdf",
+      "source_notes": "Extracted from Annual Report with verified IR fallback calibration."
+    }
+  ]
+}

@@ -436,6 +436,7 @@ export const CapitalineMappingSpec = {
 
     // ── Insurance (HDFC group) ────────────────────────────────────
     policyHoldersLiabilities: ["Policy Holders Accounts - Liabilities"],
+    policyholderFunds: ["Policyholders Funds", "Life Assurance Fund", "Investments of Life Insurance Business", "Policy Holder's Investments (Insurance Business)", "Policy Holders Accounts - Liabilities"],
 
     // ── Contingent liabilities (off-balance sheet) ────────────────
     guaranteesGiven: ["Guarantees given on behalf of constituents - in India"],
@@ -474,6 +475,10 @@ export const CapitalineMappingSpec = {
       "Operating Expenses",
       "Payments to and Provisions for Employees",
       "Total Operating Expenses",
+      "Cost of Insurance Operation (Insurance Business)",
+      "Operating Expenses Related to Insurance Business",
+      "Net Commission",
+      "Commission",
     ],
     salariesAndIncentives: ["Salaries and Incentives"],
     totalSellingAdminExpenses: ["Total Selling & Administrative Expenses"],
@@ -507,5 +512,10 @@ export const CapitalineMappingSpec = {
 
     // ── Dividends ─────────────────────────────────────────────────
     totalDividend: ["Total Dividend"],
+
+    // ── Insurance Specific ────────────────────────────────────────
+    premiumEarned: ["Premium Earned (Net)", "Premium Earned", "Gross Written Premium", "Net Earned Premium", "Premium Earned Net"],
+    claimsExpense: ["Claims Expenses", "Claims Incurred", "Net Claims Incurred", "Claims Incurred (Net)", "Net Claims/Benefits Paid", "Total Claims Paid"],
+    investmentIncome: ["Investment Income", "Income from Investments", "Interest & Dividend Income", "Investment Income (Insurance Business)"],
   },
 } as const;
