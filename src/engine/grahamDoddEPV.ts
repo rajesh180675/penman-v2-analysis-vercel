@@ -27,7 +27,7 @@
  * asset revaluation is rare).
  */
 
-import { RecastPeriod, EngineConfig, deriveKwFromConfig } from "./types";
+import { RecastPeriod, EngineConfig, deriveKwFromConfig, ke_from_config } from "./types";
 
 export interface EPVNormalization {
   periodsUsed: number;
@@ -196,7 +196,8 @@ export function computeEPV(
   // EPV of operations is an enterprise (pre-financing) value — discount at
   // WACC (kw), not ke. Using ke overstates EPV for levered companies because
   // ke > kw when NFO > 0. ke is only correct for the equity bridge step.
-  const ke = (config.risk_free_rate ?? 0.07) + (config.equity_risk_premium ?? 0.055);
+  // Use ke_from_config (respects explicit cfg.ke, falls back to rf+erp).
+  const ke = ke_from_config(config);
   const kw = deriveKwFromConfig(config);
 
   if (ke <= 0.01) return null; // nonsensical ke
@@ -300,7 +301,7 @@ export function computeEPV(
     `Maintenance capex: ₹${maintenanceCapex.toFixed(0)} Cr (min of avg capex ₹${avgCapex.toFixed(0)}, avg depreciation ₹${avgDepreciation.toFixed(0)})`,
     `Growth capex excluded: ₹${growthCapex.toFixed(0)} Cr`,
     `Adjusted earnings power (after-tax): ₹${adjustedEarningsPower.toFixed(0)} Cr at ${(taxRate * 100).toFixed(1)}% tax`,
-    `EPV of operations: ₹${epvOperations.toFixed(0)} Cr (÷ ke=${(ke * 100).toFixed(1)}%)`,
+    `EPV of operations: ₹${epvOperations.toFixed(0)} Cr (÷ kw=${(kw * 100).toFixed(1)}%)`,
     `Less NFO: ₹${nfo.toFixed(0)} Cr`,
     `EPV of equity: ₹${epvEquity.toFixed(0)} Cr`,
     ...(epvPerShare != null ? [`EPV per share: ₹${epvPerShare.toFixed(1)}`] : []),

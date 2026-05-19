@@ -2,6 +2,8 @@ import { Suspense, lazy, useState, useCallback, useMemo, useEffect, useRef } fro
 import { useServerStatus } from "./hooks/useServerStatus";
 import { RawPeriodData, RecastPeriod, DEFAULT_CONFIG, EngineConfig, CompanyRegistry } from "./engine/types";
 import { processCompanyDataFull } from "./engine/pipeline";
+import { processScopeAwareData, type ScopeAwareResult } from "./engine/scopeAwareLoader";
+import { assessAnalysisScope, analysisFamilyFromScope } from "./engine/scopePolicy";
 import type { FinancialInstitutionAnalysisResult } from "./engine/analysisFamily";
 import { fetchBankQualityIndicators, type BankQualityIndicators } from "./engine/bankQualityIndicators";
 import { deriveAnalysisStatus } from "./engine/analysisStatus";
@@ -19,6 +21,7 @@ import DataEntry from "./components/DataEntry";
 import RecastStatements from "./components/RecastStatements";
 import RatioReport from "./components/RatioReport";
 import QualityReport from "./components/QualityReport";
+import SubsidiaryContributionPanel from "./components/dashboard/SubsidiaryContributionPanel";
 import {
   AuditSubmissionMeta,
   createAuditAccessToken,
@@ -53,7 +56,7 @@ const CompanyWorkspace = lazy(() => import("./components/CompanyWorkspace"));
 const WatchlistDashboard = lazy(() => import("./components/WatchlistDashboard"));
 const DashboardView = lazy(() => import("./components/dashboard/DashboardView"));
 
-type TabId = "upload" | "dashboard" | "watchlist" | "workspace" | "inspector" | "statements" | "ratios" | "forecast" | "valuation" | "bank" | "quality" | "comparison" | "report" | "regression" | "v3analytics" | "debug";
+type TabId = "upload" | "dashboard" | "watchlist" | "workspace" | "inspector" | "statements" | "ratios" | "forecast" | "valuation" | "bank" | "quality" | "scope" | "comparison" | "report" | "regression" | "v3analytics" | "debug";
 
 const TABS: { id: TabId; label: string; icon: string; needsData?: boolean; group: string }[] = [
   { id: "upload", label: "Data", icon: "📂", group: "input" },
@@ -64,6 +67,7 @@ const TABS: { id: TabId; label: string; icon: string; needsData?: boolean; group
   { id: "statements", label: "Statements", icon: "📋", needsData: true, group: "analysis" },
   { id: "ratios", label: "Ratios", icon: "📐", needsData: true, group: "analysis" },
   { id: "quality", label: "Quality", icon: "🔍", needsData: true, group: "analysis" },
+  { id: "scope", label: "Scope", icon: "🪞", needsData: true, group: "analysis" },
   { id: "forecast", label: "Forecast", icon: "📈", needsData: true, group: "analysis" },
   { id: "valuation", label: "Valuation", icon: "💰", needsData: true, group: "valuation" },
   { id: "bank", label: "Bank", icon: "🏦", needsData: true, group: "valuation" },
@@ -87,6 +91,11 @@ export function App() {
   const auditGovernance = getAuditClientGovernance();
   const serverStatus = useServerStatus();
   const [rawData, setRawData] = useState<RawPeriodData[] | null>(null);
+  // Phase A — standalone dataset (Indian companies file BOTH consolidated AND
+  // standalone statements). When present, scopeAwareResult below carries the
+  // gap analysis (cons − stan = subsidiary contribution). null when only
+  // consolidated was loaded (manual upload or company without standalone ZIP).
+  const [standaloneRawData, setStandaloneRawData] = useState<RawPeriodData[] | null>(null);
   const [debugInfo, setDebugInfo] = useState<CapitalineParseDebug | null>(null);
   const [parserDiagnostics, setParserDiagnostics] = useState<SourceParserDiagnostics | null>(null);
   const [segmentData, setSegmentData] = useState<import("./engine/segmentParser").SegmentData | null>(null);
@@ -186,6 +195,36 @@ export function App() {
       return { error: err instanceof Error ? err.message : String(err) };
     }
   }, [config, rawData, scopeGate, bankQuality]);
+
+  // Phase A — Scope-aware analysis. When standalone data is also loaded,
+  // compute the consolidated − standalone gap (subsidiary contribution).
+  // null when standalone is null (single-scope upload). Does NOT replace
+  // the main pipeline; consolidated still drives valuation. This is the
+  // gap-analysis layer used by the Subsidiary Contribution panel (Phase B).
+  const scopeAwareResult = useMemo<ScopeAwareResult | null>(() => {
+    if (!rawData || rawData.length === 0) return null;
+    if (!standaloneRawData || standaloneRawData.length === 0) return null;
+    if (scopeGate?.scopeAssessment.blocked) return null;
+    try {
+      return processScopeAwareData(rawData, standaloneRawData, config, bankQuality);
+    } catch (err) {
+      console.error("[App] scope-aware analysis error:", err);
+      return null;
+    }
+  }, [rawData, standaloneRawData, config, scopeGate, bankQuality]);
+
+  // Log dual-scope availability so QA can verify the second ZIP loaded.
+  // Phase B will consume scopeAwareResult in a dedicated UI panel; until then
+  // this useEffect is the only consumer (and prevents a TS6133 unused warning).
+  useEffect(() => {
+    if (scopeAwareResult) {
+      console.log("[App] dual-scope analysis available:", {
+        alignedPeriods: scopeAwareResult.summary.alignedPeriods,
+        medianPatContributionPct: scopeAwareResult.summary.medianPatContributionPct,
+        patContributionTrend: scopeAwareResult.summary.patContributionTrend,
+      });
+    }
+  }, [scopeAwareResult]);
 
   // Bank/NBFC pipeline result. Carries Phase B4 valuation bundle.
   const bankResult = useMemo<FinancialInstitutionAnalysisResult | null>(() => {
@@ -392,6 +431,30 @@ export function App() {
     });
   }, [rawData, recastData, traceability]);
 
+  // Fix 6: Auto-fill shares_outstanding from the latest period's shareCountInput
+  // when the user hasn't manually entered a value. Uses diluted shares when
+  // available, falls back to end-period shares, then capital-derived shares.
+  // Only fires when recastData arrives and config.shares_outstanding is unset.
+  useEffect(() => {
+    if (!recastData || recastData.length === 0) return;
+    if (config.shares_outstanding != null) return; // user already set it
+    const latest = recastData[recastData.length - 1];
+    const snap = latest.shareCountInput;
+    if (!snap) return;
+    const autoShares =
+      snap.weightedAverageDilutedShares ??
+      snap.weightedAverageBasicShares ??
+      snap.endPeriodShares ??
+      null;
+    if (autoShares != null && autoShares > 0) {
+      setConfig((prev) => {
+        // Double-check: don't overwrite if user set it between renders
+        if (prev.shares_outstanding != null) return prev;
+        return { ...prev, shares_outstanding: autoShares };
+      });
+    }
+  }, [recastData, config.shares_outstanding]);
+
   // If rawData was submitted but recastData comes back null, navigate to an
   // appropriate fallback tab. Bank/NBFC datasets never produce industrial
   // recast — the bank-redirect effect below handles that case.
@@ -403,7 +466,16 @@ export function App() {
   }, [rawData, recastData, engineError, scopeGate]);
 
   const handleDataSubmit = useCallback(
-    (data: RawPeriodData[], debug?: CapitalineParseDebug, meta?: AuditSubmissionMeta, nextParserDiagnostics?: SourceParserDiagnostics | null, nextSegmentData?: import("./engine/segmentParser").SegmentData | null) => {
+    (
+      data: RawPeriodData[],
+      debug?: CapitalineParseDebug,
+      meta?: AuditSubmissionMeta,
+      nextParserDiagnostics?: SourceParserDiagnostics | null,
+      nextSegmentData?: import("./engine/segmentParser").SegmentData | null,
+      // Phase A — optional standalone dataset for dual-scope analysis.
+      // Library cards with hasStandalone=true pass this in; manual uploads pass null.
+      nextStandaloneData?: RawPeriodData[] | null,
+    ) => {
       const nextMeta = meta ?? {
         runId: createAuditRunId(),
         sourceMode: "manual",
@@ -434,6 +506,9 @@ export function App() {
   });
       setWorkspaceCompanyId(nextMeta.companyId || data[0]?.company_id || null);
       setRawData(data);
+      // Phase A — store standalone (or clear it). Always set so a fresh upload
+      // doesn't carry stale standalone from a previous company.
+      setStandaloneRawData(nextStandaloneData ?? null);
       setParserDiagnostics(nextParserDiagnostics ?? null);
       setSegmentData(nextSegmentData ?? null);
       if (debug) setDebugInfo(debug);
@@ -452,7 +527,18 @@ export function App() {
   // Note: Bank/NBFC datasets will auto-redirect to "bank" tab via the
   // useEffect below (which detects bankResult && !hasRecast).
   // Industrial datasets land on "statements" which is the primary analysis view.
-  setActiveTab("statements");
+  // M1 fix: detect financial-institution scope synchronously here to avoid
+  // the "No data loaded" flash that occurs when statements tab renders before
+  // the bank-redirect useEffect fires on the next render cycle.
+  const quickScope = assessAnalysisScope(data, config);
+  const quickFamily = analysisFamilyFromScope(quickScope);
+  if (quickFamily === "financial-institution" && !quickScope.blocked) {
+    setActiveTab("bank");
+  } else if (quickScope.blocked) {
+    setActiveTab("debug");
+  } else {
+    setActiveTab("statements");
+  }
     },
     [auditGovernance.contentClass, auditGovernance.retentionDays]
   );
@@ -579,6 +665,12 @@ if (!hasRecast && rawData && rawData.length > 0) {
     if (t.id === "bank") return hasRecast || bankResult !== null;
     // Dashboard: show for banks/NBFCs too (bankResult carries the analysis)
     if (t.id === "dashboard") return hasRecast || bankResult !== null;
+    // Ratios + Quality: show for banks — FinancialInstitutionReport renders NIM/ROA/ROE trends
+    if (t.id === "ratios") return hasRecast || bankResult !== null;
+    if (t.id === "quality") return hasRecast || bankResult !== null;
+    // Scope tab — visible only when both consolidated AND standalone are loaded
+    // and the gap analysis succeeded. Phase A.
+    if (t.id === "scope") return scopeAwareResult !== null;
     // Report tab: show for banks too — FinancialInstitutionReport renders from bankResult
     if (t.id === "report") return hasRecast || bankResult !== null;
     if (t.needsData) return hasRecast;
@@ -858,6 +950,9 @@ onNavigate={(tab) => setActiveTab(tab as TabId)}
 {activeTab === "dashboard" && !hasRecast && bankResult && (
 <FinancialInstitutionReport
 bankResult={bankResult}
+config={config}
+companyId={auditMeta?.companyId ?? rawData?.[0]?.company_id ?? null}
+auditRunId={auditMeta?.runId ?? null}
 marketCapCr={config.market_price != null && config.shares_outstanding != null
 ? (config.market_price * config.shares_outstanding) / 1e7
 : null}
@@ -887,6 +982,17 @@ marketCapCr={config.market_price != null && config.shares_outstanding != null
             )}
             {activeTab === "statements" && hasRecast && <RecastStatements data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
             {activeTab === "ratios" && hasRecast && <RatioReport data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
+            {activeTab === "ratios" && !hasRecast && bankResult && (
+              <FinancialInstitutionReport
+                bankResult={bankResult}
+                config={config}
+                companyId={auditMeta?.companyId ?? rawData?.[0]?.company_id ?? null}
+                auditRunId={auditMeta?.runId ?? null}
+                marketCapCr={config.market_price != null && config.shares_outstanding != null
+                  ? (config.market_price * config.shares_outstanding) / 1e7
+                  : null}
+              />
+            )}
             {activeTab === "forecast" && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
             {activeTab === "valuation" && hasRecast && !valuationBlocked && (
               <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} publication={publication} lossMaker={lossMakerResult} ratioSanity={ratioSanity} segmentData={segmentData} />
@@ -894,6 +1000,9 @@ marketCapCr={config.market_price != null && config.shares_outstanding != null
             {activeTab === "valuation" && !hasRecast && scopeBlocked && rawData && rawData.length > 0 && bankResult && (
               <FinancialInstitutionReport
                 bankResult={bankResult}
+                config={config}
+                companyId={auditMeta?.companyId ?? rawData?.[0]?.company_id ?? null}
+                auditRunId={auditMeta?.runId ?? null}
                 marketCapCr={config.market_price != null && config.shares_outstanding != null
                   ? (config.market_price * config.shares_outstanding) / 1e7
                   : null}
@@ -902,6 +1011,9 @@ marketCapCr={config.market_price != null && config.shares_outstanding != null
             {activeTab === "bank" && bankResult && (
               <FinancialInstitutionReport
                 bankResult={bankResult}
+                config={config}
+                companyId={auditMeta?.companyId ?? rawData?.[0]?.company_id ?? null}
+                auditRunId={auditMeta?.runId ?? null}
                 marketCapCr={config.market_price != null && config.shares_outstanding != null
                   ? (config.market_price * config.shares_outstanding) / 1e7
                   : null}
@@ -931,6 +1043,19 @@ marketCapCr={config.market_price != null && config.shares_outstanding != null
               </div>
             )}
             {activeTab === "quality" && hasRecast && <QualityReport data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
+            {activeTab === "quality" && !hasRecast && bankResult && (
+              <FinancialInstitutionReport
+                bankResult={bankResult}
+                config={config}
+                companyId={auditMeta?.companyId ?? rawData?.[0]?.company_id ?? null}
+                auditRunId={auditMeta?.runId ?? null}
+                marketCapCr={config.market_price != null && config.shares_outstanding != null
+                  ? (config.market_price * config.shares_outstanding) / 1e7
+                  : null}
+              />
+            )}
+            {/* Phase A — Scope tab: subsidiary contribution panel (cons − stan gap) */}
+            {activeTab === "scope" && scopeAwareResult && <SubsidiaryContributionPanel result={scopeAwareResult} />}
             {activeTab === "comparison" && <ComparisonReport registry={registry} config={config} publication={comparisonPublication} />}
             {activeTab === "report" && hasRecast && (
               <AcademicReport
@@ -974,7 +1099,7 @@ signals and see why routing was blocked.
 ) : null}
 </div>
 )}
-{(["statements", "ratios", "forecast", "quality", "report", "regression", "v3analytics"] as TabId[]).includes(activeTab) && !hasRecast && !bankResult && !(scopeBlocked && rawData && rawData.length > 0) && (
+{(["statements", "forecast", "regression", "v3analytics"] as TabId[]).includes(activeTab) && !hasRecast && !bankResult && !(scopeBlocked && rawData && rawData.length > 0) && (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <div className="text-6xl mb-4">📂</div>
                 <p className="text-xl font-semibold text-slate-600">No data loaded</p>

@@ -605,9 +605,9 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
         "RNOA_OUTLIER_CRITICAL",
       ],
       ratioRanges: {
-        ROCE: [0.4, 0.6],
-        RNOA: [0.8, 1.1],
-        NBC: [0.02, 0.05],
+        ROCE: [0.45, 0.50],   // actual 0.4764 ± 5%
+        RNOA: [1.00, 1.12],   // actual 1.0593 ± 5%
+        NBC:  [0.024, 0.028], // actual 0.0259 ± 5%
       },
     },
   },
@@ -625,8 +625,8 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
       minPeriods: 10,
       forbiddenTerminalFlags: ["STRUCTURAL_EVENT", "CAPITAL_TRANSACTION_LIKELY"],
       ratioRanges: {
-        ROCE: [0.12, 0.6],
-        RNOA: [0.12, 0.5],
+        ROCE: [0.19, 0.22],   // actual 0.2049 ± 5%
+        RNOA: [0.24, 0.27],   // actual 0.2526 ± 5%
       },
     },
   },

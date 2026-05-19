@@ -419,6 +419,21 @@ export const CapitalineMappingSpec = {
 
     // ── Funding sources ───────────────────────────────────────────
     deposits: ["Deposits", "Total Deposits"],
+    // CASA sub-components — Capitaline breaks deposits into demand/savings/term.
+    // demandDeposits = current accounts (zero-cost), savingsDeposits = savings accounts.
+    // CASA ratio = (demand + savings) / total deposits.
+    demandDeposits: [
+      "Demand Deposits",
+      "Current Deposits",
+      "Deposits - Demand",
+      "Current Account Deposits",
+    ],
+    savingsDeposits: [
+      "Savings Deposits",
+      "Savings Bank Deposits",
+      "Deposits - Savings",
+      "Savings Account Deposits",
+    ],
     borrowings: ["Borrowings", "Total Borrowings"],
     nonConvertibleDebentures: ["Non Convertible Debentures"],
     termLoansFromBanks: ["Term Loans - Banks"],

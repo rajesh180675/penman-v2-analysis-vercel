@@ -217,6 +217,17 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   const borrowings         = pickValue(raw, bs.borrowings,          "BalanceSheet");
   const cashAndBalanceWithRBI = pickValue(raw, bs.cashAndBalanceWithRBI, "BalanceSheet");
 
+  // CASA sub-components — demand (current) + savings deposits.
+  // casaRatio is derived here when Capitaline provides the breakdown;
+  // it may be overwritten later by the quality sidecar join if a more
+  // precise figure is available there.
+  const demandDeposits  = pickValue(raw, bs.demandDeposits,  "BalanceSheet");
+  const savingsDeposits = pickValue(raw, bs.savingsDeposits, "BalanceSheet");
+  const casaRatioRaw: number | null =
+    demandDeposits != null && savingsDeposits != null && deposits != null && deposits > 0
+      ? (demandDeposits + savingsDeposits) / deposits
+      : null;
+
   // Phase K — NBFC funding mix breakdown
   const nonConvertibleDebentures   = pickValue(raw, bs.nonConvertibleDebentures,   "BalanceSheet");
   const termLoansFromBanks         = pickValue(raw, bs.termLoansFromBanks,         "BalanceSheet");
@@ -286,7 +297,10 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
     roe: null,
     creditCost: null,
     costToIncome: null,
-    casaRatio: null,
+    // Capitaline-derived CASA ratio (demand + savings / total deposits).
+    // null when Capitaline does not break out deposit sub-types.
+    // May be overwritten by quality sidecar join below if sidecar has a value.
+    casaRatio: casaRatioRaw,
     // Phase K — NBFC funding mix (raw)
     nonConvertibleDebentures,
     termLoansFromBanks,
@@ -356,23 +370,23 @@ function computeBankRatios(
           sumStrict(prev.advances,    prev.investments),
         );
 
-    // NIM = NII / Average Earning Assets
-    if (current.nii != null && earningAssets != null && earningAssets > 0) {
+    // NIM = NII / Average Earning Assets — skip for insurance (premium ≠ interest)
+    if (subtype !== "insurance" && current.nii != null && earningAssets != null && earningAssets > 0) {
       result.nim = current.nii / earningAssets;
     }
 
-    // ROA = PAT / Average Total Assets
+    // ROA = PAT / Average Total Assets (meaningful for all subtypes incl. insurance)
     if (current.pat != null && avgAssets != null && avgAssets > 0) {
       result.roa = current.pat / avgAssets;
     }
 
-    // ROE = PAT / Average Equity
+    // ROE = PAT / Average Equity (meaningful for all subtypes incl. insurance)
     if (current.pat != null && avgEquity != null && avgEquity > 0) {
       result.roe = current.pat / avgEquity;
     }
 
-    // Credit Cost = Provisions / Average Advances
-    if (current.provisions != null && avgAdvances != null && avgAdvances > 0) {
+    // Credit Cost = Provisions / Average Advances — skip for insurance (no loan book)
+    if (subtype !== "insurance" && current.provisions != null && avgAdvances != null && avgAdvances > 0) {
       result.creditCost = Math.abs(current.provisions) / avgAdvances;
     }
 
@@ -391,9 +405,12 @@ function computeBankRatios(
   }
 
   // Cost to Income = Operating Expenses / (NII + Other Income)
-  const totalIncome = sumLenient(current.nii, current.otherIncome);
-  if (current.operatingExpenses != null && totalIncome != null && totalIncome > 0) {
-    result.costToIncome = Math.abs(current.operatingExpenses) / totalIncome;
+  // Skip for insurance — NII is not meaningful; use expenseRatio instead.
+  if (subtype !== "insurance") {
+    const totalIncome = sumLenient(current.nii, current.otherIncome);
+    if (current.operatingExpenses != null && totalIncome != null && totalIncome > 0) {
+      result.costToIncome = Math.abs(current.operatingExpenses) / totalIncome;
+    }
   }
 
   // Phase K — NBFC: leverage and debt mix (point-in-time, no averaging needed)
@@ -458,10 +475,12 @@ function computeBankRatios(
 // ─── Subtype Detection ──────────────────────────────────────────────────────
 
 function detectSubtype(scope: ScopeAssessment): FinancialInstitutionSubtype {
-  // Count distinct signal labels per kind. A single banking-business
-  // investment line on an NBFC's books shouldn't flip the classification.
-  // Require >= 2 distinct banking labels before declaring "bank"; otherwise
-  // prefer NBFC if NBFC signals are present (review W1).
+  // Count distinct signal labels per kind.
+  // Priority: insurance > bank (≥2 labels) > nbfc > bank (1 label) > generic.
+  // A single banking-business investment line on an NBFC's books shouldn't
+  // flip the classification — require ≥2 distinct banking labels before
+  // declaring "bank" outright. A single banking label still routes to "bank"
+  // as a last resort when no NBFC signals are present (review W1).
   const counts = new Map<string, number>();
   for (const s of scope.signals) {
     if (s.kind === "manual-override") continue;
@@ -536,9 +555,12 @@ export function processBankData(
       const match = qualityIndex.get(m.period_end);
       if (match) {
         m.quality = match;
-        // Only pull CASA from the sidecar when we have a matching quality record.
-        // Do NOT overwrite a Capitaline-derived casaRatio when no match exists.
-        m.casaRatio = match.casa_pct ?? null;
+        // Only pull CASA from the sidecar when we have a matching quality record
+        // AND the sidecar actually has a value. Do NOT overwrite a Capitaline-derived
+        // casaRatio with null.
+        if (match.casa_pct != null) {
+          m.casaRatio = match.casa_pct;
+        }
       }
     }
   }

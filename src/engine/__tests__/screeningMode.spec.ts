@@ -109,8 +109,10 @@ describe("assessAnalysisScope — screeningOnly on all return paths", () => {
       "Investments of Life Insurance Business__BalanceSheet": 100000,
     });
     const result = assessAnalysisScope([insurancePeriod]);
-    // Insurance-only → blocked
-    expect(result.blocked).toBe(true);
+    // Insurance pipeline is now implemented — insurance-only datasets are supported (not blocked).
+    // Single-period insurance still sets screeningOnly=true (insufficient history for full analysis).
+    expect(result.blocked).toBe(false);
+    expect(result.classification).toBe("supported-financial");
     expect(result.screeningOnly).toBe(true);
   });
 

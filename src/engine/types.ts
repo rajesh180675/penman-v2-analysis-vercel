@@ -833,3 +833,116 @@ export function deriveKwFromConfig(cfg: EngineConfig): number {
   const kd_aftertax = kd_pretax * (1 - tax_rate_for_kd);
   return ke * 0.80 + kd_aftertax * 0.20;
 }
+
+export interface ConfigValidationWarning {
+  field: string;
+  value: number;
+  message: string;
+  severity: "error" | "warning";
+}
+
+/**
+ * Validate EngineConfig for common input mistakes.
+ *
+ * Returns an array of warnings/errors. Empty array = config is clean.
+ * Does NOT throw — callers decide how to surface issues.
+ *
+ * Common mistakes caught:
+ *   - ke entered as percentage (e.g. 13 instead of 0.13)
+ *   - terminal_growth_rate > ke (Gordon model blows up)
+ *   - negative shares_outstanding or market_price
+ *   - statutory_tax_rate outside [0, 0.5]
+ *   - risk_free_rate or equity_risk_premium entered as percentage
+ */
+export function validateEngineConfig(cfg: EngineConfig): ConfigValidationWarning[] {
+  const warnings: ConfigValidationWarning[] = [];
+
+  // ke sanity: valid range is 0.05–0.30 (5%–30%). Values > 1 almost certainly
+  // mean the user typed "13" instead of "0.13".
+  const ke = ke_from_config(cfg);
+  if (cfg.ke > 1) {
+    warnings.push({
+      field: "ke",
+      value: cfg.ke,
+      severity: "error",
+      message: `ke = ${cfg.ke.toFixed(2)} looks like a percentage entry. Did you mean ${(cfg.ke / 100).toFixed(4)} (${cfg.ke.toFixed(1)}%)?`,
+    });
+  } else if (ke < 0.04 || ke > 0.35) {
+    warnings.push({
+      field: "ke",
+      value: ke,
+      severity: "warning",
+      message: `ke = ${(ke * 100).toFixed(1)}% is outside the typical 4%–35% range for Indian equities.`,
+    });
+  }
+
+  // risk_free_rate: valid range 0.03–0.12. Values > 0.20 likely entered as %.
+  if (cfg.risk_free_rate > 0.20) {
+    warnings.push({
+      field: "risk_free_rate",
+      value: cfg.risk_free_rate,
+      severity: "error",
+      message: `risk_free_rate = ${cfg.risk_free_rate.toFixed(2)} looks like a percentage entry. Did you mean ${(cfg.risk_free_rate / 100).toFixed(4)}?`,
+    });
+  }
+
+  // equity_risk_premium: valid range 0.03–0.12.
+  if (cfg.equity_risk_premium > 0.20) {
+    warnings.push({
+      field: "equity_risk_premium",
+      value: cfg.equity_risk_premium,
+      severity: "error",
+      message: `equity_risk_premium = ${cfg.equity_risk_premium.toFixed(2)} looks like a percentage entry. Did you mean ${(cfg.equity_risk_premium / 100).toFixed(4)}?`,
+    });
+  }
+
+  // terminal_growth_rate must be < ke (Gordon model denominator must be positive).
+  const g = cfg.terminal_growth_rate ?? 0.05;
+  if (g >= ke) {
+    warnings.push({
+      field: "terminal_growth_rate",
+      value: g,
+      severity: "error",
+      message: `terminal_growth_rate (${(g * 100).toFixed(1)}%) ≥ ke (${(ke * 100).toFixed(1)}%). Gordon Growth model denominator (ke − g) would be ≤ 0 — valuation will blow up.`,
+    });
+  } else if (g > 0.10) {
+    warnings.push({
+      field: "terminal_growth_rate",
+      value: g,
+      severity: "warning",
+      message: `terminal_growth_rate = ${(g * 100).toFixed(1)}% exceeds India's long-run nominal GDP growth proxy (~7%). Consider using ≤ 7%.`,
+    });
+  }
+
+  // statutory_tax_rate: valid range 0.10–0.40.
+  if (cfg.statutory_tax_rate < 0.05 || cfg.statutory_tax_rate > 0.50) {
+    warnings.push({
+      field: "statutory_tax_rate",
+      value: cfg.statutory_tax_rate,
+      severity: "warning",
+      message: `statutory_tax_rate = ${(cfg.statutory_tax_rate * 100).toFixed(1)}% is outside the typical 10%–40% range.`,
+    });
+  }
+
+  // shares_outstanding: must be positive when set.
+  if (cfg.shares_outstanding != null && cfg.shares_outstanding <= 0) {
+    warnings.push({
+      field: "shares_outstanding",
+      value: cfg.shares_outstanding,
+      severity: "error",
+      message: `shares_outstanding must be positive (got ${cfg.shares_outstanding}).`,
+    });
+  }
+
+  // market_price: must be positive when set.
+  if (cfg.market_price != null && cfg.market_price <= 0) {
+    warnings.push({
+      field: "market_price",
+      value: cfg.market_price,
+      severity: "error",
+      message: `market_price must be positive (got ${cfg.market_price}).`,
+    });
+  }
+
+  return warnings;
+}

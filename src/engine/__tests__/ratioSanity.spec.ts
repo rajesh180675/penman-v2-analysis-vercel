@@ -180,5 +180,31 @@ describe("ratio sanity bands", () => {
       const result = evaluateRatioSanity({ companyType: "bank" });
       expect(result.status).toBe("n/a");
     });
+
+    // F3: ratio sanity must still fire when company_type="auto" is resolved
+    // to a detected type. The D2 bug (sanity never fires for auto-detected
+    // companies) is caught by pipeline.ts resolving the effective type before
+    // calling evaluateRatioSanity. This test verifies the evaluateRatioSanity
+    // function itself handles "auto" gracefully (falls back to broad industrial bands).
+    it("F3: auto company_type falls back to broad industrial bands (not n/a)", () => {
+      // An ITC-like industrial company with company_type="auto" should still
+      // get sanity checks using the broad industrial bands.
+      const result = evaluateRatioSanity({
+        companyType: "auto",
+        industrial: { ROCE: 0.25, RNOA: 0.30, PM: 0.18, FLEV: 0.1 },
+      });
+      // Should produce checks (not n/a) — broad industrial bands apply
+      expect(result.status).not.toBe("n/a");
+      expect(result.checks.length).toBeGreaterThan(0);
+    });
+
+    it("F3: auto company_type with impossible ROCE still flags as fail", () => {
+      // Even with auto detection, a 250% ROCE should be caught.
+      const result = evaluateRatioSanity({
+        companyType: "auto",
+        industrial: { ROCE: 2.5, RNOA: 0.30, PM: 0.18 },
+      });
+      expect(result.status).toBe("fail");
+    });
   });
 });

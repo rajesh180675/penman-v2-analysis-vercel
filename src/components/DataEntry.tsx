@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { RawPeriodData, EngineConfig } from "../engine/types";
+import { useState, useCallback, useMemo } from "react";
+import { RawPeriodData, EngineConfig, validateEngineConfig } from "../engine/types";
 import type { CapitalineParseDebug } from "../engine/capitalineParser";
 import { parseScreenerTabDelimitedDetailed } from "../engine/screenerParser";
 import { parseRawPeriodsJsonDetailed } from "../engine/jsonIngestion";
@@ -18,10 +18,19 @@ import {
 import ManualEntryWizard from "./ManualEntryWizard";
 import OnboardingCard from "./dashboard/OnboardingCard";
 import CompanyLibraryGrid from "./data-entry/CompanyLibraryGrid";
-import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
 
 interface Props {
-  onDataSubmit: (data: RawPeriodData[], debug?: CapitalineParseDebug, meta?: AuditSubmissionMeta, parserDiagnostics?: SourceParserDiagnostics | null, segmentData?: import("../engine/segmentParser").SegmentData | null) => void;
+  onDataSubmit: (
+    data: RawPeriodData[],
+    debug?: CapitalineParseDebug,
+    meta?: AuditSubmissionMeta,
+    parserDiagnostics?: SourceParserDiagnostics | null,
+    segmentData?: import("../engine/segmentParser").SegmentData | null,
+    // Phase A — optional standalone dataset for dual-scope (consolidated + standalone)
+    // analysis. When present, App computes the gap (cons − stan = subsidiary
+    // contribution). null when only consolidated was loaded.
+    standaloneData?: RawPeriodData[] | null,
+  ) => void;
   currentData: RawPeriodData[] | null;
   config: EngineConfig;
   onConfigChange: (cfg: EngineConfig) => void;
@@ -42,6 +51,9 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
   const [showCostOfCapital, setShowCostOfCapital] = useState(false);
   const auditGovernance = getAuditClientGovernance();
 
+  // Fix 10: live config validation — catches ke=130, g≥ke, etc.
+  const configWarnings = useMemo(() => validateEngineConfig(config), [config]);
+
   const buildMeta = useCallback(
     (sourceMode: AuditSubmissionMeta["sourceMode"], overrides?: Partial<AuditSubmissionMeta>): AuditSubmissionMeta => {
       const meta = {
@@ -59,7 +71,14 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
     [auditGovernance.contentClass, auditGovernance.retentionDays, companyId]
   );
 
-  const processZip = useCallback(async (file: File, overrideCompanyId?: string) => {
+  const processZip = useCallback(async (
+    file: File,
+    overrideCompanyId?: string,
+    // Phase A — optional pre-parsed standalone periods. When the library card
+    // loaded both consolidated + standalone, the caller parses standalone
+    // first (so failures don't abort consolidated) and passes the periods here.
+    standalonePeriods?: RawPeriodData[] | null,
+  ) => {
     if (!file.name.toLowerCase().endsWith(".zip")) {
       setError("Please upload a .zip file containing Capitaline XLS exports.");
       setUploadStep("failed");
@@ -114,7 +133,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
             : null,
         },
       });
-      onDataSubmit(periods, debug, meta, null, segmentData);
+      onDataSubmit(periods, debug, meta, null, segmentData, standalonePeriods ?? null);
       if (periods.length === 0) {
         setError("Parsed 0 periods. Check Debug tab for details.");
         setUploadStep("failed");
@@ -192,10 +211,10 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 dark:bg-slate-900/60 dark:border-slate-700 p-6">
           <CompanyLibraryGrid
             disabled={isProcessing}
-            onPickCompany={async (folder, ticker, type, scope) => {
+            onPickCompany={async (folder, ticker, type, scope, hasStandalone) => {
               try {
                 setIsProcessing(true); setError("");
-                
+
                 // Wire chosen company parameters directly to the engine configuration
                 onConfigChange({
                   ...config,
@@ -205,14 +224,55 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                   company_type: type === "bank" || type === "nbfc" || type === "insurance" ? type : "auto",
                 });
 
-                const zipName = scope === "standalone" ? "standalone.zip" : `${folder}.zip`;
-                const zipUrl = `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(zipName)}`;
-                const resp = await fetch(zipUrl);
-                if (!resp.ok) throw new Error(`Library ${scope} ZIP not found for "${folder}".`);
-                const blob = await resp.blob();
-                const file = new File([blob], zipName, { type: "application/zip" });
-                setCompanyId(ticker.toUpperCase().slice(0, 20));
-                await processZip(file, ticker.toUpperCase().slice(0, 20));
+                // Phase A — dual-scope loading. When the company has standalone
+                // available, fetch BOTH consolidated and standalone ZIPs in
+                // parallel. Consolidated drives the main pipeline; standalone
+                // feeds the subsidiary contribution gap analysis.
+                //
+                // Legacy: when scope==="standalone" the user explicitly opted
+                // into standalone-only analysis (rare; keep it working).
+                const useDualScope = scope === "consolidated" && hasStandalone === true;
+                const consolidatedUrl = `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(folder)}.zip`;
+                const standaloneUrl   = `/data/companies/${encodeURIComponent(folder)}/standalone.zip`;
+
+                if (useDualScope) {
+                  // Parallel fetch of both ZIPs
+                  const [consResp, stanResp] = await Promise.all([
+                    fetch(consolidatedUrl),
+                    fetch(standaloneUrl),
+                  ]);
+                  if (!consResp.ok) throw new Error(`Consolidated ZIP not found for "${folder}".`);
+                  // Standalone failure is non-fatal — fall back to consolidated-only
+                  const consBlob = await consResp.blob();
+                  const consFile = new File([consBlob], `${folder}.zip`, { type: "application/zip" });
+                  setCompanyId(ticker.toUpperCase().slice(0, 20));
+
+                  let standalonePeriods: RawPeriodData[] | null = null;
+                  if (stanResp.ok) {
+                    try {
+                      const stanBlob = await stanResp.blob();
+                      const stanFile = new File([stanBlob], "standalone.zip", { type: "application/zip" });
+                      const { parseCapitalineZip } = await import("../engine/capitalineParser");
+                      const stanResult = await parseCapitalineZip(stanFile, { companyId: ticker.toUpperCase().slice(0, 20) });
+                      standalonePeriods = stanResult.periods.length > 0 ? stanResult.periods : null;
+                    } catch (stanErr) {
+                      // Standalone parse failure shouldn't block consolidated analysis
+                      console.warn(`[DataEntry] standalone parse failed for ${folder}, continuing with consolidated only:`, stanErr);
+                    }
+                  }
+                  await processZip(consFile, ticker.toUpperCase().slice(0, 20), standalonePeriods);
+                } else {
+                  // Single-scope path (legacy: user picked Standalone explicitly,
+                  // OR company has no standalone available)
+                  const zipName = scope === "standalone" ? "standalone.zip" : `${folder}.zip`;
+                  const zipUrl = `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(zipName)}`;
+                  const resp = await fetch(zipUrl);
+                  if (!resp.ok) throw new Error(`Library ${scope} ZIP not found for "${folder}".`);
+                  const blob = await resp.blob();
+                  const file = new File([blob], zipName, { type: "application/zip" });
+                  setCompanyId(ticker.toUpperCase().slice(0, 20));
+                  await processZip(file, ticker.toUpperCase().slice(0, 20));
+                }
               } catch (err) {
                 setError(err instanceof Error ? err.message : String(err));
                 setIsProcessing(false);
@@ -227,23 +287,37 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 p-2 inline-flex gap-2">
-        {([
-          ["capitaline", "Capitaline ZIP"],
-          ["screener", "Screener Paste"],
-          ["json", "Raw JSON"],
-          ["xbrl", "XBRL XML"],
-          ["manual", "Manual Wizard"],
-        ] as const).map(([k, lbl]) => (
-          <button
-            key={k}
-            onClick={() => setMode(k)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium ${mode === k ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700"}`}
-          >
-            {lbl}
-          </button>
-        ))}
-      </div>
+      {/* Phase C — Mode tabs hidden behind a disclosure when on the default
+          Capitaline path. First-time users see the library + Capitaline upload
+          only; "Other formats" reveals Screener / JSON / XBRL / Manual when
+          power users need them. */}
+      <details className="bg-white rounded-xl border border-slate-200 dark:bg-slate-900/40 dark:border-slate-700">
+        <summary className="px-3 py-2 cursor-pointer text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-300 select-none">
+          {mode === "capitaline" ? "📂 Capitaline ZIP (default)" : `🔧 ${
+            mode === "screener" ? "Screener Paste" :
+            mode === "json" ? "Raw JSON" :
+            mode === "xbrl" ? "XBRL XML" : "Manual Wizard"
+          }`}
+          <span className="ml-2 text-slate-400">— change format</span>
+        </summary>
+        <div className="px-3 pb-3 pt-1 inline-flex gap-2 flex-wrap">
+          {([
+            ["capitaline", "Capitaline ZIP"],
+            ["screener", "Screener Paste"],
+            ["json", "Raw JSON"],
+            ["xbrl", "XBRL XML"],
+            ["manual", "Manual Wizard"],
+          ] as const).map(([k, lbl]) => (
+            <button
+              key={k}
+              onClick={() => setMode(k)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${mode === k ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}
+            >
+              {lbl}
+            </button>
+          ))}
+        </div>
+      </details>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-start gap-3 flex-wrap">
@@ -252,54 +326,6 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
             <p className="text-sm text-slate-500 mt-1">ZIP file containing Balance Sheet, P&amp;L &amp; Cash Flow .xls exports</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Phase I10 — Load from library dropdown */}
-            <select
-              className="text-sm px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-100 font-medium"
-              defaultValue=""
-                onChange={async (e) => {
-                    const folder = e.target.value;
-                    if (!folder) return;
-                    e.target.value = "";
-                    try {
-                        setIsProcessing(true); setError("");
-                        // Resolve NSE ticker and wire config before processing
-                        const ticker = resolveNseSymbol(folder) ?? folder.toUpperCase().replace(/\s+/g, "");
-                        onConfigChange({
-                            ...config,
-                            quality_data_folder: folder,
-                            market_data_symbol: ticker,
-                            ticker: ticker,
-                        });
-                        const zipUrl = `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(folder)}.zip`;
-                        const resp = await fetch(zipUrl);
-                        if (!resp.ok) throw new Error(`Library ZIP not found for "${folder}". Upload the file manually.`);
-                        const blob = await resp.blob();
-                        const file = new File([blob], `${folder}.zip`, { type: "application/zip" });
-                        setCompanyId(ticker.toUpperCase().slice(0, 20));
-                        await processZip(file, ticker.toUpperCase().slice(0, 20));
-                    } catch (err) {
-                        setError(err instanceof Error ? err.message : String(err));
-                        setIsProcessing(false);
-                    }
-                }}
-            >
-              <option value="">📂 Load from library…</option>
-              {[
-                "ITC",
-                "HDFC bank",
-                "ICICI bank",
-                "bajaj finance",
-                "Life Insurance Corporation of India",
-                "paytm",
-                "Power Grid Corporation of India Ltd",
-                "reliance Industries",
-                "Tata Consultancy Services Ltd",
-                "Tata steel",
-                "Vodafone Idea Ltd",
-              ].map((name) => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
             <button onClick={handleLoadSample} className="text-sm px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium">
               Load VST Sample (10Y)
             </button>
@@ -364,6 +390,25 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
             />
           </div>
         </div>
+
+        {/* Fix 10: Config validation warnings — shown inline below essential fields */}
+        {configWarnings.length > 0 && (
+          <div className="mx-6 mb-2 space-y-1">
+            {configWarnings.map((w, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-2 rounded-lg px-3 py-2 text-xs ${
+                  w.severity === "error"
+                    ? "bg-red-50 border border-red-200 text-red-800 dark:bg-red-950/30 dark:border-red-800 dark:text-red-300"
+                    : "bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300"
+                }`}
+              >
+                <span className="mt-0.5 shrink-0">{w.severity === "error" ? "⛔" : "⚠️"}</span>
+                <span><b>{w.field}:</b> {w.message}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Collapsible: Advanced Config */}
         <div className="border-b border-slate-100">

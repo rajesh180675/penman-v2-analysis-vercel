@@ -1,33 +1,31 @@
 [
   {
-    "folder": "bajaj finance",
+    "folder": "Bajaj Finance",
     "name": "Bajaj Finance",
-    "ticker": "BAJFINANCE",
-    "sector": "NBFC",
+    "ticker": "BAJAJFINANCE",
+    "sector": "Nbfc",
     "type": "nbfc",
-    "description": "Consumer finance NBFC with retail loan focus",
+    "description": "Pre-loaded Capitaline financial dataset for Bajaj Finance.",
     "emoji": "💳",
-    "showcaseFor": "NBFC routing — borrowings/equity leverage frame",
     "hasStandalone": true
   },
   {
-    "folder": "HDFC bank",
+    "folder": "HDFC Bank",
     "name": "HDFC Bank",
     "ticker": "HDFCBANK",
-    "sector": "Banking",
+    "sector": "Bank",
     "type": "bank",
-    "description": "Largest private-sector bank by assets",
+    "description": "Pre-loaded Capitaline financial dataset for HDFC Bank.",
     "emoji": "🏦",
-    "showcaseFor": "Bank-specific quality_indicators pipeline",
     "hasStandalone": true
   },
   {
-    "folder": "ICICI bank",
+    "folder": "ICICI Bank",
     "name": "ICICI Bank",
     "ticker": "ICICIBANK",
-    "sector": "Banking",
+    "sector": "Bank",
     "type": "bank",
-    "description": "Universal bank with strong digital franchise",
+    "description": "Pre-loaded Capitaline financial dataset for ICICI Bank.",
     "emoji": "🏦",
     "hasStandalone": true
   },
@@ -64,14 +62,13 @@
     "hasStandalone": true
   },
   {
-    "folder": "paytm",
-    "name": "Paytm (One97)",
+    "folder": "Paytm",
+    "name": "Paytm",
     "ticker": "PAYTM",
-    "sector": "Fintech",
-    "type": "loss-maker",
-    "description": "Digital payments + financial services platform",
-    "emoji": "📱",
-    "showcaseFor": "Loss-maker valuation pipeline (no positive earnings)",
+    "sector": "Industrial",
+    "type": "industrial",
+    "description": "Pre-loaded Capitaline financial dataset for Paytm.",
+    "emoji": "🏢",
     "hasStandalone": true
   },
   {
@@ -86,14 +83,13 @@
     "hasStandalone": true
   },
   {
-    "folder": "reliance Industries",
+    "folder": "Reliance Industries",
     "name": "Reliance Industries",
-    "ticker": "RELIANCE",
-    "sector": "Conglomerate",
-    "type": "conglomerate",
-    "description": "O2C + telecom (Jio) + retail + new energy",
-    "emoji": "🛢️",
-    "showcaseFor": "Mixed conglomerate routing + segment-aware SOTP",
+    "ticker": "RELIANCEINDU",
+    "sector": "Industrial",
+    "type": "industrial",
+    "description": "Pre-loaded Capitaline financial dataset for Reliance Industries.",
+    "emoji": "🏢",
     "hasStandalone": true
   },
   {
@@ -107,14 +103,13 @@
     "hasStandalone": false
   },
   {
-    "folder": "Tata steel",
+    "folder": "Tata Steel",
     "name": "Tata Steel",
     "ticker": "TATASTEEL",
-    "sector": "Metals (Cyclical)",
-    "type": "cyclical",
-    "description": "Integrated steel producer, India + Europe",
-    "emoji": "🏗️",
-    "showcaseFor": "Cyclical normalization + cycle-aware terminal RE",
+    "sector": "Industrial",
+    "type": "industrial",
+    "description": "Pre-loaded Capitaline financial dataset for Tata Steel.",
+    "emoji": "🏢",
     "hasStandalone": true
   },
   {

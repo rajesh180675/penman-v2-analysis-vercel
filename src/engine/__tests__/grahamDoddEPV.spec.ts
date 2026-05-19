@@ -135,27 +135,30 @@ describe("Graham-Dodd EPV", () => {
     // Adjusted earnings = (1110 - 110) × (1 - 0.252) = 1000 × 0.748 = 748
     expect(result!.adjustedEarningsPower).toBeCloseTo(748, 0);
 
-    // ke = 0.07 + 0.055 = 0.125
-    expect(result!.ke).toBeCloseTo(0.125, 4);
+    // ke = DEFAULT_CONFIG.ke = 0.13 (takes precedence over rf+erp when > 0)
+    expect(result!.ke).toBeCloseTo(0.13, 4);
 
-    // EPV operations = 748 / 0.125 = 5984
-    expect(result!.epvOperations).toBeCloseTo(5984, 0);
+    // kw = ke*0.80 + kd_aftertax*0.20 = 0.13*0.80 + (0.08*(1-0.2517))*0.20 ≈ 0.1160
+    expect(result!.kw).toBeCloseTo(0.1160, 3);
 
-    // EPV equity = 5984 - 1050 (latest NFO) = 4934
-    expect(result!.epvEquity).toBeCloseTo(4934, 0);
+    // EPV operations = 748 / kw ≈ 6450 (uses kw, not ke — enterprise value)
+    expect(result!.epvOperations).toBeCloseTo(6450, 0);
 
-    // EPV per share = 4934 / 100 = 49.34
-    expect(result!.epvPerShare).toBeCloseTo(49.34, 1);
+    // EPV equity = 6450 - 1050 (latest NFO) ≈ 5400
+    expect(result!.epvEquity).toBeCloseTo(5400, 0);
+
+    // EPV per share = 5400 / 100 ≈ 54.0
+    expect(result!.epvPerShare).toBeCloseTo(54.0, 0);
 
     // Reproduction value = latest NOA = 5100
     expect(result!.reproductionValue).toBe(5100);
 
-    // Franchise value = 5984 - 5100 = 884 (positive → moat)
-    expect(result!.franchiseValue).toBeCloseTo(884, 0);
+    // Franchise value = 6450 - 5100 ≈ 1350 (positive → moat)
+    expect(result!.franchiseValue).toBeCloseTo(1350, 0);
     expect(result!.moatSignal).toBe("moat");
 
-    // Margin of safety = (49.34 - 500) / 500 = -0.9013 (overvalued vs EPV)
-    expect(result!.marginOfSafety).toBeCloseTo(-0.9013, 2);
+    // Margin of safety = (54.0 - 500) / 500 ≈ -0.892 (overvalued vs EPV)
+    expect(result!.marginOfSafety).toBeCloseTo(-0.892, 2);
   });
 
   it("identifies no-moat when EPV < reproduction value", () => {
@@ -198,11 +201,12 @@ describe("Graham-Dodd EPV", () => {
       makePeriod({ CoreOI: 1100 }),
     ];
     // ke = 0.005 < 0.01 threshold → null
-    const badConfig = { ...baseConfig, risk_free_rate: 0, equity_risk_premium: 0.005 };
+    // Must also zero out cfg.ke so ke_from_config falls back to rf+erp
+    const badConfig = { ...baseConfig, ke: 0, risk_free_rate: 0, equity_risk_premium: 0.005 };
     const result = computeEPV(periods, badConfig);
     expect(result).toBeNull();
 
-    const veryBadConfig = { ...baseConfig, risk_free_rate: 0, equity_risk_premium: 0 };
+    const veryBadConfig = { ...baseConfig, ke: 0, risk_free_rate: 0, equity_risk_premium: 0 };
     const result2 = computeEPV(periods, veryBadConfig);
     expect(result2).toBeNull();
   });
@@ -248,5 +252,34 @@ describe("Graham-Dodd EPV", () => {
     // Negative NFO means cash-rich → EPV equity > EPV operations
     expect(result!.epvEquity).toBeGreaterThan(result!.epvOperations);
     expect(result!.franchiseValue).toBeGreaterThan(0);
+  });
+
+  // F2: EPV golden test for ke-vs-kw bug.
+  // For a levered company (FLEV > 0, NFO > 0), EPV_operations discounted at
+  // kw (WACC) must be HIGHER than if discounted at ke, because kw < ke.
+  // This test would have caught the original bug where epvOperations used ke.
+  it("F2: levered company EPV_operations is higher when discounted at kw vs ke", () => {
+    const periods = [
+      makePeriod({ CoreOI: 1000, depreciation: 100, Capex: -120, NOA: 5000, NFO: 2000 }),
+      makePeriod({ CoreOI: 1050, depreciation: 105, Capex: -125, NOA: 5200, NFO: 2100 }),
+      makePeriod({ CoreOI: 950, depreciation: 95, Capex: -115, NOA: 4800, NFO: 1900 }),
+    ];
+    // baseConfig has ke=0.13, kd_pretax=0.08, tax_rate_for_kd=0.2517
+    // kw = 0.13*0.80 + (0.08*(1-0.2517))*0.20 ≈ 0.1160 < ke=0.13
+    const result = computeEPV(periods, baseConfig);
+    expect(result).not.toBeNull();
+
+    // kw < ke → EPV_operations(kw) > EPV_operations(ke)
+    // Verify kw is actually less than ke
+    expect(result!.kw).toBeLessThan(result!.ke);
+
+    // EPV_operations = adjustedEarningsPower / kw
+    // If we had used ke instead: adjustedEarningsPower / ke < adjustedEarningsPower / kw
+    const hypotheticalEPVWithKe = result!.adjustedEarningsPower / result!.ke;
+    expect(result!.epvOperations).toBeGreaterThan(hypotheticalEPVWithKe);
+
+    // The difference should be material (not just floating point noise)
+    const pctDiff = (result!.epvOperations - hypotheticalEPVWithKe) / hypotheticalEPVWithKe;
+    expect(pctDiff).toBeGreaterThan(0.05); // at least 5% higher when using kw
   });
 });

@@ -1,6 +1,8 @@
+import { useState } from "react";
 import type { FinancialInstitutionAnalysisResult } from "../engine/analysisFamily";
 import type { BankValuationModelResult } from "../engine/bankValuation";
 import type { BankPeriodMetrics } from "../engine/bankPipeline";
+import type { EngineConfig } from "../engine/types";
 import type {
   BankAssetQualityResult,
   CapitalBufferSeverity,
@@ -12,6 +14,12 @@ import BankHealthChart from "./charts/BankHealthChart";
 interface Props {
   bankResult: FinancialInstitutionAnalysisResult;
   marketCapCr?: number | null;
+  /** Engine config — required for Excel export. When omitted, export button hidden. */
+  config?: EngineConfig;
+  /** Company label used in Cover sheet. Falls back to config.ticker. */
+  companyId?: string | null;
+  /** Audit run ID surfaced in Cover sheet for traceability. */
+  auditRunId?: string | null;
 }
 
 function fmtCr(v: number | null): string {
@@ -589,17 +597,74 @@ function ModelCard({ name, model, marketCap }: { name: string; model: BankValuat
   );
 }
 
-export default function FinancialInstitutionReport({ bankResult, marketCapCr }: Props) {
+export default function FinancialInstitutionReport({ bankResult, marketCapCr, config, companyId, auditRunId }: Props) {
   const valuation = bankResult.valuation;
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const handleExportWorkbook = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      const { generateBankWorkbook } = await import("../engine/bankExcelExport");
+      // config is required for the workbook; if not passed, fall back to a minimal default
+      const cfg = config ?? null;
+      if (!cfg) {
+        throw new Error("Engine config not available — cannot generate workbook.");
+      }
+      const wbArray = await generateBankWorkbook(bankResult, cfg, {
+        companyLabel: companyId ?? cfg.ticker ?? undefined,
+        auditRunId: auditRunId ?? null,
+        marketCapCr,
+      });
+      const blob = new Blob([wbArray], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const latestPeriod = bankResult.periods[bankResult.periods.length - 1]?.period_end?.slice(0, 10) ?? "latest";
+      const subtypeLower = bankResult.subtype.toLowerCase();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${subtypeLower}_workbook_${latestPeriod}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("[FinancialInstitutionReport] export failed:", err);
+      setExportError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold mb-1">Financial Institution Analysis</h2>
-        <div className="text-sm text-slate-600 dark:text-slate-400">
-          Subtype: <span className="font-mono">{bankResult.subtype}</span> · {bankResult.periods.length} periods
+      <div className="flex justify-between items-start gap-3 flex-wrap">
+        <div>
+          <h2 className="text-xl font-bold mb-1">Financial Institution Analysis</h2>
+          <div className="text-sm text-slate-600 dark:text-slate-400">
+            Subtype: <span className="font-mono">{bankResult.subtype}</span> · {bankResult.periods.length} periods
+          </div>
         </div>
+        {/* H5 — Bank/NBFC/Insurance Excel export. Industrial pipeline already
+            had this; banks were the audit gap. Workbook contents adapt to subtype. */}
+        {config && (
+          <button
+            onClick={handleExportWorkbook}
+            disabled={exporting}
+            className="text-sm px-3 py-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/60 font-medium border border-emerald-200 dark:border-emerald-900/60 disabled:opacity-50"
+          >
+            {exporting ? "Generating…" : "📥 Export Excel Workbook"}
+          </button>
+        )}
       </div>
+      {exportError && (
+        <div className="rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/30 dark:border-rose-800 p-3 text-sm text-rose-900 dark:text-rose-200">
+          Export failed: {exportError}
+        </div>
+      )}
 
       {bankResult.bankMetrics && bankResult.bankMetrics.length >= 2 && (
         <BankHealthChart metrics={bankResult.bankMetrics} ke={null} />

@@ -123,4 +123,43 @@ describe("bankPipeline", () => {
       expect(m.quality).toBeNull();
     }
   });
+
+  // F1: NIM, ROA, ROE, creditCost within expected ranges for a well-formed bank dataset.
+  // Catches regressions in ratio computation (denominator bugs, sign errors, etc.)
+  it("NIM, ROA, ROE, creditCost are within expected ranges (F1 audit finding)", () => {
+    const scope = assessAnalysisScope(bankPeriods);
+    const result = processBankData(bankPeriods, scope);
+    const fy25 = result.bankMetrics?.find((m) => m.period_end === "2025-03-31");
+    expect(fy25).toBeDefined();
+
+    // NIM = NII / (Advances + Investments) = 130000 / 3680000 ≈ 3.53%
+    // Valid range for a large Indian private bank: 2.5%–5.5%
+    expect(fy25!.nim).not.toBeNull();
+    expect(fy25!.nim!).toBeGreaterThan(0.025);
+    expect(fy25!.nim!).toBeLessThan(0.055);
+
+    // ROA = PAT / avg(TotalAssets) = 62000 / 3898000 ≈ 1.59%
+    // Valid range: 0.5%–3.0%
+    expect(fy25!.roa).not.toBeNull();
+    expect(fy25!.roa!).toBeGreaterThan(0.005);
+    expect(fy25!.roa!).toBeLessThan(0.030);
+
+    // ROE = PAT / avg(Equity) = 62000 / 405000 ≈ 15.3%
+    // Valid range: 5%–30%
+    expect(fy25!.roe).not.toBeNull();
+    expect(fy25!.roe!).toBeGreaterThan(0.05);
+    expect(fy25!.roe!).toBeLessThan(0.30);
+
+    // creditCost = Provisions / avg(Advances) = 22000 / 2690000 ≈ 0.82%
+    // Valid range: 0%–5%
+    expect(fy25!.creditCost).not.toBeNull();
+    expect(fy25!.creditCost!).toBeGreaterThanOrEqual(0);
+    expect(fy25!.creditCost!).toBeLessThan(0.05);
+
+    // costToIncome = OpEx / (NII + OtherIncome) = 65000 / 178000 ≈ 36.5%
+    // Valid range: 20%–70%
+    expect(fy25!.costToIncome).not.toBeNull();
+    expect(fy25!.costToIncome!).toBeGreaterThan(0.20);
+    expect(fy25!.costToIncome!).toBeLessThan(0.70);
+  });
 });

@@ -8,9 +8,12 @@
     "npm": ">=10"
   },
   "scripts": {
+    "predev": "tsx scripts/validate-registry.ts",
+    "predev:local": "tsx scripts/validate-registry.ts",
     "dev": "node sync-companies.cjs && vite",
     "dev:local": "concurrently --kill-others-on-fail -n vite,api -c blue,green \"node sync-companies.cjs && vite\" \"node --import tsx/esm server/index.ts\"",
     "server": "node --import tsx/esm server/index.ts",
+    "prebuild": "tsx scripts/validate-registry.ts",
     "build": "node sync-companies.cjs && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

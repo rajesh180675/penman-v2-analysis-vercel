@@ -146,7 +146,69 @@ describe("scopePolicy", () => {
     expect(assessment.blocked).toBe(false);
   });
 
-  it("still blocks insurance-only datasets (no pipeline yet)", () => {
+  // F4: mixed-conglomerate routing edge cases (audit finding)
+  it("F4: 1 insurance label, 1 period — immaterial, falls through to bank pipeline", () => {
+    // Single insurance label for a single period is below the materiality threshold.
+    // Should route to bank (dominant signal), not block as mixed-conglomerate.
+    const periods = [
+      {
+        company_id: "BANK_WITH_TRIVIAL_INSURANCE",
+        period_end: "2025-03-31",
+        raw_metric_values: {
+          "Cash and Balance with RBI__BalanceSheet": 50000,
+          "Advances__BalanceSheet": 200000,
+          "Deposits__BalanceSheet": 180000,
+          "Interest Earned__ProfitLoss": 20000,
+          "Total Assets__BalanceSheet": 300000,
+          "Total Equity__BalanceSheet": 40000,
+          "Profit After Tax__ProfitLoss": 5000,
+          // Single insurance label, single period — immaterial spillover
+          "Investments of Life Insurance Business__BalanceSheet": 500,
+        },
+      },
+    ];
+    const assessment = assessAnalysisScope(periods);
+    // Should NOT block — 1 insurance label × 1 period is below materiality threshold
+    expect(assessment.blocked).toBe(false);
+    // Should route to bank (dominant signal), not mixed-conglomerate
+    expect(assessment.classification).not.toBe("mixed-financial-conglomerate");
+  });
+
+  it("F4: 2 insurance labels, 4 periods — material, blocks as mixed-conglomerate", () => {
+    // Already covered by mixedConglomerateFixture() which has 3 insurance labels × 4 periods.
+    // This test uses exactly 2 insurance labels × 4 periods to verify the boundary.
+    const periods = Array.from({ length: 4 }, (_, i) => ({
+      company_id: "BANK_WITH_INSURANCE_SUB",
+      period_end: `${2022 + i}-03-31`,
+      raw_metric_values: {
+        "Cash and Balance with RBI__BalanceSheet": 50000 + i * 5000,
+        "Advances__BalanceSheet": 200000 + i * 10000,
+        // Exactly 2 insurance labels × 4 periods = 8 total observations → material
+        "Investments of Life Insurance Business__BalanceSheet": 25000 + i * 2000,
+        "Premium Earned (Net)__ProfitLoss": 3000 + i * 200,
+        "Total Assets__BalanceSheet": 300000 + i * 20000,
+        "Total Equity__BalanceSheet": 40000 + i * 3000,
+        "Profit After Tax__ProfitLoss": 5000 + i * 400,
+      },
+    }));
+    const assessment = assessAnalysisScope(periods);
+    expect(assessment.blocked).toBe(true);
+    expect(assessment.classification).toBe("mixed-financial-conglomerate");
+  });
+
+  it("F4: mixed_conglomerate_route_to='bank' override routes to bank pipeline", () => {
+    // Already covered by 'routes to bank pipeline when override = bank' above.
+    // This test verifies the specific label used in the override hint.
+    const assessment = assessAnalysisScope(mixedConglomerateFixture(), {
+      financial_institution_mode: false,
+      mixed_conglomerate_route_to: "bank",
+    });
+    expect(assessment.blocked).toBe(false);
+    expect(assessment.classification).toBe("supported-financial");
+    expect(assessment.analysisFamily).toBe("financial-institution");
+  });
+
+  it("routes insurance-only datasets to the insurance pipeline (supported since Phase B5)", () => {
     const periods = [
       {
         company_id: "INSURANCE_CASE",
@@ -169,8 +231,9 @@ describe("scopePolicy", () => {
     ];
 
     const assessment = assessAnalysisScope(periods);
-    expect(assessment.blocked).toBe(true);
-    expect(assessment.classification).toBe("unsupported-financial-company");
-    expect(assessment.label).toBe("Unsupported insurance scope");
+    // Insurance pipeline is now implemented — insurance-only datasets are supported.
+    expect(assessment.blocked).toBe(false);
+    expect(assessment.classification).toBe("supported-financial");
+    expect(assessment.label).toBe("Supported insurance scope");
   });
 });

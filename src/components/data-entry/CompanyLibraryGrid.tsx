@@ -34,7 +34,7 @@ const COMPANIES: LibraryCompany[] = [
     hasStandalone: true,
   },
   {
-    folder: "HDFC bank",
+    folder: "HDFC Bank",
     name: "HDFC Bank",
     ticker: "HDFCBANK",
     sector: "Banking",
@@ -45,7 +45,7 @@ const COMPANIES: LibraryCompany[] = [
     hasStandalone: true,
   },
   {
-    folder: "ICICI bank",
+    folder: "ICICI Bank",
     name: "ICICI Bank",
     ticker: "ICICIBANK",
     sector: "Banking",
@@ -75,7 +75,7 @@ const COMPANIES: LibraryCompany[] = [
     hasStandalone: false,
   },
   {
-    folder: "bajaj finance",
+    folder: "Bajaj Finance",
     name: "Bajaj Finance",
     ticker: "BAJFINANCE",
     sector: "NBFC",
@@ -119,7 +119,7 @@ const COMPANIES: LibraryCompany[] = [
     hasStandalone: true,
   },
   {
-    folder: "Tata steel",
+    folder: "Tata Steel",
     name: "Tata Steel",
     ticker: "TATASTEEL",
     sector: "Metals (Cyclical)",
@@ -130,7 +130,7 @@ const COMPANIES: LibraryCompany[] = [
     hasStandalone: true,
   },
   {
-    folder: "paytm",
+    folder: "Paytm",
     name: "Paytm (One97)",
     ticker: "PAYTM",
     sector: "Fintech",
@@ -141,7 +141,7 @@ const COMPANIES: LibraryCompany[] = [
     hasStandalone: true,
   },
   {
-    folder: "reliance Industries",
+    folder: "Reliance Industries",
     name: "Reliance Industries",
     ticker: "RELIANCE",
     sector: "Conglomerate",
@@ -178,8 +178,16 @@ const TYPE_BADGE_STYLES: Record<LibraryCompany["type"], { bg: string; text: stri
 };
 
 interface Props {
-  /** Called when a company is picked. Receives the folder name (used by existing fetch logic). */
-  onPickCompany: (folder: string, ticker: string, type: LibraryCompany["type"], scope: "consolidated" | "standalone") => void;
+  /** Called when a company is picked. Receives the folder name (used by existing fetch logic).
+   *  Phase A — also receives `hasStandalone` so the caller can decide whether to fetch
+   *  both ZIPs (consolidated + standalone) for dual-scope analysis. */
+  onPickCompany: (
+    folder: string,
+    ticker: string,
+    type: LibraryCompany["type"],
+    scope: "consolidated" | "standalone",
+    hasStandalone: boolean,
+  ) => void;
   /** Disabled state — used while a load is in progress */
   disabled?: boolean;
 }
@@ -221,15 +229,17 @@ export default function CompanyLibraryGrid({ onPickCompany, disabled = false }: 
         <div>
           <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Company Library</h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            {companies.length} pre-loaded Indian companies covering every sector and architecture type
+            {companies.length} pre-loaded Indian companies. Pick one to load consolidated data; standalone (when available) is fetched automatically for gap analysis.
           </p>
         </div>
-        
+
         {/* Search, Sector, and Scope Filter Cluster */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Scope Toggle Button Group */}
-          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/80 p-1 rounded-lg border border-slate-200 dark:border-slate-800">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1">Scope:</span>
+          {/* Scope Toggle — kept for power users who want standalone-only.
+              Default "Consolidated" auto-loads BOTH ZIPs and runs gap analysis.
+              "Standalone" loads only standalone (legacy single-source path). */}
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/80 p-1 rounded-lg border border-slate-200 dark:border-slate-800" title="Default loads consolidated + standalone together for subsidiary contribution analysis. Toggle to standalone-only for niche use cases.">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1">Mode:</span>
             <div className="flex gap-0.5">
               <button
                 type="button"
@@ -292,7 +302,7 @@ export default function CompanyLibraryGrid({ onPickCompany, disabled = false }: 
             return (
               <button
                 key={c.folder}
-                onClick={() => !isUnsupportedStandalone && onPickCompany(c.folder, c.ticker, c.type, scope)}
+                onClick={() => !isUnsupportedStandalone && onPickCompany(c.folder, c.ticker, c.type, scope, c.hasStandalone === true)}
                 disabled={isCardDisabled}
                 className={`text-left rounded-xl border p-4 transition-all duration-200 group ${
                   isUnsupportedStandalone
@@ -318,16 +328,37 @@ export default function CompanyLibraryGrid({ onPickCompany, disabled = false }: 
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${badge.bg} ${badge.text} ${badge.border}`}>
                       {badge.label}
                     </span>
-                    {scope === "standalone" && (
-                      c.hasStandalone ? (
-                        <span className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60">
-                          ✓ Standalone
+                    {/* Phase C — Data availability badges. Always show what
+                        ZIPs are available so the user knows up front whether
+                        dual-scope analysis (consolidated + standalone) will run. */}
+                    <div className="flex gap-1">
+                      <span
+                        className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60"
+                        title="Consolidated statements available"
+                      >
+                        ✓ Cons
+                      </span>
+                      {c.hasStandalone ? (
+                        <span
+                          className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900/60"
+                          title="Standalone statements available — gap analysis will run automatically"
+                        >
+                          ✓ Stan
                         </span>
                       ) : (
-                        <span className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60">
-                          🚫 Cons. Only
+                        <span
+                          className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-slate-50 dark:bg-slate-900/40 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-800"
+                          title="No standalone statements — only consolidated analysis"
+                        >
+                          – Stan
                         </span>
-                      )
+                      )}
+                    </div>
+                    {/* Legacy standalone-only banner kept for users who explicitly toggled scope */}
+                    {scope === "standalone" && !c.hasStandalone && (
+                      <span className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60">
+                        🚫 Not available
+                      </span>
                     )}
                   </div>
                 </div>
