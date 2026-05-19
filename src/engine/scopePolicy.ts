@@ -92,7 +92,10 @@ const SIGNAL_GROUPS: Array<{
 ];
 
 function isMaterialValue(value: number | null | undefined) {
-  return value != null && Number.isFinite(value) && Math.abs(value) > 0.0001;
+  // Threshold: 1 Cr minimum for Cr-denominated data.
+  // The old 0.0001 threshold (Rs 1,000) caused false NBFC positives for
+  // industrial companies with trivial fee income lines.
+  return value != null && Number.isFinite(value) && Math.abs(value) >= 1.0;
 }
 
 function countObservedKeys(periods: RawPeriodData[]) {

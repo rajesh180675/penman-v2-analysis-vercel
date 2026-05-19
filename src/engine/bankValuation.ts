@@ -142,8 +142,12 @@ function justifiedPBGordon(
 
   let fairPB = (roe - g) / (ke - g);
   let floored = false;
-  if (isInsurance && fairPB < 0.7) {
-    fairPB = 0.7;
+  // Floor at 0.3x for distressed banks (ROE << ke), 0.7x for insurance.
+  // A negative fair P/B is economically meaningless — the floor represents
+  // liquidation/franchise value even in a value-destroying scenario.
+  const pbFloor = isInsurance ? 0.7 : 0.3;
+  if (fairPB < pbFloor) {
+    fairPB = pbFloor;
     floored = true;
   }
   const value = fairPB * bv;
