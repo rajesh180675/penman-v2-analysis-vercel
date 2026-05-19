@@ -166,7 +166,12 @@ function pickValue(
 }
 
 function avg(a: number | null, b: number | null): number | null {
-  if (a == null || b == null) return a ?? b;
+  // M5: when one value is null, return the non-null value as a point estimate
+  // rather than silently degrading to null. This preserves ratio computation
+  // for the first period of a new data series (prev is null for period 0).
+  if (a == null && b == null) return null;
+  if (a == null) return b;
+  if (b == null) return a;
   return (a + b) / 2;
 }
 
@@ -334,7 +339,15 @@ function computeBankRatios(
     const avgAssets   = avg(current.totalAssets,  prev.totalAssets);
     const avgEquity   = avg(current.totalEquity,  prev.totalEquity);
     const avgAdvances = avg(current.advances,     prev.advances);
-    const avgBorrowings = avg(result.borrowings, prev.borrowings);
+
+    // M4: apply the same NBFC borrowings fallback to prev so avgBorrowings
+    // is consistent — using result.borrowings (fallback-applied) vs raw
+    // prev.borrowings produced an asymmetric average for the first NBFC period.
+    let prevBorrowings = prev.borrowings;
+    if (isNbfcFraming && prevBorrowings == null && prev.totalAssets != null && prev.totalEquity != null) {
+      prevBorrowings = prev.totalAssets - prev.totalEquity;
+    }
+    const avgBorrowings = avg(result.borrowings, prevBorrowings);
     // Earning assets: advances + investments for banks, advances-only for NBFCs.
     const earningAssets = isNbfcFraming
       ? avgAdvances
