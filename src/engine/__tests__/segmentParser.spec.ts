@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseSegmentFinanceHTML } from "../segmentParser";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 
 describe("segmentParser", () => {
@@ -32,8 +32,12 @@ describe("segmentParser", () => {
     }
   });
 
-  it("parses ITC geographic segment file", () => {
-    const html = readFileSync(resolve(fixturesDir, "SegmentFinance_ (1).xls"), "utf-8");
+  // Capitaline export's secondary segment view (geographic). Filename uses
+  // "(1)" suffix as the second variant. This file is local-only Capitaline
+  // data — not tracked in git — so the test gracefully skips when missing.
+  const geoSegmentFile = resolve(fixturesDir, "SegmentFinance_ (1).xls");
+  it.skipIf(!existsSync(geoSegmentFile))("parses ITC geographic segment file", () => {
+    const html = readFileSync(geoSegmentFile, "utf-8");
     const result = parseSegmentFinanceHTML(html);
 
     expect(result).not.toBeNull();
