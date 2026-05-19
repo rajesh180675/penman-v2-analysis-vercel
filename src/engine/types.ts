@@ -671,6 +671,8 @@ export interface EngineConfig {
   shares_outstanding  ?: number;
   market_price        ?: number;
   ticker              ?: string;
+  /** Terminal growth rate used by bank valuation DDM/Gordon and industrial TV. */
+  terminal_growth_rate?: number;
   sector_template     ?: ValuationSectorTemplate;
   market_data_symbol  ?: string;
   market_data_instrument_key?: string;

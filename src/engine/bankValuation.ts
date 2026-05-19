@@ -165,6 +165,7 @@ function equityResidualIncome(
   ke: number,
   g: number,
   marketCap: number | null,
+  payoutRatio: number | null,
 ): BankValuationModelResult {
   // Need at least 3 years of book value AND positive earnings to anchor.
   const eligible = metrics.filter((m) => m.totalEquity != null && m.totalEquity > 0 && m.pat != null);
@@ -186,7 +187,7 @@ function equityResidualIncome(
     const roeT = latestROE * (1 - fadeWeight) + LONG_RUN_BANK_ROE * fadeWeight;
     const ri = (roeT - ke) * bvForecast;
     pvResidualIncome += ri / Math.pow(1 + ke, t);
-    bvForecast = bvForecast * (1 + roeT * (1 - 0.30)); // assume 30% payout
+    bvForecast = bvForecast * (1 + roeT * (1 - (payoutRatio ?? 0.30))); // use actual payout if available
   }
 
   // Terminal value: LONG_RUN_BANK_ROE − ke spread, growing at g.
@@ -316,12 +317,7 @@ export function computeBankValuation(
   }
 
   const ke = ke_from_config(cfg);
-  // Use cfg.terminal_growth_rate when present (cfg may not declare it strictly typed).
-  const cfgAny = cfg as unknown as Record<string, unknown>;
-  const cfgTerminalGrowth = typeof cfgAny.terminal_growth_rate === "number"
-    ? (cfgAny.terminal_growth_rate as number)
-    : null;
-  const g = cfgTerminalGrowth ?? DEFAULT_TERMINAL_GROWTH;
+  const g = cfg.terminal_growth_rate ?? DEFAULT_TERMINAL_GROWTH;
 
   const latest = metrics[metrics.length - 1];
   const latestBV = latest.totalEquity;
@@ -329,7 +325,7 @@ export function computeBankValuation(
   const { value: sustainableROE, obsCount } = computeSustainableROE(metrics);
 
   const justifiedPB = justifiedPBGordon(latestBV, sustainableROE, ke, g, marketCap, isInsurance);
-  const eri = equityResidualIncome(metrics, ke, g, marketCap);
+  const eri = equityResidualIncome(metrics, ke, g, marketCap, payoutRatio);
   const ddm = sustainableDDM(latestBV, latest.pat, sustainableROE, ke, g, payoutRatio, marketCap);
   const evBased = evBasedValuation(metrics, marketCap);
 

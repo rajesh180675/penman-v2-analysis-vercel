@@ -27,7 +27,7 @@
  * asset revaluation is rare).
  */
 
-import { RecastPeriod, EngineConfig } from "./types";
+import { RecastPeriod, EngineConfig, deriveKwFromConfig } from "./types";
 
 export interface EPVNormalization {
   periodsUsed: number;
@@ -192,13 +192,17 @@ export function computeEPV(
   const normalizedNOPAT = normalizedCoreOI * (1 - taxRate);
   const adjustedEarningsPower = earningsBeforeTax * (1 - taxRate);
 
-  // ── Cost of Equity ─────────────────────────────────────────────────────────
+  // ── Cost of Capital ────────────────────────────────────────────────────────
+  // EPV of operations is an enterprise (pre-financing) value — discount at
+  // WACC (kw), not ke. Using ke overstates EPV for levered companies because
+  // ke > kw when NFO > 0. ke is only correct for the equity bridge step.
   const ke = (config.risk_free_rate ?? 0.07) + (config.equity_risk_premium ?? 0.055);
+  const kw = deriveKwFromConfig(config);
 
   if (ke <= 0.01) return null; // nonsensical ke
 
   // ── EPV Calculation ────────────────────────────────────────────────────────
-  const epvOperations = adjustedEarningsPower / ke;
+  const epvOperations = adjustedEarningsPower / kw;
 
   // Latest period's NFO and NOA
   const latest = data[data.length - 1];
@@ -317,7 +321,7 @@ export function computeEPV(
     growthCapex,
     adjustedEarningsPower,
     ke,
-    kw: ke,
+    kw,
     epvOperations,
     V_EPV: epvOperations,
     nfo,

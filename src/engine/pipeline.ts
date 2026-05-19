@@ -228,11 +228,22 @@ export function processCompanyDataFull(
   const itServices = detectITServices(results, config.company_type);
   const cyclicality = assessCyclicality(results, config.company_type);
 
-  // Phase 9 — sanity-check the latest period's industrial ratios
+  // Phase 9 — sanity-check the latest period's industrial ratios.
+  // When company_type is "auto", resolve the effective type from detected
+  // signals rather than passing "auto" which has no sanity bands.
   const latest = results.length > 0 ? results[results.length - 1] : null;
+  let industrialEffectiveType: CompanyType | "auto" = config.company_type ?? "auto";
+  if (industrialEffectiveType === "auto") {
+    if (itServices?.isITServices) {
+      industrialEffectiveType = "it-services";
+    } else if (cyclicality && cyclicality.classification !== "non-cyclical") {
+      industrialEffectiveType = "cyclical";
+    }
+    // else stays "auto" — evaluateRatioSanity will use the broad industrial bands
+  }
   const ratioSanity = latest && latest.ratios
     ? evaluateRatioSanity({
-        companyType: config.company_type ?? "auto",
+        companyType: industrialEffectiveType,
         industrial: {
           ROCE: latest.ratios.ROCE,
           RNOA: latest.ratios.RNOA,
