@@ -163,7 +163,7 @@ export function App() {
       setBankQuality(null);
       return;
     }
-    void fetchBankQualityIndicators(qualityFolder)
+    void fetchBankQualityIndicators(qualityFolder, undefined, config.quality_indicators_blob_url)
       .then((q) => {
         if (!cancelled) setBankQuality(q);
       })
@@ -1015,7 +1015,7 @@ marketCapCr={config.market_price != null && config.shares_outstanding != null
             {activeTab === "valuation" && hasRecast && !valuationBlocked && (
               <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} publication={publication} lossMaker={lossMakerResult} ratioSanity={ratioSanity} segmentData={segmentData} />
             )}
-            {activeTab === "valuation" && !hasRecast && scopeBlocked && rawData && rawData.length > 0 && bankResult && (
+            {activeTab === "valuation" && !hasRecast && bankResult && rawData && rawData.length > 0 && (
               <FinancialInstitutionReport
                 bankResult={bankResult}
                 config={config}
