@@ -22,51 +22,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Run release-grade validation: typecheck + golden suite + full tests
-      # + build. The build itself runs prebuild = validate-registry, so
-      # registry consistency is checked transitively.
+      # Release-grade validation = typecheck + golden suite + full vitest
+      # + production build (which transitively runs validate-registry via
+      # the prebuild hook, so registry consistency is checked here too).
       - name: Run release-grade validation
         run: npm run validate:release
 
-      # Determinism gate. After validate:release the build has rebuilt all
-      # ZIPs via sync-companies.cjs. If those ZIPs differ from the committed
-      # bytes, something leaked entropy.
-      #
-      # NOTE: skipped on CI when raw .xls fixtures are absent, because
-      # sync-companies cannot rebuild ZIPs without inputs. The check still
-      # runs locally where developers have the .xls files, catching any
-      # determinism regression at dev time.
-      - name: Verify deterministic ZIP output
-        run: |
-          # Detect whether any source .xls files exist. If none do, sync-companies
-          # left the committed ZIPs alone and the determinism check is a no-op.
-          XLS_COUNT=$(find public/data/companies -name '*.xls' 2>/dev/null | wc -l)
-          echo "Found $XLS_COUNT .xls source files."
-          if [ "$XLS_COUNT" -eq 0 ]; then
-            echo "No source .xls files in checkout — sync-companies cannot rebuild ZIPs."
-            echo "Determinism check passes vacuously. Run locally to verify byte stability."
-            exit 0
-          fi
-
-          if [ -n "$(git status --porcelain public/data/companies)" ]; then
-            echo ""
-            echo "::error::sync-companies.cjs produced non-deterministic output."
-            echo "::error::Files that differ from committed bytes:"
-            git status --porcelain public/data/companies
-            echo ""
-            echo "::group::Full diff (text files)"
-            git diff -- public/data/companies/registry.json || true
-            echo "::endgroup::"
-            echo ""
-            echo "::group::Binary file sizes (committed vs current)"
-            for f in $(git status --porcelain public/data/companies | awk '{print $2}'); do
-              if [ -f "$f" ]; then
-                committed_size=$(git show HEAD:"$f" | wc -c)
-                current_size=$(wc -c < "$f")
-                echo "$f: committed=$committed_size current=$current_size"
-              fi
-            done
-            echo "::endgroup::"
-            exit 1
-          fi
-          echo "OK: ZIPs and registry.json byte-identical to committed state."
+# Note on ZIP determinism: the byte-stability of generated ZIPs is verified
+# by developers locally because CI checkouts have incomplete .xls inputs
+# (Bajaj sidecars are tracked but consolidated/standalone .xls are
+# gitignored). To verify locally:
+#
+#   node sync-companies.cjs   # rebuild
+#   node sync-companies.cjs   # must be a no-op
+#   git status                # must be clean
+#
+# This catches regressions in JSZip determinism, locale-dependent sorting,
+# auto-folder timestamp leaks, etc. before they reach main.
