@@ -7,7 +7,9 @@
     "type": "nbfc",
     "description": "Pre-loaded Capitaline financial dataset for Bajaj Finance.",
     "emoji": "💳",
-    "hasStandalone": true
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Bajaj%20Finance.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/standalone.zip"
   },
   {
     "folder": "HDFC Bank",
@@ -17,7 +19,9 @@
     "type": "bank",
     "description": "Pre-loaded Capitaline financial dataset for HDFC Bank.",
     "emoji": "🏦",
-    "hasStandalone": true
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/HDFC%20Bank/HDFC%20Bank.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/HDFC%20Bank/standalone.zip"
   },
   {
     "folder": "ICICI Bank",
@@ -27,7 +31,9 @@
     "type": "bank",
     "description": "Pre-loaded Capitaline financial dataset for ICICI Bank.",
     "emoji": "🏦",
-    "hasStandalone": true
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/ICICI%20Bank/ICICI%20Bank.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/ICICI%20Bank/standalone.zip"
   },
   {
     "folder": "ITC",
@@ -38,7 +44,9 @@
     "description": "Diversified conglomerate — cigarettes, FMCG, hotels, paper, agri",
     "emoji": "🚬",
     "showcaseFor": "SOTP valuation across multiple segments",
-    "hasStandalone": true
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/ITC/ITC.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/ITC/standalone.zip"
   },
   {
     "folder": "KOTAKBANK",
@@ -59,7 +67,9 @@
     "description": "State-owned life insurer, dominant market share",
     "emoji": "🛡️",
     "showcaseFor": "Insurance fail-closed (no equity-side valuation)",
-    "hasStandalone": true
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Life%20Insurance%20Corporation%20of%20India/Life%20Insurance%20Corporation%20of%20India.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Life%20Insurance%20Corporation%20of%20India/standalone.zip"
   },
   {
     "folder": "Paytm",
@@ -69,7 +79,9 @@
     "type": "industrial",
     "description": "Pre-loaded Capitaline financial dataset for Paytm.",
     "emoji": "🏢",
-    "hasStandalone": true
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Paytm/Paytm.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Paytm/standalone.zip"
   },
   {
     "folder": "Power Grid Corporation of India Ltd",
@@ -80,7 +92,9 @@
     "description": "Inter-state electricity transmission monopoly",
     "emoji": "⚡",
     "showcaseFor": "Regulated utility with stable returns",
-    "hasStandalone": true
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Power%20Grid%20Corporation%20of%20India%20Ltd/Power%20Grid%20Corporation%20of%20India%20Ltd.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Power%20Grid%20Corporation%20of%20India%20Ltd/standalone.zip"
   },
   {
     "folder": "Reliance Industries",
@@ -90,7 +104,9 @@
     "type": "industrial",
     "description": "Pre-loaded Capitaline financial dataset for Reliance Industries.",
     "emoji": "🏢",
-    "hasStandalone": true
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Reliance%20Industries/Reliance%20Industries.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Reliance%20Industries/standalone.zip"
   },
   {
     "folder": "SBIN",
@@ -110,7 +126,9 @@
     "type": "industrial",
     "description": "Pre-loaded Capitaline financial dataset for Tata Steel.",
     "emoji": "🏢",
-    "hasStandalone": true
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Tata%20Steel/Tata%20Steel.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Tata%20Steel/standalone.zip"
   },
   {
     "folder": "Tata Consultancy Services Ltd",
@@ -121,7 +139,9 @@
     "description": "Global IT services leader, capital-light",
     "emoji": "💻",
     "showcaseFor": "IT-services detector + moat scorer awareness",
-    "hasStandalone": true
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Tata%20Consultancy%20Services%20Ltd/Tata%20Consultancy%20Services%20Ltd.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Tata%20Consultancy%20Services%20Ltd/standalone.zip"
   },
   {
     "folder": "Vodafone Idea Ltd",
@@ -132,6 +152,8 @@
     "description": "3rd-largest telco — chronic losses, negative net worth",
     "emoji": "📡",
     "showcaseFor": "Negative-equity stress test (distress detector)",
-    "hasStandalone": true
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Vodafone%20Idea%20Ltd/Vodafone%20Idea%20Ltd.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Vodafone%20Idea%20Ltd/standalone.zip"
   }
 ]
