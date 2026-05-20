@@ -1022,3 +1022,4 @@ Tab is empty
 
 *Last updated: 2026-06. Reflects state after commit `e72bf4bc`
 (iron-clad sync-companies.cjs).*
+
