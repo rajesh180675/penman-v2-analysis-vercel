@@ -7,17 +7,17 @@
 
 export const NSE_SYMBOL_REGISTRY: Record<string, string> = {
   "ITC": "ITC",
-  "reliance Industries": "RELIANCE",
-  "HDFC bank": "HDFCBANK",
-  "ICICI bank": "ICICIBANK",
+  "Reliance Industries": "RELIANCE",
+  "HDFC Bank": "HDFCBANK",
+  "ICICI Bank": "ICICIBANK",
   "SBIN": "SBIN",
   "KOTAKBANK": "KOTAKBANK",
   "Tata Consultancy Services Ltd": "TCS",
-  "Tata steel": "TATASTEEL",
-  "bajaj finance": "BAJFINANCE",
+  "Tata Steel": "TATASTEEL",
+  "Bajaj Finance": "BAJFINANCE",
   "Power Grid Corporation of India Ltd": "POWERGRID",
   "Life Insurance Corporation of India": "LICI",
-  "paytm": "PAYTM",
+  "Paytm": "PAYTM",
   "Vodafone Idea Ltd": "IDEA",
 };
 
@@ -65,6 +65,13 @@ export function resolveFolderFromSymbol(symbol: string | null | undefined): stri
   // Try to find the exact match in registry values
   for (const [key, val] of Object.entries(NSE_SYMBOL_REGISTRY)) {
     if (val.toUpperCase() === upper) {
+      return key;
+    }
+  }
+
+  // Fallback: try case-insensitive match on keys (handles folder name mismatches)
+  for (const [key, val] of Object.entries(NSE_SYMBOL_REGISTRY)) {
+    if (key.toLowerCase().replace(/ /g, '') === symbol.toLowerCase().replace(/ /g, '')) {
       return key;
     }
   }
