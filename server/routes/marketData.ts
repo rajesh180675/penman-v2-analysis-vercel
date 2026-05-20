@@ -177,6 +177,65 @@ router.get("/snapshot", async (req: Request, res: Response) => {
     }
   }
 
+  if (provider === "yahoo") {
+    if (!symbol) {
+      warnings.push("No symbol configured for Yahoo Finance.");
+      return res.json({
+        ok: true,
+        snapshot: {
+          symbol, provider: "Yahoo Finance (fallback)", fetchedAt,
+          price: fallbackPrice, previousClose: null, changePct: null,
+          marketCap: null, enterpriseValue: null, sharesOutstanding: null,
+          riskFreeRate: fallbackRiskFreeRate ?? 0.07, priceAsOf: null, rateAsOf: null,
+          freshness: fallbackPrice != null ? "fallback" : "missing",
+          sourceSummary: "No symbol configured.", warnings, history: null,
+        },
+      });
+    }
+
+    try {
+      const result = await fetchYahooSnapshot(symbol);
+      const meta = result?.meta ?? {};
+      const historyPoints = parseYahooHistory(result);
+
+      const price = toNumber(meta.regularMarketPrice) ?? fallbackPrice ?? null;
+      const previousClose = toNumber(meta.chartPreviousClose) ?? toNumber(meta.previousClose) ?? null;
+      const changePct = price != null && previousClose != null && previousClose > 0
+        ? (price - previousClose) / previousClose
+        : null;
+      const sharesOutstanding = toNumber(meta.sharesOutstanding) ?? null;
+      const marketCap = toNumber(meta.marketCap) ?? (price != null && sharesOutstanding != null ? price * sharesOutstanding : null);
+
+      return res.json({
+        ok: true,
+        snapshot: {
+          symbol, provider: "Yahoo Finance", fetchedAt,
+          price, previousClose, changePct,
+          marketCap, enterpriseValue: null, sharesOutstanding,
+          riskFreeRate: fallbackRiskFreeRate ?? 0.07,
+          priceAsOf: fetchedAt, rateAsOf: null,
+          freshness: price != null ? "live" : "fallback",
+          sourceSummary: price != null ? `Yahoo Finance live quote for ${symbol}.NS.` : "Yahoo Finance did not return a live quote.",
+          warnings,
+          history: summarizeHistory(historyPoints, price),
+        },
+      });
+    } catch (error: any) {
+      warnings.push(error?.message ?? String(error));
+      return res.json({
+        ok: true,
+        snapshot: {
+          symbol, provider: "Yahoo Finance (fallback)", fetchedAt,
+          price: fallbackPrice, previousClose: null, changePct: null,
+          marketCap: null, enterpriseValue: null, sharesOutstanding: null,
+          riskFreeRate: fallbackRiskFreeRate ?? 0.07, priceAsOf: null, rateAsOf: null,
+          freshness: fallbackPrice != null ? "fallback" : "missing",
+          sourceSummary: "Yahoo Finance request failed, using fallback.", warnings, history: null,
+        },
+      });
+    }
+  }
+
   // Default fallback for unsupported providers in local mode
   warnings.push(`Provider "${provider}" not supported in local mode. Use "nse" or "manual".`);
   return res.json({
