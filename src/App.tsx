@@ -874,21 +874,39 @@ if (!hasRecast && rawData && rawData.length > 0) {
             </div>
           )}
           {/* Phase I9 — show which periods are excluded when exclusions are active */}
-          {(config.excluded_periods?.length ?? 0) > 0 && (
-            <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400 flex items-center justify-between gap-4">
-              <span>
-                Period exclusions active:{" "}
-                <span className="font-mono">{config.excluded_periods!.join(", ")}</span>
-                {" "}excluded from the pipeline.
-              </span>
-              <button
-                onClick={() => setConfig(prev => ({ ...prev, excluded_periods: [] }))}
-                className="shrink-0 px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
-              >
-                Clear exclusions
-              </button>
-            </div>
-          )}
+          {(config.excluded_periods?.length ?? 0) > 0 && (() => {
+            const totalPeriods = rawData?.length ?? 0;
+            const remainingPeriods = totalPeriods - (config.excluded_periods?.length ?? 0);
+            const lowHistory = remainingPeriods > 0 && remainingPeriods < 10;
+            return (
+              <div className={`mb-5 rounded-lg border p-3 text-xs flex flex-col gap-2 ${
+                lowHistory
+                  ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200"
+                  : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400"
+              }`}>
+                <div className="flex items-center justify-between gap-4">
+                  <span>
+                    Period exclusions active:{" "}
+                    <span className="font-mono">{config.excluded_periods!.join(", ")}</span>
+                    {" "}excluded from the pipeline.
+                  </span>
+                  <button
+                    onClick={() => setConfig(prev => ({ ...prev, excluded_periods: [] }))}
+                    className="shrink-0 px-2 py-1 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    Clear exclusions
+                  </button>
+                </div>
+                {lowHistory && (
+                  <div className="text-xs">
+                    ⚠️ Only <strong>{remainingPeriods}</strong> period{remainingPeriods !== 1 ? "s" : ""} remain after exclusion.
+                    Rigor is capped at <span className="font-mono">structurally-reconciled</span> — time-series signals
+                    (growth rates, mean-reversion, terminal value anchoring) require at least 10 periods for reliability.
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {qualityGate?.scopeAssessment?.screeningOnly && (
             <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
               <div className="font-semibold mb-1">Screening mode — single period uploaded</div>
