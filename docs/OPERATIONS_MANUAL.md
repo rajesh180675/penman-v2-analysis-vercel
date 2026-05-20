@@ -703,12 +703,24 @@ If you need a new store (e.g., quota / billing reasons):
 
 ### Local (`.env.local` — gitignored)
 
+A complete template lives at `.env.local.example` (committed). Copy it to
+get started:
+
+```bash
+cp .env.local.example .env.local
+# then edit .env.local with real values
 ```
-LOCAL_SERVER_PORT=3001                      # Express port (default 3001)
-BLOB_READ_WRITE_TOKEN=vercel_blob_rw_...    # only needed when running upload-to-blob
-ADMIN_AUDIT_TOKEN=...                       # optional — protect audit writes locally
-RESEARCH_API_BASE=http://localhost:3001     # for research persistence
+
+Most fields are optional with sensible defaults. The only values you
+actually need to set:
+
 ```
+LOCAL_SERVER_PORT=3001                      # Express port (optional, default 3001)
+BLOB_READ_WRITE_TOKEN=vercel_blob_rw_...    # only when running upload-to-blob.mjs
+```
+
+The full list (audit pipeline tokens, cron secrets, market-data API keys,
+GitHub monitor) is documented inline in `.env.local.example`.
 
 ### Vercel (Project Settings → Environment Variables)
 
