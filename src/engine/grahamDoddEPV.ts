@@ -203,7 +203,16 @@ export function computeEPV(
   if (ke <= 0.01) return null; // nonsensical ke
 
   // ── EPV Calculation ────────────────────────────────────────────────────────
-  const epvOperations = adjustedEarningsPower / kw;
+  // A4 — EPV denominator selection.
+  // normalizedNOPAT is the cleaner denominator when maintenanceCapex ≈ avgDepreciation
+  // (the capex adjustment is immaterial). Only use adjustedEarningsPower when the gap
+  // is material (>10% of avgDepreciation), indicating the company is genuinely
+  // under- or over-investing relative to its depreciation run-rate.
+  const capexDepreciationGap = avgDepreciation > 0
+    ? Math.abs(maintenanceCapex - avgDepreciation) / avgDepreciation
+    : 0;
+  const epvEarnings = capexDepreciationGap > 0.10 ? adjustedEarningsPower : normalizedNOPAT;
+  const epvOperations = epvEarnings / kw;
 
   // Latest period's NFO and NOA
   const latest = data[data.length - 1];
