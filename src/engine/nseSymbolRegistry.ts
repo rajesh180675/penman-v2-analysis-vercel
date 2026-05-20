@@ -70,7 +70,7 @@ export function resolveFolderFromSymbol(symbol: string | null | undefined): stri
   }
 
   // Fallback: try case-insensitive match on keys (handles folder name mismatches)
-  for (const [key, val] of Object.entries(NSE_SYMBOL_REGISTRY)) {
+  for (const [key,] of Object.entries(NSE_SYMBOL_REGISTRY)) {
     if (key.toLowerCase().replace(/ /g, '') === symbol.toLowerCase().replace(/ /g, '')) {
       return key;
     }

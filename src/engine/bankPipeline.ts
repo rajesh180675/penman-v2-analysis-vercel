@@ -609,6 +609,17 @@ export function processBankData(
     }
   }
 
+  // Phase B5.1 — Fallback sanitisation: computed cost-to-income can exceed 100%
+  // when X-Detail P&L labels mis-align (operatingExpenses >> totalIncome). This
+  // is physically impossible for a going-concern NBFC. For periods without an AR
+  // sidecar, null the field so the UI shows "—" instead of garbage like 36167%.
+  // Accurate historical values require AR back-fill (see extract_nbfc_quality.py).
+  for (const m of computed) {
+    if (m.costToIncome != null && (m.costToIncome > 1.0 || m.costToIncome < 0.0)) {
+      m.costToIncome = null;
+    }
+  }
+
   // Phase B5.2 — Derive asset-quality signals (NPA cycle, PCR trend,
   // slippage trajectory, loan growth vs system, deposit franchise,
   // capital buffer) from the joined records. Always populated for
