@@ -55,16 +55,22 @@ async function fetchNseHistory(symbol: string) {
   oneYearAgo.setFullYear(today.getFullYear() - 1);
   const fmt = (d: Date) => `${String(d.getDate()).padStart(2, "0")}-${String(d.getMonth() + 1).padStart(2, "0")}-${d.getFullYear()}`;
   const url = `${NSE_BASE}/api/historical/cm/equity?symbol=${encodeURIComponent(symbol)}&from=${fmt(oneYearAgo)}&to=${fmt(today)}`;
-  const res = await fetch(url, {
-    headers: { ...NSE_HEADERS, Cookie: cookie, Referer: `${NSE_BASE}/get-quotes/equity?symbol=${encodeURIComponent(symbol)}` },
-  });
-  if (!res.ok) return [];
-  const payload = await res.json() as any;
-  const data = Array.isArray(payload?.data) ? payload.data : [];
-  return data
-    .map((d: any) => ({ date: d.CH_TIMESTAMP ?? d.TIMESTAMP, close: toNumber(d.CH_CLOSING_PRICE ?? d.CLOSE_PRICE) }))
-    .filter((d: any) => d.date && d.close != null)
-    .sort((a: any, b: any) => b.date.localeCompare(a.date));
+  try {
+    const res = await fetch(url, {
+      headers: { ...NSE_HEADERS, Cookie: cookie, Referer: `${NSE_BASE}/get-quotes/equity?symbol=${encodeURIComponent(symbol)}` },
+    });
+    if (!res.ok) return [];
+    const ct = res.headers.get("content-type") ?? "";
+    if (!ct.includes("json")) return []; // NSE sometimes returns HTML (rate-limit/block)
+    const payload = await res.json() as any;
+    const data = Array.isArray(payload?.data) ? payload.data : [];
+    return data
+      .map((d: any) => ({ date: d.CH_TIMESTAMP ?? d.TIMESTAMP, close: toNumber(d.CH_CLOSING_PRICE ?? d.CLOSE_PRICE) }))
+      .filter((d: any) => d.date && d.close != null)
+      .sort((a: any, b: any) => b.date.localeCompare(a.date));
+  } catch {
+    return []; // Gracefully handle any parse/network error
+  }
 }
 
 function summarizeHistory(points: Array<{ date: string; close: number | null }>, currentPrice: number | null) {

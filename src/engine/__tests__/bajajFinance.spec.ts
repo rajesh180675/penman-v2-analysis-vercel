@@ -15,7 +15,7 @@ import { DEFAULT_CONFIG } from "../types";
 import { BankQualityIndicators } from "../bankQualityIndicators";
 
 describe("Bajaj Finance (NBFC)", () => {
-  let result: PipelineResult;
+  let result: PipelineResult | null = null;
 
   it("parses and runs pipeline without throwing", { timeout: 60_000 }, async () => {
     const zipPath = resolve(__dirname, "../../../public/data/companies/bajaj finance/bajaj finance.zip");
@@ -68,16 +68,16 @@ result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG, qi);
   });
 
   it("routes to financial-institution family", () => {
-    expect(result.analysisFamily).toBe("financial-institution");
+    expect(result!.analysisFamily).toBe("financial-institution");
   });
 
   it("produces bankResult with NBFC subtype", () => {
-    expect(result.bankResult).toBeTruthy();
-    expect(result.bankResult!.subtype).toBe("nbfc");
+    expect(result!.bankResult).toBeTruthy();
+    expect(result!.bankResult!.subtype).toBe("nbfc");
   });
 
   it("has bank metrics with ROA and ROE", () => {
-    const br = result.bankResult!;
+    const br = result!.bankResult!;
     expect(br.bankMetrics).toBeTruthy();
     expect(br.bankMetrics!.length).toBeGreaterThan(3);
 
@@ -108,13 +108,13 @@ result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG, qi);
   });
 
   it("valuation models produce results", () => {
-    const br = result.bankResult!;
+    const br = result!.bankResult!;
     expect(br.valuation).toBeTruthy();
   });
 
   // Phase D2 — NBFC-specific lenses fire when subtype="nbfc"
   it("NBFC P/AUM lens computes when AUM sidecar is present", () => {
-    const br = result.bankResult!;
+    const br = result!.bankResult!;
     expect(br.valuation).toBeTruthy();
     expect(br.valuation!.pAum).toBeDefined();
     // The fixture data ships with quality_indicators.json so AUM should be present
@@ -126,7 +126,7 @@ result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG, qi);
   });
 
   it("NBFC ROA × Leverage RI lens fires", () => {
-    const br = result.bankResult!;
+    const br = result!.bankResult!;
     expect(br.valuation!.roaLeverageRI).toBeDefined();
     if (br.valuation!.roaLeverageRI!.status === "computed") {
       expect(br.valuation!.roaLeverageRI!.intrinsicValue).toBeGreaterThan(0);
@@ -136,7 +136,7 @@ result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG, qi);
   });
 
   it("CRAR governor evaluates buffer headroom", () => {
-    const br = result.bankResult!;
+    const br = result!.bankResult!;
     expect(br.valuation!.crarGovernor).toBeDefined();
     // Bajaj's CRAR is consistently 22-28% — well above the 18% threshold
     // (15% RBI norm + 300bps buffer) so no throttle should apply.
@@ -148,7 +148,7 @@ result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG, qi);
   });
 
   it("through-cycle credit-cost diagnostic computes", () => {
-    const br = result.bankResult!;
+    const br = result!.bankResult!;
     expect(br.valuation!.creditCostCycle).toBeDefined();
     if (br.valuation!.creditCostCycle!.status === "computed") {
       expect(br.valuation!.creditCostCycle!.medianCreditCost).not.toBeNull();
@@ -159,7 +159,7 @@ result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG, qi);
   });
 
   it("triangulation includes NBFC lenses when computed", () => {
-    const br = result.bankResult!;
+    const br = result!.bankResult!;
     const contributing = br.valuation!.modelsContributing;
     // At least one NBFC-specific model should contribute (P/AUM or RoA-Lev RI)
     const hasNbfcLens = contributing.some(name =>
@@ -172,7 +172,7 @@ result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG, qi);
   });
 
   it("cost-to-income ratio is non-zero (NBFC opex fallback)", () => {
-    const br = result.bankResult!;
+    const br = result!.bankResult!;
     const latest = br.bankMetrics![br.bankMetrics!.length - 1];
     // Without sidecar, cost-to-income is a fallback approximation based on
     // X-Detail P&L labels. The fallback may be off ±5-10pp because it can't
@@ -189,5 +189,38 @@ result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG, qi);
       expect(latest.costToIncome).toBeGreaterThan(0.0);
     }
     console.log(`  costToIncome = ${(latest.costToIncome! * 100).toFixed(1)}%`);
+  });
+
+
+  it("produces three-scenario bundle (bear/base/bull)", { timeout: 60_000 }, async () => {
+    // Re-parse if result not yet available (can happen when running this test in isolation)
+    if (!result || !result.bankResult) {
+      const zipPath = resolve(__dirname, "../../../public/data/companies/bajaj finance/bajaj finance.zip");
+      const buf = readFileSync(zipPath);
+      const file = new File([buf], "bajaj finance.zip", { type: "application/zip" });
+      const parsed = await parseCapitalineZip(file);
+      const qiPath = resolve(__dirname, "../../../public/data/companies/Bajaj Finance/quality_indicators.json");
+      let qi: BankQualityIndicators | null = null;
+      try { qi = JSON.parse(readFileSync(qiPath, "utf-8")); } catch {}
+      result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG, qi);
+    }
+    const br = result!.bankResult!;
+    const bundle = br.valuation?.scenarios;
+    expect(bundle).not.toBeNull();
+    expect(bundle!.cards).toHaveLength(3);
+    expect(bundle!.cards[0].key).toBe("stress");
+    expect(bundle!.cards[1].key).toBe("base");
+    expect(bundle!.cards[2].key).toBe("bull");
+    expect(bundle!.primary).toBe("base");
+    // Base scenario should use sustainable ROE
+    const baseCard = bundle!.cards[1];
+    expect(baseCard.fairPB).toBeGreaterThan(0);
+    expect(baseCard.intrinsicValue).toBeGreaterThan(0);
+    // Bear scenario should have lower P/B than base
+    const bearCard = bundle!.cards[0];
+    expect(bearCard.fairPB).toBeLessThan(baseCard.fairPB);
+    // Bull scenario should have higher P/B than base
+    const bullCard = bundle!.cards[2];
+    expect(bullCard.fairPB).toBeGreaterThan(baseCard.fairPB);
   });
 });
