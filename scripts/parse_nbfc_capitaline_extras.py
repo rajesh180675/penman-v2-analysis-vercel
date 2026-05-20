@@ -536,18 +536,26 @@ def merge_into_quality_indicators(
             if prior_book and prior_book > 0:
                 period["slippage_pct"] = round(additions / prior_book * 100, 2)
 
-    # Build output
+    # Determine as_of_date (latest period_end)
+    sorted_periods = sorted(
+        periods,
+        key=lambda p: p.get("period_end", ""),
+    )
+    as_of_date = sorted_periods[-1]["period_end"] if sorted_periods else ""
+
+    # Build output — schema-conformant for src/engine/bankQualityIndicators.ts
     output = {
-        "source": "capitaline_structured",
-        "scope": "consolidated",
-        "company": existing.get("company", "Bajaj Finance Ltd"),
+        "schema_version": "2026-05-bank-quality-v1",
+        "company_name": existing.get("company_name") or existing.get("company") or "Bajaj Finance Ltd",
+        "as_of_date": as_of_date,
+        "source_notes": (
+            "NBFC pipeline (BAJFINANCE). Merged from Capitaline structured exports "
+            "(RBI NHB Banks, Credit Risk Analysis - Loss Given Default, Subsidiaries) "
+            "via scripts/parse_nbfc_capitaline_extras.py. AUM / AUM-growth retained "
+            "from AR-extractor (scripts/extract_nbfc_quality.py)."
+        ),
         "ticker": existing.get("ticker", "BAJFINANCE"),
-        "data_sources": [
-            "RBI NHB Banks (Capitaline export)",
-            "Credit Risk Analysis - Loss Given Default (Capitaline export)",
-            "Subsidiaries (Capitaline export)",
-            "Annual Report PDFs (AUM/AUM growth via extract_nbfc_quality.py)",
-        ],
+        "scope": "consolidated",
         "periods": periods,
     }
 
