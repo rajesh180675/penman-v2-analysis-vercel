@@ -644,6 +644,8 @@ export interface EngineConfig {
    * from the symbol (ticker "HDFCBANK" vs folder "HDFC Bank").
    */
   quality_data_folder?: string | null;
+  /** Vercel Blob URL for quality_indicators.json — preferred over local path on Vercel deploy. */
+  quality_indicators_blob_url?: string | null;
   /**
    * Phase I9 — period exclusions for demerger / M&A confirmation flow.
    * List of period_end strings (YYYY-MM-DD) to exclude from the pipeline.

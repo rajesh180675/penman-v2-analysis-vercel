@@ -217,7 +217,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 dark:bg-slate-900/60 dark:border-slate-700 p-6">
           <CompanyLibraryGrid
             disabled={isProcessing}
-            onPickCompany={async (folder, ticker, type, scope, hasStandalone, blobUrl, standaloneBlobUrl) => {
+            onPickCompany={async (folder, ticker, type, scope, hasStandalone, blobUrl, standaloneBlobUrl, qualityIndicatorsBlobUrl) => {
               try {
                 setIsProcessing(true); setError("");
 
@@ -225,6 +225,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                 onConfigChange({
                   ...config,
                   quality_data_folder: folder,
+                  quality_indicators_blob_url: qualityIndicatorsBlobUrl ?? null,
                   market_data_symbol: ticker,
                   ticker: ticker,
                   // Map all registry types to a valid CompanyType — never fall back to "auto".

@@ -177,7 +177,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [qualityFolder]);
+  }, [qualityFolder, config.quality_indicators_blob_url]);
 
   // Single engine pass — produces both the industrial recast (RecastPeriod[])
   // and the bank pipeline result. Consolidates two earlier separate calls

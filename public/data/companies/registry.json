@@ -9,7 +9,37 @@
     "emoji": "💳",
     "hasStandalone": true,
     "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Bajaj%20Finance.zip",
-    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/standalone.zip"
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/standalone.zip",
+    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/quality_indicators.json",
+    "sidecarBlobs": {
+      "subsidiaries": [
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Subsidiaries/Subsidiaries_%20%281%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Subsidiaries/Subsidiaries_%20%2810%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Subsidiaries/Subsidiaries_%20%2811%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Subsidiaries/Subsidiaries_%20%2812%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Subsidiaries/Subsidiaries_%20%282%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Subsidiaries/Subsidiaries_%20%283%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Subsidiaries/Subsidiaries_%20%284%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Subsidiaries/Subsidiaries_%20%285%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Subsidiaries/Subsidiaries_%20%286%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Subsidiaries/Subsidiaries_%20%287%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Subsidiaries/Subsidiaries_%20%288%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Subsidiaries/Subsidiaries_%20%289%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Subsidiaries/Subsidiaries_.xls"
+      ],
+      "rbiNhbBanks": [
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/RBI%20NHB%20Banks/RBINHBBanks_.xls"
+      ],
+      "lossGivenDefault": [
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_%20%281%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_%20%282%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_%20%283%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_%20%284%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_%20%285%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_%20%286%29.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_.xls"
+      ]
+    }
   },
   {
     "folder": "HDFC Bank",
@@ -21,7 +51,8 @@
     "emoji": "🏦",
     "hasStandalone": true,
     "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/HDFC%20Bank/HDFC%20Bank.zip",
-    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/HDFC%20Bank/standalone.zip"
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/HDFC%20Bank/standalone.zip",
+    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/HDFC%20Bank/quality_indicators.json"
   },
   {
     "folder": "ICICI Bank",
@@ -33,7 +64,8 @@
     "emoji": "🏦",
     "hasStandalone": true,
     "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/ICICI%20Bank/ICICI%20Bank.zip",
-    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/ICICI%20Bank/standalone.zip"
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/ICICI%20Bank/standalone.zip",
+    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/ICICI%20Bank/quality_indicators.json"
   },
   {
     "folder": "ITC",
@@ -56,7 +88,8 @@
     "type": "bank",
     "description": "Premium private bank with conservative loan book",
     "emoji": "🏦",
-    "hasStandalone": false
+    "hasStandalone": false,
+    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/KOTAKBANK/quality_indicators.json"
   },
   {
     "folder": "Life Insurance Corporation of India",
@@ -69,7 +102,8 @@
     "showcaseFor": "Insurance fail-closed (no equity-side valuation)",
     "hasStandalone": true,
     "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Life%20Insurance%20Corporation%20of%20India/Life%20Insurance%20Corporation%20of%20India.zip",
-    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Life%20Insurance%20Corporation%20of%20India/standalone.zip"
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Life%20Insurance%20Corporation%20of%20India/standalone.zip",
+    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Life%20Insurance%20Corporation%20of%20India/quality_indicators.json"
   },
   {
     "folder": "Paytm",
@@ -116,7 +150,8 @@
     "type": "bank",
     "description": "Largest public-sector bank",
     "emoji": "🏛️",
-    "hasStandalone": false
+    "hasStandalone": false,
+    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/SBIN/quality_indicators.json"
   },
   {
     "folder": "Tata Steel",

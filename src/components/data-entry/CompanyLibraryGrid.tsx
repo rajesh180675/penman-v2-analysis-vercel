@@ -23,6 +23,14 @@ export interface LibraryCompany {
   blobUrl?: string;
   /** Vercel Blob URL for standalone ZIP */
   standaloneBlobUrl?: string;
+  /** Vercel Blob URL for quality_indicators.json sidecar */
+  qualityIndicatorsBlobUrl?: string;
+  /** Vercel Blob URLs for Bajaj Finance XLS sidecar folders */
+  sidecarBlobs?: {
+    subsidiaries?: string[];
+    rbiNhbBanks?: string[];
+    lossGivenDefault?: string[];
+  };
 }
 
 const COMPANIES: LibraryCompany[] = [
@@ -193,6 +201,7 @@ interface Props {
     hasStandalone: boolean,
     blobUrl?: string,
     standaloneBlobUrl?: string,
+    qualityIndicatorsBlobUrl?: string,
   ) => void;
   /** Disabled state — used while a load is in progress */
   disabled?: boolean;
@@ -308,7 +317,7 @@ export default function CompanyLibraryGrid({ onPickCompany, disabled = false }: 
             return (
               <button
                 key={c.folder}
-                onClick={() => !isUnsupportedStandalone && onPickCompany(c.folder, c.ticker, c.type, scope, c.hasStandalone === true, c.blobUrl, c.standaloneBlobUrl)}
+                onClick={() => !isUnsupportedStandalone && onPickCompany(c.folder, c.ticker, c.type, scope, c.hasStandalone === true, c.blobUrl, c.standaloneBlobUrl, c.qualityIndicatorsBlobUrl)}
                 disabled={isCardDisabled}
                 className={`text-left rounded-xl border p-4 transition-all duration-200 group ${
                   isUnsupportedStandalone

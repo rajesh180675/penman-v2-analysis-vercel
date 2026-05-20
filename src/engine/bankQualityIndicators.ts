@@ -427,8 +427,10 @@ export function indexQualityByPeriod(
 export async function fetchBankQualityIndicators(
   companyFolder: string,
   fetchImpl: typeof fetch = fetch,
+  blobUrl?: string | null,
 ): Promise<BankQualityIndicators | null> {
-  const url = `/data/companies/${encodeURIComponent(companyFolder)}/quality_indicators.json`;
+  // Prefer Vercel Blob URL when available (Vercel deploy); fall back to local public/ path.
+  const url = blobUrl ?? `/data/companies/${encodeURIComponent(companyFolder)}/quality_indicators.json`;
   let res: Response;
   try {
     res = await fetchImpl(url);
