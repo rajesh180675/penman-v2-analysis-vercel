@@ -341,40 +341,59 @@ C:\Users\rajesh\WindsurfAPI\penman-v2-analysis\public\data\companies\Bajaj Finan
 Replace each file with the new export. Match the filenames exactly —
 the app parses by filename, not by file content.
 
-### Step 3: Re-run the AR extractor (only if you have new AR PDFs)
+### Step 3: Run the one-shot refresh command
 
-If Bajaj published a new Annual Report and you saved it as
-`BAJFINANCE_AR_FY2026.pdf` in the company folder, run:
-
-```
-python scripts/extract_nbfc_quality.py "Bajaj Finance"
-```
-
-This pulls AUM, cost-to-income, etc. out of the PDF text.
-
-### Step 4: Re-run the Capitaline merger
+This single command does everything — runs the AR extractor (if PDFs are
+available), runs the Capitaline merger, repackages the ZIPs, and updates
+the registry:
 
 ```
-python scripts/parse_nbfc_capitaline_extras.py "Bajaj Finance"
+npm run refresh -- "Bajaj Finance"
 ```
 
-This blends the structured Capitaline exports (RBI NHB / LGD / Subsidiaries)
-into `quality_indicators.json`. You should see output like:
+You'll see output like:
 
 ```
+Refreshing: Bajaj Finance  (folder="Bajaj Finance", type="nbfc", ticker="BAJFINANCE")
+
+=== nbfc AR extractor ===
+$ python scripts/extract_nbfc_quality.py BAJFINANCE
+[ ... extractor output ... ]
+
+=== Capitaline NBFC merger ===
+$ python scripts/parse_nbfc_capitaline_extras.py Bajaj Finance
 RBI NHB Banks: 15 periods parsed
 Loss Given Default: 7 periods parsed
 Subsidiaries: 13 periods parsed
-Key field coverage: 133/180 (73.9%)
+
+=== ZIP packager + registry sync ===
+$ node sync-companies.cjs
+[ ... ]
+
+============================================================
+Refresh complete: Bajaj Finance
+============================================================
 ```
 
-### Step 5: Restart the dev server
+If you don't have the Annual Report PDFs (they live in a separate
+`ITC-valuation-template` folder), the extractor step will skip with a
+warning — that's fine, the rest still runs.
+
+**Want to see what would happen first?** Add `--dry-run`:
+
+```
+npm run refresh -- --dry-run "Bajaj Finance"
+```
+
+It prints the exact commands without executing anything.
+
+### Step 4: Restart the dev server
 
 In the Command Prompt window where the app is running, press **Ctrl + C**
 to stop it, then run `npm run dev:local` again. The new ZIPs are built
 automatically and the registry refreshes.
 
-### Step 6: Refresh the browser
+### Step 5: Refresh the browser
 
 Hard-refresh (**Ctrl + Shift + R**) and click the Bajaj Finance card again.
 The new fiscal year should appear in every tab.
@@ -597,7 +616,7 @@ OPEN IN BROWSER:
 
 REFRESH BAJAJ DATA:
   1. Drop new .xls files into public/data/companies/Bajaj Finance/
-  2. python scripts/parse_nbfc_capitaline_extras.py "Bajaj Finance"
+  2. npm run refresh -- "Bajaj Finance"
   3. Restart npm run dev:local
   4. Hard-refresh browser
 
