@@ -334,17 +334,49 @@ python scripts/parse_nbfc_capitaline_extras.py "Bajaj Finance"
 }
 ```
 
-### 6.6 `scripts/extract_bank_quality.py` and `scripts/extract_insurance_quality.py`
+### 6.6 `scripts/refresh-company.mjs` (one-shot wrapper — recommended path)
+
+**What it does:**
+- Reads `registry.json` to identify the company's `type`
+- Dispatches to the right pipeline:
+  - `bank` → `extract_bank_quality.py <ticker>` → `sync-companies.cjs`
+  - `nbfc` → `extract_nbfc_quality.py <ticker>` → `parse_nbfc_capitaline_extras.py "<folder>"` → `sync-companies.cjs`
+  - `insurance` → `extract_insurance_quality.py` → `sync-companies.cjs`
+  - everything else → `sync-companies.cjs` only
+- Skips gracefully when AR PDFs or sidecar folders are missing
+- Tolerates casing typos (warns + uses registry value)
+- Prints a clean summary of what ran vs what was skipped
+
+**Usage:**
+
+```bash
+npm run refresh -- "Bajaj Finance"          # full NBFC pipeline
+npm run refresh -- "HDFC Bank"              # bank pipeline
+npm run refresh -- ITC                      # sync only
+
+# Dry run — show what would happen, do nothing:
+npm run refresh -- --dry-run "Bajaj Finance"
+
+# Skip the AR extractor (when you only refreshed Capitaline files):
+npm run refresh -- --skip-extract "Bajaj Finance"
+```
+
+This is the **preferred** way to refresh a company — it removes the
+"forgot to run the merger" failure mode that left `quality_indicators.json`
+half-stale in past sessions. The individual scripts in 6.4 / 6.5 / 6.7 are
+still callable directly when you need fine control.
+
+### 6.7 `scripts/extract_bank_quality.py` and `scripts/extract_insurance_quality.py`
 
 Same pattern as `extract_nbfc_quality.py` but tuned for bank ARs (HDFC,
 ICICI, etc.) and insurance ARs (LIC). Run when adding new ARs.
 
-### 6.7 `scripts/audit-tail.mjs`, `scripts/fetch-audited-run-fixture.mjs`
+### 6.9 `scripts/audit-tail.mjs`, `scripts/fetch-audited-run-fixture.mjs`
 
 Operational helpers for the audit pipeline. Read the file headers — they
 have specific use cases (debugging audit-monitor jobs).
 
-### 6.8 `scripts/rename-company-folders.ps1`
+### 6.10 `scripts/rename-company-folders.ps1`
 
 PowerShell script for renaming company folders to canonical Title-Case on
 Windows. Run **only** with the dev server stopped (file locks).
@@ -878,6 +910,9 @@ npm run build                  # validate-registry + sync-companies + vite build
 npm run preview                # serve dist/ locally for smoke test
 
 # ─── Data pipeline ───────────────────────────────────────────────────
+npm run refresh -- "Bajaj Finance"                 # one-shot dispatcher (preferred)
+npm run refresh -- --dry-run "<Folder>"            # see what would run
+
 node sync-companies.cjs                            # rebuild ZIPs + registry
 npx tsx scripts/validate-registry.ts               # consistency check
 BLOB_READ_WRITE_TOKEN=...  node scripts/upload-to-blob.mjs
