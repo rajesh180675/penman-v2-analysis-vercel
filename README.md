@@ -12,6 +12,7 @@ The task is to make a Penman-style valuation run defensible under review:
 - real-company golden cases must keep passing as rigor checks tighten
 
 Primary references:
+- operations / build / deploy: [`docs/OPERATIONS_MANUAL.md`](./docs/OPERATIONS_MANUAL.md)
 
 - plan: [`docs/financial-model-rigor-plan.md`](./docs/financial-model-rigor-plan.md)
 - latest audit context: [`audit-report-2026.md`](./audit-report-2026.md)
