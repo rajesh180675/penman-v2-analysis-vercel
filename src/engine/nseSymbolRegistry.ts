@@ -46,15 +46,10 @@ export function resolveNseSymbol(companyNameOrFolder: string | null | undefined)
     }
   }
 
-// If the input is a known NSE symbol (exists as a value in the registry), pass through
-const knownSymbols = Object.values(NSE_SYMBOL_REGISTRY);
-if (knownSymbols.includes(companyNameOrFolder)) {
-return companyNameOrFolder;
-}
-
-// Deprecated: all-caps passthrough removed — invalid symbols like
-// "BAJAJFINANCE" (not a real NSE ticker) silently passed through
-// and caused NSE API failures. Only known symbols pass through now.
+  // If the input is a known NSE symbol (exists as a value in the registry), pass through
+  const knownSymbols = Object.values(NSE_SYMBOL_REGISTRY);
+  if (knownSymbols.includes(companyNameOrFolder)) {
+    return companyNameOrFolder;
   }
 
   return null;
@@ -85,4 +80,3 @@ export function resolveFolderFromSymbol(symbol: string | null | undefined): stri
   // Fallback to exact symbol name if not in registry
   return symbol;
 }
-

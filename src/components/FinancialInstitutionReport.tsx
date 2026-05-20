@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FinancialInstitutionAnalysisResult } from "../engine/analysisFamily";
 import type {
   BankValuationModelResult,
+  BankScenarioCard,
   CreditCostCycleCheck,
   CrarGovernorResult,
 } from "../engine/bankValuation";
@@ -1009,6 +1010,63 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
               No models could compute a value. Each model's reason for skipping is shown above.
             </div>
           )}
+          {/* Phase E: Scenario Analysis */}
+          {valuation.scenarios && valuation.scenarios.cards.length > 0 && (
+            <div className="mt-6">
+              <h4 className="text-sm font-semibold mb-3 text-slate-700 dark:text-slate-300">
+                Scenario Analysis (Phase E)
+              </h4>
+              <div className="grid grid-cols-3 gap-3">
+                {valuation.scenarios.cards.map((card: BankScenarioCard) => {
+                  const colorClass =
+                    card.key === "base"
+                      ? "border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-900/20"
+                      : card.key === "stress"
+                        ? "border-rose-200 bg-rose-50 dark:border-rose-900/50 dark:bg-rose-900/20"
+                        : "border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-900/20";
+                  const upsideClass =
+                    card.upsidePct != null && card.upsidePct > 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-rose-600 dark:text-rose-400";
+                  return (
+                    <div key={card.key} className={"rounded-lg border p-4 text-sm " + colorClass}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-semibold text-xs uppercase tracking-wide">
+                          {card.label}
+                        </span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          {Math.round(card.probability * 100)}%
+                        </span>
+                      </div>
+                      <div className="text-2xl font-bold mb-1">
+                        {card.intrinsicValue != null
+                          ? "₹" + (card.intrinsicValue / 1_000_000_000).toFixed(0) + " Cr"
+                          : "N/A"}
+                      </div>
+                      {card.upsidePct != null && (
+                        <div className={"text-xs font-medium " + upsideClass}>
+                          {card.upsidePct > 0 ? "+" : ""}
+                          {Math.round(card.upsidePct * 100)}% vs market
+                        </div>
+                      )}
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+                        ROE {Math.round(card.roe * 100)}% &middot; g {Math.round(card.g * 100)}% &middot; ke {Math.round(card.ke * 100)}%
+                      </div>
+                      <div className="text-xs text-slate-600 dark:text-slate-400 mt-1 italic">
+                        {card.reason}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {valuation.scenarios.primary && (
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                  Primary case: {valuation.scenarios.primary}
+                </div>
+              )}
+            </div>
+          )}
+
         </section>
       )}
 
