@@ -223,9 +223,17 @@ function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   // precise figure is available there.
   const demandDeposits  = pickValue(raw, bs.demandDeposits,  "BalanceSheet");
   const savingsDeposits = pickValue(raw, bs.savingsDeposits, "BalanceSheet");
+  // CASA = (demand + savings) / total deposits.
+  // Capitaline bank BS (HDFC, ICICI) only exposes current accounts ("in Current Accounts")
+  // without a savings sub-line. Allow partial CASA when only one component is available.
+  const casaDeposits =
+    demandDeposits != null && savingsDeposits != null ? demandDeposits + savingsDeposits
+    : demandDeposits != null ? demandDeposits
+    : savingsDeposits != null ? savingsDeposits
+    : null;
   const casaRatioRaw: number | null =
-    demandDeposits != null && savingsDeposits != null && deposits != null && deposits > 0
-      ? (demandDeposits + savingsDeposits) / deposits
+    casaDeposits != null && deposits != null && deposits > 0
+      ? casaDeposits / deposits
       : null;
 
   // Phase K — NBFC funding mix breakdown

@@ -418,7 +418,7 @@ export const CapitalineMappingSpec = {
     investmentsOther: ["Other Current Investments"],
 
     // ── Funding sources ───────────────────────────────────────────
-    deposits: ["Deposits", "Total Deposits"],
+    deposits: ["Deposits", "Total Deposits", "Total Long-term Secured Deposits"],
     // CASA sub-components — Capitaline breaks deposits into demand/savings/term.
     // demandDeposits = current accounts (zero-cost), savingsDeposits = savings accounts.
     // CASA ratio = (demand + savings) / total deposits.
@@ -427,6 +427,8 @@ export const CapitalineMappingSpec = {
       "Current Deposits",
       "Deposits - Demand",
       "Current Account Deposits",
+      // Capitaline bank BS format (HDFC, ICICI): current accounts sub-line
+      "in Current Accounts",
     ],
     savingsDeposits: [
       "Savings Deposits",
