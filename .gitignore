@@ -36,3 +36,7 @@ public/data/companies/**/*.html
 public/data/companies/**/standalone/
 # Allow pre-built library ZIPs so Vercel serves them for the "Load from library" dropdown
 !public/data/companies/**/*.zip
+
+# Local scratch (debugging artifacts)
+scratch/
+scratch_*
