@@ -13,6 +13,7 @@ The task is to make a Penman-style valuation run defensible under review:
 
 Primary references:
 - operations / build / deploy: [`docs/OPERATIONS_MANUAL.md`](./docs/OPERATIONS_MANUAL.md)
+- beginner walkthrough (Bajaj Finance case study): [`docs/CASE_STUDY_BAJAJ_FINANCE.md`](./docs/CASE_STUDY_BAJAJ_FINANCE.md)
 
 - plan: [`docs/financial-model-rigor-plan.md`](./docs/financial-model-rigor-plan.md)
 - latest audit context: [`audit-report-2026.md`](./audit-report-2026.md)
