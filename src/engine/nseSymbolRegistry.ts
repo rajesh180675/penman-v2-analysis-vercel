@@ -46,9 +46,15 @@ export function resolveNseSymbol(companyNameOrFolder: string | null | undefined)
     }
   }
 
-  // If the input looks like an NSE symbol already (all caps, no spaces), pass through
-  if (/^[A-Z]{2,20}$/.test(companyNameOrFolder)) {
-    return companyNameOrFolder;
+// If the input is a known NSE symbol (exists as a value in the registry), pass through
+const knownSymbols = Object.values(NSE_SYMBOL_REGISTRY);
+if (knownSymbols.includes(companyNameOrFolder)) {
+return companyNameOrFolder;
+}
+
+// Deprecated: all-caps passthrough removed — invalid symbols like
+// "BAJAJFINANCE" (not a real NSE ticker) silently passed through
+// and caused NSE API failures. Only known symbols pass through now.
   }
 
   return null;

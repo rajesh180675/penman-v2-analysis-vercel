@@ -2,11 +2,11 @@
   {
     "folder": "Bajaj Finance",
     "name": "Bajaj Finance",
-    "ticker": "BAJAJFINANCE",
+    "ticker": "BAJFINANCE",
     "sector": "Nbfc",
     "type": "nbfc",
     "description": "Pre-loaded Capitaline financial dataset for Bajaj Finance.",
-    "emoji": "💳",
+    "emoji": "\ud83d\udcb3",
     "hasStandalone": true
   },
   {
@@ -16,7 +16,7 @@
     "sector": "Bank",
     "type": "bank",
     "description": "Pre-loaded Capitaline financial dataset for HDFC Bank.",
-    "emoji": "🏦",
+    "emoji": "\ud83c\udfe6",
     "hasStandalone": true
   },
   {
@@ -26,7 +26,7 @@
     "sector": "Bank",
     "type": "bank",
     "description": "Pre-loaded Capitaline financial dataset for ICICI Bank.",
-    "emoji": "🏦",
+    "emoji": "\ud83c\udfe6",
     "hasStandalone": true
   },
   {
@@ -35,8 +35,8 @@
     "ticker": "ITC",
     "sector": "FMCG / Cigarettes",
     "type": "conglomerate",
-    "description": "Diversified conglomerate — cigarettes, FMCG, hotels, paper, agri",
-    "emoji": "🚬",
+    "description": "Diversified conglomerate \u2014 cigarettes, FMCG, hotels, paper, agri",
+    "emoji": "\ud83d\udeac",
     "showcaseFor": "SOTP valuation across multiple segments",
     "hasStandalone": true
   },
@@ -47,17 +47,17 @@
     "sector": "Banking",
     "type": "bank",
     "description": "Premium private bank with conservative loan book",
-    "emoji": "🏦",
+    "emoji": "\ud83c\udfe6",
     "hasStandalone": false
   },
   {
     "folder": "Life Insurance Corporation of India",
     "name": "LIC",
-    "ticker": "LIFI",
+    "ticker": "LICI",
     "sector": "Insurance (Life)",
     "type": "insurance",
     "description": "State-owned life insurer, dominant market share",
-    "emoji": "🛡️",
+    "emoji": "\ud83d\udee1\ufe0f",
     "showcaseFor": "Insurance fail-closed (no equity-side valuation)",
     "hasStandalone": true
   },
@@ -68,7 +68,7 @@
     "sector": "Industrial",
     "type": "industrial",
     "description": "Pre-loaded Capitaline financial dataset for Paytm.",
-    "emoji": "🏢",
+    "emoji": "\ud83c\udfe2",
     "hasStandalone": true
   },
   {
@@ -78,18 +78,18 @@
     "sector": "Utility (PSU)",
     "type": "utility",
     "description": "Inter-state electricity transmission monopoly",
-    "emoji": "⚡",
+    "emoji": "\u26a1",
     "showcaseFor": "Regulated utility with stable returns",
     "hasStandalone": true
   },
   {
     "folder": "Reliance Industries",
     "name": "Reliance Industries",
-    "ticker": "RELIANCEINDU",
+    "ticker": "RELIANCE",
     "sector": "Industrial",
     "type": "industrial",
     "description": "Pre-loaded Capitaline financial dataset for Reliance Industries.",
-    "emoji": "🏢",
+    "emoji": "\ud83c\udfe2",
     "hasStandalone": true
   },
   {
@@ -99,7 +99,7 @@
     "sector": "Banking (PSU)",
     "type": "bank",
     "description": "Largest public-sector bank",
-    "emoji": "🏛️",
+    "emoji": "\ud83c\udfdb\ufe0f",
     "hasStandalone": false
   },
   {
@@ -109,7 +109,7 @@
     "sector": "Industrial",
     "type": "industrial",
     "description": "Pre-loaded Capitaline financial dataset for Tata Steel.",
-    "emoji": "🏢",
+    "emoji": "\ud83c\udfe2",
     "hasStandalone": true
   },
   {
@@ -119,7 +119,7 @@
     "sector": "IT Services",
     "type": "it-services",
     "description": "Global IT services leader, capital-light",
-    "emoji": "💻",
+    "emoji": "\ud83d\udcbb",
     "showcaseFor": "IT-services detector + moat scorer awareness",
     "hasStandalone": true
   },
@@ -129,8 +129,8 @@
     "ticker": "IDEA",
     "sector": "Telecom",
     "type": "telecom",
-    "description": "3rd-largest telco — chronic losses, negative net worth",
-    "emoji": "📡",
+    "description": "3rd-largest telco \u2014 chronic losses, negative net worth",
+    "emoji": "\ud83d\udce1",
     "showcaseFor": "Negative-equity stress test (distress detector)",
     "hasStandalone": true
   }
