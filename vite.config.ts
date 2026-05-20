@@ -10,15 +10,28 @@ const __dirname = path.dirname(__filename);
 const singleFileBuild = process.env.VITE_SINGLE_FILE === "1";
 
 function packageChunkName(id: string) {
-  const marker = `${path.sep}node_modules${path.sep}`;
-  const markerIndex = id.lastIndexOf(marker);
-  if (markerIndex < 0) return "vendor";
+  // Rollup always uses forward slashes in module IDs — normalize before matching
+  const normalized = id.split(path.sep).join("/");
+  const marker = "/node_modules/";
+  const markerIndex = normalized.lastIndexOf(marker);
+  if (markerIndex < 0) return undefined;
 
-  const packagePath = id.slice(markerIndex + marker.length);
-  const segments = packagePath.split(path.sep);
+  const packagePath = normalized.slice(markerIndex + marker.length);
+  const segments = packagePath.split("/");
   const packageName = segments[0]?.startsWith("@")
-    ? `${segments[0]}-${segments[1] ?? "pkg"}`
+    ? `${segments[0]}/${segments[1] ?? "pkg"}`
     : (segments[0] ?? "pkg");
+
+  // Heavy packages — explicit named chunks so the entry bundle stays lean
+  if (packageName === "recharts" || packageName.startsWith("d3-") || packageName === "victory-vendor") {
+    return "vendor-charts";
+  }
+  if (packageName === "xlsx" || packageName === "jszip" || packageName === "exceljs") {
+    return "vendor-file-parsing";
+  }
+  if (packageName === "react" || packageName === "react-dom" || packageName === "scheduler") {
+    return "vendor-react";
+  }
 
   return `vendor-${packageName.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
 }
