@@ -86,7 +86,12 @@ const SIGNAL_GROUPS: Array<{
   // funding/advance labels remain as triggers.
   // "Fee and Commission Income",
       "Interests Income (Operating)",
+      // X-Detail BS format: "Loans - Long - Term" is the parent loan book,
+      // "Loan to Customer" is a sub-category (often zero; parent captures actual).
+      "Loans - Long - Term",
       "Loan to Customer",
+      "Finance Lease Receivables",
+      "Total Loans Given",
     ],
   },
 ];
