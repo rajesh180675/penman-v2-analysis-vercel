@@ -27,7 +27,7 @@ describe("Vodafone Idea (negative networth)", () => {
     console.log("Parsed periods:", parsed.periods.length);
     console.log("Period ends:", parsed.periods.map(p => p.period_end).join(", "));
 
-    result = processCompanyDataFull(parsed.periods, DEFAULT_CONFIG);
+    result = processCompanyDataFull(parsed.periods, { ...DEFAULT_CONFIG, company_type: "telecom" as const });
     expect(result.periods.length).toBeGreaterThan(0);
     console.log("Pipeline periods:", result.periods.length);
   });

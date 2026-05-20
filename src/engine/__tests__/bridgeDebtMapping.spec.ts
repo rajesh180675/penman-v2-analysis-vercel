@@ -81,7 +81,7 @@ const currentMaturityIssuer: RawPeriodData[] = [
 
 describe("bridge debt mapping", () => {
   it("excludes generic financial-liability repayments from the bridge CF line for ITC", () => {
-    const periods = processCompanyData((itcAuditedFixture as { rawData: RawPeriodData[] }).rawData, DEFAULT_CONFIG);
+    const periods = processCompanyData((itcAuditedFixture as { rawData: RawPeriodData[] }).rawData, { ...DEFAULT_CONFIG, company_type: "industrial" as const });
     const latest = periods.find((period) => period.period_end === "2023-03-31")!;
 
     expect(traceKeys(latest, "CF.BridgeDebtRepayment")).not.toContain("Of financial Liabilities");
@@ -98,7 +98,7 @@ describe("bridge debt mapping", () => {
   });
 
   it("creates the dedicated bridge-debt trace lines on another real-company fixture", () => {
-    const periods = processCompanyData(asianPaintsAuditedFixture.rawData as RawPeriodData[], DEFAULT_CONFIG);
+    const periods = processCompanyData(asianPaintsAuditedFixture.rawData as RawPeriodData[], { ...DEFAULT_CONFIG, company_type: "industrial" as const });
     const latest = periods[periods.length - 1];
 
     expect(latest.trace?.["BS.BridgeDebt.Total"]?.length).toBeGreaterThan(0);

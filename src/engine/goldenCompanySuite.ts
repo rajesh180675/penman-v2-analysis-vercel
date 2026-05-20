@@ -23,6 +23,8 @@ export interface GoldenCompanyCase {
   source: "audited-run" | "curated-contrast" | "real-company-sample";
   note: string;
   rawData: RawPeriodData[];
+  /** Optional per-case config override. Defaults to DEFAULT_CONFIG when absent. */
+  config?: EngineConfig;
   expectation: GoldenCompanyExpectation;
 }
 
@@ -593,6 +595,7 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
     source: "audited-run",
     note: "Real audited production run captured from Vercel on 2026-03-29.",
     rawData: (itcAuditedFixture as { rawData: RawPeriodData[] }).rawData,
+    config: { ...DEFAULT_CONFIG, company_type: "industrial" as const },
     expectation: {
       qualityGateTier: "Tier 1",
       valuationBlocked: true,
@@ -617,6 +620,7 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
     source: "audited-run",
     note: "Real audited Capitaline run for a clean supported industrial issuer with complete artifact capture.",
     rawData: asianPaintsAuditedFixture.rawData as RawPeriodData[],
+    config: { ...DEFAULT_CONFIG, company_type: "industrial" as const },
     expectation: {
       qualityGateTier: "Tier 1",
       valuationBlocked: false,
@@ -709,7 +713,8 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
 ];
 
 export function runGoldenCompanyCase(testCase: GoldenCompanyCase, config: EngineConfig = DEFAULT_CONFIG): GoldenCompanyResult {
-  const periods = processCompanyData(testCase.rawData, config);
+  const effectiveConfig = testCase.config ?? config;
+  const periods = processCompanyData(testCase.rawData, effectiveConfig);
   const qualityGate = evaluateQualityGate(testCase.rawData, null, periods);
   const valuationReadiness = resolveValuationReadiness(periods);
   const latestPeriod = periods[periods.length - 1];

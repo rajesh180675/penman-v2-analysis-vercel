@@ -53,6 +53,8 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
 
   // Fix 10: live config validation — catches ke=130, g≥ke, etc.
   const configWarnings = useMemo(() => validateEngineConfig(config), [config]);
+  // Gate: company_type must be explicitly declared before any data can load.
+  const typeNotSelected = !config.company_type || config.company_type === "auto";
 
   const buildMeta = useCallback(
     (sourceMode: AuditSubmissionMeta["sourceMode"], overrides?: Partial<AuditSubmissionMeta>): AuditSubmissionMeta => {
@@ -79,6 +81,10 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
     // first (so failures don't abort consolidated) and passes the periods here.
     standalonePeriods?: RawPeriodData[] | null,
   ) => {
+    if (typeNotSelected) {
+      setError("Select a Company Type before uploading.");
+      return;
+    }
     if (!file.name.toLowerCase().endsWith(".zip")) {
       setError("Please upload a .zip file containing Capitaline XLS exports.");
       setUploadStep("failed");
@@ -221,7 +227,11 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                   quality_data_folder: folder,
                   market_data_symbol: ticker,
                   ticker: ticker,
-                  company_type: type === "bank" || type === "nbfc" || type === "insurance" ? type : "auto",
+                  // Map all registry types to a valid CompanyType — never fall back to "auto".
+                  // conglomerate → industrial; all others map directly.
+                  company_type: (["bank","nbfc","insurance","it-services","consumer","utility","telecom","cyclical"] as string[]).includes(type)
+                    ? (type as EngineConfig["company_type"])
+                    : "industrial",
                 });
 
                 // Phase A — dual-scope loading. When the company has standalone
@@ -340,16 +350,22 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
               className="w-24 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white" placeholder="VST" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Company Type</label>
+            <label className={`block text-xs font-semibold mb-1 ${typeNotSelected ? "text-red-600" : "text-slate-600"}`}>
+              Company Type{typeNotSelected && <span className="ml-1 text-red-600">⛔ required</span>}
+            </label>
             <select
               value={config.company_type ?? "auto"}
               onChange={(e) => onConfigChange({
                 ...config,
                 company_type: e.target.value as EngineConfig["company_type"],
               })}
-              className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+              className={`px-3 py-1.5 border rounded-lg text-sm bg-white ${
+                typeNotSelected
+                  ? "border-red-400 ring-1 ring-red-400"
+                  : "border-slate-300"
+              }`}
             >
-              <option value="auto">Auto detect</option>
+              <option value="auto" disabled>— Select type —</option>
               <option value="bank">Bank</option>
               <option value="nbfc">NBFC</option>
               <option value="insurance">Insurance</option>
@@ -440,7 +456,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                   })}
                   className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
                 >
-                  <option value="auto">Auto detect</option>
+                  <option value="auto" disabled>— Select type —</option>
                   <option value="consumer-staples">Consumer staples</option>
                   <option value="paint">Paint / coatings</option>
                   <option value="industrials">Industrials</option>
@@ -563,10 +579,12 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-2xl p-10 text-center transition-all cursor-pointer relative overflow-hidden group ${
-                  dragOver 
-                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-inner" 
-                    : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/40 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-sm"
+                className={`border-2 border-dashed rounded-2xl p-10 text-center transition-all relative overflow-hidden group ${
+                  typeNotSelected
+                    ? "border-red-300 bg-red-50/30 dark:bg-red-950/10 cursor-not-allowed opacity-60"
+                    : dragOver
+                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-inner cursor-pointer"
+                    : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/40 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-sm cursor-pointer"
                 }`}
               >
                 <input 
