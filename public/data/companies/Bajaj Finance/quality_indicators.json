@@ -1066,5 +1066,8 @@
         "Car Loans": 2.9
       }
     }
-  ]
+  ],
+  "schema_version": "2026-05-bank-quality-v1",
+  "company_name": "Bajaj Finance Ltd",
+  "as_of_date": "2025-03-31"
 }

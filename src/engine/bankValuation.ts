@@ -170,6 +170,11 @@ export interface BankValuationBundle {
   /** Phase D2 — CRAR-buffer growth governor (NBFC-only). */
   crarGovernor?: CrarGovernorResult;
 
+  /** Phase E — Three-scenario framework (bear/base/bull). */
+  scenarios?: ScenarioBundle;
+  /** Phase E — Subsidiary SOTP (sum-of-parts). */
+  sotp?: SotpResult;
+
   /** Triangulated central value (median of computed models). */
   triangulatedValue: number | null;
   /** Models that contributed to triangulation. */

@@ -235,11 +235,12 @@ function cleanCell(raw: string | null | undefined): string {
 
   // Check if there's any HTML/Angular residue
   if (s.includes(">") || s.includes("<")) {
-    // Phase I10: If content contains ng-binding divs, extract their text first.
-    // Vodafone Idea format has values inside <div class="ng-binding">43,571.30</div>
-    // nested deep within 8KB of Angular template comments and closing tags.
+    // Phase I10/I11: If content contains ng-binding elements, extract their text first.
+    // Vodafone Idea values: <div class="ng-binding">43,571.30</div>
+    // Bajaj Finance INDAS metric names: <label class="ng-binding ng-scope font-bold">Net Worth</label>
+    //   or breakup labels: <label class="breakup ng-binding ng-scope">Property, Plant and Equipment <span>...</span></label>
     // The old "take text after last >" fails because closing tags come after the value.
-    const ngBindingMatch = s.match(/<div[^>]*class="[^"]*ng-binding[^"]*"[^>]*>\s*([^<]+)/);
+    const ngBindingMatch = s.match(/<(?:div|label)[^>]*class="[^"]*ng-binding[^"]*"[^>]*>\s*([^<]+)/);
     if (ngBindingMatch) {
       s = ngBindingMatch[1];
     } else {
