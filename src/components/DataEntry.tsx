@@ -80,8 +80,9 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
     // loaded both consolidated + standalone, the caller parses standalone
     // first (so failures don't abort consolidated) and passes the periods here.
     standalonePeriods?: RawPeriodData[] | null,
+  options?: { skipTypeCheck?: boolean },
   ) => {
-    if (typeNotSelected) {
+    if (typeNotSelected && !options?.skipTypeCheck) {
       setError("Select a Company Type before uploading.");
       return;
     }
@@ -273,7 +274,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                       console.warn(`[DataEntry] standalone parse failed for ${folder}, continuing with consolidated only:`, stanErr);
                     }
                   }
-                  await processZip(consFile, ticker.toUpperCase().slice(0, 20), standalonePeriods);
+                  await processZip(consFile, ticker.toUpperCase().slice(0, 20), standalonePeriods, { skipTypeCheck: true });
                 } else {
                   // Single-scope path (legacy: user picked Standalone explicitly,
                   // OR company has no standalone available)
@@ -286,7 +287,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                   const blob = await resp.blob();
                   const file = new File([blob], zipName, { type: "application/zip" });
                   setCompanyId(ticker.toUpperCase().slice(0, 20));
-                  await processZip(file, ticker.toUpperCase().slice(0, 20));
+                  await processZip(file, ticker.toUpperCase().slice(0, 20), undefined, { skipTypeCheck: true });
                 }
               } catch (err) {
                 setError(err instanceof Error ? err.message : String(err));
