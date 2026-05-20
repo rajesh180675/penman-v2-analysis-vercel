@@ -882,6 +882,14 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
                     <td className="py-1 pr-3 font-mono">{p.period_end}</td>
                     <td className="text-right py-1 px-3">{fmtCr(p.bookValue)}</td>
                     <td className="text-right py-1 px-3">{fmtCr(p.earnings)}</td>
+                    {config?.shares_outstanding && config.shares_outstanding > 0 && (<>
+                      <td className="text-right py-1 px-3 text-indigo-600 dark:text-indigo-400">
+                        {p.bookValue != null ? `₹${(p.bookValue / config.shares_outstanding).toFixed(0)}` : "—"}
+                      </td>
+                      <td className="text-right py-1 px-3 text-indigo-600 dark:text-indigo-400">
+                        {p.earnings != null ? `₹${(p.earnings / config.shares_outstanding).toFixed(1)}` : "—"}
+                      </td>
+                    </>)}
                     <td className="text-right py-1 px-3">
                       {fmtCr(
                         bankResult.subtype === "nbfc"
