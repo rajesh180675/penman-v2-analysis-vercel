@@ -3,8 +3,15 @@ import { parseSegmentFinanceHTML } from "../segmentParser";
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 
-describe("segmentParser", () => {
-  const fixturesDir = resolve(__dirname, "../../../public/data/companies/ITC");
+// Raw Capitaline XLS files are gitignored (~2 MB each). On a clean clone
+// or in CI they don't exist; locally they do. Guard the suite so it runs
+// when fixtures are present and skips cleanly when they aren't.
+const fixturesDir = resolve(__dirname, "../../../public/data/companies/ITC");
+const itcSegmentXls = resolve(fixturesDir, "SegmentFinance_.xls");
+const relianceSegmentXls = resolve(__dirname, "../../../public/data/companies/Reliance Industries/SegmentFinance_.xls");
+const fixturesAvailable = existsSync(itcSegmentXls) && existsSync(relianceSegmentXls);
+
+describe.skipIf(!fixturesAvailable)("segmentParser", () => {
 
   it("parses ITC business segment file", () => {
     const html = readFileSync(resolve(fixturesDir, "SegmentFinance_.xls"), "utf-8");
@@ -48,7 +55,7 @@ describe("segmentParser", () => {
   });
 
   it("parses Reliance Industries business segment file", () => {
-    const relianceDir = resolve(__dirname, "../../../public/data/companies/reliance Industries");
+    const relianceDir = resolve(__dirname, "../../../public/data/companies/Reliance Industries");
     const html = readFileSync(resolve(relianceDir, "SegmentFinance_.xls"), "utf-8");
     const result = parseSegmentFinanceHTML(html);
 

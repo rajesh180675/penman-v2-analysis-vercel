@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { segmentDataToDefinitions, classifySegmentSector, runSOTPFromSegmentData } from "../segmentSOTPBridge";
 import { parseSegmentFinanceHTML } from "../segmentParser";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 import { RecastPeriod } from "../types";
 
+// Raw .xls fixtures are gitignored — present locally, absent in CI.
 const fixturesDir = resolve(__dirname, "../../../public/data/companies/ITC");
+const itcSegmentXls = resolve(fixturesDir, "SegmentFinance_.xls");
+const fixturesAvailable = existsSync(itcSegmentXls);
 
 const mkPeriod = (): RecastPeriod => {
   const TA = 100000;
@@ -96,7 +99,7 @@ describe("segmentSOTPBridge", () => {
   });
 
   describe("segmentDataToDefinitions", () => {
-    it("converts ITC segment data to definitions with correct profit shares", () => {
+    it.skipIf(!fixturesAvailable)("converts ITC segment data to definitions with correct profit shares", () => {
       const html = readFileSync(resolve(fixturesDir, "SegmentFinance_.xls"), "utf-8");
       const segData = parseSegmentFinanceHTML(html);
       expect(segData).not.toBeNull();
@@ -122,7 +125,7 @@ describe("segmentSOTPBridge", () => {
   });
 
   describe("runSOTPFromSegmentData", () => {
-    it("produces enhanced SOTP result from parsed data", () => {
+    it.skipIf(!fixturesAvailable)("produces enhanced SOTP result from parsed data", () => {
       const html = readFileSync(resolve(fixturesDir, "SegmentFinance_.xls"), "utf-8");
       const segData = parseSegmentFinanceHTML(html);
       expect(segData).not.toBeNull();

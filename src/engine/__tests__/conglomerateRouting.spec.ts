@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 import { parseSegmentFinanceHTML } from "../segmentParser";
 import { segmentDataToDefinitions, runSOTPFromSegmentData } from "../segmentSOTPBridge";
@@ -7,10 +7,14 @@ import { classifySegmentSector } from "../segmentSOTPBridge";
 import { SOTP_PRESETS } from "../sotpValuation";
 import { RecastPeriod } from "../types";
 
-const relianceDir = resolve(__dirname, "../../../public/data/companies/reliance Industries");
+// Raw .xls fixtures are gitignored — present locally, absent in CI.
+const relianceDir = resolve(__dirname, "../../../public/data/companies/Reliance Industries");
 const itcDir = resolve(__dirname, "../../../public/data/companies/ITC");
+const fixturesAvailable =
+  existsSync(resolve(relianceDir, "SegmentFinance_.xls")) &&
+  existsSync(resolve(itcDir, "SegmentFinance_.xls"));
 
-describe("conglomerateRouting (Phase C5)", () => {
+describe.skipIf(!fixturesAvailable)("conglomerateRouting (Phase C5)", () => {
   describe("Reliance Industries segment parsing + SOTP", () => {
     it("parses Reliance segment file and produces valid definitions", () => {
       const html = readFileSync(resolve(relianceDir, "SegmentFinance_.xls"), "utf-8");

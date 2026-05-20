@@ -18,7 +18,7 @@ describe("Bajaj Finance (NBFC)", () => {
   let result: PipelineResult | null = null;
 
   it("parses and runs pipeline without throwing", { timeout: 60_000 }, async () => {
-    const zipPath = resolve(__dirname, "../../../public/data/companies/bajaj finance/bajaj finance.zip");
+    const zipPath = resolve(__dirname, "../../../public/data/companies/Bajaj Finance/Bajaj Finance.zip");
     const buf = readFileSync(zipPath);
     const file = new File([buf], "bajaj finance.zip", { type: "application/zip" });
     const parsed = await parseCapitalineZip(file);
@@ -195,7 +195,7 @@ result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG, qi);
   it("produces three-scenario bundle (bear/base/bull)", { timeout: 60_000 }, async () => {
     // Re-parse if result not yet available (can happen when running this test in isolation)
     if (!result || !result.bankResult) {
-      const zipPath = resolve(__dirname, "../../../public/data/companies/bajaj finance/bajaj finance.zip");
+      const zipPath = resolve(__dirname, "../../../public/data/companies/Bajaj Finance/Bajaj Finance.zip");
       const buf = readFileSync(zipPath);
       const file = new File([buf], "bajaj finance.zip", { type: "application/zip" });
       const parsed = await parseCapitalineZip(file);
