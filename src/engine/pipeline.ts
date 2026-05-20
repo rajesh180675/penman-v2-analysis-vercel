@@ -60,6 +60,12 @@ export interface PipelineResult {
    * "bank" with 60% NIM, an "IT-services" firm with 5% PM).
    */
   ratioSanity: SanityAssessment | null;
+  /**
+   * B6 — Period frequency warning.
+   * Null when all gaps are annual (330-400 days).
+   * Set when quarterly or mixed-frequency data is detected.
+   */
+  frequencyWarning: string | null;
 }
 
 export function processCompanyData(
@@ -80,6 +86,28 @@ export function processCompanyData(
  *                   family is financial-institution. Ignored for
  *                   industrial pipelines.
  */
+/** B6 — Detect period frequency from date gaps.
+ * Returns a warning string when quarterly or mixed-frequency data is found.
+ * Annual = 330-400 day gaps. Quarterly = ~90 day gaps. */
+function detectFrequencyWarning(sorted: { period_end: string }[]): string | null {
+  if (sorted.length < 2) return null;
+  const gaps: number[] = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const days = (new Date(sorted[i].period_end).getTime() - new Date(sorted[i-1].period_end).getTime()) / 86_400_000;
+    gaps.push(days);
+  }
+  const quarterly = gaps.filter(d => d >= 60 && d <= 120).length;
+  const annual    = gaps.filter(d => d >= 330 && d <= 400).length;
+  const other     = gaps.length - quarterly - annual;
+  if (quarterly === gaps.length) {
+    return `All ${gaps.length} gaps are quarterly (~90 days). Ratios computed on quarterly data will be annualised incorrectly. Upload annual Capitaline exports only.`;
+  }
+  if (quarterly > 0 || other > 0) {
+    return `Mixed period frequencies detected: ${annual} annual, ${quarterly} quarterly, ${other} other gaps. Time-series ratios (growth rates, RNOA trends) may be unreliable. Use annual Capitaline exports only.`;
+  }
+  return null;
+}
+
 export function processCompanyDataFull(
   dataArray: RawPeriodData[],
   config: EngineConfig,
@@ -88,7 +116,7 @@ export function processCompanyDataFull(
   if (!dataArray || dataArray.length === 0) {
     const emptyAnomalies = runAnomalyDetection([], config);
     const distress = detectDistress([]);
-    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "industrial", distress, structuralBreakPeriods: [], lossMaker: null, itServices: null, cyclicality: null, ratioSanity: null };
+    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "industrial", distress, structuralBreakPeriods: [], lossMaker: null, itServices: null, cyclicality: null, ratioSanity: null, frequencyWarning: null };
   }
 
   // Phase I9 — apply user-confirmed period exclusions before any processing.
@@ -146,7 +174,7 @@ export function processCompanyDataFull(
  },
  })
       : null;
-    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult, distress, structuralBreakPeriods: [], lossMaker: null, itServices: null, cyclicality: null, ratioSanity };
+    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult, distress, structuralBreakPeriods: [], lossMaker: null, itServices: null, cyclicality: null, ratioSanity, frequencyWarning: null };
   }
 
   // Fail-closed for blocked financial-institution scope.
@@ -163,6 +191,7 @@ export function processCompanyDataFull(
       itServices: null,
       cyclicality: null,
       ratioSanity: null,
+      frequencyWarning: null,
     };
   }
 
@@ -254,5 +283,6 @@ export function processCompanyDataFull(
       })
     : null;
 
-  return { periods: results, anomalies, analysisFamily: "industrial", distress: detectDistress(results), structuralBreakPeriods, lossMaker, itServices, cyclicality, ratioSanity };
+  const frequencyWarning = detectFrequencyWarning(sorted);
+  return { periods: results, anomalies, analysisFamily: "industrial", distress: detectDistress(results), structuralBreakPeriods, lossMaker, itServices, cyclicality, ratioSanity, frequencyWarning };
 }
