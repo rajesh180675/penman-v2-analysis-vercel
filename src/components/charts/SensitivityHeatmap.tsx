@@ -59,6 +59,12 @@ export default function SensitivityHeatmap({ ke, g, computeValue, marketPrice = 
     return Math.abs(keVal - ke) < 0.001 && Math.abs(gVal - g) < 0.001;
   }
 
+  function isFairValue(value: number | null): boolean {
+    if (value == null || marketPrice == null || marketPrice <= 0) return false;
+    const ratio = value / marketPrice;
+    return ratio >= 0.95 && ratio <= 1.05;
+  }
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900/60">
       <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
@@ -87,7 +93,11 @@ export default function SensitivityHeatmap({ ke, g, computeValue, marketPrice = 
                   return (
                     <td
                       key={ci}
-                      className={`p-1.5 text-center rounded ${cellColor(val)} ${isBase(keVal, gVal) ? "ring-2 ring-indigo-500 font-bold" : ""}`}
+                      className={`p-1.5 text-center rounded ${cellColor(val)} ${
+                        isBase(keVal, gVal) ? "ring-2 ring-indigo-500 font-bold"
+                        : isFairValue(val) ? "ring-2 ring-orange-400 ring-offset-1"
+                        : ""
+                      }`}
                     >
                       {val != null ? `₹${val.toFixed(0)}` : "—"}
                     </td>
@@ -102,6 +112,12 @@ export default function SensitivityHeatmap({ ke, g, computeValue, marketPrice = 
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-200 inline-block" /> Undervalued (&gt;15% MoS)</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-50 border border-amber-200 inline-block" /> Fair value</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-200 inline-block" /> Overvalued</span>
+        {marketPrice != null && (
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded ring-2 ring-orange-400 inline-block bg-white dark:bg-slate-900" />
+            Fair value (±5%)
+          </span>
+        )}
         {marketPrice != null && <span className="ml-auto">Market: ₹{marketPrice.toLocaleString("en-IN")}</span>}
       </div>
     </div>
