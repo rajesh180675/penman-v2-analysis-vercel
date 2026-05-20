@@ -382,6 +382,7 @@ function sustainableDDM(
 function evBasedValuation(
   metrics: BankPeriodMetrics[],
   marketCap: number | null,
+  cfg: EngineConfig,
 ): BankValuationModelResult {
   const eligible = metrics.filter(m => m.quality && m.quality.embedded_value != null);
   if (eligible.length === 0) {
@@ -396,12 +397,12 @@ function evBasedValuation(
   const diagnostics: Record<string, number | null> = { embedded_value: ev, vnb };
 
   if (vnb != null && vnb > 0) {
-    const multiple = 12;
+    const multiple = cfg.insurance_vnb_multiple ?? 12;
     fairValue = ev + vnb * multiple;
     reason = `EV (${ev.toFixed(0)} Cr) + VNB (${vnb.toFixed(0)} Cr) × ${multiple}x multiple`;
     diagnostics.vnb_multiple = multiple;
   } else {
-    const multiple = 2.0;
+    const multiple = cfg.insurance_ev_multiple ?? 2.0;
     fairValue = ev * multiple;
     reason = `EV (${ev.toFixed(0)} Cr) × default ${multiple.toFixed(1)}x multiple (VNB missing)`;
     diagnostics.ev_multiple = multiple;
@@ -748,7 +749,7 @@ export function computeBankValuation(
   const justifiedPB = justifiedPBGordon(latestBV, sustainableROE, ke, g, marketCap, isInsurance);
   const eri = equityResidualIncome(metrics, ke, g, marketCap, payoutRatio);
   const ddm = sustainableDDM(latestBV, latest.pat, sustainableROE, ke, g, payoutRatio, marketCap);
-  const evBased = evBasedValuation(metrics, marketCap);
+  const evBased = evBasedValuation(metrics, marketCap, cfg);
 
   // Phase D2 — NBFC-only lenses.
   let pAum: BankValuationModelResult | undefined;

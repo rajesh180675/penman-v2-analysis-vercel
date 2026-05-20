@@ -661,6 +661,12 @@ export interface EngineConfig {
   g_terminal_override ?: number | null;
   g_terminal_floor    ?: number;
   g_terminal_cap      ?: number;
+  /** Insurance EV-based valuation multiples.
+   * vnb_multiple: VNB × multiple added to EV. Default 12x (private insurer).
+   * ev_multiple: EV × multiple when VNB unavailable. Default 2.0x.
+   * PSU insurers (LIC) trade at ~1.0x EV; private (HDFC Life) at ~3.5x. */
+  insurance_vnb_multiple ?: number;
+  insurance_ev_multiple  ?: number;
   g_ke_floor_spread   ?: number;
   np_PM_median        ?: number;
   np_ATO_median       ?: number;
@@ -772,6 +778,8 @@ export const DEFAULT_CONFIG: EngineConfig = {
   g_terminal_override: null,
   g_terminal_floor: 0.02,
   g_terminal_cap: 0.06,
+  insurance_vnb_multiple: 12,
+  insurance_ev_multiple: 2.0,
   g_ke_floor_spread: 0.02,
   np_PM_median: 0.055,
   np_ATO_median: 1.18,
