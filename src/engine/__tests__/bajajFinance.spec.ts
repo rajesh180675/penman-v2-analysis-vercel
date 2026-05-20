@@ -12,6 +12,7 @@ import { readFileSync } from "fs";
 import { parseCapitalineZip } from "../capitalineParser";
 import { processCompanyDataFull, PipelineResult } from "../pipeline";
 import { DEFAULT_CONFIG } from "../types";
+import { BankQualityIndicators } from "../bankQualityIndicators";
 
 describe("Bajaj Finance (NBFC)", () => {
   let result: PipelineResult;
@@ -37,7 +38,16 @@ describe("Bajaj Finance (NBFC)", () => {
       .map(([k, v]) => `${k}: ${v}`);
     console.log("KEYS IN PERIOD 0 (first 30):", nonZeroKeys.slice(0, 30));
 
-    result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG);
+    // Load quality sidecar for NBFC metrics (cost-to-income, CRAR, etc.)
+const qiPath = resolve(__dirname, "../../../public/data/companies/Bajaj Finance/quality_indicators.json");
+let qi: BankQualityIndicators | null = null;
+try {
+  const qiRaw = readFileSync(qiPath, "utf-8");
+  qi = JSON.parse(qiRaw) as BankQualityIndicators;
+} catch { /* sidecar optional */ }
+console.log("Quality sidecar loaded:", qi != null, "Periods:", qi?.periods?.length ?? 0);
+
+result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG, qi);
     expect(result).toBeTruthy();
     console.log("Analysis family:", result.analysisFamily);
     console.log("Bank result?", result.bankResult != null);
