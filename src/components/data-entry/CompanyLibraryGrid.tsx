@@ -19,6 +19,10 @@ export interface LibraryCompany {
   showcaseFor?: string;
   /** Whether standalone statements are preloaded */
   hasStandalone?: boolean;
+  /** Vercel Blob URL for consolidated ZIP (set after upload-to-blob script runs) */
+  blobUrl?: string;
+  /** Vercel Blob URL for standalone ZIP */
+  standaloneBlobUrl?: string;
 }
 
 const COMPANIES: LibraryCompany[] = [
@@ -187,6 +191,8 @@ interface Props {
     type: LibraryCompany["type"],
     scope: "consolidated" | "standalone",
     hasStandalone: boolean,
+    blobUrl?: string,
+    standaloneBlobUrl?: string,
   ) => void;
   /** Disabled state — used while a load is in progress */
   disabled?: boolean;
@@ -302,7 +308,7 @@ export default function CompanyLibraryGrid({ onPickCompany, disabled = false }: 
             return (
               <button
                 key={c.folder}
-                onClick={() => !isUnsupportedStandalone && onPickCompany(c.folder, c.ticker, c.type, scope, c.hasStandalone === true)}
+                onClick={() => !isUnsupportedStandalone && onPickCompany(c.folder, c.ticker, c.type, scope, c.hasStandalone === true, c.blobUrl, c.standaloneBlobUrl)}
                 disabled={isCardDisabled}
                 className={`text-left rounded-xl border p-4 transition-all duration-200 group ${
                   isUnsupportedStandalone

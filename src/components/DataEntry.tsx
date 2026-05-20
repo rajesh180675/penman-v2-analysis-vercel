@@ -217,7 +217,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 dark:bg-slate-900/60 dark:border-slate-700 p-6">
           <CompanyLibraryGrid
             disabled={isProcessing}
-            onPickCompany={async (folder, ticker, type, scope, hasStandalone) => {
+            onPickCompany={async (folder, ticker, type, scope, hasStandalone, blobUrl, standaloneBlobUrl) => {
               try {
                 setIsProcessing(true); setError("");
 
@@ -242,8 +242,10 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                 // Legacy: when scope==="standalone" the user explicitly opted
                 // into standalone-only analysis (rare; keep it working).
                 const useDualScope = scope === "consolidated" && hasStandalone === true;
-                const consolidatedUrl = `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(folder)}.zip`;
-                const standaloneUrl   = `/data/companies/${encodeURIComponent(folder)}/standalone.zip`;
+                // Prefer Vercel Blob URLs when available (Vercel deploy);
+                // fall back to local public/ paths (local dev).
+                const consolidatedUrl = blobUrl ?? `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(folder)}.zip`;
+                const standaloneUrl   = standaloneBlobUrl ?? `/data/companies/${encodeURIComponent(folder)}/standalone.zip`;
 
                 if (useDualScope) {
                   // Parallel fetch of both ZIPs
@@ -275,7 +277,9 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                   // Single-scope path (legacy: user picked Standalone explicitly,
                   // OR company has no standalone available)
                   const zipName = scope === "standalone" ? "standalone.zip" : `${folder}.zip`;
-                  const zipUrl = `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(zipName)}`;
+                  const zipUrl = scope === "standalone"
+                    ? (standaloneBlobUrl ?? `/data/companies/${encodeURIComponent(folder)}/standalone.zip`)
+                    : (blobUrl ?? `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(zipName)}`);
                   const resp = await fetch(zipUrl);
                   if (!resp.ok) throw new Error(`Library ${scope} ZIP not found for "${folder}".`);
                   const blob = await resp.blob();
