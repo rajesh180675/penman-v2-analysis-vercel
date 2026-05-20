@@ -158,19 +158,6 @@
     "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/SBIN/quality_indicators.json"
   },
   {
-    "folder": "Tata Steel",
-    "name": "Tata Steel",
-    "ticker": "TATASTEEL",
-    "sector": "Metals (Cyclical)",
-    "type": "cyclical",
-    "description": "Integrated steel producer, India + Europe",
-    "emoji": "🏗️",
-    "showcaseFor": "Cyclical normalization + cycle-aware terminal RE",
-    "hasStandalone": true,
-    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Tata%20Steel/Tata%20Steel.zip",
-    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Tata%20Steel/standalone.zip"
-  },
-  {
     "folder": "Tata Consultancy Services Ltd",
     "name": "TCS",
     "ticker": "TCS",
@@ -182,6 +169,19 @@
     "hasStandalone": true,
     "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Tata%20Consultancy%20Services%20Ltd/Tata%20Consultancy%20Services%20Ltd.zip",
     "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Tata%20Consultancy%20Services%20Ltd/standalone.zip"
+  },
+  {
+    "folder": "Tata Steel",
+    "name": "Tata Steel",
+    "ticker": "TATASTEEL",
+    "sector": "Metals (Cyclical)",
+    "type": "cyclical",
+    "description": "Integrated steel producer, India + Europe",
+    "emoji": "🏗️",
+    "showcaseFor": "Cyclical normalization + cycle-aware terminal RE",
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Tata%20Steel/Tata%20Steel.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Tata%20Steel/standalone.zip"
   },
   {
     "folder": "Vodafone Idea Ltd",

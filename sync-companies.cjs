@@ -168,7 +168,10 @@ function toTitleCase(str) {
  */
 async function buildDeterministicZip(entries) {
   const zip = new JSZip();
-  const sorted = [...entries].sort((a, b) => a.name.localeCompare(b.name));
+  // Use byte-order sort (NOT localeCompare) so output is identical on
+  // every OS — Windows dev box, Linux CI runner, macOS. localeCompare's
+  // default locale varies and could shuffle entries between platforms.
+  const sorted = [...entries].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
   // Pre-create directory entries with the fixed date. JSZip auto-creates
   // implicit folder entries (e.g. "revised schd/") when you add a file in
@@ -403,7 +406,8 @@ async function run() {
     }
   }
 
-  companyList.sort((a, b) => a.name.localeCompare(b.name));
+  // Byte-order sort for cross-OS deterministic registry.json
+  companyList.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
   // Idempotent write - only touch the file if the JSON actually changed.
   // Stops the dev server from inflating git status on every restart.

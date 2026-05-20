@@ -22,5 +22,26 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Run release-grade validation: typecheck + golden suite + full tests
+      # + build. The build itself runs prebuild = validate-registry, so
+      # registry consistency is checked transitively.
       - name: Run release-grade validation
         run: npm run validate:release
+
+      # Determinism gate. After validate:release the build has rebuilt all
+      # ZIPs via sync-companies.cjs. If those ZIPs differ from the committed
+      # bytes, something leaked entropy (a new auto-folder timestamp, locale
+      # drift, source-file mtime leakage). git diff must be empty.
+      - name: Verify deterministic ZIP output
+        run: |
+          if [ -n "$(git status --porcelain public/data/companies)" ]; then
+            echo ""
+            echo "::error::sync-companies.cjs produced non-deterministic output."
+            echo "::error::Files that differ from committed bytes:"
+            git status --porcelain public/data/companies
+            echo ""
+            echo "::error::Diff of registry.json (if changed):"
+            git diff public/data/companies/registry.json || true
+            exit 1
+          fi
+          echo "OK: ZIPs and registry.json byte-identical to committed state."
