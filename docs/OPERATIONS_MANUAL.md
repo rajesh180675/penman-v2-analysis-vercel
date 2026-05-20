@@ -371,12 +371,12 @@ still callable directly when you need fine control.
 Same pattern as `extract_nbfc_quality.py` but tuned for bank ARs (HDFC,
 ICICI, etc.) and insurance ARs (LIC). Run when adding new ARs.
 
-### 6.9 `scripts/audit-tail.mjs`, `scripts/fetch-audited-run-fixture.mjs`
+### 6.8 `scripts/audit-tail.mjs`, `scripts/fetch-audited-run-fixture.mjs`
 
 Operational helpers for the audit pipeline. Read the file headers — they
 have specific use cases (debugging audit-monitor jobs).
 
-### 6.10 `scripts/rename-company-folders.ps1`
+### 6.9 `scripts/rename-company-folders.ps1`
 
 PowerShell script for renaming company folders to canonical Title-Case on
 Windows. Run **only** with the dev server stopped (file locks).

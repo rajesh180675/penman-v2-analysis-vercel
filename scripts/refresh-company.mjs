@@ -91,8 +91,15 @@ function findCompany(registry, folder) {
   }
 
   console.error(`Company not found: "${folder}"`);
+  console.error("");
   console.error("Known folders:");
-  for (const c of registry) console.error(`  - ${c.folder}`);
+  for (const c of registry) console.error(`  - ${c.folder}  (type=${c.type})`);
+  console.error("");
+  console.error("Usage:");
+  console.error('  node scripts/refresh-company.mjs [--dry-run] [--skip-extract] "<Folder Name>"');
+  console.error("Examples:");
+  console.error('  npm run refresh -- "Bajaj Finance"');
+  console.error('  npm run refresh -- --dry-run "HDFC Bank"');
   process.exit(1);
 }
 

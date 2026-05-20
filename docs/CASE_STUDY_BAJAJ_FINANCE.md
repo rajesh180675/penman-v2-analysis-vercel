@@ -56,7 +56,7 @@ You need three pieces of software installed on your laptop:
 
 Open a Command Prompt (press Windows key, type `cmd`, hit Enter) and run:
 
-```
+```bash
 node --version
 ```
 
@@ -76,7 +76,7 @@ You need to copy the project from GitHub to your laptop. Do this **once**.
 
 In Command Prompt:
 
-```
+```bash
 cd C:\Users\rajesh\WindsurfAPI
 ```
 
@@ -84,7 +84,7 @@ cd C:\Users\rajesh\WindsurfAPI
 
 ### Step 2: Download the project
 
-```
+```bash
 git clone https://github.com/rajesh180675/penman-v2-analysis-vercel.git penman-v2-analysis
 ```
 
@@ -92,13 +92,13 @@ This creates a folder `penman-v2-analysis` with the entire project.
 
 ### Step 3: Move into the project folder
 
-```
+```bash
 cd penman-v2-analysis
 ```
 
 ### Step 4: Install the project's dependencies
 
-```
+```bash
 npm ci
 ```
 
@@ -108,7 +108,7 @@ as the last line doesn't say "ERROR" you're fine.
 
 ### Step 5: Install Python dependencies (only needed for new AR PDFs)
 
-```
+```bash
 pip install pymupdf openpyxl
 ```
 
@@ -123,13 +123,13 @@ you can skip this step today.
 Before you do anything, look at what the project already has for Bajaj
 Finance. Open File Explorer and navigate to:
 
-```
+```text
 C:\Users\rajesh\WindsurfAPI\penman-v2-analysis\public\data\companies\Bajaj Finance
 ```
 
 You'll see a folder structure like this:
 
-```
+```text
 Bajaj Finance/
 ├── Bajaj Finance.zip               ← packaged consolidated data (auto-built)
 ├── standalone.zip                  ← packaged standalone data (auto-built)
@@ -173,19 +173,19 @@ command that starts both.
 
 ### Step 1: Open Command Prompt and navigate to the project
 
-```
+```bash
 cd C:\Users\rajesh\WindsurfAPI\penman-v2-analysis
 ```
 
 ### Step 2: Start the app
 
-```
+```bash
 npm run dev:local
 ```
 
 You'll see a flurry of messages. Wait until you see something like:
 
-```
+```json
 [vite]  ➜  Local:   http://localhost:5173/
 [api]   Local API server listening on http://localhost:3001
 ```
@@ -334,7 +334,7 @@ For the NBFC sidecars (Bajaj-specific):
 ### Step 2: Drop them into the project folder
 
 Open File Explorer to:
-```
+```text
 C:\Users\rajesh\WindsurfAPI\penman-v2-analysis\public\data\companies\Bajaj Finance
 ```
 
@@ -347,13 +347,13 @@ This single command does everything — runs the AR extractor (if PDFs are
 available), runs the Capitaline merger, repackages the ZIPs, and updates
 the registry:
 
-```
+```bash
 npm run refresh -- "Bajaj Finance"
 ```
 
 You'll see output like:
 
-```
+```text
 Refreshing: Bajaj Finance  (folder="Bajaj Finance", type="nbfc", ticker="BAJFINANCE")
 
 === nbfc AR extractor ===
@@ -381,7 +381,7 @@ warning — that's fine, the rest still runs.
 
 **Want to see what would happen first?** Add `--dry-run`:
 
-```
+```bash
 npm run refresh -- --dry-run "Bajaj Finance"
 ```
 
@@ -499,7 +499,7 @@ The NSE proxy couldn't reach NSE. Try:
 ### "Tests fail before the build" (only relevant if you push to main)
 
 Run them yourself first:
-```
+```bash
 npm run test
 ```
 You'll see green and red lines. Red ones tell you what broke. If you
@@ -510,7 +510,7 @@ a `quality_indicators.json` is malformed.
 
 This was a real bug. It's been fixed. If you see it on a fresh clone,
 you have an old branch. Run:
-```
+```bash
 git pull origin main
 node sync-companies.cjs
 git status
@@ -520,7 +520,7 @@ Should be clean. If it isn't, contact the maintainer.
 ### "Python scripts fail with 'no module named pymupdf'"
 
 You skipped the Python install step. Run:
-```
+```bash
 pip install pymupdf openpyxl
 ```
 
@@ -606,7 +606,7 @@ That gives them everything they need to diagnose without back-and-forth.
 
 ## Reference: Quick Card
 
-```
+```text
 START THE APP:
   cd C:\Users\rajesh\WindsurfAPI\penman-v2-analysis
   npm run dev:local
