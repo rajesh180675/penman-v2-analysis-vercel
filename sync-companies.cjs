@@ -71,7 +71,7 @@ const BASELINE_METADATA = {
   },
   "Life Insurance Corporation of India": {
     name: "LIC",
-    ticker: "LIFI",
+    ticker: "LICI",
     sector: "Insurance (Life)",
     type: "insurance",
     description: "State-owned life insurer, dominant market share",
