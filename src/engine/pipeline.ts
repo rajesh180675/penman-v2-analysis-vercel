@@ -246,6 +246,13 @@ export function processCompanyDataFull(
     results.push(recast);
   }
 
+  trace("pipeline", "recastComplete", {
+    periods: results.length,
+    latestPeriod: results.length > 0 ? results[results.length - 1].period_end : null,
+    hasRatios: results.length > 1 && results[results.length - 1].ratios != null,
+    hasRI: results.length > 1 && results[results.length - 1].ri != null,
+  });
+
   // Run anomaly detection over all periods (S-5.x)
   const reSeries = results
     .filter(p => p.ri?.RE != null)
