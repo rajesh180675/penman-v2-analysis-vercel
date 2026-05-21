@@ -180,6 +180,54 @@ export interface CreditCostCycleCheck {
   message: string;
 }
 
+// ── Phase D3b — Spread Compression / Cost-of-Funds Sensitivity ──────────────
+//
+// Indian NBFCs fund themselves through wholesale borrowings (NCDs, bank loans,
+// institutional debt) — NOT deposits. This makes them acutely vulnerable to
+// funding cost spikes during liquidity crises:
+//   - FY18 IL&FS: wholesale rates spiked ~150bps in 3 months
+//   - FY20 COVID: CP/NCD markets froze, rollover risk materialized
+//   - FY22 Adani-Hindenburg: contagion fears widened NBFC spreads ~100bps
+//
+// Unlike banks (which have sticky CASA deposits as a buffer), NBFCs must
+// reprice their entire liability book within 1-3 years. A 150bps CoB spike
+// directly compresses spread → ROA → ROE → justified P/B.
+//
+// This diagnostic:
+//   1. Tracks the cost-of-borrowings trend (rising = risk)
+//   2. Stress-tests ROA under +150bps (moderate) and +250bps (severe) CoB shocks
+//   3. Flags when current spread is already thin vs trailing median
+//
+// It is INFORMATIONAL (like creditCostCycle) — does not modify valuation.
+// The analyst uses it to judge whether the base-case ROE assumption is fragile.
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface SpreadCompressionCheck {
+  status: "computed" | "skipped";
+  /** Latest cost of borrowings (decimal, e.g. 0.08 = 8%). */
+  latestCostOfBorrowings: number | null;
+  /** Latest yield on advances (decimal). */
+  latestYieldOnAdvances: number | null;
+  /** Latest spread = yield - cost (decimal). */
+  latestSpread: number | null;
+  /** Trailing 5y median spread (decimal). */
+  medianSpread: number | null;
+  /** Latest spread / median spread ratio. < 1 means compression. */
+  spreadRatio: number | null;
+  /** Cost-of-borrowings trend: YoY change in bps (positive = rising). */
+  cobTrendBps: number | null;
+  /** Stress scenario: ROA if CoB rises +150bps (IL&FS-level shock). */
+  stressedROA_150bps: number | null;
+  /** Stress scenario: ROA if CoB rises +250bps (severe liquidity crisis). */
+  stressedROA_250bps: number | null;
+  /** Current ROA for comparison. */
+  currentROA: number | null;
+  /** Severity: "compressed" | "normal" | "expanding" | "unknown". */
+  severity: "compressed" | "normal" | "expanding" | "unknown";
+  /** Human-readable explanation with stress scenario impact. */
+  message: string;
+}
+
 /** Diagnostic for CRAR-buffer growth governor (NBFC-only). */
 export interface CrarGovernorResult {
   status: "computed" | "skipped";
@@ -286,6 +334,10 @@ export interface BankValuationBundle {
    *  Fades the Gordon-model P/B when uncovered Stage 3 + restructured
    *  exceeds healthy thresholds. See EclStressGovernorResult for details. */
   eclStressGovernor?: EclStressGovernorResult;
+  /** Phase D3b — Spread compression / cost-of-funds sensitivity (NBFC-only).
+   *  Informational diagnostic: stress-tests ROA under CoB shocks and flags
+   *  when current spread is thin vs history. Does NOT modify valuation. */
+  spreadCompression?: SpreadCompressionCheck;
 
   /** Phase E — Three-scenario framework (bear/base/bull). */
   scenarios?: ScenarioBundle | null;
@@ -791,6 +843,142 @@ function creditCostCycle(metrics: BankPeriodMetrics[]): CreditCostCycleCheck {
  * so an NBFC near the regulatory floor can't claim a 5% growth assumption.
  */
 
+// ── Lens 9: Spread Compression / Cost-of-Funds Sensitivity (Phase D3b) ──────
+//
+// Stress-tests the NBFC's ROA under wholesale funding cost shocks.
+// NBFCs fund through NCDs + bank loans (not deposits), so a liquidity
+// crisis directly compresses spread → ROA → ROE → justified P/B.
+//
+// Historical shock magnitudes (Indian NBFC market):
+//   +150bps: IL&FS Sep 2018 — wholesale rates spiked within 3 months
+//   +250bps: COVID Mar 2020 — CP/NCD markets froze, rollover risk
+//   +100bps: Adani-Hindenburg Jan 2023 — contagion fears
+//
+// The stress test assumes:
+//   - Yield on advances is sticky (can't reprice loans immediately)
+//   - Cost of borrowings reprices fully (worst case — entire book rolls over)
+//   - Operating expenses and credit cost unchanged
+//   - Stressed ROA = (yield - stressed_cost - opex_ratio - credit_cost) × leverage_adj
+//
+// This is INFORMATIONAL — does not modify valuation. The analyst uses it
+// to judge whether the base-case ROE assumption is fragile.
+// ────────────────────────────────────────────────────────────────────────────
+
+function spreadCompressionCheck(metrics: BankPeriodMetrics[]): SpreadCompressionCheck {
+  // Need at least 3 periods with spread data
+  const withSpread = metrics.filter(m =>
+    m.costOfBorrowings != null && m.yieldOnAdvances != null && m.spread != null
+  );
+
+  if (withSpread.length < 3) {
+    return {
+      status: "skipped",
+      latestCostOfBorrowings: null,
+      latestYieldOnAdvances: null,
+      latestSpread: null,
+      medianSpread: null,
+      spreadRatio: null,
+      cobTrendBps: null,
+      stressedROA_150bps: null,
+      stressedROA_250bps: null,
+      currentROA: null,
+      severity: "unknown",
+      message: `only ${withSpread.length} periods with spread data (need ≥3)`,
+    };
+  }
+
+  const latest = withSpread[withSpread.length - 1];
+  const prior = withSpread[withSpread.length - 2];
+  const latestCoB = latest.costOfBorrowings!;
+  const latestYield = latest.yieldOnAdvances!;
+  const latestSpread = latest.spread!;
+  const currentROA = latest.roa;
+
+  // Trailing 5y median spread
+  const spreadSeries = withSpread.slice(-5).map(m => m.spread!);
+  const sortedSpreads = [...spreadSeries].sort((a, b) => a - b);
+  const mid = Math.floor(sortedSpreads.length / 2);
+  const medianSpread = sortedSpreads.length % 2
+    ? sortedSpreads[mid]
+    : (sortedSpreads[mid - 1] + sortedSpreads[mid]) / 2;
+
+  // Spread ratio: < 1 means current spread is below median (compressed)
+  const spreadRatio = medianSpread > 0 ? latestSpread / medianSpread : null;
+
+  // CoB trend: YoY change in basis points
+  const priorCoB = prior.costOfBorrowings!;
+  const cobTrendBps = (latestCoB - priorCoB) * 10000; // decimal → bps
+
+  // Stress test: what happens to ROA if CoB spikes?
+  // Simplified: stressed_spread = yield - (cost + shock)
+  // ROA impact ≈ spread_compression × (advances/assets) ratio
+  // For NBFCs, advances ≈ 80-85% of assets, so we use 0.82 as proxy
+  const advancesToAssets = latest.advances != null && latest.totalAssets != null && latest.totalAssets > 0
+    ? latest.advances / latest.totalAssets
+    : 0.82; // fallback for NBFCs
+
+  // ROA under stress = current ROA - (shock × advances/assets)
+  // This is because the CoB increase flows through to interest expense
+  // which reduces PAT, and ROA = PAT / assets
+  const stressedROA_150 = currentROA != null
+    ? currentROA - (0.015 * advancesToAssets)
+    : null;
+  const stressedROA_250 = currentROA != null
+    ? currentROA - (0.025 * advancesToAssets)
+    : null;
+
+  // Severity classification
+  let severity: SpreadCompressionCheck["severity"];
+  if (spreadRatio == null) {
+    severity = "unknown";
+  } else if (spreadRatio < 0.75) {
+    severity = "compressed";
+  } else if (spreadRatio > 1.15) {
+    severity = "expanding";
+  } else {
+    severity = "normal";
+  }
+
+  // Build message
+  const spreadBps = (latestSpread * 10000).toFixed(0);
+  const medianBps = (medianSpread * 10000).toFixed(0);
+  const cobPct = (latestCoB * 100).toFixed(2);
+  const yieldPct = (latestYield * 100).toFixed(2);
+  const trendDir = cobTrendBps > 20 ? "rising" : cobTrendBps < -20 ? "falling" : "stable";
+
+  let message: string;
+  if (severity === "compressed") {
+    message = `Spread ${spreadBps}bps vs ${medianBps}bps median (${((spreadRatio!) * 100).toFixed(0)}%) — ` +
+      `COMPRESSED. CoB ${cobPct}% (${trendDir}, ${cobTrendBps > 0 ? "+" : ""}${cobTrendBps.toFixed(0)}bps YoY). ` +
+      `Stress test: +150bps shock → ROA ${stressedROA_150 != null ? (stressedROA_150 * 100).toFixed(2) : "?"}%, ` +
+      `+250bps → ROA ${stressedROA_250 != null ? (stressedROA_250 * 100).toFixed(2) : "?"}%. ` +
+      `Current ROA ${currentROA != null ? (currentROA * 100).toFixed(2) : "?"}%.`;
+  } else if (severity === "expanding") {
+    message = `Spread ${spreadBps}bps vs ${medianBps}bps median (${((spreadRatio!) * 100).toFixed(0)}%) — ` +
+      `expanding (favorable). CoB ${cobPct}% (${trendDir}). Yield ${yieldPct}%.`;
+  } else {
+    message = `Spread ${spreadBps}bps vs ${medianBps}bps median (${spreadRatio != null ? ((spreadRatio * 100).toFixed(0) + "%") : "?"}) — ` +
+      `within normal band. CoB ${cobPct}% (${trendDir}, ${cobTrendBps > 0 ? "+" : ""}${cobTrendBps.toFixed(0)}bps YoY). ` +
+      `Stress test: +150bps shock → ROA ${stressedROA_150 != null ? (stressedROA_150 * 100).toFixed(2) : "?"}%, ` +
+      `+250bps → ROA ${stressedROA_250 != null ? (stressedROA_250 * 100).toFixed(2) : "?"}%.`;
+  }
+
+  return {
+    status: "computed",
+    latestCostOfBorrowings: latestCoB,
+    latestYieldOnAdvances: latestYield,
+    latestSpread,
+    medianSpread,
+    spreadRatio,
+    cobTrendBps,
+    stressedROA_150bps: stressedROA_150,
+    stressedROA_250bps: stressedROA_250,
+    currentROA,
+    severity,
+    message,
+  };
+}
+
 // ── Lens 8: ECL Stress Governor (Phase D3) ──────────────────────────────────
 //
 // Fades the justified P/B when the NBFC's uncovered credit stress exceeds
@@ -999,10 +1187,12 @@ export function computeBankValuation(
   let pAum: BankValuationModelResult | undefined;
   let roaLevRI: BankValuationModelResult | undefined;
   let creditCostCycleResult: CreditCostCycleCheck | undefined;
+  let spreadCompressionResult: SpreadCompressionCheck | undefined;
   if (isNbfc) {
     pAum = pAumLens(metrics, marketCap);
     roaLevRI = roaLeverageRI(metrics, ke, g, marketCap, payoutRatio);
     creditCostCycleResult = creditCostCycle(metrics);
+    spreadCompressionResult = spreadCompressionCheck(metrics);
   }
 
   const computedValues: Array<[string, number]> = [];
@@ -1063,6 +1253,7 @@ export function computeBankValuation(
     creditCostCycle: creditCostCycleResult,
     crarGovernor: crarGovernorResult,
     eclStressGovernor: eclStressResult,
+    spreadCompression: spreadCompressionResult,
     scenarios: scenarioBundle,
     triangulatedValue,
     modelsContributing: computedValues.map(([name]) => name),
