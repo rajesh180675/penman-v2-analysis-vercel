@@ -24,12 +24,40 @@ export async function fetchNbfcSidecarData(
     ? `${blobBaseUrl.replace(/\/$/, "")}/companies/${encodeURIComponent(companyFolder)}`
     : `/data/companies/${encodeURIComponent(companyFolder)}`;
 
+  // Strategy: try pre-parsed JSON first (fast, reliable), fall back to XLS parsing
+  const jsonResult = await fetchPreParsedJson(baseUrl);
+  if (jsonResult) {
+    trace("sidecar", "nbfcSidecar:jsonHit", {
+      lgdPeriods: jsonResult.lgd.length,
+      rbiNhbPeriods: jsonResult.rbiNhb.length,
+    });
+    return jsonResult;
+  }
+
+  // Fallback: parse XLS files at runtime
+  trace("sidecar", "nbfcSidecar:jsonMiss", { baseUrl }, null, { level: "info", msg: "No pre-parsed JSON, falling back to XLS" });
   const [lgd, rbiNhb] = await Promise.all([
     fetchLgdFiles(baseUrl),
     fetchRbiNhbFile(baseUrl),
   ]);
 
   return { lgd, rbiNhb };
+}
+
+async function fetchPreParsedJson(baseUrl: string): Promise<NbfcSidecarData | null> {
+  try {
+    const res = await fetch(`${baseUrl}/nbfc_sidecar.json`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    // Validate structure
+    if (!data || !Array.isArray(data.lgd) || !Array.isArray(data.rbi_nhb)) return null;
+    return {
+      lgd: data.lgd as LgdMigrationMatrix[],
+      rbiNhb: data.rbi_nhb as RbiNhbPeriod[],
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function fetchLgdFiles(baseUrl: string): Promise<LgdMigrationMatrix[]> {
