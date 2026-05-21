@@ -1308,7 +1308,7 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
                       </div>
                       <div className="text-2xl font-bold mb-1">
                         {card.intrinsicValue != null
-                          ? "₹" + (card.intrinsicValue / 1_000_000_000).toFixed(0) + " Cr"
+                          ? fmtCr(card.intrinsicValue)
                           : "N/A"}
                       </div>
                       {card.upsidePct != null && (
