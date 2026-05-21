@@ -1,3 +1,4 @@
+import { trace } from "../lib/traceLogger";
 /**
  * Phase D4 — LGD (Loss Given Default) and RBI NHB sidecar XLS parsers.
  *
@@ -210,6 +211,11 @@ export function parseRbiNhbFile(html: string): RbiNhbPeriod[] {
     });
   }
 
+  trace("sidecar", "rbiNhbParsed", {
+    periods: periods.length,
+    periodsWithData: periods.filter(p => (p.gnpa_cr ?? 0) > 0 || (p.crar_pct ?? 0) > 0).length,
+    latestFY: periods.length > 0 ? periods[0].fiscal_label : null,
+  });
   return periods;
 }
 
@@ -240,8 +246,14 @@ export function parseLgdFiles(htmlContents: { filename: string; html: string }[]
     : now.getFullYear() - 1;  // Before July: previous year's AR is latest
   const baseYear = latestPublishedFY - parsed.length + 1;
 
-  return parsed.map((item, i) => ({
+  const result = parsed.map((item, i) => ({
     fiscal_label: `FY${baseYear + i}`,
     ...item.data,
   }));
+  trace("sidecar", "lgdFilesParsed", {
+    fileCount: result.length,
+    fiscalYears: result.map(r => r.fiscal_label),
+    latestClosingTotal: result.length > 0 ? result[result.length - 1].gross_carrying.closing?.total : null,
+  });
+  return result;
 }
