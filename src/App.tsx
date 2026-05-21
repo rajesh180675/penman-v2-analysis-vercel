@@ -6,6 +6,7 @@ import { processScopeAwareData, type ScopeAwareResult } from "./engine/scopeAwar
 import { assessAnalysisScope, analysisFamilyFromScope } from "./engine/scopePolicy";
 import type { FinancialInstitutionAnalysisResult } from "./engine/analysisFamily";
 import { fetchBankQualityIndicators, type BankQualityIndicators } from "./engine/bankQualityIndicators";
+import { fetchNbfcSidecarData, type NbfcSidecarData } from "./engine/nbfcSidecarLoader";
 import { deriveAnalysisStatus } from "./engine/analysisStatus";
 import { CapitalineParseDebug } from "./engine/capitalineParser";
 import { auditMappingCoverage, evaluateQualityGate } from "./engine/mappingAudit";
@@ -151,6 +152,7 @@ export function App() {
   // The fetch is graceful: 404 / network errors yield null, the engine
   // still runs without quality data. Schema/parse errors throw loud.
   const [bankQuality, setBankQuality] = useState<BankQualityIndicators | null>(null);
+  const [nbfcSidecar, setNbfcSidecar] = useState<NbfcSidecarData | null>(null);
   const qualityFolder = useMemo(() => {
     // Explicit override wins. Otherwise use the parser-supplied company_id
     // when present — it usually matches the folder under public/data/companies/.
@@ -177,6 +179,25 @@ export function App() {
     return () => {
       cancelled = true;
     };
+  }, [qualityFolder, config.quality_indicators_blob_url]);
+
+  // Phase D4 — Fetch NBFC sidecar data (LGD + RBI NHB) when company folder is known
+  useEffect(() => {
+    let cancelled = false;
+    if (!qualityFolder) {
+      setNbfcSidecar(null);
+      return;
+    }
+    void fetchNbfcSidecarData(qualityFolder, config.quality_indicators_blob_url ?? null)
+      .then((data) => {
+        if (!cancelled && (data.lgd.length > 0 || data.rbiNhb.length > 0)) {
+          setNbfcSidecar(data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setNbfcSidecar(null);
+      });
+    return () => { cancelled = true; };
   }, [qualityFolder, config.quality_indicators_blob_url]);
 
   // Single engine pass — produces both the industrial recast (RecastPeriod[])
@@ -974,6 +995,7 @@ auditRunId={auditMeta?.runId ?? null}
 marketCapCr={config.market_price != null && config.shares_outstanding != null
 ? (config.market_price * config.shares_outstanding) / 1e7
 : null}
+nbfcSidecar={nbfcSidecar}
 />
 )}
             {activeTab === "watchlist" && (
@@ -1009,6 +1031,7 @@ marketCapCr={config.market_price != null && config.shares_outstanding != null
                 marketCapCr={config.market_price != null && config.shares_outstanding != null
                   ? (config.market_price * config.shares_outstanding) / 1e7
                   : null}
+                nbfcSidecar={nbfcSidecar}
               />
             )}
             {activeTab === "forecast" && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
@@ -1024,6 +1047,7 @@ marketCapCr={config.market_price != null && config.shares_outstanding != null
                 marketCapCr={config.market_price != null && config.shares_outstanding != null
                   ? (config.market_price * config.shares_outstanding) / 1e7
                   : null}
+                nbfcSidecar={nbfcSidecar}
               />
             )}
             {activeTab === "bank" && bankResult && (
@@ -1035,6 +1059,7 @@ marketCapCr={config.market_price != null && config.shares_outstanding != null
                 marketCapCr={config.market_price != null && config.shares_outstanding != null
                   ? (config.market_price * config.shares_outstanding) / 1e7
                   : null}
+                nbfcSidecar={nbfcSidecar}
               />
             )}
             {activeTab === "bank" && !bankResult && rawData && rawData.length > 0 && (
@@ -1070,6 +1095,7 @@ marketCapCr={config.market_price != null && config.shares_outstanding != null
                 marketCapCr={config.market_price != null && config.shares_outstanding != null
                   ? (config.market_price * config.shares_outstanding) / 1e7
                   : null}
+                nbfcSidecar={nbfcSidecar}
               />
             )}
             {/* Phase A — Scope tab: subsidiary contribution panel (cons − stan gap) */}
