@@ -20,6 +20,7 @@ import { computeLossMakerValuation, LossMakerValuationResult } from "./lossMaker
 import { detectITServices, ITServicesSignal } from "./itServicesDetector";
 import { assessCyclicality, CyclicalityAssessment } from "./cyclicalityDetector";
 import { evaluateRatioSanity, SanityAssessment } from "./ratioSanity";
+import { trace } from "../lib/traceLogger";
 
 export interface PipelineResult {
   periods  : RecastPeriod[];
@@ -113,6 +114,12 @@ export function processCompanyDataFull(
   config: EngineConfig,
   quality: BankQualityIndicators | null = null,
 ): PipelineResult {
+  trace("pipeline", "processCompanyDataFull:enter", {
+    periods: dataArray?.length ?? 0,
+    hasQuality: quality != null,
+    companyType: config.company_type ?? "auto",
+  });
+
   if (!dataArray || dataArray.length === 0) {
     const emptyAnomalies = runAnomalyDetection([], config);
     const distress = detectDistress([]);
@@ -133,9 +140,16 @@ export function processCompanyDataFull(
   // Detect company type from data
   const scope = assessAnalysisScope(filteredData, config);
   const family = analysisFamilyFromScope(scope);
+  trace("scope", "assessed", {
+    classification: scope.classification,
+    family,
+    signals: scope.signals,
+    blocked: scope.blocked,
+  });
 
   // Route to bank pipeline only if financial institution AND not blocked.
   if (family === "financial-institution" && !scope.blocked) {
+    trace("pipeline", "routeToBank", { family, subtype: scope.classification });
     const marketCapCr = config.market_price != null && config.shares_outstanding != null
       ? (config.market_price * config.shares_outstanding) / 1e7
       : null;

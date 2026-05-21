@@ -7,6 +7,7 @@ import { assessAnalysisScope, analysisFamilyFromScope } from "./engine/scopePoli
 import type { FinancialInstitutionAnalysisResult } from "./engine/analysisFamily";
 import { fetchBankQualityIndicators, type BankQualityIndicators } from "./engine/bankQualityIndicators";
 import { fetchNbfcSidecarData, type NbfcSidecarData } from "./engine/nbfcSidecarLoader";
+import { trace } from "./lib/traceLogger";
 import { deriveAnalysisStatus } from "./engine/analysisStatus";
 import { CapitalineParseDebug } from "./engine/capitalineParser";
 import { auditMappingCoverage, evaluateQualityGate } from "./engine/mappingAudit";
@@ -167,7 +168,14 @@ export function App() {
     }
     void fetchBankQualityIndicators(qualityFolder, undefined, config.quality_indicators_blob_url)
       .then((q) => {
-        if (!cancelled) setBankQuality(q);
+        if (!cancelled) {
+          setBankQuality(q);
+          trace("quality", "sidecarLoaded", {
+            folder: qualityFolder,
+            periods: q?.periods?.length ?? 0,
+            hasData: q != null,
+          });
+        }
       })
       .catch((err) => {
         // Schema-level failures are loud; surface to console but keep the
@@ -192,6 +200,10 @@ export function App() {
       .then((data) => {
         if (!cancelled && (data.lgd.length > 0 || data.rbiNhb.length > 0)) {
           setNbfcSidecar(data);
+          trace("sidecar", "nbfcSidecarLoaded", {
+            lgdPeriods: data.lgd.length,
+            rbiNhbPeriods: data.rbiNhb.length,
+          });
         }
       })
       .catch(() => {

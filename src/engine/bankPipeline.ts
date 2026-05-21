@@ -32,6 +32,7 @@ import {
   indexQualityByPeriod,
 } from "./bankQualityIndicators";
 import { computeBankAssetQuality } from "./bankAssetQuality";
+import { trace } from "../lib/traceLogger";
 
 /** Bank-specific metrics extracted from raw data */
 export interface BankPeriodMetrics {
@@ -579,6 +580,7 @@ export function processBankData(
 
   // Determine subtype first so ratio computation can branch on it.
   const subtype = detectSubtype(scope);
+  trace("bank", "subtypeDetected", { subtype, classification: scope.classification });
 
   // Extract raw metrics
   const rawMetrics = sorted.map(extractBankMetrics);
@@ -678,6 +680,16 @@ export function processBankData(
         subtype === "nbfc",
       )
     : null;
+
+  trace("bank", "processBankData:result", {
+    subtype,
+    periodsCount: periods.length,
+    hasValuation: valuation != null,
+    latestROE: computed.length > 0 ? computed[computed.length - 1].roe : null,
+    latestROA: computed.length > 0 ? computed[computed.length - 1].roa : null,
+    latestLeverage: computed.length > 0 ? computed[computed.length - 1].leverage : null,
+    latestSpread: computed.length > 0 ? computed[computed.length - 1].spread : null,
+  });
 
   return {
     family: "financial-institution",

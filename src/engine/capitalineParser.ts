@@ -15,6 +15,7 @@
 import JSZip from "jszip";
 import { RawPeriodData } from "./types";
 import { parseSegmentFinanceHTML, SegmentData } from "./segmentParser";
+import { trace } from "../lib/traceLogger";
 import {
   AccountingStandard,
   STANDARD_PRECEDENCE,
@@ -595,11 +596,13 @@ export async function parseCapitalineZip(
   const warnings: ParseWarning[] = [];
 
   /* 1. Open ZIP */
+  trace("parse", "zipLoad:start", { filename: zipFile.name, sizeBytes: zipFile.size, companyId });
   let zip: JSZip;
   try {
     zip = await JSZip.loadAsync(zipFile);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    trace("parse", "zipLoad:error", { error: msg }, null, { level: "error" });
     throw new Error(`Failed to open ZIP: ${msg}`);
   }
 
@@ -990,6 +993,8 @@ export async function parseCapitalineZip(
     sample: { headerRow: sampleHeaderRow, firstRows: sampleRows },
     rawMetricKeys: firstPeriodKeys,
   };
+
+  trace("parse", "zipLoad:complete", { periods: periods.length, companyId });
 
   return { periods, debug, segmentData: await parseSegmentFilesFromZip(fileEntries as any) };
 }
