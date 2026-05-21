@@ -123,6 +123,23 @@ export interface BankQualityPeriod {
   source_page?: number;
   /** Per-record notes (e.g., "PCR excludes technical write-offs"). */
   source_notes?: string;
+
+  // ── Subsidiary data (from Capitaline sidecar XLS) ───────────────
+  /** Per-subsidiary financials from the Capitaline "Subsidiaries" export.
+   *  Each entry represents one subsidiary's standalone financials for this period. */
+  subsidiaries?: SubsidiaryRecord[] | null;
+}
+
+/** A single subsidiary's financials for one fiscal year. */
+export interface SubsidiaryRecord {
+  name: string;
+  equity_cr?: number | null;
+  reserves_cr?: number | null;
+  investment_cost_cr?: number | null;
+  pat_cr?: number | null;
+  total_assets_cr?: number | null;
+  total_liabilities_cr?: number | null;
+  sales_cr?: number | null;
 }
 
 export interface BankQualityIndicators {
