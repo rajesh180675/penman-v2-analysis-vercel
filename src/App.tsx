@@ -1164,6 +1164,18 @@ nbfcSidecar={nbfcSidecar}
                 ratioSanity={ratioSanity}
               />
             )}
+            {activeTab === "report" && !hasRecast && bankResult && (
+              <FinancialInstitutionReport
+                bankResult={bankResult}
+                config={config}
+                companyId={auditMeta?.companyId ?? rawData?.[0]?.company_id ?? null}
+                auditRunId={auditMeta?.runId ?? null}
+                marketCapCr={config.market_price != null && config.shares_outstanding != null
+                  ? (config.market_price * config.shares_outstanding) / 1e7
+                  : null}
+                nbfcSidecar={nbfcSidecar}
+              />
+            )}
             {activeTab === "regression" && hasRecast && (
               <RegressionReport
                 rawData={rawData}
