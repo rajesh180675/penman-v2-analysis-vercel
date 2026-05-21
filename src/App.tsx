@@ -54,12 +54,13 @@ const ComparisonReport = lazy(() => import("./components/ComparisonReport"));
 const DebugPanel = lazy(() => import("./components/DebugPanel"));
 const V3AnalyticsPanel = lazy(() => import("./components/V3AnalyticsPanel"));
 const AtlasReport = lazy(() => import("./components/atlas/AtlasReport"));
+const BusinessModelReport = lazy(() => import("./components/business-model/BusinessModelReport"));
 const RunInspector = lazy(() => import("./components/RunInspector"));
 const CompanyWorkspace = lazy(() => import("./components/CompanyWorkspace"));
 const WatchlistDashboard = lazy(() => import("./components/WatchlistDashboard"));
 const DashboardView = lazy(() => import("./components/dashboard/DashboardView"));
 
-type TabId = "upload" | "dashboard" | "watchlist" | "workspace" | "inspector" | "statements" | "ratios" | "forecast" | "valuation" | "bank" | "quality" | "scope" | "atlas" | "comparison" | "report" | "regression" | "v3analytics" | "debug";
+type TabId = "upload" | "dashboard" | "watchlist" | "workspace" | "inspector" | "statements" | "ratios" | "forecast" | "valuation" | "bank" | "quality" | "scope" | "atlas" | "business" | "comparison" | "report" | "regression" | "v3analytics" | "debug";
 
 const TABS: { id: TabId; label: string; icon: string; needsData?: boolean; group: string }[] = [
   { id: "upload", label: "Data", icon: "📂", group: "input" },
@@ -72,6 +73,7 @@ const TABS: { id: TabId; label: string; icon: string; needsData?: boolean; group
   { id: "quality", label: "Quality", icon: "🔍", needsData: true, group: "analysis" },
   { id: "scope", label: "Scope", icon: "🪞", needsData: true, group: "analysis" },
   { id: "atlas", label: "Atlas", icon: "🛰️", needsData: true, group: "analysis" },
+  { id: "business", label: "Business Model", icon: "🏛️", needsData: true, group: "analysis" },
   { id: "forecast", label: "Forecast", icon: "📈", needsData: true, group: "analysis" },
   { id: "valuation", label: "Valuation", icon: "💰", needsData: true, group: "valuation" },
   { id: "bank", label: "Bank", icon: "🏦", needsData: true, group: "valuation" },
@@ -1176,6 +1178,12 @@ nbfcSidecar={nbfcSidecar}
               <AtlasReport
                 rawData={rawData}
                 pipelineResult={pipelineResult && !("error" in pipelineResult) ? pipelineResult : null}
+              />
+            )}
+            {activeTab === "business" && (
+              <BusinessModelReport
+                pipelineResult={pipelineResult && !("error" in pipelineResult) ? pipelineResult : null}
+                recastData={recastData}
               />
             )}
             {activeTab === "comparison" && <ComparisonReport registry={registry} config={config} publication={comparisonPublication} />}
