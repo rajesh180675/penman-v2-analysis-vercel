@@ -6,6 +6,7 @@
  * Graceful: returns null sections on 404 / network errors.
  */
 import { parseLgdFiles, parseRbiNhbFile } from "./nbfcSidecarParser";
+import { trace } from "../lib/traceLogger";
 import type { NbfcSidecarData, LgdMigrationMatrix, RbiNhbPeriod } from "./nbfcSidecarParser";
 
 export type { NbfcSidecarData, LgdMigrationMatrix, RbiNhbPeriod };
@@ -49,12 +50,19 @@ async function fetchLgdFiles(baseUrl: string): Promise<LgdMigrationMatrix[]> {
   const fetches = filenames.map(async (fname) => {
     try {
       const res = await fetch(`${folder}/${fname}`);
-      if (!res.ok) return null;
+      if (!res.ok) {
+        trace("sidecar", "lgdFile:httpError", { fname, status: res.status }, null, { level: "warn" });
+        return null;
+      }
       const html = await res.text();
       // Validate it's actually an HTML table (not a 404 page)
-      if (!html.includes("Loss Given Default") && !html.includes("Gross Caring Amount")) return null;
+      if (!html.includes("Loss Given Default") && !html.includes("Gross Caring Amount")) {
+        trace("sidecar", "lgdFile:validationFailed", { fname, htmlLength: html.length }, null, { level: "warn" });
+        return null;
+      }
       return { filename: fname, html };
-    } catch {
+    } catch (err) {
+      trace("sidecar", "lgdFile:fetchError", { fname, error: String(err) }, null, { level: "error" });
       return null;
     }
   });
@@ -64,6 +72,12 @@ async function fetchLgdFiles(baseUrl: string): Promise<LgdMigrationMatrix[]> {
     if (item) results.push(item);
   }
 
+  trace("sidecar", "lgdFetchResults", {
+    attempted: filenames.length,
+    succeeded: results.length,
+    baseUrl,
+  });
+
   if (results.length === 0) return [];
   return parseLgdFiles(results);
 }
@@ -72,11 +86,20 @@ async function fetchRbiNhbFile(baseUrl: string): Promise<RbiNhbPeriod[]> {
   const url = `${baseUrl}/RBI%20NHB%20Banks/RBINHBBanks_.xls`;
   try {
     const res = await fetch(url);
-    if (!res.ok) return [];
+    if (!res.ok) {
+      trace("sidecar", "rbiNhbFetch:httpError", { url, status: res.status }, null, { level: "warn" });
+      return [];
+    }
     const html = await res.text();
-    if (!html.includes("RBI NHB Banks") && !html.includes("Gross Non-Performing")) return [];
-    return parseRbiNhbFile(html);
-  } catch {
+    if (!html.includes("RBI NHB Banks") && !html.includes("Gross Non-Performing")) {
+      trace("sidecar", "rbiNhbFetch:validationFailed", { url, htmlLength: html.length, first100: html.slice(0, 100) }, null, { level: "warn" });
+      return [];
+    }
+    const result = parseRbiNhbFile(html);
+    trace("sidecar", "rbiNhbFetch:success", { url, periods: result.length });
+    return result;
+  } catch (err) {
+    trace("sidecar", "rbiNhbFetch:error", { url, error: String(err) }, null, { level: "error" });
     return [];
   }
 }
