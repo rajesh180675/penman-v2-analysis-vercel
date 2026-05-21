@@ -638,6 +638,52 @@ export function processBankData(
           m.costToIncome = match.cost_to_income_pct / 100;
           joinWithCti++;
         }
+
+        // Insurance Tier 1 — Capitaline Ind-AS doesn't carry premium/claims/opex
+        // for life insurers (LIC). When the sidecar has them (from AR IRDAI
+        // 5-year summary via extract_insurance_quality.py), prefer those values.
+        // Critical: the pipeline computes claimsRatio/expenseRatio/combinedRatio
+        // BEFORE the quality join runs, using the (null) Capitaline-derived
+        // premium/claims values. We override BOTH the raw fields AND the
+        // derived ratios here so the UI gets sensible values for life insurers.
+        // See references/bank-casa-extraction.md for the data-source matrix.
+        if (subtype === "insurance") {
+          if (match.net_premium_cr != null) {
+            m.premiumEarned = match.net_premium_cr;
+          }
+          if (match.claims_paid_cr != null) {
+            m.claimsExpense = match.claims_paid_cr;
+          }
+          if (match.operating_expenses_cr != null) {
+            m.operatingExpenses = match.operating_expenses_cr;
+          }
+          if (match.investment_income_cr != null) {
+            m.investmentIncome = match.investment_income_cr;
+          }
+          // Pre-derived ratios (sidecar values are already in % units —
+          // engine convention is fractional, so divide by 100)
+          if (match.claims_ratio_pct != null) {
+            m.claimsRatio = match.claims_ratio_pct / 100;
+          }
+          if (match.expense_ratio_pct != null) {
+            m.expenseRatio = match.expense_ratio_pct / 100;
+          }
+          if (match.combined_ratio_pct != null) {
+            m.combinedRatio = match.combined_ratio_pct / 100;
+          }
+          if (match.premium_growth_pct != null) {
+            m.premiumGrowth = match.premium_growth_pct / 100;
+          }
+          // Investment yield is a published metric in IRDAI AR. Prefer it
+          // over the computed (income / avg policyholder funds) value because
+          // (a) AR figure is on a daily-mark basis, more precise than YoY avg,
+          // (b) the computed path runs in extractBankMetrics() BEFORE the
+          // sidecar override above replaces investmentIncome, leaving stale
+          // yield = 0 when income was originally null.
+          if (match.investment_yield_pct != null) {
+            m.investmentYield = match.investment_yield_pct / 100;
+          }
+        }
       }
     }
     trace("bank", "qualityJoin", {

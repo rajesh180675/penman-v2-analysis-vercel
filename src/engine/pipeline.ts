@@ -230,8 +230,9 @@ export function processCompanyDataFull(
       const prev = results.length > 0 ? results[results.length - 1] : undefined;
       recast = computeRecastPeriod(raw, config, prev);
     } catch (err) {
-      console.error(`[pipeline] recast error @ ${raw.period_end}:`, err);
-      throw new Error(`Failed to recast period ${raw.period_end}: ${err instanceof Error ? err.message : String(err)}`);
+      const msg = err instanceof Error ? err.message : String(err);
+      trace("pipeline", "recast:error", { period_end: raw.period_end, error: msg }, null, { level: "error" });
+      throw new Error(`Failed to recast period ${raw.period_end}: ${msg}`);
     }
 
     if (i > 0 && results.length > 0) {
@@ -244,8 +245,9 @@ export function processCompanyDataFull(
         recast.ri      = computeResidualIncome(recast, prev, ke, kwDerived);
         recast.quality = computeQuality(recast, prev, raw, prevRaw);
       } catch (err) {
-        console.error(`[pipeline] ratio/quality error @ ${raw.period_end}:`, err);
-        throw new Error(`Failed to derive ratios/quality for period ${raw.period_end}: ${err instanceof Error ? err.message : String(err)}`);
+        const msg = err instanceof Error ? err.message : String(err);
+        trace("pipeline", "ratioQuality:error", { period_end: raw.period_end, error: msg }, null, { level: "error" });
+        throw new Error(`Failed to derive ratios/quality for period ${raw.period_end}: ${msg}`);
       }
     }
     results.push(recast);

@@ -34,6 +34,11 @@ public/data/companies/**/*.xls
 public/data/companies/**/*.xlsx
 public/data/companies/**/*.html
 public/data/companies/**/standalone/
+# Annual Reports (PDFs, ~2.9GB) — used by extract_*_quality.py scripts
+public/data/annual_reports/
+# Python bytecode caches
+__pycache__/
+*.pyc
 # Allow pre-built library ZIPs so Vercel serves them for the "Load from library" dropdown
 !public/data/companies/**/*.zip
 

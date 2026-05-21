@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { trace } from "../lib/traceLogger";
 import type { FinancialInstitutionAnalysisResult } from "../engine/analysisFamily";
 import type {
   BankValuationModelResult,
@@ -1363,8 +1364,9 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
       a.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("[FinancialInstitutionReport] export failed:", err);
-      setExportError(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      trace("export", "financialInstitutionReport:failed", { error: msg }, null, { level: "error" });
+      setExportError(msg);
     } finally {
       setExporting(false);
     }
@@ -1468,11 +1470,22 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
         <NbfcQualitySection metrics={bankResult.bankMetrics} />
       )}
 
-      {/* Phase D3c — Subsidiary breakdown from sidecar data. */}
-      {bankResult.subtype === "nbfc" && bankResult.bankMetrics && bankResult.bankMetrics.length > 0 && (
+      {/* Phase D3c — Subsidiary breakdown from sidecar data.
+       *  Available for banks AND NBFCs whenever the sidecar carries
+       *  Capitaline "Subsidiaries" exports. Render is gated on data presence
+       *  (subsidiaries non-empty), not subtype. */}
+      {bankResult.bankMetrics && bankResult.bankMetrics.length > 0 &&
+        bankResult.bankMetrics.some(m =>
+          m.quality?.subsidiaries && m.quality.subsidiaries.length > 0 &&
+          m.quality.subsidiaries.some(s => s.name !== "No Subsidiaries")
+        ) && (
         <NbfcSubsidiaryPanel metrics={bankResult.bankMetrics} />
       )}
-      {bankResult.subtype === "nbfc" && bankResult.bankMetrics && bankResult.bankMetrics.length > 0 && bankResult.bankMetrics[0]?.quality?.subsidiaries && (
+      {bankResult.bankMetrics && bankResult.bankMetrics.length > 0 &&
+        bankResult.bankMetrics.some(m =>
+          m.quality?.subsidiaries && m.quality.subsidiaries.length > 0 &&
+          m.quality.subsidiaries.some(s => s.name !== "No Subsidiaries")
+        ) && (
         <SubsidiaryGrowthChart
           periods={bankResult.bankMetrics.filter(m => m.quality?.subsidiaries).map(m => ({
             fiscal_label: m.period_end.slice(0, 4),

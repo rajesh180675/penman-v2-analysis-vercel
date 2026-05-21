@@ -53,6 +53,14 @@ async function fetchPreParsedJson(baseUrl: string): Promise<NbfcSidecarData | nu
       trace("sidecar", "preParsedJson:httpMiss", { url, status: res.status }, null, { level: "warn" });
       return null;
     }
+    // Detect Vite SPA fallback: when the file doesn't exist, dev server returns
+    // 200 OK with the index.html shell. This is "expected absence" for any
+    // non-NBFC company, not an error. Check Content-Type before parsing.
+    const contentType = res.headers.get("content-type") ?? "";
+    if (contentType.includes("text/html")) {
+      trace("sidecar", "preParsedJson:absent", { url, reason: "html-fallback" }, null, { level: "info" });
+      return null;
+    }
     const data = await res.json();
     // Validate structure
     if (!data || !Array.isArray(data.lgd) || !Array.isArray(data.rbi_nhb)) {
@@ -65,7 +73,15 @@ async function fetchPreParsedJson(baseUrl: string): Promise<NbfcSidecarData | nu
       rbiNhb: data.rbi_nhb as RbiNhbPeriod[],
     };
   } catch (err) {
-    trace("sidecar", "preParsedJson:error", { url, error: String(err), stack: (err as Error)?.stack }, null, { level: "error" });
+    // SyntaxError on HTML response shouldn't reach here anymore (Content-Type
+    // guard above). Anything else is a real error.
+    const errStr = String(err);
+    const isHtmlSyntaxError = errStr.includes("Unexpected token '<'") || errStr.includes("<!doctype");
+    if (isHtmlSyntaxError) {
+      trace("sidecar", "preParsedJson:absent", { url, reason: "html-syntax-fallback" }, null, { level: "info" });
+    } else {
+      trace("sidecar", "preParsedJson:error", { url, error: errStr, stack: (err as Error)?.stack }, null, { level: "error" });
+    }
     return null;
   }
 }
@@ -93,6 +109,13 @@ async function fetchLgdFiles(baseUrl: string): Promise<LgdMigrationMatrix[]> {
         return null;
       }
       const html = await res.text();
+      // Detect Vite SPA fallback: file doesn't exist → 200 OK with index.html
+      // shell (no Capitaline content). Expected for banks/non-NBFC companies.
+      const isSpaFallback = html.includes("<!doctype html>") && !html.includes("Loss Given Default") && !html.includes("Gross Caring Amount");
+      if (isSpaFallback) {
+        trace("sidecar", "lgdFile:absent", { fname, htmlLength: html.length }, null, { level: "info" });
+        return null;
+      }
       // Validate it's actually an HTML table (not a 404 page)
       if (!html.includes("Loss Given Default") && !html.includes("Gross Caring Amount")) {
         trace("sidecar", "lgdFile:validationFailed", { fname, htmlLength: html.length }, null, { level: "warn" });
@@ -137,6 +160,12 @@ async function fetchRbiNhbFile(baseUrl: string): Promise<RbiNhbPeriod[]> {
       return [];
     }
     const html = await res.text();
+    // Detect Vite SPA fallback (file doesn't exist on disk)
+    const isSpaFallback = html.includes("<!doctype html>") && !html.includes("RBI NHB Banks") && !html.includes("Gross Non-Performing");
+    if (isSpaFallback) {
+      trace("sidecar", "rbiNhbFetch:absent", { url, htmlLength: html.length }, null, { level: "info" });
+      return [];
+    }
     if (!html.includes("RBI NHB Banks") && !html.includes("Gross Non-Performing")) {
       trace("sidecar", "rbiNhbFetch:validationFailed", { url, htmlLength: html.length, first100: html.slice(0, 100) }, null, { level: "warn" });
       return [];

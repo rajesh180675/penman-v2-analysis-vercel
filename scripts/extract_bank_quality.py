@@ -17,7 +17,15 @@ import sys
 import os
 from pathlib import Path
 
-AR_BASE = Path(r"C:\Users\rajesh\WindsurfAPI\ITC-valuation-template\public\data\annual_reports")
+import os
+
+# Phase rigor-8: AR_BASE is configurable via PENMAN_AR_BASE env var.
+# Default is now the in-repo location (gitignored). Override with
+# `PENMAN_AR_BASE=/path/to/annual_reports` for alternate locations.
+AR_BASE = Path(os.environ.get(
+    "PENMAN_AR_BASE",
+    r"C:\Users\rajesh\WindsurfAPI\penman-v2-analysis\public\data\annual_reports",
+))
 OUTPUT_BASE = Path(r"C:\Users\rajesh\WindsurfAPI\penman-v2-analysis\public\data\companies")
 
 # Map ticker to company folder in penman-v2-analysis
@@ -227,19 +235,181 @@ def extract_gnpa_nnpa(doc) -> dict:
 
 
 def extract_casa(doc) -> float | None:
-    """Extract CASA ratio from MD&A."""
+    """Extract CASA ratio from MD&A.
+
+    The CASA section of bank ARs contains many "CASA ... X%" sentences. Most
+    are growth phrases ("CASA deposits increased by 11.7%") not the ratio we
+    want ("CASA ratio was 39.0%"). The previous extractor matched the FIRST
+    number, which was usually wrong (typically a deposit-growth percentage).
+
+    Strategy:
+      1. Scan all pages, build a list of (value, phrasing_score, context).
+      2. REJECT growth phrasings: "increased by", "grew by", "rose by",
+         "increased  X% from", "decreased by", year-on-year growth.
+      3. SCORE positive matches by phrasing strength:
+           +3 for "CASA ratio was/of/stood at X%"
+           +3 for "CASA ratio (increased|decreased) (from|to) X%"
+           +2 for "X% of total (average) deposits"
+           +2 for "average CASA ratio ... X%"
+           +1 for any other "CASA ... X%" within plausibility band
+      4. Plausibility band: 25-60% for Indian private/public banks.
+      5. Pick highest-scored candidate; tie-break by frequency (mode).
+    """
+    band_lo, band_hi = 25.0, 60.0
+    candidates: list[tuple[float, int, str]] = []
+
+    # Phrasings that signal GROWTH (volume change), not RATIO. Critical: only
+    # mask BY-clauses ("increased by X%"), NOT "increased from X% to Y%" — the
+    # latter describes a ratio change where X and Y are both ratios.
+    reject_patterns = [
+        # "CASA deposits increased by X%" — explicit volume growth
+        r"CASA[^.]{0,80}?(?:deposits?\s+)?(?:increased|grew|rose|expanded|decreased)\s+by\s+(\d+\.?\d*)\s*(?:per\s*cent|%)",
+        # "year-on-year growth in CASA deposits was X%"
+        r"(?:year[-\s]on[-\s]year\s+)?growth\s+in\s+CASA[^.]{0,40}?(\d+\.?\d*)\s*(?:per\s*cent|%)",
+        # "Average CASA deposits increased by X%"
+        r"average\s+CASA[^.]{0,40}?(?:increased|grew|rose|decreased)\s+by\s+(\d+\.?\d*)\s*(?:per\s*cent|%)",
+        # "average current account deposits rose by X% while average savings accounts ..."
+        r"average\s+(?:current|savings)\s+account[^.]{0,80}?(?:rose|grew|increased)\s+by\s+(\d+\.?\d*)\s*(?:per\s*cent|%)",
+    ]
+
+    # Phrasings that signal RATIO — score these
+    accept_specs = [
+        # "CASA ratio was/is/of/stands/stood at X%" — strongest. Allow up to 40
+        # extra chars between "ratio" and the verb (e.g. "CASA ratio of your
+        # Bank stood at 45.28%" in SBIN ARs).
+        (r"(?:Average\s+)?CASA\s+(?:\(?ratio\)?|deposits?\s+ratio)[^.\n]{0,40}?\s+(?:was|is|of|stood\s+at|stands\s+at)\s*(\d+\.?\d*)\s*(?:per\s*cent|%)", 3),
+        # "improved its CASA ratio to X%" / "CASA ratio improved to X%" (SBIN)
+        (r"(?:improved|raised|reduced|lifted|brought)\s+(?:its|our|the)\s+CASA\s+(?:\(?ratio\)?)\s+to\s+(\d+\.?\d*)\s*(?:per\s*cent|%)", 3),
+        (r"CASA\s+(?:\(?ratio\)?)\s+(?:improved|raised|reduced|lifted)\s+to\s+(\d+\.?\d*)\s*(?:per\s*cent|%)", 3),
+        # "CASA ratio increased/decreased to X%" (capture Y% — current period)
+        (r"CASA\s+(?:\(?ratio\)?)\s+(?:increased|decreased|grew|rose|fell|moved)\s+(?:from\s+\d+\.?\d*\s*(?:per\s*cent|%)\s+(?:at\s+March\s+\d+,?\s+\d+\s+)?)?to\s+(\d+\.?\d*)\s*(?:per\s*cent|%)", 3),
+        # "CASA Deposits accounted for X per cent of Total Deposits" (HDFC AR)
+        (r"CASA\s+[Dd]eposits\s+accounted\s+for\s+(\d+\.?\d*)\s*(?:per\s*cent|%)\s+of\s+(?:total\s+)?deposits?", 3),
+        # "average CASA deposits ... increased from X% of total ... to Y% of total" — capture Y% (current FY ratio)
+        (r"average\s+CASA[^.]{0,80}?(?:increased|decreased)\s+from\s+\d+\.?\d*\s*(?:per\s*cent|%)\s+of\s+(?:total\s+)?(?:average\s+)?deposits?[^.]{0,80}?to\s+(\d+\.?\d*)\s*(?:per\s*cent|%)\s+of\s+(?:total\s+)?(?:average\s+)?deposits?", 3),
+        # "X% of total (average) deposits"
+        (r"(?:CASA[^.]{0,40}?\s+(?:were?|was|is|are))\s+(\d+\.?\d*)\s*(?:per\s*cent|%)\s+of\s+(?:total\s+)?(?:average\s+)?deposits?", 2),
+        # "average CASA ratio ... X%" (table snippet)
+        (r"average\s+CASA\s+ratio[^.]{0,40}?(\d+\.?\d*)\s*(?:per\s*cent|%)", 2),
+        # Inverse ordering: "X% ... CASA ratio" (table caption)
+        (r"(\d+\.?\d*)\s*(?:per\s*cent|%)\s*[\|\s]*(?:Average\s+)?CASA\s+\(?[Rr]atio\)?", 2),
+    ]
+
     for p in range(len(doc)):
         text = doc[p].get_text()
-        # "CASA ratio ... X.X%" or "CASA ... accounted for X.X per cent"
-        m = re.search(
-            r"CASA[^.]*?(\d+\.?\d*)\s*(?:per\s*cent|%)",
-            text, re.IGNORECASE
-        )
-        if m:
-            val = float(m.group(1))
-            if 10 < val < 80:  # Plausibility
-                return val
-    return None
+        if "CASA" not in text:
+            continue
+
+        # Mask reject regions so accept patterns can't claim them
+        masked = text
+        for rej in reject_patterns:
+            masked = re.sub(rej, lambda m: " " * len(m.group(0)), masked, flags=re.IGNORECASE)
+
+        for pat, score in accept_specs:
+            for m in re.finditer(pat, masked, re.IGNORECASE):
+                try:
+                    val = float(m.group(1))
+                except (ValueError, IndexError):
+                    continue
+                if not (band_lo <= val <= band_hi):
+                    continue
+                # Capture context for diagnostics
+                start = max(0, m.start() - 30)
+                end = min(len(text), m.end() + 30)
+                ctx = text[start:end].replace("\n", " | ")[:120]
+                candidates.append((val, score, ctx))
+
+    if not candidates:
+        return None
+
+    # Pick highest-scored candidate; ties broken by mode (most common value within 0.5pp)
+    candidates.sort(key=lambda c: -c[1])
+    best_score = candidates[0][1]
+    top = [c for c in candidates if c[1] == best_score]
+
+    if len(top) == 1:
+        return round(top[0][0], 2)
+
+    # Mode: most common value within 0.5pp tolerance
+    from collections import Counter
+    rounded = [round(c[0] * 2) / 2 for c in top]  # snap to 0.5pp grid
+    mode_val, _ = Counter(rounded).most_common(1)[0]
+    return round(mode_val, 2)
+
+
+def extract_crar_mdna(doc) -> float | None:
+    """Extract CRAR / Total Capital Adequacy Ratio from MD&A as a fallback when
+    the 10-Year Highlights table didn't yield a value (Capitaline RBI NHB also
+    leaves crar=0 for SBIN and similar cases).
+
+    Patterns observed across SBIN/HDFC/ICICI ARs:
+      - "Capital Adequacy Ratio (CAR) ... stands at X%"
+      - "Capital Adequacy Ratio of X% demonstrating ..."
+      - "CRAR stood at X%"
+      - "Total Capital Ratio (%) | X%" (10-year table cell)
+
+    Reject:
+      - "regulatory minimum of X per cent" (regulatory floor, not actual)
+      - "CRAR of X per cent on an ongoing basis" (regulatory floor language)
+      - Tier-1 / CET-1 mentions
+
+    Plausibility band: 9-30% (RBI Basel III floor is ~11.5%, max realistic ~25%).
+    """
+    band_lo, band_hi = 9.0, 30.0
+    candidates: list[tuple[float, int]] = []
+
+    accept_specs = [
+        # "Capital Adequacy Ratio (CAR/CRAR) stands/stood at X%"
+        (r"(?:Capital\s+Adequacy\s+Ratio|CRAR|Total\s+Capital\s+Ratio)\s*\(?(?:CAR|CRAR)?\)?[^.]{0,80}?(?:stands?|stood)\s+at\s+(\d+\.?\d*)\s*(?:per\s*cent|%)", 3),
+        # "Capital Adequacy Ratio of X%"
+        (r"Capital\s+Adequacy\s+Ratio\s+of\s+(\d+\.?\d*)\s*(?:per\s*cent|%)", 3),
+        # "Total Capital Ratio (%) | X%" — 10-year table cell pattern
+        (r"Total\s+Capital\s+Ratio\s*\(?%?\)?\s*[\|\s]+(\d+\.?\d*)\s*(?:per\s*cent|%)?", 2),
+        # "CRAR (%) ... X%" — table snippet
+        (r"CRAR\s*\(?%?\)?\s*[\|\s]+(\d+\.?\d*)\s*(?:per\s*cent|%)?", 1),
+    ]
+
+    reject_patterns = [
+        r"(?:regulatory\s+)?minimum\s+(?:of\s+)?(?:CRAR|capital)?\s*(?:of\s+)?(\d+\.?\d*)\s*(?:per\s*cent|%)",
+        r"CRAR\s+of\s+(\d+\.?\d*)\s*(?:per\s*cent|%)\s+on\s+an?\s+ongoing\s+basis",
+        r"CRAR\s+(?:at\s+or\s+)?(?:above|below)\s+(?:the\s+regulatory\s+minimum\s+of\s+)?(\d+\.?\d*)\s*(?:per\s*cent|%)",
+        # Tier-1 / CET-1 specifically — handled separately
+        r"(?:Tier\s*[1I]|CET\s*1|Common\s+Equity\s+Tier\s*1)\s*(?:capital\s*)?(?:ratio\s*)?(?:was|is|of|stood\s+at|stands\s+at)?\s*(\d+\.?\d*)\s*(?:per\s*cent|%)",
+    ]
+
+    for p in range(len(doc)):
+        text = doc[p].get_text()
+        if "Capital Adequacy" not in text and "CRAR" not in text and "Total Capital Ratio" not in text:
+            continue
+
+        masked = text
+        for rej in reject_patterns:
+            masked = re.sub(rej, lambda m: " " * len(m.group(0)), masked, flags=re.IGNORECASE)
+
+        for pat, score in accept_specs:
+            for m in re.finditer(pat, masked, re.IGNORECASE):
+                try:
+                    val = float(m.group(1))
+                except (ValueError, IndexError):
+                    continue
+                if not (band_lo <= val <= band_hi):
+                    continue
+                candidates.append((val, score))
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda c: -c[1])
+    best_score = candidates[0][1]
+    top = [c for c in candidates if c[1] == best_score]
+
+    if len(top) == 1:
+        return round(top[0][0], 2)
+
+    from collections import Counter
+    rounded = [round(c[0] * 20) / 20 for c in top]
+    mode_val, _ = Counter(rounded).most_common(1)[0]
+    return round(mode_val, 2)
 
 
 def extract_pcr(doc) -> float | None:
@@ -315,6 +485,13 @@ def process_single_ar(pdf_path: str, fy_label: str) -> dict:
         h = highlights[period_end]
         record["tier1_pct"] = h.get("tier1_pct")
         record["crar_pct"] = h.get("crar_pct")
+
+    # 1b. CRAR MD&A fallback — fires when 10-Year table didn't yield CRAR
+    # (e.g. SBIN where the table format breaks the row-collection logic).
+    if record["crar_pct"] is None:
+        crar_mdna = extract_crar_mdna(doc)
+        if crar_mdna:
+            record["crar_pct"] = crar_mdna
     
     # 2. GNPA / NNPA from MD&A
     npa_data = extract_gnpa_nnpa(doc)

@@ -100,6 +100,33 @@ export interface BankQualityPeriod {
   /** 61st month persistency %. */
   persistency_61m?: number | null;
 
+  // ── Insurance Tier 1 (AR IRDAI 5-year summary) ────────────────────
+  // Capitaline Ind-AS does NOT carry these for life insurers (LIC). The
+  // AR's "Summary of Financial Statements" has them in a structured form.
+  // See scripts/extract_insurance_quality.py.
+  /** Gross premium income (₹ Cr). */
+  gross_premium_cr?: number | null;
+  /** Net premium income (gross - reinsurance ceded) (₹ Cr). */
+  net_premium_cr?: number | null;
+  /** Net claims paid / benefits paid (₹ Cr). */
+  claims_paid_cr?: number | null;
+  /** Operating expenses related to insurance business (₹ Cr). */
+  operating_expenses_cr?: number | null;
+  /** Commissions paid to agents/brokers (₹ Cr). */
+  commissions_cr?: number | null;
+  /** Investment income from policyholders' fund (₹ Cr). */
+  investment_income_cr?: number | null;
+  /** Yield on policyholders' fund investments (%). */
+  investment_yield_pct?: number | null;
+  /** Claims ratio = claims_paid / net_premium (%). */
+  claims_ratio_pct?: number | null;
+  /** Expense ratio = (opex + commissions) / net_premium (%). */
+  expense_ratio_pct?: number | null;
+  /** Combined ratio = claims_ratio + expense_ratio (%). */
+  combined_ratio_pct?: number | null;
+  /** YoY premium growth (%). */
+  premium_growth_pct?: number | null;
+
   // ── NBFC indicators (IndAS 109 ECL framework) ────────────────────
   /** Stage 3 (credit-impaired) loans as % of gross loan book. NBFC GNPA equivalent. */
   stage3_pct?: number | null;

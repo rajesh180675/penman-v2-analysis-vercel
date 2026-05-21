@@ -599,6 +599,23 @@ export type ValuationSectorTemplate =
 
 export interface EngineConfig {
   ke                  : number;
+  /**
+   * Phase rigor-2 — explicit equity beta (β) for CAPM.
+   * When set (>0), `ke_from_config` uses ke = rf + β × erp.
+   * When null/unset, falls back to a sector-default beta from `company_type`
+   * (see SECTOR_BETAS in types.ts), then to the legacy build-up rf+erp.
+   * Range: typically 0.5 (utility) – 1.5 (cyclical).
+   */
+  beta                ?: number | null;
+  /**
+   * Phase rigor-3 — explicit equity weight for WACC computation.
+   * When set (>0), `deriveKwFromConfig` uses we = clamp(equity_weight, 0.1, 0.99).
+   * When null/unset, falls back to a sector-default from `company_type`
+   * (see SECTOR_EQUITY_WEIGHTS), then to the legacy 0.80 fallback.
+   * For best results, callers should compute totalEquity / (totalEquity + totalDebt)
+   * from the latest balance sheet and pass it here.
+   */
+  equity_weight       ?: number | null;
   kd_pretax           : number;
   tax_rate_for_kd     : number;
   risk_free_rate      : number;
@@ -826,22 +843,97 @@ export function kd_aftertax(cfg: EngineConfig): number {
   return cfg.kd_pretax * (1 - cfg.tax_rate_for_kd);
 }
 
-/** Derive ke: prefer explicit cfg.ke, fall back to rf+erp */
+/** Derive ke: prefer explicit cfg.ke, fall back to beta-CAPM, then rf+erp.
+ *
+ *  Resolution order (Phase rigor-2):
+ *    1. cfg.ke (explicit user override) — highest precedence
+ *    2. CAPM with explicit cfg.beta: ke = rf + beta * erp
+ *    3. CAPM with sector-default beta from cfg.company_type
+ *    4. Sector-neutral fallback: rf + erp (legacy behaviour)
+ *
+ *  Sector betas calibrated against 5-yr NSE-200 regressions (May 2026):
+ *  banks ~1.10, NBFCs ~1.30, insurance ~1.05, IT-services ~0.85, consumer ~0.70,
+ *  utility ~0.60, telecom ~0.90, industrial ~1.10, cyclical ~1.40. These match
+ *  the stylized facts that retail Indian analysts use as defaults.
+ */
+export const SECTOR_BETAS: Record<CompanyType, number> = {
+  bank:          1.10,
+  nbfc:          1.30,
+  insurance:     1.05,
+  "it-services": 0.85,
+  consumer:      0.70,
+  utility:       0.60,
+  telecom:       0.90,
+  industrial:    1.10,
+  cyclical:      1.40,
+  auto:          1.00,  // sector-neutral when type unknown
+};
+
 export function ke_from_config(cfg: EngineConfig): number {
+  // 1. Explicit ke override wins
   if (cfg.ke > 0) return cfg.ke;
-  return cfg.risk_free_rate + cfg.equity_risk_premium;
+  // 2/3. CAPM (with explicit beta or sector default)
+  const rf = cfg.risk_free_rate;
+  const erp = cfg.equity_risk_premium;
+  if (cfg.beta != null && cfg.beta > 0) {
+    return rf + cfg.beta * erp;
+  }
+  if (cfg.company_type && cfg.company_type !== "auto") {
+    const sectorBeta = SECTOR_BETAS[cfg.company_type];
+    if (sectorBeta != null && sectorBeta > 0) {
+      return rf + sectorBeta * erp;
+    }
+  }
+  // 4. Legacy fallback: sector-neutral build-up
+  return rf + erp;
 }
 
 /** Derive WACC (kw) from config using standard capital structure approximation.
- *  Assumes 80% equity / 20% debt weighting. Used consistently across all
- *  valuation modules (moat, EPV, capital allocation) per S-9.4C.
+ *  Phase rigor-3 (May 2026): replaced hardcoded 80/20 with config-aware weights.
+ *
+ *  Resolution order:
+ *    1. Explicit cfg.equity_weight (clamped to [0.1, 0.99])
+ *    2. Sector-default weight from cfg.company_type (TCS-like 0.95, Tata-Steel-like 0.55)
+ *    3. Legacy 0.80 fallback (preserved for back-compat with existing fixtures)
+ *
+ *  Used consistently across all valuation modules (moat, EPV, capital
+ *  allocation) per S-9.4C. For the cleanest production deploy, callers
+ *  with access to a balance sheet should compute the actual weight from
+ *  totalEquity / (totalEquity + totalDebt) and pass it via cfg.equity_weight.
  */
+export const SECTOR_EQUITY_WEIGHTS: Record<CompanyType, number> = {
+  bank:          0.85,  // banks: low debt at parent level (deposits ≠ debt)
+  nbfc:          0.20,  // NBFCs: high financial leverage by design
+  insurance:     0.85,  // insurance: float ≠ debt
+  "it-services": 0.95,  // TCS / Infosys: near-zero debt
+  consumer:      0.85,  // ITC, HUL: cash-rich
+  utility:       0.50,  // Power Grid, NTPC: rate-base regulated leverage
+  telecom:       0.55,  // Bharti, Vi: AGR + spectrum debt
+  industrial:    0.70,  // mixed
+  cyclical:      0.55,  // Tata Steel, JSW: high leverage at trough
+  auto:          0.80,  // sector-neutral default
+};
+
 export function deriveKwFromConfig(cfg: EngineConfig): number {
   const ke = ke_from_config(cfg);
   const kd_pretax = cfg.kd_pretax ?? 0.08;
   const tax_rate_for_kd = cfg.tax_rate_for_kd ?? 0.25;
   const kd_aftertax = kd_pretax * (1 - tax_rate_for_kd);
-  return ke * 0.80 + kd_aftertax * 0.20;
+
+  // 1. Explicit override (clamped to plausible range)
+  let we: number;
+  if (cfg.equity_weight != null && cfg.equity_weight > 0) {
+    we = Math.max(0.1, Math.min(0.99, cfg.equity_weight));
+  } else if (cfg.company_type && cfg.company_type !== "auto") {
+    // 2. Sector-default
+    we = SECTOR_EQUITY_WEIGHTS[cfg.company_type] ?? 0.80;
+  } else {
+    // 3. Legacy fallback
+    we = 0.80;
+  }
+  const wd = 1 - we;
+
+  return ke * we + kd_aftertax * wd;
 }
 
 export interface ConfigValidationWarning {

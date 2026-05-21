@@ -53,12 +53,13 @@ const RegressionReport = lazy(() => import("./components/RegressionReport"));
 const ComparisonReport = lazy(() => import("./components/ComparisonReport"));
 const DebugPanel = lazy(() => import("./components/DebugPanel"));
 const V3AnalyticsPanel = lazy(() => import("./components/V3AnalyticsPanel"));
+const AtlasReport = lazy(() => import("./components/atlas/AtlasReport"));
 const RunInspector = lazy(() => import("./components/RunInspector"));
 const CompanyWorkspace = lazy(() => import("./components/CompanyWorkspace"));
 const WatchlistDashboard = lazy(() => import("./components/WatchlistDashboard"));
 const DashboardView = lazy(() => import("./components/dashboard/DashboardView"));
 
-type TabId = "upload" | "dashboard" | "watchlist" | "workspace" | "inspector" | "statements" | "ratios" | "forecast" | "valuation" | "bank" | "quality" | "scope" | "comparison" | "report" | "regression" | "v3analytics" | "debug";
+type TabId = "upload" | "dashboard" | "watchlist" | "workspace" | "inspector" | "statements" | "ratios" | "forecast" | "valuation" | "bank" | "quality" | "scope" | "atlas" | "comparison" | "report" | "regression" | "v3analytics" | "debug";
 
 const TABS: { id: TabId; label: string; icon: string; needsData?: boolean; group: string }[] = [
   { id: "upload", label: "Data", icon: "📂", group: "input" },
@@ -70,6 +71,7 @@ const TABS: { id: TabId; label: string; icon: string; needsData?: boolean; group
   { id: "ratios", label: "Ratios", icon: "📐", needsData: true, group: "analysis" },
   { id: "quality", label: "Quality", icon: "🔍", needsData: true, group: "analysis" },
   { id: "scope", label: "Scope", icon: "🪞", needsData: true, group: "analysis" },
+  { id: "atlas", label: "Atlas", icon: "🛰️", needsData: true, group: "analysis" },
   { id: "forecast", label: "Forecast", icon: "📈", needsData: true, group: "analysis" },
   { id: "valuation", label: "Valuation", icon: "💰", needsData: true, group: "valuation" },
   { id: "bank", label: "Bank", icon: "🏦", needsData: true, group: "valuation" },
@@ -247,7 +249,9 @@ export function App() {
           if (data.lgd.length > 0 || data.rbiNhb.length > 0) {
             setNbfcSidecar(data);
           } else {
-            trace("sidecar", "nbfcSidecarEmpty", { folder: qualityFolder }, null, { level: "warn", msg: "LGD+RBI NHB fetch returned 0 records — files may be missing or validation failed" });
+            // Expected absence for banks/non-NBFC companies. Only NBFCs ship
+            // LGD/RBI NHB data; everyone else legitimately returns empty.
+            trace("sidecar", "nbfcSidecarEmpty", { folder: qualityFolder }, null, { level: "info", msg: "LGD+RBI NHB empty — expected for non-NBFC companies" });
             setNbfcSidecar(null);
           }
         }
@@ -1168,6 +1172,12 @@ nbfcSidecar={nbfcSidecar}
             )}
             {/* Phase A — Scope tab: subsidiary contribution panel (cons − stan gap) */}
             {activeTab === "scope" && scopeAwareResult && <SubsidiaryContributionPanel result={scopeAwareResult} />}
+            {activeTab === "atlas" && (
+              <AtlasReport
+                rawData={rawData}
+                pipelineResult={pipelineResult && !("error" in pipelineResult) ? pipelineResult : null}
+              />
+            )}
             {activeTab === "comparison" && <ComparisonReport registry={registry} config={config} publication={comparisonPublication} />}
             {activeTab === "report" && hasRecast && (
               <AcademicReport

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { trace } from "../../lib/traceLogger";
 
 export interface LibraryCompany {
   /** Folder name in public/data/companies/ */
@@ -225,7 +226,7 @@ export default function CompanyLibraryGrid({ onPickCompany, disabled = false }: 
         }
       })
       .catch(() => {
-        console.log("Using static preloaded company library baseline.");
+        trace("ui", "companyLibrary:usingStaticBaseline", null);
       });
   }, []);
 

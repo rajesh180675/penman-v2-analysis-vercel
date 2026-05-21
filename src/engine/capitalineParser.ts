@@ -522,10 +522,26 @@ function gridToPeriods(
   const out: PeriodMap = new Map();
   const aliasMap = buildAliasMap(std);
 
+  // Phase rigor-1 (May 2026): per-grid drop accounting. Every silent skip
+  // path increments a counter so the LIC-style "premium row exists in
+  // export but never reaches mappingSpec" failure mode surfaces in trace
+  // logs instead of requiring multi-step debugging.
+  let rowsSeen = 0;
+  let rowsKept = 0;
+  let droppedNoMetric = 0;
+  let droppedSectionLabel = 0;
+  let cellsKeptCanonical = 0;
+  let cellsKeptOriginalOnly = 0;
+  const droppedLabels: string[] = [];
+
   for (let r = header.rowIndex + 1; r < grid.length; r++) {
+    rowsSeen++;
     const row = grid[r];
     const metric = cleanCell(row[header.metricCol] ?? "");
-    if (!metric) continue;
+    if (!metric) {
+      droppedNoMetric++;
+      continue;
+    }
 
     // Skip pure section-heading rows (all value cells blank and metric has no numbers)
     const hasAnyValue = header.periodCols.some((pc) => {
@@ -539,8 +555,14 @@ function gridToPeriods(
       const isLabel =
         metric.endsWith(":") ||
         (metric === metric.toUpperCase() && metric.length > 3 && !/\d/.test(metric));
-      if (isLabel) continue;
+      if (isLabel) {
+        droppedSectionLabel++;
+        if (droppedLabels.length < 12) droppedLabels.push(metric);
+        continue;
+      }
     }
+
+    rowsKept++;
 
     // Phase A: when parsing a non-Ind-AS file, emit BOTH the original label
     // (preserves traceability) AND the canonical Ind-AS label (so existing
@@ -562,6 +584,7 @@ function gridToPeriods(
       const existing = target.get(originalKey);
       if (existing === undefined || (existing.value === null && scaledValue !== null)) {
         target.set(originalKey, { value: scaledValue, statement: stmt, standard: std });
+        cellsKeptOriginalOnly++;
       }
 
       // Aliased canonical label — only when value present
@@ -573,10 +596,29 @@ function gridToPeriods(
         // here we just write if absent or null).
         if (canonExisting === undefined || canonExisting.value === null) {
           target.set(canonicalKey, { value: scaledValue, statement: stmt, standard: std });
+          cellsKeptCanonical++;
         }
       }
     }
   }
+
+  // Emit per-grid summary so silent drops are auditable. This is the lever
+  // that converts "why isn't <metric> showing up?" from a 30-min debug
+  // exercise into a single log scan.
+  trace("parse", "gridToPeriods:summary", {
+    statement: stmt,
+    standard: std,
+    multiplier,
+    periods: header.periodCols.length,
+    rowsSeen,
+    rowsKept,
+    droppedNoMetric,
+    droppedSectionLabel,
+    droppedSectionLabelSample: droppedLabels,
+    cellsKeptOriginalOnly,
+    cellsKeptCanonical,
+  });
+
   return out;
 }
 

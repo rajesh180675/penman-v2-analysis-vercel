@@ -1,12 +1,17 @@
 """
-Parse Bajaj Finance Capitaline extra data exports:
+Parse Capitaline structured extras for banks/NBFCs:
   - RBI NHB Banks (consolidated): GNPA, NNPA, CRAR, Tier-1, NPA movements, provisions
-  - Loss Given Default (consolidated): Stage 1/2/3 migration matrix per year
+  - Loss Given Default (consolidated): Stage 1/2/3 migration matrix per year (NBFC only)
   - Subsidiaries: per-sub equity, PAT, total assets/liabilities
 
 Produces an enriched quality_indicators.json that supersedes the regex-based
 AR extraction. Retains AUM/AUM-growth from the AR extractor (not available
-in Capitaline), merges everything else from structured source.
+in Capitaline) and any AR-extracted ratios when structured source is empty.
+
+Works for both NBFCs (Bajaj Finance — has LGD folder) and Banks (HDFC Bank,
+ICICI Bank — no LGD folder, gracefully skipped). Company identity is taken
+from the existing quality_indicators.json (company_name + ticker) so the
+output schema header is always company-correct.
 
 Usage:
     python scripts/parse_nbfc_capitaline_extras.py [COMPANY_FOLDER]
@@ -500,6 +505,21 @@ def merge_into_quality_indicators(
         if subs and subs.get("subsidiaries"):
             sub_summary = []
             for sub in subs["subsidiaries"]:
+                # Skip subsidiaries where Capitaline didn't populate ANY of the
+                # key financial fields (pat, assets, equity, sales). Common for
+                # SBIN where all 27 subsidiaries have 0.00 across all fields —
+                # writing them produces 27 noise rows in the UI table.
+                financials = [
+                    sub.get("pat"),
+                    sub.get("total_assets"),
+                    sub.get("total_liabilities"),
+                    sub.get("equity_subscribed"),
+                    sub.get("reserves"),
+                    sub.get("sales_turnover"),
+                ]
+                has_data = any(v is not None and v != 0 for v in financials)
+                if not has_data:
+                    continue
                 sub_summary.append({
                     "name": sub.get("name"),
                     "equity_cr": sub.get("equity_subscribed"),
@@ -510,14 +530,15 @@ def merge_into_quality_indicators(
                     "total_liabilities_cr": sub.get("total_liabilities"),
                     "sales_cr": sub.get("sales_turnover"),
                 })
-            period["subsidiaries"] = sub_summary
-            # Aggregate subsidiary contribution
-            total_sub_pat = sum(s.get("pat") or 0 for s in subs["subsidiaries"])
-            total_sub_assets = sum(s.get("total_assets") or 0 for s in subs["subsidiaries"])
-            if total_sub_pat > 0:
-                period["subsidiary_pat_cr"] = total_sub_pat
-            if total_sub_assets > 0:
-                period["subsidiary_assets_cr"] = total_sub_assets
+            if sub_summary:
+                period["subsidiaries"] = sub_summary
+                # Aggregate subsidiary contribution (only over non-empty subs)
+                total_sub_pat = sum(s.get("pat_cr") or 0 for s in sub_summary)
+                total_sub_assets = sum(s.get("total_assets_cr") or 0 for s in sub_summary)
+                if total_sub_pat > 0:
+                    period["subsidiary_pat_cr"] = total_sub_pat
+                if total_sub_assets > 0:
+                    period["subsidiary_assets_cr"] = total_sub_assets
 
         periods.append(period)
 
@@ -544,17 +565,51 @@ def merge_into_quality_indicators(
     as_of_date = sorted_periods[-1]["period_end"] if sorted_periods else ""
 
     # Build output — schema-conformant for src/engine/bankQualityIndicators.ts
+    # Company identity comes from existing JSON (preserves whatever the AR
+    # extractor wrote). Falls back to registry.json by folder name, then to
+    # folder name itself, so the schema header is always company-correct.
+    folder_name = os.path.basename(company_folder.rstrip(os.sep + "/"))
+    company_name = (
+        existing.get("company_name")
+        or existing.get("company")
+        or f"{folder_name} Ltd"
+    )
+    ticker = existing.get("ticker") or ""
+    if not ticker:
+        # Look up by folder name in registry.json
+        registry_path = os.path.join(
+            os.path.dirname(company_folder.rstrip(os.sep + "/")), "registry.json"
+        )
+        if os.path.exists(registry_path):
+            try:
+                with open(registry_path, "r") as f:
+                    registry = json.load(f)
+                for entry in registry:
+                    if entry.get("folder") == folder_name:
+                        ticker = entry.get("ticker") or ""
+                        break
+            except (json.JSONDecodeError, OSError):
+                pass
+
+    has_lgd = any(
+        any(k.startswith("stage") or k == "ecl_coverage_pct" for k in p.keys())
+        for p in periods
+    )
+    pipeline_label = "NBFC" if has_lgd else "Bank"
+
     output = {
         "schema_version": "2026-05-bank-quality-v1",
-        "company_name": existing.get("company_name") or existing.get("company") or "Bajaj Finance Ltd",
+        "company_name": company_name,
         "as_of_date": as_of_date,
         "source_notes": (
-            "NBFC pipeline (BAJFINANCE). Merged from Capitaline structured exports "
-            "(RBI NHB Banks, Credit Risk Analysis - Loss Given Default, Subsidiaries) "
-            "via scripts/parse_nbfc_capitaline_extras.py. AUM / AUM-growth retained "
-            "from AR-extractor (scripts/extract_nbfc_quality.py)."
+            f"{pipeline_label} pipeline ({ticker or company_name}). Merged from "
+            "Capitaline structured exports (RBI NHB Banks"
+            + (", Credit Risk Analysis - Loss Given Default" if has_lgd else "")
+            + ", Subsidiaries) via scripts/parse_nbfc_capitaline_extras.py. "
+            "AR-extracted fields (AUM, growth ratios, etc.) preserved where "
+            "Capitaline does not carry the field."
         ),
-        "ticker": existing.get("ticker", "BAJFINANCE"),
+        "ticker": ticker,
         "scope": "consolidated",
         "periods": periods,
     }

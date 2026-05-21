@@ -90,7 +90,7 @@
     "type": "bank",
     "description": "Premium private bank with conservative loan book",
     "emoji": "🏦",
-    "hasStandalone": false,
+    "hasStandalone": true,
     "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/KOTAKBANK/quality_indicators.json"
   },
   {
@@ -154,7 +154,7 @@
     "type": "bank",
     "description": "Largest public-sector bank",
     "emoji": "🏛️",
-    "hasStandalone": false,
+    "hasStandalone": true,
     "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/SBIN/quality_indicators.json"
   },
   {
