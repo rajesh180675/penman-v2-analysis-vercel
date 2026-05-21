@@ -473,12 +473,23 @@ export const CapitalineMappingSpec = {
       "Interest Income",
       "Total Revenue from Operations",
       "Interest / Discount on Advances / Bills",
+      // NBFCs report interest income as "Revenue From Operations" (Capitaline label)
+      // because their entire revenue IS interest income (no product sales).
+      "Revenue From Operations(Net)",
+      "Revenue From Operations",
     ],
     otherInterestIncome: ["Other Interest Income"],
     feeAndCommissionIncome: ["Fee and Commission Income"],
 
     // ── Interest expense ──────────────────────────────────────────
-    interestExpended: ["Interest Expended", "Interest Expense", "Total Interest Expenses"],
+    interestExpended: [
+      "Interest Expended",
+      "Interest Expense",
+      "Total Interest Expenses",
+      // NBFCs report interest expense as "Finance Cost" (IndAS label)
+      "Finance Cost",
+      "Finance Costs",
+    ],
     interestOnDeposits: ["Interest on Deposits"],
 
     // ── Non-interest income ───────────────────────────────────────
