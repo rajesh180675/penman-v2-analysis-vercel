@@ -1617,10 +1617,23 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
                         </span>
                       </div>
                       <div className="text-2xl font-bold mb-1">
-                        {card.intrinsicValue != null
-                          ? fmtCr(card.intrinsicValue)
-                          : "N/A"}
+                        {(() => {
+                          const shares = config?.shares_outstanding;
+                          const perShare = shares && shares > 0 && card.intrinsicValue != null
+                            ? card.intrinsicValue / shares
+                            : card.intrinsicPerShare;
+                          return perShare != null
+                            ? `₹${perShare.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`
+                            : card.intrinsicValue != null
+                              ? fmtCr(card.intrinsicValue)
+                              : "N/A";
+                        })()}
                       </div>
+                      {card.intrinsicValue != null && (
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 -mt-0.5 mb-1">
+                          {fmtCr(card.intrinsicValue)} total
+                        </div>
+                      )}
                       {card.upsidePct != null && (
                         <div className={"text-xs font-medium " + upsideClass}>
                           {card.upsidePct > 0 ? "+" : ""}
