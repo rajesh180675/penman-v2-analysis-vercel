@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Penman V2 — Data Upload User Manual</title>
+<style>
+  :root {
+    --indigo: #4f46e5;
+    --slate-800: #1e293b;
+    --slate-600: #475569;
+    --slate-400: #94a3b8;
+    --slate-100: #f1f5f9;
+    --emerald: #059669;
+    --red: #dc2626;
+    --amber: #d97706;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--slate-800);
+    line-height: 1.6;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    background: #fff;
+  }
+  h1 { font-size: 2rem; margin-bottom: 8px; color: var(--indigo); }
+  h2 { font-size: 1.4rem; margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--slate-100); }
+  h3 { font-size: 1.1rem; margin: 24px 0 12px; color: var(--slate-600); }
+  p { margin-bottom: 12px; color: var(--slate-600); }
+  .subtitle { font-size: 1rem; color: var(--slate-400); margin-bottom: 32px; }
+  .step-card {
+    background: var(--slate-100);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 16px 0;
+    border-left: 4px solid var(--indigo);
+  }
+  .step-card h4 {
+    font-size: 0.95rem;
+    color: var(--indigo);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--indigo);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .badge-required { background: #fef2f2; color: var(--red); border: 1px solid #fecaca; }
+  .badge-optional { background: var(--slate-100); color: var(--slate-400); border: 1px solid #e2e8f0; }
+  .badge-bank { background: #ecfdf5; color: var(--emerald); border: 1px solid #a7f3d0; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+  th { background: var(--slate-100); font-weight: 600; color: var(--slate-600); }
+  .tip {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 16px 0;
+    font-size: 0.9rem;
+    color: #1e40af;
+  }
+  .tip::before { content: "💡 "; }
+  .warning {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 16px 0;
+    font-size: 0.9rem;
+    color: #92400e;
+  }
+  .warning::before { content: "⚠️ "; }
+  .flow-diagram {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 16px 0;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    white-space: pre;
+    overflow-x: auto;
+    line-height: 1.4;
+  }
+  .screenshot {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin: 16px 0;
+    max-width: 100%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+  code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+  .toc { background: var(--slate-100); border-radius: 8px; padding: 16px 24px; margin: 24px 0; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin: 6px 0; }
+  .toc a { color: var(--indigo); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #e2e8f0; color: var(--slate-400); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+
+<h1>Penman V2 — Data Upload Manual</h1>
+<p class="subtitle">How to load financial data for valuation analysis — step by step</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#overview">Overview: Two Ways to Load Data</a></li>
+    <li><a href="#path-a">Path A: Library Card (One Click)</a></li>
+    <li><a href="#path-b">Path B: Custom Upload (Your Own Company)</a></li>
+    <li><a href="#essentials">Step 1 — Fill the 4 Essentials</a></li>
+    <li><a href="#slot1">Step 2 — Upload Consolidated ZIP</a></li>
+    <li><a href="#slot2">Step 3 — Upload Standalone ZIP (Optional)</a></li>
+    <li><a href="#slot3">Step 4 — Upload Quality Sidecar (Bank/NBFC Only)</a></li>
+    <li><a href="#coverage">Step 5 — Check Coverage Indicator</a></li>
+    <li><a href="#after">What Happens After Upload</a></li>
+    <li><a href="#prepare">How to Prepare the Capitaline ZIP</a></li>
+    <li><a href="#troubleshooting">Troubleshooting</a></li>
+  </ol>
+</div>
+
+<!-- ─────────────────────────────────────────── -->
+<h2 id="overview">1. Overview: Two Ways to Load Data</h2>
+
+<p>The app has two paths to get financial data into the valuation engine:</p>
+
+<div class="two-col">
+  <div class="step-card">
+    <h4>Path A — Library Card</h4>
+    <p>Click any of the 13 pre-loaded companies. Everything is automatic — consolidated ZIP, standalone ZIP, quality sidecar, and config are all fetched for you.</p>
+    <p><strong>Best for:</strong> Exploring the tool, testing pipelines, learning what the output looks like.</p>
+  </div>
+  <div class="step-card">
+    <h4>Path B — Custom Upload</h4>
+    <p>Upload your own Capitaline exports for any Indian listed company. You control what goes in.</p>
+    <p><strong>Best for:</strong> Analyzing companies not in the library, using fresh data you just exported.</p>
+  </div>
+</div>
+
+<div class="flow-diagram">
+┌─────────────────────────────────────────────────────────────┐
+│                    DATA INPUT SCREEN                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌─ Company Library (13 cards) ──────────────────────────┐  │
+│  │  Click any card → auto-loads everything               │  │
+│  │  (consolidated + standalone + quality + config)        │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                              │
+│  ─── OR ─────────────────────────────────────────────────── │
+│                                                              │
+│  ┌─ Custom Upload ───────────────────────────────────────┐  │
+│  │  [Essentials: ID, Type, Price, Shares]                │  │
+│  │                                                        │  │
+│  │  ① Consolidated ZIP ← REQUIRED                        │  │
+│  │  ② Standalone ZIP   ← optional (gap analysis)         │  │
+│  │  ③ Quality JSON     ← optional (bank/NBFC only)       │  │
+│  │                                                        │  │
+│  │  [Coverage: ✓ Type  ✓ Standalone  – Quality]          │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+              ┌─── Dashboard Opens ───┐
+              │  Verdict + Charts     │
+              │  ~12 panels           │
+              └───────────────────────┘
+</div>
+
+<!-- ─────────────────────────────────────────── -->
+<h2 id="path-a">2. Path A: Library Card (One Click)</h2>
+
+<p>The Company Library grid shows 13 pre-loaded Indian companies covering all sector types:</p>
+
+<table>
+  <tr><th>Company</th><th>Type</th><th>What it tests</th></tr>
+  <tr><td>Bajaj Finance</td><td>NBFC</td><td>NBFC routing, borrowings/equity leverage</td></tr>
+  <tr><td>HDFC Bank</td><td>Bank</td><td>Bank quality indicators pipeline</td></tr>
+  <tr><td>ICICI Bank</td><td>Bank</td><td>Universal bank with digital franchise</td></tr>
+  <tr><td>ITC Ltd</td><td>Conglomerate</td><td>SOTP valuation across segments</td></tr>
+  <tr><td>Kotak Mahindra</td><td>Bank</td><td>Conservative loan book</td></tr>
+  <tr><td>LIC</td><td>Insurance</td><td>Insurance fail-closed pipeline</td></tr>
+  <tr><td>Paytm</td><td>Loss-maker</td><td>Loss-maker valuation (no positive earnings)</td></tr>
+  <tr><td>Power Grid</td><td>Utility</td><td>Regulated utility with stable returns</td></tr>
+  <tr><td>Reliance</td><td>Conglomerate</td><td>Mixed conglomerate + segment SOTP</td></tr>
+  <tr><td>SBI</td><td>Bank</td><td>Largest PSU bank</td></tr>
+  <tr><td>TCS</td><td>IT Services</td><td>Capital-light IT services moat</td></tr>
+  <tr><td>Tata Steel</td><td>Cyclical</td><td>Cyclical normalization</td></tr>
+  <tr><td>Vodafone Idea</td><td>Telecom</td><td>Negative-equity distress test</td></tr>
+</table>
+
+<h3>How to use:</h3>
+<ol>
+  <li>Find the company card in the grid (use Search or Sector filter to narrow)</li>
+  <li>Check the badges: <code>✓ Cons</code> = consolidated available, <code>✓ Stan</code> = standalone available</li>
+  <li>Click the card</li>
+  <li>Wait 2-5 seconds — the dashboard opens automatically</li>
+</ol>
+
+<div class="tip">
+  Library cards auto-set Company Type, ticker, and fetch all supplementary data (standalone, quality sidecar, NBFC XLS files). You don't need to configure anything.
+</div>
+
+<!-- ─────────────────────────────────────────── -->
+<h2 id="path-b">3. Path B: Custom Upload (Your Own Company)</h2>
+
+<p>For companies not in the library, scroll past the grid to the <strong>"Upload Capitaline Data"</strong> section. This has 3 upload slots plus a configuration row.</p>
+
+<!-- ─────────────────────────────────────────── -->
+<h2 id="essentials">4. Step 1 — Fill the 4 Essentials</h2>
+
+<p>Before uploading any file, fill the configuration row at the top of the upload card:</p>
+
+<table>
+  <tr><th>Field</th><th>What to enter</th><th>Required?</th></tr>
+  <tr>
+    <td><strong>Company ID</strong></td>
+    <td>Short identifier (e.g. <code>BAJFINANCE</code>, <code>HDFCBANK</code>). Used in audit trail.</td>
+    <td>Yes</td>
+  </tr>
+  <tr>
+    <td><strong>Company Type</strong></td>
+    <td>Select from dropdown: Bank, NBFC, Insurance, Industrial, IT Services, Consumer/FMCG, Utility/PSU, Telecom, Cyclical/Metals</td>
+    <td>Yes ⛔</td>
+  </tr>
+  <tr>
+    <td><strong>Market Price ₹</strong></td>
+    <td>Current stock price (for P/E, P/B, fair value gap). Leave blank if unknown.</td>
+    <td>Recommended</td>
+  </tr>
+  <tr>
+    <td><strong>Shares (Cr)</strong></td>
+    <td>Shares outstanding in crores. Auto-detected from data if blank.</td>
+    <td>Optional</td>
+  </tr>
+</table>
+
+<div class="warning">
+  Company Type is <strong>mandatory</strong>. The upload drop zone is disabled (red border, grayed out) until you select a type. This determines which valuation pipeline runs — Bank pipeline for banks, Penman-Nissim recast for industrials, etc.
+</div>
+
+<div class="tip">
+  Use the explicit type you know the company IS. Don't rely on auto-detection — the tool uses your declaration to route to the correct pipeline.
+</div>
+
+<!-- ─────────────────────────────────────────── -->
+<h2 id="slot1">5. Step 2 — Upload Consolidated ZIP</h2>
+
+<div class="step-card">
+  <h4><span class="step-num">1</span> Consolidated Financial Data <span class="badge badge-required">Required</span></h4>
+  <p>This is the main data source. A single ZIP file containing 3 Capitaline XLS exports:</p>
+  <ul style="margin: 8px 0 0 20px; color: var(--slate-600);">
+    <li>Balance Sheet (Ind AS Detailed)</li>
+    <li>Profit &amp; Loss (Ind AS Detailed)</li>
+    <li>Cash Flow Statement</li>
+  </ul>
+</div>
+
+<h3>How to upload:</h3>
+<ol>
+  <li><strong>Drag &amp; drop</strong> your ZIP file onto the dashed drop zone, OR</li>
+  <li><strong>Click</strong> the drop zone to open a file browser</li>
+</ol>
+
+<p>After dropping, you'll see a progress stepper:</p>
+<ol>
+  <li><strong>Extracting Files</strong> — decompressing the ZIP</li>
+  <li><strong>Reading Formats</strong> — mapping XLS sheets and columns</li>
+  <li><strong>Balancing NOA/NFO</strong> — aligning assets &amp; liabilities</li>
+  <li><strong>Dataset Ready</strong> — pipeline compiled, dashboard opens</li>
+</ol>
+
+<div class="tip">
+  If you pre-loaded a Standalone ZIP (Slot 2) before uploading the Consolidated ZIP, the standalone is automatically parsed first and fed into the gap analysis pipeline.
+</div>
+
+<!-- ─────────────────────────────────────────── -->
+<h2 id="slot2">6. Step 3 — Upload Standalone ZIP (Optional)</h2>
+
+<div class="step-card">
+  <h4><span class="step-num">2</span> Standalone Statements <span class="badge badge-optional">Optional</span></h4>
+  <p>A separate ZIP with the same 3 files (BS + P&amp;L + CF) but from the <strong>standalone</strong> financial statements.</p>
+  <p><strong>Purpose:</strong> Enables subsidiary contribution gap analysis. The engine computes: <code>Consolidated − Standalone = Subsidiary Contribution</code></p>
+</div>
+
+<h3>How to upload:</h3>
+<ol>
+  <li>Drag &amp; drop a standalone ZIP onto the smaller drop zone, OR click it</li>
+  <li>Once loaded, you'll see: <code>✓ filename.zip (size KB)</code> with a "Remove" button</li>
+  <li>The file is held in memory until you upload the Consolidated ZIP (Slot 1)</li>
+</ol>
+
+<div class="tip">
+  Load the standalone BEFORE the consolidated. When you drop the consolidated ZIP, the app automatically parses standalone first, then runs the full dual-scope pipeline.
+</div>
+
+<div class="warning">
+  Do NOT mix consolidated and standalone files in the same ZIP. They use identical sheet structures — combining them causes naming collisions and data overwrites.
+</div>
+
+<!-- ─────────────────────────────────────────── -->
+<h2 id="slot3">7. Step 4 — Upload Quality Sidecar (Bank/NBFC Only)</h2>
+
+<div class="step-card">
+  <h4><span class="step-num">3</span> Quality Indicators Sidecar <span class="badge badge-bank">Bank/NBFC/Insurance</span></h4>
+  <p>A JSON file with pre-computed bank quality metrics that Capitaline doesn't export in standard XLS format.</p>
+  <p><strong>Purpose:</strong> Enables NIM, GNPA, CRAR, Cost/Income, Yield, Spread panels on the Bank tab.</p>
+</div>
+
+<p><strong>This slot only appears when Company Type = Bank, NBFC, or Insurance.</strong></p>
+
+<h3>What the JSON should contain:</h3>
+<table>
+  <tr><th>Field</th><th>Description</th></tr>
+  <tr><td><code>schema_version</code></td><td>"2026-05-bank-quality-v1"</td></tr>
+  <tr><td><code>company_name</code></td><td>Full legal name</td></tr>
+  <tr><td><code>as_of_date</code></td><td>Latest period end (e.g. "2025-03-31")</td></tr>
+  <tr><td><code>periods[]</code></td><td>Array of yearly objects with NIM, GNPA, CRAR, cost_to_income, yield_on_advances, cost_of_borrowings, spread, etc.</td></tr>
+</table>
+
+<div class="tip">
+  If you don't have this file, the dashboard still works — it just won't show bank-specific quality panels (NIM chart, Asset Quality table, etc.). The valuation models still run using computed fallbacks.
+</div>
+
+<!-- ─────────────────────────────────────────── -->
+<h2 id="coverage">8. Step 5 — Check Coverage Indicator</h2>
+
+<p>Below the upload slots, a status line shows what's ready:</p>
+
+<div class="flow-diagram" style="font-size: 1rem;">
+READY:  ✓ Type   ✓ Standalone   – Quality
+</div>
+
+<table>
+  <tr><th>Indicator</th><th>Meaning</th></tr>
+  <tr><td><code>✓ Type</code></td><td>Company Type selected — upload enabled</td></tr>
+  <tr><td><code>✗ Type</code></td><td>Type not selected — upload blocked</td></tr>
+  <tr><td><code>✓ Standalone</code></td><td>Standalone ZIP loaded — gap analysis will run</td></tr>
+  <tr><td><code>– Standalone</code></td><td>No standalone — consolidated-only analysis</td></tr>
+  <tr><td><code>✓ Quality</code></td><td>Quality JSON loaded — bank panels will populate</td></tr>
+  <tr><td><code>– Quality</code></td><td>No quality sidecar — bank panels use fallback</td></tr>
+</table>
+
+<!-- ─────────────────────────────────────────── -->
+<h2 id="after">9. What Happens After Upload</h2>
+
+<p>Once the consolidated ZIP is processed successfully:</p>
+
+<ol>
+  <li>The progress stepper shows all 4 steps green ✓</li>
+  <li>A success banner appears: "Excellent! [filename] was ingested successfully."</li>
+  <li>The dashboard auto-opens with:
+    <ul style="margin: 8px 0 0 20px;">
+      <li>Buy/Hold/Avoid verdict</li>
+      <li>Narrative summary</li>
+      <li>~12 charts (profitability, valuation, quality, etc.)</li>
+      <li>Bank tab (if type = bank/nbfc) with NIM, ROA, Asset Quality</li>
+      <li>Scope tab (if standalone was loaded) with subsidiary contribution</li>
+    </ul>
+  </li>
+</ol>
+
+<h3>What each upload slot enables:</h3>
+<table>
+  <tr><th>Slot</th><th>Dashboard panels enabled</th></tr>
+  <tr><td>① Consolidated only</td><td>Verdict, Recast, Valuation (5 models), Moat, Charts, DCF</td></tr>
+  <tr><td>① + ②</td><td>All above + Scope tab (subsidiary contribution gap analysis)</td></tr>
+  <tr><td>① + ③</td><td>All above + Bank Quality panels (NIM, GNPA, CRAR, Cost/Income, Yield, Spread)</td></tr>
+  <tr><td>① + ② + ③</td><td>Full analysis — all panels populated</td></tr>
+</table>
+
+<!-- ─────────────────────────────────────────── -->
+<h2 id="prepare">10. How to Prepare the Capitaline ZIP</h2>
+
+<h3>Step-by-step in Capitaline:</h3>
+<ol>
+  <li>Log in to Capitaline Plus</li>
+  <li>Search for your company</li>
+  <li>Go to <strong>Financials → Balance Sheet → Ind AS Detailed</strong></li>
+  <li>Click <strong>Export → XLS</strong> — filename must contain the word <code>balance</code></li>
+  <li>Go to <strong>Financials → Profit &amp; Loss → Ind AS Detailed</strong></li>
+  <li>Click <strong>Export → XLS</strong> — filename must contain <code>profit</code> or <code>pnl</code></li>
+  <li>Go to <strong>Financials → Cash Flow</strong></li>
+  <li>Click <strong>Export → XLS</strong> — filename must contain <code>cash</code></li>
+  <li>Select all 3 XLS files → Right-click → <strong>Send to → Compressed (zipped) folder</strong></li>
+  <li>Upload the resulting ZIP</li>
+</ol>
+
+<div class="warning">
+  <strong>Scope rule:</strong> Export either ALL Consolidated or ALL Standalone. Never mix them in one ZIP. The parser uses identical column structures for both — mixing causes silent data overwrites.
+</div>
+
+<h3>Filename detection rules:</h3>
+<table>
+  <tr><th>Statement</th><th>Filename must contain</th><th>Example</th></tr>
+  <tr><td>Balance Sheet</td><td><code>balance</code></td><td><code>HDFC_Balance_Sheet_2025.xls</code></td></tr>
+  <tr><td>Profit &amp; Loss</td><td><code>profit</code> or <code>pnl</code></td><td><code>HDFC_Profit_Loss_2025.xls</code></td></tr>
+  <tr><td>Cash Flow</td><td><code>cash</code></td><td><code>HDFC_Cash_Flow_2025.xls</code></td></tr>
+</table>
+
+<!-- ─────────────────────────────────────────── -->
+<h2 id="troubleshooting">11. Troubleshooting</h2>
+
+<table>
+  <tr><th>Problem</th><th>Cause</th><th>Fix</th></tr>
+  <tr>
+    <td>Drop zone is red/disabled</td>
+    <td>Company Type not selected</td>
+    <td>Select a type from the dropdown first</td>
+  </tr>
+  <tr>
+    <td>"Parsed 0 periods"</td>
+    <td>ZIP doesn't contain recognizable XLS files</td>
+    <td>Check filenames contain "balance", "profit"/"pnl", "cash"</td>
+  </tr>
+  <tr>
+    <td>Bank panels show "—"</td>
+    <td>No quality sidecar uploaded</td>
+    <td>Upload quality_indicators.json in Slot 3, or use a library card</td>
+  </tr>
+  <tr>
+    <td>No Scope tab</td>
+    <td>Standalone not loaded</td>
+    <td>Upload standalone ZIP in Slot 2 before consolidated</td>
+  </tr>
+  <tr>
+    <td>Cost/Income = 36167%</td>
+    <td>Wrong company type selected (industrial instead of NBFC)</td>
+    <td>Set Company Type = NBFC for NBFCs, Bank for banks</td>
+  </tr>
+  <tr>
+    <td>Slot 3 not visible</td>
+    <td>Company Type is not Bank/NBFC/Insurance</td>
+    <td>Change type to Bank, NBFC, or Insurance to see the quality slot</td>
+  </tr>
+</table>
+
+<h3>Debug trace</h3>
+<p>Every upload action is logged to the trace system. To export the debug trace:</p>
+<ol>
+  <li>Open the <strong>Debug tab</strong> in the dashboard</li>
+  <li>Click <strong>Export Trace JSON</strong></li>
+  <li>The JSON file contains every step: <code>parse/processZip:start</code>, <code>parse/standaloneZip:success</code>, <code>quality/sidecarUpload:error</code>, etc.</li>
+</ol>
+
+<footer>
+  <p>Penman V2 Analysis — Upload Manual v1.0 — May 2026</p>
+  <p>Generated for penman-v2-analysis-vercel. 728 tests passing, 93 test files.</p>
+</footer>
+
+</body>
+</html>
