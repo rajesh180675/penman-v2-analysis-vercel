@@ -611,10 +611,18 @@ export function processBankData(
   // O(n+m) — index once, lookup per period.
   if (quality) {
     const qualityIndex = indexQualityByPeriod(quality);
+    let joinMatched = 0;
+    let joinWithSubs = 0;
+    let joinWithCti = 0;
     for (const m of computed) {
       const match = qualityIndex.get(m.period_end);
       if (match) {
+        joinMatched++;
         m.quality = match;
+        if (match.subsidiaries && match.subsidiaries.length > 0 &&
+            match.subsidiaries.some(s => s.name !== "No Subsidiaries")) {
+          joinWithSubs++;
+        }
         // Only pull CASA from the sidecar when we have a matching quality record
         // AND the sidecar actually has a value. Do NOT overwrite a Capitaline-derived
         // casaRatio with null.
@@ -628,9 +636,20 @@ export function processBankData(
         // approximation that runs 5-8pp higher due to CSR, bank charges, etc.
         if (match.cost_to_income_pct != null) {
           m.costToIncome = match.cost_to_income_pct / 100;
+          joinWithCti++;
         }
       }
     }
+    trace("bank", "qualityJoin", {
+      computedPeriods: computed.length,
+      qualityPeriods: qualityIndex.size,
+      matched: joinMatched,
+      unmatched: computed.length - joinMatched,
+      withSubsidiaries: joinWithSubs,
+      withCostToIncome: joinWithCti,
+    });
+  } else {
+    trace("bank", "qualityJoin", { computedPeriods: computed.length, qualityPeriods: 0, matched: 0, unmatched: computed.length, withSubsidiaries: 0, withCostToIncome: 0 }, null, { level: "warn", msg: "No quality sidecar provided" });
   }
 
   // Phase B5.1 — Fallback sanitisation: computed cost-to-income can exceed 100%

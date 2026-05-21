@@ -118,7 +118,12 @@ export function processCompanyDataFull(
     periods: dataArray?.length ?? 0,
     hasQuality: quality != null,
     companyType: config.company_type ?? "auto",
+    ke: config.ke ?? null,
+    riskFreeRate: config.risk_free_rate ?? null,
+    excludedPeriods: config.excluded_periods?.length ?? 0,
   });
+
+  try {
 
   if (!dataArray || dataArray.length === 0) {
     const emptyAnomalies = runAnomalyDetection([], config);
@@ -305,5 +310,17 @@ export function processCompanyDataFull(
     : null;
 
   const frequencyWarning = detectFrequencyWarning(sorted);
-  return { periods: results, anomalies, analysisFamily: "industrial", distress: detectDistress(results), structuralBreakPeriods, lossMaker, itServices, cyclicality, ratioSanity, frequencyWarning };
+  const result: PipelineResult = { periods: results, anomalies, analysisFamily: "industrial", distress: detectDistress(results), structuralBreakPeriods, lossMaker, itServices, cyclicality, ratioSanity, frequencyWarning };
+  trace("pipeline", "processCompanyDataFull:exit", {
+    family: result.analysisFamily,
+    hasRecast: result.periods.length > 0,
+    hasBankResult: result.bankResult != null,
+    periodCount: result.periods.length,
+  });
+  return result;
+
+  } catch (err) {
+    trace("pipeline", "processCompanyDataFull:error", { error: String(err), stack: (err as Error)?.stack }, null, { level: "error" });
+    throw err;
+  }
 }

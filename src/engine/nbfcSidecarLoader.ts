@@ -45,17 +45,27 @@ export async function fetchNbfcSidecarData(
 }
 
 async function fetchPreParsedJson(baseUrl: string): Promise<NbfcSidecarData | null> {
+  const url = `${baseUrl}/nbfc_sidecar.json`;
+  trace("sidecar", "preParsedJson:attempt", { url });
   try {
-    const res = await fetch(`${baseUrl}/nbfc_sidecar.json`);
-    if (!res.ok) return null;
+    const res = await fetch(url);
+    if (!res.ok) {
+      trace("sidecar", "preParsedJson:httpMiss", { url, status: res.status }, null, { level: "warn" });
+      return null;
+    }
     const data = await res.json();
     // Validate structure
-    if (!data || !Array.isArray(data.lgd) || !Array.isArray(data.rbi_nhb)) return null;
+    if (!data || !Array.isArray(data.lgd) || !Array.isArray(data.rbi_nhb)) {
+      trace("sidecar", "preParsedJson:invalidStructure", { url, hasLgd: Array.isArray(data?.lgd), hasRbiNhb: Array.isArray(data?.rbi_nhb) }, null, { level: "warn" });
+      return null;
+    }
+    trace("sidecar", "preParsedJson:success", { url, lgdCount: data.lgd.length, rbiNhbCount: data.rbi_nhb.length });
     return {
       lgd: data.lgd as LgdMigrationMatrix[],
       rbiNhb: data.rbi_nhb as RbiNhbPeriod[],
     };
-  } catch {
+  } catch (err) {
+    trace("sidecar", "preParsedJson:error", { url, error: String(err), stack: (err as Error)?.stack }, null, { level: "error" });
     return null;
   }
 }
@@ -88,6 +98,7 @@ async function fetchLgdFiles(baseUrl: string): Promise<LgdMigrationMatrix[]> {
         trace("sidecar", "lgdFile:validationFailed", { fname, htmlLength: html.length }, null, { level: "warn" });
         return null;
       }
+      trace("sidecar", "lgdFile:fetchSuccess", { fname, htmlLength: html.length });
       return { filename: fname, html };
     } catch (err) {
       trace("sidecar", "lgdFile:fetchError", { fname, error: String(err) }, null, { level: "error" });
@@ -107,7 +118,14 @@ async function fetchLgdFiles(baseUrl: string): Promise<LgdMigrationMatrix[]> {
   });
 
   if (results.length === 0) return [];
-  return parseLgdFiles(results);
+  try {
+    const parsed = parseLgdFiles(results);
+    trace("sidecar", "lgdParse:success", { inputFiles: results.length, periods: parsed.length });
+    return parsed;
+  } catch (err) {
+    trace("sidecar", "lgdParse:error", { inputFiles: results.length, error: String(err), stack: (err as Error)?.stack }, null, { level: "error" });
+    return [];
+  }
 }
 
 async function fetchRbiNhbFile(baseUrl: string): Promise<RbiNhbPeriod[]> {
@@ -124,10 +142,14 @@ async function fetchRbiNhbFile(baseUrl: string): Promise<RbiNhbPeriod[]> {
       return [];
     }
     const result = parseRbiNhbFile(html);
-    trace("sidecar", "rbiNhbFetch:success", { url, periods: result.length });
+    trace("sidecar", "rbiNhbFetch:success", {
+      url,
+      periods: result.length,
+      sampleFields: result.length > 0 ? Object.keys(result[0]).filter(k => (result[0] as unknown as Record<string, unknown>)[k] != null).length : 0,
+    });
     return result;
   } catch (err) {
-    trace("sidecar", "rbiNhbFetch:error", { url, error: String(err) }, null, { level: "error" });
+    trace("sidecar", "rbiNhbFetch:error", { url, error: String(err), stack: (err as Error)?.stack }, null, { level: "error" });
     return [];
   }
 }

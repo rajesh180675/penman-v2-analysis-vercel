@@ -166,12 +166,15 @@ export function App() {
       setBankQuality(null);
       return;
     }
+    const qualityUrl = config.quality_indicators_blob_url
+      ? `${config.quality_indicators_blob_url}?v=${Date.now()}`
+      : undefined;
+    const qualitySource = qualityUrl ? "blob" : "local";
+    trace("quality", "useEffect:fetchStart", { folder: qualityFolder, source: qualitySource, url: qualityUrl ?? `local:/data/companies/${qualityFolder}/quality_indicators.json` });
     void fetchBankQualityIndicators(qualityFolder, undefined,
       // Bust browser cache for blob URLs — Vercel Blob sets max-age=31536000 (1 year)
       // which causes stale data when the sidecar is re-uploaded. Append session timestamp.
-      config.quality_indicators_blob_url
-        ? `${config.quality_indicators_blob_url}?v=${Date.now()}`
-        : undefined,
+      qualityUrl,
     )
       .then((q) => {
         if (!cancelled) {
@@ -180,6 +183,7 @@ export function App() {
             folder: qualityFolder,
             periods: q?.periods?.length ?? 0,
             hasData: q != null,
+            hasSubsidiaries: q?.periods?.filter((p) => p.subsidiaries != null).length ?? 0,
           });
         }
       })
@@ -188,6 +192,7 @@ export function App() {
         // bank pipeline running with null quality so the rest of the
         // analysis is unaffected.
         console.error("[App] bank quality sidecar load failed:", err);
+        trace("quality", "sidecarLoadError", { folder: qualityFolder, error: String(err), stack: (err as Error)?.stack }, null, { level: "error" });
         if (!cancelled) setBankQuality(null);
       });
     return () => {
@@ -209,6 +214,7 @@ export function App() {
     const sidecarBlobRoot = config.quality_indicators_blob_url
       ? config.quality_indicators_blob_url.replace(/\/companies\/[^/]+\/quality_indicators\.json$/, "")
       : null;
+    trace("sidecar", "nbfcSidecar:useEffectStart", { folder: qualityFolder, sidecarBlobRoot });
     void fetchNbfcSidecarData(qualityFolder, sidecarBlobRoot)
       .then((data) => {
         if (!cancelled) {
@@ -246,6 +252,7 @@ export function App() {
     try {
       return processCompanyDataFull(rawData, config, bankQuality);
     } catch (err) {
+      trace("pipeline", "processCompanyDataFull:error", { error: String(err), stack: (err as Error)?.stack }, null, { level: "error" });
       console.error("[App] engine error:", err);
       return { error: err instanceof Error ? err.message : String(err) };
     }
@@ -263,6 +270,7 @@ export function App() {
     try {
       return processScopeAwareData(rawData, standaloneRawData, config, bankQuality);
     } catch (err) {
+      trace("scope", "scopeAwareAnalysis:error", { error: String(err), stack: (err as Error)?.stack }, null, { level: "error" });
       console.error("[App] scope-aware analysis error:", err);
       return null;
     }

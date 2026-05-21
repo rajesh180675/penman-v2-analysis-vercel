@@ -1,3 +1,5 @@
+import { trace } from "../lib/traceLogger";
+
 /**
  * Bank Quality Indicators — Phase B5.1
  *
@@ -448,16 +450,34 @@ export async function fetchBankQualityIndicators(
 ): Promise<BankQualityIndicators | null> {
   // Prefer Vercel Blob URL when available (Vercel deploy); fall back to local public/ path.
   const url = blobUrl ?? `/data/companies/${encodeURIComponent(companyFolder)}/quality_indicators.json`;
+  const source = blobUrl ? "blob" : "local";
+  trace("quality", "fetch:start", { url, source });
+
   let res: Response;
   try {
     res = await fetchImpl(url);
   } catch (err) {
     // Network error — treat as absent rather than fatal. The bank
     // pipeline still runs without quality data.
+    trace("quality", "fetch:error", { url, error: String(err), stack: (err as Error)?.stack }, null, { level: "error" });
     return null;
   }
-  if (res.status === 404) return null;
+
+  // Trace response headers for cache diagnostics
+  trace("quality", "fetch:response", {
+    status: res.status,
+    cacheHit: res.headers.get("X-Vercel-Cache") ?? null,
+    age: res.headers.get("Age") ?? null,
+    cacheControl: res.headers.get("Cache-Control") ?? null,
+    contentLength: res.headers.get("Content-Length") ?? null,
+  });
+
+  if (res.status === 404) {
+    trace("quality", "fetch:absent", { url }, null, { level: "warn", msg: "Sidecar not found (404)" });
+    return null;
+  }
   if (!res.ok) {
+    trace("quality", "fetch:httpError", { url, status: res.status, statusText: res.statusText }, null, { level: "error" });
     throw new Error(
       `quality_indicators fetch failed: ${res.status} ${res.statusText} for ${url}`,
     );
@@ -467,12 +487,14 @@ export async function fetchBankQualityIndicators(
   const contentType = res.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json") && !contentType.includes("text/json")) {
     // Not JSON — treat as absent (no sidecar for this company).
+    trace("quality", "fetch:contentTypeRejected", { url, contentType }, null, { level: "warn" });
     return null;
   }
   let payload: unknown;
   try {
     payload = await res.json();
   } catch (err) {
+    trace("quality", "fetch:jsonParseError", { url, error: String(err), stack: (err as Error)?.stack }, null, { level: "error" });
     throw new Error(
       `quality_indicators JSON parse failed for ${companyFolder}: ${
         err instanceof Error ? err.message : String(err)
@@ -485,9 +507,23 @@ export async function fetchBankQualityIndicators(
       .filter((i) => i.severity === "error")
       .map((i) => `${i.field}: ${i.message}`)
       .join("; ");
+    trace("quality", "fetch:schemaInvalid", {
+      url,
+      errorCount: validation.issues.filter((i) => i.severity === "error").length,
+      issues: errMsgs.slice(0, 500),
+    }, null, { level: "error" });
     throw new Error(
       `quality_indicators schema invalid for ${companyFolder}: ${errMsgs}`,
     );
   }
-  return payload as BankQualityIndicators;
+
+  const qi = payload as BankQualityIndicators;
+  trace("quality", "fetch:success", {
+    periods: qi.periods?.length ?? 0,
+    hasSubsidiaries: qi.periods?.filter((p: BankQualityPeriod) => p.subsidiaries != null).length ?? 0,
+    fields: qi.periods?.length > 0
+      ? Object.keys(qi.periods[0]).filter(k => (qi.periods[0] as unknown as Record<string, unknown>)[k] != null).length
+      : 0,
+  });
+  return qi;
 }
