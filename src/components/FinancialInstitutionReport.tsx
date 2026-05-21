@@ -18,6 +18,8 @@ import type {
   TrendDirection,
 } from "../engine/bankAssetQuality";
 import BankHealthChart from "./charts/BankHealthChart";
+import SubsidiaryGrowthChart from "./charts/SubsidiaryGrowthChart";
+import LgdStageChart from "./charts/LgdStageChart";
 
 interface Props {
   bankResult: FinancialInstitutionAnalysisResult;
@@ -1470,10 +1472,21 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
       {bankResult.subtype === "nbfc" && bankResult.bankMetrics && bankResult.bankMetrics.length > 0 && (
         <NbfcSubsidiaryPanel metrics={bankResult.bankMetrics} />
       )}
+      {bankResult.subtype === "nbfc" && bankResult.bankMetrics && bankResult.bankMetrics.length > 0 && bankResult.bankMetrics[0]?.quality?.subsidiaries && (
+        <SubsidiaryGrowthChart
+          periods={bankResult.bankMetrics.filter(m => m.quality?.subsidiaries).map(m => ({
+            fiscal_label: m.period_end.slice(0, 4),
+            subsidiaries: m.quality!.subsidiaries!,
+          }))}
+        />
+      )}
 
       {/* Phase D4 — LGD stage migration + RBI NHB regulatory metrics. */}
       {bankResult.subtype === "nbfc" && nbfcSidecar && (
         <NbfcRegulatoryPanel sidecar={nbfcSidecar} />
+      )}
+      {bankResult.subtype === "nbfc" && nbfcSidecar && nbfcSidecar.lgd.length >= 2 && (
+        <LgdStageChart lgdData={nbfcSidecar.lgd} />
       )}
 
       {/* Phase D2 — NBFC governor + credit-cycle advisory banners. */}
