@@ -57,6 +57,7 @@
 import type { BankPeriodMetrics } from "./bankPipeline";
 import { EngineConfig, ke_from_config } from "./types";
 import type { SOTPResult, SegmentDefinition } from "./sotpValuation";
+import { trace } from "../lib/traceLogger";
 
 /** Lightweight three-scenario bundle for bank/NBFC valuation.
  *
@@ -1235,6 +1236,19 @@ export function computeBankValuation(
     sustainableROE, ke, terminalGrowth: g,
     latestBookValue: latestBV, marketCap,
     isNbfc,
+  });
+
+  trace("valuation", "computeBankValuation:result", {
+    sustainableROE,
+    ke,
+    g,
+    latestBV,
+    justifiedPBStatus: justifiedPB?.status ?? null,
+    eriStatus: eri?.status ?? null,
+    ddmStatus: ddm?.status ?? null,
+    triangulated: triangulatedValue,
+    eclFadeFactor: eclStressResult?.fadeFactor ?? null,
+    triangulatedValue: triangulatedValue ?? null,
   });
 
   return {
