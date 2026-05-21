@@ -1,19 +1,18 @@
 /**
- * Time-Trail Scatter — two metrics across time as a connected trail.
+ * Time-Trail Scatter v2 — phase-space with log axes + correlation.
  *
- * Each dot is one fiscal year, dots connected chronologically with a
- * gradient line (oldest=cool, newest=warm). The shape of the trail
- * reveals regime changes invisible in side-by-side line charts:
+ * v1 issues this fixes:
+ *   - Linear axes only → toggle linear/log per axis
+ *   - No correlation overlay → Pearson R + linear-fit line shown
+ *   - Path length in raw units → also reports normalized path length
+ *   - Weak defaults → preset library: Operating Leverage / DuPont / Capital Cycle / Free Cash
  *
- *   - Loops: cyclical reversion (commodity, autos)
- *   - Outward spirals: scaling business (early-stage NBFCs)
- *   - Sharp kinks: regulatory or M&A breaks (HDFC merger, demergers)
- *   - Tight clusters: stable mature business (FMCG)
- *
- * Why this is novel: every fundamental tool plots metrics vs time.
- * None plot metric-A vs metric-B with time as the trajectory. This is
- * standard in physics phase-space diagrams and macro-economics but
- * essentially absent from corporate-fundamental visualization.
+ * Reading the trail (kept from v1, validated):
+ *   - Loops: cyclical reversion
+ *   - Outward spirals: scaling
+ *   - Sharp kinks: regulatory / M&A / accounting break
+ *   - Tight clusters: stable mature
+ *   - Crossing back: regime reversion
  */
 import { useMemo, useState } from "react";
 import {
@@ -39,38 +38,119 @@ interface TrailPoint {
   x: number;
   y: number;
   period: string;
-  yearIdx: number;
-  yearShare: number; // 0 for oldest, 1 for newest
+  yearShare: number;
 }
 
-// Smart defaults: try to find common pairs of interest
-function pickInitialPair(allMetrics: string[]): [string, string] {
-  const lower = allMetrics.map((m) => m.toLowerCase());
-  const findIdx = (...needles: string[]): number => {
-    for (const n of needles) {
-      const i = lower.findIndex((m) => m.includes(n.toLowerCase()));
-      if (i >= 0) return i;
-    }
-    return -1;
-  };
+type AxisScale = "linear" | "log";
 
-  const x = findIdx("net sales", "revenue from operations", "total revenue", "interest earned", "premium");
-  const y = findIdx("net profit", "profit after tax", "pat");
-  if (x >= 0 && y >= 0) return [allMetrics[x], allMetrics[y]];
-  return [allMetrics[0], allMetrics[Math.min(1, allMetrics.length - 1)]];
+interface Preset {
+  id: string;
+  label: string;
+  description: string;
+  xPattern: string[];
+  yPattern: string[];
+}
+
+const PRESETS: Preset[] = [
+  {
+    id: "operating",
+    label: "Operating Leverage",
+    description: "Revenue × Operating Profit — measures how profit scales with sales",
+    xPattern: ["net sales", "revenue from operations", "total revenue", "interest earned", "premium"],
+    yPattern: ["operating profit", "ebitda", "ebit"],
+  },
+  {
+    id: "dupont",
+    label: "DuPont (Margin × Turnover)",
+    description: "Profit margin × Asset turnover — the classic DuPont decomposition",
+    xPattern: ["asset turnover", "total asset turnover"],
+    yPattern: ["net profit margin", "operating profit margin", "pat margin"],
+  },
+  {
+    id: "capital",
+    label: "Capital Cycle",
+    description: "CapEx × ROCE — capital deployed vs returns earned",
+    xPattern: ["capital expenditure", "additions to fixed assets", "purchase of fixed assets"],
+    yPattern: ["roce", "return on capital employed"],
+  },
+  {
+    id: "freecash",
+    label: "Free Cash",
+    description: "CFO × Net Profit — cash backing vs accounting earnings",
+    xPattern: ["net profit", "profit after tax", "pat"],
+    yPattern: ["cash from operating", "cash flow from operations", "operating cash flow"],
+  },
+  {
+    id: "scale",
+    label: "Scale (default)",
+    description: "Revenue × Net Profit — most common starting point",
+    xPattern: ["net sales", "revenue from operations", "total revenue", "interest earned", "premium"],
+    yPattern: ["net profit", "profit after tax", "pat"],
+  },
+];
+
+function findFirstMatch(metrics: string[], patterns: string[]): string | null {
+  const lower = metrics.map((m) => m.toLowerCase());
+  for (const p of patterns) {
+    const i = lower.findIndex((m) => m.includes(p.toLowerCase()));
+    if (i >= 0) return metrics[i];
+  }
+  return null;
+}
+
+function applyPreset(preset: Preset, allMetrics: string[]): { x: string; y: string } {
+  const x = findFirstMatch(allMetrics, preset.xPattern) ?? allMetrics[0];
+  const y = findFirstMatch(allMetrics, preset.yPattern) ?? allMetrics[Math.min(1, allMetrics.length - 1)];
+  return { x, y };
+}
+
+function pearsonR(pts: TrailPoint[]): number {
+  if (pts.length < 2) return 0;
+  const n = pts.length;
+  const mx = pts.reduce((s, p) => s + p.x, 0) / n;
+  const my = pts.reduce((s, p) => s + p.y, 0) / n;
+  let num = 0;
+  let dx2 = 0;
+  let dy2 = 0;
+  for (const p of pts) {
+    const dx = p.x - mx;
+    const dy = p.y - my;
+    num += dx * dy;
+    dx2 += dx * dx;
+    dy2 += dy * dy;
+  }
+  const den = Math.sqrt(dx2 * dy2);
+  return den === 0 ? 0 : num / den;
+}
+
+function linearFit(pts: TrailPoint[]): { slope: number; intercept: number } {
+  if (pts.length < 2) return { slope: 0, intercept: 0 };
+  const n = pts.length;
+  const mx = pts.reduce((s, p) => s + p.x, 0) / n;
+  const my = pts.reduce((s, p) => s + p.y, 0) / n;
+  let num = 0;
+  let den = 0;
+  for (const p of pts) {
+    num += (p.x - mx) * (p.y - my);
+    den += (p.x - mx) ** 2;
+  }
+  const slope = den === 0 ? 0 : num / den;
+  return { slope, intercept: my - slope * mx };
 }
 
 export default function TimeTrailScatter({ rawData, allMetrics }: Props) {
-  const [xMetric, setXMetric] = useState<string>(() => pickInitialPair(allMetrics)[0]);
-  const [yMetric, setYMetric] = useState<string>(() => pickInitialPair(allMetrics)[1]);
+  const initial = useMemo(() => applyPreset(PRESETS[PRESETS.length - 1], allMetrics), [allMetrics]);
+  const [xMetric, setXMetric] = useState(initial.x);
+  const [yMetric, setYMetric] = useState(initial.y);
   const [xSearch, setXSearch] = useState("");
   const [ySearch, setYSearch] = useState("");
+  const [xScale, setXScale] = useState<AxisScale>("linear");
+  const [yScale, setYScale] = useState<AxisScale>("linear");
 
   const filteredX = useMemo(() => {
     const q = xSearch.toLowerCase().trim();
     return q ? allMetrics.filter((m) => m.toLowerCase().includes(q)) : allMetrics;
   }, [allMetrics, xSearch]);
-
   const filteredY = useMemo(() => {
     const q = ySearch.toLowerCase().trim();
     return q ? allMetrics.filter((m) => m.toLowerCase().includes(q)) : allMetrics;
@@ -82,48 +162,43 @@ export default function TimeTrailScatter({ rawData, allMetrics }: Props) {
       const x = p.raw_metric_values[xMetric];
       const y = p.raw_metric_values[yMetric];
       if (x != null && y != null && Number.isFinite(x) && Number.isFinite(y)) {
+        // Log scale requires positive values — skip non-positive points when log is on
+        if (xScale === "log" && x <= 0) return;
+        if (yScale === "log" && y <= 0) return;
         pts.push({
           x,
           y,
           period: p.period_end,
-          yearIdx: i,
           yearShare: rawData.length > 1 ? i / (rawData.length - 1) : 0,
         });
       }
     });
     return pts;
-  }, [rawData, xMetric, yMetric]);
+  }, [rawData, xMetric, yMetric, xScale, yScale]);
 
-  // Axis bounds with 5% padding
+  const r = useMemo(() => pearsonR(trail), [trail]);
+  const fit = useMemo(() => linearFit(trail), [trail]);
+
   const bounds = useMemo(() => {
     if (trail.length === 0) return { xMin: 0, xMax: 1, yMin: 0, yMax: 1 };
     const xs = trail.map((p) => p.x);
     const ys = trail.map((p) => p.y);
-    const xMin = Math.min(...xs);
-    const xMax = Math.max(...xs);
-    const yMin = Math.min(...ys);
-    const yMax = Math.max(...ys);
-    const xPad = (xMax - xMin) * 0.08 || Math.abs(xMax) * 0.1 || 1;
-    const yPad = (yMax - yMin) * 0.08 || Math.abs(yMax) * 0.1 || 1;
     return {
-      xMin: xMin - xPad,
-      xMax: xMax + xPad,
-      yMin: yMin - yPad,
-      yMax: yMax + yPad,
+      xMin: Math.min(...xs),
+      xMax: Math.max(...xs),
+      yMin: Math.min(...ys),
+      yMax: Math.max(...ys),
     };
   }, [trail]);
 
-  // Year-share to color: blue → emerald → amber
   const trailColor = (share: number): string => {
     if (share < 0.5) {
-      // Cool → mid: blue (0) → emerald (0.5)
       const t = share * 2;
       const r = Math.round(59 + t * (16 - 59));
       const g = Math.round(130 + t * (185 - 130));
       const b = Math.round(246 + t * (129 - 246));
       return `rgb(${r}, ${g}, ${b})`;
     }
-    // Mid → warm: emerald (0.5) → amber (1)
     const t = (share - 0.5) * 2;
     const r = Math.round(16 + t * (245 - 16));
     const g = Math.round(185 + t * (158 - 185));
@@ -131,18 +206,58 @@ export default function TimeTrailScatter({ rawData, allMetrics }: Props) {
     return `rgb(${r}, ${g}, ${b})`;
   };
 
-  // Custom Recharts shape with chronological line trail
-  const renderTrail = () => {
-    if (trail.length < 2) return null;
-    return null; // The line is drawn separately as <Scatter line> below
+  const skippedCount = useMemo(() => {
+    let skipped = 0;
+    for (const p of rawData) {
+      const x = p.raw_metric_values[xMetric];
+      const y = p.raw_metric_values[yMetric];
+      if (x == null || y == null || !Number.isFinite(x) || !Number.isFinite(y)) {
+        skipped++;
+      } else if ((xScale === "log" && x <= 0) || (yScale === "log" && y <= 0)) {
+        skipped++;
+      }
+    }
+    return skipped;
+  }, [rawData, xMetric, yMetric, xScale, yScale]);
+
+  const rInterpretation = (r: number): { label: string; tone: string } => {
+    const abs = Math.abs(r);
+    if (abs >= 0.9) return { label: "very strong", tone: "text-emerald-700 dark:text-emerald-400" };
+    if (abs >= 0.7) return { label: "strong", tone: "text-blue-700 dark:text-blue-400" };
+    if (abs >= 0.4) return { label: "moderate", tone: "text-amber-700 dark:text-amber-400" };
+    if (abs >= 0.2) return { label: "weak", tone: "text-orange-700 dark:text-orange-400" };
+    return { label: "no relationship", tone: "text-slate-500 dark:text-slate-400" };
   };
 
   return (
     <div className="space-y-4">
+      {/* Preset library */}
+      <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+        <div className="text-[10px] uppercase font-mono tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+          Preset relationships
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {PRESETS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => {
+                const { x, y } = applyPreset(p, allMetrics);
+                setXMetric(x);
+                setYMetric(y);
+              }}
+              title={p.description}
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:border-slate-400 hover:bg-slate-50 transition dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Metric pickers */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <MetricPicker
-          axis="X axis (horizontal)"
+          axis="X axis"
           accent="text-blue-700 dark:text-blue-400"
           search={xSearch}
           setSearch={setXSearch}
@@ -150,9 +265,11 @@ export default function TimeTrailScatter({ rawData, allMetrics }: Props) {
           selected={xMetric}
           setSelected={setXMetric}
           allCount={allMetrics.length}
+          scale={xScale}
+          setScale={setXScale}
         />
         <MetricPicker
-          axis="Y axis (vertical)"
+          axis="Y axis"
           accent="text-emerald-700 dark:text-emerald-400"
           search={ySearch}
           setSearch={setYSearch}
@@ -160,37 +277,55 @@ export default function TimeTrailScatter({ rawData, allMetrics }: Props) {
           selected={yMetric}
           setSelected={setYMetric}
           allCount={allMetrics.length}
+          scale={yScale}
+          setScale={setYScale}
         />
       </div>
+
+      {/* Stats strip */}
+      {trail.length >= 2 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <StatCell label="Years plotted" value={trail.length.toString()} subline={skippedCount > 0 ? `${skippedCount} skipped` : "all valid"} />
+          <StatCell
+            label="Pearson R"
+            value={r.toFixed(3)}
+            subline={rInterpretation(r).label}
+            valueAccent={rInterpretation(r).tone}
+          />
+          <StatCell
+            label="R²"
+            value={(r * r).toFixed(3)}
+            subline={`${(r * r * 100).toFixed(0)}% variance explained`}
+          />
+          <StatCell
+            label="Slope (Δy/Δx)"
+            value={fit.slope.toLocaleString(undefined, { maximumFractionDigits: 3 })}
+            subline={fit.slope > 0 ? "positive relationship" : fit.slope < 0 ? "inverse relationship" : "flat"}
+          />
+        </div>
+      )}
 
       {/* Chart */}
       <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900/60">
         <div className="flex items-baseline justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Time-Trail · {trail.length} years
+              Phase-space trail · {trail.length} years
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Each dot is a year. Trail goes <span className="text-blue-600 dark:text-blue-400 font-medium">cool</span> (oldest)
+              Each dot is a year. Trail goes <span className="text-blue-600 dark:text-blue-400 font-medium">cool</span>
               {" → "}
               <span className="text-emerald-600 dark:text-emerald-400 font-medium">mid</span>
               {" → "}
               <span className="text-amber-600 dark:text-amber-400 font-medium">warm</span> (newest)
             </p>
           </div>
-          {trail.length >= 2 && (
-            <div className="text-right text-xs">
-              <div className="text-slate-500">Path length</div>
-              <div className="font-mono tabular-nums text-slate-700 dark:text-slate-300">
-                {pathLength(trail).toLocaleString(undefined, { maximumFractionDigits: 1 })}
-              </div>
-            </div>
-          )}
         </div>
 
         {trail.length < 2 ? (
           <div className="h-[400px] flex items-center justify-center text-sm text-slate-500">
-            Need ≥2 periods with both metrics non-null. Try different metrics.
+            Need ≥2 periods with both metrics non-null{xScale === "log" || yScale === "log" ? " (and positive for log axes)" : ""}.
+            {skippedCount > 0 && ` ${skippedCount} period${skippedCount !== 1 ? "s" : ""} skipped.`}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={460}>
@@ -200,18 +335,22 @@ export default function TimeTrailScatter({ rawData, allMetrics }: Props) {
                 type="number"
                 dataKey="x"
                 name={xMetric}
-                domain={[bounds.xMin, bounds.xMax]}
+                scale={xScale === "log" ? "log" : "auto"}
+                domain={xScale === "log" ? ["auto", "auto"] : ["auto", "auto"]}
+                allowDataOverflow={false}
                 tick={{ fontSize: 11 }}
-                label={{ value: xMetric, position: "bottom", offset: 4, fontSize: 12 }}
+                label={{ value: `${xMetric}${xScale === "log" ? " (log)" : ""}`, position: "bottom", offset: 4, fontSize: 12 }}
               />
               <YAxis
                 type="number"
                 dataKey="y"
                 name={yMetric}
-                domain={[bounds.yMin, bounds.yMax]}
+                scale={yScale === "log" ? "log" : "auto"}
+                domain={yScale === "log" ? ["auto", "auto"] : ["auto", "auto"]}
+                allowDataOverflow={false}
                 tick={{ fontSize: 11 }}
                 label={{
-                  value: yMetric,
+                  value: `${yMetric}${yScale === "log" ? " (log)" : ""}`,
                   angle: -90,
                   position: "left",
                   offset: 8,
@@ -219,9 +358,12 @@ export default function TimeTrailScatter({ rawData, allMetrics }: Props) {
                 }}
               />
               <ZAxis range={[60, 60]} />
-              {/* Reference lines at zero if axes cross */}
-              {bounds.xMin < 0 && bounds.xMax > 0 && <ReferenceLine x={0} stroke="rgba(148,163,184,0.4)" strokeDasharray="3 3" />}
-              {bounds.yMin < 0 && bounds.yMax > 0 && <ReferenceLine y={0} stroke="rgba(148,163,184,0.4)" strokeDasharray="3 3" />}
+              {xScale === "linear" && bounds.xMin < 0 && bounds.xMax > 0 && (
+                <ReferenceLine x={0} stroke="rgba(148,163,184,0.4)" strokeDasharray="3 3" />
+              )}
+              {yScale === "linear" && bounds.yMin < 0 && bounds.yMax > 0 && (
+                <ReferenceLine y={0} stroke="rgba(148,163,184,0.4)" strokeDasharray="3 3" />
+              )}
               <Tooltip
                 cursor={{ strokeDasharray: "3 3" }}
                 content={({ active, payload }) => {
@@ -259,12 +401,10 @@ export default function TimeTrailScatter({ rawData, allMetrics }: Props) {
                   />
                 ))}
               </Scatter>
-              {renderTrail()}
             </ScatterChart>
           </ResponsiveContainer>
         )}
 
-        {/* Year-by-year breadcrumb */}
         {trail.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
             {trail.map((p) => (
@@ -276,9 +416,7 @@ export default function TimeTrailScatter({ rawData, allMetrics }: Props) {
                   className="inline-block w-2 h-2 rounded-full"
                   style={{ backgroundColor: trailColor(p.yearShare) }}
                 />
-                <span className="text-slate-700 dark:text-slate-300">
-                  {p.period.slice(0, 7)}
-                </span>
+                <span className="text-slate-700 dark:text-slate-300">{p.period.slice(0, 7)}</span>
               </div>
             ))}
           </div>
@@ -291,35 +429,16 @@ export default function TimeTrailScatter({ rawData, allMetrics }: Props) {
           Reading the trail
         </h4>
         <ul className="text-xs text-amber-900 dark:text-amber-200 space-y-1">
-          <li>
-            <span className="font-semibold">Loops & figure-eights →</span> cyclical / mean-reverting business
-          </li>
-          <li>
-            <span className="font-semibold">Outward spiral →</span> scaling — both metrics growing together
-          </li>
-          <li>
-            <span className="font-semibold">Sharp kinks →</span> regulatory event, M&A, demerger, accounting change
-          </li>
-          <li>
-            <span className="font-semibold">Tight cluster near origin →</span> stable, mature, low-variance
-          </li>
-          <li>
-            <span className="font-semibold">Crossing back over itself →</span> reversion to a prior regime
-          </li>
+          <li><span className="font-semibold">Loops →</span> cyclical / mean-reverting business</li>
+          <li><span className="font-semibold">Outward spiral →</span> scaling — both metrics growing together</li>
+          <li><span className="font-semibold">Sharp kinks →</span> regulatory, M&A, demerger, accounting change</li>
+          <li><span className="font-semibold">Tight cluster →</span> stable, mature, low-variance</li>
+          <li><span className="font-semibold">High R² + straight trail →</span> strong linear relationship</li>
+          <li><span className="font-semibold">Low R² + tangled trail →</span> the metrics are independent — pick a different pair</li>
         </ul>
       </div>
     </div>
   );
-}
-
-function pathLength(pts: TrailPoint[]): number {
-  let d = 0;
-  for (let i = 1; i < pts.length; i++) {
-    const dx = pts[i].x - pts[i - 1].x;
-    const dy = pts[i].y - pts[i - 1].y;
-    d += Math.sqrt(dx * dx + dy * dy);
-  }
-  return d;
 }
 
 function MetricPicker({
@@ -331,6 +450,8 @@ function MetricPicker({
   selected,
   setSelected,
   allCount,
+  scale,
+  setScale,
 }: {
   axis: string;
   accent: string;
@@ -340,14 +461,31 @@ function MetricPicker({
   selected: string;
   setSelected: (s: string) => void;
   allCount: number;
+  scale: AxisScale;
+  setScale: (s: AxisScale) => void;
 }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/60">
       <div className="flex items-center justify-between mb-2">
         <span className={`text-xs font-mono uppercase font-semibold ${accent}`}>{axis}</span>
-        <span className="text-[10px] text-slate-400">
-          {metrics.length}/{allCount}
-        </span>
+        <div className="flex items-center gap-2">
+          <div className="flex gap-0.5 bg-slate-100 dark:bg-slate-800 rounded-md p-0.5">
+            {(["linear", "log"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setScale(s)}
+                className={`px-2 py-0.5 text-[10px] rounded transition ${
+                  scale === s
+                    ? "bg-white shadow-sm dark:bg-slate-700"
+                    : "text-slate-500 dark:text-slate-400"
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          <span className="text-[10px] text-slate-400">{metrics.length}/{allCount}</span>
+        </div>
       </div>
       <input
         type="search"
@@ -363,14 +501,34 @@ function MetricPicker({
         className="w-full rounded-md border border-slate-300 px-1 py-1 text-xs font-mono dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
       >
         {metrics.map((m) => (
-          <option key={m} value={m}>
-            {m}
-          </option>
+          <option key={m} value={m}>{m}</option>
         ))}
       </select>
       <div className="text-[11px] text-slate-500 mt-1.5 truncate" title={selected}>
         Selected: <span className="text-slate-700 dark:text-slate-300 font-mono">{selected}</span>
       </div>
+    </div>
+  );
+}
+
+function StatCell({
+  label,
+  value,
+  subline,
+  valueAccent = "text-slate-900 dark:text-slate-100",
+}: {
+  label: string;
+  value: string;
+  subline?: string;
+  valueAccent?: string;
+}) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900/60">
+      <div className="text-[10px] uppercase font-mono tracking-wider text-slate-500 dark:text-slate-400">
+        {label}
+      </div>
+      <div className={`text-base font-semibold tabular-nums mt-0.5 ${valueAccent}`}>{value}</div>
+      {subline && <div className="text-[10px] text-slate-500 mt-0.5">{subline}</div>}
     </div>
   );
 }
