@@ -110,7 +110,23 @@ export function App() {
 
   // Vim-style keyboard shortcuts (g+letter for tabs, ? for help, Shift+? for glossary)
   useKeyboardShortcuts({
-    setActiveTab: (tab) => { trace("ui", "tabSwitch", { tab }); setActiveTab(tab as TabId); },
+    setActiveTab: (tab) => {
+      trace("ui", "tabSwitch", {
+        tab,
+        hasRecast,
+        hasBankResult: bankResult !== null,
+        hasRawData: rawData != null && rawData.length > 0,
+        // Detect render-gap: tab is visible but content won't render
+        renderWillBeEmpty: (
+          (tab === "report" && !hasRecast && !bankResult) ||
+          (tab === "valuation" && !hasRecast && !bankResult) ||
+          (tab === "ratios" && !hasRecast && !bankResult) ||
+          (tab === "quality" && !hasRecast && !bankResult) ||
+          (tab === "dashboard" && !hasRecast && !bankResult)
+        ),
+      });
+      setActiveTab(tab as TabId);
+    },
     setGlossaryOpen,
     setShortcutsOpen,
     enabled: !glossaryOpen && !shortcutsOpen && !paletteOpen,
