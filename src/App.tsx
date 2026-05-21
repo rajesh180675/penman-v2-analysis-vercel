@@ -110,7 +110,7 @@ export function App() {
 
   // Vim-style keyboard shortcuts (g+letter for tabs, ? for help, Shift+? for glossary)
   useKeyboardShortcuts({
-    setActiveTab: (tab) => setActiveTab(tab as TabId),
+    setActiveTab: (tab) => { trace("ui", "tabSwitch", { tab }); setActiveTab(tab as TabId); },
     setGlossaryOpen,
     setShortcutsOpen,
     enabled: !glossaryOpen && !shortcutsOpen && !paletteOpen,
@@ -563,6 +563,11 @@ export function App() {
   // M1 fix: detect financial-institution scope synchronously here to avoid
   // the "No data loaded" flash that occurs when statements tab renders before
   // the bank-redirect useEffect fires on the next render cycle.
+  trace("ui", "dataLoaded", {
+    periods: data.length,
+    companyId: data[0]?.company_id ?? null,
+    family: analysisFamilyFromScope(assessAnalysisScope(data, config)),
+  });
   const quickScope = assessAnalysisScope(data, config);
   const quickFamily = analysisFamilyFromScope(quickScope);
   if (quickFamily === "financial-institution" && !quickScope.blocked) {
