@@ -26,10 +26,14 @@ named ticker each run. Field coverage is reported at the end.
 import fitz  # pymupdf
 import re
 import json
+import os
 import sys
 from pathlib import Path
 
-AR_BASE = Path(r"C:\Users\rajesh\WindsurfAPI\ITC-valuation-template\public\data\annual_reports")
+AR_BASE = Path(os.environ.get(
+    "PENMAN_AR_BASE",
+    r"C:\Users\rajesh\WindsurfAPI\penman-v2-analysis\public\data\annual_reports",
+))
 OUTPUT_BASE = Path(r"C:\Users\rajesh\WindsurfAPI\penman-v2-analysis\public\data\companies")
 
 # Ticker → (folder under penman-v2-analysis/public/data/companies, AR display name)

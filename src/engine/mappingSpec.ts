@@ -545,8 +545,42 @@ export const CapitalineMappingSpec = {
     totalDividend: ["Total Dividend"],
 
     // ── Insurance Specific ────────────────────────────────────────
-    premiumEarned: ["Premium Earned (Net)", "Premium Earned", "Gross Written Premium", "Net Earned Premium", "Premium Earned Net"],
-    claimsExpense: ["Claims Expenses", "Claims Incurred", "Net Claims Incurred", "Claims Incurred (Net)", "Net Claims/Benefits Paid", "Total Claims Paid"],
-    investmentIncome: ["Investment Income", "Income from Investments", "Interest & Dividend Income", "Investment Income (Insurance Business)"],
+    // Capitaline label conventions vary by insurer. LIC export uses:
+    //   "Premiums (Insurance Business)" — gross premium (₹490K Cr FY2025)
+    //   "Premium Ceded Reinsurers (Insurance Business)" — reinsurance ceded
+    //   "Income From Investment (Insurance Business)" — investment income
+    // Private insurers (HDFC Life, ICICI Pru) use the standard IRDAI labels
+    //   ("Premium Earned (Net)", "Net Earned Premium", etc.)
+    // Both are aliased here so the same engine handles both.
+    // Claims data: Capitaline does NOT export a clean "Claims Incurred" row
+    // for life insurers. The closest row is "Cost of Insurance Operations:
+    // (Insurance Business)" which conflates claims + commissions + reserve
+    // changes — NOT a claims proxy. AR extraction is required for
+    // claimsRatio / expenseRatio / combinedRatio for life insurers (LIC etc.)
+    // — see references/insurance-quality-extraction.md when available.
+    premiumEarned: [
+      "Premium Earned (Net)",
+      "Premium Earned",
+      "Gross Written Premium",
+      "Net Earned Premium",
+      "Premium Earned Net",
+      "Premiums (Insurance Business)",                   // LIC / Capitaline
+    ],
+    claimsExpense: [
+      "Claims Expenses",
+      "Claims Incurred",
+      "Net Claims Incurred",
+      "Claims Incurred (Net)",
+      "Net Claims/Benefits Paid",
+      "Total Claims Paid",
+      "Gross Claims Incurred / Benefits Paid (Insurance Business)",  // Capitaline label (typically empty for LIC)
+    ],
+    investmentIncome: [
+      "Investment Income",
+      "Income from Investments",
+      "Interest & Dividend Income",
+      "Investment Income (Insurance Business)",
+      "Income From Investment (Insurance Business)",     // LIC / Capitaline word-order variant
+    ],
   },
 } as const;

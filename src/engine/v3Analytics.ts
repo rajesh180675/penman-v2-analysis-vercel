@@ -16,6 +16,7 @@
  * All ratios: dimensionless float64 (0.25 = 25%)
  */
 import { RecastPeriod, EngineConfig, ke_from_config } from "./types";
+import { trace } from "../lib/traceLogger";
 import { deriveKwFromStructure } from "./PenmanNissimEngine";
 import { computeMoatScore, MoatScoreResult } from "./moatScoring";
 import { scoreCapitalAllocation, CapAllocScoreResult } from "./capitalAllocationScoring";
@@ -1998,9 +1999,8 @@ export function computeV3Analytics(
       globalThis.localStorage.setItem(`v3_registry_${priorKey}`, JSON.stringify(registry.snapshot()));
     }
   } catch (err) {
-    if (typeof console !== "undefined" && typeof console.warn === "function") {
-      console.warn("[v3Analytics] registry snapshot persistence skipped:", err);
-    }
+    const msg = err instanceof Error ? err.message : String(err);
+    trace("pipeline", "v3:registrySnapshot:skipped", { error: msg }, null, { level: "warn" });
     priorSnapshot = undefined;
   }
   const versionChangeLog = compareWithPriorRegistry(registry, priorSnapshot);

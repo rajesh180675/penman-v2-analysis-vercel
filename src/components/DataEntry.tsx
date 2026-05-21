@@ -333,7 +333,8 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                       standalonePeriods = stanResult.periods.length > 0 ? stanResult.periods : null;
                     } catch (stanErr) {
                       // Standalone parse failure shouldn't block consolidated analysis
-                      console.warn(`[DataEntry] standalone parse failed for ${folder}, continuing with consolidated only:`, stanErr);
+                      const msg = stanErr instanceof Error ? stanErr.message : String(stanErr);
+                      trace("ui", "dataEntry:standaloneParseFailed", { folder, error: msg }, null, { level: "warn" });
                     }
                   }
                   await processZip(consFile, ticker.toUpperCase().slice(0, 20), standalonePeriods, { skipTypeCheck: true });
