@@ -166,7 +166,13 @@ export function App() {
       setBankQuality(null);
       return;
     }
-    void fetchBankQualityIndicators(qualityFolder, undefined, config.quality_indicators_blob_url)
+    void fetchBankQualityIndicators(qualityFolder, undefined,
+      // Bust browser cache for blob URLs — Vercel Blob sets max-age=31536000 (1 year)
+      // which causes stale data when the sidecar is re-uploaded. Append session timestamp.
+      config.quality_indicators_blob_url
+        ? `${config.quality_indicators_blob_url}?v=${Date.now()}`
+        : undefined,
+    )
       .then((q) => {
         if (!cancelled) {
           setBankQuality(q);
@@ -196,7 +202,14 @@ export function App() {
       setNbfcSidecar(null);
       return;
     }
-    void fetchNbfcSidecarData(qualityFolder, config.quality_indicators_blob_url ?? null)
+    // Derive blob store root from quality_indicators URL. The loader expects
+    // the store root and appends /companies/<folder>/... itself. The
+    // quality_indicators_blob_url is a FILE url (e.g. .../companies/X/quality_indicators.json)
+    // so we strip the company path + filename to get the store root.
+    const sidecarBlobRoot = config.quality_indicators_blob_url
+      ? config.quality_indicators_blob_url.replace(/\/companies\/[^/]+\/quality_indicators\.json$/, "")
+      : null;
+    void fetchNbfcSidecarData(qualityFolder, sidecarBlobRoot)
       .then((data) => {
         if (!cancelled) {
           trace("sidecar", "nbfcSidecarFetched", {
