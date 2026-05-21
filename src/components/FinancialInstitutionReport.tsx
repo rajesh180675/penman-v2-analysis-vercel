@@ -6,6 +6,7 @@ import type {
   CreditCostCycleCheck,
   CrarGovernorResult,
   EclStressGovernorResult,
+  SpreadCompressionCheck,
 } from "../engine/bankValuation";
 import type { BankPeriodMetrics } from "../engine/bankPipeline";
 import type { EngineConfig } from "../engine/types";
@@ -493,12 +494,14 @@ function NbfcGovernorBanners({
   crarGov,
   cycle,
   eclStressGov,
+  spreadComp,
 }: {
   crarGov: CrarGovernorResult | undefined;
   cycle: CreditCostCycleCheck | undefined;
   eclStressGov: EclStressGovernorResult | undefined;
+  spreadComp: SpreadCompressionCheck | undefined;
 }) {
-  if (!crarGov && !cycle && !eclStressGov) return null;
+  if (!crarGov && !cycle && !eclStressGov && !spreadComp) return null;
   const gShouldShow = crarGov && crarGov.status === "computed" &&
     crarGov.headroomBps != null && crarGov.headroomBps < 300;
   const cycleShouldShow = cycle && cycle.status === "computed" &&
@@ -533,6 +536,11 @@ function NbfcGovernorBanners({
       {/* Phase D3 — ECL Stress Governor visual panel */}
       {eclStressGov && eclStressGov.status === "computed" && (
         <EclStressPanel ecl={eclStressGov} />
+      )}
+
+      {/* Phase D3b — Spread Compression / Cost-of-Funds Sensitivity */}
+      {spreadComp && spreadComp.status === "computed" && (
+        <SpreadCompressionPanel sc={spreadComp} />
       )}
     </div>
   );
@@ -657,6 +665,123 @@ function EclStressPanel({ ecl }: { ecl: EclStressGovernorResult }) {
       {ecl.latestStage2Pct != null && ecl.latestStage2Pct > 3.0 && (
         <div className="text-xs text-amber-700 dark:text-amber-300 mt-1">
           ⚠️ Stage 2 watchlist at {ecl.latestStage2Pct.toFixed(1)}% — elevated migration risk to Stage 3.
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Phase D3b — Spread Compression / Cost-of-Funds Sensitivity panel.
+ *
+ * Shows:
+ *   - Current spread vs trailing median (compression gauge)
+ *   - Cost-of-borrowings trend (rising/stable/falling)
+ *   - Stress scenarios: ROA under +150bps and +250bps CoB shocks
+ *   - Visual comparison bar: current ROA vs stressed ROA
+ */
+function SpreadCompressionPanel({ sc }: { sc: SpreadCompressionCheck }) {
+  const spreadBps = sc.latestSpread != null ? (sc.latestSpread * 10000).toFixed(0) : "—";
+  const medianBps = sc.medianSpread != null ? (sc.medianSpread * 10000).toFixed(0) : "—";
+  const cobPct = sc.latestCostOfBorrowings != null ? (sc.latestCostOfBorrowings * 100).toFixed(2) : "—";
+  const yieldPct = sc.latestYieldOnAdvances != null ? (sc.latestYieldOnAdvances * 100).toFixed(2) : "—";
+
+  const zoneColors = {
+    compressed: { bg: "bg-amber-50 dark:bg-amber-950/20", border: "border-amber-200 dark:border-amber-800", badge: "bg-amber-500", label: "Compressed" },
+    normal:     { bg: "bg-slate-50 dark:bg-slate-900/20", border: "border-slate-200 dark:border-slate-700", badge: "bg-slate-500", label: "Normal" },
+    expanding:  { bg: "bg-emerald-50 dark:bg-emerald-950/20", border: "border-emerald-200 dark:border-emerald-800", badge: "bg-emerald-500", label: "Expanding" },
+    unknown:    { bg: "bg-slate-50 dark:bg-slate-900/20", border: "border-slate-200 dark:border-slate-700", badge: "bg-slate-400", label: "Unknown" },
+  };
+  const c = zoneColors[sc.severity];
+
+  // ROA bar widths (scale: 0-5% ROA maps to 0-100% width)
+  const roaScale = (v: number | null) => v != null ? Math.max(0, Math.min(100, (v / 0.05) * 100)) : 0;
+
+  return (
+    <div className={`rounded border p-4 ${c.border} ${c.bg}`}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-sm">Cost-of-Funds Sensitivity</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.badge} text-white`}>
+            {c.label}
+          </span>
+        </div>
+        {sc.cobTrendBps != null && (
+          <span className={`text-xs font-mono px-2 py-0.5 rounded ${
+            sc.cobTrendBps > 20 ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300" :
+            sc.cobTrendBps < -20 ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300" :
+            "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+          }`}>
+            CoB {sc.cobTrendBps > 0 ? "+" : ""}{sc.cobTrendBps.toFixed(0)}bps YoY
+          </span>
+        )}
+      </div>
+
+      {/* Spread metrics grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs mb-3">
+        <div className="bg-white/60 dark:bg-slate-800/60 rounded p-2">
+          <div className="text-slate-500 dark:text-slate-400">Yield</div>
+          <div className="font-semibold font-mono">{yieldPct}%</div>
+        </div>
+        <div className="bg-white/60 dark:bg-slate-800/60 rounded p-2">
+          <div className="text-slate-500 dark:text-slate-400">Cost of Borrowings</div>
+          <div className="font-semibold font-mono">{cobPct}%</div>
+        </div>
+        <div className="bg-white/60 dark:bg-slate-800/60 rounded p-2">
+          <div className="text-slate-500 dark:text-slate-400">Spread</div>
+          <div className="font-semibold font-mono">{spreadBps}bps</div>
+        </div>
+        <div className="bg-white/60 dark:bg-slate-800/60 rounded p-2">
+          <div className="text-slate-500 dark:text-slate-400">vs Median</div>
+          <div className="font-semibold font-mono">{medianBps}bps</div>
+        </div>
+      </div>
+
+      {/* ROA stress scenario bars */}
+      {sc.currentROA != null && (
+        <div className="space-y-1.5 mb-2">
+          <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">ROA Stress Scenarios</div>
+          {/* Current ROA */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] w-16 text-right text-slate-500">Current</span>
+            <div className="flex-1 h-4 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${roaScale(sc.currentROA)}%` }} />
+            </div>
+            <span className="text-[10px] w-12 font-mono">{(sc.currentROA * 100).toFixed(2)}%</span>
+          </div>
+          {/* +150bps stress */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] w-16 text-right text-slate-500">+150bps</span>
+            <div className="flex-1 h-4 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full ${
+                sc.stressedROA_150bps != null && sc.stressedROA_150bps < 0.01 ? "bg-rose-500" : "bg-amber-500"
+              }`} style={{ width: `${roaScale(sc.stressedROA_150bps)}%` }} />
+            </div>
+            <span className="text-[10px] w-12 font-mono">{sc.stressedROA_150bps != null ? (sc.stressedROA_150bps * 100).toFixed(2) + "%" : "—"}</span>
+          </div>
+          {/* +250bps stress */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] w-16 text-right text-slate-500">+250bps</span>
+            <div className="flex-1 h-4 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full ${
+                sc.stressedROA_250bps != null && sc.stressedROA_250bps < 0.01 ? "bg-red-600" : "bg-rose-500"
+              }`} style={{ width: `${roaScale(sc.stressedROA_250bps)}%` }} />
+            </div>
+            <span className="text-[10px] w-12 font-mono">{sc.stressedROA_250bps != null ? (sc.stressedROA_250bps * 100).toFixed(2) + "%" : "—"}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Interpretation note */}
+      {sc.stressedROA_150bps != null && sc.stressedROA_150bps < 0.01 && (
+        <div className="text-xs text-rose-700 dark:text-rose-300 mt-1">
+          ⚠️ A +150bps funding shock would push ROA below 1% — earnings fragility risk.
+        </div>
+      )}
+      {sc.stressedROA_250bps != null && sc.stressedROA_250bps < 0 && (
+        <div className="text-xs text-red-700 dark:text-red-300 mt-1">
+          🚨 A +250bps shock would make the NBFC loss-making at current yields.
         </div>
       )}
     </div>
@@ -1060,6 +1185,7 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
           crarGov={valuation.crarGovernor}
           cycle={valuation.creditCostCycle}
           eclStressGov={valuation.eclStressGovernor}
+          spreadComp={valuation.spreadCompression}
         />
       )}
 
