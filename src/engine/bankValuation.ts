@@ -471,6 +471,7 @@ function equityResidualIncome(
   const tv = tvUndiscounted / Math.pow(1 + ke, forecastYears);
 
   const value = bv0 + pvResidualIncome + tv;
+  trace("valuation", "equityResidualIncome", { bv0, pvResidualIncome, tv, intrinsicValue: value });
   const reason = `bv₀ + 5y forecast PV (${pvResidualIncome.toFixed(0)}) + terminal (${tv.toFixed(0)})`;
   return computed(value, reason, {
     bv0,
