@@ -166,11 +166,14 @@ export function App() {
       setBankQuality(null);
       return;
     }
-    const qualityUrl = config.quality_indicators_blob_url
+    // In local dev, always use Vite-served files (no network hop, instant).
+    // Blob URLs are only needed on Vercel where public/ isn't deployed.
+    const isLocalDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    const qualityUrl = (!isLocalDev && config.quality_indicators_blob_url)
       ? `${config.quality_indicators_blob_url}?v=${Date.now()}`
       : undefined;
     const qualitySource = qualityUrl ? "blob" : "local";
-    trace("quality", "useEffect:fetchStart", { folder: qualityFolder, source: qualitySource, url: qualityUrl ?? `local:/data/companies/${qualityFolder}/quality_indicators.json` });
+    trace("quality", "useEffect:fetchStart", { folder: qualityFolder, source: qualitySource, isLocalDev, url: qualityUrl ?? `local:/data/companies/${qualityFolder}/quality_indicators.json` });
     void fetchBankQualityIndicators(qualityFolder, undefined,
       // Bust browser cache for blob URLs — Vercel Blob sets max-age=31536000 (1 year)
       // which causes stale data when the sidecar is re-uploaded. Append session timestamp.
@@ -211,10 +214,12 @@ export function App() {
     // the store root and appends /companies/<folder>/... itself. The
     // quality_indicators_blob_url is a FILE url (e.g. .../companies/X/quality_indicators.json)
     // so we strip the company path + filename to get the store root.
-    const sidecarBlobRoot = config.quality_indicators_blob_url
+    // In local dev, skip blob entirely — Vite serves the files directly.
+    const isLocalDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    const sidecarBlobRoot = (!isLocalDev && config.quality_indicators_blob_url)
       ? config.quality_indicators_blob_url.replace(/\/companies\/[^/]+\/quality_indicators\.json$/, "")
       : null;
-    trace("sidecar", "nbfcSidecar:useEffectStart", { folder: qualityFolder, sidecarBlobRoot });
+    trace("sidecar", "nbfcSidecar:useEffectStart", { folder: qualityFolder, sidecarBlobRoot, isLocalDev });
     void fetchNbfcSidecarData(qualityFolder, sidecarBlobRoot)
       .then((data) => {
         if (!cancelled) {
