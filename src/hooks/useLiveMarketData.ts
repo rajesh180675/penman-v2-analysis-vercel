@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { trace } from "../lib/traceLogger";
 import { LiveMarketDataSnapshot } from "../engine/marketData";
 
 interface Params {
@@ -48,8 +49,15 @@ export function useLiveMarketData({
       if (!response.ok) throw new Error(`Market snapshot failed with ${response.status}`);
       const payload = await response.json();
       setSnapshot(payload.snapshot ?? null);
+      trace("fetch", "marketData:success", {
+        provider, symbol,
+        price: payload.snapshot?.lastPrice ?? null,
+        change: payload.snapshot?.changePct ?? null,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+      trace("fetch", "marketData:error", { provider, symbol, error: msg }, null, { level: "warn" });
     } finally {
       setLoading(false);
     }

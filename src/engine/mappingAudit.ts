@@ -13,6 +13,7 @@ import { assessAnalysisScope, ScopeAssessment } from "./scopePolicy";
 import { clusterUnknownLabels, findCorrelationMatches, UnmappedLabel } from "./mappingClusterEngine";
 import { buildMappingPromotionCandidates, MappingPromotionCandidate } from "./mappingPromotion";
 import mappingYamlRaw from "../../CapitalineIndASDetailedMappingSpec.yaml?raw";
+import { trace } from "../lib/traceLogger";
 
 type Statement = "BalanceSheet" | "ProfitLoss" | "CashFlow" | "Unknown";
 
@@ -660,6 +661,16 @@ export function evaluateQualityGate(
   if (valuationReadiness?.status === "guarded") {
     blockingReasons.push(valuationReadiness.reasons[0] ?? "Latest period is not safe for terminal valuation.");
   }
+
+  trace("mapping", "auditComplete", {
+    tier,
+    valuationBlocked: valuationBlocked || scopeAssessment.blocked,
+    missingMinimumCount: missingMinimum.length,
+    missingCoreCount: missingCore.length,
+    blockingCount: blockingReasons.length,
+    actionableBacklog: audit.backlogSummary?.actionableCount ?? 0,
+    reviewBacklog: audit.backlogSummary?.totalsByAction?.review ?? 0,
+  });
 
   return {
     tier,
