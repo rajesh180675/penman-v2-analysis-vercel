@@ -15,6 +15,7 @@ import {
   persistAuditFile,
   rememberAuditRun,
 } from "../lib/audit";
+import { trace } from "../lib/traceLogger";
 import ManualEntryWizard from "./ManualEntryWizard";
 import OnboardingCard from "./dashboard/OnboardingCard";
 import CompanyLibraryGrid from "./data-entry/CompanyLibraryGrid";
@@ -49,6 +50,11 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
   const [jsonText, setJsonText] = useState("");
   const [showAdvancedConfig, setShowAdvancedConfig] = useState(false);
   const [showCostOfCapital, setShowCostOfCapital] = useState(false);
+  // Multi-slot upload state
+  const [standaloneFile, setStandaloneFile] = useState<File | null>(null);
+  const [qualitySidecarFile, setQualitySidecarFile] = useState<File | null>(null);
+  const [dragOverStandalone, setDragOverStandalone] = useState(false);
+  const [dragOverQuality, setDragOverQuality] = useState(false);
   const auditGovernance = getAuditClientGovernance();
 
   // Fix 10: live config validation — catches ke=130, g≥ke, etc.
@@ -84,13 +90,17 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
   ) => {
     if (typeNotSelected && !options?.skipTypeCheck) {
       setError("Select a Company Type before uploading.");
+      trace("ui", "processZip:blocked", { reason: "typeNotSelected" }, null, { level: "warn" });
       return;
     }
     if (!file.name.toLowerCase().endsWith(".zip")) {
       setError("Please upload a .zip file containing Capitaline XLS exports.");
       setUploadStep("failed");
+      trace("ui", "processZip:rejected", { fileName: file.name, reason: "not-zip" }, null, { level: "warn" });
       return;
     }
+    const t0 = performance.now();
+    trace("parse", "processZip:start", { fileName: file.name, size: file.size, hasStandalone: !!standalonePeriods });
     setIsProcessing(true);
     setError("");
     setLastFile(file.name);
@@ -124,6 +134,12 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
       const { parseCapitalineZip } = await import("../engine/capitalineParser");
       setUploadStep("parsing");
       const { periods, debug, segmentData } = await parseCapitalineZip(file, { companyId: activeCompanyId });
+      trace("parse", "processZip:parsed", { fileName: file.name }, {
+        periodCount: periods.length,
+        filesInZip: debug?.files.length ?? 0,
+        rawMetricKeys: debug?.rawMetricKeys.length ?? 0,
+        hasSegmentData: !!segmentData,
+      }, { duration_ms: Math.round(performance.now() - t0) });
       await persistAuditEvent({
         runId: meta.runId,
         eventType: "input-ingested",
@@ -144,10 +160,14 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
       if (periods.length === 0) {
         setError("Parsed 0 periods. Check Debug tab for details.");
         setUploadStep("failed");
+        trace("parse", "processZip:empty", { fileName: file.name }, null, { level: "warn", msg: "0 periods parsed" });
       } else {
         setUploadStep("success");
+        trace("parse", "processZip:success", null, { periodCount: periods.length, companyId: activeCompanyId });
       }
     } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      trace("parse", "processZip:error", { fileName: file.name }, { error: errMsg }, { level: "error" });
       await persistAuditEvent({
         runId: meta.runId,
         eventType: "input-ingest-failed",
@@ -155,13 +175,55 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         sourceMode: meta.sourceMode,
         payload: {
           fileName: file.name,
-          error: err instanceof Error ? err.message : String(err),
+          error: errMsg,
         },
       });
-      setError(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+      setError(`Failed: ${errMsg}`);
       setUploadStep("failed");
     } finally { setIsProcessing(false); }
   }, [auditGovernance.maximumUploadBytes, buildMeta, companyId, onDataSubmit]);
+
+  // Parse standalone ZIP for manual upload path
+  const parseStandaloneZip = useCallback(async (file: File): Promise<RawPeriodData[] | null> => {
+    const t0 = performance.now();
+    trace("parse", "standaloneZip:start", { fileName: file.name, size: file.size });
+    try {
+      const { parseCapitalineZip } = await import("../engine/capitalineParser");
+      const { periods } = await parseCapitalineZip(file, { companyId });
+      trace("parse", "standaloneZip:success", null, {
+        periodCount: periods.length,
+      }, { duration_ms: Math.round(performance.now() - t0) });
+      return periods.length > 0 ? periods : null;
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      trace("parse", "standaloneZip:error", { fileName: file.name }, { error: errMsg }, { level: "error" });
+      // Non-fatal — standalone is optional
+      return null;
+    }
+  }, [companyId]);
+
+  // Parse quality sidecar JSON for manual upload path
+  // TODO: Wire into App.tsx quality pipeline (currently quality is fetched by URL in App.tsx)
+  const parseQualitySidecar = useCallback(async (file: File): Promise<Record<string, unknown> | null> => {
+    trace("quality", "sidecarUpload:start", { fileName: file.name, size: file.size });
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data || typeof data !== "object") {
+        trace("quality", "sidecarUpload:invalidJson", { fileName: file.name }, null, { level: "warn" });
+        return null;
+      }
+      trace("quality", "sidecarUpload:success", null, {
+        hasSchemaVersion: !!data.schema_version,
+        periodCount: Array.isArray(data.periods) ? data.periods.length : 0,
+      });
+      return data;
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      trace("quality", "sidecarUpload:error", { fileName: file.name }, { error: errMsg }, { level: "error" });
+      return null;
+    }
+  }, []);
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
@@ -581,11 +643,20 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         {mode === "capitaline" && (
           <div className="m-6 space-y-4">
             {!uploadedFile ? (<>
+              {/* Slot 1: Consolidated ZIP — REQUIRED */}
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold">1</span>
+                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Consolidated Financial Data</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-50 px-1.5 py-0.5 rounded">Required</span>
+                </div>
+                <p className="text-xs text-slate-500 ml-7">ZIP containing Balance Sheet + P&amp;L + Cash Flow .xls exports</p>
+              </div>
               <div
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-2xl p-10 text-center transition-all relative overflow-hidden group ${
+                className={`border-2 border-dashed rounded-xl p-6 text-center transition-all relative overflow-hidden group ${
                   typeNotSelected
                     ? "border-red-300 bg-red-50/30 dark:bg-red-950/10 cursor-not-allowed opacity-60"
                     : dragOver
@@ -596,33 +667,201 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                 <input 
                   type="file" 
                   accept=".zip" 
-                  onChange={async (e) => { const f = e.target.files?.[0]; if (f) await processZip(f); e.target.value = ""; }}
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      trace("ui", "upload:consZipSelected", { fileName: f.name, size: f.size });
+                      // If standalone was pre-loaded, parse it first
+                      let stanPeriods: RawPeriodData[] | null = null;
+                      if (standaloneFile) {
+                        stanPeriods = await parseStandaloneZip(standaloneFile);
+                      }
+                      // Validate quality sidecar if present (result stored for future pipeline wiring)
+                      if (qualitySidecarFile) {
+                        await parseQualitySidecar(qualitySidecarFile);
+                      }
+                      await processZip(f, undefined, stanPeriods);
+                    }
+                    e.target.value = "";
+                  }}
                   className="hidden" 
                   id="zip-upload" 
                   disabled={isProcessing} 
                 />
-                <label htmlFor="zip-upload" className="cursor-pointer flex flex-col items-center gap-3">
-                  <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
-                    <svg className="w-8 h-8 text-indigo-500 dark:text-indigo-400 group-hover:bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <label htmlFor="zip-upload" className="cursor-pointer flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <svg className="w-6 h-6 text-indigo-500 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                   </div>
-                  <div>
-                    <div className="font-bold text-slate-800 dark:text-slate-200 text-base">Drop Capitaline ZIP here or click to browse</div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
-                      Pack your Balance Sheet, P&amp;L, and Cash Flow <b>.xls exports</b> into a single .zip file. We'll unzip and align them automatically.
+                  <div className="text-left">
+                    <div className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Drop consolidated ZIP or click to browse</div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      BS + P&amp;L + CF in one .zip — we align them automatically
                     </p>
                   </div>
                 </label>
               </div>
 
-              {/* Warning Alert about Scope Contamination */}
-              <div className="mt-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60 rounded-xl p-3.5 flex items-start gap-3">
-                <span className="text-base shrink-0 select-none">⚠️</span>
-                <div className="text-xs text-amber-800 dark:text-amber-300 leading-normal text-left">
-                  <span className="font-bold">Important Scope Warning:</span> Do not mix Consolidated and Standalone files in the same custom ZIP. Because metrics use the same sheet structures, combining them will trigger naming collisions and overwrite your financial data. Upload separate ZIPs for each reporting scope.
+              {/* Slot 2: Standalone ZIP — optional */}
+              <div className="space-y-1 pt-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-400 text-white text-[10px] font-bold">2</span>
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Standalone Statements</span>
+                  <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Optional</span>
                 </div>
+                <p className="text-xs text-slate-500 ml-7">Enables subsidiary contribution gap analysis (consolidated − standalone)</p>
               </div>
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOverStandalone(true); }}
+                onDragLeave={() => setDragOverStandalone(false)}
+                onDrop={async (e) => {
+                  e.preventDefault(); setDragOverStandalone(false);
+                  const f = e.dataTransfer.files?.[0];
+                  if (f && f.name.toLowerCase().endsWith(".zip")) {
+                    trace("ui", "upload:standaloneDropped", { fileName: f.name });
+                    setStandaloneFile(f);
+                  }
+                }}
+                className={`border border-dashed rounded-xl p-4 transition-all ${
+                  standaloneFile
+                    ? "border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20"
+                    : dragOverStandalone
+                    ? "border-indigo-400 bg-indigo-50/30"
+                    : "border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20 hover:border-slate-300"
+                }`}
+              >
+                {standaloneFile ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-emerald-600">✓</span>
+                      <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{standaloneFile.name}</span>
+                      <span className="text-[10px] text-slate-400">{(standaloneFile.size / 1024).toFixed(0)} KB</span>
+                    </div>
+                    <button onClick={() => { setStandaloneFile(null); trace("ui", "upload:standaloneClear"); }} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer flex items-center gap-3">
+                    <input
+                      type="file"
+                      accept=".zip"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) { setStandaloneFile(f); trace("ui", "upload:standaloneSelected", { fileName: f.name }); }
+                        e.target.value = "";
+                      }}
+                      className="hidden"
+                      id="standalone-upload"
+                    />
+                    <label htmlFor="standalone-upload" className="cursor-pointer flex items-center gap-3 w-full">
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                        <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      </div>
+                      <span className="text-xs text-slate-500">Drop standalone ZIP here or click</span>
+                    </label>
+                  </label>
+                )}
+              </div>
+
+              {/* Slot 3: Quality Sidecar — only for bank/nbfc/insurance */}
+              {(config.company_type === "bank" || config.company_type === "nbfc" || config.company_type === "insurance") && (
+                <>
+                  <div className="space-y-1 pt-2">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-400 text-white text-[10px] font-bold">3</span>
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Quality Indicators Sidecar</span>
+                      <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Optional</span>
+                    </div>
+                    <p className="text-xs text-slate-500 ml-7">JSON with NIM, GNPA, CRAR, Cost/Income — enables bank quality panels</p>
+                  </div>
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setDragOverQuality(true); }}
+                    onDragLeave={() => setDragOverQuality(false)}
+                    onDrop={async (e) => {
+                      e.preventDefault(); setDragOverQuality(false);
+                      const f = e.dataTransfer.files?.[0];
+                      if (f && f.name.toLowerCase().endsWith(".json")) {
+                        trace("ui", "upload:qualityDropped", { fileName: f.name });
+                        setQualitySidecarFile(f);
+                      }
+                    }}
+                    className={`border border-dashed rounded-xl p-4 transition-all ${
+                      qualitySidecarFile
+                        ? "border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20"
+                        : dragOverQuality
+                        ? "border-blue-400 bg-blue-50/30"
+                        : "border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20 hover:border-slate-300"
+                    }`}
+                  >
+                    {qualitySidecarFile ? (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-emerald-600">✓</span>
+                          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{qualitySidecarFile.name}</span>
+                          <span className="text-[10px] text-slate-400">{(qualitySidecarFile.size / 1024).toFixed(0)} KB</span>
+                        </div>
+                        <button onClick={() => { setQualitySidecarFile(null); trace("ui", "upload:qualityClear"); }} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer flex items-center gap-3">
+                        <input
+                          type="file"
+                          accept=".json"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) { setQualitySidecarFile(f); trace("ui", "upload:qualitySelected", { fileName: f.name }); }
+                            e.target.value = "";
+                          }}
+                          className="hidden"
+                          id="quality-upload"
+                        />
+                        <label htmlFor="quality-upload" className="cursor-pointer flex items-center gap-3 w-full">
+                          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                          </div>
+                          <span className="text-xs text-slate-500">Drop quality_indicators.json here or click</span>
+                        </label>
+                      </label>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Coverage summary */}
+              <div className="flex items-center gap-3 pt-2 pb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ready:</span>
+                <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">
+                  {!typeNotSelected ? "✓ Type" : "✗ Type"}
+                </span>
+                <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">
+                  {standaloneFile ? "✓ Standalone" : "– Standalone"}
+                </span>
+                {(config.company_type === "bank" || config.company_type === "nbfc" || config.company_type === "insurance") && (
+                  <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">
+                    {qualitySidecarFile ? "✓ Quality" : "– Quality"}
+                  </span>
+                )}
+              </div>
+
+              {/* How to prepare — collapsed */}
+              <details className="rounded-lg border border-slate-100 dark:border-slate-800">
+                <summary className="px-3 py-2 cursor-pointer text-xs font-medium text-slate-500 hover:text-slate-700 select-none">
+                  How to prepare the Capitaline ZIP
+                </summary>
+                <div className="px-3 pb-3 text-xs text-slate-600 space-y-1.5">
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li>Export <b>Balance Sheet (Ind AS Detailed)</b> as XLS → filename must contain "balance"</li>
+                    <li>Export <b>Profit &amp; Loss (Ind AS Detailed)</b> as XLS → filename must contain "profit" or "pnl"</li>
+                    <li>Export <b>Cash Flow</b> as XLS → filename must contain "cash"</li>
+                    <li>Select all three → <b>Add to ZIP</b> → upload above</li>
+                  </ol>
+                  <p className="text-slate-400 mt-1">Do not mix Consolidated and Standalone files in the same ZIP.</p>
+                </div>
+              </details>
             </>) : (
               <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6">
                 {/* File Details Grid */}
@@ -942,29 +1181,8 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         )}
       </div>
 
-      {/* Config summary */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 text-sm space-y-2">
-        <h3 className="font-semibold text-slate-800">Engine Configuration (§10.2)</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-          {Object.entries(config).map(([k, v]) => (
-            <div key={k} className="bg-slate-50 rounded p-2">
-              <div className="text-slate-400 font-mono">{k}</div>
-              <div className="font-semibold text-slate-700 truncate">{String(v)}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl border border-slate-200 p-5 text-sm text-slate-600 space-y-2">
-        <h3 className="font-semibold text-slate-800">How to prepare the Capitaline ZIP</h3>
-        <ol className="list-decimal pl-4 space-y-1.5">
-          <li>Export <strong>Balance Sheet (Ind AS Detailed)</strong> as XLS → filename must contain "balance"</li>
-          <li>Export <strong>Profit &amp; Loss (Ind AS Detailed)</strong> as XLS → filename must contain "profit" or "pnl"</li>
-          <li>Export <strong>Cash Flow</strong> as XLS → filename must contain "cash"</li>
-          <li>Select all three → <strong>Add to ZIP</strong> → upload above</li>
-        </ol>
-        <p className="text-slate-400 text-xs mt-2">Default config = DEFAULT_CONFIG per §10.2 of the design specification.</p>
-      </div>
+      {/* Config summary removed — raw dump moved to Debug tab. 
+           Editable fields are in Advanced Config + Cost of Capital collapsibles above. */}
     </div>
   );
 }
