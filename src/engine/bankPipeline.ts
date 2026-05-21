@@ -592,6 +592,20 @@ export function processBankData(
     computed.push(computeBankRatios(rawMetrics[i], prev, subtype));
   }
 
+  // Trace latest period metrics after computation
+  if (computed.length > 0) {
+    const _lt = computed[computed.length - 1];
+    trace("bank", "metricsComputed", {
+      periods: computed.length,
+      latestPeriod: _lt.period_end,
+      nim: _lt.nim, roa: _lt.roa, roe: _lt.roe,
+      leverage: _lt.leverage, spread: _lt.spread,
+      yieldOnAdvances: _lt.yieldOnAdvances,
+      costOfBorrowings: _lt.costOfBorrowings,
+      creditCost: _lt.creditCost,
+    });
+  }
+
   // Phase B5 — Join hand-curated asset-quality indicators by period_end.
   // Periods without a matching record stay quality: null. The join is
   // O(n+m) — index once, lookup per period.
