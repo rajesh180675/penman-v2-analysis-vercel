@@ -429,6 +429,7 @@ function justifiedPBGordon(
       ? `ROE > ke → business earning above cost of equity, fair P/B = ${fairPB.toFixed(2)}`
       : `ROE ≤ ke → business below cost of equity, fair P/B = ${fairPB.toFixed(2)} (≤ 1)`;
   }
+  trace("valuation", "justifiedPBGordon", { roe, ke, g, bv, fairPB, floored, intrinsicValue: value });
   return computed(value, reason, { fairPB, roe, ke, g, bv }, marketCap);
 }
 

@@ -198,16 +198,25 @@ export function App() {
     }
     void fetchNbfcSidecarData(qualityFolder, config.quality_indicators_blob_url ?? null)
       .then((data) => {
-        if (!cancelled && (data.lgd.length > 0 || data.rbiNhb.length > 0)) {
-          setNbfcSidecar(data);
-          trace("sidecar", "nbfcSidecarLoaded", {
+        if (!cancelled) {
+          trace("sidecar", "nbfcSidecarFetched", {
+            folder: qualityFolder,
             lgdPeriods: data.lgd.length,
             rbiNhbPeriods: data.rbiNhb.length,
           });
+          if (data.lgd.length > 0 || data.rbiNhb.length > 0) {
+            setNbfcSidecar(data);
+          } else {
+            trace("sidecar", "nbfcSidecarEmpty", { folder: qualityFolder }, null, { level: "warn", msg: "LGD+RBI NHB fetch returned 0 records — files may be missing or validation failed" });
+            setNbfcSidecar(null);
+          }
         }
       })
-      .catch(() => {
-        if (!cancelled) setNbfcSidecar(null);
+      .catch((err) => {
+        if (!cancelled) {
+          trace("sidecar", "nbfcSidecarError", { folder: qualityFolder, error: String(err) }, null, { level: "error" });
+          setNbfcSidecar(null);
+        }
       });
     return () => { cancelled = true; };
   }, [qualityFolder, config.quality_indicators_blob_url]);
