@@ -31,8 +31,8 @@ export default function InvestmentThesis({ data, config }: Props) {
   const prior = data.length >= 2 ? data[data.length - 2] : latest;
   const ticker = config.ticker ?? config.quality_data_folder ?? "Company";
 
-  const moat = useMemo(() => computeMoatScore(data), [data]);
-  const capAlloc = useMemo(() => scoreCapitalAllocation(data), [data]);
+  const moat = useMemo(() => computeMoatScore(data, config), [data, config]);
+  const capAlloc = useMemo(() => scoreCapitalAllocation(data, config), [data, config]);
   const distress = useMemo(() => detectDistress(data), [data]);
   const epv = useMemo(() => {
     try { return computeEPV(data, config); } catch { return null; }
@@ -50,7 +50,7 @@ export default function InvestmentThesis({ data, config }: Props) {
   const fcf = cfo != null && latest.cf?.Capex != null ? cfo - Math.abs(latest.cf.Capex) : null;
 
   // Thesis generation
-  const isHighQuality = (moat?.compositeScore ?? 0) >= 60 && (capAlloc?.score ?? 0) >= 60;
+  const isHighQuality = (moat?.compositeScore ?? 0) >= 60 && (capAlloc?.compositeScore ?? 0) >= 60;
   const isDistressed = distress?.severity === "critical" || distress?.severity === "severe";
   const hasMarginOfSafety = config.market_price != null && epv?.epvPerShare != null
     ? ((epv.epvPerShare - config.market_price) / config.market_price) > 0.15
@@ -67,7 +67,7 @@ export default function InvestmentThesis({ data, config }: Props) {
   // Generate thesis sentences
   const thesisSentences: string[] = [];
   if (isHighQuality) {
-    thesisSentences.push(`${ticker} demonstrates durable competitive advantages with a moat score of ${moat?.compositeScore}/100 and capital allocation score of ${capAlloc?.score}/100.`);
+    thesisSentences.push(`${ticker} demonstrates durable competitive advantages with a moat score of ${moat?.compositeScore}/100 and capital allocation score of ${capAlloc?.compositeScore}/100.`);
   } else {
     thesisSentences.push(`${ticker} shows ${(moat?.compositeScore ?? 0) >= 40 ? "moderate" : "limited"} evidence of competitive moat (score: ${moat?.compositeScore ?? "—"}/100).`);
   }
@@ -87,7 +87,7 @@ export default function InvestmentThesis({ data, config }: Props) {
   const risks: string[] = [];
 
   if ((moat?.compositeScore ?? 0) >= 70) strengths.push("Wide economic moat — sustainable competitive position");
-  if ((capAlloc?.score ?? 0) >= 70) strengths.push("Strong capital allocation discipline");
+  if ((capAlloc?.compositeScore ?? 0) >= 70) strengths.push("Strong capital allocation discipline");
   if (roce != null && roce > 0.20) strengths.push(`High ROCE (${pct(roce)}) well above cost of capital`);
   if (ccr != null && ccr > 0.8) strengths.push(`Strong cash conversion (${(ccr * 100).toFixed(0)}% of earnings to cash)`);
   if (salesGrowth != null && salesGrowth > 0.10) strengths.push(`Revenue momentum (+${pct(salesGrowth, 0)} YoY)`);
@@ -117,7 +117,7 @@ export default function InvestmentThesis({ data, config }: Props) {
               {ticker} — {thesisVerdict === "buy" ? "Buy" : thesisVerdict === "hold" ? "Hold / Accumulate" : thesisVerdict === "watch" ? "Watchlist" : "Avoid"}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Moat {moat?.compositeScore ?? "—"}/100 · Cap Alloc {capAlloc?.score ?? "—"}/100 · {data.length} periods analyzed
+              Moat {moat?.compositeScore ?? "—"}/100 · Cap Alloc {capAlloc?.compositeScore ?? "—"}/100 · {data.length} periods analyzed
             </p>
           </div>
         </div>
