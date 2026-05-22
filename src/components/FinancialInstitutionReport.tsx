@@ -1386,17 +1386,20 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
       {(() => {
         const latestMetrics = bankResult.bankMetrics?.[bankResult.bankMetrics.length - 1];
         if (!latestMetrics) return null;
+        const leverage = latestMetrics.totalAssets != null && latestMetrics.totalEquity != null && latestMetrics.totalEquity > 0
+          ? latestMetrics.totalAssets / latestMetrics.totalEquity
+          : null;
         const narrative = generateBankNarrative({
           ticker: config?.ticker ?? companyId ?? "Bank",
           nim: latestMetrics.nim ?? null,
           costToIncome: latestMetrics.costToIncome ?? null,
-          gnpa: latestMetrics.gnpa ?? null,
-          nnpa: latestMetrics.nnpa ?? null,
-          pcr: latestMetrics.pcr ?? null,
+          gnpa: null,
+          nnpa: null,
+          pcr: null,
           roa: latestMetrics.roa ?? null,
           roe: latestMetrics.roe ?? null,
-          crar: latestMetrics.crar ?? null,
-          leverageMultiple: latestMetrics.leverageMultiple ?? null,
+          crar: null,
+          leverageMultiple: leverage,
         });
         return narrative ? <InsightBlock text={narrative} icon="🏦" /> : null;
       })()}
