@@ -248,3 +248,158 @@ export function SectionHeader({ title, subtitle, icon }: SectionHeaderProps) {
     </div>
   );
 }
+
+// ─── Sparkline ────────────────────────────────────────────────────────────────
+interface SparklineProps {
+  data: (number | null)[];
+  width?: number;
+  height?: number;
+  color?: string;
+  /** Show a reference line at this value */
+  reference?: number;
+}
+
+/** Inline SVG sparkline — fits in table cells and KPI cards */
+export function Sparkline({ data, width = 64, height = 20, color = "#6366f1", reference }: SparklineProps) {
+  const valid = data.filter((v): v is number => v != null && Number.isFinite(v));
+  if (valid.length < 2) return null;
+
+  const min = Math.min(...valid);
+  const max = Math.max(...valid);
+  const range = max - min || 1;
+  const padding = 1;
+
+  const points = valid.map((v, i) => {
+    const x = padding + (i / (valid.length - 1)) * (width - 2 * padding);
+    const y = height - padding - ((v - min) / range) * (height - 2 * padding);
+    return `${x},${y}`;
+  }).join(" ");
+
+  const refY = reference != null
+    ? height - padding - ((reference - min) / range) * (height - 2 * padding)
+    : null;
+
+  return (
+    <svg width={width} height={height} className="inline-block align-middle">
+      {refY != null && (
+        <line x1={padding} y1={refY} x2={width - padding} y2={refY}
+          stroke="#94a3b8" strokeWidth={0.5} strokeDasharray="2,2" />
+      )}
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+// ─── FormulaTooltip ──────────────────────────────────────────────────────────
+interface FormulaTooltipProps {
+  /** The displayed value/content */
+  children: ReactNode;
+  /** Formula in plain text (e.g. "ROCE = CNI / avg(CSE)") */
+  formula: string;
+  /** Actual computation for this period */
+  computation?: string;
+  /** Textbook reference */
+  reference?: string;
+}
+
+/** Hover to see formula + computation + reference */
+export function FormulaTooltip({ children, formula, computation, reference }: FormulaTooltipProps) {
+  const [show, setShow] = useState(false);
+
+  return (
+    <span
+      className="relative inline-block cursor-help border-b border-dotted border-slate-400"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      {children}
+      {show && (
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-64 p-3 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-left pointer-events-none">
+          <span className="block font-mono text-xs text-indigo-600 dark:text-indigo-400 mb-1">{formula}</span>
+          {computation && <span className="block text-[11px] text-slate-600 dark:text-slate-300 mb-1">{computation}</span>}
+          {reference && <span className="block text-[10px] text-slate-400 italic">{reference}</span>}
+        </span>
+      )}
+    </span>
+  );
+}
+
+// ─── DataFreshness ───────────────────────────────────────────────────────────
+interface DataFreshnessProps {
+  /** ISO date string of the latest period end */
+  latestPeriod?: string;
+  /** Label for data source */
+  source?: string;
+}
+
+export function DataFreshness({ latestPeriod, source }: DataFreshnessProps) {
+  if (!latestPeriod) return null;
+  const date = new Date(latestPeriod);
+  const now = new Date();
+  const monthsAgo = Math.round((now.getTime() - date.getTime()) / (30.44 * 24 * 60 * 60 * 1000));
+  const stale = monthsAgo > 6;
+
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border ${
+      stale
+        ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800"
+        : "bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+    }`}>
+      {source && <span className="font-medium">{source}</span>}
+      <span>{date.toLocaleDateString("en-IN", { month: "short", year: "numeric" })}</span>
+      {stale && <span className="font-medium">({monthsAgo}mo stale)</span>}
+    </span>
+  );
+}
+
+// ─── RiskFlag ────────────────────────────────────────────────────────────────
+interface RiskFlagProps {
+  severity: "high" | "medium" | "low";
+  label: string;
+  detail?: string;
+}
+
+export function RiskFlag({ severity, label, detail }: RiskFlagProps) {
+  const styles = {
+    high: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800",
+    medium: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
+    low: "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",
+  };
+  const icons = { high: "🔴", medium: "🟡", low: "⚪" };
+
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg border ${styles[severity]}`} title={detail}>
+      <span>{icons[severity]}</span>
+      <span className="font-medium">{label}</span>
+    </span>
+  );
+}
+
+// ─── SourceBadge ─────────────────────────────────────────────────────────────
+interface SourceBadgeProps {
+  source: "capitaline" | "manual" | "estimated" | "screener" | "xbrl";
+}
+
+export function SourceBadge({ source }: SourceBadgeProps) {
+  const map: Record<string, { label: string; color: string }> = {
+    capitaline: { label: "Capitaline", color: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800" },
+    manual: { label: "Manual", color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800" },
+    estimated: { label: "Estimated", color: "bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-800" },
+    screener: { label: "Screener", color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800" },
+    xbrl: { label: "XBRL", color: "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700" },
+  };
+  const { label, color } = map[source] ?? map.manual;
+
+  return (
+    <span className={`inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded border ${color}`}>
+      {label}
+    </span>
+  );
+}
