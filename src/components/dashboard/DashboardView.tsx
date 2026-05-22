@@ -231,8 +231,8 @@ export default function DashboardView({ data, config, traceability = null, ratio
           {distress.severity === "severe" && !distress.equityModelsBlocked && (
             <RiskFlag severity="medium" label="Severe distress" detail="Significant financial stress — valuations should be treated with extreme caution" />
           )}
-          {distress.severity === "moderate" && (
-            <RiskFlag severity="low" label="Moderate stress" detail="Some indicators suggest financial pressure but not critical" />
+          {distress.severity === "warning" && (
+            <RiskFlag severity="low" label="Elevated stress" detail="Some indicators suggest financial pressure but not critical" />
           )}
         </div>
       )}
