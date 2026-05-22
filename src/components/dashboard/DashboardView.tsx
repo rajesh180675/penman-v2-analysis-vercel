@@ -7,7 +7,7 @@ import { scoreCapitalAllocation } from "../../engine/capitalAllocationScoring";
 import { detectDistress } from "../../engine/distressDetector";
 import { buildValuationCommandCenter } from "../../engine/valuationCommandCenter";
 import { resolveShareBasis } from "../../engine/shareCountTools";
-import { generateDashboardNarrative, generateBankNarrative } from "../../engine/narrativeEngine";
+import { generateDashboardNarrative } from "../../engine/narrativeEngine";
 import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { SegmentData } from "../../engine/segmentParser";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
@@ -148,26 +148,8 @@ export default function DashboardView({ data, config, traceability = null, ratio
 
   // ── Narrative generation ───────────────────────────────────────────────────
   const narrative = useMemo(() => {
-    const isBank = config.company_type === "bank" || config.company_type === "nbfc" || config.company_type === "insurance";
-    if (isBank && latest.ratios) {
-      // Bank-aware narrative using NIM/ROA decomposition
-      const leverage = latest.bs.TA > 0 && latest.bs.CSE > 0 ? latest.bs.TA / latest.bs.CSE : null;
-      const bankNarr = generateBankNarrative({
-        ticker: config.ticker ?? config.quality_data_folder ?? "Bank",
-        nim: latest.ratios.NIM ?? null,
-        costToIncome: null,
-        gnpa: null,
-        nnpa: null,
-        pcr: null,
-        roa: latest.ratios.ROA ?? null,
-        roe: latest.ratios.ROCE ?? null,
-        crar: null,
-        leverageMultiple: leverage,
-      });
-      if (bankNarr) return bankNarr;
-    }
     return generateDashboardNarrative(data, config);
-  }, [data, config, latest]);
+  }, [data, config]);
 
   // ── Confidence level ──────────────────────────────────────────────────────
   const confidence: "high" | "medium" | "low" = useMemo(() => {
