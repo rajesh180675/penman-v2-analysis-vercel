@@ -277,7 +277,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
 
       {/* Company library grid — primary way to load data on first run */}
       {mode === "capitaline" && !(currentData && currentData.length > 0) && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 dark:bg-slate-900/60 dark:border-slate-700 p-6">
+        <div className="card-base p-6">
           <CompanyLibraryGrid
             disabled={isProcessing}
             onPickCompany={async (folder, ticker, type, scope, hasStandalone, blobUrl, standaloneBlobUrl, qualityIndicatorsBlobUrl) => {
@@ -398,11 +398,11 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         </div>
       </details>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-start gap-3 flex-wrap">
+      <div className="card-base overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start gap-3 flex-wrap">
           <div>
-            <h2 className="text-xl font-bold text-slate-800">Upload Capitaline Data</h2>
-            <p className="text-sm text-slate-500 mt-1">ZIP file containing Balance Sheet, P&amp;L &amp; Cash Flow .xls exports</p>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Upload Capitaline Data</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">ZIP file containing Balance Sheet, P&amp;L &amp; Cash Flow .xls exports</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <button onClick={handleLoadSample} className="text-sm px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium">
