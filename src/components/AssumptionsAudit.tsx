@@ -37,7 +37,7 @@ function sourceBadge(source: AssumptionRow["source"]): { text: string; cls: stri
  * Key academic principle: "A valuation is only as good as its assumptions."
  */
 export default function AssumptionsAudit({ config }: Props) {
-  const ke = config.cost_of_equity ?? (config.risk_free_rate != null && config.equity_risk_premium != null
+  const ke = config.ke ?? (config.risk_free_rate != null && config.equity_risk_premium != null
     ? config.risk_free_rate + config.equity_risk_premium
     : 0.12);
   const g = config.terminal_growth_rate ?? 0.05;
@@ -49,7 +49,7 @@ export default function AssumptionsAudit({ config }: Props) {
     {
       label: "Cost of Equity (ke)",
       value: `${(ke * 100).toFixed(1)}%`,
-      source: config.cost_of_equity != null ? "user" : "computed",
+      source: config.ke != null ? "user" : "computed",
       flag: ke < 0.08 ? "warning" : ke > 0.20 ? "warning" : "ok",
       note: ke < 0.08 ? "Unusually low — check if risk-free rate and ERP are realistic" :
             ke > 0.20 ? "Very high — may overly penalize growth companies" : undefined,
