@@ -614,12 +614,15 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
   const avgTA = avg(cur.bs.TA, prev.bs.TA);
   const noaSmall = Math.abs(avgNOA) < Math.max(cfg.noa_epsilon_ratio_of_ta * Math.max(cur.bs.TA, 1), 1);
 
-  const ROCE = avgCSE > 0 ? cur.is.CNI / avgCSE : null;
-  const RNOA = !noaSmall ? cur.is.OI / avgNOA : null;
-  const NBC = Math.abs(avgNFO) > 1 ? cur.is.NFE / avgNFO : null;
-  const SPREAD = RNOA != null && NBC != null ? RNOA - NBC : null;
-  const FLEV = cur.bs.CSE > 0 ? cur.bs.NFO / cur.bs.CSE : null;
-  const FLEV_bridge = Math.abs(avgCSE) > 1 ? avgNFO / avgCSE : null;
+	// CSE epsilon: same approach as NOA — protect against near-zero denominators.
+	// Use 1 Cr absolute floor + 0.5% of TA relative floor.
+	const cseSmall = Math.abs(avgCSE) < Math.max(0.005 * Math.max(cur.bs.TA, 1), 1);
+	const ROCE = !cseSmall && avgCSE > 0 ? cur.is.CNI / avgCSE : null;
+	const RNOA = !noaSmall ? cur.is.OI / avgNOA : null;
+	const NBC = Math.abs(avgNFO) > 1 ? cur.is.NFE / Math.abs(avgNFO) : null;
+	const SPREAD = RNOA != null && NBC != null ? RNOA - NBC : null;
+	const FLEV = !cseSmall && cur.bs.CSE > 0 ? cur.bs.NFO / cur.bs.CSE : null;
+	const FLEV_bridge = !cseSmall ? avgNFO / avgCSE : null;
 
   const PM = cur.is.Sales > 0 ? cur.is.OI / cur.is.Sales : null;
   const ATO = !noaSmall ? cur.is.Sales / avgNOA : null;
@@ -643,10 +646,13 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
     + cur.bs.OL_DeferredTaxLiabilitiesNet
     + cur.bs.OL_OtherNonCurrentLiabilities;
 
-  // Interest-bearing OL: Pensions + lease liabilities (currently PensionObl=0, lease=0)
-  const leaseLiab = 0; // TODO: map from Right-of-Use / lease liability line items
-  const pensionObl = cur.bs.PensionObl ?? 0;
-  const prevLeaseLiab = 0;
+ // Interest-bearing OL: Pensions. Lease liabilities are classified as FO
+ // (financial obligations) per the BS reformulation — they are NOT in OL,
+ // so they must NOT be double-counted here. The financing cost of leases
+ // is already captured via NFE/NBC.
+ const leaseLiab = 0; // intentionally 0: leases are in FO, not OL
+ const pensionObl = cur.bs.PensionObl ?? 0;
+ const prevLeaseLiab = 0;
   const prevPensionObl = prev.bs.PensionObl ?? 0;
   const avgInterestBearingOL = (leaseLiab + pensionObl + prevLeaseLiab + prevPensionObl) / 2;
   const avgExplicitOL = explicitOL > 0 ? explicitOL : cur.bs.OL;
@@ -699,8 +705,8 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
   // Use NOA denominator for Eq.16 bridge consistency (field name retained for backward compatibility)
   const CoreOtherItems_OA = !noaSmall ? cur.is.OtherItems / avgNOA : null;
   const UOI_OA = !noaSmall ? cur.cu.UOI / avgNOA : null;
-  const CoreNBC = Math.abs(avgNFO) > 1 ? cur.cu.CoreNFE / avgNFO : null;
-  const UFE_NFO = Math.abs(avgNFO) > 1 ? cur.cu.UFE / avgNFO : null;
+	const CoreNBC = Math.abs(avgNFO) > 1 ? cur.cu.CoreNFE / Math.abs(avgNFO) : null;
+	const UFE_NFO = Math.abs(avgNFO) > 1 ? cur.cu.UFE / Math.abs(avgNFO) : null;
   const CoreRNOA = !noaSmall ? cur.cu.CoreOI / avgNOA : null;
   const CoreSPREAD = CoreRNOA != null && CoreNBC != null ? CoreRNOA - CoreNBC : null;
   let ROCE_eq16_reconstructed: number | null = null;
@@ -722,11 +728,11 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
   // §5.7 Stepped Eq.16 residual diagnosis
   const eq16ResidualThresholdWarn = cfg.eq16_residual_warning ?? 0.05;
   const eq16ResidualThresholdCrit = cfg.eq16_residual_critical ?? 0.15;
-  const eq16_flag: "OK" | "WARNING" | "CRITICAL" =
-    ROCE_eq16_error == null ? "OK"
-    : Math.abs(ROCE_eq16_error) < eq16ResidualThresholdWarn ? "OK"
-    : Math.abs(ROCE_eq16_error) < eq16ResidualThresholdCrit ? "WARNING"
-    : "CRITICAL";
+	const eq16_flag: "OK" | "WARNING" | "CRITICAL" =
+		ROCE_eq16_error == null ? "OK"
+		: Math.abs(ROCE_eq16_error) <= eq16ResidualThresholdWarn ? "OK"
+		: Math.abs(ROCE_eq16_error) <= eq16ResidualThresholdCrit ? "WARNING"
+		: "CRITICAL";
 
   // step1: RNOA − PM×ATO (DuPont closure)
   const eq16_step1 = RNOA != null && PM != null && ATO != null ? RNOA - (PM * ATO) : null;

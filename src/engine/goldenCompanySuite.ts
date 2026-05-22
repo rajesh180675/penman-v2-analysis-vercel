@@ -607,11 +607,11 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
         "ROCE_OUTLIER_CRITICAL",
         "RNOA_OUTLIER_CRITICAL",
       ],
-      ratioRanges: {
-        ROCE: [0.45, 0.50],   // actual 0.4764 ± 5%
-        RNOA: [1.00, 1.12],   // actual 1.0593 ± 5%
-        NBC:  [0.024, 0.028], // actual 0.0259 ± 5%
-      },
+ ratioRanges: {
+ ROCE: [0.45, 0.50], // actual 0.4764 ± 5%
+ RNOA: [1.00, 1.12], // actual 1.0593 ± 5%
+ NBC: [-0.030, -0.020], // ITC is net-cash (FA >> FO); NBC = NFE/|NFO| < 0
+ },
     },
   },
   {
