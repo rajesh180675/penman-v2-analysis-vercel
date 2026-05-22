@@ -403,3 +403,77 @@ export function SourceBadge({ source }: SourceBadgeProps) {
     </span>
   );
 }
+
+// ─── HeatmapCell ────────────────────────────────────────────────────────────
+interface HeatmapCellProps {
+  value: number | null;
+  min?: number;
+  max?: number;
+  format?: "pct" | "mult" | "abs";
+  /** If true, lower is better (e.g. PE ratio) */
+  invert?: boolean;
+}
+
+export function HeatmapCell({ value, min = 0, max = 1, format = "pct", invert = false }: HeatmapCellProps) {
+  if (value == null || !Number.isFinite(value)) {
+    return <td className="px-2 py-1.5 text-center text-xs text-slate-400">—</td>;
+  }
+  const ratio = Math.max(0, Math.min(1, (value - min) / (max - min || 1)));
+  const intensity = invert ? 1 - ratio : ratio;
+  // Green (good) to red (bad) via amber
+  const bg = intensity > 0.7
+    ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300"
+    : intensity > 0.4
+    ? "bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300"
+    : "bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300";
+
+  const formatted = format === "pct" ? `${(value * 100).toFixed(1)}%`
+    : format === "mult" ? `${value.toFixed(2)}×`
+    : value.toFixed(1);
+
+  return (
+    <td className={`px-2 py-1.5 text-center text-xs font-mono font-medium rounded ${bg}`}>
+      {formatted}
+    </td>
+  );
+}
+
+// ─── ProgressRing ───────────────────────────────────────────────────────────
+interface ProgressRingProps {
+  /** 0–100 percentage */
+  value: number;
+  size?: number;
+  strokeWidth?: number;
+  label?: string;
+}
+
+export function ProgressRing({ value, size = 48, strokeWidth = 4, label }: ProgressRingProps) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (Math.min(100, Math.max(0, value)) / 100) * circumference;
+  const color = value >= 80 ? "stroke-emerald-500" : value >= 50 ? "stroke-amber-500" : "stroke-red-500";
+
+  return (
+    <div className="inline-flex flex-col items-center gap-1">
+      <svg width={size} height={size} className="transform -rotate-90">
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          className="text-slate-200 dark:text-slate-700"
+        />
+        <circle
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none"
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          className={color}
+        />
+      </svg>
+      {label && <span className="text-[9px] text-slate-500 dark:text-slate-400">{label}</span>}
+    </div>
+  );
+}
