@@ -1,7 +1,9 @@
-import { RecastPeriod, NP_BENCHMARKS } from "../engine/types";
+import { RecastPeriod, NP_BENCHMARKS, EngineConfig } from "../engine/types";
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
+import { generateRatiosNarrative } from "../engine/narrativeEngine";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
+import { InsightBlock, SectionHeader } from "./shared/DesignSystem";
 import { useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -12,6 +14,7 @@ import DuPontWaterfall from "./charts/DuPontWaterfall";
 
 interface Props {
   data: RecastPeriod[];
+  config?: EngineConfig;
   traceability?: AnalysisTraceabilityEnvelope | null;
   traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
 }
@@ -23,17 +26,21 @@ const days = (v:number|null|undefined) => v!=null?v.toFixed(0)+"d" : "—";
 
 const NP_COLORS = {median:"#6366f1"};
 
-export default function RatioReport({data, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null}:Props) {
+export default function RatioReport({data, config, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null}:Props) {
   const [view, setView] = useState<"core"|"wc"|"trend">("core");
   const traceabilitySummary = precomputedTraceabilitySummary ?? buildValuationTraceabilitySurfaceSummary(traceability);
   if (!data||data.length<=1) return (
-    <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
-      <p className="font-semibold text-amber-800 text-lg">Need ≥ 2 periods</p>
+    <div className="card-base p-8 text-center">
+      <p className="font-semibold text-slate-600 dark:text-slate-300 text-lg">Need ≥ 2 periods</p>
+      <p className="text-sm text-slate-500 mt-2">Upload data with at least two fiscal years to see ratio analysis</p>
     </div>
   );
 
   const rd = data.filter(d=>d.ratios);
   const latest = rd[rd.length-1];
+
+  // Narrative insight
+  const narrative = config ? generateRatiosNarrative(data, config) : "";
 
   const dupont5 = rd.map((d, i) => {
     const prev = i > 0 ? rd[i - 1] : d;
@@ -77,6 +84,15 @@ export default function RatioReport({data, traceability = null, traceabilitySumm
 
   return (
     <div className="space-y-8">
+      <SectionHeader
+        title="Ratios"
+        subtitle="How does this business generate returns?"
+        icon="📐"
+      />
+
+      {/* Narrative insight — plain English explanation of the numbers */}
+      {narrative && <InsightBlock text={narrative} />}
+
       {traceabilitySummary && (
         <TraceabilityTrustPanel
           title="Ratio Trust Gate"

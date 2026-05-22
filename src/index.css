@@ -1,29 +1,98 @@
 @import "tailwindcss";
 
+@theme {
+  /* Typography */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Financial dashboard color palette */
+  --color-fin-positive: #10b981;
+  --color-fin-negative: #ef4444;
+  --color-fin-caution: #f59e0b;
+  --color-fin-neutral: #6366f1;
+  --color-fin-muted: #64748b;
+
+  /* Verdict colors */
+  --color-verdict-buy: #10b981;
+  --color-verdict-hold: #f59e0b;
+  --color-verdict-avoid: #ef4444;
+
+  /* Card surfaces */
+  --color-card-light: #ffffff;
+  --color-card-dark: #0f172a;
+  --color-card-elevated-light: #f8fafc;
+  --color-card-elevated-dark: #1e293b;
+
+  /* Chart palette */
+  --color-chart-1: #6366f1;
+  --color-chart-2: #10b981;
+  --color-chart-3: #f59e0b;
+  --color-chart-4: #ef4444;
+  --color-chart-5: #8b5cf6;
+  --color-chart-6: #06b6d4;
+  --color-chart-7: #f97316;
+  --color-chart-8: #ec4899;
+}
+
+/* Utility classes for the financial dashboard */
+@layer components {
+  .card-base {
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900;
+  }
+  .card-elevated {
+    @apply rounded-xl border border-slate-200 bg-white shadow-md ring-1 ring-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:ring-slate-800;
+  }
+  .card-verdict {
+    @apply rounded-xl border-l-4 bg-white p-4 shadow-sm dark:bg-slate-900;
+  }
+  .metric-value {
+    @apply font-mono text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100;
+  }
+  .metric-label {
+    @apply text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400;
+  }
+  .metric-context {
+    @apply text-xs text-slate-500 dark:text-slate-400 mt-1;
+  }
+  .section-title {
+    @apply text-lg font-semibold text-slate-800 dark:text-slate-200;
+  }
+  .insight-text {
+    @apply text-sm leading-relaxed text-slate-600 dark:text-slate-300;
+  }
+  .tab-active {
+    @apply border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-medium;
+  }
+  .badge-positive {
+    @apply inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400;
+  }
+  .badge-negative {
+    @apply inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 dark:bg-rose-900/30 dark:text-rose-400;
+  }
+  .badge-caution {
+    @apply inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400;
+  }
+  .badge-neutral {
+    @apply inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400;
+  }
+}
+
+/* Number formatting utilities */
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  .font-financial {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
 @media print {
-  header,
-  nav,
-  button,
-  input,
-  select,
-  textarea {
-    display: none !important;
-  }
-
-  main {
-    max-width: 100% !important;
-    padding: 0 !important;
-  }
-
-  .shadow-sm,
-  .shadow,
-  .shadow-md,
-  .shadow-lg {
-    box-shadow: none !important;
-  }
-
-  .rounded-xl,
-  .rounded-2xl {
-    border-radius: 0 !important;
-  }
+  header, nav, button, input, select, textarea { display: none !important; }
+  main { max-width: 100% !important; padding: 0 !important; }
+  .shadow-sm, .shadow, .shadow-md, .shadow-lg { box-shadow: none !important; }
+  .rounded-xl, .rounded-2xl { border-radius: 0 !important; }
+  .no-print { display: none !important; }
+  .print-expand { max-height: none !important; overflow: visible !important; }
 }

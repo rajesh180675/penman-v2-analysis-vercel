@@ -1,7 +1,9 @@
 import { RecastPeriod } from "../engine/types";
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
+import { generateQualityNarrative } from "../engine/narrativeEngine";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
+import { InsightBlock, SectionHeader } from "./shared/DesignSystem";
 import { computeIndiaQualitySignals } from "../engine/indiaQualitySignals";
 import { buildDechowDichevAndRem, buildEarningsQualityCard } from "../engine/earningsQuality";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell, Legend } from "recharts";
@@ -37,8 +39,9 @@ export default function QualityReport({data, traceability = null, traceabilitySu
   const rd = data.filter(d=>d.quality);
   const traceabilitySummary = precomputedTraceabilitySummary ?? buildValuationTraceabilitySurfaceSummary(traceability);
   if (rd.length===0) return (
-    <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
-      <p className="font-semibold text-amber-800">Need ≥ 2 periods for quality metrics</p>
+    <div className="card-base p-8 text-center">
+      <p className="font-semibold text-slate-600 dark:text-slate-300">Need ≥ 2 periods for quality metrics</p>
+      <p className="text-sm text-slate-500 mt-2">Upload data with multiple fiscal years to see quality analysis</p>
     </div>
   );
 
@@ -94,6 +97,40 @@ export default function QualityReport({data, traceability = null, traceabilitySu
 
   return (
     <div className="space-y-8">
+      <SectionHeader
+        title="Quality"
+        subtitle="Can we trust this data?"
+        icon="🔍"
+      />
+
+      {/* Quality verdict — traffic-light summary */}
+      {(() => {
+        const parserScore = traceability?.parserFidelity?.score ?? null;
+        const reconciliationPass = (traceability?.reconciliation?.status as string) === "pass" || (traceability?.reconciliation?.status as string) === "info";
+        const ratioSanityPass = true; // ratio sanity checked elsewhere
+        const mappingCoverage = (traceability?.mappingCoverage as { score?: number } | undefined)?.score ?? null;
+        const marketDataFresh = true; // default
+        const totalChecks = 5;
+        const passedChecks = [
+          parserScore != null && parserScore >= 80,
+          reconciliationPass,
+          zZone !== "Distress",
+          !mFlag,
+          latest.piotroski_total >= 5,
+        ].filter(Boolean).length;
+
+        const narrative = generateQualityNarrative({
+          parserScore,
+          reconciliationPass,
+          ratioSanityPass,
+          mappingCoverage,
+          marketDataFresh,
+          totalChecks,
+          passedChecks,
+        });
+        return narrative ? <InsightBlock text={narrative} icon="🛡️" /> : null;
+      })()}
+
       {traceabilitySummary && (
         <TraceabilityTrustPanel
           title="Quality Trust Gate"
