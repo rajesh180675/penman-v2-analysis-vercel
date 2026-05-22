@@ -1325,13 +1325,13 @@ signals and see why routing was blocked.
 
 function TabSkeleton() {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-      <div className="h-4 w-40 animate-pulse rounded bg-slate-200" />
-      <div className="mt-4 h-3 w-72 animate-pulse rounded bg-slate-100" />
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-8 shadow-sm">
+      <div className="h-4 w-40 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+      <div className="mt-4 h-3 w-72 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
       <div className="mt-8 grid gap-4 md:grid-cols-3">
-        <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
-        <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
-        <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
+        <div className="h-24 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+        <div className="h-24 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+        <div className="h-24 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
       </div>
     </div>
   );
