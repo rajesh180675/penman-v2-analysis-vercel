@@ -896,7 +896,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
           cautionHeading="Read the memo and exported artifacts in the context of these unresolved gates"
         />
       )}
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h1 className="text-2xl font-bold text-slate-800">Investor Research Memorandum (Academic Format)</h1>
         <p className="text-sm text-slate-500 mt-1">
           Framework: Nissim &amp; Penman (2001), residual-income valuation with operating/financing recast under Ind AS.
@@ -972,7 +972,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         </div>
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">1) Executive Findings</h2>
         <ul className="list-disc pl-5 text-sm text-slate-700 space-y-1.5">
           <li>
@@ -1013,7 +1013,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         ) : null}
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">2) Methodology — Nissim & Penman (2001) Framework</h2>
         <div className="text-sm text-slate-700 space-y-4">
           <div>
@@ -1134,7 +1134,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         </div>
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">3) Profitability and Growth Diagnostics</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -1164,7 +1164,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
       </section>
 
       {v3Bundle?.versionChangeLog.length ? (
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">2.6A) Methodology Changes from Prior Version</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -1193,7 +1193,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
       </section>
       ) : null}
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">3A) NOA denominator diagnostics (all periods)</h2>
         <p className="text-sm text-slate-700 mb-3">Flag rule: |NOA| &lt; 10% of Sales. Flagged periods: <b>{noaFlagCount}</b> / {noaDiagnostics.length}.</p>
         <div className="overflow-x-auto">
@@ -1226,7 +1226,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         </div>
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">3B) NOA structural-break diagnostics</h2>
         <p className="text-sm text-slate-700 mb-3">
           Largest year-on-year NOA shift occurred in <b>{largestNoaShift.period.slice(0, 10)}</b>: ΔNOA <b>₹{num(largestNoaShift.deltaNOA)} Cr</b>,
@@ -1302,7 +1302,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         ) : null}
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">4) Balance-Sheet Structure and Financing Posture</h2>
         <p className="text-sm text-slate-700 mb-3">
           Latest period decomposition indicates OA = <b>{num(latest.bs.OA)}</b>, FA = <b>{num(latest.bs.FA)}</b>,
@@ -1316,7 +1316,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         </div>
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">5) Cash-Flow Quality and Clean-Surplus Diagnostics</h2>
         <ul className="list-disc pl-5 text-sm text-slate-700 space-y-1.5">
           <li>
@@ -1350,7 +1350,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         </ul>
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">5A) Accrual-ratio time series</h2>
         <p className="text-xs text-slate-500 mb-3">This series helps separate transition-year accrual spikes from current-period earnings quality.</p>
         <div className="overflow-x-auto">
@@ -1387,7 +1387,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         </div>
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">5B) Operating trajectory timeline (full sample)</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -1417,7 +1417,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         </div>
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">6) Valuation Synthesis (Residual Income Framework)</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
           <MiniBox label="ke assumption" value={pct(ke, 2)} />
@@ -1475,7 +1475,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         )}
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">6A) RE sensitivity matrix (ke × g)</h2>
         <p className="text-xs text-slate-500 mb-3">Rows vary cost of equity; columns vary terminal growth. Values are V(RE, CV3) in ₹ Cr using derived kw for ReOI consistency checks.</p>
         <div className="overflow-x-auto">
@@ -1508,7 +1508,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         )}
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">6A.1) Explicit residual-income stream</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -1536,7 +1536,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
 
 
       {tvContaminated && (
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">6A.2) Terminal sensitivity (alternate RE anchors)</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -1562,7 +1562,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
       </section>
       )}
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">6B) Per-share and market-implied checks</h2>
         {local6B.status === "shares_unavailable" && (
           <p className="text-sm text-amber-700">Share count could not be derived from available data. Enter shares outstanding and market price to complete this section.</p>
@@ -1594,7 +1594,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         )}
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">6C) Quality Score Decomposition</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
@@ -1625,7 +1625,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         </div>
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
         <h2 className="font-bold text-lg text-slate-800 mb-3">7) Investment Interpretation and Monitoring Triggers</h2>
         <div className="text-sm text-slate-700 space-y-2">
           <p>

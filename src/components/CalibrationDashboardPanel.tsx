@@ -7,7 +7,7 @@ interface Props {
 
 export default function CalibrationDashboardPanel({ calibration, alerts }: Props) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-6 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-bold text-slate-800">Calibration And Alerts</h3>
@@ -35,7 +35,7 @@ export default function CalibrationDashboardPanel({ calibration, alerts }: Props
         <div><strong>Recommendation:</strong> {calibration.recommendation}</div>
       </div>
 
-      <div className="mt-4 rounded-xl border border-slate-200 bg-white">
+      <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60">
         <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800">Persisted alerts</div>
         <div className="max-h-60 overflow-auto px-4 py-3 text-sm text-slate-700">
           {alerts.length ? (
