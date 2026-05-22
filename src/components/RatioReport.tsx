@@ -147,7 +147,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
         />
       </div>
 
-      {/* DuPont Waterfall — latest period */}
+      {/* DuPont Waterfall — latest period + interactive trend */}
       <DuPontWaterfall
         taxBurden={dupont5[dupont5.length - 1]?.taxBurden ?? null}
         interestBurden={dupont5[dupont5.length - 1]?.intBurden ?? null}
@@ -155,6 +155,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
         assetTurnover={dupont5[dupont5.length - 1]?.at ?? null}
         equityMultiplier={dupont5[dupont5.length - 1]?.eqMult ?? null}
         roe={dupont5[dupont5.length - 1]?.roe5 ?? null}
+        history={dupont5}
       />
 
       <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-between">
