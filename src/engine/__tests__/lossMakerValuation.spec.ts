@@ -42,7 +42,7 @@ function mkPeriod(period_end: string, sales: number, cni: number, cfo: number, n
 
 const baseCfg: EngineConfig = {
   ...DEFAULT_CONFIG,
-  shares_outstanding: 1_000_000_000, // 100 Cr shares
+  shares_outstanding: 100, // 100 Cr shares (= 1 billion absolute)
   market_price: 700,
 };
 
@@ -200,7 +200,7 @@ describe("computeLossMakerValuation — Phase I3", () => {
       mkPeriod("2024-03-31", 42500, -31000, 7500, 230000),
       mkPeriod("2025-03-31", 43500, -27000, -500, 235000), // CFO flips negative
     ];
-    const cfg = { ...baseCfg, market_price: 7.5, shares_outstanding: 65_00_00_00_000 };
+    const cfg = { ...baseCfg, market_price: 7.5, shares_outstanding: 650 }; // 650 Cr shares
     const result = computeLossMakerValuation(periods, cfg)!;
 
     expect(result.isLossMaker).toBe(true);
@@ -212,7 +212,7 @@ describe("computeLossMakerValuation — Phase I3", () => {
     // EV - 2*NFO = 130500 - 470000 = -339500 (the old buggy path).
     expect(result.revenueMultiple.impliedEVCr).toBeCloseTo(43500 * 3.0, -1);
     const expectedEquityCr = 43500 * 3.0 - 235000;
-    const expectedPerShare = (expectedEquityCr * 1e7) / 65_00_00_00_000;
+    const expectedPerShare = expectedEquityCr / 650; // Cr / Cr-shares = ₹ per share
     expect(result.revenueMultiple.perShareValue).toBeCloseTo(expectedPerShare, 2);
 
     // Net-debt firm: no positive cash buffer → no runway, no cashPerShare
@@ -237,7 +237,7 @@ describe("computeLossMakerValuation — Phase I3", () => {
 
     // Equity = EV - NFO = 11000*3 - (-2400) = 33000 + 2400 = 35400
     const expectedEquityCr = 11000 * 3.0 + 2400;
-    const expectedPerShare = (expectedEquityCr * 1e7) / 1_000_000_000;
+    const expectedPerShare = expectedEquityCr / 100; // Cr / Cr-shares = ₹ per share
     expect(result.revenueMultiple.perShareValue).toBeCloseTo(expectedPerShare, 2);
   });
 

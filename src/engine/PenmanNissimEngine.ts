@@ -12,6 +12,7 @@ import {
   TraceMap,
   TraceEntry,
   ShareCountInputSnapshot,
+  deriveKwFromConfig,
 } from "./types";
 import { CapitalineMappingSpec as M } from "./mappingSpec";
 
@@ -583,9 +584,10 @@ export function recastCashFlow(data: RawPeriodData, is_: CanonicalIncome, bs: Ca
     d_t_discrepancy,
     // EBITDA: OI is NOPAT (after-tax), so EBIT = OI/(1-t), then EBITDA = EBIT + D&A.
     // Adding NFE here was wrong — OI is already the full after-tax operating income.
-    EBITDA: is_.taxRate < 0.99
+    // Clamp effective tax rate to avoid grossup blow-up at extreme values.
+    EBITDA: is_.taxRate < 0.50
       ? (is_.OI / (1 - is_.taxRate) + da)
-      : (is_.OI + da),
+      : (is_.OI / (1 - Math.min(is_.taxRate, 0.45)) + da),
   };
 }
 
@@ -754,7 +756,7 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
     ][maxIdx];
   }
 
-  const required_return_per_sales = ATO != null && ATO !== 0 ? cfg.risk_free_rate / ATO : null;
+  const required_return_per_sales = ATO != null && ATO !== 0 ? deriveKwFromConfig(cfg) / ATO : null;
   const value_creating_margin = PM != null && required_return_per_sales != null ? PM - required_return_per_sales : null;
 
   const CSE_eq8_check = cur.is.Sales > 0 && ATO != null && FLEV != null ? cur.is.Sales / ATO / (1 + FLEV) : null;

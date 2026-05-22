@@ -171,7 +171,7 @@ export function computeLossMakerValuation(
   const sharesOutstanding = config.shares_outstanding ?? null;
   const cashPerShare =
     netCashCr != null && sharesOutstanding != null && sharesOutstanding > 0
-      ? (netCashCr * 1e7) / sharesOutstanding // Cr → ₹
+      ? netCashCr / sharesOutstanding // both in Cr → ₹ per share
       : null;
 
   const runwayYears =
@@ -209,13 +209,13 @@ export function computeLossMakerValuation(
       : impliedEVCr;
   const perShareValue =
     sharesOutstanding != null && sharesOutstanding > 0 && latestRevenueCr != null
-      ? (equityValueCr * 1e7) / sharesOutstanding
+      ? equityValueCr / sharesOutstanding
       : null;
 
   // Reverse-DCF
   const marketCapCr =
     config.market_price != null && config.shares_outstanding != null
-      ? (config.market_price * config.shares_outstanding) / 1e7
+      ? config.market_price * config.shares_outstanding
       : null;
 
   let impliedSteadyStateMargin: number | null = null;

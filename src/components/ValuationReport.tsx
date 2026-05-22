@@ -93,16 +93,11 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
   const lastManifestAuditRef = useRef<string | null>(null);
   const lastAlertAuditRef = useRef<string | null>(null);
 
-  if (data.length < 2) {
-    return <div className="card-base p-8 text-center">
-      <p className="font-semibold text-slate-600 dark:text-slate-300 text-lg">Need ≥ 2 periods</p>
-      <p className="text-sm text-slate-500 mt-2">Upload more years of data to compute residual-income valuation.</p>
-    </div>;
-  }
+  const insufficientData = data.length < 2;
 
   const ke = keOverride != null ? keOverride / 100 : keFromConfig;
   const gRate = g / 100;
-  const shareBasis = useMemo(() => resolveShareBasis(data, effectiveConfig), [data, effectiveConfig]);
+  const shareBasis = useMemo(() => insufficientData ? { shares: null, source: "N/A", confidence: "LOW" as const, dilution_note: "", valuationConfig: effectiveConfig } : resolveShareBasis(data, effectiveConfig), [data, effectiveConfig, insufficientData]);
   const valuationData = useMemo(
     () => data.slice(0, Math.max(2, valuationReadiness.anchorIndex + 1)),
     [data, valuationReadiness.anchorIndex]
@@ -319,6 +314,15 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
   }, [auditMeta, commandCenter]);
 
   const cvSel = <T,>(v1: T, v2: T, v3: T): T => cv === "CV1" ? v1 : cv === "CV2" ? v2 : v3;
+  const distressResult = useMemo(() => detectDistress(data), [data]);
+
+  if (insufficientData) {
+    return <div className="card-base p-8 text-center">
+      <p className="font-semibold text-slate-600 dark:text-slate-300 text-lg">Need ≥ 2 periods</p>
+      <p className="text-sm text-slate-500 mt-2">Upload more years of data to compute residual-income valuation.</p>
+    </div>;
+  }
+
   const V_RE = cvSel(val.V_RE_CV1, val.V_RE_CV2, val.V_RE_CV3);
   const V_ReOI = cvSel(val.V_ReOI_CV01, val.V_ReOI_CV02, val.V_ReOI_CV03);
 
@@ -341,7 +345,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
           and going-concern stress at the top of the report so reviewers
           see it before reading any equity-side numbers. */}
       {(() => {
-        const distress = detectDistress(data);
+        const distress = distressResult;
         if (distress.severity === "none") return null;
         const tone =
           distress.severity === "critical"
