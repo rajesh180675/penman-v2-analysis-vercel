@@ -148,13 +148,13 @@ export default function QualityReport({data, traceability = null, traceabilitySu
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
           <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Piotroski F-Score</div>
           <div className="text-3xl font-bold text-indigo-700 mb-3">{latest.piotroski_total}/9</div>
           <ScoreBar score={latest.piotroski_total} max={9} thresholds={[3,7]} colors={["#ef4444","#f59e0b","#10b981"]}/>
           <div className="mt-2 text-xs text-slate-400">{latest.piotroski_total>=7?"Strong health":latest.piotroski_total>=3?"Average":"Weak signals"}</div>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
           <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Altman Z'-Score</div>
           <div className="flex items-baseline gap-2 mb-2">
             <span className="text-3xl font-bold text-slate-800">{latest.altman_zprime.toFixed(2)}</span>
@@ -174,7 +174,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
             ) : null;
           })()}
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
           <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Beneish M-Score</div>
           <div className="flex items-baseline gap-2 mb-2">
             <span className={`text-3xl font-bold ${mFlag?"text-red-600":"text-emerald-700"}`}>{latest.beneish_mscore.toFixed(2)}</span>
@@ -193,17 +193,17 @@ export default function QualityReport({data, traceability = null, traceabilitySu
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
           <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Zmijewski Distress Prob.</div>
           <div className="text-3xl font-bold text-slate-800 mb-2">{latest.zmijewski_prob_distress!=null?(latest.zmijewski_prob_distress*100).toFixed(1)+"%":"—"}</div>
           <div className="text-xs text-slate-500">Probit probability from X-Score (1984).</div>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
           <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Ohlson Distress Prob.</div>
           <div className="text-3xl font-bold text-slate-800 mb-2">{latest.ohlson_prob_distress!=null?(latest.ohlson_prob_distress*100).toFixed(1)+"%":"—"}</div>
           <div className="text-xs text-slate-500">Logit probability from O-Score (1980, adapted).</div>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
           <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Cash Earnings Quality Index</div>
           <div className={`text-3xl font-bold mb-2 ${(latest.cash_earnings_quality_index??1) < 0.7 ? "text-red-600" : "text-emerald-700"}`}>
             {latest.cash_earnings_quality_index!=null?latest.cash_earnings_quality_index.toFixed(2):"—"}
@@ -213,7 +213,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
       </div>
 
       {/* Trend Charts */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
         <h2 className="text-lg font-bold text-slate-800 mb-4">Quality Score Trends</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
@@ -262,7 +262,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
         <h2 className="text-lg font-bold text-slate-800 mb-4">Quality Overlays (D-06 / D-07 / D-09)</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-5">
           <div>
@@ -320,7 +320,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
       </div>
 
       {/* Piotroski Detail */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
           <h2 className="text-lg font-bold text-slate-800">Piotroski F-Score — 9 Signals</h2>
         </div>
@@ -362,7 +362,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
       </div>
 
       {/* Beneish */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
           <h2 className="text-lg font-bold text-slate-800">Beneish M-Score Components</h2>
           <p className="text-xs text-slate-500">M &gt; −1.78 signals possible earnings manipulation (Beneish 1999, JAR)</p>
@@ -410,7 +410,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
       </div>
 
       {/* Altman */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
           <h2 className="text-lg font-bold text-slate-800">Altman Z'-Score Components</h2>
           <p className="text-xs text-slate-500">Z' = 0.717×WC/TA + 0.847×RE/TA + 3.107×EBIT/TA + 0.420×BVE/TL + 0.998×S/TA</p>
@@ -453,7 +453,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
 
       {/* ── India Quality Signals ──────────────────────────────────── */}
       {indiaQuality && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
             <h2 className="text-lg font-bold text-slate-800">India-Specific Governance &amp; Market Quality</h2>
             <p className="text-xs text-slate-500 mt-0.5">Promoter holding, pledged shares, RPT intensity, tax avoidance, and governance events.</p>
@@ -510,7 +510,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
 
       {/* ── Earnings Quality — Dechow-Dichev &amp; Roychowdhury ─────── */}
       {earningsQuality && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
             <h2 className="text-lg font-bold text-slate-800">Earnings Quality — DD / REM Signals</h2>
             <p className="text-xs text-slate-500 mt-0.5">Signal-level accrual quality and real earnings management diagnostics using the currently available multi-period series.</p>
