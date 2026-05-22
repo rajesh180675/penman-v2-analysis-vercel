@@ -10,6 +10,7 @@ import { buildTerminalEconomics } from "../engine/terminalEconomics";
 import { resolveValuationReadiness } from "../engine/valuationPolicy";
 import { resolveShareBasis, toPerShare } from "../engine/shareCountTools";
 import { AnalysisStatusSummary } from "../engine/analysisStatus";
+import { generateValuationNarrative } from "../engine/narrativeEngine";
 import {
   buildValuationCommandCenter,
   formatHistoricalPercentile,
@@ -20,6 +21,7 @@ import {
 import { useLiveMarketData } from "../hooks/useLiveMarketData";
 import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
 import { AuditSubmissionMeta, persistAuditEvent } from "../lib/audit";
+import { InsightBlock, SectionHeader } from "./shared/DesignSystem";
 import ExpectationBridgePanel from "./ExpectationBridgePanel";
 import SensitivityHeatmap from "./charts/SensitivityHeatmap";
 import FrameworkRadar from "./charts/FrameworkRadar";
@@ -92,9 +94,9 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
   const lastAlertAuditRef = useRef<string | null>(null);
 
   if (data.length < 2) {
-    return <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
-      <p className="font-semibold text-amber-800 text-lg">Need ≥ 2 periods</p>
-      <p className="text-amber-600 mt-1 text-sm">Upload more years of data to compute residual-income valuation.</p>
+    return <div className="card-base p-8 text-center">
+      <p className="font-semibold text-slate-600 dark:text-slate-300 text-lg">Need ≥ 2 periods</p>
+      <p className="text-sm text-slate-500 mt-2">Upload more years of data to compute residual-income valuation.</p>
     </div>;
   }
 
