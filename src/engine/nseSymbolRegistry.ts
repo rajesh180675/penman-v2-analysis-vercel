@@ -15,16 +15,21 @@
 export const NSE_SYMBOL_REGISTRY: Record<string, string> = {
   "Bajaj Finance": "BAJFINANCE",
   "HDFC Bank": "HDFCBANK",
+  "Hindustan Unilever": "HINDUNILVR",
   "ICICI Bank": "ICICIBANK",
   "ITC": "ITC",
   "KOTAKBANK": "KOTAKBANK",
+  "Larsen & Toubro Ltd": "LT",
   "Life Insurance Corporation of India": "LICI",
+  "Maruti Suzuki India Ltd": "MARUTI",
   "Paytm": "PAYTM",
   "Power Grid Corporation of India Ltd": "POWERGRID",
   "Reliance Industries": "RELIANCE",
   "SBIN": "SBIN",
+  "Sun Pharmaceutical Industries Ltd": "SUNPHARMA",
   "Tata Consultancy Services Ltd": "TCS",
   "Tata Steel": "TATASTEEL",
+  "UltraTech Cement Ltd": "ULTRACEMCO",
   "Vodafone Idea Ltd": "IDEA",
 };
 

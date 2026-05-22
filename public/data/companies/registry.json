@@ -57,6 +57,16 @@
     "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/HDFC%20Bank/quality_indicators.json"
   },
   {
+    "folder": "Hindustan Unilever",
+    "ticker": "HINDUNILVR",
+    "name": "Hindustan Unilever",
+    "sector": "FMCG",
+    "type": "industrial",
+    "description": "India's largest FMCG company — home care, personal care, foods",
+    "emoji": "🧴",
+    "hasStandalone": true
+  },
+  {
     "folder": "ICICI Bank",
     "name": "ICICI Bank",
     "ticker": "ICICIBANK",
@@ -106,6 +116,26 @@
     "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Life%20Insurance%20Corporation%20of%20India/Life%20Insurance%20Corporation%20of%20India.zip",
     "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Life%20Insurance%20Corporation%20of%20India/standalone.zip",
     "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Life%20Insurance%20Corporation%20of%20India/quality_indicators.json"
+  },
+  {
+    "folder": "Larsen & Toubro Ltd",
+    "ticker": "LT",
+    "name": "Larsen & Toubro",
+    "sector": "Infrastructure / Engineering",
+    "type": "conglomerate",
+    "description": "Engineering conglomerate — infra, defence, IT, financial services",
+    "emoji": "🏗️",
+    "hasStandalone": true
+  },
+  {
+    "folder": "Maruti Suzuki India Ltd",
+    "ticker": "MARUTI",
+    "name": "Maruti Suzuki",
+    "sector": "Automobiles",
+    "type": "industrial",
+    "description": "India's largest passenger vehicle manufacturer",
+    "emoji": "🚗",
+    "hasStandalone": true
   },
   {
     "folder": "Paytm",
@@ -158,6 +188,16 @@
     "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/SBIN/quality_indicators.json"
   },
   {
+    "folder": "Sun Pharmaceutical Industries Ltd",
+    "ticker": "SUNPHARMA",
+    "name": "Sun Pharma",
+    "sector": "Pharmaceuticals",
+    "type": "industrial",
+    "description": "India's largest pharma company — specialty and generics",
+    "emoji": "💊",
+    "hasStandalone": true
+  },
+  {
     "folder": "Tata Consultancy Services Ltd",
     "name": "TCS",
     "ticker": "TCS",
@@ -182,6 +222,16 @@
     "hasStandalone": true,
     "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Tata%20Steel/Tata%20Steel.zip",
     "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Tata%20Steel/standalone.zip"
+  },
+  {
+    "folder": "UltraTech Cement Ltd",
+    "ticker": "ULTRACEMCO",
+    "name": "UltraTech Cement",
+    "sector": "Cement / Building Materials",
+    "type": "cyclical",
+    "description": "India's largest cement manufacturer by capacity",
+    "emoji": "🏭",
+    "hasStandalone": true
   },
   {
     "folder": "Vodafone Idea Ltd",

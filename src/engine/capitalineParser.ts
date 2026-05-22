@@ -14,7 +14,7 @@
 
 import JSZip from "jszip";
 import { RawPeriodData } from "./types";
-import { parseSegmentFinanceHTML, SegmentData } from "./segmentParser";
+import { parseSegmentFinanceHTML, SegmentData, AllSegmentData } from "./segmentParser";
 import { trace } from "../lib/traceLogger";
 import {
   AccountingStandard,
@@ -629,7 +629,7 @@ function gridToPeriods(
 export async function parseCapitalineZip(
   zipFile: File,
   opts?: { companyId?: string }
-): Promise<{ periods: RawPeriodData[]; debug: CapitalineParseDebug; segmentData: SegmentData | null }> {
+): Promise<{ periods: RawPeriodData[]; debug: CapitalineParseDebug; segmentData: AllSegmentData | null }> {
   if (zipFile.size > MAX_ZIP_BYTES) {
     throw new Error(`ZIP exceeds size limit (${Math.round(MAX_ZIP_BYTES / (1024 * 1024))} MB).`);
   }
@@ -1041,32 +1041,42 @@ export async function parseCapitalineZip(
   return { periods, debug, segmentData: await parseSegmentFilesFromZip(fileEntries as any) };
 }
 
-/** Phase C5: parse SegmentFinance files from the ZIP into SegmentData. */
-async function parseSegmentFilesFromZip(fileEntries: Array<{ name: string; async(type: "arraybuffer"): Promise<ArrayBuffer>; async(type: "text"): Promise<string> } & Record<string, unknown>>): Promise<SegmentData | null> {
+/** Phase C5: parse ALL SegmentFinance files from the ZIP into AllSegmentData. */
+async function parseSegmentFilesFromZip(fileEntries: Array<{ name: string; async(type: "arraybuffer"): Promise<ArrayBuffer>; async(type: "text"): Promise<string> } & Record<string, unknown>>): Promise<AllSegmentData | null> {
   const segmentEntries = fileEntries.filter(f => {
     const name = (f.name as string).split("/").pop() || (f.name as string);
     return stmtFromFilename(name) === "Segment";
   });
   if (segmentEntries.length === 0) return null;
 
-  // Parse each segment file; prefer business segments over geographic
-  let businessSegment: SegmentData | null = null;
+  // Parse ALL segment files and collect by type
+  let business: SegmentData | null = null;
+  let geographic: SegmentData | null = null;
+  let mixed: SegmentData | null = null;
+
   for (const entry of segmentEntries) {
     try {
       const text = await (entry as any).async("text");
       const parsed = parseSegmentFinanceHTML(text);
-      if (parsed && parsed.segmentationType === "business" && parsed.segments.length >= 2) {
-        businessSegment = parsed;
-        break; // first valid business segment file wins
-      }
-      if (parsed && !businessSegment) {
-        businessSegment = parsed; // fallback to any valid parse
+      if (!parsed) continue;
+
+      if (parsed.segmentationType === "business" && parsed.segments.length >= 2) {
+        if (!business) business = parsed;
+      } else if (parsed.segmentationType === "geographic") {
+        if (!geographic) geographic = parsed;
+      } else if (parsed.segmentationType === "total") {
+        if (!mixed) mixed = parsed;
+      } else if (!business) {
+        // Fallback: unclassified with multiple segments → treat as business
+        business = parsed;
       }
     } catch {
       // skip unparseable segment files
     }
   }
-  return businessSegment;
+
+  if (!business && !geographic && !mixed) return null;
+  return { business, geographic, mixed };
 }
 
 /* ══════════════════════════════════════════════════════════════════

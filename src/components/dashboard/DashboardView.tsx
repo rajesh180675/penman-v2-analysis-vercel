@@ -9,7 +9,7 @@ import { buildValuationCommandCenter } from "../../engine/valuationCommandCenter
 import { resolveShareBasis } from "../../engine/shareCountTools";
 import { generateDashboardNarrative } from "../../engine/narrativeEngine";
 import type { SanityAssessment } from "../../engine/ratioSanity";
-import type { SegmentData } from "../../engine/segmentParser";
+import type { AllSegmentData } from "../../engine/segmentParser";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 
 import { VerdictBanner, InsightBlock, ExpandableSection, ConfidenceBadge, RiskFlag, ProgressRing } from "../shared/DesignSystem";
@@ -31,7 +31,7 @@ interface Props {
   config: EngineConfig;
   traceability?: AnalysisTraceabilityEnvelope | null;
   ratioSanity?: SanityAssessment | null;
-  segmentData?: SegmentData | null;
+  segmentData?: AllSegmentData | null;
   marketData?: LiveMarketDataSnapshot | null;
   /** Optional peer count for Next Steps recommendations */
   peerCount?: number;
@@ -97,7 +97,7 @@ export default function DashboardView({ data, config, traceability = null, ratio
 
   // Authoritative valuation — use the same command center as the Valuation tab
   const commandCenter = useMemo(
-    () => buildValuationCommandCenter({ data, config, marketData, analysisStatus: null, segmentData }),
+    () => buildValuationCommandCenter({ data, config, marketData, analysisStatus: null, segmentData: segmentData?.business ?? null }),
     [data, config, marketData, segmentData],
   );
 
@@ -347,10 +347,16 @@ export default function DashboardView({ data, config, traceability = null, ratio
         </div>
       </ExpandableSection>
 
-      {/* Segment Breakdown — only shows if segment data is present */}
-      {segmentData && segmentData.segments && segmentData.segments.length > 1 && (
-        <ExpandableSection title="Segment Breakdown" badge={`${segmentData.segments.length} segments`}>
-          <SegmentBreakdown segmentData={segmentData} />
+      {/* Segment Breakdown — shows all available segment dimensions */}
+      {segmentData && segmentData.business && segmentData.business.segments.length > 1 && (
+        <ExpandableSection title="Segment Breakdown" badge={`${segmentData.business.segments.length} segments`}>
+          <SegmentBreakdown segmentData={segmentData.business} />
+          {segmentData.geographic && segmentData.geographic.segments.length > 1 && (
+            <SegmentBreakdown segmentData={segmentData.geographic} />
+          )}
+          {segmentData.mixed && segmentData.mixed.segments.length > 1 && (
+            <SegmentBreakdown segmentData={segmentData.mixed} />
+          )}
         </ExpandableSection>
       )}
 

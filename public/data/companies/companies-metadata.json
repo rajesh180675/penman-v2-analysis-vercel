@@ -1,0 +1,174 @@
+[
+  {
+    "folder": "Bajaj Finance",
+    "name": "Bajaj Finance",
+    "ticker": "BAJFINANCE",
+    "sector": "NBFC",
+    "type": "nbfc",
+    "description": "Consumer finance NBFC with retail loan focus",
+    "emoji": "💳",
+    "showcaseFor": "NBFC routing — borrowings/equity leverage frame"
+  },
+  {
+    "folder": "HDFC Bank",
+    "name": "HDFC Bank",
+    "ticker": "HDFCBANK",
+    "sector": "Banking",
+    "type": "bank",
+    "description": "Largest private-sector bank by assets",
+    "emoji": "🏦",
+    "showcaseFor": "Bank-specific quality_indicators pipeline"
+  },
+  {
+    "folder": "Hindustan Unilever",
+    "ticker": "HINDUNILVR",
+    "name": "Hindustan Unilever",
+    "sector": "FMCG",
+    "type": "industrial",
+    "description": "India's largest FMCG company — home care, personal care, foods",
+    "emoji": "🧴"
+  },
+  {
+    "folder": "ICICI Bank",
+    "name": "ICICI Bank",
+    "ticker": "ICICIBANK",
+    "sector": "Banking",
+    "type": "bank",
+    "description": "Universal bank with strong digital franchise",
+    "emoji": "🏦"
+  },
+  {
+    "folder": "ITC",
+    "name": "ITC Ltd",
+    "ticker": "ITC",
+    "sector": "FMCG / Cigarettes",
+    "type": "conglomerate",
+    "description": "Diversified conglomerate — cigarettes, FMCG, hotels, paper, agri",
+    "emoji": "🚬",
+    "showcaseFor": "SOTP valuation across multiple segments"
+  },
+  {
+    "folder": "KOTAKBANK",
+    "name": "Kotak Mahindra Bank",
+    "ticker": "KOTAKBANK",
+    "sector": "Banking",
+    "type": "bank",
+    "description": "Premium private bank with conservative loan book",
+    "emoji": "🏦"
+  },
+  {
+    "folder": "Larsen & Toubro Ltd",
+    "ticker": "LT",
+    "name": "Larsen & Toubro",
+    "sector": "Infrastructure / Engineering",
+    "type": "conglomerate",
+    "description": "Engineering conglomerate — infra, defence, IT, financial services",
+    "emoji": "🏗️"
+  },
+  {
+    "folder": "Life Insurance Corporation of India",
+    "name": "LIC",
+    "ticker": "LICI",
+    "sector": "Insurance (Life)",
+    "type": "insurance",
+    "description": "State-owned life insurer, dominant market share",
+    "emoji": "🛡️",
+    "showcaseFor": "Insurance fail-closed (no equity-side valuation)"
+  },
+  {
+    "folder": "Maruti Suzuki India Ltd",
+    "ticker": "MARUTI",
+    "name": "Maruti Suzuki",
+    "sector": "Automobiles",
+    "type": "industrial",
+    "description": "India's largest passenger vehicle manufacturer",
+    "emoji": "🚗"
+  },
+  {
+    "folder": "Paytm",
+    "name": "Paytm (One97)",
+    "ticker": "PAYTM",
+    "sector": "Fintech",
+    "type": "loss-maker",
+    "description": "Digital payments + financial services platform",
+    "emoji": "📱",
+    "showcaseFor": "Loss-maker valuation pipeline (no positive earnings)"
+  },
+  {
+    "folder": "Power Grid Corporation of India Ltd",
+    "name": "Power Grid",
+    "ticker": "POWERGRID",
+    "sector": "Utility (PSU)",
+    "type": "utility",
+    "description": "Inter-state electricity transmission monopoly",
+    "emoji": "⚡",
+    "showcaseFor": "Regulated utility with stable returns"
+  },
+  {
+    "folder": "Reliance Industries",
+    "name": "Reliance Industries",
+    "ticker": "RELIANCE",
+    "sector": "Conglomerate",
+    "type": "conglomerate",
+    "description": "O2C + telecom (Jio) + retail + new energy",
+    "emoji": "🛢️",
+    "showcaseFor": "Mixed conglomerate routing + segment-aware SOTP"
+  },
+  {
+    "folder": "SBIN",
+    "name": "State Bank of India",
+    "ticker": "SBIN",
+    "sector": "Banking (PSU)",
+    "type": "bank",
+    "description": "Largest public-sector bank",
+    "emoji": "🏛️"
+  },
+  {
+    "folder": "Sun Pharmaceutical Industries Ltd",
+    "ticker": "SUNPHARMA",
+    "name": "Sun Pharma",
+    "sector": "Pharmaceuticals",
+    "type": "industrial",
+    "description": "India's largest pharma company — specialty and generics",
+    "emoji": "💊"
+  },
+  {
+    "folder": "Tata Consultancy Services Ltd",
+    "name": "TCS",
+    "ticker": "TCS",
+    "sector": "IT Services",
+    "type": "it-services",
+    "description": "Global IT services leader, capital-light",
+    "emoji": "💻",
+    "showcaseFor": "IT-services detector + moat scorer awareness"
+  },
+  {
+    "folder": "Tata Steel",
+    "name": "Tata Steel",
+    "ticker": "TATASTEEL",
+    "sector": "Metals (Cyclical)",
+    "type": "cyclical",
+    "description": "Integrated steel producer, India + Europe",
+    "emoji": "🏗️",
+    "showcaseFor": "Cyclical normalization + cycle-aware terminal RE"
+  },
+  {
+    "folder": "UltraTech Cement Ltd",
+    "ticker": "ULTRACEMCO",
+    "name": "UltraTech Cement",
+    "sector": "Cement / Building Materials",
+    "type": "cyclical",
+    "description": "India's largest cement manufacturer by capacity",
+    "emoji": "🏭"
+  },
+  {
+    "folder": "Vodafone Idea Ltd",
+    "name": "Vodafone Idea",
+    "ticker": "IDEA",
+    "sector": "Telecom",
+    "type": "telecom",
+    "description": "3rd-largest telco — chronic losses, negative net worth",
+    "emoji": "📡",
+    "showcaseFor": "Negative-equity stress test (distress detector)"
+  }
+]
