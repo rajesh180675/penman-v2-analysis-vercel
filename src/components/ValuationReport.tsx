@@ -10,7 +10,6 @@ import { buildTerminalEconomics } from "../engine/terminalEconomics";
 import { resolveValuationReadiness } from "../engine/valuationPolicy";
 import { resolveShareBasis, toPerShare } from "../engine/shareCountTools";
 import { AnalysisStatusSummary } from "../engine/analysisStatus";
-import { generateValuationNarrative } from "../engine/narrativeEngine";
 import {
   buildValuationCommandCenter,
   formatHistoricalPercentile,
@@ -21,7 +20,6 @@ import {
 import { useLiveMarketData } from "../hooks/useLiveMarketData";
 import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
 import { AuditSubmissionMeta, persistAuditEvent } from "../lib/audit";
-import { InsightBlock, SectionHeader } from "./shared/DesignSystem";
 import ExpectationBridgePanel from "./ExpectationBridgePanel";
 import SensitivityHeatmap from "./charts/SensitivityHeatmap";
 import FrameworkRadar from "./charts/FrameworkRadar";

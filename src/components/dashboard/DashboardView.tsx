@@ -12,7 +12,7 @@ import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { SegmentData } from "../../engine/segmentParser";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 
-import { VerdictBanner, MetricCard, InsightBlock, ExpandableSection, ConfidenceBadge } from "../shared/DesignSystem";
+import { VerdictBanner, InsightBlock, ExpandableSection, ConfidenceBadge } from "../shared/DesignSystem";
 import KPITile from "./KPITile";
 import ValuationTriangulation from "./ValuationTriangulation";
 import QualitySignalPanel from "./QualitySignalPanel";
@@ -152,10 +152,11 @@ export default function DashboardView({ data, config, traceability = null, ratio
   // ── Confidence level ──────────────────────────────────────────────────────
   const confidence: "high" | "medium" | "low" = useMemo(() => {
     const score = traceability?.parserFidelity?.score ?? 0;
-    if (score >= 85 && commandCenter.frameworkCount >= 3) return "high";
-    if (score >= 60 || commandCenter.frameworkCount >= 2) return "medium";
+    const fwCount = commandCenter.scenarios.length;
+    if (score >= 85 && fwCount >= 3) return "high";
+    if (score >= 60 || fwCount >= 2) return "medium";
     return "low";
-  }, [traceability, commandCenter.frameworkCount]);
+  }, [traceability, commandCenter.scenarios.length]);
 
   // ── Verdict headline ──────────────────────────────────────────────────────
   const ticker = config.ticker ?? config.quality_data_folder ?? "Company";

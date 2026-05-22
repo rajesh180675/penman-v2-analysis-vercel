@@ -220,7 +220,7 @@ export interface ValuationNarrativeInput {
 }
 
 export function generateValuationNarrative(input: ValuationNarrativeInput): string {
-  const { ticker, price, intrinsicFloor, intrinsicCeiling, intrinsicMid, frameworkCount, convergenceSigma, marginOfSafety } = input;
+  const { price, intrinsicFloor, intrinsicCeiling, intrinsicMid, frameworkCount, convergenceSigma, marginOfSafety } = input;
   const sentences: string[] = [];
 
   if (intrinsicFloor != null && intrinsicCeiling != null && frameworkCount >= 2) {

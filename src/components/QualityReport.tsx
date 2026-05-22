@@ -3,7 +3,7 @@ import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import { generateQualityNarrative } from "../engine/narrativeEngine";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
-import { InsightBlock, SectionHeader, VerdictBanner } from "./shared/DesignSystem";
+import { InsightBlock, SectionHeader } from "./shared/DesignSystem";
 import { computeIndiaQualitySignals } from "../engine/indiaQualitySignals";
 import { buildDechowDichevAndRem, buildEarningsQualityCard } from "../engine/earningsQuality";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell, Legend } from "recharts";
@@ -106,9 +106,9 @@ export default function QualityReport({data, traceability = null, traceabilitySu
       {/* Quality verdict — traffic-light summary */}
       {(() => {
         const parserScore = traceability?.parserFidelity?.score ?? null;
-        const reconciliationPass = traceability?.reconciliation?.status === "pass" || traceability?.reconciliation?.status === "info";
+        const reconciliationPass = (traceability?.reconciliation?.status as string) === "pass" || (traceability?.reconciliation?.status as string) === "info";
         const ratioSanityPass = true; // ratio sanity checked elsewhere
-        const mappingCoverage = traceability?.mappingCoverage?.score ?? null;
+        const mappingCoverage = (traceability?.mappingCoverage as { score?: number } | undefined)?.score ?? null;
         const marketDataFresh = true; // default
         const totalChecks = 5;
         const passedChecks = [
