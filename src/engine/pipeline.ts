@@ -156,7 +156,7 @@ export function processCompanyDataFull(
   if (family === "financial-institution" && !scope.blocked) {
     trace("pipeline", "routeToBank", { family, subtype: scope.classification });
     const marketCapCr = config.market_price != null && config.shares_outstanding != null
-      ? (config.market_price * config.shares_outstanding) / 1e7
+      ? config.market_price * config.shares_outstanding
       : null;
     const bankResult = processBankData(filteredData, scope, config, marketCapCr, quality);
     const emptyAnomalies = runAnomalyDetection([], config);

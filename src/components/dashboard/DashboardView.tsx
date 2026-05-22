@@ -12,7 +12,7 @@ import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { SegmentData } from "../../engine/segmentParser";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 
-import { VerdictBanner, InsightBlock, ExpandableSection, ConfidenceBadge, RiskFlag } from "../shared/DesignSystem";
+import { VerdictBanner, InsightBlock, ExpandableSection, ConfidenceBadge, RiskFlag, ProgressRing } from "../shared/DesignSystem";
 import KPITile from "./KPITile";
 import ValuationTriangulation from "./ValuationTriangulation";
 import QualitySignalPanel from "./QualitySignalPanel";
@@ -39,42 +39,34 @@ interface Props {
 }
 
 export default function DashboardView({ data, config, traceability = null, ratioSanity = null, segmentData = null, marketData = null, peerCount = 0, onNavigate }: Props) {
-  if (!data || data.length < 2) {
-    return (
-      <div className="card-base p-12 text-center">
-        <div className="text-4xl mb-4">📊</div>
-        <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">Load company data to see the dashboard</p>
-        <p className="text-sm text-slate-500 mt-2">Upload a Capitaline ZIP or select from the library</p>
-      </div>
-    );
-  }
+  const insufficientData = !data || data.length < 2;
 
-  const latest = data[data.length - 1];
-  const prev = data[data.length - 2];
-  const shareBasis = resolveShareBasis(data, config);
+  const latest = !insufficientData ? data[data.length - 1] : null;
+  const prev = !insufficientData ? data[data.length - 2] : null;
+  const shareBasis = !insufficientData ? resolveShareBasis(data, config) : { shares: null, source: "N/A", confidence: "LOW" as const, dilution_note: "", valuationConfig: config };
   const shares = shareBasis.shares;
   const price = marketData?.price ?? config.market_price ?? null;
-  const marketCap = price != null && shares != null && shares > 0 ? (price * shares) / 1e7 : null; // ₹ Cr
+  const marketCap = price != null && shares != null && shares > 0 ? (price * shares) : null; // ₹ Cr (shares in Cr)
 
   // ── KPI computations ──────────────────────────────────────────────────────
-  const roce = latest.ratios?.ROCE ?? null;
-  const pm = latest.ratios?.PM ?? null;
-  const ato = latest.ratios?.ATO ?? null;
-  const flev = latest.ratios?.FLEV ?? null;
+  const roce = latest?.ratios?.ROCE ?? null;
+  const pm = latest?.ratios?.PM ?? null;
+  const ato = latest?.ratios?.ATO ?? null;
+  const flev = latest?.ratios?.FLEV ?? null;
 
   // Revenue growth (CAGR over available periods)
   const revenueGrowth = useMemo(() => {
-    if (data.length < 2) return null;
+    if (insufficientData || !latest) return null;
     const first = data[0].is.Sales;
     const last = latest.is.Sales;
     if (first <= 0 || last <= 0) return null;
     const years = data.length - 1;
     return Math.pow(last / first, 1 / years) - 1;
-  }, [data, latest]);
+  }, [data, latest, insufficientData]);
 
   // FCF yield
   const fcfYield = useMemo(() => {
-    if (!marketCap || marketCap <= 0) return null;
+    if (!marketCap || marketCap <= 0 || !latest) return null;
     const cfo = latest.cf?.CFO ?? 0;
     const capex = Math.abs(latest.cf?.Capex ?? 0);
     const fcf = cfo - capex;
@@ -82,17 +74,17 @@ export default function DashboardView({ data, config, traceability = null, ratio
   }, [latest, marketCap]);
 
   // Sparkline data for key metrics
-  const roceHistory = data.map(p => ({ period: p.period_end.slice(0, 4), value: p.ratios?.ROCE ?? null }));
-  const revenueHistory = data.map(p => ({ period: p.period_end.slice(0, 4), value: p.is.Sales }));
-  const fcfHistory = data.map(p => ({
+  const roceHistory = (data ?? []).map(p => ({ period: p.period_end.slice(0, 4), value: p.ratios?.ROCE ?? null }));
+  const revenueHistory = (data ?? []).map(p => ({ period: p.period_end.slice(0, 4), value: p.is.Sales }));
+  const fcfHistory = (data ?? []).map(p => ({
     period: p.period_end.slice(0, 4),
     value: (p.cf?.CFO ?? 0) - Math.abs(p.cf?.Capex ?? 0),
   }));
-  const pmHistory = data.map(p => ({ period: p.period_end.slice(0, 4), value: p.ratios?.PM ?? null }));
+  const pmHistory = (data ?? []).map(p => ({ period: p.period_end.slice(0, 4), value: p.ratios?.PM ?? null }));
 
   // EPV
-  const epv = useMemo(() => computeEPV(data, config), [data, config]);
-  const epvPerShare = epv && shares != null && shares > 0 ? (epv.epvEquity / shares) * 1e7 : null;
+  const epv = useMemo(() => insufficientData ? null : computeEPV(data, config), [data, config, insufficientData]);
+  const epvPerShare = epv && shares != null && shares > 0 ? epv.epvEquity / shares : null;
 
   // Moat scorer (5-dimension Buffett/Munger framework)
   const moat = useMemo(() => computeMoatScore(data, config), [data, config]);
@@ -178,6 +170,16 @@ export default function DashboardView({ data, config, traceability = null, ratio
     return `${ticker} — analysis complete`;
   }, [verdict, ticker, marginOfSafety, intrinsicRange, price, distress]);
 
+  if (insufficientData) {
+    return (
+      <div className="card-base p-12 text-center">
+        <div className="text-4xl mb-4">📊</div>
+        <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">Load company data to see the dashboard</p>
+        <p className="text-sm text-slate-500 mt-2">Upload a Capitaline ZIP or select from the library</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* ═══ TIER 1: VERDICT (always visible first) ═══════════════════════════ */}
@@ -191,7 +193,7 @@ export default function DashboardView({ data, config, traceability = null, ratio
           <div>
             <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100">{ticker}</h1>
             <p className="text-xs text-slate-500">
-              {config.company_type ?? "Industrial"} · {data.length} periods · {latest.period_end.slice(0, 4)}
+              {config.company_type ?? "Industrial"} · {data.length} periods · {latest!.period_end.slice(0, 4)}
             </p>
           </div>
         </div>
@@ -203,6 +205,7 @@ export default function DashboardView({ data, config, traceability = null, ratio
             </div>
           )}
           <ConfidenceBadge level={confidence} />
+          <ProgressRing value={data.length >= 10 ? 95 : data.length >= 5 ? 70 : 40} size={36} strokeWidth={3} label="Coverage" />
         </div>
       </div>
 
