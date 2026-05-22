@@ -610,7 +610,7 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
  ratioRanges: {
  ROCE: [0.45, 0.50], // actual 0.4764 ± 5%
  RNOA: [1.00, 1.12], // actual 1.0593 ± 5%
- NBC: [-0.030, -0.020], // ITC is net-cash (FA >> FO); NBC = NFE/|NFO| < 0
+ NBC: [0.020, 0.035], // ITC is net-cash (FA >> FO); NBC = NFE/NFO = neg/neg > 0 (return on net financial assets)
  },
     },
   },

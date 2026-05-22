@@ -619,7 +619,7 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
 	const cseSmall = Math.abs(avgCSE) < Math.max(0.005 * Math.max(cur.bs.TA, 1), 1);
 	const ROCE = !cseSmall && avgCSE > 0 ? cur.is.CNI / avgCSE : null;
 	const RNOA = !noaSmall ? cur.is.OI / avgNOA : null;
-	const NBC = Math.abs(avgNFO) > 1 ? cur.is.NFE / Math.abs(avgNFO) : null;
+	const NBC = Math.abs(avgNFO) > 1 ? cur.is.NFE / avgNFO : null;
 	const SPREAD = RNOA != null && NBC != null ? RNOA - NBC : null;
 	const FLEV = !cseSmall && cur.bs.CSE > 0 ? cur.bs.NFO / cur.bs.CSE : null;
 	const FLEV_bridge = !cseSmall ? avgNFO / avgCSE : null;
@@ -705,8 +705,8 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
   // Use NOA denominator for Eq.16 bridge consistency (field name retained for backward compatibility)
   const CoreOtherItems_OA = !noaSmall ? cur.is.OtherItems / avgNOA : null;
   const UOI_OA = !noaSmall ? cur.cu.UOI / avgNOA : null;
-	const CoreNBC = Math.abs(avgNFO) > 1 ? cur.cu.CoreNFE / Math.abs(avgNFO) : null;
-	const UFE_NFO = Math.abs(avgNFO) > 1 ? cur.cu.UFE / Math.abs(avgNFO) : null;
+	const CoreNBC = Math.abs(avgNFO) > 1 ? cur.cu.CoreNFE / avgNFO : null;
+	const UFE_NFO = Math.abs(avgNFO) > 1 ? cur.cu.UFE / avgNFO : null;
   const CoreRNOA = !noaSmall ? cur.cu.CoreOI / avgNOA : null;
   const CoreSPREAD = CoreRNOA != null && CoreNBC != null ? CoreRNOA - CoreNBC : null;
   let ROCE_eq16_reconstructed: number | null = null;
