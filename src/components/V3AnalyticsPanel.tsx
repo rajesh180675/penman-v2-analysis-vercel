@@ -10,6 +10,7 @@ import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimE
 import { detectDistress } from "../engine/distressDetector";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
+import { SectionHeader } from "./shared/DesignSystem";
 import {
   computeV3Analytics,
   computeSensitivityMatrix,
@@ -178,6 +179,12 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
 
   return (
     <div className="space-y-4">
+      <SectionHeader
+        title="V3 Analytics"
+        subtitle="Dirty surplus, terminal anchoring, accruals, event flags, and confidence scoring"
+        icon="🔬"
+      />
+
       {traceabilitySummary && (
         <TraceabilityTrustPanel
           title="V3 Analytics Trust Gate"
