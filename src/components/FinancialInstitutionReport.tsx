@@ -12,7 +12,8 @@ import type {
 import type { BankPeriodMetrics } from "../engine/bankPipeline";
 import type { NbfcSidecarData } from "../engine/nbfcSidecarLoader";
 import type { EngineConfig } from "../engine/types";
-import { SectionHeader } from "./shared/DesignSystem";
+import { SectionHeader, InsightBlock } from "./shared/DesignSystem";
+import { generateBankNarrative } from "../engine/narrativeEngine";
 import type {
   BankAssetQualityResult,
   CapitalBufferSeverity,
@@ -1380,6 +1381,25 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
         subtitle={`${bankResult.subtype} · ${bankResult.periods.length} periods — NIM, credit costs, capital adequacy, and valuation`}
         icon="🏦"
       />
+
+      {/* Bank narrative insight — auto-generated */}
+      {(() => {
+        const latestMetrics = bankResult.bankMetrics?.[bankResult.bankMetrics.length - 1];
+        if (!latestMetrics) return null;
+        const narrative = generateBankNarrative({
+          ticker: config?.ticker ?? companyId ?? "Bank",
+          nim: latestMetrics.nim ?? null,
+          costToIncome: latestMetrics.costToIncome ?? null,
+          gnpa: latestMetrics.gnpa ?? null,
+          nnpa: latestMetrics.nnpa ?? null,
+          pcr: latestMetrics.pcr ?? null,
+          roa: latestMetrics.roa ?? null,
+          roe: latestMetrics.roe ?? null,
+          crar: latestMetrics.crar ?? null,
+          leverageMultiple: latestMetrics.leverageMultiple ?? null,
+        });
+        return narrative ? <InsightBlock text={narrative} icon="🏦" /> : null;
+      })()}
 
       <div className="flex justify-between items-start gap-3 flex-wrap">
         <div>
