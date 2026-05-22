@@ -47,6 +47,13 @@ export interface SegmentData {
   }>;
 }
 
+/** All segment dimensions parsed from a company's ZIP — business, geographic, and mixed. */
+export interface AllSegmentData {
+  business: SegmentData | null;
+  geographic: SegmentData | null;
+  mixed: SegmentData | null;
+}
+
 /** Known section headers in Capitaline segment files */
 const SECTION_HEADERS = new Set([
   "REVENUE", "RESULT", "OTHER INFORMATION",

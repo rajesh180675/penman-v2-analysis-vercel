@@ -26,7 +26,7 @@ interface Props {
     debug?: CapitalineParseDebug,
     meta?: AuditSubmissionMeta,
     parserDiagnostics?: SourceParserDiagnostics | null,
-    segmentData?: import("../engine/segmentParser").SegmentData | null,
+    segmentData?: import("../engine/segmentParser").AllSegmentData | null,
     // Phase A — optional standalone dataset for dual-scope (consolidated + standalone)
     // analysis. When present, App computes the gap (cons − stan = subsidiary
     // contribution). null when only consolidated was loaded.

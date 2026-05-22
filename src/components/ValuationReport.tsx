@@ -40,7 +40,7 @@ import {
 } from "recharts";
 import type { LossMakerValuationResult } from "../engine/lossMakerValuation";
 import type { SanityAssessment } from "../engine/ratioSanity";
-import type { SegmentData } from "../engine/segmentParser";
+import type { AllSegmentData } from "../engine/segmentParser";
 
 interface Props {
   data: RecastPeriod[];
@@ -54,7 +54,7 @@ interface Props {
   /** Phase 9 — anchor ratio bands. Surfaces economically implausible outputs. */
   ratioSanity?: SanityAssessment | null;
   /** Phase C5 — parsed segment data for SOTP valuation. */
-  segmentData?: SegmentData | null;
+  segmentData?: AllSegmentData | null;
 }
 
 type CVMethod = "CV1" | "CV2" | "CV3";
@@ -136,7 +136,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
       config: effectiveConfig,
       marketData: liveMarketData,
       analysisStatus,
-      segmentData,
+      segmentData: segmentData?.business ?? null,
     }),
     [analysisStatus, data, effectiveConfig, liveMarketData, segmentData],
   );

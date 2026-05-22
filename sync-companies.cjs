@@ -5,160 +5,95 @@ const JSZip = require('jszip');
 
 const companiesDir = path.join(__dirname, 'public', 'data', 'companies');
 const registryFile = path.join(companiesDir, 'registry.json');
+const metadataFile = path.join(companiesDir, 'companies-metadata.json');
 
 // Fixed epoch for deterministic ZIP generation — without this JSZip writes
 // current timestamps into each entry header, so every dev-server start
 // rewrites all 22 ZIPs with new bytes and git marks them modified.
 const ZIP_FIXED_DATE = new Date('2024-01-01T00:00:00Z');
 
-// Premium baseline metadata for the 13 preloaded companies.
-// KEYS MUST MATCH THE EXACT DISK FOLDER NAME — strict lookup first, then a
-// case-insensitive fallback below to surface drift loudly. A casing mismatch
-// silently falling through to the inferred-ticker path produces wrong NSE
-// tickers (e.g. "Bajaj Finance" -> "BAJAJFINANC" via slice(0, 12) instead of
-// "BAJFINANCE").
-const BASELINE_METADATA = {
-  "ITC": {
-    name: "ITC Ltd",
-    ticker: "ITC",
-    sector: "FMCG / Cigarettes",
-    type: "conglomerate",
-    description: "Diversified conglomerate \u2014 cigarettes, FMCG, hotels, paper, agri",
-    emoji: "\ud83d\udeac",
-    showcaseFor: "SOTP valuation across multiple segments",
-  },
-  "HDFC Bank": {
-    name: "HDFC Bank",
-    ticker: "HDFCBANK",
-    sector: "Banking",
-    type: "bank",
-    description: "Largest private-sector bank by assets",
-    emoji: "\ud83c\udfe6",
-    showcaseFor: "Bank-specific quality_indicators pipeline",
-  },
-  "ICICI Bank": {
-    name: "ICICI Bank",
-    ticker: "ICICIBANK",
-    sector: "Banking",
-    type: "bank",
-    description: "Universal bank with strong digital franchise",
-    emoji: "\ud83c\udfe6",
-  },
-  "KOTAKBANK": {
-    name: "Kotak Mahindra Bank",
-    ticker: "KOTAKBANK",
-    sector: "Banking",
-    type: "bank",
-    description: "Premium private bank with conservative loan book",
-    emoji: "\ud83c\udfe6",
-  },
-  "SBIN": {
-    name: "State Bank of India",
-    ticker: "SBIN",
-    sector: "Banking (PSU)",
-    type: "bank",
-    description: "Largest public-sector bank",
-    emoji: "\ud83c\udfdb\ufe0f",
-  },
-  "Bajaj Finance": {
-    name: "Bajaj Finance",
-    ticker: "BAJFINANCE",
-    sector: "NBFC",
-    type: "nbfc",
-    description: "Consumer finance NBFC with retail loan focus",
-    emoji: "\ud83d\udcb3",
-    showcaseFor: "NBFC routing \u2014 borrowings/equity leverage frame",
-  },
-  "Life Insurance Corporation of India": {
-    name: "LIC",
-    ticker: "LICI",
-    sector: "Insurance (Life)",
-    type: "insurance",
-    description: "State-owned life insurer, dominant market share",
-    emoji: "\ud83d\udee1\ufe0f",
-    showcaseFor: "Insurance fail-closed (no equity-side valuation)",
-  },
-  "Power Grid Corporation of India Ltd": {
-    name: "Power Grid",
-    ticker: "POWERGRID",
-    sector: "Utility (PSU)",
-    type: "utility",
-    description: "Inter-state electricity transmission monopoly",
-    emoji: "\u26a1",
-    showcaseFor: "Regulated utility with stable returns",
-  },
-  "Tata Consultancy Services Ltd": {
-    name: "TCS",
-    ticker: "TCS",
-    sector: "IT Services",
-    type: "it-services",
-    description: "Global IT services leader, capital-light",
-    emoji: "\ud83d\udcbb",
-    showcaseFor: "IT-services detector + moat scorer awareness",
-  },
-  "Tata Steel": {
-    name: "Tata Steel",
-    ticker: "TATASTEEL",
-    sector: "Metals (Cyclical)",
-    type: "cyclical",
-    description: "Integrated steel producer, India + Europe",
-    emoji: "\ud83c\udfd7\ufe0f",
-    showcaseFor: "Cyclical normalization + cycle-aware terminal RE",
-  },
-  "Paytm": {
-    name: "Paytm (One97)",
-    ticker: "PAYTM",
-    sector: "Fintech",
-    type: "loss-maker",
-    description: "Digital payments + financial services platform",
-    emoji: "\ud83d\udcf1",
-    showcaseFor: "Loss-maker valuation pipeline (no positive earnings)",
-  },
-  "Reliance Industries": {
-    name: "Reliance Industries",
-    ticker: "RELIANCE",
-    sector: "Conglomerate",
-    type: "conglomerate",
-    description: "O2C + telecom (Jio) + retail + new energy",
-    emoji: "\ud83d\udee2\ufe0f",
-    showcaseFor: "Mixed conglomerate routing + segment-aware SOTP",
-  },
-  "Vodafone Idea Ltd": {
-    name: "Vodafone Idea",
-    ticker: "IDEA",
-    sector: "Telecom",
-    type: "telecom",
-    description: "3rd-largest telco \u2014 chronic losses, negative net worth",
-    emoji: "\ud83d\udce1",
-    showcaseFor: "Negative-equity stress test (distress detector)",
-  }
-};
-
-// Pre-build a case-insensitive lookup so a folder rename like
-// "bajaj finance" -> "Bajaj Finance" doesn't silently fall through.
-const BASELINE_METADATA_CI = {};
-for (const [k, v] of Object.entries(BASELINE_METADATA)) {
-  BASELINE_METADATA_CI[k.toLowerCase()] = { _key: k, ...v };
-}
-
-function lookupBaselineMetadata(folderName) {
-  if (Object.prototype.hasOwnProperty.call(BASELINE_METADATA, folderName)) {
-    return BASELINE_METADATA[folderName];
-  }
-  const ci = BASELINE_METADATA_CI[folderName.toLowerCase()];
-  if (ci) {
-    console.warn(
-      `WARN Metadata key "${ci._key}" does not match disk folder "${folderName}" - ` +
-      `update sync-companies.cjs BASELINE_METADATA so keys match disk casing exactly.`
-    );
-    const { _key, ...rest } = ci;
-    return rest;
-  }
-  return null;
-}
+// ══════════════════════════════════════════════════════════════════
+// Metadata resolution — companies-metadata.json is the SINGLE source of truth.
+// No hardcoded company list. Adding a company = add an entry to
+// companies-metadata.json + drop the data folder.
+//
+// If a folder exists on disk but has no entry in companies-metadata.json,
+// the script auto-adds an inferred entry and warns the user to verify the
+// NSE ticker.
+//
+// Chain: companies-metadata.json → (this script) → registry.json
+//        registry.json → (sync-tickers.cjs) → nseSymbolRegistry.ts
+// ══════════════════════════════════════════════════════════════════
 
 function toTitleCase(str) {
   return str.replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/**
+ * Infer metadata from a folder name when no entry exists in companies-metadata.json.
+ * The inferred ticker is a best-guess (folder name → uppercase, no spaces,
+ * max 12 chars). It is OFTEN WRONG for Indian companies (e.g. "Bajaj Finance"
+ * → "BAJAJFINANCE" when the real NSE ticker is "BAJFINANCE").
+ */
+function inferMetadata(folderName) {
+  const name = toTitleCase(folderName);
+  const ticker = folderName.replace(/\s+/g, '').replace(/Ltd$|Limited$/i, '').toUpperCase().slice(0, 12);
+
+  let type = "industrial";
+  const lf = folderName.toLowerCase();
+  if (lf.includes("bank")) type = "bank";
+  else if (lf.includes("nbfc") || lf.includes("finance") || lf.includes("capital")) type = "nbfc";
+  else if (lf.includes("insurance") || lf.includes("lic")) type = "insurance";
+  else if (lf.includes("utility") || lf.includes("power") || lf.includes("grid") || lf.includes("energy")) type = "utility";
+  else if (lf.includes("telecom") || lf.includes("communication")) type = "telecom";
+  else if (lf.includes("tcs") || lf.includes("consultancy") || lf.includes("software") || lf.includes("tech")) type = "it-services";
+
+  let emoji = "\ud83c\udfe2";
+  if (type === "bank") emoji = "\ud83c\udfe6";
+  else if (type === "nbfc") emoji = "\ud83d\udcb3";
+  else if (type === "insurance") emoji = "\ud83d\udee1\ufe0f";
+  else if (type === "utility") emoji = "\u26a1";
+  else if (type === "telecom") emoji = "\ud83d\udce1";
+  else if (type === "it-services") emoji = "\ud83d\udcbb";
+
+  const sector = toTitleCase(type.replace("-", " "));
+  const description = `Capitaline financial dataset for ${name}.`;
+  return { folder: folderName, name, ticker, sector, type, description, emoji };
+}
+
+/**
+ * Load companies-metadata.json. Returns a Map of folder → metadata.
+ * Creates the file if it doesn't exist.
+ */
+function loadMetadata() {
+  if (!fs.existsSync(metadataFile)) {
+    fs.writeFileSync(metadataFile, '[]\n');
+    return new Map();
+  }
+  try {
+    const arr = JSON.parse(fs.readFileSync(metadataFile, 'utf8'));
+    return new Map(arr.map(entry => [entry.folder, entry]));
+  } catch (err) {
+    console.error(`ERROR: Invalid companies-metadata.json:`, err.message);
+    process.exit(1);
+  }
+}
+
+/**
+ * Save the metadata map back to companies-metadata.json (sorted, idempotent).
+ */
+function saveMetadata(metadataMap) {
+  const arr = [...metadataMap.values()].sort((a, b) =>
+    a.folder < b.folder ? -1 : a.folder > b.folder ? 1 : 0
+  );
+  const json = JSON.stringify(arr, null, 2) + '\n';
+  // Only write if changed
+  if (fs.existsSync(metadataFile)) {
+    const existing = fs.readFileSync(metadataFile, 'utf8');
+    if (existing === json) return false;
+  }
+  fs.writeFileSync(metadataFile, json);
+  return true;
 }
 
 /**
@@ -302,57 +237,7 @@ async function syncAndPackCompany(folderName) {
     hasStandalone = true;
   }
 
-  // Resolve metadata: BASELINE > metadata.json > inferred-fallback
-  let metadata = lookupBaselineMetadata(folderName);
-
-  if (!metadata) {
-    const metadataPath = path.join(companyPath, 'metadata.json');
-    if (fs.existsSync(metadataPath)) {
-      try {
-        metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
-        console.log(`+ Loaded custom metadata.json for ${folderName}`);
-      } catch (err) {
-        console.error(`Warning: Invalid metadata.json in ${folderName}, applying fallbacks.`, err);
-      }
-    }
-  }
-
-  if (!metadata) {
-    // Smart fallback for new folders. EMITS A WARNING - if a company falls
-    // into this branch, the inferred ticker is almost certainly wrong
-    // (slice(0, 12) on the folder name). Add to BASELINE_METADATA above.
-    console.warn(
-      `WARN No metadata for "${folderName}" - falling through to inferred ticker. ` +
-      `Add it to BASELINE_METADATA in sync-companies.cjs (or drop a metadata.json ` +
-      `into the folder) to set the correct NSE ticker.`
-    );
-    const name = toTitleCase(folderName);
-    const ticker = folderName.replace(/\s+/g, '').toUpperCase().slice(0, 12);
-
-    let type = "industrial";
-    const lf = folderName.toLowerCase();
-    if (lf.includes("bank")) type = "bank";
-    else if (lf.includes("nbfc") || lf.includes("finance") || lf.includes("capital")) type = "nbfc";
-    else if (lf.includes("insurance") || lf.includes("lic")) type = "insurance";
-    else if (lf.includes("utility") || lf.includes("power") || lf.includes("grid") || lf.includes("energy")) type = "utility";
-    else if (lf.includes("telecom") || lf.includes("communication")) type = "telecom";
-    else if (lf.includes("tcs") || lf.includes("consultancy") || lf.includes("software") || lf.includes("tech")) type = "it-services";
-
-    let emoji = "\ud83c\udfe2";
-    if (type === "bank") emoji = "\ud83c\udfe6";
-    else if (type === "nbfc") emoji = "\ud83d\udcb3";
-    else if (type === "insurance") emoji = "\ud83d\udee1\ufe0f";
-    else if (type === "utility") emoji = "\u26a1";
-    else if (type === "telecom") emoji = "\ud83d\udce1";
-    else if (type === "it-services") emoji = "\ud83d\udcbb";
-
-    const sector = toTitleCase(type.replace("-", " "));
-    const description = `Pre-loaded Capitaline financial dataset for ${name}.`;
-    metadata = { name, ticker, sector, type, description, emoji };
-    console.log(`+ Discovered new company "${name}" with inferred type: ${type}`);
-  }
-
-  return { folder: folderName, ...metadata, hasStandalone };
+  return hasStandalone;
 }
 
 async function run() {
@@ -361,9 +246,43 @@ async function run() {
     process.exit(1);
   }
 
-  // Load existing registry to preserve blob URLs AND ticker overrides.
-  // Ticker is a hand-corrected NSE-equivalence field. Preserving it across
-  // runs makes manual tweaks sticky.
+  // Phase 1: Load metadata and discover new folders
+  const metadataMap = loadMetadata();
+  const items = fs.readdirSync(companiesDir);
+  let newCompanies = 0;
+
+  for (const item of items) {
+    const itemPath = path.join(companiesDir, item);
+    if (!fs.statSync(itemPath).isDirectory()) continue;
+    if (metadataMap.has(item)) continue;
+
+    // New folder without metadata entry — auto-add with inferred values
+    const inferred = inferMetadata(item);
+    metadataMap.set(item, inferred);
+    newCompanies++;
+    console.warn(
+      `\n\u26a0  NEW COMPANY: "${item}"\n` +
+      `   Inferred: ticker=${inferred.ticker}, type=${inferred.type}\n` +
+      `   ACTION REQUIRED: Verify the NSE ticker in companies-metadata.json\n`
+    );
+  }
+
+  // Remove stale entries (folder deleted from disk)
+  for (const folder of metadataMap.keys()) {
+    const folderPath = path.join(companiesDir, folder);
+    if (!fs.existsSync(folderPath) || !fs.statSync(folderPath).isDirectory()) {
+      console.warn(`WARN Removing stale metadata entry for "${folder}" (folder no longer exists)`);
+      metadataMap.delete(folder);
+    }
+  }
+
+  // Save updated companies-metadata.json if anything changed
+  if (saveMetadata(metadataMap)) {
+    console.log(`+ Updated companies-metadata.json (${metadataMap.size} entries)`);
+  }
+
+  // Phase 2: Package ZIPs and build registry.json
+  // Load existing registry to preserve blob URLs.
   let existingRegistry = [];
   if (fs.existsSync(registryFile)) {
     try {
@@ -374,43 +293,31 @@ async function run() {
   }
   const existingByFolder = new Map(existingRegistry.map(c => [c.folder, c]));
 
-  const items = fs.readdirSync(companiesDir);
   const companyList = [];
 
-  for (const item of items) {
-    const itemPath = path.join(companiesDir, item);
-    if (fs.statSync(itemPath).isDirectory()) {
-      const company = await syncAndPackCompany(item);
+  for (const [folder, meta] of metadataMap) {
+    const folderPath = path.join(companiesDir, folder);
+    if (!fs.existsSync(folderPath)) continue;
 
-      const existing = existingByFolder.get(item);
-      if (existing) {
-        if (existing.blobUrl) company.blobUrl = existing.blobUrl;
-        if (existing.standaloneBlobUrl) company.standaloneBlobUrl = existing.standaloneBlobUrl;
-        if (existing.qualityIndicatorsBlobUrl) company.qualityIndicatorsBlobUrl = existing.qualityIndicatorsBlobUrl;
-        if (existing.sidecarBlobs) company.sidecarBlobs = existing.sidecarBlobs;
+    const hasStandalone = await syncAndPackCompany(folder);
+    const company = { folder, ...meta, hasStandalone };
 
-        // Ticker drift warning. BASELINE_METADATA is the source of truth -
-        // overriding belongs in BASELINE_METADATA (or a metadata.json sidecar
-        // in the company folder), not in the generated registry. We do NOT
-        // preserve the registry value because it might be a stale slice(0,12)
-        // fallback artifact from when the BASELINE entry was missing.
-        if (existing.ticker && existing.ticker !== company.ticker) {
-          console.warn(
-            `WARN Ticker drift on "${item}": baseline=${company.ticker}, registry=${existing.ticker}. ` +
-            `Using baseline. If "${existing.ticker}" is correct, update BASELINE_METADATA in sync-companies.cjs.`
-          );
-        }
-      }
-
-      companyList.push(company);
+    // Preserve blob URLs from previous registry
+    const existing = existingByFolder.get(folder);
+    if (existing) {
+      if (existing.blobUrl) company.blobUrl = existing.blobUrl;
+      if (existing.standaloneBlobUrl) company.standaloneBlobUrl = existing.standaloneBlobUrl;
+      if (existing.qualityIndicatorsBlobUrl) company.qualityIndicatorsBlobUrl = existing.qualityIndicatorsBlobUrl;
+      if (existing.sidecarBlobs) company.sidecarBlobs = existing.sidecarBlobs;
     }
+
+    companyList.push(company);
   }
 
   // Byte-order sort for cross-OS deterministic registry.json
   companyList.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
   // Idempotent write - only touch the file if the JSON actually changed.
-  // Stops the dev server from inflating git status on every restart.
   const newJson = JSON.stringify(companyList, null, 2) + "\n";
   let changed = true;
   if (fs.existsSync(registryFile)) {
@@ -419,7 +326,7 @@ async function run() {
   }
   if (changed) {
     fs.writeFileSync(registryFile, newJson);
-    console.log(`\nRegistry compiled. Wrote ${companyList.length} companies to ${registryFile}\n`);
+    console.log(`\nRegistry compiled. Wrote ${companyList.length} companies to registry.json\n`);
   } else {
     console.log(`\nRegistry already up to date (${companyList.length} companies). No write needed.\n`);
   }

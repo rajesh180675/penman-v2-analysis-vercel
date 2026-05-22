@@ -1,12 +1,12 @@
 import type { AnalysisTraceabilityEnvelope } from "../../engine/analysisTraceability";
 import type { SanityAssessment } from "../../engine/ratioSanity";
-import type { SegmentData } from "../../engine/segmentParser";
+import type { AllSegmentData } from "../../engine/segmentParser";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 
 interface Props {
   traceability?: AnalysisTraceabilityEnvelope | null;
   ratioSanity?: SanityAssessment | null;
-  segmentData?: SegmentData | null;
+  segmentData?: AllSegmentData | null;
   marketData?: LiveMarketDataSnapshot | null;
 }
 
@@ -57,10 +57,11 @@ export default function QualitySignalPanel({ traceability, ratioSanity, segmentD
   });
 
   // Segment data
+  const bizSeg = segmentData?.business ?? null;
   signals.push({
     label: "Segment Data",
-    status: segmentData && segmentData.segments.length >= 2 ? "pass" : "unavailable",
-    detail: segmentData ? `${segmentData.segments.length} segments (${segmentData.segmentationType})` : "Not available in ZIP",
+    status: bizSeg && bizSeg.segments.length >= 2 ? "pass" : "unavailable",
+    detail: bizSeg ? `${bizSeg.segments.length} segments (${bizSeg.segmentationType})` : "Not available in ZIP",
   });
 
   // Market data

@@ -107,7 +107,7 @@ export function App() {
   const [standaloneRawData, setStandaloneRawData] = useState<RawPeriodData[] | null>(null);
   const [debugInfo, setDebugInfo] = useState<CapitalineParseDebug | null>(null);
   const [parserDiagnostics, setParserDiagnostics] = useState<SourceParserDiagnostics | null>(null);
-  const [segmentData, setSegmentData] = useState<import("./engine/segmentParser").SegmentData | null>(null);
+  const [segmentData, setSegmentData] = useState<import("./engine/segmentParser").AllSegmentData | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("upload");
   const [config, setConfig] = useState<EngineConfig>(DEFAULT_CONFIG);
   const [darkMode, setDarkMode] = useState(false);
@@ -551,7 +551,7 @@ export function App() {
       debug?: CapitalineParseDebug,
       meta?: AuditSubmissionMeta,
       nextParserDiagnostics?: SourceParserDiagnostics | null,
-      nextSegmentData?: import("./engine/segmentParser").SegmentData | null,
+      nextSegmentData?: import("./engine/segmentParser").AllSegmentData | null,
       // Phase A — optional standalone dataset for dual-scope analysis.
       // Library cards with hasStandalone=true pass this in; manual uploads pass null.
       nextStandaloneData?: RawPeriodData[] | null,
