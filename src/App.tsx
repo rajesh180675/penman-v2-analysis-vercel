@@ -59,9 +59,10 @@ const BusinessModelReport = lazy(() => import("./components/business-model/Busin
 const RunInspector = lazy(() => import("./components/RunInspector"));
 const CompanyWorkspace = lazy(() => import("./components/CompanyWorkspace"));
 const WatchlistDashboard = lazy(() => import("./components/WatchlistDashboard"));
+const InvestmentThesis = lazy(() => import("./components/InvestmentThesis"));
 const DashboardView = lazy(() => import("./components/dashboard/DashboardView"));
 
-type TabId = "upload" | "dashboard" | "watchlist" | "workspace" | "inspector" | "statements" | "ratios" | "forecast" | "valuation" | "bank" | "quality" | "scope" | "atlas" | "business" | "comparison" | "report" | "regression" | "v3analytics" | "debug";
+type TabId = "upload" | "dashboard" | "watchlist" | "workspace" | "inspector" | "statements" | "ratios" | "forecast" | "valuation" | "bank" | "quality" | "scope" | "atlas" | "business" | "comparison" | "report" | "thesis" | "regression" | "v3analytics" | "debug";
 
 const TABS: { id: TabId; label: string; icon: string; needsData?: boolean; group: string }[] = [
   { id: "upload", label: "Data", icon: "📂", group: "input" },
@@ -80,6 +81,7 @@ const TABS: { id: TabId; label: string; icon: string; needsData?: boolean; group
   { id: "bank", label: "Bank", icon: "🏦", needsData: true, group: "valuation" },
   { id: "comparison", label: "Comparison", icon: "👥", needsData: true, group: "peers" },
   { id: "report", label: "Report", icon: "📚", needsData: true, group: "export" },
+  { id: "thesis", label: "Thesis", icon: "📋", needsData: true, group: "export" },
   { id: "regression", label: "Regression", icon: "🧪", needsData: true, group: "advanced" },
   { id: "v3analytics", label: "V3 Analytics", icon: "🔬", needsData: true, group: "advanced" },
   { id: "debug", label: "Debug", icon: "🛠", group: "advanced" },
@@ -1232,6 +1234,9 @@ nbfcSidecar={nbfcSidecar}
               />
             )}
             {activeTab === "comparison" && <ComparisonReport registry={registry} config={config} publication={comparisonPublication} />}
+            {activeTab === "thesis" && hasRecast && (
+              <InvestmentThesis data={recastData!} config={config} />
+            )}
             {activeTab === "report" && hasRecast && (
               <AcademicReport
                 data={recastData!}
