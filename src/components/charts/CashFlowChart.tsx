@@ -1,5 +1,6 @@
 import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, ReferenceLine } from "recharts";
 import type { RecastPeriod } from "../../engine/types";
+import { fmtCr, CHART_COLORS, TOOLTIP_STYLE } from "./chartUtils";
 
 interface Props {
   data: RecastPeriod[];
@@ -98,15 +99,15 @@ export default function CashFlowChart({ data, unit = "₹ Cr" }: Props) {
           <ComposedChart data={series} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />
-            <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} fontSize={10} />
+            <YAxis tickFormatter={(v) => fmtCr(v)} fontSize={10} />
             <Tooltip
               formatter={((value: number) => [`${unit} ${value?.toLocaleString("en-IN")}`, ""]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
+              contentStyle={TOOLTIP_STYLE}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <ReferenceLine y={0} stroke="#94a3b8" />
-            <Bar dataKey="CFO" fill="#10b981" fillOpacity={0.85} radius={[3, 3, 0, 0]} />
-            <Bar dataKey="CNI" fill="#3b82f6" fillOpacity={0.7} radius={[3, 3, 0, 0]} />
+            <Bar dataKey="CFO" fill={CHART_COLORS.positive} fillOpacity={0.85} radius={[3, 3, 0, 0]} />
+            <Bar dataKey="CNI" fill={CHART_COLORS.info} fillOpacity={0.7} radius={[3, 3, 0, 0]} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -118,16 +119,16 @@ export default function CashFlowChart({ data, unit = "₹ Cr" }: Props) {
           <ComposedChart data={series} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />
-            <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} fontSize={10} />
+            <YAxis tickFormatter={(v) => fmtCr(v)} fontSize={10} />
             <Tooltip
               formatter={((value: number) => [`${unit} ${value?.toLocaleString("en-IN")}`, ""]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
+              contentStyle={TOOLTIP_STYLE}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="Capex" stackId="deploy" fill="#6366f1" fillOpacity={0.85} radius={[0, 0, 0, 0]} />
-            <Bar dataKey="Dividends" stackId="deploy" fill="#a855f7" fillOpacity={0.85} radius={[0, 0, 0, 0]} />
-            <Bar dataKey="Buybacks" stackId="deploy" fill="#ec4899" fillOpacity={0.85} radius={[3, 3, 0, 0]} />
-            <Line type="monotone" dataKey="CFO" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4 }} name="CFO (line)" />
+            <Bar dataKey="Capex" stackId="deploy" fill={CHART_COLORS.primary} fillOpacity={0.85} radius={[0, 0, 0, 0]} />
+            <Bar dataKey="Dividends" stackId="deploy" fill={CHART_COLORS.tertiary} fillOpacity={0.85} radius={[0, 0, 0, 0]} />
+            <Bar dataKey="Buybacks" stackId="deploy" fill={CHART_COLORS.accent} fillOpacity={0.85} radius={[3, 3, 0, 0]} />
+            <Line type="monotone" dataKey="CFO" stroke={CHART_COLORS.positive} strokeWidth={2.5} dot={{ r: 4 }} name="CFO (line)" />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
