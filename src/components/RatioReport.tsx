@@ -3,7 +3,7 @@ import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import { generateRatiosNarrative } from "../engine/narrativeEngine";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
-import { SectionHeader, InsightBlock, FormulaTooltip, Sparkline } from "./shared/DesignSystem";
+import { SectionHeader, InsightBlock } from "./shared/DesignSystem";
 import { useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
