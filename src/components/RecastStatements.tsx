@@ -146,8 +146,9 @@ export default function RecastStatements({ data, traceability = null, traceabili
             </tr></thead>
             <tbody className="divide-y divide-slate-100">
               <TR label="Sales (Revenue)"               vals={data.map((d) => f(d.is.Sales))} />
-              <TR label="  ↳ Sales YoY %"               vals={yoySales.map((v) => fp(v))} />
+              <TRGrowth label="  ↳ Sales YoY %"           vals={yoySales} />
               <TR label="Profit After Tax (PAT)"        vals={data.map((d) => f(d.is.PAT))} />
+              <TRGrowth label="  ↳ PAT YoY %"            vals={data.map((d, i) => i === 0 ? null : (data[i - 1].is.PAT !== 0 ? (d.is.PAT - data[i - 1].is.PAT) / Math.abs(data[i - 1].is.PAT) : null))} />
               <TR label="OCI (after-tax)"               vals={data.map((d) => f(d.is.OCI))} />
               <TR label="TCI (group)"                   vals={data.map((d) => f(d.is.TCI))} />
               <TR label="NCI Income Share (MII)"        vals={data.map((d) => f(d.is.MII))} />
@@ -271,11 +272,35 @@ const ACC: Record<string, string> = { green: "text-emerald-700 font-semibold", b
 
 function TR({ label, vals, bold, accent }: { label: string; vals: string[]; bold?: boolean; accent?: string }) {
   return (
-    <tr className={`hover:bg-slate-50 ${bold ? "bg-indigo-50/30" : ""}`}>
-      <td className={`px-4 py-2 text-slate-700 whitespace-nowrap text-sm ${bold ? "font-semibold" : ""}`}>{label}</td>
+    <tr className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 ${bold ? "bg-indigo-50/30 dark:bg-indigo-950/20" : ""}`}>
+      <td className={`px-4 py-2 text-slate-700 dark:text-slate-300 whitespace-nowrap text-sm ${bold ? "font-semibold" : ""}`}>{label}</td>
       {vals.map((v, i) => (
         <td key={i} className={`px-4 py-2 text-right font-mono text-sm whitespace-nowrap ${bold ? "font-semibold" : ""} ${accent ? ACC[accent] : ""}`}>{v}</td>
       ))}
+    </tr>
+  );
+}
+
+/** YoY growth row with conditional coloring: green > +5%, red < -5%, muted otherwise */
+function TRGrowth({ label, vals }: { label: string; vals: (number | null)[] }) {
+  return (
+    <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+      <td className="px-4 py-2 text-slate-500 dark:text-slate-400 whitespace-nowrap text-xs italic">{label}</td>
+      {vals.map((v, i) => {
+        if (v == null || !Number.isFinite(v)) {
+          return <td key={i} className="px-4 py-2 text-right font-mono text-xs text-slate-400">—</td>;
+        }
+        const pct = v * 100;
+        const color = pct > 5 ? "text-emerald-600 dark:text-emerald-400" :
+                     pct < -5 ? "text-rose-600 dark:text-rose-400" :
+                     "text-slate-400";
+        const arrow = pct > 0.5 ? "▲" : pct < -0.5 ? "▼" : "→";
+        return (
+          <td key={i} className={`px-4 py-2 text-right font-mono text-xs ${color}`}>
+            {arrow} {Math.abs(pct).toFixed(1)}%
+          </td>
+        );
+      })}
     </tr>
   );
 }
