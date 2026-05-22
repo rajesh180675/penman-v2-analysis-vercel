@@ -12,7 +12,7 @@ import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { SegmentData } from "../../engine/segmentParser";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 
-import { VerdictBanner, InsightBlock, ExpandableSection, ConfidenceBadge, RiskFlag } from "../shared/DesignSystem";
+import { VerdictBanner, InsightBlock, ExpandableSection, ConfidenceBadge, RiskFlag, ProgressRing } from "../shared/DesignSystem";
 import KPITile from "./KPITile";
 import ValuationTriangulation from "./ValuationTriangulation";
 import QualitySignalPanel from "./QualitySignalPanel";
@@ -203,6 +203,7 @@ export default function DashboardView({ data, config, traceability = null, ratio
             </div>
           )}
           <ConfidenceBadge level={confidence} />
+          <ProgressRing value={data.length >= 10 ? 95 : data.length >= 5 ? 70 : 40} size={36} strokeWidth={3} label="Coverage" />
         </div>
       </div>
 
