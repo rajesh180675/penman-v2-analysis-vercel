@@ -22,6 +22,7 @@ import { useLiveMarketData } from "../hooks/useLiveMarketData";
 import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
 import { AuditSubmissionMeta, persistAuditEvent } from "../lib/audit";
 import { InsightBlock, SectionHeader } from "./shared/DesignSystem";
+import AssumptionsAudit from "./AssumptionsAudit";
 import ExpectationBridgePanel from "./ExpectationBridgePanel";
 import SensitivityHeatmap from "./charts/SensitivityHeatmap";
 import FrameworkRadar from "./charts/FrameworkRadar";
@@ -1400,6 +1401,9 @@ function ValuationCommandCenterHero({
         });
         return narrative ? <InsightBlock text={narrative} icon="📊" /> : null;
       })()}
+
+      {/* Assumptions Audit — all valuation inputs visible and sanity-checked */}
+      <AssumptionsAudit config={config} />
 
       <div className="flex flex-wrap items-start justify-between gap-4 mt-6">
         <div>
