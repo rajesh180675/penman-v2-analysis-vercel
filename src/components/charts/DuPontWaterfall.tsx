@@ -92,7 +92,7 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
       <div className="h-48">
         <ResponsiveContainer debounce={50} width="100%" height="100%">
           <BarChart data={chartData} margin={{ left: 10, right: 10, top: 10, bottom: 5 }}
-            onClick={(e) => {
+            onClick={(e: any) => {
               if (e && e.activePayload && e.activePayload[0] && history) {
                 const key = e.activePayload[0].payload.key;
                 setSelectedFactor(prev => prev === key ? null : key);
