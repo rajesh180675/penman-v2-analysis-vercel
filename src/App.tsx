@@ -814,7 +814,7 @@ if (!hasRecast && rawData && rawData.length > 0) {
                 <span className="hidden sm:inline text-xs text-slate-400 ml-2">Residual-Income Valuation · Capitaline Ind AS</span>
               </div>
             </div>
-            <nav className="flex h-full overflow-x-auto gap-0.5">
+            <nav className="flex h-full overflow-x-auto gap-0.5" role="tablist" aria-label="Analysis tabs">
               {TAB_GROUPS.map(group => {
                 const groupTabs = visibleTabs.filter(t => t.group === group.key);
                 if (groupTabs.length === 0) return null;
@@ -824,6 +824,9 @@ if (!hasRecast && rawData && rawData.length > 0) {
                     {groupTabs.map(tab => (
                       <button
                         key={tab.id}
+                        role="tab"
+                        aria-selected={activeTab === tab.id}
+                        aria-controls={`panel-${tab.id}`}
                         onClick={() => {
                           if (tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable) return;
                           setActiveTab(tab.id);
