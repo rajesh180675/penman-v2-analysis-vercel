@@ -158,7 +158,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
         history={dupont5}
       />
 
-      <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center justify-between">
+      <div className="bg-white dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex items-center justify-between">
         <div className="text-sm text-slate-700 font-medium">Analysis View</div>
         <div className="inline-flex rounded-lg overflow-hidden border border-slate-300">
           <button onClick={() => setView("core")} className={`px-3 py-1.5 text-xs ${view === "core" ? "bg-indigo-600 text-white" : "bg-white text-slate-600"}`}>Core Ratios</button>
@@ -627,7 +627,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
 /* ── Sub-components ── */
 function Section({title,subtitle,children}:{title:string;subtitle?:string;children:React.ReactNode}) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
         <h2 className="text-lg font-bold text-slate-800">{title}</h2>
         {subtitle&&<p className="text-[11px] text-slate-500 mt-0.5">{subtitle}</p>}
