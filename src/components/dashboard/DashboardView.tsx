@@ -147,7 +147,9 @@ export default function DashboardView({ data, config, traceability = null, ratio
   }, [distress, moat, capAlloc, marginOfSafety]);
 
   // ── Narrative generation ───────────────────────────────────────────────────
-  const narrative = useMemo(() => generateDashboardNarrative(data, config), [data, config]);
+  const narrative = useMemo(() => {
+    return generateDashboardNarrative(data, config);
+  }, [data, config]);
 
   // ── Confidence level ──────────────────────────────────────────────────────
   const confidence: "high" | "medium" | "low" = useMemo(() => {
