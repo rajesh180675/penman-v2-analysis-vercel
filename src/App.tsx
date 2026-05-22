@@ -15,6 +15,7 @@ import { resolveValuationReadiness } from "./engine/valuationPolicy";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AnalysisStatusBadge } from "./components/AnalysisStatusBadge";
 import CompanySwitcher from "./components/CompanySwitcher";
+import { DataFreshness } from "./components/shared/DesignSystem";
 import GlossaryModal from "./components/GlossaryModal";
 import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
 import CommandPalette from "./components/CommandPalette";
@@ -924,7 +925,10 @@ if (!hasRecast && rawData && rawData.length > 0) {
                 </span>
                 <span className="badge-neutral">{config.company_type ?? "auto"}</span>
                 {recastData && recastData.length > 0 && (
-                  <span className="text-xs text-slate-500">{recastData.length} periods · {recastData[recastData.length - 1].period_end.slice(0, 4)}</span>
+                  <>
+                    <span className="text-xs text-slate-500">{recastData.length} periods</span>
+                    <DataFreshness latestPeriod={recastData[recastData.length - 1].period_end} source="Capitaline" />
+                  </>
                 )}
               </div>
               <div className="flex items-center gap-3">
