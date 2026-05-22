@@ -95,4 +95,67 @@
   .rounded-xl, .rounded-2xl { border-radius: 0 !important; }
   .no-print { display: none !important; }
   .print-expand { max-height: none !important; overflow: visible !important; }
+  body { background: white !important; }
 }
+
+/* ═══ INSTITUTIONAL ENHANCEMENTS (plain CSS — appended after Tailwind layers) ═══ */
+
+/* Body gradient background */
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body { background: linear-gradient(160deg, #f8fafc 0%, #eef2f7 100%); min-height: 100vh; }
+.dark body { background: linear-gradient(160deg, #0a0e1a 0%, #0f1629 100%); }
+
+/* Trust Gate Banners */
+.trust-gate { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.875rem 1rem; border-radius: 0.5rem; border: 1px solid; }
+.trust-gate-production { border-color: #a7f3d0; background: linear-gradient(90deg, #ecfdf5, rgba(236,253,245,0.3)); }
+.trust-gate-guarded { border-color: #fde68a; background: linear-gradient(90deg, #fffbeb, rgba(255,251,235,0.3)); }
+.trust-gate-blocked { border-color: #fecaca; background: linear-gradient(90deg, #fef2f2, rgba(254,242,242,0.3)); }
+.trust-gate-research { border-color: #c7d2fe; background: linear-gradient(90deg, #eef2ff, rgba(238,242,255,0.3)); }
+.dark .trust-gate-production { border-color: rgba(6,95,70,0.5); background: linear-gradient(90deg, rgba(6,78,59,0.4), rgba(6,78,59,0.05)); }
+.dark .trust-gate-guarded { border-color: rgba(146,64,14,0.5); background: linear-gradient(90deg, rgba(120,53,15,0.4), rgba(120,53,15,0.05)); }
+.dark .trust-gate-blocked { border-color: rgba(159,18,57,0.5); background: linear-gradient(90deg, rgba(136,19,55,0.4), rgba(136,19,55,0.05)); }
+.dark .trust-gate-research { border-color: rgba(67,56,202,0.5); background: linear-gradient(90deg, rgba(49,46,129,0.4), rgba(49,46,129,0.05)); }
+
+.trust-gate-icon { flex-shrink: 0; width: 2rem; height: 2rem; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; font-weight: 700; }
+.trust-gate-icon-production { background: #d1fae5; color: #047857; }
+.trust-gate-icon-guarded { background: #fef3c7; color: #b45309; }
+.trust-gate-icon-blocked { background: #fee2e2; color: #b91c1c; }
+.trust-gate-icon-research { background: #e0e7ff; color: #4338ca; }
+.dark .trust-gate-icon-production { background: rgba(6,95,70,0.5); color: #34d399; }
+.dark .trust-gate-icon-guarded { background: rgba(146,64,14,0.5); color: #fbbf24; }
+.dark .trust-gate-icon-blocked { background: rgba(159,18,57,0.5); color: #fb7185; }
+.dark .trust-gate-icon-research { background: rgba(67,56,202,0.5); color: #a5b4fc; }
+
+/* Recharts — institutional chart styling */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line { stroke: #e2e8f0; stroke-dasharray: 3 3; }
+.dark .recharts-cartesian-grid-horizontal line,
+.dark .recharts-cartesian-grid-vertical line { stroke: #1e293b; }
+.recharts-text { font-family: "Inter", system-ui, sans-serif; font-size: 11px; fill: #64748b; }
+.dark .recharts-text { fill: #94a3b8; }
+.recharts-tooltip-wrapper { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.08)); }
+.recharts-default-tooltip { background: rgba(255,255,255,0.97) !important; border: 1px solid #e2e8f0 !important; border-radius: 8px !important; padding: 8px 12px !important; font-size: 12px !important; }
+.dark .recharts-default-tooltip { background: rgba(15,23,42,0.97) !important; border-color: #334155 !important; }
+.recharts-legend-item-text { font-size: 12px !important; color: #475569 !important; }
+.dark .recharts-legend-item-text { color: #94a3b8 !important; }
+
+/* Table styling — data-dense institutional tables */
+table th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; padding: 8px 12px; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
+.dark table th { color: #94a3b8; border-bottom-color: #334155; }
+table td { font-size: 13px; padding: 6px 12px; border-bottom: 1px solid #f1f5f9; font-variant-numeric: tabular-nums; }
+.dark table td { border-bottom-color: #1e293b; }
+table tr:hover td { background: #f8fafc; }
+.dark table tr:hover td { background: #0f172a; }
+
+/* Badge ring accents */
+.badge-positive { box-shadow: inset 0 0 0 1px rgba(167,243,208,0.6); }
+.badge-negative { box-shadow: inset 0 0 0 1px rgba(254,202,202,0.6); }
+.badge-caution { box-shadow: inset 0 0 0 1px rgba(253,230,138,0.6); }
+.badge-neutral { box-shadow: inset 0 0 0 1px rgba(226,232,240,0.6); }
+.dark .badge-positive { box-shadow: inset 0 0 0 1px rgba(6,95,70,0.4); }
+.dark .badge-negative { box-shadow: inset 0 0 0 1px rgba(159,18,57,0.4); }
+.dark .badge-caution { box-shadow: inset 0 0 0 1px rgba(146,64,14,0.4); }
+.dark .badge-neutral { box-shadow: inset 0 0 0 1px rgba(51,65,85,0.4); }
+
+/* Metric value tabular nums */
+.metric-value { font-variant-numeric: tabular-nums; }
