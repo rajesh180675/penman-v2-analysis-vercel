@@ -3,7 +3,7 @@ import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import { generateRatiosNarrative } from "../engine/narrativeEngine";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
-import { SectionHeader, InsightBlock, FormulaTooltip } from "./shared/DesignSystem";
+import { SectionHeader, InsightBlock, FormulaTooltip, BenchmarkBar } from "./shared/DesignSystem";
 import { useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -176,17 +176,28 @@ export default function RatioReport({data, config, traceability = null, traceabi
           {label:"RNOA",value:latest?.ratios?.RNOA,fmt:pct,bm:"RNOA",color:"emerald"},
           {label:"SPREAD",value:latest?.ratios?.SPREAD,fmt:pct,bm:"SPREAD",color:"blue"},
           {label:"ATO",value:latest?.ratios?.ATO,fmt:(v:number|null)=>mult(v,2),bm:"ATO",color:"violet"},
-        ].map(({label,value,fmt,bm,color})=>(
-          <div key={label} className={`bg-white rounded-2xl border border-${color}-100 p-4 shadow-sm`}>
+        ].map(({label,value,fmt,bm,color})=>{
+          const benchmark = NP_BENCHMARKS[bm];
+          const bmMedian = benchmark?.median ?? null;
+          const bmMin = benchmark ? (bmMedian! - (benchmark.p75 - benchmark.p25)) : 0;
+          const bmMax = benchmark ? (bmMedian! + (benchmark.p75 - benchmark.p25)) : 1;
+          return (
+          <div key={label} className={`bg-white dark:bg-slate-900/60 rounded-2xl border border-${color}-100 dark:border-${color}-900/30 p-4 shadow-sm`}>
             <div className="text-xs text-slate-500 font-semibold uppercase">{label}</div>
-            <div className={`text-2xl font-bold text-${color}-700 mt-1`}>{fmt(value as number|null)}</div>
-            {NP_BENCHMARKS[bm]&&value!=null&&(
-              <div className="text-[10px] text-slate-400 mt-1">
-                N&P median: {(NP_BENCHMARKS[bm].median*(bm==="ATO"?1:100)).toFixed(bm==="ATO"?2:1)}{bm==="ATO"?"×":"%"}
+            <div className={`text-2xl font-bold text-${color}-700 dark:text-${color}-400 mt-1`}>{fmt(value as number|null)}</div>
+            {benchmark && value != null && (
+              <div className="mt-2">
+                <BenchmarkBar
+                  value={value}
+                  min={bmMin}
+                  max={bmMax}
+                  label={`N&P median: ${(bmMedian!*(bm==="ATO"?1:100)).toFixed(bm==="ATO"?2:1)}${bm==="ATO"?"×":"%"}`}
+                />
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ── ROCE Bridge ── */}
