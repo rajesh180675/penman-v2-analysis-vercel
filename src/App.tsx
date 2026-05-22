@@ -1124,7 +1124,7 @@ nbfcSidecar={nbfcSidecar}
               />
             )}
             {activeTab === "statements" && hasRecast && <RecastStatements data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
-            {activeTab === "ratios" && hasRecast && <RatioReport data={recastData!} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
+            {activeTab === "ratios" && hasRecast && <RatioReport data={recastData!} config={config} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
             {activeTab === "ratios" && !hasRecast && bankResult && (
               <FinancialInstitutionReport
                 bankResult={bankResult}
