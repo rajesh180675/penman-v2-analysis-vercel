@@ -1,4 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, ReferenceLine } from "recharts";
+import { TOOLTIP_STYLE } from "./chartUtils";
 import type { BankPeriodMetrics } from "../../engine/bankPipeline";
 
 interface Props {
@@ -75,7 +76,7 @@ export default function BankHealthChart({ metrics, ke }: Props) {
             <YAxis tickFormatter={(v) => `${v}%`} fontSize={10} />
             <Tooltip
               formatter={((value: number, name: string) => [`${value?.toFixed(2)}%`, name]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
+              contentStyle={TOOLTIP_STYLE}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             {keePct != null && (
@@ -98,7 +99,7 @@ export default function BankHealthChart({ metrics, ke }: Props) {
             <YAxis tickFormatter={(v) => `${v}%`} fontSize={10} />
             <Tooltip
               formatter={((value: number, name: string) => [`${value?.toFixed(2)}%`, name]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
+              contentStyle={TOOLTIP_STYLE}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Line type="monotone" dataKey="CreditCost" name="Credit Cost" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
