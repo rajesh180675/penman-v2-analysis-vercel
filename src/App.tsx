@@ -15,7 +15,7 @@ import { resolveValuationReadiness } from "./engine/valuationPolicy";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AnalysisStatusBadge } from "./components/AnalysisStatusBadge";
 import CompanySwitcher from "./components/CompanySwitcher";
-import { DataFreshness, SourceBadge } from "./components/shared/DesignSystem";
+import { DataFreshness, SourceBadge, Sparkline } from "./components/shared/DesignSystem";
 import GlossaryModal from "./components/GlossaryModal";
 import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
 import CommandPalette from "./components/CommandPalette";
@@ -935,6 +935,17 @@ if (!hasRecast && rawData && rawData.length > 0) {
               <div className="flex items-center gap-3">
                 {config.market_price != null && (
                   <span className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-100">₹{config.market_price.toFixed(0)}</span>
+                )}
+                {recastData && recastData.length >= 3 && (
+                  <Sparkline
+                    data={recastData.map(d => d.ratios?.ROCE ?? null)}
+                    width={48}
+                    height={16}
+                    color={recastData[recastData.length - 1]?.ratios?.ROCE != null &&
+                           recastData[recastData.length - 2]?.ratios?.ROCE != null &&
+                           (recastData[recastData.length - 1].ratios!.ROCE! >= recastData[recastData.length - 2].ratios!.ROCE!)
+                           ? "#10b981" : "#ef4444"}
+                  />
                 )}
                 {qualityGate && (
                   <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
