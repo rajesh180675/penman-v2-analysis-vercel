@@ -1,43 +1,65 @@
-/* Print Stylesheet — print-friendly dashboard layout
+/* Print Stylesheet — equity research report layout
    Activated when window.print() is called or user prints from browser.
-   Hides nav/sidebar/buttons, expands cards, removes shadows. */
+   Hides nav/sidebar/buttons, expands cards, removes shadows.
+   Designed to produce a clean A4 document resembling institutional research. */
 
 @media print {
   /* Hide chrome */
   header,
   nav,
   .no-print,
-  button[onClick],
+  button,
   .sticky,
   .lg\:sticky,
-  [class*="hover\\:"] {
+  [class*="hover\\:"],
+  details > summary,
+  .backdrop-blur {
     display: none !important;
+  }
+
+  /* Expand all collapsed sections for print */
+  details[open] > *,
+  details > * {
+    display: block !important;
+  }
+  details {
+    display: block !important;
   }
 
   /* Reset backgrounds */
   body {
     background: white !important;
-    color: black !important;
+    color: #1e293b !important;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif !important;
+    font-size: 10pt !important;
+    line-height: 1.5 !important;
   }
 
   /* Card flattening for print */
   .rounded-2xl,
   .rounded-xl,
-  .rounded-lg {
-    border-radius: 4px !important;
+  .rounded-lg,
+  .rounded-3xl {
+    border-radius: 2px !important;
     box-shadow: none !important;
     page-break-inside: avoid;
+    border-color: #e2e8f0 !important;
   }
 
   /* Compact spacing */
   .space-y-6 > * + *,
   .space-y-8 > * + * {
-    margin-top: 0.75rem !important;
+    margin-top: 0.5rem !important;
   }
 
-  .p-6 { padding: 0.75rem !important; }
+  .space-y-4 > * + * {
+    margin-top: 0.375rem !important;
+  }
+
+  .p-6 { padding: 0.5rem !important; }
   .p-5 { padding: 0.5rem !important; }
-  .p-4 { padding: 0.5rem !important; }
+  .p-4 { padding: 0.375rem !important; }
+  .p-3 { padding: 0.25rem !important; }
 
   /* Force charts to print background colors */
   * {
@@ -50,22 +72,91 @@
     page-break-before: always;
   }
 
-  /* Fit chart heights */
-  .h-64 { height: 200px !important; }
-  .h-56 { height: 180px !important; }
-  .h-48 { height: 150px !important; }
+  /* Keep tables together */
+  table {
+    page-break-inside: avoid;
+    font-size: 9pt !important;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  /* Fit chart heights for print */
+  .h-64 { height: 160px !important; }
+  .h-56 { height: 140px !important; }
+  .h-48 { height: 120px !important; }
+
+  /* Typography for print */
+  h1 { font-size: 16pt !important; }
+  h2 { font-size: 13pt !important; }
+  h3 { font-size: 11pt !important; }
+  .section-title { font-size: 12pt !important; }
+
+  .text-2xl { font-size: 14pt !important; }
+  .text-xl { font-size: 12pt !important; }
+  .text-lg { font-size: 11pt !important; }
+
+  /* Verdict banner print treatment */
+  .card-verdict {
+    border-left-width: 3px !important;
+    padding: 0.5rem !important;
+  }
 
   /* Hide interactive elements */
   select,
   input[type="number"],
   input[type="text"] {
-    border: 1px solid #ccc !important;
+    display: none !important;
+  }
+
+  /* Ensure grid columns work in print */
+  .grid {
+    display: grid !important;
+  }
+
+  .lg\:grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .md\:grid-cols-4 {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+
+  /* Dark mode overrides for print */
+  .dark\:bg-slate-900,
+  .dark\:bg-slate-900\/60,
+  .dark\:bg-slate-950 {
     background: white !important;
   }
 
-  /* Page setup */
+  .dark\:text-slate-100,
+  .dark\:text-slate-200,
+  .dark\:text-slate-300 {
+    color: #1e293b !important;
+  }
+
+  /* Links show URL */
+  a[href]::after {
+    content: none;
+  }
+
+  /* Page setup — A4 landscape for data-dense reports */
   @page {
-    size: A4;
-    margin: 1cm;
+    size: A4 portrait;
+    margin: 1.5cm 1cm;
+  }
+
+  @page :first {
+    margin-top: 1cm;
+  }
+
+  /* Footer with page numbers */
+  @page {
+    @bottom-center {
+      content: counter(page) " / " counter(pages);
+      font-size: 8pt;
+      color: #94a3b8;
+    }
   }
 }
