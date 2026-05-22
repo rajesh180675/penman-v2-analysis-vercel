@@ -43,16 +43,18 @@ export default function SensitivityHeatmap({ ke, g, computeValue, marketPrice = 
     );
   }, [keSteps, gSteps, computeValue]);
 
-  // Color scale
+  // Color scale — more granular for institutional feel
   function cellColor(value: number | null): string {
     if (value == null || marketPrice == null || marketPrice <= 0) return "bg-slate-100 dark:bg-slate-800";
     const ratio = value / marketPrice;
-    if (ratio > 1.3) return "bg-emerald-200 dark:bg-emerald-900/60";
-    if (ratio > 1.15) return "bg-emerald-100 dark:bg-emerald-900/30";
-    if (ratio > 1.0) return "bg-emerald-50 dark:bg-emerald-950/20";
-    if (ratio > 0.85) return "bg-amber-50 dark:bg-amber-950/20";
-    if (ratio > 0.7) return "bg-red-100 dark:bg-red-900/30";
-    return "bg-red-200 dark:bg-red-900/60";
+    if (ratio > 1.5) return "bg-emerald-300 dark:bg-emerald-800/70 text-emerald-900 dark:text-emerald-100";
+    if (ratio > 1.3) return "bg-emerald-200 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200";
+    if (ratio > 1.15) return "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300";
+    if (ratio > 1.0) return "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400";
+    if (ratio > 0.9) return "bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300";
+    if (ratio > 0.8) return "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300";
+    if (ratio > 0.7) return "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300";
+    return "bg-red-200 dark:bg-red-900/60 text-red-900 dark:text-red-200";
   }
 
   function isBase(keVal: number, gVal: number): boolean {

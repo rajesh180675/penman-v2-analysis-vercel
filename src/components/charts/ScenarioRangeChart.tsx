@@ -1,4 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Cell, LabelList } from "recharts";
+import { fmtINR, TOOLTIP_STYLE } from "./chartUtils";
 
 interface ScenarioPoint {
   label: string;
@@ -69,13 +70,13 @@ export default function ScenarioRangeChart({ scenarios, marketPrice, expectedVal
         <ResponsiveContainer debounce={50} width="100%" height="100%">
           <BarChart data={data} margin={{ left: 5, right: 30, top: 30, bottom: 5 }}>
             <XAxis dataKey="label" fontSize={11} />
-            <YAxis fontSize={10} domain={[0, max * 1.1]} tickFormatter={(v) => `₹${v}`} />
+            <YAxis fontSize={10} domain={[0, max * 1.1]} tickFormatter={(v) => fmtINR(v)} />
             <Tooltip
               formatter={((value: number, _name: string, props: { payload?: { probability: number } }) => [
                 `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })} (P=${((props.payload?.probability ?? 0) * 100).toFixed(0)}%)`,
                 "Intrinsic / share",
               ]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
+              contentStyle={TOOLTIP_STYLE}
             />
             {marketPrice != null && (
               <ReferenceLine

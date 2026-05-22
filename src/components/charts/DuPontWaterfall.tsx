@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine, LineChart, Line, CartesianGrid } from "recharts";
+import { CHART_COLORS, TOOLTIP_STYLE } from "./chartUtils";
 
 interface DuPontFactor {
   name: string;
@@ -39,11 +40,11 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
   const [selectedFactor, setSelectedFactor] = useState<string | null>(null);
 
   const factors: DuPontFactor[] = [
-    { name: "Tax Burden", value: taxBurden, color: "#6366f1", key: "taxBurden" },
-    { name: "Interest Burden", value: interestBurden, color: "#8b5cf6", key: "intBurden" },
-    { name: "Operating Margin", value: operatingMargin, color: "#10b981", key: "opm" },
-    { name: "Asset Turnover", value: assetTurnover, color: "#f59e0b", key: "at" },
-    { name: "Equity Multiplier", value: equityMultiplier, color: "#ef4444", key: "eqMult" },
+    { name: "Tax Burden", value: taxBurden, color: CHART_COLORS.primary, key: "taxBurden" },
+    { name: "Interest Burden", value: interestBurden, color: CHART_COLORS.tertiary, key: "intBurden" },
+    { name: "Operating Margin", value: operatingMargin, color: CHART_COLORS.positive, key: "opm" },
+    { name: "Asset Turnover", value: assetTurnover, color: CHART_COLORS.caution, key: "at" },
+    { name: "Equity Multiplier", value: equityMultiplier, color: CHART_COLORS.negative, key: "eqMult" },
   ];
 
   const validFactors = factors.filter(f => f.value != null && Number.isFinite(f.value));
@@ -110,7 +111,7 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
                 `${props.payload.raw.toFixed(3)} (${value}%)`,
                 props.payload.name,
               ]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
+              contentStyle={TOOLTIP_STYLE}
             />
             <ReferenceLine y={100} stroke="#94a3b8" strokeDasharray="4 4" label={{ value: "1.0×", position: "right", fontSize: 9, fill: "#94a3b8" }} />
             <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={36} style={{ cursor: history ? "pointer" : "default" }}>
@@ -154,7 +155,7 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
                 />
                 <Tooltip
                   formatter={((value: number) => [`${(value * 100).toFixed(2)}%`, selectedMeta.name]) as any}
-                  contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
+                  contentStyle={TOOLTIP_STYLE}
                 />
                 <Line
                   type="monotone"

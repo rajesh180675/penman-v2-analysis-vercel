@@ -1,4 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
+import { fmtCr, CHART_COLORS, TOOLTIP_STYLE } from "./chartUtils";
 
 interface Props {
   /** Latest period income statement */
@@ -38,9 +39,9 @@ export default function IncomeWaterfall({ sales, cogs: _cogs, operatingIncome, n
   ];
 
   const colorOf = (type: string) => {
-    if (type === "total") return "#3b82f6";       // blue (Sales/PAT)
-    if (type === "subtotal") return "#10b981";    // emerald (OI/PBT)
-    if (type === "negative") return "#ef4444";    // red (deductions)
+    if (type === "total") return CHART_COLORS.primary;       // indigo (Sales/PAT)
+    if (type === "subtotal") return CHART_COLORS.positive;   // emerald (OI/PBT)
+    if (type === "negative") return CHART_COLORS.negative;   // red (deductions)
     return "#94a3b8";
   };
 
@@ -85,12 +86,12 @@ export default function IncomeWaterfall({ sales, cogs: _cogs, operatingIncome, n
               interval={0}
             />
             <YAxis
-              tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+              tickFormatter={(v) => fmtCr(v)}
               fontSize={10}
             />
             <Tooltip
               formatter={((value: number) => [`${unit} ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, ""]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
+              contentStyle={TOOLTIP_STYLE}
             />
             <ReferenceLine y={0} stroke="#94a3b8" />
             <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={42}>

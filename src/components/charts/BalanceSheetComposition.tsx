@@ -1,5 +1,6 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import type { RecastPeriod } from "../../engine/types";
+import { fmtCr, fmtPct, CHART_COLORS, TOOLTIP_STYLE } from "./chartUtils";
 
 interface Props {
   data: RecastPeriod[];
@@ -68,11 +69,11 @@ export default function BalanceSheetComposition({ data, mode = "abs" }: Props) {
           <BarChart data={assetSeries} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />
-            <YAxis fontSize={10} tickFormatter={(v) => mode === "common" ? `${v}%` : `${(v / 1000).toFixed(0)}k`} />
-            <Tooltip formatter={((value: number, name: string) => [fmt(value), name]) as any} contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }} />
+            <YAxis fontSize={10} tickFormatter={(v) => mode === "common" ? fmtPct(v) : fmtCr(v)} />
+            <Tooltip formatter={((value: number, name: string) => [fmt(value), name]) as any} contentStyle={TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="OA" name="Operating Assets" stackId="assets" fill="#10b981" />
-            <Bar dataKey="FA" name="Financial Assets" stackId="assets" fill="#3b82f6" />
+            <Bar dataKey="OA" name="Operating Assets" stackId="assets" fill={CHART_COLORS.positive} />
+            <Bar dataKey="FA" name="Financial Assets" stackId="assets" fill={CHART_COLORS.info} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -83,11 +84,11 @@ export default function BalanceSheetComposition({ data, mode = "abs" }: Props) {
           <BarChart data={financingSeries} margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />
-            <YAxis fontSize={10} tickFormatter={(v) => mode === "common" ? `${v}%` : `${(v / 1000).toFixed(0)}k`} />
-            <Tooltip formatter={((value: number, name: string) => [fmt(value), name]) as any} contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }} />
+            <YAxis fontSize={10} tickFormatter={(v) => mode === "common" ? fmtPct(v) : fmtCr(v)} />
+            <Tooltip formatter={((value: number, name: string) => [fmt(value), name]) as any} contentStyle={TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="CSE" name="Common Shareholders' Equity" stackId="fin" fill="#6366f1" />
-            <Bar dataKey="NFO" name="Net Financial Obligations" stackId="fin" fill="#ef4444" />
+            <Bar dataKey="CSE" name="Common Shareholders' Equity" stackId="fin" fill={CHART_COLORS.primary} />
+            <Bar dataKey="NFO" name="Net Financial Obligations" stackId="fin" fill={CHART_COLORS.negative} />
             <Bar dataKey="OL" name="Operating Liabilities" stackId="fin" fill="#94a3b8" />
           </BarChart>
         </ResponsiveContainer>
