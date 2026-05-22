@@ -8,7 +8,6 @@ import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
 import PeerScatterPlot from "./charts/PeerScatterPlot";
 import PercentileBar from "./charts/PercentileBar";
 import SectorHeatmap from "./charts/SectorHeatmap";
-import { SectionHeader } from "./shared/DesignSystem";
 import { computePeerRelativeValuation } from "../engine/peerRelativeValuation";
 
 interface Props {

@@ -12,6 +12,7 @@ import type {
 import type { BankPeriodMetrics } from "../engine/bankPipeline";
 import type { NbfcSidecarData } from "../engine/nbfcSidecarLoader";
 import type { EngineConfig } from "../engine/types";
+import { SectionHeader } from "./shared/DesignSystem";
 import type {
   BankAssetQualityResult,
   CapitalBufferSeverity,

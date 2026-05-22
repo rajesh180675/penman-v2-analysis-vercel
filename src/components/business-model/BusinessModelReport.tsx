@@ -27,7 +27,6 @@
 import { useState } from "react";
 import type { RecastPeriod } from "../../engine/types";
 import type { PipelineResult } from "../../engine/pipeline";
-import { SectionHeader } from "../shared/DesignSystem";
 
 // Industrial sub-views
 import DuPontDecomposition from "./industrial/DuPontDecomposition";
