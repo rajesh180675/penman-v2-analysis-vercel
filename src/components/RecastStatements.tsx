@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
+import { SectionHeader } from "./shared/DesignSystem";
 import IncomeWaterfall from "./charts/IncomeWaterfall";
 import BalanceSheetComposition from "./charts/BalanceSheetComposition";
 import CashFlowChart from "./charts/CashFlowChart";
@@ -24,7 +25,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
     [traceability],
   );
   const traceabilitySummary = precomputedTraceabilitySummary ?? derivedTraceabilitySummary;
-  if (!data || data.length === 0) return <div className="text-center py-20 text-slate-400"><div className="text-5xl mb-3">📊</div><p>No data</p></div>;
+  if (!data || data.length === 0) return <div className="card-base p-12 text-center"><div className="text-5xl mb-3">📊</div><p className="text-slate-500">No data</p></div>;
 
   const years = data.map((d) => d.period_end.slice(0, 7));
   const yoySales = useMemo(() => data.map((d, i) => i === 0 ? null : (data[i - 1].is.Sales !== 0 ? (d.is.Sales - data[i - 1].is.Sales) / Math.abs(data[i - 1].is.Sales) : null)), [data]);
@@ -37,6 +38,12 @@ export default function RecastStatements({ data, traceability = null, traceabili
 
   return (
     <div className="space-y-8">
+      <SectionHeader
+        title="Recast Statements"
+        subtitle="Capitaline data reformulated into the Penman-Nissim operating/financial split"
+        icon="📋"
+      />
+
       {traceabilitySummary && (
         <TraceabilityTrustPanel
           title="Statements Trust Gate"

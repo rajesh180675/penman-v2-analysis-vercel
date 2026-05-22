@@ -40,6 +40,7 @@ import {
   buildForecastProvenance,
 } from "../engine/forecastPresentation";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
+import { SectionHeader } from "./shared/DesignSystem";
 import ScenarioRangeChart from "./charts/ScenarioRangeChart";
 
 interface Props {
@@ -371,6 +372,12 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
 
   return (
     <div className="space-y-8">
+      <SectionHeader
+        title="Forecast"
+        subtitle="Multi-scenario persistence-based forecasting with fade-to-median convergence"
+        icon="📈"
+      />
+
       {valuationReadiness.status !== "production-ready" && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900">
           <b>Guarded forecast valuation.</b> {valuationReadiness.reasons[0]} Forecast scenarios still start from the latest reported period, so treat scenario values as review-only until the terminal period is normalized.
