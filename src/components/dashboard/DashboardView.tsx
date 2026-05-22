@@ -348,9 +348,11 @@ export default function DashboardView({ data, config, traceability = null, ratio
       </ExpandableSection>
 
       {/* Segment Breakdown — shows all available segment dimensions */}
-      {segmentData && segmentData.business && segmentData.business.segments.length > 1 && (
-        <ExpandableSection title="Segment Breakdown" badge={`${segmentData.business.segments.length} segments`}>
-          <SegmentBreakdown segmentData={segmentData.business} />
+      {segmentData && (segmentData.business?.segments?.length ?? 0) + (segmentData.geographic?.segments?.length ?? 0) + (segmentData.mixed?.segments?.length ?? 0) > 1 && (
+        <ExpandableSection title="Segment Breakdown" badge={`${(segmentData.business?.segments?.length ?? 0) + (segmentData.geographic?.segments?.length ?? 0)} segments`}>
+          {segmentData.business && segmentData.business.segments.length > 1 && (
+            <SegmentBreakdown segmentData={segmentData.business} />
+          )}
           {segmentData.geographic && segmentData.geographic.segments.length > 1 && (
             <SegmentBreakdown segmentData={segmentData.geographic} />
           )}
