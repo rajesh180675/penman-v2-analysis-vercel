@@ -3,7 +3,7 @@ import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import { generateRatiosNarrative } from "../engine/narrativeEngine";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
-import { SectionHeader, InsightBlock } from "./shared/DesignSystem";
+import { SectionHeader, InsightBlock, FormulaTooltip } from "./shared/DesignSystem";
 import { useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -199,13 +199,13 @@ export default function RatioReport({data, config, traceability = null, traceabi
               <Th>N&P Med</Th>
             </tr></thead>
             <tbody className="divide-y divide-slate-100">
-              <TR label="ROCE" vals={rd.map(d=>pct(d.ratios?.ROCE))} bold accent="indigo"
+              <TR label={<FormulaTooltip formula="ROCE = CNI / avg(CSE)" computation={latest.ratios?.ROCE != null ? `= ${pct(latest.ratios.ROCE)}` : undefined} reference="Penman (2013), Eq. 4.4">ROCE</FormulaTooltip>} vals={rd.map(d=>pct(d.ratios?.ROCE))} bold accent="indigo"
                   bm={rd.map(d=>d.ratios?.ROCE??null)} bmKey="ROCE"/>
-              <TR label="RNOA" vals={rd.map(d=>pct(d.ratios?.RNOA))} bold
+              <TR label={<FormulaTooltip formula="RNOA = OI / avg(NOA)" computation={latest.ratios?.RNOA != null ? `= ${pct(latest.ratios.RNOA)}` : undefined} reference="Penman (2013), Eq. 5.3">RNOA</FormulaTooltip>} vals={rd.map(d=>pct(d.ratios?.RNOA))} bold
                   bm={rd.map(d=>d.ratios?.RNOA??null)} bmKey="RNOA"/>
-              <TR label="NBC (Net Borrowing Cost)" vals={rd.map(d=>pct(d.ratios?.NBC))}/>
-              <TR label="SPREAD = RNOA − NBC" vals={rd.map(d=>pct(d.ratios?.SPREAD))}/>
-              <TR label="FLEV (NFO/CSE)" vals={rd.map(d=>mult(d.ratios?.FLEV))}/>
+              <TR label={<FormulaTooltip formula="NBC = NFE / avg(NFO)" reference="Penman (2013), Eq. 5.5">NBC</FormulaTooltip>} vals={rd.map(d=>pct(d.ratios?.NBC))}/>
+              <TR label={<FormulaTooltip formula="SPREAD = RNOA − NBC" reference="Penman (2013), Eq. 5.6">SPREAD</FormulaTooltip>} vals={rd.map(d=>pct(d.ratios?.SPREAD))}/>
+              <TR label={<FormulaTooltip formula="FLEV = NFO / CSE" reference="Penman (2013), Eq. 5.7">FLEV (NFO/CSE)</FormulaTooltip>} vals={rd.map(d=>mult(d.ratios?.FLEV))}/>
               <TR label="FLEV × SPREAD" vals={rd.map(d=>{
                 const fl=d.ratios?.FLEV,sp=d.ratios?.SPREAD;
                 return fl!=null&&sp!=null?pct(fl*sp):"—";
@@ -644,7 +644,7 @@ function Th({children,left}:{children?:React.ReactNode;left?:boolean}) {
 }
 const ACCENT:Record<string,string>={indigo:"text-indigo-700",green:"text-emerald-700"};
 function TR({label,vals,bold,accent,bm,bmKey}:{
-  label:string;vals:string[];bold?:boolean;accent?:"indigo"|"green";
+  label:string|React.ReactNode;vals:string[];bold?:boolean;accent?:"indigo"|"green";
   bm?:(number|null)[];bmKey?:string;
 }) {
   const vc=accent?ACCENT[accent]:"";
