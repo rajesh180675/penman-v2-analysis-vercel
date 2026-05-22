@@ -251,9 +251,16 @@ export function processScopeAwareData(
   // ── 1. Run both through the pipeline ────────────────────────────────────
   const consolidatedResult = processCompanyDataFull(consolidatedData, config, quality ?? null);
 
-  const standaloneResult = standaloneData && standaloneData.length > 0
-    ? processCompanyDataFull(standaloneData, config, quality ?? null)
-    : null;
+	// C3 fix: Do NOT pass consolidated quality sidecar to the standalone pipeline.
+	// Quality indicators (GNPA, NNPA, PCR, CRAR, CASA, cost-to-income) are for the
+	// consolidated entity — they include subsidiary data. Feeding them into the
+	// standalone pipeline silently corrupts standalone bank metrics, making the
+	// consolidated − standalone gap analysis wrong for banks/NBFCs with subsidiaries.
+	// Standalone quality sidecars don't exist; pass null so the standalone pipeline
+	// runs without quality overrides.
+	const standaloneResult = standaloneData && standaloneData.length > 0
+		? processCompanyDataFull(standaloneData, config, null)
+		: null;
 
   if (!standaloneResult) {
     return {
