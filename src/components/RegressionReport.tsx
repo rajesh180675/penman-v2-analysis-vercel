@@ -5,6 +5,7 @@ import { PHASE0_BENCHMARK_SET } from "../engine/baselineGuardrails";
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
+import { SectionHeader } from "./shared/DesignSystem";
 
 interface Props {
   rawData: RawPeriodData[] | null;
@@ -32,16 +33,23 @@ export default function RegressionReport({ rawData, recastData, config, registry
   const traceabilitySummary = precomputedTraceabilitySummary ?? derivedTraceabilitySummary;
 
   if (!report) {
-    return (
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
-        <p className="font-semibold text-amber-800">Need uploaded raw data + 2+ recast periods</p>
-        <p className="text-sm text-amber-700 mt-1">Run analysis first, then open this tab for before/after regression deltas.</p>
+return (
+      <div className="card-base p-12 text-center">
+        <div className="text-5xl mb-3">🧪</div>
+        <p className="font-semibold text-slate-600 dark:text-slate-300">Need uploaded raw data + 2+ recast periods</p>
+        <p className="text-sm text-slate-500 mt-1">Run analysis first, then open this tab for before/after regression deltas.</p>
       </div>
     );
   }
 
-  return (
+return (
     <div className="space-y-6">
+      <SectionHeader
+        title="Regression"
+        subtitle="Before/after regression deltas — did the latest data change the engine outputs?"
+        icon="🧪"
+      />
+
       {traceabilitySummary && (
         <TraceabilityTrustPanel
           title="Regression Trust Gate"

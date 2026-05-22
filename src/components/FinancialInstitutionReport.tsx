@@ -12,6 +12,7 @@ import type {
 import type { BankPeriodMetrics } from "../engine/bankPipeline";
 import type { NbfcSidecarData } from "../engine/nbfcSidecarLoader";
 import type { EngineConfig } from "../engine/types";
+import { SectionHeader } from "./shared/DesignSystem";
 import type {
   BankAssetQualityResult,
   CapitalBufferSeverity,
@@ -1374,9 +1375,14 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
 
   return (
     <div className="space-y-6">
+      <SectionHeader
+        title="Financial Institution Analysis"
+        subtitle={`${bankResult.subtype} · ${bankResult.periods.length} periods — NIM, credit costs, capital adequacy, and valuation`}
+        icon="🏦"
+      />
+
       <div className="flex justify-between items-start gap-3 flex-wrap">
         <div>
-          <h2 className="text-xl font-bold mb-1">Financial Institution Analysis</h2>
           <div className="text-sm text-slate-600 dark:text-slate-400">
             Subtype: <span className="font-mono">{bankResult.subtype}</span> · {bankResult.periods.length} periods
           </div>

@@ -29,7 +29,7 @@ function percentileRank(values: number[], x: number) {
 export default function ComparisonReport({ registry, config, weakestTraceabilitySummary: precomputedWeakestSummary = null, publication = null }: Props) {
   const companies = Object.values(registry.companies).filter((c) => c.recastData.length > 0);
   if (companies.length < 2) {
-    return <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center text-amber-800">Load at least 2 companies to enable peer comparison.</div>;
+    return <div className="card-base p-12 text-center"><div className="text-5xl mb-3">📊</div><p className="font-semibold text-slate-600 dark:text-slate-300">Need ≥ 2 companies</p><p className="text-sm text-slate-500 mt-1">Load at least 2 companies to enable peer comparison.</p></div>;
   }
 
   const comparisonPublication = publication ?? buildComparisonPublicationSnapshot(registry);
