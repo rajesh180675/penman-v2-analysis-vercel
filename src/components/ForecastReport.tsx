@@ -425,7 +425,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
         expectedValue={expectedValue != null && sharesOut ? toPerShare(expectedValue, sharesOut) ?? null : expectedValue}
       />
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
         <h2 className="text-lg font-bold text-slate-800 mb-4">Forecast Assumptions — §4.3</h2>
         <div className="flex flex-wrap gap-4 items-end">
           {[
@@ -504,7 +504,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
           <h3 className="text-base font-bold text-slate-800 mb-2">Driver-Based Forecast</h3>
           <div className="text-sm text-slate-700">{driverModel.narrative.join(" ")}</div>
           <div className="mt-4 grid gap-2 text-sm text-slate-700">
@@ -513,7 +513,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
             <div>Year 1 ATO: <strong>{driverModel.year1.ato != null ? `${driverModel.year1.ato.toFixed(2)}x` : "—"}</strong></div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
           <h3 className="text-base font-bold text-slate-800 mb-2">Cyclical Normalization</h3>
           <div className="grid gap-2 text-sm text-slate-700">
             <div>Status: <strong>{cyclicalNormalization.label}</strong></div>
@@ -522,7 +522,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
             <div>Normalized margin: <strong>{cyclicalNormalization.normalizedMargin != null ? pct(cyclicalNormalization.normalizedMargin) : "—"}</strong></div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
           <h3 className="text-base font-bold text-slate-800 mb-2">Terminal Economics</h3>
           <div className="grid gap-2 text-sm text-slate-700">
             <div>Terminal ROIC: <strong>{terminalEconomics.terminalRoic != null ? pct(terminalEconomics.terminalRoic) : "—"}</strong></div>
@@ -532,7 +532,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{terminalEconomics.summary}</div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
           <h3 className="text-base font-bold text-slate-800 mb-2">Scenario Policy</h3>
           <div className="grid gap-2 text-sm text-slate-700">
             <div>Spread posture: <strong>{persistenceScenario.forecastPolicy?.scenarioSpread ?? "—"}</strong></div>
@@ -546,7 +546,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
           <h3 className="text-base font-bold text-slate-800 mb-2">Quarterly And TTM Driver View</h3>
           <div className="grid gap-2 text-sm text-slate-700">
             <div>Cadence: <strong>{quarterlySummary.filingCadence}</strong></div>
@@ -560,7 +560,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
         <h2 className="text-lg font-bold text-slate-800 mb-2">Fade Analysis — N&P Table 3</h2>
         <p className="text-xs text-slate-500 mb-4">Ratios mean-revert toward N&P historical medians (R<sub>t+1</sub> = α×R<sub>t</sub> + (1−α)×R̄ median)</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -606,7 +606,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+      <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
         <h2 className="text-lg font-bold text-slate-800 mb-4">Scenario Valuation — §4.3.3</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
           {scenarioCards.map((card)=>(
@@ -686,7 +686,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
       </div>
 
       {displayMode.showMonteCarlo && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-lg font-bold text-slate-800">Monte Carlo Simulation — §4.1.1</h2>
@@ -721,7 +721,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
       )}
 
       {displayMode.mode !== "diagnostic-only" && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
           <h2 className="text-lg font-bold text-slate-800 mb-2">Sensitivity Analysis — §4.3.4</h2>
           <p className="text-xs text-slate-500 mb-4">Each parameter varied ±20% from base. Impact = V_high − V_low {sharesOut ? "(₹ / share)" : "(₹ Cr)"}. Sorted by magnitude.</p>
           {sensResults.map(r=>{
@@ -747,7 +747,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
       )}
 
       {fcPeriods.length>0&&(
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
             <h2 className="text-lg font-bold text-slate-800">Pro Forma Statement (Base Case)</h2>
             <p className="text-xs text-slate-500">Derived from accounting identities Eq.2,3,12,14 {sharesOut ? `· displayed as ₹ per share on the current ${sharesOut.toLocaleString("en-IN", { maximumFractionDigits: 2 })} Cr share base` : ""}</p>

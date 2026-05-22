@@ -61,7 +61,7 @@ return (
           cautionHeading="Read regression deltas in the context of these unresolved gates"
         />
       )}
-      <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
         <h2 className="text-lg font-bold text-slate-800">Post-Fix Regression Harness</h2>
         <p className="text-xs text-slate-500 mt-1">
           Company run-through on {report.latestPeriod.slice(0, 10)} with legacy-emulation (before) vs fixed engine (after).
@@ -69,7 +69,7 @@ return (
       </section>
       {snapshot && (
         <>
-          <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+          <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
             <h3 className="font-semibold text-slate-800 mb-3">Phase 0 Baseline Universe (Frozen)</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -101,7 +101,7 @@ return (
               </table>
             </div>
           </section>
-          <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+          <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
             <h3 className="font-semibold text-slate-800 mb-3">Phase 0 Guardrails KPI Dashboard</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Box label="RE↔ReOI identity gap" value={pct(snapshot.guardrails.identityGapPct)} />
@@ -113,7 +113,7 @@ return (
               />
             </div>
           </section>
-          <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+          <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
             <h3 className="font-semibold text-slate-800 mb-3">Reproducible Baseline Snapshot</h3>
             <p className="text-xs text-slate-500 mb-3">
               Deterministic snapshot ID for regression harness baselining and CI comparisons.
@@ -130,7 +130,7 @@ return (
         </>
       )}
 
-      <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
         <h3 className="font-semibold text-slate-800 mb-3">1) Before vs After Ratio Deltas (latest period)</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -162,7 +162,7 @@ return (
         </div>
       </section>
 
-      <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
         <h3 className="font-semibold text-slate-800 mb-3">2) Identity Pass Rate A1–A9 (before vs after)</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div className="rounded-lg border border-red-200 bg-red-50 p-3">
@@ -202,7 +202,7 @@ return (
         </div>
       </section>
 
-      <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
         <h3 className="font-semibold text-slate-800 mb-3">3) Valuation Delta (RE/ReOI CV outputs)</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <Box label="ke" value={pct(report.valuationDelta.ke)} />
@@ -241,7 +241,7 @@ return (
         </div>
       </section>
 
-      <section className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+      <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
         <h3 className="font-semibold text-slate-800 mb-3">4) Fixed-Bugs Impact Table (quantitative attribution)</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
