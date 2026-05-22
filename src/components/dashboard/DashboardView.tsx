@@ -12,7 +12,7 @@ import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { SegmentData } from "../../engine/segmentParser";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 
-import { VerdictBanner, InsightBlock, ExpandableSection, ConfidenceBadge } from "../shared/DesignSystem";
+import { VerdictBanner, InsightBlock, ExpandableSection, ConfidenceBadge, RiskFlag } from "../shared/DesignSystem";
 import KPITile from "./KPITile";
 import ValuationTriangulation from "./ValuationTriangulation";
 import QualitySignalPanel from "./QualitySignalPanel";
@@ -218,6 +218,24 @@ export default function DashboardView({ data, config, traceability = null, ratio
           ...(marginOfSafety != null ? [{ label: "MoS", value: `${(marginOfSafety * 100).toFixed(0)}%` }] : []),
         ]}
       />
+
+      {/* Risk flags — only show when distress detected */}
+      {distress && distress.severity !== "none" && (
+        <div className="flex flex-wrap gap-2">
+          {distress.equityModelsBlocked && (
+            <RiskFlag severity="high" label="Equity models blocked" detail="Negative equity or severe losses make residual income models unreliable" />
+          )}
+          {distress.severity === "critical" && (
+            <RiskFlag severity="high" label="Critical distress" detail="Multiple going-concern indicators triggered" />
+          )}
+          {distress.severity === "severe" && !distress.equityModelsBlocked && (
+            <RiskFlag severity="medium" label="Severe distress" detail="Significant financial stress — valuations should be treated with extreme caution" />
+          )}
+          {distress.severity === "moderate" && (
+            <RiskFlag severity="low" label="Moderate stress" detail="Some indicators suggest financial pressure but not critical" />
+          )}
+        </div>
+      )}
 
       {/* KPI Tiles — key numbers at a glance */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
