@@ -1,4 +1,5 @@
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from "recharts";
+import { CHART_COLORS, TOOLTIP_STYLE } from "./chartUtils";
 
 interface FrameworkAnchor {
   name: string;
@@ -77,16 +78,16 @@ export default function FrameworkRadar({ anchors, marketPrice }: Props) {
                 `₹${props.payload.value.toFixed(0)} (${(value).toFixed(2)}× market)`,
                 props.payload.fullName,
               ]) as any}
-              contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
+              contentStyle={TOOLTIP_STYLE}
             />
             <Radar
               name="Implied Value"
               dataKey="ratio"
-              stroke="#6366f1"
-              fill="#6366f1"
+              stroke={CHART_COLORS.primary}
+              fill={CHART_COLORS.primary}
               fillOpacity={0.2}
               strokeWidth={2}
-              dot={{ r: 4, fill: "#6366f1" }}
+              dot={{ r: 4, fill: CHART_COLORS.primary }}
             />
           </RadarChart>
         </ResponsiveContainer>
