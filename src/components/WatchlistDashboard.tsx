@@ -1,5 +1,6 @@
 import { rankWorkspaceCompanies } from "../engine/portfolioRanking";
 import { WorkspaceCompanyRecord } from "../lib/researchWorkspace";
+import { TrendIndicator } from "./shared/DesignSystem";
 
 function pct(value: number | null | undefined, digits = 1) {
   return value == null || !Number.isFinite(value) ? "—" : `${(value * 100).toFixed(digits)}%`;
@@ -163,6 +164,9 @@ export default function WatchlistDashboard({ companies, activeCompanyId, onSelec
                         }`}>
                           {pct(row.expectedCagrStress)}
                         </span>
+                        {row.expectedCagrStress != null && (
+                          <TrendIndicator value={row.expectedCagrStress} previousValue={0} format="pct" />
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <ScoreBar score={row.score} />
