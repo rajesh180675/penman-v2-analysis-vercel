@@ -1,5 +1,29 @@
 [
   {
+    "folder": "Asian Paints",
+    "name": "Asian Paints",
+    "ticker": "ASIANPAINT",
+    "sector": "Paints",
+    "type": "consumer",
+    "description": "Capitaline financial dataset for Asian Paints.",
+    "emoji": "🏢",
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Asian%20Paints/Asian%20Paints.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Asian%20Paints/standalone.zip"
+  },
+  {
+    "folder": "Avenue Supermarts",
+    "name": "Avenue Supermarts",
+    "ticker": "DMART",
+    "sector": "Retail",
+    "type": "consumer",
+    "description": "Capitaline financial dataset for Avenue Supermarts.",
+    "emoji": "🏢",
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Avenue%20Supermarts/Avenue%20Supermarts.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Avenue%20Supermarts/standalone.zip"
+  },
+  {
     "folder": "Bajaj Finance",
     "name": "Bajaj Finance",
     "ticker": "BAJFINANCE",
@@ -43,6 +67,54 @@
     }
   },
   {
+    "folder": "Bharti Airtel",
+    "name": "Bharti Airtel",
+    "ticker": "BHARTIARTL",
+    "sector": "Telecom",
+    "type": "telecom",
+    "description": "Capitaline financial dataset for Bharti Airtel.",
+    "emoji": "🏢",
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bharti%20Airtel/Bharti%20Airtel.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bharti%20Airtel/standalone.zip"
+  },
+  {
+    "folder": "Britannia Industries",
+    "name": "Britannia Industries",
+    "ticker": "BRITANNIA",
+    "sector": "FMCG",
+    "type": "consumer",
+    "description": "Capitaline financial dataset for Britannia Industries.",
+    "emoji": "🏢",
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Britannia%20Industries/Britannia%20Industries.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Britannia%20Industries/standalone.zip"
+  },
+  {
+    "folder": "Dabur India",
+    "name": "Dabur India",
+    "ticker": "DABUR",
+    "sector": "FMCG",
+    "type": "consumer",
+    "description": "Capitaline financial dataset for Dabur India.",
+    "emoji": "🏢",
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Dabur%20India/Dabur%20India.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Dabur%20India/standalone.zip"
+  },
+  {
+    "folder": "Grasim Industries",
+    "name": "Grasim Industries",
+    "ticker": "GRASIM",
+    "sector": "Textiles",
+    "type": "industrial",
+    "description": "Capitaline financial dataset for Grasim Industries.",
+    "emoji": "🏢",
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Grasim%20Industries/Grasim%20Industries.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Grasim%20Industries/standalone.zip"
+  },
+  {
     "folder": "HDFC Bank",
     "name": "HDFC Bank",
     "ticker": "HDFCBANK",
@@ -61,10 +133,12 @@
     "ticker": "HINDUNILVR",
     "name": "Hindustan Unilever",
     "sector": "FMCG",
-    "type": "industrial",
+    "type": "consumer",
     "description": "India's largest FMCG company — home care, personal care, foods",
-    "emoji": "🧴",
-    "hasStandalone": true
+    "emoji": "🛒",
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Hindustan%20Unilever/Hindustan%20Unilever.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Hindustan%20Unilever/standalone.zip"
   },
   {
     "folder": "ICICI Bank",
@@ -93,6 +167,18 @@
     "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/ITC/standalone.zip"
   },
   {
+    "folder": "Infosys",
+    "name": "Infosys",
+    "ticker": "INFY",
+    "sector": "IT-Software",
+    "type": "it-services",
+    "description": "Capitaline financial dataset for Infosys.",
+    "emoji": "🏢",
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Infosys/Infosys.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Infosys/standalone.zip"
+  },
+  {
     "folder": "KOTAKBANK",
     "name": "Kotak Mahindra Bank",
     "ticker": "KOTAKBANK",
@@ -101,7 +187,9 @@
     "description": "Premium private bank with conservative loan book",
     "emoji": "🏦",
     "hasStandalone": true,
-    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/KOTAKBANK/quality_indicators.json"
+    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/KOTAKBANK/quality_indicators.json",
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/KOTAKBANK/KOTAKBANK.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/KOTAKBANK/standalone.zip"
   },
   {
     "folder": "Life Insurance Corporation of India",
@@ -125,7 +213,21 @@
     "type": "conglomerate",
     "description": "Engineering conglomerate — infra, defence, IT, financial services",
     "emoji": "🏗️",
-    "hasStandalone": true
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Larsen%20%26%20Toubro%20Ltd/Larsen%20%26%20Toubro%20Ltd.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Larsen%20%26%20Toubro%20Ltd/standalone.zip"
+  },
+  {
+    "folder": "Mahindra & Mahindra",
+    "name": "Mahindra & Mahindra",
+    "ticker": "M&M",
+    "sector": "Automobile",
+    "type": "cyclical",
+    "description": "Capitaline financial dataset for Mahindra & Mahindra.",
+    "emoji": "🏢",
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Mahindra%20%26%20Mahindra/Mahindra%20%26%20Mahindra.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Mahindra%20%26%20Mahindra/standalone.zip"
   },
   {
     "folder": "Maruti Suzuki India Ltd",
@@ -135,7 +237,33 @@
     "type": "industrial",
     "description": "India's largest passenger vehicle manufacturer",
     "emoji": "🚗",
-    "hasStandalone": true
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Maruti%20Suzuki%20India%20Ltd/Maruti%20Suzuki%20India%20Ltd.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Maruti%20Suzuki%20India%20Ltd/standalone.zip"
+  },
+  {
+    "folder": "NTPC",
+    "name": "NTPC",
+    "ticker": "NTPC",
+    "sector": "Power",
+    "type": "utility",
+    "description": "Capitaline financial dataset for NTPC.",
+    "emoji": "🏢",
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/NTPC/NTPC.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/NTPC/standalone.zip"
+  },
+  {
+    "folder": "Nestlé India",
+    "name": "Nestlé India",
+    "ticker": "NESTLEIND",
+    "sector": "FMCG",
+    "type": "consumer",
+    "description": "Capitaline financial dataset for Nestlé India.",
+    "emoji": "🛒",
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Nestl%C3%A9%20India/Nestl%C3%A9%20India.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Nestl%C3%A9%20India/standalone.zip"
   },
   {
     "folder": "Paytm",
@@ -185,7 +313,9 @@
     "description": "Largest public-sector bank",
     "emoji": "🏛️",
     "hasStandalone": true,
-    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/SBIN/quality_indicators.json"
+    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/SBIN/quality_indicators.json",
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/SBIN/SBIN.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/SBIN/standalone.zip"
   },
   {
     "folder": "Sun Pharmaceutical Industries Ltd",
@@ -195,7 +325,9 @@
     "type": "industrial",
     "description": "India's largest pharma company — specialty and generics",
     "emoji": "💊",
-    "hasStandalone": true
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Sun%20Pharmaceutical%20Industries%20Ltd/Sun%20Pharmaceutical%20Industries%20Ltd.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Sun%20Pharmaceutical%20Industries%20Ltd/standalone.zip"
   },
   {
     "folder": "Tata Consultancy Services Ltd",
@@ -224,6 +356,18 @@
     "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Tata%20Steel/standalone.zip"
   },
   {
+    "folder": "Titan Company",
+    "name": "Titan Company",
+    "ticker": "TITAN",
+    "sector": "Consumer Durables",
+    "type": "consumer",
+    "description": "Capitaline financial dataset for Titan Company.",
+    "emoji": "🏢",
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Titan%20Company/Titan%20Company.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Titan%20Company/standalone.zip"
+  },
+  {
     "folder": "UltraTech Cement Ltd",
     "ticker": "ULTRACEMCO",
     "name": "UltraTech Cement",
@@ -231,7 +375,9 @@
     "type": "cyclical",
     "description": "India's largest cement manufacturer by capacity",
     "emoji": "🏭",
-    "hasStandalone": true
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/UltraTech%20Cement%20Ltd/UltraTech%20Cement%20Ltd.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/UltraTech%20Cement%20Ltd/standalone.zip"
   },
   {
     "folder": "Vodafone Idea Ltd",

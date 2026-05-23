@@ -13,15 +13,25 @@
  */
 
 export const NSE_SYMBOL_REGISTRY: Record<string, string> = {
+  "Asian Paints": "ASIANPAINT",
+  "Avenue Supermarts": "DMART",
   "Bajaj Finance": "BAJFINANCE",
+  "Bharti Airtel": "BHARTIARTL",
+  "Britannia Industries": "BRITANNIA",
+  "Dabur India": "DABUR",
+  "Grasim Industries": "GRASIM",
   "HDFC Bank": "HDFCBANK",
   "Hindustan Unilever": "HINDUNILVR",
   "ICICI Bank": "ICICIBANK",
+  "Infosys": "INFY",
   "ITC": "ITC",
   "KOTAKBANK": "KOTAKBANK",
   "Larsen & Toubro Ltd": "LT",
   "Life Insurance Corporation of India": "LICI",
+  "Mahindra & Mahindra": "M&M",
   "Maruti Suzuki India Ltd": "MARUTI",
+  "Nestlé India": "NESTLEIND",
+  "NTPC": "NTPC",
   "Paytm": "PAYTM",
   "Power Grid Corporation of India Ltd": "POWERGRID",
   "Reliance Industries": "RELIANCE",
@@ -29,6 +39,7 @@ export const NSE_SYMBOL_REGISTRY: Record<string, string> = {
   "Sun Pharmaceutical Industries Ltd": "SUNPHARMA",
   "Tata Consultancy Services Ltd": "TCS",
   "Tata Steel": "TATASTEEL",
+  "Titan Company": "TITAN",
   "UltraTech Cement Ltd": "ULTRACEMCO",
   "Vodafone Idea Ltd": "IDEA",
 };

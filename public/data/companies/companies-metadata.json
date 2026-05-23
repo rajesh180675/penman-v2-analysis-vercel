@@ -1,5 +1,23 @@
 [
   {
+    "folder": "Asian Paints",
+    "name": "Asian Paints",
+    "ticker": "ASIANPAINT",
+    "sector": "Paints",
+    "type": "consumer",
+    "description": "Capitaline financial dataset for Asian Paints.",
+    "emoji": "🏢"
+  },
+  {
+    "folder": "Avenue Supermarts",
+    "name": "Avenue Supermarts",
+    "ticker": "DMART",
+    "sector": "Retail",
+    "type": "consumer",
+    "description": "Capitaline financial dataset for Avenue Supermarts.",
+    "emoji": "🏢"
+  },
+  {
     "folder": "Bajaj Finance",
     "name": "Bajaj Finance",
     "ticker": "BAJFINANCE",
@@ -8,6 +26,42 @@
     "description": "Consumer finance NBFC with retail loan focus",
     "emoji": "💳",
     "showcaseFor": "NBFC routing — borrowings/equity leverage frame"
+  },
+  {
+    "folder": "Bharti Airtel",
+    "name": "Bharti Airtel",
+    "ticker": "BHARTIARTL",
+    "sector": "Telecom",
+    "type": "telecom",
+    "description": "Capitaline financial dataset for Bharti Airtel.",
+    "emoji": "🏢"
+  },
+  {
+    "folder": "Britannia Industries",
+    "name": "Britannia Industries",
+    "ticker": "BRITANNIA",
+    "sector": "FMCG",
+    "type": "consumer",
+    "description": "Capitaline financial dataset for Britannia Industries.",
+    "emoji": "🏢"
+  },
+  {
+    "folder": "Dabur India",
+    "name": "Dabur India",
+    "ticker": "DABUR",
+    "sector": "FMCG",
+    "type": "consumer",
+    "description": "Capitaline financial dataset for Dabur India.",
+    "emoji": "🏢"
+  },
+  {
+    "folder": "Grasim Industries",
+    "name": "Grasim Industries",
+    "ticker": "GRASIM",
+    "sector": "Textiles",
+    "type": "industrial",
+    "description": "Capitaline financial dataset for Grasim Industries.",
+    "emoji": "🏢"
   },
   {
     "folder": "HDFC Bank",
@@ -24,9 +78,9 @@
     "ticker": "HINDUNILVR",
     "name": "Hindustan Unilever",
     "sector": "FMCG",
-    "type": "industrial",
+    "type": "consumer",
     "description": "India's largest FMCG company — home care, personal care, foods",
-    "emoji": "🧴"
+    "emoji": "🛒"
   },
   {
     "folder": "ICICI Bank",
@@ -46,6 +100,15 @@
     "description": "Diversified conglomerate — cigarettes, FMCG, hotels, paper, agri",
     "emoji": "🚬",
     "showcaseFor": "SOTP valuation across multiple segments"
+  },
+  {
+    "folder": "Infosys",
+    "name": "Infosys",
+    "ticker": "INFY",
+    "sector": "IT-Software",
+    "type": "it-services",
+    "description": "Capitaline financial dataset for Infosys.",
+    "emoji": "🏢"
   },
   {
     "folder": "KOTAKBANK",
@@ -76,6 +139,15 @@
     "showcaseFor": "Insurance fail-closed (no equity-side valuation)"
   },
   {
+    "folder": "Mahindra & Mahindra",
+    "name": "Mahindra & Mahindra",
+    "ticker": "M&M",
+    "sector": "Automobile",
+    "type": "cyclical",
+    "description": "Capitaline financial dataset for Mahindra & Mahindra.",
+    "emoji": "🏢"
+  },
+  {
     "folder": "Maruti Suzuki India Ltd",
     "ticker": "MARUTI",
     "name": "Maruti Suzuki",
@@ -83,6 +155,24 @@
     "type": "industrial",
     "description": "India's largest passenger vehicle manufacturer",
     "emoji": "🚗"
+  },
+  {
+    "folder": "NTPC",
+    "name": "NTPC",
+    "ticker": "NTPC",
+    "sector": "Power",
+    "type": "utility",
+    "description": "Capitaline financial dataset for NTPC.",
+    "emoji": "🏢"
+  },
+  {
+    "folder": "Nestlé India",
+    "name": "Nestlé India",
+    "ticker": "NESTLEIND",
+    "sector": "FMCG",
+    "type": "consumer",
+    "description": "Capitaline financial dataset for Nestlé India.",
+    "emoji": "🛒"
   },
   {
     "folder": "Paytm",
@@ -151,6 +241,15 @@
     "description": "Integrated steel producer, India + Europe",
     "emoji": "🏗️",
     "showcaseFor": "Cyclical normalization + cycle-aware terminal RE"
+  },
+  {
+    "folder": "Titan Company",
+    "name": "Titan Company",
+    "ticker": "TITAN",
+    "sector": "Consumer Durables",
+    "type": "consumer",
+    "description": "Capitaline financial dataset for Titan Company.",
+    "emoji": "🏢"
   },
   {
     "folder": "UltraTech Cement Ltd",

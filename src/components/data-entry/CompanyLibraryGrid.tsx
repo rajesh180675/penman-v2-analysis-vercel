@@ -11,7 +11,7 @@ export interface LibraryCompany {
   /** Sector category */
   sector: string;
   /** Type for routing/architecture */
-  type: "industrial" | "bank" | "nbfc" | "insurance" | "it-services" | "utility" | "telecom" | "cyclical" | "loss-maker" | "conglomerate";
+  type: "industrial" | "bank" | "nbfc" | "insurance" | "it-services" | "consumer" | "utility" | "telecom" | "cyclical" | "loss-maker" | "conglomerate";
   /** One-line description */
   description: string;
   /** Visual identifier emoji */
@@ -65,6 +65,7 @@ const TYPE_STYLES: Record<LibraryCompany["type"], { bg: string; text: string; la
   nbfc:          { bg: "bg-emerald-50 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-emerald-300", label: "NBFC" },
   insurance:     { bg: "bg-cyan-50 dark:bg-cyan-900/30", text: "text-cyan-700 dark:text-cyan-300", label: "Insurance" },
   "it-services": { bg: "bg-violet-50 dark:bg-violet-900/30", text: "text-violet-700 dark:text-violet-300", label: "IT Services" },
+  consumer:      { bg: "bg-lime-50 dark:bg-lime-900/30", text: "text-lime-700 dark:text-lime-300", label: "Consumer" },
   utility:       { bg: "bg-amber-50 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-300", label: "Utility" },
   telecom:       { bg: "bg-pink-50 dark:bg-pink-900/30", text: "text-pink-700 dark:text-pink-300", label: "Telecom" },
   cyclical:      { bg: "bg-orange-50 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300", label: "Cyclical" },
