@@ -25,6 +25,11 @@ import SegmentBreakdown from "./SegmentBreakdown";
 import PeriodDeltaStrip from "./PeriodDeltaStrip";
 import NextStepsPanel from "./NextStepsPanel";
 import ValuationRangeGauge from "../charts/ValuationRangeGauge";
+import useAdvancedModels from "../../hooks/useAdvancedModels";
+import FadeRatePanel from "./FadeRatePanel";
+import PenmanExpectedReturnPanel from "./PenmanExpectedReturnPanel";
+import ReverseDCFPanel from "./ReverseDCFPanel";
+import AdvancedSegmentPanel from "./AdvancedSegmentPanel";
 
 interface Props {
   data: RecastPeriod[];
@@ -47,6 +52,9 @@ export default function DashboardView({ data, config, traceability = null, ratio
   const shares = shareBasis.shares;
   const price = marketData?.price ?? config.market_price ?? null;
   const marketCap = price != null && shares != null && shares > 0 ? (price * shares) : null; // ₹ Cr (shares in Cr)
+
+  // ── Advanced Models ────────────────────────────────────────────────────────
+  const advanced = useAdvancedModels({ data, config, segmentData, marketData, shares });
 
   // ── KPI computations ──────────────────────────────────────────────────────
   const roce = latest?.ratios?.ROCE ?? null;
@@ -383,6 +391,12 @@ export default function DashboardView({ data, config, traceability = null, ratio
           </div>
         </div>
       </ExpandableSection>
+
+      {/* ── Advanced Models ──────────────────────────────────────────────── */}
+      <PenmanExpectedReturnPanel penmanReturn={advanced.penmanReturn} accountingAnchor={advanced.accountingAnchor} />
+      <ReverseDCFPanel reverseDCF={advanced.reverseDCF} />
+      <FadeRatePanel fadeRate={advanced.fadeRate} />
+      <AdvancedSegmentPanel segmentRNOA={advanced.segmentRNOA} capitalAllocation={advanced.capitalAllocation} conglomerateDiscount={advanced.conglomerateDiscount} />
 
       {/* Next Steps */}
       {(() => {
