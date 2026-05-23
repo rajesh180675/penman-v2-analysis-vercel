@@ -1,0 +1,95 @@
+import { describe, it, expect } from "vitest";
+import { computeReverseDCF } from "../reverseDCF";
+import type { RecastPeriod } from "../types";
+
+function buildRecastForRDCF(rnoa: number, noaSeries: number[], cse: number, nfo: number): RecastPeriod[] {
+  return noaSeries.map((noa, i) => ({
+    period_end: `${2020 + i}0331`,
+    ratios: { RNOA: rnoa, PM: null, ATO: null, ROCE: null, NBC: null, SPREAD: null, FLEV: null, ROE: null, accrual_ratio_bs: null, accrual_ratio_cf: null },
+    bs: { NOA: noa, NFO: nfo, CSE: cse, OA_Cash: 0, OA_Receivables: 0, OA_Inventory: 0, OA_OtherCurrentAssets: 0, OA_PPE: 0, OA_Intangibles: 0, OA_OtherNonCurrentAssets: 0, OL_Payables: 0, OL_OtherCurrentLiabilities: 0, OL_OtherNonCurrentLiabilities: 0, DTL: 0, PensionObl: 0, OL_ex_DTL: 0, FA_Cash: 0, FA_ShortTermInvestments: 0, FA_LongTermInvestments: 0, FL_ShortTermDebt: 0, FL_LongTermDebt: 0, FL_OtherFinancialLiabilities: 0, MinorityInterest: 0 },
+    is: { Sales: 0, TaxExpense: 0, taxRate: 0.25, PAT: rnoa * noa * 0.75, OCI: 0, TCI: 0, TCI_NCI: 0, CNI: 0, FinanceCost: 0, FinanceIncome: 0, FinanceIncomeRung: 1, PreferredDividend: 0, NFE: 0, OI: rnoa * noa, OtherItems: 0, OI_from_sales: 0, MII: 0, COGS: 0 },
+    cf: { CFO: rnoa * noa * 0.8, Capex: 0, FCF: 0, DividendPaid: -(rnoa * noa * 0.3), CFF: 0, CFI: 0 },
+    cu: { UOI: 0, CoreOI: rnoa * noa, UFE: 0, CoreNFE: 0, ExceptionalItemsAfterTax: 0, OCITotal: 0 },
+    ri: { ReOI: (rnoa - 0.13) * noa, ReOI_growth: null, ReOI_margin: null, capitalCharge: 0.13 * noa },
+  } as unknown as RecastPeriod));
+}
+
+describe("reverseDCF", () => {
+  it("identifies priced-for-perfection when market implies high growth", () => {
+    // Company with RNOA=20%, NOA growing ~10%, priced at 5x book
+    const data = buildRecastForRDCF(0.20, [10000, 11000, 12100, 13300, 14600], 12600, 2000);
+    // Price = 5x book value per share → very expensive
+    const result = computeReverseDCF(data, 0.13, 0.60, 5000, 12.6);
+
+    expect(result).not.toBeNull();
+    expect(result!.impliedGrowth).toBeGreaterThan(0.10); // must imply high growth
+    expect(result!.verdict).toBe("priced_for_perfection");
+  });
+
+  it("identifies asymmetric upside when market is pessimistic", () => {
+    // Company with RNOA=20%, priced below book
+    const data = buildRecastForRDCF(0.20, [10000, 11000, 12100, 13300, 14600], 12600, 2000);
+    // Price = 0.8x book → market expects decline
+    const result = computeReverseDCF(data, 0.13, 0.60, 800, 12.6);
+
+    expect(result).not.toBeNull();
+    expect(result!.impliedGrowth).toBeLessThan(0);
+    expect(["asymmetric_upside", "priced_for_failure"]).toContain(result!.verdict);
+  });
+
+  it("decomposes price into no-growth + near-term + long-term", () => {
+    const data = buildRecastForRDCF(0.22, [10000, 11500, 13200, 15200, 17500], 15500, 2000);
+    const result = computeReverseDCF(data, 0.13, 0.65, 2000, 15.5);
+
+    expect(result).not.toBeNull();
+    const d = result!.priceDecomposition;
+    // All parts should sum approximately to market price
+    expect(d.noGrowthPct + d.nearTermPct + d.longTermPct).toBeCloseTo(1.0, 0.2);
+    expect(d.noGrowthValue).toBeGreaterThan(0);
+  });
+
+  it("computes sensitivity table", () => {
+    const data = buildRecastForRDCF(0.20, [10000, 11000, 12100, 13300, 14600], 12600, 2000);
+    const result = computeReverseDCF(data, 0.13, 0.60, 1500, 12.6);
+
+    expect(result).not.toBeNull();
+    const s = result!.sensitivity;
+    // Higher growth → higher price
+    expect(s.priceAt20PctGrowth).toBeGreaterThan(s.priceAt15PctGrowth);
+    expect(s.priceAt15PctGrowth).toBeGreaterThan(s.priceAt10PctGrowth);
+    expect(s.priceAt10PctGrowth).toBeGreaterThan(s.priceAtZeroGrowth);
+  });
+
+  it("computes implied CAP (competitive advantage period)", () => {
+    const data = buildRecastForRDCF(0.22, [10000, 11000, 12100, 13300, 14600], 12600, 2000);
+    const result = computeReverseDCF(data, 0.13, 0.65, 2000, 12.6);
+
+    expect(result).not.toBeNull();
+    expect(result!.impliedCAP).toBeGreaterThan(0);
+    expect(result!.impliedCAP).toBeLessThan(50);
+  });
+
+  it("computes sustainable growth rate", () => {
+    const data = buildRecastForRDCF(0.20, [10000, 11000, 12100, 13300, 14600], 12600, 2000);
+    const result = computeReverseDCF(data, 0.13, 0.60, 1500, 12.6);
+
+    expect(result).not.toBeNull();
+    // Sustainable = RNOA × (1 - payout)
+    expect(result!.sustainableGrowth).toBeGreaterThan(0);
+    expect(result!.sustainableGrowth).toBeLessThan(result!.historicalRNOA);
+  });
+
+  it("generates narrative with key insights", () => {
+    const data = buildRecastForRDCF(0.20, [10000, 11000, 12100, 13300, 14600], 12600, 2000);
+    const result = computeReverseDCF(data, 0.13, 0.60, 1500, 12.6);
+
+    expect(result).not.toBeNull();
+    expect(result!.narrative.length).toBeGreaterThan(100);
+    expect(result!.narrative).toContain("growth");
+  });
+
+  it("returns null for insufficient data", () => {
+    const data = buildRecastForRDCF(0.20, [10000, 11000, 12000], 10000, 2000);
+    expect(computeReverseDCF(data, 0.13, 0.60, 1500, 10)).toBeNull();
+  });
+});
