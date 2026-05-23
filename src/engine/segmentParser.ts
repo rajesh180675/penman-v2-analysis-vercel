@@ -1,14 +1,17 @@
 /**
- * Segment Finance Parser
+ * Segment Finance Parser — Generic / Frequency-Based
  *
  * Parses Capitaline SegmentFinance HTML exports into typed segment data.
- * Handles both business segments (FMCG, Hotels, etc.) and geographic
- * segments (Within India, Outside India).
+ * 
+ * DESIGN: No dependency on specific Capitaline sub-section labels.
+ * Segments are identified by structural properties:
+ *   - ALL CAPS labels that repeat 2+ times across the file = segment names
+ *   - Everything else = structural labels (sub-section headers, totals, etc.)
  *
- * Structure of Capitaline segment files:
- * - Labels appear in order: section header → segment names (repeated per section)
- * - Data rows: 15 cells per row (one per year), 32 rows total for ITC
- * - Sections: REVENUE, RESULT, OTHER INFORMATION (Assets, Liabilities, Capex, Depreciation, Non-Cash)
+ * The only hard-coded knowledge:
+ *   1. Three top-level section headers: REVENUE, RESULT, OTHER INFORMATION
+ *   2. Metric sequence within each section (Capitaline's fixed ordering)
+ *   3. HTML structure (labels in <label>, data in <td>/<div>, rows in <tr>)
  */
 
 export interface SegmentPeriodData {
@@ -54,50 +57,34 @@ export interface AllSegmentData {
   mixed: SegmentData | null;
 }
 
-/** Known section headers in Capitaline segment files */
-const SECTION_HEADERS = new Set([
-  "REVENUE", "RESULT", "OTHER INFORMATION",
-]);
+// ─── Only 3 hard-coded values: the top-level section headers ───────────────
+const SECTION_HEADERS = new Set(["REVENUE", "RESULT", "OTHER INFORMATION"]);
 
-/** Sub-section labels that DO have associated data rows (must consume a row when encountered) */
-const SUB_SECTION_WITH_DATA = new Set([
-  "Revenue from Operations",
-  "Less/Add : Inter Segment Revenues",
-  "Total Segment Revenue",
-  "Net Revenue from Operations",
-  "Profit/Loss Before Interest & Tax",
-  "Segment Assets",
-  "Segment Liabilities",
-  "Capital Expenditure",
-  "Depreciation/Amortisation",
-  "Non Cash Expenditure",
-  "Add : Other Unallocable Income/Exp.",
-  "Other Income",
-  "Less : Interest Expense",
-  "Other Un-allocable Expenditure",
-  "Add : Other Income",
-  "Extra-Ordinary Income/Expense",
-  "Net Profit/Loss Before Tax",
-  "Income Tax",
-  "Fringe Benefit Tax",
-  "Deferred Tax",
-  "Net Profit",
-  "Unallocated Corporate Assets",
-  "Total Assets",
-  "Unallocated Corporate Liabilities",
-  "Total Liabilities",
-  "Net Assets",
-  "TOTAL",
-  "Unallocated Capital Expenditure",
-  "Total Capital Expenditure",
-  "Unallocated Depn/Amortn.",
-  "Total Depreciation/Amortisation",
-  "Unallocated Non-Cash Exp.",
-  "Total Non Cash Expenditure",
-]);
+// ─── Metric sequence per section (Capitaline's fixed ordering) ─────────────
+type MetricSlot = "revenue" | "interSegmentRevenue" | "totalRev" | "result" |
+  "assets" | "liabilities" | "capex" | "depreciation" | "nonCashExpenditure" | null;
+
+const REVENUE_METRICS: MetricSlot[] = ["revenue", "interSegmentRevenue", "totalRev"];
+const RESULT_METRICS: MetricSlot[] = ["result"];
+const OTHER_INFO_METRICS: MetricSlot[] = ["assets", "liabilities", "capex", "depreciation", "nonCashExpenditure"];
+
+// ─── Utility functions ─────────────────────────────────────────────────────
+
+/** Decode common HTML entities (&amp; &lt; &gt; &quot; &#NNN; &#xHH;) */
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
+
 function parseNumber(s: string): number | null {
   if (!s || s.trim() === "" || s.trim() === "-") return null;
-  // Remove commas, handle negative in parentheses
   let cleaned = s.replace(/,/g, "").trim();
   if (cleaned.startsWith("(") && cleaned.endsWith(")")) {
     cleaned = "-" + cleaned.slice(1, -1);
@@ -107,23 +94,27 @@ function parseNumber(s: string): number | null {
 }
 
 function yearFromYYYYMM(yyyymm: string): string {
-  // "202503" → "FY2025"
   const year = parseInt(yyyymm.slice(0, 4), 10);
   const month = parseInt(yyyymm.slice(4, 6), 10);
-  // Indian FY: March ending → FY is the year of March
   return month <= 3 ? `FY${year}` : `FY${year + 1}`;
 }
 
+/** Structural exclusion: labels matching these patterns are never segments */
+function isStructuralPattern(label: string): boolean {
+  const l = label.toLowerCase();
+  return l === "total" || l.startsWith("total ") ||
+    l.includes("unallocated") || l.includes("un-allocable") ||
+    l.includes("unallocable");
+}
 
 /**
  * Parse a Capitaline SegmentFinance HTML file into structured segment data.
  */
 export function parseSegmentFinanceHTML(html: string): SegmentData | null {
-  // Extract years from header (YYYYMM format)
+  // ─── Step 1: Extract years ────────────────────────────────────────────
   const yearMatch = html.match(/(\d{6}(?:\s+\d{6})*)/);
   if (!yearMatch) return null;
 
-  // Also try ng-binding pattern for years
   const yearMatches = Array.from(html.matchAll(/ng-binding[^>]*>(\d{6})/g)).map(m => m[1]);
   const years = yearMatches.length > 0
     ? yearMatches.map(yearFromYYYYMM)
@@ -131,25 +122,22 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
 
   if (years.length === 0) return null;
 
-  // Extract labels in order
-  const labelMatches = Array.from(html.matchAll(/<label[^>]*>([^<]+)<\/label>/g)).map(m => m[1].trim());
+  // ─── Step 2: Extract all labels (decoded) ─────────────────────────────
+  const labelMatches = Array.from(html.matchAll(/<label[^>]*>([^<]+)<\/label>/g))
+    .map(m => decodeHtmlEntities(m[1].trim()));
   if (labelMatches.length === 0) return null;
 
-  // Extract data rows — Capitaline uses TWO formats:
-  // 1. ng-binding divs (totals/headers): <div class="ng-binding ng-scope">73,464.55</div>
-  // 2. td cells (segment detail): <td class="datarow">4224.04</td> or plain <td>4224.04</td>
-  // Strategy: extract label + values from each <tr> as a pair
+  // ─── Step 3: Extract labeled data rows ────────────────────────────────
   interface LabeledRow { label: string; values: (number | null)[]; }
   const labeledRows: LabeledRow[] = [];
   const trBlocks = html.split(/<tr[\s>]/i).slice(1);
   for (const tr of trBlocks) {
-    // Extract label from this row
     const labelMatch = tr.match(/<label[^>]*>([^<]+)<\/label>/);
-    const label = labelMatch ? labelMatch[1].trim() : "";
+    const label = labelMatch ? decodeHtmlEntities(labelMatch[1].trim()) : "";
 
-    // Extract numeric values — try ng-binding first, then td cells
     let values: (number | null)[] = [];
 
+    // Try ng-binding first (totals/header-level rows)
     const ngCells = Array.from(tr.matchAll(/ng-binding[^>]*>([^<]*)/g))
       .map(m => m[1].trim());
     const ngValues = ngCells.filter(s =>
@@ -162,16 +150,10 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
       if (!isYearRow) {
         values = ngValues.map(parseNumber);
       } else {
-        continue; // skip year header
+        continue;
       }
     } else {
-      // Try td content extraction (skip first td which contains the label).
-      // Review W1: previous filter accepted bare empty strings, which let
-      // layout/spacer <td></td> cells slip into the value list and shift
-      // every year by one column. Require at least one digit OR an explicit
-      // "-" null marker. This still admits legitimate Capitaline rows
-      // (e.g., HOTELS post-demerger using "-" placeholders) while rejecting
-      // empty layout cells.
+      // Try td cells
       const tdContents = Array.from(tr.matchAll(/<td[^>]*>([^<]*)<\/td>/g))
         .map(m => m[1].trim());
       const tdValues = tdContents.filter(s =>
@@ -179,6 +161,11 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
       );
       if (tdValues.length === years.length) {
         values = tdValues.map(parseNumber);
+      } else if (tdValues.length > 0 && tdValues.length < years.length &&
+                 tdValues.length >= Math.max(2, Math.floor(years.length / 3))) {
+        // Variable-length rows: segments not present in all years have fewer columns
+        values = tdValues.map(parseNumber);
+        while (values.length < years.length) values.push(null);
       }
     }
 
@@ -187,23 +174,29 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
     }
   }
 
-  // Now process labeledRows in order
   const dataRows = labeledRows.map(r => r.values);
 
-  // Identify segments (labels that are NOT section headers or sub-section labels).
-  // Note (review W8): this requires the label to be ALL UPPERCASE because
-  // Capitaline segment files use uppercase for segment names while keeping
-  // section headers and sub-section labels in mixed case. Geographic and
-  // business-segment files both follow this convention. If a future
-  // Capitaline export changes case conventions, this filter will silently
-  // drop segments — relax to a case-insensitive comparison only after
-  // verifying the new fixture.
+  // ─── Step 4: Identify segments by FREQUENCY + CASE ────────────────────
+  // Key insight: segment names repeat many times (once per metric cycle across
+  // all sections). Structural labels appear 1-2 times at most.
+  // A label is a segment if: ALL CAPS + appears 2+ times + not a section header
+  // + not a structural pattern (Total/Unallocated).
+
+  const labelCounts = new Map<string, number>();
+  for (const label of labelMatches) {
+    labelCounts.set(label, (labelCounts.get(label) || 0) + 1);
+  }
+
   const segments: string[] = [];
   const seenSegments = new Set<string>();
   for (const label of labelMatches) {
+    if (seenSegments.has(label)) continue;
     if (SECTION_HEADERS.has(label)) continue;
-    if (SUB_SECTION_WITH_DATA.has(label)) continue;
-    if (label.toUpperCase() === label && !seenSegments.has(label) && label !== "TOTAL") {
+    if (isStructuralPattern(label)) continue;
+
+    // Segment detection: ALL CAPS + repeats 2+ times
+    const count = labelCounts.get(label) || 0;
+    if (label.toUpperCase() === label && count >= 2) {
       segments.push(label);
       seenSegments.add(label);
     }
@@ -211,23 +204,21 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
 
   if (segments.length === 0) return null;
 
-  // Determine segmentation type
+  // ─── Step 5: Determine segmentation type ──────────────────────────────
   const segLower = segments.map(s => s.toLowerCase());
   const isGeographic = segLower.some(s =>
     s.includes("india") || s.includes("domestic") || s.includes("international") ||
-    s.includes("outside") || s.includes("within")
+    s.includes("outside") || s.includes("within") || s.includes("overseas") ||
+    s.includes("foreign")
   );
   const segmentationType: SegmentData["segmentationType"] =
     segments.length <= 1 ? "total" : isGeographic ? "geographic" : "business";
 
-  // Map data rows to segments and sections
-  // The pattern is: each section has one row per segment (in segment order)
-  const numSegments = segments.length;
+  // ─── Step 6: Initialize data structures ───────────────────────────────
   const data: SegmentData["data"] = {};
   const unallocated: SegmentData["unallocated"] = {};
   const totals: SegmentData["totals"] = {};
 
-  // Initialize
   for (const seg of segments) {
     data[seg] = {};
     for (const yr of years) {
@@ -250,88 +241,72 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
     };
   }
 
-  // Assign rows to sections based on label order.
-  // Pattern: within each section, segment names repeat in cycles.
-  // REVENUE: cycle 1 = revenue from ops, cycle 2 = inter-segment, cycle 3 = total segment revenue
-  // RESULT: cycle 1 = segment EBIT
-  // OTHER INFORMATION: cycle 1 = assets, cycle 2 = liabilities, cycle 3 = capex, cycle 4 = depreciation, cycle 5 = non-cash
+  // ─── Step 7: Assign data rows to segments and metrics ─────────────────
+  // Strategy: purely structural, no keyword matching needed.
+  //
+  // Rules:
+  //   - Section header → reset metric to first in section's sequence
+  //   - Segment label (in seenSegments) → assign current row to current metric
+  //   - Segment repeats (already seen in this cycle) → advance metric index
+  //   - Any other label with a data row → structural; consume row, don't assign
+  //
+  // This works because:
+  //   - Metric sequences are fixed per section (Capitaline convention)
+  //   - Cycle boundaries are detectable by segment repetition
+  //   - Structural labels (sub-section headers, totals) naturally fall into "other"
+
   let rowIdx = 0;
-  let currentSection = "";
-  let cycleInSection = 0; // which cycle of segment names we're in within current section
-  let segmentCountInCycle = 0; // how many segment names seen in current cycle
+  let currentMetric: MetricSlot = null;
+  let sectionMetrics: MetricSlot[] = [];
+  let metricIndex = 0;
+  const seenInCycle = new Set<string>();
 
   for (const label of labelMatches) {
     if (SECTION_HEADERS.has(label)) {
-      currentSection = label;
-      cycleInSection = 0;
-      segmentCountInCycle = 0;
+      if (label === "REVENUE") { sectionMetrics = REVENUE_METRICS; metricIndex = 0; }
+      else if (label === "RESULT") { sectionMetrics = RESULT_METRICS; metricIndex = 0; }
+      else { sectionMetrics = OTHER_INFO_METRICS; metricIndex = 0; }
+      currentMetric = sectionMetrics[0];
+      seenInCycle.clear();
       continue;
     }
-    if (SUB_SECTION_WITH_DATA.has(label)) {
-      // Sub-section labels that have data rows — consume the row but don't assign to segments
+
+    // Any label with a data row that's NOT a segment → structural; consume row
+    if (!seenSegments.has(label)) {
       if (rowIdx < dataRows.length) rowIdx++;
       continue;
     }
 
-    // This is a segment name, TOTAL, or unallocated — it should correspond to a data row
+    // ── Segment label handling ──
     if (rowIdx >= dataRows.length) break;
 
-    if (seenSegments.has(label)) {
-      segmentCountInCycle++;
-      // When we've seen all segments, we've completed a cycle
-      if (segmentCountInCycle > numSegments) {
-        cycleInSection++;
-        segmentCountInCycle = 1;
+    // Cycle boundary: segment already seen → advance metric
+    if (seenInCycle.has(label)) {
+      metricIndex++;
+      if (metricIndex < sectionMetrics.length) {
+        currentMetric = sectionMetrics[metricIndex];
+      } else {
+        currentMetric = null;
       }
+      seenInCycle.clear();
+    }
+    seenInCycle.add(label);
 
-      const row = dataRows[rowIdx];
-      rowIdx++;
+    const row = dataRows[rowIdx];
+    rowIdx++;
 
-      // Assign based on section + cycle
-      for (let yi = 0; yi < years.length && yi < row.length; yi++) {
-        const yr = years[yi];
-        const val = row[yi];
-        if (!data[label]?.[yr]) continue;
+    if (!currentMetric || currentMetric === "totalRev") continue;
 
-        if (currentSection === "REVENUE") {
-          if (cycleInSection === 0) {
-            data[label][yr].revenue = val;
-          } else if (cycleInSection === 1) {
-            data[label][yr].interSegmentRevenue = val;
-          }
-          // cycle 2 = total segment revenue (redundant, skip)
-        } else if (currentSection === "RESULT") {
-          if (cycleInSection === 0) {
-            data[label][yr].result = val;
-          }
-        } else if (currentSection === "OTHER INFORMATION") {
-          if (cycleInSection === 0) {
-            data[label][yr].assets = val;
-          } else if (cycleInSection === 1) {
-            data[label][yr].liabilities = val;
-          } else if (cycleInSection === 2) {
-            data[label][yr].capex = val;
-          } else if (cycleInSection === 3) {
-            data[label][yr].depreciation = val;
-          } else if (cycleInSection === 4) {
-            data[label][yr].nonCashExpenditure = val;
-          }
-        }
-      }
-    } else {
-      // Non-segment row (TOTAL, unallocated, etc.) — consume the data row but don't store
-      rowIdx++;
+    // Assign values
+    for (let yi = 0; yi < years.length && yi < row.length; yi++) {
+      const yr = years[yi];
+      const val = row[yi];
+      if (!data[label]?.[yr]) continue;
+      data[label][yr][currentMetric] = val;
     }
   }
 
-  return {
-    segmentationType,
-    segments,
-    years,
-    data,
-    unallocated,
-    totals,
-  };
+  return { segmentationType, segments, years, data, unallocated, totals };
 }
 
 /**
