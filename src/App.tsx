@@ -21,10 +21,10 @@ import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
 import CommandPalette from "./components/CommandPalette";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import DataEntry from "./components/DataEntry";
-import RecastStatements from "./components/RecastStatements";
-import RatioReport from "./components/RatioReport";
-import QualityReport from "./components/QualityReport";
-import SubsidiaryContributionPanel from "./components/dashboard/SubsidiaryContributionPanel";
+const RecastStatements = lazy(() => import("./components/RecastStatements"));
+const RatioReport = lazy(() => import("./components/RatioReport"));
+const QualityReport = lazy(() => import("./components/QualityReport"));
+const SubsidiaryContributionPanel = lazy(() => import("./components/dashboard/SubsidiaryContributionPanel"));
 import {
   AuditSubmissionMeta,
   createAuditAccessToken,
