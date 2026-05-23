@@ -44,14 +44,13 @@ function appChunkName(id: string) {
   if (
     normalized.includes("/src/engine/regressionHarness.ts")
     || normalized.includes("/src/engine/baselineGuardrails.ts")
-    || normalized.includes("/src/components/RegressionReport.tsx")
     || normalized.includes("/src/engine/v3Analytics.ts")
-    || normalized.includes("/src/components/V3AnalyticsPanel.tsx")
-    || normalized.includes("/src/components/AcademicReport.tsx")
   ) {
-    // These surfaces share valuation and analytics dependencies. Keep them in one
-    // chunk so Rollup does not have to synthesize a circular edge between
-    // manually split regression and V3 analytics chunks.
+    // Engine modules only — keep these together so Rollup does not have to
+    // synthesize a circular edge between manually split regression and V3
+    // analytics chunks. UI components (RegressionReport, V3AnalyticsPanel,
+    // AcademicReport) stay in their own lazy chunks so katex/recharts etc.
+    // are not dragged into the initial preload.
     return "engine-advanced-analytics";
   }
   return undefined;
