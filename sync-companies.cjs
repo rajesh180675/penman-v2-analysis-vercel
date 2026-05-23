@@ -47,6 +47,7 @@ function inferMetadata(folderName) {
   else if (lf.includes("utility") || lf.includes("power") || lf.includes("grid") || lf.includes("energy")) type = "utility";
   else if (lf.includes("telecom") || lf.includes("communication")) type = "telecom";
   else if (lf.includes("tcs") || lf.includes("consultancy") || lf.includes("software") || lf.includes("tech")) type = "it-services";
+  else if (lf.includes("nestle") || lf.includes("hul") || lf.includes("unilever") || lf.includes("fmcg") || lf.includes("consumer") || (lf.includes("food") && !lf.includes("power"))) type = "consumer";
 
   let emoji = "\ud83c\udfe2";
   if (type === "bank") emoji = "\ud83c\udfe6";
@@ -55,8 +56,9 @@ function inferMetadata(folderName) {
   else if (type === "utility") emoji = "\u26a1";
   else if (type === "telecom") emoji = "\ud83d\udce1";
   else if (type === "it-services") emoji = "\ud83d\udcbb";
+  else if (type === "consumer") emoji = "\ud83d\uded2";
 
-  const sector = toTitleCase(type.replace("-", " "));
+  const sector = type === "consumer" ? "FMCG" : toTitleCase(type.replace("-", " "));
   const description = `Capitaline financial dataset for ${name}.`;
   return { folder: folderName, name, ticker, sector, type, description, emoji };
 }
