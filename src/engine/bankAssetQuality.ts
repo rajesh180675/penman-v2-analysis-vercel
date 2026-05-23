@@ -391,12 +391,12 @@ function buildCapitalBuffer(
 
   // Prefer Tier-1 for the buffer calculation; fall back to CRAR-as-proxy
   // (less precise but better than nothing). When using CRAR we reduce
-  // the headroom by 2pp to approximate the Tier-1/Total spread.
-  // Guard: if CRAR is very low (e.g. 10%), subtracting 2pp gives 8% which
-  // may still be above the 7.5% Tier-1 minimum — don't force a false breach.
-  // Cap the CRAR-proxy deduction so baseRatio never goes below 0.
+  // the headroom by 1.5pp to approximate the Tier-1/Total spread.
+  // M3 fix: reduced from 2pp to 1.5pp — the 2pp deduction was too aggressive
+  // for banks with CRAR ~10-11%, producing false "breach" severities.
+  // The result is flagged as "approximated" via the `source` field.
   const useTier1 = t1Found != null;
-  const crarProxy = crarFound != null ? Math.max(0, (crarFound.value as number) - 2) : 0;
+  const crarProxy = crarFound != null ? Math.max(0, (crarFound.value as number) - 1.5) : 0;
   const baseRatio = useTier1 ? t1Found!.value : crarProxy;
   const headroom = baseRatio - tier1Minimum;
 

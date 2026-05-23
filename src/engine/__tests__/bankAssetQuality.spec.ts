@@ -271,11 +271,11 @@ describe("computeBankAssetQuality — capital buffer", () => {
     expect(r.capitalBuffer.headroom_pp).toBeLessThan(0);
   });
 
-  it("falls back to CRAR-as-proxy when Tier-1 missing (with 2pp haircut)", () => {
+  it("falls back to CRAR-as-proxy when Tier-1 missing (with 1.5pp haircut)", () => {
     const r = computeBankAssetQuality([p("2025-03-31", { crar_pct: 13.0 })]);
-    // Effective ratio = 13-2 = 11 vs 9.5 floor = 1.5pp headroom → adequate
+    // Effective ratio = 13-1.5 = 11.5 vs 9.5 floor = 2.0pp headroom → adequate
     expect(r.capitalBuffer.severity).toBe("adequate");
-    expect(r.capitalBuffer.headroom_pp).toBeCloseTo(1.5, 5);
+    expect(r.capitalBuffer.headroom_pp).toBeCloseTo(2.0, 5);
     expect(r.capitalBuffer.latest_tier1_pct).toBeNull();
     expect(r.capitalBuffer.latest_crar_pct).toBe(13.0);
   });
