@@ -1996,7 +1996,15 @@ export function computeV3Analytics(
     if (typeof globalThis !== "undefined" && "localStorage" in globalThis) {
       const raw = globalThis.localStorage.getItem(`v3_registry_${priorKey}`);
       priorSnapshot = raw ? JSON.parse(raw) : undefined;
-      globalThis.localStorage.setItem(`v3_registry_${priorKey}`, JSON.stringify(registry.snapshot()));
+      // M3 fix: guard against localStorage quota exceeded for companies with
+      // large metric sets (e.g. Sun Pharma's 1312 raw keys). Serialize first,
+      // check size, and skip if > 2MB to avoid silent quota errors.
+      const snapshotJson = JSON.stringify(registry.snapshot());
+      if (snapshotJson.length < 2_000_000) {
+        globalThis.localStorage.setItem(`v3_registry_${priorKey}`, snapshotJson);
+      } else {
+        trace("pipeline", "v3:registrySnapshot:tooLarge", { key: priorKey, bytes: snapshotJson.length }, null, { level: "warn" });
+      }
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
