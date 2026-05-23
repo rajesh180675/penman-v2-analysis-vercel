@@ -80,4 +80,45 @@ describe.skipIf(!fixturesAvailable)("segmentParser", () => {
     expect(parseSegmentFinanceHTML("")).toBeNull();
     expect(parseSegmentFinanceHTML("<html><body>no data</body></html>")).toBeNull();
   });
+
+  // L&T: segments with HTML entities (& → &amp;) must be decoded and parsed correctly
+  const ltDir = resolve(__dirname, "../../../public/data/companies/Larsen & Toubro Ltd");
+  const ltZip = resolve(ltDir, "Larsen & Toubro Ltd.zip");
+  const hasLT = existsSync(ltZip);
+
+  it.skipIf(!hasLT)("parses L&T business segments with & in names", async () => {
+    const JSZip = (await import("jszip")).default;
+    const zip = await JSZip.loadAsync(readFileSync(ltZip));
+    const html = await zip.files["SegmentFinance_.xls"].async("text");
+    const result = parseSegmentFinanceHTML(html);
+
+    expect(result).not.toBeNull();
+    expect(result!.segmentationType).toBe("business");
+    expect(result!.segments).toContain("IT & TECHNOLOGY SERVICES");
+    expect(result!.segments).toContain("ELECTRICAL & AUTOMATION");
+    expect(result!.segments).toContain("ENGINEERING & CONSTRUCTION");
+    expect(result!.segments.length).toBe(17);
+
+    expect(result!.data["INFRASTRUCTURE"]["FY2025"].revenue).toBeCloseTo(129896.83, 1);
+    expect(result!.data["IT & TECHNOLOGY SERVICES"]["FY2025"].revenue).toBeCloseTo(47844.88, 1);
+    expect(result!.data["IT & TECHNOLOGY SERVICES"]["FY2025"].result).toBeCloseTo(7682.15, 1);
+    expect(result!.data["INFRASTRUCTURE"]["FY2025"].assets).toBeCloseTo(97183.24, 1);
+  });
+
+  it.skipIf(!hasLT)("parses L&T geographic segments with variable-length rows", async () => {
+    const JSZip = (await import("jszip")).default;
+    const zip = await JSZip.loadAsync(readFileSync(ltZip));
+    const html = await zip.files["SegmentFinance_ (1).xls"].async("text");
+    const result = parseSegmentFinanceHTML(html);
+
+    expect(result).not.toBeNull();
+    expect(result!.segmentationType).toBe("geographic");
+    expect(result!.segments).toContain("KINGDOM OF SAUDI ARABIA");
+    expect(result!.segments).toContain("DOMESTIC");
+
+    expect(result!.data["KINGDOM OF SAUDI ARABIA"]["FY2025"].revenue).toBeCloseTo(61002.04, 1);
+    expect(result!.data["UNITED STATES OF AMERICA"]["FY2025"].revenue).toBeCloseTo(33448.58, 1);
+    expect(result!.data["DOMESTIC"]["FY2025"].revenue).toBeCloseTo(128168.58, 1);
+    expect(result!.data["NETHERLAND"]["FY2025"].revenue).toBeNull();
+  });
 });
