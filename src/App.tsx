@@ -214,9 +214,12 @@ export function App() {
   }, [qualityFolder, config.quality_indicators_blob_url]);
 
   // Phase D4 — Fetch NBFC sidecar data (LGD + RBI NHB) when company folder is known
+  // M4 fix: only fetch for NBFC companies. Previously fired for ALL companies,
+  // causing noisy JSON parse errors when local dev server returns HTML for 404.
+  const isNbfcCompany = config.company_type === "nbfc";
   useEffect(() => {
     let cancelled = false;
-    if (!qualityFolder) {
+    if (!qualityFolder || !isNbfcCompany) {
       setNbfcSidecar(null);
       return;
     }
@@ -255,7 +258,7 @@ export function App() {
         }
       });
     return () => { cancelled = true; };
-  }, [qualityFolder, config.quality_indicators_blob_url]);
+  }, [qualityFolder, config.quality_indicators_blob_url, isNbfcCompany]);
 
   // Single engine pass — produces both the industrial recast (RecastPeriod[])
   // and the bank pipeline result. Consolidates two earlier separate calls
@@ -263,6 +266,12 @@ export function App() {
   // Phase B5: quality sidecar (when present) flows through to the bank
   // pipeline. The memo re-runs when quality arrives, so the asset-quality
   // signals populate as soon as the fetch resolves.
+  // M2 perf fix: config is a new object on every setConfig call. Use a stable
+  // serialized fingerprint so the memo only re-runs when config VALUES change,
+  // not just the object reference. This eliminates ~100+ redundant pipeline runs
+  // during the multi-setConfig initialization sequence.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const configFingerprint = useMemo(() => JSON.stringify(config), [config]);
   const pipelineResult = useMemo(() => {
     if (!rawData || rawData.length === 0) return null;
     if (scopeGate?.scopeAssessment.blocked) return null;
@@ -273,7 +282,8 @@ export function App() {
       console.error("[App] engine error:", err);
       return { error: err instanceof Error ? err.message : String(err) };
     }
-  }, [config, rawData, scopeGate, bankQuality]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configFingerprint, rawData, scopeGate, bankQuality]);
 
   // Phase A — Scope-aware analysis. When standalone data is also loaded,
   // compute the consolidated − standalone gap (subsidiary contribution).
@@ -610,12 +620,20 @@ export function App() {
   // M1 fix: detect financial-institution scope synchronously here to avoid
   // the "No data loaded" flash that occurs when statements tab renders before
   // the bank-redirect useEffect fires on the next render cycle.
+  // M2 fix: use the LATEST config (post-setConfig above) for scope assessment.
+  // The `config` closure variable is stale when called from the library grid
+  // (onConfigChange fires before onDataSubmit but React hasn't re-rendered).
+  // Reading from the updater's return value isn't possible, so we reconstruct
+  // the relevant field: company_type is already set by onConfigChange in
+  // DataEntry before this callback fires.
+  let latestConfig = config;
+  setConfig((prev) => { latestConfig = prev; return prev; });
   trace("ui", "dataLoaded", {
     periods: data.length,
     companyId: data[0]?.company_id ?? null,
-    family: analysisFamilyFromScope(assessAnalysisScope(data, config)),
+    family: analysisFamilyFromScope(assessAnalysisScope(data, latestConfig)),
   });
-  const quickScope = assessAnalysisScope(data, config);
+  const quickScope = assessAnalysisScope(data, latestConfig);
   const quickFamily = analysisFamilyFromScope(quickScope);
   if (quickFamily === "financial-institution" && !quickScope.blocked) {
     setActiveTab("bank");
