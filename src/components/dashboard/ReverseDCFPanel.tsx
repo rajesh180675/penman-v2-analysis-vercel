@@ -27,8 +27,8 @@ export default function ReverseDCFPanel({ reverseDCF }: Props) {
   const badge = verdictStyle[r.verdict] ?? verdictStyle.reasonable;
 
   const gaps = [
-    { label: 'Growth', implied: r.impliedGrowth, hist: r.historicalGrowth, gap: r.growthGap },
-    { label: 'RNOA', implied: r.impliedRNOA, hist: r.historicalRNOA, gap: r.rnoaGap },
+    { label: 'Growth', implied: r.impliedGrowth, hist: r.historicalGrowth, gap: r.growthGap, saturated: r.saturated?.impliedGrowth ?? false },
+    { label: 'RNOA', implied: r.impliedRNOA, hist: r.historicalRNOA, gap: r.rnoaGap, saturated: r.saturated?.impliedRNOA ?? false },
   ];
 
   const sens = [
@@ -63,7 +63,17 @@ export default function ReverseDCFPanel({ reverseDCF }: Props) {
         <tbody>
           {gaps.map((g) => (
             <tr key={g.label}>
-              <td>{g.label}</td>
+              <td>
+                {g.label}
+                {g.saturated && (
+                  <span
+                    className="ml-1.5 text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
+                    title="Reverse-DCF solver hit its upper bound. Price implies more than the model is willing to model — treat as a signal, not a target."
+                  >
+                    saturated
+                  </span>
+                )}
+              </td>
               <td className="text-right">{pct(g.implied)}</td>
               <td className="text-right">{pct(g.hist)}</td>
               <td className={`text-right font-medium ${g.gap > 0 ? 'text-red-400' : 'text-green-400'}`}>
@@ -73,6 +83,16 @@ export default function ReverseDCFPanel({ reverseDCF }: Props) {
           ))}
         </tbody>
       </table>
+
+      {r.saturated?.any && (
+        <div className="rounded border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-2 text-[11px] text-amber-900 dark:text-amber-200">
+          <span className="font-semibold">Model saturated.</span> The current price implies expectations beyond what the reverse-DCF solver can rationalize ({[
+            r.saturated.impliedGrowth && 'growth ≥ 40%',
+            r.saturated.impliedRNOA && 'RNOA ≥ 80%',
+            r.saturated.impliedFade && 'fade ≥ 0.95',
+          ].filter(Boolean).join(', ')}). Treat the implied figures as a signal that the market is paying a premium the model can&apos;t price, not as forecasts.
+        </div>
+      )}
 
       <p className="text-xs text-slate-500 dark:text-slate-400">
         Market expects <span className="text-slate-800 dark:text-slate-200 font-medium">{r.impliedCAP} years</span> of competitive advantage
