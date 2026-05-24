@@ -19,7 +19,7 @@ const verdictLabel: Record<string, string> = {
 };
 
 const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
-const dollar = (v: number) => `$${v.toFixed(2)}`;
+const dollar = (v: number) => `₹${v.toFixed(0)}`;
 
 export default function ReverseDCFPanel({ reverseDCF }: Props) {
   if (!reverseDCF) return null;
@@ -42,7 +42,7 @@ export default function ReverseDCFPanel({ reverseDCF }: Props) {
   const decomp = r.priceDecomposition;
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+    <div className="rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50/60 dark:bg-teal-950/40 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">What Does Market Believe?</h3>
         <span className={`text-xs px-2 py-0.5 rounded border ${badge}`}>
