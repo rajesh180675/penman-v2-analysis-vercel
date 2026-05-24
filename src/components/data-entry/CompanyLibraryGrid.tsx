@@ -1,38 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { trace } from "../../lib/traceLogger";
-
-export interface LibraryCompany {
-  /** Folder name in public/data/companies/ */
-  folder: string;
-  /** Display name */
-  name: string;
-  /** NSE ticker, used as default ID */
-  ticker: string;
-  /** Sector category */
-  sector: string;
-  /** Type for routing/architecture */
-  type: "industrial" | "bank" | "nbfc" | "insurance" | "it-services" | "consumer" | "utility" | "telecom" | "cyclical" | "loss-maker" | "conglomerate";
-  /** One-line description */
-  description: string;
-  /** Visual identifier emoji */
-  emoji: string;
-  /** Why this is interesting for testing */
-  showcaseFor?: string;
-  /** Whether standalone statements are preloaded */
-  hasStandalone?: boolean;
-  /** Vercel Blob URL for consolidated ZIP (set after upload-to-blob script runs) */
-  blobUrl?: string;
-  /** Vercel Blob URL for standalone ZIP */
-  standaloneBlobUrl?: string;
-  /** Vercel Blob URL for quality_indicators.json sidecar */
-  qualityIndicatorsBlobUrl?: string;
-  /** Vercel Blob URLs for Bajaj Finance XLS sidecar folders */
-  sidecarBlobs?: {
-    subsidiaries?: string[];
-    rbiNhbBanks?: string[];
-    lossGivenDefault?: string[];
-  };
-}
+import { LibraryCompany, parseLibraryCompanyRegistry } from "./companyRegistry";
 
 const COMPANIES: LibraryCompany[] = [
   {
@@ -102,8 +70,12 @@ export default function CompanyLibraryGrid({ onPickCompany, disabled = false }: 
         return res.json();
       })
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setCompanies(data);
+        const parsed = parseLibraryCompanyRegistry(data);
+        if (parsed.errors.length > 0) {
+          trace("ui", "companyLibrary:registryValidationErrors", { errors: parsed.errors.slice(0, 10) }, null, { level: "warn" });
+        }
+        if (parsed.companies.length > 0) {
+          setCompanies(parsed.companies);
         }
       })
       .catch(() => {
