@@ -147,7 +147,7 @@ export function App() {
     provider: config.market_data_provider as any ?? "nse",
     symbol: config.market_data_symbol ?? config.ticker ?? null,
     fallbackPrice: config.market_price ?? null,
-    fallbackRiskFreeRate: config.rf ?? null,
+    fallbackRiskFreeRate: config.risk_free_rate ?? null,
   });
 
   const qualityGate = useMemo(() => {
