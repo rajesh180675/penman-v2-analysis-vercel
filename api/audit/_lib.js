@@ -17,6 +17,10 @@ export function isAuditConfigured() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 
+export function isAuditAdminAuthRequired() {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.VERCEL || process.env.VERCEL_ENV);
+}
+
 export function getAuditGovernanceConfig() {
   return {
     retentionDays: clampNumber(process.env.AUDIT_RETENTION_DAYS, 45, 1, 365),
@@ -50,7 +54,13 @@ export function requireAuditReadAuth(request, response) {
   const previousToken = process.env.AUDIT_ADMIN_TOKEN_PREVIOUS;
   const presented = getAuditReadToken(request);
 
-  if (!configuredToken && !previousToken) return true;
+  if (!configuredToken && !previousToken) {
+    if (isAuditAdminAuthRequired()) {
+      response.status(503).json({ error: "Audit admin token is required in deployed or blob-backed mode." });
+      return false;
+    }
+    return true;
+  }
   if (safeTokenEqual(presented, configuredToken) || safeTokenEqual(presented, previousToken)) return true;
 
   response.status(401).json({ error: "Unauthorized audit read." });
@@ -62,7 +72,7 @@ export function isAuditReadAuthorized(request) {
   const previousToken = process.env.AUDIT_ADMIN_TOKEN_PREVIOUS;
   const presented = getAuditReadToken(request);
 
-  if (!configuredToken && !previousToken) return true;
+  if (!configuredToken && !previousToken) return !isAuditAdminAuthRequired();
   return safeTokenEqual(presented, configuredToken) || safeTokenEqual(presented, previousToken);
 }
 
@@ -79,18 +89,45 @@ export function hashAuditToken(token) {
   return crypto.createHash("sha256").update(String(token)).digest("hex");
 }
 
-export async function readJsonBody(request) {
+export async function readJsonBody(request, maxBytes = 8 * 1024 * 1024) {
   if (request.body && typeof request.body === "object") {
+    const bodyBytes = Buffer.byteLength(JSON.stringify(request.body), "utf8");
+    if (bodyBytes > maxBytes) {
+      const error = new Error(`Payload too large. Limit is ${maxBytes} bytes.`);
+      error.statusCode = 413;
+      error.limitBytes = maxBytes;
+      throw error;
+    }
     return request.body;
   }
 
   const chunks = [];
+  let totalBytes = 0;
   for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalBytes += buffer.length;
+    if (totalBytes > maxBytes) {
+      const error = new Error(`Payload too large. Limit is ${maxBytes} bytes.`);
+      error.statusCode = 413;
+      error.limitBytes = maxBytes;
+      throw error;
+    }
+    chunks.push(buffer);
   }
 
   const raw = Buffer.concat(chunks).toString("utf8").trim();
   return raw ? JSON.parse(raw) : {};
+}
+
+export function respondJsonBodyError(response, error) {
+  if (error?.statusCode === 413) {
+    response.status(413).json({
+      error: error.message,
+      limitBytes: error.limitBytes,
+    });
+    return true;
+  }
+  return false;
 }
 
 export function buildAuditPath(runId, kind, filename) {

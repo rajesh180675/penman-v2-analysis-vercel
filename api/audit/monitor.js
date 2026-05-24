@@ -4,7 +4,7 @@ import {
   requireMonitorAuth,
   runAuditMonitor,
 } from "./monitor-lib.js";
-import { readJsonBody } from "./_lib.js";
+import { assertContentLength, readJsonBody, respondJsonBodyError } from "./_lib.js";
 
 export default async function handler(request, response) {
   const start = Date.now();
@@ -29,7 +29,15 @@ export default async function handler(request, response) {
 
     if (request.method === "POST") {
       console.log(JSON.stringify({ level: "info", msg: "monitor.post.start", route: "/api/audit/monitor" }));
-      const body = await readJsonBody(request);
+      const maxBodyBytes = 64 * 1024;
+      if (!assertContentLength(request, response, maxBodyBytes)) return;
+      let body;
+      try {
+        body = await readJsonBody(request, maxBodyBytes);
+      } catch (error) {
+        if (respondJsonBodyError(response, error)) return;
+        throw error;
+      }
       const payload = await runAuditMonitor({
         runId: body?.runId,
         limit: body?.limit,

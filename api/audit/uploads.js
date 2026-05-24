@@ -1,5 +1,6 @@
 import { handleUpload } from "@vercel/blob/client";
 import {
+  assertContentLength,
   enforceAuditRateLimit,
   getAuditGovernanceConfig,
   hashAuditToken,
@@ -7,6 +8,7 @@ import {
   logAudit,
   readJsonBody,
   requireAuditReadAuth,
+  respondJsonBodyError,
   sanitizePathSegment,
 } from "./_lib.js";
 
@@ -49,8 +51,15 @@ export default async function handler(request, response) {
 
   if (!requireAuditReadAuth(request, response)) return;
 
-  const body = await readJsonBody(request);
   const governance = getAuditGovernanceConfig();
+  if (!assertContentLength(request, response, governance.maxEventBytes)) return;
+  let body;
+  try {
+    body = await readJsonBody(request, governance.maxEventBytes);
+  } catch (error) {
+    if (respondJsonBodyError(response, error)) return;
+    throw error;
+  }
 
   if (!enforceAuditRateLimit(request, response, "uploads", governance.maxUploadsPerMinute)) return;
 
@@ -72,7 +81,7 @@ export default async function handler(request, response) {
           allowedContentTypes: payload.allowedContentTypes ?? resolveAllowedContentTypes(kind),
           maximumSizeInBytes,
           addRandomSuffix: false,
-          allowOverwrite: true,
+          allowOverwrite: false,
           tokenPayload: JSON.stringify({
             runId,
             kind,

@@ -10,6 +10,7 @@ import {
   nowStamp,
   readJsonBody,
   requireAuditReadAuth,
+  respondJsonBodyError,
   sanitizePathSegment,
 } from "./_lib.js";
 
@@ -32,7 +33,13 @@ export default async function handler(request, response) {
     if (!assertContentLength(request, response, governance.maxEventBytes)) return;
     if (!enforceAuditRateLimit(request, response, "events", governance.maxEventsPerMinute)) return;
 
-    const body = await readJsonBody(request);
+    let body;
+    try {
+      body = await readJsonBody(request, governance.maxEventBytes);
+    } catch (error) {
+      if (respondJsonBodyError(response, error)) return;
+      throw error;
+    }
     const runId = sanitizePathSegment(body.runId, `run-${Date.now()}`);
     const eventType = sanitizePathSegment(body.eventType, "event");
     const idempotencyKey = body.idempotencyKey ? sanitizePathSegment(body.idempotencyKey) : null;
