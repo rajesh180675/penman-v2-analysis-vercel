@@ -28,21 +28,30 @@ export default async function handler(request, response) {
   const deleted = [];
 
   for (const prefix of prefixes) {
-    const result = await list({
-      prefix,
-      limit: 1000,
-      mode: "expanded",
-    });
+    let cursor = undefined;
+    let hasMore = true;
 
-    const expired = result.blobs.filter((blob) => new Date(blob.uploadedAt).getTime() < cutoff);
-    if (!expired.length) continue;
+    while (hasMore) {
+      const result = await list({
+        prefix,
+        limit: 1000,
+        mode: "expanded",
+        ...(cursor ? { cursor } : {}),
+      });
 
-    await del(expired.map((blob) => blob.url));
-    deleted.push(...expired.map((blob) => ({
-      pathname: blob.pathname,
-      uploadedAt: blob.uploadedAt,
-      size: blob.size,
-    })));
+      const expired = result.blobs.filter((blob) => new Date(blob.uploadedAt).getTime() < cutoff);
+      if (expired.length > 0) {
+        await del(expired.map((blob) => blob.url));
+        deleted.push(...expired.map((blob) => ({
+          pathname: blob.pathname,
+          uploadedAt: blob.uploadedAt,
+          size: blob.size,
+        })));
+      }
+
+      cursor = result.cursor;
+      hasMore = result.hasMore;
+    }
   }
 
   logAudit("retention.pruned", {

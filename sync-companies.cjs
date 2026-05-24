@@ -410,7 +410,20 @@ async function run() {
   }
 
   // Save updated companies-metadata.json if anything changed
-  if (saveMetadata(metadataMap)) {
+  if (CHECK_MODE) {
+    // In check mode, verify that metadata and registry are up-to-date without writing
+    const arr = [...metadataMap.values()].sort((a, b) =>
+      a.folder < b.folder ? -1 : a.folder > b.folder ? 1 : 0
+    );
+    const expectedJson = JSON.stringify(arr, null, 2) + '\n';
+    if (fs.existsSync(metadataFile)) {
+      const existing = fs.readFileSync(metadataFile, 'utf8');
+      if (existing !== expectedJson) {
+        console.error('CHECK FAILED: companies-metadata.json is out of date. Run `node sync-companies.cjs` to update.');
+        process.exit(1);
+      }
+    }
+  } else if (saveMetadata(metadataMap)) {
     console.log(`+ Updated companies-metadata.json (${metadataMap.size} entries)`);
   }
 
@@ -452,18 +465,34 @@ async function run() {
 
   // Idempotent write - only touch the file if the JSON actually changed.
   const newJson = JSON.stringify(companyList, null, 2) + "\n";
-  let changed = true;
-  if (fs.existsSync(registryFile)) {
-    const existing = fs.readFileSync(registryFile, 'utf8');
-    if (existing === newJson) changed = false;
-  }
-  if (changed) {
-    fs.writeFileSync(registryFile, newJson);
-    console.log(`\nRegistry compiled. Wrote ${companyList.length} companies to registry.json\n`);
+  if (CHECK_MODE) {
+    if (fs.existsSync(registryFile)) {
+      const existing = fs.readFileSync(registryFile, 'utf8');
+      if (existing !== newJson) {
+        console.error('CHECK FAILED: registry.json is out of date. Run `node sync-companies.cjs` to update.');
+        process.exit(1);
+      }
+    } else {
+      console.error('CHECK FAILED: registry.json does not exist. Run `node sync-companies.cjs` to generate.');
+      process.exit(1);
+    }
+    console.log(`Registry check passed (${companyList.length} companies).`);
   } else {
-    console.log(`\nRegistry already up to date (${companyList.length} companies). No write needed.\n`);
+    let changed = true;
+    if (fs.existsSync(registryFile)) {
+      const existing = fs.readFileSync(registryFile, 'utf8');
+      if (existing === newJson) changed = false;
+    }
+    if (changed) {
+      fs.writeFileSync(registryFile, newJson);
+      console.log(`\nRegistry compiled. Wrote ${companyList.length} companies to registry.json\n`);
+    } else {
+      console.log(`\nRegistry already up to date (${companyList.length} companies). No write needed.\n`);
+    }
   }
 }
+
+const CHECK_MODE = process.argv.includes('--check');
 
 run().catch(err => {
   console.error('Registry sync failed:', err);
