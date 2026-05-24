@@ -29,6 +29,18 @@ export interface ReverseDCFResult {
   impliedFade: number;              // ω priced in
   impliedCAP: number;               // competitive advantage period (years)
 
+  /**
+   * Saturation flags. True when the bisection solver hit its upper bound,
+   * meaning "the price implies more than the model is willing to model".
+   * UIs should label saturated outputs as informational signals, not targets.
+   */
+  saturated: {
+    impliedGrowth: boolean;         // true when implied growth pinned at upper bound (40%)
+    impliedRNOA: boolean;           // true when implied RNOA pinned at upper bound (80%)
+    impliedFade: boolean;           // true when implied fade pinned at upper bound (0.95)
+    any: boolean;                   // true if any solver saturated
+  };
+
   // Reality check
   historicalGrowth: number;         // actual median NOA growth (last 5Y)
   historicalRNOA: number;           // actual latest RNOA
@@ -80,6 +92,8 @@ export function computeReverseDCF(
   sharesOutstanding: number,  // in crores
 ): ReverseDCFResult | null {
   if (data.length < 4 || marketPricePerShare <= 0 || sharesOutstanding <= 0) return null;
+  if (!Number.isFinite(costOfCapital) || !Number.isFinite(omega)) return null;
+  if (!Number.isFinite(marketPricePerShare) || !Number.isFinite(sharesOutstanding)) return null;
 
   const latest = data[data.length - 1];
   const rnoa = latest.ratios?.RNOA;
@@ -87,7 +101,12 @@ export function computeReverseDCF(
   const nfo = latest.bs?.NFO ?? 0;
   const cse = latest.bs?.CSE;
 
-  if (rnoa == null || noa == null || noa <= 0 || cse == null || cse <= 0) return null;
+  // NaN guards — when EngineConfig is under-specified, OI/RNOA cascade NaN
+  // through the recast pipeline. Treat NaN the same as null and fail closed.
+  if (rnoa == null || !Number.isFinite(rnoa)) return null;
+  if (noa == null || !Number.isFinite(noa) || noa <= 0) return null;
+  if (cse == null || !Number.isFinite(cse) || cse <= 0) return null;
+  if (!Number.isFinite(nfo)) return null;
 
   const r = costOfCapital;
   const marketCap = marketPricePerShare * sharesOutstanding;
@@ -155,6 +174,22 @@ export function computeReverseDCF(
   const nearTermPerShare = nearTermValue / sharesOutstanding;
   const longTermPerShare = marketPricePerShare - epvPerShare - nearTermPerShare;
 
+  // ── Saturation flags ──
+  // Solvers use bisection with hard upper bounds. When the implied value
+  // converges within epsilon of the upper bound, the model has saturated:
+  // the price implies more than the model can rationalize. Surface this so
+  // UIs can label it as a signal rather than a target.
+  const SAT_EPS = 0.001;
+  const satGrowth = impliedGrowth >= 0.40 - SAT_EPS;
+  const satRNOA = impliedRNOA >= 0.80 - SAT_EPS;
+  const satFade = impliedFade >= 0.95 - SAT_EPS;
+  const saturated = {
+    impliedGrowth: satGrowth,
+    impliedRNOA: satRNOA,
+    impliedFade: satFade,
+    any: satGrowth || satRNOA || satFade,
+  };
+
   const priceDecomposition = {
     noGrowthValue: epvPerShare,
     nearTermGrowth: nearTermPerShare,
@@ -181,6 +216,7 @@ export function computeReverseDCF(
     impliedRNOA,
     impliedFade,
     impliedCAP,
+    saturated,
     historicalGrowth,
     historicalRNOA: rnoa,
     sustainableGrowth,

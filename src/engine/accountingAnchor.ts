@@ -70,6 +70,8 @@ export function computeAccountingAnchor(
   sharesOutstanding: number,
 ): AccountingAnchorResult | null {
   if (data.length < 3 || marketPricePerShare <= 0 || sharesOutstanding <= 0) return null;
+  if (!Number.isFinite(costOfCapital) || !Number.isFinite(omega)) return null;
+  if (!Number.isFinite(marketPricePerShare) || !Number.isFinite(sharesOutstanding)) return null;
 
   const latest = data[data.length - 1];
   const rnoa = latest.ratios?.RNOA;
@@ -77,7 +79,12 @@ export function computeAccountingAnchor(
   const nfo = latest.bs?.NFO ?? 0;
   const cse = latest.bs?.CSE;
 
-  if (rnoa == null || noa == null || noa <= 0 || cse == null || cse <= 0) return null;
+  // NaN guards — under-specified EngineConfig cascades NaN through OI/RNOA.
+  // Treat NaN as null and fail closed to preserve the rigor-ladder contract.
+  if (rnoa == null || !Number.isFinite(rnoa)) return null;
+  if (noa == null || !Number.isFinite(noa) || noa <= 0) return null;
+  if (cse == null || !Number.isFinite(cse) || cse <= 0) return null;
+  if (!Number.isFinite(nfo)) return null;
 
   const r = costOfCapital;
 

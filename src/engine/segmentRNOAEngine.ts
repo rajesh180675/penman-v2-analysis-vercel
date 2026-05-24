@@ -93,6 +93,11 @@ export function decomposeSegmentRNOA(
   costOfCapital: number,
   taxRate: number = 0.25,
 ): SegmentRNOADecomposition | null {
+  // NaN guards — non-finite inputs would poison capital charge calculations
+  // for every segment. Fail closed when costOfCapital is invalid; clamp tax.
+  if (!Number.isFinite(costOfCapital) || costOfCapital < 0) return null;
+  if (!Number.isFinite(taxRate)) taxRate = 0.25;
+
   const { segments, years, data } = segmentData;
   if (segments.length === 0 || years.length === 0) return null;
 

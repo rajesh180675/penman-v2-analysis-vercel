@@ -67,22 +67,26 @@ export function computePenmanExpectedReturn(
   sharesOutstanding: number,  // in crores
 ): PenmanExpectedReturn | null {
   if (data.length < 3 || marketPricePerShare <= 0 || sharesOutstanding <= 0) return null;
+  if (!Number.isFinite(costOfCapital) || !Number.isFinite(omega)) return null;
+  if (!Number.isFinite(marketPricePerShare) || !Number.isFinite(sharesOutstanding)) return null;
 
   const latest = data[data.length - 1];
   const prev = data[data.length - 2];
 
-  // Extract RNOA
+  // Extract RNOA. Guard against NaN: when EngineConfig is under-specified
+  // (missing tax_rate_mode / statutory_tax_rate) the OI computation in
+  // PenmanNissimEngine cascades NaN into RNOA. Treat NaN the same as null.
   const rnoa = latest.ratios?.RNOA;
-  if (rnoa == null) return null;
+  if (rnoa == null || !Number.isFinite(rnoa)) return null;
 
   // Book value per share (CSE / shares)
   const cse = latest.bs?.CSE;
-  if (cse == null || cse <= 0) return null;
+  if (cse == null || !Number.isFinite(cse) || cse <= 0) return null;
   const bookValuePerShare = cse / sharesOutstanding;
 
   // P/B ratio
   const pb = marketPricePerShare / bookValuePerShare;
-  if (pb <= 0) return null;
+  if (!Number.isFinite(pb) || pb <= 0) return null;
 
   // NOA growth rate (from latest two periods)
   const noaCurrent = latest.bs?.NOA ?? 0;
