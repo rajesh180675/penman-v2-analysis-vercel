@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const JSZip = require('jszip');
+const crc32 = require('jszip/lib/crc32');
 
 const companiesDir = path.join(__dirname, 'public', 'data', 'companies');
 const registryFile = path.join(companiesDir, 'registry.json');
@@ -159,6 +160,50 @@ function writeIfChanged(filePath, buffer, label) {
   return true;
 }
 
+/**
+ * Quick check: does the ZIP already exist and cover all current source paths?
+ * We compare the ZIP's mtime against the latest mtime of any source file.
+ * If the ZIP is newer, it's almost certainly up to date (deterministic ZIP
+ * content would not have changed without source changes).
+ * 
+ * Returns true if we can skip building this ZIP.
+ */
+async function zipUpToDate(zipPath, sourcePaths, expectedNames) {
+  if (!fs.existsSync(zipPath)) return false;
+  let zipMtime;
+  try { zipMtime = fs.statSync(zipPath).mtimeMs; } catch { return false; }
+  for (const p of sourcePaths) {
+    try { if (fs.statSync(p).mtimeMs > zipMtime) return false; } catch { return false; }
+  }
+
+  try {
+    const zip = await JSZip.loadAsync(fs.readFileSync(zipPath));
+    const actualEntries = Object.values(zip.files)
+      .filter(entry => !entry.dir)
+      .map(entry => ({
+        name: entry.name,
+        size: entry._data?.uncompressedSize,
+        crc: entry._data?.crc32 == null ? null : entry._data.crc32 >>> 0,
+      }))
+      .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+
+    const expectedEntries = sourcePaths
+      .map((sourcePath, index) => {
+        const data = fs.readFileSync(sourcePath);
+        return {
+          name: expectedNames[index],
+          size: data.length,
+          crc: crc32(data) >>> 0,
+        };
+      })
+      .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+
+    return JSON.stringify(actualEntries) === JSON.stringify(expectedEntries);
+  } catch {
+    return false;
+  }
+}
+
 async function syncAndPackCompany(folderName) {
   const companyPath = path.join(companiesDir, folderName);
   const standalonePath = path.join(companyPath, 'standalone');
@@ -166,21 +211,31 @@ async function syncAndPackCompany(folderName) {
 
   // Consolidated zip (deterministic + content-hash skip)
   const consolidatedZipPath = path.join(companyPath, `${folderName}.zip`);
-  const rootDirFiles = fs.readdirSync(companyPath);
+  let rootDirFiles = [];
+  try {
+    rootDirFiles = fs.readdirSync(companyPath);
+  } catch (zipErr) {
+    console.error(`Warning: Failed to package consolidated files for ${folderName}:`, zipErr);
+  }
   const xlsFiles = rootDirFiles.filter(f => f.endsWith('.xls') || f.endsWith('.xlsx'));
 
   if (xlsFiles.length > 0) {
+    let shouldBuildConsolidated = true;
     try {
-      const entries = [];
+      // Collect all source file paths for fast-path mtime check
+      const sourcePaths = [];
+      const sourceNames = [];
       for (const file of xlsFiles) {
-        entries.push({ name: file, data: fs.readFileSync(path.join(companyPath, file)) });
+        sourcePaths.push(path.join(companyPath, file));
+        sourceNames.push(file);
       }
       const revisedPath = path.join(companyPath, 'revised schd');
       if (fs.existsSync(revisedPath) && fs.statSync(revisedPath).isDirectory()) {
         for (const file of fs.readdirSync(revisedPath)) {
           const fp = path.join(revisedPath, file);
           if (fs.statSync(fp).isFile()) {
-            entries.push({ name: `revised schd/${file}`, data: fs.readFileSync(fp) });
+            sourcePaths.push(fp);
+            sourceNames.push(`revised schd/${file}`);
           }
         }
       }
@@ -189,51 +244,127 @@ async function syncAndPackCompany(folderName) {
         for (const file of fs.readdirSync(stdPath)) {
           const fp = path.join(stdPath, file);
           if (fs.statSync(fp).isFile()) {
-            entries.push({ name: `standard/${file}`, data: fs.readFileSync(fp) });
+            sourcePaths.push(fp);
+            sourceNames.push(`standard/${file}`);
           }
         }
       }
-      const buffer = await buildDeterministicZip(entries);
-      writeIfChanged(consolidatedZipPath, buffer, `consolidated ZIP for ${folderName}`);
-    } catch (zipErr) {
-      console.error(`Warning: Failed to package consolidated files for ${folderName}:`, zipErr);
+      // Fast-path: skip read+hash+build if ZIP is newer than all sources
+      shouldBuildConsolidated = !await zipUpToDate(consolidatedZipPath, sourcePaths, sourceNames);
+    } catch (scanErr) {
+      console.warn(`Warning: ZIP fast-path pre-scan failed for consolidated files for ${folderName}; rebuilding:`, scanErr.message);
+    }
+    if (shouldBuildConsolidated) {
+      try {
+        const entries = [];
+        for (const file of xlsFiles) {
+          entries.push({ name: file, data: fs.readFileSync(path.join(companyPath, file)) });
+        }
+        const revisedPath = path.join(companyPath, 'revised schd');
+        if (fs.existsSync(revisedPath) && fs.statSync(revisedPath).isDirectory()) {
+          for (const file of fs.readdirSync(revisedPath)) {
+            const fp = path.join(revisedPath, file);
+            if (fs.statSync(fp).isFile()) {
+              entries.push({ name: `revised schd/${file}`, data: fs.readFileSync(fp) });
+            }
+          }
+        }
+        const stdPath = path.join(companyPath, 'standard');
+        if (fs.existsSync(stdPath) && fs.statSync(stdPath).isDirectory()) {
+          for (const file of fs.readdirSync(stdPath)) {
+            const fp = path.join(stdPath, file);
+            if (fs.statSync(fp).isFile()) {
+              entries.push({ name: `standard/${file}`, data: fs.readFileSync(fp) });
+            }
+          }
+        }
+        const buffer = await buildDeterministicZip(entries);
+        writeIfChanged(consolidatedZipPath, buffer, `consolidated ZIP for ${folderName}`);
+      } catch (zipErr) {
+        console.error(`Warning: Failed to package consolidated files for ${folderName}:`, zipErr);
+      }
     }
   }
 
   // Standalone zip (deterministic + content-hash skip)
-  if (fs.existsSync(standalonePath) && fs.statSync(standalonePath).isDirectory()) {
+  let hasStandaloneDir = false;
+  try {
+    hasStandaloneDir = fs.existsSync(standalonePath) && fs.statSync(standalonePath).isDirectory();
+  } catch (zipErr) {
+    console.error(`Warning: Failed to package standalone files for ${folderName}:`, zipErr);
+  }
+  if (hasStandaloneDir) {
     hasStandalone = true;
     const standaloneZipPath = path.join(companyPath, 'standalone.zip');
+    // Collect source paths for fast-path mtime check
+    let shouldBuildStandalone = true;
     try {
-      const entries = [];
+      const saSourcePaths = [];
+      const saSourceNames = [];
       for (const file of fs.readdirSync(standalonePath)) {
         const fp = path.join(standalonePath, file);
         if (fs.statSync(fp).isFile()) {
-          entries.push({ name: file, data: fs.readFileSync(fp) });
+          saSourcePaths.push(fp);
+          saSourceNames.push(file);
         }
       }
-      const revisedPath = path.join(companyPath, 'revised schd', 'standalone');
-      if (fs.existsSync(revisedPath)) {
-        for (const file of fs.readdirSync(revisedPath)) {
-          const fp = path.join(revisedPath, file);
+      const saRevisedPath = path.join(companyPath, 'revised schd', 'standalone');
+      if (fs.existsSync(saRevisedPath) && fs.statSync(saRevisedPath).isDirectory()) {
+        for (const file of fs.readdirSync(saRevisedPath)) {
+          const fp = path.join(saRevisedPath, file);
           if (fs.statSync(fp).isFile()) {
-            entries.push({ name: `revised schd/${file}`, data: fs.readFileSync(fp) });
+            saSourcePaths.push(fp);
+            saSourceNames.push(`revised schd/${file}`);
           }
         }
       }
-      const stdPath = path.join(companyPath, 'standard', 'standalone');
-      if (fs.existsSync(stdPath)) {
-        for (const file of fs.readdirSync(stdPath)) {
-          const fp = path.join(stdPath, file);
+      const saStdPath = path.join(companyPath, 'standard', 'standalone');
+      if (fs.existsSync(saStdPath) && fs.statSync(saStdPath).isDirectory()) {
+        for (const file of fs.readdirSync(saStdPath)) {
+          const fp = path.join(saStdPath, file);
           if (fs.statSync(fp).isFile()) {
-            entries.push({ name: `standard/${file}`, data: fs.readFileSync(fp) });
+            saSourcePaths.push(fp);
+            saSourceNames.push(`standard/${file}`);
           }
         }
       }
-      const buffer = await buildDeterministicZip(entries);
-      writeIfChanged(standaloneZipPath, buffer, `standalone.zip for ${folderName}`);
-    } catch (zipErr) {
-      console.error(`Warning: Failed to package standalone files for ${folderName}:`, zipErr);
+      // Fast-path: skip read+hash+build if ZIP is newer than all sources
+      shouldBuildStandalone = !await zipUpToDate(standaloneZipPath, saSourcePaths, saSourceNames);
+    } catch (scanErr) {
+      console.warn(`Warning: ZIP fast-path pre-scan failed for standalone files for ${folderName}; rebuilding:`, scanErr.message);
+    }
+    if (shouldBuildStandalone) {
+      try {
+        const entries = [];
+        for (const file of fs.readdirSync(standalonePath)) {
+          const fp = path.join(standalonePath, file);
+          if (fs.statSync(fp).isFile()) {
+            entries.push({ name: file, data: fs.readFileSync(fp) });
+          }
+        }
+        const saRevisedPath2 = path.join(companyPath, 'revised schd', 'standalone');
+        if (fs.existsSync(saRevisedPath2)) {
+          for (const file of fs.readdirSync(saRevisedPath2)) {
+            const fp = path.join(saRevisedPath2, file);
+            if (fs.statSync(fp).isFile()) {
+              entries.push({ name: `revised schd/${file}`, data: fs.readFileSync(fp) });
+            }
+          }
+        }
+        const saStdPath2 = path.join(companyPath, 'standard', 'standalone');
+        if (fs.existsSync(saStdPath2)) {
+          for (const file of fs.readdirSync(saStdPath2)) {
+            const fp = path.join(saStdPath2, file);
+            if (fs.statSync(fp).isFile()) {
+              entries.push({ name: `standard/${file}`, data: fs.readFileSync(fp) });
+            }
+          }
+        }
+        const buffer = await buildDeterministicZip(entries);
+        writeIfChanged(standaloneZipPath, buffer, `standalone.zip for ${folderName}`);
+      } catch (zipErr) {
+        console.error(`Warning: Failed to package standalone files for ${folderName}:`, zipErr);
+      }
     }
   } else if (fs.existsSync(path.join(companyPath, 'standalone.zip'))) {
     hasStandalone = true;
