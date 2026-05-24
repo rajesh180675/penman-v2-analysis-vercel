@@ -95,5 +95,24 @@ describe("fadeRateEngine", () => {
       // Should be higher than just ω-based fade (because equilibrium RNOA > 0)
       expect(result.adjustedTerminalValue!).toBeGreaterThan(0);
     });
+
+    it("coerces NaN costOfCapital to a finite default rather than poisoning omega", () => {
+      // Reproduces the under-specified config cascade: NaN inputs must not
+      // propagate through OLS / omega / terminal value math.
+      const reois = [100, 85, 72, 61, 52, 44, 38, 32, 27, 23];
+      const data = buildRecastStubs(reois);
+      const result = analyzeFadeRate(data, NaN, "fmcg");
+
+      expect(Number.isFinite(result.firm.omega)).toBe(true);
+      expect(Number.isFinite(result.firm.terminalValueMultiplier)).toBe(true);
+    });
+
+    it("coerces NaN taxRate to default", () => {
+      const reois = [100, 85, 72, 61, 52, 44, 38, 32, 27, 23];
+      const data = buildRecastStubs(reois);
+      const result = analyzeFadeRate(data, 0.13, "fmcg", null, NaN);
+
+      expect(Number.isFinite(result.firm.omega)).toBe(true);
+    });
   });
 });

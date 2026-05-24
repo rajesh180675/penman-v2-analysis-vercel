@@ -126,4 +126,24 @@ describe("segmentRNOAEngine", () => {
     const sd: SegmentData = { segmentationType: "business", segments: [], years: [], data: {}, unallocated: {}, totals: {} };
     expect(decomposeSegmentRNOA(sd, 0.13)).toBeNull();
   });
+
+  it("returns null when costOfCapital is NaN (under-specified config)", () => {
+    const sd = buildSegmentData(segments, yearData);
+    expect(decomposeSegmentRNOA(sd, NaN)).toBeNull();
+  });
+
+  it("returns null when costOfCapital is negative", () => {
+    const sd = buildSegmentData(segments, yearData);
+    expect(decomposeSegmentRNOA(sd, -0.05)).toBeNull();
+  });
+
+  it("clamps NaN tax rate back to default rather than poisoning ReOI", () => {
+    const sd = buildSegmentData(segments, yearData);
+    const result = decomposeSegmentRNOA(sd, 0.13, NaN);
+    expect(result).not.toBeNull();
+    // ReOI must be finite — if NaN tax leaked through it would fail this check
+    for (const seg of result!.segments) {
+      expect(Number.isFinite(seg.reoi)).toBe(true);
+    }
+  });
 });

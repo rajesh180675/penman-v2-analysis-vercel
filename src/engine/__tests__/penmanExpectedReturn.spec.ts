@@ -77,4 +77,23 @@ describe("penmanExpectedReturn", () => {
     const data = buildRecastForPER(0.20, [10000, 11000, 12000, 13000], 40000, 3000);
     expect(computePenmanExpectedReturn(data, 0.13, 0.60, 0, 80)).toBeNull();
   });
+
+  it("returns null when latest period RNOA is NaN (under-specified config cascade)", () => {
+    // Reproduces the audit finding: under-specified EngineConfig cascades NaN
+    // from OI/NFE through RNOA. Engine must fail closed, not return NaN values.
+    const data = buildRecastForPER(NaN, [10000, 11000, 12000, 13000], 40000, 3000);
+    expect(computePenmanExpectedReturn(data, 0.13, 0.60, 600, 80)).toBeNull();
+  });
+
+  it("returns null when CSE is NaN", () => {
+    const data = buildRecastForPER(0.20, [10000, 11000, 12000, 13000], NaN, 3000);
+    expect(computePenmanExpectedReturn(data, 0.13, 0.60, 600, 80)).toBeNull();
+  });
+
+  it("returns null when costOfCapital or omega is non-finite", () => {
+    const data = buildRecastForPER(0.20, [10000, 11000, 12000, 13000], 40000, 3000);
+    expect(computePenmanExpectedReturn(data, NaN, 0.60, 600, 80)).toBeNull();
+    expect(computePenmanExpectedReturn(data, 0.13, NaN, 600, 80)).toBeNull();
+    expect(computePenmanExpectedReturn(data, Infinity, 0.60, 600, 80)).toBeNull();
+  });
 });

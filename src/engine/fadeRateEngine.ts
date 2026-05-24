@@ -394,6 +394,12 @@ export function analyzeFadeRate(
   segmentData?: SegmentData | null,
   taxRate: number = 0.25,
 ): FadeRateAnalysis {
+  // NaN guards — coerce non-finite inputs to safe defaults so downstream
+  // OLS / omega math doesn't propagate NaN. Function signature is non-null
+  // so callers always receive a structured result.
+  if (!Number.isFinite(costOfCapital)) costOfCapital = 0.13;
+  if (!Number.isFinite(taxRate)) taxRate = 0.25;
+
   const firm = estimateFadeRate(data, costOfCapital, companyType);
 
   const segments = segmentData

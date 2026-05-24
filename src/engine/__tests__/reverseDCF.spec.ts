@@ -92,4 +92,33 @@ describe("reverseDCF", () => {
     const data = buildRecastForRDCF(0.20, [10000, 11000, 12000], 10000, 2000);
     expect(computeReverseDCF(data, 0.13, 0.60, 1500, 10)).toBeNull();
   });
+
+  it("returns null when RNOA is NaN (under-specified config cascade)", () => {
+    const data = buildRecastForRDCF(NaN, [10000, 11000, 12100, 13300, 14600], 12600, 2000);
+    expect(computeReverseDCF(data, 0.13, 0.60, 1500, 12.6)).toBeNull();
+  });
+
+  it("returns null when costOfCapital or omega is non-finite", () => {
+    const data = buildRecastForRDCF(0.20, [10000, 11000, 12100, 13300, 14600], 12600, 2000);
+    expect(computeReverseDCF(data, NaN, 0.60, 1500, 12.6)).toBeNull();
+    expect(computeReverseDCF(data, 0.13, NaN, 1500, 12.6)).toBeNull();
+  });
+
+  it("flags saturated.impliedGrowth when price implies > 40% growth", () => {
+    // RNOA=20%, NOA growing slowly, but price = 100x book → solver hits cap
+    const data = buildRecastForRDCF(0.20, [10000, 10500, 11000, 11500, 12000], 10000, 1000);
+    const result = computeReverseDCF(data, 0.13, 0.50, 100000, 1);
+    expect(result).not.toBeNull();
+    // At least one solver must saturate at this absurd price
+    expect(result!.saturated.any).toBe(true);
+  });
+
+  it("does NOT flag saturated when price is reasonable", () => {
+    // RNOA=15%, modest growth, P/B around 1.2 → should be reasonable
+    const data = buildRecastForRDCF(0.15, [10000, 10300, 10600, 10900, 11200], 10000, 1000);
+    const result = computeReverseDCF(data, 0.13, 0.60, 1100, 10);
+    expect(result).not.toBeNull();
+    expect(result!.saturated.impliedGrowth).toBe(false);
+    expect(result!.saturated.impliedRNOA).toBe(false);
+  });
 });
