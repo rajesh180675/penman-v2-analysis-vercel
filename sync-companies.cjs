@@ -445,7 +445,10 @@ async function run() {
     const folderPath = path.join(companiesDir, folder);
     if (!fs.existsSync(folderPath)) continue;
 
-    const hasStandalone = await syncAndPackCompany(folder);
+    const hasStandalone = CHECK_MODE
+      ? fs.existsSync(path.join(folderPath, 'standalone.zip'))
+        || fs.existsSync(path.join(folderPath, 'standalone'))
+      : await syncAndPackCompany(folder);
     const company = { folder, ...meta, hasStandalone };
 
     // Preserve blob URLs from previous registry
