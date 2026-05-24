@@ -121,4 +121,25 @@ describe("reverseDCF", () => {
     expect(result!.saturated.impliedGrowth).toBe(false);
     expect(result!.saturated.impliedRNOA).toBe(false);
   });
+
+  it("narrative leads with MODEL SATURATED caveat when solver hits caps", () => {
+    const data = buildRecastForRDCF(0.20, [10000, 10500, 11000, 11500, 12000], 10000, 1000);
+    const result = computeReverseDCF(data, 0.13, 0.50, 100000, 1);
+    expect(result).not.toBeNull();
+    expect(result!.saturated.any).toBe(true);
+    expect(result!.narrative).toContain("MODEL SATURATED");
+    // Saturated dimensions should be tagged inline so downstream readers
+    // (audit traceability, PDF export, comparison report) inherit the caveat.
+    if (result!.saturated.impliedGrowth) {
+      expect(result!.narrative).toMatch(/growth.*\(saturated\)/i);
+    }
+  });
+
+  it("narrative omits saturation prefix when price is reasonable", () => {
+    const data = buildRecastForRDCF(0.15, [10000, 10300, 10600, 10900, 11200], 10000, 1000);
+    const result = computeReverseDCF(data, 0.13, 0.60, 1100, 10);
+    expect(result).not.toBeNull();
+    expect(result!.narrative).not.toContain("MODEL SATURATED");
+    expect(result!.narrative).not.toMatch(/\(saturated\)/i);
+  });
 });

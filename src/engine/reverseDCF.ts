@@ -209,7 +209,7 @@ export function computeReverseDCF(
   };
 
   // ── Narrative ──
-  const narrative = buildNarrative(impliedGrowth, historicalGrowth, impliedRNOA, rnoa, impliedCAP, sustainableGrowth, verdict, priceDecomposition);
+  const narrative = buildNarrative(impliedGrowth, historicalGrowth, impliedRNOA, rnoa, impliedCAP, sustainableGrowth, verdict, priceDecomposition, saturated);
 
   return {
     impliedGrowth,
@@ -384,16 +384,30 @@ function buildNarrative(
   impliedG: number, histG: number, impliedRNOA: number, actualRNOA: number,
   cap: number, sustainG: number, verdict: string,
   decomp: ReverseDCFResult["priceDecomposition"],
+  saturated: ReverseDCFResult["saturated"],
 ): string {
   const lines: string[] = [];
 
-  lines.push(`Market implies ${(impliedG * 100).toFixed(1)}% annual growth vs ${(histG * 100).toFixed(1)}% historical — ${impliedG > histG ? "optimistic" : "conservative"} pricing.`);
+  // When the solver saturates, lead with the caveat — the implied figures
+  // shown below are bounded by the model, not actual market expectations.
+  if (saturated.any) {
+    const dims = [
+      saturated.impliedGrowth && "growth (40% cap)",
+      saturated.impliedRNOA && "RNOA (80% cap)",
+      saturated.impliedFade && "fade (0.95 cap)",
+    ].filter(Boolean).join(", ");
+    lines.push(`MODEL SATURATED on ${dims} — current price implies expectations beyond what the reverse-DCF can rationalize. The figures below are bounded values, not forecasts; treat them as a signal that the market is paying a premium the model cannot price.`);
+  }
 
-  if (impliedG > sustainG) {
+  const gSuffix = saturated.impliedGrowth ? " (saturated)" : "";
+  lines.push(`Market implies ${(impliedG * 100).toFixed(1)}%${gSuffix} annual growth vs ${(histG * 100).toFixed(1)}% historical — ${impliedG > histG ? "optimistic" : "conservative"} pricing.`);
+
+  if (impliedG > sustainG && !saturated.impliedGrowth) {
     lines.push(`Implied growth (${(impliedG * 100).toFixed(1)}%) exceeds self-financeable rate (${(sustainG * 100).toFixed(1)}%) — market expects external capital raises or leverage increase.`);
   }
 
-  lines.push(`Implied RNOA: ${(impliedRNOA * 100).toFixed(1)}% vs actual ${(actualRNOA * 100).toFixed(1)}%. Competitive advantage must persist ~${cap} years to justify current price.`);
+  const rSuffix = saturated.impliedRNOA ? " (saturated)" : "";
+  lines.push(`Implied RNOA: ${(impliedRNOA * 100).toFixed(1)}%${rSuffix} vs actual ${(actualRNOA * 100).toFixed(1)}%. Competitive advantage must persist ~${cap} years to justify current price.`);
 
   const longPct = (decomp.longTermPct * 100).toFixed(0);
   if (decomp.longTermPct > 0.40) {
