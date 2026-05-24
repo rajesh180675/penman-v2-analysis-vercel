@@ -1,12 +1,12 @@
-import { Suspense, lazy, useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { Suspense, lazy, useState, useCallback, useMemo, useEffect } from "react";
 import { useServerStatus } from "./hooks/useServerStatus";
+import { useBankSidecars } from "./hooks/useBankSidecars";
+import { useAuditPersistence } from "./hooks/useAuditPersistence";
 import { RawPeriodData, RecastPeriod, DEFAULT_CONFIG, EngineConfig, CompanyRegistry } from "./engine/types";
 import { processCompanyDataFull } from "./engine/pipeline";
 import { processScopeAwareData, type ScopeAwareResult } from "./engine/scopeAwareLoader";
 import { assessAnalysisScope, analysisFamilyFromScope } from "./engine/scopePolicy";
 import type { FinancialInstitutionAnalysisResult } from "./engine/analysisFamily";
-import { fetchBankQualityIndicators, type BankQualityIndicators } from "./engine/bankQualityIndicators";
-import { fetchNbfcSidecarData, type NbfcSidecarData } from "./engine/nbfcSidecarLoader";
 import { trace } from "./lib/traceLogger";
 import { deriveAnalysisStatus } from "./engine/analysisStatus";
 import { CapitalineParseDebug } from "./engine/capitalineParser";
@@ -31,10 +31,8 @@ import {
   createAuditRunId,
   getAuditClientGovernance,
   isAuditEnabled,
-  persistAuditEvent,
   rememberAuditRun,
 } from "./lib/audit";
-import { buildAnalysisSnapshot } from "./lib/auditSnapshot";
 import { listWorkspaceCompanies, rememberWorkspaceAnalysis } from "./lib/researchWorkspace";
 import { fetchSharedComparisonRegistryWithStatus, formatSharedApiStatus, SharedApiResult, syncSharedComparisonRegistryWithStatus, syncWorkspaceAnalysis, syncWorkspaceProfile } from "./lib/sharedResearchApi";
 import { persistCompanyRegistry, readPersistedCompanyRegistry } from "./lib/companyRegistryStore";
@@ -142,9 +140,6 @@ export function App() {
   const [auditMeta, setAuditMeta] = useState<AuditSubmissionMeta | null>(null);
   const [workspaceCompanyId, setWorkspaceCompanyId] = useState<string | null>(null);
   const [sharedRegistryStatus, setSharedRegistryStatus] = useState<SharedApiResult<CompanyRegistry> | null>(null);
-  const lastAuditSignatureRef = useRef<string | null>(null);
-  const lastAuditStatusRef = useRef<string | null>(null);
-  const lastTabAuditRef = useRef<string | null>(null);
 
   const qualityGate = useMemo(() => {
     if (!rawData || rawData.length === 0) return null;
@@ -158,107 +153,8 @@ export function App() {
     return auditMappingCoverage(rawData);
   }, [rawData]);
 
-  // Phase B5 — Bank asset-quality sidecar. Fetched asynchronously when
-  // (a) the dataset is bank/NBFC and (b) a folder name is resolvable.
-  // The fetch is graceful: 404 / network errors yield null, the engine
-  // still runs without quality data. Schema/parse errors throw loud.
-  const [bankQuality, setBankQuality] = useState<BankQualityIndicators | null>(null);
-  const [nbfcSidecar, setNbfcSidecar] = useState<NbfcSidecarData | null>(null);
-  const qualityFolder = useMemo(() => {
-    // Explicit override wins. Otherwise use the parser-supplied company_id
-    // when present — it usually matches the folder under public/data/companies/.
-    return config.quality_data_folder ?? rawData?.[0]?.company_id ?? null;
-  }, [config.quality_data_folder, rawData]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!qualityFolder) {
-      setBankQuality(null);
-      return;
-    }
-    // In local dev, always use Vite-served files (no network hop, instant).
-    // Blob URLs are only needed on Vercel where public/ isn't deployed.
-    const isLocalDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-    const qualityUrl = (!isLocalDev && config.quality_indicators_blob_url)
-      ? `${config.quality_indicators_blob_url}?v=${Date.now()}`
-      : undefined;
-    const qualitySource = qualityUrl ? "blob" : "local";
-    trace("quality", "useEffect:fetchStart", { folder: qualityFolder, source: qualitySource, isLocalDev, url: qualityUrl ?? `local:/data/companies/${qualityFolder}/quality_indicators.json` });
-    void fetchBankQualityIndicators(qualityFolder, undefined,
-      // Bust browser cache for blob URLs — Vercel Blob sets max-age=31536000 (1 year)
-      // which causes stale data when the sidecar is re-uploaded. Append session timestamp.
-      qualityUrl,
-    )
-      .then((q) => {
-        if (!cancelled) {
-          setBankQuality(q);
-          trace("quality", "sidecarLoaded", {
-            folder: qualityFolder,
-            periods: q?.periods?.length ?? 0,
-            hasData: q != null,
-            hasSubsidiaries: q?.periods?.filter((p) => p.subsidiaries != null).length ?? 0,
-          });
-        }
-      })
-      .catch((err) => {
-        // Schema-level failures are loud; surface to console but keep the
-        // bank pipeline running with null quality so the rest of the
-        // analysis is unaffected.
-        console.error("[App] bank quality sidecar load failed:", err);
-        trace("quality", "sidecarLoadError", { folder: qualityFolder, error: String(err), stack: (err as Error)?.stack }, null, { level: "error" });
-        if (!cancelled) setBankQuality(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [qualityFolder, config.quality_indicators_blob_url]);
-
-  // Phase D4 — Fetch NBFC sidecar data (LGD + RBI NHB) when company folder is known
-  // M4 fix: only fetch for NBFC companies. Previously fired for ALL companies,
-  // causing noisy JSON parse errors when local dev server returns HTML for 404.
-  const isNbfcCompany = config.company_type === "nbfc";
-  useEffect(() => {
-    let cancelled = false;
-    if (!qualityFolder || !isNbfcCompany) {
-      setNbfcSidecar(null);
-      return;
-    }
-    // Derive blob store root from quality_indicators URL. The loader expects
-    // the store root and appends /companies/<folder>/... itself. The
-    // quality_indicators_blob_url is a FILE url (e.g. .../companies/X/quality_indicators.json)
-    // so we strip the company path + filename to get the store root.
-    // In local dev, skip blob entirely — Vite serves the files directly.
-    const isLocalDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-    const sidecarBlobRoot = (!isLocalDev && config.quality_indicators_blob_url)
-      ? config.quality_indicators_blob_url.replace(/\/companies\/[^/]+\/quality_indicators\.json$/, "")
-      : null;
-    trace("sidecar", "nbfcSidecar:useEffectStart", { folder: qualityFolder, sidecarBlobRoot, isLocalDev });
-    void fetchNbfcSidecarData(qualityFolder, sidecarBlobRoot)
-      .then((data) => {
-        if (!cancelled) {
-          trace("sidecar", "nbfcSidecarFetched", {
-            folder: qualityFolder,
-            lgdPeriods: data.lgd.length,
-            rbiNhbPeriods: data.rbiNhb.length,
-          });
-          if (data.lgd.length > 0 || data.rbiNhb.length > 0) {
-            setNbfcSidecar(data);
-          } else {
-            // Expected absence for banks/non-NBFC companies. Only NBFCs ship
-            // LGD/RBI NHB data; everyone else legitimately returns empty.
-            trace("sidecar", "nbfcSidecarEmpty", { folder: qualityFolder }, null, { level: "info", msg: "LGD+RBI NHB empty — expected for non-NBFC companies" });
-            setNbfcSidecar(null);
-          }
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          trace("sidecar", "nbfcSidecarError", { folder: qualityFolder, error: String(err) }, null, { level: "error" });
-          setNbfcSidecar(null);
-        }
-      });
-    return () => { cancelled = true; };
-  }, [qualityFolder, config.quality_indicators_blob_url, isNbfcCompany]);
+  // Phase B5 — Bank/NBFC quality sidecars (extracted to useBankSidecars hook).
+  const { bankQuality, nbfcSidecar } = useBankSidecars(config, rawData);
 
   // Single engine pass — produces both the industrial recast (RecastPeriod[])
   // and the bank pipeline result. Consolidates two earlier separate calls
@@ -577,9 +473,6 @@ export function App() {
       };
       rememberAuditRun(nextMeta);
       setAuditMeta(nextMeta);
-      lastAuditSignatureRef.current = null;
-      lastAuditStatusRef.current = null;
-      lastTabAuditRef.current = null;
   setConfig((prev) => {
     const companyId = nextMeta.companyId || data[0]?.company_id || prev.ticker;
     // Resolve NSE symbol and quality-data folder if not already set.
@@ -646,91 +539,20 @@ export function App() {
     [auditGovernance.contentClass, auditGovernance.retentionDays, config]
   );
 
-  useEffect(() => {
-    if (!auditMeta || !rawData) return;
-
-    const snapshot = buildAnalysisSnapshot({
-      rawData,
-      recastData,
-      config,
-      debugInfo,
-      parserDiagnostics,
-      qualityGate: qualityGateWithRecast,
-      mappingAudit,
-      engineError,
-      analysisStatus,
-      auditMeta,
-    });
-    const signature = JSON.stringify(snapshot);
-    if (signature === lastAuditSignatureRef.current) return;
-    lastAuditSignatureRef.current = signature;
-
-    void persistAuditEvent({
-      runId: auditMeta.runId,
-      eventType: "analysis-snapshot",
-      companyId: auditMeta.companyId,
-      sourceMode: auditMeta.sourceMode,
-      payload: snapshot,
-    });
-  }, [analysisStatus, auditMeta, config, debugInfo, engineError, mappingAudit, parserDiagnostics, qualityGate, rawData, recastData]);
-
-  useEffect(() => {
-    if (!auditMeta || !engineError) return;
-
-    void persistAuditEvent({
-      runId: auditMeta.runId,
-      eventType: "engine-error",
-      companyId: auditMeta.companyId,
-      sourceMode: auditMeta.sourceMode,
-      payload: {
-        error: engineError,
-      },
-    });
-  }, [auditMeta, engineError]);
-
-  useEffect(() => {
-    if (!auditMeta || !rawData) return;
-
-    const nextStatus = engineError
-      ? `analysis-error:${engineError}`
-      : recastData && recastData.length > 0
-        ? `analysis-ready:${recastData.length}`
-        : "data-loaded";
-
-    if (lastAuditStatusRef.current === nextStatus) return;
-    lastAuditStatusRef.current = nextStatus;
-
-    void persistAuditEvent({
-      runId: auditMeta.runId,
-      eventType: engineError ? "run-status-error" : recastData && recastData.length > 0 ? "run-status-analysis-ready" : "run-status-data-loaded",
-      companyId: auditMeta.companyId,
-      sourceMode: auditMeta.sourceMode,
-      payload: {
-        activeTab,
-        periodCount: rawData.length,
-        recastPeriodCount: recastData?.length ?? 0,
-        error: engineError ?? null,
-      },
-    });
-  }, [activeTab, auditMeta, engineError, rawData, recastData]);
-
-  useEffect(() => {
-    if (!auditMeta) return;
-
-    const tabKey = `${auditMeta.runId}:${activeTab}`;
-    if (lastTabAuditRef.current === tabKey) return;
-    lastTabAuditRef.current = tabKey;
-
-    void persistAuditEvent({
-      runId: auditMeta.runId,
-      eventType: "ui-tab-changed",
-      companyId: auditMeta.companyId,
-      sourceMode: auditMeta.sourceMode,
-      payload: {
-        activeTab,
-      },
-    });
-  }, [activeTab, auditMeta]);
+  // Audit persistence (extracted to useAuditPersistence hook)
+  useAuditPersistence({
+    auditMeta,
+    rawData,
+    recastData,
+    config,
+    debugInfo,
+    parserDiagnostics,
+    qualityGate: qualityGateWithRecast,
+    mappingAudit,
+    engineError,
+    analysisStatus,
+    activeTab,
+  });
 
   const hasRecast = (recastData?.length ?? 0) > 0;
   const hasDebug = debugInfo !== null;
