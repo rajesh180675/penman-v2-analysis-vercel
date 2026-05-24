@@ -54,4 +54,23 @@ describe("mapping resolution", () => {
     expect(recast.is.FinanceIncome).toBe(8);
     expect(recast.is.FinanceIncomeRung).toBe(1);
   });
+
+  it("marks missing scalar mappings as unmatched instead of silently presenting them as sourced zeroes", () => {
+    const raw = makeBasePeriod({});
+    delete raw.raw_metric_values["Total Assets__BalanceSheet"];
+
+    const recast = computeRecastPeriod(raw, DEFAULT_CONFIG);
+
+    expect(recast.bs.TA).toBe(0);
+    expect(recast.trace?.["BS.TA"]).toEqual([
+      {
+        statement: "BalanceSheet",
+        key: "Total Assets",
+        value: 0,
+        matchType: "exact_base",
+        note: "unmatched",
+      },
+    ]);
+    expect(recast.spec_flags?.some((flag) => flag.label === "Missing required financial line")).toBe(true);
+  });
 });

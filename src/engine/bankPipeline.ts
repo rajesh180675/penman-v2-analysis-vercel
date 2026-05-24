@@ -519,7 +519,13 @@ function computeBankRatios(
 
 // ─── Subtype Detection ──────────────────────────────────────────────────────
 
-function detectSubtype(scope: ScopeAssessment): FinancialInstitutionSubtype {
+function detectSubtype(scope: ScopeAssessment, configHint?: string): FinancialInstitutionSubtype {
+  // If config explicitly declares bank/nbfc/insurance, prefer it over signal counting.
+  // This allows metadata to disambiguate when signal overlap is ambiguous.
+  if (configHint === "bank") return "bank";
+  if (configHint === "nbfc") return "nbfc";
+  if (configHint === "insurance") return "insurance";
+
   // Count distinct signal labels per kind.
   // Priority: insurance > bank (≥2 labels) > nbfc > bank (1 label) > generic.
   // A single banking-business investment line on an NBFC's books shouldn't
@@ -567,7 +573,7 @@ export function processBankData(
   if (!dataArray || dataArray.length === 0) {
     return {
       family: "financial-institution",
-      subtype: detectSubtype(scope),
+      subtype: detectSubtype(scope, cfg?.company_type ?? undefined),
       periods: [],
       traceability: null,
       valuation: null,
@@ -579,7 +585,7 @@ export function processBankData(
   );
 
   // Determine subtype first so ratio computation can branch on it.
-  const subtype = detectSubtype(scope);
+  const subtype = detectSubtype(scope, cfg?.company_type ?? undefined);
   trace("bank", "subtypeDetected", { subtype, classification: scope.classification });
 
   // Extract raw metrics

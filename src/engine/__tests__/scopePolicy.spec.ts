@@ -28,6 +28,34 @@ describe("scopePolicy", () => {
     expect(assessment.classification).toBe("supported-industrial");
   });
 
+  it("treats registry company_type as a hint when ledger signals contradict it", () => {
+    const periods = [
+      {
+        company_id: "MISCLASSIFIED_NBFC",
+        period_end: "2025-03-31",
+        raw_metric_values: {
+          "Total Assets__BalanceSheet": 1200,
+          "Total Equity__BalanceSheet": 140,
+          "Profit After Tax__ProfitLoss": 25,
+          "Finance Receivables__BalanceSheet": 850,
+          "Loan Assets__BalanceSheet": 730,
+          "Interest / Discount on Advances / Bills__ProfitLoss": 190,
+        },
+      },
+    ];
+
+    const assessment = assessAnalysisScope(periods, {
+      financial_institution_mode: false,
+      company_type: "industrial",
+    });
+
+    expect(assessment.blocked).toBe(false);
+    expect(assessment.classification).toBe("supported-financial");
+    expect(assessment.analysisFamily).toBe("financial-institution");
+    expect(assessment.label).toBe("Supported NBFC scope");
+    expect(assessment.reasons.join(" ")).toContain("contradicts detected financial ledger signals");
+  });
+
   it("routes financial-company datasets to financial pipeline when banking/nbfc signals carry value", () => {
     const periods = [
       {

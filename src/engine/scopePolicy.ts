@@ -116,6 +116,21 @@ function countObservedKeys(periods: RawPeriodData[]) {
   return counts;
 }
 
+function maxObservedSignalValue(periods: RawPeriodData[] | null | undefined) {
+  const signalKeys = new Set(SIGNAL_GROUPS.flatMap((group) => group.keys));
+  let maxAbsValue = 0;
+  for (const period of periods ?? []) {
+    for (const [compositeKey, value] of Object.entries(period.raw_metric_values ?? {})) {
+      if (value == null || !Number.isFinite(value)) continue;
+      const idx = compositeKey.lastIndexOf("__");
+      const baseKey = idx >= 0 ? compositeKey.slice(0, idx) : compositeKey;
+      if (!signalKeys.has(baseKey)) continue;
+      maxAbsValue = Math.max(maxAbsValue, Math.abs(value));
+    }
+  }
+  return maxAbsValue;
+}
+
 export function analysisFamilyFromScope(scope: ScopeAssessment): AnalysisFamily {
   return scope.classification === "unsupported-financial-company"
       || scope.classification === "supported-financial"
@@ -138,9 +153,20 @@ export function assessAnalysisScope(
     ? "Only one period of data was uploaded. Time-series signals (growth rates, trend analysis, mean-reversion, V_RE_CV*) require at least two periods. Results are screening-level only."
     : undefined;
 
-  // Phase D2 — explicit company_type override.
-  // When set to anything other than "auto"/null, skip heuristic detection
-  // and route directly to the correct pipeline.
+  for (const group of SIGNAL_GROUPS) {
+    for (const key of group.keys) {
+      const periodsObserved = observedCounts.get(key) ?? 0;
+      if (periodsObserved > 0) {
+        signals.push({ kind: group.kind, key, periodsObserved });
+      }
+    }
+  }
+
+  const observedFinancialKinds = new Set(signals.map((signal) => signal.kind));
+
+  // Phase D2 — explicit company_type is a routing hint, not an unconditional
+  // override. If material ledger signals contradict registry metadata, prefer
+  // the data and surface the conflict in reasons rather than misrouting.
   const ct = config?.company_type;
   if (ct && ct !== "auto") {
     const financialTypes = ["bank", "nbfc", "insurance"] as const;
@@ -149,29 +175,39 @@ export function assessAnalysisScope(
       : ct === "nbfc" ? "nbfc"
       : ct === "insurance" ? "insurance"
       : "manual-override";
+    // Materiality floor (₹100 Cr) — incidental financial labels on industrial
+    // companies (e.g. "Loans - Long - Term" at ₹13 Cr on ITC) must not override
+    // explicit non-financial metadata. Only trigger contradiction when financial
+    // signal values are material enough to indicate a misclassified entity.
+    const FINANCIAL_SIGNAL_MATERIALITY_CR = 100;
+    const hasDetectedFinancialSignals = observedFinancialKinds.size > 0;
+    const metadataContradictsSignals = !isFinancial && hasDetectedFinancialSignals && maxObservedSignalValue(periods) >= FINANCIAL_SIGNAL_MATERIALITY_CR;
 
-    if (isFinancial) {
-      signals.push({ kind, key: `company_type:${ct}`, periodsObserved: periodCount });
+    if (!metadataContradictsSignals) {
+      const overrideSignals = [...signals];
+      if (isFinancial) {
+        overrideSignals.push({ kind, key: `company_type:${ct}`, periodsObserved: periodCount });
+      }
+
+      const classification: ScopeClassification = isFinancial
+        ? "supported-financial"
+        : "supported-industrial";
+
+      return {
+        policyVersion: SCOPE_POLICY_VERSION,
+        classification,
+        analysisFamily: isFinancial ? "financial-institution" : "industrial",
+        blocked: false,
+        label: `Explicit company type: ${ct}`,
+        reasons: [`User classified as "${ct}" — no contradictory material ledger signals detected.`],
+        recommendedAction: isFinancial
+          ? `Proceed with ${ct} pipeline.`
+          : "Proceed with the industrial Penman-Nissim framework.",
+        signals: overrideSignals,
+        screeningOnly,
+        screeningReason,
+      };
     }
-
-    const classification: ScopeClassification = isFinancial
-      ? "supported-financial"
-      : "supported-industrial";
-
-    return {
-      policyVersion: SCOPE_POLICY_VERSION,
-      classification,
-      analysisFamily: isFinancial ? "financial-institution" : "industrial",
-      blocked: false,
-      label: `Explicit company type: ${ct}`,
-      reasons: [`User classified as "${ct}" — skipping label heuristics.`],
-      recommendedAction: isFinancial
-        ? `Proceed with ${ct} pipeline.`
-        : "Proceed with the industrial Penman-Nissim framework.",
-      signals,
-      screeningOnly,
-      screeningReason,
-    };
   }
 
   if (config?.financial_institution_mode) {
@@ -180,15 +216,6 @@ export function assessAnalysisScope(
       key: "financial_institution_mode",
       periodsObserved: periods?.length ?? 0,
     });
-  }
-
-  for (const group of SIGNAL_GROUPS) {
-    for (const key of group.keys) {
-      const periodsObserved = observedCounts.get(key) ?? 0;
-      if (periodsObserved > 0) {
-        signals.push({ kind: group.kind, key, periodsObserved });
-      }
-    }
   }
 
   if (signals.length === 0) {
@@ -214,6 +241,9 @@ export function assessAnalysisScope(
   }
 
   const reasons: string[] = [];
+  if (ct && ct !== "auto" && observedFinancialKinds.size > 0) {
+    reasons.push(`Registry company_type "${ct}" contradicts detected financial ledger signals; routing by source data.`);
+  }
   if (grouped.get("manual-override")) {
     reasons.push("Financial-institution mode was explicitly selected.");
   }

@@ -312,30 +312,27 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                 const standaloneUrl   = standaloneBlobUrl ?? `/data/companies/${encodeURIComponent(folder)}/standalone.zip`;
 
                 if (useDualScope) {
-                  // Parallel fetch of both ZIPs
-                  const [consResp, stanResp] = await Promise.all([
-                    fetch(consolidatedUrl),
-                    fetch(standaloneUrl),
-                  ]);
+                  // Parallel fetch — standalone failure is non-fatal
+                  const consResp = await fetch(consolidatedUrl);
                   if (!consResp.ok) throw new Error(`Consolidated ZIP not found for "${folder}".`);
-                  // Standalone failure is non-fatal — fall back to consolidated-only
                   const consBlob = await consResp.blob();
                   const consFile = new File([consBlob], `${folder}.zip`, { type: "application/zip" });
                   setCompanyId(ticker.toUpperCase().slice(0, 20));
 
                   let standalonePeriods: RawPeriodData[] | null = null;
-                  if (stanResp.ok) {
-                    try {
+                  try {
+                    const stanResp = await fetch(standaloneUrl);
+                    if (stanResp.ok) {
                       const stanBlob = await stanResp.blob();
                       const stanFile = new File([stanBlob], "standalone.zip", { type: "application/zip" });
                       const { parseCapitalineZip } = await import("../engine/capitalineParser");
                       const stanResult = await parseCapitalineZip(stanFile, { companyId: ticker.toUpperCase().slice(0, 20) });
                       standalonePeriods = stanResult.periods.length > 0 ? stanResult.periods : null;
-                    } catch (stanErr) {
-                      // Standalone parse failure shouldn't block consolidated analysis
-                      const msg = stanErr instanceof Error ? stanErr.message : String(stanErr);
-                      trace("ui", "dataEntry:standaloneParseFailed", { folder, error: msg }, null, { level: "warn" });
                     }
+                  } catch (stanErr) {
+                    // Standalone fetch/parse failure shouldn't block consolidated analysis
+                    const msg = stanErr instanceof Error ? stanErr.message : String(stanErr);
+                    trace("ui", "dataEntry:standaloneFailed", { folder, error: msg }, null, { level: "warn" });
                   }
                   await processZip(consFile, ticker.toUpperCase().slice(0, 20), standalonePeriods, { skipTypeCheck: true });
                 } else {

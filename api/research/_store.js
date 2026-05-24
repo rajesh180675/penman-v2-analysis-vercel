@@ -2,8 +2,10 @@ import { get, list, put } from "@vercel/blob";
 import {
   assertContentLength,
   enforceAuditRateLimit,
+  isAuditAdminAuthRequired,
   isAuditConfigured,
   readJsonBody,
+  respondJsonBodyError,
   requireAuditReadAuth,
   sanitizePathSegment,
 } from "../audit/_lib.js";
@@ -19,6 +21,7 @@ export function researchPath(...parts) {
 }
 
 export function shouldRequireResearchReadAuth() {
+  if (isAuditAdminAuthRequired()) return true;
   if (process.env.RESEARCH_REQUIRE_READ_AUTH != null) {
     return (process.env.RESEARCH_REQUIRE_READ_AUTH ?? "false").toLowerCase() === "true";
   }
@@ -26,6 +29,7 @@ export function shouldRequireResearchReadAuth() {
 }
 
 export function shouldRequireResearchWriteAuth() {
+  if (isAuditAdminAuthRequired()) return true;
   if (process.env.RESEARCH_REQUIRE_WRITE_AUTH != null) {
     return (process.env.RESEARCH_REQUIRE_WRITE_AUTH ?? "false").toLowerCase() === "true";
   }
@@ -45,7 +49,12 @@ export function maybeRequireResearchWriteAuth(request, response) {
 export async function readResearchBody(request, response, limitBytes = 1024 * 1024) {
   if (!assertContentLength(request, response, limitBytes)) return null;
   if (!enforceAuditRateLimit(request, response, "research", 180)) return null;
-  return await readJsonBody(request);
+  try {
+    return await readJsonBody(request, limitBytes);
+  } catch (error) {
+    if (respondJsonBodyError(response, error)) return null;
+    throw error;
+  }
 }
 
 export async function readJsonBlob(pathname) {

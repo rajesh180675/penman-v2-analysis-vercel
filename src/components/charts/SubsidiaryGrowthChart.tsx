@@ -78,7 +78,7 @@ export default function SubsidiaryGrowthChart({ periods }: Props) {
             <YAxis tick={{ fontSize: 10 }} />
             <Tooltip
               contentStyle={{ fontSize: 11, borderRadius: 8 }}
-              formatter={(value: number | undefined) => [`₹${(value ?? 0).toLocaleString("en-IN")} Cr`, ""]}
+              formatter={(value: unknown) => [typeof value === "number" ? `₹${value.toLocaleString("en-IN")} Cr` : "—", ""]}
             />
             <Legend wrapperStyle={{ fontSize: 10 }} />
             {names.map((name, i) => (
@@ -107,7 +107,7 @@ export default function SubsidiaryGrowthChart({ periods }: Props) {
             <YAxis tick={{ fontSize: 10 }} />
             <Tooltip
               contentStyle={{ fontSize: 11, borderRadius: 8 }}
-              formatter={(value: number | undefined) => [`₹${(value ?? 0).toLocaleString("en-IN")} Cr`, ""]}
+              formatter={(value: unknown) => [typeof value === "number" ? `₹${value.toLocaleString("en-IN")} Cr` : "—", ""]}
             />
             <Legend wrapperStyle={{ fontSize: 10 }} />
             {names.map((name, i) => (

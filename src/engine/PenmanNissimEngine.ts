@@ -12,6 +12,8 @@ import {
   TraceMap,
   TraceEntry,
   ShareCountInputSnapshot,
+  Severity,
+  SpecFlag,
   deriveKwFromConfig,
 } from "./types";
 import { CapitalineMappingSpec as M } from "./mappingSpec";
@@ -37,12 +39,18 @@ type PickResult = {
   key: string;
   statement: "BalanceSheet" | "ProfitLoss" | "CashFlow" | "Fallback";
   matchType: "exact_composite" | "exact_base" | "fuzzy";
+  note?: string;
 };
 type PickResultWithSource = PickResult & { sourceId: string };
 
 function pushTrace(trace: TraceMap | undefined, line: string | undefined, entry: TraceEntry) {
   if (!trace || !line) return;
   if (!trace[line]) trace[line] = [];
+  if (entry.note === undefined) {
+    const { note: _note, ...withoutUndefinedNote } = entry;
+    trace[line].push(withoutUndefinedNote);
+    return;
+  }
   trace[line].push(entry);
 }
 
@@ -94,7 +102,7 @@ function pickWithSource(data: RawPeriodData, keys: readonly string[], stmt?: "Ba
       return picked;
     }
   }
-  return { value: 0, key: keys[0] ?? "", statement: stmt ?? "Fallback", matchType: "exact_base" };
+  return { value: 0, key: keys[0] ?? "", statement: stmt ?? "Fallback", matchType: "exact_base", note: "unmatched" };
 }
 
 function sumWithDistinctSource(
@@ -145,17 +153,17 @@ function sumWithDistinctSource(
 
 const valBS = (d: RawPeriodData, k: readonly string[], line?: string, trace?: TraceMap) => {
   const r = pickWithSource(d, k, "BalanceSheet");
-  pushTrace(trace, line, { statement: r.statement, key: r.key, value: r.value, matchType: r.matchType });
+  pushTrace(trace, line, { statement: r.statement, key: r.key, value: r.value, matchType: r.matchType, note: r.note });
   return r.value;
 };
 const valPL = (d: RawPeriodData, k: readonly string[], line?: string, trace?: TraceMap) => {
   const r = pickWithSource(d, k, "ProfitLoss");
-  pushTrace(trace, line, { statement: r.statement, key: r.key, value: r.value, matchType: r.matchType });
+  pushTrace(trace, line, { statement: r.statement, key: r.key, value: r.value, matchType: r.matchType, note: r.note });
   return r.value;
 };
 const valCF = (d: RawPeriodData, k: readonly string[], line?: string, trace?: TraceMap) => {
   const r = pickWithSource(d, k, "CashFlow");
-  pushTrace(trace, line, { statement: r.statement, key: r.key, value: r.value, matchType: r.matchType });
+  pushTrace(trace, line, { statement: r.statement, key: r.key, value: r.value, matchType: r.matchType, note: r.note });
   return r.value;
 };
 
@@ -591,11 +599,30 @@ export function recastCashFlow(data: RawPeriodData, is_: CanonicalIncome, bs: Ca
   };
 }
 
+function buildMissingRequiredLineFlags(trace: TraceMap, periodEnd: string): SpecFlag[] {
+  const requiredLines = [
+    "BS.TA",
+    "IS.PAT",
+  ];
+
+  return requiredLines
+    .filter((line) => trace[line]?.some((entry) => entry.note === "unmatched"))
+    .map((line) => ({
+      spec_id: `MISSING_REQUIRED_${line.replace(/\W+/g, "_")}`,
+      severity: Severity.CRITICAL,
+      label: "Missing required financial line",
+      message: `${line} could not be mapped from source data; valuation must treat the recast value as unsourced, not a real zero.`,
+      affects_terminal: true,
+      period: periodEnd,
+    }));
+}
+
 export function computeRecastPeriod(data: RawPeriodData, cfg: EngineConfig, prevPeriod?: RecastPeriod): RecastPeriod {
   const trace: TraceMap = {};
   const bs = recastBalanceSheet(data, cfg, trace);
   const { is_, cu } = recastIncome(data, bs, cfg, trace);
   const cf = recastCashFlow(data, is_, bs, prevPeriod?.bs, trace);
+  const spec_flags = buildMissingRequiredLineFlags(trace, data.period_end);
   return {
     period_end: data.period_end,
     bs,
@@ -604,6 +631,7 @@ export function computeRecastPeriod(data: RawPeriodData, cfg: EngineConfig, prev
     cf,
     trace,
     shareCountInput: extractShareCountInput(data),
+    ...(spec_flags.length > 0 ? { spec_flags } : {}),
   };
 }
 
