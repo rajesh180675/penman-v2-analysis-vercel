@@ -66,16 +66,9 @@ const VIEWS: { id: AtlasView; label: string; icon: string; tagline: string }[] =
 export default function AtlasReport({ rawData, pipelineResult }: Props) {
   const [view, setView] = useState<AtlasView>("coverage");
 
-  if (!rawData || rawData.length === 0) {
-    return (
-      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900/60">
-        <p className="text-sm text-slate-500">Atlas needs raw period data. Load a company first.</p>
-      </div>
-    );
-  }
-
   // Pre-compute the union of all metric keys ever seen across periods
   const { allMetrics, sortedPeriods } = useMemo(() => {
+    if (!rawData || rawData.length === 0) return { allMetrics: [], sortedPeriods: [] };
     const m = new Set<string>();
     for (const p of rawData) {
       for (const k of Object.keys(p.raw_metric_values)) m.add(k);
@@ -85,6 +78,14 @@ export default function AtlasReport({ rawData, pipelineResult }: Props) {
     );
     return { allMetrics: [...m].sort(), sortedPeriods: periods };
   }, [rawData]);
+
+  if (!rawData || rawData.length === 0) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900/60">
+        <p className="text-sm text-slate-500">Atlas needs raw period data. Load a company first.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
