@@ -13,6 +13,7 @@ import { deriveAnalysisStatus } from "./engine/analysisStatus";
 import { CapitalineParseDebug } from "./engine/capitalineParser";
 import { auditMappingCoverage, evaluateQualityGate } from "./engine/mappingAudit";
 import { resolveValuationReadiness } from "./engine/valuationPolicy";
+import { selectPrimaryValuationData } from "./engine/valuationDataPolicy";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AnalysisStatusBadge } from "./components/AnalysisStatusBadge";
 import CompanySwitcher from "./components/CompanySwitcher";
@@ -150,17 +151,23 @@ export function App() {
     fallbackRiskFreeRate: config.risk_free_rate ?? null,
   });
 
+  const valuationDataSelection = useMemo(
+    () => selectPrimaryValuationData(rawData, standaloneRawData),
+    [rawData, standaloneRawData],
+  );
+  const valuationRawData = valuationDataSelection?.primaryData ?? rawData;
+
   const qualityGate = useMemo(() => {
-    if (!rawData || rawData.length === 0) return null;
-    return evaluateQualityGate(rawData, config);
-  }, [config, rawData]);
+    if (!valuationRawData || valuationRawData.length === 0) return null;
+    return evaluateQualityGate(valuationRawData, config);
+  }, [config, valuationRawData]);
 
   const scopeGate = qualityGate;
 
   const mappingAudit = useMemo(() => {
-    if (!rawData || rawData.length === 0) return null;
-    return auditMappingCoverage(rawData);
-  }, [rawData]);
+    if (!valuationRawData || valuationRawData.length === 0) return null;
+    return auditMappingCoverage(valuationRawData);
+  }, [valuationRawData]);
 
   // Phase B5 — Bank/NBFC quality sidecars (extracted to useBankSidecars hook).
   const { bankQuality, nbfcSidecar } = useBankSidecars(config, rawData);
@@ -168,6 +175,12 @@ export function App() {
   // Single engine pass — produces both the industrial recast (RecastPeriod[])
   // and the bank pipeline result. Consolidates two earlier separate calls
   // into one for efficiency.
+  //
+  // Valuation normally uses consolidated data. If consolidated has too few
+  // periods for time-series valuation and standalone has sufficient history,
+  // valuationRawData becomes standalone via valuationDataSelection above. The
+  // UI surfaces that fallback explicitly; scopeAwareResult still compares the
+  // original consolidated and standalone datasets.
   // Phase B5: quality sidecar (when present) flows through to the bank
   // pipeline. The memo re-runs when quality arrives, so the asset-quality
   // signals populate as soon as the fetch resolves.
@@ -178,17 +191,17 @@ export function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const configFingerprint = useMemo(() => JSON.stringify(config), [config]);
   const pipelineResult = useMemo(() => {
-    if (!rawData || rawData.length === 0) return null;
+    if (!valuationRawData || valuationRawData.length === 0) return null;
     if (scopeGate?.scopeAssessment.blocked) return null;
     try {
-      return processCompanyDataFull(rawData, config, bankQuality);
+      return processCompanyDataFull(valuationRawData, config, bankQuality);
     } catch (err) {
       trace("pipeline", "processCompanyDataFull:error", { error: String(err), stack: (err as Error)?.stack }, null, { level: "error" });
       console.error("[App] engine error:", err);
       return { error: err instanceof Error ? err.message : String(err) };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [configFingerprint, rawData, scopeGate, bankQuality]);
+  }, [configFingerprint, valuationRawData, scopeGate, bankQuality]);
 
   // Phase A — Scope-aware analysis. When standalone data is also loaded,
   // compute the consolidated − standalone gap (subsidiary contribution).
@@ -268,7 +281,7 @@ export function App() {
   // Derive recastData reactively. Any config change (tax rate, OCI treatment,
   // hybrid-debt flag, etc.) immediately re-computes via pipelineResult above.
   const recastOutcome = useMemo<{ data: RecastPeriod[] | null; error: string | null }>(() => {
-    if (!rawData || rawData.length === 0) return { data: null, error: null };
+    if (!valuationRawData || valuationRawData.length === 0) return { data: null, error: null };
     if (scopeGate?.scopeAssessment.blocked) {
       return {
         data: null,
@@ -281,30 +294,30 @@ export function App() {
       data: pipelineResult.periods.length > 0 ? pipelineResult.periods : null,
       error: null,
     };
-  }, [pipelineResult, rawData, scopeGate]);
+  }, [pipelineResult, valuationRawData, scopeGate]);
 
   const recastData = recastOutcome.data;
   const engineError = recastOutcome.error;
   const qualityGateWithRecast = useMemo(() => {
-    if (!rawData || rawData.length === 0) return null;
-    return evaluateQualityGate(rawData, config, recastData);
-  }, [config, rawData, recastData]);
+    if (!valuationRawData || valuationRawData.length === 0) return null;
+    return evaluateQualityGate(valuationRawData, config, recastData);
+  }, [config, valuationRawData, recastData]);
   const valuationReadiness = useMemo(() => (recastData?.length ? resolveValuationReadiness(recastData) : null), [recastData]);
   const analysisStatus = useMemo(
     () => deriveAnalysisStatus(qualityGateWithRecast, valuationReadiness, mappingAudit),
     [mappingAudit, qualityGateWithRecast, valuationReadiness],
   );
   const policyVersions = useMemo(() => getAnalysisPolicyVersions(), []);
-  const latestPeriod = rawData && rawData.length > 0 ? rawData[rawData.length - 1].period_end : null;
+  const latestPeriod = valuationRawData && valuationRawData.length > 0 ? valuationRawData[valuationRawData.length - 1].period_end : null;
   const traceability = useMemo(
     () => buildAnalysisTraceability({
       runId: auditMeta?.runId ?? null,
-      companyId: rawData?.[0]?.company_id ?? null,
+      companyId: valuationRawData?.[0]?.company_id ?? rawData?.[0]?.company_id ?? null,
       sourceMode: auditMeta?.sourceMode ?? null,
-      rawData,
+      rawData: valuationRawData,
       recastData,
       config,
-      periodCount: rawData?.length ?? 0,
+      periodCount: valuationRawData?.length ?? 0,
       recastPeriodCount: recastData?.length ?? 0,
       latestPeriod,
       qualityGate: qualityGateWithRecast,
@@ -321,14 +334,14 @@ export function App() {
       retentionDays: auditMeta?.retentionDays ?? null,
       runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
     }),
-    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, policyVersions, qualityGateWithRecast, rawData, recastData],
+    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, policyVersions, qualityGateWithRecast, valuationRawData, rawData, recastData],
   );
   const publication = useMemo(
     () => (recastData?.length
       ? buildAnalysisPublicationSnapshot({
         data: recastData,
         config,
-        rawData,
+        rawData: valuationRawData,
         auditMeta,
         sharedTraceability: traceability,
         qualityGate: qualityGateWithRecast,
@@ -338,7 +351,7 @@ export function App() {
         family: qualityGateWithRecast?.scopeAssessment.analysisFamily ?? null,
       })
       : null),
-    [analysisStatus, auditMeta, config, mappingAudit, policyVersions, qualityGateWithRecast, rawData, recastData, traceability],
+    [analysisStatus, auditMeta, config, mappingAudit, policyVersions, qualityGateWithRecast, valuationRawData, recastData, traceability],
   );
   const comparisonPublication = useMemo(
     () => buildComparisonPublicationSnapshot(registry),
@@ -888,6 +901,18 @@ if (!hasRecast && rawData && rawData.length > 0) {
               </div>
             );
           })()}
+          {valuationDataSelection?.usedStandaloneFallback && (
+            <div className="mb-5 rounded-lg border border-teal-300 bg-teal-50 p-4 text-sm text-teal-900 dark:border-teal-700 dark:bg-teal-950/30 dark:text-teal-200">
+              <div className="font-semibold mb-1">Standalone valuation fallback active</div>
+              <div>
+                Consolidated statements have only <strong>{valuationDataSelection.consolidatedPeriodCount}</strong> period{valuationDataSelection.consolidatedPeriodCount === 1 ? "" : "s"};
+                standalone has <strong>{valuationDataSelection.standalonePeriodCount}</strong> periods. Main valuation, recast, ratios, and advanced models use standalone as the explicit fallback.
+              </div>
+              <div className="mt-2 text-xs text-teal-700 dark:text-teal-300">
+                Consolidated-vs-standalone gap analysis still uses both datasets in the Scope tab. Treat headline valuation as parent-standalone, not consolidated group value.
+              </div>
+            </div>
+          )}
           {qualityGate?.scopeAssessment?.screeningOnly && (
             <div className="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
               <div className="font-semibold mb-1">Screening mode — single period uploaded</div>
