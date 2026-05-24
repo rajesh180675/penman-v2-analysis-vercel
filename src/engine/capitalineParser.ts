@@ -1041,6 +1041,20 @@ export async function parseCapitalineZip(
   return { periods, debug, segmentData: await parseSegmentFilesFromZip(fileEntries as any) };
 }
 
+function segmentTypeFromCapitalineFilename(filename: string): SegmentData["segmentationType"] | null {
+  const base = filename.split("/").pop() ?? filename;
+  const normalized = base.replace(/\s+/g, " ").trim().toLowerCase();
+
+  // Capitaline convention:
+  //   SegmentFinance_.xls     = Product / Business
+  //   SegmentFinance_ (1).xls = Geographic
+  //   SegmentFinance_ (2).xls = Mixed / Total
+  if (/^segmentfinance_\.(xls|html?)$/i.test(normalized)) return "business";
+  if (/^segmentfinance_\s*\(1\)\.(xls|html?)$/i.test(normalized)) return "geographic";
+  if (/^segmentfinance_\s*\(2\)\.(xls|html?)$/i.test(normalized)) return "total";
+  return null;
+}
+
 /** Phase C5: parse ALL SegmentFinance files from the ZIP into AllSegmentData. */
 async function parseSegmentFilesFromZip(fileEntries: Array<{ name: string; async(type: "arraybuffer"): Promise<ArrayBuffer>; async(type: "text"): Promise<string> } & Record<string, unknown>>): Promise<AllSegmentData | null> {
   const segmentEntries = fileEntries.filter(f => {
@@ -1049,26 +1063,28 @@ async function parseSegmentFilesFromZip(fileEntries: Array<{ name: string; async
   });
   if (segmentEntries.length === 0) return null;
 
-  // Parse ALL segment files and collect by type
+  // Parse ALL segment files and collect by deterministic Capitaline filename convention.
+  // Do not infer product/geographic/mixed from labels: labels like "MOBILE SERVICES INDIA"
+  // are business segments even though they contain geographic words.
   let business: SegmentData | null = null;
   let geographic: SegmentData | null = null;
   let mixed: SegmentData | null = null;
 
   for (const entry of segmentEntries) {
     try {
+      const name = entry.name as string;
+      const fileType = segmentTypeFromCapitalineFilename(name);
       const text = await (entry as any).async("text");
       const parsed = parseSegmentFinanceHTML(text);
-      if (!parsed) continue;
+      if (!parsed || !fileType) continue;
 
-      if (parsed.segmentationType === "business" && parsed.segments.length >= 2) {
-        if (!business) business = parsed;
-      } else if (parsed.segmentationType === "geographic") {
-        if (!geographic) geographic = parsed;
-      } else if (parsed.segmentationType === "total") {
-        if (!mixed) mixed = parsed;
-      } else if (!business) {
-        // Fallback: unclassified with multiple segments → treat as business
-        business = parsed;
+      const typedParsed: SegmentData = { ...parsed, segmentationType: fileType };
+      if (fileType === "business") {
+        if (!business) business = typedParsed;
+      } else if (fileType === "geographic") {
+        if (!geographic) geographic = typedParsed;
+      } else if (fileType === "total") {
+        if (!mixed) mixed = typedParsed;
       }
     } catch {
       // skip unparseable segment files
