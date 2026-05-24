@@ -18,7 +18,7 @@ export default function AdvancedSegmentPanel({ segmentRNOA, capitalAllocation, c
   const efficiencyScore = capitalAllocation?.firmLevel.capitalEfficiencyScore;
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+    <div className="rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50/60 dark:bg-teal-950/40 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Segment Intelligence</h3>
         {efficiencyScore != null && (

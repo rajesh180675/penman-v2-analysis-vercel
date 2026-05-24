@@ -14,7 +14,7 @@ export default function FadeRatePanel({ fadeRate }: Props) {
   const f = fadeRate.firm;
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 p-4 space-y-3">
+    <div className="rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50/60 dark:bg-teal-950/40 p-4 space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Earnings Persistence (ω)</h3>

@@ -23,7 +23,7 @@ export default function PenmanExpectedReturnPanel({ penmanReturn, accountingAnch
   const aa = accountingAnchor;
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
+    <div className="rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50/60 dark:bg-teal-950/40 p-4 space-y-3">
       {/* Hero expected return */}
       {pr && (
         <div className="flex items-baseline gap-3">
@@ -60,8 +60,8 @@ export default function PenmanExpectedReturnPanel({ penmanReturn, accountingAnch
             })()}
           </div>
           <div className="flex justify-between text-[10px] text-slate-500">
-            <span>Intrinsic ${aa.layers.totalIntrinsic.toFixed(0)}</span>
-            <span>Market ${aa.marketPrice.toFixed(0)}</span>
+            <span>Intrinsic ₹{aa.layers.totalIntrinsic.toFixed(0)}</span>
+            <span>Market ₹{aa.marketPrice.toFixed(0)}</span>
           </div>
         </div>
       )}
@@ -87,7 +87,7 @@ export default function PenmanExpectedReturnPanel({ penmanReturn, accountingAnch
       {/* Growth justified */}
       {pr && (
         <div className="flex gap-4 text-xs text-slate-500 dark:text-slate-400">
-          <span>EPV/sh ${pr.valuationLayers.epvPerShare.toFixed(1)}</span>
+          <span>EPV/sh ₹{pr.valuationLayers.epvPerShare.toFixed(1)}</span>
           <span>Growth premium {(pr.valuationLayers.growthPremiumPct * 100).toFixed(0)}%</span>
           <span>{pr.valuationLayers.growthJustified ? '✓ justified' : '✗ not justified'}</span>
         </div>
