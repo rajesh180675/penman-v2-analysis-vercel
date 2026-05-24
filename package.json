@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^10.3.0",
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/vite": "4.1.17",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",

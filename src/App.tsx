@@ -2,6 +2,7 @@ import { Suspense, lazy, useState, useCallback, useMemo, useEffect } from "react
 import { useServerStatus } from "./hooks/useServerStatus";
 import { useBankSidecars } from "./hooks/useBankSidecars";
 import { useAuditPersistence } from "./hooks/useAuditPersistence";
+import { useLiveMarketData } from "./hooks/useLiveMarketData";
 import { RawPeriodData, RecastPeriod, DEFAULT_CONFIG, EngineConfig, CompanyRegistry } from "./engine/types";
 import { processCompanyDataFull } from "./engine/pipeline";
 import { processScopeAwareData, type ScopeAwareResult } from "./engine/scopeAwareLoader";
@@ -140,6 +141,14 @@ export function App() {
   const [auditMeta, setAuditMeta] = useState<AuditSubmissionMeta | null>(null);
   const [workspaceCompanyId, setWorkspaceCompanyId] = useState<string | null>(null);
   const [sharedRegistryStatus, setSharedRegistryStatus] = useState<SharedApiResult<CompanyRegistry> | null>(null);
+
+  // Live market data — fetched at App level so Dashboard + Valuation both have it
+  const { snapshot: liveMarketData } = useLiveMarketData({
+    provider: config.market_data_provider as any ?? "nse",
+    symbol: config.market_data_symbol ?? config.ticker ?? null,
+    fallbackPrice: config.market_price ?? null,
+    fallbackRiskFreeRate: config.rf ?? null,
+  });
 
   const qualityGate = useMemo(() => {
     if (!rawData || rawData.length === 0) return null;
@@ -932,6 +941,7 @@ config={config}
 traceability={traceability}
 ratioSanity={ratioSanity}
 segmentData={segmentData}
+marketData={liveMarketData}
 peerCount={readyCompanyCount}
 onNavigate={(tab) => setActiveTab(tab as TabId)}
 />

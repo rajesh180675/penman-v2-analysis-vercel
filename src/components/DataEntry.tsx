@@ -19,6 +19,7 @@ import { trace } from "../lib/traceLogger";
 import ManualEntryWizard from "./ManualEntryWizard";
 import OnboardingCard from "./dashboard/OnboardingCard";
 import CompanyLibraryGrid from "./data-entry/CompanyLibraryGrid";
+import CompanyTypePickerModal from "./data-entry/CompanyTypePickerModal";
 
 interface Props {
   onDataSubmit: (
@@ -45,6 +46,12 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
   const [error, setError]     = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [companyId, setCompanyId] = useState("VST");
+  const [pendingPick, setPendingPick] = useState<{
+    folder: string; ticker: string; type: string;
+    scope: string; hasStandalone: boolean;
+    blobUrl?: string | null; standaloneBlobUrl?: string | null;
+    qualityIndicatorsBlobUrl?: string | null;
+  } | null>(null);
   const [_lastFile, setLastFile] = useState<string | null>(null);
   const [screenerText, setScreenerText] = useState("");
   const [jsonText, setJsonText] = useState("");
@@ -278,81 +285,11 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
       {/* Company library grid — primary way to load data on first run */}
       {mode === "capitaline" && !(currentData && currentData.length > 0) && (
         <div className="card-base p-6">
-          <CompanyLibraryGrid
+        <CompanyLibraryGrid
             disabled={isProcessing}
-            onPickCompany={async (folder, ticker, type, scope, hasStandalone, blobUrl, standaloneBlobUrl, qualityIndicatorsBlobUrl) => {
-              try {
-                setIsProcessing(true); setError("");
-
-                // Wire chosen company parameters directly to the engine configuration
-                onConfigChange({
-                  ...config,
-                  quality_data_folder: folder,
-                  quality_indicators_blob_url: qualityIndicatorsBlobUrl ?? null,
-                  market_data_symbol: ticker,
-                  ticker: ticker,
-                  // Map all registry types to a valid CompanyType — never fall back to "auto".
-                  // conglomerate → industrial; all others map directly.
-                  company_type: (["bank","nbfc","insurance","it-services","consumer","utility","telecom","cyclical"] as string[]).includes(type)
-                    ? (type as EngineConfig["company_type"])
-                    : "industrial",
-                });
-
-                // Phase A — dual-scope loading. When the company has standalone
-                // available, fetch BOTH consolidated and standalone ZIPs in
-                // parallel. Consolidated drives the main pipeline; standalone
-                // feeds the subsidiary contribution gap analysis.
-                //
-                // Legacy: when scope==="standalone" the user explicitly opted
-                // into standalone-only analysis (rare; keep it working).
-                const useDualScope = scope === "consolidated" && hasStandalone === true;
-                // Prefer Vercel Blob URLs when available (Vercel deploy);
-                // fall back to local public/ paths (local dev).
-                const consolidatedUrl = blobUrl ?? `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(folder)}.zip`;
-                const standaloneUrl   = standaloneBlobUrl ?? `/data/companies/${encodeURIComponent(folder)}/standalone.zip`;
-
-                if (useDualScope) {
-                  // Parallel fetch — standalone failure is non-fatal
-                  const consResp = await fetch(consolidatedUrl);
-                  if (!consResp.ok) throw new Error(`Consolidated ZIP not found for "${folder}".`);
-                  const consBlob = await consResp.blob();
-                  const consFile = new File([consBlob], `${folder}.zip`, { type: "application/zip" });
-                  setCompanyId(ticker.toUpperCase().slice(0, 20));
-
-                  let standalonePeriods: RawPeriodData[] | null = null;
-                  try {
-                    const stanResp = await fetch(standaloneUrl);
-                    if (stanResp.ok) {
-                      const stanBlob = await stanResp.blob();
-                      const stanFile = new File([stanBlob], "standalone.zip", { type: "application/zip" });
-                      const { parseCapitalineZip } = await import("../engine/capitalineParser");
-                      const stanResult = await parseCapitalineZip(stanFile, { companyId: ticker.toUpperCase().slice(0, 20) });
-                      standalonePeriods = stanResult.periods.length > 0 ? stanResult.periods : null;
-                    }
-                  } catch (stanErr) {
-                    // Standalone fetch/parse failure shouldn't block consolidated analysis
-                    const msg = stanErr instanceof Error ? stanErr.message : String(stanErr);
-                    trace("ui", "dataEntry:standaloneFailed", { folder, error: msg }, null, { level: "warn" });
-                  }
-                  await processZip(consFile, ticker.toUpperCase().slice(0, 20), standalonePeriods, { skipTypeCheck: true });
-                } else {
-                  // Single-scope path (legacy: user picked Standalone explicitly,
-                  // OR company has no standalone available)
-                  const zipName = scope === "standalone" ? "standalone.zip" : `${folder}.zip`;
-                  const zipUrl = scope === "standalone"
-                    ? (standaloneBlobUrl ?? `/data/companies/${encodeURIComponent(folder)}/standalone.zip`)
-                    : (blobUrl ?? `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(zipName)}`);
-                  const resp = await fetch(zipUrl);
-                  if (!resp.ok) throw new Error(`Library ${scope} ZIP not found for "${folder}".`);
-                  const blob = await resp.blob();
-                  const file = new File([blob], zipName, { type: "application/zip" });
-                  setCompanyId(ticker.toUpperCase().slice(0, 20));
-                  await processZip(file, ticker.toUpperCase().slice(0, 20), undefined, { skipTypeCheck: true });
-                }
-              } catch (err) {
-                setError(err instanceof Error ? err.message : String(err));
-                setIsProcessing(false);
-              }
+            onPickCompany={(folder, ticker, type, scope, hasStandalone, blobUrl, standaloneBlobUrl, qualityIndicatorsBlobUrl) => {
+              // Show type picker modal instead of loading immediately
+              setPendingPick({ folder, ticker, type, scope, hasStandalone, blobUrl, standaloneBlobUrl, qualityIndicatorsBlobUrl });
             }}
           />
           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 text-center">
@@ -362,6 +299,77 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
           </div>
         </div>
       )}
+
+      {/* Company type picker modal */}
+      <CompanyTypePickerModal
+        company={pendingPick ? { folder: pendingPick.folder, ticker: pendingPick.ticker, type: pendingPick.type, hasStandalone: pendingPick.hasStandalone, blobUrl: pendingPick.blobUrl, standaloneBlobUrl: pendingPick.standaloneBlobUrl, qualityIndicatorsBlobUrl: pendingPick.qualityIndicatorsBlobUrl } : null}
+        onCancel={() => setPendingPick(null)}
+        onConfirm={async (company, chosenType) => {
+          setPendingPick(null);
+          const { folder, ticker } = company;
+          const scope = pendingPick!.scope;
+          const hasStandalone = company.hasStandalone;
+          const blobUrl = company.blobUrl;
+          const standaloneBlobUrl = company.standaloneBlobUrl;
+          const qualityIndicatorsBlobUrl = company.qualityIndicatorsBlobUrl;
+          try {
+            setIsProcessing(true); setError("");
+
+            // Wire user-chosen type directly — unconditional override
+            onConfigChange({
+              ...config,
+              quality_data_folder: folder,
+              quality_indicators_blob_url: qualityIndicatorsBlobUrl ?? null,
+              market_data_symbol: ticker,
+              market_data_provider: "nse",
+              ticker: ticker,
+              company_type: chosenType,
+            });
+
+            const useDualScope = scope === "consolidated" && hasStandalone === true;
+            const consolidatedUrl = blobUrl ?? `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(folder)}.zip`;
+            const standaloneUrl   = standaloneBlobUrl ?? `/data/companies/${encodeURIComponent(folder)}/standalone.zip`;
+
+            if (useDualScope) {
+              const consResp = await fetch(consolidatedUrl);
+              if (!consResp.ok) throw new Error(`Consolidated ZIP not found for "${folder}".`);
+              const consBlob = await consResp.blob();
+              const consFile = new File([consBlob], `${folder}.zip`, { type: "application/zip" });
+              setCompanyId(ticker.toUpperCase().slice(0, 20));
+
+              let standalonePeriods: RawPeriodData[] | null = null;
+              try {
+                const stanResp = await fetch(standaloneUrl);
+                if (stanResp.ok) {
+                  const stanBlob = await stanResp.blob();
+                  const stanFile = new File([stanBlob], "standalone.zip", { type: "application/zip" });
+                  const { parseCapitalineZip } = await import("../engine/capitalineParser");
+                  const stanResult = await parseCapitalineZip(stanFile, { companyId: ticker.toUpperCase().slice(0, 20) });
+                  standalonePeriods = stanResult.periods.length > 0 ? stanResult.periods : null;
+                }
+              } catch (stanErr) {
+                const msg = stanErr instanceof Error ? stanErr.message : String(stanErr);
+                trace("ui", "dataEntry:standaloneFailed", { folder, error: msg }, null, { level: "warn" });
+              }
+              await processZip(consFile, ticker.toUpperCase().slice(0, 20), standalonePeriods, { skipTypeCheck: true });
+            } else {
+              const zipName = scope === "standalone" ? "standalone.zip" : `${folder}.zip`;
+              const zipUrl = scope === "standalone"
+                ? (standaloneBlobUrl ?? `/data/companies/${encodeURIComponent(folder)}/standalone.zip`)
+                : (blobUrl ?? `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(zipName)}`);
+              const resp = await fetch(zipUrl);
+              if (!resp.ok) throw new Error(`Library ${scope} ZIP not found for "${folder}".`);
+              const blob = await resp.blob();
+              const file = new File([blob], zipName, { type: "application/zip" });
+              setCompanyId(ticker.toUpperCase().slice(0, 20));
+              await processZip(file, ticker.toUpperCase().slice(0, 20), undefined, { skipTypeCheck: true });
+            }
+          } catch (err) {
+            setError(err instanceof Error ? err.message : String(err));
+            setIsProcessing(false);
+          }
+        }}
+      />
 
       {/* Phase C — Mode tabs hidden behind a disclosure when on the default
           Capitaline path. First-time users see the library + Capitaline upload

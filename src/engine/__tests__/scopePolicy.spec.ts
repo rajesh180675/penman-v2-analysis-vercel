@@ -49,11 +49,12 @@ describe("scopePolicy", () => {
       company_type: "industrial",
     });
 
+    // New behavior: user's explicit choice is unconditional — no signal veto.
+    // Even though the data has NBFC-like signals, "industrial" is respected.
     expect(assessment.blocked).toBe(false);
-    expect(assessment.classification).toBe("supported-financial");
-    expect(assessment.analysisFamily).toBe("financial-institution");
-    expect(assessment.label).toBe("Supported NBFC scope");
-    expect(assessment.reasons.join(" ")).toContain("contradicts detected financial ledger signals");
+    expect(assessment.classification).toBe("supported-industrial");
+    expect(assessment.analysisFamily).toBe("industrial");
+    expect(assessment.reasons.join(" ")).toContain("manual override");
   });
 
   it("routes financial-company datasets to financial pipeline when banking/nbfc signals carry value", () => {

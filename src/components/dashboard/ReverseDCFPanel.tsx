@@ -42,16 +42,16 @@ export default function ReverseDCFPanel({ reverseDCF }: Props) {
   const decomp = r.priceDecomposition;
 
   return (
-    <div className="rounded-xl border border-slate-700 p-4 space-y-3">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-200">What Does Market Believe?</h3>
+        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">What Does Market Believe?</h3>
         <span className={`text-xs px-2 py-0.5 rounded border ${badge}`}>
           {verdictLabel[r.verdict] ?? r.verdict}
         </span>
       </div>
 
       {/* Implied vs Historical */}
-      <table className="w-full text-xs text-slate-300">
+      <table className="w-full text-xs text-slate-600 dark:text-slate-300">
         <thead>
           <tr className="text-slate-500">
             <th className="text-left font-medium">Metric</th>
@@ -74,15 +74,15 @@ export default function ReverseDCFPanel({ reverseDCF }: Props) {
         </tbody>
       </table>
 
-      <p className="text-xs text-slate-400">
-        Market expects <span className="text-slate-200 font-medium">{r.impliedCAP} years</span> of competitive advantage
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        Market expects <span className="text-slate-800 dark:text-slate-200 font-medium">{r.impliedCAP} years</span> of competitive advantage
       </p>
 
       {/* Price Decomposition Bar */}
       <div>
         <p className="text-xs text-slate-500 mb-1">Price Decomposition (${r.marketPrice.toFixed(2)})</p>
         <div className="flex h-5 rounded overflow-hidden text-[10px] font-medium">
-          <div className="bg-slate-600 flex items-center justify-center text-slate-200" style={{ width: `${decomp.noGrowthPct * 100}%` }}>
+          <div className="bg-slate-600 flex items-center justify-center text-slate-800 dark:text-slate-200" style={{ width: `${decomp.noGrowthPct * 100}%` }}>
             {(decomp.noGrowthPct * 100).toFixed(0)}%
           </div>
           <div className="bg-blue-700 flex items-center justify-center text-blue-100" style={{ width: `${decomp.nearTermPct * 100}%` }}>
@@ -100,15 +100,15 @@ export default function ReverseDCFPanel({ reverseDCF }: Props) {
       {/* Sensitivity */}
       <div className="grid grid-cols-5 gap-1 text-center text-[10px]">
         {sens.map(([label, price]) => (
-          <div key={label} className="bg-slate-800 rounded p-1">
+          <div key={label} className="bg-slate-100 dark:bg-slate-800 rounded p-1">
             <div className="text-slate-500">{label}</div>
-            <div className="text-slate-200 font-medium">{dollar(price)}</div>
+            <div className="text-slate-800 dark:text-slate-200 font-medium">{dollar(price)}</div>
           </div>
         ))}
       </div>
 
       {r.narrative && (
-        <p className="text-xs text-slate-400 italic leading-relaxed">{r.narrative}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 italic leading-relaxed">{r.narrative}</p>
       )}
     </div>
   );

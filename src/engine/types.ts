@@ -701,7 +701,7 @@ export interface EngineConfig {
   sector_template     ?: ValuationSectorTemplate;
   market_data_symbol  ?: string;
   market_data_instrument_key?: string;
-  market_data_provider?: "manual" | "upstox-readonly" | "alphavantage" | "nse" | "disabled";
+  market_data_provider?: "manual" | "upstox-readonly" | "alphavantage" | "nse" | "yahoo" | "disabled";
   market_data_refresh_seconds?: number;
   DS_warning_pct      ?: number;
   DS_critical_pct     ?: number;
