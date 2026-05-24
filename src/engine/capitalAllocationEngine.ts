@@ -275,6 +275,12 @@ export function measureConglomerateDiscount(
 
   if (totalSOTP <= 0) return null;
 
+  // Not meaningful for focused companies: if only 1 segment survived
+  // filtering or all segments map to the same sector, it's not a conglomerate
+  if (segmentValues.length < 2) return null;
+  const distinctSectors = new Set(segments.map(s => segmentSectorMap?.[s] ?? inferSectorFromName(s)));
+  if (distinctSectors.size < 2) return null;
+
   // Fill shares
   for (const sv of segmentValues) {
     sv.shareOfSOTP = sv.impliedValue / totalSOTP;
