@@ -187,9 +187,9 @@
     "description": "Premium private bank with conservative loan book",
     "emoji": "🏦",
     "hasStandalone": true,
-    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/KOTAKBANK/quality_indicators.json",
     "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/KOTAKBANK/KOTAKBANK.zip",
-    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/KOTAKBANK/standalone.zip"
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/KOTAKBANK/standalone.zip",
+    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/KOTAKBANK/quality_indicators.json"
   },
   {
     "folder": "Life Insurance Corporation of India",
@@ -313,9 +313,9 @@
     "description": "Largest public-sector bank",
     "emoji": "🏛️",
     "hasStandalone": true,
-    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/SBIN/quality_indicators.json",
     "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/SBIN/SBIN.zip",
-    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/SBIN/standalone.zip"
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/SBIN/standalone.zip",
+    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/SBIN/quality_indicators.json"
   },
   {
     "folder": "Sun Pharmaceutical Industries Ltd",
