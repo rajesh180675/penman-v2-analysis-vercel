@@ -3,7 +3,7 @@ import { trace } from "../lib/traceLogger";
 import { LiveMarketDataSnapshot } from "../engine/marketData";
 
 interface Params {
-  provider?: "manual" | "upstox-readonly" | "alphavantage" | "nse" | "disabled";
+  provider?: "manual" | "upstox-readonly" | "alphavantage" | "nse" | "yahoo" | "disabled";
   symbol?: string | null;
   instrumentKey?: string | null;
   fallbackPrice?: number | null;

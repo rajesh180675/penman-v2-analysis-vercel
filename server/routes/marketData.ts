@@ -162,26 +162,110 @@ router.get("/snapshot", async (req: Request, res: Response) => {
         },
       });
     } catch (error: any) {
-      warnings.push(error?.message ?? String(error));
-      return res.json({
-        ok: true,
-        snapshot: {
-          symbol, provider: "NSE India (fallback)", fetchedAt,
-          price: fallbackPrice, previousClose: null, changePct: null,
-          marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-          riskFreeRate: fallbackRiskFreeRate ?? 0.07, priceAsOf: null, rateAsOf: null,
-          freshness: fallbackPrice != null ? "fallback" : "missing",
-          sourceSummary: "NSE request failed, using fallback.", warnings, history: null,
-        },
-      });
+      warnings.push(`NSE failed: ${error?.message ?? String(error)}. Falling back to Yahoo Finance.`);
+      // Cascade to Yahoo Finance as fallback
+      try {
+        const yahooSymbol = symbol.includes(".") ? symbol : `${symbol}.NS`;
+        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d`;
+        const yahooRes = await fetch(yahooUrl, {
+          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+        });
+        if (!yahooRes.ok) throw new Error(`Yahoo returned ${yahooRes.status}`);
+        const yahooData = await yahooRes.json() as any;
+        const meta = yahooData?.chart?.result?.[0]?.meta;
+        if (!meta) throw new Error("Yahoo returned no data.");
+        const price = toNumber(meta.regularMarketPrice) ?? fallbackPrice;
+        const previousClose = toNumber(meta.chartPreviousClose) ?? null;
+        const changePct = price != null && previousClose != null && previousClose > 0
+          ? (price - previousClose) / previousClose
+          : null;
+        return res.json({
+          ok: true,
+          snapshot: {
+            symbol, provider: "Yahoo Finance (NSE fallback)", fetchedAt,
+            price, previousClose, changePct,
+            marketCap: null, enterpriseValue: null, sharesOutstanding: null,
+            riskFreeRate: fallbackRiskFreeRate ?? 0.07,
+            priceAsOf: fetchedAt, rateAsOf: null,
+            freshness: price != null ? "live" : "fallback",
+            sourceSummary: `NSE blocked, used Yahoo Finance for ${yahooSymbol}.`,
+            warnings, history: null,
+          },
+        });
+      } catch (yahooErr: any) {
+        warnings.push(`Yahoo fallback also failed: ${yahooErr?.message ?? String(yahooErr)}`);
+        return res.json({
+          ok: true,
+          snapshot: {
+            symbol, provider: "NSE India (all fallbacks failed)", fetchedAt,
+            price: fallbackPrice, previousClose: null, changePct: null,
+            marketCap: null, enterpriseValue: null, sharesOutstanding: null,
+            riskFreeRate: fallbackRiskFreeRate ?? 0.07, priceAsOf: null, rateAsOf: null,
+            freshness: fallbackPrice != null ? "fallback" : "missing",
+            sourceSummary: "Both NSE and Yahoo Finance failed.", warnings, history: null,
+          },
+        });
+      }
     }
   }
 
   if (provider === "yahoo") {
-    return res.status(501).json({
-      ok: false,
-      error: "Yahoo Finance provider is not implemented. Use 'nse' or 'manual' instead.",
-    });
+    if (!symbol) {
+      warnings.push("No symbol configured for Yahoo Finance.");
+      return res.json({
+        ok: true,
+        snapshot: {
+          symbol, provider: "Yahoo Finance (fallback)", fetchedAt,
+          price: fallbackPrice, previousClose: null, changePct: null,
+          marketCap: null, enterpriseValue: null, sharesOutstanding: null,
+          riskFreeRate: fallbackRiskFreeRate ?? 0.07, priceAsOf: null, rateAsOf: null,
+          freshness: fallbackPrice != null ? "fallback" : "missing",
+          sourceSummary: "No symbol configured.", warnings, history: null,
+        },
+      });
+    }
+    try {
+      const yahooSymbol = symbol.includes(".") ? symbol : `${symbol}.NS`;
+      const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d`;
+      const yahooRes = await fetch(yahooUrl, {
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+      });
+      if (!yahooRes.ok) throw new Error(`Yahoo Finance returned ${yahooRes.status}`);
+      const yahooData = await yahooRes.json() as any;
+      const meta = yahooData?.chart?.result?.[0]?.meta;
+      if (!meta) throw new Error("Yahoo Finance returned no data for symbol.");
+      const price = toNumber(meta.regularMarketPrice) ?? fallbackPrice;
+      const previousClose = toNumber(meta.chartPreviousClose) ?? null;
+      const changePct = price != null && previousClose != null && previousClose > 0
+        ? (price - previousClose) / previousClose
+        : null;
+      return res.json({
+        ok: true,
+        snapshot: {
+          symbol, provider: "Yahoo Finance", fetchedAt,
+          price, previousClose, changePct,
+          marketCap: null, enterpriseValue: null, sharesOutstanding: null,
+          riskFreeRate: fallbackRiskFreeRate ?? 0.07,
+          priceAsOf: fetchedAt, rateAsOf: null,
+          freshness: price != null ? "live" : "fallback",
+          sourceSummary: price != null ? `Yahoo Finance quote for ${yahooSymbol}.` : "Yahoo did not return a price.",
+          warnings, history: null,
+        },
+      });
+    } catch (error: any) {
+      warnings.push(error?.message ?? String(error));
+      return res.json({
+        ok: true,
+        snapshot: {
+          symbol, provider: "Yahoo Finance (fallback)", fetchedAt,
+          price: fallbackPrice, previousClose: null, changePct: null,
+          marketCap: null, enterpriseValue: null, sharesOutstanding: null,
+          riskFreeRate: fallbackRiskFreeRate ?? 0.07, priceAsOf: null, rateAsOf: null,
+          freshness: fallbackPrice != null ? "fallback" : "missing",
+          sourceSummary: "Yahoo Finance request failed, using fallback.", warnings, history: null,
+        },
+      });
+    }
   }
 
   // Default fallback for unsupported providers in local mode
