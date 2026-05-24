@@ -35,7 +35,7 @@ interface Props {
 
 export default function useAdvancedModels({ data, config, segmentData, marketData, shares }: Props): AdvancedModelsResult {
   const costOfCapital = config.ke ?? 0.13;
-  const price = marketData?.price ?? null;
+  const price = marketData?.price ?? config.market_price ?? null;
   const sharesOut = shares ?? null;
   const bizSegments = segmentData?.business ?? null;
   const companyType = config.company_type ?? undefined;
