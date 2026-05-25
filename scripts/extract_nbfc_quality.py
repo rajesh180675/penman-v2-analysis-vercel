@@ -39,8 +39,8 @@ OUTPUT_BASE = Path(r"C:\Users\rajesh\WindsurfAPI\penman-v2-analysis\public\data\
 # Ticker → (folder under penman-v2-analysis/public/data/companies, AR display name)
 NBFC_REGISTRY = {
     "BAJFINANCE": ("Bajaj Finance", "Bajaj Finance Ltd"),
-    # Future: "CHOLAFIN": ("Cholamandalam Finance", "Cholamandalam Investment & Finance Co"),
-    # Future: "MUTHOOTFIN": ("Muthoot Finance", "Muthoot Finance Ltd"),
+    "MUTHOOTFIN": ("Muthoot Finance", "Muthoot Finance Ltd"),
+    "SHRIRAMFIN": ("Shriram Finance", "Shriram Finance Ltd"),
 }
 
 
