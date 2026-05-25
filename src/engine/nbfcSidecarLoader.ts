@@ -87,12 +87,15 @@ async function fetchPreParsedJson(baseUrl: string): Promise<NbfcSidecarData | nu
 }
 
 async function fetchLgdFiles(baseUrl: string): Promise<LgdMigrationMatrix[]> {
-  // Try fetching known LGD file patterns:
-  // New convention: LossGivenDefault_YYYYMM.xls (year-named)
-  // Legacy convention: LossGivenDefault_.xls, LossGivenDefault_%20(1).xls, etc.
+  // LGD files use the year-named convention: LossGivenDefault_YYYYMM.xls
+  // (YYYYMM = fiscal year-end month, always 03 for Indian FYs).
+  // The data-ingestion workflow (capitaline-download-workflow skill) renames
+  // Capitaline's anonymous downloads before commit. Files that aren't renamed
+  // never reach disk or blob, so the loader doesn't try legacy unnamed names.
   const folder = `${baseUrl}/Loss%20Given%20Default`;
 
-  // Year-named files (FY2018-FY2025, March year-end)
+  // Year-named files (FY2018-FY2025, March year-end). When new fiscal years
+  // are added, append the corresponding YYYYMM here.
   const yearFilenames = [
     "LossGivenDefault_201803.xls",
     "LossGivenDefault_201903.xls",
@@ -104,21 +107,7 @@ async function fetchLgdFiles(baseUrl: string): Promise<LgdMigrationMatrix[]> {
     "LossGivenDefault_202503.xls",
   ];
 
-  // Legacy unnamed files (fallback)
-  const legacyFilenames = [
-    "LossGivenDefault_.xls",
-    "LossGivenDefault_%20(1).xls",
-    "LossGivenDefault_%20(2).xls",
-    "LossGivenDefault_%20(3).xls",
-    "LossGivenDefault_%20(4).xls",
-    "LossGivenDefault_%20(5).xls",
-    "LossGivenDefault_%20(6).xls",
-  ];
-
-  const results: { filename: string; html: string }[] = [];
-
-  // Try year-named first
-  const yearFetches = yearFilenames.map(async (fname) => {
+  const fetches = yearFilenames.map(async (fname) => {
     try {
       const res = await fetch(`${folder}/${fname}`);
       if (!res.ok) return null;
@@ -133,47 +122,15 @@ async function fetchLgdFiles(baseUrl: string): Promise<LgdMigrationMatrix[]> {
     }
   });
 
-  const yearSettled = await Promise.all(yearFetches);
-  for (const item of yearSettled) {
+  const settled = await Promise.all(fetches);
+  const results: { filename: string; html: string }[] = [];
+  for (const item of settled) {
     if (item) results.push(item);
   }
 
-  // If no year-named files found, try legacy pattern
-  if (results.length === 0) {
-    const legacyFetches = legacyFilenames.map(async (fname) => {
-      try {
-        const res = await fetch(`${folder}/${fname}`);
-        if (!res.ok) {
-          trace("sidecar", "lgdFile:httpError", { fname, status: res.status }, null, { level: "warn" });
-          return null;
-        }
-        const html = await res.text();
-        const isSpaFallback = html.includes("<!doctype html>") && !html.includes("Loss Given Default") && !html.includes("Gross Caring Amount");
-        if (isSpaFallback) {
-          trace("sidecar", "lgdFile:absent", { fname, htmlLength: html.length }, null, { level: "info" });
-          return null;
-        }
-        if (!html.includes("Loss Given Default") && !html.includes("Gross Caring Amount")) {
-          trace("sidecar", "lgdFile:validationFailed", { fname, htmlLength: html.length }, null, { level: "warn" });
-          return null;
-        }
-        trace("sidecar", "lgdFile:fetchSuccess", { fname, htmlLength: html.length });
-        return { filename: fname, html };
-      } catch (err) {
-        trace("sidecar", "lgdFile:fetchError", { fname, error: String(err) }, null, { level: "error" });
-        return null;
-      }
-    });
-
-    const legacySettled = await Promise.all(legacyFetches);
-    for (const item of legacySettled) {
-      if (item) results.push(item);
-    }
-  }
-
   trace("sidecar", "lgdFetchResults", {
-    attempted: results.length > 0 ? (yearSettled.filter(Boolean).length > 0 ? "year-named" : "legacy") : "both",
     succeeded: results.length,
+    attempted: yearFilenames.length,
     baseUrl,
   });
 
