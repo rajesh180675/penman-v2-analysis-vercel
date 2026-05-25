@@ -154,10 +154,17 @@ function valueByLabel(wb: ExcelJS.Workbook, sheetName: string, label: string): u
   let foundRow: number | null = null;
   sheet!.eachRow((row, rowIdx) => {
     if (foundRow !== null) return;
-    const a = row.getCell(1).value;
-    if (a === label || (typeof a === "object" && a && "richText" in (a as Record<string, unknown>) &&
-        (a as { richText: { text: string }[] }).richText.map(r => r.text).join("") === label)) {
+    const a = row.getCell(1).value as unknown;
+    if (a === label) {
       foundRow = rowIdx;
+      return;
+    }
+    // Rich-text cells appear as { richText: [{ text: string, ... }] }
+    if (a && typeof a === "object" && "richText" in (a as Record<string, unknown>)) {
+      const rt = (a as { richText?: { text?: string }[] }).richText;
+      if (Array.isArray(rt) && rt.map(r => r?.text ?? "").join("") === label) {
+        foundRow = rowIdx;
+      }
     }
   });
   expect(foundRow, `label '${label}' not found in sheet '${sheetName}'`).not.toBeNull();
