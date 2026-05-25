@@ -56,13 +56,13 @@
         "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/RBI%20NHB%20Banks/RBINHBBanks_.xls"
       ],
       "lossGivenDefault": [
-        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_%20%281%29.xls",
-        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_%20%282%29.xls",
-        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_%20%283%29.xls",
-        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_%20%284%29.xls",
-        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_%20%285%29.xls",
-        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_%20%286%29.xls",
-        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_.xls"
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_201803.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_201903.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_202003.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_202203.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_202303.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_202403.xls",
+        "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Bajaj%20Finance/Loss%20Given%20Default/LossGivenDefault_202503.xls"
       ]
     }
   },
@@ -242,6 +242,18 @@
     "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Maruti%20Suzuki%20India%20Ltd/standalone.zip"
   },
   {
+    "folder": "Muthoot Finance",
+    "name": "Muthoot Finance",
+    "ticker": "MUTHOOTFIN",
+    "sector": "Nbfc",
+    "type": "nbfc",
+    "description": "Capitaline financial dataset for Muthoot Finance.",
+    "emoji": "💳",
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Muthoot%20Finance/Muthoot%20Finance.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Muthoot%20Finance/standalone.zip"
+  },
+  {
     "folder": "NTPC",
     "name": "NTPC",
     "ticker": "NTPC",
@@ -303,6 +315,18 @@
     "hasStandalone": true,
     "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Reliance%20Industries/Reliance%20Industries.zip",
     "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Reliance%20Industries/standalone.zip"
+  },
+  {
+    "folder": "Shriram Finance",
+    "name": "Shriram Finance",
+    "ticker": "SHRIRAMFINAN",
+    "sector": "Nbfc",
+    "type": "nbfc",
+    "description": "Capitaline financial dataset for Shriram Finance.",
+    "emoji": "💳",
+    "hasStandalone": true,
+    "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Shriram%20Finance/Shriram%20Finance.zip",
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Shriram%20Finance/standalone.zip"
   },
   {
     "folder": "SBIN",

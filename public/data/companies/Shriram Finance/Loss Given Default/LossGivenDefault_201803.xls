@@ -1,0 +1,180 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta name=ProgId content=Excel.Sheet> <meta name=Generator content="Microsoft Excel 11"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Finance</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table border="1">
+                        <thead>
+                            <tr ng-show="false" class="ng-hide">
+                                <th colspan="5" class="ng-binding">
+                                    Credit Risk Analysis &gt;&gt;Loss Given Default (Consolidated)&gt;&gt;Shriram Finance Ltd
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            
+                            <tr>
+                                <th></th>
+                                <th>Gross Caring Amount</th>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                            </tr>
+                            <tr style="background-color:#D7E1F9">
+                                <th></th>
+                                <th>Stage 1</th>
+                                <th>Stage 2</th>
+                                <th>Stage 3</th>
+                                <th>Total</th>
+                            </tr>
+                            <tr>
+                                <td>Opening Balance</td>
+                                <td class="ng-binding">59,938.23</td>
+                                <td class="ng-binding">10,428.01</td>
+                                <td class="ng-binding">8,859.75</td>
+                                <td class="ng-binding">79,225.99</td>
+                            </tr>
+                            <tr>
+                                <td>New Business-Net of Recovery</td>
+                                <td class="ng-binding">43,511.52</td>
+                                <td class="ng-binding">8,247.25</td>
+                                <td class="ng-binding">2,218.17</td>
+                                <td class="ng-binding">53,976.94</td>
+                            </tr>
+                            <tr>
+                                <td>Transfer due to change in Credit worthiness</td>
+                                <td class="ng-binding">0.00</td>
+                                <td class="ng-binding">0.00</td>
+                                <td class="ng-binding">0.00</td>
+                                <td class="ng-binding">0.00</td>
+                            </tr>
+                            <tr>
+                                <td>Financial assets that have been derecognised</td>
+                                <td class="ng-binding">-25,213.85</td>
+                                <td class="ng-binding">-6,387.80</td>
+                                <td class="ng-binding">-3,929.27</td>
+                                <td class="ng-binding">-35,530.92</td>
+                            </tr>
+                            <tr>
+                                <td>Write off during the Year</td>
+                                <td class="ng-binding">-447.81</td>
+                                <td class="ng-binding">-196.39</td>
+                                <td class="ng-binding">-829.40</td>
+                                <td class="ng-binding">-1,473.60</td>
+                            </tr>
+                            <tr>
+                                <td>Transfers To Stage 1</td>
+                                <td class="ng-binding">2,983.45</td>
+                                <td class="ng-binding">-2,189.72</td>
+                                <td class="ng-binding">-793.74</td>
+                                <td>-</td>
+                            </tr>
+                            <tr>
+                                <td>Transfers To Stage 2</td>
+                                <td class="ng-binding">-7,744.92</td>
+                                <td class="ng-binding">8,849.27</td>
+                                <td class="ng-binding">-1,104.35</td>
+                                <td>-</td>
+                            </tr>
+                            <tr>
+                                <td>Transfers To Stage 3</td>
+                                <td class="ng-binding">-2,628.34</td>
+                                <td class="ng-binding">-1,884.95</td>
+                                <td class="ng-binding">4,513.29</td>
+                                <td>-</td>
+                            </tr>
+                            <tr>
+                                <td>Closing Balance</td>
+                                <td class="ng-binding">70,398.28</td>
+                                <td class="ng-binding">16,865.67</td>
+                                <td class="ng-binding">8,934.46</td>
+                                <td class="ng-binding">96,198.41</td>
+                            </tr>
+                            <tr>
+                                <td>EIR Impact Of Service Charges Received</td>
+                                <td class="ng-binding">0.00</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td>-</td>
+                            </tr>
+                            <tr>
+                                <td class="extraSpace5"></td>
+                            </tr>
+                            <tr>
+                                <th></th>
+                                <th>Expected Credit Loss</th>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                            </tr>
+                            <tr style="background-color:#D7E1F9">
+                                <th></th>
+                                <th>Stage 1</th>
+                                <th>Stage 2</th>
+                                <th>Stage 3</th>
+                                <th>Total</th>
+                            </tr>
+                            <tr>
+                                <td>Opening Balance</td>
+                                <td class="ng-binding">1,359.10</td>
+                                <td class="ng-binding">633.25</td>
+                                <td class="ng-binding">3,217.82</td>
+                                <td class="ng-binding">5,210.18</td>
+                            </tr>
+                            <tr>
+                                <td>New Business-Net of Recovery</td>
+                                <td class="ng-binding">976.15</td>
+                                <td class="ng-binding">651.49</td>
+                                <td class="ng-binding">537.02</td>
+                                <td class="ng-binding">2,164.65</td>
+                            </tr>
+                            <tr>
+                                <td>Transfer due to change in Credit worthiness</td>
+                                <td class="ng-binding">-681.63</td>
+                                <td class="ng-binding">-429.31</td>
+                                <td class="ng-binding">662.50</td>
+                                <td class="ng-binding">-448.43</td>
+                            </tr>
+                            <tr>
+                                <td>Financial assets that have been derecognised</td>
+                                <td class="ng-binding">0.00</td>
+                                <td class="ng-binding">0.00</td>
+                                <td class="ng-binding">0.00</td>
+                                <td class="ng-binding">0.00</td>
+                            </tr>
+                            <tr>
+                                <td>Write off during the Year</td>
+                                <td class="ng-binding">-447.81</td>
+                                <td class="ng-binding">-196.39</td>
+                                <td class="ng-binding">-829.40</td>
+                                <td class="ng-binding">-1,473.60</td>
+                            </tr>
+                            <tr>
+                                <td>Transfers To Stage 1</td>
+                                <td class="ng-binding">424.65</td>
+                                <td class="ng-binding">-141.68</td>
+                                <td class="ng-binding">-282.97</td>
+                                <td>-</td>
+                            </tr>
+                            <tr>
+                                <td>Transfers To Stage 2</td>
+                                <td class="ng-binding">-177.02</td>
+                                <td class="ng-binding">578.60</td>
+                                <td class="ng-binding">-401.58</td>
+                                <td>-</td>
+                            </tr>
+                            <tr>
+                                <td>Transfers To Stage 3</td>
+                                <td class="ng-binding">-60.39</td>
+                                <td class="ng-binding">-130.60</td>
+                                <td class="ng-binding">190.99</td>
+                                <td>-</td>
+                            </tr>
+                            <tr>
+                                <td>Closing Balance</td>
+                                <td class="ng-binding">1,393.05</td>
+                                <td class="ng-binding">965.36</td>
+                                <td class="ng-binding">3,094.39</td>
+                                <td class="ng-binding">5,452.79</td>
+                            </tr>
+                            <tr ng-show="false" class="ng-hide">
+                                <td>Disclaimer:-</td>
+                                <td>Capitaline Database has taken due care and caution in compilation of data.However, Capitaline Database makes no warranty that the service will meet all your requirements, the service will be uninterrupted, timely, complete, error-free, or the results that may be obtained from the use of the service will be accurate. Use of data from Capitaline is permitted only to the  licensee and its employees internal usage.The Licensee shall not use Capitaline or data from Capitaline or permit any third party to do so in order to provide data processing ,advisory, research service to third party by way of trade or otherwise. The Licensee shall also not make the data available on a network that extends beyond the Licensee's premises . In the event of unauthorised use of Capitaline or data from Capitaline by the Licensee, Capital Market publishers india pvt ltd will terminate the subscription immediately.</td>
+                            </tr>
+                        </tbody>
+                    </table></body></html>

@@ -157,6 +157,15 @@
     "emoji": "🚗"
   },
   {
+    "folder": "Muthoot Finance",
+    "name": "Muthoot Finance",
+    "ticker": "MUTHOOTFIN",
+    "sector": "Nbfc",
+    "type": "nbfc",
+    "description": "Capitaline financial dataset for Muthoot Finance.",
+    "emoji": "💳"
+  },
+  {
     "folder": "NTPC",
     "name": "NTPC",
     "ticker": "NTPC",
@@ -212,6 +221,15 @@
     "type": "bank",
     "description": "Largest public-sector bank",
     "emoji": "🏛️"
+  },
+  {
+    "folder": "Shriram Finance",
+    "name": "Shriram Finance",
+    "ticker": "SHRIRAMFINAN",
+    "sector": "Nbfc",
+    "type": "nbfc",
+    "description": "Capitaline financial dataset for Shriram Finance.",
+    "emoji": "💳"
   },
   {
     "folder": "Sun Pharmaceutical Industries Ltd",
