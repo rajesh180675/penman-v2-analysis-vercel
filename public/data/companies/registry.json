@@ -251,7 +251,8 @@
     "emoji": "💳",
     "hasStandalone": true,
     "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Muthoot%20Finance/Muthoot%20Finance.zip",
-    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Muthoot%20Finance/standalone.zip"
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Muthoot%20Finance/standalone.zip",
+    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Muthoot%20Finance/quality_indicators.json"
   },
   {
     "folder": "NTPC",
@@ -326,7 +327,8 @@
     "emoji": "💳",
     "hasStandalone": true,
     "blobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Shriram%20Finance/Shriram%20Finance.zip",
-    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Shriram%20Finance/standalone.zip"
+    "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Shriram%20Finance/standalone.zip",
+    "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Shriram%20Finance/quality_indicators.json"
   },
   {
     "folder": "SBIN",
