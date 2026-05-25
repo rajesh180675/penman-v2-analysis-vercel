@@ -360,6 +360,15 @@ function stmtFromFilename(name: string): CapitalineStatement {
 ══════════════════════════════════════════════════════════════════ */
 
 async function gridViaXlsx(buffer: ArrayBuffer): Promise<string[][]> {
+  // SECURITY NOTE: SheetJS 0.18.x has known prototype-pollution and ReDoS
+  // CVEs (GHSA-4r6h-8v6p-xvw6, GHSA-5pgg-2g8v-p4x9). They are unfixed on
+  // npm — fixed builds live only on the SheetJS CDN. Accepted risk because:
+  //   (a) parsing runs client-side in the user's browser on files THEY
+  //       uploaded; no public endpoint routes untrusted XLS through here
+  //   (b) this is one of several fallback parse strategies — failures fall
+  //       through to JSZip/regex paths
+  // If the threat model expands to public XLS uploads, replace this strategy
+  // with exceljs or a CDN-pinned SheetJS build.
   const { default: XLSX } = await import("xlsx");
   const uint8 = new Uint8Array(buffer);
   let wb: any;

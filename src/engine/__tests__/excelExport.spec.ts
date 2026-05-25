@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { read } from "xlsx";
+import ExcelJS from "exceljs";
 import { buildAnalysisTraceability } from "../analysisTraceability";
 import { generateValuationWorkbook } from "../excelExport";
 import { getAnalysisPolicyVersions } from "../policyVersions";
@@ -127,22 +127,54 @@ const valuation: ValuationResult = {
   lowConfidence: false,
 };
 
-async function coverKeCellValue(config: EngineConfig): Promise<number> {
-  const workbookBuf = await generateValuationWorkbook([mkPeriod("2025-03-31")], [], valuation, config);
-  const wb = read(workbookBuf, { type: "array" });
-  const sheet = wb.Sheets.Cover;
-  const entries = Object.entries(sheet);
-  const labelCell = entries.find(([, cell]) => cell && typeof cell === "object" && "v" in cell && cell.v === "Cost of Equity (ke)");
-  expect(labelCell).toBeTruthy();
-  const row = Number(labelCell![0].replace(/^[A-Z]+/, "")) - 1;
-  return sheet[`B${row + 1}`]?.v as number;
+/** Load a generated workbook buffer for read-back assertions. */
+async function loadWorkbook(buf: ArrayBuffer): Promise<ExcelJS.Workbook> {
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buf);
+  return wb;
 }
 
-function sheetValueByLabel(sheet: Record<string, { v?: unknown }>, label: string) {
-  const match = Object.entries(sheet).find(([, cell]) => cell && typeof cell === "object" && "v" in cell && cell.v === label);
-  expect(match).toBeTruthy();
-  const row = Number(match![0].replace(/^[A-Z]+/, ""));
-  return sheet[`B${row}`]?.v;
+/** Get the value of cell `addr` (e.g. "B6") on sheet `name`. Returns null if missing. */
+function cellValue(wb: ExcelJS.Workbook, sheetName: string, addr: string): unknown {
+  const sheet = wb.getWorksheet(sheetName);
+  if (!sheet) return null;
+  const cell = sheet.getCell(addr);
+  // ExcelJS may return objects for rich text / formulas; flatten to plain value.
+  const v = cell.value as unknown;
+  if (v && typeof v === "object" && "result" in (v as Record<string, unknown>)) {
+    return (v as { result: unknown }).result;
+  }
+  return v;
+}
+
+/** Find a label in column A of `sheetName`, return the value in column B of the same row. */
+function valueByLabel(wb: ExcelJS.Workbook, sheetName: string, label: string): unknown {
+  const sheet = wb.getWorksheet(sheetName);
+  expect(sheet, `sheet '${sheetName}' missing`).toBeTruthy();
+  let foundRow: number | null = null;
+  sheet!.eachRow((row, rowIdx) => {
+    if (foundRow !== null) return;
+    const a = row.getCell(1).value as unknown;
+    if (a === label) {
+      foundRow = rowIdx;
+      return;
+    }
+    // Rich-text cells appear as { richText: [{ text: string, ... }] }
+    if (a && typeof a === "object" && "richText" in (a as Record<string, unknown>)) {
+      const rt = (a as { richText?: { text?: string }[] }).richText;
+      if (Array.isArray(rt) && rt.map(r => r?.text ?? "").join("") === label) {
+        foundRow = rowIdx;
+      }
+    }
+  });
+  expect(foundRow, `label '${label}' not found in sheet '${sheetName}'`).not.toBeNull();
+  return cellValue(wb, sheetName, `B${foundRow}`);
+}
+
+async function coverKeCellValue(config: EngineConfig): Promise<number> {
+  const workbookBuf = await generateValuationWorkbook([mkPeriod("2025-03-31")], [], valuation, config);
+  const wb = await loadWorkbook(workbookBuf);
+  return valueByLabel(wb, "Cover", "Cost of Equity (ke)") as number;
 }
 
 describe("generateValuationWorkbook", () => {
@@ -180,10 +212,10 @@ describe("generateValuationWorkbook", () => {
         valuationSourcePeriod: "2025-03-31",
       },
     );
-    const wb = read(workbookBuf, { type: "array" });
-    expect(sheetValueByLabel(wb.Sheets.Valuation, "Valuation Status")).toBe("guarded");
-    expect(sheetValueByLabel(wb.Sheets.Valuation, "RE (CV3 — Gordon Growth)")).toBe("");
-    expect(sheetValueByLabel(wb.Sheets.Valuation, "Guarded mode")).toContain("suppressed");
+    const wb = await loadWorkbook(workbookBuf);
+    expect(valueByLabel(wb, "Valuation", "Valuation Status")).toBe("guarded");
+    expect(valueByLabel(wb, "Valuation", "RE (CV3 — Gordon Growth)")).toBe("");
+    expect(String(valueByLabel(wb, "Valuation", "Guarded mode"))).toContain("suppressed");
   });
 
   it("writes company and valuation metadata to the workbook", async () => {
@@ -226,30 +258,30 @@ describe("generateValuationWorkbook", () => {
         traceability,
       },
     );
-    const wb = read(workbookBuf, { type: "array" });
+    const wb = await loadWorkbook(workbookBuf);
 
-    expect(wb.Sheets.Cover.B6?.v).toBe("ITC");
-    expect(sheetValueByLabel(wb.Sheets.Cover, "Audit Run ID")).toBe("run-123");
-    expect(sheetValueByLabel(wb.Sheets.Cover, "Valuation Status")).toBe("guarded");
-    expect(sheetValueByLabel(wb.Sheets.Cover, "Valuation Anchor Period")).toBe("2024-03-31");
-    expect(sheetValueByLabel(wb.Sheets.Cover, "Engine Version")).toBe(getAnalysisPolicyVersions().engineVersion);
-    expect(sheetValueByLabel(wb.Sheets.Cover, "Mapping Spec Version")).toBe(getAnalysisPolicyVersions().mappingSpecVersion);
-    expect(sheetValueByLabel(wb.Sheets.Cover, "Scope Policy Version")).toBe(getAnalysisPolicyVersions().scopePolicyVersion);
-    expect(sheetValueByLabel(wb.Sheets.Cover, "Traceability Schema")).toBe(getAnalysisPolicyVersions().traceabilitySchemaVersion);
-    expect(sheetValueByLabel(wb.Sheets.Cover, "Rigor Level")).toBe("Economically plausible");
-    expect(sheetValueByLabel(wb.Sheets.Cover, "Parser Fidelity")).toBe("confirmed");
-    expect(sheetValueByLabel(wb.Sheets.Cover, "Reconciliation Status")).toBe("confirmed");
-    expect(sheetValueByLabel(wb.Sheets.Valuation, "Audit Run ID")).toBe("run-123");
-    expect(sheetValueByLabel(wb.Sheets.Valuation, "Valuation Status")).toBe("guarded");
-    expect(sheetValueByLabel(wb.Sheets.Valuation, "Anchor Period")).toBe("2024-03-31");
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Run ID")).toBe("run-123");
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Schema Version")).toBe(getAnalysisPolicyVersions().traceabilitySchemaVersion);
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Rigor Level")).toBe("Economically plausible");
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Parser Fidelity Status")).toBe("confirmed");
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Parser Fidelity Score")).toBe(100);
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Reconciliation Status")).toBe("confirmed");
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Max Reconciliation Residual")).toBe(0);
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Achieved Levels")).toBe("syntactically-valid | structurally-reconciled | economically-plausible");
+    expect(cellValue(wb, "Cover", "B6")).toBe("ITC");
+    expect(valueByLabel(wb, "Cover", "Audit Run ID")).toBe("run-123");
+    expect(valueByLabel(wb, "Cover", "Valuation Status")).toBe("guarded");
+    expect(valueByLabel(wb, "Cover", "Valuation Anchor Period")).toBe("2024-03-31");
+    expect(valueByLabel(wb, "Cover", "Engine Version")).toBe(getAnalysisPolicyVersions().engineVersion);
+    expect(valueByLabel(wb, "Cover", "Mapping Spec Version")).toBe(getAnalysisPolicyVersions().mappingSpecVersion);
+    expect(valueByLabel(wb, "Cover", "Scope Policy Version")).toBe(getAnalysisPolicyVersions().scopePolicyVersion);
+    expect(valueByLabel(wb, "Cover", "Traceability Schema")).toBe(getAnalysisPolicyVersions().traceabilitySchemaVersion);
+    expect(valueByLabel(wb, "Cover", "Rigor Level")).toBe("Economically plausible");
+    expect(valueByLabel(wb, "Cover", "Parser Fidelity")).toBe("confirmed");
+    expect(valueByLabel(wb, "Cover", "Reconciliation Status")).toBe("confirmed");
+    expect(valueByLabel(wb, "Valuation", "Audit Run ID")).toBe("run-123");
+    expect(valueByLabel(wb, "Valuation", "Valuation Status")).toBe("guarded");
+    expect(valueByLabel(wb, "Valuation", "Anchor Period")).toBe("2024-03-31");
+    expect(valueByLabel(wb, "Traceability", "Run ID")).toBe("run-123");
+    expect(valueByLabel(wb, "Traceability", "Schema Version")).toBe(getAnalysisPolicyVersions().traceabilitySchemaVersion);
+    expect(valueByLabel(wb, "Traceability", "Rigor Level")).toBe("Economically plausible");
+    expect(valueByLabel(wb, "Traceability", "Parser Fidelity Status")).toBe("confirmed");
+    expect(valueByLabel(wb, "Traceability", "Parser Fidelity Score")).toBe(100);
+    expect(valueByLabel(wb, "Traceability", "Reconciliation Status")).toBe("confirmed");
+    expect(valueByLabel(wb, "Traceability", "Max Reconciliation Residual")).toBe(0);
+    expect(valueByLabel(wb, "Traceability", "Achieved Levels")).toBe("syntactically-valid | structurally-reconciled | economically-plausible");
   });
 
   it("exports effective confidence counters separately from mapping coverage counters", async () => {
@@ -344,13 +376,13 @@ describe("generateValuationWorkbook", () => {
         traceability,
       },
     );
-    const wb = read(workbookBuf, { type: "array" });
+    const wb = await loadWorkbook(workbookBuf);
 
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Confidence Blocking Issues")).toBe(1);
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Confidence Diagnostic Issues")).toBe(0);
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Confidence Optional Issues")).toBe(0);
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Mapping Blocking Issues")).toBe(0);
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Mapping Diagnostic Issues")).toBe(0);
-    expect(sheetValueByLabel(wb.Sheets.Traceability, "Mapping Optional Issues")).toBe(0);
+    expect(valueByLabel(wb, "Traceability", "Confidence Blocking Issues")).toBe(1);
+    expect(valueByLabel(wb, "Traceability", "Confidence Diagnostic Issues")).toBe(0);
+    expect(valueByLabel(wb, "Traceability", "Confidence Optional Issues")).toBe(0);
+    expect(valueByLabel(wb, "Traceability", "Mapping Blocking Issues")).toBe(0);
+    expect(valueByLabel(wb, "Traceability", "Mapping Diagnostic Issues")).toBe(0);
+    expect(valueByLabel(wb, "Traceability", "Mapping Optional Issues")).toBe(0);
   });
 });
