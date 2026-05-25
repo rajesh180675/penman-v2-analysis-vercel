@@ -176,8 +176,22 @@ KNOWN_GROSS_TOTALS = {
 }
 
 
+def identify_lgd_year_from_filename(filepath: str) -> str | None:
+    """Extract fiscal year from year-named LGD file: LossGivenDefault_YYYYMM.xls → FY{YYYY}."""
+    basename = os.path.basename(filepath)
+    m = re.match(r"LossGivenDefault_(\d{4})(\d{2})\.xls$", basename)
+    if not m:
+        return None
+    year = int(m.group(1))
+    month = int(m.group(2))
+    # Indian FY ends March: 202503 = FY2025, 201803 = FY2018
+    if month <= 3:
+        return f"FY{year}"
+    return f"FY{year + 1}"
+
+
 def identify_lgd_year(gross_total: float) -> str | None:
-    """Match a Gross Closing Balance total to a fiscal year."""
+    """Match a Gross Closing Balance total to a fiscal year (legacy fallback)."""
     for known, fy in KNOWN_GROSS_TOTALS.items():
         if abs(gross_total - known) / known < 0.01:  # 1% tolerance
             return fy
@@ -246,14 +260,15 @@ def parse_lgd_file(filepath: str) -> dict | None:
                 migrations["new_business_s1"] = s1
                 migrations["new_business_total"] = total
 
-    # Identify year from gross closing total
+    # Identify year: prefer filename, fallback to gross closing total heuristic
     gross_total = gross.get("closing_total")
     if gross_total is None:
         return None
 
-    fy = identify_lgd_year(gross_total)
+    fy = identify_lgd_year_from_filename(filepath)
     if fy is None:
-        # Try to infer from order — caller will handle
+        fy = identify_lgd_year(gross_total)
+    if fy is None:
         fy = f"UNKNOWN_{gross_total:.0f}"
 
     return {

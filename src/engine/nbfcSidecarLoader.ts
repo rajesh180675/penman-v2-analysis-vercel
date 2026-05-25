@@ -87,10 +87,25 @@ async function fetchPreParsedJson(baseUrl: string): Promise<NbfcSidecarData | nu
 }
 
 async function fetchLgdFiles(baseUrl: string): Promise<LgdMigrationMatrix[]> {
-  // Try fetching known LGD file pattern: Loss Given Default/LossGivenDefault_.xls
-  // and numbered variants (1)-(6)
+  // Try fetching known LGD file patterns:
+  // New convention: LossGivenDefault_YYYYMM.xls (year-named)
+  // Legacy convention: LossGivenDefault_.xls, LossGivenDefault_%20(1).xls, etc.
   const folder = `${baseUrl}/Loss%20Given%20Default`;
-  const filenames = [
+
+  // Year-named files (FY2018-FY2025, March year-end)
+  const yearFilenames = [
+    "LossGivenDefault_201803.xls",
+    "LossGivenDefault_201903.xls",
+    "LossGivenDefault_202003.xls",
+    "LossGivenDefault_202103.xls",
+    "LossGivenDefault_202203.xls",
+    "LossGivenDefault_202303.xls",
+    "LossGivenDefault_202403.xls",
+    "LossGivenDefault_202503.xls",
+  ];
+
+  // Legacy unnamed files (fallback)
+  const legacyFilenames = [
     "LossGivenDefault_.xls",
     "LossGivenDefault_%20(1).xls",
     "LossGivenDefault_%20(2).xls",
@@ -101,41 +116,63 @@ async function fetchLgdFiles(baseUrl: string): Promise<LgdMigrationMatrix[]> {
   ];
 
   const results: { filename: string; html: string }[] = [];
-  const fetches = filenames.map(async (fname) => {
+
+  // Try year-named first
+  const yearFetches = yearFilenames.map(async (fname) => {
     try {
       const res = await fetch(`${folder}/${fname}`);
-      if (!res.ok) {
-        trace("sidecar", "lgdFile:httpError", { fname, status: res.status }, null, { level: "warn" });
-        return null;
-      }
+      if (!res.ok) return null;
       const html = await res.text();
-      // Detect Vite SPA fallback: file doesn't exist → 200 OK with index.html
-      // shell (no Capitaline content). Expected for banks/non-NBFC companies.
       const isSpaFallback = html.includes("<!doctype html>") && !html.includes("Loss Given Default") && !html.includes("Gross Caring Amount");
-      if (isSpaFallback) {
-        trace("sidecar", "lgdFile:absent", { fname, htmlLength: html.length }, null, { level: "info" });
-        return null;
-      }
-      // Validate it's actually an HTML table (not a 404 page)
-      if (!html.includes("Loss Given Default") && !html.includes("Gross Caring Amount")) {
-        trace("sidecar", "lgdFile:validationFailed", { fname, htmlLength: html.length }, null, { level: "warn" });
-        return null;
-      }
+      if (isSpaFallback) return null;
+      if (!html.includes("Loss Given Default") && !html.includes("Gross Caring Amount")) return null;
       trace("sidecar", "lgdFile:fetchSuccess", { fname, htmlLength: html.length });
       return { filename: fname, html };
-    } catch (err) {
-      trace("sidecar", "lgdFile:fetchError", { fname, error: String(err) }, null, { level: "error" });
+    } catch {
       return null;
     }
   });
 
-  const settled = await Promise.all(fetches);
-  for (const item of settled) {
+  const yearSettled = await Promise.all(yearFetches);
+  for (const item of yearSettled) {
     if (item) results.push(item);
   }
 
+  // If no year-named files found, try legacy pattern
+  if (results.length === 0) {
+    const legacyFetches = legacyFilenames.map(async (fname) => {
+      try {
+        const res = await fetch(`${folder}/${fname}`);
+        if (!res.ok) {
+          trace("sidecar", "lgdFile:httpError", { fname, status: res.status }, null, { level: "warn" });
+          return null;
+        }
+        const html = await res.text();
+        const isSpaFallback = html.includes("<!doctype html>") && !html.includes("Loss Given Default") && !html.includes("Gross Caring Amount");
+        if (isSpaFallback) {
+          trace("sidecar", "lgdFile:absent", { fname, htmlLength: html.length }, null, { level: "info" });
+          return null;
+        }
+        if (!html.includes("Loss Given Default") && !html.includes("Gross Caring Amount")) {
+          trace("sidecar", "lgdFile:validationFailed", { fname, htmlLength: html.length }, null, { level: "warn" });
+          return null;
+        }
+        trace("sidecar", "lgdFile:fetchSuccess", { fname, htmlLength: html.length });
+        return { filename: fname, html };
+      } catch (err) {
+        trace("sidecar", "lgdFile:fetchError", { fname, error: String(err) }, null, { level: "error" });
+        return null;
+      }
+    });
+
+    const legacySettled = await Promise.all(legacyFetches);
+    for (const item of legacySettled) {
+      if (item) results.push(item);
+    }
+  }
+
   trace("sidecar", "lgdFetchResults", {
-    attempted: filenames.length,
+    attempted: results.length > 0 ? (yearSettled.filter(Boolean).length > 0 ? "year-named" : "legacy") : "both",
     succeeded: results.length,
     baseUrl,
   });

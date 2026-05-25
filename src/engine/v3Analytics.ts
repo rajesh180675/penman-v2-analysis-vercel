@@ -1929,6 +1929,12 @@ export function computeV3Analytics(
   // resort with an explicit source label so reviewers can audit the path.
   //
   // All paths clamp phi to [0, 0.95] (review C7).
+  // §9.1b: Phi (persistence parameter) for Ohlson (1995) terminal value reversion.
+  // Default φ = 0.87 from: Nissim, D. & Penman, S.H. (2001). "Ratio Analysis and
+  // Equity Valuation: From Research to Practice." Review of Accounting Studies,
+  // 6(1), 109–154. Table 6 — median PM persistence across US industrials.
+  // Clamp [0, 0.95]: φ > 0.95 implies near-permanent supernormal returns,
+  // violating competitive equilibrium (Penman 2013, Ch. 15 caveat).
   const NP_2001_PHI_PM_DEFAULT = 0.87;
   const reSeriesForPhi = periods
     .map(p => p.ri?.RE)

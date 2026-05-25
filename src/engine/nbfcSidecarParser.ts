@@ -222,28 +222,58 @@ export function parseRbiNhbFile(html: string): RbiNhbPeriod[] {
 // ─── Multi-file LGD orchestrator ────────────────────────────────────────────
 
 /**
- * Parse multiple LGD files and assign fiscal years by chaining opening/closing totals.
- * Files are sorted by opening total (ascending = oldest first).
- * The oldest file is assumed to be FY2019 for Bajaj (7 files = FY2019-FY2025).
+ * Extract fiscal year from year-named filename: LossGivenDefault_202503.xls → "FY2025"
+ */
+function fiscalLabelFromFilename(filename: string): string | null {
+  const m = filename.match(/LossGivenDefault_(\d{4})(\d{2})\.xls/);
+  if (!m) return null;
+  const year = parseInt(m[1], 10);
+  const month = parseInt(m[2], 10);
+  // Indian FY ends March: 202503 = FY2025
+  if (month <= 3) return `FY${year}`;
+  return `FY${year + 1}`;
+}
+
+/**
+ * Parse multiple LGD files and assign fiscal years.
+ * Prefers filename-based year (LossGivenDefault_YYYYMM.xls → FY{YYYY}).
+ * Falls back to sorting by opening total and counting backwards from current year.
  */
 export function parseLgdFiles(htmlContents: { filename: string; html: string }[]): LgdMigrationMatrix[] {
   const parsed = htmlContents.map(({ filename, html }) => {
     const data = parseLgdFile(html);
     const openingTotal = data.gross_carrying.opening?.total ?? 0;
     const closingTotal = data.gross_carrying.closing?.total ?? 0;
-    return { filename, openingTotal, closingTotal, data };
+    const fiscalFromName = fiscalLabelFromFilename(filename);
+    return { filename, openingTotal, closingTotal, data, fiscalFromName };
   });
 
-  // Sort by opening total (ascending = oldest first)
+  // If all files have year in filename, use that directly
+  const allHaveNames = parsed.every(p => p.fiscalFromName !== null);
+
+  if (allHaveNames) {
+    // Sort by fiscal year (ascending)
+    parsed.sort((a, b) => a.fiscalFromName!.localeCompare(b.fiscalFromName!));
+    const result = parsed.map((item) => ({
+      fiscal_label: item.fiscalFromName!,
+      ...item.data,
+    }));
+    trace("sidecar", "lgdFilesParsed", {
+      fileCount: result.length,
+      method: "filename",
+      fiscalYears: result.map(r => r.fiscal_label),
+      latestClosingTotal: result.length > 0 ? result[result.length - 1].gross_carrying.closing?.total : null,
+    });
+    return result;
+  }
+
+  // Fallback: sort by opening total (ascending = oldest first), assign by counting
   parsed.sort((a, b) => a.openingTotal - b.openingTotal);
 
-  // Assign fiscal years: determine base year from the chain.
-  // Indian FY ends in March. The latest PUBLISHED AR is for the FY that ended
-  // most recently — e.g. in May 2026, the latest AR is FY2025 (ended Mar 2025).
   const now = new Date();
   const latestPublishedFY = now.getMonth() >= 6
-    ? now.getFullYear()       // After June: current year's AR is likely out
-    : now.getFullYear() - 1;  // Before July: previous year's AR is latest
+    ? now.getFullYear()
+    : now.getFullYear() - 1;
   const baseYear = latestPublishedFY - parsed.length + 1;
 
   const result = parsed.map((item, i) => ({
@@ -252,6 +282,7 @@ export function parseLgdFiles(htmlContents: { filename: string; html: string }[]
   }));
   trace("sidecar", "lgdFilesParsed", {
     fileCount: result.length,
+    method: "heuristic",
     fiscalYears: result.map(r => r.fiscal_label),
     latestClosingTotal: result.length > 0 ? result[result.length - 1].gross_carrying.closing?.total : null,
   });

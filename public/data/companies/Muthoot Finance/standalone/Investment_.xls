@@ -1,0 +1,89 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta name=ProgId content=Excel.Sheet> <meta name=Generator content="Microsoft Excel 11"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Finance</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table border="1">
+                    <thead>
+                        <tr ng-show="false" class="ng-hide">
+                            <th colspan="10" class="ng-binding">
+                                Finance &gt;&gt;Investment (Standalone)&gt;&gt;Muthoot Finance Ltd(Curr.  Rs in )
+                            </th>
+                        </tr>
+                        <tr style="background-color:#D7E1F9">
+                            <!--<th class="SubSbHdrLeft" ng-repeat="cols in financeDisplayTypes">{{cols.DISPLAYNAME}}</th>-->
+                            <th>Investment Company Name</th>
+                            <th>Year</th>
+                            <th>No of Equity Shares</th>
+                            <th>Cost of Investments</th>
+                            <th>Current / Non Current</th>
+                            <th>Face Value</th>
+                            <th>Prices as on</th>
+                            <th>Current Price -Unit Curr.</th>
+                            <th>Current Value of Investment</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- ngRepeat: item in financeData --><!-- ngIf: item != 0 --><tr ng-repeat="item in financeData" ng-if="item != 0" class="ng-scope">
+                            <td ng-style="(item.InvestmentCompanyName=='Total')? fontBold :''" class="ng-binding">Union Bank of India</td>
+                            <td class="ng-binding">202403</td>
+                            <td class="ng-binding">454</td>
+                            <td ng-style="(item.InvestmentCompanyName=='Total')? fontBold :''" class="ng-binding">0.01</td>
+                            <td class="ng-binding">Non-Current</td>
+                            <td class="ng-binding">-</td>
+                            <td class="ng-binding">22/05/2026</td>
+                            <td class="ng-binding">160.85</td>
+                            <td ng-style="(item.InvestmentCompanyName=='Total')? fontBold :''" class="ng-binding">0.01</td>
+                        </tr><!-- end ngIf: item != 0 --><!-- end ngRepeat: item in financeData --><!-- ngIf: item != 0 --><tr ng-repeat="item in financeData" ng-if="item != 0" class="ng-scope">
+                            <td ng-style="(item.InvestmentCompanyName=='Total')? fontBold :''" class="ng-binding">Nabil Bank Ltd</td>
+                            <td class="ng-binding">202403</td>
+                            <td class="ng-binding">1198531</td>
+                            <td ng-style="(item.InvestmentCompanyName=='Total')? fontBold :''" class="ng-binding">32.95</td>
+                            <td class="ng-binding">Non-Current</td>
+                            <td class="ng-binding">-</td>
+                            <td class="ng-binding"></td>
+                            <td class="ng-binding">-</td>
+                            <td ng-style="(item.InvestmentCompanyName=='Total')? fontBold :''" class="ng-binding">0.00</td>
+                        </tr><!-- end ngIf: item != 0 --><!-- end ngRepeat: item in financeData --><!-- ngIf: item != 0 --><tr ng-repeat="item in financeData" ng-if="item != 0" class="ng-scope">
+                            <td ng-style="(item.InvestmentCompanyName=='Total')? fontBold :''" class="ng-binding">ESAF Small Finance Bank Ltd</td>
+                            <td class="ng-binding">202403</td>
+                            <td class="ng-binding">18717244</td>
+                            <td ng-style="(item.InvestmentCompanyName=='Total')? fontBold :''" class="ng-binding">101.45</td>
+                            <td class="ng-binding">Non-Current</td>
+                            <td class="ng-binding">-</td>
+                            <td class="ng-binding">22/05/2026</td>
+                            <td class="ng-binding">28.04</td>
+                            <td ng-style="(item.InvestmentCompanyName=='Total')? fontBold :''" class="ng-binding">52.48</td>
+                        </tr><!-- end ngIf: item != 0 --><!-- end ngRepeat: item in financeData --><!-- ngIf: item != 0 --><tr ng-repeat="item in financeData" ng-if="item != 0" class="ng-scope">
+                            <td ng-style="(item.InvestmentCompanyName=='Total')? fontBold :''" class="ng-binding">Muthoot Microfin Ltd</td>
+                            <td class="ng-binding">202403</td>
+                            <td class="ng-binding">1162707</td>
+                            <td ng-style="(item.InvestmentCompanyName=='Total')? fontBold :''" class="ng-binding">23.23</td>
+                            <td class="ng-binding">Non-Current</td>
+                            <td class="ng-binding">-</td>
+                            <td class="ng-binding">22/05/2026</td>
+                            <td class="ng-binding">180.75</td>
+                            <td ng-style="(item.InvestmentCompanyName=='Total')? fontBold :''" class="ng-binding">21.02</td>
+                        </tr><!-- end ngIf: item != 0 --><!-- end ngRepeat: item in financeData --><!-- ngIf: item != 0 --><tr ng-repeat="item in financeData" ng-if="item != 0" class="ng-scope">
+                            <td ng-style="(item.InvestmentCompanyName=='Total')? fontBold :''" class="ng-binding">Asia Asset Finance PLC</td>
+                            <td class="ng-binding">202403</td>
+                            <td class="ng-binding">90558778</td>
+                            <td ng-style="(item.InvestmentCompanyName=='Total')? fontBold :''" class="ng-binding">55.41</td>
+                            <td class="ng-binding">Non-Current</td>
+                            <td class="ng-binding">-</td>
+                            <td class="ng-binding"></td>
+                            <td class="ng-binding">-</td>
+                            <td ng-style="(item.InvestmentCompanyName=='Total')? fontBold :''" class="ng-binding">0.00</td>
+                        </tr><!-- end ngIf: item != 0 --><!-- end ngRepeat: item in financeData -->
+                        <!-- ngIf: Type == 'latest' --><tr ng-if="Type == 'latest'" class="ng-scope">
+                            <td><b>Total</b></td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td><b class="ng-binding">213.04</b>
+                            </td><td>
+                            </td><td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td><b class="ng-binding">73.51</b></td>
+                        </tr><!-- end ngIf: Type == 'latest' -->
+                        <tr ng-show="false" class="ng-hide">
+                            <td>Disclaimer:-</td>
+                            <td role="gridcell" aria-colspan="9">Capitaline Database has taken due care and caution in compilation of data.However, Capitaline Database makes no warranty that the service will meet all your requirements, the service will be uninterrupted, timely, complete, error-free, or the results that may be obtained from the use of the service will be accurate. Use of data from Capitaline is permitted only to the  licensee and its employees internal usage.The Licensee shall not use Capitaline or data from Capitaline or permit any third party to do so in order to provide data processing ,advisory, research service to third party by way of trade or otherwise. The Licensee shall also not make the data available on a network that extends beyond the Licensee's premises . In the event of unauthorised use of Capitaline or data from Capitaline by the Licensee, Capital Market publishers india pvt ltd will terminate the subscription immediately.</td>
+                        </tr>
+                    </tbody>
+                </table></body></html>
