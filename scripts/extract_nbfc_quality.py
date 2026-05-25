@@ -294,10 +294,262 @@ def extract_off_book_share(doc):
     return None
 
 
+# ─── Per-ticker extractors ───────────────────────────────────────────
+
+
+def extract_muthoot_multi_year_ratios(doc):
+    """Muthoot Finance ARs include a structured 4-column ratios table
+    on the 'Business Performance' page (page 13 in FY2025 AR).
+
+    Layout (FY2025 AR, page 13):
+        Particulars     | FY25  | FY24  | FY23  | FY22
+        Capital adequacy (%)   | 23.71 | 30.37 | 31.77 | 29.97
+        Stage 3 loan assets(%) |  3.41 |  3.28 |  3.79 |  2.99
+        Return on assets (%)   |   5.7 |  5.84 |  5.93 |  7.24
+        Return on equity (%)   | 19.73 | 17.86 | 17.63 | 23.55
+        Debt-equity (%)        |  3.16 |  2.42 |  2.36 |  2.72
+
+    Each row's text is followed by 4 numeric values. The most recent AR
+    holds 4 prior years; previous ARs hold their own 4-year window.
+
+    Returns: { 'FY2025': {crar_pct, gnpa_pct, roa_pct, roe_pct}, ...}
+    """
+    out = {}
+
+    # Find the page that has all four ratio labels on it
+    target_pages = []
+    for p in range(len(doc)):
+        text = doc[p].get_text()
+        score = sum(1 for k in [
+            "Capital adequacy", "Stage 3 loan assets",
+            "Return on assets", "Return on equity",
+        ] if k in text)
+        if score >= 3:
+            target_pages.append((p, text))
+
+    if not target_pages:
+        return out
+
+    # The reporting page sits in the corporate overview section (~page 13).
+    # Use the earliest matching page (later occurrences are usually
+    # subsidiary disclosures with different scales).
+    p, text = target_pages[0]
+
+    # Identify the 4-year header — Muthoot prints it as "FY25 FY24 FY23 FY22"
+    # (the latest 4 fiscal years in descending order).
+    header = re.search(r"FY(\d{2})\s+FY(\d{2})\s+FY(\d{2})\s+FY(\d{2})", text)
+    if not header:
+        return out
+    years = [f"FY20{header.group(i)}" for i in range(1, 5)]
+
+    # Pull each ratio row's 4 trailing numbers
+    rows = [
+        ("Capital adequacy", "crar_pct"),
+        ("Stage 3 loan assets", "gnpa_pct"),
+        ("Return on assets", "roa_pct"),
+        ("Return on equity", "roe_pct"),
+    ]
+    for label, key in rows:
+        m = re.search(
+            re.escape(label) + r"[^\n]*\n([\d.\s\n]+)",
+            text,
+        )
+        if not m:
+            continue
+        nums = re.findall(r"\d+\.?\d*", m.group(1))[:4]
+        for fy, val in zip(years, nums):
+            try:
+                v = float(val)
+                if 0 <= v <= 100:
+                    out.setdefault(fy, {})[key] = v
+            except ValueError:
+                continue
+    return out
+
+
+def extract_muthoot_loan_assets_10yr(doc):
+    """Muthoot's 10-year performance review table includes a 'Loan Assets'
+    row in ₹ Mn with columns FY25..FY16.
+
+    Returns: { 'FY2025': aum_cr, 'FY2024': aum_cr, ..., 'FY2016': aum_cr }
+    The values are converted from ₹ Mn to ₹ Cr (divide by 10).
+    """
+    out = {}
+    for p in range(len(doc)):
+        text = doc[p].get_text()
+        if "10-year performance review" not in text and "Loan Assets" not in text:
+            continue
+        m = re.search(
+            r"Loan Assets\s*\n([\d,\s\n]+)",
+            text,
+        )
+        if not m:
+            continue
+        nums = re.findall(r"[\d,]+", m.group(1))[:10]
+        if len(nums) < 7:
+            continue
+        # Values are FY25 (latest) ... FY16 (oldest), in ₹ Mn
+        for i, num in enumerate(nums):
+            year_int = 2025 - i  # FY25, FY24, FY23, ...
+            try:
+                v_mn = int(num.replace(",", ""))
+                if v_mn > 1000:  # sanity
+                    out[f"FY{year_int}"] = round(v_mn / 10, 0)
+            except ValueError:
+                continue
+        if out:
+            return out
+    return out
+
+
+def extract_shriram_financial_highlights(doc, fy_label: str):
+    """Shriram Finance ARs surface KPIs on a 'Financial Highlights' or
+    'Spotlighting Competence' page near the front (page 7-10 typically).
+
+    Layout (FY2024 AR, page 10):
+        Rs. 224,862 crore   Assets Under Management (AUM)
+        8.84%               Net Interest Margin
+        3.13%               Return on Assets
+        15.64%              Return on Equity
+        5.45%               Gross Stage 3 Assets
+        2.70%               Net Stage 3 Assets
+        20.30%              Capital to Risk (Weighted) Assets Ratio
+
+    Returns dict for the single current FY of this AR.
+    """
+    record = {}
+
+    # Score pages by how many of the labels appear together
+    candidates = []
+    for p in range(len(doc)):
+        text = doc[p].get_text()
+        score = sum(1 for k in [
+            "Capital to Risk", "Capital Adequacy",
+            "Gross Stage 3", "Net Stage 3",
+            "Return on Asset", "Return on Equity",
+            "Net Interest Margin", "Assets Under Management", "AUM",
+        ] if k in text)
+        if score >= 3:
+            candidates.append((p, text, score))
+
+    if not candidates:
+        return record
+
+    # Highest-scoring page is the KPI summary
+    candidates.sort(key=lambda x: -x[2])
+    p, text, _ = candidates[0]
+
+    # Detect page layout. Older Shriram ARs (FY2023, FY2024) print
+    # "VALUE %\nLABEL" — the value sits BEFORE the label. The newer FY2025
+    # AR uses a tabular "Particulars\nFY25\nFY24\n%Change" layout where the
+    # value comes AFTER the label.
+    #
+    # Heuristic: presence of "% Change" header signals the LABEL→VALUE
+    # tabular layout. Otherwise default to VALUE→LABEL.
+    value_first = "% Change" not in text and "%Change" not in text
+
+    def _grab_pct(label_pat, lo=0.0, hi=100.0):
+        if value_first:
+            patterns = [
+                # VALUE % \n LABEL — FY2023/FY2024 ARs. Forbid digits and '%'
+                # in the connector so we don't span past a neighbouring row.
+                r"(\d+\.?\d*)\s*%\s*\n[^%\d]{0,60}?" + label_pat,
+            ]
+        else:
+            patterns = [
+                # LABEL [optional (%) suffix] \n VALUE % — FY2025 tabular AR.
+                # The label may carry a "(%)" suffix and span one wrapped line
+                # before the figure. Connector forbids new digits/labels.
+                label_pat + r"[\s\(\)%a-zA-Z]{0,40}?\n[^\d\-%]*?(\d+\.?\d*)\s*%",
+            ]
+        for pat in patterns:
+            m = re.search(pat, text, re.IGNORECASE | re.DOTALL)
+            if m:
+                try:
+                    v = float(m.group(1))
+                    if lo <= v <= hi:
+                        return v
+                except ValueError:
+                    pass
+        return None
+
+    record["crar_pct"] = _grab_pct(
+        r"(?:Capital\s+to\s+Risk(?:\s|\n)*\([^\)]*\)(?:\s|\n)*Assets?\s+Ratio|Capital\s+Adequacy\s+Ratio)", 5, 50)
+    record["gnpa_pct"] = _grab_pct(r"Gross\s+Stage\s*3", 0, 30)
+    record["nnpa_pct"] = _grab_pct(r"Net\s+Stage\s*3", 0, 30)
+    record["roa_pct"] = _grab_pct(r"Return\s+on\s+(?:Total\s+)?Assets?", 0, 30)
+    record["roe_pct"] = _grab_pct(r"Return\s+on\s+(?:Net\s+Worth|Equity)", 0, 60)
+    record["nim_pct"] = _grab_pct(r"Net\s+Interest\s+Margin", 0, 30)
+
+    # AUM in Rs. crores: scan ALL pages for the largest authoritative mention.
+    # FY2023's KPI page omits AUM; it appears in the management commentary
+    # section (~page 23). FY2025 puts AUM in the chairman's letter and
+    # AUM-trend chart, not on the ratios page.
+    aum_candidates = []
+    for q in range(len(doc)):
+        ptext = doc[q].get_text()
+        if "AUM" not in ptext and "Assets Under Management" not in ptext and "Assets under management" not in ptext:
+            continue
+        # Pattern A: "Rs. NNN,NNN[.NN] crore[s]" \n "Assets Under Management (AUM)"
+        for m in re.finditer(
+            r"Rs\.?\s*([\d,]{4,})(?:\.\d+)?\s*crore[s]?\s*\n[^\n]{0,80}?(?:Assets?\s+[Uu]nder\s+[Mm]anagement|AUM)",
+            ptext, re.IGNORECASE | re.DOTALL,
+        ):
+            try:
+                v = float(m.group(1).replace(",", ""))
+                if 50_000 < v < 5_000_000:
+                    aum_candidates.append(v)
+            except ValueError:
+                continue
+        # Pattern B: "AUM ... Rs. NNN,NNN[.NN] crore[s]" with line break tolerance
+        for m in re.finditer(
+            r"(?:Assets?\s+[Uu]nder\s+[Mm]anagement|AUM)[\s\(\)A-Za-z\.,\n]{0,80}?Rs\.?\s*([\d,]{4,})(?:\.\d+)?\s*crore[s]?",
+            ptext, re.IGNORECASE | re.DOTALL,
+        ):
+            try:
+                v = float(m.group(1).replace(",", ""))
+                if 50_000 < v < 5_000_000:
+                    aum_candidates.append(v)
+            except ValueError:
+                continue
+        # Pattern C: prose "AUM ... touching Rs. NNN,NNN[.NN] crores"
+        for m in re.finditer(
+            r"AUM[^\.]{0,120}?(?:touching|reaching|stood\s+at|of)\s+Rs\.?\s*([\d,]{4,})(?:\.\d+)?\s*crore[s]?",
+            ptext, re.IGNORECASE | re.DOTALL,
+        ):
+            try:
+                v = float(m.group(1).replace(",", ""))
+                if 50_000 < v < 5_000_000:
+                    aum_candidates.append(v)
+            except ValueError:
+                continue
+        # Pattern D: "AUM of Rs. NNN,NNN[.NN] crore" (Shriram FY2023, MDA section)
+        for m in re.finditer(
+            r"AUM\s+of\s+Rs\.?\s*([\d,]{4,})(?:\.\d+)?\s*crore[s]?",
+            ptext, re.IGNORECASE | re.DOTALL,
+        ):
+            try:
+                v = float(m.group(1).replace(",", ""))
+                if 50_000 < v < 5_000_000:
+                    aum_candidates.append(v)
+            except ValueError:
+                continue
+
+    if aum_candidates:
+        # Closing AUM is the largest authoritative mention; prior-year anchors
+        # in the same prose are smaller. This avoids YoY-anchor leakage.
+        record["aum_cr"] = max(aum_candidates)
+
+    # Drop None values for clean merge semantics
+    record = {k: v for k, v in record.items() if v is not None}
+    record["_source_page"] = p + 1
+    return record
+
+
 # ─── Per-AR processing ───────────────────────────────────────────────
 
 
-def process_single_ar(pdf_path: Path, fy_label: str) -> dict:
+def process_single_ar(pdf_path: Path, fy_label: str, ticker: str = "BAJFINANCE") -> dict:
     print(f"  Processing {fy_label}...")
     doc = fitz.open(str(pdf_path))
 
@@ -309,22 +561,32 @@ def process_single_ar(pdf_path: Path, fy_label: str) -> dict:
         "source_notes": "",
     }
 
-    # NBFC-specific extractors
-    key_ratios, kr_page = extract_key_ratios_table(doc)
-    record.update(key_ratios)
+    if ticker == "SHRIRAMFIN":
+        # Shriram has a single-page financial-highlights summary per AR
+        sh = extract_shriram_financial_highlights(doc, fy_label)
+        record["source_page"] = sh.pop("_source_page", None)
+        record.update(sh)
+    elif ticker == "MUTHOOTFIN":
+        # Muthoot's per-AR extraction is handled at the ticker level (one AR
+        # provides 4 years of ratios + 10 years of AUM). The single-AR pass
+        # only stamps the source_doc; merging happens in process_ticker.
+        pass
+    else:
+        # Default: Bajaj-style key-ratios + stage table + AUM regex
+        key_ratios, kr_page = extract_key_ratios_table(doc)
+        record.update(key_ratios)
 
-    stage, stage_page = extract_stage_distribution(doc)
-    record.update(stage)
+        stage, stage_page = extract_stage_distribution(doc)
+        record.update(stage)
 
-    aum = extract_aum(doc)
-    record.update(aum)
+        aum = extract_aum(doc)
+        record.update(aum)
 
-    off_book = extract_off_book_share(doc)
-    if off_book is not None:
-        record["off_book_share_pct"] = off_book
+        off_book = extract_off_book_share(doc)
+        if off_book is not None:
+            record["off_book_share_pct"] = off_book
 
-    # Track best source page (key ratios is most useful for cross-verify)
-    record["source_page"] = kr_page or stage_page
+        record["source_page"] = kr_page or stage_page
 
     doc.close()
     return record
@@ -357,9 +619,46 @@ def process_ticker(ticker: str):
         m = re.search(r"FY(\d{4})", pdf.name)
         fy_label = f"FY{m.group(1)}" if m else pdf.stem
         try:
-            periods.append(process_single_ar(pdf, fy_label))
+            periods.append(process_single_ar(pdf, fy_label, ticker))
         except Exception as e:
             print(f"  WARN: {fy_label} failed: {e}")
+
+    # Muthoot-specific: merge multi-year data from the latest AR.
+    # The FY2025 AR carries 4 years of ratios (FY22-25) and 10 years of AUM.
+    if ticker == "MUTHOOTFIN" and pdfs:
+        latest = sorted(pdfs)[-1]
+        doc = fitz.open(str(latest))
+        try:
+            multi_ratios = extract_muthoot_multi_year_ratios(doc)
+            multi_aum = extract_muthoot_loan_assets_10yr(doc)
+        finally:
+            doc.close()
+
+        # Index periods by fiscal_label for easy merge
+        by_fy = {p["fiscal_label"]: p for p in periods}
+        # Add periods we don't yet have (the AUM table extends back to FY2016)
+        all_fys = set(multi_ratios.keys()) | set(multi_aum.keys())
+        for fy in sorted(all_fys):
+            if fy not in by_fy:
+                by_fy[fy] = {
+                    "period_end": fiscal_year_end(fy),
+                    "fiscal_label": fy,
+                    "source_doc": latest.name,
+                    "source_page": 13,
+                    "source_notes": f"Backfilled from {latest.name} (10-year table).",
+                }
+                periods.append(by_fy[fy])
+
+        # Merge ratios (only fill missing keys — don't overwrite per-AR extraction)
+        for fy, ratios in multi_ratios.items():
+            if fy in by_fy:
+                for k, v in ratios.items():
+                    by_fy[fy].setdefault(k, v)
+
+        # Merge AUM (₹ Cr)
+        for fy, aum_cr in multi_aum.items():
+            if fy in by_fy and by_fy[fy].get("aum_cr") is None:
+                by_fy[fy]["aum_cr"] = aum_cr
 
     # Sort by period_end ascending
     periods.sort(key=lambda r: r["period_end"])

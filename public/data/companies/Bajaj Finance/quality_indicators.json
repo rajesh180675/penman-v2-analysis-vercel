@@ -42,19 +42,7 @@
       "provisions_opening_cr": 0.0,
       "provisions_made_cr": 0.0,
       "provisions_writeback_cr": 0.0,
-      "provisions_closing_cr": 0.0,
-      "subsidiaries": [
-        {
-          "name": "No Subsidiaries",
-          "equity_cr": 0.0,
-          "reserves_cr": 0.0,
-          "investment_cost_cr": 0.0,
-          "pat_cr": 0.0,
-          "total_assets_cr": 0.0,
-          "total_liabilities_cr": 0.0,
-          "sales_cr": 0.0
-        }
-      ]
+      "provisions_closing_cr": 0.0
     },
     {
       "fiscal_label": "FY2013",
@@ -74,19 +62,7 @@
       "provisions_opening_cr": 0.0,
       "provisions_made_cr": 0.0,
       "provisions_writeback_cr": 0.0,
-      "provisions_closing_cr": 0.0,
-      "subsidiaries": [
-        {
-          "name": "No Subsidiaries",
-          "equity_cr": 0.0,
-          "reserves_cr": 0.0,
-          "investment_cost_cr": 0.0,
-          "pat_cr": 0.0,
-          "total_assets_cr": 0.0,
-          "total_liabilities_cr": 0.0,
-          "sales_cr": 0.0
-        }
-      ]
+      "provisions_closing_cr": 0.0
     },
     {
       "period_end": "2014-03-31",
@@ -112,8 +88,6 @@
       "ecl_coverage_pct": null,
       "total_ecl_pct": null,
       "off_book_share_pct": null,
-      "cost_to_income_pct": 46.04,
-      "cost_to_income_source": "AR_OpexDivNII",
       "gnpa_cr": 279.61,
       "nnpa_cr": 66.46,
       "gnpa_opening_cr": 188.86,
@@ -129,19 +103,7 @@
       "provisions_writeback_cr": -81.47,
       "provisions_closing_cr": 213.15,
       "adv_capital_market_cr": 847.34,
-      "adv_real_estate_cr": 5901.46,
-      "subsidiaries": [
-        {
-          "name": "No Subsidiaries",
-          "equity_cr": 0.0,
-          "reserves_cr": 0.0,
-          "investment_cost_cr": 0.0,
-          "pat_cr": 0.0,
-          "total_assets_cr": 0.0,
-          "total_liabilities_cr": 0.0,
-          "sales_cr": 0.0
-        }
-      ]
+      "adv_real_estate_cr": 5901.46
     },
     {
       "period_end": "2015-03-31",
@@ -167,8 +129,6 @@
       "aum_cr": null,
       "aum_growth_pct": null,
       "off_book_share_pct": null,
-      "cost_to_income_pct": 45.05,
-      "cost_to_income_source": "AR_OpexDivNII",
       "gnpa_cr": 484.41,
       "nnpa_cr": 142.53,
       "gnpa_opening_cr": 279.61,
@@ -234,8 +194,6 @@
       "ecl_coverage_pct": null,
       "total_ecl_pct": null,
       "off_book_share_pct": null,
-      "cost_to_income_pct": 43.73,
-      "cost_to_income_source": "AR_OpexDivNII",
       "gnpa_cr": 538.57,
       "nnpa_cr": 122.93,
       "gnpa_opening_cr": 484.41,
@@ -301,8 +259,6 @@
       "ecl_coverage_pct": null,
       "total_ecl_pct": null,
       "off_book_share_pct": null,
-      "cost_to_income_pct": 41.35,
-      "cost_to_income_source": "AR_OpexDivNII",
       "gnpa_cr": 982.38,
       "nnpa_cr": 255.38,
       "gnpa_opening_cr": 538.57,
@@ -368,8 +324,6 @@
       "ecl_coverage_pct": 67.52,
       "total_ecl_pct": 1.9,
       "off_book_share_pct": null,
-      "cost_to_income_pct": 41.83,
-      "cost_to_income_source": "AR_OpexDivNII",
       "gnpa_cr": 1163.8,
       "nnpa_cr": 353.48,
       "gnpa_opening_cr": 982.38,
@@ -386,6 +340,15 @@
       "provisions_closing_cr": 810.32,
       "adv_capital_market_cr": 6480.21,
       "adv_real_estate_cr": 5471.32,
+      "stage1_cr": 78350.76,
+      "stage2_cr": 1082.24,
+      "stage3_cr": 1200.08,
+      "total_loan_book_cr": 80633.08,
+      "slippage_s1_to_s3_cr": 1036.76,
+      "slippage_s2_to_s3_cr": 465.71,
+      "upgrades_s3_to_s1_cr": 13.55,
+      "writeoffs_cr": 942.75,
+      "new_origination_cr": 52866.91,
       "subsidiaries": [
         {
           "name": "Bajaj Financial Securities Ltd",
@@ -409,16 +372,7 @@
         }
       ],
       "subsidiary_pat_cr": 29.369999999999997,
-      "subsidiary_assets_cr": 4737.0199999999995,
-      "stage1_cr": 78350.76,
-      "stage2_cr": 1082.24,
-      "stage3_cr": 1200.08,
-      "total_loan_book_cr": 80633.08,
-      "slippage_s1_to_s3_cr": 1036.76,
-      "slippage_s2_to_s3_cr": 465.71,
-      "upgrades_s3_to_s1_cr": 13.55,
-      "writeoffs_cr": 942.75,
-      "new_origination_cr": 52866.91
+      "subsidiary_assets_cr": 4737.0199999999995
     },
     {
       "period_end": "2019-03-31",
@@ -444,8 +398,6 @@
       "advances_growth_pct": null,
       "deposits_growth_pct": null,
       "off_book_share_pct": null,
-      "cost_to_income_pct": 35.34,
-      "cost_to_income_source": "AR_KeyRatios",
       "gnpa_cr": 1794.08,
       "nnpa_cr": 720.68,
       "gnpa_opening_cr": 1163.8,
@@ -520,8 +472,6 @@
       "advances_growth_pct": null,
       "deposits_growth_pct": null,
       "off_book_share_pct": null,
-      "cost_to_income_pct": 33.47,
-      "cost_to_income_source": "AR_KeyRatios",
       "gnpa_cr": 2339.31,
       "nnpa_cr": 923.09,
       "gnpa_opening_cr": 1794.08,
@@ -583,10 +533,10 @@
       "gnpa_pct": 1.79,
       "nnpa_pct": 0.91,
       "pcr_pct": 59.34,
-      "stage3_pct": 1.63,
-      "stage2_pct": 2.17,
-      "ecl_coverage_pct": 60.31,
-      "total_ecl_pct": 2.57,
+      "stage3_pct": 2.23,
+      "stage2_pct": 5.18,
+      "ecl_coverage_pct": 137.99,
+      "total_ecl_pct": 3.08,
       "aum_cr": 152947.0,
       "aum_growth_pct": 4.0,
       "slippage_pct": 5.49,
@@ -596,8 +546,6 @@
       "advances_growth_pct": null,
       "deposits_growth_pct": null,
       "off_book_share_pct": null,
-      "cost_to_income_pct": 30.74,
-      "cost_to_income_source": "AR_KeyRatios",
       "gnpa_cr": 2611.65,
       "nnpa_cr": 1061.96,
       "gnpa_opening_cr": 2339.31,
@@ -614,15 +562,6 @@
       "provisions_closing_cr": 1549.69,
       "adv_capital_market_cr": 6739.58,
       "adv_real_estate_cr": 17684.12,
-      "stage1_cr": 139589.01,
-      "stage2_cr": 3148.4,
-      "stage3_cr": 2363.0,
-      "total_loan_book_cr": 145100.41,
-      "slippage_s1_to_s3_cr": 2994.48,
-      "slippage_s2_to_s3_cr": 995.99,
-      "upgrades_s3_to_s1_cr": 59.78,
-      "writeoffs_cr": 2248.03,
-      "new_origination_cr": 80493.11,
       "subsidiaries": [
         {
           "name": "Bajaj Financial Securities Ltd",
@@ -665,15 +604,13 @@
       "total_ecl_pct": 2.25,
       "aum_cr": 197452.0,
       "aum_growth_pct": 29.1,
-      "slippage_pct": 5.51,
+      "slippage_pct": null,
       "restructured_pct": null,
       "cet1_pct": null,
       "casa_pct": null,
       "advances_growth_pct": null,
       "deposits_growth_pct": null,
       "off_book_share_pct": null,
-      "cost_to_income_pct": 34.65,
-      "cost_to_income_source": "AR_KeyRatios",
       "gnpa_cr": 2987.14,
       "nnpa_cr": 1247.98,
       "gnpa_opening_cr": 2611.65,
@@ -748,8 +685,6 @@
       "advances_growth_pct": null,
       "deposits_growth_pct": null,
       "off_book_share_pct": null,
-      "cost_to_income_pct": 35.12,
-      "cost_to_income_source": "AR_KeyRatios",
       "gnpa_cr": 2175.49,
       "nnpa_cr": 786.62,
       "gnpa_opening_cr": 2987.14,
@@ -825,7 +760,6 @@
       "advances_growth_pct": null,
       "deposits_growth_pct": null,
       "off_book_share_pct": null,
-      "cost_to_income_source": "AR_KeyRatios",
       "gnpa_cr": 2600.38,
       "nnpa_cr": 1132.09,
       "gnpa_opening_cr": 2175.49,
@@ -899,7 +833,6 @@
       "advances_growth_pct": null,
       "deposits_growth_pct": null,
       "off_book_share_pct": null,
-      "cost_to_income_source": "AR_KeyRatios",
       "gnpa_cr": 3677.75,
       "nnpa_cr": 1720.41,
       "gnpa_opening_cr": 2600.38,

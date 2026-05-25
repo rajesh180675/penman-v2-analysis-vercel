@@ -115,6 +115,14 @@ async function main() {
 
     // ── Bajaj Finance sidecar XLS folders ────────────────────────
     if (entry.folder === "Bajaj Finance") {
+      // sidecarBlobs is a manifest of uploaded sidecar URLs. The runtime
+      // loader (src/engine/nbfcSidecarLoader.ts) currently fetches LGD/RBI
+      // files via a hardcoded year-named pattern off the Blob root rather
+      // than reading these URLs. The manifest is still useful for:
+      //   (a) verifying uploads after a sync
+      //   (b) external consumers / debug tooling
+      //   (c) future refactor where the loader switches to a registry-driven
+      //       URL list instead of guessing filenames
       entry.sidecarBlobs = entry.sidecarBlobs ?? {};
 
       console.log(`  [Subsidiaries]`);
