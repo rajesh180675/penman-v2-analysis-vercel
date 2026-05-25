@@ -71,6 +71,6 @@ describe("mapping resolution", () => {
         note: "unmatched",
       },
     ]);
-    expect(recast.spec_flags?.some((flag) => flag.label === "Missing required financial line")).toBe(true);
+    expect(recast.spec_flags?.some((flag) => flag.label === "MAPPING_MISS_CRITICAL")).toBe(true);
   });
 });

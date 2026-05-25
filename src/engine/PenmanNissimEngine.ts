@@ -600,21 +600,59 @@ export function recastCashFlow(data: RawPeriodData, is_: CanonicalIncome, bs: Ca
 }
 
 function buildMissingRequiredLineFlags(trace: TraceMap, periodEnd: string): SpecFlag[] {
-  const requiredLines = [
+  const CRITICAL_LINES = [
     "BS.TA",
+    "BS.TotalStockholdersEquity",
+    "IS.Sales",
     "IS.PAT",
+    "IS.PBT",
+  ];
+  const WARNING_LINES = [
+    "IS.FinanceCost.Top",
+    "IS.OtherIncome",
+    "IS.TaxExpense",
+    "BS.FA.CashBank",
+    "BS.FO.LongBorrow",
+    "BS.FO.ShortBorrow",
+    "BS.TradeReceivables",
+    "BS.TradePayables",
+    "BS.PPE",
+    "BS.CurrentAssets",
+    "BS.CurrentLiabilities",
+    "CF.OperatingCF",
+    "CF.InvestingCF",
+    "CF.FinancingCF",
   ];
 
-  return requiredLines
-    .filter((line) => trace[line]?.some((entry) => entry.note === "unmatched"))
-    .map((line) => ({
-      spec_id: `MISSING_REQUIRED_${line.replace(/\W+/g, "_")}`,
-      severity: Severity.CRITICAL,
-      label: "Missing required financial line",
-      message: `${line} could not be mapped from source data; valuation must treat the recast value as unsourced, not a real zero.`,
-      affects_terminal: true,
-      period: periodEnd,
-    }));
+  const flags: SpecFlag[] = [];
+
+  for (const line of CRITICAL_LINES) {
+    if (trace[line]?.some((entry) => entry.note === "unmatched")) {
+      flags.push({
+        spec_id: `MISSING_REQUIRED_${line.replace(/\W+/g, "_")}`,
+        severity: Severity.CRITICAL,
+        label: "MAPPING_MISS_CRITICAL",
+        message: `Critical line "${line}" returned 0 — no matching key in source data. Downstream calculations may be invalid.`,
+        affects_terminal: true,
+        period: periodEnd,
+      });
+    }
+  }
+
+  for (const line of WARNING_LINES) {
+    if (trace[line]?.some((entry) => entry.note === "unmatched")) {
+      flags.push({
+        spec_id: `MAPPING_MISS_${line.replace(/\W+/g, "_")}`,
+        severity: Severity.WARNING,
+        label: "MAPPING_MISS",
+        message: `Line "${line}" returned 0 — no matching key in source data.`,
+        affects_terminal: false,
+        period: periodEnd,
+      });
+    }
+  }
+
+  return flags;
 }
 
 export function computeRecastPeriod(data: RawPeriodData, cfg: EngineConfig, prevPeriod?: RecastPeriod): RecastPeriod {
