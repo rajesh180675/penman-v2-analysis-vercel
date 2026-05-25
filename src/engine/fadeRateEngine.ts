@@ -17,6 +17,14 @@ import type { RecastPeriod } from "./types";
 import type { SegmentData } from "./segmentParser";
 
 // ─── Industry Priors (Indian sectors) ──────────────────────────────────────
+// Bayesian shrinkage priors for ω (fade rate persistence).
+// Calibrated from: Dechow, P.M., Hutton, A.P. & Sloan, R.G. (1999).
+// "An Empirical Assessment of the Residual Income Valuation Model."
+// Journal of Accounting & Economics, 26(1-3), 1–34. Table 5 (US medians),
+// adjusted for Indian market structure (higher persistence in IT/consumer
+// due to brand moats; lower in cyclicals due to commodity exposure).
+// See also: Penman, S.H. (2013). Financial Statement Analysis and Security
+// Valuation. 5th ed., McGraw-Hill. Ch. 14, Table 14.1.
 
 const INDUSTRY_OMEGA_PRIORS: Record<string, number> = {
   "it-services": 0.72,
@@ -191,6 +199,9 @@ function detectStructuralBreak(
   }
 
   // Critical F at 5% for k=2, typical df ≈ 4.0-5.0
+  // Approximation of F(2, n-4) at α=0.05 for small samples (n≈8-12).
+  // Ref: Chow, G.C. (1960). "Tests of Equality Between Sets of Coefficients
+  // in Two Linear Regressions." Econometrica, 28(3), 591–605.
   const critical = 4.5;
   const detected = maxF > critical;
 

@@ -1320,6 +1320,9 @@ export function computeQuality(cur: RecastPeriod, prev: RecastPeriod, data: RawP
     : 1.0; // neutral when data unavailable
   const lvgi = safe(TL_cur / Math.max(cur.bs.TA, 1), TL_prev / Math.max(prev.bs.TA, 1));
   const tata = prev.bs.TA > 0 ? ((cur.is.PAT - cur.cu.ExceptionalItemsAfterTax) - cur.cf.CFO) / prev.bs.TA : 0;
+  // Beneish M-Score (1999) — eight-variable model for earnings manipulation detection.
+  // Coefficients from: Beneish, M.D. (1999). "The Detection of Earnings Manipulation."
+  // Financial Analysts Journal, 55(5), 24–36. Table 4, Model 1 (probit).
   const beneish_mscore = -4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi + 0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi;
 
   const wc = cur.bs.CurrentAssets - cur.bs.CurrentLiabilities;
@@ -1339,12 +1342,20 @@ export function computeQuality(cur: RecastPeriod, prev: RecastPeriod, data: RawP
   const z_ebit_ta = cur.bs.TA > 0 ? ebit / cur.bs.TA : 0;
   const z_bve_tl = TL_cur > 0 ? bve / TL_cur : 0;
   const z_s_ta = cur.bs.TA > 0 ? cur.is.Sales / cur.bs.TA : 0;
+  // Altman Z'-Score (1993) — revised model for private/non-manufacturing firms.
+  // Coefficients from: Altman, E.I. (1993). Corporate Financial Distress and
+  // Bankruptcy. 2nd ed., Wiley. Chapter 8 (Z'-Score replaces market cap/TL
+  // with BVE/TL for non-public applicability).
   const altman_zprime = 0.717 * z_wc_ta + 0.847 * z_re_ta + 3.107 * z_ebit_ta + 0.420 * z_bve_tl + 0.998 * z_s_ta;
 
   // Zmijewski (1984)
   const zm_roa = cur.bs.TA > 0 ? cur.is.PAT / cur.bs.TA : 0;
   const zm_lev = cur.bs.TA > 0 ? TL_cur / cur.bs.TA : 0;
   const zm_liq = cur.bs.CurrentLiabilities > 0 ? cur.bs.CurrentAssets / cur.bs.CurrentLiabilities : 0;
+  // Zmijewski (1984) — probit bankruptcy prediction model.
+  // Coefficients from: Zmijewski, M.E. (1984). "Methodological Issues Related
+  // to the Estimation of Financial Distress Prediction Models."
+  // Journal of Accounting Research, 22(Supplement), 59–82. Table 2.
   const zm_x = -4.336 - 4.513 * zm_roa + 5.679 * zm_lev + 0.004 * zm_liq;
   const zm_prob = stdNormCdf(zm_x);
 
@@ -1358,6 +1369,10 @@ export function computeQuality(cur: RecastPeriod, prev: RecastPeriod, data: RawP
   const chinDen = Math.abs(niCur) + Math.abs(prev.is.PAT - prev.cu.ExceptionalItemsAfterTax);
   const chin = chinDen > 0 ? (niCur - (prev.is.PAT - prev.cu.ExceptionalItemsAfterTax)) / chinDen : 0;
   const size = Math.log(Math.max(cur.bs.TA, 1));
+  // Ohlson O-Score (1980) — logit bankruptcy prediction model, adapted for India.
+  // Coefficients from: Ohlson, J.A. (1980). "Financial Ratios and the
+  // Probabilistic Prediction of Bankruptcy." Journal of Accounting Research,
+  // 18(1), 109–131. Table 4, Model 1.
   const oScore =
     -1.32
     - 0.407 * size
