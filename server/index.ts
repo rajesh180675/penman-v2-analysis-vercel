@@ -1,5 +1,7 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import * as path from "node:path";
 import * as os from "node:os";
 import marketDataRouter from "./routes/marketData";
@@ -15,9 +17,60 @@ function isSafeSegment(s: string): boolean {
   return !/[\/\\]/.test(s) && !s.includes("..") && s.length > 0 && s.length < 128;
 }
 
-// Middleware
-app.use(cors({ origin: true }));
-app.use(express.json({ limit: "50mb" }));
+// ── Security hardening ────────────────────────────────────────────────
+//
+// This server binds to localhost and serves the user's own Vite dev session.
+// Even so, treat it as a real HTTP surface — a hostile webpage opened in the
+// same browser can issue requests to localhost:3001 unless we constrain it.
+//
+// 1) CORS: allow only loopback origins. The dev server may be reached from
+//    127.0.0.1 or localhost (with or without an explicit port), and in
+//    LAN-debug mode from the host's own IP. Any other origin is rejected.
+// 2) Helmet: standard security headers (X-Content-Type-Options, etc.).
+//    crossOriginResourcePolicy is permissive because the API serves JSON
+//    consumed by the same-origin Vite dev server.
+// 3) Body limit: dropped from 50mb (DoS-y) to 2mb. The audit pipeline
+//    handles large uploads via Vercel Blob, not via this endpoint.
+// 4) Per-IP rate limit: 600 req/min/IP — generous for normal use, blocks
+//    runaway loops or hostile pages from saturating the data store.
+
+const ALLOWED_ORIGIN_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+const corsAllowLanIp = process.env.LOCAL_SERVER_ALLOW_LAN_IP || ""; // e.g. "192.168.1.42"
+if (corsAllowLanIp) ALLOWED_ORIGIN_HOSTS.add(corsAllowLanIp);
+
+app.use(helmet({
+  // The API returns JSON only and is consumed by the local Vite frontend; a
+  // strict default-src CSP from the API itself is unnecessary, but keep the
+  // other headers (XSS, MIME sniffing, frame, referrer).
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
+
+app.use(cors({
+  origin(origin, callback) {
+    // Tools like curl / server-to-server callers send no Origin header — allow.
+    if (!origin) return callback(null, true);
+    try {
+      const u = new URL(origin);
+      if (ALLOWED_ORIGIN_HOSTS.has(u.hostname)) return callback(null, true);
+    } catch {
+      // Invalid Origin header — reject.
+    }
+    return callback(new Error(`Origin '${origin}' not permitted by local CORS policy.`));
+  },
+  credentials: false,
+}));
+
+app.use(express.json({ limit: "2mb" }));
+
+const apiLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 600,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { ok: false, error: "Too many requests — local rate limit exceeded." },
+});
+app.use("/api/", apiLimiter);
 
 // Routes — mirror the Vercel api/ structure
 app.use("/api/market-data", marketDataRouter);
