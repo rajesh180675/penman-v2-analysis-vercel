@@ -6,7 +6,7 @@
  * Data is isolated in a temp directory, cleaned up after each suite.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { createServer, type Server } from "node:http";
+import type { Server } from "node:http";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
