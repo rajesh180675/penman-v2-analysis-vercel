@@ -1,0 +1,1243 @@
+{
+  "generated_at": "2026-05-25T12:30:08.270Z",
+  "source": "scripts/generate-nbfc-sidecar.ts",
+  "lgd": [
+    {
+      "fiscal_label": "FY2018",
+      "gross_carrying": {
+        "opening": {
+          "stage1": 27470.62,
+          "stage2": 841.99,
+          "stage3": 764.41,
+          "total": 29077.01
+        },
+        "new_business": {
+          "stage1": 29784.88,
+          "stage2": 0,
+          "stage3": 0,
+          "total": 29784.88
+        },
+        "credit_worthiness_transfer": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": 0,
+          "total": 0
+        },
+        "derecognised": {
+          "stage1": -26072.86,
+          "stage2": -817.7,
+          "stage3": -647.94,
+          "total": -27538.5
+        },
+        "writeoff": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": -36.98,
+          "total": -36.98
+        },
+        "transfer_to_s1": {
+          "stage1": 0.41,
+          "stage2": -0.31,
+          "stage3": -0.1,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": -778.95,
+          "stage2": 779,
+          "stage3": -0.05,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": -1193.24,
+          "stage2": -24.55,
+          "stage3": 1217.79,
+          "total": null
+        },
+        "closing": {
+          "stage1": 29210.86,
+          "stage2": 778.43,
+          "stage3": 1297.12,
+          "total": 31286.41
+        }
+      },
+      "ecl": {
+        "opening": {
+          "stage1": 395.16,
+          "stage2": 12.24,
+          "stage3": 126.38,
+          "total": 533.78
+        },
+        "new_business": {
+          "stage1": 433.6,
+          "stage2": 0,
+          "stage3": 0,
+          "total": 433.6
+        },
+        "credit_worthiness_transfer": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": -62.23,
+          "total": -62.23
+        },
+        "derecognised": {
+          "stage1": -375.49,
+          "stage2": -11.91,
+          "stage3": 142.38,
+          "total": -245.02
+        },
+        "writeoff": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": -36.98,
+          "total": -36.98
+        },
+        "transfer_to_s1": {
+          "stage1": 0.17,
+          "stage2": -0.02,
+          "stage3": -0.15,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": -11.26,
+          "stage2": 11.26,
+          "stage3": 0,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": -29.7,
+          "stage2": -0.31,
+          "stage3": 30.01,
+          "total": null
+        },
+        "closing": {
+          "stage1": 412.47,
+          "stage2": 11.26,
+          "stage3": 199.4,
+          "total": 623.14
+        }
+      }
+    },
+    {
+      "fiscal_label": "FY2019",
+      "gross_carrying": {
+        "opening": {
+          "stage1": 28073.5,
+          "stage2": 771,
+          "stage3": 1287.16,
+          "total": 30131.66
+        },
+        "new_business": {
+          "stage1": 32587.41,
+          "stage2": 0,
+          "stage3": 0,
+          "total": 32587.41
+        },
+        "credit_worthiness_transfer": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": 0,
+          "total": 0
+        },
+        "derecognised": {
+          "stage1": -25177.05,
+          "stage2": -753.84,
+          "stage3": -1176.22,
+          "total": -27107.12
+        },
+        "writeoff": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": -25.89,
+          "total": -25.89
+        },
+        "transfer_to_s1": {
+          "stage1": 0.03,
+          "stage2": -0.03,
+          "stage3": 0,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": -891.58,
+          "stage2": 891.58,
+          "stage3": 0,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": -830.4,
+          "stage2": -17.16,
+          "stage3": 847.56,
+          "total": null
+        },
+        "closing": {
+          "stage1": 33761.91,
+          "stage2": 891.55,
+          "stage3": 932.6,
+          "total": 35586.06
+        }
+      },
+      "ecl": {
+        "opening": {
+          "stage1": 407.79,
+          "stage2": 11.24,
+          "stage3": 190.1,
+          "total": 609.13
+        },
+        "new_business": {
+          "stage1": 478.7,
+          "stage2": 0,
+          "stage3": 0,
+          "total": 478.7
+        },
+        "credit_worthiness_transfer": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": 100.37,
+          "total": 100.37
+        },
+        "derecognised": {
+          "stage1": -367.98,
+          "stage2": -10.98,
+          "stage3": -147.43,
+          "total": -526.4
+        },
+        "writeoff": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": -25.89,
+          "total": -25.89
+        },
+        "transfer_to_s1": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": 0,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": -13.05,
+          "stage2": 13.05,
+          "stage3": 0,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": -12.1,
+          "stage2": -0.25,
+          "stage3": 12.36,
+          "total": null
+        },
+        "closing": {
+          "stage1": 493.36,
+          "stage2": 13.06,
+          "stage3": 129.5,
+          "total": 635.91
+        }
+      }
+    },
+    {
+      "fiscal_label": "FY2020",
+      "gross_carrying": {
+        "opening": {
+          "stage1": 33761.91,
+          "stage2": 891.55,
+          "stage3": 932.6,
+          "total": 35586.06
+        },
+        "new_business": {
+          "stage1": 41456.14,
+          "stage2": 0,
+          "stage3": 0,
+          "total": 41456.14
+        },
+        "credit_worthiness_transfer": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": 0,
+          "total": 0
+        },
+        "derecognised": {
+          "stage1": -32269.42,
+          "stage2": -796.71,
+          "stage3": -747.94,
+          "total": -33814.07
+        },
+        "writeoff": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": -59.92,
+          "total": -59.92
+        },
+        "transfer_to_s1": {
+          "stage1": 0.1,
+          "stage2": -0.1,
+          "stage3": 0,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": -654,
+          "stage2": 654,
+          "stage3": 0,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": -679.92,
+          "stage2": -94.49,
+          "stage3": 774.41,
+          "total": null
+        },
+        "closing": {
+          "stage1": 41614.81,
+          "stage2": 654.25,
+          "stage3": 899.15,
+          "total": 43168.21
+        }
+      },
+      "ecl": {
+        "opening": {
+          "stage1": 493.36,
+          "stage2": 13.06,
+          "stage3": 129.5,
+          "total": 635.91
+        },
+        "new_business": {
+          "stage1": 433.81,
+          "stage2": 0,
+          "stage3": 0,
+          "total": 433.81
+        },
+        "credit_worthiness_transfer": {
+          "stage1": 10.03,
+          "stage2": -1.78,
+          "stage3": 116.51,
+          "total": 124.75
+        },
+        "derecognised": {
+          "stage1": -472.8,
+          "stage2": -11.62,
+          "stage3": -107.41,
+          "total": -591.83
+        },
+        "writeoff": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": -59.92,
+          "total": -59.92
+        },
+        "transfer_to_s1": {
+          "stage1": 0.01,
+          "stage2": -0.01,
+          "stage3": 0,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": -9.82,
+          "stage2": 9.82,
+          "stage3": 0,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": -15.48,
+          "stage2": -1.41,
+          "stage3": 16.89,
+          "total": null
+        },
+        "closing": {
+          "stage1": 439.1,
+          "stage2": 8.06,
+          "stage3": 95.56,
+          "total": 542.72
+        }
+      }
+    },
+    {
+      "fiscal_label": "FY2021",
+      "gross_carrying": {
+        "opening": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "new_business": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "credit_worthiness_transfer": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "derecognised": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "writeoff": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s1": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "closing": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        }
+      },
+      "ecl": {
+        "opening": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "new_business": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "credit_worthiness_transfer": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "derecognised": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "writeoff": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s1": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "closing": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        }
+      }
+    },
+    {
+      "fiscal_label": "FY2022",
+      "gross_carrying": {
+        "opening": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "new_business": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "credit_worthiness_transfer": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "derecognised": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "writeoff": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s1": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "closing": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        }
+      },
+      "ecl": {
+        "opening": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "new_business": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "credit_worthiness_transfer": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "derecognised": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "writeoff": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s1": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "closing": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        }
+      }
+    },
+    {
+      "fiscal_label": "FY2023",
+      "gross_carrying": {
+        "opening": {
+          "stage1": 606426.36,
+          "stage2": 24822.12,
+          "stage3": 19963.34,
+          "total": 651211.82
+        },
+        "new_business": {
+          "stage1": 765822.86,
+          "stage2": 11.09,
+          "stage3": 4.13,
+          "total": 765838.08
+        },
+        "credit_worthiness_transfer": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": 0,
+          "total": 0
+        },
+        "derecognised": {
+          "stage1": -666708.09,
+          "stage2": -19915.57,
+          "stage3": -17458.9,
+          "total": -704082.56
+        },
+        "writeoff": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": -2888.62,
+          "total": -2888.62
+        },
+        "transfer_to_s1": {
+          "stage1": 779.63,
+          "stage2": -670.93,
+          "stage3": -108.69,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": -9318.03,
+          "stage2": 9336.38,
+          "stage3": -18.35,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": -23658.07,
+          "stage2": -2560.42,
+          "stage3": 26218.49,
+          "total": null
+        },
+        "closing": {
+          "stage1": 673344.66,
+          "stage2": 11022.67,
+          "stage3": 25711.4,
+          "total": 710078.73
+        }
+      },
+      "ecl": {
+        "opening": {
+          "stage1": 5326.58,
+          "stage2": 759.99,
+          "stage3": 3687.64,
+          "total": 9774.21
+        },
+        "new_business": {
+          "stage1": 6048.97,
+          "stage2": 0.67,
+          "stage3": 1.34,
+          "total": 6050.98
+        },
+        "credit_worthiness_transfer": {
+          "stage1": 85.54,
+          "stage2": 126.03,
+          "stage3": 3746.98,
+          "total": 3958.55
+        },
+        "derecognised": {
+          "stage1": -5868.86,
+          "stage2": -298.37,
+          "stage3": -1828.22,
+          "total": -7995.45
+        },
+        "writeoff": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": -2888.62,
+          "total": -2888.62
+        },
+        "transfer_to_s1": {
+          "stage1": 17.35,
+          "stage2": -26.75,
+          "stage3": -90.27,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": -41.11,
+          "stage2": 42.5,
+          "stage3": -18.52,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": -305.09,
+          "stage2": -472.48,
+          "stage3": 1034.66,
+          "total": null
+        },
+        "closing": {
+          "stage1": 5263.38,
+          "stage2": 131.59,
+          "stage3": 3644.99,
+          "total": 9039.96
+        }
+      }
+    },
+    {
+      "fiscal_label": "FY2024",
+      "gross_carrying": {
+        "opening": {
+          "stage1": 616703.14,
+          "stage2": 9941.23,
+          "stage3": 23985.95,
+          "total": 650630.32
+        },
+        "new_business": {
+          "stage1": 877558.94,
+          "stage2": 0,
+          "stage3": 0,
+          "total": 877558.94
+        },
+        "credit_worthiness_transfer": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": 0,
+          "total": 0
+        },
+        "derecognised": {
+          "stage1": -722521.24,
+          "stage2": -7304.45,
+          "stage3": -18022.98,
+          "total": -747848.67
+        },
+        "writeoff": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": -264.8,
+          "total": -264.8
+        },
+        "transfer_to_s1": {
+          "stage1": 5.95,
+          "stage2": -4.58,
+          "stage3": -1.37,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": -14547.97,
+          "stage2": 14548.32,
+          "stage3": -0.35,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": -17529.45,
+          "stage2": -1619.4,
+          "stage3": 19148.83,
+          "total": null
+        },
+        "closing": {
+          "stage1": 739669.37,
+          "stage2": 15561.12,
+          "stage3": 24845.28,
+          "total": 780075.77
+        }
+      },
+      "ecl": {
+        "opening": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "new_business": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "credit_worthiness_transfer": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "derecognised": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "writeoff": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s1": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "closing": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        }
+      }
+    },
+    {
+      "fiscal_label": "FY2025",
+      "gross_carrying": {
+        "opening": {
+          "stage1": 739669.37,
+          "stage2": 15561.14,
+          "stage3": 24845.28,
+          "total": 780075.79
+        },
+        "new_business": {
+          "stage1": 1120367.99,
+          "stage2": 0.01,
+          "stage3": 0,
+          "total": 1120368
+        },
+        "credit_worthiness_transfer": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": 0,
+          "total": 0
+        },
+        "derecognised": {
+          "stage1": -769173.24,
+          "stage2": -11361.36,
+          "stage3": -14762.48,
+          "total": -795297.08
+        },
+        "writeoff": {
+          "stage1": 0,
+          "stage2": 0,
+          "stage3": -1268.62,
+          "total": -1268.62
+        },
+        "transfer_to_s1": {
+          "stage1": 27.43,
+          "stage2": -25.84,
+          "stage3": -1.59,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": -5117.77,
+          "stage2": 5118.44,
+          "stage3": -0.66,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": -24870.86,
+          "stage2": -3320.89,
+          "stage3": 28191.76,
+          "total": null
+        },
+        "closing": {
+          "stage1": 1060902.92,
+          "stage2": 5971.5,
+          "stage3": 37003.69,
+          "total": 1103878.11
+        }
+      },
+      "ecl": {
+        "opening": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "new_business": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "credit_worthiness_transfer": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "derecognised": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "writeoff": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s1": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s2": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "transfer_to_s3": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        },
+        "closing": {
+          "stage1": null,
+          "stage2": null,
+          "stage3": null,
+          "total": null
+        }
+      }
+    }
+  ],
+  "rbi_nhb": [
+    {
+      "fiscal_label": "FY2025",
+      "period_code": "202503",
+      "gnpa_cr": 3700.37,
+      "nnpa_cr": 3036.66,
+      "nnpa_pct": 2.84,
+      "crar_pct": 23.7,
+      "tier1_pct": 22.95,
+      "tier2_pct": 0.75,
+      "advance_capital_market_cr": 60.22,
+      "advance_real_estate_cr": 38.65,
+      "gnpa_opening_cr": 2484.53,
+      "gnpa_additions_cr": 3039.81,
+      "gnpa_closing_cr": 3700.37,
+      "nnpa_opening_cr": 2196.95,
+      "nnpa_additions_cr": 2663.68,
+      "nnpa_closing_cr": 3036.66,
+      "provisions_opening_cr": 287.58,
+      "provisions_made_cr": 376.13,
+      "provisions_closing_cr": 663.71
+    },
+    {
+      "fiscal_label": "FY2024",
+      "period_code": "202403",
+      "gnpa_cr": 2484.53,
+      "nnpa_cr": 2196.95,
+      "nnpa_pct": 2.93,
+      "crar_pct": 30.37,
+      "tier1_pct": 29.61,
+      "tier2_pct": 0.76,
+      "advance_capital_market_cr": 124.69,
+      "advance_real_estate_cr": 1.77,
+      "gnpa_opening_cr": 2398.6,
+      "gnpa_additions_cr": 1973.93,
+      "gnpa_closing_cr": 2484.53,
+      "nnpa_opening_cr": 2152.12,
+      "nnpa_additions_cr": 1932.83,
+      "nnpa_closing_cr": 2196.95,
+      "provisions_opening_cr": 246.47,
+      "provisions_made_cr": 41.11,
+      "provisions_closing_cr": 287.58
+    },
+    {
+      "fiscal_label": "FY2023",
+      "period_code": "202303",
+      "gnpa_cr": 2398.6,
+      "nnpa_cr": 2152.12,
+      "nnpa_pct": 3.45,
+      "crar_pct": 31.77,
+      "tier1_pct": 31.01,
+      "tier2_pct": 0.76,
+      "advance_capital_market_cr": 0,
+      "advance_real_estate_cr": 2.17,
+      "gnpa_opening_cr": 1737.22,
+      "gnpa_additions_cr": 2243.14,
+      "gnpa_closing_cr": 2398.6,
+      "nnpa_opening_cr": 1553.28,
+      "nnpa_additions_cr": 2180.61,
+      "nnpa_closing_cr": 2152.12,
+      "provisions_opening_cr": 183.94,
+      "provisions_made_cr": 62.53,
+      "provisions_closing_cr": 246.47
+    },
+    {
+      "fiscal_label": "FY2022",
+      "period_code": "202203",
+      "gnpa_cr": 1737.22,
+      "nnpa_cr": 1553.28,
+      "nnpa_pct": 2.71,
+      "crar_pct": 29.97,
+      "tier1_pct": 29.1,
+      "tier2_pct": 0.87,
+      "advance_capital_market_cr": 0,
+      "advance_real_estate_cr": 3.19,
+      "gnpa_opening_cr": 464.14,
+      "gnpa_additions_cr": 1679.69,
+      "gnpa_closing_cr": 1737.22,
+      "nnpa_opening_cr": 403.59,
+      "nnpa_additions_cr": 1556.3,
+      "nnpa_closing_cr": 1553.28,
+      "provisions_opening_cr": 60.55,
+      "provisions_made_cr": 123.39,
+      "provisions_closing_cr": 183.94
+    },
+    {
+      "fiscal_label": "FY2021",
+      "period_code": "202103",
+      "gnpa_cr": 464.14,
+      "nnpa_cr": 403.59,
+      "nnpa_pct": 0.78,
+      "crar_pct": 27.39,
+      "tier1_pct": 26.31,
+      "tier2_pct": 1.08,
+      "advance_capital_market_cr": 0,
+      "advance_real_estate_cr": 4.4,
+      "gnpa_opening_cr": 899.15,
+      "gnpa_additions_cr": 265.44,
+      "gnpa_closing_cr": 464.14,
+      "nnpa_opening_cr": 803.59,
+      "nnpa_additions_cr": 265.44,
+      "nnpa_closing_cr": 403.59,
+      "provisions_opening_cr": 95.56,
+      "provisions_made_cr": 0,
+      "provisions_closing_cr": 60.55
+    },
+    {
+      "fiscal_label": "FY2020",
+      "period_code": "202003",
+      "gnpa_cr": 899.15,
+      "nnpa_cr": 763.59,
+      "nnpa_pct": 1.96,
+      "crar_pct": 25.47,
+      "tier1_pct": 24.3,
+      "tier2_pct": 1.17,
+      "advance_capital_market_cr": 0,
+      "advance_real_estate_cr": 5.57,
+      "gnpa_opening_cr": 932.6,
+      "gnpa_additions_cr": 848.74,
+      "gnpa_closing_cr": 899.15,
+      "nnpa_opening_cr": 803.1,
+      "nnpa_additions_cr": 848.74,
+      "nnpa_closing_cr": 803.59,
+      "provisions_opening_cr": 129.5,
+      "provisions_made_cr": 0,
+      "provisions_closing_cr": 95.56
+    },
+    {
+      "fiscal_label": "FY2019",
+      "period_code": "201903",
+      "gnpa_cr": 932.6,
+      "nnpa_cr": 803.1,
+      "nnpa_pct": 2.39,
+      "crar_pct": 26.05,
+      "tier1_pct": 25.61,
+      "tier2_pct": 0.44,
+      "advance_capital_market_cr": 0,
+      "advance_real_estate_cr": 0,
+      "gnpa_opening_cr": 1287.16,
+      "gnpa_additions_cr": 840.41,
+      "gnpa_closing_cr": 932.6,
+      "nnpa_opening_cr": 1097.06,
+      "nnpa_additions_cr": 840.41,
+      "nnpa_closing_cr": 803.1,
+      "provisions_opening_cr": 190.1,
+      "provisions_made_cr": 0,
+      "provisions_closing_cr": 129.5
+    },
+    {
+      "fiscal_label": "FY2018",
+      "period_code": "201803",
+      "gnpa_cr": 1287.16,
+      "nnpa_cr": 1097.06,
+      "nnpa_pct": 3.84,
+      "crar_pct": 26.26,
+      "tier1_pct": 25.49,
+      "tier2_pct": 0.77,
+      "advance_capital_market_cr": 30,
+      "advance_real_estate_cr": 13.53,
+      "gnpa_opening_cr": 0,
+      "gnpa_additions_cr": 0,
+      "gnpa_closing_cr": 0,
+      "nnpa_opening_cr": 0,
+      "nnpa_additions_cr": 0,
+      "nnpa_closing_cr": 0,
+      "provisions_opening_cr": 0,
+      "provisions_made_cr": 0,
+      "provisions_closing_cr": 0
+    },
+    {
+      "fiscal_label": "FY2017",
+      "period_code": "201703",
+      "gnpa_cr": 562.13,
+      "nnpa_cr": 460.2,
+      "nnpa_pct": 1.69,
+      "crar_pct": 24.88,
+      "tier1_pct": 21.78,
+      "tier2_pct": 3.1,
+      "advance_capital_market_cr": 0,
+      "advance_real_estate_cr": 18.08,
+      "gnpa_opening_cr": 702.46,
+      "gnpa_additions_cr": 475.44,
+      "gnpa_closing_cr": 562.13,
+      "nnpa_opening_cr": 600.53,
+      "nnpa_additions_cr": 475.44,
+      "nnpa_closing_cr": 460.2,
+      "provisions_opening_cr": 101.93,
+      "provisions_made_cr": 0,
+      "provisions_closing_cr": 101.93
+    },
+    {
+      "fiscal_label": "FY2016",
+      "period_code": "201603",
+      "gnpa_cr": 702.46,
+      "nnpa_cr": 600.51,
+      "nnpa_pct": 2.46,
+      "crar_pct": 24.48,
+      "tier1_pct": 20.92,
+      "tier2_pct": 3.56,
+      "advance_capital_market_cr": 0,
+      "advance_real_estate_cr": 17,
+      "gnpa_opening_cr": 0,
+      "gnpa_additions_cr": 0,
+      "gnpa_closing_cr": 0,
+      "nnpa_opening_cr": 0,
+      "nnpa_additions_cr": 0,
+      "nnpa_closing_cr": 0,
+      "provisions_opening_cr": 0,
+      "provisions_made_cr": 0,
+      "provisions_closing_cr": 0
+    },
+    {
+      "fiscal_label": "FY2015",
+      "period_code": "201503",
+      "gnpa_cr": 511.67,
+      "nnpa_cr": 439.13,
+      "nnpa_pct": 1.88,
+      "crar_pct": 24.78,
+      "tier1_pct": 19.96,
+      "tier2_pct": 4.82,
+      "advance_capital_market_cr": 0,
+      "advance_real_estate_cr": 3.56,
+      "gnpa_opening_cr": 0,
+      "gnpa_additions_cr": 0,
+      "gnpa_closing_cr": 0,
+      "nnpa_opening_cr": 0,
+      "nnpa_additions_cr": 0,
+      "nnpa_closing_cr": 0,
+      "provisions_opening_cr": 0,
+      "provisions_made_cr": 0,
+      "provisions_closing_cr": 0
+    },
+    {
+      "fiscal_label": "FY2014",
+      "period_code": "201403",
+      "gnpa_cr": 416.05,
+      "nnpa_cr": 343.51,
+      "nnpa_pct": 1.57,
+      "crar_pct": 24.69,
+      "tier1_pct": 18.01,
+      "tier2_pct": 6.68,
+      "advance_capital_market_cr": 0,
+      "advance_real_estate_cr": 0,
+      "gnpa_opening_cr": 0,
+      "gnpa_additions_cr": 0,
+      "gnpa_closing_cr": 0,
+      "nnpa_opening_cr": 0,
+      "nnpa_additions_cr": 0,
+      "nnpa_closing_cr": 0,
+      "provisions_opening_cr": 0,
+      "provisions_made_cr": 0,
+      "provisions_closing_cr": 0
+    },
+    {
+      "fiscal_label": "FY2013",
+      "period_code": "201303",
+      "gnpa_cr": 525.03,
+      "nnpa_cr": 454.97,
+      "nnpa_pct": 0,
+      "crar_pct": 19.62,
+      "tier1_pct": 13.41,
+      "tier2_pct": 6.21,
+      "advance_capital_market_cr": 0,
+      "advance_real_estate_cr": 0,
+      "gnpa_opening_cr": 0,
+      "gnpa_additions_cr": 0,
+      "gnpa_closing_cr": 0,
+      "nnpa_opening_cr": 0,
+      "nnpa_additions_cr": 0,
+      "nnpa_closing_cr": 0,
+      "provisions_opening_cr": 0,
+      "provisions_made_cr": 0,
+      "provisions_closing_cr": 0
+    },
+    {
+      "fiscal_label": "FY2012",
+      "period_code": "201203",
+      "gnpa_cr": 138.95,
+      "nnpa_cr": 120.82,
+      "nnpa_pct": 0,
+      "crar_pct": 18.29,
+      "tier1_pct": 12.84,
+      "tier2_pct": 5.45,
+      "advance_capital_market_cr": 0,
+      "advance_real_estate_cr": 0,
+      "gnpa_opening_cr": 0,
+      "gnpa_additions_cr": 0,
+      "gnpa_closing_cr": 0,
+      "nnpa_opening_cr": 0,
+      "nnpa_additions_cr": 0,
+      "nnpa_closing_cr": 0,
+      "provisions_opening_cr": 0,
+      "provisions_made_cr": 0,
+      "provisions_closing_cr": 0
+    },
+    {
+      "fiscal_label": "FY2011",
+      "period_code": "201103",
+      "gnpa_cr": 46.01,
+      "nnpa_cr": 39.05,
+      "nnpa_pct": 0,
+      "crar_pct": 15.82,
+      "tier1_pct": 10.62,
+      "tier2_pct": 5.2,
+      "advance_capital_market_cr": 0,
+      "advance_real_estate_cr": 0,
+      "gnpa_opening_cr": 0,
+      "gnpa_additions_cr": 0,
+      "gnpa_closing_cr": 0,
+      "nnpa_opening_cr": 0,
+      "nnpa_additions_cr": 0,
+      "nnpa_closing_cr": 0,
+      "provisions_opening_cr": 0,
+      "provisions_made_cr": 0,
+      "provisions_closing_cr": 0
+    }
+  ]
+}
