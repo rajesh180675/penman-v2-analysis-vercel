@@ -371,7 +371,7 @@ async function gridViaXlsx(buffer: ArrayBuffer): Promise<string[][]> {
   // with exceljs or a CDN-pinned SheetJS build.
   const { default: XLSX } = await import("xlsx");
   const uint8 = new Uint8Array(buffer);
-  let wb: any;
+  let wb: import("xlsx").WorkBook;
   try {
     wb = XLSX.read(uint8, {
       type: "array",
@@ -1047,7 +1047,7 @@ export async function parseCapitalineZip(
 
   trace("parse", "zipLoad:complete", { periods: periods.length, companyId });
 
-  return { periods, debug, segmentData: await parseSegmentFilesFromZip(fileEntries as any) };
+  return { periods, debug, segmentData: await parseSegmentFilesFromZip(fileEntries as unknown as Parameters<typeof parseSegmentFilesFromZip>[0]) };
 }
 
 function segmentTypeFromCapitalineFilename(filename: string): SegmentData["segmentationType"] | null {
@@ -1083,7 +1083,7 @@ async function parseSegmentFilesFromZip(fileEntries: Array<{ name: string; async
     try {
       const name = entry.name as string;
       const fileType = segmentTypeFromCapitalineFilename(name);
-      const text = await (entry as any).async("text");
+      const text = await entry.async("text");
       const parsed = parseSegmentFinanceHTML(text);
       if (!parsed || !fileType) continue;
 
