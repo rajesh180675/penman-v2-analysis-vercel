@@ -13,6 +13,20 @@ The task is to make a Penman-style valuation run defensible under review:
 
 Primary references:
 - operations / build / deploy: [`docs/OPERATIONS_MANUAL.md`](./docs/OPERATIONS_MANUAL.md)
+
+## Rigor Feature Flags
+
+The 7-gap rigor ladder rollout (plan v4) introduced four runtime kill switches read from `import.meta.env.VITE_RIGOR_*`. Default is enabled. Set the literal string `"false"` (case-insensitive) to disable. Disabling a flag turns its gate into "compute and surface but don't gate rigor" (soft-block). Flip in Vercel env to disable a gate without redeploying code.
+
+| Flag | Gate | Affects |
+|---|---|---|
+| `VITE_RIGOR_CONCEPT_IDENTITY_BLOCK` | Gap 1 / ADR-001 | Caps rigor at `structurally-reconciled` when the concept identity layer reports unresolved critical conflicts. |
+| `VITE_RIGOR_ECONOMIC_SANITY_BLOCK` | Gap 2 / ADR-002 | Caps rigor at `structurally-reconciled` when no clean anchor period is found within `MAX_ANCHOR_LOOKBACK_PERIODS` (= 3). |
+| `VITE_RIGOR_TERMINAL_ELIGIBILITY_BLOCK` | Gap 3 / ADR-003 | Caps rigor at `economically-plausible` when the unusual-item manifest flags a terminal-blocking classification. |
+| `VITE_RIGOR_RESIDUAL_SCORE_DOWNGRADE` | Gap 7 / PR-G | Downgrades `production-ready` to `valuation-eligible` when the run's overall residual score exceeds 40. |
+
+Telemetry: each gate emits a `trace("config", "...")` event when it fires; sanitizer rejections of stale envelopes (v8 → v12) emit `recordSchemaMigration(...)` events visible in the Debug panel.
+
 - beginner walkthrough (Bajaj Finance case study): [`docs/CASE_STUDY_BAJAJ_FINANCE.md`](./docs/CASE_STUDY_BAJAJ_FINANCE.md)
 
 - plan: [`docs/financial-model-rigor-plan.md`](./docs/financial-model-rigor-plan.md)
