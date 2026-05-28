@@ -22,6 +22,9 @@ import GlossaryModal from "./components/GlossaryModal";
 import KeyboardShortcutsModal from "./components/KeyboardShortcutsModal";
 import CommandPalette from "./components/CommandPalette";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useCommandPaletteShortcut } from "./hooks/useCommandPaletteShortcut";
+import { useRegistryPersistence } from "./hooks/useRegistryPersistence";
+import { useUrlSync } from "./hooks/useUrlSync";
 import DataEntry from "./components/DataEntry";
 const RecastStatements = lazy(() => import("./components/RecastStatements"));
 const RatioReport = lazy(() => import("./components/RatioReport"));
@@ -36,9 +39,8 @@ import {
   rememberAuditRun,
 } from "./lib/audit";
 import { listWorkspaceCompanies, rememberWorkspaceAnalysis } from "./lib/researchWorkspace";
-import { fetchSharedComparisonRegistryWithStatus, formatSharedApiStatus, SharedApiResult, syncSharedComparisonRegistryWithStatus, syncWorkspaceAnalysis, syncWorkspaceProfile } from "./lib/sharedResearchApi";
-import { persistCompanyRegistry, readPersistedCompanyRegistry } from "./lib/companyRegistryStore";
-import { mergeCompanyRegistries } from "./lib/companyRegistrySnapshot";
+import { formatSharedApiStatus, syncWorkspaceAnalysis, syncWorkspaceProfile } from "./lib/sharedResearchApi";
+import { readPersistedCompanyRegistry } from "./lib/companyRegistryStore";
 import { buildAnalysisTraceability } from "./engine/analysisTraceability";
 import { resolveNseSymbol, resolveFolderFromSymbol } from "./engine/nseSymbolRegistry";
 import { buildAnalysisPublicationSnapshot } from "./lib/publication/analysisPublicationSnapshot";
@@ -127,21 +129,11 @@ export function App() {
   });
 
   // Cmd+K / Ctrl+K opens the command palette (works even when typing)
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setPaletteOpen((o) => !o);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
+  useCommandPaletteShortcut(setPaletteOpen);
   const [registry, setRegistry] = useState<CompanyRegistry>(() => readPersistedCompanyRegistry());
-  const [comparisonRegistryHydrated, setComparisonRegistryHydrated] = useState(false);
   const [auditMeta, setAuditMeta] = useState<AuditSubmissionMeta | null>(null);
   const [workspaceCompanyId, setWorkspaceCompanyId] = useState<string | null>(null);
-  const [sharedRegistryStatus, setSharedRegistryStatus] = useState<SharedApiResult<CompanyRegistry> | null>(null);
+  const { sharedRegistryStatus } = useRegistryPersistence(registry, setRegistry);
 
   // Live market data — fetched at App level so Dashboard + Valuation both have it
   const { snapshot: liveMarketData } = useLiveMarketData({
@@ -379,52 +371,13 @@ export function App() {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const hydrateSharedComparisonRegistry = async () => {
-      const result = await fetchSharedComparisonRegistryWithStatus();
-      if (cancelled) return;
-      setSharedRegistryStatus(result as SharedApiResult<CompanyRegistry>);
-      if (result.data) {
-        setRegistry((prev) => mergeCompanyRegistries(prev, result.data as CompanyRegistry));
-      }
-      setComparisonRegistryHydrated(true);
-    };
-
-    void hydrateSharedComparisonRegistry();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    // Debounce the localStorage write — registry mutates several times during
-    // a single analysis run (recast, traceability, comparison sync), and each
-    // write serializes the full registry. Coalescing into one write per 250ms
-    // turns N writes into 1 without changing observable behavior.
-    const timer = window.setTimeout(() => persistCompanyRegistry(registry), 250);
-    return () => window.clearTimeout(timer);
-  }, [registry]);
-
-  useEffect(() => {
-    if (!comparisonRegistryHydrated || Object.keys(registry.companies).length === 0) return;
-    const timer = window.setTimeout(() => {
-      void syncSharedComparisonRegistryWithStatus(registry).then((result) => setSharedRegistryStatus(result as SharedApiResult<CompanyRegistry>));
-    }, 600);
-    return () => window.clearTimeout(timer);
-  }, [comparisonRegistryHydrated, registry]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    params.set("rf", (config.risk_free_rate * 100).toFixed(2));
-    params.set("erp", (config.equity_risk_premium * 100).toFixed(2));
-    if (config.ticker) params.set("company", config.ticker);
-    params.set("tab", activeTab);
-    params.set("dark", darkMode ? "1" : "0");
-    const next = `${window.location.pathname}?${params.toString()}`;
-    window.history.replaceState({}, "", next);
-  }, [config.risk_free_rate, config.equity_risk_premium, config.ticker, activeTab, darkMode]);
+  useUrlSync({
+    riskFreeRate: config.risk_free_rate,
+    equityRiskPremium: config.equity_risk_premium,
+    ticker: config.ticker,
+    activeTab,
+    darkMode,
+  });
 
   // Keep the registry entry's recastData in sync whenever the memo re-derives it
   // (i.e. when config changes or new data is uploaded).
