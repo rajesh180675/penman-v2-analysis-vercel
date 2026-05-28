@@ -118,7 +118,7 @@ export function evaluateParserFidelity(params: {
 
     const passRate = checks.filter((check) => check.passed).length / checks.length;
     const score = clampScore((passRate * 100) - (warningCount * 5) - (parserErrorCount * 8));
-    const status: ParserFidelityStatus = periodCount === 0 || fileCount === 0 || score < 60
+    const status: ParserFidelityStatus = periodCount === 0 || fileCount === 0 || score < 70
       ? "failed"
       : score < 85 || warningCount > 0 || parserErrorCount > 0
         ? "degraded"
@@ -182,7 +182,7 @@ export function evaluateParserFidelity(params: {
 
   const passRate = checks.filter((check) => check.passed).length / checks.length;
   const score = clampScore((passRate * 100) - (warningCount * 5) - (errorCount * 8));
-  const status: ParserFidelityStatus = !hasPeriods || score < 60
+  const status: ParserFidelityStatus = !hasPeriods || score < 70
     ? "failed"
     : score < 85 || warningCount > 0 || errorCount > 0
       ? "degraded"
