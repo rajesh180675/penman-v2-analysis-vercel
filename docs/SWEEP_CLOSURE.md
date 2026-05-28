@@ -96,7 +96,7 @@ All within bundle-budget thresholds.
 Documented in `docs/architecture/plans/README.md`. Each was costed and rejected as not worth shipping in this sweep:
 
 1. `noUncheckedIndexedAccess` (1522 errors) — multi-week, low marginal trust gain
-2. `exactOptionalPropertyTypes` (84 errors) — same reasoning
+2. `exactOptionalPropertyTypes` flag flip — foundation widening shipped in PR #191 (146 files, 5490 insertions, all `?: T` widened to `?: T | undefined`). Flag itself stays off because the remaining 11 errors are at engine-level construction sites where `ValuationResult.perShare`, `ForecastScenario.forecastPolicy`, etc. are built. Each needs the `prop: value` literal pattern changed to conditional-spread `...(value !== undefined && { prop: value })`. Mechanical individually, but they touch hot compute paths covered by the 1469-test suite — risks regression for low marginal type-safety gain. Foundation work makes the eventual flip a small focused PR rather than a sweep.
 3. UI surfaces for new reviewer logic — feature work, not architecture
 4. Vercel Cron worker for backup snapshots — pure scheduler ships, worker is mechanical follow-up
 5. Sentry SDK wire-up — shim ships NOOP, SDK init is 5 lines once DSN is provisioned
