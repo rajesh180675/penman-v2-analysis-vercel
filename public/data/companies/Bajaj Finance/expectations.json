@@ -1,0 +1,19 @@
+{
+  "companyId": "bajaj-finance",
+  "companyName": "Bajaj Finance Ltd",
+  "profile": "nbfc",
+  "expectedRigorLevel": "valuation-eligible",
+  "expectedParserFidelityStatus": "confirmed",
+  "expectedReconciliationStatus": "confirmed",
+  "expectedEconomicSanityStatus": "passed",
+  "expectedConceptIdentityStatus": "clean",
+  "keyMetricTolerances": {
+    "RNOA": { "min": 0.02, "max": 0.06 },
+    "AUM_growth_3y": { "min": 0.15, "max": 0.40 },
+    "GNPA": { "min": 0.005, "max": 0.025 }
+  },
+  "expectedAnomalyFlags": [],
+  "expectedUnusualItemCount": { "min": 0, "max": 5 },
+  "expectedRunsCleanWorkbook": true,
+  "notes": "Largest non-bank lender in India. Tests NBFC pipeline (D3c subsidiary + D4 LGD/RBI-NHB sidecar). RNOA-style ratios are misleading for NBFCs; AUM growth and GNPA are the right gauges. Codifies the case study at docs/CASE_STUDY_BAJAJ_FINANCE.md."
+}
