@@ -141,22 +141,65 @@
     content: none;
   }
 
-  /* Page setup — A4 landscape for data-dense reports */
+  /* Page setup — A4 portrait for data-dense reports */
   @page {
     size: A4 portrait;
-    margin: 1.5cm 1cm;
+    margin: 2cm 1.5cm;
   }
 
   @page :first {
     margin-top: 1cm;
   }
 
-  /* Footer with page numbers */
+  /* Footer: page number + reviewer citation string from CSS variable
+     set on <html> via inline style: --print-citation: "Penman V2 — RUN 2026-05-28T12:34:00Z" */
   @page {
     @bottom-center {
       content: counter(page) " / " counter(pages);
       font-size: 8pt;
       color: #94a3b8;
     }
+    @bottom-left {
+      content: var(--print-citation, "Penman V2 Analysis");
+      font-size: 7pt;
+      color: #94a3b8;
+    }
+    @bottom-right {
+      content: var(--print-retrieval-date, "");
+      font-size: 7pt;
+      color: #94a3b8;
+    }
+  }
+
+  /* Reviewer signature block — opt-in via .print-signature wrapper */
+  .print-signature {
+    page-break-before: always;
+    padding-top: 4rem;
+  }
+  .print-signature h2 {
+    font-size: 14pt !important;
+    margin-bottom: 1rem;
+  }
+  .print-signature .sig-row {
+    display: flex;
+    gap: 2rem;
+    margin-top: 2rem;
+  }
+  .print-signature .sig-row > div {
+    flex: 1;
+    border-bottom: 1px solid #1e293b;
+    min-height: 3.5rem;
+    font-size: 9pt;
+    color: #475569;
+    padding-bottom: 0.25rem;
+  }
+
+  /* Reproducibility hash (printed beneath signature for traceability) */
+  .print-hash {
+    margin-top: 2rem;
+    font-family: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+    font-size: 7pt;
+    color: #64748b;
+    word-break: break-all;
   }
 }
