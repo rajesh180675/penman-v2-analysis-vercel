@@ -17,6 +17,8 @@ import { LineageRef } from "./lineageTypes";
 import { appendRunResidualSummary, RESIDUAL_SCORE_PRODUCTION_THRESHOLD } from "../lib/residualsStore";
 import { isEnabled } from "../lib/featureFlags";
 import { trace } from "../lib/traceLogger";
+import { selectStrategy } from "./pipeline/registry";
+import "./pipeline/strategies"; // side-effect: register all PipelineStrategies
 
 export interface TraceabilityBacklogPreview {
   statement: string;
@@ -554,9 +556,25 @@ export function buildAnalysisTraceability(params: {
     parserFidelity.status === "failed",
   ].filter(Boolean).length;
 
+  // Plan 3 PR-3.5 — stamp the dispatched strategy id into the envelope so
+  // an audit can reproduce the run with the same code path. Selection is
+  // best-effort: when rawData is missing or the registry rejects the
+  // payload (e.g. malformed input), leave the field unset.
+  let pipelineStrategyId: string | undefined;
+  if (params.rawData && params.rawData.length > 0 && params.config) {
+    try {
+      pipelineStrategyId = selectStrategy(params.rawData, params.config).id;
+    } catch (err) {
+      trace("config", "pipelineStrategy:selectFailed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   return {
     schemaVersion: policyVersions.traceabilitySchemaVersion,
     generatedAt: params.generatedAt ?? new Date().toISOString(),
+    ...(pipelineStrategyId ? { pipelineStrategyId } : {}),
     runContext: {
       runId: params.runId ?? null,
       companyId: params.companyId ?? null,
