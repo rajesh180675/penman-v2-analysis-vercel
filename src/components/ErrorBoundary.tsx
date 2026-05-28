@@ -4,13 +4,13 @@ export class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { error: unknown | null }
 > {
-  state = { error: null as unknown | null };
+  override state = { error: null as unknown | null };
 
   static getDerivedStateFromError(error: unknown) {
     return { error };
   }
 
-  componentDidCatch(error: unknown, info: unknown) {
+  override componentDidCatch(error: unknown, info: unknown) {
     // eslint-disable-next-line no-console
     console.error("App crashed:", error, info);
   }
@@ -19,7 +19,7 @@ export class ErrorBoundary extends React.Component<
     this.setState({ error: null });
   };
 
-  render() {
+  override render() {
     if (this.state.error) {
       const message =
         this.state.error instanceof Error
