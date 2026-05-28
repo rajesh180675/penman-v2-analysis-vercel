@@ -91,6 +91,13 @@ type InspectorPayload = {
         skippedPeriods?: { period: string; reason: string }[];
         failedChecks?: { checkId: string; passed: boolean; severity: string }[];
       } | null;
+      unusualItemManifest?: {
+        totalUnusualImpactOnCoreOI?: number;
+        terminalEligibilityBlocked?: boolean;
+        classifications?: Array<{ category?: string; period?: string; affectsTerminalEligibility?: boolean }>;
+        unclassifiedCount?: number;
+        truncated?: boolean;
+      } | null;
       rigor?: {
         currentLevel?: string;
         currentLabel?: string;
@@ -648,6 +655,15 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
                       : ""}
                     {Array.isArray(traceability.economicSanity?.skippedPeriods) && (traceability.economicSanity?.skippedPeriods?.length ?? 0) > 0
                       ? `, skipped ${traceability.economicSanity?.skippedPeriods?.length}`
+                      : ""}
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Unusual items: <strong>{traceability.unusualItemManifest?.classifications?.length ?? 0}</strong>
+                    {traceability.unusualItemManifest?.terminalEligibilityBlocked
+                      ? ", terminal-blocked"
+                      : ""}
+                    {(traceability.unusualItemManifest?.unclassifiedCount ?? 0) > 0
+                      ? `, ${traceability.unusualItemManifest?.unclassifiedCount} unclassified`
                       : ""}
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">

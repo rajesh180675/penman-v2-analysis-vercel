@@ -107,6 +107,14 @@ Conflict classes:
 
 Persisted v8 envelopes are rejected on read; the sanitizer logs the migration via `recordSchemaMigration()` so DebugPanel can surface volume to ops. See [`docs/adr/001-concept-identity-layer.md`](adr/001-concept-identity-layer.md).
 
+## Unusual-Item Taxonomy (Schema v11, ADR-003)
+
+Envelope `2026-06-traceability-v11` adds a `unusualItemManifest` field that classifies each "exceptional / extraordinary / unusual" raw label against an ordered rule set of 11 categories (plus `unclassified` fall-through):
+
+`demerger-scheme-effect`, `discontinued-operations`, `impairment`, `asset-sale-gain-loss`, `fair-value-change`, `litigation`, `restructuring`, `one-time-tax`, `buyback`, `special-dividend`, `capital-return`.
+
+Each classification carries a category, the matched regex pattern, a rationale template, and three booleans: `affectsCoreOI`, `affectsTerminalEligibility`, `affectsCleanSurplus`. The manifest's `terminalEligibilityBlocked` flag feeds Gap 2's Check A. When `VITE_RIGOR_TERMINAL_ELIGIBILITY_BLOCK` is on (default), an unresolved terminal-blocking item caps rigor at `economically-plausible`. See [`docs/adr/003-unusual-item-taxonomy.md`](adr/003-unusual-item-taxonomy.md).
+
 ## Economic Sanity Gates (Schema v10, ADR-002)
 
 Envelope `2026-06-traceability-v10` adds an `economicSanity` field that walks periods latest → oldest until it finds a clean anchor within `MAX_ANCHOR_LOOKBACK_PERIODS` (= 3). Five per-period checks:
