@@ -11,4 +11,9 @@
 
 // Concrete strategy imports. Each module calls registerStrategy()
 // at the bottom of its file as an import side-effect.
+//
+// Order matters: industrial is the catch-all and MUST be last
+// (its matches() returns true unconditionally). Sector-specific
+// strategies prepend.
+import "./bank";
 import "./industrial";
