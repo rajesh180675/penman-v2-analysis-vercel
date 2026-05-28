@@ -79,6 +79,13 @@ function mkTraceability(status: "production-ready" | "guarded" | "blocked"): Ana
       skippedPeriods: [],
       failedChecks: [],
     },
+    unusualItemManifest: {
+      totalUnusualImpactOnCoreOI: 0,
+      terminalEligibilityBlocked: false,
+      classifications: [],
+      unclassifiedCount: 0,
+      truncated: false,
+    },
     rigor: {
       currentLevel: status === "blocked" ? "syntactically-valid" : "production-ready",
       currentLabel: status === "blocked" ? "Syntactically valid" : "Production-ready",

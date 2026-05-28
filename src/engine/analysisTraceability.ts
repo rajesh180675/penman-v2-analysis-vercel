@@ -11,6 +11,7 @@ import { detectDistress } from "./distressDetector";
 import { ConceptIdentitySummary, summarizeConceptIdentity } from "./conceptOntology";
 import { detectCorporateActions } from "./corporateActions";
 import { EconomicSanitySummary, evaluateEconomicSanity } from "./economicSanityGates";
+import { summarizeUnusualItemManifest, UnusualItemManifest } from "./unusualItemPolicy";
 import { isEnabled } from "../lib/featureFlags";
 import { trace } from "../lib/traceLogger";
 
@@ -108,6 +109,13 @@ export interface AnalysisTraceabilityEnvelope {
    *  and the `rigor.economicSanityBlock` flag is on, the run cannot
    *  reach `economically-plausible`. */
   economicSanity: EconomicSanitySummary;
+  /** Gap 3 / PR-C — unusual-item taxonomy. Each raw label classified as
+   *  "exceptional / extraordinary / unusual" by the parser is matched
+   *  against an ordered set of regex rules and emitted as a manifest
+   *  entry with rationale. `terminalEligibilityBlocked` flips when any
+   *  classification has `affectsTerminalEligibility: true`, which feeds
+   *  back into Gap 2's terminal-period contamination check. */
+  unusualItemManifest: UnusualItemManifest;
   rigor: {
     currentLevel: AnalysisRigorLevel;
     currentLabel: string;
@@ -328,15 +336,34 @@ export function buildAnalysisTraceability(params: {
   // clean anchor is found within MAX_ANCHOR_LOOKBACK_PERIODS. When no
   // clean anchor exists, status is "blocked" and rigor cannot reach
   // economically-plausible (unless the kill switch is off).
+  // Gap 3 / PR-C — unusual-item manifest is computed first so Gap 2's
+  // Check A can consume affectsTerminalEligibility flags.
+  const unusualItemManifest = summarizeUnusualItemManifest(
+    params.recastData ?? [],
+    params.rawData ?? [],
+  );
   const corporateActions = detectCorporateActions(params.rawData ?? null);
   const economicSanity = evaluateEconomicSanity(
     params.recastData ?? [],
     params.rawData ?? [],
     corporateActions,
+    unusualItemManifest.classifications,
   );
   const economicSanityBlockEnabled = isEnabled("rigor.economicSanityBlock");
   const economicSanityBlocksPlausible =
     economicSanityBlockEnabled && economicSanity.status === "blocked";
+  const terminalEligibilityBlockEnabled = isEnabled("rigor.terminalEligibilityBlock");
+  const terminalEligibilityBlocksValuation =
+    terminalEligibilityBlockEnabled && unusualItemManifest.terminalEligibilityBlocked;
+  if (unusualItemManifest.classifications.length > 0) {
+    trace("config", "unusualItemManifest:built", {
+      companyId: params.companyId ?? null,
+      total: unusualItemManifest.classifications.length,
+      unclassifiedCount: unusualItemManifest.unclassifiedCount,
+      terminalEligibilityBlocked: unusualItemManifest.terminalEligibilityBlocked,
+      truncated: unusualItemManifest.truncated,
+    });
+  }
   if (economicSanity.status !== "passed") {
     trace("config", `economicSanity:${economicSanity.status}`, {
       companyId: params.companyId ?? null,
@@ -398,18 +425,20 @@ export function buildAnalysisTraceability(params: {
     {
       level: "valuation-eligible",
       label: "Valuation eligible",
-      achieved: structuralAchieved && !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !screeningOnly && valuationStatus !== "guarded" && valuationStatus !== "unknown",
+      achieved: structuralAchieved && !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && valuationStatus !== "guarded" && valuationStatus !== "unknown",
       detail: screeningOnly
         ? "Single-period upload — valuation eligibility requires ≥2 periods for time-series anchoring."
         : distressBlocksValuation
           ? `${distress.severity === "critical" ? "Critical" : "Severe"} financial distress detected (${distress.reasons[0] ?? "negative net worth"}). Equity-side valuation models cannot be trusted; the run is not valuation-eligible.`
           : conceptIdentityBlocksValuation
             ? `Concept identity layer reports ${conceptIdentity.unresolvedCriticalCount} unresolved critical conflict(s). Resolve before treating the run as valuation-eligible.`
-            : valuationStatus === "guarded"
-              ? "Valuation still depends on a guarded fallback anchor."
-              : valuationStatus === "warning" || valuationStatus === "production-ready"
-                ? `Valuation status is ${valuationStatus}, so the run remains eligible for valuation use.`
-                : "Valuation readiness has not been established yet.",
+            : terminalEligibilityBlocksValuation
+              ? `Unusual-item manifest flags ${unusualItemManifest.classifications.filter((c) => c.affectsTerminalEligibility).length} terminal-eligibility-blocking classification(s) (${unusualItemManifest.classifications.filter((c) => c.affectsTerminalEligibility).map((c) => c.category).slice(0, 3).join(", ")}).`
+              : valuationStatus === "guarded"
+                ? "Valuation still depends on a guarded fallback anchor."
+                : valuationStatus === "warning" || valuationStatus === "production-ready"
+                  ? `Valuation status is ${valuationStatus}, so the run remains eligible for valuation use.`
+                  : "Valuation readiness has not been established yet.",
     },
     {
       level: "production-ready",
@@ -478,6 +507,7 @@ export function buildAnalysisTraceability(params: {
     accountingStandardCoverage: computeAccountingStandardCoverage(params.rawData),
     conceptIdentity,
     economicSanity,
+    unusualItemManifest,
     rigor: {
       currentLevel: currentCheckpoint.level,
       currentLabel: currentCheckpoint.label,
