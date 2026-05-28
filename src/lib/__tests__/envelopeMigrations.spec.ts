@@ -3,12 +3,12 @@
 ================================================================ */
 
 import { describe, it, expect } from "vitest";
-import { migrateEnvelope, listMigrationsApplied, KNOWN_SCHEMA_VERSIONS } from "../envelopeMigrations";
+import { migrateEnvelope, listMigrationsApplied, KNOWN_SCHEMA_VERSIONS, CURRENT_SCHEMA_VERSION } from "../envelopeMigrations";
 
-const CURRENT = "2026-06-traceability-v16";
+const CURRENT = CURRENT_SCHEMA_VERSION;
 
 describe("migrateEnvelope (Plan 6 PR-6.4)", () => {
-  it("KNOWN_SCHEMA_VERSIONS includes v8 through v16", () => {
+  it("KNOWN_SCHEMA_VERSIONS includes v8 through v17", () => {
     expect(KNOWN_SCHEMA_VERSIONS).toContain("2026-04-traceability-v8");
     expect(KNOWN_SCHEMA_VERSIONS).toContain(CURRENT);
   });

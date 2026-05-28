@@ -34,9 +34,10 @@ export const KNOWN_SCHEMA_VERSIONS = [
   "2026-06-traceability-v14",
   "2026-06-traceability-v15",
   "2026-06-traceability-v16",
+  "2026-06-traceability-v17",
 ] as const;
 
-export const CURRENT_SCHEMA_VERSION = "2026-06-traceability-v16";
+export const CURRENT_SCHEMA_VERSION = "2026-06-traceability-v17";
 
 export interface MigrateResult {
   envelope: { schemaVersion: string; status?: string; [key: string]: unknown };
@@ -101,6 +102,12 @@ const MIGRATORS: Record<string, Migrator> = {
     schemaVersion: "2026-06-traceability-v16",
     // v16 added FX-neutrality fields (PR-5b.5); safe-default to null
     fxNeutrality: env.fxNeutrality ?? null,
+  }),
+  "2026-06-traceability-v16": (env) => ({
+    ...env,
+    schemaVersion: "2026-06-traceability-v17",
+    // v17 — evidence locking (PR-8.3); not-yet-locked envelopes default
+    locked: env.locked ?? false,
   }),
 };
 
