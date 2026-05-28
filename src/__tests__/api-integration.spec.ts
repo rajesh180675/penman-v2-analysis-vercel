@@ -134,14 +134,17 @@ describe("API Integration Tests", () => {
       expect(res.status).toBe(400);
     });
 
-    it("GET /api/audit/runs — lists all runs", async () => {
-      const res = await fetch(`${baseUrl}/api/audit/runs`);
-      const body = await res.json();
-      expect(res.status).toBe(200);
-      expect(body.ok).toBe(true);
-      expect(body.runs.length).toBeGreaterThanOrEqual(1);
-      expect(body.runs[0].runId).toBe(runId);
-    });
+  it("GET /api/audit/runs — lists all runs", async () => {
+    const res = await fetch(`${baseUrl}/api/audit/runs`);
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.runs.length).toBeGreaterThanOrEqual(1);
+    // Stale data from other test runs may appear; find ours by runId.
+    const ourRun = body.runs.find((r: any) => r.runId === runId);
+    expect(ourRun).toBeTruthy();
+    expect(ourRun.runId).toBe(runId);
+  });
 
     it("GET /api/audit/runs/:runId — returns a single run", async () => {
       const res = await fetch(`${baseUrl}/api/audit/runs/${runId}`);

@@ -22,9 +22,11 @@ describe("fadeRateEngine", () => {
 
       expect(result.omega).toBeGreaterThan(0.5);
       expect(result.omega).toBeLessThan(0.95);
-      expect(result.omegaRaw).toBeCloseTo(0.91, 1); // high persistence
-      expect(result.nObservations).toBe(9); // n-1 observations for AR(1)
+      expect(result.omegaRaw).toBeCloseTo(0.9032, 3); // exact AR(1) coefficient from engine
+      expect(result.omega).toBeGreaterThan(0.5); // shrunk omega stays in durable range
+      expect(result.nObservations).toBe(9);
       expect(result.impliedCompetitiveAdvantage).toBe("durable");
+      expect(result.terminalValueMultiplier).toBeCloseTo(2.386, 2);
     });
 
     it("estimates low ω for a mean-reverting (cyclical) series", () => {

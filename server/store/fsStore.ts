@@ -2,7 +2,11 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as os from "node:os";
 
-const DATA_DIR = path.join(os.homedir(), ".penman-data");
+const DEFAULT_DATA_DIR = path.join(os.homedir(), ".penman-data");
+
+export function dataDir(): string {
+  return process.env.PENMAN_DATA_DIR || DEFAULT_DATA_DIR;
+}
 
 /** Ensure a directory exists. */
 async function ensureDir(dir: string): Promise<void> {
@@ -57,35 +61,35 @@ export async function writeBuffer(filePath: string, buffer: Buffer): Promise<voi
 // ─── Path helpers ────────────────────────────────────────────────────────────
 
 export function auditRunPath(runId: string): string {
-  return path.join(DATA_DIR, "audit", "runs", `${runId}.json`);
+  return path.join(dataDir(), "audit", "runs", `${runId}.json`);
 }
 
 export function auditEventDir(runId: string): string {
-  return path.join(DATA_DIR, "audit", "events", runId);
+  return path.join(dataDir(), "audit", "events", runId);
 }
 
 export function auditEventPath(runId: string, eventId: string): string {
-  return path.join(DATA_DIR, "audit", "events", runId, `${eventId}.json`);
+  return path.join(dataDir(), "audit", "events", runId, `${eventId}.json`);
 }
 
 export function auditUploadPath(runId: string, filename: string): string {
-  return path.join(DATA_DIR, "audit", "uploads", runId, filename);
+  return path.join(dataDir(), "audit", "uploads", runId, filename);
 }
 
 export function researchPath(companyId: string): string {
-  return path.join(DATA_DIR, "research", "workspaces", `${companyId}.json`);
+  return path.join(dataDir(), "research", "workspaces", `${companyId}.json`);
 }
 
 export function marketCachePath(symbol: string, date: string): string {
-  return path.join(DATA_DIR, "market-cache", `${symbol}-${date}.json`);
+  return path.join(dataDir(), "market-cache", `${symbol}-${date}.json`);
 }
 
 export function runsDir(): string {
-  return path.join(DATA_DIR, "audit", "runs");
+  return path.join(dataDir(), "audit", "runs");
 }
 
 export function researchDir(): string {
-  return path.join(DATA_DIR, "research", "workspaces");
+  return path.join(dataDir(), "research", "workspaces");
 }
 
-export { DATA_DIR };
+export const DATA_DIR = DEFAULT_DATA_DIR;
