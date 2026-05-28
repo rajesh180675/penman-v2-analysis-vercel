@@ -17,14 +17,14 @@ function makeRecord(overrides: Partial<AuditRunRecord> = {}): AuditRunRecord {
     runId: "run-1",
     companyId: "TEST",
     generatedAt: "2026-01-15T10:00:00Z",
-    envelopeSchemaVersion: "2026-06-traceability-v15",
+    envelopeSchemaVersion: "2026-06-traceability-v16",
     summary: {
       rigorLevel: "production-ready",
       valuationStatus: "ready",
       blockingCount: 0,
       diagnosticCount: 2,
     },
-    envelope: { schemaVersion: "2026-06-traceability-v15" } as any,
+    envelope: { schemaVersion: "2026-06-traceability-v16" } as any,
     ...overrides,
   };
 }

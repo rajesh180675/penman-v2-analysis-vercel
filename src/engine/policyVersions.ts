@@ -5,7 +5,7 @@ export const ANOMALY_POLICY_VERSION = "2026-03-phase8";
 export const VALUATION_POLICY_VERSION = "2026-03-phase8-dcf";
 export const GOLDEN_COMPANY_SUITE_VERSION = "2026-03-phase8";
 export const SCOPE_POLICY_VERSION = "2026-03-phase7";
-export const TRACEABILITY_SCHEMA_VERSION = "2026-06-traceability-v15";
+export const TRACEABILITY_SCHEMA_VERSION = "2026-06-traceability-v16";
 
 export interface AnalysisPolicyVersions {
   engineVersion: string;
