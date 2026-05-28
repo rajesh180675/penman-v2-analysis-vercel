@@ -16,4 +16,6 @@
 // (its matches() returns true unconditionally). Sector-specific
 // strategies prepend.
 import "./bank";
+import "./nbfc";
+import "./insurance";
 import "./industrial";
