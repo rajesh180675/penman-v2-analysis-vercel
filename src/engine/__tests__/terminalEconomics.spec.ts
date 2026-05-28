@@ -133,5 +133,13 @@ describe("buildTerminalEconomics", () => {
     expect(terminal.fadeYears).toBeLessThanOrEqual(4);
     expect(terminal.terminalGrowth).toBeLessThanOrEqual(0.035);
     expect(terminal.rationale.some((item) => item.toLowerCase().includes("reinvestment"))).toBe(true);
+    // Hand-checked exacts: terminalGrowth clamped to floor, fadeYears = 4 for mixed+non-cyclical
+    expect(terminal.terminalGrowth).toBe(0.03); // clamped to floor
+    expect(terminal.fadeYears).toBe(4);
+    // terminalReinvestmentRate may be null if terminalRoic is null/0
+    if (terminal.terminalReinvestmentRate != null) {
+      expect(terminal.terminalReinvestmentRate).toBeGreaterThan(0);
+      expect(terminal.terminalReinvestmentRate).toBeLessThan(1);
+    }
   });
 });
