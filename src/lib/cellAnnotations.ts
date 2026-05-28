@@ -33,9 +33,9 @@ export interface AnnotationThread {
   cellPath: string;
   comments: Comment[];
   resolved: boolean;
-  resolverId?: string;
-  resolution?: string;
-  resolvedAt?: string;
+  resolverId?: string | undefined;
+  resolution?: string | undefined;
+  resolvedAt?: string | undefined;
   createdAt: string;
 }
 

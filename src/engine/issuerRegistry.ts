@@ -42,11 +42,11 @@ function supportStatusFromAnalysis(analysisStatus?: AnalysisStatusSummary | null
 
 export function buildIssuerMasterRecord(args: {
   companyId: string;
-  label?: string | null;
+  label?: string | null | undefined;
   rawData: RawPeriodData[] | null;
   config: EngineConfig;
-  analysisStatus?: AnalysisStatusSummary | null;
-  existing?: IssuerMasterRecordShape | null;
+  analysisStatus?: AnalysisStatusSummary | null | undefined;
+  existing?: IssuerMasterRecordShape | null | undefined;
 }): IssuerMasterRecordShape {
   const { companyId, label, rawData, config, analysisStatus, existing } = args;
   const primaryTicker = config.market_data_symbol ?? config.ticker ?? existing?.primaryTicker ?? null;

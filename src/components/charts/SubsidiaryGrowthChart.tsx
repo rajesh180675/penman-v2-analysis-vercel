@@ -2,15 +2,15 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 
 interface SubsidiaryRecord {
   name: string;
-  pat_cr?: number | null;
-  total_assets_cr?: number | null;
+  pat_cr?: number | null | undefined;
+  total_assets_cr?: number | null | undefined;
 }
 
 interface Props {
   /** Quality periods with subsidiary data, ordered chronologically */
   periods: Array<{
     fiscal_label: string;
-    subsidiaries?: SubsidiaryRecord[];
+    subsidiaries?: SubsidiaryRecord[] | undefined;
   }>;
 }
 

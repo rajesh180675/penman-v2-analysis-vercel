@@ -39,9 +39,9 @@ export type CapitalineStatement =
   | "Unknown";
 
 export interface ParseWarning {
-  file?: string;
+  file?: string | undefined;
   message: string;
-  detail?: string;
+  detail?: string | undefined;
 }
 
 /**
@@ -66,8 +66,8 @@ export interface RawGridDebug {
   colCount: number;
   firstRows: string[][];
   headerDetected: boolean;
-  headerRowIndex?: number;
-  periodLabels?: string[];
+  headerRowIndex?: number | undefined;
+  periodLabels?: string[] | undefined;
   errors: string[];
 }
 
@@ -88,7 +88,7 @@ export interface CapitalineParseDebug {
   };
   warnings: ParseWarning[];
   sample: {
-    headerRow?: string[];
+    headerRow?: string[] | undefined;
     firstRows: Array<{
       metric: string;
       statement: CapitalineStatement;

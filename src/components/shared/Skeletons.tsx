@@ -25,7 +25,7 @@ export function DashboardSkeleton() {
   );
 }
 
-export function TableSkeleton({ rows = 8, cols = 6 }: { rows?: number; cols?: number }) {
+export function TableSkeleton({ rows = 8, cols = 6 }: { rows?: number | undefined; cols?: number }) {
   return (
     <div className="animate-pulse card-base overflow-hidden">
       {/* Header */}

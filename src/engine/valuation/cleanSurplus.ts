@@ -32,9 +32,9 @@ export interface CleanSurplusInputs {
     netStockIssuance: number;
   }>;
   /** Material threshold: residual / |avg BV|. Default 1%. */
-  materialThreshold?: number;
+  materialThreshold?: number | undefined;
   /** Minor threshold: residual / |avg BV|. Default 0.25%. */
-  minorThreshold?: number;
+  minorThreshold?: number | undefined;
 }
 
 export interface PeriodCleanSurplusResidual {

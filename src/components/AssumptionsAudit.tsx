@@ -9,7 +9,7 @@ interface AssumptionRow {
   value: string;
   source: "user" | "default" | "computed";
   flag: "ok" | "warning" | "error" | null;
-  note?: string;
+  note?: string | undefined;
 }
 
 function flagColor(flag: AssumptionRow["flag"]): string {

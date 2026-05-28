@@ -123,7 +123,7 @@ export function computeDirtySurplus(
 export function computeDirtySurplusFramework(
   periods: RecastPeriod[],
   periodFlags: PeriodEventFlags[],
-  registry?: CanonicalOutputRegistry
+  registry?: CanonicalOutputRegistry | undefined
 ): DirtySurplusFramework {
   const perPeriod: Record<string, number> = {};
   const by_category = {

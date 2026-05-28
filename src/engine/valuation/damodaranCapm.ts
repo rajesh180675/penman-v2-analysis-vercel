@@ -95,8 +95,8 @@ export function relevereBeta(unleveredBeta: number, debtToEquity: number, taxRat
 
 export interface CapmInputs {
   beta: number;
-  riskFreeRate?: number; // defaults to Damodaran rf
-  equityRiskPremium?: number; // defaults to Damodaran ERP
+  riskFreeRate?: number | undefined; // defaults to Damodaran rf
+  equityRiskPremium?: number | undefined; // defaults to Damodaran ERP
 }
 
 export interface CapmResult {

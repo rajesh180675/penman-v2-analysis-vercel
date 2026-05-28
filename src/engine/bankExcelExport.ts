@@ -30,11 +30,11 @@ interface SheetSpec {
   name: string;
   rows: CellValue[][];
   /** Optional column widths in characters (default: 14 each). */
-  colWidths?: number[];
+  colWidths?: number[] | undefined;
   /** Row indices (0-based) whose first column should be bold (section headers). */
-  boldRows?: number[];
+  boldRows?: number[] | undefined;
   /** Row indices to render with the dark-blue header fill. */
-  headerRows?: number[];
+  headerRows?: number[] | undefined;
 }
 
 const HEADER_FILL = { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FF1F3864" } };
@@ -369,9 +369,9 @@ function buildNbfcFundingSheet(metrics: BankPeriodMetrics[]): SheetSpec {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export interface BankWorkbookMetadata {
-  companyLabel?: string;
-  auditRunId?: string | null;
-  marketCapCr?: number | null;
+  companyLabel?: string | undefined;
+  auditRunId?: string | null | undefined;
+  marketCapCr?: number | null | undefined;
 }
 
 /**

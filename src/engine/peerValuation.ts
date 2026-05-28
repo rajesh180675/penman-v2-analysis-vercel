@@ -39,7 +39,7 @@ export function buildPeerValuationSnapshot(args: {
     issuer?: { sector?: string | null } | null;
     valuations?: Array<{ signalLabel: string; marketPrice: number | null; expectedCagrStress: number | null; stressUpsidePct: number | null; opportunityScore?: number | null }>;
   }>;
-  sector?: string | null;
+  sector?: string | null | undefined;
 }) {
   const { registry, workspaceCompanies = [], sector } = args;
   const baseRows: PeerValuationRow[] = workspaceCompanies

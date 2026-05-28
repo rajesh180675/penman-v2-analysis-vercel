@@ -7,7 +7,7 @@ interface UseKeyboardShortcutsArgs {
   setGlossaryOpen: (open: boolean) => void;
   setShortcutsOpen: (open: boolean) => void;
   /** Disable shortcuts when a modal is already open (avoid hijacking inputs) */
-  enabled?: boolean;
+  enabled?: boolean | undefined;
 }
 
 /**

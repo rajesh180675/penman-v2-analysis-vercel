@@ -25,9 +25,9 @@ import type { CompanyRegistry } from "../engine/types";
 
 export interface RegistryPersistenceOptions {
   /** Debounce window for localStorage writes. Default 250ms. */
-  localWriteDelayMs?: number;
+  localWriteDelayMs?: number | undefined;
   /** Debounce window for shared-registry pushes. Default 600ms. */
-  remoteSyncDelayMs?: number;
+  remoteSyncDelayMs?: number | undefined;
 }
 
 export interface RegistryPersistenceState {

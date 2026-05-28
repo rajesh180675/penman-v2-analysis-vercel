@@ -16,7 +16,7 @@ export interface RawPeriodData {
    * synthetic test data won't carry this. When present, the rigor
    * envelope discounts pre-Ind-AS periods.
    */
-  accounting_standard?: "ind-as" | "revised-sch-vi" | "standard" | "unknown";
+  accounting_standard?: "ind-as" | "revised-sch-vi" | "standard" | "unknown" | undefined;
   /**
    * Phase I7 — Currency unit auto-detection.
    * Records what unit was detected in the Capitaline source file.
@@ -32,7 +32,7 @@ export interface RawPeriodData {
    *
    * When absent (legacy fixtures, synthetic test data), assume Crores.
    */
-  currency_unit?: "Crores" | "Lakhs" | "Millions" | "Thousands" | "Absolute" | "Unknown";
+  currency_unit?: "Crores" | "Lakhs" | "Millions" | "Thousands" | "Absolute" | "Unknown" | undefined;
 }
 
 export type TraceStatement = "BalanceSheet" | "ProfitLoss" | "CashFlow" | "Derived" | "Fallback";
@@ -42,7 +42,7 @@ export interface TraceEntry {
   key: string;
   value: number;
   matchType: "exact_composite" | "exact_base" | "fuzzy" | "derived";
-  note?: string;
+  note?: string | undefined;
 }
 
 export type TraceMap = Record<string, TraceEntry[]>;

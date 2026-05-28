@@ -98,9 +98,9 @@ export function clusterUnknownLabels(
   unknownLabels: UnmappedLabel[],
   options?: {
     /** Override similarity threshold (default 0.55). */
-    simThreshold?: number;
+    simThreshold?: number | undefined;
     /** Max labels returned as suggestions (default 20). */
-    maxSuggestions?: number;
+    maxSuggestions?: number | undefined;
   },
 ): ClusterResult {
   const { simThreshold = CLUSTER_SIM_THRESHOLD, maxSuggestions = 20 } = options ?? {};

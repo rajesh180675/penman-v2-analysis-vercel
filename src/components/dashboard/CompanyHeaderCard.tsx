@@ -6,8 +6,8 @@ interface Props {
   companyType: string;
   price: number | null;
   marketCap: number | null;
-  traceability?: AnalysisTraceabilityEnvelope | null;
-  ratioSanity?: SanityAssessment | null;
+  traceability?: AnalysisTraceabilityEnvelope | null | undefined;
+  ratioSanity?: SanityAssessment | null | undefined;
   segmentCount: number;
 }
 

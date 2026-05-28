@@ -95,10 +95,10 @@ export function ScenarioCard({
   reinvestmentRate: number | null;
   incrementalRoic: number | null;
   forecastPolicy?: {
-    terminalAnchorSource?: string;
-    workingCapitalPressure?: string;
-    reinvestmentBurden?: string;
-    balanceSheetFlexibility?: string;
+    terminalAnchorSource?: string | undefined;
+    workingCapitalPressure?: string | undefined;
+    reinvestmentBurden?: string | undefined;
+    balanceSheetFlexibility?: string | undefined;
   };
 }) {
   return (
@@ -143,9 +143,9 @@ export function ValCard({ color, title, subtitle, value, items, fmt, perShare, s
   value: number | null;
   items: Array<{ l: string; v: number }>;
   fmt: (n: number) => string;
-  perShare?: number | null;
+  perShare?: number | null | undefined;
   /** Phase J2: human-readable reason for skip-with-reason cards. */
-  skipReason?: string | null;
+  skipReason?: string | null | undefined;
 }) {
   const bg = color === "indigo"
     ? "bg-indigo-50 border-indigo-200"

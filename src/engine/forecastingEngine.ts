@@ -13,7 +13,7 @@ export function fadeRatio(
   historicalValue: number,
   ratioKey: keyof typeof FADE_PARAMS,
   horizonT: number,
-  industryMedian?: number,
+  industryMedian?: number | undefined,
 ): number[] {
   const alpha = FADE_PARAMS[ratioKey] ?? 0.85;
   const target = industryMedian ?? (NP_BENCHMARKS[ratioKey]?.median ?? historicalValue);
@@ -273,7 +273,7 @@ function buildScenarioWeighting(args: {
 }
 
 export function buildPersistenceForecastScenarioSet(params: {
-  periods?: RecastPeriod[];
+  periods?: RecastPeriod[] | undefined;
   latest: RecastPeriod;
   businessModel: BusinessModelProfile;
   horizon: number;
@@ -294,7 +294,7 @@ export function buildPersistenceForecastScenarioSet(params: {
 
 export function derivePersistenceForecastScenario(params: {
   scenarioKey: "stress" | "base" | "bull" | "historical-panic";
-  periods?: RecastPeriod[];
+  periods?: RecastPeriod[] | undefined;
   latest: RecastPeriod;
   businessModel: BusinessModelProfile;
   horizon: number;
@@ -425,12 +425,12 @@ export function buildForecastPeriod(
     ato: number;
     flev: number;
     nbc: number;
-    material_cost_ratio?: number | null;
-    employee_cost_ratio?: number | null;
-    depreciation_ratio?: number | null;
-    sga_ratio?: number | null;
-    other_opex_ratio?: number | null;
-    other_operating_income_ratio?: number | null;
+    material_cost_ratio?: number | null | undefined;
+    employee_cost_ratio?: number | null | undefined;
+    depreciation_ratio?: number | null | undefined;
+    sga_ratio?: number | null | undefined;
+    other_opex_ratio?: number | null | undefined;
+    other_operating_income_ratio?: number | null | undefined;
   },
   ke: number, kw: number,
   source: ForecastPeriod["source"],

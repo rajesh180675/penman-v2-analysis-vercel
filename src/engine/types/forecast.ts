@@ -31,10 +31,10 @@ export interface PersistenceScenarioTemplate {
   growthFadeAlpha: number;
   marginFadeAlpha: number;
   atoFadeAlpha: number;
-  companyEvidenceMaxWeight?: number;
-  growthGuardrailBand?: number;
-  marginGuardrailBand?: number;
-  atoGuardrailBand?: number;
+  companyEvidenceMaxWeight?: number | undefined;
+  growthGuardrailBand?: number | undefined;
+  marginGuardrailBand?: number | undefined;
+  atoGuardrailBand?: number | undefined;
 }
 
 export interface DriverForecastPlan {
@@ -72,21 +72,21 @@ export interface ForecastPeriod {
   NFE_f: number; CNI_f: number; CSE_f: number; NFO_f: number;
   ΔNOA_f: number; FCF_f: number; RE_f: number; ReOI_f: number;
   source: 'user'|'fade'|'mean_reversion'|'flat';
-  bridge_mode?: 'margin'|'cost_bridge';
-  material_cost_ratio_assumption?: number | null;
-  employee_cost_ratio_assumption?: number | null;
-  depreciation_ratio_assumption?: number | null;
-  sga_ratio_assumption?: number | null;
-  other_opex_ratio_assumption?: number | null;
-  other_operating_income_ratio_assumption?: number | null;
-  MaterialCost_f?: number | null;
-  EmployeeCost_f?: number | null;
-  Depreciation_f?: number | null;
-  SGA_f?: number | null;
-  OtherOperatingExpense_f?: number | null;
-  OtherOperatingIncome_f?: number | null;
-  GrossProfit_f?: number | null;
-  CoreOI_bridge_f?: number | null;
+  bridge_mode?: 'margin'|'cost_bridge' | undefined;
+  material_cost_ratio_assumption?: number | null | undefined;
+  employee_cost_ratio_assumption?: number | null | undefined;
+  depreciation_ratio_assumption?: number | null | undefined;
+  sga_ratio_assumption?: number | null | undefined;
+  other_opex_ratio_assumption?: number | null | undefined;
+  other_operating_income_ratio_assumption?: number | null | undefined;
+  MaterialCost_f?: number | null | undefined;
+  EmployeeCost_f?: number | null | undefined;
+  Depreciation_f?: number | null | undefined;
+  SGA_f?: number | null | undefined;
+  OtherOperatingExpense_f?: number | null | undefined;
+  OtherOperatingIncome_f?: number | null | undefined;
+  GrossProfit_f?: number | null | undefined;
+  CoreOI_bridge_f?: number | null | undefined;
 }
 
 export interface TerminalEconomicsOutput {
@@ -127,20 +127,20 @@ export type ScenarioWeightingSurface = ForecastScenarioWeighting;
 export type ScenarioSpreadPosture = "contained" | "balanced" | "wide";
 
 export interface ForecastPolicySurface {
-  companyEvidenceWeight?: number;
-  persistenceScore?: number;
-  templateGuardrailStrength?: number;
-  terminalAnchorSource?: 'company-evidence'|'blended'|'template';
-  workingCapitalPressure?: 'low' | 'medium' | 'high';
-  reinvestmentBurden?: 'light' | 'moderate' | 'heavy';
-  balanceSheetFlexibility?: 'strong' | 'adequate' | 'tight';
-  operatingMode?: 'cost-bridge' | 'margin';
-  terminalFadeYears?: number;
-  terminalEconomicsRationale?: string[];
-  scenarioWeighting?: ScenarioWeightingSurface;
-  scenarioSpread?: ScenarioSpreadPosture;
-  scenarioWeightRationale?: string[];
-  narrative?: string[];
+  companyEvidenceWeight?: number | undefined;
+  persistenceScore?: number | undefined;
+  templateGuardrailStrength?: number | undefined;
+  terminalAnchorSource?: 'company-evidence'|'blended'|'template' | undefined;
+  workingCapitalPressure?: 'low' | 'medium' | 'high' | undefined;
+  reinvestmentBurden?: 'light' | 'moderate' | 'heavy' | undefined;
+  balanceSheetFlexibility?: 'strong' | 'adequate' | 'tight' | undefined;
+  operatingMode?: 'cost-bridge' | 'margin' | undefined;
+  terminalFadeYears?: number | undefined;
+  terminalEconomicsRationale?: string[] | undefined;
+  scenarioWeighting?: ScenarioWeightingSurface | undefined;
+  scenarioSpread?: ScenarioSpreadPosture | undefined;
+  scenarioWeightRationale?: string[] | undefined;
+  narrative?: string[] | undefined;
 }
 
 export interface ForecastScenario {
@@ -150,15 +150,15 @@ export interface ForecastScenario {
   drivers: {
     sales_growth: number[]; core_sales_pm: number[];
     ato: number[]; flev: number[]; nbc: number[];
-    material_cost_ratio?: number[];
-    employee_cost_ratio?: number[];
-    depreciation_ratio?: number[];
-    sga_ratio?: number[];
-    other_opex_ratio?: number[];
-    other_operating_income_ratio?: number[];
+    material_cost_ratio?: number[] | undefined;
+    employee_cost_ratio?: number[] | undefined;
+    depreciation_ratio?: number[] | undefined;
+    sga_ratio?: number[] | undefined;
+    other_opex_ratio?: number[] | undefined;
+    other_operating_income_ratio?: number[] | undefined;
     g_terminal: number; ke: number; kw: number;
   };
-  forecastPolicy?: ForecastPolicySurface;
-  periods?: ForecastPeriod[];
-  valuationResult?: ValuationResult;
+  forecastPolicy?: ForecastPolicySurface | undefined;
+  periods?: ForecastPeriod[] | undefined;
+  valuationResult?: ValuationResult | undefined;
 }

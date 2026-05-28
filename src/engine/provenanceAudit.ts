@@ -86,7 +86,7 @@ export function buildMappingDiscrepancyRows(periods: RecastPeriod[]): MappingDis
     line: string,
     issueType: MappingDiscrepancyRow["issueType"],
     key: string,
-    statement?: string | null,
+    statement?: string | null | undefined,
   ) => {
     const id = `${line}||${issueType}||${key}`;
     const row = grouped.get(id);

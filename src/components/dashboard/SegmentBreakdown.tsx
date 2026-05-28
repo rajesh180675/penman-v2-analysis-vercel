@@ -3,7 +3,7 @@ import type { SegmentData } from "../../engine/segmentParser";
 
 interface Props {
   segmentData: SegmentData | null;
-  unit?: string;
+  unit?: string | undefined;
 }
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4", "#84cc16", "#f97316", "#6366f1", "#ef4444"];

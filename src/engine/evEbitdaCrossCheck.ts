@@ -28,7 +28,7 @@ export interface EvEbitdaCrossCheck {
 /** Compute EV/EBITDA cross-check for a single company, optionally using peer data. */
 export function computeEvEbitdaCrossCheck(
   latest: RecastPeriod,
-  peers?: EvEbitdaPeerContext[],
+  peers?: EvEbitdaPeerContext[] | undefined,
 ): EvEbitdaCrossCheck {
   const ebitda = latest.cf.EBITDA ?? 0;
   const nfo = latest.bs.NFO;

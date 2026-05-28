@@ -29,7 +29,7 @@ interface Props {
   /** Resulting ROE */
   roe: number | null;
   /** Full history for interactive trend drill-down */
-  history?: HistoryPoint[];
+  history?: HistoryPoint[] | undefined;
 }
 
 /**

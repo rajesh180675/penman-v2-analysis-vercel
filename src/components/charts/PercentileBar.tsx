@@ -2,13 +2,13 @@ interface PercentileEntry {
   label: string;
   value: number;
   percentile: number;
-  isTarget?: boolean;
+  isTarget?: boolean | undefined;
 }
 
 interface Props {
   title: string;
   entries: PercentileEntry[];
-  format?: "pct" | "mult" | "number" | "currency";
+  format?: "pct" | "mult" | "number" | "currency" | undefined;
 }
 
 function formatValue(value: number, format: Props["format"] = "number"): string {

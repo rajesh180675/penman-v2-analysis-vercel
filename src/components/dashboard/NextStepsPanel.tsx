@@ -3,16 +3,16 @@ interface ActionItem {
   label: string;
   description: string;
   tab: string;
-  primary?: boolean;
+  primary?: boolean | undefined;
 }
 
 interface Props {
   /** Current verdict — drives which next steps are emphasized */
-  verdict?: "screaming-buy" | "buy" | "hold" | "avoid" | "distressed" | null;
+  verdict?: "screaming-buy" | "buy" | "hold" | "avoid" | "distressed" | null | undefined;
   /** Whether peers are loaded (enables Comparison shortcut) */
   hasPeers: boolean;
   /** Navigation callback */
-  onNavigate?: (tab: string) => void;
+  onNavigate?: ((tab: string) => void) | undefined;
 }
 
 /**

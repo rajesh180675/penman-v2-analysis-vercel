@@ -7,17 +7,17 @@ export interface SegmentDefinition {
   /** Share of consolidated operating profit / EBIT (0-1). */
   operatingProfitShare: number;
   /** Optional revenue share (0-1) for context. */
-  revenueShare?: number;
+  revenueShare?: number | undefined;
   /** Sector template to use for this segment's valuation. */
   sectorTemplate: Exclude<ValuationSectorTemplate, "auto">;
   /** Optional override: terminal growth rate for this segment. */
-  terminalGrowthOverride?: number;
+  terminalGrowthOverride?: number | undefined;
   /** Optional override: fade speed (higher = faster mean reversion). */
-  growthFadeAlphaOverride?: number;
+  growthFadeAlphaOverride?: number | undefined;
   /** Optional: actual segment assets (₹ Cr) for NOA allocation. */
-  segmentAssets?: number;
+  segmentAssets?: number | undefined;
   /** Optional: sector-specific ke adjustment (additive basis points, e.g. 0.02 = +2%). */
-  keAdjustment?: number;
+  keAdjustment?: number | undefined;
 }
 
 /** One segment's standalone valuation output. */

@@ -4,7 +4,7 @@ import { fmtCr, CHART_COLORS, TOOLTIP_STYLE } from "./chartUtils";
 
 interface Props {
   data: RecastPeriod[];
-  unit?: string;
+  unit?: string | undefined;
 }
 
 /**

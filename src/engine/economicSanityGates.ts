@@ -77,8 +77,8 @@ export interface UnusualItemManifestLike {
 interface EvaluateInput {
   periods: RecastPeriod[];
   rawData: RawPeriodData[];
-  corporateActions?: CorporateActionEvent[];
-  unusualManifest?: UnusualItemManifestLike[];
+  corporateActions?: CorporateActionEvent[] | undefined;
+  unusualManifest?: UnusualItemManifestLike[] | undefined;
 }
 
 /**
@@ -218,8 +218,8 @@ function checksForPeriod(
 export function evaluateEconomicSanity(
   periods: RecastPeriod[],
   rawData: RawPeriodData[],
-  corporateActions?: CorporateActionEvent[],
-  unusualManifest?: UnusualItemManifestLike[],
+  corporateActions?: CorporateActionEvent[] | undefined,
+  unusualManifest?: UnusualItemManifestLike[] | undefined,
 ): EconomicSanitySummary {
   if (!periods.length) {
     return {

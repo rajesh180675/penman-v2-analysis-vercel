@@ -32,8 +32,8 @@ import { TRACEABILITY_SCHEMA_VERSION } from "../engine/policyVersions";
 
 export interface LockSignature {
   reviewerId: string;
-  reviewerName?: string;
-  reason?: string;
+  reviewerName?: string | undefined;
+  reason?: string | undefined;
 }
 
 export interface LockedEnvelope {

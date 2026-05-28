@@ -43,10 +43,10 @@ interface Props {
   rawData: RawPeriodData[] | null;
   recastData: RecastPeriod[] | null;
   config: EngineConfig;
-  analysisStatus?: AnalysisStatusSummary | null;
-  auditMeta?: AuditSubmissionMeta | null;
+  analysisStatus?: AnalysisStatusSummary | null | undefined;
+  auditMeta?: AuditSubmissionMeta | null | undefined;
   registry: CompanyRegistry;
-  selectedCompanyId?: string | null;
+  selectedCompanyId?: string | null | undefined;
   onSelectCompanyId?: (companyId: string) => void;
 }
 
@@ -54,47 +54,47 @@ interface InspectorRunPayload {
   runId: string;
   latestAt: string | null;
   latestAnalysisSnapshot?: {
-    latestPeriod?: string | null;
+    latestPeriod?: string | null | undefined;
   } | null;
   latestValuationSignal?: {
-    label?: string | null;
-    state?: string | null;
-    summary?: string | null;
-    baseUpsidePct?: number | null;
-    stressUpsidePct?: number | null;
-    opportunityScore?: number | null;
-    convictionBucket?: string | null;
-    expectedCagrStress?: number | null;
+    label?: string | null | undefined;
+    state?: string | null | undefined;
+    summary?: string | null | undefined;
+    baseUpsidePct?: number | null | undefined;
+    stressUpsidePct?: number | null | undefined;
+    opportunityScore?: number | null | undefined;
+    convictionBucket?: string | null | undefined;
+    expectedCagrStress?: number | null | undefined;
   } | null;
   latestValuationManifest?: {
     sectorTemplate?: { label?: string | null } | null;
     opportunity?: {
-      thesis?: string | null;
-      requiredMarginOfSafetyPct?: number | null;
-      qualityScore?: number | null;
-      opportunityScore?: number | null;
-      convictionBucket?: string | null;
-      expectedCagrStress?: number | null;
+      thesis?: string | null | undefined;
+      requiredMarginOfSafetyPct?: number | null | undefined;
+      qualityScore?: number | null | undefined;
+      opportunityScore?: number | null | undefined;
+      convictionBucket?: string | null | undefined;
+      expectedCagrStress?: number | null | undefined;
     } | null;
     marketContext?: {
-      expectedReturnSpreadVsRf?: number | null;
-      priceToStressValueRatio?: number | null;
+      expectedReturnSpreadVsRf?: number | null | undefined;
+      priceToStressValueRatio?: number | null | undefined;
     } | null;
     checklist?: {
-      whatMustGoRight?: string[];
-      thesisBreakers?: string[];
+      whatMustGoRight?: string[] | undefined;
+      thesisBreakers?: string[] | undefined;
     } | null;
     backtest?: {
-      available?: boolean;
-      forwardWinRate1Y?: number | null;
-      forwardWinRate3Y?: number | null;
-      median3Y?: number | null;
-      latestComparedToHistory?: string | null;
+      available?: boolean | undefined;
+      forwardWinRate1Y?: number | null | undefined;
+      forwardWinRate3Y?: number | null | undefined;
+      median3Y?: number | null | undefined;
+      latestComparedToHistory?: string | null | undefined;
     } | null;
   } | null;
   health?: {
-    severity?: "ok" | "warning" | "critical";
-    findings?: string[];
+    severity?: "ok" | "warning" | "critical" | undefined;
+    findings?: string[] | undefined;
   } | null;
 }
 
@@ -111,9 +111,9 @@ function toneForState(state: string | null | undefined) {
 }
 
 function investorGuidance(args: {
-  status?: AnalysisStatusSummary["status"] | "unknown";
-  signalState?: string | null;
-  convictionBucket?: string | null;
+  status?: AnalysisStatusSummary["status"] | "unknown" | undefined;
+  signalState?: string | null | undefined;
+  convictionBucket?: string | null | undefined;
 }) {
   const { status, signalState, convictionBucket } = args;
   if (status === "blocked" || signalState === "blocked") {

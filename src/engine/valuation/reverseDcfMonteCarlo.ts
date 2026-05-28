@@ -42,9 +42,9 @@ export interface ReverseDcfMonteCarloInputs {
   /** Distribution params for WACC (decimal). */
   wacc: { mean: number; sigma: number };
   /** Horizon in years for the explicit forecast period (default 10). */
-  horizonYears?: number;
+  horizonYears?: number | undefined;
   /** Number of Monte Carlo paths (default 10000). */
-  paths?: number;
+  paths?: number | undefined;
 }
 
 export interface ReverseDcfMonteCarloResult {

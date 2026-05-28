@@ -26,15 +26,15 @@ import LgdStageChart from "./charts/LgdStageChart";
 
 interface Props {
   bankResult: FinancialInstitutionAnalysisResult;
-  marketCapCr?: number | null;
+  marketCapCr?: number | null | undefined;
   /** Engine config — required for Excel export. When omitted, export button hidden. */
-  config?: EngineConfig;
+  config?: EngineConfig | undefined;
   /** Company label used in Cover sheet. Falls back to config.ticker. */
-  companyId?: string | null;
+  companyId?: string | null | undefined;
   /** Audit run ID surfaced in Cover sheet for traceability. */
-  auditRunId?: string | null;
+  auditRunId?: string | null | undefined;
   /** Phase D4 — LGD stage migration + RBI NHB regulatory metrics. */
-  nbfcSidecar?: NbfcSidecarData | null;
+  nbfcSidecar?: NbfcSidecarData | null | undefined;
 }
 
 function fmtCr(v: number | null): string {

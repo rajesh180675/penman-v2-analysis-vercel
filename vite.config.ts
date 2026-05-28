@@ -71,10 +71,10 @@ export default defineConfig({
       },
     },
   },
-  build: {
-    rollupOptions: singleFileBuild
-      ? undefined
-      : {
+  build: singleFileBuild
+    ? {}
+    : {
+        rollupOptions: {
           output: {
             manualChunks(id) {
               if (id.includes("node_modules")) return packageChunkName(id);
@@ -82,7 +82,7 @@ export default defineConfig({
             },
           },
         },
-  },
+      },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),

@@ -165,7 +165,7 @@ export default function DuPontDecomposition({ recastData }: Props) {
   );
 }
 
-function KPI({ label, value, subline, accent = "slate" }: { label: string; value: string; subline?: string; accent?: "slate" | "emerald" }) {
+function KPI({ label, value, subline, accent = "slate" }: { label: string; value: string; subline?: string | undefined; accent?: "slate" | "emerald" }) {
   const tone = accent === "emerald" ? "text-emerald-700 dark:text-emerald-400" : "text-slate-900 dark:text-slate-100";
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900/60">

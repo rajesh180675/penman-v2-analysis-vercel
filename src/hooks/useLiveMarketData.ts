@@ -3,12 +3,12 @@ import { trace } from "../lib/traceLogger";
 import { LiveMarketDataSnapshot } from "../engine/marketData";
 
 interface Params {
-  provider?: "manual" | "upstox-readonly" | "alphavantage" | "nse" | "yahoo" | "disabled";
-  symbol?: string | null;
-  instrumentKey?: string | null;
-  fallbackPrice?: number | null;
-  fallbackRiskFreeRate?: number | null;
-  refreshSeconds?: number | null;
+  provider?: "manual" | "upstox-readonly" | "alphavantage" | "nse" | "yahoo" | "disabled" | undefined;
+  symbol?: string | null | undefined;
+  instrumentKey?: string | null | undefined;
+  fallbackPrice?: number | null | undefined;
+  fallbackRiskFreeRate?: number | null | undefined;
+  refreshSeconds?: number | null | undefined;
 }
 
 export function useLiveMarketData({

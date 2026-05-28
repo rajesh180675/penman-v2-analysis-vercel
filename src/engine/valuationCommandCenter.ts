@@ -31,7 +31,7 @@ export interface ValuationScenarioCard {
   marginOfSafetyPct: number | null;
   expectedCagr: number | null;
   valuation: ValuationResult;
-  forecastPolicy?: ForecastPolicySurface;
+  forecastPolicy?: ForecastPolicySurface | undefined;
   assumptions: {
     ke: number;
     kw: number;
@@ -330,8 +330,8 @@ function solveImpliedKeFromOwnerEarnings(params: {
   ownerEarningsPerShare: number | null;
   growthPath: number[];
   terminalGrowth: number;
-  low?: number;
-  high?: number;
+  low?: number | undefined;
+  high?: number | undefined;
 }) {
   const { targetPrice, ownerEarningsPerShare, growthPath, terminalGrowth } = params;
   if (targetPrice == null || targetPrice <= 0 || ownerEarningsPerShare == null || ownerEarningsPerShare <= 0) return null;
@@ -670,10 +670,10 @@ function marketExpectationLabel(impliedGrowth: number | null, impliedROIC: numbe
 type CoreBuildContext = {
   data: RecastPeriod[];
   config: EngineConfig;
-  marketData?: LiveMarketDataSnapshot | null;
-  analysisStatus?: AnalysisStatusSummary | null;
+  marketData?: LiveMarketDataSnapshot | null | undefined;
+  analysisStatus?: AnalysisStatusSummary | null | undefined;
   /** Phase C5 — parsed segment data for SOTP valuation (business segments). */
-  segmentData?: SegmentData | null;
+  segmentData?: SegmentData | null | undefined;
 };
 
 type CoreBuildResult = Omit<ValuationCommandCenterOutput, "backtest">;
@@ -767,7 +767,7 @@ function buildChecklist(args: {
   reverseDcf: ReverseDcfDiagnostics;
   marketContext: ValuationMarketContext;
   stressCard: ValuationScenarioCard | null;
-  analysisStatus?: AnalysisStatusSummary | null;
+  analysisStatus?: AnalysisStatusSummary | null | undefined;
 }) {
   const { opportunity, diagnostics, reverseDcf, marketContext, stressCard, analysisStatus } = args;
   const stressForecastPolicy = stressCard?.forecastPolicy;

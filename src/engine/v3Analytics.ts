@@ -69,10 +69,10 @@ export interface DataValidationResult {
   checks: Array<{
     id: string;
     description: string;
-    period?: string;
+    period?: string | undefined;
     passed: boolean;
     severity: "ERROR" | "WARNING";
-    detail?: string;
+    detail?: string | undefined;
   }>;
   errors: number;
   warnings: number;
@@ -247,7 +247,7 @@ export function selectTerminalAnchor(
   periodFlags: PeriodEventFlags[],
   ke: number,
   kw: number,
-  gTerminalOverride?: number | null,
+  gTerminalOverride?: number | null | undefined,
   gFloor = 0.02,
   gCap = 0.07
 ): TerminalAnchorResult {
@@ -515,7 +515,7 @@ export function computeConfidenceScore(
   V_RE_CV3: number,
   V_ReOI_CV03: number,
   _eq16_residual_latest: number | null,
-  registry?: CanonicalOutputRegistry
+  registry?: CanonicalOutputRegistry | undefined
 ): ConfidenceResult {
   const n = periods.length;
   const latest = periods[n - 1];
@@ -679,8 +679,8 @@ export interface MonitoringTrigger {
 export function calibrateMonitoringTriggers(
   periods: RecastPeriod[],
   periodFlags: PeriodEventFlags[],
-  registry?: CanonicalOutputRegistry,
-  config?: EngineConfig
+  registry?: CanonicalOutputRegistry | undefined,
+  config?: EngineConfig | undefined
 ): TriggerCalibrationResult {
   const latest = periods[periods.length - 1];
   const cleanPeriod = [...periods].reverse().find((p) => {
@@ -760,8 +760,8 @@ export function generateMonitoringTriggers(
   companyId: string,
   ke: number,
   periodFlags: PeriodEventFlags[],
-  _registry?: CanonicalOutputRegistry,
-  config?: EngineConfig
+  _registry?: CanonicalOutputRegistry | undefined,
+  config?: EngineConfig | undefined
 ): MonitoringTrigger[] {
   const latest = periods[periods.length - 1];
   // S-14.2: Do NOT pass registry here — calibrateMonitoringTriggers was already called
@@ -845,7 +845,7 @@ export interface OADecompositionResult {
     deltaDTA: number;
     deltaOtherOA: number;
   };
-  interpretation?: string;
+  interpretation?: string | undefined;
 }
 export interface ReReOIGapDecomposition {
   dirty_surplus: number;
@@ -860,22 +860,22 @@ export interface ShareCountResult {
   shares: number | null;
   source: string;
   confidence: "HIGH" | "MEDIUM" | "LOW" | "FAILED";
-  dilution_note?: string;
+  dilution_note?: string | undefined;
 }
 export interface MarketImpliedResult {
   status: "full" | "market_price_required" | "shares_unavailable";
-  intrinsic_per_share?: number;
-  shares?: number;
-  shares_source?: string;
-  market_cap?: number;
-  market_price?: number;
-  margin_of_safety?: number;
-  implied_g?: number | null;
-  implied_ke?: number | null;
-  mos_interpretation?: string;
-  implied_g_note?: string;
-  implied_ke_note?: string;
-  prompt?: string;
+  intrinsic_per_share?: number | undefined;
+  shares?: number | undefined;
+  shares_source?: string | undefined;
+  market_cap?: number | undefined;
+  market_price?: number | undefined;
+  margin_of_safety?: number | undefined;
+  implied_g?: number | null | undefined;
+  implied_ke?: number | null | undefined;
+  mos_interpretation?: string | undefined;
+  implied_g_note?: string | undefined;
+  implied_ke_note?: string | undefined;
+  prompt?: string | undefined;
 }
 export interface VersionChangeEntry {
   spec_id: string;
@@ -939,7 +939,7 @@ export function decomposeReReOIGap(
   periods: RecastPeriod[],
   valuation: { V_RE_CV3: number; V_ReOI_CV03: number; CSE0: number; pvRE: number; CV_RE: number; CV_ReOI: number; ke: number; kw: number },
   gEffective: number,
-  registry?: CanonicalOutputRegistry,
+  registry?: CanonicalOutputRegistry | undefined,
 ): ReReOIGapDecomposition {
   const T = Math.max(1, periods.length - 1);
   const ke = valuation.ke;
@@ -975,8 +975,8 @@ export function decomposeReReOIGap(
 }
 export function deriveShareCount(
   periods: RecastPeriod[],
-  registry?: CanonicalOutputRegistry,
-  fallbackVPrimary?: number,
+  registry?: CanonicalOutputRegistry | undefined,
+  fallbackVPrimary?: number | undefined,
 ): ShareCountResult {
   const latest = periods[periods.length - 1];
   const directLatestShares = latest.shareCountInput?.endPeriodShares ?? null;
@@ -1064,8 +1064,8 @@ export function deriveShareCount(
 export function computeMarketImplied(
   registry: CanonicalOutputRegistry,
   valuation: { V_primary: number; ke: number; g_effective: number; CSE0: number; pvRE: number; explicit_periods: number; RE_anchor: number; periods: RecastPeriod[] },
-  marketPrice?: number,
-  sharesOverride?: number,
+  marketPrice?: number | undefined,
+  sharesOverride?: number | undefined,
 ): MarketImpliedResult {
   const shares = sharesOverride ?? registry.get<number>("shares_outstanding");
   const sharesSource = registry.get<string>("shares_source") ?? "registry";
@@ -1200,11 +1200,11 @@ export function renderVersionChangeLog(changes: VersionChangeEntry[]): string {
 export interface CrossSectionRenderedBundle {
   header: string;
   section1: string;
-  section5?: string;
-  section6?: string;
-  section6A?: string;
-  section7?: string;
-  section6A1RowCount?: number;
+  section5?: string | undefined;
+  section6?: string | undefined;
+  section6A?: string | undefined;
+  section7?: string | undefined;
+  section6A1RowCount?: number | undefined;
   /** For assertion 9: per-ke row with g values ascending and corresponding valuations */
   sensitivity?: Array<{ ke: number; values: number[]; g: number[] }>;
 }
@@ -1583,9 +1583,9 @@ export function computeV3Analytics(
   cfg: EngineConfig,
   V_RE_CV3: number,
   V_ReOI_CV03: number,
-  gTerminalOverride?: number | null,
-  kwDerived?: number,
-  itServices?: import("./itServicesDetector").ITServicesSignal | null,
+  gTerminalOverride?: number | null | undefined,
+  kwDerived?: number | undefined,
+  itServices?: import("./itServicesDetector").ITServicesSignal | null | undefined,
 ): V3AnalyticsBundle {
   const ke = ke_from_config(cfg);
   const kw = (() => {

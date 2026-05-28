@@ -296,8 +296,8 @@ export default function SubsidiaryContributionPanel({ result }: Props) {
 interface KpiCardProps {
   label: string;
   value: string;
-  sublabel?: string;
-  accent?: "high" | "mid" | "low" | "neutral";
+  sublabel?: string | undefined;
+  accent?: "high" | "mid" | "low" | "neutral" | undefined;
 }
 
 function KpiCard({ label, value, sublabel, accent = "neutral" }: KpiCardProps) {

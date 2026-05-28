@@ -42,19 +42,19 @@ type ExactRule = {
   key: string;
   action: Exclude<BacklogTriageAction, "review">;
   rationale: string;
-  targetLine?: string;
-  targetGroupId?: string;
-  suggestedSpecPath?: string;
+  targetLine?: string | undefined;
+  targetGroupId?: string | undefined;
+  suggestedSpecPath?: string | undefined;
 };
 
 type PatternRule = {
-  statement?: MappingStatement | "Unknown";
+  statement?: MappingStatement | "Unknown" | undefined;
   pattern: RegExp;
   action: Exclude<BacklogTriageAction, "review">;
   rationale: string;
-  targetLine?: string;
-  targetGroupId?: string;
-  suggestedSpecPath?: string;
+  targetLine?: string | undefined;
+  targetGroupId?: string | undefined;
+  suggestedSpecPath?: string | undefined;
 };
 
 function mapPriority(severity: MappingSeverity | null | undefined): BacklogPriority {
@@ -315,9 +315,9 @@ function buildDecision(
   _candidate: MappingBacklogCandidate,
   action: BacklogTriageAction,
   rationale: string,
-  targetLine?: string,
-  targetGroupId?: string,
-  suggestedSpecPath?: string,
+  targetLine?: string | undefined,
+  targetGroupId?: string | undefined,
+  suggestedSpecPath?: string | undefined,
 ) {
   const classification = targetGroupId ? classifyMappingIssueFromGroup(targetGroupId) : null;
   return {

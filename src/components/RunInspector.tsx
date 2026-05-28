@@ -4,8 +4,8 @@ import { AuditSubmissionMeta, getAuditRecoveryState, listRememberedAuditRuns, re
 import { AnalysisStatusBadge } from "./AnalysisStatusBadge";
 
 interface Props {
-  auditMeta?: AuditSubmissionMeta | null;
-  analysisStatus?: AnalysisStatusSummary | null;
+  auditMeta?: AuditSubmissionMeta | null | undefined;
+  analysisStatus?: AnalysisStatusSummary | null | undefined;
 }
 
 type InspectorPayload = {
@@ -24,10 +24,10 @@ type InspectorPayload = {
     sourceMode: string | null;
     payloadSummary: Record<string, unknown> | null;
     analysisSnapshot?: {
-      latestPeriod?: string | null;
-      qualityGate?: { tier?: string; valuationBlocked?: boolean } | null;
+      latestPeriod?: string | null | undefined;
+      qualityGate?: { tier?: string | undefined; valuationBlocked?: boolean } | null;
       traceability?: {
-        confidence?: { status?: string; headline?: string } | null;
+        confidence?: { status?: string | undefined; headline?: string } | null;
       } | null;
     } | null;
   }>;
@@ -42,88 +42,88 @@ type InspectorPayload = {
     };
   };
   persistedMonitorReport?: {
-    generatedAt?: string;
-    severity?: string;
-    actions?: Array<{ type: string; created?: boolean; issueUrl?: string; reason?: string }>;
+    generatedAt?: string | undefined;
+    severity?: string | undefined;
+    actions?: Array<{ type: string; created?: boolean | undefined; issueUrl?: string | undefined; reason?: string }>;
   } | null;
   latestAnalysisSnapshot?: {
-    family?: string | null;
-    latestPeriod?: string | null;
+    family?: string | null | undefined;
+    latestPeriod?: string | null | undefined;
     traceability?: {
-      schemaVersion?: string;
-      generatedAt?: string | null;
+      schemaVersion?: string | undefined;
+      generatedAt?: string | null | undefined;
       runContext?: {
-        runId?: string | null;
-        companyId?: string | null;
-        sourceMode?: string | null;
-        periodCount?: number;
-        latestPeriod?: string | null;
+        runId?: string | null | undefined;
+        companyId?: string | null | undefined;
+        sourceMode?: string | null | undefined;
+        periodCount?: number | undefined;
+        latestPeriod?: string | null | undefined;
       } | null;
       confidence?: {
-        status?: string;
-        headline?: string;
-        blockingCount?: number;
-        diagnosticCount?: number;
-        optionalCount?: number;
+        status?: string | undefined;
+        headline?: string | undefined;
+        blockingCount?: number | undefined;
+        diagnosticCount?: number | undefined;
+        optionalCount?: number | undefined;
       } | null;
       parserFidelity?: {
-        status?: string;
-        score?: number;
-        summary?: string;
+        status?: string | undefined;
+        score?: number | undefined;
+        summary?: string | undefined;
       } | null;
       reconciliation?: {
-        status?: string;
-        summary?: string;
-        warningCount?: number;
-        errorCount?: number;
-        maxResidualRatio?: number;
+        status?: string | undefined;
+        summary?: string | undefined;
+        warningCount?: number | undefined;
+        errorCount?: number | undefined;
+        maxResidualRatio?: number | undefined;
       } | null;
       conceptIdentity?: {
-        status?: string;
-        conflictCount?: number;
-        unresolvedCriticalCount?: number;
-        truncated?: boolean;
+        status?: string | undefined;
+        conflictCount?: number | undefined;
+        unresolvedCriticalCount?: number | undefined;
+        truncated?: boolean | undefined;
       } | null;
       economicSanity?: {
-        status?: string;
-        anchorPeriod?: string | null;
-        anchorReason?: string;
+        status?: string | undefined;
+        anchorPeriod?: string | null | undefined;
+        anchorReason?: string | undefined;
         skippedPeriods?: { period: string; reason: string }[];
         failedChecks?: { checkId: string; passed: boolean; severity: string }[];
       } | null;
       unusualItemManifest?: {
-        totalUnusualImpactOnCoreOI?: number;
-        terminalEligibilityBlocked?: boolean;
-        classifications?: Array<{ category?: string; period?: string; affectsTerminalEligibility?: boolean }>;
-        unclassifiedCount?: number;
-        truncated?: boolean;
+        totalUnusualImpactOnCoreOI?: number | undefined;
+        terminalEligibilityBlocked?: boolean | undefined;
+        classifications?: Array<{ category?: string | undefined; period?: string | undefined; affectsTerminalEligibility?: boolean }>;
+        unclassifiedCount?: number | undefined;
+        truncated?: boolean | undefined;
       } | null;
       lineageRef?: {
-        hasLineage?: boolean;
-        conceptCount?: number;
-        periodCount?: number;
-        checksum?: string;
+        hasLineage?: boolean | undefined;
+        conceptCount?: number | undefined;
+        periodCount?: number | undefined;
+        checksum?: string | undefined;
       } | null;
       rigor?: {
-        currentLevel?: string;
-        currentLabel?: string;
-        summary?: string;
-        achievedLevels?: string[];
-        pendingLevels?: string[];
+        currentLevel?: string | undefined;
+        currentLabel?: string | undefined;
+        summary?: string | undefined;
+        achievedLevels?: string[] | undefined;
+        pendingLevels?: string[] | undefined;
       } | null;
       mappingCoverage?: {
-        outOfSpecLabelCount?: number;
-        actionableOutOfSpecLabelCount?: number;
+        outOfSpecLabelCount?: number | undefined;
+        actionableOutOfSpecLabelCount?: number | undefined;
         backlogByAction?: Record<string, number>;
       } | null;
       analysisContext?: {
-        rawPeriodCount?: number;
-        recastPeriodCount?: number;
-        hasRecastData?: boolean;
-        hasDebugInfo?: boolean;
-        debugFiles?: number;
-        rawMetricKeyCount?: number;
-        engineError?: string | null;
+        rawPeriodCount?: number | undefined;
+        recastPeriodCount?: number | undefined;
+        hasRecastData?: boolean | undefined;
+        hasDebugInfo?: boolean | undefined;
+        debugFiles?: number | undefined;
+        rawMetricKeyCount?: number | undefined;
+        engineError?: string | null | undefined;
       } | null;
       backlogPreview?: Array<{
         statement: string;
@@ -136,111 +136,111 @@ type InspectorPayload = {
     } | null;
   } | null;
   latestMarketSnapshot?: {
-    symbol?: string | null;
-    provider?: string | null;
-    fetchedAt?: string | null;
-    price?: number | null;
-    riskFreeRate?: number | null;
-    freshness?: string | null;
-    sourceSummary?: string | null;
-    warnings?: string[];
+    symbol?: string | null | undefined;
+    provider?: string | null | undefined;
+    fetchedAt?: string | null | undefined;
+    price?: number | null | undefined;
+    riskFreeRate?: number | null | undefined;
+    freshness?: string | null | undefined;
+    sourceSummary?: string | null | undefined;
+    warnings?: string[] | undefined;
     history?: {
-      currentPricePercentile?: number | null;
-      low52Week?: number | null;
-      high52Week?: number | null;
-      distanceFrom52WeekLowPct?: number | null;
-      drawdownFrom52WeekHighPct?: number | null;
+      currentPricePercentile?: number | null | undefined;
+      low52Week?: number | null | undefined;
+      high52Week?: number | null | undefined;
+      distanceFrom52WeekLowPct?: number | null | undefined;
+      drawdownFrom52WeekHighPct?: number | null | undefined;
     } | null;
   } | null;
   latestValuationSignal?: {
-    state?: string | null;
-    label?: string | null;
-    summary?: string | null;
-    confidenceState?: string | null;
-    stressUpsidePct?: number | null;
-    baseUpsidePct?: number | null;
-    historicalPercentile?: number | null;
-    reverseDcfImpliedGrowth?: number | null;
-    requiredMarginOfSafetyPct?: number | null;
-    qualityScore?: number | null;
-    opportunityScore?: number | null;
-    convictionBucket?: string | null;
-    expectedCagrStress?: number | null;
-    killSwitches?: string[];
-    supportingFlags?: string[];
+    state?: string | null | undefined;
+    label?: string | null | undefined;
+    summary?: string | null | undefined;
+    confidenceState?: string | null | undefined;
+    stressUpsidePct?: number | null | undefined;
+    baseUpsidePct?: number | null | undefined;
+    historicalPercentile?: number | null | undefined;
+    reverseDcfImpliedGrowth?: number | null | undefined;
+    requiredMarginOfSafetyPct?: number | null | undefined;
+    qualityScore?: number | null | undefined;
+    opportunityScore?: number | null | undefined;
+    convictionBucket?: string | null | undefined;
+    expectedCagrStress?: number | null | undefined;
+    killSwitches?: string[] | undefined;
+    supportingFlags?: string[] | undefined;
     scenarios?: Array<{
-      key?: string;
-      label?: string;
-      intrinsicPerShare?: number | null;
-      upsidePct?: number | null;
+      key?: string | undefined;
+      label?: string | undefined;
+      intrinsicPerShare?: number | null | undefined;
+      upsidePct?: number | null | undefined;
     }>;
-    marketPrice?: number | null;
-    asOf?: string | null;
+    marketPrice?: number | null | undefined;
+    asOf?: string | null | undefined;
   } | null;
   latestValuationManifest?: {
-    asOf?: string | null;
-    marketPrice?: number | null;
-    riskFreeRate?: number | null;
-    sectorTemplate?: { label?: string | null; source?: string | null } | null;
+    asOf?: string | null | undefined;
+    marketPrice?: number | null | undefined;
+    riskFreeRate?: number | null | undefined;
+    sectorTemplate?: { label?: string | null | undefined; source?: string | null } | null;
     diagnostics?: {
-      ownerEarningsPerShare?: number | null;
-      reinvestmentRate?: number | null;
-      incrementalRoic?: number | null;
+      ownerEarningsPerShare?: number | null | undefined;
+      reinvestmentRate?: number | null | undefined;
+      incrementalRoic?: number | null | undefined;
     } | null;
     reverseDcf?: {
-      impliedOwnerEarningsGrowth?: number | null;
-      expectationLabel?: string | null;
+      impliedOwnerEarningsGrowth?: number | null | undefined;
+      expectationLabel?: string | null | undefined;
     } | null;
     opportunity?: {
-      qualityScore?: number | null;
-      requiredMarginOfSafetyPct?: number | null;
-      expectedCagrStress?: number | null;
-      opportunityScore?: number | null;
-      convictionBucket?: string | null;
-      thesis?: string | null;
+      qualityScore?: number | null | undefined;
+      requiredMarginOfSafetyPct?: number | null | undefined;
+      expectedCagrStress?: number | null | undefined;
+      opportunityScore?: number | null | undefined;
+      convictionBucket?: string | null | undefined;
+      thesis?: string | null | undefined;
     } | null;
     checklist?: {
-      whatMustGoRight?: string[];
-      thesisBreakers?: string[];
+      whatMustGoRight?: string[] | undefined;
+      thesisBreakers?: string[] | undefined;
     } | null;
     marketContext?: {
-      expectedReturnSpreadVsRf?: number | null;
-      marketCapFromPrice?: number | null;
-      enterpriseValueFromPrice?: number | null;
-      priceToStressValueRatio?: number | null;
+      expectedReturnSpreadVsRf?: number | null | undefined;
+      marketCapFromPrice?: number | null | undefined;
+      enterpriseValueFromPrice?: number | null | undefined;
+      priceToStressValueRatio?: number | null | undefined;
     } | null;
     backtest?: {
-      available?: boolean;
-      investableCount?: number;
-      highConvictionCount?: number;
-      screamingBuyCount?: number;
-      forwardWinRate1Y?: number | null;
-      forwardWinRate3Y?: number | null;
-      median1Y?: number | null;
-      median3Y?: number | null;
-      latestComparedToHistory?: string | null;
+      available?: boolean | undefined;
+      investableCount?: number | undefined;
+      highConvictionCount?: number | undefined;
+      screamingBuyCount?: number | undefined;
+      forwardWinRate1Y?: number | null | undefined;
+      forwardWinRate3Y?: number | null | undefined;
+      median1Y?: number | null | undefined;
+      median3Y?: number | null | undefined;
+      latestComparedToHistory?: string | null | undefined;
       points?: Array<{
-        periodEnd?: string;
-        state?: string;
-        realized1Y?: number | null;
-        realized3Y?: number | null;
+        periodEnd?: string | undefined;
+        state?: string | undefined;
+        realized1Y?: number | null | undefined;
+        realized3Y?: number | null | undefined;
       }>;
     } | null;
   } | null;
   latestValuationAlert?: {
-    state?: string | null;
-    label?: string | null;
-    summary?: string | null;
-    opportunityScore?: number | null;
-    convictionBucket?: string | null;
-    expectedCagrStress?: number | null;
-    marketPrice?: number | null;
-    asOf?: string | null;
+    state?: string | null | undefined;
+    label?: string | null | undefined;
+    summary?: string | null | undefined;
+    opportunityScore?: number | null | undefined;
+    convictionBucket?: string | null | undefined;
+    expectedCagrStress?: number | null | undefined;
+    marketPrice?: number | null | undefined;
+    asOf?: string | null | undefined;
   } | null;
   governance?: {
-    retentionDays?: number;
-    contentClass?: string;
-    adminTokenVersion?: string;
+    retentionDays?: number | undefined;
+    contentClass?: string | undefined;
+    adminTokenVersion?: string | undefined;
   } | null;
 };
 

@@ -8,7 +8,7 @@ export interface ResolvedShareBasis extends ShareCountResult {
 export function resolveShareBasis(
   periods: RecastPeriod[],
   config: EngineConfig,
-  fallbackVPrimary?: number,
+  fallbackVPrimary?: number | undefined,
 ): ResolvedShareBasis {
   if (config.shares_outstanding != null && config.shares_outstanding > 0) {
     return {

@@ -30,7 +30,7 @@ function formatRigorLevel(level: AnalysisRigorLevel) {
 }
 
 export function buildValuationTraceabilitySurfaceSummary(
-  traceability?: AnalysisTraceabilityEnvelope | null,
+  traceability?: AnalysisTraceabilityEnvelope | null | undefined,
 ): ValuationTraceabilitySurfaceSummary | null {
   if (!traceability) return null;
 

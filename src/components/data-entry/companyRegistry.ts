@@ -14,20 +14,20 @@ export interface LibraryCompany {
   /** Visual identifier emoji */
   emoji: string;
   /** Why this is interesting for testing */
-  showcaseFor?: string;
+  showcaseFor?: string | undefined;
   /** Whether standalone statements are preloaded */
-  hasStandalone?: boolean;
+  hasStandalone?: boolean | undefined;
   /** Vercel Blob URL for consolidated ZIP (set after upload-to-blob script runs) */
-  blobUrl?: string;
+  blobUrl?: string | undefined;
   /** Vercel Blob URL for standalone ZIP */
-  standaloneBlobUrl?: string;
+  standaloneBlobUrl?: string | undefined;
   /** Vercel Blob URL for quality_indicators.json sidecar */
-  qualityIndicatorsBlobUrl?: string;
+  qualityIndicatorsBlobUrl?: string | undefined;
   /** Vercel Blob URLs for XLS sidecar folders */
   sidecarBlobs?: {
-    subsidiaries?: string[];
-    rbiNhbBanks?: string[];
-    lossGivenDefault?: string[];
+    subsidiaries?: string[] | undefined;
+    rbiNhbBanks?: string[] | undefined;
+    lossGivenDefault?: string[] | undefined;
   };
 }
 

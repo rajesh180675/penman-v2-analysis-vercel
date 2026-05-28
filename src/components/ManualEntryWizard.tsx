@@ -437,7 +437,7 @@ export default function ManualEntryWizard({ onSubmit }: { onSubmit: (rows: RawPe
   );
 }
 
-function Field({ label, value, onChange, hint, placeholder }: { label: string; value: string; onChange: (v: string) => void; hint?: string; placeholder?: string }) {
+function Field({ label, value, onChange, hint, placeholder }: { label: string; value: string; onChange: (v: string) => void; hint?: string | undefined; placeholder?: string }) {
   return (
     <div>
       <label className="block text-xs text-slate-500 mb-1">{label}</label>

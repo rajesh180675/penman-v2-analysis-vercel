@@ -162,23 +162,23 @@ export interface SanityInput {
   companyType: CompanyType;
   // Bank/NBFC metrics (latest period)
   bank?: {
-    nim?: number | null;
-    roa?: number | null;
-    roe?: number | null;
-    costToIncome?: number | null;
-    creditCost?: number | null;
-    leverage?: number | null;
-    spread?: number | null;
-    yieldOnAdvances?: number | null;
-    costOfBorrowings?: number | null;
+    nim?: number | null | undefined;
+    roa?: number | null | undefined;
+    roe?: number | null | undefined;
+    costToIncome?: number | null | undefined;
+    creditCost?: number | null | undefined;
+    leverage?: number | null | undefined;
+    spread?: number | null | undefined;
+    yieldOnAdvances?: number | null | undefined;
+    costOfBorrowings?: number | null | undefined;
   };
   // Industrial metrics (latest period)
   industrial?: {
-    ROCE?: number | null;
-    RNOA?: number | null;
-    PM?: number | null;
-    SalesPM?: number | null;
-    FLEV?: number | null;
+    ROCE?: number | null | undefined;
+    RNOA?: number | null | undefined;
+    PM?: number | null | undefined;
+    SalesPM?: number | null | undefined;
+    FLEV?: number | null | undefined;
   };
 }
 

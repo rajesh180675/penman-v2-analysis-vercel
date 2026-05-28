@@ -112,8 +112,8 @@ function buildOptionalCheck(params: {
 }
 
 export function evaluateReconciliationResiduals(params: {
-  recastData?: RecastPeriod[] | null;
-  config?: EngineConfig | null;
+  recastData?: RecastPeriod[] | null | undefined;
+  config?: EngineConfig | null | undefined;
 }): ReconciliationResidualSummary {
   const recastData = params.recastData ?? [];
   const warningThreshold = params.config?.structural_residual_warning ?? 0.005;

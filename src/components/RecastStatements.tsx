@@ -11,8 +11,8 @@ import CashFlowChart from "./charts/CashFlowChart";
 
 interface Props {
   data: RecastPeriod[];
-  traceability?: AnalysisTraceabilityEnvelope | null;
-  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
+  traceability?: AnalysisTraceabilityEnvelope | null | undefined;
+  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null | undefined;
 }
 
 const f  = (n: number | undefined | null) => n == null ? "—" : n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
@@ -239,7 +239,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
   );
 }
 
-function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function Section({ title, subtitle, children }: { title: string; subtitle?: string | undefined; children: React.ReactNode }) {
   return (
     <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
@@ -260,7 +260,7 @@ function ChartBox({ title, children }: { title: string; children: React.ReactNod
   );
 }
 
-function Th({ children, left }: { children?: React.ReactNode; left?: boolean }) {
+function Th({ children, left }: { children?: React.ReactNode | undefined; left?: boolean }) {
   return (
     <th className={`px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap ${left ? "text-left" : "text-right"}`}>
       {children}
@@ -270,7 +270,7 @@ function Th({ children, left }: { children?: React.ReactNode; left?: boolean }) 
 
 const ACC: Record<string, string> = { green: "text-emerald-700 font-semibold", blue: "text-blue-700", amber: "text-amber-700" };
 
-function TR({ label, vals, bold, accent }: { label: string; vals: string[]; bold?: boolean; accent?: string }) {
+function TR({ label, vals, bold, accent }: { label: string; vals: string[]; bold?: boolean | undefined; accent?: string }) {
   return (
     <tr className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 ${bold ? "bg-indigo-50/30 dark:bg-indigo-950/20" : ""}`}>
       <td className={`px-4 py-2 text-slate-700 dark:text-slate-300 whitespace-nowrap text-sm ${bold ? "font-semibold" : ""}`}>{label}</td>

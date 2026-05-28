@@ -5,7 +5,7 @@ export interface StatementDiagnostic {
   severity: "info" | "warning" | "critical";
   label: string;
   detail: string;
-  periodEnd?: string | null;
+  periodEnd?: string | null | undefined;
 }
 
 export interface StatementDiagnosticReport {

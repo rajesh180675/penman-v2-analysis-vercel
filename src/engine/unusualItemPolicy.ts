@@ -116,7 +116,7 @@ export interface UnusualItemClassification {
   affectsCleanSurplus: boolean;
   classificationSource: "rule-based" | "heuristic" | "manual";
   rationale: string;
-  matchedPattern?: string;
+  matchedPattern?: string | undefined;
 }
 
 /** Hard cap on classifications surfaced; over this we truncate and flag. */

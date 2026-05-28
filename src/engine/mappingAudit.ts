@@ -564,7 +564,7 @@ function hasKey(byStmt: Record<Statement, Set<string>>, stmt: Statement, key: st
 export function evaluateQualityGate(
   periods: RawPeriodData[],
   config?: Pick<EngineConfig, "financial_institution_mode"> | null,
-  recastPeriods?: RecastPeriod[] | null,
+  recastPeriods?: RecastPeriod[] | null | undefined,
 ): QualityGateReport {
   const scopeAssessment = assessAnalysisScope(periods, config ?? null);
   if (!periods || periods.length === 0) {

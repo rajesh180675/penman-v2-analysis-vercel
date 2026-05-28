@@ -21,7 +21,7 @@ export interface EndpointBaseline {
   p95_ms: number;
   p99_ms: number;
   errorRate: number;
-  notes?: string;
+  notes?: string | undefined;
 }
 
 export interface Baseline {

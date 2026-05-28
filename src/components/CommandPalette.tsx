@@ -4,7 +4,7 @@ import type { CompanyRegistry } from "../engine/types";
 interface CommandItem {
   id: string;
   label: string;
-  hint?: string;
+  hint?: string | undefined;
   category: "navigate" | "company" | "action" | "modal";
   icon: string;
   keywords: string[];

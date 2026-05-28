@@ -30,10 +30,10 @@ export interface MultiCompanyRecord {
   rawData: RawPeriodData[];
   recastData: RecastPeriod[];
   /** Explicit peer-comparison company type. Required for strict peer eligibility. */
-  companyType?: CompanyType | null;
+  companyType?: CompanyType | null | undefined;
   /** Optional sector/subsector tag; when present, peer comparison requires a match. */
-  sector?: string | null;
-  traceability?: AnalysisTraceabilityEnvelope | null;
+  sector?: string | null | undefined;
+  traceability?: AnalysisTraceabilityEnvelope | null | undefined;
 }
 
 export interface CompanyRegistry {

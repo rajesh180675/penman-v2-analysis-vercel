@@ -36,7 +36,7 @@ export interface NPACycleSignal {
   /** Periods used in the comparison window. */
   periodsUsed: number;
   dataSufficient: boolean;
-  skipReason?: string;
+  skipReason?: string | undefined;
 }
 
 export interface PCRTrendSignal {
@@ -46,7 +46,7 @@ export interface PCRTrendSignal {
   /** Plain-language interpretation. */
   summary: string | null;
   dataSufficient: boolean;
-  skipReason?: string;
+  skipReason?: string | undefined;
 }
 
 export interface SlippageSignal {
@@ -55,7 +55,7 @@ export interface SlippageSignal {
   prior_slippage_pct: number | null;
   periodsUsed: number;
   dataSufficient: boolean;
-  skipReason?: string;
+  skipReason?: string | undefined;
 }
 
 export interface LoanGrowthSignal {
@@ -72,7 +72,7 @@ export interface LoanGrowthSignal {
     | "lagging-system"
     | null;
   dataSufficient: boolean;
-  skipReason?: string;
+  skipReason?: string | undefined;
 }
 
 export interface DepositFranchiseSignal {
@@ -84,7 +84,7 @@ export interface DepositFranchiseSignal {
   /** Plain-language interpretation. */
   summary: string | null;
   dataSufficient: boolean;
-  skipReason?: string;
+  skipReason?: string | undefined;
 }
 
 export interface CapitalBufferSignal {
@@ -96,7 +96,7 @@ export interface CapitalBufferSignal {
   /** Headroom = latest_tier1 − minimum, in percentage points. */
   headroom_pp: number | null;
   dataSufficient: boolean;
-  skipReason?: string;
+  skipReason?: string | undefined;
 }
 
 export interface BankAssetQualityResult {
@@ -420,9 +420,9 @@ function buildCapitalBuffer(
 
 export interface AssetQualityConfig {
   /** Reference system-wide credit growth % for loan-growth comparison. */
-  systemCreditGrowthPct?: number;
+  systemCreditGrowthPct?: number | undefined;
   /** RBI minimum Tier-1 % (default 9.5% covers Basel III + CCB). */
-  tier1MinimumPct?: number;
+  tier1MinimumPct?: number | undefined;
 }
 
 /**

@@ -4,9 +4,9 @@ import { ReactNode, useState } from "react";
 interface MetricCardProps {
   label: string;
   value: number | null | undefined;
-  format?: "pct" | "mult" | "currency" | "days" | "number" | "ratio";
-  context?: string;
-  trend?: number | null;
+  format?: "pct" | "mult" | "currency" | "days" | "number" | "ratio" | undefined;
+  context?: string | undefined;
+  trend?: number | null | undefined;
   benchmark?: { label: string; percentile: number } | null;
   onClick?: () => void;
 }
@@ -59,8 +59,8 @@ export function MetricCard({ label, value, format = "number", context, trend, be
 interface VerdictBannerProps {
   verdict: "buy" | "hold" | "avoid" | "insufficient-data";
   headline: string;
-  subtitle?: string;
-  confidence?: "high" | "medium" | "low" | null;
+  subtitle?: string | undefined;
+  confidence?: "high" | "medium" | "low" | null | undefined;
   metrics?: { label: string; value: string }[];
 }
 
@@ -122,7 +122,7 @@ export function ConfidenceBadge({ level }: ConfidenceBadgeProps) {
 // ─── InsightBlock ────────────────────────────────────────────────────────────
 interface InsightBlockProps {
   text: string;
-  icon?: string;
+  icon?: string | undefined;
 }
 
 export function InsightBlock({ text, icon = "💡" }: InsightBlockProps) {
@@ -140,8 +140,8 @@ export function InsightBlock({ text, icon = "💡" }: InsightBlockProps) {
 // ─── ExpandableSection ───────────────────────────────────────────────────────
 interface ExpandableSectionProps {
   title: string;
-  badge?: string;
-  defaultOpen?: boolean;
+  badge?: string | undefined;
+  defaultOpen?: boolean | undefined;
   children: ReactNode;
 }
 
@@ -168,8 +168,8 @@ export function ExpandableSection({ title, badge, defaultOpen = false, children 
 // ─── TrendIndicator ──────────────────────────────────────────────────────────
 interface TrendIndicatorProps {
   value: number | null;
-  label?: string;
-  format?: "pp" | "pct" | "abs";
+  label?: string | undefined;
+  format?: "pp" | "pct" | "abs" | undefined;
 }
 
 export function TrendIndicator({ value, label, format = "pp" }: TrendIndicatorProps) {
@@ -198,7 +198,7 @@ interface BenchmarkBarProps {
   min: number;
   max: number;
   zones?: { from: number; to: number; color: string; label?: string }[];
-  label?: string;
+  label?: string | undefined;
 }
 
 export function BenchmarkBar({ value, min, max, zones, label }: BenchmarkBarProps) {
@@ -233,8 +233,8 @@ export function BenchmarkBar({ value, min, max, zones, label }: BenchmarkBarProp
 // ─── SectionHeader ───────────────────────────────────────────────────────────
 interface SectionHeaderProps {
   title: string;
-  subtitle?: string;
-  icon?: string;
+  subtitle?: string | undefined;
+  icon?: string | undefined;
 }
 
 export function SectionHeader({ title, subtitle, icon }: SectionHeaderProps) {
@@ -252,11 +252,11 @@ export function SectionHeader({ title, subtitle, icon }: SectionHeaderProps) {
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 interface SparklineProps {
   data: (number | null)[];
-  width?: number;
-  height?: number;
-  color?: string;
+  width?: number | undefined;
+  height?: number | undefined;
+  color?: string | undefined;
   /** Show a reference line at this value */
-  reference?: number;
+  reference?: number | undefined;
 }
 
 /** Inline SVG sparkline — fits in table cells and KPI cards */
@@ -304,9 +304,9 @@ interface FormulaTooltipProps {
   /** Formula in plain text (e.g. "ROCE = CNI / avg(CSE)") */
   formula: string;
   /** Actual computation for this period */
-  computation?: string;
+  computation?: string | undefined;
   /** Textbook reference */
-  reference?: string;
+  reference?: string | undefined;
 }
 
 /** Hover to see formula + computation + reference */
@@ -334,9 +334,9 @@ export function FormulaTooltip({ children, formula, computation, reference }: Fo
 // ─── DataFreshness ───────────────────────────────────────────────────────────
 interface DataFreshnessProps {
   /** ISO date string of the latest period end */
-  latestPeriod?: string;
+  latestPeriod?: string | undefined;
   /** Label for data source */
-  source?: string;
+  source?: string | undefined;
 }
 
 export function DataFreshness({ latestPeriod, source }: DataFreshnessProps) {
@@ -363,7 +363,7 @@ export function DataFreshness({ latestPeriod, source }: DataFreshnessProps) {
 interface RiskFlagProps {
   severity: "high" | "medium" | "low";
   label: string;
-  detail?: string;
+  detail?: string | undefined;
 }
 
 export function RiskFlag({ severity, label, detail }: RiskFlagProps) {
@@ -407,11 +407,11 @@ export function SourceBadge({ source }: SourceBadgeProps) {
 // ─── HeatmapCell ────────────────────────────────────────────────────────────
 interface HeatmapCellProps {
   value: number | null;
-  min?: number;
-  max?: number;
-  format?: "pct" | "mult" | "abs";
+  min?: number | undefined;
+  max?: number | undefined;
+  format?: "pct" | "mult" | "abs" | undefined;
   /** If true, lower is better (e.g. PE ratio) */
-  invert?: boolean;
+  invert?: boolean | undefined;
 }
 
 export function HeatmapCell({ value, min = 0, max = 1, format = "pct", invert = false }: HeatmapCellProps) {
@@ -442,9 +442,9 @@ export function HeatmapCell({ value, min = 0, max = 1, format = "pct", invert = 
 interface ProgressRingProps {
   /** 0–100 percentage */
   value: number;
-  size?: number;
-  strokeWidth?: number;
-  label?: string;
+  size?: number | undefined;
+  strokeWidth?: number | undefined;
+  label?: string | undefined;
 }
 
 export function ProgressRing({ value, size = 48, strokeWidth = 4, label }: ProgressRingProps) {

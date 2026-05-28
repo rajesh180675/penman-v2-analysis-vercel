@@ -46,8 +46,8 @@ import ScenarioRangeChart from "./charts/ScenarioRangeChart";
 interface Props {
   data: RecastPeriod[];
   config: EngineConfig;
-  traceability?: AnalysisTraceabilityEnvelope | null;
-  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
+  traceability?: AnalysisTraceabilityEnvelope | null | undefined;
+  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null | undefined;
 }
 interface ExtendedProps extends Props { rawData?: RawPeriodData[] | null }
 

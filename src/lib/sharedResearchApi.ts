@@ -185,11 +185,11 @@ export function readResultOrNull<T>(result: SharedApiResult<T> | null | undefine
 export interface SharedResearchBundle {
   companyId: string;
   profile?: {
-    companyId?: string;
-    updatedAt?: string | null;
-    issuer?: WorkspaceCompanyRecord["issuer"] | null;
-    notebook?: WorkspaceCompanyRecord["notes"] | null;
-    portfolio?: WorkspaceCompanyRecord["portfolio"] | null;
+    companyId?: string | undefined;
+    updatedAt?: string | null | undefined;
+    issuer?: WorkspaceCompanyRecord["issuer"] | null | undefined;
+    notebook?: WorkspaceCompanyRecord["notes"] | null | undefined;
+    portfolio?: WorkspaceCompanyRecord["portfolio"] | null | undefined;
   } | null;
   filings: WorkspaceCompanyRecord["filings"];
   valuations: WorkspaceValuationSnapshot[];
@@ -344,15 +344,15 @@ export async function fetchSharedComparisonRegistry() {
 export interface AfesBlackboardOperationPayload {
   session: string;
   operation: "upsert-finding" | "append-debate-log" | "patch-code-state" | "patch-session-metadata" | "replace-snapshot";
-  agentId?: string;
-  findingKey?: string;
+  agentId?: string | undefined;
+  findingKey?: string | undefined;
   finding?: Record<string, unknown>;
   entry?: Record<string, unknown>;
   code_state?: Record<string, unknown>;
-  round?: number;
-  agents_completed?: number;
-  agents_pending?: number;
-  consensus_score?: number;
+  round?: number | undefined;
+  agents_completed?: number | undefined;
+  agents_pending?: number | undefined;
+  consensus_score?: number | undefined;
   environment?: Record<string, unknown>;
   snapshot?: Record<string, unknown>;
 }

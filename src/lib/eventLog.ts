@@ -75,7 +75,7 @@ export interface VerifyResult {
   /** Index where verification failed; -1 if valid end-to-end. */
   brokenAt: number;
   /** Human-readable reason for the failure. */
-  reason?: string;
+  reason?: string | undefined;
 }
 
 export async function verifyChain(log: LogEntry[]): Promise<VerifyResult> {

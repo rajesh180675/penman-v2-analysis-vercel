@@ -219,7 +219,7 @@ function detectStructuralBreak(
 export function estimateFadeRate(
   data: RecastPeriod[],
   costOfCapital: number,
-  companyType?: string,
+  companyType?: string | undefined,
 ): FadeRateEstimate {
   // Build ReOI series (oldest first for time-series regression)
   const sorted = [...data].sort((a, b) => a.period_end.localeCompare(b.period_end));
@@ -401,8 +401,8 @@ export function estimateSegmentFadeRates(
 export function analyzeFadeRate(
   data: RecastPeriod[],
   costOfCapital: number,
-  companyType?: string,
-  segmentData?: SegmentData | null,
+  companyType?: string | undefined,
+  segmentData?: SegmentData | null | undefined,
   taxRate: number = 0.25,
 ): FadeRateAnalysis {
   // NaN guards — coerce non-finite inputs to safe defaults so downstream

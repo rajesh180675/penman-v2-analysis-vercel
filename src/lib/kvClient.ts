@@ -42,7 +42,7 @@ export type KvSource = "kv" | "localStorage" | "none";
 export interface KvResult<T> {
   source: KvSource;
   value: T | null;
-  error?: string;
+  error?: string | undefined;
 }
 
 function localKey(key: string): string {

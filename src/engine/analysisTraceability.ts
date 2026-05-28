@@ -80,7 +80,7 @@ export interface AnalysisTraceabilityEnvelope {
    * the run with the same code path. Optional in v14 (registry empty
    * until PR-3.2); becomes required in v15 once strategies are wired.
    */
-  pipelineStrategyId?: string;
+  pipelineStrategyId?: string | undefined;
   runContext: {
     runId: string | null;
     companyId: string | null;
@@ -255,29 +255,29 @@ export function computeAccountingStandardCoverage(
 }
 
 export function buildAnalysisTraceability(params: {
-  generatedAt?: string | null;
-  runId?: string | null;
-  companyId?: string | null;
-  sourceMode?: string | null;
-  periodCount?: number;
-  latestPeriod?: string | null;
-  qualityGate?: QualityGateReport | null;
-  mappingAudit?: MappingAuditReport | null;
-  policyVersions?: AnalysisPolicyVersions | null;
-  analysisStatus?: AnalysisStatusSummary | null;
-  contentClass?: string | null;
-  retentionDays?: number | null;
-  runInspectorEnabled?: boolean | null;
-  recastPeriodCount?: number;
-  hasDebugInfo?: boolean;
-  debugFiles?: number;
-  rawMetricKeyCount?: number;
-  engineError?: string | null;
-  rawData?: RawPeriodData[] | null;
-  recastData?: RecastPeriod[] | null;
-  config?: EngineConfig | null;
-  debugInfo?: CapitalineParseDebug | null;
-  parserDiagnostics?: SourceParserDiagnostics | null;
+  generatedAt?: string | null | undefined;
+  runId?: string | null | undefined;
+  companyId?: string | null | undefined;
+  sourceMode?: string | null | undefined;
+  periodCount?: number | undefined;
+  latestPeriod?: string | null | undefined;
+  qualityGate?: QualityGateReport | null | undefined;
+  mappingAudit?: MappingAuditReport | null | undefined;
+  policyVersions?: AnalysisPolicyVersions | null | undefined;
+  analysisStatus?: AnalysisStatusSummary | null | undefined;
+  contentClass?: string | null | undefined;
+  retentionDays?: number | null | undefined;
+  runInspectorEnabled?: boolean | null | undefined;
+  recastPeriodCount?: number | undefined;
+  hasDebugInfo?: boolean | undefined;
+  debugFiles?: number | undefined;
+  rawMetricKeyCount?: number | undefined;
+  engineError?: string | null | undefined;
+  rawData?: RawPeriodData[] | null | undefined;
+  recastData?: RecastPeriod[] | null | undefined;
+  config?: EngineConfig | null | undefined;
+  debugInfo?: CapitalineParseDebug | null | undefined;
+  parserDiagnostics?: SourceParserDiagnostics | null | undefined;
 }): AnalysisTraceabilityEnvelope {
   const qualityGate = params.qualityGate;
   const coverageSummary = qualityGate?.coverageSummary ?? params.mappingAudit?.coverageSummary ?? null;

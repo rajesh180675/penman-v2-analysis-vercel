@@ -187,9 +187,9 @@ export function resolveValuationReadiness(periods: RecastPeriod[]): ValuationRea
 }
 
 export function deriveCompanyLabel(
-  rawData?: RawPeriodData[] | null,
-  configTicker?: string | null,
-  explicitCompanyId?: string | null,
+  rawData?: RawPeriodData[] | null | undefined,
+  configTicker?: string | null | undefined,
+  explicitCompanyId?: string | null | undefined,
 ): string {
   const candidates = [
     configTicker,

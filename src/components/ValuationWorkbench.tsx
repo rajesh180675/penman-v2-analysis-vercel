@@ -6,8 +6,8 @@ function pct(value: number | null | undefined, digits = 1) {
 }
 
 function nextAction(args: {
-  status?: AnalysisStatusSummary["status"] | "unknown";
-  signal?: WorkspaceSignalHistoryEntry | null;
+  status?: AnalysisStatusSummary["status"] | "unknown" | undefined;
+  signal?: WorkspaceSignalHistoryEntry | null | undefined;
 }) {
   const { status, signal } = args;
   if (status === "blocked" || signal?.state === "blocked") {
@@ -47,7 +47,7 @@ function nextAction(args: {
 }
 
 interface Props {
-  analysisStatus?: AnalysisStatusSummary | null;
+  analysisStatus?: AnalysisStatusSummary | null | undefined;
   latestSignal: WorkspaceSignalHistoryEntry | null;
   latestValuation: WorkspaceValuationSnapshot | null;
 }

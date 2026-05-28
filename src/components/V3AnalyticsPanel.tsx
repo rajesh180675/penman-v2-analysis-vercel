@@ -35,10 +35,10 @@ import type { ITServicesSignal } from "../engine/itServicesDetector";
 interface Props {
   data: RecastPeriod[];
   config: EngineConfig;
-  traceability?: AnalysisTraceabilityEnvelope | null;
-  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
+  traceability?: AnalysisTraceabilityEnvelope | null | undefined;
+  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null | undefined;
   /** Phase E3 — IT-services signal for moat scorer awareness. */
-  itServices?: ITServicesSignal | null;
+  itServices?: ITServicesSignal | null | undefined;
 }
 
 const pct = (v: number | null | undefined, d = 1) =>

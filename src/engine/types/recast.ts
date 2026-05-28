@@ -15,11 +15,11 @@ export interface CanonicalBalanceSheet {
   TA: number; CSE: number; MI: number;
   FA: number; FO: number;
   OA: number; OL: number;
-  BridgeDebtLongTerm?: number;
-  BridgeDebtShortTerm?: number;
-  BridgeDebtDebentures?: number;
-  BridgeDebtCurrentMaturities?: number;
-  BridgeDebtTotal?: number;
+  BridgeDebtLongTerm?: number | undefined;
+  BridgeDebtShortTerm?: number | undefined;
+  BridgeDebtDebentures?: number | undefined;
+  BridgeDebtCurrentMaturities?: number | undefined;
+  BridgeDebtTotal?: number | undefined;
   OL_TradePayables: number;
   OL_OtherCurrentLiabilities: number;
   OL_ProvisionsCurrent: number;
@@ -40,8 +40,8 @@ export interface CanonicalBalanceSheet {
   OA_TradeReceivables: number; OA_DTA: number;
   OA_CWIP: number; OA_Other: number;
   /* India-specific fields (Phase 2.3) */
-  promoterHolding?: number | null;
-  pledgedPromoterShares?: number | null;
+  promoterHolding?: number | null | undefined;
+  pledgedPromoterShares?: number | null | undefined;
 }
 
 /* ── Income ─────────────────────────────────────────────────────── */
@@ -54,22 +54,22 @@ export interface CanonicalIncome {
   FinanceIncomeRung: 1|2|3|4;
   PreferredDividend: number;
   /* India-specific fields (Phase 2.3) */
-  relatedPartyTransactions?: number;
-  auditorChange?: boolean;
-  qualifiedOpinion?: boolean;
+  relatedPartyTransactions?: number | undefined;
+  auditorChange?: boolean | undefined;
+  qualifiedOpinion?: boolean | undefined;
   NFE: number; OI: number;
   OtherItems: number; OI_from_sales: number; MII: number;
   COGS: number;
-  operatingCostBridge?: OperatingCostBridge;
+  operatingCostBridge?: OperatingCostBridge | undefined;
 }
 
 export interface CoreUnusual {
   UOI: number; CoreOI: number;
   UFE: number; CoreNFE: number;
   ExceptionalItemsAfterTax: number; OCITotal: number;
-  ExceptionalOperatingItemsAfterTax?: number;
-  DiscontinuedOperationsAfterTax?: number;
-  policy?: UnusualItemPolicySummary;
+  ExceptionalOperatingItemsAfterTax?: number | undefined;
+  DiscontinuedOperationsAfterTax?: number | undefined;
+  policy?: UnusualItemPolicySummary | undefined;
 }
 
 export interface OperatingCostBridge {
@@ -109,9 +109,9 @@ export interface CashFlowData {
   CFO: number; Capex: number;
   DividendPaid: number; EquityIssued: number; ShareBuybacks: number;
   InterestReceived: number; DividendReceived: number;
-  DebtProceeds?: number; DebtRepayment?: number;
-  BridgeDebtProceeds?: number; BridgeDebtRepayment?: number;
-  SaleFixedAssets?: number; PurchaseInvestments?: number; SaleInvestments?: number;
+  DebtProceeds?: number | undefined; DebtRepayment?: number | undefined;
+  BridgeDebtProceeds?: number | undefined; BridgeDebtRepayment?: number | undefined;
+  SaleFixedAssets?: number | undefined; PurchaseInvestments?: number | undefined; SaleInvestments?: number | undefined;
   FCF_accounting: number; FCF_cash: number;
   d_t: number; d_t_formula: number; d_t_discrepancy: number;
   EBITDA: number;
@@ -173,12 +173,12 @@ export interface RecastPeriod {
   is          : CanonicalIncome;
   cu          : CoreUnusual;
   cf          : CashFlowData;
-  ratios      ?: Ratios;
-  ri          ?: ResidualIncome;
-  quality     ?: QualityMetrics;
-  trace       ?: TraceMap;
-  spec_flags  ?: SpecFlag[];
-  shareCountInput?: ShareCountInputSnapshot;
+  ratios      ?: Ratios | undefined;
+  ri          ?: ResidualIncome | undefined;
+  quality     ?: QualityMetrics | undefined;
+  trace       ?: TraceMap | undefined;
+  spec_flags  ?: SpecFlag[] | undefined;
+  shareCountInput?: ShareCountInputSnapshot | undefined;
 }
 
 export interface ShareCountInputSnapshot {

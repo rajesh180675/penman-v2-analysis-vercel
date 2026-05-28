@@ -34,13 +34,13 @@ import AdvancedSegmentPanel from "./AdvancedSegmentPanel";
 interface Props {
   data: RecastPeriod[];
   config: EngineConfig;
-  traceability?: AnalysisTraceabilityEnvelope | null;
-  ratioSanity?: SanityAssessment | null;
-  segmentData?: AllSegmentData | null;
-  marketData?: LiveMarketDataSnapshot | null;
+  traceability?: AnalysisTraceabilityEnvelope | null | undefined;
+  ratioSanity?: SanityAssessment | null | undefined;
+  segmentData?: AllSegmentData | null | undefined;
+  marketData?: LiveMarketDataSnapshot | null | undefined;
   /** Optional peer count for Next Steps recommendations */
-  peerCount?: number;
-  onNavigate?: (tab: string) => void;
+  peerCount?: number | undefined;
+  onNavigate?: ((tab: string) => void) | undefined;
 }
 
 export default function DashboardView({ data, config, traceability = null, ratioSanity = null, segmentData = null, marketData = null, peerCount = 0, onNavigate }: Props) {

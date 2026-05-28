@@ -13,7 +13,7 @@ import ExcelJS from "exceljs";
 type CellObject = {
   v: string | number;
   t: "n" | "s";
-  s?: CellStyle;
+  s?: CellStyle | undefined;
 };
 
 type WorkSheet = Record<string, CellObject | Array<{ wch: number }> | string>;
@@ -117,16 +117,16 @@ import { AnalysisPolicyVersions } from "./policyVersions";
 import type { SanityAssessment } from "./ratioSanity";
 
 export interface WorkbookExportMetadata {
-  companyLabel?: string;
-  auditRunId?: string | null;
-  valuationStatus?: "production-ready" | "warning" | "guarded";
-  valuationReasons?: string[];
-  valuationAnchorPeriod?: string | null;
-  valuationSourcePeriod?: string | null;
-  policyVersions?: AnalysisPolicyVersions;
-  traceability?: AnalysisTraceabilityEnvelope;
+  companyLabel?: string | undefined;
+  auditRunId?: string | null | undefined;
+  valuationStatus?: "production-ready" | "warning" | "guarded" | undefined;
+  valuationReasons?: string[] | undefined;
+  valuationAnchorPeriod?: string | null | undefined;
+  valuationSourcePeriod?: string | null | undefined;
+  policyVersions?: AnalysisPolicyVersions | undefined;
+  traceability?: AnalysisTraceabilityEnvelope | undefined;
   /** Phase 9 — anchor ratio bands (economic sanity gate). */
-  ratioSanity?: SanityAssessment | null;
+  ratioSanity?: SanityAssessment | null | undefined;
 }
 
 export function workbookMetadataFromPublicationSnapshot(snapshot: {
@@ -154,9 +154,9 @@ export function workbookMetadataFromPublicationSnapshot(snapshot: {
 }
 // ── Style helpers ──────────────────────────────────────────────────────────────
 type Fill = { fgColor: { rgb: string } };
-type Font = { bold?: boolean; color?: { rgb: string }; sz?: number; name?: string };
-type Alignment = { horizontal?: string; vertical?: string; wrapText?: boolean };
-type CellStyle = { fill?: Fill; font?: Font; alignment?: Alignment; numFmt?: string; border?: object };
+type Font = { bold?: boolean | undefined; color?: { rgb: string }; sz?: number | undefined; name?: string };
+type Alignment = { horizontal?: string | undefined; vertical?: string | undefined; wrapText?: boolean };
+type CellStyle = { fill?: Fill | undefined; font?: Font | undefined; alignment?: Alignment | undefined; numFmt?: string | undefined; border?: object };
 
 function cell(v: string | number | null, s?: CellStyle): CellObject {
   const t = typeof v === "number" ? "n" : typeof v === "string" ? "s" : "s";
@@ -844,7 +844,7 @@ export async function generateValuationWorkbook(
   forecastScenarios: ForecastScenario[],
   valuation: ValuationResult,
   config: EngineConfig,
-  metadata?: WorkbookExportMetadata,
+  metadata?: WorkbookExportMetadata | undefined,
 ): Promise<ArrayBuffer> {
   const wb: WorkBook = utils.book_new();
 
@@ -890,7 +890,7 @@ export async function generateValuationWorkbookFromPublicationSnapshot(params: {
   forecastScenarios: ForecastScenario[];
   valuation: ValuationResult;
   config: EngineConfig;
-  ratioSanity?: SanityAssessment | null;
+  ratioSanity?: SanityAssessment | null | undefined;
 }): Promise<ArrayBuffer> {
   const metadata = workbookMetadataFromPublicationSnapshot(params.snapshot);
   metadata.ratioSanity = params.ratioSanity ?? null;

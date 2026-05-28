@@ -39,7 +39,7 @@ type PickResult = {
   key: string;
   statement: "BalanceSheet" | "ProfitLoss" | "CashFlow" | "Fallback";
   matchType: "exact_composite" | "exact_base" | "fuzzy";
-  note?: string;
+  note?: string | undefined;
 };
 type PickResultWithSource = PickResult & { sourceId: string };
 
@@ -109,8 +109,8 @@ function sumWithDistinctSource(
   data: RawPeriodData,
   keys: readonly string[],
   stmt: "BalanceSheet" | "ProfitLoss" | "CashFlow",
-  line?: string,
-  trace?: TraceMap,
+  line?: string | undefined,
+  trace?: TraceMap | undefined,
 ) {
   let total = 0;
   const usedSource = new Set<string>();
@@ -151,17 +151,17 @@ function sumWithDistinctSource(
   return total;
 }
 
-const valBS = (d: RawPeriodData, k: readonly string[], line?: string, trace?: TraceMap) => {
+const valBS = (d: RawPeriodData, k: readonly string[], line?: string | undefined, trace?: TraceMap) => {
   const r = pickWithSource(d, k, "BalanceSheet");
   pushTrace(trace, line, { statement: r.statement, key: r.key, value: r.value, matchType: r.matchType, note: r.note });
   return r.value;
 };
-const valPL = (d: RawPeriodData, k: readonly string[], line?: string, trace?: TraceMap) => {
+const valPL = (d: RawPeriodData, k: readonly string[], line?: string | undefined, trace?: TraceMap) => {
   const r = pickWithSource(d, k, "ProfitLoss");
   pushTrace(trace, line, { statement: r.statement, key: r.key, value: r.value, matchType: r.matchType, note: r.note });
   return r.value;
 };
-const valCF = (d: RawPeriodData, k: readonly string[], line?: string, trace?: TraceMap) => {
+const valCF = (d: RawPeriodData, k: readonly string[], line?: string | undefined, trace?: TraceMap) => {
   const r = pickWithSource(d, k, "CashFlow");
   pushTrace(trace, line, { statement: r.statement, key: r.key, value: r.value, matchType: r.matchType, note: r.note });
   return r.value;
@@ -547,7 +547,7 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   };
 }
 
-export function recastCashFlow(data: RawPeriodData, is_: CanonicalIncome, bs: CanonicalBalanceSheet, prev?: CanonicalBalanceSheet, trace?: TraceMap): CashFlowData {
+export function recastCashFlow(data: RawPeriodData, is_: CanonicalIncome, bs: CanonicalBalanceSheet, prev?: CanonicalBalanceSheet | undefined, trace?: TraceMap): CashFlowData {
   const cf = (line: string, keys: readonly string[]) => valCF(data, keys, line, trace);
   const sumCf = (line: string, keys: readonly string[]) => sumWithDistinctSource(data, keys, "CashFlow", line, trace);
 
@@ -975,9 +975,9 @@ export function deriveKwFromStructure(cur: RecastPeriod, prev: RecastPeriod, ke:
 export function computeValuation(
   periods: RecastPeriod[], ke: number, kw: number, g: number, cfg: EngineConfig,
   /** §11 terminal RE anchor — if provided, overrides the as-reported lastRE in CV3 computation */
-  terminalREAnchor?: number | null,
+  terminalREAnchor?: number | null | undefined,
   /** §11 terminal ReOI anchor */
-  terminalReOIAnchor?: number | null,
+  terminalReOIAnchor?: number | null | undefined,
 ) {
   if (!periods.length) {
     throw new Error("computeValuation requires at least one period.");

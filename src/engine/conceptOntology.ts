@@ -28,9 +28,9 @@ export interface ConceptDefinition {
   aggregationBehavior: AggregationBehavior;
   aliases: string[];
   valuationRelevance: "core" | "supporting" | "optional";
-  sectorRelevance?: string[];
+  sectorRelevance?: string[] | undefined;
   /** Empty / absent = applicable to every provider. */
-  providerRelevance?: DataProvider[];
+  providerRelevance?: DataProvider[] | undefined;
 }
 
 export interface ConceptCoverageRow {
@@ -67,7 +67,7 @@ export interface ConceptConflict {
   rawLabels: string[];
   statements: StatementOwner[];
   affectedPeriods: string[];
-  resolution?: string;
+  resolution?: string | undefined;
 }
 
 /** Hard cap on conflicts surfaced; over this we truncate and flag. */

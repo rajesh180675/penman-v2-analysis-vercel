@@ -24,14 +24,14 @@ import CompanyTypePickerModal from "./data-entry/CompanyTypePickerModal";
 interface Props {
   onDataSubmit: (
     data: RawPeriodData[],
-    debug?: CapitalineParseDebug,
-    meta?: AuditSubmissionMeta,
-    parserDiagnostics?: SourceParserDiagnostics | null,
-    segmentData?: import("../engine/segmentParser").AllSegmentData | null,
+    debug?: CapitalineParseDebug | undefined,
+    meta?: AuditSubmissionMeta | undefined,
+    parserDiagnostics?: SourceParserDiagnostics | null | undefined,
+    segmentData?: import("../engine/segmentParser").AllSegmentData | null | undefined,
     // Phase A — optional standalone dataset for dual-scope (consolidated + standalone)
     // analysis. When present, App computes the gap (cons − stan = subsidiary
     // contribution). null when only consolidated was loaded.
-    standaloneData?: RawPeriodData[] | null,
+    standaloneData?: RawPeriodData[] | null | undefined,
   ) => void;
   currentData: RawPeriodData[] | null;
   config: EngineConfig;
@@ -49,8 +49,8 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
   const [pendingPick, setPendingPick] = useState<{
     folder: string; ticker: string; type: string;
     scope: string; hasStandalone: boolean;
-    blobUrl?: string | null; standaloneBlobUrl?: string | null;
-    qualityIndicatorsBlobUrl?: string | null;
+    blobUrl?: string | null | undefined; standaloneBlobUrl?: string | null | undefined;
+    qualityIndicatorsBlobUrl?: string | null | undefined;
   } | null>(null);
   const [_lastFile, setLastFile] = useState<string | null>(null);
   const [screenerText, setScreenerText] = useState("");
@@ -88,11 +88,11 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
 
   const processZip = useCallback(async (
     file: File,
-    overrideCompanyId?: string,
+    overrideCompanyId?: string | undefined,
     // Phase A — optional pre-parsed standalone periods. When the library card
     // loaded both consolidated + standalone, the caller parses standalone
     // first (so failures don't abort consolidated) and passes the periods here.
-    standalonePeriods?: RawPeriodData[] | null,
+    standalonePeriods?: RawPeriodData[] | null | undefined,
   options?: { skipTypeCheck?: boolean },
   ) => {
     if (typeNotSelected && !options?.skipTypeCheck) {

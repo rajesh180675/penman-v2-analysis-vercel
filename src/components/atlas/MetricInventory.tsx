@@ -418,7 +418,7 @@ function SummaryCard({
   label: string;
   value: string;
   subline: string;
-  accent?: "slate" | "emerald" | "blue" | "amber";
+  accent?: "slate" | "emerald" | "blue" | "amber" | undefined;
 }) {
   const accentMap = {
     slate: "text-slate-900 dark:text-slate-100",

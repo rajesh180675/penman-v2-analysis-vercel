@@ -27,22 +27,22 @@ export interface MarketInputs {
   /** Current market capitalisation in ₹ Crore */
   marketCap: number;
   /** Current share price in ₹ (used for per-share multiples) */
-  sharePrice?: number | null;
+  sharePrice?: number | null | undefined;
   /** Net debt in ₹ Crore (for EV = marketCap + netDebt) */
-  netDebt?: number | null;
+  netDebt?: number | null | undefined;
 }
 
 export interface SectorMedians {
   /** Sector median PE */
-  pe?: number | null;
+  pe?: number | null | undefined;
   /** Sector median PB */
-  pb?: number | null;
+  pb?: number | null | undefined;
   /** Sector median EV/EBITDA */
-  evEbitda?: number | null;
+  evEbitda?: number | null | undefined;
   /** Sector median PS */
-  ps?: number | null;
+  ps?: number | null | undefined;
   /** Sector median Price/NII (banks) */
-  priceNii?: number | null;
+  priceNii?: number | null | undefined;
 }
 
 // ─── Output ──────────────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ export interface MultipleBand {
    * out of the historical range (review W3). Optional for backward compat
    * with hand-constructed bands in tests.
    */
-  nonPositivePeriodsExcluded?: number;
+  nonPositivePeriodsExcluded?: number | undefined;
   /** Percentile of current multiple in historical range [0–100] */
   currentPercentile: number | null;
   /** Sector median for comparison (if provided) */
@@ -192,7 +192,7 @@ function buildBand(
 export function computeIndustrialMultiples(
   periods: RecastPeriod[],
   market: MarketInputs,
-  sectorMedians?: SectorMedians,
+  sectorMedians?: SectorMedians | undefined,
 ): RelativeValuationResult {
   const notes: string[] = [];
   const sorted = [...periods].sort(
@@ -306,7 +306,7 @@ export function computeIndustrialMultiples(
 export function computeBankMultiples(
   bankMetrics: BankPeriodMetrics[],
   market: MarketInputs,
-  sectorMedians?: SectorMedians,
+  sectorMedians?: SectorMedians | undefined,
 ): RelativeValuationResult {
   const notes: string[] = [];
   const sorted = [...bankMetrics].sort(

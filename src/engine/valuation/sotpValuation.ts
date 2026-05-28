@@ -79,7 +79,7 @@ export interface SotpSegmentInput {
   /** Segment revenue in absolute ₹. Required. */
   revenue: number;
   /** Segment EBITDA in absolute ₹. Optional — when absent, EV/Revenue is used alone. */
-  ebitda?: number;
+  ebitda?: number | undefined;
 }
 
 export interface SotpInputs {
@@ -87,7 +87,7 @@ export interface SotpInputs {
   /** Net debt in absolute ₹ (debt - cash). Subtracted from total EV. */
   netDebt: number;
   /** Investments / non-operating asset surplus in absolute ₹. Added to equity value. */
-  surplusAssets?: number;
+  surplusAssets?: number | undefined;
   /** Shares outstanding (absolute count, not crore). */
   sharesOutstanding: number;
 }

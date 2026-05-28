@@ -9,9 +9,9 @@ interface Props {
   label: string;
   value: number | null;
   format: "pct" | "mult" | "currency" | "number";
-  subtitle?: string;
-  history?: SparklinePoint[];
-  trend?: number | null;
+  subtitle?: string | undefined;
+  history?: SparklinePoint[] | undefined;
+  trend?: number | null | undefined;
   onClick?: () => void;
 }
 
