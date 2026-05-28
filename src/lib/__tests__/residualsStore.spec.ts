@@ -35,7 +35,7 @@ function mkSummary(companyId: string, runIdx: number, score = 10, ts?: string): 
     runId: `${companyId}-run-${runIdx}`,
     timestamp: ts ?? `2026-${String(runIdx + 1).padStart(2, "0")}-01T00:00:00.000Z`,
     companyId,
-    schemaVersion: "2026-06-traceability-v12",
+    schemaVersion: "2026-06-traceability-v13",
     parserResiduals: { unresolvableRowCount: 0, numericParseErrorCount: 0, blankRowRate: 0 },
     mappingResiduals: { unresolvedCriticalCount: 0, unresolvedSupportingCount: 0, conflictCount: 0 },
     identityResiduals: { maxResidualRatio: 0, failedCheckCount: 0 },
