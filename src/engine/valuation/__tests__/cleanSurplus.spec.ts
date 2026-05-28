@@ -3,7 +3,7 @@
 ================================================================ */
 
 import { describe, it, expect } from "vitest";
-import { checkCleanSurplus, type CleanSurplusInputs } from "../cleanSurplus";
+import { checkCleanSurplus } from "../cleanSurplus";
 
 function periods(seq: Array<{ p: string; bv: number; ci: number; div: number; iss: number }>) {
   return seq.map((s) => ({
