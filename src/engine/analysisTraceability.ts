@@ -293,12 +293,12 @@ export function buildAnalysisTraceability(params: {
     {
       level: "syntactically-valid",
       label: "Syntactically valid",
-      achieved: hasRawData && !hasEngineError && parserFidelity.status !== "failed" && parserFidelity.score >= 60,
+      achieved: hasRawData && !hasEngineError && parserFidelity.status !== "failed" && parserFidelity.score >= 70,
       detail: !hasRawData
         ? "No raw periods were persisted for this run."
         : hasEngineError
           ? "Raw periods exist, but the engine still raised an execution error."
-          : parserFidelity.status === "failed" || parserFidelity.score < 60
+          : parserFidelity.status === "failed" || parserFidelity.score < 70
             ? `Parser fidelity did not clear the syntactic threshold (${parserFidelity.score}/100). ${parserFidelity.summary}`
             : `Parser fidelity cleared the syntactic threshold (${parserFidelity.score}/100) and no engine error was recorded.`,
     },
@@ -385,14 +385,29 @@ export function buildAnalysisTraceability(params: {
       scopeClassification: qualityGate?.scopeAssessment?.classification ?? null,
       scopeBlocked: Boolean(qualityGate?.scopeAssessment?.blocked),
     },
-    confidence: {
+  confidence: (() => {
+    // Parser fidelity is a hard gate: if the parser could not produce a
+    // trustworthy dataset, downstream confidence is meaningless regardless
+    // of what mappingAudit or valuationReadiness say.
+    if (parserFidelity.status === "failed") {
+      return {
+        status: "blocked" as const,
+        headline: `Parser fidelity failed — ${parserFidelity.summary}`,
+        tone: "red" as const,
+        blockingCount: Math.max(statusBlockingCount, valuationGateFailures, 1),
+        diagnosticCount: statusDiagnosticCount,
+        optionalCount: statusOptionalCount,
+      };
+    }
+    return {
       status: analysisStatus?.status ?? "guarded",
       headline: analysisStatus?.headline ?? "Traceability confidence status unavailable.",
       tone: analysisStatus?.tone ?? "amber",
       blockingCount: Math.max(statusBlockingCount, valuationGateFailures),
       diagnosticCount: statusDiagnosticCount,
       optionalCount: statusOptionalCount,
-    },
+    };
+  })(),
     parserFidelity,
     reconciliation,
     accountingStandardCoverage: computeAccountingStandardCoverage(params.rawData),
