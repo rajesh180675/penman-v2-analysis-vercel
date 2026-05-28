@@ -1,0 +1,28 @@
+{
+  "$schema": "../peer-multiples-schema.json",
+  "retrievalDate": "2026-01-15",
+  "source": "Capitaline Plus + screener.in (10Y trailing median)",
+  "geography": "India",
+  "version": "2026-01-peer-multiples-v1",
+  "segments": [
+    { "segment": "FMCG-Foods", "evRevenue": 4.5, "evEbitda": 22, "peRatio": 38, "peerCount": 12 },
+    { "segment": "FMCG-Personal-Care", "evRevenue": 6.2, "evEbitda": 28, "peRatio": 48, "peerCount": 9 },
+    { "segment": "FMCG-Tobacco", "evRevenue": 5.8, "evEbitda": 18, "peRatio": 24, "peerCount": 3 },
+    { "segment": "IT-Services", "evRevenue": 4.2, "evEbitda": 18, "peRatio": 28, "peerCount": 14 },
+    { "segment": "IT-Products", "evRevenue": 6.5, "evEbitda": 25, "peRatio": 38, "peerCount": 6 },
+    { "segment": "Pharma-Generics", "evRevenue": 3.8, "evEbitda": 17, "peRatio": 26, "peerCount": 15 },
+    { "segment": "Pharma-Innovator", "evRevenue": 5.5, "evEbitda": 21, "peRatio": 32, "peerCount": 8 },
+    { "segment": "Auto-PV", "evRevenue": 1.8, "evEbitda": 12, "peRatio": 22, "peerCount": 6 },
+    { "segment": "Auto-CV", "evRevenue": 1.2, "evEbitda": 10, "peRatio": 18, "peerCount": 4 },
+    { "segment": "Auto-2W-3W", "evRevenue": 2.1, "evEbitda": 14, "peRatio": 22, "peerCount": 5 },
+    { "segment": "Cement", "evRevenue": 2.4, "evEbitda": 11, "peRatio": 22, "peerCount": 12 },
+    { "segment": "Steel", "evRevenue": 1.4, "evEbitda": 7, "peRatio": 12, "peerCount": 8 },
+    { "segment": "Telecom-Mobility", "evRevenue": 3.2, "evEbitda": 11, "peRatio": 30, "peerCount": 3 },
+    { "segment": "Power-Generation", "evRevenue": 2.8, "evEbitda": 10, "peRatio": 16, "peerCount": 9 },
+    { "segment": "Real-Estate", "evRevenue": 3.5, "evEbitda": 14, "peRatio": 24, "peerCount": 18 },
+    { "segment": "Retail-Apparel", "evRevenue": 2.6, "evEbitda": 18, "peRatio": 38, "peerCount": 8 },
+    { "segment": "Hotels", "evRevenue": 4.5, "evEbitda": 18, "peRatio": 32, "peerCount": 6 },
+    { "segment": "Logistics", "evRevenue": 2.2, "evEbitda": 13, "peRatio": 26, "peerCount": 11 },
+    { "segment": "Diversified", "evRevenue": 2.5, "evEbitda": 13, "peRatio": 22, "peerCount": 0 }
+  ]
+}
