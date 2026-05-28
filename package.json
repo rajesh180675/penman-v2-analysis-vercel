@@ -23,8 +23,9 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "validate": "npm run typecheck && npm run test && npm run build",
-    "validate:release": "npm run typecheck && npm run test:golden && npm run test && npm run build",
+    "lint:any": "node scripts/check-any-budget.cjs",
+    "validate": "npm run typecheck && npm run lint:any && npm run test && npm run build",
+    "validate:release": "npm run typecheck && npm run lint:any && npm run test:golden && npm run test && npm run build",
     "refresh": "node scripts/refresh-company.mjs"
   },
   "dependencies": {
