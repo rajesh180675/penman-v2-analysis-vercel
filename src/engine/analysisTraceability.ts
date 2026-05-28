@@ -72,6 +72,13 @@ export interface AccountingStandardCoverage {
 export interface AnalysisTraceabilityEnvelope {
   schemaVersion: string;
   generatedAt: string | null;
+  /**
+   * Plan 3 PR-3.1 — Identifier of the pipeline strategy that produced
+   * this envelope. Stable across versions so an audit can reproduce
+   * the run with the same code path. Optional in v14 (registry empty
+   * until PR-3.2); becomes required in v15 once strategies are wired.
+   */
+  pipelineStrategyId?: string;
   runContext: {
     runId: string | null;
     companyId: string | null;
