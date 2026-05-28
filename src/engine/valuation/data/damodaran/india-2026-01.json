@@ -1,0 +1,45 @@
+{
+  "$schema": "../damodaran-schema.json",
+  "retrievalDate": "2026-01-15",
+  "source": "Damodaran NYU Stern - Industry Betas (Total Beta) + ERP estimates",
+  "sourceUrl": "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/data.html",
+  "geography": "India",
+  "currency": "INR",
+  "version": "2026-01-damodaran-v1",
+  "equityRiskPremium": {
+    "value": 0.0775,
+    "asOf": "2026-01-15",
+    "method": "implied ERP S&P BSE Sensex"
+  },
+  "riskFreeRate": {
+    "value": 0.071,
+    "asOf": "2026-01-15",
+    "instrument": "10Y GSec yield"
+  },
+  "industries": [
+    { "industry": "Banks", "leveredBeta": 0.95, "unleveredBeta": 0.55, "debtToEquity": 4.5 },
+    { "industry": "NBFC", "leveredBeta": 1.05, "unleveredBeta": 0.50, "debtToEquity": 3.8 },
+    { "industry": "Insurance (Life)", "leveredBeta": 0.90, "unleveredBeta": 0.55, "debtToEquity": 2.2 },
+    { "industry": "Insurance (Non-Life)", "leveredBeta": 0.85, "unleveredBeta": 0.65, "debtToEquity": 1.5 },
+    { "industry": "FMCG", "leveredBeta": 0.65, "unleveredBeta": 0.60, "debtToEquity": 0.15 },
+    { "industry": "IT Services", "leveredBeta": 0.80, "unleveredBeta": 0.78, "debtToEquity": 0.05 },
+    { "industry": "Pharma", "leveredBeta": 0.75, "unleveredBeta": 0.68, "debtToEquity": 0.20 },
+    { "industry": "Auto", "leveredBeta": 1.10, "unleveredBeta": 0.85, "debtToEquity": 0.45 },
+    { "industry": "Auto Components", "leveredBeta": 1.15, "unleveredBeta": 0.85, "debtToEquity": 0.50 },
+    { "industry": "Capital Goods", "leveredBeta": 1.05, "unleveredBeta": 0.85, "debtToEquity": 0.35 },
+    { "industry": "Cement", "leveredBeta": 0.95, "unleveredBeta": 0.75, "debtToEquity": 0.40 },
+    { "industry": "Chemicals", "leveredBeta": 1.00, "unleveredBeta": 0.78, "debtToEquity": 0.45 },
+    { "industry": "Construction", "leveredBeta": 1.20, "unleveredBeta": 0.70, "debtToEquity": 1.50 },
+    { "industry": "Real Estate", "leveredBeta": 1.30, "unleveredBeta": 0.65, "debtToEquity": 2.10 },
+    { "industry": "Power", "leveredBeta": 0.85, "unleveredBeta": 0.45, "debtToEquity": 1.80 },
+    { "industry": "Oil & Gas", "leveredBeta": 0.90, "unleveredBeta": 0.65, "debtToEquity": 0.85 },
+    { "industry": "Metals", "leveredBeta": 1.15, "unleveredBeta": 0.70, "debtToEquity": 1.10 },
+    { "industry": "Telecom", "leveredBeta": 0.85, "unleveredBeta": 0.55, "debtToEquity": 1.20 },
+    { "industry": "Retail", "leveredBeta": 1.05, "unleveredBeta": 0.85, "debtToEquity": 0.55 },
+    { "industry": "Hotels", "leveredBeta": 1.20, "unleveredBeta": 0.85, "debtToEquity": 0.65 },
+    { "industry": "Airlines", "leveredBeta": 1.30, "unleveredBeta": 0.65, "debtToEquity": 1.95 },
+    { "industry": "Logistics", "leveredBeta": 1.05, "unleveredBeta": 0.80, "debtToEquity": 0.55 },
+    { "industry": "Media", "leveredBeta": 1.10, "unleveredBeta": 0.85, "debtToEquity": 0.45 },
+    { "industry": "Diversified", "leveredBeta": 0.95, "unleveredBeta": 0.70, "debtToEquity": 0.50 }
+  ]
+}
