@@ -1,0 +1,19 @@
+{
+  "companyId": "asian-paints",
+  "companyName": "Asian Paints Ltd",
+  "profile": "clean-industrial",
+  "expectedRigorLevel": "valuation-eligible",
+  "expectedParserFidelityStatus": "confirmed",
+  "expectedReconciliationStatus": "confirmed",
+  "expectedEconomicSanityStatus": "passed",
+  "expectedConceptIdentityStatus": "clean",
+  "keyMetricTolerances": {
+    "RNOA": { "min": 0.20, "max": 0.50 },
+    "ROCE": { "min": 0.18, "max": 0.45 },
+    "NFO_to_CSE": { "min": -0.20, "max": 0.30 }
+  },
+  "expectedAnomalyFlags": [],
+  "expectedUnusualItemCount": { "min": 0, "max": 3 },
+  "expectedRunsCleanWorkbook": true,
+  "notes": "Clean Ind-AS profile, decorative paints leader, low leverage. Used as the happy-path baseline for Penman-Nissim industrial valuation."
+}
