@@ -108,7 +108,7 @@ const MUTATIONS: Record<string, (s: string) => string> = {
     return s.split("").map((c) => map[c] ?? c).join("");
   },
   "extreme-numbers"(s) {
-    return s.replace(/\b\d+(\.\d+)?\b/g, (m, _, i) => {
+    return s.replace(/\b\d+(\.\d+)?\b/g, (_match, _frac, i) => {
       const arr = ["Infinity", "NaN", "1e308", "-1e308", "0.000000001"];
       return arr[i % arr.length]!;
     });
@@ -116,7 +116,7 @@ const MUTATIONS: Record<string, (s: string) => string> = {
   "swap-delimiter"(s) {
     return s.replace(/\t/g, ",");
   },
-  empty(_) {
+  empty(_s) {
     return "";
   },
 };
