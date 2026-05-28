@@ -1,6 +1,21 @@
 import { RawPeriodData } from "./types";
 import { periodMetricValue } from "./rawMetricTools";
 
+// ─── Thresholds (Gap 2 / PR-B) ─────────────────────────────────────────────
+//
+// Single source of truth for "major capital transaction" thresholds. Both
+// detectCorporateActions and economicSanityGates consume these so the two
+// gates never disagree on what counts as material.
+
+/** Buyback ≥ 5% of CSE flags the period as contaminated for terminal anchor. */
+export const BUYBACK_PCT_OF_CSE = 0.05;
+
+/** Rights / equity issuance ≥ 10% of CSE flags the period as contaminated. */
+export const RIGHTS_PCT_OF_CSE = 0.10;
+
+/** Special-dividend-per-share threshold (₹/share) used to flag outsized payouts. */
+export const SPECIAL_DIVIDEND_PER_SHARE = 5;
+
 export interface CorporateActionEvent {
   kind: "split-or-bonus" | "dilution" | "buyback" | "special-dividend" | "capital-raise";
   periodEnd: string;

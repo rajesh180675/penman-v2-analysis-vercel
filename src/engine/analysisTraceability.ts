@@ -9,6 +9,8 @@ import { evaluateReconciliationResiduals, ReconciliationResidualSummary } from "
 import { SourceParserDiagnostics } from "./parserDiagnostics";
 import { detectDistress } from "./distressDetector";
 import { ConceptIdentitySummary, summarizeConceptIdentity } from "./conceptOntology";
+import { detectCorporateActions } from "./corporateActions";
+import { EconomicSanitySummary, evaluateEconomicSanity } from "./economicSanityGates";
 import { isEnabled } from "../lib/featureFlags";
 import { trace } from "../lib/traceLogger";
 
@@ -99,6 +101,13 @@ export interface AnalysisTraceabilityEnvelope {
    *  `rigor.conceptIdentityBlock` feature flag is on, the run cannot
    *  reach `valuation-eligible`. */
   conceptIdentity: ConceptIdentitySummary;
+  /** Gap 2 / PR-B — economic sanity gates. Surfaces the deterministic
+   *  anchor period selection (latest period that passes block-severity
+   *  checks within MAX_ANCHOR_LOOKBACK_PERIODS), skipped contaminated
+   *  periods, and the per-check verdicts. When `status === "blocked"`
+   *  and the `rigor.economicSanityBlock` flag is on, the run cannot
+   *  reach `economically-plausible`. */
+  economicSanity: EconomicSanitySummary;
   rigor: {
     currentLevel: AnalysisRigorLevel;
     currentLabel: string;
@@ -315,6 +324,29 @@ export function buildAnalysisTraceability(params: {
       blockEnabled: conceptIdentityBlockEnabled,
     });
   }
+  // Gap 2 / PR-B — economic sanity. Walks periods latest → oldest until a
+  // clean anchor is found within MAX_ANCHOR_LOOKBACK_PERIODS. When no
+  // clean anchor exists, status is "blocked" and rigor cannot reach
+  // economically-plausible (unless the kill switch is off).
+  const corporateActions = detectCorporateActions(params.rawData ?? null);
+  const economicSanity = evaluateEconomicSanity(
+    params.recastData ?? [],
+    params.rawData ?? [],
+    corporateActions,
+  );
+  const economicSanityBlockEnabled = isEnabled("rigor.economicSanityBlock");
+  const economicSanityBlocksPlausible =
+    economicSanityBlockEnabled && economicSanity.status === "blocked";
+  if (economicSanity.status !== "passed") {
+    trace("config", `economicSanity:${economicSanity.status}`, {
+      companyId: params.companyId ?? null,
+      anchorPeriod: economicSanity.anchorPeriod,
+      anchorReason: economicSanity.anchorReason,
+      skippedCount: economicSanity.skippedPeriods.length,
+      failedCheckIds: economicSanity.failedChecks.map((c) => c.checkId),
+      blockEnabled: economicSanityBlockEnabled,
+    });
+  }
   const structuralAchieved = hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues && reconciliation.status !== "failed";
   const checkpoints: AnalysisRigorCheckpoint[] = [
     {
@@ -350,14 +382,18 @@ export function buildAnalysisTraceability(params: {
     {
       level: "economically-plausible",
       label: "Economically plausible",
-      achieved: structuralAchieved && !valuationBlocked && !screeningOnly,
+      achieved: structuralAchieved && !valuationBlocked && !screeningOnly && !economicSanityBlocksPlausible,
       detail: screeningOnly
         ? "Single-period upload — economic plausibility assessment requires ≥2 periods."
         : valuationBlocked
           ? "Valuation-critical issues still block the run, so economic plausibility is not established."
-          : structuralAchieved
-            ? "The run cleared structural blockers and no valuation-critical issues remain."
-            : "Economic plausibility cannot be asserted until structural reconciliation clears.",
+          : economicSanityBlocksPlausible
+            ? `Economic sanity gates blocked the run — ${economicSanity.anchorReason}`
+            : structuralAchieved
+              ? economicSanity.status === "warned"
+                ? `Anchor period ${economicSanity.anchorPeriod}; ${economicSanity.failedChecks.length} warning-level signal(s) carried forward.`
+                : `Anchor period ${economicSanity.anchorPeriod ?? "—"}; all economic sanity checks passed.`
+              : "Economic plausibility cannot be asserted until structural reconciliation clears.",
     },
     {
       level: "valuation-eligible",
@@ -441,6 +477,7 @@ export function buildAnalysisTraceability(params: {
     reconciliation,
     accountingStandardCoverage: computeAccountingStandardCoverage(params.rawData),
     conceptIdentity,
+    economicSanity,
     rigor: {
       currentLevel: currentCheckpoint.level,
       currentLabel: currentCheckpoint.label,

@@ -84,6 +84,13 @@ type InspectorPayload = {
         unresolvedCriticalCount?: number;
         truncated?: boolean;
       } | null;
+      economicSanity?: {
+        status?: string;
+        anchorPeriod?: string | null;
+        anchorReason?: string;
+        skippedPeriods?: { period: string; reason: string }[];
+        failedChecks?: { checkId: string; passed: boolean; severity: string }[];
+      } | null;
       rigor?: {
         currentLevel?: string;
         currentLabel?: string;
@@ -632,6 +639,15 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
                     Concept identity: <strong>{traceability.conceptIdentity?.status ?? "—"}</strong>
                     {typeof traceability.conceptIdentity?.conflictCount === "number" && traceability.conceptIdentity.conflictCount > 0
                       ? ` (${traceability.conceptIdentity.conflictCount} conflict${traceability.conceptIdentity.conflictCount === 1 ? "" : "s"}, ${traceability.conceptIdentity.unresolvedCriticalCount ?? 0} critical)`
+                      : ""}
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Economic sanity: <strong>{traceability.economicSanity?.status ?? "—"}</strong>
+                    {traceability.economicSanity?.anchorPeriod
+                      ? ` (anchor ${traceability.economicSanity.anchorPeriod})`
+                      : ""}
+                    {Array.isArray(traceability.economicSanity?.skippedPeriods) && (traceability.economicSanity?.skippedPeriods?.length ?? 0) > 0
+                      ? `, skipped ${traceability.economicSanity?.skippedPeriods?.length}`
                       : ""}
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
