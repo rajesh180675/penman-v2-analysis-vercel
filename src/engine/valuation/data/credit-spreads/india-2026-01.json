@@ -1,0 +1,31 @@
+{
+  "$schema": "../credit-spreads-schema.json",
+  "retrievalDate": "2026-01-15",
+  "source": "ICRA + CRISIL India Corporate Bond Spread Matrix",
+  "geography": "India",
+  "currency": "INR",
+  "version": "2026-01-credit-spreads-v1",
+  "sovereignCurve": [
+    { "tenorYears": 1, "yield": 0.068 },
+    { "tenorYears": 3, "yield": 0.070 },
+    { "tenorYears": 5, "yield": 0.071 },
+    { "tenorYears": 10, "yield": 0.071 },
+    { "tenorYears": 15, "yield": 0.073 },
+    { "tenorYears": 20, "yield": 0.074 },
+    { "tenorYears": 30, "yield": 0.074 }
+  ],
+  "corporateSpreadsBps": [
+    { "rating": "AAA", "spread1y": 35, "spread3y": 50, "spread5y": 65, "spread10y": 80 },
+    { "rating": "AA+", "spread1y": 50, "spread3y": 70, "spread5y": 90, "spread10y": 110 },
+    { "rating": "AA", "spread1y": 75, "spread3y": 100, "spread5y": 130, "spread10y": 160 },
+    { "rating": "AA-", "spread1y": 100, "spread3y": 130, "spread5y": 165, "spread10y": 200 },
+    { "rating": "A+", "spread1y": 150, "spread3y": 190, "spread5y": 230, "spread10y": 275 },
+    { "rating": "A", "spread1y": 200, "spread3y": 245, "spread5y": 290, "spread10y": 340 },
+    { "rating": "A-", "spread1y": 270, "spread3y": 320, "spread5y": 370, "spread10y": 420 },
+    { "rating": "BBB+", "spread1y": 380, "spread3y": 430, "spread5y": 480, "spread10y": 540 },
+    { "rating": "BBB", "spread1y": 500, "spread3y": 555, "spread5y": 610, "spread10y": 680 },
+    { "rating": "BBB-", "spread1y": 700, "spread3y": 760, "spread5y": 825, "spread10y": 900 },
+    { "rating": "BB", "spread1y": 1000, "spread3y": 1080, "spread5y": 1160, "spread10y": 1260 },
+    { "rating": "B", "spread1y": 1500, "spread3y": 1600, "spread5y": 1700, "spread10y": 1830 }
+  ]
+}
