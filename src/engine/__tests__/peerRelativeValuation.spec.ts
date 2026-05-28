@@ -32,10 +32,23 @@ function makePeriod(overrides: {
   };
 }
 
-function makeRegistry(companies: Array<{ id: string; label: string; periods: RecastPeriod[] }>): CompanyRegistry {
+function makeRegistry(companies: Array<{
+  id: string;
+  label: string;
+  periods: RecastPeriod[];
+  companyType?: EngineConfig["company_type"];
+  traceability?: any;
+}>): CompanyRegistry {
   const reg: CompanyRegistry = { companies: {} };
   for (const c of companies) {
-    reg.companies[c.id] = { id: c.id, label: c.label, rawData: [], recastData: c.periods };
+    reg.companies[c.id] = {
+      id: c.id,
+      label: c.label,
+      rawData: [],
+      recastData: c.periods,
+      companyType: c.companyType ?? "consumer",
+      traceability: c.traceability ?? null,
+    };
   }
   return reg;
 }
@@ -97,6 +110,30 @@ describe("Peer Relative Valuation", () => {
     expect(roceRanking!.targetValue).toBeCloseTo(0.265, 2);
     // ITC is middle of 3 → percentile ~67%
     expect(roceRanking!.targetPercentile).toBeGreaterThanOrEqual(50);
+
+    // Exact hand-checked: ITC PM = OI/Sales = 19500/65000 = 0.30
+    // TCS PM = 55000/220000 = 0.25, Tata Steel PM = 12000/140000 = 0.086
+    const pmRanking = result!.ratioRankings.find(r => r.metric === "PM");
+    expect(pmRanking).toBeDefined();
+    expect(pmRanking!.targetValue).toBeCloseTo(0.30, 2);
+
+    // Exact hand-checked: ITC ATO = Sales/NOA = 65000/65000 = 1.0
+    // TCS ATO = 220000/100000 = 2.2, Tata Steel ATO = 140000/115000 = 1.217
+    const atoRanking = result!.ratioRankings.find(r => r.metric === "ATO");
+    expect(atoRanking).toBeDefined();
+    expect(atoRanking!.targetValue).toBeCloseTo(1.0, 2);
+
+    // Exact hand-checked: ITC RNOA = OI/NOA = 19500/65000 = 0.30
+    // TCS RNOA = 55000/100000 = 0.55, Tata Steel RNOA = 12000/115000 = 0.104
+    const rnoaRanking = result!.ratioRankings.find(r => r.metric === "RNOA");
+    expect(rnoaRanking).toBeDefined();
+    expect(rnoaRanking!.targetValue).toBeCloseTo(0.30, 2);
+
+    // Exact hand-checked: ITC FLEV = NFO/CSE = 10000/55000 = 0.182
+    // TCS FLEV = -25000/90000 = -0.278, Tata Steel FLEV = 60000/55000 = 1.091
+    const flevRanking = result!.ratioRankings.find(r => r.metric === "FLEV");
+    expect(flevRanking).toBeDefined();
+    expect(flevRanking!.targetValue).toBeCloseTo(0.182, 2);
   });
 
   it("computes multiple-implied fair values when market data available", () => {
@@ -111,7 +148,7 @@ describe("Peer Relative Valuation", () => {
     expect(result!.targetId).toBe("itc");
     // Should have explanation lines
     expect(result!.explanation.length).toBeGreaterThan(0);
-    expect(result!.explanation[0]).toContain("2 loaded peer");
+    expect(result!.explanation[0]).toContain("2 eligible peer");
   });
 
   it("handles company with negative earnings gracefully", () => {
@@ -142,5 +179,50 @@ describe("Peer Relative Valuation", () => {
     // compositeFairValue may be null if peers don't have market data
     // but explanation should always be populated
     expect(result!.explanation.length).toBeGreaterThan(1);
+  });
+
+  it("excludes peers with a different company type", () => {
+    const registry = makeRegistry([
+      { id: "itc", label: "ITC", periods: itcPeriods, companyType: "consumer" },
+      { id: "hul", label: "HUL", periods: tcsPeriods, companyType: "consumer" },
+      { id: "hdfc", label: "HDFC Bank", periods: tataSteelPeriods, companyType: "bank" },
+    ]);
+
+    const result = computePeerRelativeValuation("itc", registry, { ...baseConfig, company_type: "consumer" });
+
+    expect(result).not.toBeNull();
+    expect(result!.peerCount).toBe(1);
+    expect(result!.ratioRankings[0].peers.map((peer) => peer.companyId)).toEqual(["hul"]);
+    expect(result!.explanation[0]).toContain("1 eligible peer");
+  });
+
+  it("returns null when strict peer gates leave no eligible peers", () => {
+    const registry = makeRegistry([
+      { id: "itc", label: "ITC", periods: itcPeriods, companyType: "consumer" },
+      { id: "hdfc", label: "HDFC Bank", periods: tcsPeriods, companyType: "bank" },
+      { id: "tata-steel", label: "Tata Steel", periods: tataSteelPeriods, companyType: "cyclical" },
+    ]);
+
+    const result = computePeerRelativeValuation("itc", registry, { ...baseConfig, company_type: "consumer" });
+
+    expect(result).toBeNull();
+  });
+
+  it("excludes peers whose traceability says valuation is blocked", () => {
+    const blockedTraceability = {
+      confidence: { status: "blocked" },
+      qualityGate: { valuationBlocked: true },
+    };
+    const registry = makeRegistry([
+      { id: "itc", label: "ITC", periods: itcPeriods, companyType: "consumer" },
+      { id: "hul", label: "HUL", periods: tcsPeriods, companyType: "consumer" },
+      { id: "bad-consumer", label: "Bad Consumer", periods: tataSteelPeriods, companyType: "consumer", traceability: blockedTraceability },
+    ]);
+
+    const result = computePeerRelativeValuation("itc", registry, { ...baseConfig, company_type: "consumer" });
+
+    expect(result).not.toBeNull();
+    expect(result!.peerCount).toBe(1);
+    expect(result!.ratioRankings[0].peers.map((peer) => peer.companyId)).toEqual(["hul"]);
   });
 });

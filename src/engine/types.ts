@@ -480,6 +480,10 @@ export interface MultiCompanyRecord {
   id: string; label: string;
   rawData: RawPeriodData[];
   recastData: RecastPeriod[];
+  /** Explicit peer-comparison company type. Required for strict peer eligibility. */
+  companyType?: CompanyType | null;
+  /** Optional sector/subsector tag; when present, peer comparison requires a match. */
+  sector?: string | null;
   traceability?: AnalysisTraceabilityEnvelope | null;
 }
 

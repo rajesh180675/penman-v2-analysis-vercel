@@ -31,6 +31,8 @@ export function sanitizeCompanyRecord(value: unknown): MultiCompanyRecord | null
     rawData: Array.isArray(value.rawData) ? value.rawData : [],
     recastData: Array.isArray(value.recastData) ? value.recastData : [],
     traceability: sanitizeTraceabilityEnvelope(value.traceability),
+    companyType: typeof value.companyType === "string" ? value.companyType as MultiCompanyRecord["companyType"] : null,
+    sector: typeof value.sector === "string" && value.sector ? value.sector : null,
   };
 }
 
@@ -81,6 +83,8 @@ function mergeCompanyRecord(current: MultiCompanyRecord, incoming: MultiCompanyR
     rawData: incoming.rawData.length >= current.rawData.length ? incoming.rawData : current.rawData,
     recastData: incoming.recastData.length >= current.recastData.length ? incoming.recastData : current.recastData,
     traceability: preferredTraceability,
+    companyType: incoming.companyType ?? current.companyType ?? null,
+    sector: incoming.sector ?? current.sector ?? null,
   };
 }
 

@@ -12,7 +12,7 @@
  *   - Composite peer-implied value range
  */
 
-import { CompanyRegistry, MultiCompanyRecord, RecastPeriod, EngineConfig } from "./types";
+import { CompanyRegistry, MultiCompanyRecord, RecastPeriod, EngineConfig, CompanyType } from "./types";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -85,6 +85,24 @@ function percentileOf(value: number, arr: number[]): number | null {
   if (!clean.length) return null;
   const below = clean.filter(v => v <= value).length;
   return Math.round((below / clean.length) * 100);
+}
+
+function normalizeComparableType(type: CompanyType | null | undefined): Exclude<CompanyType, "auto"> | null {
+  return type && type !== "auto" ? type : null;
+}
+
+function recordIsBlocked(record: MultiCompanyRecord): boolean {
+  return record.traceability?.confidence?.status === "blocked"
+    || record.traceability?.qualityGate?.valuationBlocked === true
+    || record.traceability?.qualityGate?.scopeBlocked === true;
+}
+
+function samePeerGroup(target: MultiCompanyRecord, peer: MultiCompanyRecord, targetType: Exclude<CompanyType, "auto">): boolean {
+  const peerType = normalizeComparableType(peer.companyType);
+  if (peerType !== targetType) return false;
+  if (target.sector && peer.sector !== target.sector) return false;
+  if (recordIsBlocked(peer)) return false;
+  return true;
 }
 
 /** Extract latest-period ratios from a company's recast data. */
@@ -169,9 +187,12 @@ export function computePeerRelativeValuation(
   if (allCompanies.length < 2) return null; // need at least 1 peer
 
   const target = allCompanies.find(c => c.id === targetId);
-  if (!target) return null;
+  if (!target || recordIsBlocked(target)) return null;
 
-  const peers = allCompanies.filter(c => c.id !== targetId);
+  const targetType = normalizeComparableType(target.companyType) ?? normalizeComparableType(config.company_type);
+  if (!targetType) return null;
+
+  const peers = allCompanies.filter(c => c.id !== targetId && samePeerGroup(target, c, targetType));
   if (peers.length === 0) return null;
 
   // ── Ratio Rankings ──────────────────────────────────────────────────────
@@ -220,8 +241,12 @@ export function computePeerRelativeValuation(
   // ── Multiple-Implied Fair Values ────────────────────────────────────────
   const targetFundamentals = extractFundamentals(target.recastData, config);
 
-  // Collect PE, PB, PS from all companies that have market data
-  const allPEs = allCompanies
+  const comparisonSet = [target, ...peers];
+
+  // Collect PE, PB, PS from eligible peer group only. Cross-sector or blocked
+  // records are intentionally excluded so relative valuation cannot silently
+  // compare banks, cyclicals, loss-makers, and consumer compounders together.
+  const allPEs = comparisonSet
     .map(c => {
       const cConfig = c.id === targetId ? config : { ...config, shares_outstanding: undefined, market_price: undefined };
       const f = extractFundamentals(c.recastData, cConfig);
@@ -229,7 +254,7 @@ export function computePeerRelativeValuation(
     })
     .filter((v): v is number => v != null && v > 0 && v < 200);
 
-  const allPBs = allCompanies
+  const allPBs = comparisonSet
     .map(c => {
       const f = extractFundamentals(c.recastData, c.id === targetId ? config : { ...config, shares_outstanding: undefined, market_price: undefined });
       return f.pb;
@@ -277,7 +302,7 @@ export function computePeerRelativeValuation(
 
   // ── Explanation ─────────────────────────────────────────────────────────
   const explanation: string[] = [
-    `Peer relative valuation using ${peers.length} loaded peer(s).`,
+    `Peer relative valuation using ${peers.length} eligible peer(s) after company-type, sector, and quality gates.`,
     ...ratioRankings
       .filter(r => r.targetPercentile != null)
       .map(r => `${r.label}: ${((r.targetValue ?? 0) * 100).toFixed(1)}% (P${r.targetPercentile} vs peers, median ${((r.peerMedian ?? 0) * 100).toFixed(1)}%)`),
