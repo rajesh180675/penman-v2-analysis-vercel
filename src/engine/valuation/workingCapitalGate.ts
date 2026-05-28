@@ -38,7 +38,7 @@ export interface CccPeriodInputs {
   /** Trade payables at period end (₹). */
   payables: number;
   /** Optional explicit days-in-period override (default 365). */
-  daysInPeriod?: number;
+  daysInPeriod?: number | undefined;
 }
 
 export interface CccDecomposition {
@@ -79,13 +79,13 @@ export interface WorkingCapitalGateInputs {
   /** Most-recent-last sequence of period inputs. Min 2 periods. */
   periods: ReadonlyArray<CccPeriodInputs>;
   /** Sector key (matched against SECTOR_CCC_P95) or explicit threshold. */
-  sectorKey?: string;
+  sectorKey?: string | undefined;
   /** Override the sector P95 threshold (days). */
-  sectorP95Override?: number;
+  sectorP95Override?: number | undefined;
   /** Trend window in years (default 3). Looks at delta over this window. */
-  trendWindowYears?: number;
+  trendWindowYears?: number | undefined;
   /** Minimum days of sustained CCC > sector P95 to escalate to "distressed". */
-  distressedDeltaDays?: number;
+  distressedDeltaDays?: number | undefined;
 }
 
 export interface WorkingCapitalGateResult {

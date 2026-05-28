@@ -60,11 +60,11 @@ export interface EsgAdjustedKeInputs {
   /** Baseline cost of equity (decimal). */
   baseKe: number;
   /** MSCI ESG score (0..10). One of msciScore or bucket is required. */
-  msciScore?: number;
+  msciScore?: number | undefined;
   /** Direct bucket override. Wins over msciScore. */
-  bucket?: EsgBucket;
+  bucket?: EsgBucket | undefined;
   /** Custom bp override for the resolved bucket. */
-  customBpsOverride?: number;
+  customBpsOverride?: number | undefined;
 }
 
 export interface EsgAdjustedKeResult {

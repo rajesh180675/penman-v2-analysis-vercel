@@ -320,30 +320,30 @@ export interface BankValuationBundle {
   equityResidualIncome: BankValuationModelResult;
   sustainableDDM: BankValuationModelResult;
   /** Optional EV-based valuation for insurance subtype when embedded_value is present. */
-  evBased?: BankValuationModelResult;
+  evBased?: BankValuationModelResult | undefined;
   /** Phase D2 — NBFC P/AUM lens. Only computed when subtype="nbfc"
    *  AND quality sidecar provides aum_cr. */
-  pAum?: BankValuationModelResult;
+  pAum?: BankValuationModelResult | undefined;
   /** Phase D2 — NBFC ROA × Leverage three-stage residual income lens.
    *  Only computed when subtype="nbfc". */
-  roaLeverageRI?: BankValuationModelResult;
+  roaLeverageRI?: BankValuationModelResult | undefined;
   /** Phase D2 — Through-cycle credit-cost diagnostic (NBFC-only). */
-  creditCostCycle?: CreditCostCycleCheck;
+  creditCostCycle?: CreditCostCycleCheck | undefined;
   /** Phase D2 — CRAR-buffer growth governor (NBFC-only). */
-  crarGovernor?: CrarGovernorResult;
+  crarGovernor?: CrarGovernorResult | undefined;
   /** Phase D3 — ECL stress fade on justified P/B (NBFC-only).
    *  Fades the Gordon-model P/B when uncovered Stage 3 + restructured
    *  exceeds healthy thresholds. See EclStressGovernorResult for details. */
-  eclStressGovernor?: EclStressGovernorResult;
+  eclStressGovernor?: EclStressGovernorResult | undefined;
   /** Phase D3b — Spread compression / cost-of-funds sensitivity (NBFC-only).
    *  Informational diagnostic: stress-tests ROA under CoB shocks and flags
    *  when current spread is thin vs history. Does NOT modify valuation. */
-  spreadCompression?: SpreadCompressionCheck;
+  spreadCompression?: SpreadCompressionCheck | undefined;
 
   /** Phase E — Three-scenario framework (bear/base/bull). */
-  scenarios?: ScenarioBundle | null;
+  scenarios?: ScenarioBundle | null | undefined;
   /** Phase E — Subsidiary SOTP (sum-of-parts). */
-  sotp?: SOTPResult;
+  sotp?: SOTPResult | undefined;
 
   /** Triangulated central value (median of computed models). */
   triangulatedValue: number | null;
@@ -1378,7 +1378,7 @@ function buildBankCard(
 export function buildBankSOTP(_params: {
   metrics: BankPeriodMetrics[];
   ke: number;
-  segments?: SegmentDefinition[];
+  segments?: SegmentDefinition[] | undefined;
 }): SOTPResult | null {
   // SOTP requires RecastPeriod data which is not available from BankPeriodMetrics alone.
   // The pipeline layer (bankPipeline.ts) should call buildSOTPValuation directly

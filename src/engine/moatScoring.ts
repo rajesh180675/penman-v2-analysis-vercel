@@ -543,8 +543,8 @@ function classifyMoatWidth(
 export function computeMoatScore(
   periods: RecastPeriod[],
   config: EngineConfig,
-  kwOverride?: number | null,
-  itServices?: ITServicesSignal | null,
+  kwOverride?: number | null | undefined,
+  itServices?: ITServicesSignal | null | undefined,
 ): MoatScoreResult | null {
   if (!periods || periods.length < 3) return null;
 

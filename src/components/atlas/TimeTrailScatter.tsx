@@ -519,8 +519,8 @@ function StatCell({
 }: {
   label: string;
   value: string;
-  subline?: string;
-  valueAccent?: string;
+  subline?: string | undefined;
+  valueAccent?: string | undefined;
 }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900/60">

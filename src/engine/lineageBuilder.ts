@@ -108,7 +108,7 @@ function buildEntry(
   period: string,
   recast: RecastPeriod,
   raw: RawPeriodData | null,
-  intrinsicValuePerShare?: number | null,
+  intrinsicValuePerShare?: number | null | undefined,
 ): NumberLineage {
   const sourceKeys: string[] = [];
   const policy: string[] = [];

@@ -13,15 +13,15 @@ export interface AnalysisStatusSummary {
   tone: AnalysisBadgeTone;
   qualityTier: "Tier 1" | "Tier 2" | "Tier 3" | "Unknown";
   valuationStatus: ValuationReadiness["status"] | "unknown";
-  persistenceStatus?: ValuationReadiness["persistenceStatus"] | "unknown";
+  persistenceStatus?: ValuationReadiness["persistenceStatus"] | "unknown" | undefined;
   scopeBlocked: boolean;
   valuationBlocked: boolean;
   blockingCount: number;
   diagnosticCount: number;
   optionalCount: number;
-  effectiveBlockingCount?: number;
-  effectiveDiagnosticCount?: number;
-  effectiveOptionalCount?: number;
+  effectiveBlockingCount?: number | undefined;
+  effectiveDiagnosticCount?: number | undefined;
+  effectiveOptionalCount?: number | undefined;
 }
 
 function buildEffectiveCounts(args: {
@@ -41,9 +41,9 @@ function buildEffectiveCounts(args: {
 }
 
 export function deriveAnalysisStatus(
-  qualityGate?: QualityGateReport | null,
-  valuationReadiness?: ValuationReadiness | null,
-  mappingAudit?: MappingAuditReport | null,
+  qualityGate?: QualityGateReport | null | undefined,
+  valuationReadiness?: ValuationReadiness | null | undefined,
+  mappingAudit?: MappingAuditReport | null | undefined,
 ): AnalysisStatusSummary {
   const blockingCount = qualityGate?.coverageSummary.unresolvedBySeverity.critical.length ?? 0;
   const diagnosticCount = qualityGate?.coverageSummary.unresolvedBySeverity.warning.length ?? 0;

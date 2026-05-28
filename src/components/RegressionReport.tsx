@@ -12,8 +12,8 @@ interface Props {
   recastData: RecastPeriod[] | null;
   config: EngineConfig;
   registry: CompanyRegistry;
-  traceability?: AnalysisTraceabilityEnvelope | null;
-  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
+  traceability?: AnalysisTraceabilityEnvelope | null | undefined;
+  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null | undefined;
 }
 
 const pct = (v: number | null | undefined) => (v == null ? "—" : `${(v * 100).toFixed(2)}%`);

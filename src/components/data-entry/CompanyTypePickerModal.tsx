@@ -19,9 +19,9 @@ interface CompanyPickInfo {
   ticker: string;
   type: string;  // registry type (may be "conglomerate" etc.)
   hasStandalone: boolean;
-  blobUrl?: string | null;
-  standaloneBlobUrl?: string | null;
-  qualityIndicatorsBlobUrl?: string | null;
+  blobUrl?: string | null | undefined;
+  standaloneBlobUrl?: string | null | undefined;
+  qualityIndicatorsBlobUrl?: string | null | undefined;
 }
 
 interface Props {

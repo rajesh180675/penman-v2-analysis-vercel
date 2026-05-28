@@ -36,13 +36,13 @@ export interface FinancialInstitutionAnalysisResult {
   /** Phase K — full bank/NBFC metrics with derived ratios (NIM, ROA, ROE,
    *  spread, leverage, debt mix). Optional for back-compat with consumers
    *  that only need the per-period snapshot. */
-  bankMetrics?: BankPeriodMetrics[];
+  bankMetrics?: BankPeriodMetrics[] | undefined;
   /** Phase B5 — derived asset-quality signals (NPA cycle, PCR trend,
    *  slippage trajectory, loan-growth vs system, deposit franchise,
    *  capital buffer). Each signal is independently skip-with-reason.
    *  Always present when subtype is "bank" or "nbfc"; carries skip-reasons
    *  on every signal when no quality_indicators sidecar was provided. */
-  assetQuality?: BankAssetQualityResult;
+  assetQuality?: BankAssetQualityResult | undefined;
 }
 
 export type AnalysisResult = IndustrialAnalysisResult | FinancialInstitutionAnalysisResult;

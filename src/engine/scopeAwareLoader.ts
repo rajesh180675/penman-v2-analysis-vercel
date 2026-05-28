@@ -246,7 +246,7 @@ export function processScopeAwareData(
   consolidatedData: RawPeriodData[],
   standaloneData: RawPeriodData[] | null,
   config: EngineConfig,
-  quality?: BankQualityIndicators | null,
+  quality?: BankQualityIndicators | null | undefined,
 ): ScopeAwareResult {
   // ── 1. Run both through the pipeline ────────────────────────────────────
   const consolidatedResult = processCompanyDataFull(consolidatedData, config, quality ?? null);

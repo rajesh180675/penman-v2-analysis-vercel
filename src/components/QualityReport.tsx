@@ -11,8 +11,8 @@ import QualityScoreDashboard from "./charts/QualityScoreDashboard";
 
 interface Props {
   data: RecastPeriod[];
-  traceability?: AnalysisTraceabilityEnvelope | null;
-  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
+  traceability?: AnalysisTraceabilityEnvelope | null | undefined;
+  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null | undefined;
 }
 
 const fix = (v:number,d=2) => v.toFixed(d);

@@ -18,7 +18,7 @@ export type MigrationSource = "envelope" | "registry" | "snapshot";
 
 export interface MigrationContext {
   source: MigrationSource;
-  companyId?: string;
+  companyId?: string | undefined;
 }
 
 export interface MigrationEntry {
@@ -26,7 +26,7 @@ export interface MigrationEntry {
   from: string;
   to: string;
   source: MigrationSource;
-  companyId?: string;
+  companyId?: string | undefined;
 }
 
 const STORAGE_KEY = "penman.schema-migrations.v1";

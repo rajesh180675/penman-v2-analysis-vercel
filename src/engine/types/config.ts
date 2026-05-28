@@ -24,7 +24,7 @@ export interface EngineConfig {
    * (see SECTOR_BETAS), then to the legacy build-up rf+erp.
    * Range: typically 0.5 (utility) – 1.5 (cyclical).
    */
-  beta                ?: number | null;
+  beta                ?: number | null | undefined;
   /**
    * Phase rigor-3 — explicit equity weight for WACC computation.
    * When set (>0), `deriveKwFromConfig` uses we = clamp(equity_weight, 0.1, 0.99).
@@ -33,7 +33,7 @@ export interface EngineConfig {
    * For best results, callers should compute totalEquity / (totalEquity + totalDebt)
    * from the latest balance sheet and pass it here.
    */
-  equity_weight       ?: number | null;
+  equity_weight       ?: number | null | undefined;
   kd_pretax           : number;
   tax_rate_for_kd     : number;
   risk_free_rate      : number;
@@ -50,7 +50,7 @@ export interface EngineConfig {
    * and gates the company directly to the correct pipeline.
    * "auto" or null = legacy behaviour (heuristic label detection).
    */
-  company_type?: CompanyType | null;
+  company_type?: CompanyType | null | undefined;
   /**
    * Phase I — explicit override for mixed-financial-conglomerate routing.
    * When set, companies with material insurance + bank/NBFC signals
@@ -64,7 +64,7 @@ export interface EngineConfig {
    *   "industrial"  — route to Penman-Nissim (treats financial subs as non-core)
    *   null/unset    — default fail-close behaviour
    */
-  mixed_conglomerate_route_to?: "bank" | "nbfc" | "industrial" | null;
+  mixed_conglomerate_route_to?: "bank" | "nbfc" | "industrial" | null | undefined;
   /**
    * Phase B5 — Folder name under public/data/companies/ where the
    * bank's quality_indicators.json sidecar lives. Set this to opt the
@@ -78,9 +78,9 @@ export interface EngineConfig {
    * Distinct from `ticker` because the URL-safe folder name differs
    * from the symbol (ticker "HDFCBANK" vs folder "HDFC Bank").
    */
-  quality_data_folder?: string | null;
+  quality_data_folder?: string | null | undefined;
   /** Vercel Blob URL for quality_indicators.json — preferred over local path on Vercel deploy. */
-  quality_indicators_blob_url?: string | null;
+  quality_indicators_blob_url?: string | null | undefined;
   /**
    * Phase I9 — period exclusions for demerger / M&A confirmation flow.
    * List of period_end strings (YYYY-MM-DD) to exclude from the pipeline.
@@ -92,64 +92,64 @@ export interface EngineConfig {
    * Example: ["2019-03-31", "2020-03-31"] excludes the two pre-demerger
    * periods from an ITC-style demerger in FY21.
    */
-  excluded_periods?: string[];
+  excluded_periods?: string[] | undefined;
   noa_epsilon_ratio_of_ta             : number;
   separation_confidence_threshold     : number;
-  g_terminal_override ?: number | null;
-  g_terminal_floor    ?: number;
-  g_terminal_cap      ?: number;
+  g_terminal_override ?: number | null | undefined;
+  g_terminal_floor    ?: number | undefined;
+  g_terminal_cap      ?: number | undefined;
   /** Insurance EV-based valuation multiples.
    * vnb_multiple: VNB × multiple added to EV. Default 12x (private insurer).
    * ev_multiple: EV × multiple when VNB unavailable. Default 2.0x.
    * PSU insurers (LIC) trade at ~1.0x EV; private (HDFC Life) at ~3.5x. */
-  insurance_vnb_multiple ?: number;
-  insurance_ev_multiple  ?: number;
-  g_ke_floor_spread   ?: number;
-  np_PM_median        ?: number;
-  np_ATO_median       ?: number;
-  np_ROCE_median      ?: number;
-  np_RNOA_median      ?: number;
-  np_SPREAD_median    ?: number;
-  np_SalesGrowth_median?: number;
-  shares_outstanding  ?: number;
-  market_price        ?: number;
-  ticker              ?: string;
+  insurance_vnb_multiple ?: number | undefined;
+  insurance_ev_multiple  ?: number | undefined;
+  g_ke_floor_spread   ?: number | undefined;
+  np_PM_median        ?: number | undefined;
+  np_ATO_median       ?: number | undefined;
+  np_ROCE_median      ?: number | undefined;
+  np_RNOA_median      ?: number | undefined;
+  np_SPREAD_median    ?: number | undefined;
+  np_SalesGrowth_median?: number | undefined;
+  shares_outstanding  ?: number | undefined;
+  market_price        ?: number | undefined;
+  ticker              ?: string | undefined;
   /** Terminal growth rate used by bank valuation DDM/Gordon and industrial TV. */
-  terminal_growth_rate?: number;
-  sector_template     ?: ValuationSectorTemplate;
-  market_data_symbol  ?: string;
-  market_data_instrument_key?: string;
-  market_data_provider?: "manual" | "upstox-readonly" | "alphavantage" | "nse" | "yahoo" | "disabled";
-  market_data_refresh_seconds?: number;
-  DS_warning_pct      ?: number;
-  DS_critical_pct     ?: number;
-  div_disc_pct        ?: number;
-  metric_z_warning    ?: number;
-  metric_z_critical   ?: number;
-  incr_margin_upper   ?: number;
-  incr_margin_lower   ?: number;
-  comp_decline_pct    ?: number;
-  comp_decline_abs_pct?: number;
-  reclassif_pct       ?: number;
-  other_oa_residual   ?: number;
-  dta_pct             ?: number;
-  eq16_residual_warning ?: number;
-  eq16_residual_critical?: number;
-  re_anchor_jump      ?: number;
-  re_anchor_median    ?: number;
-  identity_gap_warning?: number;
-  identity_gap_critical?: number;
-  tv_grade_a          ?: number;
-  tv_grade_b          ?: number;
-  tv_grade_c          ?: number;
-  dirty_surplus_material    ?: number;
-  dirty_surplus_compromised ?: number;
-  structural_residual_warning?: number;
-  structural_residual_critical?: number;
-  pm_zscore_warning   ?: number;
-  pm_zscore_critical  ?: number;
+  terminal_growth_rate?: number | undefined;
+  sector_template     ?: ValuationSectorTemplate | undefined;
+  market_data_symbol  ?: string | undefined;
+  market_data_instrument_key?: string | undefined;
+  market_data_provider?: "manual" | "upstox-readonly" | "alphavantage" | "nse" | "yahoo" | "disabled" | undefined;
+  market_data_refresh_seconds?: number | undefined;
+  DS_warning_pct      ?: number | undefined;
+  DS_critical_pct     ?: number | undefined;
+  div_disc_pct        ?: number | undefined;
+  metric_z_warning    ?: number | undefined;
+  metric_z_critical   ?: number | undefined;
+  incr_margin_upper   ?: number | undefined;
+  incr_margin_lower   ?: number | undefined;
+  comp_decline_pct    ?: number | undefined;
+  comp_decline_abs_pct?: number | undefined;
+  reclassif_pct       ?: number | undefined;
+  other_oa_residual   ?: number | undefined;
+  dta_pct             ?: number | undefined;
+  eq16_residual_warning ?: number | undefined;
+  eq16_residual_critical?: number | undefined;
+  re_anchor_jump      ?: number | undefined;
+  re_anchor_median    ?: number | undefined;
+  identity_gap_warning?: number | undefined;
+  identity_gap_critical?: number | undefined;
+  tv_grade_a          ?: number | undefined;
+  tv_grade_b          ?: number | undefined;
+  tv_grade_c          ?: number | undefined;
+  dirty_surplus_material    ?: number | undefined;
+  dirty_surplus_compromised ?: number | undefined;
+  structural_residual_warning?: number | undefined;
+  structural_residual_critical?: number | undefined;
+  pm_zscore_warning   ?: number | undefined;
+  pm_zscore_critical  ?: number | undefined;
   // Phase 2 extensions
-  sotp_preset          ?: string;
+  sotp_preset          ?: string | undefined;
   ev_ebitda_peers      ?: Array<{ company: string; evEbitda: number | null }>;
 }
 

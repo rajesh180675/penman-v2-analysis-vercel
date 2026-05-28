@@ -17,12 +17,12 @@ import type { SanityAssessment } from "../engine/ratioSanity";
 interface Props {
   data: RecastPeriod[];
   config: EngineConfig;
-  rawData?: RawPeriodData[] | null;
-  auditMeta?: AuditSubmissionMeta | null;
-  traceability?: AnalysisTraceabilityEnvelope | null;
-  publication?: ReturnType<typeof buildAnalysisPublicationSnapshot> | null;
+  rawData?: RawPeriodData[] | null | undefined;
+  auditMeta?: AuditSubmissionMeta | null | undefined;
+  traceability?: AnalysisTraceabilityEnvelope | null | undefined;
+  publication?: ReturnType<typeof buildAnalysisPublicationSnapshot> | null | undefined;
   /** Phase 9 — anchor ratio bands for export confidence stamps. */
-  ratioSanity?: SanityAssessment | null;
+  ratioSanity?: SanityAssessment | null | undefined;
 }
 
 const pct = (v: number | null | undefined, d = 1) => (v == null ? "—" : `${(v * 100).toFixed(d)}%`);

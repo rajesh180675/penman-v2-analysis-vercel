@@ -33,7 +33,7 @@ export interface AuditRunRecord {
   /** The envelope schemaVersion at write time — used by reads to detect stale records. */
   envelopeSchemaVersion: string;
   /** Pipeline strategy id (Plan 3 PR-3.5 stamp). May be undefined for older records. */
-  pipelineStrategyId?: string;
+  pipelineStrategyId?: string | undefined;
   /** Compact summary the reviewer surface can render without rebuilding the full envelope. */
   summary: {
     rigorLevel: string | null;

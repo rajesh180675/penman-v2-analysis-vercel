@@ -32,13 +32,13 @@ export interface CapitalizeOperatingLeasesInputs {
   /** Annual operating rent expense (absolute ₹). */
   annualRent: number;
   /** Capitalization multiple. India default = 8 (Damodaran). */
-  multiple?: number;
+  multiple?: number | undefined;
   /** Tax rate as decimal. Default 25%. */
-  taxRate?: number;
+  taxRate?: number | undefined;
   /** EBITDA before lease adjustment (absolute ₹). Optional. */
-  reportedEbitda?: number;
+  reportedEbitda?: number | undefined;
   /** EBIT before lease adjustment (absolute ₹). Optional. */
-  reportedEbit?: number;
+  reportedEbit?: number | undefined;
 }
 
 export interface CapitalizedLeaseResult {
@@ -108,7 +108,7 @@ export interface LeaseSelfConsistencyInputs {
   /** Total disclosed operating-rent equivalent (cash lease payments) for the period. */
   totalRentPayments: number;
   /** Material threshold (default 15%) for ratio mismatch. */
-  materialThreshold?: number;
+  materialThreshold?: number | undefined;
 }
 
 export type LeaseConsistencyVerdict = "consistent" | "minor-mismatch" | "material-mismatch";

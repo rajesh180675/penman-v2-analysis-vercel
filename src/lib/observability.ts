@@ -25,18 +25,18 @@
 ================================================================ */
 
 export interface RunContext {
-  runId?: string;
-  companyTicker?: string;
-  pipelineStrategyId?: string;
-  schemaVersion?: string;
-  rigorLevel?: string;
+  runId?: string | undefined;
+  companyTicker?: string | undefined;
+  pipelineStrategyId?: string | undefined;
+  schemaVersion?: string | undefined;
+  rigorLevel?: string | undefined;
 }
 
 export interface ObservabilityConfig {
-  dsn?: string;
-  environment?: "development" | "preview" | "production";
-  release?: string;
-  enabled?: boolean;
+  dsn?: string | undefined;
+  environment?: "development" | "preview" | "production" | undefined;
+  release?: string | undefined;
+  enabled?: boolean | undefined;
 }
 
 let config: ObservabilityConfig = { enabled: false };

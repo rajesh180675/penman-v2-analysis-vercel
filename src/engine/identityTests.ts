@@ -15,7 +15,7 @@ export interface IdentityAssertionResult {
   diff: number;
   tolerance: number;
   pass: boolean;
-  reasonCode?: A9FailureReason;
+  reasonCode?: A9FailureReason | undefined;
 }
 
 function classifyA9Failure(period: RecastPeriod, diff: number): A9FailureReason {

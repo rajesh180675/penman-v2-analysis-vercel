@@ -14,9 +14,9 @@ import DuPontWaterfall from "./charts/DuPontWaterfall";
 
 interface Props {
   data: RecastPeriod[];
-  config?: EngineConfig;
-  traceability?: AnalysisTraceabilityEnvelope | null;
-  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
+  config?: EngineConfig | undefined;
+  traceability?: AnalysisTraceabilityEnvelope | null | undefined;
+  traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null | undefined;
 }
 
 const pct  = (v:number|null|undefined,d=1) => v!=null?(v*100).toFixed(d)+"%" : "—";
@@ -657,7 +657,7 @@ function Th({children,left}:{children?:React.ReactNode;left?:boolean}) {
 const ACCENT:Record<string,string>={indigo:"text-indigo-700",green:"text-emerald-700"};
 function TR({label,vals,bold,accent,bm,bmKey}:{
   label:string|React.ReactNode;vals:string[];bold?:boolean;accent?:"indigo"|"green";
-  bm?:(number|null)[];bmKey?:string;
+  bm?: (number|null)[] | undefined;bmKey?:string;
 }) {
   const vc=accent?ACCENT[accent]:"";
   const benchmark = bmKey&&NP_BENCHMARKS[bmKey] ? NP_BENCHMARKS[bmKey] : null;

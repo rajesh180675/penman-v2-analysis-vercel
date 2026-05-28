@@ -18,7 +18,7 @@ export type { NbfcSidecarData, LgdMigrationMatrix, RbiNhbPeriod };
  */
 export async function fetchNbfcSidecarData(
   companyFolder: string,
-  blobBaseUrl?: string | null,
+  blobBaseUrl?: string | null | undefined,
 ): Promise<NbfcSidecarData> {
   const baseUrl = blobBaseUrl
     ? `${blobBaseUrl.replace(/\/$/, "")}/companies/${encodeURIComponent(companyFolder)}`

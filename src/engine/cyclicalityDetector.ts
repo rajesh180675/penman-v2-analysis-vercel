@@ -136,7 +136,7 @@ function pickMetricSeries(
  */
 export function assessCyclicality(
   periods: RecastPeriod[] | null | undefined,
-  companyType?: string | null,
+  companyType?: string | null | undefined,
 ): CyclicalityAssessment {
   // Phase D2: explicit override from company_type dropdown
   if (companyType === "cyclical") {

@@ -30,14 +30,14 @@ export interface AnalysisPublicationSnapshot {
 export function buildAnalysisPublicationSnapshot(params: {
   data: RecastPeriod[];
   config: EngineConfig;
-  rawData?: RawPeriodData[] | null;
-  auditMeta?: AuditSubmissionMeta | null;
-  sharedTraceability?: AnalysisTraceabilityEnvelope | null;
-  qualityGate?: QualityGateReport | null;
-  mappingAudit?: MappingAuditReport | null;
-  policyVersions?: ReturnType<typeof getAnalysisPolicyVersions>;
-  analysisStatus?: AnalysisStatusSummary | null;
-  family?: AnalysisFamily | null;
+  rawData?: RawPeriodData[] | null | undefined;
+  auditMeta?: AuditSubmissionMeta | null | undefined;
+  sharedTraceability?: AnalysisTraceabilityEnvelope | null | undefined;
+  qualityGate?: QualityGateReport | null | undefined;
+  mappingAudit?: MappingAuditReport | null | undefined;
+  policyVersions?: ReturnType<typeof getAnalysisPolicyVersions> | undefined;
+  analysisStatus?: AnalysisStatusSummary | null | undefined;
+  family?: AnalysisFamily | null | undefined;
 }): AnalysisPublicationSnapshot {
   const {
     data,

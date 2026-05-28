@@ -5,7 +5,7 @@ import type { BankPeriodMetrics } from "../../engine/bankPipeline";
 interface Props {
   metrics: BankPeriodMetrics[];
   /** Cost of equity for ROE benchmark line */
-  ke?: number | null;
+  ke?: number | null | undefined;
 }
 
 /**

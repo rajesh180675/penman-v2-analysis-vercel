@@ -13,12 +13,12 @@ export interface TraceabilitySurfaceSummary {
 interface Props {
   title: string;
   summary: TraceabilitySurfaceSummary;
-  confidenceStatus?: string | null;
-  rigorLabel?: string | null;
-  parserStatus?: string | null;
-  reconciliationStatus?: string | null;
+  confidenceStatus?: string | null | undefined;
+  rigorLabel?: string | null | undefined;
+  parserStatus?: string | null | undefined;
+  reconciliationStatus?: string | null | undefined;
   cautionHeading: string;
-  aside?: ReactNode;
+  aside?: ReactNode | undefined;
 }
 
 export default function TraceabilityTrustPanel({

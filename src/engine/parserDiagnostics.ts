@@ -6,7 +6,7 @@ export interface ParserFidelityCheck {
 }
 
 export interface SourceParserDiagnostics {
-  sourceMode?: string | null;
+  sourceMode?: string | null | undefined;
   warningCount: number;
   errorCount: number;
   checks: ParserFidelityCheck[];

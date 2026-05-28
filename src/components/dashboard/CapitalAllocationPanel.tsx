@@ -2,7 +2,7 @@ import type { CapAllocScoreResult, CapAllocGrade } from "../../engine/capitalAll
 
 interface Props {
   result: CapAllocScoreResult | null;
-  title?: string;
+  title?: string | undefined;
 }
 
 const GRADE_STYLES: Record<CapAllocGrade, { bg: string; text: string; border: string; label: string }> = {

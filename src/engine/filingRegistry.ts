@@ -27,8 +27,8 @@ function inferFilingKind(rawData: RawPeriodData[] | null) {
 export function buildFilingRecord(args: {
   rawData: RawPeriodData[] | null;
   recastData: RecastPeriod[] | null;
-  analysisStatus?: AnalysisStatusSummary | null;
-  auditMeta?: AuditSubmissionMeta | null;
+  analysisStatus?: AnalysisStatusSummary | null | undefined;
+  auditMeta?: AuditSubmissionMeta | null | undefined;
 }): FilingRecordShape | null {
   const { rawData, recastData, analysisStatus, auditMeta } = args;
   const latestPeriod = rawData?.[rawData.length - 1]?.period_end ?? recastData?.[recastData.length - 1]?.period_end ?? null;

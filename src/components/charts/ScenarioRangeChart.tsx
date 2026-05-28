@@ -11,9 +11,9 @@ interface ScenarioPoint {
 
 interface Props {
   scenarios: ScenarioPoint[];
-  marketPrice?: number | null;
+  marketPrice?: number | null | undefined;
   /** Probability-weighted expected value */
-  expectedValue?: number | null;
+  expectedValue?: number | null | undefined;
 }
 
 /**

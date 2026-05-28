@@ -26,7 +26,7 @@ export interface PipelineResult {
   periods  : RecastPeriod[];
   anomalies: AnomalyBundle;
   analysisFamily: "industrial" | "financial-institution";
-  bankResult?: FinancialInstitutionAnalysisResult;
+  bankResult?: FinancialInstitutionAnalysisResult | undefined;
   /**
    * Phase J1: financial distress assessment.
    */

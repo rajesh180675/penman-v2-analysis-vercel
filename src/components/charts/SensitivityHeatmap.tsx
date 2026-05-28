@@ -8,7 +8,7 @@ interface Props {
   /** Function that computes intrinsic value per share given (ke, g) */
   computeValue: (ke: number, g: number) => number | null;
   /** Current market price for color-coding */
-  marketPrice?: number | null;
+  marketPrice?: number | null | undefined;
 }
 
 /**

@@ -13,12 +13,12 @@ export function buildAnalysisSnapshot(params: {
   recastData: RecastPeriod[] | null;
   config: EngineConfig;
   debugInfo: CapitalineParseDebug | null;
-  parserDiagnostics?: SourceParserDiagnostics | null;
+  parserDiagnostics?: SourceParserDiagnostics | null | undefined;
   qualityGate: QualityGateReport | null;
   mappingAudit: MappingAuditReport | null;
   engineError: string | null;
-  analysisStatus?: AnalysisStatusSummary | null;
-  auditMeta?: AuditSubmissionMeta | null;
+  analysisStatus?: AnalysisStatusSummary | null | undefined;
+  auditMeta?: AuditSubmissionMeta | null | undefined;
 }) {
   const { rawData, recastData, config, debugInfo, parserDiagnostics, qualityGate, mappingAudit, engineError, analysisStatus, auditMeta } = params;
   const publication = buildAnalysisPublicationSnapshot({

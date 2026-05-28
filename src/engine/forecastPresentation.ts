@@ -61,7 +61,7 @@ function hasVersion(value: string | null | undefined) {
 }
 
 export function buildForecastProvenance(args: {
-  traceability?: AnalysisTraceabilityEnvelope | null;
+  traceability?: AnalysisTraceabilityEnvelope | null | undefined;
   valuationReadiness: ValuationReadiness;
 }) {
   const policyVersions = args.traceability?.policyVersions;

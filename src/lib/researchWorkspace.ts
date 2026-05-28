@@ -89,20 +89,20 @@ export interface WorkspaceValuationSnapshot {
   convictionBucket: string | null;
   sectorTemplate: string | null;
   thesis: string;
-  persistenceNarrative?: string | null;
+  persistenceNarrative?: string | null | undefined;
   reverseDcfSummary: string;
   marketSymbol: string | null;
-  marketFreshness?: string | null;
-  marketSourceSummary?: string | null;
-  livePriceAsOf?: string | null;
-  liveRateAsOf?: string | null;
-  valuationAnchorPeriod?: string | null;
-  latestReportedPeriod?: string | null;
-  persistenceScore?: number | null;
-  marginDurabilityScore?: number | null;
-  workingCapitalDisciplineScore?: number | null;
-  forecastDiscipline?: string[] | null;
-  businessModelEvidence?: string[] | null;
+  marketFreshness?: string | null | undefined;
+  marketSourceSummary?: string | null | undefined;
+  livePriceAsOf?: string | null | undefined;
+  liveRateAsOf?: string | null | undefined;
+  valuationAnchorPeriod?: string | null | undefined;
+  latestReportedPeriod?: string | null | undefined;
+  persistenceScore?: number | null | undefined;
+  marginDurabilityScore?: number | null | undefined;
+  workingCapitalDisciplineScore?: number | null | undefined;
+  forecastDiscipline?: string[] | null | undefined;
+  businessModelEvidence?: string[] | null | undefined;
 }
 
 export interface WorkspaceSignalHistoryEntry {
@@ -117,8 +117,8 @@ export interface WorkspaceSignalHistoryEntry {
   marketPrice: number | null;
   opportunityScore: number | null;
   convictionBucket: string | null;
-  marketFreshness?: string | null;
-  valuationAnchorPeriod?: string | null;
+  marketFreshness?: string | null | undefined;
+  valuationAnchorPeriod?: string | null | undefined;
 }
 
 export interface WorkspaceResearchJournalEntry {
@@ -231,7 +231,7 @@ function writeWorkspaceMap(next: Record<string, WorkspaceCompanyRecord>) {
 function ensureCompanyRecord(
   companies: Record<string, WorkspaceCompanyRecord>,
   companyId: string,
-  label?: string | null,
+  label?: string | null | undefined,
 ) {
   const existing = companies[companyId] as Partial<WorkspaceCompanyRecord> | undefined;
   if (existing) {
@@ -292,8 +292,8 @@ export function getWorkspaceCompany(companyId: string) {
 }
 
 export function rememberWorkspaceRun(meta: AuditSubmissionMeta, details?: {
-  latestPeriod?: string | null;
-  label?: string | null;
+  latestPeriod?: string | null | undefined;
+  label?: string | null | undefined;
 }) {
   if (!meta.companyId) return;
   const companies = readWorkspaceMap();
@@ -318,8 +318,8 @@ export function rememberWorkspaceAnalysis(params: {
   rawData: RawPeriodData[] | null;
   recastData: RecastPeriod[] | null;
   config: EngineConfig;
-  analysisStatus?: AnalysisStatusSummary | null;
-  auditMeta?: AuditSubmissionMeta | null;
+  analysisStatus?: AnalysisStatusSummary | null | undefined;
+  auditMeta?: AuditSubmissionMeta | null | undefined;
 }) {
   const { rawData, recastData, config, analysisStatus, auditMeta } = params;
   const companyId = auditMeta?.companyId ?? rawData?.[0]?.company_id ?? config.ticker ?? null;
@@ -385,8 +385,8 @@ export function rememberWorkspaceAnalysis(params: {
 export function rememberWorkspaceValuation(params: {
   companyId: string;
   commandCenter: ValuationCommandCenterOutput;
-  marketSymbol?: string | null;
-  runId?: string | null;
+  marketSymbol?: string | null | undefined;
+  runId?: string | null | undefined;
 }) {
   const { companyId, commandCenter, marketSymbol, runId } = params;
   if (!companyId) return;

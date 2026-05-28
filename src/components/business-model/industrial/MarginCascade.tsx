@@ -182,7 +182,7 @@ function fmtCr(n: number): string {
   return `${n.toFixed(1)} Cr`;
 }
 
-function KPI({ label, value, subline, accent = "slate" }: { label: string; value: string; subline?: string; accent?: "slate" | "blue" | "emerald" | "amber" }) {
+function KPI({ label, value, subline, accent = "slate" }: { label: string; value: string; subline?: string | undefined; accent?: "slate" | "blue" | "emerald" | "amber" }) {
   const map = {
     slate: "text-slate-900 dark:text-slate-100",
     blue: "text-blue-700 dark:text-blue-400",

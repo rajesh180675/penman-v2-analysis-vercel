@@ -4,7 +4,7 @@ export interface AuditSubmissionMeta {
   runId: string;
   sourceMode: "capitaline" | "screener" | "json" | "xbrl" | "manual" | "sample";
   companyId: string;
-  fileName?: string | null;
+  fileName?: string | null | undefined;
   runAccessToken: string;
   contentClass: string;
   retentionDays: number;
@@ -13,13 +13,13 @@ export interface AuditSubmissionMeta {
 interface AuditEventInput {
   runId: string;
   eventType: string;
-  companyId?: string | null;
-  sourceMode?: string | null;
+  companyId?: string | null | undefined;
+  sourceMode?: string | null | undefined;
   payload: unknown;
-  idempotencyKey?: string;
-  runAccessToken?: string | null;
-  contentClass?: string | null;
-  retentionDays?: number | null;
+  idempotencyKey?: string | undefined;
+  runAccessToken?: string | null | undefined;
+  contentClass?: string | null | undefined;
+  retentionDays?: number | null | undefined;
 }
 
 interface AuditBlobInput {
@@ -28,15 +28,15 @@ interface AuditBlobInput {
   eventType: string;
   file: Blob;
   filename: string;
-  companyId?: string | null;
-  sourceMode?: string | null;
-  contentType?: string;
-  idempotencyKey?: string;
-  runAccessToken?: string | null;
-  maximumSizeInBytes?: number;
-  allowedContentTypes?: string[];
-  contentClass?: string | null;
-  retentionDays?: number | null;
+  companyId?: string | null | undefined;
+  sourceMode?: string | null | undefined;
+  contentType?: string | undefined;
+  idempotencyKey?: string | undefined;
+  runAccessToken?: string | null | undefined;
+  maximumSizeInBytes?: number | undefined;
+  allowedContentTypes?: string[] | undefined;
+  contentClass?: string | null | undefined;
+  retentionDays?: number | null | undefined;
 }
 
 const AUDIT_ENABLED =

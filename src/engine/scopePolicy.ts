@@ -32,9 +32,9 @@ export interface ScopeAssessment {
    * ladder caps at syntactically-valid and the UI surfaces an explicit
    * "screening only" caveat banner.
    */
-  screeningOnly?: boolean;
+  screeningOnly?: boolean | undefined;
   /** Human-readable explanation of why screening-only mode was triggered. */
-  screeningReason?: string;
+  screeningReason?: string | undefined;
 }
 
 const SIGNAL_GROUPS: Array<{

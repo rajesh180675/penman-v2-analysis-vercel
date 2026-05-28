@@ -4,16 +4,16 @@ import type { AllSegmentData } from "../../engine/segmentParser";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 
 interface Props {
-  traceability?: AnalysisTraceabilityEnvelope | null;
-  ratioSanity?: SanityAssessment | null;
-  segmentData?: AllSegmentData | null;
-  marketData?: LiveMarketDataSnapshot | null;
+  traceability?: AnalysisTraceabilityEnvelope | null | undefined;
+  ratioSanity?: SanityAssessment | null | undefined;
+  segmentData?: AllSegmentData | null | undefined;
+  marketData?: LiveMarketDataSnapshot | null | undefined;
 }
 
 interface SignalRow {
   label: string;
   status: "pass" | "warning" | "fail" | "info" | "unavailable";
-  detail?: string;
+  detail?: string | undefined;
 }
 
 function StatusDot({ status }: { status: SignalRow["status"] }) {

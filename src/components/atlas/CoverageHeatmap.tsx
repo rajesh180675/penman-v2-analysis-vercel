@@ -398,7 +398,7 @@ function StatCell({
 }: {
   label: string;
   value: string;
-  dot?: string;
+  dot?: string | undefined;
 }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900/60">

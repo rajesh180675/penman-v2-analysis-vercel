@@ -7,10 +7,10 @@ import { getTraceEvents, getTraceSummary, exportTraceJSON, clearTrace, type Trac
 
 interface Props {
   debugInfo: CapitalineParseDebug | null;
-  recastData?: RecastPeriod[] | null;
-  rawData?: RawPeriodData[] | null;
-  qualityGate?: QualityGateReport | null;
-  engineError?: string | null;
+  recastData?: RecastPeriod[] | null | undefined;
+  rawData?: RawPeriodData[] | null | undefined;
+  qualityGate?: QualityGateReport | null | undefined;
+  engineError?: string | null | undefined;
 }
 
 type ManifestSignature = {
@@ -28,18 +28,18 @@ type BundleManifest = {
   checksums: Array<{ file: string; mime: string; bytes: number; sha256: string }>;
   algorithm: string;
   traceability?: {
-    schemaVersion?: string;
+    schemaVersion?: string | undefined;
     qualityGate?: {
-      tier?: string;
-      valuationBlocked?: boolean;
-      scopeClassification?: string | null;
-      scopeBlocked?: boolean;
+      tier?: string | undefined;
+      valuationBlocked?: boolean | undefined;
+      scopeClassification?: string | null | undefined;
+      scopeBlocked?: boolean | undefined;
     };
     mappingCoverage?: {
       unresolvedBySeverity?: Record<string, number>;
     };
   };
-  signature?: ManifestSignature;
+  signature?: ManifestSignature | undefined;
   [k: string]: unknown;
 };
 

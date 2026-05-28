@@ -66,7 +66,7 @@ const DashboardView = lazy(() => import("./components/dashboard/DashboardView"))
 
 type TabId = "upload" | "dashboard" | "watchlist" | "workspace" | "inspector" | "statements" | "ratios" | "forecast" | "valuation" | "bank" | "quality" | "scope" | "atlas" | "business" | "comparison" | "report" | "thesis" | "regression" | "v3analytics" | "debug";
 
-const TABS: { id: TabId; label: string; icon: string; needsData?: boolean; group: string }[] = [
+const TABS: { id: TabId; label: string; icon: string; needsData?: boolean | undefined; group: string }[] = [
   { id: "upload", label: "Data", icon: "📂", group: "input" },
   { id: "dashboard", label: "Dashboard", icon: "📊", needsData: true, group: "input" },
   { id: "watchlist", label: "Watchlist", icon: "🗂", group: "input" },
@@ -434,13 +434,13 @@ export function App() {
   const handleDataSubmit = useCallback(
     (
       data: RawPeriodData[],
-      debug?: CapitalineParseDebug,
-      meta?: AuditSubmissionMeta,
-      nextParserDiagnostics?: SourceParserDiagnostics | null,
-      nextSegmentData?: import("./engine/segmentParser").AllSegmentData | null,
+      debug?: CapitalineParseDebug | undefined,
+      meta?: AuditSubmissionMeta | undefined,
+      nextParserDiagnostics?: SourceParserDiagnostics | null | undefined,
+      nextSegmentData?: import("./engine/segmentParser").AllSegmentData | null | undefined,
       // Phase A — optional standalone dataset for dual-scope analysis.
       // Library cards with hasStandalone=true pass this in; manual uploads pass null.
-      nextStandaloneData?: RawPeriodData[] | null,
+      nextStandaloneData?: RawPeriodData[] | null | undefined,
     ) => {
       const nextMeta = meta ?? {
         runId: createAuditRunId(),

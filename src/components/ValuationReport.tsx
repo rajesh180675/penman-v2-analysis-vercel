@@ -52,16 +52,16 @@ import type { AllSegmentData } from "../engine/segmentParser";
 interface Props {
   data: RecastPeriod[];
   config: EngineConfig;
-  analysisStatus?: AnalysisStatusSummary | null;
-  auditMeta?: AuditSubmissionMeta | null;
-  traceability?: AnalysisTraceabilityEnvelope | null;
-  publication?: AnalysisPublicationSnapshot | null;
+  analysisStatus?: AnalysisStatusSummary | null | undefined;
+  auditMeta?: AuditSubmissionMeta | null | undefined;
+  traceability?: AnalysisTraceabilityEnvelope | null | undefined;
+  publication?: AnalysisPublicationSnapshot | null | undefined;
   /** Phase I3 — loss-maker anchors. Populated when ≥50% of periods have CNI ≤ 0. */
-  lossMaker?: LossMakerValuationResult | null;
+  lossMaker?: LossMakerValuationResult | null | undefined;
   /** Phase 9 — anchor ratio bands. Surfaces economically implausible outputs. */
-  ratioSanity?: SanityAssessment | null;
+  ratioSanity?: SanityAssessment | null | undefined;
   /** Phase C5 — parsed segment data for SOTP valuation. */
-  segmentData?: AllSegmentData | null;
+  segmentData?: AllSegmentData | null | undefined;
 }
 
 type CVMethod = "CV1" | "CV2" | "CV3";

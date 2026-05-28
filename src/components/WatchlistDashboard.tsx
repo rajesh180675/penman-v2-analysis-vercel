@@ -8,7 +8,7 @@ function pct(value: number | null | undefined, digits = 1) {
 
 interface Props {
   companies: WorkspaceCompanyRecord[];
-  activeCompanyId?: string | null;
+  activeCompanyId?: string | null | undefined;
   onSelectCompany?: (companyId: string) => void;
 }
 

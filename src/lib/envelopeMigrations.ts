@@ -40,7 +40,7 @@ export const KNOWN_SCHEMA_VERSIONS = [
 export const CURRENT_SCHEMA_VERSION = "2026-06-traceability-v17";
 
 export interface MigrateResult {
-  envelope: { schemaVersion: string; status?: string; [key: string]: unknown };
+  envelope: { schemaVersion: string; status?: string | undefined; [key: string]: unknown };
   migrationsApplied: string[];
   /** True when the input is unmigratable (unknown version or missing schemaVersion). */
   rejected: boolean;

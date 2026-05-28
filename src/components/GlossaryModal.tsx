@@ -2,11 +2,11 @@ import { useState, useRef, useEffect } from "react";
 
 interface GlossaryEntry {
   term: string;
-  abbr?: string;
+  abbr?: string | undefined;
   category: "ratio" | "balance-sheet" | "income" | "valuation" | "quality" | "forecast";
   definition: string;
-  formula?: string;
-  example?: string;
+  formula?: string | undefined;
+  example?: string | undefined;
 }
 
 const GLOSSARY: GlossaryEntry[] = [

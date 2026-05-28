@@ -50,11 +50,11 @@ interface Props {
     type: LibraryCompany["type"],
     scope: "consolidated" | "standalone",
     hasStandalone: boolean,
-    blobUrl?: string,
-    standaloneBlobUrl?: string,
-    qualityIndicatorsBlobUrl?: string,
+    blobUrl?: string | undefined,
+    standaloneBlobUrl?: string | undefined,
+    qualityIndicatorsBlobUrl?: string | undefined,
   ) => void;
-  disabled?: boolean;
+  disabled?: boolean | undefined;
 }
 
 export default function CompanyLibraryGrid({ onPickCompany, disabled = false }: Props) {

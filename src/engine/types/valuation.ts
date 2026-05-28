@@ -36,33 +36,33 @@ export interface ValuationResult {
   /** Phase J2: true when equity-side models could not be computed due
    *  to negative latest CSE; consumers should display skip-with-reason
    *  cards instead of plotting V_RE_CV3 on intrinsic-value charts. */
-  equityModelsBlocked?: boolean;
+  equityModelsBlocked?: boolean | undefined;
   /** Plain-language reason when equityModelsBlocked is true. */
-  equityBlockedReason?: string | null;
-  impliedGrowthRE?: number;
+  equityBlockedReason?: string | null | undefined;
+  impliedGrowthRE?: number | undefined;
   // S-11.1: AR(1) reversion continuing values
-  CV_RE_reversion?: number;
-  CV_ReOI_reversion?: number;
-  RE_phi?: number;
-  ReOI_phi?: number;
-  RE_phi_r_squared?: number;
-  ReOI_phi_r_squared?: number;
-  RE_CV_divergence?: number;
-  ReOI_CV_divergence?: number;
+  CV_RE_reversion?: number | undefined;
+  CV_ReOI_reversion?: number | undefined;
+  RE_phi?: number | undefined;
+  ReOI_phi?: number | undefined;
+  RE_phi_r_squared?: number | undefined;
+  ReOI_phi_r_squared?: number | undefined;
+  RE_CV_divergence?: number | undefined;
+  ReOI_CV_divergence?: number | undefined;
   // S-17.2: Growth accounting decomposition
   // Phase J2: also nullable when equity-side blocked (uses CSE0).
-  V_no_growth?: number | null;
-  growthValue?: number | null;
-  growthFraction?: number | null;
+  V_no_growth?: number | null | undefined;
+  growthValue?: number | null | undefined;
+  growthFraction?: number | null | undefined;
   growthAccountingPerShare?: {
     vNoGrowthPerShare: number | null;
     growthValuePerShare: number | null;
     growthFraction: number | null;
     noGrowthFraction: number | null;
   };
-  fcf?: FCFValuation;
-  aeg?: AEGValuation;
-  perShare?: PerShareResult;
+  fcf?: FCFValuation | undefined;
+  aeg?: AEGValuation | undefined;
+  perShare?: PerShareResult | undefined;
 }
 
 export interface PerShareResult {

@@ -117,9 +117,9 @@ export interface HedgingEffectivenessInputs {
   /** Fair value change of derivatives portfolio (₹ crore). */
   derivativeFvChangeCr: number;
   /** Material threshold for "effective" hedging (default 0.80 = 80%). */
-  effectiveThreshold?: number;
+  effectiveThreshold?: number | undefined;
   /** Material threshold for "ineffective" hedging (default 0.40 = 40%). */
-  ineffectiveThreshold?: number;
+  ineffectiveThreshold?: number | undefined;
 }
 
 export type HedgeVerdict = "effective" | "partial" | "ineffective" | "speculative";

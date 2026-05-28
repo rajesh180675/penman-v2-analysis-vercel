@@ -3,7 +3,7 @@ import type { MoatScoreResult, MoatWidth } from "../../engine/moatScoring";
 interface Props {
   moat: MoatScoreResult | null;
   /** Optional title override */
-  title?: string;
+  title?: string | undefined;
 }
 
 const WIDTH_STYLES: Record<MoatWidth, { bg: string; text: string; border: string; label: string; emoji: string }> = {

@@ -16,7 +16,7 @@ interface Props {
   /** Period label */
   period: string;
   /** Currency unit (e.g. "₹ Cr") */
-  unit?: string;
+  unit?: string | undefined;
 }
 
 /**

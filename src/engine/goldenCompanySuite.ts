@@ -10,10 +10,10 @@ export interface GoldenCompanyExpectation {
   qualityGateTier: "Tier 1" | "Tier 2" | "Tier 3";
   valuationBlocked: boolean;
   valuationStatus: "production-ready" | "warning" | "guarded";
-  persistenceStatus?: "durable" | "mixed" | "fragile" | "unknown";
+  persistenceStatus?: "durable" | "mixed" | "fragile" | "unknown" | undefined;
   minPeriods: number;
-  requiredTerminalFlags?: string[];
-  forbiddenTerminalFlags?: string[];
+  requiredTerminalFlags?: string[] | undefined;
+  forbiddenTerminalFlags?: string[] | undefined;
   ratioRanges?: Partial<Record<"ROCE" | "RNOA" | "NBC" | "FLEV" | "cash_conversion_ratio", [number, number]>>;
 }
 
@@ -24,7 +24,7 @@ export interface GoldenCompanyCase {
   note: string;
   rawData: RawPeriodData[];
   /** Optional per-case config override. Defaults to DEFAULT_CONFIG when absent. */
-  config?: EngineConfig;
+  config?: EngineConfig | undefined;
   expectation: GoldenCompanyExpectation;
 }
 

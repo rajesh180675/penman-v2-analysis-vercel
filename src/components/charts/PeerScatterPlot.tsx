@@ -4,7 +4,7 @@ interface CompanyPoint {
   name: string;
   x: number;
   y: number;
-  isTarget?: boolean;
+  isTarget?: boolean | undefined;
 }
 
 interface Props {
@@ -13,8 +13,8 @@ interface Props {
   xLabel: string;
   yLabel: string;
   /** Optional: format axis values */
-  xFormat?: "pct" | "mult" | "number";
-  yFormat?: "pct" | "mult" | "number";
+  xFormat?: "pct" | "mult" | "number" | undefined;
+  yFormat?: "pct" | "mult" | "number" | undefined;
 }
 
 function formatAxis(value: number, format: "pct" | "mult" | "number" = "number"): string {

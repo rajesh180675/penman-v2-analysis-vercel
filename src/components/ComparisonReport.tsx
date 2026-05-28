@@ -13,8 +13,8 @@ import { computePeerRelativeValuation } from "../engine/peerRelativeValuation";
 interface Props {
   registry: CompanyRegistry;
   config: EngineConfig;
-  weakestTraceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null;
-  publication?: ComparisonPublicationSnapshot | null;
+  weakestTraceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null | undefined;
+  publication?: ComparisonPublicationSnapshot | null | undefined;
 }
 
 const METRICS = ["ROCE", "RNOA", "PM", "ATO", "FLEV", "SPREAD"] as const;

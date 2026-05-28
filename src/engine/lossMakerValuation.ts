@@ -58,7 +58,7 @@ export interface LossMakerValuationResult {
     impliedEVCr: number;
     /** Per-share value after netting cash and debt. */
     perShareValue: number | null;
-    skipReason?: string;
+    skipReason?: string | undefined;
   };
 
   /** Reverse-DCF: what does the current market cap imply? */
@@ -73,7 +73,7 @@ export interface LossMakerValuationResult {
     impliedYear5Revenue: number | null;
     /** Required revenue CAGR from current to year-5. */
     impliedRevenueCAGR: number | null;
-    skipReason?: string;
+    skipReason?: string | undefined;
   };
 
   /** Path-to-profitability flags */

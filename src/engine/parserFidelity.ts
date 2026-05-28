@@ -54,12 +54,12 @@ function buildSummary(status: ParserFidelityStatus, score: number, checks: Parse
 }
 
 export function evaluateParserFidelity(params: {
-  sourceMode?: string | null;
-  rawData?: RawPeriodData[] | null;
-  debugInfo?: CapitalineParseDebug | null;
-  periodCount?: number;
-  rawMetricKeyCount?: number;
-  parserDiagnostics?: SourceParserDiagnostics | null;
+  sourceMode?: string | null | undefined;
+  rawData?: RawPeriodData[] | null | undefined;
+  debugInfo?: CapitalineParseDebug | null | undefined;
+  periodCount?: number | undefined;
+  rawMetricKeyCount?: number | undefined;
+  parserDiagnostics?: SourceParserDiagnostics | null | undefined;
 }): ParserFidelitySummary {
   const sourceMode = params.sourceMode ?? null;
   const rawData = params.rawData ?? null;

@@ -6,7 +6,7 @@ interface Props {
   /** Ceiling value (e.g. base or optimistic scenario) */
   ceiling: number | null;
   /** Mid-point intrinsic value */
-  midpoint?: number | null;
+  midpoint?: number | null | undefined;
 }
 
 /**

@@ -519,7 +519,7 @@ function scorePayoutSustainability(
 export function scoreCapitalAllocation(
   periods: RecastPeriod[],
   config: EngineConfig,
-  kwOverride?: number | null,
+  kwOverride?: number | null | undefined,
 ): CapAllocScoreResult {
   const notes: string[] = [];
 

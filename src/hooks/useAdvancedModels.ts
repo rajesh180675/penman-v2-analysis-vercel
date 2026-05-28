@@ -28,9 +28,9 @@ export interface AdvancedModelsResult {
 interface Props {
   data: RecastPeriod[];
   config: EngineConfig;
-  segmentData?: AllSegmentData | null;
-  marketData?: LiveMarketDataSnapshot | null;
-  shares?: number | null;
+  segmentData?: AllSegmentData | null | undefined;
+  marketData?: LiveMarketDataSnapshot | null | undefined;
+  shares?: number | null | undefined;
 }
 
 export default function useAdvancedModels({ data, config, segmentData, marketData, shares }: Props): AdvancedModelsResult {

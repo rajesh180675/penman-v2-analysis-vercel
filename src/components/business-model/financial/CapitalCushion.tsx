@@ -15,7 +15,7 @@ import { useMemo } from "react";
 import { ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
 import type { FinancialInstitutionAnalysisResult } from "../../../engine/analysisFamily";
 
-interface Props { bankResult: FinancialInstitutionAnalysisResult; subtype?: "bank" | "nbfc" | "insurance" | "generic-financial"; }
+interface Props { bankResult: FinancialInstitutionAnalysisResult; subtype?: "bank" | "nbfc" | "insurance" | "generic-financial" | undefined; }
 
 export default function CapitalCushion({ bankResult, subtype }: Props) {
   const metrics = bankResult.bankMetrics ?? [];
@@ -146,7 +146,7 @@ function fmtCr(n: number): string {
   return `${n.toFixed(0)} Cr`;
 }
 
-function KPI({ label, value, subline, accent = "slate" }: { label: string; value: string; subline?: string; accent?: "slate" | "blue" | "emerald" | "amber" | "rose" }) {
+function KPI({ label, value, subline, accent = "slate" }: { label: string; value: string; subline?: string | undefined; accent?: "slate" | "blue" | "emerald" | "amber" | "rose" }) {
   const map = {
     slate: "text-slate-900 dark:text-slate-100",
     blue: "text-blue-700 dark:text-blue-400",

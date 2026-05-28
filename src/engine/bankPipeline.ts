@@ -100,16 +100,16 @@ export interface BankPeriodMetrics {
   } | null;
 
   // Insurance Specific Fields (Tier 1 & Tier 2)
-  premiumEarned?: number | null;
-  claimsExpense?: number | null;
-  policyholderFunds?: number | null;
-  investmentIncome?: number | null;
-  claimsRatio?: number | null;
-  expenseRatio?: number | null;
-  combinedRatio?: number | null;
-  premiumGrowth?: number | null;
-  floatToEquity?: number | null;
-  investmentYield?: number | null;
+  premiumEarned?: number | null | undefined;
+  claimsExpense?: number | null | undefined;
+  policyholderFunds?: number | null | undefined;
+  investmentIncome?: number | null | undefined;
+  claimsRatio?: number | null | undefined;
+  expenseRatio?: number | null | undefined;
+  combinedRatio?: number | null | undefined;
+  premiumGrowth?: number | null | undefined;
+  floatToEquity?: number | null | undefined;
+  investmentYield?: number | null | undefined;
 
   // Phase B5 — Asset-quality indicators sourced from the bank's annual
   // report (NOT Capitaline). Joined by period_end from the optional
@@ -146,7 +146,7 @@ function isValidValue(v: unknown): v is number {
 function pickValue(
   raw: Record<string, number | null | undefined>,
   keys: readonly string[],
-  statement?: string,
+  statement?: string | undefined,
 ): number | null {
   for (const key of keys) {
     if (statement) {
@@ -566,7 +566,7 @@ function detectSubtype(scope: ScopeAssessment, configHint?: string): FinancialIn
 export function processBankData(
   dataArray: RawPeriodData[],
   scope: ScopeAssessment,
-  cfg?: EngineConfig,
+  cfg?: EngineConfig | undefined,
   marketCap: number | null = null,
   quality: BankQualityIndicators | null = null,
 ): FinancialInstitutionAnalysisResult {

@@ -21,18 +21,18 @@ export interface SegmentUncertainty {
 export interface MonteCarloRequest {
   basePeriods: RecastPeriod[];
   config: EngineConfig;
-  N?: number;
-  horizonT?: number;
-  seed?: number;
+  N?: number | undefined;
+  horizonT?: number | undefined;
+  seed?: number | undefined;
   paramDistributions: {
     ke: MonteCarloDist;
     kw: MonteCarloDist;
     g: MonteCarloDist;
   };
   /** Optional: segment definitions for SOTP simulation */
-  segmentDefinitions?: SegmentDefinition[];
+  segmentDefinitions?: SegmentDefinition[] | undefined;
   /** Optional: per-segment EBIT share uncertainty (derived from historical data) */
-  segmentUncertainties?: SegmentUncertainty[];
+  segmentUncertainties?: SegmentUncertainty[] | undefined;
 }
 
 export interface MonteCarloInput {
@@ -40,14 +40,14 @@ export interface MonteCarloInput {
   config: EngineConfig;
   N: number;
   horizonT: number;
-  seed?: number;
+  seed?: number | undefined;
   paramDistributions: {
     ke: MonteCarloDist;
     kw: MonteCarloDist;
     g: MonteCarloDist;
   };
-  segmentDefinitions?: SegmentDefinition[];
-  segmentUncertainties?: SegmentUncertainty[];
+  segmentDefinitions?: SegmentDefinition[] | undefined;
+  segmentUncertainties?: SegmentUncertainty[] | undefined;
 }
 
 export interface MonteCarloProgressMessage {
@@ -65,10 +65,10 @@ export interface MonteCarloOutput {
   p90_ReOI: number;
   convergenceCheck: boolean;
   /** SOTP samples — only populated when segmentDefinitions + segmentUncertainties are provided */
-  V_SOTP_samples?: number[];
-  p10_SOTP?: number;
-  p50_SOTP?: number;
-  p90_SOTP?: number;
+  V_SOTP_samples?: number[] | undefined;
+  p10_SOTP?: number | undefined;
+  p50_SOTP?: number | undefined;
+  p90_SOTP?: number | undefined;
 }
 
 export function normalizeMonteCarloRequest(req: MonteCarloRequest): MonteCarloInput {

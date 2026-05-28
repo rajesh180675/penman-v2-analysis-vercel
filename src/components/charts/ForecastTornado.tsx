@@ -17,7 +17,7 @@ interface Props {
   /** Each driver's impact range */
   drivers: DriverImpact[];
   /** Optional market price reference line */
-  marketPrice?: number | null;
+  marketPrice?: number | null | undefined;
 }
 
 /**

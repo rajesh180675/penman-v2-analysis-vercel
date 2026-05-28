@@ -37,11 +37,11 @@ export interface TraceEvent {
   /** Output / result */
   output?: Record<string, unknown>;
   /** Duration in ms (when measured) */
-  duration_ms?: number;
+  duration_ms?: number | undefined;
   /** Optional severity for warnings/errors */
-  level?: "info" | "warn" | "error";
+  level?: "info" | "warn" | "error" | undefined;
   /** Optional human-readable message */
-  msg?: string;
+  msg?: string | undefined;
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ class TraceLoggerImpl {
     op: string,
     input?: Record<string, unknown> | null,
     output?: Record<string, unknown> | null,
-    opts?: { duration_ms?: number; level?: "info" | "warn" | "error"; msg?: string },
+    opts?: { duration_ms?: number | undefined; level?: "info" | "warn" | "error" | undefined; msg?: string },
   ): void {
     const event: TraceEvent = {
       ts: new Date().toISOString(),
@@ -95,7 +95,7 @@ class TraceLoggerImpl {
   }
 
   /** Get all events (optionally filtered). */
-  getEvents(filter?: { cat?: TraceCategory; level?: "warn" | "error" }): TraceEvent[] {
+  getEvents(filter?: { cat?: TraceCategory | undefined; level?: "warn" | "error" }): TraceEvent[] {
     let events = this.buffer;
     if (filter?.cat) events = events.filter(e => e.cat === filter.cat);
     if (filter?.level) events = events.filter(e => e.level === filter.level);
@@ -238,7 +238,7 @@ export function trace(
   op: string,
   input?: Record<string, unknown> | null,
   output?: Record<string, unknown> | null,
-  opts?: { duration_ms?: number; level?: "info" | "warn" | "error"; msg?: string },
+  opts?: { duration_ms?: number | undefined; level?: "info" | "warn" | "error" | undefined; msg?: string },
 ): void {
   getInstance().log(cat, op, input, output, opts);
 }
@@ -277,6 +277,6 @@ export function getTraceSummary() {
 }
 
 /** Get filtered events. */
-export function getTraceEvents(filter?: { cat?: TraceCategory; level?: "warn" | "error" }) {
+export function getTraceEvents(filter?: { cat?: TraceCategory | undefined; level?: "warn" | "error" }) {
   return getInstance().getEvents(filter);
 }

@@ -136,7 +136,7 @@ export interface StandardAlias {
   source: string;             // label as it appears in REV/Standard files
   canonical: string;          // Ind-AS canonical label
   appliesTo: AccountingStandard[];
-  notes?: string;
+  notes?: string | undefined;
 }
 
 export const STANDARD_ALIASES: StandardAlias[] = [
