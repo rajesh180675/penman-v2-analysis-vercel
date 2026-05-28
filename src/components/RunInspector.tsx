@@ -98,6 +98,12 @@ type InspectorPayload = {
         unclassifiedCount?: number;
         truncated?: boolean;
       } | null;
+      lineageRef?: {
+        hasLineage?: boolean;
+        conceptCount?: number;
+        periodCount?: number;
+        checksum?: string;
+      } | null;
       rigor?: {
         currentLevel?: string;
         currentLabel?: string;
@@ -664,6 +670,12 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
                       : ""}
                     {(traceability.unusualItemManifest?.unclassifiedCount ?? 0) > 0
                       ? `, ${traceability.unusualItemManifest?.unclassifiedCount} unclassified`
+                      : ""}
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Lineage: <strong>{traceability.lineageRef?.hasLineage ? "available" : "—"}</strong>
+                    {traceability.lineageRef?.hasLineage
+                      ? ` (${traceability.lineageRef?.conceptCount ?? 0} concepts × ${traceability.lineageRef?.periodCount ?? 0} periods, checksum ${traceability.lineageRef?.checksum?.slice(0, 8) ?? ""})`
                       : ""}
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">

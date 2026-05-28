@@ -52,7 +52,7 @@ describe("companyRegistryStore", () => {
           rawData: [{ company_id: "ITC", period_end: "2025-03-31", raw_metric_values: { Revenue: 1 } }],
           recastData: [{ period_end: "2025-03-31", bs: {} as never, is: {} as never, cu: {} as never, cf: {} as never }],
           traceability: {
-            schemaVersion: "2026-06-traceability-v11",
+            schemaVersion: "2026-06-traceability-v12",
             generatedAt: "2026-04-03T10:00:00.000Z",
             runContext: {},
             policyVersions: {},
@@ -104,7 +104,7 @@ describe("companyRegistryStore", () => {
     expect(readPersistedCompanyRegistry()).toEqual({ companies: {} });
   });
 
-  it("drops traceability payloads that do not match the current envelope schema (v10 stale)", () => {
+  it("drops traceability payloads that do not match the current envelope schema (v11 stale)", () => {
     storage.setItem("penman.company-registry.v2", JSON.stringify(buildCompanyRegistrySnapshot({
       companies: {
         ITC: {
@@ -113,7 +113,7 @@ describe("companyRegistryStore", () => {
           rawData: [],
           recastData: [],
           traceability: {
-            schemaVersion: "2026-06-traceability-v10",
+            schemaVersion: "2026-06-traceability-v11",
             generatedAt: "2026-04-03T10:00:00.000Z",
           } as never,
         },
@@ -146,7 +146,7 @@ describe("companyRegistryStore", () => {
             rawData: [{ company_id: "ITC", period_end: "2025-03-31", raw_metric_values: { Revenue: 1 } }],
             recastData: [{ period_end: "2025-03-31", bs: {} as never, is: {} as never, cu: {} as never, cf: {} as never }],
             traceability: {
-              schemaVersion: "2026-06-traceability-v11",
+              schemaVersion: "2026-06-traceability-v12",
               generatedAt: "2026-04-03T10:00:00.000Z",
               runContext: {},
               policyVersions: {},
@@ -160,6 +160,6 @@ describe("companyRegistryStore", () => {
 
     expect(merged.companies.ITC?.label).toBe("ITC Shared");
     expect(merged.companies.ITC?.recastData).toHaveLength(1);
-    expect(merged.companies.ITC?.traceability?.schemaVersion).toBe("2026-06-traceability-v11");
+    expect(merged.companies.ITC?.traceability?.schemaVersion).toBe("2026-06-traceability-v12");
   });
 });
