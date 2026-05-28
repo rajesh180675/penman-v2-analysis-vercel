@@ -14,6 +14,7 @@ import { EconomicSanitySummary, evaluateEconomicSanity } from "./economicSanityG
 import { summarizeUnusualItemManifest, UnusualItemManifest } from "./unusualItemPolicy";
 import { buildLineageMap, buildLineageRef } from "./lineageBuilder";
 import { LineageRef } from "./lineageTypes";
+import { appendRunResidualSummary, RESIDUAL_SCORE_PRODUCTION_THRESHOLD } from "../lib/residualsStore";
 import { isEnabled } from "../lib/featureFlags";
 import { trace } from "../lib/traceLogger";
 
@@ -459,9 +460,86 @@ export function buildAnalysisTraceability(params: {
           : analysisStatus?.headline ?? "Production-ready status was not reached.",
     },
   ];
-  const achievedLevels = checkpoints.filter((checkpoint) => checkpoint.achieved).map((checkpoint) => checkpoint.level);
-  const pendingLevels = checkpoints.filter((checkpoint) => !checkpoint.achieved).map((checkpoint) => checkpoint.level);
+  // achievedLevels/pendingLevels are recomputed below after the
+  // residual-score downgrade gate may have toggled the production-ready
+  // checkpoint. We don't materialize the pre-downgrade values.
+
+  // Gap 7 / PR-G — residual score downgrade.
+  // overallResidualScore = weighted blend of:
+  //   - parser fidelity gap (1 - score/100), weight 25%
+  //   - mapping critical / conflict count (capped 40), weight 25%
+  //   - reconciliation max residual ratio * 100 (capped 30), weight 20%
+  //   - economic sanity warnings count (capped 20), weight 15%
+  //   - unusual-item terminal blockers (capped 30), weight 15%
+  // Score is 0-100, lower is better. Above RESIDUAL_SCORE_PRODUCTION_THRESHOLD,
+  // production-ready is downgraded to valuation-eligible.
+  const parserGap = Math.max(0, 100 - parserFidelity.score);
+  const mappingPenalty = Math.min(40, blockingCount * 10 + conceptIdentity.conflictCount);
+  const reconPenalty = Math.min(30, (reconciliation.maxResidualRatio ?? 0) * 100);
+  const sanityPenalty = Math.min(20, economicSanity.failedChecks.length * 5);
+  const unusualPenalty = Math.min(30, unusualItemManifest.classifications.filter((c) => c.affectsTerminalEligibility).length * 10);
+  const overallResidualScore = Math.round(
+    parserGap * 0.25 + mappingPenalty * 0.25 + reconPenalty * 0.20 + sanityPenalty * 0.15 + unusualPenalty * 0.15,
+  );
+  const residualScoreDowngradeEnabled = isEnabled("rigor.residualScoreDowngrade");
+  const productionReadyAchievedRaw = !screeningOnly && analysisStatus?.status === "production-ready";
+  const productionReadyDowngraded =
+    productionReadyAchievedRaw && residualScoreDowngradeEnabled && overallResidualScore > RESIDUAL_SCORE_PRODUCTION_THRESHOLD;
+  if (productionReadyDowngraded) {
+    // Downgrade production-ready to false; keep valuation-eligible
+    // intact. This is enforced by replacing the production-ready
+    // checkpoint's `achieved` after the fact.
+    const idx = checkpoints.findIndex((c) => c.level === "production-ready");
+    if (idx >= 0) {
+      checkpoints[idx] = {
+        ...checkpoints[idx],
+        achieved: false,
+        detail: `Residual score ${overallResidualScore} exceeds production-ready threshold ${RESIDUAL_SCORE_PRODUCTION_THRESHOLD}; downgraded to valuation-eligible.`,
+      };
+    }
+  }
+  // Recompute achieved/pending after downgrade.
+  const achievedLevelsFinal = checkpoints.filter((c) => c.achieved).map((c) => c.level);
+  const pendingLevelsFinal = checkpoints.filter((c) => !c.achieved).map((c) => c.level);
   const currentCheckpoint = [...checkpoints].reverse().find((checkpoint) => checkpoint.achieved) ?? checkpoints[0];
+
+  // Persist residual summary.
+  if (params.runId && params.companyId) {
+    appendRunResidualSummary({
+      runId: params.runId,
+      timestamp: params.generatedAt ?? new Date().toISOString(),
+      companyId: params.companyId,
+      schemaVersion: policyVersions.traceabilitySchemaVersion,
+      parserResiduals: {
+        unresolvableRowCount: parserFidelity.errorCount,
+        numericParseErrorCount: 0,
+        blankRowRate: 0,
+      },
+      mappingResiduals: {
+        unresolvedCriticalCount: blockingCount,
+        unresolvedSupportingCount: diagnosticCount,
+        conflictCount: conceptIdentity.conflictCount,
+      },
+      identityResiduals: {
+        maxResidualRatio: reconciliation.maxResidualRatio ?? 0,
+        failedCheckCount: reconciliation.errorCount,
+      },
+      valuationBridgeResiduals: {
+        intrinsicValueSensitivity: 0,
+        terminalValueShare: 0,
+      },
+      overallResidualScore,
+    });
+    if (productionReadyDowngraded) {
+      trace("config", "residualScore:downgrade", {
+        companyId: params.companyId,
+        runId: params.runId,
+        score: overallResidualScore,
+        threshold: RESIDUAL_SCORE_PRODUCTION_THRESHOLD,
+      });
+    }
+  }
+
   const valuationGateFailures = [
     scopeBlocked,
     valuationBlocked,
@@ -524,8 +602,8 @@ export function buildAnalysisTraceability(params: {
       currentLevel: currentCheckpoint.level,
       currentLabel: currentCheckpoint.label,
       summary: currentCheckpoint.detail,
-      achievedLevels,
-      pendingLevels,
+      achievedLevels: achievedLevelsFinal,
+      pendingLevels: pendingLevelsFinal,
       checkpoints,
     },
     mappingCoverage: {
