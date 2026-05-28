@@ -46,6 +46,15 @@
     "emoji": "🏢"
   },
   {
+    "folder": "Cholamandalam Investment",
+    "name": "Cholamandalam Investment and Finance Company",
+    "ticker": "CHOLAFIN",
+    "sector": "NBFC",
+    "type": "nbfc",
+    "description": "Leading Indian NBFC focused on vehicle finance and loan against property",
+    "emoji": "🏢"
+  },
+  {
     "folder": "Dabur India",
     "name": "Dabur India",
     "ticker": "DABUR",
