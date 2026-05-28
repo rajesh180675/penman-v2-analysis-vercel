@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trace } from "../lib/traceLogger";
 import { LiveMarketDataSnapshot } from "../engine/marketData";
 
@@ -33,7 +33,13 @@ export function useLiveMarketData({
     return params.toString();
   }, [fallbackPrice, fallbackRiskFreeRate, instrumentKey, provider, symbol]);
 
+  // Stash the latest load() inputs in a ref so the polling effect doesn't have
+  // to re-subscribe (and tear down/re-create the interval) on every config tick.
+  const latestRef = useRef({ provider, symbol, instrumentKey, fallbackPrice, fallbackRiskFreeRate, query });
+  latestRef.current = { provider, symbol, instrumentKey, fallbackPrice, fallbackRiskFreeRate, query };
+
   const load = useCallback(async () => {
+    const { provider, symbol, instrumentKey, fallbackPrice, fallbackRiskFreeRate, query } = latestRef.current;
     if (provider === "disabled") {
       setSnapshot(null);
       return;
@@ -61,10 +67,14 @@ export function useLiveMarketData({
     } finally {
       setLoading(false);
     }
-  }, [fallbackPrice, fallbackRiskFreeRate, instrumentKey, provider, query, symbol]);
+  }, []);
 
+  // Re-fetch immediately when the request inputs change (cheap; just one fetch).
+  useEffect(() => { void load(); }, [query, load]);
+
+  // Polling loop is independent of the input churn. Only re-creates when the
+  // user-visible refresh cadence changes.
   useEffect(() => {
-    void load();
     const intervalMs = Math.max((refreshSeconds ?? 300) * 1000, 30_000);
     const timer = window.setInterval(() => {
       void load();

@@ -57,6 +57,8 @@ class TraceLoggerImpl {
   private buffer: TraceEvent[] = [];
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private sessionStart: string;
+  private dirty = false;
+  private beforeUnloadHandler: (() => void) | null = null;
 
   constructor() {
     this.sessionStart = new Date().toISOString();
@@ -84,6 +86,7 @@ class TraceLoggerImpl {
     if (opts?.msg) event.msg = opts.msg;
 
     this.buffer.push(event);
+    this.dirty = true;
 
     // Ring buffer: trim oldest when exceeding max
     if (this.buffer.length > MAX_EVENTS) {
@@ -143,11 +146,16 @@ class TraceLoggerImpl {
   clear(): void {
     this.buffer = [];
     this.sessionStart = new Date().toISOString();
+    this.dirty = true;
     this.flushToStorage();
   }
 
   /** Flush buffer to localStorage. */
   flushToStorage(): void {
+    // Skip the expensive JSON.stringify when nothing has changed since last flush.
+    // Without this guard, every 3s tick re-serialized the entire ring buffer
+    // (~1MB) even on idle pages, costing ~330KB/s of allocation churn.
+    if (!this.dirty) return;
     try {
       const json = JSON.stringify(this.buffer);
       // Check size before writing
@@ -158,8 +166,10 @@ class TraceLoggerImpl {
       } else {
         localStorage.setItem(STORAGE_KEY, json);
       }
+      this.dirty = false;
     } catch {
       // localStorage full or unavailable — silently continue
+      // Leave dirty=true so we retry next tick.
     }
   }
 
@@ -183,8 +193,9 @@ class TraceLoggerImpl {
   private startFlushTimer(): void {
     if (typeof window !== "undefined") {
       this.flushTimer = setInterval(() => this.flushToStorage(), FLUSH_INTERVAL_MS);
-      // Also flush on page unload
-      window.addEventListener("beforeunload", () => this.flushToStorage());
+      // Also flush on page unload — keep a reference so destroy() can detach it.
+      this.beforeUnloadHandler = () => this.flushToStorage();
+      window.addEventListener("beforeunload", this.beforeUnloadHandler);
     }
   }
 
@@ -193,6 +204,10 @@ class TraceLoggerImpl {
     if (this.flushTimer) {
       clearInterval(this.flushTimer);
       this.flushTimer = null;
+    }
+    if (this.beforeUnloadHandler && typeof window !== "undefined") {
+      window.removeEventListener("beforeunload", this.beforeUnloadHandler);
+      this.beforeUnloadHandler = null;
     }
   }
 }
