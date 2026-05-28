@@ -65,6 +65,13 @@ function mkTraceability(status: "production-ready" | "guarded" | "blocked"): Ana
       hasMultiStandardData: false,
       confidence: "high",
     },
+    conceptIdentity: {
+      status: "clean",
+      conflictCount: 0,
+      unresolvedCriticalCount: 0,
+      conflicts: [],
+      truncated: false,
+    },
     rigor: {
       currentLevel: status === "blocked" ? "syntactically-valid" : "production-ready",
       currentLabel: status === "blocked" ? "Syntactically valid" : "Production-ready",

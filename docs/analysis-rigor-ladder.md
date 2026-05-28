@@ -95,3 +95,15 @@ Capitaline runs also still have richer parser-fidelity evidence than other modes
 - deepen parser fidelity for screener, XBRL, manual, and JSON inputs with source-native anomaly counts
 - carry the same ladder and reconciliation summary into other report surfaces beyond valuation, forecast, quality, and ratios so no artifact drifts from traceability
 - partition the shared comparison registry into explicit workspace or user scopes if multiple peer sets need to coexist
+
+## Concept Identity Gate (Schema v9, ADR-001)
+
+The traceability envelope at `2026-06-traceability-v9` adds a `conceptIdentity` field that proves each canonical concept (revenue, equity, NOA, etc.) has exactly one identity across the run. When `unresolvedCriticalCount > 0` and `VITE_RIGOR_CONCEPT_IDENTITY_BLOCK` is on (default), the run cannot reach `valuation-eligible`.
+
+Conflict classes:
+- `cross-statement-conflict` — registry alias appears under two different statement owners
+- `duplicate-source` — two raw labels both resolve to the same concept in one period
+- `unresolved` — required core concept has no match in the latest period
+
+Persisted v8 envelopes are rejected on read; the sanitizer logs the migration via `recordSchemaMigration()` so DebugPanel can surface volume to ops. See [`docs/adr/001-concept-identity-layer.md`](adr/001-concept-identity-layer.md).
+

@@ -8,6 +8,9 @@ import { EngineConfig, RawPeriodData, RecastPeriod } from "./types";
 import { evaluateReconciliationResiduals, ReconciliationResidualSummary } from "./reconciliationResiduals";
 import { SourceParserDiagnostics } from "./parserDiagnostics";
 import { detectDistress } from "./distressDetector";
+import { ConceptIdentitySummary, summarizeConceptIdentity } from "./conceptOntology";
+import { isEnabled } from "../lib/featureFlags";
+import { trace } from "../lib/traceLogger";
 
 export interface TraceabilityBacklogPreview {
   statement: string;
@@ -90,6 +93,12 @@ export interface AnalysisTraceabilityEnvelope {
   reconciliation: ReconciliationResidualSummary;
   /** Phase A6 — distribution of accounting standards across raw periods. */
   accountingStandardCoverage: AccountingStandardCoverage;
+  /** Gap 1 / PR-A — concept identity layer. Surfaces conflicts between the
+   *  canonical concept registry and the raw labels resolved by the run.
+   *  When `status === "valuation-blocked"` and the
+   *  `rigor.conceptIdentityBlock` feature flag is on, the run cannot
+   *  reach `valuation-eligible`. */
+  conceptIdentity: ConceptIdentitySummary;
   rigor: {
     currentLevel: AnalysisRigorLevel;
     currentLabel: string;
@@ -288,6 +297,24 @@ export function buildAnalysisTraceability(params: {
   // these datasets; advancing the rigor level would mislead reviewers.
   const distress = detectDistress(params.recastData ?? null);
   const distressBlocksValuation = distress.severity === "critical" || distress.severity === "severe";
+  // Gap 1 / PR-A — concept identity. When the registry has unresolved
+  // critical conflicts, we block valuation-eligible (unless the kill
+  // switch is off, in which case we still surface the gate but don't
+  // gate rigor on it).
+  const conceptIdentity = summarizeConceptIdentity(params.rawData ?? null);
+  const conceptIdentityBlockEnabled = isEnabled("rigor.conceptIdentityBlock");
+  const conceptIdentityBlocksValuation =
+    conceptIdentityBlockEnabled && conceptIdentity.status === "valuation-blocked";
+  if (conceptIdentity.conflictCount > 0) {
+    trace("config", "conceptIdentity:detected", {
+      companyId: params.companyId ?? null,
+      conflictCount: conceptIdentity.conflictCount,
+      unresolvedCriticalCount: conceptIdentity.unresolvedCriticalCount,
+      status: conceptIdentity.status,
+      truncated: conceptIdentity.truncated,
+      blockEnabled: conceptIdentityBlockEnabled,
+    });
+  }
   const structuralAchieved = hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues && reconciliation.status !== "failed";
   const checkpoints: AnalysisRigorCheckpoint[] = [
     {
@@ -335,16 +362,18 @@ export function buildAnalysisTraceability(params: {
     {
       level: "valuation-eligible",
       label: "Valuation eligible",
-      achieved: structuralAchieved && !valuationBlocked && !distressBlocksValuation && !screeningOnly && valuationStatus !== "guarded" && valuationStatus !== "unknown",
+      achieved: structuralAchieved && !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !screeningOnly && valuationStatus !== "guarded" && valuationStatus !== "unknown",
       detail: screeningOnly
         ? "Single-period upload — valuation eligibility requires ≥2 periods for time-series anchoring."
         : distressBlocksValuation
           ? `${distress.severity === "critical" ? "Critical" : "Severe"} financial distress detected (${distress.reasons[0] ?? "negative net worth"}). Equity-side valuation models cannot be trusted; the run is not valuation-eligible.`
-          : valuationStatus === "guarded"
-            ? "Valuation still depends on a guarded fallback anchor."
-            : valuationStatus === "warning" || valuationStatus === "production-ready"
-              ? `Valuation status is ${valuationStatus}, so the run remains eligible for valuation use.`
-              : "Valuation readiness has not been established yet.",
+          : conceptIdentityBlocksValuation
+            ? `Concept identity layer reports ${conceptIdentity.unresolvedCriticalCount} unresolved critical conflict(s). Resolve before treating the run as valuation-eligible.`
+            : valuationStatus === "guarded"
+              ? "Valuation still depends on a guarded fallback anchor."
+              : valuationStatus === "warning" || valuationStatus === "production-ready"
+                ? `Valuation status is ${valuationStatus}, so the run remains eligible for valuation use.`
+                : "Valuation readiness has not been established yet.",
     },
     {
       level: "production-ready",
@@ -411,6 +440,7 @@ export function buildAnalysisTraceability(params: {
     parserFidelity,
     reconciliation,
     accountingStandardCoverage: computeAccountingStandardCoverage(params.rawData),
+    conceptIdentity,
     rigor: {
       currentLevel: currentCheckpoint.level,
       currentLabel: currentCheckpoint.label,

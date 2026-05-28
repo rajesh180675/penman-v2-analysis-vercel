@@ -78,6 +78,12 @@ type InspectorPayload = {
         errorCount?: number;
         maxResidualRatio?: number;
       } | null;
+      conceptIdentity?: {
+        status?: string;
+        conflictCount?: number;
+        unresolvedCriticalCount?: number;
+        truncated?: boolean;
+      } | null;
       rigor?: {
         currentLevel?: string;
         currentLabel?: string;
@@ -620,6 +626,12 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
                     Reconciliation: <strong>{traceability.reconciliation?.status ?? "—"}</strong>
                     {typeof traceability.reconciliation?.maxResidualRatio === "number"
                       ? ` (${(traceability.reconciliation.maxResidualRatio * 100).toFixed(2)}%)`
+                      : ""}
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    Concept identity: <strong>{traceability.conceptIdentity?.status ?? "—"}</strong>
+                    {typeof traceability.conceptIdentity?.conflictCount === "number" && traceability.conceptIdentity.conflictCount > 0
+                      ? ` (${traceability.conceptIdentity.conflictCount} conflict${traceability.conceptIdentity.conflictCount === 1 ? "" : "s"}, ${traceability.conceptIdentity.unresolvedCriticalCount ?? 0} critical)`
                       : ""}
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
