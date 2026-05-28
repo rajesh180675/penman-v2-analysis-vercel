@@ -107,3 +107,16 @@ Conflict classes:
 
 Persisted v8 envelopes are rejected on read; the sanitizer logs the migration via `recordSchemaMigration()` so DebugPanel can surface volume to ops. See [`docs/adr/001-concept-identity-layer.md`](adr/001-concept-identity-layer.md).
 
+## Economic Sanity Gates (Schema v10, ADR-002)
+
+Envelope `2026-06-traceability-v10` adds an `economicSanity` field that walks periods latest → oldest until it finds a clean anchor within `MAX_ANCHOR_LOOKBACK_PERIODS` (= 3). Five per-period checks:
+
+- `terminal-period-contamination` (block) — major capital event in this period (buyback ≥ 5% CSE, issuance ≥ 10% CSE, or terminal-blocking unusual item)
+- `dirty-surplus-integrity` (warn → block on 2 consecutive years) — dirty surplus residual ≥ 4% of CSE
+- `implausible-rnoa-jump` (warn) — \|ΔRNOA\| ≥ 30pp without known cause
+- `demerger-discontinued-contamination` (block) — parser or manifest signal
+- `anchor-period-selection` — summary of the walk-back
+
+`status === "blocked"` + `VITE_RIGOR_ECONOMIC_SANITY_BLOCK` on (default) caps rigor at `structurally-reconciled`. See [`docs/adr/002-economic-sanity-gates.md`](adr/002-economic-sanity-gates.md).
+
+

@@ -72,6 +72,13 @@ function mkTraceability(status: "production-ready" | "guarded" | "blocked"): Ana
       conflicts: [],
       truncated: false,
     },
+    economicSanity: {
+      status: "passed",
+      anchorPeriod: "2025-03-31",
+      anchorReason: "Latest period passed all economic sanity checks.",
+      skippedPeriods: [],
+      failedChecks: [],
+    },
     rigor: {
       currentLevel: status === "blocked" ? "syntactically-valid" : "production-ready",
       currentLabel: status === "blocked" ? "Syntactically valid" : "Production-ready",
