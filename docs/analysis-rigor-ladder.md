@@ -107,6 +107,20 @@ Conflict classes:
 
 Persisted v8 envelopes are rejected on read; the sanitizer logs the migration via `recordSchemaMigration()` so DebugPanel can surface volume to ops. See [`docs/adr/001-concept-identity-layer.md`](adr/001-concept-identity-layer.md).
 
+## Per-Number Lineage Sidecar (Schema v12, ADR-004)
+
+Envelope `2026-06-traceability-v12` adds a small `lineageRef` `{ hasLineage, conceptCount, periodCount, checksum }`. The actual lineage payload lives in the audit snapshot at `snapshot.lineage` (sidecar pattern, overrides the original brief — see ADR-004 for size justification).
+
+Eight instrumented numbers: NOA, NFO, CSE, CoreOI, RNOA, FreeCashFlow, PAT, IntrinsicValuePerShare. Each (concept, period) entry carries:
+- `sourceMetricKeys` (raw labels resolved + derived sources, capped 50)
+- `sourceStatements` (BS / IS / CF / SD)
+- `transformationSteps` (canonical recipe, capped 20)
+- `policyDecisionsApplied` (spec_flags + unusual-item exclusions, capped 10)
+- `confidence` (high / medium / low / estimated)
+- `warnings`
+
+See [`docs/adr/004-lineage-sidecar.md`](adr/004-lineage-sidecar.md).
+
 ## Unusual-Item Taxonomy (Schema v11, ADR-003)
 
 Envelope `2026-06-traceability-v11` adds a `unusualItemManifest` field that classifies each "exceptional / extraordinary / unusual" raw label against an ordered rule set of 11 categories (plus `unclassified` fall-through):

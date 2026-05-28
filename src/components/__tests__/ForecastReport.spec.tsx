@@ -86,6 +86,12 @@ function mkTraceability(status: "production-ready" | "guarded" | "blocked"): Ana
       unclassifiedCount: 0,
       truncated: false,
     },
+    lineageRef: {
+      hasLineage: false,
+      conceptCount: 0,
+      periodCount: 0,
+      checksum: "",
+    },
     rigor: {
       currentLevel: status === "blocked" ? "syntactically-valid" : "production-ready",
       currentLabel: status === "blocked" ? "Syntactically valid" : "Production-ready",

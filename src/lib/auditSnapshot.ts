@@ -6,6 +6,7 @@ import { MappingAuditReport, QualityGateReport } from "../engine/mappingAudit";
 import { AuditSubmissionMeta } from "./audit";
 import { SourceParserDiagnostics } from "../engine/parserDiagnostics";
 import { buildAnalysisPublicationSnapshot } from "./publication/analysisPublicationSnapshot";
+import { buildLineageMap } from "../engine/lineageBuilder";
 
 export function buildAnalysisSnapshot(params: {
   rawData: RawPeriodData[] | null;
@@ -66,6 +67,10 @@ export function buildAnalysisSnapshot(params: {
     latestPeriod: publication.latestRawPeriod ?? latestPeriod,
     policyVersions: publication.policyVersions,
     traceability,
+    /** Gap 4 / PR-D — lineage sidecar. Lives on the snapshot, not the
+     *  envelope. RunInspector / DebugPanel fetch this when a reviewer
+     *  drills into a specific number. */
+    lineage: buildLineageMap({ recastData, rawData }),
     config,
     qualityGate: publication.qualityGate ?? qualityGate,
     mappingAudit: publication.mappingAudit ?? mappingAudit,

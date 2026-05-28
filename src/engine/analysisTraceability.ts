@@ -12,6 +12,8 @@ import { ConceptIdentitySummary, summarizeConceptIdentity } from "./conceptOntol
 import { detectCorporateActions } from "./corporateActions";
 import { EconomicSanitySummary, evaluateEconomicSanity } from "./economicSanityGates";
 import { summarizeUnusualItemManifest, UnusualItemManifest } from "./unusualItemPolicy";
+import { buildLineageMap, buildLineageRef } from "./lineageBuilder";
+import { LineageRef } from "./lineageTypes";
 import { isEnabled } from "../lib/featureFlags";
 import { trace } from "../lib/traceLogger";
 
@@ -116,6 +118,12 @@ export interface AnalysisTraceabilityEnvelope {
    *  classification has `affectsTerminalEligibility: true`, which feeds
    *  back into Gap 2's terminal-period contamination check. */
   unusualItemManifest: UnusualItemManifest;
+  /** Gap 4 / PR-D — per-number lineage REFERENCE (not the data itself).
+   *  Lineage payload lives in the audit snapshot sidecar to keep
+   *  envelope JSON serialization bounded. The ref carries a checksum
+   *  so a future reader can detect drift between envelope and
+   *  snapshot. See ADR-004. */
+  lineageRef: LineageRef;
   rigor: {
     currentLevel: AnalysisRigorLevel;
     currentLabel: string;
@@ -508,6 +516,10 @@ export function buildAnalysisTraceability(params: {
     conceptIdentity,
     economicSanity,
     unusualItemManifest,
+    lineageRef: buildLineageRef(buildLineageMap({
+      recastData: params.recastData ?? null,
+      rawData: params.rawData ?? null,
+    })),
     rigor: {
       currentLevel: currentCheckpoint.level,
       currentLabel: currentCheckpoint.label,
