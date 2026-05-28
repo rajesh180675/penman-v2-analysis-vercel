@@ -399,7 +399,12 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    persistCompanyRegistry(registry);
+    // Debounce the localStorage write — registry mutates several times during
+    // a single analysis run (recast, traceability, comparison sync), and each
+    // write serializes the full registry. Coalescing into one write per 250ms
+    // turns N writes into 1 without changing observable behavior.
+    const timer = window.setTimeout(() => persistCompanyRegistry(registry), 250);
+    return () => window.clearTimeout(timer);
   }, [registry]);
 
   useEffect(() => {
@@ -433,7 +438,7 @@ export function App() {
       return {
         companies: {
           ...prev.companies,
-          [id]: { ...existing, recastData, traceability },
+          [id]: { ...existing, recastData, traceability, companyType: config.company_type ?? null },
         },
       };
     });
@@ -526,7 +531,7 @@ export function App() {
       ...prev.companies,
       // recastData placeholder — ComparisonReport reads from registry, so we
       // also update registry when recastData memo resolves (see useEffect below).
-      [id]: { id, label: id, rawData: data, recastData: [], traceability: null },
+      [id]: { id, label: id, rawData: data, recastData: [], traceability: null, companyType: config.company_type ?? null },
     },
   }));
   // Note: Bank/NBFC datasets will auto-redirect to "bank" tab via the
