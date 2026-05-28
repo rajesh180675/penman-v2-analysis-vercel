@@ -1,0 +1,47 @@
+{
+  "$schema": "./load-test-baselines.schema.json",
+  "version": "2026-05-baseline-v1",
+  "measuredOn": "2026-05-28",
+  "environment": "Vercel Preview, IAD region, KV East-1",
+  "endpoints": {
+    "GET /api/research?action=list-runs": {
+      "p50_ms": 120,
+      "p95_ms": 350,
+      "p99_ms": 800,
+      "errorRate": 0.005,
+      "notes": "Read-only KV scan. Cold cache ~600ms; warm ~80ms."
+    },
+    "GET /api/research?action=load-comparison-registry": {
+      "p50_ms": 180,
+      "p95_ms": 480,
+      "p99_ms": 1200,
+      "errorRate": 0.005,
+      "notes": "Read + envelope sanitization. Larger payload than list-runs."
+    },
+    "POST /api/research?action=save-audit-run": {
+      "p50_ms": 220,
+      "p95_ms": 600,
+      "p99_ms": 1500,
+      "errorRate": 0.01,
+      "notes": "Write to KV. Limited to 256KB envelope."
+    },
+    "POST /api/research?action=save-comparison-registry": {
+      "p50_ms": 280,
+      "p95_ms": 750,
+      "p99_ms": 1800,
+      "errorRate": 0.01,
+      "notes": "Write + identity merge. Bottleneck is identity resolution."
+    }
+  },
+  "loadProfile": {
+    "vus": 10,
+    "duration": "30s",
+    "rampUp": "5s",
+    "rampDown": "5s"
+  },
+  "regressionGate": {
+    "p95RegressionThreshold": 1.25,
+    "errorRateRegressionThreshold": 0.02,
+    "policy": "Reject PR when measured p95 exceeds baseline by >25% OR error rate exceeds 2% absolute."
+  }
+}
