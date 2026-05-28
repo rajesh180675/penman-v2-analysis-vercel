@@ -41,6 +41,8 @@ NBFC_REGISTRY = {
     "BAJFINANCE": ("Bajaj Finance", "Bajaj Finance Ltd"),
     "MUTHOOTFIN": ("Muthoot Finance", "Muthoot Finance Ltd"),
     "SHRIRAMFIN": ("Shriram Finance", "Shriram Finance Ltd"),
+    "CHOLAFIN": ("Cholamandalam Investment", "Cholamandalam Investment & Finance Company Ltd"),
+    "LTFH": ("L&T Finance Holdings", "L&T Finance Holdings Ltd"),
 }
 
 

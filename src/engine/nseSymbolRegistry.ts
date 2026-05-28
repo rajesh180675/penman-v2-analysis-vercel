@@ -18,6 +18,7 @@ export const NSE_SYMBOL_REGISTRY: Record<string, string> = {
   "Bajaj Finance": "BAJFINANCE",
   "Bharti Airtel": "BHARTIARTL",
   "Britannia Industries": "BRITANNIA",
+  "Cholamandalam Investment": "CHOLAFIN",
   "Dabur India": "DABUR",
   "Grasim Industries": "GRASIM",
   "HDFC Bank": "HDFCBANK",

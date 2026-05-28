@@ -91,6 +91,16 @@
     "standaloneBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/Britannia%20Industries/standalone.zip"
   },
   {
+    "folder": "Cholamandalam Investment",
+    "name": "Cholamandalam Investment and Finance Company",
+    "ticker": "CHOLAFIN",
+    "sector": "NBFC",
+    "type": "nbfc",
+    "description": "Leading Indian NBFC focused on vehicle finance and loan against property",
+    "emoji": "🏢",
+    "hasStandalone": true
+  },
+  {
     "folder": "Dabur India",
     "name": "Dabur India",
     "ticker": "DABUR",
