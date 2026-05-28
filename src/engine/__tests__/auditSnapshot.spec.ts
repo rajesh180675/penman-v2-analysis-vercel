@@ -16,12 +16,13 @@ function mkRawPeriod(period_end: string): RawPeriodData {
     raw_metric_values: {
       "Total Assets__BalanceSheet": 1000,
       "Total Equity__BalanceSheet": 600,
+      "Property, Plant and Equipment__BalanceSheet": 320,
       "Revenue From Operations(Net)__ProfitLoss": 900,
       "Profit Before Tax__ProfitLoss": 120,
       "Tax Expenses__ProfitLoss": 30,
       "Profit After Tax__ProfitLoss": 90,
-      "Net Cash from Operating Activities__CashFlow": 110,
-      "Purchased of Fixed Assets__CashFlow": 45,
+      "Net Cash From Operating Activities__CashFlow": 110,
+      "Purchase of Fixed Assets__CashFlow": 45,
     },
   };
 }

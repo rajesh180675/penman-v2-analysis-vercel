@@ -1,6 +1,7 @@
 import type { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { TRACEABILITY_SCHEMA_VERSION } from "../engine/policyVersions";
 import { CompanyRegistry, MultiCompanyRecord } from "../engine/types";
+import { recordSchemaMigration } from "./schemaMigration";
 
 export const COMPANY_REGISTRY_SNAPSHOT_SCHEMA_VERSION = "2026-04-comparison-registry-v1";
 
@@ -14,9 +15,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function sanitizeTraceabilityEnvelope(value: unknown): AnalysisTraceabilityEnvelope | null {
+function sanitizeTraceabilityEnvelope(value: unknown, companyId?: string): AnalysisTraceabilityEnvelope | null {
   if (!isRecord(value)) return null;
-  if (value.schemaVersion !== TRACEABILITY_SCHEMA_VERSION) return null;
+  if (value.schemaVersion !== TRACEABILITY_SCHEMA_VERSION) {
+    // Schema mismatch — reject loudly so the run is flagged for re-execution.
+    // Telemetry lets ops see migration volume in DebugPanel.
+    if (typeof value.schemaVersion === "string") {
+      recordSchemaMigration(value.schemaVersion, TRACEABILITY_SCHEMA_VERSION, {
+        source: "registry",
+        companyId,
+      });
+    }
+    return null;
+  }
   if (!("generatedAt" in value) || (value.generatedAt !== null && typeof value.generatedAt !== "string")) return null;
   if (!isRecord(value.runContext) || !isRecord(value.policyVersions) || !isRecord(value.confidence) || !isRecord(value.rigor)) return null;
   return value as unknown as AnalysisTraceabilityEnvelope;
@@ -30,7 +41,7 @@ export function sanitizeCompanyRecord(value: unknown): MultiCompanyRecord | null
     label: typeof value.label === "string" && value.label ? value.label : value.id,
     rawData: Array.isArray(value.rawData) ? value.rawData : [],
     recastData: Array.isArray(value.recastData) ? value.recastData : [],
-    traceability: sanitizeTraceabilityEnvelope(value.traceability),
+    traceability: sanitizeTraceabilityEnvelope(value.traceability, value.id),
     companyType: typeof value.companyType === "string" ? value.companyType as MultiCompanyRecord["companyType"] : null,
     sector: typeof value.sector === "string" && value.sector ? value.sector : null,
   };
