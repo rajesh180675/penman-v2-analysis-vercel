@@ -23,7 +23,9 @@ import DOMPurify from "dompurify";
 
 export type SanitizeProfile = "rich" | "minimal" | "strict";
 
-const RICH_CONFIG: DOMPurify.Config = {
+type Config = Parameters<typeof DOMPurify.sanitize>[1];
+
+const RICH_CONFIG: Config = {
   ALLOWED_TAGS: [
     "h1", "h2", "h3", "h4", "h5", "h6",
     "p", "br", "hr",
@@ -39,19 +41,19 @@ const RICH_CONFIG: DOMPurify.Config = {
   KEEP_CONTENT: false,
 };
 
-const MINIMAL_CONFIG: DOMPurify.Config = {
+const MINIMAL_CONFIG: Config = {
   ALLOWED_TAGS: ["br"],
   ALLOWED_ATTR: [],
   KEEP_CONTENT: true,
 };
 
-const STRICT_CONFIG: DOMPurify.Config = {
+const STRICT_CONFIG: Config = {
   ALLOWED_TAGS: [],
   ALLOWED_ATTR: [],
   KEEP_CONTENT: true,
 };
 
-const CONFIG_BY_PROFILE: Record<SanitizeProfile, DOMPurify.Config> = {
+const CONFIG_BY_PROFILE: Record<SanitizeProfile, Config> = {
   rich: RICH_CONFIG,
   minimal: MINIMAL_CONFIG,
   strict: STRICT_CONFIG,
