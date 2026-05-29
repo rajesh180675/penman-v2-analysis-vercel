@@ -25,7 +25,8 @@
     "test:e2e": "playwright test",
     "lint:any": "node scripts/check-any-budget.cjs",
     "lint:bundle": "node scripts/check-bundle-budget.cjs",
-    "validate": "npm run typecheck && npm run lint:any && npm run test && npm run build && npm run lint:bundle",
+    "lint:doc-schema": "node scripts/check-doc-schema-pin.cjs",
+    "validate": "npm run typecheck && npm run lint:any && npm run lint:doc-schema && npm run test && npm run build && npm run lint:bundle",
     "validate:release": "npm run test:golden && npm run validate",
     "refresh": "node scripts/refresh-company.mjs"
   },
