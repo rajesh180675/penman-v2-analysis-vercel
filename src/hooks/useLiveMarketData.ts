@@ -51,7 +51,9 @@ export function useLiveMarketData({
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/market-data/snapshot?${query}`);
+      const response = await fetch(`/api/market-data/snapshot?${query}`, {
+        headers: { "x-penman-local": "1" },
+      });
       if (!response.ok) throw new Error(`Market snapshot failed with ${response.status}`);
       const payload = await response.json();
       setSnapshot(payload.snapshot ?? null);

@@ -23,7 +23,9 @@ describe("sharedResearchApi AFES wrappers", () => {
 
     const snapshot = await fetchAfesBlackboard("2026-04-08");
 
-    expect(fetch).toHaveBeenCalledWith("/api/blackboard?session=2026-04-08");
+    expect(fetch).toHaveBeenCalledWith("/api/blackboard?session=2026-04-08", expect.objectContaining({
+      headers: expect.objectContaining({ "x-penman-local": "1" }),
+    }));
     expect(snapshot?.session).toBe("2026-04-08");
     expect(snapshot?.round).toBe(2);
     expect(snapshot?.findings.agent1?.status).toBe("done");
@@ -44,7 +46,10 @@ describe("sharedResearchApi AFES wrappers", () => {
 
     expect(fetch).toHaveBeenCalledWith("/api/blackboard", expect.objectContaining({
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: expect.objectContaining({
+        "Content-Type": "application/json",
+        "x-penman-local": "1",
+      }),
     }));
   });
 

@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import * as crypto from "node:crypto";
 import * as path from "node:path";
 import * as os from "node:os";
 import marketDataRouter from "./routes/marketData";
@@ -17,6 +18,67 @@ function isSafeSegment(s: string): boolean {
   return !/[\/\\]/.test(s) && !s.includes("..") && s.length > 0 && s.length < 128;
 }
 
+// ── Local-mode auth + CSRF helpers ────────────────────────────────────
+//
+// The local Express server runs on the user's machine. Even bound to
+// localhost, a hostile webpage opened in the same browser can issue
+// requests to it. We harden two ways:
+//
+//   1) `requireLocalAuditAuth` — when LOCAL_AUDIT_TOKEN is set, every
+//      request must present `x-audit-token` matching it (timing-safe
+//      compared). When the env var is unset, we no-op (preserves the
+//      zero-config dev experience for users who haven't set a token).
+//
+//   2) `requireLocalCsrfHeader` — every request must carry
+//      `x-penman-local: 1`. Browsers block custom headers on cross-
+//      origin no-cors fetches, so this single line blocks drive-by
+//      writes from hostile pages even when no token is configured.
+
+function timingSafeStringEqual(a: string | undefined | null, b: string | undefined | null): boolean {
+  if (!a || !b) return false;
+  const aBuf = Buffer.from(String(a));
+  const bBuf = Buffer.from(String(b));
+  if (aBuf.length !== bBuf.length) return false;
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
+/**
+ * Returns true (and lets the request continue) if LOCAL_AUDIT_TOKEN is unset
+ * OR the presented `x-audit-token` header matches it via constant-time compare.
+ * Otherwise responds 401 and returns false so the caller can `return` early.
+ */
+export function requireLocalAuditAuth(req: express.Request, res: express.Response): boolean {
+  const configured = process.env.LOCAL_AUDIT_TOKEN;
+  if (!configured) return true;
+  const presentedRaw = req.headers["x-audit-token"];
+  const presented = Array.isArray(presentedRaw) ? presentedRaw[0] : presentedRaw;
+  if (timingSafeStringEqual(presented ?? null, configured)) return true;
+  res.status(401).json({ ok: false, error: "Unauthorized — invalid or missing x-audit-token." });
+  return false;
+}
+
+/**
+ * Requires the `x-penman-local: 1` header on every API request. Browsers cannot
+ * set custom headers on cross-origin no-cors fetches, so this blocks drive-by
+ * writes from hostile pages even when LOCAL_AUDIT_TOKEN is unset. The Vite
+ * frontend adds this header in its fetch wrapper; curl/Postman callers must
+ * pass `-H "x-penman-local: 1"` (documented in .env.local.example).
+ */
+export function requireLocalCsrfHeader(req: express.Request, res: express.Response): boolean {
+  const headerRaw = req.headers["x-penman-local"];
+  const header = Array.isArray(headerRaw) ? headerRaw[0] : headerRaw;
+  if (header === "1") return true;
+  res.status(403).json({ ok: false, error: "Missing required x-penman-local header." });
+  return false;
+}
+
+/** Combined gate used as Express middleware on every API route. */
+function localApiGate(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (!requireLocalCsrfHeader(req, res)) return;
+  if (!requireLocalAuditAuth(req, res)) return;
+  next();
+}
+
 // ── Security hardening ────────────────────────────────────────────────
 //
 // This server binds to localhost and serves the user's own Vite dev session.
@@ -26,6 +88,9 @@ function isSafeSegment(s: string): boolean {
 // 1) CORS: allow only loopback origins. The dev server may be reached from
 //    127.0.0.1 or localhost (with or without an explicit port), and in
 //    LAN-debug mode from the host's own IP. Any other origin is rejected.
+//    When Origin is missing (curl/Postman/server-to-server callers) we
+//    additionally require the `x-penman-local` CSRF header, so a hostile
+//    page making a no-cors request without Origin is still rejected.
 // 2) Helmet: standard security headers (X-Content-Type-Options, etc.).
 //    crossOriginResourcePolicy is permissive because the API serves JSON
 //    consumed by the same-origin Vite dev server.
@@ -48,7 +113,12 @@ app.use(helmet({
 
 app.use(cors({
   origin(origin, callback) {
-    // Tools like curl / server-to-server callers send no Origin header — allow.
+    // Tools like curl / server-to-server callers send no Origin header.
+    // Allow only when paired with the X-Penman-Local CSRF header — the
+    // request-level middleware enforces the header presence; here we just
+    // permit the CORS layer to pass through. Browsers' no-cors fetches
+    // also send no Origin, but they cannot set custom headers, so the
+    // localApiGate below will still reject them.
     if (!origin) return callback(null, true);
     try {
       const u = new URL(origin);
@@ -71,6 +141,11 @@ const apiLimiter = rateLimit({
   message: { ok: false, error: "Too many requests — local rate limit exceeded." },
 });
 app.use("/api/", apiLimiter);
+
+// Local-mode auth + CSRF gate. Applied BEFORE the route mounts so every
+// /api/* path requires the x-penman-local header (and x-audit-token when
+// LOCAL_AUDIT_TOKEN is set). The /api/health endpoint below is also gated.
+app.use("/api/", localApiGate);
 
 // Routes — mirror the Vercel api/ structure
 app.use("/api/market-data", marketDataRouter);

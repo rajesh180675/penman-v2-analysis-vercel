@@ -1,4 +1,5 @@
 import {
+  BlobVersionMismatchError,
   isResearchConfigured,
   maybeRequireResearchReadAuth,
   maybeRequireResearchWriteAuth,
@@ -134,17 +135,24 @@ async function readSnapshot(session) {
   const blobSnapshot = blobCurrent ? normalizeSnapshot(blobCurrent, session) : null;
   const localSnapshot = localCurrent ? normalizeSnapshot(localCurrent, session) : null;
 
+  // Surface the persisted version field so callers can drive optimistic-concurrency
+  // writes. We don't bake `version` into normalizeSnapshot because the field is
+  // metadata, not part of the user-visible blackboard contract.
+  const blobVersion = (blobCurrent && typeof blobCurrent.version === "number" && Number.isFinite(blobCurrent.version))
+    ? blobCurrent.version
+    : 0;
+
   if (blobSnapshot && localSnapshot) {
     const blobTs = Date.parse(blobSnapshot.last_updated ?? "") || 0;
     const localTs = Date.parse(localSnapshot.last_updated ?? "") || 0;
     return localTs > blobTs
-      ? { snapshot: localSnapshot, mode: "local-only" }
-      : { snapshot: blobSnapshot, mode: "blob" };
+      ? { snapshot: localSnapshot, mode: "local-only", blobVersion }
+      : { snapshot: blobSnapshot, mode: "blob", blobVersion };
   }
 
-  if (blobSnapshot) return { snapshot: blobSnapshot, mode: "blob" };
-  if (localSnapshot) return { snapshot: localSnapshot, mode: "local-only" };
-  return { snapshot: buildDefaultSnapshot(session), mode: "empty" };
+  if (blobSnapshot) return { snapshot: blobSnapshot, mode: "blob", blobVersion };
+  if (localSnapshot) return { snapshot: localSnapshot, mode: "local-only", blobVersion };
+  return { snapshot: buildDefaultSnapshot(session), mode: "empty", blobVersion: 0 };
 }
 
 function appendUniqueDebateEntry(existingEntries, entry) {
@@ -213,7 +221,7 @@ function mergeSnapshot(snapshot, operation, payload) {
   return null;
 }
 
-async function persistSnapshot(session, operation, body, next, response) {
+async function persistSnapshot(session, operation, body, next, response, blobVersion = 0) {
   const eventPayload = {
     session,
     operation,
@@ -223,16 +231,36 @@ async function persistSnapshot(session, operation, body, next, response) {
   };
 
   let wroteBlob = false;
+  let versionConflict = null;
   if (isResearchConfigured()) {
     try {
+      // The latest.json snapshot is read-modify-written and races between
+      // concurrent agents — guard with optimistic-concurrency. The event log
+      // is append-only by timestamped path, so it does not need a version.
       await Promise.all([
-        writeJsonBlob(getLatestPath(session), next),
+        writeJsonBlob(getLatestPath(session), next, { ifVersion: blobVersion }),
         writeJsonBlob(getEventPath(session, operation), eventPayload),
       ]);
       wroteBlob = true;
-    } catch {
-      wroteBlob = false;
+    } catch (error) {
+      if (error instanceof BlobVersionMismatchError) {
+        versionConflict = error;
+        wroteBlob = false;
+      } else {
+        wroteBlob = false;
+      }
     }
+  }
+
+  if (versionConflict) {
+    response.status(409).json({
+      error: "Blackboard version conflict — another writer updated this session. Re-read and retry.",
+      session,
+      operation,
+      expectedVersion: versionConflict.expectedVersion,
+      actualVersion: versionConflict.actualVersion,
+    });
+    return null;
   }
 
   let wroteLocal = false;
@@ -295,14 +323,14 @@ export default async function handler(request, response) {
       return;
     }
 
-    const { snapshot: current } = await readSnapshot(session);
+    const { snapshot: current, blobVersion } = await readSnapshot(session);
     const next = mergeSnapshot(current, operation, body);
     if (!next) {
       response.status(400).json({ error: "Invalid blackboard operation payload.", operation });
       return;
     }
 
-    const mode = await persistSnapshot(session, operation, body, next, response);
+    const mode = await persistSnapshot(session, operation, body, next, response, blobVersion);
     if (!mode) return;
 
     response.status(200).json({ ok: true, session, operation, mode, snapshot: next });

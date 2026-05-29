@@ -7,10 +7,27 @@ import {
   readJsonBody,
   respondJsonBodyError,
   requireAuditReadAuth,
+  requireAuditWriteAuth,
   sanitizePathSegment,
 } from "../audit/_lib.js";
 
 const PREFIX = "research-store";
+
+/**
+ * Thrown by writeJsonBlob when an optimistic-concurrency check fails:
+ * the persisted payload's `version` does not match the caller's `ifVersion`.
+ * Callers should map this to a 409 Conflict response with retry guidance.
+ */
+export class BlobVersionMismatchError extends Error {
+  constructor(pathname, expected, actual) {
+    super(`Blob version mismatch at ${pathname}: expected ${expected}, found ${actual}`);
+    this.name = "BlobVersionMismatchError";
+    this.statusCode = 409;
+    this.pathname = pathname;
+    this.expectedVersion = expected;
+    this.actualVersion = actual;
+  }
+}
 
 export function isResearchConfigured() {
   return isAuditConfigured();
@@ -43,7 +60,7 @@ export function maybeRequireResearchReadAuth(request, response) {
 
 export function maybeRequireResearchWriteAuth(request, response) {
   if (!shouldRequireResearchWriteAuth()) return true;
-  return requireAuditReadAuth(request, response);
+  return requireAuditWriteAuth(request, response);
 }
 
 export async function readResearchBody(request, response, limitBytes = 1024 * 1024) {
@@ -64,8 +81,31 @@ export async function readJsonBlob(pathname) {
   return JSON.parse(text);
 }
 
-export async function writeJsonBlob(pathname, payload) {
-  return put(pathname, JSON.stringify(payload, null, 2), {
+/**
+ * Writes JSON to blob storage. When `options.ifVersion` is provided,
+ * performs an optimistic-concurrency pre-check: reads the existing payload's
+ * `version` field (default 0), compares against `ifVersion`, and throws
+ * BlobVersionMismatchError when they diverge. On success the new payload is
+ * written with `version: ifVersion + 1`.
+ *
+ * Note: Vercel Blob does not (yet) expose conditional writes; this is a
+ * read-then-write pattern with a small race window. Callers that need
+ * stronger guarantees should switch to a transactional KV.
+ */
+export async function writeJsonBlob(pathname, payload, options = {}) {
+  let finalPayload = payload;
+  if (options && typeof options.ifVersion === "number" && Number.isFinite(options.ifVersion)) {
+    const expected = options.ifVersion;
+    const existing = await readJsonBlob(pathname).catch(() => null);
+    const actual = (existing && typeof existing.version === "number" && Number.isFinite(existing.version))
+      ? existing.version
+      : 0;
+    if (actual !== expected) {
+      throw new BlobVersionMismatchError(pathname, expected, actual);
+    }
+    finalPayload = { ...payload, version: expected + 1 };
+  }
+  return put(pathname, JSON.stringify(finalPayload, null, 2), {
     access: "private",
     contentType: "application/json",
     addRandomSuffix: false,

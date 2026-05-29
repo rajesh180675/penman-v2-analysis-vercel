@@ -237,7 +237,7 @@ export default function CompanyWorkspace({
             try {
               if (!run.runAccessToken) return null;
               const response = await fetch(`/api/audit/inspector?runId=${encodeURIComponent(run.runId)}`, {
-                headers: { "x-audit-run-token": run.runAccessToken },
+                headers: { "x-audit-run-token": run.runAccessToken, "x-penman-local": "1" },
               });
               if (!response.ok) return null;
               return await response.json() as InspectorRunPayload;

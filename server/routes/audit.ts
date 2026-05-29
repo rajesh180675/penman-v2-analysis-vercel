@@ -29,20 +29,52 @@ router.post("/events", async (req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
   };
 
+  // Events are append-only by eventId, so no version check is needed for them.
   await writeJson(auditEventPath(runId, eventId), event);
 
-  // Upsert run metadata
-  const runMeta = await readJson<any>(auditRunPath(runId)) ?? {
-    runId,
-    companyId,
-    sourceMode,
-    startedAt: event.timestamp,
-    eventCount: 0,
-  };
-  runMeta.eventCount = (runMeta.eventCount ?? 0) + 1;
-  runMeta.lastEventAt = event.timestamp;
-  runMeta.lastEventType = eventType;
-  await writeJson(auditRunPath(runId), runMeta);
+  // Run metadata is read-modify-written and races between concurrent writers.
+  // Use an optimistic-concurrency loop: re-read on conflict and retry up to
+  // 3 times before surfacing 409. The fs store has no atomic compare-and-swap
+  // so this is best-effort, but it materially shrinks the lost-update window.
+  let attempts = 0;
+  while (attempts < 3) {
+    attempts += 1;
+    const runMeta: any = (await readJson<any>(auditRunPath(runId))) ?? {
+      runId,
+      companyId,
+      sourceMode,
+      startedAt: event.timestamp,
+      eventCount: 0,
+      version: 0,
+    };
+    const expectedVersion = typeof runMeta.version === "number" ? runMeta.version : 0;
+
+    const next = {
+      ...runMeta,
+      eventCount: (runMeta.eventCount ?? 0) + 1,
+      lastEventAt: event.timestamp,
+      lastEventType: eventType,
+      version: expectedVersion + 1,
+    };
+
+    // Re-read just before writing as a cheap mismatch check; fs has no atomic
+    // CAS, so concurrent writers in the same tick can still interleave, but
+    // the recheck shrinks the window and lets us retry deterministically.
+    const reread: any = await readJson<any>(auditRunPath(runId));
+    const actualVersion = reread && typeof reread.version === "number" ? reread.version : 0;
+    if (actualVersion !== expectedVersion) {
+      if (attempts >= 3) {
+        return res.status(409).json({
+          error: "Run metadata version conflict — retry exhausted.",
+          expectedVersion,
+          actualVersion,
+        });
+      }
+      continue;
+    }
+    await writeJson(auditRunPath(runId), next);
+    break;
+  }
 
   return res.json({ ok: true, eventId });
 });
