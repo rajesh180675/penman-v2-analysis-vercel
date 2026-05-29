@@ -11,7 +11,7 @@
 ================================================================ */
 
 import type { RecastPeriod } from "../types/recast";
-import type { CanonicalOutputRegistry } from "../v3Analytics";
+import type { CanonicalOutputRegistry } from "./shared";
 
 /* ══════════════════════════════════════════════════════════════════
    §15.4 Dirty Surplus Framework
