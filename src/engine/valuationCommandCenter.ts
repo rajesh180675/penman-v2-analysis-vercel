@@ -225,16 +225,16 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function makeFadeArray(base: number, alpha: number, target: number, horizon: number) {
-  const values: number[] = [];
-  let previous = base;
-  for (let i = 0; i < horizon; i += 1) {
-    const next = alpha * previous + (1 - alpha) * target;
-    values.push(next);
-    previous = next;
-  }
-  return values;
-}
+// Pure numerical solver/DCF cluster moved to ./valuationCommandCenter/solvers;
+// imported DOWN. These are vcc-private (no external consumers) so they're
+// imported for internal use only, not re-exported. makeFadeArray is used only
+// inside the cluster, so it is not imported back here.
+import {
+  computeOwnerEarningsDcf,
+  solveImpliedKeFromOwnerEarnings,
+  solveImpliedTerminalRoicFromValue,
+  solveImpliedGrowthForTarget,
+} from "./valuationCommandCenter/solvers";
 
 function annualizedReturn(from: number | null, to: number | null, years = 3) {
   if (from == null || to == null || from <= 0 || to <= 0) return null;
@@ -251,19 +251,7 @@ function scoreFromRange(value: number, min: number, max: number) {
   return clamp((value - min) / Math.max(max - min, 1e-9), 0, 1);
 }
 
-function computeOwnerEarningsDcf(baseOwnerEarnings: number | null, growthPath: number[], ke: number, terminalGrowth: number) {
-  if (baseOwnerEarnings == null) return null;
-  let current = baseOwnerEarnings;
-  const projected = growthPath.map((growth) => {
-    current *= 1 + growth;
-    return current;
-  });
-  const pv = projected.reduce((total, value, index) => total + value / Math.pow(1 + ke, index + 1), 0);
-  const terminal = projected.length && ke - terminalGrowth > 0.005
-    ? (projected[projected.length - 1] * (1 + terminalGrowth)) / (ke - terminalGrowth)
-    : 0;
-  return pv + terminal / Math.pow(1 + ke, projected.length);
-}
+
 
 function computeScenarioIntrinsicPerShare(valuation: ValuationResult, ownerEarningsDcf: number | null) {
   const modelValues = [
@@ -337,46 +325,9 @@ function extendExpectationLabel(base: string, additions: Array<string | null>) {
   return cleanAdditions.length ? `${base} ${cleanAdditions.join(" ")}` : base;
 }
 
-function solveImpliedKeFromOwnerEarnings(params: {
-  targetPrice: number | null;
-  ownerEarningsPerShare: number | null;
-  growthPath: number[];
-  terminalGrowth: number;
-  low?: number | undefined;
-  high?: number | undefined;
-}) {
-  const { targetPrice, ownerEarningsPerShare, growthPath, terminalGrowth } = params;
-  if (targetPrice == null || targetPrice <= 0 || ownerEarningsPerShare == null || ownerEarningsPerShare <= 0) return null;
-  let low = params.low ?? Math.max(terminalGrowth + 0.01, 0.04);
-  let high = params.high ?? 0.40;
-  let lowValue = computeOwnerEarningsDcf(ownerEarningsPerShare, growthPath, low, terminalGrowth);
-  let highValue = computeOwnerEarningsDcf(ownerEarningsPerShare, growthPath, high, terminalGrowth);
-  if (lowValue == null || highValue == null) return null;
-  if (lowValue < targetPrice || highValue > targetPrice) return null;
-  for (let i = 0; i < 60; i += 1) {
-    const mid = (low + high) / 2;
-    const value = computeOwnerEarningsDcf(ownerEarningsPerShare, growthPath, mid, terminalGrowth);
-    if (value == null) return null;
-    if (value > targetPrice) low = mid;
-    else high = mid;
-  }
-  return (low + high) / 2;
-}
 
-function solveImpliedTerminalRoicFromValue(params: {
-  targetPrice: number | null;
-  shares: number | null;
-  cse0: number;
-  noaT: number;
-  kw: number;
-}) {
-  const { targetPrice, shares, cse0, noaT, kw } = params;
-  if (targetPrice == null || targetPrice <= 0 || shares == null || shares <= 0 || noaT <= 0) return null;
-  const equityValue = targetPrice * shares;
-  const impliedRoic = kw + ((equityValue - cse0) * kw) / noaT;
-  if (!Number.isFinite(impliedRoic) || impliedRoic < -0.1 || impliedRoic > 2.0) return null;
-  return impliedRoic;
-}
+
+
 
 function primaryValuationPerShare(valuation: ValuationResult) {
   return median([
@@ -607,33 +558,7 @@ function persistenceConvictionCap(persistenceScore: number): ValuationSignalStat
   return "watchlist";
 }
 
-function solveImpliedGrowthForTarget(params: {
-  ownerEarningsPerShare: number | null;
-  targetPrice: number | null;
-  ke: number;
-  terminalGrowth: number;
-  normalizedGrowth: number;
-  horizon: number;
-  growthFadeAlpha: number;
-}) {
-  const { ownerEarningsPerShare, targetPrice, ke, terminalGrowth, normalizedGrowth, horizon, growthFadeAlpha } = params;
-  if (ownerEarningsPerShare == null || targetPrice == null || targetPrice <= 0) return null;
 
-  let low = -0.25;
-  let high = 0.45;
-  for (let i = 0; i < 60; i += 1) {
-    const mid = (low + high) / 2;
-    const growthPath = makeFadeArray(mid, growthFadeAlpha, normalizedGrowth, horizon);
-    const value = computeOwnerEarningsDcf(ownerEarningsPerShare, growthPath, ke, terminalGrowth);
-    if (value == null) return null;
-    if (value > targetPrice) {
-      high = mid;
-    } else {
-      low = mid;
-    }
-  }
-  return (low + high) / 2;
-}
 
 function describeExpectations(impliedGrowth: number | null, normalizedGrowth: number) {
   if (impliedGrowth == null) {
