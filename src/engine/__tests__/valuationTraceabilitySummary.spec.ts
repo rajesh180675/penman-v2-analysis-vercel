@@ -137,9 +137,11 @@ describe("buildValuationTraceabilitySurfaceSummary", () => {
       recastData: [
         {
           ...mkBalancedPeriod("2025-03-31"),
-          bs: {
-            ...mkBalancedPeriod("2025-03-31").bs,
-            FO: 200,
+          recastDebug: {
+            rawTotalAssets: 1100,
+            rawTotalLiabilitiesAndEquity: 1100,
+            rawTotalEquity: null,
+            explicitOL: 0,
           },
         },
       ],

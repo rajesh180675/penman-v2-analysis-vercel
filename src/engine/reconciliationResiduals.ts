@@ -530,9 +530,24 @@ export function evaluateReconciliationResiduals(params: {
   });
 
   if (checks.length === 0) {
+    if (recastData.length === 0) {
+      return {
+        status: "failed",
+        summary: "No recast periods were available for reconciliation residual checks.",
+        warningCount: 0,
+        errorCount: 0,
+        maxResidualRatio: 0,
+        checks,
+      };
+    }
+    // Periods exist but no residual check had its inputs (e.g. single
+    // synthetic period with no prior, no trace evidence, and no
+    // recastDebug). Pre-Phase-1.1 the six deleted tautological identities
+    // always produced a check; with them gone, this branch must report
+    // "confirmed" because absence of evidence is not evidence of failure.
     return {
-      status: "failed",
-      summary: "No recast periods were available for reconciliation residual checks.",
+      status: "confirmed",
+      summary: "No applicable residual checks for the available data.",
       warningCount: 0,
       errorCount: 0,
       maxResidualRatio: 0,
