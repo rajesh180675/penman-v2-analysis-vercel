@@ -13,6 +13,10 @@ import { computeEvEbitdaCrossCheck, updateEvEbitdaWithMarketPrice, EvEbitdaCross
 import { computeIndiaQualitySignals, IndiaQualitySignals } from "./indiaQualitySignals";
 import { buildEarningsQualityCard, buildDechowDichevAndRem, EarningsQualityCard } from "./earningsQuality";
 import { computeEPV, EPVResult } from "./grahamDoddEPV";
+import { evaluateWorkingCapitalGate, WorkingCapitalGateResult } from "./valuation/workingCapitalGate";
+import { checkCleanSurplus, CleanSurplusResult } from "./valuation/cleanSurplus";
+import { selectIndustryBeta, capmKe, CapmResult } from "./valuation/damodaranCapm";
+import { runReverseDcfMonteCarlo, ReverseDcfMonteCarloResult } from "./valuation/reverseDcfMonteCarlo";
 
 export type ValuationSignalState =
   | "blocked"
@@ -184,6 +188,14 @@ export interface ValuationCommandCenterOutput {
   earningsQuality: EarningsQualityCard;
   /** Graham-Dodd EPV — no-growth floor anchor (Greenwald). */
   epv: EPVResult | null;
+  /** Working capital CCC gate — flags stretched/distressed working capital. */
+  workingCapitalGate: WorkingCapitalGateResult | null;
+  /** Clean surplus check — detects dirty-surplus accounting. */
+  cleanSurplus: CleanSurplusResult | null;
+  /** Damodaran CAPM ke — independent cost-of-equity cross-check. */
+  damodaranCapm: CapmResult | null;
+  /** Reverse DCF Monte Carlo — implied terminal growth distribution. */
+  reverseDcfMonteCarlo: ReverseDcfMonteCarloResult | null;
   range: {
     floorPerShare: number | null;
     ceilingPerShare: number | null;
@@ -1336,6 +1348,61 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     summary = staleOrFallbackMessage;
   }
 
+  // ── Wire Class-A valuation models ──────────────────────────────────
+  // workingCapitalGate: CCC-based quality gate
+  const wcgPeriods = data.length >= 2
+    ? data.map((p) => ({
+        periodEnd: p.period_end,
+        revenue: p.is.Sales,
+        cogs: p.is.COGS,
+        receivables: p.bs.TradeReceivables,
+        inventory: p.bs.Inventory,
+        payables: p.bs.TradePayables,
+      }))
+    : null;
+  const workingCapitalGateResult: WorkingCapitalGateResult | null = wcgPeriods
+    ? evaluateWorkingCapitalGate({ periods: wcgPeriods, sectorKey: config.company_type ?? undefined })
+    : null;
+
+  // cleanSurplus: detects dirty-surplus accounting
+  const cleanSurplusResult: CleanSurplusResult | null = data.length >= 2
+    ? checkCleanSurplus({
+        periods: data.map((p) => ({
+          periodEnd: p.period_end,
+          commonEquity: p.bs.CSE,
+          comprehensiveIncome: p.is.TCI,
+          dividends: Math.abs(p.cf.DividendPaid),
+          netStockIssuance: p.cf.EquityIssued - p.cf.ShareBuybacks,
+        })),
+      })
+    : null;
+
+  // damodaranCapm: independent ke cross-check from Damodaran industry betas
+  const industryBeta = config.company_type ? selectIndustryBeta(config.company_type) : null;
+  const damodaranCapmResult: CapmResult | null = industryBeta
+    ? capmKe({ beta: industryBeta.leveredBeta })
+    : null;
+
+  // reverseDcfMonteCarlo: implied terminal growth distribution
+  const revenuePerShare = shares && shares > 0 ? latest.is.Sales / shares : null;
+  const historicalMargins = data.map((p) => p.is.Sales > 0 ? p.cf.FCF_cash / p.is.Sales : 0).filter(Number.isFinite);
+  const historicalGrowths = data.slice(1).map((p, i) => data[i].is.Sales > 0 ? (p.is.Sales - data[i].is.Sales) / data[i].is.Sales : 0).filter(Number.isFinite);
+  const meanMargin = historicalMargins.length ? historicalMargins.reduce((a, b) => a + b, 0) / historicalMargins.length : 0.10;
+  const meanGrowth = historicalGrowths.length ? historicalGrowths.reduce((a, b) => a + b, 0) / historicalGrowths.length : 0.08;
+  const sigmaMargin = historicalMargins.length > 1 ? Math.sqrt(historicalMargins.reduce((s, v) => s + (v - meanMargin) ** 2, 0) / (historicalMargins.length - 1)) : 0.03;
+  const sigmaGrowth = historicalGrowths.length > 1 ? Math.sqrt(historicalGrowths.reduce((s, v) => s + (v - meanGrowth) ** 2, 0) / (historicalGrowths.length - 1)) : 0.04;
+  const reverseDcfMonteCarloResult: ReverseDcfMonteCarloResult | null =
+    marketPrice != null && marketPrice > 0 && revenuePerShare != null && revenuePerShare > 0
+      ? runReverseDcfMonteCarlo({
+          runId: `${config.ticker ?? "unknown"}-${latest.period_end}`,
+          currentPrice: marketPrice,
+          revenuePerShare,
+          margin: { mean: meanMargin, sigma: Math.max(sigmaMargin, 0.01) },
+          growth: { mean: meanGrowth, sigma: Math.max(sigmaGrowth, 0.01) },
+          wacc: { mean: keBase, sigma: 0.015 },
+        })
+      : null;
+
   return {
     shareBasis,
     valuationReadiness,
@@ -1358,6 +1425,10 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     indiaQuality,
     earningsQuality,
     epv: computeEPV(data, config),
+    workingCapitalGate: workingCapitalGateResult,
+    cleanSurplus: cleanSurplusResult,
+    damodaranCapm: damodaranCapmResult,
+    reverseDcfMonteCarlo: reverseDcfMonteCarloResult,
     opportunity,
     checklist,
     marketContext,
