@@ -21,3 +21,8 @@ export function pctStr(v: number | null | undefined): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return `${(v * 100).toFixed(1)}%`;
 }
+
+export function numStr(v: number | null | undefined, d = 2): string {
+  if (v == null || !Number.isFinite(v)) return "—";
+  return v.toFixed(d);
+}
