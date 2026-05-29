@@ -28,7 +28,7 @@ export interface LibraryCompany {
     subsidiaries?: string[] | undefined;
     rbiNhbBanks?: string[] | undefined;
     lossGivenDefault?: string[] | undefined;
-  };
+  } | undefined;
 }
 
 export type LibraryCompanyType =

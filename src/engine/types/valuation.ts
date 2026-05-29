@@ -59,7 +59,7 @@ export interface ValuationResult {
     growthValuePerShare: number | null;
     growthFraction: number | null;
     noGrowthFraction: number | null;
-  };
+  } | undefined;
   fcf?: FCFValuation | undefined;
   aeg?: AEGValuation | undefined;
   perShare?: PerShareResult | undefined;
