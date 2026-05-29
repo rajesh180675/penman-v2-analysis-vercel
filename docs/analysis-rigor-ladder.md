@@ -141,4 +141,24 @@ Envelope `2026-06-traceability-v10` adds an `economicSanity` field that walks pe
 
 `status === "blocked"` + `VITE_RIGOR_ECONOMIC_SANITY_BLOCK` on (default) caps rigor at `structurally-reconciled`. See [`docs/adr/002-economic-sanity-gates.md`](adr/002-economic-sanity-gates.md).
 
+## Branded Primitives (Schema v13, ADR-005)
+
+Envelope `2026-06-traceability-v13` was a type-safety bump only; the envelope shape did not change. PR-1.4 introduced branded numeric primitives (`INRCrore`, `CroreShares`, `PercentFraction`, `BasisPoints`) at the engine boundaries to prevent unit-confusion bugs at compile time. The migration from v12 to v13 is a no-op metadata bump so persisted envelopes can be walked forward. Follow-on PRs (1.4a/b/c) push the brands through parsers, `EngineConfig`, and ratio/quality field types. See [`docs/adr/005-branded-primitives.md`](adr/005-branded-primitives.md).
+
+## Pipeline Strategy Pattern (Schema v14, ADR-006)
+
+Envelope `2026-06-traceability-v14` adds an optional `pipelineStrategyId: string | undefined` field. The strategy registry (industrial / bank / nbfc / insurance) is currently a metadata-only canary: `selectStrategy` stamps the chosen id onto the envelope, but the pipeline still dispatches through `processCompanyDataFull`. The bump locks in the field shape so a future load-bearing wiring (or an honest deletion of the unused strategies) can land without a destructive migration. See [`docs/adr/006-pipeline-strategy-pattern.md`](adr/006-pipeline-strategy-pattern.md).
+
+## SOTP Valuation Contributions (Schema v15, no ADR)
+
+Envelope `2026-06-traceability-v15` shipped sum-of-the-parts segment valuation support (`src/engine/valuation/sotpValuation.ts`, `src/engine/sotpValuation.ts`) backed by a peer-multiples snapshot. Per-segment EV/Revenue, EV/EBITDA, and P/E rows roll up into a defensible aggregate intrinsic value when single-multiple valuation is structurally inappropriate (conglomerates, holding companies). The envelope-shape bump is additive; the migration from v14 is a no-op stamp. **Gap**: no ADR was authored for this bump (`docs/adr/` stops at 006); retroactive ADR is queued in Phase 3.8.
+
+## FX Hedging / Neutrality Contribution (Schema v16, no ADR)
+
+Envelope `2026-06-traceability-v16` adds an optional `fxNeutrality` field (defaults to `null` for runs without FX exposure). The supporting engine module (`src/engine/valuation/fxHedging.ts`) computes FX-neutral revenue trajectories and per-period hedging effectiveness so reviewers can separate operating performance from currency translation noise. Migration from v15 stamps `fxNeutrality: null` for legacy envelopes. **Gap**: no ADR was authored; retroactive ADR-008 is queued in Phase 3.8.
+
+## Evidence Locking (Schema v17, no ADR)
+
+Envelope `2026-06-traceability-v17` adds a `locked: boolean` field (defaults to `false` after migration). Once a run reaches `production-ready` and a reviewer locks the envelope, all subsequent re-runs against the same period set must hash-match the locked evidence or surface a `lock-violation` diagnostic. This is the foundation for tamper-evident comparison snapshots and for the audit-snapshot retention contract. **Gap**: no ADR was authored; retroactive ADR-009 is queued in Phase 3.8.
+
 

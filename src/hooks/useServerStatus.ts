@@ -24,7 +24,10 @@ export function useServerStatus(): ServerStatus {
 
     async function check() {
       try {
-        const res = await fetch("/api/health", { signal: AbortSignal.timeout(3000) });
+        const res = await fetch("/api/health", {
+          signal: AbortSignal.timeout(3000),
+          headers: { "x-penman-local": "1" },
+        });
         if (cancelled) return;
         if (res.ok) {
           const data = await res.json();

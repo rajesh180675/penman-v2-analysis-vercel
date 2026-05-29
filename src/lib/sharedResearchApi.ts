@@ -29,12 +29,19 @@ function sharedApiErrorForStatus(status: number, path: string) {
   return `Request failed: ${status}`;
 }
 
+// The local Express server requires `x-penman-local: 1` on every API request
+// (CSRF guard — browsers cannot set custom headers on cross-origin no-cors
+// fetches, so this blocks drive-by writes from hostile pages). On Vercel the
+// header is harmless metadata — the deployed handlers do not enforce it.
+const LOCAL_API_HEADERS: Record<string, string> = { "x-penman-local": "1" };
+
 async function postJsonWithStatus<T>(path: string, payload: unknown): Promise<SharedApiResult<T>> {
   try {
     const response = await fetch(path, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...LOCAL_API_HEADERS,
       },
       body: JSON.stringify(payload),
     });
@@ -64,7 +71,7 @@ async function postJsonWithStatus<T>(path: string, payload: unknown): Promise<Sh
 
 async function getJsonWithStatus<T>(path: string): Promise<SharedApiResult<T>> {
   try {
-    const response = await fetch(path);
+    const response = await fetch(path, { headers: LOCAL_API_HEADERS });
     if (!response.ok) {
       return {
         ok: false,

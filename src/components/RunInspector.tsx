@@ -306,6 +306,7 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
         const response = await fetch(`/api/audit/inspector?runId=${encodeURIComponent(selectedRun.runId)}`, {
           headers: {
             "x-audit-run-token": selectedRun.runAccessToken,
+            "x-penman-local": "1",
           },
         });
         if (!response.ok) {
@@ -344,7 +345,7 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
         try {
           if (!run.runAccessToken) return null;
           const response = await fetch(`/api/audit/inspector?runId=${encodeURIComponent(run.runId)}`, {
-            headers: { "x-audit-run-token": run.runAccessToken },
+            headers: { "x-audit-run-token": run.runAccessToken, "x-penman-local": "1" },
           });
           if (!response.ok) return null;
           const item = await response.json() as InspectorPayload;

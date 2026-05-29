@@ -29,9 +29,41 @@ router.get("/:companyId", async (req: Request, res: Response) => {
 router.put("/:companyId", async (req: Request, res: Response) => {
   const companyId = req.params.companyId as string;
   if (!isSafeSegment(companyId)) return res.status(400).json({ error: "Invalid companyId." });
-  const existing = await readJson<any>(researchPath(companyId)) ?? {};
-  const merged = { ...existing, ...req.body, companyId, updatedAt: new Date().toISOString() };
-  await writeJson(researchPath(companyId), merged);
+
+  // Optimistic-concurrency loop. The fs store has no atomic CAS, so this is
+  // best-effort: read, mutate, recheck version, then write. If two writers
+  // race in the same tick the second will land on a re-read; we retry up
+  // to 3 times before surfacing 409 to the caller.
+  let attempts = 0;
+  let merged: any;
+  while (attempts < 3) {
+    attempts += 1;
+    const existing = (await readJson<any>(researchPath(companyId))) ?? {};
+    const expectedVersion = typeof existing.version === "number" ? existing.version : 0;
+
+    merged = {
+      ...existing,
+      ...req.body,
+      companyId,
+      updatedAt: new Date().toISOString(),
+      version: expectedVersion + 1,
+    };
+
+    const reread = (await readJson<any>(researchPath(companyId))) ?? {};
+    const actualVersion = typeof reread.version === "number" ? reread.version : 0;
+    if (actualVersion !== expectedVersion) {
+      if (attempts >= 3) {
+        return res.status(409).json({
+          error: "Workspace version conflict — retry exhausted.",
+          expectedVersion,
+          actualVersion,
+        });
+      }
+      continue;
+    }
+    await writeJson(researchPath(companyId), merged);
+    break;
+  }
   return res.json({ ok: true, data: merged });
 });
 

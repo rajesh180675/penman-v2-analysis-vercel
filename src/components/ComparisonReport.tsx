@@ -60,7 +60,9 @@ export default function ComparisonReport({ registry, config, weakestTraceability
       const symbol = resolveNseSymbol(c.id) ?? resolveNseSymbol(c.company);
       if (!symbol) continue;
       try {
-        const res = await fetch(`/api/market-data/snapshot?provider=nse&symbol=${encodeURIComponent(symbol)}`);
+        const res = await fetch(`/api/market-data/snapshot?provider=nse&symbol=${encodeURIComponent(symbol)}`, {
+          headers: { "x-penman-local": "1" },
+        });
         if (!res.ok) continue;
         const payload = await res.json();
         const snapshot = payload?.snapshot;

@@ -52,7 +52,7 @@ Valuation runs must pass through these sequential gates:
 | `docs/` | Rigor plan, architecture specs, persistence notes, roadmaps |
 
 ### Shared Trust Envelope
-The `AnalysisTraceabilityEnvelope` (schema `2026-04-traceability-v8`) is the shared confidence signal consumed across all UI tabs. It contains:
+The `AnalysisTraceabilityEnvelope` is the shared confidence signal consumed across all UI tabs. The current schema is exported from `src/engine/policyVersions.ts` as `TRACEABILITY_SCHEMA_VERSION` (currently `2026-06-traceability-v17`); persisted envelopes flow through `src/lib/envelopeMigrations.ts` for forward migration. It contains:
 - `confidence` (status, tone, headline)
 - `rigor` (current level, achieved levels, checkpoints)
 - `parserFidelity` (status, score, summary, checks)
@@ -70,8 +70,6 @@ Trust gates are surfaced in: Valuation, Forecast, Quality, Ratios, Statements, R
 - `docs/financial-model-rigor-plan.md` — the master rigor plan; identify missing exit criteria here
 - `docs/analysis-rigor-ladder.md` — current rigor ladder implementation details and reconciliation checks
 - `RIGOR_KNOWLEDGE_BASE.md` — operational reference for data lineage, mapping layer, and debugging guidance
-- `audit-report-2026.md` — latest audit context
-- `ARCHITECTURE_AND_SPEC_REPORT.md` — prior architecture and S-9.4C spec changes
 - `docs/comparison-registry-persistence.md` — comparison registry persistence design (local storage + shared research API)
 
 ## Development Workflow
