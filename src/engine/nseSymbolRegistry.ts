@@ -22,6 +22,7 @@ export const NSE_SYMBOL_REGISTRY: Record<string, string> = {
   "Dabur India": "DABUR",
   "Grasim Industries": "GRASIM",
   "HDFC Bank": "HDFCBANK",
+  "HDFC Life Insurance Company Ltd": "HDFCLIFE",
   "Hindustan Unilever": "HINDUNILVR",
   "ICICI Bank": "ICICIBANK",
   "Infosys": "INFY",

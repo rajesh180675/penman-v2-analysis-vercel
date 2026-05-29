@@ -139,6 +139,17 @@
     "qualityIndicatorsBlobUrl": "https://zvbqldg4jamf3lhr.public.blob.vercel-storage.com/companies/HDFC%20Bank/quality_indicators.json"
   },
   {
+    "folder": "HDFC Life Insurance Company Ltd",
+    "name": "HDFC Life",
+    "ticker": "HDFCLIFE",
+    "sector": "Insurance (Life)",
+    "type": "insurance",
+    "description": "Private life insurer, high-margin new business franchise",
+    "emoji": "🛡️",
+    "showcaseFor": "Insurance EV/VNB appraisal (private insurer, fits 12x VNB multiple)",
+    "hasStandalone": true
+  },
+  {
     "folder": "Hindustan Unilever",
     "ticker": "HINDUNILVR",
     "name": "Hindustan Unilever",
