@@ -26,7 +26,7 @@
     "lint:any": "node scripts/check-any-budget.cjs",
     "lint:bundle": "node scripts/check-bundle-budget.cjs",
     "validate": "npm run typecheck && npm run lint:any && npm run test && npm run build && npm run lint:bundle",
-    "validate:release": "npm run typecheck && npm run lint:any && npm run test:golden && npm run test && npm run build && npm run lint:bundle",
+    "validate:release": "npm run test:golden && npm run validate",
     "refresh": "node scripts/refresh-company.mjs"
   },
   "dependencies": {
