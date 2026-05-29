@@ -83,6 +83,16 @@
     "showcaseFor": "Bank-specific quality_indicators pipeline"
   },
   {
+    "folder": "HDFC Life Insurance Company Ltd",
+    "name": "HDFC Life",
+    "ticker": "HDFCLIFE",
+    "sector": "Insurance (Life)",
+    "type": "insurance",
+    "description": "Private life insurer, high-margin new business franchise",
+    "emoji": "🛡️",
+    "showcaseFor": "Insurance EV/VNB appraisal (private insurer, fits 12x VNB multiple)"
+  },
+  {
     "folder": "Hindustan Unilever",
     "ticker": "HINDUNILVR",
     "name": "Hindustan Unilever",
