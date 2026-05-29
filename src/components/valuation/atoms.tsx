@@ -99,7 +99,7 @@ export function ScenarioCard({
     workingCapitalPressure?: string | undefined;
     reinvestmentBurden?: string | undefined;
     balanceSheetFlexibility?: string | undefined;
-  };
+  } | undefined;
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

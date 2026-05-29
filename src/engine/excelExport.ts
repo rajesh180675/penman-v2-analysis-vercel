@@ -139,7 +139,7 @@ export function workbookMetadataFromPublicationSnapshot(snapshot: {
   };
   policyVersions: AnalysisPolicyVersions;
   traceability: AnalysisTraceabilityEnvelope;
-  auditMeta?: { runId?: string | null } | null;
+  auditMeta?: { runId?: string | null } | null | undefined;
 }): WorkbookExportMetadata {
   return {
     companyLabel: snapshot.companyId ?? undefined,
@@ -884,7 +884,7 @@ export async function generateValuationWorkbookFromPublicationSnapshot(params: {
     };
     policyVersions: AnalysisPolicyVersions;
     traceability: AnalysisTraceabilityEnvelope;
-    auditMeta?: { runId?: string | null } | null;
+    auditMeta?: { runId?: string | null } | null | undefined;
   };
   recastData: RecastPeriod[];
   forecastScenarios: ForecastScenario[];
