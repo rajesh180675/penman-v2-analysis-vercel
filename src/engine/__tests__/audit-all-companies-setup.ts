@@ -74,8 +74,8 @@ async function auditCompany(company: any): Promise<AuditResult> {
 
   try {
     const buf = readFileSync(zipPath);
-    const file = new File([buf], `${company.folder}.zip`, { type: "application/zip" });
-    const parsed = await parseCapitalineZip(file, { companyId: company.folder });
+    const u8 = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+    const parsed = await parseCapitalineZip(u8, { companyId: company.folder, filename: `${company.folder}.zip` });
     const config: EngineConfig = { ...DEFAULT_CONFIG, company_type: company.type as any };
     const pipeline = processCompanyDataFull(parsed.periods, config);
     const periods = pipeline.periods;

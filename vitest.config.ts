@@ -18,6 +18,10 @@ export default defineConfig({
     exclude: [
       "node_modules",
       "e2e",
+      // Worktree checkouts under .claude/worktrees/ shadow the live src/
+      // tree; vitest would otherwise pick up stale fixtures from old
+      // branches and flag them as failures even when src/ is green.
+      ".claude/**",
       // Audit-all-companies specs run the full pipeline against every
       // registry company. They're heavy (40+ minutes serial), can OOM
       // workers, and are gated behind the `test:audit` npm script.
