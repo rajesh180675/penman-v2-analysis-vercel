@@ -35,6 +35,7 @@ export type {
   Ratios,
   ResidualIncome,
   RecastPeriod,
+  RecastDebug,
   ShareCountInputSnapshot,
 } from "./recast";
 

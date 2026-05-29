@@ -549,9 +549,20 @@ export function computeMoatScore(
   if (!periods || periods.length < 3) return null;
 
   const notes: string[] = [];
+  // S-9.4C: prefer caller override, then the period's structural kw (stamped
+  // by the pipeline from deriveKwFromStructure), then the config-derived
+  // 80/20 fallback. v3Analytics passes the structural kw via override; the
+  // period.kwStructural rung handles independent callers (legacy entry
+  // points, scoring tools) that don't.
+  const sortedForKw = [...periods].sort(
+    (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()
+  );
+  const latestForKw = sortedForKw[sortedForKw.length - 1];
   const kw = (kwOverride != null && Number.isFinite(kwOverride) && kwOverride > 0)
     ? kwOverride
-    : deriveKwFromConfig(config);
+    : (latestForKw?.kwStructural != null && Number.isFinite(latestForKw.kwStructural) && latestForKw.kwStructural > 0
+      ? latestForKw.kwStructural
+      : deriveKwFromConfig(config));
 
   const sorted = [...periods].sort(
     (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()

@@ -318,11 +318,11 @@ describe("traceability snapshot", () => {
       recastData: [
         {
           ...mkRecastPeriod("2025-03-31"),
-          bs: {
-            ...mkRecastPeriod("2025-03-31").bs,
-            FO: 120,
-            OA: 840,
-            NFO: 0,
+          recastDebug: {
+            rawTotalAssets: 1100,
+            rawTotalLiabilitiesAndEquity: 1100,
+            rawTotalEquity: null,
+            explicitOL: 0,
           },
         },
       ],

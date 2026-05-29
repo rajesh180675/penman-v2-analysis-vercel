@@ -196,11 +196,17 @@ describe("evaluateReconciliationResiduals", () => {
     expect(summary.checks.some((check) => check.key === "gross-debt-flow-bridge")).toBe(true);
     expect(summary.checks.some((check) => check.key === "ending-cash-bridge")).toBe(true);
     expect(summary.checks.some((check) => check.key === "comprehensive-income-bridge")).toBe(true);
-    expect(summary.checks.some((check) => check.key === "cni-operating-financing-bridge")).toBe(true);
-    expect(summary.checks.some((check) => check.key === "core-oi-unusual-bridge")).toBe(true);
     expect(summary.checks.some((check) => check.key === "operating-cost-bridge")).toBe(true);
-    expect(summary.checks.some((check) => check.key === "core-nfe-unusual-bridge")).toBe(true);
     expect(summary.checks.some((check) => check.key === "share-capital-face-value")).toBe(true);
+    // Phase 1.1 — formerly tautological residuals were removed. Confirm
+    // they no longer surface so a future regression that re-adds them
+    // breaks the suite.
+    expect(summary.checks.some((check) => check.key === "balance-sheet-assets")).toBe(false);
+    expect(summary.checks.some((check) => check.key === "balance-sheet-capital")).toBe(false);
+    expect(summary.checks.some((check) => check.key === "noa-financing-identity")).toBe(false);
+    expect(summary.checks.some((check) => check.key === "cni-operating-financing-bridge")).toBe(false);
+    expect(summary.checks.some((check) => check.key === "core-oi-unusual-bridge")).toBe(false);
+    expect(summary.checks.some((check) => check.key === "core-nfe-unusual-bridge")).toBe(false);
   });
 
   it("skips the operating-cost bridge when coverage is below the structural threshold", () => {
@@ -392,7 +398,11 @@ describe("evaluateReconciliationResiduals", () => {
     expect(summary.status).toBe("degraded");
   });
 
-  it("fails when the CNI operating/financing bridge breaches the critical threshold", () => {
+  it("no longer surfaces the (tautological) CNI operating/financing bridge as a residual check", () => {
+    // Phase 1.1 — CNI ≡ OI - NFE - MII by algebraic construction in
+    // PenmanNissimEngine. Forcing CNI to a non-identity value via test
+    // overrides used to fire the residual at `failed`; that's now an
+    // engine-invariant assertion rather than a residual check.
     const summary = evaluateReconciliationResiduals({
       recastData: [
         mkPeriod("2024-03-31"),
@@ -406,9 +416,7 @@ describe("evaluateReconciliationResiduals", () => {
       config: DEFAULT_CONFIG,
     });
 
-    const check = summary.checks.find((item) => item.key === "cni-operating-financing-bridge" && item.periodEnd === "2025-03-31");
-    expect(check?.status).toBe("failed");
-    expect(summary.status).toBe("failed");
+    expect(summary.checks.some((item) => item.key === "cni-operating-financing-bridge")).toBe(false);
   });
 
   it("degrades when the gross-debt-flow bridge breaches the warning threshold", () => {

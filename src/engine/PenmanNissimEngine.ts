@@ -6,6 +6,7 @@ import {
   CashFlowData,
   QualityMetrics,
   RecastPeriod,
+  RecastDebug,
   EngineConfig,
   TraceMap,
   TraceEntry,
@@ -659,6 +660,7 @@ export function computeRecastPeriod(data: RawPeriodData, cfg: EngineConfig, prev
   const { is_, cu } = recastIncome(data, bs, cfg, trace);
   const cf = recastCashFlow(data, is_, bs, prevPeriod?.bs, trace);
   const spec_flags = buildMissingRequiredLineFlags(trace, data.period_end);
+  const recastDebug = extractRecastDebug(data, bs);
   return {
     period_end: data.period_end,
     bs,
@@ -667,7 +669,53 @@ export function computeRecastPeriod(data: RawPeriodData, cfg: EngineConfig, prev
     cf,
     trace,
     shareCountInput: extractShareCountInput(data),
+    recastDebug,
     ...(spec_flags.length > 0 ? { spec_flags } : {}),
+  };
+}
+
+/**
+ * Capture raw reads needed by the reconciliation-residuals stage. These reads
+ * intentionally use the SAME pick helpers as the recast layer so they can act
+ * as an independent comparison: if the recast layer lookup chain produces a
+ * different value than a direct read of the canonical raw line, the residual
+ * stage flags it. The reads are cheap (one per line) and never throw — they
+ * return null when the line is absent or non-finite, and the residual stage
+ * skips the check when null.
+ */
+function extractRecastDebug(data: RawPeriodData, bs: CanonicalBalanceSheet): RecastDebug {
+  const readRaw = (key: string): number | null => {
+    const value = data.raw_metric_values[`${key}__BalanceSheet`] ?? data.raw_metric_values[key];
+    return value != null && Number.isFinite(value) ? value : null;
+  };
+  const rawTotalAssets = readRaw("Total Assets");
+  const rawTotalLiabilitiesAndEquity = readRaw("Total Equity and Liabilities");
+  const rawTotalEquity = readRaw("Total Equity");
+  // The OL coverage check needs the explicit-OL sum too. Mirror the
+  // calculation in recastBalanceSheet: read each component once, sum.
+  const olCompKeys: readonly string[] = [
+    "Trade Payables",
+    "Other Current Liabilities",
+    "Provisions - Current",
+    "Provisions - Long-term",
+    "Current Tax Liabilities",
+    "Non-Current Tax Liabilities",
+    "Deferred Tax Liabilities (Net)",
+    "Other Non-Current Liabilities",
+  ];
+  let explicitOL = 0;
+  for (const key of olCompKeys) {
+    const value = readRaw(key);
+    if (value != null) explicitOL += value;
+  }
+  // bs is unused for now but accepted so future debug fields can reference
+  // recast-side derived numbers if needed without re-plumbing the helper.
+  void bs;
+  return {
+    rawTotalAssets,
+    rawTotalLiabilitiesAndEquity,
+    rawTotalEquity,
+    explicitOL,
   };
 }
 
