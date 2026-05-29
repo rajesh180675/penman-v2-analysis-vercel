@@ -198,7 +198,19 @@ export function computeEPV(
   // ke > kw when NFO > 0. ke is only correct for the equity bridge step.
   // Use ke_from_config (respects explicit cfg.ke, falls back to rf+erp).
   const ke = ke_from_config(config);
-  const kw = deriveKwFromConfig(config);
+  // S-9.4C: prefer the latest period's structural kw (stamped by the
+  // pipeline) over the config-derived 80/20 fallback. Structural kw uses
+  // the actual capital weights at the latest period and matches the kw
+  // consumed elsewhere (Penman residual income, valuation). Fall back to
+  // deriveKwFromConfig only when no period has a structural kw stamped
+  // (e.g. single-period datasets).
+  const sortedForKw = [...data].sort(
+    (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()
+  );
+  const latestForKw = sortedForKw[sortedForKw.length - 1];
+  const kw = (latestForKw?.kwStructural != null && Number.isFinite(latestForKw.kwStructural) && latestForKw.kwStructural > 0)
+    ? latestForKw.kwStructural
+    : deriveKwFromConfig(config);
 
   if (ke <= 0.01) return null; // nonsensical ke
 

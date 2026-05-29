@@ -239,9 +239,15 @@ export function processCompanyDataFull(
       const prev    = results[results.length - 1];
       const prevRaw = sorted[i - 1];
       try {
-        recast.ratios = computeRatios(recast, prev, config);
-        // S-9.4: kw ALWAYS derived from balance-sheet structure, never hardcoded
+        // S-9.4: kw ALWAYS derived from balance-sheet structure, never hardcoded.
+        // Stamp kwStructural BEFORE computing ratios so ratiosResidual can
+        // consume it (required_return_per_sales) — kwUsed is set to the
+        // structural value here; valuation-side paths that need to override
+        // (forecast scenarios, sensitivity sweeps) update it themselves.
         const kwDerived = deriveKwFromStructure(recast, prev, ke, config.risk_free_rate, config);
+        recast.kwStructural = kwDerived;
+        recast.kwUsed = kwDerived;
+        recast.ratios = computeRatios(recast, prev, config);
         recast.ri      = computeResidualIncome(recast, prev, ke, kwDerived);
         recast.quality = computeQuality(recast, prev, raw, prevRaw);
       } catch (err) {

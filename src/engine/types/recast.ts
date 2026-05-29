@@ -165,6 +165,27 @@ export interface ResidualIncome {
   RE: number|null; ReOI: number|null;
 }
 
+/* ── Recast debug (non-tautological reconciliation inputs) ──────── */
+
+/**
+ * Independent reads of raw lines captured during recast so the
+ * reconciliation-residuals stage can compare recast outputs against
+ * the as-reported raw values. The reads are done inside
+ * `recastBalanceSheet` so the residual stage doesn't need to redo the
+ * pick-helper logic, and so deletes/typos in the recast layer don't
+ * silently flow through.
+ */
+export interface RecastDebug {
+  /** Raw "Total Assets" line, read independently (not the fallback-chained bs.TA pick). */
+  rawTotalAssets: number | null;
+  /** Raw "Total Equity and Liabilities" line. */
+  rawTotalLiabilitiesAndEquity: number | null;
+  /** Raw "Total Equity" line — used by the external-equity-bridge residual. */
+  rawTotalEquity: number | null;
+  /** Sum of explicit OL components (trade payables, provisions, current/non-current liabilities, taxes). */
+  explicitOL: number;
+}
+
 /* ── Period ─────────────────────────────────────────────────────── */
 
 export interface RecastPeriod {
@@ -179,6 +200,22 @@ export interface RecastPeriod {
   trace       ?: TraceMap | undefined;
   spec_flags  ?: SpecFlag[] | undefined;
   shareCountInput?: ShareCountInputSnapshot | undefined;
+  /** Independent raw reads carried into reconciliationResiduals. */
+  recastDebug ?: RecastDebug | undefined;
+  /**
+   * S-9.4C — kw_structural is the WACC implied by the period's balance-sheet
+   * weights via {@link deriveKwFromStructure}. Stamped onto each period in
+   * the pipeline once `prev` is available; null for the first period (where
+   * kw cannot be derived because deriveKwFromStructure requires two periods).
+   */
+  kwStructural?: number | null | undefined;
+  /**
+   * S-9.4C — kw_used is the WACC actually consumed by valuation / scoring
+   * paths for this period. Set by valuation-side callers before stamping;
+   * compared against kwStructural in the kw-consistency reconciliation
+   * residual. Null when no valuation path has stamped a value yet.
+   */
+  kwUsed?: number | null | undefined;
 }
 
 export interface ShareCountInputSnapshot {

@@ -164,7 +164,15 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
     ][maxIdx];
   }
 
-  const required_return_per_sales = ATO != null && ATO !== 0 ? deriveKwFromConfig(cfg) / ATO : null;
+  // S-9.4C: prefer the period's structural kw (stamped by the pipeline)
+  // over the config-derived 80/20 fallback. The structural value reflects
+  // the period's actual capital weights; deriveKwFromConfig only uses it
+  // as a last-resort when the pipeline hasn't stamped a value yet (e.g.
+  // single-period datasets where deriveKwFromStructure is undefined).
+  const kwForRequiredReturn = (cur.kwStructural != null && Number.isFinite(cur.kwStructural) && cur.kwStructural > 0)
+    ? cur.kwStructural
+    : deriveKwFromConfig(cfg);
+  const required_return_per_sales = ATO != null && ATO !== 0 ? kwForRequiredReturn / ATO : null;
   const value_creating_margin = PM != null && required_return_per_sales != null ? PM - required_return_per_sales : null;
 
   const CSE_eq8_check = cur.is.Sales > 0 && ATO != null && FLEV != null ? cur.is.Sales / ATO / (1 + FLEV) : null;

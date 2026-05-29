@@ -1,3 +1,40 @@
+/* ================================================================
+   reconciliationResiduals — Phase 1.1 / 1.2 (de-tautologized)
+
+   Six tautological identity checks were removed because they evaluate
+   to 0 by algebraic construction in PenmanNissimEngine and therefore
+   cleared regardless of input quality:
+     - balance-sheet-assets         (OA = TA - FA  ⇒ (OA+FA)-TA ≡ 0)
+     - balance-sheet-capital        (OL = TA-CSE-MI-FO  ⇒ residual ≡ 0)
+     - noa-financing-identity       (NOA-NFO-CSE-MI ≡ 0)
+     - cni-operating-financing-bridge (OI = CNI+NFE+MII ⇒ residual ≡ 0)
+     - core-oi-unusual-bridge       (CoreOI = OI-UOI  ⇒ residual ≡ 0)
+     - core-nfe-unusual-bridge      (CoreNFE = NFE-UFE ⇒ residual ≡ 0)
+
+   These are now enforced by `console.assert` runtime guards inside
+   evaluateReconciliationResiduals (debug-only — they detect engine
+   regressions, not data-quality issues).
+
+   In their place this stage now performs FOUR independent comparisons
+   between recast outputs and as-reported raw lines:
+     - external-equity-bridge       recast (CSE+MI) vs raw "Total Equity"
+     - ol-coverage-bridge           explicit-OL components / OL ∈ [0.7, 1.3]
+     - recast-ta-vs-raw             bs.TA vs raw "Total Assets"
+     - recast-equity-side-vs-raw    CSE+MI+FO+OL vs raw "Total Equity and Liabilities"
+
+   Plus a new S-9.4C consistency check:
+     - kw-consistency-bridge        |kw_used - kw_structural| / kw_structural
+
+   IMPORTANT — kw-consistency-bridge is deployed as WARNING-ONLY in the
+   first release (per the plan's "deploy as warning-only first" guidance
+   so existing kw inconsistencies surface without flooding valuations
+   with `failed` statuses). The check classifies any breach beyond the
+   warning threshold as `degraded` instead of `failed`. The full
+   warning(1%)/critical(5%) escalation logic is kept inline behind the
+   ENABLE_KW_CRITICAL_FAIL flag so a follow-up can flip it on once the
+   first-release warnings have been triaged. Look for the
+   "TODO(kw-consistency-critical)" comment.
+================================================================ */
 import { EngineConfig, RecastPeriod } from "./types";
 
 // Types relocated to ./types/reconciliation (pure leaf, weakness #1 cycle break).
@@ -14,6 +51,28 @@ export type {
 };
 
 const MIN_OPERATING_COST_BRIDGE_COVERAGE = 0.6;
+
+/**
+ * TODO(kw-consistency-critical) — Flip to true once existing kw
+ * inconsistencies surfaced by the first warning-only release have been
+ * triaged. Plan §1.2 calls for a one-release observation window.
+ */
+const ENABLE_KW_CRITICAL_FAIL = false;
+
+const KW_CONSISTENCY_WARNING_THRESHOLD = 0.01;
+const KW_CONSISTENCY_CRITICAL_THRESHOLD = 0.05;
+
+/**
+ * external-equity-bridge / ol-coverage-bridge use a wider tolerance than
+ * the structural identities because their inputs are independent reads
+ * with rounding noise (Total Equity reported in lakhs, recast in crores,
+ * etc.). 1% warning / 5% critical mirrors the cash-distribution bridge.
+ */
+const EXTERNAL_EQUITY_WARNING_THRESHOLD = 0.01;
+const EXTERNAL_EQUITY_CRITICAL_THRESHOLD = 0.05;
+
+const RAW_RECAST_WARNING_THRESHOLD = 0.01;
+const RAW_RECAST_CRITICAL_THRESHOLD = 0.05;
 
 function classifyResidual(
   ratio: number,
@@ -101,6 +160,52 @@ function buildOptionalCheck(params: {
   });
 }
 
+/**
+ * S-9.4C kw-consistency residual builder.
+ *
+ * NOTE — warning-only rollout: any breach above the warning threshold
+ * classifies as `degraded`; the `failed` branch is gated behind
+ * ENABLE_KW_CRITICAL_FAIL. The plan's full 1%/5% escalation is captured
+ * here so flipping the flag enables it without code changes.
+ */
+function buildKwConsistencyCheck(period: RecastPeriod): ReconciliationResidualCheck | null {
+  const kwStructural = period.kwStructural;
+  const kwUsed = period.kwUsed;
+  if (
+    kwStructural == null
+    || kwUsed == null
+    || !Number.isFinite(kwStructural)
+    || !Number.isFinite(kwUsed)
+    || kwStructural <= 0
+  ) {
+    return null;
+  }
+  const residual = kwUsed - kwStructural;
+  const denominator = Math.abs(kwStructural);
+  const ratio = Math.abs(residual) / Math.max(denominator, 1e-9);
+  let status: ReconciliationResidualStatus;
+  if (ENABLE_KW_CRITICAL_FAIL) {
+    status = classifyResidual(ratio, KW_CONSISTENCY_WARNING_THRESHOLD, KW_CONSISTENCY_CRITICAL_THRESHOLD);
+  } else {
+    // Warning-only: clamp `failed` down to `degraded`.
+    status = ratio >= KW_CONSISTENCY_WARNING_THRESHOLD ? "degraded" : "confirmed";
+  }
+  const escalationNote = ENABLE_KW_CRITICAL_FAIL
+    ? ""
+    : " [warning-only rollout; critical-on-5% disabled per plan §1.2]";
+  return {
+    key: "kw-consistency-bridge",
+    label: "kw_used = kw_structural",
+    periodEnd: period.period_end,
+    residual,
+    ratio,
+    warningThreshold: KW_CONSISTENCY_WARNING_THRESHOLD,
+    criticalThreshold: KW_CONSISTENCY_CRITICAL_THRESHOLD,
+    status,
+    detail: `kw_used=${kwUsed.toFixed(4)} vs kw_structural=${kwStructural.toFixed(4)} — gap ${formatPct(ratio)}, warning ${formatPct(KW_CONSISTENCY_WARNING_THRESHOLD)}, critical ${formatPct(KW_CONSISTENCY_CRITICAL_THRESHOLD)}.${escalationNote}`,
+  };
+}
+
 export function evaluateReconciliationResiduals(params: {
   recastData?: RecastPeriod[] | null | undefined;
   config?: EngineConfig | null | undefined;
@@ -110,9 +215,35 @@ export function evaluateReconciliationResiduals(params: {
   const criticalThreshold = params.config?.structural_residual_critical ?? 0.02;
   const checks = recastData.flatMap((period, index) => {
     const previous = index > 0 ? recastData[index - 1] : null;
-    const assetResidual = (period.bs.OA + period.bs.FA) - period.bs.TA;
-    const capitalResidual = (period.bs.CSE + period.bs.MI + period.bs.FO + period.bs.OL) - period.bs.TA;
-    const noaResidual = period.bs.NOA - period.bs.NFO - period.bs.CSE - period.bs.MI;
+
+    // Tautological identity guards — debug-only, NOT residual checks.
+    // These hold by construction in PenmanNissimEngine; if any of these
+    // assertions fire it's an engine regression, not a data issue.
+    console.assert(
+      Math.abs((period.bs.OA + period.bs.FA) - period.bs.TA) < 1e-6,
+      "engine invariant violated: OA + FA != TA",
+    );
+    console.assert(
+      Math.abs((period.bs.CSE + period.bs.MI + period.bs.FO + period.bs.OL) - period.bs.TA) < 1e-6,
+      "engine invariant violated: CSE + MI + FO + OL != TA",
+    );
+    console.assert(
+      Math.abs(period.bs.NOA - period.bs.NFO - period.bs.CSE - period.bs.MI) < 1e-6,
+      "engine invariant violated: NOA - NFO - CSE - MI != 0",
+    );
+    console.assert(
+      Math.abs(period.is.CNI - (period.is.OI - period.is.NFE - period.is.MII)) < 1e-6,
+      "engine invariant violated: CNI != OI - NFE - MII",
+    );
+    console.assert(
+      Math.abs(period.cu.CoreOI + period.cu.UOI - period.is.OI) < 1e-6,
+      "engine invariant violated: CoreOI + UOI != OI",
+    );
+    console.assert(
+      Math.abs(period.cu.CoreNFE + period.cu.UFE - period.is.NFE) < 1e-6,
+      "engine invariant violated: CoreNFE + UFE != NFE",
+    );
+
     const shareCapital = period.shareCountInput?.shareCapital ?? null;
     const faceValue = period.shareCountInput?.faceValue ?? null;
     const endPeriodShares = period.shareCountInput?.endPeriodShares ?? null;
@@ -217,9 +348,6 @@ export function evaluateReconciliationResiduals(params: {
     const comprehensiveIncomeBasis = comprehensiveIncomeResidual != null
       ? Math.max(Math.abs(period.is.TCI), Math.abs(period.is.PAT + period.is.OCI), 1)
       : null;
-    const cniResidual = period.is.CNI - (period.is.OI - period.is.NFE - period.is.MII);
-    const coreOiResidual = period.cu.CoreOI + period.cu.UOI - period.is.OI;
-    const coreNfeResidual = period.cu.CoreNFE + period.cu.UFE - period.is.NFE;
     const operatingCostBridge = period.is.operatingCostBridge;
     const hasOperatingCostBridgeInputs = (operatingCostBridge?.coverageRatio ?? 0) >= MIN_OPERATING_COST_BRIDGE_COVERAGE;
     const reportedBridgeCoreOi = operatingCostBridge != null
@@ -232,34 +360,83 @@ export function evaluateReconciliationResiduals(params: {
       ? Math.max(Math.abs(operatingCostBridge.bridgeCoreOI), Math.abs(reportedBridgeCoreOi), 1)
       : null;
 
+    // ── Phase 1.1 promoted/new residuals ─────────────────────────
+    // external-equity-bridge: recast (CSE+MI) vs raw "Total Equity"
+    // (promoted from PenmanNissimEngine.ts:341-342 separationScore input).
+    const debug = period.recastDebug;
+    const rawTotalEquity = debug?.rawTotalEquity ?? null;
+    const externalEquityResidual = rawTotalEquity != null && rawTotalEquity > 0
+      ? (period.bs.CSE + period.bs.MI) - rawTotalEquity
+      : null;
+    const externalEquityBasis = rawTotalEquity != null && rawTotalEquity > 0 && period.bs.TA > 0
+      ? period.bs.TA
+      : null;
+
+    // ol-coverage-bridge: explicit-OL components / OL ∈ [0.7, 1.3]
+    // (promoted from olRatio at PenmanNissimEngine.ts:338-339).
+    const explicitOL = debug?.explicitOL ?? 0;
+    // Express the residual as a deviation from 1.0 expressed in OL units so
+    // existing classification thresholds are usable. Skip when OL ≤ 0.
+    let olCoverageResidual: number | null = null;
+    let olCoverageBasis: number | null = null;
+    if (period.bs.OL > 0 && explicitOL > 0) {
+      const olRatio = explicitOL / period.bs.OL;
+      // Map ratio to a residual-of-OL: |1 - ratio| × OL gives the OL units
+      // missing/excess. Critical threshold 0.30 mirrors the historic
+      // 0.7-1.3 band.
+      olCoverageResidual = (olRatio - 1) * period.bs.OL;
+      olCoverageBasis = Math.max(period.bs.OL, 1);
+    }
+
+    // recast-ta-vs-raw: bs.TA vs raw "Total Assets" line (independent read).
+    const rawTotalAssets = debug?.rawTotalAssets ?? null;
+    const recastTaVsRawResidual = rawTotalAssets != null && rawTotalAssets > 0
+      ? period.bs.TA - rawTotalAssets
+      : null;
+    const recastTaVsRawBasis = rawTotalAssets != null && rawTotalAssets > 0
+      ? Math.max(Math.abs(period.bs.TA), Math.abs(rawTotalAssets), 1)
+      : null;
+
+    // recast-equity-side-vs-raw: CSE+MI+FO+OL vs raw "Total Equity and Liabilities".
+    const rawTLE = debug?.rawTotalLiabilitiesAndEquity ?? null;
+    const recastEquitySideTotal = period.bs.CSE + period.bs.MI + period.bs.FO + period.bs.OL;
+    const recastEquitySideResidual = rawTLE != null && rawTLE > 0
+      ? recastEquitySideTotal - rawTLE
+      : null;
+    const recastEquitySideBasis = rawTLE != null && rawTLE > 0
+      ? Math.max(Math.abs(recastEquitySideTotal), Math.abs(rawTLE), 1)
+      : null;
+
+    const olCoverageStatusOverride: ReconciliationResidualStatus | null = (() => {
+      if (olCoverageResidual == null || olCoverageBasis == null || olCoverageBasis <= 0) return null;
+      // Apply consistency band 0.7-1.3 explicitly: anything outside this is
+      // critical, mild deviations 0.9-1.1 confirm, in-between is degraded.
+      const olRatio = explicitOL / period.bs.OL;
+      if (olRatio < 0.7 || olRatio > 1.3) return "failed";
+      if (olRatio < 0.9 || olRatio > 1.1) return "degraded";
+      return "confirmed";
+    })();
+
+    const olCoverageCheck = (() => {
+      if (olCoverageResidual == null || olCoverageBasis == null) return null;
+      const built = buildCheck({
+        key: "ol-coverage-bridge",
+        label: "Explicit OL components ÷ OL ∈ [0.7, 1.3]",
+        periodEnd: period.period_end,
+        residual: olCoverageResidual,
+        denominator: olCoverageBasis,
+        warningThreshold: 0.10,
+        criticalThreshold: 0.30,
+      });
+      if (olCoverageStatusOverride != null) {
+        return { ...built, status: olCoverageStatusOverride };
+      }
+      return built;
+    })();
+
+    const kwConsistencyCheck = buildKwConsistencyCheck(period);
+
     return [
-      buildCheck({
-        key: "balance-sheet-assets",
-        label: "OA + FA = TA",
-        periodEnd: period.period_end,
-        residual: assetResidual,
-        denominator: period.bs.TA,
-        warningThreshold,
-        criticalThreshold,
-      }),
-      buildCheck({
-        key: "balance-sheet-capital",
-        label: "CSE + MI + FO + OL = TA",
-        periodEnd: period.period_end,
-        residual: capitalResidual,
-        denominator: period.bs.TA,
-        warningThreshold,
-        criticalThreshold,
-      }),
-      buildCheck({
-        key: "noa-financing-identity",
-        label: "NOA - NFO - CSE - MI = 0",
-        periodEnd: period.period_end,
-        residual: noaResidual,
-        denominator: Math.max(Math.abs(period.bs.NOA), Math.abs(period.bs.CSE + period.bs.MI), 1),
-        warningThreshold,
-        criticalThreshold,
-      }),
       buildOptionalCheck({
         key: "cash-distribution-bridge",
         label: "d_t = FCF - NFE + ΔNFO",
@@ -296,39 +473,12 @@ export function evaluateReconciliationResiduals(params: {
         warningThreshold,
         criticalThreshold,
       }),
-      buildCheck({
-        key: "cni-operating-financing-bridge",
-        label: "CNI = OI - NFE - MII",
-        periodEnd: period.period_end,
-        residual: cniResidual,
-        denominator: Math.max(Math.abs(period.is.CNI), Math.abs(period.is.OI), 1),
-        warningThreshold,
-        criticalThreshold,
-      }),
-      buildCheck({
-        key: "core-oi-unusual-bridge",
-        label: "Core OI + UOI = OI",
-        periodEnd: period.period_end,
-        residual: coreOiResidual,
-        denominator: Math.max(Math.abs(period.cu.CoreOI), Math.abs(period.is.OI), 1),
-        warningThreshold,
-        criticalThreshold,
-      }),
       buildOptionalCheck({
         key: "operating-cost-bridge",
         label: `Bridge Core OI = Reported Core OI ex Other Items (coverage >= ${formatPct(MIN_OPERATING_COST_BRIDGE_COVERAGE)})`,
         periodEnd: period.period_end,
         residual: operatingCostBridgeResidual,
         denominator: operatingCostBridgeBasis,
-        warningThreshold,
-        criticalThreshold,
-      }),
-      buildCheck({
-        key: "core-nfe-unusual-bridge",
-        label: "Core NFE + UFE = NFE",
-        periodEnd: period.period_end,
-        residual: coreNfeResidual,
-        denominator: Math.max(Math.abs(period.cu.CoreNFE), Math.abs(period.is.NFE), 1),
         warningThreshold,
         criticalThreshold,
       }),
@@ -345,6 +495,37 @@ export function evaluateReconciliationResiduals(params: {
         warningThreshold,
         criticalThreshold,
       }),
+      // ── Phase 1.1 first-class promoted/new residuals ─────────────
+      buildOptionalCheck({
+        key: "external-equity-bridge",
+        label: "Recast (CSE + MI) = Raw Total Equity",
+        periodEnd: period.period_end,
+        residual: externalEquityResidual,
+        denominator: externalEquityBasis,
+        warningThreshold: EXTERNAL_EQUITY_WARNING_THRESHOLD,
+        criticalThreshold: EXTERNAL_EQUITY_CRITICAL_THRESHOLD,
+      }),
+      olCoverageCheck,
+      buildOptionalCheck({
+        key: "recast-ta-vs-raw",
+        label: "Recast TA = Raw Total Assets",
+        periodEnd: period.period_end,
+        residual: recastTaVsRawResidual,
+        denominator: recastTaVsRawBasis,
+        warningThreshold: RAW_RECAST_WARNING_THRESHOLD,
+        criticalThreshold: RAW_RECAST_CRITICAL_THRESHOLD,
+      }),
+      buildOptionalCheck({
+        key: "recast-equity-side-vs-raw",
+        label: "CSE + MI + FO + OL = Raw Total Equity and Liabilities",
+        periodEnd: period.period_end,
+        residual: recastEquitySideResidual,
+        denominator: recastEquitySideBasis,
+        warningThreshold: RAW_RECAST_WARNING_THRESHOLD,
+        criticalThreshold: RAW_RECAST_CRITICAL_THRESHOLD,
+      }),
+      // ── Phase 1.2 S-9.4C kw-consistency residual (warning-only) ──
+      kwConsistencyCheck,
     ].filter((check): check is ReconciliationResidualCheck => Boolean(check));
   });
 

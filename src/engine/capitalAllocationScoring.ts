@@ -548,9 +548,17 @@ export function scoreCapitalAllocation(
       ? `No profitable periods — capital allocation framework requires ≥3 periods of positive net income`
       : `Only ${profitablePeriods} profitable period(s) of ${periods.length} — capital allocation score low-confidence (need ≥3)`;
 
+  // S-9.4C: prefer caller override, then the period's structural kw
+  // (stamped by the pipeline), then the config-derived 80/20 fallback.
+  const sortedForKw = [...periods].sort(
+    (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()
+  );
+  const latestForKw = sortedForKw[sortedForKw.length - 1];
   const kw = (kwOverride != null && Number.isFinite(kwOverride) && kwOverride > 0)
     ? kwOverride
-    : deriveKwFromConfig(config);
+    : (latestForKw?.kwStructural != null && Number.isFinite(latestForKw.kwStructural) && latestForKw.kwStructural > 0
+      ? latestForKw.kwStructural
+      : deriveKwFromConfig(config));
 
   // Dimension 1: Dividend Consistency
   const divDim = scoreDividendConsistency(periods);
