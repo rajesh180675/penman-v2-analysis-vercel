@@ -29,39 +29,11 @@ export enum OutputChannel {
   REPORT = "report",
   AUDIT = "audit",
 }
-export class ConsistencyViolation extends Error {}
-export class CanonicalOutputRegistry {
-  private values = new Map<string, unknown>();
-  private sources = new Map<string, string>();
-  register<T>(key: string, value: T, sourceSpec: string): T {
-    if (this.values.has(key)) {
-      const existing = this.values.get(key);
-      if (typeof existing === "number" && typeof value === "number") {
-        const denom = Math.max(Math.abs(existing), 1);
-        const delta = Math.abs(existing - value) / denom;
-        if (delta > 0.001) {
-          throw new ConsistencyViolation(
-            `Conflicting values for '${key}': ${existing} (from ${this.sources.get(key)}) vs ${value} (from ${sourceSpec})`
-          );
-        }
-      } else if (JSON.stringify(existing) !== JSON.stringify(value)) {
-        throw new ConsistencyViolation(
-          `Conflicting values for '${key}': ${JSON.stringify(existing)} (from ${this.sources.get(key)}) vs ${JSON.stringify(value)} (from ${sourceSpec})`
-        );
-      }
-      return existing as T;
-    }
-    this.values.set(key, value);
-    this.sources.set(key, sourceSpec);
-    return value;
-  }
-  get<T>(key: string): T | undefined {
-    return this.values.get(key) as T | undefined;
-  }
-  snapshot(): Record<string, unknown> {
-    return Object.fromEntries(this.values.entries());
-  }
-}
+// CanonicalOutputRegistry + ConsistencyViolation moved to ./v3Analytics/shared
+// so cluster sub-modules import them DOWN rather than back UP from this file
+// (breaks the v3Analytics.ts <-> v3Analytics/* circular dependency).
+import { CanonicalOutputRegistry, ConsistencyViolation } from "./v3Analytics/shared";
+export { CanonicalOutputRegistry, ConsistencyViolation };
 /* ══════════════════════════════════════════════════════════════════
    §2.5 Data Validation
 ══════════════════════════════════════════════════════════════════ */
