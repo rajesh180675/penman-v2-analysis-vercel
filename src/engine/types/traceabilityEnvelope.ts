@@ -36,9 +36,9 @@ export interface AccountingStandardCoverage {
   preIndASPeriods: number;
   /** True when ≥2 distinct standards contributed periods. */
   hasMultiStandardData: boolean;
-  /** Confidence band: "high" if all periods are Ind-AS, "medium" if any
-   *  Revised-Sch-VI, "low" if any Standard or Unknown periods, "unknown"
-   *  when raw data has no accounting_standard tag at all. */
+  /** Confidence band: "high" when all periods are Ind-AS, "medium" with
+   *  Revised-Sch-VI present, "low" for older-Standard or Unknown periods,
+   *  "unknown" when raw data has no accounting_standard tag at all. */
   confidence: "high" | "medium" | "low" | "unknown";
 }
 
@@ -52,9 +52,9 @@ export interface AccountingStandardCoverage {
   preIndASPeriods: number;
   /** True when ≥2 distinct standards contributed periods. */
   hasMultiStandardData: boolean;
-  /** Confidence band: "high" if all periods are Ind-AS, "medium" if any
-   *  Revised-Sch-VI, "low" if any Standard or Unknown periods, "unknown"
-   *  when raw data has no accounting_standard tag at all. */
+  /** Confidence band: "high" when all periods are Ind-AS, "medium" with
+   *  Revised-Sch-VI present, "low" for older-Standard or Unknown periods,
+   *  "unknown" when raw data has no accounting_standard tag at all. */
   confidence: "high" | "medium" | "low" | "unknown";
 }
 
