@@ -67,6 +67,35 @@ export function requireAuditReadAuth(request, response) {
   return false;
 }
 
+/**
+ * Gates audit write paths (and any caller that wants to enforce a distinct
+ * write-only token). Reads from AUDIT_ADMIN_WRITE_TOKEN when set, otherwise
+ * falls back to AUDIT_ADMIN_TOKEN — so single-token deployments continue to
+ * work unchanged. The fallback is intentional: separate read and write tokens
+ * are an opt-in hardening for deployments that want to scope blast radius.
+ *
+ * Compares via safeTokenEqual (constant-time). Returns true on success;
+ * responds with 401 (or 503 when the token is required by environment but
+ * unset) and returns false on failure.
+ */
+export function requireAuditWriteAuth(request, response) {
+  const configuredWriteToken = process.env.AUDIT_ADMIN_WRITE_TOKEN || process.env.AUDIT_ADMIN_TOKEN;
+  const previousToken = process.env.AUDIT_ADMIN_TOKEN_PREVIOUS;
+  const presented = getAuditReadToken(request);
+
+  if (!configuredWriteToken && !previousToken) {
+    if (isAuditAdminAuthRequired()) {
+      response.status(503).json({ error: "Audit admin token is required in deployed or blob-backed mode." });
+      return false;
+    }
+    return true;
+  }
+  if (safeTokenEqual(presented, configuredWriteToken) || safeTokenEqual(presented, previousToken)) return true;
+
+  response.status(401).json({ error: "Unauthorized audit write." });
+  return false;
+}
+
 export function isAuditReadAuthorized(request) {
   const configuredToken = process.env.AUDIT_ADMIN_TOKEN;
   const previousToken = process.env.AUDIT_ADMIN_TOKEN_PREVIOUS;

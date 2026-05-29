@@ -157,6 +157,7 @@ async function postAuditEventRequest(body: AuditEventInput) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "x-penman-local": "1",
       },
       body: JSON.stringify(body),
     });

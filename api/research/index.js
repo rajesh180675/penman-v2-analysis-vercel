@@ -1,4 +1,4 @@
-import { buildTimestampedPath, isResearchConfigured, listJsonBlobs, maybeRequireResearchReadAuth, maybeRequireResearchWriteAuth, readJsonBlob, readResearchBody, researchPath, writeJsonBlob } from "./_store.js";
+import { BlobVersionMismatchError, buildTimestampedPath, isResearchConfigured, listJsonBlobs, maybeRequireResearchReadAuth, maybeRequireResearchWriteAuth, readJsonBlob, readResearchBody, researchPath, writeJsonBlob } from "./_store.js";
 import { sanitizePathSegment } from "../audit/_lib.js";
 
 const COMPARISON_REGISTRY_SCHEMA_VERSION = "2026-04-comparison-registry-v1";
@@ -13,6 +13,27 @@ function requireCompanyId(body, response) {
     return null;
   }
   return sanitizePathSegment(body.companyId);
+}
+
+/**
+ * Read the persisted JSON at `pathname` and return its `version` field
+ * (defaulting to 0 when missing). Used by optimistic-concurrency writes.
+ */
+async function readVersion(pathname) {
+  const existing = await readJsonBlob(pathname).catch(() => null);
+  if (existing && typeof existing.version === "number" && Number.isFinite(existing.version)) {
+    return { existing, version: existing.version };
+  }
+  return { existing, version: 0 };
+}
+
+function respondVersionConflict(response, error, kind) {
+  response.status(409).json({
+    error: "Blob version conflict — another writer updated this resource. Re-read and retry.",
+    kind,
+    expectedVersion: error.expectedVersion,
+    actualVersion: error.actualVersion,
+  });
 }
 
 export default async function handler(request, response) {
@@ -75,11 +96,21 @@ export default async function handler(request, response) {
         response.status(400).json({ error: "comparisonRegistry.companies is required." });
         return;
       }
-      await writeJsonBlob(researchPath("comparison-registry", "latest.json"), {
-        schemaVersion: comparisonRegistry.schemaVersion ?? COMPARISON_REGISTRY_SCHEMA_VERSION,
-        storedAt: new Date().toISOString(),
-        companies: comparisonRegistry.companies,
-      });
+      const pathname = researchPath("comparison-registry", "latest.json");
+      const { version } = await readVersion(pathname);
+      try {
+        await writeJsonBlob(pathname, {
+          schemaVersion: comparisonRegistry.schemaVersion ?? COMPARISON_REGISTRY_SCHEMA_VERSION,
+          storedAt: new Date().toISOString(),
+          companies: comparisonRegistry.companies,
+        }, { ifVersion: version });
+      } catch (error) {
+        if (error instanceof BlobVersionMismatchError) {
+          respondVersionConflict(response, error, kind);
+          return;
+        }
+        throw error;
+      }
       response.status(200).json({ ok: true, kind });
       return;
     }
@@ -91,13 +122,23 @@ export default async function handler(request, response) {
       const issuer = body.issuer ?? body.profile?.issuer ?? null;
       const notebook = body.notebook ?? body.profile?.notebook ?? null;
       const portfolio = body.portfolio ?? body.profile?.portfolio ?? null;
-      await writeJsonBlob(researchPath("companies", companyId, "profile.json"), {
-        companyId,
-        issuer,
-        notebook,
-        portfolio,
-        updatedAt: new Date().toISOString(),
-      });
+      const pathname = researchPath("companies", companyId, "profile.json");
+      const { version } = await readVersion(pathname);
+      try {
+        await writeJsonBlob(pathname, {
+          companyId,
+          issuer,
+          notebook,
+          portfolio,
+          updatedAt: new Date().toISOString(),
+        }, { ifVersion: version });
+      } catch (error) {
+        if (error instanceof BlobVersionMismatchError) {
+          respondVersionConflict(response, error, kind);
+          return;
+        }
+        throw error;
+      }
       response.status(200).json({ ok: true, companyId, kind });
       return;
     }
@@ -107,11 +148,21 @@ export default async function handler(request, response) {
         response.status(400).json({ error: "analysis payload is required." });
         return;
       }
-      await writeJsonBlob(buildTimestampedPath(companyId, "analysis", body.analysis.id ?? `${Date.now()}`), {
-        companyId,
-        ...body.analysis,
-        storedAt: new Date().toISOString(),
-      });
+      const pathname = buildTimestampedPath(companyId, "analysis", body.analysis.id ?? `${Date.now()}`);
+      const { version } = await readVersion(pathname);
+      try {
+        await writeJsonBlob(pathname, {
+          companyId,
+          ...body.analysis,
+          storedAt: new Date().toISOString(),
+        }, { ifVersion: version });
+      } catch (error) {
+        if (error instanceof BlobVersionMismatchError) {
+          respondVersionConflict(response, error, kind);
+          return;
+        }
+        throw error;
+      }
       response.status(200).json({ ok: true, companyId, kind });
       return;
     }
@@ -121,11 +172,21 @@ export default async function handler(request, response) {
         response.status(400).json({ error: "journal payload is required." });
         return;
       }
-      await writeJsonBlob(buildTimestampedPath(companyId, "journal", body.journal.id ?? `${Date.now()}`), {
-        companyId,
-        ...body.journal,
-        storedAt: new Date().toISOString(),
-      });
+      const pathname = buildTimestampedPath(companyId, "journal", body.journal.id ?? `${Date.now()}`);
+      const { version } = await readVersion(pathname);
+      try {
+        await writeJsonBlob(pathname, {
+          companyId,
+          ...body.journal,
+          storedAt: new Date().toISOString(),
+        }, { ifVersion: version });
+      } catch (error) {
+        if (error instanceof BlobVersionMismatchError) {
+          respondVersionConflict(response, error, kind);
+          return;
+        }
+        throw error;
+      }
       response.status(200).json({ ok: true, companyId, kind });
       return;
     }
@@ -135,11 +196,21 @@ export default async function handler(request, response) {
         response.status(400).json({ error: "filing payload is required." });
         return;
       }
-      await writeJsonBlob(buildTimestampedPath(companyId, "filings", body.filing.filingId ?? `${Date.now()}`), {
-        companyId,
-        ...body.filing,
-        storedAt: new Date().toISOString(),
-      });
+      const pathname = buildTimestampedPath(companyId, "filings", body.filing.filingId ?? `${Date.now()}`);
+      const { version } = await readVersion(pathname);
+      try {
+        await writeJsonBlob(pathname, {
+          companyId,
+          ...body.filing,
+          storedAt: new Date().toISOString(),
+        }, { ifVersion: version });
+      } catch (error) {
+        if (error instanceof BlobVersionMismatchError) {
+          respondVersionConflict(response, error, kind);
+          return;
+        }
+        throw error;
+      }
       response.status(200).json({ ok: true, companyId, kind });
       return;
     }
@@ -149,11 +220,21 @@ export default async function handler(request, response) {
         response.status(400).json({ error: "valuation payload is required." });
         return;
       }
-      await writeJsonBlob(buildTimestampedPath(companyId, "valuations", body.valuation.id ?? `${Date.now()}`), {
-        companyId,
-        ...body.valuation,
-        storedAt: new Date().toISOString(),
-      });
+      const pathname = buildTimestampedPath(companyId, "valuations", body.valuation.id ?? `${Date.now()}`);
+      const { version } = await readVersion(pathname);
+      try {
+        await writeJsonBlob(pathname, {
+          companyId,
+          ...body.valuation,
+          storedAt: new Date().toISOString(),
+        }, { ifVersion: version });
+      } catch (error) {
+        if (error instanceof BlobVersionMismatchError) {
+          respondVersionConflict(response, error, kind);
+          return;
+        }
+        throw error;
+      }
       response.status(200).json({ ok: true, companyId, kind });
       return;
     }
@@ -163,11 +244,21 @@ export default async function handler(request, response) {
         response.status(400).json({ error: "alert payload is required." });
         return;
       }
-      await writeJsonBlob(buildTimestampedPath(companyId, "alerts", body.alert.id ?? `${Date.now()}`), {
-        companyId,
-        ...body.alert,
-        storedAt: new Date().toISOString(),
-      });
+      const pathname = buildTimestampedPath(companyId, "alerts", body.alert.id ?? `${Date.now()}`);
+      const { version } = await readVersion(pathname);
+      try {
+        await writeJsonBlob(pathname, {
+          companyId,
+          ...body.alert,
+          storedAt: new Date().toISOString(),
+        }, { ifVersion: version });
+      } catch (error) {
+        if (error instanceof BlobVersionMismatchError) {
+          respondVersionConflict(response, error, kind);
+          return;
+        }
+        throw error;
+      }
       response.status(200).json({ ok: true, companyId, kind });
       return;
     }
@@ -177,14 +268,23 @@ export default async function handler(request, response) {
         response.status(400).json({ error: "portfolio payload is required." });
         return;
       }
-      const existingProfile = await readJsonBlob(researchPath("companies", companyId, "profile.json")).catch(() => null);
-      await writeJsonBlob(researchPath("companies", companyId, "profile.json"), {
-        companyId,
-        issuer: existingProfile?.issuer ?? null,
-        notebook: existingProfile?.notebook ?? null,
-        portfolio: body.portfolio,
-        updatedAt: new Date().toISOString(),
-      });
+      const pathname = researchPath("companies", companyId, "profile.json");
+      const { existing, version } = await readVersion(pathname);
+      try {
+        await writeJsonBlob(pathname, {
+          companyId,
+          issuer: existing?.issuer ?? null,
+          notebook: existing?.notebook ?? null,
+          portfolio: body.portfolio,
+          updatedAt: new Date().toISOString(),
+        }, { ifVersion: version });
+      } catch (error) {
+        if (error instanceof BlobVersionMismatchError) {
+          respondVersionConflict(response, error, kind);
+          return;
+        }
+        throw error;
+      }
       response.status(200).json({ ok: true, companyId, kind });
       return;
     }
