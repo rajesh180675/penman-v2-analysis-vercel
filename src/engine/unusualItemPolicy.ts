@@ -1,5 +1,18 @@
 import { RawPeriodData, RecastPeriod, Severity, UnusualItemBucket, UnusualItemPolicySummary } from "./types";
 
+// Types relocated to ./types/unusualItem (pure leaf, weakness #1 cycle break).
+// Imported back for internal use; re-exported so existing "./unusualItemPolicy" paths stay valid.
+import type {
+  UnusualItemCategory,
+  UnusualItemClassification,
+  UnusualItemManifest,
+} from "./types/unusualItem";
+export type {
+  UnusualItemCategory,
+  UnusualItemClassification,
+  UnusualItemManifest,
+};
+
 export const UNUSUAL_ITEM_POLICY_VERSION = "2026-06-phase8";
 
 // ─── Gap 3 / PR-C — taxonomy + classifier ───────────────────────────────────
@@ -8,20 +21,6 @@ export const UNUSUAL_ITEM_POLICY_VERSION = "2026-06-phase8";
 // use word boundaries (\b) so "interest" doesn't match "interest-rate hedge"
 // unless the latter is a separate token. First match wins; if multiple rules
 // match the same label, we record the alternative in `rationale`.
-
-export type UnusualItemCategory =
-  | "asset-sale-gain-loss"
-  | "fair-value-change"
-  | "impairment"
-  | "litigation"
-  | "restructuring"
-  | "demerger-scheme-effect"
-  | "one-time-tax"
-  | "discontinued-operations"
-  | "buyback"
-  | "special-dividend"
-  | "capital-return"
-  | "unclassified";
 
 export interface ClassificationRule {
   category: UnusualItemCategory;
@@ -106,29 +105,8 @@ export const CLASSIFICATION_RULES: ClassificationRule[] = [
   },
 ];
 
-export interface UnusualItemClassification {
-  period: string;
-  rawLabel: string;
-  value: number;
-  category: UnusualItemCategory;
-  affectsCoreOI: boolean;
-  affectsTerminalEligibility: boolean;
-  affectsCleanSurplus: boolean;
-  classificationSource: "rule-based" | "heuristic" | "manual";
-  rationale: string;
-  matchedPattern?: string | undefined;
-}
-
 /** Hard cap on classifications surfaced; over this we truncate and flag. */
 export const MAX_UNUSUAL_ITEM_CLASSIFICATIONS = 500;
-
-export interface UnusualItemManifest {
-  totalUnusualImpactOnCoreOI: number;
-  terminalEligibilityBlocked: boolean;
-  classifications: UnusualItemClassification[];
-  unclassifiedCount: number;
-  truncated: boolean;
-}
 
 /**
  * Classify raw "exceptional / extraordinary / unusual" labels that the

@@ -1,8 +1,10 @@
 import { MappingCoverageGroup, MappingSeverity, MappingStatement, classifyMappingIssue, listMappingCoverageGroups } from "./mappingPolicy";
 import { MAPPING_POLICY_VERSION } from "./policyVersions";
 
-export type BacklogTriageAction = "add-to-spec" | "group-to-existing" | "ignore-non-core" | "review";
-export type BacklogPriority = "blocking" | "diagnostic" | "optional";
+// Triage enums relocated to ./types/backlog (pure leaf) — this module reaches the
+// types-barrel tangle, so the pure unions move out. Re-exported for existing paths.
+import type { BacklogTriageAction, BacklogPriority } from "./types/backlog";
+export type { BacklogTriageAction, BacklogPriority };
 
 export interface MappingBacklogCandidate {
   statement: MappingStatement | "Unknown";

@@ -1,29 +1,19 @@
 import { EngineConfig, RecastPeriod } from "./types";
 
-export type ReconciliationResidualStatus = "confirmed" | "degraded" | "failed";
+// Types relocated to ./types/reconciliation (pure leaf, weakness #1 cycle break).
+// Imported back for internal use; re-exported so existing "./reconciliationResiduals" paths stay valid.
+import type {
+  ReconciliationResidualStatus,
+  ReconciliationResidualCheck,
+  ReconciliationResidualSummary,
+} from "./types/reconciliation";
+export type {
+  ReconciliationResidualStatus,
+  ReconciliationResidualCheck,
+  ReconciliationResidualSummary,
+};
 
 const MIN_OPERATING_COST_BRIDGE_COVERAGE = 0.6;
-
-export interface ReconciliationResidualCheck {
-  key: string;
-  label: string;
-  periodEnd: string;
-  residual: number;
-  ratio: number;
-  warningThreshold: number;
-  criticalThreshold: number;
-  status: ReconciliationResidualStatus;
-  detail: string;
-}
-
-export interface ReconciliationResidualSummary {
-  status: ReconciliationResidualStatus;
-  summary: string;
-  warningCount: number;
-  errorCount: number;
-  maxResidualRatio: number;
-  checks: ReconciliationResidualCheck[];
-}
 
 function classifyResidual(
   ratio: number,
