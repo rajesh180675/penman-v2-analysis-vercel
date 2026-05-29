@@ -636,10 +636,30 @@ function gridToPeriods(
 ══════════════════════════════════════════════════════════════════ */
 
 export async function parseCapitalineZip(
-  zipFile: File,
-  opts?: { companyId?: string }
+  zipFile: File | Blob | ArrayBuffer | Uint8Array,
+  opts?: { companyId?: string; filename?: string }
 ): Promise<{ periods: RawPeriodData[]; debug: CapitalineParseDebug; segmentData: AllSegmentData | null }> {
-  if (zipFile.size > MAX_ZIP_BYTES) {
+  // Normalize input — Node 24 native File doesn't expose a Blob shape JSZip can
+  // read, so we always pass JSZip a Uint8Array.
+  let zipBytes: Uint8Array;
+  let zipName: string;
+  let zipSize: number;
+  if (zipFile instanceof Uint8Array) {
+    zipBytes = zipFile;
+    zipName = opts?.filename ?? "input.zip";
+    zipSize = zipFile.byteLength;
+  } else if (zipFile instanceof ArrayBuffer) {
+    zipBytes = new Uint8Array(zipFile);
+    zipName = opts?.filename ?? "input.zip";
+    zipSize = zipFile.byteLength;
+  } else {
+    // File or Blob — has .arrayBuffer().
+    zipBytes = new Uint8Array(await zipFile.arrayBuffer());
+    zipName = ("name" in zipFile && typeof zipFile.name === "string") ? zipFile.name : (opts?.filename ?? "input.zip");
+    zipSize = zipFile.size;
+  }
+
+  if (zipSize > MAX_ZIP_BYTES) {
     throw new Error(`ZIP exceeds size limit (${Math.round(MAX_ZIP_BYTES / (1024 * 1024))} MB).`);
   }
 
@@ -647,10 +667,10 @@ export async function parseCapitalineZip(
   const warnings: ParseWarning[] = [];
 
   /* 1. Open ZIP */
-  trace("parse", "zipLoad:start", { filename: zipFile.name, sizeBytes: zipFile.size, companyId });
+  trace("parse", "zipLoad:start", { filename: zipName, sizeBytes: zipSize, companyId });
   let zip: JSZip;
   try {
-    zip = await JSZip.loadAsync(zipFile);
+    zip = await JSZip.loadAsync(zipBytes);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     trace("parse", "zipLoad:error", { error: msg }, null, { level: "error" });

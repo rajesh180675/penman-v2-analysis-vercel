@@ -18,7 +18,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test:golden": "vitest run src/engine/__tests__/goldenCompanySuite.spec.ts src/engine/__tests__/releaseGate.spec.ts",
-    "test:audit": "vitest run --no-threads src/engine/__tests__/audit-all-companies-shard-0.spec.ts && vitest run --no-threads src/engine/__tests__/audit-all-companies-shard-1.spec.ts && vitest run --no-threads src/engine/__tests__/audit-all-companies-shard-2.spec.ts",
+    "test:audit": "vitest run --pool=forks src/engine/__tests__/audit-all-companies-shard-0.spec.ts && vitest run --pool=forks src/engine/__tests__/audit-all-companies-shard-1.spec.ts && vitest run --pool=forks src/engine/__tests__/audit-all-companies-shard-2.spec.ts",
     "test:audit-slow": "vitest run src/engine/__tests__/audit-all-companies.spec.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -26,6 +26,8 @@
     "lint:any": "node scripts/check-any-budget.cjs",
     "lint:bundle": "node scripts/check-bundle-budget.cjs",
     "lint:doc-schema": "node scripts/check-doc-schema-pin.cjs",
+    "audit:baseline": "tsx scripts/audit-baseline.ts",
+    "audit:diff": "node scripts/audit-diff.cjs",
     "validate": "npm run typecheck && npm run lint:any && npm run lint:doc-schema && npm run test && npm run build && npm run lint:bundle",
     "validate:release": "npm run test:golden && npm run validate",
     "refresh": "node scripts/refresh-company.mjs"
