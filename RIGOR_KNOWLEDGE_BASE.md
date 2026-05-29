@@ -49,9 +49,10 @@ A run must clear 5 sequential gates. Failure at any gate "fails-closed," blockin
 - **Rule**: Capital costs ($k_e, k_w$) must be derived once and used consistently across all modules.
 - **Enforcement**: $k_w$ must be derived structurally and treated as read-only in the UI to prevent manual overrides that would break the model's internal logic.
 
-### Traceability Envelope (Schema `v8`)
+### Traceability Envelope (Schema Version)
 - The `AnalysisTraceabilityEnvelope` is the shared confidence signal.
-- It contains: `confidence` (status, tone, headline), `rigor` (current level, achieved levels), and `mappingCoverage`.
+- The current schema version is exported from [`src/engine/policyVersions.ts`](src/engine/policyVersions.ts) as `TRACEABILITY_SCHEMA_VERSION` (currently `2026-06-traceability-v17`). Treat that constant as the single source of truth; do not pin a literal version in prose. Persisted envelopes from older versions are walked forward by [`src/lib/envelopeMigrations.ts`](src/lib/envelopeMigrations.ts).
+- It contains: `confidence` (status, tone, headline), `rigor` (current level, achieved levels), `parserFidelity`, `reconciliation`, and `mappingCoverage`.
 
 ## 4. Current Gaps & Improvement Roadmap
 
@@ -59,11 +60,28 @@ A run must clear 5 sequential gates. Failure at any gate "fails-closed," blockin
 - **Label Dependency**: The system is currently fragile because it relies on string labels.
 - **Audit Gaps**: Some runs fail so early that no traceability envelope is generated, creating "black holes" in the audit log.
 
-### Planned Improvements
-1. **Metric IDs**: Transition from label-based mapping to **Metric ID-based mapping** (using Capitaline's numeric IDs).
-2. **Pre-Flight Envelopes**: Generate a minimal `v8` envelope even for failed ingestions to ensure 100% audit coverage.
-3. **Automated Spec Evolution**: Use audit logs of "unmatched labels" to automatically suggest updates to the `MappingSpec.yaml`.
-4. **UI Expansion**: Surface the Rigor Ladder in the `DebugPanel` and `CompanyWorkspace` to provide a "Rigor Roadmap" to the user.
+### What Shipped
+
+The roadmap that lived here previously listed work that has since landed. Each row links to the ADR (or plan PR) that documents the rationale and verification.
+
+| Concept | Status | Reference |
+|---------|--------|-----------|
+| Concept Identity (Metric IDs) | Shipped | [ADR-001](docs/adr/001-concept-identity-layer.md) |
+| Economic Sanity Gates | Shipped | [ADR-002](docs/adr/002-economic-sanity-gates.md) |
+| Unusual Item Taxonomy | Shipped | [ADR-003](docs/adr/003-unusual-item-taxonomy.md) |
+| Lineage Sidecar (Per-Number Traceability) | Shipped | [ADR-004](docs/adr/004-lineage-sidecar.md) |
+| Branded Primitives | Shipped (PR-1.4 partial; PR-1.4a/b/c follow-on) | [ADR-005](docs/adr/005-branded-primitives.md) |
+| Pipeline Strategy Pattern (metadata-only canary) | Shipped | [ADR-006](docs/adr/006-pipeline-strategy-pattern.md) |
+| Pre-Flight Envelopes / Migration Runner | Shipped (Plan 6 PR-6.4) | [`src/lib/envelopeMigrations.ts`](src/lib/envelopeMigrations.ts) |
+
+### Open Roadmap
+Items that genuinely have not shipped yet:
+
+1. **Phases 2-4 of the 6.9 → 10 plan**: residual de-tautologization, S-9.4C kw consistency, audit-shard regression contracts, full god-module decomposition (`PenmanNissimEngine`, `valuationCommandCenter`, `bankValuation`, `capitalineParser`), and ADR-006 strategy spine resolution (load-bearing or delete).
+2. **VCC decomposition**: pure solver/DCF cluster extraction is in progress; remaining sub-modules (forecasting glue, sector overlays, narrative renderer) still pending.
+3. **Retroactive ADRs for v15 (SOTP), v16 (FX neutrality), and v17 (evidence locking)**: schema bumps shipped without ADRs; backfill is queued for Phase 3.8.
+4. **Automated Spec Evolution**: use audit logs of "unmatched labels" to suggest updates to `MappingSpec.yaml`.
+5. **UI Expansion**: surface the Rigor Ladder in `DebugPanel` and `CompanyWorkspace` to provide a "Rigor Roadmap" to the user.
 
 ## 5. Operational Guide for AI Agents
 - **To debug a "Guarded" run**: Check `traceability.rigor.checkpoints` to find the first `achieved: false` gate.
