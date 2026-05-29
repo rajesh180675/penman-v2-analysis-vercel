@@ -28,6 +28,19 @@ import { computeFCFEDirtySurplus } from "./fcfeDirtySurplus";
 import { RawPeriodData, RecastPeriod } from "./types";
 import { periodMetricValue } from "./rawMetricTools";
 
+// Types relocated to ./types/economicSanity (pure leaf, weakness #1 cycle break).
+// Imported back for internal use; re-exported so existing "./economicSanityGates" paths stay valid.
+import type {
+  GateCheckId,
+  GateCheckResult,
+  EconomicSanitySummary,
+} from "./types/economicSanity";
+export type {
+  GateCheckId,
+  GateCheckResult,
+  EconomicSanitySummary,
+};
+
 /** Maximum periods we walk back from latest looking for a clean anchor.
  *  Beyond this, the run is blocked even if some older period is clean. */
 export const MAX_ANCHOR_LOOKBACK_PERIODS = 3;
@@ -38,29 +51,6 @@ export const RNOA_JUMP_THRESHOLD = 0.30;
 /** Dirty-surplus residual ratio threshold (vs CSE) sustained across consecutive years. */
 export const DIRTY_SURPLUS_RESIDUAL_PCT_OF_CSE = 0.04;
 export const DIRTY_SURPLUS_CONSECUTIVE_YEARS = 2;
-
-export type GateCheckId =
-  | "terminal-period-contamination"
-  | "dirty-surplus-integrity"
-  | "implausible-rnoa-jump"
-  | "demerger-discontinued-contamination"
-  | "anchor-period-selection";
-
-export interface GateCheckResult {
-  checkId: GateCheckId;
-  passed: boolean;
-  reason: string;
-  severity: "block" | "warn";
-  affectedPeriods: string[];
-}
-
-export interface EconomicSanitySummary {
-  status: "passed" | "warned" | "blocked";
-  anchorPeriod: string | null;
-  anchorReason: string;
-  skippedPeriods: { period: string; reason: string }[];
-  failedChecks: GateCheckResult[];
-}
 
 /**
  * Optional manifest of unusual items by period (Gap 3 / PR-C will populate

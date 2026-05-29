@@ -1,15 +1,27 @@
 import { RawPeriodData } from "./types";
 import { findRawMetric, listRawBaseKeys } from "./rawMetricTools";
 
+// Types relocated to ./types/conceptIdentity (pure leaf, weakness #1 cycle break).
+// Imported back for internal use; re-exported so existing "./conceptOntology" paths stay valid.
+import type {
+  StatementOwner,
+  ConflictClass,
+  ConceptConflict,
+  ConceptIdentitySummary,
+} from "./types/conceptIdentity";
+export type {
+  StatementOwner,
+  ConflictClass,
+  ConceptConflict,
+  ConceptIdentitySummary,
+};
+
 // ─── Type extensions (Gap 1 / PR-A) ─────────────────────────────────────────
 //
 // These fields make every concept's economic identity explicit. Plan v4
 // (PR-A) ships them so each metric has exactly one (statementOwner, sign,
 // aggregation) tuple — the "concept identity" that the rest of the
 // ladder can rely on.
-
-/** BS = Balance Sheet, IS = Income Statement, CF = Cash Flow, SD = Statement of Derived. */
-export type StatementOwner = "BS" | "IS" | "CF" | "SD";
 
 export type SignConvention = "asset" | "liability" | "income" | "expense" | "flow";
 
@@ -52,23 +64,6 @@ export interface ConceptCoverageSummary {
 }
 
 // ─── Conflict taxonomy ──────────────────────────────────────────────────────
-
-export type ConflictClass =
-  | "exact"
-  | "alias"
-  | "fuzzy-review"
-  | "cross-statement-conflict"
-  | "duplicate-source"
-  | "unresolved";
-
-export interface ConceptConflict {
-  conceptId: string;
-  conflictClass: ConflictClass;
-  rawLabels: string[];
-  statements: StatementOwner[];
-  affectedPeriods: string[];
-  resolution?: string | undefined;
-}
 
 /** Hard cap on conflicts surfaced; over this we truncate and flag. */
 export const MAX_CONCEPT_CONFLICTS = 200;
@@ -280,14 +275,6 @@ export function detectConflicts(
 }
 
 // ─── Envelope summary (cap-enforced) ────────────────────────────────────────
-
-export interface ConceptIdentitySummary {
-  status: "clean" | "conflicts-present" | "valuation-blocked";
-  conflictCount: number;
-  unresolvedCriticalCount: number;
-  conflicts: ConceptConflict[];
-  truncated: boolean;
-}
 
 /**
  * Build a capped, classified summary of conflicts for the envelope.

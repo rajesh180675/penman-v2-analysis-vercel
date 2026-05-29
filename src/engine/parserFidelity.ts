@@ -2,16 +2,10 @@ import { CapitalineParseDebug } from "./capitalineParser";
 import { RawPeriodData } from "./types";
 import { ParserFidelityCheck, SourceParserDiagnostics } from "./parserDiagnostics";
 
-export type ParserFidelityStatus = "confirmed" | "degraded" | "failed";
-
-export interface ParserFidelitySummary {
-  status: ParserFidelityStatus;
-  score: number;
-  summary: string;
-  warningCount: number;
-  errorCount: number;
-  checks: ParserFidelityCheck[];
-}
+// Summary types relocated to ./types/parserFidelity (pure leaf, weakness #1 cycle break).
+// ParserFidelityCheck stays in ./parserDiagnostics (imported separately above).
+import type { ParserFidelityStatus, ParserFidelitySummary } from "./types/parserFidelity";
+export type { ParserFidelityStatus, ParserFidelitySummary };
 
 function unionMetricKeyCount(rawData: RawPeriodData[] | null | undefined) {
   if (!rawData?.length) return 0;

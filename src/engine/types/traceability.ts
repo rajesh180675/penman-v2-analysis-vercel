@@ -6,4 +6,4 @@
    forcing them through the implementation module.
 ================================================================ */
 
-export type { AnalysisTraceabilityEnvelope } from "../analysisTraceability";
+export type { AnalysisTraceabilityEnvelope } from "./traceabilityEnvelope";
