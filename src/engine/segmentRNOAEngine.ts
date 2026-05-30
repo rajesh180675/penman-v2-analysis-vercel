@@ -101,7 +101,7 @@ export function decomposeSegmentRNOA(
   const { segments, years, data } = segmentData;
   if (segments.length === 0 || years.length === 0) return null;
 
-  const latestYear = years[0]; // newest first in Capitaline
+  const latestYear = years[0]!; // newest first in Capitaline
   const thirdYear = years[2] || null;
 
   // Build entries for segments with valid data in latest year
@@ -256,9 +256,9 @@ function classifyLifecycle(
   if (revCagr3y < -0.05) return "decline";
   // Check for 3 straight years of declining result
   if (years.length >= 3) {
-    const r0 = data[segName]?.[years[0]]?.result ?? 0;
-    const r1 = data[segName]?.[years[1]]?.result ?? 0;
-    const r2 = data[segName]?.[years[2]]?.result ?? 0;
+    const r0 = data[segName]?.[years[0]!]?.result ?? 0;
+    const r1 = data[segName]?.[years[1]!]?.result ?? 0;
+    const r2 = data[segName]?.[years[2]!]?.result ?? 0;
     if (r0 < r1 && r1 < r2 && r0 < 0) return "decline";
   }
   return "mature";
@@ -273,7 +273,7 @@ function computeTrend(
 
   const rnoas: number[] = [];
   for (let i = 0; i < Math.min(3, years.length); i++) {
-    const d = data[segName]?.[years[i]];
+    const d = data[segName]?.[years[i]!];
     if (!d || d.result == null || d.assets == null) break;
     const na = (d.assets ?? 0) - (d.liabilities ?? 0);
     if (na > 0) rnoas.push(d.result / na);
@@ -282,7 +282,7 @@ function computeTrend(
   if (rnoas.length < 3) return "stable";
 
   // rnoas[0] = latest, rnoas[2] = oldest
-  const delta = rnoas[0] - rnoas[2];
+  const delta = rnoas[0]! - rnoas[2]!;
   if (delta > 0.03) return "improving";
   if (delta < -0.03) return "deteriorating";
   return "stable";
@@ -296,7 +296,7 @@ function computeMarginalProductivity(
 ): number | null {
   if (!thirdYear || years.length < 3) return null;
 
-  const latest = data[segName]?.[years[0]];
+  const latest = data[segName]?.[years[0]!];
   const third = data[segName]?.[thirdYear];
   if (!latest || !third) return null;
 

@@ -236,8 +236,8 @@ export function evaluateEconomicSanity(
   for (let lookbackIdx = 0; lookbackIdx < lookbackLimit; lookbackIdx++) {
     const idx = ordered.length - 1 - lookbackIdx;
     if (idx < 0) break;
-    const current = ordered[idx];
-    const prev = idx > 0 ? ordered[idx - 1] : null;
+    const current = ordered[idx]!;
+    const prev = idx > 0 ? ordered[idx - 1]! : null;
     const checks = checksForPeriod(current, prev, ctx);
     const blocking = checks.filter((c) => c.severity === "block" && !c.passed);
     const warnings = checks.filter((c) => c.severity === "warn" && !c.passed);
@@ -277,8 +277,8 @@ export function evaluateEconomicSanity(
   // breached the dirty-surplus threshold, escalate to block.
   const anchorIdx = ordered.indexOf(anchor);
   if (anchorIdx > 0) {
-    const prev = ordered[anchorIdx - 1];
-    const prevChecks = checksForPeriod(prev, anchorIdx - 2 >= 0 ? ordered[anchorIdx - 2] : null, ctx);
+    const prev = ordered[anchorIdx - 1]!;
+    const prevChecks = checksForPeriod(prev, anchorIdx - 2 >= 0 ? ordered[anchorIdx - 2]! : null, ctx);
     const dirtyHere = checksForPeriod(anchor, prev, ctx).find((c) => c.checkId === "dirty-surplus-integrity");
     const dirtyPrev = prevChecks.find((c) => c.checkId === "dirty-surplus-integrity");
     if (dirtyHere && dirtyPrev && !dirtyHere.passed && !dirtyPrev.passed) {

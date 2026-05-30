@@ -113,9 +113,9 @@ function computePercentile(sorted: number[], pct: number): number | null {
   const index = (pct / 100) * (sorted.length - 1);
   const lower = Math.floor(index);
   const upper = Math.ceil(index);
-  if (lower === upper) return sorted[lower];
+  if (lower === upper) return sorted[lower]!;
   const weight = index - lower;
-  return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+  return sorted[lower]! * (1 - weight) + sorted[upper]! * weight;
 }
 
 function buildLabel(ctx: {

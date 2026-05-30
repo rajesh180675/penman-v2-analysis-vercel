@@ -219,7 +219,7 @@ function median(values: Array<number | null | undefined>) {
   const filtered = values.filter((value): value is number => value != null && Number.isFinite(value)).sort((a, b) => a - b);
   if (!filtered.length) return null;
   const middle = Math.floor(filtered.length / 2);
-  return filtered.length % 2 === 0 ? (filtered[middle - 1] + filtered[middle]) / 2 : filtered[middle];
+  return filtered.length % 2 === 0 ? (filtered[middle - 1]! + filtered[middle]!) / 2 : filtered[middle]!;
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -753,9 +753,9 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   const valuationReadiness = resolveValuationReadiness(data);
   const weakShareBasis = shareBasis.confidence === "LOW" || shareBasis.confidence === "FAILED";
   const valuationData = data.slice(0, Math.max(2, valuationReadiness.anchorIndex + 1));
-  const latest = valuationData[valuationData.length - 1];
-  const prev = valuationData.length >= 2 ? valuationData[valuationData.length - 2] : null;
-  const latestReported = data[data.length - 1];
+  const latest = valuationData[valuationData.length - 1]!;
+  const prev = valuationData.length >= 2 ? valuationData[valuationData.length - 2]! : null;
+  const latestReported = data[data.length - 1]!;
   const shares = shareBasis.shares ?? null;
   const marketPrice = marketData?.price ?? config.market_price ?? null;
   const riskFreeRate = marketData?.riskFreeRate ?? config.risk_free_rate;
@@ -793,7 +793,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
 
   const keBase = config.ke > 0 ? config.ke : ke_from_config({ ...config, risk_free_rate: riskFreeRate });
   const kwBase = valuationData.length >= 2
-    ? deriveKwFromStructure(valuationData[valuationData.length - 1], valuationData[valuationData.length - 2], keBase, riskFreeRate, config)
+    ? deriveKwFromStructure(valuationData[valuationData.length - 1]!, valuationData[valuationData.length - 2]!, keBase, riskFreeRate, config)
     : riskFreeRate;
   const makeScenario = (
     key: ValuationScenarioCard["key"],
@@ -981,7 +981,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     const { definitions } = segmentDataToDefinitions(segmentData);
     const distinctTemplates = new Set(definitions.map(d => d.sectorTemplate));
     const maxShare = definitions.length > 0 ? Math.max(...definitions.map(d => d.operatingProfitShare)) : 0;
-    const dominantDef = definitions.reduce((a, b) => a.operatingProfitShare > b.operatingProfitShare ? a : b, definitions[0]);
+    const dominantDef = definitions.reduce((a, b) => a && a.operatingProfitShare > b.operatingProfitShare ? a : b, definitions[0]);
     const isConglomerate = definitions.length >= 3 && distinctTemplates.size >= 2;
     conglomerateAssessment = {
       isConglomerate,
@@ -996,11 +996,11 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
     // Fallback: preset-based SOTP
     const sotpPresetKey = config.sotp_preset ?? null;
     if (sotpPresetKey && sotpPresetKey in SOTP_PRESETS) {
-      const presetDefs = SOTP_PRESETS[sotpPresetKey];
+      const presetDefs = SOTP_PRESETS[sotpPresetKey]!;
       sotpResult = buildSOTPValuation(latest, presetDefs, keBase);
       const distinctTemplates = new Set(presetDefs.map(d => d.sectorTemplate));
       const maxShare = Math.max(...presetDefs.map(d => d.operatingProfitShare));
-      const dominantDef = presetDefs.reduce((a, b) => a.operatingProfitShare > b.operatingProfitShare ? a : b, presetDefs[0]);
+      const dominantDef = presetDefs.reduce((a, b) => a && a.operatingProfitShare > b.operatingProfitShare ? a : b, presetDefs[0]);
       const isConglomerate = presetDefs.length >= 3 && distinctTemplates.size >= 2;
       conglomerateAssessment = {
         isConglomerate,
@@ -1206,7 +1206,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
 
   if (killSwitches.length) {
     state = analysisStatus?.status === "blocked" ? "blocked" : "guarded";
-    summary = killSwitches[0];
+    summary = killSwitches[0]!;
   } else if (
     confidenceState === "production-ready"
     && rareSignalSupport
@@ -1312,7 +1312,7 @@ function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
   // reverseDcfMonteCarlo: implied terminal growth distribution
   const revenuePerShare = shares && shares > 0 ? latest.is.Sales / shares : null;
   const historicalMargins = data.map((p) => p.is.Sales > 0 ? p.cf.FCF_cash / p.is.Sales : 0).filter(Number.isFinite);
-  const historicalGrowths = data.slice(1).map((p, i) => data[i].is.Sales > 0 ? (p.is.Sales - data[i].is.Sales) / data[i].is.Sales : 0).filter(Number.isFinite);
+  const historicalGrowths = data.slice(1).map((p, i) => data[i]!.is.Sales > 0 ? (p.is.Sales - data[i]!.is.Sales) / data[i]!.is.Sales : 0).filter(Number.isFinite);
   const meanMargin = historicalMargins.length ? historicalMargins.reduce((a, b) => a + b, 0) / historicalMargins.length : 0.10;
   const meanGrowth = historicalGrowths.length ? historicalGrowths.reduce((a, b) => a + b, 0) / historicalGrowths.length : 0.08;
   const sigmaMargin = historicalMargins.length > 1 ? Math.sqrt(historicalMargins.reduce((s, v) => s + (v - meanMargin) ** 2, 0) / (historicalMargins.length - 1)) : 0.03;
@@ -1402,7 +1402,7 @@ function buildBacktest(context: CoreBuildContext): ValuationBacktestSummary {
   const points: ValuationBacktestPoint[] = [];
   for (let index = 2; index < context.data.length; index += 1) {
     const subset = context.data.slice(0, index + 1);
-    const periodEnd = subset[subset.length - 1].period_end;
+    const periodEnd = subset[subset.length - 1]!.period_end;
     const asOfPrice = closestHistoricalPrice(historyPoints, periodEnd);
     if (!asOfPrice) continue;
     const historySubset = historyPoints.filter((point) => point.date <= asOfPrice.date);

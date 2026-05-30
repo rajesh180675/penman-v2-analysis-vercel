@@ -401,7 +401,7 @@ export function buildAnalysisTraceability(params: {
     const idx = checkpoints.findIndex((c) => c.level === "production-ready");
     if (idx >= 0) {
       checkpoints[idx] = {
-        ...checkpoints[idx],
+        ...checkpoints[idx]!,
         achieved: false,
         detail: `Residual score ${overallResidualScore} exceeds production-ready threshold ${RESIDUAL_SCORE_PRODUCTION_THRESHOLD}; downgraded to valuation-eligible.`,
       };
@@ -410,7 +410,7 @@ export function buildAnalysisTraceability(params: {
   // Recompute achieved/pending after downgrade.
   const achievedLevelsFinal = checkpoints.filter((c) => c.achieved).map((c) => c.level);
   const pendingLevelsFinal = checkpoints.filter((c) => !c.achieved).map((c) => c.level);
-  const currentCheckpoint = [...checkpoints].reverse().find((checkpoint) => checkpoint.achieved) ?? checkpoints[0];
+  const currentCheckpoint = [...checkpoints].reverse().find((checkpoint) => checkpoint.achieved) ?? checkpoints[0]!;
 
   // Persist residual summary.
   if (params.runId && params.companyId) {

@@ -93,14 +93,14 @@ function findFirstMatch(metrics: string[], patterns: string[]): string | null {
   const lower = metrics.map((m) => m.toLowerCase());
   for (const p of patterns) {
     const i = lower.findIndex((m) => m.includes(p.toLowerCase()));
-    if (i >= 0) return metrics[i];
+    if (i >= 0) return metrics[i]!;
   }
   return null;
 }
 
 function applyPreset(preset: Preset, allMetrics: string[]): { x: string; y: string } {
-  const x = findFirstMatch(allMetrics, preset.xPattern) ?? allMetrics[0];
-  const y = findFirstMatch(allMetrics, preset.yPattern) ?? allMetrics[Math.min(1, allMetrics.length - 1)];
+  const x = findFirstMatch(allMetrics, preset.xPattern) ?? allMetrics[0]!;
+  const y = findFirstMatch(allMetrics, preset.yPattern) ?? allMetrics[Math.min(1, allMetrics.length - 1)]!;
   return { x, y };
 }
 
@@ -139,7 +139,7 @@ function linearFit(pts: TrailPoint[]): { slope: number; intercept: number } {
 }
 
 export default function TimeTrailScatter({ rawData, allMetrics }: Props) {
-  const initial = useMemo(() => applyPreset(PRESETS[PRESETS.length - 1], allMetrics), [allMetrics]);
+  const initial = useMemo(() => applyPreset(PRESETS[PRESETS.length - 1]!, allMetrics), [allMetrics]);
   const [xMetric, setXMetric] = useState(initial.x);
   const [yMetric, setYMetric] = useState(initial.y);
   const [xSearch, setXSearch] = useState("");

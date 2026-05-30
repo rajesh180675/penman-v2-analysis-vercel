@@ -106,7 +106,7 @@ describe("NBFC pipeline — Phase K", () => {
   });
 
   it("extracts NBFC funding mix breakdown", () => {
-    const metrics = extractBankMetrics(periods[2]);
+    const metrics = extractBankMetrics(periods[2]!);
     expect(metrics.borrowings).toBe(295000);
     expect(metrics.nonConvertibleDebentures).toBe(125000);
     expect(metrics.termLoansFromBanks).toBe(92000);
@@ -117,7 +117,7 @@ describe("NBFC pipeline — Phase K", () => {
   it("computes leverage = borrowings / totalEquity for NBFC subtype", () => {
     const scope = assessAnalysisScope(periods);
     const result = processBankData(periods, scope);
-    const latest = result.bankMetrics![2];
+    const latest = result.bankMetrics![2]!;
     // 295000 / 73000 = ~4.04x
     expect(latest.leverage).not.toBeNull();
     expect(latest.leverage!).toBeCloseTo(295000 / 73000, 3);
@@ -126,7 +126,7 @@ describe("NBFC pipeline — Phase K", () => {
   it("computes debt mix as fractions of total borrowings", () => {
     const scope = assessAnalysisScope(periods);
     const result = processBankData(periods, scope);
-    const latest = result.bankMetrics![2];
+    const latest = result.bankMetrics![2]!;
     expect(latest.debtMix).not.toBeNull();
     expect(latest.debtMix!.ncdShare).toBeCloseTo(125000 / 295000, 3);
     expect(latest.debtMix!.bankLoanShare).toBeCloseTo(92000 / 295000, 3);
@@ -144,7 +144,7 @@ describe("NBFC pipeline — Phase K", () => {
   it("computes yield-on-advances, cost-of-borrowings, and spread for NBFC", () => {
     const scope = assessAnalysisScope(periods);
     const result = processBankData(periods, scope);
-    const latest = result.bankMetrics![2];
+    const latest = result.bankMetrics![2]!;
 
     // yieldOnAdvances = interestEarned / avgAdvances
     // avgAdvances = (305000 + 372000) / 2 = 338500
@@ -167,7 +167,7 @@ describe("NBFC pipeline — Phase K", () => {
   it("uses advances-only NIM denominator for NBFCs (not advances + investments)", () => {
     const scope = assessAnalysisScope(periods);
     const result = processBankData(periods, scope);
-    const latest = result.bankMetrics![2];
+    const latest = result.bankMetrics![2]!;
 
     // For an NBFC, NIM denominator should be avgAdvances only.
     // NII = 50000 - 26000 = 24000
@@ -229,7 +229,7 @@ describe("NBFC pipeline — Phase K", () => {
     const scope = assessAnalysisScope(bankPeriods);
     const result = processBankData(bankPeriods, scope);
     expect(result.subtype).toBe("bank");
-    const latest = result.bankMetrics![1];
+    const latest = result.bankMetrics![1]!;
     // NBFC-specific metrics should be null for banks
     expect(latest.leverage).toBeNull();
     expect(latest.costOfBorrowings).toBeNull();
@@ -244,8 +244,8 @@ describe("NBFC pipeline — Phase K", () => {
 
   it("computeBankRatios with explicit subtype produces NBFC framing", () => {
     // Direct unit test of the pure function — no scope detection involved
-    const m1 = extractBankMetrics(periods[1]);
-    const m2 = extractBankMetrics(periods[2]);
+    const m1 = extractBankMetrics(periods[1]!);
+    const m2 = extractBankMetrics(periods[2]!);
     const result = computeBankRatios(m2, m1, "nbfc");
     expect(result.leverage).toBeCloseTo(295000 / 73000, 3);
     expect(result.spread).not.toBeNull();
@@ -255,8 +255,8 @@ describe("NBFC pipeline — Phase K", () => {
   it("computeBankRatios with bank subtype default keeps NBFC fields null", () => {
     // Same fixture but route through bank framing — NBFC fields stay null
     // even though the raw debt-component fields are populated.
-    const m1 = extractBankMetrics(periods[1]);
-    const m2 = extractBankMetrics(periods[2]);
+    const m1 = extractBankMetrics(periods[1]!);
+    const m2 = extractBankMetrics(periods[2]!);
     const result = computeBankRatios(m2, m1, "bank");
     expect(result.leverage).toBeNull();
     expect(result.spread).toBeNull();

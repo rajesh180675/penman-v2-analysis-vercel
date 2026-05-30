@@ -47,7 +47,7 @@ export function computeConfidenceScore(
   registry?: CanonicalOutputRegistry | undefined
 ): ConfidenceResult {
   const n = periods.length;
-  const latest = periods[n - 1];
+  const latest = periods[n - 1]!;
   const dataScore = Math.min(100, latest.bs.separationScore);
   const nCrit = anchorResult.terminal_event_flags.filter((f) =>
     ["STRUCTURAL_EVENT_CRITICAL", "PM_OUTLIER_CRITICAL", "CAPITAL_TRANSACTION_LIKELY", "ROCE_OUTLIER_CRITICAL"].includes(f)

@@ -99,7 +99,7 @@ function trendToneClass(t: TrendDirection | null, semantic: "higher-is-good" | "
  *   - Debt mix — NCDs vs bank loans vs institutional vs other, as % of borrowings
  */
 function NbfcMetricsSection({ metrics }: { metrics: BankPeriodMetrics[] }) {
-  const latest = metrics[metrics.length - 1];
+  const latest = metrics[metrics.length - 1]!;
 
   return (
     <section className="space-y-4">
@@ -197,7 +197,7 @@ function NbfcMetricsSection({ metrics }: { metrics: BankPeriodMetrics[] }) {
 }
 
 function InsuranceMetricsSection({ metrics }: { metrics: BankPeriodMetrics[] }) {
-  const latest = metrics[metrics.length - 1];
+  const latest = metrics[metrics.length - 1]!;
 
   // Check if sidecar has Tier 2 metrics (e.g. solvency_ratio or embedded_value or persistency_13m)
   const hasTier2 = metrics.some(m => m.quality && (
@@ -685,7 +685,7 @@ function NbfcSubsidiaryPanel({ metrics }: { metrics: BankPeriodMetrics[] }) {
   const subNames = [...allNames].sort();
   if (subNames.length === 0) return null;
 
-  const latestWithSubs = periodsWithSubs[periodsWithSubs.length - 1];
+  const latestWithSubs = periodsWithSubs[periodsWithSubs.length - 1]!;
   const latestSubs = latestWithSubs.quality!.subsidiaries!.filter(s => s.name !== "No Subsidiaries");
   const totalSubPat = latestSubs.reduce((sum, s) => sum + (s.pat_cr ?? 0), 0);
   const totalSubAssets = latestSubs.reduce((sum, s) => sum + (s.total_assets_cr ?? 0), 0);

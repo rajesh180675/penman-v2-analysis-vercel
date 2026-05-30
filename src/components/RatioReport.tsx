@@ -37,13 +37,13 @@ export default function RatioReport({data, config, traceability = null, traceabi
   );
 
   const rd = data.filter(d=>d.ratios);
-  const latest = rd[rd.length-1];
+  const latest = rd[rd.length-1]!;
 
   // Narrative insight
   const narrative = config ? generateRatiosNarrative(data, config) : "";
 
   const dupont5 = rd.map((d, i) => {
-    const prev = i > 0 ? rd[i - 1] : d;
+    const prev = i > 0 ? rd[i - 1]! : d;
     const avgTA = (d.bs.TA + prev.bs.TA) / 2;
     const avgCSE = (d.bs.CSE + prev.bs.CSE) / 2;
     const ebt = d.is.PAT + d.is.TaxExpense;
@@ -112,14 +112,14 @@ export default function RatioReport({data, config, traceability = null, traceabi
           value={latest.ratios?.ROCE ?? null}
           format="pct"
           history={rd.map(d => ({ period: d.period_end.slice(0, 4), value: d.ratios?.ROCE ?? null }))}
-          trend={rd.length >= 2 ? (latest.ratios?.ROCE ?? 0) - (rd[rd.length - 2].ratios?.ROCE ?? 0) : null}
+          trend={rd.length >= 2 ? (latest.ratios?.ROCE ?? 0) - (rd[rd.length - 2]!.ratios?.ROCE ?? 0) : null}
         />
         <KPITile
           label="RNOA"
           value={latest.ratios?.RNOA ?? null}
           format="pct"
           history={rd.map(d => ({ period: d.period_end.slice(0, 4), value: d.ratios?.RNOA ?? null }))}
-          trend={rd.length >= 2 ? (latest.ratios?.RNOA ?? 0) - (rd[rd.length - 2].ratios?.RNOA ?? 0) : null}
+          trend={rd.length >= 2 ? (latest.ratios?.RNOA ?? 0) - (rd[rd.length - 2]!.ratios?.RNOA ?? 0) : null}
         />
         <KPITile
           label="Profit Margin"
@@ -249,7 +249,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
                 <YAxis tick={{fontSize:10}} unit="%"/>
                 <Tooltip formatter={(v:unknown)=>[`${v}%`]}/>
                 <Legend wrapperStyle={{fontSize:11}}/>
-                <ReferenceLine y={(NP_BENCHMARKS.ROCE.median*100)} stroke={NP_COLORS.median} strokeDasharray="4 2" label={{value:"N&P",fontSize:9}}/>
+                <ReferenceLine y={(NP_BENCHMARKS.ROCE!.median*100)} stroke={NP_COLORS.median} strokeDasharray="4 2" label={{value:"N&P",fontSize:9}}/>
                 <Line type="monotone" dataKey="ROCE" stroke="#6366f1" strokeWidth={2} dot={false}/>
                 <Line type="monotone" dataKey="RNOA" stroke="#10b981" strokeWidth={2} dot={false}/>
                 <Line type="monotone" dataKey="NBC"  stroke="#ef4444" strokeWidth={2} dot={false}/>
@@ -311,7 +311,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
                 <YAxis tick={{fontSize:10}} unit="%"/>
                 <Tooltip formatter={(v:unknown)=>[`${v}%`]}/>
                 <Legend wrapperStyle={{fontSize:11}}/>
-                <ReferenceLine y={NP_BENCHMARKS.PM.median*100} stroke={NP_COLORS.median} strokeDasharray="4 2"/>
+                <ReferenceLine y={NP_BENCHMARKS.PM!.median*100} stroke={NP_COLORS.median} strokeDasharray="4 2"/>
                 <Line type="monotone" dataKey="PM" stroke="#6366f1" strokeWidth={2} dot={false} name="PM"/>
               </LineChart>
             </ResponsiveContainer>
@@ -324,7 +324,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
                 <YAxis tick={{fontSize:10}}/>
                 <Tooltip/>
                 <Legend wrapperStyle={{fontSize:11}}/>
-                <ReferenceLine y={NP_BENCHMARKS.ATO.median} stroke={NP_COLORS.median} strokeDasharray="4 2"/>
+                <ReferenceLine y={NP_BENCHMARKS.ATO!.median} stroke={NP_COLORS.median} strokeDasharray="4 2"/>
                 <Line type="monotone" dataKey="ATO" stroke="#10b981" strokeWidth={2} dot={false} name="ATO"/>
               </LineChart>
             </ResponsiveContainer>
@@ -543,7 +543,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
           <div className="mt-4 space-y-2 text-xs">
             {rd.map((d, i) => {
               if (i === 0) return null;
-              const prev = rd[i - 1];
+              const prev = rd[i - 1]!;
               const dsoUp = (d.ratios?.days_receivable ?? 0) - (prev.ratios?.days_receivable ?? 0);
               const salesG = d.ratios?.Sales_growth ?? 0;
               const ccc = d.ratios?.cash_conversion_cycle ?? null;
@@ -586,11 +586,11 @@ export default function RatioReport({data, config, traceability = null, traceabi
                 ].map(({ label, fn }) => {
                   const vals = rd.map(fn);
                   const yoys = rd.slice(1).map((_, i) => {
-                    const prev = vals[i], cur = vals[i + 1];
+                    const prev = vals[i], cur = vals[i + 1]!;
                     if (!prev || prev === 0) return null;
                     return (cur - prev) / Math.abs(prev);
                   });
-                  const first = vals[0], last = vals[vals.length - 1];
+                  const first = vals[0]!, last = vals[vals.length - 1]!;
                   const years = rd.length - 1;
                   const cagr3 = first > 0 && last > 0 && years >= 2
                     ? Math.pow(last / first, 1 / years) - 1 : null;

@@ -11,7 +11,7 @@ export function medianOf(vals: number[]): number | null {
   if (!vals.length) return null;
   const sorted = [...vals].sort((a, b) => a - b);
   const m = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? (sorted[m - 1] + sorted[m]) / 2 : sorted[m];
+  return sorted.length % 2 === 0 ? (sorted[m - 1]! + sorted[m]!) / 2 : sorted[m]!;
 }
 export function computeCagr(first: number, last: number, years: number): number | null {
   if (first <= 0 || last <= 0 || years <= 0) return null;

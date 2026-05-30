@@ -99,7 +99,7 @@ export function buildStatementLineage(periods: RawPeriodData[] | null | undefine
     segmentCandidates.map((item) => `${item.type}:${item.label}`),
   ).slice(0, 12).map((entry) => {
     const [type, label] = entry.split(":");
-    return { type: type as SegmentHint["type"], label };
+    return { type: type as SegmentHint["type"], label: label! };
   });
 
   const filingMix = versions.reduce(

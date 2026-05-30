@@ -36,14 +36,14 @@ function median(vals: number[]): number {
   if (!vals.length) return 0;
   const s = [...vals].sort((a, b) => a - b);
   const m = Math.floor(s.length / 2);
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2;
 }
 
 function baseInputs(periods: RecastPeriod[], cfg: EngineConfig) {
   const ke = ke_from_config(cfg);
-  const cur = periods[periods.length - 1];
+  const cur = periods[periods.length - 1]!;
   const prev = periods[periods.length - 2];
-  const kw = deriveKwFromStructure(cur, prev, ke, cfg.risk_free_rate, cfg);
+  const kw = deriveKwFromStructure(cur, prev!, ke, cfg.risk_free_rate, cfg);
   const g = cfg.g_terminal_override ?? 0.04;
   return { ke, kw, g };
 }
@@ -86,7 +86,7 @@ function terminalAnchorStability(periods: RecastPeriod[], cfg: EngineConfig): nu
   const reSeries = baseVal.reSeries.map((r) => r.RE);
   if (!reSeries.length) return 0;
 
-  const latestRE = reSeries[reSeries.length - 1];
+  const latestRE = reSeries[reSeries.length - 1]!;
   const prior = reSeries.slice(-4, -1);
   const medianRE = median(reSeries.slice(-3));
 
@@ -94,13 +94,13 @@ function terminalAnchorStability(periods: RecastPeriod[], cfg: EngineConfig): nu
   if (prior.length >= 2) {
     const growths: number[] = [];
     for (let i = 1; i < prior.length; i++) {
-      const prev = prior[i - 1];
+      const prev = prior[i - 1]!;
       if (Math.abs(prev) < 1) continue;
-      growths.push((prior[i] - prev) / Math.abs(prev));
+      growths.push((prior[i]! - prev) / Math.abs(prev));
     }
     growthMed = median(growths);
   }
-  const tMinus1 = reSeries.length > 1 ? reSeries[reSeries.length - 2] : latestRE;
+  const tMinus1 = reSeries.length > 1 ? reSeries[reSeries.length - 2]! : latestRE;
   const grown = tMinus1 * (1 + growthMed);
 
   const anchors = [latestRE, medianRE, grown];
@@ -123,7 +123,7 @@ export function computePhase0Guardrails(periods: RecastPeriod[], cfg: EngineConf
   const reAnchor = val.V_RE_CV3 ?? val.V_ReOI_CV03;
   const identityGap = Math.abs(reAnchor - val.V_ReOI_CV03);
   const identityGapPct = reAnchor !== 0 ? identityGap / Math.abs(reAnchor) : 0;
-  const latest = periods[periods.length - 1];
+  const latest = periods[periods.length - 1]!;
   const otherOAPct = latest.bs.OA > 0 ? latest.bs.OA_Other / latest.bs.OA : null;
 
   return {
@@ -184,7 +184,7 @@ export function buildPhase0BaselineSnapshot(
     benchmarkUniverse: PHASE0_BENCHMARK_SET,
     companyId,
     periods: periods.length,
-    latestPeriod: periods[periods.length - 1].period_end,
+    latestPeriod: periods[periods.length - 1]!.period_end,
     guardrails,
     configFingerprint: cfgFingerprint,
   } as const;

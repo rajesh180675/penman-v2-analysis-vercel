@@ -161,7 +161,7 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
       "PM × ATO does not reproduce RNOA — likely averaging mismatch between Sales/NOA and OI/NOA",
       "RNOA + FLEV × SPREAD does not reproduce ROCE — cross-product terms from within-period balance sheet changes",
       "Full Eq.16 decomposition introduces additional error — unusual items or OL leverage interaction terms",
-    ][maxIdx];
+    ][maxIdx]!;
   }
 
   // S-9.4C: prefer the period's structural kw (stamped by the pipeline)
@@ -274,11 +274,11 @@ export function estimateArPhi(series: number[]): { phi: number; alpha: number; r
   const n = X.length;
   const meanX = X.reduce((s, v) => s + v, 0) / n;
   const meanY = Y.reduce((s, v) => s + v, 0) / n;
-  const cov = X.reduce((s, v, i) => s + (v - meanX) * (Y[i] - meanY), 0) / n;
+  const cov = X.reduce((s, v, i) => s + (v - meanX) * (Y[i]! - meanY), 0) / n;
   const varX = X.reduce((s, v) => s + (v - meanX) ** 2, 0) / n;
   const phi = varX > 0 ? Math.max(0, Math.min(0.98, cov / varX)) : 0.8;
   const alpha = meanY - phi * meanX;
-  const ss_res = Y.reduce((s, y, i) => s + (y - (alpha + phi * X[i])) ** 2, 0);
+  const ss_res = Y.reduce((s, y, i) => s + (y - (alpha + phi * X[i]!)) ** 2, 0);
   const ss_tot = Y.reduce((s, y) => s + (y - meanY) ** 2, 0);
   const r2 = ss_tot > 0 ? Math.max(0, 1 - ss_res / ss_tot) : 0;
   return { phi, alpha, r_squared: r2, n };

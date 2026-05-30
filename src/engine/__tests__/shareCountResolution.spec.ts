@@ -9,7 +9,7 @@ describe("share count resolution", () => {
     const rawData = (itcAuditedFixture as { rawData: RawPeriodData[] }).rawData;
     const latestOnly = rawData.filter((row) => row.period_end === "2025-03-31");
     const periods = processCompanyData(latestOnly, { ...DEFAULT_CONFIG, company_type: "industrial" as const });
-    const latest = periods[periods.length - 1];
+    const latest = periods[periods.length - 1]!;
     const registry = new CanonicalOutputRegistry();
     const shareCount = deriveShareCount(periods, registry, 180000);
 

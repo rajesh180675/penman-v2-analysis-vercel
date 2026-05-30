@@ -43,7 +43,7 @@ function decodeCellAddr(addr: string) {
   if (!match) return { r: 0, c: 0 };
   const [, letters, digits] = match;
   let c = 0;
-  for (const ch of letters) c = c * 26 + (ch.charCodeAt(0) - 64);
+  for (const ch of letters!) c = c * 26 + (ch.charCodeAt(0) - 64);
   return { r: Number(digits) - 1, c: c - 1 };
 }
 
@@ -63,7 +63,7 @@ function bookAppendSheet(wb: WorkBook, ws: WorkSheet, name: string) {
 function jsonToSheet(rows: Array<Record<string, unknown> | object>): WorkSheet {
   const ws: WorkSheet = {};
   if (!rows.length) return ws;
-  const headers = Object.keys(rows[0]);
+  const headers = Object.keys(rows[0]!);
   headers.forEach((header, col) => {
     ws[encodeCellAddr(0, col)] = { v: header, t: "s" };
   });
@@ -83,7 +83,7 @@ function jsonToSheet(rows: Array<Record<string, unknown> | object>): WorkSheet {
 async function writeWorkbookArray(wb: WorkBook) {
   const workbook = new ExcelJS.Workbook();
   for (const name of wb.SheetNames) {
-    const source = wb.Sheets[name];
+    const source = wb.Sheets[name]!;
     const sheet = workbook.addWorksheet(name);
     const entries = Object.entries(source).filter(([key]) => !key.startsWith("!"));
     for (const [addr, cell] of entries) {
@@ -755,7 +755,7 @@ function buildValuationSheet(valuation: ValuationResult, config: EngineConfig, m
       setCell(ws, row, 0, cell(`ke = ${(ke * 100).toFixed(0)}%`, LABEL_BOLD));
       gs.forEach((g, c) => {
         if (ke - g > 0.001 && valuation.pvRE != null) {
-          const cv = (valuation.reSeries.length ? valuation.reSeries[valuation.reSeries.length - 1].RE : 0) * (1 + g) / (ke - g);
+          const cv = (valuation.reSeries.length ? valuation.reSeries[valuation.reSeries.length - 1]!.RE : 0) * (1 + g) / (ke - g);
           const T = valuation.reSeries.length;
           const disc = Math.pow(1 + ke, T);
           const v = valuation.CSE0 + valuation.pvRE + cv / disc;

@@ -28,7 +28,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
   if (!data || data.length === 0) return <div className="card-base p-12 text-center"><div className="text-5xl mb-3">📊</div><p className="text-slate-500">No data</p></div>;
 
   const years = data.map((d) => d.period_end.slice(0, 7));
-  const yoySales = useMemo(() => data.map((d, i) => i === 0 ? null : (data[i - 1].is.Sales !== 0 ? (d.is.Sales - data[i - 1].is.Sales) / Math.abs(data[i - 1].is.Sales) : null)), [data]);
+  const yoySales = useMemo(() => data.map((d, i) => i === 0 ? null : (data[i - 1]!.is.Sales !== 0 ? (d.is.Sales - data[i - 1]!.is.Sales) / Math.abs(data[i - 1]!.is.Sales) : null)), [data]);
   const cd = data.map((d, i) => ({
     period: years[i], OA: d.bs.OA, OL: d.bs.OL, NOA: d.bs.NOA,
     FA: d.bs.FA, CSE: d.bs.CSE, Sales: d.is.Sales,
@@ -123,7 +123,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
 
       {/* Income Waterfall — visual decomposition of the latest period */}
       {data.length > 0 && (() => {
-        const latest = data[data.length - 1];
+        const latest = data[data.length - 1]!;
         return (
           <IncomeWaterfall
             sales={latest.is.Sales}
@@ -148,7 +148,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
               <TR label="Sales (Revenue)"               vals={data.map((d) => f(d.is.Sales))} />
               <TRGrowth label="  ↳ Sales YoY %"           vals={yoySales} />
               <TR label="Profit After Tax (PAT)"        vals={data.map((d) => f(d.is.PAT))} />
-              <TRGrowth label="  ↳ PAT YoY %"            vals={data.map((d, i) => i === 0 ? null : (data[i - 1].is.PAT !== 0 ? (d.is.PAT - data[i - 1].is.PAT) / Math.abs(data[i - 1].is.PAT) : null))} />
+              <TRGrowth label="  ↳ PAT YoY %"            vals={data.map((d, i) => i === 0 ? null : (data[i - 1]!.is.PAT !== 0 ? (d.is.PAT - data[i - 1]!.is.PAT) / Math.abs(data[i - 1]!.is.PAT) : null))} />
               <TR label="OCI (after-tax)"               vals={data.map((d) => f(d.is.OCI))} />
               <TR label="TCI (group)"                   vals={data.map((d) => f(d.is.TCI))} />
               <TR label="NCI Income Share (MII)"        vals={data.map((d) => f(d.is.MII))} />

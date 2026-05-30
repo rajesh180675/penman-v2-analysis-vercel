@@ -263,7 +263,7 @@ describe("traceability snapshot", () => {
       rawMetricKeys: ["Revenue From Operations(Net)", "Profit Before Tax"],
     };
 
-    recastData[0].bs.FO = 120;
+    recastData[0]!.bs.FO = 120;
 
     const analysisStatus: AnalysisStatusSummary = {
       status: "production-ready",

@@ -21,9 +21,9 @@ describe("makeFadeArray", () => {
     expect(arr).toHaveLength(4);
     // next = alpha*prev + (1-alpha)*target ; alpha=0.5, target=0.04
     expect(arr[0]).toBeCloseTo(0.5 * 0.2 + 0.5 * 0.04, 10); // 0.12
-    expect(arr[1]).toBeCloseTo(0.5 * arr[0] + 0.5 * 0.04, 10);
+    expect(arr[1]).toBeCloseTo(0.5 * arr[0]! + 0.5 * 0.04, 10);
     // monotonically approaches target from above
-    expect(arr[3]).toBeLessThan(arr[0]);
+    expect(arr[3]).toBeLessThan(arr[0]!);
     expect(arr[3]).toBeGreaterThan(0.04);
   });
 

@@ -39,7 +39,7 @@ export function detectStructuralEvents(
   const flags: string[] = [];
 
   for (let i = 0; i < periods.length; i += 1) {
-    const period = periods[i];
+    const period = periods[i]!;
     const key = period.period_end;
     const coreOI = period.cu?.CoreOI ?? period.is.OI ?? 0;
     const cse = period.bs.CSE ?? 0;

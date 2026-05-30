@@ -114,8 +114,8 @@ function medianOf(values: number[]): number | null {
   const sorted = [...clean].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid];
+    ? (sorted[mid - 1]! + sorted[mid]!) / 2
+    : sorted[mid]!;
 }
 
 function percentileOf(value: number, values: number[]): number | null {
@@ -199,7 +199,7 @@ export function computeIndustrialMultiples(
     (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime(),
   );
 
-  const latest = sorted[sorted.length - 1];
+  const latest = sorted[sorted.length - 1]!;
   const latestPAT   = latest.is?.PAT;
   const latestCSE   = latest.bs?.CSE;
   const latestSales = latest.is?.Sales;
@@ -313,7 +313,7 @@ export function computeBankMultiples(
     (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime(),
   );
 
-  const latest = sorted[sorted.length - 1];
+  const latest = sorted[sorted.length - 1]!;
   const latestEquity = latest.totalEquity;
   const latestPAT    = latest.pat;
   const latestNII    = latest.nii;

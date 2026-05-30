@@ -35,7 +35,7 @@ export function buildRatioSummary(
     ? (useMedian ? medianOf(last5) : last5.reduce((s, v) => s + v, 0) / last5.length)
     : null;
   const cagr_10y = valid.length >= 10
-    ? computeCagr(valid[valid.length - 10], valid[valid.length - 1], 9)
+    ? computeCagr(valid[valid.length - 10]!, valid[valid.length - 1]!, 9)
     : null;
   return {
     latest: valid[valid.length - 1] ?? null,
@@ -67,7 +67,7 @@ export function selectOADecompositionPeriods(periods: RecastPeriod[], periodFlag
   // Rule 1: Largest absolute ΔNOA (always included)
   const maxShiftPeriod = periods.slice(1).map((p, idx) => ({
     period_end: p.period_end,
-    deltaNOA: p.bs.NOA - periods[idx].bs.NOA,
+    deltaNOA: p.bs.NOA - periods[idx]!.bs.NOA,
   })).sort((a, b) => Math.abs(b.deltaNOA) - Math.abs(a.deltaNOA))[0];
   if (maxShiftPeriod) selected.add(maxShiftPeriod.period_end);
   for (const f of periodFlags) {
@@ -82,7 +82,7 @@ export function selectOADecompositionPeriods(periods: RecastPeriod[], periodFlag
     }
   }
   // Rule 4: Terminal period always included (S-15.1)
-  selected.add(periods[periods.length - 1].period_end);
+  selected.add(periods[periods.length - 1]!.period_end);
   return [...selected].sort();
 }
 export function renderOADecomposition(period: RecastPeriod, prior: RecastPeriod): OADecompositionResult {

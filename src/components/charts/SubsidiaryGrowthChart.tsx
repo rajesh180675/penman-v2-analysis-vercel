@@ -87,7 +87,7 @@ export default function SubsidiaryGrowthChart({ periods }: Props) {
                 type="monotone"
                 dataKey={`${name}_PAT`}
                 name={name.replace(/Bajaj /g, "")}
-                stroke={colors[i % colors.length]}
+                stroke={colors[i % colors.length]!}
                 strokeWidth={2}
                 dot={{ r: 3 }}
                 connectNulls
@@ -116,7 +116,7 @@ export default function SubsidiaryGrowthChart({ periods }: Props) {
                 type="monotone"
                 dataKey={`${name}_Assets`}
                 name={name.replace(/Bajaj /g, "")}
-                stroke={colors[i % colors.length]}
+                stroke={colors[i % colors.length]!}
                 strokeWidth={2}
                 dot={{ r: 3 }}
                 connectNulls

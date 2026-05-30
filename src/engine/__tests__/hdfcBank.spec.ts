@@ -38,7 +38,7 @@ describe("HDFC Bank — bank pipeline integration", () => {
     const metrics = result.bankResult?.bankMetrics ?? [];
     expect(metrics.length).toBeGreaterThanOrEqual(10);
 
-    const latest = metrics[metrics.length - 1];
+    const latest = metrics[metrics.length - 1]!;
     expect(latest).toBeTruthy();
 
     // ROA: HDFC Bank historically 1.5–2.2%
@@ -59,7 +59,7 @@ describe("HDFC Bank — bank pipeline integration", () => {
 
   it("produces CASA ratio from current-account sub-line", () => {
     const metrics = result.bankResult?.bankMetrics ?? [];
-    const latest = metrics[metrics.length - 1];
+    const latest = metrics[metrics.length - 1]!;
 
     // CASA (partial — current accounts only): HDFC Bank ~4–6%
     expect(latest.casaRatio).not.toBeNull();

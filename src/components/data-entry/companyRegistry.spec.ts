@@ -34,7 +34,7 @@ describe("parseLibraryCompanyRegistry", () => {
     ]);
 
     expect(parsed.companies).toHaveLength(1);
-    expect(parsed.companies[0].folder).toBe("ITC");
+    expect(parsed.companies[0]!.folder).toBe("ITC");
     expect(parsed.errors).toEqual([
       "registry[1].type is not supported: unknown-type",
       "registry[2].sector is required",

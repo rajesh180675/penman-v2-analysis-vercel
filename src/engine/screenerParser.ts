@@ -67,13 +67,13 @@ export function parseScreenerTabDelimitedDetailed(input: string, opts: ParseOpts
     metricRowCount += 1;
     metricCounts.set(metric, (metricCounts.get(metric) ?? 0) + 1);
     for (let c = 0; c < validCols.length; c++) {
-      const { i } = validCols[c];
+      const { i } = validCols[c]!;
       const rawCell = rows[r]?.[i] ?? "";
       const parsed = parseNumber(rawCell);
       if (rawCell.trim().length > 0 && rawCell.trim() !== "-" && rawCell.trim() !== "—" && parsed === null) {
         invalidNumericCells += 1;
       }
-      periods[c].raw_metric_values[metric] = parsed;
+      periods[c]!.raw_metric_values[metric] = parsed;
     }
   }
   const duplicateMetricCount = Array.from(metricCounts.values()).filter((count) => count > 1).length;

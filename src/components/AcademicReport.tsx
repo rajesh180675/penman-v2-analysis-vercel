@@ -156,7 +156,7 @@ function median(vals: Array<number | null | undefined>): number | null {
   const f = vals.filter((v): v is number => v != null && Number.isFinite(v)).sort((a, b) => a - b);
   if (!f.length) return null;
   const m = Math.floor(f.length / 2);
-  return f.length % 2 === 0 ? (f[m - 1] + f[m]) / 2 : f[m];
+  return f.length % 2 === 0 ? (f[m - 1]! + f[m]!) / 2 : f[m]!;
 }
 
 function madSigma(vals: number[]): number {
@@ -633,13 +633,13 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
     );
   }
 
-  const latest = data[data.length - 1];
-  const first = data[0];
+  const latest = data[data.length - 1]!;
+  const first = data[0]!;
   const years = Math.max(data.length - 1, 1);
   const companyId = deriveCompanyLabel(rawData, config.ticker, auditMeta?.companyId);
   const trailing = data.slice(Math.max(0, data.length - 5));
   const valuationData = data.slice(0, Math.max(2, valuationReadiness.anchorIndex + 1));
-  const valuationLatest = valuationData[valuationData.length - 1];
+  const valuationLatest = valuationData[valuationData.length - 1]!;
 
   const salesCagr = cagr(first.is.Sales, latest.is.Sales, years);
   const cniCagr = cagr(first.is.CNI, latest.is.CNI, years);
@@ -667,7 +667,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   }));
   const noaFlagCount = noaDiagnostics.filter((d) => d.flagged).length;
   const noaShiftSeries = data.slice(1).map((d, idx) => {
-    const prev = data[idx];
+    const prev = data[idx]!;
     return {
       period: d.period_end,
       deltaNOA: d.bs.NOA - prev.bs.NOA,
@@ -686,9 +686,9 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   const ke = ke_from_config(config);
   const kwSeries: number[] = [];
   for (let i = 1; i < valuationData.length; i++) {
-    kwSeries.push(deriveKwFromStructure(valuationData[i], valuationData[i - 1], ke, config.risk_free_rate, config));
+    kwSeries.push(deriveKwFromStructure(valuationData[i]!, valuationData[i - 1]!, ke, config.risk_free_rate, config));
   }
-  const kw = kwSeries.length ? kwSeries[kwSeries.length - 1] : ke;
+  const kw = kwSeries.length ? kwSeries[kwSeries.length - 1]! : ke;
   const kwMedian = median(kwSeries);
   const gInput = Math.min(0.05, Math.max(0.02, (salesCagr ?? 0.04) * 0.5));
   const nominalGdpProxy = 0.06;
@@ -741,11 +741,11 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   }));
 
   const cumulativeDirtySurplus = data.slice(1).reduce((sum, d, idx) => {
-    const prev = data[idx];
+    const prev = data[idx]!;
     return sum + ((d.bs.CSE - prev.bs.CSE) - d.is.CNI + d.cf.d_t);
   }, 0);
   const periodDiagnostics = data.slice(1).map((d, idx) => {
-    const prev = data[idx];
+    const prev = data[idx]!;
     const ds = (d.bs.CSE - prev.bs.CSE) - d.is.CNI + d.cf.d_t;
     const dsWarnThreshold = Math.max(0.05 * prev.bs.CSE, 0.03 * prev.bs.TA);
     const dsCritical = Math.abs(ds) > 0.1 * prev.bs.CSE;
@@ -772,7 +772,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
     return { period: d.period_end, ds, dDisc, pmZ, flags };
   });
   const latestDiag = periodDiagnostics[periodDiagnostics.length - 1];
-  const prevLatest = data[data.length - 2];
+  const prevLatest = data[data.length - 2]!;
   const accrualDeltaReceivables = latest.bs.TradeReceivables - prevLatest.bs.TradeReceivables;
   const accrualDeltaInventory = latest.bs.Inventory - prevLatest.bs.Inventory;
   const accrualDeltaPayables = latest.bs.TradePayables - prevLatest.bs.TradePayables;
@@ -800,7 +800,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
     ? ((valuation.CV_RE / Math.pow(1 + valuation.ke, explicitHorizonYears)) / valuation.V_RE_CV3)
     : null;
   const latestEq16Residual = latest.ratios?.ROCE_eq16_error ?? null;
-  const latestRe = valuation.reSeries.length ? valuation.reSeries[valuation.reSeries.length - 1].RE : null;
+  const latestRe = valuation.reSeries.length ? valuation.reSeries[valuation.reSeries.length - 1]!.RE : null;
   const dividendCashGap = latest.cf.DividendPaid - latest.cf.FCF_cash;
   const faRunwayYears = dividendCashGap > 0 ? latest.bs.FA / dividendCashGap : null;
   const mScore = latest.quality?.beneish_mscore ?? null;
@@ -1006,7 +1006,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
           </li>
           <li>
             Operations profile: PM <b>{pct(pm5)}</b> and ATO <b>{num(ato5, 2)}x</b> (median), benchmarked versus N&amp;P medians
-            ({(NP_BENCHMARKS.PM.median * 100).toFixed(1)}% and {NP_BENCHMARKS.ATO.median.toFixed(2)}x).
+            ({(NP_BENCHMARKS.PM!.median * 100).toFixed(1)}% and {NP_BENCHMARKS.ATO!.median.toFixed(2)}x).
           </li>
           <li>
             Earnings quality: accrual ratio (BS) latest = <b>{pct(latestAccrual)}</b>, cash conversion ratio latest = <b>{num(ccrLatest, 2)}x</b> (5Y average {num(ccr5, 2)}x); historical 5Y average accrual ({pct(accrual5)}) is transition-driven by NOA regime shifts.
@@ -1138,7 +1138,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
               processed through the Capitaline Ind AS CSV parser with 350+ line-item mapping rules.
               The Provenance Audit tab lists every canonical variable with its source mapping, match type
               (exact/fuzzy/derived), and value. The separation confidence score is{" "}
-              {data.length > 0 ? `${data[data.length - 1].bs.separationScore}/100` : "—"}.
+              {data.length > 0 ? `${data[data.length - 1]!.bs.separationScore}/100` : "—"}.
             </p>
           </div>
         </div>
@@ -1170,13 +1170,13 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              <Row metric="ROCE" latest={pct(latest.ratios?.ROCE)} avg5={pct(roce5)} bm={`${(NP_BENCHMARKS.ROCE.median * 100).toFixed(1)}%`} note="Shareholder return on common equity." />
-              <Row metric="RNOA" latest={pct(latest.ratios?.RNOA)} avg5={pct(rnoa5)} bm={`${(NP_BENCHMARKS.RNOA.median * 100).toFixed(1)}%`} note="Core operating profitability net of operating liabilities." />
-              <Row metric="Spread" latest={pct(latest.ratios?.SPREAD)} avg5={pct(spread5)} bm={`${(NP_BENCHMARKS.SPREAD.median * 100).toFixed(1)}%`} note="Value creation wedge between operating return and financing cost." />
-              <Row metric="PM" latest={pct(latest.ratios?.PM)} avg5={pct(pm5)} bm={`${(NP_BENCHMARKS.PM.median * 100).toFixed(1)}%`} note="Operating margin after comprehensive classification." />
-              <Row metric="ATO" latest={`${num(latest.ratios?.ATO, 2)}x`} avg5={`${num(ato5, 2)}x`} bm={`${NP_BENCHMARKS.ATO.median.toFixed(2)}x`} note="Operating asset productivity / turnover." />
-              <Row metric="Steady-state RNOA (2Y avg)" latest={pct(steadyRnoa)} avg5="—" bm={`${(NP_BENCHMARKS.RNOA.median * 100).toFixed(1)}%`} note="Use for post-transition anchoring when NOA regime shifts." />
-              <Row metric="Steady-state ATO (2Y avg)" latest={`${num(steadyAto, 2)}x`} avg5="—" bm={`${NP_BENCHMARKS.ATO.median.toFixed(2)}x`} note="Recent capital-intensity regime productivity." />
+              <Row metric="ROCE" latest={pct(latest.ratios?.ROCE)} avg5={pct(roce5)} bm={`${(NP_BENCHMARKS.ROCE!.median * 100).toFixed(1)}%`} note="Shareholder return on common equity." />
+              <Row metric="RNOA" latest={pct(latest.ratios?.RNOA)} avg5={pct(rnoa5)} bm={`${(NP_BENCHMARKS.RNOA!.median * 100).toFixed(1)}%`} note="Core operating profitability net of operating liabilities." />
+              <Row metric="Spread" latest={pct(latest.ratios?.SPREAD)} avg5={pct(spread5)} bm={`${(NP_BENCHMARKS.SPREAD!.median * 100).toFixed(1)}%`} note="Value creation wedge between operating return and financing cost." />
+              <Row metric="PM" latest={pct(latest.ratios?.PM)} avg5={pct(pm5)} bm={`${(NP_BENCHMARKS.PM!.median * 100).toFixed(1)}%`} note="Operating margin after comprehensive classification." />
+              <Row metric="ATO" latest={`${num(latest.ratios?.ATO, 2)}x`} avg5={`${num(ato5, 2)}x`} bm={`${NP_BENCHMARKS.ATO!.median.toFixed(2)}x`} note="Operating asset productivity / turnover." />
+              <Row metric="Steady-state RNOA (2Y avg)" latest={pct(steadyRnoa)} avg5="—" bm={`${(NP_BENCHMARKS.RNOA!.median * 100).toFixed(1)}%`} note="Use for post-transition anchoring when NOA regime shifts." />
+              <Row metric="Steady-state ATO (2Y avg)" latest={`${num(steadyAto, 2)}x`} avg5="—" bm={`${NP_BENCHMARKS.ATO!.median.toFixed(2)}x`} note="Recent capital-intensity regime productivity." />
               <Row metric="Sales CAGR" latest={pct(salesCagr)} avg5="—" bm="—" note="Top-line growth trajectory over full sample." />
               <Row metric="CNI CAGR" latest={pct(cniCagr)} avg5="—" bm="—" note="Growth in comprehensive earnings available to common." />
             </tbody>
@@ -1482,7 +1482,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
           Explicit residual-income horizon used in valuation: <b>{explicitHorizonYears}</b> yearly steps. Terminal-value share of guarded RE CV3: <b>{pct(tvShare, 1)}</b> ({tvGrade}). Eq.16 residual (latest): <b>{eq16ResidualPp != null ? `${eq16ResidualPp.toFixed(2)}pp` : "—"}</b> [{eq16Tier}].
           {v3TerminalAnchor && <> [As-reported TV share: <b>{pct(v3TerminalAnchor.TV_share_raw, 1)}</b> ({v3TerminalAnchor.TV_grade_raw}).]</>}.
           {data[data.length-1]?.ratios?.eq16_diagnosis && (
-            <span className="text-amber-700"> §5.7 Eq.16 diagnosis: {data[data.length-1].ratios!.eq16_diagnosis}</span>
+            <span className="text-amber-700"> §5.7 Eq.16 diagnosis: {data[data.length-1]!.ratios!.eq16_diagnosis}</span>
           )}
         </p>
         {g < gInput && (

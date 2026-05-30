@@ -116,7 +116,7 @@ describe("SOTP valuation", () => {
   describe("buildSOTPValuation", () => {
     it("values ITC segments correctly", () => {
       const period = mkPeriod(150, 500, 0.25);
-      const result = buildSOTPValuation(period, SOTP_PRESETS.ITC, 0.13);
+      const result = buildSOTPValuation(period, SOTP_PRESETS.ITC!, 0.13);
 
       expect(result.segments).toHaveLength(5);
       expect(result.operatingSum).toBeGreaterThan(0);
@@ -143,8 +143,8 @@ describe("SOTP valuation", () => {
         { name: "B", operatingProfitShare: 0.4, sectorTemplate: "services" },
       ], 0.12);
 
-      expect(result.segments[0].operatingProfit).toBeCloseTo(120, 0); // 200 * 0.6
-      expect(result.segments[1].operatingProfit).toBeCloseTo(80, 0);  // 200 * 0.4
+      expect(result.segments[0]!.operatingProfit).toBeCloseTo(120, 0); // 200 * 0.6
+      expect(result.segments[1]!.operatingProfit).toBeCloseTo(80, 0);  // 200 * 0.4
     });
 
     it("allocates NOA proportionally", () => {
@@ -164,7 +164,7 @@ describe("SOTP valuation", () => {
         { name: "A", operatingProfitShare: 1, sectorTemplate: "industrials" },
       ], 0.12);
 
-      expect(result.segments[0].impliedMultiple).toBeNull();
+      expect(result.segments[0]!.impliedMultiple).toBeNull();
     });
   });
 });

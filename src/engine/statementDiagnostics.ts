@@ -23,7 +23,7 @@ export function buildStatementDiagnostics(periods: RawPeriodData[] | null | unde
   const data = periods ?? [];
   for (let index = 1; index < data.length; index += 1) {
     const prev = data[index - 1];
-    const current = data[index];
+    const current = data[index]!;
     const revenuePrev = periodMetricValue(prev, ["Revenue From Operations", "Total Revenue from Operations", "Revenue From Operations(Net)", "Net Sale of Products"]);
     const revenueCur = periodMetricValue(current, ["Revenue From Operations", "Total Revenue from Operations", "Revenue From Operations(Net)", "Net Sale of Products"]);
     const revenueJump = pctChange(revenueCur, revenuePrev);

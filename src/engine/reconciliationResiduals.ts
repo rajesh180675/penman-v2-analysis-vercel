@@ -93,7 +93,7 @@ function readTraceValue(period: RecastPeriod, line: string): number | null {
   if (!entries?.length) return null;
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const value = entries[index]?.value;
-    if (Number.isFinite(value)) return value;
+    if (Number.isFinite(value)) return value!;
   }
   return null;
 }
@@ -558,7 +558,7 @@ export function evaluateReconciliationResiduals(params: {
   const warningCount = checks.filter((check) => check.status === "degraded").length;
   const errorCount = checks.filter((check) => check.status === "failed").length;
   const maxResidualRatio = checks.reduce((max, check) => Math.max(max, check.ratio), 0);
-  const worstCheck = [...checks].sort((left, right) => right.ratio - left.ratio)[0];
+  const worstCheck = [...checks].sort((left, right) => right.ratio - left.ratio)[0]!;
   const status: ReconciliationResidualStatus = errorCount > 0
     ? "failed"
     : warningCount > 0

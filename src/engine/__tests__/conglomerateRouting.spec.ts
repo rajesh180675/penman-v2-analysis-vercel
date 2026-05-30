@@ -73,7 +73,7 @@ describe.skipIf(!fixturesAvailable)("conglomerateRouting (Phase C5)", () => {
       const { definitions } = segmentDataToDefinitions(segData!);
       const distinctTemplates = new Set(definitions.map(d => d.sectorTemplate));
       const maxShare = Math.max(...definitions.map(d => d.operatingProfitShare));
-      const dominantDef = definitions.reduce((a, b) => a.operatingProfitShare > b.operatingProfitShare ? a : b, definitions[0]);
+      const dominantDef = definitions.reduce((a, b) => a.operatingProfitShare > b.operatingProfitShare ? a : b, definitions[0]!);
       const isConglomerate = definitions.length >= 3 && distinctTemplates.size >= 2;
 
       expect(isConglomerate).toBe(true);
@@ -98,7 +98,7 @@ describe.skipIf(!fixturesAvailable)("conglomerateRouting (Phase C5)", () => {
     });
 
     it("preset-based conglomerate assessment for Reliance", () => {
-      const presetDefs = SOTP_PRESETS["Reliance Industries"];
+      const presetDefs = SOTP_PRESETS["Reliance Industries"]!;
       expect(presetDefs).toBeDefined();
       const distinctTemplates = new Set(presetDefs.map(d => d.sectorTemplate));
       const maxShare = Math.max(...presetDefs.map(d => d.operatingProfitShare));
@@ -124,7 +124,7 @@ describe.skipIf(!fixturesAvailable)("conglomerateRouting (Phase C5)", () => {
 
   describe("Reliance SOTP preset", () => {
     it("Reliance Industries preset exists and sums to 1.0", () => {
-      const defs = SOTP_PRESETS["Reliance Industries"];
+      const defs = SOTP_PRESETS["Reliance Industries"]!;
       expect(defs).toBeDefined();
       expect(defs.length).toBe(5);
       const totalShare = defs.reduce((s, d) => s + d.operatingProfitShare, 0);

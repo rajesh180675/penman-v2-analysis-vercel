@@ -94,7 +94,7 @@ function detectFrequencyWarning(sorted: { period_end: string }[]): string | null
   if (sorted.length < 2) return null;
   const gaps: number[] = [];
   for (let i = 1; i < sorted.length; i++) {
-    const days = (new Date(sorted[i].period_end).getTime() - new Date(sorted[i-1].period_end).getTime()) / 86_400_000;
+    const days = (new Date(sorted[i]!.period_end).getTime() - new Date(sorted[i-1]!.period_end).getTime()) / 86_400_000;
     gaps.push(days);
   }
   const quarterly = gaps.filter(d => d >= 60 && d <= 120).length;
@@ -224,7 +224,7 @@ export function processCompanyDataFull(
   const results: RecastPeriod[] = [];
 
   for (let i = 0; i < sorted.length; i++) {
-    const raw = sorted[i];
+    const raw = sorted[i]!;
     let recast: RecastPeriod;
     try {
       const prev = results.length > 0 ? results[results.length - 1] : undefined;
@@ -236,8 +236,8 @@ export function processCompanyDataFull(
     }
 
     if (i > 0 && results.length > 0) {
-      const prev    = results[results.length - 1];
-      const prevRaw = sorted[i - 1];
+      const prev    = results[results.length - 1]!;
+      const prevRaw = sorted[i - 1]!;
       try {
         // S-9.4: kw ALWAYS derived from balance-sheet structure, never hardcoded.
         // Stamp kwStructural BEFORE computing ratios so ratiosResidual can
@@ -261,9 +261,9 @@ export function processCompanyDataFull(
 
   trace("pipeline", "recastComplete", {
     periods: results.length,
-    latestPeriod: results.length > 0 ? results[results.length - 1].period_end : null,
-    hasRatios: results.length > 1 && results[results.length - 1].ratios != null,
-    hasRI: results.length > 1 && results[results.length - 1].ri != null,
+    latestPeriod: results.length > 0 ? results[results.length - 1]!.period_end : null,
+    hasRatios: results.length > 1 && results[results.length - 1]!.ratios != null,
+    hasRI: results.length > 1 && results[results.length - 1]!.ri != null,
   });
 
   // Run anomaly detection over all periods (S-5.x)

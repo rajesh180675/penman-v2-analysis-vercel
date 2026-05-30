@@ -99,13 +99,13 @@ export default function CoverageHeatmap({ rawData, allMetrics }: Props) {
     const q = search.toLowerCase().trim();
     let list = q ? allMetrics.filter((m) => m.toLowerCase().includes(q)) : allMetrics;
     if (statementFilter !== "all") {
-      list = list.filter((m) => stats[m].statement === statementFilter);
+      list = list.filter((m) => stats[m]!.statement === statementFilter);
     }
 
     if (sortBy === "coverage") {
-      list = [...list].sort((a, b) => stats[b].coverage - stats[a].coverage);
+      list = [...list].sort((a, b) => stats[b]!.coverage - stats[a]!.coverage);
     } else if (sortBy === "magnitude") {
-      list = [...list].sort((a, b) => stats[b].absMax - stats[a].absMax);
+      list = [...list].sort((a, b) => stats[b]!.absMax - stats[a]!.absMax);
     } else {
       list = [...list].sort();
     }
@@ -118,7 +118,7 @@ export default function CoverageHeatmap({ rawData, allMetrics }: Props) {
     const order: AtlasStatement[] = ["BS", "PL", "CF", "Ratio", "Other"];
     const buckets = new Map<AtlasStatement, string[]>();
     for (const s of order) buckets.set(s, []);
-    for (const m of filtered) buckets.get(stats[m].statement)!.push(m);
+    for (const m of filtered) buckets.get(stats[m]!.statement)!.push(m);
     return order
       .map((s) => ({ statement: s as AtlasStatement | null, items: buckets.get(s)! }))
       .filter((g) => g.items.length > 0);
@@ -128,7 +128,7 @@ export default function CoverageHeatmap({ rawData, allMetrics }: Props) {
     let pos = 0, neg = 0, zero = 0, nul = 0;
     const byStmt: Record<AtlasStatement, number> = { BS: 0, PL: 0, CF: 0, Ratio: 0, Other: 0 };
     for (const m of allMetrics) {
-      byStmt[stats[m].statement]++;
+      byStmt[stats[m]!.statement]++;
       for (const p of periods) {
         const c = classify(p.raw_metric_values[m]);
         if (c === "positive") pos++;
@@ -251,7 +251,7 @@ export default function CoverageHeatmap({ rawData, allMetrics }: Props) {
                   )}
                   {g.items.map((m) => {
                     const isSelected = selected === m;
-                    const s = stats[m];
+                    const s = stats[m]!;
                     return (
                       <tr
                         key={m}
@@ -326,10 +326,10 @@ export default function CoverageHeatmap({ rawData, allMetrics }: Props) {
             <div className="flex items-center gap-2">
               <span
                 className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-                  STATEMENT_BADGE[stats[selected].statement]
+                  STATEMENT_BADGE[stats[selected]!.statement]
                 }`}
               >
-                {stats[selected].statement}
+                {stats[selected]!.statement}
               </span>
               <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">{selected}</h3>
             </div>

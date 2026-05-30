@@ -62,7 +62,7 @@ describe("residualsStore", () => {
     appendRunResidualSummary(s);
     const history = readResidualHistory("ITC");
     expect(history).toHaveLength(1);
-    expect(history[0].runId).toBe("ITC-run-0");
+    expect(history[0]!.runId).toBe("ITC-run-0");
   });
 
   it("caps per-company history at 100 entries (oldest evicted)", () => {
@@ -71,8 +71,8 @@ describe("residualsStore", () => {
     }
     const history = readResidualHistory("ITC");
     expect(history).toHaveLength(100);
-    expect(history[0].runId).toBe("ITC-run-20");
-    expect(history[99].runId).toBe("ITC-run-119");
+    expect(history[0]!.runId).toBe("ITC-run-20");
+    expect(history[99]!.runId).toBe("ITC-run-119");
   });
 
   it("isolates company histories", () => {
@@ -80,7 +80,7 @@ describe("residualsStore", () => {
     appendRunResidualSummary(mkSummary("HDFC", 0));
     expect(readResidualHistory("ITC")).toHaveLength(1);
     expect(readResidualHistory("HDFC")).toHaveLength(1);
-    expect(readResidualHistory("ITC")[0].companyId).toBe("ITC");
+    expect(readResidualHistory("ITC")[0]!.companyId).toBe("ITC");
   });
 
   it("survives malformed storage entries (returns empty)", () => {
@@ -115,8 +115,8 @@ describe("residualsStore", () => {
     }
     const lastFive = readResidualHistory("ITC", 5);
     expect(lastFive).toHaveLength(5);
-    expect(lastFive[0].runId).toBe("ITC-run-15");
-    expect(lastFive[4].runId).toBe("ITC-run-19");
+    expect(lastFive[0]!.runId).toBe("ITC-run-15");
+    expect(lastFive[4]!.runId).toBe("ITC-run-19");
   });
 
   it("RESIDUAL_SCORE_PRODUCTION_THRESHOLD is 40", () => {
@@ -133,6 +133,6 @@ describe("residualsStore", () => {
   it("score above threshold is identifiable for the downgrade gate", () => {
     appendRunResidualSummary(mkSummary("ITC", 0, 50));
     const history = readResidualHistory("ITC");
-    expect(history[history.length - 1].overallResidualScore).toBeGreaterThan(RESIDUAL_SCORE_PRODUCTION_THRESHOLD);
+    expect(history[history.length - 1]!.overallResidualScore).toBeGreaterThan(RESIDUAL_SCORE_PRODUCTION_THRESHOLD);
   });
 });

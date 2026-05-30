@@ -91,8 +91,8 @@ export function runDataValidation(periods: RecastPeriod[]): DataValidationResult
   }
   // CHECK_4: Temporal consistency
   for (let i = 1; i < periods.length; i++) {
-    const cur = periods[i];
-    const prev = periods[i - 1];
+    const cur = periods[i]!;
+    const prev = periods[i - 1]!;
     if (prev.bs.TA > 0) {
       const taRatio = cur.bs.TA / prev.bs.TA;
       if (taRatio > 3.0 || taRatio < 0.33) {

@@ -115,16 +115,16 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
   const yearMatch = html.match(/(\d{6}(?:\s+\d{6})*)/);
   if (!yearMatch) return null;
 
-  const yearMatches = Array.from(html.matchAll(/ng-binding[^>]*>(\d{6})/g)).map(m => m[1]);
+  const yearMatches = Array.from(html.matchAll(/ng-binding[^>]*>(\d{6})/g)).map(m => m[1]!);
   const years = yearMatches.length > 0
     ? yearMatches.map(yearFromYYYYMM)
-    : yearMatch[1].split(/\s+/).map(yearFromYYYYMM);
+    : yearMatch[1]!.split(/\s+/).map(yearFromYYYYMM);
 
   if (years.length === 0) return null;
 
   // ─── Step 2: Extract all labels (decoded) ─────────────────────────────
   const labelMatches = Array.from(html.matchAll(/<label[^>]*>([^<]+)<\/label>/g))
-    .map(m => decodeHtmlEntities(m[1].trim()));
+    .map(m => decodeHtmlEntities(m[1]!.trim()));
   if (labelMatches.length === 0) return null;
 
   // ─── Step 3: Extract labeled data rows ────────────────────────────────
@@ -133,13 +133,13 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
   const trBlocks = html.split(/<tr[\s>]/i).slice(1);
   for (const tr of trBlocks) {
     const labelMatch = tr.match(/<label[^>]*>([^<]+)<\/label>/);
-    const label = labelMatch ? decodeHtmlEntities(labelMatch[1].trim()) : "";
+    const label = labelMatch ? decodeHtmlEntities(labelMatch[1]!.trim()) : "";
 
     let values: (number | null)[] = [];
 
     // Try ng-binding first (totals/header-level rows)
     const ngCells = Array.from(tr.matchAll(/ng-binding[^>]*>([^<]*)/g))
-      .map(m => m[1].trim());
+      .map(m => m[1]!.trim());
     const ngValues = ngCells.filter(s =>
       /^-?[\d,]+\.?\d*$/.test(s) || /^\(-?[\d,]+\.?\d*\)$/.test(s) ||
       s === "0" || s === "0.00" || s === "-" || s === ""
@@ -155,7 +155,7 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
     } else {
       // Try td cells
       const tdContents = Array.from(tr.matchAll(/<td[^>]*>([^<]*)<\/td>/g))
-        .map(m => m[1].trim());
+        .map(m => m[1]!.trim());
       const tdValues = tdContents.filter(s =>
         /^-?[\d,]+\.?\d*$/.test(s) || s === "-"
       );
@@ -266,7 +266,7 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
       if (label === "REVENUE") { sectionMetrics = REVENUE_METRICS; metricIndex = 0; }
       else if (label === "RESULT") { sectionMetrics = RESULT_METRICS; metricIndex = 0; }
       else { sectionMetrics = OTHER_INFO_METRICS; metricIndex = 0; }
-      currentMetric = sectionMetrics[0];
+      currentMetric = sectionMetrics[0]!;
       seenInCycle.clear();
       continue;
     }
@@ -284,7 +284,7 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
     if (seenInCycle.has(label)) {
       metricIndex++;
       if (metricIndex < sectionMetrics.length) {
-        currentMetric = sectionMetrics[metricIndex];
+        currentMetric = sectionMetrics[metricIndex]!;
       } else {
         currentMetric = null;
       }
@@ -292,15 +292,15 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
     }
     seenInCycle.add(label);
 
-    const row = dataRows[rowIdx];
+    const row = dataRows[rowIdx]!;
     rowIdx++;
 
     if (!currentMetric || currentMetric === "totalRev") continue;
 
     // Assign values
     for (let yi = 0; yi < years.length && yi < row.length; yi++) {
-      const yr = years[yi];
-      const val = row[yi];
+      const yr = years[yi]!;
+      const val = row[yi] ?? null;
       if (!data[label]?.[yr]) continue;
       data[label][yr][currentMetric] = val;
     }

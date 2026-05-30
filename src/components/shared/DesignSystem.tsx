@@ -395,7 +395,7 @@ export function SourceBadge({ source }: SourceBadgeProps) {
     screener: { label: "Screener", color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800" },
     xbrl: { label: "XBRL", color: "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700" },
   };
-  const { label, color } = map[source] ?? map.manual;
+  const { label, color } = map[source] ?? map.manual!;
 
   return (
     <span className={`inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded border ${color}`}>

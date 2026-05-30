@@ -55,7 +55,7 @@ export default function MoatPanel({ moat, title = "Economic Moat" }: Props) {
   }
 
   const style = WIDTH_STYLES[moat.moatWidth];
-  const trend = TREND_LABEL[moat.moatTrend];
+  const trend = TREND_LABEL[moat.moatTrend]!;
 
   return (
     <div className={`rounded-xl border-2 ${style.border} ${style.bg} p-5`}>

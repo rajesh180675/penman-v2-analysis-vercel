@@ -129,7 +129,7 @@ export function classifyRunUnusualItems(
   for (const period of rawMetrics) {
     for (const [compositeKey, value] of Object.entries(period.raw_metric_values ?? {})) {
       if (value == null || !Number.isFinite(value) || value === 0) continue;
-      const baseKey = compositeKey.split("__")[0];
+      const baseKey = compositeKey.split("__")[0]!;
       // Quick screen: only consider labels that hint at unusualness.
       if (!isCandidateLabel(baseKey)) continue;
       const matched = findRule(baseKey);

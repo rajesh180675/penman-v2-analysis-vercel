@@ -57,7 +57,7 @@ export function resolveNseSymbol(companyNameOrFolder: string | null | undefined)
 
   // Exact match
   if (companyNameOrFolder in NSE_SYMBOL_REGISTRY) {
-    return NSE_SYMBOL_REGISTRY[companyNameOrFolder];
+    return NSE_SYMBOL_REGISTRY[companyNameOrFolder]!;
   }
 
   // Case-insensitive match

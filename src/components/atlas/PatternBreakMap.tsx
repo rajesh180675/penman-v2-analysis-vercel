@@ -36,7 +36,7 @@ function median(xs: number[]): number {
   if (xs.length === 0) return 0;
   const s = [...xs].sort((a, b) => a - b);
   const m = Math.floor(s.length / 2);
-  return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
+  return s.length % 2 === 0 ? (s[m - 1]! + s[m]!) / 2 : s[m]!;
 }
 
 function linearFit(xs: number[], ys: number[]): { slope: number; intercept: number } {
@@ -45,8 +45,8 @@ function linearFit(xs: number[], ys: number[]): { slope: number; intercept: numb
   const yBar = ys.reduce((a, b) => a + b, 0) / n;
   let num = 0, den = 0;
   for (let i = 0; i < n; i++) {
-    num += (xs[i] - xBar) * (ys[i] - yBar);
-    den += (xs[i] - xBar) ** 2;
+    num += (xs[i]! - xBar) * (ys[i]! - yBar);
+    den += (xs[i]! - xBar) ** 2;
   }
   const slope = den === 0 ? 0 : num / den;
   return { slope, intercept: yBar - slope * xBar };
@@ -70,13 +70,13 @@ function linearZScores(values: number[]): { zs: number[]; centers: number[] } {
   const xs = values.map((_, i) => i);
   const { slope, intercept } = linearFit(xs, values);
   const fitted = values.map((_, i) => slope * i + intercept);
-  const residuals = values.map((y, i) => y - fitted[i]);
+  const residuals = values.map((y, i) => y - fitted[i]!);
   const meanRes = residuals.reduce((a, b) => a + b, 0) / residuals.length;
   const variance = residuals.reduce((a, b) => a + (b - meanRes) ** 2, 0) / residuals.length;
   const sigma = Math.sqrt(variance);
   if (sigma === 0) return { zs: values.map(() => 0), centers: fitted };
   return {
-    zs: values.map((y, i) => (y - fitted[i]) / sigma),
+    zs: values.map((y, i) => (y - fitted[i]!) / sigma),
     centers: fitted,
   };
 }
@@ -145,7 +145,7 @@ export default function PatternBreakMap({ rawData, allMetrics }: Props) {
 
       if (values.length < 3) {
         rawData.forEach((p) => {
-          g[metric][p.period_end] = {
+          g[metric]![p.period_end] = {
             z: null,
             v: p.raw_metric_values[metric] ?? null,
             fit: null,
@@ -162,20 +162,20 @@ export default function PatternBreakMap({ rawData, allMetrics }: Props) {
       rawData.forEach((p) => {
         const v = p.raw_metric_values[metric];
         if (v != null && Number.isFinite(v)) {
-          const z = zs[valIdx];
-          const fit = centers[valIdx];
+          const z = zs[valIdx]!;
+          const fit = centers[valIdx]!;
           let isGood: boolean | null = null;
           if (Math.abs(z) >= 1 && conv !== "neutral") {
             isGood = conv === "up-good" ? z > 0 : z < 0;
           }
-          g[metric][p.period_end] = { z, v, fit, isGood };
+          g[metric]![p.period_end] = { z, v, fit, isGood };
           if (Math.abs(z) >= threshold) {
-            bc[metric] += 1;
+            bc[metric]! += 1;
             events.push({ metric, period: p.period_end, z, v, isGood, statement: stmt });
           }
           valIdx++;
         } else {
-          g[metric][p.period_end] = { z: null, v: null, fit: null, isGood: null };
+          g[metric]![p.period_end] = { z: null, v: null, fit: null, isGood: null };
         }
       });
     }

@@ -120,7 +120,7 @@ describe("segmentSOTPBridge", () => {
 
       // Time series should exist for all segments
       expect(timeSeries.length).toBe(6);
-      expect(timeSeries[0].years.length).toBe(15);
+      expect(timeSeries[0]!.years.length).toBe(15);
     });
   });
 

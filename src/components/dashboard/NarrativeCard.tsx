@@ -105,7 +105,7 @@ function generateNarrative(props: Props): { businessQuality: string; capitalAllo
     }
 
     // Sales/PAT context
-    if (latest.is.Sales > 0 && latest.is.PAT) {
+    if (latest && latest.is.Sales > 0 && latest.is.PAT) {
       const netMargin = latest.is.PAT / latest.is.Sales;
       valuationAndOutlook += `Latest period: ₹${(latest.is.Sales / 1000).toFixed(1)}k Cr revenue at ${(netMargin * 100).toFixed(1)}% net margin. `;
     }

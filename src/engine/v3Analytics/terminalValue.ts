@@ -71,13 +71,13 @@ export function selectTerminalAnchor(
   } else {
     // Use lower of CNI CAGR, Sales CAGR, BV CAGR
     const cni_cagr = computeCagr(
-      periods[0].is.CNI, periods[n - 1].is.CNI, n - 1
+      periods[0]!.is.CNI, periods[n - 1]!.is.CNI, n - 1
     );
     const sales_cagr = computeCagr(
-      periods[0].is.Sales, periods[n - 1].is.Sales, n - 1
+      periods[0]!.is.Sales, periods[n - 1]!.is.Sales, n - 1
     );
     const bv_cagr = computeCagr(
-      periods[0].bs.CSE, periods[n - 1].bs.CSE, n - 1
+      periods[0]!.bs.CSE, periods[n - 1]!.bs.CSE, n - 1
     );
     const candidates = [cni_cagr, sales_cagr, bv_cagr].filter(
       (v): v is number => v != null && Number.isFinite(v) && v > -0.2

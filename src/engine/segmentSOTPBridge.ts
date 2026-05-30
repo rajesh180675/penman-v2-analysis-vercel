@@ -136,8 +136,8 @@ function seriesCagr(series: (number | null)[]): number | null {
     .map((v, i) => v != null && v > 0 ? { v, i } : null)
     .filter((x): x is { v: number; i: number } => x != null);
   if (valid.length < 2) return null;
-  const first = valid[0];
-  const last = valid[valid.length - 1];
+  const first = valid[0]!;
+  const last = valid[valid.length - 1]!;
   const periods = last.i - first.i;
   if (periods <= 0) return null;
   return Math.pow(last.v / first.v, 1 / periods) - 1;
@@ -177,10 +177,10 @@ export function segmentDataToDefinitions(
 
   // Build definitions
   const definitions: SegmentDefinition[] = segmentData.segments
-    .filter(seg => segmentEbits[seg] > 0) // exclude loss-making segments from SOTP
+    .filter(seg => segmentEbits[seg]! > 0) // exclude loss-making segments from SOTP
     .map(seg => {
-      const ebit = segmentEbits[seg];
-      const rev = segmentRevenues[seg];
+      const ebit = segmentEbits[seg]!;
+      const rev = segmentRevenues[seg]!;
       const ts = timeSeries.find(t => t.name === seg);
       const revCagr = ts ? seriesCagr(ts.revenue) : null;
 

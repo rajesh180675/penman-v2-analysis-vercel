@@ -30,7 +30,7 @@ describe.skipIf(!fixturesAvailable)("segmentParser", () => {
     expect(result!.years[0]).toBe("FY2025");
 
     // Check that revenue data is populated for cigarettes
-    const cigData = result!.data["FMCG - CIGARETTES"];
+    const cigData = result!.data["FMCG - CIGARETTES"]!;
     expect(cigData).toBeDefined();
     const latestRevenue = cigData["FY2025"]?.revenue;
     expect(latestRevenue).not.toBeNull();
@@ -70,7 +70,7 @@ describe.skipIf(!fixturesAvailable)("segmentParser", () => {
     expect(segNames).toMatch(/oil|petro|refin|o2c/i);
 
     // Check revenue is populated for latest year on first segment
-    const seg0 = result!.segments[0];
+    const seg0 = result!.segments[0]!;
     const latestData = result!.data[seg0]?.["FY2025"];
     expect(latestData?.revenue).not.toBeNull();
     expect(latestData!.revenue!).toBeGreaterThan(10000);
@@ -89,7 +89,7 @@ describe.skipIf(!fixturesAvailable)("segmentParser", () => {
   it.skipIf(!hasLT)("parses L&T business segments with & in names", async () => {
     const JSZip = (await import("jszip")).default;
     const zip = await JSZip.loadAsync(readFileSync(ltZip));
-    const html = await zip.files["SegmentFinance_.xls"].async("text");
+    const html = await zip.files["SegmentFinance_.xls"]!.async("text");
     const result = parseSegmentFinanceHTML(html);
 
     expect(result).not.toBeNull();
@@ -99,16 +99,16 @@ describe.skipIf(!fixturesAvailable)("segmentParser", () => {
     expect(result!.segments).toContain("ENGINEERING & CONSTRUCTION");
     expect(result!.segments.length).toBe(17);
 
-    expect(result!.data["INFRASTRUCTURE"]["FY2025"].revenue).toBeCloseTo(129896.83, 1);
-    expect(result!.data["IT & TECHNOLOGY SERVICES"]["FY2025"].revenue).toBeCloseTo(47844.88, 1);
-    expect(result!.data["IT & TECHNOLOGY SERVICES"]["FY2025"].result).toBeCloseTo(7682.15, 1);
-    expect(result!.data["INFRASTRUCTURE"]["FY2025"].assets).toBeCloseTo(97183.24, 1);
+    expect(result!.data["INFRASTRUCTURE"]!["FY2025"]!.revenue).toBeCloseTo(129896.83, 1);
+    expect(result!.data["IT & TECHNOLOGY SERVICES"]!["FY2025"]!.revenue).toBeCloseTo(47844.88, 1);
+    expect(result!.data["IT & TECHNOLOGY SERVICES"]!["FY2025"]!.result).toBeCloseTo(7682.15, 1);
+    expect(result!.data["INFRASTRUCTURE"]!["FY2025"]!.assets).toBeCloseTo(97183.24, 1);
   });
 
   it.skipIf(!hasLT)("parses L&T geographic segments with variable-length rows", async () => {
     const JSZip = (await import("jszip")).default;
     const zip = await JSZip.loadAsync(readFileSync(ltZip));
-    const html = await zip.files["SegmentFinance_ (1).xls"].async("text");
+    const html = await zip.files["SegmentFinance_ (1).xls"]!.async("text");
     const result = parseSegmentFinanceHTML(html);
 
     expect(result).not.toBeNull();
@@ -116,9 +116,9 @@ describe.skipIf(!fixturesAvailable)("segmentParser", () => {
     expect(result!.segments).toContain("KINGDOM OF SAUDI ARABIA");
     expect(result!.segments).toContain("DOMESTIC");
 
-    expect(result!.data["KINGDOM OF SAUDI ARABIA"]["FY2025"].revenue).toBeCloseTo(61002.04, 1);
-    expect(result!.data["UNITED STATES OF AMERICA"]["FY2025"].revenue).toBeCloseTo(33448.58, 1);
-    expect(result!.data["DOMESTIC"]["FY2025"].revenue).toBeCloseTo(128168.58, 1);
-    expect(result!.data["NETHERLAND"]["FY2025"].revenue).toBeNull();
+    expect(result!.data["KINGDOM OF SAUDI ARABIA"]!["FY2025"]!.revenue).toBeCloseTo(61002.04, 1);
+    expect(result!.data["UNITED STATES OF AMERICA"]!["FY2025"]!.revenue).toBeCloseTo(33448.58, 1);
+    expect(result!.data["DOMESTIC"]!["FY2025"]!.revenue).toBeCloseTo(128168.58, 1);
+    expect(result!.data["NETHERLAND"]!["FY2025"]!.revenue).toBeNull();
   });
 });

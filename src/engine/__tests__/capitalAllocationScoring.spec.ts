@@ -488,8 +488,8 @@ describe("scoreCapitalAllocation — Phase I robustness", () => {
   it("treats null/NaN CNI as not profitable", () => {
     const periods = makeSeries(5);
     // First 2 periods get CNI=null
-    periods[0].is.CNI = null as never;
-    periods[1].is.CNI = NaN;
+    periods[0]!.is.CNI = null as never;
+    periods[1]!.is.CNI = NaN;
     const result = scoreCapitalAllocation(periods, makeConfig());
     expect(result.profitablePeriods).toBe(3);
     // Still sufficient (3 valid).

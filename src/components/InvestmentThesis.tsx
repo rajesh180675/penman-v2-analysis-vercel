@@ -27,8 +27,8 @@ function crFmt(v: number | null | undefined): string {
  * Structured as: Thesis Statement → Why Buy/Avoid → Key Numbers → Risks → What to Watch.
  */
 export default function InvestmentThesis({ data, config }: Props) {
-  const latest = data[data.length - 1];
-  const prior = data.length >= 2 ? data[data.length - 2] : latest;
+  const latest = data[data.length - 1]!;
+  const prior = data.length >= 2 ? data[data.length - 2]! : latest;
   const ticker = config.ticker ?? config.quality_data_folder ?? "Company";
 
   const moat = useMemo(() => computeMoatScore(data, config), [data, config]);

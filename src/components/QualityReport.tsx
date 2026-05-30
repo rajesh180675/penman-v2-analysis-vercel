@@ -19,7 +19,7 @@ const fix = (v:number,d=2) => v.toFixed(d);
 
 function ScoreBar({score,max,thresholds,colors}:{score:number;max:number;thresholds:number[];colors:string[]}) {
   const p = score/max*100;
-  const color = score>=thresholds[1]?colors[2]:score>=thresholds[0]?colors[1]:colors[0];
+  const color = score>=thresholds[1]!?colors[2]:score>=thresholds[0]!?colors[1]:colors[0];
   return (
     <div className="flex items-center gap-3">
       <div className="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden">
@@ -57,9 +57,9 @@ export default function QualityReport({data, traceability = null, traceabilitySu
     CONS:d.quality!.conservative_accounting_score!=null?+d.quality!.conservative_accounting_score!.toFixed(1):null,
   }));
 
-  const latest = rd[rd.length-1].quality!;
-  const prevPeriod = rd.length >= 2 ? rd[rd.length - 2] : null;
-  const latestPeriod = rd[rd.length - 1];
+  const latest = rd[rd.length-1]!.quality!;
+  const prevPeriod = rd.length >= 2 ? rd[rd.length - 2]! : null;
+  const latestPeriod = rd[rd.length - 1]!;
   const zZone: ("Safe"|"Grey"|"Distress") = latest.altman_zprime>2.9?"Safe":latest.altman_zprime>1.23?"Grey":"Distress";
   const mFlag = latest.beneish_mscore > -1.78;
 

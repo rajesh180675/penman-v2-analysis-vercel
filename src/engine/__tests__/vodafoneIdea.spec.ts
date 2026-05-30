@@ -66,7 +66,7 @@ describe("Vodafone Idea (negative networth)", () => {
   });
 
   it("reports key financials for the latest period", () => {
-    const last = result.periods[result.periods.length - 1];
+    const last = result.periods[result.periods.length - 1]!;
     console.log("\nLatest period:", last.period_end);
     console.log("  CSE:", last.bs.CSE.toFixed(0), "Cr");
     console.log("  NOA:", last.bs.NOA.toFixed(0), "Cr");

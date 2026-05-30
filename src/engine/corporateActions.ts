@@ -28,7 +28,7 @@ export function detectCorporateActions(periods: RawPeriodData[] | null | undefin
   const events: CorporateActionEvent[] = [];
   for (let index = 1; index < data.length; index += 1) {
     const prev = data[index - 1];
-    const current = data[index];
+    const current = data[index]!;
     const sharesPrev = periodMetricValue(prev, ["Number of Equity Shares - Subscribed Fully Paid up", "Number of Equity Shares - Issued"]);
     const sharesCur = periodMetricValue(current, ["Number of Equity Shares - Subscribed Fully Paid up", "Number of Equity Shares - Issued"]);
     const buyback = periodMetricValue(current, ["ShareBuybacks", "Buy Back of Shares", "Purchase of Own Shares"]);

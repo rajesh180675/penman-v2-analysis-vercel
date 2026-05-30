@@ -54,7 +54,7 @@ describe("validateBankQualityIndicators", () => {
   it("rejects schema-version mismatches", () => {
     const r = validateBankQualityIndicators({ ...baseValid, schema_version: "0.0.0" });
     expect(r.ok).toBe(false);
-    expect(r.issues[0].field).toBe("schema_version");
+    expect(r.issues[0]!.field).toBe("schema_version");
   });
 
   it("rejects missing required strings", () => {
@@ -69,7 +69,7 @@ describe("validateBankQualityIndicators", () => {
       periods: [{ ...baseValid.periods[0], period_end: "FY25" }],
     });
     expect(r.ok).toBe(false);
-    expect(r.issues[0].message).toMatch(/ISO date/);
+    expect(r.issues[0]!.message).toMatch(/ISO date/);
   });
 
   it("rejects duplicate period_end", () => {

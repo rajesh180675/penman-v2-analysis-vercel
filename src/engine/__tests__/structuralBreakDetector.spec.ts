@@ -68,8 +68,8 @@ describe("detectStructuralBreaks — Phase I robustness", () => {
     expect(result.hasBreaks).toBe(true);
     const equityBreaks = result.breaks.filter((b) => b.kind === "equity-drop");
     expect(equityBreaks.length).toBe(1);
-    expect(equityBreaks[0].period_end).toBe("2024-03-31");
-    expect(equityBreaks[0].reason).toMatch(/demerger|capital reduction/);
+    expect(equityBreaks[0]!.period_end).toBe("2024-03-31");
+    expect(equityBreaks[0]!.reason).toMatch(/demerger|capital reduction/);
     expect(result.affectedPeriods.has("2023-03-31")).toBe(true);
     expect(result.affectedPeriods.has("2024-03-31")).toBe(true);
   });
@@ -83,7 +83,7 @@ describe("detectStructuralBreaks — Phase I robustness", () => {
     const result = detectStructuralBreaks(periods);
     const jumps = result.breaks.filter((b) => b.kind === "equity-jump");
     expect(jumps.length).toBe(1);
-    expect(jumps[0].reason).toMatch(/capital raise|IPO|QIP/);
+    expect(jumps[0]!.reason).toMatch(/capital raise|IPO|QIP/);
   });
 
   it("flags revenue drop (segment divestiture)", () => {
@@ -95,7 +95,7 @@ describe("detectStructuralBreaks — Phase I robustness", () => {
     const result = detectStructuralBreaks(periods);
     const drops = result.breaks.filter((b) => b.kind === "revenue-drop");
     expect(drops.length).toBe(1);
-    expect(drops[0].reason).toMatch(/divestiture|demerger|demand shock/);
+    expect(drops[0]!.reason).toMatch(/divestiture|demerger|demand shock/);
   });
 
   it("flags NOA jump (M&A acquisition)", () => {
@@ -107,7 +107,7 @@ describe("detectStructuralBreaks — Phase I robustness", () => {
     const result = detectStructuralBreaks(periods);
     const jumps = result.breaks.filter((b) => b.kind === "asset-base-jump");
     expect(jumps.length).toBe(1);
-    expect(jumps[0].reason).toMatch(/M&A|acquisition|IFRS-16/);
+    expect(jumps[0]!.reason).toMatch(/M&A|acquisition|IFRS-16/);
   });
 
   it("flags multiple breaks in one transition (demerger affects equity AND revenue AND NOA)", () => {

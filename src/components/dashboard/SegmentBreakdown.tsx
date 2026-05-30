@@ -22,6 +22,7 @@ export default function SegmentBreakdown({ segmentData, unit = "₹ Cr" }: Props
 
   // Latest year is first in the array (Capitaline reports newest first)
   const latestYear = years[0];
+  if (latestYear === undefined) return null; // No periods — nothing to render
   const segType = segmentData.segmentationType === "business" ? "Business" :
                   segmentData.segmentationType === "geographic" ? "Geographic" : "Total";
 
@@ -33,7 +34,7 @@ export default function SegmentBreakdown({ segmentData, unit = "₹ Cr" }: Props
       revenue: periodData?.revenue ?? 0,
       result: periodData?.result ?? 0,
       assets: periodData?.assets ?? 0,
-      color: COLORS[i % COLORS.length],
+      color: COLORS[i % COLORS.length]!,
     };
   }).filter(s => s.revenue !== 0 || s.result !== 0);
 

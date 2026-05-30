@@ -549,7 +549,7 @@ export async function fetchBankQualityIndicators(
     periods: qi.periods?.length ?? 0,
     hasSubsidiaries: qi.periods?.filter((p: BankQualityPeriod) => p.subsidiaries != null).length ?? 0,
     fields: qi.periods?.length > 0
-      ? Object.keys(qi.periods[0]).filter(k => (qi.periods[0] as unknown as Record<string, unknown>)[k] != null).length
+      ? Object.keys(qi.periods[0]!).filter(k => (qi.periods[0] as unknown as Record<string, unknown>)[k] != null).length
       : 0,
   });
   return qi;

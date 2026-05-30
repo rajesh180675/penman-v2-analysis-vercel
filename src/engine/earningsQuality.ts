@@ -48,7 +48,7 @@ export function dechowDichevQuality(
   // Full model uses lag/lead but we simplify to CFO_t for data-sparse environments
   const pairs: [number, number][] = [];
   for (let i = 0; i < n; i += 1) {
-    pairs.push([cfoSeries[i], wcaSeries[i]]);
+    pairs.push([cfoSeries[i]!, wcaSeries[i] ?? NaN]);
   }
 
   const valid = pairs.filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
@@ -72,7 +72,7 @@ export function dechowDichevQuality(
   const slope = ssxx > 0 ? ssxy / ssxx : 0;
   const intercept = meanY - slope * meanX;
   const predicted = valid.map(([x]) => intercept + slope * x);
-  const residuals = valid.map(([, y], i) => y - predicted[i]);
+  const residuals = valid.map(([, y], i) => y - predicted[i]!);
 
   const ssRes = residuals.reduce((s, r) => s + r * r, 0);
   const rSquared = ssyy > 0 ? Math.max(0, 1 - ssRes / ssyy) : 0;
@@ -139,23 +139,23 @@ export function roychowdhuryREM(
   if (n < 4) return null;
 
   // Use the latest period for analysis
-  const latestSales = sales[n - 1];
+  const latestSales = sales[n - 1]!;
 
   // Compute normal relationships via simple regression
   // Normal CFO ~ Sales
   const cfoNormal = simpleRegression(sales, cfo);
   const predictedCFO = cfoNormal ? cfoNormal.slope * latestSales + cfoNormal.intercept : null;
-  const abnormalCFO = predictedCFO != null ? cfo[n - 1] - predictedCFO : null;
+  const abnormalCFO = predictedCFO != null ? (cfo[n - 1] ?? NaN) - predictedCFO : null;
 
   // Normal discretionary expense ~ Sales
   const discNormal = simpleRegression(sales, discretionaryExpense);
   const predictedDisc = discNormal ? discNormal.slope * latestSales + discNormal.intercept : null;
-  const abnormalDiscExp = predictedDisc != null ? discretionaryExpense[n - 1] - predictedDisc : null;
+  const abnormalDiscExp = predictedDisc != null ? (discretionaryExpense[n - 1] ?? NaN) - predictedDisc : null;
 
   // Normal production cost ~ Sales
   const prodNormal = simpleRegression(sales, productionCost);
   const predictedProd = prodNormal ? prodNormal.slope * latestSales + prodNormal.intercept : null;
-  const abnormalProdCost = predictedProd != null ? productionCost[n - 1] - predictedProd : null;
+  const abnormalProdCost = predictedProd != null ? (productionCost[n - 1] ?? NaN) - predictedProd : null;
 
   // Aggregate REM score (Roychowdhury: abs(abnormal CFO) + abs(abnormal disc exp) + abs(abnormal prod cost))
   const absComponents = [abnormalCFO, abnormalDiscExp, abnormalProdCost].filter(
@@ -337,7 +337,7 @@ export function buildDechowDichevAndRem(
   let prevOperatingWC: number | null = null;
 
   for (let i = 0; i < sorted.length; i += 1) {
-    const p = sorted[i];
+    const p = sorted[i]!;
     cfoSeries.push(p.cf.CFO ?? 0);
     salesSeries.push(p.is.Sales ?? 0);
 
@@ -362,7 +362,7 @@ export function buildDechowDichevAndRem(
     discExpenseSeries.push(sgaAdv > 0 ? sgaAdv : sgaTotal > 0 ? sgaTotal : 0);
 
     // Production cost: COGS + increase in inventory
-    const prevInv = i > 0 ? sorted[i - 1].bs.Inventory ?? 0 : inv;
+    const prevInv = i > 0 ? sorted[i - 1]!.bs.Inventory ?? 0 : inv;
     prodCostSeries.push(p.is.COGS + Math.max(inv - prevInv, 0));
   }
 
@@ -394,7 +394,7 @@ function simpleRegression(x: number[], y: number[]): RegressionResult | null {
 
   const valid: [number, number][] = [];
   for (let i = 0; i < n; i += 1) {
-    if (Number.isFinite(x[i]) && Number.isFinite(y[i])) valid.push([x[i], y[i]]);
+    if (Number.isFinite(x[i]) && Number.isFinite(y[i])) valid.push([x[i]!, y[i]!]);
   }
   if (valid.length < 2) return null;
 

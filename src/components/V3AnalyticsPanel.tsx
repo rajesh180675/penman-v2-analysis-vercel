@@ -80,8 +80,8 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
 
   const { valuation, kw } = useMemo(() => {
     if (data.length < 2) return { valuation: null, kw: ke };
-    const cur = data[data.length - 1];
-    const prev = data[data.length - 2];
+    const cur = data[data.length - 1]!;
+    const prev = data[data.length - 2]!;
     const kw_derived = deriveKwFromStructure(cur, prev, ke, config.risk_free_rate, config);
     const g = config.g_terminal_override ?? 0.04;
     // First pass: compute without anchor to get RE series for terminal anchor computation
@@ -419,13 +419,13 @@ function OverviewSection({ bundle, valuation, tvClass }: {
           label="Confidence Score"
           value={`${confidence.composite.toFixed(0)}/100`}
           badge={confidence.classification}
-          color={CONF_COLORS[confidence.classification]}
+          color={CONF_COLORS[confidence.classification]!}
         />
         <MetricCard
           label="TV Share (RE CV3)"
           value={pct(tvClass.tv_share)}
           badge={tvClass.tv_grade}
-          color={GRADE_COLORS[tvClass.tv_grade]}
+          color={GRADE_COLORS[tvClass.tv_grade]!}
         />
         <MetricCard
           label="Anchor Method"
@@ -1102,7 +1102,7 @@ function MoatSection({ moat }: { moat: MoatScoreResult | null }) {
           label="Composite Score"
           value={`${moat.compositeScore}/100`}
           badge={moat.moatWidth.toUpperCase()}
-          color={MOAT_COLORS[moat.moatWidth]}
+          color={MOAT_COLORS[moat.moatWidth]!}
         />
         <MetricCard
           label="Moat Trend"
@@ -1195,7 +1195,7 @@ function CapitalAllocSection({ ca }: { ca: CapAllocScoreResult | null }) {
           label="Composite Score"
           value={`${ca.compositeScore}/100`}
           badge={`Grade ${ca.grade}`}
-          color={GRADE_BG[ca.grade]}
+          color={GRADE_BG[ca.grade]!}
         />
         <MetricCard
           label="Trend"
@@ -1284,7 +1284,7 @@ function EPVSection({ epv }: { epv: EPVResult | null }) {
           label="EPV (Enterprise)"
           value={cr(epv.V_EPV)}
           badge={epv.interpretation.replace(/-/g, " ")}
-          color={INTERP_COLORS[epv.interpretation]}
+          color={INTERP_COLORS[epv.interpretation]!}
         />
         <MetricCard
           label="Asset Value (NOA)"
@@ -1302,7 +1302,7 @@ function EPVSection({ epv }: { epv: EPVResult | null }) {
           label="Confidence"
           value={epv.confidence.toUpperCase()}
           badge={`WACC: ${pct(epv.kw)}`}
-          color={CONF_COLOR[epv.confidence]}
+          color={CONF_COLOR[epv.confidence]!}
         />
       </div>
 

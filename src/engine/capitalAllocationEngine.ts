@@ -117,8 +117,8 @@ export function analyzeCapitalAllocation(
   const { segments, years, data } = segmentData;
   if (segments.length < 2 || years.length < 2) return null;
 
-  const latestYear = years[0];
-  const thirdYear = years[2] || years[years.length - 1];
+  const latestYear = years[0]!;
+  const thirdYear = years[2] || years[years.length - 1]!;
 
   let totalCapital = 0;
   let totalProfit = 0;
@@ -243,7 +243,7 @@ export function measureConglomerateDiscount(
   const { segments, years, data } = segmentData;
   if (segments.length < 2 || years.length === 0) return null;
 
-  const latestYear = years[0];
+  const latestYear = years[0]!;
   const marketCap = marketPricePerShare * sharesOutstanding;
   if (marketCap <= 0) return null;
 
@@ -259,7 +259,7 @@ export function measureConglomerateDiscount(
 
     // Determine sector for this segment
     const sectorKey = segmentSectorMap?.[segName] ?? inferSectorFromName(segName);
-    const peerPB = SECTOR_PB_MULTIPLES[sectorKey] ?? SECTOR_PB_MULTIPLES["default"];
+    const peerPB = SECTOR_PB_MULTIPLES[sectorKey] ?? SECTOR_PB_MULTIPLES["default"]!;
 
     const impliedValue = netAssets * peerPB;
     totalSOTP += impliedValue;
@@ -328,7 +328,7 @@ export function detectTransferPricingDistortion(
   const { segments, years, data } = segmentData;
   if (segments.length < 2 || years.length === 0) return [];
 
-  const latestYear = years[0];
+  const latestYear = years[0]!;
   const flags: TransferPricingFlag[] = [];
 
   for (const segName of segments) {
@@ -357,7 +357,7 @@ export function detectTransferPricingDistortion(
 
     // Flag 2: Margin divergence from peer
     const sectorKey = segmentSectorMap?.[segName] ?? inferSectorFromName(segName);
-    const peerOPM = SECTOR_OPM_MEDIANS[sectorKey] ?? SECTOR_OPM_MEDIANS["default"];
+    const peerOPM = SECTOR_OPM_MEDIANS[sectorKey] ?? SECTOR_OPM_MEDIANS["default"]!;
     const marginDiff = opm - peerOPM;
 
     if (Math.abs(marginDiff) > 0.10) {

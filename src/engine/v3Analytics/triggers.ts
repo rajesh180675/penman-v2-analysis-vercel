@@ -31,7 +31,7 @@ export function calibrateMonitoringTriggers(
   registry?: CanonicalOutputRegistry | undefined,
   config?: EngineConfig | undefined
 ): TriggerCalibrationResult {
-  const latest = periods[periods.length - 1];
+  const latest = periods[periods.length - 1]!;
   const cleanPeriod = [...periods].reverse().find((p) => {
     const flags = periodFlags.find((f) => f.period_end === p.period_end)?.flags ?? [];
     const hasCritical = hasCriticalTerminalFlag(flags);
@@ -75,13 +75,13 @@ export function calibrateMonitoringTriggers(
   let re_peak: number | null = null;
   let re_peak_year: number | null = null;
   for (let i = 1; i < cleanREs.length; i++) {
-    if (cleanREs[i].RE < cleanREs[i - 1].RE) {
+    if (cleanREs[i]!.RE < cleanREs[i - 1]!.RE) {
       streak += 1;
       consecutive_re_declines = Math.max(consecutive_re_declines, streak);
     } else streak = 0;
-    if (re_peak == null || cleanREs[i].RE > re_peak) {
-      re_peak = cleanREs[i].RE;
-      re_peak_year = Number.parseInt(cleanREs[i].period_end.slice(0, 4), 10);
+    if (re_peak == null || cleanREs[i]!.RE > re_peak) {
+      re_peak = cleanREs[i]!.RE;
+      re_peak_year = Number.parseInt(cleanREs[i]!.period_end.slice(0, 4), 10);
     }
   }
   registry?.register("pm_calibration_base", pm_base, "S-14.2");
@@ -112,7 +112,7 @@ export function generateMonitoringTriggers(
   _registry?: CanonicalOutputRegistry | undefined,
   config?: EngineConfig | undefined
 ): MonitoringTrigger[] {
-  const latest = periods[periods.length - 1];
+  const latest = periods[periods.length - 1]!;
   // S-14.2: Do NOT pass registry here — calibrateMonitoringTriggers was already called
   // with registry in computeV3Analytics. Passing it again causes double registration.
   const c = calibrateMonitoringTriggers(periods, periodFlags, undefined, { ...(config ?? {}), ke } as EngineConfig);

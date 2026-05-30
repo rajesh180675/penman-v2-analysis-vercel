@@ -18,7 +18,7 @@ describe("parser robustness", () => {
     ].join("\n");
     const out = parseScreenerTabDelimited(txt, { companyId: "ABC" });
     expect(out.length).toBe(2);
-    expect(out[0].company_id).toBe("ABC");
+    expect(out[0]!.company_id).toBe("ABC");
   });
 
   it("throws on invalid raw json", () => {
@@ -35,7 +35,7 @@ describe("parser robustness", () => {
     ]);
     const out = parseRawPeriodsJson(json);
     expect(out.length).toBe(1);
-    expect(out[0].period_end).toBe("2025-03-31");
+    expect(out[0]!.period_end).toBe("2025-03-31");
   });
 
   it("fails loud on invalid Capitaline zip payload", async () => {

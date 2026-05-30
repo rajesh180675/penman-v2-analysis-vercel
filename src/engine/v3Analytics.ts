@@ -210,12 +210,12 @@ export function decomposeReReOIGap(
   const ke = valuation.ke;
   const kw = valuation.kw;
   const dirty_surplus = periods.slice(1).reduce((acc, p, idx) => {
-    const prev = periods[idx];
+    const prev = periods[idx]!;
     const ds = (p.bs.CSE - prev.bs.CSE) - p.is.CNI + p.cf.DividendPaid;
     return acc + ds / Math.pow(1 + ke, idx + 1);
   }, 0);
   const nfo_timing = periods.slice(1).reduce((acc, period, idx) => {
-    const prev = periods[idx];
+    const prev = periods[idx]!;
     const deltaNfo = (period.bs.NFO ?? 0) - (prev.bs.NFO ?? 0);
     return acc + deltaNfo / Math.pow(1 + ke, idx + 1);
   }, 0);
@@ -243,7 +243,7 @@ export function deriveShareCount(
   registry?: CanonicalOutputRegistry | undefined,
   fallbackVPrimary?: number | undefined,
 ): ShareCountResult {
-  const latest = periods[periods.length - 1];
+  const latest = periods[periods.length - 1]!;
   const directLatestShares = latest.shareCountInput?.endPeriodShares ?? null;
   const weightedAverageShares = latest.shareCountInput?.weightedAverageBasicShares ?? null;
   const shareHistory = periods
@@ -251,7 +251,7 @@ export function deriveShareCount(
     .filter((value): value is number => value != null && value > 0 && Number.isFinite(value));
   const shareExpansion = shareHistory.slice(-5).reduce((sum, shares, idx, arr) => {
     if (idx === 0) return sum;
-    return sum + Math.max(0, shares - arr[idx - 1]);
+    return sum + Math.max(0, shares - arr[idx - 1]!);
   }, 0);
   const dilutionBase = periods.slice(Math.max(1, periods.length - 5)).reduce((sum, p, idx) => {
     const prev = periods[Math.max(0, periods.length - 5) + idx - 1];
@@ -303,7 +303,7 @@ export function deriveShareCount(
   if (!plausible.length) {
     return { shares: null, source: "Share Capital not available in canonical input", confidence: "FAILED" };
   }
-  let selected = plausible.find((x) => x.fv === 1) ?? plausible[0];
+  let selected = plausible.find((x) => x.fv === 1) ?? plausible[0]!;
   let confidence: ShareCountResult["confidence"] = "LOW";
   if (fallbackVPrimary && fallbackVPrimary > 0) {
     const withSanity = plausible.filter((x) => {
@@ -311,10 +311,10 @@ export function deriveShareCount(
       return perShare > 1 && perShare < 100000;
     });
     if (withSanity.length === 1) {
-      selected = withSanity[0];
+      selected = withSanity[0]!;
       confidence = "MEDIUM";
     } else if (withSanity.length > 1) {
-      selected = withSanity.find((x) => x.fv === 1 || x.fv === 10) ?? withSanity[0];
+      selected = withSanity.find((x) => x.fv === 1 || x.fv === 10) ?? withSanity[0]!;
       confidence = "LOW";
     }
   }
@@ -547,16 +547,16 @@ export function runCrossSectionAssertions(registry: CanonicalOutputRegistry, ren
   if (rendered.sensitivity && rendered.sensitivity.length > 0) {
     for (const row of rendered.sensitivity) {
       for (let i = 0; i < row.values.length - 1; i++) {
-        if (row.values[i] > row.values[i + 1] + 0.01) {
-          issues.push(`Sensitivity matrix non-monotonic at ke=${(row.ke * 100).toFixed(1)}%: V(g[${i}])=${row.values[i].toFixed(0)} > V(g[${i+1}])=${row.values[i + 1].toFixed(0)}.`);
+        if (row.values[i]! > row.values[i + 1]! + 0.01) {
+          issues.push(`Sensitivity matrix non-monotonic at ke=${(row.ke * 100).toFixed(1)}%: V(g[${i}])=${row.values[i]!.toFixed(0)} > V(g[${i+1}])=${row.values[i + 1]!.toFixed(0)}.`);
         }
       }
     }
-    const colCount = rendered.sensitivity[0].values.length;
+    const colCount = rendered.sensitivity[0]!.values.length;
     const rowsByKe = [...rendered.sensitivity].sort((a, b) => a.ke - b.ke);
     for (let c = 0; c < colCount; c++) {
       for (let i = 0; i < rowsByKe.length - 1; i++) {
-        if (rowsByKe[i].values[c] < rowsByKe[i + 1].values[c] - 0.01) {
+        if (rowsByKe[i]!.values[c]! < rowsByKe[i + 1]!.values[c]! - 0.01) {
           issues.push(`Sensitivity matrix not decreasing in ke for g-column ${c}.`);
           break;
         }
@@ -760,8 +760,8 @@ export function computeV3Analytics(
   const kw = (() => {
     if (kwDerived != null && Number.isFinite(kwDerived) && kwDerived > 0) return kwDerived;
     if (periods.length >= 2) {
-      const cur = periods[periods.length - 1];
-      const prev = periods[periods.length - 2];
+      const cur = periods[periods.length - 1]!;
+      const prev = periods[periods.length - 2]!;
       return deriveKwFromStructure(cur, prev, ke, cfg.risk_free_rate, cfg);
     }
     return ke * 0.75;
@@ -802,7 +802,7 @@ export function computeV3Analytics(
   // Get eq16 residual from latest period with ratios
   const eq16_residual_latest = (() => {
     for (let i = periods.length - 1; i >= 0; i--) {
-      const r = periods[i].ratios;
+      const r = periods[i]!.ratios;
       if (r?.ROCE_eq16_error != null) return r.ROCE_eq16_error;
     }
     return null;
@@ -821,7 +821,7 @@ export function computeV3Analytics(
     .map((periodEnd) => {
       const idx = periods.findIndex((p) => p.period_end === periodEnd);
       if (idx <= 0) return null;
-      return renderOADecomposition(periods[idx], periods[idx - 1]);
+      return renderOADecomposition(periods[idx]!, periods[idx - 1]!);
     })
     .filter((x): x is OADecompositionResult => x != null);
   const fadeParams = estimateFadeParams(periods);
@@ -961,7 +961,7 @@ function estimatePhiInline(series: number[]): number | null {
   const n = x.length;
   const meanX = x.reduce((s, v) => s + v, 0) / n;
   const meanY = y.reduce((s, v) => s + v, 0) / n;
-  const cov = x.reduce((s, v, i) => s + (v - meanX) * (y[i] - meanY), 0);
+  const cov = x.reduce((s, v, i) => s + (v - meanX) * (y[i]! - meanY), 0);
   const varX = x.reduce((s, v) => s + (v - meanX) ** 2, 0);
   if (varX < 1e-10) return null;
   return cov / varX;

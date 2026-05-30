@@ -16,8 +16,8 @@ interface FilingRecordShape {
 
 function inferFilingKind(rawData: RawPeriodData[] | null) {
   if (!rawData || rawData.length < 2) return "unknown" as const;
-  const last = new Date(rawData[rawData.length - 1].period_end).getTime();
-  const prev = new Date(rawData[rawData.length - 2].period_end).getTime();
+  const last = new Date(rawData[rawData.length - 1]!.period_end).getTime();
+  const prev = new Date(rawData[rawData.length - 2]!.period_end).getTime();
   const gapDays = Math.round((last - prev) / (1000 * 60 * 60 * 24));
   if (gapDays < 120) return "quarterly" as const;
   if (gapDays < 240) return "ttm" as const;

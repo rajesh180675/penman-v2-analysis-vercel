@@ -81,10 +81,10 @@ function parseNumeric(raw: string): number | null {
 function toStageValues(vals: (number | null)[]): StageValues | null {
   if (!vals || vals.length < 3) return null;
   return {
-    stage1: vals[0],
-    stage2: vals[1],
-    stage3: vals[2],
-    total: vals.length > 3 ? vals[3] : null,
+    stage1: vals[0]!,
+    stage2: vals[1]!,
+    stage3: vals[2]!,
+    total: vals.length > 3 ? vals[3]! : null,
   };
 }
 
@@ -101,11 +101,11 @@ function parseLgdHtml(html: string): LgdRow[] {
   for (const part of trParts) {
     const labelMatch = part.match(/<td[^>]*>([^<]+)<\/td>/);
     if (!labelMatch) continue;
-    const label = labelMatch[1].trim();
+    const label = labelMatch[1]!.trim();
     if (!label) continue;
 
     const valMatches = [...part.matchAll(/class="ng-binding"[^>]*>([^<]*)</g)];
-    const values = valMatches.map(m => parseNumeric(m[1]));
+    const values = valMatches.map(m => parseNumeric(m[1]!));
     if (values.length > 0) {
       rows.push({ label, values });
     }
@@ -170,9 +170,9 @@ export function parseRbiNhbFile(html: string): RbiNhbPeriod[] {
   for (const part of trParts) {
     const labelMatch = part.match(/<label[^>]*>([^<]+)<\/label>/);
     if (!labelMatch) continue;
-    const label = labelMatch[1].trim();
+    const label = labelMatch[1]!.trim();
     const valMatches = [...part.matchAll(/class="ng-binding ng-scope">\s*([^<]*?)\s*<\/div>/g)];
-    const values = valMatches.map(m => parseNumeric(m[1]));
+    const values = valMatches.map(m => parseNumeric(m[1]!));
     if (values.length > 0) {
       // Keep first occurrence only — duplicate labels exist across Basel I/II/III sections
       if (!(label in dataMap)) {
@@ -184,7 +184,7 @@ export function parseRbiNhbFile(html: string): RbiNhbPeriod[] {
   // Build per-period records
   const periods: RbiNhbPeriod[] = [];
   for (let i = 0; i < periodCodes.length; i++) {
-    const code = periodCodes[i];
+    const code = periodCodes[i]!;
     const fy = `FY${code.slice(0, 4)}`;
     const val = (label: string) => dataMap[label]?.[i] ?? null;
 
@@ -214,7 +214,7 @@ export function parseRbiNhbFile(html: string): RbiNhbPeriod[] {
   trace("sidecar", "rbiNhbParsed", {
     periods: periods.length,
     periodsWithData: periods.filter(p => (p.gnpa_cr ?? 0) > 0 || (p.crar_pct ?? 0) > 0).length,
-    latestFY: periods.length > 0 ? periods[0].fiscal_label : null,
+    latestFY: periods.length > 0 ? periods[0]!.fiscal_label : null,
   });
   return periods;
 }
@@ -227,8 +227,8 @@ export function parseRbiNhbFile(html: string): RbiNhbPeriod[] {
 function fiscalLabelFromFilename(filename: string): string | null {
   const m = filename.match(/LossGivenDefault_(\d{4})(\d{2})\.xls/);
   if (!m) return null;
-  const year = parseInt(m[1], 10);
-  const month = parseInt(m[2], 10);
+  const year = parseInt(m[1]!, 10);
+  const month = parseInt(m[2]!, 10);
   // Indian FY ends March: 202503 = FY2025
   if (month <= 3) return `FY${year}`;
   return `FY${year + 1}`;
@@ -262,7 +262,7 @@ export function parseLgdFiles(htmlContents: { filename: string; html: string }[]
       fileCount: result.length,
       method: "filename",
       fiscalYears: result.map(r => r.fiscal_label),
-      latestClosingTotal: result.length > 0 ? result[result.length - 1].gross_carrying.closing?.total : null,
+      latestClosingTotal: result.length > 0 ? result[result.length - 1]!.gross_carrying.closing?.total : null,
     });
     return result;
   }
@@ -284,7 +284,7 @@ export function parseLgdFiles(htmlContents: { filename: string; html: string }[]
     fileCount: result.length,
     method: "heuristic",
     fiscalYears: result.map(r => r.fiscal_label),
-    latestClosingTotal: result.length > 0 ? result[result.length - 1].gross_carrying.closing?.total : null,
+    latestClosingTotal: result.length > 0 ? result[result.length - 1]!.gross_carrying.closing?.total : null,
   });
   return result;
 }

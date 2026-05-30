@@ -92,17 +92,17 @@ describe("buildValuationPeriodsFromForecast", () => {
     expect(out).toHaveLength(3);
     expect(out[0]).toBe(latest);
 
-    expect(out[1].period_end).toBe("2025-03-31");
-    expect(out[1].bs.CSE).toBe(forecasts[0].CSE_f);
-    expect(out[1].bs.NOA).toBe(forecasts[0].NOA_f);
-    expect(out[1].bs.NFO).toBe(forecasts[0].NOA_f - forecasts[0].CSE_f);
-    expect(out[1].is.Sales).toBe(forecasts[0].Sales_f);
-    expect(out[1].is.OI).toBe(forecasts[0].OI_f);
-    expect(out[1].is.CNI).toBe(forecasts[0].CNI_f);
-    expect(out[1].is.NFE).toBe(forecasts[0].NFE_f);
-    expect(out[1].cu.CoreOI).toBe(forecasts[0].OI_f);
+    expect(out[1]!.period_end).toBe("2025-03-31");
+    expect(out[1]!.bs.CSE).toBe(forecasts[0]!.CSE_f);
+    expect(out[1]!.bs.NOA).toBe(forecasts[0]!.NOA_f);
+    expect(out[1]!.bs.NFO).toBe(forecasts[0]!.NOA_f - forecasts[0]!.CSE_f);
+    expect(out[1]!.is.Sales).toBe(forecasts[0]!.Sales_f);
+    expect(out[1]!.is.OI).toBe(forecasts[0]!.OI_f);
+    expect(out[1]!.is.CNI).toBe(forecasts[0]!.CNI_f);
+    expect(out[1]!.is.NFE).toBe(forecasts[0]!.NFE_f);
+    expect(out[1]!.cu.CoreOI).toBe(forecasts[0]!.OI_f);
 
-    expect(out[2].period_end).toBe("2026-03-31");
+    expect(out[2]!.period_end).toBe("2026-03-31");
   });
 
   it("throws for malformed latest period_end year", () => {
@@ -144,9 +144,9 @@ describe("applyDriverSensitivityToScenario", () => {
 
     const baseBuilt = buildScenario(baseScenario, latest);
     const scaledBuilt = buildScenario(scaled, latest);
-    expect(scaledBuilt[0].Sales_f).toBeGreaterThan(baseBuilt[0].Sales_f);
-    expect(scaledBuilt[0].OI_f).toBeGreaterThan(baseBuilt[0].OI_f);
-    expect(scaledBuilt[0].NOA_f).toBeLessThan(baseBuilt[0].NOA_f);
+    expect(scaledBuilt[0]!.Sales_f).toBeGreaterThan(baseBuilt[0]!.Sales_f);
+    expect(scaledBuilt[0]!.OI_f).toBeGreaterThan(baseBuilt[0]!.OI_f);
+    expect(scaledBuilt[0]!.NOA_f).toBeLessThan(baseBuilt[0]!.NOA_f);
   });
 });
 
@@ -187,7 +187,7 @@ describe("derivePersistenceForecastScenario", () => {
     const businessModel = buildBusinessModelProfile(data);
     const scenario = derivePersistenceForecastScenario({
       scenarioKey: "base",
-      latest: data[data.length - 1],
+      latest: data[data.length - 1]!,
       businessModel,
       horizon: 5,
       template: {
@@ -212,7 +212,7 @@ describe("derivePersistenceForecastScenario", () => {
     expect(scenario.forecastPolicy?.balanceSheetFlexibility).toBe("tight");
     expect(scenario.drivers.sales_growth[0]).toBeLessThan(0.2);
     expect(scenario.drivers.core_sales_pm[0]).toBeLessThan(0.2);
-    expect(scenario.drivers.sales_growth[0]).toBeGreaterThan(scenario.drivers.sales_growth[4]);
+    expect(scenario.drivers.sales_growth[0]).toBeGreaterThan(scenario.drivers.sales_growth[4]!);
     expect((scenario.forecastPolicy?.narrative ?? []).some((item) => item.toLowerCase().includes("working-capital"))).toBe(true);
   });
 
@@ -252,7 +252,7 @@ describe("derivePersistenceForecastScenario", () => {
     const scenario = derivePersistenceForecastScenario({
       scenarioKey: "base",
       periods: data,
-      latest: data[data.length - 1],
+      latest: data[data.length - 1]!,
       businessModel,
       horizon: 5,
       template: {
@@ -274,7 +274,7 @@ describe("derivePersistenceForecastScenario", () => {
     expect(scenario.forecastPolicy?.reinvestmentBurden).toBe("light");
     expect(scenario.forecastPolicy?.terminalFadeYears).toBeGreaterThanOrEqual(5);
     expect(scenario.forecastPolicy?.terminalEconomicsRationale?.length).toBeGreaterThan(0);
-    expect(scenario.drivers.sales_growth[0]).toBeGreaterThan(scenario.drivers.sales_growth[4]);
+    expect(scenario.drivers.sales_growth[0]).toBeGreaterThan(scenario.drivers.sales_growth[4]!);
     expect(scenario.drivers.g_terminal).toBeLessThanOrEqual(0.05);
   });
 
@@ -327,7 +327,7 @@ describe("derivePersistenceForecastScenario", () => {
     const scenario = derivePersistenceForecastScenario({
       scenarioKey: "base",
       periods: data,
-      latest: data[data.length - 1],
+      latest: data[data.length - 1]!,
       businessModel,
       horizon: 5,
       template,
@@ -341,7 +341,7 @@ describe("derivePersistenceForecastScenario", () => {
 
     const scenarioSet = buildPersistenceForecastScenarioSet({
       periods: data,
-      latest: data[data.length - 1],
+      latest: data[data.length - 1]!,
       businessModel,
       horizon: 5,
       template,
@@ -430,12 +430,12 @@ describe("buildScenario validation", () => {
 
     const [fp] = buildScenario(scenario, latest);
 
-    expect(fp.bridge_mode).toBe("cost_bridge");
-    expect(fp.MaterialCost_f).toBeCloseTo(495, 6);
-    expect(fp.EmployeeCost_f).toBeCloseTo(99, 6);
-    expect(fp.GrossProfit_f).toBeCloseTo(495, 6);
-    expect(fp.CoreOI_bridge_f).toBeCloseTo(316.8, 6);
-    expect(fp.core_sales_pm_assumption).toBeCloseTo(0.32, 6);
-    expect(fp.OI_f).toBeCloseTo(316.8, 6);
+    expect(fp!.bridge_mode).toBe("cost_bridge");
+    expect(fp!.MaterialCost_f).toBeCloseTo(495, 6);
+    expect(fp!.EmployeeCost_f).toBeCloseTo(99, 6);
+    expect(fp!.GrossProfit_f).toBeCloseTo(495, 6);
+    expect(fp!.CoreOI_bridge_f).toBeCloseTo(316.8, 6);
+    expect(fp!.core_sales_pm_assumption).toBeCloseTo(0.32, 6);
+    expect(fp!.OI_f).toBeCloseTo(316.8, 6);
   });
 });

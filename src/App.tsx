@@ -301,7 +301,7 @@ export function App() {
     [mappingAudit, qualityGateWithRecast, valuationReadiness],
   );
   const policyVersions = useMemo(() => getAnalysisPolicyVersions(), []);
-  const latestPeriod = valuationRawData && valuationRawData.length > 0 ? valuationRawData[valuationRawData.length - 1].period_end : null;
+  const latestPeriod = valuationRawData && valuationRawData.length > 0 ? valuationRawData[valuationRawData.length - 1]!.period_end : null;
   const traceability = useMemo(
     () => buildAnalysisTraceability({
       runId: auditMeta?.runId ?? null,
@@ -407,7 +407,7 @@ export function App() {
   useEffect(() => {
     if (!recastData || recastData.length === 0) return;
     if (config.shares_outstanding != null) return; // user already set it
-    const latest = recastData[recastData.length - 1];
+    const latest = recastData[recastData.length - 1]!;
     const snap = latest.shareCountInput;
     if (!snap) return;
     const autoShares =
@@ -741,7 +741,7 @@ if (!hasRecast && rawData && rawData.length > 0) {
                 {recastData && recastData.length > 0 && (
                   <>
                     <span className="text-xs text-slate-500">{recastData.length} periods</span>
-                    <DataFreshness latestPeriod={recastData[recastData.length - 1].period_end} />
+                    <DataFreshness latestPeriod={recastData[recastData.length - 1]!.period_end} />
                     <SourceBadge source="capitaline" />
                   </>
                 )}
@@ -757,7 +757,7 @@ if (!hasRecast && rawData && rawData.length > 0) {
                     height={16}
                     color={recastData[recastData.length - 1]?.ratios?.ROCE != null &&
                            recastData[recastData.length - 2]?.ratios?.ROCE != null &&
-                           (recastData[recastData.length - 1].ratios!.ROCE! >= recastData[recastData.length - 2].ratios!.ROCE!)
+                           (recastData[recastData.length - 1]!.ratios!.ROCE! >= recastData[recastData.length - 2]!.ratios!.ROCE!)
                            ? "#10b981" : "#ef4444"}
                   />
                 )}
@@ -804,7 +804,7 @@ if (!hasRecast && rawData && rawData.length > 0) {
                   onClick={() => {
                     // Find the earliest break period and exclude everything before it.
                     const sorted = [...structuralBreakPeriods].sort();
-                    const firstBreak = sorted[0];
+                    const firstBreak = sorted[0]!;
                     const toExclude = (rawData ?? [])
                       .map(p => p.period_end)
                       .filter(pe => pe < firstBreak);

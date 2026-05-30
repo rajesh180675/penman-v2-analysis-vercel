@@ -30,7 +30,7 @@ export function computeOwnerEarningsDcf(baseOwnerEarnings: number | null, growth
   });
   const pv = projected.reduce((total, value, index) => total + value / Math.pow(1 + ke, index + 1), 0);
   const terminal = projected.length && ke - terminalGrowth > 0.005
-    ? (projected[projected.length - 1] * (1 + terminalGrowth)) / (ke - terminalGrowth)
+    ? (projected[projected.length - 1]! * (1 + terminalGrowth)) / (ke - terminalGrowth)
     : 0;
   return pv + terminal / Math.pow(1 + ke, projected.length);
 }

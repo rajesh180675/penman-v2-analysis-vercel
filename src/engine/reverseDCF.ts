@@ -95,7 +95,7 @@ export function computeReverseDCF(
   if (!Number.isFinite(costOfCapital) || !Number.isFinite(omega)) return null;
   if (!Number.isFinite(marketPricePerShare) || !Number.isFinite(sharesOutstanding)) return null;
 
-  const latest = data[data.length - 1];
+  const latest = data[data.length - 1]!;
   const rnoa = latest.ratios?.RNOA;
   const noa = latest.bs?.NOA;
   const nfo = latest.bs?.NFO ?? 0;
@@ -115,13 +115,13 @@ export function computeReverseDCF(
   // ── Historical growth (median of last 5Y NOA growth) ──
   const growthRates: number[] = [];
   for (let i = Math.max(1, data.length - 5); i < data.length; i++) {
-    const cur = data[i].bs?.NOA ?? 0;
-    const prev = data[i - 1].bs?.NOA ?? 0;
+    const cur = data[i]!.bs?.NOA ?? 0;
+    const prev = data[i - 1]!.bs?.NOA ?? 0;
     if (prev > 0 && cur > 0) growthRates.push((cur - prev) / prev);
   }
   growthRates.sort((a, b) => a - b);
   const historicalGrowth = growthRates.length > 0
-    ? growthRates[Math.floor(growthRates.length / 2)]
+    ? growthRates[Math.floor(growthRates.length / 2)]!
     : 0;
 
   // ── Sustainable growth (self-financing capacity) ──
@@ -369,15 +369,15 @@ function computePayoutRatio(data: RecastPeriod[]): number {
   // Estimate from last few years of dividends / PAT
   const payouts: number[] = [];
   for (let i = Math.max(0, data.length - 5); i < data.length; i++) {
-    const pat = data[i].is?.PAT;
-    const div = data[i].cf?.DividendPaid;
+    const pat = data[i]!.is?.PAT;
+    const div = data[i]!.cf?.DividendPaid;
     if (pat != null && pat > 0 && div != null) {
       payouts.push(Math.abs(div) / pat);
     }
   }
   if (payouts.length === 0) return 0.30; // default assumption
   payouts.sort((a, b) => a - b);
-  return Math.min(1, payouts[Math.floor(payouts.length / 2)]);
+  return Math.min(1, payouts[Math.floor(payouts.length / 2)]!);
 }
 
 function buildNarrative(

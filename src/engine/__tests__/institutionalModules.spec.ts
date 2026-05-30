@@ -106,7 +106,7 @@ describe("institutional expansion modules", () => {
       ],
     });
     expect(peers.medians.expectedCagrStress).toBeGreaterThan(0.1);
-    expect(peers.peers[0].historyPoints).toBeGreaterThan(0);
+    expect(peers.peers[0]!.historyPoints).toBeGreaterThan(0);
 
     const calibration = calibrateSignalBacktest({
       available: true,

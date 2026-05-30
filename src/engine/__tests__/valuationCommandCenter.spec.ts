@@ -436,20 +436,20 @@ describe("valuation command center", () => {
 
     const weakData = [...baseData];
     weakData[2] = {
-      ...weakData[2],
+      ...weakData[2]!,
       quality: {
-        ...weakData[2].quality!,
+        ...weakData[2]!.quality!,
         piotroski_total: 3,
         altman_zprime: 1.8,
         beneish_mscore: -1.6,
       },
       ratios: {
-        ...weakData[2].ratios!,
+        ...weakData[2]!.ratios!,
         cash_conversion_ratio: 0.55,
         FLEV: 0.9,
       },
       bs: {
-        ...weakData[2].bs,
+        ...weakData[2]!.bs,
         separationScore: 58,
       },
     };

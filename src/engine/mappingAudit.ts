@@ -217,7 +217,7 @@ function countDatasetKeysByStatement(periods: RawPeriodData[]) {
     maxAbsValue: number;
   }>();
   for (let i = 0; i < periods.length; i += 1) {
-    const period = periods[i];
+    const period = periods[i]!;
     const isLatest = i === periods.length - 1;
     for (const compositeKey of Object.keys(period.raw_metric_values)) {
       const idx = compositeKey.lastIndexOf("__");
@@ -483,7 +483,7 @@ export function auditMappingCoverage(periods: RawPeriodData[]): MappingAuditRepo
   const yamlKeysNotInDataset = Array.from(yamlKeys).filter((k) => !datasetUnion.has(k)).sort();
   const outOfSpecLabels = Array.from(datasetCounts.entries())
     .map(([scopedKey, stats]) => {
-      const [statement, key] = scopedKey.split("||");
+      const [statement, key] = scopedKey.split("||") as [string, string];
       const candidate = {
         statement: statement as Statement,
         key,

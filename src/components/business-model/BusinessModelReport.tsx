@@ -78,7 +78,7 @@ export default function BusinessModelReport({ pipelineResult, recastData }: Prop
   const isFinancial = pipelineResult?.analysisFamily === "financial-institution";
   const subtype = pipelineResult?.bankResult?.subtype;
   const VIEWS = isFinancial ? FINANCIAL_VIEWS : INDUSTRIAL_VIEWS;
-  const [view, setView] = useState<ViewId>(VIEWS[0].id);
+  const [view, setView] = useState<ViewId>(VIEWS[0]!.id);
 
   // Insufficient data guard
   if (isFinancial) {

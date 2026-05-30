@@ -33,7 +33,7 @@ export function buildAnalysisSnapshot(params: {
     family: qualityGate?.scopeAssessment.analysisFamily ?? null,
   });
 
-  const latestPeriod = rawData && rawData.length > 0 ? rawData[rawData.length - 1].period_end : null;
+  const latestPeriod = rawData && rawData.length > 0 ? rawData[rawData.length - 1]!.period_end : null;
   const traceability = buildAnalysisTraceability({
     generatedAt: new Date().toISOString(),
     runId: auditMeta?.runId ?? null,

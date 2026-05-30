@@ -129,7 +129,7 @@ export function diagnoseManualRawPeriods(rawData: RawPeriodData[]): SourceParser
         passed: validation.warnings.length === 0,
         detail: validation.warnings.length === 0
           ? "Manual validation did not detect balance-sheet anomalies."
-          : validation.warnings[0],
+          : validation.warnings[0]!,
       },
     ],
   };

@@ -91,7 +91,7 @@ export default function SensitivityHeatmap({ ke, g, computeValue, marketPrice = 
                   {(keVal * 100).toFixed(1)}%
                 </td>
                 {gSteps.map((gVal, ci) => {
-                  const val = grid[ri][ci];
+                  const val = grid[ri]![ci]!;
                   return (
                     <td
                       key={ci}

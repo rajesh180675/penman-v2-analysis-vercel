@@ -155,8 +155,8 @@ function latestWith<T>(
   pick: (p: BankQualityPeriod) => T | null | undefined,
 ): { period: BankQualityPeriod; value: T } | null {
   for (let i = periods.length - 1; i >= 0; i--) {
-    const v = pick(periods[i]);
-    if (v != null) return { period: periods[i], value: v };
+    const v = pick(periods[i]!);
+    if (v != null) return { period: periods[i]!, value: v };
   }
   return null;
 }
@@ -175,10 +175,10 @@ function buildNPACycle(periods: BankQualityPeriod[]): NPACycleSignal {
       skipReason: `need >=2 periods with GNPA, have ${sorted.length}`,
     };
   }
-  const latest = sorted[sorted.length - 1];
+  const latest = sorted[sorted.length - 1]!;
   // Use 3y prior if available, else oldest in window
   const priorIdx = sorted.length >= 4 ? sorted.length - 4 : 0;
-  const prior = sorted[priorIdx];
+  const prior = sorted[priorIdx]!;
 
   const latestG = latest.gnpa_pct as number;
   const priorG = prior.gnpa_pct as number;
@@ -187,7 +187,7 @@ function buildNPACycle(periods: BankQualityPeriod[]): NPACycleSignal {
   // Recent-direction check: compare latest vs the previous period to
   // disambiguate "peaking" (was rising, now flat-or-down) from "rising"
   // (still climbing).
-  const prev = sorted[sorted.length - 2];
+  const prev = sorted[sorted.length - 2]!;
   const recentDelta = latestG - (prev.gnpa_pct as number);
 
   let position: NPACyclePosition;
@@ -222,10 +222,10 @@ function buildPCRTrend(periods: BankQualityPeriod[]): PCRTrendSignal {
       skipReason: `need >=2 periods with PCR, have ${sorted.length}`,
     };
   }
-  const latest = sorted[sorted.length - 1].pcr_pct as number;
+  const latest = sorted[sorted.length - 1]!.pcr_pct as number;
   // 3y-prior anchor when available
   const priorIdx = sorted.length >= 4 ? sorted.length - 4 : 0;
-  const prior = sorted[priorIdx].pcr_pct as number;
+  const prior = sorted[priorIdx]!.pcr_pct as number;
   const delta = latest - prior;
 
   let direction: TrendDirection;
@@ -265,9 +265,9 @@ function buildSlippage(periods: BankQualityPeriod[]): SlippageSignal {
           : `need >=2 periods with slippage, have ${sorted.length}`,
     };
   }
-  const latest = sorted[sorted.length - 1].slippage_pct as number;
+  const latest = sorted[sorted.length - 1]!.slippage_pct as number;
   const priorIdx = sorted.length >= 4 ? sorted.length - 4 : 0;
-  const prior = sorted[priorIdx].slippage_pct as number;
+  const prior = sorted[priorIdx]!.slippage_pct as number;
   const delta = latest - prior;
 
   let direction: TrendDirection;
@@ -331,7 +331,7 @@ function buildDepositFranchise(periods: BankQualityPeriod[]): DepositFranchiseSi
       skipReason: "no CASA data in any period",
     };
   }
-  const latestCasa = sorted[sorted.length - 1].casa_pct as number;
+  const latestCasa = sorted[sorted.length - 1]!.casa_pct as number;
 
   // Indian banking system norms (FY24 industry distribution):
   //   HDFC/SBI/ICICI/Kotak: 35–45% (premium)
@@ -349,7 +349,7 @@ function buildDepositFranchise(periods: BankQualityPeriod[]): DepositFranchiseSi
   let priorCasa: number | null = null;
   if (sorted.length >= 2) {
     const priorIdx = sorted.length >= 4 ? sorted.length - 4 : 0;
-    priorCasa = sorted[priorIdx].casa_pct as number;
+    priorCasa = sorted[priorIdx]!.casa_pct as number;
     const delta = latestCasa - priorCasa;
     if (delta > 2) trend = "improving";
     else if (delta < -2) trend = "weakening";
@@ -444,7 +444,7 @@ export function computeBankAssetQuality(
   // Coverage diagnostic — how complete is the latest period?
   let latestFieldDensity = 0;
   if (safe.length > 0) {
-    const latest = sortByDate(safe)[safe.length - 1];
+    const latest = sortByDate(safe)[safe.length - 1]!;
     const fields: Array<keyof BankQualityPeriod> = [
       "gnpa_pct",
       "nnpa_pct",

@@ -76,7 +76,7 @@ describe("insurancePipeline", () => {
   });
 
   it("extracts insurance raw fields from period data", () => {
-    const metrics = extractBankMetrics(insurancePeriods[3]);
+    const metrics = extractBankMetrics(insurancePeriods[3]!);
     expect(metrics.totalAssets).toBe(5500000);
     expect(metrics.totalEquity).toBe(15000);
     expect(metrics.policyholderFunds).toBe(5300000);
@@ -93,7 +93,7 @@ describe("insurancePipeline", () => {
     expect(result.subtype).toBe("insurance");
     expect(result.periods).toHaveLength(4);
 
-    const latest = result.bankMetrics![3];
+    const latest = result.bankMetrics![3]!;
     
     // Claims ratio: claimsIncurred / premiumEarned = 350000 / 520000 = 67.3%
     expect(latest.claimsRatio).toBeCloseTo(350000 / 520000, 4);

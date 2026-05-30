@@ -178,7 +178,7 @@ export function deriveSegmentUncertainties(segmentData: SegmentData): SegmentUnc
 
     for (const seg of segments) {
       if (ebitValues[seg] !== undefined) {
-        sharesBySegment[seg].push(ebitValues[seg] / totalEBIT);
+        sharesBySegment[seg]!.push(ebitValues[seg]! / totalEBIT);
       }
     }
   }
@@ -191,7 +191,7 @@ export function deriveSegmentUncertainties(segmentData: SegmentData): SegmentUnc
   let droppedSegments = 0;
 
   for (const seg of segments) {
-    const shares = sharesBySegment[seg];
+    const shares = sharesBySegment[seg]!;
     if (shares.length < 2) {
       droppedSegments++;
       continue;

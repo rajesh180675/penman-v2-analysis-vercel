@@ -35,8 +35,8 @@ function pick(data: RawPeriodData, keys: readonly string[], stmt: "BalanceSheet"
 
 function deriveKw(periods: RecastPeriod[], cfg: EngineConfig): number {
   if (periods.length < 2) return cfg.risk_free_rate;
-  const cur = periods[periods.length - 1];
-  const prev = periods[periods.length - 2];
+  const cur = periods[periods.length - 1]!;
+  const prev = periods[periods.length - 2]!;
   const ke = ke_from_config(cfg);
   return deriveKwFromStructure(cur, prev, ke, cfg.risk_free_rate, cfg);
 }
@@ -44,7 +44,7 @@ function deriveKw(periods: RecastPeriod[], cfg: EngineConfig): number {
 function buildLegacyEmulation(raw: RawPeriodData[], after: RecastPeriod[], cfg: EngineConfig): RecastPeriod[] {
   const out: RecastPeriod[] = [];
   for (let i = 0; i < after.length; i++) {
-    const p = after[i];
+    const p = after[i]!;
     const r = raw[i];
     if (!r) continue;
 
@@ -139,8 +139,8 @@ function buildLegacyEmulation(raw: RawPeriodData[], after: RecastPeriod[], cfg: 
   // Recompute derived parts that depend on prev-year values
   for (let i = 0; i < out.length; i++) {
     if (i > 0) {
-      const prev = out[i - 1];
-      const cur = out[i];
+      const prev = out[i - 1]!;
+      const cur = out[i]!;
       const dNOA = cur.bs.NOA - prev.bs.NOA;
       const dNFO = cur.bs.NFO - prev.bs.NFO;
       cur.cf.FCF_accounting = cur.is.OI - dNOA;
@@ -194,8 +194,8 @@ export function runRegressionHarness(rawData: RawPeriodData[], afterPeriods: Rec
   const afterId = runIdentityAssertions(afterSorted);
   const beforeId = runIdentityAssertions(beforePeriods);
 
-  const latestAfter = afterSorted[afterSorted.length - 1];
-  const latestBefore = beforePeriods[beforePeriods.length - 1];
+  const latestAfter = afterSorted[afterSorted.length - 1]!;
+  const latestBefore = beforePeriods[beforePeriods.length - 1]!;
 
   const ke = ke_from_config(cfg);
   const kwAfter = deriveKw(afterSorted, cfg);
@@ -295,7 +295,7 @@ export function runPhase0BaselineReport(
 ): Phase0BaselineReport | null {
   if (!rawData?.length || !recastData?.length) return null;
   const regression = runRegressionHarness(rawData, recastData, cfg);
-  const snapshot = buildPhase0BaselineSnapshot(rawData[0].company_id, recastData, cfg);
+  const snapshot = buildPhase0BaselineSnapshot(rawData[0]!.company_id, recastData, cfg);
   if (!regression || !snapshot) return null;
   return { snapshot, regression };
 }

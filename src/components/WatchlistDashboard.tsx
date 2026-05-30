@@ -22,9 +22,9 @@ const SIGNAL_STYLES: Record<string, { bg: string; text: string; border: string; 
 };
 
 function signalStyle(signal: string | null | undefined) {
-  if (!signal) return SIGNAL_STYLES.hold;
+  if (!signal) return SIGNAL_STYLES.hold!;
   const key = signal.toLowerCase().replace(/\s+/g, "-");
-  return SIGNAL_STYLES[key] ?? SIGNAL_STYLES.hold;
+  return SIGNAL_STYLES[key] ?? SIGNAL_STYLES.hold!;
 }
 
 function ConfidenceDots({ confidence }: { confidence: string | null | undefined }) {
