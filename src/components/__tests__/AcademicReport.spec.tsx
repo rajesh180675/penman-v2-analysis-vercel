@@ -259,4 +259,81 @@ describe("AcademicReport", () => {
     expect(html).toContain("Economically plausible");
     expect(html).toContain("Investor Research Memorandum");
   });
+
+  it("renders every numbered report section with pinned formatted values", () => {
+    const data = [
+      mkReportPeriod("2024-03-31"),
+      mkReportPeriod("2025-03-31"),
+    ];
+    const rawData = [
+      mkRawPeriod("2024-03-31"),
+      mkRawPeriod("2025-03-31"),
+    ];
+    const traceability = buildAnalysisTraceability({
+      generatedAt: "2026-04-03T16:00:00.000Z",
+      runId: "run-report",
+      companyId: "ITC",
+      sourceMode: "json",
+      rawData,
+      recastData: data,
+      config: DEFAULT_CONFIG,
+      periodCount: 2,
+      recastPeriodCount: 2,
+      latestPeriod: "2025-03-31",
+      policyVersions: getAnalysisPolicyVersions(),
+    });
+
+    const html = renderToStaticMarkup(
+      <AcademicReport
+        data={data}
+        config={DEFAULT_CONFIG}
+        rawData={rawData}
+        traceability={traceability}
+      />,
+    );
+
+    // Section headers (structural anchors). Substrings avoid &/×/— escaping.
+    expect(html).toContain("1) Executive Findings");
+    expect(html).toContain("2) Methodology");
+    expect(html).toContain("3) Profitability and Growth Diagnostics");
+    expect(html).toContain("3A) NOA denominator diagnostics");
+    expect(html).toContain("3B) NOA structural-break diagnostics");
+    expect(html).toContain("4) Balance-Sheet Structure and Financing Posture");
+    expect(html).toContain("5) Cash-Flow Quality and Clean-Surplus Diagnostics");
+    expect(html).toContain("5A) Accrual-ratio time series");
+    expect(html).toContain("5B) Operating trajectory timeline (full sample)");
+    expect(html).toContain("6) Valuation Synthesis (Residual Income Framework)");
+    expect(html).toContain("6A) RE sensitivity matrix");
+    expect(html).toContain("6A.1) Explicit residual-income stream");
+    expect(html).toContain("6B) Per-share and market-implied checks");
+    expect(html).toContain("6C) Quality Score Decomposition");
+    expect(html).toContain("7) Investment Interpretation and Monitoring Triggers");
+
+    // Header KPI block — separation confidence is deterministic.
+    expect(html).toContain("Separation Confidence");
+    expect(html).toContain("90/100");
+    expect(html).toContain("Latest ROCE");
+
+    // §3 Profitability table — N&P benchmark medians render verbatim.
+    expect(html).toContain("12.2%"); // ROCE median
+    expect(html).toContain("10.0%"); // RNOA median (also latest SPREAD)
+    expect(html).toContain("5.5%"); // PM median
+    expect(html).toContain("1.18x"); // ATO median
+
+    // §1 Executive findings — quality diagnostics pins.
+    expect(html).toContain("7/9"); // Piotroski F-score
+    expect(html).toContain("(Safe)"); // Altman Z' zone (3.10 > 2.9)
+    expect(html).toContain("(clean threshold)"); // Beneish M-score -2.00 > -1.78
+
+    // §3A NOA diagnostics — flag rule produces 0 flagged of 2.
+    expect(html).toContain("Flagged periods:");
+    expect(html).toContain("0</b> / 2");
+
+    // §2.6 Data source mapping echoes separation score again.
+    expect(html).toContain("90/100");
+
+    // §6C Piotroski/Altman component decomposition labels.
+    expect(html).toContain("Piotroski components");
+    expect(html).toContain("EBIT / TA");
+  });
 });
