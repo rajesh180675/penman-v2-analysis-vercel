@@ -9,33 +9,13 @@ import { buildRegimeContext } from "../engine/regimeModel";
 import { calibrateSignalBacktest } from "../engine/signalBacktest";
 import { buildTerminalEconomics } from "../engine/terminalEconomics";
 import { resolveValuationReadiness } from "../engine/valuationPolicy";
-import { resolveShareBasis, toPerShare } from "../engine/shareCountTools";
+import { resolveShareBasis } from "../engine/shareCountTools";
 import { AnalysisStatusSummary } from "../engine/analysisStatus";
-import { generateValuationNarrative } from "../engine/narrativeEngine";
-import {
-  buildValuationCommandCenter,
-  formatHistoricalPercentile,
-  formatPct,
-  formatPerShare,
-} from "../engine/valuationCommandCenter";
-import {
-  HeroMetric,
-  ScenarioCard,
-  SignalPill,
-  StatTile,
-  NumInput,
-  ValCard,
-} from "./valuation/atoms";
+import { buildValuationCommandCenter } from "../engine/valuationCommandCenter";
+import { SignalPill } from "./valuation/atoms";
 import { useLiveMarketData } from "../hooks/useLiveMarketData";
 import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
 import { AuditSubmissionMeta, persistAuditEvent } from "../lib/audit";
-import { InsightBlock, SectionHeader } from "./shared/DesignSystem";
-import AssumptionsAudit from "./AssumptionsAudit";
-import ExpectationBridgePanel from "./ExpectationBridgePanel";
-import SensitivityHeatmap from "./charts/SensitivityHeatmap";
-import FrameworkRadar from "./charts/FrameworkRadar";
-import ForecastTornado from "./charts/ForecastTornado";
-import MoatPanel from "./dashboard/MoatPanel";
 import { computeMoatScore } from "../engine/moatScoring";
 import { rememberWorkspaceValuation } from "../lib/researchWorkspace";
 import { syncWorkspaceAlert, syncWorkspaceValuation } from "../lib/sharedResearchApi";
@@ -43,12 +23,37 @@ import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import type { AnalysisPublicationSnapshot } from "../lib/publication/analysisPublicationSnapshot";
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell, LineChart, Line,
-} from "recharts";
 import type { LossMakerValuationResult } from "../engine/lossMakerValuation";
 import type { SanityAssessment } from "../engine/ratioSanity";
 import type { AllSegmentData } from "../engine/segmentParser";
+import { type CVMethod, fmt, makeCvSel } from "./valuation/ValuationReport.formatters";
+import {
+  buildAlertAuditPayload,
+  buildManifestAuditPayload,
+  buildReSeriesBarData,
+  buildSignalAuditPayload,
+  buildSparklineData,
+  deriveCyclicalTerminalREAnchor,
+} from "./valuation/ValuationReport.hooks";
+import ValuationCommandCenterHero from "./valuation/ValuationCommandCenterHero";
+import SensitivityGrid from "./valuation/SensitivityGrid";
+import DistressBanner from "./valuation/DistressBanner";
+import RatioSanityPanel from "./valuation/RatioSanityPanel";
+import LossMakerPanel from "./valuation/LossMakerPanel";
+import SignalEngineSection from "./valuation/SignalEngineSection";
+import ScenarioCardsSection from "./valuation/ScenarioCardsSection";
+import AnchorAnalysisGrid from "./valuation/AnchorAnalysisGrid";
+import BusinessModelSection from "./valuation/BusinessModelSection";
+import DcfLensSection from "./valuation/DcfLensSection";
+import CyclicalRegimeSection from "./valuation/CyclicalRegimeSection";
+import ChecklistMarketSection from "./valuation/ChecklistMarketSection";
+import SotpSection from "./valuation/SotpSection";
+import BacktestSection from "./valuation/BacktestSection";
+import ValuationInputsPanel from "./valuation/ValuationInputsPanel";
+import ValuationCardsSection from "./valuation/ValuationCardsSection";
+import TriangulationSection from "./valuation/TriangulationSection";
+import ReSeriesSection from "./valuation/ReSeriesSection";
+import ContinuingValueFormulae from "./valuation/ContinuingValueFormulae";
 
 interface Props {
   data: RecastPeriod[];
@@ -64,8 +69,6 @@ interface Props {
   /** Phase C5 — parsed segment data for SOTP valuation. */
   segmentData?: AllSegmentData | null | undefined;
 }
-
-type CVMethod = "CV1" | "CV2" | "CV3";
 
 export default function ValuationReport({ data, config, analysisStatus, auditMeta, traceability, publication = null, lossMaker = null, ratioSanity = null, segmentData = null }: Props) {
   const derivedValuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
@@ -123,15 +126,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
   const cyclicalNormalization = useMemo(() => buildCyclicalNormalization(data), [data]);
 
   const cyclicalTerminalREAnchor = useMemo(() => {
-    if (!cyclicalNormalization.cyclical) return null;
-    const lastPeriod = valuationData[valuationData.length - 1];
-    const lastRE = lastPeriod?.ri?.RE;
-    const latestRNOA = lastPeriod?.ratios?.RNOA;
-    const medianRNOA = cyclicalNormalization.normalizedRoic;
-    if (lastRE == null || !Number.isFinite(lastRE)) return null;
-    if (latestRNOA == null || !Number.isFinite(latestRNOA) || latestRNOA === 0) return null;
-    if (medianRNOA == null || !Number.isFinite(medianRNOA)) return null;
-    return lastRE * (medianRNOA / latestRNOA);
+    return deriveCyclicalTerminalREAnchor(cyclicalNormalization, valuationData);
   }, [cyclicalNormalization, valuationData]);
 
   const val = useMemo(() =>
@@ -188,22 +183,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
 
   useEffect(() => {
     if (!auditMeta) return;
-    const signalPayload = {
-      ...commandCenter.signal,
-      marketPrice: commandCenter.marketPrice,
-      asOf: commandCenter.asOf,
-      persistenceNarrative: commandCenter.opportunity.persistenceNarrative,
-      forecastDiscipline: commandCenter.checklist.forecastDiscipline,
-      scenarios: commandCenter.scenarios.map((scenario) => ({
-        key: scenario.key,
-        label: scenario.label,
-        intrinsicPerShare: scenario.intrinsicPerShare,
-        upsidePct: scenario.upsidePct,
-        marginOfSafetyPct: scenario.marginOfSafetyPct,
-        expectedCagr: scenario.expectedCagr,
-        forecastPolicy: scenario.forecastPolicy,
-      })),
-    };
+    const signalPayload = buildSignalAuditPayload(commandCenter);
     const signature = JSON.stringify(signalPayload);
     if (signature === lastSignalAuditRef.current) return;
     lastSignalAuditRef.current = signature;
@@ -257,29 +237,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
 
   useEffect(() => {
     if (!auditMeta) return;
-    const manifestPayload = {
-      asOf: commandCenter.asOf,
-      marketPrice: commandCenter.marketPrice,
-      riskFreeRate: commandCenter.riskFreeRate,
-      sectorTemplate: commandCenter.sectorTemplate,
-      diagnostics: commandCenter.diagnostics,
-      reverseDcf: commandCenter.reverseDcf,
-      opportunity: commandCenter.opportunity,
-      checklist: commandCenter.checklist,
-      marketContext: commandCenter.marketContext,
-      backtest: {
-        available: commandCenter.backtest.available,
-        investableCount: commandCenter.backtest.investableCount,
-        highConvictionCount: commandCenter.backtest.highConvictionCount,
-        screamingBuyCount: commandCenter.backtest.screamingBuyCount,
-        forwardWinRate1Y: commandCenter.backtest.forwardWinRate1Y,
-        forwardWinRate3Y: commandCenter.backtest.forwardWinRate3Y,
-        median1Y: commandCenter.backtest.median1Y,
-        median3Y: commandCenter.backtest.median3Y,
-        latestComparedToHistory: commandCenter.backtest.latestComparedToHistory,
-        points: commandCenter.backtest.points,
-      },
-    };
+    const manifestPayload = buildManifestAuditPayload(commandCenter);
     const signature = JSON.stringify(manifestPayload);
     if (signature === lastManifestAuditRef.current) return;
     lastManifestAuditRef.current = signature;
@@ -295,16 +253,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
   useEffect(() => {
     if (!auditMeta) return;
     if (!["high-conviction", "screaming-buy"].includes(commandCenter.signal.state)) return;
-    const alertPayload = {
-      state: commandCenter.signal.state,
-      label: commandCenter.signal.label,
-      summary: commandCenter.signal.summary,
-      opportunityScore: commandCenter.signal.opportunityScore,
-      convictionBucket: commandCenter.signal.convictionBucket,
-      expectedCagrStress: commandCenter.signal.expectedCagrStress,
-      marketPrice: commandCenter.marketPrice,
-      asOf: commandCenter.asOf,
-    };
+    const alertPayload = buildAlertAuditPayload(commandCenter);
     const signature = JSON.stringify(alertPayload);
     if (signature === lastAlertAuditRef.current) return;
     lastAlertAuditRef.current = signature;
@@ -321,7 +270,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
     });
   }, [auditMeta, commandCenter]);
 
-  const cvSel = <T,>(v1: T, v2: T, v3: T): T => cv === "CV1" ? v1 : cv === "CV2" ? v2 : v3;
+  const cvSel = makeCvSel(cv);
   const distressResult = useMemo(() => detectDistress(data), [data]);
 
   if (insufficientData) {
@@ -334,192 +283,24 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
   const V_RE = cvSel(val.V_RE_CV1, val.V_RE_CV2, val.V_RE_CV3);
   const V_ReOI = cvSel(val.V_ReOI_CV01, val.V_ReOI_CV02, val.V_ReOI_CV03);
 
-  const fmt = (n: number) => n.toLocaleString("en-IN", { maximumFractionDigits: 0 });
-  const fmtPerShare = (n: number | null | undefined) => n == null ? "—" : `₹${n.toFixed(2)}`;
   const sharesOut = shareBasis.shares ?? null;
-  const barData = val.reSeries.map((r) => ({
-    period: r.period.slice(0, 7),
-    RE: +(toPerShare(r.RE, sharesOut) ?? r.RE).toFixed(2),
-    ReOI: +(toPerShare(r.ReOI, sharesOut) ?? r.ReOI).toFixed(2),
-  }));
-  const sparklineData = liveMarketData?.history?.points.slice(0, 90).reverse().map((point) => ({
-    date: point.date.slice(5),
-    close: point.close,
-  })) ?? [];
+  const barData = buildReSeriesBarData(val, sharesOut);
+  const sparklineData = buildSparklineData(liveMarketData);
 
   return (
     <div className="space-y-8">
       {/* Phase J3: financial distress banner — surfaces negative net worth
           and going-concern stress at the top of the report so reviewers
           see it before reading any equity-side numbers. */}
-      {(() => {
-        const distress = distressResult;
-        if (distress.severity === "none") return null;
-        const tone =
-          distress.severity === "critical"
-            ? "border-red-300 bg-red-50 text-red-900"
-            : distress.severity === "severe"
-              ? "border-amber-400 bg-amber-50 text-amber-900"
-              : "border-amber-200 bg-amber-50 text-amber-800";
-        const icon =
-          distress.severity === "critical" ? "🚨"
-            : distress.severity === "severe" ? "⚠️"
-              : "⚠";
-        const title =
-          distress.severity === "critical"
-            ? "Critical financial distress — going-concern stress"
-            : distress.severity === "severe"
-              ? "Negative net worth — equity-side valuation skipped"
-              : "Negative-equity period in history";
-        return (
-          <div className={`rounded-lg border-2 p-4 ${tone}`}>
-            <div className="flex items-start gap-3">
-              <div className="text-2xl">{icon}</div>
-              <div className="flex-1">
-                <div className="font-semibold mb-1">{title}</div>
-                <ul className="text-sm space-y-1 list-disc pl-5">
-                  {distress.reasons.map((r, i) => <li key={i}>{r}</li>)}
-                </ul>
-                {distress.equityModelsBlocked && (
-                  <div className="text-xs mt-3 opacity-80">
-                    Equity-side intrinsic values (V_RE, DDM, per-share EPV, implied P/B) are
-                    skipped on this dataset. Anchor on enterprise-side V_ReOI or FCFF, segment
-                    SOTP, or reverse-DCF instead.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      <DistressBanner distress={distressResult} />
 
       {/* Phase 9 — Ratio sanity (anchor ratio bands) */}
       {ratioSanity && ratioSanity.checks.length > 0 && ratioSanity.status !== "ok" && (
-        <div className={`rounded-lg border p-5 space-y-3 ${ratioSanity.status === "fail"
-            ? "border-red-300 bg-red-50 dark:border-red-700 dark:bg-red-950/30"
-            : ratioSanity.status === "warning"
-              ? "border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30"
-              : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/40"
-          }`}>
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{ratioSanity.status === "fail" ? "🚨" : "⚠️"}</span>
-            <h3 className="font-semibold text-slate-800 dark:text-slate-200">Ratio Sanity Check</h3>
-            <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium ${ratioSanity.status === "fail" ? "bg-red-100 text-red-800" :
-                ratioSanity.status === "warning" ? "bg-amber-100 text-amber-800" :
-                  "bg-slate-100 text-slate-700"
-              }`}>{ratioSanity.status.toUpperCase()}</span>
-          </div>
-          <div className="text-xs text-slate-600 dark:text-slate-400">
-            {ratioSanity.summary} <span className="text-slate-400">· company type: {ratioSanity.companyType}</span>
-          </div>
-          <table className="w-full text-xs">
-            <thead className="text-slate-500 dark:text-slate-400">
-              <tr>
-                <th className="text-left py-1">Check</th>
-                <th className="text-right py-1">Value</th>
-                <th className="text-center py-1">Status</th>
-                <th className="text-left py-1 pl-3">Detail</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ratioSanity.checks.filter(c => c.status === "warning" || c.status === "fail").map((check) => (
-                <tr key={check.key} className="border-t border-slate-200 dark:border-slate-700">
-                  <td className="py-1 font-medium">{check.label}</td>
-                  <td className="py-1 text-right tabular-nums">{check.value != null ? `${(check.value * 100).toFixed(1)}%` : "—"}</td>
-                  <td className="py-1 text-center">
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${check.status === "fail" ? "bg-red-200 text-red-900" :
-                        check.status === "warning" ? "bg-amber-200 text-amber-900" :
-                          "bg-slate-200 text-slate-700"
-                      }`}>{check.status}</span>
-                  </td>
-                  <td className="py-1 pl-3 text-slate-600 dark:text-slate-400">{check.detail}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="text-[10px] text-slate-500 dark:text-slate-500 italic">
-            Bands are calibrated against NSE 500 (FY2014–FY2025). Fail status indicates economically implausible outputs and blocks production-ready valuation.
-          </div>
-        </div>
+        <RatioSanityPanel ratioSanity={ratioSanity} />
       )}
 
       {/* Phase I3 — Loss-maker valuation anchors */}
-      {lossMaker && (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/40 p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">📉</span>
-            <h3 className="font-semibold text-slate-800 dark:text-slate-200">Loss-Maker Valuation Anchors</h3>
-            <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium ${lossMaker.profitabilityPath.signal === "green" ? "bg-emerald-100 text-emerald-800" :
-                lossMaker.profitabilityPath.signal === "amber" ? "bg-amber-100 text-amber-800" :
-                  "bg-red-100 text-red-800"
-              }`}>{lossMaker.profitabilityPath.signal.toUpperCase()}</span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Earnings-based models skipped — {lossMaker.lossYears}/{lossMaker.totalYears} periods have CNI ≤ 0.
-            These anchors answer: what would the company need to do to justify the current price?
-          </p>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {([
-              ["Revenue", lossMaker.latestRevenueCr != null ? `₹${lossMaker.latestRevenueCr.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr` : "—"],
-              ["YoY Growth", lossMaker.revenueGrowthYoY != null ? `${(lossMaker.revenueGrowthYoY * 100).toFixed(1)}%` : "—"],
-              ["3Y CAGR", lossMaker.revenueCAGR3y != null ? `${(lossMaker.revenueCAGR3y * 100).toFixed(1)}%` : "—"],
-              ["Cash Burn/yr", lossMaker.cashBurnRateCr != null ? `₹${lossMaker.cashBurnRateCr.toFixed(0)} Cr` : "Self-funding"],
-            ] as [string, string][]).map(([label, val]) => (
-              <div key={label} className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
-                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">{label}</div>
-                <div className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{val}</div>
-              </div>
-            ))}
-          </div>
-
-          {!lossMaker.revenueMultiple.skipReason && (
-            <div className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-              <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Revenue Multiple (EV/Sales)</div>
-              <div className="flex flex-wrap gap-4 text-sm">
-                <span>Multiple: <strong>{lossMaker.revenueMultiple.multiple.toFixed(1)}x</strong> <span className="text-xs text-slate-400">({lossMaker.revenueMultiple.source})</span></span>
-                <span>Implied EV: <strong>₹{lossMaker.revenueMultiple.impliedEVCr.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr</strong></span>
-                {lossMaker.revenueMultiple.perShareValue != null && (
-                  <span>Per share: <strong>₹{lossMaker.revenueMultiple.perShareValue.toFixed(1)}</strong></span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {!lossMaker.reverseDCF.skipReason && lossMaker.reverseDCF.impliedSteadyStateMargin != null && (
-            <div className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-              <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Reverse-DCF — What the market cap implies</div>
-              <div className="flex flex-wrap gap-4 text-sm">
-                {lossMaker.reverseDCF.marketCapCr != null && (
-                  <span>Market cap: <strong>₹{lossMaker.reverseDCF.marketCapCr.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr</strong></span>
-                )}
-                <span>Implied steady-state margin: <strong>{(lossMaker.reverseDCF.impliedSteadyStateMargin * 100).toFixed(1)}%</strong></span>
-                {lossMaker.reverseDCF.impliedRevenueCAGR != null && (
-                  <span>Implied 5Y revenue CAGR: <strong>{(lossMaker.reverseDCF.impliedRevenueCAGR * 100).toFixed(1)}%</strong></span>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-            <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Path to Profitability</div>
-            <div className="flex flex-wrap gap-3 text-xs mb-2">
-              <span className={lossMaker.profitabilityPath.highGrowth ? "text-emerald-700" : "text-slate-400"}>
-                {lossMaker.profitabilityPath.highGrowth ? "✓" : "✗"} High revenue growth
-              </span>
-              <span className={lossMaker.profitabilityPath.improvingMargins ? "text-emerald-700" : "text-slate-400"}>
-                {lossMaker.profitabilityPath.improvingMargins ? "✓" : "✗"} Improving margins
-              </span>
-              <span className={lossMaker.profitabilityPath.narrowingLoss ? "text-emerald-700" : "text-slate-400"}>
-                {lossMaker.profitabilityPath.narrowingLoss ? "✓" : "✗"} Narrowing operating loss
-              </span>
-            </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400">{lossMaker.profitabilityPath.summary}</p>
-          </div>
-
-          <p className="text-xs text-slate-400 italic">{lossMaker.recommendation}</p>
-        </div>
-      )}
+      {lossMaker && <LossMakerPanel lossMaker={lossMaker} />}
 
       <ValuationCommandCenterHero
         marketSymbol={marketSymbol}
@@ -544,1077 +325,68 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
         />
       )}
 
-      <section className="grid gap-4 xl:grid-cols-3">
-        <div className="xl:col-span-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-slate-800">Signal Engine</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                The tab leads with the stressed case and only elevates a buy state when both valuation and historical context are unusually strong.
-              </p>
-            </div>
-            <SignalPill state={commandCenter.signal.state} label={commandCenter.signal.label} />
-          </div>
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Why it qualifies</div>
-              <div className="mt-2 text-sm font-medium text-slate-800">{commandCenter.signal.summary}</div>
-              <div className="mt-4 space-y-2 text-sm text-slate-700">
-                <div>Base upside: <strong>{formatPct(commandCenter.signal.baseUpsidePct)}</strong></div>
-                <div>Stress upside: <strong>{formatPct(commandCenter.signal.stressUpsidePct)}</strong></div>
-                <div>Historical setup: <strong>{formatHistoricalPercentile(commandCenter.signal.historicalPercentile)}</strong></div>
-                <div>Reverse DCF implied growth: <strong>{formatPct(commandCenter.signal.reverseDcfImpliedGrowth, 2)}</strong></div>
-                <div>Required margin of safety: <strong>{formatPct(commandCenter.signal.requiredMarginOfSafetyPct, 1)}</strong></div>
-                <div>Quality score: <strong>{commandCenter.signal.qualityScore.toFixed(0)}/100</strong></div>
-                <div>Opportunity score: <strong>{commandCenter.signal.opportunityScore.toFixed(0)}/100</strong></div>
-                <div>Stress expected CAGR: <strong>{formatPct(commandCenter.signal.expectedCagrStress, 1)}</strong></div>
-                <div>Sizing bucket: <strong>{commandCenter.signal.convictionBucket}</strong></div>
-              </div>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Kill Switches</div>
-              <ul className="mt-2 space-y-2 text-sm text-slate-700">
-                {commandCenter.signal.killSwitches.length ? commandCenter.signal.killSwitches.map((item) => (
-                  <li key={item} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700">{item}</li>
-                )) : (
-                  <li className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
-                    No active kill-switches are blocking the valuation command center.
-                  </li>
-                )}
-              </ul>
-              <div className="mt-4 text-xs font-semibold uppercase tracking-wide text-slate-500">Supporting Flags</div>
-              <ul className="mt-2 space-y-2 text-sm text-slate-700">
-                {commandCenter.signal.supportingFlags.length ? commandCenter.signal.supportingFlags.map((item) => (
-                  <li key={item} className="rounded-lg border border-slate-200 bg-white px-3 py-2">{item}</li>
-                )) : (
-                  <li className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-500">
-                    No exceptional supporting flags are active yet.
-                  </li>
-                )}
-              </ul>
-            </div>
-          </div>
-        </div>
+      <SignalEngineSection
+        commandCenter={commandCenter}
+        liveMarketData={liveMarketData}
+        sparklineData={sparklineData}
+      />
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Historical Dislocation</div>
-          <div className="mt-3 grid gap-3">
-            <StatTile label="Current price percentile" value={formatHistoricalPercentile(liveMarketData?.history?.currentPricePercentile)} />
-            <StatTile label="52-week low" value={liveMarketData?.history?.low52Week != null ? `₹${liveMarketData.history.low52Week.toFixed(2)}` : "—"} />
-            <StatTile label="52-week high" value={liveMarketData?.history?.high52Week != null ? `₹${liveMarketData.history.high52Week.toFixed(2)}` : "—"} />
-            <StatTile label="Distance from 52-week low" value={formatPct(liveMarketData?.history?.distanceFrom52WeekLowPct)} />
-            <StatTile label="Drawdown from 52-week high" value={formatPct(liveMarketData?.history?.drawdownFrom52WeekHighPct)} />
-          </div>
-          <div className="mt-5 h-40">
-            {sparklineData.length ? (
-              <ResponsiveContainer debounce={50} width="100%" height="100%">
-                <LineChart data={sparklineData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="date" hide />
-                  <YAxis tick={{ fontSize: 10 }} width={56} />
-                  <Tooltip />
-                  <Line dataKey="close" stroke="#0f172a" dot={false} strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500">
-                Historical price series unavailable for this symbol/provider.
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
+      <ScenarioCardsSection commandCenter={commandCenter} />
 
-      <section className="grid gap-4 lg:grid-cols-4">
-        {commandCenter.scenarios.map((scenario) => (
-          <ScenarioCard
-            key={scenario.key}
-            label={scenario.label}
-            intrinsicPerShare={scenario.intrinsicPerShare}
-            upsidePct={scenario.upsidePct}
-            marginOfSafetyPct={scenario.marginOfSafetyPct}
-            expectedCagr={scenario.expectedCagr}
-            ke={scenario.assumptions.ke}
-            kw={scenario.assumptions.kw}
-            g={scenario.assumptions.g}
-            salesGrowth={scenario.assumptions.salesGrowthYear1}
-            corePm={scenario.assumptions.corePmYear1}
-            reinvestmentRate={scenario.assumptions.reinvestmentRateYear1}
-            incrementalRoic={scenario.assumptions.incrementalRoicYear1}
-            forecastPolicy={scenario.forecastPolicy}
-          />
-        ))}
-      </section>
+      <AnchorAnalysisGrid commandCenter={commandCenter} moatScore={moatScore} ke={ke} data={data} />
 
-      <section className="grid gap-4 xl:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sector Template</div>
-          <div className="mt-2 text-xl font-bold text-slate-900">{commandCenter.sectorTemplate.label}</div>
-          <div className="mt-2 text-sm text-slate-600">{commandCenter.sectorTemplate.description}</div>
-          <div className="mt-4 grid gap-3 text-sm text-slate-700">
-            <div>Selection source: <strong>{commandCenter.sectorTemplate.source}</strong></div>
-            <div>Quality-adjusted margin of safety: <strong>{formatPct(commandCenter.opportunity.requiredMarginOfSafetyPct, 1)}</strong></div>
-            <div>Quality score: <strong>{commandCenter.opportunity.qualityScore.toFixed(0)}/100</strong></div>
-            <div>Opportunity score: <strong>{commandCenter.opportunity.opportunityScore.toFixed(0)}/100</strong></div>
-            <div>Sizing bucket: <strong>{commandCenter.opportunity.convictionBucket}</strong></div>
-          </div>
-        </div>
+      <BusinessModelSection commandCenter={commandCenter} />
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <ExpectationBridgePanel reverseDcf={commandCenter.reverseDcf} />
-        </div>
+      <DcfLensSection commandCenter={commandCenter} fmt={fmt} />
 
-        {/* Economic Moat Panel — 5-dimension Buffett/Munger framework */}
-        <MoatPanel moat={moatScore} title="Economic Moat (5-Dimension Score)" />
+      <CyclicalRegimeSection
+        cyclicalNormalization={cyclicalNormalization}
+        terminalEconomics={terminalEconomics}
+        regimeContext={regimeContext}
+        calibration={calibration}
+      />
 
-        {/* Phase G2: Framework Radar + Sensitivity Heatmap */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          <FrameworkRadar
-            anchors={[
-              { name: "Residual Earnings (base)", shortName: "V_RE", value: commandCenter.scenarios.find(s => s.key === "base")?.intrinsicPerShare ?? null },
-              { name: "Residual Earnings (stress)", shortName: "V_Stress", value: commandCenter.scenarios.find(s => s.key === "stress")?.intrinsicPerShare ?? null },
-              { name: "EPV (no-growth floor)", shortName: "EPV", value: commandCenter.epv?.epvPerShare ?? null },
-              { name: "Reverse DCF implied", shortName: "RevDCF", value: commandCenter.reverseDcf?.impliedOwnerEarningsGrowth ?? null },
-              { name: "SOTP (segment-weighted)", shortName: "SOTP", value: commandCenter.sotp != null && commandCenter.shareBasis.shares != null && commandCenter.shareBasis.shares > 0 ? (commandCenter.sotp.discountedSum / commandCenter.shareBasis.shares) * 1e7 : null },
-            ]}
-            marketPrice={commandCenter.marketPrice}
-          />
-          <SensitivityHeatmap
-            ke={ke}
-            g={commandCenter.scenarios.find(s => s.key === "base")?.assumptions.g ?? 0.05}
-            computeValue={(keVal, gVal) => {
-              // Simple RE perpetuity: CSE + (RNOA - ke) * NOA / (ke - g)
-              const latest = data[data.length - 1]!;
-              const rnoa = latest.ratios?.RNOA ?? 0;
-              const noa = latest.bs.NOA;
-              const cse = latest.bs.CSE;
-              const shares = commandCenter.shareBasis.shares;
-              if (!shares || shares <= 0 || keVal <= gVal) return null;
-              const equity = cse + ((rnoa - keVal) * noa) / (keVal - gVal);
-              return (equity / shares) * 1e7;
-            }}
-            marketPrice={commandCenter.marketPrice}
-          />
-        </div>
+      <ChecklistMarketSection commandCenter={commandCenter} fmt={fmt} />
 
-        {/* Sensitivity Tornado — which drivers move intrinsic value the most */}
-        {(() => {
-          const baseScenario = commandCenter.scenarios.find(s => s.key === "base");
-          const baseValue = baseScenario?.intrinsicPerShare ?? null;
-          const baseG = baseScenario?.assumptions.g ?? 0.05;
-          const latest = data[data.length - 1]!;
-          const rnoaBase = latest.ratios?.RNOA ?? 0;
-          const noa = latest.bs.NOA;
-          const cse = latest.bs.CSE;
-          const shares = commandCenter.shareBasis.shares;
+      <SotpSection commandCenter={commandCenter} />
 
-          if (!baseValue || !shares || shares <= 0) return null;
+      <BacktestSection commandCenter={commandCenter} />
 
-          const computeIV = (keV: number, gV: number, rnoaV: number, noaV: number) => {
-            if (keV <= gV) return baseValue;
-            const equity = cse + ((rnoaV - keV) * noaV) / (keV - gV);
-            return (equity / shares) * 1e7;
-          };
+      <ValuationInputsPanel
+        keOverride={keOverride}
+        setKeOverride={setKeOverride}
+        keFromConfig={keFromConfig}
+        effectiveConfig={effectiveConfig}
+        kwDerived={kwDerived}
+        g={g}
+        setG={setG}
+        cv={cv}
+        setCv={setCv}
+        commandCenter={commandCenter}
+        liveMarketData={liveMarketData}
+        config={config}
+        sharesOut={sharesOut}
+        shareBasis={shareBasis}
+        val={val}
+        valuationReadiness={valuationReadiness}
+      />
 
-          const drivers = [
-            {
-              driver: "Cost of Equity (ke)",
-              low: computeIV(ke + 0.01, baseG, rnoaBase, noa),
-              high: computeIV(Math.max(0.01, ke - 0.01), baseG, rnoaBase, noa),
-              range: "ke ±100 bps",
-            },
-            {
-              driver: "Terminal Growth (g)",
-              low: computeIV(ke, Math.max(0, baseG - 0.01), rnoaBase, noa),
-              high: computeIV(ke, Math.min(ke - 0.01, baseG + 0.01), rnoaBase, noa),
-              range: "g ±100 bps",
-            },
-            {
-              driver: "RNOA (operating return)",
-              low: computeIV(ke, baseG, rnoaBase * 0.8, noa),
-              high: computeIV(ke, baseG, rnoaBase * 1.2, noa),
-              range: "RNOA ±20%",
-            },
-            {
-              driver: "NOA (capital base)",
-              low: computeIV(ke, baseG, rnoaBase, noa * 0.9),
-              high: computeIV(ke, baseG, rnoaBase, noa * 1.1),
-              range: "NOA ±10%",
-            },
-          ].filter(d => Number.isFinite(d.low) && Number.isFinite(d.high));
+      <ValuationCardsSection val={val} V_RE={V_RE} V_ReOI={V_ReOI} cv={cv} sharesOut={sharesOut} />
 
-          if (drivers.length === 0) return null;
+      <TriangulationSection val={val} sharesOut={sharesOut} />
 
-          return (
-            <ForecastTornado
-              baseValue={baseValue}
-              drivers={drivers}
-              marketPrice={commandCenter.marketPrice}
-            />
-          );
-        })()}
-
-        {/* EPV Panel — Graham-Dodd no-growth floor anchor */}
-        {commandCenter.epv && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Graham-Dodd EPV (Greenwald)</div>
-                <div className="mt-1 text-sm text-slate-600">No-growth floor — what the business is worth if it never grows again</div>
-              </div>
-              <div className={`px-3 py-1.5 rounded-full text-xs font-bold ${commandCenter.epv.moatSignal === "moat" ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  : commandCenter.epv.moatSignal === "no-moat" ? "bg-red-50 text-red-700 border border-red-200"
-                    : "bg-slate-50 text-slate-600 border border-slate-200"
-                }`}>
-                {commandCenter.epv.moatSignal === "moat" ? "🏰 Franchise Value Positive" : commandCenter.epv.moatSignal === "no-moat" ? "⚠️ No Moat" : "Inconclusive"}
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="rounded-xl bg-slate-50 p-3">
-                <div className="text-xs text-slate-500">Normalized NOPAT</div>
-                <div className="text-lg font-bold text-slate-900">₹{commandCenter.epv.normalizedNOPAT.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr</div>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3">
-                <div className="text-xs text-slate-500">EPV per Share</div>
-                <div className="text-lg font-bold text-slate-900">{commandCenter.epv.epvPerShare != null ? `₹${commandCenter.epv.epvPerShare.toFixed(0)}` : "—"}</div>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3">
-                <div className="text-xs text-slate-500">Franchise Value</div>
-                <div className={`text-lg font-bold ${commandCenter.epv.franchiseValue > 0 ? "text-emerald-700" : "text-red-700"}`}>
-                  ₹{commandCenter.epv.franchiseValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr
-                </div>
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3">
-                <div className="text-xs text-slate-500">MoS vs Market</div>
-                <div className={`text-lg font-bold ${(commandCenter.epv.marginOfSafety ?? 0) > 0 ? "text-emerald-700" : "text-red-700"}`}>
-                  {commandCenter.epv.marginOfSafety != null ? `${(commandCenter.epv.marginOfSafety * 100).toFixed(1)}%` : "—"}
-                </div>
-              </div>
-            </div>
-            <div className="mt-3 text-xs text-slate-500">
-              Based on {commandCenter.epv.periodsUsed} periods median CoreOI. ke={((commandCenter.epv.ke) * 100).toFixed(1)}%.
-              EPV_ops = ₹{commandCenter.epv.epvOperations.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr − NFO ₹{commandCenter.epv.nfo.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr = Equity ₹{commandCenter.epv.epvEquity.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr.
-            </div>
-          </div>
-        )}
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mt-3 grid gap-3 text-sm text-slate-700">
-            <div>Base margin of safety: <strong>{formatPct(commandCenter.opportunity.baseMarginOfSafetyPct, 1)}</strong></div>
-            <div>Stress margin of safety: <strong>{formatPct(commandCenter.opportunity.stressMarginOfSafetyPct, 1)}</strong></div>
-            <div>Base expected CAGR: <strong>{formatPct(commandCenter.opportunity.expectedCagrBase, 1)}</strong></div>
-            <div>Stress expected CAGR: <strong>{formatPct(commandCenter.opportunity.expectedCagrStress, 1)}</strong></div>
-            <div>Historical cheapness score: <strong>{commandCenter.opportunity.historicalCheapnessScore != null ? `${commandCenter.opportunity.historicalCheapnessScore.toFixed(0)}/100` : "—"}</strong></div>
-            <div>Reverse-DCF pessimism score: <strong>{commandCenter.opportunity.reverseDcfPessimismScore != null ? `${commandCenter.opportunity.reverseDcfPessimismScore.toFixed(0)}/100` : "—"}</strong></div>
-          </div>
-          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
-            {commandCenter.opportunity.thesis}
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm xl:col-span-2">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Business-model realism</div>
-              <div className="mt-2 text-xl font-bold text-slate-900">Persistence evidence from recast history</div>
-              <div className="mt-2 text-sm text-slate-600">
-                Scenario starting points now blend the latest period with multi-year business evidence instead of treating a single strong year as durable by default.
-              </div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Persistence</div>
-              <div className="mt-1 text-2xl font-bold text-slate-900">{commandCenter.businessModel.persistenceScore.toFixed(0)}</div>
-              <div className="text-xs text-slate-500">/100</div>
-            </div>
-          </div>
-          <div className="mt-5 grid gap-3 md:grid-cols-3 text-sm text-slate-700">
-            <StatTile label="Demand stability" value={`${commandCenter.businessModel.demandStabilityScore.toFixed(0)}/100`} />
-            <StatTile label="Margin durability" value={`${commandCenter.businessModel.marginDurabilityScore.toFixed(0)}/100`} />
-            <StatTile label="Capital intensity" value={`${commandCenter.businessModel.capitalIntensityScore.toFixed(0)}/100`} />
-            <StatTile label="Working-capital discipline" value={`${commandCenter.businessModel.workingCapitalDisciplineScore.toFixed(0)}/100`} />
-            <StatTile label="Reinvestment quality" value={`${commandCenter.businessModel.reinvestmentQualityScore.toFixed(0)}/100`} />
-            <StatTile label="Historical cash conversion" value={formatPct(commandCenter.businessModel.historicalAnchors.cashConversion, 1)} />
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-3 text-sm text-slate-700">
-            <StatTile label="Historical sales growth" value={formatPct(commandCenter.businessModel.historicalAnchors.salesGrowth, 1)} />
-            <StatTile label="Historical core PM" value={formatPct(commandCenter.businessModel.historicalAnchors.corePm, 1)} />
-            <StatTile label="Historical ATO" value={commandCenter.businessModel.historicalAnchors.ato != null ? `${commandCenter.businessModel.historicalAnchors.ato.toFixed(2)}x` : "—"} />
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Persistence evidence</div>
-          <ul className="mt-3 space-y-2 text-sm text-slate-700">
-            {commandCenter.businessModel.evidence.map((item) => (
-              <li key={item} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">{item}</li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">DCF Cash-Flow Lens</div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2 text-sm text-slate-700">
-            <StatTile label="Owner earnings / share" value={formatPerShare(commandCenter.diagnostics.ownerEarningsPerShare)} />
-            <StatTile label="NOPAT" value={commandCenter.diagnostics.nopat != null ? `₹${fmt(commandCenter.diagnostics.nopat)} Cr` : "—"} />
-            <StatTile label="Maintenance capex" value={`₹${fmt(commandCenter.diagnostics.maintenanceCapex)} Cr`} />
-            <StatTile label="Growth capex" value={`₹${fmt(commandCenter.diagnostics.growthCapex)} Cr`} />
-            <StatTile label="Working-capital investment" value={`₹${fmt(commandCenter.diagnostics.workingCapitalInvestment)} Cr`} />
-            <StatTile label="Reinvestment rate" value={formatPct(commandCenter.diagnostics.reinvestmentRate, 1)} />
-            <StatTile label="Incremental ROIC" value={formatPct(commandCenter.diagnostics.incrementalRoic, 1)} />
-            <StatTile label="Maintenance share of capex" value={formatPct(commandCenter.diagnostics.maintenanceCapexShareOfCapex, 1)} />
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Professional Decision Rules</div>
-          <div className="mt-4 space-y-3 text-sm text-slate-700">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              `Truck-load zone` only appears when the stress case clears the required margin of safety, the current price is historically washed out, and the analysis is still production-ready.
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              Quality adjusts the hurdle: weaker accounting quality and more cyclical templates widen the required margin of safety before the buy signal is allowed to escalate.
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              Reverse DCF keeps the valuation honest by checking whether the market is already pricing an aggressive owner-earnings path.
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cyclical Normalization</div>
-          <div className="mt-3 space-y-2 text-sm text-slate-700">
-            <div>Status: <strong>{cyclicalNormalization.label}</strong></div>
-            <div>Volatility score: <strong>{cyclicalNormalization.volatilityScore.toFixed(0)}</strong></div>
-            <div>Normalized sales growth: <strong>{formatPct(cyclicalNormalization.normalizedSalesGrowth, 1)}</strong></div>
-            <div>Normalized margin: <strong>{formatPct(cyclicalNormalization.normalizedMargin, 1)}</strong></div>
-            <div>Normalized ATO: <strong>{cyclicalNormalization.normalizedAto != null ? `${cyclicalNormalization.normalizedAto.toFixed(2)}x` : "—"}</strong></div>
-          </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Terminal Economics</div>
-          <div className="mt-3 space-y-2 text-sm text-slate-700">
-            <div>Terminal ROIC: <strong>{formatPct(terminalEconomics.terminalRoic, 1)}</strong></div>
-            <div>Terminal growth: <strong>{formatPct(terminalEconomics.terminalGrowth, 1)}</strong></div>
-            <div>Terminal reinvestment: <strong>{formatPct(terminalEconomics.terminalReinvestmentRate, 1)}</strong></div>
-            <div>Fade years: <strong>{terminalEconomics.fadeYears}</strong></div>
-            <div>Competition pressure: <strong>{terminalEconomics.competitionPressure}</strong></div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{terminalEconomics.summary}</div>
-          </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Regime And Calibration</div>
-          <div className="mt-3 space-y-2 text-sm text-slate-700">
-            <div>Regime: <strong>{regimeContext.label}</strong></div>
-            <div>Discount-rate adj: <strong>{formatPct(regimeContext.discountRateAdjustment, 1)}</strong></div>
-            <div>Strongest replay state: <strong>{calibration.strongestState ?? "—"}</strong></div>
-            <div>Weakest replay state: <strong>{calibration.weakestState ?? "—"}</strong></div>
-            <div>Calibration band: <strong>{calibration.calibrationBand}</strong></div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{regimeContext.summary}</div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{calibration.hitRateSummary}</div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{calibration.alertDiscipline}</div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">{calibration.recommendation}</div>
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Thesis Checklist</div>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <div>
-              <div className="mb-2 font-semibold text-slate-800">What Must Go Right</div>
-              <ul className="space-y-2 text-sm text-slate-700">
-                {commandCenter.checklist.whatMustGoRight.map((item) => (
-                  <li key={item} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">{item}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <div className="mb-2 font-semibold text-slate-800">What Breaks The Thesis</div>
-              <ul className="space-y-2 text-sm text-slate-700">
-                {commandCenter.checklist.thesisBreakers.map((item) => (
-                  <li key={item} className="rounded-xl border border-red-200 bg-red-50 px-3 py-2">{item}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Forecast discipline</div>
-            <div className="mt-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-800">
-              {commandCenter.opportunity.persistenceNarrative}
-            </div>
-            <ul className="mt-3 space-y-2">
-              {commandCenter.checklist.forecastDiscipline.map((item) => (
-                <li key={item} className="rounded-lg border border-slate-200 bg-white px-3 py-2">{item}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Market Context</div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2 text-sm text-slate-700">
-            <StatTile label="Expected return spread vs risk-free" value={formatPct(commandCenter.marketContext.expectedReturnSpreadVsRf, 1)} />
-            <StatTile label="Price / stress value" value={commandCenter.marketContext.priceToStressValueRatio != null ? `${commandCenter.marketContext.priceToStressValueRatio.toFixed(2)}x` : "—"} />
-            <StatTile label="Implied market cap" value={commandCenter.marketContext.marketCapFromPrice != null ? `₹${fmt(commandCenter.marketContext.marketCapFromPrice)} Cr` : "—"} />
-            <StatTile label="Implied enterprise value" value={commandCenter.marketContext.enterpriseValueFromPrice != null ? `₹${fmt(commandCenter.marketContext.enterpriseValueFromPrice)} Cr` : "—"} />
-          </div>
-        </div>
-      </section>
-
-      {/* ── SOTP Valuation ─────────────────────────────────────────── */}
-      {commandCenter.sotp && (
-        <section className="grid gap-4 xl:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">SOTP Valuation</div>
-            {commandCenter.conglomerate?.sotpPreferred && (
-              <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-                This is a diversified conglomerate ({commandCenter.conglomerate.segmentCount} segments across {commandCenter.conglomerate.distinctSectorTemplates} sector templates). SOTP is the preferred valuation anchor — single-entity V_RE is less meaningful when business lines have structurally different economics.
-              </div>
-            )}
-            <div className="mt-2 text-sm text-slate-600">Sum-of-the-parts decomposes a conglomerate into separately valued business lines. The conglomerate discount reflects the diversification penalty the market typically applies to multi-segment firms.</div>
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-2 py-1.5 text-left text-slate-500 font-medium">Segment</th>
-                    <th className="px-2 py-1.5 text-right text-slate-500 font-medium">Op. Profit (₹ Cr)</th>
-                    <th className="px-2 py-1.5 text-right text-slate-500 font-medium">Value (₹ Cr)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {commandCenter.sotp.segments.map((seg) => (
-                    <tr key={seg.name} className="hover:bg-slate-50">
-                      <td className="px-2 py-1.5 font-medium text-slate-700">{seg.name}</td>
-                      <td className="px-2 py-1.5 text-right font-mono">₹{Math.round(seg.operatingProfit).toLocaleString('en-IN')}</td>
-                      <td className="px-2 py-1.5 text-right font-mono">₹{Math.round(seg.segmentValue).toLocaleString('en-IN')}</td>
-                    </tr>
-                  ))}
-                  <tr className="font-semibold bg-indigo-50">
-                    <td className="px-2 py-1.5 text-indigo-700">Operating sum</td>
-                    <td className="px-2 py-1.5" />
-                    <td className="px-2 py-1.5 text-right font-mono text-indigo-800">₹{Math.round(commandCenter.sotp.operatingSum).toLocaleString('en-IN')}</td>
-                  </tr>
-                  <tr className="font-semibold bg-indigo-50">
-                    <td className="px-2 py-1.5 text-indigo-700">Total enterprise value</td>
-                    <td className="px-2 py-1.5" />
-                    <td className="px-2 py-1.5 text-right font-mono text-indigo-800">₹{Math.round(commandCenter.sotp.totalEnterpriseValue).toLocaleString('en-IN')}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-3 grid gap-2 text-xs text-slate-600">
-              <div>Conglomerate discount: <strong className={commandCenter.sotp.conglomerateDiscountPct > 0.05 ? "text-amber-700" : ""}>{(commandCenter.sotp.conglomerateDiscountPct * 100).toFixed(1)}%</strong></div>
-              <div>After-discount value: <strong>₹{Math.round(commandCenter.sotp.discountedSum).toLocaleString('en-IN')}</strong></div>
-              {commandCenter.sotp.explanation.length > 0 && (
-                <div className="mt-2 text-xs text-slate-500 italic">{commandCenter.sotp.explanation[0]}</div>
-              )}
-            </div>
-          </div>
-
-          {/* ── EV/EBITDA Cross-Check ──────────────────────────────── */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">EV/EBITDA Cross-Check</div>
-            <div className="mt-2 text-sm text-slate-600">Peer-median EV/EBITDA provides an independent sanity check on DCF outputs. The market-derived multiple (if available) is compared against the peer distribution.</div>
-            <div className="mt-4 space-y-3 text-sm text-slate-700">
-              <StatTile label="Company EV/EBITDA" value={commandCenter.evEbitda.evEbitdaCompany != null ? `${commandCenter.evEbitda.evEbitdaCompany.toFixed(1)}x` : "—"} />
-              <StatTile label="Peer median EV/EBITDA" value={commandCenter.evEbitda.evEbitdaMedian != null ? `${commandCenter.evEbitda.evEbitdaMedian.toFixed(1)}x` : "—"} />
-              <StatTile label="Implied equity (median)" value={commandCenter.evEbitda.equityFromMedian != null ? `₹${Math.round(commandCenter.evEbitda.equityFromMedian).toLocaleString('en-IN')} Cr` : "—"} />
-              <StatTile label="P25 / P75 range" value={commandCenter.evEbitda.evEbitdaP25 != null && commandCenter.evEbitda.evEbitdaP75 != null ? `${commandCenter.evEbitda.evEbitdaP25.toFixed(1)}x – ${commandCenter.evEbitda.evEbitdaP75.toFixed(1)}x` : "—"} />
-              <StatTile label="Peer count" value={commandCenter.evEbitda.label} />
-            </div>
-          </div>
-        </section>
-      )}
-
-      <section className="grid gap-4 xl:grid-cols-[1.1fr,0.9fr]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Historical Signal Replay</div>
-              <div className="mt-1 text-sm text-slate-600">{commandCenter.backtest.latestComparedToHistory}</div>
-            </div>
-            <div className="text-right text-sm text-slate-700">
-              <div>Investable points: <strong>{commandCenter.backtest.investableCount}</strong></div>
-              <div>High-conviction+: <strong>{commandCenter.backtest.highConvictionCount}</strong></div>
-            </div>
-          </div>
-          {commandCenter.backtest.available ? (
-            <>
-              <div className="mt-4 grid gap-3 md:grid-cols-4">
-                <StatTile label="1Y forward win rate" value={formatPct(commandCenter.backtest.forwardWinRate1Y, 0)} />
-                <StatTile label="3Y forward win rate" value={formatPct(commandCenter.backtest.forwardWinRate3Y, 0)} />
-                <StatTile label="Median 1Y return" value={formatPct(commandCenter.backtest.median1Y, 1)} />
-                <StatTile label="Median 3Y CAGR" value={formatPct(commandCenter.backtest.median3Y, 1)} />
-              </div>
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 border-b">
-                      <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Period</th>
-                      <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">State</th>
-                      <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Stress CAGR</th>
-                      <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Realized 1Y</th>
-                      <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Realized 3Y</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {commandCenter.backtest.points.slice(-8).reverse().map((point) => (
-                      <tr key={point.periodEnd}>
-                        <td className="px-3 py-2 text-slate-700">{point.periodEnd.slice(0, 10)}</td>
-                        <td className="px-3 py-2 text-slate-700">{point.state}</td>
-                        <td className="px-3 py-2 text-right font-mono">{formatPct(point.expectedCagrStress, 1)}</td>
-                        <td className="px-3 py-2 text-right font-mono">{formatPct(point.realized1Y, 1)}</td>
-                        <td className="px-3 py-2 text-right font-mono">{formatPct(point.realized3Y, 1)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          ) : (
-            <div className="mt-4 rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-              {commandCenter.backtest.latestComparedToHistory}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Signal Distribution</div>
-          <div className="mt-4 space-y-2 text-sm text-slate-700">
-            {Object.entries(commandCenter.backtest.countsByState).map(([state, count]) => (
-              <div key={state} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                <span>{state}</span>
-                <strong>{count}</strong>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-        <h2 className="text-lg font-bold text-slate-800 mb-5">Valuation Inputs (§6)</h2>
-        <div className="flex flex-wrap gap-6 items-end">
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Cost of Equity ke (%)</label>
-            <div className="flex items-center gap-2">
-              <input type="number" step={0.5}
-                value={keOverride != null ? keOverride : +(keFromConfig * 100).toFixed(1)}
-                onChange={(e) => setKeOverride(Number(e.target.value))}
-                className="w-28 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 bg-white" />
-              {keOverride != null && (
-                <button onClick={() => setKeOverride(null)}
-                  className="text-xs text-slate-400 hover:text-indigo-600 underline">reset</button>
-              )}
-            </div>
-            {keOverride == null && (
-              <p className="text-xs text-slate-400 mt-0.5">
-                {effectiveConfig.ke > 0 ? `explicit: ${(effectiveConfig.ke * 100).toFixed(1)}%` : `rf+erp = ${(keFromConfig * 100).toFixed(1)}%`}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">WACC kw — derived (S-9.4)</label>
-            <div className="w-28 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-700 font-mono font-semibold">
-              {(kwDerived * 100).toFixed(2)}%
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">NOA-weighted · kd_at=kd×(1−τ)</p>
-          </div>
-
-          <NumInput label="Growth g (%)" value={g} onChange={setG} />
-
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Continuing Value</label>
-            <select value={cv} onChange={(e) => setCv(e.target.value as CVMethod)}
-              className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
-              <option value="CV1">CV1 — Zero (conservative)</option>
-              <option value="CV2">CV2 — Perpetuity, no growth</option>
-              <option value="CV3">CV3 — Gordon growth</option>
-            </select>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-            <div className="font-semibold text-slate-700">Live market overlay</div>
-            <div className="mt-1">Mode: <b>{config.market_data_provider ?? "manual"}</b></div>
-            <div className="mt-1">Sector template: <b>{commandCenter.sectorTemplate.label}</b></div>
-            <div className="mt-1">Price: <b>{commandCenter.marketPrice != null ? `₹${commandCenter.marketPrice.toFixed(2)}` : "—"}</b></div>
-            <div>Risk-free: <b>{(commandCenter.riskFreeRate * 100).toFixed(2)}%</b></div>
-            <div>Freshness: <b>{liveMarketData?.freshness ?? "fallback"}</b></div>
-          </div>
-        </div>
-
-        {sharesOut != null && (
-          <div className="mt-3 text-xs text-slate-500 space-y-1">
-            <div>Share basis: <b>{sharesOut.toLocaleString("en-IN", { maximumFractionDigits: 2 })} Cr shares</b></div>
-            <div>Source: <b>{shareBasis.source}</b> · Confidence: <b>{shareBasis.confidence}</b></div>
-          </div>
-        )}
-
-        {val.lowConfidence && (
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-            Separation Confidence Score = {val.separationScore}/100 &lt; threshold.
-            Operating/Financing separation may be unreliable. Prefer RE approach over ReOI-heavy conclusions.
-          </div>
-        )}
-
-        {valuationReadiness.status !== "production-ready" && (
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900">
-            <b>Guarded valuation mode.</b> {valuationReadiness.reasons[0]}
-            <div className="mt-1">
-              Anchor period: <b>{valuationReadiness.anchorPeriod?.slice(0, 10) ?? "n/a"}</b>
-              {" "}· Latest source period: <b>{valuationReadiness.latestPeriod?.slice(0, 10) ?? "n/a"}</b>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <ValCard color="indigo" title={`V (RE · ${cv})`} subtitle="Eq.(1a) · Clean surplus" value={V_RE}
-          items={V_RE == null ? [] : [
-            { l: "CSE₀ (base book value)", v: val.CSE0 },
-            { l: "PV of RE series", v: val.pvRE },
-            { l: `CV PV (${cv})`, v: V_RE - val.CSE0 - val.pvRE },
-          ]} fmt={fmt}
-          perShare={V_RE == null ? null : toPerShare(V_RE, sharesOut)}
-          skipReason={val.equityModelsBlocked ? val.equityBlockedReason ?? "Equity-side model skipped (negative net worth)." : null}
-        />
-        <ValCard color="emerald" title={`V (ReOI · ${cv === "CV1" ? "CV01" : cv === "CV2" ? "CV02" : "CV03"})`}
-          subtitle="Eq.(9) · Ops-only · EV−NFO" value={V_ReOI}
-          items={[
-            { l: "EV (NOA₀ + PV ReOI + CV)", v: val.EV_ReOI },
-            { l: "Less: NFO (latest)", v: -val.NFO_latest },
-            { l: "PV ReOI", v: val.pvReOI },
-          ]} fmt={fmt}
-          perShare={toPerShare(V_ReOI, sharesOut)}
-        />
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">All CV Methods — RE</div>
-          {[
-            { label: "CV1 (zero)", v: val.V_RE_CV1 },
-            { label: "CV2 (perp.)", v: val.V_RE_CV2 },
-            { label: "CV3 (growth)", v: val.V_RE_CV3 },
-          ].map((row) => (
-            <div key={row.label} className="flex justify-between py-1.5 border-b border-slate-100 text-sm">
-              <span className="text-slate-600">{row.label}</span>
-              <span className="font-mono font-semibold text-indigo-700">
-                {row.v == null
-                  ? <span className="text-amber-600">— (skipped)</span>
-                  : sharesOut
-                    ? `${fmtPerShare(toPerShare(row.v, sharesOut))} / share`
-                    : `₹${fmt(row.v)} Cr`}
-              </span>
-            </div>
-          ))}
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mt-4 mb-3">All CV Methods — ReOI</div>
-          {[
-            { label: "CV01 (zero)", v: val.V_ReOI_CV01 },
-            { label: "CV02 (perp.)", v: val.V_ReOI_CV02 },
-            { label: "CV03 (growth)", v: val.V_ReOI_CV03 },
-          ].map((row) => (
-            <div key={row.label} className="flex justify-between py-1.5 border-b border-slate-100 text-sm">
-              <span className="text-slate-600">{row.label}</span>
-              <span className="font-mono font-semibold text-emerald-700">
-                {sharesOut ? `${fmtPerShare(toPerShare(row.v, sharesOut))} / share` : `₹${fmt(row.v)} Cr`}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-          <h2 className="text-lg font-bold text-slate-800">Valuation Triangulation (v3)</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Per-share value is primary. Company totals remain as context in ₹ Cr.</p>
-        </div>
-        <div className="p-6 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b">
-                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Model</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Per Share (₹)</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Value (₹ Cr)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {[
-                ["RE (CV3)", val.V_RE_CV3, val.perShare?.intrinsic_re_per_share ?? null],
-                ["ReOI (CV03)", val.V_ReOI_CV03, val.perShare?.intrinsic_reoi_per_share ?? null],
-                ["FCFF", val.fcf?.EV_FCFF != null ? (val.fcf.EV_FCFF - val.NFO_latest) : null, val.perShare?.intrinsic_fcff_per_share ?? null],
-                ["FCFE", val.fcf?.V_FCFE ?? null, val.perShare?.intrinsic_fcfe_per_share ?? null],
-                ["DDM", val.perShare?.intrinsic_ddm_per_share != null && sharesOut ? val.perShare.intrinsic_ddm_per_share * sharesOut : null, val.perShare?.intrinsic_ddm_per_share ?? null],
-                ["AEG", val.aeg?.V_AEG ?? null, val.perShare?.intrinsic_aeg_per_share ?? null],
-              ].map(([name, v, ps]) => (
-                <tr key={name as string}>
-                  <td className="px-3 py-2 text-slate-700">{name as string}</td>
-                  <td className="px-3 py-2 text-right font-mono">{typeof ps === "number" ? `₹${ps.toFixed(2)}` : "—"}</td>
-                  <td className="px-3 py-2 text-right font-mono">{typeof v === "number" ? `₹${fmt(v)}` : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {val.perShare?.implied_growth_rate != null && (
-            <p className="text-xs text-slate-500 mt-3">
-              Reverse DCF implied growth: <b>{(val.perShare.implied_growth_rate * 100).toFixed(2)}%</b>
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-          <h2 className="text-lg font-bold text-slate-800">Residual Income Series</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            RE = CNI − ke×CSE₍t−1₎  |  ReOI = OI − kw×NOA₍t−1₎  |  §6.1–6.2
-            {sharesOut ? ` · Rendered on a per-share basis using ${sharesOut.toLocaleString("en-IN", { maximumFractionDigits: 2 })} Cr shares.` : " · Rendered in ₹ Cr until a share basis is available."}
-          </p>
-        </div>
-        <div className="p-6">
-          <div className="overflow-x-auto mb-6">
-            <table className="w-full text-sm">
-              <thead><tr className="bg-slate-50 border-b">
-                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Period</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">{sharesOut ? "CNI / share" : "CNI"}</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">{sharesOut ? "ke×CSE₋₁ / share" : "ke×CSE₋₁"}</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-indigo-500 uppercase">{sharesOut ? "RE / share" : "RE"}</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">{sharesOut ? "OI / share" : "OI"}</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">{sharesOut ? "kw×NOA₋₁ / share" : "kw×NOA₋₁"}</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-emerald-500 uppercase">{sharesOut ? "ReOI / share" : "ReOI"}</th>
-              </tr></thead>
-              <tbody className="divide-y divide-slate-100">
-                {val.reSeries.map((r, i) => {
-                  const cur = data[i + 1];
-                  const prev = data[i];
-                  if (!cur || !prev) return null;
-                  const cni = toPerShare(cur.is.CNI, sharesOut) ?? cur.is.CNI;
-                  const equityCharge = toPerShare(ke * prev.bs.CSE, sharesOut) ?? (ke * prev.bs.CSE);
-                  const re = toPerShare(r.RE, sharesOut) ?? r.RE;
-                  const oi = toPerShare(cur.is.OI, sharesOut) ?? cur.is.OI;
-                  const noaCharge = toPerShare(kwDerived * prev.bs.NOA, sharesOut) ?? (kwDerived * prev.bs.NOA);
-                  const reoi = toPerShare(r.ReOI, sharesOut) ?? r.ReOI;
-                  return (
-                    <tr key={i} className="hover:bg-slate-50">
-                      <td className="px-4 py-2 font-mono text-slate-600 text-sm">{r.period.slice(0, 7)}</td>
-                      <td className="px-4 py-2 text-right font-mono text-sm">{sharesOut ? fmtPerShare(cni) : cur.is.CNI.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
-                      <td className="px-4 py-2 text-right font-mono text-sm text-slate-400">{sharesOut ? fmtPerShare(equityCharge) : (ke * prev.bs.CSE).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
-                      <td className="px-4 py-2 text-right font-mono font-bold text-indigo-700 text-sm">{sharesOut ? fmtPerShare(re) : fmt(r.RE)}</td>
-                      <td className="px-4 py-2 text-right font-mono text-sm">{sharesOut ? fmtPerShare(oi) : cur.is.OI.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
-                      <td className="px-4 py-2 text-right font-mono text-sm text-slate-400">{sharesOut ? fmtPerShare(noaCharge) : (kwDerived * prev.bs.NOA).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
-                      <td className="px-4 py-2 text-right font-mono font-bold text-emerald-700 text-sm">{sharesOut ? fmtPerShare(reoi) : fmt(r.ReOI)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[
-              { key: "RE" as const, label: "Residual Earnings (RE)", color: "#6366f1" },
-              { key: "ReOI" as const, label: "Residual Op. Income (ReOI)", color: "#10b981" },
-            ].map(({ key, label, color }) => (
-              <div key={key} className="border border-slate-100 rounded-xl p-4">
-                <div className="text-xs font-semibold text-slate-500 mb-3 uppercase">{label} {sharesOut ? "(₹ / share)" : "(₹ Cr)"}</div>
-                <ResponsiveContainer debounce={50} width="100%" height={190}>
-                  <BarChart data={barData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip />
-                    <ReferenceLine y={0} stroke="#94a3b8" />
-                    <Bar dataKey={key}>
-                      {barData.map((entry, i) => (
-                        <Cell key={i} fill={entry[key] >= 0 ? color : "#ef4444"} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <ReSeriesSection
+        val={val}
+        data={data}
+        sharesOut={sharesOut}
+        ke={ke}
+        kwDerived={kwDerived}
+        barData={barData}
+      />
 
       <SensitivityGrid ke={ke} gRate={gRate} val={val} sharesOut={sharesOut} fmt={fmt} />
 
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-sm">
-        <h3 className="font-semibold text-slate-800 mb-3">Continuing Value Formulae (§6.1–6.2)</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs mb-3">
-          {[
-            { t: "CV1 / CV01 — Zero", f: "CV = 0", d: "Conservative. No terminal value." },
-            { t: "CV2 / CV02 — Perpetuity", f: "CV = RE₍T₎ / (ρ−1)", d: "Steady state, zero growth." },
-            { t: "CV3 / CV03 — Gordon Growth", f: "CV = RE₍T₎×(1+g) / (ρ−1−g)", d: `g = ${g.toFixed(1)}%` },
-          ].map((c) => (
-            <div key={c.t} className="bg-white p-3 rounded-lg border border-slate-100">
-              <div className="font-bold text-slate-700 mb-1 font-sans text-xs">{c.t}</div>
-              <div className="text-indigo-600">{c.f}</div>
-              <div className="text-slate-400 mt-1 font-sans">{c.d}</div>
-            </div>
-          ))}
-        </div>
-        <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-800">
-          <b>S-9.4 — kw derivation:</b> kw = (NOA/EV)×ke + (NFO/EV)×kd_aftertax, where kd_aftertax = kd_pretax×(1−τ_kd).
-          Derived kw = <b>{(kwDerived * 100).toFixed(2)}%</b>. kw is never a user input.
-        </div>
-      </div>
+      <ContinuingValueFormulae g={g} kwDerived={kwDerived} />
     </div>
   );
 }
-
-function ValuationCommandCenterHero({
-  marketSymbol,
-  commandCenter,
-  liveMarketData,
-  marketDataLoading,
-  marketDataError,
-  onRefresh,
-  config,
-}: {
-  marketSymbol: string | null;
-  commandCenter: ReturnType<typeof buildValuationCommandCenter>;
-  liveMarketData: ReturnType<typeof useLiveMarketData>["snapshot"];
-  marketDataLoading: boolean;
-  marketDataError: string | null;
-  onRefresh: () => Promise<void>;
-  config: EngineConfig;
-}) {
-  const stress = commandCenter.scenarios.find((scenario) => scenario.key === "stress");
-  const base = commandCenter.scenarios.find((scenario) => scenario.key === "base");
-
-  return (
-    <section className="rounded-3xl border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.06),_transparent_35%),linear-gradient(135deg,_#ffffff,_#f8fafc)] p-6 shadow-sm">
-      <SectionHeader
-        title="Valuation"
-        subtitle="What is this business worth?"
-        icon="💰"
-      />
-
-      {/* Narrative insight — plain English valuation summary */}
-      {(() => {
-        const price = commandCenter.marketPrice;
-        const floor = commandCenter.range.floorPerShare;
-        const ceiling = commandCenter.range.ceilingPerShare;
-        const mid = floor != null && ceiling != null ? (floor + ceiling) / 2 : null;
-        const mos = price != null && mid != null && price > 0 ? (mid - price) / price : null;
-        const narrative = generateValuationNarrative({
-          ticker: config.ticker ?? config.quality_data_folder ?? "Company",
-          price,
-          intrinsicFloor: floor,
-          intrinsicCeiling: ceiling,
-          intrinsicMid: mid,
-          frameworkCount: commandCenter.scenarios.length,
-          convergenceSigma: null,
-          marginOfSafety: mos,
-        });
-        return narrative ? <InsightBlock text={narrative} icon="📊" /> : null;
-      })()}
-
-      {/* Assumptions Audit — all valuation inputs visible and sanity-checked */}
-      <AssumptionsAudit config={config} />
-
-      <div className="flex flex-wrap items-start justify-between gap-4 mt-6">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Valuation Command Center
-          </div>
-          <h1 className="mt-3 text-2xl font-bold text-slate-900">Lead with the stressed case, not the optimistic one.</h1>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">
-            The command center keeps the live market layer separate from the audited accounting base, then asks whether the current setup is merely cheap or genuinely rare.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <SignalPill state={commandCenter.signal.state} label={commandCenter.signal.label} />
-          <button
-            onClick={() => { void onRefresh(); }}
-            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-400"
-          >
-            {marketDataLoading ? "Refreshing…" : "Refresh live data"}
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-6 grid gap-4 lg:grid-cols-5">
-        <HeroMetric label="Current price" value={commandCenter.marketPrice != null ? `₹${commandCenter.marketPrice.toFixed(2)}` : "—"} sublabel={`${commandCenter.marketContext.freshness}${marketSymbol ? ` · ${marketSymbol}` : ""}`} />
-        <HeroMetric label="Stress value" value={formatPerShare(stress?.intrinsicPerShare)} sublabel={`Upside ${formatPct(stress?.upsidePct)}`} />
-        <HeroMetric label="Base value" value={formatPerShare(base?.intrinsicPerShare)} sublabel={`Upside ${formatPct(base?.upsidePct)}`} />
-        <HeroMetric label="Expected CAGR (stress)" value={formatPct(commandCenter.opportunity.expectedCagrStress, 1)} sublabel={commandCenter.opportunity.convictionBucket} />
-        <HeroMetric label="Valuation range" value={`${formatPerShare(commandCenter.range.floorPerShare)} to ${formatPerShare(commandCenter.range.ceilingPerShare)}`} sublabel={`Anchor ${commandCenter.valuationReadiness.anchorPeriod?.slice(0, 10) ?? "—"} · As of ${commandCenter.asOf ? new Date(commandCenter.asOf).toLocaleString("en-IN") : "—"}`} />
-      </div>
-
-      <div className="mt-4 grid gap-3 lg:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Audited accounting anchor</div>
-          <div className="mt-2 text-sm text-slate-800">
-            Latest reported period <strong>{commandCenter.marketContext.latestReportedPeriod?.slice(0, 10) ?? "—"}</strong>
-          </div>
-          <div className="mt-1 text-sm text-slate-800">
-            Valuation anchor <strong>{commandCenter.marketContext.valuationAnchorPeriod?.slice(0, 10) ?? "—"}</strong>
-          </div>
-          <div className="mt-2 text-xs text-slate-500">{commandCenter.valuationReadiness.reasons[0] ?? "Latest reported period is usable as the valuation anchor."}</div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Live market overlay</div>
-          <div className="mt-2 text-sm text-slate-800">{commandCenter.marketContext.sourceSummary}</div>
-          <div className="mt-2 text-xs text-slate-500">
-            Price as-of {commandCenter.marketContext.livePriceAsOf ? new Date(commandCenter.marketContext.livePriceAsOf).toLocaleString("en-IN") : "—"}
-            {" · "}
-            Rate as-of {commandCenter.marketContext.liveRateAsOf ? new Date(commandCenter.marketContext.liveRateAsOf).toLocaleDateString("en-IN") : "—"}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Trust posture</div>
-          <div className="mt-2 text-sm text-slate-800">Confidence <strong>{commandCenter.signal.confidenceState}</strong></div>
-          <div className="mt-1 text-sm text-slate-800">Warnings <strong>{commandCenter.marketContext.warningCount}</strong></div>
-          <div className="mt-2 text-xs text-slate-500">Aggressive signals now require both a clean accounting anchor and sufficiently current market inputs.</div>
-        </div>
-      </div>
-
-      {liveMarketData?.warnings?.length ? (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <div className="font-semibold">Provider warnings</div>
-          <ul className="mt-2 space-y-1">
-            {liveMarketData.warnings.map((item) => <li key={item}>• {item}</li>)}
-          </ul>
-        </div>
-      ) : null}
-
-      {commandCenter.valuationReadiness.status !== "production-ready" && (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <div className="font-semibold">Guarded accounting anchor</div>
-          <div className="mt-1">{commandCenter.valuationReadiness.reasons[0]}</div>
-        </div>
-      )}
-
-      {marketDataError && (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <div className="font-semibold">Live market overlay warning</div>
-          <div className="mt-1">{marketDataError}</div>
-        </div>
-      )}
-
-      {(commandCenter.marketContext.freshness === "stale" || commandCenter.marketContext.freshness === "fallback" || commandCenter.marketContext.freshness === "missing") && (
-        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-          Freshness state <strong>{commandCenter.marketContext.freshness}</strong> is now part of signal discipline, so rare or aggressive labels may be capped until the market overlay improves.
-        </div>
-      )}
-
-      {commandCenter.marketContext.warningCount > 0 && !liveMarketData?.warnings?.length && (
-        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          The market overlay includes {commandCenter.marketContext.warningCount} provider warning{commandCenter.marketContext.warningCount === 1 ? "" : "s"}.
-        </div>
-      )}
-
-      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Decision protocol</div>
-        <div className="mt-1">Audited/recast accounting defines the anchor period. Live market data defines the overlay. The signal only escalates when both layers are trustworthy enough together.</div>
-      </div>
-
-    </section>
-  );
-}
-
-function SensitivityGrid({
-  ke, gRate, val, sharesOut, fmt
-}: {
-  ke: number; gRate: number;
-  val: ReturnType<typeof computeValuation>;
-  sharesOut: number | null;
-  fmt: (n: number) => string;
-}) {
-  const KES = [0.08, 0.10, 0.12, 0.14, 0.16];
-  const GS = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07];
-  const T = val.reSeries.length;
-  const lastRE = T > 0 ? val.reSeries[T - 1]!.RE : 0;
-
-  const computeV = (keV: number, gv: number): number | null => {
-    if (keV - gv <= 0.001) return null;
-    const cv3 = lastRE * (1 + gv) / (keV - gv);
-    const disc = Math.pow(1 + keV, T);
-    return val.CSE0 + val.pvRE + cv3 / disc;
-  };
-
-  return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-        <h2 className="text-lg font-bold text-slate-800">Sensitivity Grid — V_RE_CV3 (S-9.7)</h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          {sharesOut != null
-            ? "Per-share values across ke × g using the resolved share basis. Company totals are shown below for context."
-            : "₹ Cr across ke × g. Columns strictly ascending by g (S-9.7). Base highlighted."}
-        </p>
-      </div>
-      <div className="p-6 overflow-x-auto space-y-5">
-        {sharesOut != null && sharesOut > 0 && (
-          <div>
-            <div className="text-xs font-semibold text-slate-500 mb-2 uppercase">Per Share (₹) — {sharesOut.toLocaleString("en-IN", { maximumFractionDigits: 2 })} Cr shares</div>
-            <table className="text-sm border-collapse">
-              <thead>
-                <tr>
-                  <th className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-left border">ke ↓ / g →</th>
-                  {GS.map(gv => (
-                    <th key={gv} className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-right border">{(gv * 100).toFixed(0)}%</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {KES.map(keV => (
-                  <tr key={keV}>
-                    <td className="px-3 py-2 text-xs font-semibold text-slate-600 border bg-slate-50">ke={(keV * 100).toFixed(0)}%</td>
-                    {GS.map(gv => {
-                      const v = computeV(keV, gv);
-                      const ps = toPerShare(v, sharesOut);
-                      const isBase = Math.abs(keV - ke) < 0.005 && Math.abs(gv - gRate) < 0.005;
-                      if (ps == null) return <td key={gv} className="px-3 py-2 text-center text-xs text-slate-400 border">—</td>;
-                      return (
-                        <td key={gv} className={`px-3 py-2 text-right font-mono text-xs border ${isBase ? "bg-indigo-100 font-bold text-indigo-800" : "text-slate-700"}`}>
-                          ₹{ps.toFixed(2)}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <div>
-          <div className="text-xs font-semibold text-slate-500 mb-2 uppercase">Value (₹ Cr)</div>
-          <table className="text-sm border-collapse">
-            <thead>
-              <tr>
-                <th className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-left border">ke ↓ / g →</th>
-                {GS.map(gv => (
-                  <th key={gv} className="px-3 py-2 bg-slate-100 text-xs text-slate-500 text-right border">{(gv * 100).toFixed(0)}%</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {KES.map(keV => (
-                <tr key={keV}>
-                  <td className="px-3 py-2 text-xs font-semibold text-slate-600 border bg-slate-50">ke={(keV * 100).toFixed(0)}%</td>
-                  {GS.map(gv => {
-                    const v = computeV(keV, gv);
-                    const isBase = Math.abs(keV - ke) < 0.005 && Math.abs(gv - gRate) < 0.005;
-                    if (v == null) return <td key={gv} className="px-3 py-2 text-center text-xs text-slate-400 border">—</td>;
-                    return (
-                      <td key={gv} className={`px-3 py-2 text-right font-mono text-xs border ${isBase ? "bg-indigo-100 font-bold text-indigo-800" : v > 0 ? "text-slate-700" : "text-red-500"}`}>
-                        {fmt(v)}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-

@@ -59,23 +59,147 @@ function mkPeriod(period_end: string): RecastPeriod {
   } as RecastPeriod;
 }
 
+function renderReport() {
+  const data = [mkPeriod("2024-03-31"), mkPeriod("2025-03-31")];
+  const config: EngineConfig = {
+    ...DEFAULT_CONFIG,
+    shares_outstanding: CroreShares(100),
+    market_price: INRAbsolute(50),
+  };
+
+  return renderToStaticMarkup(
+    <ValuationReport
+      data={data}
+      config={config}
+      analysisStatus={null}
+    />,
+  );
+}
+
 describe("ValuationReport", () => {
   it("discloses guarded floor for floored incremental ROIC scenario values", () => {
-    const data = [mkPeriod("2024-03-31"), mkPeriod("2025-03-31")];
-    const config: EngineConfig = {
-      ...DEFAULT_CONFIG,
-      shares_outstanding: CroreShares(100),
-      market_price: INRAbsolute(50),
-    };
-
-    const html = renderToStaticMarkup(
-      <ValuationReport
-        data={data}
-        config={config}
-        analysisStatus={null}
-      />,
-    );
-
+    const html = renderReport();
     expect(html).toContain("guarded floor");
+  });
+
+  it("renders the command-center hero with the live market price", () => {
+    const html = renderReport();
+    expect(html).toContain("Valuation Command Center");
+    expect(html).toContain("Lead with the stressed case, not the optimistic one.");
+    // Hero metric labels
+    expect(html).toContain("Current price");
+    expect(html).toContain("Stress value");
+    expect(html).toContain("Base value");
+    expect(html).toContain("Expected CAGR (stress)");
+    expect(html).toContain("Valuation range");
+    // market_price = 50 flows through commandCenter.marketPrice
+    expect(html).toContain("₹50.00");
+    // Decision protocol footer
+    expect(html).toContain("Decision protocol");
+  });
+
+  it("renders the signal engine and historical dislocation section", () => {
+    const html = renderReport();
+    expect(html).toContain("Signal Engine");
+    expect(html).toContain("Why it qualifies");
+    expect(html).toContain("Kill Switches");
+    expect(html).toContain("Supporting Flags");
+    expect(html).toContain("Historical Dislocation");
+    expect(html).toContain("Current price percentile");
+    expect(html).toContain("52-week low");
+    expect(html).toContain("52-week high");
+  });
+
+  it("renders scenario cards with per-share intrinsic values", () => {
+    const html = renderReport();
+    expect(html).toContain("vs market");
+    expect(html).toContain("Margin of safety");
+    expect(html).toContain("Expected CAGR");
+    expect(html).toContain("Terminal anchor");
+  });
+
+  it("renders the anchor analysis grid sections", () => {
+    const html = renderReport();
+    expect(html).toContain("Sector Template");
+    expect(html).toContain("Quality-adjusted margin of safety");
+    expect(html).toContain("Quality score");
+    expect(html).toContain("Opportunity score");
+  });
+
+  it("renders business-model realism and DCF cash-flow lens", () => {
+    const html = renderReport();
+    expect(html).toContain("Business-model realism");
+    expect(html).toContain("Persistence evidence from recast history");
+    expect(html).toContain("Demand stability");
+    expect(html).toContain("Margin durability");
+    expect(html).toContain("DCF Cash-Flow Lens");
+    expect(html).toContain("Owner earnings / share");
+    expect(html).toContain("Maintenance capex");
+    expect(html).toContain("Professional Decision Rules");
+  });
+
+  it("renders cyclical, terminal, and regime sections", () => {
+    const html = renderReport();
+    expect(html).toContain("Cyclical Normalization");
+    expect(html).toContain("Terminal Economics");
+    expect(html).toContain("Regime And Calibration");
+    expect(html).toContain("Terminal ROIC");
+  });
+
+  it("renders thesis checklist and market context", () => {
+    const html = renderReport();
+    expect(html).toContain("Thesis Checklist");
+    expect(html).toContain("What Must Go Right");
+    expect(html).toContain("What Breaks The Thesis");
+    expect(html).toContain("Forecast discipline");
+    expect(html).toContain("Market Context");
+    expect(html).toContain("Expected return spread vs risk-free");
+  });
+
+  it("renders the historical signal replay and signal distribution", () => {
+    const html = renderReport();
+    expect(html).toContain("Historical Signal Replay");
+    expect(html).toContain("Investable points");
+    expect(html).toContain("High-conviction+");
+    expect(html).toContain("Signal Distribution");
+  });
+
+  it("renders the valuation inputs panel with derived kw", () => {
+    const html = renderReport();
+    expect(html).toContain("Valuation Inputs (§6)");
+    expect(html).toContain("Cost of Equity ke (%)");
+    expect(html).toContain("WACC kw — derived (S-9.4)");
+    expect(html).toContain("Growth g (%)");
+    expect(html).toContain("Continuing Value");
+    expect(html).toContain("Live market overlay");
+  });
+
+  it("renders the RE/ReOI value cards and triangulation table", () => {
+    const html = renderReport();
+    expect(html).toContain("All CV Methods — RE");
+    expect(html).toContain("All CV Methods — ReOI");
+    expect(html).toContain("Valuation Triangulation (v3)");
+    expect(html).toContain("FCFF");
+    expect(html).toContain("FCFE");
+    expect(html).toContain("DDM");
+    expect(html).toContain("AEG");
+    // share basis disclosure (shares_outstanding = 100 Cr)
+    expect(html).toContain("Share basis:");
+  });
+
+  it("renders the residual income series and continuing-value formulae", () => {
+    const html = renderReport();
+    expect(html).toContain("Residual Income Series");
+    expect(html).toContain("Continuing Value Formulae (§6.1–6.2)");
+    expect(html).toContain("CV1 / CV01 — Zero");
+    expect(html).toContain("CV3 / CV03 — Gordon Growth");
+    expect(html).toContain("S-9.4 — kw derivation:");
+  });
+
+  it("renders the sensitivity grid", () => {
+    const html = renderReport();
+    expect(html).toContain("Sensitivity Grid — V_RE_CV3 (S-9.7)");
+    expect(html).toContain("ke ↓ / g →");
+    expect(html).toContain("Value (₹ Cr)");
   });
 });

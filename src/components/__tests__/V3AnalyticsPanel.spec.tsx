@@ -1,6 +1,11 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import V3AnalyticsPanel from "../V3AnalyticsPanel";
+import { MoatSection } from "../v3-analytics/MoatSection";
+import { CapitalAllocSection } from "../v3-analytics/CapitalAllocSection";
+import { EPVSection } from "../v3-analytics/EPVSection";
+import { RelativeValSection } from "../v3-analytics/RelativeValSection";
+import { GapDecompSection } from "../v3-analytics/GapDecompSection";
 import { buildAnalysisTraceability } from "../../engine/analysisTraceability";
 import { getAnalysisPolicyVersions } from "../../engine/policyVersions";
 import { DEFAULT_CONFIG, RecastPeriod, RawPeriodData } from "../../engine/types";
@@ -210,5 +215,113 @@ describe("V3AnalyticsPanel", () => {
     expect(html).toContain("V3 Analytics Trust Gate");
     expect(html).toContain("Economically plausible");
     expect(html).toContain("V3 Analytics — Executive Overview");
+  });
+
+  it("renders all 15 tab labels so section composition stays intact", () => {
+    const data = [mkV3Period("2024-03-31"), mkV3Period("2025-03-31")];
+    const html = renderToStaticMarkup(
+      <V3AnalyticsPanel data={data} config={DEFAULT_CONFIG} />,
+    );
+    for (const label of [
+      "Overview",
+      "Dirty Surplus §6",
+      "Event Flags §13",
+      "Terminal Anchor §11",
+      "Sensitivity §12",
+      "Confidence §14",
+      "Triggers §15",
+      "Accruals §5A",
+      "OA Decomp §3B",
+      "RE/ReOI Gap §6",
+      "§6B Per-Share",
+      "Moat Score",
+      "Capital Allocation",
+      "EPV (Graham-Dodd)",
+      "Relative Valuation",
+    ]) {
+      expect(html).toContain(label);
+    }
+  });
+
+  it("pins the default Overview pane: headers, metric cards, and diagnostics", () => {
+    const data = [mkV3Period("2024-03-31"), mkV3Period("2025-03-31")];
+    const html = renderToStaticMarkup(
+      <V3AnalyticsPanel data={data} config={DEFAULT_CONFIG} />,
+    );
+    // Section header + subtitle
+    expect(html).toContain("V3 Analytics — Executive Overview");
+    expect(html).toContain("Full implementation of Penman–Nissim V3 specification");
+    // Metric card labels
+    expect(html).toContain("Confidence Score");
+    expect(html).toContain("TV Share (RE CV3)");
+    expect(html).toContain("Anchor Method");
+    expect(html).toContain("RE–ReOI Gap");
+    // Confidence score is formatted as N/100
+    expect(html).toMatch(/\d+\/100/);
+    // Info blocks + rows
+    expect(html).toContain("Terminal Value");
+    expect(html).toContain("Terminal growth g");
+    expect(html).toContain("Selected anchor");
+    expect(html).toContain("Data Quality");
+    expect(html).toContain("Cumulative dirty surplus");
+    expect(html).toContain("Clean surplus compromised");
+  });
+
+  it("shows the ≥2 periods guard when given a single period", () => {
+    const html = renderToStaticMarkup(
+      <V3AnalyticsPanel data={[mkV3Period("2025-03-31")]} config={DEFAULT_CONFIG} />,
+    );
+    expect(html).toContain("Need ≥ 2 periods for V3 analytics");
+  });
+});
+
+// Per-section render tests. The panel SSR-renders only the default "overview"
+// pane, so these pin the extracted sub-sections directly (covers the 14 panes
+// that the panel's default render cannot reach).
+describe("V3 analytics sub-sections", () => {
+  it("MoatSection renders the null-state when moat is null", () => {
+    const html = renderToStaticMarkup(<MoatSection moat={null} />);
+    expect(html).toContain("Insufficient data for moat scoring");
+  });
+
+  it("CapitalAllocSection renders the null-state when ca is null", () => {
+    const html = renderToStaticMarkup(<CapitalAllocSection ca={null} />);
+    expect(html).toContain("Insufficient data for capital allocation scoring");
+  });
+
+  it("EPVSection renders the null-state when epv is null", () => {
+    const html = renderToStaticMarkup(<EPVSection epv={null} />);
+    expect(html).toContain("EPV requires ≥ 3 periods");
+  });
+
+  it("RelativeValSection renders the null-state when rv is null", () => {
+    const html = renderToStaticMarkup(<RelativeValSection rv={null} />);
+    expect(html).toContain("Relative valuation requires market_price and shares_outstanding");
+  });
+
+  it("GapDecompSection renders rows, header, %-of-total, and dominant-driver star", () => {
+    const html = renderToStaticMarkup(
+      <GapDecompSection
+        gap={{
+          dirty_surplus: 60,
+          nfo_timing: 20,
+          tv_divergence: 10,
+          explicit_period_discounting: 10,
+          residual: 0,
+          total: 100,
+          dominant_driver: "nfo_timing",
+        }}
+      />,
+    );
+    expect(html).toContain("§6 RE ↔ ReOI Gap Decomposition (S-15.2)");
+    expect(html).toContain("Dirty surplus (PV)");
+    expect(html).toContain("NFO timing");
+    expect(html).toContain("TV divergence (ke vs kw)");
+    expect(html).toContain("Total gap");
+    // dominant_driver "nfo_timing" matches the "NFO timing" row → starred
+    expect(html).toContain("★");
+    // dirty_surplus 60 / total 100 = 60.0% of total
+    expect(html).toContain("60.0%");
+    expect(html).toContain("Primary driver:");
   });
 });
