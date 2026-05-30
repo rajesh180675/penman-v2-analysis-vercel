@@ -25,11 +25,20 @@ export default defineConfig({
       // Audit-all-companies specs run the full pipeline against every
       // registry company. They're heavy (40+ minutes serial), can OOM
       // workers, and are gated behind the `test:audit` npm script.
-      // Keep them out of the default `npm test` / CI `validate` pool.
-      "src/engine/__tests__/audit-all-companies*.spec.ts",
+      // Skip them unless the CLI explicitly names an audit shard
+      // (the spec must appear in process.argv to opt back in).
+      ...(process.argv.some((a) => /audit-all-companies/.test(a))
+        ? []
+        : ["src/engine/__tests__/audit-all-companies*.spec.ts"]),
     ],
     pool: "forks",
     maxWorkers: 2,
+    // Audit shards run 10 heavy pipeline+valuation cycles per fork and
+    // OOM the default Node heap (~2GB on Win32). 4GB cleared all shards
+    // in local testing; raise further if test:audit hits OOM.
+    forks: {
+      execArgv: ["--max-old-space-size=4096"],
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov", "json-summary"],

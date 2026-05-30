@@ -1,6 +1,6 @@
 /**
  * audit-all-companies-shard-1.spec.ts — Companies 10-19
- * @vitest-environment jsdom
+ * @vitest-environment node
  */
 import { describe } from "vitest";
 import { createAuditTests } from "./audit-all-companies-setup";
