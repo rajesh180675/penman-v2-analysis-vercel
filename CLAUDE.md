@@ -79,3 +79,28 @@ To iterate on rigor gaps:
 3. Implement the smallest end-to-end change that improves reviewer trust.
 4. Update tests first around the changed contract.
 5. Run `npm run validate` to verify.
+
+## PR Workflow (autonomous — do not ask permission at each step)
+After `gh pr create`, run the full cycle without stopping for confirmation. Stop only when (a) all checks are green and merge succeeds, (b) a check fails and the cause requires user judgment to fix, or (c) the user explicitly intervenes.
+
+1. **Create the PR.** Use squash-merge conventional-commit titles (matches repo history: `feat(scope): subject (#N)`).
+2. **Arm a Monitor on the checks** — do not poll, do not sleep, do not ask "want me to check?":
+   ```
+   Monitor: persistent=false, timeout_ms=1800000
+   command: prev=""; while true; do
+     cur=$(gh pr checks <PR> --json name,bucket --jq '.[]|"\(.name): \(.bucket)"' | sort)
+     comm -13 <(echo "$prev") <(echo "$cur")
+     prev=$cur
+     gh pr checks <PR> --json bucket --jq 'all(.bucket!="pending")' | grep -q true && break
+     sleep 60
+   done
+   ```
+3. **On all-green:** auto-merge immediately with `gh pr merge <PR> --squash --delete-branch`. Report the merged SHA. No "want me to merge?" prompt.
+4. **On any failure:** pull logs (`gh run view <run-id> --log-failed`), diagnose root cause, push a fix commit to the same branch, and let the Monitor pick up the re-run. Do NOT close-and-reopen, do NOT force-push, do NOT skip hooks.
+5. **Do not** create a PR and then hand back to the user with "checks are pending" — that is the state the Monitor exists to handle.
+
+Exceptions — DO stop and ask:
+- Merge conflicts requiring semantic resolution.
+- A failing check whose fix would change scope beyond what the PR was authorized for.
+- CodeRabbit raises a substantive correctness issue (not a style nit) — surface it before merging.
+- Any push to `main`/`master` directly, or any force-push to a shared branch.

@@ -5,6 +5,9 @@ import { CapitalineParseDebug } from "./capitalineParser";
 import { evaluateParserFidelity } from "./parserFidelity";
 import { EngineConfig, RawPeriodData, RecastPeriod } from "./types";
 import { evaluateReconciliationResiduals } from "./reconciliationResiduals";
+import { evaluateBankReconciliationResiduals } from "./bankReconciliationResiduals";
+import type { BankPeriodMetrics } from "./bankPipeline";
+import type { FinancialInstitutionSubtype } from "./analysisFamily";
 import { SourceParserDiagnostics } from "./parserDiagnostics";
 import { detectDistress } from "./distressDetector";
 import { summarizeConceptIdentity } from "./conceptOntology";
@@ -150,6 +153,16 @@ export function buildAnalysisTraceability(params: {
   config?: EngineConfig | null | undefined;
   debugInfo?: CapitalineParseDebug | null | undefined;
   parserDiagnostics?: SourceParserDiagnostics | null | undefined;
+  /**
+   * Phase 2.x — sector-aware reconciliation. When the pipeline routes to
+   * the financial-institution branch (banks, NBFCs, insurance), the
+   * industrial recast is empty (`recastData: []`). Pass the bank metrics
+   * + detected subtype so reconciliation residuals can be evaluated
+   * against bank-shape data instead. When omitted, the industrial
+   * evaluator runs as before.
+   */
+  bankMetrics?: BankPeriodMetrics[] | null | undefined;
+  bankSubtype?: FinancialInstitutionSubtype | null | undefined;
 }): AnalysisTraceabilityEnvelope {
   const qualityGate = params.qualityGate;
   const coverageSummary = qualityGate?.coverageSummary ?? params.mappingAudit?.coverageSummary ?? null;
@@ -170,8 +183,14 @@ export function buildAnalysisTraceability(params: {
     }));
   const rawPeriodCount = params.periodCount ?? params.rawData?.length ?? 0;
   const recastPeriodCount = params.recastPeriodCount ?? params.recastData?.length ?? 0;
+  const bankMetrics = params.bankMetrics ?? null;
+  const bankSubtype = params.bankSubtype ?? null;
+  const hasBankMetrics = (bankMetrics?.length ?? 0) > 0;
   const hasRawData = rawPeriodCount > 0;
-  const hasRecastData = recastPeriodCount > 0;
+  // Treat bank metrics as a valid structural anchor — banks/NBFCs/insurance
+  // never produce a Penman-Nissim recast, but their bank-shape metrics
+  // ARE the structural representation for that family.
+  const hasRecastData = recastPeriodCount > 0 || hasBankMetrics;
   const hasEngineError = Boolean(params.engineError);
   const hasBlockingIssues = blockingCount > 0;
   const valuationBlocked = Boolean(qualityGate?.valuationBlocked);
@@ -193,10 +212,19 @@ export function buildAnalysisTraceability(params: {
     rawMetricKeyCount: params.rawMetricKeyCount ?? 0,
     parserDiagnostics: params.parserDiagnostics ?? null,
   });
-  const reconciliation = evaluateReconciliationResiduals({
-    recastData: params.recastData ?? null,
-    config: params.config ?? null,
-  });
+  // Phase 2.x — sector-aware reconciliation. For banks/NBFCs/insurance,
+  // run bank-shape residuals against BankPeriodMetrics. For industrials,
+  // run the Penman-Nissim recast residuals. Generic-financial subtype is
+  // routed to the bank evaluator (it skips checks where funding is mixed).
+  const reconciliation = hasBankMetrics && bankSubtype != null
+    ? evaluateBankReconciliationResiduals({
+      bankMetrics,
+      subtype: bankSubtype,
+    })
+    : evaluateReconciliationResiduals({
+      recastData: params.recastData ?? null,
+      config: params.config ?? null,
+    });
   // Phase J5: distress gate. Critical or severe distress (negative net
   // worth, going-concern stress) blocks `valuation-eligible` advancement
   // even when structural reconciliation cleared. Equity-side intrinsic
