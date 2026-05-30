@@ -1,11 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { RawPeriodData, EngineConfig, validateEngineConfig } from "../engine/types";
-import { PercentFraction, CroreShares, INRAbsolute } from "../engine/types/units";
 import type { CapitalineParseDebug } from "../engine/capitalineParser";
-import { parseScreenerTabDelimitedDetailed } from "../engine/screenerParser";
-import { parseRawPeriodsJsonDetailed } from "../engine/jsonIngestion";
-import { parseXbrlXmlDetailed } from "../engine/xbrlParser";
-import { diagnoseManualRawPeriods } from "../engine/manualEntryParser";
 import { SourceParserDiagnostics } from "../engine/parserDiagnostics";
 import {
   AuditSubmissionMeta,
@@ -17,10 +12,12 @@ import {
   rememberAuditRun,
 } from "../lib/audit";
 import { trace } from "../lib/traceLogger";
-import ManualEntryWizard from "./ManualEntryWizard";
 import OnboardingCard from "./dashboard/OnboardingCard";
 import CompanyLibraryGrid from "./data-entry/CompanyLibraryGrid";
 import CompanyTypePickerModal from "./data-entry/CompanyTypePickerModal";
+import ConfigSection from "./data-entry/ConfigSection";
+import CapitalineUploadPanel from "./data-entry/CapitalineUploadPanel";
+import SourceModePanels from "./data-entry/SourceModePanels";
 
 interface Props {
   onDataSubmit: (
@@ -417,763 +414,58 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
           </div>
         </div>
 
-        {/* Config row — Essential (always visible) */}
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex flex-wrap gap-4 items-end">
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Company ID</label>
-            <input value={companyId} onChange={(e) => setCompanyId(e.target.value.toUpperCase())}
-              className="w-24 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white" placeholder="VST" />
-          </div>
-          <div>
-            <label className={`block text-xs font-semibold mb-1 ${typeNotSelected ? "text-red-600" : "text-slate-600"}`}>
-              Company Type{typeNotSelected && <span className="ml-1 text-red-600">⛔ required</span>}
-            </label>
-            <select
-              value={config.company_type ?? "auto"}
-              onChange={(e) => onConfigChange({
-                ...config,
-                company_type: e.target.value as EngineConfig["company_type"],
-              })}
-              className={`px-3 py-1.5 border rounded-lg text-sm bg-white ${
-                typeNotSelected
-                  ? "border-red-400 ring-1 ring-red-400"
-                  : "border-slate-300"
-              }`}
-            >
-              <option value="auto" disabled>— Select type —</option>
-              <option value="bank">Bank</option>
-              <option value="nbfc">NBFC</option>
-              <option value="insurance">Insurance</option>
-              <option value="industrial">Industrial</option>
-              <option value="it-services">IT Services</option>
-              <option value="consumer">Consumer / FMCG</option>
-              <option value="utility">Utility / PSU</option>
-              <option value="telecom">Telecom</option>
-              <option value="cyclical">Cyclical / Metals</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Market Price ₹</label>
-            <input
-              type="number"
-              step={0.01}
-              value={config.market_price ?? ""}
-              onChange={(e) => {
-                const value = e.target.value.trim();
-                onConfigChange({ ...config, market_price: value ? INRAbsolute(Number(value)) : undefined });
-              }}
-              className="w-28 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
-              placeholder="₹"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Shares (Cr)</label>
-            <input
-              type="number"
-              step={0.01}
-              value={config.shares_outstanding ?? ""}
-              onChange={(e) => {
-                const value = e.target.value.trim();
-                onConfigChange({ ...config, shares_outstanding: value ? CroreShares(Number(value)) : undefined });
-              }}
-              className="w-28 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
-              placeholder="auto if blank"
-            />
-          </div>
-        </div>
-
-        {/* Fix 10: Config validation warnings — shown inline below essential fields */}
-        {configWarnings.length > 0 && (
-          <div className="mx-6 mb-2 space-y-1">
-            {configWarnings.map((w, i) => (
-              <div
-                key={i}
-                className={`flex items-start gap-2 rounded-lg px-3 py-2 text-xs ${
-                  w.severity === "error"
-                    ? "bg-red-50 border border-red-200 text-red-800 dark:bg-red-950/30 dark:border-red-800 dark:text-red-300"
-                    : "bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300"
-                }`}
-              >
-                <span className="mt-0.5 shrink-0">{w.severity === "error" ? "⛔" : "⚠️"}</span>
-                <span><b>{w.field}:</b> {w.message}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Collapsible: Advanced Config */}
-        <div className="border-b border-slate-100">
-          <button
-            onClick={() => setShowAdvancedConfig(!showAdvancedConfig)}
-            className="w-full px-6 py-2.5 flex items-center justify-between text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
-          >
-            <span>▸ Advanced Configuration (sector, market data, tax)</span>
-            <span className="text-slate-400">{showAdvancedConfig ? "▾" : "▸"}</span>
-          </button>
-          {showAdvancedConfig && (
-            <div className="px-6 py-4 bg-slate-50 flex flex-wrap gap-4 items-end border-t border-slate-100">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Market Symbol</label>
-                <input
-                  value={config.market_data_symbol ?? config.ticker ?? ""}
-                  onChange={(e) => onConfigChange({ ...config, market_data_symbol: e.target.value.toUpperCase().trim() || undefined })}
-                  className="w-36 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
-                  placeholder="ASIANPAINT.BSE"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">DCF Sector Template</label>
-                <select
-                  value={config.sector_template ?? "auto"}
-                  onChange={(e) => onConfigChange({
-                    ...config,
-                    sector_template: e.target.value as EngineConfig["sector_template"],
-                  })}
-                  className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
-                >
-                  <option value="auto" disabled>— Select type —</option>
-                  <option value="consumer-staples">Consumer staples</option>
-                  <option value="paint">Paint / coatings</option>
-                  <option value="industrials">Industrials</option>
-                  <option value="commodities">Commodities</option>
-                  <option value="retail">Retail</option>
-                  <option value="services">Services</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Market Data Mode</label>
-                <select
-                  value={config.market_data_provider ?? "manual"}
-                  onChange={(e) => onConfigChange({
-                    ...config,
-                    market_data_provider: e.target.value as EngineConfig["market_data_provider"],
-                  })}
-                  className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
-                >
-                  <option value="manual">Manual / Fallback</option>
-                  <option value="upstox-readonly">Upstox Read-only</option>
-                  <option value="alphavantage">Alpha Vantage</option>
-                  <option value="disabled">Disabled</option>
-                </select>
-              </div>
-              {(config.market_data_provider ?? "manual") === "upstox-readonly" && (
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Upstox Instrument Key</label>
-                  <input
-                    value={config.market_data_instrument_key ?? ""}
-                    onChange={(e) => onConfigChange({ ...config, market_data_instrument_key: e.target.value.trim() || undefined })}
-                    className="w-52 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
-                    placeholder="NSE_EQ|INE021A01026"
-                  />
-                </div>
-              )}
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Risk-Free Rate %</label>
-                <input type="number" step={0.5} value={(config.risk_free_rate * 100).toFixed(1)}
-                  onChange={(e) => onConfigChange({ ...config, risk_free_rate: Number(e.target.value) / 100 })}
-                  className="w-24 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Tax Rate Mode</label>
-                <select value={config.tax_rate_mode}
-                  onChange={(e) => onConfigChange({ ...config, tax_rate_mode: e.target.value as "effective" | "statutory" })}
-                  className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white">
-                  <option value="effective">Effective</option>
-                  <option value="statutory">Statutory (25.17%)</option>
-                </select>
-              </div>
-              <div className="flex gap-3 flex-wrap items-center">
-                {[
-                  { key: "oci_treated_as_unusual" as const, label: "OCI = Unusual" },
-                  { key: "financial_institution_mode" as const, label: "Fin Institution (blocked)" },
-                ].map(({ key, label }) => (
-                  <label key={key} className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
-                    <input type="checkbox" checked={config[key] as boolean}
-                      onChange={(e) => onConfigChange({ ...config, [key]: e.target.checked })}
-                      className="rounded" />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Collapsible: Cost of Capital */}
-        <div className="border-b border-slate-100">
-          <button
-            onClick={() => setShowCostOfCapital(!showCostOfCapital)}
-            className="w-full px-6 py-2.5 flex items-center justify-between text-xs font-medium text-blue-700 hover:bg-blue-50 transition-colors"
-          >
-            <span>▸ Cost of Capital (ke, kd, WACC)</span>
-            <span className="text-blue-400">{showCostOfCapital ? "▾" : "▸"}</span>
-          </button>
-          {showCostOfCapital && (
-          <div className="px-6 py-3 bg-blue-50 flex flex-wrap gap-4 items-end">
-            <div>
-              <label className="block text-xs font-medium text-blue-700 mb-1">
-                ke — Cost of Equity %
-                <span className="text-blue-400 ml-1">(0 = use rf+erp)</span>
-              </label>
-              <input type="number" step={0.5} min={0} max={50}
-                value={config.ke > 0 ? (config.ke * 100).toFixed(1) : ""}
-                placeholder={`${((config.risk_free_rate + config.equity_risk_premium) * 100).toFixed(1)}`}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  onConfigChange({ ...config, ke: PercentFraction(v > 0 ? v / 100 : 0) });
-                }}
-                className="w-28 px-3 py-1.5 border border-blue-300 rounded-lg text-sm bg-white" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-blue-700 mb-1">kd pre-tax %</label>
-              <input type="number" step={0.25} min={0} max={30}
-                value={(config.kd_pretax * 100).toFixed(2)}
-                onChange={(e) => onConfigChange({ ...config, kd_pretax: Number(e.target.value) / 100 })}
-                className="w-28 px-3 py-1.5 border border-blue-300 rounded-lg text-sm bg-white" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-blue-700 mb-1">Tax rate for kd %</label>
-              <input type="number" step={0.5} min={0} max={50}
-                value={(config.tax_rate_for_kd * 100).toFixed(2)}
-                onChange={(e) => onConfigChange({ ...config, tax_rate_for_kd: Number(e.target.value) / 100 })}
-                className="w-28 px-3 py-1.5 border border-blue-300 rounded-lg text-sm bg-white" />
-            </div>
-            <div className="text-xs text-blue-600 bg-white rounded-lg border border-blue-200 px-3 py-2">
-              kd after-tax = kd_pretax × (1 − τ_kd)<br />
-              = <b>{((config.kd_pretax * (1 - config.tax_rate_for_kd)) * 100).toFixed(2)}%</b>
-              &nbsp;(computed, not stored)
-            </div>
-          </div>
-          )}
-        </div>
+        <ConfigSection
+          config={config}
+          onConfigChange={onConfigChange}
+          typeNotSelected={typeNotSelected}
+          configWarnings={configWarnings}
+          companyId={companyId}
+          setCompanyId={setCompanyId}
+          showAdvancedConfig={showAdvancedConfig}
+          setShowAdvancedConfig={setShowAdvancedConfig}
+          showCostOfCapital={showCostOfCapital}
+          setShowCostOfCapital={setShowCostOfCapital}
+        />
 
         {mode === "capitaline" && (
-          <div className="m-6 space-y-4">
-            {!uploadedFile ? (<>
-              {/* Slot 1: Consolidated ZIP — REQUIRED */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold">1</span>
-                  <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Consolidated Financial Data</span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-50 px-1.5 py-0.5 rounded">Required</span>
-                </div>
-                <p className="text-xs text-slate-500 ml-7">ZIP containing Balance Sheet + P&amp;L + Cash Flow .xls exports</p>
-              </div>
-              <div
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-xl p-6 text-center transition-all relative overflow-hidden group ${
-                  typeNotSelected
-                    ? "border-red-300 bg-red-50/30 dark:bg-red-950/10 cursor-not-allowed opacity-60"
-                    : dragOver
-                    ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-inner cursor-pointer"
-                    : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/40 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-sm cursor-pointer"
-                }`}
-              >
-                <input 
-                  type="file" 
-                  accept=".zip" 
-                  onChange={async (e) => {
-                    const f = e.target.files?.[0];
-                    if (f) {
-                      trace("ui", "upload:consZipSelected", { fileName: f.name, size: f.size });
-                      // If standalone was pre-loaded, parse it first
-                      let stanPeriods: RawPeriodData[] | null = null;
-                      if (standaloneFile) {
-                        stanPeriods = await parseStandaloneZip(standaloneFile);
-                      }
-                      // Validate quality sidecar if present (result stored for future pipeline wiring)
-                      if (qualitySidecarFile) {
-                        await parseQualitySidecar(qualitySidecarFile);
-                      }
-                      await processZip(f, undefined, stanPeriods);
-                    }
-                    e.target.value = "";
-                  }}
-                  className="hidden" 
-                  id="zip-upload" 
-                  disabled={isProcessing} 
-                />
-                <label htmlFor="zip-upload" className="cursor-pointer flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <svg className="w-6 h-6 text-indigo-500 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                  </div>
-                  <div className="text-left">
-                    <div className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Drop consolidated ZIP or click to browse</div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      BS + P&amp;L + CF in one .zip — we align them automatically
-                    </p>
-                  </div>
-                </label>
-              </div>
-
-              {/* Slot 2: Standalone ZIP — optional */}
-              <div className="space-y-1 pt-2">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-400 text-white text-[10px] font-bold">2</span>
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Standalone Statements</span>
-                  <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Optional</span>
-                </div>
-                <p className="text-xs text-slate-500 ml-7">Enables subsidiary contribution gap analysis (consolidated − standalone)</p>
-              </div>
-              <div
-                onDragOver={(e) => { e.preventDefault(); setDragOverStandalone(true); }}
-                onDragLeave={() => setDragOverStandalone(false)}
-                onDrop={async (e) => {
-                  e.preventDefault(); setDragOverStandalone(false);
-                  const f = e.dataTransfer.files?.[0];
-                  if (f && f.name.toLowerCase().endsWith(".zip")) {
-                    trace("ui", "upload:standaloneDropped", { fileName: f.name });
-                    setStandaloneFile(f);
-                  }
-                }}
-                className={`border border-dashed rounded-xl p-4 transition-all ${
-                  standaloneFile
-                    ? "border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20"
-                    : dragOverStandalone
-                    ? "border-indigo-400 bg-indigo-50/30"
-                    : "border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20 hover:border-slate-300"
-                }`}
-              >
-                {standaloneFile ? (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-emerald-600">✓</span>
-                      <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{standaloneFile.name}</span>
-                      <span className="text-[10px] text-slate-400">{(standaloneFile.size / 1024).toFixed(0)} KB</span>
-                    </div>
-                    <button onClick={() => { setStandaloneFile(null); trace("ui", "upload:standaloneClear"); }} className="text-xs text-red-500 hover:text-red-700">Remove</button>
-                  </div>
-                ) : (
-                  <label className="cursor-pointer flex items-center gap-3">
-                    <input
-                      type="file"
-                      accept=".zip"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) { setStandaloneFile(f); trace("ui", "upload:standaloneSelected", { fileName: f.name }); }
-                        e.target.value = "";
-                      }}
-                      className="hidden"
-                      id="standalone-upload"
-                    />
-                    <label htmlFor="standalone-upload" className="cursor-pointer flex items-center gap-3 w-full">
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                        <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                      </div>
-                      <span className="text-xs text-slate-500">Drop standalone ZIP here or click</span>
-                    </label>
-                  </label>
-                )}
-              </div>
-
-              {/* Slot 3: Quality Sidecar — only for bank/nbfc/insurance */}
-              {(config.company_type === "bank" || config.company_type === "nbfc" || config.company_type === "insurance") && (
-                <>
-                  <div className="space-y-1 pt-2">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-400 text-white text-[10px] font-bold">3</span>
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Quality Indicators Sidecar</span>
-                      <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Optional</span>
-                    </div>
-                    <p className="text-xs text-slate-500 ml-7">JSON with NIM, GNPA, CRAR, Cost/Income — enables bank quality panels</p>
-                  </div>
-                  <div
-                    onDragOver={(e) => { e.preventDefault(); setDragOverQuality(true); }}
-                    onDragLeave={() => setDragOverQuality(false)}
-                    onDrop={async (e) => {
-                      e.preventDefault(); setDragOverQuality(false);
-                      const f = e.dataTransfer.files?.[0];
-                      if (f && f.name.toLowerCase().endsWith(".json")) {
-                        trace("ui", "upload:qualityDropped", { fileName: f.name });
-                        setQualitySidecarFile(f);
-                      }
-                    }}
-                    className={`border border-dashed rounded-xl p-4 transition-all ${
-                      qualitySidecarFile
-                        ? "border-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20"
-                        : dragOverQuality
-                        ? "border-blue-400 bg-blue-50/30"
-                        : "border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/20 hover:border-slate-300"
-                    }`}
-                  >
-                    {qualitySidecarFile ? (
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-emerald-600">✓</span>
-                          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{qualitySidecarFile.name}</span>
-                          <span className="text-[10px] text-slate-400">{(qualitySidecarFile.size / 1024).toFixed(0)} KB</span>
-                        </div>
-                        <button onClick={() => { setQualitySidecarFile(null); trace("ui", "upload:qualityClear"); }} className="text-xs text-red-500 hover:text-red-700">Remove</button>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer flex items-center gap-3">
-                        <input
-                          type="file"
-                          accept=".json"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) { setQualitySidecarFile(f); trace("ui", "upload:qualitySelected", { fileName: f.name }); }
-                            e.target.value = "";
-                          }}
-                          className="hidden"
-                          id="quality-upload"
-                        />
-                        <label htmlFor="quality-upload" className="cursor-pointer flex items-center gap-3 w-full">
-                          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                          </div>
-                          <span className="text-xs text-slate-500">Drop quality_indicators.json here or click</span>
-                        </label>
-                      </label>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {/* Coverage summary */}
-              <div className="flex items-center gap-3 pt-2 pb-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ready:</span>
-                <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">
-                  {!typeNotSelected ? "✓ Type" : "✗ Type"}
-                </span>
-                <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">
-                  {standaloneFile ? "✓ Standalone" : "– Standalone"}
-                </span>
-                {(config.company_type === "bank" || config.company_type === "nbfc" || config.company_type === "insurance") && (
-                  <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">
-                    {qualitySidecarFile ? "✓ Quality" : "– Quality"}
-                  </span>
-                )}
-              </div>
-
-              {/* How to prepare — collapsed */}
-              <details className="rounded-lg border border-slate-100 dark:border-slate-800">
-                <summary className="px-3 py-2 cursor-pointer text-xs font-medium text-slate-500 hover:text-slate-700 select-none">
-                  How to prepare the Capitaline ZIP
-                </summary>
-                <div className="px-3 pb-3 text-xs text-slate-600 space-y-1.5">
-                  <ol className="list-decimal pl-4 space-y-1">
-                    <li>Export <b>Balance Sheet (Ind AS Detailed)</b> as XLS → filename must contain "balance"</li>
-                    <li>Export <b>Profit &amp; Loss (Ind AS Detailed)</b> as XLS → filename must contain "profit" or "pnl"</li>
-                    <li>Export <b>Cash Flow</b> as XLS → filename must contain "cash"</li>
-                    <li>Select all three → <b>Add to ZIP</b> → upload above</li>
-                  </ol>
-                  <p className="text-slate-400 mt-1">Do not mix Consolidated and Standalone files in the same ZIP.</p>
-                </div>
-              </details>
-            </>) : (
-              <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6">
-                {/* File Details Grid */}
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 flex items-center justify-center shrink-0">
-                      <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-bold text-slate-800 dark:text-slate-100 truncate max-w-xs sm:max-w-md" title={uploadedFile.name}>
-                        {uploadedFile.name}
-                      </div>
-                      <div className="text-xs text-slate-400 font-mono mt-0.5">
-                        {(uploadedFile.size / 1024).toFixed(1)} KB
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => { setUploadedFile(null); setUploadStep("idle"); setError(""); }}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors"
-                    >
-                      Clear &amp; Start Over
-                    </button>
-                  </div>
-                </div>
-
-                {/* Progress Timeline Stepper */}
-                <div className="relative pt-2">
-                  <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-slate-200 dark:bg-slate-800 -translate-y-1/2 z-0" />
-                  
-                  {/* Stepper items container */}
-                  <div className="relative z-10 flex justify-between">
-                    {[
-                      { step: "unzipping", label: "Extracting Files", desc: "Decompressing XLS ZIP contents" },
-                      { step: "parsing", label: "Reading Formats", desc: "Mapping sheets and columns" },
-                      { step: "reconciling", label: "Balancing NOA/NFO", desc: "Aligning asset & liability lines" },
-                      { step: "done", label: "Dataset Ready", desc: "Pipeline compilation finalized" }
-                    ].map((item, idx) => {
-                      const isCompleted = 
-                        (item.step === "unzipping" && ["parsing", "success"].includes(uploadStep)) ||
-                        (item.step === "parsing" && ["success"].includes(uploadStep)) ||
-                        (item.step === "reconciling" && ["success"].includes(uploadStep)) ||
-                        (item.step === "done" && uploadStep === "success");
-
-                      const isActive = 
-                        (item.step === "unzipping" && uploadStep === "unzipping") ||
-                        (item.step === "parsing" && uploadStep === "parsing") ||
-                        (item.step === "reconciling" && uploadStep === "parsing" && isProcessing) ||
-                        (item.step === "done" && uploadStep === "parsing" && !isProcessing);
-
-                      const isFailed = uploadStep === "failed";
-
-                      return (
-                        <div key={item.step} className="flex flex-col items-center text-center max-w-[120px] sm:max-w-[160px]">
-                          <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-all duration-300 ${
-                            isCompleted 
-                              ? "bg-emerald-500 border-emerald-500 text-white" 
-                              : isActive 
-                              ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100 dark:shadow-none animate-pulse scale-110" 
-                              : isFailed && idx === 3
-                              ? "bg-red-500 border-red-500 text-white"
-                              : "bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-400 dark:text-slate-600"
-                          }`}>
-                            {isCompleted ? (
-                              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
-                            ) : isFailed && idx === 3 ? (
-                              "✕"
-                            ) : (
-                              idx + 1
-                            )}
-                          </div>
-                          <div className="mt-2">
-                            <div className={`text-xs font-bold ${isActive ? "text-indigo-600 dark:text-indigo-400" : isCompleted ? "text-emerald-600 dark:text-emerald-500" : "text-slate-700 dark:text-slate-300"}`}>
-                              {item.label}
-                            </div>
-                            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 leading-snug hidden sm:block">
-                              {item.desc}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Status Notice Banners */}
-                {uploadStep === "success" && (
-                  <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/60 rounded-xl p-4 flex items-center gap-3">
-                    <span className="text-xl">🎉</span>
-                    <div className="text-xs text-emerald-800 dark:text-emerald-400 font-medium">
-                      Excellent! <b>{uploadedFile.name}</b> was ingested successfully. The financial engine has aligned the balance sheets, reformulated operating cash flows, and generated your valuation models.
-                    </div>
-                  </div>
-                )}
-
-                {uploadStep === "failed" && (
-                  <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/60 rounded-xl p-4 flex items-center gap-3">
-                    <span className="text-xl">⚠️</span>
-                    <div className="text-xs text-red-800 dark:text-red-400 font-medium space-y-1">
-                      <div><b>Ingestion Failed:</b> Please review the spreadsheet formats inside your ZIP.</div>
-                      {error && <div className="font-mono bg-red-100/50 dark:bg-red-950/40 p-1.5 rounded mt-1 border border-red-200/50">{error}</div>}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <CapitalineUploadPanel
+            config={config}
+            typeNotSelected={typeNotSelected}
+            isProcessing={isProcessing}
+            error={error}
+            uploadedFile={uploadedFile}
+            setUploadedFile={setUploadedFile}
+            uploadStep={uploadStep}
+            setUploadStep={setUploadStep}
+            setError={setError}
+            dragOver={dragOver}
+            setDragOver={setDragOver}
+            handleDrop={handleDrop}
+            standaloneFile={standaloneFile}
+            setStandaloneFile={setStandaloneFile}
+            dragOverStandalone={dragOverStandalone}
+            setDragOverStandalone={setDragOverStandalone}
+            qualitySidecarFile={qualitySidecarFile}
+            setQualitySidecarFile={setQualitySidecarFile}
+            dragOverQuality={dragOverQuality}
+            setDragOverQuality={setDragOverQuality}
+            parseStandaloneZip={parseStandaloneZip}
+            parseQualitySidecar={parseQualitySidecar}
+            processZip={processZip}
+          />
         )}
 
-        {mode === "screener" && (
-          <div className="m-6 space-y-3">
-            <p className="text-xs text-slate-500">Paste Screener.in tab-delimited 10Y table (copied from browser).</p>
-            <textarea value={screenerText} onChange={(e) => setScreenerText(e.target.value)} className="w-full h-48 p-3 border rounded-lg font-mono text-xs" placeholder="Metric\t2016\t2017 ..." />
-            <button
-              onClick={() => {
-                try {
-                  const meta = buildMeta("screener");
-                  void persistAuditEvent({
-                    runId: meta.runId,
-                    eventType: "run-started",
-                    companyId: meta.companyId,
-                    sourceMode: meta.sourceMode,
-                    payload: {
-                      ingestionMode: "screener",
-                    },
-                  });
-                  const { periods, diagnostics } = parseScreenerTabDelimitedDetailed(screenerText, { companyId });
-                  void persistAuditEvent({
-                    runId: meta.runId,
-                    eventType: "text-input-ingested",
-                    companyId: meta.companyId,
-                    sourceMode: meta.sourceMode,
-                    payload: {
-                      sourceText: screenerText,
-                      periodCount: periods.length,
-                      parserDiagnostics: diagnostics,
-                    },
-                  });
-                  if (!periods.length) setError("Screener parse returned 0 periods.");
-                  else onDataSubmit(periods, undefined, meta, diagnostics);
-                } catch (e) {
-                  const meta = buildMeta("screener");
-                  void persistAuditEvent({
-                    runId: meta.runId,
-                    eventType: "input-ingest-failed",
-                    companyId: meta.companyId,
-                    sourceMode: meta.sourceMode,
-                    payload: {
-                      error: e instanceof Error ? e.message : String(e),
-                    },
-                  });
-                  setError(`Screener parse failed: ${e instanceof Error ? e.message : String(e)}`);
-                }
-              }}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
-            >
-              Parse Screener Data
-            </button>
-          </div>
-        )}
-
-        {mode === "json" && (
-          <div className="m-6 space-y-3">
-            <p className="text-xs text-slate-500">Paste RawPeriodData[] JSON for direct API ingestion.</p>
-            <textarea value={jsonText} onChange={(e) => setJsonText(e.target.value)} className="w-full h-48 p-3 border rounded-lg font-mono text-xs" placeholder='[{"company_id":"...","period_end":"2025-03-31","raw_metric_values":{...}}]' />
-            <button
-              onClick={() => {
-                try {
-                  const meta = buildMeta("json");
-                  void persistAuditEvent({
-                    runId: meta.runId,
-                    eventType: "run-started",
-                    companyId: meta.companyId,
-                    sourceMode: meta.sourceMode,
-                    payload: {
-                      ingestionMode: "json",
-                    },
-                  });
-                  const { periods, diagnostics } = parseRawPeriodsJsonDetailed(jsonText);
-                  void persistAuditEvent({
-                    runId: meta.runId,
-                    eventType: "json-input-ingested",
-                    companyId: meta.companyId,
-                    sourceMode: meta.sourceMode,
-                    payload: {
-                      sourceJson: jsonText,
-                      periodCount: periods.length,
-                      parserDiagnostics: diagnostics,
-                    },
-                  });
-                  onDataSubmit(periods, undefined, meta, diagnostics);
-                } catch (e) {
-                  const meta = buildMeta("json");
-                  void persistAuditEvent({
-                    runId: meta.runId,
-                    eventType: "input-ingest-failed",
-                    companyId: meta.companyId,
-                    sourceMode: meta.sourceMode,
-                    payload: {
-                      error: e instanceof Error ? e.message : String(e),
-                    },
-                  });
-                  setError(`JSON ingestion failed: ${e instanceof Error ? e.message : String(e)}`);
-                }
-              }}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
-            >
-              Parse JSON Data
-            </button>
-          </div>
-        )}
-
-        {mode === "xbrl" && (
-          <div className="m-6 space-y-3">
-            <p className="text-xs text-slate-500">Upload MCA iXBRL / XBRL XML file (best-effort parser with canonical mapping).</p>
-            <input
-              type="file"
-              accept=".xml,.xbrl,.txt"
-              onChange={async (e) => {
-                const f = e.target.files?.[0];
-                if (!f) return;
-                try {
-                  const meta = buildMeta("xbrl", { fileName: f.name });
-                  void persistAuditEvent({
-                    runId: meta.runId,
-                    eventType: "run-started",
-                    companyId: meta.companyId,
-                    sourceMode: meta.sourceMode,
-                    payload: {
-                      fileName: f.name,
-                      ingestionMode: "xbrl",
-                    },
-                  });
-                  const txt = await f.text();
-                  const { periods, diagnostics } = parseXbrlXmlDetailed(txt, companyId);
-                  void persistAuditEvent({
-                    runId: meta.runId,
-                    eventType: "xbrl-input-ingested",
-                    companyId: meta.companyId,
-                    sourceMode: meta.sourceMode,
-                    payload: {
-                      fileName: f.name,
-                      sourceXml: txt,
-                      periodCount: periods.length,
-                      parserDiagnostics: diagnostics,
-                    },
-                  });
-                  if (!periods.length) setError("XBRL parse returned 0 periods. Check taxonomy labels/contexts.");
-                  else onDataSubmit(periods, undefined, meta, diagnostics);
-                } catch (err) {
-                  const meta = buildMeta("xbrl", { fileName: f.name });
-                  void persistAuditEvent({
-                    runId: meta.runId,
-                    eventType: "input-ingest-failed",
-                    companyId: meta.companyId,
-                    sourceMode: meta.sourceMode,
-                    payload: {
-                      fileName: f.name,
-                      error: err instanceof Error ? err.message : String(err),
-                    },
-                  });
-                  setError(`XBRL parse failed: ${err instanceof Error ? err.message : String(err)}`);
-                }
-              }}
-              className="block w-full text-sm border border-slate-300 rounded-lg p-2 bg-white"
-            />
-          </div>
-        )}
-
-        {mode === "manual" && (
-          <div className="m-6">
-            <ManualEntryWizard
-              onSubmit={(rows) => {
-                const meta = buildMeta("manual");
-                void persistAuditEvent({
-                  runId: meta.runId,
-                  eventType: "run-started",
-                  companyId: meta.companyId,
-                  sourceMode: meta.sourceMode,
-                  payload: {
-                    ingestionMode: "manual",
-                  },
-                });
-                void persistAuditEvent({
-                  runId: meta.runId,
-                  eventType: "manual-input-ingested",
-                  companyId: meta.companyId,
-                  sourceMode: meta.sourceMode,
-                  payload: {
-                    rows,
-                    periodCount: rows.length,
-                    parserDiagnostics: diagnoseManualRawPeriods(rows),
-                  },
-                });
-                onDataSubmit(rows, undefined, meta, diagnoseManualRawPeriods(rows));
-              }}
-            />
-          </div>
-        )}
+        <SourceModePanels
+          mode={mode}
+          companyId={companyId}
+          screenerText={screenerText}
+          setScreenerText={setScreenerText}
+          jsonText={jsonText}
+          setJsonText={setJsonText}
+          setError={setError}
+          buildMeta={buildMeta}
+          onDataSubmit={onDataSubmit}
+        />
 
         {error && (
           <div className="mx-6 mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
@@ -1188,7 +480,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         )}
       </div>
 
-      {/* Config summary removed — raw dump moved to Debug tab. 
+      {/* Config summary removed — raw dump moved to Debug tab.
            Editable fields are in Advanced Config + Cost of Capital collapsibles above. */}
     </div>
   );
