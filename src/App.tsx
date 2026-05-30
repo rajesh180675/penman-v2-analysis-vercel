@@ -325,8 +325,10 @@ export function App() {
       contentClass: auditMeta?.contentClass ?? null,
       retentionDays: auditMeta?.retentionDays ?? null,
       runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
+      bankMetrics: bankResult?.bankMetrics ?? null,
+      bankSubtype: bankResult?.subtype ?? null,
     }),
-    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, policyVersions, qualityGateWithRecast, valuationRawData, rawData, recastData],
+    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, policyVersions, qualityGateWithRecast, valuationRawData, rawData, recastData, bankResult],
   );
   const publication = useMemo(
     () => (recastData?.length

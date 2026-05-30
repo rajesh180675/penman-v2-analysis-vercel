@@ -51,7 +51,7 @@ const VALID_RIGOR_LEVELS = new Set([
   "production-ready",
 ]);
 
-const VALID_PARSER_STATUSES = new Set(["confirmed", "warning", "failed"]);
+const VALID_PARSER_STATUSES = new Set(["confirmed", "degraded", "failed"]);
 const VALID_RECONCILIATION_STATUSES = new Set(["confirmed", "degraded", "failed"]);
 const VALID_SANITY_STATUSES = new Set(["passed", "warned", "blocked"]);
 const VALID_CONCEPT_STATUSES = new Set([

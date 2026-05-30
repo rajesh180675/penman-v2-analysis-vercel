@@ -240,9 +240,16 @@ async function auditCompany(company: { folder: string; ticker: string; type: str
       recastData: pipeline.periods,
       config,
       rawData: parsed.periods,
-      periodCount: pipeline.periods.length,
-      latestPeriod: pipeline.periods[pipeline.periods.length - 1]?.period_end ?? null,
+      periodCount: parsed.periods.length,
+      recastPeriodCount: pipeline.periods.length,
+      latestPeriod: parsed.periods[parsed.periods.length - 1]?.period_end ?? null,
       policyVersions: getAnalysisPolicyVersions(),
+      debugInfo: parsed.debug,
+      hasDebugInfo: Boolean(parsed.debug),
+      debugFiles: parsed.debug?.files?.length ?? 0,
+      rawMetricKeyCount: parsed.debug?.rawMetricKeys?.length ?? 0,
+      bankMetrics: pipeline.bankResult?.bankMetrics ?? null,
+      bankSubtype: pipeline.bankResult?.subtype ?? null,
     });
 
     const anomalyFlagKeys = pipeline.anomalies.terminalFlags
