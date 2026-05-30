@@ -16,6 +16,7 @@ import CommandPalette from "../components/CommandPalette";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useCommandPaletteShortcut } from "../hooks/useCommandPaletteShortcut";
 import { useRegistryPersistence } from "../hooks/useRegistryPersistence";
+import { useResidualsSync } from "../hooks/useResidualsSync";
 import { useUrlSync } from "../hooks/useUrlSync";
 import {
   AuditSubmissionMeta,
@@ -314,6 +315,17 @@ export function AppShell() {
     engineError,
     analysisStatus,
     activeTab,
+  });
+
+  // Per-user residuals KV sync (Plan 4 PR-4.5). The engine appends the
+  // residual summary to localStorage inside the analysis derivation; this
+  // hook mirrors that history to KV (push on run completion) and pulls it
+  // back on company change when local is empty. Fail-open: a no-creds build
+  // stays local-only. runStamp = the envelope's generatedAt, which changes
+  // once per completed run.
+  useResidualsSync({
+    companyId: auditMeta?.companyId ?? rawData?.[0]?.company_id ?? null,
+    runStamp: traceability?.generatedAt ?? null,
   });
 
   const hasRecast = (recastData?.length ?? 0) > 0;
