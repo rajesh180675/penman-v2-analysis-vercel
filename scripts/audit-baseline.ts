@@ -40,6 +40,7 @@ interface BaselineEntry {
   folder: string;
   ticker: string;
   type: string;
+  family?: "industrial" | "financial-institution";
   periods: number;
   latestPeriod: string | null;
   valuation: {
@@ -50,6 +51,15 @@ interface BaselineEntry {
     sotpTotal: number | null;
     epvPerShare: number | null;
     evEbitdaEv: number | null;
+  };
+  // Phase 2.2 — bank/NBFC/insurance valuation lives separately. Captured
+  // for diff visibility; null for industrial companies.
+  bankValuation?: {
+    subtype: string | null;
+    fairPB: number | null;
+    fairValue: number | null;
+    upsidePct: number | null;
+    primaryScenario: string | null;
   };
   rigor: {
     currentLevel: string | null;
@@ -100,9 +110,60 @@ async function captureCompany(company: RegistryEntry): Promise<BaselineEntry> {
     const parsed = await parseCapitalineZip(u8, { companyId: company.folder, filename: `${company.folder}.zip` });
     const config = { ...DEFAULT_CONFIG, company_type: company.type as never };
     const pipeline = processCompanyDataFull(parsed.periods, config);
+    const family = pipeline.analysisFamily;
     const periods = pipeline.periods;
-    const latestPeriod = periods.length ? periods[periods.length - 1].period_end : null;
 
+    const trace = buildAnalysisTraceability({
+      generatedAt: "2026-05-29T00:00:00.000Z",
+      runId: `baseline-${company.folder}`,
+      companyId: company.folder,
+      sourceMode: "capitaline",
+      recastData: periods,
+      config,
+      rawData: parsed.periods,
+      periodCount: periods.length,
+      latestPeriod: periods[periods.length - 1]?.period_end ?? null,
+      policyVersions: getAnalysisPolicyVersions(),
+    });
+
+    const rigor = {
+      currentLevel: trace.rigor.currentLevel,
+      parserFidelityStatus: trace.parserFidelity.status,
+      parserFidelityScore: trace.parserFidelity.score,
+      reconciliationStatus: trace.reconciliation.status,
+      reconciliationMaxRatio: trace.reconciliation.maxResidualRatio,
+      confidenceStatus: trace.confidence.status,
+    };
+
+    if (family === "financial-institution") {
+      // Banks/NBFCs/insurance — valuation is on bankResult.valuation.
+      const bm = pipeline.bankResult?.bankMetrics ?? [];
+      const bv = pipeline.bankResult?.valuation ?? null;
+      const cards = bv?.scenarios?.cards ?? [];
+      const primaryKey = bv?.scenarios?.primary ?? "base";
+      const primary = cards.find((c) => c.key === primaryKey)
+        ?? cards.find((c) => c.key === "base")
+        ?? cards[0]
+        ?? null;
+      return {
+        folder: company.folder, ticker: company.ticker, type: company.type,
+        family,
+        periods: bm.length,
+        latestPeriod: bm[bm.length - 1]?.period_end ?? null,
+        valuation: empty.valuation, // industrial-shape; null for financial
+        bankValuation: {
+          subtype: pipeline.bankResult?.subtype ?? null,
+          fairPB: primary?.fairPB ?? null,
+          fairValue: primary?.intrinsicValue ?? null,
+          upsidePct: primary?.upsidePct ?? null,
+          primaryScenario: primaryKey,
+        },
+        rigor,
+        flags: [],
+      };
+    }
+
+    // Industrial path
     const valuation = buildValuationCommandCenter({
       data: periods, config, marketData: null, analysisStatus: null,
       segmentData: parsed.segmentData || null,
@@ -118,19 +179,6 @@ async function captureCompany(company: RegistryEntry): Promise<BaselineEntry> {
     const base = scenarios.find((s) => s.key === "base")?.intrinsicPerShare ?? null;
     const bull = scenarios.find((s) => s.key === "bull")?.intrinsicPerShare ?? null;
 
-    const trace = buildAnalysisTraceability({
-      generatedAt: "2026-05-29T00:00:00.000Z",
-      runId: `baseline-${company.folder}`,
-      companyId: company.folder,
-      sourceMode: "capitaline",
-      recastData: periods,
-      config,
-      rawData: parsed.periods,
-      periodCount: periods.length,
-      latestPeriod,
-      policyVersions: getAnalysisPolicyVersions(),
-    });
-
     const flags: string[] = [];
     if (stress !== null && !Number.isFinite(stress)) flags.push("STRESS_INVALID");
     if (base !== null && !Number.isFinite(base)) flags.push("BASE_INVALID");
@@ -141,7 +189,9 @@ async function captureCompany(company: RegistryEntry): Promise<BaselineEntry> {
 
     return {
       folder: company.folder, ticker: company.ticker, type: company.type,
-      periods: periods.length, latestPeriod,
+      family,
+      periods: periods.length,
+      latestPeriod: periods[periods.length - 1]?.period_end ?? null,
       valuation: {
         stress, base, bull,
         revDcfGrowth: valuation.reverseDcf?.impliedOwnerEarningsGrowth ?? null,
@@ -149,14 +199,7 @@ async function captureCompany(company: RegistryEntry): Promise<BaselineEntry> {
         epvPerShare: valuation.epv?.perShare ?? null,
         evEbitdaEv: valuation.evEbitda?.enterpriseValue ?? null,
       },
-      rigor: {
-        currentLevel: trace.rigor.currentLevel,
-        parserFidelityStatus: trace.parserFidelity.status,
-        parserFidelityScore: trace.parserFidelity.score,
-        reconciliationStatus: trace.reconciliation.status,
-        reconciliationMaxRatio: trace.reconciliation.maxResidualRatio,
-        confidenceStatus: trace.confidence.status,
-      },
+      rigor,
       flags,
     };
   } catch (err) {

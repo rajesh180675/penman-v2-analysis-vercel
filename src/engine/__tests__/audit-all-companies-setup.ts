@@ -30,6 +30,42 @@ interface ExpectationsContract {
   notes?: string;
 }
 
+/**
+ * Sector-superset metric bag. Industrial fills RNOA/ROCE/NFO_to_CSE;
+ * banks/NBFCs fill NIM/ROA/ROE/leverage/spread/etc.; insurers fill
+ * combined-ratio/float-leverage. expectations.json declares which keys it
+ * wants to band-check; the harness reads them out of this bag at gate time.
+ */
+type SectorMetrics = {
+  // Industrial (Penman-Nissim)
+  RNOA?: number | null;
+  ROCE?: number | null;
+  NFO_to_CSE?: number | null;
+  // Bank / NBFC (bankMetrics)
+  NIM?: number | null;
+  ROA?: number | null;
+  ROE?: number | null;
+  leverage?: number | null;
+  spread?: number | null;
+  creditCost?: number | null;
+  costToIncome?: number | null;
+  casaRatio?: number | null;
+  yieldOnAdvances?: number | null;
+  costOfBorrowings?: number | null;
+  // Insurance (bankMetrics with subtype === "insurance")
+  claimsRatio?: number | null;
+  expenseRatio?: number | null;
+  combinedRatio?: number | null;
+  floatToEquity?: number | null;
+  investmentYield?: number | null;
+  premiumGrowth?: number | null;
+  // Quality-sidecar (banks only when joined)
+  GNPA?: number | null;
+  NNPA?: number | null;
+  PCR?: number | null;
+  CRAR?: number | null;
+};
+
 interface AuditResult {
   folder: string;
   ticker: string;
@@ -45,8 +81,11 @@ interface AuditResult {
   flags: string[];
   // Phase 2.1 — expectations gate context
   hasExpectations: boolean;
-  // Filled when pipeline succeeded
-  metrics?: { RNOA: number | null; ROCE: number | null; NFO_to_CSE: number | null };
+  // Phase 2.2 — pipeline dispatch family.
+  // industrial → metrics from result.periods[last].ratios
+  // financial-institution → metrics from result.bankResult.bankMetrics[last]
+  family?: "industrial" | "financial-institution";
+  metrics?: SectorMetrics;
   rigorLevel?: string;
   parserFidelityStatus?: string;
   reconciliationStatus?: string;
@@ -74,32 +113,26 @@ export function createAuditTests({ start, size }: { start: number; size: number 
     const expectations = readExpectations(company.folder);
     const expectationsLabel = expectations ? " [expectations gate]" : "";
 
-    // Phase 2.2 not yet landed — sector recasts (bank/nbfc/insurance) are
-    // unsupported and the industrial pipeline crashes (or OOMs) on them.
-    // Skip strict gating until those PRs ship.
-    const isPhase22Pending = company.type === "bank" || company.type === "nbfc" || company.type === "insurance";
-
     it(`${company.folder} (${company.ticker}) — valuation is valid${expectationsLabel}`, async () => {
-      if (isPhase22Pending) {
-        // eslint-disable-next-line no-console
-        console.log(`  ${company.folder}: PHASE_2_2_PENDING (sector ${company.type} recast missing) — skipping`);
-        return;
-      }
-
       const result = await auditCompany(company);
       results.push(result);
 
-      // Pipeline crash always fails when not Phase-2.2-pending.
+      // Pipeline crash always fails.
       if (result.flags.some((f) => f.startsWith("ERROR"))) {
         expect(result.flags, `pipeline crashed: ${result.error}`).toEqual([]);
       }
 
-      // Universal weak gates — apply to all companies. >=2 because a few
-      // companies in the registry only have 2 fiscal years of Capitaline
-      // data; the engine still produces a valid recast for them.
+      // Universal weak gates — apply to all companies.
+      // Industrial path produces RecastPeriod[]; financial-institution path
+      // produces BankPeriodMetrics[]. Both surface a periods count.
       expect(result.periods).toBeGreaterThanOrEqual(2);
-      expect(result.stress).not.toBeNull();
-      expect(result.base).not.toBeNull();
+      // Scenario gates apply only to the industrial path. Bank/NBFC/insurance
+      // valuations live under bankResult.valuation (BankValuationBundle), not
+      // valuation.scenarios; their stress/base/bull are null here by design.
+      if (result.family === "industrial") {
+        expect(result.stress).not.toBeNull();
+        expect(result.base).not.toBeNull();
+      }
 
       // Strict gates — apply only when expectations.json is present.
       // This is the Phase 2.1 regression gate: ROCE sign flips, RNOA
@@ -194,6 +227,71 @@ async function auditCompany(company: { folder: string; ticker: string; type: str
     const parsed = await parseCapitalineZip(u8, { companyId: company.folder, filename: `${company.folder}.zip` });
     const config: EngineConfig = { ...DEFAULT_CONFIG, company_type: company.type as EngineConfig["company_type"] };
     const pipeline = processCompanyDataFull(parsed.periods, config);
+    const family = pipeline.analysisFamily;
+
+    // Common envelope (works for both families — buildAnalysisTraceability
+    // is sector-agnostic; banks pass an empty recastData and the envelope
+    // walks parserFidelity / mapping / concept identity normally).
+    const trace = buildAnalysisTraceability({
+      generatedAt: "2026-05-30T00:00:00.000Z",
+      runId: `audit-${company.folder}`,
+      companyId: company.folder,
+      sourceMode: "capitaline",
+      recastData: pipeline.periods,
+      config,
+      rawData: parsed.periods,
+      periodCount: pipeline.periods.length,
+      latestPeriod: pipeline.periods[pipeline.periods.length - 1]?.period_end ?? null,
+      policyVersions: getAnalysisPolicyVersions(),
+    });
+
+    const anomalyFlagKeys = pipeline.anomalies.terminalFlags
+      .map((f) => f.spec_id)
+      .filter((c): c is string => typeof c === "string");
+
+    if (family === "financial-institution") {
+      // Banks/NBFCs/insurance: metrics come from bankResult.bankMetrics.
+      // valuation.scenarios is empty (those live on bankResult.valuation),
+      // so industrial-style scenario gates are skipped at the call site.
+      const bm = pipeline.bankResult?.bankMetrics ?? [];
+      const latestBm = bm[bm.length - 1];
+      const metrics: SectorMetrics = {
+        NIM: latestBm?.nim ?? null,
+        ROA: latestBm?.roa ?? null,
+        ROE: latestBm?.roe ?? null,
+        leverage: latestBm?.leverage ?? null,
+        spread: latestBm?.spread ?? null,
+        creditCost: latestBm?.creditCost ?? null,
+        costToIncome: latestBm?.costToIncome ?? null,
+        casaRatio: latestBm?.casaRatio ?? null,
+        yieldOnAdvances: latestBm?.yieldOnAdvances ?? null,
+        costOfBorrowings: latestBm?.costOfBorrowings ?? null,
+        claimsRatio: latestBm?.claimsRatio ?? null,
+        expenseRatio: latestBm?.expenseRatio ?? null,
+        combinedRatio: latestBm?.combinedRatio ?? null,
+        floatToEquity: latestBm?.floatToEquity ?? null,
+        investmentYield: latestBm?.investmentYield ?? null,
+        premiumGrowth: latestBm?.premiumGrowth ?? null,
+        // Quality-sidecar passthroughs (null when no sidecar)
+        GNPA: latestBm?.quality?.gnpa_pct != null ? latestBm.quality.gnpa_pct / 100 : null,
+        NNPA: latestBm?.quality?.nnpa_pct != null ? latestBm.quality.nnpa_pct / 100 : null,
+        PCR: latestBm?.quality?.pcr_pct != null ? latestBm.quality.pcr_pct / 100 : null,
+        CRAR: latestBm?.quality?.crar_pct != null ? latestBm.quality.crar_pct / 100 : null,
+      };
+      return {
+        ...empty,
+        family,
+        periods: bm.length,
+        metrics,
+        rigorLevel: trace.rigor.currentLevel,
+        parserFidelityStatus: trace.parserFidelity.status,
+        reconciliationStatus: trace.reconciliation.status,
+        anomalyFlagKeys,
+        flags: [],
+      };
+    }
+
+    // Industrial path
     const periods = pipeline.periods;
     const latest: RecastPeriod | undefined = periods[periods.length - 1];
 
@@ -225,32 +323,15 @@ async function auditCompany(company: { folder: string; ticker: string; type: str
     if (evEbitda !== null && !Number.isFinite(evEbitda)) companyFlags.push("EVEBITDA_INVALID");
     if (!scenarios.length) companyFlags.push("NO_SCENARIOS");
 
-    // Phase 2.1 — collect rigor envelope + key metrics for the strict gate
-    const trace = buildAnalysisTraceability({
-      generatedAt: "2026-05-30T00:00:00.000Z",
-      runId: `audit-${company.folder}`,
-      companyId: company.folder,
-      sourceMode: "capitaline",
-      recastData: periods,
-      config,
-      rawData: parsed.periods,
-      periodCount: periods.length,
-      latestPeriod: latest?.period_end ?? null,
-      policyVersions: getAnalysisPolicyVersions(),
-    });
-
-    const metrics = {
+    const metrics: SectorMetrics = {
       RNOA: latest?.ratios?.RNOA ?? null,
       ROCE: latest?.ratios?.ROCE ?? null,
       NFO_to_CSE: safeRatio(latest?.bs.NFO ?? null, latest?.bs.CSE ?? null),
     };
 
-    const anomalyFlagKeys = pipeline.anomalies.terminalFlags
-      .map((f) => f.spec_id)
-      .filter((c): c is string => typeof c === "string");
-
     return {
       ...empty,
+      family,
       periods: periods.length, stress, base, bull, revDcf, sotp, epv, evEbitda,
       flags: companyFlags,
       metrics,
