@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { RawPeriodData, EngineConfig, validateEngineConfig } from "../engine/types";
+import { PercentFraction, CroreShares, INRAbsolute } from "../engine/types/units";
 import type { CapitalineParseDebug } from "../engine/capitalineParser";
 import { parseScreenerTabDelimitedDetailed } from "../engine/screenerParser";
 import { parseRawPeriodsJsonDetailed } from "../engine/jsonIngestion";
@@ -459,7 +460,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
               value={config.market_price ?? ""}
               onChange={(e) => {
                 const value = e.target.value.trim();
-                onConfigChange({ ...config, market_price: value ? Number(value) : undefined });
+                onConfigChange({ ...config, market_price: value ? INRAbsolute(Number(value)) : undefined });
               }}
               className="w-28 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
               placeholder="₹"
@@ -473,7 +474,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
               value={config.shares_outstanding ?? ""}
               onChange={(e) => {
                 const value = e.target.value.trim();
-                onConfigChange({ ...config, shares_outstanding: value ? Number(value) : undefined });
+                onConfigChange({ ...config, shares_outstanding: value ? CroreShares(Number(value)) : undefined });
               }}
               className="w-28 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
               placeholder="auto if blank"
@@ -619,7 +620,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
                 placeholder={`${((config.risk_free_rate + config.equity_risk_premium) * 100).toFixed(1)}`}
                 onChange={(e) => {
                   const v = Number(e.target.value);
-                  onConfigChange({ ...config, ke: v > 0 ? v / 100 : 0 });
+                  onConfigChange({ ...config, ke: PercentFraction(v > 0 ? v / 100 : 0) });
                 }}
                 className="w-28 px-3 py-1.5 border border-blue-300 rounded-lg text-sm bg-white" />
             </div>

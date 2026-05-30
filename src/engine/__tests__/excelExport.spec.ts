@@ -4,6 +4,7 @@ import { buildAnalysisTraceability } from "../analysisTraceability";
 import { generateValuationWorkbook } from "../excelExport";
 import { getAnalysisPolicyVersions } from "../policyVersions";
 import { DEFAULT_CONFIG, EngineConfig, RecastPeriod, ValuationResult } from "../types";
+import { PercentFraction } from "../types/units";
 
 function mkPeriod(period_end: string): RecastPeriod {
   return {
@@ -181,7 +182,7 @@ describe("generateValuationWorkbook", () => {
   it("exports explicit config.ke to the Cover ke field", async () => {
     const cfg: EngineConfig = {
       ...DEFAULT_CONFIG,
-      ke: 0.18,
+      ke: PercentFraction(0.18),
       risk_free_rate: 0.03,
       equity_risk_premium: 0.05,
     };
@@ -191,7 +192,7 @@ describe("generateValuationWorkbook", () => {
   it("falls back to rf+erp when config.ke is non-positive", async () => {
     const cfg: EngineConfig = {
       ...DEFAULT_CONFIG,
-      ke: 0,
+      ke: PercentFraction(0),
       risk_free_rate: 0.04,
       equity_risk_premium: 0.06,
     };

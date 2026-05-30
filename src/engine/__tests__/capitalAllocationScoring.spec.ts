@@ -4,20 +4,21 @@ import {
   scoreBankCapitalAllocation,
 } from "../capitalAllocationScoring";
 import { RecastPeriod, EngineConfig } from "../types";
+import { PercentFraction } from "../types/units";
 import { BankPeriodMetrics } from "../bankPipeline";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 function makeConfig(overrides: Partial<EngineConfig> = {}): EngineConfig {
   return {
-    ke: 0.12,
+    ke: PercentFraction(0.12),
     kw: 0.10,
     g_terminal: 0.05,
     risk_free_rate: 0.07,
     equity_risk_premium: 0.05,
     beta: 1.0,
     ...overrides,
-  } as EngineConfig;
+  } as unknown as EngineConfig;
 }
 
 function makePeriod(
@@ -387,7 +388,7 @@ describe("scoreBankCapitalAllocation", () => {
   });
 
   it("retentionValueAccretive counts periods where ROE > ke", () => {
-    const ke = 0.12;
+    const ke = PercentFraction(0.12);
     const metrics = makeBankMetrics(8, 0.15); // all above ke
     const periods = makeSeries(8);
     const result = scoreBankCapitalAllocation(metrics, periods, makeConfig({ ke }));

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import ForecastReport from "../ForecastReport";
 import { AnalysisTraceabilityEnvelope } from "../../engine/analysisTraceability";
 import { DEFAULT_CONFIG, RecastPeriod } from "../../engine/types";
+import { CroreShares, INRAbsolute } from "../../engine/types/units";
 
 function mkTraceability(status: "production-ready" | "guarded" | "blocked"): AnalysisTraceabilityEnvelope {
   return {
@@ -135,7 +136,7 @@ const data = [
   mkPeriod(2025, 1210, 232, 172, 665, 885),
 ];
 
-const config = { ...DEFAULT_CONFIG, market_price: 100, shares_outstanding: 10 };
+const config = { ...DEFAULT_CONFIG, market_price: INRAbsolute(100), shares_outstanding: CroreShares(10) };
 
 function mkPeriod(year: number, sales: number, oi: number, cni: number, cse: number, noa: number): RecastPeriod {
   return {

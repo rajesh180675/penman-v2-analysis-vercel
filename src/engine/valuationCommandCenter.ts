@@ -3,6 +3,7 @@ import { LiveMarketDataFreshness, LiveMarketDataSnapshot, MarketHistoryPoint, su
 import { buildBusinessModelProfile, buildScenario, buildValuationPeriodsFromForecast, derivePersistenceForecastScenario } from "./forecastingEngine";
 import { AnalysisStatusSummary } from "./analysisStatus";
 import { RecastPeriod, EngineConfig, ForecastScenario, ForecastPolicySurface, ValuationResult, ke_from_config, BusinessModelProfile } from "./types";
+import { INRAbsolute } from "./types/units";
 import { resolveShareBasis } from "./shareCountTools";
 import { ValuationReadiness, resolveValuationReadiness } from "./valuationPolicy";
 import { resolveValuationSectorTemplate } from "./valuationSectorTemplates";
@@ -1435,7 +1436,7 @@ function buildBacktest(context: CoreBuildContext): ValuationBacktestSummary {
       marketData: historicalSnapshot,
       config: {
         ...context.config,
-        market_price: asOfPrice.close,
+        market_price: INRAbsolute(asOfPrice.close),
       },
     });
 

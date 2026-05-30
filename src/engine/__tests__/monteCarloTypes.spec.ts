@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { assertValidMonteCarloInput, normalizeMonteCarloRequest } from "../monteCarloTypes";
 import { EngineConfig, RecastPeriod } from "../types";
+import { PercentFraction } from "../types/units";
 
 function mkConfig(): EngineConfig {
   return {
-    ke: 0.12,
+    ke: PercentFraction(0.12),
     kd_pretax: 0.08,
     tax_rate_for_kd: 0.25,
     risk_free_rate: 0.07,

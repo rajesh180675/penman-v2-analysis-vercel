@@ -2,17 +2,18 @@ import { describe, it, expect } from "vitest";
 import { computeBankValuation } from "../bankValuation";
 import type { BankPeriodMetrics } from "../bankPipeline";
 import type { EngineConfig } from "../types";
+import { PercentFraction } from "../types/units";
 
 function cfg(overrides: Partial<EngineConfig> = {}): EngineConfig {
   return {
-    ke: 0.12,
+    ke: PercentFraction(0.12),
     kw: 0.10,
     g_terminal: 0.05,
     risk_free_rate: 0.07,
     equity_risk_premium: 0.05,
     beta: 1.0,
     ...overrides,
-  } as EngineConfig;
+  } as unknown as EngineConfig;
 }
 
 function bankPeriod(
@@ -106,7 +107,7 @@ describe("computeBankValuation — Phase B4", () => {
   describe("Justified P/B Gordon", () => {
     it("computes fair P/B > 1 when ROE > ke", () => {
       const periods = buildHistory([0.15, 0.16, 0.17, 0.16, 0.15]);
-      const result = computeBankValuation(periods, cfg({ ke: 0.12 }));
+      const result = computeBankValuation(periods, cfg({ ke: PercentFraction(0.12) }));
       expect(result.justifiedPB.status).toBe("computed");
       expect(result.justifiedPB.diagnostics.fairPB).toBeGreaterThan(1);
       expect(result.justifiedPB.intrinsicValue).toBeGreaterThan(periods[periods.length - 1].totalEquity!);
@@ -115,7 +116,7 @@ describe("computeBankValuation — Phase B4", () => {
     it("computes fair P/B ≤ 1 when sustainable ROE ≤ ke", () => {
       // 5 years of ROE = 11%, ke = 12%. Bank is destroying equity value.
       const periods = buildHistory([0.11, 0.10, 0.11, 0.12, 0.11]);
-      const result = computeBankValuation(periods, cfg({ ke: 0.12 }));
+      const result = computeBankValuation(periods, cfg({ ke: PercentFraction(0.12) }));
       expect(result.justifiedPB.status).toBe("computed");
       const fairPB = result.justifiedPB.diagnostics.fairPB!;
       expect(fairPB).toBeLessThanOrEqual(1.05); // small tolerance
@@ -136,7 +137,7 @@ describe("computeBankValuation — Phase B4", () => {
   describe("Equity Residual Income with fade", () => {
     it("computes value above book when ROE persistently exceeds ke", () => {
       const periods = buildHistory([0.18, 0.19, 0.18, 0.17, 0.18]);
-      const result = computeBankValuation(periods, cfg({ ke: 0.12 }));
+      const result = computeBankValuation(periods, cfg({ ke: PercentFraction(0.12) }));
       expect(result.equityResidualIncome.status).toBe("computed");
       const bv0 = periods[periods.length - 1].totalEquity!;
       expect(result.equityResidualIncome.intrinsicValue).toBeGreaterThan(bv0);

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { computeEPV } from "../grahamDoddEPV";
 import { RecastPeriod, EngineConfig, DEFAULT_CONFIG } from "../types";
+import { PercentFraction, CroreShares, INRAbsolute } from "../types/units";
 
 /** Minimal RecastPeriod factory for EPV testing. */
 function makePeriod(overrides: {
@@ -86,8 +87,8 @@ describe("Graham-Dodd EPV", () => {
     risk_free_rate: 0.07,
     equity_risk_premium: 0.055,
     statutory_tax_rate: 0.252,
-    shares_outstanding: 100, // 100 Cr shares
-    market_price: 500,
+    shares_outstanding: CroreShares(100), // 100 Cr shares
+    market_price: INRAbsolute(500),
   };
 
   it("returns null for fewer than 2 periods", () => {
@@ -202,11 +203,11 @@ describe("Graham-Dodd EPV", () => {
     ];
     // ke = 0.005 < 0.01 threshold → null
     // Must also zero out cfg.ke so ke_from_config falls back to rf+erp
-    const badConfig = { ...baseConfig, ke: 0, risk_free_rate: 0, equity_risk_premium: 0.005 };
+    const badConfig = { ...baseConfig, ke: PercentFraction(0), risk_free_rate: 0, equity_risk_premium: 0.005 };
     const result = computeEPV(periods, badConfig);
     expect(result).toBeNull();
 
-    const veryBadConfig = { ...baseConfig, ke: 0, risk_free_rate: 0, equity_risk_premium: 0 };
+    const veryBadConfig = { ...baseConfig, ke: PercentFraction(0), risk_free_rate: 0, equity_risk_premium: 0 };
     const result2 = computeEPV(periods, veryBadConfig);
     expect(result2).toBeNull();
   });
@@ -246,7 +247,7 @@ describe("Graham-Dodd EPV", () => {
       makePeriod({ CoreOI: 4400, depreciation: 220, Capex: -270, NOA: 9000, NFO: -2500 }),
       makePeriod({ CoreOI: 4100, depreciation: 205, Capex: -255, NOA: 8200, NFO: -2100 }),
     ];
-    const result = computeEPV(periods, { ...baseConfig, shares_outstanding: 366 });
+    const result = computeEPV(periods, { ...baseConfig, shares_outstanding: CroreShares(366) });
     expect(result).not.toBeNull();
     expect(result!.moatSignal).toBe("moat");
     // Negative NFO means cash-rich → EPV equity > EPV operations
