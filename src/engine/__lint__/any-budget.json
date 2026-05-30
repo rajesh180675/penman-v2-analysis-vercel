@@ -3,7 +3,7 @@
   "total": 20,
   "perFile": {
     "src/engine/bankAssetQuality.ts": 3,
-    "src/engine/bankValuation.ts": 1,
+    "src/engine/bankValuation/shared.ts": 1,
     "src/engine/capitalineParser.ts": 1,
     "src/engine/distressDetector.ts": 1,
     "src/engine/lineageTypes.ts": 1,
@@ -12,6 +12,6 @@
     "src/engine/reconciliationResiduals.ts": 1,
     "src/engine/reverseDCF.ts": 4,
     "src/engine/unusualItemPolicy.ts": 1,
-    "src/engine/valuationCommandCenter.ts": 1
+    "src/engine/valuationCommandCenter/helpers.ts": 1
   }
 }
