@@ -4,7 +4,7 @@
   "perFile": {
     "src/engine/bankAssetQuality.ts": 3,
     "src/engine/bankValuation/shared.ts": 1,
-    "src/engine/capitalineParser.ts": 1,
+    "src/engine/capitalineParser/types.ts": 1,
     "src/engine/distressDetector.ts": 1,
     "src/engine/lineageTypes.ts": 1,
     "src/engine/lossMakerValuation.ts": 1,
