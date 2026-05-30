@@ -124,6 +124,14 @@ ls src/engine/__tests__/pipelineStrategyStamp.spec.ts            # provenance re
 
 # ─── Persistence ──────────────────
 grep -rn "kvGet\|kvSet" src/lib/ | wc -l   # ≥ 20
+# Plan 4 status (2026-05-31): clean per-user KV adoption SHIPPED — comparison
+# registry (#229) and residuals (#230) are KV-source-of-truth with localStorage
+# as cache (DoD #2), anon-scoped. DEFERRED BY DECISION (no auth source exists yet,
+# and the built per-user key schema can't express firm sharing): the audit-runs
+# KV fork (would regress the existing blob+token cross-tenant run history), real
+# auth + anon→auth migration + firm-scoped sharing (DoD #1/#4), the indexedDB
+# offline tier (DoD #3), KV telemetry, and storage-cap UX (DoD #5/#6). Revisit
+# when an auth source and a firm-dimension key schema land.
 
 # ─── Modelling depth ──────────────
 grep -rn "analyticalDepth\." src/engine/ | wc -l   # ≥ 10 (5 from Plan 5 + 5 from 5b)
