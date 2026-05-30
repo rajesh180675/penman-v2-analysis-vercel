@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnalysisStatusSummary } from "../engine/analysisStatus";
-import { summarizeConceptCoverage, rankUnmappedLabels } from "../engine/conceptOntology";
+import { summarizeConceptCoverage } from "../engine/conceptOntology";
 import { detectCorporateActions } from "../engine/corporateActions";
 import { buildPeerValuationSnapshot } from "../engine/peerValuation";
 import { buildStatementLineage } from "../engine/statementLineage";
@@ -38,6 +38,18 @@ import StatementLineagePanel from "./StatementLineagePanel";
 import ValuationAssumptionDiff from "./ValuationAssumptionDiff";
 import ValuationWorkbench from "./ValuationWorkbench";
 import WatchlistDashboard from "./WatchlistDashboard";
+import { MetricCard } from "./company-workspace/fields";
+import {
+  buildCompanyOptions,
+  InspectorRunPayload,
+  investorGuidance,
+  pct,
+  toneForState,
+} from "./company-workspace/CompanyWorkspace.formatters";
+import WorkspaceHero from "./company-workspace/WorkspaceHero";
+import ResearchNotebookSection from "./company-workspace/ResearchNotebookSection";
+import DiagnosticsSection from "./company-workspace/DiagnosticsSection";
+import AuditedRunHistorySection from "./company-workspace/AuditedRunHistorySection";
 
 interface Props {
   rawData: RawPeriodData[] | null;
@@ -48,130 +60,6 @@ interface Props {
   registry: CompanyRegistry;
   selectedCompanyId?: string | null | undefined;
   onSelectCompanyId?: (companyId: string) => void;
-}
-
-interface InspectorRunPayload {
-  runId: string;
-  latestAt: string | null;
-  latestAnalysisSnapshot?: {
-    latestPeriod?: string | null | undefined;
-  } | null;
-  latestValuationSignal?: {
-    label?: string | null | undefined;
-    state?: string | null | undefined;
-    summary?: string | null | undefined;
-    baseUpsidePct?: number | null | undefined;
-    stressUpsidePct?: number | null | undefined;
-    opportunityScore?: number | null | undefined;
-    convictionBucket?: string | null | undefined;
-    expectedCagrStress?: number | null | undefined;
-  } | null;
-  latestValuationManifest?: {
-    sectorTemplate?: { label?: string | null } | null;
-    opportunity?: {
-      thesis?: string | null | undefined;
-      requiredMarginOfSafetyPct?: number | null | undefined;
-      qualityScore?: number | null | undefined;
-      opportunityScore?: number | null | undefined;
-      convictionBucket?: string | null | undefined;
-      expectedCagrStress?: number | null | undefined;
-    } | null;
-    marketContext?: {
-      expectedReturnSpreadVsRf?: number | null | undefined;
-      priceToStressValueRatio?: number | null | undefined;
-    } | null;
-    checklist?: {
-      whatMustGoRight?: string[] | undefined;
-      thesisBreakers?: string[] | undefined;
-    } | null;
-    backtest?: {
-      available?: boolean | undefined;
-      forwardWinRate1Y?: number | null | undefined;
-      forwardWinRate3Y?: number | null | undefined;
-      median3Y?: number | null | undefined;
-      latestComparedToHistory?: string | null | undefined;
-    } | null;
-  } | null;
-  health?: {
-    severity?: "ok" | "warning" | "critical" | undefined;
-    findings?: string[] | undefined;
-  } | null;
-}
-
-function pct(value: number | null | undefined, digits = 1) {
-  return value == null || !Number.isFinite(value) ? "—" : `${(value * 100).toFixed(digits)}%`;
-}
-
-function toneForState(state: string | null | undefined) {
-  if (state === "blocked") return "border-red-200 bg-red-50 text-red-800";
-  if (state === "guarded") return "border-amber-200 bg-amber-50 text-amber-800";
-  if (state === "high-conviction" || state === "screaming-buy") return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  if (state === "interesting") return "border-blue-200 bg-blue-50 text-blue-800";
-  return "border-slate-200 bg-slate-50 text-slate-800";
-}
-
-function investorGuidance(args: {
-  status?: AnalysisStatusSummary["status"] | "unknown" | undefined;
-  signalState?: string | null | undefined;
-  convictionBucket?: string | null | undefined;
-}) {
-  const { status, signalState, convictionBucket } = args;
-  if (status === "blocked" || signalState === "blocked") {
-    return {
-      title: "Do not treat this as investable output",
-      detail: "The accounting or scope checks are blocking the valuation. Use this company only to diagnose data quality or unsupported business-model issues.",
-    };
-  }
-  if (status === "guarded" || signalState === "guarded") {
-    return {
-      title: "Use this as research input, not a sizing anchor",
-      detail: "The model is directionally useful, but the confidence is not strong enough to convert the output into a final investment decision.",
-    };
-  }
-  if (signalState === "screaming-buy" || convictionBucket === "truck-load zone") {
-    return {
-      title: "Rare dislocation protocol",
-      detail: "This is the only zone where aggressive buying is discussable. Re-check liquidity, balance-sheet safety, and thesis breakers before increasing size.",
-    };
-  }
-  if (signalState === "high-conviction" || convictionBucket === "high-conviction") {
-    return {
-      title: "Strong setup, still thesis-dependent",
-      detail: "The next step is not another valuation rerun. Validate catalysts, durability of economics, and downside conditions before committing more capital.",
-    };
-  }
-  if (signalState === "interesting" || convictionBucket === "accumulate") {
-    return {
-      title: "Interesting, not yet rare",
-      detail: "Track it, sharpen the thesis, and wait either for stronger evidence or a better price rather than forcing a decision.",
-    };
-  }
-  return {
-    title: "Build understanding before building exposure",
-    detail: "Start with business summary, key drivers, accounting confidence, and the stress case. If those do not line up, valuation should not drive the decision.",
-  };
-}
-
-function toTextAreaValue(value: string) {
-  return value ?? "";
-}
-
-function buildCompanyOptions(params: {
-  registry: CompanyRegistry;
-  rawData: RawPeriodData[] | null;
-}) {
-  const options = new Map<string, { companyId: string; label: string }>();
-  for (const record of listWorkspaceCompanies()) {
-    options.set(record.companyId, { companyId: record.companyId, label: record.label || record.companyId });
-  }
-  for (const item of Object.values(params.registry.companies)) {
-    options.set(item.id, { companyId: item.id, label: item.label || item.id });
-  }
-  const currentCompanyId = params.rawData?.[0]?.company_id;
-  if (currentCompanyId) {
-    options.set(currentCompanyId, { companyId: currentCompanyId, label: currentCompanyId });
-  }
-  return Array.from(options.values()).sort((left, right) => left.label.localeCompare(right.label));
 }
 
 export default function CompanyWorkspace({
@@ -382,39 +270,15 @@ export default function CompanyWorkspace({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Company Workspace
-            </div>
-            <h2 className="mt-3 text-2xl font-bold text-slate-900">{effectiveCompanyId}</h2>
-            <p className="mt-2 max-w-3xl text-sm text-slate-600">
-              This is the investor operating system for the current codebase: filings, research notes, signal history, valuation memory, and portfolio actions in one place.
-            </p>
-            {(auditMeta || rawData?.length || recastData?.length) && (
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
-                {auditMeta && <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1">source {auditMeta.sourceMode}</span>}
-                {config.market_data_symbol && <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1">symbol {config.market_data_symbol}</span>}
-                {config.sector_template && <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1">template {config.sector_template}</span>}
-                {recastData?.length ? <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1">{recastData.length} recast periods</span> : null}
-              </div>
-            )}
-          </div>
-          <div className="min-w-[240px]">
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Selected company</label>
-            <select
-              value={effectiveCompanyId}
-              onChange={(event) => setCompanyId(event.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              {companyOptions.map((option) => (
-                <option key={option.companyId} value={option.companyId}>{option.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </section>
+      <WorkspaceHero
+        effectiveCompanyId={effectiveCompanyId}
+        auditMeta={auditMeta}
+        rawData={rawData}
+        recastData={recastData}
+        config={config}
+        companyOptions={companyOptions}
+        setCompanyId={setCompanyId}
+      />
 
       <WatchlistDashboard
         companies={listWorkspaceCompanies()}
@@ -505,37 +369,10 @@ export default function CompanyWorkspace({
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-bold text-slate-800">Research Notebook</h3>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <NoteField label="Business Summary" value={toTextAreaValue(currentNotebook.businessSummary)} onChange={(value) => onNotebookFieldChange("businessSummary", value)} />
-            <NoteField label="Investment Thesis" value={toTextAreaValue(currentNotebook.thesis)} onChange={(value) => onNotebookFieldChange("thesis", value)} />
-            <NoteField label="Variant View" value={toTextAreaValue(currentNotebook.variantView)} onChange={(value) => onNotebookFieldChange("variantView", value)} />
-            <NoteField label="Key Drivers" value={toTextAreaValue(currentNotebook.keyDrivers)} onChange={(value) => onNotebookFieldChange("keyDrivers", value)} />
-            <NoteField label="Catalysts" value={toTextAreaValue(currentNotebook.catalysts)} onChange={(value) => onNotebookFieldChange("catalysts", value)} />
-            <NoteField label="Risks" value={toTextAreaValue(currentNotebook.risks)} onChange={(value) => onNotebookFieldChange("risks", value)} />
-            <NoteField label="What Must Go Right" value={toTextAreaValue(currentNotebook.whatMustGoRight)} onChange={(value) => onNotebookFieldChange("whatMustGoRight", value)} />
-            <NoteField label="What Breaks The Thesis" value={toTextAreaValue(currentNotebook.whatBreaksThesis)} onChange={(value) => onNotebookFieldChange("whatBreaksThesis", value)} />
-          </div>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
-            <SelectField
-              label="Watch Level"
-              value={currentNotebook.watchLevel}
-              options={[
-                { value: "watch", label: "Watch" },
-                { value: "researching", label: "Researching" },
-                { value: "accumulate", label: "Accumulate" },
-                { value: "high-conviction", label: "High conviction" },
-              ]}
-              onChange={(value) => onNotebookFieldChange("watchLevel", value as ResearchNotebook["watchLevel"])}
-            />
-            <TextField label="Position Plan" value={currentNotebook.positionPlan} onChange={(value) => onNotebookFieldChange("positionPlan", value)} />
-            <TextField label="Next Check" value={currentNotebook.nextCheck} onChange={(value) => onNotebookFieldChange("nextCheck", value)} />
-          </div>
-          <div className="mt-3 text-xs text-slate-500">
-            Notebook updated: {currentNotebook.updatedAt ? new Date(currentNotebook.updatedAt).toLocaleString("en-IN") : "not yet"}
-          </div>
-        </div>
+        <ResearchNotebookSection
+          currentNotebook={currentNotebook}
+          onNotebookFieldChange={onNotebookFieldChange}
+        />
 
         <AssumptionManifestPanel valuation={latestValuation} />
       </section>
@@ -595,48 +432,12 @@ export default function CompanyWorkspace({
         />
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-bold text-slate-800">Concept Ontology Coverage</h3>
-          <p className="mt-1 text-sm text-slate-500">This shows whether the loaded statements cover the analytical concepts the model cares about, not just raw line counts.</p>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <MetricCard label="Coverage" value={`${(conceptCoverage.coveragePct * 100).toFixed(0)}%`} />
-            <MetricCard label="Core matched" value={`${conceptCoverage.coreMatchedCount}/${conceptCoverage.coreTotalCount}`} />
-            <MetricCard label="Top unmapped" value={String(rankUnmappedLabels(rawData, 8).length)} />
-          </div>
-          <div className="mt-4 space-y-2 text-sm text-slate-700">
-            {conceptCoverage.unresolvedCore.length ? (
-              conceptCoverage.unresolvedCore.map((item) => (
-                <div key={item} className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">{item}</div>
-              ))
-            ) : (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-800">All core ontology concepts have a live statement match.</div>
-            )}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-bold text-slate-800">Statement Diagnostics And Corporate Actions</h3>
-          <div className="mt-4 space-y-2 text-sm text-slate-700">
-            {statementDiagnostics.diagnostics.slice(0, 6).map((item) => (
-              <div key={`${item.label}:${item.periodEnd ?? "na"}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                <div className="font-medium text-slate-800">{item.label}</div>
-                <div className="text-xs text-slate-500">{item.periodEnd?.slice(0, 10) ?? "—"}</div>
-                <div className="mt-1">{item.detail}</div>
-              </div>
-            ))}
-            {!statementDiagnostics.diagnostics.length && (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-800">No major presentation or scale discontinuities were detected in the loaded history.</div>
-            )}
-            {corporateActions.slice(0, 4).map((item) => (
-              <div key={`${item.kind}:${item.periodEnd}`} className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-blue-900">
-                <div className="font-medium">{item.kind}</div>
-                <div className="text-xs opacity-70">{item.periodEnd.slice(0, 10)} · confidence {item.confidence}</div>
-                <div className="mt-1">{item.detail}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <DiagnosticsSection
+        rawData={rawData}
+        conceptCoverage={conceptCoverage}
+        statementDiagnostics={statementDiagnostics}
+        corporateActions={corporateActions}
+      />
 
       <section className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
         <FilingHistoryPanel filings={workspaceRecord?.filings ?? []} />
@@ -670,103 +471,7 @@ export default function CompanyWorkspace({
         }}
       />
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-base font-bold text-slate-800">Audited Run History</h3>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b">
-                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Run</th>
-                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Latest period</th>
-                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Signal</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Stress CAGR</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Health</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {runHistory.map((run) => (
-                <tr key={run.runId}>
-                  <td className="px-3 py-2 text-slate-700">{run.runId.slice(0, 8)}</td>
-                  <td className="px-3 py-2 text-slate-700">{run.latestAnalysisSnapshot?.latestPeriod?.slice(0, 10) ?? "—"}</td>
-                  <td className="px-3 py-2 text-slate-700">{run.latestValuationSignal?.label ?? run.latestValuationSignal?.state ?? "—"}</td>
-                  <td className="px-3 py-2 text-right font-mono">{pct(run.latestValuationSignal?.expectedCagrStress)}</td>
-                  <td className="px-3 py-2 text-right">{run.health?.severity?.toUpperCase() ?? "—"}</td>
-                </tr>
-              ))}
-              {!runHistory.length && (
-                <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-slate-500">
-                    {loadingRuns ? "Loading run history..." : "No remembered audited runs for this company yet."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function MetricCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="mt-2 text-2xl font-bold text-slate-900">{value}</div>
-    </div>
-  );
-}
-
-function NoteField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</label>
-      <textarea
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        rows={4}
-        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
-      />
-    </div>
-  );
-}
-
-function TextField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</label>
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
-      />
-    </div>
-  );
-}
-
-function SelectField({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: Array<{ value: string; label: string }>;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</label>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
-      </select>
+      <AuditedRunHistorySection runHistory={runHistory} loadingRuns={loadingRuns} />
     </div>
   );
 }
