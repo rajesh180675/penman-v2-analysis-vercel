@@ -4,6 +4,7 @@
 import { describe, it, expect } from "vitest";
 import { computeMoatScore, computeBankMoatScore } from "../moatScoring";
 import { DEFAULT_CONFIG } from "../types";
+import { PercentFraction } from "../types/units";
 import type { RecastPeriod } from "../types";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -101,7 +102,7 @@ function makePeriod(overrides: {
   };
 }
 
-const BASE_CONFIG = { ...DEFAULT_CONFIG, ke: 0.12 };
+const BASE_CONFIG = { ...DEFAULT_CONFIG, ke: PercentFraction(0.12) };
 
 // ── Wide moat company: high RNOA, stable margins, strong SPREAD ───────────────
 const WIDE_MOAT_PERIODS: RecastPeriod[] = [

@@ -4,6 +4,7 @@ import { useBankSidecars } from "./hooks/useBankSidecars";
 import { useAuditPersistence } from "./hooks/useAuditPersistence";
 import { useLiveMarketData } from "./hooks/useLiveMarketData";
 import { RawPeriodData, RecastPeriod, DEFAULT_CONFIG, EngineConfig, CompanyRegistry } from "./engine/types";
+import { CroreShares } from "./engine/types/units";
 import { processCompanyDataFull } from "./engine/pipeline";
 import { processScopeAwareData, type ScopeAwareResult } from "./engine/scopeAwareLoader";
 import { assessAnalysisScope, analysisFamilyFromScope } from "./engine/scopePolicy";
@@ -416,9 +417,8 @@ export function App() {
       null;
     if (autoShares != null && autoShares > 0) {
       setConfig((prev) => {
-        // Double-check: don't overwrite if user set it between renders
         if (prev.shares_outstanding != null) return prev;
-        return { ...prev, shares_outstanding: autoShares };
+        return { ...prev, shares_outstanding: CroreShares(autoShares) };
       });
     }
   }, [recastData, config.shares_outstanding]);

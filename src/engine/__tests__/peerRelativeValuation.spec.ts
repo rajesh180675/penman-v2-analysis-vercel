@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { computePeerRelativeValuation } from "../peerRelativeValuation";
 import { CompanyRegistry, RecastPeriod, EngineConfig, DEFAULT_CONFIG } from "../types";
+import { CroreShares, INRAbsolute } from "../types/units";
 
 function makePeriod(overrides: {
   Sales: number;
@@ -56,8 +57,8 @@ function makeRegistry(companies: Array<{
 describe("Peer Relative Valuation", () => {
   const baseConfig: EngineConfig = {
     ...DEFAULT_CONFIG,
-    shares_outstanding: 100,
-    market_price: 500,
+    shares_outstanding: CroreShares(100),
+    market_price: INRAbsolute(500),
   };
 
   const itcPeriods = [
@@ -173,7 +174,7 @@ describe("Peer Relative Valuation", () => {
       { id: "tcs", label: "TCS", periods: tcsPeriods },
       { id: "tata-steel", label: "Tata Steel", periods: tataSteelPeriods },
     ]);
-    const configWithPrice: EngineConfig = { ...baseConfig, market_price: 500, shares_outstanding: 100 };
+    const configWithPrice: EngineConfig = { ...baseConfig, market_price: INRAbsolute(500), shares_outstanding: CroreShares(100) };
     const result = computePeerRelativeValuation("itc", registry, configWithPrice);
     expect(result).not.toBeNull();
     // compositeFairValue may be null if peers don't have market data

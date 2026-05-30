@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildValuationCommandCenter } from "../valuationCommandCenter";
 import { DEFAULT_CONFIG, RecastPeriod, Severity } from "../types";
+import { CroreShares, INRAbsolute } from "../types/units";
 import { AnalysisStatusSummary } from "../analysisStatus";
 
 function buildHistorySeries(startDate: string, startPrice: number, count: number) {
@@ -248,8 +249,8 @@ describe("valuation command center", () => {
       data,
       config: {
         ...DEFAULT_CONFIG,
-        shares_outstanding: 620,
-        market_price: 1,
+        shares_outstanding: CroreShares(620),
+        market_price: INRAbsolute(1),
       },
       marketData: {
         symbol: "ASIANPAINT.BSE",
@@ -300,8 +301,8 @@ describe("valuation command center", () => {
       data,
       config: {
         ...DEFAULT_CONFIG,
-        shares_outstanding: 620,
-        market_price: 1,
+        shares_outstanding: CroreShares(620),
+        market_price: INRAbsolute(1),
       },
       marketData: {
         symbol: "ASIANPAINT.BSE",
@@ -350,7 +351,7 @@ describe("valuation command center", () => {
       data,
       config: {
         ...DEFAULT_CONFIG,
-        shares_outstanding: 620,
+        shares_outstanding: CroreShares(620),
       },
       analysisStatus: {
         ...productionReadyStatus,
@@ -378,8 +379,8 @@ describe("valuation command center", () => {
       config: {
         ...DEFAULT_CONFIG,
         sector_template: "paint",
-        shares_outstanding: 620,
-        market_price: 0.8,
+        shares_outstanding: CroreShares(620),
+        market_price: INRAbsolute(0.8),
       },
       marketData: {
         symbol: "ASIANPAINT.BSE",
@@ -427,8 +428,8 @@ describe("valuation command center", () => {
       config: {
         ...DEFAULT_CONFIG,
         sector_template: "industrials",
-        shares_outstanding: 620,
-        market_price: 1,
+        shares_outstanding: CroreShares(620),
+        market_price: INRAbsolute(1),
       },
       analysisStatus: productionReadyStatus,
     });
@@ -458,8 +459,8 @@ describe("valuation command center", () => {
       config: {
         ...DEFAULT_CONFIG,
         sector_template: "industrials",
-        shares_outstanding: 620,
-        market_price: 1,
+        shares_outstanding: CroreShares(620),
+        market_price: INRAbsolute(1),
       },
       analysisStatus: productionReadyStatus,
     });
@@ -498,8 +499,8 @@ describe("valuation command center", () => {
       config: {
         ...DEFAULT_CONFIG,
         sector_template: "paint",
-        shares_outstanding: 620,
-        market_price: 1.1,
+        shares_outstanding: CroreShares(620),
+        market_price: INRAbsolute(1.1),
       },
       marketData: {
         symbol: "ASIANPAINT.BSE",
@@ -545,8 +546,8 @@ describe("valuation command center", () => {
       data,
       config: {
         ...DEFAULT_CONFIG,
-        shares_outstanding: 620,
-        market_price: 0.8,
+        shares_outstanding: CroreShares(620),
+        market_price: INRAbsolute(0.8),
       },
       marketData: {
         symbol: "ASIANPAINT.BSE",
@@ -605,8 +606,8 @@ describe("valuation command center", () => {
       data,
       config: {
         ...DEFAULT_CONFIG,
-        shares_outstanding: 620,
-        market_price: 0.8,
+        shares_outstanding: CroreShares(620),
+        market_price: INRAbsolute(0.8),
       },
       marketData: {
         symbol: "ASIANPAINT.BSE",
@@ -646,8 +647,8 @@ describe("valuation command center", () => {
       data,
       config: {
         ...DEFAULT_CONFIG,
-        shares_outstanding: 620,
-        market_price: 0.9,
+        shares_outstanding: CroreShares(620),
+        market_price: INRAbsolute(0.9),
       },
       marketData: {
         symbol: "ASIANPAINT.BSE",
@@ -713,8 +714,8 @@ describe("valuation command center", () => {
       data,
       config: {
         ...DEFAULT_CONFIG,
-        shares_outstanding: 620,
-        market_price: 0.75,
+        shares_outstanding: CroreShares(620),
+        market_price: INRAbsolute(0.75),
       },
       analysisStatus: productionReadyStatus,
     });
@@ -802,8 +803,8 @@ describe("valuation command center", () => {
       data: stableData,
       config: {
         ...DEFAULT_CONFIG,
-        shares_outstanding: 620,
-        market_price: 0.8,
+        shares_outstanding: CroreShares(620),
+        market_price: INRAbsolute(0.8),
       },
       marketData: {
         symbol: "ASIANPAINT.BSE",
@@ -837,8 +838,8 @@ describe("valuation command center", () => {
       data: weakPersistenceData,
       config: {
         ...DEFAULT_CONFIG,
-        shares_outstanding: 620,
-        market_price: 0.55,
+        shares_outstanding: CroreShares(620),
+        market_price: INRAbsolute(0.55),
       },
       marketData: {
         symbol: "ASIANPAINT.BSE",

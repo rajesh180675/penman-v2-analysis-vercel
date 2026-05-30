@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ValuationReport from "../ValuationReport";
 import type { EngineConfig, RecastPeriod } from "../../engine/types";
 import { DEFAULT_CONFIG } from "../../engine/types";
+import { CroreShares, INRAbsolute } from "../../engine/types/units";
 
 function mkPeriod(period_end: string): RecastPeriod {
   return {
@@ -63,8 +64,8 @@ describe("ValuationReport", () => {
     const data = [mkPeriod("2024-03-31"), mkPeriod("2025-03-31")];
     const config: EngineConfig = {
       ...DEFAULT_CONFIG,
-      shares_outstanding: 100,
-      market_price: 50,
+      shares_outstanding: CroreShares(100),
+      market_price: INRAbsolute(50),
     };
 
     const html = renderToStaticMarkup(

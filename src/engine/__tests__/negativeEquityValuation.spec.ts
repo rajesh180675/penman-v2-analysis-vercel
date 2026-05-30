@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeValuation } from "../PenmanNissimEngine";
 import { DEFAULT_CONFIG, RecastPeriod } from "../types";
+import { CroreShares, INRAbsolute } from "../types/units";
 
 /**
  * Phase J2 — equity-side fail-closed when latest CSE ≤ 0.
@@ -112,7 +113,7 @@ describe("Phase J2 — equity-side fail-closed on negative net worth", () => {
       vodafoneShaped("2025-03-31", { CSE: -20000, NOA: 2_00_000, NFO: 2_20_000, CNI: -3500, OI: 800 }),
     ];
 
-    const cfg = { ...DEFAULT_CONFIG, shares_outstanding: 65_00_00_00_000, market_price: 7.5 };
+    const cfg = { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(65_00_00_00_000), market_price: INRAbsolute(7.5) };
     const out = computeValuation(periods, 0.12, 0.10, 0.04, cfg);
 
     expect(out.equityModelsBlocked).toBe(true);
@@ -154,7 +155,7 @@ describe("Phase J2 — equity-side fail-closed on negative net worth", () => {
       vodafoneShaped("2025-03-31", { CSE: 9000, NOA: 2_00_000, NFO: 1_91_000, CNI: 1500, OI: 2200 }),
     ];
 
-    const cfg = { ...DEFAULT_CONFIG, shares_outstanding: 65_00_00_00_000, market_price: 7.5 };
+    const cfg = { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(65_00_00_00_000), market_price: INRAbsolute(7.5) };
     const out = computeValuation(periods, 0.12, 0.10, 0.04, cfg);
 
     expect(out.equityModelsBlocked).toBe(false);

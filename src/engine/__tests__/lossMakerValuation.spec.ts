@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { computeLossMakerValuation } from "../lossMakerValuation";
 import type { RecastPeriod, EngineConfig } from "../types";
 import { DEFAULT_CONFIG } from "../types";
+import { CroreShares, INRAbsolute } from "../types/units";
 
 function mkPeriod(period_end: string, sales: number, cni: number, cfo: number, nfo = 0, cogs: number | null = null): RecastPeriod {
   return {
@@ -42,8 +43,8 @@ function mkPeriod(period_end: string, sales: number, cni: number, cfo: number, n
 
 const baseCfg: EngineConfig = {
   ...DEFAULT_CONFIG,
-  shares_outstanding: 100, // 100 Cr shares (= 1 billion absolute)
-  market_price: 700,
+  shares_outstanding: CroreShares(100), // 100 Cr shares (= 1 billion absolute)
+  market_price: INRAbsolute(700),
 };
 
 describe("computeLossMakerValuation — Phase I3", () => {
@@ -200,7 +201,7 @@ describe("computeLossMakerValuation — Phase I3", () => {
       mkPeriod("2024-03-31", 42500, -31000, 7500, 230000),
       mkPeriod("2025-03-31", 43500, -27000, -500, 235000), // CFO flips negative
     ];
-    const cfg = { ...baseCfg, market_price: 7.5, shares_outstanding: 650 }; // 650 Cr shares
+    const cfg = { ...baseCfg, market_price: INRAbsolute(7.5), shares_outstanding: CroreShares(650) }; // 650 Cr shares
     const result = computeLossMakerValuation(periods, cfg)!;
 
     expect(result.isLossMaker).toBe(true);

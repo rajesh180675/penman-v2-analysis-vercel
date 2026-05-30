@@ -1,4 +1,5 @@
 import { EngineConfig, RecastPeriod } from "./types";
+import { CroreShares } from "./types/units";
 import { CanonicalOutputRegistry, deriveShareCount, ShareCountResult } from "./v3Analytics";
 
 export interface ResolvedShareBasis extends ShareCountResult {
@@ -24,7 +25,7 @@ export function resolveShareBasis(
   return {
     ...derived,
     valuationConfig: derived.shares != null && derived.shares > 0
-      ? { ...config, shares_outstanding: derived.shares }
+      ? { ...config, shares_outstanding: CroreShares(derived.shares) }
       : config,
   };
 }

@@ -5,6 +5,7 @@
 ================================================================ */
 
 import type { CompanyType } from "./company";
+import { PercentFraction, CroreShares, INRAbsolute } from "./units";
 
 export type ValuationSectorTemplate =
   | "auto"
@@ -16,7 +17,7 @@ export type ValuationSectorTemplate =
   | "services";
 
 export interface EngineConfig {
-  ke                  : number;
+  ke                  : PercentFraction;
   /**
    * Phase rigor-2 — explicit equity beta (β) for CAPM.
    * When set (>0), `ke_from_config` uses ke = rf + β × erp.
@@ -111,8 +112,8 @@ export interface EngineConfig {
   np_RNOA_median      ?: number | undefined;
   np_SPREAD_median    ?: number | undefined;
   np_SalesGrowth_median?: number | undefined;
-  shares_outstanding  ?: number | undefined;
-  market_price        ?: number | undefined;
+  shares_outstanding  ?: CroreShares | undefined;
+  market_price        ?: INRAbsolute | undefined;
   ticker              ?: string | undefined;
   /** Terminal growth rate used by bank valuation DDM/Gordon and industrial TV. */
   terminal_growth_rate?: number | undefined;
@@ -156,7 +157,7 @@ export interface EngineConfig {
 /* ── Default Config ─────────────────────────────────────────────── */
 
 export const DEFAULT_CONFIG: EngineConfig = {
-  ke: 0.13,
+  ke: PercentFraction(0.13),
   kd_pretax: 0.08,
   tax_rate_for_kd: 0.2517,
   risk_free_rate: 0.07,

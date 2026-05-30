@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { deriveKwFromStructure } from "../PenmanNissimEngine";
 import { processCompanyData } from "../pipeline";
 import { DEFAULT_CONFIG, EngineConfig, RawPeriodData } from "../types";
+import { PercentFraction } from "../types/units";
 import { runPhase0BaselineReport, runRegressionHarness } from "../regressionHarness";
 
 const sample: RawPeriodData[] = [
@@ -122,7 +123,7 @@ describe("runRegressionHarness", () => {
       ...DEFAULT_CONFIG,
       risk_free_rate: 0.03,
       equity_risk_premium: 0.09,
-      ke: 0.16,
+      ke: PercentFraction(0.16),
     };
     const recast = processCompanyData(sample, cfg);
     const report = runRegressionHarness(sample, recast, cfg);
@@ -140,7 +141,7 @@ describe("runRegressionHarness", () => {
   });
 
   it("keeps harness kw aligned with structural derivation for net-cash firms", () => {
-    const cfg: EngineConfig = { ...DEFAULT_CONFIG, ke: 0.12, kd_pretax: 0.08, tax_rate_for_kd: 0.25 };
+    const cfg: EngineConfig = { ...DEFAULT_CONFIG, ke: PercentFraction(0.12), kd_pretax: 0.08, tax_rate_for_kd: 0.25 };
     const recast = processCompanyData(netCashSample, cfg);
     const report = runRegressionHarness(netCashSample, recast, cfg);
     expect(report).not.toBeNull();

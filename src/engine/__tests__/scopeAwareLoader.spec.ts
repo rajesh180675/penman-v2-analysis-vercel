@@ -7,6 +7,7 @@ import {
   validateSOTPAgainstSubsidiaryContribution,
 } from "../scopeAwareLoader";
 import { DEFAULT_CONFIG } from "../types";
+import { PercentFraction } from "../types/units";
 import type { RawPeriodData } from "../types";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -77,7 +78,7 @@ const STAN_PERIODS: RawPeriodData[] = [
   makeRawPeriod({ period_end: "2025-03-31", company_id: "ITC", sales: 16800, pat: 2240, cse: 30400, noa: 26400 }),
 ];
 
-const CONFIG = { ...DEFAULT_CONFIG, ke: 0.12 };
+const CONFIG = { ...DEFAULT_CONFIG, ke: PercentFraction(0.12) };
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 

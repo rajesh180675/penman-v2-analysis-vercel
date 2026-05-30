@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RecastPeriod, EngineConfig } from "../engine/types";
+import { INRAbsolute } from "../engine/types/units";
 import { buildCyclicalNormalization } from "../engine/cyclicalNormalization";
 import { detectDistress } from "../engine/distressDetector";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
@@ -88,7 +89,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
   });
   const effectiveConfig = useMemo<EngineConfig>(() => ({
     ...config,
-    market_price: liveMarketData?.price ?? config.market_price,
+    market_price: liveMarketData?.price != null ? INRAbsolute(liveMarketData.price) : config.market_price,
     risk_free_rate: liveMarketData?.riskFreeRate ?? config.risk_free_rate,
   }), [config, liveMarketData]);
   const keFromConfig = ke_from_config(effectiveConfig);
