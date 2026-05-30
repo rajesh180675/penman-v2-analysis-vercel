@@ -25,8 +25,7 @@ Schema: `2026-06-traceability-v17` (`src/engine/policyVersions.ts`).
 
 ### Architecture
 
-- Pipeline strategy registry (`src/engine/pipeline/strategy.ts` + `registry.ts`) with industrial / bank / NBFC / insurance strategies
-- `pipelineStrategyId` stamped into every envelope
+- `pipelineStrategyId` stamped into every envelope (resolved from the dispatch fork; the strategy registry was removed 2026-05-30 — see ADR-006)
 - Decomposed `App.tsx` → 3 hooks; `v3Analytics.ts` → eventFraming; `ValuationReport` → atoms
 
 ### Persistence

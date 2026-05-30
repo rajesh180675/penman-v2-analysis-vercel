@@ -1,10 +1,40 @@
 # ADR-006 — Pipeline Strategy Pattern (Plan 3 PR-3.1)
 
 **Date:** 2026-05-28
-**Status:** Accepted
+**Status:** Superseded (2026-05-30) — see "Superseding note" below
 **Schema bump:** `2026-06-traceability-v13` → `2026-06-traceability-v14`
 
-## Context
+## Superseding note (2026-05-30)
+
+The strategy spine described below was removed. It abstracted a single,
+readable two-way dispatch fork (`family === "financial-institution"` →
+`processBankData`, else industrial → `computeValuation`) behind a registry +
+four strategy classes whose `value()` methods all threw "not implemented in
+canary" and had **zero** production call sites. The orchestrator (`pipeline.ts`)
+never called `selectStrategy()`; the spine's only live tendril was the audit
+stamp.
+
+What was kept: the `pipelineStrategyId` envelope field. What changed: it is now
+resolved from the **real dispatch fork** (the detected analysis family +
+subtype the live app already passes), inside `buildAnalysisTraceability`. This
+also **fixed a latent bug** — `selectStrategy()` keyed off `config.company_type`,
+so any company left at `company_type: "auto"` that was signal-detected as a
+financial institution executed the bank pipeline but was stamped `industrial-v1`.
+Regression coverage: `src/engine/__tests__/pipelineStrategyStamp.spec.ts`.
+
+No valuation code moved; golden tests are unchanged. The schema field is
+retained (free-form string), so there is **no schema bump and no migration** for
+this removal; historical persisted values are left as-is.
+
+Revisit a real strategy pattern only when a sector needs genuinely different
+recast/ratio **stages** (e.g. a REIT with NAV-per-unit mechanics) — not merely
+different sanity bands. The actual remaining leakage (sector-aware bands in
+`scopePolicy`/`financialInstitutionFramework`/`ratioSanity`) is tracked as a
+separate typed-`SectorBands` contract, not a strategy spine.
+
+---
+
+## Context (original, retained for history)
 
 The engine has four pipelines today (industrial, bank, NBFC, insurance). They live in parallel module trees with overlapping logic, ~1,500 LOC of which is structural duplication: each repeats sort → unit-normalize → recast → ratios → anomaly → valuation → envelope assembly. Adding a new sector (e.g. REITs, AMCs) means rebuilding the same scaffolding from scratch.
 

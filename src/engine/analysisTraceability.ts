@@ -7,6 +7,8 @@ import { EngineConfig, RawPeriodData, RecastPeriod } from "./types";
 import { evaluateReconciliationResiduals } from "./reconciliationResiduals";
 import { evaluateBankReconciliationResiduals } from "./bankReconciliationResiduals";
 import type { BankPeriodMetrics } from "./bankPipeline";
+import { detectSubtype } from "./bankPipeline";
+import { analysisFamilyFromScope } from "./scopePolicy";
 import type { FinancialInstitutionSubtype } from "./analysisFamily";
 import { SourceParserDiagnostics } from "./parserDiagnostics";
 import { detectDistress } from "./distressDetector";
@@ -18,8 +20,6 @@ import { buildLineageMap, buildLineageRef } from "./lineageBuilder";
 import { appendRunResidualSummary, RESIDUAL_SCORE_PRODUCTION_THRESHOLD } from "../lib/residualsStore";
 import { isEnabled } from "../lib/featureFlags";
 import { trace } from "../lib/traceLogger";
-import { selectStrategy } from "./pipeline/registry";
-import "./pipeline/strategies"; // side-effect: register all PipelineStrategies
 
 // Envelope + rigor-ladder types relocated to ./types/traceabilityEnvelope (pure leaf,
 // weakness #1 cycle break). Imported back for internal use; re-exported so existing
@@ -456,20 +456,28 @@ export function buildAnalysisTraceability(params: {
     parserFidelity.status === "failed",
   ].filter(Boolean).length;
 
-  // Plan 3 PR-3.5 — stamp the dispatched strategy id into the envelope so
-  // an audit can reproduce the run with the same code path. Selection is
-  // best-effort: when rawData is missing or the registry rejects the
-  // payload (e.g. malformed input), leave the field unset.
-  let pipelineStrategyId: string | undefined;
-  if (params.rawData && params.rawData.length > 0 && params.config) {
-    try {
-      pipelineStrategyId = selectStrategy(params.rawData, params.config).id;
-    } catch (err) {
-      trace("config", "pipelineStrategy:selectFailed", {
-        error: err instanceof Error ? err.message : String(err),
-      });
+  // Plan 3 — stamp the dispatched pipeline path into the envelope so an
+  // audit can reproduce the run with the same code path. Re-homed onto the
+  // real dispatch fork (replaces the dead strategy-spine registry): the live
+  // app already passes the detected subtype, and the full ScopeAssessment
+  // rides on qualityGate, so no recompute is needed. Best-effort: when no
+  // sector signal is available, leave the field unset.
+  const pipelineStrategyId: string | undefined = ((): string | undefined => {
+    const toId = (s: FinancialInstitutionSubtype): string =>
+      s === "bank" ? "bank-v1" : s === "insurance" ? "insurance-v1" : "nbfc-v1"; // nbfc + generic-financial → nbfc-v1
+    // 1. Prefer the explicitly-detected subtype the live app already passes.
+    if (bankSubtype) return toId(bankSubtype);
+    // 2. Else derive from the scope already carried on qualityGate. Covers the
+    //    financial-blocked branch (no bank metrics) and the auditSnapshot path.
+    const scope = qualityGate?.scopeAssessment;
+    if (scope) {
+      return analysisFamilyFromScope(scope) === "financial-institution"
+        ? toId(detectSubtype(scope, params.config?.company_type ?? undefined))
+        : "industrial-v1";
     }
-  }
+    // 3. No signal available — leave unset (matches prior best-effort semantics).
+    return undefined;
+  })();
 
   return {
     schemaVersion: policyVersions.traceabilitySchemaVersion,
