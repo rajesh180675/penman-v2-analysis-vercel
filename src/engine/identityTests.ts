@@ -121,8 +121,8 @@ function countByAssertion(results: IdentityAssertionResult[]) {
     A9: { passed: 0, failed: 0 },
   };
   for (const r of results) {
-    if (r.pass) byAssertion[r.id].passed += 1;
-    else byAssertion[r.id].failed += 1;
+    if (r.pass) byAssertion[r.id]!.passed += 1;
+    else byAssertion[r.id]!.failed += 1;
   }
   return byAssertion;
 }
@@ -169,7 +169,7 @@ export function runIdentityAssertions(periods: RecastPeriod[]): IdentitySuiteRep
   const results: IdentityAssertionResult[] = [];
 
   for (let i = 0; i < periods.length; i++) {
-    const cur = periods[i];
+    const cur = periods[i]!;
     const prev = i > 0 ? periods[i - 1] : null;
     const tTol = Math.max(1, cur.bs.TA * 0.005);
 

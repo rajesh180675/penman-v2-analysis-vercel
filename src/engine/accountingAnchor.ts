@@ -73,7 +73,7 @@ export function computeAccountingAnchor(
   if (!Number.isFinite(costOfCapital) || !Number.isFinite(omega)) return null;
   if (!Number.isFinite(marketPricePerShare) || !Number.isFinite(sharesOutstanding)) return null;
 
-  const latest = data[data.length - 1];
+  const latest = data[data.length - 1]!;
   const rnoa = latest.ratios?.RNOA;
   const noa = latest.bs?.NOA;
   const nfo = latest.bs?.NFO ?? 0;
@@ -178,39 +178,39 @@ function computeNormalizedOI(data: RecastPeriod[]): number {
   // Use median of last 5 years' core OI to strip cyclicality
   const ois: number[] = [];
   for (let i = Math.max(0, data.length - 5); i < data.length; i++) {
-    const coreOI = data[i].cu?.CoreOI;
-    const oi = data[i].is?.OI;
+    const coreOI = data[i]!.cu?.CoreOI;
+    const oi = data[i]!.is?.OI;
     ois.push(coreOI ?? oi ?? 0);
   }
   if (ois.length === 0) return 0;
   ois.sort((a, b) => a - b);
-  return ois[Math.floor(ois.length / 2)];
+  return ois[Math.floor(ois.length / 2)]!;
 }
 
 function computeMedianGrowth(data: RecastPeriod[]): number {
   const rates: number[] = [];
   for (let i = Math.max(1, data.length - 5); i < data.length; i++) {
-    const cur = data[i].bs?.NOA ?? 0;
-    const prev = data[i - 1].bs?.NOA ?? 0;
+    const cur = data[i]!.bs?.NOA ?? 0;
+    const prev = data[i - 1]!.bs?.NOA ?? 0;
     if (prev > 0 && cur > 0) rates.push((cur - prev) / prev);
   }
   if (rates.length === 0) return 0;
   rates.sort((a, b) => a - b);
-  return rates[Math.floor(rates.length / 2)];
+  return rates[Math.floor(rates.length / 2)]!;
 }
 
 function computePayoutRatio(data: RecastPeriod[]): number {
   const payouts: number[] = [];
   for (let i = Math.max(0, data.length - 5); i < data.length; i++) {
-    const pat = data[i].is?.PAT;
-    const div = data[i].cf?.DividendPaid;
+    const pat = data[i]!.is?.PAT;
+    const div = data[i]!.cf?.DividendPaid;
     if (pat != null && pat > 0 && div != null) {
       payouts.push(Math.min(1, Math.abs(div) / pat));
     }
   }
   if (payouts.length === 0) return 0.30;
   payouts.sort((a, b) => a - b);
-  return payouts[Math.floor(payouts.length / 2)];
+  return payouts[Math.floor(payouts.length / 2)]!;
 }
 
 function buildNarrative(

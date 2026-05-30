@@ -115,8 +115,8 @@ function medianOf(values: number[]): number | null {
   const sorted = [...clean].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid];
+    ? (sorted[mid - 1]! + sorted[mid]!) / 2
+    : sorted[mid]!;
 }
 
 function stdDev(values: number[]): number | null {
@@ -155,7 +155,7 @@ function estimatePhi(series: number[]): number | null {
   const n = x.length;
   const meanX = x.reduce((s, v) => s + v, 0) / n;
   const meanY = y.reduce((s, v) => s + v, 0) / n;
-  const cov = x.reduce((s, v, i) => s + (v - meanX) * (y[i] - meanY), 0);
+  const cov = x.reduce((s, v, i) => s + (v - meanX) * (y[i]! - meanY), 0);
   const varX = x.reduce((s, v) => s + (v - meanX) ** 2, 0);
   if (varX < 1e-10) return null;
   const phi = cov / varX;
@@ -208,7 +208,7 @@ function estimateCAP(
   // Fallback: linear extrapolation from last 3 periods
   if (rnoaSeries.length >= 3) {
     const recent = rnoaSeries.slice(-3);
-    const slope = (recent[2] - recent[0]) / 2;
+    const slope = (recent[2]! - recent[0]!) / 2;
     if (slope < 0 && spread0 > 0) {
       const years = Math.round(Math.min(spread0 / Math.abs(slope), 50));
       return {
@@ -396,8 +396,8 @@ function scoreReinvestmentQuality(
   );
 
   for (let i = 1; i < sorted.length; i++) {
-    const curr = sorted[i];
-    const prev = sorted[i - 1];
+    const curr = sorted[i]!;
+    const prev = sorted[i - 1]!;
 
     // Review W11: `?? 0` lets a NaN/undefined NOA collapse silently to 0,
     // producing a fake dNOA = -prevNOA and a phantom incremental RNOA.
@@ -732,7 +732,7 @@ export function computeBankMoatScore(
 
   // CAP for bank: use ROE series
   const phi = estimatePhi(roeValues);
-  const latestROE = roeValues[roeValues.length - 1];
+  const latestROE = roeValues[roeValues.length - 1]!;
   const cap = estimateCAP(latestROE, ke, phi, roeValues);
 
   const moatTrend = computeTrend(roeSpreadValues);

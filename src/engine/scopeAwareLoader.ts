@@ -196,8 +196,8 @@ function medianOf(values: number[]): number | null {
   const sorted = [...clean].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid];
+    ? (sorted[mid - 1]! + sorted[mid]!) / 2
+    : sorted[mid]!;
 }
 
 /**
@@ -218,7 +218,7 @@ function computeTrend(values: Array<number | null>): SubsidiaryContributionSumma
   let cov = 0;
   let varX = 0;
   for (let i = 0; i < n; i++) {
-    cov  += (i - meanX) * (clean[i] - meanY);
+    cov  += (i - meanX) * (clean[i]! - meanY);
     varX += (i - meanX) ** 2;
   }
   if (varX === 0) return "stable";
@@ -363,7 +363,7 @@ export function processScopeAwareData(
     medianSalesContributionPct:  medianOf(salesPcts),
     medianCoreOIContributionPct: medianOf(coreOIPcts),
     medianNOAContributionPct:    medianOf(noaPcts),
-    latest: contributions.length > 0 ? contributions[contributions.length - 1] : null,
+    latest: contributions.length > 0 ? contributions[contributions.length - 1]! : null,
     patContributionTrend: computeTrend(contributions.map(c => c.patContributionPct)),
   };
 

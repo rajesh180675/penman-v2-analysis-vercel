@@ -121,9 +121,9 @@ function olsAR1(series: number[]): {
 
   let ssXY = 0, ssXX = 0, ssYY = 0;
   for (let i = 0; i < n; i++) {
-    ssXY += (x[i] - xMean) * (y[i] - yMean);
-    ssXX += (x[i] - xMean) ** 2;
-    ssYY += (y[i] - yMean) ** 2;
+    ssXY += (x[i]! - xMean) * (y[i]! - yMean);
+    ssXX += (x[i]! - xMean) ** 2;
+    ssYY += (y[i]! - yMean) ** 2;
   }
 
   const omega = ssXX > 0 ? ssXY / ssXX : 0;
@@ -133,7 +133,7 @@ function olsAR1(series: number[]): {
   const residuals: number[] = [];
   let ssRes = 0;
   for (let i = 0; i < n; i++) {
-    const resid = y[i] - (alpha + omega * x[i]);
+    const resid = y[i]! - (alpha + omega * x[i]!);
     residuals.push(resid);
     ssRes += resid ** 2;
   }
@@ -226,9 +226,9 @@ export function estimateFadeRate(
 
   const repiSeries: Array<{ year: string; reoi: number }> = [];
   for (let i = 1; i < sorted.length; i++) {
-    const reoi = sorted[i].ri?.ReOI;
+    const reoi = sorted[i]!.ri?.ReOI;
     if (reoi != null) {
-      const fy = sorted[i].period_end.slice(0, 4);
+      const fy = sorted[i]!.period_end.slice(0, 4);
       repiSeries.push({ year: `FY${fy}`, reoi });
     }
   }
@@ -256,7 +256,7 @@ export function estimateFadeRate(
 
   // Bayesian shrinkage toward industry prior
   const sectorKey = companyType?.toLowerCase().replace(/[^a-z-]/g, "") || "default";
-  const omegaIndustryPrior = INDUSTRY_OMEGA_PRIORS[sectorKey] ?? INDUSTRY_OMEGA_PRIORS["default"];
+  const omegaIndustryPrior = INDUSTRY_OMEGA_PRIORS[sectorKey] ?? INDUSTRY_OMEGA_PRIORS["default"]!;
   const kappa = 10; // prior strength
   const n = effectiveSeries.length;
   const lambda = n / (n + kappa);
@@ -332,8 +332,8 @@ export function estimateSegmentFadeRates(
     // Build segment ReOI series
     const reoiSeries: number[] = [];
     for (let i = 1; i < reversedYears.length; i++) {
-      const yr = reversedYears[i];
-      const prevYr = reversedYears[i - 1];
+      const yr = reversedYears[i]!;
+      const prevYr = reversedYears[i - 1]!;
       const d = segmentData.data[segName]?.[yr];
       const dPrev = segmentData.data[segName]?.[prevYr];
 
@@ -362,8 +362,8 @@ export function estimateSegmentFadeRates(
     else confidence = "low";
 
     // Lifecycle classification
-    const latestYr = years[0];
-    const thirdYr = years[2] || years[years.length - 1];
+    const latestYr = years[0]!;
+    const thirdYr = years[2] || years[years.length - 1]!;
     const latestRev = segmentData.data[segName]?.[latestYr]?.revenue ?? 0;
     const thirdRev = segmentData.data[segName]?.[thirdYr]?.revenue ?? 0;
     const latestResult = segmentData.data[segName]?.[latestYr]?.result ?? 0;

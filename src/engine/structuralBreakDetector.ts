@@ -112,8 +112,8 @@ export function detectStructuralBreaks(
   );
 
   for (let i = 1; i < sorted.length; i++) {
-    const curr = sorted[i];
-    const prev = sorted[i - 1];
+    const curr = sorted[i]!;
+    const prev = sorted[i - 1]!;
 
     // Equity (CSE)
     const cseChange = pctChange(curr.bs?.CSE ?? NaN, prev.bs?.CSE ?? NaN);

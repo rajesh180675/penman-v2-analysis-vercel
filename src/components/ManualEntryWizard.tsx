@@ -185,7 +185,7 @@ export default function ManualEntryWizard({ onSubmit }: { onSubmit: (rows: RawPe
       const p = state.periods[i];
       if (!p) continue;
       for (const [stmt, key] of requiredFields) {
-        if (num((p[stmt] as Record<string, string>)[key]) !== 0) filled++;
+        if (num((p[stmt] as Record<string, string>)[key] ?? "") !== 0) filled++;
       }
     }
     return Math.round((filled / (state.numPeriods * requiredFields.length)) * 100);

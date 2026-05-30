@@ -76,8 +76,8 @@ export function computeDirtySurplus(
   let cumDS = 0;
   let CSE_adj = periods[0]?.bs.CSE ?? 0;
   for (let i = 1; i < periods.length; i++) {
-    const cur = periods[i];
-    const prev = periods[i - 1];
+    const cur = periods[i]!;
+    const prev = periods[i - 1]!;
     const CNI_t = cur.is.CNI;
     const d_reported = cur.cf.DividendPaid; // positive = cash out
     const CSE_t = cur.bs.CSE;
@@ -132,8 +132,8 @@ export function computeDirtySurplusFramework(
     steady_state: 0,
   };
   for (let i = 1; i < periods.length; i++) {
-    const cur = periods[i];
-    const prev = periods[i - 1];
+    const cur = periods[i]!;
+    const prev = periods[i - 1]!;
     const ds = (cur.bs.CSE - prev.bs.CSE) - cur.is.CNI + cur.cf.DividendPaid;
     perPeriod[cur.period_end] = ds;
     const flags = periodFlags.find((f) => f.period_end === cur.period_end)?.flags ?? [];
@@ -214,7 +214,7 @@ function trailingStats(
   if (slice.length < 2) return { median: null, stdev: null };
   const sorted = [...slice].sort((a, b) => a - b);
   const m = Math.floor(sorted.length / 2);
-  const med = sorted.length % 2 === 0 ? (sorted[m - 1] + sorted[m]) / 2 : sorted[m];
+  const med = sorted.length % 2 === 0 ? (sorted[m - 1]! + sorted[m]!) / 2 : sorted[m]!;
   const mean = slice.reduce((s, v) => s + v, 0) / slice.length;
   const stdev = Math.sqrt(slice.reduce((s, v) => s + (v - mean) ** 2, 0) / (slice.length - 1));
   return { median: med, stdev };

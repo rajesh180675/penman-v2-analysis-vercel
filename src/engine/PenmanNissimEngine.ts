@@ -774,15 +774,15 @@ export function computeValuation(
   const rhoW = 1 + kw;
   const reSeries: Array<{ period: string; RE: number; ReOI: number }> = [];
   for (let i = 1; i < periods.length; i++) {
-    const cur = periods[i];
-    const prev = periods[i - 1];
+    const cur = periods[i]!;
+    const prev = periods[i - 1]!;
     reSeries.push({ period: cur.period_end, RE: cur.is.CNI - ke * prev.bs.CSE, ReOI: cur.is.OI - kw * prev.bs.NOA });
   }
   const pvRE = reSeries.reduce((s, r, i) => s + r.RE / Math.pow(rhoE, i + 1), 0);
   const pvReOI = reSeries.reduce((s, r, i) => s + r.ReOI / Math.pow(rhoW, i + 1), 0);
   const T = reSeries.length;
-  const lastRE = T ? reSeries[T - 1].RE : 0;
-  const lastReOI = T ? reSeries[T - 1].ReOI : 0;
+  const lastRE = T ? reSeries[T - 1]!.RE : 0;
+  const lastReOI = T ? reSeries[T - 1]!.ReOI : 0;
   const discE = Math.pow(rhoE, T);
   const discW = Math.pow(rhoW, T);
 
@@ -796,12 +796,12 @@ export function computeValuation(
   const CV_W_2 = rhoW > 1 ? lastReOI / (rhoW - 1) : 0;
   const CV_W_3 = rhoW - 1 - g > 0 ? (ReOI_terminal_anchor * (1 + g)) / (rhoW - 1 - g) : 0;
 
-  const CSE0 = periods[0].bs.CSE;
-  const NOA0 = periods[0].bs.NOA;
-  const NOA_T = periods[periods.length - 1].bs.NOA;
-  const NFO_latest = periods[periods.length - 1].bs.NFO;
-  const NFO0 = periods[0].bs.NFO;
-  const RNOA_T = periods[periods.length - 1].ratios?.RNOA ?? (NOA_T !== 0 ? periods[periods.length - 1].is.OI / NOA_T : 0);
+  const CSE0 = periods[0]!.bs.CSE;
+  const NOA0 = periods[0]!.bs.NOA;
+  const NOA_T = periods[periods.length - 1]!.bs.NOA;
+  const NFO_latest = periods[periods.length - 1]!.bs.NFO;
+  const NFO0 = periods[0]!.bs.NFO;
+  const RNOA_T = periods[periods.length - 1]!.ratios?.RNOA ?? (NOA_T !== 0 ? periods[periods.length - 1]!.is.OI / NOA_T : 0);
 
   // Phase J2: equity-side fail-closed gate.
   // Every equity-side intrinsic value is V = CSE0 + pvRE + CV/discE — the
@@ -812,7 +812,7 @@ export function computeValuation(
   // equity-side values in that case but keep enterprise-side V_ReOI
   // (anchored on NOA/NFO, no CSE dependency) so reformulation work,
   // segment SOTP, and EV-based comparables stay usable.
-  const latestCSE = periods[periods.length - 1].bs.CSE;
+  const latestCSE = periods[periods.length - 1]!.bs.CSE;
   const equityModelsBlocked = !(Number.isFinite(latestCSE) && latestCSE > 0);
   const equityBlockedReason = equityModelsBlocked
     ? `Latest common shareholders' equity is ${
@@ -864,8 +864,8 @@ export function computeValuation(
   let pvFCFF = 0;
   let pvFCFE = 0;
   for (let i = 1; i < periods.length; i++) {
-    const cur = periods[i];
-    const prev = periods[i - 1];
+    const cur = periods[i]!;
+    const prev = periods[i - 1]!;
     const dNOA = cur.bs.NOA - prev.bs.NOA;
     const dCSE = cur.bs.CSE - prev.bs.CSE;
     const NOPAT = cur.is.OI;
@@ -878,8 +878,8 @@ export function computeValuation(
     fcff_series.push({ period: cur.period_end, NOPAT, dNOA, FCFF, PV_FCFF: pvFf });
     fcfe_series.push({ period: cur.period_end, CNI: cur.is.CNI, dCSE, FCFE, PV_FCFE: pvFe });
   }
-  const lastFCFF = fcff_series.length ? fcff_series[fcff_series.length - 1].FCFF : 0;
-  const lastFCFE = fcfe_series.length ? fcfe_series[fcfe_series.length - 1].FCFE : 0;
+  const lastFCFF = fcff_series.length ? fcff_series[fcff_series.length - 1]!.FCFF : 0;
+  const lastFCFE = fcfe_series.length ? fcfe_series[fcfe_series.length - 1]!.FCFE : 0;
   const CV_FCFF = rhoW - 1 - g > 0 ? (lastFCFF * (1 + g)) / (rhoW - 1 - g) : 0;
   const CV_FCFE = rhoE - 1 - g > 0 ? (lastFCFE * (1 + g)) / (rhoE - 1 - g) : 0;
   const EV_FCFF = pvFCFF + (CV_FCFF / discW);
@@ -889,14 +889,14 @@ export function computeValuation(
   const aeg_series: Array<{ period: string; CNI: number; AEG: number; PV_AEG: number }> = [];
   let pvAEG = 0;
   for (let i = 2; i < periods.length; i++) {
-    const cur = periods[i];
-    const prev = periods[i - 1];
+    const cur = periods[i]!;
+    const prev = periods[i - 1]!;
     const aeg = cur.is.CNI - rhoE * prev.is.CNI;
     const pv = aeg / Math.pow(rhoE, i - 1);
     pvAEG += pv;
     aeg_series.push({ period: cur.period_end, CNI: cur.is.CNI, AEG: aeg, PV_AEG: pv });
   }
-  const cni1 = periods.length > 1 ? periods[1].is.CNI : periods[0].is.CNI;
+  const cni1 = periods.length > 1 ? periods[1]!.is.CNI : periods[0]!.is.CNI;
   const V_AEG = cni1 / Math.max(rhoE, 1e-6) + pvAEG;
 
   // Reverse DCF / implied growth for RE CV3
@@ -941,10 +941,10 @@ export function computeValuation(
     const ddmPer = equityModelsBlocked
       ? null
       : rhoE - 1 - g > 0
-        ? ((periods[periods.length - 1].cf.DividendPaid * (1 + g)) / (rhoE - 1 - g)) / sh
+        ? ((periods[periods.length - 1]!.cf.DividendPaid * (1 + g)) / (rhoE - 1 - g)) / sh
         : null;
     const aegPer = equityModelsBlocked ? null : V_AEG / sh;
-    const latestCSE_T = periods[periods.length - 1].bs.CSE;
+    const latestCSE_T = periods[periods.length - 1]!.bs.CSE;
     return {
       intrinsic_re_per_share: rePer,
       intrinsic_reoi_per_share: reoiPer,
@@ -955,8 +955,8 @@ export function computeValuation(
       implied_pb_re: !equityModelsBlocked && rePer != null && latestCSE_T > 0
         ? (rePer * sh) / latestCSE_T
         : null,
-      implied_pe_re: !equityModelsBlocked && rePer != null && periods[periods.length - 1].is.CNI !== 0
-        ? (rePer * sh) / periods[periods.length - 1].is.CNI
+      implied_pe_re: !equityModelsBlocked && rePer != null && periods[periods.length - 1]!.is.CNI !== 0
+        ? (rePer * sh) / periods[periods.length - 1]!.is.CNI
         : null,
       margin_of_safety_re: !equityModelsBlocked && rePer != null && cfg.market_price
         ? (rePer - cfg.market_price) / cfg.market_price
@@ -1005,8 +1005,8 @@ export function computeValuation(
     ke,
     kw,
     g,
-    separationScore: periods[periods.length - 1].bs.separationScore,
-    lowConfidence: periods[periods.length - 1].bs.separationScore < (cfg.separation_confidence_threshold ?? 70),
+    separationScore: periods[periods.length - 1]!.bs.separationScore,
+    lowConfidence: periods[periods.length - 1]!.bs.separationScore < (cfg.separation_confidence_threshold ?? 70),
     equityModelsBlocked,
     equityBlockedReason,
     impliedGrowthRE,
@@ -1035,7 +1035,7 @@ export function computeValuation(
     aeg: {
       aeg_series,
       V_AEG,
-      implied_pe: periods[periods.length - 1].is.CNI !== 0 ? V_AEG / periods[periods.length - 1].is.CNI : null,
+      implied_pe: periods[periods.length - 1]!.is.CNI !== 0 ? V_AEG / periods[periods.length - 1]!.is.CNI : null,
       normalised_pe: cni1 !== 0 ? V_AEG / cni1 : null,
     },
     perShare,

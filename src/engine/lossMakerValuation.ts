@@ -106,7 +106,7 @@ function median(arr: number[]): number | null {
   if (arr.length === 0) return null;
   const sorted = [...arr].sort((a, b) => a - b);
   const m = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[m] : (sorted[m - 1] + sorted[m]) / 2;
+  return sorted.length % 2 ? sorted[m]! : (sorted[m - 1]! + sorted[m]!) / 2;
 }
 
 /**
@@ -135,20 +135,20 @@ export function computeLossMakerValuation(
 
   if (!isLossMaker) return null;
 
-  const latest = sorted[sorted.length - 1];
+  const latest = sorted[sorted.length - 1]!;
   const latestRevenueCr = latest.is?.Sales ?? null;
 
   // Revenue growth
   let revenueGrowthYoY: number | null = null;
   if (sorted.length >= 2) {
-    const prev = sorted[sorted.length - 2];
+    const prev = sorted[sorted.length - 2]!;
     if ((prev.is?.Sales ?? 0) > 0 && (latest.is?.Sales ?? 0) > 0) {
       revenueGrowthYoY = (latest.is.Sales - prev.is.Sales) / prev.is.Sales;
     }
   }
   let revenueCAGR3y: number | null = null;
   if (sorted.length >= 4) {
-    const earliest = sorted[sorted.length - 4];
+    const earliest = sorted[sorted.length - 4]!;
     revenueCAGR3y = calcCAGR(latest.is?.Sales ?? 0, earliest.is?.Sales ?? 0, 3);
   }
 
@@ -267,8 +267,8 @@ export function computeLossMakerValuation(
     .filter((v) => v < 0);
   const narrowingLoss =
     opLosses.length >= 3 &&
-    Math.abs(opLosses[opLosses.length - 1]) <
-      Math.abs(opLosses[opLosses.length - 3]) * 0.7;
+    Math.abs(opLosses[opLosses.length - 1]!) <
+      Math.abs(opLosses[opLosses.length - 3]!) * 0.7;
 
   let signal: "green" | "amber" | "red" = "red";
   let summary: string;

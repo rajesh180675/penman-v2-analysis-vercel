@@ -122,7 +122,7 @@ describe("parser fidelity diagnostics", () => {
     ];
     // Remove CFO from period 2 — the manual diagnostic only flags non-finite CFO,
     // so deleting it forces the "manual-operating-core" check to fail
-    delete rawData[1].raw_metric_values["Net Cash from Operating Activities__CashFlow"];
+    delete rawData[1]!.raw_metric_values["Net Cash from Operating Activities__CashFlow"];
     const diagnostics = diagnoseManualRawPeriods(rawData);
     const fidelity = evaluateParserFidelity({
       sourceMode: "manual",

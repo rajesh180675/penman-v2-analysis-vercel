@@ -70,8 +70,8 @@ export function computePenmanExpectedReturn(
   if (!Number.isFinite(costOfCapital) || !Number.isFinite(omega)) return null;
   if (!Number.isFinite(marketPricePerShare) || !Number.isFinite(sharesOutstanding)) return null;
 
-  const latest = data[data.length - 1];
-  const prev = data[data.length - 2];
+  const latest = data[data.length - 1]!;
+  const prev = data[data.length - 2]!;
 
   // Extract RNOA. Guard against NaN: when EngineConfig is under-specified
   // (missing tax_rate_mode / statutory_tax_rate) the OI computation in
@@ -95,12 +95,12 @@ export function computePenmanExpectedReturn(
   // Use median of available growth rates for stability
   const growthRates: number[] = [];
   for (let i = data.length - 1; i >= Math.max(1, data.length - 5); i--) {
-    const cur = data[i].bs?.NOA ?? 0;
-    const prv = data[i - 1].bs?.NOA ?? 0;
+    const cur = data[i]!.bs?.NOA ?? 0;
+    const prv = data[i - 1]!.bs?.NOA ?? 0;
     if (prv > 0 && cur > 0) growthRates.push((cur - prv) / prv);
   }
   growthRates.sort((a, b) => a - b);
-  const g = growthRates.length > 0 ? growthRates[Math.floor(growthRates.length / 2)] : noaGrowth;
+  const g = growthRates.length > 0 ? growthRates[Math.floor(growthRates.length / 2)]! : noaGrowth;
 
   // Clamp growth to reasonable range
   const gClamped = Math.max(-0.05, Math.min(0.25, g));

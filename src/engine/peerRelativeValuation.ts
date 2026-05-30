@@ -76,8 +76,8 @@ function median(arr: number[]): number | null {
   const sorted = [...clean].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid];
+    ? (sorted[mid - 1]! + sorted[mid]!) / 2
+    : sorted[mid]!;
 }
 
 function percentileOf(value: number, arr: number[]): number | null {
@@ -116,14 +116,14 @@ function extractLatestRatios(data: RecastPeriod[]): {
   RNOA: number | null;
 } | null {
   if (data.length < 1) return null;
-  const latest = data[data.length - 1];
+  const latest = data[data.length - 1]!;
   const ratios = latest.ratios;
   if (!ratios) return null;
 
   // Sales growth from last 2 periods
   let salesGrowth: number | null = null;
   if (data.length >= 2) {
-    const prev = data[data.length - 2];
+    const prev = data[data.length - 2]!;
     if (prev.is.Sales > 0 && latest.is.Sales > 0) {
       salesGrowth = (latest.is.Sales - prev.is.Sales) / prev.is.Sales;
     }

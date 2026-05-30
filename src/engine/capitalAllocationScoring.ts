@@ -88,8 +88,8 @@ function medianOf(values: number[]): number | null {
   const sorted = [...clean].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid];
+    ? (sorted[mid - 1]! + sorted[mid]!) / 2
+    : sorted[mid]!;
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -164,8 +164,8 @@ function scoreDividendConsistency(
   // Trend: count YoY increases
   let increases = 0, decreases = 0;
   for (let i = 1; i < divs.length; i++) {
-    if (divs[i] > divs[i - 1] * 1.01) increases++;
-    else if (divs[i] < divs[i - 1] * 0.99) decreases++;
+    if (divs[i]! > divs[i - 1]! * 1.01) increases++;
+    else if (divs[i]! < divs[i - 1]! * 0.99) decreases++;
   }
   const trendRatio = (increases - decreases) / (divs.length - 1);
 
@@ -308,8 +308,8 @@ function scoreReinvestmentROIC(
   const incrementalROICs: number[] = [];
 
   for (let i = 1; i < periods.length; i++) {
-    const prev = periods[i - 1];
-    const curr = periods[i];
+    const prev = periods[i - 1]!;
+    const curr = periods[i]!;
     const prevNOA  = Number.isFinite(prev.bs.NOA) ? prev.bs.NOA : null;
     const currNOA  = Number.isFinite(curr.bs.NOA) ? curr.bs.NOA : null;
     const prevCOI  = Number.isFinite(prev.cu.CoreOI ?? NaN) ? (prev.cu.CoreOI as number) : null;

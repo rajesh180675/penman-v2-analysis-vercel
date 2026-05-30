@@ -201,7 +201,7 @@ export function resolveValuationSectorTemplate(
   data: RecastPeriod[],
   preferredTemplate: ValuationSectorTemplate | null | undefined,
 ) {
-  const latest = data[data.length - 1];
+  const latest = data[data.length - 1]!;
   const resolvedId = preferredTemplate && preferredTemplate !== "auto"
     ? preferredTemplate
     : inferTemplateId(latest);

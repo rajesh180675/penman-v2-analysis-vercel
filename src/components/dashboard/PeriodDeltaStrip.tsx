@@ -49,8 +49,8 @@ function deltaArrow(pctChange: number | null): string {
 export default function PeriodDeltaStrip({ data }: Props) {
   if (!data || data.length < 2) return null;
 
-  const latest = data[data.length - 1];
-  const prior = data[data.length - 2];
+  const latest = data[data.length - 1]!;
+  const prior = data[data.length - 2]!;
 
   const entries: DeltaEntry[] = [
     { label: "Sales",          current: latest.is.Sales,           prior: prior.is.Sales,           format: "currency", direction: "higher-better" },

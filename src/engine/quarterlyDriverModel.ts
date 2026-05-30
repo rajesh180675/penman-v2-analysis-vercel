@@ -26,7 +26,7 @@ function median(values: Array<number | null | undefined>) {
   const filtered = values.filter((value): value is number => value != null && Number.isFinite(value)).sort((a, b) => a - b);
   if (!filtered.length) return null;
   const middle = Math.floor(filtered.length / 2);
-  return filtered.length % 2 === 0 ? (filtered[middle - 1] + filtered[middle]) / 2 : filtered[middle];
+  return filtered.length % 2 === 0 ? (filtered[middle - 1]! + filtered[middle]!) / 2 : filtered[middle]!;
 }
 
 export function buildQuarterlyDriverSummary(rawData: RawPeriodData[] | null | undefined, recastData: RecastPeriod[] | null | undefined): QuarterlyDriverSummary {
@@ -55,21 +55,21 @@ export function buildQuarterlyDriverSummary(rawData: RawPeriodData[] | null | un
   const inventoryIntensity = safeRatio(latestRecast?.bs.Inventory ?? null, latestRecast?.is.Sales ?? null);
   const receivableIntensity = safeRatio(latestRecast?.bs.TradeReceivables ?? null, latestRecast?.is.Sales ?? null);
   const assetExpansionPct =
-    recast.length >= 2 && recast[recast.length - 2].bs.PPE !== 0
-      ? (latestRecast!.bs.PPE - recast[recast.length - 2].bs.PPE) / Math.abs(recast[recast.length - 2].bs.PPE)
+    recast.length >= 2 && recast[recast.length - 2]!.bs.PPE !== 0
+      ? (latestRecast!.bs.PPE - recast[recast.length - 2]!.bs.PPE) / Math.abs(recast[recast.length - 2]!.bs.PPE)
       : null;
 
   const ppeGrowth = median(
     recast.slice(-3).map((period, index, array) => {
       if (index === 0) return null;
-      const prev = array[index - 1];
+      const prev = array[index - 1]!;
       return prev.bs.PPE !== 0 ? (period.bs.PPE - prev.bs.PPE) / Math.abs(prev.bs.PPE) : null;
     }),
   );
   const salesGrowth = median(
     recast.slice(-3).map((period, index, array) => {
       if (index === 0) return null;
-      const prev = array[index - 1];
+      const prev = array[index - 1]!;
       return prev.is.Sales !== 0 ? (period.is.Sales - prev.is.Sales) / Math.abs(prev.is.Sales) : null;
     }),
   );

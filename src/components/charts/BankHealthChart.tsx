@@ -31,7 +31,7 @@ export default function BankHealthChart({ metrics, ke }: Props) {
     CostIncome: m.costToIncome != null ? +(m.costToIncome * 100).toFixed(1) : null,
   }));
 
-  const latest = data[data.length - 1];
+  const latest = data[data.length - 1]!;
   const keePct = ke != null ? +(ke * 100).toFixed(1) : null;
 
   return (

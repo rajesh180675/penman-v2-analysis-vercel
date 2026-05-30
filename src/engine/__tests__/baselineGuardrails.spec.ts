@@ -83,6 +83,6 @@ describe("phase 0 baseline guardrails", () => {
     expect(s1).not.toBeNull();
     expect(s1?.snapshotId).toBe(s2?.snapshotId);
     expect(s1?.benchmarkUniverse.length).toBe(6);
-    expect(PHASE0_BENCHMARK_SET[0].id).toBe("ITC");
+    expect(PHASE0_BENCHMARK_SET[0]!.id).toBe("ITC");
   });
 });

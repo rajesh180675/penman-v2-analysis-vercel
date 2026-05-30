@@ -29,8 +29,8 @@ function quantile(sorted: number[], q: number) {
   const idx = (sorted.length - 1) * q;
   const lo = Math.floor(idx);
   const hi = Math.ceil(idx);
-  if (lo === hi) return sorted[lo];
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+  if (lo === hi) return sorted[lo]!;
+  return sorted[lo]! + (sorted[hi]! - sorted[lo]!) * (idx - lo);
 }
 
 self.onmessage = (ev: MessageEvent<unknown>) => {
@@ -51,7 +51,7 @@ self.onmessage = (ev: MessageEvent<unknown>) => {
   const sotpSamples: number[] = runSOTP ? new Array<number>(n) : [];
 
   // Latest period for SOTP (most recent)
-  const latestPeriod = basePeriods[basePeriods.length - 1];
+  const latestPeriod = basePeriods[basePeriods.length - 1]!;
 
   for (let i = 0; i < n; i++) {
     const ke = Math.max(0.03, sample(paramDistributions.ke, random));
@@ -90,7 +90,7 @@ self.onmessage = (ev: MessageEvent<unknown>) => {
       // Normalize so shares sum to 1
       const perturbedDefs: SegmentDefinition[] = segmentDefinitions.map(seg => ({
         ...seg,
-        operatingProfitShare: totalShare > 0 ? perturbedShares[seg.name] / totalShare : seg.operatingProfitShare,
+        operatingProfitShare: totalShare > 0 ? perturbedShares[seg.name]! / totalShare : seg.operatingProfitShare,
       }));
 
       const sotpResult = buildSOTPValuation(latestPeriod, perturbedDefs, ke);

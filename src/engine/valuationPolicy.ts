@@ -78,7 +78,7 @@ export function resolveValuationReadiness(periods: RecastPeriod[]): ValuationRea
   }
 
   const latestIndex = periods.length - 1;
-  const latest = periods[latestIndex];
+  const latest = periods[latestIndex]!;
   const terminalFlags = getTerminalFlags(latest);
   const contamination = computeContaminationTier(terminalFlags);
   const terminalFlagLabels = terminalFlags.map((flag) => flag.label);
@@ -146,12 +146,12 @@ export function resolveValuationReadiness(periods: RecastPeriod[]): ValuationRea
   }
 
   for (let i = latestIndex - 1; i >= 1; i -= 1) {
-    if (!isAcceptableAnchor(periods[i])) continue;
-    reasons.push(`Using prior anchor period ${periods[i].period_end} because ${latest.period_end} is ${contamination.tier.toLowerCase()}.`);
+    if (!isAcceptableAnchor(periods[i]!)) continue;
+    reasons.push(`Using prior anchor period ${periods[i]!.period_end} because ${latest.period_end} is ${contamination.tier.toLowerCase()}.`);
     return {
       status: "guarded",
       latestPeriod: latest.period_end,
-      anchorPeriod: periods[i].period_end,
+      anchorPeriod: periods[i]!.period_end,
       anchorIndex: i,
       fallbackUsed: true,
       contaminationTier: contamination.tier,
@@ -167,7 +167,7 @@ export function resolveValuationReadiness(periods: RecastPeriod[]): ValuationRea
   const fallbackPeriod = periods[fallbackIndex];
   reasons.push(
     fallbackIndex !== latestIndex
-      ? `No clean fallback anchor was found. Using nearest prior period ${fallbackPeriod.period_end} in guarded mode.`
+      ? `No clean fallback anchor was found. Using nearest prior period ${fallbackPeriod!.period_end} in guarded mode.`
       : "No prior anchor period is available. Using the latest period in guarded mode."
   );
 

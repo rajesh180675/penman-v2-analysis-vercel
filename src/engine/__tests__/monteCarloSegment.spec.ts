@@ -163,7 +163,7 @@ describe("deriveSegmentUncertainties", () => {
     );
     const result = deriveSegmentUncertainties(sd);
     const sorted = [...result].sort((a, b) => b.meanShare.mean - a.meanShare.mean);
-    expect(sorted[0].name).toBe("Cigarettes");
+    expect(sorted[0]!.name).toBe("Cigarettes");
   });
 
   it("std is non-negative for all segments", () => {

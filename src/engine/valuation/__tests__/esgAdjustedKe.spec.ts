@@ -51,7 +51,7 @@ describe("esgAdjustmentBps", () => {
   it("Adjustment is monotonic: AAA < AA < ... < CCC", () => {
     const order = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC"] as const;
     for (let i = 1; i < order.length; i++) {
-      expect(esgAdjustmentBps(order[i])).toBeGreaterThan(esgAdjustmentBps(order[i - 1]));
+      expect(esgAdjustmentBps(order[i]!)).toBeGreaterThan(esgAdjustmentBps(order[i - 1]!));
     }
   });
 

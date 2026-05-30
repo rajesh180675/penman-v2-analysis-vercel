@@ -47,7 +47,7 @@ describe("bankPipeline", () => {
   ];
 
   it("extracts bank metrics from raw period data", () => {
-    const metrics = extractBankMetrics(bankPeriods[1]);
+    const metrics = extractBankMetrics(bankPeriods[1]!);
     expect(metrics.totalAssets).toBe(4200000);
     expect(metrics.advances).toBe(2900000);
     expect(metrics.deposits).toBe(2700000);
@@ -65,10 +65,10 @@ describe("bankPipeline", () => {
     expect(result.periods).toHaveLength(2);
 
     // Second period should have ratios
-    expect(result.periods[1].bookValue).toBe(430000);
-    expect(result.periods[1].earnings).toBe(62000);
-    expect(result.periods[1].deposits).toBe(2700000);
-    expect(result.periods[1].advances).toBe(2900000);
+    expect(result.periods[1]!.bookValue).toBe(430000);
+    expect(result.periods[1]!.earnings).toBe(62000);
+    expect(result.periods[1]!.deposits).toBe(2700000);
+    expect(result.periods[1]!.advances).toBe(2900000);
   });
 
   it("detects bank subtype from scope signals", () => {

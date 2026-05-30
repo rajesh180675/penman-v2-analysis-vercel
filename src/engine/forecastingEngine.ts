@@ -35,7 +35,7 @@ function median(values: Array<number | null | undefined>) {
   const filtered = values.filter((value): value is number => value != null && Number.isFinite(value)).sort((a, b) => a - b);
   if (!filtered.length) return null;
   const middle = Math.floor(filtered.length / 2);
-  return filtered.length % 2 === 0 ? (filtered[middle - 1] + filtered[middle]) / 2 : filtered[middle];
+  return filtered.length % 2 === 0 ? (filtered[middle - 1]! + filtered[middle]!) / 2 : filtered[middle]!;
 }
 
 function latestFinite(values: Array<number | null | undefined>) {
@@ -518,7 +518,7 @@ export function buildScenario(
     if (!Number.isFinite(value)) {
       throw new Error(`Scenario driver '${name}' contains non-finite value at index ${Math.min(idx, values.length - 1)}`);
     }
-    return value;
+    return value!;
   };
   const pickOptionalDriverValue = (values: number[] | undefined, idx: number): number | null => {
     if (!values?.length) return null;
@@ -526,7 +526,7 @@ export function buildScenario(
     if (!Number.isFinite(value)) {
       throw new Error(`Scenario driver contains non-finite optional value at index ${Math.min(idx, values.length - 1)}`);
     }
-    return value;
+    return value!;
   };
 
   const d = scenario.drivers;

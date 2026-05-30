@@ -28,6 +28,7 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
     "useUnknownInCatchVariables": true
   },
   "include": ["src", "server", "vite.config.ts"]

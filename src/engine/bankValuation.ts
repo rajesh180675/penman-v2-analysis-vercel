@@ -358,8 +358,8 @@ function median(values: number[]): number | null {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2
-    ? sorted[mid]
-    : (sorted[mid - 1] + sorted[mid]) / 2;
+    ? sorted[mid]!
+    : (sorted[mid - 1]! + sorted[mid]!) / 2;
 }
 
 function skipped(reason: string, diagnostics: Record<string, number | null> = {}): BankValuationModelResult {
@@ -446,7 +446,7 @@ function equityResidualIncome(
   const eligible = metrics.filter((m) => m.totalEquity != null && m.totalEquity > 0 && m.pat != null);
   if (eligible.length < 3) return skipped(`only ${eligible.length} usable periods, need ≥3 with positive book value`);
 
-  const latest = eligible[eligible.length - 1];
+  const latest = eligible[eligible.length - 1]!;
   const bv0 = latest.totalEquity!;
 
   // Latest realized ROE (not sustainable) anchors the forward forecast.
@@ -531,7 +531,7 @@ function evBasedValuation(
   if (eligible.length === 0) {
     return skipped("Embedded Value sidecar data unavailable (quality_indicators.json must supply embedded_value)");
   }
-  const latest = eligible[eligible.length - 1];
+  const latest = eligible[eligible.length - 1]!;
   const ev = latest.quality!.embedded_value!;
   const vnb = latest.quality!.vnb ?? null;
 
@@ -600,7 +600,7 @@ function pAumLens(
   if (eligibleAum.length === 0) {
     return skipped("aum_cr missing from quality_indicators.json (NBFC P/AUM needs AUM data)");
   }
-  const latestWithAum = eligibleAum[eligibleAum.length - 1];
+  const latestWithAum = eligibleAum[eligibleAum.length - 1]!;
   const aum = latestWithAum.quality!.aum_cr!;
   if (aum <= 0) return skipped("non-positive AUM");
 
@@ -652,7 +652,7 @@ function roaLeverageRI(
   if (eligible.length < 3) {
     return skipped(`only ${eligible.length} usable periods, need ≥3 with positive book value`);
   }
-  const latest = eligible[eligible.length - 1];
+  const latest = eligible[eligible.length - 1]!;
   const bv0 = latest.totalEquity!;
   const latestROA = latest.roa;
   const latestLeverage = latest.leverage;
@@ -735,7 +735,7 @@ function crarGovernor(
       },
     };
   }
-  const latest = eligible[eligible.length - 1];
+  const latest = eligible[eligible.length - 1]!;
   const crar = latest.quality!.crar_pct!;
   const headroomBps = (crar - required) * 100;
 
@@ -790,7 +790,7 @@ function creditCostCycle(metrics: BankPeriodMetrics[]): CreditCostCycleCheck {
     };
   }
   const med = median(series);
-  const latest = metrics[metrics.length - 1].creditCost;
+  const latest = metrics[metrics.length - 1]!.creditCost;
   if (med == null || latest == null) {
     return {
       status: "skipped",
@@ -890,8 +890,8 @@ function spreadCompressionCheck(metrics: BankPeriodMetrics[]): SpreadCompression
     };
   }
 
-  const latest = withSpread[withSpread.length - 1];
-  const prior = withSpread[withSpread.length - 2];
+  const latest = withSpread[withSpread.length - 1]!;
+  const prior = withSpread[withSpread.length - 2]!;
   const latestCoB = latest.costOfBorrowings!;
   const latestYield = latest.yieldOnAdvances!;
   const latestSpread = latest.spread!;
@@ -902,8 +902,8 @@ function spreadCompressionCheck(metrics: BankPeriodMetrics[]): SpreadCompression
   const sortedSpreads = [...spreadSeries].sort((a, b) => a - b);
   const mid = Math.floor(sortedSpreads.length / 2);
   const medianSpread = sortedSpreads.length % 2
-    ? sortedSpreads[mid]
-    : (sortedSpreads[mid - 1] + sortedSpreads[mid]) / 2;
+    ? sortedSpreads[mid]!
+    : (sortedSpreads[mid - 1]! + sortedSpreads[mid]!) / 2;
 
   // Spread ratio: < 1 means current spread is below median (compressed)
   const spreadRatio = medianSpread > 0 ? latestSpread / medianSpread : null;
@@ -1032,7 +1032,7 @@ function eclStressGovernor(
     };
   }
 
-  const latest = eligible[eligible.length - 1];
+  const latest = eligible[eligible.length - 1]!;
   const q = latest.quality!;
   const stage3 = q.stage3_pct!;
   const eclCoverage = q.ecl_coverage_pct ?? null;  // coerce undefined → null
@@ -1145,7 +1145,7 @@ export function computeBankValuation(
     crarGovernorResult = gov.result;
   }
 
-  const latest = metrics[metrics.length - 1];
+  const latest = metrics[metrics.length - 1]!;
   const latestBV = latest.totalEquity;
 
   const { value: sustainableROE, obsCount } = computeSustainableROE(metrics);

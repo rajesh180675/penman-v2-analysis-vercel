@@ -168,7 +168,7 @@ async function fetchRbiNhbFile(baseUrl: string): Promise<RbiNhbPeriod[]> {
     trace("sidecar", "rbiNhbFetch:success", {
       url,
       periods: result.length,
-      sampleFields: result.length > 0 ? Object.keys(result[0]).filter(k => (result[0] as unknown as Record<string, unknown>)[k] != null).length : 0,
+      sampleFields: result.length > 0 ? Object.keys(result[0]!).filter(k => (result[0] as unknown as Record<string, unknown>)[k] != null).length : 0,
     });
     return result;
   } catch (err) {

@@ -77,8 +77,8 @@ function median(values: number[]): number | null {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2
-    ? sorted[mid]
-    : (sorted[mid - 1] + sorted[mid]) / 2;
+    ? sorted[mid]!
+    : (sorted[mid - 1]! + sorted[mid]!) / 2;
 }
 
 function stdDev(values: number[]): number | null {
@@ -95,8 +95,8 @@ function quantile(values: number[], q: number): number | null {
   const idx = (sorted.length - 1) * q;
   const lo = Math.floor(idx);
   const hi = Math.ceil(idx);
-  if (lo === hi) return sorted[lo];
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+  if (lo === hi) return sorted[lo]!;
+  return sorted[lo]! + (sorted[hi]! - sorted[lo]!) * (idx - lo);
 }
 
 /**
@@ -191,7 +191,7 @@ function assessCyclicalityInternal(
   const { values, metric } = series;
   const med = median(values);
   const sd = stdDev(values);
-  const latest = values[values.length - 1];
+  const latest = values[values.length - 1]!;
 
   // Use absolute median for CV when median is small (e.g. RNOA could be near 0)
   // to avoid divide-by-near-zero blowups.

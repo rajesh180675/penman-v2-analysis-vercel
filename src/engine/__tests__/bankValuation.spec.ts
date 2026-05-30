@@ -66,9 +66,9 @@ function buildHistory(roes: number[], bvStart = 8_000, bvGrowth = 0.10): BankPer
   let bv = bvStart;
   for (let i = 0; i < roes.length; i++) {
     bv *= 1 + bvGrowth;
-    const pat = roes[i] * bv;
+    const pat = roes[i]! * bv;
     periods.push(
-      bankPeriod(`${2020 + i}-03-31`, { totalEquity: bv, pat, roe: roes[i] }),
+      bankPeriod(`${2020 + i}-03-31`, { totalEquity: bv, pat, roe: roes[i]! }),
     );
   }
   return periods;
@@ -110,7 +110,7 @@ describe("computeBankValuation — Phase B4", () => {
       const result = computeBankValuation(periods, cfg({ ke: PercentFraction(0.12) }));
       expect(result.justifiedPB.status).toBe("computed");
       expect(result.justifiedPB.diagnostics.fairPB).toBeGreaterThan(1);
-      expect(result.justifiedPB.intrinsicValue).toBeGreaterThan(periods[periods.length - 1].totalEquity!);
+      expect(result.justifiedPB.intrinsicValue).toBeGreaterThan(periods[periods.length - 1]!.totalEquity!);
     });
 
     it("computes fair P/B ≤ 1 when sustainable ROE ≤ ke", () => {
@@ -139,7 +139,7 @@ describe("computeBankValuation — Phase B4", () => {
       const periods = buildHistory([0.18, 0.19, 0.18, 0.17, 0.18]);
       const result = computeBankValuation(periods, cfg({ ke: PercentFraction(0.12) }));
       expect(result.equityResidualIncome.status).toBe("computed");
-      const bv0 = periods[periods.length - 1].totalEquity!;
+      const bv0 = periods[periods.length - 1]!.totalEquity!;
       expect(result.equityResidualIncome.intrinsicValue).toBeGreaterThan(bv0);
     });
 
@@ -187,7 +187,7 @@ describe("computeBankValuation — Phase B4", () => {
     it("skips when latest earnings are non-positive", () => {
       const periods = buildHistory([0.15, 0.16, 0.15, 0.15, 0.15]);
       // Override latest period to have zero PAT
-      periods[periods.length - 1].pat = 0;
+      periods[periods.length - 1]!.pat = 0;
       const result = computeBankValuation(periods, cfg(), null, 0.30);
       expect(result.sustainableDDM.status).toBe("skipped");
       expect(result.sustainableDDM.reason).toMatch(/non-positive/);
@@ -206,8 +206,8 @@ describe("computeBankValuation — Phase B4", () => {
           result.sustainableDDM.intrinsicValue,
         ].filter((v): v is number => v != null).sort((a, b) => a - b);
         // Triangulated value sits within [min, max]
-        expect(result.triangulatedValue).toBeGreaterThanOrEqual(computedVals[0]);
-        expect(result.triangulatedValue).toBeLessThanOrEqual(computedVals[computedVals.length - 1]);
+        expect(result.triangulatedValue).toBeGreaterThanOrEqual(computedVals[0]!);
+        expect(result.triangulatedValue).toBeLessThanOrEqual(computedVals[computedVals.length - 1]!);
       }
     });
 
@@ -221,7 +221,7 @@ describe("computeBankValuation — Phase B4", () => {
       expect(result.sustainableDDM.status).toBe("skipped");
       // ERI computes; bv0 ≈ 10,648, intrinsic value should be below book.
       if (result.equityResidualIncome.status === "computed") {
-        const bv0 = periods[periods.length - 1].totalEquity!;
+        const bv0 = periods[periods.length - 1]!.totalEquity!;
         expect(result.equityResidualIncome.intrinsicValue!).toBeLessThan(bv0);
       }
       // Triangulation with one model is just that model's value.

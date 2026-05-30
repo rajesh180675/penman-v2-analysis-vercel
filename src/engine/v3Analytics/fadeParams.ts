@@ -50,12 +50,12 @@ export function estimateFadeParams(
       const n = X.length;
       const meanX = X.reduce((s, v) => s + v, 0) / n;
       const meanY = Y.reduce((s, v) => s + v, 0) / n;
-      const cov = X.reduce((s, v, i) => s + (v - meanX) * (Y[i] - meanY), 0) / n;
+      const cov = X.reduce((s, v, i) => s + (v - meanX) * (Y[i]! - meanY), 0) / n;
       const varX = X.reduce((s, v) => s + (v - meanX) ** 2, 0) / n;
       const phi = varX > 0 ? cov / varX : npDefault;
       const alpha = meanY - phi * meanX;
       // R²
-      const ss_res = Y.reduce((s, y, i) => s + (y - (alpha + phi * X[i])) ** 2, 0);
+      const ss_res = Y.reduce((s, y, i) => s + (y - (alpha + phi * X[i]!)) ** 2, 0);
       const ss_tot = Y.reduce((s, y) => s + (y - meanY) ** 2, 0);
       const r2 = ss_tot > 0 ? 1 - ss_res / ss_tot : 0;
       if (r2 > 0.30 && phi > 0.50 && phi < 0.98) {

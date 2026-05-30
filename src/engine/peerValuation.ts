@@ -28,7 +28,7 @@ function median(values: Array<number | null | undefined>) {
   const filtered = values.filter((value): value is number => value != null && Number.isFinite(value)).sort((a, b) => a - b);
   if (!filtered.length) return null;
   const middle = Math.floor(filtered.length / 2);
-  return filtered.length % 2 === 0 ? (filtered[middle - 1] + filtered[middle]) / 2 : filtered[middle];
+  return filtered.length % 2 === 0 ? (filtered[middle - 1]! + filtered[middle]!) / 2 : filtered[middle]!;
 }
 
 export function buildPeerValuationSnapshot(args: {

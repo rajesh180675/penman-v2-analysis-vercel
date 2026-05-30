@@ -90,7 +90,7 @@ describe("bridge debt mapping", () => {
 
   it("captures debentures and current maturities in the bridge debt total while excluding leases", () => {
     const periods = processCompanyData(currentMaturityIssuer, DEFAULT_CONFIG);
-    const latest = periods[periods.length - 1];
+    const latest = periods[periods.length - 1]!;
 
     expect(traceKeys(latest, "BS.BridgeDebt.Debentures")).toContain("Debentures / Bonds Quoted");
     expect(traceKeys(latest, "BS.BridgeDebt.CurrentMaturities")).toContain("Total Current Maturities of Long-term Borrowings");
@@ -99,7 +99,7 @@ describe("bridge debt mapping", () => {
 
   it("creates the dedicated bridge-debt trace lines on another real-company fixture", () => {
     const periods = processCompanyData(asianPaintsAuditedFixture.rawData as RawPeriodData[], { ...DEFAULT_CONFIG, company_type: "industrial" as const });
-    const latest = periods[periods.length - 1];
+    const latest = periods[periods.length - 1]!;
 
     expect(latest.trace?.["BS.BridgeDebt.Total"]?.length).toBeGreaterThan(0);
     expect(latest.trace?.["CF.BridgeDebtProceeds"]?.length).toBeGreaterThan(0);

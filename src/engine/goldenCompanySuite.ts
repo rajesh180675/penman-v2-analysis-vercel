@@ -717,7 +717,7 @@ export function runGoldenCompanyCase(testCase: GoldenCompanyCase, config: Engine
   const periods = processCompanyData(testCase.rawData, effectiveConfig);
   const qualityGate = evaluateQualityGate(testCase.rawData, null, periods);
   const valuationReadiness = resolveValuationReadiness(periods);
-  const latestPeriod = periods[periods.length - 1];
+  const latestPeriod = periods[periods.length - 1]!;
 
   return {
     companyId: testCase.companyId,

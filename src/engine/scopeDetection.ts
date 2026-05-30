@@ -50,9 +50,9 @@ export function detectReportingScope(html: string): ScopeMetadata {
   );
 
   if (headerMatch) {
-    const statementType = headerMatch[1].trim();
-    const scopeStr = headerMatch[2].trim().toLowerCase();
-    const companyName = headerMatch[3].trim().replace(/\(Curr\..*$/, "").trim();
+    const statementType = headerMatch[1]!.trim();
+    const scopeStr = headerMatch[2]!.trim().toLowerCase();
+    const companyName = headerMatch[3]!.trim().replace(/\(Curr\..*$/, "").trim();
 
     const scope: ReportingScope = scopeStr.includes("consolidated")
       ? "consolidated"
@@ -83,7 +83,7 @@ export function detectReportingScope(html: string): ScopeMetadata {
   // to the document head for the same reason).
   const headSlice = html.slice(0, 4096);
   const companyMatch = headSlice.match(/(?:&gt;|&#62;|>){2}\s*([A-Z][^(<]{2,40}?)(?:\(|<)/);
-  const companyName = companyMatch ? companyMatch[1].trim() : null;
+  const companyName = companyMatch ? companyMatch[1]!.trim() : null;
 
   return {
     scope,

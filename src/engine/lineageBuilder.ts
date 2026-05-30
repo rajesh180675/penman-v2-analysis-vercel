@@ -267,8 +267,8 @@ export function buildLineageRef(map: LineageMap | null): LineageRef {
   const periods = new Set<string>();
   for (const key of Object.keys(map.entries)) {
     const [concept, period] = key.split("|");
-    concepts.add(concept);
-    periods.add(period);
+    concepts.add(concept!);
+    periods.add(period!);
   }
   return {
     hasLineage: true,

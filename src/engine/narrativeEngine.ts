@@ -40,7 +40,7 @@ export function generateDashboardNarrative(
   config: EngineConfig,
 ): string {
   if (!data || data.length < 2) return "";
-  const latest = data[data.length - 1];
+  const latest = data[data.length - 1]!;
   const r = latest.ratios;
   if (!r) return "";
 
@@ -92,7 +92,7 @@ export function generateDashboardNarrative(
   }
 
   // Revenue growth
-  const revGrowth = cagr(data[0].is.Sales, latest.is.Sales, data.length);
+  const revGrowth = cagr(data[0]!.is.Sales, latest.is.Sales, data.length);
   if (revGrowth != null) {
     sentences.push(
       `Revenue has compounded at ${pct(revGrowth)} over ${data.length - 1} years.`,
@@ -109,7 +109,7 @@ export function generateRatiosNarrative(
   config: EngineConfig,
 ): string {
   if (!data || data.length < 2) return "";
-  const latest = data[data.length - 1];
+  const latest = data[data.length - 1]!;
   const r = latest.ratios;
   if (!r) return "";
 

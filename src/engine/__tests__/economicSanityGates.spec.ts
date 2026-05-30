@@ -162,7 +162,7 @@ describe("economicSanityGates / evaluateEconomicSanity", () => {
     const summary = evaluateEconomicSanity(periods, periods.map((p) => mkRaw(p.period_end)));
     expect(summary.anchorPeriod).toBe("2024-03-31");
     expect(summary.skippedPeriods).toHaveLength(1);
-    expect(summary.skippedPeriods[0].period).toBe("2025-03-31");
+    expect(summary.skippedPeriods[0]!.period).toBe("2025-03-31");
   });
 
   it("RNOA_JUMP_THRESHOLD constant is exposed and reasonable", () => {

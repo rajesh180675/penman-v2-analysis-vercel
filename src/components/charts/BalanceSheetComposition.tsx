@@ -49,7 +49,7 @@ export default function BalanceSheetComposition({ data, mode = "abs" }: Props) {
   const fmt = (v: number) =>
     mode === "common" ? `${v?.toFixed(1)}%` : `₹${v?.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr`;
 
-  const latest = data[data.length - 1];
+  const latest = data[data.length - 1]!;
   const ta = latest.bs.TA;
   const showLatest = ta > 0;
 

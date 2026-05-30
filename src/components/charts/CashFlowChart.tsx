@@ -42,7 +42,7 @@ export default function CashFlowChart({ data, unit = "₹ Cr" }: Props) {
     };
   });
 
-  const latest = series[series.length - 1];
+  const latest = series[series.length - 1]!;
   const totals = series.reduce(
     (a, p) => ({
       CFO: a.CFO + p.CFO,

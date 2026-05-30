@@ -594,13 +594,13 @@ export function processBankData(
   // Compute ratios (need previous period for averages)
   const computed: BankPeriodMetrics[] = [];
   for (let i = 0; i < rawMetrics.length; i++) {
-    const prev = i > 0 ? computed[i - 1] : null;
-    computed.push(computeBankRatios(rawMetrics[i], prev, subtype));
+    const prev = i > 0 ? computed[i - 1]! : null;
+    computed.push(computeBankRatios(rawMetrics[i]!, prev, subtype));
   }
 
   // Trace latest period metrics after computation
   if (computed.length > 0) {
-    const _lt = computed[computed.length - 1];
+    const _lt = computed[computed.length - 1]!;
     trace("bank", "metricsComputed", {
       periods: computed.length,
       latestPeriod: _lt.period_end,
@@ -750,8 +750,8 @@ export function processBankData(
     const sorted = [...payoutSamples].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
     derivedPayoutRatio = sorted.length % 2 === 0
-      ? (sorted[mid - 1] + sorted[mid]) / 2
-      : sorted[mid];
+      ? (sorted[mid - 1]! + sorted[mid]!) / 2
+      : sorted[mid]!;
     // Clamp to [0.05, 0.95] — extreme values indicate data issues
     derivedPayoutRatio = Math.max(0.05, Math.min(0.95, derivedPayoutRatio));
   }
@@ -770,10 +770,10 @@ export function processBankData(
     subtype,
     periodsCount: periods.length,
     hasValuation: valuation != null,
-    latestROE: computed.length > 0 ? computed[computed.length - 1].roe : null,
-    latestROA: computed.length > 0 ? computed[computed.length - 1].roa : null,
-    latestLeverage: computed.length > 0 ? computed[computed.length - 1].leverage : null,
-    latestSpread: computed.length > 0 ? computed[computed.length - 1].spread : null,
+    latestROE: computed.length > 0 ? computed[computed.length - 1]!.roe : null,
+    latestROA: computed.length > 0 ? computed[computed.length - 1]!.roa : null,
+    latestLeverage: computed.length > 0 ? computed[computed.length - 1]!.leverage : null,
+    latestSpread: computed.length > 0 ? computed[computed.length - 1]!.spread : null,
   });
 
   return {

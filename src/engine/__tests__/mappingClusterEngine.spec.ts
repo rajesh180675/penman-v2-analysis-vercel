@@ -89,7 +89,7 @@ describe("Cluster unknown labels", () => {
 
     const result = clusterUnknownLabels(unknown);
     expect(result.clusters).toHaveLength(1);
-    expect(result.clusters[0].recommendation).toBeOneOf(["add-alias", "add-sub-key", "review-manual"]);
+    expect(result.clusters[0]!.recommendation).toBeOneOf(["add-alias", "add-sub-key", "review-manual"]);
   });
 
   it("limits results to maxSuggestions", () => {

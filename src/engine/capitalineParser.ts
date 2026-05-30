@@ -170,14 +170,14 @@ export function detectCurrencyUnit(
     const row = grid[r];
     if (!row || row.length < 2) continue;
 
-    const label = norm(row[0]).toLowerCase();
+    const label = norm(row[0]!).toLowerCase();
     if (!label.includes("curr") && !label.includes("unit") && !label.includes("denomination")) {
       continue;
     }
 
     // Found a currency label row — read the first non-empty value cell
     for (let c = 1; c < row.length; c++) {
-      const cell = norm(row[c]).toLowerCase();
+      const cell = norm(row[c]!).toLowerCase();
       if (!cell) continue;
 
       // Match common Capitaline patterns
@@ -243,7 +243,7 @@ function cleanCell(raw: string | null | undefined): string {
     // The old "take text after last >" fails because closing tags come after the value.
     const ngBindingMatch = s.match(/<(?:div|label)[^>]*class="[^"]*ng-binding[^"]*"[^>]*>\s*([^<]+)/);
     if (ngBindingMatch) {
-      s = ngBindingMatch[1];
+      s = ngBindingMatch[1]!;
     } else {
       // Take everything after the LAST `>`
       const gIdx = s.lastIndexOf(">");
@@ -307,8 +307,8 @@ function tryParsePeriod(rawCell: string): string | null {
   // YYYYMM (e.g. 202503) — Capitaline's standard export format
   const ym = s.match(/^(\d{4})(\d{2})$/);
   if (ym) {
-    const yr = parseInt(ym[1]);
-    const mo = parseInt(ym[2]);
+    const yr = parseInt(ym[1]!);
+    const mo = parseInt(ym[2]!);
     if (yr >= 1990 && yr <= 2099 && mo >= 1 && mo <= 12) {
       const lastDay = new Date(Date.UTC(yr, mo, 0)).getUTCDate();
       return `${yr}-${String(mo).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
@@ -320,9 +320,9 @@ function tryParsePeriod(rawCell: string): string | null {
     /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[/\-.']*(\d{2,4})$/i
   );
   if (mmy) {
-    const mon = MONTH_MAP[mmy[1].slice(0, 3).toLowerCase()];
+    const mon = MONTH_MAP[mmy[1]!.slice(0, 3).toLowerCase()];
     if (!mon) return null;
-    let yr = parseInt(mmy[2]);
+    let yr = parseInt(mmy[2]!);
     if (yr < 100) yr += yr < 50 ? 2000 : 1900;
     if (yr < 1990 || yr > 2099) return null;
     const lastDay = new Date(Date.UTC(yr, mon, 0)).getUTCDate();
@@ -335,7 +335,7 @@ function tryParsePeriod(rawCell: string): string | null {
   // FY2016 / FY16
   const fy = s.match(/^fy'?(\d{2,4})$/i);
   if (fy) {
-    let yr = parseInt(fy[1]);
+    let yr = parseInt(fy[1]!);
     if (yr < 100) yr += yr < 50 ? 2000 : 1900;
     return `${yr}-03-31`;
   }
@@ -492,7 +492,7 @@ function detectHeader(grid: string[][]): HeaderInfo | null {
   // Scan for rows with ≥3 period cols first, then ≥2, then ≥1
   for (const minPeriods of [3, 2, 1]) {
     for (let r = 0; r < limit; r++) {
-      const h = tryHeaderRow(grid[r], r);
+      const h = tryHeaderRow(grid[r]!, r);
       if (h && h.periodCols.length >= minPeriods) return h;
     }
   }
@@ -503,9 +503,9 @@ function tryHeaderRow(row: string[], rowIndex: number): HeaderInfo | null {
   if (!row || row.length < 2) return null;
   const periodCols: HeaderInfo["periodCols"] = [];
   for (let c = 0; c < row.length; c++) {
-    const pe = tryParsePeriod(row[c]);
+    const pe = tryParsePeriod(row[c]!);
     if (pe) {
-      periodCols.push({ col: c, period_end: pe, label: cleanCell(row[c]) });
+      periodCols.push({ col: c, period_end: pe, label: cleanCell(row[c]!) });
     }
   }
   if (!periodCols.length) return null;
@@ -545,7 +545,7 @@ function gridToPeriods(
 
   for (let r = header.rowIndex + 1; r < grid.length; r++) {
     rowsSeen++;
-    const row = grid[r];
+    const row = grid[r]!;
     const metric = cleanCell(row[header.metricCol] ?? "");
     if (!metric) {
       droppedNoMetric++;
@@ -883,7 +883,7 @@ export async function parseCapitalineZip(
         r < Math.min(grid.length, header.rowIndex + 15);
         r++
       ) {
-        const row = grid[r];
+        const row = grid[r]!;
         const metric = cleanCell(row[header.metricCol] ?? "");
         if (!metric) continue;
         const vals = header.periodCols.map((pc) =>
@@ -1044,7 +1044,7 @@ export async function parseCapitalineZip(
 
   const firstPeriodKeys =
     periods.length > 0
-      ? Object.keys(periods[0].raw_metric_values).filter(
+      ? Object.keys(periods[0]!.raw_metric_values).filter(
           (k) => !k.includes("__")
         )
       : [];

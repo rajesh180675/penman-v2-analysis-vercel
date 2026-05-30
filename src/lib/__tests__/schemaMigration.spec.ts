@@ -51,7 +51,7 @@ describe("schemaMigration", () => {
       source: "envelope",
       companyId: "ITC",
     });
-    expect(entries[0].ts).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(entries[0]!.ts).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
   it("caps entries at 100 (oldest evicted)", () => {
@@ -61,8 +61,8 @@ describe("schemaMigration", () => {
     const entries = readSchemaMigrations();
     expect(entries).toHaveLength(100);
     // Oldest 20 evicted, so first kept entry is co-20
-    expect(entries[0].companyId).toBe("co-20");
-    expect(entries[99].companyId).toBe("co-119");
+    expect(entries[0]!.companyId).toBe("co-20");
+    expect(entries[99]!.companyId).toBe("co-119");
   });
 
   it("survives corrupted storage (returns empty list)", () => {

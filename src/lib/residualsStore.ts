@@ -138,7 +138,7 @@ function evictOldestGlobalEntry(): boolean {
     const id = key.slice(COMPANY_KEY_PREFIX.length, -COMPANY_KEY_SUFFIX.length);
     const entries = readCompanyEntries(id);
     if (entries.length === 0) continue;
-    const first = entries[0];
+    const first = entries[0]!;
     if (first.timestamp < oldestTimestamp) {
       oldestTimestamp = first.timestamp;
       oldestKey = key;

@@ -123,7 +123,7 @@ export function computeERI(data: RecastPeriod[]): ERIResult | null {
 
   let manipScore: number;
   if (mScores.length >= 2) {
-    const latestM = mScores[mScores.length - 1];
+    const latestM = mScores[mScores.length - 1]!;
     // Distance from threshold: -1.78
     // If M = -3.0, distance = 1.22 (safe); if M = -1.0, distance = -0.78 (dangerous)
     const distance = -1.78 - latestM; // positive = safe
@@ -158,9 +158,9 @@ export function computeERI(data: RecastPeriod[]): ERIResult | null {
   // OR: reserves growing faster than revenue (building hidden value)
   const conservatismSignals: number[] = [];
   for (let i = 1; i < data.length; i++) {
-    const noa = data[i].bs?.NOA ?? 0;
-    const prevNoa = data[i - 1].bs?.NOA ?? 0;
-    const oi = data[i].is?.OI ?? 0;
+    const noa = data[i]!.bs?.NOA ?? 0;
+    const prevNoa = data[i - 1]!.bs?.NOA ?? 0;
+    const oi = data[i]!.is?.OI ?? 0;
     if (prevNoa > 0 && oi > 0) {
       // Penman-Zhang conservatism: NOA growth < earnings growth suggests conservative accounting
       const noaGrowth = (noa - prevNoa) / prevNoa;
@@ -237,6 +237,6 @@ function sortedMedian(arr: number[]): number {
   const sorted = [...arr].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid];
+    ? (sorted[mid - 1]! + sorted[mid]!) / 2
+    : sorted[mid]!;
 }

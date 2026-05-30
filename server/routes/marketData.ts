@@ -18,7 +18,7 @@ async function getNseCookie(): Promise<string> {
   const setCookie = res.headers.get("set-cookie") ?? "";
   const cookies = setCookie
     .split(",")
-    .map(c => c.split(";")[0].trim())
+    .map(c => c.split(";")[0]!.trim())
     .filter(c => c.includes("="))
     .join("; ");
   nseCookieCache = { cookie: cookies, ts: Date.now() };

@@ -65,7 +65,7 @@ export default function DashboardView({ data, config, traceability = null, ratio
   // Revenue growth (CAGR over available periods)
   const revenueGrowth = useMemo(() => {
     if (insufficientData || !latest) return null;
-    const first = data[0].is.Sales;
+    const first = data[0]!.is.Sales;
     const last = latest.is.Sales;
     if (first <= 0 || last <= 0) return null;
     const years = data.length - 1;

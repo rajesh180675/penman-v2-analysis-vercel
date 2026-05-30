@@ -22,7 +22,7 @@ function medianOf(vals: number[]): number | null {
   if (!vals.length) return null;
   const s = [...vals].sort((a, b) => a - b);
   const m = Math.floor(s.length / 2);
-  return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
+  return s.length % 2 === 0 ? (s[m - 1]! + s[m]!) / 2 : s[m]!;
 }
 
 function madStddev(vals: number[]): number {
@@ -60,8 +60,8 @@ export function detectDirtySurplusPerPeriod(
   const results: DirtySurplusResult[] = [];
 
   for (let i = 1; i < periods.length; i++) {
-    const cur  = periods[i];
-    const prev = periods[i - 1];
+    const cur  = periods[i]!;
+    const prev = periods[i - 1]!;
 
     const CSE_t  = cur.bs.CSE;
     const CSE_t1 = prev.bs.CSE;
@@ -118,9 +118,9 @@ export function detectDividendDiscrepancy(
   const flags: SpecFlag[] = [];
 
   for (let i = 1; i < periods.length; i++) {
-    const cur   = periods[i];
-    const prev  = periods[i - 1];
-    const ds    = dsSeries[i - 1];
+    const cur   = periods[i]!;
+    const prev  = periods[i - 1]!;
+    const ds    = dsSeries[i - 1]!;
     const disc  = -ds.DS_t; // algebraically disc = −DS
     const abs_d = Math.abs(disc);
 
@@ -170,7 +170,7 @@ export function detectMetricStepChanges(
   const results: MetricOutlierResult[] = [];
 
   for (let i = 0; i < periods.length; i++) {
-    const cur = periods[i];
+    const cur = periods[i]!;
     const flags: SpecFlag[] = [];
     let pm_z: number|null = null, rnoa_z: number|null = null, roce_z: number|null = null;
     let incr_margin: number|null = null;
@@ -178,7 +178,7 @@ export function detectMetricStepChanges(
     if (i >= 4) {
       // Compute robust z-score using prior periods (excluding current)
       const priorPM   = pmSeries.slice(0, i).filter((v): v is number => v != null && Number.isFinite(v));
-      const priorRNOA = rnoa_series.slice(0, i).filter((v): v is number => v != null && Number.isFinite(v) && !(periods[periods.indexOf(periods[i])]?.ratios?.noaSmall));
+      const priorRNOA = rnoa_series.slice(0, i).filter((v): v is number => v != null && Number.isFinite(v) && !(periods[periods.indexOf(periods[i]!)]?.ratios?.noaSmall));
       const priorROCE = roce_series.slice(0, i).filter((v): v is number => v != null && Number.isFinite(v));
 
       const checkMetric = (
@@ -211,7 +211,7 @@ export function detectMetricStepChanges(
 
     // Incremental margin anomaly
     if (i > 0) {
-      const prev = periods[i - 1];
+      const prev = periods[i - 1]!;
       const ΔRev = cur.is.Sales - prev.is.Sales;
       if (ΔRev > 0) {
         const ΔOI = cur.is.OI - prev.is.OI;
@@ -245,8 +245,8 @@ export function detectComponentDisappearance(
   const flags: SpecFlag[] = [];
 
   for (let i = 1; i < periods.length; i++) {
-    const cur  = periods[i];
-    const prev = periods[i - 1];
+    const cur  = periods[i]!;
+    const prev = periods[i - 1]!;
     const TA_prev = Math.max(prev.bs.TA, 1);
 
     type BSKey = "OA" | "FA" | "OL" | "FO";
@@ -308,8 +308,8 @@ export function detectReclassification(
   const flags: SpecFlag[] = [];
 
   for (let i = 1; i < periods.length; i++) {
-    const cur  = periods[i];
-    const prev = periods[i - 1];
+    const cur  = periods[i]!;
+    const prev = periods[i - 1]!;
 
     const ΔOA = cur.bs.OA - prev.bs.OA;
     const ΔFA = cur.bs.FA - prev.bs.FA;
@@ -439,8 +439,8 @@ export function validateTerminalREAnchor(
   }
 
   const n = reSeries.length;
-  const RE_T    = reSeries[n - 1].RE;
-  const RE_prev = n >= 2 ? reSeries[n - 2].RE : null;
+  const RE_T    = reSeries[n - 1]!.RE;
+  const RE_prev = n >= 2 ? reSeries[n - 2]!.RE : null;
   const reVals  = reSeries.map(r => r.RE).filter(Number.isFinite);
   const RE_median = medianOf(reVals);
 
@@ -449,7 +449,7 @@ export function validateTerminalREAnchor(
 
   const flags: SpecFlag[] = [];
   let terminal_anomaly = false;
-  const latest_period  = reSeries[n - 1].period;
+  const latest_period  = reSeries[n - 1]!.period;
 
   if (anchor_jump != null && anchor_jump > jump_thresh) {
     terminal_anomaly = true;
@@ -586,7 +586,7 @@ export function runAnomalyDetection(
 
   // Cumulative dirty surplus
   const cumulativeDS = dsSeries.reduce((s, r) => s + r.DS_t, 0);
-  const terminalCSE  = Math.max(Math.abs(periods[periods.length - 1].bs.CSE), 1);
+  const terminalCSE  = Math.max(Math.abs(periods[periods.length - 1]!.bs.CSE), 1);
   const cumulativeDS_pct = Math.abs(cumulativeDS) / terminalCSE;
 
   // Build per-period summaries
@@ -614,7 +614,7 @@ export function runAnomalyDetection(
   );
 
   // Terminal period flags
-  const latestPeriod = periods[periods.length - 1].period_end;
+  const latestPeriod = periods[periods.length - 1]!.period_end;
   const terminalFlags = allFlagsFlat.filter(f => f.period === latestPeriod);
 
   // Add any terminal RE anchor flags

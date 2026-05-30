@@ -43,6 +43,7 @@ function buildLookup(): Map<string, MappingEntry> {
     if (Array.isArray(node)) {
       // Leaf — array of raw labels
       const canonical = path[path.length - 1];
+      if (canonical === undefined) return;
       const root = path[0]?.toLowerCase() ?? "";
       const statement: AtlasStatement = root.includes("balancesheet")
         ? "BS"

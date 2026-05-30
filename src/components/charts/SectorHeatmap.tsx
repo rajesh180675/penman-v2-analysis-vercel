@@ -127,7 +127,7 @@ export default function SectorHeatmap({ companies, metrics }: Props) {
                       key={m.key}
                       className={`px-2 py-2 text-center font-mono border border-white dark:border-slate-900 ${cellColor(rank)}`}
                     >
-                      {formatValue(v, m.format)}
+                      {formatValue(v ?? null, m.format)}
                     </td>
                   );
                 })}

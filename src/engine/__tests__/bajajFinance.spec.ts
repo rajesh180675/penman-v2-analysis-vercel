@@ -33,7 +33,7 @@ describe("Bajaj Finance (NBFC)", () => {
     console.log("REASONS:", scope.reasons);
     
     // Print all non-zero keys in period 0
-    const nonZeroKeys = Object.entries(parsed!.periods[0].raw_metric_values)
+    const nonZeroKeys = Object.entries(parsed!.periods[0]!.raw_metric_values)
       .filter(([_, v]) => v !== null && Math.abs(v) >= 1.0)
       .map(([k, v]) => `${k}: ${v}`);
     console.log("KEYS IN PERIOD 0 (first 30):", nonZeroKeys.slice(0, 30));
@@ -56,7 +56,7 @@ result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG, qi);
       console.log("Subtype:", br.subtype);
       console.log("Bank metrics periods:", br.bankMetrics?.length);
       if (br.bankMetrics && br.bankMetrics.length > 0) {
-        const latest = br.bankMetrics[br.bankMetrics.length - 1];
+        const latest = br.bankMetrics[br.bankMetrics.length - 1]!;
         console.log("Latest NIM:", latest.nim);
         console.log("Latest ROA:", latest.roa);
         console.log("Latest ROE:", latest.roe);
@@ -81,7 +81,7 @@ result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG, qi);
     expect(br.bankMetrics).toBeTruthy();
     expect(br.bankMetrics!.length).toBeGreaterThan(3);
 
-    const latest = br.bankMetrics![br.bankMetrics!.length - 1];
+    const latest = br.bankMetrics![br.bankMetrics!.length - 1]!;
     // X-Detail P&L: avgAssets/avgEquity require a prior period; the last
     // period in the test dataset may not have a valid prior. Skip nulls.
     // Bajaj Finance ROA ~4%, ROE ~19% (when data is complete)
@@ -173,7 +173,7 @@ result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG, qi);
 
   it("cost-to-income ratio is non-zero (NBFC opex fallback)", () => {
     const br = result!.bankResult!;
-    const latest = br.bankMetrics![br.bankMetrics!.length - 1];
+    const latest = br.bankMetrics![br.bankMetrics!.length - 1]!;
     // Without sidecar, cost-to-income is a fallback approximation based on
     // X-Detail P&L labels. The fallback may be off ±5-10pp because it can't
     // precisely separate CSR/bank-charges etc. The AR sidecar (when fetched)
@@ -208,19 +208,19 @@ result = processCompanyDataFull(parsed!.periods, DEFAULT_CONFIG, qi);
     const bundle = br.valuation?.scenarios;
     expect(bundle).not.toBeNull();
     expect(bundle!.cards).toHaveLength(3);
-    expect(bundle!.cards[0].key).toBe("stress");
-    expect(bundle!.cards[1].key).toBe("base");
-    expect(bundle!.cards[2].key).toBe("bull");
+    expect(bundle!.cards[0]!.key).toBe("stress");
+    expect(bundle!.cards[1]!.key).toBe("base");
+    expect(bundle!.cards[2]!.key).toBe("bull");
     expect(bundle!.primary).toBe("base");
     // Base scenario should use sustainable ROE
-    const baseCard = bundle!.cards[1];
+    const baseCard = bundle!.cards[1]!;
     expect(baseCard.fairPB).toBeGreaterThan(0);
     expect(baseCard.intrinsicValue).toBeGreaterThan(0);
     // Bear scenario should have lower P/B than base
-    const bearCard = bundle!.cards[0];
+    const bearCard = bundle!.cards[0]!;
     expect(bearCard.fairPB).toBeLessThan(baseCard.fairPB);
     // Bull scenario should have higher P/B than base
-    const bullCard = bundle!.cards[2];
+    const bullCard = bundle!.cards[2]!;
     expect(bullCard.fairPB).toBeGreaterThan(baseCard.fairPB);
   });
 });

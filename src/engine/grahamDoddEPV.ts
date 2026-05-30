@@ -107,8 +107,8 @@ function median(arr: number[]): number {
   const sorted = [...arr].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid];
+    ? (sorted[mid - 1]! + sorted[mid]!) / 2
+    : sorted[mid]!;
 }
 
 /**
@@ -227,7 +227,7 @@ export function computeEPV(
   const epvOperations = epvEarnings / kw;
 
   // Latest period's NFO and NOA
-  const latest = data[data.length - 1];
+  const latest = data[data.length - 1]!;
   const nfo = latest.bs.NFO;
   const epvEquity = epvOperations - nfo;
 
@@ -301,7 +301,7 @@ export function computeEPV(
 
   const sortedMargins = [...coreOIMargins].sort((a, b) => a - b);
   const marginRange: [number, number] = sortedMargins.length >= 2
-    ? [sortedMargins[0], sortedMargins[sortedMargins.length - 1]]
+    ? [sortedMargins[0]!, sortedMargins[sortedMargins.length - 1]!]
     : [medianCoreOIMargin, medianCoreOIMargin];
 
   const normalization: EPVNormalization = {

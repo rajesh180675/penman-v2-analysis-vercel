@@ -67,7 +67,7 @@ describe("golden master regression", () => {
   it("keeps stable high-level outputs for baseline sample", () => {
     const out = processCompanyData(sample, DEFAULT_CONFIG);
     expect(out.length).toBe(2);
-    const latest = out[1];
+    const latest = out[1]!;
     expect(latest.bs.TA).toBe(1080);
     expect(Math.round((latest.ratios?.ROCE ?? 0) * 1000) / 1000).toBeGreaterThan(0);
     expect(Math.round((latest.ratios?.RNOA ?? 0) * 1000) / 1000).toBeGreaterThan(0);
@@ -102,6 +102,6 @@ describe("golden master regression", () => {
 
     const out = processCompanyData(distressed, DEFAULT_CONFIG);
     expect(out).toHaveLength(1);
-    expect(out[0].bs.CSE).toBe(-40);
+    expect(out[0]!.bs.CSE).toBe(-40);
   });
 });

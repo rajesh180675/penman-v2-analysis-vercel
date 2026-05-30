@@ -96,8 +96,8 @@ describe("parseXbrlXmlDetailed", () => {
     const result = parseXbrlXmlDetailed("<xbrl />", "XBRL");
 
     expect(result.periods).toHaveLength(1);
-    expect(result.periods[0].period_end).toBe("2025-03-31");
-    expect(result.periods[0].raw_metric_values["Total Assets"]).toBe(1000);
+    expect(result.periods[0]!.period_end).toBe("2025-03-31");
+    expect(result.periods[0]!.raw_metric_values["Total Assets"]).toBe(1000);
     expect(result.diagnostics.sourceMode).toBe("xbrl");
     expect(result.diagnostics.warningCount).toBe(0);
     expect(result.diagnostics.errorCount).toBe(0);
@@ -137,12 +137,12 @@ describe("parseXbrlXmlDetailed", () => {
     const byId = Object.fromEntries(result.diagnostics.checks.map((check) => [check.id, check]));
 
     expect(result.periods).toHaveLength(1);
-    expect(result.periods[0].raw_metric_values["Total Assets"]).toBe(980);
+    expect(result.periods[0]!.raw_metric_values["Total Assets"]).toBe(980);
     expect(result.diagnostics.warningCount).toBe(2);
     expect(result.diagnostics.errorCount).toBe(1);
-    expect(byId["xbrl-context-periods"].passed).toBe(false);
-    expect(byId["xbrl-numeric-facts"].passed).toBe(false);
-    expect(byId["xbrl-duplicate-conflicts"].passed).toBe(false);
+    expect(byId["xbrl-context-periods"]!.passed).toBe(false);
+    expect(byId["xbrl-numeric-facts"]!.passed).toBe(false);
+    expect(byId["xbrl-duplicate-conflicts"]!.passed).toBe(false);
   });
 
   it("fails loud on invalid xml parser errors", () => {

@@ -43,8 +43,8 @@ export function pearsonCorrelation(X: number[], Y: number[]): number {
   let varX = 0;
   let varY = 0;
   for (let i = 0; i < n; i += 1) {
-    const dx = X[i] - meanX;
-    const dy = Y[i] - meanY;
+    const dx = X[i]! - meanX;
+    const dy = Y[i]! - meanY;
     cov += dx * dy;
     varX += dx * dx;
     varY += dy * dy;

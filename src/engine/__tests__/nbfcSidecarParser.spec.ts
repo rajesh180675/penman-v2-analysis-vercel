@@ -74,15 +74,15 @@ describe.skipIf(!nhbExists)("RBI NHB parser", () => {
     const result = parseRbiNhbFile(html);
 
     expect(result.length).toBe(15);
-    expect(result[0].fiscal_label).toBe("FY2025");
-    expect(result[0].period_code).toBe("202503");
-    expect(result[14].fiscal_label).toBe("FY2011");
+    expect(result[0]!.fiscal_label).toBe("FY2025");
+    expect(result[0]!.period_code).toBe("202503");
+    expect(result[14]!.fiscal_label).toBe("FY2011");
   });
 
   it("extracts GNPA and capital adequacy for FY2025", () => {
     const html = readFileSync(nhbPath, "utf-8");
     const result = parseRbiNhbFile(html);
-    const fy25 = result[0];
+    const fy25 = result[0]!;
 
     expect(fy25.gnpa_cr).toBeCloseTo(3677.75, 0);
     expect(fy25.nnpa_cr).toBeCloseTo(1720.41, 0);
@@ -93,7 +93,7 @@ describe.skipIf(!nhbExists)("RBI NHB parser", () => {
   it("extracts NPA movement data", () => {
     const html = readFileSync(nhbPath, "utf-8");
     const result = parseRbiNhbFile(html);
-    const fy25 = result[0];
+    const fy25 = result[0]!;
 
     expect(fy25.gnpa_opening_cr).toBeCloseTo(2600.38, 0);
     expect(fy25.gnpa_additions_cr).toBeCloseTo(11044.26, 0);

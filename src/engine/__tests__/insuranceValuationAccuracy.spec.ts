@@ -133,7 +133,7 @@ describe("insurance valuation accuracy — LIC EV/VNB bridge", () => {
     const metrics = licMetrics();
     // Strip VNB from the latest period — simulate an insurer that discloses
     // EV but not VNB.
-    metrics[metrics.length - 1].quality = {
+    metrics[metrics.length - 1]!.quality = {
       period_end: "2024-03-31",
       embedded_value: LIC_EV_FY24,
       vnb: null,

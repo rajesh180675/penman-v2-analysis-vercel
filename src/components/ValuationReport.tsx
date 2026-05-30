@@ -115,8 +115,8 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
     [shareBasis]
   );
   const kwDerived = useMemo(() => {
-    const cur = valuationData[valuationData.length - 1];
-    const prev = valuationData[valuationData.length - 2];
+    const cur = valuationData[valuationData.length - 1]!;
+    const prev = valuationData[valuationData.length - 2]!;
     return deriveKwFromStructure(cur, prev, ke, effectiveConfig.risk_free_rate, effectiveConfig);
   }, [valuationData, ke, effectiveConfig]);
 
@@ -157,7 +157,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
   );
   const terminalEconomics = useMemo(
     () => buildTerminalEconomics({
-      latest: data[data.length - 1],
+      latest: data[data.length - 1]!,
       normalized: cyclicalNormalization,
       requiredReturn: ke,
       sectorTerminalGrowth: commandCenter.scenarios.find((item) => item.key === "base")?.assumptions.g ?? gRate,
@@ -684,7 +684,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
             g={commandCenter.scenarios.find(s => s.key === "base")?.assumptions.g ?? 0.05}
             computeValue={(keVal, gVal) => {
               // Simple RE perpetuity: CSE + (RNOA - ke) * NOA / (ke - g)
-              const latest = data[data.length - 1];
+              const latest = data[data.length - 1]!;
               const rnoa = latest.ratios?.RNOA ?? 0;
               const noa = latest.bs.NOA;
               const cse = latest.bs.CSE;
@@ -702,7 +702,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
           const baseScenario = commandCenter.scenarios.find(s => s.key === "base");
           const baseValue = baseScenario?.intrinsicPerShare ?? null;
           const baseG = baseScenario?.assumptions.g ?? 0.05;
-          const latest = data[data.length - 1];
+          const latest = data[data.length - 1]!;
           const rnoaBase = latest.ratios?.RNOA ?? 0;
           const noa = latest.bs.NOA;
           const cse = latest.bs.CSE;
@@ -1529,7 +1529,7 @@ function SensitivityGrid({
   const KES = [0.08, 0.10, 0.12, 0.14, 0.16];
   const GS = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07];
   const T = val.reSeries.length;
-  const lastRE = T > 0 ? val.reSeries[T - 1].RE : 0;
+  const lastRE = T > 0 ? val.reSeries[T - 1]!.RE : 0;
 
   const computeV = (keV: number, gv: number): number | null => {
     if (keV - gv <= 0.001) return null;

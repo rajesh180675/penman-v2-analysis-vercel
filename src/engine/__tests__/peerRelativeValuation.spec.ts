@@ -193,7 +193,7 @@ describe("Peer Relative Valuation", () => {
 
     expect(result).not.toBeNull();
     expect(result!.peerCount).toBe(1);
-    expect(result!.ratioRankings[0].peers.map((peer) => peer.companyId)).toEqual(["hul"]);
+    expect(result!.ratioRankings[0]!.peers.map((peer) => peer.companyId)).toEqual(["hul"]);
     expect(result!.explanation[0]).toContain("1 eligible peer");
   });
 
@@ -224,6 +224,6 @@ describe("Peer Relative Valuation", () => {
 
     expect(result).not.toBeNull();
     expect(result!.peerCount).toBe(1);
-    expect(result!.ratioRankings[0].peers.map((peer) => peer.companyId)).toEqual(["hul"]);
+    expect(result!.ratioRankings[0]!.peers.map((peer) => peer.companyId)).toEqual(["hul"]);
   });
 });

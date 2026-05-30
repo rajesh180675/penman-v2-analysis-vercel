@@ -55,7 +55,7 @@ export default function CapitalAllocationPanel({ result, title = "Capital Alloca
   }
 
   const style = GRADE_STYLES[result.grade];
-  const trend = TREND_LABEL[result.trend];
+  const trend = TREND_LABEL[result.trend]!;
 
   return (
     <div className={`rounded-xl border-2 ${style.border} ${style.bg} p-5`}>

@@ -87,7 +87,7 @@ export function computeMertonCredit(
 ): MertonCreditResult | null {
   if (data.length < 2) return null;
 
-  const latest = data[data.length - 1];
+  const latest = data[data.length - 1]!;
   const noa = latest.bs?.NOA;
   const nfo = latest.bs?.NFO ?? 0;
   const cse = latest.bs?.CSE;
@@ -179,7 +179,7 @@ export function computeRegimeConditionalValuation(
 ): RegimeConditionalResult | null {
   if (data.length < 3 || sharesOutstanding <= 0) return null;
 
-  const latest = data[data.length - 1];
+  const latest = data[data.length - 1]!;
   const rnoa = latest.ratios?.RNOA;
   const noa = latest.bs?.NOA;
   const cse = latest.bs?.CSE;
@@ -189,12 +189,12 @@ export function computeRegimeConditionalValuation(
   // Compute historical growth
   const growthRates: number[] = [];
   for (let i = Math.max(1, data.length - 5); i < data.length; i++) {
-    const cur = data[i].bs?.NOA ?? 0;
-    const prev = data[i - 1].bs?.NOA ?? 0;
+    const cur = data[i]!.bs?.NOA ?? 0;
+    const prev = data[i - 1]!.bs?.NOA ?? 0;
     if (prev > 0) growthRates.push((cur - prev) / prev);
   }
   const medianGrowth = growthRates.length > 0
-    ? growthRates.sort((a, b) => a - b)[Math.floor(growthRates.length / 2)]
+    ? growthRates.sort((a, b) => a - b)[Math.floor(growthRates.length / 2)]!
     : 0.10;
 
   // India regime parameters
@@ -241,7 +241,7 @@ export function computeRegimeConditionalValuation(
   const drawdownRisk = expPerShare > 0 ? (expPerShare - recPerShare) / expPerShare : 0;
 
   // Current regime detection (simple heuristic from recent growth trajectory)
-  const recentGrowth = growthRates.length > 0 ? growthRates[growthRates.length - 1] : 0;
+  const recentGrowth = growthRates.length > 0 ? growthRates[growthRates.length - 1]! : 0;
   let currentRegime: RegimeConditionalResult["currentRegime"];
   if (recentGrowth > 0.15) currentRegime = "expansion";
   else if (recentGrowth > 0.05) currentRegime = "late_cycle";

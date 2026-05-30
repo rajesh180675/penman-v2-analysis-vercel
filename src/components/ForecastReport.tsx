@@ -115,7 +115,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
   const valuationConfig = useMemo(() => shareBasis.valuationConfig, [shareBasis]);
   const sharesOut = shareBasis.shares ?? null;
 
-  const latest = data[data.length-1];
+  const latest = data[data.length-1]!;
   const latestRatios = latest?.ratios;
 
   const basePM  = latestRatios?.CoreSalesPM ?? latestRatios?.PM ?? 0.12;
@@ -145,8 +145,8 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
 
   const kwDerived = useMemo(() => {
     if (data.length < 2) return config.risk_free_rate;
-    const cur = data[data.length - 1];
-    const prev = data[data.length - 2];
+    const cur = data[data.length - 1]!;
+    const prev = data[data.length - 2]!;
     return deriveKwFromStructure(cur, prev, ke_inp / 100, config.risk_free_rate, config);
   }, [data, ke_inp, config]);
   const cyclicalNormalization = useMemo(() => buildCyclicalNormalization(data), [data]);
@@ -305,9 +305,9 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
 
   const chartFade = Array.from({length:horizonT},((_,i)=>({
     year:`Y+${i+1}`,
-    Sales_g: +(fadeSG[i]*100).toFixed(1),
-    PM:      +(fadePM[i]*100).toFixed(1),
-    ATO:     +fadeATO[i].toFixed(2),
+    Sales_g: +(fadeSG[i]!*100).toFixed(1),
+    PM:      +(fadePM[i]!*100).toFixed(1),
+    ATO:     +fadeATO[i]!.toFixed(2),
     NP_PM:   +(NP_PM*100).toFixed(1),
     NP_ATO:  +NP_ATO.toFixed(2),
   })));
@@ -365,7 +365,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
     const counts = new Array<number>(bins).fill(0);
     for (const v of vals) {
       const idx = Math.min(bins - 1, Math.max(0, Math.floor((v - min) / step)));
-      counts[idx] += 1;
+      counts[idx]! += 1;
     }
     return counts.map((n, i) => ({ bucket: `${cr(min + i * step)}–${cr(min + (i + 1) * step)}`, n }));
   }, [mcOut, sharesOut]);
@@ -637,11 +637,11 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
                     <div className="text-xs text-slate-500 mt-1">Total equity value: ₹{cr(card.forecast.valuationResult.V_RE_CV3)} Cr</div>
                   )}
                   <div className="mt-2 text-xs text-slate-500">
-                    Sales g Y1: {pct(card.forecast.drivers.sales_growth[0])} → Y{card.forecast.horizonT}: {pct(card.forecast.drivers.sales_growth[card.forecast.horizonT-1]??card.forecast.drivers.sales_growth[0])}
+                    Sales g Y1: {pct(card.forecast.drivers.sales_growth[0]!)} → Y{card.forecast.horizonT}: {pct(card.forecast.drivers.sales_growth[card.forecast.horizonT-1]??card.forecast.drivers.sales_growth[0]!)}
                   </div>
-                  <div className="text-xs text-slate-500">Core PM Y1: {pct(card.forecast.drivers.core_sales_pm[0])}</div>
+                  <div className="text-xs text-slate-500">Core PM Y1: {pct(card.forecast.drivers.core_sales_pm[0]!)}</div>
                   {card.forecast.drivers.material_cost_ratio?.length ? (
-                    <div className="text-xs text-slate-500">Material / Sales Y1: {pct(card.forecast.drivers.material_cost_ratio[0])}</div>
+                    <div className="text-xs text-slate-500">Material / Sales Y1: {pct(card.forecast.drivers.material_cost_ratio[0]!)}</div>
                   ) : null}
                 </div>
               )}

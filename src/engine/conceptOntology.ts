@@ -227,8 +227,8 @@ export function detectConflicts(
       const aliasSet = new Set(concept.aliases.map((a) => a.toLowerCase()));
       const matched: string[] = [];
       for (let i = 0; i < baseKeys.length; i++) {
-        if (aliasSet.has(baseKeysLower[i])) {
-          matched.push(baseKeys[i]);
+        if (aliasSet.has(baseKeysLower[i]!)) {
+          matched.push(baseKeys[i]!);
         }
       }
       if (matched.length >= 2) {

@@ -84,7 +84,7 @@ export default function ComparisonReport({ registry, config, weakestTraceability
     return latestByCo.map((c) => {
       const n = c.series.length;
       const kw = n >= 2
-        ? deriveKwFromStructure(c.series[n - 1], c.series[n - 2], ke, config.risk_free_rate, config)
+        ? deriveKwFromStructure(c.series[n - 1]!, c.series[n - 2]!, ke, config.risk_free_rate, config)
         : config.risk_free_rate;
       const localCfg: EngineConfig = { ...config };
       const v = computeValuation(c.series, ke, kw, g, localCfg);
@@ -349,8 +349,8 @@ export default function ComparisonReport({ registry, config, weakestTraceability
                     })}
                     <td className="px-3 py-2 text-right text-slate-500 font-mono">
                       {m === "ATO" || m === "FLEV"
-                        ? `${NP_BENCHMARKS[m].median.toFixed(2)}x`
-                        : `${(NP_BENCHMARKS[m].median * 100).toFixed(1)}%`}
+                        ? `${NP_BENCHMARKS[m]!.median.toFixed(2)}x`
+                        : `${(NP_BENCHMARKS[m]!.median * 100).toFixed(1)}%`}
                     </td>
                   </tr>
                 );

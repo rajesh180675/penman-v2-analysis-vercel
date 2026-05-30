@@ -140,7 +140,7 @@ describe("valueRDPipeline", () => {
     const fullPos = valueRDPipeline(base);
     const halfPos = valueRDPipeline({
       ...base,
-      projects: [{ ...base.projects[0], probabilityOfSuccess: 0.5 }],
+      projects: [{ ...base.projects[0]!, probabilityOfSuccess: 0.5 }],
     });
     expect(halfPos.totalExpectedValue).toBeCloseTo(fullPos.totalExpectedValue * 0.5, 6);
   });

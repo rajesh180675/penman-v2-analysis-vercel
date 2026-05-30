@@ -42,7 +42,7 @@ export default function BVCompounder({ bankResult }: Props) {
   let bvCAGR: number | null = null;
   if (validBv.length >= 2) {
     const years = validBv.length - 1;
-    bvCAGR = (Math.pow(validBv[validBv.length - 1] / validBv[0], 1 / years) - 1) * 100;
+    bvCAGR = (Math.pow(validBv[validBv.length - 1]! / validBv[0]!, 1 / years) - 1) * 100;
   }
   const validROE = rows.map((r) => r.roe).filter((v): v is number => v != null);
   const avgROE = validROE.length > 0 ? validROE.reduce((a, b) => a + b, 0) / validROE.length : null;
@@ -65,7 +65,7 @@ export default function BVCompounder({ bankResult }: Props) {
     rose: { bg: "bg-rose-100 dark:bg-rose-900/40", text: "text-rose-900 dark:text-rose-200", border: "border-rose-300 dark:border-rose-700" },
     slate: { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-700 dark:text-slate-300", border: "border-slate-300 dark:border-slate-700" },
   };
-  const g = gc[grade.color];
+  const g = gc[grade.color]!;
 
   return (
     <div className="space-y-4">

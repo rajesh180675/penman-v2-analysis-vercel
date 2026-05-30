@@ -147,8 +147,8 @@ describe("runRegressionHarness", () => {
     expect(report).not.toBeNull();
     expect(recast.length).toBeGreaterThan(1);
 
-    const prev = recast[recast.length - 2];
-    const cur = recast[recast.length - 1];
+    const prev = recast[recast.length - 2]!;
+    const cur = recast[recast.length - 1]!;
     expect(cur.bs.NFO).toBeLessThan(0);
 
     const expectedKw = deriveKwFromStructure(cur, prev, cfg.ke, cfg.risk_free_rate, cfg);

@@ -133,9 +133,9 @@ describe("Supplementary Path A controls", () => {
 
   it("uses period-by-period NFO movement in RE-ReOI gap decomposition", () => {
     const periods = [mkPeriod(2023, 0.24, 70, 500), mkPeriod(2024, 0.25, 75, 560), mkPeriod(2025, 0.26, 80, 620)];
-    periods[0].bs.NFO = 0;
-    periods[1].bs.NFO = 100;
-    periods[2].bs.NFO = 0;
+    periods[0]!.bs.NFO = 0;
+    periods[1]!.bs.NFO = 100;
+    periods[2]!.bs.NFO = 0;
 
     const out = decomposeReReOIGap(periods, {
       V_RE_CV3: 950,
@@ -185,7 +185,7 @@ describe("Supplementary Path A controls", () => {
 
     const ds = computeDirtySurplus(allPeriods, 0.13);
     const flags = detectPeriodEventFlags(allPeriods, ds);
-    const terminalFlags = flags[flags.length - 1];
+    const terminalFlags = flags[flags.length - 1]!;
     expect(terminalFlags.flags).toContain("STRUCTURAL_EVENT_CRITICAL");
 
     const anchor = selectTerminalAnchor(allPeriods, flags, 0.13, 0.10);
@@ -231,7 +231,7 @@ describe("Supplementary Path A controls", () => {
     const allPeriods = [p1, p2];
     const ds = computeDirtySurplus(allPeriods, 0.13);
     const flags = detectPeriodEventFlags(allPeriods, ds);
-    const lastFlags = flags[flags.length - 1];
+    const lastFlags = flags[flags.length - 1]!;
     expect(lastFlags.flags).toContain("POTENTIAL_RECLASSIFICATION");
     const selected = selectOADecompositionPeriods(allPeriods, flags);
     expect(selected).toContain(p2.period_end);
@@ -251,9 +251,9 @@ describe("Supplementary Path A controls", () => {
     ];
     const rows = buildAccrualTable(periods);
     expect(rows).toHaveLength(1);
-    expect(rows[0].regime).toBe("GROWTH_ACCRUAL");
-    expect(rows[0].flag).not.toBe("OK");
-    expect(rows[0].interpretation.length).toBeGreaterThan(0);
+    expect(rows[0]!.regime).toBe("GROWTH_ACCRUAL");
+    expect(rows[0]!.flag).not.toBe("OK");
+    expect(rows[0]!.interpretation.length).toBeGreaterThan(0);
   });
 
   // FIX VERIFICATION: S-16.3 — buildSection6B returns partial when no market price
@@ -332,7 +332,7 @@ describe("Supplementary Path A controls", () => {
 
   it("S-9.4: computeV3Analytics derives kw from structure when kw is not provided", () => {
     const periods = [mkPeriod(2024, 0.25, 80, 1246), mkPeriod(2025, 0.27, 85, 1246)];
-    const expectedKw = deriveKwFromStructure(periods[1], periods[0], DEFAULT_CONFIG.ke, DEFAULT_CONFIG.risk_free_rate, DEFAULT_CONFIG);
+    const expectedKw = deriveKwFromStructure(periods[1]!, periods[0]!, DEFAULT_CONFIG.ke, DEFAULT_CONFIG.risk_free_rate, DEFAULT_CONFIG);
 
     const out = computeV3Analytics(periods, DEFAULT_CONFIG, 5000, 4800, 0.04);
 

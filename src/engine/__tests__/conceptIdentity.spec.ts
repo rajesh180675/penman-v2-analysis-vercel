@@ -69,8 +69,8 @@ describe("conceptOntology / concept identity", () => {
     const conflicts = detectConflicts([period]);
     const dup = conflicts.filter((c) => c.conflictClass === "duplicate-source" && c.conceptId === "inventory");
     expect(dup).toHaveLength(1);
-    expect(dup[0].rawLabels.length).toBeGreaterThanOrEqual(2);
-    expect(dup[0].affectedPeriods).toEqual(["2025-03-31"]);
+    expect(dup[0]!.rawLabels.length).toBeGreaterThanOrEqual(2);
+    expect(dup[0]!.affectedPeriods).toEqual(["2025-03-31"]);
   });
 
   it("flags unresolved critical concepts when the latest period misses a core mapping", () => {
@@ -160,7 +160,7 @@ describe("conceptOntology / concept identity", () => {
     const b = detectConflicts([period]);
     expect(a.map((c) => c.conceptId)).toEqual(b.map((c) => c.conceptId));
     for (let i = 1; i < a.length; i++) {
-      const cmp = a[i - 1].conceptId.localeCompare(a[i].conceptId);
+      const cmp = a[i - 1]!.conceptId.localeCompare(a[i]!.conceptId);
       expect(cmp).toBeLessThanOrEqual(0);
     }
   });

@@ -48,7 +48,7 @@ export default function AssetQuality({ bankResult }: Props) {
     rose: { bg: "bg-rose-100 dark:bg-rose-900/40", text: "text-rose-900 dark:text-rose-200", border: "border-rose-300 dark:border-rose-700" },
     slate: { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-700 dark:text-slate-300", border: "border-slate-300 dark:border-slate-700" },
   };
-  const g = gc[grade.color];
+  const g = gc[grade.color]!;
 
   return (
     <div className="space-y-4">

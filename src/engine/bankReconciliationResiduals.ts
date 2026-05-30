@@ -533,7 +533,7 @@ export function evaluateBankReconciliationResiduals(params: {
   const warningCount = checks.filter((c) => c.status === "degraded").length;
   const errorCount = checks.filter((c) => c.status === "failed").length;
   const maxResidualRatio = checks.reduce((max, c) => Math.max(max, c.ratio), 0);
-  const worst = [...checks].sort((a, b) => b.ratio - a.ratio)[0];
+  const worst = [...checks].sort((a, b) => b.ratio - a.ratio)[0]!;
   const status: ReconciliationResidualStatus =
     errorCount > 0 ? "failed" : warningCount > 0 ? "degraded" : "confirmed";
   const summary =

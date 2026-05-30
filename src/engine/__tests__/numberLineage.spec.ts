@@ -74,14 +74,14 @@ describe("lineageBuilder", () => {
     const recast = [mkRecast("2025-03-31")];
     const raw = [mkRaw("2025-03-31")];
     const map = buildLineageMap({ recastData: recast, rawData: raw });
-    const cseEntry = map.entries["cse|2025-03-31"];
+    const cseEntry = map.entries["cse|2025-03-31"]!;
     expect(cseEntry.sourceMetricKeys.some((k) => k.includes("Equity"))).toBe(true);
   });
 
   it("includes derived source keys for derived concepts", () => {
     const recast = [mkRecast("2025-03-31")];
     const map = buildLineageMap({ recastData: recast, rawData: [] });
-    const noaEntry = map.entries["noa|2025-03-31"];
+    const noaEntry = map.entries["noa|2025-03-31"]!;
     expect(noaEntry.sourceMetricKeys).toContain("BS.TA");
     expect(noaEntry.sourceStatements).toEqual(["BS"]);
   });
@@ -93,7 +93,7 @@ describe("lineageBuilder", () => {
       ],
     })];
     const map = buildLineageMap({ recastData: recast, rawData: [] });
-    const rnoaEntry = map.entries["rnoa|2025-03-31"];
+    const rnoaEntry = map.entries["rnoa|2025-03-31"]!;
     expect(rnoaEntry.policyDecisionsApplied).toContain("spec_flag: CAPITAL_TRANSACTION");
     expect(rnoaEntry.confidence).toBe("medium");
     expect(rnoaEntry.warnings.length).toBeGreaterThan(0);
@@ -105,7 +105,7 @@ describe("lineageBuilder", () => {
     }));
     const recast = [mkRecast("2025-03-31", { specFlags: flags as never })];
     const map = buildLineageMap({ recastData: recast, rawData: [] });
-    const noa = map.entries["noa|2025-03-31"];
+    const noa = map.entries["noa|2025-03-31"]!;
     expect(noa.policyDecisionsApplied.length).toBeLessThanOrEqual(LINEAGE_POLICY_DECISIONS_CAP + 1);
     expect(noa.policyDecisionsApplied[noa.policyDecisionsApplied.length - 1]).toMatch(/more/);
   });
@@ -133,7 +133,7 @@ describe("lineageBuilder", () => {
       rawData: [],
       intrinsicValuePerShareByPeriod: { "2025-03-31": 1234.56 },
     });
-    const iv = map.entries["intrinsic-value-per-share|2025-03-31"];
+    const iv = map.entries["intrinsic-value-per-share|2025-03-31"]!;
     expect(iv.finalValue).toBe(1234.56);
     expect(iv.confidence).toBe("high");
   });
@@ -141,7 +141,7 @@ describe("lineageBuilder", () => {
   it("flags missing IV/share as estimated confidence", () => {
     const recast = [mkRecast("2025-03-31")];
     const map = buildLineageMap({ recastData: recast, rawData: [] });
-    const iv = map.entries["intrinsic-value-per-share|2025-03-31"];
+    const iv = map.entries["intrinsic-value-per-share|2025-03-31"]!;
     expect(iv.finalValue).toBeNull();
     expect(iv.confidence).toBe("estimated");
   });

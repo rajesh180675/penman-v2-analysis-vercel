@@ -131,7 +131,7 @@ export function buildTerminalEconomics(args: TerminalEconomicsArgs) {
     terminalReinvestmentRate: terminalRoic != null && terminalRoic > 0 ? terminalGrowth / terminalRoic : null,
     fadeYears,
     competitionPressure,
-    summary: rationale[0],
+    summary: rationale[0]!,
     rationale,
   } satisfies TerminalEconomicsOutput;
 }

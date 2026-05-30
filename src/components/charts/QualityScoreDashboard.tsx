@@ -19,7 +19,7 @@ interface ScoreEntry {
  * Each scored independently with traffic-light status + interpretation.
  */
 export default function QualityScoreDashboard({ data }: Props) {
-  if (!data || data.length === 0 || !data[data.length - 1].quality) {
+  if (!data || data.length === 0 || !data[data.length - 1]!.quality) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900/60">
         <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Quality Score Dashboard</h3>
@@ -28,7 +28,7 @@ export default function QualityScoreDashboard({ data }: Props) {
     );
   }
 
-  const q = data[data.length - 1].quality!;
+  const q = data[data.length - 1]!.quality!;
 
   // Scoring rules:
   // - Piotroski (0–9): >=7 good, 3–6 neutral, <3 bad
