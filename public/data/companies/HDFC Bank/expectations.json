@@ -2,18 +2,47 @@
   "companyId": "hdfc-bank",
   "companyName": "HDFC Bank Ltd",
   "profile": "bfsi",
-  "expectedRigorLevel": "valuation-eligible",
-  "expectedParserFidelityStatus": "confirmed",
-  "expectedReconciliationStatus": "confirmed",
+  "expectedRigorLevel": "syntactically-valid",
+  "expectedParserFidelityStatus": "failed",
+  "expectedReconciliationStatus": "failed",
   "expectedEconomicSanityStatus": "passed",
   "expectedConceptIdentityStatus": "clean",
   "keyMetricTolerances": {
-    "RNOA": { "min": 0.0, "max": 0.05 },
-    "NIM": { "min": 0.025, "max": 0.05 },
-    "CRAR": { "min": 0.15, "max": 0.25 }
+    "ROA": {
+      "min": 0.0124,
+      "max": 0.0224
+    },
+    "ROE": {
+      "min": 0.1384,
+      "max": 0.153
+    }
   },
   "expectedAnomalyFlags": [],
-  "expectedUnusualItemCount": { "min": 0, "max": 5 },
+  "expectedUnusualItemCount": {
+    "min": 0,
+    "max": 5
+  },
   "expectedRunsCleanWorkbook": true,
-  "notes": "Largest private-sector Indian bank. Tests bank-pipeline path and ensures BFSI subtype routing is preserved across rigor v9-v12. NIM and CRAR dominate; Penman-Nissim ratios less informative for banks."
+  "notes": "Largest private-sector Indian bank. Tests bank-pipeline path and ensures BFSI subtype routing is preserved across rigor v9-v12. NIM and CRAR dominate; Penman-Nissim ratios less informative for banks.",
+  "capturedAt": "2026-05-30T03:48:02Z",
+  "targetState": {
+    "expectedRigorLevel": "valuation-eligible",
+    "expectedParserFidelityStatus": "confirmed",
+    "expectedReconciliationStatus": "confirmed",
+    "expectedAnomalyFlags": [],
+    "keyMetricTolerances": {
+      "RNOA": {
+        "min": 0,
+        "max": 0.05
+      },
+      "NIM": {
+        "min": 0.025,
+        "max": 0.05
+      },
+      "CRAR": {
+        "min": 0.15,
+        "max": 0.25
+      }
+    }
+  }
 }

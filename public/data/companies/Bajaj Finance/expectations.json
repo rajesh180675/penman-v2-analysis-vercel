@@ -2,18 +2,55 @@
   "companyId": "bajaj-finance",
   "companyName": "Bajaj Finance Ltd",
   "profile": "nbfc",
-  "expectedRigorLevel": "valuation-eligible",
-  "expectedParserFidelityStatus": "confirmed",
-  "expectedReconciliationStatus": "confirmed",
+  "expectedRigorLevel": "syntactically-valid",
+  "expectedParserFidelityStatus": "failed",
+  "expectedReconciliationStatus": "failed",
   "expectedEconomicSanityStatus": "passed",
   "expectedConceptIdentityStatus": "clean",
   "keyMetricTolerances": {
-    "RNOA": { "min": 0.02, "max": 0.06 },
-    "AUM_growth_3y": { "min": 0.15, "max": 0.40 },
-    "GNPA": { "min": 0.005, "max": 0.025 }
+    "ROA": {
+      "min": 0.0349,
+      "max": 0.0449
+    },
+    "ROE": {
+      "min": 0.1815,
+      "max": 0.2006
+    },
+    "leverage": {
+      "min": 3.3402,
+      "max": 4.0825
+    },
+    "costToIncome": {
+      "min": 0.4838,
+      "max": 0.5347
+    }
   },
   "expectedAnomalyFlags": [],
-  "expectedUnusualItemCount": { "min": 0, "max": 5 },
+  "expectedUnusualItemCount": {
+    "min": 0,
+    "max": 5
+  },
   "expectedRunsCleanWorkbook": true,
-  "notes": "Largest non-bank lender in India. Tests NBFC pipeline (D3c subsidiary + D4 LGD/RBI-NHB sidecar). RNOA-style ratios are misleading for NBFCs; AUM growth and GNPA are the right gauges. Codifies the case study at docs/CASE_STUDY_BAJAJ_FINANCE.md."
+  "notes": "Largest non-bank lender in India. Tests NBFC pipeline (D3c subsidiary + D4 LGD/RBI-NHB sidecar). RNOA-style ratios are misleading for NBFCs; AUM growth and GNPA are the right gauges. Codifies the case study at docs/CASE_STUDY_BAJAJ_FINANCE.md.",
+  "capturedAt": "2026-05-30T03:48:02Z",
+  "targetState": {
+    "expectedRigorLevel": "valuation-eligible",
+    "expectedParserFidelityStatus": "confirmed",
+    "expectedReconciliationStatus": "confirmed",
+    "expectedAnomalyFlags": [],
+    "keyMetricTolerances": {
+      "RNOA": {
+        "min": 0.02,
+        "max": 0.06
+      },
+      "AUM_growth_3y": {
+        "min": 0.15,
+        "max": 0.4
+      },
+      "GNPA": {
+        "min": 0.005,
+        "max": 0.025
+      }
+    }
+  }
 }

@@ -1,0 +1,959 @@
+{
+  "label": "phase2-2",
+  "capturedAt": "2026-05-30T04:04:03.621Z",
+  "policyVersions": {
+    "engineVersion": "2026-03-phase8-valuation-command-center",
+    "mappingSpecVersion": "2026-03-capitaline-indas-v2",
+    "mappingPolicyVersion": "2026-03-phase8",
+    "anomalyPolicyVersion": "2026-03-phase8",
+    "valuationPolicyVersion": "2026-03-phase8-dcf",
+    "goldenCompanySuiteVersion": "2026-03-phase8",
+    "scopePolicyVersion": "2026-03-phase7",
+    "traceabilitySchemaVersion": "2026-06-traceability-v17"
+  },
+  "entries": [
+    {
+      "folder": "Asian Paints",
+      "ticker": "ASIANPAINT",
+      "type": "consumer",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 175.379975587282,
+        "base": 323.2112996692898,
+        "bull": 386.9082803803888,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Avenue Supermarts",
+      "ticker": "DMART",
+      "type": "consumer",
+      "family": "industrial",
+      "periods": 14,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 55.04486682084692,
+        "base": 274.0718615437413,
+        "bull": 441.0990174766779,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Bajaj Finance",
+      "ticker": "BAJFINANCE",
+      "type": "nbfc",
+      "family": "financial-institution",
+      "periods": 12,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": null,
+        "base": null,
+        "bull": null,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "nbfc",
+        "fairPB": 1.763439616781065,
+        "fairValue": 174469.2313871104,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 0,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Bharti Airtel",
+      "ticker": "BHARTIARTL",
+      "type": "telecom",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": -237.67854471385758,
+        "base": -93.10408782654702,
+        "bull": -134.6625715892423,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1.7855739851593198,
+        "confidenceStatus": "blocked"
+      },
+      "flags": [
+        "BASE_GT_BULL",
+        "NEGATIVE_BASE"
+      ]
+    },
+    {
+      "folder": "Britannia Industries",
+      "ticker": "BRITANNIA",
+      "type": "consumer",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 279.377038992219,
+        "base": 680.1573049018665,
+        "bull": 878.1009703706612,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Cholamandalam Investment",
+      "ticker": "CHOLAFIN",
+      "type": "nbfc",
+      "family": "financial-institution",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": null,
+        "base": null,
+        "bull": null,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "nbfc",
+        "fairPB": 1.8125000000000002,
+        "fairValue": 42899.500625,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 0,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Dabur India",
+      "ticker": "DABUR",
+      "type": "consumer",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 73.54031307829169,
+        "base": 116.0475448840018,
+        "bull": 136.96519042560067,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Grasim Industries",
+      "ticker": "GRASIM",
+      "type": "industrial",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": -668.1396416591672,
+        "base": -75.35511812806926,
+        "bull": -189.5716490987317,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1.4161279670811162,
+        "confidenceStatus": "blocked"
+      },
+      "flags": [
+        "BASE_GT_BULL",
+        "NEGATIVE_BASE"
+      ]
+    },
+    {
+      "folder": "HDFC Bank",
+      "ticker": "HDFCBANK",
+      "type": "bank",
+      "family": "financial-institution",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": null,
+        "base": null,
+        "bull": null,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "bank",
+        "fairPB": 1.4552492933753423,
+        "fairValue": 783140.1224885499,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 0,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "HDFC Life Insurance Company Ltd",
+      "ticker": "HDFCLIFE",
+      "type": "insurance",
+      "family": "financial-institution",
+      "periods": 13,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": null,
+        "base": null,
+        "bull": null,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "insurance",
+        "fairPB": 0.7977310130197675,
+        "fairValue": 12887.041377549396,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 0,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Hindustan Unilever",
+      "ticker": "HINDUNILVR",
+      "type": "consumer",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 299.92975070477974,
+        "base": 476.7403719100972,
+        "bull": 562.0874594337511,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "ICICI Bank",
+      "ticker": "ICICIBANK",
+      "type": "bank",
+      "family": "financial-institution",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": null,
+        "base": null,
+        "bull": null,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "bank",
+        "fairPB": 1.4804203833497804,
+        "fairValue": 486677.30513221887,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 0,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "ITC",
+      "ticker": "ITC",
+      "type": "conglomerate",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 90.97048294770062,
+        "base": 138.11118286153967,
+        "bull": 159.34473228697348,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Infosys",
+      "ticker": "INFY",
+      "type": "it-services",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2026-03-31",
+      "valuation": {
+        "stress": 134.1129991329404,
+        "base": 271.391506834743,
+        "bull": 341.8595972983288,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "KOTAKBANK",
+      "ticker": "KOTAKBANK",
+      "type": "bank",
+      "family": "financial-institution",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": null,
+        "base": null,
+        "bull": null,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "bank",
+        "fairPB": 1.1389462412928335,
+        "fairValue": 179371.9032261515,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 0,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Life Insurance Corporation of India",
+      "ticker": "LICI",
+      "type": "insurance",
+      "family": "financial-institution",
+      "periods": 7,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": null,
+        "base": null,
+        "bull": null,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "insurance",
+        "fairPB": 1.8125000000000002,
+        "fairValue": 231100.38375000004,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 0,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Larsen & Toubro Ltd",
+      "ticker": "LT",
+      "type": "conglomerate",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2026-03-31",
+      "valuation": {
+        "stress": -129.26191794129605,
+        "base": 330.31673014991145,
+        "bull": 371.50372195120485,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Mahindra & Mahindra",
+      "ticker": "M&M",
+      "type": "cyclical",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 83.80661640851554,
+        "base": 505.5573884391026,
+        "bull": 492.60101724676906,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1.0701437964223057,
+        "confidenceStatus": "blocked"
+      },
+      "flags": [
+        "BASE_GT_BULL"
+      ]
+    },
+    {
+      "folder": "Maruti Suzuki India Ltd",
+      "ticker": "MARUTI",
+      "type": "industrial",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 1673.4759896058094,
+        "base": 2961.6255033331836,
+        "bull": 3613.2968559708847,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Muthoot Finance",
+      "ticker": "MUTHOOTFIN",
+      "type": "nbfc",
+      "family": "financial-institution",
+      "periods": 11,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": null,
+        "base": null,
+        "bull": null,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "nbfc",
+        "fairPB": 1.7752811261261097,
+        "fairValue": 53246.32636650311,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 0,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "NTPC",
+      "ticker": "NTPC",
+      "type": "utility",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": -57.07795064232958,
+        "base": 96.43850131843114,
+        "bull": 114.03217439271624,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Nestlé India",
+      "ticker": "NESTLEIND",
+      "type": "consumer",
+      "family": "industrial",
+      "periods": 2,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 184.77745207501889,
+        "base": 399.4867456923025,
+        "bull": 532.0845894651056,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Paytm",
+      "ticker": "PAYTM",
+      "type": "loss-maker",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 67.52281234803708,
+        "base": 73.32405804552332,
+        "bull": 64.22109124076995,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": [
+        "BASE_GT_BULL"
+      ]
+    },
+    {
+      "folder": "Power Grid Corporation of India Ltd",
+      "ticker": "POWERGRID",
+      "type": "utility",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 42.31083961707999,
+        "base": 118.71229914796788,
+        "bull": 140.58888391591924,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Reliance Industries",
+      "ticker": "RELIANCE",
+      "type": "conglomerate",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 67.1615514895144,
+        "base": 268.64836275415064,
+        "bull": 335.24009109557244,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Shriram Finance",
+      "ticker": "SHRIRAMFINAN",
+      "type": "nbfc",
+      "family": "financial-institution",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": null,
+        "base": null,
+        "bull": null,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "nbfc",
+        "fairPB": 1.2980771288059003,
+        "fairValue": 73302.18180978601,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 0,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "SBIN",
+      "ticker": "SBIN",
+      "type": "bank",
+      "family": "financial-institution",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": null,
+        "base": null,
+        "bull": null,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "bank",
+        "fairPB": 1.4284938822845672,
+        "fairValue": 721478.8342707374,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 0,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Sun Pharmaceutical Industries Ltd",
+      "ticker": "SUNPHARMA",
+      "type": "industrial",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 246.20958996056058,
+        "base": 446.00057371047274,
+        "bull": 532.1609020290159,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Tata Consultancy Services Ltd",
+      "ticker": "TCS",
+      "type": "it-services",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2026-03-31",
+      "valuation": {
+        "stress": 419.98133717661403,
+        "base": 860.95327236751,
+        "bull": 1095.5117056496863,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Tata Steel",
+      "ticker": "TATASTEEL",
+      "type": "cyclical",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": -16.81402235170413,
+        "base": 17.180021601457344,
+        "bull": 15.564475828628806,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1.0633406475970235,
+        "confidenceStatus": "blocked"
+      },
+      "flags": [
+        "BASE_GT_BULL"
+      ]
+    },
+    {
+      "folder": "Titan Company",
+      "ticker": "TITAN",
+      "type": "consumer",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 76.69026833077174,
+        "base": 164.47694817747401,
+        "bull": 206.6021435231935,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1.973404642794657,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "UltraTech Cement Ltd",
+      "ticker": "ULTRACEMCO",
+      "type": "cyclical",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 989.1189567450151,
+        "base": 2273.047406929401,
+        "bull": 2838.437842756698,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Vodafone Idea Ltd",
+      "ticker": "IDEA",
+      "type": "telecom",
+      "family": "industrial",
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": -31.70503246093252,
+        "base": -33.93793463093084,
+        "bull": -31.658481498630877,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "failed",
+        "parserFidelityScore": 60,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "blocked"
+      },
+      "flags": [
+        "STRESS_GT_BASE",
+        "NEGATIVE_BASE"
+      ]
+    }
+  ]
+}
