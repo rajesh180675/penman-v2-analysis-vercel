@@ -1,5 +1,7 @@
 # Plan 3 — Pipeline Strategy Refactor (5 PRs, schema v13 → v14)
 
+> **⚠️ SUPERSEDED (2026-05-30).** This roadmap was abandoned after PR-3.1's interface + registry shipped as dead scaffolding. Verification found the strategy spine abstracted a single readable 2-way dispatch fork (`family === "financial-institution"` → `processBankData`, else industrial → `computeValuation`), routed nothing in production (all four `value()` methods threw "not implemented in canary"), and its only live tendril — the `pipelineStrategyId` audit stamp — was itself buggy (keyed off `config.company_type` instead of the detected family, mis-stamping every auto-detected financial as `industrial-v1`). The spine was deleted and the stamp re-homed onto the real fork. A strategy pattern is revisited only when a sector needs genuinely different recast/ratio **stages** (e.g. a REIT), not merely different bands. See [`docs/adr/006-pipeline-strategy-pattern.md`](../../adr/006-pipeline-strategy-pattern.md).
+
 > **For Hermes:** Use `subagent-driven-development` skill. This plan deletes ~1,500 LOC by unifying the parallel `bank/`, `nbfc/`, `insurance/`, and industrial pipelines under one strategy interface. Treat the existing test suite as a contract — it MUST stay green throughout.
 
 **Goal:** Replace the duplicated bank/NBFC/insurance pipelines with a single `PipelineStrategy` abstraction so that:

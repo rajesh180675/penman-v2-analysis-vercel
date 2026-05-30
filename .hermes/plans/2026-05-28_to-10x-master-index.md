@@ -115,8 +115,12 @@ grep -rn "INRCrore\|CroreShares\|PercentFraction" src/engine/ | wc -l # ≥ 200
 find src -name "*.ts" -o -name "*.tsx" | xargs wc -l | sort -rn | head -10
 # Top 10 all ≤ 600 lines
 
-# ─── Pipeline strategies ──────────
-ls src/engine/pipeline/strategies/   # industrial, bank, nbfc, insurance
+# ─── Pipeline sector provenance ──────────
+# (ADR-006 superseded 2026-05-30: the strategy spine was a premature abstraction
+#  over a 2-way dispatch fork. Gate asserts the OUTCOME — every run stamps its
+#  audited sector path — not the MECHANISM. See docs/adr/006.)
+grep -n "pipelineStrategyId" src/engine/analysisTraceability.ts  # stamp resolved from the dispatch fork
+ls src/engine/__tests__/pipelineStrategyStamp.spec.ts            # provenance regression test present
 
 # ─── Persistence ──────────────────
 grep -rn "kvGet\|kvSet" src/lib/ | wc -l   # ≥ 20
@@ -149,7 +153,7 @@ npm run validate:release
 A skeptical CFA + senior architect + accessibility consultant + ops engineer all open the codebase together and find:
 
 **Software architecture**
-- No file too long to read; primitives carry unit semantics; one strategy interface across sectors
+- No file too long to read; primitives carry unit semantics; every run stamps its audited sector path
 - Multi-tenant with offline support; CSP, sanitization, fuzz tests; envelope schemas upgrade in place
 
 **Domain rigor (Plans 5 + 5b)**

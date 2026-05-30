@@ -147,7 +147,7 @@ Envelope `2026-06-traceability-v13` was a type-safety bump only; the envelope sh
 
 ## Pipeline Strategy Pattern (Schema v14, ADR-006)
 
-Envelope `2026-06-traceability-v14` adds an optional `pipelineStrategyId: string | undefined` field. The strategy registry (industrial / bank / nbfc / insurance) is currently a metadata-only canary: `selectStrategy` stamps the chosen id onto the envelope, but the pipeline still dispatches through `processCompanyDataFull`. The bump locks in the field shape so a future load-bearing wiring (or an honest deletion of the unused strategies) can land without a destructive migration. See [`docs/adr/006-pipeline-strategy-pattern.md`](adr/006-pipeline-strategy-pattern.md).
+Envelope `2026-06-traceability-v14` adds an optional `pipelineStrategyId: string | undefined` field recording which sector path produced the run. **Update (2026-05-30, ADR-006 superseded):** the strategy registry that originally stamped this field was removed as a premature abstraction over a 2-way dispatch fork; the field is retained and now resolved directly from the detected analysis family + subtype inside `buildAnalysisTraceability` (which also fixed a latent mis-stamp for auto-detected financials). The v14 field shape is unchanged, so no migration was needed. See [`docs/adr/006-pipeline-strategy-pattern.md`](adr/006-pipeline-strategy-pattern.md).
 
 ## SOTP Valuation Contributions (Schema v15, no ADR)
 
