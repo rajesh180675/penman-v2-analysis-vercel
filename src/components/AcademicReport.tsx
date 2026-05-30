@@ -1,8 +1,4 @@
-import { useMemo, useRef, useState } from "react";
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
-import JSZip from "jszip";
-import katex from "katex";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "katex/dist/katex.min.css";
 import { EngineConfig, NP_BENCHMARKS, RawPeriodData, RecastPeriod, ke_from_config } from "../engine/types";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
@@ -173,14 +169,35 @@ function madSigma(vals: number[]): number {
 }
 
 export default function AcademicReport({ data, config, rawData, auditMeta, traceability: sharedTraceability = null, publication: precomputedPublication = null, ratioSanity = null }: Props) {
-  const eqROCE = katex.renderToString(String.raw`\mathrm{ROCE}_t = \frac{\mathrm{CNI}_t}{\overline{\mathrm{CSE}}}`,
-    { throwOnError: false, displayMode: true });
-  const eqRNOA = katex.renderToString(String.raw`\mathrm{RNOA}_t = \frac{\mathrm{OI}_t}{\overline{\mathrm{NOA}}}`,
-    { throwOnError: false, displayMode: true });
-  const eqRE = katex.renderToString(String.raw`\mathrm{RE}_t = \mathrm{CNI}_t - k_e\,\mathrm{CSE}_{t-1}`,
-    { throwOnError: false, displayMode: true });
-  const eqReOI = katex.renderToString(String.raw`\mathrm{ReOI}_t = \mathrm{OI}_t - k_w\,\mathrm{NOA}_{t-1}`,
-    { throwOnError: false, displayMode: true });
+  // KaTeX is lazy-loaded so the entry chunk doesn't ship the renderer for
+  // users who never open Academic Report. Equations render as plain LaTeX
+  // text until katex resolves, then upgrade to typeset HTML in place.
+  const [equations, setEquations] = useState<{
+    eqROCE: string;
+    eqRNOA: string;
+    eqRE: string;
+    eqReOI: string;
+  }>(() => ({
+    eqROCE: String.raw`\mathrm{ROCE}_t = \frac{\mathrm{CNI}_t}{\overline{\mathrm{CSE}}}`,
+    eqRNOA: String.raw`\mathrm{RNOA}_t = \frac{\mathrm{OI}_t}{\overline{\mathrm{NOA}}}`,
+    eqRE: String.raw`\mathrm{RE}_t = \mathrm{CNI}_t - k_e\,\mathrm{CSE}_{t-1}`,
+    eqReOI: String.raw`\mathrm{ReOI}_t = \mathrm{OI}_t - k_w\,\mathrm{NOA}_{t-1}`,
+  }));
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { default: katex } = await import("katex");
+      if (cancelled) return;
+      setEquations({
+        eqROCE: katex.renderToString(String.raw`\mathrm{ROCE}_t = \frac{\mathrm{CNI}_t}{\overline{\mathrm{CSE}}}`, { throwOnError: false, displayMode: true }),
+        eqRNOA: katex.renderToString(String.raw`\mathrm{RNOA}_t = \frac{\mathrm{OI}_t}{\overline{\mathrm{NOA}}}`, { throwOnError: false, displayMode: true }),
+        eqRE: katex.renderToString(String.raw`\mathrm{RE}_t = \mathrm{CNI}_t - k_e\,\mathrm{CSE}_{t-1}`, { throwOnError: false, displayMode: true }),
+        eqReOI: katex.renderToString(String.raw`\mathrm{ReOI}_t = \mathrm{OI}_t - k_w\,\mathrm{NOA}_{t-1}`, { throwOnError: false, displayMode: true }),
+      });
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const { eqROCE, eqRNOA, eqRE, eqReOI } = equations;
 
   const reportRef = useRef<HTMLDivElement | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
@@ -332,6 +349,10 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
 
   const generatePdfBlob = async () => {
     if (!reportRef.current) return null;
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+      import("html2canvas"),
+      import("jspdf"),
+    ]);
     const canvas = await html2canvas(reportRef.current, {
       scale: 2,
       useCORS: true,
@@ -398,6 +419,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
     if (exportingBundle || exportingPdf) return;
     setExportingBundle(true);
     try {
+      const { default: JSZip } = await import("jszip");
       const zip = new JSZip();
       const latestPeriod = data[data.length - 1]?.period_end?.slice(0, 10) ?? "latest";
 
