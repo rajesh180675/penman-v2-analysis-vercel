@@ -461,6 +461,13 @@ export function extractRecastDebug(data: RawPeriodData, bs: CanonicalBalanceShee
   const rawTotalAssets = readRaw("Total Assets");
   const rawTotalLiabilitiesAndEquity = readRaw("Total Equity and Liabilities");
   const rawTotalEquity = readRaw("Total Equity");
+  // Independently-reported asset subtotals (read straight from source, NOT
+  // derived from Total Assets). Their sum vs reported Total Assets is the
+  // non-tautological asset-composition check. The non-current line has two
+  // Capitaline label variants; prefer the canonical one, fall back to the alt.
+  const rawCurrentAssets = readRaw("Total Current Assets");
+  const rawNonCurrentAssets =
+    readRaw("Total Non-Current and Other Assets") ?? readRaw("Total Reported Non-current Assets");
   // The OL coverage check needs the explicit-OL sum too. Mirror the
   // calculation in recastBalanceSheet: read each component once, sum.
   const olCompKeys: readonly string[] = [
@@ -485,6 +492,8 @@ export function extractRecastDebug(data: RawPeriodData, bs: CanonicalBalanceShee
     rawTotalAssets,
     rawTotalLiabilitiesAndEquity,
     rawTotalEquity,
+    rawCurrentAssets,
+    rawNonCurrentAssets,
     explicitOL,
   };
 }
