@@ -110,7 +110,14 @@ export function buildClassAModels(
         periods: data.map((p) => ({
           periodEnd: p.period_end,
           commonEquity: p.bs.CSE,
-          comprehensiveIncome: p.is.TCI,
+          // CSE excludes minority interest (recast: CSE = totalSE - MI), so the
+          // comprehensive-income basis must also be parent-attributable. Group
+          // TCI includes the NCI share; subtract TCI_NCI to align the bases,
+          // else every period's residual falsely absorbs the minority's CI and
+          // flags a phantom dirty-surplus for any firm with non-wholly-owned
+          // subsidiaries. Preferred dividends are left in TCI to net against the
+          // total DividendPaid term below (using CNI would double-remove them).
+          comprehensiveIncome: p.is.TCI - p.is.TCI_NCI,
           dividends: Math.abs(p.cf.DividendPaid),
           netStockIssuance: p.cf.EquityIssued - p.cf.ShareBuybacks,
         })),
