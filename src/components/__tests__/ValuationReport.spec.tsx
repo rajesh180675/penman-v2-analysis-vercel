@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import ValuationReport from "../ValuationReport";
-import type { EngineConfig, RecastPeriod } from "../../engine/types";
+import type { AnalysisTraceabilityEnvelope, EngineConfig, RecastPeriod } from "../../engine/types";
 import { DEFAULT_CONFIG } from "../../engine/types";
 import { CroreShares, INRAbsolute } from "../../engine/types/units";
+import { buildAnalysisTraceability } from "../../engine/analysisTraceability";
+import { getAnalysisPolicyVersions } from "../../engine/policyVersions";
 
 function mkPeriod(period_end: string): RecastPeriod {
   return {
@@ -59,7 +61,7 @@ function mkPeriod(period_end: string): RecastPeriod {
   } as RecastPeriod;
 }
 
-function renderReport() {
+function renderReport(traceability?: AnalysisTraceabilityEnvelope | null) {
   const data = [mkPeriod("2024-03-31"), mkPeriod("2025-03-31")];
   const config: EngineConfig = {
     ...DEFAULT_CONFIG,
@@ -72,11 +74,44 @@ function renderReport() {
       data={data}
       config={config}
       analysisStatus={null}
+      traceability={traceability ?? null}
     />,
   );
 }
 
 describe("ValuationReport", () => {
+  // Phase 3.5 — trust-envelope contract: the analyticalDepth block (schema v18)
+  // is enriched at this surface from the locally-built command center, then
+  // surfaced through the shared TraceabilityTrustPanel.
+  it("surfaces the analytical-depth line when a trust envelope is present", () => {
+    const traceability = buildAnalysisTraceability({
+      generatedAt: "2026-04-03T10:00:00.000Z",
+      runId: "run-depth",
+      companyId: "ITC",
+      sourceMode: "json",
+      recastData: [mkPeriod("2024-03-31"), mkPeriod("2025-03-31")],
+      config: DEFAULT_CONFIG,
+      rawData: [
+        { company_id: "ITC", period_end: "2024-03-31", raw_metric_values: {} },
+        { company_id: "ITC", period_end: "2025-03-31", raw_metric_values: {} },
+      ],
+      periodCount: 2,
+      latestPeriod: "2025-03-31",
+      policyVersions: getAnalysisPolicyVersions(),
+    });
+    const html = renderReport(traceability);
+    // Trust panel renders, and the depth read-out reaches the HTML.
+    expect(html).toContain("Valuation Trust Gate");
+    expect(html).toContain("Analytical depth");
+    expect(html).toContain("depth analytics");
+  });
+
+  it("renders no trust panel (and no depth line) when the envelope is absent", () => {
+    const html = renderReport(null);
+    expect(html).not.toContain("Valuation Trust Gate");
+    expect(html).not.toContain("Analytical depth");
+  });
+
   it("discloses guarded floor for floored incremental ROIC scenario values", () => {
     const html = renderReport();
     expect(html).toContain("guarded floor");

@@ -173,4 +173,79 @@ describe("buildValuationTraceabilitySurfaceSummary", () => {
     expect(summary?.confidenceLine).not.toContain("0 blocking / 0 diagnostic");
     expect(summary?.blockers.some((item) => item.includes("reconciliation"))).toBe(true);
   });
+
+  // Phase 3.5 — analyticalDepth (schema v18) contract: depthLine is emitted
+  // only when the envelope actually carries the block, so structural-only
+  // envelopes (the 9 non-valuation surfaces, snapshot/publication) are unchanged.
+  it("emits depthLine when the envelope carries an analyticalDepth block", () => {
+    const base = buildAnalysisTraceability({
+      generatedAt: "2026-04-03T10:10:00.000Z",
+      runId: "run-depth",
+      companyId: "ITC",
+      sourceMode: "json",
+      recastData: [mkBalancedPeriod("2025-03-31")],
+      config: DEFAULT_CONFIG,
+      rawData: [
+        {
+          company_id: "ITC",
+          period_end: "2025-03-31",
+          raw_metric_values: {
+            "Total Assets__BalanceSheet": 1000,
+            "Total Equity__BalanceSheet": 600,
+            "Revenue From Operations(Net)__ProfitLoss": 900,
+            "Profit After Tax__ProfitLoss": 90,
+          },
+        },
+      ],
+      periodCount: 1,
+      latestPeriod: "2025-03-31",
+      policyVersions: getAnalysisPolicyVersions(),
+    });
+    const enriched = {
+      ...base,
+      analyticalDepth: {
+        status: "partial" as const,
+        summary: "2/4 depth analytics ran, 1 flagged for review",
+        presentCount: 2,
+        watchCount: 1,
+        checks: [],
+      },
+    };
+
+    const summary = buildValuationTraceabilitySurfaceSummary(enriched);
+    expect(summary?.depthLine).toBeDefined();
+    expect(summary?.depthLine).toContain("partial");
+    expect(summary?.depthLine).toContain("2/4 depth analytics");
+    expect(summary?.depthLine).toContain("1 to review");
+  });
+
+  it("omits depthLine for a structural-only envelope (no analyticalDepth)", () => {
+    const base = buildAnalysisTraceability({
+      generatedAt: "2026-04-03T10:11:00.000Z",
+      runId: "run-no-depth",
+      companyId: "ITC",
+      sourceMode: "json",
+      recastData: [mkBalancedPeriod("2025-03-31")],
+      config: DEFAULT_CONFIG,
+      rawData: [
+        {
+          company_id: "ITC",
+          period_end: "2025-03-31",
+          raw_metric_values: {
+            "Total Assets__BalanceSheet": 1000,
+            "Total Equity__BalanceSheet": 600,
+            "Revenue From Operations(Net)__ProfitLoss": 900,
+            "Profit After Tax__ProfitLoss": 90,
+          },
+        },
+      ],
+      periodCount: 1,
+      latestPeriod: "2025-03-31",
+      policyVersions: getAnalysisPolicyVersions(),
+    });
+    // buildAnalysisTraceability does not set analyticalDepth — structural only.
+    expect(base.analyticalDepth).toBeUndefined();
+    const summary = buildValuationTraceabilitySurfaceSummary(base);
+    expect(summary?.depthLine).toBeUndefined();
+  });
 });
