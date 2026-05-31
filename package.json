@@ -29,7 +29,7 @@
     "audit:baseline": "tsx scripts/audit-baseline.ts",
     "audit:diff": "node scripts/audit-diff.cjs",
     "validate": "npm run typecheck && npm run lint:any && npm run lint:doc-schema && npm run test && npm run build && npm run lint:bundle",
-    "validate:release": "npm run test:golden && npm run validate",
+    "validate:release": "npm run test:golden && npm run validate && npm run test:audit",
     "refresh": "node scripts/refresh-company.mjs"
   },
   "dependencies": {
