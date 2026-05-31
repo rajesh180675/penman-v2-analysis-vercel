@@ -35,15 +35,15 @@
    Plus a new S-9.4C consistency check:
      - kw-consistency-bridge        |kw_used - kw_structural| / kw_structural
 
-   IMPORTANT — kw-consistency-bridge is deployed as WARNING-ONLY in the
-   first release (per the plan's "deploy as warning-only first" guidance
-   so existing kw inconsistencies surface without flooding valuations
-   with `failed` statuses). The check classifies any breach beyond the
-   warning threshold as `degraded` instead of `failed`. The full
-   warning(1%)/critical(5%) escalation logic is kept inline behind the
-   ENABLE_KW_CRITICAL_FAIL flag so a follow-up can flip it on once the
-   first-release warnings have been triaged. Look for the
-   "TODO(kw-consistency-critical)" comment.
+   IMPORTANT — kw-consistency-bridge is PROVENANCE-DRIVEN and fail-closed.
+   It does NOT compare kwUsed vs kwStructural magnitudes (that diff is
+   tautologically zero: the pipeline stamps both from one
+   deriveKwFromStructure call). Instead it asserts that every period which
+   CAN derive a structural kw (any non-first period) actually has a valid
+   one stamped — equivalently, that the shared `resolveKw` seam resolves
+   to the structural rung rather than silently falling back to the config
+   approximation. A non-first period missing a structural kw fails closed.
+   See buildKwConsistencyCheck for the full rationale.
 ================================================================ */
 import { EngineConfig, RecastPeriod } from "./types";
 
@@ -61,13 +61,6 @@ export type {
 };
 
 const MIN_OPERATING_COST_BRIDGE_COVERAGE = 0.6;
-
-/**
- * TODO(kw-consistency-critical) — Flip to true once existing kw
- * inconsistencies surfaced by the first warning-only release have been
- * triaged. Plan §1.2 calls for a one-release observation window.
- */
-const ENABLE_KW_CRITICAL_FAIL = false;
 
 const KW_CONSISTENCY_WARNING_THRESHOLD = 0.01;
 const KW_CONSISTENCY_CRITICAL_THRESHOLD = 0.05;
@@ -171,48 +164,53 @@ function buildOptionalCheck(params: {
 }
 
 /**
- * S-9.4C kw-consistency residual builder.
+ * S-9.4C kw-consistency residual builder — PROVENANCE-DRIVEN, fail-closed.
  *
- * NOTE — warning-only rollout: any breach above the warning threshold
- * classifies as `degraded`; the `failed` branch is gated behind
- * ENABLE_KW_CRITICAL_FAIL. The plan's full 1%/5% escalation is captured
- * here so flipping the flag enables it without code changes.
+ * The old form compared `period.kwUsed - period.kwStructural`, but the
+ * pipeline stamps both from the identical `deriveKwFromStructure` result
+ * (pipeline.ts:248-249) and nothing else writes kwUsed, so that residual
+ * was identically 0 — tautological, permanently "confirmed". A magnitude
+ * diff against a fresh re-derivation is equally tautological at evaluation
+ * time (same ke, same prev reproduces kwStructural exactly).
+ *
+ * The genuine invariant is provenance: `kwUsed` is stamped ONLY by the
+ * pipeline's kw step (pipeline.ts:248-249), together with `kwStructural`,
+ * for every period that can derive a structural kw. So `kwUsed` presence
+ * marks "this period went through kw-stamping" — and in that context the
+ * structural kw MUST be valid. If it isn't, every kw consumer silently
+ * resolves `resolveKw` to the config approximation instead — the exact
+ * "derive once, consume everywhere" violation S-9.4C forbids — so it fails
+ * closed (ratio 1 → drives the ladder).
+ *
+ * Periods with no `kwUsed` were never kw-stamped (the first period, which
+ * has no prior to weight against; or directly-constructed recast fixtures
+ * that bypass the pipeline) and are legitimately skipped, not failed.
  */
 function buildKwConsistencyCheck(period: RecastPeriod): ReconciliationResidualCheck | null {
-  const kwStructural = period.kwStructural;
   const kwUsed = period.kwUsed;
-  if (
-    kwStructural == null
-    || kwUsed == null
-    || !Number.isFinite(kwStructural)
-    || !Number.isFinite(kwUsed)
-    || kwStructural <= 0
-  ) {
+  // No kwUsed → this period never went through the pipeline's kw-stamping
+  // step, so there is nothing to assert about structural provenance.
+  if (kwUsed == null || !Number.isFinite(kwUsed)) {
     return null;
   }
-  const residual = kwUsed - kwStructural;
-  const denominator = Math.abs(kwStructural);
-  const ratio = Math.abs(residual) / Math.max(denominator, 1e-9);
-  let status: ReconciliationResidualStatus;
-  if (ENABLE_KW_CRITICAL_FAIL) {
-    status = classifyResidual(ratio, KW_CONSISTENCY_WARNING_THRESHOLD, KW_CONSISTENCY_CRITICAL_THRESHOLD);
-  } else {
-    // Warning-only: clamp `failed` down to `degraded`.
-    status = ratio >= KW_CONSISTENCY_WARNING_THRESHOLD ? "degraded" : "confirmed";
-  }
-  const escalationNote = ENABLE_KW_CRITICAL_FAIL
-    ? ""
-    : " [warning-only rollout; critical-on-5% disabled per plan §1.2]";
+  const kwStructural = period.kwStructural;
+  const structurallyResolved =
+    kwStructural != null && Number.isFinite(kwStructural) && kwStructural > 0;
+  const status: ReconciliationResidualStatus = structurallyResolved ? "confirmed" : "failed";
+  const ratio = structurallyResolved ? 0 : 1;
+  const detail = structurallyResolved
+    ? `kw resolved structurally (kw_structural=${kwStructural!.toFixed(4)}) — every module charges the same S-9.4C-derived capital cost.`
+    : `kw was used (kw_used=${kwUsed.toFixed(4)}) without a structural kw stamped — kw consumers silently fall back to the config approximation, breaking S-9.4C "derive once" consistency.`;
   return {
     key: "kw-consistency-bridge",
-    label: "kw_used = kw_structural",
+    label: "kw resolved structurally (S-9.4C)",
     periodEnd: period.period_end,
-    residual,
+    residual: ratio,
     ratio,
     warningThreshold: KW_CONSISTENCY_WARNING_THRESHOLD,
     criticalThreshold: KW_CONSISTENCY_CRITICAL_THRESHOLD,
     status,
-    detail: `kw_used=${kwUsed.toFixed(4)} vs kw_structural=${kwStructural.toFixed(4)} — gap ${formatPct(ratio)}, warning ${formatPct(KW_CONSISTENCY_WARNING_THRESHOLD)}, critical ${formatPct(KW_CONSISTENCY_CRITICAL_THRESHOLD)}.${escalationNote}`,
+    detail,
   };
 }
 

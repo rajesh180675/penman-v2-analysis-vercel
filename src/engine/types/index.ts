@@ -96,6 +96,7 @@ export type {
   ValuationSectorTemplate,
   EngineConfig,
   ConfigValidationWarning,
+  KwSource,
 } from "./config";
 
 export {
@@ -105,6 +106,7 @@ export {
   kd_aftertax,
   ke_from_config,
   deriveKwFromConfig,
+  resolveKw,
   validateEngineConfig,
 } from "./config";
 

@@ -27,7 +27,7 @@
  * asset revaluation is rare).
  */
 
-import { RecastPeriod, EngineConfig, deriveKwFromConfig, ke_from_config } from "./types";
+import { RecastPeriod, EngineConfig, resolveKw, ke_from_config } from "./types";
 
 export interface EPVNormalization {
   periodsUsed: number;
@@ -208,9 +208,7 @@ export function computeEPV(
     (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()
   );
   const latestForKw = sortedForKw[sortedForKw.length - 1];
-  const kw = (latestForKw?.kwStructural != null && Number.isFinite(latestForKw.kwStructural) && latestForKw.kwStructural > 0)
-    ? latestForKw.kwStructural
-    : deriveKwFromConfig(config);
+  const kw = resolveKw(latestForKw?.kwStructural, config).kw;
 
   if (ke <= 0.01) return null; // nonsensical ke
 
