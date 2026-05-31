@@ -109,3 +109,11 @@ export {
 } from "./config";
 
 export type { AnalysisTraceabilityEnvelope } from "./traceability";
+
+export type {
+  AnalyticalDepthSummary,
+  AnalyticalDepthStatus,
+  AnalyticalDepthCheck,
+  AnalyticalDepthCheckKey,
+  AnalyticalDepthCheckStatus,
+} from "./analyticalDepth";

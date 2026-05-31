@@ -8,6 +8,11 @@ export interface ValuationTraceabilitySurfaceSummary {
   reconciliationLine: string;
   nextGateLine: string;
   blockers: string[];
+  /** Plan 5 keystone — present only when the envelope carries the
+   *  analyticalDepth block (valuation-time enrichment). Absent on the
+   *  structural-only envelopes that the 9 non-valuation surfaces render, so
+   *  those surfaces are unaffected. */
+  depthLine?: string | undefined;
 }
 
 function formatPct(value: number | null | undefined) {
@@ -68,6 +73,11 @@ export function buildValuationTraceabilitySurfaceSummary(
     ? `${effectiveConfidenceStatus} · ${effectiveBlockingCount} gate issue${effectiveBlockingCount === 1 ? "" : "s"}`
     : `${effectiveConfidenceStatus} · ${traceability.confidence.blockingCount} blocking / ${traceability.confidence.diagnosticCount} diagnostic`;
 
+  const depth = traceability.analyticalDepth;
+  const depthLine = depth
+    ? `${depth.status} · ${depth.presentCount}/4 depth analytics${depth.watchCount > 0 ? ` · ${depth.watchCount} to review` : ""}`
+    : undefined;
+
   return {
     headline: `${traceability.rigor.currentLabel} · ${traceability.confidence.headline}`,
     detail: traceability.rigor.summary,
@@ -78,5 +88,8 @@ export function buildValuationTraceabilitySurfaceSummary(
       ? `Next unresolved gate: ${formatRigorLevel(pendingLevel)}.`
       : "All currently wired rigor gates are cleared.",
     blockers,
+    // Conditionally included so structural-only envelopes (the 9 non-valuation
+    // surfaces, snapshot/publication) yield a byte-identical summary object.
+    ...(depthLine ? { depthLine } : {}),
   };
 }

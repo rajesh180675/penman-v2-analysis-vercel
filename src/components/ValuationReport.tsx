@@ -21,6 +21,7 @@ import { rememberWorkspaceValuation } from "../lib/researchWorkspace";
 import { syncWorkspaceAlert, syncWorkspaceValuation } from "../lib/sharedResearchApi";
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
+import { evaluateAnalyticalDepth } from "../engine/analyticalDepth";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import type { AnalysisPublicationSnapshot } from "../lib/publication/analysisPublicationSnapshot";
 import type { LossMakerValuationResult } from "../engine/lossMakerValuation";
@@ -74,11 +75,6 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
   const derivedValuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
   const valuationReadiness = publication?.valuationReadiness ?? derivedValuationReadiness;
   const resolvedTraceability = publication?.traceability ?? traceability;
-  const derivedTraceabilitySummary = useMemo(
-    () => buildValuationTraceabilitySurfaceSummary(resolvedTraceability),
-    [resolvedTraceability],
-  );
-  const traceabilitySummary = publication?.traceabilitySummary ?? derivedTraceabilitySummary;
   const resolvedNseSymbol = useMemo(() => resolveNseSymbol(config.market_data_symbol ?? config.ticker ?? config.quality_data_folder ?? null), [config.market_data_symbol, config.ticker, config.quality_data_folder]);
   const marketProvider = config.market_data_provider ?? (resolvedNseSymbol ? "nse" : "manual");
   const marketSymbol = config.market_data_symbol ?? config.ticker ?? resolvedNseSymbol ?? null;
@@ -142,6 +138,23 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
       segmentData: segmentData?.business ?? null,
     }),
     [analysisStatus, data, effectiveConfig, liveMarketData, segmentData],
+  );
+
+  // Plan 5 keystone — enrich the trust envelope with the analyticalDepth block.
+  // The structural builder (useAuditAnalysis) runs without valuation in scope,
+  // so depth is added here, the seam where the envelope and the command center
+  // first coexist. Non-valuation surfaces keep the structural-only envelope.
+  const analyticalDepth = useMemo(
+    () => evaluateAnalyticalDepth(commandCenter, { modelKe: ke }),
+    [commandCenter, ke],
+  );
+  const enrichedTraceability = useMemo(
+    () => (resolvedTraceability ? { ...resolvedTraceability, analyticalDepth } : resolvedTraceability),
+    [resolvedTraceability, analyticalDepth],
+  );
+  const traceabilitySummary = useMemo(
+    () => buildValuationTraceabilitySurfaceSummary(enrichedTraceability),
+    [enrichedTraceability],
   );
 
   // Moat scorer (5-dimension Buffett/Munger framework)

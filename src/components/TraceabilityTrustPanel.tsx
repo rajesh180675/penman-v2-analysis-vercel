@@ -8,6 +8,9 @@ export interface TraceabilitySurfaceSummary {
   reconciliationLine: string;
   nextGateLine: string;
   blockers: string[];
+  /** Plan 5 keystone — analytical-depth read-out. Present only on
+   *  valuation-time enriched envelopes; absent for structural-only surfaces. */
+  depthLine?: string | undefined;
 }
 
 interface Props {
@@ -47,6 +50,12 @@ export default function TraceabilityTrustPanel({
         <TrustMetric label="Parser fidelity" value={parserStatus ?? "—"} sublabel={summary.parserLine} />
         <TrustMetric label="Reconciliation" value={reconciliationStatus ?? "—"} sublabel={summary.reconciliationLine} />
       </div>
+      {summary.depthLine && (
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Analytical depth</span>
+          <span className="ml-2">{summary.depthLine}</span>
+        </div>
+      )}
       {summary.blockers.length > 0 && (
         <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <div className="font-semibold">{cautionHeading}</div>
