@@ -119,6 +119,18 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
     return deriveKwFromStructure(cur, prev, ke, effectiveConfig.risk_free_rate, effectiveConfig);
   }, [valuationData, ke, effectiveConfig]);
 
+  // S-9.4C structural baseline: kw recomputed at the UN-overridden config ke.
+  // When the analyst moves ke (keOverride), kwDerived drifts from this baseline;
+  // the InputsPanel surfaces the delta as a read-only badge. This is intentional
+  // sensitivity exploration — it does NOT touch the rigor ladder (kw stays
+  // structurally derived). When keOverride is null, ke === keFromConfig so the
+  // two coincide and the badge is hidden.
+  const kwStructuralBaseline = useMemo(() => {
+    const cur = valuationData[valuationData.length - 1]!;
+    const prev = valuationData[valuationData.length - 2]!;
+    return deriveKwFromStructure(cur, prev, keFromConfig, effectiveConfig.risk_free_rate, effectiveConfig);
+  }, [valuationData, keFromConfig, effectiveConfig]);
+
   const cyclicalNormalization = useMemo(() => buildCyclicalNormalization(data), [data]);
 
   const cyclicalTerminalREAnchor = useMemo(() => {
@@ -371,6 +383,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
         keFromConfig={keFromConfig}
         effectiveConfig={effectiveConfig}
         kwDerived={kwDerived}
+        kwStructuralBaseline={kwStructuralBaseline}
         g={g}
         setG={setG}
         cv={cv}

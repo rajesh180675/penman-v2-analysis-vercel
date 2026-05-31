@@ -13,6 +13,7 @@ export default function AssumptionsPanel({
   g_inp,
   setG,
   kwDerived,
+  kwStructuralBaseline,
   horizon,
   setH,
   probabilityState,
@@ -28,6 +29,7 @@ export default function AssumptionsPanel({
   g_inp: number;
   setG: (v: number) => void;
   kwDerived: number;
+  kwStructuralBaseline: number;
   horizon: number;
   setH: (v: number) => void;
   probabilityState: ForecastProbabilityState;
@@ -58,6 +60,11 @@ export default function AssumptionsPanel({
           <div className="w-28 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-700 font-mono font-semibold">
             {(kwDerived * 100).toFixed(2)}
           </div>
+          {Math.abs(kwDerived - kwStructuralBaseline) > 1e-4 && (
+            <p className="text-xs text-amber-600 mt-0.5 font-medium" title="Recomputed kw at your ke assumption vs the structural baseline at config ke. Sensitivity exploration only — does not affect the rigor ladder.">
+              Δ {(kwDerived - kwStructuralBaseline) >= 0 ? "+" : ""}{((kwDerived - kwStructuralBaseline) * 100).toFixed(2)}pp vs structural ({(kwStructuralBaseline * 100).toFixed(2)}%)
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">Horizon (years)</label>

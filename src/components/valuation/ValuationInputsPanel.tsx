@@ -12,6 +12,7 @@ export default function ValuationInputsPanel({
   keFromConfig,
   effectiveConfig,
   kwDerived,
+  kwStructuralBaseline,
   g,
   setG,
   cv,
@@ -29,6 +30,7 @@ export default function ValuationInputsPanel({
   keFromConfig: number;
   effectiveConfig: EngineConfig;
   kwDerived: number;
+  kwStructuralBaseline: number;
   g: number;
   setG: (v: number) => void;
   cv: CVMethod;
@@ -70,6 +72,11 @@ export default function ValuationInputsPanel({
             {(kwDerived * 100).toFixed(2)}%
           </div>
           <p className="text-xs text-slate-400 mt-0.5">NOA-weighted · kd_at=kd×(1−τ)</p>
+          {Math.abs(kwDerived - kwStructuralBaseline) > 1e-4 && (
+            <p className="text-xs text-amber-600 mt-0.5 font-medium" title="Recomputed kw at your overridden ke vs the structural baseline at config ke. Sensitivity exploration only — does not affect the rigor ladder.">
+              Δ {(kwDerived - kwStructuralBaseline) >= 0 ? "+" : ""}{((kwDerived - kwStructuralBaseline) * 100).toFixed(2)}pp vs structural ({(kwStructuralBaseline * 100).toFixed(2)}%)
+            </p>
+          )}
         </div>
 
         <NumInput label="Growth g (%)" value={g} onChange={setG} />

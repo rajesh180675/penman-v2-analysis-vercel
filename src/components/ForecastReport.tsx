@@ -57,6 +57,12 @@ interface ExtendedProps extends Props { rawData?: RawPeriodData[] | null }
 
 export default function ForecastReport({data,config, rawData = null, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null}:ExtendedProps) {
   const keBase = ke_from_config(config);
+  // ke_inp is seeded in percent rounded to 0.1pp; keSeed is the exact decimal ke
+  // the live path starts from (ke_inp/100 at rest). The structural baseline must
+  // use keSeed — NOT raw keBase — so kwDerived === baseline before the analyst
+  // moves ke, mirroring the Valuation side (otherwise the rounding gap would
+  // light the Δ badge at rest).
+  const keSeed = +(keBase * 100).toFixed(1) / 100;
   const valuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
   const derivedTraceabilitySummary = useMemo(
     () => buildValuationTraceabilitySurfaceSummary(traceability),
@@ -88,7 +94,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
   const operatingBridge = latest?.is.operatingCostBridge;
   const bridgeReady = (operatingBridge?.coverageRatio ?? 0) >= 0.25;
 
-  const [ke_inp,  setKe]  = useState(+(keBase*100).toFixed(1));
+  const [ke_inp,  setKe]  = useState(+(keSeed*100).toFixed(1));
   const [g_inp,   setG]   = useState(5.0);
   const [horizon, setH]   = useState(5);
   const [mcBusy, setMcBusy] = useState(false);
@@ -101,6 +107,17 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
     const prev = data[data.length - 2]!;
     return deriveKwFromStructure(cur, prev, ke_inp / 100, config.risk_free_rate, config);
   }, [data, ke_inp, config]);
+  // S-9.4C structural baseline: kw recomputed at the config ke seed (keSeed),
+  // the same value the live ke_inp starts from — not the analyst's moved ke_inp.
+  // Moving the ke assumption drifts kwDerived from this; the AssumptionsPanel
+  // surfaces the gap as a read-only badge. Sensitivity only — the rigor ladder
+  // is untouched. Exactly equal to kwDerived at the initial ke_inp seed.
+  const kwStructuralBaseline = useMemo(() => {
+    if (data.length < 2) return config.risk_free_rate;
+    const cur = data[data.length - 1]!;
+    const prev = data[data.length - 2]!;
+    return deriveKwFromStructure(cur, prev, keSeed, config.risk_free_rate, config);
+  }, [data, keSeed, config]);
   const cyclicalNormalization = useMemo(() => buildCyclicalNormalization(data), [data]);
   const businessModel = useMemo(() => buildBusinessModelProfile(data), [data]);
   const persistenceTemplate = useMemo(() => ({
@@ -370,6 +387,7 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
         g_inp={g_inp}
         setG={setG}
         kwDerived={kwDerived}
+        kwStructuralBaseline={kwStructuralBaseline}
         horizon={horizon}
         setH={setH}
         probabilityState={probabilityState}
