@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { computeBankValuation } from "../bankValuation";
 import type { BankPeriodMetrics } from "../bankPipeline";
 import { DEFAULT_CONFIG } from "../types";
+import { PercentFraction } from "../types/units";
 
 /**
  * Bank/NBFC terminal-RI regression — spurious (1+g) removed.
@@ -43,7 +44,7 @@ describe("bank equity-residual-income terminal value drops the spurious (1+g)", 
       bankPeriod("2022-03-31", 1000, 0.13),
       bankPeriod("2023-03-31", 1000, 0.13),
     ];
-    const cfg = { ...DEFAULT_CONFIG, ke: 0.11, terminal_growth_rate: 0.05 };
+    const cfg = { ...DEFAULT_CONFIG, ke: PercentFraction(0.11), terminal_growth_rate: 0.05 };
 
     const bundle = computeBankValuation(metrics, cfg, null, /* payoutRatio */ 0.30, false, false);
 
