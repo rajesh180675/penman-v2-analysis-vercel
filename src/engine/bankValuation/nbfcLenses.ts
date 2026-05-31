@@ -186,8 +186,11 @@ export function roaLeverageRI(
  * to the headroom shortfall.
  *
  * Formula: if headroom_bps >= 300 → no adjustment.
- *          if headroom_bps < 300  → effective_g = g × (headroom_bps / 300)
+ *          if 0 < headroom_bps < 300 → effective_g = g × max(headroom_bps / 300, 0.25)
  *          if headroom_bps <= 0   → effective_g = max(0, g × 0.25)
+ * The 0.25 floor on the middle branch keeps the governor monotonic in headroom
+ * (a thinly-but-positively capitalised firm never gets less growth than a
+ * below-norm one) and continuous at the headroom → 0 boundary.
  */
 export function crarGovernor(
   metrics: BankPeriodMetrics[],
@@ -218,7 +221,13 @@ export function crarGovernor(
   if (headroomBps >= NBFC_CRAR_BUFFER_BPS) {
     message = `CRAR ${crar.toFixed(2)}% — ${headroomBps.toFixed(0)}bps headroom over RBI norm + buffer (${required.toFixed(2)}%); no throttle.`;
   } else if (headroomBps > 0) {
-    const factor = headroomBps / NBFC_CRAR_BUFFER_BPS;
+    // Floor the throttle at 0.25× so the governor stays monotonic in capital
+    // headroom: without the floor, factor = headroomBps/buffer falls below 0.25
+    // for headroom < 75bps, handing a thinly-capitalised-but-positive bank LESS
+    // permitted growth than the 0.25× floor granted to a below-norm bank in the
+    // branch below — i.e. less headroom → more growth, and a discontinuity as
+    // headroom → 0⁺. Matches the below-norm floor at the boundary.
+    const factor = Math.max(headroomBps / NBFC_CRAR_BUFFER_BPS, 0.25);
     effectiveG = originalG * factor;
     message = `CRAR ${crar.toFixed(2)}% — only ${headroomBps.toFixed(0)}bps headroom; throttling g from ${(originalG * 100).toFixed(2)}% to ${(effectiveG * 100).toFixed(2)}% (factor ${factor.toFixed(2)}x).`;
   } else {
