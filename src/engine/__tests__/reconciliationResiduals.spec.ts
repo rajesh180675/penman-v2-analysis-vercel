@@ -718,18 +718,21 @@ describe("evaluateReconciliationResiduals", () => {
   });
 
   // ── Phase 1.1 (d) — recast-vs-raw mutation regression guard ────────────────
-  // The de-tautologization is only defensible if a corrupted as-reported value
-  // actually fails the gate. Before Phase 1.1 the asset residual was 0 by
-  // construction (OA ≡ TA − FA), so ANY input cleared "reconciled". These two
-  // tests pin the LIVE behaviour: a clean raw read confirms; a divergent one
-  // fails closed. The fixture's base mkPeriod omits recastDebug, so supplying it
-  // here is what activates the independent recast-ta-vs-raw comparison — proving
-  // the check is wired, not dormant.
-  it("surfaces recast-ta-vs-raw as a live, confirmed residual when raw Total Assets matches recast TA", () => {
+  // The de-tautologization is only defensible if a divergent as-reported value
+  // actually fails the gate. recast-ta-vs-raw now compares recast bs.TA against
+  // the SUM of independently-reported asset subtotals (Total Current Assets +
+  // Total Non-Current Assets) — NOT the raw "Total Assets" cell that bs.TA
+  // itself resolves (which made the old form identically 0). These two tests
+  // pin the LIVE evaluator behaviour at the unit level; the end-to-end raw-
+  // corruption test below proves it fires through the real recast pipeline.
+  it("surfaces recast-ta-vs-raw as a live, confirmed residual when reported subtotals sum to recast TA", () => {
     const recastDebug = {
-      rawTotalAssets: 1000, // matches mkPeriod bs.TA
+      rawTotalAssets: 1000,
       rawTotalLiabilitiesAndEquity: 1000, // matches CSE+MI+FO+OL = 600+0+150+250
       rawTotalEquity: 600, // matches CSE+MI = 600+0
+      // Current + Non-Current subtotals sum to 1000 = recast bs.TA → residual 0.
+      rawCurrentAssets: 400,
+      rawNonCurrentAssets: 600,
       explicitOL: 250, // matches bs.OL = 250 → coverage ratio 1.0
     };
     const summary = evaluateReconciliationResiduals({
@@ -759,16 +762,18 @@ describe("evaluateReconciliationResiduals", () => {
     expect(summary.status).toBe("confirmed");
   });
 
-  it("fails reconciliation when an as-reported Total Assets value diverges from recast TA", () => {
-    // Corrupt ONLY the independently-read raw Total Assets by +10% while leaving
-    // every recast-derived field intact. Pre-Phase-1.1 this could not be caught
-    // (the asset identity was algebraically zero); the recast-ta-vs-raw residual
-    // must now fail closed. Everything else (incl. the ending-cash bridge) is
-    // kept clean so recast-ta-vs-raw is the SOLE driver of the failed status.
+  it("fails reconciliation when reported asset subtotals diverge from recast TA", () => {
+    // Reported subtotals sum to 1100, diverging +10% from recast bs.TA = 1000
+    // (e.g. a subtotal misparsed or an asset line silently dropped into the
+    // OA_Other plug). The recast-ta-vs-raw residual must fail closed. Everything
+    // else (incl. the ending-cash bridge) is kept clean so recast-ta-vs-raw is
+    // the SOLE driver of the failed status.
     const recastDebug = {
-      rawTotalAssets: 1100, // +10% vs recast bs.TA = 1000
+      rawTotalAssets: 1000,
       rawTotalLiabilitiesAndEquity: 1000, // left clean to isolate the TA residual
       rawTotalEquity: 600,
+      rawCurrentAssets: 600,
+      rawNonCurrentAssets: 500, // sum 1100 vs recast 1000
       explicitOL: 250,
     };
     const summary = evaluateReconciliationResiduals({
@@ -798,5 +803,38 @@ describe("evaluateReconciliationResiduals", () => {
     const failedKeys = summary.checks.filter((c) => c.status === "failed").map((c) => c.key);
     expect(failedKeys).toEqual(["recast-ta-vs-raw"]);
     expect(summary.status).toBe("failed");
+  });
+
+  it("skips recast-ta-vs-raw honestly when a reported asset subtotal is absent", () => {
+    // When either subtotal is missing the check cannot run — it must be ABSENT,
+    // not silently 'confirmed'. This is the honesty guard: a company that omits
+    // the subtotals is not credited with passing an asset-composition check.
+    const recastDebug = {
+      rawTotalAssets: 1000,
+      rawTotalLiabilitiesAndEquity: 1000,
+      rawTotalEquity: 600,
+      rawCurrentAssets: 400,
+      rawNonCurrentAssets: null, // absent → check skipped
+      explicitOL: 250,
+    };
+    const summary = evaluateReconciliationResiduals({
+      recastData: [
+        mkPeriod("2024-03-31"),
+        mkPeriod("2025-03-31", {
+          recastDebug,
+          trace: {
+            ...mkPeriod("2025-03-31").trace,
+            "BS.FA.CashBank": [
+              { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 160, matchType: "exact_base" },
+            ],
+          },
+        }),
+      ],
+      config: DEFAULT_CONFIG,
+    });
+    const check = summary.checks.find(
+      (c) => c.key === "recast-ta-vs-raw" && c.periodEnd === "2025-03-31",
+    );
+    expect(check).toBeUndefined();
   });
 });

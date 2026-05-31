@@ -322,6 +322,11 @@ describe("traceability snapshot", () => {
             rawTotalAssets: 1100,
             rawTotalLiabilitiesAndEquity: 1100,
             rawTotalEquity: null,
+            // Reported asset subtotals sum to 1100, diverging from recast
+            // bs.TA (1000) → recast-ta-vs-raw fails closed (preserves this
+            // test's reconciliation-failure intent under the rebased check).
+            rawCurrentAssets: 600,
+            rawNonCurrentAssets: 500,
             explicitOL: 0,
           },
         },

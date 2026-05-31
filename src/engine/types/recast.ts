@@ -182,6 +182,15 @@ export interface RecastDebug {
   rawTotalLiabilitiesAndEquity: number | null;
   /** Raw "Total Equity" line — used by the external-equity-bridge residual. */
   rawTotalEquity: number | null;
+  /**
+   * Independently-reported asset subtotals ("Total Current Assets" and
+   * "Total Non-Current and Other Assets"), read directly from source — NOT
+   * derived from Total Assets. Their sum vs the reported Total Assets is the
+   * non-tautological asset-composition cross-check (mirrors ol-coverage on the
+   * liability side): a mapping miss or corrupted line makes the sum diverge.
+   */
+  rawCurrentAssets: number | null;
+  rawNonCurrentAssets: number | null;
   /** Sum of explicit OL components (trade payables, provisions, current/non-current liabilities, taxes). */
   explicitOL: number;
 }

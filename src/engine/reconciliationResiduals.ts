@@ -19,7 +19,17 @@
    between recast outputs and as-reported raw lines:
      - external-equity-bridge       recast (CSE+MI) vs raw "Total Equity"
      - ol-coverage-bridge           explicit-OL components / OL ∈ [0.7, 1.3]
-     - recast-ta-vs-raw             bs.TA vs raw "Total Assets"
+     - recast-ta-vs-raw             bs.TA vs reported (Total Current Assets
+                                    + Total Non-Current Assets). NOTE: the
+                                    original bs.TA-vs-raw-"Total Assets" form
+                                    was itself tautological — bs.TA resolves
+                                    the same "Total Assets" cell the check read
+                                    back, so the residual was identically 0.
+                                    Re-based onto the independently-reported
+                                    asset subtotals (asset-side analog of
+                                    ol-coverage), which genuinely diverge when
+                                    a subtotal is corrupted or an asset line
+                                    falls into the OA_Other plug.
      - recast-equity-side-vs-raw    CSE+MI+FO+OL vs raw "Total Equity and Liabilities"
 
    Plus a new S-9.4C consistency check:
@@ -388,13 +398,24 @@ export function evaluateReconciliationResiduals(params: {
       olCoverageBasis = Math.max(period.bs.OL, 1);
     }
 
-    // recast-ta-vs-raw: bs.TA vs raw "Total Assets" line (independent read).
-    const rawTotalAssets = debug?.rawTotalAssets ?? null;
-    const recastTaVsRawResidual = rawTotalAssets != null && rawTotalAssets > 0
-      ? period.bs.TA - rawTotalAssets
+    // recast-ta-vs-raw: recast bs.TA vs the SUM of independently-reported asset
+    // subtotals (Total Current Assets + Total Non-Current Assets). This is the
+    // asset-side analog of ol-coverage-bridge — both sides come from distinct
+    // raw lines, so it is genuinely non-tautological (the prior bs.TA-vs-raw-TA
+    // form read the same cell twice and was identically 0). Diverges when a
+    // subtotal is misparsed/corrupted or an asset line silently lands in the
+    // OA_Other plug. Skip honestly when either subtotal is absent.
+    const rawCurrentAssets = debug?.rawCurrentAssets ?? null;
+    const rawNonCurrentAssets = debug?.rawNonCurrentAssets ?? null;
+    const reportedAssetComposition =
+      rawCurrentAssets != null && rawNonCurrentAssets != null
+        ? rawCurrentAssets + rawNonCurrentAssets
+        : null;
+    const recastTaVsRawResidual = reportedAssetComposition != null && reportedAssetComposition > 0
+      ? period.bs.TA - reportedAssetComposition
       : null;
-    const recastTaVsRawBasis = rawTotalAssets != null && rawTotalAssets > 0
-      ? Math.max(Math.abs(period.bs.TA), Math.abs(rawTotalAssets), 1)
+    const recastTaVsRawBasis = reportedAssetComposition != null && reportedAssetComposition > 0
+      ? Math.max(Math.abs(period.bs.TA), Math.abs(reportedAssetComposition), 1)
       : null;
 
     // recast-equity-side-vs-raw: CSE+MI+FO+OL vs raw "Total Equity and Liabilities".
@@ -508,7 +529,7 @@ export function evaluateReconciliationResiduals(params: {
       olCoverageCheck,
       buildOptionalCheck({
         key: "recast-ta-vs-raw",
-        label: "Recast TA = Raw Total Assets",
+        label: "Recast TA = Reported (Current + Non-Current Assets)",
         periodEnd: period.period_end,
         residual: recastTaVsRawResidual,
         denominator: recastTaVsRawBasis,

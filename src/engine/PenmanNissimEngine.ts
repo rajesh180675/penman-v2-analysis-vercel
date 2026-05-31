@@ -129,6 +129,12 @@ export function computeValuation(
   const NOA_T = periods[periods.length - 1]!.bs.NOA;
   const NFO_latest = periods[periods.length - 1]!.bs.NFO;
   const NFO0 = periods[0]!.bs.NFO;
+  // Minority interest at the valuation anchor period. kw weights operating
+  // value across CSE+MI+NFO (deriveKwFromStructure), so the enterprise→equity
+  // bridge for the COMMON shareholder must subtract BOTH net debt (NFO) and
+  // the minority claim (MI). Omitting MI overstates per-common-share value by
+  // the minority interest for any firm with non-wholly-owned subsidiaries.
+  const MI0 = periods[0]!.bs.MI;
   const RNOA_T = periods[periods.length - 1]!.ratios?.RNOA ?? (NOA_T !== 0 ? periods[periods.length - 1]!.is.OI / NOA_T : 0);
 
   // Phase J2: equity-side fail-closed gate.
@@ -263,8 +269,8 @@ export function computeValuation(
     const rePer = equityModelsBlocked
       ? null
       : ((CSE0 + pvRE + CV_RE_3 / discE) / sh);
-    const reoiPer = ((NOA0 + pvReOI + CV_W_3 / discW) - NFO0) / sh;
-    const fcffPer = (EV_FCFF - NFO0) / sh;
+    const reoiPer = ((NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - MI0) / sh;
+    const fcffPer = (EV_FCFF - NFO0 - MI0) / sh;
     const fcfePer = equityModelsBlocked ? null : V_FCFE / sh;
     const ddmPer = equityModelsBlocked
       ? null
@@ -324,9 +330,13 @@ export function computeValuation(
     V_RE_CV1: equityModelsBlocked ? null : CSE0 + pvRE + CV_RE_1 / discE,
     V_RE_CV2: equityModelsBlocked ? null : CSE0 + pvRE + CV_RE_2 / discE,
     V_RE_CV3: equityModelsBlocked ? null : CSE0 + pvRE + CV_RE_3 / discE,
-    V_ReOI_CV01: (NOA0 + pvReOI + CV_W_1 / discW) - NFO0,
-    V_ReOI_CV02: (NOA0 + pvReOI + CV_W_2 / discW) - NFO0,
-    V_ReOI_CV03: (NOA0 + pvReOI + CV_W_3 / discW) - NFO0,
+    // Enterprise→common-equity bridge: subtract net debt (NFO) AND minority
+    // interest (MI0). Keeps V_ReOI_CV03/sh === intrinsic_reoi_per_share and
+    // makes the RE-vs-ReOI identity a common-vs-common comparison (V_RE_* is
+    // CSE-anchored common equity). EV_ReOI above stays operating-entity value.
+    V_ReOI_CV01: (NOA0 + pvReOI + CV_W_1 / discW) - NFO0 - MI0,
+    V_ReOI_CV02: (NOA0 + pvReOI + CV_W_2 / discW) - NFO0 - MI0,
+    V_ReOI_CV03: (NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - MI0,
     CSE0,
     NOA0,
     NFO_latest,
