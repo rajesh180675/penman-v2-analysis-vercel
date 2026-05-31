@@ -8,7 +8,7 @@ import { migrateEnvelope, listMigrationsApplied, KNOWN_SCHEMA_VERSIONS, CURRENT_
 const CURRENT = CURRENT_SCHEMA_VERSION;
 
 describe("migrateEnvelope (Plan 6 PR-6.4)", () => {
-  it("KNOWN_SCHEMA_VERSIONS includes v8 through v17", () => {
+  it("KNOWN_SCHEMA_VERSIONS includes v8 through the current version", () => {
     expect(KNOWN_SCHEMA_VERSIONS).toContain("2026-04-traceability-v8");
     expect(KNOWN_SCHEMA_VERSIONS).toContain(CURRENT);
   });
@@ -65,5 +65,24 @@ describe("migrateEnvelope (Plan 6 PR-6.4)", () => {
     expect(r1.envelope.schemaVersion).toBe(CURRENT);
     expect(r2.envelope.schemaVersion).toBe(CURRENT);
     expect(r2.migrationsApplied).toHaveLength(0);
+  });
+
+  it("v17 → v18 adds analyticalDepth defaulting to null (legacy envelopes had no depth)", () => {
+    const input = { schemaVersion: "2026-06-traceability-v17", locked: true, foo: "bar" };
+    const r = migrateEnvelope(input);
+    expect(r.envelope.schemaVersion).toBe("2026-06-traceability-v18");
+    expect(r.envelope.analyticalDepth).toBeNull();
+    expect(r.migrationsApplied).toContain("2026-06-traceability-v17");
+    // Non-destructive: prior fields carried forward.
+    expect(r.envelope.locked).toBe(true);
+    expect(r.envelope.foo).toBe("bar");
+  });
+
+  it("v17 → v18 preserves an already-present analyticalDepth block (does not clobber)", () => {
+    const depth = { status: "rich", summary: "4/4", presentCount: 4, watchCount: 0, checks: [] };
+    const input = { schemaVersion: "2026-06-traceability-v17", analyticalDepth: depth };
+    const r = migrateEnvelope(input);
+    expect(r.envelope.schemaVersion).toBe("2026-06-traceability-v18");
+    expect(r.envelope.analyticalDepth).toEqual(depth);
   });
 });

@@ -65,10 +65,10 @@ describe("reproducibilityHash (Plan 8 PR-8.3)", () => {
 });
 
 describe("lockEvidence + verifyLockedHash (Plan 8 PR-8.3)", () => {
-  it("lockEvidence stamps schema v17, hash, and signature", async () => {
+  it("lockEvidence stamps schema v18, hash, and signature", async () => {
     const env = { runId: "r-001", value: 100 };
     const locked = await lockEvidence(env, { reviewerId: "alice", reviewerName: "Alice" });
-    expect(locked.schemaVersion).toBe("2026-06-traceability-v17");
+    expect(locked.schemaVersion).toBe("2026-06-traceability-v18");
     expect(locked.locked).toBe(true);
     expect(locked.reproducibilityHash).toMatch(/^[0-9a-f]{64}$/);
     expect(locked.lockedBy.reviewerId).toBe("alice");

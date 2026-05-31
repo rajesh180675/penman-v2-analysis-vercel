@@ -10,6 +10,7 @@ import type { ReconciliationResidualSummary } from "./reconciliation";
 import type { ConceptIdentitySummary } from "./conceptIdentity";
 import type { EconomicSanitySummary } from "./economicSanity";
 import type { UnusualItemManifest } from "./unusualItem";
+import type { AnalyticalDepthSummary } from "./analyticalDepth";
 import type { AnalysisPolicyVersions } from "../policyVersions";
 import type { LineageRef } from "../lineageTypes";
 import type { BacklogTriageAction, BacklogPriority } from "./backlog";
@@ -138,6 +139,14 @@ export interface AnalysisTraceabilityEnvelope {
    *  classification has `affectsTerminalEligibility: true`, which feeds
    *  back into Gap 2's terminal-period contamination check. */
   unusualItemManifest: UnusualItemManifest;
+  /** Plan 5 keystone (schema v18) — analytical-depth read-out: how much
+   *  valuation depth the run exercised (reverse-DCF plausibility, clean-surplus,
+   *  Damodaran CAPM ke cross-check, SOTP). Populated at valuation time by the
+   *  surface enricher (`evaluateAnalyticalDepth`); the structural builder
+   *  (`buildAnalysisTraceability`) leaves it absent because valuation output is
+   *  not in scope there. Optional + nullable so non-valuation surfaces, the
+   *  snapshot/publication paths, and migrated legacy envelopes are unaffected. */
+  analyticalDepth?: AnalyticalDepthSummary | null | undefined;
   /** Gap 4 / PR-D — per-number lineage REFERENCE (not the data itself).
    *  Lineage payload lives in the audit snapshot sidecar to keep
    *  envelope JSON serialization bounded. The ref carries a checksum

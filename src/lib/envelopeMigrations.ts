@@ -35,9 +35,10 @@ export const KNOWN_SCHEMA_VERSIONS = [
   "2026-06-traceability-v15",
   "2026-06-traceability-v16",
   "2026-06-traceability-v17",
+  "2026-06-traceability-v18",
 ] as const;
 
-export const CURRENT_SCHEMA_VERSION = "2026-06-traceability-v17";
+export const CURRENT_SCHEMA_VERSION = "2026-06-traceability-v18";
 
 export interface MigrateResult {
   envelope: { schemaVersion: string; status?: string | undefined; [key: string]: unknown };
@@ -108,6 +109,13 @@ const MIGRATORS: Record<string, Migrator> = {
     schemaVersion: "2026-06-traceability-v17",
     // v17 — evidence locking (PR-8.3); not-yet-locked envelopes default
     locked: env.locked ?? false,
+  }),
+  "2026-06-traceability-v17": (env) => ({
+    ...env,
+    schemaVersion: "2026-06-traceability-v18",
+    // v18 — analyticalDepth keystone (Plan 5); depth is a valuation-time
+    // enrichment, so persisted/legacy envelopes default to null (absent).
+    analyticalDepth: env.analyticalDepth ?? null,
   }),
 };
 
