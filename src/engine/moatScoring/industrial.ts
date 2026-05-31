@@ -2,7 +2,7 @@
  * Economic Moat Scoring — industrial company scorer (RNOA/SPREAD-based).
  */
 
-import { RecastPeriod, EngineConfig, deriveKwFromConfig } from "../types";
+import { RecastPeriod, EngineConfig, resolveKw } from "../types";
 import type { ITServicesSignal } from "../itServicesDetector";
 import { MoatScoreResult } from "./types";
 import { medianOf, estimatePhi, estimateCAP, computeTrend } from "./stats";
@@ -48,11 +48,7 @@ export function computeMoatScore(
     (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()
   );
   const latestForKw = sortedForKw[sortedForKw.length - 1];
-  const kw = (kwOverride != null && Number.isFinite(kwOverride) && kwOverride > 0)
-    ? kwOverride
-    : (latestForKw?.kwStructural != null && Number.isFinite(latestForKw.kwStructural) && latestForKw.kwStructural > 0
-      ? latestForKw.kwStructural
-      : deriveKwFromConfig(config));
+  const kw = resolveKw(latestForKw?.kwStructural, config, { override: kwOverride }).kw;
 
   const sorted = [...periods].sort(
     (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()

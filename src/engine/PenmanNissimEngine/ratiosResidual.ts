@@ -13,7 +13,7 @@
 ================================================================ */
 
 import type { Ratios, ResidualIncome, RecastPeriod } from "../types/recast";
-import { deriveKwFromConfig, type EngineConfig } from "../types/config";
+import { resolveKw, type EngineConfig } from "../types/config";
 
 export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: EngineConfig): Ratios {
   const avg = (a: number, b: number) => (a + b) / 2;
@@ -176,9 +176,7 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
   // the period's actual capital weights; deriveKwFromConfig only uses it
   // as a last-resort when the pipeline hasn't stamped a value yet (e.g.
   // single-period datasets where deriveKwFromStructure is undefined).
-  const kwForRequiredReturn = (cur.kwStructural != null && Number.isFinite(cur.kwStructural) && cur.kwStructural > 0)
-    ? cur.kwStructural
-    : deriveKwFromConfig(cfg);
+  const kwForRequiredReturn = resolveKw(cur.kwStructural, cfg).kw;
   const required_return_per_sales = ATO != null && ATO !== 0 ? kwForRequiredReturn / ATO : null;
   const value_creating_margin = PM != null && required_return_per_sales != null ? PM - required_return_per_sales : null;
 

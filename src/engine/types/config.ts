@@ -315,6 +315,47 @@ export function deriveKwFromConfig(cfg: EngineConfig): number {
   return ke * we + kd_aftertax * wd;
 }
 
+/**
+ * Where a resolved cost-of-operating-capital (kw) value came from.
+ * `structural` is the S-9.4C-compliant source (pipeline-stamped
+ * deriveKwFromStructure); `config` means a caller fell back to the
+ * sector/weight-derived approximation because no structural kw was
+ * available — which the kw-consistency residual treats as a defect for
+ * any period that *should* have one.
+ */
+export type KwSource = "override" | "structural" | "config" | "fallback";
+
+/**
+ * S-9.4C single resolution seam for kw. Every module that needs an
+ * operating capital charge resolves it here so the precedence is derived
+ * once, not re-hand-rolled per call site. Returns both the value AND the
+ * rung it landed on — the rung is the genuine (non-tautological) signal
+ * the kw-consistency residual checks: a non-first period that resolves to
+ * `config` instead of `structural` means the pipeline failed to stamp a
+ * structural kw and the consumer silently used the config approximation.
+ *
+ * Precedence: explicit caller override → pipeline-stamped structural →
+ * caller-supplied fallback (e.g. reverseDCF's costOfCapital) → config.
+ */
+export function resolveKw(
+  kwStructural: number | null | undefined,
+  config: EngineConfig,
+  opts?: { override?: number | null | undefined; fallback?: number | null | undefined },
+): { kw: number; source: KwSource } {
+  const override = opts?.override;
+  if (override != null && Number.isFinite(override) && override > 0) {
+    return { kw: override, source: "override" };
+  }
+  if (kwStructural != null && Number.isFinite(kwStructural) && kwStructural > 0) {
+    return { kw: kwStructural, source: "structural" };
+  }
+  const fallback = opts?.fallback;
+  if (fallback != null && Number.isFinite(fallback) && fallback > 0) {
+    return { kw: fallback, source: "fallback" };
+  }
+  return { kw: deriveKwFromConfig(config), source: "config" };
+}
+
 export interface ConfigValidationWarning {
   field: string;
   value: number;

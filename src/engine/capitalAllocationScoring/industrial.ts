@@ -1,4 +1,4 @@
-import { RecastPeriod, EngineConfig, deriveKwFromConfig } from "../types";
+import { RecastPeriod, EngineConfig, resolveKw } from "../types";
 import { CapAllocDimension, CapAllocScoreResult } from "./types";
 import { medianOf, clamp, linearScore, gradeFromScore, trendFromSeries } from "./shared";
 
@@ -436,11 +436,7 @@ export function scoreCapitalAllocation(
     (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()
   );
   const latestForKw = sortedForKw[sortedForKw.length - 1];
-  const kw = (kwOverride != null && Number.isFinite(kwOverride) && kwOverride > 0)
-    ? kwOverride
-    : (latestForKw?.kwStructural != null && Number.isFinite(latestForKw.kwStructural) && latestForKw.kwStructural > 0
-      ? latestForKw.kwStructural
-      : deriveKwFromConfig(config));
+  const kw = resolveKw(latestForKw?.kwStructural, config, { override: kwOverride }).kw;
 
   // Dimension 1: Dividend Consistency
   const divDim = scoreDividendConsistency(periods);
