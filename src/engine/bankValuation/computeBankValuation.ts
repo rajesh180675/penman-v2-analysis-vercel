@@ -164,10 +164,16 @@ export function computeBankValuation(
   // computed we use it directly as the triangulated value; the other three models
   // (Gordon, RI, DDM) are displayed as sanity range brackets rather than being
   // averaged with EV (which would dramatically dilute the actuarial estimate).
+  // When EV is NOT computed we FAIL CLOSED (triangulatedValue = null): the
+  // bank-framed book-value models are inappropriate for an insurer and must not
+  // silently substitute for a missing embedded value. The caller can read
+  // evBased.reason ("Embedded Value sidecar data unavailable …") to surface why.
   // For banks/NBFCs the original median-of-all-computed-models is preserved.
   let triangulatedValue: number | null = null;
-  if (isInsurance && evBased.status === "computed" && evBased.intrinsicValue != null) {
-    triangulatedValue = evBased.intrinsicValue;
+  if (isInsurance) {
+    triangulatedValue = evBased.status === "computed" && evBased.intrinsicValue != null
+      ? evBased.intrinsicValue
+      : null;
   } else {
     triangulatedValue = computedValues.length > 0
       ? median(computedValues.map(([, v]) => v))
