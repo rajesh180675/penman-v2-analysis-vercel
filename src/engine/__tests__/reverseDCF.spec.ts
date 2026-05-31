@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { computeReverseDCF } from "../reverseDCF";
 import type { RecastPeriod } from "../types";
 
-function buildRecastForRDCF(rnoa: number, noaSeries: number[], cse: number, nfo: number): RecastPeriod[] {
+function buildRecastForRDCF(rnoa: number, noaSeries: number[], cse: number, nfo: number, kwStructural?: number): RecastPeriod[] {
   return noaSeries.map((noa, i) => ({
     period_end: `${2020 + i}0331`,
     ratios: { RNOA: rnoa, PM: null, ATO: null, ROCE: null, NBC: null, SPREAD: null, FLEV: null, ROE: null, accrual_ratio_bs: null, accrual_ratio_cf: null },
@@ -11,6 +11,10 @@ function buildRecastForRDCF(rnoa: number, noaSeries: number[], cse: number, nfo:
     cf: { CFO: rnoa * noa * 0.8, Capex: 0, FCF: 0, DividendPaid: -(rnoa * noa * 0.3), CFF: 0, CFI: 0 },
     cu: { UOI: 0, CoreOI: rnoa * noa, UFE: 0, CoreNFE: 0, ExceptionalItemsAfterTax: 0, OCITotal: 0 },
     ri: { ReOI: (rnoa - 0.13) * noa, ReOI_growth: null, ReOI_margin: null, capitalCharge: 0.13 * noa },
+    // Stamp the per-period structural kw the real pipeline assigns (types/recast.ts).
+    // Only stamped when caller asks, so legacy fixtures keep exercising the
+    // costOfCapital fallback branch.
+    ...(kwStructural != null ? { kwStructural } : {}),
   } as unknown as RecastPeriod));
 }
 
@@ -186,5 +190,69 @@ describe("reverseDCF", () => {
     // At low price, implied growth should be negative; allow wide range for solver noise
     expect(result!.impliedGrowth).toBeLessThan(0);
     expect(result!.impliedGrowth).toBeGreaterThan(-0.15);
+  });
+
+  // ── S-9.4C regression: operating residual income is charged at structural kw,
+  // not cost-of-equity. Triangulated so it asserts the fix is LIVE (output
+  // tracks the stamped kw and diverges from the ke-charged result), not merely
+  // that the suite stays green via the costOfCapital fallback. ──
+  describe("S-9.4C: charges ReOI at structural kw, not ke", () => {
+    const NOA = [10000, 11000, 12100, 13300, 14600];
+    const RNOA = 0.20;
+    const CSE = 12600;
+    const NFO = 2000; // NFO != 0 so kw and ke genuinely diverge
+
+    it("output tracks stamped kwStructural and ignores the passed ke", () => {
+      // A: no kw stamped, ke = 0.10 → fallback makes r = 0.10
+      const viaFallback = computeReverseDCF(
+        buildRecastForRDCF(RNOA, NOA, CSE, NFO), 0.10, 0.60, 5000, 12.6,
+      );
+      // B: kw = 0.10 stamped, ke = 0.13 passed → r must become 0.10 (tracks kw)
+      const viaStructural = computeReverseDCF(
+        buildRecastForRDCF(RNOA, NOA, CSE, NFO, 0.10), 0.13, 0.60, 5000, 12.6,
+      );
+      expect(viaFallback).not.toBeNull();
+      expect(viaStructural).not.toBeNull();
+      // Charging at the same effective rate must produce identical EPV and
+      // implied expectations — proving kw drives the charge and the divergent
+      // passed ke is correctly ignored.
+      expect(viaStructural!.priceDecomposition.noGrowthValue)
+        .toBeCloseTo(viaFallback!.priceDecomposition.noGrowthValue, 6);
+      expect(viaStructural!.impliedGrowth).toBeCloseTo(viaFallback!.impliedGrowth, 6);
+      expect(viaStructural!.sensitivity.priceAtZeroGrowth)
+        .toBeCloseTo(viaFallback!.sensitivity.priceAtZeroGrowth, 6);
+    });
+
+    it("stamped kw != ke moves the numbers (fix is not a dormant no-op)", () => {
+      // Same passed ke = 0.13 for both; one stamps a lower structural kw.
+      const keCharged = computeReverseDCF(
+        buildRecastForRDCF(RNOA, NOA, CSE, NFO), 0.13, 0.60, 5000, 12.6,
+      );
+      const kwCharged = computeReverseDCF(
+        buildRecastForRDCF(RNOA, NOA, CSE, NFO, 0.10), 0.13, 0.60, 5000, 12.6,
+      );
+      expect(keCharged).not.toBeNull();
+      expect(kwCharged).not.toBeNull();
+      // A lower capital charge (kw 10% < ke 13%) raises residual income, so the
+      // no-growth EPV must be strictly higher. If the fix were dormant these
+      // would be equal.
+      expect(kwCharged!.priceDecomposition.noGrowthValue)
+        .toBeGreaterThan(keCharged!.priceDecomposition.noGrowthValue);
+    });
+
+    it("falls back to ke when kwStructural is absent or non-positive", () => {
+      const baseline = computeReverseDCF(
+        buildRecastForRDCF(RNOA, NOA, CSE, NFO), 0.13, 0.60, 5000, 12.6,
+      );
+      // A non-finite / non-positive stamped kw must NOT be trusted — guard sends
+      // it back to the passed ke, matching the unstamped baseline exactly.
+      const zeroKw = computeReverseDCF(
+        buildRecastForRDCF(RNOA, NOA, CSE, NFO, 0), 0.13, 0.60, 5000, 12.6,
+      );
+      expect(baseline).not.toBeNull();
+      expect(zeroKw).not.toBeNull();
+      expect(zeroKw!.priceDecomposition.noGrowthValue)
+        .toBeCloseTo(baseline!.priceDecomposition.noGrowthValue, 6);
+    });
   });
 });

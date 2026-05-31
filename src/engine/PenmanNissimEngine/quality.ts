@@ -62,8 +62,14 @@ export function computeQuality(cur: RecastPeriod, prev: RecastPeriod, data: RawP
 
   const dsri = safe(safe(cur.bs.TradeReceivables, cur.is.Sales), safe(prev.bs.TradeReceivables, prev.is.Sales));
   const gmi = safe(gmPrev, gmCur);
-  const hardAssetsCur = cur.bs.PPE + cur.bs.Goodwill + cur.bs.CurrentAssets;
-  const hardAssetsPrev = prev.bs.PPE + prev.bs.Goodwill + prev.bs.CurrentAssets;
+  // Beneish AQI "hard assets" = Current Assets + PP&E (+ Securities). Goodwill and
+  // other intangibles are deliberately EXCLUDED: AQI = [1 − hardAssets/TA]_t /
+  // [...]_{t-1} is designed to rise when a firm shifts weight into soft assets
+  // (capitalised goodwill/intangibles). Counting goodwill as "hard" subtracts it
+  // back out and inverts the signal — an acquisition-driven goodwill build would
+  // lower AQI (look cleaner) instead of raising it.
+  const hardAssetsCur = cur.bs.PPE + cur.bs.CurrentAssets;
+  const hardAssetsPrev = prev.bs.PPE + prev.bs.CurrentAssets;
   const aqiNum = cur.bs.TA > 0 ? 1 - hardAssetsCur / cur.bs.TA : 0;
   const aqiDen = prev.bs.TA > 0 ? 1 - hardAssetsPrev / prev.bs.TA : 0;
   const aqi = aqiDen !== 0 ? aqiNum / aqiDen : 0;

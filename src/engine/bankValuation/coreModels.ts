@@ -103,9 +103,15 @@ export function equityResidualIncome(
   }
 
   // Terminal value: LONG_RUN_BANK_ROE − ke spread, growing at g.
+  // After the 5y loop bvForecast = BV₅, so terminalRI = (ROE − ke)·BV₅ is the
+  // residual income of YEAR 6 on its opening book — i.e. RI₆, the FIRST flow of
+  // the terminal perpetuity. The continuing value at the end of the explicit
+  // period is therefore RI₆/(ke − g); no extra (1+g). A (1+g) here would push
+  // the first flow to RI₇ and overstate the terminal value by one year's growth
+  // (it would only be correct if terminalRI were RI₅, computed on BV₄).
   if (ke - g < MIN_KE_MINUS_G) return skipped(`ke − g below ${MIN_KE_MINUS_G} guardrail for terminal value`);
   const terminalRI = (LONG_RUN_BANK_ROE - ke) * bvForecast;
-  const tvUndiscounted = terminalRI * (1 + g) / (ke - g);
+  const tvUndiscounted = terminalRI / (ke - g);
   const tv = tvUndiscounted / Math.pow(1 + ke, forecastYears);
 
   const value = bv0 + pvResidualIncome + tv;

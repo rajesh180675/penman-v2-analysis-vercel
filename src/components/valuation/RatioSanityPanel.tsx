@@ -45,7 +45,7 @@ export default function RatioSanityPanel({ ratioSanity }: { ratioSanity: SanityA
         </tbody>
       </table>
       <div className="text-[10px] text-slate-500 dark:text-slate-500 italic">
-        Bands are calibrated against NSE 500 (FY2014–FY2025). Fail status indicates economically implausible outputs and blocks production-ready valuation.
+        Bands are heuristic, sector-typical ranges for Indian listed companies. Fail status indicates economically implausible outputs and blocks production-ready valuation.
       </div>
     </div>
   );

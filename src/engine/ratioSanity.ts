@@ -11,8 +11,10 @@
  *   - warning band  (unusual but plausible — surface for review)
  *   - fail band     (economically impossible — blocks "production-ready")
  *
- * Bands are calibrated against Indian listed companies (NSE 500 universe)
- * across the FY2014–FY2025 window.
+ * Bands are heuristic, sector-typical ranges informed by Indian listed-company
+ * norms over roughly the FY2014–FY2025 window. They are hand-set from domain
+ * knowledge (and RBI sector aggregates for banks/NBFCs), not derived from a
+ * formal NSE-500 percentile study.
  */
 
 import type { CompanyType } from "./types";
@@ -51,9 +53,11 @@ export interface SanityAssessment {
 
 // ─── Bands ──────────────────────────────────────────────────────────────────
 //
-// Each band is calibrated to FY2014-FY2025 NSE-500 distributions. The
-// "warning" band is roughly [P5, P95] of the universe; "normal" is roughly
-// [P15, P85]. Values outside warning are economically implausible.
+// Each band is a hand-set, sector-typical range informed by Indian listed-company
+// norms over roughly FY2014-FY2025. The "warning" band approximates a plausible
+// tail (think ~P5/P95) and "normal" the central range (~P15/P85) — these are
+// heuristic anchors, not computed percentiles. Values outside warning are
+// economically implausible.
 //
 // Where banks/NBFCs are concerned, we use stricter regulatory ranges (RBI
 // publishes sector aggregates).

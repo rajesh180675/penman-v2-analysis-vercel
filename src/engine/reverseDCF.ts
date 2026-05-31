@@ -108,7 +108,20 @@ export function computeReverseDCF(
   if (cse == null || !Number.isFinite(cse) || cse <= 0) return null;
   if (!Number.isFinite(nfo)) return null;
 
-  const r = costOfCapital;
+  // S-9.4C: operating residual income (ReOI on NOA) must be charged at the
+  // structural cost of OPERATIONS (kw = the reformulated-balance-sheet WACC),
+  // NOT the cost of equity. This whole engine builds enterprise value
+  // (epvFirm = NOA + ReOI/r) and then subtracts NFO to reach equity, so r is
+  // the operating capital charge. Prefer the per-period structural kw the
+  // pipeline stamps onto the recast (the same S-9.4C source grahamDoddEPV,
+  // moatScoring and capitalAllocationScoring consume); fall back to the passed
+  // costOfCapital only when kwStructural is absent (e.g. directly-constructed
+  // test fixtures). Using ke here mis-charges — and, when kw < RNOA < ke,
+  // mis-signs — every implied-expectation output for any firm with NFO != 0.
+  const kwStructural = latest.kwStructural;
+  const r = (kwStructural != null && Number.isFinite(kwStructural) && kwStructural > 0)
+    ? kwStructural
+    : costOfCapital;
   const marketCap = marketPricePerShare * sharesOutstanding;
   const equityValue = marketCap; // what the market says equity is worth
 
