@@ -196,9 +196,18 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
   const OI_growth = prev.is.OI !== 0 ? (cur.is.OI - prev.is.OI) / Math.abs(prev.is.OI) : null;
   const Sales_growth = prev.is.Sales !== 0 ? (cur.is.Sales - prev.is.Sales) / Math.abs(prev.is.Sales) : null;
 
-  // S-5.1: Dirty surplus for this period (requires prev CSE)
+  // S-5.1: Dirty surplus for this period (requires prev CSE).
+  // Clean-surplus identity: ΔCSE = CNI − (Div + Buy − Iss), so the dirty-surplus
+  // residual (the ΔCSE NOT explained by income + owner transactions) is
+  //   ΔCSE − CNI + Div + Buy − Iss.
+  // Dividends and buybacks both return cash to owners (add back); share issuance
+  // raises equity without transiting the P&L (subtract). Omitting Iss/Buy — as
+  // the prior dividends-only form did — misclassifies issuance and buybacks as
+  // dirty surplus; on ITC this overstated the FY23/FY24 residual by 2–4% of CSE.
+  // Fields are positive magnitudes: DividendPaid/ShareBuybacks via Math.abs,
+  // EquityIssued = positive issue proceeds.
   const ΔCSE_t = cur.bs.CSE - prev.bs.CSE;
-  const dirty_surplus = ΔCSE_t - cur.is.CNI + cur.cf.DividendPaid;
+  const dirty_surplus = ΔCSE_t - cur.is.CNI + cur.cf.DividendPaid + cur.cf.ShareBuybacks - cur.cf.EquityIssued;
   const dirty_surplus_pct_cse = Math.abs(prev.bs.CSE) > 1
     ? Math.abs(dirty_surplus) / Math.abs(prev.bs.CSE)
     : null;
