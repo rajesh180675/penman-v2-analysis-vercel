@@ -118,10 +118,36 @@ export function buildSOTPValuation(
     // Phase C5: per-segment ke (sector-specific risk adjustment)
     const segmentKe = ke + (seg.keAdjustment ?? 0);
 
-    // Simple perpetuity: Segment Value = OP_after_tax / (segmentKe - g)
+    // Value-driver Gordon growth (McKinsey form), consistent with
+    // terminalEconomics.ts (reinvestmentRate = g / RONIC):
+    //   V = NOPAT0 · (1 − g/RONIC) · (1+g) / (ke − g)
+    // The prior `NOPAT0 / (ke − g)` granted growth for free — it discounted at
+    // (ke − g) but charged no reinvestment, and used the CURRENT flow (CF0)
+    // rather than next year's (CF1 = CF0·(1+g)). Sustaining growth g requires
+    // reinvesting g/RONIC of NOPAT, so only (1 − g/RONIC) is distributable.
+    // RONIC = the segment's steady-state after-tax return on its operating
+    // assets (new capital earns what existing capital earns).
     const opAfterTax = opProfit * (1 - latest.is.taxRate);
+    const ronic = allocatedNOA > 0 ? opAfterTax / allocatedNOA : null;
     const denom = segmentKe - g;
-    const segmentVal = denom > 0.01 ? opAfterTax / denom : null;
+    // Fail closed on growth that can't be self-funded: when RONIC ≤ g (or RONIC
+    // is unavailable/non-positive), deny the growth credit and fall back to the
+    // no-growth perpetuity NOPAT/ke. Otherwise apply the reinvestment haircut on
+    // next year's flow.
+    let segmentVal: number | null;
+    if (denom <= 0.01) {
+      segmentVal = null;
+    } else if (opAfterTax <= 0) {
+      // No positive operating income to capitalise — preserve prior behaviour
+      // (negative/zero value, null implied multiple).
+      segmentVal = opAfterTax / segmentKe;
+    } else if (ronic != null && ronic > g && g > 0) {
+      const distributable = opAfterTax * (1 - g / ronic); // FCF0
+      segmentVal = (distributable * (1 + g)) / denom;      // CF1 in the numerator
+    } else {
+      // Growth not self-fundable → no-growth perpetuity.
+      segmentVal = opAfterTax / segmentKe;
+    }
     const impliedMultiple = segmentVal != null && opProfit > 0 ? segmentVal / opProfit : null;
 
     return {
