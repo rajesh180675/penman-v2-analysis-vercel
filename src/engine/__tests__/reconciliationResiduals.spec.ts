@@ -716,4 +716,87 @@ describe("evaluateReconciliationResiduals", () => {
     expect(debtCheck?.status).toBe("confirmed");
     expect(debtCheck?.residual).toBe(0);
   });
+
+  // ── Phase 1.1 (d) — recast-vs-raw mutation regression guard ────────────────
+  // The de-tautologization is only defensible if a corrupted as-reported value
+  // actually fails the gate. Before Phase 1.1 the asset residual was 0 by
+  // construction (OA ≡ TA − FA), so ANY input cleared "reconciled". These two
+  // tests pin the LIVE behaviour: a clean raw read confirms; a divergent one
+  // fails closed. The fixture's base mkPeriod omits recastDebug, so supplying it
+  // here is what activates the independent recast-ta-vs-raw comparison — proving
+  // the check is wired, not dormant.
+  it("surfaces recast-ta-vs-raw as a live, confirmed residual when raw Total Assets matches recast TA", () => {
+    const recastDebug = {
+      rawTotalAssets: 1000, // matches mkPeriod bs.TA
+      rawTotalLiabilitiesAndEquity: 1000, // matches CSE+MI+FO+OL = 600+0+150+250
+      rawTotalEquity: 600, // matches CSE+MI = 600+0
+      explicitOL: 250, // matches bs.OL = 250 → coverage ratio 1.0
+    };
+    const summary = evaluateReconciliationResiduals({
+      recastData: [
+        mkPeriod("2024-03-31"),
+        mkPeriod("2025-03-31", {
+          recastDebug,
+          // CashBank 100→160 balances the ending-cash bridge (ΔCash 60 = CFO 120
+          // − Capex 40 − Dividend 20), isolating the recast-vs-raw residuals.
+          trace: {
+            ...mkPeriod("2025-03-31").trace,
+            "BS.FA.CashBank": [
+              { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 160, matchType: "exact_base" },
+            ],
+          },
+        }),
+      ],
+      config: DEFAULT_CONFIG,
+    });
+
+    const check = summary.checks.find(
+      (c) => c.key === "recast-ta-vs-raw" && c.periodEnd === "2025-03-31",
+    );
+    expect(check).toBeDefined();
+    expect(check?.residual).toBe(0);
+    expect(check?.status).toBe("confirmed");
+    expect(summary.status).toBe("confirmed");
+  });
+
+  it("fails reconciliation when an as-reported Total Assets value diverges from recast TA", () => {
+    // Corrupt ONLY the independently-read raw Total Assets by +10% while leaving
+    // every recast-derived field intact. Pre-Phase-1.1 this could not be caught
+    // (the asset identity was algebraically zero); the recast-ta-vs-raw residual
+    // must now fail closed. Everything else (incl. the ending-cash bridge) is
+    // kept clean so recast-ta-vs-raw is the SOLE driver of the failed status.
+    const recastDebug = {
+      rawTotalAssets: 1100, // +10% vs recast bs.TA = 1000
+      rawTotalLiabilitiesAndEquity: 1000, // left clean to isolate the TA residual
+      rawTotalEquity: 600,
+      explicitOL: 250,
+    };
+    const summary = evaluateReconciliationResiduals({
+      recastData: [
+        mkPeriod("2024-03-31"),
+        mkPeriod("2025-03-31", {
+          recastDebug,
+          trace: {
+            ...mkPeriod("2025-03-31").trace,
+            "BS.FA.CashBank": [
+              { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 160, matchType: "exact_base" },
+            ],
+          },
+        }),
+      ],
+      config: DEFAULT_CONFIG,
+    });
+
+    const check = summary.checks.find(
+      (c) => c.key === "recast-ta-vs-raw" && c.periodEnd === "2025-03-31",
+    );
+    // ratio = |1000 − 1100| / max(1000, 1100, 1) = 100/1100 ≈ 0.0909 > 5% critical.
+    expect(check?.ratio).toBeCloseTo(100 / 1100, 4);
+    expect(check?.ratio).toBeGreaterThan(0.05);
+    expect(check?.status).toBe("failed");
+    // recast-ta-vs-raw is the only breached check, so it alone drives the summary.
+    const failedKeys = summary.checks.filter((c) => c.status === "failed").map((c) => c.key);
+    expect(failedKeys).toEqual(["recast-ta-vs-raw"]);
+    expect(summary.status).toBe("failed");
+  });
 });
