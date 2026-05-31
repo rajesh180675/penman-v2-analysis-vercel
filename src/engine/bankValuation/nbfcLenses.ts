@@ -152,10 +152,15 @@ export function roaLeverageRI(
     bvForecast = bvForecast * (1 + roeT * (1 - (payoutRatio ?? 0.20))); // NBFC retain ~80%
   }
 
-  // Terminal: long-run ROA × long-run leverage
+  // Terminal: long-run ROA × long-run leverage.
+  // After the 7y loop bvForecast = BV₇, so terminalRI = (ROE − ke)·BV₇ is the
+  // residual income of YEAR 8 on its opening book — i.e. RI₈, the FIRST flow of
+  // the terminal perpetuity. The continuing value is RI₈/(ke − g); no extra
+  // (1+g) (that would push the first flow to RI₉ and overstate TV by one year's
+  // growth — it would only be correct if terminalRI were RI₇, on BV₆).
   const terminalROE = LONG_RUN_NBFC_ROA * (1 + sustainableLev);
   const terminalRI = (terminalROE - ke) * bvForecast;
-  const tvUndiscounted = terminalRI * (1 + g) / (ke - g);
+  const tvUndiscounted = terminalRI / (ke - g);
   const tv = tvUndiscounted / Math.pow(1 + ke, forecastYears);
 
   const value = bv0 + pvResidualIncome + tv;
