@@ -233,7 +233,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
               <TR label="— Core SPREAD" vals={rd.map(d=>pct(d.ratios?.CoreSPREAD))}/>
               <TR label="Eq.16 reconstructed ROCE" vals={rd.map(d=>pct(d.ratios?.ROCE_eq16_reconstructed))} accent="indigo"/>
               <TR label="Eq.16 bridge error" vals={rd.map(d=>pct(d.ratios?.ROCE_eq16_error))}/>
-              <TR label="ROTCE (OI/TCE)" vals={rd.map(d=>pct(d.ratios?.ROTCE))}/>
+              <TR label="ROTCE ((CNI+MII)/avg(CSE+MI))" vals={rd.map(d=>pct(d.ratios?.ROTCE))}/>
               <TR label="MSR" vals={rd.map(d=>mult(d.ratios?.MSR,3))}/>
             </tbody>
           </table>

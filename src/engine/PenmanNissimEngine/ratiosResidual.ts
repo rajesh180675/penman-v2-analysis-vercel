@@ -104,8 +104,15 @@ export function computeRatios(cur: RecastPeriod, prev: RecastPeriod, cfg: Engine
     ? RNOA - RNOA_check
     : null;
 
-  const avgTCE = avg(cur.bs.NOA + cur.bs.MI, prev.bs.NOA + prev.bs.MI);
-  const ROTCE = avgTCE > 0 ? cur.is.OI / avgTCE : null;
+  // ROTCE — Return on Total Common + Minority Equity. Denominator is the equity
+  // claim on operations, CSE + MI (= NOA − NFO by the financing identity), NOT
+  // NOA + MI: NOA already includes MI (invariant NOA = CSE + NFO + MI), so NOA+MI
+  // double-counts minority interest. Numerator is comprehensive income to ALL
+  // equity holders, CNI + MII, matching the common+minority denominator. Using
+  // OI / avg(NOA) here would just reproduce RNOA — a different (operating-asset)
+  // return — making the metric redundant.
+  const avgTCE = avg(cur.bs.CSE + cur.bs.MI, prev.bs.CSE + prev.bs.MI);
+  const ROTCE = avgTCE > 0 ? (cur.is.CNI + cur.is.MII) / avgTCE : null;
   const MSR = cur.bs.CSE > 0 && (cur.is.CNI + cur.is.MII) !== 0
     ? (cur.is.CNI / (cur.is.CNI + cur.is.MII)) / (cur.bs.CSE / (cur.bs.CSE + cur.bs.MI))
     : null;
