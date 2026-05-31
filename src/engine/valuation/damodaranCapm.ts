@@ -29,6 +29,7 @@
 ================================================================ */
 
 import damodaranIndia2026 from "./data/damodaran/india-2026-01.json";
+import type { CompanyType } from "../types/company";
 
 export interface DamodaranIndustryRow {
   industry: string;
@@ -82,6 +83,49 @@ export function selectIndustryBeta(name: string): DamodaranIndustryRow | null {
     }
   }
   return best ?? DATA.industries.find((r) => r.industry === "Diversified") ?? null;
+}
+
+/**
+ * Deterministic CompanyType → Damodaran industry mapping.
+ *
+ * The free-text selectIndustryBeta above is for display-name callers. Feeding
+ * it a CompanyType enum value is fragile: the auto-detect sentinel "auto" would
+ * exact-match the "Auto" (automobiles) industry and pick beta 1.10, and
+ * "it-services" cannot substring-match "IT Services" because of the hyphen, so
+ * it silently fell through to "Diversified". This table resolves each enum value
+ * to a named industry once, deterministically.
+ *
+ * Two deliberate Diversified mappings (no specific automaker/conglomerate beta):
+ *  - "auto": the legacy auto-DETECT sentinel, NOT automobiles — must not pick the
+ *    "Auto" carmaker row.
+ *  - "industrial": broad manufacturing/infra/conglomerate bucket with no single
+ *    Damodaran analogue; Diversified is the honest default.
+ */
+const COMPANY_TYPE_TO_DAMODARAN: Record<CompanyType, string> = {
+  auto: "Diversified",
+  bank: "Banks",
+  nbfc: "NBFC",
+  insurance: "Insurance (Life)",
+  industrial: "Diversified",
+  "it-services": "IT Services",
+  consumer: "FMCG",
+  utility: "Power",
+  telecom: "Telecom",
+  cyclical: "Metals",
+};
+
+/**
+ * Resolve the Damodaran industry row for an explicit CompanyType enum value.
+ * Falls back to "Diversified" if the mapped industry is somehow absent from the
+ * snapshot (defensive — every mapped name exists in the shipped table today).
+ */
+export function selectIndustryBetaForCompanyType(companyType: CompanyType): DamodaranIndustryRow | null {
+  const industryName = COMPANY_TYPE_TO_DAMODARAN[companyType];
+  return (
+    DATA.industries.find((r) => r.industry === industryName)
+    ?? DATA.industries.find((r) => r.industry === "Diversified")
+    ?? null
+  );
 }
 
 /**

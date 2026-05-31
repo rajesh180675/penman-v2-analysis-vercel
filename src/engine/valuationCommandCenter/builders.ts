@@ -8,7 +8,7 @@ import { runSOTPFromSegmentData, segmentDataToDefinitions } from "../segmentSOTP
 import type { SegmentData } from "../segmentParser";
 import { evaluateWorkingCapitalGate, WorkingCapitalGateResult } from "../valuation/workingCapitalGate";
 import { checkCleanSurplus, CleanSurplusResult } from "../valuation/cleanSurplus";
-import { selectIndustryBeta, capmKe, CapmResult } from "../valuation/damodaranCapm";
+import { selectIndustryBetaForCompanyType, capmKe, CapmResult } from "../valuation/damodaranCapm";
 import { runReverseDcfMonteCarlo, ReverseDcfMonteCarloResult } from "../valuation/reverseDcfMonteCarlo";
 import { computeOwnerEarningsDcf } from "./solvers";
 import {
@@ -124,8 +124,10 @@ export function buildClassAModels(
       })
     : null;
 
-  // damodaranCapm: independent ke cross-check from Damodaran industry betas
-  const industryBeta = config.company_type ? selectIndustryBeta(config.company_type) : null;
+  // damodaranCapm: independent ke cross-check from Damodaran industry betas.
+  // Resolve via the deterministic CompanyType→industry map (the free-text matcher
+  // mis-resolves enum values like "auto"/"it-services").
+  const industryBeta = config.company_type ? selectIndustryBetaForCompanyType(config.company_type) : null;
   const damodaranCapmResult: CapmResult | null = industryBeta
     ? capmKe({ beta: industryBeta.leveredBeta })
     : null;
