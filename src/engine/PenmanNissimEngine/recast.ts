@@ -344,7 +344,15 @@ export function recastCashFlow(data: RawPeriodData, is_: CanonicalIncome, bs: Ca
   const dNFO = prev ? (bs.NFO - prev.NFO) : 0;
   const FCF_accounting = prev ? (is_.OI - dNOA) : 0;
   const FCF_cash = CFO - Capex;
-  const d_t = DividendPaid - EquityIssued - ShareBuybacks;
+  // Net distribution to owners: dividends and buybacks are BOTH cash returned to
+  // owners (same positive sign), equity issuance is cash received. Storage above
+  // makes all three positive magnitudes (DividendPaid/ShareBuybacks via Math.abs,
+  // EquityIssued is raw positive proceeds), so d_t = Div + Buyback - Issued.
+  // (Previously subtracted ShareBuybacks — wrong sign; latent only because the
+  // Capitaline CF template carries no buyback row, so the term was always 0.)
+  // d_t_formula below is Penman's net-distribution identity (FCF - NFE + dNFO),
+  // which already expects this positive-out convention — do NOT change it.
+  const d_t = DividendPaid + ShareBuybacks - EquityIssued;
   const d_t_formula = prev ? (FCF_accounting - is_.NFE + dNFO) : 0;
   const d_t_discrepancy = prev ? d_t - d_t_formula : 0;
 
