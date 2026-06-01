@@ -273,6 +273,18 @@ export function buildAnalysisTraceability(params: {
   const terminalEligibilityBlockEnabled = isEnabled("rigor.terminalEligibilityBlock");
   const terminalEligibilityBlocksValuation =
     terminalEligibilityBlockEnabled && unusualItemManifest.terminalEligibilityBlocked;
+  // Phase 0 — sector fail-safe. A detected-but-unmodelled industrial subsector
+  // (telecom/utility) runs the full recast and produces sector-correct ratios,
+  // but the engine has no sector-native valuation model, so the industrial
+  // Penman-Nissim intrinsic value must NOT be blessed. Cap the ladder at
+  // economically-plausible by denying valuation-eligible + production-ready.
+  // currentLevel is the highest achieved checkpoint, so this makes
+  // economically-plausible the ceiling automatically.
+  const scopeClassification = qualityGate?.scopeAssessment?.classification;
+  const sectorUnmodelledCapsAtPlausible =
+    scopeClassification === "detected-telecom-unmodelled"
+    || scopeClassification === "detected-utility-unmodelled";
+  const sectorCapLabel = scopeClassification === "detected-utility-unmodelled" ? "Utility" : "Telecom";
   if (unusualItemManifest.classifications.length > 0) {
     trace("config", "unusualItemManifest:built", {
       companyId: params.companyId ?? null,
@@ -343,8 +355,10 @@ export function buildAnalysisTraceability(params: {
     {
       level: "valuation-eligible",
       label: "Valuation eligible",
-      achieved: structuralAchieved && !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && valuationStatus !== "guarded" && valuationStatus !== "unknown",
-      detail: screeningOnly
+      achieved: structuralAchieved && !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && !sectorUnmodelledCapsAtPlausible && valuationStatus !== "guarded" && valuationStatus !== "unknown",
+      detail: sectorUnmodelledCapsAtPlausible
+        ? `${sectorCapLabel} sector detected — the engine has no sector-native valuation model, so the industrial intrinsic value is produced but not blessed. The run is capped at economically-plausible; ratios are sector-correct.`
+        : screeningOnly
         ? "Single-period upload — valuation eligibility requires ≥2 periods for time-series anchoring."
         : distressBlocksValuation
           ? `${distress.severity === "critical" ? "Critical" : "Severe"} financial distress detected (${distress.reasons[0] ?? "negative net worth"}). Equity-side valuation models cannot be trusted; the run is not valuation-eligible.`
@@ -361,8 +375,10 @@ export function buildAnalysisTraceability(params: {
     {
       level: "production-ready",
       label: "Production-ready",
-      achieved: !screeningOnly && analysisStatus?.status === "production-ready",
-      detail: screeningOnly
+      achieved: !screeningOnly && !sectorUnmodelledCapsAtPlausible && analysisStatus?.status === "production-ready",
+      detail: sectorUnmodelledCapsAtPlausible
+        ? `${sectorCapLabel} sector detected — production-ready requires a sector-native valuation model, which is not yet implemented.`
+        : screeningOnly
         ? "Single-period upload — production-ready status requires ≥2 periods."
         : analysisStatus?.status === "production-ready"
           ? "All currently wired release checks passed."

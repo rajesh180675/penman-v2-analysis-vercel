@@ -297,7 +297,14 @@ export function processCompanyDataFull(
   const latest = results.length > 0 ? results[results.length - 1] : null;
   let industrialEffectiveType: CompanyType | "auto" = config.company_type ?? "auto";
   if (industrialEffectiveType === "auto") {
-    if (itServices?.isITServices) {
+    // Phase 0 — a detected-but-unmodelled subsector selects its sector bands
+    // first, so a regulated/telecom company isn't pre-empted by the cyclical
+    // heuristic. ratioSanity already carries telecom/utility bands.
+    if (scope.classification === "detected-telecom-unmodelled") {
+      industrialEffectiveType = "telecom";
+    } else if (scope.classification === "detected-utility-unmodelled") {
+      industrialEffectiveType = "utility";
+    } else if (itServices?.isITServices) {
       industrialEffectiveType = "it-services";
     } else if (cyclicality && cyclicality.classification !== "non-cyclical") {
       industrialEffectiveType = "cyclical";
