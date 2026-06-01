@@ -77,6 +77,20 @@ const EXTERNAL_EQUITY_CRITICAL_THRESHOLD = 0.05;
 const RAW_RECAST_WARNING_THRESHOLD = 0.01;
 const RAW_RECAST_CRITICAL_THRESHOLD = 0.05;
 
+const VALUATION_TRIANGULATION_WARNING_THRESHOLD = 0.15;
+const VALUATION_TRIANGULATION_CRITICAL_THRESHOLD = 0.30;
+
+export interface ValuationTriangulationMethod {
+  key: string;
+  label: string;
+  perShare: number | null | undefined;
+}
+
+export interface ValuationTriangulationEvidence {
+  periodEnd?: string | null | undefined;
+  methods: ValuationTriangulationMethod[];
+}
+
 function classifyResidual(
   ratio: number,
   warningThreshold: number,
@@ -163,6 +177,62 @@ function buildOptionalCheck(params: {
   });
 }
 
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[middle - 1]! + sorted[middle]!) / 2
+    : sorted[middle]!;
+}
+
+function buildValuationTriangulationCheck(
+  evidence: ValuationTriangulationEvidence | null | undefined,
+  fallbackPeriodEnd: string,
+): ReconciliationResidualCheck | null {
+  const finiteMethods = (evidence?.methods ?? [])
+    .filter((method): method is ValuationTriangulationMethod & { perShare: number } =>
+      method.perShare != null && Number.isFinite(method.perShare) && method.perShare > 0,
+    );
+  // Honest skip: absence of at least two finite paradigms is not divergence.
+  if (finiteMethods.length < 2) return null;
+
+  const basis = median(finiteMethods.map((method) => method.perShare));
+  if (!Number.isFinite(basis) || basis <= 0) return null;
+
+  let worstLeft = finiteMethods[0]!;
+  let worstRight = finiteMethods[1]!;
+  let maxPairwiseDelta = 0;
+  for (let i = 0; i < finiteMethods.length; i += 1) {
+    for (let j = i + 1; j < finiteMethods.length; j += 1) {
+      const left = finiteMethods[i]!;
+      const right = finiteMethods[j]!;
+      const delta = Math.abs(left.perShare - right.perShare);
+      if (delta > maxPairwiseDelta) {
+        maxPairwiseDelta = delta;
+        worstLeft = left;
+        worstRight = right;
+      }
+    }
+  }
+
+  const built = buildCheck({
+    key: "valuation-triangulation",
+    label: "Independent valuation paradigms agree",
+    periodEnd: evidence?.periodEnd ?? fallbackPeriodEnd,
+    residual: maxPairwiseDelta,
+    denominator: basis,
+    warningThreshold: VALUATION_TRIANGULATION_WARNING_THRESHOLD,
+    criticalThreshold: VALUATION_TRIANGULATION_CRITICAL_THRESHOLD,
+  });
+  const methodSummary = finiteMethods
+    .map((method) => `${method.label}: ₹${method.perShare.toFixed(2)}/share`)
+    .join("; ");
+  return {
+    ...built,
+    detail: `Independent valuation paradigms diverge by max ₹${maxPairwiseDelta.toFixed(2)}/share (${formatPct(built.ratio)} of median ₹${basis.toFixed(2)}). Worst pair: ${worstLeft.label} vs ${worstRight.label}. Methods: ${methodSummary}.`,
+  };
+}
+
 /**
  * S-9.4C kw-consistency residual builder — PROVENANCE-DRIVEN, fail-closed.
  *
@@ -217,11 +287,12 @@ function buildKwConsistencyCheck(period: RecastPeriod): ReconciliationResidualCh
 export function evaluateReconciliationResiduals(params: {
   recastData?: RecastPeriod[] | null | undefined;
   config?: EngineConfig | null | undefined;
+  valuationTriangulation?: ValuationTriangulationEvidence | null | undefined;
 }): ReconciliationResidualSummary {
   const recastData = params.recastData ?? [];
   const warningThreshold = params.config?.structural_residual_warning ?? 0.005;
   const criticalThreshold = params.config?.structural_residual_critical ?? 0.02;
-  const checks = recastData.flatMap((period, index) => {
+  const structuralChecks = recastData.flatMap((period, index) => {
     const previous = index > 0 ? recastData[index - 1] : null;
 
     // Tautological identity guards — debug-only, NOT residual checks.
@@ -548,6 +619,15 @@ export function evaluateReconciliationResiduals(params: {
     ].filter((check): check is ReconciliationResidualCheck => Boolean(check));
   });
 
+  const valuationTriangulationCheck = buildValuationTriangulationCheck(
+    params.valuationTriangulation,
+    recastData[recastData.length - 1]?.period_end ?? "valuation",
+  );
+  const checks = [
+    ...structuralChecks,
+    ...(valuationTriangulationCheck ? [valuationTriangulationCheck] : []),
+  ];
+
   if (checks.length === 0) {
     if (recastData.length === 0) {
       return {
@@ -588,7 +668,7 @@ export function evaluateReconciliationResiduals(params: {
     ? `${errorCount} reconciliation residual check(s) breached the critical threshold. Worst check: ${worstCheck.label} in ${worstCheck.periodEnd} at ${formatPct(worstCheck.ratio)}.`
     : status === "degraded"
       ? `${warningCount} reconciliation residual check(s) are above the warning threshold, but none are critical. Worst check: ${worstCheck.label} in ${worstCheck.periodEnd} at ${formatPct(worstCheck.ratio)}.`
-      : `All ${checks.length} reconciliation residual checks stayed within the ${formatPct(warningThreshold)} warning threshold. Worst check: ${worstCheck.label} in ${worstCheck.periodEnd} at ${formatPct(worstCheck.ratio)}.`;
+      : `All ${checks.length} reconciliation residual checks stayed within their warning thresholds. Worst check: ${worstCheck.label} in ${worstCheck.periodEnd} at ${formatPct(worstCheck.ratio)} (warning ${formatPct(worstCheck.warningThreshold)}).`;
 
   return {
     status,

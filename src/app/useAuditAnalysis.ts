@@ -15,6 +15,7 @@ import { buildAnalysisPublicationSnapshot } from "../lib/publication/analysisPub
 import { buildComparisonPublicationSnapshot } from "../lib/publication/comparisonPublicationSnapshot";
 import { getAnalysisPolicyVersions } from "../engine/policyVersions";
 import { SourceParserDiagnostics } from "../engine/parserDiagnostics";
+import { buildValuationCommandCenter } from "../engine/valuationCommandCenter";
 
 export interface AuditAnalysisInputs {
   rawData: RawPeriodData[] | null;
@@ -152,6 +153,19 @@ export function useAuditAnalysis(inputs: AuditAnalysisInputs) {
     () => deriveAnalysisStatus(qualityGateWithRecast, valuationReadiness, mappingAudit),
     [mappingAudit, qualityGateWithRecast, valuationReadiness],
   );
+  const valuationTriangulation = useMemo(() => {
+    if (!recastData?.length) return null;
+    try {
+      return buildValuationCommandCenter({
+        data: recastData,
+        config,
+        analysisStatus,
+      }).valuationTriangulation;
+    } catch (err) {
+      trace("valuation", "valuationTriangulation:error", { error: String(err), stack: (err as Error)?.stack }, null, { level: "warn" });
+      return null;
+    }
+  }, [analysisStatus, config, recastData]);
   const policyVersions = useMemo(() => getAnalysisPolicyVersions(), []);
   const latestPeriod = valuationRawData && valuationRawData.length > 0 ? valuationRawData[valuationRawData.length - 1]!.period_end : null;
   const traceability = useMemo(
@@ -180,8 +194,9 @@ export function useAuditAnalysis(inputs: AuditAnalysisInputs) {
       runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
       bankMetrics: bankResult?.bankMetrics ?? null,
       bankSubtype: bankResult?.subtype ?? null,
+      valuationTriangulation,
     }),
-    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, policyVersions, qualityGateWithRecast, valuationRawData, rawData, recastData, bankResult],
+    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, policyVersions, qualityGateWithRecast, valuationRawData, rawData, recastData, bankResult, valuationTriangulation],
   );
   const publication = useMemo(
     () => (recastData?.length

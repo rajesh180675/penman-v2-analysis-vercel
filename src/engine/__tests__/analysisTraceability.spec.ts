@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAnalysisTraceability } from "../analysisTraceability";
+import type { RecastPeriod } from "../types";
 
 const productionReadyStatus = {
   status: "production-ready" as const,
@@ -16,6 +17,66 @@ const productionReadyStatus = {
   diagnosticCount: 0,
   optionalCount: 0,
 };
+
+function mkTraceabilityRecastPeriod(period_end: string): RecastPeriod {
+  return {
+    period_end,
+    bs: {
+      TA: 1000,
+      CSE: 600,
+      MI: 0,
+      FA: 200,
+      FO: 150,
+      OA: 800,
+      OL: 250,
+      NOA: 600,
+      NFO: 0,
+    },
+    is: {
+      Sales: 900,
+      TaxExpense: 30,
+      taxRate: 0.25,
+      PAT: 90,
+      OCI: 0,
+      TCI: 90,
+      TCI_NCI: 0,
+      CNI: 90,
+      FinanceCost: 12,
+      FinanceIncome: 2,
+      FinanceIncomeRung: 1,
+      PreferredDividend: 0,
+      NFE: 10,
+      OI: 100,
+      OtherItems: 0,
+      MII: 0,
+      COGS: 600,
+    },
+    cu: {
+      UOI: 0,
+      CoreOI: 100,
+      UFE: 0,
+      CoreNFE: 10,
+      ExceptionalItemsAfterTax: 0,
+      OCITotal: 0,
+    },
+    cf: {
+      CFO: 120,
+      Capex: 40,
+      DividendPaid: 20,
+      EquityIssued: 0,
+      ShareBuybacks: 0,
+      InterestReceived: 0,
+      DividendReceived: 0,
+      FCF_accounting: 60,
+      FCF_cash: 80,
+      d_t: 20,
+      d_t_formula: 20,
+      d_t_discrepancy: 0,
+      EBITDA: 140,
+    },
+    trace: {},
+  } as RecastPeriod;
+}
 
 describe("analysis traceability confidence gates", () => {
   it("blocks confidence when parser fidelity fails even if mapping status is otherwise production-ready", () => {
@@ -107,5 +168,41 @@ describe("analysis traceability confidence gates", () => {
     expect(traceability.parserFidelity.status).not.toBe("failed");
     expect(traceability.confidence.status).toBe("guarded");
     expect(traceability.confidence.tone).toBe("amber");
+  });
+
+  it("fails closed above structurally-reconciled when independent valuation paradigms diverge materially", () => {
+    const rawData = Array.from({ length: 2 }, (_, i) => ({
+      company_id: "DIVERGECO",
+      period_end: `202${4 + i}-03-31`,
+      raw_metric_values: {
+        "Total Assets__BalanceSheet": 1000 + i * 100,
+        "Total Equity__BalanceSheet": 600 + i * 60,
+        "Revenue From Operations(Net)__ProfitLoss": 900 + i * 90,
+        "Net Cash from Operating Activities__CashFlow": 120 + i * 12,
+        "Purchased of Fixed Assets__CashFlow": -40 - i * 4,
+      },
+    }));
+    const recastData = rawData.map((period) => mkTraceabilityRecastPeriod(period.period_end));
+
+    const traceability = buildAnalysisTraceability({
+      sourceMode: "manual",
+      periodCount: 2,
+      rawMetricKeyCount: 5,
+      rawData,
+      recastData,
+      analysisStatus: productionReadyStatus,
+      valuationTriangulation: {
+        methods: [
+          { key: "accrual-riv", label: "Accrual RIV", perShare: 100 },
+          { key: "cash-fcff-dcf", label: "Cash-statement FCFF DCF", perShare: 145 },
+          { key: "relative-ev-ebitda", label: "Relative EV/EBITDA", perShare: 105 },
+        ],
+      },
+    });
+
+    expect(traceability.reconciliation.status).toBe("failed");
+    expect(traceability.reconciliation.checks.some((check) => check.key === "valuation-triangulation")).toBe(true);
+    expect(traceability.rigor.achievedLevels).not.toContain("valuation-eligible");
+    expect(traceability.rigor.achievedLevels).not.toContain("production-ready");
   });
 });

@@ -11,6 +11,8 @@ import { computeEvEbitdaCrossCheck, updateEvEbitdaWithMarketPrice } from "../evE
 import { computeIndiaQualitySignals } from "../indiaQualitySignals";
 import { buildEarningsQualityCard, buildDechowDichevAndRem } from "../earningsQuality";
 import { computeEPV } from "../grahamDoddEPV";
+import { computeCashFlowDcf } from "../cashFlowDcf";
+import { buildValuationTriangulationEvidence } from "../valuationTriangulation";
 import { buildBacktest } from "./backtest";
 import {
   ValuationSignalState,
@@ -457,6 +459,20 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
   const { workingCapitalGateResult, cleanSurplusResult, damodaranCapmResult, reverseDcfMonteCarloResult } =
     buildClassAModels(data, config, latest, shares, marketPrice, keBase);
 
+  // ── Poly-paradigm Phase 1.1: independent cash-statement FCFF DCF ────
+  const cashFlowDcf = computeCashFlowDcf(valuationData, config, shares, {
+    terminalGrowth: baseCard?.assumptions.g ?? sectorTemplate.normalizedGrowth,
+    nearTermGrowth: baseCard?.assumptions.salesGrowthYear1 ?? sectorTemplate.normalizedGrowth,
+    horizon,
+  });
+  const valuationTriangulation = buildValuationTriangulationEvidence({
+    scenarios,
+    cashFlowDcf,
+    evEbitda: evEbitdaWithMarket,
+    shares,
+    periodEnd: latest.period_end,
+  });
+
   return {
     shareBasis,
     valuationReadiness,
@@ -483,6 +499,8 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     cleanSurplus: cleanSurplusResult,
     damodaranCapm: damodaranCapmResult,
     reverseDcfMonteCarlo: reverseDcfMonteCarloResult,
+    cashFlowDcf,
+    valuationTriangulation,
     opportunity,
     checklist,
     marketContext,

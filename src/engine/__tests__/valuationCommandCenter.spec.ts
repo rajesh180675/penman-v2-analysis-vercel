@@ -288,6 +288,10 @@ describe("valuation command center", () => {
     expect(out.opportunity.qualityScore).toBeGreaterThan(60);
     expect(out.opportunity.requiredMarginOfSafetyPct).toBeGreaterThan(0.15);
     expect(out.scenarios.find((scenario) => scenario.key === "stress")?.expectedCagr).not.toBeNull();
+    // Poly-paradigm Phase 1.1: the command center must expose the independent
+    // cash-statement FCFF DCF separately, not fold it into the old median blend.
+    expect(out.cashFlowDcf).not.toBeNull();
+    expect(out.cashFlowDcf?.perShare).toBeGreaterThan(0);
   });
 
   it("uses persistence-led scenario weighting in the command center", () => {

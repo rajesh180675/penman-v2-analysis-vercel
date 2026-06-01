@@ -144,6 +144,42 @@ function mkPeriod(period_end: string, overrides?: Partial<RecastPeriod>): Recast
 }
 
 describe("evaluateReconciliationResiduals", () => {
+  it("adds a valuation-triangulation residual and fails closed when independent paradigms diverge materially", () => {
+    const summary = evaluateReconciliationResiduals({
+      recastData: [mkPeriod("2024-03-31"), mkPeriod("2025-03-31")],
+      config: DEFAULT_CONFIG,
+      valuationTriangulation: {
+        methods: [
+          { key: "accrual-riv", label: "Accrual RIV", perShare: 100 },
+          { key: "cash-fcff-dcf", label: "Cash-statement FCFF DCF", perShare: 145 },
+          { key: "relative-ev-ebitda", label: "Relative EV/EBITDA", perShare: 105 },
+        ],
+      },
+    });
+
+    const check = summary.checks.find((entry) => entry.key === "valuation-triangulation");
+    expect(check).toBeDefined();
+    expect(check?.status).toBe("failed");
+    expect(check?.detail).toContain("Accrual RIV");
+    expect(check?.detail).toContain("Cash-statement FCFF DCF");
+    expect(summary.status).toBe("failed");
+  });
+
+  it("skips valuation-triangulation honestly when fewer than two finite methods exist", () => {
+    const summary = evaluateReconciliationResiduals({
+      recastData: [mkPeriod("2024-03-31"), mkPeriod("2025-03-31")],
+      config: DEFAULT_CONFIG,
+      valuationTriangulation: {
+        methods: [
+          { key: "accrual-riv", label: "Accrual RIV", perShare: 100 },
+          { key: "cash-fcff-dcf", label: "Cash-statement FCFF DCF", perShare: null },
+        ],
+      },
+    });
+
+    expect(summary.checks.some((entry) => entry.key === "valuation-triangulation")).toBe(false);
+  });
+
   it("includes cash-distribution and share-capital tie-out checks when data is available", () => {
     const current = mkPeriod("2025-03-31", {
       is: {

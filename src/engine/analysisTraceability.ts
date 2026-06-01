@@ -4,7 +4,7 @@ import { MappingAuditReport, QualityGateReport } from "./mappingAudit";
 import { CapitalineParseDebug } from "./capitalineParser";
 import { evaluateParserFidelity } from "./parserFidelity";
 import { EngineConfig, RawPeriodData, RecastPeriod } from "./types";
-import { evaluateReconciliationResiduals } from "./reconciliationResiduals";
+import { evaluateReconciliationResiduals, type ValuationTriangulationEvidence } from "./reconciliationResiduals";
 import { evaluateBankReconciliationResiduals } from "./bankReconciliationResiduals";
 import type { BankPeriodMetrics } from "./bankPipeline";
 import { detectSubtype } from "./bankPipeline";
@@ -163,6 +163,13 @@ export function buildAnalysisTraceability(params: {
    */
   bankMetrics?: BankPeriodMetrics[] | null | undefined;
   bankSubtype?: FinancialInstitutionSubtype | null | undefined;
+  /**
+   * Poly-paradigm Phase 1.2 — independent valuation methods to reconcile
+   * (accrual RIV/ReOI, cash-statement FCFF DCF, relative EV/EBITDA). When
+   * supplied for industrial runs, material disagreement becomes a first-class
+   * reconciliation residual and can fail-close the rigor ladder.
+   */
+  valuationTriangulation?: ValuationTriangulationEvidence | null | undefined;
 }): AnalysisTraceabilityEnvelope {
   const qualityGate = params.qualityGate;
   const coverageSummary = qualityGate?.coverageSummary ?? params.mappingAudit?.coverageSummary ?? null;
@@ -224,6 +231,7 @@ export function buildAnalysisTraceability(params: {
     : evaluateReconciliationResiduals({
       recastData: params.recastData ?? null,
       config: params.config ?? null,
+      valuationTriangulation: params.valuationTriangulation ?? null,
     });
   // Phase J5: distress gate. Critical or severe distress (negative net
   // worth, going-concern stress) blocks `valuation-eligible` advancement
@@ -375,14 +383,20 @@ export function buildAnalysisTraceability(params: {
     {
       level: "production-ready",
       label: "Production-ready",
-      achieved: !screeningOnly && !sectorUnmodelledCapsAtPlausible && analysisStatus?.status === "production-ready",
+      achieved: structuralAchieved && !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && !sectorUnmodelledCapsAtPlausible && analysisStatus?.status === "production-ready",
       detail: sectorUnmodelledCapsAtPlausible
         ? `${sectorCapLabel} sector detected — production-ready requires a sector-native valuation model, which is not yet implemented.`
         : screeningOnly
         ? "Single-period upload — production-ready status requires ≥2 periods."
-        : analysisStatus?.status === "production-ready"
-          ? "All currently wired release checks passed."
-          : analysisStatus?.headline ?? "Production-ready status was not reached.",
+        : !structuralAchieved
+          ? `Production-ready requires structural reconciliation to clear. ${reconciliation.summary}`
+          : valuationBlocked
+            ? "Valuation-critical issues still block the run, so production-ready status is denied."
+            : distressBlocksValuation || conceptIdentityBlocksValuation || terminalEligibilityBlocksValuation
+              ? "Valuation eligibility blockers remain, so production-ready status is denied."
+              : analysisStatus?.status === "production-ready"
+                ? "All currently wired release checks passed."
+                : analysisStatus?.headline ?? "Production-ready status was not reached.",
     },
   ];
   // achievedLevels/pendingLevels are recomputed below after the
@@ -407,7 +421,7 @@ export function buildAnalysisTraceability(params: {
     parserGap * 0.25 + mappingPenalty * 0.25 + reconPenalty * 0.20 + sanityPenalty * 0.15 + unusualPenalty * 0.15,
   );
   const residualScoreDowngradeEnabled = isEnabled("rigor.residualScoreDowngrade");
-  const productionReadyAchievedRaw = !screeningOnly && analysisStatus?.status === "production-ready";
+  const productionReadyAchievedRaw = structuralAchieved && !screeningOnly && !valuationBlocked && analysisStatus?.status === "production-ready";
   const productionReadyDowngraded =
     productionReadyAchievedRaw && residualScoreDowngradeEnabled && overallResidualScore > RESIDUAL_SCORE_PRODUCTION_THRESHOLD;
   if (productionReadyDowngraded) {
