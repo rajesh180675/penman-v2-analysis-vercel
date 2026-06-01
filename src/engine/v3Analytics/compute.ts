@@ -5,6 +5,7 @@
    back-edge to the v3Analytics.ts barrel.
 ══════════════════════════════════════════════════════════════════ */
 import { RecastPeriod, EngineConfig, ke_from_config } from "../types";
+import { CroreShares } from "../types/units";
 import { trace } from "../../lib/traceLogger";
 import { deriveKwFromStructure } from "../PenmanNissimEngine";
 import { computeMoatScore, MoatScoreResult } from "../moatScoring";
@@ -252,6 +253,8 @@ export function computeV3Analytics(
   const triggerCalibration = calibrateMonitoringTriggers(periods, periodFlags, registry, cfg);
   const triggers = generateMonitoringTriggers(periods, companyId, ke, periodFlags, registry, cfg);
   const shareCount = deriveShareCount(periods, registry, anchorResult.V_total);
+  const sharesForPerShare = cfg.shares_outstanding ?? shareCount.sharesForPerShare ?? shareCount.shares ?? undefined;
+  const sharesForMarketCap = cfg.shares_outstanding ?? shareCount.sharesForMarketCap ?? shareCount.shares ?? undefined;
   const marketImplied = computeMarketImplied(
     registry,
     {
@@ -265,7 +268,8 @@ export function computeV3Analytics(
       periods,
     },
     cfg.market_price,
-    cfg.shares_outstanding ?? shareCount.shares ?? undefined,
+    sharesForPerShare,
+    sharesForMarketCap,
   );
   const accrualTable = buildAccrualTable(periods);
   const section6B = buildSection6B(shareCount, marketImplied, registry);
@@ -303,10 +307,10 @@ export function computeV3Analytics(
   const cyclicality = assessCyclicality(periods);
   const structuralBreaks = detectStructuralBreaks(periods);
   const lossMakerValuation = computeLossMakerValuation(periods, cfg);
-  const epv = computeEPV(periods, cfg);
-  const relativeValuation = cfg.market_price != null && cfg.shares_outstanding != null
+  const epv = computeEPV(periods, sharesForPerShare != null ? { ...cfg, shares_outstanding: CroreShares(sharesForPerShare) } : cfg);
+  const relativeValuation = cfg.market_price != null && sharesForMarketCap != null
     ? computeIndustrialMultiples(periods, {
-        marketCap: cfg.market_price * cfg.shares_outstanding / 1e7,
+        marketCap: cfg.market_price * sharesForMarketCap,
         sharePrice: cfg.market_price,
       })
     : null;

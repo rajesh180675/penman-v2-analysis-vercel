@@ -114,6 +114,29 @@ describe("Supplementary Path A controls", () => {
     expect(market.margin_of_safety).not.toBeUndefined();
   });
 
+  it("S-16.2: market-implied analytics split per-share and market-cap share bases", () => {
+    const periods = [mkPeriod(2024, 0.25, 80, 100), mkPeriod(2025, 0.27, 85, 110)];
+    const r = new CanonicalOutputRegistry();
+    const market = computeMarketImplied(r, {
+      V_primary: 10700,
+      ke: 0.13,
+      g_effective: 0.04,
+      CSE0: 5000,
+      pvRE: 2000,
+      explicit_periods: 1,
+      RE_anchor: 85,
+      periods,
+    }, 70, 107, 110);
+
+    expect(market.status).toBe("full");
+    // Intrinsic/share uses diluted weighted-average style denominator.
+    expect(market.intrinsic_per_share).toBeCloseTo(100, 6);
+    expect(market.shares).toBe(107);
+    // Market cap uses period-end paid-up denominator.
+    expect(market.market_cap_shares).toBe(110);
+    expect(market.market_cap).toBeCloseTo(7700, 6);
+  });
+
   it("decomposes RE-ReOI valuation gap and returns dominant driver", () => {
     const periods = [mkPeriod(2023, 0.24, 70, 500), mkPeriod(2024, 0.25, 75, 560), mkPeriod(2025, 0.26, 80, 620)];
     const out = decomposeReReOIGap(periods, {

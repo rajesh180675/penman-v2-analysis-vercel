@@ -15,8 +15,13 @@ describe("share count resolution", () => {
 
     expect(latest.shareCountInput?.endPeriodShares).toBeCloseTo(1251.4119781, 4);
     expect(latest.shareCountInput?.weightedAverageBasicShares).toBeCloseTo(1250.24, 2);
-    expect(shareCount.shares).toBeCloseTo(1251.4119781, 4);
-    expect(shareCount.source).toContain("Number of Equity Shares");
+    expect(latest.shareCountInput?.weightedAverageDilutedShares).toBeCloseTo(1252.10, 2);
+    // Per-share basis = diluted weighted average (1252.10), market-cap basis = period-end paid-up (1251.41).
+    expect(shareCount.shares).toBeCloseTo(1252.10, 2);
+    expect(shareCount.sharesForPerShare).toBeCloseTo(1252.10, 2);
+    expect(shareCount.sharesForMarketCap).toBeCloseTo(1251.41, 2);
+    expect(shareCount.source).toContain("Diluted");
+    expect(shareCount.sourceForMarketCap.toLowerCase()).toContain("paid up");
     expect(shareCount.source).not.toContain("Equity proxy");
     expect(shareCount.confidence).toBe("HIGH");
   });

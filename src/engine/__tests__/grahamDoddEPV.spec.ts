@@ -283,4 +283,123 @@ describe("Graham-Dodd EPV", () => {
     const pctDiff = (result!.epvOperations - hypotheticalEPVWithKe) / hypotheticalEPVWithKe;
     expect(pctDiff).toBeGreaterThan(0.05); // at least 5% higher when using kw
   });
+
+  // ── Phase B — Reinvestment runway / compounder signal ─────────────────────
+
+  it("DMART-shape reinvestment-heavy retailer: after-tax ROIC below kw, so compounderScore=false", () => {
+    // DMART-shape: ~2% margin on 50,000 Cr sales, ~21,000 Cr NOA, ~1,500 Cr growth capex.
+    // After-tax RNOA = ~1,200 × (1-tax) / 21,000 ≈ 4.3% < 13% kw → compounderScore=false.
+    // Stickiness is based on after-tax RNOA > kw, not just positive RNOA, so
+    // stickiness = 0% (none of the periods beat kw).
+    const periods = Array.from({ length: 5 }, (_, i) => makePeriod({
+      CoreOI: 1150 + i * 50,
+      depreciation: 850,
+      Capex: -2350, // growth capex ≈ 1500
+      NOA: 21000,
+      NFO: -100, // net cash
+      OI: 1150 + i * 50,
+      Sales: 55000 + i * 1000,
+    }));
+    const result = computeEPV(periods, baseConfig);
+    expect(result).not.toBeNull();
+    expect(result!.compounderScore).toBe(false);
+    expect(result!.reinvestmentValue).toBe(0);
+    expect(result!.latestROIC).toBeGreaterThan(0);
+    expect(result!.currentSpread!).toBeLessThan(0); // negative after-tax spread
+    // After-tax RNOA > kw never true → stickiness = 0
+    expect(result!.rnoaStickiness).toBe(0);
+  });
+
+  it("true compounder (Asian Paints / ITC shape): RNOA > 30%, growth capex 200 Cr, compounderScore=true with real reinvestmentValue", () => {
+    // Latest after-tax ROIC = 3,700 × (1-tax) / 8,000 ≈ 34.6%.
+    // Spread ≈ 21.6% >> 200 bps gate. Growth capex 200 Cr positive.
+    // After-tax RNOA > kw in 100% of periods (sticky).
+    // Expected reinvestmentValue > 0, totalEPV > epvOperations, interpretation = moat-with-growth-runway.
+    const periods = Array.from({ length: 6 }, (_, i) => makePeriod({
+      CoreOI: 3200 + i * 100,
+      depreciation: 600,
+      Capex: -800, // growth capex ≈ 200
+      NOA: 8000,
+      NFO: 0,
+      OI: 3200 + i * 100,
+      Sales: 25000 + i * 500,
+    }));
+    const result = computeEPV(periods, baseConfig);
+    expect(result).not.toBeNull();
+    expect(result!.compounderScore).toBe(true);
+    expect(result!.reinvestmentValue).toBeGreaterThan(0);
+    expect(result!.totalEPV).toBeGreaterThan(result!.epvOperations);
+    expect(result!.totalEPVPerShare).not.toBeNull();
+    expect(result!.latestROIC!).toBeGreaterThan(0.30);
+    expect(result!.currentSpread!).toBeGreaterThan(0.20); // 20%+ after-tax spread
+    expect(result!.rnoaStickiness).toBe(1.0); // all periods after-tax RNOA > kw
+    expect(result!.totalEPV).toBeCloseTo(result!.epvEquity + result!.reinvestmentValue, 6);
+    // Since static EPV will easily clear reproduction (high CoreOI on low NOA),
+    // this should be the "moat-with-growth-runway" interpretation.
+    expect(result!.interpretation).toBe("moat-with-growth-runway");
+  });
+
+  it("non-compounder value-destroyer: spread negative → reinvestmentValue stays 0", () => {
+    // High NOA, low CoreOI — value-destroyer. Spread = 5% - 13% = -8%.
+    // Growth capex 100 Cr positive but spread negative → gate fires.
+    const periods = Array.from({ length: 5 }, (_, i) => makePeriod({
+      CoreOI: 400 + i * 20,
+      depreciation: 300,
+      Capex: -400, // growth capex = 100
+      NOA: 8000,
+      NFO: 2000,
+      OI: 400 + i * 20,
+      Sales: 10000,
+    }));
+    const result = computeEPV(periods, baseConfig);
+    expect(result).not.toBeNull();
+    expect(result!.compounderScore).toBe(false);
+    expect(result!.reinvestmentValue).toBe(0);
+    expect(result!.currentSpread!).toBeLessThan(0);
+    expect(result!.totalEPV).toBe(result!.epvEquity);
+  });
+
+  it("stickiness gate: one-off positive spread fails the compounder gate", () => {
+    // Period 1-4: value-destroyer (after-tax RNOA ≈ 1.5% < 13% kw).
+    // Period 5: one-off pop makes after-tax ROIC > kw by >200 bps, but
+    // stickiness = 20% < 60%.
+    // The compounder gate must refuse the spread as transient.
+    const periods = [
+      makePeriod({ CoreOI: 150, depreciation: 100, Capex: -250, NOA: 8000, NFO: 2000, OI: 150, Sales: 10000 }),
+      makePeriod({ CoreOI: 160, depreciation: 100, Capex: -250, NOA: 8100, NFO: 2050, OI: 160, Sales: 10000 }),
+      makePeriod({ CoreOI: 170, depreciation: 100, Capex: -250, NOA: 8200, NFO: 2100, OI: 170, Sales: 10000 }),
+      makePeriod({ CoreOI: 180, depreciation: 100, Capex: -250, NOA: 8300, NFO: 2150, OI: 180, Sales: 10000 }),
+      // Latest: dramatic pop — after-tax spread clears the 200bps gate in one period only.
+      makePeriod({ CoreOI: 1800, depreciation: 100, Capex: -250, NOA: 8400, NFO: 2200, OI: 1800, Sales: 10000 }),
+    ];
+    const result = computeEPV(periods, baseConfig);
+    expect(result).not.toBeNull();
+    // Spread on the latest period > 200bps but stickiness = 1/5 = 20% < 60%.
+    expect(result!.latestROIC!).toBeGreaterThan(0.13);
+    expect(result!.currentSpread!).toBeGreaterThan(0.02);
+    expect(result!.rnoaStickiness).toBeLessThan(0.6);
+    expect(result!.compounderScore).toBe(false);
+    expect(result!.reinvestmentValue).toBe(0);
+  });
+
+  it("growth-runway interpretation applies when recent reinvestment clears WACC but static median EPV is below reproduction", () => {
+    // Earlier periods are asset-light and earn >WACC; the latest period has a
+    // much larger NOA base and still clears WACC by >200 bps. Median CoreOI is
+    // low relative to latest NOA, so static EPV remains below reproduction
+    // value (no-moat), but the reinvestment gate recognizes a genuine runway.
+    const periods = [
+      makePeriod({ CoreOI: 1100, depreciation: 300, Capex: -800, NOA: 5000, NFO: 0, OI: 1100, Sales: 12000 }),
+      makePeriod({ CoreOI: 1120, depreciation: 300, Capex: -800, NOA: 5000, NFO: 0, OI: 1120, Sales: 12500 }),
+      makePeriod({ CoreOI: 1130, depreciation: 300, Capex: -800, NOA: 5000, NFO: 0, OI: 1130, Sales: 13000 }),
+      makePeriod({ CoreOI: 900, depreciation: 300, Capex: -800, NOA: 20000, NFO: 0, OI: 900, Sales: 25000 }),
+      makePeriod({ CoreOI: 4300, depreciation: 300, Capex: -800, NOA: 20000, NFO: 0, OI: 4300, Sales: 28000 }),
+    ];
+    const result = computeEPV(periods, baseConfig);
+    expect(result).not.toBeNull();
+    expect(result!.moatSignal).toBe("no-moat");
+    expect(result!.compounderScore).toBe(true);
+    expect(result!.rnoaStickiness).toBeGreaterThanOrEqual(0.6);
+    expect(result!.reinvestmentValue).toBeGreaterThan(0);
+    expect(result!.interpretation).toBe("growth-runway");
+  });
 });
