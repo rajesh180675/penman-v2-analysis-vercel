@@ -251,19 +251,26 @@ export function computeValuation(
   const EV_FCFF = CV_FCFF == null ? null : pvFCFF + (CV_FCFF / discW);
   const V_FCFE = CV_FCFE == null ? null : pvFCFE + (CV_FCFE / discE);
 
-  // AEG valuation (Ohlson-Juettner style short-form proxy)
+  // AEG valuation (Ohlson-Juettner style short-form proxy).
+  // OJ/Penman AEG is an earnings-capitalization model:
+  //   P0 = CNI1 / ke + Σ AEG_t / (ke × R^(t-1))
+  // where AEG_t = CNI_t − R×CNI_{t-1} + ke×Div_{t-1}.
+  // The dividend term is load-bearing: full-payout no-growth firms have zero
+  // abnormal earnings growth and value at forward earnings / ke, matching DDM.
   const aeg_series: Array<{ period: string; CNI: number; AEG: number; PV_AEG: number }> = [];
   let pvAEG = 0;
   for (let i = 2; i < periods.length; i++) {
     const cur = periods[i]!;
     const prev = periods[i - 1]!;
-    const aeg = cur.is.CNI - rhoE * prev.is.CNI;
+    const priorDistribution = prev.cf.d_t ?? prev.cf.DividendPaid;
+    const aeg = cur.is.CNI - rhoE * prev.is.CNI + ke * priorDistribution;
     const pv = aeg / Math.pow(rhoE, i - 1);
     pvAEG += pv;
     aeg_series.push({ period: cur.period_end, CNI: cur.is.CNI, AEG: aeg, PV_AEG: pv });
   }
   const cni1 = periods.length > 1 ? periods[1]!.is.CNI : periods[0]!.is.CNI;
-  const V_AEG = cni1 / Math.max(rhoE, 1e-6) + pvAEG;
+  const aegCapitalizationRate = Math.max(ke, MIN_GORDON_SPREAD);
+  const V_AEG = (cni1 + pvAEG) / aegCapitalizationRate;
 
   // Reverse DCF / implied growth for RE CV3
   let impliedGrowthRE: number | undefined;

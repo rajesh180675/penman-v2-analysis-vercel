@@ -1,6 +1,6 @@
 # Poly-Paradigm Valuation — Plan to 10/10 Functional Rigor
 
-**Status:** Proposed (not started). Phase 0 sector fail-safe already shipped (#240).
+**Status:** In progress toward 10/10. Phase 0 sector fail-safe shipped (#240); Phase 1 cash lens + cross-paradigm gate shipped (#241/#242); CV denominator guards shipped (#243).
 **Author:** drafted with Claude Code.
 **Thesis:** Keep Penman-Nissim as the *accrual lens*, add genuinely **independent** valuation lenses, and make the rigor layer **adjudicate disagreement** between them — not triangulate variations of one recast.
 
@@ -47,13 +47,13 @@ Under clean surplus, **RE≡FCFE and ReOI≡FCFF≡AEG** — the same informatio
 
 ## Phase 1 — ✅ The poly-paradigm spine (highest value; fully grounded)
 
-### 1.1 An independent cash-lens FCFF DCF
+### 1.1 Independent cash-lens FCFF DCF ✅ SHIPPED (#241/#242)
 **Files:** new `src/engine/cashFlowDcf.ts`; wired into `valuationCommandCenter/core.ts`.
 - Build a forward FCFF DCF directly from the cash-flow statement: project `FCF_cash = CFO − Capex` (`recast.ts:346`, already computed per period) forward, discount at kw (`resolveKw`), bridge EV→equity via `−NFO −MI`. This is a *genuinely independent* leg — it reads cash, not accrual NOA.
 - Surface it as a first-class triangulation method alongside RIV and relative, NOT folded back into the median blend (keep it separable so the gate in 1.2 can see it disagree).
 - **Blast radius:** additive; does not touch `computeValuation`. **Golden risk:** none if it's a new output the existing tests don't assert.
 
-### 1.2 Cross-paradigm reconciliation gate (the keystone — make divergence fail closed)
+### 1.2 Cross-paradigm reconciliation gate ✅ SHIPPED (#242)
 **Files:** `src/engine/analysisTraceability.ts`, `src/engine/reconciliationResiduals.ts`, `src/engine/valuationCommandCenter/core.ts`.
 
 The grounding gave the exact, faithful-to-#238 hook:
@@ -90,10 +90,10 @@ Intended: a real-options lens (option-to-abandon / option-to-expand) for the bus
 
 ---
 
-## Phase 4 — ⚠️ Mechanical correctness tail (VERIFY EACH)
+## Phase 4 — ⚠️ Mechanical correctness tail (partially shipped)
 
-- 🟡 **CV silent-collapse-to-zero (likely real):** in `computeValuation`, the Gordon terms guard `rhoE-1-g>0 ? ... : 0` and `rhoW-1-g>0 ? ... : 0` (~PenmanNissimEngine.ts:122-125, read earlier this session). When g ≥ discount rate, continuing value silently becomes 0 — a large valuation swing with no surfaced reason. **Fix:** surface it as an explicit guard/flag, don't return a silent zero.
-- ⚠️ **AEG mis-scaling:** flagged in the original audit; NOT verified this pass. Locate the AEG model and confirm the scaling concern is real before touching it.
+- ✅ **CV silent-collapse-to-zero:** fixed in #243. Gordon-style terminal CVs now fail closed with explicit `continuingValueGuards` when terminal growth is not safely below the relevant discount rate; invalid terminal spreads no longer become silent zeros.
+- ✅ **AEG mis-scaling:** fixed in this workstream. The Ohlson-Juettner/Penman AEG lens now capitalizes forward earnings at `ke` (not `1+ke`), divides discounted AEG by `ke`, and includes the `ke × prior distribution` dividend-displacement term. Load-bearing invariant: full-payout no-growth clean-surplus firms have zero AEG and agree with RE/DDM.
 - ⚠️ **Anomaly-threshold calibration:** `ratioSanity` BANDS, `RNOA_JUMP_THRESHOLD`, `economicSanityGates` — confirm which are magic numbers vs cohort-tagged, then tag/recalibrate against the 33-company corpus.
 
 ---
@@ -118,7 +118,8 @@ The opportunity (the user's point): on-disk-but-unused data is a **cross-validat
 **Asymptotic / never-truly-done** (be honest with stakeholders): threshold calibration drifts with each market cycle; sector-native models are never exhaustive (the next unusual company always exists); optionality valuation is inherently assumption-heavy. "10/10" means *the rigor layer adjudicates disagreement between independent lenses and fails closed honestly* — not that any single number is perfect.
 
 ## Recommended order (impact-per-hour)
-1. **Phase 1** — independent cash-DCF + cross-paradigm gate. Fully grounded, highest leverage, proves the whole thesis. **Start here.**
-2. **Phase 4 CV-collapse** — small, likely-real, surfaces a silent valuation swing.
-3. **Phase 2** — sector-native recast (lift the cap).
-4. **Phase 3 / 5 / rest of 4** — only after re-grounding each (their grounding agents failed this pass).
+1. ✅ **Phase 1** — independent cash-DCF + cross-paradigm gate shipped (#241/#242).
+2. ✅ **Phase 4 CV-collapse** — shipped (#243).
+3. ✅ **Phase 4 AEG scaling** — fixed in this workstream.
+4. **Phase 2** — sector-native recast (lift the cap).
+5. **Phase 3 / 5 / anomaly-threshold calibration** — only after re-grounding each (their grounding agents failed this pass).
