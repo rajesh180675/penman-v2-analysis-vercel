@@ -76,7 +76,7 @@ The grounding gave the exact, faithful-to-#238 hook:
 
 Phase 0 (#240) detects telecom/utility and caps them at economically-plausible. This phase makes the recast faithful so the cap can lift.
 
-- **Telecom:** reclassify `Rights Under Licensing Agreement` (spectrum/licence, ~154k Cr at Vi — verified label) as an operating asset, not the `OA_Other` plug; surface `License Fee / Operation Charges` (AGR) distinctly. Files: `mappingSpec.ts`, `recast.ts`.
+- **Telecom:** ✅ first recast-detail slice shipped: `Rights Under Licensing Agreement` is surfaced as telecom spectrum/licence operating intangible detail, and network/licence opex is explicit in the operating-cost bridge without double-counting `Other Expenses`. Remaining: telecom-native cross-checks/reconciliation and cap lift.
 - **Utility:** rate-base × allowed-return lens; stop the envelope flagging a healthy regulated near-zero RNOA−kw spread as value-destruction.
 - **Lift gate:** allow valuation-eligible again only when a telecom/utility-specific reconciliation residual passes.
 
