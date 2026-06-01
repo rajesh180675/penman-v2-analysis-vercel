@@ -265,4 +265,106 @@ describe("scopePolicy", () => {
     expect(assessment.classification).toBe("supported-financial");
     expect(assessment.label).toBe("Supported insurance scope");
   });
+
+  // ── Phase 0 — telecom/utility fail-safe (detected-but-unmodelled) ──────────
+
+  /** A clean industrial-shaped base period (no sector discriminators). */
+  function industrialBase(i: number): Record<string, number> {
+    return {
+      "Total Assets__BalanceSheet": 100000 + i * 5000,
+      "Total Equity__BalanceSheet": 40000 + i * 2000,
+      "Profit After Tax__ProfitLoss": 6000 + i * 300,
+      "Profit Before Tax__ProfitLoss": 8000 + i * 400,
+      "Tax Expenses__ProfitLoss": 2000 + i * 100,
+      "Revenue From Operations(Net)__ProfitLoss": 80000 + i * 4000,
+      "Finance Cost__ProfitLoss": 1500 + i * 50,
+      "Net Cash from Operating Activities__CashFlow": 12000 + i * 500,
+      "Purchased of Fixed Assets__CashFlow": -4000 - i * 200,
+    };
+  }
+
+  it("detects telecom from the clean network-opex discriminator (>=2 periods) and stays industrial family", () => {
+    const periods = Array.from({ length: 4 }, (_, i) => ({
+      company_id: "TELECOM_LIKE",
+      period_end: `${2022 + i}-03-31`,
+      raw_metric_values: {
+        ...industrialBase(i),
+        "Direct Tele Communication / Network Development Expenses__ProfitLoss": 5000 + i * 300,
+      },
+    }));
+    const assessment = assessAnalysisScope(periods);
+    expect(assessment.classification).toBe("detected-telecom-unmodelled");
+    expect(assessment.analysisFamily).toBe("industrial");
+    expect(assessment.blocked).toBe(false);
+    expect(assessment.reasons.join(" ")).toContain("telecom");
+  });
+
+  it("detects utility from the Ind-AS 114 regulatory-deferral discriminator (>=2 periods)", () => {
+    const periods = Array.from({ length: 4 }, (_, i) => ({
+      company_id: "UTILITY_LIKE",
+      period_end: `${2022 + i}-03-31`,
+      raw_metric_values: {
+        ...industrialBase(i),
+        "Regulatory Deferral Account - Debit Balance__BalanceSheet": 9000 + i * 500,
+      },
+    }));
+    const assessment = assessAnalysisScope(periods);
+    expect(assessment.classification).toBe("detected-utility-unmodelled");
+    expect(assessment.analysisFamily).toBe("industrial");
+    expect(assessment.blocked).toBe(false);
+    expect(assessment.reasons.join(" ")).toContain("utility");
+  });
+
+  it("does NOT trigger the sector cap on a single stray period (conservative >=2 gate)", () => {
+    const periods = Array.from({ length: 4 }, (_, i) => ({
+      company_id: "INDUSTRIAL_ONE_STRAY",
+      period_end: `${2022 + i}-03-31`,
+      raw_metric_values: {
+        ...industrialBase(i),
+        // Discriminator material in only ONE period — below the >=2 threshold.
+        ...(i === 0
+          ? { "Regulatory Deferral Account - Debit Balance__BalanceSheet": 9000 }
+          : {}),
+      },
+    }));
+    const assessment = assessAnalysisScope(periods);
+    expect(assessment.classification).toBe("supported-industrial");
+  });
+
+  it("respects an explicit company_type='telecom' override with the capped classification", () => {
+    const periods = [
+      {
+        company_id: "EXPLICIT_TELECOM",
+        period_end: "2025-03-31",
+        raw_metric_values: industrialBase(0),
+      },
+    ];
+    const assessment = assessAnalysisScope(periods, {
+      financial_institution_mode: false,
+      company_type: "telecom",
+    });
+    expect(assessment.classification).toBe("detected-telecom-unmodelled");
+    expect(assessment.analysisFamily).toBe("industrial");
+    expect(assessment.blocked).toBe(false);
+  });
+
+  it("does NOT reclassify a bank that carries a stray telecom opex line (financial signals win)", () => {
+    const periods = Array.from({ length: 4 }, (_, i) => ({
+      company_id: "BANK_WITH_TELECOM_NOISE",
+      period_end: `${2022 + i}-03-31`,
+      raw_metric_values: {
+        "Cash and Balance with RBI__BalanceSheet": 50000 + i * 5000,
+        "Investments of Banking Business__BalanceSheet": 200000 + i * 10000,
+        "Total Assets__BalanceSheet": 300000 + i * 20000,
+        "Total Equity__BalanceSheet": 40000 + i * 3000,
+        "Profit After Tax__ProfitLoss": 5000 + i * 400,
+        // Stray telecom line — must NOT override the financial routing.
+        "Direct Tele Communication / Network Development Expenses__ProfitLoss": 5000 + i * 300,
+      },
+    }));
+    const assessment = assessAnalysisScope(periods);
+    expect(assessment.analysisFamily).toBe("financial-institution");
+    expect(assessment.classification).not.toBe("detected-telecom-unmodelled");
+  });
 });
+
