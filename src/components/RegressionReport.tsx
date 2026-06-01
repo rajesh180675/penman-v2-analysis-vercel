@@ -234,7 +234,11 @@ return (
                 <td className="px-3 py-2 text-slate-700">V_ReOI_CV03</td>
                 <td className="px-3 py-2 text-right">₹{num(report.valuationDelta.V_ReOI_CV03_before)}</td>
                 <td className="px-3 py-2 text-right text-emerald-700">₹{num(report.valuationDelta.V_ReOI_CV03_after)}</td>
-                <td className="px-3 py-2 text-right">₹{num(report.valuationDelta.V_ReOI_CV03_after - report.valuationDelta.V_ReOI_CV03_before)}</td>
+                <td className="px-3 py-2 text-right">
+                  {report.valuationDelta.V_ReOI_CV03_after != null && report.valuationDelta.V_ReOI_CV03_before != null
+                    ? `₹${num(report.valuationDelta.V_ReOI_CV03_after - report.valuationDelta.V_ReOI_CV03_before)}`
+                    : "—"}
+                </td>
               </tr>
             </tbody>
           </table>

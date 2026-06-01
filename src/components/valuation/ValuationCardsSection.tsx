@@ -12,7 +12,7 @@ export default function ValuationCardsSection({
 }: {
   val: ReturnType<typeof computeValuation>;
   V_RE: number | null;
-  V_ReOI: number;
+  V_ReOI: number | null;
   cv: CVMethod;
   sharesOut: number | null;
 }) {
@@ -29,12 +29,13 @@ export default function ValuationCardsSection({
       />
       <ValCard color="emerald" title={`V (ReOI · ${cv === "CV1" ? "CV01" : cv === "CV2" ? "CV02" : "CV03"})`}
         subtitle="Eq.(9) · Ops-only · EV−NFO" value={V_ReOI}
-        items={[
-          { l: "EV (NOA₀ + PV ReOI + CV)", v: val.EV_ReOI },
+        items={V_ReOI == null ? [] : [
+          ...(val.EV_ReOI != null ? [{ l: "EV (NOA₀ + PV ReOI + CV)", v: val.EV_ReOI }] : []),
           { l: "Less: NFO (latest)", v: -val.NFO_latest },
           { l: "PV ReOI", v: val.pvReOI },
         ]} fmt={fmt}
-        perShare={toPerShare(V_ReOI, sharesOut)}
+        perShare={V_ReOI == null ? null : toPerShare(V_ReOI, sharesOut)}
+        skipReason={V_ReOI == null ? "ReOI growth continuing value skipped: terminal growth must be below operating capital cost." : null}
       />
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">All CV Methods — RE</div>
@@ -63,7 +64,11 @@ export default function ValuationCardsSection({
           <div key={row.label} className="flex justify-between py-1.5 border-b border-slate-100 text-sm">
             <span className="text-slate-600">{row.label}</span>
             <span className="font-mono font-semibold text-emerald-700">
-              {sharesOut ? `${fmtPerShare(toPerShare(row.v, sharesOut))} / share` : `₹${fmt(row.v)} Cr`}
+              {row.v == null
+                ? <span className="text-amber-600">— (skipped)</span>
+                : sharesOut
+                  ? `${fmtPerShare(toPerShare(row.v, sharesOut))} / share`
+                  : `₹${fmt(row.v)} Cr`}
             </span>
           </div>
         ))}

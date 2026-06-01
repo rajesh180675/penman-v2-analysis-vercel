@@ -90,7 +90,7 @@ export default function ComparisonReport({ registry, config, weakestTraceability
       const v = computeValuation(c.series, ke, kw, g, localCfg);
       const re = v.V_RE_CV3;
       const reoi = v.V_ReOI_CV03;
-      const fcff = v.fcf ? v.fcf.EV_FCFF - v.NFO_latest : null;
+      const fcff = v.fcf?.EV_FCFF != null ? v.fcf.EV_FCFF - v.NFO_latest : null;
       const fcfe = v.fcf?.V_FCFE ?? null;
       const ddmPerShare = v.perShare?.intrinsic_ddm_per_share ?? null;
       const aeg = v.aeg?.V_AEG ?? null;
@@ -271,7 +271,7 @@ export default function ComparisonReport({ registry, config, weakestTraceability
                     />
                   </td>
                   <td className="px-3 py-2 text-right font-mono">₹{Number.isFinite(r.re) ? (r.re as number).toLocaleString("en-IN", { maximumFractionDigits: 0 }) : "—"}</td>
-                  <td className="px-3 py-2 text-right font-mono">₹{Number.isFinite(r.reoi) ? r.reoi.toLocaleString("en-IN", { maximumFractionDigits: 0 }) : "—"}</td>
+                  <td className="px-3 py-2 text-right font-mono">{r.reoi != null && Number.isFinite(r.reoi) ? `₹${r.reoi.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}</td>
                   <td className="px-3 py-2 text-right font-mono">{r.fcff != null ? `₹${r.fcff.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}</td>
                   <td className="px-3 py-2 text-right font-mono">{r.fcfe != null ? `₹${r.fcfe.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}</td>
                   <td className="px-3 py-2 text-right font-mono">{r.ddm != null ? `₹${r.ddm.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}</td>

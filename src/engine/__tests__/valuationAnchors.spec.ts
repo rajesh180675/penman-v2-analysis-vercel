@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeValuation, deriveKwFromStructure } from "../PenmanNissimEngine";
 import { DEFAULT_CONFIG, RecastPeriod } from "../types";
+import { CroreShares } from "../types/units";
 
 function mkPeriod(
   period_end: string,
@@ -129,5 +130,56 @@ describe("valuation anchor and kw guardrails", () => {
 
     expect(out.CV_RE).toBeCloseTo(expectedCvRe, 8);
     expect(out.CV_ReOI).toBeCloseTo(expectedCvReOi, 8);
+  });
+
+  it("fails closed instead of silently zeroing equity-side Gordon CV when terminal growth is not below ke", () => {
+    const periods: RecastPeriod[] = [
+      mkPeriod("2023-03-31", { CSE: 500, NOA: 620, NFO: 120, FO: 220, CNI: 100, OI: 110 }),
+      mkPeriod("2024-03-31", { CSE: 560, NOA: 670, NFO: 120, FO: 220, CNI: 120, OI: 130 }),
+      mkPeriod("2025-03-31", { CSE: 620, NOA: 720, NFO: 120, FO: 220, CNI: 140, OI: 150 }),
+    ];
+    const cfg = { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(100) };
+
+    const out = computeValuation(periods, 0.08, 0.1, 0.08, cfg, 40, 30);
+    const guards = (out as unknown as { continuingValueGuards?: Array<{ model: string; reason: string }> })
+      .continuingValueGuards ?? [];
+
+    expect(out.CV_RE).toBeNull();
+    expect(out.V_RE_CV3).toBeNull();
+    expect(out.perShare?.intrinsic_re_per_share).toBeNull();
+    expect(out.fcf?.CV_FCFE).toBeNull();
+    expect(out.fcf?.V_FCFE).toBeNull();
+    expect(out.perShare?.intrinsic_fcfe_per_share).toBeNull();
+    expect(out.perShare?.intrinsic_ddm_per_share).toBeNull();
+    expect(out.V_RE_CV1).toBeTypeOf("number");
+    expect(out.V_RE_CV2).toBeTypeOf("number");
+    expect(guards.map((g) => g.model)).toEqual(expect.arrayContaining(["RE_CV3", "FCFE_CV", "DDM"]));
+    expect(guards.find((g) => g.model === "RE_CV3")?.reason).toMatch(/terminal growth.*cost of equity/i);
+  });
+
+  it("fails closed instead of silently zeroing operating Gordon CV when terminal growth is not below kw", () => {
+    const periods: RecastPeriod[] = [
+      mkPeriod("2023-03-31", { CSE: 500, NOA: 620, NFO: 120, FO: 220, CNI: 100, OI: 110 }),
+      mkPeriod("2024-03-31", { CSE: 560, NOA: 670, NFO: 120, FO: 220, CNI: 120, OI: 130 }),
+      mkPeriod("2025-03-31", { CSE: 620, NOA: 720, NFO: 120, FO: 220, CNI: 140, OI: 150 }),
+    ];
+    const cfg = { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(100) };
+
+    const out = computeValuation(periods, 0.12, 0.08, 0.08, cfg, 40, 30);
+    const guards = (out as unknown as { continuingValueGuards?: Array<{ model: string; reason: string }> })
+      .continuingValueGuards ?? [];
+
+    expect(out.CV_ReOI).toBeNull();
+    expect(out.EV_ReOI).toBeNull();
+    expect(out.V_ReOI_CV03).toBeNull();
+    expect(out.perShare?.intrinsic_reoi_per_share).toBeNull();
+    expect(out.fcf?.CV_FCFF).toBeNull();
+    expect(out.fcf?.EV_FCFF).toBeNull();
+    expect(out.perShare?.intrinsic_fcff_per_share).toBeNull();
+    expect(out.V_ReOI_CV01).toBeTypeOf("number");
+    expect(out.V_ReOI_CV02).toBeTypeOf("number");
+    expect(out.V_RE_CV3).toBeTypeOf("number");
+    expect(guards.map((g) => g.model)).toEqual(expect.arrayContaining(["ReOI_CV03", "FCFF_CV"]));
+    expect(guards.find((g) => g.model === "ReOI_CV03")?.reason).toMatch(/terminal growth.*operating capital cost/i);
   });
 });

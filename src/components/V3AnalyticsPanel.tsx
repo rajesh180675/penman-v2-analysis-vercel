@@ -69,14 +69,15 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
 
   const bundle: V3AnalyticsBundle | null = useMemo(() => {
     if (!valuation) return null;
+    const reoiCv03 = valuation.V_ReOI_CV03;
+    const primaryAnchor = valuation.V_RE_CV3 ?? reoiCv03;
+    if (primaryAnchor == null || reoiCv03 == null) return null;
     return computeV3Analytics(
       data, config,
-      // Phase J2: fall back to V_ReOI_CV03 / V_RE_CV1 surrogate when
-      // equity-side is blocked, so v3 analytics still produce a confidence
-      // signal instead of crashing on null. The `equityModelsBlocked`
-      // flag carries forward via the valuation object.
-      valuation.V_RE_CV3 ?? valuation.V_ReOI_CV03,
-      valuation.V_ReOI_CV03,
+      // Phase J2: fall back to V_ReOI_CV03 when equity-side is blocked,
+      // but skip if the terminal denominator guard also invalidated CV03.
+      primaryAnchor,
+      reoiCv03,
       config.g_terminal_override,
       kw,
       itServices,

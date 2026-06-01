@@ -74,6 +74,8 @@ export type {
 
 export type {
   GrowthAccounting,
+  ContinuingValueGuard,
+  ContinuingValueGuardModel,
   ValuationResult,
   PerShareResult,
   FCFValuation,
