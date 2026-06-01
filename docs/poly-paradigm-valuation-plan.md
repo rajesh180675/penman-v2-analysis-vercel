@@ -76,9 +76,9 @@ The grounding gave the exact, faithful-to-#238 hook:
 
 Phase 0 (#240) detects telecom/utility and caps them at economically-plausible. This phase makes the recast faithful so the cap can lift.
 
-- **Telecom:** ✅ first recast-detail slice shipped: `Rights Under Licensing Agreement` is surfaced as telecom spectrum/licence operating intangible detail, and network/licence opex is explicit in the operating-cost bridge without double-counting `Other Expenses`. Remaining: telecom-native cross-checks/reconciliation and cap lift.
+- **Telecom:** ✅ recast-detail slice shipped and cap-lift predicate shipped. `Rights Under Licensing Agreement` is surfaced as telecom spectrum/licence operating intangible detail, network/licence opex is explicit in the operating-cost bridge, and `telecom-sector-native-readiness` removes only the blanket telecom cap when trace-backed spectrum + network opex evidence is confirmed. Remaining: telecom-native EV/EBITDA / per-subscriber cross-checks and real-company fixture ranges.
 - **Utility:** rate-base × allowed-return lens; stop the envelope flagging a healthy regulated near-zero RNOA−kw spread as value-destruction.
-- **Lift gate:** allow valuation-eligible again only when a telecom/utility-specific reconciliation residual passes.
+- **Lift gate:** telecom now uses a confirmed sector-native readiness residual before the blanket cap can lift; utility still needs its RAB-specific residual/lens before cap lift.
 
 ---
 

@@ -93,15 +93,17 @@ A second Opus-pinned grounding pass against real source + corpus corrected two c
 - Added explicit sector-native reads for `"Rights Under Licensing Agreement"` → `OA_TelecomSpectrumLicenses`, with fallback into `OA_OtherIntangibles` only when the generic `Intangible Assets` subtotal is absent. This avoids double-counting current Vodafone-style exports where `Intangible Assets` already captures spectrum/licence rights.
 - Added distinct operating-cost bridge fields for `"Direct Tele Communication / Network Development Expenses"` and `"License Fee / Operation Charges"` / `"Licence Fee / Operation Charges"`. These reduce the undifferentiated `otherOperatingExpense` residual while preserving total operating costs when `Other Expenses` is present.
 - **Important:** `"License Fee / Operation Charges"` is surfaced as `licenseFeeOperationCharges`, not as a telecom-only trigger, because Phase 0 grounding showed it also appears materially in Power Grid. Detection remains on the clean discriminators only.
-- This is a recast-detail/auditability slice, not a cap lift. Telecom/utility remain capped until the reconciliation/lens work in 2.2–2.3 exists.
+- This was a recast-detail/auditability slice, not a cap lift by itself. Telecom cap lifting now depends on the readiness gate in 2.2; utility remains capped until the RAB lens ships.
 
-### 2.2 Telecom ratio/valuation adjustments
-- Telecom is closer to industrial than banks are, so the goal is a *corrected* NOA/kw, not a parallel pipeline. Once spectrum/AGR are correctly bucketed, the existing ReOI machinery applies. Add EV/EBITDA and per-subscriber sanity cross-checks (telecom-native multiples) as triangulation, not as the primary gate.
+### 2.2 Telecom sector-native readiness gate ✅ SHIPPED (cap-lift predicate)
+- Added `telecom-sector-native-readiness` in `reconciliationResiduals.ts`. For detected telecom runs, the latest recast must have trace-backed spectrum/licence operating intangibles (`OA_TelecomSpectrumLicenses`) plus trace-backed network opex (`telecomNetworkOpex`), and the sector-specific operating-cost bridge must be internally consistent.
+- `analysisTraceability.ts` now keeps the Phase-0 cap unless that readiness residual is `confirmed`. If it is confirmed, telecom no longer carries the blanket unmodelled-sector cap; the usual blockers still apply (distress, concept-identity, terminal eligibility, valuation-triangulation divergence, mapping blocks).
+- Missing/ambiguous telecom evidence is deliberately `degraded` rather than structural `failed`: the output remains honest and capped at economically-plausible instead of pretending the sector model is ready.
 
-### 2.3 Lift the Phase-0 cap
-- Once recast is sector-faithful and reconciliation passes, allow telecom to reach `valuation-eligible` again — gated on a telecom-specific reconciliation residual (spectrum + AGR coverage) passing.
+### 2.3 Telecom ratio/valuation adjustments
+- Telecom is closer to industrial than banks are, so the goal is a *corrected* NOA/kw, not a parallel pipeline. Once spectrum/AGR are correctly bucketed and the readiness gate confirms, the existing ReOI machinery can be eligible again. Remaining enhancement: add EV/EBITDA and per-subscriber sanity cross-checks (telecom-native multiples) as triangulation, not as the primary gate.
 
-**Verify:** `sectorNativeRecast.spec.ts` locks the first slice: detailed spectrum/licence lines move out of the OA_Other plug into operating intangibles when no generic subtotal exists, and network/licence opex becomes explicit bridge detail without double-counting `Other Expenses`. Remaining verification for cap lift: captured fixture (Bharti / Vodafone Idea shape — Vi already referenced in `vodafoneIdea.spec.ts`); assert sector-native triangulation/reconciliation passes before allowing telecom beyond the Phase-0 cap.
+**Verify:** `sectorNativeRecast.spec.ts` locks the first recast slice. `telecomCapLiftGate.spec.ts` locks the cap-lift predicate: missing spectrum/licence evidence keeps the cap, while confirmed trace-backed spectrum + network opex removes only the blanket telecom cap (not any other rigor blocker). Still useful later: captured fixture (Bharti / Vodafone Idea shape — Vi already referenced in `vodafoneIdea.spec.ts`) for real-company regression ranges.
 
 ---
 

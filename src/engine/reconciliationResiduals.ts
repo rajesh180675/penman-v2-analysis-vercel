@@ -233,6 +233,62 @@ function buildValuationTriangulationCheck(
   };
 }
 
+function buildTelecomSectorNativeReadinessCheck(
+  recastData: RecastPeriod[],
+  scopeClassification: string | null | undefined,
+): ReconciliationResidualCheck | null {
+  if (scopeClassification !== "detected-telecom-unmodelled") return null;
+
+  const latest = recastData[recastData.length - 1] ?? null;
+  if (!latest) {
+    return {
+      key: "telecom-sector-native-readiness",
+      label: "Telecom sector-native recast readiness",
+      periodEnd: "telecom",
+      residual: 1,
+      ratio: 1,
+      warningThreshold: 0.01,
+      criticalThreshold: 1,
+      status: "degraded",
+      detail: "Telecom sector-native reconciliation could not run because no recast periods were available; keep the Phase-0 cap in place.",
+    };
+  }
+
+  const bridge = latest.is.operatingCostBridge ?? null;
+  const spectrum = latest.bs.OA_TelecomSpectrumLicenses ?? 0;
+  const networkOpex = bridge?.telecomNetworkOpex ?? 0;
+  const licenseFee = bridge?.licenseFeeOperationCharges ?? 0;
+  const sectorOpex = bridge?.sectorSpecificOperatingExpense ?? 0;
+
+  const hasSpectrumEvidence = spectrum > 0 && hasTraceEvidence(latest, "BS.OA.TelecomSpectrumLicenses");
+  const hasNetworkOpexEvidence = networkOpex > 0 && hasTraceEvidence(latest, "IS.Telecom.NetworkOpex");
+  const opexBridgeConsistent = bridge != null
+    && Math.abs(sectorOpex - (networkOpex + licenseFee)) < 1e-6
+    && bridge.otherOperatingExpense >= -1e-6
+    && bridge.operatingCosts >= sectorOpex;
+
+  const missing: string[] = [];
+  if (!hasSpectrumEvidence) missing.push("missing spectrum/licence asset evidence");
+  if (!hasNetworkOpexEvidence) missing.push("missing network opex evidence");
+  if (!opexBridgeConsistent) missing.push("ambiguous sector operating-cost bridge");
+
+  const confirmed = missing.length === 0;
+  const ratio = confirmed ? 0 : missing.length / 3;
+  return {
+    key: "telecom-sector-native-readiness",
+    label: "Telecom sector-native recast readiness",
+    periodEnd: latest.period_end,
+    residual: ratio,
+    ratio,
+    warningThreshold: 0.01,
+    criticalThreshold: 1,
+    status: confirmed ? "confirmed" : "degraded",
+    detail: confirmed
+      ? `Telecom sector-native recast evidence confirmed for latest period: spectrum/licence operating intangibles ₹${spectrum.toFixed(2)} Cr and network opex ₹${networkOpex.toFixed(2)} Cr are trace-backed; sector opex bridge is internally consistent.`
+      : `Telecom sector-native reconciliation not confirmed (${missing.join("; ")}). Keep the Phase-0 cap in place until spectrum/licence assets and network opex are trace-backed and the sector opex bridge is unambiguous.`,
+  };
+}
+
 /**
  * S-9.4C kw-consistency residual builder — PROVENANCE-DRIVEN, fail-closed.
  *
@@ -288,6 +344,7 @@ export function evaluateReconciliationResiduals(params: {
   recastData?: RecastPeriod[] | null | undefined;
   config?: EngineConfig | null | undefined;
   valuationTriangulation?: ValuationTriangulationEvidence | null | undefined;
+  scopeClassification?: string | null | undefined;
 }): ReconciliationResidualSummary {
   const recastData = params.recastData ?? [];
   const warningThreshold = params.config?.structural_residual_warning ?? 0.005;
@@ -619,12 +676,17 @@ export function evaluateReconciliationResiduals(params: {
     ].filter((check): check is ReconciliationResidualCheck => Boolean(check));
   });
 
+  const telecomSectorNativeReadinessCheck = buildTelecomSectorNativeReadinessCheck(
+    recastData,
+    params.scopeClassification,
+  );
   const valuationTriangulationCheck = buildValuationTriangulationCheck(
     params.valuationTriangulation,
     recastData[recastData.length - 1]?.period_end ?? "valuation",
   );
   const checks = [
     ...structuralChecks,
+    ...(telecomSectorNativeReadinessCheck ? [telecomSectorNativeReadinessCheck] : []),
     ...(valuationTriangulationCheck ? [valuationTriangulationCheck] : []),
   ];
 
