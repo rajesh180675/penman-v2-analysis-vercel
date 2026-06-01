@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { evaluateReconciliationResiduals } from "../reconciliationResiduals";
-import { DEFAULT_CONFIG, RecastPeriod } from "../types";
+import { computeRecastPeriod } from "../PenmanNissimEngine";
+import { DEFAULT_CONFIG, RawPeriodData, RecastPeriod } from "../types";
 
 function mkPeriod(period_end: string, overrides?: Partial<RecastPeriod>): RecastPeriod {
   return {
@@ -143,6 +144,43 @@ function mkPeriod(period_end: string, overrides?: Partial<RecastPeriod>): Recast
   };
 }
 
+function mkTelecomRaw(period_end: string, i: number, overrides: Record<string, number> = {}): RawPeriodData {
+  return {
+    company_id: "TELECOM_READY",
+    period_end,
+    raw_metric_values: {
+      "Total Assets__BalanceSheet": 1200 + i * 100,
+      "Total Equity__BalanceSheet": 650 + i * 50,
+      "Total Stockholders' Equity__BalanceSheet": 650 + i * 50,
+      "Minority Interest__BalanceSheet": 0,
+      "Property, Plant and Equipment__BalanceSheet": 320 + i * 20,
+      "Rights Under Licensing Agreement__BalanceSheet": 260 + i * 10,
+      "Revenue From Operations(Net)__ProfitLoss": 950 + i * 60,
+      "Profit Before Tax__ProfitLoss": 150 + i * 8,
+      "Tax Expenses__ProfitLoss": 35 + i * 2,
+      "Profit After Tax__ProfitLoss": 110 + i * 6,
+      "Total Comprehensive Income for the Year__ProfitLoss": 110 + i * 6,
+      "Finance Cost__ProfitLoss": 12 + i,
+      "Other Income__ProfitLoss": 0,
+      "Other Expenses__ProfitLoss": 120 + i * 5,
+      "Direct Tele Communication / Network Development Expenses__ProfitLoss": 70 + i * 4,
+      "License Fee / Operation Charges__ProfitLoss": 30 + i * 2,
+      "Net Cash from Operating Activities__CashFlow": 150 + i * 8,
+      "Purchased of Fixed Assets__CashFlow": -45 - i * 3,
+      "Dividend Paid__CashFlow": -10,
+      ...overrides,
+    },
+  };
+}
+
+function computeTelecomRecasts(periods: RawPeriodData[]): RecastPeriod[] {
+  const recasts: RecastPeriod[] = [];
+  for (const period of periods) {
+    recasts.push(computeRecastPeriod(period, { ...DEFAULT_CONFIG, company_type: "telecom" }, recasts.at(-1)));
+  }
+  return recasts;
+}
+
 describe("evaluateReconciliationResiduals", () => {
   it("adds a valuation-triangulation residual and fails closed when independent paradigms diverge materially", () => {
     const summary = evaluateReconciliationResiduals({
@@ -178,6 +216,43 @@ describe("evaluateReconciliationResiduals", () => {
     });
 
     expect(summary.checks.some((entry) => entry.key === "valuation-triangulation")).toBe(false);
+  });
+
+  it("adds a telecom sector-native readiness residual when spectrum and network opex are trace-backed", () => {
+    const recastData = computeTelecomRecasts([
+      mkTelecomRaw("2025-03-31", 1),
+    ]);
+
+    const summary = evaluateReconciliationResiduals({
+      recastData,
+      config: DEFAULT_CONFIG,
+      scopeClassification: "detected-telecom-unmodelled",
+    });
+
+    const check = summary.checks.find((entry) => entry.key === "telecom-sector-native-readiness");
+    expect(check).toBeDefined();
+    expect(check?.periodEnd).toBe("2025-03-31");
+    expect(check?.status).toBe("confirmed");
+    expect(check?.detail).toContain("spectrum/licence");
+    expect(check?.detail).toContain("network opex");
+  });
+
+  it("keeps telecom sector-native readiness degraded when spectrum/licence evidence is absent", () => {
+    const recastData = computeTelecomRecasts([
+      mkTelecomRaw("2025-03-31", 1, { "Rights Under Licensing Agreement__BalanceSheet": 0 }),
+    ]);
+
+    const summary = evaluateReconciliationResiduals({
+      recastData,
+      config: DEFAULT_CONFIG,
+      scopeClassification: "detected-telecom-unmodelled",
+    });
+
+    const check = summary.checks.find((entry) => entry.key === "telecom-sector-native-readiness");
+    expect(check).toBeDefined();
+    expect(check?.status).toBe("degraded");
+    expect(check?.detail.toLowerCase()).toContain("missing spectrum/licence");
+    expect(summary.status).toBe("degraded");
   });
 
   it("includes cash-distribution and share-capital tie-out checks when data is available", () => {

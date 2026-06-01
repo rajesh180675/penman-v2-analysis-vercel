@@ -232,6 +232,7 @@ export function buildAnalysisTraceability(params: {
       recastData: params.recastData ?? null,
       config: params.config ?? null,
       valuationTriangulation: params.valuationTriangulation ?? null,
+      scopeClassification: qualityGate?.scopeAssessment?.classification ?? null,
     });
   // Phase J5: distress gate. Critical or severe distress (negative net
   // worth, going-concern stress) blocks `valuation-eligible` advancement
@@ -289,10 +290,15 @@ export function buildAnalysisTraceability(params: {
   // currentLevel is the highest achieved checkpoint, so this makes
   // economically-plausible the ceiling automatically.
   const scopeClassification = qualityGate?.scopeAssessment?.classification;
+  const telecomSectorNativeReady = scopeClassification === "detected-telecom-unmodelled"
+    && reconciliation.checks.some((check) => check.key === "telecom-sector-native-readiness" && check.status === "confirmed");
   const sectorUnmodelledCapsAtPlausible =
-    scopeClassification === "detected-telecom-unmodelled"
+    (scopeClassification === "detected-telecom-unmodelled" && !telecomSectorNativeReady)
     || scopeClassification === "detected-utility-unmodelled";
   const sectorCapLabel = scopeClassification === "detected-utility-unmodelled" ? "Utility" : "Telecom";
+  const sectorCapReason = scopeClassification === "detected-telecom-unmodelled"
+    ? "no sector-native valuation model is blessed until sector-native reconciliation confirms trace-backed spectrum/licence assets plus network opex coverage"
+    : "the engine has no utility-native regulated-asset-base valuation model";
   if (unusualItemManifest.classifications.length > 0) {
     trace("config", "unusualItemManifest:built", {
       companyId: params.companyId ?? null,
@@ -365,7 +371,7 @@ export function buildAnalysisTraceability(params: {
       label: "Valuation eligible",
       achieved: structuralAchieved && !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && !sectorUnmodelledCapsAtPlausible && valuationStatus !== "guarded" && valuationStatus !== "unknown",
       detail: sectorUnmodelledCapsAtPlausible
-        ? `${sectorCapLabel} sector detected — the engine has no sector-native valuation model, so the industrial intrinsic value is produced but not blessed. The run is capped at economically-plausible; ratios are sector-correct.`
+        ? `${sectorCapLabel} sector detected — ${sectorCapReason}, so the industrial intrinsic value is produced but not blessed. The run is capped at economically-plausible; ratios are sector-correct.`
         : screeningOnly
         ? "Single-period upload — valuation eligibility requires ≥2 periods for time-series anchoring."
         : distressBlocksValuation
@@ -385,7 +391,7 @@ export function buildAnalysisTraceability(params: {
       label: "Production-ready",
       achieved: structuralAchieved && !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && !sectorUnmodelledCapsAtPlausible && analysisStatus?.status === "production-ready",
       detail: sectorUnmodelledCapsAtPlausible
-        ? `${sectorCapLabel} sector detected — production-ready requires a sector-native valuation model, which is not yet implemented.`
+        ? `${sectorCapLabel} sector detected — production-ready requires sector-native reconciliation and valuation readiness; ${sectorCapReason}.`
         : screeningOnly
         ? "Single-period upload — production-ready status requires ≥2 periods."
         : !structuralAchieved
