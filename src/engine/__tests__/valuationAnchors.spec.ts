@@ -5,7 +5,16 @@ import { CroreShares } from "../types/units";
 
 function mkPeriod(
   period_end: string,
-  values: { CSE: number; NOA: number; NFO: number; FO: number; CNI: number; OI: number; FinanceCost?: number }
+  values: {
+    CSE: number;
+    NOA: number;
+    NFO: number;
+    FO: number;
+    CNI: number;
+    OI: number;
+    FinanceCost?: number;
+    DividendPaid?: number;
+  }
 ): RecastPeriod {
   return {
     period_end,
@@ -80,15 +89,15 @@ function mkPeriod(
     cf: {
       CFO: 140,
       Capex: 30,
-      DividendPaid: 20,
+      DividendPaid: values.DividendPaid ?? 20,
       EquityIssued: 0,
       ShareBuybacks: 0,
       InterestReceived: 0,
       DividendReceived: 0,
       FCF_accounting: 90,
       FCF_cash: 110,
-      d_t: 20,
-      d_t_formula: 20,
+      d_t: values.DividendPaid ?? 20,
+      d_t_formula: values.DividendPaid ?? 20,
       d_t_discrepancy: 0,
       EBITDA: 140,
     },
@@ -130,6 +139,35 @@ describe("valuation anchor and kw guardrails", () => {
 
     expect(out.CV_RE).toBeCloseTo(expectedCvRe, 8);
     expect(out.CV_ReOI).toBeCloseTo(expectedCvReOi, 8);
+  });
+
+  it("capitalizes forward earnings at ke and includes dividend displacement in AEG", () => {
+    // Clean-surplus, full-payout, no-growth case:
+    // - CSE is flat because CNI is paid out as dividends each year.
+    // - Residual income is zero, so RE value = opening book value.
+    // - DDM value = dividend / ke.
+    // - AEG must agree: P0 = CNI1/ke + Σ AEG_t/(ke*R^(t-1)); AEG_t is zero
+    //   after adding the ke × prior-dividend displacement term.
+    // Current bug this locks: the engine used CNI1/R + ΣAEG/R^t and omitted
+    // dividends, under-scaling a no-growth full-payout firm by roughly 90%.
+    const periods: RecastPeriod[] = [
+      mkPeriod("2023-03-31", { CSE: 1000, NOA: 1000, NFO: 0, FO: 0, CNI: 100, OI: 100, DividendPaid: 100 }),
+      mkPeriod("2024-03-31", { CSE: 1000, NOA: 1000, NFO: 0, FO: 0, CNI: 100, OI: 100, DividendPaid: 100 }),
+      mkPeriod("2025-03-31", { CSE: 1000, NOA: 1000, NFO: 0, FO: 0, CNI: 100, OI: 100, DividendPaid: 100 }),
+      mkPeriod("2026-03-31", { CSE: 1000, NOA: 1000, NFO: 0, FO: 0, CNI: 100, OI: 100, DividendPaid: 100 }),
+    ];
+    const cfg = { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(100) };
+
+    const out = computeValuation(periods, 0.10, 0.10, 0, cfg);
+
+    expect(out.V_RE_CV3).toBeCloseTo(1000, 6);
+    expect(out.perShare?.intrinsic_ddm_per_share).toBeCloseTo(10, 6);
+    for (const entry of out.aeg?.aeg_series ?? []) {
+      expect(entry.AEG).toBeCloseTo(0, 10);
+    }
+    expect(out.aeg?.V_AEG).toBeCloseTo(1000, 6);
+    expect(out.perShare?.intrinsic_aeg_per_share).toBeCloseTo(10, 6);
+    expect(out.aeg?.normalised_pe).toBeCloseTo(10, 6);
   });
 
   it("fails closed instead of silently zeroing equity-side Gordon CV when terminal growth is not below ke", () => {
