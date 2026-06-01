@@ -12,6 +12,8 @@ import { WorkingCapitalGateResult } from "../valuation/workingCapitalGate";
 import { CleanSurplusResult } from "../valuation/cleanSurplus";
 import { CapmResult } from "../valuation/damodaranCapm";
 import { ReverseDcfMonteCarloResult } from "../valuation/reverseDcfMonteCarlo";
+import type { CashFlowDcfResult } from "../cashFlowDcf";
+import type { ValuationTriangulationEvidence } from "../reconciliationResiduals";
 
 export type ValuationSignalState =
   | "blocked"
@@ -191,6 +193,10 @@ export interface ValuationCommandCenterOutput {
   damodaranCapm: CapmResult | null;
   /** Reverse DCF Monte Carlo — implied terminal growth distribution. */
   reverseDcfMonteCarlo: ReverseDcfMonteCarloResult | null;
+  /** Independent cash-statement FCFF DCF lens (does not read NOA/OI accrual recast). */
+  cashFlowDcf: CashFlowDcfResult | null;
+  /** Lightweight evidence used by the traceability gate to adjudicate paradigm disagreement. */
+  valuationTriangulation: ValuationTriangulationEvidence;
   range: {
     floorPerShare: number | null;
     ceilingPerShare: number | null;
