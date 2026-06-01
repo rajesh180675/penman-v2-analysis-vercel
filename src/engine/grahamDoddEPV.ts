@@ -86,7 +86,7 @@ export interface EPVResult {
   /** Moat signal: "moat" if franchise > 0, "no-moat" if ≤ 0. */
   moatSignal: "moat" | "no-moat" | "inconclusive";
   /** Qualitative interpretation of franchise strength. */
-  interpretation: "strong-franchise" | "franchise" | "competitive" | "depressed-earnings" | "insufficient-data";
+  interpretation: "strong-franchise" | "franchise" | "competitive" | "depressed-earnings" | "insufficient-data" | "growth-runway" | "moat-with-growth-runway";
   /** Confidence level based on data quality and period count. */
   confidence: "high" | "medium" | "low";
   /** Notes explaining confidence deductions. */
@@ -99,6 +99,34 @@ export interface EPVResult {
   explanation: string[];
   /** Number of periods used for normalization. */
   periodsUsed: number;
+
+  // ── Reinvestment-runway (Phase B) ────────────────────────────────────────
+  /** Latest period after-tax RNOA/ROIC (CoreOI × (1-tax) / NOA on the
+   *  most recent period) — the *current* run-rate return on operating
+   *  capital, distinct from the median RNOA used in the static EPV. */
+  latestROIC: number | null;
+  /** Current after-tax spread = latestROIC - kw. Positive = company is
+   *  earning more than its cost of capital on operating capital. */
+  currentSpread: number | null;
+  /** Value of incremental investment opportunities over the reinvestment
+   *  horizon. PV of (after-tax spread × avg incremental NOA) over
+   *  `reinvestmentHorizon` years + terminal value with conservative spread
+   *  fade. Zero when spread ≤ 0, growth capex ≤ 0, or RNOA stickiness gate
+   *  fails. */
+  reinvestmentValue: number;
+  /** Explicit reinvestment horizon (years) used in the calculation. */
+  reinvestmentHorizonYears: number;
+  /** True iff the company passes the compounder gate:
+   *    - growthCapex > 0
+   *    - current after-tax spread > 200 bps (durability threshold)
+   *    - after-tax RNOA > kw in ≥ 60% of recent periods (stickiness) */
+  compounderScore: boolean;
+  /** Combined equity EPV + reinvestment value (₹ Cr). */
+  totalEPV: number;
+  /** Combined equity EPV per share (₹). */
+  totalEPVPerShare: number | null;
+  /** RNOA stickiness — fraction of recent periods with after-tax RNOA > kw. */
+  rnoaStickiness: number | null;
 }
 
 /** Compute median of a numeric array. */
@@ -109,6 +137,54 @@ function median(arr: number[]): number {
   return sorted.length % 2 === 0
     ? (sorted[mid - 1]! + sorted[mid]!) / 2
     : sorted[mid]!;
+}
+
+/**
+ * Reinvestment-runway value (Phase B — compounder signal).
+ *
+ * The static Graham-Dodd EPV is the no-growth floor — it intentionally
+ * ignores future investment opportunities. For a compounder (current ROIC
+ * > WACC, growth capex > 0, return persistence), the value of those
+ * opportunities is real and material. This function computes that value as
+ * the PV of (spread × average incremental NOA) over a forward horizon,
+ * plus a terminal value with linear spread fade.
+ *
+ * @param latestAfterTaxOI - Latest period after-tax CoreOI / NOPAT proxy (₹ Cr).
+ * @param latestNOA - Latest period Net Operating Assets (₹ Cr).
+ * @param growthCapex - Annual growth capex (₹ Cr/yr) — `avgCapex - avgDepreciation`.
+ * @param kw - WACC (decimal, e.g. 0.13).
+ * @param horizon - Explicit reinvestment horizon (years, default 5).
+ * @param terminalGrowth - Long-run reinvestment growth (default 5%).
+ * @returns reinvestmentValue (₹ Cr), plus PV breakdown for audit.
+ */
+function computeReinvestmentValue(
+  latestAfterTaxOI: number,
+  latestNOA: number,
+  growthCapex: number,
+  kw: number,
+  horizon = 5,
+  terminalGrowth = 0.05,
+): { reinvestmentValue: number; pvExplicit: number; pvTerminal: number; latestROIC: number; spread: number } {
+  const latestROIC = latestNOA > 0 ? latestAfterTaxOI / latestNOA : 0;
+  const spread = latestNOA > 0 ? latestROIC - kw : 0;
+  if (latestNOA <= 0 || growthCapex <= 0 || spread <= 0) {
+    return { reinvestmentValue: 0, pvExplicit: 0, pvTerminal: 0, latestROIC, spread };
+  }
+  let pvExplicit = 0;
+  let incrementalNOA = 0;
+  for (let t = 1; t <= horizon; t++) {
+    incrementalNOA += growthCapex;
+    const avgIncremental = (incrementalNOA + (incrementalNOA - growthCapex)) / 2;
+    const annualSpreadEarnings = spread * avgIncremental;
+    pvExplicit += annualSpreadEarnings / Math.pow(1 + kw, t);
+  }
+  // Terminal: spread fades linearly from `spread` at horizon to 0 at year 10.
+  // Mid-point residual spread = spread × 0.5.
+  const remainingGrowth = growthCapex * (1 + terminalGrowth);
+  const residualSpread = spread * 0.5;
+  const terminalValue = (residualSpread * remainingGrowth) / Math.max(0.001, kw - terminalGrowth);
+  const pvTerminal = terminalValue / Math.pow(1 + kw, horizon);
+  return { reinvestmentValue: pvExplicit + pvTerminal, pvExplicit, pvTerminal, latestROIC, spread };
 }
 
 /**
@@ -245,6 +321,47 @@ export function computeEPV(
         ? "no-moat"
         : "inconclusive";
 
+  // ── Reinvestment Runway (Phase B — compounder signal) ───────────────────
+  // The static EPV above is the no-growth floor. For a compounder (current
+  // RNOA > WACC, growth capex > 0, persistent RNOA), the value of incremental
+  // investment is real and material. We compute it as the PV of the spread
+  // earned on growth capex over a 5-year explicit horizon + terminal value
+  // with linear spread fade.
+  const reinvestmentHorizonYears = 5;
+  const reinvest = computeReinvestmentValue(
+    latest.cu.CoreOI * (1 - taxRate),
+    latest.bs.NOA,
+    growthCapex,
+    kw,
+    reinvestmentHorizonYears,
+  );
+  // RNOA stickiness: fraction of recent periods with positive SPREAD
+  // (RNOA > kw), not just positive RNOA. A positive RNOA below the cost of
+  // capital is value-destruction, not a compounder signal — only periods
+  // where the spread is positive should count.
+  const rnoaSeries = data
+    .map(p => (p.bs.NOA > 0 ? (p.cu.CoreOI * (1 - taxRate)) / p.bs.NOA : null))
+    .filter((v): v is number => v != null && Number.isFinite(v));
+  const rnoaStickiness = rnoaSeries.length > 0
+    ? rnoaSeries.filter(r => r > kw).length / rnoaSeries.length
+    : null;
+  // Compounder gate: positive growth capex + spread > 200 bps + stickiness ≥ 60%.
+  // A spread below 200 bps is too close to WACC to claim durability; a low
+  // stickiness means it's not persistent. Both must be met.
+  const compounderScore =
+    growthCapex > 0
+    && (reinvest.spread > 0.02)
+    && (rnoaStickiness == null || rnoaStickiness >= 0.6);
+  // Apply the stickiness gate to the reinvestment value itself (it stays 0
+  // if the compounder score fails — protects the headline number from
+  // transient spreads).
+  const reinvestmentValue = compounderScore ? reinvest.reinvestmentValue : 0;
+  // Reinvestment options attach to the operating asset base but accrue to
+  // equity after the same NFO bridge as static EPV. Therefore the combined
+  // per-share value must start from epvEquity, not epvOperations.
+  const totalEPV = epvEquity + reinvestmentValue;
+  const totalEPVPerShare = shares != null && shares > 0 ? totalEPV / shares : null;
+
   // ── Margin of Safety vs Market ─────────────────────────────────────────────
   const marketPrice = config.market_price ?? null;
   const marginOfSafety =
@@ -255,14 +372,26 @@ export function computeEPV(
   // ── Derived UI fields ──────────────────────────────────────────────────────
   const franchisePct = epvOperations > 0 ? franchiseValue / epvOperations : 0;
 
-  const interpretation: EPVResult["interpretation"] =
-    franchisePct > 0.5
-      ? "strong-franchise"
-      : franchisePct > 0.2
-        ? "franchise"
-        : franchisePct > 0
-          ? "competitive"
-          : "depressed-earnings";
+  // Interpretation honours the static moat signal AND the compounder signal
+  // (separately). A "growth-runway" tag is added when compounderScore is true
+  // and the static reading is "depressed-earnings" (the case the original
+  // Graham-Dodd framing gets wrong — a compounder on depressed earnings
+  // shouldn't read as "no-moat" without context).
+  let interpretation: EPVResult["interpretation"];
+  if (moatSignal === "moat" && compounderScore) {
+    interpretation = "moat-with-growth-runway";
+  } else if (compounderScore && franchiseValue < 0) {
+    interpretation = "growth-runway";
+  } else {
+    interpretation =
+      franchisePct > 0.5
+        ? "strong-franchise"
+        : franchisePct > 0.2
+          ? "franchise"
+          : franchisePct > 0
+            ? "competitive"
+            : "depressed-earnings";
+  }
 
   const priceToEPV =
     marketPrice != null && epvPerShare != null && epvPerShare > 0
@@ -329,6 +458,12 @@ export function computeEPV(
     ...(marginOfSafety != null
       ? [`Margin of safety vs market (₹${marketPrice?.toFixed(1)}): ${(marginOfSafety * 100).toFixed(1)}%`]
       : []),
+    // Phase B — reinvestment runway explanation
+    `Latest after-tax ROIC (current run-rate): ${reinvest.latestROIC > 0 ? `${(reinvest.latestROIC * 100).toFixed(2)}%` : "n/a"}`,
+    `Spread over kw: ${(reinvest.spread * 100).toFixed(2)}% ${reinvest.spread > 0.02 ? "(compounder-eligible)" : reinvest.spread > 0 ? "(below 200bps durability gate)" : "(negative — value-destroyer today)"}`,
+    `RNOA stickiness: ${rnoaStickiness != null ? `${(rnoaStickiness * 100).toFixed(0)}% of periods had after-tax RNOA > kw` : "n/a"}`,
+    `Reinvestment value: ₹${reinvestmentValue.toFixed(0)} Cr (compounder=${compounderScore})`,
+    `Total equity EPV (static + reinvestment): ₹${totalEPV.toFixed(0)} Cr${totalEPVPerShare != null ? ` → ₹${totalEPVPerShare.toFixed(1)}/share` : ""}`,
   ];
 
   return {
@@ -361,5 +496,14 @@ export function computeEPV(
     marginOfSafety,
     explanation,
     periodsUsed: coreOIs.length,
+    // Phase B — reinvestment runway
+    latestROIC: reinvest.latestROIC,
+    currentSpread: reinvest.spread,
+    reinvestmentValue,
+    reinvestmentHorizonYears,
+    compounderScore,
+    totalEPV,
+    totalEPVPerShare,
+    rnoaStickiness,
   };
 }

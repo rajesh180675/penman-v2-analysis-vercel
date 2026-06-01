@@ -11,10 +11,17 @@ export function resolveShareBasis(
   config: EngineConfig,
   fallbackVPrimary?: number | undefined,
 ): ResolvedShareBasis {
+  // The user-supplied `shares_outstanding` is the most defensible value for BOTH
+  // per-share and market-cap purposes — it overrides everything. (Audited input
+  // is treated as authoritative.)
   if (config.shares_outstanding != null && config.shares_outstanding > 0) {
+    const explicit = config.shares_outstanding;
     return {
-      shares: config.shares_outstanding,
+      sharesForPerShare: explicit,
+      sharesForMarketCap: explicit,
+      shares: explicit,
       source: "Config: shares_outstanding",
+      sourceForMarketCap: "Config: shares_outstanding",
       confidence: "HIGH",
       dilution_note: "Using share count supplied in configuration.",
       valuationConfig: config,
@@ -24,8 +31,8 @@ export function resolveShareBasis(
   const derived = deriveShareCount(periods, new CanonicalOutputRegistry(), fallbackVPrimary);
   return {
     ...derived,
-    valuationConfig: derived.shares != null && derived.shares > 0
-      ? { ...config, shares_outstanding: CroreShares(derived.shares) }
+    valuationConfig: derived.sharesForPerShare != null && derived.sharesForPerShare > 0
+      ? { ...config, shares_outstanding: CroreShares(derived.sharesForPerShare) }
       : config,
   };
 }

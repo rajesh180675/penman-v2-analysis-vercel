@@ -9,8 +9,12 @@ import { CanonicalOutputRegistry } from "./shared";
 export interface MarketImpliedResult {
   status: "full" | "market_price_required" | "shares_unavailable";
   intrinsic_per_share?: number | undefined;
+  /** Per-share denominator (diluted weighted-average when available). */
   shares?: number | undefined;
   shares_source?: string | undefined;
+  /** Market-cap denominator (period-end paid-up when available). */
+  market_cap_shares?: number | undefined;
+  market_cap_shares_source?: string | undefined;
   market_cap?: number | undefined;
   market_price?: number | undefined;
   margin_of_safety?: number | undefined;
@@ -27,10 +31,13 @@ export function computeMarketImplied(
   valuation: { V_primary: number; ke: number; g_effective: number; CSE0: number; pvRE: number; explicit_periods: number; RE_anchor: number; periods: RecastPeriod[] },
   marketPrice?: number | undefined,
   sharesOverride?: number | undefined,
+  marketCapSharesOverride?: number | undefined,
 ): MarketImpliedResult {
   const shares = sharesOverride ?? registry.get<number>("shares_outstanding");
   const sharesSource = registry.get<string>("shares_source") ?? "registry";
   if (!shares || shares <= 0) return { status: "shares_unavailable" };
+  const marketCapShares = marketCapSharesOverride ?? shares;
+  const marketCapSharesSource = marketCapSharesOverride != null ? "period-end paid-up shares" : sharesSource;
   const intrinsic_per_share = valuation.V_primary / shares;
   if (marketPrice == null || !Number.isFinite(marketPrice) || marketPrice <= 0) {
     return {
@@ -38,10 +45,12 @@ export function computeMarketImplied(
       intrinsic_per_share,
       shares,
       shares_source: sharesSource,
+      market_cap_shares: marketCapShares,
+      market_cap_shares_source: marketCapSharesSource,
       prompt: `Intrinsic value per share is ₹${intrinsic_per_share.toFixed(1)}. Enter market price for implied analytics.`,
     };
   }
-  const market_cap = marketPrice * shares;
+  const market_cap = marketPrice * marketCapShares;
   const margin_of_safety = (intrinsic_per_share - marketPrice) / marketPrice;
   const mos_interpretation = margin_of_safety > 0.2
     ? "Substantial margin of safety."
@@ -113,6 +122,8 @@ export function computeMarketImplied(
     intrinsic_per_share,
     shares,
     shares_source: sharesSource,
+    market_cap_shares: marketCapShares,
+    market_cap_shares_source: marketCapSharesSource,
     market_cap,
     market_price: marketPrice,
     margin_of_safety,

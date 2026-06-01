@@ -64,7 +64,15 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
   const latest = valuationData[valuationData.length - 1]!;
   const prev = valuationData.length >= 2 ? valuationData[valuationData.length - 2]! : null;
   const latestReported = data[data.length - 1]!;
-  const shares = shareBasis.shares ?? null;
+  // Two distinct share bases:
+  //   - `shares` (per-share): the diluted weighted-average count used to convert
+  //     rupee aggregates into per-share metrics (P/E, intrinsic per share, etc.).
+  //   - `marketCapShares` (market cap): the period-end paid-up count used to
+  //     convert spot price into market cap and EV — i.e. the equity outstanding
+  //     *today*, not the average over the year. See `shareCountTools.ts` for
+  //     the resolver and `docs/reinvestment-runway-and-share-basis-plan.md`.
+  const shares = shareBasis.sharesForPerShare ?? shareBasis.shares ?? null;
+  const marketCapShares = shareBasis.sharesForMarketCap ?? shareBasis.shares ?? null;
   const marketPrice = marketData?.price ?? config.market_price ?? null;
   const riskFreeRate = marketData?.riskFreeRate ?? config.risk_free_rate;
   const marketFreshness = marketData?.freshness ?? (marketPrice != null || marketData?.riskFreeRate != null ? "fallback" : "missing");
@@ -294,8 +302,8 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
 
   const marketContext: ValuationMarketContext = {
     expectedReturnSpreadVsRf: opportunity.expectedCagrStress != null ? opportunity.expectedCagrStress - riskFreeRate : null,
-    marketCapFromPrice: marketPrice != null && shares != null ? marketPrice * shares : null,
-    enterpriseValueFromPrice: marketPrice != null && shares != null ? marketPrice * shares + latest.bs.NFO : null,
+    marketCapFromPrice: marketPrice != null && marketCapShares != null ? marketPrice * marketCapShares : null,
+    enterpriseValueFromPrice: marketPrice != null && marketCapShares != null ? marketPrice * marketCapShares + latest.bs.NFO : null,
     priceToStressValueRatio: marketPrice != null && (stressCard?.intrinsicPerShare ?? null) != null && (stressCard?.intrinsicPerShare ?? 0) > 0
       ? marketPrice / (stressCard?.intrinsicPerShare ?? 1)
       : null,
@@ -494,7 +502,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     evEbitda: evEbitdaWithMarket,
     indiaQuality,
     earningsQuality,
-    epv: computeEPV(data, config),
+    epv: computeEPV(data, shareBasis.valuationConfig),
     workingCapitalGate: workingCapitalGateResult,
     cleanSurplus: cleanSurplusResult,
     damodaranCapm: damodaranCapmResult,
