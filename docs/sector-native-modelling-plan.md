@@ -1,6 +1,6 @@
 # Sector-Native Modelling — Rigorous Remediation Plan
 
-**Status:** Phase 0 SHIPPED (telecom/utility fail-safe). Phases 1–4 proposed.
+**Status:** Phase 0 SHIPPED (telecom/utility fail-safe). Phase 2.1 SHIPPED (telecom/sector recast detail); remaining sector-native valuation/lift-gate phases proposed.
 **Author:** drafted with Claude Code, grounded by two code-state exploration passes (see §0)
 **Scope:** Make the engine sector-faithful (or fail-safe) for banks/NBFCs, insurers, telecom, and utilities — so no company receives a confident valuation built on the wrong economic model.
 
@@ -88,10 +88,12 @@ A second Opus-pinned grounding pass against real source + corpus corrected two c
 
 **Prereq:** Phase 0 fail-safe is live (so this is an upgrade, not a panic fix).
 
-### 2.1 Spectrum & licence/AGR classification
-- **Files:** the Capitaline mapping spec (`mappingSpec.ts`, consumed at `recast.ts:24-25`), `recast.ts`.
-- The verified telecom lines (from Vodafone Idea real data): `"Rights Under Licensing Agreement"` (spectrum/licence intangible, 154,412 Cr) → **operating assets** (they generate operating revenue), not the `OA_Other` plug; `"License Fee / Operation Charges"` (AGR revenue-share to DoT, 3,137 Cr) → surfaced as a distinct regulatory charge rather than absorbed into generic opex.
-- Lease/ROU already handled industrially; verify the telecom magnitude doesn't distort the operating/financing boundary.
+### 2.1 Spectrum & licence/AGR classification ✅ SHIPPED (first slice)
+- **Files:** `mappingSpec.ts`, `recast.ts`, `types/recast.ts`.
+- Added explicit sector-native reads for `"Rights Under Licensing Agreement"` → `OA_TelecomSpectrumLicenses`, with fallback into `OA_OtherIntangibles` only when the generic `Intangible Assets` subtotal is absent. This avoids double-counting current Vodafone-style exports where `Intangible Assets` already captures spectrum/licence rights.
+- Added distinct operating-cost bridge fields for `"Direct Tele Communication / Network Development Expenses"` and `"License Fee / Operation Charges"` / `"Licence Fee / Operation Charges"`. These reduce the undifferentiated `otherOperatingExpense` residual while preserving total operating costs when `Other Expenses` is present.
+- **Important:** `"License Fee / Operation Charges"` is surfaced as `licenseFeeOperationCharges`, not as a telecom-only trigger, because Phase 0 grounding showed it also appears materially in Power Grid. Detection remains on the clean discriminators only.
+- This is a recast-detail/auditability slice, not a cap lift. Telecom/utility remain capped until the reconciliation/lens work in 2.2–2.3 exists.
 
 ### 2.2 Telecom ratio/valuation adjustments
 - Telecom is closer to industrial than banks are, so the goal is a *corrected* NOA/kw, not a parallel pipeline. Once spectrum/AGR are correctly bucketed, the existing ReOI machinery applies. Add EV/EBITDA and per-subscriber sanity cross-checks (telecom-native multiples) as triangulation, not as the primary gate.
@@ -99,7 +101,7 @@ A second Opus-pinned grounding pass against real source + corpus corrected two c
 ### 2.3 Lift the Phase-0 cap
 - Once recast is sector-faithful and reconciliation passes, allow telecom to reach `valuation-eligible` again — gated on a telecom-specific reconciliation residual (spectrum + AGR coverage) passing.
 
-**Verify:** captured fixture (Bharti / Vodafone Idea shape — Vi already referenced in `vodafoneIdea.spec.ts`); assert spectrum lands in OA, AGR in its own class, NOA changes vs the pre-fix industrial recast in the expected direction.
+**Verify:** `sectorNativeRecast.spec.ts` locks the first slice: detailed spectrum/licence lines move out of the OA_Other plug into operating intangibles when no generic subtotal exists, and network/licence opex becomes explicit bridge detail without double-counting `Other Expenses`. Remaining verification for cap lift: captured fixture (Bharti / Vodafone Idea shape — Vi already referenced in `vodafoneIdea.spec.ts`); assert sector-native triangulation/reconciliation passes before allowing telecom beyond the Phase-0 cap.
 
 ---
 

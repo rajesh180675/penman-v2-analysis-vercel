@@ -51,6 +51,12 @@ export const CapitalineMappingSpec = {
       "Gross Intangible Assets",
       "Brands / Trademark",
     ],
+    telecomSpectrumLicenseAssets: [
+      "Rights Under Licensing Agreement",
+      "Spectrum License",
+      "Spectrum Licences",
+      "Telecom Licenses",
+    ],
     currentAssets: ["Total Current Assets"],
     currentLiabilities: ["Total Current Liabilities"],
     nonCurrentAssets: ["Total Non-Current and Other Assets", "Total Reported Non-current Assets"],
@@ -220,6 +226,13 @@ export const CapitalineMappingSpec = {
     totalExpenses: ["Total Expenses"],
     employeeExpense: ["Employee Benefits / Salaries & other Staff Cost", "Employee Benefit Expenses", "Employee Benefits Expense", "Employee Cost", "Salaries and Incentives"],
     otherExpenses: ["Other Expenses", "Other Operating Expenses", "Operating and Other Expenses"],
+    telecomNetworkOpex: [
+      "Direct Tele Communication / Network Development Expenses",
+    ],
+    licenseFeeOperationCharges: [
+      "License Fee / Operation Charges",
+      "Licence Fee / Operation Charges",
+    ],
     depreciationAmortization: [
       "Depreciation and Amortization",
       "Depreciation on Tangible Assets",

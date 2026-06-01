@@ -135,7 +135,13 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   const OA_PPE   = PPE;
   const OA_ROU   = bs("BS.OA.ROU", ["Right of Use Assets", "Right-of-Use Assets"]);
   const OA_Goodwill = Goodwill;
-  const OA_OtherIntangibles = bs("BS.OA.OtherIntangibles", ["Other Intangible Assets", "Intangible Assets"]);
+  const OA_TelecomSpectrumLicenses = sumBs("BS.OA.TelecomSpectrumLicenses", M.balanceSheet.telecomSpectrumLicenseAssets);
+  const genericOtherIntangibles = bs("BS.OA.OtherIntangibles", M.balanceSheet.intangibleAssets);
+  // Capitaline sometimes exposes telecom spectrum/licence rights as a detailed
+  // line rather than a generic intangible subtotal. Treat those rights as
+  // operating intangibles (spectrum is productive operating capacity), but avoid
+  // double-counting when the generic Intangible Assets subtotal is present.
+  const OA_OtherIntangibles = genericOtherIntangibles > 0 ? genericOtherIntangibles : OA_TelecomSpectrumLicenses;
   const OA_Inventory = Inventory;
   const OA_TradeReceivables = TradeReceivables;
   const OA_DTA   = bs("BS.OA.DTA", ["Deferred Tax Assets", "Net Deferred Tax Assets"]);
@@ -163,6 +169,7 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
     PPE, LIFO_reserve: 0,
     separationScore: score,
     OA_PPE, OA_ROU, OA_Goodwill, OA_OtherIntangibles,
+    OA_TelecomSpectrumLicenses,
     OA_Inventory, OA_TradeReceivables, OA_DTA, OA_CWIP, OA_Other,
   };
 }
@@ -254,20 +261,23 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
     + sgaRepairs
     + sgaPowerFuel;
   const otherExpenses = pl("IS.OtherExpenses", M.profitLoss.otherExpenses);
-  const sgaResidual = sgaDetailed > 0 && otherExpenses > sgaDetailed ? otherExpenses - sgaDetailed : 0;
+  const telecomNetworkOpex = sumPLWithTrace(data, M.profitLoss.telecomNetworkOpex, "IS.Telecom.NetworkOpex", trace);
+  const licenseFeeOperationCharges = sumPLWithTrace(data, M.profitLoss.licenseFeeOperationCharges, "IS.Sector.LicenseFeeOperationCharges", trace);
+  const sectorSpecificOperatingExpense = telecomNetworkOpex + licenseFeeOperationCharges;
+  const sgaResidual = otherExpenses > sgaDetailed + sectorSpecificOperatingExpense
+    ? otherExpenses - sgaDetailed - sectorSpecificOperatingExpense
+    : 0;
   const sgaTotal = sgaDetailed;
-  const otherOperatingExpense = sgaDetailed > 0
-    ? Math.max(0, otherExpenses - sgaDetailed)
-    : Math.max(0, otherExpenses);
+  const otherOperatingExpense = Math.max(0, otherExpenses - sgaDetailed - sectorSpecificOperatingExpense);
   const otherOperatingIncome = Math.max(0, OtherIncome - (FinanceIncomeRung === 4 ? Math.min(OtherIncome, FinanceIncome) : 0));
   const grossProfit = Sales - COGS;
-  const operatingCosts = employeeCost + depreciation + sgaTotal + otherOperatingExpense;
+  const operatingCosts = employeeCost + depreciation + sgaTotal + sectorSpecificOperatingExpense + otherOperatingExpense;
   const OCITotal = cfg.oci_treated_as_unusual ? OCI : 0;
   const UOI = ExceptionalItemsAfterTax + OCITotal;
   const CoreOI = OI - UOI;
-  const bridgeCoreOI = grossProfit - employeeCost - depreciation - sgaTotal - otherOperatingExpense + otherOperatingIncome;
+  const bridgeCoreOI = grossProfit - employeeCost - depreciation - sgaTotal - sectorSpecificOperatingExpense - otherOperatingExpense + otherOperatingIncome;
   const bridgeCoverageDenominator = Math.abs(OI_from_sales) > 1 ? Math.abs(OI_from_sales) : Math.abs(Sales);
-  const coverageNumerator = Math.abs(COGS) + Math.abs(employeeCost) + Math.abs(depreciation) + Math.abs(sgaTotal) + Math.abs(otherOperatingExpense) + Math.abs(otherOperatingIncome);
+  const coverageNumerator = Math.abs(COGS) + Math.abs(employeeCost) + Math.abs(depreciation) + Math.abs(sgaTotal) + Math.abs(sectorSpecificOperatingExpense) + Math.abs(otherOperatingExpense) + Math.abs(otherOperatingIncome);
   const bridgeCoverageRatio = bridgeCoverageDenominator > 0
     ? Math.min(1, coverageNumerator / Math.max(Math.abs(Sales), 1))
     : null;
@@ -297,6 +307,9 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
         sgaDetailed,
         sgaResidual,
         sgaTotal,
+        telecomNetworkOpex,
+        licenseFeeOperationCharges,
+        sectorSpecificOperatingExpense,
         otherOperatingExpense,
         otherOperatingIncome,
         grossProfit,
