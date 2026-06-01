@@ -247,18 +247,22 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   const valuationLegacyKw = computeValuation(valuationData, ke, config.risk_free_rate, g, config);
   // Phase J2: V_RE_CV3 may be null on negative-equity companies. Fall back
   // to V_ReOI_CV03 for the identity-gap so the report stays renderable.
-  const reAnchor = valuation.V_RE_CV3 ?? valuation.V_ReOI_CV03;
-  const reoiIdentityGap = Math.abs(reAnchor - valuation.V_ReOI_CV03);
-  const reoiIdentityGapPct = reAnchor !== 0 ? reoiIdentityGap / Math.abs(reAnchor) : null;
+  const reoiCv03 = valuation.V_ReOI_CV03;
+  const reAnchor = valuation.V_RE_CV3 ?? reoiCv03;
+  const reoiIdentityGap = reAnchor != null && reoiCv03 != null ? Math.abs(reAnchor - reoiCv03) : 0;
+  const reoiIdentityGapPct = reAnchor != null && reAnchor !== 0
+    ? reoiIdentityGap / Math.abs(reAnchor)
+    : null;
 
   // §14 V3 Composite Confidence Score
   const v3Bundle: V3AnalyticsBundle | null = (() => {
+    if (reAnchor == null || reoiCv03 == null) return null;
     try {
       return computeV3Analytics(
         valuationData,
         config,
-        valuation.V_RE_CV3 ?? valuation.V_ReOI_CV03,
-        valuation.V_ReOI_CV03,
+        reAnchor,
+        reoiCv03,
         config.g_terminal_override,
         kw,
       );
@@ -307,7 +311,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   const ratioTimeline = computeRatioTimeline(data, periodDiagnostics);
   const explicitHorizonYears = Math.max(valuation.reSeries.length, 0);
   // Phase J2: V_RE_CV3 may be null when latest CSE ≤ 0.
-  const terminalWeightRE = valuation.V_RE_CV3 != null && valuation.V_RE_CV3 !== 0
+  const terminalWeightRE = valuation.V_RE_CV3 != null && valuation.V_RE_CV3 !== 0 && valuation.CV_RE != null
     ? ((valuation.CV_RE / Math.pow(1 + valuation.ke, explicitHorizonYears)) / valuation.V_RE_CV3)
     : null;
   const latestEq16Residual = latest.ratios?.ROCE_eq16_error ?? null;
@@ -345,7 +349,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
     // Phase J2: when the equity-side path is blocked, anchor on
     // V_ReOI_CV03 so Section 6B still produces an intrinsic-per-share
     // estimate (enterprise-level) rather than crashing on null.
-    primaryValue: primaryValuation ?? valuation.V_ReOI_CV03,
+    primaryValue: primaryValuation ?? valuation.V_ReOI_CV03 ?? 0,
     ke,
     g: gBase,
     cse0: valuation.CSE0,
@@ -567,4 +571,3 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
     </div>
   );
 }
-

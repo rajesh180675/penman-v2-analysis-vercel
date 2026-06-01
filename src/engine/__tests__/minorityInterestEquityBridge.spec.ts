@@ -159,6 +159,6 @@ describe("minority-interest equity bridge", () => {
     );
     expect(withMi.V_RE_CV3).toBeCloseTo(noMi.V_RE_CV3!, 6);
     // Operating-entity value (EV_ReOI) excludes both NFO and MI — also unchanged.
-    expect(withMi.EV_ReOI).toBeCloseTo(noMi.EV_ReOI, 6);
+    expect(withMi.EV_ReOI!).toBeCloseTo(noMi.EV_ReOI!, 6);
   });
 });

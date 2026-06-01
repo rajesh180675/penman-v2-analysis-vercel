@@ -62,7 +62,7 @@ self.onmessage = (ev: MessageEvent<unknown>) => {
     // Substitute NaN so the histogram caller's existing NaN-filter drops
     // these draws rather than feeding null into Math.min/Math.max.
     reSamples[i] = v.V_RE_CV3 ?? Number.NaN;
-    reoiSamples[i] = v.V_ReOI_CV03;
+    reoiSamples[i] = v.V_ReOI_CV03 ?? Number.NaN;
 
     // SOTP draw: perturb each segment's EBIT share, normalize to sum=1
     if (runSOTP && segmentDefinitions && segmentUncertainties) {
@@ -129,4 +129,3 @@ self.onmessage = (ev: MessageEvent<unknown>) => {
 };
 
 export {};
-

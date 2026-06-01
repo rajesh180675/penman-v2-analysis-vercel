@@ -174,8 +174,8 @@ export interface RegressionHarnessReport {
     kw_after: number;
     V_RE_CV3_before: number | null;
     V_RE_CV3_after: number | null;
-    V_ReOI_CV03_before: number;
-    V_ReOI_CV03_after: number;
+    V_ReOI_CV03_before: number | null;
+    V_ReOI_CV03_after: number | null;
   };
   bugImpactTable: Array<{ bugClass: string; metric: string; before: number | null; after: number | null; delta: number | null }>;
 }
@@ -217,13 +217,16 @@ export function runRegressionHarness(rawData: RawPeriodData[], afterPeriods: Rec
     };
   }
 
+  const waccBeforeVal = computeValuation(afterSorted, ke, kwBefore, g, cfg).V_ReOI_CV03;
   const bugImpactTable = [
     {
       bugClass: "WACC weighting (C1)",
       metric: "V_ReOI_CV03",
-      before: computeValuation(afterSorted, ke, kwBefore, g, cfg).V_ReOI_CV03,
+      before: waccBeforeVal,
       after: vAfter.V_ReOI_CV03,
-      delta: vAfter.V_ReOI_CV03 - computeValuation(afterSorted, ke, kwBefore, g, cfg).V_ReOI_CV03,
+      delta: vAfter.V_ReOI_CV03 != null && waccBeforeVal != null
+        ? vAfter.V_ReOI_CV03 - waccBeforeVal
+        : null,
     },
     {
       bugClass: "Finance-income rung3 gate (C3)",

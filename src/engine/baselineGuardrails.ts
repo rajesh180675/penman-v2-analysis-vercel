@@ -120,9 +120,10 @@ export function computePhase0Guardrails(periods: RecastPeriod[], cfg: EngineConf
   const val = computeValuation(periods, ke, kw, g, cfg);
   // Phase J2: V_RE_CV3 may be null on negative-equity companies. Use
   // V_ReOI_CV03 for the identity-gap when equity-side is blocked.
-  const reAnchor = val.V_RE_CV3 ?? val.V_ReOI_CV03;
-  const identityGap = Math.abs(reAnchor - val.V_ReOI_CV03);
-  const identityGapPct = reAnchor !== 0 ? identityGap / Math.abs(reAnchor) : 0;
+  const reoiCv03 = val.V_ReOI_CV03;
+  const reAnchor = val.V_RE_CV3 ?? reoiCv03;
+  const identityGap = reAnchor != null && reoiCv03 != null ? Math.abs(reAnchor - reoiCv03) : 0;
+  const identityGapPct = reAnchor != null && reAnchor !== 0 ? identityGap / Math.abs(reAnchor) : 0;
   const latest = periods[periods.length - 1]!;
   const otherOAPct = latest.bs.OA > 0 ? latest.bs.OA_Other / latest.bs.OA : null;
 

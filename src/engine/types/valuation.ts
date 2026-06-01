@@ -21,18 +21,36 @@ export interface GrowthAccounting {
 
 /* ── Valuation ──────────────────────────────────────────────────── */
 
+export type ContinuingValueGuardModel = "RE_CV3" | "ReOI_CV03" | "FCFF_CV" | "FCFE_CV" | "DDM";
+
+export interface ContinuingValueGuard {
+  model: ContinuingValueGuardModel;
+  basis: "equity" | "operating";
+  discountRate: number;
+  terminalGrowth: number;
+  spread: number;
+  reason: string;
+}
+
 export interface ValuationResult {
   reSeries: Array<{period:string;RE:number;ReOI:number}>;
   pvRE: number; pvReOI: number;
-  CV_RE: number; CV_ReOI: number; EV_ReOI: number;
+  /** Gordon-growth continuing values are null when terminal growth is not
+   *  safely below the relevant discount rate. Prior versions silently returned
+   *  zero in that case, which made invalid terminal models look like valid low
+   *  values. See continuingValueGuards for the explicit skip reasons. */
+  CV_RE: number | null; CV_ReOI: number | null; EV_ReOI: number | null;
+
   /** Phase J2: equity-side values are null when latest CSE ≤ 0 (negative
    *  net worth). Enterprise-side V_ReOI_* remain published since they
    *  anchor on NOA/NFO, not CSE, and stay economically meaningful. */
   V_RE_CV1: number | null; V_RE_CV2: number | null; V_RE_CV3: number | null;
-  V_ReOI_CV01: number; V_ReOI_CV02: number; V_ReOI_CV03: number;
+  V_ReOI_CV01: number; V_ReOI_CV02: number; V_ReOI_CV03: number | null;
   CSE0: number; NOA0: number; NFO_latest: number;
   ke: number; kw: number; g: number;
   separationScore: number; lowConfidence: boolean;
+  continuingValueGuards?: ContinuingValueGuard[] | undefined;
+
   /** Phase J2: true when equity-side models could not be computed due
    *  to negative latest CSE; consumers should display skip-with-reason
    *  cards instead of plotting V_RE_CV3 on intrinsic-value charts. */
@@ -47,8 +65,8 @@ export interface ValuationResult {
   ReOI_phi?: number | undefined;
   RE_phi_r_squared?: number | undefined;
   ReOI_phi_r_squared?: number | undefined;
-  RE_CV_divergence?: number | undefined;
-  ReOI_CV_divergence?: number | undefined;
+  RE_CV_divergence?: number | null | undefined;
+  ReOI_CV_divergence?: number | null | undefined;
   // S-17.2: Growth accounting decomposition
   // Phase J2: also nullable when equity-side blocked (uses CSE0).
   V_no_growth?: number | null | undefined;
@@ -81,7 +99,7 @@ export interface PerShareResult {
 export interface FCFValuation {
   fcff_series: Array<{ period: string; NOPAT: number; dNOA: number; FCFF: number; PV_FCFF: number }>;
   fcfe_series: Array<{ period: string; CNI: number; dCSE: number; FCFE: number; PV_FCFE: number }>;
-  EV_FCFF: number; V_FCFE: number; CV_FCFF: number; CV_FCFE: number;
+  EV_FCFF: number | null; V_FCFE: number | null; CV_FCFF: number | null; CV_FCFE: number | null;
 }
 
 export interface AEGValuation {

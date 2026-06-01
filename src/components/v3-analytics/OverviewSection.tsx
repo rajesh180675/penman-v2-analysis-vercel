@@ -14,10 +14,11 @@ export function OverviewSection({ bundle, valuation, tvClass }: {
   // Phase J2: V_RE_CV3 may be null on negative-equity companies. Use
   // V_ReOI_CV03 as the identity-gap reference when equity-side is blocked
   // so the panel stays renderable instead of crashing the overview.
-  const reAnchor = valuation.V_RE_CV3 ?? valuation.V_ReOI_CV03;
-  const identityGap = Math.abs(reAnchor - valuation.V_ReOI_CV03);
-  const identityGapPct = reAnchor !== 0 ? identityGap / Math.abs(reAnchor) : 0;
-  const identityFlag = identityGapPct < 0.05 ? "CONVERGED" : identityGapPct < 0.15 ? "WARNING" : "CRITICAL";
+  const reoiCv03 = valuation.V_ReOI_CV03;
+  const reAnchor = valuation.V_RE_CV3 ?? reoiCv03;
+  const identityGap = reAnchor != null && reoiCv03 != null ? Math.abs(reAnchor - reoiCv03) : null;
+  const identityGapPct = reAnchor != null && reAnchor !== 0 && identityGap != null ? identityGap / Math.abs(reAnchor) : 0;
+  const identityFlag = identityGap == null ? "WARNING" : identityGapPct < 0.05 ? "CONVERGED" : identityGapPct < 0.15 ? "WARNING" : "CRITICAL";
 
   return (
     <div className="space-y-6">

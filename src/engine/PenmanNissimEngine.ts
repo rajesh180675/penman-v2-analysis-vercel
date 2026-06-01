@@ -3,6 +3,8 @@ import {
   RecastPeriod,
   EngineConfig,
   TraceMap,
+  ContinuingValueGuard,
+  ContinuingValueGuardModel,
 } from "./types";
 
 // Recast layer (balance sheet, income, cash flow) + missing-line flagging +
@@ -59,6 +61,8 @@ import {
 } from "./PenmanNissimEngine/ratiosResidual";
 export { computeRatios, computeResidualIncome, estimateArPhi, cvReversion };
 
+const MIN_GORDON_SPREAD = 1e-6;
+
 export function deriveKwFromStructure(cur: RecastPeriod, prev: RecastPeriod, ke: number, riskFreeRate: number, cfg?: EngineConfig): number {
   // S-9.4: kw = ke × (CSE+MI)/NOA + kd_aftertax × NFO/NOA
   // kw is ALWAYS derived from balance-sheet weights — NEVER a config input (Invariant 5)
@@ -114,15 +118,43 @@ export function computeValuation(
   const discE = Math.pow(rhoE, T);
   const discW = Math.pow(rhoW, T);
 
+  const continuingValueGuards: ContinuingValueGuard[] = [];
+  const gordonCv = (
+    model: ContinuingValueGuardModel,
+    basis: "equity" | "operating",
+    anchor: number,
+    discountRate: number,
+    capitalCostLabel: "cost of equity" | "operating capital cost",
+  ): number | null => {
+    const spread = discountRate - g;
+    if (
+      !Number.isFinite(anchor)
+      || !Number.isFinite(discountRate)
+      || !Number.isFinite(g)
+      || spread <= MIN_GORDON_SPREAD
+    ) {
+      continuingValueGuards.push({
+        model,
+        basis,
+        discountRate,
+        terminalGrowth: g,
+        spread,
+        reason: `Gordon continuing value skipped: terminal growth ${(g * 100).toFixed(2)}% must be below ${capitalCostLabel} ${(discountRate * 100).toFixed(2)}%.`,
+      });
+      return null;
+    }
+    return (anchor * (1 + g)) / spread;
+  };
+
   const CV_RE_1 = 0;
   const CV_RE_2 = rhoE > 1 ? lastRE / (rhoE - 1) : 0;
   // §11: use provided terminal anchor if available, fall back to as-reported lastRE
   const RE_terminal_anchor = terminalREAnchor != null && Number.isFinite(terminalREAnchor) ? terminalREAnchor : lastRE;
   const ReOI_terminal_anchor = terminalReOIAnchor != null && Number.isFinite(terminalReOIAnchor) ? terminalReOIAnchor : lastReOI;
-  const CV_RE_3 = rhoE - 1 - g > 0 ? (RE_terminal_anchor * (1 + g)) / (rhoE - 1 - g) : 0;
+  const CV_RE_3 = gordonCv("RE_CV3", "equity", RE_terminal_anchor, ke, "cost of equity");
   const CV_W_1 = 0;
   const CV_W_2 = rhoW > 1 ? lastReOI / (rhoW - 1) : 0;
-  const CV_W_3 = rhoW - 1 - g > 0 ? (ReOI_terminal_anchor * (1 + g)) / (rhoW - 1 - g) : 0;
+  const CV_W_3 = gordonCv("ReOI_CV03", "operating", ReOI_terminal_anchor, kw, "operating capital cost");
 
   const CSE0 = periods[0]!.bs.CSE;
   const NOA0 = periods[0]!.bs.NOA;
@@ -173,8 +205,8 @@ export function computeValuation(
     const base = Math.max(Math.abs(gordon), 1);
     return Math.abs(gordon - reversion) / base;
   };
-  const RE_CV_divergence = gordonVsReversionFlag(CV_RE_3, CV_RE_reversion);
-  const ReOI_CV_divergence = gordonVsReversionFlag(CV_W_3, CV_ReOI_reversion);
+  const RE_CV_divergence = CV_RE_3 == null ? null : gordonVsReversionFlag(CV_RE_3, CV_RE_reversion);
+  const ReOI_CV_divergence = CV_W_3 == null ? null : gordonVsReversionFlag(CV_W_3, CV_ReOI_reversion);
 
   // §1.3: Growth accounting decomposition (Penman's preferred anchor)
   // No-growth value: value from existing assets at current profitability
@@ -182,7 +214,7 @@ export function computeValuation(
   // Phase J2: gated on equity-side health since CSE0 is the anchor.
   const V_no_growth = equityModelsBlocked ? null : CSE0 + (RNOA_T - kw) * NOA_T / kw;
   // Use primary valuation (RE CV3) as total value
-  const V_total = equityModelsBlocked ? null : CSE0 + pvRE + CV_RE_3 / discE;
+  const V_total = equityModelsBlocked || CV_RE_3 == null ? null : CSE0 + pvRE + CV_RE_3 / discE;
   const growthValue =
     equityModelsBlocked || V_total == null || V_no_growth == null
       ? null
@@ -214,10 +246,10 @@ export function computeValuation(
   }
   const lastFCFF = fcff_series.length ? fcff_series[fcff_series.length - 1]!.FCFF : 0;
   const lastFCFE = fcfe_series.length ? fcfe_series[fcfe_series.length - 1]!.FCFE : 0;
-  const CV_FCFF = rhoW - 1 - g > 0 ? (lastFCFF * (1 + g)) / (rhoW - 1 - g) : 0;
-  const CV_FCFE = rhoE - 1 - g > 0 ? (lastFCFE * (1 + g)) / (rhoE - 1 - g) : 0;
-  const EV_FCFF = pvFCFF + (CV_FCFF / discW);
-  const V_FCFE = pvFCFE + (CV_FCFE / discE);
+  const CV_FCFF = gordonCv("FCFF_CV", "operating", lastFCFF, kw, "operating capital cost");
+  const CV_FCFE = gordonCv("FCFE_CV", "equity", lastFCFE, ke, "cost of equity");
+  const EV_FCFF = CV_FCFF == null ? null : pvFCFF + (CV_FCFF / discW);
+  const V_FCFE = CV_FCFE == null ? null : pvFCFE + (CV_FCFE / discE);
 
   // AEG valuation (Ohlson-Juettner style short-form proxy)
   const aeg_series: Array<{ period: string; CNI: number; AEG: number; PV_AEG: number }> = [];
@@ -266,18 +298,16 @@ export function computeValuation(
     // and FCFE uses dCSE only as the change between periods (the level
     // CSE_T can still be read meaningfully even if it's negative — the
     // distress signal is the user's cue).
-    const rePer = equityModelsBlocked
+    const rePer = equityModelsBlocked || CV_RE_3 == null
       ? null
       : ((CSE0 + pvRE + CV_RE_3 / discE) / sh);
-    const reoiPer = ((NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - MI0) / sh;
-    const fcffPer = (EV_FCFF - NFO0 - MI0) / sh;
-    const fcfePer = equityModelsBlocked ? null : V_FCFE / sh;
-    const ddmPer = equityModelsBlocked
-      ? null
-      : rhoE - 1 - g > 0
-        ? ((periods[periods.length - 1]!.cf.DividendPaid * (1 + g)) / (rhoE - 1 - g)) / sh
-        : null;
+    const reoiPer = CV_W_3 == null ? null : ((NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - MI0) / sh;
+    const fcffPer = EV_FCFF == null ? null : (EV_FCFF - NFO0 - MI0) / sh;
+    const fcfePer = equityModelsBlocked || V_FCFE == null ? null : V_FCFE / sh;
+    const ddmCv = gordonCv("DDM", "equity", periods[periods.length - 1]!.cf.DividendPaid, ke, "cost of equity");
+    const ddmPer = equityModelsBlocked || ddmCv == null ? null : ddmCv / sh;
     const aegPer = equityModelsBlocked ? null : V_AEG / sh;
+
     const latestCSE_T = periods[periods.length - 1]!.bs.CSE;
     return {
       intrinsic_re_per_share: rePer,
@@ -325,18 +355,18 @@ export function computeValuation(
     pvReOI,
     CV_RE: CV_RE_3,
     CV_ReOI: CV_W_3,
-    EV_ReOI: NOA0 + pvReOI + CV_W_3 / discW,
+    EV_ReOI: CV_W_3 == null ? null : NOA0 + pvReOI + CV_W_3 / discW,
     // Phase J2: equity-side values nulled when latest CSE ≤ 0.
     V_RE_CV1: equityModelsBlocked ? null : CSE0 + pvRE + CV_RE_1 / discE,
     V_RE_CV2: equityModelsBlocked ? null : CSE0 + pvRE + CV_RE_2 / discE,
-    V_RE_CV3: equityModelsBlocked ? null : CSE0 + pvRE + CV_RE_3 / discE,
+    V_RE_CV3: equityModelsBlocked || CV_RE_3 == null ? null : CSE0 + pvRE + CV_RE_3 / discE,
     // Enterprise→common-equity bridge: subtract net debt (NFO) AND minority
     // interest (MI0). Keeps V_ReOI_CV03/sh === intrinsic_reoi_per_share and
     // makes the RE-vs-ReOI identity a common-vs-common comparison (V_RE_* is
     // CSE-anchored common equity). EV_ReOI above stays operating-entity value.
     V_ReOI_CV01: (NOA0 + pvReOI + CV_W_1 / discW) - NFO0 - MI0,
     V_ReOI_CV02: (NOA0 + pvReOI + CV_W_2 / discW) - NFO0 - MI0,
-    V_ReOI_CV03: (NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - MI0,
+    V_ReOI_CV03: CV_W_3 == null ? null : (NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - MI0,
     CSE0,
     NOA0,
     NFO_latest,
@@ -347,6 +377,7 @@ export function computeValuation(
     lowConfidence: periods[periods.length - 1]!.bs.separationScore < (cfg.separation_confidence_threshold ?? 70),
     equityModelsBlocked,
     equityBlockedReason,
+    continuingValueGuards,
     impliedGrowthRE,
     // S-11.1: AR(1) reversion continuing values
     CV_RE_reversion,
