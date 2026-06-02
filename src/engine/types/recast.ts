@@ -20,6 +20,10 @@ export interface CanonicalBalanceSheet {
   BridgeDebtDebentures?: number | undefined;
   BridgeDebtCurrentMaturities?: number | undefined;
   BridgeDebtTotal?: number | undefined;
+  /** Explicit Ind AS 116 lease liabilities included in FO; used by greenfield lease-adjusted lens. */
+  FO_LeaseLiabilities?: number | undefined;
+  /** Financial obligations excluding explicit lease liabilities. */
+  FO_FinancialDebtExLease?: number | undefined;
   OL_TradePayables: number;
   OL_OtherCurrentLiabilities: number;
   OL_ProvisionsCurrent: number;

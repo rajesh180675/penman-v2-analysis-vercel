@@ -21,6 +21,7 @@ import { detectITServices, ITServicesSignal } from "./itServicesDetector";
 import { assessCyclicality, CyclicalityAssessment } from "./cyclicalityDetector";
 import { evaluateRatioSanity, SanityAssessment } from "./ratioSanity";
 import { trace } from "../lib/traceLogger";
+import { runGreenfieldPipeline, type GreenfieldPipelineResult } from "./greenfieldPipeline";
 
 export interface PipelineResult {
   periods  : RecastPeriod[];
@@ -67,6 +68,8 @@ export interface PipelineResult {
    * Set when quarterly or mixed-frequency data is detected.
    */
   frequencyWarning: string | null;
+  /** Greenfield six-layer sidecar: as-reported and adjusted audit/confidence lens. */
+  greenfield?: GreenfieldPipelineResult | undefined;
 }
 
 export function processCompanyData(
@@ -325,7 +328,8 @@ export function processCompanyDataFull(
     : null;
 
   const frequencyWarning = detectFrequencyWarning(sorted);
-  const result: PipelineResult = { periods: results, anomalies, analysisFamily: "industrial", distress: detectDistress(results), structuralBreakPeriods, lossMaker, itServices, cyclicality, ratioSanity, frequencyWarning };
+  const greenfield = runGreenfieldPipeline({ rawData: filteredData, config, recastData: results });
+  const result: PipelineResult = { periods: results, anomalies, analysisFamily: "industrial", distress: detectDistress(results), structuralBreakPeriods, lossMaker, itServices, cyclicality, ratioSanity, frequencyWarning, greenfield };
   trace("pipeline", "processCompanyDataFull:exit", {
     family: result.analysisFamily,
     hasRecast: result.periods.length > 0,

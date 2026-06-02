@@ -64,6 +64,7 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   const leaseLiab = bs("BS.FO.LeaseLiabilities", ["Lease Liabilities"]);
   const otherFinLiab = bs("BS.FO.OtherFinLiabLT", ["Others Financial Liabilities - Long-term"]) + bs("BS.FO.OtherFinLiabST", ["Others Financial Liabilities - Short-term"]);
   const hybrid = cfg.hybrid_perpetual_as_debt ? bs("BS.FO.Hybrid", ["Hybrid Perpetual Securities"]) : 0;
+  const financialDebtExLease = longBorrow + shortBorrow + otherFinLiab + hybrid;
   const bridgeDebtLongTerm = sumBs("BS.BridgeDebt.LongTerm", M.balanceSheet.bridgeDebt.longTermBorrowings);
   const bridgeDebtShortTerm = sumBs("BS.BridgeDebt.ShortTerm", M.balanceSheet.bridgeDebt.shortTermBorrowings);
   const bridgeDebtDebentures = sumBs("BS.BridgeDebt.Debentures", M.balanceSheet.bridgeDebt.debentures);
@@ -156,6 +157,8 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
     BridgeDebtDebentures: bridgeDebtDebentures,
     BridgeDebtCurrentMaturities: bridgeDebtCurrentMaturities,
     BridgeDebtTotal: bridgeDebtTotal,
+    FO_LeaseLiabilities: leaseLiab,
+    FO_FinancialDebtExLease: financialDebtExLease,
     OL_TradePayables: bs("BS.OLComp.TradePayablesOut", M.balanceSheet.olComponents.tradePayables),
     OL_OtherCurrentLiabilities: bs("BS.OLComp.OtherCurrentLiabilitiesOut", M.balanceSheet.olComponents.otherCurrentLiabilities),
     OL_ProvisionsCurrent: bs("BS.OLComp.ProvisionsCurrentOut", M.balanceSheet.olComponents.provisionsCurrent),

@@ -174,24 +174,32 @@ export function detectDistress(
     };
   }
 
-  // Warning: isolated negative period, latest is positive
-  if (longestNegativeRun === 1 && !latestCSENegative) {
+  // Historical negative-equity runs are not current distress when the latest
+  // balance sheet has recovered. This is the DMART/Ind AS 116 pitfall: a
+  // multi-year accounting artifact should reduce confidence and trigger
+  // explanation, but must not label the live company insolvent or block equity
+  // models anchored on the latest positive CSE.
+  if (!latestCSENegative) {
     severity = "warning";
     reasons.push(
-      `One isolated period of negative equity in history (${negativeEquityPeriods}/${totalPeriods}); latest equity is positive but model trust is reduced.`,
+      `${negativeEquityPeriods} historical negative-equity period(s) detected (longest run ${longestNegativeRun}), but latest equity is positive; treat as an accounting/structural-break caveat, not current financial distress.`,
     );
-  }
-
-  // Severe: latest is negative OR ≥2 consecutive negative periods
-  if (latestCSENegative || longestNegativeRun >= 2) {
-    severity = "severe";
-    if (latestCSENegative) {
+    if (latestCFO != null && latestCFO > 0) {
       reasons.push(
-        `Latest common shareholders' equity is ≤ 0 (${
-          latestCSE != null ? latestCSE.toFixed(0) : "?"
-        } Cr); equity-side valuation models (RE, DDM, per-share EPV) cannot be trusted.`,
+        `Latest CFO is positive (${latestCFO.toFixed(0)} Cr), so the current solvency story does not match bankruptcy-style distress.`,
       );
     }
+  }
+
+  // Severe: latest is negative. Equity-side models anchor on latest CSE, so
+  // the gate is current negative equity — not historical artifacts.
+  if (latestCSENegative) {
+    severity = "severe";
+    reasons.push(
+      `Latest common shareholders' equity is ≤ 0 (${
+        latestCSE != null ? latestCSE.toFixed(0) : "?"
+      } Cr); equity-side valuation models (RE, DDM, per-share EPV) cannot be trusted.`,
+    );
     if (longestNegativeRun >= 2) {
       reasons.push(
         `Longest run of consecutive negative-equity periods is ${longestNegativeRun}; structural rather than one-off.`,
@@ -217,10 +225,10 @@ export function detectDistress(
     }
   }
 
-  // Equity-side models block when severity is severe or critical.
-  // Warning lets them publish — the affected period is in history, latest
-  // is positive, so anchoring on latest CSE is still valid.
-  const equityModelsBlocked = severity === "severe" || severity === "critical";
+  // Equity-side models block only on current negative equity / current severe
+  // distress. Historical negative-equity artifacts reduce confidence but do
+  // not poison latest-CSE equity anchors.
+  const equityModelsBlocked = latestCSENegative || severity === "critical";
 
   return {
     hasNegativeEquity,
