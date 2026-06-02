@@ -94,9 +94,14 @@ function localApiGate(req: express.Request, res: express.Response, next: express
 // 2) Helmet: standard security headers (X-Content-Type-Options, etc.).
 //    crossOriginResourcePolicy is permissive because the API serves JSON
 //    consumed by the same-origin Vite dev server.
-// 3) Body limit: dropped from 50mb (DoS-y) to 2mb. The audit pipeline
-//    handles large uploads via Vercel Blob, not via this endpoint.
-// 4) Per-IP rate limit: 600 req/min/IP — generous for normal use, blocks
+// 3) Per-IP rate limit + local CSRF/auth run BEFORE body parsing. This
+//    prevents drive-by oversized JSON posts from hostile browser pages from
+//    consuming parser memory.
+// 4) Body limit: authenticated local workspace/comparison-registry sync can
+//    legitimately exceed 2mb because registry records carry raw/recast data
+//    for comparison. Keep it bounded (10mb), but not so low that DMART-sized
+//    local analysis snapshots fail.
+// 5) Per-IP rate limit: 600 req/min/IP — generous for normal use, blocks
 //    runaway loops or hostile pages from saturating the data store.
 
 const ALLOWED_ORIGIN_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
@@ -131,7 +136,7 @@ app.use(cors({
   credentials: false,
 }));
 
-app.use(express.json({ limit: "2mb" }));
+const LOCAL_JSON_BODY_LIMIT = process.env.LOCAL_JSON_BODY_LIMIT ?? "10mb";
 
 const apiLimiter = rateLimit({
   windowMs: 60_000,
@@ -142,10 +147,17 @@ const apiLimiter = rateLimit({
 });
 app.use("/api/", apiLimiter);
 
-// Local-mode auth + CSRF gate. Applied BEFORE the route mounts so every
-// /api/* path requires the x-penman-local header (and x-audit-token when
-// LOCAL_AUDIT_TOKEN is set). The /api/health endpoint below is also gated.
+// Local-mode auth + CSRF gate. Applied BEFORE JSON body parsing and route
+// mounts so every /api/* path requires the x-penman-local header (and
+// x-audit-token when LOCAL_AUDIT_TOKEN is set). The /api/health endpoint
+// below is also gated.
 app.use("/api/", localApiGate);
+
+// Parse only authenticated local API JSON. Keeping this after localApiGate is
+// load-bearing: a malicious web page can POST to localhost, but cannot set the
+// required custom header in no-cors mode, so oversized hostile bodies are
+// rejected before they reach express.json.
+app.use("/api/", express.json({ limit: LOCAL_JSON_BODY_LIMIT }));
 
 // Routes — mirror the Vercel api/ structure
 app.use("/api/market-data", marketDataRouter);
@@ -189,6 +201,10 @@ app.get("/api/health", (_req, res) => {
 
 // Global error handler
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (err?.type === "entity.too.large") {
+    res.status(413).json({ ok: false, error: `API request body too large. Limit: ${LOCAL_JSON_BODY_LIMIT}.` });
+    return;
+  }
   console.error("[server error]", err?.message ?? err);
   res.status(500).json({ ok: false, error: "Internal server error." });
 });
