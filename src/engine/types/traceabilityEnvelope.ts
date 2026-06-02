@@ -11,6 +11,7 @@ import type { ConceptIdentitySummary } from "./conceptIdentity";
 import type { EconomicSanitySummary } from "./economicSanity";
 import type { UnusualItemManifest } from "./unusualItem";
 import type { AnalyticalDepthSummary } from "./analyticalDepth";
+import type { AntiTautologySummary } from "../valuationEvidence/types";
 import type { AnalysisPolicyVersions } from "../policyVersions";
 import type { LineageRef } from "../lineageTypes";
 import type { BacklogTriageAction, BacklogPriority } from "./backlog";
@@ -147,6 +148,10 @@ export interface AnalysisTraceabilityEnvelope {
    *  not in scope there. Optional + nullable so non-valuation surfaces, the
    *  snapshot/publication paths, and migrated legacy envelopes are unaffected. */
   analyticalDepth?: AnalyticalDepthSummary | null | undefined;
+  /** Schema v19 anti-tautology evidence summary. Populated at valuation time
+   *  when command-center evidence exists; structural-only envelopes and legacy
+   *  migrations carry null/absent to avoid pretending valuation evidence ran. */
+  antiTautology?: AntiTautologySummary | null | undefined;
   /** Gap 4 / PR-D — per-number lineage REFERENCE (not the data itself).
    *  Lineage payload lives in the audit snapshot sidecar to keep
    *  envelope JSON serialization bounded. The ref carries a checksum

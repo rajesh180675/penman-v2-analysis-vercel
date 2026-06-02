@@ -13,6 +13,9 @@ export interface ValuationTraceabilitySurfaceSummary {
    *  structural-only envelopes that the 9 non-valuation surfaces render, so
    *  those surfaces are unaffected. */
   depthLine?: string | undefined;
+  /** Schema v19 anti-tautology evidence line. Present only when valuation-time
+   *  evidence exists; structural-only envelopes remain unchanged. */
+  antiTautologyLine?: string | undefined;
 }
 
 function formatPct(value: number | null | undefined) {
@@ -32,6 +35,23 @@ function formatRigorLevel(level: AnalysisRigorLevel) {
     case "production-ready":
       return "Production-ready";
   }
+}
+
+function buildAntiTautologyLine(traceability: AnalysisTraceabilityEnvelope): string | undefined {
+  const anti = traceability.antiTautology;
+  if (!anti) return undefined;
+  const holdout = anti.forecastHoldout.status;
+  const isolation = anti.priceDerivedIsolation.reverseDcfExcludedFromIntrinsicConfidence
+    && anti.priceDerivedIsolation.priceDerivedAssumptionsUsedForIntrinsic === 0
+    ? "reverse DCF quarantined"
+    : `${anti.priceDerivedIsolation.priceDerivedAssumptionsUsedForIntrinsic} price-derived assumption(s) need review`;
+  const sector = anti.sectorDriverCoverage.status === "confirmed"
+    ? "sector drivers sourced"
+    : anti.sectorDriverCoverage.status === "partial"
+      ? `${anti.sectorDriverCoverage.sourceUnavailableCount} sector driver(s) unavailable`
+      : "sector drivers unavailable";
+  const divergence = anti.paradigmIndependence.criticalDivergence ? "critical lens divergence" : "no critical lens divergence";
+  return `${holdout} · ${anti.paradigmIndependence.independentLensCount} independent intrinsic lenses · ${isolation} · ${sector} · ${divergence}`;
 }
 
 export function buildValuationTraceabilitySurfaceSummary(
@@ -77,6 +97,7 @@ export function buildValuationTraceabilitySurfaceSummary(
   const depthLine = depth
     ? `${depth.status} · ${depth.presentCount}/4 depth analytics${depth.watchCount > 0 ? ` · ${depth.watchCount} to review` : ""}`
     : undefined;
+  const antiTautologyLine = buildAntiTautologyLine(traceability);
 
   return {
     headline: `${traceability.rigor.currentLabel} · ${traceability.confidence.headline}`,
@@ -91,5 +112,6 @@ export function buildValuationTraceabilitySurfaceSummary(
     // Conditionally included so structural-only envelopes (the 9 non-valuation
     // surfaces, snapshot/publication) yield a byte-identical summary object.
     ...(depthLine ? { depthLine } : {}),
+    ...(antiTautologyLine ? { antiTautologyLine } : {}),
   };
 }

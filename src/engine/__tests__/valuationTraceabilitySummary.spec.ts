@@ -253,4 +253,45 @@ describe("buildValuationTraceabilitySurfaceSummary", () => {
     const summary = buildValuationTraceabilitySurfaceSummary(base);
     expect(summary?.depthLine).toBeUndefined();
   });
+
+  it("emits antiTautologyLine when the envelope carries anti-tautology evidence", () => {
+    const base = buildAnalysisTraceability({
+      generatedAt: "2026-04-03T10:12:00.000Z",
+      runId: "run-anti-tautology",
+      companyId: "ITC",
+      sourceMode: "json",
+      recastData: [mkBalancedPeriod("2025-03-31")],
+      config: DEFAULT_CONFIG,
+      rawData: [
+        {
+          company_id: "ITC",
+          period_end: "2025-03-31",
+          raw_metric_values: {
+            "Total Assets__BalanceSheet": 1000,
+            "Total Equity__BalanceSheet": 600,
+            "Revenue From Operations(Net)__ProfitLoss": 900,
+            "Profit After Tax__ProfitLoss": 90,
+          },
+        },
+      ],
+      periodCount: 1,
+      latestPeriod: "2025-03-31",
+      policyVersions: getAnalysisPolicyVersions(),
+    });
+    const enriched = {
+      ...base,
+      antiTautology: {
+        evidenceLedgerRef: { hasLedger: true, assumptionCount: 12, unsupportedCount: 2, priceDerivedCount: 3, checksum: "fnv1a-test" },
+        forecastHoldout: { available: true, status: "confirmed" as const, weightedMape: 0.04, valuationRangeWideningPct: 0.03 },
+        priceDerivedIsolation: { reverseDcfExcludedFromIntrinsicConfidence: true, priceDerivedAssumptionsUsedForIntrinsic: 0 },
+        paradigmIndependence: { independentLensCount: 3, criticalDivergence: false },
+        sectorDriverCoverage: { status: "confirmed" as const, driverCount: 2, sourceUnavailableCount: 0 },
+      },
+    };
+
+    const summary = buildValuationTraceabilitySurfaceSummary(enriched);
+    expect(summary?.antiTautologyLine).toContain("confirmed");
+    expect(summary?.antiTautologyLine).toContain("3 independent intrinsic lenses");
+    expect(summary?.antiTautologyLine).toContain("reverse DCF quarantined");
+  });
 });

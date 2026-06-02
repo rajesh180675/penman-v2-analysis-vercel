@@ -11,6 +11,9 @@ export interface TraceabilitySurfaceSummary {
   /** Plan 5 keystone — analytical-depth read-out. Present only on
    *  valuation-time enriched envelopes; absent for structural-only surfaces. */
   depthLine?: string | undefined;
+  /** Schema v19 anti-tautology evidence line. Present only on valuation-time
+   *  enriched envelopes carrying anti-tautology evidence. */
+  antiTautologyLine?: string | undefined;
 }
 
 interface Props {
@@ -54,6 +57,12 @@ export default function TraceabilityTrustPanel({
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
           <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Analytical depth</span>
           <span className="ml-2">{summary.depthLine}</span>
+        </div>
+      )}
+      {summary.antiTautologyLine && (
+        <div className="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-900 dark:border-teal-800 dark:bg-teal-950 dark:text-teal-100">
+          <span className="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300">Anti-tautology evidence</span>
+          <span className="ml-2">{summary.antiTautologyLine}</span>
         </div>
       )}
       {summary.blockers.length > 0 && (

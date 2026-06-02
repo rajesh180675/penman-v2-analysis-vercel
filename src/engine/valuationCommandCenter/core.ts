@@ -13,6 +13,12 @@ import { buildEarningsQualityCard, buildDechowDichevAndRem } from "../earningsQu
 import { computeEPV } from "../grahamDoddEPV";
 import { computeCashFlowDcf } from "../cashFlowDcf";
 import { buildValuationTriangulationEvidence } from "../valuationTriangulation";
+import {
+  buildAssumptionEvidenceLedger,
+  buildEvidenceWeightedSynthesis,
+  buildMarketImpliedExpectationLedger,
+  evaluateForecastHoldout,
+} from "../valuationEvidence";
 import { buildBacktest } from "./backtest";
 import {
   ValuationSignalState,
@@ -480,6 +486,30 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     shares,
     periodEnd: latest.period_end,
   });
+  const evidenceLedger = buildAssumptionEvidenceLedger({
+    scenarios,
+    reverseDcf,
+    periodEnd: latest.period_end,
+    companyId: config.ticker ?? null,
+  });
+  const forecastHoldout = evaluateForecastHoldout(data);
+  const marketImpliedExpectations = buildMarketImpliedExpectationLedger({
+    marketPrice,
+    asOf: marketData?.priceAsOf ?? marketData?.fetchedAt ?? null,
+    reverseDcf,
+  });
+  const evEbitdaPerShare = evEbitdaWithMarket.equityFromMedian != null && shares != null && shares > 0
+    ? evEbitdaWithMarket.equityFromMedian / shares
+    : null;
+  const evidenceWeightedSynthesis = buildEvidenceWeightedSynthesis({
+    scenarios,
+    cashFlowDcf,
+    evEbitdaPerShare,
+    reverseDcf,
+    evidenceLedger,
+    forecastHoldout,
+    marketPrice,
+  });
 
   return {
     shareBasis,
@@ -508,6 +538,10 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     damodaranCapm: damodaranCapmResult,
     reverseDcfMonteCarlo: reverseDcfMonteCarloResult,
     cashFlowDcf,
+    evidenceLedger,
+    forecastHoldout,
+    marketImpliedExpectations,
+    evidenceWeightedSynthesis,
     valuationTriangulation,
     opportunity,
     checklist,

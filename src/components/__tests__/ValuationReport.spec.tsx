@@ -104,6 +104,8 @@ describe("ValuationReport", () => {
     expect(html).toContain("Valuation Trust Gate");
     expect(html).toContain("Analytical depth");
     expect(html).toContain("depth analytics");
+    expect(html).toContain("Anti-tautology evidence");
+    expect(html).toContain("reverse DCF quarantined");
   });
 
   it("renders no trust panel (and no depth line) when the envelope is absent", () => {
