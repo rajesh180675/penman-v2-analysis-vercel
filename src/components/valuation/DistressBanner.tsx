@@ -4,10 +4,10 @@ export default function DistressBanner({ distress }: { distress: ReturnType<type
   if (distress.severity === "none") return null;
   const tone =
     distress.severity === "critical"
-      ? "border-red-300 bg-red-50 text-red-900"
+      ? "border-red-300 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100"
       : distress.severity === "severe"
-        ? "border-amber-400 bg-amber-50 text-amber-900"
-        : "border-amber-200 bg-amber-50 text-amber-800";
+        ? "border-amber-400 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+        : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100";
   const icon =
     distress.severity === "critical" ? "🚨"
       : distress.severity === "severe" ? "⚠️"
@@ -17,7 +17,7 @@ export default function DistressBanner({ distress }: { distress: ReturnType<type
       ? "Critical financial distress — going-concern stress"
       : distress.severity === "severe"
         ? "Current negative net worth — equity-side valuation skipped"
-        : "Historical negative-equity / accounting caveat";
+        : "Historical accounting caveat — not current distress";
   return (
     <div className={`rounded-lg border-2 p-4 ${tone}`}>
       <div className="flex items-start gap-3">
