@@ -14,6 +14,12 @@ import { CapmResult } from "../valuation/damodaranCapm";
 import { ReverseDcfMonteCarloResult } from "../valuation/reverseDcfMonteCarlo";
 import type { CashFlowDcfResult } from "../cashFlowDcf";
 import type { ValuationTriangulationEvidence } from "../reconciliationResiduals";
+import type {
+  EvidenceWeightedValuationSynthesis,
+  ForecastHoldoutSummary,
+  MarketImpliedExpectationLedger,
+  ValuationEvidenceLedger,
+} from "../valuationEvidence/types";
 
 export type ValuationSignalState =
   | "blocked"
@@ -195,6 +201,14 @@ export interface ValuationCommandCenterOutput {
   reverseDcfMonteCarlo: ReverseDcfMonteCarloResult | null;
   /** Independent cash-statement FCFF DCF lens (does not read NOA/OI accrual recast). */
   cashFlowDcf: CashFlowDcfResult | null;
+  /** Anti-tautology assumption ledger: every material scenario assumption gets source/confidence metadata. */
+  evidenceLedger: ValuationEvidenceLedger;
+  /** Forecast holdout skill: can historical driver forecasts predict known future periods? */
+  forecastHoldout: ForecastHoldoutSummary;
+  /** Reverse DCF quarantine ledger: market-implied expectations are diagnostic-only. */
+  marketImpliedExpectations: MarketImpliedExpectationLedger;
+  /** Evidence-weighted synthesis that weights independent lenses, not Penman model count. */
+  evidenceWeightedSynthesis: EvidenceWeightedValuationSynthesis;
   /** Lightweight evidence used by the traceability gate to adjudicate paradigm disagreement. */
   valuationTriangulation: ValuationTriangulationEvidence;
   range: {

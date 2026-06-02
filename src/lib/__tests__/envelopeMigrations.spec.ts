@@ -67,11 +67,12 @@ describe("migrateEnvelope (Plan 6 PR-6.4)", () => {
     expect(r2.migrationsApplied).toHaveLength(0);
   });
 
-  it("v17 → v18 adds analyticalDepth defaulting to null (legacy envelopes had no depth)", () => {
+  it("v17 → current adds analyticalDepth defaulting to null (legacy envelopes had no depth)", () => {
     const input = { schemaVersion: "2026-06-traceability-v17", locked: true, foo: "bar" };
     const r = migrateEnvelope(input);
-    expect(r.envelope.schemaVersion).toBe("2026-06-traceability-v18");
+    expect(r.envelope.schemaVersion).toBe(CURRENT);
     expect(r.envelope.analyticalDepth).toBeNull();
+    expect(r.envelope.antiTautology).toBeNull();
     expect(r.migrationsApplied).toContain("2026-06-traceability-v17");
     // Non-destructive: prior fields carried forward.
     expect(r.envelope.locked).toBe(true);
@@ -82,7 +83,16 @@ describe("migrateEnvelope (Plan 6 PR-6.4)", () => {
     const depth = { status: "rich", summary: "4/4", presentCount: 4, watchCount: 0, checks: [] };
     const input = { schemaVersion: "2026-06-traceability-v17", analyticalDepth: depth };
     const r = migrateEnvelope(input);
-    expect(r.envelope.schemaVersion).toBe("2026-06-traceability-v18");
+    expect(r.envelope.schemaVersion).toBe(CURRENT);
     expect(r.envelope.analyticalDepth).toEqual(depth);
+  });
+
+  it("v18 → v19 adds antiTautology defaulting to null", () => {
+    const input = { schemaVersion: "2026-06-traceability-v18", analyticalDepth: null, foo: "bar" };
+    const r = migrateEnvelope(input);
+    expect(r.envelope.schemaVersion).toBe("2026-06-traceability-v19");
+    expect(r.envelope.antiTautology).toBeNull();
+    expect(r.migrationsApplied).toContain("2026-06-traceability-v18");
+    expect(r.envelope.foo).toBe("bar");
   });
 });

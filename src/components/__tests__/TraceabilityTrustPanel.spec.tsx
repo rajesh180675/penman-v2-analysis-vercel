@@ -70,4 +70,13 @@ describe("TraceabilityTrustPanel", () => {
     const withoutDepth = render(mkSummary());
     expect(withoutDepth).not.toContain("Analytical depth");
   });
+
+  it("renders the anti-tautology line only when antiTautologyLine is present", () => {
+    const withAntiTautology = render(mkSummary({ antiTautologyLine: "confirmed · 3 independent intrinsic lenses · reverse DCF quarantined" }));
+    expect(withAntiTautology).toContain("Anti-tautology evidence");
+    expect(withAntiTautology).toContain("confirmed · 3 independent intrinsic lenses");
+
+    const withoutAntiTautology = render(mkSummary());
+    expect(withoutAntiTautology).not.toContain("Anti-tautology evidence");
+  });
 });

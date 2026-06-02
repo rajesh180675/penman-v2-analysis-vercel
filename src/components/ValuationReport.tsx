@@ -12,6 +12,7 @@ import { resolveValuationReadiness } from "../engine/valuationPolicy";
 import { resolveShareBasis } from "../engine/shareCountTools";
 import { AnalysisStatusSummary } from "../engine/analysisStatus";
 import { buildValuationCommandCenter } from "../engine/valuationCommandCenter";
+import { summarizeAntiTautology } from "../engine/valuationEvidence";
 import { SignalPill } from "./valuation/atoms";
 import { useLiveMarketData } from "../hooks/useLiveMarketData";
 import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
@@ -160,9 +161,13 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
     () => evaluateAnalyticalDepth(commandCenter, { modelKe: ke }),
     [commandCenter, ke],
   );
+  const antiTautology = useMemo(
+    () => summarizeAntiTautology(commandCenter),
+    [commandCenter],
+  );
   const enrichedTraceability = useMemo(
-    () => (resolvedTraceability ? { ...resolvedTraceability, analyticalDepth } : resolvedTraceability),
-    [resolvedTraceability, analyticalDepth],
+    () => (resolvedTraceability ? { ...resolvedTraceability, analyticalDepth, antiTautology } : resolvedTraceability),
+    [resolvedTraceability, analyticalDepth, antiTautology],
   );
   const traceabilitySummary = useMemo(
     () => buildValuationTraceabilitySurfaceSummary(enrichedTraceability),

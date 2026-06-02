@@ -36,9 +36,10 @@ export const KNOWN_SCHEMA_VERSIONS = [
   "2026-06-traceability-v16",
   "2026-06-traceability-v17",
   "2026-06-traceability-v18",
+  "2026-06-traceability-v19",
 ] as const;
 
-export const CURRENT_SCHEMA_VERSION = "2026-06-traceability-v18";
+export const CURRENT_SCHEMA_VERSION = "2026-06-traceability-v19";
 
 export interface MigrateResult {
   envelope: { schemaVersion: string; status?: string | undefined; [key: string]: unknown };
@@ -116,6 +117,13 @@ const MIGRATORS: Record<string, Migrator> = {
     // v18 — analyticalDepth keystone (Plan 5); depth is a valuation-time
     // enrichment, so persisted/legacy envelopes default to null (absent).
     analyticalDepth: env.analyticalDepth ?? null,
+  }),
+  "2026-06-traceability-v18": (env) => ({
+    ...env,
+    schemaVersion: "2026-06-traceability-v19",
+    // v19 — anti-tautology valuation evidence; this is only populated by
+    // valuation command-center runs, so migrated envelopes default to null.
+    antiTautology: env.antiTautology ?? null,
   }),
 };
 
