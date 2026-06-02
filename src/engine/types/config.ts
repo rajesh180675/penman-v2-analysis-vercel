@@ -16,6 +16,9 @@ export type ValuationSectorTemplate =
   | "retail"
   | "services";
 
+export type StructuralBreakWindowPolicy = "auto-post-break" | "manual" | "keep-all";
+export type GreenfieldAdjustmentMode = "as-reported-only" | "adjusted-with-audit";
+
 export interface EngineConfig {
   ke                  : PercentFraction;
   /**
@@ -94,6 +97,10 @@ export interface EngineConfig {
    * periods from an ITC-style demerger in FY21.
    */
   excluded_periods?: string[] | undefined;
+  /** Greenfield L3 policy: whether structural-break periods are auto-excluded from the adjusted analysis window. */
+  structural_break_window_policy?: StructuralBreakWindowPolicy | undefined;
+  /** Greenfield L4 policy: compute audited adjusted lens or keep as-reported only. */
+  greenfield_adjustment_mode?: GreenfieldAdjustmentMode | undefined;
   noa_epsilon_ratio_of_ta             : number;
   separation_confidence_threshold     : number;
   g_terminal_override ?: number | null | undefined;
@@ -169,6 +176,8 @@ export const DEFAULT_CONFIG: EngineConfig = {
   investment_in_subsidiaries_as_operating: true,
   financial_institution_mode: false,
   company_type: "auto",
+  structural_break_window_policy: "auto-post-break",
+  greenfield_adjustment_mode: "adjusted-with-audit",
   mixed_conglomerate_route_to: null,
   quality_data_folder: null,
   noa_epsilon_ratio_of_ta: 0.10,

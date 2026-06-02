@@ -16,8 +16,8 @@ export default function DistressBanner({ distress }: { distress: ReturnType<type
     distress.severity === "critical"
       ? "Critical financial distress — going-concern stress"
       : distress.severity === "severe"
-        ? "Negative net worth — equity-side valuation skipped"
-        : "Negative-equity period in history";
+        ? "Current negative net worth — equity-side valuation skipped"
+        : "Historical negative-equity / accounting caveat";
   return (
     <div className={`rounded-lg border-2 p-4 ${tone}`}>
       <div className="flex items-start gap-3">

@@ -92,20 +92,20 @@ describe("distressDetector", () => {
     expect(result.reasons.some((r) => r.includes("Latest"))).toBe(true);
   });
 
-  it("flags severe for 2 consecutive negative periods even when not at latest", () => {
+  it("flags warning for recovered multi-period historical negative equity (latest still positive)", () => {
     const periods = [
       period("2020-03-31", { CSE: 1000 }),
       period("2021-03-31", { CSE: -100 }),
       period("2022-03-31", { CSE: -200 }),
       period("2023-03-31", { CSE: 50 }),
-      period("2024-03-31", { CSE: 200 }),
+      period("2024-03-31", { CSE: 200, CFO: 250 }),
     ];
     const result = detectDistress(periods);
-    expect(result.severity).toBe("severe");
-    // Latest is positive, but the 2-period run upgrades us past warning
+    expect(result.severity).toBe("warning");
     expect(result.latestCSENegative).toBe(false);
-    expect(result.equityModelsBlocked).toBe(true);
-    expect(result.reasons.some((r) => r.includes("consecutive"))).toBe(true);
+    expect(result.equityModelsBlocked).toBe(false);
+    expect(result.reasons.some((r) => r.includes("historical negative-equity"))).toBe(true);
+    expect(result.reasons.some((r) => r.includes("not current financial distress"))).toBe(true);
   });
 
   it("flags critical when latest CSE negative + 3+ consecutive + CFO ≤ 0 (Vodafone Idea pattern)", () => {

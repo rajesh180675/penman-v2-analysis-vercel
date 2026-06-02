@@ -96,6 +96,8 @@ export type {
 
 export type {
   ValuationSectorTemplate,
+  StructuralBreakWindowPolicy,
+  GreenfieldAdjustmentMode,
   EngineConfig,
   ConfigValidationWarning,
   KwSource,
