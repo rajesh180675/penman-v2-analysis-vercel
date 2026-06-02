@@ -221,6 +221,62 @@ describe("API Integration Tests", () => {
       expect(body.entries.length).toBeGreaterThanOrEqual(1);
     });
 
+    it("POST /api/research — persists production-shape comparison registry payloads", async () => {
+      const res = await fetch(`${baseUrl}/api/research`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "comparison-registry",
+          comparisonRegistry: {
+            schemaVersion: "2026-04-comparison-registry-v1",
+            storedAt: null,
+            companies: {
+              DMART: {
+                id: "DMART",
+                label: "Avenue Supermarts",
+                rawData: [{ period_end: "2025-03-31", raw_metric_values: { Revenue: 1 } }],
+                recastData: [{ period: "2025" }],
+                traceability: null,
+                companyType: "consumer",
+                sector: "Retail",
+              },
+            },
+          },
+        }),
+      });
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({ ok: true, kind: "comparison-registry" });
+
+      const getRes = await fetch(`${baseUrl}/api/research?kind=comparison-registry`);
+      const snapshot = await getRes.json();
+      expect(getRes.status).toBe(200);
+      expect(snapshot.companies.DMART.label).toBe("Avenue Supermarts");
+    });
+
+    it("POST /api/research — persists production-shape company research entries", async () => {
+      const analysisRes = await fetch(`${baseUrl}/api/research`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId: "DMART",
+          kind: "analysis",
+          analysis: {
+            id: "analysis-1",
+            latestPeriod: "2025-03-31",
+            qualityTier: "valuation-eligible",
+          },
+        }),
+      });
+      expect(analysisRes.status).toBe(200);
+      expect(await analysisRes.json()).toMatchObject({ ok: true, companyId: "DMART", kind: "analysis" });
+
+      const bundleRes = await fetch(`${baseUrl}/api/research?companyId=DMART`);
+      const bundle = await bundleRes.json();
+      expect(bundleRes.status).toBe(200);
+      expect(bundle.companyId).toBe("DMART");
+      expect(bundle.analysis[0].latestPeriod).toBe("2025-03-31");
+    });
+
     it("PUT /api/research/:companyId — merges with existing data", async () => {
       const res = await fetch(`${baseUrl}/api/research/${companyId}`, {
         method: "PUT",
