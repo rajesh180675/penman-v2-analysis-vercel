@@ -325,8 +325,12 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
             });
 
             const useDualScope = scope === "consolidated" && hasStandalone === true;
-            const consolidatedUrl = blobUrl ?? `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(folder)}.zip`;
-            const standaloneUrl   = standaloneBlobUrl ?? `/data/companies/${encodeURIComponent(folder)}/standalone.zip`;
+            // In local dev, always use the local Vite-served paths — all ZIPs exist
+            // under public/data/companies/ and blob URLs fail with CORS/network errors
+            // in a localhost context. On Vercel (DEV=false) the blobUrl is used as normal.
+            const preferLocal = import.meta.env.DEV;
+            const consolidatedUrl = (!preferLocal && blobUrl) ? blobUrl : `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(folder)}.zip`;
+            const standaloneUrl   = (!preferLocal && standaloneBlobUrl) ? standaloneBlobUrl : `/data/companies/${encodeURIComponent(folder)}/standalone.zip`;
 
             if (useDualScope) {
               const consResp = await fetch(consolidatedUrl);
@@ -353,8 +357,8 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
             } else {
               const zipName = scope === "standalone" ? "standalone.zip" : `${folder}.zip`;
               const zipUrl = scope === "standalone"
-                ? (standaloneBlobUrl ?? `/data/companies/${encodeURIComponent(folder)}/standalone.zip`)
-                : (blobUrl ?? `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(zipName)}`);
+                ? ((!preferLocal && standaloneBlobUrl) ? standaloneBlobUrl : `/data/companies/${encodeURIComponent(folder)}/standalone.zip`)
+                : ((!preferLocal && blobUrl) ? blobUrl : `/data/companies/${encodeURIComponent(folder)}/${encodeURIComponent(zipName)}`);
               const resp = await fetch(zipUrl);
               if (!resp.ok) throw new Error(`Library ${scope} ZIP not found for "${folder}".`);
               const blob = await resp.blob();
