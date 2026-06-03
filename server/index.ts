@@ -36,10 +36,11 @@ function isSafeSegment(s: string): boolean {
 
 function timingSafeStringEqual(a: string | undefined | null, b: string | undefined | null): boolean {
   if (!a || !b) return false;
-  const aBuf = Buffer.from(String(a));
-  const bBuf = Buffer.from(String(b));
-  if (aBuf.length !== bBuf.length) return false;
-  return crypto.timingSafeEqual(aBuf, bBuf);
+  // Hash both values to a fixed 32-byte digest before comparing so the
+  // early-return path cannot leak the token length via response timing.
+  const aHash = crypto.createHash("sha256").update(String(a)).digest();
+  const bHash = crypto.createHash("sha256").update(String(b)).digest();
+  return crypto.timingSafeEqual(aHash, bHash);
 }
 
 /**

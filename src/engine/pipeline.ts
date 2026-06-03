@@ -196,7 +196,12 @@ export function processCompanyDataFull(
  },
  })
       : null;
-    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult, distress, structuralBreakPeriods: [], lossMaker: null, itServices: null, cyclicality: null, ratioSanity, frequencyWarning: null };
+    // B6 — also check frequency for bank/NBFC data (quarterly uploads are equally unreliable)
+    const sortedForFreq = [...filteredData].sort(
+      (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()
+    );
+    const frequencyWarning = detectFrequencyWarning(sortedForFreq);
+    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult, distress, structuralBreakPeriods: [], lossMaker: null, itServices: null, cyclicality: null, ratioSanity, frequencyWarning };
   }
 
   // Fail-closed for blocked financial-institution scope.
