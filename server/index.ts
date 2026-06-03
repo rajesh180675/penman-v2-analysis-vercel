@@ -138,6 +138,11 @@ app.use(cors({
 }));
 
 const LOCAL_JSON_BODY_LIMIT = process.env.LOCAL_JSON_BODY_LIMIT ?? "10mb";
+// The /api/research endpoint handles comparison-registry sync which carries
+// raw/recast data for multiple companies. A 30-company portfolio can easily
+// exceed 10MB. Allow up to 50MB on that route specifically; other routes
+// keep the tighter global limit.
+const RESEARCH_JSON_BODY_LIMIT = process.env.RESEARCH_JSON_BODY_LIMIT ?? "50mb";
 
 const apiLimiter = rateLimit({
   windowMs: 60_000,
@@ -163,7 +168,10 @@ app.use("/api/", express.json({ limit: LOCAL_JSON_BODY_LIMIT }));
 // Routes — mirror the Vercel api/ structure
 app.use("/api/market-data", marketDataRouter);
 app.use("/api/audit", auditRouter);
-app.use("/api/research", researchRouter);
+// Research route gets a higher body limit for multi-company comparison payloads.
+// This override MUST come before the route mount so Express uses it instead of
+// the global 10MB parser.
+app.use("/api/research", express.json({ limit: RESEARCH_JSON_BODY_LIMIT }), researchRouter);
 
 // Blackboard (simple key-value)
 app.get("/api/blackboard", async (req, res) => {
@@ -203,7 +211,10 @@ app.get("/api/health", (_req, res) => {
 // Global error handler
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (err?.type === "entity.too.large") {
-    res.status(413).json({ ok: false, error: `API request body too large. Limit: ${LOCAL_JSON_BODY_LIMIT}.` });
+    const isResearch = _req.path.startsWith("/research") || _req.baseUrl?.includes("/research");
+    const activeLimit = isResearch ? RESEARCH_JSON_BODY_LIMIT : LOCAL_JSON_BODY_LIMIT;
+    const envHint = isResearch ? "RESEARCH_JSON_BODY_LIMIT" : "LOCAL_JSON_BODY_LIMIT";
+    res.status(413).json({ ok: false, error: `Request body too large. Limit: ${activeLimit}. Override with ${envHint} env var.` });
     return;
   }
   console.error("[server error]", err?.message ?? err);

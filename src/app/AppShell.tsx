@@ -23,18 +23,16 @@ import {
   createAuditAccessToken,
   createAuditRunId,
   getAuditClientGovernance,
-  isAuditEnabled,
   rememberAuditRun,
 } from "../lib/audit";
-import { listWorkspaceCompanies } from "../lib/researchWorkspace";
 import { readPersistedCompanyRegistry } from "../lib/companyRegistryStore";
 import { resolveNseSymbol, resolveFolderFromSymbol } from "../engine/nseSymbolRegistry";
 import { SourceParserDiagnostics } from "../engine/parserDiagnostics";
 import type { TabId } from "./tabs";
-import { TABS } from "./tabs";
 import { useAuditAnalysis } from "./useAuditAnalysis";
 import { useConfigManager } from "./useConfigManager";
 import { useWorkspaceSync } from "./useWorkspaceSync";
+import { useTabVisibility } from "./useTabVisibility";
 import { AppHeader } from "./components/AppHeader";
 import { CompanyContextStrip } from "./components/CompanyContextStrip";
 import { AnalysisBanners } from "./components/AnalysisBanners";
@@ -305,52 +303,14 @@ export function AppShell() {
     runStamp: traceability?.generatedAt ?? null,
   });
 
-  const hasRecast = (recastData?.length ?? 0) > 0;
-  const hasDebug = debugInfo !== null;
-  const workspaceCompanies = listWorkspaceCompanies();
-  const hasWorkspace = hasRecast || Boolean(rawData?.length) || workspaceCompanies.length > 0;
-  const valuationBlocked = Boolean(qualityGate?.valuationBlocked);
-  const scopeBlocked = Boolean(qualityGate?.scopeAssessment.blocked);
-  const financialFallbackAvailable = Boolean(scopeBlocked && rawData && rawData.length > 0 && !hasRecast);
-  const valuationTabEnabled = hasRecast || financialFallbackAvailable;
-
-// Financial-institution auto-redirect: when the pipeline produced a
-// bankResult or identified an unsupported scope (insurance), steer
-// the user away from the blank "statements" tab.
-useEffect(() => {
-if (!hasRecast && rawData && rawData.length > 0) {
- if (bankResult && activeTab === "statements") {
-  setActiveTab("bank");
- } else if (scopeBlocked && !bankResult && activeTab === "statements") {
-  // Insurance / unsupported financial — redirect to debug with context
-  setActiveTab("debug");
- }
-}
-}, [bankResult, hasRecast, activeTab, scopeBlocked, rawData]);
-
-  const readyCompanyCount = Object.values(registry.companies).filter((c) => c.recastData.length > 0).length;
-
-  const visibleTabs = TABS.filter(t => {
-    if (t.id === "debug") return hasDebug;
-    if (t.id === "comparison") return readyCompanyCount >= 2;
-    if (t.id === "inspector") return isAuditEnabled() && Boolean(auditMeta);
-    if (t.id === "watchlist") return hasWorkspace;
-    if (t.id === "workspace") return hasWorkspace;
-    if (t.id === "valuation") return valuationTabEnabled;
-    // Bank/NBFC tab: show when bankResult exists, even without industrial recast
-    if (t.id === "bank") return hasRecast || bankResult !== null;
-    // Dashboard: show for banks/NBFCs too (bankResult carries the analysis)
-    if (t.id === "dashboard") return hasRecast || bankResult !== null;
-    // Ratios + Quality: show for banks — FinancialInstitutionReport renders NIM/ROA/ROE trends
-    if (t.id === "ratios") return hasRecast || bankResult !== null;
-    if (t.id === "quality") return hasRecast || bankResult !== null;
-    // Scope tab — visible only when both consolidated AND standalone are loaded
-    // and the gap analysis succeeded. Phase A.
-    if (t.id === "scope") return scopeAwareResult !== null;
-    // Report tab: show for banks too — FinancialInstitutionReport renders from bankResult
-    if (t.id === "report") return hasRecast || bankResult !== null;
-    if (t.needsData) return hasRecast;
-    return true;
+  // ── Tab visibility (extracted hook) ────────────────────────────────
+  const {
+    visibleTabs, hasRecast, valuationBlocked,
+    scopeBlocked, financialFallbackAvailable, readyCompanyCount,
+    workspaceCompanies,
+  } = useTabVisibility({
+    rawData, recastData, debugInfo, qualityGate, bankResult,
+    scopeAwareResult, auditMeta, registry, activeTab, setActiveTab,
   });
 
   // Pass the full config — ForecastReport (and any engine calls it triggers) may
