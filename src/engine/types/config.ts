@@ -14,7 +14,9 @@ export type ValuationSectorTemplate =
   | "industrials"
   | "commodities"
   | "retail"
-  | "services";
+  | "services"
+  | "telecom"
+  | "utility";
 
 export type StructuralBreakWindowPolicy = "auto-post-break" | "manual" | "keep-all";
 export type GreenfieldAdjustmentMode = "as-reported-only" | "adjusted-with-audit";

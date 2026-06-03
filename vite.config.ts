@@ -74,6 +74,10 @@ export default defineConfig({
   build: singleFileBuild
     ? {}
     : {
+        // Vite's default 500 KB uncompressed warning is too noisy for this
+        // intentionally lazy-loaded analytics app. scripts/check-bundle-budget.cjs
+        // remains the authoritative gzip budget gate after every production build.
+        chunkSizeWarningLimit: 1100,
         rollupOptions: {
           output: {
             manualChunks(id) {

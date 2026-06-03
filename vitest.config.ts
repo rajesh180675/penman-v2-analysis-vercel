@@ -15,6 +15,12 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    setupFiles: ["./src/test/setup.ts"],
+    // Real-company Capitaline fixtures can spend >60s in beforeAll under full
+    // fork contention on Windows even though the isolated suite is healthy.
+    // Keep the hook timeout above the observed worst case so validation is not
+    // flaky while still bounding genuinely stuck hooks.
+    hookTimeout: 120_000,
     exclude: [
       "node_modules",
       "e2e",

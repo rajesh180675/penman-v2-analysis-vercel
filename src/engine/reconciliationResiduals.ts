@@ -289,6 +289,57 @@ function buildTelecomSectorNativeReadinessCheck(
   };
 }
 
+function buildUtilitySectorNativeReadinessCheck(
+  recastData: RecastPeriod[],
+  scopeClassification: string | null | undefined,
+): ReconciliationResidualCheck | null {
+  if (scopeClassification !== "detected-utility-unmodelled") return null;
+
+  const latest = recastData[recastData.length - 1] ?? null;
+  if (!latest) {
+    return {
+      key: "utility-sector-native-readiness",
+      label: "Utility sector-native recast readiness",
+      periodEnd: "utility",
+      residual: 1,
+      ratio: 1,
+      warningThreshold: 0.01,
+      criticalThreshold: 1,
+      status: "degraded",
+      detail: "Utility sector-native reconciliation could not run because no recast periods were available; keep the Phase-0 cap in place.",
+    };
+  }
+
+  const rateBasePpe = latest.bs.OA_PPE ?? 0;
+  const cwip = latest.bs.OA_CWIP ?? 0;
+  const regulatoryDeferrals = latest.bs.OA_UtilityRegulatoryDeferrals ?? 0;
+
+  const hasPpeEvidence = rateBasePpe > 0 && hasTraceEvidence(latest, "BS.PPE");
+  const hasCwipEvidence = cwip > 0 && hasTraceEvidence(latest, "BS.OA.CWIP");
+  const hasRegulatoryDeferralEvidence = regulatoryDeferrals > 0 && hasTraceEvidence(latest, "BS.OA.UtilityRegulatoryDeferrals");
+
+  const missing: string[] = [];
+  if (!hasPpeEvidence) missing.push("missing utility PPE/rate-base evidence");
+  if (!hasCwipEvidence) missing.push("missing CWIP evidence");
+  if (!hasRegulatoryDeferralEvidence) missing.push("missing regulatory-deferral evidence");
+
+  const confirmed = missing.length === 0;
+  const ratio = confirmed ? 0 : missing.length / 3;
+  return {
+    key: "utility-sector-native-readiness",
+    label: "Utility sector-native recast readiness",
+    periodEnd: latest.period_end,
+    residual: ratio,
+    ratio,
+    warningThreshold: 0.01,
+    criticalThreshold: 1,
+    status: confirmed ? "confirmed" : "degraded",
+    detail: confirmed
+      ? `Utility sector-native recast evidence confirmed for latest period: PPE/rate-base ₹${rateBasePpe.toFixed(2)} Cr, CWIP ₹${cwip.toFixed(2)} Cr, and regulatory deferrals ₹${regulatoryDeferrals.toFixed(2)} Cr are trace-backed.`
+      : `Utility sector-native reconciliation not confirmed (${missing.join("; ")}). Keep the Phase-0 cap in place until PPE/rate-base, CWIP, and regulatory deferral balances are trace-backed.`,
+  };
+}
+
 /**
  * S-9.4C kw-consistency residual builder — PROVENANCE-DRIVEN, fail-closed.
  *
@@ -680,6 +731,10 @@ export function evaluateReconciliationResiduals(params: {
     recastData,
     params.scopeClassification,
   );
+  const utilitySectorNativeReadinessCheck = buildUtilitySectorNativeReadinessCheck(
+    recastData,
+    params.scopeClassification,
+  );
   const valuationTriangulationCheck = buildValuationTriangulationCheck(
     params.valuationTriangulation,
     recastData[recastData.length - 1]?.period_end ?? "valuation",
@@ -687,6 +742,7 @@ export function evaluateReconciliationResiduals(params: {
   const checks = [
     ...structuralChecks,
     ...(telecomSectorNativeReadinessCheck ? [telecomSectorNativeReadinessCheck] : []),
+    ...(utilitySectorNativeReadinessCheck ? [utilitySectorNativeReadinessCheck] : []),
     ...(valuationTriangulationCheck ? [valuationTriangulationCheck] : []),
   ];
 

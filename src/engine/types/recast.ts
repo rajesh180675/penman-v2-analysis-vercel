@@ -42,6 +42,7 @@ export interface CanonicalBalanceSheet {
   OA_PPE: number; OA_ROU: number; OA_Goodwill: number;
   OA_OtherIntangibles: number; OA_Inventory: number;
   OA_TelecomSpectrumLicenses?: number | undefined;
+  OA_UtilityRegulatoryDeferrals?: number | undefined;
   OA_TradeReceivables: number; OA_DTA: number;
   OA_CWIP: number; OA_Other: number;
   /* India-specific fields (Phase 2.3) */

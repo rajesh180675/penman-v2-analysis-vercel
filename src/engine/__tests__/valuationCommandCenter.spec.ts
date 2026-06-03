@@ -372,6 +372,40 @@ describe("valuation command center", () => {
     expect(out.signal.killSwitches[0]).toContain("outside the supported industrial-company scope");
   });
 
+  it("routes explicit telecom and utility company types to sector-native valuation templates", () => {
+    const data = [
+      mkPeriod(2023, 1000, 180, 130, 520, 760),
+      mkPeriod(2024, 1100, 205, 150, 590, 820),
+      mkPeriod(2025, 1210, 232, 172, 665, 885),
+    ];
+
+    const telecom = buildValuationCommandCenter({
+      data,
+      config: {
+        ...DEFAULT_CONFIG,
+        company_type: "telecom",
+        shares_outstanding: CroreShares(620),
+      },
+      analysisStatus: productionReadyStatus,
+    });
+    const utility = buildValuationCommandCenter({
+      data,
+      config: {
+        ...DEFAULT_CONFIG,
+        company_type: "utility",
+        shares_outstanding: CroreShares(620),
+      },
+      analysisStatus: productionReadyStatus,
+    });
+
+    expect(telecom.sectorTemplate.id).toBe("telecom");
+    expect(utility.sectorTemplate.id).toBe("utility");
+    expect(telecom.sectorTemplate.source).toBe("company-type");
+    expect(utility.sectorTemplate.source).toBe("company-type");
+    expect(telecom.scenarios.find((card) => card.key === "base")?.intrinsicPerShare).not.toBeNull();
+    expect(utility.scenarios.find((card) => card.key === "base")?.intrinsicPerShare).not.toBeNull();
+  });
+
   it("applies the selected sector template and exposes a professional opportunity protocol", () => {
     const data = [
       mkPeriod(2023, 1000, 180, 130, 520, 760),

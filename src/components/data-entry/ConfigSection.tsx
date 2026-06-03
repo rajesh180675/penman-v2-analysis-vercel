@@ -149,6 +149,8 @@ export default function ConfigSection({
                 <option value="commodities">Commodities</option>
                 <option value="retail">Retail</option>
                 <option value="services">Services</option>
+                <option value="telecom">Telecom / spectrum network</option>
+                <option value="utility">Utility / regulated asset base</option>
               </select>
             </div>
             <div>

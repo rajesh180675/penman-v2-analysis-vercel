@@ -110,6 +110,66 @@ function buildTrace(rawData: RawPeriodData[]) {
   });
 }
 
+function mkUtilityRaw(period_end: string, i: number, overrides: Record<string, number> = {}): RawPeriodData {
+  return {
+    company_id: "UTILITY_CAP_LIFT",
+    period_end,
+    raw_metric_values: {
+      "Total Assets__BalanceSheet": 2200 + i * 120,
+      "Total Equity__BalanceSheet": 900 + i * 45,
+      "Total Stockholders' Equity__BalanceSheet": 900 + i * 45,
+      "Minority Interest__BalanceSheet": 0,
+      "Property, Plant and Equipment__BalanceSheet": 980 + i * 60,
+      "Capital Work in Progress__BalanceSheet": 240 + i * 15,
+      "Regulatory Deferral Account - Debit Balance__BalanceSheet": 160 + i * 8,
+      "Revenue From Operations(Net)__ProfitLoss": 1400 + i * 70,
+      "Profit Before Tax__ProfitLoss": 250 + i * 10,
+      "Tax Expenses__ProfitLoss": 62 + i * 2,
+      "Profit After Tax__ProfitLoss": 188 + i * 8,
+      "Total Comprehensive Income for the Year__ProfitLoss": 188 + i * 8,
+      "Finance Cost__ProfitLoss": 55 + i * 2,
+      "Other Income__ProfitLoss": 0,
+      "Other Expenses__ProfitLoss": 120 + i * 5,
+      "Net Cash from Operating Activities__CashFlow": 330 + i * 12,
+      "Purchased of Fixed Assets__CashFlow": -210 - i * 8,
+      "Dividend Paid__CashFlow": -70,
+      ...overrides,
+    },
+  };
+}
+
+function computeLatestUtilityRecast(rawData: RawPeriodData[]): RecastPeriod[] {
+  const latest = rawData.at(-1);
+  return latest ? [computeRecastPeriod(latest, { ...DEFAULT_CONFIG, company_type: "utility" })] : [];
+}
+
+function buildUtilityTrace(rawData: RawPeriodData[]) {
+  const scope = assessAnalysisScope(rawData);
+  expect(scope.classification).toBe("detected-utility-unmodelled");
+  return buildAnalysisTraceability({
+    generatedAt: "2026-06-01T00:00:00.000Z",
+    runId: "run-utility-cap-lift",
+    companyId: "UTILITY_CAP_LIFT",
+    sourceMode: "manual",
+    rawData,
+    rawMetricKeyCount: Object.keys(rawData[0]?.raw_metric_values ?? {}).length,
+    periodCount: rawData.length,
+    latestPeriod: rawData.at(-1)?.period_end,
+    recastData: computeLatestUtilityRecast(rawData),
+    config: { ...DEFAULT_CONFIG, company_type: "utility" },
+    analysisStatus: CLEAN_STATUS,
+    qualityGate: gateWithScope(scope),
+    valuationTriangulation: {
+      methods: [
+        { key: "accrual-riv", label: "Accrual RIV", perShare: 100 },
+        { key: "cash-fcff-dcf", label: "Cash-statement FCFF DCF", perShare: 103 },
+        { key: "relative-ev-ebitda", label: "Relative EV/EBITDA", perShare: 97 },
+      ],
+    },
+    policyVersions: getAnalysisPolicyVersions(),
+  });
+}
+
 describe("telecom sector-native cap lift gate", () => {
   it("keeps the Phase-0 telecom cap when sector-native reconciliation is not confirmed", () => {
     const rawData = Array.from({ length: 4 }, (_, i) =>
@@ -136,5 +196,19 @@ describe("telecom sector-native cap lift gate", () => {
     expect(readiness?.status).toBe("confirmed");
     expect(veCheckpoint?.detail.toLowerCase()).not.toContain("no sector-native valuation model");
     expect(veCheckpoint?.detail.toLowerCase()).not.toContain("sector-native reconciliation");
+  });
+});
+
+describe("utility sector-native cap lift gate", () => {
+  it("does not apply the Phase-0 utility cap once regulatory-deferral rate-base evidence is confirmed", () => {
+    const rawData = Array.from({ length: 4 }, (_, i) => mkUtilityRaw(`${2022 + i}-03-31`, i));
+
+    const trace = buildUtilityTrace(rawData);
+    const readiness = trace.reconciliation.checks.find((check) => check.key === "utility-sector-native-readiness");
+    const veCheckpoint = trace.rigor.checkpoints.find((check) => check.level === "valuation-eligible");
+
+    expect(readiness?.status).toBe("confirmed");
+    expect(veCheckpoint?.detail.toLowerCase()).not.toContain("utility sector detected");
+    expect(veCheckpoint?.detail.toLowerCase()).not.toContain("no utility-native");
   });
 });
