@@ -14,6 +14,10 @@ import { buildAnalysisTraceability } from "../engine/analysisTraceability";
 import { buildAnalysisPublicationSnapshot } from "../lib/publication/analysisPublicationSnapshot";
 import { buildComparisonPublicationSnapshot } from "../lib/publication/comparisonPublicationSnapshot";
 import { getAnalysisPolicyVersions } from "../engine/policyVersions";
+
+// Module-level constant — policy versions are static and never change
+// during the app lifecycle. Eliminates a useMemo allocation per render.
+const POLICY_VERSIONS = getAnalysisPolicyVersions();
 import { SourceParserDiagnostics } from "../engine/parserDiagnostics";
 import { buildValuationCommandCenter } from "../engine/valuationCommandCenter";
 
@@ -166,7 +170,7 @@ export function useAuditAnalysis(inputs: AuditAnalysisInputs) {
       return null;
     }
   }, [analysisStatus, config, recastData]);
-  const policyVersions = useMemo(() => getAnalysisPolicyVersions(), []);
+  const policyVersions = POLICY_VERSIONS;
   const latestPeriod = valuationRawData && valuationRawData.length > 0 ? valuationRawData[valuationRawData.length - 1]!.period_end : null;
   const traceability = useMemo(
     () => buildAnalysisTraceability({
@@ -196,7 +200,7 @@ export function useAuditAnalysis(inputs: AuditAnalysisInputs) {
       bankSubtype: bankResult?.subtype ?? null,
       valuationTriangulation,
     }),
-    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, policyVersions, qualityGateWithRecast, valuationRawData, rawData, recastData, bankResult, valuationTriangulation],
+    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, qualityGateWithRecast, valuationRawData, rawData, recastData, bankResult, valuationTriangulation],
   );
   const publication = useMemo(
     () => (recastData?.length
@@ -213,7 +217,7 @@ export function useAuditAnalysis(inputs: AuditAnalysisInputs) {
         family: qualityGateWithRecast?.scopeAssessment.analysisFamily ?? null,
       })
       : null),
-    [analysisStatus, auditMeta, config, mappingAudit, policyVersions, qualityGateWithRecast, valuationRawData, recastData, traceability],
+    [analysisStatus, auditMeta, config, mappingAudit, qualityGateWithRecast, valuationRawData, recastData, traceability],
   );
   const comparisonPublication = useMemo(
     () => buildComparisonPublicationSnapshot(registry),

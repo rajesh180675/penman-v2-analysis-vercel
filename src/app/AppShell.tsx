@@ -3,7 +3,7 @@ import { useServerStatus } from "../hooks/useServerStatus";
 import { useBankSidecars } from "../hooks/useBankSidecars";
 import { useAuditPersistence } from "../hooks/useAuditPersistence";
 import { useLiveMarketData } from "../hooks/useLiveMarketData";
-import { RawPeriodData, DEFAULT_CONFIG, EngineConfig, CompanyRegistry } from "../engine/types";
+import { RawPeriodData, CompanyRegistry } from "../engine/types";
 import { CroreShares } from "../engine/types/units";
 import { analysisFamilyFromScope, assessAnalysisScope } from "../engine/scopePolicy";
 import { trace } from "../lib/traceLogger";
@@ -26,14 +26,15 @@ import {
   isAuditEnabled,
   rememberAuditRun,
 } from "../lib/audit";
-import { listWorkspaceCompanies, rememberWorkspaceAnalysis } from "../lib/researchWorkspace";
-import { syncWorkspaceAnalysis, syncWorkspaceProfile } from "../lib/sharedResearchApi";
+import { listWorkspaceCompanies } from "../lib/researchWorkspace";
 import { readPersistedCompanyRegistry } from "../lib/companyRegistryStore";
 import { resolveNseSymbol, resolveFolderFromSymbol } from "../engine/nseSymbolRegistry";
 import { SourceParserDiagnostics } from "../engine/parserDiagnostics";
 import type { TabId } from "./tabs";
 import { TABS } from "./tabs";
 import { useAuditAnalysis } from "./useAuditAnalysis";
+import { useConfigManager } from "./useConfigManager";
+import { useWorkspaceSync } from "./useWorkspaceSync";
 import { AppHeader } from "./components/AppHeader";
 import { CompanyContextStrip } from "./components/CompanyContextStrip";
 import { AnalysisBanners } from "./components/AnalysisBanners";
@@ -52,8 +53,6 @@ export function AppShell() {
   const [parserDiagnostics, setParserDiagnostics] = useState<SourceParserDiagnostics | null>(null);
   const [segmentData, setSegmentData] = useState<import("../engine/segmentParser").AllSegmentData | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("upload");
-  const [config, setConfig] = useState<EngineConfig>(DEFAULT_CONFIG);
-  const [darkMode, setDarkMode] = useState(false);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -75,6 +74,11 @@ export function AppShell() {
   const [auditMeta, setAuditMeta] = useState<AuditSubmissionMeta | null>(null);
   const [workspaceCompanyId, setWorkspaceCompanyId] = useState<string | null>(null);
   const { sharedRegistryStatus } = useRegistryPersistence(registry, setRegistry);
+
+  // ── Config manager (extracted hook) ────────────────────────────────
+  // Owns config state, URL hydration, dark mode.
+  // configRef always holds the latest config — no more stale closures.
+  const { config, setConfig, configRef, darkMode, setDarkMode } = useConfigManager(setActiveTab);
 
   // Live market data — fetched at App level so Dashboard + Valuation both have it
   const { snapshot: liveMarketData } = useLiveMarketData({
@@ -134,27 +138,6 @@ export function AppShell() {
   const hasUnacknowledgedBreaks = structuralBreakPeriods.length > 0 &&
     (!config.excluded_periods || config.excluded_periods.length === 0);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const rf = Number(params.get("rf"));
-    const erp = Number(params.get("erp"));
-    const company = params.get("company");
-    const tab = params.get("tab") as TabId | null;
-    const dark = params.get("dark");
-    setConfig((prev) => ({
-      ...prev,
-      risk_free_rate: Number.isFinite(rf) && rf > 0 ? rf / 100 : prev.risk_free_rate,
-      equity_risk_premium: Number.isFinite(erp) && erp > 0 ? erp / 100 : prev.equity_risk_premium,
-      ticker: company || prev.ticker,
-    }));
-    if (tab && TABS.some((t) => t.id === tab)) setActiveTab(tab);
-    if (dark === "1") setDarkMode(true);
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", darkMode);
-  }, [darkMode]);
-
   useUrlSync({
     riskFreeRate: config.risk_free_rate,
     equityRiskPremium: config.equity_risk_premium,
@@ -183,10 +166,9 @@ export function AppShell() {
     // current when the user changes type after loading data.
   }, [rawData, recastData, traceability, config.company_type]);
 
-  // Fix 6: Auto-fill shares_outstanding from the latest period's shareCountInput
-  // when the user hasn't manually entered a value. Uses diluted shares when
-  // available, falls back to end-period shares, then capital-derived shares.
-  // Only fires when recastData arrives and config.shares_outstanding is unset.
+  // Auto-fill shares_outstanding from recast shareCountInput. This was
+  // originally inside useConfigManager but recastData arrives after the
+  // config hook initializes, so the effect lives here where both are available.
   useEffect(() => {
     if (!recastData || recastData.length === 0) return;
     if (config.shares_outstanding != null) return; // user already set it
@@ -201,10 +183,11 @@ export function AppShell() {
     if (autoShares != null && autoShares > 0) {
       setConfig((prev) => {
         if (prev.shares_outstanding != null) return prev;
+        // CroreShares branded import is used in the hook; inline here for clarity.
         return { ...prev, shares_outstanding: CroreShares(autoShares) };
       });
     }
-  }, [recastData, config.shares_outstanding]);
+  }, [recastData, config.shares_outstanding, setConfig]);
 
   // If rawData was submitted but recastData comes back null, navigate to an
   // appropriate fallback tab. Bank/NBFC datasets never produce industrial
@@ -275,17 +258,9 @@ export function AppShell() {
   // Note: Bank/NBFC datasets will auto-redirect to "bank" tab via the
   // useEffect below (which detects bankResult && !hasRecast).
   // Industrial datasets land on "statements" which is the primary analysis view.
-  // M1 fix: detect financial-institution scope synchronously here to avoid
-  // the "No data loaded" flash that occurs when statements tab renders before
-  // the bank-redirect useEffect fires on the next render cycle.
-  // M2 fix: use the LATEST config (post-setConfig above) for scope assessment.
-  // The `config` closure variable is stale when called from the library grid
-  // (onConfigChange fires before onDataSubmit but React hasn't re-rendered).
-  // Reading from the updater's return value isn't possible, so we reconstruct
-  // the relevant field: company_type is already set by onConfigChange in
-  // DataEntry before this callback fires.
-  let latestConfig = config;
-  setConfig((prev) => { latestConfig = prev; return prev; });
+  // M2 fix: use configRef.current for the latest config, replacing the old
+  // stale-closure workaround `let latestConfig; setConfig(prev => { latestConfig = prev; return prev; })`.
+  const latestConfig = configRef.current;
   trace("ui", "dataLoaded", {
     periods: data.length,
     companyId: data[0]?.company_id ?? null,
@@ -301,7 +276,7 @@ export function AppShell() {
     setActiveTab("statements");
   }
     },
-    [auditGovernance.contentClass, auditGovernance.retentionDays, config]
+    [auditGovernance.contentClass, auditGovernance.retentionDays, config, configRef, setConfig]
   );
 
   // Audit persistence (extracted to useAuditPersistence hook)
@@ -383,26 +358,14 @@ if (!hasRecast && rawData && rawData.length > 0) {
   // partial object caused silent undefined accesses for those fields.
   const forecastConfig = config;
 
-  useEffect(() => {
-    if (!rawData && !recastData) return;
-    rememberWorkspaceAnalysis({
-      rawData,
-      recastData,
-      config,
-      analysisStatus,
-      auditMeta,
-    });
-  }, [analysisStatus, auditMeta, config, rawData, recastData]);
-
-  useEffect(() => {
-    const companyId = auditMeta?.companyId ?? rawData?.[0]?.company_id ?? null;
-    if (!companyId) return;
-    const workspaceCompanies = listWorkspaceCompanies();
-    const record = workspaceCompanies.find((item) => item.companyId === companyId) ?? null;
-    if (!record) return;
-    void syncWorkspaceProfile(record);
-    if (record.analysisHistory[0]) void syncWorkspaceAnalysis(companyId, record.analysisHistory[0]);
-  }, [analysisStatus, auditMeta?.companyId, rawData]);
+  // ── Workspace sync (extracted hook with 800ms debounce) ────────────
+  useWorkspaceSync({
+    rawData,
+    recastData,
+    config,
+    analysisStatus,
+    auditMeta,
+  });
 
   return (
     <ErrorBoundary>
