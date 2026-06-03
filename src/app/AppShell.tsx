@@ -179,7 +179,9 @@ export function AppShell() {
         },
       };
     });
-  }, [rawData, recastData, traceability]);
+    // config.company_type included so the registry companyType field stays
+    // current when the user changes type after loading data.
+  }, [rawData, recastData, traceability, config.company_type]);
 
   // Fix 6: Auto-fill shares_outstanding from the latest period's shareCountInput
   // when the user hasn't manually entered a value. Uses diluted shares when

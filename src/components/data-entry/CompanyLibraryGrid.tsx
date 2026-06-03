@@ -218,7 +218,8 @@ export default function CompanyLibraryGrid({ onPickCompany, disabled = false }: 
           {/* Rows */}
           <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
             {filtered.map(c => {
-              const style = TYPE_STYLES[c.type];
+              const style = TYPE_STYLES[c.type as keyof typeof TYPE_STYLES];
+              if (!style) return null; // unknown type — skip row rather than crash
               return (
                 <button
                   key={c.folder}

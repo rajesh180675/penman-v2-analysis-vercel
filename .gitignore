@@ -45,3 +45,25 @@ __pycache__/
 # Local scratch (debugging artifacts)
 scratch/
 scratch_*
+
+# Security / reverse-engineering research scripts (unrelated to the app)
+frida_*.js
+frida_*.log
+disasm_paltalk*.py
+hermes_paltalk.py
+security_assessment.py
+extract_proto*.py
+parse_frida_dump.py
+
+# Debug JSONL captures
+*_out.jsonl
+capture_out.jsonl
+proto_dump.jsonl
+
+# Hermes agent temporary files and unmerged plans
+.hermes/tmp/
+.hermes/plans/
+
+# Test results / playwright artifacts
+test-results/
+playwright-report/

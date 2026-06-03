@@ -395,7 +395,10 @@ export function assessAnalysisScope(
     const insuranceSignals = signals.filter(s => s.kind === "insurance");
     const distinctLabels = insuranceSignals.length;
     const totalPeriodsObserved = insuranceSignals.reduce((sum, s) => sum + s.periodsObserved, 0);
-    const isMaterial = (distinctLabels >= 2 && totalPeriodsObserved >= 4)
+    // Two or more distinct insurance labels each seen in ≥ 2 periods,
+    // OR a single label dominating 4+ periods — both indicate a material
+    // insurance sub-business, not a stray line item.
+    const isMaterial = (distinctLabels >= 2 && totalPeriodsObserved >= 2)
                     || (distinctLabels >= 1 && totalPeriodsObserved >= 4);
 
     if (isMaterial) {
