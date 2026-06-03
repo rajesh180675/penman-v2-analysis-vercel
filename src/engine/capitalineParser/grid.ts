@@ -17,7 +17,9 @@ export async function gridViaXlsx(buffer: ArrayBuffer): Promise<string[][]> {
   // with exceljs or a CDN-pinned SheetJS build.
   const { default: XLSX } = await import("xlsx");
   const uint8 = new Uint8Array(buffer);
-  let wb: import("xlsx").WorkBook;
+  let wb: import("xlsx").WorkBook | null = null;
+  let best: string[][] = [];
+
   try {
     wb = XLSX.read(uint8, {
       type: "array",
@@ -27,29 +29,39 @@ export async function gridViaXlsx(buffer: ArrayBuffer): Promise<string[][]> {
       dense: false,
       codepage: 65001,
     });
+
+    if (wb && wb.SheetNames.length) {
+      for (const sn of wb.SheetNames) {
+        const ws = wb.Sheets[sn];
+        if (!ws) continue;
+        const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, {
+          header: 1,
+          raw: false,
+          defval: "",
+        }) as unknown[][];
+
+        const grid = rows
+          .map((r) =>
+            (Array.isArray(r) ? r : [r]).map((c) => cleanCell(String(c ?? "")))
+          )
+          .filter((r) => r.some((c) => c !== ""));
+
+        if (grid.length > best.length) best = grid;
+      }
+    }
   } catch {
     return [];
+  } finally {
+    // Attempt to manually clear references to prevent memory leaks from SheetJS
+    if (wb) {
+        for (const sheet of Object.keys(wb.Sheets)) {
+            delete wb.Sheets[sheet];
+        }
+        wb.SheetNames.length = 0;
+        wb = null;
+    }
   }
-  if (!wb.SheetNames.length) return [];
 
-  let best: string[][] = [];
-  for (const sn of wb.SheetNames) {
-    const ws = wb.Sheets[sn];
-    if (!ws) continue;
-    const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, {
-      header: 1,
-      raw: false,
-      defval: "",
-    }) as unknown[][];
-
-    const grid = rows
-      .map((r) =>
-        (Array.isArray(r) ? r : [r]).map((c) => cleanCell(String(c ?? "")))
-      )
-      .filter((r) => r.some((c) => c !== ""));
-
-    if (grid.length > best.length) best = grid;
-  }
   return best;
 }
 

@@ -17,17 +17,12 @@
  *   - HDFC Bank: hdfcBank.spec.ts (ROA, ROE, CASA bands)
  *   - Bajaj Finance: bajajFinance.spec.ts (NBFC routing + cost-to-income)
  *   - Vodafone Idea: vodafoneIdea.spec.ts (loss-maker fail-close)
- *
- * Why we don't load ZIPs here: parsing 13 ZIPs in one worker leaks ~1.3GB
- * per parse and OOMs even with --max-old-space-size=4096. The leak lives
- * in the parser (JSZip + xlsx workbook retention) and is a separate issue.
- * Until then, ZIP-load assertions run in their own per-company spec files
- * (one worker each = clean heap per test file).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 import { NSE_SYMBOL_REGISTRY } from "../nseSymbolRegistry";
+import { parseCapitalineZip } from "../capitalineParser";
 
 interface RegistryEntry {
   folder: string;
@@ -98,6 +93,13 @@ describe("Golden Companies — registry validation", () => {
           expect(existsSync(stanPath)).toBe(true);
         });
       }
+
+      it("can load the ZIP without OOMing the worker (leak test)", async () => {
+        const zipPath = resolve(COMPANIES_DIR, entry.folder, `${entry.folder}.zip`);
+        const buffer = readFileSync(zipPath);
+        const { periods } = await parseCapitalineZip(buffer);
+        expect(periods.length).toBeGreaterThan(0);
+      });
     });
   }
 });
