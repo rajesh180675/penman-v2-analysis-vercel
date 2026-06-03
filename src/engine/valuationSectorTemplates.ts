@@ -1,4 +1,4 @@
-import { RecastPeriod, ValuationSectorTemplate } from "./types";
+import { CompanyType, RecastPeriod, ValuationSectorTemplate } from "./types";
 
 export interface ValuationSectorTemplateDefinition {
   id: Exclude<ValuationSectorTemplate, "auto">;
@@ -164,6 +164,52 @@ export const VALUATION_SECTOR_TEMPLATES: Record<Exclude<ValuationSectorTemplate,
     cyclical: false,
     keAdjustment: -0.015,  // asset-light, high ROCE, lower risk
   },
+  telecom: {
+    id: "telecom",
+    label: "Telecom / spectrum network",
+    description: "Spectrum/licence-heavy network operator model with high fixed-cost leverage, heavy maintenance capex, and regulated tariff sensitivity.",
+    normalizedGrowth: 0.075,
+    terminalGrowthFloor: 0.025,
+    terminalGrowthCap: 0.045,
+    maintenanceCapexShare: 0.86,
+    maintenanceDepFloor: 1.1,
+    baseRequiredMarginOfSafety: 0.34,
+    stressBaseUpside: 0.28,
+    stressProtectedUpside: 0.1,
+    historicalExtremePercentile: 0.08,
+    growthFadeAlpha: 0.7,
+    marginFadeAlpha: 0.84,
+    atoFadeAlpha: 0.9,
+    companyEvidenceMaxWeight: 0.68,
+    growthGuardrailBand: 0.03,
+    marginGuardrailBand: 0.035,
+    atoGuardrailBand: 0.3,
+    cyclical: true,
+    keAdjustment: 0.015,
+  },
+  utility: {
+    id: "utility",
+    label: "Utility / regulated asset base",
+    description: "Rate-base utility model with CWIP/regulatory-deferral evidence, lower demand volatility, and high capital intensity.",
+    normalizedGrowth: 0.065,
+    terminalGrowthFloor: 0.025,
+    terminalGrowthCap: 0.045,
+    maintenanceCapexShare: 0.88,
+    maintenanceDepFloor: 1.05,
+    baseRequiredMarginOfSafety: 0.3,
+    stressBaseUpside: 0.24,
+    stressProtectedUpside: 0.08,
+    historicalExtremePercentile: 0.1,
+    growthFadeAlpha: 0.74,
+    marginFadeAlpha: 0.88,
+    atoFadeAlpha: 0.92,
+    companyEvidenceMaxWeight: 0.72,
+    growthGuardrailBand: 0.025,
+    marginGuardrailBand: 0.03,
+    atoGuardrailBand: 0.3,
+    cyclical: false,
+    keAdjustment: -0.005,
+  },
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -197,17 +243,38 @@ function inferTemplateId(latest: RecastPeriod): Exclude<ValuationSectorTemplate,
   return "services";
 }
 
+function templateFromCompanyType(companyType: CompanyType | null | undefined): Exclude<ValuationSectorTemplate, "auto"> | null {
+  switch (companyType) {
+    case "telecom":
+      return "telecom";
+    case "utility":
+      return "utility";
+    case "consumer":
+      return "consumer-staples";
+    case "it-services":
+      return "services";
+    case "cyclical":
+      return "commodities";
+    default:
+      return null;
+  }
+}
+
 export function resolveValuationSectorTemplate(
   data: RecastPeriod[],
   preferredTemplate: ValuationSectorTemplate | null | undefined,
+  companyType?: CompanyType | null | undefined,
 ) {
   const latest = data[data.length - 1]!;
+  const companyTypeTemplate = preferredTemplate == null || preferredTemplate === "auto"
+    ? templateFromCompanyType(companyType)
+    : null;
   const resolvedId = preferredTemplate && preferredTemplate !== "auto"
     ? preferredTemplate
-    : inferTemplateId(latest);
+    : companyTypeTemplate ?? inferTemplateId(latest);
   const template = VALUATION_SECTOR_TEMPLATES[resolvedId];
   return {
     template,
-    source: preferredTemplate && preferredTemplate !== "auto" ? "user" : "auto",
+    source: preferredTemplate && preferredTemplate !== "auto" ? "user" : companyTypeTemplate ? "company-type" : "auto",
   } as const;
 }

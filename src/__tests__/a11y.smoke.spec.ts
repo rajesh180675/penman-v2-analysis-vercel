@@ -48,6 +48,12 @@ async function runAxe(html: string): Promise<AxeViolation[]> {
         // we add wcag22aa for the new 2.2 success criteria.
         values: ["wcag2a", "wcag2aa", "wcag22aa"],
       },
+      rules: {
+        // axe's color-contrast rule relies on canvas/text measurement APIs that
+        // jsdom does not implement. Keep the harness focused on rules jsdom can
+        // evaluate deterministically; browser-based E2E should own contrast.
+        "color-contrast": { enabled: false },
+      },
     });
     return result.violations.map((v) => ({
       id: v.id,
@@ -95,13 +101,11 @@ describe("a11y harness (Plan 7 PR-7.1)", () => {
     expect(violations.length).toBeGreaterThan(0);
   });
 
-  it("flags low color contrast (WCAG 1.4.3)", async () => {
-    // Light grey text on white — fails AA
+  it("keeps the jsdom harness stable when contrast cannot be computed", async () => {
+    // Light grey text on white would fail AA in a real browser, but jsdom lacks
+    // the layout/canvas APIs axe needs for deterministic contrast evaluation.
     const html = '<p style="color: #cccccc; background: #ffffff;">faint text</p>';
     const violations = await runAxe(html);
-    // axe in jsdom can't always compute contrast; we accept either a
-    // violation or empty (jsdom limitation). This test is a reminder
-    // that the rule is enabled, not a strict assertion.
     expect(Array.isArray(violations)).toBe(true);
   });
 });

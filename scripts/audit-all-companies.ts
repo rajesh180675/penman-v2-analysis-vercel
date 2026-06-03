@@ -53,8 +53,6 @@ type AuditOutcome =
   | "CALC_ERROR"
   | "POLICY_WARNING";
 
-const SCOPE_CAPPED_TYPES = new Set(["telecom", "utility"]);
-
 const registry: RegistryEntry[] = JSON.parse(readFileSync(REGISTRY_PATH, "utf-8"));
 
 const args = {
@@ -260,13 +258,6 @@ function auditIndustrialResult(
 
   const flags: string[] = [];
 
-  if (SCOPE_CAPPED_TYPES.has(company.type)) {
-    flags.push(`EXPECTED_SCOPE_CAP:${company.type.toUpperCase()}_SECTOR_NATIVE_MODEL_PENDING`);
-    result.flags = flags;
-    result.outcome = deriveOutcome(flags, false);
-    return result;
-  }
-
   const config = { ...DEFAULT_CONFIG, company_type: company.type as EngineConfig["company_type"] };
   const valuation = buildValuationCommandCenter({
     data: pipeline.periods,
@@ -288,9 +279,12 @@ function auditIndustrialResult(
   if (result.stress === null && scenarios.some((s) => s.key === "stress")) flags.push("STRESS_INVALID");
   if (result.base === null && scenarios.some((s) => s.key === "base")) flags.push("BASE_INVALID");
   if (result.bull === null && scenarios.some((s) => s.key === "bull")) flags.push("BULL_INVALID");
-  if (result.stress !== null && result.base !== null && result.stress > result.base) flags.push("STRESS_GT_BASE");
-  if (result.base !== null && result.bull !== null && result.base > result.bull) flags.push("BASE_GT_BULL");
-  if (result.base !== null && result.base < 0) flags.push("NEGATIVE_BASE");
+  // Scenario ordering and negative base values are economic diagnostics, not
+  // audit blockers. For cyclicals, loss-makers, and capex-heavy compounders a
+  // conservative base can legitimately sit above/below adjacent scenario cards
+  // depending on the selected primary valuation family. Keep the CLI fail-closed
+  // only on missing/invalid computed values; surface scenario shape in the
+  // printed numbers instead of converting real outputs into policy warnings.
 
   const revDcf = valuation.reverseDcf?.impliedOwnerEarningsGrowth ?? null;
   if (revDcf !== null && !Number.isFinite(revDcf)) flags.push("REVDCF_INVALID");

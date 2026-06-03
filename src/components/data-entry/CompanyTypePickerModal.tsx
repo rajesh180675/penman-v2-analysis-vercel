@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CompanyType } from "../../engine/types";
 
 const TYPES: { value: CompanyType; label: string }[] = [
@@ -30,8 +30,7 @@ interface Props {
   onCancel: () => void;
 }
 
-/** Map registry type to a sensible default for the dropdown */
-function registryTypeToDefault(registryType: string): CompanyType {
+export function registryTypeToDefault(registryType: string): CompanyType {
   const direct = ["bank", "nbfc", "insurance", "it-services", "consumer", "utility", "telecom", "cyclical"] as const;
   if ((direct as readonly string[]).includes(registryType)) return registryType as CompanyType;
   // conglomerate, loss-maker, etc. → industrial
@@ -41,6 +40,10 @@ function registryTypeToDefault(registryType: string): CompanyType {
 export default function CompanyTypePickerModal({ company, onConfirm, onCancel }: Props) {
   const defaultType = company ? registryTypeToDefault(company.type) : "auto";
   const [chosen, setChosen] = useState<CompanyType>(defaultType);
+
+  useEffect(() => {
+    setChosen(defaultType);
+  }, [defaultType, company?.folder, company?.ticker]);
 
   if (!company) return null;
 

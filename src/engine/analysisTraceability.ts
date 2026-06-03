@@ -292,13 +292,15 @@ export function buildAnalysisTraceability(params: {
   const scopeClassification = qualityGate?.scopeAssessment?.classification;
   const telecomSectorNativeReady = scopeClassification === "detected-telecom-unmodelled"
     && reconciliation.checks.some((check) => check.key === "telecom-sector-native-readiness" && check.status === "confirmed");
+  const utilitySectorNativeReady = scopeClassification === "detected-utility-unmodelled"
+    && reconciliation.checks.some((check) => check.key === "utility-sector-native-readiness" && check.status === "confirmed");
   const sectorUnmodelledCapsAtPlausible =
     (scopeClassification === "detected-telecom-unmodelled" && !telecomSectorNativeReady)
-    || scopeClassification === "detected-utility-unmodelled";
+    || (scopeClassification === "detected-utility-unmodelled" && !utilitySectorNativeReady);
   const sectorCapLabel = scopeClassification === "detected-utility-unmodelled" ? "Utility" : "Telecom";
   const sectorCapReason = scopeClassification === "detected-telecom-unmodelled"
     ? "no sector-native valuation model is blessed until sector-native reconciliation confirms trace-backed spectrum/licence assets plus network opex coverage"
-    : "the engine has no utility-native regulated-asset-base valuation model";
+    : "no utility-native regulated-asset-base valuation model is blessed until sector-native reconciliation confirms trace-backed PPE/rate-base, CWIP, and regulatory-deferral balances";
   if (unusualItemManifest.classifications.length > 0) {
     trace("config", "unusualItemManifest:built", {
       companyId: params.companyId ?? null,

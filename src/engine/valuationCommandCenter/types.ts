@@ -172,7 +172,7 @@ export interface ValuationCommandCenterOutput {
     id: string;
     label: string;
     description: string;
-    source: "user" | "auto";
+    source: "user" | "company-type" | "auto";
   };
   businessModel: BusinessModelProfile;
   scenarios: ValuationScenarioCard[];

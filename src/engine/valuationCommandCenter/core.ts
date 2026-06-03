@@ -86,7 +86,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
   const marketWarnings = marketData?.warnings ?? [];
   const orderedHistory = normalizeHistoricalSeries(marketData?.history?.points);
   const historySummary = orderedHistory.length ? summarizeHistoricalPrices(orderedHistory, marketPrice) : marketData?.history ?? null;
-  const { template: sectorTemplate, source: sectorTemplateSource } = resolveValuationSectorTemplate(valuationData, config.sector_template);
+  const { template: sectorTemplate, source: sectorTemplateSource } = resolveValuationSectorTemplate(valuationData, config.sector_template, config.company_type);
   const horizon = 5;
 
   const diagnostics = computeCashFlowDiagnostics(

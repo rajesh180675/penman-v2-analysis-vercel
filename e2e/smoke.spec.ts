@@ -11,16 +11,17 @@ test.describe("Critical Path E2E", () => {
   });
 
   test("health endpoint responds", async ({ request }) => {
-    const response = await request.get("/api/health");
+    const response = await request.get("/api/health", {
+      headers: { "x-penman-local": "1" },
+    });
     expect(response.ok()).toBe(true);
     const body = await response.json();
     expect(body.ok).toBe(true);
   });
 
   test("tab navigation works", async ({ page }) => {
-    await page.goto("/");
-    // Wait for the app to fully load
-    await page.waitForLoadState("networkidle");
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("body")).toBeVisible();
 
     // The app uses tabs — verify at least one tab/button is interactive
     const buttons = page.getByRole("button");
@@ -29,8 +30,8 @@ test.describe("Critical Path E2E", () => {
   });
 
   test("dark mode toggle exists and works", async ({ page }) => {
-    await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("body")).toBeVisible();
 
     // Look for a dark mode toggle (common pattern in this app)
     const darkToggle = page.locator('[aria-label*="dark"], [aria-label*="theme"], button:has-text("🌙"), button:has-text("☀")');
@@ -45,8 +46,8 @@ test.describe("Critical Path E2E", () => {
   });
 
   test("command palette opens with keyboard shortcut", async ({ page }) => {
-    await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("body")).toBeVisible();
 
     // Cmd+K or Ctrl+K typically opens command palette
     await page.keyboard.press("Control+k");
@@ -61,8 +62,8 @@ test.describe("Critical Path E2E", () => {
 
   test("URL routing to company workspace", async ({ page }) => {
     // Navigate with a company param in URL
-    await page.goto("/?company=Asian_Paints");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/?company=Asian_Paints", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("body")).toBeVisible();
 
     // The app should not crash — verify body is still visible
     await expect(page.locator("body")).toBeVisible();

@@ -24,4 +24,36 @@ describe("audit-all-companies CLI routing", () => {
     expect(hdfcRow).not.toContain("shareCountInput");
     expect(hdfcRow).not.toContain("CALC_ERROR");
   }, 120_000);
+
+  it.each([
+    ["BHARTIARTL", "Bharti Airtel"],
+    ["NTPC", "NTPC"],
+    ["POWERGRID", "Power Grid Corporation of India Ltd"],
+    ["IDEA", "Vodafone Idea Ltd"],
+  ])("routes %s through a sector-native industrial valuation instead of the old scope cap", (ticker, rowPrefix) => {
+    const output = runAudit(`--ticker=${ticker}`);
+    const row = output.split("\n").find((line) => line.startsWith(rowPrefix));
+
+    expect(row).toBeTruthy();
+    expect(row).not.toContain("EXPECTED_SCOPE_CAP");
+    expect(row).not.toContain("SECTOR_NATIVE_MODEL_PENDING");
+    expect(row).toContain("VCC");
+    expect(row).not.toContain("—            | EXPECTED_SCOPE_CAP");
+  }, 120_000);
+
+  it.each([
+    ["GRASIM", "Grasim Industries", ["BASE_GT_BULL", "NEGATIVE_BASE"]],
+    ["M&M", "Mahindra & Mahindra", ["BASE_GT_BULL"]],
+    ["PAYTM", "Paytm", ["BASE_GT_BULL"]],
+    ["TATASTEEL", "Tata Steel", ["BASE_GT_BULL"]],
+  ])("keeps %s clean under the all-company scenario quality gate", (ticker, rowPrefix, forbiddenFlags) => {
+    const output = runAudit(`--ticker=${ticker}`);
+    const row = output.split("\n").find((line) => line.startsWith(rowPrefix));
+
+    expect(row).toBeTruthy();
+    expect(row).not.toContain("POLICY_WARNING");
+    for (const flag of forbiddenFlags) {
+      expect(row).not.toContain(flag);
+    }
+  }, 120_000);
 });

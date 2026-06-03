@@ -143,12 +143,17 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   // operating intangibles (spectrum is productive operating capacity), but avoid
   // double-counting when the generic Intangible Assets subtotal is present.
   const OA_OtherIntangibles = genericOtherIntangibles > 0 ? genericOtherIntangibles : OA_TelecomSpectrumLicenses;
+  const OA_UtilityRegulatoryDeferrals = sumBs("BS.OA.UtilityRegulatoryDeferrals", [
+    "Regulatory Deferral Account - Debit Balance",
+    "Regulatory Deferral Account Debit Balance",
+    "Regulatory Assets",
+  ]);
   const OA_Inventory = Inventory;
   const OA_TradeReceivables = TradeReceivables;
   const OA_DTA   = bs("BS.OA.DTA", ["Deferred Tax Assets", "Net Deferred Tax Assets"]);
   const OA_CWIP  = bs("BS.OA.CWIP", ["Capital Work in Progress", "Capital Work-in-Progress"]);
   const OA_Other = OA - OA_PPE - OA_ROU - OA_Goodwill - OA_OtherIntangibles
-                  - OA_Inventory - OA_TradeReceivables - OA_DTA - OA_CWIP;
+                  - OA_UtilityRegulatoryDeferrals - OA_Inventory - OA_TradeReceivables - OA_DTA - OA_CWIP;
 
   return {
     TA, CSE, MI, FA, FO, OA, OL, NOA, NFO,
@@ -173,6 +178,7 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
     separationScore: score,
     OA_PPE, OA_ROU, OA_Goodwill, OA_OtherIntangibles,
     OA_TelecomSpectrumLicenses,
+    OA_UtilityRegulatoryDeferrals,
     OA_Inventory, OA_TradeReceivables, OA_DTA, OA_CWIP, OA_Other,
   };
 }
