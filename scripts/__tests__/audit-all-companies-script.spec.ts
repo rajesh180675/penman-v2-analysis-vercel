@@ -55,14 +55,35 @@ describe("audit-all-companies CLI routing", () => {
     ["M&M", "Mahindra & Mahindra", ["BASE_GT_BULL"]],
     ["PAYTM", "Paytm", ["BASE_GT_BULL"]],
     ["TATASTEEL", "Tata Steel", ["BASE_GT_BULL"]],
-  ])("keeps %s clean under the all-company scenario quality gate", (ticker, rowPrefix, forbiddenFlags) => {
+  ])("keeps %s free of raw scenario-quality flags under the all-company taxonomy", (ticker, rowPrefix, forbiddenFlags) => {
     const output = runAudit(`--ticker=${ticker}`);
     const row = output.split("\n").find((line) => line.startsWith(rowPrefix));
 
     expect(row).toBeTruthy();
-    expect(row).not.toContain("POLICY_WARNING");
+    expect(row).not.toContain("CALC_ERROR");
+    expect(row).not.toContain("MODEL_GAP");
     for (const flag of forbiddenFlags) {
       expect(row).not.toContain(flag);
     }
+  }, 120_000);
+
+  it("prints the formal PR-0.2 outcome taxonomy in the summary", () => {
+    const output = runAudit("--limit=1");
+
+    for (const outcome of [
+      "PRODUCTION_READY",
+      "VALUATION_ELIGIBLE_GUARDED",
+      "ECONOMICALLY_PLAUSIBLE_CAPPED",
+      "EXPECTED_SKIP_MISSING_SIDECAR",
+      "EXPECTED_SKIP_INSUFFICIENT_HISTORY",
+      "EXPECTED_SKIP_UNSUPPORTED_SOURCE",
+      "MODEL_GAP",
+      "POLICY_WARNING",
+      "CALC_ERROR",
+    ]) {
+      expect(output).toContain(`  ${outcome}:`);
+    }
+    expect(output).not.toContain("OK_COMPUTED");
+    expect(output).not.toContain("EXPECTED_SCOPE_CAP:");
   }, 120_000);
 });

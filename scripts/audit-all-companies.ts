@@ -20,9 +20,13 @@ import { fileURLToPath } from "node:url";
 import {
   auditCompanyRun,
   type AuditCompanyRunResult,
-  type AuditOutcome,
   type AuditRegistryEntry,
 } from "./lib/auditCompanyRun";
+import {
+  AUDIT_OUTCOMES,
+  isActionableAuditOutcome,
+  type AuditOutcome,
+} from "./lib/auditTypes";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, "..");
@@ -30,6 +34,9 @@ const COMPANIES_DIR = join(PROJECT_ROOT, "public", "data", "companies");
 const REGISTRY_PATH = join(COMPANIES_DIR, "registry.json");
 
 const registry: AuditRegistryEntry[] = JSON.parse(readFileSync(REGISTRY_PATH, "utf-8"));
+const OUTCOME_WIDTH = Math.max(...AUDIT_OUTCOMES.map((outcome) => outcome.length), "Outcome".length);
+const STATUS_CLASS_WIDTH = "valuation-eligible-guarded".length;
+const TABLE_WIDTH = 230 + Math.max(0, OUTCOME_WIDTH - 29) + Math.max(0, STATUS_CLASS_WIDTH - 14);
 
 const args = {
   limit: null as number | null,
@@ -57,9 +64,11 @@ if (args.ticker) {
 
 console.log(`Auditing ${companies.length} companies...`);
 console.log(
-  "Company                   | CompanyType  | AnalysisFamily        | Strategy     | StatusClass    | Periods | Stress   | Base     | Bull     | Triang   | SOTP     | Models | Outcome                       | Applicability        | Flags",
+  "Company                   | CompanyType  | AnalysisFamily        | Strategy     | " +
+  `${"StatusClass".padEnd(STATUS_CLASS_WIDTH)} | Periods | Stress   | Base     | Bull     | Triang   | SOTP     | Models | ` +
+  `${"Outcome".padEnd(OUTCOME_WIDTH)} | Applicability        | Flags`,
 );
-console.log("-".repeat(230));
+console.log("-".repeat(TABLE_WIDTH));
 
 function formatNumber(value: number | null): string {
   return value !== null ? value.toFixed(2).padStart(8) : "N/A".padStart(8);
@@ -85,7 +94,7 @@ function printResult(result: AuditCompanyRunResult): void {
   console.log(
     `${result.folder.padEnd(25)} | ${result.companyType.padEnd(12)} | ${familyLabel.padEnd(21)} | ` +
     `${(result.pipelineStrategyId ?? "—").padEnd(12)} | ` +
-    `${result.statusClass.padEnd(14)} | ` +
+    `${result.statusClass.padEnd(STATUS_CLASS_WIDTH)} | ` +
     `${String(result.periods).padStart(3)} | ` +
     `${formatNumber(result.stress)} | ` +
     `${formatNumber(result.base)} | ` +
@@ -93,10 +102,15 @@ function printResult(result: AuditCompanyRunResult): void {
     `${formatNumber(result.triangulatedValue)} | ` +
     `${formatNumber(result.sotp)} | ` +
     `${formatModels(result.models).padEnd(12)} | ` +
-    `${result.outcome.padEnd(29)} | ` +
+    `${result.outcome.padEnd(OUTCOME_WIDTH)} | ` +
     `${formatApplicability(result).padEnd(20)} | ` +
     `${flagStr}`,
   );
+}
+
+function formatActionableDetails(result: AuditCompanyRunResult): string {
+  if (result.flags.length > 0) return result.flags.join(", ");
+  return `outcome=${result.outcome}, rigor=${result.rigor.currentLevel ?? "unknown"}`;
 }
 
 // Process sequentially to avoid OOM.
@@ -113,20 +127,20 @@ async function run() {
     byOutcome.set(result.outcome, (byOutcome.get(result.outcome) ?? 0) + 1);
   }
   const calcErrors = results.filter((r) => r.outcome === "CALC_ERROR");
-  const actionable = results.filter((r) => r.outcome === "CALC_ERROR" || r.outcome === "MODEL_GAP" || r.outcome === "POLICY_WARNING");
+  const actionable = results.filter((r) => isActionableAuditOutcome(r.outcome));
   const nonCalcError = results.length - calcErrors.length;
 
-  console.log("\n" + "=".repeat(230));
+  console.log("\n" + "=".repeat(TABLE_WIDTH));
   console.log(`AUDIT SUMMARY: ${nonCalcError}/${results.length} without calculation errors`);
   console.log("OUTCOMES:");
-  for (const outcome of ["OK_COMPUTED", "EXPECTED_SKIP_MISSING_SIDECAR", "EXPECTED_SCOPE_CAP", "MODEL_GAP", "POLICY_WARNING", "CALC_ERROR"] as AuditOutcome[]) {
+  for (const outcome of AUDIT_OUTCOMES) {
     console.log(`  ${outcome}: ${byOutcome.get(outcome) ?? 0}`);
   }
 
   if (actionable.length) {
     console.log(`\nACTIONABLE (${actionable.length}):`);
     for (const r of actionable) {
-      console.log(`  ${r.folder} (${r.ticker}, ${r.companyType}, ${r.analysisFamily}): ${r.flags.join(", ")}`);
+      console.log(`  ${r.folder} (${r.ticker}, ${r.companyType}, ${r.analysisFamily}): ${formatActionableDetails(r)}`);
     }
   }
 }

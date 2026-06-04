@@ -19,6 +19,12 @@ import type {
   BankValuationModelResult,
 } from "../../src/engine/bankValuation";
 import type { AllSegmentData, SegmentData } from "../../src/engine/segmentParser";
+import {
+  deriveAuditOutcome,
+  statusClassFromOutcome,
+  type AuditOutcome,
+  type AuditStatusClass,
+} from "./auditTypes";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_PROJECT_ROOT = resolve(__dirname, "..", "..");
@@ -30,22 +36,6 @@ export interface AuditRegistryEntry {
   type: string;
   hasStandalone?: boolean;
 }
-
-export type AuditOutcome =
-  | "OK_COMPUTED"
-  | "EXPECTED_SKIP_MISSING_SIDECAR"
-  | "EXPECTED_SCOPE_CAP"
-  | "MODEL_GAP"
-  | "CALC_ERROR"
-  | "POLICY_WARNING";
-
-export type AuditStatusClass =
-  | "ok-computed"
-  | "expected-skip"
-  | "scope-cap"
-  | "model-gap"
-  | "calc-error"
-  | "policy-warning";
 
 export type AuditAnalysisFamily = "industrial" | "financial-institution" | "unknown";
 
@@ -165,36 +155,6 @@ function companiesDir(projectRoot: string): string {
   return join(projectRoot, "public", "data", "companies");
 }
 
-export function statusClassFromOutcome(outcome: AuditOutcome): AuditStatusClass {
-  switch (outcome) {
-    case "OK_COMPUTED": return "ok-computed";
-    case "EXPECTED_SKIP_MISSING_SIDECAR": return "expected-skip";
-    case "EXPECTED_SCOPE_CAP": return "scope-cap";
-    case "MODEL_GAP": return "model-gap";
-    case "CALC_ERROR": return "calc-error";
-    case "POLICY_WARNING": return "policy-warning";
-  }
-}
-
-export function deriveAuditOutcome(flags: string[], hasComputedValue: boolean): AuditOutcome {
-  if (flags.some((f) => f.startsWith("ERROR") || f.startsWith("CALC_ERROR") || f.endsWith("_INVALID"))) {
-    return "CALC_ERROR";
-  }
-  if (flags.some((f) => f.startsWith("MODEL_GAP") || f === "NO_SCENARIOS")) {
-    return "MODEL_GAP";
-  }
-  if (flags.some((f) => f.startsWith("EXPECTED_SCOPE_CAP"))) {
-    return "EXPECTED_SCOPE_CAP";
-  }
-  if (flags.some((f) => f.startsWith("EXPECTED_SKIP_MISSING_SIDECAR"))) {
-    return "EXPECTED_SKIP_MISSING_SIDECAR";
-  }
-  if (flags.length > 0) {
-    return "POLICY_WARNING";
-  }
-  return hasComputedValue ? "OK_COMPUTED" : "MODEL_GAP";
-}
-
 export function finiteOrNull(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -278,6 +238,15 @@ function finalize(result: AuditCompanyRunResult, outcome: AuditOutcome): AuditCo
     outcome,
     statusClass: statusClassFromOutcome(outcome),
   };
+}
+
+function deriveResultOutcome(result: AuditCompanyRunResult, hasComputedValue: boolean): AuditOutcome {
+  return deriveAuditOutcome({
+    flags: result.flags,
+    hasComputedValue,
+    rigorLevel: result.rigor.currentLevel,
+    periodCount: result.periods,
+  });
 }
 
 function pushInvalidIfComputed(flags: string[], label: string, model: BankValuationModelResult | undefined): void {
@@ -434,7 +403,7 @@ function financialResult(args: {
   if (!bankResult) {
     flags.push("CALC_ERROR:NO_BANK_RESULT");
     result.flags = flags;
-    return finalize(result, deriveAuditOutcome(flags, false));
+    return finalize(result, deriveResultOutcome(result, false));
   }
 
   const valuation = bankResult.valuation;
@@ -511,7 +480,7 @@ function financialResult(args: {
     models: [],
   };
   result.flags = flags;
-  return finalize(result, deriveAuditOutcome(flags, result.triangulatedValue != null || result.models.length > 0));
+  return finalize(result, deriveResultOutcome(result, result.triangulatedValue != null || result.models.length > 0));
 }
 
 function industrialResult(args: {
@@ -589,7 +558,7 @@ function industrialResult(args: {
   };
 
   result.flags = flags;
-  return finalize(result, deriveAuditOutcome(flags, result.base != null || result.triangulatedValue != null));
+  return finalize(result, deriveResultOutcome(result, result.base != null || result.triangulatedValue != null));
 }
 
 export async function auditCompanyRun(
@@ -602,7 +571,7 @@ export async function auditCompanyRun(
   if (!existsSync(zipPath)) {
     const result = emptyResult(company);
     result.flags = ["CALC_ERROR:MISSING_ZIP"];
-    return finalize(result, deriveAuditOutcome(result.flags, false));
+    return finalize(result, deriveResultOutcome(result, false));
   }
 
   try {
@@ -636,6 +605,6 @@ export async function auditCompanyRun(
     const message = (error as Error).message;
     result.flags = [`CALC_ERROR:${message}`];
     result.error = message;
-    return finalize(result, deriveAuditOutcome(result.flags, false));
+    return finalize(result, deriveResultOutcome(result, false));
   }
 }
