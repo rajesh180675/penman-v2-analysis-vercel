@@ -476,7 +476,7 @@ export async function fetchBankQualityIndicators(
   blobUrl?: string | null | undefined,
 ): Promise<BankQualityIndicators | null> {
   // Prefer Vercel Blob URL when available (Vercel deploy); fall back to local public/ path.
-  const url = blobUrl ?? `/data/companies/${encodeURIComponent(companyFolder)}/quality_indicators.json`;
+  const url = blobUrl ?? `/data/companies/${encodeURIComponent(companyFolder).replace(/%26/g, "&")}/quality_indicators.json`;
   const source = blobUrl ? "blob" : "local";
   trace("quality", "fetch:start", { url, source });
 

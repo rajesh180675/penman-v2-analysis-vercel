@@ -16,7 +16,7 @@ export async function gridViaXlsx(buffer: ArrayBuffer): Promise<string[][]> {
   // If the threat model expands to public XLS uploads, replace this strategy
   // with exceljs or a CDN-pinned SheetJS build.
   const { default: XLSX } = await import("xlsx");
-  const uint8 = new Uint8Array(buffer);
+  let uint8: Uint8Array | null = new Uint8Array(buffer);
   let wb: import("xlsx").WorkBook | null = null;
   let best: string[][] = [];
 
@@ -52,14 +52,15 @@ export async function gridViaXlsx(buffer: ArrayBuffer): Promise<string[][]> {
   } catch {
     return [];
   } finally {
-    // Attempt to manually clear references to prevent memory leaks from SheetJS
+    // Clear references to help GC reclaim SheetJS WorkBook + large buffers
     if (wb) {
-        for (const sheet of Object.keys(wb.Sheets)) {
-            delete wb.Sheets[sheet];
-        }
-        wb.SheetNames.length = 0;
-        wb = null;
+      for (const sheet of Object.keys(wb.Sheets)) {
+        delete wb.Sheets[sheet];
+      }
+      wb.SheetNames.length = 0;
+      wb = null;
     }
+    uint8 = null;
   }
 
   return best;

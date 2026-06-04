@@ -193,7 +193,7 @@ export function evaluateQualityGate(
   if (!hasKey(byStmt, "CashFlow", "Net Cash from Operating Activities")) {
     missingCore.push("Net Cash from Operating Activities (CashFlow)");
   }
-  if (!hasAny(byStmt, "CashFlow", ["Purchased of Fixed Assets", "Purchase of Fixed Assets"])) {
+  if (!hasAny(byStmt, "CashFlow", ["Purchased of Fixed Assets", "Purchase of Fixed Assets", "Capital Expenditure", "Purchase of Project Materials"])) {
     missingCore.push("Purchased of Fixed Assets (CashFlow)");
   }
   if (!hasKey(byStmt, "ProfitLoss", "Finance Cost")) {
