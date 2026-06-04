@@ -1,9 +1,30 @@
 # Valuation Maturity Scorecard
 
-Generated: 2026-06-04T16:00:15.438Z
+Generated: 2026-06-04T16:33:59.511Z
 Schema: `2026-06-valuation-maturity-v1`
 Overall score: **6.1/10** (developing)
 Audited corpus: 33 companies; total weight 100
+
+## Current Baseline and Target
+
+- Current score: **6.1/10**.
+- Current rating: `developing`.
+- Target score: **10.0/10**.
+- Target state: no supported company type is silently routed through the wrong valuation family; unsupported source or sidecar gaps are explicit expected skips, not crashes or green badges.
+- Baseline artifact source: `npx tsx scripts/valuation-scorecard.ts --format md` over the audited company registry.
+- Machine-readable source: `npx tsx scripts/valuation-scorecard.ts --format json`.
+
+This score is intentionally conservative. It measures the current end-to-end corpus after the company-type-aware audit harness and skip/error taxonomy landed, not the aspirational 10/10 roadmap. A low family score is a work queue, not a reason to route companies through weaker generic models.
+
+## Expected skips are not bugs
+
+Expected skips are not bugs. They are deliberate fail-closed outcomes for cases where the model needs a source, sidecar, or support contract that is not present yet:
+
+- `EXPECTED_SKIP_MISSING_SIDECAR` — a required sidecar such as insurance EV/VNB, source tieout, or another sector-specific source pack is absent.
+- `EXPECTED_SKIP_INSUFFICIENT_HISTORY` — the company has too few usable periods for the requested valuation or maturity gate.
+- `EXPECTED_SKIP_UNSUPPORTED_SOURCE` — the current source mode or source artifact is not yet covered by the required parser/diagnostic contract.
+
+These rows should count against maturity until the missing contract is implemented, but they must not be reported as `CALC_ERROR`. A calculation error means the code failed or emitted invalid numeric output; an expected skip means the system refused to overstate confidence.
 
 ## Family Scores
 

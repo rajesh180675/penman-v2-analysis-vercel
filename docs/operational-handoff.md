@@ -16,7 +16,27 @@ This document is the operational summary written **after** all 8 PRs of plan v4 
 | PR-G | rigor/residuals-dashboard | — | Gap 7 |
 | PR-H | rigor/smaller-items | — | Plan v4 N-2 documentation, operational handoff |
 
-Current envelope schema: **`2026-06-traceability-v12`**.
+Current envelope schema: **`2026-06-traceability-v19`**.
+
+## Valuation maturity baseline
+
+Plan 0 adds the living valuation maturity scorecard as the audit baseline for future modeling PRs:
+
+- Baseline artifact: `docs/valuation-maturity-scorecard.md`.
+- Decision record: `docs/adr/008-valuation-maturity-scorecard.md`.
+- Current score: **6.1/10** (`developing`) across 33 companies.
+- Target score: **10.0/10**.
+- Current audit health: 33/33 rows without calculation errors; all rows carry formal taxonomy outcomes.
+
+Run these after valuation-modeling or source-contract PRs:
+
+```bash
+npx tsx scripts/valuation-scorecard.ts --format json
+npx tsx scripts/valuation-scorecard.ts --format md
+npm run test:audit
+```
+
+Expected skips are not bugs. `EXPECTED_SKIP_MISSING_SIDECAR`, `EXPECTED_SKIP_INSUFFICIENT_HISTORY`, and `EXPECTED_SKIP_UNSUPPORTED_SOURCE` identify missing source/model contracts that should reduce maturity without being mislabeled as `CALC_ERROR`.
 
 ## Where the surfaces live
 

@@ -128,6 +128,11 @@ describe("valuation maturity scorecard", () => {
 
     expect(markdown).toContain("# Valuation Maturity Scorecard");
     expect(markdown).toContain("Schema: `2026-06-valuation-maturity-v1`");
+    expect(markdown).toContain("## Current Baseline and Target");
+    expect(markdown).toContain("Current score:");
+    expect(markdown).toContain("Target score: **10.0/10**");
+    expect(markdown).toContain("## Expected skips are not bugs");
+    expect(markdown).toContain("EXPECTED_SKIP_MISSING_SIDECAR");
     expect(markdown).toContain("| Family | Weight | Score | Status | Evidence | Blockers |");
     expect(markdown).toContain("Industrial core valuation");
     expect(markdown).toContain("POLICY_WARNING: 1");
