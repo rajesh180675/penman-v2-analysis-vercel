@@ -77,6 +77,18 @@ This is a real improvement in clarity, but it is still only a partial reconcilia
 
 Capitaline runs also still have richer parser-fidelity evidence than other modes because they use parse-debug signals such as file presence, header detection, period consistency, and parser noise. Other source modes still rely on lighter post-parse density heuristics rather than rich source-native diagnostics.
 
+## Plan 0 audit taxonomy and expected skips
+
+The all-company audit harness now reports each company with explicit `analysisFamily`, `companyType`, `pipelineStrategyId`, `statusClass`, and a bounded outcome taxonomy. The valuation maturity scorecard (`docs/valuation-maturity-scorecard.md`, ADR-008) rolls those rows into eight weighted score families.
+
+Expected skips are not bugs. They are fail-closed declarations that the required source or support contract is absent:
+
+- `EXPECTED_SKIP_MISSING_SIDECAR` — required sidecar evidence such as insurance EV/VNB or another sector pack is absent.
+- `EXPECTED_SKIP_INSUFFICIENT_HISTORY` — there are too few usable periods for the requested gate or model.
+- `EXPECTED_SKIP_UNSUPPORTED_SOURCE` — the source mode/artifact is not yet covered by the required diagnostics.
+
+Expected skips should reduce maturity until the missing contract is implemented, but they must not be counted as `CALC_ERROR`. A `CALC_ERROR` means thrown exception, invalid numeric output, or an impossible computed state. The distinction keeps the ladder fail-closed without incentivizing unsupported companies to be silently routed through a generic valuation family.
+
 ## What Was Validated
 
 - snapshot tests: [`src/engine/__tests__/auditSnapshot.spec.ts`](../src/engine/__tests__/auditSnapshot.spec.ts)
@@ -155,10 +167,10 @@ Envelope `2026-06-traceability-v15` shipped sum-of-the-parts segment valuation s
 
 ## FX Hedging / Neutrality Contribution (Schema v16, no ADR)
 
-Envelope `2026-06-traceability-v16` adds an optional `fxNeutrality` field (defaults to `null` for runs without FX exposure). The supporting engine module (`src/engine/valuation/fxHedging.ts`) computes FX-neutral revenue trajectories and per-period hedging effectiveness so reviewers can separate operating performance from currency translation noise. Migration from v15 stamps `fxNeutrality: null` for legacy envelopes. **Gap**: no ADR was authored; retroactive ADR-008 is queued in Phase 3.8.
+Envelope `2026-06-traceability-v16` adds an optional `fxNeutrality` field (defaults to `null` for runs without FX exposure). The supporting engine module (`src/engine/valuation/fxHedging.ts`) computes FX-neutral revenue trajectories and per-period hedging effectiveness so reviewers can separate operating performance from currency translation noise. Migration from v15 stamps `fxNeutrality: null` for legacy envelopes. **Gap**: no ADR was authored; retroactive ADR-009 is queued in Phase 3.8.
 
 ## Evidence Locking (Schema v17, no ADR)
 
-Envelope `2026-06-traceability-v17` adds a `locked: boolean` field (defaults to `false` after migration). Once a run reaches `production-ready` and a reviewer locks the envelope, all subsequent re-runs against the same period set must hash-match the locked evidence or surface a `lock-violation` diagnostic. This is the foundation for tamper-evident comparison snapshots and for the audit-snapshot retention contract. **Gap**: no ADR was authored; retroactive ADR-009 is queued in Phase 3.8.
+Envelope `2026-06-traceability-v17` adds a `locked: boolean` field (defaults to `false` after migration). Once a run reaches `production-ready` and a reviewer locks the envelope, all subsequent re-runs against the same period set must hash-match the locked evidence or surface a `lock-violation` diagnostic. This is the foundation for tamper-evident comparison snapshots and for the audit-snapshot retention contract. **Gap**: no ADR was authored; retroactive ADR-010 is queued in Phase 3.8.
 
 
