@@ -28,6 +28,8 @@ export default defineConfig({
       // tree; vitest would otherwise pick up stale fixtures from old
       // branches and flag them as failures even when src/ is green.
       ".claude/**",
+      // Hermes plans/scratch files are agent workspace artifacts, not test inputs.
+      ".hermes/**",
       // Audit-all-companies specs run the full pipeline against every
       // registry company. They're heavy (40+ minutes serial), can OOM
       // workers, and are gated behind the `test:audit` npm script.

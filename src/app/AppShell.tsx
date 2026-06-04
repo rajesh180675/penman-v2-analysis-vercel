@@ -221,11 +221,12 @@ export function AppShell() {
       setAuditMeta(nextMeta);
   setConfig((prev) => {
     const companyId = nextMeta.companyId || data[0]?.company_id || prev.ticker;
+    const isDifferentCompany = companyId !== prev.ticker;
     // Resolve NSE symbol and quality-data folder if not already set.
     // This ensures manual uploads (which skip the library grid) also get
     // proper symbol/folder wiring so the sidecar fetch and live price work.
-    const resolvedSymbol = prev.market_data_symbol ?? resolveNseSymbol(companyId) ?? null;
-    const resolvedFolder = prev.quality_data_folder ?? resolveFolderFromSymbol(companyId) ?? companyId;
+    const resolvedSymbol = (isDifferentCompany ? null : prev.market_data_symbol) ?? resolveNseSymbol(companyId) ?? null;
+    const resolvedFolder = (isDifferentCompany ? null : prev.quality_data_folder) ?? resolveFolderFromSymbol(companyId) ?? companyId;
     return {
       ...prev,
       ticker: companyId,

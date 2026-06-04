@@ -159,19 +159,17 @@ app.use("/api/", apiLimiter);
 // below is also gated.
 app.use("/api/", localApiGate);
 
-// Parse only authenticated local API JSON. Keeping this after localApiGate is
-// load-bearing: a malicious web page can POST to localhost, but cannot set the
-// required custom header in no-cors mode, so oversized hostile bodies are
-// rejected before they reach express.json.
+// Research route gets a higher body limit for multi-company comparison payloads.
+// This override must run before the global 10MB parser, otherwise the tighter limit
+// intercepts and rejects large payloads with 413 (Payload Too Large).
+app.use("/api/research", express.json({ limit: RESEARCH_JSON_BODY_LIMIT }), researchRouter);
+
+// Parse other local API JSON using the standard 10MB limit.
 app.use("/api/", express.json({ limit: LOCAL_JSON_BODY_LIMIT }));
 
 // Routes — mirror the Vercel api/ structure
 app.use("/api/market-data", marketDataRouter);
 app.use("/api/audit", auditRouter);
-// Research route gets a higher body limit for multi-company comparison payloads.
-// This override MUST come before the route mount so Express uses it instead of
-// the global 10MB parser.
-app.use("/api/research", express.json({ limit: RESEARCH_JSON_BODY_LIMIT }), researchRouter);
 
 // Blackboard (simple key-value)
 app.get("/api/blackboard", async (req, res) => {
@@ -211,10 +209,15 @@ app.get("/api/health", (_req, res) => {
 // Global error handler
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (err?.type === "entity.too.large") {
-    const isResearch = _req.path.startsWith("/research") || _req.baseUrl?.includes("/research");
+    console.error(`[413 Payload Too Large] Path: ${_req.path}, BaseUrl: ${_req.baseUrl}, Method: ${_req.method}, Length: ${_req.headers["content-length"]}`);
+    const isResearch = _req.path.includes("/research") || _req.baseUrl?.includes("/research");
     const activeLimit = isResearch ? RESEARCH_JSON_BODY_LIMIT : LOCAL_JSON_BODY_LIMIT;
     const envHint = isResearch ? "RESEARCH_JSON_BODY_LIMIT" : "LOCAL_JSON_BODY_LIMIT";
-    res.status(413).json({ ok: false, error: `Request body too large. Limit: ${activeLimit}. Override with ${envHint} env var.` });
+    res.status(413).json({
+      ok: false,
+      error: `Request body too large. Limit: ${activeLimit}. Override with ${envHint} env var.`,
+      debug: { path: _req.path, baseUrl: _req.baseUrl, originalUrl: _req.originalUrl }
+    });
     return;
   }
   console.error("[server error]", err?.message ?? err);

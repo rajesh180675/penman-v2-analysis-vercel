@@ -4,7 +4,7 @@ import type { FinancialInstitutionAnalysisResult } from "../engine/analysisFamil
 import type { BankScenarioCard } from "../engine/bankValuation";
 import type { NbfcSidecarData } from "../engine/nbfcSidecarLoader";
 import type { EngineConfig } from "../engine/types";
-import { SectionHeader, InsightBlock } from "./shared/DesignSystem";
+import { SectionHeader, InsightBlock, VerdictBanner } from "./shared/DesignSystem";
 import { generateBankNarrative } from "../engine/narrativeEngine";
 import BankHealthChart from "./charts/BankHealthChart";
 import SubsidiaryGrowthChart from "./charts/SubsidiaryGrowthChart";
@@ -36,6 +36,32 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
   const valuation = bankResult.valuation;
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+
+  const price = config?.market_price ?? null;
+  const ticker = config?.ticker ?? companyId ?? "Bank";
+  const intrinsicValueCr = valuation?.triangulatedValue ?? null;
+  // MoS keeps the industrial convention: (intrinsic - market) / market.
+  const marginOfSafety = marketCapCr != null && intrinsicValueCr != null && marketCapCr > 0
+    ? (intrinsicValueCr - marketCapCr) / marketCapCr
+    : null;
+  // Human-readable "discount/premium to intrinsic" must use intrinsic as denominator.
+  const discountToIntrinsic = marketCapCr != null && intrinsicValueCr != null && intrinsicValueCr > 0
+    ? (intrinsicValueCr - marketCapCr) / intrinsicValueCr
+    : null;
+
+  const verdict = discountToIntrinsic != null
+    ? (discountToIntrinsic > 0.25 ? "buy" : discountToIntrinsic <= 0.0 ? "avoid" : "hold")
+    : "hold";
+
+  const verdictHeadline = discountToIntrinsic != null
+    ? (verdict === "buy"
+        ? `${ticker} trades at ${(discountToIntrinsic * 100).toFixed(0)}% discount to intrinsic value (₹${intrinsicValueCr?.toFixed(0) ?? "—"} Cr vs ₹${marketCapCr?.toFixed(0) ?? "—"} Cr)`
+        : verdict === "avoid"
+        ? `${ticker} trades ${Math.abs(discountToIntrinsic * 100).toFixed(0)}% above intrinsic value — limited upside`
+        : `${ticker} trades near fair value — wait for a better entry or exit point`)
+    : `${ticker} — analysis complete`;
+
+  const confidence = intrinsicValueCr != null ? "high" : "medium";
 
   const handleExportWorkbook = async () => {
     if (exporting) return;
@@ -77,10 +103,28 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
 
   return (
     <div className="space-y-6">
-      <SectionHeader
-        title="Financial Institution Analysis"
-        subtitle={`${bankResult.subtype} · ${bankResult.periods.length} periods — NIM, credit costs, capital adequacy, and valuation`}
-        icon="🏦"
+      <div className="flex justify-between items-start flex-wrap gap-4">
+        <SectionHeader
+          title="Financial Institution Analysis"
+          subtitle={`${bankResult.subtype} · ${bankResult.periods.length} periods — NIM, credit costs, capital adequacy, and valuation`}
+          icon="🏦"
+        />
+        {price != null && (
+          <div className="text-right bg-slate-50 dark:bg-slate-900/40 p-2 rounded-lg border border-slate-100 dark:border-slate-800/60 min-w-[120px]">
+            <p className="font-mono text-lg font-bold text-slate-800 dark:text-slate-100">₹{price.toFixed(0)}</p>
+            <p className="text-xs text-slate-500">{marketCapCr ? `₹${marketCapCr.toFixed(0)} Cr MCap` : "Market Price"}</p>
+          </div>
+        )}
+      </div>
+
+      <VerdictBanner
+        verdict={verdict}
+        headline={verdictHeadline}
+        confidence={confidence}
+        metrics={[
+          { label: "Models", value: valuation ? `${valuation.modelsContributing.length}` : "0" },
+          ...(marginOfSafety != null ? [{ label: "MoS", value: `${(marginOfSafety * 100).toFixed(0)}%` }] : []),
+        ]}
       />
 
       {/* Bank narrative insight — auto-generated */}

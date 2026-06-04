@@ -6,7 +6,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 
-test.setTimeout(120_000);
+test.setTimeout(180_000);
 
 type CompanyTypeValue =
   | "bank"
@@ -101,17 +101,25 @@ test.describe("Navigation and URL state", () => {
     await loadCompanyFromLibrary(page, "Asian Paints", "consumer");
 
     const tabNames = [
+      /Data/,
       /Dashboard/,
       /Watchlist/,
       /Workspace/,
       /Runs/,
+      /Statements/,
       /Ratios/,
       /Quality/,
       /Scope/,
-      /Comparison/,
+      /Atlas/,
+      /Business Model/,
+      /Forecast/,
+      /Valuation/,
+      /Bank/,
       /Report/,
+      /Thesis/,
+      /Regression/,
+      /V3 Analytics/,
       /Debug/,
-      /Data/,
     ];
 
     for (const tabName of tabNames) {

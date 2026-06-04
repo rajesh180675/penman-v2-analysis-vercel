@@ -22,7 +22,7 @@ export async function fetchNbfcSidecarData(
 ): Promise<NbfcSidecarData> {
   const baseUrl = blobBaseUrl
     ? `${blobBaseUrl.replace(/\/$/, "")}/companies/${encodeURIComponent(companyFolder)}`
-    : `/data/companies/${encodeURIComponent(companyFolder)}`;
+    : `/data/companies/${encodeURIComponent(companyFolder).replace(/%26/g, "&")}`;
 
   // Strategy: try pre-parsed JSON first (fast, reliable), fall back to XLS parsing
   const jsonResult = await fetchPreParsedJson(baseUrl);
