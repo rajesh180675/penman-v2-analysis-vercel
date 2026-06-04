@@ -21,8 +21,8 @@
       "max": 4.0825
     },
     "costToIncome": {
-      "min": 0.4838,
-      "max": 0.5347
+      "min": 0.3154,
+      "max": 0.3486
     }
   },
   "expectedAnomalyFlags": [],

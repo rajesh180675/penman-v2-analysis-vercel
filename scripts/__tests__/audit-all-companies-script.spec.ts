@@ -14,15 +14,24 @@ function runAudit(...args: string[]): string {
 }
 
 describe("audit-all-companies CLI routing", () => {
-  it("routes banks through the financial-institution valuation path instead of industrial valuation", () => {
-    const output = runAudit("--ticker=HDFCBANK");
+  it.each([
+    ["HDFCBANK", "HDFC Bank", "bank", "bank-v1"],
+    ["BAJFINANCE", "Bajaj Finance", "nbfc", "nbfc-v1"],
+    ["LICI", "Life Insurance Corporation of India", "insurance", "insurance-v1"],
+  ])("routes %s through the financial-institution valuation path with explicit audit metadata", (ticker, rowPrefix, companyType, strategyId) => {
+    const output = runAudit(`--ticker=${ticker}`);
 
-    expect(output).toContain("Family");
-    expect(output).toContain("financial-institution");
-    const hdfcRow = output.split("\n").find((line) => line.startsWith("HDFC Bank"));
-    expect(hdfcRow).toBeTruthy();
-    expect(hdfcRow).not.toContain("shareCountInput");
-    expect(hdfcRow).not.toContain("CALC_ERROR");
+    expect(output).toContain("CompanyType");
+    expect(output).toContain("AnalysisFamily");
+    expect(output).toContain("Strategy");
+    expect(output).toContain("StatusClass");
+    const row = output.split("\n").find((line) => line.startsWith(rowPrefix));
+    expect(row).toBeTruthy();
+    expect(row).toContain(companyType);
+    expect(row).toContain("financial-institution");
+    expect(row).toContain(strategyId);
+    expect(row).not.toContain("shareCountInput");
+    expect(row).not.toContain("CALC_ERROR");
   }, 120_000);
 
   it.each([
