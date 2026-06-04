@@ -180,7 +180,7 @@ export function deriveAuditOutcome(flags: string[], hasComputedValue: boolean): 
   if (flags.some((f) => f.startsWith("ERROR") || f.startsWith("CALC_ERROR") || f.endsWith("_INVALID"))) {
     return "CALC_ERROR";
   }
-  if (flags.some((f) => f.startsWith("MODEL_GAP") || f === "CONGLO_NO_SOTP" || f === "NO_SCENARIOS")) {
+  if (flags.some((f) => f.startsWith("MODEL_GAP") || f === "NO_SCENARIOS")) {
     return "MODEL_GAP";
   }
   if (flags.some((f) => f.startsWith("EXPECTED_SCOPE_CAP"))) {
@@ -465,8 +465,16 @@ function financialResult(args: {
     result.stress = finiteOrNull(cards.find((card) => card.key === "stress")?.intrinsicValue);
     result.base = finiteOrNull(cards.find((card) => card.key === "base")?.intrinsicValue);
     result.bull = finiteOrNull(cards.find((card) => card.key === "bull")?.intrinsicValue);
-    result.triangulatedValue = finiteOrNull(valuation.triangulatedValue);
     result.sotp = finiteOrNull(valuation.sotp?.totalEnterpriseValue);
+    result.valuation = {
+      stress: result.stress,
+      base: result.base,
+      bull: result.bull,
+      revDcfGrowth: null,
+      sotpTotal: result.sotp,
+      epvPerShare: null,
+      evEbitdaEv: null,
+    };
     result.bankValuation = {
       subtype: bankResult.subtype ?? null,
       fairPB: primary?.fairPB ?? null,
