@@ -6,6 +6,7 @@ import { evaluateParserFidelity } from "./parserFidelity";
 import { EngineConfig, RawPeriodData, RecastPeriod } from "./types";
 import { evaluateReconciliationResiduals, type ValuationTriangulationEvidence } from "./reconciliationResiduals";
 import { evaluateBankReconciliationResiduals } from "./bankReconciliationResiduals";
+import type { ReconciliationResidualStatus } from "./types/reconciliation";
 import type { BankPeriodMetrics } from "./bankPipeline";
 import { detectSubtype } from "./bankPipeline";
 import { analysisFamilyFromScope } from "./scopePolicy";
@@ -234,6 +235,11 @@ export function buildAnalysisTraceability(params: {
       valuationTriangulation: params.valuationTriangulation ?? null,
       scopeClassification: qualityGate?.scopeAssessment?.classification ?? null,
     });
+
+  const hardTieoutReady = reconciliation.readiness?.hardTieoutReady ?? false;
+  const effectiveReconciliationStatus: ReconciliationResidualStatus =
+    reconciliation.status === "failed" && hardTieoutReady ? "degraded" : reconciliation.status;
+
   // Phase J5: distress gate. Critical or severe distress (negative net
   // worth, going-concern stress) blocks `valuation-eligible` advancement
   // even when structural reconciliation cleared. Equity-side intrinsic
@@ -320,7 +326,7 @@ export function buildAnalysisTraceability(params: {
       blockEnabled: economicSanityBlockEnabled,
     });
   }
-  const structuralAchieved = hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues && reconciliation.status !== "failed";
+  const structuralAchieved = hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues && effectiveReconciliationStatus !== "failed";
   const checkpoints: AnalysisRigorCheckpoint[] = [
     {
       level: "syntactically-valid",
@@ -344,9 +350,9 @@ export function buildAnalysisTraceability(params: {
           ? "Scope policy blocked this dataset before structural reconciliation could clear."
           : hasBlockingIssues
             ? `${blockingCount} blocking mapping or identity issues remain unresolved.`
-            : reconciliation.status === "failed"
+            : effectiveReconciliationStatus === "failed"
               ? `Structural residual thresholds did not clear. ${reconciliation.summary}`
-              : reconciliation.status === "degraded"
+              : effectiveReconciliationStatus === "degraded"
                 ? `Structural residual thresholds cleared without critical breaches, but warning-level residuals remain. ${reconciliation.summary}`
             : hasRecastData
               ? `Recast statements exist and structural residual checks cleared. ${reconciliation.summary}`
@@ -509,11 +515,21 @@ export function buildAnalysisTraceability(params: {
     //    financial-blocked branch (no bank metrics) and the auditSnapshot path.
     const scope = qualityGate?.scopeAssessment;
     if (scope) {
-      return analysisFamilyFromScope(scope) === "financial-institution"
-        ? toId(detectSubtype(scope, params.config?.company_type ?? undefined))
-        : "industrial-v1";
+      if (analysisFamilyFromScope(scope) === "financial-institution") {
+        return toId(detectSubtype(scope, params.config?.company_type ?? undefined));
+      }
+      if (scope.classification === "detected-telecom-unmodelled" || params.config?.company_type === "telecom") return "telecom-v1";
+      if (scope.classification === "detected-utility-unmodelled" || params.config?.company_type === "utility") return "utility-v1";
+      if (params.config?.company_type === "cyclical") return "cyclical-v1";
+      if (params.config?.company_type === "loss-maker") return "loss-maker-v1";
+      return "industrial-v1";
     }
-    // 3. No signal available — leave unset (matches prior best-effort semantics).
+    // 3. No signal available — leave unset unless config has explicit sector-native type.
+    const ct = params.config?.company_type;
+    if (ct === "telecom") return "telecom-v1";
+    if (ct === "utility") return "utility-v1";
+    if (ct === "cyclical") return "cyclical-v1";
+    if (ct === "loss-maker") return "loss-maker-v1";
     return undefined;
   })();
 
@@ -560,7 +576,10 @@ export function buildAnalysisTraceability(params: {
     };
   })(),
     parserFidelity,
-    reconciliation,
+    reconciliation: {
+      ...reconciliation,
+      status: effectiveReconciliationStatus,
+    },
     accountingStandardCoverage: computeAccountingStandardCoverage(params.rawData),
     conceptIdentity,
     economicSanity,

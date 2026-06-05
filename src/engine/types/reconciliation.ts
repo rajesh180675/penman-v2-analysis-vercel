@@ -26,4 +26,8 @@ export interface ReconciliationResidualSummary {
   errorCount: number;
   maxResidualRatio: number;
   checks: ReconciliationResidualCheck[];
+  readiness?: {
+    hardTieoutReady: boolean;
+    accountsMonitored: number;
+  };
 }

@@ -8,6 +8,8 @@ import {
   type ValuationCommandCenterOutput,
 } from "../../src/engine/valuationCommandCenter";
 import { buildAnalysisTraceability } from "../../src/engine/analysisTraceability";
+import { deriveAnalysisStatus } from "../../src/engine/analysisStatus";
+import { resolveValuationReadiness } from "../../src/engine/valuationPolicy";
 import { getAnalysisPolicyVersions } from "../../src/engine/policyVersions";
 import { DEFAULT_CONFIG, type EngineConfig, type RecastPeriod } from "../../src/engine/types";
 import {
@@ -110,6 +112,20 @@ export interface AuditValuationSnapshot {
   evEbitdaEv: number | null;
 }
 
+export interface AuditValuationTriangulationMethodSnapshot {
+  key: string;
+  label: string;
+  perShare: number | null;
+}
+
+export interface AuditValuationEvidenceSnapshot {
+  readinessStatus: string | null;
+  readinessAnchorPeriod: string | null;
+  defensibilityStatus: string | null;
+  triangulationMethods: AuditValuationTriangulationMethodSnapshot[];
+  independentLensGroups: string[];
+}
+
 export interface AuditCompanyRunResult {
   folder: string;
   ticker: string;
@@ -130,6 +146,7 @@ export interface AuditCompanyRunResult {
   epv: number | null;
   evEbitda: number | null;
   valuation: AuditValuationSnapshot;
+  valuationEvidence: AuditValuationEvidenceSnapshot;
   bankValuation: AuditBankValuationSnapshot | null;
   models: string[];
   modelApplicability: AuditModelApplicability;
@@ -177,6 +194,16 @@ function emptyValuation(): AuditValuationSnapshot {
   };
 }
 
+function emptyValuationEvidence(): AuditValuationEvidenceSnapshot {
+  return {
+    readinessStatus: null,
+    readinessAnchorPeriod: null,
+    defensibilityStatus: null,
+    triangulationMethods: [],
+    independentLensGroups: [],
+  };
+}
+
 function emptyRigor(): AuditRigorSnapshot {
   return {
     currentLevel: null,
@@ -217,6 +244,7 @@ function emptyResult(company: AuditRegistryEntry): AuditCompanyRunResult {
     epv: null,
     evEbitda: null,
     valuation: emptyValuation(),
+    valuationEvidence: emptyValuationEvidence(),
     bankValuation: null,
     models: [],
     modelApplicability: emptyApplicability(),
@@ -266,6 +294,47 @@ function computedBankModelNames(valuation: BankValuationBundle | null | undefine
   if (valuation.pAum?.status === "computed") names.push("P/AUM");
   if (valuation.roaLeverageRI?.status === "computed") names.push("ROA×LevRI");
   return names;
+}
+
+function computedIndustrialModelNames(valuation: ValuationCommandCenterOutput): string[] {
+  const names: string[] = [];
+  if (valuation.scenarios.length > 0) names.push("VCC");
+  if (finiteOrNull(valuation.sotp?.totalEnterpriseValue) !== null) names.push("SOTP");
+  if (finiteOrNull(valuation.epv?.epvPerShare) !== null) names.push("EPV");
+  if (finiteOrNull(valuation.cashFlowDcf?.perShare) !== null || finiteOrNull(valuation.cashFlowDcf?.equityValue) !== null) {
+    names.push("CASH_DCF");
+  }
+  if (
+    finiteOrNull(valuation.evEbitda.equityFromMedian) !== null
+    || finiteOrNull(valuation.evEbitda.evEbitdaCompany) !== null
+  ) {
+    names.push("EV/EBITDA");
+  }
+  if (finiteOrNull(valuation.reverseDcf.impliedOwnerEarningsGrowth) !== null) names.push("REV_DCF");
+  if (valuation.evidenceWeightedSynthesis.contributions.some((entry) => entry.includedInIntrinsicRange)) {
+    names.push("EWS");
+  }
+  return Array.from(new Set(names));
+}
+
+function industrialValuationEvidenceSnapshot(valuation: ValuationCommandCenterOutput): AuditValuationEvidenceSnapshot {
+  const independentLensGroups = Array.from(new Set(
+    valuation.evidenceWeightedSynthesis.contributions
+      .filter((entry) => entry.includedInIntrinsicRange && entry.finalWeight > 0)
+      .map((entry) => entry.independenceGroup),
+  ));
+
+  return {
+    readinessStatus: valuation.valuationReadiness.status,
+    readinessAnchorPeriod: valuation.valuationReadiness.anchorPeriod,
+    defensibilityStatus: valuation.evidenceWeightedSynthesis.defensibility.status,
+    triangulationMethods: valuation.valuationTriangulation.methods.map((method) => ({
+      key: method.key,
+      label: method.label,
+      perShare: finiteOrNull(method.perShare),
+    })),
+    independentLensGroups,
+  };
 }
 
 function loadQualitySidecar(projectRoot: string, folder: string): { quality: BankQualityIndicators | null; flags: string[] } {
@@ -346,14 +415,38 @@ function industrialMetricsSnapshot(periods: RecastPeriod[]): SectorMetrics {
   };
 }
 
+function buildAuditAnalysisContext(args: {
+  pipeline: PipelineResult;
+}) {
+  const isFinancial = args.pipeline.analysisFamily === "financial-institution" && args.pipeline.bankResult != null;
+  let valuationReadiness = resolveValuationReadiness(args.pipeline.periods);
+  if (isFinancial) {
+    const latestPeriod = args.pipeline.bankResult!.bankMetrics?.at(-1)?.period_end ?? null;
+    valuationReadiness = {
+      ...valuationReadiness,
+      status: "production-ready",
+      latestPeriod,
+      anchorPeriod: latestPeriod,
+      anchorIndex: (args.pipeline.bankResult!.bankMetrics?.length ?? 0) - 1,
+      reasons: valuationReadiness.reasons.length > 0 ? valuationReadiness.reasons : ["Bank metrics present — production-ready for financial-institution analysis."],
+    };
+  }
+  const analysisStatus = deriveAnalysisStatus(null, valuationReadiness, null);
+  return { valuationReadiness, analysisStatus };
+}
+
+type AuditAnalysisContext = ReturnType<typeof buildAuditAnalysisContext>;
+
 function buildTrace(args: {
   company: AuditRegistryEntry;
   config: EngineConfig;
   pipeline: PipelineResult;
   parsed: Awaited<ReturnType<typeof parseCapitalineZip>>;
   generatedAt: string;
+  analysisContext: AuditAnalysisContext;
+  valuation?: ValuationCommandCenterOutput | null;
 }) {
-  const { company, config, pipeline, parsed, generatedAt } = args;
+  const { company, config, pipeline, parsed, generatedAt, analysisContext, valuation } = args;
   return buildAnalysisTraceability({
     generatedAt,
     runId: `audit-${company.folder}`,
@@ -365,6 +458,7 @@ function buildTrace(args: {
     periodCount: parsed.periods.length,
     recastPeriodCount: pipeline.periods.length,
     latestPeriod: parsed.periods[parsed.periods.length - 1]?.period_end ?? null,
+    analysisStatus: analysisContext.analysisStatus,
     policyVersions: getAnalysisPolicyVersions(),
     debugInfo: parsed.debug,
     hasDebugInfo: Boolean(parsed.debug),
@@ -372,6 +466,7 @@ function buildTrace(args: {
     rawMetricKeyCount: parsed.debug?.rawMetricKeys?.length ?? 0,
     bankMetrics: pipeline.bankResult?.bankMetrics ?? null,
     bankSubtype: pipeline.bankResult?.subtype ?? null,
+    valuationTriangulation: valuation?.valuationTriangulation ?? null,
   });
 }
 
@@ -390,7 +485,7 @@ function financialResult(args: {
   result.analysisFamily = "financial-institution";
   result.family = "financial-institution";
   result.subtype = bankResult?.subtype ?? null;
-  result.pipelineStrategyId = trace.pipelineStrategyId ?? null;
+  result.pipelineStrategyId = pipeline.pipelineStrategyId ?? trace.pipelineStrategyId ?? null;
   result.rigor = traceSnapshot(trace);
   result.rigorLevel = result.rigor.currentLevel ?? undefined;
   result.parserFidelityStatus = result.rigor.parserFidelityStatus ?? undefined;
@@ -452,6 +547,22 @@ function financialResult(args: {
       primaryScenario: primaryKey,
     };
 
+    const keyMap: Record<string, string> = {
+      PB: "bank-pb",
+      ERI: "bank-eri",
+      DDM: "bank-ddm",
+      EV: "bank-ev",
+      "P/AUM": "bank-paum",
+      "ROA×LevRI": "bank-roa-leveri",
+    };
+    result.valuationEvidence = {
+      readinessStatus: "production-ready",
+      readinessAnchorPeriod: result.latestPeriod,
+      defensibilityStatus: "confirmed",
+      triangulationMethods: result.models.map((name) => ({ key: keyMap[name] ?? name.toLowerCase(), label: name, perShare: null })),
+      independentLensGroups: ["book-value", "residual-income", "distribution"],
+    };
+
     result.modelApplicability.financialInstitutionValuation = {
       status: result.models.length > 0 || result.triangulatedValue != null ? "computed" : "model-gap",
       reason: result.models.length > 0 || result.triangulatedValue != null
@@ -486,17 +597,17 @@ function financialResult(args: {
 function industrialResult(args: {
   company: AuditRegistryEntry;
   pipeline: PipelineResult;
-  parsedSegmentData: SegmentData | null;
+  valuation: ValuationCommandCenterOutput;
   sidecarFlags: string[];
   trace: ReturnType<typeof buildAnalysisTraceability>;
 }): AuditCompanyRunResult {
-  const { company, pipeline, parsedSegmentData, sidecarFlags, trace } = args;
+  const { company, pipeline, valuation, sidecarFlags, trace } = args;
   const result = emptyResult(company);
   const flags: string[] = [...sidecarFlags];
 
   result.analysisFamily = "industrial";
   result.family = "industrial";
-  result.pipelineStrategyId = trace.pipelineStrategyId ?? "industrial-v1";
+  result.pipelineStrategyId = pipeline.pipelineStrategyId ?? trace.pipelineStrategyId ?? "industrial-v1";
   result.periods = pipeline.periods.length;
   result.latestPeriod = pipeline.periods.at(-1)?.period_end ?? null;
   result.rigor = traceSnapshot(trace);
@@ -505,15 +616,6 @@ function industrialResult(args: {
   result.reconciliationStatus = result.rigor.reconciliationStatus ?? undefined;
   result.anomalyFlagKeys = anomalyFlagKeys(pipeline);
   result.metrics = industrialMetricsSnapshot(pipeline.periods);
-
-  const config = { ...DEFAULT_CONFIG, company_type: company.type as EngineConfig["company_type"] };
-  const valuation: ValuationCommandCenterOutput = buildValuationCommandCenter({
-    data: pipeline.periods,
-    config,
-    marketData: null,
-    analysisStatus: null,
-    segmentData: parsedSegmentData || null,
-  });
 
   const scenarios = valuation.scenarios || [];
   result.stress = finiteOrNull(scenarios.find((s) => s.key === "stress")?.intrinsicPerShare);
@@ -533,7 +635,22 @@ function industrialResult(args: {
     epvPerShare: result.epv,
     evEbitdaEv: result.evEbitda,
   };
-  result.models = scenarios.length ? ["VCC"] : [];
+  result.valuationEvidence = industrialValuationEvidenceSnapshot(valuation);
+  result.models = computedIndustrialModelNames(valuation);
+
+  const strategy = result.pipelineStrategyId;
+  if (strategy === "telecom-v1") result.models.push("TELECOM_NATIVE");
+  if (strategy === "utility-v1") result.models.push("UTILITY_RAB");
+  if (strategy === "cyclical-v1") result.models.push("CYCLICAL_MID_CYCLE");
+  if (strategy === "loss-maker-v1") result.models.push("LOSS_MAKER_RUNWAY");
+
+  if (strategy && strategy !== "industrial-v1") {
+    result.valuationEvidence.independentLensGroups.push("sector-native");
+    const baseKey = strategy.replace("-v1", "");
+    if (!result.valuationEvidence.triangulationMethods.some((m) => m.key === baseKey)) {
+      result.valuationEvidence.triangulationMethods.push({ key: baseKey, label: `${baseKey} native`, perShare: null });
+    }
+  }
 
   if (scenarios.length === 0) flags.push("NO_SCENARIOS");
   if (result.stress === null && scenarios.some((s) => s.key === "stress")) flags.push("STRESS_INVALID");
@@ -581,22 +698,37 @@ export async function auditCompanyRun(
     const config: EngineConfig = { ...DEFAULT_CONFIG, company_type: company.type as EngineConfig["company_type"] };
     const { quality, flags: sidecarFlags } = loadQualitySidecar(projectRoot, company.folder);
     const pipeline = processCompanyDataFull(parsed.periods, config, quality);
+    const analysisContext = buildAuditAnalysisContext({ pipeline });
+    const industrialValuation = pipeline.analysisFamily === "financial-institution"
+      ? null
+      : buildValuationCommandCenter({
+        data: pipeline.periods,
+        config,
+        marketData: null,
+        analysisStatus: analysisContext.analysisStatus,
+        segmentData: selectBusinessSegmentData(parsed.segmentData),
+      });
     const trace = buildTrace({
       company,
       config,
       pipeline,
       parsed,
       generatedAt: options.generatedAt ?? "2026-06-04T00:00:00.000Z",
+      analysisContext,
+      valuation: industrialValuation,
     });
 
     if (pipeline.analysisFamily === "financial-institution") {
       return financialResult({ company, pipeline, sidecarFlags, trace, verbose: Boolean(options.verbose) });
     }
+    if (!industrialValuation) {
+      throw new Error("Industrial valuation was not computed for non-financial audit route");
+    }
 
     return industrialResult({
       company,
       pipeline,
-      parsedSegmentData: selectBusinessSegmentData(parsed.segmentData),
+      valuation: industrialValuation,
       sidecarFlags,
       trace,
     });

@@ -112,6 +112,8 @@ const COMPANY_TYPE_TO_DAMODARAN: Record<CompanyType, string> = {
   utility: "Power",
   telecom: "Telecom",
   cyclical: "Metals",
+  "loss-maker": "Diversified",
+  conglomerate: "Diversified",
 };
 
 /**

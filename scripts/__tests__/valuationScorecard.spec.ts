@@ -21,6 +21,13 @@ const baseRow = {
   periods: 15,
   latestPeriod: "2025-03-31",
   models: ["VCC"],
+  valuationEvidence: {
+    readinessStatus: "guarded",
+    readinessAnchorPeriod: "2025-03-31",
+    defensibilityStatus: "guarded",
+    triangulationMethods: [],
+    independentLensGroups: [],
+  },
   outcome: "POLICY_WARNING" as const,
   statusClass: "policy-warning" as const,
   flags: [],
@@ -117,6 +124,37 @@ describe("valuation maturity scorecard", () => {
 
     const weighted = scorecard.families.reduce((sum, family) => sum + family.score * family.weight, 0) / 100;
     expect(scorecard.overallScore).toBe(Number(weighted.toFixed(1)));
+  });
+
+  it("uses triangulation and readiness evidence when scoring scorecard audit rows", () => {
+    const scorecard = buildValuationMaturityScorecard([
+      row({
+        folder: "Asian Paints",
+        ticker: "ASIANPAINT",
+        models: ["VCC", "SOTP", "EPV", "CASH_DCF"],
+        outcome: "PRODUCTION_READY",
+        statusClass: "production-ready",
+        rigor: { ...baseRow.rigor, currentLevel: "production-ready", reconciliationStatus: "pass" },
+        valuationEvidence: {
+          readinessStatus: "production-ready",
+          readinessAnchorPeriod: "2025-03-31",
+          defensibilityStatus: "confirmed",
+          triangulationMethods: [
+            { key: "accrual-riv", label: "Residual income", perShare: 120 },
+            { key: "cash-fcff-dcf", label: "FCFF DCF", perShare: 118 },
+          ],
+          independentLensGroups: ["accrual-history", "cash-statement"],
+        },
+      }),
+    ], { generatedAt: "2026-06-04T00:00:00.000Z" });
+
+    const independence = scorecard.families.find((family) => family.id === "cross-paradigm-independence");
+    const traceability = scorecard.families.find((family) => family.id === "traceability-reconciliation-fail-closed");
+
+    expect(independence?.score).toBeGreaterThanOrEqual(9);
+    expect(independence?.evidence).toContain("Triangulation methods: accrual-riv, cash-fcff-dcf");
+    expect(independence?.evidence).toContain("Independent lens groups: accrual-history, cash-statement");
+    expect(traceability?.evidence).toContain("Valuation readiness statuses: production-ready");
   });
 
   it("renders markdown with family scores, blockers, and the audit outcome summary", () => {
