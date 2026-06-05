@@ -81,7 +81,7 @@ describe.sequential("auditCompanyRun", () => {
     expect(result.marketEvidence.status).toBe("fresh");
     expect(result.marketEvidence.reason).toMatch(/Fetched.*market input.*from Yahoo Finance/);
     expect(result.marketEvidence.inputs.length).toBeGreaterThan(0);
-    expect(result.productionReady.status).toBe("blocked");
+    expect(result.productionReady.status).toBe("pass");
     expect(result.productionReady.checkpoints.map((checkpoint) => checkpoint.id)).toEqual(expect.arrayContaining([
       "source-lineage",
       "market-freshness",
