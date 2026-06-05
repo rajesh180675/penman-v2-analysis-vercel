@@ -23,7 +23,9 @@ export type CompanyType =
   | "consumer"       // FMCG, retail (ITC, HUL, Asian Paints)
   | "utility"        // power, gas, water (Power Grid, NTPC)
   | "telecom"        // Bharti Airtel, Vodafone Idea
-  | "cyclical";      // metals, mining, capital goods (Tata Steel, JSW)
+  | "cyclical"       // metals, mining, capital goods (Tata Steel, JSW)
+  | "loss-maker"     // structurally unprofitable / pre-earnings (Paytm pre-FY2024)
+  | "conglomerate";  // diversified holding company with SOTP lens preferred
 
 export interface MultiCompanyRecord {
   id: string; label: string;

@@ -27,6 +27,7 @@ export interface PipelineResult {
   periods  : RecastPeriod[];
   anomalies: AnomalyBundle;
   analysisFamily: "industrial" | "financial-institution";
+  pipelineStrategyId?: string | undefined;
   bankResult?: FinancialInstitutionAnalysisResult | undefined;
   /**
    * Phase J1: financial distress assessment.
@@ -201,7 +202,8 @@ export function processCompanyDataFull(
       (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()
     );
     const frequencyWarning = detectFrequencyWarning(sortedForFreq);
-    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", bankResult, distress, structuralBreakPeriods: [], lossMaker: null, itServices: null, cyclicality: null, ratioSanity, frequencyWarning };
+    const bankPipelineStrategyId = bankResult.subtype === "bank" ? "bank-v1" : bankResult.subtype === "insurance" ? "insurance-v1" : "nbfc-v1";
+    return { periods: [], anomalies: emptyAnomalies, analysisFamily: "financial-institution", pipelineStrategyId: bankPipelineStrategyId, bankResult, distress, structuralBreakPeriods: [], lossMaker: null, itServices: null, cyclicality: null, ratioSanity, frequencyWarning };
   }
 
   // Fail-closed for blocked financial-institution scope.
@@ -212,6 +214,7 @@ export function processCompanyDataFull(
       periods: [],
       anomalies: emptyAnomalies,
       analysisFamily: "financial-institution",
+      pipelineStrategyId: "bank-v1",
       distress,
       structuralBreakPeriods: [],
       lossMaker: null,
@@ -334,7 +337,13 @@ export function processCompanyDataFull(
 
   const frequencyWarning = detectFrequencyWarning(sorted);
   const greenfield = runGreenfieldPipeline({ rawData: filteredData, config, recastData: results });
-  const result: PipelineResult = { periods: results, anomalies, analysisFamily: "industrial", distress: detectDistress(results), structuralBreakPeriods, lossMaker, itServices, cyclicality, ratioSanity, frequencyWarning, greenfield };
+  const industrialPipelineStrategyId =
+    config.company_type === "telecom" || scope.classification === "detected-telecom-unmodelled" ? "telecom-v1"
+    : config.company_type === "utility" || scope.classification === "detected-utility-unmodelled" ? "utility-v1"
+    : config.company_type === "cyclical" ? "cyclical-v1"
+    : config.company_type === "loss-maker" || lossMaker?.isLossMaker ? "loss-maker-v1"
+    : "industrial-v1";
+  const result: PipelineResult = { periods: results, anomalies, analysisFamily: "industrial", pipelineStrategyId: industrialPipelineStrategyId, distress: detectDistress(results), structuralBreakPeriods, lossMaker, itServices, cyclicality, ratioSanity, frequencyWarning, greenfield };
   trace("pipeline", "processCompanyDataFull:exit", {
     family: result.analysisFamily,
     hasRecast: result.periods.length > 0,

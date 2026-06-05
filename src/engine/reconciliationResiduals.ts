@@ -788,6 +788,19 @@ export function evaluateReconciliationResiduals(params: {
       ? `${warningCount} reconciliation residual check(s) are above the warning threshold, but none are critical. Worst check: ${worstCheck.label} in ${worstCheck.periodEnd} at ${formatPct(worstCheck.ratio)}.`
       : `All ${checks.length} reconciliation residual checks stayed within their warning thresholds. Worst check: ${worstCheck.label} in ${worstCheck.periodEnd} at ${formatPct(worstCheck.ratio)} (warning ${formatPct(worstCheck.warningThreshold)}).`;
 
+  const HARD_TIEOUT_KEYS = new Set([
+    "recast-ta-vs-raw",
+    "recast-equity-side-vs-raw",
+    "external-equity-bridge",
+    "share-capital-bridge",
+    "kw-consistency-bridge",
+    "income-statement-identity",
+  ]);
+
+  const hardTieoutChecks = checks.filter((check) => HARD_TIEOUT_KEYS.has(check.key));
+  const accountsMonitored = hardTieoutChecks.length;
+  const hardTieoutReady = accountsMonitored > 0 && hardTieoutChecks.every((check) => check.status !== "failed" && check.ratio <= 0.01);
+
   return {
     status,
     summary,
@@ -795,5 +808,9 @@ export function evaluateReconciliationResiduals(params: {
     errorCount,
     maxResidualRatio,
     checks,
+    readiness: {
+      hardTieoutReady,
+      accountsMonitored,
+    },
   };
 }

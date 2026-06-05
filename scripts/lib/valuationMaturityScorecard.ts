@@ -32,6 +32,17 @@ export interface ValuationScorecardAuditRow {
   periods: number;
   latestPeriod: string | null;
   models: string[];
+  valuationEvidence: {
+    readinessStatus: string | null;
+    readinessAnchorPeriod: string | null;
+    defensibilityStatus: string | null;
+    triangulationMethods: Array<{
+      key: string;
+      label: string;
+      perShare: number | null;
+    }>;
+    independentLensGroups: string[];
+  };
   outcome: AuditOutcome;
   statusClass: AuditStatusClass;
   flags: string[];
@@ -234,6 +245,12 @@ function scoreSectorNativeCoverage(rows: ValuationScorecardAuditRow[]): Valuatio
 
 function scoreLensIndependence(row: ValuationScorecardAuditRow): number {
   if (row.outcome === "CALC_ERROR") return 0;
+
+  const independentGroups = row.valuationEvidence.independentLensGroups.length;
+  const triangulationMethods = row.valuationEvidence.triangulationMethods.length;
+  if (independentGroups >= 2 && triangulationMethods >= 2 && row.models.length >= 2) return 9.5;
+  if (independentGroups >= 2 && row.models.length >= 2) return 8.5;
+  if (triangulationMethods >= 2 && row.models.length >= 2) return 8;
   if (row.models.length >= 4) return 8.5;
   if (row.models.length === 3) return 7;
   if (row.models.length === 2) return 5.5;
@@ -243,6 +260,14 @@ function scoreLensIndependence(row: ValuationScorecardAuditRow): number {
 
 function scoreCrossParadigmIndependence(rows: ValuationScorecardAuditRow[]): ValuationMaturityFamilyScore {
   const singleLens = rows.filter((row) => row.models.length <= 1 && row.outcome !== "CALC_ERROR").length;
+  const missingEvidence = rows.filter((row) =>
+    row.outcome !== "CALC_ERROR"
+    && row.valuationEvidence.triangulationMethods.length === 0
+    && row.valuationEvidence.independentLensGroups.length === 0,
+  ).length;
+  const triangulationMethods = rows.flatMap((row) => row.valuationEvidence.triangulationMethods.map((method) => method.key));
+  const independentGroups = rows.flatMap((row) => row.valuationEvidence.independentLensGroups);
+
   return makeFamily(
     "cross-paradigm-independence",
     average(rows.map(scoreLensIndependence)),
@@ -250,8 +275,13 @@ function scoreCrossParadigmIndependence(rows: ValuationScorecardAuditRow[]): Val
     [
       `${rows.length} audited rows assessed for contributing valuation lenses`,
       `Model sets: ${compactList(rows.map((row) => row.models.length ? row.models.join("+") : "none"))}`,
+      triangulationMethods.length ? `Triangulation methods: ${compactList(triangulationMethods)}` : "No explicit triangulation methods captured in audit rows",
+      independentGroups.length ? `Independent lens groups: ${compactList(independentGroups)}` : "No independent lens groups captured in audit rows",
     ],
-    singleLens ? [`${singleLens}/${rows.length} audited rows still rely on a single valuation spine`] : [],
+    [
+      singleLens ? `${singleLens}/${rows.length} audited rows still rely on a single valuation spine` : "",
+      missingEvidence ? `${missingEvidence}/${rows.length} audited rows lack triangulation/independence evidence` : "",
+    ],
   );
 }
 
@@ -267,6 +297,8 @@ function rigorScore(row: ValuationScorecardAuditRow): number {
 
 function scoreTraceability(rows: ValuationScorecardAuditRow[]): ValuationMaturityFamilyScore {
   const levels = rows.map((row) => row.rigor.currentLevel ?? "unknown");
+  const readinessStatuses = rows.map((row) => row.valuationEvidence.readinessStatus ?? "unknown");
+  const unknownReadiness = readinessStatuses.filter((status) => status === "unknown").length;
   const calcErrors = rows.filter((row) => row.outcome === "CALC_ERROR").length;
   const syntacticOnly = rows.filter((row) => row.rigor.currentLevel === "syntactically-valid").length;
   const productionReady = rows.filter((row) => row.rigor.currentLevel === "production-ready").length;
@@ -276,11 +308,13 @@ function scoreTraceability(rows: ValuationScorecardAuditRow[]): ValuationMaturit
     rows.length,
     [
       `Rigor levels: ${compactList(levels)}`,
+      `Valuation readiness statuses: ${compactList(readinessStatuses)}`,
       `${productionReady}/${rows.length} audited rows reached production-ready rigor`,
     ],
     [
       calcErrors ? `${plural(calcErrors, "row")} have calculation errors and fail closed` : "",
       syntacticOnly ? `${plural(syntacticOnly, "row")} remain at syntactically-valid rigor` : "",
+      unknownReadiness ? `${plural(unknownReadiness, "row")} lack valuation readiness evidence` : "",
       productionReady === 0 && rows.length > 0 ? "No audited row currently clears the production-ready gate" : "",
     ],
   );

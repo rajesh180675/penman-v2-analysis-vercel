@@ -42,10 +42,11 @@ export default defineConfig({
     pool: "forks",
     maxWorkers: 2,
     // Audit shards run 10 heavy pipeline+valuation cycles per fork and
-    // OOM the default Node heap (~2GB on Win32). 4GB cleared all shards
-    // in local testing; raise further if test:audit hits OOM.
+    // OOM the default Node heap (~2GB on Win32). 8GB cleared all shards
+    // in local testing including the auditCompanyRun spec (6 tests, each
+    // parsing full Capitaline ZIPs with pipeline + valuation).
     forks: {
-      execArgv: ["--max-old-space-size=4096"],
+    execArgv: ["--max-old-space-size=8192", "--expose-gc"],
     },
     coverage: {
       provider: "v8",

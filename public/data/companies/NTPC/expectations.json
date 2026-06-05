@@ -2,9 +2,9 @@
   "companyId": "ntpc",
   "companyName": "NTPC Ltd",
   "profile": "capital-intensive-regulated",
-  "expectedRigorLevel": "syntactically-valid",
+  "expectedRigorLevel": "economically-plausible",
   "expectedParserFidelityStatus": "degraded",
-  "expectedReconciliationStatus": "failed",
+  "expectedReconciliationStatus": "degraded",
   "expectedEconomicSanityStatus": "passed",
   "expectedConceptIdentityStatus": "clean",
   "keyMetricTolerances": {
@@ -33,9 +33,9 @@
   "notes": "State-owned thermal+renewables generator. Capital-intensive with regulated returns; high NFO_to_CSE is structural (debt-financed PPE), not distress. Tests that NFO/CSE ranges are sector-aware.",
   "capturedAt": "2026-05-30T05:21:23Z",
   "targetState": {
-    "expectedRigorLevel": "syntactically-valid",
-    "expectedParserFidelityStatus": "failed",
-    "expectedReconciliationStatus": "failed",
+    "expectedRigorLevel": "economically-plausible",
+    "expectedParserFidelityStatus": "degraded",
+    "expectedReconciliationStatus": "degraded",
     "expectedAnomalyFlags": [
       "S-10.1",
       "S-10.1"

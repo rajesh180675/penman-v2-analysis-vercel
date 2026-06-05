@@ -543,6 +543,12 @@ export function evaluateBankReconciliationResiduals(params: {
         ? `${warningCount} bank reconciliation check(s) above warning, none critical. Worst: ${worst.label} in ${worst.periodEnd} at ${formatPct(worst.ratio)}.`
         : `All ${checks.length} bank reconciliation checks cleared. Worst: ${worst.label} in ${worst.periodEnd} at ${formatPct(worst.ratio)}.`;
 
+  const hardTieoutChecks = checks.filter((check) =>
+    check.key === "capital-adequacy" || check.key === "asset-liability-identity" || check.key === "npa-coverage-identity"
+  );
+  const accountsMonitored = hardTieoutChecks.length;
+  const hardTieoutReady = accountsMonitored > 0 && hardTieoutChecks.every((check) => check.status !== "failed" && check.ratio <= 0.01);
+
   return {
     status,
     summary,
@@ -550,5 +556,9 @@ export function evaluateBankReconciliationResiduals(params: {
     errorCount,
     maxResidualRatio,
     checks,
+    readiness: {
+      hardTieoutReady,
+      accountsMonitored,
+    },
   };
 }

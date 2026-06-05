@@ -256,6 +256,8 @@ export const SECTOR_BETAS: Record<CompanyType, number> = {
   telecom:       0.90,
   industrial:    1.10,
   cyclical:      1.40,
+  "loss-maker":  1.00,
+  conglomerate:  1.10,
   auto:          1.00,  // sector-neutral when type unknown
 };
 
@@ -301,6 +303,8 @@ export const SECTOR_EQUITY_WEIGHTS: Record<CompanyType, number> = {
   telecom:       0.55,  // Bharti, Vi: AGR + spectrum debt
   industrial:    0.70,  // mixed
   cyclical:      0.55,  // Tata Steel, JSW: high leverage at trough
+  "loss-maker":  0.80,  // neutral default
+  conglomerate:  0.70,  // similar to industrial
   auto:          0.80,  // sector-neutral default
 };
 
