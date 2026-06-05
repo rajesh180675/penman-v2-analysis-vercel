@@ -47,6 +47,16 @@ describe("audit skip/error taxonomy", () => {
     expect(deriveAuditOutcome({ flags: [...flags], hasComputedValue: false, rigorLevel: null, periodCount: 4 })).toBe(expected);
   });
 
+  it("does not promote production-ready rigor when production-ready checkpoints are blocked", () => {
+    expect(deriveAuditOutcome({
+      flags: [],
+      hasComputedValue: true,
+      rigorLevel: "production-ready",
+      periodCount: 5,
+      productionReadyBlockers: ["source-lineage", "reviewer-pack"],
+    })).toBe("VALUATION_ELIGIBLE_GUARDED");
+  });
+
   it("classifies insufficient history even without a pre-existing flag", () => {
     expect(deriveAuditOutcome({ flags: [], hasComputedValue: false, rigorLevel: null, periodCount: 1 })).toBe(
       "EXPECTED_SKIP_INSUFFICIENT_HISTORY",

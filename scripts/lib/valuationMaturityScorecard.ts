@@ -6,7 +6,7 @@ import {
   type AuditStatusClass,
 } from "./auditTypes";
 
-export const SCORECARD_SCHEMA_VERSION = "2026-06-valuation-maturity-v1" as const;
+export const SCORECARD_SCHEMA_VERSION = "2026-06-valuation-maturity-v2" as const;
 
 export const SCORECARD_FAMILIES = [
   { id: "industrial-core", label: "Industrial core valuation", weight: 15 },
@@ -22,6 +22,51 @@ export const SCORECARD_FAMILIES = [
 export type ScorecardFamilyId = typeof SCORECARD_FAMILIES[number]["id"];
 export type ScorecardFamilyStatus = "strong" | "guarded" | "gap" | "blocked";
 export type ValuationMaturityRating = "institutional" | "reviewer-ready" | "guarded" | "developing";
+
+export type ValuationBlockerSeverity = "info" | "warning" | "blocker";
+export type ValuationBlockerFamily =
+  | "parser-fidelity"
+  | "reconciliation"
+  | "source-lineage"
+  | "market-freshness"
+  | "valuation-readiness"
+  | "sector-contract"
+  | "model-applicability"
+  | "cross-lens-disagreement"
+  | "reviewer-pack";
+
+export interface ValuationBlockerReason {
+  code: string;
+  family: ValuationBlockerFamily;
+  severity: ValuationBlockerSeverity;
+  message: string;
+  companyTicker: string;
+  evidenceRefs: string[];
+  clearsWhen: string;
+}
+
+export interface ValuationScorecardRowSummary {
+  folder: string;
+  ticker: string;
+  companyType: string;
+  analysisFamily: "industrial" | "financial-institution" | "unknown";
+  pipelineStrategyId: string | null;
+  outcome: AuditOutcome;
+  statusClass: AuditStatusClass;
+  rigorLevel: string | null;
+  valuationReadinessStatus: string | null;
+  productionReady: {
+    status: "pass" | "blocked";
+    checkpoints: Array<{
+      id: string;
+      label: string;
+      status: "pass" | "warn" | "fail" | "expected-skip";
+      evidenceRefs: string[];
+      reason: string;
+    }>;
+  } | null;
+  blockers: ValuationBlockerReason[];
+}
 
 export interface ValuationScorecardAuditRow {
   folder: string;
@@ -42,6 +87,45 @@ export interface ValuationScorecardAuditRow {
       perShare: number | null;
     }>;
     independentLensGroups: string[];
+  };
+  sourceEvidence?: {
+    artifactCount: number;
+    hashedArtifactCount: number;
+    sourceUnavailableCount: number;
+    lineageRef: {
+      hasLineage: boolean;
+      conceptCount: number;
+      periodCount: number;
+      checksum: string;
+    } | null;
+    artifacts: Array<{
+      artifactId: string;
+      provider: string;
+      role: string;
+      sha256: string | null;
+      byteLength: number | null;
+      sourceUnavailable: boolean;
+    }>;
+  };
+  marketEvidence?: {
+    status: "fresh" | "stale" | "source_unavailable";
+    inputs: Array<{
+      kind: string;
+      source: string;
+      asOf: string | null;
+      value: number | null;
+    }>;
+    reason: string;
+  };
+  productionReady?: {
+    status: "pass" | "blocked";
+    checkpoints: Array<{
+      id: string;
+      label: string;
+      status: "pass" | "warn" | "fail" | "expected-skip";
+      evidenceRefs: string[];
+      reason: string;
+    }>;
   };
   outcome: AuditOutcome;
   statusClass: AuditStatusClass;
@@ -80,8 +164,10 @@ export interface ValuationMaturityScorecard {
     calcErrors: number;
     actionable: number;
     expectedSkips: number;
+    blockerCounts: Record<ValuationBlockerFamily, number>;
   };
   families: ValuationMaturityFamilyScore[];
+  rowSummaries: ValuationScorecardRowSummary[];
 }
 
 export interface BuildValuationMaturityScorecardOptions {
@@ -134,6 +220,227 @@ function compactList(values: string[], limit = 4): string {
   const unique = dedupe(values).filter(Boolean);
   if (unique.length <= limit) return unique.join(", ");
   return `${unique.slice(0, limit).join(", ")} +${unique.length - limit} more`;
+}
+
+const BLOCKER_FAMILIES: ValuationBlockerFamily[] = [
+  "parser-fidelity",
+  "reconciliation",
+  "source-lineage",
+  "market-freshness",
+  "valuation-readiness",
+  "sector-contract",
+  "model-applicability",
+  "cross-lens-disagreement",
+  "reviewer-pack",
+];
+
+function makeBlocker(
+  row: ValuationScorecardAuditRow,
+  code: string,
+  family: ValuationBlockerFamily,
+  severity: ValuationBlockerSeverity,
+  message: string,
+  clearsWhen: string,
+  evidenceRefs: string[] = [],
+): ValuationBlockerReason {
+  return {
+    code,
+    family,
+    severity,
+    message,
+    companyTicker: row.ticker,
+    evidenceRefs,
+    clearsWhen,
+  };
+}
+
+function isReconciliationCleared(status: string | null): boolean {
+  return status === "pass" || status === "confirmed";
+}
+
+function hasSourceLineageEvidence(row: ValuationScorecardAuditRow): boolean {
+  const evidence = row.sourceEvidence;
+  return Boolean(
+    evidence
+    && evidence.artifactCount > 0
+    && evidence.hashedArtifactCount === evidence.artifactCount
+    && evidence.sourceUnavailableCount === 0
+    && evidence.lineageRef?.hasLineage === true
+    && evidence.lineageRef.conceptCount > 0
+    && evidence.lineageRef.periodCount > 0
+    && /^[a-f0-9]{8,64}$/.test(evidence.lineageRef.checksum),
+  );
+}
+
+function hasFreshMarketEvidence(row: ValuationScorecardAuditRow): boolean {
+  return row.marketEvidence?.status === "fresh" && row.marketEvidence.inputs.length > 0;
+}
+
+export function deriveValuationBlockers(row: ValuationScorecardAuditRow): ValuationBlockerReason[] {
+  const blockers: ValuationBlockerReason[] = [];
+
+  if (row.rigor.parserFidelityStatus !== "pass") {
+    blockers.push(makeBlocker(
+      row,
+      "parser-fidelity-not-cleared",
+      "parser-fidelity",
+      row.rigor.parserFidelityStatus === "failed" ? "blocker" : "warning",
+      `Parser fidelity status is ${row.rigor.parserFidelityStatus ?? "unknown"}.`,
+      "Parser fidelity must pass for every valuation-critical source artifact.",
+      ["rigor.parserFidelityStatus"],
+    ));
+  }
+
+  if (row.rigor.currentLevel === "syntactically-valid") {
+    blockers.push(makeBlocker(
+      row,
+      "rigor-syntactic-only",
+      "reconciliation",
+      "blocker",
+      "Run has not cleared structural reconciliation.",
+      "Clear explicit statement/recast residual checks and advance beyond syntactically-valid rigor.",
+      ["rigor.currentLevel"],
+    ));
+  }
+
+  if (!isReconciliationCleared(row.rigor.reconciliationStatus)) {
+    blockers.push(makeBlocker(
+      row,
+      "reconciliation-not-cleared",
+      "reconciliation",
+      row.rigor.reconciliationStatus === "failed" ? "blocker" : "warning",
+      `Reconciliation status is ${row.rigor.reconciliationStatus ?? "unknown"}.`,
+      "Reconciliation must be confirmed or immaterially clean before production-ready valuation.",
+      ["rigor.reconciliationStatus"],
+    ));
+  }
+
+  if (row.valuationEvidence.readinessStatus !== "production-ready") {
+    blockers.push(makeBlocker(
+      row,
+      `valuation-readiness-${row.valuationEvidence.readinessStatus ?? "unknown"}`,
+      "valuation-readiness",
+      row.valuationEvidence.readinessStatus === "guarded" ? "blocker" : "warning",
+      `Valuation readiness is ${row.valuationEvidence.readinessStatus ?? "unknown"}.`,
+      "Valuation readiness must be production-ready or explicitly expected-skipped with a source contract reason.",
+      ["valuationEvidence.readinessStatus"],
+    ));
+  }
+
+  if (SECTOR_NATIVE_TYPES.has(row.companyType) && !isSectorNativeStrategy(row)) {
+    blockers.push(makeBlocker(
+      row,
+      "sector-native-strategy-missing",
+      "sector-contract",
+      "blocker",
+      `${row.companyType} row is not supported by a sector-native valuation strategy.`,
+      "Route through a source-backed sector-native strategy or mark the required sector source contract unavailable.",
+      ["companyType", "pipelineStrategyId", "models"],
+    ));
+  }
+
+  if (row.outcome === "MODEL_GAP" || row.models.length === 0) {
+    blockers.push(makeBlocker(
+      row,
+      "model-gap",
+      "model-applicability",
+      "blocker",
+      row.models.length === 0 ? "No valuation model produced a usable output." : "Audit outcome reports a model gap.",
+      "At least one applicable source-backed valuation model must compute, or the row must become an expected skip.",
+      ["models", "outcome"],
+    ));
+  }
+
+  if (row.models.length <= 1 && row.outcome !== "CALC_ERROR" && !isExpectedSkipOutcome(row.outcome)) {
+    blockers.push(makeBlocker(
+      row,
+      "single-valuation-spine",
+      "cross-lens-disagreement",
+      "warning",
+      "Row lacks enough independent valuation lenses for anti-tautology evidence.",
+      "Add source-backed independent valuation evidence or keep the row capped below production-ready.",
+      ["models", "valuationEvidence.independentLensGroups"],
+    ));
+  }
+
+  if (!hasSourceLineageEvidence(row)) {
+    blockers.push(makeBlocker(
+      row,
+      "source-lineage-missing",
+      "source-lineage",
+      "blocker",
+      "First-class source artifact/cell lineage is not yet attached to this scorecard row.",
+      "Attach source artifact hashes and material-number source-cell lineage, or emit source_unavailable.",
+      ["sourceEvidence", "sourceLineage"],
+    ));
+  }
+
+  if (!hasFreshMarketEvidence(row)) {
+    const unavailable = row.marketEvidence?.status === "source_unavailable";
+    blockers.push(makeBlocker(
+      row,
+      unavailable ? "market-freshness-source-unavailable" : "market-freshness-stale-or-missing",
+      "market-freshness",
+      "warning",
+      unavailable
+        ? (row.marketEvidence?.reason ?? "Market price/share/peer-multiple source is unavailable for this row.")
+        : "Market price/share/peer-multiple freshness is stale or missing for this row.",
+      "Attach timestamped market input freshness or explicitly exclude stale/unavailable market inputs.",
+      ["marketEvidence"],
+    ));
+  }
+
+  blockers.push(makeBlocker(
+    row,
+    "reviewer-pack-missing",
+    "reviewer-pack",
+    "warning",
+    "Workbook/reviewer-pack parity evidence is not yet attached to this row.",
+    "Generate reviewer pack/workbook parity evidence and feed it into the scorecard.",
+    ["reviewerPack"],
+  ));
+
+  if (row.outcome === "POLICY_WARNING" && row.flags.length === 0) {
+    blockers.push(makeBlocker(
+      row,
+      "policy-warning-unexplained",
+      "model-applicability",
+      "warning",
+      "Audit row is a policy warning without a lower-level flag explaining the policy decision.",
+      "Convert the warning into explicit blocker reasons or a stricter expected-skip/source contract.",
+      ["outcome", "flags"],
+    ));
+  }
+
+  return blockers;
+}
+
+function rowSummary(row: ValuationScorecardAuditRow): ValuationScorecardRowSummary {
+  return {
+    folder: row.folder,
+    ticker: row.ticker,
+    companyType: row.companyType,
+    analysisFamily: row.analysisFamily,
+    pipelineStrategyId: row.pipelineStrategyId,
+    outcome: row.outcome,
+    statusClass: row.statusClass,
+    rigorLevel: row.rigor.currentLevel,
+    valuationReadinessStatus: row.valuationEvidence.readinessStatus,
+    productionReady: row.productionReady ?? null,
+    blockers: deriveValuationBlockers(row),
+  };
+}
+
+function blockerCounts(rowSummaries: ValuationScorecardRowSummary[]): Record<ValuationBlockerFamily, number> {
+  const counts = Object.fromEntries(BLOCKER_FAMILIES.map((family) => [family, 0])) as Record<ValuationBlockerFamily, number>;
+  for (const summary of rowSummaries) {
+    for (const blocker of summary.blockers) counts[blocker.family] += 1;
+  }
+  return counts;
+}
+
+function countBlockers(rowSummaries: ValuationScorecardRowSummary[], family: ValuationBlockerFamily): number {
+  return rowSummaries.reduce((count, summary) => count + summary.blockers.filter((blocker) => blocker.family === family).length, 0);
 }
 
 function familyStatus(score: number): ScorecardFamilyStatus {
@@ -320,9 +627,11 @@ function scoreTraceability(rows: ValuationScorecardAuditRow[]): ValuationMaturit
   );
 }
 
-function scoreDataFreshness(rows: ValuationScorecardAuditRow[]): ValuationMaturityFamilyScore {
+function scoreDataFreshness(rows: ValuationScorecardAuditRow[], rowSummaries: ValuationScorecardRowSummary[]): ValuationMaturityFamilyScore {
   const withPeriods = rows.filter((row) => row.periods > 0).length;
   const withLatest = rows.filter((row) => row.latestPeriod).length;
+  const sourceLineageGaps = countBlockers(rowSummaries, "source-lineage");
+  const freshnessGaps = countBlockers(rowSummaries, "market-freshness");
   const base = rows.length === 0 ? 0 : 4.5 + (withPeriods / rows.length) + (withLatest / rows.length);
   return makeFamily(
     "data-freshness-source-tieout",
@@ -332,7 +641,12 @@ function scoreDataFreshness(rows: ValuationScorecardAuditRow[]): ValuationMaturi
       `${withPeriods}/${rows.length} audited rows have parsed periods`,
       `${withLatest}/${rows.length} audited rows expose latest period labels`,
     ],
-    ["source hashes, source-cell tieout, and market freshness are not yet first-class scorecard inputs"],
+    [
+      sourceLineageGaps ? `${sourceLineageGaps} ${sourceLineageGaps === 1 ? "row lacks" : "rows lack"} first-class source lineage evidence` : "",
+      freshnessGaps ? `${freshnessGaps} ${freshnessGaps === 1 ? "row lacks" : "rows lack"} fresh timestamped market evidence` : "",
+      sourceLineageGaps ? "source hashes/source-cell lineage remain incomplete for the rows above" : "source artifact hashes and lineage refs are first-class scorecard inputs",
+      freshnessGaps ? "market freshness remains blocked where source_unavailable/stale evidence is emitted" : "market freshness evidence is first-class for this audit sample",
+    ],
   );
 }
 
@@ -385,13 +699,14 @@ export function buildValuationMaturityScorecard(
 ): ValuationMaturityScorecard {
   const outcomes = outcomeCounts(rows);
   const calcErrors = outcomes.CALC_ERROR;
+  const rowSummaries = rows.map(rowSummary);
   const families = [
     scoreIndustrialCore(rows),
     scoreFinancialCoverage(rows),
     scoreSectorNativeCoverage(rows),
     scoreCrossParadigmIndependence(rows),
     scoreTraceability(rows),
-    scoreDataFreshness(rows),
+    scoreDataFreshness(rows, rowSummaries),
     scoreWorkbookDefensibility(rows),
     scoreEngineeringQuality(rows, calcErrors),
   ];
@@ -411,8 +726,10 @@ export function buildValuationMaturityScorecard(
       calcErrors,
       actionable: countOutcomes(rows, isActionableAuditOutcome),
       expectedSkips: countOutcomes(rows, isExpectedSkipOutcome),
+      blockerCounts: blockerCounts(rowSummaries),
     },
     families,
+    rowSummaries,
   };
 }
 
@@ -471,6 +788,38 @@ export function renderScorecardMarkdown(scorecard: ValuationMaturityScorecard): 
   lines.push(`Calculation errors: ${scorecard.corpus.calcErrors}`);
   lines.push(`Expected skips: ${scorecard.corpus.expectedSkips}`);
   lines.push(`Actionable rows: ${scorecard.corpus.actionable}`);
+  lines.push("");
+  lines.push("## Blocker Counts");
+  lines.push("");
+  for (const [family, count] of Object.entries(scorecard.corpus.blockerCounts)) {
+    lines.push(`- ${family}: ${count}`);
+  }
+  lines.push("");
+  lines.push("## Row Blocker Ledger");
+  lines.push("");
+  lines.push("| Ticker | Outcome | Rigor | Readiness | Blockers |");
+  lines.push("|---|---|---|---|---|");
+  for (const row of scorecard.rowSummaries) {
+    const blockerCodes = row.blockers.map((blocker) => blocker.code);
+    lines.push(
+      `| ${row.ticker} | ${row.outcome} | ${row.rigorLevel ?? "unknown"} | ` +
+      `${row.valuationReadinessStatus ?? "unknown"} | ${markdownCell(blockerCodes)} |`,
+    );
+  }
+  lines.push("");
+  lines.push("## Production-Ready Checkpoints");
+  lines.push("");
+  lines.push("| Ticker | Status | Failed / non-pass checkpoints |");
+  lines.push("|---|---|---|");
+  for (const row of scorecard.rowSummaries) {
+    const checkpoints = row.productionReady?.checkpoints ?? [];
+    const nonPass = checkpoints
+      .filter((checkpoint) => checkpoint.status !== "pass")
+      .map((checkpoint) => `${checkpoint.id}: ${checkpoint.reason}`);
+    lines.push(
+      `| ${row.ticker} | ${row.productionReady?.status ?? "unknown"} | ${markdownCell(nonPass)} |`,
+    );
+  }
   lines.push("");
   lines.push("## Company-Type Mix");
   lines.push("");
