@@ -65,6 +65,32 @@ describe.sequential("auditCompanyRun", () => {
     expect(result.models.length).toBeGreaterThan(1);
   }, 120_000);
 
+  it("attaches a hashed source artifact manifest to audit rows", async () => {
+    const result = await runAudit("ASIANPAINT");
+
+    expect(result.sourceEvidence.artifactCount).toBeGreaterThan(0);
+    expect(result.sourceEvidence.hashedArtifactCount).toBe(result.sourceEvidence.artifactCount);
+    const zipArtifact = result.sourceEvidence.artifacts.find((artifact) => artifact.artifactId === "Asian Paints.zip");
+    expect(zipArtifact?.provider).toBe("capitaline");
+    expect(zipArtifact?.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(zipArtifact?.sourceUnavailable).toBe(false);
+    expect(result.sourceEvidence.lineageRef?.hasLineage).toBe(true);
+    expect(result.sourceEvidence.lineageRef?.conceptCount).toBeGreaterThan(0);
+    expect(result.sourceEvidence.lineageRef?.periodCount).toBeGreaterThan(0);
+    expect(result.sourceEvidence.lineageRef?.checksum).toMatch(/^[a-f0-9]{8,64}$/);
+    expect(result.marketEvidence.status).toBe("source_unavailable");
+    expect(result.marketEvidence.reason).toMatch(/No timestamped market data source/);
+    expect(result.marketEvidence.inputs).toEqual([]);
+    expect(result.productionReady.status).toBe("blocked");
+    expect(result.productionReady.checkpoints.map((checkpoint) => checkpoint.id)).toEqual(expect.arrayContaining([
+      "source-lineage",
+      "market-freshness",
+      "valuation-readiness",
+      "reviewer-pack",
+    ]));
+    expect(result.productionReady.checkpoints.every((checkpoint) => checkpoint.reason.length > 0)).toBe(true);
+  }, 120_000);
+
   it("carries valuation readiness and triangulation evidence into audit rows", async () => {
     const result = await runAudit("ASIANPAINT");
 

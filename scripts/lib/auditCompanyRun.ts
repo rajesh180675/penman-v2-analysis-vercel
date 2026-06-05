@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -126,6 +127,56 @@ export interface AuditValuationEvidenceSnapshot {
   independentLensGroups: string[];
 }
 
+export interface AuditSourceArtifactEvidence {
+  artifactId: string;
+  provider: "capitaline" | "sidecar";
+  role: "primary-source" | "quality-sidecar";
+  sha256: string | null;
+  byteLength: number | null;
+  sourceUnavailable: boolean;
+}
+
+export interface AuditLineageRefSnapshot {
+  hasLineage: boolean;
+  conceptCount: number;
+  periodCount: number;
+  checksum: string;
+}
+
+export interface AuditSourceEvidenceSnapshot {
+  artifacts: AuditSourceArtifactEvidence[];
+  artifactCount: number;
+  hashedArtifactCount: number;
+  sourceUnavailableCount: number;
+  lineageRef: AuditLineageRefSnapshot | null;
+}
+
+export interface AuditMarketEvidenceInputSnapshot {
+  kind: "market-price" | "shares-outstanding" | "peer-multiple";
+  source: string;
+  asOf: string | null;
+  value: number | null;
+}
+
+export interface AuditMarketEvidenceSnapshot {
+  status: "fresh" | "stale" | "source_unavailable";
+  inputs: AuditMarketEvidenceInputSnapshot[];
+  reason: string;
+}
+
+export interface AuditProductionReadyCheckpointSnapshot {
+  id: string;
+  label: string;
+  status: "pass" | "warn" | "fail" | "expected-skip";
+  evidenceRefs: string[];
+  reason: string;
+}
+
+export interface AuditProductionReadySnapshot {
+  status: "pass" | "blocked";
+  checkpoints: AuditProductionReadyCheckpointSnapshot[];
+}
+
 export interface AuditCompanyRunResult {
   folder: string;
   ticker: string;
@@ -147,6 +198,9 @@ export interface AuditCompanyRunResult {
   evEbitda: number | null;
   valuation: AuditValuationSnapshot;
   valuationEvidence: AuditValuationEvidenceSnapshot;
+  sourceEvidence: AuditSourceEvidenceSnapshot;
+  marketEvidence: AuditMarketEvidenceSnapshot;
+  productionReady: AuditProductionReadySnapshot;
   bankValuation: AuditBankValuationSnapshot | null;
   models: string[];
   modelApplicability: AuditModelApplicability;
@@ -170,6 +224,187 @@ export interface AuditCompanyRunOptions {
 
 function companiesDir(projectRoot: string): string {
   return join(projectRoot, "public", "data", "companies");
+}
+
+function hashArtifact(path: string): { sha256: string; byteLength: number } {
+  const buf = readFileSync(path);
+  return {
+    sha256: createHash("sha256").update(buf).digest("hex"),
+    byteLength: buf.length,
+  };
+}
+
+function sourceArtifact(args: {
+  path: string;
+  artifactId: string;
+  provider: AuditSourceArtifactEvidence["provider"];
+  role: AuditSourceArtifactEvidence["role"];
+}): AuditSourceArtifactEvidence {
+  if (!existsSync(args.path)) {
+    return {
+      artifactId: args.artifactId,
+      provider: args.provider,
+      role: args.role,
+      sha256: null,
+      byteLength: null,
+      sourceUnavailable: true,
+    };
+  }
+  const hashed = hashArtifact(args.path);
+  return {
+    artifactId: args.artifactId,
+    provider: args.provider,
+    role: args.role,
+    sha256: hashed.sha256,
+    byteLength: hashed.byteLength,
+    sourceUnavailable: false,
+  };
+}
+
+function buildSourceEvidence(projectRoot: string, company: AuditRegistryEntry): AuditSourceEvidenceSnapshot {
+  const companyDir = join(companiesDir(projectRoot), company.folder);
+  const artifacts: AuditSourceArtifactEvidence[] = [
+    sourceArtifact({
+      path: join(companyDir, `${company.folder}.zip`),
+      artifactId: `${company.folder}.zip`,
+      provider: "capitaline",
+      role: "primary-source",
+    }),
+  ];
+  const qualitySidecarPath = join(companyDir, "quality_indicators.json");
+  if (existsSync(qualitySidecarPath)) {
+    artifacts.push(sourceArtifact({
+      path: qualitySidecarPath,
+      artifactId: "quality_indicators.json",
+      provider: "sidecar",
+      role: "quality-sidecar",
+    }));
+  }
+  return {
+    artifacts,
+    artifactCount: artifacts.length,
+    hashedArtifactCount: artifacts.filter((artifact) => artifact.sha256 != null).length,
+    sourceUnavailableCount: artifacts.filter((artifact) => artifact.sourceUnavailable).length,
+    lineageRef: null,
+  };
+}
+
+function withSourceEvidence(
+  result: AuditCompanyRunResult,
+  sourceEvidence: AuditSourceEvidenceSnapshot,
+  lineageRef?: AuditLineageRefSnapshot | null,
+): AuditCompanyRunResult {
+  const updated: AuditCompanyRunResult = {
+    ...result,
+    sourceEvidence: { ...sourceEvidence, lineageRef: lineageRef ?? sourceEvidence.lineageRef },
+  };
+  const productionReady = buildProductionReadySnapshot(updated);
+  const outcome = result.outcome === "PRODUCTION_READY" && productionReady.status === "blocked"
+    ? "VALUATION_ELIGIBLE_GUARDED"
+    : result.outcome;
+  return {
+    ...updated,
+    productionReady,
+    outcome,
+    statusClass: statusClassFromOutcome(outcome),
+  };
+}
+
+function hasCompleteSourceEvidence(evidence: AuditSourceEvidenceSnapshot): boolean {
+  return Boolean(
+    evidence.artifactCount > 0
+    && evidence.hashedArtifactCount === evidence.artifactCount
+    && evidence.sourceUnavailableCount === 0
+    && evidence.lineageRef?.hasLineage === true
+    && evidence.lineageRef.conceptCount > 0
+    && evidence.lineageRef.periodCount > 0
+    && /^[a-f0-9]{8,64}$/.test(evidence.lineageRef.checksum),
+  );
+}
+
+function checkpoint(
+  id: string,
+  label: string,
+  passed: boolean,
+  reason: string,
+  evidenceRefs: string[],
+): AuditProductionReadyCheckpointSnapshot {
+  return {
+    id,
+    label,
+    status: passed ? "pass" : "fail",
+    reason,
+    evidenceRefs,
+  };
+}
+
+function isEconomicallyPlausibleOrBetter(level: string | null | undefined): boolean {
+  return level === "economically-plausible" || level === "valuation-eligible" || level === "production-ready";
+}
+
+function buildProductionReadySnapshot(result: AuditCompanyRunResult): AuditProductionReadySnapshot {
+  const checkpoints: AuditProductionReadyCheckpointSnapshot[] = [
+    checkpoint(
+      "parser-fidelity",
+      "Parser fidelity",
+      result.rigor.parserFidelityStatus === "pass",
+      result.rigor.parserFidelityStatus === "pass" ? "Parser fidelity passed." : `Parser fidelity is ${result.rigor.parserFidelityStatus ?? "unknown"}.`,
+      ["rigor.parserFidelityStatus", "rigor.parserFidelityScore"],
+    ),
+    checkpoint(
+      "source-lineage",
+      "Source lineage",
+      hasCompleteSourceEvidence(result.sourceEvidence),
+      hasCompleteSourceEvidence(result.sourceEvidence) ? "Source artifacts are hashed and lineageRef is populated." : "Source artifact hash and bounded lineageRef evidence are incomplete.",
+      ["sourceEvidence.artifacts", "sourceEvidence.lineageRef"],
+    ),
+    checkpoint(
+      "market-freshness",
+      "Market freshness",
+      result.marketEvidence.status === "fresh" && result.marketEvidence.inputs.length > 0,
+      result.marketEvidence.status === "fresh" ? "Market inputs are timestamped fresh." : result.marketEvidence.reason,
+      ["marketEvidence"],
+    ),
+    checkpoint(
+      "reconciliation",
+      "Reconciliation",
+      result.rigor.reconciliationStatus === "pass" || result.rigor.reconciliationStatus === "confirmed",
+      result.rigor.reconciliationStatus === "pass" || result.rigor.reconciliationStatus === "confirmed" ? "Reconciliation passed." : `Reconciliation is ${result.rigor.reconciliationStatus ?? "unknown"}.`,
+      ["rigor.reconciliationStatus", "rigor.reconciliationMaxRatio"],
+    ),
+    checkpoint(
+      "economic-sanity",
+      "Economic sanity",
+      isEconomicallyPlausibleOrBetter(result.rigor.currentLevel),
+      isEconomicallyPlausibleOrBetter(result.rigor.currentLevel) ? "Rigor ladder reached economic plausibility or better." : `Rigor level is ${result.rigor.currentLevel ?? "unknown"}.`,
+      ["rigor.currentLevel"],
+    ),
+    checkpoint(
+      "valuation-readiness",
+      "Valuation readiness",
+      result.valuationEvidence.readinessStatus === "production-ready",
+      result.valuationEvidence.readinessStatus === "production-ready" ? "Valuation readiness is production-ready." : `Valuation readiness is ${result.valuationEvidence.readinessStatus ?? "unknown"}.`,
+      ["valuationEvidence.readinessStatus"],
+    ),
+    checkpoint(
+      "independent-evidence",
+      "Independent valuation evidence",
+      result.valuationEvidence.independentLensGroups.length >= 2 && result.models.length >= 2,
+      result.valuationEvidence.independentLensGroups.length >= 2 && result.models.length >= 2 ? "At least two independent valuation evidence groups are present." : "At least two independent valuation evidence groups are required.",
+      ["models", "valuationEvidence.independentLensGroups"],
+    ),
+    checkpoint(
+      "reviewer-pack",
+      "Reviewer pack parity",
+      false,
+      "Workbook/reviewer-pack parity evidence is not yet generated for audit rows.",
+      ["reviewerPack"],
+    ),
+  ];
+  return {
+    status: checkpoints.every((item) => item.status === "pass" || item.status === "expected-skip") ? "pass" : "blocked",
+    checkpoints,
+  };
 }
 
 export function finiteOrNull(value: number | null | undefined): number | null {
@@ -201,6 +436,31 @@ function emptyValuationEvidence(): AuditValuationEvidenceSnapshot {
     defensibilityStatus: null,
     triangulationMethods: [],
     independentLensGroups: [],
+  };
+}
+
+function emptySourceEvidence(): AuditSourceEvidenceSnapshot {
+  return {
+    artifacts: [],
+    artifactCount: 0,
+    hashedArtifactCount: 0,
+    sourceUnavailableCount: 0,
+    lineageRef: null,
+  };
+}
+
+function emptyMarketEvidence(): AuditMarketEvidenceSnapshot {
+  return {
+    status: "source_unavailable",
+    inputs: [],
+    reason: "No timestamped market data source is configured for audit-company runs.",
+  };
+}
+
+function emptyProductionReady(): AuditProductionReadySnapshot {
+  return {
+    status: "blocked",
+    checkpoints: [],
   };
 }
 
@@ -245,6 +505,9 @@ function emptyResult(company: AuditRegistryEntry): AuditCompanyRunResult {
     evEbitda: null,
     valuation: emptyValuation(),
     valuationEvidence: emptyValuationEvidence(),
+    sourceEvidence: emptySourceEvidence(),
+    marketEvidence: emptyMarketEvidence(),
+    productionReady: emptyProductionReady(),
     bankValuation: null,
     models: [],
     modelApplicability: emptyApplicability(),
@@ -269,11 +532,16 @@ function finalize(result: AuditCompanyRunResult, outcome: AuditOutcome): AuditCo
 }
 
 function deriveResultOutcome(result: AuditCompanyRunResult, hasComputedValue: boolean): AuditOutcome {
+  const productionReady = buildProductionReadySnapshot(result);
+  result.productionReady = productionReady;
   return deriveAuditOutcome({
     flags: result.flags,
     hasComputedValue,
     rigorLevel: result.rigor.currentLevel,
     periodCount: result.periods,
+    productionReadyBlockers: productionReady.checkpoints
+      .filter((checkpoint) => checkpoint.status === "fail")
+      .map((checkpoint) => checkpoint.id),
   });
 }
 
@@ -683,12 +951,13 @@ export async function auditCompanyRun(
   options: AuditCompanyRunOptions = {},
 ): Promise<AuditCompanyRunResult> {
   const projectRoot = resolve(options.projectRoot ?? DEFAULT_PROJECT_ROOT);
+  const sourceEvidence = buildSourceEvidence(projectRoot, company);
   const zipPath = join(companiesDir(projectRoot), company.folder, `${company.folder}.zip`);
 
   if (!existsSync(zipPath)) {
     const result = emptyResult(company);
     result.flags = ["CALC_ERROR:MISSING_ZIP"];
-    return finalize(result, deriveResultOutcome(result, false));
+    return withSourceEvidence(finalize(result, deriveResultOutcome(result, false)), sourceEvidence);
   }
 
   try {
@@ -719,24 +988,32 @@ export async function auditCompanyRun(
     });
 
     if (pipeline.analysisFamily === "financial-institution") {
-      return financialResult({ company, pipeline, sidecarFlags, trace, verbose: Boolean(options.verbose) });
+      return withSourceEvidence(
+        financialResult({ company, pipeline, sidecarFlags, trace, verbose: Boolean(options.verbose) }),
+        sourceEvidence,
+        trace.lineageRef,
+      );
     }
     if (!industrialValuation) {
       throw new Error("Industrial valuation was not computed for non-financial audit route");
     }
 
-    return industrialResult({
-      company,
-      pipeline,
-      valuation: industrialValuation,
-      sidecarFlags,
-      trace,
-    });
+    return withSourceEvidence(
+      industrialResult({
+        company,
+        pipeline,
+        valuation: industrialValuation,
+        sidecarFlags,
+        trace,
+      }),
+      sourceEvidence,
+      trace.lineageRef,
+    );
   } catch (error) {
     const result = emptyResult(company);
     const message = (error as Error).message;
     result.flags = [`CALC_ERROR:${message}`];
     result.error = message;
-    return finalize(result, deriveResultOutcome(result, false));
+    return withSourceEvidence(finalize(result, deriveResultOutcome(result, false)), sourceEvidence);
   }
 }

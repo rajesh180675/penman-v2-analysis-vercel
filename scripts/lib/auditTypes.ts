@@ -32,6 +32,7 @@ export interface DeriveAuditOutcomeInput {
   hasComputedValue: boolean;
   rigorLevel?: string | null;
   periodCount?: number | null;
+  productionReadyBlockers?: string[];
 }
 
 export function statusClassFromOutcome(outcome: AuditOutcome): AuditStatusClass {
@@ -59,7 +60,7 @@ export function isExpectedSkipOutcome(outcome: AuditOutcome): boolean {
 }
 
 export function deriveAuditOutcome(input: DeriveAuditOutcomeInput): AuditOutcome {
-  const { flags, hasComputedValue, rigorLevel, periodCount } = input;
+  const { flags, hasComputedValue, rigorLevel, periodCount, productionReadyBlockers = [] } = input;
 
   if (flags.some((f) => f.startsWith("ERROR") || f.startsWith("CALC_ERROR") || f.endsWith("_INVALID"))) {
     return "CALC_ERROR";
@@ -87,6 +88,9 @@ export function deriveAuditOutcome(input: DeriveAuditOutcomeInput): AuditOutcome
   }
   if (!hasComputedValue) {
     return "MODEL_GAP";
+  }
+  if (rigorLevel === "production-ready" && productionReadyBlockers.length > 0) {
+    return "VALUATION_ELIGIBLE_GUARDED";
   }
 
   return RIGOR_TO_OUTCOME[rigorLevel ?? ""] ?? "POLICY_WARNING";
