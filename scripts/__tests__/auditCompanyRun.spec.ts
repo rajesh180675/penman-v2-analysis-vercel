@@ -78,9 +78,9 @@ describe.sequential("auditCompanyRun", () => {
     expect(result.sourceEvidence.lineageRef?.conceptCount).toBeGreaterThan(0);
     expect(result.sourceEvidence.lineageRef?.periodCount).toBeGreaterThan(0);
     expect(result.sourceEvidence.lineageRef?.checksum).toMatch(/^[a-f0-9]{8,64}$/);
-    expect(result.marketEvidence.status).toBe("source_unavailable");
-    expect(result.marketEvidence.reason).toMatch(/No timestamped market data source/);
-    expect(result.marketEvidence.inputs).toEqual([]);
+    expect(result.marketEvidence.status).toBe("fresh");
+    expect(result.marketEvidence.reason).toMatch(/Fetched.*market input.*from Yahoo Finance/);
+    expect(result.marketEvidence.inputs.length).toBeGreaterThan(0);
     expect(result.productionReady.status).toBe("blocked");
     expect(result.productionReady.checkpoints.map((checkpoint) => checkpoint.id)).toEqual(expect.arrayContaining([
       "source-lineage",

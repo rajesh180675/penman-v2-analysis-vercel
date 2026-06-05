@@ -453,8 +453,56 @@ function emptyMarketEvidence(): AuditMarketEvidenceSnapshot {
   return {
     status: "source_unavailable",
     inputs: [],
-    reason: "No timestamped market data source is configured for audit-company runs.",
+    reason: "Market data fetch not attempted.",
   };
+}
+
+async function fetchMarketEvidence(ticker: string): Promise<AuditMarketEvidenceSnapshot> {
+  try {
+    const yahooSymbol = ticker.includes(".") ? ticker : `${ticker}.NS`;
+    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d`;
+    const res = await fetch(yahooUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+    });
+    if (!res.ok) {
+      return {
+        status: "source_unavailable",
+        inputs: [],
+        reason: `Yahoo Finance returned ${res.status}`,
+      };
+    }
+    const data = await res.json() as any;
+    const meta = data?.chart?.result?.[0]?.meta;
+    if (!meta) {
+      return {
+        status: "source_unavailable",
+        inputs: [],
+        reason: "Yahoo Finance returned no data",
+      };
+    }
+    const price = typeof meta.regularMarketPrice === "number" ? meta.regularMarketPrice : null;
+    const marketTime = meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString() : null;
+    const inputs: AuditMarketEvidenceInputSnapshot[] = [];
+    if (price != null) {
+      inputs.push({
+        kind: "market-price",
+        source: "yahoo_finance",
+        asOf: marketTime,
+        value: price,
+      });
+    }
+    const status = inputs.length > 0 ? "fresh" : "source_unavailable";
+    const reason = inputs.length > 0
+      ? `Fetched ${inputs.length} market input(s) from Yahoo Finance`
+      : "Yahoo Finance returned no usable market data";
+    return { status, inputs, reason };
+  } catch (err: any) {
+    return {
+      status: "source_unavailable",
+      inputs: [],
+      reason: `Market data fetch failed: ${err?.message ?? String(err)}`,
+    };
+  }
 }
 
 function emptyProductionReady(): AuditProductionReadySnapshot {
@@ -952,11 +1000,13 @@ export async function auditCompanyRun(
 ): Promise<AuditCompanyRunResult> {
   const projectRoot = resolve(options.projectRoot ?? DEFAULT_PROJECT_ROOT);
   const sourceEvidence = buildSourceEvidence(projectRoot, company);
+  const marketEvidence = await fetchMarketEvidence(company.ticker);
   const zipPath = join(companiesDir(projectRoot), company.folder, `${company.folder}.zip`);
 
   if (!existsSync(zipPath)) {
     const result = emptyResult(company);
     result.flags = ["CALC_ERROR:MISSING_ZIP"];
+    result.marketEvidence = marketEvidence;
     return withSourceEvidence(finalize(result, deriveResultOutcome(result, false)), sourceEvidence);
   }
 
@@ -988,32 +1038,29 @@ export async function auditCompanyRun(
     });
 
     if (pipeline.analysisFamily === "financial-institution") {
-      return withSourceEvidence(
-        financialResult({ company, pipeline, sidecarFlags, trace, verbose: Boolean(options.verbose) }),
-        sourceEvidence,
-        trace.lineageRef,
-      );
+      const result = financialResult({ company, pipeline, sidecarFlags, trace, verbose: Boolean(options.verbose) });
+      result.marketEvidence = marketEvidence;
+      return withSourceEvidence(result, sourceEvidence, trace.lineageRef);
     }
     if (!industrialValuation) {
       throw new Error("Industrial valuation was not computed for non-financial audit route");
     }
 
-    return withSourceEvidence(
-      industrialResult({
-        company,
-        pipeline,
-        valuation: industrialValuation,
-        sidecarFlags,
-        trace,
-      }),
-      sourceEvidence,
-      trace.lineageRef,
-    );
+    const result = industrialResult({
+      company,
+      pipeline,
+      valuation: industrialValuation,
+      sidecarFlags,
+      trace,
+    });
+    result.marketEvidence = marketEvidence;
+    return withSourceEvidence(result, sourceEvidence, trace.lineageRef);
   } catch (error) {
     const result = emptyResult(company);
     const message = (error as Error).message;
     result.flags = [`CALC_ERROR:${message}`];
     result.error = message;
+    result.marketEvidence = marketEvidence;
     return withSourceEvidence(finalize(result, deriveResultOutcome(result, false)), sourceEvidence);
   }
 }
