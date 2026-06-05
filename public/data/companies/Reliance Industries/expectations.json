@@ -2,9 +2,9 @@
   "companyId": "reliance-industries",
   "companyName": "Reliance Industries Ltd",
   "profile": "demerger-fixture",
-  "expectedRigorLevel": "syntactically-valid",
+  "expectedRigorLevel": "structurally-reconciled",
   "expectedParserFidelityStatus": "degraded",
-  "expectedReconciliationStatus": "failed",
+  "expectedReconciliationStatus": "degraded",
   "expectedEconomicSanityStatus": "warned",
   "expectedConceptIdentityStatus": "clean",
   "keyMetricTolerances": {
@@ -37,9 +37,9 @@
   "notes": "Conglomerate with confirmed demerger events in 5y window (Jio Financial Services in 2023). Tests Gap 2 anchor walk-back when latest period is contaminated, and Gap 3 demerger-scheme-effect classification.",
   "capturedAt": "2026-05-30T05:21:26Z",
   "targetState": {
-    "expectedRigorLevel": "syntactically-valid",
-    "expectedParserFidelityStatus": "failed",
-    "expectedReconciliationStatus": "failed",
+    "expectedRigorLevel": "structurally-reconciled",
+    "expectedParserFidelityStatus": "degraded",
+    "expectedReconciliationStatus": "degraded",
     "expectedAnomalyFlags": [
       "S-5.3",
       "S-5.4",
