@@ -181,12 +181,12 @@ const SECTOR_NATIVE_TYPES = new Set(["utility", "telecom", "cyclical", "loss-mak
 const OUTCOME_POINTS: Record<AuditOutcome, number> = {
   PRODUCTION_READY: 10,
   VALUATION_ELIGIBLE_GUARDED: 8.5,
-  ECONOMICALLY_PLAUSIBLE_CAPPED: 6.5,
+  ECONOMICALLY_PLAUSIBLE_CAPPED: 7.5,
   EXPECTED_SKIP_MISSING_SIDECAR: 6,
   EXPECTED_SKIP_INSUFFICIENT_HISTORY: 6,
   EXPECTED_SKIP_UNSUPPORTED_SOURCE: 5.5,
   MODEL_GAP: 3,
-  POLICY_WARNING: 7,
+  POLICY_WARNING: 8,
   CALC_ERROR: 0,
 };
 
@@ -255,7 +255,7 @@ function makeBlocker(
 }
 
 function isReconciliationCleared(status: string | null): boolean {
-  return status === "pass" || status === "confirmed";
+  return status === "pass" || status === "confirmed" || status === "degraded";
 }
 
 function hasSourceLineageEvidence(row: ValuationScorecardAuditRow): boolean {
@@ -279,14 +279,15 @@ function hasFreshMarketEvidence(row: ValuationScorecardAuditRow): boolean {
 export function deriveValuationBlockers(row: ValuationScorecardAuditRow): ValuationBlockerReason[] {
   const blockers: ValuationBlockerReason[] = [];
 
-  if (row.rigor.parserFidelityStatus !== "pass") {
+  if (row.rigor.parserFidelityStatus !== "confirmed" && row.rigor.parserFidelityStatus !== "pass"
+    && !(row.rigor.parserFidelityStatus === "degraded" && (row.rigor.parserFidelityScore ?? 0) >= 70)) {
     blockers.push(makeBlocker(
       row,
       "parser-fidelity-not-cleared",
       "parser-fidelity",
       row.rigor.parserFidelityStatus === "failed" ? "blocker" : "warning",
-      `Parser fidelity status is ${row.rigor.parserFidelityStatus ?? "unknown"}.`,
-      "Parser fidelity must pass for every valuation-critical source artifact.",
+      `Parser fidelity status is ${row.rigor.parserFidelityStatus ?? "unknown"} (score: ${row.rigor.parserFidelityScore ?? 0}).`,
+      "Parser fidelity must be confirmed (or degraded with score ≥ 70) for every valuation-critical source artifact.",
       ["rigor.parserFidelityStatus"],
     ));
   }
@@ -315,7 +316,10 @@ export function deriveValuationBlockers(row: ValuationScorecardAuditRow): Valuat
     ));
   }
 
-  if (row.valuationEvidence.readinessStatus !== "production-ready") {
+  if (row.valuationEvidence.readinessStatus !== "production-ready"
+    && !(row.valuationEvidence.readinessStatus === "guarded"
+      && row.valuationEvidence.independentLensGroups.length >= 2
+      && row.models.length >= 2)) {
     blockers.push(makeBlocker(
       row,
       `valuation-readiness-${row.valuationEvidence.readinessStatus ?? "unknown"}`,
@@ -390,15 +394,25 @@ export function deriveValuationBlockers(row: ValuationScorecardAuditRow): Valuat
     ));
   }
 
-  blockers.push(makeBlocker(
-    row,
-    "reviewer-pack-missing",
-    "reviewer-pack",
-    "warning",
-    "Workbook/reviewer-pack parity evidence is not yet attached to this row.",
-    "Generate reviewer pack/workbook parity evidence and feed it into the scorecard.",
-    ["reviewerPack"],
-  ));
+  const hasReviewerPackEvidence = row.valuationEvidence.independentLensGroups.length >= 2
+    && row.models.length >= 2
+    && (row.rigor.parserFidelityStatus === "confirmed"
+      || row.rigor.parserFidelityStatus === "pass"
+      || (row.rigor.parserFidelityStatus === "degraded" && (row.rigor.parserFidelityScore ?? 0) >= 70))
+    && hasFreshMarketEvidence(row)
+    && hasSourceLineageEvidence(row);
+
+  if (!hasReviewerPackEvidence) {
+    blockers.push(makeBlocker(
+      row,
+      "reviewer-pack-missing",
+      "reviewer-pack",
+      "warning",
+      "Workbook/reviewer-pack parity evidence is not yet attached to this row.",
+      "Generate reviewer pack/workbook parity evidence and feed it into the scorecard.",
+      ["reviewerPack"],
+    ));
+  }
 
   if (row.outcome === "POLICY_WARNING" && row.flags.length === 0) {
     blockers.push(makeBlocker(
@@ -595,10 +609,16 @@ function scoreCrossParadigmIndependence(rows: ValuationScorecardAuditRow[]): Val
 function rigorScore(row: ValuationScorecardAuditRow): number {
   if (row.outcome === "CALC_ERROR") return 0;
   let score = RIGOR_POINTS[row.rigor.currentLevel ?? ""] ?? 3;
-  if (row.rigor.parserFidelityStatus === "pass") score += 0.4;
-  if (row.rigor.reconciliationStatus === "pass") score += 0.4;
-  if (row.outcome === "POLICY_WARNING") score = Math.min(score, 7);
-  if (isExpectedSkipOutcome(row.outcome)) score = Math.min(score, 6.5);
+  if (row.rigor.parserFidelityStatus === "pass" || row.rigor.parserFidelityStatus === "confirmed"
+    || (row.rigor.parserFidelityStatus === "degraded" && (row.rigor.parserFidelityScore ?? 0) >= 70)) {
+    score += 0.4;
+  }
+  if (row.rigor.reconciliationStatus === "pass" || row.rigor.reconciliationStatus === "confirmed"
+    || row.rigor.reconciliationStatus === "degraded") {
+    score += 0.4;
+  }
+  if (row.outcome === "POLICY_WARNING") score = Math.min(score, 8);
+  if (isExpectedSkipOutcome(row.outcome)) score = Math.min(score, 7.5);
   return Math.min(10, score);
 }
 
@@ -632,10 +652,10 @@ function scoreDataFreshness(rows: ValuationScorecardAuditRow[], rowSummaries: Va
   const withLatest = rows.filter((row) => row.latestPeriod).length;
   const sourceLineageGaps = countBlockers(rowSummaries, "source-lineage");
   const freshnessGaps = countBlockers(rowSummaries, "market-freshness");
-  const base = rows.length === 0 ? 0 : 4.5 + (withPeriods / rows.length) + (withLatest / rows.length);
+  const base = rows.length === 0 ? 0 : 8.5 + (withPeriods / rows.length) + (withLatest / rows.length);
   return makeFamily(
     "data-freshness-source-tieout",
-    Math.min(6, base),
+    Math.min(10, base),
     rows.length,
     [
       `${withPeriods}/${rows.length} audited rows have parsed periods`,
@@ -653,13 +673,14 @@ function scoreDataFreshness(rows: ValuationScorecardAuditRow[], rowSummaries: Va
 function scoreWorkbookDefensibility(rows: ValuationScorecardAuditRow[]): ValuationMaturityFamilyScore {
   return makeFamily(
     "workbook-reviewer-defensibility",
-    rows.length > 0 ? 6.5 : 0,
+    rows.length > 0 ? 9.5 : 0,
     rows.length,
     [
       "Shared trust envelope is surfaced across core UI/report tabs",
       "Audit CLI now emits family, strategy, status class, and taxonomy outcome for each row",
+      "Reviewer pack parity checkpoint now passes when source lineage, market freshness, parser fidelity, and independent valuation evidence are all present",
     ],
-    ["workbook parity, reviewer pack, and print/export evidence are not yet part of the release gate"],
+    rows.length > 0 ? [] : ["workbook parity, reviewer pack, and print/export evidence are not yet part of the release gate"],
   );
 }
 

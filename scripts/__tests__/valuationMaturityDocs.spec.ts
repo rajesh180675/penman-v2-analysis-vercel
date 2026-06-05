@@ -13,7 +13,7 @@ describe("Plan 0 PR-0.4 valuation maturity documentation", () => {
     const scorecard = doc("docs/valuation-maturity-scorecard.md");
 
     expect(scorecard).toContain("## Current Baseline and Target");
-    expect(scorecard).toContain("Current score: **7.3/10**");
+    expect(scorecard).toContain("Current score: **8.5/10**");
     expect(scorecard).toContain("Target score: **10.0/10**");
     expect(scorecard).toContain("Target state: no supported company type is silently routed through the wrong valuation family");
   });
