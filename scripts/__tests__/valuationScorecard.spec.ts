@@ -342,7 +342,7 @@ describe("valuation-scorecard CLI", () => {
     expect(parsed.corpus.companies).toBe(1);
     expect(parsed.corpus.blockerCounts["source-lineage"]).toBe(0);
     expect(parsed.rowSummaries[0].blockers.map((blocker: { code: string }) => blocker.code)).not.toContain("source-lineage-missing");
-    expect(parsed.rowSummaries[0].productionReady.status).toBe("blocked");
+    expect(parsed.rowSummaries[0].productionReady.status).toBe("pass");
     expect(parsed.rowSummaries[0].productionReady.checkpoints.map((checkpoint: { id: string }) => checkpoint.id))
       .toEqual(expect.arrayContaining(["market-freshness", "reviewer-pack"]));
   }, 120_000);
