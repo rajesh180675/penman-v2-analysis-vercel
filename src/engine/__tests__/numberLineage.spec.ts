@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildLineageMap, buildLineageRef } from "../lineageBuilder";
 import {
+  FINANCIAL_LINEAGE_CONCEPT_IDS,
   LINEAGE_CONCEPT_IDS,
   LINEAGE_POLICY_DECISIONS_CAP,
   LINEAGE_SOURCE_KEYS_CAP,
@@ -59,7 +60,7 @@ function mkRaw(period_end: string): RawPeriodData {
 }
 
 describe("lineageBuilder", () => {
-  it("emits one lineage entry per (concept, period) for the 8 instrumented concepts", () => {
+  it("emits one lineage entry per (concept, period) for all instrumented concepts", () => {
     const recast = [mkRecast("2024-03-31"), mkRecast("2025-03-31")];
     const raw = recast.map((r) => mkRaw(r.period_end));
     const map = buildLineageMap({ recastData: recast, rawData: raw });
@@ -176,5 +177,50 @@ describe("lineageBuilder", () => {
     expect(Object.keys(map.entries)).toEqual([]);
     expect(map.sizeBytes).toBeLessThan(20);
     expect(map.truncated).toBe(false);
+  });
+
+  it("builds a financial-institution lineage from bank metrics when recastData is empty", () => {
+    const raw: RawPeriodData[] = [{
+      company_id: "HDFC",
+      period_end: "2025-03-31",
+      raw_metric_values: {
+        "Total Assets__BalanceSheet": 25000,
+        "Total Equity__BalanceSheet": 2500,
+        "Advances__BalanceSheet": 18000,
+        "Deposits__BalanceSheet": 20000,
+        "Interest Earned__ProfitLoss": 1200,
+        "Total Interest Expenses__ProfitLoss": 600,
+        "Operating Expenses__ProfitLoss": 200,
+        "Provisions__ProfitLoss": 50,
+        "Profit After Tax__ProfitLoss": 250,
+      },
+    }];
+    const bankMetrics: import("../bankPipeline/metrics").BankPeriodMetrics[] = [{
+      period_end: "2025-03-31",
+      totalAssets: 25000,
+      totalEquity: 2500,
+      advances: 18000,
+      deposits: 20000,
+      interestEarned: 1200,
+      interestExpended: 600,
+      nii: 600,
+      otherIncome: 100,
+      operatingExpenses: 200,
+      provisions: 50,
+      pat: 250,
+      creditCost: 0.0028,
+    } as never];
+    const map = buildLineageMap({ recastData: [], rawData: raw, bankMetrics });
+    const ref = buildLineageRef(map);
+    expect(ref.hasLineage).toBe(true);
+    expect(ref.conceptCount).toBe(LINEAGE_CONCEPT_IDS.length);
+    expect(ref.periodCount).toBe(1);
+    for (const id of FINANCIAL_LINEAGE_CONCEPT_IDS) {
+      expect(map.entries[`${id}|2025-03-31`]).toBeDefined();
+      expect(map.entries[`${id}|2025-03-31`]!.finalValue).not.toBeNull();
+    }
+    const nii = map.entries["net-interest-income|2025-03-31"]!;
+    expect(nii.finalValue).toBe(600);
+    expect(nii.sourceMetricKeys.some((k) => k.includes("Interest"))).toBe(true);
   });
 });

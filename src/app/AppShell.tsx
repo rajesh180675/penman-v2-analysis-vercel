@@ -18,6 +18,7 @@ import { useCommandPaletteShortcut } from "../hooks/useCommandPaletteShortcut";
 import { useRegistryPersistence } from "../hooks/useRegistryPersistence";
 import { useResidualsSync } from "../hooks/useResidualsSync";
 import { useUrlSync } from "../hooks/useUrlSync";
+import { mergeCompanyRegistries } from "../lib/companyRegistrySnapshot";
 import {
   AuditSubmissionMeta,
   createAuditAccessToken,
@@ -278,6 +279,12 @@ export function AppShell() {
     [auditGovernance.contentClass, auditGovernance.retentionDays, config, configRef, setConfig]
   );
 
+  const handleBatchSubmit = useCallback((incomingRegistry: CompanyRegistry) => {
+    trace("ui", "AppShell:batchRegistryReceived", { count: Object.keys(incomingRegistry.companies).length });
+    setRegistry((prev) => mergeCompanyRegistries(prev, incomingRegistry));
+    setActiveTab("watchlist");
+  }, []);
+
   // Audit persistence (extracted to useAuditPersistence hook)
   useAuditPersistence({
     auditMeta,
@@ -394,6 +401,7 @@ export function AppShell() {
             recastData={recastData}
             hasRecast={hasRecast}
             handleDataSubmit={handleDataSubmit}
+            onBatchSubmit={handleBatchSubmit}
             auditMeta={auditMeta}
             analysisStatus={analysisStatus}
             traceability={traceability}

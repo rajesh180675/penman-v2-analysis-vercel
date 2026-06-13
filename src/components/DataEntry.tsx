@@ -1,7 +1,10 @@
 import { useState, useCallback, useMemo } from "react";
-import { RawPeriodData, EngineConfig, validateEngineConfig } from "../engine/types";
+import { RawPeriodData, EngineConfig, validateEngineConfig, CompanyRegistry } from "../engine/types";
 import type { CapitalineParseDebug } from "../engine/capitalineParser";
 import { SourceParserDiagnostics } from "../engine/parserDiagnostics";
+import { runBatchAnalysis, type BatchCompanyInput } from "../engine/batchRunner";
+import { LibraryCompany } from "./data-entry/companyRegistry";
+import { rememberWorkspaceAnalysis } from "../lib/researchWorkspace";
 import {
   AuditSubmissionMeta,
   createAuditAccessToken,
@@ -34,9 +37,10 @@ interface Props {
   currentData: RawPeriodData[] | null;
   config: EngineConfig;
   onConfigChange: (cfg: EngineConfig) => void;
+  onBatchSubmit?: ((registry: CompanyRegistry) => void) | undefined;
 }
 
-export default function DataEntry({ onDataSubmit, currentData, config, onConfigChange }: Props) {
+export default function DataEntry({ onDataSubmit, currentData, config, onConfigChange, onBatchSubmit }: Props) {
   const [mode, setMode] = useState<"capitaline" | "screener" | "json" | "xbrl" | "manual">("capitaline");
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<{ name: string; size: number } | null>(null);
@@ -60,6 +64,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
   const [qualitySidecarFile, setQualitySidecarFile] = useState<File | null>(null);
   const [dragOverStandalone, setDragOverStandalone] = useState(false);
   const [dragOverQuality, setDragOverQuality] = useState(false);
+  const [batchStatus, setBatchStatus] = useState<string | null>(null);
   const auditGovernance = getAuditClientGovernance();
 
   // Fix 10: live config validation — catches ke=130, g≥ke, etc.
@@ -230,6 +235,52 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
     }
   }, []);
 
+  const handleBatchRun = useCallback(async (companies: LibraryCompany[]) => {
+    if (!onBatchSubmit) return;
+    const t0 = performance.now();
+    trace("ui", "dataEntry:batchRun:start", { count: companies.length });
+    setIsProcessing(true);
+    setError("");
+    setBatchStatus(`Running 0 / ${companies.length}`);
+    try {
+      const inputs: BatchCompanyInput[] = companies.map((c) => ({
+        folder: c.folder,
+        name: c.name,
+        ticker: c.ticker,
+        type: c.type as BatchCompanyInput["type"],
+        sector: c.sector,
+        hasStandalone: c.hasStandalone === true,
+        blobUrl: c.blobUrl,
+        standaloneBlobUrl: c.standaloneBlobUrl,
+        qualityIndicatorsBlobUrl: c.qualityIndicatorsBlobUrl,
+      }));
+      const result = await runBatchAnalysis(inputs, config);
+      if (result.summary.succeeded > 0) {
+        for (const company of Object.values(result.registry.companies)) {
+          setBatchStatus(`Saving ${company.label}...`);
+          rememberWorkspaceAnalysis({
+            rawData: company.rawData,
+            recastData: company.recastData,
+            config: { ...config, ticker: company.id, market_data_symbol: company.id, sector_template: undefined },
+          });
+        }
+        onBatchSubmit(result.registry);
+      }
+      if (result.summary.failed > 0) {
+        const samples = Object.entries(result.errors).slice(0, 5).map(([folder, msg]) => `${folder}: ${msg}`).join("; ");
+        setError(`Batch finished with ${result.summary.failed} failure(s). ${samples}`);
+      }
+      trace("ui", "dataEntry:batchRun:complete", { ...result.summary, duration_ms: Math.round(performance.now() - t0) });
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      trace("ui", "dataEntry:batchRun:error", { error: errMsg, stack: (err as Error)?.stack }, null, { level: "error" });
+      setError(`Batch run failed: ${errMsg}`);
+    } finally {
+      setIsProcessing(false);
+      setBatchStatus(null);
+    }
+  }, [config, onBatchSubmit]);
+
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
     const file = e.dataTransfer.files?.[0];
@@ -283,13 +334,19 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
       {/* Company library grid — primary way to load data on first run */}
       {mode === "capitaline" && !(currentData && currentData.length > 0) && (
         <div className="card-base p-6">
-        <CompanyLibraryGrid
+          <CompanyLibraryGrid
             disabled={isProcessing}
             onPickCompany={(folder, ticker, type, scope, hasStandalone, blobUrl, standaloneBlobUrl, qualityIndicatorsBlobUrl) => {
               // Show type picker modal instead of loading immediately
               setPendingPick({ folder, ticker, type, scope, hasStandalone, blobUrl, standaloneBlobUrl, qualityIndicatorsBlobUrl });
             }}
+            onBatchRun={onBatchSubmit ? handleBatchRun : undefined}
           />
+          {batchStatus && (
+            <div className="mt-3 text-xs text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg px-3 py-2">
+              {batchStatus}
+            </div>
+          )}
           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 text-center">
             <p className="text-xs text-slate-500">
               Or scroll down to upload your own Capitaline ZIP, paste from Screener.in, or build manually.

@@ -41,6 +41,7 @@ interface TabRouterProps {
   recastData: RecastPeriod[] | null;
   hasRecast: boolean;
   handleDataSubmit: AnyResult;
+  onBatchSubmit?: (registry: CompanyRegistry) => void;
   auditMeta: AuditSubmissionMeta | null;
   analysisStatus: AnalysisStatusSummary;
   traceability: AnyResult;
@@ -69,7 +70,7 @@ interface TabRouterProps {
 export function TabRouter(props: TabRouterProps) {
   const {
     activeTab, setActiveTab, config, setConfig, forecastConfig, rawData, recastData, hasRecast,
-    handleDataSubmit, auditMeta, analysisStatus, traceability, publication, ratioSanity, segmentData,
+    handleDataSubmit, onBatchSubmit, auditMeta, analysisStatus, traceability, publication, ratioSanity, segmentData,
     liveMarketData, readyCompanyCount, bankResult, nbfcSidecar, lossMakerResult, registry,
     comparisonPublication, workspaceCompanies, workspaceCompanyId, setWorkspaceCompanyId,
     valuationBlocked, scopeBlocked, qualityGate, scopeAwareResult, pipelineResult, debugInfo, engineError,
@@ -84,7 +85,7 @@ export function TabRouter(props: TabRouterProps) {
     <Suspense fallback={<TabSkeleton />}>
       {activeTab === "inspector" && <RunInspector auditMeta={auditMeta} analysisStatus={analysisStatus} />}
       {activeTab === "upload" && (
-        <DataEntry onDataSubmit={handleDataSubmit} currentData={rawData} config={config} onConfigChange={setConfig} />
+        <DataEntry onDataSubmit={handleDataSubmit} onBatchSubmit={onBatchSubmit} currentData={rawData} config={config} onConfigChange={setConfig} />
       )}
       {activeTab === "dashboard" && hasRecast && (
         <DashboardView

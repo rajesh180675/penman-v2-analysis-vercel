@@ -2,8 +2,8 @@
   "schema_version": "2026-05-bank-quality-v1",
   "company_name": "Shriram Finance Ltd",
   "as_of_date": "2025-03-31",
-  "source_notes": "NBFC pipeline (SHRIRAMFINAN). Merged from Capitaline structured exports (RBI NHB Banks, Credit Risk Analysis - Loss Given Default, Subsidiaries) via scripts/parse_nbfc_capitaline_extras.py. AR-extracted fields (AUM, growth ratios, etc.) preserved where Capitaline does not carry the field.",
-  "ticker": "SHRIRAMFINAN",
+  "source_notes": "NBFC pipeline (SHRIRAMFIN). Merged from Capitaline structured exports (RBI NHB Banks, Credit Risk Analysis - Loss Given Default, Subsidiaries) via scripts/parse_nbfc_capitaline_extras.py. AR-extracted fields (AUM, growth ratios, etc.) preserved where Capitaline does not carry the field.",
+  "ticker": "SHRIRAMFIN",
   "scope": "consolidated",
   "periods": [
     {

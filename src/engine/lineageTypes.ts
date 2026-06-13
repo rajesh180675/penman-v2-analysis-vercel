@@ -23,9 +23,17 @@ export type LineageConceptId =
   | "rnoa"
   | "intrinsic-value-per-share"
   | "free-cash-flow"
-  | "pat";
+  | "pat"
+  // Phase 1 — financial-institution instrumented concepts
+  | "total-assets"
+  | "total-equity"
+  | "net-interest-income"
+  | "operating-profit"
+  | "advances"
+  | "deposits"
+  | "credit-cost";
 
-/** All 8 instrumented concepts in display order. */
+/** All instrumented concepts in display order. */
 export const LINEAGE_CONCEPT_IDS: readonly LineageConceptId[] = [
   "noa",
   "nfo",
@@ -35,7 +43,27 @@ export const LINEAGE_CONCEPT_IDS: readonly LineageConceptId[] = [
   "free-cash-flow",
   "pat",
   "intrinsic-value-per-share",
+  // Financial-institution concepts
+  "total-assets",
+  "total-equity",
+  "net-interest-income",
+  "operating-profit",
+  "advances",
+  "deposits",
+  "credit-cost",
 ] as const;
+
+/** Concepts that are derived or specific to financial institutions and
+ *  should not be expected to have a recast value on industrial rows. */
+export const FINANCIAL_LINEAGE_CONCEPT_IDS: readonly LineageConceptId[] = [
+  "total-assets",
+  "total-equity",
+  "net-interest-income",
+  "operating-profit",
+  "advances",
+  "deposits",
+  "credit-cost",
+];
 
 /** Caps applied when building lineage. Plan v4 N-3 budgets:
  *  ≤50 sourceMetricKeys, ≤20 transformationSteps, ≤10 policyDecisionsApplied
