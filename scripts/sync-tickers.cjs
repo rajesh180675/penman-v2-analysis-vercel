@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * sync-tickers.cjs — regenerate src/engine/nseSymbolRegistry.ts from registry.json
+ * sync-tickers.cjs -- regenerate src/engine/nseSymbolRegistry.ts from registry.json
  *
  * Phase rigor-4 (May 2026): registry.json is now the canonical ticker source.
  * This script derives nseSymbolRegistry.ts from it so the two never drift.
@@ -8,7 +8,7 @@
  * Run after editing registry.json:
  *   node scripts/sync-tickers.cjs
  *
- * The companyLibraryGrid.tsx COMPANIES const is left as-is — that file
+ * The companyLibraryGrid.tsx COMPANIES const is left as-is -- that file
  * fetches registry.json at runtime and uses COMPANIES only as the offline
  * fallback. As long as registry.json is the source for the runtime path,
  * a stale COMPANIES const has no production effect.
@@ -20,9 +20,10 @@ const path = require("node:path");
 const REPO_ROOT = path.resolve(__dirname, "..");
 const REGISTRY_PATH = path.join(REPO_ROOT, "public", "data", "companies", "registry.json");
 const OUTPUT_PATH = path.join(REPO_ROOT, "src", "engine", "nseSymbolRegistry.ts");
+const JS_REGISTRY_PATH = path.join(REPO_ROOT, "api", "market-data", "symbolRegistry.js");
 
 const HEADER = `/**
- * NSE Symbol Registry — GENERATED FROM registry.json
+ * NSE Symbol Registry -- GENERATED FROM registry.json
  *
  * DO NOT EDIT BY HAND. Run \`node scripts/sync-tickers.cjs\` after
  * modifying public/data/companies/registry.json.
@@ -47,7 +48,7 @@ export function resolveNseSymbol(companyNameOrFolder: string | null | undefined)
 
   // Exact match
   if (companyNameOrFolder in NSE_SYMBOL_REGISTRY) {
-    return NSE_SYMBOL_REGISTRY[companyNameOrFolder];
+    return NSE_SYMBOL_REGISTRY[companyNameOrFolder] ?? null;
   }
 
   // Case-insensitive match
@@ -99,6 +100,10 @@ export function resolveFolderFromSymbol(symbol: string | null | undefined): stri
 }
 `;
 
+function normalizeNewlines(str) {
+  return str.replace(/\r\n/g, "\n");
+}
+
 function main() {
   const registry = JSON.parse(fs.readFileSync(REGISTRY_PATH, "utf-8"));
   if (!Array.isArray(registry)) {
@@ -118,13 +123,31 @@ function main() {
   // Idempotent: only write if content differs (preserves mtime)
   let existing = "";
   try { existing = fs.readFileSync(OUTPUT_PATH, "utf-8"); } catch (_) { /* fresh */ }
-  if (existing.replace(/\r\n/g, "\n") === out.replace(/\r\n/g, "\n")) {
+  if (normalizeNewlines(existing) !== normalizeNewlines(out)) {
+    fs.writeFileSync(OUTPUT_PATH, out, "utf-8");
+    console.log(`+ wrote nseSymbolRegistry.ts (${entries.length} entries from registry.json)`);
+  } else {
     console.log(`nseSymbolRegistry.ts already up to date (${entries.length} entries)`);
-    return;
   }
 
-  fs.writeFileSync(OUTPUT_PATH, out, "utf-8");
-  console.log(`+ wrote nseSymbolRegistry.ts (${entries.length} entries from registry.json)`);
+  // Also emit a plain-JS registry for the Vercel serverless snapshot function.
+  const jsBody = [
+    "// GENERATED FROM registry.json by scripts/sync-tickers.cjs",
+    "// DO NOT EDIT BY HAND.",
+    "export const NSE_SYMBOL_REGISTRY = {",
+    ...entries,
+    "};",
+    "",
+  ].join("\n");
+
+  let existingJs = "";
+  try { existingJs = fs.readFileSync(JS_REGISTRY_PATH, "utf-8"); } catch (_) { /* fresh */ }
+  if (normalizeNewlines(existingJs) !== normalizeNewlines(jsBody)) {
+    fs.writeFileSync(JS_REGISTRY_PATH, jsBody, "utf-8");
+    console.log(`+ wrote api/market-data/symbolRegistry.js (${entries.length} entries)`);
+  } else {
+    console.log(`api/market-data/symbolRegistry.js already up to date (${entries.length} entries)`);
+  }
 }
 
 main();

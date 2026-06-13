@@ -1,5 +1,5 @@
 /**
- * NSE Symbol Registry — GENERATED FROM registry.json
+ * NSE Symbol Registry -- GENERATED FROM registry.json
  *
  * DO NOT EDIT BY HAND. Run `node scripts/sync-tickers.cjs` after
  * modifying public/data/companies/registry.json.
@@ -39,7 +39,7 @@ export const NSE_SYMBOL_REGISTRY: Record<string, string> = {
   "Power Grid Corporation of India Ltd": "POWERGRID",
   "Reliance Industries": "RELIANCE",
   "SBIN": "SBIN",
-  "Shriram Finance": "SHRIRAMFINAN",
+  "Shriram Finance": "SHRIRAMFIN",
   "Sun Pharmaceutical Industries Ltd": "SUNPHARMA",
   "Tata Consultancy Services Ltd": "TCS",
   "Tata Steel": "TATASTEEL",
@@ -57,7 +57,7 @@ export function resolveNseSymbol(companyNameOrFolder: string | null | undefined)
 
   // Exact match
   if (companyNameOrFolder in NSE_SYMBOL_REGISTRY) {
-    return NSE_SYMBOL_REGISTRY[companyNameOrFolder]!;
+    return NSE_SYMBOL_REGISTRY[companyNameOrFolder] ?? null;
   }
 
   // Case-insensitive match

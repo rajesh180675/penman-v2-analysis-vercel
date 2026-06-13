@@ -447,7 +447,6 @@ async function run() {
 
     const hasStandalone = CHECK_MODE
       ? fs.existsSync(path.join(folderPath, 'standalone.zip'))
-        || fs.existsSync(path.join(folderPath, 'standalone'))
       : await syncAndPackCompany(folder);
     const company = { folder, ...meta, hasStandalone };
 

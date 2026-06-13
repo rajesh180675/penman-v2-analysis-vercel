@@ -1,0 +1,1710 @@
+{
+  "label": "market-freshness",
+  "capturedAt": "2026-06-13T12:24:30.283Z",
+  "policyVersions": {
+    "engineVersion": "2026-03-phase8-valuation-command-center",
+    "mappingSpecVersion": "2026-03-capitaline-indas-v2",
+    "mappingPolicyVersion": "2026-03-phase8",
+    "anomalyPolicyVersion": "2026-03-phase8",
+    "valuationPolicyVersion": "2026-03-phase8-dcf",
+    "goldenCompanySuiteVersion": "2026-03-phase8",
+    "scopePolicyVersion": "2026-03-phase7",
+    "traceabilitySchemaVersion": "2026-06-traceability-v19"
+  },
+  "entries": [
+    {
+      "folder": "Asian Paints",
+      "ticker": "ASIANPAINT",
+      "type": "consumer",
+      "companyType": "consumer",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "industrial-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "EPV",
+            "CASH_DCF",
+            "EWS"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 173.22992239370203,
+        "base": 321.1074967596023,
+        "bull": 384.8244056115018,
+        "revDcfGrowth": null,
+        "sotpTotal": 29838.21685411324,
+        "epvPerShare": 161.7675834625497,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Avenue Supermarts",
+      "ticker": "DMART",
+      "type": "consumer",
+      "companyType": "consumer",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "industrial-v1",
+      "statusClass": "economically-plausible-capped",
+      "outcome": "ECONOMICALLY_PLAUSIBLE_CAPPED",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "EPV",
+            "CASH_DCF",
+            "EWS"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 14,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 47.98210230562235,
+        "base": 270.00617635563395,
+        "bull": 442.5544080896634,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": 114.82449066463703,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "economically-plausible",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Bajaj Finance",
+      "ticker": "BAJFINANCE",
+      "type": "nbfc",
+      "companyType": "nbfc",
+      "family": "financial-institution",
+      "analysisFamily": "financial-institution",
+      "pipelineStrategyId": "nbfc-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "skipped",
+          "reason": "financial-institution company routed through bankResult.valuation",
+          "models": []
+        },
+        "financialInstitutionValuation": {
+          "status": "computed",
+          "reason": "bankResult.valuation produced financial-institution models",
+          "models": [
+            "PB",
+            "ERI",
+            "DDM",
+            "P/AUM",
+            "ROA×LevRI"
+          ]
+        }
+      },
+      "periods": 12,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 99861.88053016375,
+        "base": 174469.2313871104,
+        "bull": 265604.60518281383,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "nbfc",
+        "fairPB": 1.763439616781065,
+        "fairValue": 174469.2313871104,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "confirmed",
+        "parserFidelityScore": 100,
+        "reconciliationStatus": "confirmed",
+        "reconciliationMaxRatio": 0.41775428295365863,
+        "confidenceStatus": "production-ready"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Bharti Airtel",
+      "ticker": "BHARTIARTL",
+      "type": "telecom",
+      "companyType": "telecom",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "telecom-v1",
+      "statusClass": "economically-plausible-capped",
+      "outcome": "ECONOMICALLY_PLAUSIBLE_CAPPED",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "EPV",
+            "CASH_DCF",
+            "EWS",
+            "TELECOM_NATIVE"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": -236.75216017464345,
+        "base": -140.3261964387416,
+        "bull": -175.73248659912952,
+        "revDcfGrowth": null,
+        "sotpTotal": 80207.35672324379,
+        "epvPerShare": 127.82236944313563,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "economically-plausible",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1.7855739851593198,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Britannia Industries",
+      "ticker": "BRITANNIA",
+      "type": "consumer",
+      "companyType": "consumer",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "industrial-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "EPV",
+            "CASH_DCF",
+            "EWS"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 281.00059650531443,
+        "base": 676.5371437538574,
+        "bull": 871.7328012762241,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": 274.1463512439623,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Cholamandalam Investment",
+      "ticker": "CHOLAFIN",
+      "type": "nbfc",
+      "companyType": "nbfc",
+      "family": "financial-institution",
+      "analysisFamily": "financial-institution",
+      "pipelineStrategyId": "nbfc-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "skipped",
+          "reason": "financial-institution company routed through bankResult.valuation",
+          "models": []
+        },
+        "financialInstitutionValuation": {
+          "status": "computed",
+          "reason": "bankResult.valuation produced financial-institution models",
+          "models": [
+            "PB",
+            "ERI",
+            "DDM",
+            "ROA×LevRI"
+          ]
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 24539.930122699385,
+        "base": 38926.1926446281,
+        "bull": 54413.58628865979,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "nbfc",
+        "fairPB": 1.6446280991735538,
+        "fairValue": 38926.1926446281,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "confirmed",
+        "reconciliationMaxRatio": 0.5564098240881246,
+        "confidenceStatus": "production-ready"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Dabur India",
+      "ticker": "DABUR",
+      "type": "consumer",
+      "companyType": "consumer",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "industrial-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "EPV",
+            "CASH_DCF",
+            "EWS"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 72.4683144389568,
+        "base": 114.34798530361657,
+        "bull": 134.9733247570087,
+        "revDcfGrowth": null,
+        "sotpTotal": 16654.97987213849,
+        "epvPerShare": 64.72996531445389,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Grasim Industries",
+      "ticker": "GRASIM",
+      "type": "industrial",
+      "companyType": "industrial",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "industrial-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "EPV"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": -1132.6251911236027,
+        "base": -528.3880386370586,
+        "bull": -644.811239144223,
+        "revDcfGrowth": null,
+        "sotpTotal": 37311.904386710936,
+        "epvPerShare": -1481.511096603354,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1.4161279670811162,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "HDFC Bank",
+      "ticker": "HDFCBANK",
+      "type": "bank",
+      "companyType": "bank",
+      "family": "financial-institution",
+      "analysisFamily": "financial-institution",
+      "pipelineStrategyId": "bank-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "skipped",
+          "reason": "financial-institution company routed through bankResult.valuation",
+          "models": []
+        },
+        "financialInstitutionValuation": {
+          "status": "computed",
+          "reason": "bankResult.valuation produced financial-institution models",
+          "models": [
+            "PB",
+            "ERI",
+            "DDM"
+          ]
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 427804.3395572521,
+        "base": 783140.1224885499,
+        "bull": 1223569.6399847332,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "bank",
+        "fairPB": 1.4552492933753423,
+        "fairValue": 783140.1224885499,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "confirmed",
+        "reconciliationMaxRatio": 0,
+        "confidenceStatus": "production-ready"
+      },
+      "flags": []
+    },
+    {
+      "folder": "HDFC Life Insurance Company Ltd",
+      "ticker": "HDFCLIFE",
+      "type": "insurance",
+      "companyType": "insurance",
+      "family": "financial-institution",
+      "analysisFamily": "financial-institution",
+      "pipelineStrategyId": "insurance-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "skipped",
+          "reason": "financial-institution company routed through bankResult.valuation",
+          "models": []
+        },
+        "financialInstitutionValuation": {
+          "status": "computed",
+          "reason": "bankResult.valuation produced financial-institution models",
+          "models": [
+            "PB",
+            "ERI",
+            "DDM",
+            "EV"
+          ]
+        }
+      },
+      "periods": 13,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 5453.024436556102,
+        "base": 12887.041377549396,
+        "bull": 22567.595170065862,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "insurance",
+        "fairPB": 0.7977310130197675,
+        "fairValue": 12887.041377549396,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "confirmed",
+        "reconciliationMaxRatio": 0.1287993152283869,
+        "confidenceStatus": "production-ready"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Hindustan Unilever",
+      "ticker": "HINDUNILVR",
+      "type": "consumer",
+      "companyType": "consumer",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "industrial-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "EPV",
+            "CASH_DCF",
+            "EWS"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 299.46801525915,
+        "base": 476.2635874712588,
+        "bull": 561.6034107947664,
+        "revDcfGrowth": null,
+        "sotpTotal": 39756,
+        "epvPerShare": 168.91514547050764,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "ICICI Bank",
+      "ticker": "ICICIBANK",
+      "type": "bank",
+      "companyType": "bank",
+      "family": "financial-institution",
+      "analysisFamily": "financial-institution",
+      "pipelineStrategyId": "bank-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "skipped",
+          "reason": "financial-institution company routed through bankResult.valuation",
+          "models": []
+        },
+        "financialInstitutionValuation": {
+          "status": "computed",
+          "reason": "bankResult.valuation produced financial-institution models",
+          "models": [
+            "PB",
+            "ERI",
+            "DDM"
+          ]
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 267092.33400502184,
+        "base": 486677.30513221887,
+        "bull": 758483.9535096252,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "bank",
+        "fairPB": 1.4804203833497804,
+        "fairValue": 486677.30513221887,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "confirmed",
+        "reconciliationMaxRatio": 0,
+        "confidenceStatus": "production-ready"
+      },
+      "flags": []
+    },
+    {
+      "folder": "ITC",
+      "ticker": "ITC",
+      "type": "conglomerate",
+      "companyType": "conglomerate",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "industrial-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "EPV",
+            "CASH_DCF",
+            "EWS"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 90.7674203862168,
+        "base": 137.88214227678245,
+        "bull": 159.10399044105228,
+        "revDcfGrowth": null,
+        "sotpTotal": 215366.88717754546,
+        "epvPerShare": 63.345446281537235,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Infosys",
+      "ticker": "INFY",
+      "type": "it-services",
+      "companyType": "it-services",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "industrial-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "EPV",
+            "CASH_DCF",
+            "EWS"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2026-03-31",
+      "valuation": {
+        "stress": 132.59049252822666,
+        "base": 281.2685866483607,
+        "bull": 348.7447807828099,
+        "revDcfGrowth": null,
+        "sotpTotal": 68739.27228879524,
+        "epvPerShare": 267.7942762714878,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "KOTAKBANK",
+      "ticker": "KOTAKBANK",
+      "type": "bank",
+      "companyType": "bank",
+      "family": "financial-institution",
+      "analysisFamily": "financial-institution",
+      "pipelineStrategyId": "bank-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "skipped",
+          "reason": "financial-institution company routed through bankResult.valuation",
+          "models": []
+        },
+        "financialInstitutionValuation": {
+          "status": "computed",
+          "reason": "bankResult.valuation produced financial-institution models",
+          "models": [
+            "PB",
+            "ERI",
+            "DDM"
+          ]
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 90543.63920080104,
+        "base": 179371.9032261515,
+        "bull": 291658.98763486865,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "bank",
+        "fairPB": 1.1389462412928335,
+        "fairValue": 179371.9032261515,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "confirmed",
+        "reconciliationMaxRatio": 0,
+        "confidenceStatus": "production-ready"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Life Insurance Corporation of India",
+      "ticker": "LICI",
+      "type": "insurance",
+      "companyType": "insurance",
+      "family": "financial-institution",
+      "analysisFamily": "financial-institution",
+      "pipelineStrategyId": "insurance-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "skipped",
+          "reason": "financial-institution company routed through bankResult.valuation",
+          "models": []
+        },
+        "financialInstitutionValuation": {
+          "status": "computed",
+          "reason": "bankResult.valuation produced financial-institution models",
+          "models": [
+            "PB",
+            "ERI",
+            "DDM",
+            "EV"
+          ]
+        }
+      },
+      "periods": 7,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 133047.29739130434,
+        "base": 231100.38375000004,
+        "bull": 350635.065,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "insurance",
+        "fairPB": 1.8125000000000002,
+        "fairValue": 231100.38375000004,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "confirmed",
+        "parserFidelityScore": 100,
+        "reconciliationStatus": "confirmed",
+        "reconciliationMaxRatio": 0,
+        "confidenceStatus": "production-ready"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Larsen & Toubro Ltd",
+      "ticker": "LT",
+      "type": "conglomerate",
+      "companyType": "conglomerate",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "industrial-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "EPV",
+            "CASH_DCF",
+            "EWS"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2026-03-31",
+      "valuation": {
+        "stress": -176.31379473917113,
+        "base": 283.0644848090526,
+        "bull": 324.23351977625134,
+        "revDcfGrowth": null,
+        "sotpTotal": 75200.33665017661,
+        "epvPerShare": 444.7326849106486,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Mahindra & Mahindra",
+      "ticker": "M&M",
+      "type": "cyclical",
+      "companyType": "cyclical",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "cyclical-v1",
+      "statusClass": "economically-plausible-capped",
+      "outcome": "ECONOMICALLY_PLAUSIBLE_CAPPED",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "EPV",
+            "EWS",
+            "CYCLICAL_MID_CYCLE"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 33.008284269738404,
+        "base": 453.4783984233011,
+        "bull": 440.5613696102242,
+        "revDcfGrowth": null,
+        "sotpTotal": 95385.41144731338,
+        "epvPerShare": -12.991193428677024,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "economically-plausible",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1.0701437964223057,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Maruti Suzuki India Ltd",
+      "ticker": "MARUTI",
+      "type": "industrial",
+      "companyType": "industrial",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "industrial-v1",
+      "statusClass": "economically-plausible-capped",
+      "outcome": "ECONOMICALLY_PLAUSIBLE_CAPPED",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "EPV",
+            "CASH_DCF",
+            "EWS"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 1673.4759896058094,
+        "base": 2961.6255033331836,
+        "bull": 3613.2968559708847,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": 2678.762885533405,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "economically-plausible",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Muthoot Finance",
+      "ticker": "MUTHOOTFIN",
+      "type": "nbfc",
+      "companyType": "nbfc",
+      "family": "financial-institution",
+      "analysisFamily": "financial-institution",
+      "pipelineStrategyId": "nbfc-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "skipped",
+          "reason": "financial-institution company routed through bankResult.valuation",
+          "models": []
+        },
+        "financialInstitutionValuation": {
+          "status": "computed",
+          "reason": "bankResult.valuation produced financial-institution models",
+          "models": [
+            "PB",
+            "ERI",
+            "DDM",
+            "P/AUM",
+            "ROA×LevRI"
+          ]
+        }
+      },
+      "periods": 11,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 30520.666168002168,
+        "base": 53246.32636650311,
+        "bull": 80992.82848867081,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "nbfc",
+        "fairPB": 1.7752811261261097,
+        "fairValue": 53246.32636650311,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "confirmed",
+        "reconciliationMaxRatio": 0.4884357642662573,
+        "confidenceStatus": "production-ready"
+      },
+      "flags": []
+    },
+    {
+      "folder": "NTPC",
+      "ticker": "NTPC",
+      "type": "utility",
+      "companyType": "utility",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "utility-v1",
+      "statusClass": "economically-plausible-capped",
+      "outcome": "ECONOMICALLY_PLAUSIBLE_CAPPED",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "EPV",
+            "CASH_DCF",
+            "EWS",
+            "UTILITY_RAB"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": -56.571511106033036,
+        "base": 88.52008929061692,
+        "bull": 102.74789933481624,
+        "revDcfGrowth": null,
+        "sotpTotal": 42274.26199404948,
+        "epvPerShare": -66.5655210171768,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "economically-plausible",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1.50327254864664,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Nestlé India",
+      "ticker": "NESTLEIND",
+      "type": "consumer",
+      "companyType": "consumer",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "industrial-v1",
+      "statusClass": "economically-plausible-capped",
+      "outcome": "ECONOMICALLY_PLAUSIBLE_CAPPED",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "EPV",
+            "CASH_DCF",
+            "EWS"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 2,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 184.7774520750189,
+        "base": 399.4867456923021,
+        "bull": 532.0845894651059,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": 276.73317964721986,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "economically-plausible",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Paytm",
+      "ticker": "PAYTM",
+      "type": "loss-maker",
+      "companyType": "loss-maker",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "loss-maker-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "EWS",
+            "LOSS_MAKER_RUNWAY"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 67.86092306514534,
+        "base": 73.67219133255036,
+        "bull": 64.55349771220833,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Power Grid Corporation of India Ltd",
+      "ticker": "POWERGRID",
+      "type": "utility",
+      "companyType": "utility",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "utility-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "EPV",
+            "CASH_DCF",
+            "EWS",
+            "UTILITY_RAB"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 43.34008417501411,
+        "base": 100.24955896105405,
+        "bull": 113.86340235007187,
+        "revDcfGrowth": null,
+        "sotpTotal": 98934.99126877784,
+        "epvPerShare": 57.0139906540809,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1.3918605374921005,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Reliance Industries",
+      "ticker": "RELIANCE",
+      "type": "conglomerate",
+      "companyType": "conglomerate",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "industrial-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "EPV",
+            "CASH_DCF",
+            "EWS"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 18.276283540000676,
+        "base": 219.76309480463698,
+        "bull": 286.3548231460586,
+        "revDcfGrowth": null,
+        "sotpTotal": 306348.6807254318,
+        "epvPerShare": 227.9766019319719,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1.2562730428017466,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Shriram Finance",
+      "ticker": "SHRIRAMFIN",
+      "type": "nbfc",
+      "companyType": "nbfc",
+      "family": "financial-institution",
+      "analysisFamily": "financial-institution",
+      "pipelineStrategyId": "nbfc-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "skipped",
+          "reason": "financial-institution company routed through bankResult.valuation",
+          "models": []
+        },
+        "financialInstitutionValuation": {
+          "status": "computed",
+          "reason": "bankResult.valuation produced financial-institution models",
+          "models": [
+            "PB",
+            "ERI",
+            "DDM",
+            "P/AUM",
+            "ROA×LevRI"
+          ]
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 39550.480868366416,
+        "base": 72188.75709863285,
+        "bull": 111374.1105296885,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "nbfc",
+        "fairPB": 1.2783599646436423,
+        "fairValue": 72188.75709863285,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "confirmed",
+        "reconciliationMaxRatio": 0.5197489157857575,
+        "confidenceStatus": "production-ready"
+      },
+      "flags": []
+    },
+    {
+      "folder": "SBIN",
+      "ticker": "SBIN",
+      "type": "bank",
+      "companyType": "bank",
+      "family": "financial-institution",
+      "analysisFamily": "financial-institution",
+      "pipelineStrategyId": "bank-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "skipped",
+          "reason": "financial-institution company routed through bankResult.valuation",
+          "models": []
+        },
+        "financialInstitutionValuation": {
+          "status": "computed",
+          "reason": "bankResult.valuation produced financial-institution models",
+          "models": [
+            "PB",
+            "ERI",
+            "DDM"
+          ]
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 392102.10210138257,
+        "base": 721478.8342707374,
+        "bull": 1130325.9790276499,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": null,
+        "evEbitdaEv": null
+      },
+      "bankValuation": {
+        "subtype": "bank",
+        "fairPB": 1.4284938822845672,
+        "fairValue": 721478.8342707374,
+        "upsidePct": null,
+        "primaryScenario": "base"
+      },
+      "rigor": {
+        "currentLevel": "syntactically-valid",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "failed",
+        "reconciliationMaxRatio": 1.113481790374988,
+        "confidenceStatus": "production-ready"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Sun Pharmaceutical Industries Ltd",
+      "ticker": "SUNPHARMA",
+      "type": "industrial",
+      "companyType": "industrial",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "industrial-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "EPV",
+            "CASH_DCF",
+            "EWS"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 245.6512396083745,
+        "base": 445.44222335828664,
+        "bull": 531.6025516768301,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": 247.23490362771147,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Tata Consultancy Services Ltd",
+      "ticker": "TCS",
+      "type": "it-services",
+      "companyType": "it-services",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "industrial-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "EPV",
+            "CASH_DCF",
+            "EWS"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2026-03-31",
+      "valuation": {
+        "stress": 430.0947145027941,
+        "base": 892.66135543507,
+        "bull": 1138.5967285658107,
+        "revDcfGrowth": null,
+        "sotpTotal": 38637,
+        "epvPerShare": 521.1313588987031,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Tata Steel",
+      "ticker": "TATASTEEL",
+      "type": "cyclical",
+      "companyType": "cyclical",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "cyclical-v1",
+      "statusClass": "economically-plausible-capped",
+      "outcome": "ECONOMICALLY_PLAUSIBLE_CAPPED",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "EPV",
+            "CASH_DCF",
+            "EWS",
+            "CYCLICAL_MID_CYCLE"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": -11.666073831171731,
+        "base": 19.089420574948697,
+        "bull": 17.36945184804588,
+        "revDcfGrowth": null,
+        "sotpTotal": 49897.18272193863,
+        "epvPerShare": 21.70864293538118,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "economically-plausible",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1.6540862691436478,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Titan Company",
+      "ticker": "TITAN",
+      "type": "consumer",
+      "companyType": "consumer",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "industrial-v1",
+      "statusClass": "policy-warning",
+      "outcome": "POLICY_WARNING",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "EPV",
+            "CASH_DCF",
+            "EWS"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 73.60394235859772,
+        "base": 167.15843454809993,
+        "bull": 211.9076992657232,
+        "revDcfGrowth": null,
+        "sotpTotal": 8492.835200683872,
+        "epvPerShare": -63.5857047034056,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "structurally-reconciled",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1.973404642794657,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "UltraTech Cement Ltd",
+      "ticker": "ULTRACEMCO",
+      "type": "cyclical",
+      "companyType": "cyclical",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "cyclical-v1",
+      "statusClass": "economically-plausible-capped",
+      "outcome": "ECONOMICALLY_PLAUSIBLE_CAPPED",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "EPV",
+            "CASH_DCF",
+            "EWS",
+            "CYCLICAL_MID_CYCLE"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": 1116.2744577035844,
+        "base": 2105.433036007762,
+        "bull": 2482.344652724634,
+        "revDcfGrowth": null,
+        "sotpTotal": null,
+        "epvPerShare": 477.44337990698284,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "economically-plausible",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    },
+    {
+      "folder": "Vodafone Idea Ltd",
+      "ticker": "IDEA",
+      "type": "telecom",
+      "companyType": "telecom",
+      "family": "industrial",
+      "analysisFamily": "industrial",
+      "pipelineStrategyId": "telecom-v1",
+      "statusClass": "economically-plausible-capped",
+      "outcome": "ECONOMICALLY_PLAUSIBLE_CAPPED",
+      "modelApplicability": {
+        "industrialCommandCenter": {
+          "status": "computed",
+          "reason": "industrial command center produced scenario valuation",
+          "models": [
+            "VCC",
+            "SOTP",
+            "CASH_DCF",
+            "EWS",
+            "TELECOM_NATIVE"
+          ]
+        },
+        "financialInstitutionValuation": {
+          "status": "skipped",
+          "reason": "non-financial company routed through industrial command center",
+          "models": []
+        }
+      },
+      "periods": 15,
+      "latestPeriod": "2025-03-31",
+      "valuation": {
+        "stress": -33.0850763083573,
+        "base": -35.63845119121762,
+        "bull": -33.38542576444363,
+        "revDcfGrowth": null,
+        "sotpTotal": -68984.15297026614,
+        "epvPerShare": null,
+        "evEbitdaEv": 0
+      },
+      "bankValuation": null,
+      "rigor": {
+        "currentLevel": "economically-plausible",
+        "parserFidelityStatus": "degraded",
+        "parserFidelityScore": 80,
+        "reconciliationStatus": "degraded",
+        "reconciliationMaxRatio": 1,
+        "confidenceStatus": "guarded"
+      },
+      "flags": []
+    }
+  ]
+}

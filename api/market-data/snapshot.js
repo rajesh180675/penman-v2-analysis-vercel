@@ -1,4 +1,5 @@
 import { enforceAuditRateLimit, requireAuditReadAuth } from "../audit/_lib.js";
+import { NSE_SYMBOL_REGISTRY } from "./symbolRegistry.js";
 
 function toNumber(value) {
   const parsed = Number(value);
@@ -18,7 +19,7 @@ function sanitizeSymbol(value) {
 
 function sanitizeProvider(value) {
   const normalized = sanitizeText(value);
-  if (normalized === "manual" || normalized === "upstox-readonly" || normalized === "alphavantage" || normalized === "nse" || normalized === "disabled") {
+  if (normalized === "manual" || normalized === "upstox-readonly" || normalized === "alphavantage" || normalized === "nse" || normalized === "yahoo" || normalized === "disabled") {
     return normalized;
   }
   return null;
@@ -368,12 +369,13 @@ async function fetchNseHistory(symbol) {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-async function fetchNseSnapshot({ symbol, fallbackPrice, fallbackRiskFreeRate, warnings, fetchedAt }) {
+async function fetchNseSnapshot({ rawSymbol, fallbackPrice, fallbackRiskFreeRate, warnings, fetchedAt }) {
+  const symbol = resolveSymbolWithParity(rawSymbol, warnings);
   if (!symbol) {
     warnings.push("No NSE symbol configured.");
     return buildFallbackSnapshot({
       provider: "NSE (fallback)",
-      symbol,
+      symbol: rawSymbol,
       instrumentKey: null,
       fallbackPrice,
       fallbackRiskFreeRate,
@@ -423,17 +425,82 @@ async function fetchNseSnapshot({ symbol, fallbackPrice, fallbackRiskFreeRate, w
     };
   } catch (error) {
     warnings.push(error instanceof Error ? error.message : String(error));
-    return buildFallbackSnapshot({
-      provider: "NSE India (fallback)",
-      symbol,
-      instrumentKey: null,
-      fallbackPrice,
-      fallbackRiskFreeRate,
-      warnings,
-      fetchedAt,
-      sourceSummary: "Using manual/config fallback because NSE request failed.",
-    });
+    // NSE often blocks serverless/Vercel — fall back to Yahoo Finance.
+    try {
+      const yahoo = await fetchYahooSnapshot(symbol);
+      const price = yahoo.price ?? fallbackPrice ?? null;
+      const previousClose = yahoo.previousClose ?? null;
+      const changePct = price != null && previousClose != null && previousClose > 0
+        ? (price - previousClose) / previousClose
+        : null;
+      return {
+        symbol,
+        instrumentKey: null,
+        provider: "Yahoo Finance (NSE fallback)",
+        fetchedAt,
+        price,
+        previousClose,
+        changePct,
+        marketCap: null,
+        enterpriseValue: null,
+        sharesOutstanding: null,
+        riskFreeRate: fallbackRiskFreeRate ?? 0.07,
+        priceAsOf: fetchedAt,
+        rateAsOf: null,
+        freshness: price != null ? "live" : (fallbackPrice != null ? "fallback" : "missing"),
+        sourceSummary: `NSE blocked, used Yahoo Finance for ${yahoo.rawSymbol}.`,
+        warnings,
+        history: null,
+      };
+    } catch (yahooErr) {
+      warnings.push(yahooErr instanceof Error ? yahooErr.message : String(yahooErr));
+      return buildFallbackSnapshot({
+        provider: "NSE India (fallback)",
+        symbol,
+        instrumentKey: null,
+        fallbackPrice,
+        fallbackRiskFreeRate,
+        warnings,
+        fetchedAt,
+        sourceSummary: "NSE blocked and Yahoo Finance fallback also failed; using manual/config fallback.",
+      });
+    }
   }
+}
+
+async function fetchYahooSnapshot(symbol) {
+  const yahooSymbol = symbol.includes(".") ? symbol : `${symbol}.NS`;
+  const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d`;
+  const yahooRes = await fetch(yahooUrl, {
+    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+  });
+  if (!yahooRes.ok) throw new Error(`Yahoo returned ${yahooRes.status}`);
+  const yahooData = await yahooRes.json();
+  const meta = yahooData?.chart?.result?.[0]?.meta;
+  if (!meta) throw new Error("Yahoo returned no data.");
+  return {
+    price: toNumber(meta.regularMarketPrice),
+    previousClose: toNumber(meta.chartPreviousClose),
+    rawSymbol: yahooSymbol,
+  };
+}
+
+function resolveSymbolWithParity(rawSymbol, warnings) {
+  if (!rawSymbol) return null;
+  const canonical = NSE_SYMBOL_REGISTRY[rawSymbol] ?? null;
+  if (canonical && canonical !== rawSymbol) {
+    warnings.push(`Ticker parity: requested ${rawSymbol}, resolved to ${canonical}.`);
+    return canonical;
+  }
+  // Also try case-insensitive key match
+  const lower = rawSymbol.toLowerCase();
+  for (const [key, value] of Object.entries(NSE_SYMBOL_REGISTRY)) {
+    if (key.toLowerCase() === lower) {
+      if (value !== rawSymbol) warnings.push(`Ticker parity: requested ${rawSymbol}, resolved to ${value}.`);
+      return value;
+    }
+  }
+  return rawSymbol;
 }
 
 export default async function handler(request, response) {
@@ -453,7 +520,7 @@ export default async function handler(request, response) {
   const warnings = [];
   const fetchedAt = new Date().toISOString();
 
-  if (provider === "upstox-readonly" || provider === "alphavantage" || provider === "nse") {
+  if (provider === "upstox-readonly" || provider === "alphavantage" || provider === "nse" || provider === "yahoo") {
     if (!requireAuditReadAuth(request, response)) return;
     if (!enforceAuditRateLimit(request, response, "market-data", 60)) return;
   }
@@ -492,12 +559,55 @@ export default async function handler(request, response) {
     });
   } else if (provider === "nse") {
     snapshot = await fetchNseSnapshot({
-      symbol,
+      rawSymbol: symbol,
       fallbackPrice,
       fallbackRiskFreeRate,
       warnings,
       fetchedAt,
     });
+  } else if (provider === "yahoo") {
+    const yahooSymbol = resolveSymbolWithParity(symbol, warnings);
+    try {
+      const yahoo = await fetchYahooSnapshot(yahooSymbol ?? symbol);
+      const price = yahoo.price ?? fallbackPrice ?? null;
+      const previousClose = yahoo.previousClose ?? null;
+      const changePct = price != null && previousClose != null && previousClose > 0
+        ? (price - previousClose) / previousClose
+        : null;
+      snapshot = {
+        symbol: yahooSymbol ?? symbol,
+        instrumentKey: null,
+        provider: "Yahoo Finance",
+        fetchedAt,
+        price,
+        previousClose,
+        changePct,
+        marketCap: null,
+        enterpriseValue: null,
+        sharesOutstanding: null,
+        riskFreeRate: fallbackRiskFreeRate ?? 0.07,
+        priceAsOf: fetchedAt,
+        rateAsOf: null,
+        freshness: price != null ? "live" : (fallbackPrice != null ? "fallback" : "missing"),
+        sourceSummary: price != null
+          ? `Yahoo Finance quote for ${yahoo.rawSymbol}.`
+          : "Yahoo Finance did not return a price; using fallback config where available.",
+        warnings,
+        history: null,
+      };
+    } catch (error) {
+      warnings.push(error instanceof Error ? error.message : String(error));
+      snapshot = buildFallbackSnapshot({
+        provider: "Yahoo Finance (fallback)",
+        symbol: yahooSymbol ?? symbol,
+        instrumentKey: null,
+        fallbackPrice,
+        fallbackRiskFreeRate,
+        warnings,
+        fetchedAt,
+        sourceSummary: "Yahoo Finance request failed, using fallback.",
+      });
+    }
   } else {
     snapshot = await fetchAlphaVantageSnapshot({
       symbol,
