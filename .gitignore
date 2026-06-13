@@ -49,8 +49,6 @@ scratch_*
 # Security / reverse-engineering research scripts (unrelated to the app)
 frida_*.js
 frida_*.log
-disasm_paltalk*.py
-hermes_paltalk.py
 security_assessment.py
 extract_proto*.py
 parse_frida_dump.py
