@@ -3,6 +3,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseCapitalineZip } from "../../src/engine/capitalineParser";
+import { resolveNseSymbol } from "../../src/engine/nseSymbolRegistry";
+import { marketCachePath, readJson, writeJson, listFiles } from "../../server/store/fsStore";
 import { processCompanyDataFull, type PipelineResult } from "../../src/engine/pipeline";
 import {
   buildValuationCommandCenter,
@@ -498,27 +500,57 @@ function emptyMarketEvidence(): AuditMarketEvidenceSnapshot {
   };
 }
 
-async function fetchMarketEvidence(ticker: string): Promise<AuditMarketEvidenceSnapshot> {
+export async function fetchMarketEvidence(ticker: string, folder?: string): Promise<AuditMarketEvidenceSnapshot> {
+  // Ticker parity: registry tickers can drift from the canonical NSE/Yahoo
+  // symbol. Use resolveNseSymbol as the single source of truth.
+  const candidates = [ticker, folder].filter((s): s is string => Boolean(s));
+  let effectiveTicker = ticker;
+  for (const candidate of candidates) {
+    const canonical = resolveNseSymbol(candidate);
+    if (canonical) {
+      effectiveTicker = canonical;
+      break;
+    }
+  }
+  const parityNote = effectiveTicker !== ticker ? `Ticker parity: ${ticker} → ${effectiveTicker}. ` : "";
+
+  const yahooSymbol = effectiveTicker.includes(".") ? effectiveTicker : `${effectiveTicker}.NS`;
+  const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d`;
+
   try {
-    const yahooSymbol = ticker.includes(".") ? ticker : `${ticker}.NS`;
-    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d`;
     const res = await fetch(yahooUrl, {
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
     });
     if (!res.ok) {
+      const stale = await readCachedMarketEvidence(effectiveTicker);
+      if (stale) {
+        return {
+          status: "stale",
+          inputs: stale.inputs,
+          reason: `${parityNote}Yahoo Finance returned ${res.status}; serving cached market snapshot.`,
+        };
+      }
       return {
         status: "source_unavailable",
         inputs: [],
-        reason: `Yahoo Finance returned ${res.status}`,
+        reason: `${parityNote}Yahoo Finance returned ${res.status}`,
       };
     }
     const data = await res.json() as any;
     const meta = data?.chart?.result?.[0]?.meta;
     if (!meta) {
+      const stale = await readCachedMarketEvidence(effectiveTicker);
+      if (stale) {
+        return {
+          status: "stale",
+          inputs: stale.inputs,
+          reason: `${parityNote}Yahoo Finance returned no data; serving cached market snapshot.`,
+        };
+      }
       return {
         status: "source_unavailable",
         inputs: [],
-        reason: "Yahoo Finance returned no data",
+        reason: `${parityNote}Yahoo Finance returned no data`,
       };
     }
     const price = typeof meta.regularMarketPrice === "number" ? meta.regularMarketPrice : null;
@@ -534,15 +566,51 @@ async function fetchMarketEvidence(ticker: string): Promise<AuditMarketEvidenceS
     }
     const status = inputs.length > 0 ? "fresh" : "source_unavailable";
     const reason = inputs.length > 0
-      ? `Fetched ${inputs.length} market input(s) from Yahoo Finance`
-      : "Yahoo Finance returned no usable market data";
-    return { status, inputs, reason };
+      ? `${parityNote}Fetched ${inputs.length} market input(s) from Yahoo Finance`
+      : `${parityNote}Yahoo Finance returned no usable market data`;
+    const snapshot: AuditMarketEvidenceSnapshot = { status, inputs, reason };
+    await cacheMarketEvidence(effectiveTicker, snapshot);
+    return snapshot;
   } catch (err: any) {
+    const stale = await readCachedMarketEvidence(effectiveTicker);
+    if (stale) {
+      return {
+        status: "stale",
+        inputs: stale.inputs,
+        reason: `${parityNote}Market data fetch failed: ${err?.message ?? String(err)}; serving cached market snapshot.`,
+      };
+    }
     return {
       status: "source_unavailable",
       inputs: [],
-      reason: `Market data fetch failed: ${err?.message ?? String(err)}`,
+      reason: `${parityNote}Market data fetch failed: ${err?.message ?? String(err)}`,
     };
+  }
+}
+
+async function cacheMarketEvidence(symbol: string, snapshot: AuditMarketEvidenceSnapshot): Promise<void> {
+  try {
+    const date = new Date().toISOString().slice(0, 10);
+    await writeJson(marketCachePath(symbol, date), snapshot);
+  } catch {
+    // Cache writes are best-effort.
+  }
+}
+
+async function readCachedMarketEvidence(symbol: string): Promise<AuditMarketEvidenceSnapshot | null> {
+  try {
+    const date = new Date().toISOString().slice(0, 10);
+    const dir = marketCachePath(symbol, date).replace(/[\\/][^\\/]+$/, "");
+    const files = await listFiles(dir, ".json");
+    const matching = files
+      .filter(f => f.includes(`${symbol}-`))
+      .sort((a, b) => b.localeCompare(a));
+    if (!matching.length) return null;
+    const cached = await readJson<AuditMarketEvidenceSnapshot>(matching[0]!);
+    if (!cached || cached.inputs.length === 0) return null;
+    return cached;
+  } catch {
+    return null;
   }
 }
 
@@ -1041,7 +1109,7 @@ export async function auditCompanyRun(
 ): Promise<AuditCompanyRunResult> {
   const projectRoot = resolve(options.projectRoot ?? DEFAULT_PROJECT_ROOT);
   const sourceEvidence = buildSourceEvidence(projectRoot, company);
-  const marketEvidence = await fetchMarketEvidence(company.ticker);
+  const marketEvidence = await fetchMarketEvidence(company.ticker, company.folder);
   const zipPath = join(companiesDir(projectRoot), company.folder, `${company.folder}.zip`);
 
   if (!existsSync(zipPath)) {
