@@ -1,4 +1,6 @@
 import { Router, Request, Response } from "express";
+import { resolveNseSymbol } from "../../src/engine/nseSymbolRegistry";
+import { marketCachePath, readJson, writeJson, listFiles } from "../store/fsStore";
 
 const NSE_BASE = "https://www.nseindia.com";
 const NSE_HEADERS: Record<string, string> = {
@@ -90,10 +92,75 @@ function summarizeHistory(points: Array<{ date: string; close: number | null }>,
   };
 }
 
+function yahooSymbol(symbol: string): string {
+  return symbol.includes(".") ? symbol : `${symbol}.NS`;
+}
+
+async function fetchYahooSnapshot(symbol: string) {
+  const sym = yahooSymbol(symbol);
+  const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=5d`;
+  const yahooRes = await fetch(yahooUrl, {
+    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+  });
+  if (!yahooRes.ok) throw new Error(`Yahoo returned ${yahooRes.status}`);
+  const yahooData = await yahooRes.json() as any;
+  const meta = yahooData?.chart?.result?.[0]?.meta;
+  if (!meta) throw new Error("Yahoo returned no data.");
+  const price = toNumber(meta.regularMarketPrice);
+  const previousClose = toNumber(meta.chartPreviousClose);
+  return { price, previousClose, symbol: sym };
+}
+
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function cacheSnapshot(symbol: string, snapshot: unknown) {
+  try {
+    await writeJson(marketCachePath(symbol, todayKey()), snapshot);
+  } catch {
+    // Caching is best-effort; don't fail the request.
+  }
+}
+
+async function readOfflineSnapshot(symbol: string): Promise<Record<string, unknown> | null> {
+  try {
+    const dir = marketCachePath(symbol, todayKey()).replace(/[\\/][^\\/]+$/, "");
+    const files = await listFiles(dir, ".json");
+    const matching = files
+      .filter(f => f.includes(`${symbol}-`))
+      .sort((a, b) => b.localeCompare(a));
+    if (!matching.length) return null;
+    const cached = await readJson<Record<string, unknown>>(matching[0]!);
+    if (!cached) return null;
+    return {
+      ...cached,
+      freshness: "offline",
+      provider: `${cached.provider ?? "Unknown"} (offline cache)`,
+      sourceSummary: `Serving cached market snapshot because live fetch failed.`,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Apply ticker parity check: registry tickers can drift from the actual
+ * NSE/Yahoo symbol. resolveNseSymbol is the single source of truth.
+ */
+function normalizeSymbol(raw: string, warnings: string[]): string {
+  const canonical = resolveNseSymbol(raw);
+  if (canonical && canonical !== raw) {
+    warnings.push(`Ticker parity: requested ${raw}, resolved to ${canonical}.`);
+    return canonical;
+  }
+  return raw;
+}
+
 const router = Router();
 
 router.get("/snapshot", async (req: Request, res: Response) => {
-  const symbol = (req.query.symbol as string ?? "").toUpperCase().trim();
+  let symbol = (req.query.symbol as string ?? "").toUpperCase().trim();
   const provider = (req.query.provider as string ?? "manual").toLowerCase();
   const fallbackPrice = toNumber(req.query.fallbackPrice);
   const fallbackRiskFreeRate = toNumber(req.query.fallbackRiskFreeRate);
@@ -115,39 +182,40 @@ router.get("/snapshot", async (req: Request, res: Response) => {
     });
   }
 
-  if (provider === "nse") {
+  if (provider === "nse" || provider === "yahoo") {
     if (!symbol) {
-      warnings.push("No NSE symbol configured.");
+      warnings.push(`No symbol configured for ${provider.toUpperCase()}.`);
       return res.json({
         ok: true,
         snapshot: {
-          symbol, provider: "NSE (fallback)", fetchedAt,
+          symbol, provider: `${provider.toUpperCase()} (fallback)`, fetchedAt,
           price: fallbackPrice, previousClose: null, changePct: null,
           marketCap: null, enterpriseValue: null, sharesOutstanding: null,
           riskFreeRate: fallbackRiskFreeRate ?? 0.07, priceAsOf: null, rateAsOf: null,
           freshness: fallbackPrice != null ? "fallback" : "missing",
-          sourceSummary: "No NSE symbol configured.", warnings, history: null,
+          sourceSummary: `No symbol configured for ${provider.toUpperCase()}.`, warnings, history: null,
         },
       });
     }
 
-    try {
-      const [quotePayload, historyPoints] = await Promise.all([
-        fetchNseQuote(symbol),
-        fetchNseHistory(symbol).catch(err => { warnings.push(`NSE history: ${err.message}`); return []; }),
-      ]);
+    symbol = normalizeSymbol(symbol, warnings);
 
-      const priceInfo = (quotePayload as any)?.priceInfo ?? {};
-      const info = (quotePayload as any)?.info ?? {};
-      const price = toNumber(priceInfo.lastPrice) ?? toNumber(priceInfo.close) ?? fallbackPrice ?? null;
-      const previousClose = toNumber(priceInfo.previousClose) ?? null;
-      const changePct = price != null && previousClose != null && previousClose > 0
-        ? (price - previousClose) / previousClose
-        : null;
+    if (provider === "nse") {
+      try {
+        const [quotePayload, historyPoints] = await Promise.all([
+          fetchNseQuote(symbol),
+          fetchNseHistory(symbol).catch(err => { warnings.push(`NSE history: ${err.message}`); return []; }),
+        ]);
 
-      return res.json({
-        ok: true,
-        snapshot: {
+        const priceInfo = (quotePayload as any)?.priceInfo ?? {};
+        const info = (quotePayload as any)?.info ?? {};
+        const price = toNumber(priceInfo.lastPrice) ?? toNumber(priceInfo.close) ?? fallbackPrice ?? null;
+        const previousClose = toNumber(priceInfo.previousClose) ?? null;
+        const changePct = price != null && previousClose != null && previousClose > 0
+          ? (price - previousClose) / previousClose
+          : null;
+
+        const snapshot = {
           symbol, instrumentKey: null, provider: "NSE India", fetchedAt,
           price, previousClose, changePct,
           marketCap: toNumber(info.totalMarketCap) ?? null,
@@ -155,105 +223,82 @@ router.get("/snapshot", async (req: Request, res: Response) => {
           sharesOutstanding: toNumber(info.issuedSize) ?? null,
           riskFreeRate: fallbackRiskFreeRate ?? 0.07,
           priceAsOf: fetchedAt, rateAsOf: null,
-          freshness: price != null ? "live" : "fallback",
+          freshness: price != null ? "live" : "fallback" as const,
           sourceSummary: price != null ? `NSE India live quote for ${symbol}.` : "NSE did not return a live quote.",
           warnings,
           history: summarizeHistory(historyPoints as any, price),
-        },
-      });
-    } catch (error: any) {
-      warnings.push(`NSE failed: ${error?.message ?? String(error)}. Falling back to Yahoo Finance.`);
-      // Cascade to Yahoo Finance as fallback
-      try {
-        const yahooSymbol = symbol.includes(".") ? symbol : `${symbol}.NS`;
-        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d`;
-        const yahooRes = await fetch(yahooUrl, {
-          headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
-        });
-        if (!yahooRes.ok) throw new Error(`Yahoo returned ${yahooRes.status}`);
-        const yahooData = await yahooRes.json() as any;
-        const meta = yahooData?.chart?.result?.[0]?.meta;
-        if (!meta) throw new Error("Yahoo returned no data.");
-        const price = toNumber(meta.regularMarketPrice) ?? fallbackPrice;
-        const previousClose = toNumber(meta.chartPreviousClose) ?? null;
-        const changePct = price != null && previousClose != null && previousClose > 0
-          ? (price - previousClose) / previousClose
-          : null;
-        return res.json({
-          ok: true,
-          snapshot: {
+        };
+        await cacheSnapshot(symbol, snapshot);
+        return res.json({ ok: true, snapshot });
+      } catch (error: any) {
+        warnings.push(`NSE failed: ${error?.message ?? String(error)}. Falling back to Yahoo Finance.`);
+        // Cascade to Yahoo Finance as fallback
+        try {
+          const yahoo = await fetchYahooSnapshot(symbol);
+          const price = yahoo.price ?? fallbackPrice;
+          const previousClose = yahoo.previousClose;
+          const changePct = price != null && previousClose != null && previousClose > 0
+            ? (price - previousClose) / previousClose
+            : null;
+          const snapshot = {
             symbol, provider: "Yahoo Finance (NSE fallback)", fetchedAt,
             price, previousClose, changePct,
             marketCap: null, enterpriseValue: null, sharesOutstanding: null,
             riskFreeRate: fallbackRiskFreeRate ?? 0.07,
             priceAsOf: fetchedAt, rateAsOf: null,
-            freshness: price != null ? "live" : "fallback",
-            sourceSummary: `NSE blocked, used Yahoo Finance for ${yahooSymbol}.`,
+            freshness: price != null ? "live" : "fallback" as const,
+            sourceSummary: `NSE blocked, used Yahoo Finance for ${yahoo.symbol}.`,
             warnings, history: null,
-          },
-        });
-      } catch (yahooErr: any) {
-        warnings.push(`Yahoo fallback also failed: ${yahooErr?.message ?? String(yahooErr)}`);
-        return res.json({
-          ok: true,
-          snapshot: {
-            symbol, provider: "NSE India (all fallbacks failed)", fetchedAt,
-            price: fallbackPrice, previousClose: null, changePct: null,
-            marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-            riskFreeRate: fallbackRiskFreeRate ?? 0.07, priceAsOf: null, rateAsOf: null,
-            freshness: fallbackPrice != null ? "fallback" : "missing",
-            sourceSummary: "Both NSE and Yahoo Finance failed.", warnings, history: null,
-          },
-        });
+          };
+          await cacheSnapshot(symbol, snapshot);
+          return res.json({ ok: true, snapshot });
+        } catch (yahooErr: any) {
+          warnings.push(`Yahoo fallback also failed: ${yahooErr?.message ?? String(yahooErr)}`);
+          const offline = await readOfflineSnapshot(symbol);
+          if (offline) {
+            return res.json({ ok: true, snapshot: offline });
+          }
+          return res.json({
+            ok: true,
+            snapshot: {
+              symbol, provider: "NSE India (all fallbacks failed)", fetchedAt,
+              price: fallbackPrice, previousClose: null, changePct: null,
+              marketCap: null, enterpriseValue: null, sharesOutstanding: null,
+              riskFreeRate: fallbackRiskFreeRate ?? 0.07, priceAsOf: null, rateAsOf: null,
+              freshness: fallbackPrice != null ? "fallback" : "missing",
+              sourceSummary: "Both NSE and Yahoo Finance failed.", warnings, history: null,
+            },
+          });
+        }
       }
     }
-  }
 
-  if (provider === "yahoo") {
-    if (!symbol) {
-      warnings.push("No symbol configured for Yahoo Finance.");
-      return res.json({
-        ok: true,
-        snapshot: {
-          symbol, provider: "Yahoo Finance (fallback)", fetchedAt,
-          price: fallbackPrice, previousClose: null, changePct: null,
-          marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-          riskFreeRate: fallbackRiskFreeRate ?? 0.07, priceAsOf: null, rateAsOf: null,
-          freshness: fallbackPrice != null ? "fallback" : "missing",
-          sourceSummary: "No symbol configured.", warnings, history: null,
-        },
-      });
-    }
+    // provider === "yahoo"
     try {
-      const yahooSymbol = symbol.includes(".") ? symbol : `${symbol}.NS`;
-      const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol)}?interval=1d&range=5d`;
-      const yahooRes = await fetch(yahooUrl, {
-        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
-      });
-      if (!yahooRes.ok) throw new Error(`Yahoo Finance returned ${yahooRes.status}`);
-      const yahooData = await yahooRes.json() as any;
-      const meta = yahooData?.chart?.result?.[0]?.meta;
-      if (!meta) throw new Error("Yahoo Finance returned no data for symbol.");
-      const price = toNumber(meta.regularMarketPrice) ?? fallbackPrice;
-      const previousClose = toNumber(meta.chartPreviousClose) ?? null;
+      const yahoo = await fetchYahooSnapshot(symbol);
+      const price = yahoo.price ?? fallbackPrice;
+      const previousClose = yahoo.previousClose;
       const changePct = price != null && previousClose != null && previousClose > 0
         ? (price - previousClose) / previousClose
         : null;
-      return res.json({
-        ok: true,
-        snapshot: {
-          symbol, provider: "Yahoo Finance", fetchedAt,
-          price, previousClose, changePct,
-          marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-          riskFreeRate: fallbackRiskFreeRate ?? 0.07,
-          priceAsOf: fetchedAt, rateAsOf: null,
-          freshness: price != null ? "live" : "fallback",
-          sourceSummary: price != null ? `Yahoo Finance quote for ${yahooSymbol}.` : "Yahoo did not return a price.",
-          warnings, history: null,
-        },
-      });
+      const snapshot = {
+        symbol, provider: "Yahoo Finance", fetchedAt,
+        price, previousClose, changePct,
+        marketCap: null, enterpriseValue: null, sharesOutstanding: null,
+        riskFreeRate: fallbackRiskFreeRate ?? 0.07,
+        priceAsOf: fetchedAt, rateAsOf: null,
+        freshness: price != null ? "live" : "fallback" as const,
+        sourceSummary: price != null ? `Yahoo Finance quote for ${yahoo.symbol}.` : "Yahoo did not return a price.",
+        warnings, history: null,
+      };
+      await cacheSnapshot(symbol, snapshot);
+      return res.json({ ok: true, snapshot });
     } catch (error: any) {
       warnings.push(error?.message ?? String(error));
+      const offline = await readOfflineSnapshot(symbol);
+      if (offline) {
+        return res.json({ ok: true, snapshot: offline });
+      }
       return res.json({
         ok: true,
         snapshot: {

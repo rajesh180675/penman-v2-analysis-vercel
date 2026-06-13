@@ -54,10 +54,11 @@ interface Props {
     standaloneBlobUrl?: string | undefined,
     qualityIndicatorsBlobUrl?: string | undefined,
   ) => void;
+  onBatchRun?: ((companies: LibraryCompany[]) => void) | undefined;
   disabled?: boolean | undefined;
 }
 
-export default function CompanyLibraryGrid({ onPickCompany, disabled = false }: Props) {
+export default function CompanyLibraryGrid({ onPickCompany, onBatchRun, disabled = false }: Props) {
   const [search, setSearch] = useState("");
   const [activeType, setActiveType] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("name");
@@ -136,8 +137,23 @@ export default function CompanyLibraryGrid({ onPickCompany, disabled = false }: 
           </span>
         </div>
 
-        {/* Search */}
-        <div className="relative">
+        <div className="flex items-center gap-2">
+          {onBatchRun && (
+            <button
+              type="button"
+              onClick={() => {
+                trace("ui", "companyLibrary:batchRun", { count: filtered.length });
+                onBatchRun(filtered);
+              }}
+              disabled={disabled || filtered.length === 0}
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Batch analyze {filtered.length}
+            </button>
+          )}
+
+          {/* Search */}
+          <div className="relative">
           <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -156,6 +172,7 @@ export default function CompanyLibraryGrid({ onPickCompany, disabled = false }: 
               ✕
             </button>
           )}
+          </div>
         </div>
       </div>
 

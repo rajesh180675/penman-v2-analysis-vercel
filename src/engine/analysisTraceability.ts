@@ -22,6 +22,42 @@ import { appendRunResidualSummary, RESIDUAL_SCORE_PRODUCTION_THRESHOLD } from ".
 import { isEnabled } from "../lib/featureFlags";
 import { trace } from "../lib/traceLogger";
 
+function median(values: number[]): number | null {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length === 0) return null;
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1]! + sorted[mid]!) / 2
+    : sorted[mid]!;
+}
+
+/** Phase 1 — derive a per-period IV/share map from the valuation triangulation
+ *  evidence so lineage can record where the headline intrinsic value came from. */
+function deriveIntrinsicValuePerShare(params: {
+  valuationTriangulation?: import("./reconciliationResiduals").ValuationTriangulationEvidence | null | undefined;
+  latestPeriod?: string | null | undefined;
+  recastData?: RecastPeriod[] | null | undefined;
+  bankMetrics?: BankPeriodMetrics[] | null | undefined;
+}): Record<string, number | null> {
+  const evidence = params.valuationTriangulation;
+  const finite = (evidence?.methods ?? [])
+    .map((m) => m.perShare)
+    .filter((v): v is number => v != null && Number.isFinite(v) && v > 0);
+  if (finite.length === 0) return {};
+
+  const iv = median(finite);
+  if (iv == null) return {};
+
+  let period = evidence?.periodEnd ?? params.latestPeriod ?? null;
+  if (!period) {
+    const lastRecast = params.recastData?.at(-1);
+    const lastBank = params.bankMetrics?.at(-1);
+    period = lastRecast?.period_end ?? lastBank?.period_end ?? null;
+  }
+  if (!period) return {};
+  return { [period]: iv };
+}
+
 // Envelope + rigor-ladder types relocated to ./types/traceabilityEnvelope (pure leaf,
 // weakness #1 cycle break). Imported back for internal use; re-exported so existing
 // "./analysisTraceability" import paths stay valid.
@@ -587,6 +623,8 @@ export function buildAnalysisTraceability(params: {
     lineageRef: buildLineageRef(buildLineageMap({
       recastData: params.recastData ?? null,
       rawData: params.rawData ?? null,
+      bankMetrics: params.bankMetrics ?? null,
+      intrinsicValuePerShareByPeriod: deriveIntrinsicValuePerShare(params),
     })),
     rigor: {
       currentLevel: currentCheckpoint.level,

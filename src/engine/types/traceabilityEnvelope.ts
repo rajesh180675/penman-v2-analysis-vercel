@@ -44,22 +44,6 @@ export interface AccountingStandardCoverage {
   confidence: "high" | "medium" | "low" | "unknown";
 }
 
-export interface AccountingStandardCoverage {
-  /** Standard with the most periods. Falls back to "unknown" when raw
-   *  data carries no provenance (legacy fixtures, screener imports). */
-  dominantStandard: AccountingStandardLabel;
-  /** Period count per standard. */
-  periodsByStandard: Record<AccountingStandardLabel, number>;
-  /** Periods whose dominant standard is non-Ind-AS (medium/low confidence). */
-  preIndASPeriods: number;
-  /** True when ≥2 distinct standards contributed periods. */
-  hasMultiStandardData: boolean;
-  /** Confidence band: "high" when all periods are Ind-AS, "medium" with
-   *  Revised-Sch-VI present, "low" for older-Standard or Unknown periods,
-   *  "unknown" when raw data has no accounting_standard tag at all. */
-  confidence: "high" | "medium" | "low" | "unknown";
-}
-
 export type AnalysisRigorLevel =
   | "syntactically-valid"
   | "structurally-reconciled"
