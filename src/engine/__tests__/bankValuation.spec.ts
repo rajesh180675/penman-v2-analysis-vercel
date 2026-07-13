@@ -7,6 +7,8 @@ import { PercentFraction } from "../types/units";
 function cfg(overrides: Partial<EngineConfig> = {}): EngineConfig {
   return {
     ke: PercentFraction(0.12),
+    cost_of_equity_mode: "manual",
+    ke_manual_rationale: "Valuation unit-test assumption",
     kw: 0.10,
     g_terminal: 0.05,
     risk_free_rate: 0.07,

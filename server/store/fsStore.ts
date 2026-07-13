@@ -58,6 +58,46 @@ export async function writeBuffer(filePath: string, buffer: Buffer): Promise<voi
   await fs.writeFile(filePath, buffer);
 }
 
+export async function readBuffer(filePath: string): Promise<Buffer | null> {
+  try {
+    return await fs.readFile(filePath);
+  } catch {
+    return null;
+  }
+}
+
+export async function listDirectoryFiles(dir: string): Promise<string[]> {
+  try {
+    await ensureDir(dir);
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    return entries.filter((entry) => entry.isFile()).map((entry) => path.join(dir, entry.name)).sort();
+  } catch {
+    return [];
+  }
+}
+
+export async function listDirectories(dir: string): Promise<string[]> {
+  try {
+    await ensureDir(dir);
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    return entries.filter((entry) => entry.isDirectory()).map((entry) => path.join(dir, entry.name)).sort();
+  } catch {
+    return [];
+  }
+}
+
+export async function removePath(target: string): Promise<void> {
+  await fs.rm(target, { recursive: true, force: true });
+}
+
+export async function pathModifiedAt(target: string): Promise<string | null> {
+  try {
+    return (await fs.stat(target)).mtime.toISOString();
+  } catch {
+    return null;
+  }
+}
+
 // ─── Path helpers ────────────────────────────────────────────────────────────
 
 export function auditRunPath(runId: string): string {
@@ -74,6 +114,18 @@ export function auditEventPath(runId: string, eventId: string): string {
 
 export function auditUploadPath(runId: string, filename: string): string {
   return path.join(dataDir(), "audit", "uploads", runId, filename);
+}
+
+export function auditBlobPath(runId: string, kind: "inputs" | "artifacts", filename: string): string {
+  return path.join(dataDir(), "audit", kind, runId, filename);
+}
+
+export function auditBlobDir(runId: string, kind: "inputs" | "artifacts"): string {
+  return path.join(dataDir(), "audit", kind, runId);
+}
+
+export function auditKindRoot(kind: "events" | "inputs" | "artifacts" | "uploads"): string {
+  return path.join(dataDir(), "audit", kind);
 }
 
 export function researchPath(companyId: string): string {

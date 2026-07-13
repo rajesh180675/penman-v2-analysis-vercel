@@ -2,7 +2,8 @@
  * Economic Moat Scoring — bank/NBFC scorer (ROE-based).
  */
 
-import { EngineConfig, ke_from_config } from "../types";
+import { EngineConfig } from "../types";
+import { resolveCostOfCapitalFromConfig } from "../costOfCapital";
 import { BankPeriodMetrics } from "../bankPipeline";
 import { BankMoatResult } from "./types";
 import { medianOf, stdDev, clamp, estimatePhi, estimateCAP, computeTrend } from "./stats";
@@ -21,7 +22,7 @@ export function computeBankMoatScore(
   if (!bankMetrics || bankMetrics.length < 3) return null;
 
   const notes: string[] = [];
-  const ke = ke_from_config(config);
+  const ke = resolveCostOfCapitalFromConfig({ config }).ke;
 
   const sorted = [...bankMetrics].sort(
     (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()

@@ -31,6 +31,7 @@ interface AuditBlobInput {
   companyId?: string | null | undefined;
   sourceMode?: string | null | undefined;
   contentType?: string | undefined;
+  contentEncoding?: string | null | undefined;
   idempotencyKey?: string | undefined;
   runAccessToken?: string | null | undefined;
   maximumSizeInBytes?: number | undefined;
@@ -45,6 +46,7 @@ const AUDIT_CONTENT_CLASS =
   (import.meta.env.VITE_AUDIT_CONTENT_CLASS ?? "confidential-financial-statements").trim();
 const AUDIT_RETENTION_DAYS = clampNumber(import.meta.env.VITE_AUDIT_RETENTION_DAYS, 45, 7, 365);
 const AUDIT_MAX_UPLOAD_BYTES = clampNumber(import.meta.env.VITE_AUDIT_MAX_UPLOAD_BYTES, 64 * 1024 * 1024, 1024 * 1024, 512 * 1024 * 1024);
+const AUDIT_MAX_EVENT_BYTES = clampNumber(import.meta.env.VITE_AUDIT_MAX_EVENT_BYTES, 8 * 1024 * 1024, 16 * 1024, 32 * 1024 * 1024);
 const AUDIT_PENDING_EVENTS_KEY = "penman.audit.pending-events.v1";
 const AUDIT_PENDING_FAILURES_KEY = "penman.audit.pending-failures.v1";
 const AUDIT_RECENT_RUNS_KEY = "penman.audit.recent-runs.v1";
@@ -106,6 +108,26 @@ function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
+class AuditHttpError extends Error {
+  readonly status: number;
+  readonly retryable: boolean;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "AuditHttpError";
+    this.status = status;
+    this.retryable = status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
+  }
+}
+
+function isRetryableAuditError(error: unknown): boolean {
+  return !(error instanceof AuditHttpError) || error.retryable;
+}
+
+function jsonBodyBytes(value: unknown): number {
+  return new TextEncoder().encode(JSON.stringify(value)).byteLength;
+}
+
 function randomTokenSegment() {
   if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
     const bytes = new Uint8Array(16);
@@ -143,6 +165,7 @@ async function withRetry<T>(task: () => Promise<T>) {
       return await task();
     } catch (error) {
       lastError = error;
+      if (!isRetryableAuditError(error)) throw error;
       if (attempt < AUDIT_RETRY_ATTEMPTS - 1 && typeof window !== "undefined") {
         await sleep(250 * (attempt + 1));
       }
@@ -153,17 +176,23 @@ async function withRetry<T>(task: () => Promise<T>) {
 
 async function postAuditEventRequest(body: AuditEventInput) {
   return withRetry(async () => {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "x-penman-local": "1",
+    };
+    if (body.runAccessToken) headers["x-audit-run-token"] = body.runAccessToken;
     const response = await fetch("/api/audit/events", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-penman-local": "1",
-      },
+      headers,
       body: JSON.stringify(body),
     });
 
     if (!response.ok) {
-      throw new Error(`Audit event failed with ${response.status}`);
+      const detail = await response.text().catch(() => "");
+      throw new AuditHttpError(
+        response.status,
+        `Audit event failed with ${response.status}${detail ? `: ${detail.slice(0, 300)}` : ""}`,
+      );
     }
 
     return await response.json();
@@ -205,7 +234,7 @@ export function rememberAuditRun(meta: AuditSubmissionMeta) {
     companyId: meta.companyId,
     sourceMode: meta.sourceMode,
     fileName: meta.fileName ?? null,
-    runAccessToken: null,
+    runAccessToken: meta.runAccessToken,
     contentClass: meta.contentClass,
     retentionDays: meta.retentionDays,
     createdAt: new Date().toISOString(),
@@ -234,8 +263,9 @@ export async function flushQueuedAuditEvents() {
   for (const entry of pending) {
     try {
       await postAuditEventRequest(entry);
-    } catch {
-      remaining.push(entry);
+    } catch (error) {
+      if (isRetryableAuditError(error)) remaining.push(entry);
+      else console.warn("[audit] discarded permanently rejected queued event", error);
     }
   }
 
@@ -249,15 +279,27 @@ export async function persistAuditEvent(input: AuditEventInput) {
   const payload: AuditEventInput = {
     ...input,
     idempotencyKey: input.idempotencyKey ?? createIdempotencyKey(`${input.runId}-${input.eventType}`),
-    runAccessToken: input.runAccessToken ?? null,
+    runAccessToken: input.runAccessToken ?? storedRun?.runAccessToken ?? null,
     contentClass: input.contentClass ?? storedRun?.contentClass ?? AUDIT_CONTENT_CLASS,
     retentionDays: input.retentionDays ?? storedRun?.retentionDays ?? AUDIT_RETENTION_DAYS,
   };
+
+  const payloadBytes = jsonBodyBytes(payload);
+  if (payloadBytes > AUDIT_MAX_EVENT_BYTES) {
+    console.warn(
+      `[audit] event persistence skipped: ${payloadBytes} bytes exceeds the ${AUDIT_MAX_EVENT_BYTES}-byte event limit`,
+    );
+    return null;
+  }
 
   try {
     await flushQueuedAuditEvents();
     return await postAuditEventRequest(payload);
   } catch (error) {
+    if (!isRetryableAuditError(error)) {
+      console.warn("[audit] permanently rejected event was not queued", error);
+      return null;
+    }
     const pending = readStoredArray<StoredPendingEvent>(AUDIT_PENDING_EVENTS_KEY);
     pending.push({
       ...payload,
@@ -297,6 +339,38 @@ export async function persistAuditBlob(input: AuditBlobInput) {
 
   try {
     const pathname = `audit-runs/${input.runId}/${input.kind}/${input.filename}`;
+
+    if (import.meta.env.DEV) {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/octet-stream",
+        "x-penman-local": "1",
+        "x-audit-run-id": input.runId,
+        "x-audit-kind": input.kind,
+        "x-audit-filename": input.filename,
+        "x-audit-event-type": input.eventType,
+        "x-audit-content-type": input.contentType || input.file.type || "application/octet-stream",
+        "x-audit-content-class": contentClass,
+        "x-audit-retention-days": String(retentionDays),
+      };
+      if (input.contentEncoding) headers["x-audit-content-encoding"] = input.contentEncoding;
+      if (input.companyId) headers["x-audit-company-id"] = input.companyId;
+      if (input.sourceMode) headers["x-audit-source-mode"] = input.sourceMode;
+      if (runAccessToken) headers["x-audit-run-token"] = runAccessToken;
+      const result = await withRetry(async () => {
+        const response = await fetch("/api/audit/blobs", {
+          method: "POST",
+          headers,
+          body: input.file,
+        });
+        if (!response.ok) {
+          const detail = await response.text().catch(() => "");
+          throw new AuditHttpError(response.status, `Local audit blob failed with ${response.status}: ${detail.slice(0, 300)}`);
+        }
+        return await response.json();
+      });
+      clearFailure(input.runId, input.filename, input.kind);
+      return result;
+    }
 
     const result = await withRetry(() =>
       upload(pathname, input.file, {

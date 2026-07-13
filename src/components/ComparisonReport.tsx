@@ -9,12 +9,15 @@ import PeerScatterPlot from "./charts/PeerScatterPlot";
 import PercentileBar from "./charts/PercentileBar";
 import SectorHeatmap from "./charts/SectorHeatmap";
 import { computePeerRelativeValuation } from "../engine/peerRelativeValuation";
+import RunBackedPortfolioComparison from "./RunBackedPortfolioComparison";
+import type { ReturnTypeOfPortfolioComparison } from "../engine/portfolioRunComparison.types";
 
 interface Props {
   registry: CompanyRegistry;
   config: EngineConfig;
   weakestTraceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null | undefined;
   publication?: ComparisonPublicationSnapshot | null | undefined;
+  runComparison?: ReturnTypeOfPortfolioComparison | null | undefined;
 }
 
 const METRICS = ["ROCE", "RNOA", "PM", "ATO", "FLEV", "SPREAD"] as const;
@@ -26,10 +29,11 @@ function percentileRank(values: number[], x: number) {
   return lessEq / s.length;
 }
 
-export default function ComparisonReport({ registry, config, weakestTraceabilitySummary: precomputedWeakestSummary = null, publication = null }: Props) {
-  const companies = Object.values(registry.companies).filter((c) => c.recastData.length > 0);
+export default function ComparisonReport({ registry, config, weakestTraceabilitySummary: precomputedWeakestSummary = null, publication = null, runComparison = null }: Props) {
+  const comparableIssuerIds = runComparison ? new Set(runComparison.rows.filter((row) => row.comparable).map((row) => row.issuerId)) : null;
+  const companies = Object.values(registry.companies).filter((c) => c.recastData.length > 0 && (!comparableIssuerIds || comparableIssuerIds.has(c.id)));
   if (companies.length < 2) {
-    return <div className="card-base p-12 text-center"><div className="text-5xl mb-3">📊</div><p className="font-semibold text-slate-600 dark:text-slate-300">Need ≥ 2 companies</p><p className="text-sm text-slate-500 mt-1">Load at least 2 companies to enable peer comparison.</p></div>;
+    return <div className="space-y-6">{runComparison && <RunBackedPortfolioComparison comparison={runComparison} />}<div className="card-base p-12 text-center"><div className="text-5xl mb-3">📊</div><p className="font-semibold text-slate-600 dark:text-slate-300">Need ≥ 2 companies</p><p className="text-sm text-slate-500 mt-1">Load at least 2 companies to enable peer comparison.</p></div></div>;
   }
 
   const comparisonPublication = publication ?? buildComparisonPublicationSnapshot(registry);
@@ -150,6 +154,7 @@ export default function ComparisonReport({ registry, config, weakestTraceability
 
   return (
     <div className="space-y-6">
+      {runComparison && <RunBackedPortfolioComparison comparison={runComparison} />}
       {comparisonSummary && (
         <TraceabilityTrustPanel
           title="Comparison Trust Gate"

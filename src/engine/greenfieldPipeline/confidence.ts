@@ -1,4 +1,4 @@
-import type { AdjustmentValidationReport, ConfidenceScore, NormalizedPeriod, TriageResult } from "./types";
+import type { AdjustmentAuditEntry, AdjustmentValidationReport, ConfidenceScore, NormalizedPeriod, TriageResult } from "./types";
 
 function severityPenalty(severity: string): number {
   if (severity === "CRITICAL") return 25;
@@ -30,7 +30,34 @@ function staleCap(periods: readonly NormalizedPeriod[], asOf: Date): { cap: numb
   return { cap: 55, reason: `Latest financials are ${months.toFixed(1)} months old (>12mo stale cap).` };
 }
 
-function scoreOne(periods: readonly NormalizedPeriod[], triage: TriageResult, validation: AdjustmentValidationReport, asOf: Date, adjusted: boolean): ConfidenceScore {
+function acceptedTransformationGroups(auditTrail: readonly AdjustmentAuditEntry[]): Array<{
+  adjusterId: AdjustmentAuditEntry["adjusterId"];
+  period: string;
+  signalIds: string[];
+}> {
+  const groups = new Map<string, { adjusterId: AdjustmentAuditEntry["adjusterId"]; period: string; signalIds: Set<string> }>();
+  for (const entry of auditTrail) {
+    if (entry.validationStatus !== "accepted") continue;
+    const key = `${entry.adjusterId}:${entry.period}`;
+    const group = groups.get(key) ?? { adjusterId: entry.adjusterId, period: entry.period, signalIds: new Set<string>() };
+    for (const evidence of entry.driven_by) group.signalIds.add(evidence.signalId);
+    groups.set(key, group);
+  }
+  return Array.from(groups.values()).map((group) => ({
+    adjusterId: group.adjusterId,
+    period: group.period,
+    signalIds: Array.from(group.signalIds),
+  }));
+}
+
+function scoreOne(
+  periods: readonly NormalizedPeriod[],
+  triage: TriageResult,
+  validation: AdjustmentValidationReport,
+  auditTrail: readonly AdjustmentAuditEntry[],
+  asOf: Date,
+  adjusted: boolean,
+): ConfidenceScore {
   let score = 60;
   const penalties: ConfidenceScore["penalties"] = [];
   const bonuses: ConfidenceScore["bonuses"] = [];
@@ -45,9 +72,21 @@ function scoreOne(periods: readonly NormalizedPeriod[], triage: TriageResult, va
       score -= points;
     }
     if ((signal.severity === "CRITICAL" || signal.severity === "BLOCKING") && signal.p_artifact < 0.5 && signal.blocksValuation) blocked = true;
-    if (adjusted && signal.p_artifact >= 0.75 && signal.suggestedAdjusters.length > 0) {
-      const bonus = signal.severity === "BLOCKING" || signal.severity === "CRITICAL" ? 15 : 10;
-      bonuses.push({ reason: `Resolved high-probability accounting artifact: ${signal.label}`, points: bonus, signalId: signal.id });
+  }
+
+  // A detector suggestion is not evidence that an accounting issue was
+  // resolved. Only an applied transformation that survived validation can
+  // increase adjusted-view confidence.
+  if (adjusted && validation.status !== "rejected") {
+    for (const transformation of acceptedTransformationGroups(auditTrail)) {
+      const drivingSignals = triage.activeSignals.filter((signal) => transformation.signalIds.includes(signal.id));
+      const hasBlockingDriver = drivingSignals.some((signal) => signal.severity === "BLOCKING" || signal.severity === "CRITICAL");
+      const bonus = hasBlockingDriver ? 15 : 10;
+      bonuses.push({
+        reason: `Accepted validated transformation ${transformation.adjusterId} for ${transformation.period}.`,
+        points: bonus,
+        signalId: drivingSignals[0]?.id,
+      });
       score += bonus;
     }
   }
@@ -68,10 +107,11 @@ function scoreOne(periods: readonly NormalizedPeriod[], triage: TriageResult, va
   return { level: level(score, blocked), score, penalties, bonuses, caps };
 }
 
-export function scoreGreenfieldConfidence(params: { asReported: readonly NormalizedPeriod[]; adjusted: readonly NormalizedPeriod[]; triage: TriageResult; validation: AdjustmentValidationReport; asOf?: Date | string | undefined }): { asReported: ConfidenceScore; adjusted: ConfidenceScore } {
+export function scoreGreenfieldConfidence(params: { asReported: readonly NormalizedPeriod[]; adjusted: readonly NormalizedPeriod[]; triage: TriageResult; validation: AdjustmentValidationReport; auditTrail?: readonly AdjustmentAuditEntry[] | undefined; asOf?: Date | string | undefined }): { asReported: ConfidenceScore; adjusted: ConfidenceScore } {
   const asOf = params.asOf instanceof Date ? params.asOf : new Date(params.asOf ?? Date.now());
+  const auditTrail = params.auditTrail ?? [];
   return {
-    asReported: scoreOne(params.asReported, params.triage, params.validation, asOf, false),
-    adjusted: scoreOne(params.adjusted, params.triage, params.validation, asOf, true),
+    asReported: scoreOne(params.asReported, params.triage, params.validation, auditTrail, asOf, false),
+    adjusted: scoreOne(params.adjusted, params.triage, params.validation, auditTrail, asOf, true),
   };
 }

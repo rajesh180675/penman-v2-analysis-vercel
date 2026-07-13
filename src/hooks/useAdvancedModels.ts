@@ -10,6 +10,7 @@ import { computeReverseDCF, type ReverseDCFResult } from "../engine/reverseDCF";
 import { computeAccountingAnchor, type AccountingAnchorResult } from "../engine/accountingAnchor";
 import { analyzeCapitalAllocation, measureConglomerateDiscount, detectTransferPricingDistortion, type CapitalAllocationResult, type ConglomerateDiscountResult, type TransferPricingFlag } from "../engine/capitalAllocationEngine";
 import { computeMertonCredit, computeRegimeConditionalValuation, type MertonCreditResult, type RegimeConditionalResult } from "../engine/mertonRegimeEngine";
+import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
 
 export interface AdvancedModelsResult {
   fadeRate: FadeRateAnalysis | null;
@@ -34,7 +35,14 @@ interface Props {
 }
 
 export default function useAdvancedModels({ data, config, segmentData, marketData, shares }: Props): AdvancedModelsResult {
-  const costOfCapital = config.ke ?? 0.13;
+  const capitalCostResult = useMemo(() => resolveCostOfCapitalFromConfig({
+    config,
+    current: data.at(-1) ?? null,
+    previous: data.at(-2) ?? null,
+    riskFreeRate: marketData?.riskFreeRate ?? config.risk_free_rate,
+    marketAsOf: marketData?.rateAsOf ?? marketData?.fetchedAt ?? null,
+  }), [config, data, marketData]);
+  const costOfCapital = capitalCostResult.ke;
   const price = marketData?.price ?? config.market_price ?? null;
   const sharesOut = shares ?? null;
   const bizSegments = segmentData?.business ?? null;

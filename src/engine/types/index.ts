@@ -98,6 +98,8 @@ export type {
   ValuationSectorTemplate,
   StructuralBreakWindowPolicy,
   GreenfieldAdjustmentMode,
+  CostOfEquityMode,
+  CostOfDebtMode,
   EngineConfig,
   ConfigValidationWarning,
   KwSource,

@@ -1,8 +1,9 @@
-import { computeRatios, computeValuation, deriveKwFromStructure } from "./PenmanNissimEngine";
+import { computeRatios, computeValuation } from "./PenmanNissimEngine";
 import { runIdentityAssertions } from "./identityTests";
 import { CapitalineMappingSpec as M } from "./mappingSpec";
 import { buildPhase0BaselineSnapshot, Phase0BaselineSnapshot } from "./baselineGuardrails";
-import { EngineConfig, RawPeriodData, RecastPeriod, ke_from_config } from "./types";
+import { EngineConfig, RawPeriodData, RecastPeriod } from "./types";
+import { resolveCostOfCapitalFromConfig } from "./costOfCapital";
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
 
@@ -37,8 +38,7 @@ function deriveKw(periods: RecastPeriod[], cfg: EngineConfig): number {
   if (periods.length < 2) return cfg.risk_free_rate;
   const cur = periods[periods.length - 1]!;
   const prev = periods[periods.length - 2]!;
-  const ke = ke_from_config(cfg);
-  return deriveKwFromStructure(cur, prev, ke, cfg.risk_free_rate, cfg);
+  return resolveCostOfCapitalFromConfig({ config: cfg, current: cur, previous: prev }).kw;
 }
 
 function buildLegacyEmulation(raw: RawPeriodData[], after: RecastPeriod[], cfg: EngineConfig): RecastPeriod[] {
@@ -197,7 +197,11 @@ export function runRegressionHarness(rawData: RawPeriodData[], afterPeriods: Rec
   const latestAfter = afterSorted[afterSorted.length - 1]!;
   const latestBefore = beforePeriods[beforePeriods.length - 1]!;
 
-  const ke = ke_from_config(cfg);
+  const ke = resolveCostOfCapitalFromConfig({
+    config: cfg,
+    current: latestAfter,
+    previous: afterSorted[afterSorted.length - 2] ?? null,
+  }).ke;
   const kwAfter = deriveKw(afterSorted, cfg);
   const kwBefore = cfg.risk_free_rate;
   const g = 0.05;

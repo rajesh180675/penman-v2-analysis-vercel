@@ -95,12 +95,13 @@ describe("buildValuationPeriodsFromForecast", () => {
     expect(out[1]!.period_end).toBe("2025-03-31");
     expect(out[1]!.bs.CSE).toBe(forecasts[0]!.CSE_f);
     expect(out[1]!.bs.NOA).toBe(forecasts[0]!.NOA_f);
-    expect(out[1]!.bs.NFO).toBe(forecasts[0]!.NOA_f - forecasts[0]!.CSE_f);
-    expect(out[1]!.is.Sales).toBe(forecasts[0]!.Sales_f);
+    expect(out[1]!.bs.NFO).toBe(forecasts[0]!.NOA_f - forecasts[0]!.CSE_f - latest.bs.MI);
     expect(out[1]!.is.OI).toBe(forecasts[0]!.OI_f);
     expect(out[1]!.is.CNI).toBe(forecasts[0]!.CNI_f);
-    expect(out[1]!.is.NFE).toBe(forecasts[0]!.NFE_f);
-    expect(out[1]!.cu.CoreOI).toBe(forecasts[0]!.OI_f);
+    expect(out[1]!.cf.d_t).toBe(forecasts[0]!.CNI_f - (forecasts[0]!.CSE_f - latest.bs.CSE));
+    expect(out[1]!.cf).not.toBe(latest.cf);
+    expect("Sales" in out[1]!.is).toBe(false);
+    expect("cu" in out[1]!).toBe(false);
 
     expect(out[2]!.period_end).toBe("2026-03-31");
   });
@@ -109,6 +110,15 @@ describe("buildValuationPeriodsFromForecast", () => {
     const latest = mkLatest("bad-date");
     expect(() => buildValuationPeriodsFromForecast(latest, [mkForecast(0)])).toThrow(
       "Invalid period_end year in latestPeriod: bad-date",
+    );
+  });
+
+  it("fails closed instead of publishing non-finite forecast valuation inputs", () => {
+    const latest = mkLatest();
+    const forecast = { ...mkForecast(0), OI_f: Number.NaN };
+
+    expect(() => buildValuationPeriodsFromForecast(latest, [forecast])).toThrow(
+      "Forecast period 1 contains a non-finite valuation input.",
     );
   });
 });

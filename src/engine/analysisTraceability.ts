@@ -1,12 +1,11 @@
 import { AnalysisPolicyVersions, getAnalysisPolicyVersions } from "./policyVersions";
 import { AnalysisStatusSummary } from "./analysisStatus";
 import { MappingAuditReport, QualityGateReport } from "./mappingAudit";
-import { CapitalineParseDebug } from "./capitalineParser";
+import { CapitalineParseDebug, SourceArtifactHash } from "./capitalineParser";
 import { evaluateParserFidelity } from "./parserFidelity";
 import { EngineConfig, RawPeriodData, RecastPeriod } from "./types";
 import { evaluateReconciliationResiduals, type ValuationTriangulationEvidence } from "./reconciliationResiduals";
 import { evaluateBankReconciliationResiduals } from "./bankReconciliationResiduals";
-import type { ReconciliationResidualStatus } from "./types/reconciliation";
 import type { BankPeriodMetrics } from "./bankPipeline";
 import { detectSubtype } from "./bankPipeline";
 import { analysisFamilyFromScope } from "./scopePolicy";
@@ -77,6 +76,42 @@ export type {
   TraceabilityBacklogPreview,
   AnalysisTraceabilityEnvelope,
 };
+
+/**
+ * Enforce the rigor ladder as a monotonic prefix.
+ *
+ * Callers first calculate the independent criterion for each ordered rung,
+ * then pass those candidate checkpoints here. Once one rung fails, every
+ * downstream rung remains unachieved even if its local criterion happens to
+ * pass. Keeping this rule in one pure evaluator prevents future gates from
+ * accidentally bypassing a predecessor.
+ */
+export function enforceRigorPrefix(
+  candidates: AnalysisRigorCheckpoint[],
+): AnalysisRigorCheckpoint[] {
+  let prefixCleared = true;
+  let firstBlockedLabel: string | null = null;
+
+  return candidates.map((candidate) => {
+    const independentlyAchieved = candidate.achieved;
+    const achieved = prefixCleared && independentlyAchieved;
+
+    if (!achieved && firstBlockedLabel == null) {
+      firstBlockedLabel = candidate.label;
+    }
+
+    const blockedOnlyByPredecessor = !prefixCleared && independentlyAchieved;
+    prefixCleared = achieved;
+
+    return {
+      ...candidate,
+      achieved,
+      detail: blockedOnlyByPredecessor
+        ? `Cannot clear before ${firstBlockedLabel ?? "the preceding rigor checkpoint"} clears. ${candidate.detail}`
+        : candidate.detail,
+    };
+  });
+}
 
 /**
  * Phase A6 — derive accounting-standard coverage from raw period data.
@@ -190,6 +225,10 @@ export function buildAnalysisTraceability(params: {
   config?: EngineConfig | null | undefined;
   debugInfo?: CapitalineParseDebug | null | undefined;
   parserDiagnostics?: SourceParserDiagnostics | null | undefined;
+  /** Source-lineage — per-file SHA-256 hashes from the parser. When present,
+   *  stamped onto the envelope so the production-ready checkpoint can verify
+   *  source provenance without requiring the CLI audit harness. */
+  sourceArtifactHashes?: SourceArtifactHash[] | null | undefined;
   /**
    * Phase 2.x — sector-aware reconciliation. When the pipeline routes to
    * the financial-institution branch (banks, NBFCs, insurance), the
@@ -272,9 +311,11 @@ export function buildAnalysisTraceability(params: {
       scopeClassification: qualityGate?.scopeAssessment?.classification ?? null,
     });
 
-  const hardTieoutReady = reconciliation.readiness?.hardTieoutReady ?? false;
-  const effectiveReconciliationStatus: ReconciliationResidualStatus =
-    reconciliation.status === "failed" && hardTieoutReady ? "degraded" : reconciliation.status;
+  // A readiness sub-dimension may explain which tie-outs are available, but
+  // it must never promote the overall reconciliation verdict. Structural
+  // clearance accepts only a real confirmed/degraded check pack.
+  const reconciliationClearsStructural =
+    reconciliation.status === "confirmed" || reconciliation.status === "degraded";
 
   // Phase J5: distress gate. Critical or severe distress (negative net
   // worth, going-concern stress) blocks `valuation-eligible` advancement
@@ -362,12 +403,15 @@ export function buildAnalysisTraceability(params: {
       blockEnabled: economicSanityBlockEnabled,
     });
   }
-  const structuralAchieved = hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues && effectiveReconciliationStatus !== "failed";
-  const checkpoints: AnalysisRigorCheckpoint[] = [
+  const syntacticCriteriaCleared =
+    hasRawData && !hasEngineError && parserFidelity.status !== "failed" && parserFidelity.score >= 70;
+  const structuralCriteriaCleared =
+    hasRawData && hasRecastData && !scopeBlocked && !hasBlockingIssues && reconciliationClearsStructural;
+  const checkpoints = enforceRigorPrefix([
     {
       level: "syntactically-valid",
       label: "Syntactically valid",
-      achieved: hasRawData && !hasEngineError && parserFidelity.status !== "failed" && parserFidelity.score >= 70,
+      achieved: syntacticCriteriaCleared,
       detail: !hasRawData
         ? "No raw periods were persisted for this run."
         : hasEngineError
@@ -379,16 +423,18 @@ export function buildAnalysisTraceability(params: {
     {
       level: "structurally-reconciled",
       label: "Structurally reconciled",
-      achieved: structuralAchieved && !screeningOnly,
+      achieved: structuralCriteriaCleared && !screeningOnly,
       detail: screeningOnly
         ? "Single-period upload — structural reconciliation requires ≥2 periods. Results are screening-level only."
         : scopeBlocked
           ? "Scope policy blocked this dataset before structural reconciliation could clear."
           : hasBlockingIssues
             ? `${blockingCount} blocking mapping or identity issues remain unresolved.`
-            : effectiveReconciliationStatus === "failed"
+            : reconciliation.status === "failed"
               ? `Structural residual thresholds did not clear. ${reconciliation.summary}`
-              : effectiveReconciliationStatus === "degraded"
+              : reconciliation.status === "insufficient-evidence"
+                ? `Structural reconciliation lacked independent evidence. ${reconciliation.summary}`
+              : reconciliation.status === "degraded"
                 ? `Structural residual thresholds cleared without critical breaches, but warning-level residuals remain. ${reconciliation.summary}`
             : hasRecastData
               ? `Recast statements exist and structural residual checks cleared. ${reconciliation.summary}`
@@ -397,14 +443,14 @@ export function buildAnalysisTraceability(params: {
     {
       level: "economically-plausible",
       label: "Economically plausible",
-      achieved: structuralAchieved && !valuationBlocked && !screeningOnly && !economicSanityBlocksPlausible,
+      achieved: !valuationBlocked && !screeningOnly && !economicSanityBlocksPlausible,
       detail: screeningOnly
         ? "Single-period upload — economic plausibility assessment requires ≥2 periods."
         : valuationBlocked
           ? "Valuation-critical issues still block the run, so economic plausibility is not established."
           : economicSanityBlocksPlausible
             ? `Economic sanity gates blocked the run — ${economicSanity.anchorReason}`
-            : structuralAchieved
+            : structuralCriteriaCleared
               ? economicSanity.status === "warned"
                 ? `Anchor period ${economicSanity.anchorPeriod}; ${economicSanity.failedChecks.length} warning-level signal(s) carried forward.`
                 : `Anchor period ${economicSanity.anchorPeriod ?? "—"}; all economic sanity checks passed.`
@@ -413,7 +459,7 @@ export function buildAnalysisTraceability(params: {
     {
       level: "valuation-eligible",
       label: "Valuation eligible",
-      achieved: structuralAchieved && !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && !sectorUnmodelledCapsAtPlausible && valuationStatus !== "guarded" && valuationStatus !== "unknown",
+      achieved: !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && !sectorUnmodelledCapsAtPlausible && valuationStatus !== "guarded" && valuationStatus !== "unknown",
       detail: sectorUnmodelledCapsAtPlausible
         ? `${sectorCapLabel} sector detected — ${sectorCapReason}, so the industrial intrinsic value is produced but not blessed. The run is capped at economically-plausible; ratios are sector-correct.`
         : screeningOnly
@@ -433,12 +479,12 @@ export function buildAnalysisTraceability(params: {
     {
       level: "production-ready",
       label: "Production-ready",
-      achieved: structuralAchieved && !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && !sectorUnmodelledCapsAtPlausible && analysisStatus?.status === "production-ready",
+      achieved: !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && !sectorUnmodelledCapsAtPlausible && analysisStatus?.status === "production-ready",
       detail: sectorUnmodelledCapsAtPlausible
         ? `${sectorCapLabel} sector detected — production-ready requires sector-native reconciliation and valuation readiness; ${sectorCapReason}.`
         : screeningOnly
         ? "Single-period upload — production-ready status requires ≥2 periods."
-        : !structuralAchieved
+        : !structuralCriteriaCleared
           ? `Production-ready requires structural reconciliation to clear. ${reconciliation.summary}`
           : valuationBlocked
             ? "Valuation-critical issues still block the run, so production-ready status is denied."
@@ -448,7 +494,7 @@ export function buildAnalysisTraceability(params: {
                 ? "All currently wired release checks passed."
                 : analysisStatus?.headline ?? "Production-ready status was not reached.",
     },
-  ];
+  ]);
   // achievedLevels/pendingLevels are recomputed below after the
   // residual-score downgrade gate may have toggled the production-ready
   // checkpoint. We don't materialize the pre-downgrade values.
@@ -471,7 +517,9 @@ export function buildAnalysisTraceability(params: {
     parserGap * 0.25 + mappingPenalty * 0.25 + reconPenalty * 0.20 + sanityPenalty * 0.15 + unusualPenalty * 0.15,
   );
   const residualScoreDowngradeEnabled = isEnabled("rigor.residualScoreDowngrade");
-  const productionReadyAchievedRaw = structuralAchieved && !screeningOnly && !valuationBlocked && analysisStatus?.status === "production-ready";
+  const productionReadyAchievedRaw = checkpoints.some(
+    (checkpoint) => checkpoint.level === "production-ready" && checkpoint.achieved,
+  );
   const productionReadyDowngraded =
     productionReadyAchievedRaw && residualScoreDowngradeEnabled && overallResidualScore > RESIDUAL_SCORE_PRODUCTION_THRESHOLD;
   if (productionReadyDowngraded) {
@@ -532,7 +580,7 @@ export function buildAnalysisTraceability(params: {
   const valuationGateFailures = [
     scopeBlocked,
     valuationBlocked,
-    reconciliation.status === "failed",
+    !reconciliationClearsStructural,
     parserFidelity.status === "failed",
   ].filter(Boolean).length;
 
@@ -614,7 +662,7 @@ export function buildAnalysisTraceability(params: {
     parserFidelity,
     reconciliation: {
       ...reconciliation,
-      status: effectiveReconciliationStatus,
+      status: reconciliation.status,
     },
     accountingStandardCoverage: computeAccountingStandardCoverage(params.rawData),
     conceptIdentity,
@@ -626,6 +674,7 @@ export function buildAnalysisTraceability(params: {
       bankMetrics: params.bankMetrics ?? null,
       intrinsicValuePerShareByPeriod: deriveIntrinsicValuePerShare(params),
     })),
+    sourceArtifactHashes: params.sourceArtifactHashes ?? params.debugInfo?.sourceArtifactHashes ?? null,
     rigor: {
       currentLevel: currentCheckpoint.level,
       currentLabel: currentCheckpoint.label,

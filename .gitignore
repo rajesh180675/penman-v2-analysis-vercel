@@ -53,6 +53,136 @@ security_assessment.py
 extract_proto*.py
 parse_frida_dump.py
 
+# ─────────────────────────────────────────────────────────────
+# Paltalk reverse-engineering research (unrelated to this app)
+# Kept untracked by request. Naming uses two consistent cases:
+# lowercase scripts/data, UPPERCASE docs/reports.
+# ─────────────────────────────────────────────────────────────
+# Paltalk scripts, data, logs (lowercase prefix)
+paltalk*
+# Paltalk docs / reports (UPPERCASE prefix)
+PALTALK*
+# Compound-named Paltalk files (basename match at any depth)
+analyze_paltalk*.py
+disasm_paltalk*.py
+frida_paltalk*.py
+probe_paltalk*.py
+test_paltalk*.py
+diagnostics_paltalk.py
+hermes_paltalk.py
+run_paltalk_bot*
+# Paltalk kiro specs
+.kiro/specs/paltalk-bridge*/
+
+# Crypto / traffic-capture scratch from the same investigation
+all_traffic*
+bcrypt*.json*
+bcrypt_hook.py
+captured_traffic.jsonl
+crypto_gate_*
+chacha_callers.py
+chacha_cluster_disasm.py
+decode_proto.py
+analyze.py
+analyze_capture.py
+analyze_memory.py
+check_admin.py
+check_bcrypt.py
+check_plaintext.py
+
+# Underscore-prefixed diagnostic scripts & dumps
+_aesni_fn_entry.py
+_debug_addr.py
+_diag_*.py
+_diag_*.json
+_find_ptlib_path.py
+_inspect_*.py
+_smoke*.txt
+_smoke_test_cf_models.py
+_verify_disasm.py
+_qos_*.json
+_ws2_diag.json
+
+# RE notes / protocol docs
+CHAT_PROTOCOL.md
+DESIGN_DYNAMIC_PERSONALITY.md
+PROTOCOL_FINDINGS.md
+
+# Paltalk bot run logs
+bot_*.log
+
+# Hermes scratch
+.hermes/junk_replies.json
+.hermes/replies/
+
+# ─────────────────────────────────────────────────────────────
+# Paltalk research — generically-named scratch (same investigation
+# as the paltalk* block above; this app is pure TS/React with no
+# Python, so all RE Python scripts are safe to ignore at root).
+# ─────────────────────────────────────────────────────────────
+# Frida / instrumentation scripts & their dumps
+frida_*.py
+# Recon / discovery scripts
+find_chat_func.py
+find_hooks.py
+find_send.py
+find_ssl.py
+enum_procs.py
+list_modules.py
+memscan.py
+type_enum.py
+snap.py
+proto_probe.py
+inspect_ws.py
+pipe_test.py
+probe_pipes.py
+probe_internal_ws.py
+# Injection / capture scripts & data
+inject_chat.py
+inject_message.py
+full_capture.*
+live_capture.jsonl
+capture_output.jsonl
+scan_results.json
+plaintext_capture.jsonl
+plaintext_full.json
+ptlib_capture.jsonl
+ptlib_full.json
+raw_proto.jsonl
+qt_io_capture.jsonl
+qt_string_probe.jsonl
+socket_discovery_capture.jsonl
+ssl_packet_capture.jsonl
+sspi_capture.jsonl
+sspi2_capture.jsonl
+# Bot engine & test harness (Python — not part of this app)
+personality/
+mock_llm_server.py
+run_frida_capture.py
+run_qt_ws_hook.py
+run_roast_loop.bat
+set_proxy.ps1
+tests/__init__.py
+# Root-level Python test scripts (Paltalk research). Anchored to repo
+# root so this never touches scripts/*.py or other subdirs.
+/test_*.py
+# Bot runtime logs (dry runs)
+dryrun_logs/
+# Runtime scratch JSON
+reply.json
+response.json
+full_capture.json
+# Stray `nul` artifact from a redirect on Windows
+nul
+
+# Reverse-engineering toolkits (vendored binaries — never commit)
+tools/procmon/
+tools/radare2/
+
+# Secrets — API keys / bearer tokens (NEVER commit)
+twitterapi_key.txt
+x_tokens.txt
+
 # Debug JSONL captures
 *_out.jsonl
 capture_out.jsonl

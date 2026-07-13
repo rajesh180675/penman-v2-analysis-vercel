@@ -1,5 +1,6 @@
 import type { BankPeriodMetrics } from "../bankPipeline";
-import { EngineConfig, ke_from_config } from "../types";
+import { EngineConfig } from "../types";
+import { resolveCostOfCapitalFromConfig } from "../costOfCapital";
 import { trace } from "../../lib/traceLogger";
 import type {
   BankValuationModelResult,
@@ -37,7 +38,7 @@ import { buildBankScenarioBundle } from "./scenarios";
  * the standard EngineConfig. marketCap is optional — when provided each
  * model's premium-over-market is computed; otherwise null.
  *
- * Per S-9.4C: ke comes from ke_from_config(cfg), single source of truth.
+ * Per S-9.4C: ke comes from the shared CostOfCapitalResult.
  * Terminal growth uses cfg.terminal_growth_rate when present else
  * DEFAULT_TERMINAL_GROWTH.
  *
@@ -59,7 +60,7 @@ export function computeBankValuation(
     const skip = skipped("no bank metrics provided");
     return {
       sustainableROE: null,
-      ke: ke_from_config(cfg),
+      ke: resolveCostOfCapitalFromConfig({ config: cfg }).ke,
       terminalGrowth: DEFAULT_TERMINAL_GROWTH,
       latestBookValue: null,
       usableHistory: 0,
@@ -73,7 +74,7 @@ export function computeBankValuation(
     };
   }
 
-  const ke = ke_from_config(cfg);
+  const ke = resolveCostOfCapitalFromConfig({ config: cfg }).ke;
   const originalG = cfg.terminal_growth_rate ?? DEFAULT_TERMINAL_GROWTH;
 
   // Phase D2 — apply CRAR-buffer governor for NBFCs so all downstream

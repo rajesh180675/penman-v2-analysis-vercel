@@ -20,6 +20,7 @@ import type {
   MarketImpliedExpectationLedger,
   ValuationEvidenceLedger,
 } from "../valuationEvidence/types";
+import type { CostOfCapitalResult } from "../costOfCapital";
 
 export type ValuationSignalState =
   | "blocked"
@@ -34,6 +35,8 @@ export interface ValuationScenarioCard {
   label: string;
   scenario: ForecastScenario;
   intrinsicPerShare: number | null;
+  /** Independent owner-earnings DCF value retained before scenario synthesis. */
+  ownerEarningsDcfPerShare?: number | null | undefined;
   upsidePct: number | null;
   marginOfSafetyPct: number | null;
   expectedCagr: number | null;
@@ -167,6 +170,8 @@ export interface ValuationCommandCenterOutput {
   valuationReadiness: ValuationReadiness;
   marketPrice: number | null;
   riskFreeRate: number;
+  /** One pinned capital-cost result consumed by all command-center models. */
+  costOfCapital: CostOfCapitalResult;
   asOf: string | null;
   sectorTemplate: {
     id: string;

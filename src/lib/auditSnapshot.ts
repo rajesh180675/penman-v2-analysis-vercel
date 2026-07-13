@@ -1,10 +1,10 @@
-import { AnalysisStatusSummary } from "../engine/analysisStatus";
+import type { AnalysisStatusSummary } from "../engine/analysisStatus";
 import { buildAnalysisTraceability } from "../engine/analysisTraceability";
-import { EngineConfig, RawPeriodData, RecastPeriod } from "../engine/types";
-import { CapitalineParseDebug } from "../engine/capitalineParser";
-import { MappingAuditReport, QualityGateReport } from "../engine/mappingAudit";
-import { AuditSubmissionMeta } from "./audit";
-import { SourceParserDiagnostics } from "../engine/parserDiagnostics";
+import type { EngineConfig, RawPeriodData, RecastPeriod } from "../engine/types";
+import type { CapitalineParseDebug } from "../engine/capitalineParser";
+import type { MappingAuditReport, QualityGateReport } from "../engine/mappingAudit";
+import type { AuditSubmissionMeta } from "./audit";
+import type { SourceParserDiagnostics } from "../engine/parserDiagnostics";
 import { buildAnalysisPublicationSnapshot } from "./publication/analysisPublicationSnapshot";
 import { buildLineageMap } from "../engine/lineageBuilder";
 

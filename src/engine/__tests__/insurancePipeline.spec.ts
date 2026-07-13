@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { processBankData, extractBankMetrics } from "../bankPipeline";
 import { assessAnalysisScope } from "../scopePolicy";
 import { computeBankValuation } from "../bankValuation";
+import { DEFAULT_CONFIG } from "../types";
+import { PercentFraction } from "../types/units";
 
 describe("insurancePipeline", () => {
   const insurancePeriods = [
@@ -135,13 +137,14 @@ describe("insurancePipeline", () => {
     const metrics = result.bankMetrics!;
     
     const cfg = {
-      ke: 0.14, // ke = 14%
+      ...DEFAULT_CONFIG,
+      ke: PercentFraction(0.14), // ke = 14%
       risk_free_rate: 0.07,
       equity_risk_premium: 0.07,
       terminal_growth_rate: 0.05, // g = 5%
     };
 
-    const val = computeBankValuation(metrics, cfg as any, 450000, null, true);
+    const val = computeBankValuation(metrics, cfg, 450000, null, true);
 
     // Check Justified P/B Gordon is computed
     expect(val.justifiedPB.status).toBe("computed");

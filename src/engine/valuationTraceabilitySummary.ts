@@ -60,6 +60,9 @@ export function buildValuationTraceabilitySurfaceSummary(
   if (!traceability) return null;
 
   const pendingLevel = traceability.rigor.pendingLevels[0] ?? null;
+  const reconciliationCleared =
+    traceability.reconciliation.status === "confirmed"
+    || traceability.reconciliation.status === "degraded";
   const blockers = Array.from(
     new Set(
       [
@@ -67,7 +70,7 @@ export function buildValuationTraceabilitySurfaceSummary(
           ? traceability.qualityGate.blockingReasons
           : []),
         traceability.rigor.summary,
-        traceability.reconciliation.status === "failed" ? traceability.reconciliation.summary : null,
+        !reconciliationCleared ? traceability.reconciliation.summary : null,
         traceability.parserFidelity.status === "failed" ? traceability.parserFidelity.summary : null,
       ].filter((item): item is string => Boolean(item && item.trim()))
     )
@@ -76,7 +79,7 @@ export function buildValuationTraceabilitySurfaceSummary(
   const valuationGateFailures = [
     traceability.qualityGate.scopeBlocked,
     traceability.qualityGate.valuationBlocked,
-    traceability.reconciliation.status === "failed",
+    !reconciliationCleared,
     traceability.parserFidelity.status === "failed",
   ].filter(Boolean).length;
 

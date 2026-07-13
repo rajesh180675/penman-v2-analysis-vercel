@@ -11,11 +11,11 @@ import { buildTerminalEconomics } from "../engine/terminalEconomics";
 import { resolveValuationReadiness } from "../engine/valuationPolicy";
 import { resolveShareBasis } from "../engine/shareCountTools";
 import { AnalysisStatusSummary } from "../engine/analysisStatus";
-import { buildValuationCommandCenter } from "../engine/valuationCommandCenter";
+import { buildValuationCommandCenter, type ValuationCommandCenterOutput } from "../engine/valuationCommandCenter";
 import { summarizeAntiTautology } from "../engine/valuationEvidence";
 import { SignalPill } from "./valuation/atoms";
-import { useLiveMarketData } from "../hooks/useLiveMarketData";
 import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
+import type { LiveMarketDataSnapshot } from "../engine/marketData";
 import { AuditSubmissionMeta, persistAuditEvent } from "../lib/audit";
 import { computeMoatScore } from "../engine/moatScoring";
 import { rememberWorkspaceValuation } from "../lib/researchWorkspace";
@@ -70,23 +70,35 @@ interface Props {
   ratioSanity?: SanityAssessment | null | undefined;
   /** Phase C5 — parsed segment data for SOTP valuation. */
   segmentData?: AllSegmentData | null | undefined;
+  /** Authoritative run output. Legacy tests/callers may omit it temporarily. */
+  commandCenter?: ValuationCommandCenterOutput | null | undefined;
+  marketData?: LiveMarketDataSnapshot | null | undefined;
+  marketDataLoading?: boolean | undefined;
+  marketDataError?: string | null | undefined;
+  onMarketRefresh?: (() => Promise<void>) | undefined;
 }
 
-export default function ValuationReport({ data, config, analysisStatus, auditMeta, traceability, publication = null, lossMaker = null, ratioSanity = null, segmentData = null }: Props) {
+export default function ValuationReport({
+  data,
+  config,
+  analysisStatus,
+  auditMeta,
+  traceability,
+  publication = null,
+  lossMaker = null,
+  ratioSanity = null,
+  segmentData = null,
+  commandCenter: runCommandCenter = null,
+  marketData: liveMarketData = null,
+  marketDataLoading = false,
+  marketDataError = null,
+  onMarketRefresh,
+}: Props) {
   const derivedValuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
   const valuationReadiness = publication?.valuationReadiness ?? derivedValuationReadiness;
   const resolvedTraceability = publication?.traceability ?? traceability;
   const resolvedNseSymbol = useMemo(() => resolveNseSymbol(config.market_data_symbol ?? config.ticker ?? config.quality_data_folder ?? null), [config.market_data_symbol, config.ticker, config.quality_data_folder]);
-  const marketProvider = config.market_data_provider ?? (resolvedNseSymbol ? "nse" : "manual");
   const marketSymbol = config.market_data_symbol ?? config.ticker ?? resolvedNseSymbol ?? null;
-  const { snapshot: liveMarketData, loading: marketDataLoading, error: marketDataError, refresh } = useLiveMarketData({
-    provider: marketProvider,
-    symbol: marketSymbol,
-    instrumentKey: config.market_data_instrument_key ?? null,
-    fallbackPrice: config.market_price ?? null,
-    fallbackRiskFreeRate: config.risk_free_rate ?? null,
-    refreshSeconds: config.market_data_refresh_seconds ?? 300,
-  });
   const effectiveConfig = useMemo<EngineConfig>(() => ({
     ...config,
     market_price: liveMarketData?.price != null ? INRAbsolute(liveMarketData.price) : config.market_price,
@@ -143,31 +155,30 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
     [valuationData, ke, kwDerived, gRate, valuationConfig, cyclicalTerminalREAnchor]
   );
   const commandCenter = useMemo(
-    () => buildValuationCommandCenter({
+    () => runCommandCenter ?? buildValuationCommandCenter({
       data,
       config: effectiveConfig,
       marketData: liveMarketData,
       analysisStatus,
       segmentData: segmentData?.business ?? null,
     }),
-    [analysisStatus, data, effectiveConfig, liveMarketData, segmentData],
+    [analysisStatus, data, effectiveConfig, liveMarketData, runCommandCenter, segmentData],
   );
 
-  // Plan 5 keystone — enrich the trust envelope with the analyticalDepth block.
-  // The structural builder (useAuditAnalysis) runs without valuation in scope,
-  // so depth is added here, the seam where the envelope and the command center
-  // first coexist. Non-valuation surfaces keep the structural-only envelope.
-  const analyticalDepth = useMemo(
-    () => evaluateAnalyticalDepth(commandCenter, { modelKe: ke }),
-    [commandCenter, ke],
-  );
-  const antiTautology = useMemo(
-    () => summarizeAntiTautology(commandCenter),
-    [commandCenter],
-  );
+  // Native runs arrive with finalized analytical-depth and anti-tautology
+  // evidence. The fallback remains only for legacy component callers that do
+  // not yet supply a run-backed envelope.
   const enrichedTraceability = useMemo(
-    () => (resolvedTraceability ? { ...resolvedTraceability, analyticalDepth, antiTautology } : resolvedTraceability),
-    [resolvedTraceability, analyticalDepth, antiTautology],
+    () => {
+      if (!resolvedTraceability) return resolvedTraceability;
+      if (resolvedTraceability.analyticalDepth && resolvedTraceability.antiTautology) return resolvedTraceability;
+      return {
+        ...resolvedTraceability,
+        analyticalDepth: evaluateAnalyticalDepth(commandCenter, { modelKe: ke }),
+        antiTautology: summarizeAntiTautology(commandCenter),
+      };
+    },
+    [resolvedTraceability, commandCenter, ke],
   );
   const traceabilitySummary = useMemo(
     () => buildValuationTraceabilitySurfaceSummary(enrichedTraceability),
@@ -338,7 +349,7 @@ export default function ValuationReport({ data, config, analysisStatus, auditMet
         liveMarketData={liveMarketData}
         marketDataLoading={marketDataLoading}
         marketDataError={marketDataError}
-        onRefresh={refresh}
+        onRefresh={onMarketRefresh ?? (() => Promise.resolve())}
         config={effectiveConfig}
       />
 

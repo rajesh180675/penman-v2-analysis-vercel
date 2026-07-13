@@ -7,10 +7,10 @@ import {
   isAuditConfigured,
   logAudit,
   readJsonBody,
-  requireAuditReadAuth,
   respondJsonBodyError,
   sanitizePathSegment,
 } from "./_lib.js";
+import { authorizeAuditRunWrite } from "./_runAccess.js";
 
 function resolveAllowedContentTypes(kind) {
   if (kind === "inputs") {
@@ -49,8 +49,6 @@ export default async function handler(request, response) {
     return;
   }
 
-  if (!requireAuditReadAuth(request, response)) return;
-
   const governance = getAuditGovernanceConfig();
   if (!assertContentLength(request, response, governance.maxEventBytes)) return;
   let body;
@@ -72,6 +70,15 @@ export default async function handler(request, response) {
         const runId = sanitizePathSegment(payload.runId, `run-${Date.now()}`);
         const kind = sanitizePathSegment(payload.kind, "artifacts");
         const filename = sanitizePathSegment(payload.filename || pathname, "blob.bin");
+        const access = await authorizeAuditRunWrite(request, {
+          runId,
+          runAccessToken: payload.runAccessToken ?? null,
+        });
+        if (!access.authorized) {
+          const error = new Error("Unauthorized audit run upload.");
+          error.statusCode = 401;
+          throw error;
+        }
         const maximumSizeInBytes = Math.min(
           Number(payload.maximumSizeInBytes) || governance.maxUploadBytes,
           governance.maxUploadBytes,
@@ -115,7 +122,7 @@ export default async function handler(request, response) {
     response.status(200).json(json);
   } catch (error) {
     console.error("[audit] upload failed", error);
-    response.status(400).json({
+    response.status(error?.statusCode === 401 ? 401 : 400).json({
       error: error instanceof Error ? error.message : "Upload failed.",
     });
   }

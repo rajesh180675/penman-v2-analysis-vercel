@@ -111,7 +111,42 @@ export function auditMappingCoverage(periods: RawPeriodData[]): MappingAuditRepo
       values: [entry.latestValue ?? 0],
     }));
   const clusterSuggestions = clusterUnknownLabels(clusterInputs);
-  const correlationSuggestions = [] as ReturnType<typeof findCorrelationMatches>;
+
+  // Build multi-period value arrays for known (in-spec) labels so
+  // findCorrelationMatches can detect high-|r| alias candidates.
+  const knownLabelValues = new Map<string, number[]>();
+  const outOfSpecKeys = new Set(outOfSpecLabels.map((e) => e.key));
+  for (const period of periods) {
+    for (const [compositeKey, value] of Object.entries(period.raw_metric_values)) {
+      if (value == null || !Number.isFinite(value)) continue;
+      const idx = compositeKey.lastIndexOf("__");
+      if (idx < 0) continue;
+      const base = compositeKey.slice(0, idx);
+      if (outOfSpecKeys.has(base) || !specKeys.has(base)) continue;
+      const arr = knownLabelValues.get(base) ?? [];
+      arr.push(value);
+      knownLabelValues.set(base, arr);
+    }
+  }
+  // Build multi-period arrays for unknown labels too.
+  const unknownMultiPeriod: UnmappedLabel[] = [];
+  for (const entry of outOfSpecLabels) {
+    if (entry.triage.action === "ignore-non-core") continue;
+    const values: number[] = [];
+    for (const period of periods) {
+      for (const [compositeKey, value] of Object.entries(period.raw_metric_values)) {
+        if (value == null || !Number.isFinite(value)) continue;
+        const idx = compositeKey.lastIndexOf("__");
+        if (idx < 0) continue;
+        const base = compositeKey.slice(0, idx);
+        if (base === entry.key) { values.push(value); break; }
+      }
+    }
+    if (values.length >= 3) {
+      unknownMultiPeriod.push({ key: entry.key, statement: entry.statement === "Unknown" ? "Unknown" : entry.statement, values });
+    }
+  }
+  const correlationSuggestions = findCorrelationMatches(unknownMultiPeriod, knownLabelValues);
   const promotionCandidates = buildMappingPromotionCandidates({
     outOfSpecLabels,
     clusterSuggestions,

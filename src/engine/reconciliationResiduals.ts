@@ -498,6 +498,8 @@ export function evaluateReconciliationResiduals(params: {
       + period.cf.DividendReceived
       + (period.cf.DebtProceeds ?? 0)
       + (period.cf.DebtRepayment ?? 0)
+      + (period.cf.BridgeDebtProceeds ?? 0)
+      + (period.cf.BridgeDebtRepayment ?? 0)
       + (period.cf.SaleFixedAssets ?? 0)
       + investmentFlow;
     const endingCashResidual = hasMaterialInvestmentFlow && hasInvestmentBalanceEvidence && previousCashInvestments != null
@@ -757,14 +759,13 @@ export function evaluateReconciliationResiduals(params: {
         checks,
       };
     }
-    // Periods exist but no residual check had its inputs (e.g. single
-    // synthetic period with no prior, no trace evidence, and no
-    // recastDebug). Pre-Phase-1.1 the six deleted tautological identities
-    // always produced a check; with them gone, this branch must report
-    // "confirmed" because absence of evidence is not evidence of failure.
+    // Periods exist but no independent residual check had its inputs (e.g. a
+    // single synthetic period with no prior, trace evidence, or recastDebug).
+    // This is not a failed numerical check, but it is also not confirmation:
+    // absence of evidence cannot clear the structural rigor gate.
     return {
-      status: "confirmed",
-      summary: "No applicable residual checks for the available data.",
+      status: "insufficient-evidence",
+      summary: "Recast periods exist, but no independent residual checks had sufficient evidence to run.",
       warningCount: 0,
       errorCount: 0,
       maxResidualRatio: 0,
@@ -792,9 +793,8 @@ export function evaluateReconciliationResiduals(params: {
     "recast-ta-vs-raw",
     "recast-equity-side-vs-raw",
     "external-equity-bridge",
-    "share-capital-bridge",
+    "share-capital-face-value",
     "kw-consistency-bridge",
-    "income-statement-identity",
   ]);
 
   const hardTieoutChecks = checks.filter((check) => HARD_TIEOUT_KEYS.has(check.key));

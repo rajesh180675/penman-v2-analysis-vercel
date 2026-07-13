@@ -691,15 +691,32 @@ function finalize(result: AuditCompanyRunResult, outcome: AuditOutcome): AuditCo
 function deriveResultOutcome(result: AuditCompanyRunResult, hasComputedValue: boolean): AuditOutcome {
   const productionReady = buildProductionReadySnapshot(result);
   result.productionReady = productionReady;
-  return deriveAuditOutcome({
+  const rigorLevel = result.rigor.currentLevel;
+  const outcome = deriveAuditOutcome({
     flags: result.flags,
     hasComputedValue,
-    rigorLevel: result.rigor.currentLevel,
+    rigorLevel,
     periodCount: result.periods,
     productionReadyBlockers: productionReady.checkpoints
       .filter((checkpoint) => checkpoint.status === "fail")
       .map((checkpoint) => checkpoint.id),
   });
+  // When the outcome is POLICY_WARNING and no explicit flags explain it,
+  // emit an explanatory flag so the scorecard doesn't mark it "unexplained".
+  if (outcome === "POLICY_WARNING" && result.flags.length === 0) {
+    if (rigorLevel === "structurally-reconciled") {
+      result.flags.push("POLICY:RIGOR_CAP_STRUCTURAL");
+    } else if (rigorLevel === "syntactically-valid") {
+      result.flags.push("POLICY:RIGOR_CAP_SYNTACTIC");
+    } else if (rigorLevel === "economically-plausible") {
+      result.flags.push("POLICY:RIGOR_CAP_ECONOMIC");
+    } else if (hasComputedValue) {
+      result.flags.push("POLICY:VALUATION_COMPUTED_NON_PROD_READY");
+    } else {
+      result.flags.push("POLICY:NO_COMPUTED_VALUE");
+    }
+  }
+  return outcome;
 }
 
 function pushInvalidIfComputed(flags: string[], label: string, model: BankValuationModelResult | undefined): void {
@@ -709,55 +726,83 @@ function pushInvalidIfComputed(flags: string[], label: string, model: BankValuat
   }
 }
 
-function computedBankModelNames(valuation: BankValuationBundle | null | undefined): string[] {
+function isFiniteComputedBankModel(model: BankValuationModelResult | null | undefined): boolean {
+  return model?.status === "computed" && finiteOrNull(model.intrinsicValue) !== null;
+}
+
+export function computedBankModelNames(valuation: BankValuationBundle | null | undefined): string[] {
   if (!valuation) return [];
   const names: string[] = [];
-  if (valuation.justifiedPB.status === "computed") names.push("PB");
-  if (valuation.equityResidualIncome.status === "computed") names.push("ERI");
-  if (valuation.sustainableDDM.status === "computed") names.push("DDM");
-  if (valuation.evBased?.status === "computed") names.push("EV");
-  if (valuation.pAum?.status === "computed") names.push("P/AUM");
-  if (valuation.roaLeverageRI?.status === "computed") names.push("ROA×LevRI");
+  if (isFiniteComputedBankModel(valuation.justifiedPB)) names.push("PB");
+  if (isFiniteComputedBankModel(valuation.equityResidualIncome)) names.push("ERI");
+  if (isFiniteComputedBankModel(valuation.sustainableDDM)) names.push("DDM");
+  if (isFiniteComputedBankModel(valuation.evBased)) names.push("EV");
+  if (isFiniteComputedBankModel(valuation.pAum)) names.push("P/AUM");
+  if (isFiniteComputedBankModel(valuation.roaLeverageRI)) names.push("ROA×LevRI");
   return names;
 }
 
-function computedIndustrialModelNames(valuation: ValuationCommandCenterOutput): string[] {
+function bankModelEvidenceGroup(name: string): string | null {
+  switch (name) {
+    case "PB": return "book-value";
+    case "ERI": return "residual-income";
+    case "DDM": return "distribution";
+    case "EV": return "embedded-value";
+    case "P/AUM": return "asset-base";
+    case "ROA×LevRI": return "residual-income";
+    default: return null;
+  }
+}
+
+export function computedIndustrialModelNames(valuation: ValuationCommandCenterOutput): string[] {
   const names: string[] = [];
-  if (valuation.scenarios.length > 0) names.push("VCC");
+  if (valuation.scenarios.some((scenario) => finiteOrNull(scenario.intrinsicPerShare) !== null)) names.push("VCC");
   if (finiteOrNull(valuation.sotp?.totalEnterpriseValue) !== null) names.push("SOTP");
   if (finiteOrNull(valuation.epv?.epvPerShare) !== null) names.push("EPV");
   if (finiteOrNull(valuation.cashFlowDcf?.perShare) !== null || finiteOrNull(valuation.cashFlowDcf?.equityValue) !== null) {
     names.push("CASH_DCF");
   }
-  if (
-    finiteOrNull(valuation.evEbitda.equityFromMedian) !== null
-    || finiteOrNull(valuation.evEbitda.evEbitdaCompany) !== null
-  ) {
+  if (finiteOrNull(valuation.evEbitda.equityFromMedian) !== null) {
     names.push("EV/EBITDA");
-  }
-  if (finiteOrNull(valuation.reverseDcf.impliedOwnerEarningsGrowth) !== null) names.push("REV_DCF");
-  if (valuation.evidenceWeightedSynthesis.contributions.some((entry) => entry.includedInIntrinsicRange)) {
-    names.push("EWS");
   }
   return Array.from(new Set(names));
 }
 
+function industrialModelEvidenceGroups(modelNames: string[]): string[] {
+  const groups = modelNames.map((name): string | null => {
+    switch (name) {
+      case "VCC": return "residual-income";
+      case "SOTP": return "sum-of-parts";
+      case "EPV": return "earnings-power";
+      case "CASH_DCF": return "cash-flow";
+      case "EV/EBITDA": return "market-multiple";
+      default: return null;
+    }
+  }).filter((group): group is string => group != null);
+  return Array.from(new Set(groups));
+}
+
 function industrialValuationEvidenceSnapshot(valuation: ValuationCommandCenterOutput): AuditValuationEvidenceSnapshot {
-  const independentLensGroups = Array.from(new Set(
+  const ewsGroups = Array.from(new Set(
     valuation.evidenceWeightedSynthesis.contributions
       .filter((entry) => entry.includedInIntrinsicRange && entry.finalWeight > 0)
       .map((entry) => entry.independenceGroup),
   ));
+  const independentLensGroups = ewsGroups.length > 0
+    ? ewsGroups
+    : industrialModelEvidenceGroups(computedIndustrialModelNames(valuation));
 
   return {
     readinessStatus: valuation.valuationReadiness.status,
     readinessAnchorPeriod: valuation.valuationReadiness.anchorPeriod,
     defensibilityStatus: valuation.evidenceWeightedSynthesis.defensibility.status,
-    triangulationMethods: valuation.valuationTriangulation.methods.map((method) => ({
-      key: method.key,
-      label: method.label,
-      perShare: finiteOrNull(method.perShare),
-    })),
+    triangulationMethods: valuation.valuationTriangulation.methods
+      .filter((method) => finiteOrNull(method.perShare) !== null)
+      .map((method) => ({
+        key: method.key,
+        label: method.label,
+        perShare: finiteOrNull(method.perShare),
+      })),
     independentLensGroups,
   };
 }
@@ -846,14 +891,28 @@ function buildAuditAnalysisContext(args: {
   const isFinancial = args.pipeline.analysisFamily === "financial-institution" && args.pipeline.bankResult != null;
   let valuationReadiness = resolveValuationReadiness(args.pipeline.periods);
   if (isFinancial) {
-    const latestPeriod = args.pipeline.bankResult!.bankMetrics?.at(-1)?.period_end ?? null;
+    const bankMetrics = args.pipeline.bankResult!.bankMetrics ?? [];
+    const latestPeriod = bankMetrics.at(-1)?.period_end ?? null;
+    const hasSufficientHistory = bankMetrics.length >= 3;
+    const hasContaminatedAnchor = bankMetrics.length > 0 && (bankMetrics.at(-1)?.roa == null || bankMetrics.at(-1)?.roe == null);
+    const bankReadinessStatus = hasSufficientHistory && !hasContaminatedAnchor
+      ? "production-ready"
+      : hasSufficientHistory
+        ? "guarded"
+        : "warning";
     valuationReadiness = {
       ...valuationReadiness,
-      status: "production-ready",
+      status: bankReadinessStatus,
       latestPeriod,
       anchorPeriod: latestPeriod,
-      anchorIndex: (args.pipeline.bankResult!.bankMetrics?.length ?? 0) - 1,
-      reasons: valuationReadiness.reasons.length > 0 ? valuationReadiness.reasons : ["Bank metrics present — production-ready for financial-institution analysis."],
+      anchorIndex: bankMetrics.length - 1,
+      reasons: valuationReadiness.reasons.length > 0
+        ? valuationReadiness.reasons
+        : hasSufficientHistory && !hasContaminatedAnchor
+          ? ["Bank metrics present with sufficient history — production-ready for financial-institution analysis."]
+          : hasSufficientHistory
+            ? ["Bank metrics present but latest period has missing key ratios — guarded."]
+            : [`Insufficient bank history (${bankMetrics.length} periods, need ≥3) — warning.`],
     };
   }
   const analysisStatus = deriveAnalysisStatus(null, valuationReadiness, null);
@@ -985,7 +1044,11 @@ function financialResult(args: {
       readinessAnchorPeriod: result.latestPeriod,
       defensibilityStatus: "confirmed",
       triangulationMethods: result.models.map((name) => ({ key: keyMap[name] ?? name.toLowerCase(), label: name, perShare: null })),
-      independentLensGroups: ["book-value", "residual-income", "distribution"],
+      independentLensGroups: Array.from(new Set(
+        result.models
+          .map(bankModelEvidenceGroup)
+          .filter((group): group is string => group != null),
+      )),
     };
 
     result.modelApplicability.financialInstitutionValuation = {
@@ -1062,20 +1125,6 @@ function industrialResult(args: {
   };
   result.valuationEvidence = industrialValuationEvidenceSnapshot(valuation);
   result.models = computedIndustrialModelNames(valuation);
-
-  const strategy = result.pipelineStrategyId;
-  if (strategy === "telecom-v1") result.models.push("TELECOM_NATIVE");
-  if (strategy === "utility-v1") result.models.push("UTILITY_RAB");
-  if (strategy === "cyclical-v1") result.models.push("CYCLICAL_MID_CYCLE");
-  if (strategy === "loss-maker-v1") result.models.push("LOSS_MAKER_RUNWAY");
-
-  if (strategy && strategy !== "industrial-v1") {
-    result.valuationEvidence.independentLensGroups.push("sector-native");
-    const baseKey = strategy.replace("-v1", "");
-    if (!result.valuationEvidence.triangulationMethods.some((m) => m.key === baseKey)) {
-      result.valuationEvidence.triangulationMethods.push({ key: baseKey, label: `${baseKey} native`, perShare: null });
-    }
-  }
 
   if (scenarios.length === 0) flags.push("NO_SCENARIOS");
   if (result.stress === null && scenarios.some((s) => s.key === "stress")) flags.push("STRESS_INVALID");

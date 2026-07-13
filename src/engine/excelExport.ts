@@ -13,6 +13,7 @@ import type { AnalysisTraceabilityEnvelope } from "./analysisTraceability";
 import { buildMappingDiscrepancyRows, buildProvenanceAuditRows } from "./provenanceAudit";
 import type { AnalysisPolicyVersions } from "./policyVersions";
 import type { SanityAssessment } from "./ratioSanity";
+import type { AnalysisPublicationRunIdentity } from "../lib/publication/analysisPublicationSnapshot";
 import type { WorkBook } from "./excelExport/xlsx";
 import { utils, writeWorkbookArray } from "./excelExport/xlsx";
 import {
@@ -41,10 +42,15 @@ export function workbookMetadataFromPublicationSnapshot(snapshot: {
   policyVersions: AnalysisPolicyVersions;
   traceability: AnalysisTraceabilityEnvelope;
   auditMeta?: { runId?: string | null } | null | undefined;
+  runIdentity?: AnalysisPublicationRunIdentity | null | undefined;
 }): WorkbookExportMetadata {
   return {
     companyLabel: snapshot.companyId ?? undefined,
     auditRunId: snapshot.auditMeta?.runId ?? undefined,
+    analysisRunId: snapshot.runIdentity?.runId ?? undefined,
+    reproducibilityHash: snapshot.runIdentity?.reproducibilityHash ?? undefined,
+    analysisRunSchemaVersion: snapshot.runIdentity?.schemaVersion ?? undefined,
+    executorVersion: snapshot.runIdentity?.executorVersion ?? undefined,
     valuationStatus: snapshot.valuationReadiness.status,
     valuationReasons: snapshot.valuationReadiness.reasons,
     valuationAnchorPeriod: snapshot.valuationReadiness.anchorPeriod,
@@ -100,6 +106,7 @@ export async function generateValuationWorkbookFromPublicationSnapshot(params: {
     policyVersions: AnalysisPolicyVersions;
     traceability: AnalysisTraceabilityEnvelope;
     auditMeta?: { runId?: string | null } | null | undefined;
+    runIdentity?: AnalysisPublicationRunIdentity | null | undefined;
   };
   recastData: RecastPeriod[];
   forecastScenarios: ForecastScenario[];

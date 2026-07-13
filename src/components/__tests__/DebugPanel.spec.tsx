@@ -13,6 +13,7 @@ function mkDebugInfo(): CapitalineParseDebug {
     companyId: "BANK",
     files: [{ name: "BalanceSheet.xlsx", statementGuess: "BalanceSheet" }],
     detectedPeriods: ["2025-03-31"],
+    sourceArtifactHashes: [],
     rawGrids: [],
     metrics: {
       totalCompositeKeys: 1,
@@ -113,6 +114,7 @@ function mkRichDebugInfo(): CapitalineParseDebug {
       { name: "ProfitLoss.xlsx", statementGuess: "ProfitLoss" },
     ],
     detectedPeriods: ["2024-03-31", "2025-03-31"],
+    sourceArtifactHashes: [],
     metrics: {
       totalCompositeKeys: 14,
       totalBaseKeys: 7,

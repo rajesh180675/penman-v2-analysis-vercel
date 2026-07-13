@@ -2,11 +2,11 @@
   "companyId": "asian-paints",
   "companyName": "Asian Paints Ltd",
   "profile": "clean-industrial",
-  "expectedRigorLevel": "structurally-reconciled",
+  "expectedRigorLevel": "syntactically-valid",
   "expectedParserFidelityStatus": "degraded",
-  "expectedReconciliationStatus": "degraded",
-  "expectedEconomicSanityStatus": "passed",
-  "expectedConceptIdentityStatus": "clean",
+  "expectedReconciliationStatus": "failed",
+  "expectedEconomicSanityStatus": "blocked",
+  "expectedConceptIdentityStatus": "valuation-blocked",
   "keyMetricTolerances": {
     "RNOA": {
       "min": 0.2105,

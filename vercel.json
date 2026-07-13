@@ -9,8 +9,8 @@
       "source": "/(.*)",
       "headers": [
         {
-          "key": "Content-Security-Policy-Report-Only",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' wss: https://vitals.vercel-insights.com https://*.public.blob.vercel-storage.com; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
         },
         {
           "key": "X-Content-Type-Options",
@@ -27,6 +27,18 @@
         {
           "key": "Permissions-Policy",
           "value": "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        },
+        {
+          "key": "Cross-Origin-Resource-Policy",
+          "value": "same-origin"
         }
       ]
     }
@@ -39,6 +51,18 @@
     {
       "path": "/api/cron/prune-audit",
       "schedule": "47 2 * * *"
+    },
+    {
+      "path": "/api/cron/platform-outbox",
+      "schedule": "7 3 * * *"
+    },
+    {
+      "path": "/api/cron/platform-backup",
+      "schedule": "23 3 * * *"
+    },
+    {
+      "path": "/api/cron/platform-restore-drill",
+      "schedule": "41 4 1 * *"
     }
   ]
 }

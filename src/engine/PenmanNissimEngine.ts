@@ -6,6 +6,7 @@ import {
   ContinuingValueGuard,
   ContinuingValueGuardModel,
 } from "./types";
+import type { LegacyValuationPeriodInput } from "./forecastState/legacyAdapter";
 
 // Recast layer (balance sheet, income, cash flow) + missing-line flagging +
 // reconciliation-residual debug capture moved to ./PenmanNissimEngine/recast;
@@ -74,7 +75,9 @@ export function deriveKwFromStructure(cur: RecastPeriod, prev: RecastPeriod, ke:
 
   // kd_aftertax: prefer config (S-9.4 compliance), then infer from finance cost
   let kdAfterTax: number;
-  if (cfg && cfg.kd_pretax > 0) {
+  if (cfg?.cost_of_debt_mode === "credit-spread" && cfg.credit_spread != null && cfg.credit_spread >= 0) {
+    kdAfterTax = (riskFreeRate + cfg.credit_spread) * (1 - (cfg.tax_rate_for_kd ?? cfg.statutory_tax_rate ?? 0.2517));
+  } else if (cfg && (cfg.cost_of_debt_mode === "manual" || cfg.cost_of_debt_mode == null) && cfg.kd_pretax > 0) {
     kdAfterTax = cfg.kd_pretax * (1 - (cfg.tax_rate_for_kd ?? cfg.statutory_tax_rate ?? 0.2517));
   } else {
     const avgFO = (Math.abs(cur.bs.FO) + Math.abs(prev.bs.FO)) / 2;
@@ -92,7 +95,7 @@ export function deriveKwFromStructure(cur: RecastPeriod, prev: RecastPeriod, ke:
 }
 
 export function computeValuation(
-  periods: RecastPeriod[], ke: number, kw: number, g: number, cfg: EngineConfig,
+  periods: readonly LegacyValuationPeriodInput[], ke: number, kw: number, g: number, cfg: EngineConfig,
   /** §11 terminal RE anchor — if provided, overrides the as-reported lastRE in CV3 computation */
   terminalREAnchor?: number | null | undefined,
   /** §11 terminal ReOI anchor */

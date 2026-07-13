@@ -1,5 +1,11 @@
-import { RecastPeriod, ValuationSectorTemplate } from "./types";
+import { ValuationSectorTemplate } from "./types";
 import { VALUATION_SECTOR_TEMPLATES } from "./valuationSectorTemplates";
+
+/** Exact consolidated anchor required by the SOTP formula. */
+export interface SotpValuationAnchorInput {
+  readonly bs: { readonly NOA: number };
+  readonly is: { readonly OI: number; readonly taxRate: number };
+}
 
 /** Definition of a single business segment for SOTP valuation. */
 export interface SegmentDefinition {
@@ -91,7 +97,7 @@ export function estimateConglomerateDiscount(
 
 /** Build a SOTP valuation from segment definitions and consolidated data. */
 export function buildSOTPValuation(
-  latest: RecastPeriod,
+  latest: SotpValuationAnchorInput,
   segments: SegmentDefinition[],
   ke: number,
 ): SOTPResult {

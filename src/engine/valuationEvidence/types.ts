@@ -96,6 +96,8 @@ export interface ForecastHoldoutMetricError {
   predicted: number | null;
   absoluteError: number | null;
   percentageError: number | null;
+  benchmarkPredicted?: number | null | undefined;
+  benchmarkPercentageError?: number | null | undefined;
   status: "confirmed" | "degraded" | "failed" | "unavailable";
 }
 
@@ -115,6 +117,19 @@ export interface ForecastHoldoutSummary {
     status: "confirmed" | "degraded" | "failed" | "unavailable";
     confidencePenaltyPct: number;
     valuationRangeWideningPct: number;
+    /** Rolling-origin calibration disclosure. Optional on migrated payloads. */
+    calibrationStatus?: "calibrated" | "degraded" | "failed" | "unavailable" | undefined;
+    sampleSize?: number | undefined;
+    minimumTrainPeriods?: number | undefined;
+    benchmark?: {
+      readonly name: "last-observation-carried-forward";
+      readonly weightedMape: number | null;
+      readonly skillVsBenchmark: number | null;
+    } | undefined;
+    noLookAhead?: {
+      readonly status: "confirmed";
+      readonly policy: "strict-prior-period-training";
+    } | undefined;
   };
 }
 
@@ -169,10 +184,71 @@ export interface EvidenceWeightedModelContribution {
   finalWeight: number;
   includedInIntrinsicRange: boolean;
   reason: string;
+  /** Present only after a governed adjustment replaced this exact base vote. */
+  substitution?: EvidenceSynthesisSubstitutionTrace | undefined;
+}
+
+export interface EvidenceSynthesisSubstitutionTrace {
+  readonly policyVersion: "2026-07-evidence-synthesis-substitution-v1";
+  readonly dossierHash: `sha256:${string}`;
+  readonly baseModelId: string;
+  readonly baseCaseId: string | null;
+  readonly basePerShare: number;
+  readonly optionalityPerShare: number;
+  readonly composedPerShare: number;
+  readonly evidenceRefs: readonly string[];
+  readonly transformationRefs: readonly string[];
+}
+
+export interface EvidenceSynthesisCompositionDiagnostics {
+  readonly policyVersion: "2026-07-evidence-synthesis-substitution-v1";
+  readonly appliedCount: number;
+  readonly dossierHashes: readonly `sha256:${string}`[];
+  readonly targetModelKeys: readonly string[];
+  readonly totalOptionalityPerShare: number;
+  readonly countingPolicy: "replace-exact-base-vote-once";
+}
+
+/**
+ * One vote after algebraically or evidentially correlated model outputs have
+ * been collapsed. The group weight is deliberately bounded by its strongest
+ * member; adding another formula in the same group cannot add another vote.
+ */
+export interface CollapsedEvidenceFamilyContribution {
+  independenceGroup: EvidenceIndependenceGroup;
+  modelKeys: string[];
+  labels: string[];
+  perShare: number;
+  groupWeight: number;
+  memberContributionCount: number;
+}
+
+export interface EvidenceSynthesisIndependenceDiagnostics {
+  policyVersion: "2026-07-independence-synthesis-v1";
+  eligibleContributionCount: number;
+  independentGroupCount: number;
+  correlatedContributionCount: number;
+  weightingPolicy: "maximum-member-reliability";
+  familyValuePolicy: "reliability-weighted-median";
+  rangePolicy: "weighted-p20-p80";
+  groups: CollapsedEvidenceFamilyContribution[];
+  rawLowPerShare: number | null;
+  rawHighPerShare: number | null;
+  robustLowPerShare: number | null;
+  robustHighPerShare: number | null;
+  maximumGroupSpreadRatio: number | null;
+  criticalDivergence: boolean;
 }
 
 export interface EvidenceWeightedValuationSynthesis {
   contributions: EvidenceWeightedModelContribution[];
+  /** Optional for persisted pre-substitution syntheses. */
+  compositionDiagnostics?: EvidenceSynthesisCompositionDiagnostics | undefined;
+  /**
+   * Optional only for backwards compatibility with persisted v1 command-center
+   * fixtures. Newly computed syntheses always emit these diagnostics.
+   */
+  independenceDiagnostics?: EvidenceSynthesisIndependenceDiagnostics | undefined;
   intrinsicRange: {
     lowPerShare: number | null;
     midPerShare: number | null;
@@ -205,6 +281,10 @@ export interface AntiTautologySummary {
     status: ForecastHoldoutSummary["aggregate"]["status"];
     weightedMape: number | null;
     valuationRangeWideningPct: number;
+    calibrationStatus?: ForecastHoldoutSummary["aggregate"]["calibrationStatus"] | undefined;
+    sampleSize?: number | undefined;
+    benchmarkSkill?: number | null | undefined;
+    noLookAheadStatus?: "confirmed" | undefined;
   };
   priceDerivedIsolation: {
     reverseDcfExcludedFromIntrinsicConfidence: boolean;

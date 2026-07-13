@@ -1,5 +1,6 @@
-import { computeValuation, deriveKwFromStructure } from "./PenmanNissimEngine";
-import { EngineConfig, RecastPeriod, ke_from_config } from "./types";
+import { computeValuation } from "./PenmanNissimEngine";
+import { EngineConfig, RecastPeriod } from "./types";
+import { resolveCostOfCapitalFromConfig } from "./costOfCapital";
 
 export interface BenchmarkCompany {
   id: string;
@@ -40,10 +41,11 @@ function median(vals: number[]): number {
 }
 
 function baseInputs(periods: RecastPeriod[], cfg: EngineConfig) {
-  const ke = ke_from_config(cfg);
   const cur = periods[periods.length - 1]!;
   const prev = periods[periods.length - 2];
-  const kw = deriveKwFromStructure(cur, prev!, ke, cfg.risk_free_rate, cfg);
+  const capitalCost = resolveCostOfCapitalFromConfig({ config: cfg, current: cur, previous: prev });
+  const ke = capitalCost.ke;
+  const kw = capitalCost.kw;
   const g = cfg.g_terminal_override ?? 0.04;
   return { ke, kw, g };
 }

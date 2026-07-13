@@ -110,7 +110,12 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
           icon="🏦"
         />
         {price != null && (
-          <div className="text-right bg-slate-50 dark:bg-slate-900/40 p-2 rounded-lg border border-slate-100 dark:border-slate-800/60 min-w-[120px]">
+          <div
+            className="text-right bg-slate-50 dark:bg-slate-900/40 p-2 rounded-lg border border-slate-100 dark:border-slate-800/60 min-w-[120px]"
+            data-testid="fi-market-basis"
+            data-market-price={price}
+            data-market-cap-cr={marketCapCr ?? ""}
+          >
             <p className="font-mono text-lg font-bold text-slate-800 dark:text-slate-100">₹{price.toFixed(0)}</p>
             <p className="text-xs text-slate-500">{marketCapCr ? `₹${marketCapCr.toFixed(0)} Cr MCap` : "Market Price"}</p>
           </div>

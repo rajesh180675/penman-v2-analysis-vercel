@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildEvidenceWeightedSynthesis } from "../evidenceWeightedSynthesis";
+import {
+  buildEvidenceWeightedSynthesis,
+  collapseEvidenceWeightedContributions,
+  substituteEvidenceWeightedSynthesisContribution,
+} from "../evidenceWeightedSynthesis";
+import type { EvidenceWeightedModelContribution } from "../types";
 import type { ValuationScenarioCard, ReverseDcfDiagnostics } from "../../valuationCommandCenter";
 import type { CashFlowDcfResult } from "../../cashFlowDcf";
 import type { ValuationEvidenceLedger, ForecastHoldoutSummary } from "../types";
@@ -118,5 +123,61 @@ describe("buildEvidenceWeightedSynthesis", () => {
 
     expect(result.defensibility.status).toBe("guarded");
     expect(result.defensibility.checklist.find((item) => item.key === "paradigm-independence")?.passed).toBe(false);
+    const cashContribution = result.contributions.find((item) => item.modelKey === "cash-fcff-dcf");
+    expect(cashContribution?.perShare).toBeNull();
+    expect(cashContribution?.includedInIntrinsicRange).toBe(false);
+    expect(cashContribution?.finalWeight).toBe(0);
+  });
+
+  it("collapses correlated variants to one max-reliability family vote", () => {
+    const item = (
+      modelKey: string,
+      independenceGroup: EvidenceWeightedModelContribution["independenceGroup"],
+      perShare: number,
+      finalWeight: number,
+    ): EvidenceWeightedModelContribution => ({
+      modelKey,
+      label: modelKey,
+      independenceGroup,
+      perShare,
+      baseReliability: finalWeight,
+      evidenceCoveragePenalty: 0,
+      forecastSkillPenalty: 0,
+      priceDerivedPenalty: 0,
+      finalWeight,
+      includedInIntrinsicRange: true,
+      reason: "fixture",
+    });
+    const collapsed = collapseEvidenceWeightedContributions([
+      item("reoi-base", "accrual-history", 100, 0.8),
+      item("reoi-stress", "accrual-history", 80, 0.6),
+      item("reoi-bull", "accrual-history", 130, 0.7),
+      item("cash-dcf", "cash-statement", 95, 0.65),
+    ]);
+
+    expect(collapsed).toHaveLength(2);
+    const forecastFamily = collapsed.find((group) => group.independenceGroup === "accrual-history");
+    expect(forecastFamily?.memberContributionCount).toBe(3);
+    expect(forecastFamily?.groupWeight).toBe(0.8);
+    expect(forecastFamily?.modelKeys).toEqual(["reoi-base", "reoi-bull", "reoi-stress"]);
+  });
+
+  it("fails closed when an exact-base substitution is ambiguous or value-mismatched", () => {
+    const synthesis = buildEvidenceWeightedSynthesis({
+      scenarios: [scenario(valuation({ re: 100, reoi: 104 }))], cashFlowDcf, evEbitdaPerShare: 108,
+      reverseDcf: null, evidenceLedger: ledger, forecastHoldout: confirmedHoldout, marketPrice: 150,
+    });
+    const substitution = {
+      targetModelKey: "cash-fcff-dcf", targetIndependenceGroup: "cash-statement" as const,
+      dossierHash: `sha256:${"a".repeat(64)}` as const, baseModelId: "industrial.cash-statement-fcff-dcf", baseCaseId: "base",
+      basePerShare: 111, optionalityPerShare: 5, composedPerShare: 116,
+      evidenceRefs: ["artifact:base", "artifact:review"], transformationRefs: ["transform:base", "transform:options"],
+    };
+    expect(substituteEvidenceWeightedSynthesisContribution({ synthesis, ...substitution })).toMatchObject({ status: "blocked", blockerCodes: ["SUBSTITUTION_BASE_VALUE_MISMATCH"] });
+    const cash = synthesis.contributions.find((item) => item.modelKey === "cash-fcff-dcf")!;
+    expect(substituteEvidenceWeightedSynthesisContribution({
+      synthesis: { ...synthesis, contributions: [...synthesis.contributions, { ...cash }] },
+      ...substitution, basePerShare: 110, composedPerShare: 115,
+    })).toMatchObject({ status: "blocked", blockerCodes: expect.arrayContaining(["SUBSTITUTION_TARGET_AMBIGUOUS"]) });
   });
 });

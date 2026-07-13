@@ -228,7 +228,7 @@ export function evaluateEconomicSanity(
   );
 
   const skipped: { period: string; reason: string }[] = [];
-  const allWarnings: GateCheckResult[] = [];
+  const allFailedChecks: GateCheckResult[] = [];
   let anchor: RecastPeriod | null = null;
   let anchorReason = "";
   const lookbackLimit = Math.min(ordered.length, MAX_ANCHOR_LOOKBACK_PERIODS + 1);
@@ -249,15 +249,16 @@ export function evaluateEconomicSanity(
           : `Walked back ${lookbackIdx} period(s); ${current.period_end} cleared all block-severity checks.`;
       // Carry warnings from the anchor period only — older warnings are
       // logged via skippedPeriods.
-      allWarnings.push(...warnings);
+      allFailedChecks.push(...warnings);
       break;
     } else {
       skipped.push({
         period: current.period_end,
         reason: blocking.map((c) => c.checkId).join(","),
       });
-      // Aggregate failed checks for visibility in the envelope.
-      allWarnings.push(...blocking, ...warnings);
+      // Carry forward only warning-severity checks from skipped periods;
+      // blocking checks are already captured in skippedPeriods[].reason.
+      allFailedChecks.push(...warnings);
     }
   }
 
@@ -269,7 +270,7 @@ export function evaluateEconomicSanity(
         .map((s) => `${s.period} (${s.reason})`)
         .join("; ")}`,
       skippedPeriods: skipped,
-      failedChecks: allWarnings,
+      failedChecks: allFailedChecks,
     };
   }
 
@@ -295,12 +296,12 @@ export function evaluateEconomicSanity(
         anchorPeriod: null,
         anchorReason: `Anchor ${anchor.period_end} would have qualified, but sustained dirty-surplus residual blocks the run.`,
         skippedPeriods: [...skipped, { period: anchor.period_end, reason: sustained.checkId }],
-        failedChecks: [...allWarnings, sustained],
+        failedChecks: [...allFailedChecks, sustained],
       };
     }
   }
 
-  const anchorWarnings = allWarnings.filter((c) => c.affectedPeriods.includes(anchor!.period_end));
+  const anchorWarnings = allFailedChecks.filter((c) => c.affectedPeriods.includes(anchor!.period_end));
   const status: EconomicSanitySummary["status"] = anchorWarnings.length > 0 ? "warned" : "passed";
 
   return {
@@ -308,6 +309,6 @@ export function evaluateEconomicSanity(
     anchorPeriod: anchor.period_end,
     anchorReason,
     skippedPeriods: skipped,
-    failedChecks: allWarnings,
+    failedChecks: allFailedChecks,
   };
 }

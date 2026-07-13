@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { CapitalineParseDebug } from "../engine/capitalineParser";
 import { RawPeriodData, RecastPeriod } from "../engine/types";
+import type { GreenfieldPipelineResult } from "../engine/greenfieldPipeline";
 import { auditMappingCoverage, evaluateGranularityChecklist, QualityGateReport } from "../engine/mappingAudit";
 import { runIdentityAssertions } from "../engine/identityTests";
 import { Card, StatBox } from "./debug/debugUi";
@@ -19,6 +20,8 @@ import { MetricSearchPanel } from "./debug/MetricSearchPanel";
 import { RawGridDumps } from "./debug/RawGridDumps";
 import { RawKeysGrid } from "./debug/RawKeysGrid";
 import { TraceLogViewer } from "./debug/TraceLogViewer";
+import { SourceLineageCard } from "./debug/SourceLineageCard";
+import { GreenfieldPanel } from "./debug/GreenfieldPanel";
 
 interface Props {
   debugInfo: CapitalineParseDebug | null;
@@ -26,9 +29,10 @@ interface Props {
   rawData?: RawPeriodData[] | null | undefined;
   qualityGate?: QualityGateReport | null | undefined;
   engineError?: string | null | undefined;
+  greenfield?: GreenfieldPipelineResult | null | undefined;
 }
 
-export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate, engineError }: Props) {
+export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate, engineError, greenfield }: Props) {
   const [expandedGrid, setExpandedGrid] = useState<string | null>(null);
   const [showAllKeys, setShowAllKeys]   = useState(false);
   const [showCollisions, setShowCollisions] = useState(false);
@@ -339,6 +343,10 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
           </div>
         )}
       </Card>
+
+      <SourceLineageCard hashes={debugInfo.sourceArtifactHashes} />
+
+      <GreenfieldPanel greenfield={greenfield} />
 
       {/* ── Mapping Coverage Audit ── */}
       {mappingAudit && (

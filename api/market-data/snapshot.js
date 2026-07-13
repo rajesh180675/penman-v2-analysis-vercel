@@ -1,5 +1,5 @@
-import { enforceAuditRateLimit, requireAuditReadAuth } from "../audit/_lib.js";
-import { NSE_SYMBOL_REGISTRY } from "./symbolRegistry.js";
+import { enforceAuditRateLimit } from "../audit/_lib.js";
+import { NSE_SYMBOL_REGISTRY } from "./_symbolRegistry.js";
 
 function toNumber(value) {
   const parsed = Number(value);
@@ -65,7 +65,7 @@ function summarizeHistoricalPrices(points, currentPrice) {
   };
 }
 
-function buildFallbackSnapshot({
+export function buildFallbackSnapshot({
   provider,
   symbol,
   instrumentKey,
@@ -88,8 +88,8 @@ function buildFallbackSnapshot({
     enterpriseValue: null,
     sharesOutstanding: null,
     riskFreeRate: fallbackRiskFreeRate,
-    priceAsOf: null,
-    rateAsOf: null,
+    priceAsOf: fallbackPrice != null ? fetchedAt : null,
+    rateAsOf: fallbackRiskFreeRate != null ? fetchedAt : null,
     freshness,
     sourceSummary,
     warnings,
@@ -206,8 +206,8 @@ async function fetchAlphaVantageSnapshot({ symbol, fallbackPrice, fallbackRiskFr
       enterpriseValue: null,
       sharesOutstanding: null,
       riskFreeRate,
-      priceAsOf: quote?.asOf ?? null,
-      rateAsOf: treasury.asOf ?? null,
+      priceAsOf: quote?.asOf ?? (fallbackPrice != null ? fetchedAt : null),
+      rateAsOf: treasury.asOf ?? (fallbackRiskFreeRate != null ? fetchedAt : null),
       freshness: quote?.price != null ? "live" : (price == null && riskFreeRate == null ? "missing" : "fallback"),
       sourceSummary: quote?.price != null
         ? "Alpha Vantage quote feed with Treasury Yield overlay."
@@ -282,8 +282,8 @@ async function fetchUpstoxReadonlySnapshot({ symbol, instrumentKey, fallbackPric
       enterpriseValue: null,
       sharesOutstanding: null,
       riskFreeRate: fallbackRiskFreeRate ?? null,
-      priceAsOf: quote?.asOf ?? null,
-      rateAsOf: null,
+      priceAsOf: quote?.asOf ?? (fallbackPrice != null ? fetchedAt : null),
+      rateAsOf: fallbackRiskFreeRate != null ? fetchedAt : null,
       freshness: quote?.price != null ? "live" : (price == null && fallbackRiskFreeRate == null ? "missing" : "fallback"),
       sourceSummary: quote?.price != null
         ? "Upstox read-only quote feed with manual/config rate fallback."
@@ -415,7 +415,7 @@ async function fetchNseSnapshot({ rawSymbol, fallbackPrice, fallbackRiskFreeRate
       sharesOutstanding: toNumber(info.issuedSize ?? quotePayload?.securityInfo?.issuedSize) ?? null,
       riskFreeRate,
       priceAsOf: fetchedAt,
-      rateAsOf: null,
+      rateAsOf: fetchedAt,
       freshness: price != null ? "live" : (fallbackPrice != null ? "fallback" : "missing"),
       sourceSummary: price != null
         ? `NSE India live quote for ${symbol}.`
@@ -446,7 +446,7 @@ async function fetchNseSnapshot({ rawSymbol, fallbackPrice, fallbackRiskFreeRate
         sharesOutstanding: null,
         riskFreeRate: fallbackRiskFreeRate ?? 0.07,
         priceAsOf: fetchedAt,
-        rateAsOf: null,
+        rateAsOf: fetchedAt,
         freshness: price != null ? "live" : (fallbackPrice != null ? "fallback" : "missing"),
         sourceSummary: `NSE blocked, used Yahoo Finance for ${yahoo.rawSymbol}.`,
         warnings,
@@ -521,8 +521,12 @@ export default async function handler(request, response) {
   const fetchedAt = new Date().toISOString();
 
   if (provider === "upstox-readonly" || provider === "alphavantage" || provider === "nse" || provider === "yahoo") {
-    if (!requireAuditReadAuth(request, response)) return;
-    if (!enforceAuditRateLimit(request, response, "market-data", 60)) return;
+    // Market snapshots are a product read path, not an audit-admin operation.
+    // Vendor credentials remain server-side; the browser receives only the
+    // normalized, rate-limited result. A verified workspace session replaces
+    // this public stopgap in the platform-auth wave.
+    if (!enforceAuditRateLimit(request, response, "market-data", 30)) return;
+    response.setHeader("Cache-Control", "private, max-age=30, stale-while-revalidate=60");
   }
 
   let snapshot;
@@ -587,7 +591,7 @@ export default async function handler(request, response) {
         sharesOutstanding: null,
         riskFreeRate: fallbackRiskFreeRate ?? 0.07,
         priceAsOf: fetchedAt,
-        rateAsOf: null,
+        rateAsOf: fetchedAt,
         freshness: price != null ? "live" : (fallbackPrice != null ? "fallback" : "missing"),
         sourceSummary: price != null
           ? `Yahoo Finance quote for ${yahoo.rawSymbol}.`

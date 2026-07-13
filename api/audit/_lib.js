@@ -105,6 +105,15 @@ export function isAuditReadAuthorized(request) {
   return safeTokenEqual(presented, configuredToken) || safeTokenEqual(presented, previousToken);
 }
 
+export function isAuditWriteAuthorized(request) {
+  const configuredToken = process.env.AUDIT_ADMIN_WRITE_TOKEN || process.env.AUDIT_ADMIN_TOKEN;
+  const previousToken = process.env.AUDIT_ADMIN_TOKEN_PREVIOUS;
+  const presented = getAuditReadToken(request);
+
+  if (!configuredToken && !previousToken) return !isAuditAdminAuthRequired();
+  return safeTokenEqual(presented, configuredToken) || safeTokenEqual(presented, previousToken);
+}
+
 export function getRunAccessToken(request) {
   const headerToken = request.headers["x-audit-run-token"] || request.headers["X-Audit-Run-Token"];
   if (typeof headerToken === "string" && headerToken) return headerToken;

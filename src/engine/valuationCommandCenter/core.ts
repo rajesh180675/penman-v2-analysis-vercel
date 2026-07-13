@@ -1,8 +1,8 @@
-import { deriveKwFromStructure } from "../PenmanNissimEngine";
 import { LiveMarketDataSnapshot, summarizeHistoricalPrices } from "../marketData";
 import { buildBusinessModelProfile } from "../forecastingEngine";
 import { AnalysisStatusSummary } from "../analysisStatus";
-import { RecastPeriod, EngineConfig, ke_from_config } from "../types";
+import { RecastPeriod, EngineConfig } from "../types";
+import { resolveCostOfCapitalFromConfig } from "../costOfCapital";
 import { resolveShareBasis } from "../shareCountTools";
 import { resolveValuationReadiness } from "../valuationPolicy";
 import { resolveValuationSectorTemplate } from "../valuationSectorTemplates";
@@ -113,10 +113,15 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     0.6,
   );
 
-  const keBase = config.ke > 0 ? config.ke : ke_from_config({ ...config, risk_free_rate: riskFreeRate });
-  const kwBase = valuationData.length >= 2
-    ? deriveKwFromStructure(valuationData[valuationData.length - 1]!, valuationData[valuationData.length - 2]!, keBase, riskFreeRate, config)
-    : riskFreeRate;
+  const costOfCapital = resolveCostOfCapitalFromConfig({
+    config,
+    current: latest,
+    previous: prev,
+    riskFreeRate,
+    marketAsOf: marketData?.rateAsOf ?? marketData?.fetchedAt ?? null,
+  });
+  const keBase = costOfCapital.ke;
+  const kwBase = costOfCapital.kw;
   const { scenarios, derivedScenarios } = buildScenarioCards({
     config,
     sectorTemplate,
@@ -516,6 +521,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     valuationReadiness,
     marketPrice,
     riskFreeRate,
+    costOfCapital,
     asOf: marketData?.priceAsOf ?? marketData?.fetchedAt ?? null,
     sectorTemplate: {
       id: sectorTemplate.id,

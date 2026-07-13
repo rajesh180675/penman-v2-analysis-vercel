@@ -5,7 +5,19 @@
    can never re-enter the engine's type->logic->type tangle. The originating logic
    module re-exports these names, so existing import paths stay valid. */
 
-export type ReconciliationResidualStatus = "confirmed" | "degraded" | "failed";
+/**
+ * Overall reconciliation verdict.
+ *
+ * `insufficient-evidence` is deliberately distinct from `degraded`: degraded
+ * means checks actually ran and produced warning-level residuals, while
+ * insufficient evidence means no independent residual check could run.  The
+ * latter must never satisfy the structural rigor gate.
+ */
+export type ReconciliationResidualStatus =
+  | "confirmed"
+  | "degraded"
+  | "failed"
+  | "insufficient-evidence";
 
 export interface ReconciliationResidualCheck {
   key: string;

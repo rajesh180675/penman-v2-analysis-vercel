@@ -31,5 +31,5 @@
     "noUncheckedIndexedAccess": true,
     "useUnknownInCatchVariables": true
   },
-  "include": ["src", "server", "vite.config.ts"]
+  "include": ["src", "server", "api/**/*.ts", "vite.config.ts"]
 }

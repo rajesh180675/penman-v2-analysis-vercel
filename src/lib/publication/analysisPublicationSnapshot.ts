@@ -8,9 +8,23 @@ import { resolveValuationReadiness } from "../../engine/valuationPolicy";
 import { EngineConfig, RawPeriodData, RecastPeriod } from "../../engine/types";
 import { assessAnalysisScope } from "../../engine/scopePolicy";
 import type { AnalysisFamily } from "../../engine/analysisFamily";
+import type { AnalysisRunV1 } from "../../engine/analysisRun";
 import { AuditSubmissionMeta } from "../audit";
 
+export interface AnalysisPublicationRunIdentity {
+  readonly runId: AnalysisRunV1["runId"];
+  readonly reproducibilityHash: AnalysisRunV1["reproducibilityHash"];
+  readonly schemaVersion: AnalysisRunV1["schemaVersion"];
+  readonly executorVersion: AnalysisRunV1["executorVersion"];
+  readonly analysisWindowRef: AnalysisRunV1["analysisWindowRef"];
+  readonly marketSnapshotRef: AnalysisRunV1["marketSnapshotRef"];
+  readonly assumptionSetRef: AnalysisRunV1["assumptionSetRef"];
+  readonly modelResultRefs: AnalysisRunV1["modelResultRefs"];
+}
+
 export interface AnalysisPublicationSnapshot {
+  /** Immutable analytical identity shared by every publication surface. */
+  runIdentity: AnalysisPublicationRunIdentity | null;
   family: AnalysisFamily;
   companyId: string | null;
   latestRawPeriod: string | null;
@@ -38,6 +52,7 @@ export function buildAnalysisPublicationSnapshot(params: {
   policyVersions?: ReturnType<typeof getAnalysisPolicyVersions> | undefined;
   analysisStatus?: AnalysisStatusSummary | null | undefined;
   family?: AnalysisFamily | null | undefined;
+  analysisRun?: AnalysisRunV1 | null | undefined;
 }): AnalysisPublicationSnapshot {
   const {
     data,
@@ -50,6 +65,7 @@ export function buildAnalysisPublicationSnapshot(params: {
     policyVersions: precomputedPolicyVersions,
     analysisStatus: precomputedAnalysisStatus = null,
     family: precomputedFamily = null,
+    analysisRun = null,
   } = params;
   const valuationReadiness = resolveValuationReadiness(data);
   const policyVersions = precomputedPolicyVersions ?? getAnalysisPolicyVersions();
@@ -85,6 +101,18 @@ export function buildAnalysisPublicationSnapshot(params: {
   });
 
   return {
+    runIdentity: analysisRun
+      ? {
+          runId: analysisRun.runId,
+          reproducibilityHash: analysisRun.reproducibilityHash,
+          schemaVersion: analysisRun.schemaVersion,
+          executorVersion: analysisRun.executorVersion,
+          analysisWindowRef: analysisRun.analysisWindowRef,
+          marketSnapshotRef: analysisRun.marketSnapshotRef,
+          assumptionSetRef: analysisRun.assumptionSetRef,
+          modelResultRefs: analysisRun.modelResultRefs,
+        }
+      : null,
     family,
     companyId: rawData?.[0]?.company_id ?? null,
     latestRawPeriod,

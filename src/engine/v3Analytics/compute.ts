@@ -4,10 +4,10 @@
    from sibling v3Analytics/* modules + external engine modules — no
    back-edge to the v3Analytics.ts barrel.
 ══════════════════════════════════════════════════════════════════ */
-import { RecastPeriod, EngineConfig, ke_from_config } from "../types";
+import { RecastPeriod, EngineConfig } from "../types";
 import { CroreShares } from "../types/units";
 import { trace } from "../../lib/traceLogger";
-import { deriveKwFromStructure } from "../PenmanNissimEngine";
+import { resolveCostOfCapitalFromConfig } from "../costOfCapital";
 import { computeMoatScore, MoatScoreResult } from "../moatScoring";
 import { scoreCapitalAllocation, CapAllocScoreResult } from "../capitalAllocationScoring";
 import { assessCyclicality, CyclicalityAssessment } from "../cyclicalityDetector";
@@ -121,16 +121,15 @@ export function computeV3Analytics(
   kwDerived?: number | undefined,
   itServices?: import("../itServicesDetector").ITServicesSignal | null | undefined,
 ): V3AnalyticsBundle {
-  const ke = ke_from_config(cfg);
-  const kw = (() => {
-    if (kwDerived != null && Number.isFinite(kwDerived) && kwDerived > 0) return kwDerived;
-    if (periods.length >= 2) {
-      const cur = periods[periods.length - 1]!;
-      const prev = periods[periods.length - 2]!;
-      return deriveKwFromStructure(cur, prev, ke, cfg.risk_free_rate, cfg);
-    }
-    return ke * 0.75;
-  })();
+  const capitalCost = resolveCostOfCapitalFromConfig({
+    config: cfg,
+    current: periods.at(-1) ?? null,
+    previous: periods.at(-2) ?? null,
+  });
+  const ke = capitalCost.ke;
+  const kw = kwDerived != null && Number.isFinite(kwDerived) && kwDerived > 0
+    ? kwDerived
+    : capitalCost.kw;
   const registry = new CanonicalOutputRegistry();
   registry.register("period_count", periods.length, "S-13.3");
   registry.register("company_id", cfg.ticker ?? "Company", "S-13.3");

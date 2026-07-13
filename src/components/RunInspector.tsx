@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnalysisStatusSummary } from "../engine/analysisStatus";
 import { AuditSubmissionMeta, getAuditRecoveryState, listRememberedAuditRuns, rememberAuditRun } from "../lib/audit";
 import { AnalysisStatusBadge } from "./AnalysisStatusBadge";
+import { fetchAuditArtifactDownload, inspectAuditArtifact, type AuditArtifactInspection } from "../lib/auditArtifacts";
 import { MetricCard } from "./run-inspector/atoms";
 import { formatBytes } from "./run-inspector/RunInspector.formatters";
 import { TraceabilitySection } from "./run-inspector/TraceabilitySection";
@@ -19,6 +20,9 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [watchlistRows, setWatchlistRows] = useState<WatchlistRow[]>([]);
+  const [artifactInspections, setArtifactInspections] = useState<Record<string, AuditArtifactInspection>>({});
+  const [artifactAction, setArtifactAction] = useState<string | null>(null);
+  const automaticVerificationAttempts = useRef(new Set<string>());
 
   useEffect(() => {
     if (!auditMeta) return;
@@ -38,6 +42,45 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
   const valuationSignal = payload?.latestValuationSignal ?? null;
   const valuationManifest = payload?.latestValuationManifest ?? null;
   const valuationAlert = payload?.latestValuationAlert ?? null;
+
+  useEffect(() => {
+    setArtifactInspections({});
+    setArtifactAction(null);
+    automaticVerificationAttempts.current.clear();
+  }, [selectedRunId]);
+
+  const verifyArtifact = async (pathname: string) => {
+    if (!selectedRun?.runAccessToken) return;
+    setArtifactAction(`verify:${pathname}`);
+    setError(null);
+    try {
+      const inspection = await inspectAuditArtifact({ runId: selectedRun.runId, pathname, runAccessToken: selectedRun.runAccessToken });
+      setArtifactInspections((current) => ({ ...current, [pathname]: inspection }));
+    } catch (artifactError) {
+      setError(artifactError instanceof Error ? artifactError.message : String(artifactError));
+    } finally {
+      setArtifactAction(null);
+    }
+  };
+
+  const downloadArtifact = async (pathname: string) => {
+    if (!selectedRun?.runAccessToken) return;
+    setArtifactAction(`download:${pathname}`);
+    setError(null);
+    try {
+      const download = await fetchAuditArtifactDownload({ runId: selectedRun.runId, pathname, runAccessToken: selectedRun.runAccessToken });
+      const url = URL.createObjectURL(download.blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = download.filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (artifactError) {
+      setError(artifactError instanceof Error ? artifactError.message : String(artifactError));
+    } finally {
+      setArtifactAction(null);
+    }
+  };
 
   useEffect(() => {
     if (!selectedRun) {
@@ -83,6 +126,17 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
       window.clearInterval(timer);
     };
   }, [selectedRun]);
+
+  useEffect(() => {
+    if (!selectedRun?.runAccessToken || !payload?.artifacts.length || artifactAction) return;
+    const newestSnapshot = payload.artifacts.find((item) =>
+      item.eventType === "analysis-snapshot-artifact"
+      || item.pathname.toLowerCase().includes("analysis-snapshot"));
+    if (!newestSnapshot || artifactInspections[newestSnapshot.pathname]) return;
+    if (automaticVerificationAttempts.current.has(newestSnapshot.pathname)) return;
+    automaticVerificationAttempts.current.add(newestSnapshot.pathname);
+    void verifyArtifact(newestSnapshot.pathname);
+  }, [artifactAction, artifactInspections, payload?.artifacts, selectedRun]);
 
   useEffect(() => {
     if (!knownRuns.length) {
@@ -357,12 +411,38 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h3 className="font-semibold text-slate-800">Artifacts and Inputs</h3>
             <div className="mt-3 space-y-3 text-sm">
-              {[...(payload?.inputs ?? []), ...(payload?.artifacts ?? [])].map((item) => (
+              {(payload?.inputs ?? []).map((item) => (
                 <div key={item.pathname} className="rounded-lg border border-slate-200 px-3 py-2">
                   <div className="font-medium text-slate-800">{item.pathname.split("/").pop()}</div>
                   <div className="text-xs text-slate-500">{formatBytes(item.size)} · {new Date(item.uploadedAt).toLocaleString("en-IN")}</div>
                 </div>
               ))}
+              {(payload?.artifacts ?? []).map((item) => {
+                const inspection = artifactInspections[item.pathname];
+                const status = inspection?.verification.status;
+                return (
+                  <div key={item.pathname} className="rounded-lg border border-slate-200 px-3 py-3">
+                    <div className="font-medium text-slate-800">{item.pathname.split("/").pop()}</div>
+                    <div className="text-xs text-slate-500">Artifact · {formatBytes(item.size)} · {item.contentEncoding ?? "identity"} · {new Date(item.uploadedAt).toLocaleString("en-IN")}</div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button type="button" onClick={() => void verifyArtifact(item.pathname)} disabled={artifactAction !== null} className="rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 disabled:opacity-50">
+                        {artifactAction === `verify:${item.pathname}` ? "Verifying…" : "Verify integrity"}
+                      </button>
+                      <button type="button" onClick={() => void downloadArtifact(item.pathname)} disabled={artifactAction !== null} className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 disabled:opacity-50">
+                        {artifactAction === `download:${item.pathname}` ? "Preparing…" : "Download"}
+                      </button>
+                    </div>
+                    {inspection && (
+                      <div className={`mt-2 rounded-md px-2.5 py-2 text-xs ${status === "verified" ? "bg-emerald-50 text-emerald-800" : status === "mismatch" || status === "invalid-compression" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-800"}`}>
+                        <div className="font-semibold">Integrity: {status}</div>
+                        <div>Encoding: {inspection.artifact.contentEncoding ?? "identity"} · Decoded: {inspection.verification.decodedBytes != null ? formatBytes(inspection.verification.decodedBytes) : "—"}</div>
+                        <div className="break-all font-mono">SHA: {inspection.verification.actualHash ?? "unavailable"}</div>
+                        {inspection.snapshotSummary && <pre className="mt-2 overflow-x-auto whitespace-pre-wrap">{JSON.stringify(inspection.snapshotSummary, null, 2)}</pre>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               {!payload?.inputs?.length && !payload?.artifacts?.length && (
                 <p className="text-slate-500">{loading ? "Loading persisted blobs…" : "No persisted inputs or artifacts found yet."}</p>
               )}
@@ -389,6 +469,13 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
               </div>
               <div className="rounded-lg bg-slate-50 px-3 py-2">
                 Pending failed uploads/exports: <strong>{recovery.pendingFailures.length}</strong>
+              </div>
+              <div className={`rounded-lg px-3 py-2 ${payload?.retentionHealth?.status === "warning" ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800"}`}>
+                Retention cleanup: <strong>{payload?.retentionHealth?.status ?? "unknown"}</strong>
+                <div className="mt-1 text-xs">{payload?.retentionHealth?.summary ?? "No cleanup health report is available."}</div>
+                {payload?.retentionHealth?.lastCheckedAt && (
+                  <div className="mt-1 text-xs">Last checked: {new Date(payload.retentionHealth.lastCheckedAt).toLocaleString("en-IN")}</div>
+                )}
               </div>
             </div>
           </section>

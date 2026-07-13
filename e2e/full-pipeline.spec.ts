@@ -24,7 +24,12 @@ async function openApp(page: Page) {
   await expect(page.getByRole("heading", { name: /Company Library/i })).toBeVisible({ timeout: 30_000 });
 }
 
-async function loadCompanyFromLibrary(page: Page, companyName: string, expectedType: CompanyTypeValue) {
+async function loadCompanyFromLibrary(
+  page: Page,
+  companyName: string,
+  expectedType: CompanyTypeValue,
+  marketBasis?: { price: number; sharesCrore: number },
+) {
   await page.getByRole("tab", { name: /Data/ }).click();
 
   const companyButton = page.locator("button").filter({ hasText: companyName }).first();
@@ -34,6 +39,11 @@ async function loadCompanyFromLibrary(page: Page, companyName: string, expectedT
   const pipelineSelect = page.locator("select").filter({ hasText: /Auto \(detect from data\)/ }).first();
   await expect(pipelineSelect).toBeVisible({ timeout: 10_000 });
   await expect(pipelineSelect).toHaveValue(expectedType);
+
+  if (marketBasis) {
+    await page.locator('label:has-text("Market Price") + input').fill(String(marketBasis.price));
+    await page.locator('label:has-text("Shares (Cr)") + input').fill(String(marketBasis.sharesCrore));
+  }
 
   await page.getByRole("button", { name: /^Load$/ }).click();
   await expect(page.getByRole("tab", { name: /Dashboard/ })).toBeEnabled({ timeout: 75_000 });
@@ -51,6 +61,31 @@ function collectPageErrors(page: Page) {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   return errors;
+}
+
+async function readImmutableRunIdentity(page: Page) {
+  const status = page.getByRole("region", { name: "Immutable analysis run identity" });
+  await expect(status).toBeVisible({ timeout: 120_000 });
+  const runId = await status.getAttribute("data-run-id");
+  const hash = await status.getAttribute("data-reproducibility-hash");
+  const windowHash = await status.getAttribute("data-analysis-window-hash");
+  const marketHash = await status.getAttribute("data-market-snapshot-hash");
+  expect(runId).toBeTruthy();
+  expect(hash).toMatch(/^sha256:[0-9a-f]{64}$/);
+  expect(windowHash).toMatch(/^sha256:[0-9a-f]{64}$/);
+  expect(marketHash === "" || /^sha256:[0-9a-f]{64}$/.test(marketHash ?? "")).toBe(true);
+  return { runId, hash, windowHash, marketHash };
+}
+
+async function readStableImmutableRunIdentity(page: Page) {
+  let identity = await readImmutableRunIdentity(page);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    await page.waitForTimeout(2_000);
+    const next = await readImmutableRunIdentity(page);
+    if (next.runId === identity.runId) return next;
+    identity = next;
+  }
+  return identity;
 }
 
 test.describe("Bundled company pipeline", () => {
@@ -78,6 +113,38 @@ test.describe("Bundled company pipeline", () => {
     const main = page.locator("main").first();
     await expect(main).toContainText(/Financial Institution Analysis|NIM|ROA|ROE|CASA|Deposits/i, { timeout: 15_000 });
     expect(errors).toEqual([]);
+  });
+
+  test("keeps one industrial run identity across valuation, forecast, and report", async ({ page }) => {
+    await openApp(page);
+    await loadCompanyFromLibrary(page, "Asian Paints", "consumer");
+    const expected = await readStableImmutableRunIdentity(page);
+
+    for (const tabName of [/Forecast/, /Valuation/, /Report/]) {
+      await switchTab(page, tabName);
+      expect(await readImmutableRunIdentity(page)).toEqual(expected);
+    }
+
+    await expect(page.locator("main").first()).toContainText(expected.hash!, { timeout: 30_000 });
+  });
+
+  test("uses crore shares directly for FI market cap and preserves the run hash", async ({ page }) => {
+    await openApp(page);
+    await loadCompanyFromLibrary(page, "HDFC Bank", "bank", { price: 2_000, sharesCrore: 760 });
+    const expected = await readStableImmutableRunIdentity(page);
+
+    await switchTab(page, /Bank/);
+    const marketBasis = page.getByTestId("fi-market-basis");
+    await expect(marketBasis).toBeVisible({ timeout: 30_000 });
+    const price = Number(await marketBasis.getAttribute("data-market-price"));
+    const marketCapCr = Number(await marketBasis.getAttribute("data-market-cap-cr"));
+    expect(Number.isFinite(price) && price > 0).toBe(true);
+    expect(Number.isFinite(marketCapCr) && marketCapCr > 0).toBe(true);
+    expect(marketCapCr).toBe(1_520_000);
+    // HDFC has hundreds of crore shares. The former extra /1e7 conversion
+    // made market cap smaller than one share price; this invariant kills it.
+    expect(marketCapCr / price).toBeGreaterThan(10);
+    expect(await readImmutableRunIdentity(page)).toEqual(expected);
   });
 
   test("loads DMART as consumer retail without turning lease accounting into distress", async ({ page }) => {

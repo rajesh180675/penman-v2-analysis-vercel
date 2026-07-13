@@ -23,6 +23,9 @@ function validateEntry(period: NormalizedPeriod | null, entry: AdjustmentAuditEn
     return rejectedBy;
   }
   if (entry.field === "values.fcfCash") rejectedBy.push("fcf-is-never-adjusted");
+  if (entry.adjusterId === "A1_LEASE_ADJUSTER" && entry.field === "values.financialDebtExLease") {
+    rejectedBy.push("ex-lease-debt-must-not-subtract-leases-again");
+  }
   if (entry.field === "values.cse" && finite(period.values.totalAssets) && finite(period.values.totalLiabilities) && typeof entry.after === "number") {
     const residual = Math.abs(period.values.totalAssets - (entry.after + period.values.totalLiabilities)) / Math.max(Math.abs(period.values.totalAssets), 1);
     if (residual > 0.005) rejectedBy.push("balance-sheet-identity-failed");

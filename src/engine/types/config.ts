@@ -20,9 +20,16 @@ export type ValuationSectorTemplate =
 
 export type StructuralBreakWindowPolicy = "auto-post-break" | "manual" | "keep-all";
 export type GreenfieldAdjustmentMode = "as-reported-only" | "adjusted-with-audit";
+export type CostOfEquityMode = "capm" | "manual";
+export type CostOfDebtMode = "reported-effective" | "credit-spread" | "manual";
 
 export interface EngineConfig {
   ke                  : PercentFraction;
+  /** Explicitly controls whether `ke` is a manual override or CAPM is resolved. */
+  cost_of_equity_mode ?: CostOfEquityMode | undefined;
+  /** Required reviewer rationale when cost_of_equity_mode is manual. */
+  ke_manual_rationale ?: string | undefined;
+  ke_evidence_refs    ?: string[] | undefined;
   /**
    * Phase rigor-2 — explicit equity beta (β) for CAPM.
    * When set (>0), `ke_from_config` uses ke = rf + β × erp.
@@ -41,6 +48,13 @@ export interface EngineConfig {
    */
   equity_weight       ?: number | null | undefined;
   kd_pretax           : number;
+  /** Explicitly controls debt-cost resolution; scalar kd is used only in manual mode. */
+  cost_of_debt_mode   ?: CostOfDebtMode | undefined;
+  kd_manual_rationale ?: string | undefined;
+  kd_evidence_refs    ?: string[] | undefined;
+  /** Optional dated credit spread used only in credit-spread mode. */
+  credit_spread       ?: number | null | undefined;
+  credit_spread_as_of ?: string | null | undefined;
   tax_rate_for_kd     : number;
   risk_free_rate      : number;
   equity_risk_premium : number;
@@ -167,7 +181,9 @@ export interface EngineConfig {
 
 export const DEFAULT_CONFIG: EngineConfig = {
   ke: PercentFraction(0.13),
+  cost_of_equity_mode: "capm",
   kd_pretax: 0.08,
+  cost_of_debt_mode: "reported-effective",
   tax_rate_for_kd: 0.2517,
   risk_free_rate: 0.07,
   equity_risk_premium: 0.06,
@@ -179,7 +195,9 @@ export const DEFAULT_CONFIG: EngineConfig = {
   financial_institution_mode: false,
   company_type: "auto",
   structural_break_window_policy: "auto-post-break",
-  greenfield_adjustment_mode: "adjusted-with-audit",
+  // Adjusted views remain opt-in until every transformation is balanced and
+  // validated. Detectors still run in this mode; they cannot rewrite facts.
+  greenfield_adjustment_mode: "as-reported-only",
   mixed_conglomerate_route_to: null,
   quality_data_folder: null,
   noa_epsilon_ratio_of_ta: 0.10,
@@ -262,8 +280,10 @@ export const SECTOR_BETAS: Record<CompanyType, number> = {
 };
 
 export function ke_from_config(cfg: EngineConfig): number {
-  // 1. Explicit ke override wins
-  if (cfg.ke > 0) return cfg.ke;
+  // Explicit manual mode is the only unambiguous scalar override. Configs
+  // created before the mode field retain legacy behavior for migration.
+  if (cfg.cost_of_equity_mode === "manual" && cfg.ke > 0) return cfg.ke;
+  if (cfg.cost_of_equity_mode == null && cfg.ke > 0) return cfg.ke;
   // 2/3. CAPM (with explicit beta or sector default)
   const rf = cfg.risk_free_rate;
   const erp = cfg.equity_risk_premium;

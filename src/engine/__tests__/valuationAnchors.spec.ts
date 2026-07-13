@@ -108,7 +108,14 @@ describe("valuation anchor and kw guardrails", () => {
   it("uses config kd path for kw and allows kw > ke for net-cash structure", () => {
     const prev = mkPeriod("2024-03-31", { CSE: 850, NOA: 650, NFO: -200, FO: 50, CNI: 110, OI: 120 });
     const cur = mkPeriod("2025-03-31", { CSE: 900, NOA: 700, NFO: -200, FO: 40, CNI: 115, OI: 125 });
-    const cfg = { ...DEFAULT_CONFIG, kd_pretax: 0.08, tax_rate_for_kd: 0.25 };
+    const cfg = {
+      ...DEFAULT_CONFIG,
+      cost_of_debt_mode: "manual" as const,
+      kd_pretax: 0.08,
+      kd_manual_rationale: "Structural kw regression fixture.",
+      kd_evidence_refs: ["fixture:kw-net-cash"],
+      tax_rate_for_kd: 0.25,
+    };
     const kw = deriveKwFromStructure(cur, prev, 0.12, 0.05, cfg);
 
     expect(kw).toBeGreaterThan(0.12);
@@ -118,7 +125,14 @@ describe("valuation anchor and kw guardrails", () => {
   it("floors kw at risk free when structure math goes negative", () => {
     const prev = mkPeriod("2024-03-31", { CSE: 50, NOA: 1000, NFO: 4000, FO: 4100, CNI: 110, OI: 120 });
     const cur = mkPeriod("2025-03-31", { CSE: 50, NOA: 1000, NFO: 4000, FO: 4100, CNI: 115, OI: 125 });
-    const cfg = { ...DEFAULT_CONFIG, kd_pretax: 0.01, tax_rate_for_kd: 0.0 };
+    const cfg = {
+      ...DEFAULT_CONFIG,
+      cost_of_debt_mode: "manual" as const,
+      kd_pretax: 0.01,
+      kd_manual_rationale: "Structural kw floor regression fixture.",
+      kd_evidence_refs: ["fixture:kw-floor"],
+      tax_rate_for_kd: 0.0,
+    };
     const kw = deriveKwFromStructure(cur, prev, 0.08, 0.06, cfg);
 
     expect(kw).toBe(0.06);

@@ -6,6 +6,7 @@ import { diagnoseManualRawPeriods } from "../../engine/manualEntryParser";
 import { SourceParserDiagnostics } from "../../engine/parserDiagnostics";
 import { AuditSubmissionMeta, persistAuditEvent } from "../../lib/audit";
 import type { CapitalineParseDebug } from "../../engine/capitalineParser";
+import { buildTextCanonicalFactBundle, type CanonicalFactIngestionBundle } from "../../engine/facts";
 import ManualEntryWizard from "../ManualEntryWizard";
 
 interface Props {
@@ -27,6 +28,7 @@ interface Props {
     parserDiagnostics?: SourceParserDiagnostics | null | undefined,
     segmentData?: import("../../engine/segmentParser").AllSegmentData | null | undefined,
     standaloneData?: RawPeriodData[] | null | undefined,
+    canonicalFacts?: CanonicalFactIngestionBundle | null | undefined,
   ) => void;
 }
 
@@ -48,7 +50,7 @@ export default function SourceModePanels({
           <p className="text-xs text-slate-500">Paste Screener.in tab-delimited 10Y table (copied from browser).</p>
           <textarea value={screenerText} onChange={(e) => setScreenerText(e.target.value)} className="w-full h-48 p-3 border rounded-lg font-mono text-xs" placeholder="Metric\t2016\t2017 ..." />
           <button
-            onClick={() => {
+            onClick={async () => {
               try {
                 const meta = buildMeta("screener");
                 void persistAuditEvent({
@@ -73,7 +75,17 @@ export default function SourceModePanels({
                   },
                 });
                 if (!periods.length) setError("Screener parse returned 0 periods.");
-                else onDataSubmit(periods, undefined, meta, diagnostics);
+                else {
+                  const canonicalFacts = await buildTextCanonicalFactBundle({
+                    rawData: periods,
+                    sourceText: screenerText,
+                    sourceMode: "screener",
+                    fileName: meta.fileName ?? "screener-paste.tsv",
+                    scope: "consolidated",
+                    contentClass: meta.contentClass,
+                  });
+                  onDataSubmit(periods, undefined, meta, diagnostics, null, null, canonicalFacts);
+                }
               } catch (e) {
                 const meta = buildMeta("screener");
                 void persistAuditEvent({
@@ -100,7 +112,7 @@ export default function SourceModePanels({
           <p className="text-xs text-slate-500">Paste RawPeriodData[] JSON for direct API ingestion.</p>
           <textarea value={jsonText} onChange={(e) => setJsonText(e.target.value)} className="w-full h-48 p-3 border rounded-lg font-mono text-xs" placeholder='[{"company_id":"...","period_end":"2025-03-31","raw_metric_values":{...}}]' />
           <button
-            onClick={() => {
+            onClick={async () => {
               try {
                 const meta = buildMeta("json");
                 void persistAuditEvent({
@@ -124,7 +136,15 @@ export default function SourceModePanels({
                     parserDiagnostics: diagnostics,
                   },
                 });
-                onDataSubmit(periods, undefined, meta, diagnostics);
+                const canonicalFacts = await buildTextCanonicalFactBundle({
+                  rawData: periods,
+                  sourceText: jsonText,
+                  sourceMode: "json",
+                  fileName: meta.fileName ?? "raw-periods.json",
+                  scope: "consolidated",
+                  contentClass: meta.contentClass,
+                });
+                onDataSubmit(periods, undefined, meta, diagnostics, null, null, canonicalFacts);
               } catch (e) {
                 const meta = buildMeta("json");
                 void persistAuditEvent({
@@ -182,7 +202,17 @@ export default function SourceModePanels({
                   },
                 });
                 if (!periods.length) setError("XBRL parse returned 0 periods. Check taxonomy labels/contexts.");
-                else onDataSubmit(periods, undefined, meta, diagnostics);
+                else {
+                  const canonicalFacts = await buildTextCanonicalFactBundle({
+                    rawData: periods,
+                    sourceText: txt,
+                    sourceMode: "xbrl",
+                    fileName: f.name,
+                    scope: "consolidated",
+                    contentClass: meta.contentClass,
+                  });
+                  onDataSubmit(periods, undefined, meta, diagnostics, null, null, canonicalFacts);
+                }
               } catch (err) {
                 const meta = buildMeta("xbrl", { fileName: f.name });
                 void persistAuditEvent({
@@ -207,6 +237,7 @@ export default function SourceModePanels({
         <div className="m-6">
           <ManualEntryWizard
             onSubmit={(rows) => {
+              void (async () => {
               const meta = buildMeta("manual");
               void persistAuditEvent({
                 runId: meta.runId,
@@ -228,7 +259,19 @@ export default function SourceModePanels({
                   parserDiagnostics: diagnoseManualRawPeriods(rows),
                 },
               });
-              onDataSubmit(rows, undefined, meta, diagnoseManualRawPeriods(rows));
+              const sourceText = JSON.stringify(rows);
+              const canonicalFacts = await buildTextCanonicalFactBundle({
+                rawData: rows,
+                sourceText,
+                sourceMode: "manual",
+                fileName: "manual-entry.json",
+                scope: "consolidated",
+                contentClass: meta.contentClass,
+              });
+              onDataSubmit(rows, undefined, meta, diagnoseManualRawPeriods(rows), null, null, canonicalFacts);
+              })().catch((manualError: unknown) => {
+                setError(`Manual ingestion failed: ${manualError instanceof Error ? manualError.message : String(manualError)}`);
+              });
             }}
           />
         </div>

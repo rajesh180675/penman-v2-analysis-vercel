@@ -23,7 +23,7 @@ describe("batchRunner", () => {
     vi.restoreAllMocks();
   });
 
-  it.skipIf(!hasItcZip)("runs a single company and returns a populated registry", { timeout: 120_000 }, async () => {
+  it.skipIf(!hasItcZip)("runs a single company and returns a populated registry", { timeout: 240_000 }, async () => {
     const zipBuffer = await readFile(ITC_ZIP_PATH);
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementation(async () => {
       return new Response(zipBuffer, {

@@ -1,4 +1,4 @@
-import { requireCronAuth, runAuditMonitor } from "../audit/monitor-lib.js";
+import { requireCronAuth, runAuditMonitor } from "../audit/_monitor-lib.js";
 
 export default async function handler(request, response) {
   const start = Date.now();

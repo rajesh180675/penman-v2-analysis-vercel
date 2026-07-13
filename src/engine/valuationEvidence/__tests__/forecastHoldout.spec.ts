@@ -39,6 +39,11 @@ describe("evaluateForecastHoldout", () => {
     expect(result.aggregate.weightedMape).not.toBeNull();
     expect(result.aggregate.weightedMape!).toBeLessThan(0.05);
     expect(result.aggregate.valuationRangeWideningPct).toBeLessThanOrEqual(0.05);
+    expect(result.aggregate.sampleSize).toBe(2);
+    expect(result.aggregate.noLookAhead?.status).toBe("confirmed");
+    expect(result.aggregate.benchmark?.name).toBe("last-observation-carried-forward");
+    expect(result.aggregate.benchmark?.skillVsBenchmark).toBeGreaterThan(0);
+    expect(result.aggregate.calibrationStatus).toBe("degraded");
   });
 
   it("fails forecast skill and widens valuation range when known outcomes diverge", () => {
@@ -69,6 +74,8 @@ describe("evaluateForecastHoldout", () => {
 
     expect(result.available).toBe(false);
     expect(result.aggregate.status).toBe("unavailable");
+    expect(result.aggregate.sampleSize).toBe(0);
+    expect(result.aggregate.calibrationStatus).toBe("unavailable");
     expect(result.reason).toContain("at least");
   });
 });

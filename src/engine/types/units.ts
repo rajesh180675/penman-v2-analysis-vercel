@@ -91,6 +91,18 @@ export const absoluteSharesToCrore = (a: AbsoluteShares): CroreShares => CroreSh
 export const fractionToBps = (f: PercentFraction): BasisPoints => BasisPoints(f * 10000);
 export const bpsToFraction = (b: BasisPoints): PercentFraction => PercentFraction(b / 10000);
 
+/**
+ * Market capitalisation in INR crore.
+ *
+ * A rupee-per-share price multiplied by shares expressed in crores is
+ * already numerically INR crore. Converting the share count to absolute
+ * shares and dividing by 1e7 again would apply the crore conversion twice.
+ */
+export const marketCapCroreFromPrice = (
+  pricePerShare: INRAbsolute,
+  shares: CroreShares,
+): INRCrore => INRCrore(pricePerShare * shares);
+
 /* ── Arithmetic helpers — preserve brand ───────────────────────── */
 
 export const addCrore = (a: INRCrore, b: INRCrore): INRCrore => INRCrore(a + b);

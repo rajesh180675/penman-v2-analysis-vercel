@@ -37,9 +37,10 @@ export const KNOWN_SCHEMA_VERSIONS = [
   "2026-06-traceability-v17",
   "2026-06-traceability-v18",
   "2026-06-traceability-v19",
+  "2026-06-traceability-v20",
 ] as const;
 
-export const CURRENT_SCHEMA_VERSION = "2026-06-traceability-v19";
+export const CURRENT_SCHEMA_VERSION = "2026-06-traceability-v20";
 
 export interface MigrateResult {
   envelope: { schemaVersion: string; status?: string | undefined; [key: string]: unknown };
@@ -124,6 +125,13 @@ const MIGRATORS: Record<string, Migrator> = {
     // v19 — anti-tautology valuation evidence; this is only populated by
     // valuation command-center runs, so migrated envelopes default to null.
     antiTautology: env.antiTautology ?? null,
+  }),
+  "2026-06-traceability-v19": (env) => ({
+    ...env,
+    schemaVersion: "2026-06-traceability-v20",
+    // v20 — source-lineage: per-file SHA-256 hashes from the parser.
+    // Migrated envelopes default to null (no hashes available for old runs).
+    sourceArtifactHashes: env.sourceArtifactHashes ?? null,
   }),
 };
 

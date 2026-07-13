@@ -2,11 +2,11 @@
   "companyId": "reliance-industries",
   "companyName": "Reliance Industries Ltd",
   "profile": "demerger-fixture",
-  "expectedRigorLevel": "structurally-reconciled",
+  "expectedRigorLevel": "syntactically-valid",
   "expectedParserFidelityStatus": "degraded",
-  "expectedReconciliationStatus": "degraded",
-  "expectedEconomicSanityStatus": "warned",
-  "expectedConceptIdentityStatus": "clean",
+  "expectedReconciliationStatus": "failed",
+  "expectedEconomicSanityStatus": "blocked",
+  "expectedConceptIdentityStatus": "valuation-blocked",
   "keyMetricTolerances": {
     "RNOA": {
       "min": 0.0749,

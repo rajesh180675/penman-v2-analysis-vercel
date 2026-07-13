@@ -38,6 +38,12 @@ export default defineConfig({
       ...(process.argv.some((a) => /audit-all-companies/.test(a))
         ? []
         : ["src/engine/__tests__/audit-all-companies*.spec.ts"]),
+      // The real TCS snapshot budget check parses a full Capitaline ZIP and
+      // runs the complete pipeline (~80s on Windows). Keep it as an explicit
+      // validation gate without charging every ordinary `npm test` run.
+      ...(process.argv.some((a) => /auditSnapshotTransport\.integration/.test(a))
+        ? []
+        : ["src/lib/__tests__/auditSnapshotTransport.integration.spec.ts"]),
     ],
     pool: "forks",
     maxWorkers: 2,

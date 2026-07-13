@@ -112,14 +112,23 @@ describe("computeCashFlowDcf — independent cash lens", () => {
     expect(Number.isFinite(r!.equityValue)).toBe(true);
   });
 
-  it("emits a finite terminal value under the kw−g spread guard (no blow-up, no silent zero)", () => {
+  it("fails closed when terminal growth does not clear the kw−g spread guard", () => {
     const periods = [
       mkPeriod("2023-03-31", { fcf: 100, kwStructural: 0.12 }),
       mkPeriod("2024-03-31", { fcf: 110, kwStructural: 0.12 }),
     ];
-    // terminalGrowth (0.40) far exceeds kw (0.12): kw−g < 0.005 → terminal = 0,
-    // so EV is just the discounted explicit window — finite, not Infinity.
-    const r = computeCashFlowDcf(periods, CONFIG, 100, { terminalGrowth: 0.4 });
+    // An explicit-period-only positive value would look computed even though
+    // the terminal model is invalid. Honest null keeps it out of synthesis.
+    expect(computeCashFlowDcf(periods, CONFIG, 100, { terminalGrowth: 0.4 })).toBeNull();
+    expect(computeCashFlowDcf(periods, CONFIG, 100, { terminalGrowth: 0.115 })).toBeNull();
+  });
+
+  it("computes when terminal growth leaves more than the minimum spread", () => {
+    const periods = [
+      mkPeriod("2023-03-31", { fcf: 100, kwStructural: 0.12 }),
+      mkPeriod("2024-03-31", { fcf: 110, kwStructural: 0.12 }),
+    ];
+    const r = computeCashFlowDcf(periods, CONFIG, 100, { terminalGrowth: 0.11 });
     expect(r).not.toBeNull();
     expect(Number.isFinite(r!.enterpriseValue)).toBe(true);
     expect(r!.enterpriseValue).toBeGreaterThan(0);

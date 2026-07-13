@@ -3,8 +3,8 @@ export type InspectorPayload = {
   runId: string;
   latestAt: string | null;
   counts: { events: number; inputs: number; artifacts: number };
-  inputs: Array<{ pathname: string; uploadedAt: string; size: number }>;
-  artifacts: Array<{ pathname: string; uploadedAt: string; size: number }>;
+  inputs: AuditBlobItem[];
+  artifacts: AuditBlobItem[];
   timeline: Array<{
     pathname: string;
     uploadedAt: string;
@@ -232,6 +232,24 @@ export type InspectorPayload = {
     contentClass?: string | undefined;
     adminTokenVersion?: string | undefined;
   } | null;
+  retentionHealth?: {
+    status: "healthy" | "scheduled" | "warning" | "not-yet-checked";
+    mode: "local-opportunistic" | "vercel-cron";
+    lastCheckedAt: string | null;
+    expiredRunCount: number;
+    expiredArtifactCount: number;
+    orphanCount: number;
+    summary: string;
+  } | null;
+};
+
+export type AuditBlobItem = {
+  pathname: string;
+  uploadedAt: string;
+  size: number;
+  contentType?: string | undefined;
+  contentEncoding?: string | null | undefined;
+  eventType?: string | null | undefined;
 };
 
 export type WatchlistRow = {
