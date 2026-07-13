@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPlatformConfigurationHealth } from "./health.js";
+import { buildPlatformConfigurationHealth } from "../../server/platform/healthHandler";
 
 describe("platform deployment health", () => {
   it("fails closed until every durable provider boundary is configured", () => {

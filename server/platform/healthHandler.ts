@@ -1,25 +1,27 @@
 import crypto from "node:crypto";
-import { buildPlatformActivationPreflight } from "../../src/platform/operations/activationPreflight.ts";
+import type { Request, Response } from "express";
+import { buildPlatformActivationPreflight } from "../../src/platform/operations/activationPreflight";
 
-function safeEqual(left, right) {
+function safeEqual(left: unknown, right: unknown): boolean {
   if (typeof left !== "string" || typeof right !== "string") return false;
   const a = Buffer.from(left);
   const b = Buffer.from(right);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-export function buildPlatformConfigurationHealth(env = process.env) {
+export function buildPlatformConfigurationHealth(env: NodeJS.ProcessEnv = process.env) {
   const preflight = buildPlatformActivationPreflight(env, "release");
   return {
     schemaVersion: preflight.schemaVersion,
-    status: preflight.status === "ready" ? "configured" : "blocked",
+    status: preflight.status === "ready" ? "configured" as const : "blocked" as const,
     checks: preflight.checks,
     missingVariables: preflight.missingVariables,
     invalidVariables: preflight.invalidVariables,
   };
 }
 
-export default async function handler(request, response) {
+/** Token-authenticated deployment health probe used by the consolidated platform function. */
+export default async function platformHealthHandler(request: Request, response: Response): Promise<void> {
   response.setHeader("Cache-Control", "no-store");
   if (request.method !== "GET") {
     response.setHeader("Allow", "GET");
@@ -40,17 +42,17 @@ export default async function handler(request, response) {
   }
   try {
     const [{ createPlatformRuntime }, { ProductionPlatformProbe }] = await Promise.all([
-      import("../../server/platform/defaultRuntime.ts"),
-      import("../../src/platform/operations/productionProbe.ts"),
+      import("./defaultRuntime"),
+      import("../../src/platform/operations/productionProbe"),
     ]);
     const adapters = createPlatformRuntime();
     const live = await new ProductionPlatformProbe(adapters.sql, adapters.objects).run({
-      organizationId: process.env.PLATFORM_HEALTH_ORGANIZATION_ID,
-      workspaceId: process.env.PLATFORM_HEALTH_WORKSPACE_ID,
+      organizationId: process.env.PLATFORM_HEALTH_ORGANIZATION_ID!,
+      workspaceId: process.env.PLATFORM_HEALTH_WORKSPACE_ID!,
       probeId: `health-${Date.now()}`,
       checkedAt,
     });
-    response.status(live.status === "ready" ? 200 : 503).json({ ok: live.status === "ready", status: live.status, checks: health.checks, ...live });
+    response.status(live.status === "ready" ? 200 : 503).json({ ok: live.status === "ready", checks: health.checks, ...live });
   } catch (error) {
     console.error("Platform live health probe failed", error instanceof Error ? error.name : "UnknownError");
     response.status(503).json({ ok: false, status: "blocked", checks: health.checks, checkedAt, error: "PLATFORM_LIVE_PROBE_FAILED" });

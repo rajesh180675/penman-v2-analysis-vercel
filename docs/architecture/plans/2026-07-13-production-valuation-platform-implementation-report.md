@@ -208,7 +208,7 @@ CI includes the TCS acceptance path in the release dependency graph.
 - `src/components/ComparisonReport.tsx`
 - `server/routes/marketData.ts`
 - `api/market-data/snapshot.js`
-- `api/platform/health.js`
+- `api/platform/[...path].ts` and `server/platform/healthHandler.ts`
 - `docs/generated/valuation-model-catalog.md`
 - `.github/workflows/validate.yml`
 

@@ -38,6 +38,8 @@ npm run platform:preflight
 
 The committed Vercel schedule invokes the outbox once per day so preview and production deployments remain valid on the Hobby plan. Production deployments that require prompt webhook delivery must use Vercel Pro (change the outbox expression to `*/5 * * * *`) or an authenticated external scheduler that calls `/api/cron/platform-outbox` every five minutes. Keep `CRON_SECRET` configured in either mode.
 
+The deployment adapter also consolidates all five `/api/cron/*` handlers into one catch-all function and serves `/api/platform/health` through the platform catch-all. Handler modules prefixed with `_` are private implementation files, not additional Vercel functions. This keeps the Vite deployment at the Hobby limit of 12 functions without changing public routes or authorization behavior.
+
 ## 3. Activate a staging workspace
 
 Use real organization, workspace, and principal identifiers from the configured identity tenant.

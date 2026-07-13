@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const blob = vi.hoisted(() => ({ del: vi.fn(), get: vi.fn(), list: vi.fn() }));
 vi.mock("@vercel/blob", () => blob);
 
-import handler, { classifyAuditPruneCandidate } from "./prune-audit.js";
+import handler, { classifyAuditPruneCandidate } from "./_prune-audit.js";
 
 function responseHarness() {
   return {
