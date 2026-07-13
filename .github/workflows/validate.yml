@@ -131,6 +131,28 @@ jobs:
           test "$AUDIT" = success
           test "$TCS_ACCEPTANCE" = success
 
+  # Compatibility context required by the protected main branch. Keep this
+  # as a real aggregate gate rather than a manually-created commit status.
+  validate:
+    name: validate
+    if: always()
+    needs: [quality, unit-tests, golden, company-audit, tcs-acceptance]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce protected-branch validation
+        env:
+          QUALITY: ${{ needs.quality.result }}
+          UNIT: ${{ needs.unit-tests.result }}
+          GOLDEN: ${{ needs.golden.result }}
+          AUDIT: ${{ needs.company-audit.result }}
+          TCS_ACCEPTANCE: ${{ needs.tcs-acceptance.result }}
+        run: |
+          test "$QUALITY" = success
+          test "$UNIT" = success
+          test "$GOLDEN" = success
+          test "$AUDIT" = success
+          test "$TCS_ACCEPTANCE" = success
+
 # ZIP determinism remains a local release check because CI checkouts omit
 # gitignored Capitaline .xls sources. Run sync-companies.cjs twice; the second
 # run must be a no-op before publishing a registry change.
