@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import itcAuditedFixture from "../__fixtures__/itc-capitaline-audited.json";
 import { processCompanyData } from "../pipeline";
 import { DEFAULT_CONFIG, RawPeriodData } from "../types";
+import { CroreShares } from "../types/units";
 import { resolveShareBasis, toPerShare } from "../shareCountTools";
 
 /**
@@ -125,8 +126,8 @@ describe("share count tools", () => {
     const latestOnly = rawData.filter((row) => row.period_end === "2025-03-31");
     const periods = processCompanyData(latestOnly, { ...DEFAULT_CONFIG, company_type: "industrial" as const });
 
-    const override = 999.99 as unknown as number;
-    const resolved = resolveShareBasis(periods, { ...DEFAULT_CONFIG, shares_outstanding: override as any }, 180000);
+    const override = CroreShares(999.99);
+    const resolved = resolveShareBasis(periods, { ...DEFAULT_CONFIG, shares_outstanding: override }, 180000);
 
     // Config override applies to BOTH bases (audited config input is authoritative).
     expect(resolved.sharesForPerShare).toBe(override);

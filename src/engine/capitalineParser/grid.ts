@@ -2,65 +2,31 @@ import { HeaderInfo } from "./types";
 import { cleanCell, tryParsePeriod } from "./cells";
 
 /* ══════════════════════════════════════════════════════════════════
-   Parse Strategy A: SheetJS XLSX
+   Parse Strategy A: ExcelJS XLSX
 ══════════════════════════════════════════════════════════════════ */
 
 export async function gridViaXlsx(buffer: ArrayBuffer): Promise<string[][]> {
-  // SECURITY NOTE: SheetJS 0.18.x has known prototype-pollution and ReDoS
-  // CVEs (GHSA-4r6h-8v6p-xvw6, GHSA-5pgg-2g8v-p4x9). They are unfixed on
-  // npm — fixed builds live only on the SheetJS CDN. Accepted risk because:
-  //   (a) parsing runs client-side in the user's browser on files THEY
-  //       uploaded; no public endpoint routes untrusted XLS through here
-  //   (b) this is one of several fallback parse strategies — failures fall
-  //       through to JSZip/regex paths
-  // If the threat model expands to public XLS uploads, replace this strategy
-  // with exceljs or a CDN-pinned SheetJS build.
-  const { default: XLSX } = await import("xlsx");
-  let uint8: Uint8Array | null = new Uint8Array(buffer);
-  let wb: import("xlsx").WorkBook | null = null;
+  const { default: ExcelJS } = await import("exceljs");
+  const workbook = new ExcelJS.Workbook();
   let best: string[][] = [];
 
   try {
-    wb = XLSX.read(uint8, {
-      type: "array",
-      cellDates: false,
-      cellFormula: false,
-      raw: false,
-      dense: false,
-      codepage: 65001,
-    });
-
-    if (wb && wb.SheetNames.length) {
-      for (const sn of wb.SheetNames) {
-        const ws = wb.Sheets[sn];
-        if (!ws) continue;
-        const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, {
-          header: 1,
-          raw: false,
-          defval: "",
-        }) as unknown[][];
-
-        const grid = rows
-          .map((r) =>
-            (Array.isArray(r) ? r : [r]).map((c) => cleanCell(String(c ?? "")))
-          )
-          .filter((r) => r.some((c) => c !== ""));
-
-        if (grid.length > best.length) best = grid;
-      }
+    // ExcelJS accepts ArrayBuffer/Uint8Array in browsers, although its public
+    // declaration uses Node's Buffer type for the same binary input.
+    await workbook.xlsx.load(buffer);
+    for (const worksheet of workbook.worksheets) {
+      const grid: string[][] = [];
+      worksheet.eachRow({ includeEmpty: false }, (row) => {
+        const cells: string[] = [];
+        for (let column = 1; column <= row.cellCount; column += 1) {
+          cells.push(cleanCell(row.getCell(column).text));
+        }
+        if (cells.some((cell) => cell !== "")) grid.push(cells);
+      });
+      if (grid.length > best.length) best = grid;
     }
   } catch {
     return [];
-  } finally {
-    // Clear references to help GC reclaim SheetJS WorkBook + large buffers
-    if (wb) {
-      for (const sheet of Object.keys(wb.Sheets)) {
-        delete wb.Sheets[sheet];
-      }
-      wb.SheetNames.length = 0;
-      wb = null;
-    }
-    uint8 = null;
   }
 
   return best;

@@ -1,5 +1,6 @@
 import { EngineConfig, RawPeriodData } from "./types";
 import { periodMetricValue } from "./rawMetricTools";
+import { resolveCostOfCapitalFromConfig } from "./costOfCapital";
 
 export type FinancialInstitutionKind = "bank" | "nbfc" | "insurance" | "generic-financial";
 
@@ -39,7 +40,7 @@ export function buildFinancialInstitutionValuation(periods: RawPeriodData[], con
   const bookValuePerShare = bookValue != null && shares != null && shares > 0 ? bookValue / shares : null;
   const earningsPerShare = earnings != null && shares != null && shares > 0 ? earnings / shares : periodMetricValue(latest, ["Earning Per Share - Basic"]);
   const roe = bookValue != null && earnings != null && Math.abs(bookValue) > 1 ? earnings / bookValue : earningsPerShare != null && bookValuePerShare != null && bookValuePerShare > 0 ? earningsPerShare / bookValuePerShare : null;
-  const ke = config.ke > 0 ? config.ke : config.risk_free_rate + config.equity_risk_premium;
+  const ke = resolveCostOfCapitalFromConfig({ config }).ke;
   const baseGrowth = Math.max(0.03, Math.min(0.08, config.g_terminal_override ?? 0.05));
 
   const deposits = periodMetricValue(latest, ["Deposits", "Current Account Deposits", "Savings Deposits"]);

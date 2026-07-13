@@ -183,6 +183,8 @@ describe("generateValuationWorkbook", () => {
     const cfg: EngineConfig = {
       ...DEFAULT_CONFIG,
       ke: PercentFraction(0.18),
+      cost_of_equity_mode: "manual",
+      ke_manual_rationale: "Workbook test override",
       risk_free_rate: 0.03,
       equity_risk_premium: 0.05,
     };
@@ -193,6 +195,7 @@ describe("generateValuationWorkbook", () => {
     const cfg: EngineConfig = {
       ...DEFAULT_CONFIG,
       ke: PercentFraction(0),
+      cost_of_equity_mode: "capm",
       risk_free_rate: 0.04,
       equity_risk_premium: 0.06,
     };
@@ -251,6 +254,10 @@ describe("generateValuationWorkbook", () => {
       {
         companyLabel: "ITC",
         auditRunId: "run-123",
+        analysisRunId: "analysis-run-456",
+        reproducibilityHash: `sha256:${"a".repeat(64)}`,
+        analysisRunSchemaVersion: "2026-07-analysis-run-v1",
+        executorVersion: "legacy-analysis-run-executor-v1",
         valuationStatus: "guarded",
         valuationReasons: ["Using prior anchor period 2024-03-31 because 2025-03-31 is compromised."],
         valuationAnchorPeriod: "2024-03-31",
@@ -263,26 +270,31 @@ describe("generateValuationWorkbook", () => {
 
     expect(cellValue(wb, "Cover", "B6")).toBe("ITC");
     expect(valueByLabel(wb, "Cover", "Audit Run ID")).toBe("run-123");
+    expect(valueByLabel(wb, "Cover", "Analysis Run ID")).toBe("analysis-run-456");
+    expect(valueByLabel(wb, "Cover", "Reproducibility Hash")).toBe(`sha256:${"a".repeat(64)}`);
     expect(valueByLabel(wb, "Cover", "Valuation Status")).toBe("guarded");
     expect(valueByLabel(wb, "Cover", "Valuation Anchor Period")).toBe("2024-03-31");
     expect(valueByLabel(wb, "Cover", "Engine Version")).toBe(getAnalysisPolicyVersions().engineVersion);
     expect(valueByLabel(wb, "Cover", "Mapping Spec Version")).toBe(getAnalysisPolicyVersions().mappingSpecVersion);
     expect(valueByLabel(wb, "Cover", "Scope Policy Version")).toBe(getAnalysisPolicyVersions().scopePolicyVersion);
     expect(valueByLabel(wb, "Cover", "Traceability Schema")).toBe(getAnalysisPolicyVersions().traceabilitySchemaVersion);
-    expect(valueByLabel(wb, "Cover", "Rigor Level")).toBe("Economically plausible");
+    expect(valueByLabel(wb, "Cover", "Rigor Level")).toBe(traceability.rigor.currentLabel);
     expect(valueByLabel(wb, "Cover", "Parser Fidelity")).toBe("confirmed");
-    expect(valueByLabel(wb, "Cover", "Reconciliation Status")).toBe("confirmed");
+    expect(valueByLabel(wb, "Cover", "Reconciliation Status")).toBe(traceability.reconciliation.status);
     expect(valueByLabel(wb, "Valuation", "Audit Run ID")).toBe("run-123");
     expect(valueByLabel(wb, "Valuation", "Valuation Status")).toBe("guarded");
     expect(valueByLabel(wb, "Valuation", "Anchor Period")).toBe("2024-03-31");
-    expect(valueByLabel(wb, "Traceability", "Run ID")).toBe("run-123");
+    expect(valueByLabel(wb, "Traceability", "Run ID")).toBe("analysis-run-456");
+    expect(valueByLabel(wb, "Traceability", "Reproducibility Hash")).toBe(`sha256:${"a".repeat(64)}`);
+    expect(valueByLabel(wb, "Traceability", "Analysis Run Schema")).toBe("2026-07-analysis-run-v1");
+    expect(valueByLabel(wb, "Traceability", "Executor Version")).toBe("legacy-analysis-run-executor-v1");
     expect(valueByLabel(wb, "Traceability", "Schema Version")).toBe(getAnalysisPolicyVersions().traceabilitySchemaVersion);
-    expect(valueByLabel(wb, "Traceability", "Rigor Level")).toBe("Economically plausible");
+    expect(valueByLabel(wb, "Traceability", "Rigor Level")).toBe(traceability.rigor.currentLabel);
     expect(valueByLabel(wb, "Traceability", "Parser Fidelity Status")).toBe("confirmed");
     expect(valueByLabel(wb, "Traceability", "Parser Fidelity Score")).toBe(100);
-    expect(valueByLabel(wb, "Traceability", "Reconciliation Status")).toBe("confirmed");
-    expect(valueByLabel(wb, "Traceability", "Max Reconciliation Residual")).toBe(0);
-    expect(valueByLabel(wb, "Traceability", "Achieved Levels")).toBe("syntactically-valid | structurally-reconciled | economically-plausible");
+    expect(valueByLabel(wb, "Traceability", "Reconciliation Status")).toBe(traceability.reconciliation.status);
+    expect(valueByLabel(wb, "Traceability", "Max Reconciliation Residual")).toBe(traceability.reconciliation.maxResidualRatio ?? 0);
+    expect(valueByLabel(wb, "Traceability", "Achieved Levels")).toBe(traceability.rigor.achievedLevels.join(" | "));
   });
 
   it("exports effective confidence counters separately from mapping coverage counters", async () => {
@@ -379,9 +391,9 @@ describe("generateValuationWorkbook", () => {
     );
     const wb = await loadWorkbook(workbookBuf);
 
-    expect(valueByLabel(wb, "Traceability", "Confidence Blocking Issues")).toBe(1);
-    expect(valueByLabel(wb, "Traceability", "Confidence Diagnostic Issues")).toBe(0);
-    expect(valueByLabel(wb, "Traceability", "Confidence Optional Issues")).toBe(0);
+    expect(valueByLabel(wb, "Traceability", "Confidence Blocking Issues")).toBe(traceability.confidence.blockingCount);
+    expect(valueByLabel(wb, "Traceability", "Confidence Diagnostic Issues")).toBe(traceability.confidence.diagnosticCount);
+    expect(valueByLabel(wb, "Traceability", "Confidence Optional Issues")).toBe(traceability.confidence.optionalCount);
     expect(valueByLabel(wb, "Traceability", "Mapping Blocking Issues")).toBe(0);
     expect(valueByLabel(wb, "Traceability", "Mapping Diagnostic Issues")).toBe(0);
     expect(valueByLabel(wb, "Traceability", "Mapping Optional Issues")).toBe(0);

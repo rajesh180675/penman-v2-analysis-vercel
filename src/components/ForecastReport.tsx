@@ -46,6 +46,10 @@ import MonteCarloSection from "./forecast/MonteCarloSection";
 import SensitivitySection from "./forecast/SensitivitySection";
 import ProFormaTable from "./forecast/ProFormaTable";
 import ProvenancePanel from "./forecast/ProvenancePanel";
+import RunBackedForecastReport from "./forecast/RunBackedForecastReport";
+import type { SourcedAssumptionSet, UnifiedAnalysisWindow } from "../engine/analysisCase";
+import type { IndustrialForecastResult, ScenarioOrderingReport } from "../engine/forecastState";
+import type { ScenarioGovernanceReport } from "../engine/valuationEvidence";
 
 interface Props {
   data: RecastPeriod[];
@@ -53,9 +57,35 @@ interface Props {
   traceability?: AnalysisTraceabilityEnvelope | null | undefined;
   traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null | undefined;
 }
-interface ExtendedProps extends Props { rawData?: RawPeriodData[] | null }
+interface ExtendedProps extends Props {
+  rawData?: RawPeriodData[] | null;
+  /** Presence of this property selects the immutable run-backed surface, even
+   * while the value is null during worker execution. */
+  runForecastResults?: readonly IndustrialForecastResult[] | null;
+  analysisWindow?: UnifiedAnalysisWindow | null;
+  sourcedAssumptionSet?: SourcedAssumptionSet | null;
+  scenarioOrdering?: ScenarioOrderingReport | null;
+  scenarioGovernance?: ScenarioGovernanceReport | null;
+}
 
-export default function ForecastReport({data,config, rawData = null, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null}:ExtendedProps) {
+export default function ForecastReport(props: ExtendedProps) {
+  if ("runForecastResults" in props) {
+    return (
+      <RunBackedForecastReport
+        results={props.runForecastResults ?? null}
+        analysisWindow={props.analysisWindow ?? null}
+        assumptions={props.sourcedAssumptionSet ?? null}
+        ordering={props.scenarioOrdering ?? null}
+        governance={props.scenarioGovernance ?? null}
+        traceability={props.traceability ?? null}
+        traceabilitySummary={props.traceabilitySummary ?? buildValuationTraceabilitySurfaceSummary(props.traceability)}
+      />
+    );
+  }
+  return <LegacyForecastReport {...props} />;
+}
+
+function LegacyForecastReport({data,config, rawData = null, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null}:ExtendedProps) {
   const keBase = ke_from_config(config);
   // ke_inp is seeded in percent rounded to 0.1pp; keSeed is the exact decimal ke
   // the live path starts from (ke_inp/100 at rest). The structural baseline must
@@ -176,7 +206,10 @@ export default function ForecastReport({data,config, rawData = null, traceabilit
         traceability.confidence.status === "blocked"
         || traceability.qualityGate.scopeBlocked
         || traceability.qualityGate.valuationBlocked
-        || traceability.reconciliation.status === "failed"
+        || (
+          traceability.reconciliation.status !== "confirmed"
+          && traceability.reconciliation.status !== "degraded"
+        )
         || traceability.parserFidelity.status === "failed"
       ) {
         return "blocked" as const;

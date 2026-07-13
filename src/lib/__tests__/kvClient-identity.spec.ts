@@ -2,7 +2,7 @@
    Plan 4 PR-4.1 — kvClient + identity contract tests.
 ================================================================ */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { isKvEnabled, kvGet, kvSet, kvDelete } from "../kvClient";
 import {
   getAnonId,
@@ -26,9 +26,17 @@ beforeEach(() => {
 });
 
 describe("kvClient (Plan 4 PR-4.1)", () => {
-  it("isKvEnabled() returns false in test environment (no creds)", () => {
-    // Vitest jsdom runs without VITE_KV_REST_API_URL set, so KV is off.
+  it("keeps remote KV disabled in browser code", () => {
     expect(isKvEnabled()).toBe(false);
+  });
+
+  it("never sends storage credentials or values over fetch", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    await kvSet("sensitive", { value: 42 });
+    await kvGet("sensitive");
+    await kvDelete("sensitive");
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
 
   it("kvSet writes to localStorage when KV disabled, source='localStorage'", async () => {

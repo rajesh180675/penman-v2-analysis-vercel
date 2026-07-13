@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import "katex/dist/katex.min.css";
 import { EngineConfig, RawPeriodData, RecastPeriod, ke_from_config } from "../engine/types";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
@@ -37,6 +37,7 @@ import { ValuationSynthesisSection, SensitivityMatrixSection, ResidualIncomeStre
 import { Section6BPanel } from "./academic/Section6BPanel";
 import { QualityScoreSection, InvestmentInterpretationSection } from "./academic/QualityAndInterpretationSections";
 import { ExportToolbar } from "./academic/ExportToolbar";
+import { useAcademicEquations } from "./academic/useAcademicEquations";
 
 interface Props {
   data: RecastPeriod[];
@@ -51,34 +52,8 @@ interface Props {
 
 export default function AcademicReport({ data, config, rawData, auditMeta, traceability: sharedTraceability = null, publication: precomputedPublication = null, ratioSanity = null }: Props) {
   // KaTeX is lazy-loaded so the entry chunk doesn't ship the renderer for
-  // users who never open Academic Report. Equations render as plain LaTeX
-  // text until katex resolves, then upgrade to typeset HTML in place.
-  const [equations, setEquations] = useState<{
-    eqROCE: string;
-    eqRNOA: string;
-    eqRE: string;
-    eqReOI: string;
-  }>(() => ({
-    eqROCE: String.raw`\mathrm{ROCE}_t = \frac{\mathrm{CNI}_t}{\overline{\mathrm{CSE}}}`,
-    eqRNOA: String.raw`\mathrm{RNOA}_t = \frac{\mathrm{OI}_t}{\overline{\mathrm{NOA}}}`,
-    eqRE: String.raw`\mathrm{RE}_t = \mathrm{CNI}_t - k_e\,\mathrm{CSE}_{t-1}`,
-    eqReOI: String.raw`\mathrm{ReOI}_t = \mathrm{OI}_t - k_w\,\mathrm{NOA}_{t-1}`,
-  }));
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const { default: katex } = await import("katex");
-      if (cancelled) return;
-      setEquations({
-        eqROCE: katex.renderToString(String.raw`\mathrm{ROCE}_t = \frac{\mathrm{CNI}_t}{\overline{\mathrm{CSE}}}`, { throwOnError: false, displayMode: true }),
-        eqRNOA: katex.renderToString(String.raw`\mathrm{RNOA}_t = \frac{\mathrm{OI}_t}{\overline{\mathrm{NOA}}}`, { throwOnError: false, displayMode: true }),
-        eqRE: katex.renderToString(String.raw`\mathrm{RE}_t = \mathrm{CNI}_t - k_e\,\mathrm{CSE}_{t-1}`, { throwOnError: false, displayMode: true }),
-        eqReOI: katex.renderToString(String.raw`\mathrm{ReOI}_t = \mathrm{OI}_t - k_w\,\mathrm{NOA}_{t-1}`, { throwOnError: false, displayMode: true }),
-      });
-    })();
-    return () => { cancelled = true; };
-  }, []);
-  const { eqROCE, eqRNOA, eqRE, eqReOI } = equations;
+  // users who never open Academic Report.
+  const { eqROCE, eqRNOA, eqRE, eqReOI } = useAcademicEquations();
 
   const reportRef = useRef<HTMLDivElement | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
@@ -131,6 +106,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   const traceability = publication.traceability;
   const granularityChecklist = publication.granularityChecklist;
   const traceabilitySummary = publication.traceabilitySummary;
+  const runIdentity = publication.runIdentity;
 
   const exportPdf = async () => {
     if (!reportRef.current || exportingPdf) return;
@@ -155,6 +131,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         valuationReadiness,
         policyVersions,
         traceability,
+        runIdentity,
         companyId,
         hmacKeyId,
         hmacSecret,
@@ -174,6 +151,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         valuationReadiness,
         policyVersions,
         traceability,
+        runIdentity,
         auditMeta,
         data,
         valuation,
@@ -399,6 +377,7 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         valuationReadiness={valuationReadiness}
         qualityGate={qualityGate}
         traceability={traceability}
+        runIdentity={runIdentity}
         blockingIssues={blockingIssues}
         diagnosticIssues={diagnosticIssues}
         optionalIssues={optionalIssues}

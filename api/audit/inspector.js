@@ -49,6 +49,10 @@ export default async function handler(request, response) {
 
   const health = evaluateRunHealth(run, getMonitorConfig());
   const persistedMonitorReport = await getMonitorReport(runId).catch(() => null);
+  const governance = getAuditGovernanceConfig();
+  const retentionCutoff = Date.now() - governance.retentionDays * 24 * 60 * 60 * 1_000;
+  const expiredVisibleCount = [...run.inputs, ...run.artifacts]
+    .filter((item) => new Date(item.uploadedAt).getTime() < retentionCutoff).length;
 
   response.status(200).json({
     ok: true,
@@ -65,6 +69,17 @@ export default async function handler(request, response) {
     latestValuationAlert: run.latestValuationAlert,
     health,
     persistedMonitorReport,
-    governance: getAuditGovernanceConfig(),
+    governance,
+    retentionHealth: {
+      status: expiredVisibleCount > 0 ? "warning" : "scheduled",
+      mode: "vercel-cron",
+      lastCheckedAt: persistedMonitorReport?.generatedAt ?? null,
+      expiredRunCount: 0,
+      expiredArtifactCount: expiredVisibleCount,
+      orphanCount: 0,
+      summary: expiredVisibleCount > 0
+        ? `${expiredVisibleCount} visible blob(s) are older than the ${governance.retentionDays}-day policy and should be removed by the next cron pass.`
+        : `Vercel cron enforces the ${governance.retentionDays}-day policy and one-day orphan grace period.`,
+    },
   });
 }

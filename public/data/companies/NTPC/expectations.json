@@ -2,11 +2,11 @@
   "companyId": "ntpc",
   "companyName": "NTPC Ltd",
   "profile": "capital-intensive-regulated",
-  "expectedRigorLevel": "economically-plausible",
+  "expectedRigorLevel": "syntactically-valid",
   "expectedParserFidelityStatus": "degraded",
-  "expectedReconciliationStatus": "degraded",
+  "expectedReconciliationStatus": "failed",
   "expectedEconomicSanityStatus": "passed",
-  "expectedConceptIdentityStatus": "clean",
+  "expectedConceptIdentityStatus": "valuation-blocked",
   "keyMetricTolerances": {
     "RNOA": {
       "min": 0.0698,

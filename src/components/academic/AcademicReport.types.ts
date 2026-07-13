@@ -17,6 +17,7 @@ export type TerminalAnchor = V3Bundle["anchorResult"] | undefined;
 
 export type QualityGate = Publication["qualityGate"];
 export type Traceability = Publication["traceability"];
+export type RunIdentity = Publication["runIdentity"];
 export type ValuationReadiness = Publication["valuationReadiness"];
 export type TraceabilitySummary = Publication["traceabilitySummary"];
 

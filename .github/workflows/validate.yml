@@ -6,36 +6,130 @@ on:
   schedule:
     - cron: "15 2 * * *"
 
-jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+permissions:
+  contents: read
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+jobs:
+  quality:
+    name: Quality, snapshot budget, and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint:any
+      - run: npm run lint:doc-schema
+      - run: npm run lint:model-catalog
+      - name: Real TCS audit transport budget
+        run: npm run lint:audit-snapshot
+      - run: npm run build
+      - run: npm run lint:bundle
 
-      - name: Install dependencies
-        run: npm ci
+  unit-tests:
+    name: Unit shard ${{ matrix.shard }}/3
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: mkdir -p test-results
+      - name: Run timed Vitest shard
+        run: npm run test:timed:${{ matrix.shard }}
+      - name: Report slowest tests
+        if: always()
+        run: node scripts/report-slow-tests.mjs test-results/shard-${{ matrix.shard }}.xml 25
+      - name: Upload timing report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-shard-${{ matrix.shard }}
+          path: test-results/shard-${{ matrix.shard }}.xml
+          if-no-files-found: warn
 
-      # Release-grade validation = typecheck + golden suite + full vitest
-      # + production build (which transitively runs validate-registry via
-      # the prebuild hook, so registry consistency is checked here too).
-      - name: Run release-grade validation
-        run: npm run validate:release
+  golden:
+    name: Golden valuation cases
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:golden
 
-# Note on ZIP determinism: the byte-stability of generated ZIPs is verified
-# by developers locally because CI checkouts have incomplete .xls inputs
-# (Bajaj sidecars are tracked but consolidated/standalone .xls are
-# gitignored). To verify locally:
-#
-#   node sync-companies.cjs   # rebuild
-#   node sync-companies.cjs   # must be a no-op
-#   git status                # must be clean
-#
-# This catches regressions in JSZip determinism, locale-dependent sorting,
-# auto-folder timestamp leaks, etc. before they reach main.
+  company-audit:
+    name: Company audit shard ${{ matrix.shard }}/3
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run --pool=forks src/engine/__tests__/audit-all-companies-shard-${{ matrix.shard }}.spec.ts
+
+  tcs-acceptance:
+    name: TCS deep-link audit acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e:tcs-audit
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcs-acceptance-playwright-report
+          path: playwright-report
+          if-no-files-found: ignore
+
+  release-gate:
+    name: Release validation complete
+    if: always()
+    needs: [quality, unit-tests, golden, company-audit, tcs-acceptance]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce every parallel gate
+        env:
+          QUALITY: ${{ needs.quality.result }}
+          UNIT: ${{ needs.unit-tests.result }}
+          GOLDEN: ${{ needs.golden.result }}
+          AUDIT: ${{ needs.company-audit.result }}
+          TCS_ACCEPTANCE: ${{ needs.tcs-acceptance.result }}
+        run: |
+          test "$QUALITY" = success
+          test "$UNIT" = success
+          test "$GOLDEN" = success
+          test "$AUDIT" = success
+          test "$TCS_ACCEPTANCE" = success
+
+# ZIP determinism remains a local release check because CI checkouts omit
+# gitignored Capitaline .xls sources. Run sync-companies.cjs twice; the second
+# run must be a no-op before publishing a registry change.

@@ -69,9 +69,13 @@ function compareMetric(train: RecastPeriod[], test: RecastPeriod, metric: Foreca
   const def = METRICS.find((item) => item.metric === metric)!;
   const actual = finiteOrNull(def.extractor(test));
   const predicted = predictNext(train, metric);
+  const benchmarkPredicted = metricValues(train, metric).at(-1) ?? null;
   const absoluteError = actual != null && predicted != null ? Math.abs(actual - predicted) : null;
   const percentageError = absoluteError != null && actual != null && Math.abs(actual) > 1e-9
     ? absoluteError / Math.abs(actual)
+    : null;
+  const benchmarkPercentageError = benchmarkPredicted != null && actual != null && Math.abs(actual) > 1e-9
+    ? Math.abs(actual - benchmarkPredicted) / Math.abs(actual)
     : null;
   return {
     metric,
@@ -79,6 +83,8 @@ function compareMetric(train: RecastPeriod[], test: RecastPeriod, metric: Foreca
     predicted,
     absoluteError,
     percentageError,
+    benchmarkPredicted,
+    benchmarkPercentageError,
     status: metricStatus(percentageError),
   };
 }
@@ -117,6 +123,11 @@ export function evaluateForecastHoldout(periods: RecastPeriod[] | null | undefin
         status: "unavailable",
         confidencePenaltyPct: 0.15,
         valuationRangeWideningPct: 0.15,
+        calibrationStatus: "unavailable",
+        sampleSize: 0,
+        minimumTrainPeriods: MIN_TRAIN_PERIODS,
+        benchmark: { name: "last-observation-carried-forward", weightedMape: null, skillVsBenchmark: null },
+        noLookAhead: { status: "confirmed", policy: "strict-prior-period-training" },
       },
     };
   }
@@ -137,6 +148,7 @@ export function evaluateForecastHoldout(periods: RecastPeriod[] | null | undefin
   }
 
   const metricMape: Partial<Record<ForecastHoldoutMetric, number>> = {};
+  const benchmarkMetricMape: Partial<Record<ForecastHoldoutMetric, number>> = {};
   for (const def of METRICS) {
     const errors = folds
       .flatMap((fold) => fold.metrics)
@@ -145,6 +157,13 @@ export function evaluateForecastHoldout(periods: RecastPeriod[] | null | undefin
       .filter((value): value is number => value != null && Number.isFinite(value));
     const metricMedian = median(errors);
     if (metricMedian != null) metricMape[def.metric] = metricMedian;
+    const benchmarkErrors = folds
+      .flatMap((fold) => fold.metrics)
+      .filter((item) => item.metric === def.metric)
+      .map((item) => item.benchmarkPercentageError)
+      .filter((value): value is number => value != null && Number.isFinite(value));
+    const benchmarkMedian = median(benchmarkErrors);
+    if (benchmarkMedian != null) benchmarkMetricMape[def.metric] = benchmarkMedian;
   }
 
   let weightedNumerator = 0;
@@ -156,7 +175,26 @@ export function evaluateForecastHoldout(periods: RecastPeriod[] | null | undefin
     weightDenominator += def.weight;
   }
   const weightedMape = weightDenominator > 0 ? weightedNumerator / weightDenominator : null;
+  let benchmarkNumerator = 0;
+  let benchmarkDenominator = 0;
+  for (const def of METRICS) {
+    const mape = benchmarkMetricMape[def.metric];
+    if (mape == null || !Number.isFinite(mape)) continue;
+    benchmarkNumerator += mape * def.weight;
+    benchmarkDenominator += def.weight;
+  }
+  const benchmarkWeightedMape = benchmarkDenominator > 0 ? benchmarkNumerator / benchmarkDenominator : null;
+  const skillVsBenchmark = weightedMape != null && benchmarkWeightedMape != null && benchmarkWeightedMape > 1e-12
+    ? (benchmarkWeightedMape - weightedMape) / benchmarkWeightedMape
+    : null;
   const status = aggregateStatus(weightedMape);
+  const calibrationStatus = status === "failed"
+    ? "failed" as const
+    : status === "unavailable"
+      ? "unavailable" as const
+      : status === "confirmed" && folds.length >= 3 && (skillVsBenchmark ?? -1) > 0
+        ? "calibrated" as const
+        : "degraded" as const;
 
   return {
     available: status !== "unavailable",
@@ -167,6 +205,15 @@ export function evaluateForecastHoldout(periods: RecastPeriod[] | null | undefin
       status,
       confidencePenaltyPct: confidencePenaltyPct(status, weightedMape),
       valuationRangeWideningPct: valuationRangeWideningPct(status, weightedMape),
+      calibrationStatus,
+      sampleSize: folds.length,
+      minimumTrainPeriods: MIN_TRAIN_PERIODS,
+      benchmark: {
+        name: "last-observation-carried-forward",
+        weightedMape: benchmarkWeightedMape,
+        skillVsBenchmark,
+      },
+      noLookAhead: { status: "confirmed", policy: "strict-prior-period-training" },
     },
   };
 }

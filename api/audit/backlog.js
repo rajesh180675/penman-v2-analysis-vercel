@@ -48,6 +48,24 @@ function fallbackOutOfSpecLabels(rawData) {
   });
 }
 
+function fallbackOutOfSpecMetricKeys(rawMetricKeyIndex) {
+  if (!Array.isArray(rawMetricKeyIndex)) return null;
+  const counts = new Map();
+  for (const compositeKey of rawMetricKeyIndex) {
+    if (typeof compositeKey !== "string") continue;
+    const idx = compositeKey.lastIndexOf("__");
+    if (idx < 0) continue;
+    const key = compositeKey.slice(0, idx);
+    const statement = compositeKey.slice(idx + 2) || "Unknown";
+    if (KNOWN_MAPPING_KEYS.has(key)) continue;
+    counts.set(`${statement}||${key}`, 1);
+  }
+  return Array.from(counts.keys()).map((scoped) => {
+    const [statement, key] = scoped.split("||");
+    return { statement, key, periodsObserved: 1 };
+  });
+}
+
 function classifyCandidate(statement, key) {
   const label = String(key || "").toLowerCase();
   if (statement === "ProfitLoss") {
@@ -94,7 +112,7 @@ async function listSnapshotBlobs(limit, runId = null) {
 
   const latestByRun = new Map();
   for (const blob of result.blobs) {
-    if (!blob.pathname.endsWith("analysis-snapshot.json")) continue;
+    if (!blob.pathname.endsWith(".json") || !blob.pathname.includes("analysis-snapshot")) continue;
     const blobRunId = extractRunIdFromPath(blob.pathname);
     if (!blobRunId) continue;
     const existing = latestByRun.get(blobRunId);
@@ -147,7 +165,9 @@ export default async function handler(request, response) {
     const payload = parsed?.payload ?? {};
     const companyId = parsed?.companyId ?? payload.companyId ?? null;
     policyVersions = policyVersions ?? payload.policyVersions ?? null;
-    const labels = payload.mappingAudit?.outOfSpecLabels ?? fallbackOutOfSpecLabels(payload.rawData);
+    const labels = payload.mappingAudit?.outOfSpecLabels
+      ?? fallbackOutOfSpecMetricKeys(payload.rawMetricKeyIndex)
+      ?? fallbackOutOfSpecLabels(payload.rawData);
 
     for (const label of labels) {
       const statement = label.statement ?? "Unknown";

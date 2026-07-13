@@ -1,7 +1,7 @@
 import { RecastPeriod } from "../../engine/types";
 import { pct, num } from "./AcademicReport.formatters";
 import { Kpi } from "./AcademicUi";
-import type { QualityGate, Traceability, ValuationReadiness, Valuation } from "./AcademicReport.types";
+import type { QualityGate, RunIdentity, Traceability, ValuationReadiness, Valuation } from "./AcademicReport.types";
 
 interface Issue { title: string }
 
@@ -12,6 +12,7 @@ export function MemoHeaderSection(props: {
   valuationReadiness: ValuationReadiness;
   qualityGate: QualityGate;
   traceability: Traceability;
+  runIdentity: RunIdentity;
   blockingIssues: Issue[];
   diagnosticIssues: Issue[];
   optionalIssues: Issue[];
@@ -25,6 +26,7 @@ export function MemoHeaderSection(props: {
     valuationReadiness,
     qualityGate,
     traceability,
+    runIdentity,
     blockingIssues,
     diagnosticIssues,
     optionalIssues,
@@ -86,6 +88,11 @@ export function MemoHeaderSection(props: {
             <div className="mt-1 text-[11px] text-slate-600">
               Run {traceability.runContext.runId ? traceability.runContext.runId.slice(0, 8) : "—"} · source {traceability.runContext.sourceMode ?? "—"} · actionable backlog {traceability.mappingCoverage.actionableOutOfSpecLabelCount} · review queue {traceability.mappingCoverage.backlogByAction.review}
             </div>
+            {runIdentity ? (
+              <div className="mt-1 break-all font-mono text-[10px] text-slate-600">
+                Analysis run {runIdentity.runId} · {runIdentity.reproducibilityHash}
+              </div>
+            ) : null}
           </div>
         )}
         {valuationReadiness.status !== "production-ready" && (

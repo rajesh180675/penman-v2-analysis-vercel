@@ -211,8 +211,13 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   if (err?.type === "entity.too.large") {
     console.error(`[413 Payload Too Large] Path: ${_req.path}, BaseUrl: ${_req.baseUrl}, Method: ${_req.method}, Length: ${_req.headers["content-length"]}`);
     const isResearch = _req.path.includes("/research") || _req.baseUrl?.includes("/research");
-    const activeLimit = isResearch ? RESEARCH_JSON_BODY_LIMIT : LOCAL_JSON_BODY_LIMIT;
-    const envHint = isResearch ? "RESEARCH_JSON_BODY_LIMIT" : "LOCAL_JSON_BODY_LIMIT";
+    const isAuditBlob = _req.path.includes("/audit/blobs") || _req.originalUrl?.includes("/api/audit/blobs");
+    const activeLimit = isAuditBlob
+      ? process.env.LOCAL_AUDIT_BLOB_LIMIT ?? "64mb"
+      : isResearch ? RESEARCH_JSON_BODY_LIMIT : LOCAL_JSON_BODY_LIMIT;
+    const envHint = isAuditBlob
+      ? "LOCAL_AUDIT_BLOB_LIMIT"
+      : isResearch ? "RESEARCH_JSON_BODY_LIMIT" : "LOCAL_JSON_BODY_LIMIT";
     res.status(413).json({
       ok: false,
       error: `Request body too large. Limit: ${activeLimit}. Override with ${envHint} env var.`,
@@ -224,9 +229,14 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   res.status(500).json({ ok: false, error: "Internal server error." });
 });
 
+// Bind to localhost only by default so only your machine can reach the API.
+// Set LOCAL_SERVER_BIND=0.0.0.0 (or any interface) only if you deliberately
+// want LAN exposure — e.g. testing from another device on your Wi-Fi.
+const HOST = process.env.LOCAL_SERVER_BIND ?? "127.0.0.1";
+
 // Start
-app.listen(PORT, () => {
-  console.log(`\n  🏠 Penman local server running at http://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`\n  🏠 Penman local server running at http://${HOST}:${PORT}`);
   console.log(`  📁 Data stored in ~/.penman-data/`);
   console.log(`  📊 Market data: NSE India (no API key needed)`);
   console.log(`  🔗 Vite proxy should forward /api/* here\n`);

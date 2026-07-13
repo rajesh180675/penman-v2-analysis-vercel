@@ -17,6 +17,7 @@ export function runGreenfieldPipeline(input: GreenfieldPipelineInput): Greenfiel
     adjusted: adjustedResult.adjusted,
     triage,
     validation: validated.validation,
+    auditTrail: validated.auditTrail,
     asOf: input.context?.asOf,
   });
   return {

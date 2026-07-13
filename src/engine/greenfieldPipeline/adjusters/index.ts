@@ -56,27 +56,6 @@ function applyLeaseAdjuster(periods: NormalizedPeriod[], signals: readonly Anoma
       const entry = audit("A1_LEASE_ADJUSTER", period.periodEnd, "values.nfoExLease", before, after, "Separate lease liabilities from financial leverage / NFO stress lens.", drivenBy);
       if (entry) audits.push(entry);
     }
-    if (finite(period.values.financialDebtExLease) && finite(period.values.leaseLiabilities)) {
-      const before = period.values.financialDebtExLease;
-      const after = Math.max(0, period.values.financialDebtExLease - Math.max(0, period.values.leaseLiabilities));
-      period.values.financialDebtExLease = after;
-      const entry = audit("A1_LEASE_ADJUSTER", period.periodEnd, "values.financialDebtExLease", before, after, "Remove explicit lease liability from financial-debt lens.", drivenBy);
-      if (entry) audits.push(entry);
-    }
-  }
-  return audits;
-}
-
-function applyDirtySurplusAdjuster(periods: NormalizedPeriod[], signals: readonly AnomalySignal[]): AdjustmentAuditEntry[] {
-  const audits: AdjustmentAuditEntry[] = [];
-  const eligiblePeriods = new Set(signals.filter((signal) => signal.suggestedAdjusters.includes("A2_DIRTY_SURPLUS_ADJUSTER") && signal.p_artifact >= 0.75).map((signal) => signal.period));
-  for (const period of periods) {
-    if (!eligiblePeriods.has(period.periodEnd) || !finite(period.derived.dirtySurplusSeed)) continue;
-    const drivenBy = byPeriod(signals, period.periodEnd, "A2_DIRTY_SURPLUS_ADJUSTER");
-    const before = period.derived.dirtySurplusSeed;
-    period.derived.dirtySurplusSeed = 0;
-    const entry = audit("A2_DIRTY_SURPLUS_ADJUSTER", period.periodEnd, "derived.dirtySurplusSeed", before, 0, "Resolved high-probability accounting dirty-surplus artifact for adjusted confidence lens.", drivenBy);
-    if (entry) audits.push(entry);
   }
   return audits;
 }
@@ -109,20 +88,6 @@ function applyPreBreakTruncator(periods: readonly NormalizedPeriod[], triage: Tr
   return buildAnalysisWindow(periods, triage);
 }
 
-function applyBuybackAdjuster(periods: NormalizedPeriod[], signals: readonly AnomalySignal[]): AdjustmentAuditEntry[] {
-  const audits: AdjustmentAuditEntry[] = [];
-  for (const period of periods) {
-    const drivenBy = byPeriod(signals, period.periodEnd, "A4_BUYBACK_ADJUSTER");
-    if (drivenBy.length === 0 || !finite(period.derived.dirtySurplusSeed) || !finite(period.values.buybacks)) continue;
-    const before = period.derived.dirtySurplusSeed;
-    const after = Math.abs(before) <= Math.abs(period.values.buybacks) * 1.1 ? 0 : before;
-    period.derived.dirtySurplusSeed = after;
-    const entry = audit("A4_BUYBACK_ADJUSTER", period.periodEnd, "derived.dirtySurplusSeed", before, after, "Capital return explains dirty-surplus residual in adjusted audit lens.", drivenBy);
-    if (entry) audits.push(entry);
-  }
-  return audits;
-}
-
 export function applyAdjustments(asReported: readonly NormalizedPeriod[], triage: TriageResult): AdjustmentPipelineResult {
   const adjusted = clonePeriods(asReported);
   const auditTrail: AdjustmentAuditEntry[] = [];
@@ -130,9 +95,7 @@ export function applyAdjustments(asReported: readonly NormalizedPeriod[], triage
 
   for (const adjuster of triage.adjusterOrder) {
     if (adjuster === "A1_LEASE_ADJUSTER") auditTrail.push(...applyLeaseAdjuster(adjusted, triage.activeSignals));
-    if (adjuster === "A2_DIRTY_SURPLUS_ADJUSTER") auditTrail.push(...applyDirtySurplusAdjuster(adjusted, triage.activeSignals));
     if (adjuster === "A3_PRE_BREAK_TRUNCATOR") analysisWindow = applyPreBreakTruncator(adjusted, triage);
-    if (adjuster === "A4_BUYBACK_ADJUSTER") auditTrail.push(...applyBuybackAdjuster(adjusted, triage.activeSignals));
   }
 
   return { adjusted, auditTrail, analysisWindow };

@@ -22,6 +22,8 @@
 
 import { RecastPeriod, EngineConfig, resolveKw } from "./types";
 
+const MIN_TERMINAL_SPREAD = 0.005;
+
 export interface CashFlowDcfResult {
   /** Enterprise value from discounting the projected FCFF stream at kw. */
   enterpriseValue: number;
@@ -55,7 +57,8 @@ function median(values: number[]): number {
  *  - fewer than 2 periods (no defensible normalized base), or
  *  - the normalized base FCF is <= 0 (a DCF on negative free cash flow is
  *    meaningless — those firms belong to the optionality lens, Phase 3), or
- *  - kw is non-finite/non-positive.
+ *  - kw is non-finite/non-positive, or
+ *  - terminal economics fail the minimum positive kw minus growth spread.
  *
  * @param periods   recast periods, chronological (oldest → newest).
  * @param config    engine config (for resolveKw fallback + risk-free floor).
@@ -89,6 +92,10 @@ export function computeCashFlowDcf(
   const latest = periods[periods.length - 1]!;
   const { kw } = resolveKw(latest.kwStructural, config);
   if (!Number.isFinite(kw) || kw <= 0) return null;
+  // A zero terminal value is not a valid substitute for invalid Gordon
+  // economics. Fail closed so this lens is excluded from synthesis and model
+  // counts through the existing honest-null contract.
+  if (!Number.isFinite(terminalGrowth) || kw - terminalGrowth <= MIN_TERMINAL_SPREAD) return null;
 
   // Normalized base: median of trailing FCF_cash to damp single-year noise.
   // FCF_cash = CFO − Capex is already sign-correct per period (recast.ts:346).
@@ -121,12 +128,10 @@ export function computeCashFlowDcf(
     0,
   );
 
-  // Terminal (Gordon) value, with the same guard that prevents the
-  // CV-silent-collapse issue: only when kw − g leaves a positive spread.
+  // Terminal (Gordon) value. The kw − g guard above ensures this calculation
+  // cannot silently collapse to zero or blow up on invalid economics.
   const lastFcf = projected[projected.length - 1]!;
-  const terminalValue = kw - terminalGrowth > 0.005
-    ? (lastFcf * (1 + terminalGrowth)) / (kw - terminalGrowth)
-    : 0;
+  const terminalValue = (lastFcf * (1 + terminalGrowth)) / (kw - terminalGrowth);
   const pvTerminal = terminalValue / Math.pow(1 + kw, horizon);
 
   const enterpriseValue = pvExplicit + pvTerminal;

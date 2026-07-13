@@ -21,6 +21,7 @@ import {
   absoluteSharesToCrore,
   fractionToBps,
   bpsToFraction,
+  marketCapCroreFromPrice,
   addCrore,
   subCrore,
   mulCroreScalar,
@@ -91,6 +92,21 @@ describe("units — branded primitives (Plan 1 PR-1.4)", () => {
     // round-trip back is fraction-equivalent
     const back = absoluteSharesToCrore(absolute);
     expect(back as number).toBeCloseTo(original as number, 6);
+  });
+
+  it("derives INR-crore market cap directly from price and crore shares", () => {
+    const price = INRAbsolute(4072);
+    const shares = CroreShares(620);
+    const marketCapCr = marketCapCroreFromPrice(price, shares);
+
+    expect(marketCapCr as number).toBe(2_524_640);
+
+    // Metamorphic check: expanding crore shares to absolute shares and then
+    // explicitly converting absolute INR back to crore yields the same value.
+    const viaAbsoluteUnits = absoluteToCrore(
+      INRAbsolute((price as number) * (croreSharesToAbsolute(shares) as number)),
+    );
+    expect(marketCapCr as number).toBe(viaAbsoluteUnits as number);
   });
 
   it("fraction <-> bps round-trip is exact", () => {

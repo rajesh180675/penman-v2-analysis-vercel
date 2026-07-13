@@ -1,4 +1,5 @@
 import { RecastPeriod, ForecastPeriod, ForecastScenario, BusinessModelProfile, PersistenceScenarioTemplate } from "../types";
+import type { LegacyValuationPeriodInput } from "../forecastState";
 import { buildCyclicalNormalization } from "../cyclicalNormalization";
 import { buildDriverForecastModel } from "../forecastDriverModel";
 import { buildTerminalEconomics } from "../terminalEconomics";
@@ -395,90 +396,49 @@ export function buildScenario(
 /* §4.3.x Forecast -> valuation bridge used by scenario, sensitivity, and MC */
 export function buildValuationPeriodsFromForecast(
   latestPeriod: RecastPeriod,
-  forecastPeriods: ForecastPeriod[],
-): RecastPeriod[] {
-  const baseYear = Number.parseInt(latestPeriod.period_end.slice(0, 4), 10);
-  if (!Number.isFinite(baseYear)) {
+  forecastPeriods: readonly ForecastPeriod[],
+): readonly LegacyValuationPeriodInput[] {
+  const anchorDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(latestPeriod.period_end);
+  if (!anchorDate) {
     throw new Error(`Invalid period_end year in latestPeriod: ${latestPeriod.period_end}`);
   }
+  const baseYear = Number(anchorDate[1]);
+  const dateSuffix = `${anchorDate[2]}-${anchorDate[3]}`;
+  const valuationPeriods: LegacyValuationPeriodInput[] = [latestPeriod];
+  let previousCommonEquity = latestPeriod.bs.CSE;
 
-  return [
-    latestPeriod,
-    ...forecastPeriods.map((fp, i) => ({
-      period_end: `${baseYear + i + 1}-03-31`,
-      bs: { ...latestPeriod.bs, CSE: fp.CSE_f, NOA: fp.NOA_f, NFO: fp.NOA_f - fp.CSE_f },
-      is: {
-        ...latestPeriod.is,
-        CNI: fp.CNI_f,
-        OI: fp.OI_f,
-        Sales: fp.Sales_f,
-        NFE: fp.NFE_f,
-        operatingCostBridge: fp.bridge_mode === "cost_bridge" ? {
-          ...(latestPeriod.is.operatingCostBridge ?? {
-            materialCost: 0,
-            employeeCost: 0,
-            depreciation: 0,
-            sgaAdvertising: 0,
-            sgaLegalProfessional: 0,
-            sgaRent: 0,
-            sgaFreight: 0,
-            sgaRepairs: 0,
-            sgaPowerFuel: 0,
-            sgaDetailed: 0,
-            sgaResidual: 0,
-            sgaTotal: 0,
-            otherOperatingExpense: 0,
-            otherOperatingIncome: 0,
-            grossProfit: 0,
-            operatingCosts: 0,
-            bridgeCoreOI: 0,
-            bridgeGapToReportedCoreOI: 0,
-            coverageRatio: null,
-            driverRatios: {
-              materialCostPct: null,
-              employeeCostPct: null,
-              depreciationPct: null,
-              sgaPct: null,
-              otherOperatingExpensePct: null,
-              otherOperatingIncomePct: null,
-              bridgeCoreSalesPm: null,
-            },
-          }),
-          materialCost: fp.MaterialCost_f ?? 0,
-          employeeCost: fp.EmployeeCost_f ?? 0,
-          depreciation: fp.Depreciation_f ?? 0,
-          sgaAdvertising: 0,
-          sgaLegalProfessional: 0,
-          sgaRent: 0,
-          sgaFreight: 0,
-          sgaRepairs: 0,
-          sgaPowerFuel: 0,
-          sgaDetailed: fp.SGA_f ?? 0,
-          sgaResidual: 0,
-          sgaTotal: fp.SGA_f ?? 0,
-          otherOperatingExpense: fp.OtherOperatingExpense_f ?? 0,
-          otherOperatingIncome: fp.OtherOperatingIncome_f ?? 0,
-          grossProfit: fp.GrossProfit_f ?? 0,
-          operatingCosts: (fp.EmployeeCost_f ?? 0) + (fp.Depreciation_f ?? 0) + (fp.SGA_f ?? 0) + (fp.OtherOperatingExpense_f ?? 0),
-          bridgeCoreOI: fp.CoreOI_bridge_f ?? fp.OI_f,
-          bridgeGapToReportedCoreOI: (fp.CoreOI_bridge_f ?? fp.OI_f) - fp.OI_f,
-          coverageRatio: latestPeriod.is.operatingCostBridge?.coverageRatio ?? null,
-          driverRatios: {
-            materialCostPct: fp.material_cost_ratio_assumption ?? null,
-            employeeCostPct: fp.employee_cost_ratio_assumption ?? null,
-            depreciationPct: fp.depreciation_ratio_assumption ?? null,
-            sgaPct: fp.sga_ratio_assumption ?? null,
-            otherOperatingExpensePct: fp.other_opex_ratio_assumption ?? null,
-            otherOperatingIncomePct: fp.other_operating_income_ratio_assumption ?? null,
-            bridgeCoreSalesPm: fp.core_sales_pm_assumption,
-          },
-        } : latestPeriod.is.operatingCostBridge,
-      },
-      cu: {
-        ...latestPeriod.cu,
-        CoreOI: fp.CoreOI_bridge_f ?? fp.OI_f,
-      },
-      cf: latestPeriod.cf,
-    })),
-  ];
+  forecastPeriods.forEach((forecast, index) => {
+    const required = [forecast.CSE_f, forecast.NOA_f, forecast.CNI_f, forecast.OI_f];
+    if (!required.every(Number.isFinite)) {
+      throw new Error(`Forecast period ${index + 1} contains a non-finite valuation input.`);
+    }
+
+    // Clean-surplus distribution is reconstructed explicitly from the
+    // forecasted common-income/equity roll-forward. Projected periods expose
+    // only the structural fields consumed by valuation: no historical parser
+    // trace, quality flag, operating-cost row, or cash-flow object is copied.
+    const ownerDistribution = forecast.CNI_f - (forecast.CSE_f - previousCommonEquity);
+    const period: LegacyValuationPeriodInput = {
+      period_end: `${baseYear + index + 1}-${dateSuffix}`,
+      bs: Object.freeze({
+        CSE: forecast.CSE_f,
+        NOA: forecast.NOA_f,
+        NFO: forecast.NOA_f - forecast.CSE_f - latestPeriod.bs.MI,
+        MI: latestPeriod.bs.MI,
+        separationScore: latestPeriod.bs.separationScore,
+      }),
+      is: Object.freeze({ CNI: forecast.CNI_f, OI: forecast.OI_f }),
+      cf: Object.freeze({
+        DividendPaid: Math.max(0, ownerDistribution),
+        d_t: ownerDistribution,
+      }),
+      ratios: Object.freeze({
+        RNOA: forecast.NOA_f !== 0 ? forecast.OI_f / forecast.NOA_f : null,
+      }),
+    };
+    valuationPeriods.push(Object.freeze(period));
+    previousCommonEquity = forecast.CSE_f;
+  });
+
+  return Object.freeze(valuationPeriods);
 }

@@ -157,6 +157,29 @@ function resolveOperatingProfit(metric: BankPeriodMetrics): number | null {
   return Number.isFinite(op) ? op : null;
 }
 
+const RAW_ONLY_LINEAGE_CONCEPTS: readonly LineageConceptId[] = ["cse", "pat", "free-cash-flow"] as const;
+
+function buildRawOnlyEntry(conceptId: LineageConceptId, raw: RawPeriodData): NumberLineage | null {
+  const aliases = CONCEPT_RAW_ALIASES[conceptId] ?? [];
+  if (aliases.length === 0) return null;
+  const match = findRawMetric(raw, aliases);
+  if (!match?.key) return null;
+  return {
+    conceptId,
+    period: raw.period_end,
+    finalValue: match.value,
+    sourceMetricKeys: [match.key],
+    sourceStatements: [STATEMENT_OWNER[conceptId]],
+    transformationSteps: [
+      "Raw Capitaline metric preserved for source-lineage fallback.",
+      "Financial-institution audit rows do not retain industrial RecastPeriod traces.",
+    ],
+    policyDecisionsApplied: [],
+    confidence: "medium",
+    warnings: ["Raw-data lineage fallback; canonical recast lineage unavailable for this audit route."],
+  };
+}
+
 function buildEntry(
   conceptId: LineageConceptId,
   period: string,
@@ -374,6 +397,15 @@ export function buildLineageMap(input: BuildLineageInput): LineageMap {
         ) {
           truncated = true;
         }
+      }
+    }
+  } else {
+    // Last-resort source lineage for datasets that have neither recast rows
+    // nor financial-institution metrics.
+    for (const raw of input.rawData ?? []) {
+      for (const conceptId of RAW_ONLY_LINEAGE_CONCEPTS) {
+        const entry = buildRawOnlyEntry(conceptId, raw);
+        if (entry) entries[`${conceptId}|${raw.period_end}`] = entry;
       }
     }
   }

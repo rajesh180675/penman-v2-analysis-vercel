@@ -1,9 +1,13 @@
 export type {
   AntiTautologySummary,
+  CollapsedEvidenceFamilyContribution,
   DefensibleRange,
   DefensibilityChecklistItem,
   EvidenceIndependenceGroup,
   EvidenceSourceType,
+  EvidenceSynthesisIndependenceDiagnostics,
+  EvidenceSynthesisCompositionDiagnostics,
+  EvidenceSynthesisSubstitutionTrace,
   EvidenceWeightedModelContribution,
   EvidenceWeightedValuationSynthesis,
   ForecastHoldoutFold,
@@ -20,5 +24,16 @@ export type {
 export { buildAssumptionEvidenceLedger } from "./assumptionLedger";
 export { evaluateForecastHoldout } from "./forecastHoldout";
 export { buildMarketImpliedExpectationLedger } from "./marketImpliedLedger";
-export { buildEvidenceWeightedSynthesis } from "./evidenceWeightedSynthesis";
+export {
+  buildEvidenceWeightedSynthesis,
+  collapseEvidenceWeightedContributions,
+  EVIDENCE_SYNTHESIS_SUBSTITUTION_POLICY_VERSION,
+  substituteEvidenceWeightedSynthesisContribution,
+} from "./evidenceWeightedSynthesis";
+export type { EvidenceSynthesisSubstitutionDecision } from "./evidenceWeightedSynthesis";
 export { summarizeAntiTautology } from "./antiTautologySummary";
+export {
+  SCENARIO_GOVERNANCE_SCHEMA_VERSION,
+  buildScenarioGovernanceReport,
+} from "./scenarioGovernance";
+export type { ScenarioGovernanceReport } from "./scenarioGovernance";

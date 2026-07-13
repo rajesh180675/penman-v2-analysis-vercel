@@ -113,6 +113,19 @@ function mkRecastPeriod(period_end: string): RecastPeriod {
       d_t_discrepancy: 0,
       EBITDA: 140,
     },
+    // A real, independent reconciliation input. The snapshot tests assert a
+    // confirmed/production-ready run, so they must not rely on the legacy
+    // no-applicable-checks => confirmed shortcut.
+    shareCountInput: {
+      endPeriodShares: 60,
+      endPeriodSharesSource: "Number of Equity Shares - Subscribed Fully Paid up",
+      weightedAverageBasicShares: 60,
+      weightedAverageBasicSource: "Weighted Average Number of Shares in Issue - Basic",
+      weightedAverageDilutedShares: 60,
+      weightedAverageDilutedSource: "Weighted Average Number of Shares in Issue - Diluted",
+      faceValue: 10,
+      shareCapital: 600,
+    },
   };
 }
 
@@ -212,6 +225,7 @@ describe("traceability snapshot", () => {
         { name: "CashFlowINDAS_.xls", statementGuess: "CashFlow" },
       ],
       detectedPeriods: ["2025-03-31"],
+      sourceArtifactHashes: [],
       rawGrids: [
         {
           file: "BalanceSheetINDAS_.xls",

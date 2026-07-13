@@ -182,6 +182,20 @@ function computeTelecomRecasts(periods: RawPeriodData[]): RecastPeriod[] {
 }
 
 describe("evaluateReconciliationResiduals", () => {
+  it("reports insufficient evidence rather than confirmation when no independent check can run", () => {
+    const summary = evaluateReconciliationResiduals({
+      recastData: [mkPeriod("2025-03-31", {
+        shareCountInput: undefined,
+        trace: {},
+      })],
+      config: DEFAULT_CONFIG,
+    });
+
+    expect(summary.checks).toEqual([]);
+    expect(summary.status).toBe("insufficient-evidence");
+    expect(summary.summary).toContain("no independent residual checks");
+  });
+
   it("adds a valuation-triangulation residual and fails closed when independent paradigms diverge materially", () => {
     const summary = evaluateReconciliationResiduals({
       recastData: [mkPeriod("2024-03-31"), mkPeriod("2025-03-31")],
@@ -535,7 +549,7 @@ describe("evaluateReconciliationResiduals", () => {
       trace: {
         ...mkPeriod("2025-03-31").trace,
         "BS.FA.CashBank": [
-          { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 160, matchType: "exact_base" },
+          { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 260, matchType: "exact_base" },
         ],
       },
     });

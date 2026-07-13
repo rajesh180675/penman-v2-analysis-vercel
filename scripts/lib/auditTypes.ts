@@ -25,6 +25,8 @@ const RIGOR_TO_OUTCOME: Record<string, AuditOutcome> = {
   "production-ready": "PRODUCTION_READY",
   "valuation-eligible": "VALUATION_ELIGIBLE_GUARDED",
   "economically-plausible": "ECONOMICALLY_PLAUSIBLE_CAPPED",
+  "structurally-reconciled": "POLICY_WARNING",
+  "syntactically-valid": "POLICY_WARNING",
 };
 
 export interface DeriveAuditOutcomeInput {

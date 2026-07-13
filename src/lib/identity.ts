@@ -1,9 +1,13 @@
 /* ================================================================
    Plan 4 PR-4.1 — identity.ts
 
-   Lightweight identity layer: cookie-pinned anonymous UUID with
-   30-day TTL. When the user is authenticated (set via setAuthId),
-   that id wins and never expires.
+   Lightweight browser profile layer: cookie-pinned anonymous UUID with
+   30-day TTL. A locally selected profile id can win for compatibility.
+
+   IMPORTANT: this module is not an authentication or authorization boundary.
+   Servers must derive principals from verified sessions and must never trust
+   these values for workspace access. They currently namespace localStorage
+   only; the legacy auth-named exports remain while callers are migrated.
 
    Browser-only — server contexts get a no-op. SSR never actually
    needs identity since persistence is per-tab.

@@ -11,6 +11,65 @@ const itcSegmentXls = resolve(fixturesDir, "SegmentFinance_.xls");
 const relianceSegmentXls = resolve(__dirname, "../../../public/data/companies/Reliance Industries/SegmentFinance_.xls");
 const fixturesAvailable = existsSync(itcSegmentXls) && existsSync(relianceSegmentXls);
 
+describe("segmentParser regressions", () => {
+  it("keeps newest visible years when Capitaline detail rows are wider than the header", () => {
+    const html = `
+      <table>
+        <tr>
+          <th>Year</th>
+          <th class="SubSbHdrLeft ng-binding ng-scope">202503</th>
+          <th class="SubSbHdrLeft ng-binding ng-scope">202403</th>
+        </tr>
+        <tr><td><label>REVENUE</label></td></tr>
+        <tr>
+          <td><label class="ng-binding ng-scope">Revenue from Operations</label></td>
+          <td><div class="ng-binding ng-scope">300</div></td>
+          <td><div class="ng-binding ng-scope">250</div></td>
+        </tr>
+        <tr class="clsBreakUp_2 beakUpCss">
+          <td><label>SEGMENT A</label></td>
+          <td class="datarow">120</td>
+          <td class="datarow">90</td>
+          <td class="datarow">70</td>
+        </tr>
+        <tr class="clsBreakUp_2 beakUpCss">
+          <td><label>SEGMENT B</label></td>
+          <td class="datarow">80</td>
+          <td class="datarow">60</td>
+          <td class="datarow">40</td>
+        </tr>
+        <tr><td><label>RESULT</label></td></tr>
+        <tr>
+          <td><label class="ng-binding ng-scope">Profit/Loss Before Interest & Tax</label></td>
+          <td><div class="ng-binding ng-scope">100</div></td>
+          <td><div class="ng-binding ng-scope">80</div></td>
+        </tr>
+        <tr class="clsBreakUp_2 beakUpCss">
+          <td><label>SEGMENT A</label></td>
+          <td class="datarow">30</td>
+          <td class="datarow">20</td>
+          <td class="datarow">10</td>
+        </tr>
+        <tr class="clsBreakUp_2 beakUpCss">
+          <td><label>SEGMENT B</label></td>
+          <td class="datarow">15</td>
+          <td class="datarow">10</td>
+          <td class="datarow">5</td>
+        </tr>
+      </table>
+    `;
+
+    const result = parseSegmentFinanceHTML(html);
+
+    expect(result).not.toBeNull();
+    expect(result!.years).toEqual(["FY2025", "FY2024"]);
+    expect(result!.data["SEGMENT A"]!["FY2025"]!.revenue).toBe(120);
+    expect(result!.data["SEGMENT A"]!["FY2024"]!.revenue).toBe(90);
+    expect(result!.data["SEGMENT A"]!["FY2025"]!.result).toBe(30);
+    expect(result!.data["SEGMENT A"]!["FY2024"]!.result).toBe(20);
+  });
+});
+
 describe.skipIf(!fixturesAvailable)("segmentParser", () => {
 
   it("parses ITC business segment file", () => {

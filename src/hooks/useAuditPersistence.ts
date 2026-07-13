@@ -7,9 +7,22 @@ import type { MappingAuditReport } from "../engine/mappingAudit";
 import type { AnalysisStatusSummary } from "../engine/analysisStatus";
 import {
   AuditSubmissionMeta,
+  persistAuditBlob,
   persistAuditEvent,
 } from "../lib/audit";
 import { buildAnalysisSnapshot } from "../lib/auditSnapshot";
+import { attachPersistedArtifactDescriptor } from "../lib/auditSnapshotTransport";
+import { prepareAnalysisSnapshotOffThread } from "../lib/auditSnapshotWorkerClient";
+
+function persistedArtifactPath(result: unknown): string | null {
+  if (!result || typeof result !== "object") return null;
+  const record = result as Record<string, unknown>;
+  if (typeof record.pathname === "string") return record.pathname;
+  if (typeof record.path === "string") return record.path;
+  return null;
+}
+
+export const AUDIT_SNAPSHOT_DEBOUNCE_MS = 900;
 
 interface AuditPersistenceInputs {
   auditMeta: AuditSubmissionMeta | null;
@@ -46,34 +59,65 @@ export function useAuditPersistence({
   const lastAuditSignatureRef = useRef<string | null>(null);
   const lastAuditStatusRef = useRef<string | null>(null);
   const lastTabAuditRef = useRef<string | null>(null);
+  const snapshotGenerationRef = useRef(0);
 
   // Persist analysis snapshot when data or config changes
   useEffect(() => {
+    const generation = ++snapshotGenerationRef.current;
     if (!auditMeta || !rawData) return;
-
-    const snapshot = buildAnalysisSnapshot({
-      rawData,
-      recastData,
-      config,
-      debugInfo,
-      parserDiagnostics,
-      qualityGate,
-      mappingAudit,
-      engineError,
-      analysisStatus,
-      auditMeta,
-    });
-    const signature = JSON.stringify(snapshot);
-    if (signature === lastAuditSignatureRef.current) return;
-    lastAuditSignatureRef.current = signature;
-
-    void persistAuditEvent({
-      runId: auditMeta.runId,
-      eventType: "analysis-snapshot",
-      companyId: auditMeta.companyId,
-      sourceMode: auditMeta.sourceMode,
-      payload: snapshot,
-    });
+    const timer = window.setTimeout(() => {
+      const snapshot = buildAnalysisSnapshot({
+        rawData,
+        recastData,
+        config,
+        debugInfo,
+        parserDiagnostics,
+        qualityGate,
+        mappingAudit,
+        engineError,
+        analysisStatus,
+        auditMeta,
+      });
+      void (async () => {
+        const prepared = await prepareAnalysisSnapshotOffThread(snapshot);
+        if (generation !== snapshotGenerationRef.current) return;
+        if (prepared.descriptor.contentHash === lastAuditSignatureRef.current) return;
+        lastAuditSignatureRef.current = prepared.descriptor.contentHash;
+        const persisted = await persistAuditBlob({
+          runId: auditMeta.runId,
+          kind: "artifacts",
+          eventType: "analysis-snapshot-artifact",
+          file: prepared.blob,
+          filename: prepared.descriptor.filename,
+          companyId: auditMeta.companyId,
+          sourceMode: auditMeta.sourceMode,
+          contentType: prepared.descriptor.contentType,
+          contentEncoding: prepared.descriptor.contentEncoding,
+          allowedContentTypes: [prepared.descriptor.contentType],
+        });
+        if (generation !== snapshotGenerationRef.current) return;
+        const descriptor = {
+          ...prepared.descriptor,
+          persisted: persisted !== null,
+          pathname: persistedArtifactPath(persisted),
+        };
+        const compactSnapshot = attachPersistedArtifactDescriptor(prepared.compactSnapshot, descriptor);
+        await persistAuditEvent({
+          runId: auditMeta.runId,
+          eventType: "analysis-snapshot",
+          companyId: auditMeta.companyId,
+          sourceMode: auditMeta.sourceMode,
+          idempotencyKey: `${auditMeta.runId}-analysis-snapshot-${descriptor.contentHash.slice(0, 16)}`,
+          payload: compactSnapshot,
+        });
+      })().catch((error: unknown) => {
+        console.warn("[audit] analysis snapshot persistence failed", error);
+      });
+    }, AUDIT_SNAPSHOT_DEBOUNCE_MS);
+    return () => {
+      window.clearTimeout(timer);
+      if (snapshotGenerationRef.current === generation) snapshotGenerationRef.current += 1;
+    };
   }, [analysisStatus, auditMeta, config, debugInfo, engineError, mappingAudit, parserDiagnostics, qualityGate, rawData, recastData]);
 
   // Persist engine error events

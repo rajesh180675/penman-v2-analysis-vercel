@@ -203,7 +203,7 @@ describe("Supplementary Path A controls", () => {
     ];
     // Simulate terminal period NOA jump >50%
     const terminalPeriod = { ...mkPeriod(2025, 0.25, 100, 600) };
-    (terminalPeriod.bs as any).NOA = 1100; // >50% jump from 650
+    terminalPeriod.bs.NOA = 1100; // >50% jump from 650
     const allPeriods = [...periods, terminalPeriod];
 
     const ds = computeDirtySurplus(allPeriods, 0.13);
@@ -223,9 +223,9 @@ describe("Supplementary Path A controls", () => {
     const p21 = mkPeriod(2021, 0.25, 82, 520);
     const p22 = mkPeriod(2022, 0.25, 84, 540);
     const p23 = { ...mkPeriod(2023, 0.25, 120, 560) }; // T-1 with large NOA
-    (p23.bs as any).NOA = 1200; // STRUCTURAL_EVENT_CRITICAL at T-1
+    p23.bs.NOA = 1200; // STRUCTURAL_EVENT_CRITICAL at T-1
     const p24 = { ...mkPeriod(2024, 0.25, 200, 600) }; // T with large NOA too
-    (p24.bs as any).NOA = 2000; // STRUCTURAL_EVENT_CRITICAL at T
+    p24.bs.NOA = 2000; // STRUCTURAL_EVENT_CRITICAL at T
 
     const allPeriods = [base, p21, p22, p23, p24];
     const ds = computeDirtySurplus(allPeriods, 0.13);
@@ -247,10 +247,10 @@ describe("Supplementary Path A controls", () => {
     const p1 = mkPeriod(2023, 0.25, 80, 500);
     const p2 = { ...mkPeriod(2024, 0.25, 85, 550) };
     // Make OA increase by 100 but identified components only increase by 20 → 80% is "other"
-    (p2.bs as any).OA = 1000; // +100 from 900
-    (p2.bs as any).OA_PPE = 270; // +20 from 250 — only 20 identified
+    p2.bs.OA = 1000; // +100 from 900
+    p2.bs.OA_PPE = 270; // +20 from 250 — only 20 identified
     // OA_Other = 550 + 80 = 630 (implicitly via OA_Other field)
-    (p2.bs as any).OA_Other = 630;
+    p2.bs.OA_Other = 630;
     const allPeriods = [p1, p2];
     const ds = computeDirtySurplus(allPeriods, 0.13);
     const flags = detectPeriodEventFlags(allPeriods, ds);

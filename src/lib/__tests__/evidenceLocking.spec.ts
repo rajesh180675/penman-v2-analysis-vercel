@@ -10,6 +10,7 @@ import {
   verifyLockedHash,
   isReadOnly,
 } from "../evidenceLocking";
+import { TRACEABILITY_SCHEMA_VERSION } from "../../engine/policyVersions";
 
 vi.useFakeTimers();
 beforeEach(() => {
@@ -68,7 +69,7 @@ describe("lockEvidence + verifyLockedHash (Plan 8 PR-8.3)", () => {
   it("lockEvidence stamps current schema, hash, and signature", async () => {
     const env = { runId: "r-001", value: 100 };
     const locked = await lockEvidence(env, { reviewerId: "alice", reviewerName: "Alice" });
-    expect(locked.schemaVersion).toBe("2026-06-traceability-v19");
+    expect(locked.schemaVersion).toBe(TRACEABILITY_SCHEMA_VERSION);
     expect(locked.locked).toBe(true);
     expect(locked.reproducibilityHash).toMatch(/^[0-9a-f]{64}$/);
     expect(locked.lockedBy.reviewerId).toBe("alice");

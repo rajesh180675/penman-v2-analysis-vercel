@@ -161,6 +161,12 @@ export function parseSegmentFinanceHTML(html: string): SegmentData | null {
       );
       if (tdValues.length === years.length) {
         values = tdValues.map(parseNumber);
+      } else if (tdValues.length > years.length) {
+        // Some Capitaline SegmentFinance exports (TCS) render historical
+        // breakup rows wider than the visible Angular year header. Columns are
+        // newest-first, so keep the values that align with the reported years
+        // and drop older hidden tail columns instead of dropping the row.
+        values = tdValues.slice(0, years.length).map(parseNumber);
       } else if (tdValues.length > 0 && tdValues.length < years.length &&
                  tdValues.length >= Math.max(2, Math.floor(years.length / 3))) {
         // Variable-length rows: segments not present in all years have fewer columns

@@ -4,6 +4,7 @@ import {
   buildAuditPath,
   enforceAuditRateLimit,
   getAuditGovernanceConfig,
+  getRunAccessToken,
   hashAuditToken,
   isAuditConfigured,
   logAudit,
@@ -13,6 +14,7 @@ import {
   respondJsonBodyError,
   sanitizePathSegment,
 } from "./_lib.js";
+import { requireAuditRunWrite } from "./_runAccess.js";
 
 async function streamToBuffer(stream) {
   const arrayBuffer = await new Response(stream).arrayBuffer();
@@ -28,7 +30,6 @@ export default async function handler(request, response) {
   }
 
   if (request.method === "POST") {
-    if (!requireAuditReadAuth(request, response)) return;
     const governance = getAuditGovernanceConfig();
     if (!assertContentLength(request, response, governance.maxEventBytes)) return;
     if (!enforceAuditRateLimit(request, response, "events", governance.maxEventsPerMinute)) return;
@@ -40,7 +41,15 @@ export default async function handler(request, response) {
       if (respondJsonBodyError(response, error)) return;
       throw error;
     }
-    const runId = sanitizePathSegment(body.runId, `run-${Date.now()}`);
+    if (typeof body.runId !== "string" || !body.runId.trim()) {
+      response.status(400).json({ error: "runId is required." });
+      return;
+    }
+    const runId = sanitizePathSegment(body.runId);
+    if (!await requireAuditRunWrite(request, response, {
+      runId,
+      runAccessToken: body.runAccessToken ?? null,
+    })) return;
     const eventType = sanitizePathSegment(body.eventType, "event");
     const idempotencyKey = body.idempotencyKey ? sanitizePathSegment(body.idempotencyKey) : null;
     const filename = idempotencyKey ? `${eventType}-${idempotencyKey}.json` : `${nowStamp()}-${eventType}.json`;
@@ -67,7 +76,7 @@ export default async function handler(request, response) {
       sourceMode: body.sourceMode ?? null,
       createdAt: new Date().toISOString(),
       idempotencyKey,
-      runAccessHash: hashAuditToken(body.runAccessToken ?? null),
+      runAccessHash: hashAuditToken(getRunAccessToken(request) ?? body.runAccessToken ?? null),
       contentClass: body.contentClass ?? governance.contentClass,
       retentionDays: Number(body.retentionDays) || governance.retentionDays,
       payload: body.payload ?? {},

@@ -5,8 +5,15 @@ import { AuditSubmissionMeta } from "../../lib/audit";
 import { CapitalineParseDebug } from "../../engine/capitalineParser";
 import type { FinancialInstitutionAnalysisResult } from "../../engine/analysisFamily";
 import type { ScopeAwareResult } from "../../engine/scopeAwareLoader";
+import type { LiveMarketDataSnapshot } from "../../engine/marketData";
+import type { ValuationCommandCenterOutput } from "../../engine/valuationCommandCenter";
+import type { SourcedAssumptionSet, UnifiedAnalysisWindow } from "../../engine/analysisCase";
+import type { IndustrialForecastResult, ScenarioOrderingReport } from "../../engine/forecastState";
+import type { ScenarioGovernanceReport } from "../../engine/valuationEvidence";
+import { marketCapCroreFromPrice } from "../../engine/types/units";
 import type { TabId } from "../tabs";
 import DataEntry from "../../components/DataEntry";
+import type { ReturnTypeOfPortfolioComparison } from "../../engine/portfolioRunComparison.types";
 
 const RecastStatements = lazy(() => import("../../components/RecastStatements"));
 const RatioReport = lazy(() => import("../../components/RatioReport"));
@@ -49,12 +56,22 @@ interface TabRouterProps {
   ratioSanity: AnyResult;
   segmentData: AnyResult;
   liveMarketData: AnyResult;
+  liveMarketDataLoading: boolean;
+  liveMarketDataError: string | null;
+  refreshLiveMarketData: () => Promise<void>;
+  commandCenter: ValuationCommandCenterOutput | null;
+  analysisWindow: UnifiedAnalysisWindow | null;
+  sourcedAssumptionSet: SourcedAssumptionSet | null;
+  forecastResults: readonly IndustrialForecastResult[] | null;
+  scenarioOrdering: ScenarioOrderingReport | null;
+  scenarioGovernance: ScenarioGovernanceReport | null;
   readyCompanyCount: number;
   bankResult: FinancialInstitutionAnalysisResult | null;
   nbfcSidecar: AnyResult;
   lossMakerResult: AnyResult;
   registry: CompanyRegistry;
   comparisonPublication: AnyResult;
+  portfolioRunComparison: ReturnTypeOfPortfolioComparison;
   workspaceCompanies: AnyResult;
   workspaceCompanyId: string | null;
   setWorkspaceCompanyId: (id: string | null) => void;
@@ -71,13 +88,15 @@ export function TabRouter(props: TabRouterProps) {
   const {
     activeTab, setActiveTab, config, setConfig, forecastConfig, rawData, recastData, hasRecast,
     handleDataSubmit, onBatchSubmit, auditMeta, analysisStatus, traceability, publication, ratioSanity, segmentData,
-    liveMarketData, readyCompanyCount, bankResult, nbfcSidecar, lossMakerResult, registry,
-    comparisonPublication, workspaceCompanies, workspaceCompanyId, setWorkspaceCompanyId,
+    liveMarketData, liveMarketDataLoading, liveMarketDataError, refreshLiveMarketData, commandCenter,
+    analysisWindow, sourcedAssumptionSet, forecastResults, scenarioOrdering, scenarioGovernance,
+    readyCompanyCount, bankResult, nbfcSidecar, lossMakerResult, registry,
+    comparisonPublication, portfolioRunComparison, workspaceCompanies, workspaceCompanyId, setWorkspaceCompanyId,
     valuationBlocked, scopeBlocked, qualityGate, scopeAwareResult, pipelineResult, debugInfo, engineError,
   } = props;
 
   const marketCapCr = config.market_price != null && config.shares_outstanding != null
-    ? (config.market_price * config.shares_outstanding) / 1e7
+    ? marketCapCroreFromPrice(config.market_price, config.shares_outstanding)
     : null;
   const companyId = auditMeta?.companyId ?? rawData?.[0]?.company_id ?? null;
 
@@ -144,9 +163,35 @@ export function TabRouter(props: TabRouterProps) {
           nbfcSidecar={nbfcSidecar}
         />
       )}
-      {activeTab === "forecast" && hasRecast && <ForecastReport data={recastData!} rawData={rawData} config={forecastConfig} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
+      {activeTab === "forecast" && hasRecast && <ForecastReport
+        data={recastData!}
+        rawData={rawData}
+        config={forecastConfig}
+        traceability={traceability}
+        traceabilitySummary={publication?.traceabilitySummary ?? null}
+        runForecastResults={forecastResults}
+        analysisWindow={analysisWindow}
+        sourcedAssumptionSet={sourcedAssumptionSet}
+        scenarioOrdering={scenarioOrdering}
+        scenarioGovernance={scenarioGovernance}
+      />}
       {activeTab === "valuation" && hasRecast && !valuationBlocked && (
-        <ValuationReport data={recastData!} config={config} analysisStatus={analysisStatus} auditMeta={auditMeta} traceability={traceability} publication={publication} lossMaker={lossMakerResult} ratioSanity={ratioSanity} segmentData={segmentData} />
+        <ValuationReport
+          data={recastData!}
+          config={config}
+          analysisStatus={analysisStatus}
+          auditMeta={auditMeta}
+          traceability={traceability}
+          publication={publication}
+          lossMaker={lossMakerResult}
+          ratioSanity={ratioSanity}
+          segmentData={segmentData}
+          commandCenter={commandCenter}
+          marketData={liveMarketData as LiveMarketDataSnapshot | null}
+          marketDataLoading={liveMarketDataLoading}
+          marketDataError={liveMarketDataError}
+          onMarketRefresh={refreshLiveMarketData}
+        />
       )}
       {activeTab === "valuation" && !hasRecast && bankResult && rawData && rawData.length > 0 && (
         <FinancialInstitutionReport
@@ -216,7 +261,7 @@ export function TabRouter(props: TabRouterProps) {
           recastData={recastData}
         />
       )}
-      {activeTab === "comparison" && <ComparisonReport registry={registry} config={config} publication={comparisonPublication} />}
+      {activeTab === "comparison" && <ComparisonReport registry={registry} config={config} publication={comparisonPublication} runComparison={portfolioRunComparison} />}
       {activeTab === "thesis" && hasRecast && (
         <InvestmentThesis data={recastData!} config={config} />
       )}
@@ -252,7 +297,7 @@ export function TabRouter(props: TabRouterProps) {
         />
       )}
       {activeTab === "v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
-      {activeTab === "debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError} />}
+      {activeTab === "debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError} greenfield={pipelineResult?.greenfield ?? null} />}
       {/* Insurance / unsupported financial scope: show clear message on valuation tab */}
       {activeTab === "valuation" && !hasRecast && scopeBlocked && !bankResult && rawData && rawData.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">

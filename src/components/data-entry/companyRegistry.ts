@@ -155,3 +155,33 @@ export function parseLibraryCompanyRegistry(data: unknown): { companies: Library
 
   return { companies, errors };
 }
+
+/** Resolve a share/deep-link company token by ticker, display name, or folder. */
+export function findLibraryCompany(
+  companies: readonly LibraryCompany[],
+  reference: string,
+): LibraryCompany | null {
+  const normalize = (value: string) => value
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+  const needle = normalize(reference);
+  if (!needle) return null;
+  return companies.find((company) =>
+    normalize(company.ticker) === needle
+    || normalize(company.name) === needle
+    || normalize(company.folder) === needle
+  ) ?? null;
+}
+
+export function buildLocalLibraryCompanyUrls(company: Pick<LibraryCompany, "folder">): {
+  consolidated: string;
+  standalone: string;
+} {
+  const encodedFolder = encodeURIComponent(company.folder).replace(/%26/g, "&");
+  return {
+    consolidated: `/data/companies/${encodedFolder}/${encodedFolder}.zip`,
+    standalone: `/data/companies/${encodedFolder}/standalone.zip`,
+  };
+}

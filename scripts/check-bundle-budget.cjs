@@ -11,7 +11,7 @@
      entry           300 KB gz   the initial JS the user must download
      vendor-react    150 KB gz   React + scheduler
      vendor-charts   200 KB gz   recharts + d3-*
-     vendor-file-parsing  120 KB gz   xlsx/jszip — lazy-only
+     vendor-file-parsing  350 KB gz   exceljs/jszip — lazy-only
      any-other-chunk      400 KB gz
 
    The TOTAL gzipped JS is also capped at 2.5 MB to catch unbounded

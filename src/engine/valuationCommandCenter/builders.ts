@@ -212,6 +212,7 @@ export function buildScenarioCards(args: {
       label: key === "stress" ? "Stress case" : key === "base" ? "Base case" : key === "bull" ? "Bull case" : "Historical panic",
       scenario: scenarioWithTerminal,
       intrinsicPerShare,
+      ownerEarningsDcfPerShare: ownerDcf,
       upsidePct: intrinsicPerShare != null && marketPrice != null && marketPrice > 0 ? (intrinsicPerShare - marketPrice) / marketPrice : null,
       marginOfSafetyPct,
       expectedCagr: annualizedReturn(marketPrice, intrinsicPerShare, 3),

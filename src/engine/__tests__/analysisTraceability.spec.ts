@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildAnalysisTraceability } from "../analysisTraceability";
+import { buildAnalysisTraceability, enforceRigorPrefix } from "../analysisTraceability";
 import type { RecastPeriod } from "../types";
+import type { AnalysisRigorCheckpoint, AnalysisRigorLevel } from "../analysisTraceability";
 
 const productionReadyStatus = {
   status: "production-ready" as const,
@@ -74,11 +75,57 @@ function mkTraceabilityRecastPeriod(period_end: string): RecastPeriod {
       d_t_discrepancy: 0,
       EBITDA: 140,
     },
+    shareCountInput: {
+      endPeriodShares: 60,
+      endPeriodSharesSource: "Number of Equity Shares - Subscribed Fully Paid up",
+      weightedAverageBasicShares: 60,
+      weightedAverageBasicSource: "Weighted Average Number of Shares in Issue - Basic",
+      weightedAverageDilutedShares: 60,
+      weightedAverageDilutedSource: "Weighted Average Number of Shares in Issue - Diluted",
+      faceValue: 10,
+      shareCapital: 600,
+    },
     trace: {},
   } as RecastPeriod;
 }
 
+const rigorLevels: AnalysisRigorLevel[] = [
+  "syntactically-valid",
+  "structurally-reconciled",
+  "economically-plausible",
+  "valuation-eligible",
+  "production-ready",
+];
+
+function denseRawData(periodCount = 2) {
+  return Array.from({ length: periodCount }, (_, i) => ({
+    company_id: "RIGORCO",
+    period_end: `202${4 + i}-03-31`,
+    raw_metric_values: Object.fromEntries(
+      Array.from({ length: 20 }, (_, j) => [`metric_${j}__BalanceSheet`, 100 + i + j]),
+    ),
+  }));
+}
+
 describe("analysis traceability confidence gates", () => {
+  it("enforces a monotonic prefix for every combination of checkpoint criteria", () => {
+    for (let mask = 0; mask < 2 ** rigorLevels.length; mask += 1) {
+      const candidates: AnalysisRigorCheckpoint[] = rigorLevels.map((level, index) => ({
+        level,
+        label: level,
+        achieved: Boolean(mask & (1 << index)),
+        detail: `criterion ${index}`,
+      }));
+
+      const evaluated = enforceRigorPrefix(candidates);
+      let expectedPrefix = true;
+      for (let index = 0; index < evaluated.length; index += 1) {
+        expectedPrefix = expectedPrefix && candidates[index]!.achieved;
+        expect(evaluated[index]!.achieved, `mask=${mask}, index=${index}`).toBe(expectedPrefix);
+      }
+    }
+  });
+
   it("blocks confidence when parser fidelity fails even if mapping status is otherwise production-ready", () => {
     const traceability = buildAnalysisTraceability({
       sourceMode: "manual",
@@ -201,7 +248,59 @@ describe("analysis traceability confidence gates", () => {
     });
 
     expect(traceability.reconciliation.status).toBe("failed");
+    // The share-capital hard tie-out is independently ready, but readiness
+    // must never soften the failed overall reconciliation verdict.
+    expect(traceability.reconciliation.readiness?.hardTieoutReady).toBe(true);
     expect(traceability.reconciliation.checks.some((check) => check.key === "valuation-triangulation")).toBe(true);
+    expect(traceability.rigor.achievedLevels).not.toContain("structurally-reconciled");
+    expect(traceability.rigor.achievedLevels).not.toContain("valuation-eligible");
+    expect(traceability.rigor.achievedLevels).not.toContain("production-ready");
+  });
+
+  it("does not clear structural or downstream gates when syntactic fidelity fails", () => {
+    const rawData = denseRawData().map((period) => ({
+      ...period,
+      raw_metric_values: { only_metric__BalanceSheet: 100 },
+    }));
+    const recastData = rawData.map((period) => mkTraceabilityRecastPeriod(period.period_end));
+
+    const traceability = buildAnalysisTraceability({
+      sourceMode: "manual",
+      periodCount: rawData.length,
+      rawMetricKeyCount: 1,
+      rawData,
+      recastData,
+      analysisStatus: productionReadyStatus,
+    });
+
+    expect(traceability.parserFidelity.status).toBe("failed");
+    expect(traceability.reconciliation.status).toBe("confirmed");
+    expect(traceability.rigor.achievedLevels).toEqual([]);
+    expect(traceability.rigor.checkpoints.slice(1).every((checkpoint) => !checkpoint.achieved)).toBe(true);
+  });
+
+  it("does not clear valuation or production when the economic gate is blocked", () => {
+    const rawData = denseRawData();
+    const recastData = rawData.map((period) => ({
+      ...mkTraceabilityRecastPeriod(period.period_end),
+      cf: {
+        ...mkTraceabilityRecastPeriod(period.period_end).cf,
+        EquityIssued: 100,
+      },
+    }));
+
+    const traceability = buildAnalysisTraceability({
+      sourceMode: "manual",
+      periodCount: rawData.length,
+      rawMetricKeyCount: 20,
+      rawData,
+      recastData,
+      analysisStatus: productionReadyStatus,
+    });
+
+    expect(traceability.rigor.achievedLevels).toContain("structurally-reconciled");
+    expect(traceability.economicSanity.status).toBe("blocked");
+    expect(traceability.rigor.achievedLevels).not.toContain("economically-plausible");
     expect(traceability.rigor.achievedLevels).not.toContain("valuation-eligible");
     expect(traceability.rigor.achievedLevels).not.toContain("production-ready");
   });

@@ -5,9 +5,13 @@ import type { EngineConfig } from "../types";
 const DEPENDENCIES: Record<AdjusterId, AdjusterId[]> = {
   A1_LEASE_ADJUSTER: [],
   A2_DIRTY_SURPLUS_ADJUSTER: ["A1_LEASE_ADJUSTER"],
-  A3_PRE_BREAK_TRUNCATOR: ["A2_DIRTY_SURPLUS_ADJUSTER"],
+  A3_PRE_BREAK_TRUNCATOR: [],
   A4_BUYBACK_ADJUSTER: ["A1_LEASE_ADJUSTER", "A2_DIRTY_SURPLUS_ADJUSTER"],
 };
+
+// Residual-only A2/A4 transformations are deliberately unavailable until
+// counterpart facts can be identified and accounting identities revalidated.
+const SAFE_ADJUSTERS = new Set<AdjusterId>(["A1_LEASE_ADJUSTER", "A3_PRE_BREAK_TRUNCATOR"]);
 
 function uniqueAdjusters(signals: readonly AnomalySignal[]): AdjusterId[] {
   const values = new Set<AdjusterId>();
@@ -52,7 +56,7 @@ function topoSort(requested: readonly AdjusterId[]): { order: AdjusterId[]; cycl
 
 export function triageSignals(signals: readonly AnomalySignal[], config: EngineConfig): TriageResult {
   const structuralBreakWindowPolicy = config.structural_break_window_policy ?? "auto-post-break";
-  const adjustmentMode = config.greenfield_adjustment_mode ?? "adjusted-with-audit";
+  const adjustmentMode = config.greenfield_adjustment_mode ?? "as-reported-only";
   const suppressedIds = new Map<string, { suppressedBy: string; reason: string }>();
 
   for (const suppressor of signals) {
@@ -69,7 +73,11 @@ export function triageSignals(signals: readonly AnomalySignal[], config: EngineC
     const match = suppressedIds.get(signal.id);
     return match ? [{ signal, suppressedBy: match.suppressedBy, reason: match.reason }] : [];
   });
-  const requestedAdjusters = adjustmentMode === "as-reported-only" ? [] : uniqueAdjusters(activeSignals);
+  const suggestedAdjusters = uniqueAdjusters(activeSignals);
+  const withheldAdjusters = suggestedAdjusters.filter((adjuster) => !SAFE_ADJUSTERS.has(adjuster));
+  const requestedAdjusters = adjustmentMode === "as-reported-only"
+    ? []
+    : suggestedAdjusters.filter((adjuster) => SAFE_ADJUSTERS.has(adjuster));
   const sorted = topoSort(requestedAdjusters);
   const rationale: string[] = [];
 
@@ -84,6 +92,9 @@ export function triageSignals(signals: readonly AnomalySignal[], config: EngineC
   }
   if (adjustmentMode === "as-reported-only") {
     rationale.push("Adjustment mode is as-reported-only; detectors still surface but adjusters are skipped.");
+  }
+  if (adjustmentMode === "adjusted-with-audit" && withheldAdjusters.length > 0) {
+    rationale.push(`${withheldAdjusters.join(", ")} withheld: residual reclassification requires identified counterpart facts and balanced validation.`);
   }
 
   return {

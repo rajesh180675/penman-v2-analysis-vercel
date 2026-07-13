@@ -44,7 +44,14 @@ describe("bank equity-residual-income terminal value drops the spurious (1+g)", 
       bankPeriod("2022-03-31", 1000, 0.13),
       bankPeriod("2023-03-31", 1000, 0.13),
     ];
-    const cfg = { ...DEFAULT_CONFIG, ke: PercentFraction(0.11), terminal_growth_rate: 0.05 };
+    const cfg = {
+      ...DEFAULT_CONFIG,
+      cost_of_equity_mode: "manual" as const,
+      ke: PercentFraction(0.11),
+      ke_manual_rationale: "Terminal-RI regression fixture.",
+      ke_evidence_refs: ["fixture:bank-terminal-ri"],
+      terminal_growth_rate: 0.05,
+    };
 
     const bundle = computeBankValuation(metrics, cfg, null, /* payoutRatio */ 0.30, false, false);
 

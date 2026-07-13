@@ -71,7 +71,7 @@ export default function OnboardingCard({ hasData }: Props) {
               ✓ Distress detection
             </span>
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-              ✓ 663 tests · sector sanity bands
+              ✓ Standard + golden + corpus release gates
             </span>
           </div>
 

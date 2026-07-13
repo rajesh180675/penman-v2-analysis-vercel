@@ -4,11 +4,12 @@
  * kw derivation (S-9.4), and per-period flag attachment.
  * Routes to bank pipeline when financial institution detected.
  */
-import { RawPeriodData, RecastPeriod, EngineConfig, CompanyType, ke_from_config } from "./types";
+import { RawPeriodData, RecastPeriod, EngineConfig, CompanyType } from "./types";
 import {
   computeRecastPeriod, computeRatios,
-  computeResidualIncome, computeQuality, deriveKwFromStructure,
+  computeResidualIncome, computeQuality,
 } from "./PenmanNissimEngine";
+import { resolveCostOfCapitalFromConfig } from "./costOfCapital";
 import { runAnomalyDetection, AnomalyBundle } from "./anomalyDetection";
 import { buildUnusualItemPolicy } from "./unusualItemPolicy";
 import { assessAnalysisScope, analysisFamilyFromScope } from "./scopePolicy";
@@ -22,6 +23,8 @@ import { assessCyclicality, CyclicalityAssessment } from "./cyclicalityDetector"
 import { evaluateRatioSanity, SanityAssessment } from "./ratioSanity";
 import { trace } from "../lib/traceLogger";
 import { runGreenfieldPipeline, type GreenfieldPipelineResult } from "./greenfieldPipeline";
+import { anomalySignalToSpecFlag } from "./greenfieldPipeline/adapters";
+import type { SpecFlag } from "./types/quality";
 
 export interface PipelineResult {
   periods  : RecastPeriod[];
@@ -78,6 +81,39 @@ export function processCompanyData(
   config: EngineConfig,
 ): RecastPeriod[] {
   return processCompanyDataFull(dataArray, config).periods;
+}
+
+/**
+ * Merge period-scoped quality signals without losing recast mapping misses.
+ * `period + spec_id + label` is the stable semantic identity: `spec_id` alone
+ * identifies a policy section (several distinct S-5.3 signals can coexist),
+ * while the label identifies the signal within that section. Duplicate
+ * producers are collapsed deterministically while retaining the strongest
+ * severity and terminal-impact verdict.
+ */
+export function mergePeriodSpecFlags(
+  periodEnd: string,
+  ...groups: ReadonlyArray<readonly SpecFlag[] | null | undefined>
+): SpecFlag[] {
+  const merged = new Map<string, SpecFlag>();
+
+  for (const flag of groups.flatMap((group) => group ?? [])) {
+    if (flag.period !== periodEnd) continue;
+    const signalId = `${flag.period}\u0000${flag.spec_id}\u0000${flag.label}`;
+    const existing = merged.get(signalId);
+    if (!existing) {
+      merged.set(signalId, flag);
+      continue;
+    }
+
+    merged.set(signalId, {
+      ...existing,
+      severity: Math.max(existing.severity, flag.severity) as SpecFlag["severity"],
+      affects_terminal: existing.affects_terminal || flag.affects_terminal,
+    });
+  }
+
+  return [...merged.values()];
 }
 
 /**
@@ -229,8 +265,8 @@ export function processCompanyDataFull(
     (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()
   );
 
-  // S-9.4: ke derived from config — prefer explicit ke, fall back to rf+erp
-  const ke = ke_from_config(config);
+  // Resolve the base equity charge once through the explicit policy seam.
+  const ke = resolveCostOfCapitalFromConfig({ config }).ke;
 
   const results: RecastPeriod[] = [];
 
@@ -255,7 +291,12 @@ export function processCompanyDataFull(
         // consume it (required_return_per_sales) — kwUsed is set to the
         // structural value here; valuation-side paths that need to override
         // (forecast scenarios, sensitivity sweeps) update it themselves.
-        const kwDerived = deriveKwFromStructure(recast, prev, ke, config.risk_free_rate, config);
+        const capitalCost = resolveCostOfCapitalFromConfig({
+          config,
+          current: recast,
+          previous: prev,
+        });
+        const kwDerived = capitalCost.kw;
         recast.kwStructural = kwDerived;
         recast.kwUsed = kwDerived;
         recast.ratios = computeRatios(recast, prev, config);
@@ -292,9 +333,11 @@ export function processCompanyDataFull(
 
   // Attach per-period flags back to each RecastPeriod (S-5.7)
   for (const period of results) {
-    period.spec_flags = anomalies.periodSummaries
+    const mappingFlags = period.spec_flags ?? [];
+    const anomalyFlags = anomalies.periodSummaries
       .find(s => s.period_end === period.period_end)
       ?.all_flags ?? [];
+    period.spec_flags = mergePeriodSpecFlags(period.period_end, mappingFlags, anomalyFlags);
     period.cu.policy = buildUnusualItemPolicy(period);
   }
 
@@ -337,6 +380,25 @@ export function processCompanyDataFull(
 
   const frequencyWarning = detectFrequencyWarning(sorted);
   const greenfield = runGreenfieldPipeline({ rawData: filteredData, config, recastData: results });
+  // Wire greenfield sidecar anomaly signals into per-period spec_flags so
+  // the UI and traceability envelope surface accounting-quality signals
+  // (standard adoption, dirty surplus, lease, FX, structural break, etc.)
+  // alongside the existing S-5.x anomaly flags.
+  if (greenfield.signals.length > 0) {
+    const gfFlagsByPeriod = new Map<string, SpecFlag[]>();
+    for (const signal of greenfield.signals) {
+      const flag = anomalySignalToSpecFlag(signal);
+      const existing = gfFlagsByPeriod.get(signal.period) ?? [];
+      existing.push(flag);
+      gfFlagsByPeriod.set(signal.period, existing);
+    }
+    for (const period of results) {
+      const gfFlags = gfFlagsByPeriod.get(period.period_end);
+      if (gfFlags && gfFlags.length > 0) {
+        period.spec_flags = mergePeriodSpecFlags(period.period_end, period.spec_flags, gfFlags);
+      }
+    }
+  }
   const industrialPipelineStrategyId =
     config.company_type === "telecom" || scope.classification === "detected-telecom-unmodelled" ? "telecom-v1"
     : config.company_type === "utility" || scope.classification === "detected-utility-unmodelled" ? "utility-v1"

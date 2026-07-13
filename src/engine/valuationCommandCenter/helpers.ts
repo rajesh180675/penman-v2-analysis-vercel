@@ -51,12 +51,14 @@ export function scoreFromRange(value: number, min: number, max: number) {
 
 
 export function computeScenarioIntrinsicPerShare(valuation: ValuationResult, ownerEarningsDcf: number | null) {
-  const modelValues = [
+  const accrualFamilyValue = median([
     valuation.perShare?.intrinsic_re_per_share ?? null,
     valuation.perShare?.intrinsic_reoi_per_share ?? null,
+  ]);
+  return median([
+    accrualFamilyValue,
     ownerEarningsDcf,
-  ];
-  return median(modelValues);
+  ]);
 }
 
 export function computeCrossCheckSpread(valuation: ValuationResult) {

@@ -61,7 +61,11 @@ export function useConfigManager(
       equity_risk_premium: Number.isFinite(erp) && erp > 0 ? erp / 100 : prev.equity_risk_premium,
       ticker: company || prev.ticker,
     }));
-    if (tab && TABS.some((t) => t.id === tab)) setActiveTab(tab);
+    // A company deep link must mount DataEntry first so the bundled ZIP can be
+    // resolved and ingested. AppShell retains the requested destination and
+    // restores it after ingestion completes.
+    if (company) setActiveTab("upload");
+    else if (tab && TABS.some((t) => t.id === tab)) setActiveTab(tab);
     if (dark === "1") setDarkMode(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

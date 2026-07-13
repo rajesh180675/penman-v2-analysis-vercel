@@ -9,6 +9,7 @@ export function gridToPeriods(
   stmt: CapitalineStatement,
   std: AccountingStandard,
   multiplier: number = 1,
+  source?: { readonly fileName: string; readonly parserMethod: string } | undefined,
 ): PeriodMap {
   const out: PeriodMap = new Map();
   const aliasMap = buildAliasMap(std);
@@ -72,9 +73,15 @@ export function gridToPeriods(
       // Original label — always written for traceability
       const originalKey = `${metric}__${stmt}`;
       const scaledValue = value != null && multiplier !== 1 ? value * multiplier : value;
+      const origin = source ? {
+        fileName: source.fileName,
+        parserMethod: source.parserMethod,
+        row: r + 1,
+        column: pc.col + 1,
+      } : undefined;
       const existing = target.get(originalKey);
       if (existing === undefined || (existing.value === null && scaledValue !== null)) {
-        target.set(originalKey, { value: scaledValue, statement: stmt, standard: std });
+        target.set(originalKey, { value: scaledValue, statement: stmt, standard: std, origin });
         cellsKeptOriginalOnly++;
       }
 
@@ -86,7 +93,7 @@ export function gridToPeriods(
         // canonical key (that comparison happens in the main merge loop;
         // here we just write if absent or null).
         if (canonExisting === undefined || canonExisting.value === null) {
-          target.set(canonicalKey, { value: scaledValue, statement: stmt, standard: std });
+          target.set(canonicalKey, { value: scaledValue, statement: stmt, standard: std, origin });
           cellsKeptCanonical++;
         }
       }

@@ -162,6 +162,17 @@ describe("lineageBuilder", () => {
     expect(buildLineageRef(a).periodCount).toBe(1);
   });
 
+  it("builds bounded raw-data lineage when recast data is unavailable", () => {
+    const raw = [mkRaw("2025-03-31")];
+    const map = buildLineageMap({ recastData: [], rawData: raw });
+    expect(map.entries["cse|2025-03-31"]?.sourceMetricKeys).toContain("Total Equity");
+    expect(map.entries["pat|2025-03-31"]?.sourceMetricKeys).toContain("Profit After Tax");
+    const ref = buildLineageRef(map);
+    expect(ref.hasLineage).toBe(true);
+    expect(ref.conceptCount).toBeGreaterThan(0);
+    expect(ref.periodCount).toBe(1);
+  });
+
   it("snapshot size stays under 100KB for a 12-period typical case (Plan v4 N-3 budget)", () => {
     const recast: RecastPeriod[] = [];
     for (let i = 0; i < 12; i++) {

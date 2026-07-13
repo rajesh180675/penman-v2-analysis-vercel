@@ -365,7 +365,31 @@ export function assessAnalysisScope(
   const signalKinds = new Set(signals.map(s => s.kind).filter(k => k !== "manual-override"));
   const isBank = signalKinds.has("banking");
   const isInsurance = signalKinds.has("insurance");
-  const isNbfc = signalKinds.has("nbfc");
+
+  // NBFC detection requires at least 2 distinct NBFC signal keys.
+  // A single key (especially "Loans - Long - Term") appears materially in
+  // many industrial companies as subsidiary/staff loans and is not a
+  // reliable NBFC discriminator. Requiring co-occurrence mirrors the
+  // insurance materiality heuristic and prevents false positives like
+  // Bharti Airtel, Titan, Dabur, and Tata Steel being misrouted to the
+  // bank pipeline.
+  const nbfcSignalCount = signals.filter(s => s.kind === "nbfc")
+    .reduce((distinct, s) => distinct.add(s.key), new Set<string>()).size;
+  const isNbfc = nbfcSignalCount >= 2;
+
+  // When nbfc signals exist but don't meet the 2-key threshold, strip them
+  // so the company falls through to industrial classification instead of
+  // being routed to the financial pipeline with a lone false-positive key.
+  if (!isNbfc && nbfcSignalCount > 0 && !isBank && !isInsurance) {
+    const nbfcKeys = new Set(signals.filter(s => s.kind === "nbfc").map(s => s.key));
+    reasons.push(
+      `NBFC signal(s) (${[...nbfcKeys].join(", ")}) did not meet the 2-distinct-key threshold; treating as industrial.`
+    );
+    // Remove nbfc signals so downstream routing sees no financial signals.
+    for (let i = signals.length - 1; i >= 0; i--) {
+      if (signals[i]?.kind === "nbfc") signals.splice(i, 1);
+    }
+  }
 
   // Insurance is supported!
   if (isInsurance && !isBank && !isNbfc) {
@@ -465,7 +489,36 @@ export function assessAnalysisScope(
     // so reviewers can audit the routing decision.
   }
 
-  // Banks and NBFCs are now supported — route to financial pipeline
+  // Banks and NBFCs are now supported — route to financial pipeline.
+  // If we reach here with no financial signal kinds (bank/nbfc/insurance all
+  // false), the lone nbfc signals were stripped above — fall through to
+  // industrial instead of misclassifying.
+  if (!isBank && !isNbfc && !isInsurance) {
+    // Check for unmodelled industrial subsector before defaulting.
+    const subsector = detectIndustrialSubsector(observedCounts);
+    if (subsector) {
+      return buildUnmodelledSectorScope({
+        sector: subsector,
+        signals: [],
+        screeningOnly,
+        screeningReason,
+        source: "detected",
+      });
+    }
+    return {
+      policyVersion: SCOPE_POLICY_VERSION,
+      classification: "supported-industrial",
+      analysisFamily: "industrial",
+      blocked: false,
+      label: "Supported industrial/company scope",
+      reasons,
+      recommendedAction: "Proceed with the industrial Penman-Nissim framework.",
+      signals: [],
+      screeningOnly,
+      screeningReason,
+    };
+  }
+
   return {
     policyVersion: SCOPE_POLICY_VERSION,
     classification: "supported-financial",

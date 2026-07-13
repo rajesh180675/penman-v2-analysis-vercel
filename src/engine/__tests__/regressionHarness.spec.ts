@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveKwFromStructure } from "../PenmanNissimEngine";
+import { resolveCostOfCapitalFromConfig } from "../costOfCapital";
 import { processCompanyData } from "../pipeline";
 import { DEFAULT_CONFIG, EngineConfig, RawPeriodData } from "../types";
 import { PercentFraction } from "../types/units";
@@ -124,6 +124,8 @@ describe("runRegressionHarness", () => {
       risk_free_rate: 0.03,
       equity_risk_premium: 0.09,
       ke: PercentFraction(0.16),
+      cost_of_equity_mode: "manual",
+      ke_manual_rationale: "Regression test override",
     };
     const recast = processCompanyData(sample, cfg);
     const report = runRegressionHarness(sample, recast, cfg);
@@ -141,7 +143,16 @@ describe("runRegressionHarness", () => {
   });
 
   it("keeps harness kw aligned with structural derivation for net-cash firms", () => {
-    const cfg: EngineConfig = { ...DEFAULT_CONFIG, ke: PercentFraction(0.12), kd_pretax: 0.08, tax_rate_for_kd: 0.25 };
+    const cfg: EngineConfig = {
+      ...DEFAULT_CONFIG,
+      ke: PercentFraction(0.12),
+      cost_of_equity_mode: "manual",
+      ke_manual_rationale: "Regression test override",
+      kd_pretax: 0.08,
+      cost_of_debt_mode: "manual",
+      kd_manual_rationale: "Regression test override",
+      tax_rate_for_kd: 0.25,
+    };
     const recast = processCompanyData(netCashSample, cfg);
     const report = runRegressionHarness(netCashSample, recast, cfg);
     expect(report).not.toBeNull();
@@ -151,7 +162,11 @@ describe("runRegressionHarness", () => {
     const cur = recast[recast.length - 1]!;
     expect(cur.bs.NFO).toBeLessThan(0);
 
-    const expectedKw = deriveKwFromStructure(cur, prev, cfg.ke, cfg.risk_free_rate, cfg);
+    const expectedKw = resolveCostOfCapitalFromConfig({
+      config: cfg,
+      current: cur,
+      previous: prev,
+    }).kw;
     expect(report?.valuationDelta.kw_after).toBeCloseTo(expectedKw, 10);
     expect(report?.valuationDelta.kw_after).toBeGreaterThan(cfg.ke);
   });

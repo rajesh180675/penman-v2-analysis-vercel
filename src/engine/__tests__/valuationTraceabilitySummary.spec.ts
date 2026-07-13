@@ -90,6 +90,18 @@ function mkBalancedPeriod(period_end: string): RecastPeriod {
       d_t_discrepancy: 0,
       EBITDA: 140,
     },
+    // Supplies an independent structural check for fixtures that claim a
+    // confirmed reconciliation verdict.
+    shareCountInput: {
+      endPeriodShares: 60,
+      endPeriodSharesSource: "Number of Equity Shares - Subscribed Fully Paid up",
+      weightedAverageBasicShares: 60,
+      weightedAverageBasicSource: "Weighted Average Number of Shares in Issue - Basic",
+      weightedAverageDilutedShares: 60,
+      weightedAverageDilutedSource: "Weighted Average Number of Shares in Issue - Diluted",
+      faceValue: 10,
+      shareCapital: 600,
+    },
   };
 }
 
@@ -126,6 +138,33 @@ describe("buildValuationTraceabilitySurfaceSummary", () => {
     expect(summary?.parserLine).toBe("confirmed · 100/100");
     expect(summary?.reconciliationLine).toBe("confirmed · max residual 0.00%");
     expect(summary?.nextGateLine).toBe("Next unresolved gate: Valuation eligible.");
+  });
+
+  it("treats insufficient reconciliation evidence as a blocking gate issue", () => {
+    const traceability = buildAnalysisTraceability({
+      sourceMode: "json",
+      recastData: [{
+        ...mkBalancedPeriod("2025-03-31"),
+        shareCountInput: undefined,
+      }],
+      rawData: [{
+        company_id: "ITC",
+        period_end: "2025-03-31",
+        raw_metric_values: {
+          "Total Assets__BalanceSheet": 1000,
+          "Total Equity__BalanceSheet": 600,
+          "Revenue From Operations(Net)__ProfitLoss": 900,
+          "Profit After Tax__ProfitLoss": 90,
+        },
+      }],
+      periodCount: 1,
+    });
+
+    const summary = buildValuationTraceabilitySurfaceSummary(traceability);
+
+    expect(traceability.reconciliation.status).toBe("insufficient-evidence");
+    expect(summary?.confidenceLine).toContain("blocked");
+    expect(summary?.blockers).toContain(traceability.reconciliation.summary);
   });
 
   it("carries structural-reconciliation failure into the valuation disclosure", () => {

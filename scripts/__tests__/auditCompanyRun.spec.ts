@@ -10,7 +10,14 @@
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it, afterEach } from "vitest";
-import { auditCompanyRun, type AuditRegistryEntry } from "../lib/auditCompanyRun";
+import type { BankValuationBundle } from "../../src/engine/bankValuation";
+import type { ValuationCommandCenterOutput } from "../../src/engine/valuationCommandCenter";
+import {
+  auditCompanyRun,
+  computedBankModelNames,
+  computedIndustrialModelNames,
+  type AuditRegistryEntry,
+} from "../lib/auditCompanyRun";
 
 const projectRoot = process.cwd();
 const registry = JSON.parse(
@@ -39,6 +46,43 @@ describe.sequential("auditCompanyRun", () => {
  function runAudit(ticker: string): ReturnType<typeof auditCompanyRun> {
  return auditCompanyRun(byTicker(ticker), { projectRoot: resolve(projectRoot) });
  }
+
+  it("counts only finite computed intrinsic results in model ledgers", () => {
+    const bankValuation = {
+      justifiedPB: { status: "computed", intrinsicValue: 100 },
+      equityResidualIncome: { status: "computed", intrinsicValue: Number.NaN },
+      sustainableDDM: { status: "skipped", intrinsicValue: 80 },
+    } as unknown as BankValuationBundle;
+    expect(computedBankModelNames(bankValuation)).toEqual(["PB"]);
+
+    const industrialValuation = {
+      scenarios: [{ intrinsicPerShare: 120 }],
+      sotp: { totalEnterpriseValue: 500 },
+      epv: { epvPerShare: 90 },
+      cashFlowDcf: { perShare: 110, equityValue: 1_100 },
+      evEbitda: { equityFromMedian: 1_050, evEbitdaCompany: 20 },
+      reverseDcf: { impliedOwnerEarningsGrowth: 0.25 },
+      evidenceWeightedSynthesis: { contributions: [{ includedInIntrinsicRange: true }] },
+    } as unknown as ValuationCommandCenterOutput;
+    expect(computedIndustrialModelNames(industrialValuation)).toEqual([
+      "VCC",
+      "SOTP",
+      "EPV",
+      "CASH_DCF",
+      "EV/EBITDA",
+    ]);
+
+    const diagnosticsOnly = {
+      scenarios: [{ intrinsicPerShare: null }],
+      sotp: null,
+      epv: null,
+      cashFlowDcf: null,
+      evEbitda: { equityFromMedian: null, evEbitdaCompany: 20 },
+      reverseDcf: { impliedOwnerEarningsGrowth: 0.25 },
+      evidenceWeightedSynthesis: { contributions: [{ includedInIntrinsicRange: true }] },
+    } as unknown as ValuationCommandCenterOutput;
+    expect(computedIndustrialModelNames(diagnosticsOnly)).toEqual([]);
+  });
 
   it("routes HDFC Bank through a financial-institution audit result with explicit metadata", async () => {
     const result = await runAudit("HDFCBANK");
@@ -81,7 +125,10 @@ describe.sequential("auditCompanyRun", () => {
     expect(result.marketEvidence.status).toBe("fresh");
     expect(result.marketEvidence.reason).toMatch(/Fetched.*market input.*from Yahoo Finance/);
     expect(result.marketEvidence.inputs.length).toBeGreaterThan(0);
-    expect(result.productionReady.status).toBe("pass");
+    const checkpointPass = result.productionReady.checkpoints.every((checkpoint) =>
+      checkpoint.status === "pass" || checkpoint.status === "expected-skip",
+    );
+    expect(result.productionReady.status).toBe(checkpointPass ? "pass" : "blocked");
     expect(result.productionReady.checkpoints.map((checkpoint) => checkpoint.id)).toEqual(expect.arrayContaining([
       "source-lineage",
       "market-freshness",
@@ -105,15 +152,14 @@ describe.sequential("auditCompanyRun", () => {
     expect(result.valuationEvidence.defensibilityStatus).toMatch(/^(confirmed|guarded|blocked)$/);
   }, 120_000);
 
-  it("promotes hard-tieout-cleared industrial rows beyond syntactic-only while preserving guarded valuation status", async () => {
+  it("does not let hard-tieout readiness skip a blocked lower rigor gate", async () => {
   const result = await runAudit("ASIANPAINT");
 
-  // The hard-tieout-ready promotion allows structural reconciliation to clear
-  // even when some residual checks are in warning range. Economic sanity
-  // may also clear, so the rigor level is at least structurally-reconciled
-  // and may reach economically-plausible.
-  expect(["structurally-reconciled", "economically-plausible"]).toContain(result.rigor.currentLevel);
-  expect(result.rigor.reconciliationStatus).toBe("degraded");
+  // Hard-tieout readiness cannot downgrade an overall reconciliation failure,
+  // and the monotonic ladder cannot promote structural/economic levels when a
+  // lower gate is blocked for this fixture.
+  expect(result.rigor.currentLevel).toBe("syntactically-valid");
+  expect(result.rigor.reconciliationStatus).toBe("failed");
   // readinessStatus may be "guarded" or "warning" depending on the
   // valuation readiness computed from the pipeline periods.
   expect(["guarded", "warning"]).toContain(result.valuationEvidence.readinessStatus);
@@ -140,7 +186,7 @@ describe.sequential("auditCompanyRun", () => {
   expect(result.outcome).toBe("POLICY_WARNING");
   }, 120_000);
 
-  it("routes explicit sector-native company types through native valuation strategy ids and evidence", async () => {
+  it("does not fabricate sector-native models or evidence from routing strategy ids", async () => {
     const cases = [
       { ticker: "BHARTIARTL", strategy: "telecom-v1", model: "TELECOM_NATIVE" },
       { ticker: "NTPC", strategy: "utility-v1", model: "UTILITY_RAB" },
@@ -151,9 +197,9 @@ describe.sequential("auditCompanyRun", () => {
     for (const item of cases) {
       const result = await runAudit(item.ticker);
       expect(result.pipelineStrategyId).toBe(item.strategy);
-      expect(result.models).toContain(item.model);
-      expect(result.valuationEvidence.independentLensGroups).toContain("sector-native");
-      expect(result.valuationEvidence.triangulationMethods.map((method) => method.key)).toContain(item.strategy.replace("-v1", ""));
+      expect(result.models).not.toContain(item.model);
+      expect(result.valuationEvidence.independentLensGroups).not.toContain("sector-native");
+      expect(result.valuationEvidence.triangulationMethods.map((method) => method.key)).not.toContain(item.strategy.replace("-v1", ""));
     }
   }, 240_000);
 });

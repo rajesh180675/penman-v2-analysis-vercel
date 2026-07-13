@@ -10,7 +10,7 @@
   "scripts": {
     "predev": "tsx scripts/validate-registry.ts",
     "predev:local": "tsx scripts/validate-registry.ts",
-    "dev": "node sync-companies.cjs && vite",
+    "dev": "concurrently --kill-others-on-fail -n vite,api -c blue,green \"node sync-companies.cjs && vite\" \"node --import tsx/esm server/index.ts\"",
     "dev:local": "concurrently --kill-others-on-fail -n vite,api -c blue,green \"node sync-companies.cjs && vite\" \"node --import tsx/esm server/index.ts\"",
     "server": "node --import tsx/esm server/index.ts",
     "prebuild": "node sync-companies.cjs --check && tsx scripts/validate-registry.ts",
@@ -22,14 +22,26 @@
     "test:audit": "vitest run --pool=forks src/engine/__tests__/audit-all-companies-shard-0.spec.ts && vitest run --pool=forks src/engine/__tests__/audit-all-companies-shard-1.spec.ts && vitest run --pool=forks src/engine/__tests__/audit-all-companies-shard-2.spec.ts",
     "test:audit-slow": "vitest run src/engine/__tests__/audit-all-companies.spec.ts",
     "test": "vitest run",
+    "test:shard:1": "vitest run --shard=1/3 --maxWorkers=1",
+    "test:shard:2": "vitest run --shard=2/3 --maxWorkers=1",
+    "test:shard:3": "vitest run --shard=3/3 --maxWorkers=1",
+    "test:sharded": "concurrently --kill-others-on-fail -n shard1,shard2,shard3 -c cyan,magenta,yellow \"npm run test:shard:1\" \"npm run test:shard:2\" \"npm run test:shard:3\"",
+    "test:timed:1": "vitest run --shard=1/3 --maxWorkers=1 --reporter=default --reporter=junit --outputFile.junit=test-results/shard-1.xml",
+    "test:timed:2": "vitest run --shard=2/3 --maxWorkers=1 --reporter=default --reporter=junit --outputFile.junit=test-results/shard-2.xml",
+    "test:timed:3": "vitest run --shard=3/3 --maxWorkers=1 --reporter=default --reporter=junit --outputFile.junit=test-results/shard-3.xml",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "test:e2e:tcs-audit": "playwright test e2e/tcs-audit-acceptance.spec.ts",
     "lint:any": "node scripts/check-any-budget.cjs",
     "lint:bundle": "node scripts/check-bundle-budget.cjs",
     "lint:doc-schema": "node scripts/check-doc-schema-pin.cjs",
+    "lint:model-catalog": "tsx scripts/check-model-catalog-freshness.ts",
+    "lint:audit-snapshot": "vitest run src/lib/__tests__/auditSnapshotTransport.integration.spec.ts",
+    "platform:ops": "tsx scripts/platform-operations.ts",
+    "platform:preflight": "tsx scripts/platform-operations.ts preflight release",
     "audit:baseline": "tsx scripts/audit-baseline.ts",
     "audit:diff": "node scripts/audit-diff.cjs",
-    "validate": "npm run typecheck && npm run typecheck:scripts && npm run lint:any && npm run lint:doc-schema && npm run test && npm run build && npm run lint:bundle",
+    "validate": "npm run typecheck && npm run typecheck:scripts && npm run lint:any && npm run lint:doc-schema && npm run lint:model-catalog && npm run lint:audit-snapshot && npm run test:sharded && npm run build && npm run lint:bundle",
     "validate:release": "npm run test:golden && npm run validate && npm run test:audit",
     "refresh": "node scripts/refresh-company.mjs"
   },
@@ -42,6 +54,7 @@
     "jspdf": "^4.2.0",
     "jszip": "^3.10.1",
     "katex": "^0.16.33",
+    "pg": "^8.16.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.7.0",
@@ -54,6 +67,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.15.5",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.1",
@@ -68,9 +82,11 @@
     "tailwindcss": "4.1.17",
     "tsx": "^4.22.2",
     "typescript": "5.9.3",
-    "vite": "7.3.2",
+    "vite": "^7.3.6",
     "vite-plugin-singlefile": "2.3.0",
-    "vitest": "^4.0.18",
-    "xlsx": "^0.18.5"
+    "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }

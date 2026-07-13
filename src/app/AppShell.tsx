@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useServerStatus } from "../hooks/useServerStatus";
 import { useBankSidecars } from "../hooks/useBankSidecars";
 import { useAuditPersistence } from "../hooks/useAuditPersistence";
@@ -29,8 +29,10 @@ import {
 import { readPersistedCompanyRegistry } from "../lib/companyRegistryStore";
 import { resolveNseSymbol, resolveFolderFromSymbol } from "../engine/nseSymbolRegistry";
 import { SourceParserDiagnostics } from "../engine/parserDiagnostics";
-import type { TabId } from "./tabs";
-import { useAuditAnalysis } from "./useAuditAnalysis";
+import type { CanonicalFactIngestionBundle } from "../engine/facts";
+import { TABS, type TabId } from "./tabs";
+import { useRunBackedAuditAnalysis } from "./useRunBackedAuditAnalysis";
+import { usePlatformGovernanceEvidence } from "./platformGovernance";
 import { useConfigManager } from "./useConfigManager";
 import { useWorkspaceSync } from "./useWorkspaceSync";
 import { useTabVisibility } from "./useTabVisibility";
@@ -38,6 +40,8 @@ import { AppHeader } from "./components/AppHeader";
 import { CompanyContextStrip } from "./components/CompanyContextStrip";
 import { AnalysisBanners } from "./components/AnalysisBanners";
 import { TabRouter } from "./components/TabRouter";
+import { AnalysisRunStatusBar } from "./components/AnalysisRunStatusBar";
+import { resolvePostIngestionDeepLinkTab } from "./deepLinkRouting";
 
 export function AppShell() {
   const auditGovernance = getAuditClientGovernance();
@@ -50,8 +54,16 @@ export function AppShell() {
   const [standaloneRawData, setStandaloneRawData] = useState<RawPeriodData[] | null>(null);
   const [debugInfo, setDebugInfo] = useState<CapitalineParseDebug | null>(null);
   const [parserDiagnostics, setParserDiagnostics] = useState<SourceParserDiagnostics | null>(null);
+  const [canonicalFacts, setCanonicalFacts] = useState<CanonicalFactIngestionBundle | null>(null);
   const [segmentData, setSegmentData] = useState<import("../engine/segmentParser").AllSegmentData | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("upload");
+  const requestedDeepLinkTabRef = useRef<TabId | null>((() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.get("company")) return null;
+    const requested = params.get("tab") as TabId | null;
+    return requested && TABS.some((tab) => tab.id === requested) ? requested : null;
+  })());
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -80,7 +92,12 @@ export function AppShell() {
   const { config, setConfig, configRef, darkMode, setDarkMode } = useConfigManager(setActiveTab);
 
   // Live market data — fetched at App level so Dashboard + Valuation both have it
-  const { snapshot: liveMarketData } = useLiveMarketData({
+  const {
+    snapshot: liveMarketData,
+    loading: liveMarketDataLoading,
+    error: liveMarketDataError,
+    refresh: refreshLiveMarketData,
+  } = useLiveMarketData({
     provider: config.market_data_provider as any ?? "nse",
     symbol: config.market_data_symbol ?? config.ticker ?? null,
     fallbackPrice: config.market_price ?? null,
@@ -89,6 +106,8 @@ export function AppShell() {
 
   // Phase B5 — Bank/NBFC quality sidecars (extracted to useBankSidecars hook).
   const { bankQuality, nbfcSidecar } = useBankSidecars(config, rawData);
+  const analysisAsOf = new Date().toISOString().slice(0, 10);
+  const platformGovernance = usePlatformGovernanceEvidence(auditMeta?.companyId ?? rawData?.[0]?.company_id ?? null, analysisAsOf);
 
   // The reactive derivation chain (extracted to useAuditAnalysis hook).
   const {
@@ -111,8 +130,17 @@ export function AppShell() {
     traceability,
     publication,
     comparisonPublication,
-  } = useAuditAnalysis({
-    rawData,
+    portfolioRunComparison,
+    commandCenter,
+    analysisWindow,
+    sourcedAssumptionSet,
+    forecastResults,
+    scenarioOrdering,
+    scenarioGovernance,
+    analysisRun,
+    analysisRunState,
+  } = useRunBackedAuditAnalysis({
+    rawData: platformGovernance.blocksAnalysis ? null : rawData,
     standaloneRawData,
     config,
     bankQuality,
@@ -120,6 +148,12 @@ export function AppShell() {
     parserDiagnostics,
     auditMeta,
     registry,
+    liveMarketData,
+    segmentData,
+    canonicalFacts,
+    scenarioCalibration: platformGovernance.scenarioCalibration,
+    sectorSidecar: platformGovernance.sectorSidecar,
+    advancedModels: platformGovernance.advancedModels,
   });
 
   // Log dual-scope availability so QA can verify the second ZIP loaded.
@@ -208,6 +242,7 @@ export function AppShell() {
       // Phase A — optional standalone dataset for dual-scope analysis.
       // Library cards with hasStandalone=true pass this in; manual uploads pass null.
       nextStandaloneData?: RawPeriodData[] | null | undefined,
+      nextCanonicalFacts?: CanonicalFactIngestionBundle | null | undefined,
     ) => {
       const nextMeta = meta ?? {
         runId: createAuditRunId(),
@@ -242,6 +277,7 @@ export function AppShell() {
       setStandaloneRawData(nextStandaloneData ?? null);
       setParserDiagnostics(nextParserDiagnostics ?? null);
       setSegmentData(nextSegmentData ?? null);
+      setCanonicalFacts(nextCanonicalFacts ?? null);
       if (debug) setDebugInfo(debug);
       else setDebugInfo(null);
   if (data.length === 0) { setActiveTab("debug"); return; }
@@ -268,13 +304,14 @@ export function AppShell() {
   });
   const quickScope = assessAnalysisScope(data, latestConfig);
   const quickFamily = analysisFamilyFromScope(quickScope);
-  if (quickFamily === "financial-institution" && !quickScope.blocked) {
-    setActiveTab("bank");
-  } else if (quickScope.blocked) {
-    setActiveTab("debug");
-  } else {
-    setActiveTab("statements");
-  }
+  const requestedDeepLinkTab = requestedDeepLinkTabRef.current;
+  requestedDeepLinkTabRef.current = null;
+  setActiveTab(resolvePostIngestionDeepLinkTab({
+    requestedTab: requestedDeepLinkTab,
+    family: quickFamily,
+    scope: quickScope,
+    hasStandaloneData: Boolean(nextStandaloneData?.length),
+  }));
     },
     [auditGovernance.contentClass, auditGovernance.retentionDays, config, configRef, setConfig]
   );
@@ -373,11 +410,29 @@ export function AppShell() {
         )}
 
         <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
+          {rawData?.length && ["queued", "running", "cancellation-requested"].includes(analysisRunState) ? (
+            <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
+              Building immutable analysis run{analysisRun ? ` ${analysisRun.runId}` : ""}…
+            </div>
+          ) : null}
           {qualityGate && (
             <div className="mb-5">
               <AnalysisStatusBadge status={analysisStatus} />
             </div>
           )}
+          {platformGovernance.advancedModelResolutionRequired && (platformGovernance.advancedModelsLoading || platformGovernance.error) && (
+            <section
+              role={platformGovernance.error ? "alert" : "status"}
+              className={`mb-5 rounded-xl border px-4 py-3 text-sm ${platformGovernance.error
+                ? "border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200"
+                : "border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200"}`}
+            >
+              {platformGovernance.error
+                ? `Advanced-model governance could not be verified. Analysis is paused: ${platformGovernance.error}`
+                : "Resolving authenticated advanced-model promotion and composition evidence…"}
+            </section>
+          )}
+          <AnalysisRunStatusBar run={analysisRun} executionState={analysisRunState} />
           <AnalysisBanners
             setConfig={setConfig}
             config={config}
@@ -409,12 +464,22 @@ export function AppShell() {
             ratioSanity={ratioSanity}
             segmentData={segmentData}
             liveMarketData={liveMarketData}
+            liveMarketDataLoading={liveMarketDataLoading}
+            liveMarketDataError={liveMarketDataError}
+            refreshLiveMarketData={refreshLiveMarketData}
+            commandCenter={commandCenter}
+            analysisWindow={analysisWindow}
+            sourcedAssumptionSet={sourcedAssumptionSet}
+            forecastResults={forecastResults}
+            scenarioOrdering={scenarioOrdering}
+            scenarioGovernance={scenarioGovernance}
             readyCompanyCount={readyCompanyCount}
             bankResult={bankResult}
             nbfcSidecar={nbfcSidecar}
             lossMakerResult={lossMakerResult}
             registry={registry}
             comparisonPublication={comparisonPublication}
+            portfolioRunComparison={portfolioRunComparison}
             workspaceCompanies={workspaceCompanies}
             workspaceCompanyId={workspaceCompanyId}
             setWorkspaceCompanyId={setWorkspaceCompanyId}

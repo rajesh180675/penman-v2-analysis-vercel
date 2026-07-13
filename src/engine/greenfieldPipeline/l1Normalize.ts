@@ -46,19 +46,6 @@ function pickRaw(raw: RawPeriodData, aliases: readonly string[]): number | null 
   return null;
 }
 
-function sumRaw(raw: RawPeriodData, aliases: readonly string[]): number | null {
-  let total = 0;
-  let seen = false;
-  for (const alias of aliases) {
-    const value = pickRaw(raw, [alias]);
-    if (value != null) {
-      total += value;
-      seen = true;
-    }
-  }
-  return seen ? total : null;
-}
-
 function daysBetween(start: string, end: string): number | null {
   const startMs = new Date(start).getTime();
   const endMs = new Date(end).getTime();
@@ -132,13 +119,7 @@ export function normalizePeriods(rawData: RawPeriodData[], config: EngineConfig,
     }
     const leaseLiabilities = fromRecastOrRaw(recast?.bs.FO_LeaseLiabilities, raw, RAW_ALIASES.leaseLiabilities, "values.leaseLiabilities", lineageRows);
     const rightOfUseAssets = fromRecastOrRaw(recast?.bs.OA_ROU, raw, RAW_ALIASES.rightOfUseAssets, "values.rightOfUseAssets", lineageRows);
-    const rawFinancialDebtCr = sumRaw(raw, [
-      ...RAW_ALIASES.longBorrowings,
-      ...RAW_ALIASES.shortBorrowings,
-      ...RAW_ALIASES.otherFinancialLiabilitiesLong,
-      ...RAW_ALIASES.otherFinancialLiabilitiesShort,
-    ]);
-    const financialDebtExLease = fromRecastOrRaw(recast?.bs.FO_FinancialDebtExLease ?? rawFinancialDebtCr, raw, RAW_ALIASES.longBorrowings, "values.financialDebtExLease", lineageRows);
+    const financialDebtExLease = fromRecastOrRaw(recast?.bs.FO_FinancialDebtExLease, raw, [...RAW_ALIASES.longBorrowings, ...RAW_ALIASES.shortBorrowings, ...RAW_ALIASES.otherFinancialLiabilitiesLong, ...RAW_ALIASES.otherFinancialLiabilitiesShort], "values.financialDebtExLease", lineageRows);
     const nfo = fromRecastOrRaw(recast?.bs.NFO, raw, ["Net Financial Obligation"], "values.nfo", lineageRows);
     const dividendsPaid = fromRecastOrRaw(recast?.cf.DividendPaid, raw, RAW_ALIASES.dividendPaid, "values.dividendsPaid", lineageRows);
     const equityIssued = fromRecastOrRaw(recast?.cf.EquityIssued, raw, RAW_ALIASES.equityIssued, "values.equityIssued", lineageRows);

@@ -16,6 +16,7 @@ type ProvenanceRows = Publication["provenanceRows"];
 type ValuationReadiness = Publication["valuationReadiness"];
 type PolicyVersions = Publication["policyVersions"];
 type Traceability = Publication["traceability"];
+type RunIdentity = Publication["runIdentity"];
 type ValuationResult = ReturnType<typeof computeValuation>;
 
 export interface TraceRecord {
@@ -200,6 +201,7 @@ export async function runExportIcBundle(params: {
   valuationReadiness: ValuationReadiness;
   policyVersions: PolicyVersions;
   traceability: Traceability;
+  runIdentity: RunIdentity;
   companyId: string;
   hmacKeyId: string;
   hmacSecret: string;
@@ -214,6 +216,7 @@ export async function runExportIcBundle(params: {
     valuationReadiness,
     policyVersions,
     traceability,
+    runIdentity,
     companyId,
     hmacKeyId,
     hmacSecret,
@@ -254,6 +257,7 @@ export async function runExportIcBundle(params: {
   const traceJson = JSON.stringify(
     {
       generatedAt,
+      runIdentity,
       periods: data.map((p) => p.period_end),
       rows: traceRecords,
     },
@@ -299,6 +303,7 @@ export async function runExportIcBundle(params: {
     },
     policyVersions,
     traceability,
+    runIdentity,
     rowCounts: {
       recastPeriods: data.length,
       traceRows: traceRecords.length,
@@ -378,6 +383,7 @@ export async function runExportWorkbook(params: {
   valuationReadiness: ValuationReadiness;
   policyVersions: PolicyVersions;
   traceability: Traceability;
+  runIdentity: RunIdentity;
   auditMeta: AuditSubmissionMeta | null | undefined;
   data: RecastPeriod[];
   valuation: ValuationResult;
@@ -389,6 +395,7 @@ export async function runExportWorkbook(params: {
     valuationReadiness,
     policyVersions,
     traceability,
+    runIdentity,
     auditMeta,
     data,
     valuation,
@@ -403,6 +410,7 @@ export async function runExportWorkbook(params: {
       policyVersions,
       traceability,
       auditMeta,
+      runIdentity,
     },
     recastData: data,
     forecastScenarios: [],

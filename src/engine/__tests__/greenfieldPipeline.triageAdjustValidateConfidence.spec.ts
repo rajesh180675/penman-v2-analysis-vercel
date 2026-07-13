@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { runGreenfieldPipeline, triageSignals, validateAdjustments, type AnomalySignal, type NormalizedPeriod } from "../greenfieldPipeline";
+import {
+  applyAdjustments,
+  runGreenfieldPipeline,
+  scoreGreenfieldConfidence,
+  triageSignals,
+  validateAdjustments,
+  type AnomalySignal,
+  type NormalizedPeriod,
+} from "../greenfieldPipeline";
 import { DEFAULT_CONFIG, type RawPeriodData } from "../types";
 
 function signal(id: string, detectorId: AnomalySignal["detectorId"], period: string, suggestedAdjusters: AnomalySignal["suggestedAdjusters"] = []): AnomalySignal {
@@ -60,15 +68,71 @@ function normalized(periodEnd: string): NormalizedPeriod {
 }
 
 describe("greenfield L3-L6 integration", () => {
-  it("triages D4 suppression and orders A1 before downstream adjusters", () => {
+  it("defaults to as-reported-only and withholds residual-zeroing adjusters even when adjusted mode is explicit", () => {
     const dirty = signal("dirty", "D2_DIRTY_SURPLUS", "2025-03-31", ["A2_DIRTY_SURPLUS_ADJUSTER"]);
     const oci = { ...signal("oci", "D4_FX_OCI_TRANSLATION", "2025-03-31", ["A2_DIRTY_SURPLUS_ADJUSTER"]), suppresses: [{ detectorId: "D2_DIRTY_SURPLUS" as const, period: "2025-03-31", reason: "OCI explains residual" }] };
     const lease = signal("lease", "D3_LEASE_ACCOUNTING", "2025-03-31", ["A1_LEASE_ADJUSTER"]);
     const buyback = signal("buyback", "D7_BUYBACK_CAPITAL_RETURN", "2025-03-31", ["A4_BUYBACK_ADJUSTER"]);
-    const triage = triageSignals([dirty, oci, lease, buyback], DEFAULT_CONFIG);
+    const defaultTriage = triageSignals([dirty, oci, lease, buyback], DEFAULT_CONFIG);
+
+    expect(DEFAULT_CONFIG.greenfield_adjustment_mode).toBe("as-reported-only");
+    expect(defaultTriage.adjusterOrder).toEqual([]);
+    expect(defaultTriage.rationale).toContain("Adjustment mode is as-reported-only; detectors still surface but adjusters are skipped.");
+
+    const triage = triageSignals([dirty, oci, lease, buyback], {
+      ...DEFAULT_CONFIG,
+      greenfield_adjustment_mode: "adjusted-with-audit",
+    });
 
     expect(triage.suppressedSignals.map((item) => item.signal.id)).toContain("dirty");
-    expect(triage.adjusterOrder.indexOf("A1_LEASE_ADJUSTER")).toBeLessThan(triage.adjusterOrder.indexOf("A4_BUYBACK_ADJUSTER"));
+    expect(triage.adjusterOrder).toContain("A1_LEASE_ADJUSTER");
+    expect(triage.adjusterOrder).not.toContain("A2_DIRTY_SURPLUS_ADJUSTER");
+    expect(triage.adjusterOrder).not.toContain("A4_BUYBACK_ADJUSTER");
+    expect(triage.rationale.join(" ")).toContain("withheld");
+  });
+
+  it("keeps ex-lease debt and dirty-surplus residuals intact, and rewards only accepted transformations", () => {
+    const lease = signal("lease", "D3_LEASE_ACCOUNTING", "2025-03-31", ["A1_LEASE_ADJUSTER"]);
+    const dirty = signal("dirty", "D2_DIRTY_SURPLUS", "2025-03-31", ["A2_DIRTY_SURPLUS_ADJUSTER"]);
+    const buyback = signal("buyback", "D7_BUYBACK_CAPITAL_RETURN", "2025-03-31", ["A4_BUYBACK_ADJUSTER"]);
+    const triage = triageSignals([lease, dirty, buyback], {
+      ...DEFAULT_CONFIG,
+      greenfield_adjustment_mode: "adjusted-with-audit",
+    });
+    const asReported = [normalized("2025-03-31")];
+    const proposed = applyAdjustments(asReported, triage);
+
+    expect(proposed.adjusted[0]!.values.financialDebtExLease).toBe(25);
+    expect(proposed.adjusted[0]!.derived.dirtySurplusSeed).toBe(5);
+    expect(proposed.adjusted[0]!.values.leaseNeutralEquity).toBe(55);
+    expect(proposed.adjusted[0]!.values.nfoExLease).toBe(-2);
+    expect(proposed.auditTrail.map((entry) => entry.field)).toEqual([
+      "values.leaseNeutralEquity",
+      "values.nfoExLease",
+    ]);
+
+    const validated = validateAdjustments(asReported, proposed.adjusted, proposed.auditTrail);
+    const confidence = scoreGreenfieldConfidence({
+      asReported,
+      adjusted: proposed.adjusted,
+      triage,
+      validation: validated.validation,
+      auditTrail: validated.auditTrail,
+      asOf: "2025-03-31",
+    });
+    const suggestionOnlyConfidence = scoreGreenfieldConfidence({
+      asReported,
+      adjusted: proposed.adjusted,
+      triage,
+      validation: validated.validation,
+      auditTrail: [],
+      asOf: "2025-03-31",
+    });
+
+    expect(validated.validation.acceptedCount).toBe(2);
+    expect(confidence.adjusted.bonuses).toHaveLength(1);
+    expect(confidence.adjusted.bonuses[0]!.reason).toContain("Accepted validated transformation A1_LEASE_ADJUSTER");
+    expect(suggestionOnlyConfidence.adjusted.bonuses).toEqual([]);
   });
 
   it("validates field-level adjustments and rejects any attempted FCF change", () => {
@@ -91,6 +155,29 @@ describe("greenfield L3-L6 integration", () => {
     expect(auditTrail[0]!.validationStatus).toBe("rejected");
     expect(adjusted[0]!.values.fcfCash).toBe(-1);
     expect(validation.rejectedCount).toBe(1);
+  });
+
+  it("fails closed if a lease adjustment attempts to rewrite debt already classified ex-lease", () => {
+    const asReported = [normalized("2025-03-31")];
+    const adjusted = [normalized("2025-03-31")];
+    adjusted[0]!.values.financialDebtExLease = 5;
+    const { auditTrail, validation } = validateAdjustments(asReported, adjusted, [{
+      adjusterId: "A1_LEASE_ADJUSTER",
+      field: "values.financialDebtExLease",
+      period: "2025-03-31",
+      before: 25,
+      after: 5,
+      delta: -20,
+      reason: "unsafe double lease subtraction",
+      driven_by: [],
+      validationStatus: "pending",
+      rejectedBy: [],
+    }]);
+
+    expect(auditTrail[0]!.validationStatus).toBe("rejected");
+    expect(auditTrail[0]!.rejectedBy).toContain("ex-lease-debt-must-not-subtract-leases-again");
+    expect(adjusted[0]!.values.financialDebtExLease).toBe(25);
+    expect(validation.status).toBe("rejected");
   });
 
   it("runs the six-layer sidecar and keeps DMART story non-distressed but confidence-capped when stale", () => {

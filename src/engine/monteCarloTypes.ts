@@ -1,4 +1,5 @@
-import type { EngineConfig, RecastPeriod } from "./types";
+import type { EngineConfig } from "./types";
+import type { LegacyValuationPeriodInput } from "./forecastState";
 import type { SegmentDefinition } from "./sotpValuation";
 import type { SegmentData } from "./segmentParser";
 
@@ -19,7 +20,7 @@ export interface SegmentUncertainty {
 }
 
 export interface MonteCarloRequest {
-  basePeriods: RecastPeriod[];
+  basePeriods: readonly LegacyValuationPeriodInput[];
   config: EngineConfig;
   N?: number | undefined;
   horizonT?: number | undefined;
@@ -36,7 +37,7 @@ export interface MonteCarloRequest {
 }
 
 export interface MonteCarloInput {
-  basePeriods: RecastPeriod[];
+  basePeriods: readonly LegacyValuationPeriodInput[];
   config: EngineConfig;
   N: number;
   horizonT: number;

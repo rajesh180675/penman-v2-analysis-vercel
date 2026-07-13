@@ -136,30 +136,31 @@ describe("Graham-Dodd EPV", () => {
     // Adjusted earnings = (1110 - 110) × (1 - 0.252) = 1000 × 0.748 = 748
     expect(result!.adjustedEarningsPower).toBeCloseTo(748, 0);
 
-    // ke = DEFAULT_CONFIG.ke = 0.13 (takes precedence over rf+erp when > 0)
-    expect(result!.ke).toBeCloseTo(0.13, 4);
+    // Default policy is CAPM: rf 7% + sector-neutral beta 1.0 × ERP 5.5%.
+    expect(result!.ke).toBeCloseTo(0.125, 4);
 
-    // kw = ke*0.80 + kd_aftertax*0.20 = 0.13*0.80 + (0.08*(1-0.2517))*0.20 ≈ 0.1160
-    expect(result!.kw).toBeCloseTo(0.1160, 3);
+    // Structural weights use latest CSE/NFO; debt falls back to rf + 3% when
+    // an explicit FO series is unavailable in this minimal fixture.
+    expect(result!.kw).toBeCloseTo(0.1147, 3);
 
-    // EPV operations = 748 / kw ≈ 6450 (uses kw, not ke — enterprise value)
-    expect(result!.epvOperations).toBeCloseTo(6450, 0);
+    // EPV operations = 748 / kw ≈ 6523 (uses kw, not ke — enterprise value)
+    expect(result!.epvOperations).toBeCloseTo(6523, 0);
 
-    // EPV equity = 6450 - 1050 (latest NFO) ≈ 5400
-    expect(result!.epvEquity).toBeCloseTo(5400, 0);
+    // EPV equity = 6523 - 1050 (latest NFO) ≈ 5473
+    expect(result!.epvEquity).toBeCloseTo(5473, 0);
 
-    // EPV per share = 5400 / 100 ≈ 54.0
-    expect(result!.epvPerShare).toBeCloseTo(54.0, 0);
+    // EPV per share = 5473 / 100 ≈ 54.7
+    expect(result!.epvPerShare).toBeCloseTo(54.7, 0);
 
     // Reproduction value = latest NOA = 5100
     expect(result!.reproductionValue).toBe(5100);
 
-    // Franchise value = 6450 - 5100 ≈ 1350 (positive → moat)
-    expect(result!.franchiseValue).toBeCloseTo(1350, 0);
+    // Franchise value = 6523 - 5100 ≈ 1423 (positive → moat)
+    expect(result!.franchiseValue).toBeCloseTo(1423, 0);
     expect(result!.moatSignal).toBe("moat");
 
-    // Margin of safety = (54.0 - 500) / 500 ≈ -0.892 (overvalued vs EPV)
-    expect(result!.marginOfSafety).toBeCloseTo(-0.892, 2);
+    // Margin of safety ≈ -0.891 (overvalued vs EPV)
+    expect(result!.marginOfSafety).toBeCloseTo(-0.891, 2);
   });
 
   it("identifies no-moat when EPV < reproduction value", () => {

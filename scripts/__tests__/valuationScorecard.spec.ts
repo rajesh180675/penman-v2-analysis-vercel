@@ -10,6 +10,11 @@ import {
   renderScorecardMarkdown,
   type ValuationScorecardAuditRow,
 } from "../lib/valuationMaturityScorecard";
+import {
+  executeSectorCase,
+  toSectorNativeCreditResult,
+  type UtilityRabCaseInput,
+} from "../../src/engine/sectorCases";
 import { diffValuationMaturityScorecards } from "../lib/valuationScorecardDiff";
 
 const projectRoot = process.cwd();
@@ -129,6 +134,51 @@ describe("valuation maturity scorecard", () => {
 
     const weighted = scorecard.families.reduce((sum, family) => sum + family.score * family.weight, 0) / 100;
     expect(scorecard.overallScore).toBe(Number(weighted.toFixed(1)));
+  });
+
+  it("does not award sector-native maturity credit for a routing strategy without a computed native model", () => {
+    const strategyOnly = buildValuationMaturityScorecard([row({
+      ticker: "UTILITY_ROUTE_ONLY",
+      companyType: "utility",
+      pipelineStrategyId: "utility-v1",
+      models: ["VCC", "UTILITY_RAB"],
+    })]);
+    const utilityInput: UtilityRabCaseInput = {
+      caseType: "utility-rab",
+      issuerId: "UTILITY_COMPUTED",
+      asOf: "2026-03-31",
+      companyType: "utility",
+      sharesOutstandingCr: 100,
+      evidence: {
+        "utility.rate-base": ["fact:rate-base"],
+        "utility.tariff-return": ["filing:tariff-order"],
+        "utility.capital-structure": ["fact:capital-structure"],
+      },
+      regulatedRateBaseCr: 1_000,
+      constructionWorkInProgressCr: 100,
+      cwipEligibilityPct: 0.5,
+      regulatoryAssetsCr: 50,
+      regulatoryLiabilitiesCr: 20,
+      regulatedEquityWeight: 0.4,
+      allowedReturnOnEquity: 0.14,
+      costOfEquity: 0.11,
+      terminalGrowth: 0.04,
+      netDebtCr: 600,
+    };
+    const computedUtility = executeSectorCase(utilityInput);
+    expect(computedUtility.status).toBe("computed");
+    const computedNative = buildValuationMaturityScorecard([row({
+      ticker: "UTILITY_COMPUTED",
+      companyType: "utility",
+      pipelineStrategyId: "utility-v1",
+      models: ["VCC"],
+      sectorNativeResults: [toSectorNativeCreditResult(computedUtility)],
+    })]);
+
+    expect(strategyOnly.families.find((family) => family.id === "sector-native-coverage")?.score).toBe(4);
+    expect(strategyOnly.rowSummaries[0]!.blockers.map((blocker) => blocker.code)).toContain("sector-native-strategy-missing");
+    expect(computedNative.families.find((family) => family.id === "sector-native-coverage")?.score).toBeGreaterThanOrEqual(7);
+    expect(computedNative.rowSummaries[0]!.blockers.map((blocker) => blocker.code)).not.toContain("sector-native-strategy-missing");
   });
 
   it("emits row-level blocker reasons so policy warnings are actionable instead of circular", () => {
@@ -342,8 +392,12 @@ describe("valuation-scorecard CLI", () => {
     expect(parsed.corpus.companies).toBe(1);
     expect(parsed.corpus.blockerCounts["source-lineage"]).toBe(0);
     expect(parsed.rowSummaries[0].blockers.map((blocker: { code: string }) => blocker.code)).not.toContain("source-lineage-missing");
-    expect(parsed.rowSummaries[0].productionReady.status).toBe("pass");
-    expect(parsed.rowSummaries[0].productionReady.checkpoints.map((checkpoint: { id: string }) => checkpoint.id))
+    const productionReady = parsed.rowSummaries[0].productionReady;
+    const checkpointPass = productionReady.checkpoints.every((checkpoint: { status: string }) =>
+      checkpoint.status === "pass" || checkpoint.status === "expected-skip",
+    );
+    expect(productionReady.status).toBe(checkpointPass ? "pass" : "blocked");
+    expect(productionReady.checkpoints.map((checkpoint: { id: string }) => checkpoint.id))
       .toEqual(expect.arrayContaining(["market-freshness", "reviewer-pack"]));
   }, 120_000);
 

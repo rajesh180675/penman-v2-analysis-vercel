@@ -21,6 +21,7 @@ import type { BankPeriodMetrics } from "./bankPipeline";
 import type { BankValuationBundle, BankValuationModelResult } from "./bankValuation";
 import type { FinancialInstitutionAnalysisResult, FinancialInstitutionSubtype } from "./analysisFamily";
 import type { EngineConfig } from "./types";
+import { resolveCostOfCapitalFromConfig } from "./costOfCapital";
 
 // ─── Style + workbook helpers ─────────────────────────────────────────────────
 
@@ -89,7 +90,7 @@ function buildCoverSheet(
   metadata: BankWorkbookMetadata,
 ): SheetSpec {
   const v = bankResult.valuation;
-  const ke = config.ke ?? (config.risk_free_rate + config.equity_risk_premium);
+  const ke = resolveCostOfCapitalFromConfig({ config }).ke;
   const subtypeLabel = subtypeDisplayLabel(bankResult.subtype);
 
   const rows: CellValue[][] = [

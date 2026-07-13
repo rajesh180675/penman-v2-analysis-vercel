@@ -14,6 +14,7 @@ import type { AnalyticalDepthSummary } from "./analyticalDepth";
 import type { AntiTautologySummary } from "../valuationEvidence/types";
 import type { AnalysisPolicyVersions } from "../policyVersions";
 import type { LineageRef } from "../lineageTypes";
+import type { SourceArtifactHash } from "../capitalineParser/types";
 import type { BacklogTriageAction, BacklogPriority } from "./backlog";
 
 /**
@@ -142,6 +143,11 @@ export interface AnalysisTraceabilityEnvelope {
    *  so a future reader can detect drift between envelope and
    *  snapshot. See ADR-004. */
   lineageRef: LineageRef;
+  /** Source-lineage — SHA-256 hashes of each source artifact (.xls file)
+   *  inside the parsed ZIP. Empty for manual entry / JSON import runs.
+   *  Lets the production-ready checkpoint verify source provenance without
+   *  requiring the CLI audit harness to run separately. */
+  sourceArtifactHashes?: SourceArtifactHash[] | null | undefined;
   rigor: {
     currentLevel: AnalysisRigorLevel;
     currentLabel: string;

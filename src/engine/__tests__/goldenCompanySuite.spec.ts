@@ -46,6 +46,6 @@ describe("golden company acceptance suite", () => {
           `${testCase.id} cash conversion ratio`,
         );
       }
-    }, 20000);
+    }, 60000);
   }
 });

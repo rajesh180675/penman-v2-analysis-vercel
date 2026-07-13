@@ -27,7 +27,8 @@
  * asset revaluation is rare).
  */
 
-import { RecastPeriod, EngineConfig, resolveKw, ke_from_config } from "./types";
+import { RecastPeriod, EngineConfig } from "./types";
+import { resolveCostOfCapitalFromConfig } from "./costOfCapital";
 
 export interface EPVNormalization {
   periodsUsed: number;
@@ -272,8 +273,6 @@ export function computeEPV(
   // EPV of operations is an enterprise (pre-financing) value — discount at
   // WACC (kw), not ke. Using ke overstates EPV for levered companies because
   // ke > kw when NFO > 0. ke is only correct for the equity bridge step.
-  // Use ke_from_config (respects explicit cfg.ke, falls back to rf+erp).
-  const ke = ke_from_config(config);
   // S-9.4C: prefer the latest period's structural kw (stamped by the
   // pipeline) over the config-derived 80/20 fallback. Structural kw uses
   // the actual capital weights at the latest period and matches the kw
@@ -284,7 +283,14 @@ export function computeEPV(
     (a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()
   );
   const latestForKw = sortedForKw[sortedForKw.length - 1];
-  const kw = resolveKw(latestForKw?.kwStructural, config).kw;
+  const previousForKw = sortedForKw[sortedForKw.length - 2];
+  const capitalCost = resolveCostOfCapitalFromConfig({
+    config,
+    current: latestForKw,
+    previous: previousForKw,
+  });
+  const ke = capitalCost.ke;
+  const kw = capitalCost.kw;
 
   if (ke <= 0.01) return null; // nonsensical ke
 

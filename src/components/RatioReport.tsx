@@ -9,11 +9,11 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   Legend, BarChart, Bar, ReferenceLine, Cell,
 } from "recharts";
-import KPITile from "./dashboard/KPITile";
 import DuPontWaterfall from "./charts/DuPontWaterfall";
 import { Section, ChartGrid, ChartCard, Th, TR } from "./ratio/atoms";
 import { pct, mult, num, days } from "./ratio/formatters";
 import { RatioTrendView } from "./ratio/RatioTrendView";
+import { RatioKpiGrid } from "./ratio/RatioKpiGrid";
 
 interface Props {
   data: RecastPeriod[];
@@ -104,46 +104,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
       )}
 
       {/* Sparkline KPI Grid — visual summary before tables */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        <KPITile
-          label="ROCE"
-          value={latest.ratios?.ROCE ?? null}
-          format="pct"
-          history={rd.map(d => ({ period: d.period_end.slice(0, 4), value: d.ratios?.ROCE ?? null }))}
-          trend={rd.length >= 2 ? (latest.ratios?.ROCE ?? 0) - (rd[rd.length - 2]!.ratios?.ROCE ?? 0) : null}
-        />
-        <KPITile
-          label="RNOA"
-          value={latest.ratios?.RNOA ?? null}
-          format="pct"
-          history={rd.map(d => ({ period: d.period_end.slice(0, 4), value: d.ratios?.RNOA ?? null }))}
-          trend={rd.length >= 2 ? (latest.ratios?.RNOA ?? 0) - (rd[rd.length - 2]!.ratios?.RNOA ?? 0) : null}
-        />
-        <KPITile
-          label="Profit Margin"
-          value={latest.ratios?.PM ?? null}
-          format="pct"
-          history={rd.map(d => ({ period: d.period_end.slice(0, 4), value: d.ratios?.PM ?? null }))}
-        />
-        <KPITile
-          label="Asset Turnover"
-          value={latest.ratios?.ATO ?? null}
-          format="mult"
-          history={rd.map(d => ({ period: d.period_end.slice(0, 4), value: d.ratios?.ATO ?? null }))}
-        />
-        <KPITile
-          label="Fin. Leverage"
-          value={latest.ratios?.FLEV ?? null}
-          format="mult"
-          history={rd.map(d => ({ period: d.period_end.slice(0, 4), value: d.ratios?.FLEV ?? null }))}
-        />
-        <KPITile
-          label="Cash Conversion"
-          value={latest.ratios?.cash_conversion_ratio ?? null}
-          format="mult"
-          history={rd.map(d => ({ period: d.period_end.slice(0, 4), value: d.ratios?.cash_conversion_ratio ?? null }))}
-        />
-      </div>
+      <RatioKpiGrid rd={rd} latest={latest} />
 
       {/* DuPont Waterfall — latest period + interactive trend */}
       <DuPontWaterfall

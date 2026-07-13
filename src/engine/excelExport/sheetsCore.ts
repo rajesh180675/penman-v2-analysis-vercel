@@ -2,7 +2,7 @@
  * Core workbook sheets (Cover, Traceability, Ratio Sanity, Recast)  extracted verbatim from excelExport.ts.
  */
 import type { EngineConfig, RecastPeriod } from "../types";
-import { ke_from_config } from "../types";
+import { resolveCostOfCapitalFromConfig } from "../costOfCapital";
 import type { AnalysisTraceabilityEnvelope } from "../analysisTraceability";
 import type { AnalysisPolicyVersions } from "../policyVersions";
 import type { SanityAssessment } from "../ratioSanity";
@@ -24,6 +24,10 @@ import {
 export interface WorkbookExportMetadata {
   companyLabel?: string | undefined;
   auditRunId?: string | null | undefined;
+  analysisRunId?: string | null | undefined;
+  reproducibilityHash?: string | null | undefined;
+  analysisRunSchemaVersion?: string | null | undefined;
+  executorVersion?: string | null | undefined;
   valuationStatus?: "production-ready" | "warning" | "guarded" | undefined;
   valuationReasons?: string[] | undefined;
   valuationAnchorPeriod?: string | null | undefined;
@@ -37,7 +41,7 @@ export interface WorkbookExportMetadata {
 // ── Sheet 1: Cover ─────────────────────────────────────────────────────────────
 export function buildCoverSheet(config: EngineConfig, periodCount: number, metadata?: WorkbookExportMetadata): WorkSheet {
   const ws: WorkSheet = {};
-  const ke = ke_from_config(config);
+  const ke = resolveCostOfCapitalFromConfig({ config }).ke;
   const valuationReason = metadata?.valuationReasons?.[0] ?? "—";
   const versions = metadata?.policyVersions;
   const traceability = metadata?.traceability;
@@ -49,6 +53,8 @@ export function buildCoverSheet(config: EngineConfig, periodCount: number, metad
     [cell("")],
     [cell("Company", LABEL_BOLD), cell(metadata?.companyLabel ?? config.ticker ?? "—", LABEL)],
     [cell("Audit Run ID", LABEL_BOLD), cell(metadata?.auditRunId ?? "—", LABEL)],
+    [cell("Analysis Run ID", LABEL_BOLD), cell(metadata?.analysisRunId ?? "—", LABEL)],
+    [cell("Reproducibility Hash", LABEL_BOLD), cell(metadata?.reproducibilityHash ?? "—", LABEL)],
     [cell("Valuation Status", LABEL_BOLD), cell(metadata?.valuationStatus ?? "production-ready", LABEL)],
     [cell("Valuation Anchor Period", LABEL_BOLD), cell(metadata?.valuationAnchorPeriod ?? "—", LABEL)],
     [cell("Latest Source Period", LABEL_BOLD), cell(metadata?.valuationSourcePeriod ?? "—", LABEL)],
@@ -96,7 +102,10 @@ export function buildTraceabilitySheet(metadata?: WorkbookExportMetadata): WorkS
     [cell("")],
     [cell("Schema Version", LABEL_BOLD), cell(traceability?.schemaVersion ?? "—", LABEL)],
     [cell("Generated At", LABEL_BOLD), cell(traceability?.generatedAt ?? "—", LABEL)],
-    [cell("Run ID", LABEL_BOLD), cell(traceability?.runContext?.runId ?? metadata?.auditRunId ?? "—", LABEL)],
+    [cell("Run ID", LABEL_BOLD), cell(metadata?.analysisRunId ?? traceability?.runContext?.runId ?? "—", LABEL)],
+    [cell("Reproducibility Hash", LABEL_BOLD), cell(metadata?.reproducibilityHash ?? "—", LABEL)],
+    [cell("Analysis Run Schema", LABEL_BOLD), cell(metadata?.analysisRunSchemaVersion ?? "—", LABEL)],
+    [cell("Executor Version", LABEL_BOLD), cell(metadata?.executorVersion ?? "—", LABEL)],
     [cell("Company ID", LABEL_BOLD), cell(traceability?.runContext?.companyId ?? metadata?.companyLabel ?? "—", LABEL)],
     [cell("Source Mode", LABEL_BOLD), cell(traceability?.runContext?.sourceMode ?? "—", LABEL)],
     [cell("Latest Period", LABEL_BOLD), cell(traceability?.runContext?.latestPeriod ?? metadata?.valuationSourcePeriod ?? "—", LABEL)],

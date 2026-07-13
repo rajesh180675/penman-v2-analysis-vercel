@@ -28,6 +28,8 @@ import {
   CapitalineParseDebug,
   CurrencyUnit,
   PeriodMap,
+  SourceArtifactHash,
+  CapitalineFactOrigin,
 } from "./capitalineParser/types";
 import {
   UNIT_TO_CR_MULTIPLIER,
@@ -57,6 +59,8 @@ export type {
   RawGridDebug,
   CapitalineParseDebug,
   CurrencyUnit,
+  SourceArtifactHash,
+  CapitalineFactOrigin,
 } from "./capitalineParser/types";
 
 /* ══════════════════════════════════════════════════════════════════
@@ -146,6 +150,8 @@ export async function parseCapitalineZip(
   }));
 
   const rawGrids: RawGridDebug[] = [];
+  // Phase source-lineage — per-file SHA-256 hashes for traceability envelope.
+  const sourceArtifactHashes: SourceArtifactHash[] = [];
   // allPeriods: period_end → Map<compositeKey, {value, statement}>
   const allPeriods: PeriodMap = new Map();
   const sampleRows: CapitalineParseDebug["sample"]["firstRows"] = [];
@@ -188,6 +194,18 @@ export async function parseCapitalineZip(
       buffer = await entry.async("arraybuffer");
     } catch (e) {
       throw new Error(`Could not read '${fileName}': ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    // Source-lineage: SHA-256 of uncompressed file bytes.
+    try {
+      const digest = await crypto.subtle.digest("SHA-256", buffer);
+      sourceArtifactHashes.push({
+        fileName,
+        sha256: Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join(""),
+        byteLength: buffer.byteLength,
+      });
+    } catch {
+      // crypto.subtle may be unavailable in some test environments — skip hash.
     }
 
     const gd: RawGridDebug = {
@@ -292,7 +310,10 @@ export async function parseCapitalineZip(
 
       if (!sampleHeaderRow) sampleHeaderRow = grid[header.rowIndex];
 
-      const fp = gridToPeriods(grid, header, stmtGuess, stdGuess, fileMultiplier);
+      const fp = gridToPeriods(grid, header, stmtGuess, stdGuess, fileMultiplier, {
+        fileName,
+        parserMethod: gd.bestMethod,
+      });
       for (const [pe, mmap] of fp) {
         if (!allPeriods.has(pe)) allPeriods.set(pe, new Map());
         const target = allPeriods.get(pe)!;
@@ -415,15 +436,17 @@ export async function parseCapitalineZip(
   };
 
   const periods: RawPeriodData[] = [];
+  const factOrigins: Record<string, Record<string, CapitalineFactOrigin>> = {};
 
   for (const period_end of detectedPeriods) {
     const cmap = allPeriods.get(period_end)!;
     const raw: Record<string, number | null> = {};
+    const rawOrigins: Record<string, CapitalineFactOrigin> = {};
 
     // Track best base-key per statement for global winner
     const baseKeyBest = new Map<
       string,
-      { stmt: CapitalineStatement; value: number | null }
+      { stmt: CapitalineStatement; value: number | null; origin?: CapitalineFactOrigin | undefined }
     >();
 
     for (const [ck, payload] of cmap) {
@@ -434,13 +457,14 @@ export async function parseCapitalineZip(
 
       // Store composite key
       raw[ck] = payload.value;
+      if (payload.origin) rawOrigins[ck] = payload.origin;
       totalComposite++;
       byStmt[stmt] = (byStmt[stmt] || 0) + 1;
 
       // Determine base-key winner (for backward compat with val() without preferStmt)
       const ex = baseKeyBest.get(metric);
       if (!ex || STMT_PRECEDENCE[stmt] > STMT_PRECEDENCE[ex.stmt]) {
-        baseKeyBest.set(metric, { stmt, value: payload.value });
+        baseKeyBest.set(metric, { stmt, value: payload.value, origin: payload.origin });
       }
 
       // Track global collisions for debug
@@ -455,6 +479,7 @@ export async function parseCapitalineZip(
     // Write base-key winners (for simple val() lookups)
     for (const [m, o] of baseKeyBest) {
       raw[m] = o.value;
+      if (o.origin) rawOrigins[m] = o.origin;
     }
 
     // Phase A: derive dominant standard for this period.
@@ -481,6 +506,7 @@ export async function parseCapitalineZip(
       accounting_standard: dominantStandard,
       currency_unit: dominantUnit,
     });
+    factOrigins[period_end] = rawOrigins;
   }
 
   // Build collision list for debug
@@ -506,6 +532,8 @@ export async function parseCapitalineZip(
     companyId,
     files: filesMeta,
     detectedPeriods,
+    sourceArtifactHashes,
+    factOrigins,
     rawGrids,
     metrics: {
       totalCompositeKeys: totalComposite,

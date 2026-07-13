@@ -1,4 +1,5 @@
-import { RecastPeriod, EngineConfig, ke_from_config } from "../types";
+import { RecastPeriod, EngineConfig } from "../types";
+import { resolveCostOfCapitalFromConfig } from "../costOfCapital";
 import { BankPeriodMetrics } from "../bankPipeline";
 import { BankCapAllocResult } from "./types";
 import { medianOf, clamp, linearScore, gradeFromScore, trendFromSeries } from "./shared";
@@ -20,7 +21,7 @@ export function scoreBankCapitalAllocation(
   config: EngineConfig
 ): BankCapAllocResult {
   const notes: string[] = [];
-  const ke = ke_from_config(config);
+  const ke = resolveCostOfCapitalFromConfig({ config }).ke;
 
   if (bankMetrics.length < 3) {
     notes.push("Fewer than 3 periods — scores are low confidence");

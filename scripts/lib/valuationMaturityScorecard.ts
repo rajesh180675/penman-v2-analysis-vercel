@@ -5,6 +5,11 @@ import {
   type AuditOutcome,
   type AuditStatusClass,
 } from "./auditTypes";
+import {
+  evaluateSectorNativeCredit,
+  type SectorCaseType,
+  type SectorNativeCreditResult,
+} from "../../src/engine/sectorCases";
 
 export const SCORECARD_SCHEMA_VERSION = "2026-06-valuation-maturity-v2" as const;
 
@@ -77,6 +82,10 @@ export interface ValuationScorecardAuditRow {
   periods: number;
   latestPeriod: string | null;
   models: string[];
+  /** Typed, evidence-eligible sector results. Model-name strings alone never
+   * grant sector-native maturity credit.
+   */
+  sectorNativeResults?: SectorNativeCreditResult[];
   valuationEvidence: {
     readinessStatus: string | null;
     readinessAnchorPeriod: string | null;
@@ -331,7 +340,7 @@ export function deriveValuationBlockers(row: ValuationScorecardAuditRow): Valuat
     ));
   }
 
-  if (SECTOR_NATIVE_TYPES.has(row.companyType) && !isSectorNativeStrategy(row)) {
+  if (SECTOR_NATIVE_TYPES.has(row.companyType) && !hasSectorNativeComputedModel(row)) {
     blockers.push(makeBlocker(
       row,
       "sector-native-strategy-missing",
@@ -339,7 +348,7 @@ export function deriveValuationBlockers(row: ValuationScorecardAuditRow): Valuat
       "blocker",
       `${row.companyType} row is not supported by a sector-native valuation strategy.`,
       "Route through a source-backed sector-native strategy or mark the required sector source contract unavailable.",
-      ["companyType", "pipelineStrategyId", "models"],
+      ["companyType", "pipelineStrategyId", "sectorNativeResults"],
     ));
   }
 
@@ -422,6 +431,24 @@ export function deriveValuationBlockers(row: ValuationScorecardAuditRow): Valuat
       "warning",
       "Audit row is a policy warning without a lower-level flag explaining the policy decision.",
       "Convert the warning into explicit blocker reasons or a stricter expected-skip/source contract.",
+      ["outcome", "flags"],
+    ));
+  } else if (row.outcome === "POLICY_WARNING" && row.flags.some((f) => f.startsWith("POLICY:"))) {
+    const policyFlag = row.flags.find((f) => f.startsWith("POLICY:")) ?? "";
+    const reasonMap: Record<string, string> = {
+      "POLICY:RIGOR_CAP_STRUCTURAL": "Valuation computed but rigor capped at structurally-reconciled — economic sanity or valuation-eligible gate not cleared.",
+      "POLICY:RIGOR_CAP_SYNTACTIC": "Valuation computed but rigor capped at syntactically-valid — structural reconciliation not cleared.",
+      "POLICY:RIGOR_CAP_ECONOMIC": "Valuation computed but rigor capped at economically-plausible — valuation-eligible gate not cleared.",
+      "POLICY:VALUATION_COMPUTED_NON_PROD_READY": "Valuation computed but production-ready gate not cleared.",
+      "POLICY:NO_COMPUTED_VALUE": "No computed valuation value — model applicability gap.",
+    };
+    blockers.push(makeBlocker(
+      row,
+      "policy-warning-rigor-cap",
+      "model-applicability",
+      "info",
+      reasonMap[policyFlag] ?? `Policy warning explained by flag: ${policyFlag}`,
+      "Advance the rigor ladder to clear the cap, or accept the current level as the ceiling for this company.",
       ["outcome", "flags"],
     ));
   }
@@ -538,20 +565,28 @@ function scoreFinancialCoverage(rows: ValuationScorecardAuditRow[]): ValuationMa
   );
 }
 
-function isSectorNativeStrategy(row: ValuationScorecardAuditRow): boolean {
-  const strategy = row.pipelineStrategyId ?? "";
+function hasSectorNativeComputedModel(row: ValuationScorecardAuditRow): boolean {
   if (!SECTOR_NATIVE_TYPES.has(row.companyType)) return false;
-  if (row.companyType === "conglomerate") return row.models.some((model) => model.toUpperCase().includes("SOTP"));
-  return strategy !== "industrial-v1" && strategy.toLowerCase().includes(row.companyType);
+  const expectedCases: Partial<Record<string, SectorCaseType>> = {
+    telecom: "telecom-network",
+    utility: "utility-rab",
+    cyclical: "cyclical-mid-cycle",
+    conglomerate: "conglomerate-sotp",
+  };
+  const expectedCase = expectedCases[row.companyType];
+  if (!expectedCase) return false;
+  return (row.sectorNativeResults ?? []).some(
+    (result) => result.caseType === expectedCase && evaluateSectorNativeCredit(result).credited,
+  );
 }
 
 function scoreSectorNativeCoverage(rows: ValuationScorecardAuditRow[]): ValuationMaturityFamilyScore {
   const scoped = rowsForTypes(rows, SECTOR_NATIVE_TYPES);
   const rowScores = scoped.map((row) => {
-    if (isSectorNativeStrategy(row)) return Math.max(7, outcomeScore(row));
+    if (hasSectorNativeComputedModel(row)) return Math.max(7, outcomeScore(row));
     return Math.min(4, outcomeScore(row));
   });
-  const nonNative = scoped.filter((row) => !isSectorNativeStrategy(row));
+  const nonNative = scoped.filter((row) => !hasSectorNativeComputedModel(row));
   return makeFamily(
     "sector-native-coverage",
     average(rowScores),
