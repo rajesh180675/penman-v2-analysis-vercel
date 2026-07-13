@@ -36,6 +36,8 @@ npm run platform:preflight
 
 `runtime` validates PostgreSQL, private Blob, HTTPS OIDC, and bounded connection settings. `operations` validates backup, cron, health, outbox, and capacity settings. `release` requires both profiles. Present-but-unsafe URLs, weak secrets, invalid base64 key material, placeholders, and unbounded numeric overrides fail closed.
 
+The committed Vercel schedule invokes the outbox once per day so preview and production deployments remain valid on the Hobby plan. Production deployments that require prompt webhook delivery must use Vercel Pro (change the outbox expression to `*/5 * * * *`) or an authenticated external scheduler that calls `/api/cron/platform-outbox` every five minutes. Keep `CRON_SECRET` configured in either mode.
+
 ## 3. Activate a staging workspace
 
 Use real organization, workspace, and principal identifiers from the configured identity tenant.
@@ -53,7 +55,7 @@ Bootstrap is deliberately single-use and fails if a membership already exists. M
 ## 4. Verify authenticated deployment behavior
 
 1. Call `/api/platform/health` with `x-platform-health-token`; require HTTP 200 and `status: ready`.
-2. Confirm the five-minute outbox, daily backup, and monthly restore-drill schedules execute successfully.
+2. Confirm the outbox, daily backup, and monthly restore-drill schedules execute successfully. For production webhook delivery, verify the Pro or external five-minute outbox schedule described above.
 3. Run `npm run validate:release`.
 4. Run `npm run test:e2e:tcs-audit` against staging.
 5. Verify an OIDC user can access only workspaces authorized by signed organization membership.
