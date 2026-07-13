@@ -1,5 +1,5 @@
 import { enforceAuditRateLimit } from "../audit/_lib.js";
-import { NSE_SYMBOL_REGISTRY } from "./symbolRegistry.js";
+import { NSE_SYMBOL_REGISTRY } from "./_symbolRegistry.js";
 
 function toNumber(value) {
   const parsed = Number(value);

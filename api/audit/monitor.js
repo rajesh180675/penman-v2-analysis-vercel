@@ -3,7 +3,7 @@ import {
   listMonitorReports,
   requireMonitorAuth,
   runAuditMonitor,
-} from "./monitor-lib.js";
+} from "./_monitor-lib.js";
 import { assertContentLength, readJsonBody, respondJsonBodyError } from "./_lib.js";
 
 export default async function handler(request, response) {

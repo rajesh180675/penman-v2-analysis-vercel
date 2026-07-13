@@ -6,7 +6,7 @@ import {
   isAuditConfigured,
   sanitizePathSegment,
 } from "./_lib.js";
-import { evaluateRunHealth, getMonitorConfig, getMonitorReport, getRunTimeline } from "./monitor-lib.js";
+import { evaluateRunHealth, getMonitorConfig, getMonitorReport, getRunTimeline } from "./_monitor-lib.js";
 
 function isAuthorizedForRun(request, timeline) {
   const presented = getRunAccessToken(request);

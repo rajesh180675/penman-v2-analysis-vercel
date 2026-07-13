@@ -24,6 +24,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint:any
       - run: npm run lint:doc-schema
+      - run: npm run lint:vercel-functions
       - run: npm run lint:model-catalog
       - name: Real TCS audit transport budget
         run: npm run lint:audit-snapshot

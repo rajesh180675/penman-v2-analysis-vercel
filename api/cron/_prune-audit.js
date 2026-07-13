@@ -6,7 +6,7 @@ import {
   isAuditConfigured,
   logAudit,
 } from "../audit/_lib.js";
-import { requireCronAuth } from "../audit/monitor-lib.js";
+import { requireCronAuth } from "../audit/_monitor-lib.js";
 
 const DAY_MS = 24 * 60 * 60 * 1_000;
 
