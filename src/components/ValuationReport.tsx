@@ -28,6 +28,7 @@ import type { AnalysisPublicationSnapshot } from "../lib/publication/analysisPub
 import type { LossMakerValuationResult } from "../engine/lossMakerValuation";
 import type { SanityAssessment } from "../engine/ratioSanity";
 import type { AllSegmentData } from "../engine/segmentParser";
+import { EmptyState } from "./shared/Primitives";
 import { type CVMethod, fmt, makeCvSel } from "./valuation/ValuationReport.formatters";
 import {
   buildAlertAuditPayload,
@@ -315,10 +316,11 @@ export default function ValuationReport({
   const distressResult = useMemo(() => detectDistress(data), [data]);
 
   if (insufficientData) {
-    return <div className="card-base p-8 text-center">
-      <p className="font-semibold text-slate-600 dark:text-slate-300 text-lg">Need ≥ 2 periods</p>
-      <p className="text-sm text-slate-500 mt-2">Upload more years of data to compute residual-income valuation.</p>
-    </div>;
+    return <EmptyState
+      icon="currency"
+      title="Need ≥ 2 periods"
+      body="Upload more years of data to compute residual-income valuation."
+    />;
   }
 
   const V_RE = cvSel(val.V_RE_CV1, val.V_RE_CV2, val.V_RE_CV3);

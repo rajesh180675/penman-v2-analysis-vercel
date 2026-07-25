@@ -74,18 +74,67 @@ export function gridViaHtml(text: string): string[][] {
 ══════════════════════════════════════════════════════════════════ */
 
 export function gridViaRegex(text: string): string[][] {
-  const trMatches = text.match(/<tr[\s\S]*?<\/tr>/gi) ?? [];
+  // Streaming rewrite — avoids text.match(/<tr[\s\S]*?<\/tr>/gi) which
+  // materialises one giant array of every <tr> substring in the file. On
+  // multi-MB Capitaline exports (e.g. TCS 14 MB P&L) that array alone
+  // exhausts the worker heap (~2 GB). Walk the string with indexOf instead;
+  // peak memory is O(largest single row), not O(file size).
   const grid: string[][] = [];
-  for (const trBlock of trMatches) {
-    const cellMatches =
-      trBlock.match(/<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi) ?? [];
-    const cells = cellMatches.map((cm) => {
-      const inner = cm
-        .replace(/^<(?:td|th)[^>]*>/, "")
-        .replace(/<\/(?:td|th)>$/, "");
-      return cleanCell(inner);
-    });
+  const lower = text.toLowerCase();
+  const len = text.length;
+  let pos = 0;
+  while (pos < len) {
+    const trStart = lower.indexOf("<tr", pos);
+    if (trStart === -1) break;
+    // Skip past "<tr" and any attributes to the closing ">" of the open tag.
+    const trOpenEnd = lower.indexOf(">", trStart);
+    if (trOpenEnd === -1) break;
+    const trEnd = lower.indexOf("</tr>", trOpenEnd);
+    if (trEnd === -1) break;
+
+    // Slice the row out ONCE and scan only inside it. Searching the whole
+    // document for each cell's closing tag is what made the first version of
+    // this rewrite quadratic: `indexOf("</th>", …)` is unbounded, and most
+    // Capitaline rows contain no <th> at all, so every single cell scanned to
+    // end-of-file. On a 14 MB export that is O(cells x filesize) — 20k rows
+    // took ~105 s. Bounded to the row, the walk is linear again and peak
+    // memory really is O(largest single row) as intended.
+    const row = text.slice(trOpenEnd + 1, trEnd);
+    const rowLower = lower.slice(trOpenEnd + 1, trEnd);
+    const rowLen = row.length;
+
+    const cells: string[] = [];
+    let cellPos = 0;
+    while (cellPos < rowLen) {
+      // Find next <td or <th that is a real tag (delimiter follows).
+      let tdStart = -1;
+      for (let i = cellPos; i + 3 < rowLen; i++) {
+        if (
+          rowLower.charCodeAt(i) === 60 /* < */ &&
+          (rowLower.charCodeAt(i + 1) === 116 /* t */) &&
+          (rowLower.charCodeAt(i + 2) === 100 /* d */ || rowLower.charCodeAt(i + 2) === 104 /* h */)
+        ) {
+          const next = rowLower.charCodeAt(i + 3);
+          // Must be whitespace, '>', or '/' to be a real <td>/<th tag.
+          if (next === 62 || next === 47 || next === 32 || next === 9 || next === 10 || next === 13) {
+            tdStart = i;
+            break;
+          }
+        }
+      }
+      if (tdStart === -1) break;
+      const tdOpenEnd = rowLower.indexOf(">", tdStart);
+      if (tdOpenEnd === -1) break;
+      // Find matching close tag — whichever of </td> or </th> comes first.
+      let tdEnd = rowLower.indexOf("</td>", tdOpenEnd);
+      const thEnd = rowLower.indexOf("</th>", tdOpenEnd);
+      if (tdEnd === -1 || (thEnd !== -1 && thEnd < tdEnd)) tdEnd = thEnd;
+      if (tdEnd === -1) break;
+      cells.push(cleanCell(row.slice(tdOpenEnd + 1, tdEnd)));
+      cellPos = tdEnd + 5;
+    }
     if (cells.some((c) => c !== "")) grid.push(cells);
+    pos = trEnd + 5;
   }
   return grid;
 }

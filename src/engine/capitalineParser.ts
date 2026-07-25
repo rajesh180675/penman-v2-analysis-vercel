@@ -243,18 +243,27 @@ export async function parseCapitalineZip(
         gd.errors.push(`html-dom: ${e instanceof Error ? e.message : String(e)}`);
       }
 
-      /* Strategy B: Regex */
-      try {
-        const g = gridViaRegex(text);
-        gd.methods.push(`regex→${g.length}r`);
-        const s = gridScore(g);
-        if (s > bestScore) {
-          grid = g;
-          bestScore = s;
-          gd.bestMethod = "regex";
+      /* Strategy B: Regex — skip when DOM already produced a strong grid.
+         On multi-MB Capitaline files (TCS P&L is 14 MB), DOMParser reliably
+         extracts the table; running the streaming regex too doubles the work
+         for zero quality gain. The 5000-point threshold roughly corresponds
+         to "≥80 rows × ≥8 cols × decent density + header bonus". */
+      const domIsStrong = bestScore >= 5000 && detectHeader(grid) !== null;
+      if (!domIsStrong) {
+        try {
+          const g = gridViaRegex(text);
+          gd.methods.push(`regex→${g.length}r`);
+          const s = gridScore(g);
+          if (s > bestScore) {
+            grid = g;
+            bestScore = s;
+            gd.bestMethod = "regex";
+          }
+        } catch (e) {
+          gd.errors.push(`regex: ${e instanceof Error ? e.message : String(e)}`);
         }
-      } catch (e) {
-        gd.errors.push(`regex: ${e instanceof Error ? e.message : String(e)}`);
+      } else {
+        gd.methods.push("regex→skipped(dom-strong)");
       }
     }
 

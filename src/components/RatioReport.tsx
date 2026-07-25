@@ -29,7 +29,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
   const traceabilitySummary = precomputedTraceabilitySummary ?? buildValuationTraceabilitySurfaceSummary(traceability);
   if (!data||data.length<=1) return (
     <div className="card-base p-8 text-center">
-      <p className="font-semibold text-slate-600 dark:text-slate-300 text-lg">Need ≥ 2 periods</p>
+      <p className="font-semibold text-slate-600 dark:text-slate-300 dark:text-slate-300 text-lg">Need ≥ 2 periods</p>
       <p className="text-sm text-slate-500 mt-2">Upload data with at least two fiscal years to see ratio analysis</p>
     </div>
   );
@@ -118,11 +118,11 @@ export default function RatioReport({data, config, traceability = null, traceabi
       />
 
       <div className="bg-white dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex items-center justify-between">
-        <div className="text-sm text-slate-700 font-medium">Analysis View</div>
+        <div className="text-sm text-slate-700 dark:text-slate-200 font-medium">Analysis View</div>
         <div className="inline-flex rounded-lg overflow-hidden border border-slate-300">
-          <button onClick={() => setView("core")} className={`px-3 py-1.5 text-xs ${view === "core" ? "bg-indigo-600 text-white" : "bg-white text-slate-600"}`}>Core Ratios</button>
-          <button onClick={() => setView("wc")} className={`px-3 py-1.5 text-xs ${view === "wc" ? "bg-indigo-600 text-white" : "bg-white text-slate-600"}`}>WC Deep Dive</button>
-          <button onClick={() => setView("trend")} className={`px-3 py-1.5 text-xs ${view === "trend" ? "bg-indigo-600 text-white" : "bg-white text-slate-600"}`}>Trend (C-03)</button>
+          <button onClick={() => setView("core")} className={`px-3 py-1.5 text-xs ${view === "core" ? "bg-indigo-600 text-white" : "bg-white text-slate-600 dark:text-slate-300 dark:text-slate-300"}`}>Core Ratios</button>
+          <button onClick={() => setView("wc")} className={`px-3 py-1.5 text-xs ${view === "wc" ? "bg-indigo-600 text-white" : "bg-white text-slate-600 dark:text-slate-300 dark:text-slate-300"}`}>WC Deep Dive</button>
+          <button onClick={() => setView("trend")} className={`px-3 py-1.5 text-xs ${view === "trend" ? "bg-indigo-600 text-white" : "bg-white text-slate-600 dark:text-slate-300 dark:text-slate-300"}`}>Trend (C-03)</button>
         </div>
       </div>
 
@@ -164,7 +164,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
       <Section title="ROCE Decomposition — Paper Eq.(4) & Eq.(16)" subtitle="ROCE = RNOA + FLEV × SPREAD  |  Eq.16: ROCE = MSR × {Core Sales PM × ATO* + Other/OA + UOI/OA + OLLEV×OLSPREAD + FLEV×(CoreSPREAD+…)}">
         <div className="overflow-x-auto mb-6">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 border-b border-slate-200">
+            <thead><tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200">
               <Th left>Driver</Th>
               {rd.map(d=><Th key={d.period_end}>{d.period_end.slice(0,7)}</Th>)}
               <Th>N&P Med</Th>
@@ -235,7 +235,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
       <Section title="DuPont Decomposition — Paper Eq.(4a) & Eq.(10)" subtitle="RNOA = PM × ATO  |  Eq.10: ReOI = Sales × (PM − kw/ATO)">
         <div className="overflow-x-auto mb-6">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 border-b border-slate-200">
+            <thead><tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200">
               <Th left>Metric</Th>
               {rd.map(d=><Th key={d.period_end}>{d.period_end.slice(0,7)}</Th>)}
               <Th>N&P Med</Th>
@@ -295,7 +295,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
       <Section title="Operating Liability Leverage — Paper Eq.(7)" subtitle="RNOA = ROOA + OLLEV × OLSPREAD   (io excludes deferred tax per spec §4.1.2)">
         <div className="overflow-x-auto mb-6">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 border-b border-slate-200">
+            <thead><tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200">
               <Th left>Metric</Th>
               {rd.map(d=><Th key={d.period_end}>{d.period_end.slice(0,7)}</Th>)}
             </tr></thead>
@@ -316,7 +316,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
       <Section title="Working Capital & Liquidity" subtitle="Days Sales Outstanding | Days Inventory | Days Payable | Cash Conversion Cycle">
         <div className="overflow-x-auto mb-4">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 border-b border-slate-200">
+            <thead><tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200">
               <Th left>Metric</Th>
               {rd.map(d=><Th key={d.period_end}>{d.period_end.slice(0,7)}</Th>)}
             </tr></thead>
@@ -337,7 +337,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
       <Section title="Earnings Quality — Accruals & Cash Conversion" subtitle="Accrual ratio BS = ΔNOA/avg(TA) | CCR = CFO/OI | Accrual regime (S-6.3) | Dirty surplus (S-5.1)">
         <div className="overflow-x-auto mb-4">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 border-b border-slate-200">
+            <thead><tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200">
               <Th left>Metric</Th>
               {rd.map(d=><Th key={d.period_end}>{d.period_end.slice(0,7)}</Th>)}
             </tr></thead>
@@ -390,7 +390,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
       <Section title="Growth Drivers" subtitle="NOA Growth | CNI Growth | Sales Growth — Paper §2.4">
         <div className="overflow-x-auto mb-4">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 border-b border-slate-200">
+            <thead><tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200">
               <Th left>Driver</Th>
               {rd.map(d=><Th key={d.period_end}>{d.period_end.slice(0,7)}</Th>)}
             </tr></thead>
@@ -421,7 +421,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
       <Section title="Extended 5-Factor DuPont (C-04)" subtitle="ROE = (NI/EBT) × (EBT/EBIT) × (EBIT/Sales) × (Sales/Assets) × (Assets/Equity)">
         <div className="overflow-x-auto mb-4">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 border-b border-slate-200">
+            <thead><tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200">
               <Th left>Factor</Th>
               {dupont5.map(d => <Th key={d.period}>{d.period}</Th>)}
             </tr></thead>
@@ -457,7 +457,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
         <Section title="Working Capital Deep Dive (C-06)" subtitle="DIO, DSO, DPO, CCC with qualitative flags">
           <div className="overflow-x-auto mb-5">
             <table className="w-full text-sm">
-              <thead><tr className="bg-slate-50 border-b border-slate-200">
+              <thead><tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200">
                 <Th left>Metric</Th>
                 {rd.map(d => <Th key={d.period_end}>{d.period_end.slice(0,7)}</Th>)}
               </tr></thead>
@@ -508,7 +508,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
               const ccc = d.ratios?.cash_conversion_cycle ?? null;
               const warn = dsoUp > 7 && salesG < 0.1;
               return (
-                <div key={d.period_end} className={`rounded-lg border p-2 ${warn ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+                <div key={d.period_end} className={`rounded-lg border p-2 ${warn ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 dark:text-slate-300"}`}>
                   <b>{d.period_end.slice(0,7)}:</b> DSO delta {dsoUp.toFixed(1)}d, Sales growth {pct(salesG)}{ccc != null ? `, CCC ${ccc.toFixed(1)}d` : ""}
                   {warn ? "  -> Flag: receivables rising faster than sales." : ""}
                 </div>

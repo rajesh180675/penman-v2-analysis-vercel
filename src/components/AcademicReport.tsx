@@ -7,8 +7,10 @@ import { buildAnalysisPublicationSnapshot } from "../lib/publication/analysisPub
 import { deriveCompanyLabel } from "../engine/valuationPolicy";
 import { computeV3Analytics, V3AnalyticsBundle, computeAnchorTable } from "../engine/v3Analytics";
 import { AuditSubmissionMeta } from "../lib/audit";
+import { trace } from "../lib/traceLogger";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import type { SanityAssessment } from "../engine/ratioSanity";
+import type { ReportArtifactKind, ReportExportResult } from "../reporting";
 import {
   cagr,
   avg,
@@ -56,9 +58,11 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   const { eqROCE, eqRNOA, eqRE, eqReOI } = useAcademicEquations();
 
   const reportRef = useRef<HTMLDivElement | null>(null);
-  const [exportingPdf, setExportingPdf] = useState(false);
-  const [exportingBundle, setExportingBundle] = useState(false);
-  const [exportingXlsx, setExportingXlsx] = useState(false);
+  const [activeExport, setActiveExport] = useState<ReportArtifactKind | null>(null);
+  const [exportNotice, setExportNotice] = useState<{
+    tone: "success" | "warning" | "error";
+    message: string;
+  } | null>(null);
   const [hmacKeyId, setHmacKeyId] = useState("IC-LOCAL-KEY");
   const [hmacSecret, setHmacSecret] = useState("");
 
@@ -108,59 +112,86 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   const traceabilitySummary = publication.traceabilitySummary;
   const runIdentity = publication.runIdentity;
 
-  const exportPdf = async () => {
-    if (!reportRef.current || exportingPdf) return;
-    setExportingPdf(true);
+  const performExport = async (
+    format: ReportArtifactKind,
+    operation: () => Promise<ReportExportResult>,
+  ) => {
+    if (activeExport) return;
+    setActiveExport(format);
+    setExportNotice(null);
+    trace("export", `report-export-${format}-started`, { companyId, format });
     try {
-      await runExportPdf({ reportEl: reportRef.current, data, auditMeta });
+      const result = await operation();
+      const size = result.bytes >= 1024 * 1024
+        ? `${(result.bytes / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.max(1, Math.round(result.bytes / 1024))} KB`;
+      const auditUnavailable = result.auditStatus === "unavailable";
+      setExportNotice({
+        tone: auditUnavailable ? "warning" : "success",
+        message: auditUnavailable
+          ? `Downloaded ${result.filename} (${size}). Audit storage was unavailable; the local file is complete.`
+          : `Downloaded ${result.filename} (${size}).`,
+      });
+      trace("export", `report-export-${format}-completed`, { companyId, format }, {
+        filename: result.filename,
+        bytes: result.bytes,
+        auditStatus: result.auditStatus,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setExportNotice({
+        tone: "error",
+        message: `Export failed: ${message}`,
+      });
+      trace("export", `report-export-${format}-failed`, { companyId, format }, { error: message }, { level: "error" });
     } finally {
-      setExportingPdf(false);
+      setActiveExport(null);
     }
   };
 
-  const exportIcBundle = async () => {
-    if (exportingBundle || exportingPdf) return;
-    setExportingBundle(true);
-    try {
-      await runExportIcBundle({
-        reportEl: reportRef.current,
-        data,
-        traceRecords,
-        provenanceRows,
-        granularityChecklist,
-        valuationReadiness,
-        policyVersions,
-        traceability,
-        runIdentity,
-        companyId,
-        hmacKeyId,
-        hmacSecret,
-        auditMeta,
-      });
-    } finally {
-      setExportingBundle(false);
-    }
+  const exportPdf = () => {
+    void performExport("pdf", () => runExportPdf({
+      reportEl: reportRef.current,
+      data,
+      companyId,
+      valuationReadiness,
+      traceability,
+      runIdentity,
+      auditMeta,
+    }));
   };
 
-  const exportWorkbook = async () => {
-    if (exportingXlsx) return;
-    setExportingXlsx(true);
-    try {
-      await runExportWorkbook({
-        companyId,
-        valuationReadiness,
-        policyVersions,
-        traceability,
-        runIdentity,
-        auditMeta,
-        data,
-        valuation,
-        config,
-        ratioSanity,
-      });
-    } finally {
-      setExportingXlsx(false);
-    }
+  const exportIcBundle = () => {
+    void performExport("zip", () => runExportIcBundle({
+      reportEl: reportRef.current,
+      data,
+      traceRecords,
+      provenanceRows,
+      granularityChecklist,
+      valuationReadiness,
+      policyVersions,
+      traceability,
+      runIdentity,
+      companyId,
+      hmacKeyId,
+      hmacSecret,
+      auditMeta,
+    }));
+  };
+
+  const exportWorkbook = () => {
+    void performExport("xlsx", () => runExportWorkbook({
+      companyId,
+      valuationReadiness,
+      policyVersions,
+      traceability,
+      runIdentity,
+      auditMeta,
+      data,
+      valuation,
+      config,
+      ratioSanity,
+    }));
   };
 
   if (!data || data.length < 2) {
@@ -353,9 +384,8 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         exportWorkbook={exportWorkbook}
         exportPdf={exportPdf}
         exportIcBundle={exportIcBundle}
-        exportingBundle={exportingBundle}
-        exportingPdf={exportingPdf}
-        exportingXlsx={exportingXlsx}
+        activeExport={activeExport}
+        notice={exportNotice}
       />
 
       <div ref={reportRef} className="space-y-6">

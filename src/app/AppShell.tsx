@@ -37,6 +37,7 @@ import { useConfigManager } from "./useConfigManager";
 import { useWorkspaceSync } from "./useWorkspaceSync";
 import { useTabVisibility } from "./useTabVisibility";
 import { AppHeader } from "./components/AppHeader";
+import { SidebarNav } from "./components/SidebarNav";
 import { CompanyContextStrip } from "./components/CompanyContextStrip";
 import { AnalysisBanners } from "./components/AnalysisBanners";
 import { TabRouter } from "./components/TabRouter";
@@ -409,89 +410,99 @@ export function AppShell() {
           />
         )}
 
-        <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8">
-          {rawData?.length && ["queued", "running", "cancellation-requested"].includes(analysisRunState) ? (
-            <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
-              Building immutable analysis run{analysisRun ? ` ${analysisRun.runId}` : ""}…
-            </div>
-          ) : null}
-          {qualityGate && (
-            <div className="mb-5">
-              <AnalysisStatusBadge status={analysisStatus} />
-            </div>
-          )}
-          {platformGovernance.advancedModelResolutionRequired && (platformGovernance.advancedModelsLoading || platformGovernance.error) && (
-            <section
-              role={platformGovernance.error ? "alert" : "status"}
-              className={`mb-5 rounded-xl border px-4 py-3 text-sm ${platformGovernance.error
-                ? "border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200"
-                : "border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200"}`}
-            >
-              {platformGovernance.error
-                ? `Advanced-model governance could not be verified. Analysis is paused: ${platformGovernance.error}`
-                : "Resolving authenticated advanced-model promotion and composition evidence…"}
-            </section>
-          )}
-          <AnalysisRunStatusBar run={analysisRun} executionState={analysisRunState} />
-          <AnalysisBanners
-            setConfig={setConfig}
-            config={config}
-            rawData={rawData}
-            sharedRegistryStatus={sharedRegistryStatus}
-            engineError={engineError}
-            hasUnacknowledgedBreaks={hasUnacknowledgedBreaks}
-            structuralBreakPeriods={structuralBreakPeriods}
-            valuationDataSelection={valuationDataSelection}
-            qualityGate={qualityGate}
-            itServicesSignal={itServicesSignal}
-            cyclicalitySignal={cyclicalitySignal}
-          />
-          <TabRouter
+        <div className="flex">
+          <SidebarNav
+            visibleTabs={visibleTabs}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
-            config={config}
-            setConfig={setConfig}
-            forecastConfig={forecastConfig}
-            rawData={rawData}
-            recastData={recastData}
-            hasRecast={hasRecast}
-            handleDataSubmit={handleDataSubmit}
-            onBatchSubmit={handleBatchSubmit}
-            auditMeta={auditMeta}
-            analysisStatus={analysisStatus}
-            traceability={traceability}
-            publication={publication}
-            ratioSanity={ratioSanity}
-            segmentData={segmentData}
-            liveMarketData={liveMarketData}
-            liveMarketDataLoading={liveMarketDataLoading}
-            liveMarketDataError={liveMarketDataError}
-            refreshLiveMarketData={refreshLiveMarketData}
-            commandCenter={commandCenter}
-            analysisWindow={analysisWindow}
-            sourcedAssumptionSet={sourcedAssumptionSet}
-            forecastResults={forecastResults}
-            scenarioOrdering={scenarioOrdering}
-            scenarioGovernance={scenarioGovernance}
-            readyCompanyCount={readyCompanyCount}
-            bankResult={bankResult}
-            nbfcSidecar={nbfcSidecar}
-            lossMakerResult={lossMakerResult}
-            registry={registry}
-            comparisonPublication={comparisonPublication}
-            portfolioRunComparison={portfolioRunComparison}
-            workspaceCompanies={workspaceCompanies}
-            workspaceCompanyId={workspaceCompanyId}
-            setWorkspaceCompanyId={setWorkspaceCompanyId}
             valuationBlocked={valuationBlocked}
+            financialFallbackAvailable={financialFallbackAvailable}
             scopeBlocked={scopeBlocked}
-            qualityGate={qualityGate}
-            scopeAwareResult={scopeAwareResult}
-            pipelineResult={pipelineResult}
-            debugInfo={debugInfo}
-            engineError={engineError}
           />
-        </main>
+          <main className="flex-1 max-w-[1400px] mx-auto px-4 sm:px-6 py-8 min-w-0">
+            {rawData?.length && ["queued", "running", "cancellation-requested"].includes(analysisRunState) ? (
+              <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
+                Building immutable analysis run{analysisRun ? ` ${analysisRun.runId}` : ""}…
+              </div>
+            ) : null}
+            {qualityGate && (
+              <div className="mb-5">
+                <AnalysisStatusBadge status={analysisStatus} />
+              </div>
+            )}
+            {platformGovernance.advancedModelResolutionRequired && (platformGovernance.advancedModelsLoading || platformGovernance.error) && (
+              <section
+                role={platformGovernance.error ? "alert" : "status"}
+                className={`mb-5 rounded-xl border px-4 py-3 text-sm ${platformGovernance.error
+                  ? "border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200"
+                  : "border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200"}`}
+              >
+                {platformGovernance.error
+                  ? `Advanced-model governance could not be verified. Analysis is paused: ${platformGovernance.error}`
+                  : "Resolving authenticated advanced-model promotion and composition evidence…"}
+              </section>
+            )}
+            <AnalysisRunStatusBar run={analysisRun} executionState={analysisRunState} />
+            <AnalysisBanners
+              setConfig={setConfig}
+              config={config}
+              rawData={rawData}
+              sharedRegistryStatus={sharedRegistryStatus}
+              engineError={engineError}
+              hasUnacknowledgedBreaks={hasUnacknowledgedBreaks}
+              structuralBreakPeriods={structuralBreakPeriods}
+              valuationDataSelection={valuationDataSelection}
+              qualityGate={qualityGate}
+              itServicesSignal={itServicesSignal}
+              cyclicalitySignal={cyclicalitySignal}
+            />
+            <TabRouter
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              config={config}
+              setConfig={setConfig}
+              forecastConfig={forecastConfig}
+              rawData={rawData}
+              recastData={recastData}
+              hasRecast={hasRecast}
+              handleDataSubmit={handleDataSubmit}
+              onBatchSubmit={handleBatchSubmit}
+              auditMeta={auditMeta}
+              analysisStatus={analysisStatus}
+              traceability={traceability}
+              publication={publication}
+              ratioSanity={ratioSanity}
+              segmentData={segmentData}
+              liveMarketData={liveMarketData}
+              liveMarketDataLoading={liveMarketDataLoading}
+              liveMarketDataError={liveMarketDataError}
+              refreshLiveMarketData={refreshLiveMarketData}
+              commandCenter={commandCenter}
+              analysisWindow={analysisWindow}
+              sourcedAssumptionSet={sourcedAssumptionSet}
+              forecastResults={forecastResults}
+              scenarioOrdering={scenarioOrdering}
+              scenarioGovernance={scenarioGovernance}
+              readyCompanyCount={readyCompanyCount}
+              bankResult={bankResult}
+              nbfcSidecar={nbfcSidecar}
+              lossMakerResult={lossMakerResult}
+              registry={registry}
+              comparisonPublication={comparisonPublication}
+              portfolioRunComparison={portfolioRunComparison}
+              workspaceCompanies={workspaceCompanies}
+              workspaceCompanyId={workspaceCompanyId}
+              setWorkspaceCompanyId={setWorkspaceCompanyId}
+              valuationBlocked={valuationBlocked}
+              scopeBlocked={scopeBlocked}
+              qualityGate={qualityGate}
+              scopeAwareResult={scopeAwareResult}
+              pipelineResult={pipelineResult}
+              debugInfo={debugInfo}
+              engineError={engineError}
+            />
+          </main>
+        </div>
       </div>
       <GlossaryModal open={glossaryOpen} onClose={() => setGlossaryOpen(false)} />
       <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />

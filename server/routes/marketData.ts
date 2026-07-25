@@ -157,6 +157,38 @@ function normalizeSymbol(raw: string, warnings: string[]): string {
   return raw;
 }
 
+/**
+ * Every snapshot value must ship with its own pinned as-of date.
+ *
+ * The AnalysisRun request-validation gate rejects a snapshot that carries a
+ * price or risk-free rate without one (MARKET_PRICE_DATE_REQUIRED /
+ * MARKET_RATE_DATE_REQUIRED). That rejection blocks the run *before* the
+ * pipeline runs, so the UI projection gets no pipelineResult, recastData comes
+ * back empty, and every data-gated tab (dashboard, statements, ratios, quality,
+ * valuation, report) disappears. Branches below default riskFreeRate to 0.07,
+ * so they must pin rateAsOf too — the Vercel handler already does.
+ */
+function pinAsOfDates<T extends Record<string, unknown>>(snapshot: T): T {
+  // Prefer the snapshot's own fetch time so a cached entry keeps honest
+  // provenance instead of being restamped as if it were just fetched.
+  const asOf = typeof snapshot.fetchedAt === "string" ? snapshot.fetchedAt : new Date().toISOString();
+  return {
+    ...snapshot,
+    priceAsOf: snapshot.price != null ? (snapshot.priceAsOf ?? asOf) : null,
+    rateAsOf: snapshot.riskFreeRate != null ? (snapshot.rateAsOf ?? asOf) : null,
+  };
+}
+
+/**
+ * Single exit point for every snapshot response, so the value/as-of pairing
+ * cannot be broken again by one branch. This also repairs snapshots read back
+ * from the on-disk cache, which may have been written before this invariant
+ * existed and would otherwise keep blocking runs until they aged out.
+ */
+function sendSnapshot(res: Response, snapshot: Record<string, unknown>) {
+  return res.json({ ok: true, snapshot: pinAsOfDates(snapshot) });
+}
+
 const router = Router();
 
 router.get("/snapshot", async (req: Request, res: Response) => {
@@ -168,33 +200,27 @@ router.get("/snapshot", async (req: Request, res: Response) => {
   const warnings: string[] = [];
 
   if (provider === "manual" || provider === "disabled") {
-    return res.json({
-      ok: true,
-      snapshot: {
-        symbol, provider: "Manual / Fallback", fetchedAt,
-        price: fallbackPrice, previousClose: null, changePct: null,
-        marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-        riskFreeRate: fallbackRiskFreeRate, priceAsOf: fallbackPrice != null ? fetchedAt : null, rateAsOf: fallbackRiskFreeRate != null ? fetchedAt : null,
-        freshness: fallbackPrice != null ? "fallback" : "missing",
-        sourceSummary: "Using manual/config market inputs without any vendor API call.",
-        warnings, history: null,
-      },
+    return sendSnapshot(res, {
+      symbol, provider: "Manual / Fallback", fetchedAt,
+      price: fallbackPrice, previousClose: null, changePct: null,
+      marketCap: null, enterpriseValue: null, sharesOutstanding: null,
+      riskFreeRate: fallbackRiskFreeRate,
+      freshness: fallbackPrice != null ? "fallback" : "missing",
+      sourceSummary: "Using manual/config market inputs without any vendor API call.",
+      warnings, history: null,
     });
   }
 
   if (provider === "nse" || provider === "yahoo") {
     if (!symbol) {
       warnings.push(`No symbol configured for ${provider.toUpperCase()}.`);
-      return res.json({
-        ok: true,
-        snapshot: {
-          symbol, provider: `${provider.toUpperCase()} (fallback)`, fetchedAt,
-          price: fallbackPrice, previousClose: null, changePct: null,
-          marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-          riskFreeRate: fallbackRiskFreeRate ?? 0.07, priceAsOf: fallbackPrice != null ? fetchedAt : null, rateAsOf: fetchedAt,
-          freshness: fallbackPrice != null ? "fallback" : "missing",
-          sourceSummary: `No symbol configured for ${provider.toUpperCase()}.`, warnings, history: null,
-        },
+      return sendSnapshot(res, {
+        symbol, provider: `${provider.toUpperCase()} (fallback)`, fetchedAt,
+        price: fallbackPrice, previousClose: null, changePct: null,
+        marketCap: null, enterpriseValue: null, sharesOutstanding: null,
+        riskFreeRate: fallbackRiskFreeRate ?? 0.07,
+        freshness: fallbackPrice != null ? "fallback" : "missing",
+        sourceSummary: `No symbol configured for ${provider.toUpperCase()}.`, warnings, history: null,
       });
     }
 
@@ -229,7 +255,7 @@ router.get("/snapshot", async (req: Request, res: Response) => {
           history: summarizeHistory(historyPoints as any, price),
         };
         await cacheSnapshot(symbol, snapshot);
-        return res.json({ ok: true, snapshot });
+        return sendSnapshot(res, snapshot);
       } catch (error: any) {
         warnings.push(`NSE failed: ${error?.message ?? String(error)}. Falling back to Yahoo Finance.`);
         // Cascade to Yahoo Finance as fallback
@@ -245,29 +271,25 @@ router.get("/snapshot", async (req: Request, res: Response) => {
             price, previousClose, changePct,
             marketCap: null, enterpriseValue: null, sharesOutstanding: null,
             riskFreeRate: fallbackRiskFreeRate ?? 0.07,
-            priceAsOf: fetchedAt, rateAsOf: null,
             freshness: price != null ? "live" : "fallback" as const,
             sourceSummary: `NSE blocked, used Yahoo Finance for ${yahoo.symbol}.`,
             warnings, history: null,
           };
           await cacheSnapshot(symbol, snapshot);
-          return res.json({ ok: true, snapshot });
+          return sendSnapshot(res, snapshot);
         } catch (yahooErr: any) {
           warnings.push(`Yahoo fallback also failed: ${yahooErr?.message ?? String(yahooErr)}`);
           const offline = await readOfflineSnapshot(symbol);
           if (offline) {
-            return res.json({ ok: true, snapshot: offline });
+            return sendSnapshot(res, offline);
           }
-          return res.json({
-            ok: true,
-            snapshot: {
-              symbol, provider: "NSE India (all fallbacks failed)", fetchedAt,
-              price: fallbackPrice, previousClose: null, changePct: null,
-              marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-              riskFreeRate: fallbackRiskFreeRate ?? 0.07, priceAsOf: null, rateAsOf: null,
-              freshness: fallbackPrice != null ? "fallback" : "missing",
-              sourceSummary: "Both NSE and Yahoo Finance failed.", warnings, history: null,
-            },
+          return sendSnapshot(res, {
+            symbol, provider: "NSE India (all fallbacks failed)", fetchedAt,
+            price: fallbackPrice, previousClose: null, changePct: null,
+            marketCap: null, enterpriseValue: null, sharesOutstanding: null,
+            riskFreeRate: fallbackRiskFreeRate ?? 0.07,
+            freshness: fallbackPrice != null ? "fallback" : "missing",
+            sourceSummary: "Both NSE and Yahoo Finance failed.", warnings, history: null,
           });
         }
       }
@@ -286,46 +308,39 @@ router.get("/snapshot", async (req: Request, res: Response) => {
         price, previousClose, changePct,
         marketCap: null, enterpriseValue: null, sharesOutstanding: null,
         riskFreeRate: fallbackRiskFreeRate ?? 0.07,
-        priceAsOf: fetchedAt, rateAsOf: null,
         freshness: price != null ? "live" : "fallback" as const,
         sourceSummary: price != null ? `Yahoo Finance quote for ${yahoo.symbol}.` : "Yahoo did not return a price.",
         warnings, history: null,
       };
       await cacheSnapshot(symbol, snapshot);
-      return res.json({ ok: true, snapshot });
+      return sendSnapshot(res, snapshot);
     } catch (error: any) {
       warnings.push(error?.message ?? String(error));
       const offline = await readOfflineSnapshot(symbol);
       if (offline) {
-        return res.json({ ok: true, snapshot: offline });
+        return sendSnapshot(res, offline);
       }
-      return res.json({
-        ok: true,
-        snapshot: {
-          symbol, provider: "Yahoo Finance (fallback)", fetchedAt,
-          price: fallbackPrice, previousClose: null, changePct: null,
-          marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-          riskFreeRate: fallbackRiskFreeRate ?? 0.07, priceAsOf: fallbackPrice != null ? fetchedAt : null, rateAsOf: fetchedAt,
-          freshness: fallbackPrice != null ? "fallback" : "missing",
-          sourceSummary: "Yahoo Finance request failed, using fallback.", warnings, history: null,
-        },
+      return sendSnapshot(res, {
+        symbol, provider: "Yahoo Finance (fallback)", fetchedAt,
+        price: fallbackPrice, previousClose: null, changePct: null,
+        marketCap: null, enterpriseValue: null, sharesOutstanding: null,
+        riskFreeRate: fallbackRiskFreeRate ?? 0.07,
+        freshness: fallbackPrice != null ? "fallback" : "missing",
+        sourceSummary: "Yahoo Finance request failed, using fallback.", warnings, history: null,
       });
     }
   }
 
   // Default fallback for unsupported providers in local mode
   warnings.push(`Provider "${provider}" not supported in local mode. Use "nse" or "manual".`);
-  return res.json({
-    ok: true,
-    snapshot: {
-      symbol, provider: `${provider} (unsupported locally)`, fetchedAt,
-      price: fallbackPrice, previousClose: null, changePct: null,
-      marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-      riskFreeRate: fallbackRiskFreeRate, priceAsOf: fallbackPrice != null ? fetchedAt : null, rateAsOf: fallbackRiskFreeRate != null ? fetchedAt : null,
-      freshness: fallbackPrice != null ? "fallback" : "missing",
-      sourceSummary: `Provider "${provider}" requires Vercel deployment. Use "nse" for local.`,
-      warnings, history: null,
-    },
+  return sendSnapshot(res, {
+    symbol, provider: `${provider} (unsupported locally)`, fetchedAt,
+    price: fallbackPrice, previousClose: null, changePct: null,
+    marketCap: null, enterpriseValue: null, sharesOutstanding: null,
+    riskFreeRate: fallbackRiskFreeRate,
+    freshness: fallbackPrice != null ? "fallback" : "missing",
+    sourceSummary: `Provider "${provider}" requires Vercel deployment. Use "nse" for local.`,
+    warnings, history: null,
   });
 });
 
