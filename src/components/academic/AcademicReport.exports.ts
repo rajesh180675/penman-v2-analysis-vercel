@@ -4,6 +4,16 @@ import { computeValuation } from "../../engine/PenmanNissimEngine";
 import { EngineConfig, RecastPeriod } from "../../engine/types";
 import type { SanityAssessment } from "../../engine/ratioSanity";
 import {
+  assertReportArtifact,
+  buildReportDocument,
+  buildReportFilename,
+  downloadBlob,
+  renderReportDocumentHtml,
+  renderReportDocumentPdf,
+  type ReportDocumentV1,
+  type ReportExportResult,
+} from "../../reporting";
+import {
   sha256Hex,
   hmacSha256Hex,
   bytesLength,
@@ -18,6 +28,15 @@ type PolicyVersions = Publication["policyVersions"];
 type Traceability = Publication["traceability"];
 type RunIdentity = Publication["runIdentity"];
 type ValuationResult = ReturnType<typeof computeValuation>;
+
+export interface ReportDocumentContext {
+  readonly companyId: string;
+  readonly latestPeriod: string;
+  readonly generatedAt?: string | undefined;
+  readonly valuationReadiness: ValuationReadiness;
+  readonly traceability: Traceability;
+  readonly runIdentity: RunIdentity;
+}
 
 export interface TraceRecord {
   period: string;
@@ -125,71 +144,65 @@ export function getProvenanceAuditMarkdown(params: {
   return lines.join("\n");
 }
 
-export async function generatePdfBlob(reportEl: HTMLDivElement | null): Promise<Blob | null> {
-  if (!reportEl) return null;
-  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-    import("html2canvas"),
-    import("jspdf"),
-  ]);
-  const canvas = await html2canvas(reportEl, {
-    scale: 2,
-    useCORS: true,
-    backgroundColor: "#f8fafc",
+export function createReportDocument(
+  reportEl: HTMLDivElement | null,
+  context: ReportDocumentContext,
+): ReportDocumentV1 {
+  if (!reportEl) throw new Error("The report surface is not available for export.");
+  return buildReportDocument(reportEl, {
+    companyId: context.companyId,
+    latestPeriod: context.latestPeriod,
+    generatedAt: context.generatedAt,
+    runId: context.runIdentity?.runId ?? null,
+    reproducibilityHash: context.runIdentity?.reproducibilityHash ?? null,
+    rigorLabel: context.traceability.rigor.currentLabel,
+    confidenceStatus: context.traceability.confidence.status,
+    valuationStatus: context.valuationReadiness.status,
   });
+}
 
-  const imgData = canvas.toDataURL("image/png");
-  const pdf = new jsPDF("p", "mm", "a4");
-  const pageWidth = 210;
-  const pageHeight = 297;
-  const margin = 8;
-  const printWidth = pageWidth - margin * 2;
-  const imgHeight = (canvas.height * printWidth) / canvas.width;
-
-  let heightLeft = imgHeight;
-  let position = margin;
-
-  pdf.addImage(imgData, "PNG", margin, position, printWidth, imgHeight, undefined, "FAST");
-  heightLeft -= pageHeight - margin * 2;
-
-  while (heightLeft > 0) {
-    position = margin - (imgHeight - heightLeft);
-    pdf.addPage();
-    pdf.addImage(imgData, "PNG", margin, position, printWidth, imgHeight, undefined, "FAST");
-    heightLeft -= pageHeight - margin * 2;
-  }
-
-  return pdf.output("blob");
+export async function generatePdfBlob(
+  reportEl: HTMLDivElement | null,
+  context: ReportDocumentContext,
+): Promise<Blob> {
+  return renderReportDocumentPdf(createReportDocument(reportEl, context));
 }
 
 export async function runExportPdf(params: {
   reportEl: HTMLDivElement | null;
   data: RecastPeriod[];
+  companyId: string;
+  valuationReadiness: ValuationReadiness;
+  traceability: Traceability;
+  runIdentity: RunIdentity;
   auditMeta: AuditSubmissionMeta | null | undefined;
-}): Promise<void> {
-  const { reportEl, data, auditMeta } = params;
-  const blob = await generatePdfBlob(reportEl);
-  if (!blob) return;
+}): Promise<ReportExportResult> {
+  const { reportEl, data, companyId, valuationReadiness, traceability, runIdentity, auditMeta } = params;
   const latestPeriod = data[data.length - 1]?.period_end?.slice(0, 10) ?? "latest";
+  const blob = await generatePdfBlob(reportEl, {
+    companyId,
+    latestPeriod,
+    valuationReadiness,
+    traceability,
+    runIdentity,
+  });
+  const filename = buildReportFilename(companyId, latestPeriod, "academic-report", "pdf");
+  const receipt = downloadBlob(blob, filename);
+  let auditStatus: ReportExportResult["auditStatus"] = "not-requested";
   if (auditMeta) {
-    await persistAuditBlob({
+    const persisted = await persistAuditBlob({
       runId: auditMeta.runId,
       kind: "artifacts",
       eventType: "report-pdf-exported",
       file: blob,
-      filename: `academic_report_${latestPeriod}.pdf`,
+      filename,
       companyId: auditMeta.companyId,
       sourceMode: auditMeta.sourceMode,
       contentType: "application/pdf",
     });
+    auditStatus = persisted ? "stored" : "unavailable";
   }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `academic_report_${latestPeriod}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  return Object.freeze({ format: "pdf", ...receipt, auditStatus });
 }
 
 export async function runExportIcBundle(params: {
@@ -206,7 +219,7 @@ export async function runExportIcBundle(params: {
   hmacKeyId: string;
   hmacSecret: string;
   auditMeta: AuditSubmissionMeta | null | undefined;
-}): Promise<void> {
+}): Promise<ReportExportResult> {
   const {
     reportEl,
     data,
@@ -225,18 +238,35 @@ export async function runExportIcBundle(params: {
   const { default: JSZip } = await import("jszip");
   const zip = new JSZip();
   const latestPeriod = data[data.length - 1]?.period_end?.slice(0, 10) ?? "latest";
+  const filename = buildReportFilename(companyId, latestPeriod, "ic-bundle", "zip");
 
   const generatedAt = new Date().toISOString();
   const files: Array<{ name: string; content: string | Blob; mime: string }> = [];
 
-  const pdfBlob = await generatePdfBlob(reportEl);
-  if (pdfBlob) {
-    files.push({
-      name: `academic_report_${latestPeriod}.pdf`,
-      content: pdfBlob,
-      mime: "application/pdf",
-    });
-  }
+  const reportDocument = createReportDocument(reportEl, {
+    companyId,
+    latestPeriod,
+    generatedAt,
+    valuationReadiness,
+    traceability,
+    runIdentity,
+  });
+  const pdfBlob = await renderReportDocumentPdf(reportDocument);
+  files.push({
+    name: buildReportFilename(companyId, latestPeriod, "academic-report", "pdf"),
+    content: pdfBlob,
+    mime: "application/pdf",
+  });
+  files.push({
+    name: "report_document.json",
+    content: JSON.stringify(reportDocument, null, 2),
+    mime: "application/json",
+  });
+  files.push({
+    name: "report_document.html",
+    content: renderReportDocumentHtml(reportDocument),
+    mime: "text/html",
+  });
 
   if (granularityChecklist) {
     const checklistCsv = getChecklistCsv(granularityChecklist);
@@ -287,7 +317,8 @@ export async function runExportIcBundle(params: {
 
   const manifestCore = {
     generatedAt,
-    bundle: `ic_bundle_${latestPeriod}.zip`,
+    reportDocumentSchema: reportDocument.schemaVersion,
+    bundle: filename,
     companyId,
     periodRange: {
       start: data[0]?.period_end ?? null,
@@ -311,6 +342,7 @@ export async function runExportIcBundle(params: {
       granularityPass: granularityChecklist?.summary.pass ?? 0,
       granularityPartial: granularityChecklist?.summary.partial ?? 0,
       granularityFail: granularityChecklist?.summary.fail ?? 0,
+      reportBlocks: reportDocument.blocks.length,
     },
     checksums: fileChecksums,
     algorithm: "SHA-256",
@@ -348,34 +380,31 @@ export async function runExportIcBundle(params: {
 
   zip.file("manifest.json", JSON.stringify(manifest, null, 2));
 
-  const bundleBlob = await zip.generateAsync({ type: "blob" });
+  const bundleBlob = await zip.generateAsync({ type: "blob", mimeType: "application/zip" });
+  await assertReportArtifact(bundleBlob, "zip");
+  const receipt = downloadBlob(bundleBlob, filename);
+  let auditStatus: ReportExportResult["auditStatus"] = "not-requested";
   if (auditMeta) {
-    await persistAuditBlob({
+    const persisted = await persistAuditBlob({
       runId: auditMeta.runId,
       kind: "artifacts",
       eventType: "ic-bundle-exported",
       file: bundleBlob,
-      filename: `ic_bundle_${latestPeriod}.zip`,
+      filename,
       companyId: auditMeta.companyId,
       sourceMode: auditMeta.sourceMode,
       contentType: "application/zip",
     });
-    await persistAuditEvent({
+    const manifestPersisted = await persistAuditEvent({
       runId: auditMeta.runId,
       eventType: "ic-bundle-manifest",
       companyId: auditMeta.companyId,
       sourceMode: auditMeta.sourceMode,
       payload: manifest,
     });
+    auditStatus = persisted && manifestPersisted ? "stored" : "unavailable";
   }
-  const url = URL.createObjectURL(bundleBlob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `ic_bundle_${latestPeriod}.zip`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  return Object.freeze({ format: "zip", ...receipt, auditStatus });
 }
 
 export async function runExportWorkbook(params: {
@@ -389,7 +418,7 @@ export async function runExportWorkbook(params: {
   valuation: ValuationResult;
   config: EngineConfig;
   ratioSanity: SanityAssessment | null | undefined;
-}): Promise<void> {
+}): Promise<ReportExportResult> {
   const {
     companyId,
     valuationReadiness,
@@ -421,25 +450,23 @@ export async function runExportWorkbook(params: {
   const blob = new Blob([wbArray], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
+  await assertReportArtifact(blob, "xlsx");
   const latestPeriod = data[data.length - 1]?.period_end?.slice(0, 10) ?? "latest";
+  const filename = buildReportFilename(companyId, latestPeriod, "institutional-workbook", "xlsx");
+  const receipt = downloadBlob(blob, filename);
+  let auditStatus: ReportExportResult["auditStatus"] = "not-requested";
   if (auditMeta) {
-    await persistAuditBlob({
+    const persisted = await persistAuditBlob({
       runId: auditMeta.runId,
       kind: "artifacts",
       eventType: "workbook-exported",
       file: blob,
-      filename: `institutional_workbook_${latestPeriod}.xlsx`,
+      filename,
       companyId: auditMeta.companyId,
       sourceMode: auditMeta.sourceMode,
       contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
+    auditStatus = persisted ? "stored" : "unavailable";
   }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `institutional_workbook_${latestPeriod}.xlsx`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  return Object.freeze({ format: "xlsx", ...receipt, auditStatus });
 }

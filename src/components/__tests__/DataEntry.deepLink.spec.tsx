@@ -67,8 +67,8 @@ describe("DataEntry bundled-company deep links", () => {
     root = createRoot(container);
     window.history.replaceState({}, "", "/?rf=7.00&erp=6.00&tab=upload&company=TCS");
     parseCapitalineZip.mockReset();
-    parseCapitalineZip.mockImplementation(async (file: File) =>
-      file.name === "standalone.zip" ? parseResult(standalone) : parseResult(consolidated));
+    parseCapitalineZip.mockImplementation(async (_file: unknown, opts?: { filename?: string }) =>
+      opts?.filename === "standalone.zip" ? parseResult(standalone) : parseResult(consolidated));
     fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === "/data/companies/registry.json") {

@@ -40,7 +40,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
   const traceabilitySummary = precomputedTraceabilitySummary ?? buildValuationTraceabilitySurfaceSummary(traceability);
   if (rd.length===0) return (
     <div className="card-base p-8 text-center">
-      <p className="font-semibold text-slate-600 dark:text-slate-300">Need ≥ 2 periods for quality metrics</p>
+      <p className="font-semibold text-slate-600 dark:text-slate-300 dark:text-slate-300">Need ≥ 2 periods for quality metrics</p>
       <p className="text-sm text-slate-500 mt-2">Upload data with multiple fiscal years to see quality analysis</p>
     </div>
   );
@@ -157,7 +157,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
         <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
           <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Altman Z'-Score</div>
           <div className="flex items-baseline gap-2 mb-2">
-            <span className="text-3xl font-bold text-slate-800">{latest.altman_zprime.toFixed(2)}</span>
+            <span className="text-3xl font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100">{latest.altman_zprime.toFixed(2)}</span>
             <ZoneTag zone={zZone}/>
           </div>
           <div className="text-xs text-slate-400">Z' &gt;2.9 Safe · 1.23–2.9 Grey · &lt;1.23 Distress</div>
@@ -195,12 +195,12 @@ export default function QualityReport({data, traceability = null, traceabilitySu
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
           <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Zmijewski Distress Prob.</div>
-          <div className="text-3xl font-bold text-slate-800 mb-2">{latest.zmijewski_prob_distress!=null?(latest.zmijewski_prob_distress*100).toFixed(1)+"%":"—"}</div>
+          <div className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">{latest.zmijewski_prob_distress!=null?(latest.zmijewski_prob_distress*100).toFixed(1)+"%":"—"}</div>
           <div className="text-xs text-slate-500">Probit probability from X-Score (1984).</div>
         </div>
         <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
           <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Ohlson Distress Prob.</div>
-          <div className="text-3xl font-bold text-slate-800 mb-2">{latest.ohlson_prob_distress!=null?(latest.ohlson_prob_distress*100).toFixed(1)+"%":"—"}</div>
+          <div className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-2">{latest.ohlson_prob_distress!=null?(latest.ohlson_prob_distress*100).toFixed(1)+"%":"—"}</div>
           <div className="text-xs text-slate-500">Logit probability from O-Score (1980, adapted).</div>
         </div>
         <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
@@ -214,7 +214,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
 
       {/* Trend Charts */}
       <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-        <h2 className="text-lg font-bold text-slate-800 mb-4">Quality Score Trends</h2>
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">Quality Score Trends</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <div className="text-xs font-semibold text-slate-500 mb-2">F-Score (0–9)</div>
@@ -263,7 +263,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
       </div>
 
       <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-        <h2 className="text-lg font-bold text-slate-800 mb-4">Quality Overlays (D-06 / D-07 / D-09)</h2>
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">Quality Overlays (D-06 / D-07 / D-09)</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-5">
           <div>
             <div className="text-xs font-semibold text-slate-500 mb-2">Distress Probability (%)</div>
@@ -310,7 +310,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
           {rd.slice(-5).map((d) => {
             const flags = d.quality?.revenue_quality_flags ?? [];
             return (
-              <div key={d.period_end} className={`rounded-lg border p-2 ${flags.length ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-slate-50 text-slate-600"}`}>
+              <div key={d.period_end} className={`rounded-lg border p-2 ${flags.length ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 dark:text-slate-300"}`}>
                 <b>{d.period_end.slice(0,7)}:</b> {flags.length ? flags.join(" ") : "No major revenue-recognition warnings from current rule-set."}
                 {d.quality?.operating_leverage != null ? `  DOL=${d.quality.operating_leverage.toFixed(2)}.` : ""}
               </div>
@@ -321,20 +321,20 @@ export default function QualityReport({data, traceability = null, traceabilitySu
 
       {/* Piotroski Detail */}
       <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-          <h2 className="text-lg font-bold text-slate-800">Piotroski F-Score — 9 Signals</h2>
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 dark:bg-slate-800 dark:bg-slate-800">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100">Piotroski F-Score — 9 Signals</h2>
         </div>
         <div className="p-6 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 border-b">
+            <thead><tr className="bg-slate-50 dark:bg-slate-800 border-b">
               <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase">Signal</th>
               <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Category</th>
               {rd.map(d=><th key={d.period_end} className="px-3 py-2 text-center text-xs font-semibold text-slate-500">{d.period_end.slice(0,7)}</th>)}
             </tr></thead>
             <tbody className="divide-y divide-slate-100">
               {PIOTROSKI_SIGNALS.map(({key,label,cat})=>(
-                <tr key={key} className="hover:bg-slate-50">
-                  <td className="px-3 py-2 text-slate-700 text-xs">{label}</td>
+                <tr key={key} className="hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <td className="px-3 py-2 text-slate-700 dark:text-slate-200 text-xs">{label}</td>
                   <td className="px-3 py-2 text-slate-400 text-xs">{cat}</td>
                   {rd.map(d=>{
                     const v = d.quality?.[key as keyof typeof d.quality] as number;
@@ -349,7 +349,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
                 </tr>
               ))}
               <tr className="bg-indigo-50/40 font-semibold">
-                <td className="px-3 py-2 text-slate-700 text-sm" colSpan={2}>Total F-Score</td>
+                <td className="px-3 py-2 text-slate-700 dark:text-slate-200 text-sm" colSpan={2}>Total F-Score</td>
                 {rd.map(d=>(
                   <td key={d.period_end} className="px-3 py-2 text-center font-bold text-indigo-700">
                     {d.quality?.piotroski_total}/9
@@ -363,13 +363,13 @@ export default function QualityReport({data, traceability = null, traceabilitySu
 
       {/* Beneish */}
       <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-          <h2 className="text-lg font-bold text-slate-800">Beneish M-Score Components</h2>
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 dark:bg-slate-800 dark:bg-slate-800">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100">Beneish M-Score Components</h2>
           <p className="text-xs text-slate-500">M &gt; −1.78 signals possible earnings manipulation (Beneish 1999, JAR)</p>
         </div>
         <div className="p-6 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 border-b">
+            <thead><tr className="bg-slate-50 dark:bg-slate-800 border-b">
               <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Component</th>
               {rd.map(d=><th key={d.period_end} className="px-3 py-2 text-right text-xs font-semibold text-slate-500">{d.period_end.slice(0,7)}</th>)}
             </tr></thead>
@@ -384,8 +384,8 @@ export default function QualityReport({data, traceability = null, traceabilitySu
                 {key:"beneish_lvgi",label:"LVGI — Leverage Index"},
                 {key:"beneish_tata",label:"TATA — Total Accruals/TA"},
               ].map(({key,label})=>(
-                <tr key={key} className="hover:bg-slate-50">
-                  <td className="px-3 py-2 text-slate-700 text-xs">{label}</td>
+                <tr key={key} className="hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <td className="px-3 py-2 text-slate-700 dark:text-slate-200 text-xs">{label}</td>
                   {rd.map(d=>(
                     <td key={d.period_end} className="px-3 py-2 text-right font-mono text-xs">
                       {fix(d.quality?.[key as keyof typeof d.quality] as number??0)}
@@ -394,7 +394,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
                 </tr>
               ))}
               <tr className="font-semibold bg-red-50/40">
-                <td className="px-3 py-2 text-slate-700">M-Score</td>
+                <td className="px-3 py-2 text-slate-700 dark:text-slate-200 dark:text-slate-200">M-Score</td>
                 {rd.map(d=>{
                   const m=d.quality?.beneish_mscore??0;
                   return (
@@ -411,13 +411,13 @@ export default function QualityReport({data, traceability = null, traceabilitySu
 
       {/* Altman */}
       <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-          <h2 className="text-lg font-bold text-slate-800">Altman Z'-Score Components</h2>
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 dark:bg-slate-800 dark:bg-slate-800">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100">Altman Z'-Score Components</h2>
           <p className="text-xs text-slate-500">Z' = 0.717×WC/TA + 0.847×RE/TA + 3.107×EBIT/TA + 0.420×BVE/TL + 0.998×S/TA</p>
         </div>
         <div className="p-6 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 border-b">
+            <thead><tr className="bg-slate-50 dark:bg-slate-800 border-b">
               <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Component</th>
               {rd.map(d=><th key={d.period_end} className="px-3 py-2 text-right text-xs font-semibold text-slate-500">{d.period_end.slice(0,7)}</th>)}
             </tr></thead>
@@ -429,8 +429,8 @@ export default function QualityReport({data, traceability = null, traceabilitySu
                 {key:"altman_bve_tl",label:"0.420 × BVE/TL"},
                 {key:"altman_s_ta",label:"0.998 × S/TA"},
               ].map(({key,label})=>(
-                <tr key={key} className="hover:bg-slate-50">
-                  <td className="px-3 py-2 text-xs text-slate-700">{label}</td>
+                <tr key={key} className="hover:bg-slate-50 dark:hover:bg-slate-800">
+                  <td className="px-3 py-2 text-xs text-slate-700 dark:text-slate-200">{label}</td>
                   {rd.map(d=>(
                     <td key={d.period_end} className="px-3 py-2 text-right font-mono text-xs">
                       {fix(d.quality?.[key as keyof typeof d.quality] as number??0)}
@@ -438,8 +438,8 @@ export default function QualityReport({data, traceability = null, traceabilitySu
                   ))}
                 </tr>
               ))}
-              <tr className="font-semibold bg-slate-50">
-                <td className="px-3 py-2 text-slate-700">Z'-Score</td>
+              <tr className="font-semibold bg-slate-50 dark:bg-slate-800 dark:bg-slate-800">
+                <td className="px-3 py-2 text-slate-700 dark:text-slate-200 dark:text-slate-200">Z'-Score</td>
                 {rd.map(d=>{
                   const z=d.quality?.altman_zprime??0;
                   const col=z>2.9?"text-emerald-700":z>1.23?"text-amber-700":"text-red-600";
@@ -454,14 +454,14 @@ export default function QualityReport({data, traceability = null, traceabilitySu
       {/* ── India Quality Signals ──────────────────────────────────── */}
       {indiaQuality && (
         <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-            <h2 className="text-lg font-bold text-slate-800">India-Specific Governance &amp; Market Quality</h2>
+          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 dark:bg-slate-800 dark:bg-slate-800">
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100">India-Specific Governance &amp; Market Quality</h2>
             <p className="text-xs text-slate-500 mt-0.5">Promoter holding, pledged shares, RPT intensity, tax avoidance, and governance events.</p>
           </div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Promoter Holding</div>
-              <div className="text-2xl font-bold text-slate-800">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100">
                 {indiaQuality.promoterHolding != null ? `${indiaQuality.promoterHolding.toFixed(1)}%` : "—"}
               </div>
               {indiaQuality.pledgedPromoterShares != null && (
@@ -472,7 +472,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
             </div>
             <div>
               <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Related Party Transactions</div>
-              <div className="text-2xl font-bold text-slate-800">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100">
                 {rptIntensityPct != null ? `${rptIntensityPct.toFixed(1)}%` : "—"}
               </div>
               <div className="text-xs text-slate-500 mt-1">
@@ -483,7 +483,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
             </div>
             <div>
               <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Tax Avoidance Intensity</div>
-              <div className="text-2xl font-bold text-slate-800">
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100">
                 {taxAvoidanceIntensityPct != null ? `${taxAvoidanceIntensityPct.toFixed(1)}pp` : "—"}
               </div>
               <div className="text-xs text-slate-500 mt-1">
@@ -511,31 +511,31 @@ export default function QualityReport({data, traceability = null, traceabilitySu
       {/* ── Earnings Quality — Dechow-Dichev &amp; Roychowdhury ─────── */}
       {earningsQuality && (
         <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-            <h2 className="text-lg font-bold text-slate-800">Earnings Quality — DD / REM Signals</h2>
+          <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 dark:bg-slate-800 dark:bg-slate-800">
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100">Earnings Quality — DD / REM Signals</h2>
             <p className="text-xs text-slate-500 mt-0.5">Signal-level accrual quality and real earnings management diagnostics using the currently available multi-period series.</p>
           </div>
           <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Timeliness / DD Quality</div>
-              <div className="text-2xl font-bold text-slate-800">{earningsQuality.timeliness.toFixed(0)}/25</div>
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100">{earningsQuality.timeliness.toFixed(0)}/25</div>
               <div className="text-xs text-slate-400 mt-1">Dechow-Dichev accrual quality via CFO-WCA relationship.</div>
             </div>
             <div>
               <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Neutrality</div>
-              <div className="text-2xl font-bold text-slate-800">{earningsQuality.neutrality.toFixed(0)}/25</div>
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100">{earningsQuality.neutrality.toFixed(0)}/25</div>
               <div className="text-xs text-slate-400 mt-1">
                 {earningsQuality.remFlag ? "⚠ Real earnings management detected." : "No REM signals detected."}
               </div>
             </div>
             <div>
               <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Completeness</div>
-              <div className="text-2xl font-bold text-slate-800">{earningsQuality.completeness.toFixed(0)}/25</div>
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100">{earningsQuality.completeness.toFixed(0)}/25</div>
               <div className="text-xs text-slate-400 mt-1">Dirty surplus and OCI events coverage.</div>
             </div>
             <div>
               <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Realization</div>
-              <div className="text-2xl font-bold text-slate-800">{earningsQuality.realization.toFixed(0)}/25</div>
+              <div className="text-2xl font-bold text-slate-800 dark:text-slate-100 dark:text-slate-100">{earningsQuality.realization.toFixed(0)}/25</div>
               <div className="text-xs text-slate-400 mt-1">Cash conversion and accrual realization.</div>
             </div>
           </div>

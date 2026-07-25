@@ -5,6 +5,7 @@ import { SourceParserDiagnostics } from "../engine/parserDiagnostics";
 import { runBatchAnalysis, type BatchCompanyInput } from "../engine/batchRunner";
 import { LibraryCompany } from "./data-entry/companyRegistry";
 import { rememberWorkspaceAnalysis } from "../lib/researchWorkspace";
+import { readCachedParse, writeCachedParse, sha256Hex } from "../lib/capitalineParseCache";
 import type { CanonicalFactIngestionBundle } from "../engine/facts";
 import { buildCapitalineCanonicalFactBundle } from "../engine/facts";
 import {
@@ -172,7 +173,36 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
       });
       const { parseCapitalineZip } = await import("../engine/capitalineParser");
       setUploadStep("parsing");
-      const { periods, debug, segmentData } = await parseCapitalineZip(file, { companyId: activeCompanyId });
+
+      // Cache lookup: hash the ZIP bytes; on hit, skip the parse entirely.
+      const zipBytes = new Uint8Array(await file.arrayBuffer());
+      const zipSha = await sha256Hex(zipBytes);
+      let parsed: { periods: RawPeriodData[]; debug: CapitalineParseDebug; segmentData: import("../engine/segmentParser").AllSegmentData | null } | null = null;
+      if (zipSha) {
+        const cached = await readCachedParse(zipSha);
+        if (cached) {
+          parsed = { periods: cached.periods, debug: cached.debug, segmentData: cached.segmentData };
+          trace("parse", "processZip:cacheHit", { fileName: file.name, zipSha: zipSha.slice(0, 12) }, {
+            periodCount: cached.periods.length,
+          });
+        }
+      }
+      if (!parsed) {
+        const fresh = await parseCapitalineZip(zipBytes, { companyId: activeCompanyId, filename: file.name });
+        parsed = fresh;
+        if (zipSha) {
+          // Fire-and-forget — caching must not block the analysis path.
+          void writeCachedParse({
+            zipSha256: zipSha,
+            zipSize: file.size,
+            cachedAt: new Date().toISOString(),
+            periods: fresh.periods,
+            debug: fresh.debug,
+            segmentData: fresh.segmentData,
+          });
+        }
+      }
+      const { periods, debug, segmentData } = parsed;
       const canonicalFacts = buildCapitalineCanonicalFactBundle({
         rawData: periods,
         debug,
@@ -424,11 +454,35 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
           if (standaloneResponse.ok) {
             const standaloneBlob = await standaloneResponse.blob();
             const standaloneFile = new File([standaloneBlob], "standalone.zip", { type: "application/zip" });
-            const { parseCapitalineZip } = await import("../engine/capitalineParser");
-            const standaloneResult = await parseCapitalineZip(standaloneFile, {
-              companyId: ticker.toUpperCase().slice(0, 20),
-            });
-            standalonePeriods = standaloneResult.periods.length > 0 ? standaloneResult.periods : null;
+            const standaloneBytes = new Uint8Array(await standaloneFile.arrayBuffer());
+            const standaloneSha = await sha256Hex(standaloneBytes);
+            let standaloneCached = false;
+            if (standaloneSha) {
+              const cached = await readCachedParse(standaloneSha);
+              if (cached && cached.periods.length > 0) {
+                standalonePeriods = cached.periods;
+                standaloneCached = true;
+                trace("ui", "dataEntry:standaloneCacheHit", { folder, sha: standaloneSha.slice(0, 12) });
+              }
+            }
+            if (!standaloneCached) {
+              const { parseCapitalineZip } = await import("../engine/capitalineParser");
+              const standaloneResult = await parseCapitalineZip(standaloneBytes, {
+                companyId: ticker.toUpperCase().slice(0, 20),
+                filename: "standalone.zip",
+              });
+              standalonePeriods = standaloneResult.periods.length > 0 ? standaloneResult.periods : null;
+              if (standaloneSha && standalonePeriods) {
+                void writeCachedParse({
+                  zipSha256: standaloneSha,
+                  zipSize: standaloneFile.size,
+                  cachedAt: new Date().toISOString(),
+                  periods: standalonePeriods,
+                  debug: standaloneResult.debug,
+                  segmentData: standaloneResult.segmentData,
+                });
+              }
+            }
             if (!standalonePeriods) {
               const warning = `Standalone ZIP for "${folder}" parsed zero periods; consolidated analysis will continue.`;
               setLoadWarnings([warning]);

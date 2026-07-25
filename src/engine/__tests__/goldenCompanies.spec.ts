@@ -94,7 +94,11 @@ describe("Golden Companies — registry validation", () => {
         });
       }
 
-      it("can load the ZIP without OOMing the worker (leak test)", async () => {
+      // The node env has no DOMParser, so this takes the regex-scraper path
+      // rather than the DOM path the browser actually uses. Measured cost is
+      // 3s-195s per ZIP (worst: Shriram Finance at 195s), so the 5s default
+      // cannot hold. The budget still fails closed on a real hang or OOM.
+      it("can load the ZIP without OOMing the worker (leak test)", { timeout: 300_000 }, async () => {
         const zipPath = resolve(COMPANIES_DIR, entry.folder, `${entry.folder}.zip`);
         const buffer = readFileSync(zipPath);
         const { periods } = await parseCapitalineZip(buffer);

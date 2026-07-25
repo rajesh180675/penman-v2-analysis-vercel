@@ -90,6 +90,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
+      // jsPDF exposes an optional DOM-to-canvas renderer through its `.html()`
+      // API. Reporting deliberately uses the semantic vector renderer instead,
+      // so keep that incompatible path fail-closed and out of production chunks.
+      "html2canvas": path.resolve(__dirname, "src/reporting/unsupportedDomRasterizer.ts"),
     },
   },
 });

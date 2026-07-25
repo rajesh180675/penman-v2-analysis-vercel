@@ -101,6 +101,10 @@ export function useAnalysisRunExecution(
   const [error, setError] = useState<string | null>(null);
   const sequenceRef = useRef(0);
   const previousRef = useRef<PreviousExecution | null>(null);
+  // Keep the last successfully-stored run so downstream consumers (tabs,
+  // valuation surfaces) don't blank out while a superseding run is in flight.
+  // Cleared only when rawData itself goes away (company switch / reset).
+  const lastStoredRef = useRef<StoredAnalysisRun | null>(null);
 
   const rawFingerprint = useMemo(() => fingerprint(inputs.rawData), [inputs.rawData]);
   const configFingerprint = useMemo(() => fingerprint(inputs.config), [inputs.config]);
@@ -123,12 +127,25 @@ export function useAnalysisRunExecution(
       setState("idle");
       setProgress(null);
       setError(null);
+      lastStoredRef.current = null;
       return;
+    }
+
+    // Company switch: rawData changed to a different issuer. Clear the
+    // last-stored fallback so tabs don't show the previous company's data
+    // while the new company's first run is in flight.
+    const currentIssuer = inputs.auditMeta?.companyId ?? inputs.rawData[0]?.company_id ?? null;
+    if (lastStoredRef.current && lastStoredRef.current.run.issuerId !== currentIssuer) {
+      lastStoredRef.current = null;
+      setActiveRunId(null);
     }
 
     let disposed = false;
     let task: BrowserAnalysisRunTask | null = null;
-    setActiveRunId(null);
+    // Do NOT clear activeRunId here — keep the previous run visible while the
+    // superseding run is in flight. Tabs stay populated during config/market
+    // re-runs. Only clear when rawData itself is removed (handled above) or
+    // the issuer changes (handled above).
     setState("queued");
     setProgress(null);
     setError(null);
@@ -189,6 +206,7 @@ export function useAnalysisRunExecution(
         const stored = await store.addExecution(result, { makeCurrent: true });
         if (disposed) return;
         previousRef.current = { issuerId, ...fingerprints, run: stored.run };
+        lastStoredRef.current = stored;
         setActiveRunId(stored.run.runId);
         setState(result.status);
       }).catch((executionError: unknown) => {
@@ -215,8 +233,13 @@ export function useAnalysisRunExecution(
   // Repository reads return defensive clones. Memoize the selected projection
   // so render-only state changes cannot manufacture a new analytical object
   // graph and retrigger persistence effects in downstream tabs.
+  //
+  // Fallback: when activeRunId is null (re-run in flight), expose the last
+  // successfully-stored run so tabs don't blank out. This is safe because
+  // the store's runs are immutable — the old run remains valid until the new
+  // one replaces it.
   const stored = useMemo(
-    () => activeRunId ? store.get(activeRunId) : null,
+    () => activeRunId ? store.get(activeRunId) : lastStoredRef.current,
     [activeRunId, store],
   );
   return {

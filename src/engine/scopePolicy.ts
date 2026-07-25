@@ -94,8 +94,14 @@ const SIGNAL_GROUPS: Array<{
   // funding/advance labels remain as triggers.
   // "Fee and Commission Income",
       "Interests Income (Operating)",
-      // X-Detail BS format: "Loans - Long - Term" is the parent loan book,
-      // "Loan to Customer" is a sub-category (often zero; parent captures actual).
+      // X-Detail BS format: "Loans - Long - Term" is the parent loan book and
+      // "Loan to Customer" is a sub-category (often zero; the parent carries
+      // the actual balance). Both must stay: "Loans - Long - Term" is the
+      // ONLY material NBFC label Bajaj Finance reports (₹407,844 Cr across 16
+      // periods), so removing it drops Bajaj below the 2-distinct-key
+      // threshold and misroutes a real NBFC to the industrial pipeline.
+      // Conglomerates that carry subsidiary loans (Grasim) are separated by the
+      // explicit company_type override, not by narrowing this list.
       "Loans - Long - Term",
       "Loan to Customer",
       "Finance Lease Receivables",
@@ -392,6 +398,15 @@ export function assessAnalysisScope(
   }
 
   // Insurance is supported!
+  //
+  // Deliberately NOT gated behind a 2-distinct-key threshold like NBFC above.
+  // Real insurers can surface a single recognised label — LIC's export matches
+  // only "Premium Earned (Net)" (its "Claims Incurred" is not the spec's
+  // "Claims Expenses"), so a 2-key rule demotes a genuine insurer to the
+  // industrial pipeline and its subtype degrades to generic-financial.
+  // Conglomerates that carry one insurance-subsidiary line are handled by the
+  // explicit company_type override instead: the library picker always supplies
+  // a concrete type, and an explicit type skips signal detection entirely.
   if (isInsurance && !isBank && !isNbfc) {
     return {
       policyVersion: SCOPE_POLICY_VERSION,

@@ -163,7 +163,27 @@ async function runOneCompany(
       : `/data/companies/${encodePath(input.folder)}/${encodePath(input.folder)}.zip`;
 
     const zipBuf = await fetchArrayBuffer(zipUrl, fetchImpl, { companyId: input.folder, kind: "consolidated-zip" });
-    const parseResult = await parseCapitalineZip(zipBuf, { companyId: input.folder, filename: `${input.folder}.zip` });
+    // Cache check: avoid re-parsing a multi-MB Capitaline ZIP we've already parsed.
+    const { readCachedParse, writeCachedParse, sha256Hex } = await import("../lib/capitalineParseCache");
+    const zipSha = await sha256Hex(zipBuf);
+    let parseResult: { periods: RawPeriodData[]; debug: import("./capitalineParser").CapitalineParseDebug; segmentData: import("./segmentParser").AllSegmentData | null } | null = null;
+    if (zipSha) {
+      const cached = await readCachedParse(zipSha);
+      if (cached) parseResult = { periods: cached.periods, debug: cached.debug, segmentData: cached.segmentData };
+    }
+    if (!parseResult) {
+      parseResult = await parseCapitalineZip(zipBuf, { companyId: input.folder, filename: `${input.folder}.zip` });
+      if (zipSha) {
+        void writeCachedParse({
+          zipSha256: zipSha,
+          zipSize: zipBuf.byteLength,
+          cachedAt: new Date().toISOString(),
+          periods: parseResult.periods,
+          debug: parseResult.debug,
+          segmentData: parseResult.segmentData,
+        });
+      }
+    }
 
     let standaloneRaw: RawPeriodData[] | null = null;
     if (input.hasStandalone) {
@@ -172,7 +192,25 @@ async function runOneCompany(
         : `/data/companies/${encodePath(input.folder)}/standalone.zip`;
       try {
         const standaloneBuf = await fetchArrayBuffer(standaloneUrl, fetchImpl, { companyId: input.folder, kind: "standalone-zip" });
-        const standaloneResult = await parseCapitalineZip(standaloneBuf, { companyId: `${input.folder}-standalone`, filename: "standalone.zip" });
+        const standaloneSha = await sha256Hex(standaloneBuf);
+        let standaloneResult: { periods: RawPeriodData[]; debug: import("./capitalineParser").CapitalineParseDebug; segmentData: import("./segmentParser").AllSegmentData | null } | null = null;
+        if (standaloneSha) {
+          const cached = await readCachedParse(standaloneSha);
+          if (cached) standaloneResult = { periods: cached.periods, debug: cached.debug, segmentData: cached.segmentData };
+        }
+        if (!standaloneResult) {
+          standaloneResult = await parseCapitalineZip(standaloneBuf, { companyId: `${input.folder}-standalone`, filename: "standalone.zip" });
+          if (standaloneSha) {
+            void writeCachedParse({
+              zipSha256: standaloneSha,
+              zipSize: standaloneBuf.byteLength,
+              cachedAt: new Date().toISOString(),
+              periods: standaloneResult.periods,
+              debug: standaloneResult.debug,
+              segmentData: standaloneResult.segmentData,
+            });
+          }
+        }
         standaloneRaw = standaloneResult.periods;
       } catch (err) {
         trace("pipeline", "standalone:skipped", { folder: input.folder, error: String(err) }, null, { level: "warn" });

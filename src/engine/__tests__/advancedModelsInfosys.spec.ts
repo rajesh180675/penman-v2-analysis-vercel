@@ -38,7 +38,11 @@ describe.skipIf(!HAS_ZIP)("Advanced Models — Infosys (IT Services)", () => {
     periods = pipeline.periods;
     segmentData = parsed.segmentData;
     expect(periods.length).toBeGreaterThanOrEqual(5);
-  }, 30_000);
+    // No inline timeout: this hook parses a real Capitaline ZIP and runs the
+    // full pipeline, which takes ~22s isolated but exceeds 30s under the fork
+    // contention of `npm run test:sharded`. Inherit the 120s hookTimeout in
+    // vitest.config.ts, which exists for exactly this case.
+  });
 
   it("ERI for a quality IT company is high", () => {
     const eri = computeERI(periods);

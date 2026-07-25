@@ -1,9 +1,16 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import JSZip from "jszip";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import AcademicReport from "../AcademicReport";
+import { runExportIcBundle } from "../academic/AcademicReport.exports";
 import { buildAnalysisTraceability } from "../../engine/analysisTraceability";
 import { getAnalysisPolicyVersions } from "../../engine/policyVersions";
 import { DEFAULT_CONFIG, RecastPeriod, RawPeriodData } from "../../engine/types";
+import { buildAnalysisPublicationSnapshot } from "../../lib/publication/analysisPublicationSnapshot";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 function mkRawPeriod(period_end: string): RawPeriodData {
   return {
@@ -336,4 +343,99 @@ describe("AcademicReport", () => {
     expect(html).toContain("Piotroski components");
     expect(html).toContain("EBIT / TA");
   });
+
+  it("builds a validated IC ZIP with the canonical report, PDF, evidence, and closed manifest", async () => {
+    const data = [mkReportPeriod("2024-03-31"), mkReportPeriod("2025-03-31")];
+    const rawData = [mkRawPeriod("2024-03-31"), mkRawPeriod("2025-03-31")];
+    const traceability = buildAnalysisTraceability({
+      generatedAt: "2026-04-03T16:00:00.000Z",
+      runId: "run-report",
+      companyId: "ITC",
+      sourceMode: "json",
+      rawData,
+      recastData: data,
+      config: DEFAULT_CONFIG,
+      periodCount: 2,
+      recastPeriodCount: 2,
+      latestPeriod: "2025-03-31",
+      policyVersions: getAnalysisPolicyVersions(),
+    });
+    const publication = buildAnalysisPublicationSnapshot({
+      data,
+      config: DEFAULT_CONFIG,
+      rawData,
+      auditMeta: null,
+      sharedTraceability: traceability,
+    });
+    const reportElement = document.createElement("div");
+    reportElement.innerHTML = `
+      <h1>Investor Research Memorandum</h1>
+      <h2>Executive Findings</h2>
+      <p>Valuation evidence for ITC.</p>
+      <table><tr><th>Metric</th><th>Value</th></tr><tr><td>RNOA</td><td>12%</td></tr></table>
+    `;
+
+    let downloaded: Blob | null = null;
+    vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
+      if (!(blob instanceof Blob)) throw new Error("Expected Blob artifact");
+      downloaded = blob;
+      return "blob:ic-bundle";
+    });
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    vi.spyOn(globalThis, "setTimeout").mockImplementation((callback) => {
+      if (typeof callback === "function") callback();
+      return 0 as unknown as ReturnType<typeof setTimeout>;
+    });
+
+    const result = await runExportIcBundle({
+      reportEl: reportElement,
+      data,
+      traceRecords: [],
+      provenanceRows: publication.provenanceRows,
+      granularityChecklist: publication.granularityChecklist,
+      valuationReadiness: publication.valuationReadiness,
+      policyVersions: publication.policyVersions,
+      traceability: publication.traceability,
+      runIdentity: publication.runIdentity,
+      companyId: "ITC",
+      hmacKeyId: "",
+      hmacSecret: "",
+      auditMeta: null,
+    });
+
+    expect(result.format).toBe("zip");
+    expect(result.filename).toBe("penman-ITC-ic-bundle-2025-03-31.zip");
+    expect(result.auditStatus).toBe("not-requested");
+    const bundle = downloaded as Blob | null;
+    if (!bundle) throw new Error("Expected IC bundle download");
+    const archive = await JSZip.loadAsync(new Uint8Array(await bundle.arrayBuffer()));
+    const names = Object.keys(archive.files);
+    expect(names).toEqual(expect.arrayContaining([
+      "penman-ITC-academic-report-2025-03-31.pdf",
+      "report_document.json",
+      "report_document.html",
+      "traceability_appendix.csv",
+      "traceability_appendix.json",
+      "provenance_audit_report.csv",
+      "provenance_audit_report.md",
+      "manifest.json",
+    ]));
+    const manifest = JSON.parse(await archive.file("manifest.json")!.async("string")) as {
+      generatedAt: string;
+      reportDocumentSchema: string;
+      checksums: Array<{ file: string }>;
+      signature: { mode: string };
+    };
+    expect(manifest.reportDocumentSchema).toBe("2026-07-report-document-v1");
+    expect(manifest.signature.mode).toBe("unsigned");
+    const canonicalReport = JSON.parse(await archive.file("report_document.json")!.async("string")) as {
+      generatedAt: string;
+    };
+    expect(canonicalReport.generatedAt).toBe(manifest.generatedAt);
+    expect(manifest.checksums.map((entry) => entry.file).sort())
+      .toEqual(names.filter((name) => name !== "manifest.json").sort());
+    expect(await archive.file("penman-ITC-academic-report-2025-03-31.pdf")!.async("string"))
+      .toMatch(/^%PDF-/);
+  }, 30_000);
 });

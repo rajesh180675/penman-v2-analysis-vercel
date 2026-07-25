@@ -266,6 +266,84 @@ describe("scopePolicy", () => {
     expect(assessment.label).toBe("Supported insurance scope");
   });
 
+  // ── Conglomerate vs real NBFC separation ───────────────────────────────────
+  // Both cases below carry the "Loans - Long - Term" label. It is a genuine
+  // NBFC loan-book label AND a generic industrial line (loans to subsidiaries),
+  // so label presence alone cannot classify. The NBFC 2-distinct-key threshold
+  // separates the loan-book cases; a lone *insurance* subsidiary line is NOT
+  // threshold-separable (see the insurance note in scopePolicy.ts — LIC itself
+  // matches only one recognised key), so the conglomerate case is separated by
+  // the explicit company_type the library picker always supplies.
+  // Regression guard for the Grasim/Bajaj pair.
+
+  /** Grasim shape: one insurance key + one NBFC key, both material. */
+  function conglomerateWithFinancialSubsidiaries(i: number): Record<string, number> {
+    return {
+      ...industrialBase(i),
+      // Single insurance label — Birla Sun Life subsidiary on the consolidated BS.
+      "Investments of Life Insurance Business__BalanceSheet": 90000 + i * 2000,
+      // Single NBFC label — loans to subsidiaries/JVs, not a customer loan book.
+      "Loans - Long - Term__BalanceSheet": 120000 + i * 1000,
+    };
+  }
+
+  function conglomeratePeriods() {
+    return Array.from({ length: 4 }, (_, i) => ({
+      company_id: "CONGLOMERATE_WITH_FIN_SUBS",
+      period_end: `202${2 + i}-03-31`,
+      raw_metric_values: conglomerateWithFinancialSubsidiaries(i),
+    }));
+  }
+
+  it("keeps a conglomerate with financial subsidiaries on the industrial pipeline under its registry type", () => {
+    // This is the path the app actually takes: DataEntry never loads with
+    // company_type "auto", and the picker maps a "conglomerate" registry entry
+    // to "industrial". Routing this to the financial pipeline would yield zero
+    // industrial recast and hide the dashboard/valuation/report tabs.
+    const assessment = assessAnalysisScope(conglomeratePeriods(), {
+      financial_institution_mode: false,
+      company_type: "industrial",
+    });
+    expect(assessment.blocked).toBe(false);
+    expect(assessment.classification).toBe("supported-industrial");
+    expect(assessment.analysisFamily).toBe("industrial");
+  });
+
+  it("routes the same conglomerate to insurance under auto-detection", () => {
+    // Documents the deliberate asymmetry rather than asserting it away: with no
+    // explicit type, the lone insurance-subsidiary line is enough, because a
+    // 2-key insurance threshold would demote real single-label insurers (LIC).
+    // The lone NBFC key stays in `signals` but does not set isNbfc, so the
+    // insurance branch wins.
+    const assessment = assessAnalysisScope(conglomeratePeriods());
+    expect(assessment.blocked).toBe(false);
+    expect(assessment.classification).toBe("supported-financial");
+    expect(assessment.label).toBe("Supported insurance scope");
+  });
+
+  it("routes a real NBFC to the financial pipeline when two NBFC labels are material", () => {
+    const periods = Array.from({ length: 4 }, (_, i) => ({
+      company_id: "REAL_NBFC",
+      period_end: `202${2 + i}-03-31`,
+      raw_metric_values: {
+        "Total Assets__BalanceSheet": 300000 + i * 20000,
+        "Total Equity__BalanceSheet": 50000 + i * 4000,
+        "Profit After Tax__ProfitLoss": 9000 + i * 800,
+        // Bajaj Finance reports its customer loan book under "Loans - Long -
+        // Term"; it is the largest NBFC label on the statement. Paired with a
+        // second NBFC label it must clear the threshold.
+        "Loans - Long - Term__BalanceSheet": 400000 + i * 30000,
+        "Total Loans Given__BalanceSheet": 380000 + i * 28000,
+      },
+    }));
+
+    const assessment = assessAnalysisScope(periods);
+    expect(assessment.blocked).toBe(false);
+    expect(assessment.classification).toBe("supported-financial");
+    expect(assessment.analysisFamily).toBe("financial-institution");
+    expect(assessment.label).toBe("Supported NBFC scope");
+  });
+
   // ── Phase 0 — telecom/utility fail-safe (detected-but-unmodelled) ──────────
 
   /** A clean industrial-shaped base period (no sector discriminators). */

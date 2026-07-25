@@ -195,3 +195,4 @@ proto_dump.jsonl
 # Test results / playwright artifacts
 test-results/
 playwright-report/
+.quadcodeai/

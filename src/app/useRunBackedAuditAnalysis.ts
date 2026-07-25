@@ -102,12 +102,13 @@ export function useRunBackedAuditAnalysis(inputs: RunBackedAuditAnalysisInputs) 
   const pipelineResult = projection?.pipelineResult ?? null;
   const allRecastData = pipelineResult?.periods.length ? pipelineResult.periods : null;
   const analysisWindow = projection?.analysisWindow ?? null;
-  const recastData = useMemo(
-    () => allRecastData && analysisWindow
-      ? allRecastData.filter((period) => analysisWindow.includedPeriods.includes(period.period_end))
-      : allRecastData,
-    [allRecastData, analysisWindow],
-  );
+  // Always expose the full recast history to the tabs. The analysis window
+  // only governs the valuation command center / forecast anchor — statements,
+  // ratios, quality, dashboard, etc. all need the full period range even when
+  // the window-selection gate blocks or narrows the valuation anchor.
+  // (Previously this filtered by analysisWindow.includedPeriods, which left
+  // recastData empty whenever the window was blocked → tabs disappeared.)
+  const recastData = allRecastData;
   const qualityGate = projection?.qualityGate ?? null;
   const qualityGateWithRecast = qualityGate;
   const scopeGate = qualityGate;

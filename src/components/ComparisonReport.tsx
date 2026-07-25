@@ -10,6 +10,7 @@ import PercentileBar from "./charts/PercentileBar";
 import SectorHeatmap from "./charts/SectorHeatmap";
 import { computePeerRelativeValuation } from "../engine/peerRelativeValuation";
 import RunBackedPortfolioComparison from "./RunBackedPortfolioComparison";
+import { EmptyState } from "./shared/Primitives";
 import type { ReturnTypeOfPortfolioComparison } from "../engine/portfolioRunComparison.types";
 
 interface Props {
@@ -33,7 +34,7 @@ export default function ComparisonReport({ registry, config, weakestTraceability
   const comparableIssuerIds = runComparison ? new Set(runComparison.rows.filter((row) => row.comparable).map((row) => row.issuerId)) : null;
   const companies = Object.values(registry.companies).filter((c) => c.recastData.length > 0 && (!comparableIssuerIds || comparableIssuerIds.has(c.id)));
   if (companies.length < 2) {
-    return <div className="space-y-6">{runComparison && <RunBackedPortfolioComparison comparison={runComparison} />}<div className="card-base p-12 text-center"><div className="text-5xl mb-3">📊</div><p className="font-semibold text-slate-600 dark:text-slate-300">Need ≥ 2 companies</p><p className="text-sm text-slate-500 mt-1">Load at least 2 companies to enable peer comparison.</p></div></div>;
+    return <div className="space-y-6">{runComparison && <RunBackedPortfolioComparison comparison={runComparison} />}<EmptyState icon="users" title="Need ≥ 2 companies" body="Load at least 2 companies to enable peer comparison." /></div>;
   }
 
   const comparisonPublication = publication ?? buildComparisonPublicationSnapshot(registry);
@@ -165,8 +166,8 @@ export default function ComparisonReport({ registry, config, weakestTraceability
           reconciliationStatus={weakestCompany?.traceability?.reconciliation.status ?? null}
           cautionHeading="Review these peer-level trust blockers before using the comparison output as a ranking or valuation decision surface."
           aside={(
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
-              <div className="font-semibold uppercase tracking-wide text-slate-500">Peer trust counts</div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              <div className="font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Peer trust counts</div>
               <div className="mt-2 space-y-1">
                 <div>{companies.length} peers loaded</div>
                 <div>{companies.length - comparisonPublication.missingTraceabilityCount} with persisted traceability</div>
@@ -178,39 +179,39 @@ export default function ComparisonReport({ registry, config, weakestTraceability
         />
       )}
 
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <h2 className="text-lg font-bold text-slate-800 mb-2">Per-Company Trust State</h2>
-        <p className="text-xs text-slate-500 mb-4">Cross-company rankings inherit the trust level of each loaded peer. Review parser fidelity, reconciliation status, and the next unresolved gate before comparing upside or percentile ranks.</p>
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm dark:bg-slate-900 dark:border-slate-700">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Per-Company Trust State</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Cross-company rankings inherit the trust level of each loaded peer. Review parser fidelity, reconciliation status, and the next unresolved gate before comparing upside or percentile ranks.</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 border-b">
-                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Company</th>
-                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Confidence</th>
-                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Rigor level</th>
-                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Parser fidelity</th>
-                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Reconciliation</th>
-                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Next unresolved gate</th>
+              <tr className="bg-slate-50 border-b dark:bg-slate-800 dark:border-slate-700">
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500 dark:text-slate-400">Company</th>
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500 dark:text-slate-400">Confidence</th>
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500 dark:text-slate-400">Rigor level</th>
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500 dark:text-slate-400">Parser fidelity</th>
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500 dark:text-slate-400">Reconciliation</th>
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500 dark:text-slate-400">Next unresolved gate</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {companies.map((company) => {
                 const traceability = company.traceability ?? null;
                 const summary = comparisonPublication.companySummaries[company.id] ?? null;
                 return (
                   <tr key={company.id}>
-                    <td className="px-3 py-2 font-medium text-slate-700">{company.label || company.id}</td>
+                    <td className="px-3 py-2 font-medium text-slate-700 dark:text-slate-200">{company.label || company.id}</td>
                     <td className="px-3 py-2">
                       <StatusPill tone={traceability?.confidence.tone ?? "amber"}>{traceability?.confidence.status ?? "missing"}</StatusPill>
                     </td>
-                    <td className="px-3 py-2 text-slate-700">{traceability?.rigor.currentLabel ?? "Traceability missing"}</td>
-                    <td className="px-3 py-2 text-slate-700">
+                    <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{traceability?.rigor.currentLabel ?? "Traceability missing"}</td>
+                    <td className="px-3 py-2 text-slate-700 dark:text-slate-300">
                       {traceability ? `${traceability.parserFidelity.status} · ${traceability.parserFidelity.score}/100` : "Traceability missing"}
                     </td>
-                    <td className="px-3 py-2 text-slate-700">
+                    <td className="px-3 py-2 text-slate-700 dark:text-slate-300">
                       {traceability ? `${traceability.reconciliation.status} · ${formatPct(traceability.reconciliation.maxResidualRatio)}` : "Traceability missing"}
                     </td>
-                    <td className="px-3 py-2 text-slate-700">{summary?.nextGateLine ?? "Reprocess this company in the current rigor-aware flow."}</td>
+                    <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{summary?.nextGateLine ?? "Reprocess this company in the current rigor-aware flow."}</td>
                   </tr>
                 );
               })}
@@ -223,7 +224,7 @@ export default function ComparisonReport({ registry, config, weakestTraceability
         <button onClick={fetchNsePrices} disabled={nseLoading} className="px-4 py-2 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-sm font-medium hover:bg-indigo-100 disabled:opacity-50">
           {nseLoading ? "Fetching NSE…" : "Auto-fill from NSE"}
         </button>
-        <button onClick={() => setSortByUpside((v) => !v)} className="px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50">
+        <button onClick={() => setSortByUpside((v) => !v)} className="px-4 py-2 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
           Sort: {sortByUpside ? "Upside ↓" : "Company A→Z"}
         </button>
         <button onClick={exportPanelCsv} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">
@@ -231,30 +232,30 @@ export default function ComparisonReport({ registry, config, weakestTraceability
         </button>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <h2 className="text-lg font-bold text-slate-800 mb-2">Valuation Comparison Panel (F-04)</h2>
-        <p className="text-xs text-slate-500 mb-4">All 6 model outputs per company (₹ Cr). Enter market price + shares to compute implied upside from RE-CV3 per-share value.</p>
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm dark:bg-slate-900 dark:border-slate-700">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Valuation Comparison Panel (F-04)</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">All 6 model outputs per company (₹ Cr). Enter market price + shares to compute implied upside from RE-CV3 per-share value.</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 border-b">
-                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Company</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Market Price</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Shares (Cr)</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">RE (CV3)</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">ReOI (CV03)</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">FCFF</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">FCFE</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">DDM</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">AEG</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Intrinsic / Share</th>
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">Upside</th>
+              <tr className="bg-slate-50 border-b dark:bg-slate-800 dark:border-slate-700">
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500 dark:text-slate-400">Company</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500 dark:text-slate-400">Market Price</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500 dark:text-slate-400">Shares (Cr)</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500 dark:text-slate-400">RE (CV3)</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500 dark:text-slate-400">ReOI (CV03)</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500 dark:text-slate-400">FCFF</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500 dark:text-slate-400">FCFE</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500 dark:text-slate-400">DDM</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500 dark:text-slate-400">AEG</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500 dark:text-slate-400">Intrinsic / Share</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500 dark:text-slate-400">Upside</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {valuationRows.map((r) => (
                 <tr key={r.id}>
-                  <td className="px-3 py-2 font-medium text-slate-700">{r.company}</td>
+                  <td className="px-3 py-2 font-medium text-slate-700 dark:text-slate-200">{r.company}</td>
                   <td className="px-3 py-2 text-right">
                     <input
                       type="number"
@@ -320,39 +321,39 @@ export default function ComparisonReport({ registry, config, weakestTraceability
         );
       })()}
 
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <h2 className="text-lg font-bold text-slate-800 mb-2">Peer Ratio Comparison (Cross-Section)</h2>
-        <p className="text-xs text-slate-500 mb-4">Rows are core Nissim–Penman ratios; columns are loaded companies. N&P median shown for anchor context.</p>
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm dark:bg-slate-900 dark:border-slate-700">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Peer Ratio Comparison (Cross-Section)</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Rows are core Nissim–Penman ratios; columns are loaded companies. N&P median shown for anchor context.</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 border-b">
-                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Metric</th>
+              <tr className="bg-slate-50 border-b dark:bg-slate-800 dark:border-slate-700">
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500 dark:text-slate-400">Metric</th>
                 {latestByCo.map((c) => (
-                  <th key={c.company} className="px-3 py-2 text-right text-xs uppercase text-slate-500">{c.company}</th>
+                  <th key={c.company} className="px-3 py-2 text-right text-xs uppercase text-slate-500 dark:text-slate-400">{c.company}</th>
                 ))}
-                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500">N&P Median</th>
+                <th className="px-3 py-2 text-right text-xs uppercase text-slate-500 dark:text-slate-400">N&P Median</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {METRICS.map((m) => {
                 const vals = latestByCo
                   .map((c) => c.latest?.ratios?.[m as keyof NonNullable<typeof c.latest.ratios>] as number | null)
                   .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
                 return (
                   <tr key={m}>
-                    <td className="px-3 py-2 font-medium text-slate-700">{m}</td>
+                    <td className="px-3 py-2 font-medium text-slate-700 dark:text-slate-200">{m}</td>
                     {latestByCo.map((c) => {
                       const v = c.latest?.ratios?.[m as keyof NonNullable<typeof c.latest.ratios>] as number | null;
                       const p = v != null ? percentileRank(vals, v) : null;
-                      const bg = p == null ? "" : p >= 0.75 ? "bg-emerald-50" : p <= 0.25 ? "bg-red-50" : "bg-amber-50";
+                      const bg = p == null ? "" : p >= 0.75 ? "bg-emerald-50 dark:bg-emerald-900/30" : p <= 0.25 ? "bg-red-50 dark:bg-red-900/30" : "bg-amber-50 dark:bg-amber-900/30";
                       return (
                         <td key={c.company + m} className={`px-3 py-2 text-right font-mono ${bg}`}>
                           {v == null ? "—" : m === "ATO" || m === "FLEV" ? `${v.toFixed(2)}x` : `${(v * 100).toFixed(1)}%`}
                         </td>
                       );
                     })}
-                    <td className="px-3 py-2 text-right text-slate-500 font-mono">
+                    <td className="px-3 py-2 text-right text-slate-500 dark:text-slate-400 font-mono">
                       {m === "ATO" || m === "FLEV"
                         ? `${NP_BENCHMARKS[m]!.median.toFixed(2)}x`
                         : `${(NP_BENCHMARKS[m]!.median * 100).toFixed(1)}%`}
@@ -364,23 +365,23 @@ export default function ComparisonReport({ registry, config, weakestTraceability
           </table>
         </div>
       </div>
-
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <h3 className="text-base font-bold text-slate-800 mb-2">Cross-Section Percentile Ranking (latest period)</h3>
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm dark:bg-slate-900 dark:border-slate-700">
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-2">Cross-Section Percentile Ranking (latest period)</h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Each cell shows the percentile rank of that company&apos;s ratio within the loaded peer set.</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 border-b">
-                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500">Company</th>
+              <tr className="bg-slate-50 border-b dark:bg-slate-800 dark:border-slate-700">
+                <th className="px-3 py-2 text-left text-xs uppercase text-slate-500 dark:text-slate-400">Company</th>
                 {METRICS.map((m) => (
-                  <th key={m} className="px-3 py-2 text-right text-xs uppercase text-slate-500">{m} pctile</th>
+                  <th key={m} className="px-3 py-2 text-right text-xs uppercase text-slate-500 dark:text-slate-400">{m} pctile</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {latestByCo.map((c) => (
                 <tr key={c.company}>
-                  <td className="px-3 py-2 font-medium text-slate-700">{c.company}</td>
+                  <td className="px-3 py-2 font-medium text-slate-700 dark:text-slate-200">{c.company}</td>
                   {METRICS.map((m) => {
                     const vals = latestByCo
                       .map((x) => x.latest?.ratios?.[m as keyof NonNullable<typeof x.latest.ratios>] as number | null)
@@ -401,11 +402,11 @@ export default function ComparisonReport({ registry, config, weakestTraceability
 
         {/* Peer Relative Valuation Panel (Phase G) */}
         {peerRelative && (
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm lg:col-span-2">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm dark:bg-slate-900 dark:border-slate-700 lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-lg font-bold text-slate-800">Peer Relative Valuation</h2>
-                <p className="text-xs text-slate-500 mt-1">{peerRelative.peerCount} peers · Multiple-implied fair values from sector medians</p>
+                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Peer Relative Valuation</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{peerRelative.peerCount} peers · Multiple-implied fair values from sector medians</p>
               </div>
               {peerRelative.compositeMarginOfSafety != null && (
                 <span className={`text-sm font-bold px-3 py-1.5 rounded-full ${peerRelative.compositeMarginOfSafety > 0.15 ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
@@ -419,12 +420,12 @@ export default function ComparisonReport({ registry, config, weakestTraceability
             {peerRelative.multipleImplied.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                 {peerRelative.multipleImplied.map((m, i) => (
-                  <div key={i} className="rounded-xl bg-slate-50 p-3">
-                    <div className="text-xs text-slate-500">{m.metric} implied</div>
-                    <div className="text-lg font-bold text-slate-900">
+                  <div key={i} className="rounded-xl bg-slate-50 dark:bg-slate-800 p-3">
+                    <div className="text-xs text-slate-500 dark:text-slate-400">{m.metric} implied</div>
+                    <div className="text-lg font-bold text-slate-900 dark:text-slate-100">
                       {m.impliedFairValue != null ? `₹${m.impliedFairValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—"}
                     </div>
-                    <div className="text-[10px] text-slate-400">Peer median: {m.peerMedianMultiple?.toFixed(1) ?? "—"}×</div>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500">Peer median: {m.peerMedianMultiple?.toFixed(1) ?? "—"}×</div>
                   </div>
                 ))}
               </div>

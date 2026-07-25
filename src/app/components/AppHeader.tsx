@@ -5,6 +5,7 @@ import { AnalysisStatusBadge } from "../../components/AnalysisStatusBadge";
 import CompanySwitcher from "../../components/CompanySwitcher";
 import type { TabId } from "../tabs";
 import { TABS, TAB_GROUPS } from "../tabs";
+import { Icon, type IconName } from "../../components/shared/Primitives";
 
 interface AppHeaderProps {
   visibleTabs: typeof TABS;
@@ -26,6 +27,29 @@ interface AppHeaderProps {
   setShortcutsOpen: (v: boolean) => void;
   setGlossaryOpen: (v: boolean) => void;
 }
+
+const TAB_ICONS: Record<TabId, IconName> = {
+  upload: "database",
+  dashboard: "chart",
+  watchlist: "folder",
+  workspace: "compass",
+  inspector: "satellite",
+  statements: "table",
+  ratios: "calculator",
+  quality: "search",
+  scope: "mirror",
+  atlas: "satellite",
+  business: "building",
+  forecast: "trending-up",
+  valuation: "currency",
+  bank: "bank",
+  comparison: "users",
+  report: "book",
+  thesis: "document",
+  regression: "flask",
+  v3analytics: "microscope",
+  debug: "wrench",
+};
 
 export function AppHeader({
   visibleTabs,
@@ -53,7 +77,7 @@ export function AppHeader({
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">PN</div>
           <div>
-            <span className="font-bold text-slate-800 text-sm">Penman–Nissim V3</span>
+            <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">Penman–Nissim V3</span>
             <span className="hidden sm:inline text-xs text-slate-400 ml-2">Residual-Income Valuation · Capitaline Ind AS</span>
           </div>
         </div>
@@ -83,12 +107,12 @@ export function AppHeader({
                     }
                     disabled={tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable}
                     className={`px-2.5 h-full text-xs font-medium border-b-2 transition-colors flex items-center gap-1 whitespace-nowrap ${activeTab === tab.id
-                      ? "border-indigo-600 text-indigo-600"
+                      ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
                       : tab.id === "valuation" && valuationBlocked
-                        ? "border-transparent text-slate-300 cursor-not-allowed"
-                        : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
+                        ? "border-transparent text-slate-300 dark:text-slate-600 cursor-not-allowed"
+                        : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300"
                       }`}>
-                    <span>{tab.icon}</span>
+                    <Icon name={TAB_ICONS[tab.id]} size={14} />
                     <span className="hidden sm:inline">{tab.label}</span>
                   </button>
                 ))}
@@ -99,7 +123,7 @@ export function AppHeader({
         </nav>
         <div className="ml-3 flex items-center gap-2">
           {isAuditEnabled() && auditMeta && (
-            <span className="hidden lg:inline-flex px-2 py-1 text-[11px] rounded border border-emerald-200 bg-emerald-50 text-emerald-700">
+            <span className="hidden lg:inline-flex px-2 py-1 text-[11px] rounded border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400">
               Audit run {auditMeta.runId.slice(0, 8)}
             </span>
           )}
@@ -124,28 +148,29 @@ export function AppHeader({
             className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-1"
             title="Command palette (Ctrl/Cmd+K)"
           >
-            ⌘ <span className="font-mono text-[10px] text-slate-500">K</span>
+            <Icon name="command" size={12} />
+            <span className="font-mono text-[10px] text-slate-500">K</span>
           </button>
           <button
             onClick={() => setShortcutsOpen(true)}
             className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
             title="Keyboard shortcuts (?)"
           >
-            ⌨️
+            <Icon name="keyboard" size={12} />
           </button>
           <button
             onClick={() => setGlossaryOpen(true)}
             className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
             title="Open glossary — definitions of RNOA, NOA, EPV, Piotroski, etc."
           >
-            📖
+            <Icon name="book" size={12} />
           </button>
           <button
             onClick={() => setDarkMode((v) => !v)}
             className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
             title="Toggle dark mode"
           >
-            {darkMode ? "☀️" : "🌙"}
+            <Icon name={darkMode ? "sun" : "moon"} size={12} />
           </button>
           <button
             onClick={async () => {
@@ -154,7 +179,7 @@ export function AppHeader({
             className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
             title="Copy shareable link"
           >
-            🔗
+            <Icon name="link" size={12} />
           </button>
         </div>
       </div>

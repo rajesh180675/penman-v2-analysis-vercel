@@ -35,6 +35,14 @@ function byTicker(ticker: string): AuditRegistryEntry {
  * GC reclaim the heavy pipeline + valuation objects after the test. The
  * previous Map-based cache caused V8 OOM when all 6 tests accumulated
  * parsed data for 6+ companies in a single worker.
+ *
+ * Every audit test carries a 240s budget. Each one parses a real multi-MB
+ * Capitaline ZIP, runs the full pipeline + valuation, and makes a live Yahoo
+ * Finance call (auditCompanyRun.ts fetches query1.finance.yahoo.com), so the
+ * cost is CPU plus network latency. The whole file takes ~191s in isolation;
+ * under the three-way fork contention of `npm run test:sharded` the old 120s
+ * budget timed out on HDFCBANK. There is no global testTimeout, so these
+ * inline values are the only budget.
  */
 describe.sequential("auditCompanyRun", () => {
  // Force GC after each heavy test to release pipeline objects before
@@ -95,7 +103,7 @@ describe.sequential("auditCompanyRun", () => {
     expect(result.statusClass).not.toBe("calc-error");
     expect(result.error ?? "").not.toContain("shareCountInput");
     expect(result.flags.join(",")).not.toContain("shareCountInput");
-  }, 120_000);
+  }, 240_000);
 
   it("exposes computed industrial valuation lenses instead of collapsing them to one VCC bucket", async () => {
     const result = await runAudit("ASIANPAINT");
@@ -107,7 +115,7 @@ describe.sequential("auditCompanyRun", () => {
     expect(result.valuation.epvPerShare).not.toBeNull();
     expect(result.models).toEqual(expect.arrayContaining(["VCC", "SOTP", "EPV", "CASH_DCF"]));
     expect(result.models.length).toBeGreaterThan(1);
-  }, 120_000);
+  }, 240_000);
 
   it("attaches a hashed source artifact manifest to audit rows", async () => {
     const result = await runAudit("ASIANPAINT");
@@ -136,7 +144,7 @@ describe.sequential("auditCompanyRun", () => {
       "reviewer-pack",
     ]));
     expect(result.productionReady.checkpoints.every((checkpoint) => checkpoint.reason.length > 0)).toBe(true);
-  }, 120_000);
+  }, 240_000);
 
   it("carries valuation readiness and triangulation evidence into audit rows", async () => {
     const result = await runAudit("ASIANPAINT");
@@ -150,7 +158,7 @@ describe.sequential("auditCompanyRun", () => {
       expect.arrayContaining(["accrual-history", "cash-statement"]),
     );
     expect(result.valuationEvidence.defensibilityStatus).toMatch(/^(confirmed|guarded|blocked)$/);
-  }, 120_000);
+  }, 240_000);
 
   it("does not let hard-tieout readiness skip a blocked lower rigor gate", async () => {
   const result = await runAudit("ASIANPAINT");
@@ -163,7 +171,7 @@ describe.sequential("auditCompanyRun", () => {
   // readinessStatus may be "guarded" or "warning" depending on the
   // valuation readiness computed from the pipeline periods.
   expect(["guarded", "warning"]).toContain(result.valuationEvidence.readinessStatus);
-  }, 120_000);
+  }, 240_000);
 
   it("carries financial-institution valuation readiness evidence and bank-shape triangulation when bank gates clear", async () => {
   const result = await runAudit("HDFCBANK");
@@ -184,7 +192,7 @@ describe.sequential("auditCompanyRun", () => {
   // blocks the production-ready checkpoint in analysisTraceability).
   expect(result.rigor.currentLevel).toBe("structurally-reconciled");
   expect(result.outcome).toBe("POLICY_WARNING");
-  }, 120_000);
+  }, 240_000);
 
   it("does not fabricate sector-native models or evidence from routing strategy ids", async () => {
     const cases = [

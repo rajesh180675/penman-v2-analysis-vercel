@@ -12,8 +12,8 @@ import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { AllSegmentData } from "../../engine/segmentParser";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 
-import { VerdictBanner, InsightBlock, ExpandableSection, ConfidenceBadge, RiskFlag, ProgressRing } from "../shared/DesignSystem";
-import KPITile from "./KPITile";
+import { VerdictBanner, InsightBlock, RiskFlag } from "../shared/DesignSystem";
+import { ContextHeader, Metric, EmptyState, EvidenceRail, EvidenceItem, Icon, type RigorLevel } from "../shared/Primitives";
 import ValuationTriangulation from "./ValuationTriangulation";
 import QualitySignalPanel from "./QualitySignalPanel";
 import PenmanDecompositionChart from "./PenmanDecompositionChart";
@@ -80,15 +80,6 @@ export default function DashboardView({ data, config, traceability = null, ratio
     const fcf = cfo - capex;
     return fcf / marketCap;
   }, [latest, marketCap]);
-
-  // Sparkline data for key metrics
-  const roceHistory = (data ?? []).map(p => ({ period: p.period_end.slice(0, 4), value: p.ratios?.ROCE ?? null }));
-  const revenueHistory = (data ?? []).map(p => ({ period: p.period_end.slice(0, 4), value: p.is.Sales }));
-  const fcfHistory = (data ?? []).map(p => ({
-    period: p.period_end.slice(0, 4),
-    value: (p.cf?.CFO ?? 0) - Math.abs(p.cf?.Capex ?? 0),
-  }));
-  const pmHistory = (data ?? []).map(p => ({ period: p.period_end.slice(0, 4), value: p.ratios?.PM ?? null }));
 
   // EPV
   const epv = useMemo(() => insufficientData ? null : computeEPV(data, config), [data, config, insufficientData]);
@@ -178,57 +169,37 @@ export default function DashboardView({ data, config, traceability = null, ratio
     return `${ticker} — analysis complete`;
   }, [verdict, ticker, marginOfSafety, intrinsicRange, price, distress]);
 
+  // Rigor ladder state from traceability envelope
+  const rigorCurrent: RigorLevel = (traceability?.rigor?.currentLevel as RigorLevel | undefined) ?? "syntactically-valid";
+  const rigorAchieved: RigorLevel[] = (traceability?.rigor?.achievedLevels as RigorLevel[] | undefined) ?? [];
+
   if (insufficientData) {
     return (
-      <div className="card-base p-12 text-center">
-        <div className="text-4xl mb-4">📊</div>
-        <p className="text-lg font-semibold text-slate-600 dark:text-slate-300">Load company data to see the dashboard</p>
-        <p className="text-sm text-slate-500 mt-2">Upload a Capitaline ZIP or select from the library</p>
-      </div>
+      <EmptyState
+        icon="chart"
+        title="Load company data to see the dashboard"
+        body="Upload a Capitaline ZIP or select from the library to begin analysis."
+      />
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* ═══ TIER 1: VERDICT (always visible first) ═══════════════════════════ */}
-
-      {/* Company context strip */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
-            <span className="font-bold text-indigo-700 dark:text-indigo-300 text-sm">{ticker.slice(0, 3)}</span>
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100">{ticker}</h1>
-            <p className="text-xs text-slate-500">
-              {config.company_type ?? "Industrial"} · {data.length} periods · {latest!.period_end.slice(0, 4)}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          {price != null && (
-            <div className="text-right">
-              <p className="font-mono text-lg font-bold text-slate-800 dark:text-slate-100">₹{price.toFixed(0)}</p>
-              <p className="text-xs text-slate-500">{marketCap ? `₹${marketCap.toFixed(0)} Cr MCap` : "Market Price"}</p>
-            </div>
-          )}
-          <ConfidenceBadge level={confidence} />
-          <ProgressRing value={data.length >= 10 ? 95 : data.length >= 5 ? 70 : 40} size={36} strokeWidth={3} label="Coverage" />
-        </div>
-      </div>
-
-      {/* Verdict banner */}
-      <VerdictBanner
-        verdict={verdict === "buy" ? "buy" : verdict === "hold" ? "hold" : verdict === "avoid" ? "avoid" : "insufficient-data"}
-        headline={verdictHeadline}
+      {/* ═══ ZONE A: CONTEXT HEADER (persistent context + rigor ladder) ═══ */}
+      <ContextHeader
+        ticker={ticker}
+        companyType={config.company_type}
+        periodCount={data.length}
+        latestPeriod={latest!.period_end}
+        price={price}
+        marketCap={marketCap}
+        rigorCurrent={rigorCurrent}
+        rigorAchieved={rigorAchieved}
+        verdict={verdict}
         confidence={confidence}
-        metrics={[
-          { label: "Moat", value: moat ? `${moat.compositeScore}/100` : "—" },
-          { label: "Quality", value: confidence === "high" ? "High" : confidence === "medium" ? "Med" : "Low" },
-          { label: "Risk", value: distress?.severity === "none" ? "Low" : distress?.severity ?? "—" },
-          ...(marginOfSafety != null ? [{ label: "MoS", value: `${(marginOfSafety * 100).toFixed(0)}%` }] : []),
-        ]}
       />
+
+      {/* ═══ ZONE B: HERO (verdict + KPIs + ONE chart) ═══════════════════ */}
 
       {/* Risk flags — only show when distress detected */}
       {distress && distress.severity !== "none" && (
@@ -248,60 +219,51 @@ export default function DashboardView({ data, config, traceability = null, ratio
         </div>
       )}
 
+      {/* Verdict banner */}
+      <VerdictBanner
+        verdict={verdict === "buy" ? "buy" : verdict === "hold" ? "hold" : verdict === "avoid" ? "avoid" : "insufficient-data"}
+        headline={verdictHeadline}
+        confidence={confidence}
+        metrics={[
+          { label: "Moat", value: moat ? `${moat.compositeScore}/100` : "—" },
+          { label: "Quality", value: confidence === "high" ? "High" : confidence === "medium" ? "Med" : "Low" },
+          { label: "Risk", value: distress?.severity === "none" ? "Low" : distress?.severity ?? "—" },
+          ...(marginOfSafety != null ? [{ label: "MoS", value: `${(marginOfSafety * 100).toFixed(0)}%` }] : []),
+        ]}
+      />
+
       {/* KPI Tiles — key numbers at a glance */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KPITile
+        <Metric
           label="ROCE"
           value={roce}
           format="pct"
-          history={roceHistory}
           trend={roce != null && prev?.ratios?.ROCE != null ? roce - prev.ratios.ROCE : null}
           onClick={() => onNavigate?.("ratios")}
         />
-        <KPITile
+        <Metric
           label="Revenue Growth"
           value={revenueGrowth}
           format="pct"
-          subtitle={`${data.length - 1}Y CAGR`}
-          history={revenueHistory}
+          context={`${data.length - 1}Y CAGR`}
           onClick={() => onNavigate?.("statements")}
         />
-        <KPITile
+        <Metric
           label="FCF Yield"
           value={fcfYield}
           format="pct"
-          history={fcfHistory}
           onClick={() => onNavigate?.("valuation")}
         />
-        <KPITile
+        <Metric
           label="Intrinsic Value"
           value={intrinsicRange?.mid ?? null}
           format="currency"
-          subtitle={intrinsicRange ? `₹${intrinsicRange.floor.toFixed(0)}–${intrinsicRange.ceiling.toFixed(0)}` : undefined}
+          context={intrinsicRange ? `₹${intrinsicRange.floor.toFixed(0)}–${intrinsicRange.ceiling.toFixed(0)}` : undefined}
           onClick={() => onNavigate?.("valuation")}
         />
       </div>
 
-      {/* ═══ TIER 2: WHY (supporting evidence) ════════════════════════════════ */}
-
-      {/* Narrative insight — plain English explanation */}
-      {narrative && <InsightBlock text={narrative} icon="📖" />}
-
-      {/* Period delta — what changed since last year */}
-      <PeriodDeltaStrip data={data} />
-
-      {/* Main Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <PenmanDecompositionChart data={data} />
-        <ValuationTriangulation
-          price={price}
-          epvPerShare={epvPerShare}
-          intrinsicRange={intrinsicRange}
-          marketCap={marketCap}
-        />
-      </div>
-
-      {/* Value Range Gauge */}
+      {/* ONE hero chart: Valuation Range Gauge */}
       <ValuationRangeGauge
         price={price}
         floor={epvPerShare ?? intrinsicRange?.floor ?? null}
@@ -309,94 +271,102 @@ export default function DashboardView({ data, config, traceability = null, ratio
         midpoint={intrinsicRange?.mid ?? null}
       />
 
-      {/* Print button */}
-      <div className="flex items-center justify-end gap-2 no-print">
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 font-medium border border-slate-200 dark:border-slate-700 transition-colors"
-          title="Print or save as PDF"
-        >
-          🖨️ Print / Save as PDF
-        </button>
-      </div>
+      {/* ═══ ZONE C: EVIDENCE RAIL (collapsed sections) ═══════════════════ */}
+      <EvidenceRail title="Supporting Evidence">
+        <EvidenceItem summary={`Narrative: ${narrative ? narrative.slice(0, 80) + "…" : "No narrative generated"}`}>
+          {narrative && <InsightBlock text={narrative} icon="📖" />}
+        </EvidenceItem>
 
-      {/* ═══ TIER 3: DEEP DIVE (expandable sections) ══════════════════════════ */}
+        <EvidenceItem summary={`Period Delta: ${latest && prev ? `${latest.period_end.slice(0, 4)} vs ${prev.period_end.slice(0, 4)}` : "—"}`}>
+          <PeriodDeltaStrip data={data} />
+        </EvidenceItem>
 
-      {/* Investment Thesis — detailed buy/hold/avoid reasoning */}
-      <ExpandableSection title="Investment Thesis" badge={verdict.toUpperCase()} defaultOpen={false}>
-        <InvestmentThesisCard
-          moat={moat}
-          capAlloc={capAlloc}
-          distress={distress}
-          marginOfSafety={marginOfSafety}
-          price={price}
-          intrinsic={intrinsicRange?.mid ?? null}
-        />
-        <div className="mt-4">
-          <NarrativeCard
-            data={data}
-            companyId={ticker}
+        <EvidenceItem summary={`Penman Decomposition: ROCE ${roce != null ? (roce * 100).toFixed(1) + "%" : "—"}`}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <PenmanDecompositionChart data={data} />
+            <ValuationTriangulation
+              price={price}
+              epvPerShare={epvPerShare}
+              intrinsicRange={intrinsicRange}
+              marketCap={marketCap}
+            />
+          </div>
+        </EvidenceItem>
+
+        <EvidenceItem summary={`Investment Thesis: ${verdict.toUpperCase()}`}>
+          <InvestmentThesisCard
             moat={moat}
             capAlloc={capAlloc}
             distress={distress}
             marginOfSafety={marginOfSafety}
-            revenueGrowth={revenueGrowth}
-            fcfYield={fcfYield}
+            price={price}
+            intrinsic={intrinsicRange?.mid ?? null}
           />
-        </div>
-      </ExpandableSection>
-
-      {/* Economic Moat + Capital Allocation */}
-      <ExpandableSection title="Economic Moat & Management Quality" badge={moat ? `${moat.compositeScore}/100` : undefined}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <MoatPanel moat={moat} />
-          <CapitalAllocationPanel result={capAlloc} />
-        </div>
-      </ExpandableSection>
-
-      {/* Segment Breakdown — shows all available segment dimensions */}
-      {segmentData && (segmentData.business?.segments?.length ?? 0) + (segmentData.geographic?.segments?.length ?? 0) + (segmentData.mixed?.segments?.length ?? 0) > 1 && (
-        <ExpandableSection title="Segment Breakdown" badge={`${(segmentData.business?.segments?.length ?? 0) + (segmentData.geographic?.segments?.length ?? 0)} segments`}>
-          {segmentData.business && segmentData.business.segments.length > 1 && (
-            <SegmentBreakdown segmentData={segmentData.business} />
-          )}
-          {segmentData.geographic && segmentData.geographic.segments.length > 1 && (
-            <SegmentBreakdown segmentData={segmentData.geographic} />
-          )}
-          {segmentData.mixed && segmentData.mixed.segments.length > 1 && (
-            <SegmentBreakdown segmentData={segmentData.mixed} />
-          )}
-        </ExpandableSection>
-      )}
-
-      {/* Quality + Additional KPIs */}
-      <ExpandableSection title="Quality Signals & Supporting Ratios" badge={`${confidence} confidence`}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <QualitySignalPanel
-            traceability={traceability}
-            ratioSanity={ratioSanity}
-            segmentData={segmentData}
-            marketData={marketData}
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <KPITile label="Profit Margin" value={pm} format="pct" history={pmHistory} />
-            <KPITile label="Asset Turnover" value={ato} format="mult" />
-            <KPITile label="Fin. Leverage" value={flev} format="mult" />
-            <KPITile
-              label="Earnings Quality"
-              value={traceability?.parserFidelity?.score != null ? traceability.parserFidelity.score / 100 : null}
-              format="pct"
+          <div className="mt-4">
+            <NarrativeCard
+              data={data}
+              companyId={ticker}
+              moat={moat}
+              capAlloc={capAlloc}
+              distress={distress}
+              marginOfSafety={marginOfSafety}
+              revenueGrowth={revenueGrowth}
+              fcfYield={fcfYield}
             />
           </div>
-        </div>
-      </ExpandableSection>
+        </EvidenceItem>
 
-      {/* ── Advanced Models ──────────────────────────────────────────────── */}
-      <PenmanExpectedReturnPanel penmanReturn={advanced.penmanReturn} accountingAnchor={advanced.accountingAnchor} />
-      <ReverseDCFPanel reverseDCF={advanced.reverseDCF} />
-      <FadeRatePanel fadeRate={advanced.fadeRate} />
-      <AdvancedSegmentPanel segmentRNOA={advanced.segmentRNOA} capitalAllocation={advanced.capitalAllocation} conglomerateDiscount={advanced.conglomerateDiscount} />
+        <EvidenceItem summary={`Economic Moat: ${moat ? `${moat.compositeScore}/100` : "—"}`}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <MoatPanel moat={moat} />
+            <CapitalAllocationPanel result={capAlloc} />
+          </div>
+        </EvidenceItem>
+
+        {segmentData && (segmentData.business?.segments?.length ?? 0) + (segmentData.geographic?.segments?.length ?? 0) + (segmentData.mixed?.segments?.length ?? 0) > 1 && (
+          <EvidenceItem summary={`Segment Breakdown: ${(segmentData.business?.segments?.length ?? 0) + (segmentData.geographic?.segments?.length ?? 0)} segments`}>
+            {segmentData.business && segmentData.business.segments.length > 1 && (
+              <SegmentBreakdown segmentData={segmentData.business} />
+            )}
+            {segmentData.geographic && segmentData.geographic.segments.length > 1 && (
+              <SegmentBreakdown segmentData={segmentData.geographic} />
+            )}
+            {segmentData.mixed && segmentData.mixed.segments.length > 1 && (
+              <SegmentBreakdown segmentData={segmentData.mixed} />
+            )}
+          </EvidenceItem>
+        )}
+
+        <EvidenceItem summary={`Quality Signals: ${confidence} confidence`}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <QualitySignalPanel
+              traceability={traceability}
+              ratioSanity={ratioSanity}
+              segmentData={segmentData}
+              marketData={marketData}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <Metric label="Profit Margin" value={pm} format="pct" />
+              <Metric label="Asset Turnover" value={ato} format="mult" />
+              <Metric label="Fin. Leverage" value={flev} format="mult" />
+              <Metric
+                label="Earnings Quality"
+                value={traceability?.parserFidelity?.score != null ? traceability.parserFidelity.score / 100 : null}
+                format="pct"
+              />
+            </div>
+          </div>
+        </EvidenceItem>
+
+        <EvidenceItem summary="Advanced Models: Penman E[R], Reverse DCF, Fade Rate, Segment Intelligence">
+          <div className="space-y-6">
+            <PenmanExpectedReturnPanel penmanReturn={advanced.penmanReturn} accountingAnchor={advanced.accountingAnchor} />
+            <ReverseDCFPanel reverseDCF={advanced.reverseDCF} />
+            <FadeRatePanel fadeRate={advanced.fadeRate} />
+            <AdvancedSegmentPanel segmentRNOA={advanced.segmentRNOA} capitalAllocation={advanced.capitalAllocation} conglomerateDiscount={advanced.conglomerateDiscount} />
+          </div>
+        </EvidenceItem>
+      </EvidenceRail>
 
       {/* Next Steps */}
       {(() => {
@@ -427,6 +397,19 @@ export default function DashboardView({ data, config, traceability = null, ratio
           />
         );
       })()}
+
+      {/* Print button */}
+      <div className="flex items-center justify-end gap-2 no-print">
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 font-medium border border-slate-200 dark:border-slate-700 transition-colors"
+          title="Print or save as PDF"
+        >
+          <Icon name="printer" size={12} className="inline mr-1" />
+          Print / Save as PDF
+        </button>
+      </div>
     </div>
   );
 }
