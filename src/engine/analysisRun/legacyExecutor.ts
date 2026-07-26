@@ -14,6 +14,7 @@ import type { SegmentData } from "../segmentParser";
 import type { AnalysisTraceabilityEnvelope, EngineConfig, RawPeriodData, RecastPeriod } from "../types";
 import { validateEngineConfig } from "../types";
 import { buildValuationCommandCenter, type ValuationCommandCenterOutput } from "../valuationCommandCenter";
+import type { MacroPack } from "../marketPacks";
 import {
   adaptLegacyCommandCenterModelResults,
   CURRENT_MODEL_REGISTRY,
@@ -123,6 +124,20 @@ export interface LegacyAnalysisRunInputV1 {
     readonly observations: readonly DeepReadonly<ScenarioCalibrationObservation>[];
     readonly policy: DeepReadonly<ScenarioCalibrationPolicy>;
   } | null | undefined;
+  /**
+   * Pinned macro pack supplying a dated risk-free rate and ERP.
+   *
+   * Optional and absent by default: with no pack the capital-cost assumptions
+   * resolve to engine constants tiered `prior`, which is exactly what every
+   * existing run already produced. Supplying one is an opt-in claim that these
+   * inputs are dated observations, checked against `metadata.asOf` for staleness
+   * and look-ahead before it is honoured.
+   *
+   * It does not need separate hash treatment: a different pack resolves a
+   * different `ke`/`kw`, those are assumption candidates, and the candidate set
+   * already feeds `assumptionSetId` and therefore the reproducibility hash.
+   */
+  readonly macroPack?: MacroPack | null | undefined;
   readonly sectorSidecar?: DeepReadonly<GovernedSectorSidecarApproval> | null | undefined;
   readonly advancedModels?: readonly {
     readonly request: DeepReadonly<GovernedAdvancedModelInput>;
@@ -1082,6 +1097,14 @@ export function createLegacyAnalysisRunExecutor(
             analysisStatus,
             segmentData,
             holdoutVintage,
+            macroPack: input.macroPack,
+            // The run's own cutoff, which is already validated (AS_OF_REQUIRED,
+            // AS_OF_INVALID) and already the look-ahead bound for raw periods,
+            // market history and calibration above. Using it here too means a
+            // pack observation's staleness is a property of the run rather than
+            // of the wall clock, so re-running identical inputs reproduces an
+            // identical provenance tier — which is the whole point of pinning.
+            analysisAsOf: input.metadata.asOf,
           });
         } catch (error) {
           terminal = { kind: "failed", stage: "model-execution", code: "LEGACY_COMMAND_CENTER_FAILED", message: errorMessage(error) };
@@ -1107,6 +1130,13 @@ export function createLegacyAnalysisRunExecutor(
           window: analysisWindow,
           config,
           marketSnapshot,
+          // Same pack and same as-of date the command center was built with
+          // above. These two routes are asserted equal by the Stage 9 parity
+          // spec, so passing a pack to one and not the other would fork the
+          // valuation — the native stage would resolve a different discount rate
+          // than the models actually used.
+          macroPack: input.macroPack,
+          analysisAsOf: input.metadata.asOf,
           factRef: factArtifact.ref,
           policyRef: policyArtifact.ref,
           marketRef: marketArtifact?.ref ?? null,

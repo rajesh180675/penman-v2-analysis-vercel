@@ -26,3 +26,7 @@ export type {
   MacroPack,
   MacroPackResolution,
 } from "./macroPack";
+
+// The one pack with real published observations in it. Kept separate from the
+// container so the mechanism stays testable against synthetic packs.
+export { INDIA_ERP_BASIS, INDIA_MACRO_PACK } from "./indiaMacroPack";
