@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable no-console */
 /**
  * Phase 1.4 — doc schema pin check.
  *

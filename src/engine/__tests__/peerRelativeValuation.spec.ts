@@ -209,6 +209,113 @@ describe("Peer Relative Valuation", () => {
     expect(result).toBeNull();
   });
 
+  describe("multiple-implied lens", () => {
+    // Five same-type, same-sector peers so the pack clears MIN_PEER_CONSTITUENTS.
+    function fmcgRegistry(): CompanyRegistry {
+      const registry: CompanyRegistry = { companies: {} };
+      const scales = { itc: 1, hul: 1.2, dabur: 0.9, britannia: 1.1, nestle: 1.3, marico: 0.95 } as const;
+      for (const [id, scale] of Object.entries(scales)) {
+        registry.companies[id] = {
+          id,
+          label: id.toUpperCase(),
+          rawData: [],
+          companyType: "consumer",
+          sector: "FMCG",
+          traceability: null,
+          recastData: [
+            makePeriod({ Sales: 60000 * scale, OI: 18000 * scale, CNI: 13500 * scale, CSE: 50000 * scale, NOA: 60000 * scale, NFO: 10000 }),
+            makePeriod({ Sales: 65000 * scale, OI: 19500 * scale, CNI: 14600 * scale, CSE: 55000 * scale, NOA: 65000 * scale, NFO: 10000 }),
+          ],
+        };
+      }
+      return registry;
+    }
+
+    const fmcgConfig: EngineConfig = {
+      ...baseConfig,
+      company_type: "consumer",
+      shares_outstanding: CroreShares(100),
+      market_price: INRAbsolute(500),
+    };
+
+    function peerPack(overrides: { asOf?: string } = {}) {
+      return {
+        asOf: overrides.asOf ?? "2026-07-20",
+        source: "NSE close via market-data snapshot",
+        peerGroupKey: "consumer/FMCG",
+        constituents: ["hul", "dabur", "britannia", "nestle", "marico"].map((companyId, index) => ({
+          companyId,
+          label: companyId.toUpperCase(),
+          // Spread prices so the median is not degenerate.
+          price: 450 + index * 40,
+          priceAsOf: overrides.asOf ?? "2026-07-20",
+          shares: 100,
+        })),
+      };
+    }
+
+    it("computes peer PE and PB from the pinned pack", () => {
+      // Before the pack existed, peers were passed a blanked config, so every
+      // peer PE/PB was null and this lens could never fire for any input.
+      const result = computePeerRelativeValuation("itc", fmcgRegistry(), fmcgConfig, {
+        peerPack: peerPack(),
+        analysisAsOf: "2026-07-26",
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.multipleLens.status).toBe("computed");
+      expect(result!.multipleImplied.length).toBeGreaterThan(0);
+      expect(result!.compositeFairValue).not.toBeNull();
+      expect(result!.multipleLens.asOf).toBe("2026-07-20");
+      expect(result!.multipleLens.source).toContain("NSE");
+
+      const pe = result!.multipleImplied.find((item) => item.metric === "PE");
+      expect(pe!.peerMedianMultiple).not.toBeNull();
+      expect(pe!.peerCount).toBe(5);
+    });
+
+    it("skips with a reason when no pack is supplied instead of returning a silent empty array", () => {
+      const result = computePeerRelativeValuation("itc", fmcgRegistry(), fmcgConfig, { analysisAsOf: "2026-07-26" });
+
+      expect(result!.multipleLens.status).toBe("skipped");
+      expect(result!.multipleLens.reason).toContain("No pinned peer pack");
+      expect(result!.multipleImplied).toEqual([]);
+      expect(result!.compositeFairValue).toBeNull();
+      expect(result!.explanation.some((line) => line.includes("Peer multiple lens skipped"))).toBe(true);
+    });
+
+    it("skips rather than presenting a 3-name median as a sector median", () => {
+      const thin = peerPack();
+      const result = computePeerRelativeValuation("itc", fmcgRegistry(), fmcgConfig, {
+        peerPack: { ...thin, constituents: thin.constituents.slice(0, 3) },
+        analysisAsOf: "2026-07-26",
+      });
+
+      expect(result!.multipleLens.status).toBe("skipped");
+      expect(result!.multipleLens.reason).toContain("at least");
+      expect(result!.compositeFairValue).toBeNull();
+    });
+
+    it("skips a stale pack", () => {
+      const result = computePeerRelativeValuation("itc", fmcgRegistry(), fmcgConfig, {
+        peerPack: peerPack({ asOf: "2026-01-05" }),
+        analysisAsOf: "2026-07-26",
+      });
+
+      expect(result!.multipleLens.status).toBe("skipped");
+      expect(result!.multipleLens.reason).toContain("stale");
+    });
+
+    it("still ranks ratios when the multiple lens is skipped", () => {
+      // Ratio percentiles need no prices, so they must survive a withheld lens.
+      const result = computePeerRelativeValuation("itc", fmcgRegistry(), fmcgConfig);
+
+      expect(result!.multipleLens.status).toBe("skipped");
+      expect(result!.ratioRankings.length).toBe(6);
+      expect(result!.ratioRankings.find((r) => r.metric === "ROCE")!.peerMedian).not.toBeNull();
+    });
+  });
+
   it("excludes peers whose traceability says valuation is blocked", () => {
     const blockedTraceability = {
       confidence: { status: "blocked" },

@@ -129,7 +129,6 @@ export function createAuditTests({ start, size }: { start: number; size: number 
     const okResults = results.filter((r) => !r.flags.length);
     const gatedResults = results.filter((r) => r.hasExpectations);
 
-    // eslint-disable-next-line no-console
     console.log(
       `\n[Shard ${start}-${start + size}] ` +
       `${okResults.length}/${results.length} clean, ` +
@@ -138,7 +137,6 @@ export function createAuditTests({ start, size }: { start: number; size: number 
     );
 
     for (const r of errorResults) {
-      // eslint-disable-next-line no-console
       console.log(`  ${r.folder} (${r.ticker}): ${r.flags.join(", ")}`);
     }
   });

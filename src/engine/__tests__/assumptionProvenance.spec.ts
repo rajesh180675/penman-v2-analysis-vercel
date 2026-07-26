@@ -1,0 +1,247 @@
+import { describe, expect, it } from "vitest";
+import { buildAnalysisTraceability } from "../analysisTraceability";
+import { buildAssumptionProvenance } from "../assumptionProvenance";
+import { resolveCapitalCostAssumptions, type PeerLeveredBeta } from "../assumptions/capitalCostAssumptions";
+import type { MacroPack } from "../marketPacks";
+import { DEFAULT_CONFIG, type RecastPeriod } from "../types";
+
+const ANALYSIS_AS_OF = "2026-07-26";
+
+function macroPack(): MacroPack {
+  return {
+    asOf: "2026-07-20",
+    riskFreeRate: { value: 0.0685, asOf: "2026-07-20", source: "RBI 10Y G-Sec close" },
+    equityRiskPremium: { value: 0.058, asOf: "2026-03-31", source: "Damodaran India implied ERP" },
+    longRunNominalGrowth: { value: 0.105, asOf: "2025-12-31", source: "IMF WEO nominal GDP trend" },
+  };
+}
+
+function peerBetas(): PeerLeveredBeta[] {
+  return [1.0, 1.1, 1.2, 1.3, 1.4].map((leveredBeta, index) => ({
+    companyId: `peer-${index}`,
+    leveredBeta,
+    debtToEquity: 0.5,
+    taxRate: 0.25,
+  }));
+}
+
+/** All four inputs on undated defaults — exactly what a run produces today. */
+function allPriors() {
+  return resolveCapitalCostAssumptions({ config: { ...DEFAULT_CONFIG }, analysisAsOf: ANALYSIS_AS_OF });
+}
+
+/** Nothing on a default: pack-sourced macro plus a bottom-up beta. */
+function fullyDefensible() {
+  return resolveCapitalCostAssumptions({
+    config: { ...DEFAULT_CONFIG, company_type: "consumer" },
+    macroPack: macroPack(),
+    analysisAsOf: ANALYSIS_AS_OF,
+    peerBetas: peerBetas(),
+    targetDebtToEquity: 0.5,
+    taxRate: 0.25,
+  });
+}
+
+describe("buildAssumptionProvenance", () => {
+  it("reports absent — not defensible — when no tiers were supplied", () => {
+    const summary = buildAssumptionProvenance(null);
+
+    // The distinction that matters: silence about provenance must never read as
+    // evidence of provenance.
+    expect(summary.status).toBe("absent");
+    expect(summary.status).not.toBe("defensible");
+    expect(summary.checks).toEqual([]);
+    expect(summary.priorTierKeys).toEqual([]);
+  });
+
+  it("reports the current production state as prior-dependent", () => {
+    const summary = buildAssumptionProvenance(allPriors());
+
+    expect(summary.status).toBe("prior-dependent");
+    expect(summary.priorCount).toBe(4);
+    expect(summary.defensibleCount).toBe(0);
+    expect([...summary.priorTierKeys].sort()).toEqual([
+      "beta",
+      "equity-risk-premium",
+      "risk-free-rate",
+      "terminal-growth-ceiling",
+    ]);
+    expect(summary.summary).toMatch(/assumption, not an observation/);
+  });
+
+  it("dates a sourced input and leaves a prior dateless", () => {
+    const summary = buildAssumptionProvenance(fullyDefensible());
+
+    expect(summary.status).toBe("defensible");
+    expect(summary.priorCount).toBe(0);
+    const erp = summary.checks.find((check) => check.key === "equity-risk-premium");
+    expect(erp?.tier).toBe("sourced");
+    expect(erp?.asOf).toBe("2026-03-31");
+    expect(erp?.source).toMatch(/Damodaran/);
+
+    const beta = summary.checks.find((check) => check.key === "beta");
+    expect(beta?.tier).toBe("estimated");
+    // A bottom-up beta is computed from held data, so it has no observation date
+    // of its own — that is correct, not a missing field.
+    expect(beta?.asOf).toBeNull();
+  });
+
+  it("names the guess and why it was reached", () => {
+    const beta = buildAssumptionProvenance(allPriors()).checks.find((check) => check.key === "beta");
+
+    expect(beta?.tier).toBe("prior");
+    expect(beta?.asOf).toBeNull();
+    expect(beta?.detail).toMatch(/undated prior/);
+    expect(beta?.detail).toMatch(/bottom-up/i);
+  });
+
+  it("reports mixed when only some inputs are sourced", () => {
+    const summary = buildAssumptionProvenance(resolveCapitalCostAssumptions({
+      config: { ...DEFAULT_CONFIG, company_type: "consumer" },
+      macroPack: macroPack(),
+      analysisAsOf: ANALYSIS_AS_OF,
+    }));
+
+    expect(summary.status).toBe("mixed");
+    expect(summary.priorTierKeys).toEqual(["beta"]);
+    expect(summary.summary).toMatch(/3 of 4/);
+  });
+});
+
+/* ── the gate ─────────────────────────────────────────────────────────────── */
+
+function recastPeriod(period_end: string): RecastPeriod {
+  return {
+    period_end,
+    bs: { TA: 1000, CSE: 600, MI: 0, FA: 200, FO: 150, OA: 800, OL: 250, NOA: 600, NFO: 0 },
+    is: {
+      Sales: 900, TaxExpense: 30, taxRate: 0.25, PAT: 90, OCI: 0, TCI: 90, TCI_NCI: 0, CNI: 90,
+      FinanceCost: 12, FinanceIncome: 2, FinanceIncomeRung: 1, PreferredDividend: 0,
+      NFE: 10, OI: 100, OtherItems: 0, MII: 0, COGS: 600,
+    },
+    cu: { UOI: 0, CoreOI: 100, UFE: 0, CoreNFE: 10, ExceptionalItemsAfterTax: 0, OCITotal: 0 },
+    cf: {
+      CFO: 120, Capex: 40, DividendPaid: 20, EquityIssued: 0, ShareBuybacks: 0,
+      InterestReceived: 0, DividendReceived: 0, FCF_accounting: 60, FCF_cash: 80,
+      d_t: 20, d_t_formula: 20, d_t_discrepancy: 0, EBITDA: 140,
+    },
+    shareCountInput: {
+      endPeriodShares: 60,
+      endPeriodSharesSource: "Number of Equity Shares - Subscribed Fully Paid up",
+      weightedAverageBasicShares: 60,
+      weightedAverageBasicSource: "Weighted Average Number of Shares in Issue - Basic",
+      weightedAverageDilutedShares: 60,
+      weightedAverageDilutedSource: "Weighted Average Number of Shares in Issue - Diluted",
+      faceValue: 10,
+      shareCapital: 600,
+    },
+    trace: {},
+  } as RecastPeriod;
+}
+
+const productionReadyStatus = {
+  status: "production-ready" as const,
+  label: "Production-ready",
+  headline: "Analysis cleared current release checks",
+  summary: "No blocking scope or valuation issues were detected for the loaded dataset.",
+  reasons: [],
+  tone: "emerald" as const,
+  qualityTier: "Tier 1" as const,
+  valuationStatus: "production-ready" as const,
+  scopeBlocked: false,
+  valuationBlocked: false,
+  blockingCount: 0,
+  diagnosticCount: 0,
+  optionalCount: 0,
+};
+
+function envelope(assumptionProvenance?: ReturnType<typeof buildAssumptionProvenance> | null) {
+  // Real Capitaline labels, not synthetic ones: the concept-identity gate
+  // resolves core concepts by label, so `metric_0__BalanceSheet` style keys
+  // leave them unresolved and block valuation-eligible before this gate is
+  // ever consulted.
+  const rawData = Array.from({ length: 2 }, (_, i) => ({
+    company_id: "RIGORCO",
+    period_end: `202${4 + i}-03-31`,
+    raw_metric_values: {
+      "Total Assets__BalanceSheet": 1000 + i,
+      "Total Equity__BalanceSheet": 600 + i,
+      "Property, Plant and Equipment__BalanceSheet": 320 + i,
+      "Revenue From Operations(Net)__ProfitLoss": 900 + i,
+      "Profit Before Tax__ProfitLoss": 120 + i,
+      "Tax Expenses__ProfitLoss": 30,
+      "Profit After Tax__ProfitLoss": 90 + i,
+      "Net Cash From Operating Activities__CashFlow": 110 + i,
+      "Purchase of Fixed Assets__CashFlow": 45,
+    },
+  }));
+  return buildAnalysisTraceability({
+    sourceMode: "manual",
+    periodCount: rawData.length,
+    rawMetricKeyCount: 20,
+    rawData,
+    recastData: rawData.map((period) => recastPeriod(period.period_end)),
+    analysisStatus: productionReadyStatus,
+    ...(assumptionProvenance !== undefined ? { assumptionProvenance } : {}),
+  });
+}
+
+describe("assumption-provenance rigor gate", () => {
+  it("the baseline fixture reaches production-ready", () => {
+    // Guards every assertion below from passing vacuously: if this fixture ever
+    // stops clearing the ladder, the demotion tests prove nothing.
+    const env = envelope();
+
+    expect(env.rigor.achievedLevels).toContain("production-ready");
+    expect(env.assumptionProvenance).toBeNull();
+  });
+
+  it("denies production-ready when the cost of equity rests entirely on priors", () => {
+    const env = envelope(buildAssumptionProvenance(allPriors()));
+
+    expect(env.rigor.achievedLevels).not.toContain("production-ready");
+    const checkpoint = env.rigor.checkpoints.find((item) => item.level === "production-ready");
+    expect(checkpoint?.achieved).toBe(false);
+    expect(checkpoint?.detail).toMatch(/undated priors/);
+    expect(checkpoint?.detail).toMatch(/beta/);
+  });
+
+  it("leaves valuation-eligible intact — a prior-based run is research, not garbage", () => {
+    // The core design claim. Gating the valuation rung would fail the run closed
+    // in legacyExecutor and delete a working reformulation; capping it at
+    // valuation-eligible keeps the analysis and withholds only the release claim.
+    const env = envelope(buildAssumptionProvenance(allPriors()));
+
+    expect(env.rigor.achievedLevels).toContain("valuation-eligible");
+    expect(env.rigor.currentLevel).toBe("valuation-eligible");
+    expect(env.rigor.pendingLevels).toEqual(["production-ready"]);
+  });
+
+  it("allows production-ready when every input is estimated or sourced", () => {
+    const env = envelope(buildAssumptionProvenance(fullyDefensible()));
+
+    expect(env.rigor.achievedLevels).toContain("production-ready");
+    expect(env.assumptionProvenance?.status).toBe("defensible");
+  });
+
+  it("does not fire when a sourced ERP carries a sector beta", () => {
+    // Threshold is deliberate: ke = rf + beta x ERP, and the gate asks whether
+    // the risk-premium term is entirely unsourced. A sector beta against a dated
+    // ERP is a weaker claim, reported as `mixed`, but not a fabricated one.
+    const env = envelope(buildAssumptionProvenance(resolveCapitalCostAssumptions({
+      config: { ...DEFAULT_CONFIG, company_type: "consumer" },
+      macroPack: macroPack(),
+      analysisAsOf: ANALYSIS_AS_OF,
+    })));
+
+    expect(env.assumptionProvenance?.status).toBe("mixed");
+    expect(env.rigor.achievedLevels).toContain("production-ready");
+  });
+
+  it("does not fire when no provenance was reported", () => {
+    const env = envelope(buildAssumptionProvenance(null));
+
+    expect(env.assumptionProvenance?.status).toBe("absent");
+    expect(env.rigor.achievedLevels).toContain("production-ready");
+  });
+});

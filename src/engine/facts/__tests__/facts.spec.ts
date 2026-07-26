@@ -390,6 +390,40 @@ describe("FactSet canonical serialization", () => {
     expect(await hashFactSetContent(normal)).toBe(await hashFactSetContent(reordered));
   });
 
+  it("ignores acquisition time so the same bytes hash identically on every parse", async () => {
+    // This is what unblocks real vintage stamping. While `acquiredAt` was
+    // hash-bearing, every adapter had to pin it to null or re-parsing a
+    // byte-identical ZIP would mint a new factSetId.
+    const base: FactSetContent = {
+      schemaVersion: FACT_SET_SCHEMA_VERSION,
+      issuerId: "issuer-1",
+      sourceArtifacts: [artifact()],
+      facts: [reportedFact()],
+    };
+    const fetchedLater: FactSetContent = {
+      ...base,
+      sourceArtifacts: [artifact("a", { acquiredAt: "2027-01-02T23:59:59.000Z" })],
+    };
+
+    expect(canonicalizeFactSetContent(base)).toBe(canonicalizeFactSetContent(fetchedLater));
+    expect(await hashFactSetContent(base)).toBe(await hashFactSetContent(fetchedLater));
+  });
+
+  it("keeps filing date hash-bearing so a restatement cannot collide with the original", async () => {
+    const original: FactSetContent = {
+      schemaVersion: FACT_SET_SCHEMA_VERSION,
+      issuerId: "issuer-1",
+      sourceArtifacts: [artifact()],
+      facts: [reportedFact()],
+    };
+    const restated: FactSetContent = {
+      ...original,
+      sourceArtifacts: [artifact("a", { filingAsOf: "2026-11-14" })],
+    };
+
+    expect(await hashFactSetContent(original)).not.toBe(await hashFactSetContent(restated));
+  });
+
   it("creates an immutable AnalysisRun-compatible content reference and detects tampering", async () => {
     const created = await createFactSet(factSetContent());
     expect(created.ok).toBe(true);

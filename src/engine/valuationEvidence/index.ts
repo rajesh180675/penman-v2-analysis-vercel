@@ -14,8 +14,12 @@ export type {
   ForecastHoldoutMetric,
   ForecastHoldoutMetricError,
   ForecastHoldoutSummary,
+  HoldoutVintageIndex,
   MarketImpliedExpectationLedger,
   MarketImpliedExpectationRow,
+  NoLookAheadDisclosure,
+  PeriodObservationKind,
+  PeriodVintage,
   ValuationAssumptionEvidence,
   ValuationAssumptionKey,
   ValuationEvidenceLedger,
@@ -23,6 +27,8 @@ export type {
 
 export { buildAssumptionEvidenceLedger } from "./assumptionLedger";
 export { evaluateForecastHoldout } from "./forecastHoldout";
+export { buildHoldoutVintageIndex } from "./vintageIndex";
+export type { VintageArtifact } from "./vintageIndex";
 export { buildMarketImpliedExpectationLedger } from "./marketImpliedLedger";
 export {
   buildEvidenceWeightedSynthesis,

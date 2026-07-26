@@ -125,3 +125,17 @@ export type {
   AnalyticalDepthCheckKey,
   AnalyticalDepthCheckStatus,
 } from "./analyticalDepth";
+
+export type {
+  AssumptionProvenanceSummary,
+  AssumptionProvenanceStatus,
+  AssumptionProvenanceCheck,
+  AssumptionProvenanceTier,
+} from "./assumptionProvenance";
+
+export type {
+  EarningsQualitySummary,
+  EarningsQualityStatus,
+  EarningsQualityCheck,
+  EarningsQualityDimension,
+} from "./earningsQualitySummary";

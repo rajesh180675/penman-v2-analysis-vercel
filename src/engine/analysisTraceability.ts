@@ -68,6 +68,8 @@ import type {
   TraceabilityBacklogPreview,
   AnalysisTraceabilityEnvelope,
 } from "./types/traceabilityEnvelope";
+import type { AssumptionProvenanceSummary } from "./types/assumptionProvenance";
+import type { EarningsQualitySummary } from "./types/earningsQualitySummary";
 export type {
   AccountingStandardLabel,
   AccountingStandardCoverage,
@@ -246,6 +248,14 @@ export function buildAnalysisTraceability(params: {
    * reconciliation residual and can fail-close the rigor ladder.
    */
   valuationTriangulation?: ValuationTriangulationEvidence | null | undefined;
+  /**
+   * Capital-cost provenance tiers, from `buildAssumptionProvenance`. Supplied
+   * only by callers that ran a valuation (the structural builder has no cost of
+   * capital). When omitted the block is null and the gate does not fire —
+   * "no tiers reported" is not evidence of guessing.
+   */
+  assumptionProvenance?: AssumptionProvenanceSummary | null | undefined;
+  earningsQuality?: EarningsQualitySummary | null | undefined;
 }): AnalysisTraceabilityEnvelope {
   const qualityGate = params.qualityGate;
   const coverageSummary = qualityGate?.coverageSummary ?? params.mappingAudit?.coverageSummary ?? null;
@@ -535,6 +545,75 @@ export function buildAnalysisTraceability(params: {
       };
     }
   }
+  // Assumption-provenance gate.
+  //
+  // ke = rf + beta × ERP. When BOTH beta and the ERP are undated defaults, the
+  // discount rate is an assumption with a decimal point on it, and every
+  // downstream intrinsic value inherits that. Structural checks cannot detect
+  // this: the value resolved without error, so parser fidelity, reconciliation,
+  // and economic sanity all pass while the headline number rests on a guess.
+  //
+  // Deliberately gates production-ready, NOT valuation-eligible. A run built on
+  // sector priors is still a legitimate research output — the reformulation,
+  // ratios, and lineage are all real — so it stays valuation-eligible. What it
+  // cannot claim is readiness for final reporting. Gating the valuation rung
+  // would also fail the run closed outright (legacyExecutor treats a failed
+  // valuation-eligible checkpoint as terminal), which would delete working
+  // analysis rather than qualify it.
+  //
+  // Fires only when a provenance summary was actually supplied. An absent block
+  // means no tiers were reported, which is not evidence of guessing.
+  const assumptionProvenance = params.assumptionProvenance ?? null;
+  const assumptionProvenanceBlockEnabled = isEnabled("rigor.assumptionProvenanceBlock");
+  const keRestsOnPriors = assumptionProvenance != null
+    && assumptionProvenance.priorTierKeys.includes("beta")
+    && assumptionProvenance.priorTierKeys.includes("equity-risk-premium");
+  const assumptionProvenanceBlocksProduction = keRestsOnPriors && assumptionProvenanceBlockEnabled;
+  if (assumptionProvenanceBlocksProduction) {
+    const idx = checkpoints.findIndex((c) => c.level === "production-ready");
+    if (idx >= 0 && checkpoints[idx]!.achieved) {
+      checkpoints[idx] = {
+        ...checkpoints[idx]!,
+        achieved: false,
+        detail: `Cost of equity rests on undated priors (${assumptionProvenance!.priorTierKeys.join(", ")}); production-ready requires an estimated or dated-source beta and equity risk premium. ${assumptionProvenance!.summary}`,
+      };
+    }
+  }
+
+  // Earnings-quality gate.
+  //
+  // Reformulation is arithmetic on reported numbers: it reconciles, it balances,
+  // and none of that speaks to whether the reported earnings describe the
+  // business. A run whose accruals do not track cash, whose surplus is dirty,
+  // and whose earnings are not cash-backed can clear every structural gate and
+  // still be a precise model of an untrustworthy input.
+  //
+  // Same rung and same reasoning as the assumption-provenance gate above:
+  // production-ready only. Poor earnings quality is a finding the analysis
+  // produced, not a failure to produce an analysis, so the reformulation and its
+  // ratios stay valuation-eligible — that is where a reviewer would go looking.
+  //
+  // Two conditions keep this honest. The summary must report `unreliable`, which
+  // requires enough measured dimensions to mean it (the card scores every
+  // dimension whether or not its input existed, so a composite can be low while
+  // being mostly placeholder). And the checkpoint must already be achieved, so
+  // this reason can never displace a lower-rung structural failure in the UI.
+  const earningsQuality = params.earningsQuality ?? null;
+  const earningsQualityBlockEnabled = isEnabled("rigor.earningsQualityBlock");
+  const earningsQualityBlocksProduction = earningsQuality != null
+    && earningsQuality.status === "unreliable"
+    && earningsQualityBlockEnabled;
+  if (earningsQualityBlocksProduction) {
+    const idx = checkpoints.findIndex((c) => c.level === "production-ready");
+    if (idx >= 0 && checkpoints[idx]!.achieved) {
+      checkpoints[idx] = {
+        ...checkpoints[idx]!,
+        achieved: false,
+        detail: `Measured earnings quality is unreliable for valuation; production-ready requires earnings the reformulation can be trusted to describe. ${earningsQuality!.summary}`,
+      };
+    }
+  }
+
   // Recompute achieved/pending after downgrade.
   const achievedLevelsFinal = checkpoints.filter((c) => c.achieved).map((c) => c.level);
   const pendingLevelsFinal = checkpoints.filter((c) => !c.achieved).map((c) => c.level);
@@ -675,6 +754,8 @@ export function buildAnalysisTraceability(params: {
       intrinsicValuePerShareByPeriod: deriveIntrinsicValuePerShare(params),
     })),
     sourceArtifactHashes: params.sourceArtifactHashes ?? params.debugInfo?.sourceArtifactHashes ?? null,
+    assumptionProvenance,
+    earningsQuality,
     rigor: {
       currentLevel: currentCheckpoint.level,
       currentLabel: currentCheckpoint.label,

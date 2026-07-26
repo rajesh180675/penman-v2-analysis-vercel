@@ -11,6 +11,8 @@ import type { ConceptIdentitySummary } from "./conceptIdentity";
 import type { EconomicSanitySummary } from "./economicSanity";
 import type { UnusualItemManifest } from "./unusualItem";
 import type { AnalyticalDepthSummary } from "./analyticalDepth";
+import type { AssumptionProvenanceSummary } from "./assumptionProvenance";
+import type { EarningsQualitySummary } from "./earningsQualitySummary";
 import type { AntiTautologySummary } from "../valuationEvidence/types";
 import type { AnalysisPolicyVersions } from "../policyVersions";
 import type { LineageRef } from "../lineageTypes";
@@ -137,6 +139,25 @@ export interface AnalysisTraceabilityEnvelope {
    *  when command-center evidence exists; structural-only envelopes and legacy
    *  migrations carry null/absent to avoid pretending valuation evidence ran. */
   antiTautology?: AntiTautologySummary | null | undefined;
+  /** Schema v21 — provenance tiers for the capital-cost inputs (risk-free rate,
+   *  ERP, beta, terminal-growth ceiling). Populated at valuation time from
+   *  `CostOfCapitalResult.assumptions`; structural-only envelopes and migrated
+   *  legacy envelopes carry null/absent rather than implying the inputs were
+   *  sourced. When `status === "prior-dependent"` and the
+   *  `rigor.assumptionProvenanceBlock` flag is on, the run cannot reach
+   *  `production-ready`: a discount rate built entirely from undated defaults is
+   *  a defensible research output but not a production valuation. */
+  assumptionProvenance?: AssumptionProvenanceSummary | null | undefined;
+  /** Schema v22 — earnings-quality scorecard projection. Populated at valuation
+   *  time from `ValuationCommandCenterOutput.earningsQuality`; structural-only
+   *  envelopes and migrated legacy envelopes carry null/absent rather than
+   *  implying the earnings were checked and found clean. When
+   *  `status === "unreliable"` and the `rigor.earningsQualityBlock` flag is on,
+   *  the run cannot reach `production-ready`: reformulating unreliable earnings
+   *  produces an arithmetically valid model of an untrustworthy input. Blocking
+   *  requires measured dimensions — see `EarningsQualitySummary` for why the
+   *  composite alone is not sufficient evidence. */
+  earningsQuality?: EarningsQualitySummary | null | undefined;
   /** Gap 4 / PR-D — per-number lineage REFERENCE (not the data itself).
    *  Lineage payload lives in the audit snapshot sidecar to keep
    *  envelope JSON serialization bounded. The ref carries a checksum

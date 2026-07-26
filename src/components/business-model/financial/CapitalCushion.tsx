@@ -21,10 +21,9 @@ export default function CapitalCushion({ bankResult, subtype }: Props) {
   const metrics = bankResult.bankMetrics ?? [];
   const isInsurance = subtype === "insurance";
 
-  if (isInsurance) {
-    return <InsuranceFloat metrics={metrics} />;
-  }
-
+  // Resolved before the insurance branch: a `subtype` that flips to or from
+  // "insurance" on a mounted component would otherwise change this component's
+  // hook count between renders, which React treats as a fatal error.
   const rows = useMemo(() => {
     return metrics.map((m) => ({
       period: m.period_end.slice(0, 7),
@@ -32,6 +31,10 @@ export default function CapitalCushion({ bankResult, subtype }: Props) {
       tier1: m.quality?.tier1_pct != null ? +m.quality.tier1_pct.toFixed(2) : null,
     }));
   }, [metrics]);
+
+  if (isInsurance) {
+    return <InsuranceFloat metrics={metrics} />;
+  }
 
   const latest = rows[rows.length - 1];
   const floor = subtype === "nbfc" ? 15 : 11.5;

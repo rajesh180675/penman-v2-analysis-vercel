@@ -11,6 +11,7 @@
  */
 
 import type { RecastPeriod } from "./types";
+import type { EarningsQualityCheck } from "./types/earningsQualitySummary";
 
 /* ================================================================
    Dechow-Dichev Accrual Quality (2002)
@@ -208,6 +209,15 @@ export interface EarningsQualityCard {
   /** Human-readable summary. */
   label: string;
   flags: string[];
+  /**
+   * Per-dimension breakdown recording whether each score came from a real input
+   * or from a neutral placeholder. The four scores above are always populated —
+   * a card built from no inputs at all still totals 51/100 — so a consumer that
+   * acts on the composite (the rigor ladder) needs to know how much of it was
+   * actually measured. `flagged` mirrors the conditions under which this builder
+   * already pushes a `flags` message, so it asserts nothing new.
+   */
+  dimensions: EarningsQualityCheck[];
 }
 
 export function buildEarningsQualityCard(
@@ -221,8 +231,10 @@ export function buildEarningsQualityCard(
 
   // Recognition timeliness (Dechow-Dichev R² proxy)
   let timeliness = 12; // Neutral
+  let timelinessDetail = "No accrual-quality regression ran (needs 5+ periods); score is a neutral placeholder.";
   if (ddResult) {
     timeliness = ddResult.rSquared * 25;
+    timelinessDetail = `Accrual quality R² ${ddResult.rSquared.toFixed(2)} over ${ddResult.n} observations.`;
     if (ddResult.rSquared < 0.30) {
       flags.push(`Low accrual quality R² (${ddResult.rSquared.toFixed(2)}) suggests earnings lag economic events.`);
     }
@@ -230,8 +242,10 @@ export function buildEarningsQualityCard(
 
   // Neutrality/conservatism (REM detection)
   let neutrality = 12; // Neutral
+  let neutralityDetail = "No real-earnings-management test ran (needs 4+ periods); score is a neutral placeholder.";
   if (remResult) {
     neutrality = remResult.remFlag ? 5 : 20;
+    neutralityDetail = remResult.label;
     if (remResult.remFlag) {
       flags.push(remResult.label);
     }
@@ -239,8 +253,10 @@ export function buildEarningsQualityCard(
 
   // Completeness (dirty surplus ratio)
   let completeness = 15;
+  let completenessDetail = "Dirty-surplus ratio unavailable; score is a neutral placeholder.";
   if (dirtySurplusPctCSE != null) {
     const absDS = Math.abs(dirtySurplusPctCSE);
+    completenessDetail = `Dirty surplus is ${(absDS * 100).toFixed(1)}% of CSE.`;
     if (absDS < 0.02) {
       completeness = 22; // Clean surplus
     } else if (absDS < 0.05) {
@@ -256,7 +272,9 @@ export function buildEarningsQualityCard(
 
   // Realization (cash conversion ratio)
   let realization = 12;
+  let realizationDetail = "Cash conversion ratio unavailable; score is a neutral placeholder.";
   if (cashConversionRatio != null) {
+    realizationDetail = `Cash conversion ratio is ${(cashConversionRatio * 100).toFixed(0)}% of reported earnings.`;
     if (cashConversionRatio >= 0.90) {
       realization = 22; // Excellent cash backing
     } else if (cashConversionRatio >= 0.70) {
@@ -285,6 +303,45 @@ export function buildEarningsQualityCard(
 
   if (ddResult) flags.unshift(`Accrual quality R²: ${ddResult.rSquared.toFixed(2)} (${ddResult.label})`);
 
+  const absDirtySurplus = dirtySurplusPctCSE != null ? Math.abs(dirtySurplusPctCSE) : null;
+  // `flagged` repeats the exact condition each `flags.push` above fires on, so a
+  // consumer reading these booleans learns nothing the scorecard did not already
+  // say in prose.
+  const dimensions: EarningsQualityCheck[] = [
+    {
+      key: "timeliness",
+      label: "Recognition timeliness",
+      score: Math.round(timeliness * 4) / 4,
+      measured: ddResult != null,
+      flagged: ddResult != null && ddResult.rSquared < 0.30,
+      detail: timelinessDetail,
+    },
+    {
+      key: "neutrality",
+      label: "Neutrality",
+      score: Math.round(neutrality * 4) / 4,
+      measured: remResult != null,
+      flagged: remResult != null && remResult.remFlag,
+      detail: neutralityDetail,
+    },
+    {
+      key: "completeness",
+      label: "Completeness",
+      score: Math.round(completeness * 4) / 4,
+      measured: absDirtySurplus != null,
+      flagged: absDirtySurplus != null && absDirtySurplus >= 0.05,
+      detail: completenessDetail,
+    },
+    {
+      key: "realization",
+      label: "Cash realization",
+      score: Math.round(realization * 4) / 4,
+      measured: cashConversionRatio != null,
+      flagged: cashConversionRatio != null && cashConversionRatio < 0.70,
+      detail: realizationDetail,
+    },
+  ];
+
   return {
     totalScore: Math.max(0, Math.min(100, totalScore)),
     timeliness: Math.round(timeliness * 4) / 4,
@@ -294,6 +351,7 @@ export function buildEarningsQualityCard(
     remFlag: remResult?.remFlag ?? false,
     label,
     flags,
+    dimensions,
   };
 }
 

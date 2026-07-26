@@ -58,3 +58,21 @@ export function isIndustrialAnalysis(result: AnalysisResult): result is Industri
 export function isFinancialInstitutionAnalysis(result: AnalysisResult): result is FinancialInstitutionAnalysisResult {
   return result.family === "financial-institution";
 }
+
+/**
+ * Short label for the financial-institution tab, so an insurer is not filed
+ * under "Bank" while the panel inside it reads "Insurance Valuation".
+ *
+ * Deliberately not shared with bankExcelExport's subtypeDisplayLabel: a
+ * worksheet name can afford "Generic Financial", but a tab label has to fit the
+ * sidebar and header, so that case collapses to "Financial".
+ */
+export function financialInstitutionTabLabel(subtype: FinancialInstitutionSubtype): string {
+  switch (subtype) {
+    case "nbfc": return "NBFC";
+    case "insurance": return "Insurance";
+    case "generic-financial": return "Financial";
+    case "bank": return "Bank";
+    default: return "Bank";
+  }
+}

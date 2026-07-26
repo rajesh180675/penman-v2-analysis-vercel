@@ -30,12 +30,28 @@ function percentileRank(values: number[], x: number) {
   return lessEq / s.length;
 }
 
-export default function ComparisonReport({ registry, config, weakestTraceabilitySummary: precomputedWeakestSummary = null, publication = null, runComparison = null }: Props) {
+/**
+ * Guard wrapper — deliberately hook-free.
+ *
+ * The body below calls eight hooks. This early return used to sit above them
+ * inside a single function, so a second company loading into an already-mounted
+ * report changed the component's hook count between renders and React would
+ * throw "Rendered more hooks than during the previous render". Splitting the
+ * guard out fixes the hook count while leaving the body's behaviour untouched:
+ * nothing in it runs until there are at least two comparable companies.
+ */
+export default function ComparisonReport(props: Props) {
+  const comparableIssuerIds = props.runComparison ? new Set(props.runComparison.rows.filter((row) => row.comparable).map((row) => row.issuerId)) : null;
+  const companies = Object.values(props.registry.companies).filter((c) => c.recastData.length > 0 && (!comparableIssuerIds || comparableIssuerIds.has(c.id)));
+  if (companies.length < 2) {
+    return <div className="space-y-6">{props.runComparison && <RunBackedPortfolioComparison comparison={props.runComparison} />}<EmptyState icon="users" title="Need ≥ 2 companies" body="Load at least 2 companies to enable peer comparison." /></div>;
+  }
+  return <ComparisonReportBody {...props} />;
+}
+
+function ComparisonReportBody({ registry, config, weakestTraceabilitySummary: precomputedWeakestSummary = null, publication = null, runComparison = null }: Props) {
   const comparableIssuerIds = runComparison ? new Set(runComparison.rows.filter((row) => row.comparable).map((row) => row.issuerId)) : null;
   const companies = Object.values(registry.companies).filter((c) => c.recastData.length > 0 && (!comparableIssuerIds || comparableIssuerIds.has(c.id)));
-  if (companies.length < 2) {
-    return <div className="space-y-6">{runComparison && <RunBackedPortfolioComparison comparison={runComparison} />}<EmptyState icon="users" title="Need ≥ 2 companies" body="Load at least 2 companies to enable peer comparison." /></div>;
-  }
 
   const comparisonPublication = publication ?? buildComparisonPublicationSnapshot(registry);
   const comparisonSummary = precomputedWeakestSummary
@@ -47,20 +63,53 @@ export default function ComparisonReport({ registry, config, weakestTraceability
     ? companies.find((company) => company.id === comparisonPublication.weakestCompanyId) ?? null
     : null;
   const latestByCo = companies.map((c) => ({ company: c.label || c.id, id: c.id, latest: c.recastData[c.recastData.length - 1], series: c.recastData }));
-  const [marketInputs, setMarketInputs] = useState<Record<string, { price: number; shares: number }>>({});
+  // `priceAsOf` is present only for prices fetched from the market-data snapshot.
+  // A hand-typed price has no provenance, so it stays undated and is therefore
+  // not eligible to back a peer median.
+  const [marketInputs, setMarketInputs] = useState<Record<string, { price: number; shares: number; priceAsOf?: string | null }>>({});
   const [sortByUpside, setSortByUpside] = useState(true);
   const [nseLoading, setNseLoading] = useState(false);
+
+  /**
+   * Peer pack assembled from the per-company quotes this table already holds.
+   *
+   * Only dated quotes are offered. An undated hand-typed price is dropped rather
+   * than passed through with today's date attached — inventing a date is exactly
+   * how an unfounded freshness claim gets made.
+   */
+  const peerPack = useMemo(() => {
+    const constituents = latestByCo.flatMap((entry) => {
+      const input = marketInputs[entry.id];
+      if (!input?.priceAsOf) return [];
+      return [{
+        companyId: entry.id,
+        label: entry.company,
+        price: input.price,
+        // The pack contract is date-only; a snapshot returns a full timestamp.
+        priceAsOf: input.priceAsOf.slice(0, 10),
+        shares: input.shares,
+      }];
+    });
+    if (!constituents.length) return null;
+    const target = registry.companies[latestByCo[0]?.id ?? ""];
+    return {
+      asOf: constituents.map((item) => item.priceAsOf).sort().at(-1)!,
+      source: "NSE snapshot via /api/market-data/snapshot",
+      peerGroupKey: `${target?.companyType ?? "unknown"}/${target?.sector ?? "unknown"}`,
+      constituents,
+    };
+  }, [latestByCo, marketInputs, registry]);
 
   // Peer relative valuation (Phase G)
   const peerRelative = useMemo(() => {
     const firstCompanyId = latestByCo[0]?.id;
     if (!firstCompanyId) return null;
-    return computePeerRelativeValuation(firstCompanyId, registry, config);
-  }, [latestByCo, registry, config]);
+    return computePeerRelativeValuation(firstCompanyId, registry, config, { peerPack });
+  }, [latestByCo, registry, config, peerPack]);
 
   const fetchNsePrices = useCallback(async () => {
     setNseLoading(true);
-    const updates: Record<string, { price: number; shares: number }> = { ...marketInputs };
+    const updates: Record<string, { price: number; shares: number; priceAsOf?: string | null }> = { ...marketInputs };
     for (const c of latestByCo) {
       const symbol = resolveNseSymbol(c.id) ?? resolveNseSymbol(c.company);
       if (!symbol) continue;
@@ -75,7 +124,13 @@ export default function ComparisonReport({ registry, config, weakestTraceability
           const shares = snapshot.sharesOutstanding != null
             ? snapshot.sharesOutstanding / 1e7  // NSE returns absolute count, we need Cr
             : updates[c.id]?.shares ?? 0;
-          updates[c.id] = { price: snapshot.price, shares };
+          // The snapshot route pins priceAsOf alongside every price it returns,
+          // so a fetched quote is datable; fall back to fetchedAt, never to now.
+          updates[c.id] = {
+            price: snapshot.price,
+            shares,
+            priceAsOf: snapshot.priceAsOf ?? snapshot.fetchedAt ?? null,
+          };
         }
       } catch { /* skip failures */ }
     }
@@ -261,7 +316,9 @@ export default function ComparisonReport({ registry, config, weakestTraceability
                       type="number"
                       step="0.1"
                       value={marketInputs[r.id]?.price ?? ""}
-                      onChange={(e) => setMarketInputs((prev) => ({ ...prev, [r.id]: { price: Number(e.target.value), shares: prev[r.id]?.shares ?? 0 } }))}
+                      // Dropping priceAsOf is deliberate: a hand-typed price
+                      // supersedes whatever was fetched and carries no date.
+                      onChange={(e) => setMarketInputs((prev) => ({ ...prev, [r.id]: { price: Number(e.target.value), shares: prev[r.id]?.shares ?? 0, priceAsOf: null } }))}
                       className="w-24 px-2 py-1 border border-slate-300 rounded text-xs text-right"
                       placeholder="0"
                     />
@@ -271,7 +328,9 @@ export default function ComparisonReport({ registry, config, weakestTraceability
                       type="number"
                       step="0.01"
                       value={marketInputs[r.id]?.shares ?? ""}
-                      onChange={(e) => setMarketInputs((prev) => ({ ...prev, [r.id]: { price: prev[r.id]?.price ?? 0, shares: Number(e.target.value) } }))}
+                      // Share count is a different quantity from the price, so
+                      // editing it leaves the price's provenance intact.
+                      onChange={(e) => setMarketInputs((prev) => ({ ...prev, [r.id]: { price: prev[r.id]?.price ?? 0, shares: Number(e.target.value), priceAsOf: prev[r.id]?.priceAsOf ?? null } }))}
                       className="w-24 px-2 py-1 border border-slate-300 rounded text-xs text-right"
                       placeholder="0"
                     />

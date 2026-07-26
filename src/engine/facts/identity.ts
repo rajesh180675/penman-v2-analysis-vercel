@@ -7,6 +7,7 @@ import {
   type FactSet,
   type FactSetContent,
   type Sha256Id,
+  type SourceArtifact,
 } from "./contracts";
 
 /** Artifact provenance participating in fact identity, normalized as a set. */
@@ -75,6 +76,24 @@ export function canonicalizeCanonicalFact(fact: CanonicalFact): string {
 }
 
 /**
+ * Acquisition time is provenance, not content.
+ *
+ * `acquiredAt` records when we happened to fetch the bytes, so it differs
+ * between two parses of a byte-identical ZIP. Leaving it in the identity
+ * projection made `factSetId` non-reproducible, which is why every adapter
+ * pinned it to `null` — the field could not be populated without breaking the
+ * hash. Excluding it here is what makes real acquisition timestamps safe to
+ * record.
+ *
+ * `filingAsOf` deliberately stays in: two exports of the same period filed on
+ * different dates are a restatement, and a restatement must not hash-collide
+ * with the original. Same reasoning as `filingVersion` in fact identity.
+ */
+function selectStableArtifactContent(artifact: SourceArtifact): SourceArtifact {
+  return { ...artifact, acquiredAt: null };
+}
+
+/**
  * Stable FactSet projection. Arrays that are semantically sets are sorted;
  * the self-referential factSetId is deliberately excluded.
  */
@@ -84,9 +103,9 @@ export function selectFactSetIdentityContent(
   return {
     schemaVersion: source.schemaVersion,
     issuerId: source.issuerId,
-    sourceArtifacts: [...source.sourceArtifacts].sort((left, right) =>
-      left.artifactId.localeCompare(right.artifactId),
-    ),
+    sourceArtifacts: [...source.sourceArtifacts]
+      .sort((left, right) => left.artifactId.localeCompare(right.artifactId))
+      .map(selectStableArtifactContent),
     facts: [...source.facts]
       .sort((left, right) => left.factId.localeCompare(right.factId))
       .map(selectStableFactContent),

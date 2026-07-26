@@ -1,5 +1,10 @@
-import { SECTOR_BETAS, SECTOR_EQUITY_WEIGHTS } from "../types/config";
+import { SECTOR_EQUITY_WEIGHTS } from "../types/config";
 import type { EngineConfig, RecastPeriod } from "../types";
+import {
+  resolveCapitalCostAssumptions,
+  type PeerLeveredBeta,
+} from "../assumptions/capitalCostAssumptions";
+import type { MacroPack } from "../marketPacks";
 import {
   COST_OF_CAPITAL_POLICY_VERSION,
   type CapitalStructureWeights,
@@ -46,19 +51,51 @@ function resolveEquity(policy: CostOfEquityPolicy): {
       ],
     };
   }
+  // When tiers are present, each row carries its own observation date. Stamping
+  // the market snapshot date onto a sector beta prior would date a number that
+  // has no date, which is the exact confusion the tiers exist to remove.
+  const tiers = policy.assumptions;
+  const priorKeys = tiers?.priorTierKeys ?? [];
   return {
     ke: policy.riskFreeRate + policy.beta * policy.equityRiskPremium,
     beta: policy.beta,
     erp: policy.equityRiskPremium,
     riskFree: policy.riskFreeRate,
     evidence: [
-      { component: "risk-free", source: policy.riskFreeSource, asOf: policy.asOf, value: policy.riskFreeRate, evidenceRefs: policy.evidenceRefs },
-      { component: "beta", source: policy.betaSource, asOf: policy.asOf, value: policy.beta, evidenceRefs: policy.evidenceRefs },
-      { component: "erp", source: policy.erpSource, asOf: policy.asOf, value: policy.equityRiskPremium, evidenceRefs: policy.evidenceRefs },
+      {
+        component: "risk-free",
+        source: policy.riskFreeSource,
+        asOf: tiers ? tiers.riskFreeRate.asOf : policy.asOf,
+        value: policy.riskFreeRate,
+        evidenceRefs: policy.evidenceRefs,
+        tier: tiers?.riskFreeRate.tier,
+        fallbackReason: tiers?.riskFreeRate.fallbackReason,
+      },
+      {
+        component: "beta",
+        source: policy.betaSource,
+        asOf: tiers ? tiers.beta.asOf : policy.asOf,
+        value: policy.beta,
+        evidenceRefs: policy.evidenceRefs,
+        tier: tiers?.beta.tier,
+        fallbackReason: tiers?.beta.fallbackReason,
+      },
+      {
+        component: "erp",
+        source: policy.erpSource,
+        asOf: tiers ? tiers.equityRiskPremium.asOf : policy.asOf,
+        value: policy.equityRiskPremium,
+        evidenceRefs: policy.evidenceRefs,
+        tier: tiers?.equityRiskPremium.tier,
+        fallbackReason: tiers?.equityRiskPremium.fallbackReason,
+      },
     ],
     warnings: [
       ...(policy.asOf ? [] : ["CAPM inputs are not pinned to an as-of date."]),
       ...(policy.evidenceRefs.length ? [] : ["CAPM inputs have no evidence reference."]),
+      ...(priorKeys.length
+        ? [`CAPM inputs resting on undated priors rather than sourced data: ${priorKeys.join(", ")}.`]
+        : []),
     ],
   };
 }
@@ -216,6 +253,9 @@ export function resolveCostOfCapital(input: ResolveCostOfCapitalInput): CostOfCa
     beta: equity.beta,
     riskFreeRate,
     equityRiskPremium: equity.erp,
+    // Manual ke reports no tiers: the reviewer supplied the number directly, so
+    // there is nothing to attribute. Absent is honest; "sourced" would not be.
+    assumptions: input.equityPolicy.mode === "capm" ? input.equityPolicy.assumptions : undefined,
     taxRate,
     weights,
     evidence,
@@ -226,10 +266,36 @@ export function resolveCostOfCapital(input: ResolveCostOfCapitalInput): CostOfCa
 
 export function costPoliciesFromConfig(
   config: EngineConfig,
-  options?: { readonly riskFreeRate?: number | undefined; readonly marketAsOf?: string | null | undefined },
+  options?: {
+    readonly riskFreeRate?: number | undefined;
+    readonly marketAsOf?: string | null | undefined;
+    /** Pinned macro pack. When absent, rf/ERP/terminal ceiling resolve as priors. */
+    readonly macroPack?: MacroPack | null | undefined;
+    /** Analysis date, for the pack's staleness and look-ahead checks. */
+    readonly analysisAsOf?: string | null | undefined;
+    /** Peer levered betas, for a bottom-up beta instead of the sector prior. */
+    readonly peerBetas?: readonly PeerLeveredBeta[] | undefined;
+    /** Target leverage to relever a bottom-up beta at, from structural weights. */
+    readonly targetDebtToEquity?: number | null | undefined;
+    readonly taxRate?: number | null | undefined;
+  },
 ): { equityPolicy: CostOfEquityPolicy; debtPolicy: CostOfDebtPolicy } {
-  const riskFreeRate = options?.riskFreeRate ?? config.risk_free_rate;
-  const companyType = config.company_type ?? "auto";
+  // Beta and the ERP used to be read straight off `SECTOR_BETAS` and
+  // `config.equity_risk_premium` and stamped `erpSource: "Engine configuration"`.
+  // Both still resolve to those values when nothing better exists, but now they
+  // arrive labelled, so the provenance gate can tell a sourced ERP from a guess.
+  const assumptions = resolveCapitalCostAssumptions({
+    config,
+    macroPack: options?.macroPack,
+    analysisAsOf: options?.analysisAsOf,
+    liveRiskFreeRate: options?.riskFreeRate != null
+      ? { value: options.riskFreeRate, asOf: options?.marketAsOf ?? null, source: "Pinned market snapshot" }
+      : null,
+    peerBetas: options?.peerBetas,
+    targetDebtToEquity: options?.targetDebtToEquity,
+    taxRate: options?.taxRate,
+  });
+
   const equityPolicy: CostOfEquityPolicy = config.cost_of_equity_mode === "manual"
     ? {
         mode: "manual",
@@ -239,14 +305,15 @@ export function costPoliciesFromConfig(
       }
     : {
         mode: "capm",
-        riskFreeRate,
-        beta: config.beta != null && config.beta > 0 ? config.beta : SECTOR_BETAS[companyType] ?? 1,
-        equityRiskPremium: config.equity_risk_premium,
-        riskFreeSource: options?.riskFreeRate != null ? "Pinned market snapshot" : "Engine configuration",
-        betaSource: config.beta != null && config.beta > 0 ? "Explicit beta" : `Sector beta (${companyType})`,
-        erpSource: "Engine configuration",
+        riskFreeRate: assumptions.riskFreeRate.value,
+        beta: assumptions.beta.value,
+        equityRiskPremium: assumptions.equityRiskPremium.value,
+        riskFreeSource: assumptions.riskFreeRate.source,
+        betaSource: assumptions.beta.source,
+        erpSource: assumptions.equityRiskPremium.source,
         asOf: options?.marketAsOf ?? null,
         evidenceRefs: [],
+        assumptions,
       };
 
   let debtPolicy: CostOfDebtPolicy;
@@ -260,7 +327,9 @@ export function costPoliciesFromConfig(
   } else if (config.cost_of_debt_mode === "credit-spread") {
     debtPolicy = {
       mode: "credit-spread",
-      riskFreeRate,
+      // Same resolved rate the equity side used, so kd and ke cannot sit on
+      // different risk-free rates within one run.
+      riskFreeRate: assumptions.riskFreeRate.value,
       spread: config.credit_spread ?? 0.03,
       curveSource: "Configured credit curve",
       ratingSource: "Configured rating/spread",
@@ -279,10 +348,30 @@ export function resolveCostOfCapitalFromConfig(input: {
   readonly previous?: RecastPeriod | null | undefined;
   readonly riskFreeRate?: number | undefined;
   readonly marketAsOf?: string | null | undefined;
+  readonly macroPack?: MacroPack | null | undefined;
+  readonly analysisAsOf?: string | null | undefined;
+  readonly peerBetas?: readonly PeerLeveredBeta[] | undefined;
 }): CostOfCapitalResult {
+  // A bottom-up beta must be relevered at the target's own leverage, so it is
+  // derived from the same selected-period balance sheet the weights come from
+  // rather than passed in separately and risking a mismatch.
+  const structural = capitalWeights(input.config, input.current);
+  const targetDebtToEquity = structural.source === "structural"
+    && structural.equityClaims != null && structural.equityClaims > 0
+    && structural.netFinancialObligations != null
+    ? Math.max(0, structural.netFinancialObligations / structural.equityClaims)
+    : null;
+
   const policies = costPoliciesFromConfig(input.config, {
     riskFreeRate: input.riskFreeRate,
     marketAsOf: input.marketAsOf,
+    macroPack: input.macroPack,
+    analysisAsOf: input.analysisAsOf,
+    peerBetas: input.peerBetas,
+    targetDebtToEquity,
+    taxRate: input.current?.is.taxRate != null && input.current.is.taxRate > 0.01
+      ? clamp(input.current.is.taxRate, 0, 0.5)
+      : clamp(input.config.tax_rate_for_kd ?? input.config.statutory_tax_rate, 0, 0.5),
   });
   return resolveCostOfCapital({
     ...policies,

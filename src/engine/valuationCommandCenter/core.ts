@@ -18,6 +18,7 @@ import {
   buildEvidenceWeightedSynthesis,
   buildMarketImpliedExpectationLedger,
   evaluateForecastHoldout,
+  type HoldoutVintageIndex,
 } from "../valuationEvidence";
 import { buildBacktest } from "./backtest";
 import {
@@ -57,6 +58,12 @@ export type CoreBuildContext = {
   analysisStatus?: AnalysisStatusSummary | null | undefined;
   /** Phase C5 — parsed segment data for SOTP valuation (business segments). */
   segmentData?: SegmentData | null | undefined;
+  /**
+   * Per-period publication vintage, derived from ingestion provenance. Absent
+   * when the caller has no fact-level provenance, in which case the holdout
+   * reports its no-look-ahead claim as unverified rather than assuming it.
+   */
+  holdoutVintage?: HoldoutVintageIndex | null | undefined;
 };
 
 type CoreBuildResult = Omit<ValuationCommandCenterOutput, "backtest">;
@@ -497,7 +504,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     periodEnd: latest.period_end,
     companyId: config.ticker ?? null,
   });
-  const forecastHoldout = evaluateForecastHoldout(data);
+  const forecastHoldout = evaluateForecastHoldout(data, context.holdoutVintage);
   const marketImpliedExpectations = buildMarketImpliedExpectationLedger({
     marketPrice,
     asOf: marketData?.priceAsOf ?? marketData?.fetchedAt ?? null,

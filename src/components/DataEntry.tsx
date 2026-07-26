@@ -178,10 +178,14 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
       const zipBytes = new Uint8Array(await file.arrayBuffer());
       const zipSha = await sha256Hex(zipBytes);
       let parsed: { periods: RawPeriodData[]; debug: CapitalineParseDebug; segmentData: import("../engine/segmentParser").AllSegmentData | null } | null = null;
+      // When these bytes were acquired, which is provenance rather than content:
+      // a cache hit reports the original fetch, not the moment it was re-read.
+      let acquiredAt: string | null = null;
       if (zipSha) {
         const cached = await readCachedParse(zipSha);
         if (cached) {
           parsed = { periods: cached.periods, debug: cached.debug, segmentData: cached.segmentData };
+          acquiredAt = cached.cachedAt;
           trace("parse", "processZip:cacheHit", { fileName: file.name, zipSha: zipSha.slice(0, 12) }, {
             periodCount: cached.periods.length,
           });
@@ -190,12 +194,15 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
       if (!parsed) {
         const fresh = await parseCapitalineZip(zipBytes, { companyId: activeCompanyId, filename: file.name });
         parsed = fresh;
+        acquiredAt = new Date().toISOString();
         if (zipSha) {
           // Fire-and-forget — caching must not block the analysis path.
           void writeCachedParse({
             zipSha256: zipSha,
             zipSize: file.size,
-            cachedAt: new Date().toISOString(),
+            // Same stamp the artifact carries, so a later cache hit agrees with
+            // the run that populated it.
+            cachedAt: acquiredAt,
             periods: fresh.periods,
             debug: fresh.debug,
             segmentData: fresh.segmentData,
@@ -208,6 +215,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         debug,
         scope: "consolidated",
         contentClass: meta.contentClass,
+        acquiredAt,
       });
       trace("parse", "processZip:parsed", { fileName: file.name }, {
         periodCount: periods.length,

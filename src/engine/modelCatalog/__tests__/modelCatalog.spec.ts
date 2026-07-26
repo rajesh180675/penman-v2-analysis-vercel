@@ -9,6 +9,7 @@ import {
   evaluateModelApplicability,
   generateModelCatalog,
   groupIndependentModelEvidence,
+  independenceGroupsForModelIds,
   validateModelCatalog,
   type ModelGuardResult,
   type ValuationModelDefinition,
@@ -176,6 +177,89 @@ describe("finite computed model evidence", () => {
     const results = [computed("advanced.real-options-rd-pipeline", 30)];
     expect(countFiniteComputedModels(results, CURRENT_MODEL_REGISTRY)).toBe(0);
     expect(countFiniteComputedModels(results, CURRENT_MODEL_REGISTRY, { productionOnly: false })).toBe(1);
+  });
+});
+
+describe("independenceGroupsForModelIds", () => {
+  it("collapses justified P/B and equity residual income into one group", () => {
+    // The defect this function exists to fix. The audit harness kept its own
+    // switch mapping PB -> "book-value" and ERI -> "residual-income", so a bank
+    // valued only by those two reported TWO independent confirmations. Justified
+    // P/B under Gordon growth is the closed form of the equity residual-income
+    // model: same algebra, same inputs, one piece of evidence.
+    const groups = independenceGroupsForModelIds(
+      ["fi.bank.justified-pb-gordon", "fi.bank.equity-residual-income"],
+      CURRENT_MODEL_REGISTRY,
+    );
+
+    expect(groups).toEqual(["fi-book-residual-income"]);
+    expect(groups).toHaveLength(1);
+  });
+
+  it("also collapses the NBFC ROA x leverage residual-income variant", () => {
+    expect(independenceGroupsForModelIds(
+      [
+        "fi.bank.justified-pb-gordon",
+        "fi.bank.equity-residual-income",
+        "fi.nbfc.roa-leverage-residual-income",
+      ],
+      CURRENT_MODEL_REGISTRY,
+    )).toEqual(["fi-book-residual-income"]);
+  });
+
+  it("keeps genuinely independent bank lenses apart", () => {
+    // Dividend discount and embedded value rest on different evidence than book
+    // residual income, so a bank reaching all three has real triangulation.
+    expect(independenceGroupsForModelIds(
+      [
+        "fi.bank.justified-pb-gordon",
+        "fi.bank.equity-residual-income",
+        "fi.bank.sustainable-ddm",
+        "fi.insurance.embedded-value-vnb",
+        "fi.nbfc.p-aum",
+      ],
+      CURRENT_MODEL_REGISTRY,
+    )).toEqual([
+      "actuarial-embedded-value",
+      "fi-asset-market-multiple",
+      "fi-book-residual-income",
+      "fi-distribution",
+    ]);
+  });
+
+  it("reports the industrial audit lenses as five distinct groups", () => {
+    // The industrial fallback's five names were already one-to-one with distinct
+    // groups, so moving it onto the registry changes the vocabulary, not the
+    // count — the correctness fix here is FI-only.
+    expect(independenceGroupsForModelIds(
+      [
+        "industrial.penman.residual-income",
+        "industrial.segment-sotp",
+        "industrial.graham-dodd-epv",
+        "industrial.cash-statement-fcff-dcf",
+        "industrial.ev-ebitda-peer",
+      ],
+      CURRENT_MODEL_REGISTRY,
+    )).toEqual([
+      "accrual-residual-income",
+      "cash-statement",
+      "earnings-power",
+      "peer-market",
+      "segment-sotp",
+    ]);
+  });
+
+  it("returns nothing for no models", () => {
+    expect(independenceGroupsForModelIds([], CURRENT_MODEL_REGISTRY)).toEqual([]);
+  });
+
+  it("throws on an unknown model id rather than silently dropping it", () => {
+    // Silently skipping would quietly lower an independence count that gates
+    // release claims, and callers map a closed set of names, so a miss is a bug.
+    expect(() => independenceGroupsForModelIds(
+      ["fi.bank.sustainable-ddm", "industrial.not-a-real-model"],
+      CURRENT_MODEL_REGISTRY,
+    )).toThrow(/industrial.not-a-real-model/);
   });
 });
 

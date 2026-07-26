@@ -103,11 +103,25 @@ function mediaTypeForFile(fileName: string): string {
   return "text/plain";
 }
 
+/**
+ * Acquisition time is supplied by the caller, never read from the clock here.
+ *
+ * Two reasons. Parsing stays deterministic, so a fixture-driven test does not
+ * need to stub time. And a cache hit can report when the bytes were actually
+ * fetched rather than when they were re-read.
+ *
+ * `filingAsOf` stays null for Capitaline: the export carries no per-period
+ * filing dates. That is what makes a Capitaline run classify as
+ * `single-export` rather than `per-filing`, which is the honest answer — one
+ * dated snapshot cannot distinguish an original filing from a later
+ * restatement.
+ */
 function artifactFromCapitalineHash(args: {
   readonly hash: CapitalineParseDebug["sourceArtifactHashes"][number];
   readonly issuerId: string;
   readonly scope: FactScope;
   readonly contentClass: string;
+  readonly acquiredAt: string | null;
 }): SourceArtifact {
   return {
     artifactId: `sha256:${args.hash.sha256}` as Sha256Id,
@@ -115,7 +129,7 @@ function artifactFromCapitalineHash(args: {
     mediaType: mediaTypeForFile(args.hash.fileName),
     byteLength: args.hash.byteLength,
     sourceMode: "capitaline",
-    acquiredAt: null,
+    acquiredAt: args.acquiredAt,
     filingAsOf: null,
     issuerId: args.issuerId,
     scope: args.scope,
@@ -129,6 +143,8 @@ export function buildCapitalineCanonicalFactBundle(args: {
   readonly debug: CapitalineParseDebug;
   readonly scope: FactScope;
   readonly contentClass: string;
+  /** ISO timestamp the bytes were fetched. Omit when unknown; never defaulted to now. */
+  readonly acquiredAt?: string | null | undefined;
 }): CanonicalFactIngestionBundle | null {
   const issuerId = args.rawData[0]?.company_id ?? args.debug.companyId;
   const sourceArtifacts = args.debug.sourceArtifactHashes.map((hash) => artifactFromCapitalineHash({
@@ -136,6 +152,7 @@ export function buildCapitalineCanonicalFactBundle(args: {
     issuerId,
     scope: args.scope,
     contentClass: args.contentClass,
+    acquiredAt: args.acquiredAt ?? null,
   }));
   if (!sourceArtifacts.length || !args.debug.factOrigins) return null;
   const artifactByFile = new Map(sourceArtifacts.map((artifact) => [artifact.fileName.toLocaleLowerCase(), artifact]));
@@ -192,6 +209,14 @@ export async function buildTextCanonicalFactBundle(args: {
   readonly scope: FactScope;
   readonly contentClass: string;
   readonly enteredBy?: string | null | undefined;
+  /** ISO timestamp the bytes were fetched. Omit when unknown; never defaulted to now. */
+  readonly acquiredAt?: string | null | undefined;
+  /**
+   * Filing date (YYYY-MM-DD) when the source declares one. XBRL carries this;
+   * a pasted Screener table generally does not. Left null rather than guessed,
+   * because a wrong filing date would manufacture a vintage claim.
+   */
+  readonly filingAsOf?: string | null | undefined;
 }): Promise<CanonicalFactIngestionBundle | null> {
   const issuerId = args.rawData[0]?.company_id;
   if (!issuerId || !args.rawData.length || !args.sourceText.length) return null;
@@ -202,8 +227,8 @@ export async function buildTextCanonicalFactBundle(args: {
     mediaType: mediaTypeForFile(args.fileName),
     byteLength: new TextEncoder().encode(args.sourceText).byteLength,
     sourceMode: args.sourceMode,
-    acquiredAt: null,
-    filingAsOf: null,
+    acquiredAt: args.acquiredAt ?? null,
+    filingAsOf: args.filingAsOf ?? null,
     issuerId,
     scope: args.scope,
     parserVersion: CANONICAL_SOURCE_ADAPTER_VERSION,

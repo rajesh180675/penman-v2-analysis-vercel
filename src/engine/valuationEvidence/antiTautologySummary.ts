@@ -55,6 +55,7 @@ export function summarizeAntiTautology(commandCenter: {
       sampleSize: holdout.aggregate.sampleSize,
       benchmarkSkill: holdout.aggregate.benchmark?.skillVsBenchmark ?? null,
       noLookAheadStatus: holdout.aggregate.noLookAhead?.status,
+      noLookAheadVintageDiscipline: holdout.aggregate.noLookAhead?.vintageDiscipline,
     },
     priceDerivedIsolation: {
       reverseDcfExcludedFromIntrinsicConfidence: synthesis.contributions.find((item) => item.modelKey === "reverse-dcf")?.includedInIntrinsicRange === false,

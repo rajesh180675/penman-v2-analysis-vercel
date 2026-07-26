@@ -4,6 +4,8 @@ import type {
   ForecastHoldoutMetric,
   ForecastHoldoutMetricError,
   ForecastHoldoutSummary,
+  HoldoutVintageIndex,
+  NoLookAheadDisclosure,
 } from "./types";
 
 const MIN_PERIODS = 6;
@@ -110,7 +112,74 @@ function valuationRangeWideningPct(status: ForecastHoldoutSummary["aggregate"]["
   return 0.15;
 }
 
-export function evaluateForecastHoldout(periods: RecastPeriod[] | null | undefined): ForecastHoldoutSummary {
+/**
+ * Ordering discipline is free — `evaluateForecastHoldout` trains on
+ * `slice(0, testIndex)`, so a training window can never reach the test period.
+ * Vintage discipline has to be earned, and a single dated export cannot earn it:
+ * every period in it was observed on the same later date, so a figure restated
+ * after the fact is indistinguishable from what was originally filed. Training
+ * on restated numbers inflates apparent skill, which is exactly the error a
+ * holdout exists to rule out.
+ *
+ * Returns `unverified` with a reason rather than downgrading the whole holdout:
+ * the error metrics are still informative, they just cannot be called
+ * out-of-sample.
+ */
+function assessNoLookAhead(
+  coveredPeriodEnds: readonly string[],
+  vintage: HoldoutVintageIndex | null | undefined,
+): NoLookAheadDisclosure {
+  const unverified = (reason: string): NoLookAheadDisclosure => ({
+    status: "unverified",
+    policy: "strict-prior-period-training",
+    orderingDiscipline: "confirmed",
+    vintageDiscipline: "unverified",
+    reason,
+  });
+
+  if (!vintage) {
+    return unverified("No per-filing vintage index supplied; training values are as-restated-today, not as-published-then.");
+  }
+  if (vintage.kind !== "per-filing") {
+    return unverified(
+      `Periods were observed as "${vintage.kind}", so every figure shares one observation date and a restatement cannot be distinguished from an original filing.`,
+    );
+  }
+
+  const byPeriod = new Map(vintage.periods.map((entry) => [entry.periodEnd, entry]));
+  const covered = coveredPeriodEnds.map((periodEnd) => byPeriod.get(periodEnd));
+  const missing = coveredPeriodEnds.filter((periodEnd) => !byPeriod.get(periodEnd)?.filingAsOf);
+  if (missing.length) {
+    return unverified(`No filing date for ${missing.length} of ${coveredPeriodEnds.length} periods (${missing.slice(0, 3).join(", ")}).`);
+  }
+
+  for (const entry of covered) {
+    if (!entry?.filingAsOf) continue;
+    if (entry.filingAsOf < entry.periodEnd) {
+      return unverified(`Period ${entry.periodEnd} claims a filing date of ${entry.filingAsOf}, which precedes the period it reports.`);
+    }
+  }
+
+  for (let index = 1; index < covered.length; index += 1) {
+    const prev = covered[index - 1]?.filingAsOf;
+    const cur = covered[index]?.filingAsOf;
+    if (prev && cur && cur <= prev) {
+      return unverified(`Filing dates are not strictly increasing at ${covered[index]?.periodEnd} (${prev} → ${cur}); vintages appear collapsed.`);
+    }
+  }
+
+  return {
+    status: "confirmed",
+    policy: "per-filing-vintage",
+    orderingDiscipline: "confirmed",
+    vintageDiscipline: "confirmed",
+  };
+}
+
+export function evaluateForecastHoldout(
+  periods: RecastPeriod[] | null | undefined,
+  vintage?: HoldoutVintageIndex | null,
+): ForecastHoldoutSummary {
   const ordered = [...(periods ?? [])].sort((a, b) => a.period_end.localeCompare(b.period_end));
   if (ordered.length < MIN_PERIODS) {
     return {
@@ -127,7 +196,8 @@ export function evaluateForecastHoldout(periods: RecastPeriod[] | null | undefin
         sampleSize: 0,
         minimumTrainPeriods: MIN_TRAIN_PERIODS,
         benchmark: { name: "last-observation-carried-forward", weightedMape: null, skillVsBenchmark: null },
-        noLookAhead: { status: "confirmed", policy: "strict-prior-period-training" },
+        // No folds ran, so there is nothing to make a vintage claim about.
+        noLookAhead: assessNoLookAhead([], vintage),
       },
     };
   }
@@ -213,7 +283,13 @@ export function evaluateForecastHoldout(periods: RecastPeriod[] | null | undefin
         weightedMape: benchmarkWeightedMape,
         skillVsBenchmark,
       },
-      noLookAhead: { status: "confirmed", policy: "strict-prior-period-training" },
+      // Disclosed, not enforced. `calibrationStatus` deliberately still reflects
+      // measured error only: demoting it on unverified vintage would change
+      // confidence output for every company at once, and the demotion belongs
+      // to the assumption-provenance gate that consumes this disclosure.
+      // Every period participates as train or test, so all of them need vintage —
+      // not just the tested ones.
+      noLookAhead: assessNoLookAhead(ordered.map((period) => period.period_end), vintage),
     },
   };
 }

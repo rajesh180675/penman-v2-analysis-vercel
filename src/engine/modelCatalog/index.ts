@@ -13,6 +13,7 @@ export {
   countFiniteComputedModels,
   countIndependentModelEvidenceGroups,
   groupIndependentModelEvidence,
+  independenceGroupsForModelIds,
   selectFiniteComputedModelResults,
 } from "./evidence";
 

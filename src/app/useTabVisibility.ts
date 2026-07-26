@@ -11,7 +11,7 @@ import { RawPeriodData, RecastPeriod, CompanyRegistry } from "../engine/types";
 import { isAuditEnabled, AuditSubmissionMeta } from "../lib/audit";
 import { listWorkspaceCompanies } from "../lib/researchWorkspace";
 import { QualityGateReport } from "../engine/mappingAudit";
-import type { FinancialInstitutionAnalysisResult } from "../engine/analysisFamily";
+import { financialInstitutionTabLabel, type FinancialInstitutionAnalysisResult } from "../engine/analysisFamily";
 import type { ScopeAwareResult } from "../engine/scopeAwareLoader";
 import { TABS, type TabId } from "./tabs";
 
@@ -82,28 +82,38 @@ export function useTabVisibility(inputs: TabVisibilityInputs): TabVisibilityRetu
     [registry],
   );
 
-  const visibleTabs = useMemo(() => TABS.filter(t => {
-    if (t.id === "debug") return hasDebug;
-    if (t.id === "comparison") return readyCompanyCount >= 2;
-    if (t.id === "inspector") return isAuditEnabled() && Boolean(auditMeta);
-    if (t.id === "watchlist") return hasWorkspace;
-    if (t.id === "workspace") return hasWorkspace;
-    if (t.id === "valuation") return valuationTabEnabled;
-    // Bank/NBFC tab: show when bankResult exists, even without industrial recast
-    if (t.id === "bank") return hasRecast || bankResult !== null;
-    // Dashboard: show for banks/NBFCs too (bankResult carries the analysis)
-    if (t.id === "dashboard") return hasRecast || bankResult !== null;
-    // Ratios + Quality: show for banks — FinancialInstitutionReport renders NIM/ROA/ROE trends
-    if (t.id === "ratios") return hasRecast || bankResult !== null;
-    if (t.id === "quality") return hasRecast || bankResult !== null;
-    // Scope tab — visible only when both consolidated AND standalone are loaded
-    // and the gap analysis succeeded. Phase A.
-    if (t.id === "scope") return scopeAwareResult !== null;
-    // Report tab: show for banks too — FinancialInstitutionReport renders from bankResult
-    if (t.id === "report") return hasRecast || bankResult !== null;
-    if (t.needsData) return hasRecast;
-    return true;
-  }), [hasDebug, readyCompanyCount, auditMeta, hasWorkspace, valuationTabEnabled, hasRecast, bankResult, scopeAwareResult]);
+  const visibleTabs = useMemo(() => {
+    const filtered = TABS.filter(t => {
+      if (t.id === "debug") return hasDebug;
+      if (t.id === "comparison") return readyCompanyCount >= 2;
+      if (t.id === "inspector") return isAuditEnabled() && Boolean(auditMeta);
+      if (t.id === "watchlist") return hasWorkspace;
+      if (t.id === "workspace") return hasWorkspace;
+      if (t.id === "valuation") return valuationTabEnabled;
+      // Bank/NBFC tab: show when bankResult exists, even without industrial recast
+      if (t.id === "bank") return hasRecast || bankResult !== null;
+      // Dashboard: show for banks/NBFCs too (bankResult carries the analysis)
+      if (t.id === "dashboard") return hasRecast || bankResult !== null;
+      // Ratios + Quality: show for banks — FinancialInstitutionReport renders NIM/ROA/ROE trends
+      if (t.id === "ratios") return hasRecast || bankResult !== null;
+      if (t.id === "quality") return hasRecast || bankResult !== null;
+      // Scope tab — visible only when both consolidated AND standalone are loaded
+      // and the gap analysis succeeded. Phase A.
+      if (t.id === "scope") return scopeAwareResult !== null;
+      // Report tab: show for banks too — FinancialInstitutionReport renders from bankResult
+      if (t.id === "report") return hasRecast || bankResult !== null;
+      if (t.needsData) return hasRecast;
+      return true;
+    });
+
+    // Name the financial-institution tab after the subtype actually loaded, so
+    // an insurer is not filed under "Bank" while the panel inside it reads
+    // "Insurance Valuation". Industrial companies have no bankResult and keep
+    // the static "Bank" label.
+    if (!bankResult) return filtered;
+    const label = financialInstitutionTabLabel(bankResult.subtype);
+    return filtered.map(t => (t.id === "bank" ? { ...t, label } : t));
+  }, [hasDebug, readyCompanyCount, auditMeta, hasWorkspace, valuationTabEnabled, hasRecast, bankResult, scopeAwareResult]);
 
   return {
     visibleTabs,
