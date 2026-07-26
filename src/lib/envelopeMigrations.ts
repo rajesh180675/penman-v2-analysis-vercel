@@ -38,9 +38,11 @@ export const KNOWN_SCHEMA_VERSIONS = [
   "2026-06-traceability-v18",
   "2026-06-traceability-v19",
   "2026-06-traceability-v20",
+  "2026-06-traceability-v21",
+  "2026-06-traceability-v22",
 ] as const;
 
-export const CURRENT_SCHEMA_VERSION = "2026-06-traceability-v20";
+export const CURRENT_SCHEMA_VERSION = "2026-06-traceability-v22";
 
 export interface MigrateResult {
   envelope: { schemaVersion: string; status?: string | undefined; [key: string]: unknown };
@@ -132,6 +134,25 @@ const MIGRATORS: Record<string, Migrator> = {
     // v20 — source-lineage: per-file SHA-256 hashes from the parser.
     // Migrated envelopes default to null (no hashes available for old runs).
     sourceArtifactHashes: env.sourceArtifactHashes ?? null,
+  }),
+  "2026-06-traceability-v20": (env) => ({
+    ...env,
+    schemaVersion: "2026-06-traceability-v21",
+    // v21 — capital-cost assumption provenance tiers. Only valuation runs report
+    // tiers, and a legacy envelope predates the tier layer entirely, so migrated
+    // envelopes default to null. Null means "provenance unknown", NOT "sourced" —
+    // back-filling a tier here would invent provenance the old run never had.
+    assumptionProvenance: env.assumptionProvenance ?? null,
+  }),
+  "2026-06-traceability-v21": (env) => ({
+    ...env,
+    schemaVersion: "2026-06-traceability-v22",
+    // v22 — earnings-quality scorecard projection. Only valuation runs produce a
+    // scorecard, so migrated envelopes default to null. Null means "earnings
+    // quality unknown", NOT "checked and clean" — an old run never ran the test,
+    // and back-filling a clean status would be the fabrication the block exists
+    // to prevent.
+    earningsQuality: env.earningsQuality ?? null,
   }),
 };
 

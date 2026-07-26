@@ -20,3 +20,13 @@ export type {
   ResolvedSourcedAssumption,
   SourcedAssumptionSet,
 } from "./assumptions";
+
+export {
+  ASSUMPTION_RESOLUTION_STAGE_VERSION,
+  resolveAnalysisAssumptions,
+} from "./assumptionResolution";
+export type {
+  AssumptionResolutionInput,
+  AssumptionResolutionOutput,
+  PerShareBasisStatus,
+} from "./assumptionResolution";

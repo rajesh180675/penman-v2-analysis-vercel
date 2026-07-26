@@ -11,6 +11,10 @@ import {
   type ValuationCommandCenterOutput,
 } from "../../src/engine/valuationCommandCenter";
 import { buildAnalysisTraceability } from "../../src/engine/analysisTraceability";
+import {
+  CURRENT_MODEL_REGISTRY,
+  independenceGroupsForModelIds,
+} from "../../src/engine/modelCatalog";
 import { deriveAnalysisStatus } from "../../src/engine/analysisStatus";
 import { resolveValuationReadiness } from "../../src/engine/valuationPolicy";
 import { getAnalysisPolicyVersions } from "../../src/engine/policyVersions";
@@ -742,16 +746,31 @@ export function computedBankModelNames(valuation: BankValuationBundle | null | u
   return names;
 }
 
-function bankModelEvidenceGroup(name: string): string | null {
-  switch (name) {
-    case "PB": return "book-value";
-    case "ERI": return "residual-income";
-    case "DDM": return "distribution";
-    case "EV": return "embedded-value";
-    case "P/AUM": return "asset-base";
-    case "ROA×LevRI": return "residual-income";
-    default: return null;
-  }
+/**
+ * Audit display name -> catalog model id. The registry, not this file, decides
+ * which of these are correlated.
+ *
+ * This replaced a local switch that mapped PB to "book-value" and ERI to
+ * "residual-income" — two independent lenses. They are not: justified P/B under
+ * Gordon growth is the closed form of the equity residual-income model, so both
+ * (and the NBFC ROA x leverage variant) sit in the registry's single
+ * `fi-book-residual-income` group. The old mapping let a bank valued only by
+ * P/B and ERI report two independent confirmations of one piece of algebra.
+ */
+export const FI_AUDIT_MODEL_IDS: Record<string, string> = {
+  PB: "fi.bank.justified-pb-gordon",
+  ERI: "fi.bank.equity-residual-income",
+  DDM: "fi.bank.sustainable-ddm",
+  EV: "fi.insurance.embedded-value-vnb",
+  "P/AUM": "fi.nbfc.p-aum",
+  "ROA×LevRI": "fi.nbfc.roa-leverage-residual-income",
+};
+
+function bankModelEvidenceGroups(modelNames: string[]): string[] {
+  const modelIds = modelNames
+    .map((name) => FI_AUDIT_MODEL_IDS[name])
+    .filter((modelId): modelId is string => modelId != null);
+  return [...independenceGroupsForModelIds(modelIds, CURRENT_MODEL_REGISTRY)];
 }
 
 export function computedIndustrialModelNames(valuation: ValuationCommandCenterOutput): string[] {
@@ -768,18 +787,27 @@ export function computedIndustrialModelNames(valuation: ValuationCommandCenterOu
   return Array.from(new Set(names));
 }
 
+/**
+ * Audit display name -> catalog model id, for the industrial fallback path.
+ *
+ * VCC maps to the Penman residual-income model rather than
+ * `industrial.scenario-headline`: the scenario headline is an aggregator over
+ * that algebra, and grouping it as `aggregation` would describe the presentation
+ * layer instead of the evidence the number rests on.
+ */
+export const INDUSTRIAL_AUDIT_MODEL_IDS: Record<string, string> = {
+  VCC: "industrial.penman.residual-income",
+  SOTP: "industrial.segment-sotp",
+  EPV: "industrial.graham-dodd-epv",
+  CASH_DCF: "industrial.cash-statement-fcff-dcf",
+  "EV/EBITDA": "industrial.ev-ebitda-peer",
+};
+
 function industrialModelEvidenceGroups(modelNames: string[]): string[] {
-  const groups = modelNames.map((name): string | null => {
-    switch (name) {
-      case "VCC": return "residual-income";
-      case "SOTP": return "sum-of-parts";
-      case "EPV": return "earnings-power";
-      case "CASH_DCF": return "cash-flow";
-      case "EV/EBITDA": return "market-multiple";
-      default: return null;
-    }
-  }).filter((group): group is string => group != null);
-  return Array.from(new Set(groups));
+  const modelIds = modelNames
+    .map((name) => INDUSTRIAL_AUDIT_MODEL_IDS[name])
+    .filter((modelId): modelId is string => modelId != null);
+  return [...independenceGroupsForModelIds(modelIds, CURRENT_MODEL_REGISTRY)];
 }
 
 function industrialValuationEvidenceSnapshot(valuation: ValuationCommandCenterOutput): AuditValuationEvidenceSnapshot {
@@ -959,9 +987,10 @@ function financialResult(args: {
   pipeline: PipelineResult;
   sidecarFlags: string[];
   trace: ReturnType<typeof buildAnalysisTraceability>;
+  analysisContext: AuditAnalysisContext;
   verbose: boolean;
 }): AuditCompanyRunResult {
-  const { company, pipeline, sidecarFlags, trace, verbose } = args;
+  const { company, pipeline, sidecarFlags, trace, analysisContext, verbose } = args;
   const result = emptyResult(company);
   const flags = [...sidecarFlags];
   const bankResult = pipeline.bankResult;
@@ -1040,15 +1069,19 @@ function financialResult(args: {
       "ROA×LevRI": "bank-roa-leveri",
     };
     result.valuationEvidence = {
-      readinessStatus: "production-ready",
-      readinessAnchorPeriod: result.latestPeriod,
-      defensibilityStatus: "confirmed",
+      // Was hardcoded "production-ready" for every financial institution, which
+      // made the valuation-readiness checkpoint pass by construction for the
+      // whole family. The real status is already computed from bank history
+      // depth and anchor contamination in buildAuditAnalysisContext — it was
+      // just never passed in.
+      readinessStatus: analysisContext.valuationReadiness.status,
+      readinessAnchorPeriod: analysisContext.valuationReadiness.anchorPeriod ?? result.latestPeriod,
+      // Null, not "confirmed". Defensibility is a property of the
+      // evidence-weighted synthesis, and the FI path runs no synthesis at all,
+      // so any status here would be invented rather than measured.
+      defensibilityStatus: null,
       triangulationMethods: result.models.map((name) => ({ key: keyMap[name] ?? name.toLowerCase(), label: name, perShare: null })),
-      independentLensGroups: Array.from(new Set(
-        result.models
-          .map(bankModelEvidenceGroup)
-          .filter((group): group is string => group != null),
-      )),
+      independentLensGroups: bankModelEvidenceGroups(result.models),
     };
 
     result.modelApplicability.financialInstitutionValuation = {
@@ -1196,7 +1229,7 @@ export async function auditCompanyRun(
     });
 
     if (pipeline.analysisFamily === "financial-institution") {
-      const result = financialResult({ company, pipeline, sidecarFlags, trace, verbose: Boolean(options.verbose) });
+      const result = financialResult({ company, pipeline, sidecarFlags, trace, analysisContext, verbose: Boolean(options.verbose) });
       result.marketEvidence = marketEvidence;
       return withSourceEvidence(result, sourceEvidence, trace.lineageRef);
     }

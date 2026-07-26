@@ -8,6 +8,7 @@ import { DEFAULT_CONFIG } from "../../types";
 import type { ValuationCommandCenterOutput } from "../../valuationCommandCenter";
 import type { ValuationReadiness } from "../../valuationPolicy";
 import { resolveCostOfCapitalFromConfig } from "../../costOfCapital";
+import type { AssumptionCandidate, AssumptionResolutionOutput } from "../../analysisCase";
 import { evaluateRealOptionsCompositionApproval } from "../../advancedModelGovernance";
 import {
   createLegacyAnalysisRunExecutor,
@@ -68,6 +69,55 @@ function readiness(): ValuationReadiness {
     terminalFlagLabels: [],
     reasons: ["Latest period is a clean anchor."],
   };
+}
+
+/**
+ * P6 Stage 9 seam. RECAST is a two-element stub with no `bs`/`ratios`, so the
+ * real `resolveAnalysisAssumptions` would resolve a blocked share basis off
+ * fixture data that was never meant to be economically valid. The mock keeps
+ * this spec about the executor's stage sequencing; parity against the monolith
+ * is asserted in analysisCase/__tests__/assumptionResolution.spec.ts on real
+ * golden fixtures.
+ *
+ * The candidate window matches `selectAnalysisWindow`'s `includedPeriods`
+ * below, because a period window outside the analysis window is a blocker in
+ * `resolveSourcedAssumptionSet` and would fail the run.
+ */
+function assumptionResolution(): AssumptionResolutionOutput {
+  const costOfCapital = resolveCostOfCapitalFromConfig({ config: DEFAULT_CONFIG });
+  const periodWindow = { from: "2025-03-31", to: "2026-03-31", observations: 2 };
+  const capital = (assumptionId: string, key: string, value: number): AssumptionCandidate<unknown> => ({
+    assumptionId,
+    key,
+    value,
+    unit: "FRACTION",
+    mode: "derived",
+    evidenceRefs: [{ contentHash: `sha256:${"d".repeat(64)}` }] as unknown as AssumptionCandidate<unknown>["evidenceRefs"],
+    periodWindow,
+    range: null,
+    distribution: { family: "point", parameters: { value } },
+    confidence: "high",
+    reviewerState: "system",
+    required: true,
+  });
+  return {
+    stageVersion: "2026-07-assumption-resolution-v1",
+    costOfCapital,
+    shareBasis: { shares: 10, sharesForPerShare: 10, confidence: "HIGH" },
+    valuationReadiness: readiness(),
+    anchorPeriods: RECAST,
+    riskFreeRate: costOfCapital.riskFreeRate,
+    marketPrice: null,
+    marketAsOf: null,
+    perShareStatus: "confirmed",
+    status: "confirmed",
+    blockers: [],
+    capitalCandidates: [
+      capital("cost-of-equity", "ke", costOfCapital.ke),
+      capital("operating-capital-cost", "kw", costOfCapital.kw),
+    ],
+    marketCandidates: [],
+  } as unknown as AssumptionResolutionOutput;
 }
 
 function pipeline(): PipelineResult {
@@ -192,8 +242,11 @@ function dependencies(options: {
       "rigor.economicSanityBlock": true,
       "rigor.terminalEligibilityBlock": true,
       "rigor.residualScoreDowngrade": true,
+      "rigor.assumptionProvenanceBlock": true,
+      "rigor.earningsQualityBlock": true,
     })),
     validateConfig: vi.fn(() => []),
+    resolveAssumptions: vi.fn(() => assumptionResolution()) as unknown as LegacyAnalysisRunExecutorDependencies["resolveAssumptions"],
   };
 }
 

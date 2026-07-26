@@ -112,3 +112,29 @@ export function countIndependentModelEvidenceGroups(
 ): number {
   return groupIndependentModelEvidence(results, registry, options).length;
 }
+
+/**
+ * Independence groups for a set of model ids, with the registry as the sole
+ * authority on which models are correlated.
+ *
+ * For callers that know WHICH models computed but do not hold
+ * `ValuationModelResult` payloads — notably the audit harness, which reads
+ * display names off legacy command-center and bank-valuation output. Those
+ * callers previously kept their own name-to-group switches, which is how the
+ * audit came to count justified P/B and equity residual income as two
+ * independent confirmations when they are the same algebra: justified P/B under
+ * Gordon growth is the closed form of the equity residual-income model, and the
+ * registry groups both under `fi-book-residual-income`.
+ *
+ * Throws on an unknown model id. The caller's map is a static constant over a
+ * closed set of names, so a miss is a programming error — and silently dropping
+ * the entry would quietly change an independence count that gates release
+ * claims.
+ */
+export function independenceGroupsForModelIds(
+  modelIds: readonly string[],
+  registry: ValuationModelRegistry,
+): readonly string[] {
+  const groups = modelIds.map((modelId) => registry.require(modelId).independenceGroup);
+  return [...new Set(groups)].sort((left, right) => left.localeCompare(right));
+}

@@ -126,11 +126,57 @@ export interface ForecastHoldoutSummary {
       readonly weightedMape: number | null;
       readonly skillVsBenchmark: number | null;
     } | undefined;
-    noLookAhead?: {
-      readonly status: "confirmed";
-      readonly policy: "strict-prior-period-training";
-    } | undefined;
+    noLookAhead?: NoLookAheadDisclosure | undefined;
   };
+}
+
+/**
+ * Two independent claims live behind "no look-ahead", and only one of them is
+ * free.
+ *
+ * `orderingDiscipline` — training slices never reach the test period or later.
+ * Verified by construction in `evaluateForecastHoldout`, which trains on
+ * `ordered.slice(0, testIndex)`.
+ *
+ * `vintageDiscipline` — the training *values* are the ones that were knowable
+ * at prediction time, not figures later restated. A single as-of-today export
+ * cannot establish this: every period in it was observed on the same, later
+ * date, so a restatement is indistinguishable from an original filing. Proving
+ * it needs per-filing vintage (see `HoldoutVintageIndex`).
+ *
+ * `status` is `confirmed` only when both hold. This type deliberately admits
+ * "unverified" — the previous literal-`"confirmed"` type made the claim
+ * unfalsifiable, so a holdout over restated data reported clean skill.
+ */
+export interface NoLookAheadDisclosure {
+  readonly status: "confirmed" | "unverified";
+  readonly policy: "strict-prior-period-training" | "per-filing-vintage";
+  readonly orderingDiscipline: "confirmed";
+  readonly vintageDiscipline: "confirmed" | "unverified";
+  /** Why vintage discipline could not be established. Absent when confirmed. */
+  readonly reason?: string | undefined;
+}
+
+/** How a period's numbers came to be observed. */
+export type PeriodObservationKind = "per-filing" | "single-export" | "unknown";
+
+export interface PeriodVintage {
+  /** Period end this vintage describes (YYYY-MM-DD). */
+  readonly periodEnd: string;
+  /** When these numbers were filed/published (YYYY-MM-DD), or null when unknown. */
+  readonly filingAsOf: string | null;
+  /** When the artifact carrying this period was acquired (ISO timestamp), or null. */
+  readonly acquiredAt: string | null;
+}
+
+/**
+ * Per-period publication vintage for a holdout run. `kind: "single-export"`
+ * means every period came from one dated snapshot — the common Capitaline case,
+ * which cannot support a vintage claim no matter how many periods it carries.
+ */
+export interface HoldoutVintageIndex {
+  readonly kind: PeriodObservationKind;
+  readonly periods: readonly PeriodVintage[];
 }
 
 export type MarketImpliedExpectationKey =
@@ -284,7 +330,9 @@ export interface AntiTautologySummary {
     calibrationStatus?: ForecastHoldoutSummary["aggregate"]["calibrationStatus"] | undefined;
     sampleSize?: number | undefined;
     benchmarkSkill?: number | null | undefined;
-    noLookAheadStatus?: "confirmed" | undefined;
+    noLookAheadStatus?: NoLookAheadDisclosure["status"] | undefined;
+    /** Split out so a reviewer can see which half of the claim is unproven. */
+    noLookAheadVintageDiscipline?: NoLookAheadDisclosure["vintageDiscipline"] | undefined;
   };
   priceDerivedIsolation: {
     reverseDcfExcludedFromIntrinsicConfidence: boolean;

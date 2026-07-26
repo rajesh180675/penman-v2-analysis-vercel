@@ -178,15 +178,23 @@ describe.sequential("auditCompanyRun", () => {
 
   expect(result.analysisFamily).toBe("financial-institution");
   expect(result.pipelineStrategyId).toBe("bank-v1");
-  // Valuation evidence itself reaches production-ready + confirmed
+  // Readiness is now COMPUTED from bank history depth and anchor contamination
+  // rather than hardcoded "production-ready" for every financial institution.
+  // HDFC Bank has sufficient history with a clean anchor, so it earns the status.
   expect(result.valuationEvidence.readinessStatus).toBe("production-ready");
-  expect(result.valuationEvidence.defensibilityStatus).toBe("confirmed");
+  // Null, not "confirmed": defensibility is a property of the evidence-weighted
+  // synthesis and the FI path runs no synthesis, so there is nothing to confirm.
+  expect(result.valuationEvidence.defensibilityStatus).toBeNull();
   expect(result.valuationEvidence.triangulationMethods.map((method) => method.key)).toEqual(
   expect.arrayContaining(["bank-pb", "bank-eri", "bank-ddm"]),
   );
+  // Registry vocabulary, and PB + ERI collapse into ONE group: justified P/B
+  // under Gordon growth is the closed form of equity residual income, so they
+  // are one piece of algebra, not two independent confirmations.
   expect(result.valuationEvidence.independentLensGroups).toEqual(
-  expect.arrayContaining(["book-value", "residual-income", "distribution"]),
+  expect.arrayContaining(["fi-book-residual-income", "fi-distribution"]),
   );
+  expect(result.valuationEvidence.independentLensGroups).not.toContain("book-value");
   // Rigor is capped below production-ready when analysisStatus is "guarded"
   // (diagnostic mapping gaps → deriveAnalysisStatus returns guarded, which
   // blocks the production-ready checkpoint in analysisTraceability).

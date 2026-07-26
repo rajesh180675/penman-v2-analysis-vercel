@@ -136,7 +136,7 @@ export function applyStructuralAdjustments(
 ): { adjustedValue: number; rationale: string } {
   const hasDiscOps = summary.events.some((e) => e.eventType === "discontinued-operations");
 
-  let adjustedValue = baseIntrinsicValue;
+  const adjustedValue = baseIntrinsicValue;
   const adjustments: string[] = [];
 
   if (hasDiscOps) {

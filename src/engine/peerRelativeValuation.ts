@@ -13,6 +13,11 @@
  */
 
 import { CompanyRegistry, MultiCompanyRecord, RecastPeriod, EngineConfig, CompanyType } from "./types";
+import {
+  resolvePeerPackEligibility,
+  usablePeerConstituents,
+  type PeerPack,
+} from "./marketPacks";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -51,6 +56,26 @@ export interface PeerMultipleImplied {
   peerCount: number;
 }
 
+/**
+ * Why the multiple-implied lens did or did not run.
+ *
+ * Previously its absence was indistinguishable from a peer signal of zero:
+ * `multipleImplied` came back `[]` and `compositeFairValue` came back null with
+ * no statement of why. A reviewer needs to tell "withheld" from "computed and
+ * uninformative".
+ */
+export interface PeerMultipleLensStatus {
+  status: "computed" | "skipped";
+  /** Present when skipped. */
+  reason?: string | undefined;
+  /** Pack date backing the multiples, when computed. */
+  asOf?: string | undefined;
+  /** Pack source backing the multiples, when computed. */
+  source?: string | undefined;
+  /** Constituents that carried both a dated price and a share count. */
+  usableConstituentCount: number;
+}
+
 export interface PeerRelativeResult {
   /** Target company ID */
   targetId: string;
@@ -60,6 +85,8 @@ export interface PeerRelativeResult {
   ratioRankings: PeerRatioRanking[];
   /** Multiple-implied fair values */
   multipleImplied: PeerMultipleImplied[];
+  /** Disclosure for the multiple-implied lens — never silently empty. */
+  multipleLens: PeerMultipleLensStatus;
   /** Composite implied fair value (median of all implied values) */
   compositeFairValue: number | null;
   /** Margin of safety vs composite (positive = undervalued) */
@@ -182,6 +209,16 @@ export function computePeerRelativeValuation(
   targetId: string,
   registry: CompanyRegistry,
   config: EngineConfig,
+  options?: {
+    /**
+     * Dated per-constituent prices and share counts. Without it the
+     * multiple-implied lens is skipped with a reason rather than returning an
+     * empty array that reads like a peer signal of zero.
+     */
+    readonly peerPack?: PeerPack | null | undefined;
+    /** Analysis date, for the pack's staleness and look-ahead checks. */
+    readonly analysisAsOf?: string | null | undefined;
+  },
 ): PeerRelativeResult | null {
   const allCompanies = Object.values(registry.companies).filter(c => c.recastData.length >= 2);
   if (allCompanies.length < 2) return null; // need at least 1 peer
@@ -241,54 +278,87 @@ export function computePeerRelativeValuation(
   // ── Multiple-Implied Fair Values ────────────────────────────────────────
   const targetFundamentals = extractFundamentals(target.recastData, config);
 
-  const comparisonSet = [target, ...peers];
-
-  // Collect PE, PB, PS from eligible peer group only. Cross-sector or blocked
-  // records are intentionally excluded so relative valuation cannot silently
-  // compare banks, cyclicals, loss-makers, and consumer compounders together.
-  const allPEs = comparisonSet
-    .map(c => {
-      const cConfig = c.id === targetId ? config : { ...config, shares_outstanding: undefined, market_price: undefined };
-      const f = extractFundamentals(c.recastData, cConfig);
-      return f.pe;
-    })
-    .filter((v): v is number => v != null && v > 0 && v < 200);
-
-  const allPBs = comparisonSet
-    .map(c => {
-      const f = extractFundamentals(c.recastData, c.id === targetId ? config : { ...config, shares_outstanding: undefined, market_price: undefined });
-      return f.pb;
-    })
-    .filter((v): v is number => v != null && v > 0 && v < 50);
+  // A peer multiple needs that peer's own price and share count. `EngineConfig`
+  // carries exactly one of each — the target's — so the previous implementation
+  // blanked them for peers and every peer PE/PB came back null. `allPEs` could
+  // then hold only the target's own PE, which the median call filtered out, so
+  // the lens was unreachable for all inputs. Peer prices now come from the
+  // pinned pack, which is the only place they exist.
+  const packEligibility = resolvePeerPackEligibility(options?.peerPack, {
+    analysisAsOf: options?.analysisAsOf ?? null,
+  });
 
   const multipleImplied: PeerMultipleImplied[] = [];
+  let multipleLens: PeerMultipleLensStatus;
 
-  // PE-implied
-  const peerMedianPE = median(allPEs.filter(v => v !== targetFundamentals.pe));
-  if (peerMedianPE != null && targetFundamentals.eps != null && targetFundamentals.eps > 0) {
-    const implied = peerMedianPE * targetFundamentals.eps;
-    multipleImplied.push({
-      metric: "PE",
-      peerMedianMultiple: peerMedianPE,
-      targetFundamental: targetFundamentals.eps,
-      impliedFairValue: implied,
-      premiumDiscount: targetFundamentals.marketPrice != null ? (targetFundamentals.marketPrice - implied) / implied : null,
-      peerCount: allPEs.length - (targetFundamentals.pe != null ? 1 : 0),
+  if (packEligibility.status !== "eligible") {
+    multipleLens = {
+      status: "skipped",
+      reason: packEligibility.reason,
+      usableConstituentCount: packEligibility.usableCount,
+    };
+  } else {
+    const constituents = usablePeerConstituents(options!.peerPack!);
+    const peerMultiples = peers.flatMap((peer) => {
+      const quote = constituents.get(peer.id);
+      if (!quote?.price || !quote.shares) return [];
+      const latest = peer.recastData[peer.recastData.length - 1];
+      if (!latest) return [];
+      const eps = latest.is.CNI / quote.shares;
+      const bvps = latest.bs.CSE / quote.shares;
+      return [{
+        pe: eps > 0 ? quote.price / eps : null,
+        pb: bvps > 0 ? quote.price / bvps : null,
+      }];
     });
-  }
 
-  // PB-implied
-  const peerMedianPB = median(allPBs.filter(v => v !== targetFundamentals.pb));
-  if (peerMedianPB != null && targetFundamentals.bvps != null && targetFundamentals.bvps > 0) {
-    const implied = peerMedianPB * targetFundamentals.bvps;
-    multipleImplied.push({
-      metric: "PB",
-      peerMedianMultiple: peerMedianPB,
-      targetFundamental: targetFundamentals.bvps,
-      impliedFairValue: implied,
-      premiumDiscount: targetFundamentals.marketPrice != null ? (targetFundamentals.marketPrice - implied) / implied : null,
-      peerCount: allPBs.length - (targetFundamentals.pb != null ? 1 : 0),
-    });
+    // Bands drop implausible multiples rather than letting one distressed or
+    // near-zero-earnings peer drag the median.
+    const peerPEs = peerMultiples
+      .map((item) => item.pe)
+      .filter((value): value is number => value != null && value > 0 && value < 200);
+    const peerPBs = peerMultiples
+      .map((item) => item.pb)
+      .filter((value): value is number => value != null && value > 0 && value < 50);
+
+    const peerMedianPE = median(peerPEs);
+    if (peerMedianPE != null && targetFundamentals.eps != null && targetFundamentals.eps > 0) {
+      const implied = peerMedianPE * targetFundamentals.eps;
+      multipleImplied.push({
+        metric: "PE",
+        peerMedianMultiple: peerMedianPE,
+        targetFundamental: targetFundamentals.eps,
+        impliedFairValue: implied,
+        premiumDiscount: targetFundamentals.marketPrice != null ? (targetFundamentals.marketPrice - implied) / implied : null,
+        peerCount: peerPEs.length,
+      });
+    }
+
+    const peerMedianPB = median(peerPBs);
+    if (peerMedianPB != null && targetFundamentals.bvps != null && targetFundamentals.bvps > 0) {
+      const implied = peerMedianPB * targetFundamentals.bvps;
+      multipleImplied.push({
+        metric: "PB",
+        peerMedianMultiple: peerMedianPB,
+        targetFundamental: targetFundamentals.bvps,
+        impliedFairValue: implied,
+        premiumDiscount: targetFundamentals.marketPrice != null ? (targetFundamentals.marketPrice - implied) / implied : null,
+        peerCount: peerPBs.length,
+      });
+    }
+
+    multipleLens = multipleImplied.length
+      ? {
+          status: "computed",
+          asOf: packEligibility.asOf,
+          source: packEligibility.source,
+          usableConstituentCount: packEligibility.usableCount,
+        }
+      : {
+          status: "skipped",
+          reason: "Peer pack was eligible but no peer produced a usable PE or PB, or the target has no positive EPS/BVPS.",
+          usableConstituentCount: packEligibility.usableCount,
+        };
   }
 
   // Composite implied fair value
@@ -307,8 +377,11 @@ export function computePeerRelativeValuation(
       .filter(r => r.targetPercentile != null)
       .map(r => `${r.label}: ${((r.targetValue ?? 0) * 100).toFixed(1)}% (P${r.targetPercentile} vs peers, median ${((r.peerMedian ?? 0) * 100).toFixed(1)}%)`),
     ...multipleImplied.map(m =>
-      `${m.metric}-implied: ₹${m.impliedFairValue?.toFixed(1)} (peer median ${m.metric}=${m.peerMedianMultiple?.toFixed(1)}x × ₹${m.targetFundamental?.toFixed(1)})`
+      `${m.metric}-implied: ₹${m.impliedFairValue?.toFixed(1)} (peer median ${m.metric}=${m.peerMedianMultiple?.toFixed(1)}x × ₹${m.targetFundamental?.toFixed(1)}, ${m.peerCount} peer(s) priced ${multipleLens.asOf ?? "undated"})`
     ),
+    // Say plainly that the lens was withheld. An absent line reads as "no peer
+    // signal"; this distinguishes it from "peer signal of zero".
+    ...(multipleLens.status === "skipped" ? [`Peer multiple lens skipped: ${multipleLens.reason}`] : []),
     ...(compositeFairValue != null ? [`Composite peer-implied fair value: ₹${compositeFairValue.toFixed(1)}`] : []),
     ...(compositeMarginOfSafety != null ? [`Margin of safety vs peer-implied: ${(compositeMarginOfSafety * 100).toFixed(1)}%`] : []),
   ];
@@ -318,6 +391,7 @@ export function computePeerRelativeValuation(
     peerCount: peers.length,
     ratioRankings,
     multipleImplied,
+    multipleLens,
     compositeFairValue,
     compositeMarginOfSafety,
     explanation,

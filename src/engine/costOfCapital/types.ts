@@ -1,4 +1,5 @@
 import type { EngineConfig, RecastPeriod } from "../types";
+import type { AssumptionTier, CapitalCostAssumptionSet } from "../assumptions/capitalCostAssumptions";
 
 export const COST_OF_CAPITAL_POLICY_VERSION = "2026-07-cost-of-capital-v1" as const;
 
@@ -8,6 +9,14 @@ export interface CostEvidence {
   readonly asOf: string | null;
   readonly value: number;
   readonly evidenceRefs: readonly string[];
+  /**
+   * Provenance strength of the value. Present for the CAPM inputs, which are the
+   * ones that were previously indistinguishable from sourced data; absent for
+   * components not yet tiered (debt cost, tax, capital structure).
+   */
+  readonly tier?: AssumptionTier | undefined;
+  /** Why a weaker tier was used. Present only when `tier` is `prior`. */
+  readonly fallbackReason?: string | undefined;
 }
 
 export type CostOfEquityPolicy =
@@ -21,6 +30,13 @@ export type CostOfEquityPolicy =
       readonly erpSource: string;
       readonly asOf: string | null;
       readonly evidenceRefs: readonly string[];
+      /**
+       * Provenance tiers for the three CAPM inputs above, when the policy was
+       * built from `costPoliciesFromConfig`. Optional so a caller can still
+       * hand-build a policy; when absent, evidence rows carry no tier and the
+       * assumption-provenance gate has nothing to judge.
+       */
+      readonly assumptions?: CapitalCostAssumptionSet | undefined;
     }
   | {
       readonly mode: "manual";
@@ -79,6 +95,12 @@ export interface CostOfCapitalResult {
   readonly beta: number | null;
   readonly riskFreeRate: number;
   readonly equityRiskPremium: number | null;
+  /**
+   * Provenance tiers for the capital-cost inputs, when the policy was built from
+   * `costPoliciesFromConfig`. Absent for manual ke and for hand-built policies —
+   * absent means "no tiers were reported", which is NOT the same as "sourced".
+   */
+  readonly assumptions?: CapitalCostAssumptionSet | undefined;
   readonly taxRate: number;
   readonly weights: CapitalStructureWeights;
   readonly evidence: readonly CostEvidence[];

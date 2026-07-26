@@ -51,7 +51,7 @@ A run must clear 5 sequential gates. Failure at any gate "fails-closed," blockin
 
 ### Traceability Envelope (Schema Version)
 - The `AnalysisTraceabilityEnvelope` is the shared confidence signal.
-- The current schema version is exported from [`src/engine/policyVersions.ts`](src/engine/policyVersions.ts) as `TRACEABILITY_SCHEMA_VERSION` (currently `2026-06-traceability-v20`). Treat that constant as the single source of truth; do not pin a literal version in prose. Persisted envelopes from older versions are walked forward by [`src/lib/envelopeMigrations.ts`](src/lib/envelopeMigrations.ts).
+- The current schema version is exported from [`src/engine/policyVersions.ts`](src/engine/policyVersions.ts) as `TRACEABILITY_SCHEMA_VERSION` (currently `2026-06-traceability-v22`). Treat that constant as the single source of truth; do not pin a literal version in prose. Persisted envelopes from older versions are walked forward by [`src/lib/envelopeMigrations.ts`](src/lib/envelopeMigrations.ts).
 - It contains: `confidence` (status, tone, headline), `rigor` (current level, achieved levels), `parserFidelity`, `reconciliation`, `mappingCoverage`, and valuation-time enrichments such as `analyticalDepth` / `antiTautology` when those surfaces have run.
 
 ## 4. Current Gaps & Improvement Roadmap

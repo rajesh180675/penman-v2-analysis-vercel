@@ -11,6 +11,8 @@ import { resolveValuationReadiness } from "../engine/valuationPolicy";
 import { selectPrimaryValuationData } from "../engine/valuationDataPolicy";
 import { AuditSubmissionMeta } from "../lib/audit";
 import { buildAnalysisTraceability } from "../engine/analysisTraceability";
+import { buildAssumptionProvenance } from "../engine/assumptionProvenance";
+import { buildEarningsQualitySummary } from "../engine/earningsQualitySummary";
 import { buildAnalysisPublicationSnapshot } from "../lib/publication/analysisPublicationSnapshot";
 import { buildComparisonPublicationSnapshot } from "../lib/publication/comparisonPublicationSnapshot";
 import { getAnalysisPolicyVersions } from "../engine/policyVersions";
@@ -62,7 +64,6 @@ export function useAuditAnalysis(inputs: AuditAnalysisInputs) {
   // serialized fingerprint so the memo only re-runs when config VALUES change,
   // not just the object reference. This eliminates ~100+ redundant pipeline runs
   // during the multi-setConfig initialization sequence.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const configFingerprint = useMemo(() => JSON.stringify(config), [config]);
   const pipelineResult = useMemo(() => {
     if (!valuationRawData || valuationRawData.length === 0) return null;
@@ -157,19 +158,35 @@ export function useAuditAnalysis(inputs: AuditAnalysisInputs) {
     () => deriveAnalysisStatus(qualityGateWithRecast, valuationReadiness, mappingAudit),
     [mappingAudit, qualityGateWithRecast, valuationReadiness],
   );
-  const valuationTriangulation = useMemo(() => {
+  // Keep the whole command center rather than one field off it. Two envelope
+  // inputs are derived from this single build (valuation triangulation and
+  // capital-cost provenance); discarding the rest meant the provenance gate fired
+  // in the run executor but not here, so the rigor stepper and the persisted run
+  // could disagree about production-readiness.
+  const commandCenter = useMemo(() => {
     if (!recastData?.length) return null;
     try {
       return buildValuationCommandCenter({
         data: recastData,
         config,
         analysisStatus,
-      }).valuationTriangulation;
+      });
     } catch (err) {
-      trace("valuation", "valuationTriangulation:error", { error: String(err), stack: (err as Error)?.stack }, null, { level: "warn" });
+      trace("valuation", "commandCenter:error", { error: String(err), stack: (err as Error)?.stack }, null, { level: "warn" });
       return null;
     }
   }, [analysisStatus, config, recastData]);
+  const valuationTriangulation = commandCenter?.valuationTriangulation ?? null;
+  // Null when no command center built: "no tiers reported" must not read as
+  // "inputs were sourced".
+  const assumptionProvenance = useMemo(
+    () => (commandCenter ? buildAssumptionProvenance(commandCenter.costOfCapital.assumptions) : null),
+    [commandCenter],
+  );
+  const earningsQuality = useMemo(
+    () => (commandCenter ? buildEarningsQualitySummary(commandCenter.earningsQuality) : null),
+    [commandCenter],
+  );
   const policyVersions = POLICY_VERSIONS;
   const latestPeriod = valuationRawData && valuationRawData.length > 0 ? valuationRawData[valuationRawData.length - 1]!.period_end : null;
   const traceability = useMemo(
@@ -199,8 +216,10 @@ export function useAuditAnalysis(inputs: AuditAnalysisInputs) {
       bankMetrics: bankResult?.bankMetrics ?? null,
       bankSubtype: bankResult?.subtype ?? null,
       valuationTriangulation,
+      assumptionProvenance,
+      earningsQuality,
     }),
-    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, qualityGateWithRecast, valuationRawData, rawData, recastData, bankResult, valuationTriangulation],
+    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, qualityGateWithRecast, valuationRawData, rawData, recastData, bankResult, valuationTriangulation, assumptionProvenance, earningsQuality],
   );
   const publication = useMemo(
     () => (recastData?.length

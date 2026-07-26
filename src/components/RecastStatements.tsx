@@ -25,10 +25,13 @@ export default function RecastStatements({ data, traceability = null, traceabili
     [traceability],
   );
   const traceabilitySummary = precomputedTraceabilitySummary ?? derivedTraceabilitySummary;
+  // Computed before the no-data guard below. `data` arriving on a mounted
+  // component would otherwise add a hook between renders, which React treats as
+  // a fatal error. An empty `data` maps to an empty array, so hoisting is safe.
+  const yoySales = useMemo(() => (data ?? []).map((d, i) => i === 0 ? null : (data[i - 1]!.is.Sales !== 0 ? (d.is.Sales - data[i - 1]!.is.Sales) / Math.abs(data[i - 1]!.is.Sales) : null)), [data]);
   if (!data || data.length === 0) return <div className="card-base p-12 text-center"><div className="text-5xl mb-3">📊</div><p className="text-slate-500">No data</p></div>;
 
   const years = data.map((d) => d.period_end.slice(0, 7));
-  const yoySales = useMemo(() => data.map((d, i) => i === 0 ? null : (data[i - 1]!.is.Sales !== 0 ? (d.is.Sales - data[i - 1]!.is.Sales) / Math.abs(data[i - 1]!.is.Sales) : null)), [data]);
   const cd = data.map((d, i) => ({
     period: years[i], OA: d.bs.OA, OL: d.bs.OL, NOA: d.bs.NOA,
     FA: d.bs.FA, CSE: d.bs.CSE, Sales: d.is.Sales,

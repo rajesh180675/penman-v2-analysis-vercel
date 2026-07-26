@@ -1,6 +1,8 @@
 import { deriveAnalysisStatus, type AnalysisStatusSummary } from "../analysisStatus";
 import { buildAnalysisTraceability } from "../analysisTraceability";
 import { evaluateAnalyticalDepth } from "../analyticalDepth";
+import { buildAssumptionProvenance } from "../assumptionProvenance";
+import { buildEarningsQualitySummary } from "../earningsQualitySummary";
 import type { BankQualityIndicators } from "../bankQualityIndicators";
 import type { CapitalineParseDebug, SourceArtifactHash } from "../capitalineParser";
 import { auditMappingCoverage, evaluateQualityGate, type MappingAuditReport, type QualityGateReport } from "../mappingAudit";
@@ -19,6 +21,7 @@ import {
   type ValuationModelResult as CatalogValuationModelResult,
 } from "../modelCatalog";
 import {
+  buildHoldoutVintageIndex,
   buildScenarioGovernanceReport,
   summarizeAntiTautology,
   type EvidenceWeightedValuationSynthesis,
@@ -29,7 +32,9 @@ import {
   selectUnifiedAnalysisWindow,
   selectFamilyPeriodAnalysisWindow,
   resolveSourcedAssumptionSet,
+  resolveAnalysisAssumptions,
   type AssumptionCandidate,
+  type AssumptionResolutionOutput,
   type SourcedAssumptionSet,
   type UnifiedAnalysisWindow,
 } from "../analysisCase";
@@ -210,6 +215,8 @@ export interface LegacyAnalysisRunExecutorDependencies {
   readonly getPolicyVersions: typeof getAnalysisPolicyVersions;
   readonly snapshotFlags: typeof snapshotFlags;
   readonly validateConfig: typeof validateEngineConfig;
+  /** P6 Stage 9 — native assumption resolution. */
+  readonly resolveAssumptions: typeof resolveAnalysisAssumptions;
 }
 
 const DEFAULT_DEPENDENCIES: LegacyAnalysisRunExecutorDependencies = {
@@ -226,6 +233,7 @@ const DEFAULT_DEPENDENCIES: LegacyAnalysisRunExecutorDependencies = {
   getPolicyVersions: getAnalysisPolicyVersions,
   snapshotFlags,
   validateConfig: validateEngineConfig,
+  resolveAssumptions: resolveAnalysisAssumptions,
 };
 
 interface TerminalOutcome {
@@ -468,51 +476,33 @@ function pointDistribution(value: number) {
   return { family: "point" as const, parameters: { value } };
 }
 
+/**
+ * P6 Stage 9: the capital-cost and market candidates now come from the native
+ * `resolveAnalysisAssumptions` stage instead of being read back off
+ * `commandCenter.costOfCapital`. The growth candidates below still read the
+ * monolith's base scenario card, because terminal growth and the year-1
+ * drivers are forecast output (Stage 10) and cannot be derived here without
+ * inventing a second, unvalidated derivation route.
+ *
+ * Candidate ORDER is load-bearing and unchanged: ke, kw, growth, market price.
+ * The array order feeds `assumptionSetId`, which feeds each run's
+ * `reproducibilityHash`, so reordering would make already-stored runs stop
+ * matching a re-run of identical data.
+ */
 function buildRunAssumptionCandidates(params: {
-  readonly window: UnifiedAnalysisWindow;
+  readonly resolution: AssumptionResolutionOutput;
   readonly commandCenter: ValuationCommandCenterOutput;
   readonly config: EngineConfig;
+  readonly window: UnifiedAnalysisWindow;
   readonly factRef: ContentRef<"fact-set">;
   readonly policyRef: ContentRef<"policy-bundle">;
-  readonly marketRef: ContentRef<"market-snapshot"> | null;
 }): AssumptionCandidate<unknown>[] {
   const included = params.window.includedPeriods;
   const periodWindow = included.length
     ? { from: included[0]!, to: included[included.length - 1]!, observations: included.length }
     : null;
-  const cost = params.commandCenter.costOfCapital;
   const base = params.commandCenter.scenarios.find((scenario) => scenario.key === "base");
-  const confidence = cost.status === "confirmed" ? "high" as const : cost.status === "guarded" ? "medium" as const : "unavailable" as const;
-  const candidates: AssumptionCandidate<unknown>[] = [
-    {
-      assumptionId: "cost-of-equity",
-      key: "ke",
-      value: cost.ke,
-      unit: "FRACTION",
-      mode: "derived",
-      evidenceRefs: [params.factRef, params.policyRef],
-      periodWindow,
-      range: null,
-      distribution: pointDistribution(cost.ke),
-      confidence,
-      reviewerState: "system",
-      required: true,
-    },
-    {
-      assumptionId: "operating-capital-cost",
-      key: "kw",
-      value: cost.kw,
-      unit: "FRACTION",
-      mode: "derived",
-      evidenceRefs: [params.factRef, params.policyRef],
-      periodWindow,
-      range: null,
-      distribution: pointDistribution(cost.kw),
-      confidence,
-      reviewerState: "system",
-      required: true,
-    },
-  ];
+  const candidates: AssumptionCandidate<unknown>[] = [...params.resolution.capitalCandidates];
   if (base) {
     const g = base.assumptions.g;
     candidates.push({
@@ -550,22 +540,7 @@ function buildRunAssumptionCandidates(params: {
       });
     }
   }
-  if (params.marketRef && params.commandCenter.marketPrice != null) {
-    candidates.push({
-      assumptionId: "market-price-observation",
-      key: "market_price",
-      value: params.commandCenter.marketPrice,
-      unit: "INR_PER_SHARE",
-      mode: "market-implied",
-      evidenceRefs: [params.marketRef],
-      periodWindow: null,
-      range: null,
-      distribution: pointDistribution(params.commandCenter.marketPrice),
-      confidence: "high",
-      reviewerState: "system",
-      required: false,
-    });
-  }
+  candidates.push(...params.resolution.marketCandidates);
   return candidates;
 }
 
@@ -1085,12 +1060,28 @@ export function createLegacyAnalysisRunExecutor(
 
       if (!terminal) {
         try {
+          // Publication vintage for the holdout's no-look-ahead claim. Only
+          // periods traceable to an artifact can be stamped; a
+          // "source-unavailable" period is simply omitted, which keeps the index
+          // incomplete and therefore withholds the claim rather than faking it.
+          const periodArtifacts: Record<string, string> = {};
+          for (const [periodEnd, source] of Object.entries(canonicalFacts?.periodSources ?? {})) {
+            if (source.kind === "source-unavailable") continue;
+            periodArtifacts[periodEnd] = source.artifactId;
+          }
+          const holdoutVintage = canonicalFacts
+            ? buildHoldoutVintageIndex({
+                artifacts: canonicalFacts.sourceArtifacts,
+                periodArtifacts,
+              })
+            : null;
           commandCenter = dependencies.buildCommandCenter({
             data: windowedRecastData,
             config,
             marketData: marketSnapshot,
             analysisStatus,
             segmentData,
+            holdoutVintage,
           });
         } catch (error) {
           terminal = { kind: "failed", stage: "model-execution", code: "LEGACY_COMMAND_CENTER_FAILED", message: errorMessage(error) };
@@ -1108,15 +1099,27 @@ export function createLegacyAnalysisRunExecutor(
       if (marketArtifact) artifacts.push(marketArtifact);
 
       if (!terminal && commandCenter && analysisWindow) {
+        // P6 Stage 9. Same periods and market snapshot the command center was
+        // built from on line 1073 — a different period set here would resolve a
+        // different cost of capital than the one the models actually used.
+        const resolution = dependencies.resolveAssumptions({
+          periods: windowedRecastData,
+          window: analysisWindow,
+          config,
+          marketSnapshot,
+          factRef: factArtifact.ref,
+          policyRef: policyArtifact.ref,
+          marketRef: marketArtifact?.ref ?? null,
+        });
         sourcedAssumptionSet = await resolveSourcedAssumptionSet({
           window: analysisWindow,
           candidates: buildRunAssumptionCandidates({
+            resolution,
             window: analysisWindow,
             commandCenter,
             config,
             factRef: factArtifact.ref,
             policyRef: policyArtifact.ref,
-            marketRef: marketArtifact?.ref ?? null,
           }),
         });
         if (sourcedAssumptionSet.status === "blocked") {
@@ -1283,6 +1286,16 @@ export function createLegacyAnalysisRunExecutor(
           bankMetrics: pipelineResult?.bankResult?.bankMetrics ?? null,
           bankSubtype: pipelineResult?.bankResult?.subtype ?? null,
           valuationTriangulation: commandCenter?.valuationTriangulation ?? null,
+          // Null when no valuation ran: the ladder must not read "no tiers
+          // reported" as evidence that the inputs were sourced.
+          assumptionProvenance: commandCenter
+            ? buildAssumptionProvenance(commandCenter.costOfCapital.assumptions)
+            : null,
+          // Null when no valuation ran: silence about earnings quality must not
+          // read as a clean bill of health.
+          earningsQuality: commandCenter
+            ? buildEarningsQualitySummary(commandCenter.earningsQuality)
+            : null,
         });
         envelope = {
           ...structuralEnvelope,

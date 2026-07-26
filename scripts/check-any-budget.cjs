@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable no-console */
 /**
  * Plan 1 PR-1.2 — `any` budget enforcement.
  *

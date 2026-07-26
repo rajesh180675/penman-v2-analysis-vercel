@@ -47,8 +47,8 @@ export function solveImpliedKeFromOwnerEarnings(params: {
   if (targetPrice == null || targetPrice <= 0 || ownerEarningsPerShare == null || ownerEarningsPerShare <= 0) return null;
   let low = params.low ?? Math.max(terminalGrowth + 0.01, 0.04);
   let high = params.high ?? 0.40;
-  let lowValue = computeOwnerEarningsDcf(ownerEarningsPerShare, growthPath, low, terminalGrowth);
-  let highValue = computeOwnerEarningsDcf(ownerEarningsPerShare, growthPath, high, terminalGrowth);
+  const lowValue = computeOwnerEarningsDcf(ownerEarningsPerShare, growthPath, low, terminalGrowth);
+  const highValue = computeOwnerEarningsDcf(ownerEarningsPerShare, growthPath, high, terminalGrowth);
   if (lowValue == null || highValue == null) return null;
   if (lowValue < targetPrice || highValue > targetPrice) return null;
   for (let i = 0; i < 60; i += 1) {

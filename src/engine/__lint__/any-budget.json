@@ -1,6 +1,6 @@
 {
   "_comment": "Plan 1 PR-1.2 — `any` budget lockfile. Each entry is the maximum number of `\\bany\\b` occurrences (excluding pure-comment lines, test files) tolerated in that file. Most entries are false positives — `\\bany\\b` matches the word in string literals (e.g. \"no data in any period\"), property names (e.g. `saturated.any`), or comments. Real `any` type annotations should be 0. Tighten budgets when content drops; never raise without justification. CI script: scripts/check-any-budget.cjs.",
-  "total": 20,
+  "total": 16,
   "perFile": {
     "src/engine/bankAssetQuality.ts": 3,
     "src/engine/bankValuation/shared.ts": 1,

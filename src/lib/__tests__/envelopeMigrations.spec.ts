@@ -106,4 +106,39 @@ describe("migrateEnvelope (Plan 6 PR-6.4)", () => {
     expect(r.migrationsApplied).toContain("2026-06-traceability-v19");
     expect(r.envelope.foo).toBe("baz");
   });
+
+  it("v20 → v21 adds assumptionProvenance defaulting to null, not to a tier", () => {
+    const input = { schemaVersion: "2026-06-traceability-v20", sourceArtifactHashes: null, foo: "qux" };
+    const r = migrateEnvelope(input);
+    expect(r.envelope.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    // Null means "provenance unknown". Back-filling a tier here would invent
+    // provenance a pre-v21 run never had, which is the defect the block exists
+    // to expose.
+    expect(r.envelope.assumptionProvenance).toBeNull();
+    expect(r.migrationsApplied).toContain("2026-06-traceability-v20");
+    expect(r.envelope.foo).toBe("qux");
+  });
+
+  it("preserves an assumptionProvenance block that already exists", () => {
+    const existing = { status: "mixed", priorTierKeys: ["beta"] };
+    const r = migrateEnvelope({ schemaVersion: "2026-06-traceability-v20", assumptionProvenance: existing });
+    expect(r.envelope.assumptionProvenance).toEqual(existing);
+  });
+
+  it("v21 → v22 adds earningsQuality defaulting to null, not to a clean status", () => {
+    const input = { schemaVersion: "2026-06-traceability-v21", assumptionProvenance: null, foo: "quux" };
+    const r = migrateEnvelope(input);
+    expect(r.envelope.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    // Null means "earnings quality unknown". A pre-v22 run never ran the
+    // scorecard, so defaulting to "confirmed" would invent a clean bill of health.
+    expect(r.envelope.earningsQuality).toBeNull();
+    expect(r.migrationsApplied).toContain("2026-06-traceability-v21");
+    expect(r.envelope.foo).toBe("quux");
+  });
+
+  it("preserves an earningsQuality block that already exists", () => {
+    const existing = { status: "unreliable", totalScore: 15, measuredCount: 4 };
+    const r = migrateEnvelope({ schemaVersion: "2026-06-traceability-v21", earningsQuality: existing });
+    expect(r.envelope.earningsQuality).toEqual(existing);
+  });
 });
