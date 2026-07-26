@@ -106,15 +106,6 @@ export function buildFallbackSnapshot({
   };
 }
 
-function pickLatestTreasuryYield(payload) {
-  const data = Array.isArray(payload?.data) ? payload.data : [];
-  const latest = data.find((entry) => entry?.value != null) ?? null;
-  return {
-    rate: latest ? toNumber(latest.value) : null,
-    asOf: latest?.date ?? null,
-  };
-}
-
 function parseAlphaVantageQuote(payload) {
   const quote = payload?.["Global Quote"] ?? null;
   if (!quote || typeof quote !== "object") return null;
@@ -188,29 +179,28 @@ async function fetchAlphaVantageSnapshot({ symbol, fallbackPrice, warnings, fetc
   }
 
   try {
-    const [quotePayload, treasuryPayload, historyPayload] = await Promise.all([
+    // No TREASURY_YIELD request. It used to supply the risk-free rate here, but
+    // `maturity=10year` on that endpoint is the *US* 10-year: these are rupee cash
+    // flows valued against an ERP that already carries an India country premium,
+    // so discounting INR at a USD rate is simply the wrong instrument. It was
+    // also the only rate on this path carrying a real observation date, which
+    // made it the one the client would tier `sourced` — the wrong instrument
+    // outranking everything else.
+    //
+    // Fetching it anyway and discarding the result would be worse than not
+    // fetching: a rejection from a request nobody consumes would take the whole
+    // Promise.all down and drop an otherwise valid quote into the catch path,
+    // and it would spend a request from a quota that is 25/day on the free tier.
+    const [quotePayload, historyPayload] = await Promise.all([
       readJson(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(alphaKey)}`),
-      readJson(`https://www.alphavantage.co/query?function=TREASURY_YIELD&interval=daily&maturity=10year&apikey=${encodeURIComponent(alphaKey)}`),
       readJson(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&outputsize=full&symbol=${encodeURIComponent(symbol)}&apikey=${encodeURIComponent(alphaKey)}`),
     ]);
-    if (quotePayload?.Note || treasuryPayload?.Note || historyPayload?.Note) {
+    if (quotePayload?.Note || historyPayload?.Note) {
       warnings.push("Alpha Vantage rate limit response received. Falling back where needed.");
     }
     const quote = parseAlphaVantageQuote(quotePayload);
-    const treasury = pickLatestTreasuryYield(treasuryPayload);
     const historyPoints = parseAlphaVantageHistory(historyPayload);
     const price = quote?.price ?? fallbackPrice ?? null;
-    // Deliberately NOT used as the risk-free rate. `TREASURY_YIELD&maturity=10year`
-    // is the *US* 10-year, and these are rupee cash flows valued against an ERP
-    // that already carries an India country premium. Discounting INR at a USD
-    // risk-free rate understates the rate and double-counts nothing in the right
-    // direction — it is simply the wrong currency. It was previously the only
-    // rate here carrying a real observation date, which made it the one the
-    // client would tier `sourced`, so the wrong instrument outranked everything.
-    if (treasury.rate != null) {
-      warnings.push("Alpha Vantage supplies a US 10Y Treasury yield, which is not a rupee risk-free rate; it was not used.");
-    }
-    const riskFreeRate = null;
     return {
       symbol,
       instrumentKey: null,
@@ -222,12 +212,16 @@ async function fetchAlphaVantageSnapshot({ symbol, fallbackPrice, warnings, fetc
       marketCap: null,
       enterpriseValue: null,
       sharesOutstanding: null,
-      riskFreeRate,
+      // Inlined: the `const riskFreeRate = null` this used to read went out with
+      // the Treasury request. No provider on this path observes a rupee rate.
+      riskFreeRate: null,
       priceAsOf: quote?.asOf ?? (fallbackPrice != null ? fetchedAt : null),
       rateAsOf: null,
       freshness: quote?.price != null ? "live" : (price == null ? "missing" : "fallback"),
+      // No longer claims a Treasury overlay: that request is gone, and the
+      // summary is what a reviewer reads to know what the snapshot rests on.
       sourceSummary: quote?.price != null
-        ? "Alpha Vantage quote feed with Treasury Yield overlay."
+        ? "Alpha Vantage quote feed."
         : "Alpha Vantage did not return a live quote; using fallback config where available.",
       warnings,
       history: summarizeHistoricalPrices(historyPoints, price),
@@ -434,7 +428,11 @@ async function fetchNseSnapshot({ rawSymbol, fallbackPrice, warnings, fetchedAt 
       enterpriseValue: null,
       sharesOutstanding: toNumber(info.issuedSize ?? quotePayload?.securityInfo?.issuedSize) ?? null,
       riskFreeRate,
-      priceAsOf: fetchedAt,
+      // Conditioned on the resolved price, which may be null once both NSE and
+      // the caller's fallback come up empty. Stamping `fetchedAt` regardless made
+      // absent data look current — the same defect as dating a rate nobody
+      // observed, one field over. Matches buildFallbackSnapshot.
+      priceAsOf: price != null ? fetchedAt : null,
       // Null, not fetchedAt: fetchedAt dates the HTTP request, not an observation.
       rateAsOf: null,
       freshness: price != null ? "live" : (fallbackPrice != null ? "fallback" : "missing"),
@@ -469,7 +467,8 @@ async function fetchNseSnapshot({ rawSymbol, fallbackPrice, warnings, fetchedAt 
         // path, and a hardcoded 0.07 stamped with `fetchedAt` was being tiered
         // `sourced` by the client. See buildFallbackSnapshot.
         riskFreeRate: null,
-        priceAsOf: fetchedAt,
+        // Conditioned on the resolved price — see the NSE path above.
+        priceAsOf: price != null ? fetchedAt : null,
         rateAsOf: null,
         freshness: price != null ? "live" : (fallbackPrice != null ? "fallback" : "missing"),
         sourceSummary: `NSE blocked, used Yahoo Finance for ${yahoo.rawSymbol}.`,
@@ -615,7 +614,8 @@ export default async function handler(request, response) {
         // path, and a hardcoded 0.07 stamped with `fetchedAt` was being tiered
         // `sourced` by the client. See buildFallbackSnapshot.
         riskFreeRate: null,
-        priceAsOf: fetchedAt,
+        // Conditioned on the resolved price — see the NSE path above.
+        priceAsOf: price != null ? fetchedAt : null,
         rateAsOf: null,
         freshness: price != null ? "live" : (fallbackPrice != null ? "fallback" : "missing"),
         sourceSummary: price != null
