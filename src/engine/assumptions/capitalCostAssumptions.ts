@@ -211,39 +211,37 @@ export interface LiveRiskFreeObservation {
 }
 
 /**
- * Resolve the risk-free rate: live snapshot, then a dated pack observation, then
- * the config constant.
+ * Resolve the risk-free rate: a *dated* live snapshot, then a dated pack
+ * observation, then an undated live snapshot, then the config constant.
  *
- * The live snapshot wins on *value* because that is what the engine already did;
- * changing that would move every discount rate. What changes is the *label*. An
- * undated live rate keeps being used but is tiered `prior`, because a rate we
- * cannot date cannot be reproduced by a reviewer — which is the whole claim the
- * tier is making.
+ * Precedence is by strength of provenance, not by source. A dated live rate
+ * outranks the pack because it is the same kind of claim, only fresher. An
+ * undated live rate does not: a number of unknown vintage cannot be reproduced
+ * by a reviewer, so it loses to a pack observation that can be, and it is the
+ * one case where the pack changes a *value* rather than only a label.
+ *
+ * That ordering matters more than it looks. Ranking any live rate above the pack
+ * meant a run could report a sourced ERP bolted to a `prior` risk-free rate
+ * while a dated rate sat unused in the pack — the exact opposite of what
+ * supplying a pack is asking for. With no pack supplied, resolution.riskFreeRate
+ * is unusable and this falls through to the undated live rate exactly as before,
+ * so no existing caller moves.
  */
 export function resolveRiskFreeRate(
   resolution: MacroPackResolution,
   config: EngineConfig,
   live?: LiveRiskFreeObservation | null | undefined,
 ): TieredAssumption {
-  if (live != null && Number.isFinite(live.value) && live.value > 0) {
-    return live.asOf
-      ? {
-          key: "risk-free-rate",
-          value: live.value,
-          tier: "sourced",
-          source: live.source,
-          asOf: live.asOf,
-          method: "Live market snapshot",
-        }
-      : {
-          key: "risk-free-rate",
-          value: live.value,
-          tier: "prior",
-          source: live.source,
-          asOf: null,
-          method: "Live market snapshot",
-          fallbackReason: "Live risk-free rate carries no as-of date, so it cannot be reproduced.",
-        };
+  const liveUsable = live != null && Number.isFinite(live.value) && live.value > 0;
+  if (liveUsable && live!.asOf) {
+    return {
+      key: "risk-free-rate",
+      value: live!.value,
+      tier: "sourced",
+      source: live!.source,
+      asOf: live!.asOf,
+      method: "Live market snapshot",
+    };
   }
 
   const observation = resolution.riskFreeRate;
@@ -257,6 +255,19 @@ export function resolveRiskFreeRate(
       method: "Pinned macro pack",
     };
   }
+
+  if (liveUsable) {
+    return {
+      key: "risk-free-rate",
+      value: live!.value,
+      tier: "prior",
+      source: live!.source,
+      asOf: null,
+      method: "Live market snapshot",
+      fallbackReason: "Live risk-free rate carries no as-of date, so it cannot be reproduced.",
+    };
+  }
+
   return {
     key: "risk-free-rate",
     value: config.risk_free_rate,

@@ -309,6 +309,52 @@ describe("legacy-backed AnalysisRun executor", () => {
     expect(deps.summarizeAntiTautology).toHaveBeenCalledTimes(1);
   });
 
+  it("dates pack staleness by the run's own asOf, not by the clock, on both capital-cost routes", async () => {
+    // A pack observation's tier depends on how old it is. If that age were
+    // measured against `new Date()`, this run would silently demote from
+    // `sourced` to `prior` 31 days after the rate was published — same inputs,
+    // different provenance claim, no code change. `metadata.asOf` is already
+    // pinned and already validated (AS_OF_REQUIRED / AS_OF_INVALID), so it is
+    // the date that makes the tier reproducible.
+    const deps = dependencies();
+    const execute = createLegacyAnalysisRunExecutor(deps);
+    const pack = {
+      asOf: "2026-07-01",
+      riskFreeRate: { value: 0.0685, asOf: "2026-07-01", source: "RBI 10Y G-Sec close" },
+      equityRiskPremium: { value: 0.0708, asOf: "2026-01-05", source: "Damodaran India ERP" },
+      longRunNominalGrowth: null,
+    };
+
+    const result = await execute({ ...input(), macroPack: pack });
+
+    expect(result.status).toBe("completed");
+    // Both routes, or the Stage 9 parity contract breaks: the native stage would
+    // resolve a discount rate the executed models never used.
+    expect(deps.buildCommandCenter).toHaveBeenCalledWith(
+      expect.objectContaining({ macroPack: pack, analysisAsOf: "2026-07-10" }),
+    );
+    expect(deps.resolveAssumptions).toHaveBeenCalledWith(
+      expect.objectContaining({ macroPack: pack, analysisAsOf: "2026-07-10" }),
+    );
+  });
+
+  it("leaves both capital-cost routes packless when no pack is supplied", async () => {
+    // The default every existing caller gets. An absent pack must stay absent
+    // rather than resolving to a house default, so nothing about adding this
+    // input moves an existing run's discount rate.
+    const deps = dependencies();
+    const execute = createLegacyAnalysisRunExecutor(deps);
+
+    await execute(input());
+
+    expect(deps.buildCommandCenter).toHaveBeenCalledWith(
+      expect.objectContaining({ macroPack: undefined, analysisAsOf: "2026-07-10" }),
+    );
+    expect(deps.resolveAssumptions).toHaveBeenCalledWith(
+      expect.objectContaining({ macroPack: undefined }),
+    );
+  });
+
   it("executes an approved, family-bound sector sidecar as an immutable catalog model result", async () => {
     const execute = createLegacyAnalysisRunExecutor(dependencies());
     const governed = input();

@@ -40,6 +40,7 @@ import type { LiveMarketDataSnapshot } from "../marketData";
 import { resolveShareBasis, type ResolvedShareBasis } from "../shareCountTools";
 import type { EngineConfig, RecastPeriod } from "../types";
 import { resolveValuationReadiness, type ValuationReadiness } from "../valuationPolicy";
+import type { MacroPack } from "../marketPacks";
 import type { AssumptionCandidate } from "./assumptions";
 import type { UnifiedAnalysisWindow } from "./window";
 
@@ -63,6 +64,15 @@ export interface AssumptionResolutionInput {
   readonly window: UnifiedAnalysisWindow;
   readonly config: EngineConfig;
   readonly marketSnapshot?: LiveMarketDataSnapshot | null | undefined;
+  /**
+   * Pinned macro pack, forwarded to the capital-cost resolver. Absent by
+   * default, matching `CoreBuildContext` — the parity spec compares this stage
+   * against the monolith, so the two must default the same way or they diverge
+   * on every fixture.
+   */
+  readonly macroPack?: MacroPack | null | undefined;
+  /** Run as-of date for the pack's staleness and look-ahead checks. */
+  readonly analysisAsOf?: string | null | undefined;
   readonly factRef: ContentRef<"fact-set">;
   readonly policyRef: ContentRef<"policy-bundle">;
   readonly marketRef?: ContentRef<"market-snapshot"> | null | undefined;
@@ -140,17 +150,30 @@ export function resolveAnalysisAssumptions(
   const previous = anchorPeriods.length >= 2 ? anchorPeriods[anchorPeriods.length - 2]! : null;
 
   const marketSnapshot = input.marketSnapshot ?? null;
-  const riskFreeRate = marketSnapshot?.riskFreeRate ?? input.config.risk_free_rate;
+  // Only a rate that actually came from the snapshot, mirroring core.ts. Passing
+  // `?? config.risk_free_rate` here made the resolver label an engine constant
+  // "Pinned market snapshot", which is a market attribution for a number no
+  // market produced.
+  const liveRiskFreeRate = marketSnapshot?.riskFreeRate ?? undefined;
   const marketPrice = marketSnapshot?.price ?? input.config.market_price ?? null;
-  const marketAsOf = marketSnapshot?.rateAsOf ?? marketSnapshot?.fetchedAt ?? null;
+  // `rateAsOf` only — `fetchedAt` dates the request, not the rate. See core.ts.
+  const marketAsOf = marketSnapshot?.rateAsOf ?? null;
 
   const costOfCapital = resolveCostOfCapitalFromConfig({
     config: input.config,
     current: latest,
     previous,
-    riskFreeRate,
+    riskFreeRate: liveRiskFreeRate,
     marketAsOf,
+    macroPack: input.macroPack,
+    analysisAsOf: input.analysisAsOf,
   });
+  // The rate the run reports, taken from the resolved assumption so it cannot
+  // disagree with the one inside ke. Falls back for manual-ke mode, which
+  // reports no assumption set.
+  const riskFreeRate = costOfCapital.assumptions?.riskFreeRate.value
+    ?? liveRiskFreeRate
+    ?? input.config.risk_free_rate;
 
   const included = input.window.includedPeriods;
   const periodWindow = included.length

@@ -2,7 +2,17 @@ name: Validate
 
 on:
   pull_request:
+  # Restricted to main. Unfiltered, this ran the entire matrix twice for every
+  # same-repo pull request — once for the branch push, once for the PR — which is
+  # ~14 duplicate jobs per PR including the 45-minute company-audit shards, and
+  # two sets of check results to read when diagnosing a failure.
+  #
+  # Branch protection's required `validate` context is unaffected: it is
+  # evaluated against the PR head commit, which the `pull_request` trigger above
+  # still covers. This trigger now serves its actual purpose, validating main
+  # after a merge.
   push:
+    branches: [main]
   schedule:
     - cron: "15 2 * * *"
 

@@ -70,12 +70,14 @@ export function buildFallbackSnapshot({
   symbol,
   instrumentKey,
   fallbackPrice,
-  fallbackRiskFreeRate,
   warnings,
   fetchedAt,
   sourceSummary,
 }) {
-  const freshness = fallbackPrice == null && fallbackRiskFreeRate == null ? "missing" : "fallback";
+  // Keys on the price alone. It used to also count a configured risk-free rate,
+  // but this snapshot no longer reports one, so a call with no price and a
+  // configured rate would have claimed "fallback" while carrying nothing.
+  const freshness = fallbackPrice == null ? "missing" : "fallback";
   return {
     symbol,
     instrumentKey,
@@ -87,9 +89,16 @@ export function buildFallbackSnapshot({
     marketCap: null,
     enterpriseValue: null,
     sharesOutstanding: null,
-    riskFreeRate: fallbackRiskFreeRate,
+    // No rate is reported here, and deliberately. This used to echo back a
+    // caller-supplied fallback rate — the client's own `config.risk_free_rate`
+    // round-tripping through an HTTP call — stamped with `fetchedAt`, which
+    // dates the call rather than any observation of a rate. The client tiers a
+    // *dated* live rate as `sourced`, so the pair laundered an engine constant
+    // into attributable market data. The client still falls back to its config
+    // on a null, labelled as the default it is.
+    riskFreeRate: null,
     priceAsOf: fallbackPrice != null ? fetchedAt : null,
-    rateAsOf: fallbackRiskFreeRate != null ? fetchedAt : null,
+    rateAsOf: null,
     freshness,
     sourceSummary,
     warnings,
@@ -151,7 +160,7 @@ function parseUpstoxQuote(payload, instrumentKey) {
   };
 }
 
-async function fetchAlphaVantageSnapshot({ symbol, fallbackPrice, fallbackRiskFreeRate, warnings, fetchedAt }) {
+async function fetchAlphaVantageSnapshot({ symbol, fallbackPrice, warnings, fetchedAt }) {
   const alphaKey = process.env.ALPHAVANTAGE_API_KEY;
   if (!alphaKey) {
     warnings.push("ALPHAVANTAGE_API_KEY is not configured.");
@@ -160,7 +169,6 @@ async function fetchAlphaVantageSnapshot({ symbol, fallbackPrice, fallbackRiskFr
       symbol,
       instrumentKey: null,
       fallbackPrice,
-      fallbackRiskFreeRate,
       warnings,
       fetchedAt,
       sourceSummary: "Using manual/config fallback because Alpha Vantage is not configured.",
@@ -173,7 +181,6 @@ async function fetchAlphaVantageSnapshot({ symbol, fallbackPrice, fallbackRiskFr
       symbol,
       instrumentKey: null,
       fallbackPrice,
-      fallbackRiskFreeRate,
       warnings,
       fetchedAt,
       sourceSummary: "Using manual/config fallback because no Alpha Vantage symbol is configured.",
@@ -193,7 +200,17 @@ async function fetchAlphaVantageSnapshot({ symbol, fallbackPrice, fallbackRiskFr
     const treasury = pickLatestTreasuryYield(treasuryPayload);
     const historyPoints = parseAlphaVantageHistory(historyPayload);
     const price = quote?.price ?? fallbackPrice ?? null;
-    const riskFreeRate = treasury.rate != null ? treasury.rate / 100 : fallbackRiskFreeRate ?? null;
+    // Deliberately NOT used as the risk-free rate. `TREASURY_YIELD&maturity=10year`
+    // is the *US* 10-year, and these are rupee cash flows valued against an ERP
+    // that already carries an India country premium. Discounting INR at a USD
+    // risk-free rate understates the rate and double-counts nothing in the right
+    // direction — it is simply the wrong currency. It was previously the only
+    // rate here carrying a real observation date, which made it the one the
+    // client would tier `sourced`, so the wrong instrument outranked everything.
+    if (treasury.rate != null) {
+      warnings.push("Alpha Vantage supplies a US 10Y Treasury yield, which is not a rupee risk-free rate; it was not used.");
+    }
+    const riskFreeRate = null;
     return {
       symbol,
       instrumentKey: null,
@@ -207,8 +224,8 @@ async function fetchAlphaVantageSnapshot({ symbol, fallbackPrice, fallbackRiskFr
       sharesOutstanding: null,
       riskFreeRate,
       priceAsOf: quote?.asOf ?? (fallbackPrice != null ? fetchedAt : null),
-      rateAsOf: treasury.asOf ?? (fallbackRiskFreeRate != null ? fetchedAt : null),
-      freshness: quote?.price != null ? "live" : (price == null && riskFreeRate == null ? "missing" : "fallback"),
+      rateAsOf: null,
+      freshness: quote?.price != null ? "live" : (price == null ? "missing" : "fallback"),
       sourceSummary: quote?.price != null
         ? "Alpha Vantage quote feed with Treasury Yield overlay."
         : "Alpha Vantage did not return a live quote; using fallback config where available.",
@@ -222,7 +239,6 @@ async function fetchAlphaVantageSnapshot({ symbol, fallbackPrice, fallbackRiskFr
       symbol,
       instrumentKey: null,
       fallbackPrice,
-      fallbackRiskFreeRate,
       warnings,
       fetchedAt,
       sourceSummary: "Using manual/config fallback because Alpha Vantage request failed.",
@@ -230,7 +246,7 @@ async function fetchAlphaVantageSnapshot({ symbol, fallbackPrice, fallbackRiskFr
   }
 }
 
-async function fetchUpstoxReadonlySnapshot({ symbol, instrumentKey, fallbackPrice, fallbackRiskFreeRate, warnings, fetchedAt }) {
+async function fetchUpstoxReadonlySnapshot({ symbol, instrumentKey, fallbackPrice, warnings, fetchedAt }) {
   const accessToken = process.env.UPSTOX_ACCESS_TOKEN;
   if (!accessToken) {
     warnings.push("UPSTOX_ACCESS_TOKEN is not configured.");
@@ -239,7 +255,6 @@ async function fetchUpstoxReadonlySnapshot({ symbol, instrumentKey, fallbackPric
       symbol,
       instrumentKey,
       fallbackPrice,
-      fallbackRiskFreeRate,
       warnings,
       fetchedAt,
       sourceSummary: "Using manual/config fallback because Upstox read-only auth is not configured.",
@@ -252,7 +267,6 @@ async function fetchUpstoxReadonlySnapshot({ symbol, instrumentKey, fallbackPric
       symbol,
       instrumentKey,
       fallbackPrice,
-      fallbackRiskFreeRate,
       warnings,
       fetchedAt,
       sourceSummary: "Using manual/config fallback because no Upstox instrument key is configured.",
@@ -281,12 +295,13 @@ async function fetchUpstoxReadonlySnapshot({ symbol, instrumentKey, fallbackPric
       marketCap: null,
       enterpriseValue: null,
       sharesOutstanding: null,
-      riskFreeRate: fallbackRiskFreeRate ?? null,
+      // Upstox returns quotes, not yields. See buildFallbackSnapshot.
+      riskFreeRate: null,
       priceAsOf: quote?.asOf ?? (fallbackPrice != null ? fetchedAt : null),
-      rateAsOf: fallbackRiskFreeRate != null ? fetchedAt : null,
-      freshness: quote?.price != null ? "live" : (price == null && fallbackRiskFreeRate == null ? "missing" : "fallback"),
+      rateAsOf: null,
+      freshness: quote?.price != null ? "live" : (price == null ? "missing" : "fallback"),
       sourceSummary: quote?.price != null
-        ? "Upstox read-only quote feed with manual/config rate fallback."
+        ? "Upstox read-only quote feed."
         : "Upstox did not return a quote; using fallback config where available.",
       warnings: quote?.price != null
         ? [...warnings, "Risk-free rate remains manual/config-driven in Upstox mode."]
@@ -300,7 +315,6 @@ async function fetchUpstoxReadonlySnapshot({ symbol, instrumentKey, fallbackPric
       symbol,
       instrumentKey,
       fallbackPrice,
-      fallbackRiskFreeRate,
       warnings,
       fetchedAt,
       sourceSummary: "Using manual/config fallback because the Upstox read-only request failed.",
@@ -369,7 +383,7 @@ async function fetchNseHistory(symbol) {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-async function fetchNseSnapshot({ rawSymbol, fallbackPrice, fallbackRiskFreeRate, warnings, fetchedAt }) {
+async function fetchNseSnapshot({ rawSymbol, fallbackPrice, warnings, fetchedAt }) {
   const symbol = resolveSymbolWithParity(rawSymbol, warnings);
   if (!symbol) {
     warnings.push("No NSE symbol configured.");
@@ -378,7 +392,6 @@ async function fetchNseSnapshot({ rawSymbol, fallbackPrice, fallbackRiskFreeRate
       symbol: rawSymbol,
       instrumentKey: null,
       fallbackPrice,
-      fallbackRiskFreeRate,
       warnings,
       fetchedAt,
       sourceSummary: "Using manual/config fallback because no NSE symbol is configured.",
@@ -399,8 +412,15 @@ async function fetchNseSnapshot({ rawSymbol, fallbackPrice, fallbackRiskFreeRate
       ? (price - previousClose) / previousClose
       : toNumber(priceInfo.pChange) != null ? toNumber(priceInfo.pChange) / 100 : null;
 
-    // India 10Y G-Sec as risk-free proxy — fallback to config
-    const riskFreeRate = fallbackRiskFreeRate ?? 0.07; // default 7% India 10Y
+    // NSE returns quotes, not yields — there is no observed risk-free rate on
+    // this path. This used to default to a hardcoded 0.07 paired with
+    // `rateAsOf: fetchedAt`; the client tiers a *dated* live rate as `sourced`,
+    // so a constant written in this file was presented as attributable market
+    // data. Echoing `fallbackRiskFreeRate` back undated is no better: the run
+    // executor blocks on a rate without an as-of date
+    // (MARKET_RATE_DATE_REQUIRED), so it would fail the run over a value the
+    // client already holds as config. Report nothing.
+    const riskFreeRate = null;
 
     return {
       symbol,
@@ -415,7 +435,8 @@ async function fetchNseSnapshot({ rawSymbol, fallbackPrice, fallbackRiskFreeRate
       sharesOutstanding: toNumber(info.issuedSize ?? quotePayload?.securityInfo?.issuedSize) ?? null,
       riskFreeRate,
       priceAsOf: fetchedAt,
-      rateAsOf: fetchedAt,
+      // Null, not fetchedAt: fetchedAt dates the HTTP request, not an observation.
+      rateAsOf: null,
       freshness: price != null ? "live" : (fallbackPrice != null ? "fallback" : "missing"),
       sourceSummary: price != null
         ? `NSE India live quote for ${symbol}.`
@@ -444,9 +465,12 @@ async function fetchNseSnapshot({ rawSymbol, fallbackPrice, fallbackRiskFreeRate
         marketCap: null,
         enterpriseValue: null,
         sharesOutstanding: null,
-        riskFreeRate: fallbackRiskFreeRate ?? 0.07,
+        // Yahoo returns quotes, not yields — there is no observed rate on this
+        // path, and a hardcoded 0.07 stamped with `fetchedAt` was being tiered
+        // `sourced` by the client. See buildFallbackSnapshot.
+        riskFreeRate: null,
         priceAsOf: fetchedAt,
-        rateAsOf: fetchedAt,
+        rateAsOf: null,
         freshness: price != null ? "live" : (fallbackPrice != null ? "fallback" : "missing"),
         sourceSummary: `NSE blocked, used Yahoo Finance for ${yahoo.rawSymbol}.`,
         warnings,
@@ -459,7 +483,6 @@ async function fetchNseSnapshot({ rawSymbol, fallbackPrice, fallbackRiskFreeRate
         symbol,
         instrumentKey: null,
         fallbackPrice,
-        fallbackRiskFreeRate,
         warnings,
         fetchedAt,
         sourceSummary: "NSE blocked and Yahoo Finance fallback also failed; using manual/config fallback.",
@@ -513,7 +536,10 @@ export default async function handler(request, response) {
   const symbol = sanitizeSymbol(request.query?.symbol);
   const instrumentKey = sanitizeText(request.query?.instrumentKey);
   const fallbackPrice = toNumber(request.query?.fallbackPrice);
-  const fallbackRiskFreeRate = toNumber(request.query?.fallbackRiskFreeRate);
+  // `fallbackRiskFreeRate` is deliberately not read. No provider here observes a
+  // rupee risk-free rate, so this endpoint reports none; echoing the client's own
+  // config value back would date an engine constant by the HTTP call. An older
+  // deployed client may still send the param — it is ignored, not rejected.
   const provider = sanitizeProvider(request.query?.provider)
     || sanitizeProvider(process.env.MARKET_DATA_PROVIDER)
     || "manual";
@@ -536,7 +562,6 @@ export default async function handler(request, response) {
       symbol,
       instrumentKey,
       fallbackPrice,
-      fallbackRiskFreeRate,
       warnings,
       fetchedAt,
       sourceSummary: "Live market data is disabled. Using manual/config inputs only.",
@@ -547,7 +572,6 @@ export default async function handler(request, response) {
       symbol,
       instrumentKey,
       fallbackPrice,
-      fallbackRiskFreeRate,
       warnings,
       fetchedAt,
       sourceSummary: "Using manual/config market inputs without any vendor API call.",
@@ -557,7 +581,6 @@ export default async function handler(request, response) {
       symbol,
       instrumentKey,
       fallbackPrice,
-      fallbackRiskFreeRate,
       warnings,
       fetchedAt,
     });
@@ -565,7 +588,6 @@ export default async function handler(request, response) {
     snapshot = await fetchNseSnapshot({
       rawSymbol: symbol,
       fallbackPrice,
-      fallbackRiskFreeRate,
       warnings,
       fetchedAt,
     });
@@ -589,9 +611,12 @@ export default async function handler(request, response) {
         marketCap: null,
         enterpriseValue: null,
         sharesOutstanding: null,
-        riskFreeRate: fallbackRiskFreeRate ?? 0.07,
+        // Yahoo returns quotes, not yields — there is no observed rate on this
+        // path, and a hardcoded 0.07 stamped with `fetchedAt` was being tiered
+        // `sourced` by the client. See buildFallbackSnapshot.
+        riskFreeRate: null,
         priceAsOf: fetchedAt,
-        rateAsOf: fetchedAt,
+        rateAsOf: null,
         freshness: price != null ? "live" : (fallbackPrice != null ? "fallback" : "missing"),
         sourceSummary: price != null
           ? `Yahoo Finance quote for ${yahoo.rawSymbol}.`
@@ -606,7 +631,6 @@ export default async function handler(request, response) {
         symbol: yahooSymbol ?? symbol,
         instrumentKey: null,
         fallbackPrice,
-        fallbackRiskFreeRate,
         warnings,
         fetchedAt,
         sourceSummary: "Yahoo Finance request failed, using fallback.",
@@ -616,7 +640,6 @@ export default async function handler(request, response) {
     snapshot = await fetchAlphaVantageSnapshot({
       symbol,
       fallbackPrice,
-      fallbackRiskFreeRate,
       warnings,
       fetchedAt,
     });

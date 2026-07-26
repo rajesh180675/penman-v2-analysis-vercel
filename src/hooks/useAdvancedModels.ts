@@ -39,8 +39,15 @@ export default function useAdvancedModels({ data, config, segmentData, marketDat
     config,
     current: data.at(-1) ?? null,
     previous: data.at(-2) ?? null,
-    riskFreeRate: marketData?.riskFreeRate ?? config.risk_free_rate,
-    marketAsOf: marketData?.rateAsOf ?? marketData?.fetchedAt ?? null,
+    // Only a rate the snapshot actually carried, and only the rate's own
+    // observation date. `?? config.risk_free_rate` made the resolver label an
+    // engine constant "Pinned market snapshot" — a market attribution for a
+    // number no market produced — and `?? fetchedAt` dated the rate by when the
+    // HTTP call ran. The value is unchanged: with no snapshot the resolver falls
+    // through to the same constant via the branch that says so. Matches
+    // valuationCommandCenter/core.ts and analysisCase/assumptionResolution.ts.
+    riskFreeRate: marketData?.riskFreeRate ?? undefined,
+    marketAsOf: marketData?.rateAsOf ?? null,
   }), [config, data, marketData]);
   const costOfCapital = capitalCostResult.ke;
   const price = marketData?.price ?? config.market_price ?? null;

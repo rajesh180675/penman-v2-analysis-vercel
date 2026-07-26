@@ -182,6 +182,79 @@ describe("macro-derived assumptions", () => {
     expect(result.fallbackReason).toContain("limit is 30 days");
   });
 
+  it("prefers a dated live rate over the pack, since it is the same claim only fresher", () => {
+    const result = resolveRiskFreeRate(resolveMacroPack(macroPack(), ANALYSIS_AS_OF), config, {
+      value: 0.0691,
+      asOf: "2026-07-24",
+      source: "NSE G-Sec close",
+    });
+
+    expect(result.tier).toBe("sourced");
+    expect(result.value).toBeCloseTo(0.0691, 6);
+    expect(result.method).toBe("Live market snapshot");
+  });
+
+  it("prefers a dated pack observation over an UNDATED live rate", () => {
+    // The ordering that matters. An undated rate cannot be reproduced by a
+    // reviewer, so it loses to one that can — and this is the single case where
+    // supplying a pack changes a *value* rather than only a label.
+    //
+    // Ranking any live rate above the pack (the previous behaviour) meant a run
+    // could report a sourced ERP bolted to a `prior` risk-free rate while a
+    // perfectly good dated rate sat unused in the pack, which is the opposite of
+    // what supplying a pack asks for.
+    const result = resolveRiskFreeRate(resolveMacroPack(macroPack(), ANALYSIS_AS_OF), config, {
+      value: 0.0719,
+      asOf: null,
+      source: "Pinned market snapshot",
+    });
+
+    expect(result.tier).toBe("sourced");
+    expect(result.value).toBeCloseTo(0.0685, 6);
+    expect(result.method).toBe("Pinned macro pack");
+    expect(result.asOf).toBe("2026-07-20");
+  });
+
+  it("still uses an undated live rate when no pack can supply one", () => {
+    // Non-regression: with no pack — which is every caller that has not opted in
+    // — an undated live rate keeps being used at its own value and keeps being
+    // labelled `prior`. Nothing about the reorder moves an existing discount rate.
+    const result = resolveRiskFreeRate(resolveMacroPack(null, ANALYSIS_AS_OF), config, {
+      value: 0.0719,
+      asOf: null,
+      source: "Pinned market snapshot",
+    });
+
+    expect(result.tier).toBe("prior");
+    expect(result.value).toBeCloseTo(0.0719, 6);
+    expect(result.fallbackReason).toContain("no as-of date");
+  });
+
+  it("falls back to an undated live rate when the pack's own rate is stale", () => {
+    // A stale pack observation is unusable, so it does not shield an undated live
+    // rate from being reported as the prior it is.
+    const stale = macroPack({ riskFreeRate: { value: 0.0685, asOf: "2026-01-05", source: "RBI 10Y G-Sec close" } });
+    const result = resolveRiskFreeRate(resolveMacroPack(stale, ANALYSIS_AS_OF), config, {
+      value: 0.0719,
+      asOf: null,
+      source: "Pinned market snapshot",
+    });
+
+    expect(result.tier).toBe("prior");
+    expect(result.value).toBeCloseTo(0.0719, 6);
+  });
+
+  it("ignores a non-positive live rate rather than discounting at zero", () => {
+    const result = resolveRiskFreeRate(resolveMacroPack(macroPack(), ANALYSIS_AS_OF), config, {
+      value: 0,
+      asOf: "2026-07-24",
+      source: "Broken feed",
+    });
+
+    expect(result.value).toBeCloseTo(0.0685, 6);
+    expect(result.method).toBe("Pinned macro pack");
+  });
+
   it("sources the terminal growth ceiling from long-run nominal growth", () => {
     const result = resolveTerminalGrowthCeiling(resolveMacroPack(macroPack(), ANALYSIS_AS_OF), config);
 

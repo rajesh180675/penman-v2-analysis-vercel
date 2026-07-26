@@ -7,6 +7,7 @@ import { resolveShareBasis } from "../shareCountTools";
 import { resolveValuationReadiness } from "../valuationPolicy";
 import { resolveValuationSectorTemplate } from "../valuationSectorTemplates";
 import type { SegmentData } from "../segmentParser";
+import type { MacroPack } from "../marketPacks";
 import { computeEvEbitdaCrossCheck, updateEvEbitdaWithMarketPrice } from "../evEbitdaCrossCheck";
 import { computeIndiaQualitySignals } from "../indiaQualitySignals";
 import { buildEarningsQualityCard, buildDechowDichevAndRem } from "../earningsQuality";
@@ -64,12 +65,31 @@ export type CoreBuildContext = {
    * reports its no-look-ahead claim as unverified rather than assuming it.
    */
   holdoutVintage?: HoldoutVintageIndex | null | undefined;
+  /**
+   * Pinned macro pack supplying a dated risk-free rate and ERP.
+   *
+   * Absent by default, and deliberately so: with no pack the capital-cost
+   * assumptions resolve to engine constants tiered `prior`, which is what every
+   * existing caller already got. A caller that wants sourced inputs has to say
+   * so, and has to say as of when.
+   */
+  macroPack?: MacroPack | null | undefined;
+  /**
+   * The run's as-of date, for the pack's staleness and look-ahead checks.
+   *
+   * Supplied by the caller rather than read off the clock in here. A pack
+   * observation whose tier depended on `new Date()` would silently demote from
+   * `sourced` to `prior` once it crossed its staleness window, so the same
+   * inputs would produce a different provenance claim depending on when you ran
+   * them — which is the property the pack exists to provide.
+   */
+  analysisAsOf?: string | null | undefined;
 };
 
 type CoreBuildResult = Omit<ValuationCommandCenterOutput, "backtest">;
 
 export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
-  const { data, config, marketData, analysisStatus } = context;
+  const { data, config, marketData, analysisStatus, macroPack, analysisAsOf } = context;
   const shareBasis = resolveShareBasis(data, config);
   const valuationReadiness = resolveValuationReadiness(data);
   const weakShareBasis = shareBasis.confidence === "LOW" || shareBasis.confidence === "FAILED";
@@ -87,7 +107,13 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
   const shares = shareBasis.sharesForPerShare ?? shareBasis.shares ?? null;
   const marketCapShares = shareBasis.sharesForMarketCap ?? shareBasis.shares ?? null;
   const marketPrice = marketData?.price ?? config.market_price ?? null;
-  const riskFreeRate = marketData?.riskFreeRate ?? config.risk_free_rate;
+  // Only a rate that genuinely came from the market snapshot. This used to read
+  // `marketData?.riskFreeRate ?? config.risk_free_rate` and hand the result to
+  // the resolver, which labelled it "Pinned market snapshot" — so on the primary
+  // app path, which passes no market data at all, an engine constant was
+  // attributed to a market feed it never touched. The constant is still the
+  // eventual fallback; it now arrives through the config branch that says so.
+  const liveRiskFreeRate = marketData?.riskFreeRate ?? undefined;
   const marketFreshness = marketData?.freshness ?? (marketPrice != null || marketData?.riskFreeRate != null ? "fallback" : "missing");
   const freshnessScore = scoreFreshness(marketFreshness);
   const marketWarnings = marketData?.warnings ?? [];
@@ -124,9 +150,25 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     config,
     current: latest,
     previous: prev,
-    riskFreeRate,
-    marketAsOf: marketData?.rateAsOf ?? marketData?.fetchedAt ?? null,
+    riskFreeRate: liveRiskFreeRate,
+    // `rateAsOf` only. This used to fall back to `fetchedAt`, which dates the
+    // HTTP call rather than the rate — and since the resolver tiers a *dated*
+    // live rate `sourced`, any snapshot at all was enough to date the rate and
+    // outrank a pinned pack observation. The run executor already refuses a rate
+    // without `rateAsOf` (MARKET_RATE_DATE_REQUIRED), so the fallback also
+    // contradicted the repo's own gate.
+    marketAsOf: marketData?.rateAsOf ?? null,
+    macroPack,
+    analysisAsOf,
   });
+  // The rate the rest of the run must use, so scenarios and the reported
+  // risk-free rate cannot drift from the one inside ke and kd. Reads the resolved
+  // assumption where there is one; CAPM mode with no pack resolves this to
+  // `live ?? config`, which is what this line used to compute directly, and
+  // manual-ke mode has no assumption set so it keeps that expression.
+  const riskFreeRate = costOfCapital.assumptions?.riskFreeRate.value
+    ?? liveRiskFreeRate
+    ?? config.risk_free_rate;
   const keBase = costOfCapital.ke;
   const kwBase = costOfCapital.kw;
   const { scenarios, derivedScenarios } = buildScenarioCards({

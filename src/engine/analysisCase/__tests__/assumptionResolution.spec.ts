@@ -18,6 +18,7 @@ import { resolveAnalysisAssumptions } from "../assumptionResolution";
 import { selectUnifiedAnalysisWindow, type UnifiedAnalysisWindow } from "../window";
 import { processCompanyData } from "../../pipeline";
 import { buildValuationCommandCenter } from "../../valuationCommandCenter";
+import { INDIA_MACRO_PACK } from "../../marketPacks";
 import { DEFAULT_CONFIG, type EngineConfig, type RawPeriodData, type RecastPeriod } from "../../types";
 import { INRAbsolute } from "../../types/units";
 import type { ContentRef } from "../../analysisRun";
@@ -37,6 +38,14 @@ function ref<TKind extends ContentRef["kind"]>(kind: TKind, seed: string): Conte
     schemaVersion: "test-v1",
   };
 }
+
+/**
+ * A date on which both of the pack's observations are fresh. Explicit, never
+ * `new Date()`: a clock-derived date would demote the risk-free rate from
+ * `sourced` to `prior` 31 days after it was published, turning a calendar event
+ * into a red test that looks like a code regression.
+ */
+const PACK_AS_OF = "2026-07-26";
 
 const FACT_REF = ref("fact-set", "a");
 const POLICY_REF = ref("policy-bundle", "b");
@@ -138,6 +147,115 @@ describe("Stage 9 assumption resolution — parity with the command-center monol
     // that makes a risk-free rate citable.
     expect(native.marketAsOf).toBe("2026-04-30");
     expect(native.costOfCapital).toEqual(monolith.costOfCapital);
+  });
+});
+
+describe("macro pack wiring — both routes, same answer", () => {
+  it("does not attribute the engine's own constant to a market snapshot", () => {
+    // The defect this guards. With no market data — which is what the primary app
+    // path passes — core.ts used to compute `marketData?.riskFreeRate ??
+    // config.risk_free_rate` and hand the result to the resolver, which labelled
+    // it "Pinned market snapshot". So an engine constant was reported to
+    // reviewers as a market observation. The value is unchanged; only the claim
+    // about where it came from is.
+    const periods = processCompanyData(vstRealCompanySample, DEFAULT_CONFIG);
+    const out = buildValuationCommandCenter({ data: periods, config: DEFAULT_CONFIG });
+    const rf = out.costOfCapital.assumptions?.riskFreeRate;
+
+    expect(rf?.tier).toBe("prior");
+    expect(rf?.source).toBe("Engine configuration");
+    expect(rf?.source).not.toContain("market snapshot");
+    expect(rf?.asOf).toBeNull();
+    expect(out.riskFreeRate).toBeCloseTo(DEFAULT_CONFIG.risk_free_rate, 10);
+  });
+
+  it("sources the risk-free rate and ERP from a supplied pack", async () => {
+    const { periods, window, config } = await setup(vstRealCompanySample);
+    const monolith = buildValuationCommandCenter({
+      data: periods, config, macroPack: INDIA_MACRO_PACK, analysisAsOf: PACK_AS_OF,
+    });
+    const rf = monolith.costOfCapital.assumptions?.riskFreeRate;
+    const erp = monolith.costOfCapital.assumptions?.equityRiskPremium;
+
+    expect(rf?.tier).toBe("sourced");
+    expect(rf?.value).toBeCloseTo(0.0682, 6);
+    expect(rf?.asOf).toBe("2026-07-24");
+    expect(erp?.tier).toBe("sourced");
+    expect(erp?.value).toBeCloseTo(0.0708, 6);
+    // The reported rate must be the resolved one. If these diverged, the rate on
+    // screen would not be the rate inside ke.
+    expect(monolith.riskFreeRate).toBeCloseTo(0.0682, 6);
+
+    // Beta is still a sector prior — no peer beta source exists — so a pack alone
+    // does not buy full defensibility. Asserted so nobody reads two sourced
+    // inputs as three.
+    expect(monolith.costOfCapital.assumptions?.fullyDefensible).toBe(false);
+    expect(monolith.costOfCapital.assumptions?.priorTierKeys).toContain("beta");
+
+    // And the native stage must agree, or the extraction has forked.
+    const native = resolveAnalysisAssumptions({
+      periods, window, config, factRef: FACT_REF, policyRef: POLICY_REF,
+      macroPack: INDIA_MACRO_PACK, analysisAsOf: PACK_AS_OF,
+    });
+    expect(native.costOfCapital).toEqual(monolith.costOfCapital);
+    expect(native.riskFreeRate).toBe(monolith.riskFreeRate);
+  });
+
+  it("leaves every existing caller's discount rate untouched", async () => {
+    // The reorder inside resolveRiskFreeRate only bites when a pack is supplied.
+    // No current production caller supplies one, so ke must be identical with the
+    // pack argument absent.
+    const { periods, config } = await setup(leveragedIndustrial);
+    const withoutPack = buildValuationCommandCenter({ data: periods, config });
+    const explicitlyNoPack = buildValuationCommandCenter({
+      data: periods, config, macroPack: null, analysisAsOf: null,
+    });
+
+    expect(explicitlyNoPack.costOfCapital.ke).toBe(withoutPack.costOfCapital.ke);
+    expect(explicitlyNoPack.costOfCapital.kw).toBe(withoutPack.costOfCapital.kw);
+  });
+
+  it("refuses the pack for an earlier valuation date rather than supplying a future rate", async () => {
+    // Look-ahead guard, end to end: a 2026 rate cannot inform a 2025 valuation,
+    // so both inputs fall back to labelled priors instead of quietly leaking a
+    // rate nobody could have known.
+    const { periods, config } = await setup(vstRealCompanySample);
+    const out = buildValuationCommandCenter({
+      data: periods, config, macroPack: INDIA_MACRO_PACK, analysisAsOf: "2025-03-31",
+    });
+
+    expect(out.costOfCapital.assumptions?.riskFreeRate.tier).toBe("prior");
+    expect(out.costOfCapital.assumptions?.riskFreeRate.fallbackReason).toMatch(/look-ahead/i);
+    expect(out.costOfCapital.assumptions?.equityRiskPremium.tier).toBe("prior");
+    expect(out.riskFreeRate).toBeCloseTo(config.risk_free_rate, 10);
+  });
+
+  it("prefers a dated market rate over the pack, and the pack over an undated one", async () => {
+    const { periods, config } = await setup(netCashCompounder);
+    const base = {
+      symbol: "TEST", provider: "test", fetchedAt: "2026-07-25T00:00:00.000Z",
+      price: 1234, previousClose: null, changePct: null, marketCap: null,
+      enterpriseValue: null, sharesOutstanding: null, priceAsOf: "2026-07-25",
+      freshness: "live" as const, sourceSummary: "test", warnings: [], history: null,
+    };
+
+    const dated = buildValuationCommandCenter({
+      data: periods, config, macroPack: INDIA_MACRO_PACK, analysisAsOf: PACK_AS_OF,
+      marketData: { ...base, riskFreeRate: 0.0691, rateAsOf: "2026-07-25" },
+    });
+    expect(dated.riskFreeRate).toBeCloseTo(0.0691, 6);
+    expect(dated.costOfCapital.assumptions?.riskFreeRate.tier).toBe("sourced");
+
+    // A rate with no `rateAsOf` is undated, even though the snapshot carries a
+    // `fetchedAt`. That timestamp records when the HTTP call ran, so it cannot
+    // date the rate — core.ts used to fall back to it, which meant any snapshot
+    // at all outranked a pinned observation.
+    const undated = buildValuationCommandCenter({
+      data: periods, config, macroPack: INDIA_MACRO_PACK, analysisAsOf: PACK_AS_OF,
+      marketData: { ...base, riskFreeRate: 0.0719, rateAsOf: null },
+    });
+    expect(undated.riskFreeRate).toBeCloseTo(0.0682, 6);
+    expect(undated.costOfCapital.assumptions?.riskFreeRate.method).toBe("Pinned macro pack");
   });
 });
 
