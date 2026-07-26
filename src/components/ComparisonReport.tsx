@@ -23,6 +23,26 @@ interface Props {
 
 const METRICS = ["ROCE", "RNOA", "PM", "ATO", "FLEV", "SPREAD"] as const;
 
+/**
+ * The comparable set, shared by the guard wrapper and the body below.
+ *
+ * Both need the same answer: the guard decides whether to render at all, the
+ * body decides what to render. Computing it twice let the "≥ 2 companies" gate
+ * drift out of sync with what the body actually shows if only one copy were
+ * edited.
+ */
+function comparableCompanies(
+  registry: CompanyRegistry,
+  runComparison: ReturnTypeOfPortfolioComparison | null | undefined,
+) {
+  const comparableIssuerIds = runComparison
+    ? new Set(runComparison.rows.filter((row) => row.comparable).map((row) => row.issuerId))
+    : null;
+  return Object.values(registry.companies).filter(
+    (c) => c.recastData.length > 0 && (!comparableIssuerIds || comparableIssuerIds.has(c.id)),
+  );
+}
+
 function percentileRank(values: number[], x: number) {
   if (!values.length) return null;
   const s = [...values].sort((a, b) => a - b);
@@ -41,8 +61,7 @@ function percentileRank(values: number[], x: number) {
  * nothing in it runs until there are at least two comparable companies.
  */
 export default function ComparisonReport(props: Props) {
-  const comparableIssuerIds = props.runComparison ? new Set(props.runComparison.rows.filter((row) => row.comparable).map((row) => row.issuerId)) : null;
-  const companies = Object.values(props.registry.companies).filter((c) => c.recastData.length > 0 && (!comparableIssuerIds || comparableIssuerIds.has(c.id)));
+  const companies = comparableCompanies(props.registry, props.runComparison);
   if (companies.length < 2) {
     return <div className="space-y-6">{props.runComparison && <RunBackedPortfolioComparison comparison={props.runComparison} />}<EmptyState icon="users" title="Need ≥ 2 companies" body="Load at least 2 companies to enable peer comparison." /></div>;
   }
@@ -50,8 +69,7 @@ export default function ComparisonReport(props: Props) {
 }
 
 function ComparisonReportBody({ registry, config, weakestTraceabilitySummary: precomputedWeakestSummary = null, publication = null, runComparison = null }: Props) {
-  const comparableIssuerIds = runComparison ? new Set(runComparison.rows.filter((row) => row.comparable).map((row) => row.issuerId)) : null;
-  const companies = Object.values(registry.companies).filter((c) => c.recastData.length > 0 && (!comparableIssuerIds || comparableIssuerIds.has(c.id)));
+  const companies = comparableCompanies(registry, runComparison);
 
   const comparisonPublication = publication ?? buildComparisonPublicationSnapshot(registry);
   const comparisonSummary = precomputedWeakestSummary
