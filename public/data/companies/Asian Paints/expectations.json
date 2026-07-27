@@ -30,7 +30,7 @@
   },
   "expectedRunsCleanWorkbook": true,
   "notes": "Clean Ind-AS profile, decorative paints leader, low leverage. Used as the happy-path baseline for Penman-Nissim industrial valuation.",
-  "capturedAt": "2026-07-27T05:02:35Z",
+  "capturedAt": "2026-07-27T06:01:25Z",
   "targetState": {
     "expectedRigorLevel": "valuation-eligible",
     "expectedParserFidelityStatus": "confirmed",

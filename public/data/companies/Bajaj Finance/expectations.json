@@ -40,7 +40,7 @@
   },
   "expectedRunsCleanWorkbook": true,
   "notes": "Largest non-bank lender in India. Tests NBFC pipeline (D3c subsidiary + D4 LGD/RBI-NHB sidecar). RNOA-style ratios are misleading for NBFCs; AUM growth and GNPA are the right gauges. Codifies the case study at docs/CASE_STUDY_BAJAJ_FINANCE.md.",
-  "capturedAt": "2026-07-27T05:02:40Z",
+  "capturedAt": "2026-07-27T06:01:52Z",
   "targetState": {
     "expectedRigorLevel": "valuation-eligible",
     "expectedParserFidelityStatus": "confirmed",
