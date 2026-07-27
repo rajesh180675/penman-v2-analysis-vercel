@@ -121,8 +121,17 @@ export function processBankData(
         // Only pull CASA from the sidecar when we have a matching quality record
         // AND the sidecar actually has a value. Do NOT overwrite a Capitaline-derived
         // casaRatio with null.
+        //
+        // `casa_pct` is a PERCENT (validated to [0, 100] in bankQualityIndicators)
+        // while `casaRatio` is a FRACTION — metrics.ts computes it as
+        // casaDeposits / deposits. Assigning across without /100 put 43.5 into a
+        // field the definitional check reads as 4350%, so
+        // "CASA ≤ Total Deposits" failed for every sidecar-backed period and
+        // reported "Indicates parse error" about the sidecar join, not the parse.
+        // Compare the cost-to-income branch immediately below, which has always
+        // divided.
         if (match.casa_pct != null) {
-          m.casaRatio = match.casa_pct;
+          m.casaRatio = match.casa_pct / 100;
         }
         // Phase D2 — AR-sourced cost-to-income (Opex/NTI) overrides the computed
         // value when available. The AR's "Total operating expenses to NTI" is the

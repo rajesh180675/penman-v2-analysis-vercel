@@ -116,6 +116,32 @@ describe("bankPipeline", () => {
     expect(fy24?.quality).toBeNull();
   });
 
+  it("converts the sidecar's CASA percent to a fraction on the way in", () => {
+    // `casa_pct` is a percent — bankQualityIndicators validates it to [0, 100].
+    // `casaRatio` is a fraction — metrics.ts computes casaDeposits / deposits.
+    // The join used to assign across without dividing, so 34.36 landed in a
+    // field the "CASA ≤ Total Deposits" reconciliation check reads as 3436%.
+    // That failed the check for every sidecar-backed period and blamed it on a
+    // parse error. The cost_to_income_pct branch beside it has always divided.
+    const scope = assessAnalysisScope(bankPeriods);
+    const quality = {
+      schema_version: "2026-05-bank-quality-v1",
+      company_name: "HDFC Bank Ltd",
+      as_of_date: "2025-03-31",
+      periods: [
+        { period_end: "2025-03-31", fiscal_label: "FY25", casa_pct: 34.36, cost_to_income_pct: 40.5 },
+      ],
+    };
+    const result = processBankData(bankPeriods, scope, undefined, null, quality);
+    const fy25 = result.bankMetrics!.find((m) => m.period_end === "2025-03-31");
+
+    expect(fy25?.casaRatio).toBeCloseTo(0.3436, 6);
+    // Sibling field, same block — pinned so the two stay in the same unit.
+    expect(fy25?.costToIncome).toBeCloseTo(0.405, 6);
+    // The raw sidecar record keeps its own percent units untouched.
+    expect(fy25?.quality?.casa_pct).toBe(34.36);
+  });
+
   it("leaves quality null when no sidecar provided (back-compat)", () => {
     const scope = assessAnalysisScope(bankPeriods);
     const result = processBankData(bankPeriods, scope);

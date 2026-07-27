@@ -88,18 +88,23 @@ describe("gridViaRegex", () => {
     });
   }
 
-  it("parses uppercase <TD>/<TH> tags that the legacy regex silently dropped", () => {
-    // Deliberate divergence from the oracle: legacy stripped the open tag with
-    // /^<(?:td|th)[^>]*>/ — no `i` flag — so an uppercase-tag document produced
-    // cells that still contained "<TD>" and an empty grid overall. The streaming
-    // walk is case-insensitive, so uppercase files now parse. Cell *contents*
-    // keep their original case either way.
+  it("parses uppercase <TD>/<TH> tags", () => {
+    // The streaming walk matches <td>/<th> case-insensitively, so uppercase
+    // files parse. Cell *contents* keep their original case.
+    //
+    // This used to assert the oracle returned [] here, because legacy strips the
+    // open tag with /^<(?:td|th)[^>]*>/ — no `i` flag — leaving "<TD>…</TD>" in
+    // the cell, which `cleanCell` then reduced to "". That legacy bug is still
+    // there, but it is no longer observable: cleanCell now falls back to
+    // stripping tags when "text after the last >" comes out empty, so the
+    // oracle recovers the same text. Both agree, and the divergence this case
+    // was written to pin has closed rather than been worked around.
     const html = `
       <TABLE>
         <TR><TD>Sales Of Products</TD><TD>10</TD></TR>
       </TABLE>`;
     expect(gridViaRegex(html)).toEqual([["Sales Of Products", "10"]]);
-    expect(gridViaRegexLegacy(html)).toEqual([]);
+    expect(gridViaRegexLegacy(html)).toEqual([["Sales Of Products", "10"]]);
   });
 
   it("extracts the expected grid for a Capitaline-shaped table", () => {
