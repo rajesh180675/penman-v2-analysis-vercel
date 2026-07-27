@@ -152,3 +152,84 @@ describe("NSE history row narrowing", () => {
     }
   });
 });
+
+/**
+ * A close price the feed never reported must not become a traded zero.
+ *
+ * Distinct from the narrowing above: that guards against losing real rows, this
+ * guards against inventing a fake one. `Number("")`, `Number(null)`,
+ * `Number("  ")` and `Number([])` are all `0`, so a blank close used to arrive as
+ * a real observation at zero — which `Math.min` then makes the 52-week low, the
+ * UI renders as `₹0.00` (RunInspector.tsx:297, SignalEngineSection.tsx:78), and
+ * `summarizeHistory`'s own `low52 > 0` guard rejects, silently blanking
+ * `distanceFrom52WeekLowPct` with no stated reason.
+ *
+ * Not a valuation defect: the percentile only selects narrative text in
+ * `buildRegimeContext` (regimeModel.ts:11-15), and `discountRateAdjustment`
+ * depends solely on the risk-free rate. It misreports a price, not a discount
+ * rate.
+ */
+describe("NSE close-price screening", () => {
+  // Each label records what this raw value produced before the screen. Measured
+  // against the real function, not hypothesised.
+  const COERCED_TO_A_NUMBER: [string, unknown][] = [
+    ["an empty string (was 0)", ""],
+    ["a whitespace-only string (was 0)", "   "],
+    ["an empty array (was 0)", []],
+    ["boolean true (was 1)", true],
+    ["a negative price (was -5)", -5],
+    ["an explicit zero", 0],
+  ];
+
+  it.each(COERCED_TO_A_NUMBER)(
+    "rejects %s rather than reporting it as a trade",
+    (_label, raw) => {
+      expect(parseNseHistoryRows([{ CH_TIMESTAMP: "2026-07-24", CH_CLOSING_PRICE: raw }])).toEqual([]);
+    },
+  );
+
+  /**
+   * `null` — the ordinary JSON encoding for a missing value — reaches the
+   * coercion only in the alternate field position, and the asymmetry is
+   * invisible from the call site.
+   *
+   * `CH_CLOSING_PRICE: null` alone was already rejected, but incidentally rather
+   * than deliberately: `??` fell through to an absent `CLOSE_PRICE`, and
+   * `Number(undefined)` is `NaN` where `Number(null)` is `0`. `CLOSE_PRICE: null`
+   * on its own did produce a zero, because `undefined ?? null` is `null`. All
+   * three positions are pinned so a later simplification of the chain cannot
+   * quietly restore the zero.
+   */
+  it("rejects a null close in every field position", () => {
+    const day = "2026-07-24";
+    expect(parseNseHistoryRows([{ CH_TIMESTAMP: day, CLOSE_PRICE: null }])).toEqual([]);
+    expect(parseNseHistoryRows([{ CH_TIMESTAMP: day, CH_CLOSING_PRICE: null }])).toEqual([]);
+    expect(parseNseHistoryRows([{ CH_TIMESTAMP: day, CH_CLOSING_PRICE: null, CLOSE_PRICE: null }])).toEqual([]);
+  });
+
+  it("keeps a blank close from hiding a usable alternate field", () => {
+    // `CH_CLOSING_PRICE ?? CLOSE_PRICE` stopped at "" — not nullish — and never
+    // reached the real value beside it. Screening each field separately recovers
+    // this row instead of scoring it zero.
+    const points = parseNseHistoryRows([
+      { CH_TIMESTAMP: "2026-07-24", CH_CLOSING_PRICE: "", CLOSE_PRICE: 3450.5 },
+    ]);
+    expect(points).toEqual([{ date: "2026-07-24", close: 3450.5 }]);
+  });
+
+  it("does not let one blank close become the 52-week low of the series", () => {
+    const points = parseNseHistoryRows([
+      { CH_TIMESTAMP: "2026-07-24", CH_CLOSING_PRICE: 3450.5 },
+      { CH_TIMESTAMP: "2026-07-23", CH_CLOSING_PRICE: null },
+      { CH_TIMESTAMP: "2026-07-22", CH_CLOSING_PRICE: 3402.15 },
+    ]);
+    expect(points.map(p => p.close)).toEqual([3450.5, 3402.15]);
+    expect(Math.min(...points.map(p => p.close!))).toBe(3402.15);
+  });
+
+  it("still accepts a legitimately small price", () => {
+    // The screen rejects non-positive, not sub-rupee: penny scrips are real.
+    const points = parseNseHistoryRows([{ CH_TIMESTAMP: "2026-07-24", CH_CLOSING_PRICE: 0.05 }]);
+    expect(points).toEqual([{ date: "2026-07-24", close: 0.05 }]);
+  });
+});
