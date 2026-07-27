@@ -835,7 +835,13 @@ function industrialValuationEvidenceSnapshot(valuation: ValuationCommandCenterOu
   };
 }
 
-function loadQualitySidecar(projectRoot: string, folder: string): { quality: BankQualityIndicators | null; flags: string[] } {
+/**
+ * Exported so `refresh-expectations.ts` can feed the baseline generator exactly
+ * what this gate feeds the pipeline. Without the sidecar the generator computed a
+ * different rigor level than the audit asserts, so a freshly generated baseline
+ * could never pass for a sidecar-backed company.
+ */
+export function loadQualitySidecar(projectRoot: string, folder: string): { quality: BankQualityIndicators | null; flags: string[] } {
   const sidecarPath = join(companiesDir(projectRoot), folder, "quality_indicators.json");
   if (!existsSync(sidecarPath)) return { quality: null, flags: [] };
 
@@ -913,7 +919,13 @@ function industrialMetricsSnapshot(periods: RecastPeriod[]): SectorMetrics {
   };
 }
 
-function buildAuditAnalysisContext(args: {
+/**
+ * Exported for `refresh-expectations.ts` — see {@link loadQualitySidecar}. The
+ * `analysisStatus` this derives feeds `buildAnalysisTraceability`, and omitting
+ * it changes the resulting rigor level, so the baseline generator has to derive
+ * it the same way.
+ */
+export function buildAuditAnalysisContext(args: {
   pipeline: PipelineResult;
 }) {
   const isFinancial = args.pipeline.analysisFamily === "financial-institution" && args.pipeline.bankResult != null;

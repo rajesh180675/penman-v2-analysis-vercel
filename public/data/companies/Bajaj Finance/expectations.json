@@ -4,7 +4,7 @@
   "profile": "nbfc",
   "expectedRigorLevel": "structurally-reconciled",
   "expectedParserFidelityStatus": "confirmed",
-  "expectedReconciliationStatus": "confirmed",
+  "expectedReconciliationStatus": "degraded",
   "expectedEconomicSanityStatus": "passed",
   "expectedConceptIdentityStatus": "clean",
   "keyMetricTolerances": {
@@ -20,6 +20,14 @@
       "min": 3.3402,
       "max": 4.0825
     },
+    "spread": {
+      "min": 0.1097,
+      "max": 0.1213
+    },
+    "creditCost": {
+      "min": 0.0167,
+      "max": 0.0267
+    },
     "costToIncome": {
       "min": 0.3154,
       "max": 0.3486
@@ -32,28 +40,24 @@
   },
   "expectedRunsCleanWorkbook": true,
   "notes": "Largest non-bank lender in India. Tests NBFC pipeline (D3c subsidiary + D4 LGD/RBI-NHB sidecar). RNOA-style ratios are misleading for NBFCs; AUM growth and GNPA are the right gauges. Codifies the case study at docs/CASE_STUDY_BAJAJ_FINANCE.md.",
-  "capturedAt": "2026-05-30T05:20:12Z",
+  "capturedAt": "2026-07-27T05:02:40Z",
   "targetState": {
-    "expectedRigorLevel": "syntactically-valid",
-    "expectedParserFidelityStatus": "failed",
+    "expectedRigorLevel": "valuation-eligible",
+    "expectedParserFidelityStatus": "confirmed",
     "expectedReconciliationStatus": "confirmed",
     "expectedAnomalyFlags": [],
     "keyMetricTolerances": {
-      "ROA": {
-        "min": 0.0349,
-        "max": 0.0449
+      "RNOA": {
+        "min": 0.02,
+        "max": 0.06
       },
-      "ROE": {
-        "min": 0.1815,
-        "max": 0.2006
+      "AUM_growth_3y": {
+        "min": 0.15,
+        "max": 0.4
       },
-      "leverage": {
-        "min": 3.3402,
-        "max": 4.0825
-      },
-      "costToIncome": {
-        "min": 0.4838,
-        "max": 0.5347
+      "GNPA": {
+        "min": 0.005,
+        "max": 0.025
       }
     }
   }

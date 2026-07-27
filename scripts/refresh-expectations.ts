@@ -26,6 +26,9 @@ import { processCompanyDataFull } from "../src/engine/pipeline";
 import { buildAnalysisTraceability } from "../src/engine/analysisTraceability";
 import { getAnalysisPolicyVersions } from "../src/engine/policyVersions";
 import { DEFAULT_CONFIG, EngineConfig } from "../src/engine/types";
+// Reuse the audit gate's own input assembly. Anything this generator does
+// differently from `auditCompanyRun` produces a baseline the gate cannot satisfy.
+import { buildAuditAnalysisContext, loadQualitySidecar } from "./lib/auditCompanyRun";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, "..");
@@ -110,13 +113,22 @@ async function refreshOne(company: RegistryEntry) {
     company_type: company.type as EngineConfig["company_type"],
   };
 
+  // Load the bank/NBFC quality sidecar and derive analysisStatus exactly as the
+  // audit gate does. Skipping either produced a baseline the gate could not
+  // satisfy: HDFC Bank generated "structurally-reconciled" here while the audit
+  // observed "syntactically-valid" for the same company, same commit, same
+  // environment — a permanently red gate that no amount of regeneration fixed.
+  const { quality } = loadQualitySidecar(PROJECT_ROOT, company.folder);
+
   let pipeline;
   try {
-    pipeline = processCompanyDataFull(parsed.periods, config);
+    pipeline = processCompanyDataFull(parsed.periods, config, quality);
   } catch (err) {
     console.log(`  ${company.folder}: SKIP (pipeline failed: ${(err as Error).message})`);
     return;
   }
+
+  const { analysisStatus } = buildAuditAnalysisContext({ pipeline });
 
   const trace = buildAnalysisTraceability({
     generatedAt: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
@@ -129,6 +141,7 @@ async function refreshOne(company: RegistryEntry) {
     periodCount: parsed.periods.length,
     recastPeriodCount: pipeline.periods.length,
     latestPeriod: parsed.periods[parsed.periods.length - 1]?.period_end ?? null,
+    analysisStatus,
     policyVersions: getAnalysisPolicyVersions(),
     debugInfo: parsed.debug,
     hasDebugInfo: Boolean(parsed.debug),
@@ -229,8 +242,18 @@ async function refreshOne(company: RegistryEntry) {
     expectedAnomalyFlags: observedAnomalyFlags,
     keyMetricTolerances: metricTolerances,
     capturedAt: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
-    targetState: {
-      // Aspirations stay locked here so the gap remains visible.
+    // Aspirations stay locked here so the gap remains visible. Carry forward an
+    // existing targetState untouched; only seed one from the top-level fields on
+    // the FIRST capture, when top-level still holds the aspiration.
+    //
+    // Seeding from `existing.expectedRigorLevel` unconditionally — as this did —
+    // is right exactly once. On every later run it copies the last OBSERVED
+    // state into the target, so the aspiration is overwritten by whatever the
+    // engine happened to produce and the gap silently closes without anything
+    // improving. That had already erased two: NTPC's target read
+    // "economically-plausible" and Asian Paints' "structurally-reconciled",
+    // and a plain refresh rewrote both to "syntactically-valid".
+    targetState: existing.targetState ?? {
       expectedRigorLevel: existing.expectedRigorLevel,
       expectedParserFidelityStatus: existing.expectedParserFidelityStatus,
       expectedReconciliationStatus: existing.expectedReconciliationStatus,

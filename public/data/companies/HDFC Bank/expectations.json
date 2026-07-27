@@ -2,9 +2,9 @@
   "companyId": "hdfc-bank",
   "companyName": "HDFC Bank Ltd",
   "profile": "bfsi",
-  "expectedRigorLevel": "structurally-reconciled",
+  "expectedRigorLevel": "syntactically-valid",
   "expectedParserFidelityStatus": "degraded",
-  "expectedReconciliationStatus": "confirmed",
+  "expectedReconciliationStatus": "failed",
   "expectedEconomicSanityStatus": "passed",
   "expectedConceptIdentityStatus": "clean",
   "keyMetricTolerances": {
@@ -15,6 +15,18 @@
     "ROE": {
       "min": 0.1384,
       "max": 0.153
+    },
+    "creditCost": {
+      "min": 0.0012,
+      "max": 0.0112
+    },
+    "costToIncome": {
+      "min": 0.1256,
+      "max": 0.1388
+    },
+    "casaRatio": {
+      "min": 33.06,
+      "max": 36.54
     }
   },
   "expectedAnomalyFlags": [],
@@ -24,20 +36,24 @@
   },
   "expectedRunsCleanWorkbook": true,
   "notes": "Largest private-sector Indian bank. Tests bank-pipeline path and ensures BFSI subtype routing is preserved across rigor v9-v12. NIM and CRAR dominate; Penman-Nissim ratios less informative for banks.",
-  "capturedAt": "2026-05-30T05:20:09Z",
+  "capturedAt": "2026-07-27T05:04:03Z",
   "targetState": {
-    "expectedRigorLevel": "syntactically-valid",
-    "expectedParserFidelityStatus": "failed",
+    "expectedRigorLevel": "valuation-eligible",
+    "expectedParserFidelityStatus": "confirmed",
     "expectedReconciliationStatus": "confirmed",
     "expectedAnomalyFlags": [],
     "keyMetricTolerances": {
-      "ROA": {
-        "min": 0.0124,
-        "max": 0.0224
+      "RNOA": {
+        "min": 0,
+        "max": 0.05
       },
-      "ROE": {
-        "min": 0.1384,
-        "max": 0.153
+      "NIM": {
+        "min": 0.025,
+        "max": 0.05
+      },
+      "CRAR": {
+        "min": 0.15,
+        "max": 0.25
       }
     }
   }
