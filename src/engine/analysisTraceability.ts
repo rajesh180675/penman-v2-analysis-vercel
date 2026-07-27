@@ -547,7 +547,7 @@ export function buildAnalysisTraceability(params: {
   }
   // Assumption-provenance gate.
   //
-  // ke = rf + beta × ERP. When BOTH beta and the ERP are undated defaults, the
+  // ke = rf + beta × ERP. When ANY of those three is an undated default, the
   // discount rate is an assumption with a decimal point on it, and every
   // downstream intrinsic value inherits that. Structural checks cannot detect
   // this: the value resolved without error, so parser fidelity, reconciliation,
@@ -565,9 +565,24 @@ export function buildAnalysisTraceability(params: {
   // means no tiers were reported, which is not evidence of guessing.
   const assumptionProvenance = params.assumptionProvenance ?? null;
   const assumptionProvenanceBlockEnabled = isEnabled("rigor.assumptionProvenanceBlock");
-  const keRestsOnPriors = assumptionProvenance != null
-    && assumptionProvenance.priorTierKeys.includes("beta")
-    && assumptionProvenance.priorTierKeys.includes("equity-risk-premium");
+  // Named explicitly rather than testing `priorCount > 0`, because not every
+  // prior is a ke input. `terminal-growth-ceiling` resolves `prior` on every run
+  // today — `INDIA_MACRO_PACK.longRunNominalGrowth` is deliberately null, since a
+  // perpetual growth ceiling is a structural judgment nobody publishes as an
+  // observation — so a count-based gate would block every run forever and could
+  // never be cleared by better sourcing.
+  const KE_INPUT_KEYS = ["risk-free-rate", "beta", "equity-risk-premium"] as const;
+  const kePriorKeys = assumptionProvenance
+    ? KE_INPUT_KEYS.filter((key) => assumptionProvenance.priorTierKeys.includes(key))
+    : [];
+  // ANY, not ALL. This used to require beta AND the ERP to both be priors, which
+  // made the gate unclearable in the wrong direction: it also meant sourcing
+  // *one* of them switched the gate off for the other. A company whose regressed
+  // beta is too imprecise to use (IDEA, se 0.25) would have reached
+  // production-ready on a sector-prior beta the moment the ERP became sourced,
+  // which is the opposite of what supplying a pack should buy. One guessed term
+  // in a three-term product is enough to make the product a guess.
+  const keRestsOnPriors = kePriorKeys.length > 0;
   const assumptionProvenanceBlocksProduction = keRestsOnPriors && assumptionProvenanceBlockEnabled;
   if (assumptionProvenanceBlocksProduction) {
     const idx = checkpoints.findIndex((c) => c.level === "production-ready");
@@ -575,7 +590,10 @@ export function buildAnalysisTraceability(params: {
       checkpoints[idx] = {
         ...checkpoints[idx]!,
         achieved: false,
-        detail: `Cost of equity rests on undated priors (${assumptionProvenance!.priorTierKeys.join(", ")}); production-ready requires an estimated or dated-source beta and equity risk premium. ${assumptionProvenance!.summary}`,
+        // Lists the ke-input priors only. Joining every prior key would name
+        // `terminal-growth-ceiling` as a reason the *cost of equity* is a guess,
+        // which it is not — it does not appear in ke at all.
+        detail: `Cost of equity rests on undated priors (${kePriorKeys.join(", ")}); production-ready requires an estimated or dated-source risk-free rate, beta, and equity risk premium. ${assumptionProvenance!.summary}`,
       };
     }
   }
