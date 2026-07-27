@@ -128,6 +128,20 @@ export function cleanCell(raw: string | null | undefined): string {
       const gIdx = s.lastIndexOf(">");
       if (gIdx >= 0) {
         s = s.slice(gIdx + 1);
+        // …unless that leaves nothing, which happens when the content is wrapped
+        // in a plain tag carrying no ng-binding class:
+        //   <label style="padding-left:15px;">Goodwill</label>
+        // Here the last `>` closes `</label>`, so the slice above is "" and the
+        // metric-name column silently blanked. On TCS's balance sheet that hit
+        // 1697 of 1789 rows, and gridToPeriods drops every labelless row (there
+        // is no key to file its values under), losing ~89% of the metrics while
+        // still reporting a healthy 15-period parse.
+        //
+        // Falling back only when the slice is empty keeps the Angular
+        // attribute-residue case intact — `… 'red'" class="ng-scope">22,403.63`
+        // still resolves via the slice, because there the slice is non-empty and
+        // stripping tags would leave the residue behind.
+        if (!s.trim()) s = raw.replace(/<[^>]*>/g, "");
       } else {
         // Strip HTML tags
         s = s.replace(/<[^>]*>/g, "");
