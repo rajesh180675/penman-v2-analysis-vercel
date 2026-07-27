@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom (audit transport reads window/browser storage) */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getAuditRecoveryState,

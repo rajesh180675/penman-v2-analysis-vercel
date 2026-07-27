@@ -14,7 +14,23 @@ export default defineConfig({
     },
   },
   test: {
-    environment: "jsdom",
+    // `node`, not `jsdom`. Standing up a jsdom document per file dominated the
+    // clock on a suite that is overwhelmingly pure computation: `environment` was
+    // 138s of one shard's 188s and 446s of another's 835s, and 238 of the 258
+    // runnable specs never touch a DOM.
+    //
+    // The 20 that do are marked `@vitest-environment jsdom` in their own
+    // docblocks, which override this default (as do the 11 that already carried
+    // that marker, and 4 explicit `node` ones). The list was not derived by
+    // grepping for `document`/`window` — that both over- and under-matches, since
+    // it hits the word "window" in prose and misses DOM use inside a spec's
+    // import graph. It came from running every directory under `--environment
+    // node` and marking exactly what failed.
+    //
+    // A new spec now defaults to node. One that needs a DOM fails loudly on
+    // `document is not defined` and wants the docblock, which is the right
+    // failure mode: explicit rather than silently slow.
+    environment: "node",
     setupFiles: ["./src/test/setup.ts"],
     // Real-company Capitaline fixtures can spend >60s in beforeAll under full
     // fork contention on Windows even though the isolated suite is healthy.

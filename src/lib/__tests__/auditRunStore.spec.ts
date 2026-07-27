@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom (browser-storage-backed store) */
 /* ================================================================
    Plan 4 PR-4.2 — auditRunStore contract tests.
 ================================================================ */
