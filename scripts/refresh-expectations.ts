@@ -118,7 +118,18 @@ async function refreshOne(company: RegistryEntry) {
   // satisfy: HDFC Bank generated "structurally-reconciled" here while the audit
   // observed "syntactically-valid" for the same company, same commit, same
   // environment — a permanently red gate that no amount of regeneration fixed.
-  const { quality } = loadQualitySidecar(PROJECT_ROOT, company.folder);
+  const { quality, flags: qualityFlags } = loadQualitySidecar(PROJECT_ROOT, company.folder);
+  if (qualityFlags.length > 0) {
+    // Fail closed rather than capture. The audit gate records these flags and
+    // carries on, so it would observe a state derived from a broken sidecar; if
+    // we captured the same thing the baseline would agree with the audit and the
+    // gate would go green over an input nobody validated. Skipping leaves the
+    // previous baseline in place, which can turn the gate red — that is the
+    // intended direction. Currently unreachable: all 33 registry companies load
+    // clean (10 have a sidecar, 0 flagged).
+    console.log(`  ${company.folder}: SKIP (${qualityFlags.join(", ")})`);
+    return;
+  }
 
   let pipeline;
   try {

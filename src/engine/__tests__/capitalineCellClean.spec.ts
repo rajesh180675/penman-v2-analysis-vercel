@@ -74,4 +74,30 @@ describe("cleanCell — cases the fix must not regress", () => {
     expect(cleanCell("")).toBe("");
     expect(cleanCell("<label></label>")).toBe("");
   });
+
+  it("returns empty for residue whose value is empty, rather than the residue itself", () => {
+    // Both conditions on the fallback exist for this case. The slice after the
+    // last `>` is empty, so the fallback is consulted — but there is no `<` in
+    // the input, so stripping tags is a no-op and would hand back the whole
+    // `= 0 ? '' : 'red'" class="ng-scope"` string as if it were a cell value.
+    // Requiring the stripped text to be free of `>` keeps this at "".
+    expect(cleanCell(`= 0 ? '' : 'red'" class="ng-scope">`)).toBe("");
+    expect(cleanCell(`= 0 ? '' : 'red'" class="ng-scope">   `)).toBe("");
+  });
+
+  it("judges emptiness on the decoded slice, not the raw one", () => {
+    // `&nbsp;` is non-empty as raw text but whitespace once decoded. Deciding
+    // before decoding meant the fallback never fired and the label was still
+    // lost — the same defect this fix is for, one entity deep.
+    expect(cleanCell('<label style="padding-left:15px;">Goodwill</label>&nbsp;')).toBe("Goodwill");
+    expect(cleanCell("<td>9108.00</td>&nbsp;")).toBe("9108.00");
+    // …and a cell that is only an entity space still reads as empty.
+    expect(cleanCell("<td>&nbsp;</td>")).toBe("");
+  });
+
+  it("keeps encoded angle brackets in the recovered text", () => {
+    // Decoding happens after tag stripping, so an encoded `>` in the content
+    // cannot be mistaken for markup on the way through.
+    expect(cleanCell("<td>A &gt; B</td>")).toBe("A > B");
+  });
 });

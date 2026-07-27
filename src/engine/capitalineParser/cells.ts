@@ -98,6 +98,17 @@ export function norm(s: string): string {
     .trim();
 }
 
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'");
+}
+
 /**
  * Clean Angular template residue from cells.
  *
@@ -137,11 +148,24 @@ export function cleanCell(raw: string | null | undefined): string {
         // is no key to file its values under), losing ~89% of the metrics while
         // still reporting a healthy 15-period parse.
         //
-        // Falling back only when the slice is empty keeps the Angular
-        // attribute-residue case intact — `… 'red'" class="ng-scope">22,403.63`
-        // still resolves via the slice, because there the slice is non-empty and
-        // stripping tags would leave the residue behind.
-        if (!s.trim()) s = raw.replace(/<[^>]*>/g, "");
+        // Two conditions, and both are load-bearing:
+        //
+        //  - Emptiness is judged on the DECODED slice. `…</label>&nbsp;` leaves
+        //    a slice of "&nbsp;", which is non-empty as raw text but is
+        //    whitespace once decoded — so without decoding first the fallback
+        //    never fires and the label is still lost.
+        //
+        //  - The stripped text must not itself still contain a `>`. That is what
+        //    keeps the Angular attribute-residue case intact. For a residue cell
+        //    whose value is empty — `= 0 ? '' : 'red'" class="ng-scope">` —
+        //    there is no `<`, so stripping tags is a no-op and the "fallback"
+        //    would hand back the entire residue string as though it were cell
+        //    content. Requiring a clean strip means well-formed markup recovers
+        //    its text and residue still resolves to "".
+        if (!decodeEntities(s).trim()) {
+          const stripped = raw.replace(/<[^>]*>/g, "");
+          if (!stripped.includes(">")) s = stripped;
+        }
       } else {
         // Strip HTML tags
         s = s.replace(/<[^>]*>/g, "");
@@ -149,17 +173,7 @@ export function cleanCell(raw: string | null | undefined): string {
     }
   }
 
-  // Decode HTML entities
-  s = s
-    .replace(/&amp;/g, "&")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'");
-
-  return norm(s);
+  return norm(decodeEntities(s));
 }
 
 export function parseNum(cell: string | null | undefined): number | null {
