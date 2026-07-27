@@ -61,6 +61,35 @@ function fingerprint(value: unknown): string {
   return JSON.stringify(value) ?? "null";
 }
 
+/**
+ * Market snapshots are re-fetched on a timer — every five minutes by default,
+ * and as often as every thirty seconds when a caller lowers `refreshSeconds`
+ * (useLiveMarketData clamps to that floor). Every response carries a fresh
+ * `fetchedAt`, along with `priceAsOf`/`rateAsOf`, which the market-data route
+ * pins to `fetchedAt` whenever the vendor supplies no date of its own.
+ *
+ * Fingerprinting the raw snapshot therefore changed on every poll even when the
+ * price, rate and history were byte-identical. That re-fired the execution
+ * effect, incremented the run ordinal, and rebuilt the market-snapshot artifact
+ * whose ref sits inside the identity core — so a page left open replaced its own
+ * reproducibility hash once per refresh interval without any analytical input
+ * having moved. A run's identity has to survive an idle page.
+ *
+ * The dates are truncated rather than dropped: the staleness checks that read
+ * them reason in whole days, so crossing into a new trading day is a real
+ * analytical change and must still fork the run.
+ */
+function fingerprintMarketSnapshot(snapshot: LiveMarketDataSnapshot | null): string {
+  if (!snapshot) return fingerprint(snapshot);
+  const day = (value: string | null) => (value ? value.slice(0, 10) : null);
+  return fingerprint({
+    ...snapshot,
+    fetchedAt: day(snapshot.fetchedAt),
+    priceAsOf: day(snapshot.priceAsOf),
+    rateAsOf: day(snapshot.rateAsOf),
+  });
+}
+
 function relationForExecution(
   previous: PreviousExecution | null,
   issuerId: string,
@@ -108,7 +137,7 @@ export function useAnalysisRunExecution(
 
   const rawFingerprint = useMemo(() => fingerprint(inputs.rawData), [inputs.rawData]);
   const configFingerprint = useMemo(() => fingerprint(inputs.config), [inputs.config]);
-  const marketFingerprint = useMemo(() => fingerprint(inputs.marketSnapshot), [inputs.marketSnapshot]);
+  const marketFingerprint = useMemo(() => fingerprintMarketSnapshot(inputs.marketSnapshot), [inputs.marketSnapshot]);
   const auditFingerprint = useMemo(() => fingerprint(inputs.auditMeta), [inputs.auditMeta]);
   const auxiliaryFingerprint = useMemo(() => fingerprint({
     bankQuality: inputs.bankQuality,
@@ -254,4 +283,5 @@ export function useAnalysisRunExecution(
 
 export const analysisRunCoordinatorInternals = {
   relationForExecution,
+  fingerprintMarketSnapshot,
 };

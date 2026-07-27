@@ -33,6 +33,7 @@
     "test:e2e": "playwright test",
     "test:e2e:tcs-audit": "playwright test e2e/tcs-audit-acceptance.spec.ts",
     "test:e2e:a11y": "playwright test e2e/accessibility.spec.ts",
+    "test:e2e:pipeline": "playwright test e2e/full-pipeline.spec.ts",
     "lint": "eslint . --max-warnings=92",
     "lint:fix": "eslint . --fix",
     "lint:any": "node scripts/check-any-budget.cjs",

@@ -77,15 +77,47 @@ async function readImmutableRunIdentity(page: Page) {
   return { runId, hash, windowHash, marketHash };
 }
 
+/**
+ * Wait until the run identity stops moving.
+ *
+ * Loading a company mints more than one run by design: `rawData` is gated on
+ * asynchronous advanced-model governance (AppShell → usePlatformGovernanceEvidence),
+ * so a first run executes and a second, legitimately different one follows a few
+ * seconds later once that resolves.
+ *
+ * Returning after two matching samples two seconds apart could land inside that
+ * gap, and every later assertion then compared against an identity the app had
+ * already superseded — which is how this spec failed intermittently at the
+ * per-tab checks and consistently at the one that followed them. Requiring the
+ * runId to hold across a longer quiet window describes the settling behaviour
+ * instead of racing it.
+ */
 async function readStableImmutableRunIdentity(page: Page) {
+  // Governance settles in a few seconds; 60s is generous. Deliberately not
+  // larger: loadCompanyFromLibrary can already spend 75s of the 180s test
+  // budget, so a longer wait here would blow the test timeout and report a
+  // generic Playwright failure instead of the message below.
+  const quietMs = 10_000;
+  const settleBudgetMs = 60_000;
+  const deadline = Date.now() + settleBudgetMs;
   let identity = await readImmutableRunIdentity(page);
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    await page.waitForTimeout(2_000);
+  let stableSince = Date.now();
+
+  while (Date.now() < deadline) {
+    await page.waitForTimeout(1_000);
     const next = await readImmutableRunIdentity(page);
-    if (next.runId === identity.runId) return next;
+    if (next.runId !== identity.runId) {
+      identity = next;
+      stableSince = Date.now();
+      continue;
+    }
     identity = next;
+    if (Date.now() - stableSince >= quietMs) return next;
   }
-  return identity;
+  throw new Error(
+    `Run identity never settled: still ${identity.runId} after ${settleBudgetMs / 1_000}s. `
+    + "A run is being re-minted repeatedly — check what keeps changing the execution fingerprints.",
+  );
 }
 
 test.describe("Bundled company pipeline", () => {
@@ -125,7 +157,21 @@ test.describe("Bundled company pipeline", () => {
       expect(await readImmutableRunIdentity(page)).toEqual(expected);
     }
 
-    await expect(page.locator("main").first()).toContainText(expected.hash!, { timeout: 30_000 });
+    // This used to assert the full 64-hex hash appeared as text in `main`, which
+    // no surface renders for this run: the status bar always elides it
+    // (`sha256:6202cbbc…5dc6625`, AnalysisRunStatusBar) and the one component
+    // that prints every character — the academic memo header — does not mount
+    // when the run is blocked, as Asian Paints' is at model-execution. The
+    // assertion and the eliding renderer landed in the same commit (9bb5cb04),
+    // so it was never green.
+    //
+    // The intent is still worth keeping: the hash must be reachable by a human,
+    // not only through data attributes a test can read. That is what the status
+    // bar's title exposes.
+    const hashCode = page.getByRole("region", { name: "Immutable analysis run identity" }).locator("code");
+    await expect(hashCode).toHaveAttribute("title", expected.hash!);
+    await expect(hashCode).toContainText(expected.hash!.slice(0, 17));
+    await expect(hashCode).toContainText(expected.hash!.slice(-10));
   });
 
   test("uses crore shares directly for FI market cap and preserves the run hash", async ({ page }) => {
