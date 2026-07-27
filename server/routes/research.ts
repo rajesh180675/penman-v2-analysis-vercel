@@ -7,7 +7,7 @@ const COMPARISON_REGISTRY_SCHEMA_VERSION = "2026-04-comparison-registry-v1";
 
 /** Reject path segments containing traversal or separators. */
 function isSafeSegment(s: string): boolean {
-  return !/[\/\\]/.test(s) && !s.includes("..") && s.length > 0 && s.length < 128;
+  return !/[/\\]/.test(s) && !s.includes("..") && s.length > 0 && s.length < 128;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

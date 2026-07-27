@@ -382,7 +382,6 @@ async function run() {
   // Phase 1: Load metadata and discover new folders
   const metadataMap = loadMetadata();
   const items = fs.readdirSync(companiesDir);
-  let newCompanies = 0;
 
   for (const item of items) {
     const itemPath = path.join(companiesDir, item);
@@ -392,7 +391,6 @@ async function run() {
     // New folder without metadata entry — auto-add with inferred values
     const inferred = inferMetadata(item);
     metadataMap.set(item, inferred);
-    newCompanies++;
     console.warn(
       `\n\u26a0  NEW COMPANY: "${item}"\n` +
       `   Inferred: ticker=${inferred.ticker}, type=${inferred.type}\n` +

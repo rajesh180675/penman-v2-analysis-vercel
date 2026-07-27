@@ -61,7 +61,10 @@ export default async function handler(request, response) {
     counts: run.counts,
     inputs: run.inputs,
     artifacts: run.artifacts,
-    timeline: run.timeline.slice(0, 20).map(({ runAccessHash, ...item }) => item),
+    // Destructured only to strip it from the response. Keep the rename form:
+    // `{ _runAccessHash, ...item }` would pick a property that does not exist
+    // and leak the real runAccessHash into `item`.
+    timeline: run.timeline.slice(0, 20).map(({ runAccessHash: _runAccessHash, ...item }) => item),
     latestAnalysisSnapshot: run.latestAnalysisSnapshot,
     latestMarketSnapshot: run.latestMarketSnapshot,
     latestValuationSignal: run.latestValuationSignal,

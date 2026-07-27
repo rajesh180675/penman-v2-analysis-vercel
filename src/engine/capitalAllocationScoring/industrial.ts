@@ -93,7 +93,6 @@ function scoreBuybackQuality(
   let buybacksValueAccretive = 0;
   let dilutiveIssuances = 0;
   let totalBuybackPeriods = 0;
-  let totalIssuancePeriods = 0;
   let buybackWithoutSpread = 0;
   let totalGrossBuyback = 0;
   let totalGrossIssuance = 0;
@@ -128,7 +127,6 @@ function scoreBuybackQuality(
     // Dilutive net-issuance check (existing semantics): equity issued
     // exceeds buyback amount by 10%+ in a SPREAD-negative year.
     if (issuance > buyback * 1.1) {
-      totalIssuancePeriods++;
       if (spread !== null && spread < 0) {
         dilutiveIssuances++;
         pScore = pScore == null ? 15 : Math.min(pScore, 15); // dilutive issuance — bad

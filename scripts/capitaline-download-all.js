@@ -18,11 +18,6 @@
 
 (function capitalineDownloadAll() {
   const DELAY = 3000; // ms between actions (3 seconds)
-  const scope = () => {
-    const el = document.querySelector('[ng-controller]') || document.body;
-    return window.angular?.element(el)?.scope?.() || 
-           window.angular?.element(document.querySelector('select'))?.scope?.();
-  };
 
   function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
