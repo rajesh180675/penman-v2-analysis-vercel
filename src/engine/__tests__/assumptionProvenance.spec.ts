@@ -224,10 +224,22 @@ describe("assumption-provenance rigor gate", () => {
     expect(env.assumptionProvenance?.status).toBe("defensible");
   });
 
-  it("does not fire when a sourced ERP carries a sector beta", () => {
-    // Threshold is deliberate: ke = rf + beta x ERP, and the gate asks whether
-    // the risk-premium term is entirely unsourced. A sector beta against a dated
-    // ERP is a weaker claim, reported as `mixed`, but not a fabricated one.
+  it("fires when a sourced ERP carries a sector beta", () => {
+    // THRESHOLD CHANGE, and a deliberate reversal. This case used to be allowed
+    // through, on the rationale that the gate asked whether the risk-premium term
+    // was *entirely* unsourced, and that a sector beta against a dated ERP was a
+    // weaker claim rather than a fabricated one.
+    //
+    // What changed is what a `prior` beta means. That rationale was written when
+    // beta had no path to anything else: `MIN_BOTTOM_UP_PEERS` is 5 and no loaded
+    // company has a peer set that deep, so `prior` was the only tier beta could
+    // ever report, and a gate that fired on it would have been permanently
+    // unclearable. With the regressed beta pack, `prior` now means the opposite of
+    // absent — the company WAS regressed against NIFTY 50 and the slope came back
+    // too imprecise to use (IDEA: 1.43, se 0.25, r-squared 0.11). That is an
+    // active negative finding about this company, and a run cannot claim
+    // readiness for final reporting while one term of its discount rate is a
+    // sector average standing in for a rejected measurement.
     const env = envelope(buildAssumptionProvenance(resolveCapitalCostAssumptions({
       config: { ...DEFAULT_CONFIG, company_type: "consumer" },
       macroPack: macroPack(),
@@ -235,6 +247,65 @@ describe("assumption-provenance rigor gate", () => {
     })));
 
     expect(env.assumptionProvenance?.status).toBe("mixed");
+    expect(env.rigor.achievedLevels).not.toContain("production-ready");
+    const checkpoint = env.rigor.checkpoints.find((item) => item.level === "production-ready");
+    expect(checkpoint?.detail).toMatch(/beta/);
+    // Names only the offending term. The ERP is sourced here, so listing it as a
+    // reason the cost of equity is a guess would be false.
+    expect(checkpoint?.detail).not.toMatch(/equity-risk-premium/);
+  });
+
+  it("still leaves valuation-eligible intact when only beta is a prior", () => {
+    // The tightening withholds the release claim; it must not delete the
+    // analysis. Same principle as the all-priors case, asserted separately
+    // because this is the path the shipped packs actually produce for the two
+    // companies whose betas are too noisy to use.
+    const env = envelope(buildAssumptionProvenance(resolveCapitalCostAssumptions({
+      config: { ...DEFAULT_CONFIG, company_type: "consumer" },
+      macroPack: macroPack(),
+      analysisAsOf: ANALYSIS_AS_OF,
+    })));
+
+    expect(env.rigor.achievedLevels).toContain("valuation-eligible");
+    expect(env.rigor.currentLevel).toBe("valuation-eligible");
+  });
+
+  it("fires on any single ke term, including the risk-free rate", () => {
+    // ke = rf + beta x ERP has three terms and the gate covers all three. An
+    // undated rf is the same defect as an undated beta: the headline discount
+    // rate contains a number nobody observed.
+    for (const drop of ["riskFreeRate", "equityRiskPremium"] as const) {
+      const env = envelope(buildAssumptionProvenance(resolveCapitalCostAssumptions({
+        config: { ...DEFAULT_CONFIG, company_type: "consumer" },
+        macroPack: { ...macroPack(), [drop]: null },
+        analysisAsOf: ANALYSIS_AS_OF,
+        peerBetas: peerBetas(),
+        targetDebtToEquity: 0.5,
+        taxRate: 0.25,
+      })));
+
+      expect(env.rigor.achievedLevels, drop).not.toContain("production-ready");
+    }
+  });
+
+  it("does not fire on a prior terminal-growth ceiling, which is not a ke term", () => {
+    // The reason the gate names its three keys instead of testing priorCount > 0.
+    // `INDIA_MACRO_PACK.longRunNominalGrowth` is deliberately null — a perpetual
+    // growth ceiling is a structural judgment nobody publishes as an observation
+    // — so the ceiling resolves `prior` on every real run. A count-based gate
+    // would block the entire fleet forever and no amount of sourcing could clear
+    // it. This is the shape the shipped packs actually produce.
+    const env = envelope(buildAssumptionProvenance(resolveCapitalCostAssumptions({
+      config: { ...DEFAULT_CONFIG, company_type: "consumer" },
+      macroPack: { ...macroPack(), longRunNominalGrowth: null },
+      analysisAsOf: ANALYSIS_AS_OF,
+      peerBetas: peerBetas(),
+      targetDebtToEquity: 0.5,
+      taxRate: 0.25,
+    })));
+
+    expect(env.assumptionProvenance?.status).toBe("mixed");
+    expect(env.assumptionProvenance?.priorTierKeys).toEqual(["terminal-growth-ceiling"]);
     expect(env.rigor.achievedLevels).toContain("production-ready");
   });
 
