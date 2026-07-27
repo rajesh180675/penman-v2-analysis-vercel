@@ -44,6 +44,7 @@ import {
   gridScore,
   detectHeader,
   gridViaSpreadsheetML,
+  hasDomParser,
 } from "./capitalineParser/grid";
 import { gridToPeriods } from "./capitalineParser/gridToPeriods";
 import { parseSegmentFilesFromZip } from "./capitalineParser/segments";
@@ -230,17 +231,36 @@ export async function parseCapitalineZip(
 
     /* Strategy A: HTML DOM */
     if (hasHtmlTable) {
-      try {
-        const g = gridViaHtml(text);
-        gd.methods.push(`html-dom→${g.length}r`);
-        const s = gridScore(g);
-        if (s > bestScore) {
-          grid = g;
-          bestScore = s;
-          gd.bestMethod = "html-dom";
+      // Record an absent DOM as a SKIPPED strategy, not a parse error.
+      //
+      // `gridViaHtml` used to be called unconditionally, and under a DOM-less
+      // runtime its internal `catch` swallowed the ReferenceError and returned
+      // []. The trail then read `html-dom→0r`, which is indistinguishable from
+      // "this file genuinely had no tables" — that ambiguity is what let a
+      // silent 89% metric loss go unnoticed for as long as it did.
+      //
+      // Deliberately NOT gd.errors: parserFidelity sums grid.errors into
+      // `parserErrorCount`, which fails the "parser noise" check outright and
+      // costs 8 points of a 100-point score that gates syntactically-valid at
+      // 80. Charging that per statement file would fail-close every node run
+      // (CI audit shards, refresh-expectations, batchRunner) for a parse the
+      // regex strategy now handles equivalently. A missing DOM is a property
+      // of the runtime, not a defect in the file.
+      if (!hasDomParser()) {
+        gd.methods.push("html-dom→skipped(no-DOMParser)");
+      } else {
+        try {
+          const g = gridViaHtml(text);
+          gd.methods.push(`html-dom→${g.length}r`);
+          const s = gridScore(g);
+          if (s > bestScore) {
+            grid = g;
+            bestScore = s;
+            gd.bestMethod = "html-dom";
+          }
+        } catch (e) {
+          gd.errors.push(`html-dom: ${e instanceof Error ? e.message : String(e)}`);
         }
-      } catch (e) {
-        gd.errors.push(`html-dom: ${e instanceof Error ? e.message : String(e)}`);
       }
 
       /* Strategy B: Regex — skip when DOM already produced a strong grid.
@@ -269,17 +289,31 @@ export async function parseCapitalineZip(
 
     /* Strategy C: SpreadsheetML — only for real XML workbooks */
     if (isSpreadsheetML) {
-      try {
-        const g = gridViaSpreadsheetML(text);
-        gd.methods.push(`ssml→${g.length}r`);
-        const s = gridScore(g);
-        if (s > bestScore) {
-          grid = g;
-          bestScore = s;
-          gd.bestMethod = "ssml";
+      // Unlike the HTML branch above, an absent DOM here IS an error, because
+      // no other strategy can actually read this file. Strategy D is gated on
+      // `!hasHtmlTable && !isSpreadsheetML` so it never runs. The regex strategy
+      // does run — `hasHtmlTable` is /<table/i, which matches SpreadsheetML's
+      // `<Table>` element — but it looks for `<tr>`/`<td>` and SpreadsheetML
+      // spells those `<Row>`/`<Cell>`, so it comes back empty. Failing parser
+      // fidelity is the correct outcome for a file that genuinely did not parse.
+      if (!hasDomParser()) {
+        gd.methods.push("ssml→skipped(no-DOMParser)");
+        gd.errors.push(
+          "ssml: no DOMParser in this runtime — SpreadsheetML workbooks cannot be read here, and no fallback strategy applies to them.",
+        );
+      } else {
+        try {
+          const g = gridViaSpreadsheetML(text);
+          gd.methods.push(`ssml→${g.length}r`);
+          const s = gridScore(g);
+          if (s > bestScore) {
+            grid = g;
+            bestScore = s;
+            gd.bestMethod = "ssml";
+          }
+        } catch (e) {
+          gd.errors.push(`ssml: ${e instanceof Error ? e.message : String(e)}`);
         }
-      } catch (e) {
-        gd.errors.push(`ssml: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
 
@@ -299,6 +333,19 @@ export async function parseCapitalineZip(
         gd.errors.push(`xlsx: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
+
+    // Record the shape of the grid the strategies settled on. These three
+    // fields were initialised to 0/0/[] above and then never written, so every
+    // consumer read zeros no matter what was parsed: the debug panel showed
+    // "0r × 0c" and "Grid is EMPTY — all parse strategies returned 0 rows" for a
+    // perfect 1789-row parse, the "Header not detected (N rows…)" warning always
+    // said 0, and the audit snapshot transported zeros. Same failure as the
+    // strategy reporting above — the trail described something other than what
+    // happened.
+    gd.rowCount = grid.length;
+    gd.colCount = grid.reduce((max, row) => Math.max(max, row.length), 0);
+    // 30 rows is what the debug panel's own header text promises.
+    gd.firstRows = grid.slice(0, 30);
 
     /* Header detection */
     const header = detectHeader(grid);
