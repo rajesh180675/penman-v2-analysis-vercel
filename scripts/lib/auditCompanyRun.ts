@@ -220,6 +220,7 @@ export interface AuditCompanyRunResult {
   reconciliationStatus: string | undefined;
   anomalyFlagKeys: string[];
   parseCoverage: AuditParseCoverage;
+  segmentCoverage: AuditSegmentCoverage;
   error?: string;
 }
 
@@ -237,6 +238,29 @@ export interface AuditParseCoverage {
   metricKeyCount: number;
   /** Non-null numeric values across all periods — catches columns going blank. */
   nonNullValueCount: number;
+}
+
+/**
+ * Segment counts per segmentation slot, or null where the ZIP ships no such file.
+ *
+ * `parseCoverage` above cannot see any of this: segment files are deliberately
+ * excluded from `raw_metric_values` (capitalineParser.ts skips
+ * Segment-classified files) and routed to a separate `segmentData` channel. So
+ * segment extraction could collapse to null across every company and the parse
+ * coverage gate would stay green.
+ *
+ * It is worth guarding because SOTP depends on it, and the dependency is a
+ * cliff: `buildSotpAssessment` runs only when the selected slot has
+ * `segments.length >= 2` (valuationCommandCenter/builders.ts). NTPC sits at
+ * exactly 2, so losing one segment silently drops its SOTP lens.
+ *
+ * null is a legitimate value — Bajaj Finance ships no segment members at all —
+ * so the gate asserts these stay *equal*, not that they stay populated.
+ */
+export interface AuditSegmentCoverage {
+  business: number | null;
+  geographic: number | null;
+  mixed: number | null;
 }
 
 export interface AuditCompanyRunOptions {
@@ -699,6 +723,11 @@ function emptyResult(company: AuditRegistryEntry): AuditCompanyRunResult {
     reconciliationStatus: undefined,
     anomalyFlagKeys: [],
     parseCoverage: { metricKeyCount: 0, nonNullValueCount: 0 },
+    // All-null here means "nothing was parsed", which is indistinguishable from
+    // "this ZIP ships no segment files". That ambiguity is harmless: every
+    // emptyResult path also carries an ERROR/CALC_ERROR flag, which the gate
+    // fails on before it reaches any coverage assertion.
+    segmentCoverage: { business: null, geographic: null, mixed: null },
   };
 }
 
@@ -717,6 +746,26 @@ export function measureParseCoverage(rawData: readonly RawPeriodData[]): AuditPa
     }
   }
   return { metricKeyCount: keys.size, nonNullValueCount: nonNull };
+}
+
+/**
+ * Count segments per slot. Reads the whole `segmentData` channel rather than
+ * just the slot SOTP consumes — `selectBusinessSegmentData` falls back from
+ * business to mixed, so a change in either can move the valuation, and
+ * geographic feeds the dashboard breakdown.
+ *
+ * A slot present but carrying zero segments is recorded as 0, not null: the
+ * file parsed and yielded nothing, which is a different failure from the file
+ * being absent, and only exact-equality assertions can tell them apart.
+ */
+export function measureSegmentCoverage(segmentData: AllSegmentData | null): AuditSegmentCoverage {
+  const count = (slot: SegmentData | null | undefined): number | null =>
+    slot ? slot.segments.length : null;
+  return {
+    business: count(segmentData?.business),
+    geographic: count(segmentData?.geographic),
+    mixed: count(segmentData?.mixed),
+  };
 }
 
 function finalize(result: AuditCompanyRunResult, outcome: AuditOutcome): AuditCompanyRunResult {
@@ -1279,11 +1328,15 @@ export async function auditCompanyRun(
     // of the parser rather than what survived the pipeline. Same value on both
     // routes — set here rather than threaded through each result builder.
     const parseCoverage = measureParseCoverage(parsed.periods);
+    // Read from the parse, not from the slot SOTP selected, so a change in any
+    // slot is visible even when the selected one is unchanged.
+    const segmentCoverage = measureSegmentCoverage(parsed.segmentData);
 
     if (pipeline.analysisFamily === "financial-institution") {
       const result = financialResult({ company, pipeline, sidecarFlags, trace, analysisContext, verbose: Boolean(options.verbose) });
       result.marketEvidence = marketEvidence;
       result.parseCoverage = parseCoverage;
+      result.segmentCoverage = segmentCoverage;
       return withSourceEvidence(result, sourceEvidence, trace.lineageRef);
     }
     if (!industrialValuation) {
@@ -1299,6 +1352,7 @@ export async function auditCompanyRun(
     });
     result.marketEvidence = marketEvidence;
     result.parseCoverage = parseCoverage;
+    result.segmentCoverage = segmentCoverage;
     return withSourceEvidence(result, sourceEvidence, trace.lineageRef);
   } catch (error) {
     const result = emptyResult(company);

@@ -34,6 +34,11 @@ interface ExpectationsContract {
     metricKeyCount: { min: number; max: number };
     nonNullValueCount: { min: number; max: number };
   };
+  expectedSegmentCoverage?: {
+    business: number | null;
+    geographic: number | null;
+    mixed: number | null;
+  };
   notes?: string;
 }
 
@@ -132,6 +137,35 @@ describe("golden suite — expectations.json contract (Gap 6 / PR-F)", () => {
           expect(Number.isInteger(range.max), `${folder}.${field}: max must be an integer count`).toBe(true);
           expect(range.min, `${folder}.${field}: min must be >= 0`).toBeGreaterThanOrEqual(0);
           expect(range.min, `${folder}.${field}: min should be <= max`).toBeLessThanOrEqual(range.max);
+        }
+      }
+
+      // Segment counts, when present. Exact integers or null — null means the
+      // ZIP ships no file for that slot, which is a different state from a file
+      // that parsed to zero segments, so `null` and `0` must both survive the
+      // JSON round-trip distinctly.
+      //
+      // Only an absent key (undefined) skips validation, and only for
+      // back-compat. An explicit `null` container is rejected: "this company has
+      // no segment data" is three null SLOTS, and writing `null` here instead
+      // would read as absent and silently un-gate the company. All three slots
+      // must be present too — the runtime gate iterates a fixed slot list, so a
+      // contract missing one would leave it unasserted.
+      const segmentCoverage: unknown = exp.expectedSegmentCoverage;
+      if (segmentCoverage !== undefined) {
+        expect(
+          typeof segmentCoverage === "object" && segmentCoverage !== null && !Array.isArray(segmentCoverage),
+          `${folder}: expectedSegmentCoverage must be an object carrying business/geographic/mixed, got ` +
+          `${segmentCoverage === null ? "null" : typeof segmentCoverage}. A company whose ZIP ships no ` +
+          `segment files carries three null slots, not a null container.`,
+        ).toBe(true);
+        const slots = segmentCoverage as Record<string, unknown>;
+        for (const slot of ["business", "geographic", "mixed"] as const) {
+          const count = slots[slot];
+          expect(
+            count === null || (typeof count === "number" && Number.isInteger(count) && count >= 0),
+            `${folder}.${slot}: must be null or a non-negative integer, got ${String(count)}`,
+          ).toBe(true);
         }
       }
     }

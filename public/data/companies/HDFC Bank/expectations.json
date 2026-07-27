@@ -36,7 +36,7 @@
   },
   "expectedRunsCleanWorkbook": true,
   "notes": "Largest private-sector Indian bank. Tests bank-pipeline path and ensures BFSI subtype routing is preserved across rigor v9-v12. NIM and CRAR dominate; Penman-Nissim ratios less informative for banks.",
-  "capturedAt": "2026-07-27T08:38:26Z",
+  "capturedAt": "2026-07-27T09:41:17Z",
   "targetState": {
     "expectedRigorLevel": "valuation-eligible",
     "expectedParserFidelityStatus": "confirmed",
@@ -66,5 +66,10 @@
       "min": 11115,
       "max": 18527
     }
+  },
+  "expectedSegmentCoverage": {
+    "business": 7,
+    "geographic": null,
+    "mixed": null
   }
 }

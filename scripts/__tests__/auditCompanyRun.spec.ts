@@ -12,12 +12,14 @@ import { join, resolve } from "node:path";
 import { describe, expect, it, afterEach } from "vitest";
 import type { BankValuationBundle } from "../../src/engine/bankValuation";
 import type { ValuationCommandCenterOutput } from "../../src/engine/valuationCommandCenter";
+import type { SegmentData } from "../../src/engine/segmentParser";
 import type { RawPeriodData } from "../../src/engine/types";
 import {
   auditCompanyRun,
   computedBankModelNames,
   computedIndustrialModelNames,
   measureParseCoverage,
+  measureSegmentCoverage,
   type AuditRegistryEntry,
 } from "../lib/auditCompanyRun";
 
@@ -263,5 +265,51 @@ describe("measureParseCoverage", () => {
 
   it("reports zeros for an empty parse rather than throwing", () => {
     expect(measureParseCoverage([])).toEqual({ metricKeyCount: 0, nonNullValueCount: 0 });
+  });
+});
+
+describe("measureSegmentCoverage", () => {
+  function slot(segments: string[], type: SegmentData["segmentationType"] = "business"): SegmentData {
+    return {
+      segmentationType: type,
+      segments,
+      years: ["FY2025"],
+      data: {},
+      unallocated: {},
+      totals: {},
+    };
+  }
+
+  it("counts segments in each populated slot", () => {
+    const coverage = measureSegmentCoverage({
+      business: slot(["Paints", "Home Improvement", "International"]),
+      geographic: slot(["India", "Overseas"], "geographic"),
+      // The slot is named `mixed` but its segmentationType is "total" — that is
+      // how the parser labels SegmentFinance_ (2).xls.
+      mixed: slot(["Total", "Unallocated"], "total"),
+    });
+    expect(coverage).toEqual({ business: 3, geographic: 2, mixed: 2 });
+  });
+
+  it("distinguishes an absent file (null) from one that parsed to zero segments (0)", () => {
+    // This is the whole reason the gate asserts equality rather than presence.
+    // Bajaj Finance ships no segment files at all, so null is its correct
+    // steady state; a slot that appears and yields nothing is a real failure.
+    const coverage = measureSegmentCoverage({
+      business: slot([]),
+      geographic: null,
+      mixed: null,
+    });
+    expect(coverage.business).toBe(0);
+    expect(coverage.geographic).toBeNull();
+    expect(coverage.mixed).toBeNull();
+  });
+
+  it("returns all nulls when the parser produced no segment channel at all", () => {
+    expect(measureSegmentCoverage(null)).toEqual({
+      business: null,
+      geographic: null,
+      mixed: null,
+    });
   });
 });
