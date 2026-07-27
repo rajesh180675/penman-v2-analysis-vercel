@@ -184,8 +184,18 @@ export function resolveEquityBeta(
     return { status: "unusable", ticker: key, reason: `Equity beta pack has no constituent for ${key} (benchmark ${pack.benchmark}).` };
   }
 
-  if (!Number.isFinite(observation.leveredBeta) || !Number.isFinite(observation.standardError)) {
-    return { status: "unusable", ticker: key, reason: `${key} beta or standard error is not a finite number.` };
+  // r-squared is checked alongside the other two even though it never gates a
+  // value: it is reported on the `usable` result and interpolated into the
+  // method string, so a NaN would reach a reviewer as "r-squared NaN" attached
+  // to an otherwise confident verdict. The generated pack cannot produce one
+  // (the script rejects a zero-variance series first), but this function is a
+  // general contract over any hand-built pack.
+  if (
+    !Number.isFinite(observation.leveredBeta)
+    || !Number.isFinite(observation.standardError)
+    || !Number.isFinite(observation.rSquared)
+  ) {
+    return { status: "unusable", ticker: key, reason: `${key} beta, standard error, or r-squared is not a finite number.` };
   }
   if (observation.leveredBeta < PLAUSIBLE_BETA.min || observation.leveredBeta > PLAUSIBLE_BETA.max) {
     return {

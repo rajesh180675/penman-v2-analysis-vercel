@@ -139,6 +139,10 @@ describe("resolveEquityBeta", () => {
   it("rejects non-finite figures", () => {
     expect(resolveEquityBeta(pack({ constituents: [observation({ leveredBeta: Number.NaN })] }), "TESTCO").status).toBe("unusable");
     expect(resolveEquityBeta(pack({ constituents: [observation({ standardError: Number.POSITIVE_INFINITY })] }), "TESTCO").status).toBe("unusable");
+    // r-squared too, even though it gates nothing: it is reported on the usable
+    // result and interpolated into the method string, so a NaN would reach a
+    // reviewer as "r-squared NaN" on an otherwise confident verdict.
+    expect(resolveEquityBeta(pack({ constituents: [observation({ rSquared: Number.NaN })] }), "TESTCO").status).toBe("unusable");
   });
 
   it("rejects a window ending after the analysis date as look-ahead", () => {
