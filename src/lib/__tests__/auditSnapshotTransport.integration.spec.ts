@@ -1,14 +1,20 @@
 /**
  * @vitest-environment jsdom
  *
- * jsdom is load-bearing here, not incidental. `gridViaHtml` and
- * `gridViaSpreadsheetML` call `new DOMParser()` inside a bare
- * `try { } catch { return [] }`, so without a DOM the Capitaline parser does not
- * fail — it silently falls back to the regex grid strategy and extracts far less.
- * Measured on this TCS ZIP: 4407 unique metric keys under jsdom vs 475 under
- * node, 60425 non-null values vs 6499, with `periods.length === 15` either way.
- * The snapshot then comes in at 2.26 MB and the >10 MB budget assertion below
- * fails for a reason that has nothing to do with the transport code it guards.
+ * The pin's original reason has expired, and it is kept for a different one.
+ *
+ * It was added because `gridViaHtml` swallowed the missing-DOMParser
+ * ReferenceError and fell back to the regex grid, which extracted so much less
+ * (475 metric keys vs 4407 on this TCS ZIP) that the snapshot came in at 2.26 MB
+ * and the >10 MB assertion below failed for reasons unrelated to the transport
+ * code it guards. The cleanCell fix closed that gap — node and jsdom now agree
+ * exactly at 4407 keys / 60425 values — and this spec has been measured passing
+ * under node with the pin removed.
+ *
+ * It stays because with a DOM this is the only place in CI where a real
+ * multi-MB Capitaline export goes through the DOM grid strategy: node takes the
+ * regex path, so dropping the pin would leave `gridViaHtml` exercised only
+ * against synthetic fixtures, on the path every browser user actually runs.
  */
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";

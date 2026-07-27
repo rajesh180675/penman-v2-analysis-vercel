@@ -37,6 +37,19 @@ export async function gridViaXlsx(buffer: ArrayBuffer): Promise<string[][]> {
    Best for Capitaline Angular HTML XLS files
 ══════════════════════════════════════════════════════════════════ */
 
+/**
+ * Whether this runtime has a DOM parser at all.
+ *
+ * `gridViaHtml` and `gridViaSpreadsheetML` both need one. Browsers always do;
+ * bare Node (CI test shards, `refresh-expectations`, `batchRunner`) does not,
+ * and there the constructor throws a ReferenceError that the strategies catch
+ * and turn into an empty grid. Callers use this to say "skipped" instead of
+ * reporting a zero-row parse that looks like an empty file.
+ */
+export function hasDomParser(): boolean {
+  return typeof DOMParser !== "undefined";
+}
+
 export function gridViaHtml(text: string): string[][] {
   let doc: Document;
   try {
