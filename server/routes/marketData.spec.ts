@@ -1,7 +1,7 @@
 import type { AddressInfo } from "node:net";
 import express from "express";
 import { describe, expect, it } from "vitest";
-import marketDataRouter from "./marketData";
+import marketDataRouter, { parseNseHistoryRows } from "./marketData";
 
 /**
  * Every snapshot value must ship with its own pinned as-of date.
@@ -85,5 +85,70 @@ describe("local market-data snapshot as-of pinning", () => {
     const snapshot = await getSnapshot("provider=nse");
     expect(snapshot.riskFreeRate).toBe(0.07);
     expectAsOfPairing(snapshot);
+  });
+});
+
+/**
+ * A partial NSE payload must cost only the rows that are actually unusable.
+ *
+ * Both narrowing steps guard the same failure mode: something throws while
+ * reading or sorting rows, `fetchNseHistory`'s catch turns the throw into `[]`,
+ * and every valid observation beside the bad one is lost. The caller cannot tell
+ * that from "NSE returned nothing", so the 52-week range and percentile silently
+ * disappear instead of being computed from the rows that did arrive.
+ */
+describe("NSE history row narrowing", () => {
+  const VALID = { CH_TIMESTAMP: "2026-07-24", CH_CLOSING_PRICE: 3450.5 };
+
+  it("keeps valid observations when a malformed element sits beside them", () => {
+    // The regression: elements were cast, not narrowed, so reading
+    // `row.CH_TIMESTAMP` off a null threw before any filter ran.
+    const points = parseNseHistoryRows([
+      VALID,
+      null,
+      "unexpected string row",
+      42,
+      ["nested", "array"],
+      { CH_TIMESTAMP: "2026-07-23", CH_CLOSING_PRICE: 3402.15 },
+    ]);
+    expect(points).toHaveLength(2);
+    expect(points.map(p => p.date)).toEqual(["2026-07-24", "2026-07-23"]);
+  });
+
+  it("drops a row whose timestamp is not a string rather than losing the series", () => {
+    // `localeCompare` is a string method; a numeric timestamp satisfied the row
+    // shape and threw at sort time.
+    const points = parseNseHistoryRows([VALID, { CH_TIMESTAMP: 20260723, CH_CLOSING_PRICE: 3402.15 }]);
+    expect(points).toEqual([{ date: "2026-07-24", close: 3450.5 }]);
+  });
+
+  it("drops rows with no usable close but keeps their neighbours", () => {
+    const points = parseNseHistoryRows([
+      VALID,
+      { CH_TIMESTAMP: "2026-07-23" },
+      { CH_TIMESTAMP: "2026-07-22", CH_CLOSING_PRICE: "not-a-number" },
+      { CH_TIMESTAMP: "", CH_CLOSING_PRICE: 3400 },
+    ]);
+    expect(points).toEqual([{ date: "2026-07-24", close: 3450.5 }]);
+  });
+
+  it("sorts newest first regardless of payload order", () => {
+    const points = parseNseHistoryRows([
+      { CH_TIMESTAMP: "2026-07-22", CH_CLOSING_PRICE: 3400 },
+      { CH_TIMESTAMP: "2026-07-24", CH_CLOSING_PRICE: 3450.5 },
+      { CH_TIMESTAMP: "2026-07-23", CH_CLOSING_PRICE: 3402.15 },
+    ]);
+    expect(points.map(p => p.date)).toEqual(["2026-07-24", "2026-07-23", "2026-07-22"]);
+  });
+
+  it("reads the alternate field names NSE also serves", () => {
+    const points = parseNseHistoryRows([{ TIMESTAMP: "2026-07-24", CLOSE_PRICE: "3450.50" }]);
+    expect(points).toEqual([{ date: "2026-07-24", close: 3450.5 }]);
+  });
+
+  it("returns empty for a payload that is not an array", () => {
+    for (const notAnArray of [undefined, null, {}, "", "rows", 0, { data: [VALID] }]) {
+      expect(parseNseHistoryRows(notAnArray)).toEqual([]);
+    }
   });
 });

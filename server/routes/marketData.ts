@@ -91,6 +91,37 @@ interface HistoryPoint {
   readonly close: number | null;
 }
 
+/**
+ * Narrows an NSE `data` array into usable close observations.
+ *
+ * Exported for tests: the network wrapper below cannot be exercised without
+ * mocking fetch, and this is the part that has repeatedly been wrong.
+ *
+ * Both narrowing steps are load-bearing, and they must happen in this order:
+ *
+ *   1. Rows are filtered to records BEFORE any field is read. A `null` or
+ *      primitive element makes `row.CH_TIMESTAMP` throw, and the caller's catch
+ *      turns that throw into an empty history — so one malformed element used to
+ *      discard every valid observation beside it.
+ *   2. `date` is then checked to be a non-empty string, because the sort below
+ *      calls `localeCompare` on it. A numeric `CH_TIMESTAMP` satisfies the row
+ *      shape and threw at sort time, with the same total-loss outcome.
+ */
+export function parseNseHistoryRows(data: unknown): readonly HistoryPoint[] {
+  const rows: readonly NseHistoryRow[] = Array.isArray(data)
+    ? data.filter((row): row is NseHistoryRow =>
+        typeof row === "object" && row !== null && !Array.isArray(row))
+    : [];
+  return rows
+    .map((row): { date: unknown; close: number | null } => ({
+      date: row.CH_TIMESTAMP ?? row.TIMESTAMP,
+      close: toNumber(row.CH_CLOSING_PRICE ?? row.CLOSE_PRICE),
+    }))
+    .filter((point): point is HistoryPoint =>
+      typeof point.date === "string" && point.date !== "" && point.close != null)
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
 /** Message from an unknown throw, matching this repo's narrowing convention. */
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -106,7 +137,7 @@ async function fetchNseQuote(symbol: string): Promise<NseQuotePayload | null> {
   return await res.json() as NseQuotePayload | null;
 }
 
-async function fetchNseHistory(symbol: string) {
+async function fetchNseHistory(symbol: string): Promise<readonly HistoryPoint[]> {
   const cookie = await getNseCookie();
   const today = new Date();
   const oneYearAgo = new Date(today);
@@ -121,20 +152,7 @@ async function fetchNseHistory(symbol: string) {
     const ct = res.headers.get("content-type") ?? "";
     if (!ct.includes("json")) return []; // NSE sometimes returns HTML (rate-limit/block)
     const payload = await res.json() as { readonly data?: unknown } | null;
-    const data = payload?.data;
-    const rows: readonly NseHistoryRow[] = Array.isArray(data) ? data as NseHistoryRow[] : [];
-    return rows
-      .map((row): { date: unknown; close: number | null } => ({
-        date: row.CH_TIMESTAMP ?? row.TIMESTAMP,
-        close: toNumber(row.CH_CLOSING_PRICE ?? row.CLOSE_PRICE),
-      }))
-      // The string check is what makes the sort below safe, not a cosmetic
-      // narrowing: `date` arrives as `unknown` and `localeCompare` is a string
-      // method. Under the previous `any` a numeric timestamp typechecked here
-      // and threw at sort time, which the outer catch swallowed into an empty
-      // history — so a partial payload lost every point, silently.
-      .filter((point): point is HistoryPoint => typeof point.date === "string" && point.date !== "" && point.close != null)
-      .sort((a, b) => b.date.localeCompare(a.date));
+    return parseNseHistoryRows(payload?.data);
   } catch {
     return []; // Gracefully handle any parse/network error
   }

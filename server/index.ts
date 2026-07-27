@@ -207,6 +207,19 @@ app.get("/api/health", (_req, res) => {
 });
 
 /**
+ * Bounded description of a thrown value for the server log.
+ *
+ * An `Error` contributes its message. Anything else contributes only its type,
+ * never its contents: middleware can throw an object carrying request data,
+ * credentials, or PII, and this handler is the one place such a value would be
+ * written out verbatim. `api/cron/*` logs `error.name` for the same reason.
+ */
+function describeThrown(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return `non-Error value thrown (${typeof error})`;
+}
+
+/**
  * body-parser signals an oversized payload with a `type` property rather than a
  * distinct Error subclass, so this is a property probe and not an `instanceof`
  * check. Extracted as a guard so the 413 branch reads a checked property
@@ -239,9 +252,7 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
     });
     return;
   }
-  // Logs the raw value for a non-Error throw rather than `undefined`, which is
-  // what `err?.message` would have produced for a thrown string or object.
-  console.error("[server error]", err instanceof Error ? err.message : err);
+  console.error("[server error]", describeThrown(err));
   res.status(500).json({ ok: false, error: "Internal server error." });
 });
 
