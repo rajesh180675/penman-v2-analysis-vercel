@@ -12,10 +12,12 @@ import { join, resolve } from "node:path";
 import { describe, expect, it, afterEach } from "vitest";
 import type { BankValuationBundle } from "../../src/engine/bankValuation";
 import type { ValuationCommandCenterOutput } from "../../src/engine/valuationCommandCenter";
+import type { RawPeriodData } from "../../src/engine/types";
 import {
   auditCompanyRun,
   computedBankModelNames,
   computedIndustrialModelNames,
+  measureParseCoverage,
   type AuditRegistryEntry,
 } from "../lib/auditCompanyRun";
 
@@ -218,4 +220,48 @@ describe.sequential("auditCompanyRun", () => {
       expect(result.valuationEvidence.triangulationMethods.map((method) => method.key)).not.toContain(item.strategy.replace("-v1", ""));
     }
   }, 240_000);
+});
+
+/**
+ * Separate describe so these stay out of the sequential real-ZIP block above —
+ * they are pure arithmetic and cost nothing.
+ */
+describe("measureParseCoverage", () => {
+  function period(values: Record<string, number | null>): RawPeriodData {
+    return { company_id: "X", period_end: "2025-03-31", raw_metric_values: values };
+  }
+
+  it("unions keys across periods but counts values per period", () => {
+    // "Sales" in both years, "OneOff" in only the second. Two distinct keys,
+    // three values — the two dimensions have to move independently or a lost
+    // column hides behind an intact key set.
+    const coverage = measureParseCoverage([
+      period({ Sales: 100 }),
+      period({ Sales: 110, OneOff: 5 }),
+    ]);
+    expect(coverage.metricKeyCount).toBe(2);
+    expect(coverage.nonNullValueCount).toBe(3);
+  });
+
+  it("counts a key that is present but null, without counting its value", () => {
+    // This is the shape of a blanked column: Capitaline still emits the row
+    // label, so the key survives while the number does not. Counting the null
+    // as a value would make the drop invisible.
+    const coverage = measureParseCoverage([period({ Sales: null, PAT: 42 })]);
+    expect(coverage.metricKeyCount).toBe(2);
+    expect(coverage.nonNullValueCount).toBe(1);
+  });
+
+  it("excludes non-finite numbers from the value count", () => {
+    const coverage = measureParseCoverage([
+      period({ A: Number.NaN, B: Number.POSITIVE_INFINITY, C: 0 }),
+    ]);
+    expect(coverage.metricKeyCount).toBe(3);
+    // 0 is a real observation and counts; NaN and Infinity do not.
+    expect(coverage.nonNullValueCount).toBe(1);
+  });
+
+  it("reports zeros for an empty parse rather than throwing", () => {
+    expect(measureParseCoverage([])).toEqual({ metricKeyCount: 0, nonNullValueCount: 0 });
+  });
 });

@@ -28,7 +28,7 @@ import { getAnalysisPolicyVersions } from "../src/engine/policyVersions";
 import { DEFAULT_CONFIG, EngineConfig } from "../src/engine/types";
 // Reuse the audit gate's own input assembly. Anything this generator does
 // differently from `auditCompanyRun` produces a baseline the gate cannot satisfy.
-import { buildAuditAnalysisContext, loadQualitySidecar } from "./lib/auditCompanyRun";
+import { buildAuditAnalysisContext, loadQualitySidecar, measureParseCoverage } from "./lib/auditCompanyRun";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, "..");
@@ -65,6 +65,10 @@ interface ExpectationsContract {
   expectedAnomalyFlags: string[];
   expectedUnusualItemCount: { min: number; max: number };
   expectedRunsCleanWorkbook: boolean;
+  expectedParseCoverage?: {
+    metricKeyCount: { min: number; max: number };
+    nonNullValueCount: { min: number; max: number };
+  };
   notes?: string;
   targetState?: Record<string, unknown>;
   capturedAt?: string;
@@ -76,6 +80,21 @@ function band(value: number | null | undefined, pct = args.pct): { min: number; 
   // where ±5% relative is within float-rounding noise.
   const padding = Math.max(Math.abs(value) * pct, 0.005);
   return { min: Number((value - padding).toFixed(4)), max: Number((value + padding).toFixed(4)) };
+}
+
+/**
+ * Band for a parse-volume count, deliberately much wider than `band`.
+ *
+ * The failure mode this guards is a cliff, not drift: TCS silently fell from
+ * 4407 metric keys to 475 and from 60425 values to 6499 while every other
+ * field in this contract stayed identical. ±25% catches that with room to
+ * spare, and leaves normal churn — a mapping addition, one more source file in
+ * a refreshed ZIP — from turning the whole suite red for a benign reason.
+ * Integers, since these are counts.
+ */
+function countBand(value: number, pct = 0.25): { min: number; max: number } {
+  const padding = Math.ceil(value * pct);
+  return { min: Math.max(0, value - padding), max: value + padding };
 }
 
 function safeRatio(num: number | null | undefined, den: number | null | undefined): number | null {
@@ -161,6 +180,8 @@ async function refreshOne(company: RegistryEntry) {
     bankMetrics: pipeline.bankResult?.bankMetrics ?? null,
     bankSubtype: pipeline.bankResult?.subtype ?? null,
   });
+
+  const coverage = measureParseCoverage(parsed.periods);
 
   const observedAnomalyFlags = pipeline.anomalies.terminalFlags
     .map((f) => f.spec_id)
@@ -252,6 +273,12 @@ async function refreshOne(company: RegistryEntry) {
     expectedReconciliationStatus: trace.reconciliation.status,
     expectedAnomalyFlags: observedAnomalyFlags,
     keyMetricTolerances: metricTolerances,
+    // Measured on the raw parse, before recasting — same call the audit gate
+    // makes, so the two cannot disagree about what "coverage" means.
+    expectedParseCoverage: {
+      metricKeyCount: countBand(coverage.metricKeyCount),
+      nonNullValueCount: countBand(coverage.nonNullValueCount),
+    },
     capturedAt: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
     // Aspirations stay locked here so the gap remains visible. Carry forward an
     // existing targetState untouched; only seed one from the top-level fields on
@@ -280,6 +307,9 @@ async function refreshOne(company: RegistryEntry) {
     `  ${company.folder} [${pipeline.analysisFamily === "industrial" ? "industrial" : pipeline.bankResult?.subtype ?? "bank"}]: rigor=${next.expectedRigorLevel} parser=${next.expectedParserFidelityStatus} recon=${next.expectedReconciliationStatus}`,
   );
   console.log(`            ${metricSummary}`);
+  console.log(
+    `            coverage: ${coverage.metricKeyCount} metric keys, ${coverage.nonNullValueCount} values`,
+  );
 }
 
 (async () => {

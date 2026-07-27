@@ -30,6 +30,10 @@ interface ExpectationsContract {
   expectedAnomalyFlags: string[];
   expectedUnusualItemCount: { min: number; max: number };
   expectedRunsCleanWorkbook: boolean;
+  expectedParseCoverage?: {
+    metricKeyCount: { min: number; max: number };
+    nonNullValueCount: { min: number; max: number };
+  };
   notes?: string;
 }
 
@@ -117,6 +121,19 @@ describe("golden suite — expectations.json contract (Gap 6 / PR-F)", () => {
       expect(typeof exp.expectedUnusualItemCount.max).toBe("number");
       expect(exp.expectedUnusualItemCount.min).toBeLessThanOrEqual(exp.expectedUnusualItemCount.max);
       expect(typeof exp.expectedRunsCleanWorkbook).toBe("boolean");
+
+      // Parse-coverage bands, when present. Counts, so integral and >= 0 —
+      // a fractional or negative bound means the generator wrote a ratio band
+      // into a volume field, which is the class of unit mix-up that has bitten
+      // this contract before (casaRatio held a percent for months).
+      if (exp.expectedParseCoverage) {
+        for (const [field, range] of Object.entries(exp.expectedParseCoverage)) {
+          expect(Number.isInteger(range.min), `${folder}.${field}: min must be an integer count`).toBe(true);
+          expect(Number.isInteger(range.max), `${folder}.${field}: max must be an integer count`).toBe(true);
+          expect(range.min, `${folder}.${field}: min must be >= 0`).toBeGreaterThanOrEqual(0);
+          expect(range.min, `${folder}.${field}: min should be <= max`).toBeLessThanOrEqual(range.max);
+        }
+      }
     }
     // We expect at least the 5 mandatory ones.
     expect(validated, "fewer expectations.json files than mandatory golden companies").toBeGreaterThanOrEqual(REQUIRED_GOLDEN.length);
