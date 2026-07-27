@@ -11,7 +11,6 @@ export class ErrorBoundary extends React.Component<
   }
 
   override componentDidCatch(error: unknown, info: unknown) {
-    // eslint-disable-next-line no-console
     console.error("App crashed:", error, info);
   }
 

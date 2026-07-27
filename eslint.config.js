@@ -151,13 +151,21 @@ export default tseslint.config(
     rules: {
       /**
        * Enabled because this repo already carries `eslint-disable-next-line
-       * no-console` comments under src/ (ErrorBoundary, the audit test setup):
-       * the authors expected this rule to be enforced. Until now nothing was,
-       * so those directives suppressed nothing. Warn rather than error — the
-       * remaining call sites are deliberate diagnostics, and `console.assert`
-       * in reconciliationResiduals.ts is a documented runtime guard.
+       * no-console` comments under src/: the authors expected this rule to be
+       * enforced, and until this config existed nothing was.
+       *
+       * `assert`/`warn`/`error` are allowed because every current call site is
+       * a deliberate diagnostic: `console.assert` in reconciliationResiduals.ts
+       * guards documented engine invariants, `lib/audit.ts` and the audit /
+       * sidecar hooks warn when a best-effort persistence write is dropped, and
+       * `lib/observability.ts` IS the console sink. Reviewing 17 accepted
+       * warnings on every lint run is how a genuinely stray log gets missed.
+       *
+       * What stays flagged is `console.log`/`info`/`debug` — the shape stray
+       * debugging actually takes. Warn rather than error so a new one surfaces
+       * in the ratchet without failing the build mid-edit.
        */
-      "no-console": "warn",
+      "no-console": ["warn", { allow: ["assert", "warn", "error"] }],
       // A hook called conditionally is a real defect, not a style opinion.
       "react-hooks/rules-of-hooks": "error",
       // Warn: this codebase intentionally omits deps in several memos and says

@@ -157,10 +157,13 @@ export function AppShell() {
     advancedModels: platformGovernance.advancedModels,
   });
 
-  // Log dual-scope availability so QA can verify the second ZIP loaded.
+  // Record dual-scope availability so QA can verify the second ZIP loaded.
+  // Goes through the trace logger rather than the console: the Debug panel
+  // reads traces, and useAuditAnalysis already reports its scope failures on
+  // the same "scope" channel.
   useEffect(() => {
     if (scopeAwareResult) {
-      console.log("[App] dual-scope analysis available:", {
+      trace("scope", "dualScopeAvailable", null, {
         alignedPeriods: scopeAwareResult.summary.alignedPeriods,
         medianPatContributionPct: scopeAwareResult.summary.medianPatContributionPct,
         patContributionTrend: scopeAwareResult.summary.patContributionTrend,
