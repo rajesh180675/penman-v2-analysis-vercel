@@ -24,6 +24,20 @@ interface ExpectationsContract {
   expectedAnomalyFlags: string[];
   expectedUnusualItemCount: { min: number; max: number };
   expectedRunsCleanWorkbook: boolean;
+  /**
+   * How much the parser produced, banded ±25% by `refresh-expectations`.
+   *
+   * Optional so a contract written before this field existed still gates on
+   * everything else rather than throwing. Every field above describes the
+   * *shape* of a run, and a parse can lose most of its metrics without moving
+   * any of them: TCS fell from 4407 metric keys to 475 and 60425 values to
+   * 6499 while still reporting 15 clean periods, unchanged ratios, and the
+   * same parser-fidelity status — the whole gate stayed green.
+   */
+  expectedParseCoverage?: {
+    metricKeyCount: { min: number; max: number };
+    nonNullValueCount: { min: number; max: number };
+  };
   notes?: string;
 }
 
@@ -109,7 +123,31 @@ export function createAuditTests({ start, size }: { start: number; size: number 
           expect(value, `${metric} out of band [${band.min}, ${band.max}]: got ${value}`)
             .toBeLessThanOrEqual(band.max);
         }
-        // (e) Anomaly flags — every expected flag must appear in the
+        // (e) Parse coverage — how much came out of the parser at all.
+        // Bands are wide (±25%); anything tripping this is a cliff, not drift,
+        // so report the direction rather than leaving a bare number comparison.
+        const coverageBands = expectations.expectedParseCoverage;
+        if (coverageBands) {
+          const observed: Record<string, number> = {
+            metricKeyCount: result.parseCoverage.metricKeyCount,
+            nonNullValueCount: result.parseCoverage.nonNullValueCount,
+          };
+          for (const [field, band] of Object.entries(coverageBands)) {
+            const value = observed[field]!;
+            const direction = value < band.min ? "COLLAPSED" : "GREW";
+            expect(
+              value,
+              `parse coverage ${direction}: ${field} ${value} is outside [${band.min}, ${band.max}]. ` +
+              `The parser is extracting a different amount of data than when this baseline was captured — ` +
+              `check the grid strategy and cell cleaning before regenerating.`,
+            ).toBeGreaterThanOrEqual(band.min);
+            expect(
+              value,
+              `parse coverage ${direction}: ${field} ${value} is outside [${band.min}, ${band.max}].`,
+            ).toBeLessThanOrEqual(band.max);
+          }
+        }
+        // (f) Anomaly flags — every expected flag must appear in the
         // observed set (subset check; observed may legitimately include
         // additional minor flags without failing the gate).
         if (expectations.expectedAnomalyFlags.length > 0) {

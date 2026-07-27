@@ -33,7 +33,7 @@
   },
   "expectedRunsCleanWorkbook": true,
   "notes": "Conglomerate with confirmed demerger events in 5y window (Jio Financial Services in 2023). Tests Gap 2 anchor walk-back when latest period is contaminated, and Gap 3 demerger-scheme-effect classification.",
-  "capturedAt": "2026-07-27T06:04:12Z",
+  "capturedAt": "2026-07-27T08:38:33Z",
   "targetState": {
     "expectedRigorLevel": "economically-plausible",
     "expectedParserFidelityStatus": "confirmed",
@@ -54,6 +54,16 @@
         "min": 0.2,
         "max": 0.8
       }
+    }
+  },
+  "expectedParseCoverage": {
+    "metricKeyCount": {
+      "min": 1683,
+      "max": 2805
+    },
+    "nonNullValueCount": {
+      "min": 22043,
+      "max": 36739
     }
   }
 }

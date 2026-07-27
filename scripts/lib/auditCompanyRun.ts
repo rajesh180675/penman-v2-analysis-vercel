@@ -18,7 +18,7 @@ import {
 import { deriveAnalysisStatus } from "../../src/engine/analysisStatus";
 import { resolveValuationReadiness } from "../../src/engine/valuationPolicy";
 import { getAnalysisPolicyVersions } from "../../src/engine/policyVersions";
-import { DEFAULT_CONFIG, type EngineConfig, type RecastPeriod } from "../../src/engine/types";
+import { DEFAULT_CONFIG, type EngineConfig, type RawPeriodData, type RecastPeriod } from "../../src/engine/types";
 import {
   validateBankQualityIndicators,
   type BankQualityIndicators,
@@ -219,7 +219,24 @@ export interface AuditCompanyRunResult {
   parserFidelityStatus: string | undefined;
   reconciliationStatus: string | undefined;
   anomalyFlagKeys: string[];
+  parseCoverage: AuditParseCoverage;
   error?: string;
+}
+
+/**
+ * How much of the company actually came out of the parser.
+ *
+ * Every other field here describes the *shape* of a run — period counts,
+ * statuses, ratio values — and a parse can lose most of its metrics without
+ * changing any of them. TCS went from 4407 metric keys to 475 and from 60425
+ * non-null values to 6499 while still reporting 15 clean periods, and the whole
+ * gate stayed green. These two numbers are the ones that moved.
+ */
+export interface AuditParseCoverage {
+  /** Distinct `metric__Statement` keys the parser produced across all periods. */
+  metricKeyCount: number;
+  /** Non-null numeric values across all periods — catches columns going blank. */
+  nonNullValueCount: number;
 }
 
 export interface AuditCompanyRunOptions {
@@ -681,7 +698,25 @@ function emptyResult(company: AuditRegistryEntry): AuditCompanyRunResult {
     parserFidelityStatus: undefined,
     reconciliationStatus: undefined,
     anomalyFlagKeys: [],
+    parseCoverage: { metricKeyCount: 0, nonNullValueCount: 0 },
   };
+}
+
+/**
+ * Count what the parser actually produced. Union of keys across periods, so a
+ * metric present in only one year still counts once; values counted per period,
+ * so losing a column shows up even when the key set is intact.
+ */
+export function measureParseCoverage(rawData: readonly RawPeriodData[]): AuditParseCoverage {
+  const keys = new Set<string>();
+  let nonNull = 0;
+  for (const period of rawData) {
+    for (const [key, value] of Object.entries(period.raw_metric_values ?? {})) {
+      keys.add(key);
+      if (value != null && Number.isFinite(value)) nonNull++;
+    }
+  }
+  return { metricKeyCount: keys.size, nonNullValueCount: nonNull };
 }
 
 function finalize(result: AuditCompanyRunResult, outcome: AuditOutcome): AuditCompanyRunResult {
@@ -1240,9 +1275,15 @@ export async function auditCompanyRun(
       valuation: industrialValuation,
     });
 
+    // Measured on the raw parse, before recasting, so it reflects what came out
+    // of the parser rather than what survived the pipeline. Same value on both
+    // routes — set here rather than threaded through each result builder.
+    const parseCoverage = measureParseCoverage(parsed.periods);
+
     if (pipeline.analysisFamily === "financial-institution") {
       const result = financialResult({ company, pipeline, sidecarFlags, trace, analysisContext, verbose: Boolean(options.verbose) });
       result.marketEvidence = marketEvidence;
+      result.parseCoverage = parseCoverage;
       return withSourceEvidence(result, sourceEvidence, trace.lineageRef);
     }
     if (!industrialValuation) {
@@ -1257,6 +1298,7 @@ export async function auditCompanyRun(
       trace,
     });
     result.marketEvidence = marketEvidence;
+    result.parseCoverage = parseCoverage;
     return withSourceEvidence(result, sourceEvidence, trace.lineageRef);
   } catch (error) {
     const result = emptyResult(company);
