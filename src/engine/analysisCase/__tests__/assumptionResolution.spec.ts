@@ -18,7 +18,7 @@ import { resolveAnalysisAssumptions } from "../assumptionResolution";
 import { selectUnifiedAnalysisWindow, type UnifiedAnalysisWindow } from "../window";
 import { processCompanyData } from "../../pipeline";
 import { buildValuationCommandCenter } from "../../valuationCommandCenter";
-import { INDIA_MACRO_PACK } from "../../marketPacks";
+import { INDIA_EQUITY_BETA_PACK, INDIA_MACRO_PACK } from "../../marketPacks";
 import { DEFAULT_CONFIG, type EngineConfig, type RawPeriodData, type RecastPeriod } from "../../types";
 import { INRAbsolute } from "../../types/units";
 import type { ContentRef } from "../../analysisRun";
@@ -256,6 +256,122 @@ describe("macro pack wiring — both routes, same answer", () => {
     });
     expect(undated.riskFreeRate).toBeCloseTo(0.0682, 6);
     expect(undated.costOfCapital.assumptions?.riskFreeRate.method).toBe("Pinned macro pack");
+  });
+
+  it("sources beta from the pinned beta pack, and the native stage agrees", async () => {
+    // The fixture's financials are VST's; only the ticker is swapped, because the
+    // pack is keyed by ticker and the point here is the lookup and the parity, not
+    // this company's beta. TCS regresses to 0.8909 with se 0.0895 over 260 weeks.
+    const { periods, window } = await setup(vstRealCompanySample);
+    const config: EngineConfig = { ...DEFAULT_CONFIG, ticker: "TCS" };
+    const monolith = buildValuationCommandCenter({
+      data: periods, config, macroPack: INDIA_MACRO_PACK, betaPack: INDIA_EQUITY_BETA_PACK,
+      analysisAsOf: PACK_AS_OF,
+    });
+    const beta = monolith.costOfCapital.assumptions?.beta;
+
+    // `estimated`, not `sourced`: the slope was computed here from price history
+    // rather than handed over by a vendor who stands behind it.
+    expect(beta?.tier).toBe("estimated");
+    expect(beta?.value).toBeCloseTo(0.8909, 6);
+    // The window end, which is what this estimate is an observation as of — not
+    // the pack assembly date and not the run date.
+    expect(beta?.asOf).toBe("2026-07-19");
+    expect(beta?.method).toMatch(/NIFTY 50/);
+
+    // Beta leaving the prior tier is the whole point: with both packs the only
+    // remaining prior is the terminal-growth ceiling, which is not a ke term.
+    expect(monolith.costOfCapital.assumptions?.priorTierKeys).toEqual(["terminal-growth-ceiling"]);
+
+    // And the native stage must agree, or the Stage 9 extraction has forked and
+    // would report a beta the executed models never discounted at.
+    const native = resolveAnalysisAssumptions({
+      periods, window, config, factRef: FACT_REF, policyRef: POLICY_REF,
+      macroPack: INDIA_MACRO_PACK, betaPack: INDIA_EQUITY_BETA_PACK, analysisAsOf: PACK_AS_OF,
+    });
+    expect(native.costOfCapital).toEqual(monolith.costOfCapital);
+  });
+
+  it("moves ke by a measurable amount rather than resolving to the same number", async () => {
+    // Non-vacuity guard for the test above. A pack that relabelled the tier
+    // without changing the value would satisfy every assertion there while
+    // buying nothing, so assert the discount rate actually moved.
+    const { periods } = await setup(vstRealCompanySample);
+    const config: EngineConfig = { ...DEFAULT_CONFIG, ticker: "TCS" };
+    const withoutPacks = buildValuationCommandCenter({ data: periods, config });
+    const withPacks = buildValuationCommandCenter({
+      data: periods, config, macroPack: INDIA_MACRO_PACK, betaPack: INDIA_EQUITY_BETA_PACK,
+      analysisAsOf: PACK_AS_OF,
+    });
+
+    expect(withoutPacks.costOfCapital.assumptions?.beta.tier).toBe("prior");
+    expect(withPacks.costOfCapital.ke).not.toBeCloseTo(withoutPacks.costOfCapital.ke, 6);
+  });
+
+  it("keeps beta a stated prior for a constituent whose regression is too imprecise", async () => {
+    // The gate earning its keep through the whole stack. IDEA is IN the pack, so
+    // this is not a lookup miss: the slope came back at se 0.25 and the resolver
+    // refuses it, carrying the measurement's own reason into the fallback rather
+    // than the generic peer-count one.
+    const { periods } = await setup(vstRealCompanySample);
+    const out = buildValuationCommandCenter({
+      data: periods, config: { ...DEFAULT_CONFIG, ticker: "IDEA" },
+      macroPack: INDIA_MACRO_PACK, betaPack: INDIA_EQUITY_BETA_PACK, analysisAsOf: PACK_AS_OF,
+    });
+    const beta = out.costOfCapital.assumptions?.beta;
+
+    expect(beta?.tier).toBe("prior");
+    expect(beta?.fallbackReason).toMatch(/too imprecise/);
+    expect(out.costOfCapital.assumptions?.priorTierKeys).toContain("beta");
+  });
+
+  it("leaves beta a prior when a pack is supplied but the run carries no ticker", async () => {
+    // A manually-entered dataset has no exchange ticker. The honest outcome is
+    // the stated prior, not a guess at which company it is.
+    const { periods, config } = await setup(vstRealCompanySample);
+    const out = buildValuationCommandCenter({
+      data: periods, config, betaPack: INDIA_EQUITY_BETA_PACK, analysisAsOf: PACK_AS_OF,
+    });
+
+    expect(config.ticker).toBeUndefined();
+    expect(out.costOfCapital.assumptions?.beta.tier).toBe("prior");
+  });
+
+  it("leaves every existing caller's beta untouched when no beta pack is supplied", async () => {
+    // Same inertness contract the macro pack shipped under. No production caller
+    // supplies a beta pack yet, so threading the parameter must not move a single
+    // discount rate until one opts in.
+    const { periods, window } = await setup(leveragedIndustrial);
+    const config: EngineConfig = { ...DEFAULT_CONFIG, ticker: "TCS" };
+    const absent = buildValuationCommandCenter({ data: periods, config });
+    const explicitlyNull = buildValuationCommandCenter({
+      data: periods, config, betaPack: null, analysisAsOf: null,
+    });
+
+    expect(explicitlyNull.costOfCapital.ke).toBe(absent.costOfCapital.ke);
+    expect(explicitlyNull.costOfCapital.kw).toBe(absent.costOfCapital.kw);
+    expect(absent.costOfCapital.assumptions?.beta.tier).toBe("prior");
+    // The reason must stay the peer-count one, not "no pack supplied", which
+    // would read as a regression to a caller who never opted in.
+    expect(absent.costOfCapital.assumptions?.beta.fallbackReason).toMatch(/bottom-up/);
+
+    const native = resolveAnalysisAssumptions({
+      periods, window, config, factRef: FACT_REF, policyRef: POLICY_REF,
+    });
+    expect(native.costOfCapital).toEqual(absent.costOfCapital);
+  });
+
+  it("refuses the beta pack for an earlier valuation date rather than back-dating a slope", async () => {
+    // A 2026 regression window cannot inform a 2024 valuation. Without a
+    // vintage-appropriate pack the honest answer is the stated prior.
+    const { periods } = await setup(vstRealCompanySample);
+    const out = buildValuationCommandCenter({
+      data: periods, config: { ...DEFAULT_CONFIG, ticker: "TCS" },
+      betaPack: INDIA_EQUITY_BETA_PACK, analysisAsOf: "2024-03-31",
+    });
+
+    expect(out.costOfCapital.assumptions?.beta.tier).toBe("prior");
+    expect(out.costOfCapital.assumptions?.beta.fallbackReason).toMatch(/look-ahead/i);
   });
 });
 

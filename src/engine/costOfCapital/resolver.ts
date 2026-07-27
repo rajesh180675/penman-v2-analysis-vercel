@@ -4,7 +4,7 @@ import {
   resolveCapitalCostAssumptions,
   type PeerLeveredBeta,
 } from "../assumptions/capitalCostAssumptions";
-import type { MacroPack } from "../marketPacks";
+import type { EquityBetaPack, MacroPack } from "../marketPacks";
 import {
   COST_OF_CAPITAL_POLICY_VERSION,
   type CapitalStructureWeights,
@@ -271,6 +271,12 @@ export function costPoliciesFromConfig(
     readonly marketAsOf?: string | null | undefined;
     /** Pinned macro pack. When absent, rf/ERP/terminal ceiling resolve as priors. */
     readonly macroPack?: MacroPack | null | undefined;
+    /**
+     * Pinned regressed betas, keyed by exchange ticker. When absent, beta
+     * resolves from peers if deep enough and otherwise as a sector prior, which
+     * is what every caller got before this pack existed.
+     */
+    readonly betaPack?: EquityBetaPack | null | undefined;
     /** Analysis date, for the pack's staleness and look-ahead checks. */
     readonly analysisAsOf?: string | null | undefined;
     /** Peer levered betas, for a bottom-up beta instead of the sector prior. */
@@ -287,6 +293,7 @@ export function costPoliciesFromConfig(
   const assumptions = resolveCapitalCostAssumptions({
     config,
     macroPack: options?.macroPack,
+    betaPack: options?.betaPack,
     analysisAsOf: options?.analysisAsOf,
     liveRiskFreeRate: options?.riskFreeRate != null
       ? { value: options.riskFreeRate, asOf: options?.marketAsOf ?? null, source: "Pinned market snapshot" }
@@ -349,6 +356,7 @@ export function resolveCostOfCapitalFromConfig(input: {
   readonly riskFreeRate?: number | undefined;
   readonly marketAsOf?: string | null | undefined;
   readonly macroPack?: MacroPack | null | undefined;
+  readonly betaPack?: EquityBetaPack | null | undefined;
   readonly analysisAsOf?: string | null | undefined;
   readonly peerBetas?: readonly PeerLeveredBeta[] | undefined;
 }): CostOfCapitalResult {
@@ -366,6 +374,7 @@ export function resolveCostOfCapitalFromConfig(input: {
     riskFreeRate: input.riskFreeRate,
     marketAsOf: input.marketAsOf,
     macroPack: input.macroPack,
+    betaPack: input.betaPack,
     analysisAsOf: input.analysisAsOf,
     peerBetas: input.peerBetas,
     targetDebtToEquity,

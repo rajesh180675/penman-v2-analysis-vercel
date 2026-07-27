@@ -40,7 +40,7 @@ import type { LiveMarketDataSnapshot } from "../marketData";
 import { resolveShareBasis, type ResolvedShareBasis } from "../shareCountTools";
 import type { EngineConfig, RecastPeriod } from "../types";
 import { resolveValuationReadiness, type ValuationReadiness } from "../valuationPolicy";
-import type { MacroPack } from "../marketPacks";
+import type { EquityBetaPack, MacroPack } from "../marketPacks";
 import type { AssumptionCandidate } from "./assumptions";
 import type { UnifiedAnalysisWindow } from "./window";
 
@@ -71,6 +71,14 @@ export interface AssumptionResolutionInput {
    * on every fixture.
    */
   readonly macroPack?: MacroPack | null | undefined;
+  /**
+   * Pinned regressed betas, forwarded to the capital-cost resolver alongside
+   * `macroPack`. Both must be threaded here for the same reason: the parity spec
+   * asserts this stage's `costOfCapital` equals the monolith's, so a pack that
+   * reached one route and not the other would fork the discount rate — the
+   * native stage would report a beta the executed models never used.
+   */
+  readonly betaPack?: EquityBetaPack | null | undefined;
   /** Run as-of date for the pack's staleness and look-ahead checks. */
   readonly analysisAsOf?: string | null | undefined;
   readonly factRef: ContentRef<"fact-set">;
@@ -166,6 +174,7 @@ export function resolveAnalysisAssumptions(
     riskFreeRate: liveRiskFreeRate,
     marketAsOf,
     macroPack: input.macroPack,
+    betaPack: input.betaPack,
     analysisAsOf: input.analysisAsOf,
   });
   // The rate the run reports, taken from the resolved assumption so it cannot

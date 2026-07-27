@@ -14,7 +14,7 @@ import type { SegmentData } from "../segmentParser";
 import type { AnalysisTraceabilityEnvelope, EngineConfig, RawPeriodData, RecastPeriod } from "../types";
 import { validateEngineConfig } from "../types";
 import { buildValuationCommandCenter, type ValuationCommandCenterOutput } from "../valuationCommandCenter";
-import type { MacroPack } from "../marketPacks";
+import type { EquityBetaPack, MacroPack } from "../marketPacks";
 import {
   adaptLegacyCommandCenterModelResults,
   CURRENT_MODEL_REGISTRY,
@@ -138,6 +138,15 @@ export interface LegacyAnalysisRunInputV1 {
    * already feeds `assumptionSetId` and therefore the reproducibility hash.
    */
   readonly macroPack?: MacroPack | null | undefined;
+  /**
+   * Pinned regressed betas, looked up by `config.ticker`.
+   *
+   * Same opt-in contract as `macroPack`, and the same hash argument: a different
+   * pack resolves a different `ke`/`kw`, those are assumption candidates, and the
+   * candidate set already feeds `assumptionSetId` and therefore the run's
+   * reproducibility hash. So a run is not reproducible-by-accident across packs.
+   */
+  readonly betaPack?: EquityBetaPack | null | undefined;
   readonly sectorSidecar?: DeepReadonly<GovernedSectorSidecarApproval> | null | undefined;
   readonly advancedModels?: readonly {
     readonly request: DeepReadonly<GovernedAdvancedModelInput>;
@@ -1098,6 +1107,7 @@ export function createLegacyAnalysisRunExecutor(
             segmentData,
             holdoutVintage,
             macroPack: input.macroPack,
+            betaPack: input.betaPack,
             // The run's own cutoff, which is already validated (AS_OF_REQUIRED,
             // AS_OF_INVALID) and already the look-ahead bound for raw periods,
             // market history and calibration above. Using it here too means a
@@ -1136,6 +1146,7 @@ export function createLegacyAnalysisRunExecutor(
           // valuation — the native stage would resolve a different discount rate
           // than the models actually used.
           macroPack: input.macroPack,
+          betaPack: input.betaPack,
           analysisAsOf: input.metadata.asOf,
           factRef: factArtifact.ref,
           policyRef: policyArtifact.ref,
