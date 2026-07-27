@@ -2,7 +2,24 @@
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    // ES2022.Error is the granular lib file declaring `ErrorOptions` and the
+    // `new Error(message, options)` overloads — nothing else. It is listed
+    // instead of bumping the whole lib to ES2022 so the rest of the ES2022
+    // library surface stays out: `Object.hasOwn` still errors here, which is
+    // the intended behaviour and was verified rather than assumed.
+    //
+    // Note that `Array.prototype.at` does NOT error, and never did — `types:
+    // ["node"]` above pulls in @types/node, which declares it independently of
+    // `lib`. So this entry is not the only thing widening what typechecks; it
+    // is only what makes `cause` legal. Without it both `tsc --noEmit` and
+    // tsconfig.scripts.json reject all six call sites with TS2554.
+    //
+    // `target` deliberately stays ES2020: the option bag is a constructor
+    // argument, not syntax, so nothing needs downlevelling. Runtime support is
+    // not in question — Error cause shipped in Node 16.9 and `engines.node`
+    // requires ^20.19.0 || >=22.12.0, with no browserslist narrowing the
+    // browser floor below it.
+    "lib": ["ES2020", "ES2022.Error", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
     "types": ["node"],

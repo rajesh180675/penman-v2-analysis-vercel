@@ -132,7 +132,7 @@ export async function parseCapitalineZip(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     trace("parse", "zipLoad:error", { error: msg }, null, { level: "error" });
-    throw new Error(`Failed to open ZIP: ${msg}`);
+    throw new Error(`Failed to open ZIP: ${msg}`, { cause: e });
   }
 
   const fileEntries = Object.values(zip.files).filter(
@@ -194,7 +194,7 @@ export async function parseCapitalineZip(
     try {
       buffer = await entry.async("arraybuffer");
     } catch (e) {
-      throw new Error(`Could not read '${fileName}': ${e instanceof Error ? e.message : String(e)}`);
+      throw new Error(`Could not read '${fileName}': ${e instanceof Error ? e.message : String(e)}`, { cause: e });
     }
 
     // Source-lineage: SHA-256 of uncompressed file bytes.
