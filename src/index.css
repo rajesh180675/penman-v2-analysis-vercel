@@ -51,7 +51,10 @@
   /* Text hierarchy */
   --color-text-1: #0f172a;
   --color-text-2: #475569;
-  --color-text-3: #94a3b8;
+  /* Was #94a3b8 (slate-400), which measured 2.56:1 on white — every wb-* label
+     class that reads this token failed WCAG AA. #64748b (slate-500) is 4.76:1
+     and keeps the tertiary-label hierarchy below --color-text-2. */
+  --color-text-3: #64748b;
   --color-text-1-dark: #f1f5f9;
   --color-text-2-dark: #cbd5e1;
   --color-text-3-dark: #64748b;

@@ -77,8 +77,11 @@ export function AppHeader({
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">PN</div>
           <div>
-            <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">Penman–Nissim V3</span>
-            <span className="hidden sm:inline text-xs text-slate-400 ml-2">Residual-Income Valuation · Capitaline Ind AS</span>
+            {/* h1, not a span: the document had no level-one heading at all
+                (axe: page-has-heading-one). Tailwind preflight resets heading
+                size/weight/margin to inherit, so the classes keep the visual. */}
+            <h1 className="inline font-bold text-slate-800 dark:text-slate-100 text-sm">Penman–Nissim V3</h1>
+            <span className="hidden sm:inline text-xs text-slate-500 dark:text-slate-400 ml-2">Residual-Income Valuation · Capitaline Ind AS</span>
           </div>
         </div>
         <nav className="flex h-full overflow-x-auto gap-0.5" role="tablist" aria-label="Analysis tabs">
@@ -87,13 +90,19 @@ export function AppHeader({
             if (groupTabs.length === 0) return null;
             return (
               <div key={group.key} className="flex items-center">
-                <span className="text-[9px] uppercase tracking-wider text-slate-400 px-1.5 hidden lg:inline">{group.label}</span>
+                <span className="text-[9px] uppercase tracking-wider text-slate-600 dark:text-slate-400 px-1.5 hidden lg:inline">{group.label}</span>
                 {groupTabs.map(tab => (
                   <button
                     key={tab.id}
+                    id={`tab-${tab.id}`}
                     role="tab"
                     aria-selected={activeTab === tab.id}
-                    aria-controls={`panel-${tab.id}`}
+                    // Only the selected tab has a rendered panel: TabRouter swaps one
+                    // container's contents rather than mounting 19 of them. Pointing
+                    // every tab at `panel-<id>` referenced elements that never existed
+                    // (axe: aria-valid-attr-value, critical), so the attribute is set
+                    // only where the target is actually in the document.
+                    aria-controls={activeTab === tab.id ? `panel-${tab.id}` : undefined}
                     onClick={() => {
                       if (tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable) return;
                       setActiveTab(tab.id);

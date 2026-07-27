@@ -31,15 +31,19 @@ export default function ConfigSection({
       {/* Config row — Essential (always visible) */}
       <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex flex-wrap gap-4 items-end">
         <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Company ID</label>
-          <input value={companyId} onChange={(e) => setCompanyId(e.target.value.toUpperCase())}
+          <label htmlFor="config-company-id" className="block text-xs font-medium text-slate-600 mb-1">Company ID</label>
+          <input id="config-company-id" value={companyId} onChange={(e) => setCompanyId(e.target.value.toUpperCase())}
             className="w-24 px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white" placeholder="VST" />
         </div>
         <div>
-          <label className={`block text-xs font-semibold mb-1 ${typeNotSelected ? "text-red-600" : "text-slate-600"}`}>
+          {/* htmlFor/id pairs the visible label with the control. Without it the
+              select had no accessible name at all (axe: select-name, critical) —
+              a screen reader announced only its options. */}
+          <label htmlFor="config-company-type" className={`block text-xs font-semibold mb-1 ${typeNotSelected ? "text-red-600" : "text-slate-600"}`}>
             Company Type{typeNotSelected && <span className="ml-1 text-red-600">⛔ required</span>}
           </label>
           <select
+            id="config-company-type"
             value={config.company_type ?? "auto"}
             onChange={(e) => onConfigChange({
               ...config,
@@ -64,8 +68,9 @@ export default function ConfigSection({
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Market Price ₹</label>
+          <label htmlFor="config-market-price" className="block text-xs font-medium text-slate-600 mb-1">Market Price ₹</label>
           <input
+            id="config-market-price"
             type="number"
             step={0.01}
             value={config.market_price ?? ""}
@@ -78,8 +83,9 @@ export default function ConfigSection({
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Shares (Cr)</label>
+          <label htmlFor="config-shares-outstanding" className="block text-xs font-medium text-slate-600 mb-1">Shares (Cr)</label>
           <input
+            id="config-shares-outstanding"
             type="number"
             step={0.01}
             value={config.shares_outstanding ?? ""}

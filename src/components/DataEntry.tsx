@@ -645,7 +645,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
             mode === "json" ? "Raw JSON" :
             mode === "xbrl" ? "XBRL XML" : "Manual Wizard"
           }`}
-          <span className="ml-2 text-slate-400">— change format</span>
+          <span className="ml-2 text-slate-600 dark:text-slate-400">— change format</span>
         </summary>
         <div className="px-3 pb-3 pt-1 inline-flex gap-2 flex-wrap">
           {([
