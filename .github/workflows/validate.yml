@@ -148,10 +148,41 @@ jobs:
           path: playwright-report
           if-no-files-found: ignore
 
+  # Full bundled-company pipeline through the real UI: loads four companies from
+  # the library, cycles all 19 tabs, and asserts run identity holds across tab
+  # switches. Kept out of CI until now because one of its seven tests failed on
+  # main — the run-identity check sampled the hash before asynchronous
+  # advanced-model governance had settled, so it compared against an identity the
+  # app had already superseded. All seven pass, so it can gate.
+  #
+  # Its own job rather than folded into tcs-acceptance: this is the slowest
+  # browser suite (~3 min), and a pipeline regression should be reported as one
+  # instead of surfacing under a deep-link audit name.
+  pipeline-e2e:
+    name: Full pipeline e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e:pipeline
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-e2e-playwright-report
+          path: playwright-report
+          if-no-files-found: ignore
+
   release-gate:
     name: Release validation complete
     if: always()
-    needs: [quality, unit-tests, golden, company-audit, tcs-acceptance, accessibility]
+    needs: [quality, unit-tests, golden, company-audit, tcs-acceptance, accessibility, pipeline-e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Enforce every parallel gate
@@ -162,6 +193,7 @@ jobs:
           AUDIT: ${{ needs.company-audit.result }}
           TCS_ACCEPTANCE: ${{ needs.tcs-acceptance.result }}
           ACCESSIBILITY: ${{ needs.accessibility.result }}
+          PIPELINE_E2E: ${{ needs.pipeline-e2e.result }}
         run: |
           test "$QUALITY" = success
           test "$UNIT" = success
@@ -169,13 +201,14 @@ jobs:
           test "$AUDIT" = success
           test "$TCS_ACCEPTANCE" = success
           test "$ACCESSIBILITY" = success
+          test "$PIPELINE_E2E" = success
 
   # Compatibility context required by the protected main branch. Keep this
   # as a real aggregate gate rather than a manually-created commit status.
   validate:
     name: validate
     if: always()
-    needs: [quality, unit-tests, golden, company-audit, tcs-acceptance, accessibility]
+    needs: [quality, unit-tests, golden, company-audit, tcs-acceptance, accessibility, pipeline-e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Enforce protected-branch validation
@@ -186,6 +219,7 @@ jobs:
           AUDIT: ${{ needs.company-audit.result }}
           TCS_ACCEPTANCE: ${{ needs.tcs-acceptance.result }}
           ACCESSIBILITY: ${{ needs.accessibility.result }}
+          PIPELINE_E2E: ${{ needs.pipeline-e2e.result }}
         run: |
           test "$QUALITY" = success
           test "$UNIT" = success
@@ -193,6 +227,7 @@ jobs:
           test "$AUDIT" = success
           test "$TCS_ACCEPTANCE" = success
           test "$ACCESSIBILITY" = success
+          test "$PIPELINE_E2E" = success
 
 # ZIP determinism remains a local release check because CI checkouts omit
 # gitignored Capitaline .xls sources. Run sync-companies.cjs twice; the second
