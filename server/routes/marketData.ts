@@ -40,17 +40,104 @@ function computePercentileRank(current: number | null, series: (number | null)[]
   return lessOrEqual / cleaned.length;
 }
 
-async function fetchNseQuote(symbol: string) {
+/**
+ * The third-party JSON shapes this route reads. Declared rather than left as
+ * `any` because `any` makes the *reads* unchecked too: `priceInfo.lastPrice`
+ * typechecks as a number even when NSE served an HTML block page, which is how
+ * this file has produced silent numeric defects before.
+ *
+ * Every leaf stays `unknown` on purpose. These payloads are unversioned and
+ * outside our control, so a renamed or absent key must be forced through
+ * `toNumber` rather than trusted. The assertions below are unchecked — what
+ * they buy is checked reads, not a validated payload.
+ */
+interface NseQuotePriceInfo {
+  readonly lastPrice?: unknown;
+  readonly close?: unknown;
+  readonly previousClose?: unknown;
+}
+
+interface NseQuoteInfo {
+  readonly totalMarketCap?: unknown;
+  readonly issuedSize?: unknown;
+}
+
+interface NseQuotePayload {
+  readonly priceInfo?: NseQuotePriceInfo;
+  readonly info?: NseQuoteInfo;
+}
+
+interface NseHistoryRow {
+  readonly CH_TIMESTAMP?: unknown;
+  readonly TIMESTAMP?: unknown;
+  readonly CH_CLOSING_PRICE?: unknown;
+  readonly CLOSE_PRICE?: unknown;
+}
+
+interface YahooChartPayload {
+  readonly chart?: {
+    readonly result?: readonly {
+      readonly meta?: {
+        readonly regularMarketPrice?: unknown;
+        readonly chartPreviousClose?: unknown;
+      };
+    }[];
+  };
+}
+
+/** One close observation, after both leaves have been narrowed. */
+interface HistoryPoint {
+  readonly date: string;
+  readonly close: number | null;
+}
+
+/**
+ * Narrows an NSE `data` array into usable close observations.
+ *
+ * Exported for tests: the network wrapper below cannot be exercised without
+ * mocking fetch, and this is the part that has repeatedly been wrong.
+ *
+ * Both narrowing steps are load-bearing, and they must happen in this order:
+ *
+ *   1. Rows are filtered to records BEFORE any field is read. A `null` or
+ *      primitive element makes `row.CH_TIMESTAMP` throw, and the caller's catch
+ *      turns that throw into an empty history — so one malformed element used to
+ *      discard every valid observation beside it.
+ *   2. `date` is then checked to be a non-empty string, because the sort below
+ *      calls `localeCompare` on it. A numeric `CH_TIMESTAMP` satisfies the row
+ *      shape and threw at sort time, with the same total-loss outcome.
+ */
+export function parseNseHistoryRows(data: unknown): readonly HistoryPoint[] {
+  const rows: readonly NseHistoryRow[] = Array.isArray(data)
+    ? data.filter((row): row is NseHistoryRow =>
+        typeof row === "object" && row !== null && !Array.isArray(row))
+    : [];
+  return rows
+    .map((row): { date: unknown; close: number | null } => ({
+      date: row.CH_TIMESTAMP ?? row.TIMESTAMP,
+      close: toNumber(row.CH_CLOSING_PRICE ?? row.CLOSE_PRICE),
+    }))
+    .filter((point): point is HistoryPoint =>
+      typeof point.date === "string" && point.date !== "" && point.close != null)
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/** Message from an unknown throw, matching this repo's narrowing convention. */
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function fetchNseQuote(symbol: string): Promise<NseQuotePayload | null> {
   const cookie = await getNseCookie();
   const url = `${NSE_BASE}/api/quote-equity?symbol=${encodeURIComponent(symbol)}`;
   const res = await fetch(url, {
     headers: { ...NSE_HEADERS, Cookie: cookie, Referer: `${NSE_BASE}/get-quotes/equity?symbol=${encodeURIComponent(symbol)}` },
   });
   if (!res.ok) throw new Error(`NSE quote API returned ${res.status}`);
-  return await res.json();
+  return await res.json() as NseQuotePayload | null;
 }
 
-async function fetchNseHistory(symbol: string) {
+async function fetchNseHistory(symbol: string): Promise<readonly HistoryPoint[]> {
   const cookie = await getNseCookie();
   const today = new Date();
   const oneYearAgo = new Date(today);
@@ -64,18 +151,14 @@ async function fetchNseHistory(symbol: string) {
     if (!res.ok) return [];
     const ct = res.headers.get("content-type") ?? "";
     if (!ct.includes("json")) return []; // NSE sometimes returns HTML (rate-limit/block)
-    const payload = await res.json() as any;
-    const data = Array.isArray(payload?.data) ? payload.data : [];
-    return data
-      .map((d: any) => ({ date: d.CH_TIMESTAMP ?? d.TIMESTAMP, close: toNumber(d.CH_CLOSING_PRICE ?? d.CLOSE_PRICE) }))
-      .filter((d: any) => d.date && d.close != null)
-      .sort((a: any, b: any) => b.date.localeCompare(a.date));
+    const payload = await res.json() as { readonly data?: unknown } | null;
+    return parseNseHistoryRows(payload?.data);
   } catch {
     return []; // Gracefully handle any parse/network error
   }
 }
 
-function summarizeHistory(points: Array<{ date: string; close: number | null }>, currentPrice: number | null) {
+function summarizeHistory(points: readonly HistoryPoint[], currentPrice: number | null) {
   if (!points.length) return null;
   const closes = points.map(p => p.close).filter((v): v is number => v != null && Number.isFinite(v));
   if (!closes.length) return null;
@@ -103,7 +186,7 @@ async function fetchYahooSnapshot(symbol: string) {
     headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
   });
   if (!yahooRes.ok) throw new Error(`Yahoo returned ${yahooRes.status}`);
-  const yahooData = await yahooRes.json() as any;
+  const yahooData = await yahooRes.json() as YahooChartPayload | null;
   const meta = yahooData?.chart?.result?.[0]?.meta;
   if (!meta) throw new Error("Yahoo returned no data.");
   const price = toNumber(meta.regularMarketPrice);
@@ -230,11 +313,17 @@ router.get("/snapshot", async (req: Request, res: Response) => {
       try {
         const [quotePayload, historyPoints] = await Promise.all([
           fetchNseQuote(symbol),
-          fetchNseHistory(symbol).catch(err => { warnings.push(`NSE history: ${err.message}`); return []; }),
+          // `.catch`'s reason is `any` by Promise's own typing, so `err.message`
+          // typechecked here on a non-Error throw and would have pushed
+          // "NSE history: undefined". `getNseCookie` is awaited outside
+          // fetchNseHistory's try block, so a DNS/TLS failure does reach here.
+          fetchNseHistory(symbol).catch((error: unknown) => { warnings.push(`NSE history: ${errorMessage(error)}`); return []; }),
         ]);
 
-        const priceInfo = (quotePayload as any)?.priceInfo ?? {};
-        const info = (quotePayload as any)?.info ?? {};
+        // Annotated rather than inferred: `?? {}` would otherwise widen to
+        // `NseQuotePriceInfo | {}` and the reads below would not typecheck.
+        const priceInfo: NseQuotePriceInfo = quotePayload?.priceInfo ?? {};
+        const info: NseQuoteInfo = quotePayload?.info ?? {};
         const price = toNumber(priceInfo.lastPrice) ?? toNumber(priceInfo.close) ?? fallbackPrice ?? null;
         const previousClose = toNumber(priceInfo.previousClose) ?? null;
         const changePct = price != null && previousClose != null && previousClose > 0
@@ -252,12 +341,14 @@ router.get("/snapshot", async (req: Request, res: Response) => {
           freshness: price != null ? "live" : "fallback" as const,
           sourceSummary: price != null ? `NSE India live quote for ${symbol}.` : "NSE did not return a live quote.",
           warnings,
-          history: summarizeHistory(historyPoints as any, price),
+          // The `as any` here is gone rather than replaced: once fetchNseHistory
+          // returns HistoryPoint[], this call typechecks on its own.
+          history: summarizeHistory(historyPoints, price),
         };
         await cacheSnapshot(symbol, snapshot);
         return sendSnapshot(res, snapshot);
-      } catch (error: any) {
-        warnings.push(`NSE failed: ${error?.message ?? String(error)}. Falling back to Yahoo Finance.`);
+      } catch (error) {
+        warnings.push(`NSE failed: ${errorMessage(error)}. Falling back to Yahoo Finance.`);
         // Cascade to Yahoo Finance as fallback
         try {
           const yahoo = await fetchYahooSnapshot(symbol);
@@ -277,8 +368,8 @@ router.get("/snapshot", async (req: Request, res: Response) => {
           };
           await cacheSnapshot(symbol, snapshot);
           return sendSnapshot(res, snapshot);
-        } catch (yahooErr: any) {
-          warnings.push(`Yahoo fallback also failed: ${yahooErr?.message ?? String(yahooErr)}`);
+        } catch (yahooErr) {
+          warnings.push(`Yahoo fallback also failed: ${errorMessage(yahooErr)}`);
           const offline = await readOfflineSnapshot(symbol);
           if (offline) {
             return sendSnapshot(res, offline);
@@ -314,8 +405,8 @@ router.get("/snapshot", async (req: Request, res: Response) => {
       };
       await cacheSnapshot(symbol, snapshot);
       return sendSnapshot(res, snapshot);
-    } catch (error: any) {
-      warnings.push(error?.message ?? String(error));
+    } catch (error) {
+      warnings.push(errorMessage(error));
       const offline = await readOfflineSnapshot(symbol);
       if (offline) {
         return sendSnapshot(res, offline);

@@ -179,8 +179,8 @@ app.get("/api/blackboard", async (req, res) => {
   try {
     const data = await readJson(filePath);
     res.json({ ok: true, data: data ?? {} });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err?.message ?? "Read failed." });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err instanceof Error ? err.message : "Read failed." });
   }
 });
 
@@ -191,8 +191,8 @@ app.put("/api/blackboard", async (req, res) => {
   try {
     await writeJson(filePath, req.body);
     res.json({ ok: true });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err?.message ?? "Write failed." });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err instanceof Error ? err.message : "Write failed." });
   }
 });
 
@@ -206,9 +206,36 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-// Global error handler
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  if (err?.type === "entity.too.large") {
+/**
+ * Bounded description of a thrown value for the server log.
+ *
+ * An `Error` contributes its message. Anything else contributes only its type,
+ * never its contents: middleware can throw an object carrying request data,
+ * credentials, or PII, and this handler is the one place such a value would be
+ * written out verbatim. `api/cron/*` logs `error.name` for the same reason.
+ */
+function describeThrown(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return `non-Error value thrown (${typeof error})`;
+}
+
+/**
+ * body-parser signals an oversized payload with a `type` property rather than a
+ * distinct Error subclass, so this is a property probe and not an `instanceof`
+ * check. Extracted as a guard so the 413 branch reads a checked property
+ * instead of trusting `any`.
+ */
+function isPayloadTooLargeError(error: unknown): boolean {
+  return typeof error === "object"
+    && error !== null
+    && (error as { type?: unknown }).type === "entity.too.large";
+}
+
+// Global error handler. `err` is typed `unknown` rather than express's own `any`:
+// anything any middleware throws lands here, which is precisely what this
+// project's `useUnknownInCatchVariables` setting says to treat as unknown.
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (isPayloadTooLargeError(err)) {
     console.error(`[413 Payload Too Large] Path: ${_req.path}, BaseUrl: ${_req.baseUrl}, Method: ${_req.method}, Length: ${_req.headers["content-length"]}`);
     const isResearch = _req.path.includes("/research") || _req.baseUrl?.includes("/research");
     const isAuditBlob = _req.path.includes("/audit/blobs") || _req.originalUrl?.includes("/api/audit/blobs");
@@ -225,7 +252,7 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
     });
     return;
   }
-  console.error("[server error]", err?.message ?? err);
+  console.error("[server error]", describeThrown(err));
   res.status(500).json({ ok: false, error: "Internal server error." });
 });
 
