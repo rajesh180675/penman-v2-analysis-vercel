@@ -199,8 +199,8 @@ async function refreshOne(company: RegistryEntry) {
     .filter((c): c is string => typeof c === "string");
 
   // Build sector-appropriate metric bands.
-  let metricTolerances: Record<string, { min: number; max: number }> = {};
-  let metricSummary = "";
+  let metricTolerances: Record<string, { min: number; max: number }>;
+  let metricSummary: string;
 
   if (pipeline.analysisFamily === "industrial") {
     const latest = pipeline.periods[pipeline.periods.length - 1];

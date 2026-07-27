@@ -58,7 +58,7 @@ export function justifiedPBGordon(
     floored = true;
   }
   const value = fairPB * bv;
-  let reason = "";
+  let reason: string;
   if (floored) {
     reason = `ROE ≤ ke → floored at 0.7x P/B for insurance business`;
   } else {
@@ -178,8 +178,8 @@ export function evBasedValuation(
   const ev = latest.quality!.embedded_value!;
   const vnb = latest.quality!.vnb ?? null;
 
-  let fairValue = 0;
-  let reason = "";
+  let fairValue: number;
+  let reason: string;
   const diagnostics: Record<string, number | null> = { embedded_value: ev, vnb };
 
   if (vnb != null && vnb > 0) {

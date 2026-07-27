@@ -170,7 +170,7 @@ export function computeBankValuation(
   // silently substitute for a missing embedded value. The caller can read
   // evBased.reason ("Embedded Value sidecar data unavailable …") to surface why.
   // For banks/NBFCs the original median-of-all-computed-models is preserved.
-  let triangulatedValue: number | null = null;
+  let triangulatedValue: number | null;
   if (isInsurance) {
     triangulatedValue = evBased.status === "computed" && evBased.intrinsicValue != null
       ? evBased.intrinsicValue
