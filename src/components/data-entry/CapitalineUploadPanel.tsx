@@ -67,7 +67,7 @@ export default function CapitalineUploadPanel({
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-bold">1</span>
             <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Consolidated Financial Data</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-50 px-1.5 py-0.5 rounded">Required</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-50 px-1.5 py-0.5 rounded">Required</span>
           </div>
           <p className="text-xs text-slate-500 ml-7">ZIP containing Balance Sheet + P&amp;L + Cash Flow .xls exports</p>
         </div>
@@ -77,7 +77,11 @@ export default function CapitalineUploadPanel({
           onDrop={handleDrop}
           className={`border-2 border-dashed rounded-xl p-6 text-center transition-all relative overflow-hidden group ${
             typeNotSelected
-              ? "border-red-300 bg-red-50/30 dark:bg-red-950/10 cursor-not-allowed opacity-60"
+              // No blanket opacity here: dimming a container that holds text drags
+              // its contrast down with it (axe measured slate-800 blending to
+              // #777e8b, 4.03:1). The red border and not-allowed cursor carry the
+              // disabled state without touching legibility.
+              ? "border-red-300 bg-red-50/30 dark:bg-red-950/10 cursor-not-allowed"
               : dragOver
               ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-inner cursor-pointer"
               : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/40 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-sm cursor-pointer"
@@ -127,7 +131,7 @@ export default function CapitalineUploadPanel({
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-400 text-white text-[10px] font-bold">2</span>
             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Standalone Statements</span>
-            <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Optional</span>
+            <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">Optional</span>
           </div>
           <p className="text-xs text-slate-500 ml-7">Enables subsidiary contribution gap analysis (consolidated − standalone)</p>
         </div>
@@ -191,7 +195,7 @@ export default function CapitalineUploadPanel({
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-400 text-white text-[10px] font-bold">3</span>
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Quality Indicators Sidecar</span>
-                <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Optional</span>
+                <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">Optional</span>
               </div>
               <p className="text-xs text-slate-500 ml-7">JSON with NIM, GNPA, CRAR, Cost/Income — enables bank quality panels</p>
             </div>
@@ -252,7 +256,7 @@ export default function CapitalineUploadPanel({
 
         {/* Coverage summary */}
         <div className="flex items-center gap-3 pt-2 pb-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ready:</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">Ready:</span>
           <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400">
             {!typeNotSelected ? "✓ Type" : "✗ Type"}
           </span>

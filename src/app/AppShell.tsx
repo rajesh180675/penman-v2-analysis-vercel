@@ -459,6 +459,17 @@ export function AppShell() {
               itServicesSignal={itServicesSignal}
               cyclicalitySignal={cyclicalitySignal}
             />
+            {/* The panel the header's selected tab points at. TabRouter swaps one
+                container's contents rather than mounting a panel per tab, so there
+                is exactly one tabpanel and its id tracks the active tab.
+                aria-labelledby is omitted when the active tab is filtered out of
+                visibleTabs — pointing at a button that was never rendered is the
+                same dangling-reference defect this change fixes on the tab side. */}
+            <div
+              role="tabpanel"
+              id={`panel-${activeTab}`}
+              aria-labelledby={visibleTabs.some(t => t.id === activeTab) ? `tab-${activeTab}` : undefined}
+            >
             <TabRouter
               activeTab={activeTab}
               setActiveTab={setActiveTab}
@@ -504,6 +515,7 @@ export function AppShell() {
               debugInfo={debugInfo}
               engineError={engineError}
             />
+            </div>
           </main>
         </div>
       </div>

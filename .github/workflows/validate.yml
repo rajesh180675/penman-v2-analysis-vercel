@@ -122,10 +122,36 @@ jobs:
           path: playwright-report
           if-no-files-found: ignore
 
+  # Browser-based axe sweep. Separate from tcs-acceptance so a contrast
+  # regression is reported as an accessibility failure rather than buried in a
+  # deep-link audit check. This is the only job that can evaluate
+  # `color-contrast` — the two jsdom harnesses disable it because jsdom has no
+  # layout engine.
+  accessibility:
+    name: Browser accessibility sweep
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e:a11y
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-playwright-report
+          path: playwright-report
+          if-no-files-found: ignore
+
   release-gate:
     name: Release validation complete
     if: always()
-    needs: [quality, unit-tests, golden, company-audit, tcs-acceptance]
+    needs: [quality, unit-tests, golden, company-audit, tcs-acceptance, accessibility]
     runs-on: ubuntu-latest
     steps:
       - name: Enforce every parallel gate
@@ -135,19 +161,21 @@ jobs:
           GOLDEN: ${{ needs.golden.result }}
           AUDIT: ${{ needs.company-audit.result }}
           TCS_ACCEPTANCE: ${{ needs.tcs-acceptance.result }}
+          ACCESSIBILITY: ${{ needs.accessibility.result }}
         run: |
           test "$QUALITY" = success
           test "$UNIT" = success
           test "$GOLDEN" = success
           test "$AUDIT" = success
           test "$TCS_ACCEPTANCE" = success
+          test "$ACCESSIBILITY" = success
 
   # Compatibility context required by the protected main branch. Keep this
   # as a real aggregate gate rather than a manually-created commit status.
   validate:
     name: validate
     if: always()
-    needs: [quality, unit-tests, golden, company-audit, tcs-acceptance]
+    needs: [quality, unit-tests, golden, company-audit, tcs-acceptance, accessibility]
     runs-on: ubuntu-latest
     steps:
       - name: Enforce protected-branch validation
@@ -157,12 +185,14 @@ jobs:
           GOLDEN: ${{ needs.golden.result }}
           AUDIT: ${{ needs.company-audit.result }}
           TCS_ACCEPTANCE: ${{ needs.tcs-acceptance.result }}
+          ACCESSIBILITY: ${{ needs.accessibility.result }}
         run: |
           test "$QUALITY" = success
           test "$UNIT" = success
           test "$GOLDEN" = success
           test "$AUDIT" = success
           test "$TCS_ACCEPTANCE" = success
+          test "$ACCESSIBILITY" = success
 
 # ZIP determinism remains a local release check because CI checkouts omit
 # gitignored Capitaline .xls sources. Run sync-companies.cjs twice; the second

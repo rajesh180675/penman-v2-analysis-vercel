@@ -132,7 +132,7 @@ export default function CompanyLibraryGrid({ onPickCompany, onBatchRun, disabled
           <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
             Company Library
           </h3>
-          <span className="text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] font-mono text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
             {filtered.length}/{companies.length}
           </span>
         </div>
@@ -287,7 +287,7 @@ export default function CompanyLibraryGrid({ onPickCompany, onBatchRun, disabled
       )}
 
       {/* Footer hint */}
-      <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center">
+      <p className="text-[10px] text-slate-600 dark:text-slate-400 text-center">
         Click a company to load. Consolidated + standalone (when available) loaded together for gap analysis.
       </p>
     </div>
