@@ -22,7 +22,14 @@
 
 import { SECTOR_BETAS } from "../types/config";
 import type { CompanyType, EngineConfig } from "../types";
-import { resolveMacroPack, type MacroPack, type MacroPackResolution } from "../marketPacks";
+import {
+  resolveEquityBeta,
+  resolveMacroPack,
+  type EquityBetaPack,
+  type EquityBetaStatus,
+  type MacroPack,
+  type MacroPackResolution,
+} from "../marketPacks";
 
 export type AssumptionTier = "estimated" | "sourced" | "prior";
 
@@ -108,11 +115,25 @@ function sectorBetaPrior(companyType: CompanyType | undefined, reason: string): 
 }
 
 /**
- * Resolve beta, preferring a bottom-up estimate over any supplied scalar.
+ * Resolve beta: bottom-up from peers, then the company's own regressed beta,
+ * then an explicit scalar, then a sector prior.
  *
- * Order is deliberate. A bottom-up beta is reproducible from data we hold, so it
- * outranks an explicit beta whose derivation we cannot see — but an explicit
- * beta is still `sourced` and defensible, unlike a sector prior.
+ * Order is deliberate, and the first two are both `estimated` for the same
+ * reason — each is reproducible from data we hold — so the tie is broken on
+ * precision rather than kind. A bottom-up beta is a median across peers, which
+ * averages away a good part of the estimation error that any single regression
+ * carries; a five-year weekly regression on one name typically has a standard
+ * error around 0.09, and the median of five such names is tighter than that.
+ * That is the standard argument for preferring industry betas, and it is why a
+ * qualifying peer set still wins here.
+ *
+ * Both outrank an explicit beta whose derivation we cannot see. That ordering
+ * predates the regressed branch (a bottom-up beta already outranked
+ * `config.beta`), and extending it is deliberate rather than incidental: a
+ * dated regression with its error bars published is more defensible than an
+ * undated scalar, even a deliberate one. A reviewer who needs the scalar to win
+ * should withhold the pack for that run, which keeps the override visible in
+ * the inputs instead of hiding it behind a silent precedence rule.
  */
 export function resolveBeta(input: {
   readonly companyType?: CompanyType | undefined;
@@ -120,6 +141,13 @@ export function resolveBeta(input: {
   readonly targetDebtToEquity?: number | null | undefined;
   readonly taxRate?: number | null | undefined;
   readonly peerBetas?: readonly PeerLeveredBeta[] | undefined;
+  /**
+   * The company's own regressed beta, already validated against the pack's
+   * precision and staleness rules. `unusable` carries the reason, which becomes
+   * the prior's `fallbackReason` so a reviewer sees why the regression was not
+   * used rather than only that a default was.
+   */
+  readonly regressedBeta?: EquityBetaStatus | null | undefined;
   /** Explicit beta from config, when a reviewer set one. */
   readonly explicitBeta?: number | null | undefined;
   readonly explicitBetaSource?: string | undefined;
@@ -153,6 +181,23 @@ export function resolveBeta(input: {
     }
   }
 
+  const regressed = input.regressedBeta ?? null;
+  if (regressed?.status === "usable") {
+    return {
+      key: "beta",
+      value: regressed.beta,
+      // `estimated`, not `sourced`. The distinction is who did the arithmetic:
+      // a sourced value is one a third party computed and stands behind, while
+      // this slope was computed here from price history, which is exactly what
+      // `estimated` means in this module. Calling it `sourced` would also imply
+      // a vendor stands behind the number, which nobody does.
+      tier: "estimated",
+      source: regressed.source,
+      asOf: regressed.asOf,
+      method: regressed.method,
+    };
+  }
+
   if (input.explicitBeta != null && Number.isFinite(input.explicitBeta) && input.explicitBeta > 0) {
     return {
       key: "beta",
@@ -164,9 +209,15 @@ export function resolveBeta(input: {
     };
   }
 
-  const reason = assetBetas.length < minimum
-    ? `Only ${assetBetas.length} usable peer beta(s); a bottom-up estimate needs ${minimum}.`
-    : "Target leverage or tax rate unavailable, so peer betas could not be relevered.";
+  // The regression's own reason is the more specific one when there was a pack
+  // to consult at all: "beta se 0.250 is above the 0.15 limit" tells a reviewer
+  // something actionable, where the peer-count reason only restates that 33
+  // companies are not a sector.
+  const reason = regressed?.status === "unusable"
+    ? regressed.reason
+    : assetBetas.length < minimum
+      ? `Only ${assetBetas.length} usable peer beta(s); a bottom-up estimate needs ${minimum}.`
+      : "Target leverage or tax rate unavailable, so peer betas could not be relevered.";
   return sectorBetaPrior(input.companyType, reason);
 }
 
@@ -333,6 +384,12 @@ export interface CapitalCostAssumptionSet {
 export function resolveCapitalCostAssumptions(input: {
   readonly config: EngineConfig;
   readonly macroPack?: MacroPack | null | undefined;
+  /**
+   * Pinned regressed betas. Absent by default for the same reason `macroPack`
+   * is: with no pack, beta resolves exactly as it did before this pack existed,
+   * so no existing caller moves until one asks for it and says as of when.
+   */
+  readonly betaPack?: EquityBetaPack | null | undefined;
   readonly analysisAsOf?: string | null | undefined;
   readonly liveRiskFreeRate?: LiveRiskFreeObservation | null | undefined;
   readonly peerBetas?: readonly PeerLeveredBeta[] | undefined;
@@ -343,12 +400,27 @@ export function resolveCapitalCostAssumptions(input: {
   const riskFreeRate = resolveRiskFreeRate(resolution, input.config, input.liveRiskFreeRate);
   const equityRiskPremium = resolveEquityRiskPremium(resolution, input.config);
   const terminalGrowthCeiling = resolveTerminalGrowthCeiling(resolution, input.config);
+  // Only consulted when a pack was supplied, so a run without one reports the
+  // peer-count reason it always did rather than "no pack supplied", which would
+  // read as a regression to anyone who never opted in.
+  // Keyed on `ticker`, deliberately not `market_data_symbol`. The pack is
+  // generated from registry tickers, and `ticker` is what the registry sets
+  // (AppShell passes the company id straight into it). `market_data_symbol` is a
+  // user-editable field for a price feed and may carry an exchange suffix or a
+  // provider-specific instrument format, so keying on it would miss the pack for
+  // a company that is in it.
+  const regressedBeta = input.betaPack
+    ? resolveEquityBeta(input.betaPack, input.config.ticker ?? null, {
+        analysisAsOf: input.analysisAsOf ?? null,
+      })
+    : null;
   const beta = resolveBeta({
     // config.company_type admits null; the prior lookup keys off "auto" instead.
     companyType: input.config.company_type ?? undefined,
     targetDebtToEquity: input.targetDebtToEquity,
     taxRate: input.taxRate,
     peerBetas: input.peerBetas,
+    regressedBeta,
     explicitBeta: input.config.beta,
     explicitBetaSource: "Explicit beta from engine configuration",
   });
