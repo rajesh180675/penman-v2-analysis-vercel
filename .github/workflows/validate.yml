@@ -157,9 +157,10 @@ jobs:
   #
   # Its own job rather than folded into tcs-acceptance: this is the slowest
   # browser suite (~3 min), and a pipeline regression should be reported as one
-  # instead of surfacing under a deep-link audit name.
+  # instead of surfacing under a deep-link audit name. Also carries the fast
+  # pre-ingestion smoke spec — see the step comment below.
   pipeline-e2e:
-    name: Full pipeline e2e
+    name: Pipeline and smoke e2e
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -170,6 +171,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # Smoke runs first and in the same job: it is ~11s against the same
+      # browser and server this job already pays ~2 min of `npm ci` plus a
+      # Chromium install to stand up. A separate job would spend two minutes of
+      # setup per eleven seconds of testing. Running it first also means a
+      # boot-level break is reported before the three-minute pipeline suite.
+      - run: npm run test:e2e:smoke
       - run: npm run test:e2e:pipeline
       - name: Upload Playwright diagnostics
         if: failure()
