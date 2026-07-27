@@ -92,6 +92,36 @@ interface HistoryPoint {
 }
 
 /**
+ * A traded close, or null when the feed did not report one.
+ *
+ * `toNumber` is `Number(value)`, and `Number("")`, `Number(null)`, `Number("  ")`
+ * and `Number([])` are all `0`. So a blank close survived as a real zero, and a
+ * zero is not inert downstream: `Math.min` makes it the 52-week low, the UI
+ * renders that as `₹0.00`, and `summarizeHistory`'s own `low52 > 0` guard then
+ * fails and silently blanks `distanceFrom52WeekLowPct`. The snapshot reports a
+ * low nobody traded at, and a missing distance with no stated reason.
+ *
+ * This needs no exotic payload to fire: `null` is the ordinary JSON encoding for
+ * a missing value. (Which shape NSE actually serves on a non-trading day is not
+ * established here — the coercion is the defect, not one specific payload.)
+ *
+ * So the raw value is screened before conversion rather than after. Non-positive
+ * and non-numeric types are rejected too: cash-market equity does not trade at or
+ * below zero, and `Number(true)` is `1` while `Number(["3450"])` is `3450` —
+ * coercions that would invent an observation out of a malformed field.
+ *
+ * Deliberately local to the history parse. `toNumber` also backs the Yahoo price,
+ * marketCap, sharesOutstanding and the `fallbackPrice` query parameter, each with
+ * its own callers and tests; changing it globally is a wider decision than this.
+ */
+function toClosePrice(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) && value > 0 ? value : null;
+  if (typeof value !== "string" || value.trim() === "") return null;
+  const parsed = toNumber(value);
+  return parsed != null && parsed > 0 ? parsed : null;
+}
+
+/**
  * Narrows an NSE `data` array into usable close observations.
  *
  * Exported for tests: the network wrapper below cannot be exercised without
@@ -115,7 +145,11 @@ export function parseNseHistoryRows(data: unknown): readonly HistoryPoint[] {
   return rows
     .map((row): { date: unknown; close: number | null } => ({
       date: row.CH_TIMESTAMP ?? row.TIMESTAMP,
-      close: toNumber(row.CH_CLOSING_PRICE ?? row.CLOSE_PRICE),
+      // Each field is screened separately, then chained — matching the quote
+      // path's `toNumber(lastPrice) ?? toNumber(close)` below. `??` on the raw
+      // values would stop at a blank `CH_CLOSING_PRICE` and never reach a real
+      // `CLOSE_PRICE`, because `""` is not nullish.
+      close: toClosePrice(row.CH_CLOSING_PRICE) ?? toClosePrice(row.CLOSE_PRICE),
     }))
     .filter((point): point is HistoryPoint =>
       typeof point.date === "string" && point.date !== "" && point.close != null)
