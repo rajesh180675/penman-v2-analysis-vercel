@@ -34,6 +34,11 @@ interface ExpectationsContract {
     metricKeyCount: { min: number; max: number };
     nonNullValueCount: { min: number; max: number };
   };
+  expectedSegmentCoverage?: {
+    business: number | null;
+    geographic: number | null;
+    mixed: number | null;
+  };
   notes?: string;
 }
 
@@ -132,6 +137,20 @@ describe("golden suite — expectations.json contract (Gap 6 / PR-F)", () => {
           expect(Number.isInteger(range.max), `${folder}.${field}: max must be an integer count`).toBe(true);
           expect(range.min, `${folder}.${field}: min must be >= 0`).toBeGreaterThanOrEqual(0);
           expect(range.min, `${folder}.${field}: min should be <= max`).toBeLessThanOrEqual(range.max);
+        }
+      }
+
+      // Segment counts, when present. Exact integers or null — null means the
+      // ZIP ships no file for that slot, which is a different state from a file
+      // that parsed to zero segments, so `null` and `0` must both survive the
+      // JSON round-trip distinctly.
+      if (exp.expectedSegmentCoverage) {
+        for (const slot of ["business", "geographic", "mixed"] as const) {
+          const count = exp.expectedSegmentCoverage[slot];
+          expect(
+            count === null || (Number.isInteger(count) && count >= 0),
+            `${folder}.${slot}: must be null or a non-negative integer, got ${count}`,
+          ).toBe(true);
         }
       }
     }

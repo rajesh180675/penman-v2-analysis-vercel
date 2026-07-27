@@ -28,7 +28,12 @@ import { getAnalysisPolicyVersions } from "../src/engine/policyVersions";
 import { DEFAULT_CONFIG, EngineConfig } from "../src/engine/types";
 // Reuse the audit gate's own input assembly. Anything this generator does
 // differently from `auditCompanyRun` produces a baseline the gate cannot satisfy.
-import { buildAuditAnalysisContext, loadQualitySidecar, measureParseCoverage } from "./lib/auditCompanyRun";
+import {
+  buildAuditAnalysisContext,
+  loadQualitySidecar,
+  measureParseCoverage,
+  measureSegmentCoverage,
+} from "./lib/auditCompanyRun";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, "..");
@@ -68,6 +73,11 @@ interface ExpectationsContract {
   expectedParseCoverage?: {
     metricKeyCount: { min: number; max: number };
     nonNullValueCount: { min: number; max: number };
+  };
+  expectedSegmentCoverage?: {
+    business: number | null;
+    geographic: number | null;
+    mixed: number | null;
   };
   notes?: string;
   targetState?: Record<string, unknown>;
@@ -182,6 +192,7 @@ async function refreshOne(company: RegistryEntry) {
   });
 
   const coverage = measureParseCoverage(parsed.periods);
+  const segmentCoverage = measureSegmentCoverage(parsed.segmentData);
 
   const observedAnomalyFlags = pipeline.anomalies.terminalFlags
     .map((f) => f.spec_id)
@@ -279,6 +290,10 @@ async function refreshOne(company: RegistryEntry) {
       metricKeyCount: countBand(coverage.metricKeyCount),
       nonNullValueCount: countBand(coverage.nonNullValueCount),
     },
+    // Exact counts, not bands. These are single-digit integers feeding a cliff:
+    // SOTP runs only at >= 2 segments, and NTPC sits at exactly 2. Any movement
+    // is material, including null <-> number in either direction.
+    expectedSegmentCoverage: segmentCoverage,
     capturedAt: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
     // Aspirations stay locked here so the gap remains visible. Carry forward an
     // existing targetState untouched; only seed one from the top-level fields on
@@ -308,7 +323,8 @@ async function refreshOne(company: RegistryEntry) {
   );
   console.log(`            ${metricSummary}`);
   console.log(
-    `            coverage: ${coverage.metricKeyCount} metric keys, ${coverage.nonNullValueCount} values`,
+    `            coverage: ${coverage.metricKeyCount} metric keys, ${coverage.nonNullValueCount} values` +
+    `  segments: business=${segmentCoverage.business} geo=${segmentCoverage.geographic} mixed=${segmentCoverage.mixed}`,
   );
 }
 

@@ -38,6 +38,22 @@ interface ExpectationsContract {
     metricKeyCount: { min: number; max: number };
     nonNullValueCount: { min: number; max: number };
   };
+  /**
+   * Segments per slot, captured exactly rather than banded.
+   *
+   * `expectedParseCoverage` above cannot see any of this — segment files are
+   * routed to a separate `segmentData` channel, not into `raw_metric_values` —
+   * and SOTP depends on it through a threshold: `buildSotpAssessment` runs only
+   * at `segments.length >= 2`. NTPC sits at exactly 2.
+   *
+   * null is legitimate (Bajaj Finance ships no segment files), so this asserts
+   * equality, not presence.
+   */
+  expectedSegmentCoverage?: {
+    business: number | null;
+    geographic: number | null;
+    mixed: number | null;
+  };
   notes?: string;
 }
 
@@ -147,7 +163,22 @@ export function createAuditTests({ start, size }: { start: number; size: number 
             ).toBeLessThanOrEqual(band.max);
           }
         }
-        // (f) Anomaly flags — every expected flag must appear in the
+        // (f) Segment coverage — exact counts per slot, because SOTP turns on a
+        // threshold (>= 2 segments) rather than degrading smoothly, and these
+        // are single-digit numbers where a band would swallow the whole signal.
+        const segmentExpectation = expectations.expectedSegmentCoverage;
+        if (segmentExpectation) {
+          for (const [slot, expectedCount] of Object.entries(segmentExpectation)) {
+            const actual = result.segmentCoverage[slot as keyof typeof result.segmentCoverage];
+            expect(
+              actual,
+              `segment coverage drift: ${slot} was ${expectedCount} at capture, now ${actual}. ` +
+              `Segment data feeds SOTP (needs >= 2 segments) and the dashboard breakdown; ` +
+              `null means the ZIP ships no such file, so a number-to-null change means extraction broke.`,
+            ).toBe(expectedCount);
+          }
+        }
+        // (g) Anomaly flags — every expected flag must appear in the
         // observed set (subset check; observed may legitimately include
         // additional minor flags without failing the gate).
         if (expectations.expectedAnomalyFlags.length > 0) {

@@ -31,7 +31,7 @@
   },
   "expectedRunsCleanWorkbook": true,
   "notes": "State-owned thermal+renewables generator. Capital-intensive with regulated returns; high NFO_to_CSE is structural (debt-financed PPE), not distress. Tests that NFO/CSE ranges are sector-aware.",
-  "capturedAt": "2026-07-27T08:46:18Z",
+  "capturedAt": "2026-07-27T09:43:56Z",
   "targetState": {
     "expectedRigorLevel": "valuation-eligible",
     "expectedParserFidelityStatus": "confirmed",
@@ -61,5 +61,10 @@
       "min": 4908,
       "max": 8182
     }
+  },
+  "expectedSegmentCoverage": {
+    "business": 2,
+    "geographic": null,
+    "mixed": null
   }
 }
