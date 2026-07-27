@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom (axe-core needs a real DOM) */
 /* ================================================================
    P7 — accessibility checks on the real report surfaces.
 

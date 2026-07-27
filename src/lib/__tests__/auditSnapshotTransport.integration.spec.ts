@@ -1,3 +1,15 @@
+/**
+ * @vitest-environment jsdom
+ *
+ * jsdom is load-bearing here, not incidental. `gridViaHtml` and
+ * `gridViaSpreadsheetML` call `new DOMParser()` inside a bare
+ * `try { } catch { return [] }`, so without a DOM the Capitaline parser does not
+ * fail — it silently falls back to the regex grid strategy and extracts far less.
+ * Measured on this TCS ZIP: 4407 unique metric keys under jsdom vs 475 under
+ * node, 60425 non-null values vs 6499, with `periods.length === 15` either way.
+ * The snapshot then comes in at 2.26 MB and the >10 MB budget assertion below
+ * fails for a reason that has nothing to do with the transport code it guards.
+ */
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";

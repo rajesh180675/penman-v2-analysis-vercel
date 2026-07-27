@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom (HTML sanitizer parses against a real DOM) */
 /* ================================================================
    Plan 6 PR-6.1 — sanitize contract tests.
 ================================================================ */

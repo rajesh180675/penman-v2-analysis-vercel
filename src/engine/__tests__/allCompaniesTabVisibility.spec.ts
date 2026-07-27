@@ -1,4 +1,16 @@
-
+/**
+ * @vitest-environment jsdom
+ *
+ * Pinned for the same reason as auditSnapshotTransport.integration.spec.ts: the
+ * Capitaline DOM grid strategies need `DOMParser`, and without one they degrade
+ * to the regex path silently rather than failing. This spec parses every
+ * company's real ZIP, so under node it would run on a fraction of the extracted
+ * metrics.
+ *
+ * Note this suite is `describe.skip` below, so the pin is currently unexercised —
+ * it is here so that whoever re-enables it does not start from a silently
+ * degraded parse. It has not been verified by a passing run.
+ */
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";

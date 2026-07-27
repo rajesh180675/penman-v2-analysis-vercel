@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom (axe-core needs a real DOM) */
 /* ================================================================
    Plan 7 PR-7.1 — A11y test harness via axe-core.
 

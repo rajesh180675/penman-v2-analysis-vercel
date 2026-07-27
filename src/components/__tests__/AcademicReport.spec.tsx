@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom (asserts against a parsed DOM) */
 import { renderToStaticMarkup } from "react-dom/server";
 import JSZip from "jszip";
 import { afterEach, describe, expect, it, vi } from "vitest";

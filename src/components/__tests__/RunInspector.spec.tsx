@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom (asserts against a parsed DOM) */
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import RunInspector from "../RunInspector";

@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom (downloadBlob drives browser download APIs) */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   REPORT_DOCUMENT_SCHEMA_VERSION,

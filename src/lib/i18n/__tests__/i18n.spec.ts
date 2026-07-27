@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom (locale persists to browser storage) */
 /* ================================================================
    Plan 7 PR-7.2 — i18n contract tests.
 ================================================================ */
