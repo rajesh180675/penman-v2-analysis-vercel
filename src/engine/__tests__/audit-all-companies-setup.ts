@@ -166,13 +166,27 @@ export function createAuditTests({ start, size }: { start: number; size: number 
         // (f) Segment coverage — exact counts per slot, because SOTP turns on a
         // threshold (>= 2 segments) rather than degrading smoothly, and these
         // are single-digit numbers where a band would swallow the whole signal.
-        const segmentExpectation = expectations.expectedSegmentCoverage;
-        if (segmentExpectation) {
-          for (const [slot, expectedCount] of Object.entries(segmentExpectation)) {
-            const actual = result.segmentCoverage[slot as keyof typeof result.segmentCoverage];
+        //
+        // Only an absent key skips this. An explicit `null` container fails:
+        // "no segment data" is three null slots, and a null container would
+        // otherwise read as absent and quietly un-gate the company. Iterating a
+        // fixed slot list rather than the contract's own keys means a contract
+        // that omits a slot fails on undefined instead of leaving it unasserted.
+        const segmentExpectation: unknown = expectations.expectedSegmentCoverage;
+        if (segmentExpectation !== undefined) {
+          expect(
+            typeof segmentExpectation === "object" && segmentExpectation !== null && !Array.isArray(segmentExpectation),
+            `expectedSegmentCoverage must be an object carrying business/geographic/mixed, got ` +
+            `${segmentExpectation === null ? "null" : typeof segmentExpectation}. A company whose ZIP ships ` +
+            `no segment files carries three null slots, not a null container.`,
+          ).toBe(true);
+          const slots = segmentExpectation as Record<string, number | null | undefined>;
+          for (const slot of ["business", "geographic", "mixed"] as const) {
+            const expectedCount = slots[slot];
+            const actual = result.segmentCoverage[slot];
             expect(
               actual,
-              `segment coverage drift: ${slot} was ${expectedCount} at capture, now ${actual}. ` +
+              `segment coverage drift: ${slot} was ${String(expectedCount)} at capture, now ${String(actual)}. ` +
               `Segment data feeds SOTP (needs >= 2 segments) and the dashboard breakdown; ` +
               `null means the ZIP ships no such file, so a number-to-null change means extraction broke.`,
             ).toBe(expectedCount);
