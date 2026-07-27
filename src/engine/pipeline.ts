@@ -279,7 +279,7 @@ export function processCompanyDataFull(
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       trace("pipeline", "recast:error", { period_end: raw.period_end, error: msg }, null, { level: "error" });
-      throw new Error(`Failed to recast period ${raw.period_end}: ${msg}`);
+      throw new Error(`Failed to recast period ${raw.period_end}: ${msg}`, { cause: err });
     }
 
     if (i > 0 && results.length > 0) {
@@ -305,7 +305,7 @@ export function processCompanyDataFull(
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         trace("pipeline", "ratioQuality:error", { period_end: raw.period_end, error: msg }, null, { level: "error" });
-        throw new Error(`Failed to derive ratios/quality for period ${raw.period_end}: ${msg}`);
+        throw new Error(`Failed to derive ratios/quality for period ${raw.period_end}: ${msg}`, { cause: err });
       }
     }
     results.push(recast);

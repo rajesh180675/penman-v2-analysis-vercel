@@ -77,7 +77,7 @@ async function fetchArrayBuffer(
     res = await fetchImpl(url);
   } catch (err) {
     trace("pipeline", "fetch:error", { ...context, url, error: String(err), stack: (err as Error)?.stack }, null, { level: "error" });
-    throw new Error(`${context.kind} fetch failed: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`${context.kind} fetch failed: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
   }
   if (!res.ok) {
     trace("pipeline", "fetch:httpError", { ...context, url, status: res.status, statusText: res.statusText }, null, { level: "error" });

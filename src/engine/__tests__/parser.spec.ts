@@ -42,4 +42,32 @@ describe("parser robustness", () => {
     const invalidZip = new File(["not-a-zip"], "bad.zip", { type: "application/zip" });
     await expect(parseCapitalineZip(invalidZip, { companyId: "BAD" })).rejects.toThrow("Failed to open ZIP");
   });
+
+  /**
+   * The wrapped rethrow used to discard the original error entirely: the message
+   * was interpolated into a new Error and the stack that said which JSZip call
+   * actually failed was dropped. Four of the six wrapping sites in the engine
+   * `trace(...)` the original stack first, so it reached the trace channel — but
+   * never the caller, who sees only the Error object.
+   *
+   * Asserting the chain rather than the message, because the message already had
+   * coverage above and was never what broke.
+   */
+  it("preserves the underlying failure as the rethrow's cause", async () => {
+    const invalidZip = new File(["not-a-zip"], "bad.zip", { type: "application/zip" });
+    const error = await parseCapitalineZip(invalidZip, { companyId: "BAD" }).then(
+      () => { throw new Error("expected the parse to reject"); },
+      (err: unknown) => err,
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    // The wrapper the caller sees.
+    expect((error as Error).message).toContain("Failed to open ZIP");
+    // The original, which is the part that was being thrown away.
+    const cause = (error as Error).cause;
+    expect(cause).toBeInstanceOf(Error);
+    expect((cause as Error).stack).toBeTruthy();
+    // Not the same object: this is a wrapped chain, not a bare rethrow.
+    expect(cause).not.toBe(error);
+  });
 });

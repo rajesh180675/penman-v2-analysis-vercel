@@ -384,6 +384,7 @@ export async function fetchBankQualityIndicators(
       `quality_indicators JSON parse failed for ${companyFolder}: ${
         err instanceof Error ? err.message : String(err)
       }`,
+      { cause: err },
     );
   }
   const validation = validateBankQualityIndicators(payload);

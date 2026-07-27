@@ -94,12 +94,17 @@ export default tseslint.config(
       "no-useless-escape": "warn",
 
       /**
-       * Warn. An ESLint 10 rule asking rethrows to pass `cause`. Losing the
-       * original error is a real (small) quality issue in the six parser and
-       * pipeline sites it finds, but threading `cause` through them is its own
-       * change with its own test surface.
+       * Error, and at zero occurrences. An ESLint 10 rule asking rethrows to
+       * pass `cause`. This was `warn` while the six parser and pipeline sites it
+       * found still discarded their original error; all six now thread
+       * `{ cause: err }`, so the rule is promoted rather than left as a warning
+       * the ratchet would absorb — a new wrapped rethrow that drops its cause
+       * should fail, not quietly consume one of the remaining 72 slots.
+       *
+       * Enabling `cause` needed `"ES2022.Error"` in tsconfig's `lib`; see the
+       * comment there for why the target stays ES2020.
        */
-      "preserve-caught-error": "warn",
+      "preserve-caught-error": "error",
 
       // An empty catch is the idiomatic "best-effort, failure is fine" marker
       // and is used deliberately here.
