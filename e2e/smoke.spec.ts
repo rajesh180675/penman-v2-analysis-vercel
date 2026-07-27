@@ -37,10 +37,10 @@ test.describe("Critical Path E2E", () => {
     const darkToggle = page.locator('[aria-label*="dark"], [aria-label*="theme"], button:has-text("🌙"), button:has-text("☀")');
     if (await darkToggle.count() > 0) {
       await darkToggle.first().click();
-      // Verify the html/body class changed
-      const html = page.locator("html");
-      const classList = await html.getAttribute("class");
-      // Just confirm the click didn't crash the app
+      // Only confirms the click didn't crash the app. A previous version read
+      // html's class attribute into a variable and asserted nothing on it, so
+      // the "verify the class changed" intent it documented was never actually
+      // implemented — dropped rather than left as a dead read.
       await expect(page.locator("body")).toBeVisible();
     }
   });

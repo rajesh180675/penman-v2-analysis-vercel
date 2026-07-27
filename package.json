@@ -32,7 +32,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:tcs-audit": "playwright test e2e/tcs-audit-acceptance.spec.ts",
-    "lint": "eslint . --max-warnings=120",
+    "lint": "eslint . --max-warnings=110",
     "lint:fix": "eslint . --fix",
     "lint:any": "node scripts/check-any-budget.cjs",
     "lint:bundle": "node scripts/check-bundle-budget.cjs",

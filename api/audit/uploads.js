@@ -65,7 +65,9 @@ export default async function handler(request, response) {
     const json = await handleUpload({
       body,
       request,
-      onBeforeGenerateToken: async (pathname, clientPayload, multipart) => {
+      // `_multipart` is unused but kept to document @vercel/blob's callback
+      // signature; the underscore is what argsIgnorePattern expects.
+      onBeforeGenerateToken: async (pathname, clientPayload, _multipart) => {
         const payload = clientPayload ? JSON.parse(clientPayload) : {};
         const runId = sanitizePathSegment(payload.runId, `run-${Date.now()}`);
         const kind = sanitizePathSegment(payload.kind, "artifacts");

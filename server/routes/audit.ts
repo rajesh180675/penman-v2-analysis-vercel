@@ -12,7 +12,7 @@ const router = Router();
 
 /** Reject path segments containing traversal or separators. */
 function isSafeSegment(s: string): boolean {
-  return !/[\/\\]/.test(s) && !s.includes("..") && s.length > 0 && s.length < 128;
+  return !/[/\\]/.test(s) && !s.includes("..") && s.length > 0 && s.length < 128;
 }
 
 function requestHeader(req: Request, name: string): string {
