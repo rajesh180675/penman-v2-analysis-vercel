@@ -7,7 +7,7 @@ import { resolveShareBasis } from "../shareCountTools";
 import { resolveValuationReadiness } from "../valuationPolicy";
 import { resolveValuationSectorTemplate } from "../valuationSectorTemplates";
 import type { SegmentData } from "../segmentParser";
-import type { MacroPack } from "../marketPacks";
+import type { EquityBetaPack, MacroPack } from "../marketPacks";
 import { computeEvEbitdaCrossCheck, updateEvEbitdaWithMarketPrice } from "../evEbitdaCrossCheck";
 import { computeIndiaQualitySignals } from "../indiaQualitySignals";
 import { buildEarningsQualityCard, buildDechowDichevAndRem } from "../earningsQuality";
@@ -75,6 +75,15 @@ export type CoreBuildContext = {
    */
   macroPack?: MacroPack | null | undefined;
   /**
+   * Pinned regressed betas, looked up by `config.ticker`.
+   *
+   * Absent by default for the same reason `macroPack` is. Note the two are
+   * independent inputs but not independent decisions: supplying one without the
+   * other leaves ke part-sourced and part-guessed, and the provenance gate
+   * demotes the run either way, so callers should pass both or neither.
+   */
+  betaPack?: EquityBetaPack | null | undefined;
+  /**
    * The run's as-of date, for the pack's staleness and look-ahead checks.
    *
    * Supplied by the caller rather than read off the clock in here. A pack
@@ -89,7 +98,7 @@ export type CoreBuildContext = {
 type CoreBuildResult = Omit<ValuationCommandCenterOutput, "backtest">;
 
 export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
-  const { data, config, marketData, analysisStatus, macroPack, analysisAsOf } = context;
+  const { data, config, marketData, analysisStatus, macroPack, betaPack, analysisAsOf } = context;
   const shareBasis = resolveShareBasis(data, config);
   const valuationReadiness = resolveValuationReadiness(data);
   const weakShareBasis = shareBasis.confidence === "LOW" || shareBasis.confidence === "FAILED";
@@ -159,6 +168,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     // contradicted the repo's own gate.
     marketAsOf: marketData?.rateAsOf ?? null,
     macroPack,
+    betaPack,
     analysisAsOf,
   });
   // The rate the rest of the run must use, so scenarios and the reported
