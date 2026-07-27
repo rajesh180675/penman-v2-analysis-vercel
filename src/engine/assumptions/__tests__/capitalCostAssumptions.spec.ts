@@ -10,7 +10,13 @@ import {
   unleverBeta,
   type PeerLeveredBeta,
 } from "../capitalCostAssumptions";
-import { resolveMacroPack, type MacroPack } from "../../marketPacks";
+import {
+  resolveMacroPack,
+  type EquityBetaObservation,
+  type EquityBetaPack,
+  type EquityBetaStatus,
+  type MacroPack,
+} from "../../marketPacks";
 import { DEFAULT_CONFIG, type EngineConfig } from "../../types";
 
 const ANALYSIS_AS_OF = "2026-07-26";
@@ -33,6 +39,46 @@ function peerBetas(leveredBetas: readonly number[], debtToEquity = 0.5, taxRate 
     debtToEquity,
     taxRate,
   }));
+}
+
+/**
+ * A regression that already passed the pack's precision and staleness gates.
+ * Built by hand rather than by calling `resolveEquityBeta`, so these cases test
+ * what `resolveBeta` does with a verdict rather than re-testing how the verdict
+ * is reached — that is `equityBetaPack.spec.ts`'s job.
+ */
+function usableRegression(overrides: { beta: number }): EquityBetaStatus {
+  return {
+    status: "usable",
+    ticker: "TESTCO",
+    beta: overrides.beta,
+    standardError: 0.089,
+    rSquared: 0.28,
+    observations: 260,
+    asOf: "2026-07-19",
+    source: "Yahoo Finance adjusted-close history",
+    method: "OLS on 260 weekly returns vs NIFTY 50 (^NSEI), 2021-08-01 to 2026-07-19; se 0.089, r-squared 0.280",
+  };
+}
+
+/** A pinned pack with one constituent, for the aggregate-resolver cases. */
+function betaPack(overrides: Partial<EquityBetaObservation> = {}): EquityBetaPack {
+  return {
+    asOf: "2026-07-19",
+    benchmark: "NIFTY 50 (^NSEI)",
+    frequency: "weekly",
+    source: "Yahoo Finance adjusted-close history",
+    constituents: [{
+      ticker: "TESTCO",
+      leveredBeta: 0.8909,
+      standardError: 0.0895,
+      rSquared: 0.2771,
+      observations: 260,
+      windowStart: "2021-08-01",
+      windowEnd: "2026-07-19",
+      ...overrides,
+    }],
+  };
 }
 
 describe("Hamada unlever/relever", () => {
@@ -148,6 +194,95 @@ describe("resolveBeta", () => {
 
     // Four usable peers is below the floor, so this must not silently pass.
     expect(result.tier).toBe("prior");
+  });
+});
+
+describe("resolveBeta — own-company regressed beta", () => {
+  it("uses a usable regression as estimated, carrying its date and diagnostics", () => {
+    // The gap this branch closes: on 33 loaded companies the bottom-up floor is
+    // almost never met, so beta was a sector constant for effectively every run.
+    const result = resolveBeta({
+      companyType: "nbfc",
+      regressedBeta: usableRegression({ beta: 1.3043 }),
+    });
+
+    expect(result.tier).toBe("estimated");
+    expect(result.value).toBeCloseTo(1.3043, 6);
+    // Dated, unlike both the sector prior and an explicit scalar.
+    expect(result.asOf).toBe("2026-07-19");
+    expect(result.method).toContain("260 weekly returns");
+    expect(result.fallbackReason).toBeUndefined();
+    // Not the nbfc prior of 1.30 by coincidence of value — check the tier moved.
+    expect(result.source).not.toContain("Sector beta prior");
+  });
+
+  it("prefers a bottom-up peer median over a single-name regression", () => {
+    // Both are `estimated`; the median across peers averages away part of the
+    // estimation error a single regression carries, which is the standard
+    // argument for industry betas.
+    const result = resolveBeta({
+      companyType: "consumer",
+      targetDebtToEquity: 0.5,
+      taxRate: 0.25,
+      peerBetas: peerBetas([1.0, 1.1, 1.2, 1.3, 1.4]),
+      regressedBeta: usableRegression({ beta: 0.6 }),
+    });
+
+    expect(result.tier).toBe("estimated");
+    expect(result.value).toBeCloseTo(1.2, 6);
+    expect(result.source).toContain("5 peer betas");
+  });
+
+  it("prefers a regression over an explicit scalar", () => {
+    // A dated regression with published error bars is more defensible than an
+    // undated number, so it outranks it — the same ordering bottom-up already had.
+    const result = resolveBeta({
+      companyType: "consumer",
+      regressedBeta: usableRegression({ beta: 0.89 }),
+      explicitBeta: 1.15,
+    });
+
+    expect(result.tier).toBe("estimated");
+    expect(result.value).toBeCloseTo(0.89, 6);
+  });
+
+  it("falls back to the prior and reports WHY the regression was rejected", () => {
+    // The imprecise-estimate case: IDEA regresses to 1.43 with se 0.25. The
+    // reason has to be the regression's, not the peer count, because only the
+    // former tells a reviewer something actionable.
+    const result = resolveBeta({
+      companyType: "telecom",
+      regressedBeta: {
+        status: "unusable",
+        ticker: "IDEA",
+        reason: "IDEA beta of 1.430 has standard error 0.250 (r-squared 0.112), above the 0.15 limit; the estimate is too imprecise to outrank a stated prior.",
+      },
+    });
+
+    expect(result.tier).toBe("prior");
+    expect(result.fallbackReason).toContain("standard error 0.250");
+    expect(result.fallbackReason).not.toContain("peer beta(s)");
+  });
+
+  it("still reports the peer-count reason when no pack was consulted at all", () => {
+    // Non-regression: a caller that never opted into a beta pack must keep
+    // seeing the reason it always saw, not "no pack supplied" — which would read
+    // as a new failure rather than unchanged behaviour.
+    const result = resolveBeta({ companyType: "nbfc", targetDebtToEquity: 0.5, taxRate: 0.25 });
+
+    expect(result.tier).toBe("prior");
+    expect(result.fallbackReason).toContain(`needs ${MIN_BOTTOM_UP_PEERS}`);
+  });
+
+  it("prefers an explicit scalar over a rejected regression", () => {
+    const result = resolveBeta({
+      companyType: "consumer",
+      regressedBeta: { status: "unusable", ticker: "PAYTM", reason: "too noisy" },
+      explicitBeta: 1.05,
+    });
+
+    expect(result.tier).toBe("sourced");
+    expect(result.value).toBeCloseTo(1.05, 6);
   });
 });
 
@@ -308,5 +443,93 @@ describe("resolveCapitalCostAssumptions", () => {
     expect(set.priorTierKeys).toEqual(["beta"]);
     expect(set.riskFreeRate.tier).toBe("sourced");
     expect(set.beta.value).toBeCloseTo(0.70, 6);
+  });
+
+  it("resolves beta from a supplied beta pack, keyed on the config ticker", () => {
+    // Beta pack only, deliberately no macro pack: this isolates the new branch,
+    // and it is also the shape that matters for the rigor gate — beta stops
+    // being a prior while the macro inputs are untouched.
+    const set = resolveCapitalCostAssumptions({
+      config: { ...DEFAULT_CONFIG, company_type: "it-services", ticker: "TESTCO" },
+      betaPack: betaPack(),
+      analysisAsOf: ANALYSIS_AS_OF,
+    });
+
+    expect(set.beta.tier).toBe("estimated");
+    expect(set.beta.value).toBeCloseTo(0.8909, 6);
+    expect(set.beta.asOf).toBe("2026-07-19");
+    expect([...set.priorTierKeys].sort()).toEqual([
+      "equity-risk-premium",
+      "risk-free-rate",
+      "terminal-growth-ceiling",
+    ]);
+  });
+
+  it("leaves beta a prior when the supplied pack has no entry for the ticker", () => {
+    const set = resolveCapitalCostAssumptions({
+      config: { ...DEFAULT_CONFIG, company_type: "nbfc", ticker: "ABSENT" },
+      betaPack: betaPack(),
+      analysisAsOf: ANALYSIS_AS_OF,
+    });
+
+    expect(set.beta.tier).toBe("prior");
+    expect(set.beta.value).toBeCloseTo(1.30, 6);
+    expect(set.beta.fallbackReason).toContain("no constituent for ABSENT");
+  });
+
+  it("leaves beta a prior when the run has no ticker to key on", () => {
+    // DEFAULT_CONFIG carries no ticker, which is the manual-entry path.
+    const set = resolveCapitalCostAssumptions({
+      config: { ...DEFAULT_CONFIG, company_type: "consumer" },
+      betaPack: betaPack(),
+      analysisAsOf: ANALYSIS_AS_OF,
+    });
+
+    expect(set.beta.tier).toBe("prior");
+    expect(set.beta.fallbackReason).toContain("No ticker on the run");
+  });
+
+  it("does not consult the pack at all when none is supplied", () => {
+    // The property that keeps this change inert for existing callers: same
+    // inputs, same beta, same reason as before the pack existed.
+    const withoutPack = resolveCapitalCostAssumptions({
+      config: { ...DEFAULT_CONFIG, company_type: "nbfc", ticker: "TESTCO" },
+      analysisAsOf: ANALYSIS_AS_OF,
+    });
+
+    expect(withoutPack.beta.tier).toBe("prior");
+    expect(withoutPack.beta.value).toBeCloseTo(1.30, 6);
+    expect(withoutPack.beta.fallbackReason).toContain(`needs ${MIN_BOTTOM_UP_PEERS}`);
+    expect(withoutPack.beta.fallbackReason).not.toContain("pack");
+  });
+
+  it("rejects a pack estimate dated after the analysis as look-ahead", () => {
+    // The analysisAsOf must reach the beta pack too, not only the macro pack —
+    // otherwise a regression window that has not happened yet would be used.
+    const set = resolveCapitalCostAssumptions({
+      config: { ...DEFAULT_CONFIG, company_type: "consumer", ticker: "TESTCO" },
+      betaPack: betaPack({ windowEnd: "2026-08-16" }),
+      analysisAsOf: ANALYSIS_AS_OF,
+    });
+
+    expect(set.beta.tier).toBe("prior");
+    expect(set.beta.fallbackReason).toContain("look-ahead");
+  });
+
+  it("is fully defensible with a complete macro pack and a usable regressed beta", () => {
+    // The end state this pack exists to make reachable without needing five
+    // peers in the same sector.
+    const set = resolveCapitalCostAssumptions({
+      config: { ...DEFAULT_CONFIG, company_type: "it-services", ticker: "TESTCO" },
+      macroPack: macroPack(),
+      betaPack: betaPack(),
+      analysisAsOf: ANALYSIS_AS_OF,
+      // The macro pack above carries long-run nominal growth, so the ceiling is
+      // sourced too and nothing is left on a default.
+    });
+
+    expect(set.terminalGrowthCeiling.tier).toBe("sourced");
+    expect(set.priorTierKeys).toEqual([]);
+    expect(set.fullyDefensible).toBe(true);
   });
 });
