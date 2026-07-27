@@ -100,7 +100,9 @@ export default async function handler(request, response) {
     const value = JSON.parse(decoded.toString("utf8"));
     parsed = value && typeof value === "object" ? value : null;
   } catch {
-    parsed = null;
+    // Unparseable payload just means the artifact is not JSON-inspectable, so
+    // `parsed` keeps its initial null. Re-assigning it here made the
+    // initializer dead, which is what no-useless-assignment was reporting.
   }
   response.status(200).json({
     ok: true,

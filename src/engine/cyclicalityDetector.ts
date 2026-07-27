@@ -222,7 +222,7 @@ function assessCyclicalityInternal(
   const zScore = sd != null && sd > 0 && med != null ? (latest - med) / sd : null;
 
   let classification: CyclicalityClass = "cyclical-midcycle";
-  let reasonExtra = "";
+  let reasonExtra: string;
   if (zScore != null && zScore > PEAK_TROUGH_Z_THRESHOLD) {
     classification = "cyclical-peak";
     reasonExtra = `; latest ${metric} is ${zScore.toFixed(1)} σ above median — likely peak-cycle`;

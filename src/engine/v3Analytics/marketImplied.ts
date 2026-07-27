@@ -65,7 +65,9 @@ export function computeMarketImplied(
     return valuation.CSE0 + valuation.pvRE + cv / Math.pow(1 + valuation.ke, valuation.explicit_periods);
   };
   let implied_g: number | null = null;
-  let gNote = "";
+  // No placeholder: every branch below assigns, so the compiler now enforces
+  // that rather than a dead "" silently surviving as the reported note.
+  let gNote: string;
   let lo = -0.10;
   let hi = valuation.ke - 0.005;
   if (vAtG(hi) >= market_cap && vAtG(lo) <= market_cap) {
@@ -92,7 +94,7 @@ export function computeMarketImplied(
     return valuation.CSE0 + pvRE + cv / Math.pow(1 + keTry, valuation.explicit_periods);
   };
   let implied_ke: number | null = null;
-  let keNote = "";
+  let keNote: string;
   let keLo = valuation.g_effective + 0.005;
   let keHi = 0.25;
   if (vAtKe(keLo) >= market_cap) {

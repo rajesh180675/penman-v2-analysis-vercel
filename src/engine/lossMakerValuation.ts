@@ -270,7 +270,7 @@ export function computeLossMakerValuation(
     Math.abs(opLosses[opLosses.length - 1]!) <
       Math.abs(opLosses[opLosses.length - 3]!) * 0.7;
 
-  let signal: "green" | "amber" | "red" = "red";
+  let signal: "green" | "amber" | "red";
   let summary: string;
   const flags = [highGrowth, improvingMargins, narrowingLoss].filter(Boolean).length;
   if (flags >= 2) {

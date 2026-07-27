@@ -83,7 +83,9 @@ export function dechowDichevQuality(
   const avgCfo = Math.abs(valid.reduce((s, [x]) => s + x, 0) / m);
   const avgAbsAq = avgCfo > 0 ? (residuals.reduce((s, r) => s + Math.abs(r), 0) / m) / avgCfo : 1;
 
-  let label = "Insufficient data for accrual quality assessment.";
+  // The old "Insufficient data…" placeholder was unreachable: this function
+  // returns null at n < 5 and again at m < 4, so nothing sparse gets here.
+  let label: string;
   if (rSquared >= 0.70) {
     label = "High accrual quality — WC accruals closely track cash flows.";
   } else if (rSquared >= 0.40) {
@@ -290,7 +292,7 @@ export function buildEarningsQualityCard(
 
   const totalScore = Math.round(timeliness + neutrality + completeness + realization);
 
-  let label = "Earnings quality appears moderate.";
+  let label: string;
   if (totalScore >= 80) {
     label = "High earnings quality — Earnings are timely, neutral, complete, and well-realized in cash.";
   } else if (totalScore >= 60) {
