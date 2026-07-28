@@ -52,6 +52,28 @@ import type { SourcedAssumptionSet, UnifiedAnalysisWindow } from "../engine/anal
 import type { IndustrialForecastResult, ScenarioOrderingReport } from "../engine/forecastState";
 import type { ScenarioGovernanceReport } from "../engine/valuationEvidence";
 
+/**
+ * Fallback scenario weights, hoisted out of the render body.
+ *
+ * Written inline, this was a fresh object on every render, and
+ * `probabilityState` is memoised on `manualWeights ?? defaultWeights` — so the
+ * memo's dependency changed identity each render whenever the fallback was
+ * taken, defeating it.
+ *
+ * `derivePersistenceForecastScenario` returns `forecastPolicy` unconditionally
+ * with `scenarioWeighting` populated (`forecastingEngine/scenarios.ts`), so the
+ * fallback is not reachable today and nothing thrashes in practice. Hoisted
+ * anyway: the `?? ` says the author did not want to rely on that, and the day
+ * `forecastPolicy` becomes optional the breakage would be a silently
+ * recomputing memo rather than a type error.
+ */
+const FALLBACK_SCENARIO_WEIGHTS: ForecastScenarioWeighting = {
+  stress: 0.25,
+  base: 0.4,
+  bull: 0.2,
+  historicalPanic: 0.15,
+};
+
 interface Props {
   data: RecastPeriod[];
   config: EngineConfig;
@@ -185,12 +207,7 @@ function LegacyForecastReport({data,config, rawData = null, traceability = null,
     template: persistenceTemplate,
     riskInputs: { ke: ke_inp / 100, kw: kwDerived, riskFreeRate: config.risk_free_rate },
   }), [data, latest, businessModel, horizon, persistenceTemplate, ke_inp, kwDerived, config.risk_free_rate]);
-  const defaultWeights = persistenceScenario.forecastPolicy?.scenarioWeighting ?? {
-    stress: 0.25,
-    base: 0.4,
-    bull: 0.2,
-    historicalPanic: 0.15,
-  };
+  const defaultWeights = persistenceScenario.forecastPolicy?.scenarioWeighting ?? FALLBACK_SCENARIO_WEIGHTS;
   const [manualWeights, setManualWeights] = useState<ForecastScenarioWeighting | null>(null);
   const probabilityState = useMemo(
     () => buildForecastProbabilityState(manualWeights ?? defaultWeights),
