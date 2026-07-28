@@ -106,11 +106,11 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
               fontSize={11}
               domain={["auto", "auto"]}
             />
-            <Tooltip
-              formatter={((value: number, _name: string, props: any) => [
-                `${props.payload.raw.toFixed(3)} (${value}%)`,
-                props.payload.name,
-              ]) as any}
+            <Tooltip<number, string>
+              formatter={(value, _name, item) => {
+                const point = item.payload as (typeof chartData)[number] | undefined;
+                return [`${point?.raw.toFixed(3) ?? "—"} (${value}%)`, point?.name ?? ""];
+              }}
               contentStyle={TOOLTIP_STYLE}
             />
             <ReferenceLine y={100} stroke="#94a3b8" strokeDasharray="4 4" label={{ value: "1.0×", position: "right", fontSize: 9, fill: "#94a3b8" }} />
@@ -153,8 +153,8 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
                   fontSize={10}
                   domain={["auto", "auto"]}
                 />
-                <Tooltip
-                  formatter={((value: number) => [`${(value * 100).toFixed(2)}%`, selectedMeta.name]) as any}
+                <Tooltip<number, string>
+                  formatter={(value) => [value == null ? "—" : `${(value * 100).toFixed(2)}%`, selectedMeta.name]}
                   contentStyle={TOOLTIP_STYLE}
                 />
                 <Line

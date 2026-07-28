@@ -100,8 +100,8 @@ export default function CashFlowChart({ data, unit = "₹ Cr" }: Props) {
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />
             <YAxis tickFormatter={(v) => fmtCr(v)} fontSize={10} />
-            <Tooltip
-              formatter={((value: number) => [`${unit} ${value?.toLocaleString("en-IN")}`, ""]) as any}
+            <Tooltip<number, string>
+              formatter={(value) => [`${unit} ${value?.toLocaleString("en-IN")}`, ""]}
               contentStyle={TOOLTIP_STYLE}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -120,8 +120,8 @@ export default function CashFlowChart({ data, unit = "₹ Cr" }: Props) {
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />
             <YAxis tickFormatter={(v) => fmtCr(v)} fontSize={10} />
-            <Tooltip
-              formatter={((value: number) => [`${unit} ${value?.toLocaleString("en-IN")}`, ""]) as any}
+            <Tooltip<number, string>
+              formatter={(value) => [`${unit} ${value?.toLocaleString("en-IN")}`, ""]}
               contentStyle={TOOLTIP_STYLE}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />

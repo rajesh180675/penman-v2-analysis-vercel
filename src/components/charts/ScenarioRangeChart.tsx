@@ -71,11 +71,11 @@ export default function ScenarioRangeChart({ scenarios, marketPrice, expectedVal
           <BarChart data={data} margin={{ left: 5, right: 30, top: 30, bottom: 5 }}>
             <XAxis dataKey="label" fontSize={11} />
             <YAxis fontSize={10} domain={[0, max * 1.1]} tickFormatter={(v) => fmtINR(v)} />
-            <Tooltip
-              formatter={((value: number, _name: string, props: { payload?: { probability: number } }) => [
-                `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })} (P=${((props.payload?.probability ?? 0) * 100).toFixed(0)}%)`,
+            <Tooltip<number, string>
+              formatter={(value, _name, item) => [
+                `₹${(value ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })} (P=${(((item.payload as { probability?: number } | undefined)?.probability ?? 0) * 100).toFixed(0)}%)`,
                 "Intrinsic / share",
-              ]) as any}
+              ]}
               contentStyle={TOOLTIP_STYLE}
             />
             {marketPrice != null && (
@@ -97,7 +97,10 @@ export default function ScenarioRangeChart({ scenarios, marketPrice, expectedVal
               />
             )}
             <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-              <LabelList dataKey="value" position="top" fontSize={11} formatter={((v: number) => `₹${v}`) as any} />
+              {/* recharts types the label as RenderableText, which includes
+                  null/undefined; the guard keeps a missing bar from printing
+                  "₹undefined" above it. */}
+              <LabelList dataKey="value" position="top" fontSize={11} formatter={(v) => (v == null ? "" : `₹${v}`)} />
               {data.map((entry, i) => (
                 <Cell key={i} fill={entry.color} fillOpacity={0.85} />
               ))}

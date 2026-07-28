@@ -74,8 +74,8 @@ export default function BankHealthChart({ metrics, ke }: Props) {
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />
             <YAxis tickFormatter={(v) => `${v}%`} fontSize={10} />
-            <Tooltip
-              formatter={((value: number, name: string) => [`${value?.toFixed(2)}%`, name]) as any}
+            <Tooltip<number, string>
+              formatter={(value, name) => [`${value?.toFixed(2)}%`, name ?? ""]}
               contentStyle={TOOLTIP_STYLE}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -97,8 +97,8 @@ export default function BankHealthChart({ metrics, ke }: Props) {
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />
             <YAxis tickFormatter={(v) => `${v}%`} fontSize={10} />
-            <Tooltip
-              formatter={((value: number, name: string) => [`${value?.toFixed(2)}%`, name]) as any}
+            <Tooltip<number, string>
+              formatter={(value, name) => [`${value?.toFixed(2)}%`, name ?? ""]}
               contentStyle={TOOLTIP_STYLE}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />

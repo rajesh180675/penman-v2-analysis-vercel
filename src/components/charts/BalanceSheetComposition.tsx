@@ -46,7 +46,10 @@ export default function BalanceSheetComposition({ data, mode = "abs" }: Props) {
     };
   });
 
-  const fmt = (v: number) =>
+  // Widened to match what recharts actually passes a tooltip formatter: the
+  // value is optional. The `?.` reads were already written for that case; the
+  // type just says so now, which is what let the `as any` at the call sites go.
+  const fmt = (v: number | undefined) =>
     mode === "common" ? `${v?.toFixed(1)}%` : `₹${v?.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr`;
 
   const latest = data[data.length - 1]!;
@@ -70,7 +73,7 @@ export default function BalanceSheetComposition({ data, mode = "abs" }: Props) {
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />
             <YAxis fontSize={10} tickFormatter={(v) => mode === "common" ? fmtPct(v) : fmtCr(v)} />
-            <Tooltip formatter={((value: number, name: string) => [fmt(value), name]) as any} contentStyle={TOOLTIP_STYLE} />
+            <Tooltip<number, string> formatter={(value, name) => [fmt(value), name ?? ""]} contentStyle={TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Bar dataKey="OA" name="Operating Assets" stackId="assets" fill={CHART_COLORS.positive} />
             <Bar dataKey="FA" name="Financial Assets" stackId="assets" fill={CHART_COLORS.info} />
@@ -85,7 +88,7 @@ export default function BalanceSheetComposition({ data, mode = "abs" }: Props) {
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
             <XAxis dataKey="period" fontSize={10} />
             <YAxis fontSize={10} tickFormatter={(v) => mode === "common" ? fmtPct(v) : fmtCr(v)} />
-            <Tooltip formatter={((value: number, name: string) => [fmt(value), name]) as any} contentStyle={TOOLTIP_STYLE} />
+            <Tooltip<number, string> formatter={(value, name) => [fmt(value), name ?? ""]} contentStyle={TOOLTIP_STYLE} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Bar dataKey="CSE" name="Common Shareholders' Equity" stackId="fin" fill={CHART_COLORS.primary} />
             <Bar dataKey="NFO" name="Net Financial Obligations" stackId="fin" fill={CHART_COLORS.negative} />

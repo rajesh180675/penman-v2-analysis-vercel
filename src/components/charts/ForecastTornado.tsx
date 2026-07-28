@@ -92,11 +92,14 @@ export default function ForecastTornado({ baseValue, drivers, marketPrice }: Pro
               fontSize={11}
               tick={{ fill: "#475569" }}
             />
-            <Tooltip
-              formatter={((_value: number, name: string, props: { payload?: { lowAbs: number; highAbs: number; range: string } }) => {
-                if (name === "downside") return [`₹${(props.payload?.lowAbs ?? 0).toFixed(0)}`, "Low scenario"];
-                return [`₹${(props.payload?.highAbs ?? 0).toFixed(0)}`, "High scenario"];
-              }) as any}
+            <Tooltip<number, string>
+              formatter={(_value, name, item) => {
+                // `item.payload` is the untyped row recharts carries through; it
+                // is one of `data`'s entries above.
+                const point = item.payload as (typeof data)[number] | undefined;
+                if (name === "downside") return [`₹${(point?.lowAbs ?? 0).toFixed(0)}`, "Low scenario"];
+                return [`₹${(point?.highAbs ?? 0).toFixed(0)}`, "High scenario"];
+              }}
               labelFormatter={(label, payload) => {
                 const range = payload?.[0]?.payload?.range;
                 return range ? `${label} — ${range}` : label;
