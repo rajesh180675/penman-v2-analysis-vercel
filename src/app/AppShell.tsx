@@ -501,6 +501,7 @@ export function AppShell() {
               bankResult={bankResult}
               nbfcSidecar={nbfcSidecar}
               lossMakerResult={lossMakerResult}
+              itServicesSignal={itServicesSignal}
               registry={registry}
               comparisonPublication={comparisonPublication}
               portfolioRunComparison={portfolioRunComparison}

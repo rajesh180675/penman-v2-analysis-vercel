@@ -12,6 +12,7 @@ import { generateDashboardNarrative } from "../../engine/narrativeEngine";
 import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { AllSegmentData } from "../../engine/segmentParser";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
+import type { ITServicesSignal } from "../../engine/itServicesDetector";
 
 import { VerdictBanner, InsightBlock, RiskFlag } from "../shared/DesignSystem";
 import { ContextHeader, Metric, EmptyState, EvidenceRail, EvidenceItem, Icon, type RigorLevel } from "../shared/Primitives";
@@ -42,9 +43,16 @@ interface Props {
   /** Optional peer count for Next Steps recommendations */
   peerCount?: number | undefined;
   onNavigate?: ((tab: string) => void) | undefined;
+  /**
+   * Phase E3 — IT-services fingerprint. Required, though `null` is valid: the
+   * moat scorer disqualifies itself for an IT-services company and `MoatPanel`
+   * renders that reason, but only if the signal reaches it. Optional would make
+   * forgetting it silent, and this surface turns the moat score into a verdict.
+   */
+  itServices: ITServicesSignal | null;
 }
 
-export default function DashboardView({ data, config, traceability = null, ratioSanity = null, segmentData = null, marketData = null, peerCount = 0, onNavigate }: Props) {
+export default function DashboardView({ data, config, traceability = null, ratioSanity = null, segmentData = null, marketData = null, peerCount = 0, onNavigate, itServices }: Props) {
   const insufficientData = !data || data.length < 2;
 
   const latest = !insufficientData ? data[data.length - 1] : null;
@@ -94,7 +102,10 @@ export default function DashboardView({ data, config, traceability = null, ratio
   const epvPerShare = epv && shares != null && shares > 0 ? epv.epvEquity / shares : null;
 
   // Moat scorer (5-dimension Buffett/Munger framework)
-  const moat = useMemo(() => computeMoatScore(data, config), [data, config]);
+  // Phase E3: `null` kw override keeps the existing resolution order (period
+  // kwStructural, then the config fallback); the fourth argument is the signal
+  // this surface never used to pass, so `MoatPanel`'s caveat never rendered.
+  const moat = useMemo(() => computeMoatScore(data, config, null, itServices), [data, config, itServices]);
 
   // Capital Allocation scorer (5-dimension management quality)
   const capAlloc = useMemo(() => scoreCapitalAllocation(data, config), [data, config]);

@@ -5,11 +5,18 @@ import { scoreCapitalAllocation } from "../engine/capitalAllocationScoring";
 import { detectDistress } from "../engine/distressDetector";
 import { computeEPV } from "../engine/grahamDoddEPV";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
+import type { ITServicesSignal } from "../engine/itServicesDetector";
 import { SectionHeader } from "./shared/DesignSystem";
 
 interface Props {
   data: RecastPeriod[];
   config: EngineConfig;
+  /**
+   * Phase E3 — IT-services fingerprint. Required, though `null` is valid: this
+   * page states a moat conclusion in prose, so the scorer's own
+   * "classification unreliable" verdict has to be able to reach it.
+   */
+  itServices: ITServicesSignal | null;
 }
 
 function pct(v: number | null | undefined, digits = 1): string {
@@ -27,12 +34,14 @@ function crFmt(v: number | null | undefined): string {
  * Investment Thesis — one-page summary suitable for a pitch deck or IC memo.
  * Structured as: Thesis Statement → Why Buy/Avoid → Key Numbers → Risks → What to Watch.
  */
-export default function InvestmentThesis({ data, config }: Props) {
+export default function InvestmentThesis({ data, config, itServices }: Props) {
   const latest = data[data.length - 1]!;
   const prior = data.length >= 2 ? data[data.length - 2]! : latest;
   const ticker = config.ticker ?? config.quality_data_folder ?? "Company";
 
-  const moat = useMemo(() => computeMoatScore(data, config), [data, config]);
+  // Phase E3: `null` kw override preserves the existing resolution order; the
+  // fourth argument is the IT-services signal this page never used to pass.
+  const moat = useMemo(() => computeMoatScore(data, config, null, itServices), [data, config, itServices]);
   const capAlloc = useMemo(() => scoreCapitalAllocation(data, config), [data, config]);
   const distress = useMemo(() => detectDistress(data), [data]);
   const epv = useMemo(() => {
