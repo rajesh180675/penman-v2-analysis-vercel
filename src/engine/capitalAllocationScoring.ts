@@ -25,3 +25,4 @@ export type {
 
 export { scoreCapitalAllocation } from "./capitalAllocationScoring/industrial";
 export { scoreBankCapitalAllocation } from "./capitalAllocationScoring/bank";
+export { decisiveCapAlloc } from "./capitalAllocationScoring/interpretation";

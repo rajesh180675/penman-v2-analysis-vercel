@@ -53,13 +53,35 @@ const DATA = [
   { period_end: "2025-03-31", is: { Sales: 240000, PAT: 48000 } },
 ] as unknown as RecastPeriod[];
 
-function render(moat: MoatScoreResult | null) {
+const CAP_SKIP_REASON =
+  "Only 1 profitable period(s) of 10 — capital allocation score low-confidence (need ≥3)";
+
+function mkCapAlloc(dataSufficient: boolean): CapAllocScoreResult {
+  return {
+    compositeScore: 84,
+    grade: "A",
+    dimensions: [],
+    medianPayoutRatio: 0.3,
+    medianFCFConversion: 0.91,
+    medianIncrementalROIC: 0.27,
+    buybacksValueAccretive: 2,
+    dilutiveIssuances: 0,
+    totalPeriods: 10,
+    trend: "improving",
+    notes: [],
+    dataSufficient,
+    skipReason: dataSufficient ? null : CAP_SKIP_REASON,
+    profitablePeriods: dataSufficient ? 10 : 1,
+  };
+}
+
+function render(moat: MoatScoreResult | null, capAlloc: CapAllocScoreResult | null = null) {
   return renderToStaticMarkup(
     <NarrativeCard
       data={DATA}
       companyId="TCS"
       moat={moat}
-      capAlloc={null as unknown as CapAllocScoreResult}
+      capAlloc={capAlloc}
       distress={null}
       marginOfSafety={0.4}
       revenueGrowth={0.2}
@@ -102,5 +124,50 @@ describe("NarrativeCard moat prose", () => {
     const html = render(null);
     expect(html).not.toContain("thin");
     expect(html).toContain("Insufficient periods");
+  });
+});
+
+describe("NarrativeCard capital allocation prose", () => {
+  // Same defect shape as the moat paragraph: `scoreCapitalAllocation` sets
+  // `dataSufficient: false` below three profitable periods and still returns a
+  // composite score and a letter grade. The grade is a verdict in one
+  // character, so it must not survive the scorer disowning it.
+  const sound = mkMoat(true);
+
+  it("grades capital allocation when the score is sound", () => {
+    // Non-vacuity for the three negative assertions below.
+    const html = render(sound, mkCapAlloc(true));
+    expect(html).toContain("disciplined and value-creating");
+    expect(html).toContain("Grade A");
+    expect(html).toContain("91%");
+  });
+
+  it("does not state a grade when the scorer disowned the score", () => {
+    const html = render(sound, mkCapAlloc(false));
+    expect(html).not.toContain("disciplined and value-creating");
+    expect(html).not.toContain("Grade A");
+    expect(html).toContain("not graded");
+    expect(html).toContain("profitable period(s)");
+  });
+
+  it("drops the ratios measured against net income when it is disowned", () => {
+    // FCF conversion and incremental ROIC are both ratios over CNI, which is
+    // the quantity the skip reason says is negative or missing — they invert
+    // sign rather than degrade.
+    const html = render(sound, mkCapAlloc(false));
+    expect(html).not.toContain("FCF conversion runs at");
+    expect(html).not.toContain("incremental ROIC on new NOA");
+  });
+
+  it("still reports buyback and issuance counts, which do not depend on CNI", () => {
+    const html = render(sound, mkCapAlloc(false));
+    expect(html).toContain("value-accretive in 2 period(s)");
+  });
+
+  it("does not call capital allocation average when there is no result at all", () => {
+    // `pickWord(null, ...)` returned the third word — "average".
+    const html = render(sound, null);
+    expect(html).not.toContain("looks average");
+    expect(html).toContain("not scored");
   });
 });

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { RecastPeriod, EngineConfig } from "../engine/types";
 import { computeMoatScore, decisiveMoat } from "../engine/moatScoring";
-import { scoreCapitalAllocation } from "../engine/capitalAllocationScoring";
+import { scoreCapitalAllocation, decisiveCapAlloc } from "../engine/capitalAllocationScoring";
 import { detectDistress } from "../engine/distressDetector";
 import { computeEPV } from "../engine/grahamDoddEPV";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
@@ -71,8 +71,12 @@ export default function InvestmentThesis({ data, config, itServices }: Props) {
   // more here than anywhere: "demonstrates durable competitive advantages with
   // a moat score of 82/100" is a claim, and it must not rest on a number the
   // scorer disowned.
+  // `decisiveCapAlloc` is the same contract for the capital-allocation grade,
+  // which disowns itself below three profitable periods and returns a score and
+  // a letter regardless.
   const decisive = decisiveMoat(moat);
-  const isHighQuality = (decisive?.compositeScore ?? 0) >= 60 && (capAlloc?.compositeScore ?? 0) >= 60;
+  const decisiveCapital = decisiveCapAlloc(capAlloc);
+  const isHighQuality = (decisive?.compositeScore ?? 0) >= 60 && (decisiveCapital?.compositeScore ?? 0) >= 60;
   const isDistressed = distress?.severity === "critical" || distress?.severity === "severe";
   const hasMarginOfSafety = config.market_price != null && epv?.epvPerShare != null
     ? ((epv.epvPerShare - config.market_price) / config.market_price) > 0.15
@@ -94,7 +98,7 @@ export default function InvestmentThesis({ data, config, itServices }: Props) {
     // company when it is a finding about the framework's applicability.
     thesisSentences.push(`Moat scoring does not apply to ${ticker}: ${moat.skipReason ?? "the scorer marked its own classification unreliable"}`);
   } else if (isHighQuality) {
-    thesisSentences.push(`${ticker} demonstrates durable competitive advantages with a moat score of ${decisive?.compositeScore}/100 and capital allocation score of ${capAlloc?.compositeScore}/100.`);
+    thesisSentences.push(`${ticker} demonstrates durable competitive advantages with a moat score of ${decisive?.compositeScore}/100 and capital allocation score of ${decisiveCapital?.compositeScore}/100.`);
   } else {
     thesisSentences.push(`${ticker} shows ${(decisive?.compositeScore ?? 0) >= 40 ? "moderate" : "limited"} evidence of competitive moat (score: ${decisive?.compositeScore ?? "—"}/100).`);
   }
@@ -114,7 +118,7 @@ export default function InvestmentThesis({ data, config, itServices }: Props) {
   const risks: string[] = [];
 
   if ((decisive?.compositeScore ?? 0) >= 70) strengths.push("Wide economic moat — sustainable competitive position");
-  if ((capAlloc?.compositeScore ?? 0) >= 70) strengths.push("Strong capital allocation discipline");
+  if ((decisiveCapital?.compositeScore ?? 0) >= 70) strengths.push("Strong capital allocation discipline");
   if (roce != null && roce > 0.20) strengths.push(`High ROCE (${pct(roce)}) well above cost of capital`);
   if (ccr != null && ccr > 0.8) strengths.push(`Strong cash conversion (${(ccr * 100).toFixed(0)}% of earnings to cash)`);
   if (salesGrowth != null && salesGrowth > 0.10) strengths.push(`Revenue momentum (+${pct(salesGrowth, 0)} YoY)`);
@@ -153,7 +157,7 @@ export default function InvestmentThesis({ data, config, itServices }: Props) {
                   — but flagged, because an unqualified "Moat 82/100" sitting
                   directly above prose saying the framework does not apply is
                   the same contradiction this change exists to remove. */}
-              Moat {moat?.compositeScore ?? "—"}/100{moat && !decisive ? " (not applicable)" : ""} · Cap Alloc {capAlloc?.compositeScore ?? "—"}/100 · {data.length} periods analyzed
+              Moat {moat?.compositeScore ?? "—"}/100{moat && !decisive ? " (not applicable)" : ""} · Cap Alloc {capAlloc?.compositeScore ?? "—"}/100{capAlloc && !decisiveCapital ? " (not applicable)" : ""} · {data.length} periods analyzed
             </p>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { decisiveMoat, type MoatScoreResult } from "../../engine/moatScoring";
-import type { CapAllocScoreResult } from "../../engine/capitalAllocationScoring";
+import { decisiveCapAlloc, type CapAllocScoreResult } from "../../engine/capitalAllocationScoring";
 import type { DistressAssessment } from "../../engine/distressDetector";
 
 interface Props {
@@ -87,9 +87,15 @@ function deriveVerdict(
   // rather than as the plausible 0-100 number the scorer still returns — for a
   // loss-maker, or an IT-services company whose RNOA is inflated by a NOA
   // denominator near zero.
+  // A moat the scorer disowned cannot support a verdict, and neither can a
+  // capital-allocation grade. Both scorers return a plausible 0-100 alongside
+  // `dataSufficient: false` — moat for an IT-services company whose RNOA is
+  // inflated by a near-zero NOA denominator, capital allocation for anything
+  // with fewer than three profitable periods.
   const decisive = decisiveMoat(moat);
+  const decisiveCapital = decisiveCapAlloc(capAlloc);
   const moatScore = decisive?.compositeScore ?? null;
-  const capScore = capAlloc?.compositeScore ?? null;
+  const capScore = decisiveCapital?.compositeScore ?? null;
   const moatWide = decisive?.moatWidth === "wide";
 
   // 2. Compose the quality picture
@@ -106,9 +112,13 @@ function deriveVerdict(
   else if (goodBusiness) reasons.push(`Decent moat (score ${moatScore})`);
   else if (moatScore != null) reasons.push(`Weak moat (score ${moatScore})`);
 
-  if (greatManagement) reasons.push(`Excellent capital allocation (grade ${capAlloc!.grade})`);
-  else if (goodManagement) reasons.push(`Good capital allocation (grade ${capAlloc!.grade})`);
-  else if (capScore != null) reasons.push(`Mediocre capital allocation (grade ${capAlloc!.grade})`);
+  // Same treatment for the grade: a letter is a verdict in one character, so
+  // "Grade D" off a disowned score is the strongest available claim about
+  // management on evidence the scorer has withdrawn.
+  if (capAlloc && !decisiveCapital) reasons.push(`Capital allocation not assessed: ${capAlloc.skipReason ?? "score marked unreliable"}`);
+  else if (greatManagement) reasons.push(`Excellent capital allocation (grade ${decisiveCapital!.grade})`);
+  else if (goodManagement) reasons.push(`Good capital allocation (grade ${decisiveCapital!.grade})`);
+  else if (capScore != null) reasons.push(`Mediocre capital allocation (grade ${decisiveCapital!.grade})`);
 
   // 3. Compose the valuation picture
   const cheap = mos != null && mos > 0.25;

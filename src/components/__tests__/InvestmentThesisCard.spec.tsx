@@ -43,17 +43,34 @@ function mkMoat(dataSufficient: boolean): MoatScoreResult {
   };
 }
 
+const CAP_SKIP_REASON =
+  "Only 1 profitable period(s) of 10 — capital allocation score low-confidence (need ≥3)";
+
 // Great management and a cheap price, so the moat is the only thing standing
 // between this fixture and a "screaming buy". If the gate works, the verdict
 // has to come down; if it silently didn't, the test would still pass on a
 // weaker fixture that could never have reached a buy in the first place.
-const STRONG_CAP_ALLOC = { compositeScore: 88, grade: "A" } as CapAllocScoreResult;
+//
+// `dataSufficient` is explicit rather than left off the partial cast: the
+// capital-allocation gate reads it, and an absent flag is falsy, which would
+// quietly withdraw the management leg and make the moat tests below pass for
+// the wrong reason.
+function mkCapAlloc(dataSufficient: boolean): CapAllocScoreResult {
+  return {
+    compositeScore: 88,
+    grade: "A",
+    dataSufficient,
+    skipReason: dataSufficient ? null : CAP_SKIP_REASON,
+  } as CapAllocScoreResult;
+}
 
-function render(moat: MoatScoreResult) {
+const STRONG_CAP_ALLOC = mkCapAlloc(true);
+
+function render(moat: MoatScoreResult, capAlloc: CapAllocScoreResult | null = STRONG_CAP_ALLOC) {
   return renderToStaticMarkup(
     <InvestmentThesisCard
       moat={moat}
-      capAlloc={STRONG_CAP_ALLOC}
+      capAlloc={capAlloc}
       distress={null}
       marginOfSafety={0.4}
       price={100}
@@ -91,5 +108,48 @@ describe("InvestmentThesisCard and an insufficient moat", () => {
     // requires a great business, and there is no longer evidence of one.
     const html = render(mkMoat(false));
     expect(html).not.toContain("Screaming Buy");
+  });
+});
+
+describe("InvestmentThesisCard and an insufficient capital-allocation grade", () => {
+  // `scoreCapitalAllocation` has the same self-disqualifying shape: below three
+  // periods of positive CNI it sets `dataSufficient: false` and still returns a
+  // composite score and a letter grade. Here the moat is sound and the price is
+  // cheap, so management is the only leg under test.
+  const SOUND_MOAT = mkMoat(true);
+
+  it("does not state a grade when the scorer marked the score unreliable", () => {
+    const html = render(SOUND_MOAT, mkCapAlloc(false));
+    expect(html).not.toContain("Excellent capital allocation");
+    expect(html).not.toContain("grade A");
+  });
+
+  it("states why capital allocation was not assessed", () => {
+    const html = render(SOUND_MOAT, mkCapAlloc(false));
+    expect(html).toContain("Capital allocation not assessed");
+    expect(html).toContain("profitable period(s)");
+  });
+
+  it("withdraws the screaming buy that rested on the disowned grade", () => {
+    // The moat is wide and the margin of safety is 40%, so a screaming buy is
+    // reachable on every other leg — it is specifically the management leg
+    // being withdrawn.
+    expect(render(SOUND_MOAT, mkCapAlloc(true))).toContain("Screaming Buy");
+    expect(render(SOUND_MOAT, mkCapAlloc(false))).not.toContain("Screaming Buy");
+  });
+
+  it("does not read a disowned low score as an avoid either", () => {
+    // The mirror-image failure, and the more damaging direction: a disowned
+    // score below 35 fires the avoid branch, turning "management cannot be
+    // assessed" into "management is bad".
+    //
+    // The moat here is deliberately middling and narrow, not the wide fixture
+    // above. With a wide moat the card returns "buy" two branches earlier, so
+    // the avoid branch is never evaluated and the assertion would hold whether
+    // or not the gate exists.
+    const middling = { ...mkMoat(true), compositeScore: 50, moatWidth: "narrow" } as MoatScoreResult;
+    const weak = { ...mkCapAlloc(false), compositeScore: 12, grade: "D" } as CapAllocScoreResult;
+    expect(render(middling, { ...weak, dataSufficient: true, skipReason: null })).toContain("Avoid");
+    expect(render(middling, weak)).not.toContain("Avoid");
   });
 });
