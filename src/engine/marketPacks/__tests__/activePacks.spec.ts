@@ -171,10 +171,26 @@ interface CallSite {
   readonly line: number;
   readonly callee: string;
   readonly mode: SupplyMode;
+  /**
+   * Whether this call also hands over an `analysisAsOf`.
+   *
+   * Tracked separately from `mode`, and asserted separately, because packs
+   * without a date is its own mistake and the worse of the two: both resolvers
+   * gate their age checks on the date being truthy (`macroPack.ts` and
+   * `equityBetaPack.ts`), so an undated call skips staleness *and* look-ahead
+   * and resolves `sourced` forever — including long after the observation
+   * lapses. Folding this into `mode` would report "not active" for two
+   * different errors and leave the reviewer guessing which one they made.
+   */
+  readonly dated: boolean;
 }
 
 function describeCall(call: CallSite): string {
   return `${call.file}:${call.line} ${call.callee}(…) supplies: ${call.mode}`;
+}
+
+function describeUndated(call: CallSite): string {
+  return `${call.file}:${call.line} ${call.callee}(…) supplies packs with no analysisAsOf`;
 }
 
 function calleeName(expression: ts.Expression): string | null {
@@ -208,8 +224,7 @@ function suppliedNames(call: ts.CallExpression, sf: ts.SourceFile): Set<string> 
   return names;
 }
 
-function classify(call: ts.CallExpression, sf: ts.SourceFile): SupplyMode {
-  const names = suppliedNames(call, sf);
+function classify(names: Set<string>): SupplyMode {
   if (names.has("ACTIVE_MARKET_PACKS")) return "active";
   for (const name of FORWARDED_NAMES) if (names.has(name)) return "forwarded";
   return "none";
@@ -228,11 +243,13 @@ function callSitesIn(file: string): CallSite[] {
     if (ts.isCallExpression(node)) {
       const callee = calleeName(node.expression);
       if (callee && RESOLVER_NAMES.has(callee)) {
+        const names = suppliedNames(node, sf);
         found.push({
           file,
           line: sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1,
           callee,
-          mode: classify(node, sf),
+          mode: classify(names),
+          dated: names.has("analysisAsOf"),
         });
       }
     }
@@ -328,6 +345,33 @@ describe("pack activation — the call-site census", () => {
     // check, which is how a surface silently leaves this list.
     expect(calls.length).toBeGreaterThan(0);
     expect(calls.filter((call) => call.mode !== "active").map(describeCall)).toEqual([]);
+  });
+
+  it.each(SUPPLIES_PACKS)("%s dates every call it supplies packs to", (path) => {
+    // The second half of activation, and the half the census used to miss. A
+    // call can name `ACTIVE_MARKET_PACKS`, satisfy every assertion above, and
+    // still resolve `sourced` forever: both resolvers gate their age checks on
+    // `analysisAsOf` being truthy, so an undated call skips staleness *and*
+    // look-ahead. That is worse than omitting the packs, because omitting them
+    // yields a visibly undated `prior` tier while this yields a confident
+    // `sourced` tier on an observation that lapsed months ago.
+    const calls = callSitesIn(path);
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.filter((call) => !call.dated).map(describeUndated)).toEqual([]);
+  });
+
+  it("reports an undated call as undated", () => {
+    // Non-vacuity for the assertion above: if `dated` were true for everything,
+    // it would pass on all eight files while checking nothing. These two resolve
+    // capital costs with no date at all — `pipeline.ts` by exemption, and the
+    // audit harness for the reason KNOWN_UNPINNED records — so the checker has
+    // to be able to say so.
+    const pipeline = callSitesIn("src/engine/pipeline.ts");
+    expect(pipeline.length).toBeGreaterThan(0);
+    expect(pipeline.every((call) => !call.dated)).toBe(true);
+    const harness = callSitesIn("scripts/lib/auditCompanyRun.ts");
+    expect(harness.length).toBeGreaterThan(0);
+    expect(harness.every((call) => !call.dated)).toBe(true);
   });
 
   it(`${RUN_INPUT_SITE} spreads the packs onto the run input`, () => {
