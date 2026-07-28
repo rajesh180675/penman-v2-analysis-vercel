@@ -1,15 +1,22 @@
 import { useMemo } from "react";
 import type { RecastPeriod, EngineConfig } from "../engine/types";
-import { computeMoatScore } from "../engine/moatScoring";
+import { computeMoatScore, decisiveMoat } from "../engine/moatScoring";
 import { scoreCapitalAllocation } from "../engine/capitalAllocationScoring";
 import { detectDistress } from "../engine/distressDetector";
 import { computeEPV } from "../engine/grahamDoddEPV";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
+import type { ITServicesSignal } from "../engine/itServicesDetector";
 import { SectionHeader } from "./shared/DesignSystem";
 
 interface Props {
   data: RecastPeriod[];
   config: EngineConfig;
+  /**
+   * Phase E3 — IT-services fingerprint. Required, though `null` is valid: this
+   * page states a moat conclusion in prose, so the scorer's own
+   * "classification unreliable" verdict has to be able to reach it.
+   */
+  itServices: ITServicesSignal | null;
 }
 
 function pct(v: number | null | undefined, digits = 1): string {
@@ -27,12 +34,14 @@ function crFmt(v: number | null | undefined): string {
  * Investment Thesis — one-page summary suitable for a pitch deck or IC memo.
  * Structured as: Thesis Statement → Why Buy/Avoid → Key Numbers → Risks → What to Watch.
  */
-export default function InvestmentThesis({ data, config }: Props) {
+export default function InvestmentThesis({ data, config, itServices }: Props) {
   const latest = data[data.length - 1]!;
   const prior = data.length >= 2 ? data[data.length - 2]! : latest;
   const ticker = config.ticker ?? config.quality_data_folder ?? "Company";
 
-  const moat = useMemo(() => computeMoatScore(data, config), [data, config]);
+  // Phase E3: `null` kw override preserves the existing resolution order; the
+  // fourth argument is the IT-services signal this page never used to pass.
+  const moat = useMemo(() => computeMoatScore(data, config, null, itServices), [data, config, itServices]);
   const capAlloc = useMemo(() => scoreCapitalAllocation(data, config), [data, config]);
   const distress = useMemo(() => detectDistress(data), [data]);
   const epv = useMemo(() => {
@@ -54,8 +63,16 @@ export default function InvestmentThesis({ data, config }: Props) {
   const cfo = latest.cf?.CFO;
   const fcf = cfo != null && latest.cf?.Capex != null ? cfo - Math.abs(latest.cf.Capex) : null;
 
-  // Thesis generation
-  const isHighQuality = (moat?.compositeScore ?? 0) >= 60 && (capAlloc?.compositeScore ?? 0) >= 60;
+  // Thesis generation.
+  //
+  // `decisiveMoat` is null when the scorer set `dataSufficient: false` — a
+  // loss-maker, or an IT-services company whose RNOA is inflated by a NOA
+  // denominator near zero. This page writes prose, so the distinction matters
+  // more here than anywhere: "demonstrates durable competitive advantages with
+  // a moat score of 82/100" is a claim, and it must not rest on a number the
+  // scorer disowned.
+  const decisive = decisiveMoat(moat);
+  const isHighQuality = (decisive?.compositeScore ?? 0) >= 60 && (capAlloc?.compositeScore ?? 0) >= 60;
   const isDistressed = distress?.severity === "critical" || distress?.severity === "severe";
   const hasMarginOfSafety = config.market_price != null && epv?.epvPerShare != null
     ? ((epv.epvPerShare - config.market_price) / config.market_price) > 0.15
@@ -71,10 +88,15 @@ export default function InvestmentThesis({ data, config }: Props) {
 
   // Generate thesis sentences
   const thesisSentences: string[] = [];
-  if (isHighQuality) {
-    thesisSentences.push(`${ticker} demonstrates durable competitive advantages with a moat score of ${moat?.compositeScore}/100 and capital allocation score of ${capAlloc?.compositeScore}/100.`);
+  if (moat && !decisive) {
+    // Say why there is no moat sentence rather than falling through to the
+    // "limited evidence" branch, which would read as a finding about the
+    // company when it is a finding about the framework's applicability.
+    thesisSentences.push(`Moat scoring does not apply to ${ticker}: ${moat.skipReason ?? "the scorer marked its own classification unreliable"}`);
+  } else if (isHighQuality) {
+    thesisSentences.push(`${ticker} demonstrates durable competitive advantages with a moat score of ${decisive?.compositeScore}/100 and capital allocation score of ${capAlloc?.compositeScore}/100.`);
   } else {
-    thesisSentences.push(`${ticker} shows ${(moat?.compositeScore ?? 0) >= 40 ? "moderate" : "limited"} evidence of competitive moat (score: ${moat?.compositeScore ?? "—"}/100).`);
+    thesisSentences.push(`${ticker} shows ${(decisive?.compositeScore ?? 0) >= 40 ? "moderate" : "limited"} evidence of competitive moat (score: ${decisive?.compositeScore ?? "—"}/100).`);
   }
   if (roce != null && rnoa != null) {
     thesisSentences.push(`Returns on equity of ${pct(roce)} are driven by operating returns (RNOA ${pct(rnoa)}) ${spread != null && spread > 0 ? "amplified" : "offset"} by financial leverage.`);
@@ -91,7 +113,7 @@ export default function InvestmentThesis({ data, config }: Props) {
   const strengths: string[] = [];
   const risks: string[] = [];
 
-  if ((moat?.compositeScore ?? 0) >= 70) strengths.push("Wide economic moat — sustainable competitive position");
+  if ((decisive?.compositeScore ?? 0) >= 70) strengths.push("Wide economic moat — sustainable competitive position");
   if ((capAlloc?.compositeScore ?? 0) >= 70) strengths.push("Strong capital allocation discipline");
   if (roce != null && roce > 0.20) strengths.push(`High ROCE (${pct(roce)}) well above cost of capital`);
   if (ccr != null && ccr > 0.8) strengths.push(`Strong cash conversion (${(ccr * 100).toFixed(0)}% of earnings to cash)`);
@@ -103,7 +125,12 @@ export default function InvestmentThesis({ data, config }: Props) {
   if (ccr != null && ccr < 0.5) risks.push("Weak cash conversion — earnings quality concern");
   if (salesGrowth != null && salesGrowth < -0.05) risks.push(`Revenue decline (${pct(salesGrowth, 0)} YoY) — demand pressure`);
   if (spread != null && spread < 0) risks.push("Negative SPREAD — borrowing costs exceed operating returns");
-  if ((moat?.compositeScore ?? 0) < 40) risks.push("Limited moat evidence — vulnerable to competition");
+  // Guarded on `decisive` existing, not just on the score: with the moat
+  // disowned, `?? 0` is 0, which is < 40 — so an ungated read would turn "the
+  // framework does not apply" into "vulnerable to competition", the strongest
+  // form of the claim, on no evidence at all.
+  if (decisive && decisive.compositeScore < 40) risks.push("Limited moat evidence — vulnerable to competition");
+  else if (moat && !decisive) risks.push(`Moat score unavailable — ${moat.skipReason ?? "the scorer marked its classification unreliable"}`);
 
   return (
     <div className="space-y-6">
@@ -122,7 +149,11 @@ export default function InvestmentThesis({ data, config }: Props) {
               {ticker} — {thesisVerdict === "buy" ? "Buy" : thesisVerdict === "hold" ? "Hold / Accumulate" : thesisVerdict === "watch" ? "Watchlist" : "Avoid"}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Moat {moat?.compositeScore ?? "—"}/100 · Cap Alloc {capAlloc?.compositeScore ?? "—"}/100 · {data.length} periods analyzed
+              {/* Still shows the raw score — it is evidence a reviewer may want
+                  — but flagged, because an unqualified "Moat 82/100" sitting
+                  directly above prose saying the framework does not apply is
+                  the same contradiction this change exists to remove. */}
+              Moat {moat?.compositeScore ?? "—"}/100{moat && !decisive ? " (not applicable)" : ""} · Cap Alloc {capAlloc?.compositeScore ?? "—"}/100 · {data.length} periods analyzed
             </p>
           </div>
         </div>

@@ -260,6 +260,7 @@ describe("AcademicReport", () => {
         config={DEFAULT_CONFIG}
         rawData={rawData}
         traceability={traceability}
+        itServices={null}
       />,
     );
 
@@ -297,6 +298,7 @@ describe("AcademicReport", () => {
         config={DEFAULT_CONFIG}
         rawData={rawData}
         traceability={traceability}
+        itServices={null}
       />,
     );
 

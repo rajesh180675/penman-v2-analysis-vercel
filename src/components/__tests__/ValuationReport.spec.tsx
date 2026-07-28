@@ -75,6 +75,7 @@ function renderReport(traceability?: AnalysisTraceabilityEnvelope | null) {
       config={config}
       analysisStatus={null}
       traceability={traceability ?? null}
+      itServices={null}
     />,
   );
 }

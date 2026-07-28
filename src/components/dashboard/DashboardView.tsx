@@ -2,16 +2,18 @@ import { useMemo } from "react";
 import { RecastPeriod, EngineConfig } from "../../engine/types";
 import { AnalysisTraceabilityEnvelope } from "../../engine/analysisTraceability";
 import { computeEPV } from "../../engine/grahamDoddEPV";
-import { computeMoatScore } from "../../engine/moatScoring";
+import { computeMoatScore, decisiveMoat } from "../../engine/moatScoring";
 import { scoreCapitalAllocation } from "../../engine/capitalAllocationScoring";
 import { detectDistress } from "../../engine/distressDetector";
 import { buildValuationCommandCenter } from "../../engine/valuationCommandCenter";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../../engine/marketPacks";
 import { resolveShareBasis } from "../../engine/shareCountTools";
 import { generateDashboardNarrative } from "../../engine/narrativeEngine";
+import { formatMoatBannerMetric } from "./moatMetricLabel";
 import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { AllSegmentData } from "../../engine/segmentParser";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
+import type { ITServicesSignal } from "../../engine/itServicesDetector";
 
 import { VerdictBanner, InsightBlock, RiskFlag } from "../shared/DesignSystem";
 import { ContextHeader, Metric, EmptyState, EvidenceRail, EvidenceItem, Icon, type RigorLevel } from "../shared/Primitives";
@@ -42,9 +44,16 @@ interface Props {
   /** Optional peer count for Next Steps recommendations */
   peerCount?: number | undefined;
   onNavigate?: ((tab: string) => void) | undefined;
+  /**
+   * Phase E3 — IT-services fingerprint. Required, though `null` is valid: the
+   * moat scorer disqualifies itself for an IT-services company and `MoatPanel`
+   * renders that reason, but only if the signal reaches it. Optional would make
+   * forgetting it silent, and this surface turns the moat score into a verdict.
+   */
+  itServices: ITServicesSignal | null;
 }
 
-export default function DashboardView({ data, config, traceability = null, ratioSanity = null, segmentData = null, marketData = null, peerCount = 0, onNavigate }: Props) {
+export default function DashboardView({ data, config, traceability = null, ratioSanity = null, segmentData = null, marketData = null, peerCount = 0, onNavigate, itServices }: Props) {
   const insufficientData = !data || data.length < 2;
 
   const latest = !insufficientData ? data[data.length - 1] : null;
@@ -94,7 +103,10 @@ export default function DashboardView({ data, config, traceability = null, ratio
   const epvPerShare = epv && shares != null && shares > 0 ? epv.epvEquity / shares : null;
 
   // Moat scorer (5-dimension Buffett/Munger framework)
-  const moat = useMemo(() => computeMoatScore(data, config), [data, config]);
+  // Phase E3: `null` kw override keeps the existing resolution order (period
+  // kwStructural, then the config fallback); the fourth argument is the signal
+  // this surface never used to pass, so `MoatPanel`'s caveat never rendered.
+  const moat = useMemo(() => computeMoatScore(data, config, null, itServices), [data, config, itServices]);
 
   // Capital Allocation scorer (5-dimension management quality)
   const capAlloc = useMemo(() => scoreCapitalAllocation(data, config), [data, config]);
@@ -139,9 +151,13 @@ export default function DashboardView({ data, config, traceability = null, ratio
     const distressed = distress?.equityModelsBlocked || distress?.severity === "severe" || distress?.severity === "critical";
     if (distressed) return "avoid" as const;
 
-    const moatScore = moat?.compositeScore ?? null;
+    // A moat the scorer marked unreliable cannot drive a buy or an avoid.
+    // `MoatPanel` still renders the score and its skip reason — displaying it is
+    // fine, deciding on it is not.
+    const decisive = decisiveMoat(moat);
+    const moatScore = decisive?.compositeScore ?? null;
     const capScore = capAlloc?.compositeScore ?? null;
-    const greatBiz = (moatScore != null && moatScore >= 75) || moat?.moatWidth === "wide";
+    const greatBiz = (moatScore != null && moatScore >= 75) || decisive?.moatWidth === "wide";
     const goodBiz = moatScore != null && moatScore >= 60;
     const greatMgmt = capScore != null && capScore >= 75;
     const goodMgmt = capScore != null && capScore >= 60;
@@ -245,7 +261,11 @@ export default function DashboardView({ data, config, traceability = null, ratio
         headline={verdictHeadline}
         confidence={confidence}
         metrics={[
-          { label: "Moat", value: moat ? `${moat.compositeScore}/100` : "—" },
+          // Not a display-only read, despite looking like one: this sits in the
+          // banner directly above the verdict, with no room for the skip reason
+          // beside it. Gating the verdict without gating this would print
+          // "Moat 82/100" above a verdict saying the moat was not assessed.
+          { label: "Moat", value: formatMoatBannerMetric(moat) },
           { label: "Quality", value: confidence === "high" ? "High" : confidence === "medium" ? "Med" : "Low" },
           { label: "Risk", value: distress?.severity === "none" ? "Low" : distress?.severity ?? "—" },
           ...(marginOfSafety != null ? [{ label: "MoS", value: `${(marginOfSafety * 100).toFixed(0)}%` }] : []),
@@ -336,7 +356,10 @@ export default function DashboardView({ data, config, traceability = null, ratio
           </div>
         </EvidenceItem>
 
-        <EvidenceItem summary={`Economic Moat: ${moat ? `${moat.compositeScore}/100` : "—"}`}>
+        {/* `EvidenceItem` is `defaultOpen = false`, so this summary is visible
+            while `MoatPanel` — and therefore the skip reason — is collapsed out
+            of sight. Same slot shape as the banner metric, same gate. */}
+        <EvidenceItem summary={`Economic Moat: ${formatMoatBannerMetric(moat)}`}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <MoatPanel moat={moat} />
             <CapitalAllocationPanel result={capAlloc} />
@@ -391,9 +414,12 @@ export default function DashboardView({ data, config, traceability = null, ratio
       {/* Next Steps */}
       {(() => {
         const distressed = distress?.equityModelsBlocked || distress?.severity === "severe" || distress?.severity === "critical";
-        const moatScore = moat?.compositeScore ?? null;
+        // Same gate as the verdict memo above — Next Steps recommends actions
+        // off this verdict, so it must not reach a conclusion the verdict won't.
+        const decisive = decisiveMoat(moat);
+        const moatScore = decisive?.compositeScore ?? null;
         const capScore = capAlloc?.compositeScore ?? null;
-        const greatBiz = (moatScore != null && moatScore >= 75) || moat?.moatWidth === "wide";
+        const greatBiz = (moatScore != null && moatScore >= 75) || decisive?.moatWidth === "wide";
         const greatMgmt = capScore != null && capScore >= 75;
         const goodBiz = moatScore != null && moatScore >= 60;
         const goodMgmt = capScore != null && capScore >= 60;

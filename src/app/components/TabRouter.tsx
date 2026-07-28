@@ -10,6 +10,7 @@ import type { ValuationCommandCenterOutput } from "../../engine/valuationCommand
 import type { SourcedAssumptionSet, UnifiedAnalysisWindow } from "../../engine/analysisCase";
 import type { IndustrialForecastResult, ScenarioOrderingReport } from "../../engine/forecastState";
 import type { ScenarioGovernanceReport } from "../../engine/valuationEvidence";
+import type { ITServicesSignal } from "../../engine/itServicesDetector";
 import { marketCapCroreFromPrice } from "../../engine/types/units";
 import type { TabId } from "../tabs";
 import DataEntry from "../../components/DataEntry";
@@ -69,6 +70,12 @@ interface TabRouterProps {
   bankResult: FinancialInstitutionAnalysisResult | null;
   nbfcSidecar: AnyResult;
   lossMakerResult: AnyResult;
+  /**
+   * Phase E3 — IT-services fingerprint. Already surfaced as a banner by
+   * `AnalysisBanners`; the moat scorer needs the same signal to mark its own
+   * classification unreliable, and it can only reach it through here.
+   */
+  itServicesSignal: ITServicesSignal | null;
   registry: CompanyRegistry;
   comparisonPublication: AnyResult;
   portfolioRunComparison: ReturnTypeOfPortfolioComparison;
@@ -90,7 +97,7 @@ export function TabRouter(props: TabRouterProps) {
     handleDataSubmit, onBatchSubmit, auditMeta, analysisStatus, traceability, publication, ratioSanity, segmentData,
     liveMarketData, liveMarketDataLoading, liveMarketDataError, refreshLiveMarketData, commandCenter,
     analysisWindow, sourcedAssumptionSet, forecastResults, scenarioOrdering, scenarioGovernance,
-    readyCompanyCount, bankResult, nbfcSidecar, lossMakerResult, registry,
+    readyCompanyCount, bankResult, nbfcSidecar, lossMakerResult, itServicesSignal, registry,
     comparisonPublication, portfolioRunComparison, workspaceCompanies, workspaceCompanyId, setWorkspaceCompanyId,
     valuationBlocked, scopeBlocked, qualityGate, scopeAwareResult, pipelineResult, debugInfo, engineError,
   } = props;
@@ -116,6 +123,7 @@ export function TabRouter(props: TabRouterProps) {
           marketData={liveMarketData}
           peerCount={readyCompanyCount}
           onNavigate={(tab) => setActiveTab(tab as TabId)}
+          itServices={itServicesSignal}
         />
       )}
       {/* Bank/NBFC dashboard: show FinancialInstitutionReport when no industrial recast */}
@@ -191,6 +199,7 @@ export function TabRouter(props: TabRouterProps) {
           marketDataLoading={liveMarketDataLoading}
           marketDataError={liveMarketDataError}
           onMarketRefresh={refreshLiveMarketData}
+          itServices={itServicesSignal}
         />
       )}
       {activeTab === "valuation" && !hasRecast && bankResult && rawData && rawData.length > 0 && (
@@ -263,7 +272,7 @@ export function TabRouter(props: TabRouterProps) {
       )}
       {activeTab === "comparison" && <ComparisonReport registry={registry} config={config} publication={comparisonPublication} runComparison={portfolioRunComparison} />}
       {activeTab === "thesis" && hasRecast && (
-        <InvestmentThesis data={recastData!} config={config} />
+        <InvestmentThesis data={recastData!} config={config} itServices={itServicesSignal} />
       )}
       {activeTab === "report" && hasRecast && (
         <AcademicReport
@@ -274,6 +283,7 @@ export function TabRouter(props: TabRouterProps) {
           traceability={traceability}
           publication={publication}
           ratioSanity={ratioSanity}
+          itServices={itServicesSignal}
         />
       )}
       {activeTab === "report" && !hasRecast && bankResult && (
@@ -296,7 +306,7 @@ export function TabRouter(props: TabRouterProps) {
           traceabilitySummary={publication?.traceabilitySummary ?? null}
         />
       )}
-      {activeTab === "v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} />}
+      {activeTab === "v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} itServices={itServicesSignal} />}
       {activeTab === "debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError} greenfield={pipelineResult?.greenfield ?? null} />}
       {/* Insurance / unsupported financial scope: show clear message on valuation tab */}
       {activeTab === "valuation" && !hasRecast && scopeBlocked && !bankResult && rawData && rawData.length > 0 && (

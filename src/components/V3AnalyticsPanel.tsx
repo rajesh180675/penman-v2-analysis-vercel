@@ -44,11 +44,20 @@ interface Props {
   config: EngineConfig;
   traceability?: AnalysisTraceabilityEnvelope | null | undefined;
   traceabilitySummary?: ReturnType<typeof buildValuationTraceabilitySurfaceSummary> | null | undefined;
-  /** Phase E3 — IT-services signal for moat scorer awareness. */
-  itServices?: ITServicesSignal | null | undefined;
+  /**
+   * Phase E3 — IT-services signal for moat scorer awareness.
+   *
+   * Required, though `null` is a legitimate value, because the prop used to be
+   * optional-with-a-null-default and the only caller never passed it: the moat
+   * scorer then classified moat width on structurally inflated RNOA and
+   * reported `dataSufficient: true`, so the caveat below never rendered. An
+   * omission that changes the analysis has to be a compile error, not a
+   * default — pass `null` explicitly for a company with no signal.
+   */
+  itServices: ITServicesSignal | null;
 }
 
-export default function V3AnalyticsPanel({ data, config, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null, itServices = null }: Props) {
+export default function V3AnalyticsPanel({ data, config, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null, itServices }: Props) {
   const [activeSection, setActiveSection] = useState<"overview" | "dirty" | "events" | "terminal" | "sensitivity" | "confidence" | "triggers" | "accruals" | "oa_decomp" | "gap_decomp" | "section6b" | "moat" | "capital_alloc" | "epv" | "relative_val">("overview");
   const derivedTraceabilitySummary = useMemo(
     () => buildValuationTraceabilitySurfaceSummary(traceability),
@@ -98,7 +107,7 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
       // at the rate the header prints.
       { ...ACTIVE_MARKET_PACKS, analysisAsOf: analysisAsOfToday() },
     );
-  }, [data, config, valuation, kw]);
+  }, [data, config, valuation, kw, itServices]);
 
   // Second pass: recompute with §11 terminal anchor once we have the bundle
   const valuationWithAnchor = useMemo(() => {

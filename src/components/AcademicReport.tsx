@@ -12,6 +12,7 @@ import { AuditSubmissionMeta } from "../lib/audit";
 import { trace } from "../lib/traceLogger";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import type { SanityAssessment } from "../engine/ratioSanity";
+import type { ITServicesSignal } from "../engine/itServicesDetector";
 import type { ReportArtifactKind, ReportExportResult } from "../reporting";
 import {
   cagr,
@@ -52,9 +53,20 @@ interface Props {
   publication?: ReturnType<typeof buildAnalysisPublicationSnapshot> | null | undefined;
   /** Phase 9 — anchor ratio bands for export confidence stamps. */
   ratioSanity?: SanityAssessment | null | undefined;
+  /**
+   * Phase E3 — IT-services fingerprint. The moat scorer needs it to mark its
+   * own classification unreliable; without it an exported report presents an
+   * unqualified moat width for a company whose RNOA is structurally inflated.
+   *
+   * Required rather than optional — unlike its neighbours here — because this
+   * call site previously passed a literal `undefined` under a comment saying
+   * the surface had no signal to pass. It did have one; it was never routed.
+   * Pass `null` explicitly when a company genuinely has no signal.
+   */
+  itServices: ITServicesSignal | null;
 }
 
-export default function AcademicReport({ data, config, rawData, auditMeta, traceability: sharedTraceability = null, publication: precomputedPublication = null, ratioSanity = null }: Props) {
+export default function AcademicReport({ data, config, rawData, auditMeta, traceability: sharedTraceability = null, publication: precomputedPublication = null, ratioSanity = null, itServices }: Props) {
   // KaTeX is lazy-loaded so the entry chunk doesn't ship the renderer for
   // users who never open Academic Report.
   const { eqROCE, eqRNOA, eqRE, eqReOI } = useAcademicEquations();
@@ -289,9 +301,11 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         reoiCv03,
         config.g_terminal_override,
         kw,
-        // This surface has no IT-services signal to pass; explicit `undefined`
-        // rather than a shorter call so the packs land in the right position.
-        undefined,
+        // Phase E3. This used to be an explicit `undefined` with a comment
+        // saying the surface had no signal to pass — but the signal exists, it
+        // just was not routed here, so an exported report stated a moat width
+        // for an IT-services company without the caveat the scorer writes.
+        itServices,
         // Same packs `ke` above was resolved from — an exported report must not
         // discount its bundle at a different rate than it prints.
         { ...ACTIVE_MARKET_PACKS, analysisAsOf: analysisAsOfToday() },

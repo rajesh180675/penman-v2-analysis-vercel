@@ -29,6 +29,7 @@ import type { AnalysisPublicationSnapshot } from "../lib/publication/analysisPub
 import type { LossMakerValuationResult } from "../engine/lossMakerValuation";
 import type { SanityAssessment } from "../engine/ratioSanity";
 import type { AllSegmentData } from "../engine/segmentParser";
+import type { ITServicesSignal } from "../engine/itServicesDetector";
 import { EmptyState } from "./shared/Primitives";
 import { type CVMethod, fmt, makeCvSel } from "./valuation/ValuationReport.formatters";
 import {
@@ -78,6 +79,13 @@ interface Props {
   marketDataLoading?: boolean | undefined;
   marketDataError?: string | null | undefined;
   onMarketRefresh?: (() => Promise<void>) | undefined;
+  /**
+   * Phase E3 — IT-services fingerprint. Required, though `null` is valid, so
+   * that a call site cannot omit it silently: `AnchorAnalysisGrid` renders the
+   * moat scorer's own skip-reason, and without the signal an IT-services
+   * company gets a confident moat width computed on inflated RNOA.
+   */
+  itServices: ITServicesSignal | null;
 }
 
 export default function ValuationReport({
@@ -95,6 +103,7 @@ export default function ValuationReport({
   marketDataLoading = false,
   marketDataError = null,
   onMarketRefresh,
+  itServices,
 }: Props) {
   const derivedValuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
   const valuationReadiness = publication?.valuationReadiness ?? derivedValuationReadiness;
@@ -215,7 +224,10 @@ export default function ValuationReport({
   );
 
   // Moat scorer (5-dimension Buffett/Munger framework)
-  const moatScore = useMemo(() => computeMoatScore(data, effectiveConfig), [data, effectiveConfig]);
+  // Phase E3: `null` kw override preserves the existing resolution order; the
+  // fourth argument is the IT-services signal this surface never used to pass,
+  // so `AnchorAnalysisGrid` could not render the scorer's own skip-reason.
+  const moatScore = useMemo(() => computeMoatScore(data, effectiveConfig, null, itServices), [data, effectiveConfig, itServices]);
   const regimeContext = useMemo(
     () => buildRegimeContext(commandCenter.riskFreeRate, liveMarketData?.history?.currentPricePercentile ?? null),
     [commandCenter.riskFreeRate, liveMarketData?.history?.currentPricePercentile],

@@ -1,4 +1,4 @@
-import type { MoatScoreResult } from "../../engine/moatScoring";
+import { decisiveMoat, type MoatScoreResult } from "../../engine/moatScoring";
 import type { CapAllocScoreResult } from "../../engine/capitalAllocationScoring";
 import type { DistressAssessment } from "../../engine/distressDetector";
 
@@ -82,9 +82,15 @@ function deriveVerdict(
     return { verdict: "distressed", reasons };
   }
 
-  const moatScore = moat?.compositeScore ?? null;
+  // A moat the scorer disowned cannot support a verdict. `decisiveMoat` returns
+  // null when `dataSufficient` is false, so the score below reads as "unknown"
+  // rather than as the plausible 0-100 number the scorer still returns — for a
+  // loss-maker, or an IT-services company whose RNOA is inflated by a NOA
+  // denominator near zero.
+  const decisive = decisiveMoat(moat);
+  const moatScore = decisive?.compositeScore ?? null;
   const capScore = capAlloc?.compositeScore ?? null;
-  const moatWide = moat?.moatWidth === "wide";
+  const moatWide = decisive?.moatWidth === "wide";
 
   // 2. Compose the quality picture
   const goodBusiness = moatScore != null && moatScore >= 60;
@@ -92,7 +98,11 @@ function deriveVerdict(
   const greatBusiness = moatScore != null && moatScore >= 75;
   const greatManagement = capScore != null && capScore >= 75;
 
-  if (greatBusiness) reasons.push(`Strong moat (score ${moatScore}, ${moat!.moatWidth})`);
+  // The skip reason is still worth stating — it is why there is no moat line,
+  // and a verdict with a silent gap in its evidence is harder to review than
+  // one that names it.
+  if (moat && !decisive) reasons.push(`Moat not assessed: ${moat.skipReason ?? "score marked unreliable"}`);
+  else if (greatBusiness) reasons.push(`Strong moat (score ${moatScore}, ${decisive!.moatWidth})`);
   else if (goodBusiness) reasons.push(`Decent moat (score ${moatScore})`);
   else if (moatScore != null) reasons.push(`Weak moat (score ${moatScore})`);
 

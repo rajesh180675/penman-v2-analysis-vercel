@@ -9,6 +9,7 @@ import { GapDecompSection } from "../v3-analytics/GapDecompSection";
 import { buildAnalysisTraceability } from "../../engine/analysisTraceability";
 import { getAnalysisPolicyVersions } from "../../engine/policyVersions";
 import { DEFAULT_CONFIG, RecastPeriod, RawPeriodData } from "../../engine/types";
+import type { ITServicesSignal } from "../../engine/itServicesDetector";
 
 function mkRawPeriod(period_end: string): RawPeriodData {
   return {
@@ -209,6 +210,7 @@ describe("V3AnalyticsPanel", () => {
         data={data}
         config={DEFAULT_CONFIG}
         traceability={traceability}
+        itServices={null}
       />,
     );
 
@@ -220,7 +222,7 @@ describe("V3AnalyticsPanel", () => {
   it("renders all 15 tab labels so section composition stays intact", () => {
     const data = [mkV3Period("2024-03-31"), mkV3Period("2025-03-31")];
     const html = renderToStaticMarkup(
-      <V3AnalyticsPanel data={data} config={DEFAULT_CONFIG} />,
+      <V3AnalyticsPanel data={data} config={DEFAULT_CONFIG} itServices={null} />,
     );
     for (const label of [
       "Overview",
@@ -246,7 +248,7 @@ describe("V3AnalyticsPanel", () => {
   it("pins the default Overview pane: headers, metric cards, and diagnostics", () => {
     const data = [mkV3Period("2024-03-31"), mkV3Period("2025-03-31")];
     const html = renderToStaticMarkup(
-      <V3AnalyticsPanel data={data} config={DEFAULT_CONFIG} />,
+      <V3AnalyticsPanel data={data} config={DEFAULT_CONFIG} itServices={null} />,
     );
     // Section header + subtitle
     expect(html).toContain("V3 Analytics — Executive Overview");
@@ -269,9 +271,46 @@ describe("V3AnalyticsPanel", () => {
 
   it("shows the ≥2 periods guard when given a single period", () => {
     const html = renderToStaticMarkup(
-      <V3AnalyticsPanel data={[mkV3Period("2025-03-31")]} config={DEFAULT_CONFIG} />,
+      <V3AnalyticsPanel data={[mkV3Period("2025-03-31")]} config={DEFAULT_CONFIG} itServices={null} />,
     );
     expect(html).toContain("Need ≥ 2 periods for V3 analytics");
+  });
+
+  // Phase E3 wiring. `computeMoatScore` has always known how to disqualify
+  // itself for an IT-services company, and this panel has always known how to
+  // render that caveat — but the prop carrying the signal was optional and the
+  // only caller never passed it, so for TCS and INFY the panel scored moat
+  // width on structurally inflated RNOA and reported it as sufficient.
+  //
+  // Asserted in both directions, because the failure mode was silence: a test
+  // that only checks the caveat appears would also pass if the panel warned
+  // unconditionally, which is a different bug with the same green tick.
+  describe("IT-services moat caveat", () => {
+    const IT_SIGNAL: ITServicesSignal = {
+      isITServices: true,
+      medianEmployeeCostRatio: 0.52,
+      medianPPERatio: 0.04,
+      reason: "employee cost 52% of revenue, PPE 4% of total assets",
+      periodsAnalysed: 3,
+    };
+    // Three periods: below that `computeMoatScore` returns null and there is no
+    // classification to caveat, so the test would pass vacuously.
+    const data = [mkV3Period("2023-03-31"), mkV3Period("2024-03-31"), mkV3Period("2025-03-31")];
+
+    it("marks the moat score low-confidence when the signal is supplied", () => {
+      const html = renderToStaticMarkup(
+        <V3AnalyticsPanel data={data} config={DEFAULT_CONFIG} itServices={IT_SIGNAL} />,
+      );
+      expect(html).toContain("Moat score is low-confidence");
+      expect(html).toContain("IT-services company");
+    });
+
+    it("does not caveat the moat score when there is no signal", () => {
+      const html = renderToStaticMarkup(
+        <V3AnalyticsPanel data={data} config={DEFAULT_CONFIG} itServices={null} />,
+      );
+      expect(html).not.toContain("IT-services company");
+    });
   });
 });
 
