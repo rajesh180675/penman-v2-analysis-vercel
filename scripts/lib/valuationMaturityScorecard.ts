@@ -733,8 +733,15 @@ function scoreDataFreshness(rows: ValuationScorecardAuditRow[], rowSummaries: Va
     [
       sourceLineageGaps ? `${sourceLineageGaps} ${sourceLineageGaps === 1 ? "row lacks" : "rows lack"} first-class source lineage evidence` : "",
       freshnessGaps ? `${freshnessGaps} ${freshnessGaps === 1 ? "row lacks" : "rows lack"} fresh timestamped market evidence` : "",
-      sourceLineageGaps ? "source hashes/source-cell lineage remain incomplete for the rows above" : "source artifact hashes and lineage refs are first-class scorecard inputs",
-      freshnessGaps ? "market freshness remains blocked where source_unavailable/stale evidence is emitted" : "market freshness evidence is first-class for this audit sample",
+      // Gaps only. These two slots used to carry a positive statement on the
+      // else branch ("...are first-class scorecard inputs"), which made this the
+      // one family that wrote good news into a cell named `blockers`. Anything
+      // auditing "is this family reporting something missing?" then had to parse
+      // the prose to tell the two apart — and a prose blacklist fails open on the
+      // first phrasing nobody anticipated. The coverage those sentences claimed
+      // is already stated, with counts, in the evidence lines above.
+      sourceLineageGaps ? "source hashes/source-cell lineage remain incomplete for the rows above" : "",
+      freshnessGaps ? "market freshness remains blocked where source_unavailable/stale evidence is emitted" : "",
     ],
   );
 }

@@ -1,6 +1,6 @@
 # Valuation Maturity Scorecard
 
-Generated: 2026-07-28T07:20:10.799Z
+Generated: 2026-07-28T08:43:55.942Z
 Schema: `2026-06-valuation-maturity-v2`
 Overall score: **7.6/10** (guarded)
 Audited corpus: 33 companies; total weight 100
@@ -35,7 +35,7 @@ These rows should count against maturity until the missing contract is implement
 | Sector-native coverage | 12 | 4.0 | blocked | 11/33 audited rows need sector-native economics; Sector types: telecom, conglomerate, cyclical, utility +1 more | telecom remains routed through telecom-v1 instead of a sector-native model; conglomerate remains routed through industrial-v1 instead of a sector-native model; cyclical remains routed through cyclical-v1 instead of a sector-native model; utility remains routed through utility-v1 instead of a sector-native model; loss-maker remains routed through loss-maker-v1 instead of a sector-native model |
 | Cross-paradigm independence | 12 | 9.0 | strong | 33 audited rows assessed for contributing valuation lenses; Model sets: VCC+SOTP+EPV+CASH_DCF, VCC+EPV, PB+ERI+DDM+P/AUM+ROA×LevRI, VCC+EPV+CASH_DCF +6 more; Triangulation methods: accrual-riv, cash-fcff-dcf, bank-pb, bank-eri +4 more; Independent lens groups: accrual-history, cash-statement, fi-asset-market-multiple, fi-book-residual-income +5 more | 1/33 audited rows still rely on a single valuation spine |
 | Traceability/reconciliation/fail-closed gates | 16 | 5.0 | gap | Rigor levels: syntactically-valid, structurally-reconciled; Valuation readiness statuses: warning, guarded, production-ready; 0/33 audited rows reached production-ready rigor | 27 rows remain at syntactically-valid rigor; No audited row currently clears the production-ready gate |
-| Data freshness/source tieout | 10 | 10.0 | strong | 33/33 audited rows have parsed periods; 33/33 audited rows expose latest period labels; 33/33 audited rows carry hashed source lineage; 33/33 audited rows carry fresh timestamped market evidence | source artifact hashes and lineage refs are first-class scorecard inputs; market freshness evidence is first-class for this audit sample |
+| Data freshness/source tieout | 10 | 10.0 | strong | 33/33 audited rows have parsed periods; 33/33 audited rows expose latest period labels; 33/33 audited rows carry hashed source lineage; 33/33 audited rows carry fresh timestamped market evidence | — |
 | Workbook/reviewer defensibility | 10 | 9.5 | strong | Shared trust envelope is surfaced across core UI/report tabs; Audit CLI now emits family, strategy, status class, and taxonomy outcome for each row; Reviewer pack parity checkpoint now passes when source lineage, market freshness, parser fidelity, and independent valuation evidence are all present | — |
 | Engineering/release quality | 10 | 8.5 | strong | Audit harness completed 33 rows with 0 CALC_ERROR outcomes; Repository exposes validate, release validation, golden tests, and all-company audit scripts | — |
 

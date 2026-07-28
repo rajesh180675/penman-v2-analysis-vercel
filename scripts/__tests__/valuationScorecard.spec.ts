@@ -307,11 +307,12 @@ describe("valuation maturity scorecard", () => {
     // family below its ceiling. A row with everything scores everything.
     expect(family?.score).toBe(10);
     expect(family?.status).toBe("strong");
-    // Asserted as "no gap language" rather than an empty list: this family's
-    // blockers slot also carries two positive statements when nothing is
-    // missing ("...are first-class scorecard inputs"), which predates this
-    // change and is left alone.
-    expect(family?.blockers.filter((blocker) => /\blacks?\b|incomplete|remains blocked/.test(blocker))).toEqual([]);
+    // Exactly empty, not "contains no gap phrasings". This slot used to emit two
+    // positive statements when nothing was missing, which made the assertion a
+    // prose filter and left the doc-level guard reading generated English to tell
+    // good news from bad. The coverage those sentences claimed is in `evidence`,
+    // with counts; `blockers` now holds gaps or nothing.
+    expect(family?.blockers).toEqual([]);
   });
 
   it("clears the market-freshness blocker only when timestamped market evidence is fresh", () => {
