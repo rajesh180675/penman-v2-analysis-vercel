@@ -22,11 +22,15 @@ Current envelope schema: **`2026-06-traceability-v19`**.
 
 Plan 0 adds the living valuation maturity scorecard as the audit baseline for future modeling PRs:
 
-- Baseline artifact: `docs/valuation-maturity-scorecard.md`.
+- Baseline artifact: `docs/valuation-maturity-scorecard.md` — read the current score there, not from this file.
 - Decision record: `docs/adr/008-valuation-maturity-scorecard.md`.
-- Current score: **6.1/10** (`developing`) across 33 companies.
 - Target score: **10.0/10**.
-- Current audit health: 33/33 rows without calculation errors; all rows carry formal taxonomy outcomes.
+
+This section deliberately does not restate the current score. It used to say
+**6.1/10** (`developing`) while the generated artifact said 8.5 and the code
+produced 7.6 — three numbers for one measurement, two of them hand-copied and
+both wrong. A generated value copied into a hand-maintained doc is stale from the
+moment the generator runs again, so the pointer is the durable form.
 
 Run these after valuation-modeling or source-contract PRs:
 
