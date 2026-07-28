@@ -5,7 +5,8 @@
  */
 import { useMemo, useState } from "react";
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
-import { RecastPeriod, EngineConfig, ke_from_config } from "../engine/types";
+import { RecastPeriod, EngineConfig } from "../engine/types";
+import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { detectDistress } from "../engine/distressDetector";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
@@ -54,7 +55,11 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
   );
   const traceabilitySummary = precomputedTraceabilitySummary ?? derivedTraceabilitySummary;
 
-  const ke = ke_from_config(config);
+  // S-9.4C: one cost-of-equity derivation for the whole app, replacing the
+  // parallel `ke_from_config` implementation. `computeV3Analytics` already
+  // resolves its own capital cost through the resolver, so this surface was
+  // reaching the same number by a second route.
+  const ke = resolveCostOfCapitalFromConfig({ config }).ke;
 
   const { valuation, kw } = useMemo(() => {
     if (data.length < 2) return { valuation: null, kw: ke };

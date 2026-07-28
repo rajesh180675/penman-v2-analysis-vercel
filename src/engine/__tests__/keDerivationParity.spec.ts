@@ -1,17 +1,23 @@
 /* ================================================================
    ke derivation parity — the two paths, pinned.
 
-   The engine derives a cost of equity twice. `ke_from_config`
-   (types/config.ts) is what five UI surfaces call; the capital-cost
-   resolver is what the run, the valuation command center, the bank
-   models, the Excel exports and the baseline guardrails use.
+   The engine derives a cost of equity twice. The capital-cost resolver
+   is what the run, the valuation command center, the bank models, the
+   Excel exports, the baseline guardrails and — since the call-site
+   unification below — all five report surfaces use. `ke_from_config`
+   (types/config.ts) is now internal to that module. Its remaining callers are
+   `validateEngineConfig`, which DataEntry renders as config warnings,
+   and `deriveKwFromConfig`, which has no production caller left at all
+   (noted, not removed — deleting a live export is not this change).
 
-   Today they agree, and the agreement is a coincidence of constants,
-   not a shared implementation: both compute `rf + sectorBeta × erp`
-   off the same config fields. Nothing enforced it, so either could
-   have been edited alone and the app would have printed one discount
-   rate while the run recorded another — an S-9.4C violation that no
-   test would have caught.
+   They agree, and the agreement is a coincidence of constants, not a
+   shared implementation: both compute `rf + sectorBeta × erp` off the
+   same config fields. Nothing enforced it, so either could have been
+   edited alone and the app would have printed one discount rate while
+   the run recorded another — an S-9.4C violation that no test would
+   have caught. The blast radius is smaller now that the report
+   surfaces are off this path, but a divergence would still make the
+   config-warning panel disagree with every number the run produces.
 
    This spec is that enforcement. It is deliberately arithmetic-free:
    it asserts the two functions return the same number, never what
@@ -126,11 +132,23 @@ describe("ke derivation: known divergences", () => {
 });
 
 /* ── The pack tripwire ────────────────────────────────────────────
-   This is the reason #46 exists and why the pinned packs are wired
-   but inert.
+   Why the pinned packs are still wired but inert, even now that every
+   surface calls the resolver.
+
+   Unifying the call sites closed half of this. The report surfaces no
+   longer call a different *function* than the run — they all call the
+   resolver now. What remains is that they call it with different
+   *arguments*: the
+   surfaces pass `{ config }` and nothing else, so a pack handed to the
+   run would still leave them deriving the unpinned rate.
+
+   That is a smaller gap than a duplicated formula, and a different one:
+   it closes by threading the pack (or the run's already-resolved
+   capital cost) into the surfaces, not by editing an equation. The
+   assertions below hold either way, which is why they are still here.
 ────────────────────────────────────────────────────────────────── */
 describe("ke derivation: pinned pack", () => {
-  it("moves the resolver away from ke_from_config, which cannot see a pack", () => {
+  it("moves the resolver away from a pack-less derivation of the same config", () => {
     const config: EngineConfig = { ...DEFAULT_CONFIG, company_type: "it-services" };
     const withPack = resolveCostOfCapitalFromConfig({
       config,
@@ -138,18 +156,20 @@ describe("ke derivation: pinned pack", () => {
       analysisAsOf: "2026-07-27",
     });
 
-    // `ke_from_config` takes only a config, so there is no argument by which
-    // a pack could reach it. Supplying one to the resolver therefore splits
-    // the two paths — here by ~74bp, and by 47–133bp across the sector table.
-    // Any surface still calling `ke_from_config` would print the unpinned
-    // rate while the run recorded the pinned one.
+    // A pack reaches the resolver only as an argument, so any caller that
+    // omits it derives a different number from the same config — here by
+    // ~74bp, and by 47-133bp across the sector table. `ke_from_config` stands
+    // in for that pack-less derivation because it is exactly what the
+    // surfaces' `{ config }`-only call reduces to (proven by the parity block
+    // above), and it cannot take a pack at all.
     //
-    // So: before a production caller supplies a pack, the five surfaces
-    // listed at the top of this file must read the resolved ke instead.
-    // If a future change makes these agree, this expectation fails, and
-    // that failure is the signal that activation is safe — read it as a
-    // prompt to delete this test, not to loosen it.
+    // So: before a production caller supplies a pack, the surfaces must
+    // receive the same pack or read the run's resolved ke. If a future change
+    // makes these agree, this expectation fails, and that failure is the
+    // signal that activation is safe — read it as a prompt to delete this
+    // test, not to loosen it.
     expect(Math.abs(withPack.ke - ke_from_config(config))).toBeGreaterThan(0.001);
+    expect(Math.abs(withPack.ke - resolveCostOfCapitalFromConfig({ config }).ke)).toBeGreaterThan(0.001);
 
     // The pack is what earns the sourced tiers; beta stays a prior because
     // no beta pack or peer set was supplied here.

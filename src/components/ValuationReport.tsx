@@ -4,7 +4,7 @@ import { INRAbsolute } from "../engine/types/units";
 import { buildCyclicalNormalization } from "../engine/cyclicalNormalization";
 import { detectDistress } from "../engine/distressDetector";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
-import { ke_from_config } from "../engine/types";
+import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
 import { buildRegimeContext } from "../engine/regimeModel";
 import { calibrateSignalBacktest } from "../engine/signalBacktest";
 import { buildTerminalEconomics } from "../engine/terminalEconomics";
@@ -105,7 +105,17 @@ export default function ValuationReport({
     market_price: liveMarketData?.price != null ? INRAbsolute(liveMarketData.price) : config.market_price,
     risk_free_rate: liveMarketData?.riskFreeRate ?? config.risk_free_rate,
   }), [config, liveMarketData]);
-  const keFromConfig = ke_from_config(effectiveConfig);
+  // S-9.4C: one cost-of-equity derivation for the whole app, replacing the
+  // parallel `ke_from_config` implementation.
+  //
+  // Still `effectiveConfig`, not `config`: the live risk-free rate and market
+  // price are already folded into it above, and the reviewer's ke override below
+  // is layered on top. Deliberately not read off `commandCenter.costOfCapital`
+  // even though this surface has one — that build also passes the selected
+  // periods and the live market snapshot, so its ke is a different (better-
+  // evidenced) number, and adopting it here would move the displayed discount
+  // rate rather than just unify how it is derived.
+  const keFromConfig = resolveCostOfCapitalFromConfig({ config: effectiveConfig }).ke;
   const [keOverride, setKeOverride] = useState<number | null>(null);
   const [g, setG] = useState(effectiveConfig.g_terminal_override != null ? effectiveConfig.g_terminal_override * 100 : 4.0);
   const [cv, setCv] = useState<CVMethod>("CV3");

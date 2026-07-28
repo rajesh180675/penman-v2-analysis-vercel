@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import "katex/dist/katex.min.css";
-import { EngineConfig, RawPeriodData, RecastPeriod, ke_from_config } from "../engine/types";
+import { EngineConfig, RawPeriodData, RecastPeriod } from "../engine/types";
+import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildAnalysisPublicationSnapshot } from "../lib/publication/analysisPublicationSnapshot";
@@ -235,8 +236,12 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
     noaShiftSeries[0] ?? { period: latest.period_end, deltaNOA: 0, deltaOA: 0, deltaFA: 0, deltaOL: 0, deltaFO: 0 },
   );
 
-  // S-9.4: ke from config — prefer explicit config.ke over rf+erp
-  const ke = ke_from_config(config);
+  // S-9.4C: one cost-of-equity derivation for the whole app. This read the
+  // `ke_from_config` helper, which computes `rf + sectorBeta × erp` off the same
+  // config fields the resolver does — so the two agreed only by coincidence of
+  // constants, and either could have been edited alone while this surface printed
+  // one discount rate and the recorded run kept another.
+  const ke = resolveCostOfCapitalFromConfig({ config }).ke;
   const kwSeries: number[] = [];
   for (let i = 1; i < valuationData.length; i++) {
     kwSeries.push(deriveKwFromStructure(valuationData[i]!, valuationData[i - 1]!, ke, config.risk_free_rate, config));

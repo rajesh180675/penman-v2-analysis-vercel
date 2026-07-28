@@ -1,4 +1,5 @@
-import { CompanyRegistry, EngineConfig, NP_BENCHMARKS, ke_from_config } from "../engine/types";
+import { CompanyRegistry, EngineConfig, NP_BENCHMARKS } from "../engine/types";
+import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { useCallback, useMemo, useState } from "react";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
@@ -157,7 +158,15 @@ function ComparisonReportBody({ registry, config, weakestTraceabilitySummary: pr
   }, [latestByCo, marketInputs]);
 
   const baseValuationRows = useMemo(() => {
-    const ke = ke_from_config(config);
+    // S-9.4C: one cost-of-equity derivation for the whole app, replacing the
+    // parallel `ke_from_config` implementation.
+    //
+    // Passing only `{ config }` is deliberate and preserves today's behaviour
+    // exactly: one ke, derived from the workspace config, applied to every peer
+    // row below. Resolving per peer would be more defensible — each company has
+    // its own leverage and sector beta — but it would change every number in this
+    // table, so it is a separate change and not this one.
+    const ke = resolveCostOfCapitalFromConfig({ config }).ke;
     const g = 0.05;
     return latestByCo.map((c) => {
       const n = c.series.length;
