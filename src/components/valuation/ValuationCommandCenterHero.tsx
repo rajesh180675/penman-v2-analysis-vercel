@@ -59,7 +59,10 @@ export default function ValuationCommandCenterHero({
       })()}
 
       {/* Assumptions Audit — all valuation inputs visible and sanity-checked */}
-      <AssumptionsAudit config={config} />
+      {/* The command center already resolved the capital cost; passing it keeps
+          the audit panel reporting the rate the valuation discounted at rather
+          than re-deriving one from config. */}
+      <AssumptionsAudit config={config} costOfCapital={commandCenter.costOfCapital} />
 
       <div className="flex flex-wrap items-start justify-between gap-4 mt-6">
         <div>
