@@ -55,15 +55,27 @@ function flagBadge(flag: AssumptionRow["flag"]): string | null {
   return null;
 }
 
-function sourceBadge(source: RowSource): { text: string; cls: string } {
+/**
+ * Exported so a spec can assert the badges are actually distinguishable. Two of
+ * these shipped sharing a colour with a stronger tier, which is a silent failure
+ * in a panel whose only job is telling provenance apart.
+ */
+export function sourceBadge(source: RowSource): { text: string; cls: string } {
   switch (source) {
     case "user": return { text: "User", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" };
-    case "computed": return { text: "Computed", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" };
+    // Indigo, not the emerald "Sourced" wears. This badge means arithmetic over
+    // the rows above it, or a tier the resolver did not report — a weaker claim
+    // than a dated third-party observation. Sharing a colour with "Sourced"
+    // would blur the one distinction this panel exists to draw.
+    case "computed": return { text: "Computed", cls: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300" };
     // The provenance tiers, coloured by how much weight a reviewer should put
     // on the number: a dated third-party observation, something derived here,
     // or an engine default that no source stands behind.
     case "sourced": return { text: "Sourced", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" };
-    case "estimated": return { text: "Estimated", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" };
+    // Violet: "Estimated" shipped in the same blue as "User", which is the same
+    // collision CodeRabbit caught between Computed and Sourced. A number this
+    // engine derived and a number a reviewer typed are not the same claim.
+    case "estimated": return { text: "Estimated", cls: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300" };
     case "prior": return { text: "Prior", cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" };
     default: return { text: "Default", cls: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400" };
   }

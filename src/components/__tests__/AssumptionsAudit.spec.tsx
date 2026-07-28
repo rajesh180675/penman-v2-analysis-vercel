@@ -13,7 +13,7 @@
 
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import AssumptionsAudit from "../AssumptionsAudit";
+import AssumptionsAudit, { sourceBadge } from "../AssumptionsAudit";
 import { DEFAULT_CONFIG, type EngineConfig } from "../../engine/types";
 import { PercentFraction } from "../../engine/types/units";
 import { resolveCostOfCapitalFromConfig } from "../../engine/costOfCapital";
@@ -91,6 +91,18 @@ describe("AssumptionsAudit — source badges", () => {
     const explicit = render({ ...DEFAULT_CONFIG, company_type: "it-services" }).html;
     expect(explicit).not.toContain("Auto-detection may misclassify");
     expect(explicit).toContain(">User<");
+  });
+
+  it("gives every provenance level its own colour", () => {
+    // Two badges shipped sharing a colour with a stronger tier: Computed with
+    // Sourced, and Estimated with User. Identical styling in the one panel whose
+    // job is telling provenance apart is a silent failure — a reviewer skimming
+    // colours reads a derived number as an observed one.
+    const levels = ["user", "default", "computed", "sourced", "estimated", "prior"] as const;
+    const badges = levels.map(l => sourceBadge(l));
+
+    expect(new Set(badges.map(b => b.text)).size).toBe(levels.length);
+    expect(new Set(badges.map(b => b.cls)).size).toBe(levels.length);
   });
 
   it("surfaces why a beta fell back to its sector prior", () => {
