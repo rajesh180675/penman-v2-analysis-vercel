@@ -11,7 +11,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import DuPontWaterfall from "../charts/DuPontWaterfall";
+import DuPontWaterfall, { resolveDrillDown } from "../charts/DuPontWaterfall";
 import { formatRevenueMixTooltip } from "../dashboard/SegmentBreakdown";
 
 describe("SegmentBreakdown revenue-mix tooltip", () => {
@@ -62,6 +62,16 @@ function mount(node: ReactElement): HTMLDivElement {
     created.render(node);
   });
   return container;
+}
+
+/** Re-render into the same root, so component state survives — as it does on a
+ *  company switch, where RatioReport stays mounted and only its props change. */
+function rerender(node: ReactElement): void {
+  const currentRoot = root;
+  if (!currentRoot) throw new Error("rerender before mount");
+  act(() => {
+    currentRoot.render(node);
+  });
 }
 
 afterEach(() => {
@@ -146,9 +156,11 @@ describe("DuPontWaterfall drill-down", () => {
           .dispatchEvent(new MouseEvent("click", { bubbles: true }));
       });
       expect(host.textContent).not.toContain("Period Trend");
-      // No selection means no bar was dimmed — the tell that the click was
-      // absorbed rather than half-applied.
-      expect(host.querySelectorAll('[fill-opacity="0.4"]').length).toBe(0);
+      // Whether the click was absorbed or merely half-applied — dimming the
+      // other bars around a panel that never opens — is not visible here:
+      // recharts renders no shapes inside `.recharts-bar-rectangle` under
+      // jsdom, so the Cell opacity has no DOM to assert against. That half is
+      // covered by the resolveDrillDown block below.
     });
   }
 
@@ -174,5 +186,113 @@ describe("DuPontWaterfall drill-down", () => {
         .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(host.textContent).toContain("Operating Margin — 3-Period Trend");
+  });
+
+  it("drops a selection the new history can no longer plot", () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    // The click guard alone does not cover this: `selectedFactor` is state and
+    // `history` is a prop, and RatioReport unmounts on tab switch but not on
+    // company switch. So a selection outlives the data it was made against.
+    const host = mount(<DuPontWaterfall {...LATEST} history={HISTORY} />);
+    act(() => {
+      host.querySelectorAll(".recharts-bar-rectangle")[0]!
+        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(host.textContent).toContain("Tax Burden — 3-Period Trend");
+
+    rerender(<DuPontWaterfall {...LATEST} history={[HISTORY[0]!]} />);
+
+    expect(host.textContent).not.toContain("Period Trend");
+    expect(host.textContent).not.toContain("Click a bar");
+  });
+
+  it("restores the trend when a plottable history comes back", () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    // The flip side of deriving rather than resetting: a selection suppressed
+    // by thin data is not destroyed by it. This is what a reset effect would
+    // have thrown away, and why the fix reads the state instead of clearing it.
+    const host = mount(<DuPontWaterfall {...LATEST} history={HISTORY} />);
+    act(() => {
+      host.querySelectorAll(".recharts-bar-rectangle")[0]!
+        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    rerender(<DuPontWaterfall {...LATEST} history={[HISTORY[0]!]} />);
+    expect(host.textContent).not.toContain("Period Trend");
+
+    rerender(<DuPontWaterfall {...LATEST} history={HISTORY} />);
+    expect(host.textContent).toContain("Tax Burden — 3-Period Trend");
+  });
+});
+
+/* ── The dimming half ─────────────────────────────────────────────
+   The clicking tests above can see the panel open and close, but not
+   whether the other bars were dimmed: recharts renders no shapes
+   inside `.recharts-bar-rectangle` under jsdom, so the `Cell`
+   fill-opacity has no DOM to assert against at any animation delay.
+   A `[fill-opacity="0.4"]` query matches zero elements even with a
+   selection active, which makes it vacuous rather than reassuring.
+
+   Both the dimming and the click guard read `active`/`trendable` from
+   this one function, so asserting it here covers the half the DOM
+   cannot show.
+────────────────────────────────────────────────────────────────── */
+const KEYS = ["taxBurden", "intBurden", "opm", "at", "eqMult"] as const;
+
+describe("resolveDrillDown", () => {
+  it("offers nothing when there is no history at all", () => {
+    const { trendable, active } = resolveDrillDown(KEYS, undefined, "taxBurden");
+    expect(trendable.size).toBe(0);
+    // No trendable factor means no bar is dimmed, however stale the selection.
+    expect(active).toBeNull();
+  });
+
+  it.each([
+    ["an empty history", [] as typeof HISTORY],
+    ["a single-period history", [HISTORY[0]!]],
+  ])("offers nothing for %s, which is truthy but unplottable", (_label, thin) => {
+    const { trendable, active } = resolveDrillDown(KEYS, thin, "opm");
+    expect(trendable.size).toBe(0);
+    expect(active).toBeNull();
+  });
+
+  it("excludes only the factor whose own series is too thin", () => {
+    const noTaxTrend = HISTORY.map(h => ({ ...h, taxBurden: null }));
+    const { trendable } = resolveDrillDown(KEYS, noTaxTrend, null);
+    expect(trendable.has("taxBurden")).toBe(false);
+    // The guard must not pass by disabling everything.
+    expect(trendable.has("opm")).toBe(true);
+    expect(trendable.size).toBe(4);
+  });
+
+  it("needs two samples, not one", () => {
+    // One non-null period cannot draw a line, and `trendData.length >= 2`
+    // gates the panel, so one sample must not count as trendable.
+    const oneSample = HISTORY.map((h, i) => ({ ...h, opm: i === 0 ? h.opm : null }));
+    expect(resolveDrillDown(KEYS, oneSample, null).trendable.has("opm")).toBe(false);
+
+    const twoSamples = HISTORY.map((h, i) => ({ ...h, opm: i < 2 ? h.opm : null }));
+    expect(resolveDrillDown(KEYS, twoSamples, null).trendable.has("opm")).toBe(true);
+  });
+
+  it("suppresses a selection the history can no longer plot", () => {
+    // The stale-state route: this is the case where the bars would otherwise
+    // stay dimmed around a panel that is no longer rendering.
+    expect(resolveDrillDown(KEYS, [HISTORY[0]!], "taxBurden").active).toBeNull();
+    expect(resolveDrillDown(KEYS, HISTORY, "taxBurden").active).toBe("taxBurden");
+  });
+
+  it("suppresses a selection whose own series went null, not the whole chart", () => {
+    const noTaxTrend = HISTORY.map(h => ({ ...h, taxBurden: null }));
+    expect(resolveDrillDown(KEYS, noTaxTrend, "taxBurden").active).toBeNull();
+    expect(resolveDrillDown(KEYS, noTaxTrend, "opm").active).toBe("opm");
+  });
+
+  it("ignores a selection for a factor that renders no bar", () => {
+    // `validFactors` drops factors null in the latest period, so a selection
+    // can name a key that is no longer on the chart. Dimming the remaining
+    // bars for an absent one would be the same defect.
+    const withoutTax = KEYS.filter(k => k !== "taxBurden");
+    expect(resolveDrillDown(withoutTax, HISTORY, "taxBurden").active).toBeNull();
   });
 });
