@@ -172,7 +172,9 @@ interface CallSite {
   readonly callee: string;
   readonly mode: SupplyMode;
   /**
-   * Whether this call also hands over an `analysisAsOf`.
+   * Whether this call also hands over a usable `analysisAsOf` — see
+   * `datesTheCall`, which rejects the falsy literals rather than accepting the
+   * property name.
    *
    * Tracked separately from `mode`, and asserted separately, because packs
    * without a date is its own mistake and the worse of the two: both resolvers
@@ -230,9 +232,55 @@ function classify(names: Set<string>): SupplyMode {
   return "none";
 }
 
+/**
+ * Whether this call hands over a *usable* `analysisAsOf`.
+ *
+ * The property name alone is not enough, and the gap is the same shape as the
+ * one #45 closed: `analysisAsOf: undefined` reads as supplied and behaves as
+ * omitted, because both resolvers only ever test the date for truthiness. So
+ * the three falsy literals are rejected here.
+ *
+ * Anything computed — a call, a property access, a bare identifier — is taken
+ * at face value. Source cannot evaluate it, and a check that demanded a literal
+ * date would reject `analysisAsOfToday()`, which is the correct way to date a
+ * live surface. A date arriving inside a spread is likewise invisible; that
+ * reads as undated, which fails loudly rather than passing quietly.
+ */
+function datesTheCall(call: ts.CallExpression): boolean {
+  for (const arg of call.arguments) {
+    if (!ts.isObjectLiteralExpression(arg)) continue;
+    for (const property of arg.properties) {
+      if (!property.name || !ts.isIdentifier(property.name)) continue;
+      if (property.name.text !== "analysisAsOf") continue;
+      // Shorthand (`{ analysisAsOf }`) forwards whatever is in scope.
+      if (!ts.isPropertyAssignment(property)) return true;
+      return !isFalsyLiteral(property.initializer);
+    }
+  }
+  return false;
+}
+
+function isFalsyLiteral(expression: ts.Expression): boolean {
+  if (expression.kind === ts.SyntaxKind.NullKeyword) return true;
+  if (ts.isIdentifier(expression) && expression.text === "undefined") return true;
+  if (ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)) {
+    return expression.text.length === 0;
+  }
+  return false;
+}
+
 /** Every capital-cost call in one file, with what each one supplies. */
 function callSitesIn(file: string): CallSite[] {
-  const text = source(file);
+  return callSitesInSource(file, source(file));
+}
+
+/**
+ * The classifier proper, over text rather than a path, so the falsy-date cases
+ * can be asserted on a snippet. They cannot be asserted on the tree: no file in
+ * the repo writes `analysisAsOf: undefined` today, which is the point — the
+ * check exists so the first one that does fails.
+ */
+function callSitesInSource(file: string, text: string): CallSite[] {
   // Cheap skip for the tree walk: a call needs its callee's identifier text to
   // appear somewhere in the file, so a file naming none of them has none.
   if (![...RESOLVER_NAMES].some((name) => text.includes(name))) return [];
@@ -249,7 +297,7 @@ function callSitesIn(file: string): CallSite[] {
           line: sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1,
           callee,
           mode: classify(names),
-          dated: names.has("analysisAsOf"),
+          dated: datesTheCall(node),
         });
       }
     }
@@ -358,6 +406,32 @@ describe("pack activation — the call-site census", () => {
     const calls = callSitesIn(path);
     expect(calls.length).toBeGreaterThan(0);
     expect(calls.filter((call) => !call.dated).map(describeUndated)).toEqual([]);
+  });
+
+  it("does not accept a date that is only nominally there", () => {
+    // `analysisAsOf: undefined` supplies the property and supplies no date, and
+    // the two are indistinguishable downstream: both resolvers gate on
+    // truthiness, so the falsy value takes the same branch as the missing one.
+    // A name-only check would call this dated and let it through, which is the
+    // #45 mistake — satisfying the guard on the strength of the spelling.
+    const dated = (snippet: string): boolean => {
+      const calls = callSitesInSource("fixture.ts", snippet);
+      expect(calls).toHaveLength(1);
+      return calls[0]!.dated;
+    };
+    const call = (asOf: string): string =>
+      `buildValuationCommandCenter({ ...ACTIVE_MARKET_PACKS, analysisAsOf: ${asOf} });`;
+
+    expect(dated(call("undefined"))).toBe(false);
+    expect(dated(call("null"))).toBe(false);
+    expect(dated(call('""'))).toBe(false);
+    // Positive controls, so this test cannot pass by rejecting everything. The
+    // computed forms are what the live surfaces actually use, and source cannot
+    // evaluate them — taking them at face value is deliberate.
+    expect(dated(call("analysisAsOfToday()"))).toBe(true);
+    expect(dated(call('"2026-07-24"'))).toBe(true);
+    expect(dated(call("run.metadata.asOf"))).toBe(true);
+    expect(dated("buildValuationCommandCenter({ ...ACTIVE_MARKET_PACKS, analysisAsOf });")).toBe(true);
   });
 
   it("reports an undated call as undated", () => {
