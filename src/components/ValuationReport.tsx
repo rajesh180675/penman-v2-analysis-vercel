@@ -175,6 +175,12 @@ export default function ValuationReport({
     computeValuation(valuationData, ke, kwDerived, gRate, valuationConfig, cyclicalTerminalREAnchor),
     [valuationData, ke, kwDerived, gRate, valuationConfig, cyclicalTerminalREAnchor]
   );
+  // The fallback build, for legacy callers that pass no run-backed command
+  // center. It needs the packs for the same reason the `keFromConfig` resolve
+  // above does — and this is the call the first version of the census missed,
+  // because it only checked that the *file* named `ACTIVE_MARKET_PACKS`
+  // somewhere. `runCommandCenter` (the native path) already carries the run's
+  // pinned ke, so only this branch had to change.
   const commandCenter = useMemo(
     () => runCommandCenter ?? buildValuationCommandCenter({
       data,
@@ -182,6 +188,8 @@ export default function ValuationReport({
       marketData: liveMarketData,
       analysisStatus,
       segmentData: segmentData?.business ?? null,
+      ...ACTIVE_MARKET_PACKS,
+      analysisAsOf: analysisAsOfToday(),
     }),
     [analysisStatus, data, effectiveConfig, liveMarketData, runCommandCenter, segmentData],
   );

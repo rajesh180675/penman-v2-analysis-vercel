@@ -1,9 +1,9 @@
 /* ================================================================
    Pack activation — that every capital-cost call site is accounted for.
 
-   Most assertions here read source text rather than call a function.
-   That is deliberate, and it is because of how a pack reaches the
-   resolver: as an argument, never a default.
+   Most assertions here inspect source rather than call a function. That
+   is deliberate, and it is because of how a pack reaches the resolver:
+   as an argument, never a default.
 
    `resolveCostOfCapitalFromConfig({ config })` returns the *unpinned*
    rate — the same undated `rf + sectorBeta × erp` it always did — and it
@@ -19,9 +19,20 @@
    that set. Every module that resolves a capital cost must be in
    exactly one of three lists, and the last test derives the real set
    from the tree so a new one cannot appear unlisted.
+
+   The unit is one *call*, not one file, and that distinction is the
+   whole guard rather than a refinement of it. The first version of this
+   spec asked whether a file contained the text `ACTIVE_MARKET_PACKS`
+   anywhere — and passed `ValuationReport.tsx`, which supplied the packs
+   when resolving its displayed ke and omitted them in the
+   `buildValuationCommandCenter` fallback thirty lines further down. A
+   file-level check cannot see that, because the file satisfies it on the
+   strength of the call that was already correct. So each call is parsed
+   and classified on its own arguments.
 ================================================================ */
 
 import { readdirSync, readFileSync } from "node:fs";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../activePacks";
 import { INDIA_EQUITY_BETA_PACK } from "../indiaEquityBetaPack";
@@ -33,10 +44,10 @@ import { DEFAULT_CONFIG, type EngineConfig } from "../../types";
 
 /**
  * Supplies the packs: everything whose resolved rate a reviewer reads, or
- * that records one. These must name `ACTIVE_MARKET_PACKS`.
+ * that records one. Every capital-cost call in these must name
+ * `ACTIVE_MARKET_PACKS`.
  */
 const SUPPLIES_PACKS = [
-  "src/app/analysisRun/useAnalysisRunExecution.ts",
   "src/app/useAuditAnalysis.ts",
   "src/components/dashboard/DashboardView.tsx",
   "src/components/ValuationReport.tsx",
@@ -48,7 +59,16 @@ const SUPPLIES_PACKS = [
 ];
 
 /**
- * Takes the packs from its caller. These must NOT name
+ * The tenth supply site, and the one the census cannot classify: it resolves
+ * no capital cost of its own. It assembles the run input, and the executor is
+ * what reaches a resolver — so what has to be asserted here is the spread onto
+ * that input, not a call.
+ */
+const RUN_INPUT_SITE = "src/app/analysisRun/useAnalysisRunExecution.ts";
+
+/**
+ * Takes the packs from its caller. Every capital-cost call in these must
+ * forward what it was given, and these files must NOT name
  * `ACTIVE_MARKET_PACKS`: importing it would make a spec that calls one of
  * these directly resolve production packs, which is exactly the
  * supplied-never-inferred contract the resolver's testability rests on.
@@ -58,6 +78,13 @@ const PASSES_PACKS_THROUGH = [
   "src/engine/analysisCase/assumptionResolution.ts",
   "src/engine/grahamDoddEPV.ts",
   "src/engine/v3Analytics/compute.ts",
+  // The run executor. It builds the command center through an injected
+  // `dependencies.buildCommandCenter`, so the callee is spelled differently
+  // from every other site — which is why `buildCommandCenter` is a matched
+  // name below. It forwards `input.macroPack`/`input.betaPack` against the
+  // run's frozen `metadata.asOf` rather than the clock, which is what makes a
+  // replayed run reproduce its provenance tier.
+  "src/engine/analysisRun/legacyExecutor.ts",
 ];
 
 /**
@@ -112,6 +139,108 @@ const KNOWN_UNPINNED: ReadonlyArray<readonly [string, string]> = [
   // today's pack and not today's clock.
   ["scripts/lib/auditCompanyRun.ts", "pinned as-of predates two of three observations"],
 ];
+
+/* ── The census machinery ─────────────────────────────────────────
+   Parsed rather than pattern-matched, so that what is being asked is
+   "does *this call* receive the packs" and not "does this file mention
+   them somewhere". A comment, a type annotation or an import cannot
+   satisfy any assertion below.
+────────────────────────────────────────────────────────────────── */
+
+/**
+ * The functions that turn a config into a capital cost, plus the two that
+ * wrap one. `buildCommandCenter` is the injected alias the run executor calls
+ * through — matched on the property name, since a dependency-injected call
+ * site is still a call site.
+ */
+const RESOLVER_NAMES = new Set([
+  "resolveCostOfCapitalFromConfig",
+  "buildValuationCommandCenter",
+  "buildCommandCenter",
+  "computeEPV",
+  "computeV3Analytics",
+]);
+
+/** Names that count as handing packs down from a parameter. */
+const FORWARDED_NAMES = new Set(["packs", "macroPack", "betaPack"]);
+
+type SupplyMode = "active" | "forwarded" | "none";
+
+interface CallSite {
+  readonly file: string;
+  readonly line: number;
+  readonly callee: string;
+  readonly mode: SupplyMode;
+}
+
+function describeCall(call: CallSite): string {
+  return `${call.file}:${call.line} ${call.callee}(…) supplies: ${call.mode}`;
+}
+
+function calleeName(expression: ts.Expression): string | null {
+  if (ts.isIdentifier(expression)) return expression.text;
+  if (ts.isPropertyAccessExpression(expression)) return expression.name.text;
+  return null;
+}
+
+/**
+ * The identifiers this call actually hands over: spread expressions, property
+ * names, and bare identifier arguments. Deliberately shallow — a pack has to
+ * arrive as an argument of this call, so a name mentioned in a nested
+ * expression is not the same thing as one supplied.
+ */
+function suppliedNames(call: ts.CallExpression, sf: ts.SourceFile): Set<string> {
+  const names = new Set<string>();
+  for (const arg of call.arguments) {
+    if (ts.isIdentifier(arg)) {
+      names.add(arg.text);
+      continue;
+    }
+    if (!ts.isObjectLiteralExpression(arg)) continue;
+    for (const property of arg.properties) {
+      if (ts.isSpreadAssignment(property)) {
+        names.add(property.expression.getText(sf));
+      } else if (property.name && ts.isIdentifier(property.name)) {
+        names.add(property.name.text);
+      }
+    }
+  }
+  return names;
+}
+
+function classify(call: ts.CallExpression, sf: ts.SourceFile): SupplyMode {
+  const names = suppliedNames(call, sf);
+  if (names.has("ACTIVE_MARKET_PACKS")) return "active";
+  for (const name of FORWARDED_NAMES) if (names.has(name)) return "forwarded";
+  return "none";
+}
+
+/** Every capital-cost call in one file, with what each one supplies. */
+function callSitesIn(file: string): CallSite[] {
+  const text = source(file);
+  // Cheap skip for the tree walk: a call needs its callee's identifier text to
+  // appear somewhere in the file, so a file naming none of them has none.
+  if (![...RESOLVER_NAMES].some((name) => text.includes(name))) return [];
+
+  const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const found: CallSite[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node)) {
+      const callee = calleeName(node.expression);
+      if (callee && RESOLVER_NAMES.has(callee)) {
+        found.push({
+          file,
+          line: sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1,
+          callee,
+          mode: classify(node, sf),
+        });
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
+  return found;
+}
 
 function source(path: string): string {
   return readFileSync(new URL(`../../../../${path}`, import.meta.url), "utf-8");
@@ -181,36 +310,58 @@ describe("pack activation — the packs themselves", () => {
 });
 
 describe("pack activation — the call-site census", () => {
-  it.each(SUPPLIES_PACKS)("%s supplies the active packs", (path) => {
-    expect(source(path)).toContain("ACTIVE_MARKET_PACKS");
+  it("classifies the parse it depends on", () => {
+    // Guards the machinery, not the wiring. Every assertion below reads
+    // `mode`, so a parse that silently found nothing — a `typescript` import
+    // that resolved oddly, a walk rooted wrong — would make all of them pass
+    // vacuously. Assert instead that the classifier separates a call that
+    // supplies the packs from one that does not, on a file known to hold both.
+    const dashboard = callSitesIn("src/components/dashboard/DashboardView.tsx");
+    expect(dashboard.length).toBeGreaterThanOrEqual(2);
+    expect(dashboard.every((call) => call.mode === "active")).toBe(true);
+    expect(callSitesIn("src/engine/pipeline.ts").every((call) => call.mode === "none")).toBe(true);
   });
 
-  it.each(PASSES_PACKS_THROUGH)("%s takes packs from its caller", (path) => {
-    const text = source(path);
-    // Accepts them...
-    expect(text).toMatch(/SuppliedMarketPacks|macroPack/);
+  it.each(SUPPLIES_PACKS)("%s supplies the active packs at every call", (path) => {
+    const calls = callSitesIn(path);
+    // A file that resolved nothing would otherwise pass by having no calls to
+    // check, which is how a surface silently leaves this list.
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.filter((call) => call.mode !== "active").map(describeCall)).toEqual([]);
+  });
+
+  it(`${RUN_INPUT_SITE} spreads the packs onto the run input`, () => {
+    // No call to classify: this hands the packs to the executor, which is what
+    // reaches a resolver. Asserting zero calls too, so that adding one here
+    // fails rather than going unchecked — it would belong in SUPPLIES_PACKS.
+    expect(source(RUN_INPUT_SITE)).toContain("...ACTIVE_MARKET_PACKS");
+    expect(callSitesIn(RUN_INPUT_SITE)).toEqual([]);
+  });
+
+  it.each(PASSES_PACKS_THROUGH)("%s forwards the packs it was given", (path) => {
+    const calls = callSitesIn(path);
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.filter((call) => call.mode !== "forwarded").map(describeCall)).toEqual([]);
     // ...and does not reach for the production set itself.
-    expect(text).not.toContain("ACTIVE_MARKET_PACKS");
+    expect(source(path)).not.toContain("ACTIVE_MARKET_PACKS");
   });
 
   it.each(KNOWN_UNPINNED)("%s is a recorded exemption (%s)", (path) => {
     // Asserted so a fixed exemption cannot sit here looking unfixed: once one
-    // of these starts supplying packs, move it to SUPPLIES_PACKS.
-    expect(source(path)).not.toContain("ACTIVE_MARKET_PACKS");
+    // of these starts supplying packs, move it to the list that says so.
+    const calls = callSitesIn(path);
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.filter((call) => call.mode !== "none").map(describeCall)).toEqual([]);
   });
 
   it("finds no capital-cost resolution outside the three lists", () => {
     // Derived from the tree rather than trusting the lists above to be
     // current. Test files are excluded: a spec asserting the pack-less
     // behaviour is the contract working, not a call site that forgot.
-    const RESOLVERS = /resolveCostOfCapitalFromConfig\(|buildValuationCommandCenter\(|computeEPV\(|computeV3Analytics\(/;
     const accounted = new Set<string>([
       ...SUPPLIES_PACKS,
       ...PASSES_PACKS_THROUGH,
       ...KNOWN_UNPINNED.map(([path]) => path),
-      // The resolver and the activation seam define the things being matched.
-      "src/engine/costOfCapital/resolver.ts",
-      "src/engine/marketPacks/activePacks.ts",
     ]);
 
     const unaccounted: string[] = [];
@@ -222,7 +373,11 @@ describe("pack activation — the call-site census", () => {
       for (const file of walk(root)) {
         if (/__tests__|\.spec\.|\.test\./.test(file)) continue;
         if (accounted.has(file)) continue;
-        if (RESOLVERS.test(source(file))) unaccounted.push(file);
+        // Note what no longer needs exempting: `costOfCapital/resolver.ts` and
+        // `activePacks.ts` had to be listed while this matched text, because a
+        // function declaration and a doc-comment example read the same as a
+        // call. Parsing tells them apart.
+        if (callSitesIn(file).length > 0) unaccounted.push(file);
       }
     }
 
