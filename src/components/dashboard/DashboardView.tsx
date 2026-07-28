@@ -9,6 +9,7 @@ import { buildValuationCommandCenter } from "../../engine/valuationCommandCenter
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../../engine/marketPacks";
 import { resolveShareBasis } from "../../engine/shareCountTools";
 import { generateDashboardNarrative } from "../../engine/narrativeEngine";
+import { formatMoatBannerMetric } from "./moatMetricLabel";
 import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { AllSegmentData } from "../../engine/segmentParser";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
@@ -264,10 +265,7 @@ export default function DashboardView({ data, config, traceability = null, ratio
           // banner directly above the verdict, with no room for the skip reason
           // beside it. Gating the verdict without gating this would print
           // "Moat 82/100" above a verdict saying the moat was not assessed.
-          // "n/a" (scorer disowned the score) reads differently from "—" (no
-          // score at all); the number itself survives in `MoatPanel` below,
-          // where the skip reason renders next to it.
-          { label: "Moat", value: moat ? (decisiveMoat(moat) ? `${moat.compositeScore}/100` : "n/a") : "—" },
+          { label: "Moat", value: formatMoatBannerMetric(moat) },
           { label: "Quality", value: confidence === "high" ? "High" : confidence === "medium" ? "Med" : "Low" },
           { label: "Risk", value: distress?.severity === "none" ? "Low" : distress?.severity ?? "—" },
           ...(marginOfSafety != null ? [{ label: "MoS", value: `${(marginOfSafety * 100).toFixed(0)}%` }] : []),
@@ -358,7 +356,10 @@ export default function DashboardView({ data, config, traceability = null, ratio
           </div>
         </EvidenceItem>
 
-        <EvidenceItem summary={`Economic Moat: ${moat ? `${moat.compositeScore}/100` : "—"}`}>
+        {/* `EvidenceItem` is `defaultOpen = false`, so this summary is visible
+            while `MoatPanel` — and therefore the skip reason — is collapsed out
+            of sight. Same slot shape as the banner metric, same gate. */}
+        <EvidenceItem summary={`Economic Moat: ${formatMoatBannerMetric(moat)}`}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <MoatPanel moat={moat} />
             <CapitalAllocationPanel result={capAlloc} />
