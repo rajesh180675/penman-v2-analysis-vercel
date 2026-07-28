@@ -1,4 +1,5 @@
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from "recharts";
+import type { PieLabelRenderProps } from "recharts";
 import type { SegmentData } from "../../engine/segmentParser";
 
 interface Props {
@@ -98,7 +99,11 @@ export default function SegmentBreakdown({ segmentData, unit = "₹ Cr" }: Props
                   outerRadius={85}
                   paddingAngle={2}
                   dataKey="value"
-                  label={(entry: any) => `${((entry.pct ?? 0) * 100).toFixed(0)}%`}
+                  // Pie spreads the data row into the label props, so `pct` is
+                  // there at runtime — but recharts only types `payload` as
+                  // carrying it, so read it from there.
+                  label={(props: PieLabelRenderProps) =>
+                    `${(((props.payload as (typeof pieData)[number] | undefined)?.pct ?? 0) * 100).toFixed(0)}%`}
                   labelLine={false}
                   fontSize={10}
                 >
@@ -107,9 +112,16 @@ export default function SegmentBreakdown({ segmentData, unit = "₹ Cr" }: Props
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={((value: number, _name: string, props: { payload?: { pct: number } }) =>
-                    [`${unit} ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })} (${(props.payload?.pct ?? 0 * 100).toFixed(1)}%)`, ""]) as any
-                  }
+                  formatter={(value, _name, item) => {
+                    const point = item.payload as (typeof pieData)[number] | undefined;
+                    // `pct ?? 0 * 100` binds as `pct ?? (0 * 100)`, so the share
+                    // prints as a fraction: a 45% segment reads "0.5%". Left as-is
+                    // here to keep this a typing-only change; tracked separately.
+                    return [
+                      `${unit} ${(value ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })} (${(point?.pct ?? 0 * 100).toFixed(1)}%)`,
+                      "",
+                    ];
+                  }}
                   contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
                 />
                 <Legend wrapperStyle={{ fontSize: 10 }} verticalAlign="bottom" iconSize={8} />
@@ -134,8 +146,8 @@ export default function SegmentBreakdown({ segmentData, unit = "₹ Cr" }: Props
                   interval={0}
                 />
                 <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} fontSize={10} />
-                <Tooltip
-                  formatter={((value: number) => [`${unit} ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, ""]) as any}
+                <Tooltip<number, string>
+                  formatter={(value) => [value == null ? "—" : `${unit} ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, ""]}
                   contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -233,8 +245,8 @@ export default function SegmentBreakdown({ segmentData, unit = "₹ Cr" }: Props
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.5} />
                 <XAxis dataKey="year" fontSize={10} />
                 <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} fontSize={10} />
-                <Tooltip
-                  formatter={((value: number) => [`${unit} ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, ""]) as any}
+                <Tooltip<number, string>
+                  formatter={(value) => [value == null ? "—" : `${unit} ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, ""]}
                   contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
                 />
                 <Legend wrapperStyle={{ fontSize: 10 }} iconSize={8} />
