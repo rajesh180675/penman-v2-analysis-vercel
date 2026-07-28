@@ -119,6 +119,17 @@ describe("NSE history parsing (deployed handler)", () => {
     expect(parseNseHistoryRows([{ CH_TIMESTAMP: "2026-07-24", CH_CLOSING_PRICE: null }])).toEqual([]);
   });
 
+  it("rejects a non-numeric placeholder, as it did before this fix", () => {
+    // Characterises rather than guards: `toNumber` has always returned null for
+    // these, since `Number("NA")` is NaN — unlike `Number("")`, which is 0. The
+    // typed twin's spec pins the same shape via "not-a-number". Kept explicit
+    // because a placeholder string is the other way a feed reports "no trade",
+    // and the fix above deliberately screens only blank-and-non-positive.
+    for (const raw of ["NA", "-", "—", "n/a"]) {
+      expect(parseNseHistoryRows([{ CH_TIMESTAMP: "2026-07-24", CH_CLOSING_PRICE: raw }])).toEqual([]);
+    }
+  });
+
   it("keeps a blank close from hiding a usable alternate field", () => {
     const points = parseNseHistoryRows([
       { CH_TIMESTAMP: "2026-07-24", CH_CLOSING_PRICE: "", CLOSE_PRICE: 3450.5 },
@@ -162,6 +173,13 @@ describe("AlphaVantage history parsing (deployed handler)", () => {
 
   it("rejects a blank close rather than scoring it zero", () => {
     for (const raw of ["", "   ", null, 0, -5]) {
+      expect(parseAlphaVantageHistory(series({ "2026-07-24": { "4. close": raw } }))).toEqual([]);
+    }
+  });
+
+  it("rejects a non-numeric placeholder, as it did before this fix", () => {
+    // Same characterisation as the NSE case above: NaN was already rejected.
+    for (const raw of ["NA", "-", "—", "n/a"]) {
       expect(parseAlphaVantageHistory(series({ "2026-07-24": { "4. close": raw } }))).toEqual([]);
     }
   });
