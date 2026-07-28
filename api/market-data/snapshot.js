@@ -6,6 +6,70 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/**
+ * A traded close, or null when the feed did not report one.
+ *
+ * `toNumber` is `Number(value)`, and `Number("")`, `Number(null)`, `Number("  ")`
+ * and `Number([])` are all `0`. So a blank close entered the series as a real
+ * observation, and a zero is not inert: `Math.min` makes it the 52-week low, the
+ * UI prints it as `₹0.00`, and `summarizeHistoricalPrices`'s own `low52Week > 0`
+ * guard then fails and silently blanks `distanceFrom52WeekLowPct`.
+ *
+ * `null` is the ordinary JSON encoding for a missing value, so this needs no
+ * exotic payload. Non-positive and non-numeric types are rejected too:
+ * cash-market equity does not trade at or below zero, and `Number(true)` is `1`
+ * while `Number(["3450"])` is `3450` — coercions that invent an observation out
+ * of a malformed field. Sub-rupee prices still pass; penny scrips are real.
+ *
+ * Deliberately not applied to `toNumber`'s other callers here (quote prices,
+ * marketCap, issuedSize, query params), which have their own semantics.
+ * Mirrors `toClosePrice` in `server/routes/marketData.ts`.
+ */
+function toClosePrice(value) {
+  if (typeof value === "number") return Number.isFinite(value) && value > 0 ? value : null;
+  if (typeof value !== "string" || value.trim() === "") return null;
+  const parsed = toNumber(value);
+  return parsed != null && parsed > 0 ? parsed : null;
+}
+
+/**
+ * Narrows an NSE `data` array into usable close observations.
+ *
+ * This is the deployed twin of `parseNseHistoryRows` in
+ * `server/routes/marketData.ts`. It carried three defects that the typed route
+ * no longer has, all with the same outcome — `fetchNseHistory`'s caller converts
+ * any throw into `[]`, so one bad element discarded every valid observation
+ * beside it and the caller could not tell that from "NSE returned nothing":
+ *
+ *   1. Elements were read without being narrowed, so `row.CH_TIMESTAMP` threw on
+ *      a `null` or primitive row.
+ *   2. `d.date && ...` only tested truthiness, so a numeric `CH_TIMESTAMP` passed
+ *      the filter. Measured, that leaks a junk row into the series rather than
+ *      always throwing: `localeCompare` coerces its argument, so it only fails
+ *      when the comparator happens to read the numeric date as the receiver.
+ *      Whether a partial payload yields a bad point or no points at all comes
+ *      down to sort order — which is worse than either outcome alone.
+ *   3. A blank close coerced to `0` and became a fake trade — see `toClosePrice`.
+ *
+ * Exported for tests: the network wrapper cannot be exercised without mocking
+ * fetch, and this is the part that has repeatedly been wrong.
+ */
+export function parseNseHistoryRows(data) {
+  const rows = Array.isArray(data)
+    ? data.filter((row) => typeof row === "object" && row !== null && !Array.isArray(row))
+    : [];
+  return rows
+    .map((row) => ({
+      date: row.CH_TIMESTAMP ?? row.TIMESTAMP,
+      // Each field screened separately, then chained: `??` on the raw values
+      // stops at a blank `CH_CLOSING_PRICE` and never reaches a real
+      // `CLOSE_PRICE`, because `""` is not nullish.
+      close: toClosePrice(row.CH_CLOSING_PRICE) ?? toClosePrice(row.CLOSE_PRICE),
+    }))
+    .filter((point) => typeof point.date === "string" && point.date !== "" && point.close != null)
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
 function sanitizeText(value) {
   if (typeof value !== "string") return null;
   const normalized = value.trim();
@@ -121,13 +185,19 @@ function parseAlphaVantageQuote(payload) {
   };
 }
 
-function parseAlphaVantageHistory(payload) {
+export function parseAlphaVantageHistory(payload) {
   const series = payload?.["Time Series (Daily)"] ?? payload?.["Time Series (Daily Adjusted)"] ?? null;
   if (!series || typeof series !== "object") return [];
   return Object.entries(series)
     .map(([date, value]) => ({
       date,
-      close: toNumber(value?.["5. adjusted close"] ?? value?.["4. close"]),
+      // Same screen as the NSE path, and for the same reason: a blank
+      // `"4. close"` coerced to a traded 0 and both providers feed the same
+      // `summarizeHistoricalPrices`. Only the close needs screening here — the
+      // dates are object keys, so always strings, and the `?.` reads already
+      // tolerate a null entry. Reachable only when ALPHAVANTAGE_API_KEY is set,
+      // which is not verified either way here.
+      close: toClosePrice(value?.["5. adjusted close"]) ?? toClosePrice(value?.["4. close"]),
     }))
     .filter((entry) => entry.close != null)
     .sort((left, right) => right.date.localeCompare(left.date))
@@ -370,11 +440,7 @@ async function fetchNseHistory(symbol) {
   });
   if (!res.ok) return [];
   const payload = await res.json();
-  const data = Array.isArray(payload?.data) ? payload.data : [];
-  return data
-    .map(d => ({ date: d.CH_TIMESTAMP ?? d.TIMESTAMP, close: toNumber(d.CH_CLOSING_PRICE ?? d.CLOSE_PRICE) }))
-    .filter(d => d.date && d.close != null)
-    .sort((a, b) => b.date.localeCompare(a.date));
+  return parseNseHistoryRows(payload?.data);
 }
 
 async function fetchNseSnapshot({ rawSymbol, fallbackPrice, warnings, fetchedAt }) {
