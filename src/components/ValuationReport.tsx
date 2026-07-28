@@ -5,6 +5,7 @@ import { buildCyclicalNormalization } from "../engine/cyclicalNormalization";
 import { detectDistress } from "../engine/distressDetector";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
+import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
 import { buildRegimeContext } from "../engine/regimeModel";
 import { calibrateSignalBacktest } from "../engine/signalBacktest";
 import { buildTerminalEconomics } from "../engine/terminalEconomics";
@@ -115,7 +116,16 @@ export default function ValuationReport({
   // periods and the live market snapshot, so its ke is a different (better-
   // evidenced) number, and adopting it here would move the displayed discount
   // rate rather than just unify how it is derived.
-  const keFromConfig = resolveCostOfCapitalFromConfig({ config: effectiveConfig }).ke;
+  //
+  // The packs are supplied here for the same reason: a resolver called without
+  // them derives the *unpinned* rate from the same config, so omitting them on
+  // this surface while the run receives them would print one discount rate
+  // against a run that recorded another.
+  const keFromConfig = resolveCostOfCapitalFromConfig({
+    config: effectiveConfig,
+    ...ACTIVE_MARKET_PACKS,
+    analysisAsOf: analysisAsOfToday(),
+  }).ke;
   const [keOverride, setKeOverride] = useState<number | null>(null);
   const [g, setG] = useState(effectiveConfig.g_terminal_override != null ? effectiveConfig.g_terminal_override * 100 : 4.0);
   const [cv, setCv] = useState<CVMethod>("CV3");

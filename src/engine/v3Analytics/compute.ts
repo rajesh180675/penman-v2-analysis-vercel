@@ -8,6 +8,7 @@ import { RecastPeriod, EngineConfig } from "../types";
 import { CroreShares } from "../types/units";
 import { trace } from "../../lib/traceLogger";
 import { resolveCostOfCapitalFromConfig } from "../costOfCapital";
+import type { SuppliedMarketPacks } from "../marketPacks/activePacks";
 import { computeMoatScore, MoatScoreResult } from "../moatScoring";
 import { scoreCapitalAllocation, CapAllocScoreResult } from "../capitalAllocationScoring";
 import { assessCyclicality, CyclicalityAssessment } from "../cyclicalityDetector";
@@ -120,11 +121,18 @@ export function computeV3Analytics(
   gTerminalOverride?: number | null | undefined,
   kwDerived?: number | undefined,
   itServices?: import("../itServicesDetector").ITServicesSignal | null | undefined,
+  // Supplied by the caller rather than imported, so a spec calling this
+  // directly still gets the unpinned derivation. Both production callers
+  // (V3AnalyticsPanel, AcademicReport) resolve their own ke from the active
+  // packs and pass the same ones here — without this the panel would print one
+  // discount rate in its header and score the bundle below it at another.
+  packs?: SuppliedMarketPacks,
 ): V3AnalyticsBundle {
   const capitalCost = resolveCostOfCapitalFromConfig({
     config: cfg,
     current: periods.at(-1) ?? null,
     previous: periods.at(-2) ?? null,
+    ...packs,
   });
   const ke = capitalCost.ke;
   const kw = kwDerived != null && Number.isFinite(kwDerived) && kwDerived > 0
@@ -306,7 +314,7 @@ export function computeV3Analytics(
   const cyclicality = assessCyclicality(periods);
   const structuralBreaks = detectStructuralBreaks(periods);
   const lossMakerValuation = computeLossMakerValuation(periods, cfg);
-  const epv = computeEPV(periods, sharesForPerShare != null ? { ...cfg, shares_outstanding: CroreShares(sharesForPerShare) } : cfg);
+  const epv = computeEPV(periods, sharesForPerShare != null ? { ...cfg, shares_outstanding: CroreShares(sharesForPerShare) } : cfg, packs);
   const relativeValuation = cfg.market_price != null && sharesForMarketCap != null
     ? computeIndustrialMultiples(periods, {
         marketCap: cfg.market_price * sharesForMarketCap,

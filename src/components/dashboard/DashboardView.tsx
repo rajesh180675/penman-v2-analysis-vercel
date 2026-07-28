@@ -6,6 +6,7 @@ import { computeMoatScore } from "../../engine/moatScoring";
 import { scoreCapitalAllocation } from "../../engine/capitalAllocationScoring";
 import { detectDistress } from "../../engine/distressDetector";
 import { buildValuationCommandCenter } from "../../engine/valuationCommandCenter";
+import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../../engine/marketPacks";
 import { resolveShareBasis } from "../../engine/shareCountTools";
 import { generateDashboardNarrative } from "../../engine/narrativeEngine";
 import type { SanityAssessment } from "../../engine/ratioSanity";
@@ -82,7 +83,14 @@ export default function DashboardView({ data, config, traceability = null, ratio
   }, [latest, marketCap]);
 
   // EPV
-  const epv = useMemo(() => insufficientData ? null : computeEPV(data, config), [data, config, insufficientData]);
+  // Packs supplied for the same reason as the command center below: this EPV is
+  // printed next to that build's numbers.
+  const epv = useMemo(
+    () => insufficientData
+      ? null
+      : computeEPV(data, config, { ...ACTIVE_MARKET_PACKS, analysisAsOf: analysisAsOfToday() }),
+    [data, config, insufficientData],
+  );
   const epvPerShare = epv && shares != null && shares > 0 ? epv.epvEquity / shares : null;
 
   // Moat scorer (5-dimension Buffett/Munger framework)
@@ -96,7 +104,19 @@ export default function DashboardView({ data, config, traceability = null, ratio
 
   // Authoritative valuation — use the same command center as the Valuation tab
   const commandCenter = useMemo(
-    () => buildValuationCommandCenter({ data, config, marketData, analysisStatus: null, segmentData: segmentData?.business ?? null }),
+    () => buildValuationCommandCenter({
+      data,
+      config,
+      marketData,
+      analysisStatus: null,
+      segmentData: segmentData?.business ?? null,
+      // Same packs the run and the Valuation tab resolve against. The comment
+      // above says this uses "the same command center as the Valuation tab";
+      // without these it would build the same *function* from different inputs
+      // and print a different discount rate on the landing surface.
+      ...ACTIVE_MARKET_PACKS,
+      analysisAsOf: analysisAsOfToday(),
+    }),
     [data, config, marketData, segmentData],
   );
 

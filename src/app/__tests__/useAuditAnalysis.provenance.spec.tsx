@@ -70,15 +70,38 @@ describe("useAuditAnalysis — assumption provenance reaches the envelope", () =
     ]);
   });
 
-  it("reports the live app's own capital-cost inputs as undated priors", () => {
-    // Nothing in the app supplies a macro pack or peer betas yet (P1), so a real
-    // run today rests on config constants. The UI must say so rather than imply
-    // the discount rate was sourced.
+  it("reports the pack's dated inputs as sourced and the rest as priors", () => {
+    // This asserted `prior-dependent` until the packs were activated: nothing in
+    // the app supplied one, so every CAPM input rested on a config constant.
+    // `useAuditAnalysis` now passes `ACTIVE_MARKET_PACKS`, so the risk-free rate
+    // and ERP carry observation dates and the status is `mixed`.
+    //
+    // Both remaining priors are structural, not oversights, which is why this
+    // asserts `mixed` rather than being relaxed to accept anything:
+    //   - beta, because this fixture's config carries no `ticker` and the beta
+    //     pack is keyed by exchange ticker. A manual upload sits in exactly this
+    //     position, so reporting a prior there is the honest reading.
+    //   - terminal-growth-ceiling, because `INDIA_MACRO_PACK` pins
+    //     `longRunNominalGrowth` to null on purpose.
     const block = runHook().traceability.assumptionProvenance as AssumptionProvenanceSummary;
 
-    expect(block.status).toBe("prior-dependent");
+    expect(block.status).toBe("mixed");
     expect(block.priorTierKeys).toContain("beta");
-    expect(block.priorTierKeys).toContain("equity-risk-premium");
+    // The activation itself: these two were priors before it and must not
+    // regress to priors while a pack is being supplied.
+    expect(block.priorTierKeys).not.toContain("risk-free-rate");
+    expect(block.priorTierKeys).not.toContain("equity-risk-premium");
+  });
+
+  it("resolves the beta too once the config names a ticker the pack covers", () => {
+    // The other half of the same wiring, and the case a library-loaded company
+    // actually hits — AppShell sets `config.ticker` from the ingested company id,
+    // which is the registry ticker. Without this, the assertion above would pass
+    // just as well if the beta pack were never supplied at all.
+    const block = runHook({ config: { ...DEFAULT_CONFIG, ticker: "TCS" } })
+      .traceability.assumptionProvenance as AssumptionProvenanceSummary;
+
+    expect(block.priorTierKeys).not.toContain("beta");
   });
 
   it("does not let the provenance reason mask a more fundamental failure", () => {
