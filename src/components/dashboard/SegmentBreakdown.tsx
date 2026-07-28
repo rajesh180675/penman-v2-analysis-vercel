@@ -14,6 +14,21 @@ function pct(v: number | null | undefined): string {
   return `${(v * 100).toFixed(1)}%`;
 }
 
+/**
+ * The revenue-mix tooltip's single line: absolute revenue plus that segment's
+ * share of the total. Lifted out of the JSX so a spec can assert the share is
+ * scaled — recharts renders tooltip content only in response to a real pointer
+ * event, so inline the formatter was reachable by typecheck alone.
+ */
+export function formatRevenueMixTooltip(
+  value: number | undefined,
+  share: number | null | undefined,
+  unit: string,
+): string {
+  const amount = (value ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+  return `${unit} ${amount} (${pct(share)})`;
+}
+
 export default function SegmentBreakdown({ segmentData, unit = "₹ Cr" }: Props) {
   if (!segmentData || !segmentData.segments || segmentData.segments.length === 0) {
     return null; // Don't show panel if no segment data — Dashboard already gates rendering
@@ -111,16 +126,13 @@ export default function SegmentBreakdown({ segmentData, unit = "₹ Cr" }: Props
                     <Cell key={i} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip
+                <Tooltip<number, string>
                   formatter={(value, _name, item) => {
+                    // Was `(point?.pct ?? 0 * 100).toFixed(1)`, which binds as
+                    // `pct ?? (0 * 100)`: the multiply only ever applied to the
+                    // fallback, so a real fraction printed unscaled.
                     const point = item.payload as (typeof pieData)[number] | undefined;
-                    // `pct ?? 0 * 100` binds as `pct ?? (0 * 100)`, so the share
-                    // prints as a fraction: a 45% segment reads "0.5%". Left as-is
-                    // here to keep this a typing-only change; tracked separately.
-                    return [
-                      `${unit} ${(value ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })} (${(point?.pct ?? 0 * 100).toFixed(1)}%)`,
-                      "",
-                    ];
+                    return [formatRevenueMixTooltip(value, point?.pct, unit), ""];
                   }}
                   contentStyle={{ fontSize: 11, borderRadius: 8, background: "#1e293b", border: "1px solid #334155", color: "#f1f5f9" }}
                 />
