@@ -165,6 +165,22 @@ router.get("/:companyId", async (req: Request, res: Response) => {
   return res.json({ ok: true, data });
 });
 
+/**
+ * The legacy local workspace blob this route read-modify-writes.
+ *
+ * The record stays open because the payload is caller-defined: this route
+ * stores whatever the workspace UI sends and never inspects it. Only the three
+ * fields the route itself owns are named, and all three are optional because a
+ * file written by an earlier version of this route simply lacks them — there is
+ * no migration and no schema check. That is why `version` is read through a
+ * `typeof` check below rather than trusted.
+ */
+interface LocalResearchWorkspace extends Record<string, unknown> {
+  companyId?: string;
+  updatedAt?: string;
+  version?: number;
+}
+
 // PUT /api/research/:companyId — legacy local workspace upsert.
 router.put("/:companyId", async (req: Request, res: Response) => {
   const companyId = req.params.companyId as string;
@@ -175,10 +191,10 @@ router.put("/:companyId", async (req: Request, res: Response) => {
   // race in the same tick the second will land on a re-read; we retry up
   // to 3 times before surfacing 409 to the caller.
   let attempts = 0;
-  let merged: any;
+  let merged: LocalResearchWorkspace | undefined;
   while (attempts < 3) {
     attempts += 1;
-    const existing = (await readJson<any>(researchPath(companyId))) ?? {};
+    const existing = (await readJson<LocalResearchWorkspace>(researchPath(companyId))) ?? {};
     const expectedVersion = typeof existing.version === "number" ? existing.version : 0;
 
     merged = {
@@ -189,7 +205,7 @@ router.put("/:companyId", async (req: Request, res: Response) => {
       version: expectedVersion + 1,
     };
 
-    const reread = (await readJson<any>(researchPath(companyId))) ?? {};
+    const reread = (await readJson<LocalResearchWorkspace>(researchPath(companyId))) ?? {};
     const actualVersion = typeof reread.version === "number" ? reread.version : 0;
     if (actualVersion !== expectedVersion) {
       if (attempts >= 3) {

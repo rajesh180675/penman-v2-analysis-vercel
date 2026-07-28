@@ -557,6 +557,33 @@ function emptyMarketEvidence(): AuditMarketEvidenceSnapshot {
   };
 }
 
+/**
+ * The two fields this file reads out of a Yahoo chart response, and nothing
+ * else.
+ *
+ * Every level is optional because none of it is guaranteed: the response is
+ * third-party JSON, and the code below already treats a missing `meta` as
+ * "source unavailable" rather than an error. Typing it this narrowly keeps that
+ * handling honest — the optionality is what the null checks are *for*, whereas
+ * `as any` let them look like defensive noise.
+ */
+interface YahooChartResponse {
+  readonly chart?: {
+    readonly result?: ReadonlyArray<{
+      readonly meta?: {
+        readonly regularMarketPrice?: unknown;
+        /** Epoch seconds. */
+        readonly regularMarketTime?: number;
+      };
+    }>;
+  };
+}
+
+/** Message from an unknown throw, matching this repo's narrowing convention. */
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export async function fetchMarketEvidence(ticker: string, folder?: string): Promise<AuditMarketEvidenceSnapshot> {
   // Ticker parity: registry tickers can drift from the canonical NSE/Yahoo
   // symbol. Use resolveNseSymbol as the single source of truth.
@@ -593,7 +620,7 @@ export async function fetchMarketEvidence(ticker: string, folder?: string): Prom
         reason: `${parityNote}Yahoo Finance returned ${res.status}`,
       };
     }
-    const data = await res.json() as any;
+    const data = await res.json() as YahooChartResponse;
     const meta = data?.chart?.result?.[0]?.meta;
     if (!meta) {
       const stale = await readCachedMarketEvidence(effectiveTicker);
@@ -628,19 +655,20 @@ export async function fetchMarketEvidence(ticker: string, folder?: string): Prom
     const snapshot: AuditMarketEvidenceSnapshot = { status, inputs, reason };
     await cacheMarketEvidence(effectiveTicker, snapshot);
     return snapshot;
-  } catch (err: any) {
+  } catch (err) {
+    const message = errorMessage(err);
     const stale = await readCachedMarketEvidence(effectiveTicker);
     if (stale) {
       return {
         status: "stale",
         inputs: stale.inputs,
-        reason: `${parityNote}Market data fetch failed: ${err?.message ?? String(err)}; serving cached market snapshot.`,
+        reason: `${parityNote}Market data fetch failed: ${message}; serving cached market snapshot.`,
       };
     }
     return {
       status: "source_unavailable",
       inputs: [],
-      reason: `${parityNote}Market data fetch failed: ${err?.message ?? String(err)}`,
+      reason: `${parityNote}Market data fetch failed: ${message}`,
     };
   }
 }
