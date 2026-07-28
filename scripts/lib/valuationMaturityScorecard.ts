@@ -682,12 +682,44 @@ function scoreTraceability(rows: ValuationScorecardAuditRow[]): ValuationMaturit
   );
 }
 
+/**
+ * Weights inside the data-freshness family.
+ *
+ * The old formula was `8.5 + periodCoverage + latestCoverage`, clamped to 10.
+ * Its entire dynamic range was 8.5 to 10.0 — every possible corpus scored
+ * `strong`, including one where no row had a source hash and no row had fresh
+ * market evidence. It printed those gaps in its own blockers cell while grading
+ * itself 10.0, which is the exact shape of dishonesty a maturity scorecard
+ * exists to prevent: the two things the family is named after ("source tieout",
+ * "freshness") were the two it did not price.
+ *
+ * Parsed periods and a latest-period label are prerequisites, not achievements —
+ * every audited row has both, so they carry almost no information and get only
+ * enough weight to register a corpus that failed to parse at all. Lineage
+ * carries the most because "source tieout" is what the family is for.
+ */
+const FRESHNESS_WEIGHTS = {
+  sourceLineage: 0.5,
+  marketFreshness: 0.3,
+  parsedPeriods: 0.1,
+  latestPeriodLabel: 0.1,
+} as const;
+
 function scoreDataFreshness(rows: ValuationScorecardAuditRow[], rowSummaries: ValuationScorecardRowSummary[]): ValuationMaturityFamilyScore {
   const withPeriods = rows.filter((row) => row.periods > 0).length;
   const withLatest = rows.filter((row) => row.latestPeriod).length;
   const sourceLineageGaps = countBlockers(rowSummaries, "source-lineage");
   const freshnessGaps = countBlockers(rowSummaries, "market-freshness");
-  const base = rows.length === 0 ? 0 : 8.5 + (withPeriods / rows.length) + (withLatest / rows.length);
+  // Coverage, not gap count, so the score is comparable across corpus sizes.
+  const share = (covered: number): number => (rows.length === 0 ? 0 : covered / rows.length);
+  const base = rows.length === 0
+    ? 0
+    : 10 * (
+      FRESHNESS_WEIGHTS.sourceLineage * share(rows.length - sourceLineageGaps)
+      + FRESHNESS_WEIGHTS.marketFreshness * share(rows.length - freshnessGaps)
+      + FRESHNESS_WEIGHTS.parsedPeriods * share(withPeriods)
+      + FRESHNESS_WEIGHTS.latestPeriodLabel * share(withLatest)
+    );
   return makeFamily(
     "data-freshness-source-tieout",
     Math.min(10, base),
@@ -695,6 +727,8 @@ function scoreDataFreshness(rows: ValuationScorecardAuditRow[], rowSummaries: Va
     [
       `${withPeriods}/${rows.length} audited rows have parsed periods`,
       `${withLatest}/${rows.length} audited rows expose latest period labels`,
+      `${rows.length - sourceLineageGaps}/${rows.length} audited rows carry hashed source lineage`,
+      `${rows.length - freshnessGaps}/${rows.length} audited rows carry fresh timestamped market evidence`,
     ],
     [
       sourceLineageGaps ? `${sourceLineageGaps} ${sourceLineageGaps === 1 ? "row lacks" : "rows lack"} first-class source lineage evidence` : "",
