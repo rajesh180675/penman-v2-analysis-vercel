@@ -5,10 +5,10 @@ import {
   NP_BENCHMARKS,
   EngineConfig,
   RawPeriodData,
-  ke_from_config,
   ForecastScenarioKey,
   ForecastScenarioWeighting,
 } from "../engine/types";
+import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
 import { buildCyclicalNormalization } from "../engine/cyclicalNormalization";
 import { buildDriverForecastModel } from "../engine/forecastDriverModel";
 import { buildQuarterlyDriverSummary } from "../engine/quarterlyDriverModel";
@@ -86,7 +86,9 @@ export default function ForecastReport(props: ExtendedProps) {
 }
 
 function LegacyForecastReport({data,config, rawData = null, traceability = null, traceabilitySummary: precomputedTraceabilitySummary = null}:ExtendedProps) {
-  const keBase = ke_from_config(config);
+  // S-9.4C: one cost-of-equity derivation for the whole app, replacing the
+  // parallel `ke_from_config` implementation.
+  const keBase = resolveCostOfCapitalFromConfig({ config }).ke;
   // ke_inp is seeded in percent rounded to 0.1pp; keSeed is the exact decimal ke
   // the live path starts from (ke_inp/100 at rest). The structural baseline must
   // use keSeed — NOT raw keBase — so kwDerived === baseline before the analyst
