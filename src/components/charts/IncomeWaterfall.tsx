@@ -89,8 +89,8 @@ export default function IncomeWaterfall({ sales, cogs: _cogs, operatingIncome, n
               tickFormatter={(v) => fmtCr(v)}
               fontSize={10}
             />
-            <Tooltip
-              formatter={((value: number) => [`${unit} ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, ""]) as any}
+            <Tooltip<number, string>
+              formatter={(value) => [value == null ? "—" : `${unit} ${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, ""]}
               contentStyle={TOOLTIP_STYLE}
             />
             <ReferenceLine y={0} stroke="#94a3b8" />

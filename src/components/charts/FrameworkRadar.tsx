@@ -73,11 +73,16 @@ export default function FrameworkRadar({ anchors, marketPrice }: Props) {
               fontSize={9}
               tickFormatter={(v: number) => `${v.toFixed(1)}×`}
             />
-            <Tooltip
-              formatter={((value: number, _name: string, props: any) => [
-                `₹${props.payload.value.toFixed(0)} (${(value).toFixed(2)}× market)`,
-                props.payload.fullName,
-              ]) as any}
+            <Tooltip<number, string>
+              formatter={(value, _name, item) => {
+                // `item.payload` is the untyped row recharts carries through; here
+                // it is always one of `chartData`'s entries.
+                const point = item.payload as (typeof chartData)[number] | undefined;
+                return [
+                  `₹${point?.value.toFixed(0) ?? "—"} (${(value ?? 0).toFixed(2)}× market)`,
+                  point?.fullName ?? "",
+                ];
+              }}
               contentStyle={TOOLTIP_STYLE}
             />
             <Radar
