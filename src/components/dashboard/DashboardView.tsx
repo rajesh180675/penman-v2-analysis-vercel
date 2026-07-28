@@ -260,7 +260,14 @@ export default function DashboardView({ data, config, traceability = null, ratio
         headline={verdictHeadline}
         confidence={confidence}
         metrics={[
-          { label: "Moat", value: moat ? `${moat.compositeScore}/100` : "—" },
+          // Not a display-only read, despite looking like one: this sits in the
+          // banner directly above the verdict, with no room for the skip reason
+          // beside it. Gating the verdict without gating this would print
+          // "Moat 82/100" above a verdict saying the moat was not assessed.
+          // "n/a" (scorer disowned the score) reads differently from "—" (no
+          // score at all); the number itself survives in `MoatPanel` below,
+          // where the skip reason renders next to it.
+          { label: "Moat", value: moat ? (decisiveMoat(moat) ? `${moat.compositeScore}/100` : "n/a") : "—" },
           { label: "Quality", value: confidence === "high" ? "High" : confidence === "medium" ? "Med" : "Low" },
           { label: "Risk", value: distress?.severity === "none" ? "Low" : distress?.severity ?? "—" },
           ...(marginOfSafety != null ? [{ label: "MoS", value: `${(marginOfSafety * 100).toFixed(0)}%` }] : []),
