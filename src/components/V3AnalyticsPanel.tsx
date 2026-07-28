@@ -284,7 +284,13 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
           const pathSignal = lmv.profitabilityPath.signal;
           const lmvBody = [
             `${lmv.lossYears}/${lmv.totalYears} periods loss-making.`,
-            `Revenue-multiple anchor (${lmv.revenueMultiple.source}): ${lmv.revenueMultiple.multiple.toFixed(1)}x ⇒ implied EV ₹${lmv.revenueMultiple.impliedEVCr.toFixed(0)} Cr${lmv.revenueMultiple.perShareValue != null ? ` (₹${lmv.revenueMultiple.perShareValue.toFixed(0)}/share)` : ""}.`,
+            // The reason replaces the anchor rather than following it: an
+            // implied EV of ₹0 with a per-share figure that is really just
+            // −NFO/shares reads as a valuation, and a caveat appended after a
+            // number does not retract the number.
+            lmv.revenueMultiple.skipReason
+              ? `No revenue-multiple anchor: ${lmv.revenueMultiple.skipReason}`
+              : `Revenue-multiple anchor (${lmv.revenueMultiple.source}): ${lmv.revenueMultiple.multiple.toFixed(1)}x ⇒ implied EV ₹${lmv.revenueMultiple.impliedEVCr.toFixed(0)} Cr${lmv.revenueMultiple.perShareValue != null ? ` (₹${lmv.revenueMultiple.perShareValue.toFixed(0)}/share)` : ""}.`,
             lmv.runwayYears != null
               ? `Runway: ~${lmv.runwayYears.toFixed(1)} years at current burn.`
               : null,
