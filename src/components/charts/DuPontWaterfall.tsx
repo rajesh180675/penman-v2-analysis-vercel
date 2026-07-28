@@ -33,6 +33,44 @@ interface Props {
 }
 
 /**
+ * Which factors can be drilled into, and which one is actually open.
+ *
+ * Lifted out of the component because recharts renders no bar shapes under
+ * jsdom — the `<g class="recharts-bar-rectangle">` elements come back childless,
+ * so the `Cell` opacity that expresses "dimmed" cannot be asserted from the DOM
+ * at all. A clicking spec can see the panel appear but not the dimming, which
+ * is exactly half of this defect. Putting both answers in one pure function is
+ * what makes the other half testable.
+ */
+export function resolveDrillDown(
+  factorKeys: readonly string[],
+  history: readonly HistoryPoint[] | undefined,
+  selectedFactor: string | null,
+): { trendable: Set<string>; active: string | null } {
+  // A factor is trendable only when its own series has enough non-null samples
+  // to draw a line. A bare `if (!history)` guard is not enough: `history={[]}`
+  // is truthy, and so is a history where one factor is null in every period. In
+  // either case selecting would dim the other bars while no panel could appear.
+  const trendable = new Set(
+    history
+      ? factorKeys.filter(
+          key => history.filter(h => h[key as keyof HistoryPoint] != null).length >= 2,
+        )
+      : [],
+  );
+
+  // The selection is state; the history is a prop. RatioReport unmounts on tab
+  // switch but not on company switch, so a selection outlives the data it was
+  // made against: pick a factor on a company with history, load one with a
+  // single period, and the bars would stay dimmed around a panel that is no
+  // longer there. Deriving the active factor rather than resetting the state
+  // closes that without discarding a selection the data may yet support again.
+  const active = selectedFactor != null && trendable.has(selectedFactor) ? selectedFactor : null;
+
+  return { trendable, active };
+}
+
+/**
  * DuPont 5-factor waterfall chart showing how each factor contributes to ROE.
  * Click any bar to expand a historical trend line for that factor.
  */
@@ -57,31 +95,41 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
     );
   }
 
+  // Keyed off the factors that actually render a bar, so the affordance, the
+  // click guard and the dimming cannot disagree about which bars exist.
+  const { trendable: trendableKeys, active: activeFactor } = resolveDrillDown(
+    validFactors.map(f => f.key),
+    history,
+    selectedFactor,
+  );
+
   const chartData = validFactors.map(f => ({
     name: f.name,
     value: +(f.value! * 100).toFixed(1),
     raw: f.value!,
     color: f.color,
     key: f.key,
-    selected: f.key === selectedFactor,
+    selected: f.key === activeFactor,
   }));
 
   // Build trend data for selected factor
-  const trendData = history && selectedFactor
+  const trendData = history && activeFactor
     ? history.map(h => ({
         period: h.period,
-        value: h[selectedFactor as keyof HistoryPoint] as number | null,
+        value: h[activeFactor as keyof HistoryPoint] as number | null,
       })).filter(d => d.value != null)
     : [];
 
-  const selectedMeta = factors.find(f => f.key === selectedFactor);
+  const selectedMeta = factors.find(f => f.key === activeFactor);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900/60">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">DuPont 5-Factor Decomposition</h3>
-          {history && history.length > 0 && (
+          {/* Advertise the affordance only where it exists: a history that is
+              present but too thin to plot must not invite a click. */}
+          {trendableKeys.size > 0 && (
             <p className="text-[10px] text-slate-400 mt-0.5">Click a bar to see its historical trend</p>
           )}
         </div>
@@ -92,14 +140,7 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
 
       <div className="h-48">
         <ResponsiveContainer debounce={50} width="100%" height="100%">
-          <BarChart data={chartData} margin={{ left: 10, right: 10, top: 10, bottom: 5 }}
-            onClick={(e: any) => {
-              if (e && e.activePayload && e.activePayload[0] && history) {
-                const key = e.activePayload[0].payload.key;
-                setSelectedFactor(prev => prev === key ? null : key);
-              }
-            }}
-          >
+          <BarChart data={chartData} margin={{ left: 10, right: 10, top: 10, bottom: 5 }}>
             <XAxis dataKey="name" fontSize={10} angle={-15} textAnchor="end" height={50} />
             <YAxis
               tickFormatter={(v) => `${v}%`}
@@ -114,12 +155,28 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
               contentStyle={TOOLTIP_STYLE}
             />
             <ReferenceLine y={100} stroke="#94a3b8" strokeDasharray="4 4" label={{ value: "1.0×", position: "right", fontSize: 9, fill: "#94a3b8" }} />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={36} style={{ cursor: history ? "pointer" : "default" }}>
+            {/* The handler lives on the Bar, not the BarChart: the chart-level
+                onClick argument (recharts' MouseHandlerDataParam) carries only
+                active* indices, never a payload, so reading activePayload there
+                silently never fired. BarRectangleItem does carry the row. */}
+            <Bar
+              dataKey="value"
+              radius={[4, 4, 0, 0]}
+              barSize={36}
+              style={{ cursor: trendableKeys.size > 0 ? "pointer" : "default" }}
+              onClick={(data) => {
+                const key = (data.payload as (typeof chartData)[number] | undefined)?.key;
+                if (key == null || !trendableKeys.has(key)) return;
+                setSelectedFactor(prev => (prev === key ? null : key));
+              }}
+            >
               {chartData.map((entry, i) => (
                 <Cell
                   key={i}
                   fill={entry.color}
-                  fillOpacity={entry.selected ? 1 : selectedFactor ? 0.4 : 0.8}
+                  // `activeFactor`, not `selectedFactor`: a selection that no
+                  // longer has a trend must not dim its neighbours.
+                  fillOpacity={entry.selected ? 1 : activeFactor ? 0.4 : 0.8}
                   stroke={entry.selected ? entry.color : "none"}
                   strokeWidth={entry.selected ? 2 : 0}
                 />
@@ -129,8 +186,10 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
         </ResponsiveContainer>
       </div>
 
-      {/* Trend drill-down — appears when a factor is clicked */}
-      {selectedFactor && trendData.length >= 2 && selectedMeta && (
+      {/* Trend drill-down — appears when a factor is clicked. Gated on
+          `activeFactor`, not the raw state, so this and the dimming above
+          open and close together. */}
+      {activeFactor && trendData.length >= 2 && selectedMeta && (
         <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-xs font-semibold text-slate-600 dark:text-slate-400">
