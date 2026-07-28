@@ -12,6 +12,7 @@ import type {
   AnalysisRunV1,
   LegacyAnalysisRunInputV1,
 } from "../../engine/analysisRun";
+import { ACTIVE_MARKET_PACKS } from "../../engine/marketPacks";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 import type { CanonicalFactIngestionBundle } from "../../engine/facts";
 import type { SourceParserDiagnostics } from "../../engine/parserDiagnostics";
@@ -199,6 +200,13 @@ export function useAnalysisRunExecution(
         debugInfo: inputs.debugInfo,
         parserDiagnostics: inputs.parserDiagnostics,
         canonicalFacts: inputs.canonicalFacts,
+        // Pack activation. The executor already forwards these to the resolver
+        // and already passes `metadata.asOf` below as the analysis date, so the
+        // staleness windows are measured — supplying the packs is the only
+        // missing half. Every UI surface that resolves a capital cost supplies
+        // the same two, which is what keeps the displayed discount rate and the
+        // recorded one the same number (S-9.4C).
+        ...ACTIVE_MARKET_PACKS,
         metadata: {
           runId: requestId,
           issuerId,

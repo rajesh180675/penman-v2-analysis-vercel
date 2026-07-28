@@ -22,6 +22,7 @@ import { getAnalysisPolicyVersions } from "../engine/policyVersions";
 const POLICY_VERSIONS = getAnalysisPolicyVersions();
 import { SourceParserDiagnostics } from "../engine/parserDiagnostics";
 import { buildValuationCommandCenter } from "../engine/valuationCommandCenter";
+import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
 
 export interface AuditAnalysisInputs {
   rawData: RawPeriodData[] | null;
@@ -170,6 +171,13 @@ export function useAuditAnalysis(inputs: AuditAnalysisInputs) {
         data: recastData,
         config,
         analysisStatus,
+        // Same packs the run executor supplies. This build is not just a
+        // display: `assumptionProvenance` below is derived from its
+        // `costOfCapital.assumptions` and feeds the provenance gate, so if this
+        // one call omitted the packs the gate would score undated priors while
+        // the recorded run scored sourced observations.
+        ...ACTIVE_MARKET_PACKS,
+        analysisAsOf: analysisAsOfToday(),
       });
     } catch (err) {
       trace("valuation", "commandCenter:error", { error: String(err), stack: (err as Error)?.stack }, null, { level: "warn" });

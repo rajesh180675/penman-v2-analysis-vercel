@@ -4,6 +4,7 @@ import { computeMoatScore } from "../engine/moatScoring";
 import { scoreCapitalAllocation } from "../engine/capitalAllocationScoring";
 import { detectDistress } from "../engine/distressDetector";
 import { computeEPV } from "../engine/grahamDoddEPV";
+import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
 import { SectionHeader } from "./shared/DesignSystem";
 
 interface Props {
@@ -35,7 +36,11 @@ export default function InvestmentThesis({ data, config }: Props) {
   const capAlloc = useMemo(() => scoreCapitalAllocation(data, config), [data, config]);
   const distress = useMemo(() => detectDistress(data), [data]);
   const epv = useMemo(() => {
-    try { return computeEPV(data, config); } catch { return null; }
+    // Packs supplied: this panel prints an EPV alongside the valuation tab's
+    // numbers for the same issuer.
+    try {
+      return computeEPV(data, config, { ...ACTIVE_MARKET_PACKS, analysisAsOf: analysisAsOfToday() });
+    } catch { return null; }
   }, [data, config]);
 
   // Core metrics

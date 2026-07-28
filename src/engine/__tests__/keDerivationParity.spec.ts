@@ -131,21 +131,22 @@ describe("ke derivation: known divergences", () => {
   });
 });
 
-/* ── The pack tripwire ────────────────────────────────────────────
-   Why the pinned packs are still wired but inert, even now that every
-   surface calls the resolver.
+/* ── The pack gap, now closed ─────────────────────────────────────
+   The packs are no longer inert. `ACTIVE_MARKET_PACKS` is supplied at
+   every call site whose rate a reviewer reads, so the run and the
+   surfaces resolve the same pinned ke.
 
-   Unifying the call sites closed half of this. The report surfaces no
-   longer call a different *function* than the run — they all call the
-   resolver now. What remains is that they call it with different
-   *arguments*: the
-   surfaces pass `{ config }` and nothing else, so a pack handed to the
-   run would still leave them deriving the unpinned rate.
+   What this block still pins is the mechanism that made the gap
+   possible, because it has not changed and cannot be tested from the
+   activation side: a pack reaches the resolver only as an argument, so
+   a caller that omits it silently derives the unpinned rate. That is
+   why forgetting a pack is invisible rather than loud, and it is why
+   the census in `marketPacks/__tests__/activePacks.spec.ts` checks the
+   call sites by name — behaviour alone cannot see a missing argument.
 
-   That is a smaller gap than a duplicated formula, and a different one:
-   it closes by threading the pack (or the run's already-resolved
-   capital cost) into the surfaces, not by editing an equation. The
-   assertions below hold either way, which is why they are still here.
+   These assertions therefore read as "omitting the pack still changes
+   the number", which is the premise the census depends on. If they ever
+   stop holding, the census is asserting nothing.
 ────────────────────────────────────────────────────────────────── */
 describe("ke derivation: pinned pack", () => {
   it("moves the resolver away from a pack-less derivation of the same config", () => {
@@ -159,15 +160,15 @@ describe("ke derivation: pinned pack", () => {
     // A pack reaches the resolver only as an argument, so any caller that
     // omits it derives a different number from the same config — here by
     // ~74bp, and by 47-133bp across the sector table. `ke_from_config` stands
-    // in for that pack-less derivation because it is exactly what the
-    // surfaces' `{ config }`-only call reduces to (proven by the parity block
-    // above), and it cannot take a pack at all.
+    // in for that pack-less derivation because it is exactly what a
+    // `{ config }`-only call reduces to (proven by the parity block above),
+    // and it cannot take a pack at all.
     //
-    // So: before a production caller supplies a pack, the surfaces must
-    // receive the same pack or read the run's resolved ke. If a future change
-    // makes these agree, this expectation fails, and that failure is the
-    // signal that activation is safe — read it as a prompt to delete this
-    // test, not to loosen it.
+    // Production now supplies the packs, so this is no longer a gap waiting to
+    // be closed — it is the reason the gap was invisible while it existed, and
+    // the reason the census exists. Do not "fix" this by making the two agree:
+    // if omitting a pack stopped changing the number, a call site that forgot
+    // one would be indistinguishable from one that did not.
     expect(Math.abs(withPack.ke - ke_from_config(config))).toBeGreaterThan(0.001);
     expect(Math.abs(withPack.ke - resolveCostOfCapitalFromConfig({ config }).ke)).toBeGreaterThan(0.001);
 

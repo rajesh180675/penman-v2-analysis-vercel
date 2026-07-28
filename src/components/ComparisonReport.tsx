@@ -1,5 +1,6 @@
 import { CompanyRegistry, EngineConfig, NP_BENCHMARKS } from "../engine/types";
 import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
+import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { useCallback, useMemo, useState } from "react";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
@@ -161,12 +162,23 @@ function ComparisonReportBody({ registry, config, weakestTraceabilitySummary: pr
     // S-9.4C: one cost-of-equity derivation for the whole app, replacing the
     // parallel `ke_from_config` implementation.
     //
-    // Passing only `{ config }` is deliberate and preserves today's behaviour
-    // exactly: one ke, derived from the workspace config, applied to every peer
-    // row below. Resolving per peer would be more defensible — each company has
-    // its own leverage and sector beta — but it would change every number in this
-    // table, so it is a separate change and not this one.
-    const ke = resolveCostOfCapitalFromConfig({ config }).ke;
+    // One ke, derived from the workspace config, applied to every peer row
+    // below. Resolving per peer would be more defensible — each company has its
+    // own leverage and beta — but it would change every number in this table, so
+    // it stays a separate change.
+    //
+    // The packs are supplied because the workspace company appears in this table
+    // too, and it must not show a different discount rate here than the
+    // Valuation tab shows for the same run. Note what that means for the peer
+    // rows: the beta pack is keyed on `config.ticker`, so the pinned beta is the
+    // *workspace* issuer's, applied to every row — the same single-ke
+    // approximation as before, now built on dated inputs rather than undated
+    // ones. It is not a per-peer beta and does not pretend to be.
+    const ke = resolveCostOfCapitalFromConfig({
+      config,
+      ...ACTIVE_MARKET_PACKS,
+      analysisAsOf: analysisAsOfToday(),
+    }).ke;
     const g = 0.05;
     return latestByCo.map((c) => {
       const n = c.series.length;

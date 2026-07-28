@@ -29,6 +29,7 @@
 
 import { RecastPeriod, EngineConfig } from "./types";
 import { resolveCostOfCapitalFromConfig } from "./costOfCapital";
+import type { SuppliedMarketPacks } from "./marketPacks/activePacks";
 
 export interface EPVNormalization {
   periodsUsed: number;
@@ -198,6 +199,10 @@ function computeReinvestmentValue(
 export function computeEPV(
   data: RecastPeriod[],
   config: EngineConfig,
+  // Handed down by the caller, never imported here: this runs inside the
+  // command center, so resolving a second unpinned ke would price the
+  // no-growth floor at a different discount rate than the models above it.
+  packs?: SuppliedMarketPacks,
 ): EPVResult | null {
   if (data.length < 2) return null;
 
@@ -288,6 +293,7 @@ export function computeEPV(
     config,
     current: latestForKw,
     previous: previousForKw,
+    ...packs,
   });
   const ke = capitalCost.ke;
   const kw = capitalCost.kw;
