@@ -36,3 +36,4 @@ export type {
 
 export { computeMoatScore } from "./moatScoring/industrial";
 export { computeBankMoatScore } from "./moatScoring/bank";
+export { decisiveMoat } from "./moatScoring/interpretation";

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { RecastPeriod, EngineConfig } from "../../engine/types";
 import { AnalysisTraceabilityEnvelope } from "../../engine/analysisTraceability";
 import { computeEPV } from "../../engine/grahamDoddEPV";
-import { computeMoatScore } from "../../engine/moatScoring";
+import { computeMoatScore, decisiveMoat } from "../../engine/moatScoring";
 import { scoreCapitalAllocation } from "../../engine/capitalAllocationScoring";
 import { detectDistress } from "../../engine/distressDetector";
 import { buildValuationCommandCenter } from "../../engine/valuationCommandCenter";
@@ -150,9 +150,13 @@ export default function DashboardView({ data, config, traceability = null, ratio
     const distressed = distress?.equityModelsBlocked || distress?.severity === "severe" || distress?.severity === "critical";
     if (distressed) return "avoid" as const;
 
-    const moatScore = moat?.compositeScore ?? null;
+    // A moat the scorer marked unreliable cannot drive a buy or an avoid.
+    // `MoatPanel` still renders the score and its skip reason — displaying it is
+    // fine, deciding on it is not.
+    const decisive = decisiveMoat(moat);
+    const moatScore = decisive?.compositeScore ?? null;
     const capScore = capAlloc?.compositeScore ?? null;
-    const greatBiz = (moatScore != null && moatScore >= 75) || moat?.moatWidth === "wide";
+    const greatBiz = (moatScore != null && moatScore >= 75) || decisive?.moatWidth === "wide";
     const goodBiz = moatScore != null && moatScore >= 60;
     const greatMgmt = capScore != null && capScore >= 75;
     const goodMgmt = capScore != null && capScore >= 60;
@@ -402,9 +406,12 @@ export default function DashboardView({ data, config, traceability = null, ratio
       {/* Next Steps */}
       {(() => {
         const distressed = distress?.equityModelsBlocked || distress?.severity === "severe" || distress?.severity === "critical";
-        const moatScore = moat?.compositeScore ?? null;
+        // Same gate as the verdict memo above — Next Steps recommends actions
+        // off this verdict, so it must not reach a conclusion the verdict won't.
+        const decisive = decisiveMoat(moat);
+        const moatScore = decisive?.compositeScore ?? null;
         const capScore = capAlloc?.compositeScore ?? null;
-        const greatBiz = (moatScore != null && moatScore >= 75) || moat?.moatWidth === "wide";
+        const greatBiz = (moatScore != null && moatScore >= 75) || decisive?.moatWidth === "wide";
         const greatMgmt = capScore != null && capScore >= 75;
         const goodBiz = moatScore != null && moatScore >= 60;
         const goodMgmt = capScore != null && capScore >= 60;
