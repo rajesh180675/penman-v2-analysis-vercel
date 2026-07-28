@@ -597,7 +597,17 @@ export function buildAnalysisTraceability(params: {
         // Lists the ke-input priors only. Joining every prior key would name
         // `terminal-growth-ceiling` as a reason the *cost of equity* is a guess,
         // which it is not — it does not appear in ke at all.
-        detail: `Cost of equity rests on undated priors (${kePriorKeys.join(", ")}); production-ready requires an estimated or dated-source risk-free rate, beta, and equity risk premium. ${assumptionProvenance!.summary}`,
+        //
+        // The remediation branches because manual mode resolves no CAPM term at
+        // all: telling that reviewer to source a risk-free rate, a beta and an
+        // ERP names three inputs the run never had, and points away from the one
+        // thing that would actually clear the gate — deriving ke instead of
+        // typing it.
+        detail: `Cost of equity rests on undated priors (${kePriorKeys.join(", ")}); ${
+          kePriorKeys.includes("cost-of-equity")
+            ? "production-ready requires a cost of equity derived from estimated or dated-source inputs rather than supplied directly."
+            : "production-ready requires an estimated or dated-source risk-free rate, beta, and equity risk premium."
+        } ${assumptionProvenance!.summary}`,
       };
     }
   }

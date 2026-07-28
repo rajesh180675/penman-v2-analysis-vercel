@@ -391,9 +391,19 @@ describe("assumption-provenance rigor gate", () => {
     expect(checkpoint?.achieved).toBe(false);
     expect(checkpoint?.detail).toMatch(/cost-of-equity/);
     // The detail must not claim rf, beta or the ERP are the problem: manual mode
-    // resolved none of them, so naming them would be false.
-    expect(checkpoint?.detail).not.toMatch(/risk-free-rate/);
-    expect(checkpoint?.detail).not.toMatch(/equity-risk-premium/);
+    // resolved none of them, so naming them would be false — and the remediation
+    // would point at three inputs the reviewer cannot supply from here.
+    //
+    // Matched in prose as well as in key form. The hyphenated spellings alone
+    // only guard the joined key list; the requirement sentence spells the same
+    // terms with spaces, so a key-only assertion passes while the sentence still
+    // names them. That is exactly the hole this shipped with.
+    expect(checkpoint?.detail).not.toMatch(/risk-free/i);
+    expect(checkpoint?.detail).not.toMatch(/equity[- ]risk[- ]premium/i);
+    expect(checkpoint?.detail).not.toMatch(/beta/i);
+    // And it must say what would clear the gate: deriving the rate, not sourcing
+    // CAPM terms that were never resolved.
+    expect(checkpoint?.detail).toMatch(/supplied directly/);
   });
 
   it("leaves a manual-ke run valuation-eligible", () => {
