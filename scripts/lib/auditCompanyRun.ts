@@ -11,6 +11,7 @@ import {
   type ValuationCommandCenterOutput,
 } from "../../src/engine/valuationCommandCenter";
 import { buildAnalysisTraceability } from "../../src/engine/analysisTraceability";
+import { buildAssumptionProvenance } from "../../src/engine/assumptionProvenance";
 import {
   CURRENT_MODEL_REGISTRY,
   independenceGroupsForModelIds,
@@ -99,6 +100,17 @@ export interface AuditRigorSnapshot {
   reconciliationStatus: string | null;
   reconciliationMaxRatio: number | null;
   confidenceStatus: string | null;
+  /**
+   * Whether the discount rate this row was graded against was observed or
+   * guessed. Without it on the row, the harness resolved a capital cost, built
+   * the provenance, fed it to the gate, and then reported nothing about it — so
+   * no test could tell a wired gate from an unwired one, and a reviewer reading
+   * audit output could not tell either.
+   *
+   * `null` on the financial-institution route, where no command center is built
+   * and no ke is resolved.
+   */
+  assumptionProvenanceStatus: string | null;
 }
 
 export interface AuditBankValuationSnapshot {
@@ -674,6 +686,7 @@ function emptyRigor(): AuditRigorSnapshot {
     reconciliationStatus: null,
     reconciliationMaxRatio: null,
     confidenceStatus: null,
+    assumptionProvenanceStatus: null,
   };
 }
 
@@ -958,6 +971,7 @@ function traceSnapshot(trace: ReturnType<typeof buildAnalysisTraceability>): Aud
     reconciliationStatus: trace.reconciliation.status,
     reconciliationMaxRatio: trace.reconciliation.maxResidualRatio,
     confidenceStatus: trace.confidence.status,
+    assumptionProvenanceStatus: trace.assumptionProvenance?.status ?? null,
   };
 }
 
@@ -1055,6 +1069,22 @@ function buildTrace(args: {
   valuation?: ValuationCommandCenterOutput | null;
 }) {
   const { company, config, pipeline, parsed, generatedAt, analysisContext, valuation } = args;
+  // The audit harness is the only non-app caller that actually resolves a
+  // capital cost, and it was passing `valuationTriangulation` from the command
+  // center while dropping the provenance from the same object. That made the
+  // provenance gate unreachable here: `absent` does not fire it, so the CLI that
+  // decides whether a company is production-ready graded a discount rate the app
+  // would have withheld the claim for. Reading both off one command center is
+  // what keeps the two answers the same.
+  //
+  // Null on the financial-institution route, where no command center is built
+  // and no ke is resolved — `absent` is honest there rather than a bypass.
+  const assumptionProvenance = valuation
+    ? buildAssumptionProvenance(valuation.costOfCapital.assumptions, {
+      equityMode: valuation.costOfCapital.equityMode,
+      ke: valuation.costOfCapital.ke,
+    })
+    : null;
   return buildAnalysisTraceability({
     generatedAt,
     runId: `audit-${company.folder}`,
@@ -1075,6 +1105,7 @@ function buildTrace(args: {
     bankMetrics: pipeline.bankResult?.bankMetrics ?? null,
     bankSubtype: pipeline.bankResult?.subtype ?? null,
     valuationTriangulation: valuation?.valuationTriangulation ?? null,
+    assumptionProvenance,
   });
 }
 
