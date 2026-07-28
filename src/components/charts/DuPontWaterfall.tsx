@@ -66,6 +66,19 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
     selected: f.key === selectedFactor,
   }));
 
+  // A bar is only clickable when its own series has enough non-null samples to
+  // draw a line. A bare `if (!history)` guard is not enough: `history={[]}` is
+  // truthy, and so is a history where one factor is null in every period. In
+  // either case selecting would dim the other bars while no panel could appear.
+  // Derived from the rendered bars, so the affordance and the click agree.
+  const trendableKeys = new Set(
+    history
+      ? chartData
+          .filter(d => history.filter(h => h[d.key as keyof HistoryPoint] != null).length >= 2)
+          .map(d => d.key)
+      : [],
+  );
+
   // Build trend data for selected factor
   const trendData = history && selectedFactor
     ? history.map(h => ({
@@ -81,7 +94,9 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">DuPont 5-Factor Decomposition</h3>
-          {history && history.length > 0 && (
+          {/* Advertise the affordance only where it exists: a history that is
+              present but too thin to plot must not invite a click. */}
+          {trendableKeys.size > 0 && (
             <p className="text-[10px] text-slate-400 mt-0.5">Click a bar to see its historical trend</p>
           )}
         </div>
@@ -115,11 +130,10 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
               dataKey="value"
               radius={[4, 4, 0, 0]}
               barSize={36}
-              style={{ cursor: history ? "pointer" : "default" }}
+              style={{ cursor: trendableKeys.size > 0 ? "pointer" : "default" }}
               onClick={(data) => {
-                if (!history) return;
                 const key = (data.payload as (typeof chartData)[number] | undefined)?.key;
-                if (key == null) return;
+                if (key == null || !trendableKeys.has(key)) return;
                 setSelectedFactor(prev => (prev === key ? null : key));
               }}
             >

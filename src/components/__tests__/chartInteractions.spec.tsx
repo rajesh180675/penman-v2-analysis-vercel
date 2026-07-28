@@ -127,4 +127,52 @@ describe("DuPontWaterfall drill-down", () => {
     });
     expect(host.textContent).not.toContain("Period Trend");
   });
+
+  // `history={[]}` and a single-period history are both truthy, so a guard on
+  // `history` alone would advertise a click and then dim the other bars for a
+  // panel that can never render (`trendData.length >= 2` gates it).
+  const thinHistories: Array<[string, typeof HISTORY]> = [
+    ["an empty history", []],
+    ["a single-period history", [HISTORY[0]!]],
+  ];
+  for (const [label, thin] of thinHistories) {
+    it(`does not offer the affordance for ${label}`, () => {
+      (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+      const host = mount(<DuPontWaterfall {...LATEST} history={thin} />);
+      expect(host.textContent).not.toContain("Click a bar");
+
+      act(() => {
+        host.querySelectorAll(".recharts-bar-rectangle")[0]!
+          .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+      expect(host.textContent).not.toContain("Period Trend");
+      // No selection means no bar was dimmed — the tell that the click was
+      // absorbed rather than half-applied.
+      expect(host.querySelectorAll('[fill-opacity="0.4"]').length).toBe(0);
+    });
+  }
+
+  it("ignores a factor whose own series is entirely null", () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    // Tax Burden is present in the latest period (so it still renders a bar)
+    // but absent in every history row, so it has no trend to open.
+    const noTaxTrend = HISTORY.map(h => ({ ...h, taxBurden: null }));
+    const host = mount(<DuPontWaterfall {...LATEST} history={noTaxTrend} />);
+
+    // Other factors are still trendable, so the header does invite a click.
+    expect(host.textContent).toContain("Click a bar to see its historical trend");
+
+    const bars = host.querySelectorAll(".recharts-bar-rectangle");
+    act(() => {
+      bars[0]!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(host.textContent).not.toContain("Period Trend");
+
+    // A neighbouring factor that does have a series still works.
+    act(() => {
+      host.querySelectorAll(".recharts-bar-rectangle")[2]!
+        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(host.textContent).toContain("Operating Margin — 3-Period Trend");
+  });
 });
