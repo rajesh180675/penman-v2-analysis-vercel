@@ -9,10 +9,17 @@ export function TraceLogViewer() {
   const [filter, setFilter] = useState<TraceCategory | "all">("all");
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Both readers take their data from the trace logger's module-level buffer,
+  // not from props or state, so `refreshKey` is an invalidation key rather than
+  // a value they read. `handleClear` bumps it after `clearTrace()`; without it
+  // the rule's advice would leave the summary and the event list showing the
+  // buffer as it stood at mount, i.e. the entries the user just cleared.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const summary = useMemo(() => getTraceSummary(), [refreshKey]);
   const events = useMemo(() => {
     const all = getTraceEvents(filter === "all" ? undefined : { cat: filter });
     return all.slice(-200); // Show last 200 events
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, refreshKey]);
 
   const handleExport = () => {

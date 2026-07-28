@@ -36,6 +36,12 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
     return knownRuns.find((item) => item.runId === selectedRunId) ?? null;
   }, [knownRuns, selectedRunId]);
 
+  // `getAuditRecoveryState()` takes no arguments — it reads persisted state
+  // outside React. `payload` and `selectedRunId` are the invalidation keys that
+  // say "re-read it now": a new payload arrives on the 7s poll, and switching
+  // runs changes which run's recovery state is relevant. Removing them, as the
+  // rule suggests, would read the state once at mount and never again.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const recovery = useMemo(() => getAuditRecoveryState(), [payload, selectedRunId]);
   const traceability = payload?.latestAnalysisSnapshot?.traceability ?? null;
   const marketSnapshot = payload?.latestMarketSnapshot ?? null;
@@ -136,6 +142,12 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
     if (automaticVerificationAttempts.current.has(newestSnapshot.pathname)) return;
     automaticVerificationAttempts.current.add(newestSnapshot.pathname);
     void verifyArtifact(newestSnapshot.pathname);
+    // `verifyArtifact` is redefined every render, so listing it would re-fire
+    // this effect on every render — and the effect's job is to fire once per
+    // newly-seen snapshot, which is what `automaticVerificationAttempts` tracks.
+    // No stale closure: the only non-stable value it reads is `selectedRun`,
+    // which is already a dependency, plus setState functions, which are stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [artifactAction, artifactInspections, payload?.artifacts, selectedRun]);
 
   useEffect(() => {

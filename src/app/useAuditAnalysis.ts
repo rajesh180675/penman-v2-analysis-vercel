@@ -234,7 +234,13 @@ export function useAuditAnalysis(inputs: AuditAnalysisInputs) {
       assumptionProvenance,
       earningsQuality,
     }),
-    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, qualityGateWithRecast, valuationRawData, rawData, recastData, bankResult, valuationTriangulation, assumptionProvenance, earningsQuality],
+    // `policyVersions` is `POLICY_VERSIONS`, resolved once at module load, so
+    // listing it changes nothing today. It is listed anyway: if that ever
+    // becomes per-render — a policy bundle selected by the user, say — the
+    // traceability envelope would otherwise keep reporting the bundle it was
+    // first built with, and a stale policy version in a defensibility artifact
+    // is exactly the kind of drift this envelope exists to rule out.
+    [analysisStatus, auditMeta, config, debugInfo, engineError, latestPeriod, mappingAudit, parserDiagnostics, policyVersions, qualityGateWithRecast, valuationRawData, rawData, recastData, bankResult, valuationTriangulation, assumptionProvenance, earningsQuality],
   );
   const publication = useMemo(
     () => (recastData?.length
@@ -251,7 +257,10 @@ export function useAuditAnalysis(inputs: AuditAnalysisInputs) {
         family: qualityGateWithRecast?.scopeAssessment.analysisFamily ?? null,
       })
       : null),
-    [analysisStatus, auditMeta, config, mappingAudit, qualityGateWithRecast, valuationRawData, recastData, traceability],
+    // Same reasoning as the traceability memo above: inert today, and the
+    // publication snapshot is the artifact a reviewer reads the policy bundle
+    // off, so it is the last place that should be able to go stale.
+    [analysisStatus, auditMeta, config, mappingAudit, policyVersions, qualityGateWithRecast, valuationRawData, recastData, traceability],
   );
   const comparisonPublication = useMemo(
     () => buildComparisonPublicationSnapshot(registry),

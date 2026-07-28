@@ -177,6 +177,11 @@ export function useRunBackedAuditAnalysis(inputs: RunBackedAuditAnalysisInputs) 
     requireSamePolicyBundle: true,
     maximumIssuerWeight: 0.25,
     maximumFamilyWeight: 0.5,
+    // `execution.run` is an invalidation key, not a value this callback reads.
+    // The store object identity is stable for the session, so without it the
+    // comparison would be computed once and never again — while its inputs are
+    // the runs inside that store, which change exactly when a new run lands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [execution.run, execution.store]);
 
   return {

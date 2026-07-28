@@ -11,11 +11,12 @@
 import { useMemo } from "react";
 import { ComposedChart, Line, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Legend, ReferenceLine } from "recharts";
 import type { FinancialInstitutionAnalysisResult } from "../../../engine/analysisFamily";
+import { NO_BANK_METRICS } from "./noMetrics";
 
 interface Props { bankResult: FinancialInstitutionAnalysisResult; }
 
 export default function OperatingEfficiency({ bankResult }: Props) {
-  const metrics = bankResult.bankMetrics ?? [];
+  const metrics = bankResult.bankMetrics ?? NO_BANK_METRICS;
 
   const rows = useMemo(() => {
     return metrics.map((m) => {

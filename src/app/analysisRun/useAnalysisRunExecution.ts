@@ -258,6 +258,19 @@ export function useAnalysisRunExecution(
       window.clearTimeout(timer);
       task?.cancel("Superseded by newer analytical inputs.");
     };
+    // The 17 `inputs.*` members the rule wants listed are deliberately absent:
+    // this effect keys on the five fingerprint digests instead, which is the
+    // whole point of computing them. The raw objects change identity on every
+    // market poll even when their contents are byte-identical, and re-firing
+    // this effect creates a new run — see `fingerprintMarketSnapshot` above,
+    // where truncating the timestamps to whole days is what stops an idle page
+    // replacing its own reproducibility hash once per refresh interval.
+    //
+    // Every input the effect body reads is covered: `rawData`/`config`/
+    // `marketSnapshot` by their own digests, `auditMeta` by `auditFingerprint`,
+    // and the remaining eight by `auxiliaryFingerprint`. A digest that misses a
+    // field would be the real bug here, not the short dependency list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     auditFingerprint,
     auxiliaryFingerprint,
