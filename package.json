@@ -35,7 +35,7 @@
     "test:e2e:a11y": "playwright test e2e/accessibility.spec.ts",
     "test:e2e:pipeline": "playwright test e2e/full-pipeline.spec.ts",
     "test:e2e:smoke": "playwright test e2e/smoke.spec.ts",
-    "lint": "eslint . --max-warnings=28",
+    "lint": "eslint . --max-warnings=27",
     "lint:fix": "eslint . --fix",
     "lint:any": "node scripts/check-any-budget.cjs",
     "lint:bundle": "node scripts/check-bundle-budget.cjs",

@@ -92,14 +92,7 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
 
       <div className="h-48">
         <ResponsiveContainer debounce={50} width="100%" height="100%">
-          <BarChart data={chartData} margin={{ left: 10, right: 10, top: 10, bottom: 5 }}
-            onClick={(e: any) => {
-              if (e && e.activePayload && e.activePayload[0] && history) {
-                const key = e.activePayload[0].payload.key;
-                setSelectedFactor(prev => prev === key ? null : key);
-              }
-            }}
-          >
+          <BarChart data={chartData} margin={{ left: 10, right: 10, top: 10, bottom: 5 }}>
             <XAxis dataKey="name" fontSize={10} angle={-15} textAnchor="end" height={50} />
             <YAxis
               tickFormatter={(v) => `${v}%`}
@@ -114,7 +107,22 @@ export default function DuPontWaterfall({ taxBurden, interestBurden, operatingMa
               contentStyle={TOOLTIP_STYLE}
             />
             <ReferenceLine y={100} stroke="#94a3b8" strokeDasharray="4 4" label={{ value: "1.0×", position: "right", fontSize: 9, fill: "#94a3b8" }} />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={36} style={{ cursor: history ? "pointer" : "default" }}>
+            {/* The handler lives on the Bar, not the BarChart: the chart-level
+                onClick argument (recharts' MouseHandlerDataParam) carries only
+                active* indices, never a payload, so reading activePayload there
+                silently never fired. BarRectangleItem does carry the row. */}
+            <Bar
+              dataKey="value"
+              radius={[4, 4, 0, 0]}
+              barSize={36}
+              style={{ cursor: history ? "pointer" : "default" }}
+              onClick={(data) => {
+                if (!history) return;
+                const key = (data.payload as (typeof chartData)[number] | undefined)?.key;
+                if (key == null) return;
+                setSelectedFactor(prev => (prev === key ? null : key));
+              }}
+            >
               {chartData.map((entry, i) => (
                 <Cell
                   key={i}
