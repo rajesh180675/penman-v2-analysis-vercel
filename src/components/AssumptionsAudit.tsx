@@ -1,15 +1,46 @@
 import type { EngineConfig } from "../engine/types";
+import type { CostOfCapitalResult } from "../engine/costOfCapital";
+import type { AssumptionTier } from "../engine/assumptions/capitalCostAssumptions";
 
 interface Props {
   config: EngineConfig;
+  /**
+   * The capital cost the run resolved, from `commandCenter.costOfCapital`.
+   *
+   * Required, not optional. This panel used to read `config.ke` directly, which
+   * is a different number: the app never sets `cost_of_equity_mode`, so it stays
+   * `"capm"` and a reviewer-typed `config.ke` is ignored by every derivation —
+   * the panel was reporting a cost of equity the valuation had not used. Taking
+   * the resolved result is what makes it agree (S-9.4C), and it retires this
+   * file as a third ke derivation path.
+   */
+  costOfCapital: CostOfCapitalResult;
 }
+
+/**
+ * Where a displayed number came from. `sourced`/`estimated`/`prior` are the
+ * engine's own provenance tiers, reused rather than re-invented so the badge
+ * cannot drift from what the resolver recorded.
+ */
+type RowSource = AssumptionTier | "user" | "default" | "computed";
 
 interface AssumptionRow {
   label: string;
   value: string;
-  source: "user" | "default" | "computed";
+  source: RowSource;
   flag: "ok" | "warning" | "error" | null;
   note?: string | undefined;
+}
+
+/**
+ * The weakest of several tiers. A derived number inherits the provenance of its
+ * softest input: ke built from a sourced risk-free rate, a sourced ERP and a
+ * sector-prior beta is a prior, because the beta is doing real work in it.
+ */
+function weakestTier(tiers: readonly AssumptionTier[]): AssumptionTier {
+  if (tiers.includes("prior")) return "prior";
+  if (tiers.includes("estimated")) return "estimated";
+  return "sourced";
 }
 
 function flagColor(flag: AssumptionRow["flag"]): string {
@@ -24,10 +55,16 @@ function flagBadge(flag: AssumptionRow["flag"]): string | null {
   return null;
 }
 
-function sourceBadge(source: AssumptionRow["source"]): { text: string; cls: string } {
+function sourceBadge(source: RowSource): { text: string; cls: string } {
   switch (source) {
     case "user": return { text: "User", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" };
     case "computed": return { text: "Computed", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" };
+    // The provenance tiers, coloured by how much weight a reviewer should put
+    // on the number: a dated third-party observation, something derived here,
+    // or an engine default that no source stands behind.
+    case "sourced": return { text: "Sourced", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" };
+    case "estimated": return { text: "Estimated", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" };
+    case "prior": return { text: "Prior", cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" };
     default: return { text: "Default", cls: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400" };
   }
 }
@@ -36,20 +73,27 @@ function sourceBadge(source: AssumptionRow["source"]): { text: string; cls: stri
  * Assumptions Audit Panel — makes every valuation input visible and flags risks.
  * Key academic principle: "A valuation is only as good as its assumptions."
  */
-export default function AssumptionsAudit({ config }: Props) {
-  const ke = config.ke ?? (config.risk_free_rate != null && config.equity_risk_premium != null
-    ? config.risk_free_rate + config.equity_risk_premium
-    : 0.12);
+export default function AssumptionsAudit({ config, costOfCapital }: Props) {
+  const ke = costOfCapital.ke;
+  const tiers = costOfCapital.assumptions;
+  // ke is a product of three inputs, so it is only as defensible as the weakest
+  // of them. Manual ke reports no tiers at all — the reviewer supplied the rate
+  // directly, so "User" is the accurate label and a tier would be an invention.
+  const keSource: RowSource = costOfCapital.equityMode === "manual"
+    ? "user"
+    : tiers
+      ? weakestTier([tiers.riskFreeRate.tier, tiers.equityRiskPremium.tier, tiers.beta.tier])
+      : "computed";
   const g = config.terminal_growth_rate ?? 0.05;
-  const rfr = config.risk_free_rate ?? 0.07;
-  const erp = config.equity_risk_premium ?? 0.05;
+  const rfr = costOfCapital.riskFreeRate;
+  const erp = costOfCapital.equityRiskPremium;
   const price = config.market_price;
 
   const assumptions: AssumptionRow[] = [
     {
       label: "Cost of Equity (ke)",
       value: `${(ke * 100).toFixed(1)}%`,
-      source: config.ke != null ? "user" : "computed",
+      source: keSource,
       flag: ke < 0.08 ? "warning" : ke > 0.20 ? "warning" : "ok",
       note: ke < 0.08 ? "Unusually low — check if risk-free rate and ERP are realistic" :
             ke > 0.20 ? "Very high — may overly penalize growth companies" : undefined,
@@ -65,19 +109,35 @@ export default function AssumptionsAudit({ config }: Props) {
     },
     {
       label: "Risk-Free Rate",
+      // Was `config.risk_free_rate != null ? "user" : "default"`, which is
+      // always "user": the field is required on EngineConfig, so the engine's
+      // own 7% default was badged as a reviewer's choice. Same for the ERP and
+      // ke rows below. The resolver's tier is the answer to that question.
       value: `${(rfr * 100).toFixed(1)}%`,
-      source: config.risk_free_rate != null ? "user" : "default",
+      source: tiers?.riskFreeRate.tier ?? "computed",
       flag: rfr < 0.04 ? "warning" : rfr > 0.10 ? "warning" : "ok",
       note: rfr < 0.04 ? "Below India 10Y Gsec historical range" :
             rfr > 0.10 ? "High — check if using current market yield" : undefined,
     },
     {
       label: "Equity Risk Premium",
-      value: `${(erp * 100).toFixed(1)}%`,
-      source: config.equity_risk_premium != null ? "user" : "default",
-      flag: erp < 0.03 ? "warning" : erp > 0.08 ? "warning" : "ok",
-      note: erp < 0.03 ? "Low for Indian equities — typical range 4-6%" :
+      // Null in manual-ke mode, where no ERP entered the discount rate. Saying
+      // so beats printing the config constant the run never multiplied.
+      value: erp == null ? "Not used (manual ke)" : `${(erp * 100).toFixed(1)}%`,
+      source: erp == null ? "user" : tiers?.equityRiskPremium.tier ?? "computed",
+      flag: erp == null ? null : erp < 0.03 ? "warning" : erp > 0.08 ? "warning" : "ok",
+      note: erp == null ? undefined :
+            erp < 0.03 ? "Low for Indian equities — typical range 4-6%" :
             erp > 0.08 ? "High — may undervalue stable companies" : undefined,
+    },
+    {
+      label: "Beta (β)",
+      // New row. Beta is the input most likely to be a sector prior, and the
+      // one whose provenance the reviewer could not previously see at all.
+      value: costOfCapital.beta == null ? "Not used (manual ke)" : `${costOfCapital.beta.toFixed(2)}×`,
+      source: costOfCapital.beta == null ? "user" : tiers?.beta.tier ?? "computed",
+      flag: tiers?.beta.tier === "prior" ? "warning" : "ok",
+      note: tiers?.beta.tier === "prior" ? tiers.beta.fallbackReason : undefined,
     },
     {
       label: "Market Price",
@@ -96,9 +156,14 @@ export default function AssumptionsAudit({ config }: Props) {
     {
       label: "Company Type",
       value: config.company_type ?? "auto",
-      source: config.company_type != null ? "user" : "default",
+      // DEFAULT_CONFIG ships `company_type: "auto"`, so the old `!= null` test
+      // badged the unset default as a reviewer's choice. "auto" *is* the unset
+      // state — the flag below already treated it that way.
+      source: config.company_type != null && config.company_type !== "auto" ? "user" : "default",
       flag: config.company_type == null || config.company_type === "auto" ? "warning" : "ok",
-      note: config.company_type == null ? "Auto-detection may misclassify — prefer explicit selection" : undefined,
+      note: config.company_type == null || config.company_type === "auto"
+        ? "Auto-detection may misclassify — prefer explicit selection"
+        : undefined,
     },
   ];
 
