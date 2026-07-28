@@ -250,6 +250,71 @@ describe("valuation maturity scorecard", () => {
       .not.toContain("1 row lacks first-class source lineage evidence");
   });
 
+  it("does not grade the data-freshness family strong while it prints its own lineage and freshness gaps", () => {
+    // The defect this pins: the family scored `8.5 + parsedPeriodShare +
+    // latestPeriodShare`, clamped to 10. Its entire dynamic range was 8.5 to
+    // 10.0, so no corpus could score below `strong` — including this one, where
+    // not one row carries a source hash or fresh market evidence. It printed
+    // those gaps in its own blockers cell and graded itself 10.0.
+    //
+    // The two things "Data freshness/source tieout" is named after were the two
+    // it did not price. Nothing in this spec file caught it, because nothing
+    // asserted the score at all.
+    const scorecard = buildValuationMaturityScorecard([
+      row({ ticker: "NOLINEAGE" }),
+      row({ ticker: "NOEVIDENCE" }),
+    ], { generatedAt: "2026-06-04T00:00:00.000Z" });
+
+    const family = scorecard.families.find((f) => f.id === "data-freshness-source-tieout");
+    // Both rows parse and expose a latest period, which is all this corpus has:
+    // 10 * (0.1 + 0.1) = 2.0.
+    expect(family?.score).toBe(2);
+    expect(family?.status).toBe("blocked");
+    expect(family?.blockers).toContain("2 rows lack first-class source lineage evidence");
+    // The score and the blockers must agree. A family that lists gaps cannot
+    // also claim the top band.
+    expect(family?.status).not.toBe("strong");
+  });
+
+  it("awards the data-freshness family a full score only when lineage and market evidence are both present", () => {
+    const complete = row({
+      ticker: "COMPLETE",
+      sourceEvidence: {
+        artifactCount: 1,
+        hashedArtifactCount: 1,
+        sourceUnavailableCount: 0,
+        lineageRef: { hasLineage: true, conceptCount: 8, periodCount: 5, checksum: "c".repeat(64) },
+        artifacts: [{
+          artifactId: "Complete Co.zip",
+          provider: "capitaline",
+          role: "primary-source",
+          sha256: "d".repeat(64),
+          byteLength: 2048,
+          sourceUnavailable: false,
+        }],
+      },
+      marketEvidence: {
+        status: "fresh",
+        reason: "NSE close imported from source fixture.",
+        inputs: [{ kind: "market-price", source: "nse", asOf: "2026-06-05", value: 1234 }],
+      },
+    });
+
+    const family = buildValuationMaturityScorecard([complete], { generatedAt: "2026-06-04T00:00:00.000Z" })
+      .families.find((f) => f.id === "data-freshness-source-tieout");
+
+    // 10.0 is still reachable — the fix prices the gaps, it does not cap the
+    // family below its ceiling. A row with everything scores everything.
+    expect(family?.score).toBe(10);
+    expect(family?.status).toBe("strong");
+    // Exactly empty, not "contains no gap phrasings". This slot used to emit two
+    // positive statements when nothing was missing, which made the assertion a
+    // prose filter and left the doc-level guard reading generated English to tell
+    // good news from bad. The coverage those sentences claimed is in `evidence`,
+    // with counts; `blockers` now holds gaps or nothing.
+    expect(family?.blockers).toEqual([]);
+  });
+
   it("clears the market-freshness blocker only when timestamped market evidence is fresh", () => {
     const scorecard = buildValuationMaturityScorecard([
       row({

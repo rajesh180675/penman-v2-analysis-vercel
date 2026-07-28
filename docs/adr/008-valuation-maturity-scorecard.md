@@ -10,7 +10,7 @@
 
 Plan 0 of the 10/10 roadmap requires the project to measure valuation maturity honestly before adding more models. Before this decision, `scripts/audit-all-companies.ts` could show whether individual companies computed, skipped, or failed, but there was no stable weighted roll-up that told reviewers where the product stood against the roadmap.
 
-The current live-corpus baseline after PRs #259-#262 is 33 audited companies, 0 `CALC_ERROR` rows, and a valuation maturity score of 6.1/10. The largest gaps are sector-native coverage, cross-paradigm independence, and traceability/reconciliation/fail-closed gates. Treating these as ad hoc notes would make progress hard to compare across future PRs.
+The live-corpus baseline at the time of this decision, after PRs #259-#262, was 33 audited companies, 0 `CALC_ERROR` rows, and a valuation maturity score of 6.1/10 (read the current score from the generated artifact, not from this record). The largest gaps are sector-native coverage, cross-paradigm independence, and traceability/reconciliation/fail-closed gates. Treating these as ad hoc notes would make progress hard to compare across future PRs.
 
 ## Decision
 
