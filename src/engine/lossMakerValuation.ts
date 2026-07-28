@@ -321,7 +321,13 @@ export function computeLossMakerValuation(
       : `Revenue-multiple anchor: ${multiple.toFixed(1)}x ⇒ ${perShareValue != null ? `₹${perShareValue.toFixed(0)}/share` : "use peer median"}.`;
     recommendation = `Loss-maker with constructive trajectory. ${anchorClause} Compare with current price; reverse-DCF implied CAGR is ${impliedRevenueCAGR != null ? `${(impliedRevenueCAGR * 100).toFixed(0)}%` : "TBD"}.`;
   } else {
-    recommendation = `Loss-maker with weak path-to-profitability signals. Treat any revenue-multiple anchor as upper bound, not fair value. Consider waiting for either margin inflection or constructive guidance before sizing position.`;
+    // "Treat any revenue-multiple anchor as upper bound" presupposes an anchor
+    // to bound. With no sales there is none, and the sentence sends the reader
+    // looking for a figure the panel is declining to show.
+    const anchorClause = revenueMultipleSkipReason
+      ? `No revenue-multiple anchor is available: ${revenueMultipleSkipReason}`
+      : `Treat any revenue-multiple anchor as upper bound, not fair value.`;
+    recommendation = `Loss-maker with weak path-to-profitability signals. ${anchorClause} Consider waiting for either margin inflection or constructive guidance before sizing position.`;
   }
 
   return {

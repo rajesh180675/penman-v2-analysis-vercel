@@ -173,15 +173,54 @@ describe("computeLossMakerValuation — Phase I3", () => {
       expect(result.recommendation).toMatch(/No revenue-multiple anchor/);
     });
 
-    it("still quotes the anchor when revenue is present", () => {
-      // Positive control: the two tests above must not be passing because the
-      // producer now declines unconditionally.
+    it("withdraws the upper-bound framing on the weak path too", () => {
+      // The third recommendation branch. "Treat any revenue-multiple anchor as
+      // upper bound" presupposes an anchor to bound, so it is the same false
+      // claim in weaker clothing. Reached with no runway (net debt, so there is
+      // no cash buffer to divide) and 0/3 profitability signals — which is
+      // exactly the shape a pre-revenue distressed name has.
+      const periods = Array.from({ length: 4 }, (_, i) =>
+        mkPeriod(`${2022 + i}-03-31`, 0, -500 - i * 100, -400 - i * 100, 2000),
+      );
+      const result = computeLossMakerValuation(periods, baseCfg)!;
+      expect(result.runwayYears).toBeNull();
+      expect(result.profitabilityPath.signal).toBe("red");
+      expect(result.recommendation).toMatch(/No revenue-multiple anchor is available/);
+      expect(result.recommendation).not.toMatch(/upper bound/);
+    });
+
+    it("keeps the upper-bound framing on the weak path when there is an anchor", () => {
+      // Positive control for the branch above: the withdrawal is conditional on
+      // the skip reason, not on the signal being red.
       const result = computeLossMakerValuation(
         Array.from({ length: 4 }, (_, i) => mkPeriod(`${2022 + i}-03-31`, 5000 + i * 1000, -500, -100, -3000)),
         baseCfg,
       )!;
+      expect(result.profitabilityPath.signal).toBe("red");
       expect(result.revenueMultiple.skipReason).toBeUndefined();
-      expect(result.recommendation).toMatch(/revenue-multiple/);
+      expect(result.recommendation).toMatch(/Treat any revenue-multiple anchor as upper bound/);
+      expect(result.recommendation).not.toMatch(/No revenue-multiple anchor/);
+    });
+
+    it("still quotes the anchor as a number when revenue is present", () => {
+      // Positive control for the whole block: the tests above must not be
+      // passing because the producer now declines unconditionally. Asserts the
+      // numeric anchor rather than the bare phrase — "revenue-multiple" alone
+      // also appears in the weak-path wording, so matching it would not prove a
+      // figure was published. Green shape (2/3 signals) is the only branch that
+      // quotes the multiple with a per-share value.
+      const result = computeLossMakerValuation(
+        [
+          mkPeriod("2022-03-31", 4000, -800, -700, 0, 3200),
+          mkPeriod("2023-03-31", 5500, -600, -500, 0, 4100),
+          mkPeriod("2024-03-31", 7500, -400, -200, 0, 5100),
+          mkPeriod("2025-03-31", 11000, -200, 100, 0, 6600),
+        ],
+        baseCfg,
+      )!;
+      expect(result.profitabilityPath.signal).toBe("green");
+      expect(result.revenueMultiple.skipReason).toBeUndefined();
+      expect(result.recommendation).toMatch(/Revenue-multiple anchor: \d+\.\dx/);
       expect(result.recommendation).not.toMatch(/No revenue-multiple anchor/);
     });
   });
