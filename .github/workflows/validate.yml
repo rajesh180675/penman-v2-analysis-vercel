@@ -37,6 +37,14 @@ jobs:
       - run: npm run lint:doc-schema
       - run: npm run lint:vercel-functions
       - run: npm run lint:model-catalog
+      # The only check here that can go red without anybody changing anything:
+      # it compares each pinned observation's own date against its own staleness
+      # window, so it fires on a calendar date rather than on a diff. That is
+      # deliberate. Past its window an observation resolves as a `prior`, which
+      # moves ke and blocks production-ready with no commit to blame — this
+      # trades an unrelated red PR for finding out from a moved discount rate.
+      # When it fires, refresh the pack; do not widen the window.
+      - run: npm run lint:pack-freshness
       - name: Real TCS audit transport budget
         run: npm run lint:audit-snapshot
       - run: npm run build
