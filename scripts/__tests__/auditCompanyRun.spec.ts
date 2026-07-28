@@ -107,6 +107,11 @@ describe.sequential("auditCompanyRun", () => {
     expect(result.statusClass).not.toBe("calc-error");
     expect(result.error ?? "").not.toContain("shareCountInput");
     expect(result.flags.join(",")).not.toContain("shareCountInput");
+    // The bank route builds no command center and resolves no ke, so reporting
+    // nothing about the discount rate is honest here rather than a bypass. This
+    // is the control for the industrial assertion: it pins that `null` means "no
+    // rate was resolved", not "the wiring is missing".
+    expect(result.rigor.assumptionProvenanceStatus).toBeNull();
   }, 240_000);
 
   it("exposes computed industrial valuation lenses instead of collapsing them to one VCC bucket", async () => {
@@ -162,6 +167,15 @@ describe.sequential("auditCompanyRun", () => {
       expect.arrayContaining(["accrual-history", "cash-statement"]),
     );
     expect(result.valuationEvidence.defensibilityStatus).toMatch(/^(confirmed|guarded|blocked)$/);
+    // The industrial route resolves a capital cost, so the harness must say
+    // whether the rate it graded this row against was observed or guessed. It
+    // used to build the command center, read `valuationTriangulation` off it, and
+    // drop the provenance from the same object — which left the gate unreachable
+    // here, because `absent` does not fire it. A `null` fails this: that is the
+    // unwired state, and it is what the bank-route control above pins as the only
+    // legitimate reason to report nothing.
+    expect(result.rigor.assumptionProvenanceStatus).not.toBeNull();
+    expect(result.rigor.assumptionProvenanceStatus).toMatch(/^(defensible|mixed|prior-dependent)$/);
   }, 240_000);
 
   it("does not let hard-tieout readiness skip a blocked lower rigor gate", async () => {
