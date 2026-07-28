@@ -32,6 +32,30 @@ function safeHashEqual(left: string | null | undefined, right: string | null | u
   return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
 }
 
+/**
+ * The run-metadata aggregate this route read-modify-writes.
+ *
+ * Every field is optional because the file on disk is whatever a previous
+ * version of this route wrote — there is no migration and no schema check, so a
+ * run created before a field existed simply lacks it. That is exactly why the
+ * code below reads `version` through a `typeof` check rather than trusting it,
+ * and typing the shape this way keeps those checks legible instead of making
+ * them look redundant.
+ */
+interface LocalAuditRunMeta {
+  runId?: string;
+  companyId?: string;
+  sourceMode?: string;
+  startedAt?: string;
+  eventCount?: number;
+  version?: number;
+  lastEventAt?: string;
+  lastEventType?: string;
+  runAccessHash?: string | null;
+  contentClass?: string | null;
+  retentionDays?: number;
+}
+
 async function authorizeLocalRunRead(req: Request, runId: string): Promise<boolean> {
   const run = await readJson<{ runAccessHash?: string | null }>(auditRunPath(runId));
   if (!run) return false;
@@ -72,7 +96,7 @@ router.post("/events", async (req: Request, res: Response) => {
   let attempts = 0;
   while (attempts < 3) {
     attempts += 1;
-    const runMeta: any = (await readJson<any>(auditRunPath(runId))) ?? {
+    const runMeta: LocalAuditRunMeta = (await readJson<LocalAuditRunMeta>(auditRunPath(runId))) ?? {
       runId,
       companyId,
       sourceMode,
@@ -99,7 +123,7 @@ router.post("/events", async (req: Request, res: Response) => {
     // Re-read just before writing as a cheap mismatch check; fs has no atomic
     // CAS, so concurrent writers in the same tick can still interleave, but
     // the recheck shrinks the window and lets us retry deterministically.
-    const reread: any = await readJson<any>(auditRunPath(runId));
+    const reread = await readJson<LocalAuditRunMeta>(auditRunPath(runId));
     const actualVersion = reread && typeof reread.version === "number" ? reread.version : 0;
     if (actualVersion !== expectedVersion) {
       if (attempts >= 3) {
@@ -134,10 +158,13 @@ router.get("/events", async (req: Request, res: Response) => {
 router.get("/runs", async (_req: Request, res: Response) => {
   const dir = runsDir();
   const files = await listFiles(dir);
-  const runs = await Promise.all(files.map(f => readJson(f)));
+  const runs = await Promise.all(files.map(f => readJson<LocalAuditRunMeta>(f)));
+  // A type predicate rather than `.filter(Boolean)`: `Boolean` does not narrow
+  // out the `null` that `readJson` returns for an unreadable file, which is why
+  // the comparator needed an annotation to reach `startedAt` at all.
   const sorted = runs
-    .filter(Boolean)
-    .sort((a: any, b: any) => (b.startedAt ?? "").localeCompare(a.startedAt ?? ""));
+    .filter((run): run is LocalAuditRunMeta => run !== null)
+    .sort((a, b) => (b.startedAt ?? "").localeCompare(a.startedAt ?? ""));
   return res.json({ ok: true, runs: sorted });
 });
 
