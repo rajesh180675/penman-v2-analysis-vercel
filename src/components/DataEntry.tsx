@@ -264,7 +264,14 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
       setError(`Failed: ${errMsg}`);
       setUploadStep("failed");
     } finally { setIsProcessing(false); }
-  }, [auditGovernance.maximumUploadBytes, buildMeta, companyId, onDataSubmit]);
+    // `typeNotSelected` is read by the gate at the top of this callback, and it
+    // was missing here. Nothing else in this list changes when the user picks a
+    // company type — `onDataSubmit` is a `useCallback(..., [])` in AppShell,
+    // `companyId` is local state, `buildMeta` and `auditGovernance` do not
+    // depend on config — so the callback identity never refreshed and it kept
+    // reading the type as unselected. The upload stayed blocked after the
+    // picker said otherwise.
+  }, [auditGovernance.maximumUploadBytes, buildMeta, companyId, onDataSubmit, typeNotSelected]);
 
   // Parse standalone ZIP for manual upload path
   const parseStandaloneZip = useCallback(async (file: File): Promise<RawPeriodData[] | null> => {
