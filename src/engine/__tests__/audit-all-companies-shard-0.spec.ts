@@ -1,10 +1,15 @@
 /**
- * audit-all-companies-shard-0.spec.ts — Companies 0-9
+ * audit-all-companies-shard-0.spec.ts — the first slice of the registry.
+ *
+ * The slice bounds are computed from the live registry length (`tileShard`),
+ * not written here. Hardcoded bounds are what left the registry's last company
+ * audited by no shard at all — see `scripts/lib/auditShards.ts`.
+ *
  * @vitest-environment node
  */
 import { describe } from "vitest";
-import { createAuditTests } from "./audit-all-companies-setup";
+import { createShardAuditTests } from "./audit-all-companies-setup";
 
-describe("Audit Shard 0 (companies 0-9)", () => {
-  createAuditTests({ start: 0, size: 10 });
+describe("Audit Shard 0", () => {
+  createShardAuditTests(0);
 });

@@ -6,11 +6,31 @@ import {
   type AuditCompanyRunResult,
   type AuditRegistryEntry,
 } from "../../../scripts/lib/auditCompanyRun";
+import { tileShard } from "../../../scripts/lib/auditShards";
 
 const PROJECT_ROOT = resolve(__dirname, "../../..");
 const COMPANIES_DIR = resolve(PROJECT_ROOT, "public/data/companies");
 const REGISTRY_PATH = join(COMPANIES_DIR, "registry.json");
 const registry = JSON.parse(readFileSync(REGISTRY_PATH, "utf-8")) as AuditRegistryEntry[];
+
+/**
+ * Companies allowed to report `statusClass === "model-gap"`, keyed by ticker,
+ * valued by the reason.
+ *
+ * Empty, and that is the finding rather than an oversight: an audit of all 33
+ * companies returns exactly one flag each, always `POLICY:RIGOR_CAP_SYNTACTIC`
+ * or `POLICY:RIGOR_CAP_STRUCTURAL`. Since `auditCompanyRun` only pushes a
+ * `POLICY:` flag when no other flag was raised, that single flag proves every
+ * other category is empty — no `MODEL_GAP:*`, no `NO_SCENARIOS`, no
+ * `*_INVALID`. So the gate this list guards costs nothing today and exists to
+ * make a future regression fail loudly instead of printing into a summary
+ * nobody reads.
+ *
+ * Add an entry only for a gap that is genuinely expected — data a ZIP does not
+ * ship, a model that does not apply to a sector — and say which, so the next
+ * reader can tell an accepted limitation from a bug that was waved through.
+ */
+const MODEL_GAP_ALLOWLIST: Record<string, string> = {};
 
 interface ExpectationsContract {
   companyId: string;
@@ -65,6 +85,20 @@ function readExpectations(folder: string): ExpectationsContract | null {
   return JSON.parse(readFileSync(p, "utf-8")) as ExpectationsContract;
 }
 
+/**
+ * The tests for one CI shard, with its slice derived from the live registry
+ * length rather than written into the spec.
+ *
+ * The shard specs used to pass literal `{ start, size }` pairs, and they tiled
+ * 0-31 while the registry held 33 entries — so the last company was audited by
+ * no shard, in a suite whose whole purpose is that every company is audited.
+ * Nothing failed, because a shard that covers less than it claims is
+ * indistinguishable from one that covers everything.
+ */
+export function createShardAuditTests(shard: number) {
+  return createAuditTests(tileShard(shard, registry.length));
+}
+
 export function createAuditTests({ start, size }: { start: number; size: number }) {
   const slice = registry.slice(start, start + size);
   const results: TestAuditResult[] = [];
@@ -90,6 +124,32 @@ export function createAuditTests({ start, size }: { start: number; size: number 
       expect(result.analysisFamily).not.toBe("unknown");
       expect(result.pipelineStrategyId).toBeTruthy();
       expect(result.statusClass).not.toBe("calc-error");
+      // `model-gap` was the one actionable outcome nothing asserted against.
+      //
+      // Worth being precise about what this adds, because most of the flag
+      // vocabulary is already gated and it is not obvious which parts:
+      // `deriveAuditOutcome` maps any `ERROR`/`CALC_ERROR` prefix *and any
+      // `_INVALID` suffix* to `CALC_ERROR`, so the whole `*_INVALID` cluster —
+      // industrial scenarios and all six `pushInvalidIfComputed` bank labels —
+      // already fails on the line above. What fell through was everything
+      // mapping to `MODEL_GAP`: the `MODEL_GAP:*` flags, `NO_SCENARIOS`, and a
+      // run that computed no value at all. On the financial-institution path
+      // that gap was direct: `MODEL_GAP:NO_FINANCIAL_VALUATION` sets
+      // `financialInstitutionValuation.status` to `"model-gap"`, and the branch
+      // below only asserts it is not `"skipped"`.
+      //
+      // `policy-warning` stays allowed. Every one of the 33 companies reports
+      // exactly one `POLICY:RIGOR_CAP_*` flag, so gating that would fail the
+      // entire suite rather than catch anything.
+      if (!(company.ticker in MODEL_GAP_ALLOWLIST)) {
+        expect(
+          result.statusClass,
+          `${company.ticker} reports a model gap: ${result.flags.join(", ") || "(no flags; computed no value)"}. ` +
+          `A company in the registry is expected to produce its family's models. If this gap is legitimate ` +
+          `— data the ZIP does not ship, a model that genuinely does not apply — record it in ` +
+          `MODEL_GAP_ALLOWLIST with the reason rather than relaxing this assertion.`,
+        ).not.toBe("model-gap");
+      }
 
       // Scenario gates apply only to the industrial path. Bank/NBFC/insurance
       // valuations live under bankResult.valuation, not industrial scenarios.
