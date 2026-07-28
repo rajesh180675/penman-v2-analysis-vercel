@@ -571,7 +571,11 @@ export function buildAnalysisTraceability(params: {
   // perpetual growth ceiling is a structural judgment nobody publishes as an
   // observation — so a count-based gate would block every run forever and could
   // never be cleared by better sourcing.
-  const KE_INPUT_KEYS = ["risk-free-rate", "beta", "equity-risk-premium"] as const;
+  // `cost-of-equity` is the manual-ke case, where no CAPM term was resolved at
+  // all: the reviewer supplied the rate directly, so there is no rf, beta or ERP
+  // to name. Without it in this list a manual ke would report a prior and the
+  // gate would still pass, which is the bypass this list existed to close.
+  const KE_INPUT_KEYS = ["risk-free-rate", "beta", "equity-risk-premium", "cost-of-equity"] as const;
   const kePriorKeys = assumptionProvenance
     ? KE_INPUT_KEYS.filter((key) => assumptionProvenance.priorTierKeys.includes(key))
     : [];

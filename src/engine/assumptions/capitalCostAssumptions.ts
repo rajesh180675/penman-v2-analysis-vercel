@@ -202,10 +202,23 @@ export function resolveBeta(input: {
     return {
       key: "beta",
       value: input.explicitBeta,
-      tier: "sourced",
+      // `prior`, not `sourced`. This module defines `sourced` as a dated
+      // third-party value with an attributable origin, and a number typed into
+      // `config.beta` is neither dated nor third-party — `asOf` is null right
+      // below, which is the tell. Labelling it `sourced` also switched the
+      // provenance gate off, so typing any beta bought production-ready for a
+      // run whose beta nobody observed: a weaker claim than the sector prior it
+      // outranks, yet it cleared a gate the prior blocks.
+      //
+      // It stays ahead of the sector prior on VALUE — a reviewer who names a
+      // beta for this company means it — and it is the same treatment
+      // `config.equity_risk_premium` and `config.risk_free_rate` already get:
+      // config constants are used, and reported as priors.
+      tier: "prior",
       source: input.explicitBetaSource ?? "Explicit beta",
       asOf: null,
       method: "Reviewer-supplied levered beta",
+      fallbackReason: "Beta was supplied directly in the engine configuration, so it carries no observation date or third-party attribution. Supply a beta pack or a peer set to earn a measured beta.",
     };
   }
 

@@ -180,7 +180,14 @@ export function useAuditAnalysis(inputs: AuditAnalysisInputs) {
   // Null when no command center built: "no tiers reported" must not read as
   // "inputs were sourced".
   const assumptionProvenance = useMemo(
-    () => (commandCenter ? buildAssumptionProvenance(commandCenter.costOfCapital.assumptions) : null),
+    // equityMode is what lets a manual ke report as an undated prior rather than
+    // as `absent`, which does not fire the gate.
+    () => (commandCenter
+      ? buildAssumptionProvenance(commandCenter.costOfCapital.assumptions, {
+          equityMode: commandCenter.costOfCapital.equityMode,
+          ke: commandCenter.costOfCapital.ke,
+        })
+      : null),
     [commandCenter],
   );
   const earningsQuality = useMemo(
