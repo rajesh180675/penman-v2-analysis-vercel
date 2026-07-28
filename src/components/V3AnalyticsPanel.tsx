@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { RecastPeriod, EngineConfig } from "../engine/types";
 import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
+import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { detectDistress } from "../engine/distressDetector";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
@@ -59,7 +60,14 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
   // parallel `ke_from_config` implementation. `computeV3Analytics` already
   // resolves its own capital cost through the resolver, so this surface was
   // reaching the same number by a second route.
-  const ke = resolveCostOfCapitalFromConfig({ config }).ke;
+  // Packs supplied so this surface and `computeV3Analytics` reach the same
+  // number: that function resolves its own capital cost, and it is reached from
+  // the run, which now supplies them.
+  const ke = resolveCostOfCapitalFromConfig({
+    config,
+    ...ACTIVE_MARKET_PACKS,
+    analysisAsOf: analysisAsOfToday(),
+  }).ke;
 
   const { valuation, kw } = useMemo(() => {
     if (data.length < 2) return { valuation: null, kw: ke };
@@ -86,6 +94,9 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
       config.g_terminal_override,
       kw,
       itServices,
+      // Same packs this surface resolved `ke` from above, so the bundle scores
+      // at the rate the header prints.
+      { ...ACTIVE_MARKET_PACKS, analysisAsOf: analysisAsOfToday() },
     );
   }, [data, config, valuation, kw]);
 

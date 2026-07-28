@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import "katex/dist/katex.min.css";
 import { EngineConfig, RawPeriodData, RecastPeriod } from "../engine/types";
 import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
+import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildAnalysisPublicationSnapshot } from "../lib/publication/analysisPublicationSnapshot";
@@ -241,7 +242,16 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   // config fields the resolver does — so the two agreed only by coincidence of
   // constants, and either could have been edited alone while this surface printed
   // one discount rate and the recorded run kept another.
-  const ke = resolveCostOfCapitalFromConfig({ config }).ke;
+  //
+  // Packs supplied for the same reason. This surface is the one a reviewer
+  // exports, so the discount rate it prints has to be the rate the run
+  // discounted at, and a resolver called without the packs derives the unpinned
+  // one from the same config.
+  const ke = resolveCostOfCapitalFromConfig({
+    config,
+    ...ACTIVE_MARKET_PACKS,
+    analysisAsOf: analysisAsOfToday(),
+  }).ke;
   const kwSeries: number[] = [];
   for (let i = 1; i < valuationData.length; i++) {
     kwSeries.push(deriveKwFromStructure(valuationData[i]!, valuationData[i - 1]!, ke, config.risk_free_rate, config));
@@ -279,6 +289,12 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         reoiCv03,
         config.g_terminal_override,
         kw,
+        // This surface has no IT-services signal to pass; explicit `undefined`
+        // rather than a shorter call so the packs land in the right position.
+        undefined,
+        // Same packs `ke` above was resolved from — an exported report must not
+        // discount its bundle at a different rate than it prints.
+        { ...ACTIVE_MARKET_PACKS, analysisAsOf: analysisAsOfToday() },
       );
     } catch { return null; }
   })();

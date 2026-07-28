@@ -43,3 +43,14 @@ export { INDIA_ERP_BASIS, INDIA_MACRO_PACK } from "./indiaMacroPack";
 // above is tested against synthetic packs, so a regenerated pack cannot quietly
 // change what the resolver is proven to do.
 export { INDIA_EQUITY_BETA_PACK } from "./indiaEquityBetaPack";
+
+// Which of the above production actually supplies, and the clock it measures
+// them against. Separate from the packs themselves because "a pack exists" and
+// "every surface resolves against it" are different claims — see activePacks.ts.
+export { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "./activePacks";
+
+export {
+  PACK_FRESHNESS_LEAD_DAYS,
+  checkPackFreshness,
+} from "./packFreshness";
+export type { PackFreshnessFinding, PackFreshnessSeverity } from "./packFreshness";

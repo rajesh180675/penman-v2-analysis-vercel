@@ -597,7 +597,10 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     evEbitda: evEbitdaWithMarket,
     indiaQuality,
     earningsQuality,
-    epv: computeEPV(data, shareBasis.valuationConfig),
+    // Packs handed down, not re-derived: EPV is the no-growth floor for the
+    // same issuer this build is valuing, so it has to discount at the rate the
+    // rest of this object was built with.
+    epv: computeEPV(data, shareBasis.valuationConfig, { macroPack, betaPack, analysisAsOf }),
     workingCapitalGate: workingCapitalGateResult,
     cleanSurplus: cleanSurplusResult,
     damodaranCapm: damodaranCapmResult,

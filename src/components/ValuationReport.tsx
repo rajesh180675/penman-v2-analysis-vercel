@@ -5,6 +5,7 @@ import { buildCyclicalNormalization } from "../engine/cyclicalNormalization";
 import { detectDistress } from "../engine/distressDetector";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
+import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
 import { buildRegimeContext } from "../engine/regimeModel";
 import { calibrateSignalBacktest } from "../engine/signalBacktest";
 import { buildTerminalEconomics } from "../engine/terminalEconomics";
@@ -115,7 +116,16 @@ export default function ValuationReport({
   // periods and the live market snapshot, so its ke is a different (better-
   // evidenced) number, and adopting it here would move the displayed discount
   // rate rather than just unify how it is derived.
-  const keFromConfig = resolveCostOfCapitalFromConfig({ config: effectiveConfig }).ke;
+  //
+  // The packs are supplied here for the same reason: a resolver called without
+  // them derives the *unpinned* rate from the same config, so omitting them on
+  // this surface while the run receives them would print one discount rate
+  // against a run that recorded another.
+  const keFromConfig = resolveCostOfCapitalFromConfig({
+    config: effectiveConfig,
+    ...ACTIVE_MARKET_PACKS,
+    analysisAsOf: analysisAsOfToday(),
+  }).ke;
   const [keOverride, setKeOverride] = useState<number | null>(null);
   const [g, setG] = useState(effectiveConfig.g_terminal_override != null ? effectiveConfig.g_terminal_override * 100 : 4.0);
   const [cv, setCv] = useState<CVMethod>("CV3");
@@ -165,6 +175,12 @@ export default function ValuationReport({
     computeValuation(valuationData, ke, kwDerived, gRate, valuationConfig, cyclicalTerminalREAnchor),
     [valuationData, ke, kwDerived, gRate, valuationConfig, cyclicalTerminalREAnchor]
   );
+  // The fallback build, for legacy callers that pass no run-backed command
+  // center. It needs the packs for the same reason the `keFromConfig` resolve
+  // above does — and this is the call the first version of the census missed,
+  // because it only checked that the *file* named `ACTIVE_MARKET_PACKS`
+  // somewhere. `runCommandCenter` (the native path) already carries the run's
+  // pinned ke, so only this branch had to change.
   const commandCenter = useMemo(
     () => runCommandCenter ?? buildValuationCommandCenter({
       data,
@@ -172,6 +188,8 @@ export default function ValuationReport({
       marketData: liveMarketData,
       analysisStatus,
       segmentData: segmentData?.business ?? null,
+      ...ACTIVE_MARKET_PACKS,
+      analysisAsOf: analysisAsOfToday(),
     }),
     [analysisStatus, data, effectiveConfig, liveMarketData, runCommandCenter, segmentData],
   );
