@@ -1,5 +1,5 @@
 import { decisiveMoat, type MoatScoreResult } from "../../engine/moatScoring";
-import type { CapAllocScoreResult } from "../../engine/capitalAllocationScoring";
+import { decisiveCapAlloc, type CapAllocScoreResult } from "../../engine/capitalAllocationScoring";
 import type { DistressAssessment } from "../../engine/distressDetector";
 import type { RecastPeriod } from "../../engine/types";
 
@@ -71,29 +71,47 @@ function generateNarrative(props: Props): { businessQuality: string; capitalAllo
   }
 
   // ── Capital Allocation paragraph ──
-  const capAdj = pickWord(capAlloc?.compositeScore, ["disciplined and value-creating", "competent", "average", "questionable"]);
-  let capitalAllocation = `Management's capital allocation looks ${capAdj}`;
-  if (capAlloc) {
-    capitalAllocation += ` (Grade ${capAlloc.grade}, score ${capAlloc.compositeScore}/100, ${capAlloc.trend}). `;
-    if (capAlloc.medianFCFConversion != null) {
-      capitalAllocation += `FCF conversion runs at ${(capAlloc.medianFCFConversion * 100).toFixed(0)}% of net income`;
+  //
+  // Same treatment, same reason: below three profitable periods the scorer sets
+  // `dataSufficient: false` and returns a score and a letter grade anyway. The
+  // adjective and the grade are the claim here, so both come from
+  // `decisiveCapAlloc` — and the skip reason opens the paragraph instead of
+  // trailing it as a "Caveat:", which is the position a reader reaches after
+  // already having read "disciplined and value-creating".
+  const decisiveCapital = decisiveCapAlloc(capAlloc);
+  let capitalAllocation: string;
+  if (decisiveCapital) {
+    const capAdj = pickWord(decisiveCapital.compositeScore, ["disciplined and value-creating", "competent", "average", "questionable"]);
+    capitalAllocation = `Management's capital allocation looks ${capAdj} (Grade ${decisiveCapital.grade}, score ${decisiveCapital.compositeScore}/100, ${decisiveCapital.trend}). `;
+    if (decisiveCapital.medianFCFConversion != null) {
+      capitalAllocation += `FCF conversion runs at ${(decisiveCapital.medianFCFConversion * 100).toFixed(0)}% of net income`;
     }
-    if (capAlloc.medianIncrementalROIC != null) {
-      capitalAllocation += `, and incremental ROIC on new NOA averages ${(capAlloc.medianIncrementalROIC * 100).toFixed(1)}%. `;
+    if (decisiveCapital.medianIncrementalROIC != null) {
+      capitalAllocation += `, and incremental ROIC on new NOA averages ${(decisiveCapital.medianIncrementalROIC * 100).toFixed(1)}%. `;
     } else {
       capitalAllocation += `. `;
     }
+  } else if (capAlloc) {
+    capitalAllocation = `Capital allocation is not graded for ${companyId}: ${capAlloc.skipReason ?? "the scorer marked its own grade unreliable"} `;
+    // FCF conversion and incremental ROIC are both ratios against net income,
+    // which is the quantity the skip reason says is missing or negative. They
+    // invert sign rather than degrade, so they are dropped here for the reason
+    // CAP is dropped from the moat paragraph — not omitted for brevity.
+  } else {
+    // `pickWord(null, …)` returns its third word, so this branch used to open
+    // with "looks average" and then admit there was nothing to score.
+    capitalAllocation = `Capital allocation is not scored for ${companyId} — insufficient data. `;
+  }
+  if (capAlloc) {
+    // Event counts, not ratios off net income: these are periods in which a
+    // buyback or an issuance coincided with a positive or negative SPREAD, so
+    // they survive an unprofitable stretch and stay reportable either way.
     if (capAlloc.buybacksValueAccretive > 0) {
       capitalAllocation += `Buybacks were value-accretive in ${capAlloc.buybacksValueAccretive} period(s) — done when SPREAD was positive. `;
     }
     if (capAlloc.dilutiveIssuances > 0) {
       capitalAllocation += `⚠ ${capAlloc.dilutiveIssuances} dilutive issuance(s) detected — equity raised when SPREAD was negative. `;
     }
-    if (!capAlloc.dataSufficient && capAlloc.skipReason) {
-      capitalAllocation += `Caveat: ${capAlloc.skipReason} `;
-    }
-  } else {
-    capitalAllocation += `, but data is insufficient to score it formally. `;
   }
 
   // ── Valuation & Outlook paragraph ──
