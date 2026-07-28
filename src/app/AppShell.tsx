@@ -99,7 +99,7 @@ export function AppShell() {
     error: liveMarketDataError,
     refresh: refreshLiveMarketData,
   } = useLiveMarketData({
-    provider: config.market_data_provider as any ?? "nse",
+    provider: config.market_data_provider ?? "nse",
     symbol: config.market_data_symbol ?? config.ticker ?? null,
     fallbackPrice: config.market_price ?? null,
     fallbackRiskFreeRate: config.risk_free_rate ?? null,

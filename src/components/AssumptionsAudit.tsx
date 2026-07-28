@@ -97,7 +97,7 @@ export default function AssumptionsAudit({ config }: Props) {
       label: "Company Type",
       value: config.company_type ?? "auto",
       source: config.company_type != null ? "user" : "default",
-      flag: config.company_type == null || config.company_type === "auto" as any ? "warning" : "ok",
+      flag: config.company_type == null || config.company_type === "auto" ? "warning" : "ok",
       note: config.company_type == null ? "Auto-detection may misclassify — prefer explicit selection" : undefined,
     },
   ];
