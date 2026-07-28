@@ -1,4 +1,4 @@
-import type { MoatScoreResult } from "../../engine/moatScoring";
+import { decisiveMoat, type MoatScoreResult } from "../../engine/moatScoring";
 import type { CapAllocScoreResult } from "../../engine/capitalAllocationScoring";
 import type { DistressAssessment } from "../../engine/distressDetector";
 import type { RecastPeriod } from "../../engine/types";
@@ -29,24 +29,45 @@ function generateNarrative(props: Props): { businessQuality: string; capitalAllo
   const periods = data.length;
 
   // ── Business Quality paragraph ──
-  const moatAdj = pickWord(moat?.compositeScore, ["wide and durable", "narrow but real", "thin", "essentially absent"]);
-  const moatVerb = moat?.moatTrend === "strengthening" ? "strengthening" :
-                   moat?.moatTrend === "eroding" ? "eroding" : "stable";
+  //
+  // The width adjective IS the claim in this paragraph, so it has to come from
+  // a score the scorer stands behind. `decisiveMoat` is null when
+  // `dataSufficient` is false — a loss-maker, or an IT-services company whose
+  // RNOA is inflated by a NOA denominator near zero — and the scorer still
+  // returns an ordinary-looking 0-100 in that case, which is what made "wide
+  // and durable" reachable on a score its own author had just disowned.
+  //
+  // The caveat used to be appended after the claim. A note at the end of a
+  // paragraph does not retract the sentence that opened it: by then the reader
+  // has read the conclusion. So when the score is not decisive the reason
+  // replaces the classification rather than following it.
+  const decisive = decisiveMoat(moat);
+  const moatVerb = decisive?.moatTrend === "strengthening" ? "strengthening" :
+                   decisive?.moatTrend === "eroding" ? "eroding" : "stable";
   const rnoaTxt = moat?.medianRNOA != null ? `${(moat.medianRNOA * 100).toFixed(1)}%` : "—";
   const spreadTxt = moat?.medianSPREAD != null ? `${(moat.medianSPREAD * 100).toFixed(1)}%` : "—";
   const periodsAboveCoC = moat ? `${moat.periodsAboveCostOfCapital} of ${moat.totalPeriods}` : "—";
 
-  let businessQuality = `${companyId} shows a ${moatAdj} economic moat, currently ${moatVerb}. `;
-  if (moat) {
-    businessQuality += `Median RNOA over ${moat.totalPeriods} periods is ${rnoaTxt}, with the company earning above its cost of capital in ${periodsAboveCoC} years (median spread ${spreadTxt}). `;
-    if (moat.cap.years != null) {
-      businessQuality += `Competitive advantage period (CAP) estimated at ~${moat.cap.years} years (${moat.cap.confidence} confidence). `;
+  let businessQuality: string;
+  if (decisive) {
+    const moatAdj = pickWord(decisive.compositeScore, ["wide and durable", "narrow but real", "thin", "essentially absent"]);
+    businessQuality = `${companyId} shows a ${moatAdj} economic moat, currently ${moatVerb}. `;
+    businessQuality += `Median RNOA over ${decisive.totalPeriods} periods is ${rnoaTxt}, with the company earning above its cost of capital in ${periodsAboveCoC} years (median spread ${spreadTxt}). `;
+    if (decisive.cap.years != null) {
+      businessQuality += `Competitive advantage period (CAP) estimated at ~${decisive.cap.years} years (${decisive.cap.confidence} confidence). `;
     }
-    if (!moat.dataSufficient && moat.skipReason) {
-      businessQuality += `Note: ${moat.skipReason} `;
-    }
+  } else if (moat) {
+    businessQuality = `Moat width is not classified for ${companyId}: ${moat.skipReason ?? "the scorer marked its own classification unreliable"} `;
+    // The medians stay — they are the evidence a reviewer would want — but as
+    // reported figures rather than as the basis of a width verdict. CAP is
+    // dropped entirely: it is a fade estimate off the same RNOA the scorer just
+    // said is distorted, so it would carry the distortion into a year count.
+    businessQuality += `Median RNOA over ${moat.totalPeriods} periods is ${rnoaTxt} and median spread ${spreadTxt}, above cost of capital in ${periodsAboveCoC} years — reported without a width classification. `;
   } else {
-    businessQuality += `Insufficient periods to assess moat width reliably. `;
+    // `pickWord(null, …)` returns its third word, so this branch used to open
+    // with "shows a thin economic moat" and then say there was not enough data
+    // to assess moat width — a classification drawn from no data at all.
+    businessQuality = `Insufficient periods to assess ${companyId}'s moat width reliably. `;
   }
 
   // ── Capital Allocation paragraph ──
