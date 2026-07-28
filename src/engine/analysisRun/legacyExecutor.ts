@@ -1329,8 +1329,13 @@ export function createLegacyAnalysisRunExecutor(
           valuationTriangulation: commandCenter?.valuationTriangulation ?? null,
           // Null when no valuation ran: the ladder must not read "no tiers
           // reported" as evidence that the inputs were sourced.
+          // equityMode is what lets a manual ke report as an undated prior
+          // rather than as `absent`, which does not fire the gate.
           assumptionProvenance: commandCenter
-            ? buildAssumptionProvenance(commandCenter.costOfCapital.assumptions)
+            ? buildAssumptionProvenance(commandCenter.costOfCapital.assumptions, {
+                equityMode: commandCenter.costOfCapital.equityMode,
+                ke: commandCenter.costOfCapital.ke,
+              })
             : null,
           // Null when no valuation ran: silence about earnings quality must not
           // read as a clean bill of health.

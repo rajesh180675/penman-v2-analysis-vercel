@@ -571,7 +571,11 @@ export function buildAnalysisTraceability(params: {
   // perpetual growth ceiling is a structural judgment nobody publishes as an
   // observation — so a count-based gate would block every run forever and could
   // never be cleared by better sourcing.
-  const KE_INPUT_KEYS = ["risk-free-rate", "beta", "equity-risk-premium"] as const;
+  // `cost-of-equity` is the manual-ke case, where no CAPM term was resolved at
+  // all: the reviewer supplied the rate directly, so there is no rf, beta or ERP
+  // to name. Without it in this list a manual ke would report a prior and the
+  // gate would still pass, which is the bypass this list existed to close.
+  const KE_INPUT_KEYS = ["risk-free-rate", "beta", "equity-risk-premium", "cost-of-equity"] as const;
   const kePriorKeys = assumptionProvenance
     ? KE_INPUT_KEYS.filter((key) => assumptionProvenance.priorTierKeys.includes(key))
     : [];
@@ -593,7 +597,17 @@ export function buildAnalysisTraceability(params: {
         // Lists the ke-input priors only. Joining every prior key would name
         // `terminal-growth-ceiling` as a reason the *cost of equity* is a guess,
         // which it is not — it does not appear in ke at all.
-        detail: `Cost of equity rests on undated priors (${kePriorKeys.join(", ")}); production-ready requires an estimated or dated-source risk-free rate, beta, and equity risk premium. ${assumptionProvenance!.summary}`,
+        //
+        // The remediation branches because manual mode resolves no CAPM term at
+        // all: telling that reviewer to source a risk-free rate, a beta and an
+        // ERP names three inputs the run never had, and points away from the one
+        // thing that would actually clear the gate — deriving ke instead of
+        // typing it.
+        detail: `Cost of equity rests on undated priors (${kePriorKeys.join(", ")}); ${
+          kePriorKeys.includes("cost-of-equity")
+            ? "production-ready requires a cost of equity derived from estimated or dated-source inputs rather than supplied directly."
+            : "production-ready requires an estimated or dated-source risk-free rate, beta, and equity risk premium."
+        } ${assumptionProvenance!.summary}`,
       };
     }
   }

@@ -143,7 +143,13 @@ describe("resolveBeta", () => {
     expect(result.value).not.toBeCloseTo(0.95, 3);
   });
 
-  it("falls back to an explicit beta as sourced when peers are too few", () => {
+  it("uses an explicit beta when peers are too few, but reports it as a prior", () => {
+    // THRESHOLD CHANGE. This used to assert `sourced`, which was wrong on this
+    // module's own definition: `sourced` means a dated third-party value, and
+    // the `asOf: null` two lines down says this is neither. It also switched the
+    // provenance gate off, so typing a beta into config bought production-ready
+    // for a run whose beta nobody observed — a weaker claim than the sector
+    // prior it outranks, yet it cleared a gate the prior blocks.
     const result = resolveBeta({
       companyType: "consumer",
       targetDebtToEquity: 0.5,
@@ -152,8 +158,12 @@ describe("resolveBeta", () => {
       explicitBeta: 0.95,
     });
 
-    expect(result.tier).toBe("sourced");
+    expect(result.tier).toBe("prior");
+    expect(result.asOf).toBeNull();
+    // Still preferred on VALUE over the sector default — a reviewer who names a
+    // beta for this company means it. Only the provenance label changed.
     expect(result.value).toBeCloseTo(0.95, 6);
+    expect(result.fallbackReason).toMatch(/no observation date/);
   });
 
   it("labels the sector default as prior and says why", () => {
@@ -274,15 +284,31 @@ describe("resolveBeta — own-company regressed beta", () => {
     expect(result.fallbackReason).toContain(`needs ${MIN_BOTTOM_UP_PEERS}`);
   });
 
-  it("prefers an explicit scalar over a rejected regression", () => {
+  it("prefers an explicit scalar over a rejected regression, still as a prior", () => {
     const result = resolveBeta({
       companyType: "consumer",
       regressedBeta: { status: "unusable", ticker: "PAYTM", reason: "too noisy" },
       explicitBeta: 1.05,
     });
 
-    expect(result.tier).toBe("sourced");
+    // The precedence is unchanged — the reviewer's number wins over a rejected
+    // regression. Only the tier moved, from `sourced` to `prior`: two undated
+    // numbers, and the gate must not treat one of them as an observation.
     expect(result.value).toBeCloseTo(1.05, 6);
+    expect(result.tier).toBe("prior");
+  });
+
+  it("keeps the explicit-beta prior distinguishable from the sector default", () => {
+    // Both are `prior` now, so the tier alone no longer tells them apart. The
+    // reason has to: a reviewer needs to know whether the number is theirs or a
+    // sector average, since only one of them is actionable.
+    const explicit = resolveBeta({ companyType: "consumer", explicitBeta: 1.05 });
+    const sector = resolveBeta({ companyType: "consumer" });
+
+    expect(explicit.source).toMatch(/[Ee]xplicit beta/);
+    expect(explicit.fallbackReason).toMatch(/supplied directly in the engine configuration/);
+    expect(sector.source).not.toMatch(/[Ee]xplicit beta/);
+    expect(sector.value).not.toBeCloseTo(1.05, 6);
   });
 });
 

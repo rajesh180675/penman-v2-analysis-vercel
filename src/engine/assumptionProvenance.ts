@@ -70,11 +70,50 @@ function toCheck(assumption: TieredAssumption): AssumptionProvenanceCheck {
  *   carried on `CostOfCapitalResult.assumptions`. Pass null/undefined when the
  *   run reported no tiers (manual ke, hand-built policy, or no valuation) — the
  *   result is `absent`, which is deliberately distinct from `defensible`.
+ * @param options pass `equityMode` from `CostOfCapitalResult.equityMode` so a
+ *   manual ke is distinguishable from the other reasons tiers can be missing.
+ *   Omit it and the old behaviour is unchanged.
  */
 export function buildAssumptionProvenance(
   assumptions: CapitalCostAssumptionSet | null | undefined,
+  options?: {
+    readonly equityMode?: "capm" | "manual" | undefined;
+    /** The resolved ke, only used to name the rate in the check's detail. */
+    readonly ke?: number | undefined;
+  },
 ): AssumptionProvenanceSummary {
   if (!assumptions) {
+    // A manual ke reports no tiers, which used to land here as `absent` — and
+    // `absent` does not fire the provenance gate. So the least attributable
+    // input in the system cleared a gate that a sector-prior beta blocks: a
+    // reviewer could type a discount rate and reach production-ready, while the
+    // same run with a measured-but-imprecise beta could not.
+    //
+    // The reviewer's number is still used. It is now reported for what it is: a
+    // rate with no observation date and no third-party attribution, which is the
+    // definition of a prior in this module. `absent` stays reserved for the case
+    // it was written for — no valuation ran, or the policy was hand-built — where
+    // silence really is the absence of a claim rather than an unsourced one.
+    if (options?.equityMode === "manual") {
+      const shown = options.ke != null && Number.isFinite(options.ke) ? pct(options.ke) : "—";
+      const detail = `Cost of equity ${shown} rests on an undated prior (reviewer-supplied manual rate). Manual mode bypasses CAPM entirely, so no risk-free rate, beta or equity risk premium was resolved and none can be attributed.`;
+      return {
+        status: "prior-dependent",
+        summary: `The cost of equity was supplied directly by a reviewer (${shown}); it carries no observation date or third-party attribution, so the discount rate is a judgment, not an observation.`,
+        defensibleCount: 0,
+        priorCount: 1,
+        priorTierKeys: ["cost-of-equity"],
+        checks: [{
+          key: "cost-of-equity",
+          label: "Cost of equity (manual)",
+          tier: "prior",
+          value: options.ke != null && Number.isFinite(options.ke) ? options.ke : null,
+          source: "Reviewer-supplied manual cost of equity",
+          asOf: null,
+          detail,
+        }],
+      };
+    }
     return {
       status: "absent",
       summary: "No tiered capital-cost assumptions were reported for this run, so assumption provenance cannot be assessed.",

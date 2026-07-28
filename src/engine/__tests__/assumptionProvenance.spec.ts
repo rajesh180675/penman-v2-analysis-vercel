@@ -106,6 +106,69 @@ describe("buildAssumptionProvenance", () => {
     expect(summary.priorTierKeys).toEqual(["beta"]);
     expect(summary.summary).toMatch(/3 of 4/);
   });
+
+  it("reports a manual ke as an undated prior, not as absent", () => {
+    // The bypass this closes. A manual ke reports no tiers, which landed here as
+    // `absent` — and `absent` does not fire the provenance gate. So the least
+    // attributable input in the system cleared a gate that a measured-but-
+    // imprecise beta blocks: a reviewer could type a discount rate and reach
+    // production-ready.
+    const summary = buildAssumptionProvenance(undefined, { equityMode: "manual", ke: 0.155 });
+
+    expect(summary.status).toBe("prior-dependent");
+    expect(summary.status).not.toBe("absent");
+    expect(summary.priorTierKeys).toEqual(["cost-of-equity"]);
+    expect(summary.priorCount).toBe(1);
+    expect(summary.defensibleCount).toBe(0);
+
+    const check = summary.checks[0];
+    expect(check?.tier).toBe("prior");
+    // Dateless by nature, which is the whole point — `sourced` in this module
+    // means a dated third-party value.
+    expect(check?.asOf).toBeNull();
+    expect(check?.value).toBeCloseTo(0.155, 6);
+    // Names the rate so a reviewer sees which number is the judgment.
+    expect(check?.detail).toMatch(/15\.50%/);
+    expect(check?.detail).toMatch(/bypasses CAPM/);
+  });
+
+  it("keeps absent for the cases absent was written for", () => {
+    // A hand-built capm policy and a run where no valuation happened both report
+    // no tiers, and there silence really is the absence of a claim rather than an
+    // unsourced one. Only manual mode asserts a rate without attributing it.
+    expect(buildAssumptionProvenance(null).status).toBe("absent");
+    expect(buildAssumptionProvenance(undefined, { equityMode: "capm" }).status).toBe("absent");
+    // No options at all — the pre-existing call shape must not change meaning.
+    expect(buildAssumptionProvenance(undefined).status).toBe("absent");
+  });
+
+  it("survives a manual ke with no resolved rate to name", () => {
+    // The resolver returns the reviewer's number even when it is 0 and fails
+    // closed on it, so this shape is reachable. The block must still report the
+    // provenance rather than crash formatting a missing rate.
+    const summary = buildAssumptionProvenance(undefined, { equityMode: "manual" });
+
+    expect(summary.status).toBe("prior-dependent");
+    expect(summary.checks[0]?.value).toBeNull();
+    expect(summary.checks[0]?.detail).toMatch(/—/);
+  });
+
+  it("reports a reviewer-typed beta as a prior, not as sourced", () => {
+    // The second bypass. `config.beta` used to resolve `sourced`, which switched
+    // the gate off for the whole run: typing any beta bought production-ready.
+    const summary = buildAssumptionProvenance(resolveCapitalCostAssumptions({
+      config: { ...DEFAULT_CONFIG, company_type: "consumer", beta: 1.05 },
+      macroPack: macroPack(),
+      analysisAsOf: ANALYSIS_AS_OF,
+    }));
+
+    const beta = summary.checks.find((check) => check.key === "beta");
+    expect(beta?.tier).toBe("prior");
+    expect(beta?.value).toBeCloseTo(1.05, 6);
+    expect(summary.priorTierKeys).toContain("beta");
+    // The reviewer's beta is still the value used — only its label changed.
+    expect(beta?.detail).toMatch(/undated prior/);
+  });
 });
 
 /* ── the gate ─────────────────────────────────────────────────────────────── */
@@ -314,5 +377,58 @@ describe("assumption-provenance rigor gate", () => {
 
     expect(env.assumptionProvenance?.status).toBe("absent");
     expect(env.rigor.achievedLevels).toContain("production-ready");
+  });
+
+  it("denies production-ready for a reviewer-typed manual ke", () => {
+    // The gate's whole subject is whether the discount rate was observed. A
+    // manual ke is the case where it demonstrably was not — and it used to be
+    // the one case that sailed through, because reporting no tiers read as
+    // `absent` rather than as an unsourced claim.
+    const env = envelope(buildAssumptionProvenance(undefined, { equityMode: "manual", ke: 0.155 }));
+
+    expect(env.rigor.achievedLevels).not.toContain("production-ready");
+    const checkpoint = env.rigor.checkpoints.find((item) => item.level === "production-ready");
+    expect(checkpoint?.achieved).toBe(false);
+    expect(checkpoint?.detail).toMatch(/cost-of-equity/);
+    // The detail must not claim rf, beta or the ERP are the problem: manual mode
+    // resolved none of them, so naming them would be false — and the remediation
+    // would point at three inputs the reviewer cannot supply from here.
+    //
+    // Matched in prose as well as in key form. The hyphenated spellings alone
+    // only guard the joined key list; the requirement sentence spells the same
+    // terms with spaces, so a key-only assertion passes while the sentence still
+    // names them. That is exactly the hole this shipped with.
+    expect(checkpoint?.detail).not.toMatch(/risk-free/i);
+    expect(checkpoint?.detail).not.toMatch(/equity[- ]risk[- ]premium/i);
+    expect(checkpoint?.detail).not.toMatch(/beta/i);
+    // And it must say what would clear the gate: deriving the rate, not sourcing
+    // CAPM terms that were never resolved.
+    expect(checkpoint?.detail).toMatch(/supplied directly/);
+  });
+
+  it("leaves a manual-ke run valuation-eligible", () => {
+    // Same principle as every other case here: withhold the release claim, keep
+    // the analysis. A reviewer-supplied discount rate is a legitimate research
+    // choice — it just is not an observation.
+    const env = envelope(buildAssumptionProvenance(undefined, { equityMode: "manual", ke: 0.155 }));
+
+    expect(env.rigor.achievedLevels).toContain("valuation-eligible");
+    expect(env.rigor.currentLevel).toBe("valuation-eligible");
+  });
+
+  it("denies production-ready when beta was typed into config", () => {
+    // Reachable from the UI: ConfigSection writes `config.beta`. This used to
+    // resolve `sourced` and switch the gate off for the entire run, so a typed
+    // beta was worth more to the ladder than a regressed one.
+    const env = envelope(buildAssumptionProvenance(resolveCapitalCostAssumptions({
+      config: { ...DEFAULT_CONFIG, company_type: "consumer", beta: 1.05 },
+      macroPack: macroPack(),
+      analysisAsOf: ANALYSIS_AS_OF,
+    })));
+
+    expect(env.rigor.achievedLevels).not.toContain("production-ready");
+    expect(env.rigor.achievedLevels).toContain("valuation-eligible");
+    const checkpoint = env.rigor.checkpoints.find((item) => item.level === "production-ready");
+    expect(checkpoint?.detail).toMatch(/beta/);
   });
 });
