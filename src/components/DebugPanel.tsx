@@ -17,6 +17,7 @@ import { TraceabilityPanel, type TraceRecord } from "./debug/TraceabilityPanel";
 import { GranularityChecklistPanel } from "./debug/GranularityChecklistPanel";
 import { RecastVerificationPanel } from "./debug/RecastVerificationPanel";
 import { MetricSearchPanel, SEARCH_ROWS_SHOWN } from "./debug/MetricSearchPanel";
+import { searchableBaseKeys } from "./debug/searchableKeys";
 import { RawGridDumps } from "./debug/RawGridDumps";
 import { RawKeysGrid } from "./debug/RawKeysGrid";
 import { TraceLogViewer } from "./debug/TraceLogViewer";
@@ -259,6 +260,13 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
     downloadTextFile("traceability_appendix.csv", csv, "text/csv;charset=utf-8");
   };
 
+  // Every base key in any period, not just the oldest one the parser sampled.
+  // See `debug/searchableKeys.ts` for what that cost and why it is a union.
+  const searchableKeys = useMemo(
+    () => searchableBaseKeys(rawData, debugInfo),
+    [rawData, debugInfo],
+  );
+
   // Metric search — find a key across all periods and show its values.
   // The match count travels with the rows: a bare `slice` left the panel
   // showing thirty rows for a query that hit 489 keys (measured on Reliance,
@@ -267,13 +275,10 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
     if (!debugInfo || !metricSearch.trim() || metricSearch.length < 2) return null;
     const q = metricSearch.toLowerCase();
 
-    // Search in rawMetricKeys
-    const matches = debugInfo.rawMetricKeys.filter((k) =>
-      k.toLowerCase().includes(q)
-    );
+    const matches = searchableKeys.filter((k) => k.toLowerCase().includes(q));
 
     return { shown: matches.slice(0, SEARCH_ROWS_SHOWN), total: matches.length };
-  }, [debugInfo, metricSearch]);
+  }, [debugInfo, metricSearch, searchableKeys]);
 
   if (!debugInfo) {
     return (

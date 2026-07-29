@@ -281,8 +281,11 @@ describe("DebugPanel panel rendering (SSR safety net)", () => {
     expect(html).toContain("e.g. Finance Cost");
   });
 
-  it("renders the raw base-metric-keys grid", () => {
-    expect(html).toContain("All Base Metric Keys");
+  it("renders the raw base-metric-keys grid, scoped to the period it shows", () => {
+    // The title used to read "All Base Metric Keys in Period 1". The list is
+    // `rawMetricKeys`, built from the oldest period only, and "Period 1" read as
+    // the latest year on a panel that is newest-first everywhere else.
+    expect(html).toContain("Base Metric Keys in 2024-03, oldest of 2 periods");
     expect(html).toContain("Show all keys");
   });
 
