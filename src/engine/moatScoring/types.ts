@@ -42,6 +42,15 @@ export interface MoatScoreResult {
   periodsAboveCostOfCapital: number;
   /** Number of periods with SPREAD > 5% */
   periodsWithStrongSpread: number;
+  /**
+   * Periods carrying a finite SPREAD — the population both counts above are
+   * drawn from, and always smaller than `totalPeriods`: the pipeline computes
+   * ratios only from the second period onward (pipeline.ts:285), so the oldest
+   * period never has one. Reported separately because
+   * `periodsAboveCostOfCapital / totalPeriods` reads as periods that failed to
+   * clear kw when some of them were never measured.
+   */
+  spreadMeasuredPeriods: number;
   /** Total periods analyzed */
   totalPeriods: number;
   /** Median RNOA across history */

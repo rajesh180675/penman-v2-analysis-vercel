@@ -94,11 +94,33 @@ export default function MoatPanel({ moat, title = "Economic Moat" }: Props) {
             <div className="text-sm font-bold text-slate-900 dark:text-slate-100">{(moat.medianSPREAD * 100).toFixed(1)}%</div>
           </div>
         )}
+        {/* Denominator is the periods that carry a SPREAD, not every period
+            analysed. Both counts come from `spreadValues`
+            (moatScoring/industrial.ts:85-90), which is always shorter than
+            `sorted`: the pipeline computes ratios from i > 0 only
+            (pipeline.ts:285), and SPREAD is null whenever |avgNFO| <= 1
+            (ratiosResidual.ts:32-33) — i.e. for debt-free companies. Dividing
+            by `totalPeriods` counted unmeasured periods as periods that failed
+            to clear kw. */}
         <div className="rounded-lg bg-white/70 dark:bg-slate-800/50 p-2">
           <div className="text-[10px] uppercase tracking-wide text-slate-500">Periods &gt; kw</div>
-          <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
-            {moat.periodsAboveCostOfCapital}/{moat.totalPeriods}
-          </div>
+          {moat.spreadMeasuredPeriods === 0 ? (
+            <>
+              <div className="text-sm font-bold text-slate-900 dark:text-slate-100">—</div>
+              <div className="text-[10px] text-slate-500">
+                No SPREAD in {moat.totalPeriods} periods
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                {moat.periodsAboveCostOfCapital}/{moat.spreadMeasuredPeriods}
+              </div>
+              <div className="text-[10px] text-slate-500">
+                with SPREAD · {moat.totalPeriods} analysed
+              </div>
+            </>
+          )}
         </div>
         <div className="rounded-lg bg-white/70 dark:bg-slate-800/50 p-2">
           <div className="text-[10px] uppercase tracking-wide text-slate-500">CAP (years)</div>

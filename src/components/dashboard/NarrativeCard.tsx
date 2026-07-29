@@ -46,13 +46,22 @@ function generateNarrative(props: Props): { businessQuality: string; capitalAllo
                    decisive?.moatTrend === "eroding" ? "eroding" : "stable";
   const rnoaTxt = moat?.medianRNOA != null ? `${(moat.medianRNOA * 100).toFixed(1)}%` : "—";
   const spreadTxt = moat?.medianSPREAD != null ? `${(moat.medianSPREAD * 100).toFixed(1)}%` : "—";
-  const periodsAboveCoC = moat ? `${moat.periodsAboveCostOfCapital} of ${moat.totalPeriods}` : "—";
+  // "X of Y years" put two bases side by side: `periodsAboveCostOfCapital` is
+  // counted over `spreadValues` (moatScoring/industrial.ts:85-90) while
+  // `totalPeriods` is every period analysed, so the difference read as years the
+  // company failed to clear kw when some of them had no SPREAD to compare. The
+  // oldest period never does — `pipeline.ts:285` computes ratios from i > 0 — and
+  // neither does any period of an effectively debt-free company, since SPREAD is
+  // null when |avgNFO| <= 1 (ratiosResidual.ts:32-33).
+  const cocClause = moat && moat.spreadMeasuredPeriods > 0
+    ? `, with the company earning above its cost of capital in ${moat.periodsAboveCostOfCapital} of ${moat.spreadMeasuredPeriods} years carrying a computable spread (median spread ${spreadTxt})`
+    : ", though no year carried a computable spread to measure against cost of capital";
 
   let businessQuality: string;
   if (decisive) {
     const moatAdj = pickWord(decisive.compositeScore, ["wide and durable", "narrow but real", "thin", "essentially absent"]);
     businessQuality = `${companyId} shows a ${moatAdj} economic moat, currently ${moatVerb}. `;
-    businessQuality += `Median RNOA over ${decisive.totalPeriods} periods is ${rnoaTxt}, with the company earning above its cost of capital in ${periodsAboveCoC} years (median spread ${spreadTxt}). `;
+    businessQuality += `Median RNOA over ${decisive.totalPeriods} periods is ${rnoaTxt}${cocClause}. `;
     if (decisive.cap.years != null) {
       businessQuality += `Competitive advantage period (CAP) estimated at ~${decisive.cap.years} years (${decisive.cap.confidence} confidence). `;
     }
@@ -62,7 +71,10 @@ function generateNarrative(props: Props): { businessQuality: string; capitalAllo
     // reported figures rather than as the basis of a width verdict. CAP is
     // dropped entirely: it is a fade estimate off the same RNOA the scorer just
     // said is distorted, so it would carry the distortion into a year count.
-    businessQuality += `Median RNOA over ${moat.totalPeriods} periods is ${rnoaTxt} and median spread ${spreadTxt}, above cost of capital in ${periodsAboveCoC} years — reported without a width classification. `;
+    const cocFragment = moat.spreadMeasuredPeriods > 0
+      ? `above cost of capital in ${moat.periodsAboveCostOfCapital} of ${moat.spreadMeasuredPeriods} years carrying a computable spread`
+      : "with no year carrying a computable spread";
+    businessQuality += `Median RNOA over ${moat.totalPeriods} periods is ${rnoaTxt} and median spread ${spreadTxt}, ${cocFragment} — reported without a width classification. `;
   } else {
     // `pickWord(null, …)` returns its third word, so this branch used to open
     // with "shows a thin economic moat" and then say there was not enough data

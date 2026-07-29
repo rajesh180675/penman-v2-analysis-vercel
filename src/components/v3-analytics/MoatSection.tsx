@@ -37,7 +37,11 @@ export function MoatSection({ moat }: { moat: MoatScoreResult | null }) {
         <MetricCard
           label="Moat Trend"
           value={moat.moatTrend.replace("-", " ")}
-          badge={`${moat.periodsAboveCostOfCapital}/${moat.totalPeriods} periods above kw`}
+          badge={
+            moat.spreadMeasuredPeriods === 0
+              ? `no SPREAD in ${moat.totalPeriods} periods`
+              : `${moat.periodsAboveCostOfCapital}/${moat.spreadMeasuredPeriods} SPREAD periods above kw`
+          }
           color={TREND_COLORS[moat.moatTrend] + " bg-slate-50"}
         />
         <MetricCard
@@ -60,7 +64,14 @@ export function MoatSection({ moat }: { moat: MoatScoreResult | null }) {
         <InfoRow label="AR(1) phi" value={moat.cap.phi != null ? moat.cap.phi.toFixed(3) : "—"} />
         <InfoRow label="Latest RNOA" value={moat.cap.latestRNOA != null ? pct(moat.cap.latestRNOA) : "—"} />
         <InfoRow label="Fade target (kw)" value={pct(moat.cap.kw)} />
-        <InfoRow label="Strong SPREAD periods (>5%)" value={`${moat.periodsWithStrongSpread} / ${moat.totalPeriods}`} />
+        <InfoRow
+          label="Strong SPREAD periods (>5%)"
+          value={
+            moat.spreadMeasuredPeriods === 0
+              ? `— (no SPREAD in ${moat.totalPeriods} periods)`
+              : `${moat.periodsWithStrongSpread} / ${moat.spreadMeasuredPeriods} with SPREAD`
+          }
+        />
       </InfoBlock>
 
       {/* Dimension breakdown */}
