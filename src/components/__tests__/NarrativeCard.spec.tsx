@@ -65,6 +65,7 @@ function mkCapAlloc(dataSufficient: boolean): CapAllocScoreResult {
     medianFCFConversion: 0.91,
     medianIncrementalROIC: 0.27,
     buybacksValueAccretive: 2,
+    buybackPeriods: 3,
     dilutiveIssuances: 0,
     totalPeriods: 10,
     trend: "improving",

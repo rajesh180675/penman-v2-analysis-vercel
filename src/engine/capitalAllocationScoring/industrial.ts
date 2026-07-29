@@ -87,7 +87,12 @@ function scoreDividendConsistency(
  */
 function scoreBuybackQuality(
   periods: RecastPeriod[],
-): { dimension: CapAllocDimension; buybacksValueAccretive: number; dilutiveIssuances: number } {
+): {
+  dimension: CapAllocDimension;
+  buybacksValueAccretive: number;
+  buybackPeriods: number;
+  dilutiveIssuances: number;
+} {
   const rawValues: Array<{ period: string; value: number | null }> = [];
   const evidence: string[] = [];
   let buybacksValueAccretive = 0;
@@ -168,6 +173,7 @@ function scoreBuybackQuality(
       rawValues,
     },
     buybacksValueAccretive,
+    buybackPeriods: totalBuybackPeriods,
     dilutiveIssuances,
   };
 }
@@ -440,7 +446,7 @@ export function scoreCapitalAllocation(
   const divDim = scoreDividendConsistency(periods);
 
   // Dimension 2: Buyback Quality
-  const { dimension: buyDim, buybacksValueAccretive, dilutiveIssuances } =
+  const { dimension: buyDim, buybacksValueAccretive, buybackPeriods, dilutiveIssuances } =
     scoreBuybackQuality(periods);
 
   // Dimension 3: Reinvestment ROIC
@@ -483,6 +489,7 @@ export function scoreCapitalAllocation(
     medianFCFConversion,
     medianIncrementalROIC,
     buybacksValueAccretive,
+    buybackPeriods,
     dilutiveIssuances,
     totalPeriods: periods.length,
     trend,

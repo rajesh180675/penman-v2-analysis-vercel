@@ -201,6 +201,35 @@ describe("scoreCapitalAllocation", () => {
     );
     const result = scoreCapitalAllocation(periods, makeConfig());
     expect(result.buybacksValueAccretive).toBe(6);
+    // Every period bought back here, so the two denominators coincide — which is
+    // exactly why this case could not have caught the panel's bug.
+    expect(result.buybackPeriods).toBe(6);
+    expect(result.totalPeriods).toBe(6);
+  });
+
+  it("counts buyback periods apart from every period analysed", () => {
+    // Two accretive buybacks, one value-destroying, five quiet years. Issuance
+    // stays 0 so the dilutive test (`issuance > buyback * 1.1`) cannot fire and
+    // confuse the buyback tally.
+    const periods = [
+      makePeriod("2016-03-31", { buyback: 30, spread: 0.08 }),
+      makePeriod("2017-03-31", { buyback: 30, spread: 0.08 }),
+      makePeriod("2018-03-31", { buyback: 30, spread: -0.04 }),
+      ...Array.from({ length: 5 }, (_, i) =>
+        makePeriod(`${2019 + i}-03-31`, { buyback: 0, spread: 0.05 }),
+      ),
+    ];
+    const result = scoreCapitalAllocation(periods, makeConfig());
+    expect(result.buybacksValueAccretive).toBe(2);
+    expect(result.buybackPeriods).toBe(3);
+    expect(result.totalPeriods).toBe(8);
+  });
+
+  it("reports no buyback periods for a company that never bought back", () => {
+    const result = scoreCapitalAllocation(makeSeries(6), makeConfig());
+    expect(result.buybackPeriods).toBe(0);
+    expect(result.buybacksValueAccretive).toBe(0);
+    expect(result.totalPeriods).toBe(6);
   });
 
   it("detects dilutive issuances", () => {
