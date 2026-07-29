@@ -88,6 +88,14 @@ export function computeMoatScore(
 
   const periodsAboveCostOfCapital = spreadValues.filter(v => v > 0).length;
   const periodsWithStrongSpread   = spreadValues.filter(v => v > 0.05).length;
+  // Reported so the surfaces can divide by the population these two counts were
+  // actually drawn from. `spreadValues` drops periods without a finite SPREAD.
+  // For pipeline-produced input that is at least the oldest period —
+  // `pipeline.ts:285` computes ratios only from i > 0 — and SPREAD is null
+  // whenever |avgNFO| <= 1 (ratiosResidual.ts:32-33), i.e. for effectively
+  // debt-free companies, where the gap widens to every period. A caller that
+  // stamps ratios on every period gets `spreadValues.length === sorted.length`.
+  const spreadMeasuredPeriods = spreadValues.length;
   const totalPeriods = sorted.length;
 
   // ── RNOA series for CAP ──────────────────────────────────────────────────
@@ -150,6 +158,7 @@ export function computeMoatScore(
     cap,
     periodsAboveCostOfCapital,
     periodsWithStrongSpread,
+    spreadMeasuredPeriods,
     totalPeriods,
     medianRNOA,
     medianSPREAD,

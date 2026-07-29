@@ -21,6 +21,7 @@ function mkMoat(dataSufficient: boolean): MoatScoreResult {
     cap: { years: 8, phi: 0.8, latestRNOA: 0.42, kw: 0.11, confidence: "medium", method: "ar1-fade" },
     periodsAboveCostOfCapital: 10,
     periodsWithStrongSpread: 9,
+    spreadMeasuredPeriods: 10,
     totalPeriods: 10,
     medianRNOA: 0.42,
     medianSPREAD: 0.31,

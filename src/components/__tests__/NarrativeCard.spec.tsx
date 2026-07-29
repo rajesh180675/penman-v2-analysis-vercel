@@ -28,14 +28,18 @@ const SKIP_REASON =
   "IT-services company — RNOA is structurally inflated (tiny NOA denominator). "
   + "Moat width classification unreliable.";
 
-function mkMoat(dataSufficient: boolean): MoatScoreResult {
+function mkMoat(dataSufficient: boolean, overrides: Partial<MoatScoreResult> = {}): MoatScoreResult {
   return {
     compositeScore: 82,
     moatWidth: "wide",
     dimensions: [],
     cap: { years: 8, phi: 0.8, latestRNOA: 0.42, kw: 0.11, confidence: "medium", method: "ar1-fade" },
-    periodsAboveCostOfCapital: 10,
-    periodsWithStrongSpread: 9,
+    // Three distinct counts: 7 above kw, of 9 periods carrying a SPREAD, over
+    // 10 analysed. They must differ or the cost-of-capital clause below cannot
+    // tell the two denominators apart.
+    periodsAboveCostOfCapital: 7,
+    periodsWithStrongSpread: 5,
+    spreadMeasuredPeriods: 9,
     totalPeriods: 10,
     medianRNOA: 0.42,
     medianSPREAD: 0.31,
@@ -45,6 +49,7 @@ function mkMoat(dataSufficient: boolean): MoatScoreResult {
     dataSufficient,
     skipReason: dataSufficient ? null : SKIP_REASON,
     positiveRNOAPeriods: 10,
+    ...overrides,
   };
 }
 
@@ -118,6 +123,38 @@ describe("NarrativeCard moat prose", () => {
     const html = render(mkMoat(false));
     expect(html).toContain("42.0%");
     expect(html).toContain("without a width classification");
+  });
+
+  it("counts years above cost of capital against the years that had a spread", () => {
+    // "7 of 10 years" put two populations side by side:
+    // `periodsAboveCostOfCapital` is counted over periods with a finite SPREAD
+    // (moatScoring/industrial.ts:85-90) while `totalPeriods` is every period
+    // analysed, so the three-year gap read as three years the company failed to
+    // clear kw when they were never measured against it.
+    const html = render(mkMoat(true));
+    expect(html).toContain("7 of 9 years carrying a computable spread");
+    expect(html).not.toContain("7 of 10");
+  });
+
+  it("says no year was measurable rather than reporting 0 of 10", () => {
+    // A debt-free company: SPREAD is null in every period
+    // (ratiosResidual.ts:32-33), so there is no denominator to divide by.
+    const html = render(mkMoat(true, {
+      periodsAboveCostOfCapital: 0,
+      periodsWithStrongSpread: 0,
+      spreadMeasuredPeriods: 0,
+    }));
+    expect(html).toContain("no year carried a computable spread");
+    expect(html).not.toContain("0 of 0");
+    expect(html).not.toContain("0 of 10");
+  });
+
+  it("keeps the same denominator in the disowned-score paragraph", () => {
+    // The `else if (moat)` branch reports the medians as evidence without a
+    // verdict — it carries the same clause and had the same mismatch.
+    const html = render(mkMoat(false));
+    expect(html).toContain("7 of 9 years carrying a computable spread");
+    expect(html).not.toContain("7 of 10");
   });
 
   it("does not call the moat thin when there is no moat result at all", () => {

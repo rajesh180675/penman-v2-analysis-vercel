@@ -145,6 +145,12 @@ describe("computeMoatScore — wide moat company", () => {
   it("all periods above cost of capital", () => {
     const result = computeMoatScore(WIDE_MOAT_PERIODS, BASE_CONFIG)!;
     expect(result.periodsAboveCostOfCapital).toBe(WIDE_MOAT_PERIODS.length);
+    // This fixture stamps a SPREAD on every period, so all three counts
+    // coincide — which is why a case named for this behaviour could not catch
+    // the surfaces dividing by `totalPeriods`. Real pipeline output never has
+    // them coincide; see the `spreadMeasuredPeriods` block below.
+    expect(result.spreadMeasuredPeriods).toBe(WIDE_MOAT_PERIODS.length);
+    expect(result.totalPeriods).toBe(WIDE_MOAT_PERIODS.length);
   });
 
   it("median RNOA is ~0.30", () => {
@@ -209,6 +215,60 @@ describe("computeMoatScore — no moat company", () => {
     if (result.cap.latestRNOA != null && result.cap.latestRNOA <= result.cap.kw) {
       expect(result.cap.years).toBe(0);
     }
+  });
+});
+
+describe("computeMoatScore — SPREAD-bearing periods vs periods analysed", () => {
+  // The counts the surfaces render as a ratio come from different populations:
+  // `periodsAboveCostOfCapital` and `periodsWithStrongSpread` are counted over
+  // periods with a finite SPREAD, while `totalPeriods` is every period passed
+  // in. `spreadMeasuredPeriods` is the population the first two are drawn from,
+  // so a surface can divide by it instead of overstating the shortfall.
+
+  it("excludes a period the pipeline gave no ratios from the SPREAD population", () => {
+    // `pipeline.ts:285` computes ratios only from i > 0, so the oldest period
+    // of every real run arrives without any — the one-period gap the surfaces
+    // used to report as a year below cost of capital.
+    const withoutOldestRatios = WIDE_MOAT_PERIODS.map((p, i) =>
+      i === 0 ? { ...p, ratios: undefined } as unknown as RecastPeriod : p,
+    );
+    const result = computeMoatScore(withoutOldestRatios, BASE_CONFIG)!;
+    expect(result.totalPeriods).toBe(7);
+    expect(result.spreadMeasuredPeriods).toBe(6);
+    expect(result.periodsAboveCostOfCapital).toBe(6);
+  });
+
+  it("reports zero measured periods for a company whose SPREAD is never computable", () => {
+    // SPREAD is null whenever |avgNFO| <= 1 (ratiosResidual.ts:32-33) — an
+    // effectively debt-free company. Every period is analysed and none is
+    // measured, so the ratio has no denominator at all.
+    const noSpread = WIDE_MOAT_PERIODS.map(p => ({
+      ...p,
+      ratios: { ...p.ratios, SPREAD: null } as unknown as RecastPeriod["ratios"],
+    }));
+    const result = computeMoatScore(noSpread, BASE_CONFIG)!;
+    expect(result.totalPeriods).toBe(7);
+    expect(result.spreadMeasuredPeriods).toBe(0);
+    expect(result.periodsAboveCostOfCapital).toBe(0);
+    expect(result.periodsWithStrongSpread).toBe(0);
+    expect(result.medianSPREAD).toBeNull();
+  });
+
+  it("counts a measured period that failed to clear kw in the denominator only", () => {
+    // The denominator has to be the measurable population, not the qualifying
+    // one. Every period here carries a SPREAD and none of them is positive, so
+    // this is the one shape that tells `spreadValues.length` apart from
+    // `periodsAboveCostOfCapital` — the weak inequalities below hold either way.
+    const result = computeMoatScore(NO_MOAT_PERIODS, BASE_CONFIG)!;
+    expect(result.spreadMeasuredPeriods).toBe(NO_MOAT_PERIODS.length);
+    expect(result.periodsAboveCostOfCapital).toBe(0);
+  });
+
+  it("never reports more measured periods than periods analysed", () => {
+    const result = computeMoatScore(NO_MOAT_PERIODS, BASE_CONFIG)!;
+    expect(result.spreadMeasuredPeriods).toBeLessThanOrEqual(result.totalPeriods);
+    expect(result.periodsAboveCostOfCapital).toBeLessThanOrEqual(result.spreadMeasuredPeriods);
+    expect(result.periodsWithStrongSpread).toBeLessThanOrEqual(result.spreadMeasuredPeriods);
   });
 });
 
