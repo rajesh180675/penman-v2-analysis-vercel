@@ -145,10 +145,13 @@ describe("StatementLineagePanel restatement candidates", () => {
       },
     ]);
     const html = render(lineage);
+    expect(lineage.restatementCandidates).toHaveLength(1);
     expect(lineage.restatementCandidates[0]).toContain("2025-03-31");
     expect(html).toContain("Restatement candidates (1)");
-    // Both the candidate line and the filing row it refers to.
-    expect(html).toContain("2025-03-31");
+    // The filing row, matched on its own markup rather than on the date alone —
+    // the candidate line contains the same date, so a bare substring check would
+    // pass even with the row missing, which is exactly the bug.
+    expect(html).toContain(">2025-03-31</div>");
   });
 
   it("keeps its empty-state copy when nothing was flagged", () => {
