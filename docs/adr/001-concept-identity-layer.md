@@ -51,6 +51,7 @@ The registry sanitizer (`src/lib/companyRegistrySnapshot.ts`) rejects any envelo
 
 ### Neutral
 - Existing call sites of `summarizeConceptCoverage` and `rankUnmappedLabels` are unchanged; the new fields are additive.
+  - 2026-07-29: `rankUnmappedLabels` was later replaced by `summarizeUnmappedLabels` for reasons unrelated to this ADR — its sole caller read `.length` off a list the function had already truncated. The statement above remains an accurate description of what this ADR changed.
 
 ## Alternatives Considered
 

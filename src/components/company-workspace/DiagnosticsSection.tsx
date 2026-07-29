@@ -48,8 +48,8 @@ export default function DiagnosticsSection({
           <MetricCard label="Core matched" value={`${conceptCoverage.coreMatchedCount}/${conceptCoverage.coreTotalCount}`} />
           {/* Was `label="Top unmapped"` over `rankUnmappedLabels(rawData, 8).length`
               — a value capped at 8 by its own limit argument, so it printed 8 for
-              every company in the registry while the truth ranged 221 to 1,698.
-              "Top" also promised a list nothing rendered. */}
+              all 33 bundled companies while the counts ran 216 to 2,334. "Top"
+              also promised a list nothing rendered. */}
           <MetricCard label="Unmapped labels" value={unmappedLabelsMetric(summarizeUnmappedLabels(rawData))} />
         </div>
         <div className="mt-4 space-y-2 text-sm text-slate-700">
