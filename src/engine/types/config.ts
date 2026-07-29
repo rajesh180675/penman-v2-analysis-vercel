@@ -406,7 +406,8 @@ export interface ConfigValidationWarning {
  *
  * Common mistakes caught:
  *   - ke entered as percentage (e.g. 13 instead of 0.13)
- *   - terminal_growth_rate > ke (Gordon model blows up)
+ *   - terminal_growth_rate ≥ ke, when that field is set (see the check below for
+ *     why an unset field is not judged against a default)
  *   - negative shares_outstanding or market_price
  *   - statutory_tax_rate outside [0, 0.5]
  *   - risk_free_rate or equity_risk_premium entered as percentage
@@ -453,22 +454,51 @@ export function validateEngineConfig(cfg: EngineConfig): ConfigValidationWarning
     });
   }
 
-  // terminal_growth_rate must be < ke (Gordon model denominator must be positive).
-  const g = cfg.terminal_growth_rate ?? 0.05;
-  if (g >= ke) {
-    warnings.push({
-      field: "terminal_growth_rate",
-      value: g,
-      severity: "error",
-      message: `terminal_growth_rate (${(g * 100).toFixed(1)}%) ≥ ke (${(ke * 100).toFixed(1)}%). Gordon Growth model denominator (ke − g) would be ≤ 0 — valuation will blow up.`,
-    });
-  } else if (g > 0.10) {
-    warnings.push({
-      field: "terminal_growth_rate",
-      value: g,
-      severity: "warning",
-      message: `terminal_growth_rate = ${(g * 100).toFixed(1)}% exceeds India's long-run nominal GDP growth proxy (~7%). Consider using ≤ 7%.`,
-    });
+  // terminal_growth_rate must be < ke (Gordon model denominator must be positive)
+  // — but only when the field is actually set.
+  //
+  // This read `cfg.terminal_growth_rate ?? 0.05`, and nothing in the app writes
+  // that field: no UI control, absent from DEFAULT_CONFIG, absent from every
+  // company data file. So the check compared a hardcoded 5% against ke on every
+  // config. A reviewer who typed a low risk-free rate (rf = 0 with the consumer
+  // beta resolves ke = 4.2%) got an error naming a terminal growth they never
+  // entered — and on the AnalysisRun path that error becomes a run blocker,
+  // because `analysisRun/legacyExecutor.ts:359` maps a config "error" to a
+  // diagnostic "blocker" and any blocker is terminal.
+  //
+  // The field has exactly one production consumer: `computeBankValuation`, which
+  // reads it unclamped and divides by (ke − g). So when it IS set this check is
+  // real, and it stays. When it is unset the bank models apply their own
+  // documented default and skip each model with a reason if (ke − g) falls below
+  // their guardrail, so the validator does not need to invent a value to judge.
+  //
+  // The industrial paths are deliberately not validated here. Both the command
+  // center's `g_terminal_override` and the Valuation tab's own g are clamped to
+  // the sector template before any model sees them, so a config-time comparison
+  // would judge a number the run does not use; the breach that survives clamping
+  // is caught by `computeValuation`'s Gordon guard, which nulls the continuing
+  // value and names the spread it refused.
+  const g = cfg.terminal_growth_rate;
+  if (g != null) {
+    if (g >= ke) {
+      warnings.push({
+        field: "terminal_growth_rate",
+        value: g,
+        severity: "error",
+        // Not "valuation will blow up": the three Gordon-based bank models guard
+        // on MIN_KE_MINUS_G and return `skipped(...)`, so the arithmetic never
+        // runs. Describing a blow-up would describe a computation that is
+        // already prevented.
+        message: `terminal_growth_rate (${(g * 100).toFixed(1)}%) ≥ ke (${(ke * 100).toFixed(1)}%). The Gordon denominator (ke − g) is ≤ 0, so every Gordon-based model will decline to value this company.`,
+      });
+    } else if (g > 0.10) {
+      warnings.push({
+        field: "terminal_growth_rate",
+        value: g,
+        severity: "warning",
+        message: `terminal_growth_rate = ${(g * 100).toFixed(1)}% exceeds India's long-run nominal GDP growth proxy (~7%). Consider using ≤ 7%.`,
+      });
+    }
   }
 
   // statutory_tax_rate: valid range 0.10–0.40.
