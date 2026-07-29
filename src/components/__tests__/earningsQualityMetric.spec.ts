@@ -69,24 +69,35 @@ describe("earningsQualityMetric", () => {
     expect(context).toBe("No dimension had inputs");
   });
 
-  it("distinguishes nothing measured from nothing attempted", () => {
+  it("distinguishes no scorecard from a scorecard with nothing to score", () => {
     // Both render an em dash, so the reason has to be legible in the context
-    // line: a structural-only run has no scorecard at all, which is a different
-    // thing from a scorecard that found no inputs.
-    const noRun = earningsQualityMetric(buildEarningsQualitySummary(null));
+    // line: no scorecard was built at all is a different fact from a scorecard
+    // that ran and found no inputs, and it sends the reviewer somewhere else.
+    const noCard = earningsQualityMetric(buildEarningsQualitySummary(null));
 
-    expect(noRun.value).toBeNull();
-    expect(noRun.context).toBe("No valuation ran");
-    expect(noRun.context).not.toBe(
+    expect(noCard.value).toBeNull();
+    expect(noCard.context).toBe("No scorecard for this run");
+    expect(noCard.context).not.toBe(
       earningsQualityMetric(buildEarningsQualitySummary(mkCard(0, 51))).context,
     );
   });
 
-  it("treats a missing envelope field like a run that never valued", () => {
+  it("treats a missing envelope field like a run with no scorecard", () => {
     // `earningsQuality` is optional on the envelope and absent on persisted
     // envelopes written before schema v22, so both null and undefined arrive here.
-    expect(earningsQualityMetric(null)).toEqual({ value: null, context: "No valuation ran" });
-    expect(earningsQualityMetric(undefined)).toEqual({ value: null, context: "No valuation ran" });
+    const absent = { value: null, context: "No scorecard for this run" };
+    expect(earningsQualityMetric(null)).toEqual(absent);
+    expect(earningsQualityMetric(undefined)).toEqual(absent);
+  });
+
+  it("does not claim the run never valued, which it cannot know", () => {
+    // `DashboardView` builds its own command center and prints an intrinsic value
+    // from it; this signal comes from the one in `useAuditAnalysis`, which is
+    // wrapped in try/catch. "No valuation ran" beside a displayed valuation would
+    // be the same kind of false sentence the tile is being fixed for.
+    for (const summary of [null, buildEarningsQualitySummary(null), buildEarningsQualitySummary(mkCard(0, 51))]) {
+      expect(earningsQualityMetric(summary).context).not.toContain("valuation");
+    }
   });
 
   it("rounds rather than printing a composite with a decimal point", () => {

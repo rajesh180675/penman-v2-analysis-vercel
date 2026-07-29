@@ -177,21 +177,31 @@ describe("DashboardView — the Earnings Quality tile", () => {
     expect(eq).toContain("No dimension had inputs");
   });
 
-  it("says a valuation never ran rather than reporting no inputs", async () => {
-    // A structural-only envelope: the rungs below valuation clear without one, so
-    // this state is reachable, and it is a different fact from a scorecard that
-    // ran and found nothing — one sends the reviewer to the run, the other to the
-    // statements.
+  it("says no scorecard was built rather than reporting no inputs", async () => {
+    // A structural-only envelope: the rungs below valuation clear without a
+    // scorecard, so this state is reachable, and it is a different fact from a
+    // scorecard that ran and found nothing — one sends the reviewer to the run,
+    // the other to the statements.
     const eq = tileText(await mountOpen(mkTraceability(null)), "Earnings Quality");
 
-    expect(eq).toContain("No valuation ran");
+    expect(eq).toContain("No scorecard for this run");
     expect(eq).not.toContain(`${FIDELITY}`);
   });
 
   it("renders the tile with no envelope at all, and claims nothing", async () => {
     const eq = tileText(await mountOpen(null), "Earnings Quality");
 
-    expect(eq).toContain("No valuation ran");
+    expect(eq).toContain("No scorecard for this run");
     expect(eq).toContain("—");
+  });
+
+  it("never says a valuation did not run while displaying one", async () => {
+    // This surface builds its own command center, so it prints an intrinsic value
+    // regardless of the envelope the tile reads. Wording the blank as "no
+    // valuation ran" would put that sentence next to ₹7.
+    const container = await mountOpen(mkTraceability(null));
+
+    expect(tileText(container, "Intrinsic Value")).toMatch(/₹/);
+    expect(tileText(container, "Earnings Quality")).not.toContain("valuation");
   });
 });
