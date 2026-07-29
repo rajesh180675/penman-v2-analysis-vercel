@@ -8,7 +8,16 @@ export interface EvEbitdaPeerContext {
 
 export interface EvEbitdaCrossCheck {
   ebitdaT: number;
-  enterpriseValue: number;
+  /**
+   * Null until a multiple exists to build it from — either the company's own
+   * (market price present) or the peer median (at least one finite peer).
+   *
+   * Was `number`, which forced the `?? 0` this used to compute: with no peers
+   * and no market price, both multiples are null and the field resolved to a
+   * confident ₹0 enterprise value. Every sibling below already propagates null
+   * in that case, so the non-nullable type was the outlier, not the arithmetic.
+   */
+  enterpriseValue: number | null;
   evEbitdaCompany: number | null;
   evEbitdaMedian: number | null;
   evEbitdaP25: number | null;
@@ -22,6 +31,16 @@ export interface EvEbitdaCrossCheck {
   equityFromP25: number | null;
   /** Implied equity value from 75th percentile (bull case). */
   equityFromP75: number | null;
+  /**
+   * How many peers contributed a finite positive multiple — i.e. the size of
+   * the set the median and quartiles above were computed from, after the
+   * null/non-finite/non-positive entries are dropped.
+   *
+   * New. `SotpSection` shipped a tile labelled "Peer count" that rendered
+   * `label`, a semicolon-joined summary beginning `EBITDA_T: <n>`, because no
+   * count existed to render. A reviewer read an EBITDA figure as a peer count.
+   */
+  peerCount: number;
   label: string;
 }
 
@@ -50,8 +69,17 @@ export function computeEvEbitdaCrossCheck(
   const evFromP25 = evEbitdaP25 != null ? ebitda * evEbitdaP25 : null;
   const evFromP75 = evEbitdaP75 != null ? ebitda * evEbitdaP75 : null;
 
-  // Enterprise value of the company at median multiple
-  const enterpriseValue = ebitda * (evEbitdaCompany ?? evEbitdaMedian ?? 0);
+  // Enterprise value at whichever multiple is available: the company's own once
+  // market price has been applied, else the peer median.
+  //
+  // Null when neither exists. This read `?? 0`, and `config.ev_ebitda_peers` has
+  // no writer anywhere in the app — no UI control, absent from DEFAULT_CONFIG,
+  // absent from every company data file and market pack — so `peerMultiples` is
+  // always empty in production and this field always resolved to ₹0. Zero is a
+  // valuation a reviewer cannot tell apart from a real one; the six fields below
+  // all return null in the same state, so the `number` type was the outlier.
+  const multiple = evEbitdaCompany ?? evEbitdaMedian;
+  const enterpriseValue = multiple != null ? ebitda * multiple : null;
 
   // Implied equity value from median multiple minus nfo
   const equityFromMedian = evFromMedian != null ? evFromMedian - nfo : null;
@@ -80,6 +108,11 @@ export function computeEvEbitdaCrossCheck(
     equityFromMedian,
     equityFromP25,
     equityFromP75,
+    // Post-filter, so it counts the peers that actually reached the percentiles
+    // rather than the peers a caller supplied. A peer with a null or negative
+    // multiple contributes nothing to the median and must not be counted as if
+    // it had.
+    peerCount: peerMultiples.length,
     label,
   };
 }

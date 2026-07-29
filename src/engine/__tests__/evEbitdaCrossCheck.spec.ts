@@ -112,6 +112,49 @@ describe("EV/EBITDA cross-check", () => {
     expect(result.evEbitdaP25).toBeNull();
     expect(result.evFromMedian).toBeNull();
     expect(result.equityFromMedian).toBeNull();
+    // This test asserted the four fields above and skipped `enterpriseValue`,
+    // which was the one that did not comply: it read
+    // `ebitda * (evEbitdaCompany ?? evEbitdaMedian ?? 0)`, so with no peers and
+    // no market price it returned ₹0 — a valuation indistinguishable from a real
+    // one — while everything around it returned null.
+    expect(result.enterpriseValue).toBeNull();
+  });
+
+  it("reports the peer count, so a surface need not infer it from the label", () => {
+    const period = mkPeriod(130);
+
+    expect(computeEvEbitdaCrossCheck(period, peers).peerCount).toBe(5);
+    expect(computeEvEbitdaCrossCheck(period, []).peerCount).toBe(0);
+    expect(computeEvEbitdaCrossCheck(period, undefined).peerCount).toBe(0);
+    // `SotpSection` had no count to render, so its "Peer count" tile rendered
+    // `label` — a string beginning `EBITDA_T: 130`. The count is what the tile
+    // claims to show, and the label never contained one.
+    expect(computeEvEbitdaCrossCheck(period, peers).label).not.toContain("5 peers");
+  });
+
+  it("counts only the peers that reached the percentiles", () => {
+    const period = mkPeriod(130);
+    // A null, a zero and a negative multiple are all filtered out before the
+    // median is taken, so counting the supplied array would overstate the
+    // evidence behind the median by three peers.
+    const result = computeEvEbitdaCrossCheck(period, [
+      { company: "Real", evEbitda: 12 },
+      { company: "Missing", evEbitda: null },
+      { company: "Zero", evEbitda: 0 },
+      { company: "Negative", evEbitda: -4 },
+    ]);
+
+    expect(result.peerCount).toBe(1);
+    expect(result.evEbitdaMedian).toBeCloseTo(12, 6);
+  });
+
+  it("builds enterprise value from the peer median when there is no market price", () => {
+    // The `?? 0` masked this path too: with peers but no market price the EV is
+    // a real number, and the fix must not have turned it null.
+    const result = computeEvEbitdaCrossCheck(mkPeriod(130), peers);
+
+    expect(result.evEbitdaCompany).toBeNull();
+    expect(result.enterpriseValue).toBeCloseTo(130 * 12.0, 6);
   });
 
   it("updates with market price to show company EV/EBITDA", () => {

@@ -65,8 +65,21 @@ export default function SotpSection({
           <StatTile label="Peer median EV/EBITDA" value={commandCenter.evEbitda.evEbitdaMedian != null ? `${commandCenter.evEbitda.evEbitdaMedian.toFixed(1)}x` : "—"} />
           <StatTile label="Implied equity (median)" value={commandCenter.evEbitda.equityFromMedian != null ? `₹${Math.round(commandCenter.evEbitda.equityFromMedian).toLocaleString('en-IN')} Cr` : "—"} />
           <StatTile label="P25 / P75 range" value={commandCenter.evEbitda.evEbitdaP25 != null && commandCenter.evEbitda.evEbitdaP75 != null ? `${commandCenter.evEbitda.evEbitdaP25.toFixed(1)}x – ${commandCenter.evEbitda.evEbitdaP75.toFixed(1)}x` : "—"} />
-          <StatTile label="Peer count" value={commandCenter.evEbitda.label} />
+          {/* Was `value={...evEbitda.label}` — a semicolon-joined summary that
+              begins `EBITDA_T: <n>` and contains no count in any code path, so
+              this tile showed the reviewer an EBITDA figure under the heading
+              "Peer count". The engine now reports the post-filter count. */}
+          <StatTile label="Peer count" value={`${commandCenter.evEbitda.peerCount}`} />
         </div>
+        {/* Every tile above except the market-derived one goes blank when no peer
+            multiple is configured, which reads as a broken panel rather than an
+            absent input. `config.ev_ebitda_peers` is the only source and nothing
+            in the app writes it, so say so instead of showing a row of dashes. */}
+        {commandCenter.evEbitda.peerCount === 0 && (
+          <div className="mt-3 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600">
+            No peer multiples are configured, so there is no peer distribution to check the DCF against. The relative model reports itself as not computed rather than contributing a value to the triangulation.
+          </div>
+        )}
       </div>
     </section>
   );
