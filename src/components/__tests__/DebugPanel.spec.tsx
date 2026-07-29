@@ -196,6 +196,11 @@ function mkRichRaw(): RawPeriodData[] {
         "Profit After Tax__ProfitLoss": 98,
         "Net Cash from Operating Activities__CashFlow": 145,
         "Exceptional Items__ProfitLoss": 4,
+        // Two statement variants of one base key — a collision, which the parser
+        // tracks in `baseKeyCollisions`. It also makes the composite and base
+        // counts unequal, so the banner's two numbers are distinguishable: equal
+        // counts would let a swap of the two expressions pass unnoticed.
+        "Revenue From Operations(Net)__Segment": 850,
         "Total Assets": 1000,
         "Total Equity": 600,
         "Revenue From Operations(Net)": 850,
@@ -266,9 +271,13 @@ describe("DebugPanel panel rendering (SSR safety net)", () => {
   it("counts distinct keys in the banner, not the parser's per-period sums", () => {
     // The fixture's `metrics` carries the mismatched pair the banner used to
     // show: 14 composite (a sum over 2 periods) beside 7 base (the oldest
-    // period alone). The union is 8 composite and 8 base — the two periods
-    // share seven keys and 2025 adds "Exceptional Items".
-    expect(text).toContain("8 composite keys");
+    // period alone). The distinct counts are 9 composite and 8 base — the two
+    // periods share seven keys, 2025 adds "Exceptional Items", and its
+    // "Revenue From Operations(Net)" appears under two statements.
+    //
+    // Deliberately unequal. Were both 8, swapping the two expressions would
+    // still render correctly and no assertion here would notice.
+    expect(text).toContain("9 composite keys");
     expect(text).toContain("8 base metrics");
     expect(text).not.toContain("14 composite keys");
     expect(text).not.toContain("7 base metrics");
