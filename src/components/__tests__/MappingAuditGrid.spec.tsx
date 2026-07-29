@@ -225,6 +225,18 @@ describe("MappingAuditGrid triage-action strip", () => {
     expect(text).not.toContain("39 total");
   });
 
+  it("renders the subtotal outside the row the four action tiles share", () => {
+    // The defect was positional: right value, right label, wrong row. Every
+    // other assertion here passes with all five tiles back in one `grid-cols-5`,
+    // so this one pins the structure — a new grid container must open between
+    // the last action tile and the subtotal.
+    const ignoredAt = text.indexOf(">Ignored</div>");
+    const subtotalAt = text.indexOf(">Actionable subtotal</div>");
+    expect(ignoredAt).toBeGreaterThan(-1);
+    expect(subtotalAt).toBeGreaterThan(ignoredAt);
+    expect(text.slice(ignoredAt, subtotalAt)).toContain('class="grid');
+  });
+
   it("does not count the subtotal into the total it displays", () => {
     const partition =
       boxValue("Add to spec")! +
