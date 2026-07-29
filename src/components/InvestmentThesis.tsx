@@ -92,7 +92,16 @@ export default function InvestmentThesis({ data, config, itServices }: Props) {
 
   // Generate thesis sentences
   const thesisSentences: string[] = [];
-  if (moat && !decisive) {
+  if (!moat) {
+    // `computeMoatScore` has two failure modes, and only one of them returns an
+    // object. Below three periods it returns null outright
+    // (`moatScoring/industrial.ts:39`), which the branch below cannot see: it
+    // reads `decisive?.compositeScore ?? 0`, and `0 >= 40` is false, so a null
+    // score printed "shows limited evidence of competitive moat" — the adverse
+    // reading, on no evidence at all. The Thesis tab is gated only on having at
+    // least one recast period, so a two-period upload reaches exactly this.
+    thesisSentences.push(`Moat scoring needs at least 3 periods and ${ticker} has ${data.length} — no competitive-advantage conclusion is drawn here.`);
+  } else if (!decisive) {
     // Say why there is no moat sentence rather than falling through to the
     // "limited evidence" branch, which would read as a finding about the
     // company when it is a finding about the framework's applicability.
