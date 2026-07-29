@@ -62,7 +62,15 @@ export default function ValuationCommandCenterHero({
       {/* The command center already resolved the capital cost; passing it keeps
           the audit panel reporting the rate the valuation discounted at rather
           than re-deriving one from config. */}
-      <AssumptionsAudit config={config} costOfCapital={commandCenter.costOfCapital} />
+      {/* `base?.assumptions.g` for the same reason `costOfCapital` is passed: it
+          is the terminal growth this build applied, already clamped to the
+          sector template. The panel used to read `config.terminal_growth_rate`,
+          which nothing in the app writes. */}
+      <AssumptionsAudit
+        config={config}
+        costOfCapital={commandCenter.costOfCapital}
+        terminalGrowth={base?.assumptions.g ?? null}
+      />
 
       <div className="flex flex-wrap items-start justify-between gap-4 mt-6">
         <div>
