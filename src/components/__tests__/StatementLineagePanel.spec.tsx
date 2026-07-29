@@ -180,7 +180,9 @@ describe("StatementLineagePanel segment hints", () => {
     );
     expect(html).toContain("Segment hints (1)");
     expect(html).toContain("geography");
-    expect(html).not.toContain("more");
+    // Matched on the remainder chip's shape rather than the bare word "more",
+    // which the panel's prose is free to use.
+    expect(html).not.toMatch(/\+\d+ more/);
   });
 
   it("keeps its empty-state copy when nothing segment-like was disclosed", () => {
@@ -204,6 +206,7 @@ describe("StatementLineagePanel filing mix", () => {
   it("omits the unclassified chip when every filing was classified", () => {
     const html = render(buildStatementLineage(annualPeriods(2024, 2)));
     expect(html).toContain("A 2");
-    expect(html).not.toContain("?");
+    // The chip's shape, not a bare "?", which any future prose could contain.
+    expect(html).not.toMatch(/\? \d+/);
   });
 });
