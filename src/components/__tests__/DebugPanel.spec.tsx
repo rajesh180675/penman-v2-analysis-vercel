@@ -264,6 +264,17 @@ describe("DebugPanel panel rendering (SSR safety net)", () => {
      assertions that pin a number next to its unit are made against this. */
   const text = html.replace(/<!-- -->/g, "");
 
+  /* The number a StatBox renders above a given label.
+     `StatBox` emits the value first and the label second, so asserting that a
+     label is present says nothing about which value sits above it — a mutation
+     run confirmed the composite tile could show the base count undetected. */
+  function statBoxValue(label: string): string | null {
+    const m = text.match(
+      new RegExp(`>([\\d,]+)</div><div class="[^"]*">${label}</div>`),
+    );
+    return m?.[1] ?? null;
+  }
+
   it("renders the status banner with parsed period/file counts", () => {
     expect(html).toContain("Parsed 2 periods from 2 files");
   });
@@ -287,11 +298,17 @@ describe("DebugPanel panel rendering (SSR safety net)", () => {
     expect(html).toContain("Distinct keys across all 2 periods.");
   });
 
-  it("labels the head tiles as distinct counts", () => {
+  it("labels the head tiles as distinct counts, and shows those counts", () => {
     // These sit beside a "Periods" tile. Unlabelled, Infosys read as 3,600
     // composite keys against 15 periods — which is 15 × 240.
-    expect(html).toContain("Distinct Composite Keys");
-    expect(html).toContain("Distinct Base Metrics");
+    //
+    // The values are pinned to their labels, not merely present somewhere on the
+    // page: a mutation run showed the composite tile could render the base count
+    // with every label assertion still passing.
+    expect(statBoxValue("Distinct Composite Keys")).toBe("9");
+    expect(statBoxValue("Distinct Base Metrics")).toBe("8");
+    expect(statBoxValue("Periods")).toBe("2");
+    expect(statBoxValue("Files")).toBe("2");
   });
 
   it("names the by-statement chips as per-period reads and totals them", () => {
