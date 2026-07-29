@@ -1,6 +1,7 @@
 import { RawPeriodData } from "../../engine/types";
-import { rankUnmappedLabels } from "../../engine/conceptOntology";
+import { summarizeUnmappedLabels } from "../../engine/conceptOntology";
 import { MetricCard } from "./fields";
+import { unmappedLabelsMetric } from "./unmappedLabelsMetric";
 
 interface ConceptCoverage {
   coveragePct: number;
@@ -45,7 +46,11 @@ export default function DiagnosticsSection({
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <MetricCard label="Coverage" value={`${(conceptCoverage.coveragePct * 100).toFixed(0)}%`} />
           <MetricCard label="Core matched" value={`${conceptCoverage.coreMatchedCount}/${conceptCoverage.coreTotalCount}`} />
-          <MetricCard label="Top unmapped" value={String(rankUnmappedLabels(rawData, 8).length)} />
+          {/* Was `label="Top unmapped"` over `rankUnmappedLabels(rawData, 8).length`
+              — a value capped at 8 by its own limit argument, so it printed 8 for
+              every company in the registry while the truth ranged 221 to 1,698.
+              "Top" also promised a list nothing rendered. */}
+          <MetricCard label="Unmapped labels" value={unmappedLabelsMetric(summarizeUnmappedLabels(rawData))} />
         </div>
         <div className="mt-4 space-y-2 text-sm text-slate-700">
           {conceptCoverage.unresolvedCore.length ? (

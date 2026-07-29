@@ -155,13 +155,48 @@ export function summarizeConceptCoverage(periods: RawPeriodData[] | null | undef
   } satisfies ConceptCoverageSummary;
 }
 
-export function rankUnmappedLabels(periods: RawPeriodData[] | null | undefined, limit = 20) {
+export interface UnmappedLabelSummary {
+  /** Distinct labels in the latest period that no ontology alias claims. */
+  unmapped: number;
+  /** Distinct labels in the latest period, claimed or not — the denominator. */
+  distinct: number;
+}
+
+/**
+ * How many of the latest period's raw labels the ontology does not claim, and how
+ * many there were to claim.
+ *
+ * Both counts are of *distinct* labels. `listRawBaseKeys` returns one entry per
+ * composite `<label>__<statement>` key, so a label reported on two statements
+ * appears twice: Infosys parses 475 base keys from 235 distinct labels,
+ * Cholamandalam 3,488 from 1,719. Counting the raw list would report how the
+ * source file lays its statements out rather than how much of it maps.
+ *
+ * Replaces `rankUnmappedLabels`, whose only consumer read `.length` off a list the
+ * function had already `slice`d to a limit of 8. The tile therefore printed 8 for
+ * every company in the registry — measured across the bundled ZIPs the true figure
+ * is 221 (Infosys, NTPC) to 1,698 (HDFC Bank). Returning counts rather than a
+ * truncated list is the point: there is no length left to misread.
+ *
+ * Reports counts only, because nothing rendered the ranked labels — the list was
+ * built and discarded on every render, and "Top unmapped" named a list no user
+ * ever saw.
+ */
+export function summarizeUnmappedLabels(
+  periods: RawPeriodData[] | null | undefined,
+): UnmappedLabelSummary {
   const latest = periods?.[periods.length - 1] ?? null;
-  if (!latest) return [];
+  if (!latest) return { unmapped: 0, distinct: 0 };
   const knownLabels = new Set(CONCEPT_ONTOLOGY.flatMap((concept) => concept.aliases.map((alias) => alias.toLowerCase())));
-  return listRawBaseKeys(latest)
-    .filter((label) => !knownLabels.has(label.toLowerCase()))
-    .slice(0, limit);
+  // Folded to lower case for both the dedupe and the alias compare, so a label
+  // that differs from an alias only in case counts as claimed rather than as one
+  // more unmapped label — the same leniency `findRawMetric` applies.
+  const distinct = new Set(listRawBaseKeys(latest).map((label) => label.toLowerCase()));
+  let unmapped = 0;
+  for (const label of distinct) {
+    if (!knownLabels.has(label)) unmapped += 1;
+  }
+  return { unmapped, distinct: distinct.size };
 }
 
 // ─── Conflict detection (Gap 1 / PR-A) ──────────────────────────────────────
