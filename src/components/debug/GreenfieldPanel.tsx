@@ -3,10 +3,27 @@
    adjusted confidence, anomaly signals, adjustment audit trail, and
    validation diff table. */
 import type { GreenfieldPipelineResult } from "../../engine/greenfieldPipeline";
+import { capped } from "../cappedList";
 import { Card } from "./debugUi";
+
+/** Room for each score-adjustment list. Both also report their own total. */
+const ADJUSTMENTS_SHOWN = 3;
 
 interface Props {
   greenfield?: GreenfieldPipelineResult | null | undefined;
+}
+
+/**
+ * Largest first. `scoreOne` pushes one penalty per active signal in detector
+ * order, then the rejected-adjustment penalty last, and one bonus per accepted
+ * transformation group — all unbounded. So the head of either list was
+ * "whichever detectors happened to run first", displayed as three signed point
+ * deductions under a confidence score, where a reader reads the three biggest.
+ * Sorting is safe to do here because neither list has any other consumer that
+ * depends on its order.
+ */
+function byPoints<T extends { points: number }>(items: T[]) {
+  return capped([...items].sort((left, right) => right.points - left.points), ADJUSTMENTS_SHOWN);
 }
 
 function ConfidenceBadge({ level, score }: { level: string; score: number }) {
@@ -38,6 +55,8 @@ export function GreenfieldPanel({ greenfield }: Props) {
   const { confidence, triage, validation, analysisWindow } = greenfield;
   const activeSignals = triage.activeSignals;
   const adjustedDiff = validation.diffTable.filter((r) => r.validationStatus === "accepted");
+  const penalties = byPoints(confidence.asReported.penalties);
+  const bonuses = byPoints(confidence.adjusted.bonuses);
 
   return (
     <Card title="Greenfield Sidecar — As-Reported vs Adjusted">
@@ -52,26 +71,46 @@ export function GreenfieldPanel({ greenfield }: Props) {
           <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">As-Reported</div>
           <ConfidenceBadge level={confidence.asReported.level} score={confidence.asReported.score} />
           {confidence.asReported.penalties.length > 0 && (
-            <ul className="mt-2 space-y-0.5">
-              {confidence.asReported.penalties.slice(0, 3).map((p, i) => (
-                <li key={i} className="text-xs text-slate-500 dark:text-slate-400">
-                  −{p.points} {p.reason}
-                </li>
-              ))}
-            </ul>
+            <>
+              <div className="mt-2 text-xs text-slate-400">
+                Penalties ({confidence.asReported.penalties.length}) · largest first
+              </div>
+              <ul className="mt-1 space-y-0.5">
+                {penalties.shown.map((p, i) => (
+                  <li key={i} className="text-xs text-slate-500 dark:text-slate-400">
+                    −{p.points} {p.reason}
+                  </li>
+                ))}
+              </ul>
+              {penalties.hidden > 0 && (
+                <div className="mt-1 text-xs text-slate-400">
+                  +{penalties.hidden} smaller {penalties.hidden === 1 ? "penalty" : "penalties"} not shown.
+                </div>
+              )}
+            </>
           )}
         </div>
         <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
           <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Adjusted</div>
           <ConfidenceBadge level={confidence.adjusted.level} score={confidence.adjusted.score} />
           {confidence.adjusted.bonuses.length > 0 && (
-            <ul className="mt-2 space-y-0.5">
-              {confidence.adjusted.bonuses.slice(0, 3).map((b, i) => (
-                <li key={i} className="text-xs text-emerald-600 dark:text-emerald-400">
-                  +{b.points} {b.reason}
-                </li>
-              ))}
-            </ul>
+            <>
+              <div className="mt-2 text-xs text-slate-400">
+                Bonuses ({confidence.adjusted.bonuses.length}) · largest first
+              </div>
+              <ul className="mt-1 space-y-0.5">
+                {bonuses.shown.map((b, i) => (
+                  <li key={i} className="text-xs text-emerald-600 dark:text-emerald-400">
+                    +{b.points} {b.reason}
+                  </li>
+                ))}
+              </ul>
+              {bonuses.hidden > 0 && (
+                <div className="mt-1 text-xs text-slate-400">
+                  +{bonuses.hidden} smaller {bonuses.hidden === 1 ? "bonus" : "bonuses"} not shown.
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

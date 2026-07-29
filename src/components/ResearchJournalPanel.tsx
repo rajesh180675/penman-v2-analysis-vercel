@@ -1,5 +1,14 @@
 import { useState } from "react";
 import { WorkspaceResearchJournalEntry } from "../lib/researchWorkspace";
+import { capped } from "./cappedList";
+
+/**
+ * Room for recent entries. The panel also says how many entries exist, which
+ * matters more here than on most surfaces: this is the record a reviewer checks
+ * to see whether a thesis was written down before or after the price moved, and
+ * eight of forty reads as all of them.
+ */
+const ENTRIES_SHOWN = 8;
 
 interface Props {
   entries: WorkspaceResearchJournalEntry[];
@@ -10,6 +19,10 @@ export default function ResearchJournalPanel({ entries, onAdd }: Props) {
   const [kind, setKind] = useState<WorkspaceResearchJournalEntry["kind"]>("note");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+
+  // The head is the right end here: `addWorkspaceJournalEntry` `unshift`s, so the
+  // store is already newest-first. Only the total was missing.
+  const shown = capped(entries, ENTRIES_SHOWN);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -57,8 +70,13 @@ export default function ResearchJournalPanel({ entries, onAdd }: Props) {
         </button>
       </div>
 
-      <div className="mt-5 space-y-3">
-        {entries.slice(0, 8).map((entry) => (
+      {entries.length > 0 && (
+        <div className="mt-5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Entries ({entries.length}) · newest first
+        </div>
+      )}
+      <div className="mt-3 space-y-3">
+        {shown.shown.map((entry) => (
           <div key={entry.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="font-medium text-slate-800">{entry.title}</div>
@@ -68,6 +86,11 @@ export default function ResearchJournalPanel({ entries, onAdd }: Props) {
             <div className="mt-2 text-sm text-slate-700">{entry.body}</div>
           </div>
         ))}
+        {shown.hidden > 0 && (
+          <p className="text-xs text-slate-500">
+            {shown.hidden} older {shown.hidden === 1 ? "entry is" : "entries are"} not shown.
+          </p>
+        )}
         {!entries.length && <p className="text-sm text-slate-500">No journal entries yet.</p>}
       </div>
     </div>

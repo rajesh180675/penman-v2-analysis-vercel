@@ -1,5 +1,9 @@
 import type { NbfcSidecarData } from "../../engine/nbfcSidecarLoader";
+import { capped } from "../cappedList";
 import { fmtNum } from "./financialInstitutionFormatters";
+
+/** Rows in the RBI/NHB table. The heading reports the true period count. */
+const NHB_PERIODS_SHOWN = 12;
 
 /**
  * Phase D4 — LGD Stage Migration + RBI NHB Regulatory Metrics Panel.
@@ -19,6 +23,13 @@ export function NbfcRegulatoryPanel({ sidecar }: { sidecar: NbfcSidecarData }) {
     (p.gnpa_cr != null && p.gnpa_cr > 0) ||
     (p.crar_pct != null && p.crar_pct > 0)
   );
+  // The head is the right end to keep: `parseRbiNhbFile` walks the export's
+  // `<th>` period codes in source order, and all eight bundled RBI/NHB exports
+  // run 202503 down to 201103. So this is newest-first already, and the twelve
+  // rows shown were FY2025..FY2014 — the three oldest were the ones dropped.
+  // Only the remainder line was missing: all four NBFC sidecars carry fifteen
+  // periods with data, so the cap binds on every one of them.
+  const nhbPeriods = capped(nhbWithData, NHB_PERIODS_SHOWN);
 
   return (
     <section className="space-y-6">
@@ -123,7 +134,7 @@ export function NbfcRegulatoryPanel({ sidecar }: { sidecar: NbfcSidecarData }) {
       {nhbWithData.length > 0 && (
         <div className="space-y-3">
           <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-            RBI/NHB Regulatory Metrics ({nhbWithData.length} periods)
+            RBI/NHB Regulatory Metrics ({nhbWithData.length} periods · newest first)
           </h4>
           <div className="overflow-x-auto">
             <table className="w-full text-xs border-collapse">
@@ -140,7 +151,7 @@ export function NbfcRegulatoryPanel({ sidecar }: { sidecar: NbfcSidecarData }) {
                 </tr>
               </thead>
               <tbody>
-                {nhbWithData.slice(0, 12).map(p => (
+                {nhbPeriods.shown.map(p => (
                   <tr key={p.period_code} className="border-b border-slate-100 dark:border-slate-800">
                     <td className="py-1 px-2 font-mono">{p.fiscal_label}</td>
                     <td className="text-right py-1 px-2 font-mono">{fmtNum(p.gnpa_cr)}</td>
@@ -155,6 +166,11 @@ export function NbfcRegulatoryPanel({ sidecar }: { sidecar: NbfcSidecarData }) {
               </tbody>
             </table>
           </div>
+          {nhbPeriods.hidden > 0 && (
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              {nhbPeriods.hidden} older {nhbPeriods.hidden === 1 ? "period is" : "periods are"} not shown.
+            </div>
+          )}
         </div>
       )}
     </section>
