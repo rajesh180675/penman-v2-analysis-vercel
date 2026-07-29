@@ -156,6 +156,12 @@ function mkRichDebugInfo(): CapitalineParseDebug {
   };
 }
 
+/* Both composite and base keys, because that is what a real parse produces:
+   `capitalineParser.ts:536-539` writes the base-key winners into
+   `raw_metric_values` alongside the `__`-suffixed composites. The 2025 period
+   carries one key the 2024 period does not, so a distinct count over both
+   periods is distinguishable from either a per-period sum or a single-period
+   read. */
 function mkRichRaw(): RawPeriodData[] {
   return [
     {
@@ -169,6 +175,13 @@ function mkRichRaw(): RawPeriodData[] {
         "Tax Expenses__ProfitLoss": 30,
         "Profit After Tax__ProfitLoss": 90,
         "Net Cash from Operating Activities__CashFlow": 130,
+        "Total Assets": 900,
+        "Total Equity": 540,
+        "Revenue From Operations(Net)": 760,
+        "Profit Before Tax": 120,
+        "Tax Expenses": 30,
+        "Profit After Tax": 90,
+        "Net Cash from Operating Activities": 130,
       },
     },
     {
@@ -182,6 +195,15 @@ function mkRichRaw(): RawPeriodData[] {
         "Tax Expenses__ProfitLoss": 32,
         "Profit After Tax__ProfitLoss": 98,
         "Net Cash from Operating Activities__CashFlow": 145,
+        "Exceptional Items__ProfitLoss": 4,
+        "Total Assets": 1000,
+        "Total Equity": 600,
+        "Revenue From Operations(Net)": 850,
+        "Profit Before Tax": 130,
+        "Tax Expenses": 32,
+        "Profit After Tax": 98,
+        "Net Cash from Operating Activities": 145,
+        "Exceptional Items": 4,
       },
     },
   ];
@@ -233,8 +255,44 @@ describe("DebugPanel panel rendering (SSR safety net)", () => {
     />,
   );
 
+  /* A run of `{expr} literal {expr}` can be split into separate text nodes, so
+     assertions that pin a number next to its unit are made against this. */
+  const text = html.replace(/<!-- -->/g, "");
+
   it("renders the status banner with parsed period/file counts", () => {
     expect(html).toContain("Parsed 2 periods from 2 files");
+  });
+
+  it("counts distinct keys in the banner, not the parser's per-period sums", () => {
+    // The fixture's `metrics` carries the mismatched pair the banner used to
+    // show: 14 composite (a sum over 2 periods) beside 7 base (the oldest
+    // period alone). The union is 8 composite and 8 base — the two periods
+    // share seven keys and 2025 adds "Exceptional Items".
+    expect(text).toContain("8 composite keys");
+    expect(text).toContain("8 base metrics");
+    expect(text).not.toContain("14 composite keys");
+    expect(text).not.toContain("7 base metrics");
+  });
+
+  it("states the basis the two banner counts share", () => {
+    expect(html).toContain("Distinct keys across all 2 periods.");
+  });
+
+  it("labels the head tiles as distinct counts", () => {
+    // These sit beside a "Periods" tile. Unlabelled, Infosys read as 3,600
+    // composite keys against 15 periods — which is 15 × 240.
+    expect(html).toContain("Distinct Composite Keys");
+    expect(html).toContain("Distinct Base Metrics");
+  });
+
+  it("names the by-statement chips as per-period reads and totals them", () => {
+    // The chips are `byStatement`, incremented in the same loop iteration as
+    // the old composite total, so they sum to it: 4 + 8 + 2 = 14 here. Left
+    // titled "Metrics by Statement" beside a distinct count of 8, they would
+    // have replaced one basis mismatch with another.
+    expect(html).toContain("Composite Key Reads by Statement");
+    expect(text).toContain("14 reads across 2 periods");
+    expect(html).not.toContain("Metrics by Statement");
   });
 
   it("renders the mapping coverage audit grid with dataset/backlog sections", () => {

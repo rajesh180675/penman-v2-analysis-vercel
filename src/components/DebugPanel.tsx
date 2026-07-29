@@ -18,6 +18,7 @@ import { GranularityChecklistPanel } from "./debug/GranularityChecklistPanel";
 import { RecastVerificationPanel } from "./debug/RecastVerificationPanel";
 import { MetricSearchPanel, SEARCH_ROWS_SHOWN } from "./debug/MetricSearchPanel";
 import { searchableBaseKeys } from "./debug/searchableKeys";
+import { parsedKeyCensus, censusBasisNote } from "./debug/keyCensus";
 import { RawGridDumps } from "./debug/RawGridDumps";
 import { RawKeysGrid } from "./debug/RawKeysGrid";
 import { TraceLogViewer } from "./debug/TraceLogViewer";
@@ -267,6 +268,26 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
     [rawData, debugInfo],
   );
 
+  // Distinct composite and base key counts on one shared basis. The parser's
+  // own `metrics.totalCompositeKeys` is a per-period sum and its
+  // `totalBaseKeys` is a single period's count, so the two could not be read
+  // against each other. See `debug/keyCensus.ts`.
+  const census = useMemo(() => parsedKeyCensus(rawData, debugInfo), [rawData, debugInfo]);
+  const basisNote = censusBasisNote(census);
+
+  // What the by-statement chips actually add up to. Kept as the parser's own
+  // per-period sums (see the card below for why they are not recounted here),
+  // so the total is stated on the card rather than left for a reader to add up
+  // and compare against a distinct count.
+  const statementReadTotal = useMemo(
+    () =>
+      Object.values(debugInfo?.metrics.byStatement ?? {}).reduce(
+        (sum, n) => sum + n,
+        0,
+      ),
+    [debugInfo],
+  );
+
   // Metric search — find a key across all periods and show its values.
   // The match count travels with the rows: a bare `slice` left the panel
   // showing thirty rows for a query that hit 489 keys (measured on Reliance,
@@ -315,10 +336,13 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
                 : `Parse failed — 0 periods from ${debugInfo.files.length} files`}
             </div>
             <div className="text-sm text-slate-600 mt-1">
-              {debugInfo.metrics.totalCompositeKeys.toLocaleString()} composite keys ·{" "}
-              {debugInfo.metrics.totalBaseKeys.toLocaleString()} base metrics ·{" "}
+              {census.compositeKeys.toLocaleString()} composite keys ·{" "}
+              {census.baseKeys.toLocaleString()} base metrics ·{" "}
               {debugInfo.warnings.length} warnings
             </div>
+            {basisNote && (
+              <div className="text-xs text-slate-500 mt-1">{basisNote}</div>
+            )}
           </div>
         </div>
       </div>
@@ -327,13 +351,27 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <StatBox label="Files"          value={debugInfo.files.length} />
         <StatBox label="Periods"        value={debugInfo.detectedPeriods.length} highlight={!hasData} />
-        <StatBox label="Composite Keys" value={debugInfo.metrics.totalCompositeKeys} />
-        <StatBox label="Base Metrics"   value={debugInfo.metrics.totalBaseKeys} />
+        {/* "Distinct" is load-bearing: these sat beside "Periods" showing a
+            per-period sum, so Infosys read 3,600 composite keys against 15
+            periods of 240. */}
+        <StatBox label="Distinct Composite Keys" value={census.compositeKeys} />
+        <StatBox label="Distinct Base Metrics"   value={census.baseKeys} />
         <StatBox label="Warnings"       value={debugInfo.warnings.length} highlight={debugInfo.warnings.length > 0} />
       </div>
 
-      {/* ── Metrics by Statement ── */}
-      <Card title="Metrics by Statement">
+      {/* ── Composite key reads by statement ──
+           These chips are the other half of the same basis problem. `byStmt`
+           (`capitalineParser.ts:518`) is incremented in the same loop iteration
+           as `totalComposite` (`:517`), so each chip is reads-per-period summed
+           over every period, and the chips add up to the old composite total —
+           11,770 on Bajaj Finance against 1,065 distinct.
+
+           Labelled rather than recounted here. The parser attributes a key from
+           its `__` suffix when it has one and from `payload.statement` when it
+           does not, and `payload` is not in `rawData`; a UI-side per-statement
+           census could only parse suffixes, so it would silently drop the
+           suffixless keys. Re-deriving attribution is parser work. */}
+      <Card title="Composite Key Reads by Statement">
         <div className="flex gap-3 flex-wrap">
           {Object.entries(debugInfo.metrics.byStatement).map(([s, n]) => (
             <span key={s} className="px-3 py-1.5 bg-slate-100 rounded-full text-sm">
@@ -341,6 +379,13 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
             </span>
           ))}
         </div>
+        {debugInfo.detectedPeriods.length > 1 && (
+          <div className="text-xs text-slate-500 mt-2">
+            {statementReadTotal.toLocaleString()} reads across{" "}
+            {debugInfo.detectedPeriods.length} periods, counting each key once per period
+            it appears in — a different basis from the distinct counts above.
+          </div>
+        )}
         {hasData && (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {debugInfo.detectedPeriods.map((p) => (
