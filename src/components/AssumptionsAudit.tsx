@@ -15,6 +15,19 @@ interface Props {
    * file as a third ke derivation path.
    */
   costOfCapital: CostOfCapitalResult;
+  /**
+   * The terminal growth the run actually applied, from the command center's
+   * base scenario (`scenarios.find(s => s.key === "base")?.assumptions.g`).
+   *
+   * Required and nullable rather than optional-with-a-default, for the same
+   * reason `costOfCapital` is. This row read `config.terminal_growth_rate ?? 0.05`,
+   * and that field has no writer anywhere in the app: it is absent from
+   * `DEFAULT_CONFIG`, no UI control sets it, and no company data file carries it.
+   * So it was always `undefined`, the row always printed 5.0% and always badged
+   * itself "Default", while the run discounted at the scenario's own g. An
+   * optional prop would let a caller silently reintroduce that.
+   */
+  terminalGrowth: number | null;
 }
 
 /**
@@ -85,7 +98,7 @@ export function sourceBadge(source: RowSource): { text: string; cls: string } {
  * Assumptions Audit Panel — makes every valuation input visible and flags risks.
  * Key academic principle: "A valuation is only as good as its assumptions."
  */
-export default function AssumptionsAudit({ config, costOfCapital }: Props) {
+export default function AssumptionsAudit({ config, costOfCapital, terminalGrowth }: Props) {
   const ke = costOfCapital.ke;
   const tiers = costOfCapital.assumptions;
   // ke is a product of three inputs, so it is only as defensible as the weakest
@@ -96,7 +109,11 @@ export default function AssumptionsAudit({ config, costOfCapital }: Props) {
     : tiers
       ? weakestTier([tiers.riskFreeRate.tier, tiers.equityRiskPremium.tier, tiers.beta.tier])
       : "computed";
-  const g = config.terminal_growth_rate ?? 0.05;
+  // The run's own terminal growth, threaded in. `config.terminal_growth_rate`
+  // used to supply this and is never written anywhere in the app, so the row
+  // printed a 5% fallback while the valuation discounted at the scenario's g.
+  const g = terminalGrowth;
+  const spread = g == null ? null : ke - g;
   const rfr = costOfCapital.riskFreeRate;
   const erp = costOfCapital.equityRiskPremium;
   const price = config.market_price;
@@ -112,10 +129,25 @@ export default function AssumptionsAudit({ config, costOfCapital }: Props) {
     },
     {
       label: "Terminal Growth (g)",
-      value: `${(g * 100).toFixed(1)}%`,
-      source: config.terminal_growth_rate != null ? "user" : "default",
-      flag: g >= ke ? "error" : g > 0.07 ? "warning" : g < 0 ? "warning" : "ok",
-      note: g >= ke ? "g ≥ ke breaks the Gordon Growth model — valuation will be infinite/negative" :
+      value: g == null ? "Not resolved" : `${(g * 100).toFixed(1)}%`,
+      // "Computed", not "User", even when a reviewer set `g_terminal_override`:
+      // the builder clamps that override to the sector template's floor and cap
+      // before any model sees it, so the number on this row can differ from the
+      // one that was typed. Badging it as the reviewer's choice would repeat the
+      // mistake this row is being fixed for.
+      source: g == null ? "default" : "computed",
+      flag: g == null ? "warning" : g >= ke ? "error" : g > 0.07 ? "warning" : g < 0 ? "warning" : "ok",
+      // Not "valuation will be infinite/negative" — nothing here divides by a
+      // non-positive denominator. `gordonCv` returns null when the spread falls
+      // to MIN_GORDON_SPREAD, so `V_RE_CV3` and `intrinsic_re_per_share` go null
+      // (`PenmanNissimEngine.ts:311`) and CV1/CV2 — a zero and a no-growth
+      // continuing value, neither of which divides by (ke − g) — still compute.
+      // The owner-earnings DCF likewise substitutes a terminal value of 0
+      // (`valuationCommandCenter/solvers.ts:32`). So the failure mode is a range
+      // that understates, which a reviewer chasing an infinity would not find.
+      // Same false promise as the one removed from `validateEngineConfig`.
+      note: g == null ? "No scenario resolved a terminal growth — the value range below cannot be reproduced from this panel" :
+            g >= ke ? "g ≥ ke — the growth continuing value is skipped rather than computed, so the range below rests on no-growth methods and understates value" :
             g > 0.07 ? "Above nominal GDP growth — hard to sustain forever" :
             g < 0 ? "Negative terminal growth implies permanent decline" : undefined,
     },
@@ -160,10 +192,15 @@ export default function AssumptionsAudit({ config, costOfCapital }: Props) {
     },
     {
       label: "ke − g Spread",
-      value: `${((ke - g) * 100).toFixed(1)}%`,
+      // Both legs now come from the same scenario: `keBase` is
+      // `costOfCapital.ke` (`valuationCommandCenter/core.ts:182`) and the base
+      // card's `assumptions.g` is the growth that build applied, so this is the
+      // base case's actual Gordon denominator rather than a mixed pair.
+      value: spread == null ? "Not resolved" : `${(spread * 100).toFixed(1)}%`,
       source: "computed",
-      flag: (ke - g) < 0.03 ? "warning" : "ok",
-      note: (ke - g) < 0.03 ? "Narrow spread makes terminal value very sensitive to small changes" : undefined,
+      flag: spread == null ? "warning" : spread < 0.03 ? "warning" : "ok",
+      note: spread == null ? "Terminal growth unresolved, so the Gordon denominator cannot be shown" :
+            spread < 0.03 ? "Narrow spread makes terminal value very sensitive to small changes" : undefined,
     },
     {
       label: "Company Type",

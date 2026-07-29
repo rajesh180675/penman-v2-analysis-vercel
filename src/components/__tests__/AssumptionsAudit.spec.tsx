@@ -19,13 +19,24 @@ import { PercentFraction } from "../../engine/types/units";
 import { resolveCostOfCapitalFromConfig } from "../../engine/costOfCapital";
 import { INDIA_MACRO_PACK } from "../../engine/marketPacks/indiaMacroPack";
 
-function render(config: EngineConfig, opts?: { pack?: boolean }) {
+/**
+ * 4% is what the app actually reaches this panel with — `ValuationReport`'s g
+ * state defaults to 4.0 and the base scenario's clamped growth lands in the same
+ * region. Deliberately NOT 5%: that is the `?? 0.05` fallback the row used to
+ * print, so a default of 5% here would let the old behaviour pass the new tests.
+ */
+const RUN_G = 0.04;
+
+function render(config: EngineConfig, opts?: { pack?: boolean; terminalGrowth?: number | null }) {
   const costOfCapital = resolveCostOfCapitalFromConfig({
     config,
     ...(opts?.pack ? { macroPack: INDIA_MACRO_PACK, analysisAsOf: "2026-07-27" } : {}),
   });
+  const terminalGrowth = opts && "terminalGrowth" in opts ? opts.terminalGrowth ?? null : RUN_G;
   return {
-    html: renderToStaticMarkup(<AssumptionsAudit config={config} costOfCapital={costOfCapital} />),
+    html: renderToStaticMarkup(
+      <AssumptionsAudit config={config} costOfCapital={costOfCapital} terminalGrowth={terminalGrowth} />,
+    ),
     costOfCapital,
   };
 }
@@ -113,5 +124,116 @@ describe("AssumptionsAudit — source badges", () => {
     // The reviewer sees the resolver's own reason, not a generic warning.
     expect(html).toContain("usable peer beta");
     expect(html).toContain("1.30×");
+  });
+});
+
+describe("AssumptionsAudit — terminal growth agreement", () => {
+  // Same defect the ke row was fixed for: the row read a config field, and the
+  // run discounted at a different number. `config.terminal_growth_rate` has no
+  // writer anywhere in the app — absent from DEFAULT_CONFIG, no UI control, no
+  // company data file — so it was always undefined and the row always printed
+  // the 5% fallback with a "Default" badge.
+
+  it("shows the run's terminal growth, not the 5% config fallback", () => {
+    const config: EngineConfig = { ...DEFAULT_CONFIG, company_type: "it-services" };
+    const { html, costOfCapital } = render(config);
+
+    expect(costOfCapital.ke).toBeCloseTo(0.121, 6);
+    expect(html).toContain("4.0%");
+    // The spread row has to move with it. 12.1% − 4% = 8.1%; the old pairing of
+    // a resolved ke with the 5% fallback gave 7.1%, so its absence is what
+    // catches a regression in the spread leg specifically.
+    expect(html).toContain("8.1%");
+    expect(html).not.toContain("7.1%");
+  });
+
+  it("ignores config.terminal_growth_rate even when something sets it", () => {
+    // Nothing in the app writes this field today, but a future caller might,
+    // and it still would not be the growth any model applied. The panel reports
+    // the run, not the config.
+    const config: EngineConfig = {
+      ...DEFAULT_CONFIG,
+      company_type: "it-services",
+      terminal_growth_rate: 0.09,
+    };
+    const { html } = render(config);
+
+    expect(html).toContain("4.0%");
+    expect(html).not.toContain("9.0%");
+  });
+
+  it("badges the growth Computed, not the reviewer's choice", () => {
+    // `g_terminal_override` is clamped to the sector template's floor and cap
+    // before any model sees it (valuationCommandCenter/builders.ts:186-190), so
+    // the number on this row can differ from the one a reviewer typed. "User"
+    // would overstate what the reviewer actually controlled.
+    const { html } = render({ ...DEFAULT_CONFIG, company_type: "it-services" });
+    const growthRow = html.slice(html.indexOf("Terminal Growth (g)"));
+
+    expect(growthRow.slice(0, 400)).toContain(">Computed<");
+    expect(growthRow.slice(0, 400)).not.toContain(">Default<");
+  });
+
+  it("says the growth is unresolved rather than inventing one", () => {
+    // No base scenario means no growth was applied. Printing 5.0% here is the
+    // exact failure this panel exists to prevent, and a blank row reads as a
+    // surface that was never wired up.
+    const { html } = render({ ...DEFAULT_CONFIG, company_type: "it-services" }, { terminalGrowth: null });
+
+    // Twice: the growth row and the spread that depends on it.
+    expect(html.match(/Not resolved/g)?.length).toBe(2);
+    expect(html).not.toContain("4.0%");
+    expect(html).toContain("cannot be reproduced from this panel");
+  });
+
+  it("can finally flag a real g ≥ ke breach", () => {
+    // Unreachable before: the flag tested the never-written config field, so it
+    // could not fire on a real breach and could fire spuriously on a low ke.
+    const config: EngineConfig = {
+      ...DEFAULT_CONFIG,
+      cost_of_equity_mode: "manual",
+      ke: PercentFraction(0.035),
+      ke_manual_rationale: "Reviewer judgment",
+    };
+    const { html } = render(config);
+
+    expect(html).toContain("the growth continuing value is skipped");
+    expect(html).toContain("🛑");
+    expect(html).toContain("1 error");
+  });
+
+  it("describes the breach as a skipped continuing value, not an infinity", () => {
+    // The note used to promise the valuation "will be infinite/negative". It
+    // will be neither: `gordonCv` returns null at MIN_GORDON_SPREAD, so
+    // `V_RE_CV3` and `intrinsic_re_per_share` go null while CV1 (zero) and CV2
+    // (no-growth perpetuity) still compute — neither divides by (ke − g) — and
+    // the owner-earnings DCF substitutes a terminal value of 0. The real failure
+    // mode is a range that understates, so a reviewer sent looking for an
+    // infinity is looking for the wrong symptom.
+    const config: EngineConfig = {
+      ...DEFAULT_CONFIG,
+      cost_of_equity_mode: "manual",
+      ke: PercentFraction(0.035),
+      ke_manual_rationale: "Reviewer judgment",
+    };
+    const { html } = render(config);
+
+    expect(html).not.toContain("infinite");
+    expect(html).toContain("understates value");
+  });
+
+  it("does not flag a breach when the spread is healthy", () => {
+    // Positive control for the test above: same manual-ke path, ke well clear
+    // of g, so the error must be absent rather than merely differently worded.
+    const config: EngineConfig = {
+      ...DEFAULT_CONFIG,
+      cost_of_equity_mode: "manual",
+      ke: PercentFraction(0.14),
+      ke_manual_rationale: "Reviewer judgment",
+    };
+    const { html } = render(config);
+
+    expect(html).not.toContain("g ≥ ke breaks the Gordon Growth model");
+    expect(html).not.toContain("1 error");
   });
 });
