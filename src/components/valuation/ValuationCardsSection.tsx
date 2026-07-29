@@ -1,7 +1,67 @@
 import { computeValuation } from "../../engine/PenmanNissimEngine";
+import type { ContinuingValueGuardModel } from "../../engine/types";
 import { toPerShare } from "../../engine/shareCountTools";
 import { ValCard } from "./atoms";
 import { type CVMethod, fmt, fmtPerShare } from "./ValuationReport.formatters";
+
+type Valuation = ReturnType<typeof computeValuation>;
+
+/**
+ * The Gordon guard's own explanation for a nulled continuing value.
+ *
+ * `gordonCv` already builds a precise reason — it names the terminal growth and
+ * the capital cost it had to be below — and `computeValuation` returns them as
+ * `continuingValueGuards`. Only CV3/CV03 discount through Gordon; CV1 is zero
+ * and CV2 is a no-growth perpetuity, so neither can trip the spread guard and
+ * neither should borrow its wording.
+ */
+function gordonGuardReason(
+  val: Valuation,
+  model: ContinuingValueGuardModel,
+  cv: CVMethod,
+): string | null {
+  if (cv !== "CV3") return null;
+  return (val.continuingValueGuards ?? []).find((g) => g.model === model)?.reason ?? null;
+}
+
+/**
+ * `ValCard` decides a card is skipped from `value == null` and renders the
+ * reason only inside that branch, so a reason gated on any narrower condition
+ * leaves a bare "— Skipped" with nothing beside it — indistinguishable from a
+ * card that was never wired up.
+ *
+ * `V_RE` is null when `equityModelsBlocked || CV_RE_3 == null`
+ * (`PenmanNissimEngine.ts:372`), and this card used to explain only the first
+ * of those. Typing a terminal growth above ke in the Growth input nulls the
+ * value through the second and said nothing at all.
+ */
+function reCardSkipReason(val: Valuation, cv: CVMethod): string {
+  // Checked ahead of the guard: when net worth is gone the equity side has no
+  // value to continue, which is the more fundamental of the two blockers.
+  if (val.equityModelsBlocked) {
+    return val.equityBlockedReason ?? "Equity-side model skipped (negative net worth).";
+  }
+  return gordonGuardReason(val, "RE_CV3", cv)
+    ?? "Residual-income value unavailable for the selected continuing-value method.";
+}
+
+/**
+ * The ReOI card's reason was already gated on the value being null, so it
+ * always said something — but it asserted the cause in prose while the guard
+ * carries the actual rates. Prefer the guard's string and keep a non-empty
+ * fallback for a null that arrives some other way.
+ *
+ * The fallback splits on the method for the same reason `gordonGuardReason`
+ * returns null off CV3: only CV03 divides by (kw − g), so naming the terminal
+ * growth under CV01/CV02 would describe a computation that did not run. Matches
+ * the RE side's method-neutral wording.
+ */
+function reoiCardSkipReason(val: Valuation, cv: CVMethod): string {
+  return gordonGuardReason(val, "ReOI_CV03", cv)
+    ?? (cv === "CV3"
+      ? "ReOI growth continuing value skipped: terminal growth must be below operating capital cost."
+      : "ReOI value unavailable for the selected continuing-value method.");
+}
 
 export default function ValuationCardsSection({
   val,
@@ -25,7 +85,7 @@ export default function ValuationCardsSection({
           { l: `CV PV (${cv})`, v: V_RE - val.CSE0 - val.pvRE },
         ]} fmt={fmt}
         perShare={V_RE == null ? null : toPerShare(V_RE, sharesOut)}
-        skipReason={val.equityModelsBlocked ? val.equityBlockedReason ?? "Equity-side model skipped (negative net worth)." : null}
+        skipReason={V_RE == null ? reCardSkipReason(val, cv) : null}
       />
       <ValCard color="emerald" title={`V (ReOI · ${cv === "CV1" ? "CV01" : cv === "CV2" ? "CV02" : "CV03"})`}
         subtitle="Eq.(9) · Ops-only · EV−NFO" value={V_ReOI}
@@ -35,7 +95,7 @@ export default function ValuationCardsSection({
           { l: "PV ReOI", v: val.pvReOI },
         ]} fmt={fmt}
         perShare={V_ReOI == null ? null : toPerShare(V_ReOI, sharesOut)}
-        skipReason={V_ReOI == null ? "ReOI growth continuing value skipped: terminal growth must be below operating capital cost." : null}
+        skipReason={V_ReOI == null ? reoiCardSkipReason(val, cv) : null}
       />
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">All CV Methods — RE</div>
