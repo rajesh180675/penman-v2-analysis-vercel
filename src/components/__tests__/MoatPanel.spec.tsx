@@ -4,11 +4,11 @@
    `periodsAboveCostOfCapital` is counted over `spreadValues`
    (moatScoring/industrial.ts:85-90) — the periods that carry a finite
    SPREAD. The denominator was `totalPeriods` = `sorted.length`, every
-   period analysed. The two are never equal: `pipeline.ts:285` computes
-   ratios from i > 0 only, so the oldest period never has a SPREAD, and
-   SPREAD is null altogether when |avgNFO| <= 1
-   (ratiosResidual.ts:32-33) — i.e. for an effectively debt-free
-   company, where every period is unmeasured.
+   period analysed. For anything the pipeline produced the two differ:
+   `pipeline.ts:285` computes ratios from i > 0 only, so the oldest
+   period has no SPREAD, and SPREAD is null altogether when
+   |avgNFO| <= 1 (ratiosResidual.ts:32-33) — i.e. for an effectively
+   debt-free company, where no period is measured.
 
    So the gap read as periods that failed to clear kw when they were
    simply never compared to it. `spreadMeasuredPeriods` now carries the

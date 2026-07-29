@@ -5,8 +5,8 @@
    `totalPeriods`: the "Moat Trend" badge and the "Strong SPREAD
    periods (>5%)" row. Both counts skip periods with no finite SPREAD
    (moatScoring/industrial.ts:85-90) while `totalPeriods` counts every
-   period analysed — see MoatPanel.spec.tsx for why the two can never
-   coincide.
+   period analysed — see MoatPanel.spec.tsx for why pipeline output
+   always separates the two.
 
    The strong-SPREAD row is the sharper case: a period without a SPREAD
    cannot have one above 5%, so dividing by every period understated
