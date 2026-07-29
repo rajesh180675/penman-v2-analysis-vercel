@@ -173,6 +173,83 @@ describe("MappingAuditGrid backlog triage", () => {
   });
 });
 
+describe("MappingAuditGrid triage-action strip", () => {
+  /* Every count deliberately distinct, and `actionableCount` consistent with the
+     producer: `entries.filter(e => e.action !== "ignore-non-core").length`
+     (mappingBacklogPolicy.ts:463) = 7 + 5 + 3 = 15, over a backlog of 24. */
+  function strip() {
+    return audit({
+      backlogSummary: {
+        ...audit().backlogSummary,
+        totalsByAction: {
+          "add-to-spec": 7,
+          "group-to-existing": 5,
+          review: 3,
+          "ignore-non-core": 9,
+        },
+        actionableCount: 15,
+      },
+    });
+  }
+
+  const html = render(strip());
+  const text = html.replace(/<!-- -->/g, "");
+
+  /** The number a StatBox renders above `label` — it emits value then label. */
+  function boxValue(label: string): number | null {
+    const m = text.match(
+      new RegExp(`>([\\d,]+)</div><div class="[^"]*">${label}</div>`),
+    );
+    return m ? Number(m[1]!.replace(/,/g, "")) : null;
+  }
+
+  it("shows each triage action against its own count", () => {
+    // Pinned value-to-label, not merely present: four same-shaped tiles in a row
+    // let any pair swap undetected if only the labels are asserted.
+    expect(boxValue("Add to spec")).toBe(7);
+    expect(boxValue("Group existing")).toBe(5);
+    expect(boxValue("Review")).toBe(3);
+    expect(boxValue("Ignored")).toBe(9);
+  });
+
+  it("states the backlog total the four action tiles partition", () => {
+    expect(text).toContain("by triage action · 24 total");
+  });
+
+  it("marks the actionable figure as a subtotal of tiles already shown", () => {
+    // Was labelled "Actionable" in the same five-column row as its own
+    // components, so summing the row gave 2×actionable + ignored (39) rather
+    // than the backlog size (24).
+    expect(boxValue("Actionable subtotal")).toBe(15);
+    expect(text).toContain("Not a fifth category");
+    expect(text).not.toContain("39 total");
+  });
+
+  it("renders the subtotal outside the row the four action tiles share", () => {
+    // The defect was positional: right value, right label, wrong row. Every
+    // other assertion here passes with all five tiles back in one `grid-cols-5`,
+    // so this one pins the structure — a new grid container must open between
+    // the last action tile and the subtotal.
+    const ignoredAt = text.indexOf(">Ignored</div>");
+    const subtotalAt = text.indexOf(">Actionable subtotal</div>");
+    expect(ignoredAt).toBeGreaterThan(-1);
+    expect(subtotalAt).toBeGreaterThan(ignoredAt);
+    expect(text.slice(ignoredAt, subtotalAt)).toContain('class="grid');
+  });
+
+  it("does not count the subtotal into the total it displays", () => {
+    const partition =
+      boxValue("Add to spec")! +
+      boxValue("Group existing")! +
+      boxValue("Review")! +
+      boxValue("Ignored")!;
+    expect(partition).toBe(24);
+    // The identity the two producers guarantee, pinned so a change to either
+    // `totalsByAction` or `actionableCount` surfaces here.
+    expect(boxValue("Actionable subtotal")).toBe(partition - boxValue("Ignored")!);
+  });
+});
+
 describe("MappingAuditGrid scope signals", () => {
   /** Detection order, which is what the explicit-company_type path returns. */
   function unsortedSignals(): ScopeSignal[] {

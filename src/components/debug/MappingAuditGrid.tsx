@@ -2,11 +2,32 @@
    Extracted verbatim from DebugPanel.tsx. No logic changes. */
 
 import type { MappingAuditReport, QualityGateReport } from "../../engine/mappingAudit";
+import type { BacklogTriageAction } from "../../engine/mappingBacklogPolicy";
 import { capped } from "../cappedList";
 import { Card, StatBox } from "./debugUi";
 
 const BACKLOG_SHOWN = 12;
 const SCOPE_SIGNALS_SHOWN = 6;
+
+/* Typed as the full action union, so adding a fifth triage action fails the
+   build here rather than silently dropping a bucket out of the strip while the
+   caption keeps claiming a total. */
+const ACTION_ORDER: readonly BacklogTriageAction[] = [
+  "add-to-spec",
+  "group-to-existing",
+  "review",
+  "ignore-non-core",
+];
+
+const ACTION_LABELS: Record<BacklogTriageAction, string> = {
+  "add-to-spec": "Add to spec",
+  "group-to-existing": "Group existing",
+  review: "Review",
+  "ignore-non-core": "Ignored",
+};
+
+/** Amber only where a non-zero count is something to act on. */
+const HIGHLIGHT_ACTIONS = new Set<BacklogTriageAction>(["add-to-spec", "review"]);
 
 export function MappingAuditGrid({
   mappingAudit,
@@ -24,6 +45,14 @@ export function MappingAuditGrid({
   // against `actionableCount`, the only number on hand that is not itself a
   // window.
   const backlog = capped(mappingAudit.backlogSummary.topActionable, BACKLOG_SHOWN);
+  // Summed from the four tiles rather than read from `outOfSpecLabels.length`.
+  // The two are equal today — `summarizeMappingBacklog` buckets every entry it
+  // is given — but a caption sourced elsewhere can disagree with the tiles under
+  // it, which is the defect this strip already had once.
+  const backlogTotal = ACTION_ORDER.reduce(
+    (sum, action) => sum + mappingAudit.backlogSummary.totalsByAction[action],
+    0,
+  );
   // Sorted here, not trusted from the producer. `assessAnalysisScope` sorts by
   // `periodsObserved` on six of its return paths but NOT on the explicit
   // `company_type` path, which returns `overrideSignals` in detection order —
@@ -90,12 +119,39 @@ export function MappingAuditGrid({
         <StatBox label="Unknown keys" value={mappingAudit.datasetKeyCounts.Unknown} highlight={mappingAudit.datasetKeyCounts.Unknown > 0} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
-        <StatBox label="Add to spec" value={mappingAudit.backlogSummary.totalsByAction["add-to-spec"]} highlight={mappingAudit.backlogSummary.totalsByAction["add-to-spec"] > 0} />
-        <StatBox label="Group existing" value={mappingAudit.backlogSummary.totalsByAction["group-to-existing"]} />
-        <StatBox label="Review" value={mappingAudit.backlogSummary.totalsByAction.review} highlight={mappingAudit.backlogSummary.totalsByAction.review > 0} />
-        <StatBox label="Ignored" value={mappingAudit.backlogSummary.totalsByAction["ignore-non-core"]} />
-        <StatBox label="Actionable" value={mappingAudit.backlogSummary.actionableCount} highlight={mappingAudit.backlogSummary.actionableCount > 0} />
+      {/* These five tiles were one `grid-cols-5` row of identical boxes, but
+          they are not five categories. `totalsByAction` counts one bucket per
+          entry, so the four action tiles partition the backlog exactly;
+          `actionableCount` is `action !== "ignore-non-core"`
+          (mappingBacklogPolicy.ts:463), so the fifth tile is the sum of the
+          first three. Summing the row as displayed double-counted every
+          actionable label — 2×actionable + ignored instead of the backlog size,
+          a ~211-label overstatement on Reliance. The subtotal now sits in its
+          own row, saying which tiles it re-counts. */}
+      <div className="mb-4 space-y-2">
+        <div className="text-xs text-slate-500">
+          Out-of-spec labels by triage action · {backlogTotal.toLocaleString()} total
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          {ACTION_ORDER.map((action) => (
+            <StatBox
+              key={action}
+              label={ACTION_LABELS[action]}
+              value={mappingAudit.backlogSummary.totalsByAction[action]}
+              highlight={HIGHLIGHT_ACTIONS.has(action) && mappingAudit.backlogSummary.totalsByAction[action] > 0}
+            />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <StatBox
+            label="Actionable subtotal"
+            value={mappingAudit.backlogSummary.actionableCount}
+            highlight={mappingAudit.backlogSummary.actionableCount > 0}
+          />
+          <div className="md:col-span-3 flex items-center text-xs text-slate-500">
+            Not a fifth category — every label above except Ignored, counted again.
+          </div>
+        </div>
       </div>
 
       <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
