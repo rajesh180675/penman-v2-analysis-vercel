@@ -126,6 +126,120 @@ describe("computeLossMakerValuation — Phase I3", () => {
     expect(result.revenueMultiple.multiple).toBe(6.0);
   });
 
+  /* An EV/Sales anchor with no sales. `reverseDCF` has always declined on this
+     condition; the revenue-multiple side checked only `!= null`, so at zero
+     revenue it published `impliedEVCr` of 0 and a per-share figure that is
+     really just −NFO/shares — net financial position under the heading
+     "Revenue Multiple (EV/Sales)". The declared `skipReason` was never written,
+     so the panel's guard on it could not fire. */
+  describe("declines the revenue multiple when there is no revenue to apply it to", () => {
+    const zeroRevenuePeriods = (): RecastPeriod[] => [
+      mkPeriod("2022-03-31", 0, -500, -400, -1000),
+      mkPeriod("2023-03-31", 0, -600, -500, -800),
+      mkPeriod("2024-03-31", 0, -700, -600, -600),
+      mkPeriod("2025-03-31", 0, -800, -700, -400),
+    ];
+
+    it("states the reason instead of publishing a zero-revenue anchor", () => {
+      const result = computeLossMakerValuation(zeroRevenuePeriods(), baseCfg)!;
+      expect(result.revenueMultiple.skipReason).toMatch(/positive latest revenue/);
+      // The reverse-DCF declines on the same input, which is what makes the
+      // old revenue-multiple behaviour an inconsistency rather than a choice.
+      expect(result.reverseDCF.skipReason).toMatch(/positive latest revenue/);
+    });
+
+    it("keeps the reason out of the recommendation's anchor claim", () => {
+      // The decision path. `recommendation` travels into the V3 banner without
+      // the panel's guard, so a skip that only suppressed the panel block would
+      // still have a multiple quoted as an anchor here.
+      const result = computeLossMakerValuation(zeroRevenuePeriods(), baseCfg)!;
+      expect(result.recommendation).not.toMatch(/Anchor on revenue-multiple/);
+      expect(result.recommendation).not.toMatch(/Revenue-multiple anchor:/);
+      expect(result.recommendation).toMatch(/No revenue-multiple anchor/);
+    });
+
+    it("declines for negative latest revenue, not just zero", () => {
+      // The producer's contract is non-positive, not zero: a sign-flipped or
+      // contra-revenue parse must be refused for the same reason. Without this
+      // the zero fixture above would still pass if `<= 0` regressed to `=== 0`,
+      // and a negative multiple would publish as a valuation.
+      const periods = zeroRevenuePeriods().map((p) => ({
+        ...p,
+        is: { ...p.is, Sales: -250 } as RecastPeriod["is"],
+      }));
+      const result = computeLossMakerValuation(periods, baseCfg)!;
+      expect(result.latestRevenueCr).toBe(-250);
+      expect(result.revenueMultiple.skipReason).toMatch(/positive latest revenue/);
+      expect(result.recommendation).toMatch(/No revenue-multiple anchor/);
+    });
+
+    it("declines when the sales line is missing rather than zero", () => {
+      // A partial parse that fails to map the Sales row, as distinct from a
+      // pre-revenue company. Different reason, same refusal.
+      const periods = zeroRevenuePeriods().map((p) => {
+        const is = { ...p.is } as Record<string, unknown>;
+        delete is.Sales;
+        // Double cast: `Sales` is required on CanonicalIncome, and the point of
+        // the fixture is that a partial parse can leave it absent anyway.
+        return { ...p, is: is as unknown as RecastPeriod["is"] };
+      });
+      const result = computeLossMakerValuation(periods, baseCfg)!;
+      expect(result.revenueMultiple.skipReason).toMatch(/missing/);
+      expect(result.recommendation).toMatch(/No revenue-multiple anchor/);
+    });
+
+    it("withdraws the upper-bound framing on the weak path too", () => {
+      // The third recommendation branch. "Treat any revenue-multiple anchor as
+      // upper bound" presupposes an anchor to bound, so it is the same false
+      // claim in weaker clothing. Reached with no runway (net debt, so there is
+      // no cash buffer to divide) and 0/3 profitability signals — which is
+      // exactly the shape a pre-revenue distressed name has.
+      const periods = Array.from({ length: 4 }, (_, i) =>
+        mkPeriod(`${2022 + i}-03-31`, 0, -500 - i * 100, -400 - i * 100, 2000),
+      );
+      const result = computeLossMakerValuation(periods, baseCfg)!;
+      expect(result.runwayYears).toBeNull();
+      expect(result.profitabilityPath.signal).toBe("red");
+      expect(result.recommendation).toMatch(/No revenue-multiple anchor is available/);
+      expect(result.recommendation).not.toMatch(/upper bound/);
+    });
+
+    it("keeps the upper-bound framing on the weak path when there is an anchor", () => {
+      // Positive control for the branch above: the withdrawal is conditional on
+      // the skip reason, not on the signal being red.
+      const result = computeLossMakerValuation(
+        Array.from({ length: 4 }, (_, i) => mkPeriod(`${2022 + i}-03-31`, 5000 + i * 1000, -500, -100, -3000)),
+        baseCfg,
+      )!;
+      expect(result.profitabilityPath.signal).toBe("red");
+      expect(result.revenueMultiple.skipReason).toBeUndefined();
+      expect(result.recommendation).toMatch(/Treat any revenue-multiple anchor as upper bound/);
+      expect(result.recommendation).not.toMatch(/No revenue-multiple anchor/);
+    });
+
+    it("still quotes the anchor as a number when revenue is present", () => {
+      // Positive control for the whole block: the tests above must not be
+      // passing because the producer now declines unconditionally. Asserts the
+      // numeric anchor rather than the bare phrase — "revenue-multiple" alone
+      // also appears in the weak-path wording, so matching it would not prove a
+      // figure was published. Green shape (2/3 signals) is the only branch that
+      // quotes the multiple with a per-share value.
+      const result = computeLossMakerValuation(
+        [
+          mkPeriod("2022-03-31", 4000, -800, -700, 0, 3200),
+          mkPeriod("2023-03-31", 5500, -600, -500, 0, 4100),
+          mkPeriod("2024-03-31", 7500, -400, -200, 0, 5100),
+          mkPeriod("2025-03-31", 11000, -200, 100, 0, 6600),
+        ],
+        baseCfg,
+      )!;
+      expect(result.profitabilityPath.signal).toBe("green");
+      expect(result.revenueMultiple.skipReason).toBeUndefined();
+      expect(result.recommendation).toMatch(/Revenue-multiple anchor: \d+\.\dx/);
+      expect(result.recommendation).not.toMatch(/No revenue-multiple anchor/);
+    });
+  });
+
   it("computes runway years from cash and burn", () => {
     const periods = [
       mkPeriod("2022-03-31", 5000, -500, -1000, -3000), // -3000 NFO = ₹3000 Cr net cash

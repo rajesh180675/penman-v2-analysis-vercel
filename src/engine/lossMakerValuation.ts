@@ -212,6 +212,19 @@ export function computeLossMakerValuation(
       ? equityValueCr / sharesOutstanding
       : null;
 
+  // An EV/Sales anchor needs sales. Without them `impliedEVCr` is 0 and
+  // `perShareValue` collapses to −NFO/shares — net financial position wearing
+  // the label "Revenue Multiple (EV/Sales)", which reads as a valuation rather
+  // than as the absence of one. `reverseDCF` below already declines on this
+  // exact condition; the revenue-multiple side checked only `!= null` and so
+  // published a figure derived from no revenue at all.
+  const revenueMultipleSkipReason =
+    latestRevenueCr == null
+      ? "Revenue multiple requires latest-period sales, which are missing."
+      : latestRevenueCr <= 0
+        ? "Revenue multiple requires positive latest revenue."
+        : undefined;
+
   // Reverse-DCF
   const marketCapCr =
     config.market_price != null && config.shares_outstanding != null
@@ -290,16 +303,31 @@ export function computeLossMakerValuation(
     summary = `Weak path: 0/3 positive signals. Neither growth, margins, nor loss-narrowing improving. Equity at material risk of dilution or impairment.`;
   }
 
-  // Overall recommendation
+  // Overall recommendation. The multiple is only quotable when it was applied
+  // to something, so where there is no anchor the reason replaces it rather
+  // than sitting beside it: this string is the sentence a reviewer acts on, and
+  // it travels into the V3 banner without the panel's guard around it.
   let recommendation: string;
   if (runwayYears != null && runwayYears < 2) {
-    recommendation = `Loss-maker with <2 years runway at current burn. Anchor on revenue-multiple of ${multiple.toFixed(1)}x and stress-test against equity dilution risk. Reverse-DCF asks for ${
+    const anchorClause = revenueMultipleSkipReason
+      ? `No revenue-multiple anchor is available: ${revenueMultipleSkipReason} Stress-test against equity dilution risk.`
+      : `Anchor on revenue-multiple of ${multiple.toFixed(1)}x and stress-test against equity dilution risk.`;
+    recommendation = `Loss-maker with <2 years runway at current burn. ${anchorClause} Reverse-DCF asks for ${
       impliedRevenueCAGR != null ? `${(impliedRevenueCAGR * 100).toFixed(0)}% revenue CAGR for 5y` : "growth assumptions that need sense-checking"
     }.`;
   } else if (signal === "green") {
-    recommendation = `Loss-maker with constructive trajectory. Revenue-multiple anchor: ${multiple.toFixed(1)}x ⇒ ${perShareValue != null ? `₹${perShareValue.toFixed(0)}/share` : "use peer median"}. Compare with current price; reverse-DCF implied CAGR is ${impliedRevenueCAGR != null ? `${(impliedRevenueCAGR * 100).toFixed(0)}%` : "TBD"}.`;
+    const anchorClause = revenueMultipleSkipReason
+      ? `No revenue-multiple anchor: ${revenueMultipleSkipReason}`
+      : `Revenue-multiple anchor: ${multiple.toFixed(1)}x ⇒ ${perShareValue != null ? `₹${perShareValue.toFixed(0)}/share` : "use peer median"}.`;
+    recommendation = `Loss-maker with constructive trajectory. ${anchorClause} Compare with current price; reverse-DCF implied CAGR is ${impliedRevenueCAGR != null ? `${(impliedRevenueCAGR * 100).toFixed(0)}%` : "TBD"}.`;
   } else {
-    recommendation = `Loss-maker with weak path-to-profitability signals. Treat any revenue-multiple anchor as upper bound, not fair value. Consider waiting for either margin inflection or constructive guidance before sizing position.`;
+    // "Treat any revenue-multiple anchor as upper bound" presupposes an anchor
+    // to bound. With no sales there is none, and the sentence sends the reader
+    // looking for a figure the panel is declining to show.
+    const anchorClause = revenueMultipleSkipReason
+      ? `No revenue-multiple anchor is available: ${revenueMultipleSkipReason}`
+      : `Treat any revenue-multiple anchor as upper bound, not fair value.`;
+    recommendation = `Loss-maker with weak path-to-profitability signals. ${anchorClause} Consider waiting for either margin inflection or constructive guidance before sizing position.`;
   }
 
   return {
@@ -318,6 +346,7 @@ export function computeLossMakerValuation(
       source,
       impliedEVCr,
       perShareValue,
+      skipReason: revenueMultipleSkipReason,
     },
     reverseDCF: {
       marketCapCr,

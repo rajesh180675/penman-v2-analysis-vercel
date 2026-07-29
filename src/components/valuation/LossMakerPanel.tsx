@@ -30,9 +30,14 @@ export default function LossMakerPanel({ lossMaker }: { lossMaker: LossMakerValu
         ))}
       </div>
 
-      {!lossMaker.revenueMultiple.skipReason && (
-        <div className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-          <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Revenue Multiple (EV/Sales)</div>
+      <div className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+        <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Revenue Multiple (EV/Sales)</div>
+        {/* The reason is shown rather than the section being dropped: an absent
+            block reads the same as a block that was never wired, so a reviewer
+            cannot tell "not applicable here" from "we forgot to compute it". */}
+        {lossMaker.revenueMultiple.skipReason ? (
+          <div className="text-xs text-amber-700 dark:text-amber-400">⚠️ {lossMaker.revenueMultiple.skipReason}</div>
+        ) : (
           <div className="flex flex-wrap gap-4 text-sm">
             <span>Multiple: <strong>{lossMaker.revenueMultiple.multiple.toFixed(1)}x</strong> <span className="text-xs text-slate-400">({lossMaker.revenueMultiple.source})</span></span>
             <span>Implied EV: <strong>₹{lossMaker.revenueMultiple.impliedEVCr.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr</strong></span>
@@ -40,8 +45,8 @@ export default function LossMakerPanel({ lossMaker }: { lossMaker: LossMakerValu
               <span>Per share: <strong>₹{lossMaker.revenueMultiple.perShareValue.toFixed(1)}</strong></span>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {!lossMaker.reverseDCF.skipReason && lossMaker.reverseDCF.impliedSteadyStateMargin != null && (
         <div className="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
