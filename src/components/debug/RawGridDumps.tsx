@@ -3,7 +3,74 @@
    by DebugPanel and is passed as props. No logic changes. */
 
 import type { CapitalineParseDebug } from "../../engine/capitalineParser";
+import { capped } from "../cappedList";
 import { Card } from "./debugUi";
+
+/** Columns per row. Wider grids exist; the container scrolls horizontally. */
+const COLUMNS_SHOWN = 12;
+
+type RawGrid = CapitalineParseDebug["rawGrids"][number];
+
+/**
+ * The row/column preview for one grid.
+ *
+ * Extracted so the column count can be computed before the JSX. The header row
+ * used to be built from `firstRows[0]` while every body row sliced its own
+ * length, and row 0 of a Capitaline export is a one-cell title — measured across
+ * seven grids from two companies, `firstRows[0].length` was 1 every single time
+ * while the rows beneath it ran 10 to 15 wide. So the table drew one `C0` header
+ * over twelve columns of numbers, on the panel whose entire job is showing which
+ * column a value came from.
+ */
+function GridPreview({ gd }: { gd: RawGrid }) {
+  // Widest rendered row, not row 0's width, and not `gd.colCount` — that is the
+  // max over all `rowCount` rows, which can exceed anything in this 30-row window.
+  const width = gd.firstRows.reduce((max, row) => Math.max(max, row.length), 0);
+  const columns = capped(Array.from({ length: width }, (_, index) => index), COLUMNS_SHOWN);
+
+  return (
+    <>
+      <div className="text-xs font-semibold text-slate-500 mb-1">
+        First {gd.firstRows.length} of {gd.rowCount} rows
+        {columns.hidden > 0
+          ? ` · showing ${columns.shown.length} of ${width} columns`
+          : ` · all ${width} columns`}:
+      </div>
+      <div className="overflow-x-auto rounded-lg border border-slate-200">
+        <table className="text-xs font-mono border-collapse min-w-full">
+          <thead>
+            <tr className="bg-slate-100">
+              <th className="px-2 py-1 border border-slate-200 text-slate-400 w-8">#</th>
+              {columns.shown.map((ci) => (
+                <th key={ci} className="px-2 py-1 border border-slate-200 text-slate-500 min-w-[90px]">C{ci}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {gd.firstRows.map((row, ri) => (
+              <tr
+                key={ri}
+                className={ri === gd.headerRowIndex ? "bg-yellow-100 font-bold" : ri % 2 === 0 ? "bg-white" : "bg-slate-50"}
+              >
+                <td className="px-2 py-1 border border-slate-200 text-slate-300 text-center">{ri}</td>
+                {row.slice(0, COLUMNS_SHOWN).map((cell, ci) => (
+                  <td
+                    key={ci}
+                    className={`px-2 py-1 border border-slate-200 max-w-[120px] truncate ${ci === 0 ? "text-left" : "text-right"}`}
+                    title={cell}
+                  >
+                    {cell || <span className="text-slate-200">·</span>}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-slate-400">Hover cells to see full content.</p>
+    </>
+  );
+}
 
 export function RawGridDumps({
   debugInfo,
@@ -73,41 +140,7 @@ export function RawGridDumps({
                     ⚠ Grid is EMPTY — all parse strategies returned 0 rows.
                   </div>
                 ) : (
-                  <>
-                    <div className="text-xs font-semibold text-slate-500 mb-1">First {gd.firstRows.length} rows:</div>
-                    <div className="overflow-x-auto rounded-lg border border-slate-200">
-                      <table className="text-xs font-mono border-collapse min-w-full">
-                        <thead>
-                          <tr className="bg-slate-100">
-                            <th className="px-2 py-1 border border-slate-200 text-slate-400 w-8">#</th>
-                            {(gd.firstRows[0] ?? []).slice(0, 12).map((_c, ci) => (
-                              <th key={ci} className="px-2 py-1 border border-slate-200 text-slate-500 min-w-[90px]">C{ci}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {gd.firstRows.map((row, ri) => (
-                            <tr
-                              key={ri}
-                              className={ri === gd.headerRowIndex ? "bg-yellow-100 font-bold" : ri % 2 === 0 ? "bg-white" : "bg-slate-50"}
-                            >
-                              <td className="px-2 py-1 border border-slate-200 text-slate-300 text-center">{ri}</td>
-                              {row.slice(0, 12).map((cell, ci) => (
-                                <td
-                                  key={ci}
-                                  className={`px-2 py-1 border border-slate-200 max-w-[120px] truncate ${ci === 0 ? "text-left" : "text-right"}`}
-                                  title={cell}
-                                >
-                                  {cell || <span className="text-slate-200">·</span>}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <p className="text-xs text-slate-400">Hover cells to see full content.</p>
-                  </>
+                  <GridPreview gd={gd} />
                 )}
               </div>
             )}
