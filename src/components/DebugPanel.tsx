@@ -16,7 +16,7 @@ import { IdentitySuitePanel } from "./debug/IdentitySuitePanel";
 import { TraceabilityPanel, type TraceRecord } from "./debug/TraceabilityPanel";
 import { GranularityChecklistPanel } from "./debug/GranularityChecklistPanel";
 import { RecastVerificationPanel } from "./debug/RecastVerificationPanel";
-import { MetricSearchPanel } from "./debug/MetricSearchPanel";
+import { MetricSearchPanel, SEARCH_ROWS_SHOWN } from "./debug/MetricSearchPanel";
 import { RawGridDumps } from "./debug/RawGridDumps";
 import { RawKeysGrid } from "./debug/RawKeysGrid";
 import { TraceLogViewer } from "./debug/TraceLogViewer";
@@ -259,7 +259,10 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
     downloadTextFile("traceability_appendix.csv", csv, "text/csv;charset=utf-8");
   };
 
-  // Metric search — find a key across all periods and show its values
+  // Metric search — find a key across all periods and show its values.
+  // The match count travels with the rows: a bare `slice` left the panel
+  // showing thirty rows for a query that hit 489 keys (measured on Reliance,
+  // `q="in"`), with nothing on screen to say so.
   const searchResults = useMemo(() => {
     if (!debugInfo || !metricSearch.trim() || metricSearch.length < 2) return null;
     const q = metricSearch.toLowerCase();
@@ -269,7 +272,7 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
       k.toLowerCase().includes(q)
     );
 
-    return matches.slice(0, 30);
+    return { shown: matches.slice(0, SEARCH_ROWS_SHOWN), total: matches.length };
   }, [debugInfo, metricSearch]);
 
   if (!debugInfo) {
@@ -433,7 +436,7 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
       {/* ── Metric Search ── */}
       {hasData && (
         <MetricSearchPanel
-          debugInfo={debugInfo}
+          rawData={rawData}
           metricSearch={metricSearch}
           setMetricSearch={setMetricSearch}
           searchResults={searchResults}
