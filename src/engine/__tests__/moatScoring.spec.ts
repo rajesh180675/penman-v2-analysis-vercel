@@ -254,6 +254,16 @@ describe("computeMoatScore — SPREAD-bearing periods vs periods analysed", () =
     expect(result.medianSPREAD).toBeNull();
   });
 
+  it("counts a measured period that failed to clear kw in the denominator only", () => {
+    // The denominator has to be the measurable population, not the qualifying
+    // one. Every period here carries a SPREAD and none of them is positive, so
+    // this is the one shape that tells `spreadValues.length` apart from
+    // `periodsAboveCostOfCapital` — the weak inequalities below hold either way.
+    const result = computeMoatScore(NO_MOAT_PERIODS, BASE_CONFIG)!;
+    expect(result.spreadMeasuredPeriods).toBe(NO_MOAT_PERIODS.length);
+    expect(result.periodsAboveCostOfCapital).toBe(0);
+  });
+
   it("never reports more measured periods than periods analysed", () => {
     const result = computeMoatScore(NO_MOAT_PERIODS, BASE_CONFIG)!;
     expect(result.spreadMeasuredPeriods).toBeLessThanOrEqual(result.totalPeriods);
