@@ -76,6 +76,34 @@ describe("StatementLineagePanel filings list", () => {
     const html = render(buildStatementLineage(annualPeriods(2020, 7)));
     expect(html).toContain("1 earlier filing is not shown");
   });
+
+  it("does not reorder the lineage it was handed", () => {
+    // The newest-first display order comes from reversing a *copy*. Reversing in
+    // place would render correctly once and then flip on the next render, because
+    // `CompanyWorkspace` memoizes this object on `rawData` and hands the same
+    // array back every time. Asserted after one render, not two: an in-place
+    // reverse cancels itself on the second pass, so an even number of renders
+    // cannot tell the two implementations apart.
+    const lineage = buildStatementLineage(annualPeriods(2012, 15));
+    const before = lineage.versions.map((item) => item.periodEnd);
+    render(lineage);
+    expect(lineage.versions.map((item) => item.periodEnd)).toEqual(before);
+    // And the render after that still shows the newest end.
+    expect(render(lineage)).toContain("2026-03-31");
+  });
+
+  it("does not reorder the candidate list it was handed", () => {
+    // Same in-place-reverse hazard on the other reversed list.
+    const lineage = summary({
+      restatementCandidates: ["2012-03-31: a", "2019-03-31: b", "2026-03-31: c"],
+    });
+    render(lineage);
+    expect(lineage.restatementCandidates).toEqual([
+      "2012-03-31: a",
+      "2019-03-31: b",
+      "2026-03-31: c",
+    ]);
+  });
 });
 
 describe("StatementLineagePanel restatement candidates", () => {
