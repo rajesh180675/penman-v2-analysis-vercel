@@ -94,11 +94,31 @@ export default function CapitalAllocationPanel({ result, title = "Capital Alloca
           <div className="text-[10px] uppercase tracking-wide text-slate-500">Incr. ROIC</div>
           <div className="text-sm font-bold text-slate-900 dark:text-slate-100">{pct(result.medianIncrementalROIC)}</div>
         </div>
+        {/* Denominator is buyback periods, not every period analysed.
+            `buybacksValueAccretive` only increments inside `if (buyback > 0)`
+            (capitalAllocationScoring/industrial.ts:112-115) while `totalPeriods`
+            is `periods.length` (:487), so this read "2/15" for a company that
+            bought back twice and got both right — thirteen value-destroying
+            buybacks that never happened. */}
         <div className="rounded-lg bg-white/70 dark:bg-slate-800/50 p-2">
           <div className="text-[10px] uppercase tracking-wide text-slate-500">Buybacks Accretive</div>
-          <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
-            {result.buybacksValueAccretive}/{result.totalPeriods}
-          </div>
+          {result.buybackPeriods === 0 ? (
+            <>
+              <div className="text-sm font-bold text-slate-900 dark:text-slate-100">—</div>
+              <div className="text-[10px] text-slate-500">
+                No buybacks in {result.totalPeriods} periods
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                {result.buybacksValueAccretive}/{result.buybackPeriods}
+              </div>
+              <div className="text-[10px] text-slate-500">
+                buyback periods · {result.totalPeriods} analysed
+              </div>
+            </>
+          )}
         </div>
       </div>
 

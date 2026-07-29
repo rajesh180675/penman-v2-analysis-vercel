@@ -25,6 +25,13 @@ export interface CapAllocScoreResult {
   medianIncrementalROIC: number | null;
   /** Periods where buybacks occurred with positive SPREAD */
   buybacksValueAccretive: number;
+  /**
+   * Periods where a buyback occurred at all — the population
+   * `buybacksValueAccretive` is drawn from. Reported separately because
+   * `totalPeriods` is every period analysed, so `buybacksValueAccretive /
+   * totalPeriods` counts quiet years as failed buybacks.
+   */
+  buybackPeriods: number;
   /** Periods where equity was issued with negative SPREAD (dilutive) */
   dilutiveIssuances: number;
   /** Total periods analyzed */
