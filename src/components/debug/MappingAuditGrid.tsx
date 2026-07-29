@@ -2,7 +2,11 @@
    Extracted verbatim from DebugPanel.tsx. No logic changes. */
 
 import type { MappingAuditReport, QualityGateReport } from "../../engine/mappingAudit";
+import { capped } from "../cappedList";
 import { Card, StatBox } from "./debugUi";
+
+const BACKLOG_SHOWN = 12;
+const SCOPE_SIGNALS_SHOWN = 6;
 
 export function MappingAuditGrid({
   mappingAudit,
@@ -11,6 +15,28 @@ export function MappingAuditGrid({
   mappingAudit: MappingAuditReport;
   qualityGate?: QualityGateReport | null | undefined;
 }) {
+  // Two truncations stacked, so this list's own length is not the total.
+  // `summarizeMappingBacklog` already `.slice(0, 25)`s into `topActionable`, and
+  // this panel took 12 of those — measured across five bundled companies,
+  // `topActionable` was 25 every time while `actionableCount` ran 49 (Infosys) to
+  // 211 (Reliance). So twelve rows stood for 211, and reporting
+  // `topActionable.length` would have under-reported it too. The header counts
+  // against `actionableCount`, the only number on hand that is not itself a
+  // window.
+  const backlog = capped(mappingAudit.backlogSummary.topActionable, BACKLOG_SHOWN);
+  // Sorted here, not trusted from the producer. `assessAnalysisScope` sorts by
+  // `periodsObserved` on six of its return paths but NOT on the explicit
+  // `company_type` path, which returns `overrideSignals` in detection order —
+  // and that is the path the library picker always takes, since it always
+  // supplies a concrete type. So the head was "whichever SIGNAL_GROUPS key
+  // matched first" on exactly the runs a reviewer sees most.
+  const scopeSignals = capped(
+    [...(qualityGate?.scopeAssessment.signals ?? [])].sort(
+      (left, right) => right.periodsObserved - left.periodsObserved,
+    ),
+    SCOPE_SIGNALS_SHOWN,
+  );
+
   return (
     <Card title="Mapping Coverage Audit">
       {qualityGate && (
@@ -46,8 +72,15 @@ export function MappingAuditGrid({
       )}
       {qualityGate?.scopeAssessment.signals.length ? (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-900">
-          <div className="font-semibold mb-1">Scope signals</div>
-          <div>{qualityGate.scopeAssessment.signals.slice(0, 6).map((signal) => `${signal.kind}: ${signal.key}`).join(" · ")}</div>
+          <div className="font-semibold mb-1">
+            Scope signals ({qualityGate.scopeAssessment.signals.length}) · strongest first
+          </div>
+          <div>{scopeSignals.shown.map((signal) => `${signal.kind}: ${signal.key}`).join(" · ")}</div>
+          {scopeSignals.hidden > 0 && (
+            <div className="mt-1">
+              +{scopeSignals.hidden} weaker {scopeSignals.hidden === 1 ? "signal" : "signals"} not shown.
+            </div>
+          )}
         </div>
       ) : null}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
@@ -74,7 +107,10 @@ export function MappingAuditGrid({
           <div className="text-xs text-green-700">No actionable backlog labels remain in this dataset.</div>
         ) : (
           <div className="max-h-64 overflow-auto space-y-2 text-xs">
-            {mappingAudit.backlogSummary.topActionable.slice(0, 12).map((entry) => (
+            <div className="text-slate-500">
+              Showing {backlog.shown.length} of {mappingAudit.backlogSummary.actionableCount} actionable · highest-ranked first
+            </div>
+            {backlog.shown.map((entry) => (
               <div key={`${entry.statement}:${entry.key}`} className="rounded-md border border-slate-200 bg-white px-3 py-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-slate-800">{entry.statement}:{entry.key}</span>
@@ -129,7 +165,12 @@ export function MappingAuditGrid({
             {mappingAudit.yamlKeysNotInDataset.length === 0 ? (
               <div className="text-green-700">None</div>
             ) : (
-              mappingAudit.yamlKeysNotInDataset.slice(0, 200).map((k) => <div key={k}>{k}</div>)
+              /* Cap dropped rather than given a remainder line: it could not
+                 bind. This list is a subset of the YAML key universe, and the
+                 whole spec file yields 182 extractable keys, so `.slice(0, 200)`
+                 was dead code. Measured 60-119 across five bundled companies.
+                 The container already scrolls. */
+              mappingAudit.yamlKeysNotInDataset.map((k) => <div key={k}>{k}</div>)
             )}
           </div>
         </div>
