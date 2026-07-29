@@ -4,20 +4,19 @@ import CompanyWorkspace from "../CompanyWorkspace";
 import type { CompanyRegistry, EngineConfig, RawPeriodData } from "../../engine/types";
 import { DEFAULT_CONFIG } from "../../engine/types";
 
-function mkRaw(companyId: string, periodEnd: string): RawPeriodData {
+function mkRaw(
+  companyId: string,
+  periodEnd: string,
+  raw: Record<string, number> = { Sales: 900, "Net Profit": 90, "Total Assets": 1000 },
+): RawPeriodData {
   return {
     company_id: companyId,
     period_end: periodEnd,
-    raw_metric_values: {
-      Sales: 900,
-      "Net Profit": 90,
-      "Total Assets": 1000,
-    },
+    raw_metric_values: raw,
   };
 }
 
-function renderWorkspace() {
-  const rawData = [mkRaw("TESTCO", "2025-03-31")];
+function renderWorkspace(rawData: RawPeriodData[] = [mkRaw("TESTCO", "2025-03-31")]) {
   const config: EngineConfig = {
     ...DEFAULT_CONFIG,
     sector_template: "industrials",
@@ -108,10 +107,28 @@ describe("CompanyWorkspace", () => {
     expect(html).toContain("Concept Ontology Coverage");
     expect(html).toContain("Coverage");
     expect(html).toContain("Core matched");
-    expect(html).toContain("Top unmapped");
+    expect(html).toContain("Unmapped labels");
     expect(html).toContain("Statement Diagnostics And Corporate Actions");
     expect(html).toContain("Internal Analysis Memory");
     expect(html).toContain("No local analysis memory for this company yet.");
+  });
+
+  it("reports every unmapped label, not the first eight of them", () => {
+    // The tile used to render `rankUnmappedLabels(rawData, 8).length`, so any
+    // company with more than eight unmapped labels showed 8 — which is every
+    // company in the bundled registry, where the real figure runs 221 to 1,698.
+    // Twelve here, one of them ("Inventory") an ontology alias, and one repeated
+    // across two statements so the old un-deduped base-key list would have
+    // over-counted it.
+    const raw: Record<string, number> = { Inventory__BalanceSheet: 40, "Lease Adjustment__ProfitLoss": 1 };
+    for (let i = 0; i < 11; i++) raw[`Unclaimed Label ${i}__BalanceSheet`] = i;
+    raw["Lease Adjustment__BalanceSheet"] = 1;
+
+    const html = renderWorkspace([mkRaw("TESTCO", "2025-03-31", raw)]);
+
+    // 13 distinct labels: 11 unclaimed + "Lease Adjustment" (once) + "Inventory".
+    expect(html).toContain("12 of 13");
+    expect(html).not.toContain(">8<");
   });
 
   it("renders the audited run history table headers and empty state", () => {

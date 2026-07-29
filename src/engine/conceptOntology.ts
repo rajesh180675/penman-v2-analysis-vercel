@@ -1,5 +1,5 @@
 import { RawPeriodData } from "./types";
-import { findRawMetric, listRawBaseKeys } from "./rawMetricTools";
+import { findRawMetric, listRawBaseKeys, listValuedRawBaseKeys } from "./rawMetricTools";
 
 // Types relocated to ./types/conceptIdentity (pure leaf, weakness #1 cycle break).
 // Imported back for internal use; re-exported so existing "./conceptOntology" paths stay valid.
@@ -155,13 +155,62 @@ export function summarizeConceptCoverage(periods: RawPeriodData[] | null | undef
   } satisfies ConceptCoverageSummary;
 }
 
-export function rankUnmappedLabels(periods: RawPeriodData[] | null | undefined, limit = 20) {
+export interface UnmappedLabelSummary {
+  /** Distinct valued labels in the latest period that no ontology alias claims. */
+  unmapped: number;
+  /** Distinct valued labels in the latest period, claimed or not — the denominator. */
+  distinct: number;
+}
+
+/**
+ * How many of the latest period's raw labels the ontology does not claim, and how
+ * many there were to claim.
+ *
+ * Replaces `rankUnmappedLabels`, whose only consumer read `.length` off a list the
+ * function had already `slice`d to a limit of 8 — so the tile could not report more
+ * than 8. Every one of the 33 bundled companies parses past that: all 33 displayed
+ * exactly `8`, where this function reports 216 for the short exports and 2,334 for
+ * ITC. Returning counts rather than a truncated list is the point — there is no
+ * length left to misread.
+ *
+ * Reports counts only, because nothing rendered the ranked labels — the list was
+ * built and discarded on every render, and "Top unmapped" named a list no user
+ * ever saw.
+ *
+ * Two things make the counting non-obvious, and both were measured rather than
+ * assumed:
+ *
+ * Labels are counted once. Keys are `<label>__<statement>` composites, so a label
+ * reported on two statements yields two of them — Infosys parses 475 keys from 235
+ * distinct labels, ITC 5,069 from 2,381. Counting keys would report how the export
+ * lays its statements out rather than how much of it maps.
+ *
+ * Only labels carrying a figure are counted, via `listValuedRawBaseKeys`. The
+ * parser writes a kept row's key whether or not it found a value, and on the bank
+ * and insurer exports the empty ones dominate: 1,228 of HDFC Bank's 1,721 distinct
+ * labels are null on every statement they appear in, 1,147 of ICICI Bank's 1,614.
+ * Counting those would make the tile a measure of how sparse the file is. It would
+ * also put this tile at odds with the two beside it — 7 of HDFC Bank's null labels
+ * are ontology aliases ("fixed assets", "trade receivables", "sundry creditors"),
+ * which `findRawMetric` skips for want of a figure, so `Coverage` and `Core
+ * matched` report those concepts unmatched. Sharing the predicate means one grid
+ * block gives one answer about which labels are in play.
+ */
+export function summarizeUnmappedLabels(
+  periods: RawPeriodData[] | null | undefined,
+): UnmappedLabelSummary {
   const latest = periods?.[periods.length - 1] ?? null;
-  if (!latest) return [];
+  if (!latest) return { unmapped: 0, distinct: 0 };
   const knownLabels = new Set(CONCEPT_ONTOLOGY.flatMap((concept) => concept.aliases.map((alias) => alias.toLowerCase())));
-  return listRawBaseKeys(latest)
-    .filter((label) => !knownLabels.has(label.toLowerCase()))
-    .slice(0, limit);
+  // Folded to lower case for both the dedupe and the alias compare, so a label
+  // that differs from an alias only in case counts as claimed rather than as one
+  // more unmapped label — the same leniency `findRawMetric` applies.
+  const distinct = new Set(listValuedRawBaseKeys(latest).map((label) => label.toLowerCase()));
+  let unmapped = 0;
+  for (const label of distinct) {
+    if (!knownLabels.has(label)) unmapped += 1;
+  }
+  return { unmapped, distinct: distinct.size };
 }
 
 // ─── Conflict detection (Gap 1 / PR-A) ──────────────────────────────────────

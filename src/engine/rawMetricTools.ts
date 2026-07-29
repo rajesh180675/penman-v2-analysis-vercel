@@ -19,6 +19,29 @@ export function listRawBaseKeys(period: RawPeriodData | null | undefined) {
   return Object.keys(period.raw_metric_values ?? {}).map(baseKey);
 }
 
+/**
+ * Base keys of the entries that actually carry a figure.
+ *
+ * `listRawBaseKeys` lists every key the parser wrote, and it writes the original
+ * label unconditionally — a row it kept but found no value in still gets a key per
+ * statement. On the bank and insurer exports that dominates: HDFC Bank's latest
+ * period has 1,721 distinct labels of which 1,228 are null on every statement they
+ * appear in.
+ *
+ * Same predicate `findRawMetric` applies below, so anything counted here is
+ * something a concept lookup could have resolved. A label finite on one statement
+ * and null on another is included, once, by the statement that has the figure.
+ */
+export function listValuedRawBaseKeys(period: RawPeriodData | null | undefined) {
+  if (!period) return [];
+  const out: string[] = [];
+  for (const [compositeKey, rawValue] of Object.entries(period.raw_metric_values ?? {})) {
+    if (rawValue == null || !Number.isFinite(rawValue)) continue;
+    out.push(baseKey(compositeKey));
+  }
+  return out;
+}
+
 export function findRawMetric(
   period: RawPeriodData | null | undefined,
   aliases: string[],
