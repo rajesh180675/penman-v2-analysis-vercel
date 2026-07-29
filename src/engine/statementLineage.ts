@@ -95,11 +95,23 @@ export function buildStatementLineage(periods: RawPeriodData[] | null | undefine
     }
     return [];
   });
+  // Deliberately uncapped. This used to `.slice(0, 12)` here, which bound for 6 of
+  // the 12 companies sampled — Hindustan Unilever has 35 hints, Cholamandalam and
+  // HDFC Life 33 each — and the only consumer renders every hint it is handed with
+  // no total, so 35 appeared as 12 and nothing said so. Truncating for display is
+  // the panel's business (`statementLineageWindow.ts`), and it can only report how
+  // many it dropped if this function stops dropping them first.
   const segmentHints = unique(
     segmentCandidates.map((item) => `${item.type}:${item.label}`),
-  ).slice(0, 12).map((entry) => {
-    const [type, label] = entry.split(":");
-    return { type: type as SegmentHint["type"], label: label! };
+  ).map((entry) => {
+    const separator = entry.indexOf(":");
+    return {
+      type: entry.slice(0, separator) as SegmentHint["type"],
+      // `split(":")` took only the first fragment, so a label containing a colon
+      // rendered truncated. Fine while the cap hid most of them; not once every
+      // hint is shown.
+      label: entry.slice(separator + 1),
+    };
   });
 
   const filingMix = versions.reduce(
