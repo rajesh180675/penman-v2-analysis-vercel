@@ -158,6 +158,21 @@ describe("computeLossMakerValuation — Phase I3", () => {
       expect(result.recommendation).toMatch(/No revenue-multiple anchor/);
     });
 
+    it("declines for negative latest revenue, not just zero", () => {
+      // The producer's contract is non-positive, not zero: a sign-flipped or
+      // contra-revenue parse must be refused for the same reason. Without this
+      // the zero fixture above would still pass if `<= 0` regressed to `=== 0`,
+      // and a negative multiple would publish as a valuation.
+      const periods = zeroRevenuePeriods().map((p) => ({
+        ...p,
+        is: { ...p.is, Sales: -250 } as RecastPeriod["is"],
+      }));
+      const result = computeLossMakerValuation(periods, baseCfg)!;
+      expect(result.latestRevenueCr).toBe(-250);
+      expect(result.revenueMultiple.skipReason).toMatch(/positive latest revenue/);
+      expect(result.recommendation).toMatch(/No revenue-multiple anchor/);
+    });
+
     it("declines when the sales line is missing rather than zero", () => {
       // A partial parse that fails to map the Sales row, as distinct from a
       // pre-revenue company. Different reason, same refusal.
