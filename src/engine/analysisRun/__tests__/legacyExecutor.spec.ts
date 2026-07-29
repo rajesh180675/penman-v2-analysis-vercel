@@ -3,7 +3,7 @@ import type { AnalysisStatusSummary } from "../../analysisStatus";
 import type { AnalysisTraceabilityEnvelope } from "../../analysisTraceability";
 import type { MappingAuditReport, QualityGateReport } from "../../mappingAudit";
 import type { PipelineResult } from "../../pipeline";
-import type { EngineConfig, RawPeriodData, RecastPeriod } from "../../types";
+import type { ConfigValidationWarning, EngineConfig, RawPeriodData, RecastPeriod } from "../../types";
 import { DEFAULT_CONFIG } from "../../types";
 import type { ValuationCommandCenterOutput } from "../../valuationCommandCenter";
 import type { ValuationReadiness } from "../../valuationPolicy";
@@ -203,6 +203,7 @@ function dependencies(options: {
   scopeBlocked?: boolean | undefined;
   processError?: Error | undefined;
   windowBlocked?: boolean | undefined;
+  configWarnings?: ConfigValidationWarning[] | undefined;
 } = {}): LegacyAnalysisRunExecutorDependencies {
   const gate = qualityGate(Boolean(options.scopeBlocked));
   return {
@@ -245,7 +246,7 @@ function dependencies(options: {
       "rigor.assumptionProvenanceBlock": true,
       "rigor.earningsQualityBlock": true,
     })),
-    validateConfig: vi.fn(() => []),
+    validateConfig: vi.fn(() => options.configWarnings ?? []),
     resolveAssumptions: vi.fn(() => assumptionResolution()) as unknown as LegacyAnalysisRunExecutorDependencies["resolveAssumptions"],
   };
 }
@@ -524,6 +525,58 @@ describe("legacy-backed AnalysisRun executor", () => {
     expect(deps.processPipeline).not.toHaveBeenCalled();
     expect(deps.buildCommandCenter).not.toHaveBeenCalled();
     expect(deps.buildTraceability).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks the run on a config validation error, before any engine reads a period", async () => {
+    // The mapping at `legacyExecutor.ts:355-361` promotes a config-level
+    // "error" to a diagnostic "blocker", and `request-validation` is index 0 of
+    // ANALYSIS_STAGE_ORDER, so the whole run is terminal before the pipeline is
+    // touched. Nothing asserted that: this spec stubs `validateConfig` to `[]`,
+    // so every other case here runs with a clean config.
+    //
+    // It matters because it sets the cost of a false positive in
+    // `validateEngineConfig`. A check that fires on a value the reviewer never
+    // set does not merely print a warning — it refuses the run. That is why the
+    // terminal-growth check now only judges `terminal_growth_rate` when it is
+    // actually set (see types/__tests__/validateEngineConfig.spec.ts).
+    const deps = dependencies({
+      configWarnings: [{
+        field: "terminal_growth_rate",
+        value: 0.05,
+        severity: "error",
+        message: "synthetic config error",
+      }],
+    });
+    const result = await createLegacyAnalysisRunExecutor(deps)(input());
+
+    expect(result.status).toBe("blocked");
+    if (result.status !== "blocked") throw new Error("Expected blocked result");
+    // The field name reaches the reason code, so a reviewer can tell which
+    // config field stopped the run without reading the message.
+    expect(result.reasonCode).toBe("CONFIG_TERMINAL_GROWTH_RATE_ERROR");
+    expect(result.run.stageResults.find((stage) => stage.stageId === "request-validation")?.status).toBe("blocked");
+    expect(deps.processPipeline).not.toHaveBeenCalled();
+  });
+
+  it("lets the run proceed on a config validation warning", async () => {
+    // Positive control for the test above: same plumbing, "warning" instead of
+    // "error". The mapping sends this to a non-blocking diagnostic, so a
+    // questionable-but-usable config must still produce a completed run —
+    // otherwise the severity distinction in `validateEngineConfig` would be
+    // decorative.
+    const deps = dependencies({
+      configWarnings: [{
+        field: "terminal_growth_rate",
+        value: 0.11,
+        severity: "warning",
+        message: "synthetic config warning",
+      }],
+    });
+    const result = await createLegacyAnalysisRunExecutor(deps)(input());
+
+    expect(result.status).toBe("completed");
+    expect(deps.processPipeline).toHaveBeenCalledTimes(1);
+    expect(result.diagnostics.some((d) => d.code === "CONFIG_TERMINAL_GROWTH_RATE_WARNING")).toBe(true);
   });
 
   it("captures an unexpected pipeline failure in a finalized failed run", async () => {
