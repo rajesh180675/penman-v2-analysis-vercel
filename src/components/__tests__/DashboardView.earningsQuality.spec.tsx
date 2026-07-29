@@ -20,11 +20,12 @@
 ================================================================ */
 
 import { act } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
 import DashboardView from "../dashboard/DashboardView";
 import { buildEarningsQualitySummary } from "../../engine/earningsQualitySummary";
 import type { EarningsQualityCard } from "../../engine/earningsQuality";
+import type { EarningsQualitySummary } from "../../engine/types/earningsQualitySummary";
 import type { AnalysisTraceabilityEnvelope } from "../../engine/analysisTraceability";
 import { DEFAULT_CONFIG, type EngineConfig, type RecastPeriod } from "../../engine/types";
 import { CroreShares, INRAbsolute } from "../../engine/types/units";
@@ -88,15 +89,27 @@ function mkCard(measuredCount: number, totalScore: number): EarningsQualityCard 
  * the two fields under test are the two that matter. Building a real envelope
  * would drag `buildAnalysisTraceability`'s whole input surface in without making
  * the assertion stronger.
+ *
+ * Takes the envelope field value rather than a card, because the distinction
+ * matters here: a structural-only run puts `null` on the envelope
+ * (`analysisTraceability.ts` writes `params.earningsQuality ?? null`, and
+ * `useAuditAnalysis` passes null when no command center built), *not* an
+ * absent-summary object. Building the fixture from a null card would have this
+ * test exercise the projection path while leaving the reachable one uncovered.
  */
-function mkTraceability(card: EarningsQualityCard | null): AnalysisTraceabilityEnvelope {
+function mkEnvelope(earningsQuality: EarningsQualitySummary | null): AnalysisTraceabilityEnvelope {
   return {
     parserFidelity: { score: FIDELITY, status: "pass", summary: "", checks: [] },
-    earningsQuality: buildEarningsQualitySummary(card),
+    earningsQuality,
   } as unknown as AnalysisTraceabilityEnvelope;
 }
 
-const containers: HTMLElement[] = [];
+/** An envelope from a run that produced a scorecard. */
+const withCard = (measuredCount: number, totalScore: number) =>
+  mkEnvelope(buildEarningsQualitySummary(mkCard(measuredCount, totalScore)));
+
+/** Roots, not just containers: dropping the DOM node does not unmount React. */
+const roots: Root[] = [];
 
 /** Mount the dashboard and expand the evidence item the tile lives in. */
 async function mountOpen(traceability: AnalysisTraceabilityEnvelope | null): Promise<HTMLElement> {
@@ -107,8 +120,8 @@ async function mountOpen(traceability: AnalysisTraceabilityEnvelope | null): Pro
   };
   const container = document.createElement("div");
   document.body.appendChild(container);
-  containers.push(container);
   const root = createRoot(container);
+  roots.push(root);
 
   await act(async () => {
     root.render(
@@ -143,13 +156,16 @@ function tileText(container: HTMLElement, label: string): string {
 }
 
 afterEach(() => {
+  // Unmount before dropping the nodes: removing a container leaves its root
+  // mounted, so effects and React-owned state would leak between tests.
+  for (const root of roots) act(() => { root.unmount(); });
+  roots.length = 0;
   document.body.replaceChildren();
-  containers.length = 0;
 });
 
 describe("DashboardView — the Earnings Quality tile", () => {
   it("shows the measured composite, not the parser-fidelity score", async () => {
-    const eq = tileText(await mountOpen(mkTraceability(mkCard(4, 84))), "Earnings Quality");
+    const eq = tileText(await mountOpen(withCard(4, 84)), "Earnings Quality");
 
     expect(eq).toContain("84/100");
     expect(eq).toContain("4 of 4 dimensions measured");
@@ -162,7 +178,7 @@ describe("DashboardView — the Earnings Quality tile", () => {
     // The fix must not have removed the number, only stopped a second tile
     // labelling it as something else — a reviewer still needs to see how much of
     // the file mapped, and this is the panel that says so.
-    const container = await mountOpen(mkTraceability(mkCard(4, 84)));
+    const container = await mountOpen(withCard(4, 84));
 
     expect(container.textContent).toContain("Parser Fidelity");
     expect(container.textContent).toContain(`${FIDELITY}% of labels mapped`);
@@ -171,21 +187,37 @@ describe("DashboardView — the Earnings Quality tile", () => {
   it("shows no composite when every dimension was a placeholder", async () => {
     // An all-null card still totals 51/100 and calls itself "moderate". That is
     // the number the tile would print if it read the card instead of the summary.
-    const eq = tileText(await mountOpen(mkTraceability(mkCard(0, 51))), "Earnings Quality");
+    const eq = tileText(await mountOpen(withCard(0, 51)), "Earnings Quality");
 
     expect(eq).not.toContain("51");
     expect(eq).toContain("No dimension had inputs");
   });
 
   it("says no scorecard was built rather than reporting no inputs", async () => {
-    // A structural-only envelope: the rungs below valuation clear without a
-    // scorecard, so this state is reachable, and it is a different fact from a
+    // The structural-only envelope, and the shape a real one takes: the field is
+    // null, not an absent-summary object. The rungs below valuation clear without
+    // a scorecard, so this state ships, and it is a different fact from a
     // scorecard that ran and found nothing — one sends the reviewer to the run,
     // the other to the statements.
-    const eq = tileText(await mountOpen(mkTraceability(null)), "Earnings Quality");
+    const eq = tileText(await mountOpen(mkEnvelope(null)), "Earnings Quality");
 
     expect(eq).toContain("No scorecard for this run");
+    expect(eq).not.toContain("No dimension had inputs");
     expect(eq).not.toContain(`${FIDELITY}`);
+  });
+
+  it("gives the same answer for a summary projected from no card", async () => {
+    // The other way a scorecard can be absent. Not produced by today's builders —
+    // both guard with `commandCenter ? buildEarningsQualitySummary(...) : null` —
+    // but it is what the public projection returns, and the two must not read as
+    // two different explanations of one fact.
+    const eq = tileText(
+      await mountOpen(mkEnvelope(buildEarningsQualitySummary(null))),
+      "Earnings Quality",
+    );
+
+    expect(eq).toContain("No scorecard for this run");
+    expect(eq).not.toContain("No dimension had inputs");
   });
 
   it("renders the tile with no envelope at all, and claims nothing", async () => {
@@ -199,7 +231,7 @@ describe("DashboardView — the Earnings Quality tile", () => {
     // This surface builds its own command center, so it prints an intrinsic value
     // regardless of the envelope the tile reads. Wording the blank as "no
     // valuation ran" would put that sentence next to ₹7.
-    const container = await mountOpen(mkTraceability(null));
+    const container = await mountOpen(mkEnvelope(null));
 
     expect(tileText(container, "Intrinsic Value")).toMatch(/₹/);
     expect(tileText(container, "Earnings Quality")).not.toContain("valuation");
