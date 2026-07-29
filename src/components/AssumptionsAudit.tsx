@@ -137,8 +137,17 @@ export default function AssumptionsAudit({ config, costOfCapital, terminalGrowth
       // mistake this row is being fixed for.
       source: g == null ? "default" : "computed",
       flag: g == null ? "warning" : g >= ke ? "error" : g > 0.07 ? "warning" : g < 0 ? "warning" : "ok",
+      // Not "valuation will be infinite/negative" — nothing here divides by a
+      // non-positive denominator. `gordonCv` returns null when the spread falls
+      // to MIN_GORDON_SPREAD, so `V_RE_CV3` and `intrinsic_re_per_share` go null
+      // (`PenmanNissimEngine.ts:311`) and CV1/CV2 — a zero and a no-growth
+      // continuing value, neither of which divides by (ke − g) — still compute.
+      // The owner-earnings DCF likewise substitutes a terminal value of 0
+      // (`valuationCommandCenter/solvers.ts:32`). So the failure mode is a range
+      // that understates, which a reviewer chasing an infinity would not find.
+      // Same false promise as the one removed from `validateEngineConfig`.
       note: g == null ? "No scenario resolved a terminal growth — the value range below cannot be reproduced from this panel" :
-            g >= ke ? "g ≥ ke breaks the Gordon Growth model — valuation will be infinite/negative" :
+            g >= ke ? "g ≥ ke — the growth continuing value is skipped rather than computed, so the range below rests on no-growth methods and understates value" :
             g > 0.07 ? "Above nominal GDP growth — hard to sustain forever" :
             g < 0 ? "Negative terminal growth implies permanent decline" : undefined,
     },

@@ -197,9 +197,29 @@ describe("AssumptionsAudit — terminal growth agreement", () => {
     };
     const { html } = render(config);
 
-    expect(html).toContain("g ≥ ke breaks the Gordon Growth model");
+    expect(html).toContain("the growth continuing value is skipped");
     expect(html).toContain("🛑");
     expect(html).toContain("1 error");
+  });
+
+  it("describes the breach as a skipped continuing value, not an infinity", () => {
+    // The note used to promise the valuation "will be infinite/negative". It
+    // will be neither: `gordonCv` returns null at MIN_GORDON_SPREAD, so
+    // `V_RE_CV3` and `intrinsic_re_per_share` go null while CV1 (zero) and CV2
+    // (no-growth perpetuity) still compute — neither divides by (ke − g) — and
+    // the owner-earnings DCF substitutes a terminal value of 0. The real failure
+    // mode is a range that understates, so a reviewer sent looking for an
+    // infinity is looking for the wrong symptom.
+    const config: EngineConfig = {
+      ...DEFAULT_CONFIG,
+      cost_of_equity_mode: "manual",
+      ke: PercentFraction(0.035),
+      ke_manual_rationale: "Reviewer judgment",
+    };
+    const { html } = render(config);
+
+    expect(html).not.toContain("infinite");
+    expect(html).toContain("understates value");
   });
 
   it("does not flag a breach when the spread is healthy", () => {
