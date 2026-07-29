@@ -92,8 +92,17 @@ export default function ValuationWorkbench({ analysisStatus, latestSignal, lates
       {latestValuation?.businessModelEvidence?.length ? (
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Business-model evidence</div>
+          {/* Uncapped rather than given a "+N more" chip. `assessBusinessModel`
+              pushes at most four lines — one each for a spiking margin, spiking
+              growth, weak cash conversion, and a soft cost bridge — and the
+              fifth string is an all-clear that only fires when the other four
+              did not. So `.slice(0, 3)` could hide exactly one line, and only on
+              the company where all four warnings fired: the case where the
+              hidden line is least safe to drop. A remainder chip costs more
+              vertical space than the bullet it would stand in for, and the
+              sibling `forecastDiscipline` list below already renders in full. */}
           <ul className="mt-2 space-y-1">
-            {latestValuation.businessModelEvidence.slice(0, 3).map((item) => <li key={item}>• {item}</li>)}
+            {latestValuation.businessModelEvidence.map((item) => <li key={item}>• {item}</li>)}
           </ul>
         </div>
       ) : null}
