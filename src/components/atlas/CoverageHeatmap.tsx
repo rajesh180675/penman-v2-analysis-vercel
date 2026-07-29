@@ -142,37 +142,57 @@ export default function CoverageHeatmap({ rawData, allMetrics }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Stats strip */}
+      {/* Stats strip — every value here is a CELL count (metric × period). The
+          statement strip below it counts METRICS, so the two strips do not
+          decompose one another however alike they look. */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        <StatCell label="Cells" value={totals.total.toLocaleString()} />
+        <StatCell
+          label="Cells"
+          value={totals.total.toLocaleString()}
+          subline={`${allMetrics.length.toLocaleString()} metrics × ${periods.length} periods`}
+        />
         <StatCell label="Positive" value={totals.pos.toLocaleString()} dot="bg-emerald-500" />
         <StatCell label="Negative" value={totals.neg.toLocaleString()} dot="bg-rose-500" />
         <StatCell label="Zero / dash" value={totals.zero.toLocaleString()} dot="bg-amber-300" />
         <StatCell label="Missing" value={totals.nul.toLocaleString()} dot="bg-slate-300" />
       </div>
 
-      {/* Statement breakdown */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        {(["BS", "PL", "CF", "Ratio", "Other"] as AtlasStatement[]).map((s) => (
-          <button
-            key={s}
-            onClick={() => setStatementFilter(statementFilter === s ? "all" : s)}
-            className={`rounded-lg border px-3 py-2 text-left transition ${
-              statementFilter === s
-                ? "border-blue-500 ring-2 ring-blue-200 dark:ring-blue-900/40"
-                : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600"
-            } ${totals.byStmt[s] === 0 ? "opacity-40" : ""}`}
-            disabled={totals.byStmt[s] === 0}
-          >
-            <div className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATEMENT_BADGE[s]}`}>
-              {s}
-            </div>
-            <div className="text-base font-semibold tabular-nums mt-1 text-slate-900 dark:text-slate-100">
-              {totals.byStmt[s]}
-            </div>
-            <div className="text-[10px] text-slate-500">{statementLabel(s)}</div>
-          </button>
-        ))}
+      {/* Statement breakdown. Captioned because these chips carry a bare number
+          under an identical five-column grid to the cell counts above: with no
+          unit they read as a decomposition of "Cells", which they are not.
+          `byStmt` is incremented once per metric, so they sum to the total named
+          in the caption — MetricInventory's same-looking strip really does
+          decompose the tile above it, which is what makes the misread easy.
+
+          Caption and chips share a wrapper: as a bare child of `space-y-4` the
+          caption would sit equidistant between the two strips and could be read
+          as a footnote to the cell counts instead. */}
+      <div className="space-y-1.5">
+        <div className="text-[10px] uppercase font-mono tracking-wider text-slate-500 dark:text-slate-400">
+          Metrics by statement · {allMetrics.length.toLocaleString()} total
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+          {(["BS", "PL", "CF", "Ratio", "Other"] as AtlasStatement[]).map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatementFilter(statementFilter === s ? "all" : s)}
+              className={`rounded-lg border px-3 py-2 text-left transition ${
+                statementFilter === s
+                  ? "border-blue-500 ring-2 ring-blue-200 dark:ring-blue-900/40"
+                  : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600"
+              } ${totals.byStmt[s] === 0 ? "opacity-40" : ""}`}
+              disabled={totals.byStmt[s] === 0}
+            >
+              <div className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${STATEMENT_BADGE[s]}`}>
+                {s}
+              </div>
+              <div className="text-base font-semibold tabular-nums mt-1 text-slate-900 dark:text-slate-100">
+                {totals.byStmt[s]}
+              </div>
+              <div className="text-[10px] text-slate-500">{statementLabel(s)}</div>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Controls */}
@@ -395,10 +415,12 @@ function StatCell({
   label,
   value,
   dot,
+  subline,
 }: {
   label: string;
   value: string;
   dot?: string | undefined;
+  subline?: string | undefined;
 }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900/60">
@@ -411,6 +433,9 @@ function StatCell({
       <div className="text-base font-semibold tabular-nums text-slate-900 dark:text-slate-100 mt-0.5">
         {value}
       </div>
+      {subline && (
+        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{subline}</div>
+      )}
     </div>
   );
 }
