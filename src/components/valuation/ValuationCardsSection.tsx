@@ -50,10 +50,17 @@ function reCardSkipReason(val: Valuation, cv: CVMethod): string {
  * always said something — but it asserted the cause in prose while the guard
  * carries the actual rates. Prefer the guard's string and keep a non-empty
  * fallback for a null that arrives some other way.
+ *
+ * The fallback splits on the method for the same reason `gordonGuardReason`
+ * returns null off CV3: only CV03 divides by (kw − g), so naming the terminal
+ * growth under CV01/CV02 would describe a computation that did not run. Matches
+ * the RE side's method-neutral wording.
  */
 function reoiCardSkipReason(val: Valuation, cv: CVMethod): string {
   return gordonGuardReason(val, "ReOI_CV03", cv)
-    ?? "ReOI growth continuing value skipped: terminal growth must be below operating capital cost.";
+    ?? (cv === "CV3"
+      ? "ReOI growth continuing value skipped: terminal growth must be below operating capital cost."
+      : "ReOI value unavailable for the selected continuing-value method.");
 }
 
 export default function ValuationCardsSection({

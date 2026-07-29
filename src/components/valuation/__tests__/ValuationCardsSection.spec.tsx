@@ -63,8 +63,16 @@ function mkPeriod(period_end: string, CSE: number): RecastPeriod {
 const KE = 0.12;
 const KW = 0.11;
 
-/** Healthy equity, so `equityModelsBlocked` is false and only the guard can bite. */
-function render({ g, cv = "CV3" }: { g: number; cv?: CVMethod }): string {
+/**
+ * Healthy equity, so `equityModelsBlocked` is false and only the guard can bite.
+ *
+ * `forceReOINull` overrides the computed `V_ReOI` prop. Needed because
+ * `V_ReOI_CV01`/`CV02` are typed `number`, not `number | null`
+ * (`types/valuation.ts:48`), so no engine input produces a null there — the
+ * component's contract is nonetheless the prop it is handed, and the fallback
+ * behind that prop should still be a true sentence.
+ */
+function render({ g, cv = "CV3", forceReOINull = false }: { g: number; cv?: CVMethod; forceReOINull?: boolean }): string {
   const periods = [mkPeriod("2024-03-31", 850), mkPeriod("2025-03-31", 900)];
   const val = computeValuation(periods, KE, KW, g, DEFAULT_CONFIG);
   const cvSel = makeCvSel(cv);
@@ -72,7 +80,7 @@ function render({ g, cv = "CV3" }: { g: number; cv?: CVMethod }): string {
     <ValuationCardsSection
       val={val}
       V_RE={cvSel(val.V_RE_CV1, val.V_RE_CV2, val.V_RE_CV3)}
-      V_ReOI={cvSel(val.V_ReOI_CV01, val.V_ReOI_CV02, val.V_ReOI_CV03)}
+      V_ReOI={forceReOINull ? null : cvSel(val.V_ReOI_CV01, val.V_ReOI_CV02, val.V_ReOI_CV03)}
       cv={cv}
       sharesOut={100}
     />,
@@ -130,5 +138,34 @@ describe("ValuationCardsSection — a skipped card names its blocker", () => {
     // run for the selected method.
     const html = render({ g: 0.15, cv: "CV1" });
     expect(html).not.toContain("terminal growth 15.00%");
+  });
+
+  it("keeps the CV1 ReOI fallback free of Gordon wording", () => {
+    // The test above renders a non-skipped ReOI card, so it never reaches the
+    // fallback and cannot catch its wording. Forcing the null does.
+    //
+    // `gordonGuardReason` returns null off CV3 by design, so before this the
+    // fallback claimed "terminal growth must be below operating capital cost"
+    // for a method that has no terminal growth term at all — a precise-sounding
+    // sentence about arithmetic that did not run.
+    const html = render({ g: 0.04, cv: "CV1", forceReOINull: true });
+
+    expect(html).toContain("— Skipped");
+    expect(bareSkipCount(html)).toBe(0);
+    expect(html).toContain("ReOI value unavailable for the selected continuing-value method");
+    expect(html).not.toContain("terminal growth must be below operating capital cost");
+  });
+
+  it("still names the terminal growth on a CV3 fallback", () => {
+    // Positive control for the split above: the method-specific sentence must
+    // survive under CV3, or the fix would have traded a wrong reason for a
+    // uselessly generic one everywhere.
+    //
+    // g below kw, so `gordonCv` pushes no guard and the fallback is what
+    // renders — the one path where CV3's own wording is the right answer.
+    const html = render({ g: 0.04, cv: "CV3", forceReOINull: true });
+
+    expect(html).toContain("terminal growth must be below operating capital cost");
+    expect(html).not.toContain("ReOI value unavailable for the selected");
   });
 });
