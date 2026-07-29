@@ -1,6 +1,6 @@
 import { StatementLineageSummary } from "../engine/statementLineage";
+import { capped } from "./cappedList";
 import {
-  capped,
   CANDIDATES_SHOWN,
   SEGMENT_HINTS_SHOWN,
   VERSIONS_SHOWN,
