@@ -10,6 +10,7 @@ import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../../engine/marketPacks
 import { resolveShareBasis } from "../../engine/shareCountTools";
 import { generateDashboardNarrative } from "../../engine/narrativeEngine";
 import { formatMoatBannerMetric } from "./moatMetricLabel";
+import { earningsQualityMetric } from "./earningsQualityMetric";
 import type { SanityAssessment } from "../../engine/ratioSanity";
 import type { AllSegmentData } from "../../engine/segmentParser";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
@@ -71,6 +72,11 @@ export default function DashboardView({ data, config, traceability = null, ratio
   const pm = latest?.ratios?.PM ?? null;
   const ato = latest?.ratios?.ATO ?? null;
   const flev = latest?.ratios?.FLEV ?? null;
+  // Read off the envelope rather than rebuilt here: `useAuditAnalysis` already
+  // projects the card through `buildEarningsQualitySummary`, and a second
+  // derivation on this surface could disagree with the Quality tab about the
+  // same company.
+  const earningsQuality = earningsQualityMetric(traceability?.earningsQuality);
 
   // Revenue growth (CAGR over available periods)
   const revenueGrowth = useMemo(() => {
@@ -394,10 +400,16 @@ export default function DashboardView({ data, config, traceability = null, ratio
               <Metric label="Profit Margin" value={pm} format="pct" />
               <Metric label="Asset Turnover" value={ato} format="mult" />
               <Metric label="Fin. Leverage" value={flev} format="mult" />
+              {/* Was `traceability.parserFidelity.score / 100` — the syntactic
+                  read-fidelity score, which `QualitySignalPanel` to the left of
+                  this grid already renders under its own name. So one number
+                  appeared twice on one screen, the second time as a different
+                  analytical concept, and "Earnings Quality 96.0%" told a reviewer
+                  the accruals had been checked when nothing had checked them. */}
               <Metric
                 label="Earnings Quality"
-                value={traceability?.parserFidelity?.score != null ? traceability.parserFidelity.score / 100 : null}
-                format="pct"
+                value={earningsQuality.value}
+                context={earningsQuality.context}
               />
             </div>
           </div>
