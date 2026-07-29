@@ -71,13 +71,20 @@ export default function SotpSection({
               "Peer count". The engine now reports the post-filter count. */}
           <StatTile label="Peer count" value={`${commandCenter.evEbitda.peerCount}`} />
         </div>
-        {/* Every tile above except the market-derived one goes blank when no peer
-            multiple is configured, which reads as a broken panel rather than an
-            absent input. `config.ev_ebitda_peers` is the only source and nothing
-            in the app writes it, so say so instead of showing a row of dashes. */}
+        {/* Every tile above except the market-derived one goes blank with no peer
+            multiple, which reads as a broken panel rather than an absent input,
+            so say why instead of showing a row of dashes.
+
+            "No usable peer multiple", not "none configured": a zero count has two
+            causes — nothing supplied, or peers supplied whose multiples were all
+            null, zero or negative and so were dropped before the median. Only the
+            first is reachable today (`config.ev_ebitda_peers` is the sole source
+            and nothing writes it), but claiming the reviewer configured nothing
+            when they configured three unusable peers would be the same kind of
+            false sentence this panel is being fixed for. */}
         {commandCenter.evEbitda.peerCount === 0 && (
           <div className="mt-3 rounded-lg bg-slate-50 border border-slate-200 px-3 py-2 text-xs text-slate-600">
-            No peer multiples are configured, so there is no peer distribution to check the DCF against. The relative model reports itself as not computed rather than contributing a value to the triangulation.
+            No usable peer multiple, so there is no peer distribution to check the DCF against. The relative model reports itself as not computed rather than contributing a value to the triangulation.
           </div>
         )}
       </div>

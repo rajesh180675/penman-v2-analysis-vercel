@@ -137,20 +137,37 @@ describe("SotpSection — the peer-count tile", () => {
   });
 });
 
-describe("SotpSection — an unconfigured cross-check says so", () => {
+describe("SotpSection — a cross-check with no usable peer says so", () => {
   it("explains the blank peer tiles instead of showing a row of dashes", () => {
     const html = render();
 
     // Same principle as a skipped valuation card naming its blocker: absent
     // input and broken panel look identical when both render "—".
-    expect(html).toContain("No peer multiples are configured");
+    expect(html).toContain("No usable peer multiple");
     expect(html).toContain("not computed");
+  });
+
+  it("does not claim nothing was configured when what was configured was unusable", () => {
+    // A zero count has two causes, and the note first read "No peer multiples
+    // are configured", which is false for this one: three peers were supplied
+    // and all three were dropped before the median. Only reachable by a future
+    // caller today, but a wrong reason sends the reviewer to look for a missing
+    // config rather than at the peer values they entered.
+    const html = render([
+      { company: "Missing", evEbitda: null },
+      { company: "Zero", evEbitda: 0 },
+      { company: "Negative", evEbitda: -4 },
+    ]);
+
+    expect(tileValue(html, "Peer count")).toContain("0");
+    expect(html).toContain("No usable peer multiple");
+    expect(html).not.toContain("configured");
   });
 
   it("drops the note once a peer multiple exists", () => {
     const html = render([{ company: "PeerA", evEbitda: 12 }]);
 
-    expect(html).not.toContain("No peer multiples are configured");
+    expect(html).not.toContain("No usable peer multiple");
     // And the peer figures the note stood in for are now real.
     expect(tileValue(html, "Peer median EV/EBITDA")).toContain("12.0x");
   });
