@@ -14,6 +14,7 @@ import { computePeerRelativeValuation } from "../engine/peerRelativeValuation";
 import RunBackedPortfolioComparison from "./RunBackedPortfolioComparison";
 import { EmptyState } from "./shared/Primitives";
 import type { ReturnTypeOfPortfolioComparison } from "../engine/portfolioRunComparison.types";
+import { priceToBook } from "./valuationScaleMath";
 
 interface Props {
   registry: CompanyRegistry;
@@ -539,12 +540,15 @@ function ComparisonReportBody({ registry, config, weakestTraceabilitySummary: pr
           companies={latestByCo.map((c, i) => ({
             name: c.company,
             x: c.latest?.ratios?.ROCE ?? 0,
-            y: (() => {
-              const inp = marketInputs[c.id];
-              if (!inp?.price || !inp?.shares || inp.shares <= 0) return 0;
-              const cse = c.latest?.bs?.CSE ?? 0;
-              return (inp.price * inp.shares * 1e7) / (cse > 0 ? cse : 1);
-            })(),
+            // ₹/share × crore shares is already market cap in ₹ crore, the same
+            // unit as CSE, so the ratio needs no scaling — the ×1e7 that used to
+            // be here put every point 1e7× up a "P/B" axis. The share input is
+            // crore-denominated by construction: the column header says
+            // "Shares (Cr)" and the NSE fetch divides its absolute count by 1e7
+            // (:146). 0 stays the no-data sentinel it already was, and now also
+            // covers non-positive book equity, which previously divided by ₹1 Cr
+            // and produced a fabricated multiple.
+            y: priceToBook(marketInputs[c.id]?.price, marketInputs[c.id]?.shares, c.latest?.bs?.CSE) ?? 0,
             isTarget: i === 0,
           }))}
           xLabel="ROCE"

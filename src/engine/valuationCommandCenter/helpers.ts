@@ -1,7 +1,7 @@
 import { LiveMarketDataFreshness, MarketHistoryPoint } from "../marketData";
 import { AnalysisStatusSummary } from "../analysisStatus";
 import { RecastPeriod, ValuationResult } from "../types";
-import { resolveShareBasis } from "../shareCountTools";
+import { resolveShareBasis, toPerShare } from "../shareCountTools";
 import { SOTPResult } from "../sotpValuation";
 import {
   solveImpliedKeFromOwnerEarnings,
@@ -237,16 +237,37 @@ export function primaryValueRange(cards: ValuationScenarioCard[]) {
   };
 }
 
+/**
+ * SOTP equity value per share, after the conglomerate discount.
+ *
+ * `discountedSum` is a whole-entity (enterprise) figure, so NFO is
+ * subtracted to reach the common-equity claim a share price represents.
+ * Both operands are ₹ crore and `shares` is crore shares, so the quotient
+ * is already ₹/share — no 1e7 (see `types/units.ts:96`).
+ *
+ * Callers must pass the NFO of the period the SOTP was built at. That is the
+ * *anchor* period, which `resolveValuationReadiness` moves off the newest
+ * period when the terminal one is contaminated (`valuationPolicy.ts:145-166`);
+ * pairing this sum with a different period's net debt mixes vintages.
+ */
+export function sotpEquityPerShare(
+  sotp: SOTPResult,
+  shareBasis: ReturnType<typeof resolveShareBasis>,
+  nfo: number,
+): number | null {
+  return toPerShare(sotp.discountedSum - nfo, shareBasis.shares);
+}
+
 /** Phase C5: when SOTP is preferred, derive value range from SOTP EV. */
 export function sotpValueRange(sotp: SOTPResult, shareBasis: ReturnType<typeof resolveShareBasis>, nfo: number) {
   const shares = shareBasis.shares ?? null;
   if (!shares || shares <= 0) return { floorPerShare: null, ceilingPerShare: null };
-  // Floor: discounted sum (after conglomerate discount) - NFO
-  const equityFloor = sotp.discountedSum - nfo;
+  // Floor: discounted sum (after conglomerate discount) - NFO. Same quantity
+  // the radar plots, so it shares one definition.
   // Ceiling: undiscounted sum (no conglomerate discount) - NFO
   const equityCeiling = sotp.operatingSum - nfo;
   return {
-    floorPerShare: equityFloor / shares,
+    floorPerShare: sotpEquityPerShare(sotp, shareBasis, nfo),
     ceilingPerShare: equityCeiling / shares,
   };
 }

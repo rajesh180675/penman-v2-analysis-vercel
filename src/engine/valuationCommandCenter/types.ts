@@ -184,6 +184,14 @@ export interface ValuationCommandCenterOutput {
   diagnostics: DcfCashFlowDiagnostics;
   reverseDcf: ReverseDcfDiagnostics;
   sotp: SOTPResult | null;
+  /**
+   * SOTP value per share, bridged to common equity (−NFO) at the anchor period.
+   * Reported here rather than derived by the surfaces: `sotp.discountedSum` is
+   * an enterprise figure, and the NFO it must pair with belongs to the anchor
+   * period, which the surfaces do not resolve (`valuationPolicy.ts:145-166`).
+   * Null when there is no SOTP or no usable share basis.
+   */
+  sotpPerShare: number | null;
   /** Phase C5 — conglomerate assessment from segment data or presets. */
   conglomerate: ConglomerateAssessment | null;
   evEbitda: EvEbitdaCrossCheck;

@@ -33,6 +33,7 @@ import {
   scoreFromRange,
   buildReverseDcfExpectation,
   primaryValueRange,
+  sotpEquityPerShare,
   sotpValueRange,
   appendCrossCheckWarning,
   summaryWithCrossCheckWarning,
@@ -593,6 +594,9 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     diagnostics,
     reverseDcf,
     sotp: sotpResult,
+    // `latest` is the anchor period (:107), which is the period sotpResult was
+    // built from — so this is the NFO that sum is allowed to be bridged with.
+    sotpPerShare: sotpResult ? sotpEquityPerShare(sotpResult, shareBasis, latest.bs.NFO) : null,
     conglomerate: conglomerateAssessment,
     evEbitda: evEbitdaWithMarket,
     indiaQuality,
