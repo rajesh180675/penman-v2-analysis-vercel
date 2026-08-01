@@ -1,4 +1,3 @@
-import type { RecastPeriod } from "../../engine/types";
 import { buildValuationCommandCenter, formatPct } from "../../engine/valuationCommandCenter";
 import { computeMoatScore } from "../../engine/moatScoring";
 import ExpectationBridgePanel from "../ExpectationBridgePanel";
@@ -6,18 +5,27 @@ import SensitivityHeatmap from "../charts/SensitivityHeatmap";
 import FrameworkRadar from "../charts/FrameworkRadar";
 import ForecastTornado from "../charts/ForecastTornado";
 import MoatPanel from "../dashboard/MoatPanel";
+import { rePerpetuityPerShare } from "../valuationScaleMath";
 
 export default function AnchorAnalysisGrid({
   commandCenter,
   moatScore,
   ke,
-  data,
 }: {
   commandCenter: ReturnType<typeof buildValuationCommandCenter>;
   moatScore: ReturnType<typeof computeMoatScore>;
   ke: number;
-  data: RecastPeriod[];
 }) {
+  // The period the command center actually valued, read rather than re-derived.
+  // This used to be `data[data.length - 1]`, the newest *reported* period, while
+  // every other figure in this grid — the scenarios, `baseValue`, `shareBasis` —
+  // comes from the anchor. `resolveValuationReadiness` moves the anchor earlier
+  // when the terminal period is contaminated (valuationPolicy.ts:145-166), so on
+  // those runs the tornado differenced an anchor-period base against
+  // newest-period drivers and the bars mixed driver sensitivity with the
+  // inter-period delta in CSE/NOA/RNOA.
+  const latest = commandCenter.anchorPeriod;
+
   return (
     <section className="grid gap-4 xl:grid-cols-3">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -47,25 +55,40 @@ export default function AnchorAnalysisGrid({
             { name: "Residual Earnings (base)", shortName: "V_RE", value: commandCenter.scenarios.find(s => s.key === "base")?.intrinsicPerShare ?? null },
             { name: "Residual Earnings (stress)", shortName: "V_Stress", value: commandCenter.scenarios.find(s => s.key === "stress")?.intrinsicPerShare ?? null },
             { name: "EPV (no-growth floor)", shortName: "EPV", value: commandCenter.epv?.epvPerShare ?? null },
-            { name: "Reverse DCF implied", shortName: "RevDCF", value: commandCenter.reverseDcf?.impliedOwnerEarningsGrowth ?? null },
-            { name: "SOTP (segment-weighted)", shortName: "SOTP", value: commandCenter.sotp != null && commandCenter.shareBasis.shares != null && commandCenter.shareBasis.shares > 0 ? (commandCenter.sotp.discountedSum / commandCenter.shareBasis.shares) * 1e7 : null },
+            // Every spoke has to be ₹/share: FrameworkRadar divides each by
+            // marketPrice. This slot used to hold reverseDcf's implied owner-
+            // earnings growth — a fraction, which the radar's `value > 0`
+            // filter accepts and then clamps to the 0.3× floor, inventing a
+            // spoke and dragging the reported convergence σ with it. The
+            // cash-lens FCFF DCF is the genuinely independent per-share leg
+            // (cashFlowDcf.ts:1-16); the implied growth is a market-expectation
+            // diagnostic, already surfaced as a percent by the
+            // ExpectationBridgePanel in this same grid.
+            { name: "Cash-lens FCFF DCF", shortName: "FCFF", value: commandCenter.cashFlowDcf?.perShare ?? null },
+            // Read, not derived. `sotp.discountedSum` is a whole-entity figure
+            // that has to be bridged to common equity (−NFO −MI) before it can
+            // sit beside four equity anchors, and the NFO and MI it pairs with
+            // are the anchor period's — which this component cannot resolve,
+            // since the anchor
+            // moves off the newest period when the terminal one is contaminated
+            // (valuationPolicy.ts:145-166). Dividing `discountedSum` here by
+            // `shareBasis.shares` (and, before, scaling it by 1e7) produced a
+            // spoke that was both unbridged and mis-scaled.
+            { name: "SOTP (segment-weighted)", shortName: "SOTP", value: commandCenter.sotpPerShare },
           ]}
           marketPrice={commandCenter.marketPrice}
         />
         <SensitivityHeatmap
           ke={ke}
           g={commandCenter.scenarios.find(s => s.key === "base")?.assumptions.g ?? 0.05}
-          computeValue={(keVal, gVal) => {
-            // Simple RE perpetuity: CSE + (RNOA - ke) * NOA / (ke - g)
-            const latest = data[data.length - 1]!;
-            const rnoa = latest.ratios?.RNOA ?? 0;
-            const noa = latest.bs.NOA;
-            const cse = latest.bs.CSE;
-            const shares = commandCenter.shareBasis.shares;
-            if (!shares || shares <= 0 || keVal <= gVal) return null;
-            const equity = cse + ((rnoa - keVal) * noa) / (keVal - gVal);
-            return (equity / shares) * 1e7;
-          }}
+          computeValue={(keVal, gVal) => rePerpetuityPerShare({
+            cse: latest.bs.CSE,
+            noa: latest.bs.NOA,
+            rnoa: latest.ratios?.RNOA ?? 0,
+            ke: keVal,
+            g: gVal,
+            shares: commandCenter.shareBasis.shares,
+          })}
           marketPrice={commandCenter.marketPrice}
         />
       </div>
@@ -75,19 +98,21 @@ export default function AnchorAnalysisGrid({
         const baseScenario = commandCenter.scenarios.find(s => s.key === "base");
         const baseValue = baseScenario?.intrinsicPerShare ?? null;
         const baseG = baseScenario?.assumptions.g ?? 0.05;
-        const latest = data[data.length - 1]!;
         const rnoaBase = latest.ratios?.RNOA ?? 0;
         const noa = latest.bs.NOA;
-        const cse = latest.bs.CSE;
         const shares = commandCenter.shareBasis.shares;
 
         if (!baseValue || !shares || shares <= 0) return null;
 
-        const computeIV = (keV: number, gV: number, rnoaV: number, noaV: number) => {
-          if (keV <= gV) return baseValue;
-          const equity = cse + ((rnoaV - keV) * noaV) / (keV - gV);
-          return (equity / shares) * 1e7;
-        };
+        // `baseValue` is `intrinsicPerShare`, a median of bare equity/shares
+        // quotients (computeScenarioIntrinsicPerShare in
+        // valuationCommandCenter/helpers.ts, over the per-share values built at
+        // PenmanNissimEngine.ts:313). The drivers are differenced against it in
+        // ForecastTornado (:42-43), so they have to be on that same ₹/share
+        // scale; the ×1e7 that used to be here made every bar 1e7× the base.
+        // A non-convergent perpetuity falls back to the base, i.e. no impact.
+        const computeIV = (keV: number, gV: number, rnoaV: number, noaV: number) =>
+          rePerpetuityPerShare({ cse: latest.bs.CSE, noa: noaV, rnoa: rnoaV, ke: keV, g: gV, shares }) ?? baseValue;
 
         const drivers = [
           {

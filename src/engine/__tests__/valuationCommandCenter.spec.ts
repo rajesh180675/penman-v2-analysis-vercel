@@ -672,7 +672,114 @@ describe("valuation command center", () => {
     expect(out.valuationReadiness.anchorPeriod).toBe("2024-03-31");
     expect(out.marketContext.valuationAnchorPeriod).toBe("2024-03-31");
     expect(out.signal.state).toBe("guarded");
-    expect(out.valuationReadiness.fallbackUsed).toBe(true);
+
+    // The anchor *record*, not just its date. `AnchorAnalysisGrid` used to read
+    // `data[data.length - 1]` for the heatmap and tornado inputs while taking
+    // `baseValue`/`scenarios`/`shareBasis` from the command center — so on a
+    // fallback run it differenced an anchor-period base against newest-period
+    // drivers. This fixture is what tells the two selections apart: 2024 carries
+    // CSE 590 / NOA 820 where the contaminated 2025 period carries 665 / 885.
+    expect(out.anchorPeriod.period_end).toBe("2024-03-31");
+    expect(out.anchorPeriod.bs.CSE).toBe(590);
+    expect(out.anchorPeriod.bs.NOA).toBe(820);
+    expect(out.anchorPeriod).not.toBe(data[data.length - 1]);
+  });
+
+  it("reports the newest period as the anchor when the terminal period is clean", () => {
+    // The other half of the contract: `anchorPeriod` must not be unconditionally
+    // "one period back", or every clean run would silently value a stale period.
+    const data = [
+      mkPeriod(2023, 1000, 180, 130, 520, 760),
+      mkPeriod(2024, 1100, 205, 150, 590, 820),
+      mkPeriod(2025, 1210, 232, 172, 665, 885),
+    ];
+    const out = buildValuationCommandCenter({
+      data,
+      config: {
+        ...DEFAULT_CONFIG,
+        shares_outstanding: CroreShares(620),
+        market_price: INRAbsolute(0.8),
+      },
+      marketData: null,
+      analysisStatus: productionReadyStatus,
+    });
+
+    expect(out.valuationReadiness.fallbackUsed).toBe(false);
+    expect(out.anchorPeriod.period_end).toBe("2025-03-31");
+    expect(out.anchorPeriod.bs.CSE).toBe(665);
+  });
+
+  it("bridges the SOTP sum with the anchor period's own NFO and MI", () => {
+    // `sotpEquityPerShare` is unit-tested against literal arguments, so it can be
+    // correct while the *wiring* is not: a call site that passed `0` for MI, or
+    // the newest reported period's balance sheet, satisfies every one of those
+    // tests. This is the end-to-end assertion — it fails if either bridge leg is
+    // dropped here or paired with the wrong period.
+    //
+    // The 2025 period is contaminated, so the anchor is 2024 and the two vintages
+    // must be told apart. Both preserve `NOA = CSE + NFO + MI`
+    // (identityTests.ts:180), which is why NFO is overridden alongside MI: with
+    // the identity held, NFO + MI ≡ NOA − CSE, so 2024 bridges by 230 and 2025 by
+    // 220 — and ignoring MI entirely bridges by 190.
+    const data = [
+      mkPeriod(2023, 1000, 180, 130, 520, 760),
+      { ...mkPeriod(2024, 1100, 205, 150, 590, 820), bs: { ...mkPeriod(2024, 1100, 205, 150, 590, 820).bs, MI: 40, NFO: 190 } },
+      {
+        ...mkPeriod(2025, 1210, 232, 172, 665, 885),
+        bs: { ...mkPeriod(2025, 1210, 232, 172, 665, 885).bs, MI: 140, NFO: 80 },
+        spec_flags: [
+          {
+            spec_id: "S-5.1",
+            severity: Severity.CRITICAL,
+            label: "STRUCTURAL_EVENT",
+            message: "Dirty surplus event.",
+            affects_terminal: true,
+            period: "2025-03-31",
+          },
+          {
+            spec_id: "S-5.3",
+            severity: Severity.CRITICAL,
+            label: "RNOA_OUTLIER_CRITICAL",
+            message: "RNOA outlier.",
+            affects_terminal: true,
+            period: "2025-03-31",
+          },
+        ],
+      },
+    ];
+    const out = buildValuationCommandCenter({
+      data,
+      config: {
+        ...DEFAULT_CONFIG,
+        shares_outstanding: CroreShares(620),
+        market_price: INRAbsolute(120),
+        sotp_preset: "ITC",
+      },
+      marketData: null,
+      analysisStatus: productionReadyStatus,
+    });
+
+    expect(out.anchorPeriod.period_end).toBe("2024-03-31");
+    expect(out.shareBasis.shares).toBe(620);
+    // Guard the guard: a preset that produced no value would make every
+    // assertion below true of zero.
+    expect(out.sotp).not.toBeNull();
+    expect(out.sotp!.discountedSum).toBeGreaterThan(0);
+
+    // Written out rather than routed back through the helper, so the expectation
+    // does not inherit the bug it is checking for.
+    const expected = (out.sotp!.discountedSum - 190 - 40) / 620;
+    expect(out.sotpPerShare).toBeCloseTo(expected, 10);
+    // Neither the newest period's bridge nor an MI-less one.
+    expect(out.sotpPerShare).not.toBeCloseTo((out.sotp!.discountedSum - 80 - 140) / 620, 10);
+    expect(out.sotpPerShare).not.toBeCloseTo((out.sotp!.discountedSum - 190) / 620, 10);
+
+    // ITC is 5 segments over 4 sector templates, so `sotpPreferred` fires and the
+    // published range comes from the SOTP path (core.ts:654) — the second call
+    // site, wired independently of the first.
+    expect(out.conglomerate?.sotpPreferred).toBe(true);
+    expect(out.range.floorPerShare).toBeCloseTo(expected, 10);
+    expect(out.range.ceilingPerShare).toBeCloseTo((out.sotp!.operatingSum - 190 - 40) / 620, 10);
   });
 
   it("keeps conservative scenarios ordered below the base case", () => {

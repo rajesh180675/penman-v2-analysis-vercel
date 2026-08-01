@@ -33,6 +33,7 @@ import {
   scoreFromRange,
   buildReverseDcfExpectation,
   primaryValueRange,
+  sotpEquityPerShare,
   sotpValueRange,
   appendCrossCheckWarning,
   summaryWithCrossCheckWarning,
@@ -578,6 +579,10 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
   return {
     shareBasis,
     valuationReadiness,
+    // The period every figure below was built from (:107) — the anchor, which is
+    // not the newest reported period when that one is contaminated. Reported so
+    // surfaces read it instead of re-deriving `data[data.length - 1]`.
+    anchorPeriod: latest,
     marketPrice,
     riskFreeRate,
     costOfCapital,
@@ -593,6 +598,10 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     diagnostics,
     reverseDcf,
     sotp: sotpResult,
+    // `latest` is the anchor period (:107), which is the period sotpResult was
+    // built from — so these are the NFO and MI that sum is allowed to be
+    // bridged with. Both come from one period, or the bridge mixes vintages.
+    sotpPerShare: sotpResult ? sotpEquityPerShare(sotpResult, shareBasis, latest.bs.NFO, latest.bs.MI) : null,
     conglomerate: conglomerateAssessment,
     evEbitda: evEbitdaWithMarket,
     indiaQuality,
@@ -643,7 +652,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
       killSwitches,
     },
     range: conglomerateAssessment?.sotpPreferred && sotpResult
-      ? sotpValueRange(sotpResult, shareBasis, latest.bs.NFO)
+      ? sotpValueRange(sotpResult, shareBasis, latest.bs.NFO, latest.bs.MI)
       : primaryValueRange(scenarios),
   };
 

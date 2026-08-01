@@ -1,7 +1,7 @@
 import { LiveMarketDataFreshness, MarketHistoryPoint } from "../marketData";
 import { AnalysisStatusSummary } from "../analysisStatus";
 import { RecastPeriod, ValuationResult } from "../types";
-import { resolveShareBasis } from "../shareCountTools";
+import { resolveShareBasis, toPerShare } from "../shareCountTools";
 import { SOTPResult } from "../sotpValuation";
 import {
   solveImpliedKeFromOwnerEarnings,
@@ -237,17 +237,54 @@ export function primaryValueRange(cards: ValuationScenarioCard[]) {
   };
 }
 
+/**
+ * SOTP equity value per share, after the conglomerate discount.
+ *
+ * `discountedSum` is a whole-entity (enterprise) figure, so the full
+ * enterprise→**common** equity bridge is subtracted: net debt (NFO) *and*
+ * minority interest (MI). The repo's balance-sheet identity is
+ * `NOA = CSE + NFO + MI` (`identityTests.ts:180`), so dropping MI leaves the
+ * minorities' share of the subsidiaries inside a number compared against a
+ * share price that has no claim on it. `cashFlowDcf.ts:139` applies the same
+ * `− NFO − MI` bridge for the same reason.
+ *
+ * Both operands are ₹ crore and `shares` is crore shares, so the quotient
+ * is already ₹/share — no 1e7 (see `types/units.ts:96`).
+ *
+ * Callers must pass the NFO and MI of the period the SOTP was built at. That is
+ * the *anchor* period, which `resolveValuationReadiness` moves off the newest
+ * period when the terminal one is contaminated (`valuationPolicy.ts:145-166`);
+ * pairing this sum with a different period's net debt mixes vintages.
+ */
+export function sotpEquityPerShare(
+  sotp: SOTPResult,
+  shareBasis: ReturnType<typeof resolveShareBasis>,
+  nfo: number,
+  mi: number,
+): number | null {
+  return toPerShare(sotp.discountedSum - nfo - mi, shareBasis.shares);
+}
+
 /** Phase C5: when SOTP is preferred, derive value range from SOTP EV. */
-export function sotpValueRange(sotp: SOTPResult, shareBasis: ReturnType<typeof resolveShareBasis>, nfo: number) {
+export function sotpValueRange(
+  sotp: SOTPResult,
+  shareBasis: ReturnType<typeof resolveShareBasis>,
+  nfo: number,
+  mi: number,
+) {
   const shares = shareBasis.shares ?? null;
   if (!shares || shares <= 0) return { floorPerShare: null, ceilingPerShare: null };
-  // Floor: discounted sum (after conglomerate discount) - NFO
-  const equityFloor = sotp.discountedSum - nfo;
-  // Ceiling: undiscounted sum (no conglomerate discount) - NFO
-  const equityCeiling = sotp.operatingSum - nfo;
+  // Floor: discounted sum (after conglomerate discount), bridged to common
+  // equity. Same quantity the radar plots, so it shares one definition.
+  // Ceiling: undiscounted sum (no conglomerate discount), same bridge.
+  const equityCeiling = sotp.operatingSum - nfo - mi;
   return {
-    floorPerShare: equityFloor / shares,
-    ceilingPerShare: equityCeiling / shares,
+    floorPerShare: sotpEquityPerShare(sotp, shareBasis, nfo, mi),
+    // Routed through `toPerShare` to match the floor's finiteness guard: a
+    // non-finite numerator (NaN/Infinity from the segment sums or bridge
+    // legs) returns `null`, the same value a range consumer guards against,
+    // instead of `NaN` — which a `!= null` check lets through.
+    ceilingPerShare: toPerShare(equityCeiling, shares),
   };
 }
 

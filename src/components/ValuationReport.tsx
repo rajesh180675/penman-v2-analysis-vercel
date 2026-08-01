@@ -416,7 +416,7 @@ export default function ValuationReport({
 
       <ScenarioCardsSection commandCenter={commandCenter} />
 
-      <AnchorAnalysisGrid commandCenter={commandCenter} moatScore={moatScore} ke={ke} data={data} />
+      <AnchorAnalysisGrid commandCenter={commandCenter} moatScore={moatScore} ke={ke} />
 
       <BusinessModelSection commandCenter={commandCenter} />
 
