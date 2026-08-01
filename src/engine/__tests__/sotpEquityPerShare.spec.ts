@@ -128,4 +128,15 @@ describe("sotpEquityPerShare", () => {
     const range = sotpValueRange(sotp(), basis(120), 6_000, 1_200);
     expect(range.ceilingPerShare).toBe(190);
   });
+
+  it("returns null, not NaN, for both legs when the numerators are non-finite", () => {
+    // The ceiling divides directly; the floor goes through `toPerShare`, which
+    // rejects non-finite numerators. Before `ceilingPerShare` was routed through
+    // the same helper, a NaN/Infinity from the segment sums or bridge legs
+    // produced a `NaN` ceiling beside a `null` floor — and `!= null` is the guard
+    // every range consumer uses, so the NaN passed through as a published point.
+    const range = sotpValueRange(sotp({ operatingSum: NaN, discountedSum: NaN }), basis(120), 6_000, 1_200);
+    expect(range.floorPerShare).toBeNull();
+    expect(range.ceilingPerShare).toBeNull();
+  });
 });

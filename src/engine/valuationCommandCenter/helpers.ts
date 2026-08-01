@@ -280,7 +280,11 @@ export function sotpValueRange(
   const equityCeiling = sotp.operatingSum - nfo - mi;
   return {
     floorPerShare: sotpEquityPerShare(sotp, shareBasis, nfo, mi),
-    ceilingPerShare: equityCeiling / shares,
+    // Routed through `toPerShare` to match the floor's finiteness guard: a
+    // non-finite numerator (NaN/Infinity from the segment sums or bridge
+    // legs) returns `null`, the same value a range consumer guards against,
+    // instead of `NaN` — which a `!= null` check lets through.
+    ceilingPerShare: toPerShare(equityCeiling, shares),
   };
 }
 
