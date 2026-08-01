@@ -439,6 +439,7 @@ function LegacyForecastReport({data,config, rawData = null, traceability = null,
         }))}
         marketPrice={config.market_price ?? null}
         expectedValue={expectedValue != null && sharesOut ? toPerShare(expectedValue, sharesOut) ?? null : expectedValue}
+        perShare={Boolean(sharesOut)}
       />
 
       <AssumptionsPanel

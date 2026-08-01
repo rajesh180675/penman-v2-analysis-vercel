@@ -14,14 +14,23 @@ interface Props {
   marketPrice?: number | null | undefined;
   /** Probability-weighted expected value */
   expectedValue?: number | null | undefined;
+  /**
+   * Whether bars are on a per-share (₹/share) axis. When false the values are
+   * raw ₹ Cr and `marketPrice` — an equity *per-share* price — has no business
+   * on this axis, so the reference line and stat are suppressed. Without this,
+   * the no-shares-out path plotted ₹Cr scenario values beside a ₹/share market
+   * price under a "per share" label (the unit-scale class; see
+   * `docs/.../unit-scale-mismatch-in-charts`).
+   */
+  perShare?: boolean;
 }
 
 /**
  * Scenario Range Chart — visual summary of the 4 forecast scenarios
- * (Stress / Base / Bull / Panic) showing intrinsic per share with market
- * price reference line. Probability shown on each bar.
+ * (Stress / Base / Bull / Panic) showing intrinsic value with a market-price
+ * reference line *when the bars are per share*. Probability shown on each bar.
  */
-export default function ScenarioRangeChart({ scenarios, marketPrice, expectedValue }: Props) {
+export default function ScenarioRangeChart({ scenarios, marketPrice, expectedValue, perShare = true }: Props) {
   const data = scenarios.map(s => ({
     label: s.label,
     value: s.value != null ? Math.round(s.value) : 0,
@@ -39,22 +48,27 @@ export default function ScenarioRangeChart({ scenarios, marketPrice, expectedVal
     );
   }
 
-  const max = Math.max(...validValues, marketPrice ?? 0, expectedValue ?? 0);
+  // A per-share equity price only scales the axis when the bars are per share.
+  // On the ₹Cr path it is a different unit — including it in the domain would
+  // squash the bars for a comparison the reference line then doesn't make.
+  const refPrice = perShare ? marketPrice : null;
+  const max = Math.max(...validValues, refPrice ?? 0, expectedValue ?? 0);
+  const unitLabel = perShare ? "per share" : "₹ Cr";
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900/60 space-y-3">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Scenario Value Range</h3>
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Scenario Value Range <span className="text-slate-400 font-normal">({unitLabel})</span></h3>
           <p className="text-xs text-slate-500">
-            Intrinsic per share across stress / base / bull / panic paths. Market price shown as reference.
+            Intrinsic value {unitLabel} across stress / base / bull / panic paths{perShare ? ". Market price shown as reference." : "."}
           </p>
         </div>
         <div className="flex gap-3 text-xs">
-          {marketPrice != null && (
+          {refPrice != null && (
             <div className="text-right">
               <div className="text-[10px] uppercase tracking-wide text-slate-500">Market Price</div>
-              <div className="font-bold text-amber-600">₹{marketPrice.toFixed(0)}</div>
+              <div className="font-bold text-amber-600">₹{refPrice.toFixed(0)}</div>
             </div>
           )}
           {expectedValue != null && (
@@ -74,17 +88,17 @@ export default function ScenarioRangeChart({ scenarios, marketPrice, expectedVal
             <Tooltip<number, string>
               formatter={(value, _name, item) => [
                 `₹${(value ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })} (P=${(((item.payload as { probability?: number } | undefined)?.probability ?? 0) * 100).toFixed(0)}%)`,
-                "Intrinsic / share",
+                perShare ? "Intrinsic / share" : "Intrinsic (₹ Cr)",
               ]}
               contentStyle={TOOLTIP_STYLE}
             />
-            {marketPrice != null && (
+            {refPrice != null && (
               <ReferenceLine
-                y={marketPrice}
+                y={refPrice}
                 stroke="#f59e0b"
                 strokeDasharray="4 4"
                 strokeWidth={2}
-                label={{ value: `Market ₹${marketPrice.toFixed(0)}`, position: "right", fontSize: 10, fill: "#f59e0b" }}
+                label={{ value: `Market ₹${refPrice.toFixed(0)}`, position: "right", fontSize: 10, fill: "#f59e0b" }}
               />
             )}
             {expectedValue != null && (
