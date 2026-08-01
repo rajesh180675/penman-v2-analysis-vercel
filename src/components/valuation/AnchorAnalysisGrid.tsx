@@ -1,4 +1,3 @@
-import type { RecastPeriod } from "../../engine/types";
 import { buildValuationCommandCenter, formatPct } from "../../engine/valuationCommandCenter";
 import { computeMoatScore } from "../../engine/moatScoring";
 import ExpectationBridgePanel from "../ExpectationBridgePanel";
@@ -12,16 +11,20 @@ export default function AnchorAnalysisGrid({
   commandCenter,
   moatScore,
   ke,
-  data,
 }: {
   commandCenter: ReturnType<typeof buildValuationCommandCenter>;
   moatScore: ReturnType<typeof computeMoatScore>;
   ke: number;
-  data: RecastPeriod[];
 }) {
-  // Non-null is safe: ValuationReport returns early below 2 periods
-  // (ValuationReport.tsx:358), which is what the closures below already assume.
-  const latest = data[data.length - 1]!;
+  // The period the command center actually valued, read rather than re-derived.
+  // This used to be `data[data.length - 1]`, the newest *reported* period, while
+  // every other figure in this grid — the scenarios, `baseValue`, `shareBasis` —
+  // comes from the anchor. `resolveValuationReadiness` moves the anchor earlier
+  // when the terminal period is contaminated (valuationPolicy.ts:145-166), so on
+  // those runs the tornado differenced an anchor-period base against
+  // newest-period drivers and the bars mixed driver sensitivity with the
+  // inter-period delta in CSE/NOA/RNOA.
+  const latest = commandCenter.anchorPeriod;
 
   return (
     <section className="grid gap-4 xl:grid-cols-3">
@@ -62,10 +65,11 @@ export default function AnchorAnalysisGrid({
             // diagnostic, already surfaced as a percent by the
             // ExpectationBridgePanel in this same grid.
             { name: "Cash-lens FCFF DCF", shortName: "FCFF", value: commandCenter.cashFlowDcf?.perShare ?? null },
-            // Read, not derived. `sotp.discountedSum` is an enterprise figure
-            // that has to be bridged to equity (−NFO) before it can sit beside
-            // four equity anchors, and the NFO it pairs with is the anchor
-            // period's — which this component cannot resolve, since the anchor
+            // Read, not derived. `sotp.discountedSum` is a whole-entity figure
+            // that has to be bridged to common equity (−NFO −MI) before it can
+            // sit beside four equity anchors, and the NFO and MI it pairs with
+            // are the anchor period's — which this component cannot resolve,
+            // since the anchor
             // moves off the newest period when the terminal one is contaminated
             // (valuationPolicy.ts:145-166). Dividing `discountedSum` here by
             // `shareBasis.shares` (and, before, scaling it by 1e7) produced a

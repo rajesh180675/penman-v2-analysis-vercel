@@ -1,6 +1,6 @@
 import { LiveMarketDataFreshness } from "../marketData";
 import { AnalysisStatusSummary } from "../analysisStatus";
-import { ForecastScenario, ForecastPolicySurface, ValuationResult, BusinessModelProfile } from "../types";
+import { ForecastScenario, ForecastPolicySurface, RecastPeriod, ValuationResult, BusinessModelProfile } from "../types";
 import { resolveShareBasis } from "../shareCountTools";
 import { ValuationReadiness } from "../valuationPolicy";
 import { SOTPResult } from "../sotpValuation";
@@ -168,6 +168,28 @@ export interface ValuationSignal {
 export interface ValuationCommandCenterOutput {
   shareBasis: ReturnType<typeof resolveShareBasis>;
   valuationReadiness: ValuationReadiness;
+  /**
+   * The period every figure on this output was built from.
+   *
+   * NOT necessarily the newest reported period: `resolveValuationReadiness`
+   * moves the anchor earlier when the terminal period is contaminated
+   * (`valuationPolicy.ts:145-166`, `valuationReadiness.fallbackUsed`). Exposed
+   * as a record rather than left to the surfaces to re-derive, because a
+   * surface that reads `data[data.length - 1]` silently pairs newest-period
+   * drivers with anchor-period scenarios. The `Math.max(2, anchorIndex + 1)`
+   * window is duplicated at `ValuationReport.tsx:152` and
+   * `AcademicReport.tsx:225`, so any change to `core.ts:106` has to be mirrored
+   * in both — one more reason for surfaces to read this instead.
+   *
+   * This is the period `core.ts:107` actually valued, which is *usually* but not
+   * always `valuationReadiness.anchorPeriod` (and hence
+   * `marketContext.valuationAnchorPeriod`). With exactly two periods and a
+   * GUARDED/COMPROMISED terminal one, `valuationPolicy.ts:166` reports index 0
+   * and sets `fallbackUsed`, while the `Math.max(2, …)` floor keeps the window at
+   * two — so `latest` is still index 1, the contaminated period. Prefer this
+   * field over the date string wherever the two have to agree.
+   */
+  anchorPeriod: RecastPeriod;
   marketPrice: number | null;
   riskFreeRate: number;
   /** One pinned capital-cost result consumed by all command-center models. */
@@ -185,10 +207,11 @@ export interface ValuationCommandCenterOutput {
   reverseDcf: ReverseDcfDiagnostics;
   sotp: SOTPResult | null;
   /**
-   * SOTP value per share, bridged to common equity (−NFO) at the anchor period.
-   * Reported here rather than derived by the surfaces: `sotp.discountedSum` is
-   * an enterprise figure, and the NFO it must pair with belongs to the anchor
-   * period, which the surfaces do not resolve (`valuationPolicy.ts:145-166`).
+   * SOTP value per share, bridged to common equity (−NFO −MI) at the anchor
+   * period. Reported here rather than derived by the surfaces:
+   * `sotp.discountedSum` is a whole-entity figure, and the NFO and MI it must
+   * pair with belong to the anchor period, which the surfaces do not resolve
+   * (`valuationPolicy.ts:145-166`).
    * Null when there is no SOTP or no usable share basis.
    */
   sotpPerShare: number | null;
