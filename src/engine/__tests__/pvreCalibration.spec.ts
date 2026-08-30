@@ -133,14 +133,14 @@ describe("PVRE snapshot persistence", () => {
     expect(loadSnapshots(workspace, "NOEXIST")).toEqual([]);
   });
 
-  it("ignores corrupt snapshot files", () => {
+  it("ignores corrupt snapshot files", async () => {
     const out = fakePvre(80, 100, 120);
     persistSnapshot(workspace, buildSnapshot(out, { ticker: "ITC", asOf: "2026-08-29" }));
     // write a corrupt snapshot file
     const dir = join(workspace, ".penman", "pvre", "itc");
     expect(existsSync(dir)).toBe(true);
     const corrupt = join(dir, "2026-08-30.seed-9.itr-5.json");
-    const { writeFileSync } = require("fs") as typeof import("fs");
+    const { writeFileSync } = await import("fs");
     writeFileSync(corrupt, "{not valid json");
     const loaded = loadSnapshots(workspace, "ITC");
     // the good one survives; the corrupt one is skipped

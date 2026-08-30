@@ -221,31 +221,31 @@ export function runPvre(input: PvreRunInput): PvreResult {
   });
   const contributing = perModel.filter((m) => m.finiteShare > 0.5).map((m) => m.model);
 
-  let disagreement: PvreCrossModelDisagreement | null = null;
   const summaries = perModel.map((m) => m.summary).filter((s): s is NonNullable<typeof s> => s != null);
-  if (summaries.length >= 2 && intrinsic && intrinsic.q50 !== 0) {
-    const width = summaries.reduce(
-      (acc, s) => Math.max(acc, Math.abs(s.q95 - s.q05)),
-      0,
-    );
-    const dispersionRatio = width / Math.abs(intrinsic.q50);
-    disagreement = {
-      dispersionRatio,
-      contributingModels: contributing,
-      gate: disagreementGate(dispersionRatio),
-      reason:
-        contributing.length < 2
-          ? "fewer than two models computed on a majority of draws"
-          : "dispersion measured across per-model 90% CI widths",
-    };
-  } else {
-    disagreement = {
-      dispersionRatio: null,
-      contributingModels: contributing,
-      gate: "guarded",
-      reason: "insufficient models or degenerate median to measure dispersion",
-    };
-  }
+  const disagreement: PvreCrossModelDisagreement =
+    summaries.length >= 2 && intrinsic && intrinsic.q50 !== 0
+      ? (() => {
+          const width = summaries.reduce(
+            (acc, s) => Math.max(acc, Math.abs(s.q95 - s.q05)),
+            0,
+          );
+          const dispersionRatio = width / Math.abs(intrinsic!.q50);
+          return {
+            dispersionRatio,
+            contributingModels: contributing,
+            gate: disagreementGate(dispersionRatio),
+            reason:
+              contributing.length < 2
+                ? "fewer than two models computed on a majority of draws"
+                : "dispersion measured across per-model 90% CI widths",
+          };
+        })()
+      : {
+          dispersionRatio: null,
+          contributingModels: contributing,
+          gate: "guarded",
+          reason: "insufficient models or degenerate median to measure dispersion",
+        };
 
   const p = input.marketPrice;
   const probabilityUndervalued =

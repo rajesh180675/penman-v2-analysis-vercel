@@ -21,6 +21,11 @@ import {
   DivergingBarChart,
   QuantileFanChart,
   CorrelationMatrix,
+  GroupedBarChart,
+  HorizontalBarList,
+  RangeBandChart,
+  DonutChart,
+  CagrOverlayChart,
   fmtPct,
 } from "../charts";
 
@@ -207,6 +212,89 @@ export default function ChartGallery() {
       <ChartCard title="Segment contribution" subtitle="TreemapChart — revenue sized, growth displayed" status="production">
         <TreemapChart entries={SEGMENTS} height={320} />
       </ChartCard>
+
+      {/* ── Growth + peer comparison (new tier) ─────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ChartCard title="Revenue growth" subtitle="CagrOverlayChart — bars + smoothed CAGR path overlay" status="production">
+          <CagrOverlayChart
+            data={PERIODS.map((p, i) => ({ period: p, value: [9840, 10200, 11200, 12730, 14240, 15850, 17620][i]! }))}
+            height={280}
+          />
+        </ChartCard>
+        <ChartCard title="Peer ROCE comparison" subtitle="GroupedBarChart — company vs two peers + sector median" status="production">
+          <GroupedBarChart
+            data={[
+              { period: "FY23", co: 16.8, peerA: 14.2, peerB: 18.1 },
+              { period: "FY24", co: 18.4, peerA: 15.6, peerB: 17.3 },
+              { period: "FY25", co: 18.7, peerA: 16.4, peerB: 18.9 },
+            ]}
+            series={[
+              { key: "co", label: "ITC" },
+              { key: "peerA", label: "HUL" },
+              { key: "peerB", label: "Dabur" },
+            ]}
+            formatValue={(v) => `${v.toFixed(0)}%`}
+            formatTooltip={(v) => `${v.toFixed(1)}%`}
+            referenceValue={15}
+            referenceLabel="Sector median 15%"
+            height={280}
+          />
+        </ChartCard>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ChartCard title="Capital employed mix" subtitle="DonutChart — interactive legend, center total" status="production">
+          <DonutChart
+            entries={[
+              { label: "FMCG", value: 24600 },
+              { label: "Hotels", value: 5900 },
+              { label: "Agri", value: 8200 },
+              { label: "Paperboards", value: 7800 },
+              { label: "IT", value: 3210 },
+            ]}
+            centerLabel="₹49.7K Cr"
+            centerSub="Capital employed"
+            height={240}
+          />
+        </ChartCard>
+        <ChartCard title="Top contributors to FY25 NOPAT" subtitle="HorizontalBarList — tone-aware ranked bars">
+          <HorizontalBarList
+            entries={[
+              { label: "FMCG — Cigarettes", value: 12840, tone: "positive" },
+              { label: "Agri Business", value: 1420, tone: "positive" },
+              { label: "IT Services", value: 940, tone: "positive" },
+              { label: "FMCG — Others", value: -380, tone: "negative" },
+              { label: "Hotels", value: 290, tone: "positive" },
+              { label: "Paperboards", value: -610, tone: "negative" },
+            ]}
+            height={260}
+          />
+        </ChartCard>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ChartCard
+          title="P/E trading range"
+          subtitle="RangeBandChart — 7Y historical multiple band, median, current mark"
+          status="guarded"
+          footnote="Min–max monthly P/E by fiscal year; orange dot = current multiple."
+        >
+          <RangeBandChart
+            data={[
+              { period: "FY19", low: 19.2, median: 24.1, high: 29.8 },
+              { period: "FY20", low: 17.4, median: 22.6, high: 28.2 },
+              { period: "FY21", low: 14.1, median: 17.8, high: 21.6 },
+              { period: "FY22", low: 15.9, median: 19.4, high: 24.7 },
+              { period: "FY23", low: 18.2, median: 22.9, high: 27.5 },
+              { period: "FY24", low: 20.6, median: 25.3, high: 30.1 },
+              { period: "FY25", low: 21.8, median: 26.4, high: 31.2 },
+            ]}
+            currentValue={23.1}
+            formatValue={(v) => `${v.toFixed(0)}×`}
+            height={260}
+          />
+        </ChartCard>
+      </div>
 
       {/* ── Probabilistic + correlation ─────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
