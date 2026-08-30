@@ -11,7 +11,7 @@ interface TraceabilitySectionProps {
 export function TraceabilitySection({ traceability, family, loading }: TraceabilitySectionProps) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="font-semibold text-slate-800">Traceability</h3>
+      <h3 className="font-semibold text-slate-800 dark:text-slate-100">Traceability</h3>
       {traceability ? (
         <div className="mt-3 space-y-4 text-sm text-slate-700">
           <div className="grid gap-3 md:grid-cols-2">

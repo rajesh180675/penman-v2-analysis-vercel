@@ -84,6 +84,9 @@ export function useTabVisibility(inputs: TabVisibilityInputs): TabVisibilityRetu
 
   const visibleTabs = useMemo(() => {
     const filtered = TABS.filter(t => {
+      // Design checklist + chart gallery: dev-only (hidden in production builds)
+      if (t.id === "design") return import.meta.env.DEV;
+      if (t.id === "charts") return import.meta.env.DEV;
       if (t.id === "debug") return hasDebug;
       if (t.id === "comparison") return readyCompanyCount >= 2;
       if (t.id === "inspector") return isAuditEnabled() && Boolean(auditMeta);

@@ -23,7 +23,7 @@ export function OverviewSection({ bundle, valuation, tvClass }: {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-bold text-slate-800 mb-1">V3 Analytics — Executive Overview</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">V3 Analytics — Executive Overview</h3>
         <p className="text-xs text-slate-500">Full implementation of Penman–Nissim V3 specification §6, §9, §11–§15</p>
       </div>
 

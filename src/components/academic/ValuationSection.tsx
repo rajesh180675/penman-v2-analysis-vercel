@@ -33,8 +33,8 @@ export function ValuationSynthesisSection(props: {
     eq16Tier, v3TerminalAnchor, data, g, gInput, bindingGCap, tvContaminated, latest,
   } = props;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">6) Valuation Synthesis (Residual Income Framework)</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">6) Valuation Synthesis (Residual Income Framework)</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
           <MiniBox label="ke assumption" value={pct(ke, 2)} />
           <MiniBox label="kw (derived, latest)" value={pct(kw, 2)} />
@@ -100,8 +100,8 @@ export function SensitivityMatrixSection(props: {
 }) {
   const { sensitivityG, sensitivityMatrix, v3TerminalAnchor } = props;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">6A) RE sensitivity matrix (ke × g)</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">6A) RE sensitivity matrix (ke × g)</h2>
         <p className="text-xs text-slate-500 mb-3">Rows vary cost of equity; columns vary terminal growth. Values are V(RE, CV3) in ₹ Cr using derived kw for ReOI consistency checks.</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -141,8 +141,8 @@ export function ResidualIncomeStreamSection(props: {
 }) {
   const { valuation, periodDiagnostics } = props;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">6A.1) Explicit residual-income stream</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">6A.1) Explicit residual-income stream</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -179,8 +179,8 @@ export function TerminalSensitivitySection(props: {
   const { tvContaminated, anchorTable, v3TerminalAnchor, primaryValuation, valuation } = props;
   if (!tvContaminated) return null;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">6A.2) Terminal sensitivity (alternate RE anchors)</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">6A.2) Terminal sensitivity (alternate RE anchors)</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>

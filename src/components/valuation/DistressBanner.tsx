@@ -9,7 +9,7 @@ export default function DistressBanner({ distress }: { distress: ReturnType<type
         ? "border-amber-400 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
         : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100";
   const icon =
-    distress.severity === "critical" ? "🚨"
+    distress.severity === "critical" ? "alert-triangle"
       : distress.severity === "severe" ? "⚠️"
         : "⚠";
   const title =

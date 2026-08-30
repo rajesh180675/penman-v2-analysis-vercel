@@ -26,7 +26,7 @@ export default function ResearchJournalPanel({ entries, onAdd }: Props) {
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-base font-bold text-slate-800">Research Journal</h3>
+      <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Research Journal</h3>
       <p className="mt-1 text-sm text-slate-500">
         Write down why you would buy, why you would not buy, and what changed. This prevents the valuation tab from becoming a black-box decision machine.
       </p>

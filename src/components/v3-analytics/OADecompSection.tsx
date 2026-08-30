@@ -16,7 +16,7 @@ export function OADecompSection({ decompositions }: { decompositions: OADecompos
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-bold text-slate-800 mb-1">§3B OA Sub-Component Decomposition (S-15.1)</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">§3B OA Sub-Component Decomposition (S-15.1)</h3>
         <p className="text-xs text-slate-500">Decomposed for all structurally flagged periods and terminal period.</p>
       </div>
       {decompositions.map((d) => (

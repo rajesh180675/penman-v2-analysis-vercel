@@ -6,6 +6,7 @@
    This is the lazy-loaded component behind the "Watchlist" tab.
 ================================================================ */
 
+import { Icon } from "./shared/Icon";
 import type { WorkspaceCompanyRecord } from "../lib/researchWorkspace";
 import { trace } from "../lib/traceLogger";
 
@@ -55,7 +56,7 @@ export default function WatchlistDashboard(props: WatchlistDashboardProps) {
   if (companies.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/40">
-        <div className="text-5xl mb-4">🗂</div>
+        <div className="wb-text-3"><Icon name="folder" size={40} /></div>
         <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200">Watchlist is empty</h2>
         <p className="mt-2 max-w-md text-sm text-slate-600 dark:text-slate-400">
           Load a company from the Data tab or run a batch analysis of the library. Tracked companies will appear here with their latest signal and analysis status.

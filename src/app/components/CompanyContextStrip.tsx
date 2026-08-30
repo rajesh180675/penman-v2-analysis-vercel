@@ -11,16 +11,16 @@ interface CompanyContextStripProps {
 
 export function CompanyContextStrip({ config, recastData, auditMeta, qualityGate }: CompanyContextStripProps) {
   return (
-    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800 sticky top-14 z-20">
+    <div className="wb-surface border-b wb-divider sticky top-14 z-20">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-1.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="font-semibold text-sm text-slate-800 dark:text-slate-200">
+          <span className="font-semibold text-sm wb-text-1">
             {config.ticker ?? config.quality_data_folder ?? auditMeta?.companyId ?? "—"}
           </span>
           <span className="badge-neutral">{config.company_type ?? "auto"}</span>
           {recastData && recastData.length > 0 && (
             <>
-              <span className="text-xs text-slate-500">{recastData.length} periods</span>
+              <span className="text-xs wb-text-3">{recastData.length} periods</span>
               <DataFreshness latestPeriod={recastData[recastData.length - 1]!.period_end} />
               <SourceBadge source="capitaline" />
             </>
@@ -28,7 +28,7 @@ export function CompanyContextStrip({ config, recastData, auditMeta, qualityGate
         </div>
         <div className="flex items-center gap-3">
           {config.market_price != null && (
-            <span className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-100">₹{config.market_price.toFixed(0)}</span>
+            <span className="font-mono text-sm font-semibold wb-text-1">₹{config.market_price.toFixed(0)}</span>
           )}
           {recastData && recastData.length >= 3 && (
             <Sparkline

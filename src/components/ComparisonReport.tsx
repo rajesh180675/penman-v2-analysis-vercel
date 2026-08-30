@@ -12,7 +12,7 @@ import PercentileBar from "./charts/PercentileBar";
 import SectorHeatmap from "./charts/SectorHeatmap";
 import { computePeerRelativeValuation } from "../engine/peerRelativeValuation";
 import RunBackedPortfolioComparison from "./RunBackedPortfolioComparison";
-import { EmptyState } from "./shared/Primitives";
+import { EmptyState } from "./shared/EmptyState";
 import type { ReturnTypeOfPortfolioComparison } from "../engine/portfolioRunComparison.types";
 import { priceToBook } from "./valuationScaleMath";
 

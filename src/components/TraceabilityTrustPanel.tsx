@@ -42,7 +42,7 @@ export default function TraceabilityTrustPanel({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</div>
-          <h2 className="mt-1 text-lg font-bold text-slate-900">{summary.headline}</h2>
+          <h2 className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">{summary.headline}</h2>
           <p className="mt-2 max-w-3xl text-sm text-slate-600">{summary.detail}</p>
         </div>
         {aside}

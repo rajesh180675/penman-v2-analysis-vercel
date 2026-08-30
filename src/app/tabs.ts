@@ -1,26 +1,32 @@
-export type TabId = "upload" | "dashboard" | "watchlist" | "workspace" | "inspector" | "statements" | "ratios" | "forecast" | "valuation" | "bank" | "quality" | "scope" | "atlas" | "business" | "comparison" | "report" | "thesis" | "regression" | "v3analytics" | "debug";
+export type TabId = "upload" | "dashboard" | "watchlist" | "workspace" | "inspector" | "statements" | "ratios" | "forecast" | "valuation" | "bank" | "quality" | "scope" | "atlas" | "business" | "comparison" | "report" | "thesis" | "regression" | "v3analytics" | "debug" | "design" | "charts";
 
-export const TABS: { id: TabId; label: string; icon: string; needsData?: boolean | undefined; group: string }[] = [
-  { id: "upload", label: "Data", icon: "📂", group: "input" },
-  { id: "dashboard", label: "Dashboard", icon: "📊", needsData: true, group: "input" },
-  { id: "watchlist", label: "Watchlist", icon: "🗂", group: "input" },
-  { id: "workspace", label: "Workspace", icon: "🧭", group: "input" },
-  { id: "inspector", label: "Runs", icon: "🛰️", group: "input" },
-  { id: "statements", label: "Statements", icon: "📋", needsData: true, group: "analysis" },
-  { id: "ratios", label: "Ratios", icon: "📐", needsData: true, group: "analysis" },
-  { id: "quality", label: "Quality", icon: "🔍", needsData: true, group: "analysis" },
-  { id: "scope", label: "Scope", icon: "🪞", needsData: true, group: "analysis" },
-  { id: "atlas", label: "Atlas", icon: "🛰️", needsData: true, group: "analysis" },
-  { id: "business", label: "Business Model", icon: "🏛️", needsData: true, group: "analysis" },
-  { id: "forecast", label: "Forecast", icon: "📈", needsData: true, group: "analysis" },
-  { id: "valuation", label: "Valuation", icon: "💰", needsData: true, group: "valuation" },
-  { id: "bank", label: "Bank", icon: "🏦", needsData: true, group: "valuation" },
-  { id: "comparison", label: "Comparison", icon: "👥", needsData: true, group: "peers" },
-  { id: "report", label: "Report", icon: "📚", needsData: true, group: "export" },
-  { id: "thesis", label: "Thesis", icon: "📋", needsData: true, group: "export" },
-  { id: "regression", label: "Regression", icon: "🧪", needsData: true, group: "advanced" },
-  { id: "v3analytics", label: "V3 Analytics", icon: "🔬", needsData: true, group: "advanced" },
-  { id: "debug", label: "Debug", icon: "🛠", group: "advanced" },
+// No `icon` field: tab icons are SVG, resolved via `src/app/tabIcons.ts`
+// (TAB_ICONS). The old emoji strings are gone with the header tab strip.
+export const TABS: { id: TabId; label: string; needsData?: boolean | undefined; group: string }[] = [
+  { id: "upload", label: "Data", group: "input" },
+  { id: "dashboard", label: "Dashboard", needsData: true, group: "input" },
+  { id: "watchlist", label: "Watchlist", group: "input" },
+  { id: "workspace", label: "Workspace", group: "input" },
+  { id: "inspector", label: "Runs", group: "input" },
+  { id: "statements", label: "Statements", needsData: true, group: "analysis" },
+  { id: "ratios", label: "Ratios", needsData: true, group: "analysis" },
+  { id: "quality", label: "Quality", needsData: true, group: "analysis" },
+  { id: "scope", label: "Scope", needsData: true, group: "analysis" },
+  { id: "atlas", label: "Atlas", needsData: true, group: "analysis" },
+  { id: "business", label: "Business Model", needsData: true, group: "analysis" },
+  { id: "forecast", label: "Forecast", needsData: true, group: "analysis" },
+  { id: "valuation", label: "Valuation", needsData: true, group: "valuation" },
+  { id: "bank", label: "Bank", needsData: true, group: "valuation" },
+  { id: "comparison", label: "Comparison", needsData: true, group: "peers" },
+  { id: "report", label: "Report", needsData: true, group: "export" },
+  { id: "thesis", label: "Thesis", needsData: true, group: "export" },
+  { id: "regression", label: "Regression", needsData: true, group: "advanced" },
+  { id: "v3analytics", label: "V3 Analytics", needsData: true, group: "advanced" },
+  { id: "debug", label: "Debug", group: "advanced" },
+  // Dev-only design-system checklist (docs/greenfield-ui-redesign.md §2.7).
+  // Hidden unless import.meta.env.DEV — see useTabVisibility.
+  { id: "design", label: "Design", group: "advanced" },
+  { id: "charts", label: "Charts", group: "advanced" },
 ];
 
 export const TAB_GROUPS: { key: string; label: string }[] = [

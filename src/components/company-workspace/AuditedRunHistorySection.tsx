@@ -8,7 +8,7 @@ interface Props {
 export default function AuditedRunHistorySection({ runHistory, loadingRuns }: Props) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-base font-bold text-slate-800">Audited Run History</h3>
+      <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Audited Run History</h3>
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

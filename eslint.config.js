@@ -171,6 +171,28 @@ export default tseslint.config(
        * in the ratchet without failing the build mid-edit.
        */
       "no-console": ["warn", { allow: ["assert", "warn", "error"] }],
+      /**
+       * Phase 0 (greenfield UI redesign): every `<h1-6>` with a `text-slate-*`
+       * color must also have a `dark:text-slate-*` variant. Without this, the
+       * heading renders near-black on the dark card surface (contrast defect).
+       *
+       * Warn rather than error: the rule ran retroactively across the whole
+       * codebase (zero occurrences as of 2026-08-07), so any new occurrence
+       * will surface in the lint ratchet and fail the validate gate.
+       */
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector:
+            'JSXOpeningElement[name.name=/^h[1-6]$/] JSXAttribute[name.name="className"][value.type="Literal"]' +
+            '[value.value=/text-slate-\\d+/]' +
+            '[value.value!=/dark:text-\\S+/]',
+          message:
+            "Heading with text-slate-* must also include a dark:text-* variant " +
+            "(e.g. dark:text-slate-100, dark:text-white) — see docs/greenfield-ui-redesign.md §2.7.",
+        },
+      ],
+
       // A hook called conditionally is a real defect, not a style opinion.
       "react-hooks/rules-of-hooks": "error",
       // Warn: this codebase intentionally omits deps in several memos and says

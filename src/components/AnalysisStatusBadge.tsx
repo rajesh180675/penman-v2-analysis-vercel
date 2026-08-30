@@ -1,3 +1,4 @@
+import { Icon, type IconName } from "./shared/Icon";
 import { AnalysisStatusSummary } from "../engine/analysisStatus";
 
 function toneClasses(tone: AnalysisStatusSummary["tone"], compact: boolean) {
@@ -17,9 +18,9 @@ function toneClasses(tone: AnalysisStatusSummary["tone"], compact: boolean) {
 }
 
 function toneIcon(tone: AnalysisStatusSummary["tone"]) {
-  if (tone === "red") return { icon: "🚫", cls: "trust-gate-icon-blocked" };
-  if (tone === "amber") return { icon: "⚠️", cls: "trust-gate-icon-guarded" };
-  return { icon: "✓", cls: "trust-gate-icon-production" };
+  if (tone === "red") return { icon: "shield-x" as IconName, cls: "trust-gate-icon-blocked" };
+  if (tone === "amber") return { icon: "alert-triangle" as IconName, cls: "trust-gate-icon-guarded" };
+  return { icon: "shield-check" as IconName, cls: "trust-gate-icon-production" };
 }
 
 export function AnalysisStatusBadge({ status, compact = false }: { status: AnalysisStatusSummary; compact?: boolean }) {
@@ -37,7 +38,7 @@ export function AnalysisStatusBadge({ status, compact = false }: { status: Analy
 
   return (
     <div className={classes}>
-      <div className={cls}>{icon}</div>
+      <div className={cls}><Icon name={icon} size={14} /></div>
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-bold tracking-tight">

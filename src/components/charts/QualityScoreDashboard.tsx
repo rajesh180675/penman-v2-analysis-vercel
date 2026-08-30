@@ -1,4 +1,5 @@
 import type { RecastPeriod } from "../../engine/types";
+import { Icon, type IconName } from "../shared/Icon";
 
 interface Props {
   /** Latest period quality data */
@@ -93,12 +94,12 @@ export default function QualityScoreDashboard({ data }: Props) {
     badCount >= 1 ? { label: "Quality Composite: MIXED", color: "text-amber-700 dark:text-amber-300", bg: "bg-amber-50 dark:bg-amber-900/30" } :
                     { label: "Quality Composite: NEUTRAL", color: "text-blue-700 dark:text-blue-300", bg: "bg-blue-50 dark:bg-blue-900/30" };
 
-  const statusStyle = (s: ScoreEntry["status"]) => {
+  const statusStyle = (s: ScoreEntry["status"]): { bg: string; border: string; text: string; icon: IconName } => {
     switch (s) {
-      case "good":    return { bg: "bg-emerald-50 dark:bg-emerald-900/30", border: "border-emerald-300 dark:border-emerald-700", text: "text-emerald-700 dark:text-emerald-300", emoji: "✅" };
-      case "neutral": return { bg: "bg-amber-50 dark:bg-amber-900/30",     border: "border-amber-300 dark:border-amber-700",     text: "text-amber-700 dark:text-amber-300",     emoji: "⚠️" };
-      case "bad":     return { bg: "bg-red-50 dark:bg-red-900/30",         border: "border-red-300 dark:border-red-700",         text: "text-red-700 dark:text-red-300",         emoji: "🛑" };
-      default:        return { bg: "bg-slate-50 dark:bg-slate-800/50",     border: "border-slate-300 dark:border-slate-700",     text: "text-slate-500",                            emoji: "—" };
+      case "good":    return { bg: "bg-emerald-50 dark:bg-emerald-900/30", border: "border-emerald-300 dark:border-emerald-700", text: "text-emerald-700 dark:text-emerald-300", icon: "check" };
+      case "neutral": return { bg: "bg-amber-50 dark:bg-amber-900/30",     border: "border-amber-300 dark:border-amber-700",     text: "text-amber-700 dark:text-amber-300",     icon: "alert-triangle" };
+      case "bad":     return { bg: "bg-red-50 dark:bg-red-900/30",         border: "border-red-300 dark:border-red-700",         text: "text-red-700 dark:text-red-300",         icon: "shield-x" };
+      default:        return { bg: "bg-slate-50 dark:bg-slate-800/50",     border: "border-slate-300 dark:border-slate-700",     text: "text-slate-500",                            icon: "x" };
     }
   };
 
@@ -121,7 +122,7 @@ export default function QualityScoreDashboard({ data }: Props) {
             <div key={i} className={`rounded-lg border-2 ${style.border} ${style.bg} p-3`}>
               <div className="flex items-center justify-between mb-1">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">{s.name}</div>
-                <span className="text-base">{style.emoji}</span>
+                <span className="wb-text-2"><Icon name={style.icon} size={16} /></span>
               </div>
               <div className={`text-2xl font-bold ${style.text}`}>
                 {s.value != null && Number.isFinite(s.value) ? s.value.toFixed(2) : "—"}

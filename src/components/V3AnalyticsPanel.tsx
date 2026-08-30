@@ -12,6 +12,7 @@ import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimE
 import { detectDistress } from "../engine/distressDetector";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
+import { Icon, type IconName } from "./shared/Icon";
 import { SectionHeader } from "./shared/DesignSystem";
 import {
   computeV3Analytics,
@@ -163,22 +164,22 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
     );
   }
 
-  const tabs: Array<{ id: typeof activeSection; label: string; icon: string }> = [
-    { id: "overview", label: "Overview", icon: "📊" },
-    { id: "dirty", label: "Dirty Surplus §6", icon: "🧮" },
-    { id: "events", label: "Event Flags §13", icon: "🚩" },
-    { id: "terminal", label: "Terminal Anchor §11", icon: "⚓" },
-    { id: "sensitivity", label: "Sensitivity §12", icon: "📉" },
-    { id: "confidence", label: "Confidence §14", icon: "🎯" },
-    { id: "triggers", label: "Triggers §15", icon: "🔔" },
-    { id: "accruals", label: "Accruals §5A", icon: "📋" },
-    { id: "oa_decomp", label: "OA Decomp §3B", icon: "🏗" },
-    { id: "gap_decomp", label: "RE/ReOI Gap §6", icon: "🔍" },
-    { id: "section6b", label: "§6B Per-Share", icon: "💹" },
-    { id: "moat", label: "Moat Score", icon: "🏰" },
-    { id: "capital_alloc", label: "Capital Allocation", icon: "🏦" },
-    { id: "epv", label: "EPV (Graham-Dodd)", icon: "📐" },
-    { id: "relative_val", label: "Relative Valuation", icon: "⚖️" },
+  const tabs: Array<{ id: typeof activeSection; label: string; icon: IconName }> = [
+    { id: "overview", label: "Overview", icon: "chart" },
+    { id: "dirty", label: "Dirty Surplus §6", icon: "calculator" },
+    { id: "events", label: "Event Flags §13", icon: "flag" },
+    { id: "terminal", label: "Terminal Anchor §11", icon: "anchor" },
+    { id: "sensitivity", label: "Sensitivity §12", icon: "trend-down" },
+    { id: "confidence", label: "Confidence §14", icon: "target" },
+    { id: "triggers", label: "Triggers §15", icon: "bell" },
+    { id: "accruals", label: "Accruals §5A", icon: "table" },
+    { id: "oa_decomp", label: "OA Decomp §3B", icon: "building" },
+    { id: "gap_decomp", label: "RE/ReOI Gap §6", icon: "search" },
+    { id: "section6b", label: "§6B Per-Share", icon: "trending-up" },
+    { id: "moat", label: "Moat Score", icon: "shield" },
+    { id: "capital_alloc", label: "Capital Allocation", icon: "bank" },
+    { id: "epv", label: "EPV (Graham-Dodd)", icon: "calculator" },
+    { id: "relative_val", label: "Relative Valuation", icon: "scale" },
   ];
 
   return (
@@ -186,7 +187,7 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
       <SectionHeader
         title="V3 Analytics"
         subtitle="Dirty surplus, terminal anchoring, accruals, event flags, and confidence scoring"
-        icon="🔬"
+        icon="microscope"
       />
 
       {traceabilitySummary && (
@@ -210,13 +211,13 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
         if (distress.severity === "critical") {
           banners.push({
             tone: "danger",
-            title: "🚨 Critical distress — going-concern stress",
+            title: "Critical distress — going-concern stress",
             body: distress.reasons.join(" "),
           });
         } else if (distress.severity === "severe") {
           banners.push({
             tone: "warn",
-            title: "⚠️ Negative net worth — equity-side valuation skipped",
+            title: " Negative net worth — equity-side valuation skipped",
             body: `${distress.reasons.join(" ")} Anchor on enterprise-side V_ReOI or FCFF.`,
           });
         } else if (distress.severity === "warning") {
@@ -231,19 +232,19 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
         if (bundle.cyclicality?.classification === "cyclical-peak") {
           banners.push({
             tone: "warn",
-            title: "🌡️ Latest period is at peak-cycle",
+            title: "Latest period is at peak-cycle",
             body: `${bundle.cyclicality.reason}. Latest ${bundle.cyclicality.metricUsed === "core-pm" ? "operating margin" : "RNOA"}: ${((bundle.cyclicality.latestValue ?? 0) * 100).toFixed(1)}%; cycle median: ${((bundle.cyclicality.medianValue ?? 0) * 100).toFixed(1)}%. Naïve valuation extrapolation will be optimistic; consider median-of-cycle as a sanity anchor.`,
           });
         } else if (bundle.cyclicality?.classification === "cyclical-trough") {
           banners.push({
             tone: "warn",
-            title: "🌡️ Latest period is at trough-cycle",
+            title: "Latest period is at trough-cycle",
             body: `${bundle.cyclicality.reason}. Latest ${bundle.cyclicality.metricUsed === "core-pm" ? "operating margin" : "RNOA"}: ${((bundle.cyclicality.latestValue ?? 0) * 100).toFixed(1)}%; cycle median: ${((bundle.cyclicality.medianValue ?? 0) * 100).toFixed(1)}%. Naïve valuation extrapolation will be pessimistic; consider median-of-cycle as a sanity anchor.`,
           });
         } else if (bundle.cyclicality?.classification === "cyclical-midcycle") {
           banners.push({
             tone: "info",
-            title: "🌡️ Cyclical business, latest near mid-cycle",
+            title: "️ Cyclical business, latest near mid-cycle",
             body: bundle.cyclicality.reason,
           });
         }
@@ -252,7 +253,7 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
         if (bundle.moatScore && !bundle.moatScore.dataSufficient && bundle.moatScore.skipReason) {
           banners.push({
             tone: "warn",
-            title: "🏰 Moat score is low-confidence",
+            title: "Moat score is low-confidence",
             body: bundle.moatScore.skipReason,
           });
         }
@@ -261,7 +262,7 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
         if (bundle.capitalAllocation && !bundle.capitalAllocation.dataSufficient && bundle.capitalAllocation.skipReason) {
           banners.push({
             tone: "warn",
-            title: "💼 Capital allocation score is low-confidence",
+            title: "Capital allocation score is low-confidence",
             body: bundle.capitalAllocation.skipReason,
           });
         }
@@ -304,7 +305,7 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
             .join(" ");
           banners.push({
             tone: pathSignal === "red" ? "warn" : "info",
-            title: `📉 Loss-maker — earnings-based models skipped, alternative anchors below`,
+            title: ` Loss-maker — earnings-based models skipped, alternative anchors below`,
             body: lmvBody,
           });
         }
@@ -342,7 +343,7 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
                   : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
                 }`}
             >
-              <span>{t.icon}</span>
+              <Icon name={t.icon} size={13} />
               <span>{t.label}</span>
             </button>
           ))}

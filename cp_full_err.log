@@ -1,0 +1,215 @@
++ MSYS2_PATH=/usr/local/bin:/usr/bin:/bin
++ MANPATH=/usr/local/man:/usr/share/man:/usr/man:/share/man
++ INFOPATH=/usr/local/info:/usr/share/info:/usr/info:/share/info
++ case "${MSYS2_PATH_TYPE:-inherit}" in
++ ORIGINAL_PATH='/mingw64/bin:/usr/bin:/c/Users/rajesh/bin:/c/Users/rajesh/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/debugCommand:/c/Users/rajesh/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/copilotCli:/c/Python314/Scripts:/c/Python314:/c/Windows/system32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0:/c/Windows/System32/OpenSSH:/c/Program Files/dotnet:/c/Program Files/nodejs:/c/ProgramData/chocolatey/bin:/cmd:/c/Program Files/GitHub CLI:/c/Users/rajesh/.grok/bin:/c/Users/rajesh/AppData/Local/agy/bin:/c/Users/rajesh/AppData/Local/hermes/hermes-agent/venv/Scripts:/c/Users/rajesh/.local/bin:/c/Users/rajesh/AppData/Local/Microsoft/WindowsApps:/c/Users/rajesh/AppData/Roaming/npm:/c/Users/rajesh/AppData/Local/Programs/Microsoft VS Code/bin:/c/Users/rajesh/AppData/Local/Microsoft/WinGet/Packages/BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe/ripgrep-15.1.0-x86_64-pc-windows-msvc:/c/Users/rajesh/AppData/Local/Programs/Antigravity/bin:/c/Users/rajesh/AppData/Local/Programs/Kiro/bin:/c/Users/rajesh/AppData/Local/Programs/Windsurf/bin:/c/Users/rajesh/.qoder/bin/qodercli:/c/Users/rajesh/.qoder/bin/qodercli:/c/Users/rajesh/.vscode/extensions/ms-python.debugpy-2026.6.0-win32-x64/bundled/scripts/noConfigScripts'
++ unset MINGW_MOUNT_POINT
++ . /etc/msystem
+++ export MSYSTEM=MINGW64
+++ MSYSTEM=MINGW64
+++ unset MSYSTEM_PREFIX
+++ unset MSYSTEM_CARCH
+++ unset MSYSTEM_CHOST
+++ unset MINGW_CHOST
+++ unset MINGW_PREFIX
+++ unset MINGW_PACKAGE_PREFIX
+++ '[' -e /etc/msystem.d/MINGW64 ']'
+++ source /etc/msystem.d/MINGW64
++++ MSYSTEM_PREFIX=/mingw64
++++ MSYSTEM_CARCH=x86_64
++++ MSYSTEM_CHOST=x86_64-w64-mingw32
++++ MINGW_CHOST=x86_64-w64-mingw32
++++ MINGW_PREFIX=/mingw64
++++ MINGW_PACKAGE_PREFIX=mingw-w64-x86_64
++++ export MSYSTEM_PREFIX MSYSTEM_CARCH MSYSTEM_CHOST MINGW_CHOST MINGW_PREFIX MINGW_PACKAGE_PREFIX
++ case "${MSYSTEM}" in
++ MINGW_MOUNT_POINT=/mingw64
++ PATH='/mingw64/bin:/usr/local/bin:/usr/bin:/bin:/mingw64/bin:/usr/bin:/c/Users/rajesh/bin:/c/Users/rajesh/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/debugCommand:/c/Users/rajesh/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/copilotCli:/c/Python314/Scripts:/c/Python314:/c/Windows/system32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0:/c/Windows/System32/OpenSSH:/c/Program Files/dotnet:/c/Program Files/nodejs:/c/ProgramData/chocolatey/bin:/cmd:/c/Program Files/GitHub CLI:/c/Users/rajesh/.grok/bin:/c/Users/rajesh/AppData/Local/agy/bin:/c/Users/rajesh/AppData/Local/hermes/hermes-agent/venv/Scripts:/c/Users/rajesh/.local/bin:/c/Users/rajesh/AppData/Local/Microsoft/WindowsApps:/c/Users/rajesh/AppData/Roaming/npm:/c/Users/rajesh/AppData/Local/Programs/Microsoft VS Code/bin:/c/Users/rajesh/AppData/Local/Microsoft/WinGet/Packages/BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe/ripgrep-15.1.0-x86_64-pc-windows-msvc:/c/Users/rajesh/AppData/Local/Programs/Antigravity/bin:/c/Users/rajesh/AppData/Local/Programs/Kiro/bin:/c/Users/rajesh/AppData/Local/Programs/Windsurf/bin:/c/Users/rajesh/.qoder/bin/qodercli:/c/Users/rajesh/.qoder/bin/qodercli:/c/Users/rajesh/.vscode/extensions/ms-python.debugpy-2026.6.0-win32-x64/bundled/scripts/noConfigScripts'
++ PKG_CONFIG_PATH=/mingw64/lib/pkgconfig:/mingw64/share/pkgconfig
++ PKG_CONFIG_SYSTEM_INCLUDE_PATH=/mingw64/include
++ PKG_CONFIG_SYSTEM_LIBRARY_PATH=/mingw64/lib
++ ACLOCAL_PATH=/mingw64/share/aclocal:/usr/share/aclocal
++ MANPATH=/mingw64/local/man:/mingw64/share/man:/usr/local/man:/usr/share/man:/usr/man:/share/man
++ INFOPATH=/mingw64/local/info:/mingw64/share/info:/usr/local/info:/usr/share/info:/usr/info:/share/info
++ CONFIG_SITE=/etc/config.site
++ MAYBE_FIRST_START=false
++ '[' '!' -d /c/Users/rajesh ']'
++ SYSCONFDIR=/etc
++ ORIGINAL_TMP=/tmp
++ ORIGINAL_TEMP=/tmp
++ case "$TMP" in
++ case "$TEMP" in
++ test -d ''
++ test '!' -d /tmp
++ TMPDIR=/tmp
++ export TMPDIR
+++ export LC_COLLATE=C
+++ LC_COLLATE=C
+++ echo '/etc/post-install/*.post'
++ for postinst in $(export LC_COLLATE=C; echo /etc/post-install/*.post)
++ '[' -e '/etc/post-install/*.post' ']'
++ '[' '!' 'x5.3.9(1)-release' = x ']'
++ '[' -z DESKTOP-K97BHEO ']'
+++ which bash
++ SHELL=/usr/bin/bash
++ profile_d sh
++ local file=
+++ export LC_COLLATE=C
+++ LC_COLLATE=C
+++ echo /etc/profile.d/aliases.sh /etc/profile.d/bash_profile.sh /etc/profile.d/env.sh /etc/profile.d/git-prompt.sh /etc/profile.d/lang.sh /etc/profile.d/perlbin.sh
++ for file in $(export LC_COLLATE=C; echo /etc/profile.d/*.$1)
++ '[' -e /etc/profile.d/aliases.sh ']'
++ . /etc/profile.d/aliases.sh
+++ alias 'ls=ls -F --color=auto --show-control-chars'
+++ alias 'll=ls -l'
++ for file in $(export LC_COLLATE=C; echo /etc/profile.d/*.$1)
++ '[' -e /etc/profile.d/bash_profile.sh ']'
++ . /etc/profile.d/bash_profile.sh
+++ '[' -e /c/Users/rajesh/.bashrc -a '!' -e /c/Users/rajesh/.bash_profile -a '!' -e /c/Users/rajesh/.bash_login -a '!' -e /c/Users/rajesh/.profile ']'
++ for file in $(export LC_COLLATE=C; echo /etc/profile.d/*.$1)
++ '[' -e /etc/profile.d/env.sh ']'
++ . /etc/profile.d/env.sh
+++ export 'PATH=/c/Users/rajesh/bin:/mingw64/bin:/usr/local/bin:/usr/bin:/bin:/mingw64/bin:/usr/bin:/c/Users/rajesh/bin:/c/Users/rajesh/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/debugCommand:/c/Users/rajesh/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/copilotCli:/c/Python314/Scripts:/c/Python314:/c/Windows/system32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0:/c/Windows/System32/OpenSSH:/c/Program Files/dotnet:/c/Program Files/nodejs:/c/ProgramData/chocolatey/bin:/cmd:/c/Program Files/GitHub CLI:/c/Users/rajesh/.grok/bin:/c/Users/rajesh/AppData/Local/agy/bin:/c/Users/rajesh/AppData/Local/hermes/hermes-agent/venv/Scripts:/c/Users/rajesh/.local/bin:/c/Users/rajesh/AppData/Local/Microsoft/WindowsApps:/c/Users/rajesh/AppData/Roaming/npm:/c/Users/rajesh/AppData/Local/Programs/Microsoft VS Code/bin:/c/Users/rajesh/AppData/Local/Microsoft/WinGet/Packages/BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe/ripgrep-15.1.0-x86_64-pc-windows-msvc:/c/Users/rajesh/AppData/Local/Programs/Antigravity/bin:/c/Users/rajesh/AppData/Local/Programs/Kiro/bin:/c/Users/rajesh/AppData/Local/Programs/Windsurf/bin:/c/Users/rajesh/.qoder/bin/qodercli:/c/Users/rajesh/.qoder/bin/qodercli:/c/Users/rajesh/.vscode/extensions/ms-python.debugpy-2026.6.0-win32-x64/bundled/scripts/noConfigScripts'
+++ PATH='/c/Users/rajesh/bin:/mingw64/bin:/usr/local/bin:/usr/bin:/bin:/mingw64/bin:/usr/bin:/c/Users/rajesh/bin:/c/Users/rajesh/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/debugCommand:/c/Users/rajesh/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/copilotCli:/c/Python314/Scripts:/c/Python314:/c/Windows/system32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0:/c/Windows/System32/OpenSSH:/c/Program Files/dotnet:/c/Program Files/nodejs:/c/ProgramData/chocolatey/bin:/cmd:/c/Program Files/GitHub CLI:/c/Users/rajesh/.grok/bin:/c/Users/rajesh/AppData/Local/agy/bin:/c/Users/rajesh/AppData/Local/hermes/hermes-agent/venv/Scripts:/c/Users/rajesh/.local/bin:/c/Users/rajesh/AppData/Local/Microsoft/WindowsApps:/c/Users/rajesh/AppData/Roaming/npm:/c/Users/rajesh/AppData/Local/Programs/Microsoft VS Code/bin:/c/Users/rajesh/AppData/Local/Microsoft/WinGet/Packages/BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe/ripgrep-15.1.0-x86_64-pc-windows-msvc:/c/Users/rajesh/AppData/Local/Programs/Antigravity/bin:/c/Users/rajesh/AppData/Local/Programs/Kiro/bin:/c/Users/rajesh/AppData/Local/Programs/Windsurf/bin:/c/Users/rajesh/.qoder/bin/qodercli:/c/Users/rajesh/.qoder/bin/qodercli:/c/Users/rajesh/.vscode/extensions/ms-python.debugpy-2026.6.0-win32-x64/bundled/scripts/noConfigScripts'
+++ test -n ''
+++ case "$MSYSTEM" in
+++ export DISPLAY=needs-to-be-defined
+++ DISPLAY=needs-to-be-defined
+++ '[' -f /mingw64/bin/git-askpass.exe ']'
+++ export SSH_ASKPASS=/mingw64/bin/git-askpass.exe
+++ SSH_ASKPASS=/mingw64/bin/git-askpass.exe
++ for file in $(export LC_COLLATE=C; echo /etc/profile.d/*.$1)
++ '[' -e /etc/profile.d/git-prompt.sh ']'
++ . /etc/profile.d/git-prompt.sh
+++ test -f /etc/profile.d/git-sdk.sh
+++ TITLEPREFIX=MINGW64
+++ test -f /c/Users/rajesh/.config/git/git-prompt.sh
+++ PS1='\[\033]0;$TITLEPREFIX:$PWD\007\]'
+++ PS1='\[\033]0;$TITLEPREFIX:$PWD\007\]\n'
+++ PS1='\[\033]0;$TITLEPREFIX:$PWD\007\]\n\[\033[32m\]'
+++ PS1='\[\033]0;$TITLEPREFIX:$PWD\007\]\n\[\033[32m\]\u@\h '
+++ PS1='\[\033]0;$TITLEPREFIX:$PWD\007\]\n\[\033[32m\]\u@\h \[\033[35m\]'
+++ PS1='\[\033]0;$TITLEPREFIX:$PWD\007\]\n\[\033[32m\]\u@\h \[\033[35m\]$MSYSTEM '
+++ PS1='\[\033]0;$TITLEPREFIX:$PWD\007\]\n\[\033[32m\]\u@\h \[\033[35m\]$MSYSTEM \[\033[33m\]'
+++ PS1='\[\033]0;$TITLEPREFIX:$PWD\007\]\n\[\033[32m\]\u@\h \[\033[35m\]$MSYSTEM \[\033[33m\]\w'
+++ test -z ''
++++ git --exec-path
+++ GIT_EXEC_PATH='C:/Program Files/Git/mingw64/libexec/git-core'
+++ COMPLETION_PATH='C:/Program Files/Git/mingw64'
+++ COMPLETION_PATH='C:/Program Files/Git/mingw64'
+++ COMPLETION_PATH='C:/Program Files/Git/mingw64/share/git/completion'
+++ test -f 'C:/Program Files/Git/mingw64/share/git/completion/git-prompt.sh'
+++ . 'C:/Program Files/Git/mingw64/share/git/completion/git-completion.bash'
++++ case "$COMP_WORDBREAKS" in
++++ : great
++++ type _get_comp_words_by_ref
++++ [[ -n '' ]]
+++++ compgen -v __gitcomp_builtin_
++++ unset
++++ __git_merge_strategies=
++++ __git_merge_strategy_options=$'ours theirs subtree subtree= patience\n\thistogram diff-algorithm= ignore-space-change ignore-all-space\n\tignore-space-at-eol renormalize no-renormalize no-renames\n\tfind-renames find-renames= rename-threshold='
++++ __git_all_commands=
++++ __git_whitespacelist='nowarn warn error error-all fix'
++++ __git_patchformat='mbox stgit stgit-series hg mboxrd'
++++ __git_showcurrentpatch='diff raw'
++++ __git_am_inprogress_options='--skip --continue --resolved --abort --quit --show-current-patch'
++++ __git_quoted_cr='nowarn warn strip'
++++ __git_ref_fieldlist='refname objecttype objectsize objectname upstream push HEAD symref'
++++ __git_sequencer_inprogress_options='--continue --quit --abort --skip'
++++ __git_cherry_pick_inprogress_options='--continue --quit --abort --skip'
++++ __git_untracked_file_modes='all no normal'
++++ __git_diff_algorithms='myers minimal patience histogram'
++++ __git_diff_submodule_formats='diff log short'
++++ __git_color_moved_opts='no default plain blocks zebra dimmed-zebra'
++++ __git_color_moved_ws_opts=$'no ignore-space-at-eol ignore-space-change\n\t\t\tignore-all-space allow-indentation-change'
++++ __git_ws_error_highlight_opts='context old new all default'
++++ __git_diff_common_options=$'--stat --numstat --shortstat --summary\n\t\t\t--patch-with-stat --name-only --name-status --color\n\t\t\t--no-color --color-words --no-renames --check\n\t\t\t--color-moved --color-moved= --no-color-moved\n\t\t\t--color-moved-ws= --no-color-moved-ws\n\t\t\t--full-index --binary --abbrev --diff-filter=\n\t\t\t--find-copies --find-object --find-renames\n\t\t\t--no-relative --relative\n\t\t\t--find-copies-harder --ignore-cr-at-eol\n\t\t\t--text --ignore-space-at-eol --ignore-space-change\n\t\t\t--ignore-all-space --ignore-blank-lines --exit-code\n\t\t\t--quiet --ext-diff --no-ext-diff --unified=\n\t\t\t--no-prefix --src-prefix= --dst-prefix=\n\t\t\t--inter-hunk-context= --function-context\n\t\t\t--patience --histogram --minimal\n\t\t\t--raw --word-diff --word-diff-regex=\n\t\t\t--dirstat --dirstat= --dirstat-by-file\n\t\t\t--dirstat-by-file= --cumulative\n\t\t\t--diff-algorithm= --default-prefix\n\t\t\t--submodule --submodule= --ignore-submodules\n\t\t\t--indent-heuristic --no-indent-heuristic\n\t\t\t--textconv --no-textconv --break-rewrites\n\t\t\t--patch --no-patch --cc --combined-all-paths\n\t\t\t--anchored= --compact-summary --ignore-matching-lines=\n\t\t\t--irreversible-delete --line-prefix --no-stat\n\t\t\t--output= --output-indicator-context=\n\t\t\t--output-indicator-new= --output-indicator-old=\n\t\t\t--ws-error-highlight=\n\t\t\t--pickaxe-all --pickaxe-regex --patch-with-raw\n'
++++ __git_diff_difftool_options=$'--cached --staged\n\t\t\t--base --ours --theirs --no-index --merge-base\n\t\t\t--ita-invisible-in-index --ita-visible-in-index\n\t\t\t--stat --numstat --shortstat --summary\n\t\t\t--patch-with-stat --name-only --name-status --color\n\t\t\t--no-color --color-words --no-renames --check\n\t\t\t--color-moved --color-moved= --no-color-moved\n\t\t\t--color-moved-ws= --no-color-moved-ws\n\t\t\t--full-index --binary --abbrev --diff-filter=\n\t\t\t--find-copies --find-object --find-renames\n\t\t\t--no-relative --relative\n\t\t\t--find-copies-harder --ignore-cr-at-eol\n\t\t\t--text --ignore-space-at-eol --ignore-space-change\n\t\t\t--ignore-all-space --ignore-blank-lines --exit-code\n\t\t\t--quiet --ext-diff --no-ext-diff --unified=\n\t\t\t--no-prefix --src-prefix= --dst-prefix=\n\t\t\t--inter-hunk-context= --function-context\n\t\t\t--patience --histogram --minimal\n\t\t\t--raw --word-diff --word-diff-regex=\n\t\t\t--dirstat --dirstat= --dirstat-by-file\n\t\t\t--dirstat-by-file= --cumulative\n\t\t\t--diff-algorithm= --default-prefix\n\t\t\t--submodule --submodule= --ignore-submodules\n\t\t\t--indent-heuristic --no-indent-heuristic\n\t\t\t--textconv --no-textconv --break-rewrites\n\t\t\t--patch --no-patch --cc --combined-all-paths\n\t\t\t--anchored= --compact-summary --ignore-matching-lines=\n\t\t\t--irreversible-delete --line-prefix --no-stat\n\t\t\t--output= --output-indicator-context=\n\t\t\t--output-indicator-new= --output-indicator-old=\n\t\t\t--ws-error-highlight=\n\t\t\t--pickaxe-all --pickaxe-regex --patch-with-raw\n'
++++ __git_mergetools_common=$'diffuse diffmerge ecmerge emerge kdiff3 meld opendiff\n\t\t\ttkdiff vimdiff nvimdiff gvimdiff xxdiff araxis p4merge\n\t\t\tbc codecompare smerge\n'
++++ __git_fetch_recurse_submodules='yes on-demand no'
++++ __git_format_patch_extra_options=$'\n\t--full-index --not --all --no-prefix --src-prefix=\n\t--dst-prefix= --notes\n'
++++ __git_log_common_options=$'\n\t--not --all\n\t--branches --tags --remotes\n\t--first-parent --merges --no-merges\n\t--max-count=\n\t--max-age= --since= --after=\n\t--min-age= --until= --before=\n\t--min-parents= --max-parents=\n\t--no-min-parents --no-max-parents\n\t--alternate-refs --ancestry-path\n\t--author-date-order --basic-regexp\n\t--bisect --boundary --exclude-first-parent-only\n\t--exclude-hidden --extended-regexp\n\t--fixed-strings --grep-reflog\n\t--ignore-missing --left-only --perl-regexp\n\t--reflog --regexp-ignore-case --remove-empty\n\t--right-only --show-linear-break\n\t--show-notes-by-default --show-pulls\n\t--since-as-filter --single-worktree\n'
++++ __git_log_gitk_options=$'\n\t--dense --sparse --full-history\n\t--simplify-merges --simplify-by-decoration\n\t--left-right --notes --no-notes\n'
++++ __git_log_shortlog_options=$'\n\t--author= --grep= --exclude=\n\t--all-match --invert-grep\n'
++++ __git_log_show_options=$'\n\t--diff-merges --diff-merges= --no-diff-merges --dd --remerge-diff\n\t--encoding=\n'
++++ __git_diff_merges_opts='off none on first-parent 1 separate m combined c dense-combined cc remerge r'
++++ __git_log_pretty_formats='oneline short medium full fuller reference email raw format: tformat: mboxrd'
++++ __git_log_date_formats='relative iso8601 iso8601-strict rfc2822 short local default human raw unix auto: format:'
++++ __git_push_recurse_submodules='check on-demand only'
++++ __git_rebase_inprogress_options='--continue --skip --abort --quit --show-current-patch'
++++ __git_rebase_interactive_inprogress_options='--continue --skip --abort --quit --show-current-patch --edit-todo'
++++ __git_send_email_confirm_options='always never auto cc compose'
++++ __git_send_email_suppresscc_options='author self cc bodycc sob cccmd body all'
++++ __git_config_vars=
++++ __git_config_vars_all=
++++ __git_config_sections=
++++ __git_revert_inprogress_options='--continue --quit --abort --skip'
++++ __git_cmds_with_parseopt_helper=
++++ [[ -n '' ]]
++++ ___git_complete git __git_main
++++ local wrapper=__git_wrap__git_main
++++ eval '__git_wrap__git_main () { __git_func_wrap __git_main ; }'
++++ complete -o bashdefault -o default -o nospace -F __git_wrap__git_main git
++++ ___git_complete gitk __gitk_main
++++ local wrapper=__git_wrap__gitk_main
++++ eval '__git_wrap__gitk_main () { __git_func_wrap __gitk_main ; }'
++++ complete -o bashdefault -o default -o nospace -F __git_wrap__gitk_main gitk
++++ '[' cygwin = cygwin ']'
++++ ___git_complete git.exe __git_main
++++ local wrapper=__git_wrap__git_main
++++ eval '__git_wrap__git_main () { __git_func_wrap __git_main ; }'
++++ complete -o bashdefault -o default -o nospace -F __git_wrap__git_main git.exe
+++ . 'C:/Program Files/Git/mingw64/share/git/completion/git-prompt.sh'
++++ __git_printf_supports_v=
++++ printf -v __git_printf_supports_v -- %s yes
+++++ printf $'\n\t__git_SOH="\\001" __git_STX="\\002" __git_ESC="\\033"\n\t__git_LF="\\n" __git_CRLF="\\r\\n"\n'
++++ eval $'\n\t__git_SOH="\001" __git_STX="\002" __git_ESC="\E"\n\t__git_LF="\n" __git_CRLF="\r\n"'
+++++ __git_SOH=$'\001'
+++++ __git_STX=$'\002'
+++++ __git_ESC=$'\E'
+++++ __git_LF=$'\n'
+++++ __git_CRLF=$'\n'
+++ PS1='\[\033]0;$TITLEPREFIX:$PWD\007\]\n\[\033[32m\]\u@\h \[\033[35m\]$MSYSTEM \[\033[33m\]\w\[\033[36m\]'
+++ PS1='\[\033]0;$TITLEPREFIX:$PWD\007\]\n\[\033[32m\]\u@\h \[\033[35m\]$MSYSTEM \[\033[33m\]\w\[\033[36m\]`__git_ps1`'
+++ PS1='\[\033]0;$TITLEPREFIX:$PWD\007\]\n\[\033[32m\]\u@\h \[\033[35m\]$MSYSTEM \[\033[33m\]\w\[\033[36m\]`__git_ps1`\[\033[0m\]'
+++ PS1='\[\033]0;$TITLEPREFIX:$PWD\007\]\n\[\033[32m\]\u@\h \[\033[35m\]$MSYSTEM \[\033[33m\]\w\[\033[36m\]`__git_ps1`\[\033[0m\]\n'
+++ PS1='\[\033]0;$TITLEPREFIX:$PWD\007\]\n\[\033[32m\]\u@\h \[\033[35m\]$MSYSTEM \[\033[33m\]\w\[\033[36m\]`__git_ps1`\[\033[0m\]\n$ '
+++ MSYS2_PS1='\[\033]0;$TITLEPREFIX:$PWD\007\]\n\[\033[32m\]\u@\h \[\033[35m\]$MSYSTEM \[\033[33m\]\w\[\033[36m\]`__git_ps1`\[\033[0m\]\n$ '
+++ test -z ''
+++ for c in "$HOME"/bash_completion.d/*.bash
+++ test '!' -f '/c/Users/rajesh/bash_completion.d/*.bash'
+++ shopt -s no_empty_cmd_completion
++ for file in $(export LC_COLLATE=C; echo /etc/profile.d/*.$1)
++ '[' -e /etc/profile.d/lang.sh ']'
++ . /etc/profile.d/lang.sh
+++ test -z en_US.UTF-8
++ for file in $(export LC_COLLATE=C; echo /etc/profile.d/*.$1)
++ '[' -e /etc/profile.d/perlbin.sh ']'
++ . /etc/profile.d/perlbin.sh
+++ '[' -d /usr/bin/site_perl ']'
+++ '[' -d /usr/lib/perl5/site_perl/bin ']'
+++ '[' -d /usr/bin/vendor_perl ']'
+++ PATH='/c/Users/rajesh/bin:/mingw64/bin:/usr/local/bin:/usr/bin:/bin:/mingw64/bin:/usr/bin:/c/Users/rajesh/bin:/c/Users/rajesh/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/debugCommand:/c/Users/rajesh/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/copilotCli:/c/Python314/Scripts:/c/Python314:/c/Windows/system32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0:/c/Windows/System32/OpenSSH:/c/Program Files/dotnet:/c/Program Files/nodejs:/c/ProgramData/chocolatey/bin:/cmd:/c/Program Files/GitHub CLI:/c/Users/rajesh/.grok/bin:/c/Users/rajesh/AppData/Local/agy/bin:/c/Users/rajesh/AppData/Local/hermes/hermes-agent/venv/Scripts:/c/Users/rajesh/.local/bin:/c/Users/rajesh/AppData/Local/Microsoft/WindowsApps:/c/Users/rajesh/AppData/Roaming/npm:/c/Users/rajesh/AppData/Local/Programs/Microsoft VS Code/bin:/c/Users/rajesh/AppData/Local/Microsoft/WinGet/Packages/BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe/ripgrep-15.1.0-x86_64-pc-windows-msvc:/c/Users/rajesh/AppData/Local/Programs/Antigravity/bin:/c/Users/rajesh/AppData/Local/Programs/Kiro/bin:/c/Users/rajesh/AppData/Local/Programs/Windsurf/bin:/c/Users/rajesh/.qoder/bin/qodercli:/c/Users/rajesh/.qoder/bin/qodercli:/c/Users/rajesh/.vscode/extensions/ms-python.debugpy-2026.6.0-win32-x64/bundled/scripts/noConfigScripts:/usr/bin/vendor_perl'
+++ '[' -d /usr/lib/perl5/vendor_perl/bin ']'
+++ '[' -d /usr/bin/core_perl ']'
+++ PATH='/c/Users/rajesh/bin:/mingw64/bin:/usr/local/bin:/usr/bin:/bin:/mingw64/bin:/usr/bin:/c/Users/rajesh/bin:/c/Users/rajesh/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/debugCommand:/c/Users/rajesh/AppData/Roaming/Code/User/globalStorage/github.copilot-chat/copilotCli:/c/Python314/Scripts:/c/Python314:/c/Windows/system32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0:/c/Windows/System32/OpenSSH:/c/Program Files/dotnet:/c/Program Files/nodejs:/c/ProgramData/chocolatey/bin:/cmd:/c/Program Files/GitHub CLI:/c/Users/rajesh/.grok/bin:/c/Users/rajesh/AppData/Local/agy/bin:/c/Users/rajesh/AppData/Local/hermes/hermes-agent/venv/Scripts:/c/Users/rajesh/.local/bin:/c/Users/rajesh/AppData/Local/Microsoft/WindowsApps:/c/Users/rajesh/AppData/Roaming/npm:/c/Users/rajesh/AppData/Local/Programs/Microsoft VS Code/bin:/c/Users/rajesh/AppData/Local/Microsoft/WinGet/Packages/BurntSushi.ripgrep.MSVC_Microsoft.Winget.Source_8wekyb3d8bbwe/ripgrep-15.1.0-x86_64-pc-windows-msvc:/c/Users/rajesh/AppData/Local/Programs/Antigravity/bin:/c/Users/rajesh/AppData/Local/Programs/Kiro/bin:/c/Users/rajesh/AppData/Local/Programs/Windsurf/bin:/c/Users/rajesh/.qoder/bin/qodercli:/c/Users/rajesh/.qoder/bin/qodercli:/c/Users/rajesh/.vscode/extensions/ms-python.debugpy-2026.6.0-win32-x64/bundled/scripts/noConfigScripts:/usr/bin/vendor_perl:/usr/bin/core_perl'
+++ export PATH
++ '[' -n /mingw64 ']'
+++ export LC_COLLATE=C
+++ LC_COLLATE=C
+++ echo '/mingw64/etc/profile.d/*.sh'
++ for file in $(export LC_COLLATE=C; echo ${MINGW_MOUNT_POINT}/etc/profile.d/*.$1)
++ '[' -e '/mingw64/etc/profile.d/*.sh' ']'
++ '[' -f /etc/bash.bashrc ']'
++ . /etc/bash.bashrc
+++ [[ -z '' ]]
+++ CYG_SYS_BASHRC=1
+++ [[ hxBc != *i* ]]
+++ return
++ '[' -n /mingw64/share/aclocal:/usr/share/aclocal ']'
++ export ACLOCAL_PATH
++ export PATH MANPATH INFOPATH PKG_CONFIG_PATH PKG_CONFIG_SYSTEM_INCLUDE_PATH PKG_CONFIG_SYSTEM_LIBRARY_PATH USER TMP TEMP HOSTNAME PS1 SHELL ORIGINAL_TMP ORIGINAL_TEMP ORIGINAL_PATH CONFIG_SITE
++ unset PATH_SEPARATOR
++ '[' false = true ']'
++ unset MAYBE_FIRST_START
++ bash

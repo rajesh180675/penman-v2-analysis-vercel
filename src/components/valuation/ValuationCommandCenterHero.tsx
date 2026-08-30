@@ -35,7 +35,7 @@ export default function ValuationCommandCenterHero({
       <SectionHeader
         title="Valuation"
         subtitle="What is this business worth?"
-        icon="💰"
+        icon="currency"
       />
 
       {/* Narrative insight — plain English valuation summary */}
@@ -55,7 +55,7 @@ export default function ValuationCommandCenterHero({
           convergenceSigma: null,
           marginOfSafety: mos,
         });
-        return narrative ? <InsightBlock text={narrative} icon="📊" /> : null;
+        return narrative ? <InsightBlock text={narrative} icon="chart" /> : null;
       })()}
 
       {/* Assumptions Audit — all valuation inputs visible and sanity-checked */}
@@ -77,7 +77,7 @@ export default function ValuationCommandCenterHero({
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Valuation Command Center
           </div>
-          <h1 className="mt-3 text-2xl font-bold text-slate-900">Lead with the stressed case, not the optimistic one.</h1>
+          <h1 className="mt-3 text-2xl font-bold text-slate-900 dark:text-slate-100">Lead with the stressed case, not the optimistic one.</h1>
           <p className="mt-2 max-w-3xl text-sm text-slate-600">
             The command center keeps the live market layer separate from the audited accounting base, then asks whether the current setup is merely cheap or genuinely rare.
           </p>

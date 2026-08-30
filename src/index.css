@@ -17,12 +17,6 @@
   --color-verdict-hold: #f59e0b;
   --color-verdict-avoid: #ef4444;
 
-  /* Card surfaces */
-  --color-card-light: #ffffff;
-  --color-card-dark: #0f172a;
-  --color-card-elevated-light: #f8fafc;
-  --color-card-elevated-dark: #1e293b;
-
   /* Chart palette */
   --color-chart-1: #6366f1;
   --color-chart-2: #10b981;
@@ -84,33 +78,6 @@
 
 /* Utility classes for the financial dashboard */
 @layer components {
-  .card-base {
-    @apply rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900;
-  }
-  .card-elevated {
-    @apply rounded-xl border border-slate-200 bg-white shadow-md ring-1 ring-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:ring-slate-800;
-  }
-  .card-verdict {
-    @apply rounded-xl border-l-4 bg-white p-4 shadow-sm dark:bg-slate-900;
-  }
-  .metric-value {
-    @apply font-mono text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100;
-  }
-  .metric-label {
-    @apply text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400;
-  }
-  .metric-context {
-    @apply text-xs text-slate-500 dark:text-slate-400 mt-1;
-  }
-  .section-title {
-    @apply text-lg font-semibold text-slate-800 dark:text-slate-200;
-  }
-  .insight-text {
-    @apply text-sm leading-relaxed text-slate-600 dark:text-slate-300;
-  }
-  .tab-active {
-    @apply border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-medium;
-  }
   .badge-positive {
     @apply inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400;
   }
@@ -122,6 +89,25 @@
   }
   .badge-neutral {
     @apply inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-400;
+  }
+  /* Header utility buttons — one consistent icon-button style (Workbench). */
+  .wb-icon-btn {
+    @apply inline-flex h-7 items-center justify-center gap-1 rounded-md border px-2 text-xs transition-colors;
+    border-color: var(--color-border);
+    color: var(--color-text-2);
+    background: transparent;
+  }
+  .wb-icon-btn:hover {
+    background-color: var(--color-surface-2);
+    color: var(--color-text-1);
+  }
+  .dark .wb-icon-btn {
+    border-color: var(--color-border-dark);
+    color: var(--color-text-2-dark);
+  }
+  .dark .wb-icon-btn:hover {
+    background-color: var(--color-surface-2-dark);
+    color: var(--color-text-1-dark);
   }
 }
 
@@ -204,9 +190,6 @@ table tr:hover td { background: #f8fafc; }
 .dark .badge-negative { box-shadow: inset 0 0 0 1px rgba(159,18,57,0.4); }
 .dark .badge-caution { box-shadow: inset 0 0 0 1px rgba(146,64,14,0.4); }
 .dark .badge-neutral { box-shadow: inset 0 0 0 1px rgba(51,65,85,0.4); }
-
-/* Metric value tabular nums */
-.metric-value { font-variant-numeric: tabular-nums; }
 
 /* ═══ WORKBENCH TOKEN CLASSES (plain CSS — appended after Tailwind layers) ═══
    Semantic surface/text/border utilities backed by the @theme token pairs.
@@ -608,3 +591,56 @@ table tr:hover td { background: #f8fafc; }
 }
 .dark .wb-evidence-chevron { color: var(--color-text-3-dark); }
 .wb-evidence-chevron-open { transform: rotate(90deg); }
+
+/* ═══ SPARKLINE MICRO-CHARTS (pure-SVG, zero-dependency) ═══ */
+.wb-spark { display: block; overflow: visible; }
+.wb-spark-area { fill: var(--color-chart-1); opacity: 0.12; }
+.wb-spark-line { fill: none; stroke: var(--color-chart-1); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.wb-spark-dot { fill: var(--color-chart-1); }
+.wb-spark-positive .wb-spark-area { fill: var(--color-fin-positive); }
+.wb-spark-positive .wb-spark-line, .wb-spark-positive .wb-spark-dot { stroke: var(--color-fin-positive); fill: var(--color-fin-positive); }
+.wb-spark-negative .wb-spark-area { fill: var(--color-fin-negative); }
+.wb-spark-negative .wb-spark-line, .wb-spark-negative .wb-spark-dot { stroke: var(--color-fin-negative); fill: var(--color-fin-negative); }
+.wb-spark-caution .wb-spark-area { fill: var(--color-fin-caution); }
+.wb-spark-caution .wb-spark-line, .wb-spark-caution .wb-spark-dot { stroke: var(--color-fin-caution); fill: var(--color-fin-caution); }
+
+/* Spark bars (column micro-chart) */
+.wb-sparkbar { display: flex; align-items: flex-end; gap: 2px; }
+.wb-sparkbar-col { flex: 1; border-radius: 1px 1px 0 0; background: var(--color-chart-1); opacity: 0.75; min-width: 2px; }
+.wb-sparkbar-col-positive { background: var(--color-fin-positive); }
+.wb-sparkbar-col-negative { background: var(--color-fin-negative); }
+.wb-sparkbar-col-caution { background: var(--color-fin-caution); }
+.wb-sparkbar-col-muted { background: var(--color-text-3); opacity: 0.35; }
+
+/* Bullet chart (value vs target vs qualitative bands) */
+.wb-bullet-band { border-radius: 2px; }
+.wb-bullet-measure { border-radius: 2px; }
+.wb-bullet-marker { border-radius: 1px; }
+
+/* Treemap tiles */
+.wb-treemap-tile { border-radius: 6px; padding: 6px 8px; overflow: hidden; position: relative; transition: filter 0.15s, transform 0.15s; cursor: default; }
+.wb-treemap-tile:hover { filter: brightness(1.08); transform: translateY(-1px); z-index: 1; }
+.wb-treemap-label { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.95); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wb-treemap-value { font-size: 11px; font-weight: 700; font-family: var(--font-mono); color: rgba(255,255,255,0.9); font-variant-numeric: tabular-nums; }
+
+/* Radial progress ring */
+.wb-radial-track { fill: none; stroke: var(--color-surface-2); }
+.dark .wb-radial-track { stroke: var(--color-surface-2-dark); }
+.wb-radial-fill { fill: none; stroke-linecap: round; transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+
+/* Gauge (semicircle) */
+.wb-gauge-track { fill: none; stroke: var(--color-surface-2); }
+.dark .wb-gauge-track { stroke: var(--color-surface-2-dark); }
+.wb-gauge-needle { transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); transform-origin: center; }
+
+/* Legend dot */
+.wb-legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+/* Chart empty placeholder */
+.wb-chart-empty {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 120px; border-radius: 8px;
+  background-color: var(--color-surface-2);
+  color: var(--color-text-3); font-size: 12px;
+}
+.dark .wb-chart-empty { background-color: var(--color-surface-2-dark); color: var(--color-text-3-dark); }

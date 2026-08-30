@@ -1,4 +1,5 @@
 import { ReactNode, useState } from "react";
+import { Icon, type IconName } from "./Icon";
 
 // ─── MetricCard ──────────────────────────────────────────────────────────────
 interface MetricCardProps {
@@ -26,11 +27,11 @@ function formatValue(value: number | null | undefined, format: string): string {
 export function MetricCard({ label, value, format = "number", context, trend, benchmark, onClick }: MetricCardProps) {
   return (
     <div
-      className={`card-base p-4 ${onClick ? "cursor-pointer hover:ring-2 hover:ring-indigo-500/30 transition-all" : ""}`}
+      className={`wb-metric ${onClick ? "cursor-pointer hover:ring-2 hover:ring-indigo-500/30 transition-all" : ""}`}
       onClick={onClick}
     >
-      <p className="metric-label">{label}</p>
-      <p className="metric-value mt-1">{formatValue(value, format)}</p>
+      <p className="wb-metric-label">{label}</p>
+      <p className="wb-metric-value mt-1">{formatValue(value, format)}</p>
       {trend != null && Number.isFinite(trend) && (
         <span className={`text-xs font-medium ${trend > 0 ? "text-emerald-600 dark:text-emerald-400" : trend < 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-500"}`}>
           {trend > 0 ? "▲" : trend < 0 ? "▼" : "→"} {Math.abs(trend * 100).toFixed(1)}pp
@@ -50,7 +51,7 @@ export function MetricCard({ label, value, format = "number", context, trend, be
           </div>
         </div>
       )}
-      {context && <p className="metric-context">{context}</p>}
+      {context && <p className="wb-metric-context">{context}</p>}
     </div>
   );
 }
@@ -71,16 +72,16 @@ const VERDICT_STYLES = {
   "insufficient-data": "border-l-slate-400 bg-slate-50/50 dark:bg-slate-900/50",
 };
 
-const VERDICT_ICONS = { buy: "🟢", hold: "🟡", avoid: "🔴", "insufficient-data": "⚪" };
+const VERDICT_ICONS = { buy: "shield-check" as const, hold: "gauge" as const, avoid: "shield-x" as const, "insufficient-data": "info" as const };
 const VERDICT_LABELS = { buy: "BUY", hold: "HOLD", avoid: "AVOID", "insufficient-data": "INSUFFICIENT DATA" };
 
 export function VerdictBanner({ verdict, headline, subtitle, confidence, metrics }: VerdictBannerProps) {
   return (
-    <div className={`card-verdict ${VERDICT_STYLES[verdict]}`}>
+    <div className={`wb-panel rounded-xl border-l-4 p-4 shadow-sm ${VERDICT_STYLES[verdict]}`}>
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-lg">{VERDICT_ICONS[verdict]}</span>
+            <span className="text-lg"><Icon name={VERDICT_ICONS[verdict]} size={16} /></span>
             <span className="text-sm font-bold uppercase tracking-wide text-slate-700 dark:text-slate-200">
               {VERDICT_LABELS[verdict]}
             </span>
@@ -125,12 +126,12 @@ interface InsightBlockProps {
   icon?: string | undefined;
 }
 
-export function InsightBlock({ text, icon = "💡" }: InsightBlockProps) {
+export function InsightBlock({ text, icon = "info" }: InsightBlockProps) {
   if (!text) return null;
   return (
     <div className="rounded-lg bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 px-4 py-3">
-      <p className="insight-text">
-        <span className="mr-1.5">{icon}</span>
+      <p className="text-sm leading-relaxed wb-text-2">
+        <span className="mr-1.5 wb-text-3"><Icon name={icon as IconName} size={16} /></span>
         {text}
       </p>
     </div>
@@ -148,7 +149,7 @@ interface ExpandableSectionProps {
 export function ExpandableSection({ title, badge, defaultOpen = false, children }: ExpandableSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="card-base overflow-hidden">
+    <div className="wb-panel overflow-hidden">
       <button
         className="flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
         onClick={() => setOpen(!open)}
@@ -234,14 +235,15 @@ export function BenchmarkBar({ value, min, max, zones, label }: BenchmarkBarProp
 interface SectionHeaderProps {
   title: string;
   subtitle?: string | undefined;
-  icon?: string | undefined;
+  /** SVG icon name (Workbench icon set), not an emoji */
+  icon?: IconName | undefined;
 }
 
 export function SectionHeader({ title, subtitle, icon }: SectionHeaderProps) {
   return (
     <div className="mb-4">
-      <h2 className="section-title flex items-center gap-2">
-        {icon && <span>{icon}</span>}
+      <h2 className="text-lg font-semibold wb-text-1 flex items-center gap-2">
+        {icon && <Icon name={icon} size={20} className="wb-text-3" />}
         {title}
       </h2>
       {subtitle && <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
@@ -372,11 +374,11 @@ export function RiskFlag({ severity, label, detail }: RiskFlagProps) {
     medium: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
     low: "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",
   };
-  const icons = { high: "🔴", medium: "🟡", low: "⚪" };
+  const icons = { high: "shield-x" as const, medium: "alert-triangle" as const, low: "info" as const };
 
   return (
     <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg border ${styles[severity]}`} title={detail}>
-      <span>{icons[severity]}</span>
+      <span><Icon name={icons[severity]} size={14} /></span>
       <span className="font-medium">{label}</span>
     </span>
   );

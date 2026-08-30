@@ -22,7 +22,7 @@ export function EPVSection({ epv }: { epv: EPVResult | null }) {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-bold text-slate-800 mb-1">Earnings Power Value (Graham-Dodd)</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">Earnings Power Value (Graham-Dodd)</h3>
         <p className="text-xs text-slate-500">EPV = Normalized NOPAT / WACC. Franchise value = EPV − Asset value. A strong franchise earns above its reproduction cost.</p>
       </div>
 

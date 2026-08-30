@@ -11,7 +11,7 @@ export default function TriangulationSection({
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-        <h2 className="text-lg font-bold text-slate-800">Valuation Triangulation (v3)</h2>
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Valuation Triangulation (v3)</h2>
         <p className="text-xs text-slate-500 mt-0.5">Per-share value is primary. Company totals remain as context in ₹ Cr.</p>
       </div>
       <div className="p-6 overflow-x-auto">

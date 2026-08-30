@@ -3,17 +3,9 @@ import { AnalysisStatusSummary } from "../../engine/analysisStatus";
 import { AuditSubmissionMeta, isAuditEnabled } from "../../lib/audit";
 import { AnalysisStatusBadge } from "../../components/AnalysisStatusBadge";
 import CompanySwitcher from "../../components/CompanySwitcher";
-import type { TabId } from "../tabs";
-import { TABS, TAB_GROUPS } from "../tabs";
-import { Icon, type IconName } from "../../components/shared/Primitives";
+import { Icon } from "../../components/shared/Icon";
 
 interface AppHeaderProps {
-  visibleTabs: typeof TABS;
-  activeTab: TabId;
-  setActiveTab: (tab: TabId) => void;
-  valuationBlocked: boolean;
-  financialFallbackAvailable: boolean;
-  scopeBlocked: boolean;
   auditMeta: AuditSubmissionMeta | null;
   rawData: RawPeriodData[] | null;
   analysisStatus: AnalysisStatusSummary;
@@ -28,36 +20,13 @@ interface AppHeaderProps {
   setGlossaryOpen: (v: boolean) => void;
 }
 
-const TAB_ICONS: Record<TabId, IconName> = {
-  upload: "database",
-  dashboard: "chart",
-  watchlist: "folder",
-  workspace: "compass",
-  inspector: "satellite",
-  statements: "table",
-  ratios: "calculator",
-  quality: "search",
-  scope: "mirror",
-  atlas: "satellite",
-  business: "building",
-  forecast: "trending-up",
-  valuation: "currency",
-  bank: "bank",
-  comparison: "users",
-  report: "book",
-  thesis: "document",
-  regression: "flask",
-  v3analytics: "microscope",
-  debug: "wrench",
-};
-
+/**
+ * Top bar: brand + status chips + utility buttons only. Tab navigation lives
+ * solely in `SidebarNav` (which owns the role="tablist" pattern) — the 20-tab
+ * horizontal strip that used to sit here was removed as part of the Workbench
+ * shell consolidation (docs/greenfield-ui-redesign.md Phase 5).
+ */
 export function AppHeader({
-  visibleTabs,
-  activeTab,
-  setActiveTab,
-  valuationBlocked,
-  financialFallbackAvailable,
-  scopeBlocked,
   auditMeta,
   rawData,
   analysisStatus,
@@ -84,52 +53,6 @@ export function AppHeader({
             <span className="hidden sm:inline text-xs text-slate-500 dark:text-slate-400 ml-2">Residual-Income Valuation · Capitaline Ind AS</span>
           </div>
         </div>
-        <nav className="flex h-full overflow-x-auto gap-0.5" role="tablist" aria-label="Analysis tabs">
-          {TAB_GROUPS.map(group => {
-            const groupTabs = visibleTabs.filter(t => t.group === group.key);
-            if (groupTabs.length === 0) return null;
-            return (
-              <div key={group.key} className="flex items-center">
-                <span className="text-[9px] uppercase tracking-wider text-slate-600 dark:text-slate-400 px-1.5 hidden lg:inline">{group.label}</span>
-                {groupTabs.map(tab => (
-                  <button
-                    key={tab.id}
-                    id={`tab-${tab.id}`}
-                    role="tab"
-                    aria-selected={activeTab === tab.id}
-                    // Only the selected tab has a rendered panel: TabRouter swaps one
-                    // container's contents rather than mounting 19 of them. Pointing
-                    // every tab at `panel-<id>` referenced elements that never existed
-                    // (axe: aria-valid-attr-value, critical), so the attribute is set
-                    // only where the target is actually in the document.
-                    aria-controls={activeTab === tab.id ? `panel-${tab.id}` : undefined}
-                    onClick={() => {
-                      if (tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable) return;
-                      setActiveTab(tab.id);
-                    }}
-                    title={
-                      tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable
-                        ? scopeBlocked
-                          ? "Unsupported financial-company scope. See Debug tab."
-                          : "Valuation blocked by quality gate. See Debug tab."
-                        : undefined
-                    }
-                    disabled={tab.id === "valuation" && valuationBlocked && !financialFallbackAvailable}
-                    className={`px-2.5 h-full text-xs font-medium border-b-2 transition-colors flex items-center gap-1 whitespace-nowrap ${activeTab === tab.id
-                      ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
-                      : tab.id === "valuation" && valuationBlocked
-                        ? "border-transparent text-slate-300 dark:text-slate-600 cursor-not-allowed"
-                        : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300"
-                      }`}>
-                    <Icon name={TAB_ICONS[tab.id]} size={14} />
-                    <span className="hidden sm:inline">{tab.label}</span>
-                  </button>
-                ))}
-                <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-1 last:hidden" />
-              </div>
-            );
-          })}
-        </nav>
         <div className="ml-3 flex items-center gap-2">
           {isAuditEnabled() && auditMeta && (
             <span className="hidden lg:inline-flex px-2 py-1 text-[11px] rounded border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400">
@@ -154,29 +77,29 @@ export function AppHeader({
           )}
           <button
             onClick={() => setPaletteOpen(true)}
-            className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-1"
+            className="wb-icon-btn"
             title="Command palette (Ctrl/Cmd+K)"
           >
             <Icon name="command" size={12} />
-            <span className="font-mono text-[10px] text-slate-500">K</span>
+            <span className="font-mono text-[10px] wb-text-3">K</span>
           </button>
           <button
             onClick={() => setShortcutsOpen(true)}
-            className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
+            className="wb-icon-btn"
             title="Keyboard shortcuts (?)"
           >
             <Icon name="keyboard" size={12} />
           </button>
           <button
             onClick={() => setGlossaryOpen(true)}
-            className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700"
+            className="wb-icon-btn"
             title="Open glossary — definitions of RNOA, NOA, EPV, Piotroski, etc."
           >
             <Icon name="book" size={12} />
           </button>
           <button
             onClick={() => setDarkMode((v) => !v)}
-            className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+            className="wb-icon-btn"
             title="Toggle dark mode"
           >
             <Icon name={darkMode ? "sun" : "moon"} size={12} />
@@ -185,7 +108,7 @@ export function AppHeader({
             onClick={async () => {
               await navigator.clipboard.writeText(window.location.href);
             }}
-            className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800"
+            className="wb-icon-btn"
             title="Copy shareable link"
           >
             <Icon name="link" size={12} />

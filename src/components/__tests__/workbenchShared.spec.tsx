@@ -96,7 +96,10 @@ describe("Metric", () => {
     expect(html).toContain("ROCE");
     expect(html).toContain("18.5%");
     expect(html).toContain("5Y avg");
-    expect(html).toContain("wb-surface");
+    // wb-metric is the redesign doc's metric-tile class (wb-metric-label /
+    // wb-metric-value / wb-metric-context), shared with the Dashboard spec that
+    // pins `.wb-metric-label`. Consolidating onto it removed the old wb-surface root.
+    expect(html).toContain("wb-metric");
   });
   it("renders sparkline only with ≥3 valid points", () => {
     const two = renderToStaticMarkup(

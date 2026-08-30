@@ -17,7 +17,12 @@ import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 import type { ITServicesSignal } from "../../engine/itServicesDetector";
 
 import { VerdictBanner, InsightBlock, RiskFlag } from "../shared/DesignSystem";
-import { ContextHeader, Metric, EmptyState, EvidenceRail, EvidenceItem, Icon, type RigorLevel } from "../shared/Primitives";
+import { ContextHeader } from "../shared/ContextHeader";
+import { EvidenceRail, EvidenceItem } from "../shared/EvidenceRail";
+import { Metric } from "../shared/Metric";
+import { EmptyState } from "../shared/EmptyState";
+import { Icon } from "../shared/Icon";
+import { type RigorLevel } from "../shared/RigorStepper";
 import ValuationTriangulation from "./ValuationTriangulation";
 import QualitySignalPanel from "./QualitySignalPanel";
 import PenmanDecompositionChart from "./PenmanDecompositionChart";
@@ -322,7 +327,7 @@ export default function DashboardView({ data, config, traceability = null, ratio
       {/* ═══ ZONE C: EVIDENCE RAIL (collapsed sections) ═══════════════════ */}
       <EvidenceRail title="Supporting Evidence">
         <EvidenceItem summary={`Narrative: ${narrative ? narrative.slice(0, 80) + "…" : "No narrative generated"}`}>
-          {narrative && <InsightBlock text={narrative} icon="📖" />}
+          {narrative && <InsightBlock text={narrative} icon="book" />}
         </EvidenceItem>
 
         <EvidenceItem summary={`Period Delta: ${latest && prev ? `${latest.period_end.slice(0, 4)} vs ${prev.period_end.slice(0, 4)}` : "—"}`}>

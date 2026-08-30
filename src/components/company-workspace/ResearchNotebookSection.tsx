@@ -10,7 +10,7 @@ interface Props {
 export default function ResearchNotebookSection({ currentNotebook, onNotebookFieldChange }: Props) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-base font-bold text-slate-800">Research Notebook</h3>
+      <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Research Notebook</h3>
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <NoteField label="Business Summary" value={toTextAreaValue(currentNotebook.businessSummary)} onChange={(value) => onNotebookFieldChange("businessSummary", value)} />
         <NoteField label="Investment Thesis" value={toTextAreaValue(currentNotebook.thesis)} onChange={(value) => onNotebookFieldChange("thesis", value)} />

@@ -24,7 +24,7 @@ export default function SensitivityGrid({
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-        <h2 className="text-lg font-bold text-slate-800">Sensitivity Grid — V_RE_CV3 (S-9.7)</h2>
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Sensitivity Grid — V_RE_CV3 (S-9.7)</h2>
         <p className="text-xs text-slate-500 mt-0.5">
           {sharesOut != null
             ? "Per-share values across ke × g using the resolved share basis. Company totals are shown below for context."

@@ -4,9 +4,9 @@ import { NP_BENCHMARKS } from "../../engine/types";
 /* ── Sub-components ── */
 export function Section({title,subtitle,children}:{title:string;subtitle?:string;children:ReactNode}) {
   return (
-    <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+    <div className="wb-panel rounded-2xl overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-        <h2 className="text-lg font-bold text-slate-800">{title}</h2>
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">{title}</h2>
         {subtitle&&<p className="text-[11px] text-slate-500 mt-0.5">{subtitle}</p>}
       </div>
       <div className="p-6">{children}</div>

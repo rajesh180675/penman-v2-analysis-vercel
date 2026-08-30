@@ -5,6 +5,7 @@ import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import { SectionHeader } from "./shared/DesignSystem";
+import { EmptyState } from "./shared/EmptyState";
 import IncomeWaterfall from "./charts/IncomeWaterfall";
 import BalanceSheetComposition from "./charts/BalanceSheetComposition";
 import CashFlowChart from "./charts/CashFlowChart";
@@ -29,7 +30,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
   // component would otherwise add a hook between renders, which React treats as
   // a fatal error. An empty `data` maps to an empty array, so hoisting is safe.
   const yoySales = useMemo(() => (data ?? []).map((d, i) => i === 0 ? null : (data[i - 1]!.is.Sales !== 0 ? (d.is.Sales - data[i - 1]!.is.Sales) / Math.abs(data[i - 1]!.is.Sales) : null)), [data]);
-  if (!data || data.length === 0) return <div className="card-base p-12 text-center"><div className="text-5xl mb-3">📊</div><p className="text-slate-500">No data</p></div>;
+  if (!data || data.length === 0) return <EmptyState icon="table" title="No data" body="Upload a Capitaline ZIP or select a company to see recast statements." />;
 
   const years = data.map((d) => d.period_end.slice(0, 7));
   const cd = data.map((d, i) => ({
@@ -44,7 +45,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
       <SectionHeader
         title="Recast Statements"
         subtitle="Capitaline data reformulated into the Penman-Nissim operating/financial split"
-        icon="📋"
+        icon="table"
       />
 
       {traceabilitySummary && (
@@ -58,11 +59,11 @@ export default function RecastStatements({ data, traceability = null, traceabili
           cautionHeading="Read the recast statements and bridge outputs in the context of these upstream trust limits."
         />
       )}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
-        <div className="text-sm text-slate-700 font-medium">Display Mode</div>
-        <div className="inline-flex rounded-lg overflow-hidden border border-slate-300">
-          <button onClick={() => setMode("abs")} className={`px-3 py-1.5 text-xs ${mode === "abs" ? "bg-indigo-600 text-white" : "bg-white text-slate-600"}`}>₹ Cr</button>
-          <button onClick={() => setMode("common")} className={`px-3 py-1.5 text-xs ${mode === "common" ? "bg-indigo-600 text-white" : "bg-white text-slate-600"}`}>Common-size</button>
+      <div className="wb-surface rounded-xl border p-4 flex items-center justify-between">
+        <div className="text-sm wb-text-2 font-medium">Display Mode</div>
+        <div className="inline-flex rounded-lg overflow-hidden border wb-border-strong">
+          <button onClick={() => setMode("abs")} className={`px-3 py-1.5 text-xs ${mode === "abs" ? "bg-indigo-600 text-white" : "wb-surface wb-text-2"}`}>₹ Cr</button>
+          <button onClick={() => setMode("common")} className={`px-3 py-1.5 text-xs ${mode === "common" ? "bg-indigo-600 text-white" : "wb-surface wb-text-2"}`}>Common-size</button>
         </div>
       </div>
 
@@ -73,10 +74,10 @@ export default function RecastStatements({ data, traceability = null, traceabili
       <Section title="Recast Balance Sheet" subtitle="§3.2 Operating vs Financing partition · OA+FA=TA · OL=TotalLiab−FO">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 border-b border-slate-200">
+            <thead><tr className="wb-surface-inset border-b wb-border">
               <Th left>Metric</Th>{years.map((y) => <Th key={y}>{y}</Th>)}
             </tr></thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               <TR label="Total Assets (TA)"          vals={data.map((d) => f(d.bs.TA))} />
               <TR label="Financial Assets (FA)"      vals={data.map((d) => mode === "common" ? fp(d.bs.TA > 0 ? d.bs.FA / d.bs.TA : null) : f(d.bs.FA))} accent="blue" />
               <TR label="Operating Assets (OA=TA−FA)" vals={data.map((d) => mode === "common" ? fp(d.bs.TA > 0 ? d.bs.OA / d.bs.TA : null) : f(d.bs.OA))} />
@@ -102,7 +103,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
           <ChartBox title="NOA / FA / CSE (₹ Cr)">
             <ResponsiveContainer debounce={50} width="100%" height={210}>
-              <LineChart data={cd}><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <LineChart data={cd}><CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis dataKey="period" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} />
                 <Tooltip /><Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line type="monotone" dataKey="NOA" stroke="#6366f1" strokeWidth={2} dot={false} />
@@ -113,7 +114,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
           </ChartBox>
           <ChartBox title="OA vs OL (₹ Cr)">
             <ResponsiveContainer debounce={50} width="100%" height={210}>
-              <LineChart data={cd}><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <LineChart data={cd}><CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis dataKey="period" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} />
                 <Tooltip /><Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line type="monotone" dataKey="OA" stroke="#f59e0b" strokeWidth={2} dot={false} />
@@ -144,10 +145,10 @@ export default function RecastStatements({ data, traceability = null, traceabili
       <Section title="Recast Income Statement" subtitle="§3.3 CNI / NFE / OI · §4 Core vs Unusual · paper Eq.(2)">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 border-b border-slate-200">
+            <thead><tr className="wb-surface-inset border-b wb-border">
               <Th left>Metric</Th>{years.map((y) => <Th key={y}>{y}</Th>)}
             </tr></thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               <TR label="Sales (Revenue)"               vals={data.map((d) => f(d.is.Sales))} />
               <TRGrowth label="  ↳ Sales YoY %"           vals={yoySales} />
               <TR label="Profit After Tax (PAT)"        vals={data.map((d) => f(d.is.PAT))} />
@@ -184,7 +185,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
           <ChartBox title="Sales / OI / CNI (₹ Cr)">
             <ResponsiveContainer debounce={50} width="100%" height={210}>
-              <LineChart data={cd}><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <LineChart data={cd}><CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis dataKey="period" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} />
                 <Tooltip /><Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line type="monotone" dataKey="Sales" stroke="#94a3b8" strokeWidth={2} dot={false} />
@@ -195,7 +196,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
           </ChartBox>
           <ChartBox title="Core OI vs Unusual OI (₹ Cr)">
             <ResponsiveContainer debounce={50} width="100%" height={210}>
-              <LineChart data={cd}><CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <LineChart data={cd}><CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis dataKey="period" tick={{ fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} />
                 <Tooltip /><Legend wrapperStyle={{ fontSize: 11 }} />
                 <Line type="monotone" dataKey="CoreOI" stroke="#10b981" strokeWidth={2} dot={false} name="Core OI" />
@@ -214,10 +215,10 @@ export default function RecastStatements({ data, traceability = null, traceabili
       <Section title="Free Cash Flow &amp; Dividends" subtitle="§7 Accounting FCF = OI − ΔNOA | Cash FCF = CFO − Capex | Eq.(14)–(15)">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="bg-slate-50 border-b border-slate-200">
+            <thead><tr className="wb-surface-inset border-b wb-border">
               <Th left>Metric</Th>{years.map((y) => <Th key={y}>{y}</Th>)}
             </tr></thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               <TR label="CFO"                    vals={data.map((d) => f(d.cf.CFO))} />
               <TR label="Capex"                  vals={data.map((d) => f(d.cf.Capex))} />
               <TR label="FCF (cash: CFO−Capex)"  vals={data.map((d) => f(d.cf.FCF_cash))} bold />
@@ -244,10 +245,10 @@ export default function RecastStatements({ data, traceability = null, traceabili
 
 function Section({ title, subtitle, children }: { title: string; subtitle?: string | undefined; children: React.ReactNode }) {
   return (
-    <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-        <h2 className="text-lg font-bold text-slate-800">{title}</h2>
-        {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+    <div className="wb-panel rounded-2xl overflow-hidden">
+      <div className="px-6 py-4 border-b wb-divider wb-surface-inset">
+        <h2 className="text-lg font-bold wb-text-1">{title}</h2>
+        {subtitle && <p className="text-xs wb-text-3 mt-0.5">{subtitle}</p>}
       </div>
       <div className="p-6">{children}</div>
     </div>
@@ -256,8 +257,8 @@ function Section({ title, subtitle, children }: { title: string; subtitle?: stri
 
 function ChartBox({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border border-slate-100 rounded-xl p-4">
-      <div className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wide">{title}</div>
+    <div className="border wb-border rounded-xl p-4">
+      <div className="text-xs font-semibold wb-text-3 mb-3 uppercase tracking-wide">{title}</div>
       {children}
     </div>
   );
@@ -265,13 +266,17 @@ function ChartBox({ title, children }: { title: string; children: React.ReactNod
 
 function Th({ children, left }: { children?: React.ReactNode | undefined; left?: boolean }) {
   return (
-    <th className={`px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap ${left ? "text-left" : "text-right"}`}>
+    <th className={`px-4 py-2.5 text-xs font-semibold wb-text-3 uppercase tracking-wide whitespace-nowrap ${left ? "text-left" : "text-right"}`}>
       {children}
     </th>
   );
 }
 
-const ACC: Record<string, string> = { green: "text-emerald-700 font-semibold", blue: "text-blue-700", amber: "text-amber-700" };
+const ACC: Record<string, string> = {
+  green: "text-emerald-700 dark:text-emerald-400 font-semibold",
+  blue: "text-blue-700 dark:text-blue-400",
+  amber: "text-amber-700 dark:text-amber-400",
+};
 
 function TR({ label, vals, bold, accent }: { label: string; vals: string[]; bold?: boolean | undefined; accent?: string }) {
   return (

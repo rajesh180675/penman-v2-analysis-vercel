@@ -1,4 +1,5 @@
 import { decisiveMoat, type MoatScoreResult } from "../../engine/moatScoring";
+import { Icon, type IconName } from "../shared/Icon";
 import { decisiveCapAlloc, type CapAllocScoreResult } from "../../engine/capitalAllocationScoring";
 import type { DistressAssessment } from "../../engine/distressDetector";
 
@@ -21,7 +22,7 @@ interface VerdictProfile {
   color: string;
   bg: string;
   border: string;
-  emoji: string;
+  icon: IconName;
   blurb: string;
 }
 
@@ -31,7 +32,7 @@ const VERDICTS: Record<Verdict, VerdictProfile> = {
     color: "text-emerald-700 dark:text-emerald-300",
     bg: "bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/40 dark:to-emerald-800/30",
     border: "border-emerald-400 dark:border-emerald-600",
-    emoji: "🚀",
+    icon: "target",
     blurb: "High-quality business + capable management + cheap valuation. Rare combination.",
   },
   buy: {
@@ -39,7 +40,7 @@ const VERDICTS: Record<Verdict, VerdictProfile> = {
     color: "text-blue-700 dark:text-blue-300",
     bg: "bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/40 dark:to-blue-800/30",
     border: "border-blue-400 dark:border-blue-600",
-    emoji: "✅",
+    icon: "check",
     blurb: "Quality business at fair-to-attractive price. Worth a position.",
   },
   hold: {
@@ -47,7 +48,7 @@ const VERDICTS: Record<Verdict, VerdictProfile> = {
     color: "text-amber-700 dark:text-amber-300",
     bg: "bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/40 dark:to-amber-800/30",
     border: "border-amber-400 dark:border-amber-600",
-    emoji: "👀",
+    icon: "gauge",
     blurb: "Mixed signals — wait for a better entry or stronger fundamentals.",
   },
   avoid: {
@@ -55,7 +56,7 @@ const VERDICTS: Record<Verdict, VerdictProfile> = {
     color: "text-red-700 dark:text-red-300",
     bg: "bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/40 dark:to-red-800/30",
     border: "border-red-400 dark:border-red-600",
-    emoji: "🛑",
+    icon: "shield-x",
     blurb: "Either weak business, poor management, or expensive valuation. Skip.",
   },
   distressed: {
@@ -63,7 +64,7 @@ const VERDICTS: Record<Verdict, VerdictProfile> = {
     color: "text-red-800 dark:text-red-200",
     bg: "bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/60 dark:to-red-800/50",
     border: "border-red-600 dark:border-red-500",
-    emoji: "💀",
+    icon: "alert-triangle",
     blurb: "Financial distress detected. Equity models unreliable. Speculative.",
   },
 };
@@ -162,7 +163,7 @@ export default function InvestmentThesisCard({ moat, capAlloc, distress, marginO
     <div className={`rounded-2xl border-2 ${profile.border} ${profile.bg} p-6 shadow-sm`}>
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <span className="text-4xl">{profile.emoji}</span>
+          <span className="wb-text-2"><Icon name={profile.icon} size={30} /></span>
           <div>
             <div className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Investment Thesis</div>
             <div className={`text-2xl font-bold ${profile.color}`}>{profile.label}</div>

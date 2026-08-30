@@ -6,7 +6,7 @@ export function DirtySurplusSection({ ds }: { ds: V3AnalyticsBundle["dirtySurplu
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-base font-bold text-slate-800 mb-1">§6 Clean-Surplus Accounting</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">§6 Clean-Surplus Accounting</h3>
         <p className="text-xs text-slate-500 mb-3">Dirty surplus = ΔCSE − CNI + Dividends paid. Material values indicate capital transactions or OCI events not captured in CNI.</p>
       </div>
 

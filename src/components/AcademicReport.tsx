@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import "katex/dist/katex.min.css";
+import { EmptyState } from "./shared/EmptyState";
 import { EngineConfig, RawPeriodData, RecastPeriod } from "../engine/types";
 import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
@@ -210,10 +211,11 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
 
   if (!data || data.length < 2) {
     return (
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
-        <p className="font-semibold text-amber-800 text-lg">Need at least 2 periods to generate report</p>
-        <p className="text-amber-700 text-sm mt-1">Upload full history to produce a rigorous academic narrative.</p>
-      </div>
+      <EmptyState
+        icon="book"
+        title="Need at least 2 periods to generate report"
+        body="Upload full history to produce a rigorous academic narrative."
+      />
     );
   }
 

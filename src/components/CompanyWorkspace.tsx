@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnalysisStatusSummary } from "../engine/analysisStatus";
+import { EmptyState } from "./shared/EmptyState";
 import { summarizeConceptCoverage } from "../engine/conceptOntology";
 import { detectCorporateActions } from "../engine/corporateActions";
 import { buildPeerValuationSnapshot } from "../engine/peerValuation";
@@ -259,12 +260,11 @@ export default function CompanyWorkspace({
 
   if (!companyOptions.length) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-slate-600 shadow-sm">
-        <p className="text-lg font-semibold text-slate-800">No company workspace yet</p>
-        <p className="mt-2 text-sm">
-          Load a company first. The workspace will then keep your research notes, signal history, filing memory, and portfolio discipline together.
-        </p>
-      </div>
+      <EmptyState
+        icon="compass"
+        title="No company workspace yet"
+        body="Load a company first. The workspace will then keep your research notes, signal history, filing memory, and portfolio discipline together."
+      />
     );
   }
 
@@ -328,7 +328,7 @@ export default function CompanyWorkspace({
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-base font-bold text-slate-800">Research Workflow</h3>
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Research Workflow</h3>
               <p className="mt-1 text-sm text-slate-500">
                 Use this checklist before trusting the valuation conclusion. The app should tell the investor what still needs to be understood.
               </p>
@@ -349,7 +349,7 @@ export default function CompanyWorkspace({
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-bold text-slate-800">Latest Valuation Memory</h3>
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Latest Valuation Memory</h3>
           {latestRun || latestValuation ? (
             <div className="mt-4 space-y-3 text-sm text-slate-700">
               <div>Signal: <strong>{latestValuation?.signalLabel ?? latestRun?.latestValuationSignal?.label ?? latestRun?.latestValuationSignal?.state ?? "—"}</strong></div>
@@ -442,7 +442,7 @@ export default function CompanyWorkspace({
       <section className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
         <FilingHistoryPanel filings={workspaceRecord?.filings ?? []} />
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-bold text-slate-800">Internal Analysis Memory</h3>
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Internal Analysis Memory</h3>
           <div className="mt-4 space-y-2 text-sm text-slate-700">
             {(workspaceRecord?.analysisHistory ?? []).map((item: WorkspaceAnalysisSnapshot) => (
               <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">

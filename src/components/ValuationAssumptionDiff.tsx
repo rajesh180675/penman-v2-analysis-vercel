@@ -13,7 +13,7 @@ export default function ValuationAssumptionDiff({ current, previous }: Props) {
   if (!current || !previous) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-base font-bold text-slate-800">Assumption Diff</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Assumption Diff</h3>
         <p className="mt-2 text-sm text-slate-500">A second saved valuation snapshot is required before the app can show what actually changed.</p>
       </div>
     );
@@ -40,7 +40,7 @@ export default function ValuationAssumptionDiff({ current, previous }: Props) {
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-base font-bold text-slate-800">Assumption Diff</h3>
+      <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Assumption Diff</h3>
       <p className="mt-1 text-sm text-slate-500">This prevents “same stock, different mood” analysis. The investor can see what actually changed between two stored valuation states.</p>
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-sm">

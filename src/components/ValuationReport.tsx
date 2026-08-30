@@ -30,7 +30,7 @@ import type { LossMakerValuationResult } from "../engine/lossMakerValuation";
 import type { SanityAssessment } from "../engine/ratioSanity";
 import type { AllSegmentData } from "../engine/segmentParser";
 import type { ITServicesSignal } from "../engine/itServicesDetector";
-import { EmptyState } from "./shared/Primitives";
+import { EmptyState } from "./shared/EmptyState";
 import { type CVMethod, fmt, makeCvSel } from "./valuation/ValuationReport.formatters";
 import {
   buildAlertAuditPayload,
@@ -54,6 +54,7 @@ import CyclicalRegimeSection from "./valuation/CyclicalRegimeSection";
 import ChecklistMarketSection from "./valuation/ChecklistMarketSection";
 import SotpSection from "./valuation/SotpSection";
 import BacktestSection from "./valuation/BacktestSection";
+import PvreSection from "./valuation/PvreSection";
 import ValuationInputsPanel from "./valuation/ValuationInputsPanel";
 import ValuationCardsSection from "./valuation/ValuationCardsSection";
 import TriangulationSection from "./valuation/TriangulationSection";
@@ -434,6 +435,8 @@ export default function ValuationReport({
       <SotpSection commandCenter={commandCenter} />
 
       <BacktestSection commandCenter={commandCenter} />
+
+      <PvreSection commandCenter={commandCenter} data={data} config={effectiveConfig} />
 
       <ValuationInputsPanel
         keOverride={keOverride}

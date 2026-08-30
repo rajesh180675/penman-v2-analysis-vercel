@@ -21,7 +21,7 @@ export function EventFlagsSection({ flags, periods }: { flags: PeriodEventFlags[
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-base font-bold text-slate-800 mb-1">§13 Period Event Flags</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">§13 Period Event Flags</h3>
         <p className="text-xs text-slate-500">
           {flagged.length > 0
             ? `${flagged.length} of ${flags.length} periods have event flags. Terminal period flags affect anchor selection (§11.5).`

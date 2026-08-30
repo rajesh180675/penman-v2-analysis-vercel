@@ -8,7 +8,7 @@ export function Section6BPanel({ s6b }: { s6b: Section6BResult }) {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-base font-bold text-slate-800 mb-1">§6B Per-Share &amp; Market-Implied Checks (S-16.1–16.3)</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">§6B Per-Share &amp; Market-Implied Checks (S-16.1–16.3)</h3>
         <p className="text-xs text-slate-500">
           {s6b.status === "empty" && "Share count unavailable from canonical data. Provide shares_outstanding in config."}
           {s6b.status === "partial" && `Shares derived: ${s6b.shares?.toLocaleString("en-IN")} Cr (${s6b.shares_source}). Provide market_price in config for full analytics.`}

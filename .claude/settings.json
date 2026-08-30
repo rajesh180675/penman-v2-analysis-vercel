@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__penman-v2-analysis__*",
+      "Edit(./**)"
+    ],
+    "defaultMode": "acceptEdits"
+  }
+}

@@ -1,5 +1,7 @@
+import { Icon, type IconName } from "../shared/Icon";
+
 interface ActionItem {
-  icon: string;
+  icon: IconName;
   label: string;
   description: string;
   tab: string;
@@ -23,27 +25,27 @@ export default function NextStepsPanel({ verdict, hasPeers, onNavigate }: Props)
   // Verdict-aware CTAs
   const baseActions: ActionItem[] = [
     {
-      icon: "🎯",
+      icon: "target",
       label: "Detailed Valuation",
       description: "Drill into the Framework Radar, Sensitivity Heatmap, and EPV calculations",
       tab: "valuation",
       primary: verdict === "buy" || verdict === "screaming-buy" || verdict === "hold",
     },
     {
-      icon: "🩺",
+      icon: "search",
       label: "Quality Audit",
       description: "Check Piotroski / Altman / Beneish / Zmijewski / Ohlson distress scores",
       tab: "quality",
       primary: verdict === "distressed" || verdict === "avoid",
     },
     {
-      icon: "📊",
+      icon: "table",
       label: "Recast Statements",
       description: "Income waterfall, balance sheet composition, cash flow trends",
       tab: "statements",
     },
     {
-      icon: "🔮",
+      icon: "trending-up",
       label: "Forecast Scenarios",
       description: "Base / Bull / Bear / Stress paths with reverse DCF and Monte Carlo",
       tab: "forecast",
@@ -52,7 +54,7 @@ export default function NextStepsPanel({ verdict, hasPeers, onNavigate }: Props)
 
   if (hasPeers) {
     baseActions.push({
-      icon: "🆚",
+      icon: "users",
       label: "Peer Comparison",
       description: "Sector heatmap, scatter plots, percentile bands, peer-implied fair values",
       tab: "comparison",
@@ -61,7 +63,7 @@ export default function NextStepsPanel({ verdict, hasPeers, onNavigate }: Props)
   }
 
   baseActions.push({
-    icon: "📥",
+    icon: "download",
     label: "Export Excel Report",
     description: "Multi-sheet workbook: recast statements, ratios, forecast, valuation, traceability",
     tab: "report",
@@ -70,7 +72,7 @@ export default function NextStepsPanel({ verdict, hasPeers, onNavigate }: Props)
   return (
     <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/40 dark:to-slate-900/20 dark:border-slate-700 p-6 shadow-sm">
       <div className="flex items-center gap-2 mb-4">
-        <span className="text-xl">🧭</span>
+        <span className="wb-text-3"><Icon name="compass" size={20} /></span>
         <div>
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Where to Next?</h3>
           <p className="text-xs text-slate-500">
@@ -92,7 +94,7 @@ export default function NextStepsPanel({ verdict, hasPeers, onNavigate }: Props)
             }`}
           >
             <div className="flex items-start gap-3">
-              <span className="text-2xl">{a.icon}</span>
+              <span className="wb-text-3 flex-shrink-0 mt-0.5"><Icon name={a.icon} size={20} /></span>
               <div className="flex-1 min-w-0">
                 <div className={`text-sm font-bold ${a.primary ? "text-indigo-700 dark:text-indigo-300" : "text-slate-800 dark:text-slate-200"}`}>
                   {a.label}
@@ -110,7 +112,7 @@ export default function NextStepsPanel({ verdict, hasPeers, onNavigate }: Props)
       </div>
 
       <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 text-[11px] text-slate-500 italic">
-        💡 Tip: the most useful tabs depend on the verdict. Buy/Hold candidates benefit most from Valuation depth.
+        Tip: the most useful tabs depend on the verdict. Buy/Hold candidates benefit most from Valuation depth.
         Avoid/Distressed candidates need a Quality audit first.
       </div>
     </div>

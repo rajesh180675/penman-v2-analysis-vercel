@@ -9,7 +9,7 @@ export default function FilingHistoryPanel({ filings }: Props) {
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-bold text-slate-800">Filing History</h3>
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Filing History</h3>
           <p className="mt-1 text-sm text-slate-500">
             Every remembered run is treated like a filing checkpoint so the investor can see which period and source the conclusion came from.
           </p>

@@ -9,7 +9,7 @@ export function ConfidenceSection({ conf, validation }: {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-bold text-slate-800 mb-1">§14 Composite Confidence Score</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">§14 Composite Confidence Score</h3>
         <p className="text-xs text-slate-500">Weighted across 6 dimensions: separation quality, clean surplus, RE–ReOI convergence, Eq.16 closure, earnings persistence, terminal cleanliness.</p>
       </div>
 

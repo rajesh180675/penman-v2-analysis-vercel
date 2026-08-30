@@ -39,7 +39,7 @@ export function RecastVerificationPanel({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-5">
         {/* BS snapshot */}
         <div>
-          <h4 className="font-semibold text-slate-600 text-sm mb-3">Balance Sheet</h4>
+          <h4 className="font-semibold text-slate-600 dark:text-slate-300 text-sm mb-3">Balance Sheet</h4>
           <div className="grid grid-cols-3 gap-2">
             {Object.entries(verifyPeriod.bs).map(([k, v]) => (
               <div key={k} className="p-2 bg-slate-50 rounded border border-slate-100">
@@ -54,7 +54,7 @@ export function RecastVerificationPanel({
 
         {/* IS snapshot */}
         <div>
-          <h4 className="font-semibold text-slate-600 text-sm mb-3">Income Statement</h4>
+          <h4 className="font-semibold text-slate-600 dark:text-slate-300 text-sm mb-3">Income Statement</h4>
           <div className="grid grid-cols-3 gap-2">
             {Object.entries(verifyPeriod.is).map(([k, v]) => (
               <div key={k} className="p-2 bg-slate-50 rounded border border-slate-100">

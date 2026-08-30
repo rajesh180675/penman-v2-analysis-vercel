@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Icon, type IconName } from "./shared/Icon";
 
 interface ShortcutDef {
   keys: string[];
@@ -49,10 +50,10 @@ export default function KeyboardShortcutsModal({ open, onClose }: Props) {
     !q || s.description.toLowerCase().includes(q) || s.keys.join("").toLowerCase().includes(q)
   );
 
-  const groups = [
-    { key: "navigation" as const, label: "Navigation",  emoji: "🧭" },
-    { key: "modals" as const,     label: "Modals",      emoji: "📋" },
-    { key: "actions" as const,    label: "Actions",     emoji: "⚡" },
+  const groups: { key: string; label: string; icon: IconName }[] = [
+    { key: "navigation", label: "Navigation",  icon: "compass" },
+    { key: "modals",     label: "Modals",      icon: "table" },
+    { key: "actions",    label: "Actions",     icon: "zap" },
   ];
 
   return (
@@ -88,8 +89,8 @@ export default function KeyboardShortcutsModal({ open, onClose }: Props) {
             if (items.length === 0) return null;
             return (
               <div key={g.key}>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                  {g.emoji} {g.label}
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+                  <Icon name={g.icon} size={14} className="wb-text-3" /> {g.label}
                 </h3>
                 <div className="space-y-1">
                   {items.map((s, i) => (

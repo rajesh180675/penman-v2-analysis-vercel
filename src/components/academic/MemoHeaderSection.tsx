@@ -34,8 +34,8 @@ export function MemoHeaderSection(props: {
     valuation,
   } = props;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-800">Investor Research Memorandum (Academic Format)</h1>
+      <section className="wb-panel rounded-2xl p-6">
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Investor Research Memorandum (Academic Format)</h1>
         <p className="text-sm text-slate-500 mt-1">
           Framework: Nissim &amp; Penman (2001), residual-income valuation with operating/financing recast under Ind AS.
         </p>

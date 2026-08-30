@@ -1,4 +1,5 @@
 import type { RecastPeriod } from "../../engine/types";
+import { Icon } from "../shared/Icon";
 
 interface Props {
   data: RecastPeriod[];
@@ -69,7 +70,7 @@ export default function PeriodDeltaStrip({ data }: Props) {
   return (
     <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 dark:from-slate-900/60 dark:to-slate-800/30 dark:border-slate-700 p-4 shadow-sm">
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-base">📈</span>
+        <span className="wb-text-3"><Icon name="trending-up" size={16} /></span>
         <div>
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">What Changed Year-over-Year</h3>
           <p className="text-xs text-slate-500">{priorPeriod} → {period}</p>

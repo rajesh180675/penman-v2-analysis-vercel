@@ -29,6 +29,12 @@ import type {
   BankValuationModelResult,
 } from "../../src/engine/bankValuation";
 import type { AllSegmentData, SegmentData } from "../../src/engine/segmentParser";
+import { deriveSectorCase } from "../../src/engine/seade";
+import { executeCatalogSectorCase, toSectorNativeCreditResult } from "../../src/engine/sectorCases";
+import { CURRENT_SECTOR_CASE_REGISTRY } from "../../src/engine/sectorCases/registry";
+import { resolveShareBasis } from "../../src/engine/shareCountTools";
+import type { SectorNativeCreditResult } from "../../src/engine/sectorCases/contracts";
+import type { CompanyType } from "../../src/engine/types";
 import {
   deriveAuditOutcome,
   statusClassFromOutcome,
@@ -221,6 +227,8 @@ export interface AuditCompanyRunResult {
   productionReady: AuditProductionReadySnapshot;
   bankValuation: AuditBankValuationSnapshot | null;
   models: string[];
+  /** Typed sector-native results from SEADE-derived case inputs (computed or blocked). */
+  sectorNativeResults?: SectorNativeCreditResult[];
   modelApplicability: AuditModelApplicability;
   outcome: AuditOutcome;
   statusClass: AuditStatusClass;
@@ -1276,8 +1284,9 @@ function industrialResult(args: {
   valuation: ValuationCommandCenterOutput;
   sidecarFlags: string[];
   trace: ReturnType<typeof buildAnalysisTraceability>;
+  config: EngineConfig;
 }): AuditCompanyRunResult {
-  const { company, pipeline, valuation, sidecarFlags, trace } = args;
+  const { company, pipeline, valuation, sidecarFlags, trace, config } = args;
   const result = emptyResult(company);
   const flags: string[] = [...sidecarFlags];
 
@@ -1336,8 +1345,60 @@ function industrialResult(args: {
     models: [],
   };
 
+  // SEADE: derive + execute the sector-native case for sector-typed companies.
+  // Fail-closed — derivation/execution problems are captured as a blocked
+  // credit result (or omitted), never thrown into the industrial path.
+  const seadeCredit = runSeadeSectorCase({
+    companyType: company.type,
+    ticker: company.ticker,
+    pipeline,
+    config,
+  });
+  if (seadeCredit.length) {
+    result.sectorNativeResults = seadeCredit;
+    const computed = seadeCredit.find((entry) => entry.status === "computed");
+    if (computed) {
+      flags.push(`SEADE_SECTOR_COMPUTED:${computed.caseType}`);
+    } else {
+      flags.push(`SEADE_SECTOR_BLOCKED:${seadeCredit[0]!.caseType}`);
+    }
+  }
+
   result.flags = flags;
   return finalize(result, deriveResultOutcome(result, result.base != null || result.triangulatedValue != null));
+}
+
+/** Run SEADE derivation + sector-case execution for a sector-typed company. */
+function runSeadeSectorCase(args: {
+  companyType: string;
+  ticker: string;
+  pipeline: PipelineResult;
+  config: EngineConfig;
+}): SectorNativeCreditResult[] {
+  const { companyType, ticker, pipeline, config } = args;
+  // Only sector-native types have SEADE derivation modules.
+  const sectorTypes = new Set(["telecom", "utility", "cyclical"]);
+  if (!sectorTypes.has(companyType)) return [];
+  if (!pipeline.periods.length) return [];
+  try {
+    const shares = resolveShareBasis(pipeline.periods, config).sharesForPerShare ?? null;
+    const derived = deriveSectorCase({
+      issuerId: ticker,
+      companyType: companyType as Exclude<CompanyType, "auto">,
+      periods: pipeline.periods,
+      config,
+      sharesOutstandingCr: shares,
+    });
+    if (!derived.derived || derived.derived.derivationStatus !== "ready") return [];
+    const caseType = derived.derived.caseType;
+    const modelId = CURRENT_SECTOR_CASE_REGISTRY.require(caseType).modelId;
+    const execution = executeCatalogSectorCase({ modelId, input: derived.derived.inputs });
+    if (execution.status === "rejected" || !execution.caseResult) return [];
+    return [toSectorNativeCreditResult(execution.caseResult)];
+  } catch {
+    // SEADE is additive; a derivation fault must never break the audit row.
+    return [];
+  }
 }
 
 export async function auditCompanyRun(
@@ -1408,6 +1469,7 @@ export async function auditCompanyRun(
       valuation: industrialValuation,
       sidecarFlags,
       trace,
+      config,
     });
     result.marketEvidence = marketEvidence;
     result.parseCoverage = parseCoverage;

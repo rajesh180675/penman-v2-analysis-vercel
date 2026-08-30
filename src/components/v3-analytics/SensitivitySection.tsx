@@ -29,7 +29,7 @@ export function SensitivitySection({ matrix, baseKe, baseG }: {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-base font-bold text-slate-800 mb-1">§12.1 RE Sensitivity Matrix</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">§12.1 RE Sensitivity Matrix</h3>
         <p className="text-xs text-slate-500">V(RE, CV3) in ₹ Cr. Rows = cost of equity (ke); columns = terminal growth (g). Base case highlighted.</p>
       </div>
 

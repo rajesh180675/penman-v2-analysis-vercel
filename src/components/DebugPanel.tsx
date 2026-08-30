@@ -1,3 +1,4 @@
+import { EmptyState } from "./shared/EmptyState";
 import { useState, useMemo } from "react";
 import { CapitalineParseDebug } from "../engine/capitalineParser";
 import { RawPeriodData, RecastPeriod } from "../engine/types";
@@ -303,14 +304,11 @@ export default function DebugPanel({ debugInfo, recastData, rawData, qualityGate
 
   if (!debugInfo) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 p-10 text-center text-slate-400">
-        <div className="text-5xl mb-3">🔍</div>
-        <p className="text-lg font-medium text-slate-600">No debug info yet</p>
-        {engineError && (
-          <p className="text-sm mt-2 text-red-700">Engine error: {engineError}</p>
-        )}
-        <p className="text-sm mt-1">Upload a Capitaline ZIP to see parsing diagnostics here.</p>
-      </div>
+      <EmptyState
+        icon="wrench"
+        title="No debug info yet"
+        body={engineError ? `Engine error: ${engineError}` : "Upload a Capitaline ZIP to see parsing diagnostics here."}
+      />
     );
   }
 

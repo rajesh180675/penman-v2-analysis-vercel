@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import type { CompanyRegistry } from "../engine/types";
+import { Icon, type IconName } from "./shared/Icon";
 
 interface CommandItem {
   id: string;
   label: string;
   hint?: string | undefined;
   category: "navigate" | "company" | "action" | "modal";
-  icon: string;
+  icon: IconName;
   keywords: string[];
   run: () => void;
 }
@@ -36,29 +37,29 @@ export default function CommandPalette({
   // Build command list
   const commands = useMemo<CommandItem[]>(() => {
     const navItems: CommandItem[] = [
-      { id: "nav-dashboard", label: "Go to Dashboard", hint: "Single-screen overview + verdict", category: "navigate", icon: "📊", keywords: ["dashboard", "home", "overview", "verdict"], run: () => setActiveTab("dashboard") },
-      { id: "nav-upload", label: "Go to Data (upload)", hint: "Upload Capitaline ZIP, configure", category: "navigate", icon: "📂", keywords: ["data", "upload", "input", "capitaline"], run: () => setActiveTab("upload") },
-      { id: "nav-statements", label: "Go to Statements", hint: "Recast BS / IS / CF + waterfall charts", category: "navigate", icon: "📋", keywords: ["statements", "balance sheet", "income", "cash flow", "waterfall"], run: () => setActiveTab("statements") },
-      { id: "nav-ratios", label: "Go to Ratios", hint: "Sparklines, DuPont waterfall, NSE bands", category: "navigate", icon: "📈", keywords: ["ratios", "roce", "rnoa", "dupont", "sparkline"], run: () => setActiveTab("ratios") },
-      { id: "nav-forecast", label: "Go to Forecast", hint: "Scenarios, Monte Carlo, reverse DCF", category: "navigate", icon: "🔮", keywords: ["forecast", "scenarios", "monte carlo", "fade"], run: () => setActiveTab("forecast") },
-      { id: "nav-valuation", label: "Go to Valuation", hint: "Framework radar, EPV, sensitivity, tornado", category: "navigate", icon: "🎯", keywords: ["valuation", "intrinsic", "epv", "moat", "tornado"], run: () => setActiveTab("valuation") },
-      { id: "nav-quality", label: "Go to Quality", hint: "Piotroski / Altman / Beneish / Ohlson", category: "navigate", icon: "🩺", keywords: ["quality", "piotroski", "altman", "beneish", "distress"], run: () => setActiveTab("quality") },
-      { id: "nav-bank", label: "Go to Bank Tab", hint: "NIM / ROA / ROE — bank/NBFC specific", category: "navigate", icon: "🏦", keywords: ["bank", "nbfc", "nim", "credit cost"], run: () => setActiveTab("bank") },
-      { id: "nav-comparison", label: "Go to Comparison", hint: "Sector heatmap, scatter plots, peer values", category: "navigate", icon: "🆚", keywords: ["comparison", "peers", "scatter", "heatmap"], run: () => setActiveTab("comparison") },
-      { id: "nav-watchlist", label: "Go to Watchlist", hint: "Ranked tracked companies", category: "navigate", icon: "🗂️", keywords: ["watchlist", "tracking", "ranked"], run: () => setActiveTab("watchlist") },
-      { id: "nav-workspace", label: "Go to Workspace", hint: "Notes / research per company", category: "navigate", icon: "✏️", keywords: ["workspace", "notes", "research"], run: () => setActiveTab("workspace") },
-      { id: "nav-report", label: "Go to Report (Export)", hint: "Generate Excel workbook", category: "navigate", icon: "📥", keywords: ["report", "export", "excel", "xlsx", "pdf"], run: () => setActiveTab("report") },
-      { id: "nav-runs", label: "Go to Audit Runs", hint: "All runs, persisted to ~/.penman-data/audit/", category: "navigate", icon: "📜", keywords: ["runs", "audit", "history"], run: () => setActiveTab("inspector") },
+      { id: "nav-dashboard", label: "Go to Dashboard", hint: "Single-screen overview + verdict", category: "navigate", icon: "chart", keywords: ["dashboard", "home", "overview", "verdict"], run: () => setActiveTab("dashboard") },
+      { id: "nav-upload", label: "Go to Data (upload)", hint: "Upload Capitaline ZIP, configure", category: "navigate", icon: "database", keywords: ["data", "upload", "input", "capitaline"], run: () => setActiveTab("upload") },
+      { id: "nav-statements", label: "Go to Statements", hint: "Recast BS / IS / CF + waterfall charts", category: "navigate", icon: "table", keywords: ["statements", "balance sheet", "income", "cash flow", "waterfall"], run: () => setActiveTab("statements") },
+      { id: "nav-ratios", label: "Go to Ratios", hint: "Sparklines, DuPont waterfall, NSE bands", category: "navigate", icon: "calculator", keywords: ["ratios", "roce", "rnoa", "dupont", "sparkline"], run: () => setActiveTab("ratios") },
+      { id: "nav-forecast", label: "Go to Forecast", hint: "Scenarios, Monte Carlo, reverse DCF", category: "navigate", icon: "trending-up", keywords: ["forecast", "scenarios", "monte carlo", "fade"], run: () => setActiveTab("forecast") },
+      { id: "nav-valuation", label: "Go to Valuation", hint: "Framework radar, EPV, sensitivity, tornado", category: "navigate", icon: "currency", keywords: ["valuation", "intrinsic", "epv", "moat", "tornado"], run: () => setActiveTab("valuation") },
+      { id: "nav-quality", label: "Go to Quality", hint: "Piotroski / Altman / Beneish / Ohlson", category: "navigate", icon: "search", keywords: ["quality", "piotroski", "altman", "beneish", "distress"], run: () => setActiveTab("quality") },
+      { id: "nav-bank", label: "Go to Bank Tab", hint: "NIM / ROA / ROE — bank/NBFC specific", category: "navigate", icon: "bank", keywords: ["bank", "nbfc", "nim", "credit cost"], run: () => setActiveTab("bank") },
+      { id: "nav-comparison", label: "Go to Comparison", hint: "Sector heatmap, scatter plots, peer values", category: "navigate", icon: "users", keywords: ["comparison", "peers", "scatter", "heatmap"], run: () => setActiveTab("comparison") },
+      { id: "nav-watchlist", label: "Go to Watchlist", hint: "Ranked tracked companies", category: "navigate", icon: "folder", keywords: ["watchlist", "tracking", "ranked"], run: () => setActiveTab("watchlist") },
+      { id: "nav-workspace", label: "Go to Workspace", hint: "Notes / research per company", category: "navigate", icon: "compass", keywords: ["workspace", "notes", "research"], run: () => setActiveTab("workspace") },
+      { id: "nav-report", label: "Go to Report (Export)", hint: "Generate Excel workbook", category: "navigate", icon: "book", keywords: ["report", "export", "excel", "xlsx", "pdf"], run: () => setActiveTab("report") },
+      { id: "nav-runs", label: "Go to Audit Runs", hint: "All runs, persisted to ~/.penman-data/audit/", category: "navigate", icon: "satellite", keywords: ["runs", "audit", "history"], run: () => setActiveTab("inspector") },
     ];
 
     const modalItems: CommandItem[] = [
-      { id: "modal-glossary", label: "Open Glossary", hint: "Definitions of RNOA / NOA / EPV / Piotroski / etc.", category: "modal", icon: "📖", keywords: ["glossary", "definitions", "help", "what is", "meaning"], run: () => setGlossaryOpen(true) },
-      { id: "modal-shortcuts", label: "Show Keyboard Shortcuts", hint: "Vim-style g+letter sequences and more", category: "modal", icon: "⌨️", keywords: ["shortcuts", "keyboard", "keys", "hotkeys"], run: () => setShortcutsOpen(true) },
+      { id: "modal-glossary", label: "Open Glossary", hint: "Definitions of RNOA / NOA / EPV / Piotroski / etc.", category: "modal", icon: "book", keywords: ["glossary", "definitions", "help", "what is", "meaning"], run: () => setGlossaryOpen(true) },
+      { id: "modal-shortcuts", label: "Show Keyboard Shortcuts", hint: "Vim-style g+letter sequences and more", category: "modal", icon: "keyboard", keywords: ["shortcuts", "keyboard", "keys", "hotkeys"], run: () => setShortcutsOpen(true) },
     ];
 
     const actionItems: CommandItem[] = [
-      { id: "action-toggle-dark", label: "Toggle Dark Mode", category: "action", icon: "🌙", keywords: ["dark", "light", "theme", "mode", "color"], run: () => setDarkMode((v) => !v) },
-      { id: "action-print", label: "Print / Save Dashboard as PDF", hint: "Browser print dialog with print stylesheet", category: "action", icon: "🖨️", keywords: ["print", "pdf", "export", "save"], run: () => window.print() },
+      { id: "action-toggle-dark", label: "Toggle Dark Mode", category: "action", icon: "moon", keywords: ["dark", "light", "theme", "mode", "color"], run: () => setDarkMode((v) => !v) },
+      { id: "action-print", label: "Print / Save Dashboard as PDF", hint: "Browser print dialog with print stylesheet", category: "action", icon: "printer", keywords: ["print", "pdf", "export", "save"], run: () => window.print() },
     ];
 
     const companyItems: CommandItem[] = onSwitchCompany
@@ -70,7 +71,7 @@ export default function CommandPalette({
             label: `Switch to ${c.label || c.id}`,
             hint: `${c.recastData.length} periods loaded`,
             category: "company" as const,
-            icon: "🏢",
+            icon: "building",
             keywords: [c.id.toLowerCase(), (c.label || "").toLowerCase(), "company", "switch"],
             run: () => onSwitchCompany(c.id),
           }))
@@ -181,7 +182,7 @@ export default function CommandPalette({
                           isHighlighted ? "bg-indigo-50 dark:bg-indigo-900/30" : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
                         }`}
                       >
-                        <span className="text-lg">{c.icon}</span>
+                        <span className="wb-text-3 flex-shrink-0"><Icon name={c.icon} size={16} /></span>
                         <div className="flex-1 min-w-0">
                           <div className={`text-sm font-medium truncate ${isHighlighted ? "text-indigo-700 dark:text-indigo-300" : "text-slate-800 dark:text-slate-200"}`}>
                             {c.label}

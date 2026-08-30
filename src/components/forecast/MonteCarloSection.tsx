@@ -22,10 +22,10 @@ export default function MonteCarloSection({
   sharesOut: number | null;
 }) {
   return (
-    <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+    <div className="wb-panel rounded-2xl p-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-800">Monte Carlo Simulation — §4.1.1</h2>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Monte Carlo Simulation — §4.1.1</h2>
           <p className="text-xs text-slate-500">N=10,000 simulations in Web Worker. Outputs valuation distribution percentiles{sharesOut ? " on a per-share basis" : ""}.</p>
         </div>
         <button onClick={runMc} disabled={mcBusy} className={`px-4 py-2 rounded-lg text-sm font-medium ${mcBusy?"bg-slate-300 text-slate-100":"bg-indigo-600 text-white hover:bg-indigo-700"}`}>

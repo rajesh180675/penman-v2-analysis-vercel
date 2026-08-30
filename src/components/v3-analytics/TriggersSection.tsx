@@ -9,7 +9,7 @@ export function TriggersSection({ triggers, fadeParams }: {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-bold text-slate-800 mb-1">§15.3 Monitoring Triggers</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">§15.3 Monitoring Triggers</h3>
         <p className="text-xs text-slate-500">Auto-generated investment monitoring triggers derived from the analysis.</p>
       </div>
 

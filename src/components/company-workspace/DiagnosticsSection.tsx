@@ -60,7 +60,7 @@ export default function DiagnosticsSection({
   return (
     <section className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-base font-bold text-slate-800">Concept Ontology Coverage</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Concept Ontology Coverage</h3>
         <p className="mt-1 text-sm text-slate-500">This shows whether the loaded statements cover the analytical concepts the model cares about, not just raw line counts.</p>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <MetricCard label="Coverage" value={`${(conceptCoverage.coveragePct * 100).toFixed(0)}%`} />
@@ -82,7 +82,7 @@ export default function DiagnosticsSection({
         </div>
       </div>
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-base font-bold text-slate-800">Statement Diagnostics And Corporate Actions</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Statement Diagnostics And Corporate Actions</h3>
         <div className="mt-4 space-y-2 text-sm text-slate-700">
           {statementDiagnostics.diagnostics.length > 0 && (
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">

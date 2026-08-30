@@ -30,8 +30,8 @@ export default function FadeAnalysisSection({
   NP_ATO: number;
 }) {
   return (
-    <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-      <h2 className="text-lg font-bold text-slate-800 mb-2">Fade Analysis — N&P Table 3</h2>
+    <div className="wb-panel rounded-2xl p-6">
+      <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Fade Analysis — N&P Table 3</h2>
       <p className="text-xs text-slate-500 mb-4">Ratios mean-revert toward N&P historical medians (R<sub>t+1</sub> = α×R<sub>t</sub> + (1−α)×R̄ median)</p>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>

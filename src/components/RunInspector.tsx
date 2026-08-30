@@ -215,7 +215,7 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-800">Run Inspector</h2>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Run Inspector</h2>
             <p className="mt-1 text-sm text-slate-500">
               First-class audit timeline for the current browser-authorized run, without exposing broad admin audit access.
             </p>
@@ -257,7 +257,7 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-bold text-slate-800">Opportunity Watchlist</h3>
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Opportunity Watchlist</h3>
             <p className="mt-1 text-sm text-slate-500">Local portfolio-style ranking across remembered audited runs using the persisted valuation manifest.</p>
           </div>
           <div className="text-xs text-slate-500">{watchlistRows.length} tracked runs</div>
@@ -296,7 +296,7 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
 
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-bold text-slate-800">Latest Market Snapshot</h3>
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Latest Market Snapshot</h3>
           {marketSnapshot ? (
             <div className="mt-4 space-y-2 text-sm text-slate-700">
               <div>Symbol: <strong>{marketSnapshot.symbol ?? "—"}</strong></div>
@@ -319,7 +319,7 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-bold text-slate-800">Latest Valuation Signal</h3>
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Latest Valuation Signal</h3>
           {valuationSignal ? (
             <div className="mt-4 space-y-3 text-sm text-slate-700">
               <div>State: <strong>{valuationSignal.label ?? valuationSignal.state ?? "—"}</strong></div>
@@ -352,7 +352,7 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
 
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-bold text-slate-800">Latest Valuation Manifest</h3>
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Latest Valuation Manifest</h3>
           {valuationManifest ? (
             <div className="mt-4 space-y-3 text-sm text-slate-700">
               <div>Sector template: <strong>{valuationManifest.sectorTemplate?.label ?? "—"}</strong></div>
@@ -372,7 +372,7 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-bold text-slate-800">Alerts and Backtest</h3>
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Alerts and Backtest</h3>
           <div className="mt-4 space-y-3 text-sm text-slate-700">
             <div>Latest alert: <strong>{valuationAlert?.label ?? valuationAlert?.state ?? "—"}</strong></div>
             <div>Alert summary: <strong>{valuationAlert?.summary ?? "—"}</strong></div>
@@ -386,7 +386,7 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
 
       <section className="grid gap-6 lg:grid-cols-[1.35fr,0.95fr]">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="font-semibold text-slate-800">Timeline</h3>
+          <h3 className="font-semibold text-slate-800 dark:text-slate-100">Timeline</h3>
           <div className="mt-4 space-y-3">
             {payload?.timeline?.length ? payload.timeline.map((item) => (
               <div key={item.pathname} className="rounded-xl border border-slate-200 p-3">
@@ -409,7 +409,7 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
 
         <div className="space-y-6">
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="font-semibold text-slate-800">Monitor Findings</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">Monitor Findings</h3>
             <ul className="mt-3 space-y-2 text-sm text-slate-700">
               {payload?.health.findings?.map((finding) => (
                 <li key={finding} className="rounded-lg bg-slate-50 px-3 py-2">{finding}</li>
@@ -421,7 +421,7 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="font-semibold text-slate-800">Artifacts and Inputs</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">Artifacts and Inputs</h3>
             <div className="mt-3 space-y-3 text-sm">
               {(payload?.inputs ?? []).map((item) => (
                 <div key={item.pathname} className="rounded-lg border border-slate-200 px-3 py-2">
@@ -468,7 +468,7 @@ export default function RunInspector({ auditMeta, analysisStatus }: Props) {
           />
 
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="font-semibold text-slate-800">Governance and Recovery</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">Governance and Recovery</h3>
             <div className="mt-3 grid gap-3 text-sm text-slate-700">
               <div className="rounded-lg bg-slate-50 px-3 py-2">
                 Sensitive class: <strong>{selectedRun?.contentClass ?? payload?.governance?.contentClass ?? "—"}</strong>

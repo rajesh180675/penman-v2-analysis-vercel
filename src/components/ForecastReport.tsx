@@ -404,7 +404,7 @@ function LegacyForecastReport({data,config, rawData = null, traceability = null,
       <SectionHeader
         title="Forecast"
         subtitle="Multi-scenario persistence-based forecasting with fade-to-median convergence"
-        icon="📈"
+        icon="trending-up"
       />
 
       {valuationReadiness.status !== "production-ready" && (

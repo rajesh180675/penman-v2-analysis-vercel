@@ -1,4 +1,5 @@
 import type { MoatScoreResult, MoatWidth } from "../../engine/moatScoring";
+import { Icon, type IconName } from "../shared/Icon";
 
 interface Props {
   moat: MoatScoreResult | null;
@@ -6,34 +7,34 @@ interface Props {
   title?: string | undefined;
 }
 
-const WIDTH_STYLES: Record<MoatWidth, { bg: string; text: string; border: string; label: string; emoji: string }> = {
+const WIDTH_STYLES: Record<MoatWidth, { bg: string; text: string; border: string; label: string; icon: IconName }> = {
   wide: {
     bg: "bg-emerald-50 dark:bg-emerald-900/30",
     text: "text-emerald-700 dark:text-emerald-300",
     border: "border-emerald-300 dark:border-emerald-700",
     label: "Wide Moat",
-    emoji: "🏰",
+    icon: "shield-check",
   },
   narrow: {
     bg: "bg-blue-50 dark:bg-blue-900/30",
     text: "text-blue-700 dark:text-blue-300",
     border: "border-blue-300 dark:border-blue-700",
     label: "Narrow Moat",
-    emoji: "🛡️",
+    icon: "shield",
   },
   none: {
     bg: "bg-slate-50 dark:bg-slate-800/50",
     text: "text-slate-600 dark:text-slate-400",
     border: "border-slate-300 dark:border-slate-700",
     label: "No Moat",
-    emoji: "⚠️",
+    icon: "shield-warning",
   },
   "insufficient-data": {
     bg: "bg-amber-50 dark:bg-amber-900/30",
     text: "text-amber-700 dark:text-amber-300",
     border: "border-amber-300 dark:border-amber-700",
     label: "Insufficient Data",
-    emoji: "❓",
+    icon: "info",
   },
 };
 
@@ -63,7 +64,7 @@ export default function MoatPanel({ moat, title = "Economic Moat" }: Props) {
         <div>
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">{title}</h3>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl">{style.emoji}</span>
+            <span className="wb-text-2"><Icon name={style.icon} size={22} /></span>
             <span className={`text-lg font-bold ${style.text}`}>{style.label}</span>
             <span className={`text-xs font-medium ${trend.color}`}>{trend.label}</span>
           </div>

@@ -13,7 +13,7 @@ export function GapDecompSection({ gap }: { gap: ReReOIGapDecomposition }) {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-base font-bold text-slate-800 mb-1">§6 RE ↔ ReOI Gap Decomposition (S-15.2)</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">§6 RE ↔ ReOI Gap Decomposition (S-15.2)</h3>
         <p className="text-xs text-slate-500">Exact four-component decomposition of the V_RE − V_ReOI valuation gap.</p>
       </div>
       <div className="overflow-x-auto">

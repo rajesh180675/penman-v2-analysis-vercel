@@ -24,7 +24,7 @@ export default function ReSeriesSection({
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-        <h2 className="text-lg font-bold text-slate-800">Residual Income Series</h2>
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Residual Income Series</h2>
         <p className="text-xs text-slate-500 mt-0.5">
           RE = CNI − ke×CSE₍t−1₎  |  ReOI = OI − kw×NOA₍t−1₎  |  §6.1–6.2
           {sharesOut ? ` · Rendered on a per-share basis using ${sharesOut.toLocaleString("en-IN", { maximumFractionDigits: 2 })} Cr shares.` : " · Rendered in ₹ Cr until a share basis is available."}

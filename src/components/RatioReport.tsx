@@ -4,6 +4,7 @@ import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTra
 import { generateRatiosNarrative } from "../engine/narrativeEngine";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import { SectionHeader, InsightBlock, FormulaTooltip, BenchmarkBar } from "./shared/DesignSystem";
+import { EmptyState } from "./shared/EmptyState";
 import { useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -28,10 +29,11 @@ export default function RatioReport({data, config, traceability = null, traceabi
   const [view, setView] = useState<"core"|"wc"|"trend">("core");
   const traceabilitySummary = precomputedTraceabilitySummary ?? buildValuationTraceabilitySurfaceSummary(traceability);
   if (!data||data.length<=1) return (
-    <div className="card-base p-8 text-center">
-      <p className="font-semibold text-slate-600 dark:text-slate-300 dark:text-slate-300 text-lg">Need ≥ 2 periods</p>
-      <p className="text-sm text-slate-500 mt-2">Upload data with at least two fiscal years to see ratio analysis</p>
-    </div>
+    <EmptyState
+      icon="calculator"
+      title="Need ≥ 2 periods"
+      body="Upload data with at least two fiscal years to see ratio analysis"
+    />
   );
 
   const rd = data.filter(d=>d.ratios);
@@ -85,7 +87,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
       <SectionHeader
         title="Ratios"
         subtitle="How does this business generate returns?"
-        icon="📐"
+        icon="calculator"
       />
 
       {/* Narrative insight — plain English explanation of the numbers */}
@@ -117,7 +119,7 @@ export default function RatioReport({data, config, traceability = null, traceabi
         history={dupont5}
       />
 
-      <div className="bg-white dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex items-center justify-between">
+      <div className="wb-panel rounded-xl p-3 flex items-center justify-between">
         <div className="text-sm text-slate-700 dark:text-slate-200 font-medium">Analysis View</div>
         <div className="inline-flex rounded-lg overflow-hidden border border-slate-300">
           <button onClick={() => setView("core")} className={`px-3 py-1.5 text-xs ${view === "core" ? "bg-indigo-600 text-white" : "bg-white text-slate-600 dark:text-slate-300 dark:text-slate-300"}`}>Core Ratios</button>

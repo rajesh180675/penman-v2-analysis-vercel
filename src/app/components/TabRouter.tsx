@@ -35,6 +35,8 @@ const CompanyWorkspace = lazy(() => import("../../components/CompanyWorkspace"))
 const WatchlistDashboard = lazy(() => import("../../components/WatchlistDashboard"));
 const InvestmentThesis = lazy(() => import("../../components/InvestmentThesis"));
 const DashboardView = lazy(() => import("../../components/dashboard/DashboardView"));
+const DesignSystemShowcase = lazy(() => import("../../components/design/DesignSystemShowcase"));
+const ChartGallery = lazy(() => import("../../components/design/ChartGallery"));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyResult = any;
@@ -308,6 +310,8 @@ export function TabRouter(props: TabRouterProps) {
       )}
       {activeTab === "v3analytics" && hasRecast && <V3AnalyticsPanel data={recastData!} config={config} traceability={traceability} traceabilitySummary={publication?.traceabilitySummary ?? null} itServices={itServicesSignal} />}
       {activeTab === "debug" && <DebugPanel debugInfo={debugInfo} recastData={recastData} rawData={rawData} qualityGate={qualityGate} engineError={engineError} greenfield={pipelineResult?.greenfield ?? null} />}
+      {activeTab === "design" && <DesignSystemShowcase />}
+      {activeTab === "charts" && <ChartGallery />}
       {/* Insurance / unsupported financial scope: show clear message on valuation tab */}
       {activeTab === "valuation" && !hasRecast && scopeBlocked && !bankResult && rawData && rawData.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">

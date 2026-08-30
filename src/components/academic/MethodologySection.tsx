@@ -10,11 +10,11 @@ export function MethodologySection(props: {
 }) {
   const { rawData, data, eqROCE, eqRNOA, eqRE, eqReOI } = props;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">2) Methodology — Nissim & Penman (2001) Framework</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">2) Methodology — Nissim & Penman (2001) Framework</h2>
         <div className="text-sm text-slate-700 space-y-4">
           <div>
-            <h3 className="font-semibold text-slate-800 mb-1">2.1 Operating / Financing Separation</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-1">2.1 Operating / Financing Separation</h3>
             <p>
               The engine implements the N&amp;P (2001) separation of all assets and liabilities into operating (OA, OL)
               and financing (FA, FO) categories. Financial assets include cash, short-term investments, long-term
@@ -27,7 +27,7 @@ export function MethodologySection(props: {
             </p>
           </div>
           <div>
-            <h3 className="font-semibold text-slate-800 mb-1">2.2 India-Specific Adjustments (Ind AS)</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-1">2.2 India-Specific Adjustments (Ind AS)</h3>
             <p>
               (a) <b>Ind AS 116 Leases:</b> Right-of-use assets and lease liabilities are automatically included in
               OA and FO respectively (effective from FY2020 for listed Indian entities). This increases both NOA and
@@ -59,7 +59,7 @@ export function MethodologySection(props: {
             </p>
           </div>
           <div>
-            <h3 className="font-semibold text-slate-800 mb-1">2.3 Profitability Decomposition (Eq.1–16)</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-1">2.3 Profitability Decomposition (Eq.1–16)</h3>
             <p>
               The engine implements the full N&amp;P profitability bridge. ROCE = RNOA + FLEV × SPREAD
               (Eq. 4/5, N&amp;P 2001). Operating profitability decomposes as RNOA = PM × ATO (Eq. 7/8).
@@ -75,7 +75,7 @@ export function MethodologySection(props: {
             </p>
           </div>
           <div>
-            <h3 className="font-semibold text-slate-800 mb-1">2.4 Valuation Models</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-1">2.4 Valuation Models</h3>
             <p>
               <b>RE model (Eq. 1a):</b> V = CSE₀ + Σ PV(RE_t) + PV(CV_RE), where RE_t = CNI_t − k_e × CSE_(t-1).
               Three continuing values: CV1 (zero), CV2 (perpetuity), CV3 (Gordon growth at rate g).
@@ -98,7 +98,7 @@ export function MethodologySection(props: {
             </p>
           </div>
           <div>
-            <h3 className="font-semibold text-slate-800 mb-1">2.5 Forecasting (Fade Analysis)</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-1">2.5 Forecasting (Fade Analysis)</h3>
             <p>
               Forecast drivers (Sales growth, Core PM, ATO, FLEV, NBC) are faded from their latest historical values
               toward N&amp;P (2001) Table 1 long-run medians using AR(1) fade parameters from N&amp;P Table 3:
@@ -107,7 +107,7 @@ export function MethodologySection(props: {
             </p>
           </div>
           <div>
-            <h3 className="font-semibold text-slate-800 mb-1">2.6 Data Source Mapping</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-1">2.6 Data Source Mapping</h3>
             <p>
               This analysis used {rawData ? `${rawData.length} period(s) of data` : "uploaded financial data"}
               processed through the Capitaline Ind AS CSV parser with 350+ line-item mapping rules.

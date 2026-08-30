@@ -8,7 +8,7 @@ interface Props {
   conglomerateDiscount: ConglomerateDiscountResult | null;
 }
 
-const quadrantEmoji = { star: '⭐', margin_fortress: '🏰', volume_play: '🏃', dog: '🐕' } as const;
+const quadrantIcon = { star: 'target', margin_fortress: 'shield', volume_play: 'zap', dog: 'x' } as const;
 const lifecycleColor = { growth: 'text-green-400', mature: 'text-blue-400', startup: 'text-cyan-400', decline: 'text-red-400' } as const;
 const trendDisplay = { improving: { arrow: '↑', color: 'text-green-400' }, stable: { arrow: '→', color: 'text-gray-400' }, deteriorating: { arrow: '↓', color: 'text-red-400' } } as const;
 
@@ -53,7 +53,7 @@ export default function AdvancedSegmentPanel({ segmentRNOA, capitalAllocation, c
                   <td className="text-right px-1">{(seg.opm * 100).toFixed(1)}</td>
                   <td className="text-right px-1">{seg.ato.toFixed(2)}</td>
                   <td className="text-right px-1">{(seg.rnoa * 100).toFixed(1)}</td>
-                  <td className="text-center px-1">{quadrantEmoji[seg.quadrant]}</td>
+                  <td className="text-center px-1">{quadrantIcon[seg.quadrant]}</td>
                   <td className={`text-center px-1 ${lifecycleColor[seg.lifecycle]}`}>{seg.lifecycle}</td>
                   <td className={`text-center px-1 ${trendDisplay[seg.trend].color}`}>{trendDisplay[seg.trend].arrow}</td>
                 </tr>

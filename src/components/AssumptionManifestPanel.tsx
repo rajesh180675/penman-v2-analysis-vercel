@@ -10,8 +10,8 @@ interface Props {
 
 export default function AssumptionManifestPanel({ valuation }: Props) {
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-6 shadow-sm">
-      <h3 className="text-base font-bold text-slate-800">Assumption Manifest</h3>
+    <div className="wb-panel rounded-2xl p-6">
+      <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Assumption Manifest</h3>
       {valuation ? (
         <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
           <ManifestStat label="As of" value={valuation.asOf?.slice(0, 10) ?? "—"} />

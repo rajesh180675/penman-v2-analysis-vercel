@@ -107,7 +107,7 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
         <SectionHeader
           title="Financial Institution Analysis"
           subtitle={`${bankResult.subtype} · ${bankResult.periods.length} periods — NIM, credit costs, capital adequacy, and valuation`}
-          icon="🏦"
+          icon="bank"
         />
         {price != null && (
           <div
@@ -151,7 +151,7 @@ export default function FinancialInstitutionReport({ bankResult, marketCapCr, co
           crar: null,
           leverageMultiple: leverage,
         });
-        return narrative ? <InsightBlock text={narrative} icon="🏦" /> : null;
+        return narrative ? <InsightBlock text={narrative} icon="bank" /> : null;
       })()}
 
       <div className="flex justify-between items-start gap-3 flex-wrap">
