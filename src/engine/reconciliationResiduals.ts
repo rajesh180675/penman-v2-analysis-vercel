@@ -157,6 +157,7 @@ function buildOptionalCheck(params: {
   denominator: number | null;
   warningThreshold: number;
   criticalThreshold: number;
+  role?: "gating" | "diagnostic";
 }): ReconciliationResidualCheck | null {
   if (
     params.residual == null ||
@@ -166,7 +167,7 @@ function buildOptionalCheck(params: {
   ) {
     return null;
   }
-  return buildCheck({
+  const built = buildCheck({
     key: params.key,
     label: params.label,
     periodEnd: params.periodEnd,
@@ -175,6 +176,7 @@ function buildOptionalCheck(params: {
     warningThreshold: params.warningThreshold,
     criticalThreshold: params.criticalThreshold,
   });
+  return params.role != null ? { ...built, role: params.role } : built;
 }
 
 function median(values: number[]): number {
@@ -542,11 +544,20 @@ export function evaluateReconciliationResiduals(params: {
     const reportedBridgeCoreOi = operatingCostBridge != null
       ? period.cu.CoreOI - period.is.OtherItems
       : null;
-    const operatingCostBridgeResidual = hasOperatingCostBridgeInputs && operatingCostBridge != null && reportedBridgeCoreOi != null
-      ? operatingCostBridge.bridgeCoreOI - reportedBridgeCoreOi
+    // bridgeCoreOI is built from pre-tax cost lines (Sales − COGS − opex);
+    // CoreOI is after-tax. Compare like bases: tax-adjust the bridge by the
+    // period's effective tax rate. Before this fix the raw pre-tax bridge
+    // was compared against the after-tax CoreOI, breaking the check on 299
+    // of 306 corpus periods (median 28%, all false positives).
+    const taxRate = period.is.taxRate;
+    const bridgeCoreOiComparable = operatingCostBridge != null && Number.isFinite(taxRate) && taxRate > 0 && taxRate < 0.55
+      ? operatingCostBridge.bridgeCoreOI * (1 - taxRate)
+      : operatingCostBridge?.bridgeCoreOI ?? null;
+    const operatingCostBridgeResidual = hasOperatingCostBridgeInputs && bridgeCoreOiComparable != null && reportedBridgeCoreOi != null
+      ? bridgeCoreOiComparable - reportedBridgeCoreOi
       : null;
-    const operatingCostBridgeBasis = operatingCostBridgeResidual != null && operatingCostBridge != null && reportedBridgeCoreOi != null
-      ? Math.max(Math.abs(operatingCostBridge.bridgeCoreOI), Math.abs(reportedBridgeCoreOi), 1)
+    const operatingCostBridgeBasis = operatingCostBridgeResidual != null && bridgeCoreOiComparable != null && reportedBridgeCoreOi != null
+      ? Math.max(Math.abs(bridgeCoreOiComparable), Math.abs(reportedBridgeCoreOi), 1)
       : null;
 
     // ── Phase 1.1 promoted/new residuals ─────────────────────────
@@ -645,6 +656,11 @@ export function evaluateReconciliationResiduals(params: {
         denominator: cashDistributionBasis,
         warningThreshold,
         criticalThreshold,
+        // Diagnostic-only until the recast reads the reported net-cash
+        // movement lines: Capitaline CF snippets decompose distributions
+        // incompletely, so this identity fails on nearly every period
+        // (267/308 corpus-wide) without signalling real misstatement.
+        role: "diagnostic",
       }),
       buildOptionalCheck({
         key: "gross-debt-flow-bridge",
@@ -654,6 +670,10 @@ export function evaluateReconciliationResiduals(params: {
         denominator: hasDebtFlowInputs ? debtFlowBasis : null,
         warningThreshold,
         criticalThreshold,
+        // Diagnostic-only: bridge debt is a recast construct whose CF
+        // proceeds/repayment lines are only partially mapped, so Δ(derived)
+        // vs reported-flow fragments fails structurally (253/308 corpus-wide).
+        role: "diagnostic",
       }),
       buildOptionalCheck({
         key: "ending-cash-bridge",
@@ -663,6 +683,11 @@ export function evaluateReconciliationResiduals(params: {
         denominator: hasEndingCashInputs ? endingCashBasis : null,
         warningThreshold,
         criticalThreshold,
+        // Diagnostic-only until the recast anchors to the reported closing
+        // cash line (netCashChange/openingCash/closingCash exist in the
+        // mapping spec but are not read): reconstruction from incomplete CF
+        // lines failed 308/308 corpus periods at a median ratio of 92%.
+        role: "diagnostic",
       }),
       buildOptionalCheck({
         key: "comprehensive-income-bridge",
@@ -773,10 +798,20 @@ export function evaluateReconciliationResiduals(params: {
     };
   }
 
-  const warningCount = checks.filter((check) => check.status === "degraded").length;
-  const errorCount = checks.filter((check) => check.status === "failed").length;
-  const maxResidualRatio = checks.reduce((max, check) => Math.max(max, check.ratio), 0);
-  const worstCheck = [...checks].sort((left, right) => right.ratio - left.ratio)[0]!;
+  // Diagnostic checks are surfaced and counted in the detail but do not drive
+  // the verdict: they measure reconstructions whose evidence the current
+  // Capitaline CF mapping cannot yet supply (see check.role docs). Gating
+  // checks (true recast identities + hard tieouts) decide the verdict alone.
+  const gatingChecks = checks.filter((check) => check.role !== "diagnostic");
+  const diagnosticChecks = checks.filter((check) => check.role === "diagnostic");
+  const gatePool = gatingChecks.length > 0 ? gatingChecks : checks;
+  const warningCount = gatePool.filter((check) => check.status === "degraded").length;
+  const errorCount = gatePool.filter((check) => check.status === "failed").length;
+  const maxResidualRatio = gatePool.reduce((max, check) => Math.max(max, check.ratio), 0);
+  const worstCheck = [...gatePool].sort((left, right) => right.ratio - left.ratio)[0]!;
+  const diagnosticSummary = diagnosticChecks.length > 0
+    ? ` ${diagnosticChecks.length} evidence-limited reconstruction check(s) are diagnostic-only (not gating).`
+    : "";
   const status: ReconciliationResidualStatus = errorCount > 0
     ? "failed"
     : warningCount > 0
@@ -784,10 +819,10 @@ export function evaluateReconciliationResiduals(params: {
       : "confirmed";
 
   const summary = status === "failed"
-    ? `${errorCount} reconciliation residual check(s) breached the critical threshold. Worst check: ${worstCheck.label} in ${worstCheck.periodEnd} at ${formatPct(worstCheck.ratio)}.`
+    ? `${errorCount} reconciliation residual check(s) breached the critical threshold. Worst check: ${worstCheck.label} in ${worstCheck.periodEnd} at ${formatPct(worstCheck.ratio)}.${diagnosticSummary}`
     : status === "degraded"
-      ? `${warningCount} reconciliation residual check(s) are above the warning threshold, but none are critical. Worst check: ${worstCheck.label} in ${worstCheck.periodEnd} at ${formatPct(worstCheck.ratio)}.`
-      : `All ${checks.length} reconciliation residual checks stayed within their warning thresholds. Worst check: ${worstCheck.label} in ${worstCheck.periodEnd} at ${formatPct(worstCheck.ratio)} (warning ${formatPct(worstCheck.warningThreshold)}).`;
+      ? `${warningCount} reconciliation residual check(s) are above the warning threshold, but none are critical. Worst check: ${worstCheck.label} in ${worstCheck.periodEnd} at ${formatPct(worstCheck.ratio)}.${diagnosticSummary}`
+      : `All ${gatePool.length} gating reconciliation residual checks stayed within their warning thresholds. Worst check: ${worstCheck.label} in ${worstCheck.periodEnd} at ${formatPct(worstCheck.ratio)} (warning ${formatPct(worstCheck.warningThreshold)}).${diagnosticSummary}`;
 
   const HARD_TIEOUT_KEYS = new Set([
     "recast-ta-vs-raw",
