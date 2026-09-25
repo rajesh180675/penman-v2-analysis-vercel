@@ -42,6 +42,8 @@ const EXPECTED_CENSUS = [
   "src/engine/regressionHarness.ts :: afterForecast",
   "src/engine/regressionHarness.ts :: afterForecast",
   "src/engine/regressionHarness.ts :: beforeForecast",
+  // Re-values the base card along buildScenarioCards' own anchored path.
+  "src/engine/valuationCommandCenter/breakEven.ts :: buildValuationPeriodsFromForecast(latest, periods)",
   "src/engine/valuationCommandCenter/builders.ts :: valuationPeriods",
 ];
 

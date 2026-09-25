@@ -25,6 +25,9 @@ test.describe("Next UI (?ui=next)", () => {
     // Phase 1: the Verdict renders from the run's command center.
     await expect(page.getByRole("region", { name: "Verdict" })).toBeVisible();
     await expect(page.getByText("Base value")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "What would change our mind" })).toBeVisible();
+    // The backtest record is served to the browser and shown as counts.
+    await expect(page.getByText(/beat .nothing changes. on sales in \d+ of \d+ years/)).toBeVisible();
 
     await page.getByRole("link", { name: "Valuation" }).click();
     await expect(page).toHaveURL(/#\/case\/TCS\/valuation$/);

@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { EmptyState } from "../components/shared/EmptyState";
 import { findLibraryCompany } from "../components/data-entry/companyRegistry";
 import { CasePage } from "./CasePage";
-import { useCompanyRun, useRegistry, useRoute } from "./hooks";
+import { useCompanyRun, useRegistry, useRoute, useTrackRecord } from "./hooks";
 import { LibraryPage } from "./LibraryPage";
 import { formatRoute, LIBRARY, type Route } from "./route";
 
@@ -25,6 +25,7 @@ export function NextApp() {
     [route, registry],
   );
   const run = useCompanyRun(company);
+  const trackRecords = useTrackRecord();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -58,7 +59,7 @@ export function NextApp() {
         {route.space === "library" && <LibraryPage registry={registry} />}
         {route.space === "case" && (
           registry.status === "ready"
-            ? <CasePage route={route} company={company} run={run} />
+            ? <CasePage route={route} company={company} run={run} trackRecords={trackRecords} />
             : <LibraryPage registry={registry} />
         )}
         {route.space === "record" && (

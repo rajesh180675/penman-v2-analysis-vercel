@@ -11,12 +11,15 @@
  *    src/engine/selfConsistentValuation/persistencePriors.generated.ts.
  * 4. Freezes today's forecasts into accountability/snapshots/<made-at>/ —
  *    never overwriting an existing snapshot: a frozen forecast is a record.
+ * 5. Writes public/data/accountability/track-record.json — each company's
+ *    one-year-ahead record against a random walk, for the Case Verdict.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  companyTrackRecord,
   estimatePanelPersistence,
   summarizeWalkForward,
   type AccountabilitySummary,
@@ -89,6 +92,15 @@ for (const r of industrial) {
   writeFileSync(path, JSON.stringify(s, null, 1) + "\n");
   written++;
 }
+
+// ── Per-company track record, served to the browser ───────────────────────
+const publicDir = join(ROOT, "public", "data", "accountability");
+mkdirSync(publicDir, { recursive: true });
+writeFileSync(join(publicDir, "track-record.json"), JSON.stringify({
+  madeAt,
+  basis: "Walk-forward backtest of the base forecast (scripts/accountability/run-all.ts); one year ahead, against a random walk. Capitaline serves restated figures, so the record sees restatements of its own history.",
+  companies: walkForwards.map(companyTrackRecord),
+}, null, 1) + "\n");
 
 writeFileSync(join(ROOT, "accountability", "summary.json"), JSON.stringify({ madeAt, overall, byGroup, priors, anchorLags }, null, 1) + "\n");
 writeFileSync(join(ROOT, "src", "engine", "selfConsistentValuation", "persistencePriors.generated.ts"), renderPriors(priors, madeAt, series.length));

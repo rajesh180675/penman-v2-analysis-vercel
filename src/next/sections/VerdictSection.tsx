@@ -3,14 +3,20 @@
  * Valuation hero reads in run-backed mode — through the hero's own formatters,
  * so every number here is the hero's number (Phase 1 parity).
  */
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { formatPct, formatPerShare } from "../../engine/valuationCommandCenter";
+import { solveBreakEvens, type BreakEvenResult } from "../../engine/valuationCommandCenter/breakEven";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
+import type { CompanyTrackRecord } from "../../engine/accountability";
 import { Withheld } from "../ui/Withheld";
 
 type CommandCenter = NonNullable<LegacyAnalysisRunExecutionResult["materialization"]["commandCenter"]>;
 
-export function VerdictSection({ result }: { result: LegacyAnalysisRunExecutionResult }) {
+export function VerdictSection({ result, trackRecord = null }: {
+  result: LegacyAnalysisRunExecutionResult;
+  /** The company's backtest record; null when none exists or it has not loaded. */
+  trackRecord?: CompanyTrackRecord | null;
+}) {
   const cc = result.materialization.commandCenter;
   if (!cc) {
     return (
@@ -32,6 +38,7 @@ export function VerdictSection({ result }: { result: LegacyAnalysisRunExecutionR
       <Panel>
         <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">{cc.signal.label}</p>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{cc.signal.summary}</p>
+        <TrackRecordLine record={trackRecord} />
       </Panel>
 
       <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -50,6 +57,8 @@ export function VerdictSection({ result }: { result: LegacyAnalysisRunExecutionR
 
       <ValueRange cc={cc} />
 
+      <ChangeOurMind cc={cc} noPrice={noPrice} />
+
       <p className="text-xs text-slate-500">
         Valued from <strong>{cc.anchorPeriod.period_end}</strong>
         {" · "}latest reported <strong>{cc.marketContext.latestReportedPeriod ?? "—"}</strong>
@@ -57,6 +66,82 @@ export function VerdictSection({ result }: { result: LegacyAnalysisRunExecutionR
           ? <> · {cc.valuationReadiness.reasons[0]}</>
           : null}
       </p>
+    </div>
+  );
+}
+
+const TRACK_METRICS = [
+  ["sales-log-error", "sales"],
+  ["core-oi-margin-error", "operating margin"],
+  ["cni-roe-point-error", "earnings"],
+] as const;
+
+/**
+ * How this company's base forecast has done one year ahead against "nothing
+ * changes" — counts a reader can check, from the walk-forward backtest.
+ */
+function TrackRecordLine({ record }: { record: CompanyTrackRecord | null }) {
+  const parts = TRACK_METRICS.flatMap(([metric, label]) => {
+    const r = record?.oneYearAhead[metric];
+    return r ? [`${label} in ${r.beatRandomWalk} of ${r.scored} years`] : [];
+  });
+  return (
+    <p className="mt-3 text-xs text-slate-500">
+      <span className="font-medium text-slate-700 dark:text-slate-300">Track record: </span>
+      {parts.length
+        ? <>one year ahead, the base forecast beat &ldquo;nothing changes&rdquo; on {parts.join("; ")}.</>
+        : <Withheld reason="No backtest record for this company." />}
+    </p>
+  );
+}
+
+const DRIVER_LABEL: Record<BreakEvenResult["driver"], string> = {
+  sales_growth: "Sales growth (year 1)",
+  core_sales_pm: "Core operating margin (year 1)",
+  ke: "Cost of equity",
+};
+
+/**
+ * What would change our mind: for each key base-case driver, the value at
+ * which the base case equals today's price (each moved alone).
+ */
+function ChangeOurMind({ cc, noPrice }: { cc: CommandCenter; noPrice: string }) {
+  // The run's command center is deeply readonly; the solver only reads it (it
+  // spreads new driver arrays and never mutates), so viewing it through the
+  // engine's mutable type is safe — the same seam the current shell uses.
+  const results = useMemo(() => solveBreakEvens(cc as unknown as Parameters<typeof solveBreakEvens>[0]), [cc]);
+  return (
+    <div className="wb-surface rounded-xl border p-4 shadow-sm">
+      <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">What would change our mind</h2>
+      <p className="mt-1 text-xs text-slate-500">The value each base-case driver would need, on its own, for the base case to equal today's price.</p>
+      <table className="mt-3 w-full text-sm">
+        <thead>
+          <tr className="text-left text-xs text-slate-500">
+            <th className="py-1 font-medium">Driver</th>
+            <th className="py-1 font-medium">Base case</th>
+            <th className="py-1 font-medium">Price requires</th>
+          </tr>
+        </thead>
+        <tbody>
+          {results.map((r) => (
+            <tr key={r.driver} className="border-t border-slate-100 dark:border-slate-800">
+              <td className="py-2 text-slate-700 dark:text-slate-300">{DRIVER_LABEL[r.driver]}</td>
+              <td className="py-2 font-medium">
+                {Number.isFinite(r.base) ? formatPct(r.base, 1) : <Withheld reason="The run has no base-case forecast." />}
+              </td>
+              <td className="py-2 font-medium">
+                {r.breakEven != null
+                  ? formatPct(r.breakEven, 1)
+                  : <Withheld reason={
+                      r.reason === "no-price" ? noPrice
+                        : r.reason === "beyond-range" ? "No value within the searched range reaches the price."
+                          : "The base case produced no value."
+                    } />}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
