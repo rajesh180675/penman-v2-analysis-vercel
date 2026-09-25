@@ -1,6 +1,6 @@
 /**
- * The next UI shell (docs/ui-revamp-plan.md), mounted when the URL carries
- * `?ui=next`. The current interface is untouched until cutover (Phase 6).
+ * The next UI shell (docs/ui-revamp-plan.md) — the default interface since the
+ * Phase 6 cutover. The classic interface stays at `?ui=classic`.
  */
 import { useMemo, useState } from "react";
 import { findLibraryCompany } from "../components/data-entry/companyRegistry";
@@ -62,7 +62,7 @@ export function NextApp() {
               })}
             </ul>
           </nav>
-          <a href={window.location.pathname} className="text-xs text-slate-500 hover:underline">Back to the current interface</a>
+          <a href="/?ui=classic" className="text-xs text-slate-500 hover:underline">Classic interface</a>
         </div>
       </header>
 

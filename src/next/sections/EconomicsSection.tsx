@@ -24,7 +24,7 @@ export function EconomicsSection({ periods }: { periods: readonly RecastPeriod[]
   const cell = (t: LineageTarget, text: string | null, label: string) => (
     <td className="px-2 py-1 text-right tabular-nums">
       {text == null ? (
-        <span className="text-xs text-slate-400" title="Not reported for this year">n/a</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400" title="Not reported for this year">n/a</span>
       ) : (
         <button
           type="button"

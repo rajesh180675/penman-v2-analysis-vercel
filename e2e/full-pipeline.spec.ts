@@ -20,7 +20,7 @@ type CompanyTypeValue =
   | "cyclical";
 
 async function openApp(page: Page) {
-  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.goto("/?ui=classic", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: /Company Library/i })).toBeVisible({ timeout: 30_000 });
 }
 

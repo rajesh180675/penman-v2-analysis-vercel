@@ -27,7 +27,7 @@ import { test, expect, type Page } from "@playwright/test";
 async function openInitialSurface(page: Page) {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.goto("/?ui=classic", { waitUntil: "domcontentloaded" });
   // A named heading, not `body`: this fails if the bundle throws on boot.
   await expect(page.getByRole("heading", { name: /Company Library/i })).toBeVisible({ timeout: 60_000 });
   return errors;
@@ -65,7 +65,7 @@ test.describe("Pre-ingestion smoke", () => {
   });
 
   test("dark mode can be deep-linked with ?dark=1", async ({ page }) => {
-    await page.goto("/?dark=1", { waitUntil: "domcontentloaded" });
+    await page.goto("/?ui=classic&dark=1", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: /Company Library/i })).toBeVisible({ timeout: 60_000 });
     await expect(page.locator("html")).toHaveClass(/(^|\s)dark(\s|$)/);
   });

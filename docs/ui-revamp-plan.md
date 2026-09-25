@@ -1,6 +1,6 @@
 # UI revamp: from module tabs to a research case
 
-**Status:** Phase 6 next (2026-09-26) — shell, hash router, Library, Case skeleton, run store, Verdict, Business & economics, Evidence & trust, Forecast, Valuation, Peers, Record and Lab live behind `?ui=next`; see "Progress" below. Plan written 2026-09-25. Supersedes the *layout* of `docs/greenfield-ui-redesign.md`, which was a visual reskin (tokens, `wb-panel`, SVG icons) and is kept as the design-token foundation.
+**Status:** Phases 0–6 delivered (2026-09-26) — the new UI is the default at `/`, the classic interface at `?ui=classic` — shell, hash router, Library, Case skeleton, run store, Verdict, Business & economics, Evidence & trust, Forecast, Valuation, Peers, Record, Lab and the as-of view; see "Progress" below. Plan written 2026-09-25. Supersedes the *layout* of `docs/greenfield-ui-redesign.md`, which was a visual reskin (tokens, `wb-panel`, SVG icons) and is kept as the design-token foundation.
 **Premise:** today's UI is organised the way the engine is built — 22 tabs, one per module (Statements, Ratios, Quality, Scope, Atlas, Business Model, Forecast, Valuation, Bank, Comparison, Report, Thesis, Regression, V3 Analytics, Debug…). A reviewer who wants the one thing the app exists to answer — *what is this company worth, how sure are we, and what would change our mind* — has to open six tabs and assemble it themselves. The revamp organises the UI around that question, and around the two things this application now does that nothing else does: **every number is traceable**, and **every forecast is scored against what happened**.
 
 ## Decisions
@@ -138,6 +138,12 @@ Each phase ships as its own PR(s) through the normal CI/merge workflow; the old 
 - The Case header offers the run's reported years ("Latest" returns to today); the URL carries the date (`#/case/TCS/verdict?asOf=2023-03-31`), and a banner states the limits.
 - **Exit test** `asOf.spec.tsx`, through the real executor on real TCS data: an FY23 Case contains only years to FY23, is anchored no later, and records the date; a later year slipped into the run makes the executor block it.
 - **Honest limit:** Capitaline serves restated figures, so an as-of view can include later restatements of the years it shows; the plan's "only data filed by then" needs the as-filed ledger (`data/filings/`) wired into the run, which is next-phase Track A work.
+
+**Phase 6 — Cutover (2026-09-26):**
+- The new UI is the **default at `/`**. `?ui=classic` opens the classic interface, and so does any classic deep link (`?company=` or `?tab=` without a `ui` flag), so links written for the classic shell — including the TCS deep-link audit — keep landing where they were meant to. The new UI's header links to it ("Classic interface").
+- Browser tests: smoke, full-pipeline and the classic accessibility sweep now load `?ui=classic`; the TCS deep-link audit is unchanged and doubles as the backward-compatibility proof; the next-UI e2e runs at `/`.
+- **Accessibility:** the sweep now also scans the new Library — the default first surface — with every axe rule on, contrast included; the new UI's "n/a" text was raised from slate-400 (2.6:1) to slate-500 to pass contrast.
+- **Deliberately not done (a change to the plan's Phase 6):** the classic tabs are not deleted. Record and Lab launch them, and own-data upload, watchlist and workspace still live there; deleting them would remove working functionality with no replacement. Each is deleted when it is rebuilt in the new UI.
 
 **Decision:** `Value`, `Withheld`, `ChartFrame` and `LineageDrawer` are built with the first section that uses them (Phase 1–2), not in Phase 0 — a component with no consumer has no contract to test against. Interactive driver edits move with the Forecast section (Phase 3).
 

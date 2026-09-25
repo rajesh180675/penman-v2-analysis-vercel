@@ -88,7 +88,7 @@ async function runAxe(page: Page): Promise<AxeViolation[]> {
 }
 
 async function openInitialSurface(page: Page): Promise<number> {
-  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.goto("/?ui=classic", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: /Company Library/i })).toBeVisible({ timeout: 60_000 });
   return (await page.content()).length;
 }
@@ -126,5 +126,15 @@ test.describe("browser accessibility gate", () => {
     // toEqual([]) rather than a count check: the failure diff names the rule,
     // the impact and the offending selectors.
     expect(found).toEqual([]);
+  });
+
+  test("the new UI's Library — the default surface since cutover — has no violations", async ({ page }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "Library", level: 1 })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(/^\d+ companies$/)).toBeVisible();
+    // Non-vacuity: the library cards must have rendered before axe runs.
+    expect(await page.locator('a[href^="#/case/"]').count()).toBeGreaterThan(10);
+
+    expect(await runAxe(page)).toEqual([]);
   });
 });

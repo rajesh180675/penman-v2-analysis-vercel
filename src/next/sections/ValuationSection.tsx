@@ -162,7 +162,7 @@ function Sensitivity({ cc }: { cc: CommandCenter }) {
               <th scope="row" className="py-1 pr-3 text-left text-xs font-medium text-slate-500">{percent(base.ke + SENSITIVITY_KE[i]!)}</th>
               {row.map((cell, j) => (
                 <td key={SENSITIVITY_G[j]} className={`px-2 py-1 ${i === 2 && j === 2 ? "font-semibold" : ""}`}>
-                  {cell?.value != null ? formatPerShare(cell.value) : <span className="text-xs text-slate-400" title="Terminal growth at or above the discount rate">n/a</span>}
+                  {cell?.value != null ? formatPerShare(cell.value) : <span className="text-xs text-slate-500 dark:text-slate-400" title="Terminal growth at or above the discount rate">n/a</span>}
                 </td>
               ))}
             </tr>
