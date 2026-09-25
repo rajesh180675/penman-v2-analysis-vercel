@@ -67,8 +67,19 @@ export interface TerminalREValidation {
   flags: SpecFlag[];
 }
 
+/**
+ * A terminal-RE jump must also be material against equity to flag: the move
+ * from the reference RE (previous year, or the sample median) must exceed this
+ * share of the terminal period's opening CSE, i.e. 5 ROE points. The ratio
+ * tests alone fire on residual earnings near zero — a firm earning about its
+ * cost of equity (L&T: median RE ₹487 Cr on ~₹90,000 Cr equity) makes any
+ * ordinary year "6× the median" — and a CRITICAL flag walks the valuation
+ * anchor back a year.
+ */
+export const RE_ANCHOR_MATERIALITY = 0.05;
+
 export function validateTerminalREAnchor(
-  reSeries: Array<{period:string; RE:number; ReOI:number}>,
+  reSeries: Array<{period:string; RE:number; ReOI:number; openingCSE?: number | undefined}>,
   cfg: EngineConfig
 ): TerminalREValidation {
   const jump_thresh   = cfg.re_anchor_jump   ?? 2.0;
@@ -90,8 +101,13 @@ export function validateTerminalREAnchor(
   const flags: SpecFlag[] = [];
   let terminal_anomaly = false;
   const latest_period  = reSeries[n - 1]!.period;
+  // Without an equity basis (callers that don't supply one) the ratio tests
+  // stand alone, as before.
+  const equityBasis = reSeries[n - 1]!.openingCSE;
+  const material = (reference: number) =>
+    equityBasis == null || !(equityBasis > 0) || Math.abs(RE_T - reference) > RE_ANCHOR_MATERIALITY * equityBasis;
 
-  if (anchor_jump != null && anchor_jump > jump_thresh) {
+  if (anchor_jump != null && anchor_jump > jump_thresh && material(RE_prev!)) {
     terminal_anomaly = true;
     flags.push(flag(
       "S-10.1", Severity.CRITICAL, "TERMINAL_RE_ANOMALY",
@@ -100,7 +116,7 @@ export function validateTerminalREAnchor(
       true, latest_period
     ));
   }
-  if (anchor_vs_median != null && anchor_vs_median > median_thresh) {
+  if (anchor_vs_median != null && anchor_vs_median > median_thresh && material(RE_median!)) {
     terminal_anomaly = true;
     flags.push(flag(
       "S-10.1", Severity.CRITICAL, "TERMINAL_RE_ANOMALY",
