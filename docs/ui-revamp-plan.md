@@ -1,6 +1,6 @@
 # UI revamp: from module tabs to a research case
 
-**Status:** Phase 4 next (2026-09-26) — shell, hash router, Library, Case skeleton, run store, Verdict, Business & economics, Evidence & trust, Forecast and Valuation live behind `?ui=next`; see "Progress" below. Plan written 2026-09-25. Supersedes the *layout* of `docs/greenfield-ui-redesign.md`, which was a visual reskin (tokens, `wb-panel`, SVG icons) and is kept as the design-token foundation.
+**Status:** Phase 5 next (2026-09-26) — shell, hash router, Library, Case skeleton, run store, Verdict, Business & economics, Evidence & trust, Forecast, Valuation, Peers, Record and Lab live behind `?ui=next`; see "Progress" below. Plan written 2026-09-25. Supersedes the *layout* of `docs/greenfield-ui-redesign.md`, which was a visual reskin (tokens, `wb-panel`, SVG icons) and is kept as the design-token foundation.
 **Premise:** today's UI is organised the way the engine is built — 22 tabs, one per module (Statements, Ratios, Quality, Scope, Atlas, Business Model, Forecast, Valuation, Bank, Comparison, Report, Thesis, Regression, V3 Analytics, Debug…). A reviewer who wants the one thing the app exists to answer — *what is this company worth, how sure are we, and what would change our mind* — has to open six tabs and assemble it themselves. The revamp organises the UI around that question, and around the two things this application now does that nothing else does: **every number is traceable**, and **every forecast is scored against what happened**.
 
 ## Decisions
@@ -125,6 +125,13 @@ Each phase ships as its own PR(s) through the normal CI/merge workflow; the old 
 - **Exit tests** `forecastValuation.spec.tsx` (real TCS and ITC data): the edited value and every forecast row are the engine's; the model table shows every computed value and every withheld reason; the grid's centre is the base card.
 - **Measured, and a plan change:** a re-valuation takes 0.05 ms (median; p95 0.10 ms) on ITC, the largest bundled company, and the 25-cell grid 1.7 ms — three orders of magnitude inside the 150 ms budget. Driver edits therefore stay on the main thread; routing them through the worker would add latency, not remove it.
 - Not done: the fade chart (the year-by-year table carries it) and frozen snapshots as ghost lines (`accountability/snapshots/` is not served to the browser).
+
+**Phase 4 — Peers, Record, Lab (2026-09-26):**
+- `sections/PeersSection.tsx`: the company beside up to four same-type library peers — latest-year RNOA, margin, turnover, ROCE, sales growth, base value and upside. Peers are analysed only when the reader asks (each is a full run), one at a time, through the session run cache.
+- `legacyTools.ts` maps **every one of the 22 current tabs** to a home, keyed by `TabId` so a new tab without a home fails to compile: 11 to rebuilt Case sections, 3 to the Library (own-data upload, watchlist, workspace), 2 to the Record (report, thesis), 6 to the Lab (run inspector, regression, V3 analytics, debug, design, charts).
+- `ToolsPage.tsx` (Record and Lab) and the Library's "Your data and lists" open those tools **in the classic interface** for the chosen company (`/?ui=classic&tab=…&company=…`, the deep link the current shell already reads); a tool that needs a company is withheld until one is chosen.
+- **Decision, a change to the plan:** hosting the classic tabs inside the new shell would mean re-creating the classic shell's whole state (registry, workspace, uploads, sidecars, market data) — i.e. the classic shell itself. The Record and Lab therefore launch the classic interface rather than embed it, and Phase 6 keeps it available at `?ui=classic` instead of deleting the tabs: the Lab tools and own-data upload still live there. Tabs are deleted one by one as each is rebuilt.
+- Exit test `phase4.spec.tsx`: all 22 tabs mapped exactly once; Case homes are real sections; classic links carry the deep link; peers chosen, measured and gated as specified.
 
 **Decision:** `Value`, `Withheld`, `ChartFrame` and `LineageDrawer` are built with the first section that uses them (Phase 1–2), not in Phase 0 — a component with no consumer has no contract to test against. Interactive driver edits move with the Forecast section (Phase 3).
 

@@ -2,11 +2,12 @@
  * The next UI shell (docs/ui-revamp-plan.md), mounted when the URL carries
  * `?ui=next`. The current interface is untouched until cutover (Phase 6).
  */
-import { useMemo } from "react";
-import { EmptyState } from "../components/shared/EmptyState";
+import { useMemo, useState } from "react";
 import { findLibraryCompany } from "../components/data-entry/companyRegistry";
 import { CasePage } from "./CasePage";
-import { useCompanyRun, useRegistry, useRoute, useTrackRecord } from "./hooks";
+import { useCompanyRun, usePeerRuns, useRegistry, useRoute, useTrackRecord } from "./hooks";
+import { choosePeers } from "./sections/PeersSection";
+import { ToolsPage } from "./ToolsPage";
 import { LibraryPage } from "./LibraryPage";
 import { formatRoute, LIBRARY, type Route } from "./route";
 
@@ -26,6 +27,16 @@ export function NextApp() {
   );
   const run = useCompanyRun(company);
   const trackRecords = useTrackRecord();
+  const peers = useMemo(
+    () => (company && registry.status === "ready" ? choosePeers(company, registry.companies) : []),
+    [company, registry],
+  );
+  const [peersRequestedFor, setPeersRequestedFor] = useState<string | null>(null);
+  const peerRuns = usePeerRuns(peers, company != null && peersRequestedFor === company.folder);
+  const recordCompany = useMemo(
+    () => (route.space === "record" && route.company && registry.status === "ready" ? findLibraryCompany(registry.companies, route.company) : null),
+    [route, registry],
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -59,14 +70,23 @@ export function NextApp() {
         {route.space === "library" && <LibraryPage registry={registry} />}
         {route.space === "case" && (
           registry.status === "ready"
-            ? <CasePage route={route} company={company} run={run} trackRecords={trackRecords} />
+            ? (
+              <CasePage
+                route={route}
+                company={company}
+                run={run}
+                trackRecords={trackRecords}
+                peers={peers}
+                peerRuns={peerRuns}
+                onLoadPeers={() => setPeersRequestedFor(company?.folder ?? null)}
+              />
+            )
             : <LibraryPage registry={registry} />
         )}
-        {route.space === "record" && (
-          <EmptyState icon="book" title="Record arrives in Phase 4" body="Thesis, research journal, frozen forecasts and how they scored." />
-        )}
-        {route.space === "lab" && (
-          <EmptyState icon="flask" title="Lab arrives in Phase 4" body="Regression, V3 analytics, run inspector and debug tools. They remain in the current interface." />
+        {(route.space === "record" || route.space === "lab") && (
+          registry.status === "ready"
+            ? <ToolsPage kind={route.space} companies={registry.companies} company={recordCompany} />
+            : <LibraryPage registry={registry} />
         )}
       </main>
     </div>

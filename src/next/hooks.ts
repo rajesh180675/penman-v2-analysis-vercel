@@ -87,3 +87,36 @@ export function useTrackRecord(): TrackRecordFile | null {
   }, []);
   return file;
 }
+
+/**
+ * Peer runs, started only when `enabled` and one at a time (each is a full
+ * analysis), through the same session cache as the Case. Null until enabled.
+ */
+export function usePeerRuns(
+  peers: readonly LibraryCompany[],
+  enabled: boolean,
+  cache: CompanyRunCache = sessionRuns,
+): ReadonlyMap<string, CompanyRunState> | null {
+  const [runs, setRuns] = useState<ReadonlyMap<string, CompanyRunState> | null>(null);
+  useEffect(() => {
+    if (!enabled) {
+      setRuns(null);
+      return;
+    }
+    let cancelled = false;
+    const update = (folder: string, state: CompanyRunState) => {
+      if (!cancelled) setRuns((prev) => new Map(prev ?? []).set(folder, state));
+    };
+    setRuns(new Map());
+    void (async () => {
+      for (const peer of peers) {
+        if (cancelled) return;
+        update(peer.folder, { status: "loading", step: "fetching" });
+        update(peer.folder, await cache.get(peer));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [peers, enabled, cache]);
+  return runs;
+}
+
