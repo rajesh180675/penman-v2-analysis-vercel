@@ -1,0 +1,132 @@
+{
+ "symbol": "INFY",
+ "source": "NSE corporates-financial-results (Annual, Consolidated)",
+ "records": [
+  {
+   "fiscalYearEnd": "2019-03-31",
+   "filingDate": "2019-10-18T18:40",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_48345_135245_05092019030633_WEB.xml",
+   "extraction": "id-convention-undeclared",
+   "headline": {
+    "revenue": 82675,
+    "profitBeforeTax": 21041,
+    "profitAfterTax": 15410,
+    "profitFromContinuingOperations": 15410,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 15404,
+    "financeCosts": 0,
+    "totalAssets": null,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2020-03-31",
+   "filingDate": "2020-05-08T14:15",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_54913_241950_21042020033738_WEB.xml",
+   "extraction": "id-convention-undeclared",
+   "headline": {
+    "revenue": 90791,
+    "profitBeforeTax": 22007,
+    "profitAfterTax": 16639,
+    "profitFromContinuingOperations": 16639,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 16594,
+    "financeCosts": 170,
+    "totalAssets": null,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2021-03-31",
+   "filingDate": "2021-04-14T21:52",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_69333_434774_14042021095204_WEB.xml",
+   "extraction": "id-convention-undeclared",
+   "headline": {
+    "revenue": 100472,
+    "profitBeforeTax": 26628,
+    "profitAfterTax": 19423,
+    "profitFromContinuingOperations": 19423,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 19351,
+    "financeCosts": 195,
+    "totalAssets": null,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2022-03-31",
+   "filingDate": "2022-04-13T20:48",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_83516_634679_13042022084838_WEB.xml",
+   "extraction": "id-convention-undeclared",
+   "headline": {
+    "revenue": 121641,
+    "profitBeforeTax": 30110,
+    "profitAfterTax": 22146,
+    "profitFromContinuingOperations": 22146,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 22110,
+    "financeCosts": 200,
+    "totalAssets": null,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": 23885
+   }
+  },
+  {
+   "fiscalYearEnd": "2023-03-31",
+   "filingDate": "2023-04-14T10:38",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_90708_818546_14042023103840.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 146767,
+    "profitBeforeTax": 33322,
+    "profitAfterTax": 24108,
+    "profitFromContinuingOperations": 24108,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 24095,
+    "financeCosts": 284,
+    "totalAssets": 125816,
+    "totalEquity": 75795,
+    "equityAttributableToOwners": 75407,
+    "cashFlowFromOperations": 22467
+   }
+  },
+  {
+   "fiscalYearEnd": "2024-03-31",
+   "filingDate": "2024-04-19T11:28",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_104589_1099938_19042024112830.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 153670,
+    "profitBeforeTax": 35988,
+    "profitAfterTax": 26248,
+    "profitFromContinuingOperations": 26248,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 26233,
+    "financeCosts": 470,
+    "totalAssets": 137814,
+    "totalEquity": 88461,
+    "equityAttributableToOwners": 88116,
+    "cashFlowFromOperations": 25210
+   }
+  }
+ ]
+}

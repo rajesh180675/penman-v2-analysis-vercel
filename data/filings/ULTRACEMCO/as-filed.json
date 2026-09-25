@@ -1,0 +1,132 @@
+{
+ "symbol": "ULTRACEMCO",
+ "source": "NSE corporates-financial-results (Annual, Consolidated)",
+ "records": [
+  {
+   "fiscalYearEnd": "2019-03-31",
+   "filingDate": "2019-06-26T14:34",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_43623_99038_25042019120617_WEB.xml",
+   "extraction": "id-convention-undeclared",
+   "headline": {
+    "revenue": 37379.2,
+    "profitBeforeTax": 3537.83,
+    "profitAfterTax": 2431.59,
+    "profitFromContinuingOperations": 2431.05,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 2434.72,
+    "financeCosts": 1548.57,
+    "totalAssets": null,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2020-03-31",
+   "filingDate": "2020-06-03T14:22",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_55223_259846_20052020040307_WEB.xml",
+   "extraction": "id-convention-undeclared",
+   "headline": {
+    "revenue": 42124.83,
+    "profitBeforeTax": 5243.53,
+    "profitAfterTax": 5810.46,
+    "profitFromContinuingOperations": 5811.69,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 5814.84,
+    "financeCosts": 1985.65,
+    "totalAssets": null,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2021-03-31",
+   "filingDate": "2021-05-08T11:56",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_69769_446493_08052021115651_WEB.xml",
+   "extraction": "id-convention-undeclared",
+   "headline": {
+    "revenue": 44725.8,
+    "profitBeforeTax": 7855.46,
+    "profitAfterTax": 5461.85,
+    "profitFromContinuingOperations": 5316.76,
+    "profitFromDiscontinuedOperations": 142.91,
+    "profitAttributableToOwners": 5463.1,
+    "financeCosts": 1485.65,
+    "totalAssets": null,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2022-03-31",
+   "filingDate": "2022-04-29T20:48",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_83783_649799_29042022084825_WEB.xml",
+   "extraction": "id-convention-undeclared",
+   "headline": {
+    "revenue": 52598.83,
+    "profitBeforeTax": 8362.7,
+    "profitAfterTax": 7334.26,
+    "profitFromContinuingOperations": 7172.64,
+    "profitFromDiscontinuedOperations": 159.92,
+    "profitAttributableToOwners": 7344.31,
+    "financeCosts": 944.71,
+    "totalAssets": null,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": 9283.24
+   }
+  },
+  {
+   "fiscalYearEnd": "2023-03-31",
+   "filingDate": "2023-04-28T20:30",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_91005_834947_28042023083039.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 63239.98,
+    "profitBeforeTax": 7412.22,
+    "profitAfterTax": 5073.4,
+    "profitFromContinuingOperations": 5069.37,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": null,
+    "financeCosts": 822.72,
+    "totalAssets": 91386.96,
+    "totalEquity": 54380.17,
+    "equityAttributableToOwners": 54380.17,
+    "cashFlowFromOperations": 9068.51
+   }
+  },
+  {
+   "fiscalYearEnd": "2024-03-31",
+   "filingDate": "2024-04-29T20:25",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_104953_1111327_29042024082510.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 70908.14,
+    "profitBeforeTax": 9400.21,
+    "profitAfterTax": 7003.96,
+    "profitFromContinuingOperations": 6981.95,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 7005,
+    "financeCosts": 968,
+    "totalAssets": 100802.01,
+    "totalEquity": 60283.42,
+    "equityAttributableToOwners": 60227.48,
+    "cashFlowFromOperations": 10897.54
+   }
+  }
+ ]
+}
