@@ -1,6 +1,6 @@
 # UI revamp: from module tabs to a research case
 
-**Status:** Phase 1 in progress (2026-09-26) — shell, hash router, Library, Case skeleton, run store and the Verdict section live behind `?ui=next`; see "Progress" below. Plan written 2026-09-25. Supersedes the *layout* of `docs/greenfield-ui-redesign.md`, which was a visual reskin (tokens, `wb-panel`, SVG icons) and is kept as the design-token foundation.
+**Status:** Phase 3 next (2026-09-26) — shell, hash router, Library, Case skeleton, run store, Verdict, Business & economics and Evidence & trust live behind `?ui=next`; see "Progress" below. Plan written 2026-09-25. Supersedes the *layout* of `docs/greenfield-ui-redesign.md`, which was a visual reskin (tokens, `wb-panel`, SVG icons) and is kept as the design-token foundation.
 **Premise:** today's UI is organised the way the engine is built — 22 tabs, one per module (Statements, Ratios, Quality, Scope, Atlas, Business Model, Forecast, Valuation, Bank, Comparison, Report, Thesis, Regression, V3 Analytics, Debug…). A reviewer who wants the one thing the app exists to answer — *what is this company worth, how sure are we, and what would change our mind* — has to open six tabs and assemble it themselves. The revamp organises the UI around that question, and around the two things this application now does that nothing else does: **every number is traceable**, and **every forecast is scored against what happened**.
 
 ## Decisions
@@ -110,6 +110,13 @@ Each phase ships as its own PR(s) through the normal CI/merge workflow; the old 
 - **What would change our mind** (`engine/valuationCommandCenter/breakEven.ts`): for year-1 sales growth, year-1 core margin and the cost of equity, the value at which the base case equals the price, each moved alone (kw follows ke structurally, S-9.4C). The base card is re-valued along the exact path behind its displayed value — with no shift it reproduces the card to 9 decimals (tested on real TCS data). Beyond ±25pp (ke: −6/+15pp) the answer is withheld, not extrapolated.
 - **Track record**: `run-all.ts` now writes `public/data/accountability/track-record.json` (per company, one year ahead: forecasts scored and how many beat a random walk); the Verdict states the counts for sales, operating margin and earnings, or withholds them.
 - Found on the way: `buildScenarioCards` computes each card's value *with* the owner-earnings DCF, and `normalizeScenarioCards` then replaces it with the RE/ReOI median — the first computation never reaches the screen. Also, the market-implied ledger compares implied terminal ROIC against the *growth* anchor, so it reads "optimistic" for nearly every company. Neither is surfaced in the new UI; both are left for their own fixes.
+
+**Phase 2 — Economics + Evidence (2026-09-26):**
+- `lineage.ts` resolves every displayed number: statement lines to the recast's own trace (the Capitaline rows, or the derivation it recorded) plus, for derived lines, the formula and component lines; ratios to the formula in `ratiosResidual.ts` with this and the prior year's operands. `ui/LineageDrawer.tsx` shows source rows, formula and drill-down.
+- `sections/EconomicsSection.tsx`: income, balance sheet and drivers (PM, ATO, RNOA, NBC, FLEV, SPREAD, ROCE) for the latest six years ("latest 6 of N" stated), every number a button into the drawer; pattern breaks (anomaly flags) by year.
+- `sections/EvidenceSection.tsx`: rigor ladder (achieved / not, with detail), reconciliation checks and parser-fidelity checks — failures first, totals stated, diagnostic checks marked.
+- **Exit tests** `economics.spec.tsx` on real TCS and M&M data: all 15 statement lines the section shares with the Statements tab are the same strings for the same years; every displayed number (100+ per company) resolves to source rows or components; NOA = OA − OL and OI = CNI + NFE + MII add up in the drawer. Mutation-checked (formatting, a wrong field, a lost trace each fail).
+- Not yet in §3: the Capitaline-vs-as-filed tie-out (it lives in `data/filings/`, not served to the browser).
 
 **Decision:** `Value`, `Withheld`, `ChartFrame` and `LineageDrawer` are built with the first section that uses them (Phase 1–2), not in Phase 0 — a component with no consumer has no contract to test against. Interactive driver edits move with the Forecast section (Phase 3).
 

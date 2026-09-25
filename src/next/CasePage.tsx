@@ -3,12 +3,16 @@ import type { LibraryCompany } from "../components/data-entry/companyRegistry";
 import type { CompanyRunState } from "./companyRun";
 import type { TrackRecordFile } from "./hooks";
 import { CASE_SECTIONS, formatRoute, LIBRARY, type CaseRoute, type CaseSection } from "./route";
+import type { RecastPeriod } from "../engine/types";
+import { EconomicsSection } from "./sections/EconomicsSection";
+import { EvidenceSection } from "./sections/EvidenceSection";
 import { VerdictSection } from "./sections/VerdictSection";
 
+type BuiltSection = "verdict" | "economics" | "evidence";
+type UnbuiltSection = Exclude<CaseSection, BuiltSection>;
+
 /** Sections not yet built: the phase that builds each, and today's tab that covers it meanwhile. */
-const SECTION_STATUS: Record<Exclude<CaseSection, "verdict">, { phase: number; currentTab: string }> = {
-  economics: { phase: 2, currentTab: "statements" },
-  evidence: { phase: 2, currentTab: "quality" },
+const SECTION_STATUS: Record<UnbuiltSection, { phase: number; currentTab: string }> = {
   forecast: { phase: 3, currentTab: "forecast" },
   valuation: { phase: 3, currentTab: "valuation" },
   peers: { phase: 4, currentTab: "comparison" },
@@ -68,17 +72,35 @@ export function CasePage({
       </nav>
 
       <section aria-label={section.label}>
-        {route.section === "verdict"
-          ? run?.status === "ready"
-            ? <VerdictSection result={run.result} trackRecord={trackRecords?.companies.find((c) => c.ticker === company.ticker) ?? null} />
-            : null
+        {isBuilt(route.section)
+          ? run?.status === "ready" ? renderBuilt(route.section, run.result, trackRecords, company.ticker) : null
           : <NotYetBuilt section={route.section} label={section.label} ticker={company.ticker} />}
       </section>
     </article>
   );
 }
 
-function NotYetBuilt({ section, label, ticker }: { section: Exclude<CaseSection, "verdict">; label: string; ticker: string }) {
+const isBuilt = (section: CaseSection): section is BuiltSection =>
+  section === "verdict" || section === "economics" || section === "evidence";
+
+function renderBuilt(
+  section: BuiltSection,
+  result: Extract<CompanyRunState, { status: "ready" }>["result"],
+  trackRecords: TrackRecordFile | null,
+  ticker: string,
+) {
+  switch (section) {
+    case "verdict":
+      return <VerdictSection result={result} trackRecord={trackRecords?.companies.find((c) => c.ticker === ticker) ?? null} />;
+    case "economics":
+      // The run's periods are deeply readonly; the section only reads them.
+      return <EconomicsSection periods={(result.materialization.pipelineResult?.periods ?? []) as unknown as readonly RecastPeriod[]} />;
+    case "evidence":
+      return <EvidenceSection result={result} />;
+  }
+}
+
+function NotYetBuilt({ section, label, ticker }: { section: UnbuiltSection; label: string; ticker: string }) {
   const status = SECTION_STATUS[section];
   const currentUiHref = `?company=${encodeURIComponent(ticker)}&tab=${status.currentTab}`;
   return (
