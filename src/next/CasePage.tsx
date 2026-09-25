@@ -49,6 +49,7 @@ export function CasePage({
           {company.name} <span className="font-mono text-base text-slate-500">{company.ticker}</span>
         </h1>
         <RunStatus run={run} />
+        <AsOfControl route={route} run={run} />
       </header>
 
       <nav aria-label="Case sections">
@@ -72,7 +73,7 @@ export function CasePage({
 
       <section aria-label={section.label}>
         {run?.status === "ready"
-          ? renderSection(route.section, run.result, { trackRecords, company, peers, peerRuns, onLoadPeers })
+          ? renderSection(route.section, run.result, { asOf: route.asOf, trackRecords, company, peers, peerRuns, onLoadPeers })
           : null}
       </section>
     </article>
@@ -83,6 +84,7 @@ function renderSection(
   section: CaseSection,
   result: Extract<CompanyRunState, { status: "ready" }>["result"],
   context: {
+    asOf: string | null;
     trackRecords: TrackRecordFile | null;
     company: LibraryCompany;
     peers: readonly LibraryCompany[];
@@ -93,7 +95,7 @@ function renderSection(
   const trackRecord = context.trackRecords?.companies.find((c) => c.ticker === context.company.ticker) ?? null;
   switch (section) {
     case "verdict":
-      return <VerdictSection result={result} trackRecord={trackRecord} />;
+      return <VerdictSection result={result} trackRecord={trackRecord} asOf={context.asOf} />;
     case "economics":
       // The run's periods are deeply readonly; the section only reads them.
       return <EconomicsSection periods={(result.materialization.pipelineResult?.periods ?? []) as unknown as readonly RecastPeriod[]} />;
@@ -106,6 +108,39 @@ function renderSection(
     case "peers":
       return <PeersSection company={context.company} result={result} peers={context.peers} peerRuns={context.peerRuns} onLoadPeers={context.onLoadPeers} />;
   }
+}
+
+/**
+ * The as-of time machine: view the Case as of an earlier reported year. The
+ * choices are the years in the current run, so an as-of view offers only
+ * earlier years; "Latest" returns to today.
+ */
+function AsOfControl({ route, run }: { route: CaseRoute; run: CompanyRunState | null }) {
+  const years = run?.status === "ready"
+    ? [...(run.result.materialization.pipelineResult?.periods ?? [])].map((p) => p.period_end).reverse()
+    : [];
+  const options = route.asOf && !years.includes(route.asOf) ? [route.asOf, ...years] : years;
+  return (
+    <div className="mt-2 space-y-1">
+      <label className="text-sm">
+        <span className="mr-2 text-slate-600 dark:text-slate-300">As of</span>
+        <select
+          value={route.asOf ?? ""}
+          onChange={(e) => { window.location.hash = formatRoute({ ...route, asOf: e.target.value || null }); }}
+          className="rounded border border-slate-300 bg-white px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-900"
+        >
+          <option value="">Latest</option>
+          {options.slice(route.asOf ? 0 : 1).map((y) => <option key={y} value={y}>{y}</option>)}
+        </select>
+      </label>
+      {route.asOf && (
+        <p role="note" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+          Viewing the company as of <strong>{route.asOf}</strong>: only years ending on or before it, no market price, and capital-cost inputs dated after it refused as look-ahead.
+          Capitaline serves restated figures, so these years may include later restatements; the as-filed ledger removes that when it is wired in.
+        </p>
+      )}
+    </div>
+  );
 }
 
 function RunStatus({ run }: { run: CompanyRunState | null }) {

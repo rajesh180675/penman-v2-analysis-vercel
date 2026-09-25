@@ -25,7 +25,7 @@ export function NextApp() {
     () => route.space === "case" && registry.status === "ready" ? findLibraryCompany(registry.companies, route.company) : null,
     [route, registry],
   );
-  const run = useCompanyRun(company);
+  const run = useCompanyRun(company, route.space === "case" ? route.asOf : null);
   const trackRecords = useTrackRecord();
   const peers = useMemo(
     () => (company && registry.status === "ready" ? choosePeers(company, registry.companies) : []),

@@ -12,10 +12,12 @@ import { Withheld } from "../ui/Withheld";
 
 type CommandCenter = NonNullable<LegacyAnalysisRunExecutionResult["materialization"]["commandCenter"]>;
 
-export function VerdictSection({ result, trackRecord = null }: {
+export function VerdictSection({ result, trackRecord = null, asOf = null }: {
   result: LegacyAnalysisRunExecutionResult;
   /** The company's backtest record; null when none exists or it has not loaded. */
   trackRecord?: CompanyTrackRecord | null;
+  /** Set when the Case is viewed as of an earlier date. */
+  asOf?: string | null;
 }) {
   const cc = result.materialization.commandCenter;
   if (!cc) {
@@ -28,7 +30,9 @@ export function VerdictSection({ result, trackRecord = null }: {
 
   const scenario = (key: "stress" | "base" | "bull") => cc.scenarios.find((s) => s.key === key) ?? null;
   const [stress, base, bull] = [scenario("stress"), scenario("base"), scenario("bull")];
-  const noPrice = `No market price: the live market overlay is ${cc.marketContext.freshness}.`;
+  const noPrice = asOf
+    ? `No price as of ${asOf}: the live price is today's, not point-in-time.`
+    : `No market price: the live market overlay is ${cc.marketContext.freshness}.`;
   const noValue = cc.shareBasis.shares == null
     ? "No share count could be resolved, so no per-share value."
     : "The model produced no value for this scenario.";
