@@ -22,6 +22,9 @@ test.describe("Next UI (?ui=next)", () => {
     await expect(page.getByRole("heading", { name: /TCS/ })).toBeVisible();
     // The run settles in the worker: the header then carries the rigor level.
     await expect(page.getByText(/Rigor: /)).toBeVisible({ timeout: 120_000 });
+    // Phase 1: the Verdict renders from the run's command center.
+    await expect(page.getByRole("region", { name: "Verdict" })).toBeVisible();
+    await expect(page.getByText("Base value")).toBeVisible();
 
     await page.getByRole("link", { name: "Valuation" }).click();
     await expect(page).toHaveURL(/#\/case\/TCS\/valuation$/);

@@ -9,6 +9,7 @@
  */
 import { startBrowserAnalysisRun } from "../engine/analysisRun/browserClient";
 import type { LegacyAnalysisRunExecutionResult, LegacyAnalysisRunInputV1 } from "../engine/analysisRun";
+import type { LiveMarketDataSnapshot } from "../engine/marketData";
 import { ACTIVE_MARKET_PACKS } from "../engine/marketPacks";
 import { DEFAULT_CONFIG, type EngineConfig, type RawPeriodData } from "../engine/types";
 import { buildLocalLibraryCompanyUrls, type LibraryCompany } from "../components/data-entry/companyRegistry";
@@ -21,6 +22,8 @@ export type CompanyRunState =
 export interface CompanyRunDependencies {
   readonly fetchZip: (url: string) => Promise<Uint8Array>;
   readonly parse: (bytes: Uint8Array, companyId: string) => Promise<RawPeriodData[]>;
+  /** The live market overlay; null when unavailable (the run proceeds, price withheld). */
+  readonly fetchMarketSnapshot: (config: EngineConfig) => Promise<LiveMarketDataSnapshot | null>;
   readonly run: (input: LegacyAnalysisRunInputV1, requestId: string) => Promise<LegacyAnalysisRunExecutionResult>;
   readonly now: () => Date;
 }
@@ -34,6 +37,22 @@ const defaultDependencies: CompanyRunDependencies = {
   parse: async (bytes, companyId) => {
     const { parseCapitalineZip } = await import("../engine/capitalineParser");
     return (await parseCapitalineZip(bytes, { companyId })).periods;
+  },
+  // Same request the current shell's useLiveMarketData makes.
+  fetchMarketSnapshot: async (config) => {
+    const params = new URLSearchParams({ provider: config.market_data_provider ?? "nse" });
+    const symbol = config.market_data_symbol ?? config.ticker;
+    if (symbol) params.set("symbol", symbol);
+    if (config.market_price != null && Number.isFinite(config.market_price)) params.set("fallbackPrice", String(config.market_price));
+    if (config.risk_free_rate != null && Number.isFinite(config.risk_free_rate)) params.set("fallbackRiskFreeRate", String(config.risk_free_rate));
+    try {
+      const response = await fetch(`/api/market-data/snapshot?${params.toString()}`, { headers: { "x-penman-local": "1" } });
+      if (!response.ok) return null;
+      const payload = (await response.json()) as { snapshot?: LiveMarketDataSnapshot | null };
+      return payload.snapshot ?? null;
+    } catch {
+      return null;
+    }
   },
   run: (input, requestId) => startBrowserAnalysisRun({ requestId, input }).result,
   now: () => new Date(),
@@ -57,14 +76,16 @@ export async function loadCompanyRun(
     const bytes = await deps.fetchZip(buildLocalLibraryCompanyUrls(company).consolidated);
     onStep("parsing");
     const issuerId = company.ticker.toUpperCase();
-    const rawData = await deps.parse(bytes, issuerId);
+    const config = configForCompany(company);
+    const [rawData, marketSnapshot] = await Promise.all([deps.parse(bytes, issuerId), deps.fetchMarketSnapshot(config)]);
     if (rawData.length === 0) return { status: "error", message: "The company's data parsed to zero periods." };
     onStep("analysing");
     const now = deps.now().toISOString();
     const runId = `next-${issuerId}-${now}`;
     const input: LegacyAnalysisRunInputV1 = {
       rawData,
-      config: configForCompany(company),
+      config,
+      marketSnapshot,
       ...ACTIVE_MARKET_PACKS,
       metadata: {
         runId,

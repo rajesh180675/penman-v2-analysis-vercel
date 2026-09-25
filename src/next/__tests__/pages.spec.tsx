@@ -15,7 +15,9 @@ const tcs: LibraryCompany = { ...itc, folder: "TCS", name: "Tata Consultancy Ser
 function readyRun(): LegacyAnalysisRunExecutionResult {
   return {
     status: "completed",
+    materialization: { commandCenter: null },
     run: {
+      family: "industrial",
       trustEnvelope: {
         confidence: { status: "guarded", headline: "Guarded: reconciliation residuals exceed tolerance", tone: "amber" },
         rigor: { currentLabel: "Syntactically valid" },
@@ -55,6 +57,11 @@ describe("CasePage", () => {
     expect(html).toContain("ITC Ltd");
     expect(html).toContain("Guarded: reconciliation residuals exceed tolerance");
     expect(html).toContain("Rigor: Syntactically valid");
+  });
+
+  it("names each section region once — the section is the landmark, not its cards", () => {
+    const html = renderToStaticMarkup(<CasePage route={caseRoute("ITC")} company={itc} run={{ status: "ready", result: readyRun() }} />);
+    expect(html.match(/aria-label="Verdict"/g)).toHaveLength(1);
   });
 
   it("marks the active section and says which phase builds it", () => {
