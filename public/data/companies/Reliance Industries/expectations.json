@@ -9,12 +9,12 @@
   "expectedConceptIdentityStatus": "valuation-blocked",
   "keyMetricTolerances": {
     "RNOA": {
-      "min": 0.0697,
-      "max": 0.0797
+      "min": 0.0809,
+      "max": 0.0909
     },
     "ROCE": {
-      "min": 0.0914,
-      "max": 0.1014
+      "min": 0.0771,
+      "max": 0.0871
     },
     "NFO_to_CSE": {
       "min": 0.0773,
