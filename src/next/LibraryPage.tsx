@@ -1,6 +1,7 @@
 import { EmptyState } from "../components/shared/EmptyState";
 import type { LibraryCompany } from "../components/data-entry/companyRegistry";
 import type { RegistryState } from "./hooks";
+import { classicHref, toolsIn } from "./legacyTools";
 import { caseRoute, formatRoute } from "./route";
 
 export function LibraryPage({ registry }: { registry: RegistryState }) {
@@ -20,6 +21,20 @@ export function LibraryPage({ registry }: { registry: RegistryState }) {
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {companies.map((company) => <LibraryCard key={company.folder} company={company} />)}
       </ul>
+      <div className="border-t border-slate-200 pt-4 dark:border-slate-700">
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Your data and lists</h2>
+        <p className="text-xs text-slate-500">These open in the classic interface until they are rebuilt here.</p>
+        <ul className="mt-2 grid gap-3 sm:grid-cols-3">
+          {toolsIn("library").map(({ tab, label, description }) => (
+            <li key={tab}>
+              <a href={classicHref(tab)} className="wb-surface block rounded-xl border p-3 text-sm shadow-sm hover:border-slate-400">
+                <span className="font-medium text-slate-900 dark:text-slate-100">{label}</span>
+                <span className="mt-1 block text-xs text-slate-500">{description}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   );
 }

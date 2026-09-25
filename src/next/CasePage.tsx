@@ -7,16 +7,9 @@ import type { RecastPeriod } from "../engine/types";
 import { EconomicsSection } from "./sections/EconomicsSection";
 import { EvidenceSection } from "./sections/EvidenceSection";
 import { ForecastSection } from "./sections/ForecastSection";
+import { PeersSection } from "./sections/PeersSection";
 import { ValuationSection } from "./sections/ValuationSection";
 import { VerdictSection } from "./sections/VerdictSection";
-
-type BuiltSection = "verdict" | "economics" | "evidence" | "forecast" | "valuation";
-type UnbuiltSection = Exclude<CaseSection, BuiltSection>;
-
-/** Sections not yet built: the phase that builds each, and today's tab that covers it meanwhile. */
-const SECTION_STATUS: Record<UnbuiltSection, { phase: number; currentTab: string }> = {
-  peers: { phase: 4, currentTab: "comparison" },
-};
 
 const STEP_LABEL = { fetching: "Fetching filings…", parsing: "Reading statements…", analysing: "Running the analysis…" } as const;
 
@@ -25,11 +18,17 @@ export function CasePage({
   company,
   run,
   trackRecords = null,
+  peers = [],
+  peerRuns = null,
+  onLoadPeers = () => {},
 }: {
   route: CaseRoute;
   company: LibraryCompany | null;
   run: CompanyRunState | null;
   trackRecords?: TrackRecordFile | null;
+  peers?: readonly LibraryCompany[];
+  peerRuns?: ReadonlyMap<string, CompanyRunState> | null;
+  onLoadPeers?: () => void;
 }) {
   if (!company) {
     return (
@@ -72,49 +71,41 @@ export function CasePage({
       </nav>
 
       <section aria-label={section.label}>
-        {isBuilt(route.section)
-          ? run?.status === "ready" ? renderBuilt(route.section, run.result, trackRecords, company.ticker) : null
-          : <NotYetBuilt section={route.section} label={section.label} ticker={company.ticker} />}
+        {run?.status === "ready"
+          ? renderSection(route.section, run.result, { trackRecords, company, peers, peerRuns, onLoadPeers })
+          : null}
       </section>
     </article>
   );
 }
 
-const isBuilt = (section: CaseSection): section is BuiltSection =>
-  section !== "peers";
-
-function renderBuilt(
-  section: BuiltSection,
+function renderSection(
+  section: CaseSection,
   result: Extract<CompanyRunState, { status: "ready" }>["result"],
-  trackRecords: TrackRecordFile | null,
-  ticker: string,
+  context: {
+    trackRecords: TrackRecordFile | null;
+    company: LibraryCompany;
+    peers: readonly LibraryCompany[];
+    peerRuns: ReadonlyMap<string, CompanyRunState> | null;
+    onLoadPeers: () => void;
+  },
 ) {
+  const trackRecord = context.trackRecords?.companies.find((c) => c.ticker === context.company.ticker) ?? null;
   switch (section) {
     case "verdict":
-      return <VerdictSection result={result} trackRecord={trackRecords?.companies.find((c) => c.ticker === ticker) ?? null} />;
+      return <VerdictSection result={result} trackRecord={trackRecord} />;
     case "economics":
       // The run's periods are deeply readonly; the section only reads them.
       return <EconomicsSection periods={(result.materialization.pipelineResult?.periods ?? []) as unknown as readonly RecastPeriod[]} />;
     case "evidence":
       return <EvidenceSection result={result} />;
     case "forecast":
-      return <ForecastSection result={result} trackRecord={trackRecords?.companies.find((c) => c.ticker === ticker) ?? null} />;
+      return <ForecastSection result={result} trackRecord={trackRecord} />;
     case "valuation":
       return <ValuationSection result={result} />;
+    case "peers":
+      return <PeersSection company={context.company} result={result} peers={context.peers} peerRuns={context.peerRuns} onLoadPeers={context.onLoadPeers} />;
   }
-}
-
-function NotYetBuilt({ section, label, ticker }: { section: UnbuiltSection; label: string; ticker: string }) {
-  const status = SECTION_STATUS[section];
-  const currentUiHref = `?company=${encodeURIComponent(ticker)}&tab=${status.currentTab}`;
-  return (
-    <EmptyState
-      icon="layers"
-      title={`${label} arrives in Phase ${status.phase}`}
-      body="Until then, the current interface covers it."
-      action={{ label: "Open in the current interface", onClick: () => window.location.assign(currentUiHref) }}
-    />
-  );
 }
 
 function RunStatus({ run }: { run: CompanyRunState | null }) {

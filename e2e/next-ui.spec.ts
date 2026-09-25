@@ -49,6 +49,12 @@ test.describe("Next UI (?ui=next)", () => {
     await expect(page).toHaveURL(/#\/case\/TCS\/valuation$/);
     await expect(page.getByRole("heading", { name: "Models" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Sensitivity" })).toBeVisible();
+    // Phase 4: Peers offers the comparison; the Lab opens tools in the classic interface.
+    await page.getByRole("link", { name: "Peers" }).click();
+    await expect(page.getByRole("button", { name: /^Analyse \d+ peers?$/ })).toBeVisible();
+    await page.goto("/?ui=next#/lab");
+    await expect(page.getByRole("heading", { name: "Lab" })).toBeVisible();
+    await expect(page.locator('a[href="/?ui=classic&tab=debug"]')).toBeVisible();
 
     expect(errors).toEqual([]);
   });

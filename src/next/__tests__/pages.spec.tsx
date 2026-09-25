@@ -64,10 +64,10 @@ describe("CasePage", () => {
     expect(html.match(/aria-label="Verdict"/g)).toHaveLength(1);
   });
 
-  it("marks the active section and says which phase builds it", () => {
+  it("marks the active section, and every section is built", () => {
     const html = renderToStaticMarkup(<CasePage route={caseRoute("ITC", "peers")} company={itc} run={null} />);
     expect(html).toMatch(/aria-current="page"[^>]*>Peers</);
-    expect(html).toContain("Peers arrives in Phase 4");
+    expect(html).not.toContain("arrives in Phase");
     expect(html).toContain('href="#/case/ITC/forecast"');
   });
 
