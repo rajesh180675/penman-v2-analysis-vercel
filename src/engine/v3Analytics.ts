@@ -79,7 +79,7 @@ export type { Section6BStatus, Section6BResult } from "./v3Analytics/section6B";
 
 // §15.2 RE/ReOI identity-gap decomposition
 export { decomposeReReOIGap } from "./v3Analytics/reReoiGap";
-export type { ReReOIGapDecomposition } from "./v3Analytics/reReoiGap";
+export type { GapValuationParts, ReReOIGapDecomposition } from "./v3Analytics/reReoiGap";
 
 // §13.4 Version-change log
 export { compareWithPriorRegistry, renderVersionChangeLog } from "./v3Analytics/versionChange";

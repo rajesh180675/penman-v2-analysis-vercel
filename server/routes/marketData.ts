@@ -282,8 +282,13 @@ function normalizeSymbol(raw: string, warnings: string[]): string {
  * MARKET_RATE_DATE_REQUIRED). That rejection blocks the run *before* the
  * pipeline runs, so the UI projection gets no pipelineResult, recastData comes
  * back empty, and every data-gated tab (dashboard, statements, ratios, quality,
- * valuation, report) disappears. Branches below default riskFreeRate to 0.07,
- * so they must pin rateAsOf too — the Vercel handler already does.
+ * valuation, report) disappears.
+ *
+ * No branch reports a risk-free rate: quote vendors do not publish yields, and
+ * echoing the caller's `fallbackRiskFreeRate` (or a constant) back through this
+ * pin would date it with `fetchedAt` — which the client tiers as a sourced
+ * observation. The client falls back to its own config on null, labelled as
+ * the default it is. Matches api/market-data/snapshot.js.
  */
 function pinAsOfDates<T extends Record<string, unknown>>(snapshot: T): T {
   // Prefer the snapshot's own fetch time so a cached entry keeps honest
@@ -312,7 +317,6 @@ router.get("/snapshot", async (req: Request, res: Response) => {
   let symbol = (req.query.symbol as string ?? "").toUpperCase().trim();
   const provider = (req.query.provider as string ?? "manual").toLowerCase();
   const fallbackPrice = toNumber(req.query.fallbackPrice);
-  const fallbackRiskFreeRate = toNumber(req.query.fallbackRiskFreeRate);
   const fetchedAt = new Date().toISOString();
   const warnings: string[] = [];
 
@@ -321,7 +325,7 @@ router.get("/snapshot", async (req: Request, res: Response) => {
       symbol, provider: "Manual / Fallback", fetchedAt,
       price: fallbackPrice, previousClose: null, changePct: null,
       marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-      riskFreeRate: fallbackRiskFreeRate,
+      riskFreeRate: null,
       freshness: fallbackPrice != null ? "fallback" : "missing",
       sourceSummary: "Using manual/config market inputs without any vendor API call.",
       warnings, history: null,
@@ -335,7 +339,7 @@ router.get("/snapshot", async (req: Request, res: Response) => {
         symbol, provider: `${provider.toUpperCase()} (fallback)`, fetchedAt,
         price: fallbackPrice, previousClose: null, changePct: null,
         marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-        riskFreeRate: fallbackRiskFreeRate ?? 0.07,
+        riskFreeRate: null,
         freshness: fallbackPrice != null ? "fallback" : "missing",
         sourceSummary: `No symbol configured for ${provider.toUpperCase()}.`, warnings, history: null,
       });
@@ -358,7 +362,10 @@ router.get("/snapshot", async (req: Request, res: Response) => {
         // `NseQuotePriceInfo | {}` and the reads below would not typecheck.
         const priceInfo: NseQuotePriceInfo = quotePayload?.priceInfo ?? {};
         const info: NseQuoteInfo = quotePayload?.info ?? {};
-        const price = toNumber(priceInfo.lastPrice) ?? toNumber(priceInfo.close) ?? fallbackPrice ?? null;
+        // Freshness keys on what NSE quoted, never on the config fallback —
+        // mirrors api/market-data/snapshot.js.
+        const livePrice = toNumber(priceInfo.lastPrice) ?? toNumber(priceInfo.close) ?? null;
+        const price = livePrice ?? fallbackPrice ?? null;
         const previousClose = toNumber(priceInfo.previousClose) ?? null;
         const changePct = price != null && previousClose != null && previousClose > 0
           ? (price - previousClose) / previousClose
@@ -370,10 +377,12 @@ router.get("/snapshot", async (req: Request, res: Response) => {
           marketCap: toNumber(info.totalMarketCap) ?? null,
           enterpriseValue: null,
           sharesOutstanding: toNumber(info.issuedSize) ?? null,
-          riskFreeRate: fallbackRiskFreeRate ?? 0.07,
-          priceAsOf: fetchedAt, rateAsOf: null,
-          freshness: price != null ? "live" : "fallback" as const,
-          sourceSummary: price != null ? `NSE India live quote for ${symbol}.` : "NSE did not return a live quote.",
+          // Quotes carry no yield. A constant here would be tiered as market
+          // data by the client — report nothing, as the deployed handler does.
+          riskFreeRate: null,
+          priceAsOf: price != null ? fetchedAt : null, rateAsOf: null,
+          freshness: livePrice != null ? "live" : price != null ? "fallback" : "missing",
+          sourceSummary: livePrice != null ? `NSE India live quote for ${symbol}.` : "NSE did not return a live quote; using fallback config where available.",
           warnings,
           // The `as any` here is gone rather than replaced: once fetchNseHistory
           // returns HistoryPoint[], this call typechecks on its own.
@@ -386,7 +395,8 @@ router.get("/snapshot", async (req: Request, res: Response) => {
         // Cascade to Yahoo Finance as fallback
         try {
           const yahoo = await fetchYahooSnapshot(symbol);
-          const price = yahoo.price ?? fallbackPrice;
+          const livePrice = yahoo.price ?? null;
+          const price = livePrice ?? fallbackPrice ?? null;
           const previousClose = yahoo.previousClose;
           const changePct = price != null && previousClose != null && previousClose > 0
             ? (price - previousClose) / previousClose
@@ -395,9 +405,12 @@ router.get("/snapshot", async (req: Request, res: Response) => {
             symbol, provider: "Yahoo Finance (NSE fallback)", fetchedAt,
             price, previousClose, changePct,
             marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-            riskFreeRate: fallbackRiskFreeRate ?? 0.07,
-            freshness: price != null ? "live" : "fallback" as const,
-            sourceSummary: `NSE blocked, used Yahoo Finance for ${yahoo.symbol}.`,
+            riskFreeRate: null,
+            priceAsOf: price != null ? fetchedAt : null, rateAsOf: null,
+            freshness: livePrice != null ? "live" : price != null ? "fallback" : "missing",
+            sourceSummary: livePrice != null
+              ? `NSE blocked, used Yahoo Finance for ${yahoo.symbol}.`
+              : "NSE blocked and Yahoo Finance returned no price; using fallback config where available.",
             warnings, history: null,
           };
           await cacheSnapshot(symbol, snapshot);
@@ -412,7 +425,7 @@ router.get("/snapshot", async (req: Request, res: Response) => {
             symbol, provider: "NSE India (all fallbacks failed)", fetchedAt,
             price: fallbackPrice, previousClose: null, changePct: null,
             marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-            riskFreeRate: fallbackRiskFreeRate ?? 0.07,
+            riskFreeRate: null,
             freshness: fallbackPrice != null ? "fallback" : "missing",
             sourceSummary: "Both NSE and Yahoo Finance failed.", warnings, history: null,
           });
@@ -423,7 +436,8 @@ router.get("/snapshot", async (req: Request, res: Response) => {
     // provider === "yahoo"
     try {
       const yahoo = await fetchYahooSnapshot(symbol);
-      const price = yahoo.price ?? fallbackPrice;
+      const livePrice = yahoo.price ?? null;
+      const price = livePrice ?? fallbackPrice ?? null;
       const previousClose = yahoo.previousClose;
       const changePct = price != null && previousClose != null && previousClose > 0
         ? (price - previousClose) / previousClose
@@ -432,9 +446,10 @@ router.get("/snapshot", async (req: Request, res: Response) => {
         symbol, provider: "Yahoo Finance", fetchedAt,
         price, previousClose, changePct,
         marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-        riskFreeRate: fallbackRiskFreeRate ?? 0.07,
-        freshness: price != null ? "live" : "fallback" as const,
-        sourceSummary: price != null ? `Yahoo Finance quote for ${yahoo.symbol}.` : "Yahoo did not return a price.",
+        riskFreeRate: null,
+        priceAsOf: price != null ? fetchedAt : null, rateAsOf: null,
+        freshness: livePrice != null ? "live" : price != null ? "fallback" : "missing",
+        sourceSummary: livePrice != null ? `Yahoo Finance quote for ${yahoo.symbol}.` : "Yahoo did not return a price; using fallback config where available.",
         warnings, history: null,
       };
       await cacheSnapshot(symbol, snapshot);
@@ -449,7 +464,7 @@ router.get("/snapshot", async (req: Request, res: Response) => {
         symbol, provider: "Yahoo Finance (fallback)", fetchedAt,
         price: fallbackPrice, previousClose: null, changePct: null,
         marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-        riskFreeRate: fallbackRiskFreeRate ?? 0.07,
+        riskFreeRate: null,
         freshness: fallbackPrice != null ? "fallback" : "missing",
         sourceSummary: "Yahoo Finance request failed, using fallback.", warnings, history: null,
       });
@@ -462,7 +477,7 @@ router.get("/snapshot", async (req: Request, res: Response) => {
     symbol, provider: `${provider} (unsupported locally)`, fetchedAt,
     price: fallbackPrice, previousClose: null, changePct: null,
     marketCap: null, enterpriseValue: null, sharesOutstanding: null,
-    riskFreeRate: fallbackRiskFreeRate,
+    riskFreeRate: null,
     freshness: fallbackPrice != null ? "fallback" : "missing",
     sourceSummary: `Provider "${provider}" requires Vercel deployment. Use "nse" for local.`,
     warnings, history: null,

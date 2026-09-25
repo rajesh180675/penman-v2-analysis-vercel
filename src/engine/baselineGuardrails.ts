@@ -1,4 +1,5 @@
 import { computeValuation } from "./PenmanNissimEngine";
+import { buildAnchoredValuationPeriods } from "./anchoredValuationPeriods";
 import { EngineConfig, RecastPeriod } from "./types";
 import { resolveCostOfCapitalFromConfig } from "./costOfCapital";
 
@@ -50,13 +51,24 @@ function baseInputs(periods: RecastPeriod[], cfg: EngineConfig) {
   return { ke, kw, g };
 }
 
+/**
+ * All guardrails value ONE latest-anchored forecast. `computeValuation` treats
+ * periods[0] as the valuation date, so the raw history used to date every
+ * guardrail at the oldest balance sheet.
+ */
+function anchoredPeriods(periods: RecastPeriod[], cfg: EngineConfig) {
+  const { ke, kw, g } = baseInputs(periods, cfg);
+  return buildAnchoredValuationPeriods({ history: periods, config: cfg, ke, kw, g });
+}
+
 function valuationBand(periods: RecastPeriod[], cfg: EngineConfig): ValuationErrorBand {
   const { ke, kw, g } = baseInputs(periods, cfg);
+  const forecast = anchoredPeriods(periods, cfg);
   // Phase J2: V_RE_CV3 may be null on negative-equity companies. Fall back
   // to enterprise-side V_ReOI_CV03 in that case so the guardrail band
   // stays comparable across the benchmark universe (a Vodafone Idea-shaped
   // company would otherwise return all-NaN bands).
-  const baseVal = computeValuation(periods, ke, kw, g, cfg);
+  const baseVal = computeValuation(forecast, ke, kw, g, cfg);
   const useEnterpriseAnchor = baseVal.V_RE_CV3 == null;
   const base = (useEnterpriseAnchor ? baseVal.V_ReOI_CV03 : baseVal.V_RE_CV3) ?? 0;
   const candidates: number[] = [];
@@ -66,7 +78,7 @@ function valuationBand(periods: RecastPeriod[], cfg: EngineConfig): ValuationErr
     for (const dG of gShocks) {
       const keS = Math.max(cfg.risk_free_rate + 0.005, ke + dKe);
       const gS = Math.max(0, Math.min(keS - 0.005, g + dG));
-      const v = computeValuation(periods, keS, kw, gS, cfg);
+      const v = computeValuation(forecast, keS, kw, gS, cfg);
       const candidate = useEnterpriseAnchor ? v.V_ReOI_CV03 : v.V_RE_CV3;
       if (candidate != null) candidates.push(candidate);
     }
@@ -82,11 +94,19 @@ function valuationBand(periods: RecastPeriod[], cfg: EngineConfig): ValuationErr
   };
 }
 
+/**
+ * Spread of value across plausible terminal RE anchors taken from REALIZED
+ * history (latest, 3-year median, prior year grown), each capitalized from
+ * today's book: V = B_T + anchor(1+g)/(ke−g). Denominated by the anchored
+ * base valuation.
+ */
 function terminalAnchorStability(periods: RecastPeriod[], cfg: EngineConfig): number {
   const { ke, kw, g } = baseInputs(periods, cfg);
-  const baseVal = computeValuation(periods, ke, kw, g, cfg);
-  const reSeries = baseVal.reSeries.map((r) => r.RE);
-  if (!reSeries.length) return 0;
+  const baseVal = computeValuation(anchoredPeriods(periods, cfg), ke, kw, g, cfg);
+  const reSeries = periods
+    .map((p) => p.ri?.RE)
+    .filter((re): re is number => re != null && Number.isFinite(re));
+  if (!reSeries.length || ke - g <= 0) return 0;
 
   const latestRE = reSeries[reSeries.length - 1]!;
   const prior = reSeries.slice(-4, -1);
@@ -105,11 +125,8 @@ function terminalAnchorStability(periods: RecastPeriod[], cfg: EngineConfig): nu
   const tMinus1 = reSeries.length > 1 ? reSeries[reSeries.length - 2]! : latestRE;
   const grown = tMinus1 * (1 + growthMed);
 
-  const anchors = [latestRE, medianRE, grown];
-  const vals = anchors
-    .map((a) => computeValuation(periods, ke, kw, g, cfg, a, null).V_RE_CV3)
-    .filter((v): v is number => v != null);
-  if (vals.length === 0) return 0;
+  const bookT = periods[periods.length - 1]!.bs.CSE;
+  const vals = [latestRE, medianRE, grown].map((a) => bookT + (a * (1 + g)) / (ke - g));
   const lo = Math.min(...vals);
   const hi = Math.max(...vals);
   const denom = Math.max(Math.abs(baseVal.V_RE_CV3 ?? 0), 1);
@@ -119,7 +136,7 @@ function terminalAnchorStability(periods: RecastPeriod[], cfg: EngineConfig): nu
 export function computePhase0Guardrails(periods: RecastPeriod[], cfg: EngineConfig): Phase0Guardrails | null {
   if (!periods || periods.length < 2) return null;
   const { ke, kw, g } = baseInputs(periods, cfg);
-  const val = computeValuation(periods, ke, kw, g, cfg);
+  const val = computeValuation(anchoredPeriods(periods, cfg), ke, kw, g, cfg);
   // Phase J2: V_RE_CV3 may be null on negative-equity companies. Use
   // V_ReOI_CV03 for the identity-gap when equity-side is blocked.
   const reoiCv03 = val.V_ReOI_CV03;

@@ -26,6 +26,8 @@
  */
 import { useState } from "react";
 import type { RecastPeriod } from "../../engine/types";
+import { EmptyState as SharedEmptyState } from "../shared/EmptyState";
+import { Icon, type IconName } from "../shared/Icon";
 import type { PipelineResult } from "../../engine/pipeline";
 
 // Industrial sub-views
@@ -54,24 +56,24 @@ type ViewId = IndustrialView | FinancialView;
 interface ViewSpec {
   id: ViewId;
   label: string;
-  icon: string;
+  icon: IconName;
   tagline: string;
 }
 
 const INDUSTRIAL_VIEWS: ViewSpec[] = [
-  { id: "dupont",     label: "DuPont 5-Step",       icon: "⚙️", tagline: "Decompose ROE: tax × interest × margin × turnover × leverage" },
-  { id: "cascade",    label: "Margin Cascade",      icon: "💧", tagline: "Revenue → Gross → EBITDA → EBIT → PBT → Net" },
-  { id: "ccc",        label: "Cash Cycle",          icon: "🔄", tagline: "Days inventory + receivables − payables = working capital intensity" },
-  { id: "capital",    label: "Capital Allocation",  icon: "🏗️", tagline: "Where retained cash goes: CapEx, dividends, buybacks, debt" },
-  { id: "compounder", label: "Compounder Test",     icon: "📈", tagline: "ROIC × reinvestment rate — Buffett's quality screen" },
+  { id: "dupont",     label: "DuPont 5-Step",       icon: "gear", tagline: "Decompose ROE: tax × interest × margin × turnover × leverage" },
+  { id: "cascade",    label: "Margin Cascade",      icon: "droplet", tagline: "Revenue → Gross → EBITDA → EBIT → PBT → Net" },
+  { id: "ccc",        label: "Cash Cycle",          icon: "refresh", tagline: "Days inventory + receivables − payables = working capital intensity" },
+  { id: "capital",    label: "Capital Allocation",  icon: "building", tagline: "Where retained cash goes: CapEx, dividends, buybacks, debt" },
+  { id: "compounder", label: "Compounder Test",     icon: "trending-up", tagline: "ROIC × reinvestment rate — Buffett's quality screen" },
 ];
 
 const FINANCIAL_VIEWS: ViewSpec[] = [
-  { id: "earning",    label: "Earning Power",       icon: "⚡", tagline: "NIM × leverage = ROE (the DuPont for banks)" },
-  { id: "asset",      label: "Asset Quality",       icon: "🛡️", tagline: "GNPA/NNPA trajectory + credit cost cycle" },
-  { id: "efficiency", label: "Op Efficiency",       icon: "⚖️", tagline: "Cost-to-income evolution (under 40% = wonderful)" },
-  { id: "cushion",    label: "Capital / Float",     icon: "🏦", tagline: "CRAR cushion + float economics" },
-  { id: "bvc",        label: "BV Compounder",       icon: "📈", tagline: "Book value CAGR + dividend consistency" },
+  { id: "earning",    label: "Earning Power",       icon: "zap", tagline: "NIM × leverage = ROE (the DuPont for banks)" },
+  { id: "asset",      label: "Asset Quality",       icon: "shield", tagline: "GNPA/NNPA trajectory + credit cost cycle" },
+  { id: "efficiency", label: "Op Efficiency",       icon: "scale", tagline: "Cost-to-income evolution (under 40% = wonderful)" },
+  { id: "cushion",    label: "Capital / Float",     icon: "bank", tagline: "CRAR cushion + float economics" },
+  { id: "bvc",        label: "BV Compounder",       icon: "trending-up", tagline: "Book value CAGR + dividend consistency" },
 ];
 
 export default function BusinessModelReport({ pipelineResult, recastData }: Props) {
@@ -113,7 +115,7 @@ export default function BusinessModelReport({ pipelineResult, recastData }: Prop
           : "border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 dark:border-amber-900/40 dark:from-amber-950/30 dark:to-orange-950/30"
       }`}>
         <div className="flex items-start gap-3">
-          <div className="text-3xl leading-none">{isFinancial ? "🏦" : "🏛️"}</div>
+          <div className="wb-text-3 leading-none"><Icon name={isFinancial ? "bank" : "building"} size={28} /></div>
           <div className="flex-1">
             <h2 className={`text-base font-semibold ${
               isFinancial ? "text-blue-900 dark:text-blue-200" : "text-amber-900 dark:text-amber-200"
@@ -158,7 +160,7 @@ export default function BusinessModelReport({ pipelineResult, recastData }: Prop
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="text-base">{v.icon}</span>
+                <span className="wb-text-3 flex-shrink-0"><Icon name={v.icon} size={16} /></span>
                 <span className={`text-sm font-semibold ${active ? activeText : "text-slate-700 dark:text-slate-200"}`}>
                   {v.label}
                 </span>
@@ -197,9 +199,5 @@ export default function BusinessModelReport({ pipelineResult, recastData }: Prop
 }
 
 function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900/60">
-      <p className="text-sm text-slate-500">{message}</p>
-    </div>
-  );
+  return <SharedEmptyState icon="building" title={message} />;
 }

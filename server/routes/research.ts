@@ -99,14 +99,30 @@ router.post("/", async (req: Request, res: Response) => {
     if (!comparisonRegistry || !isRecord(comparisonRegistry.companies)) {
       return res.status(400).json({ error: "comparisonRegistry.companies is required." });
     }
+    // Same optimistic-concurrency contract as api/research/index.js: a writer
+    // that sends the version it last read is refused if another writer got
+    // there first; one that sends none keeps last-writer-wins.
+    const current = await readJson<{ version?: number }>(comparisonRegistryPath());
+    const actualVersion = typeof current?.version === "number" ? current.version : 0;
+    const expected = req.body?.expectedVersion;
+    const expectedVersion = typeof expected === "number" && Number.isInteger(expected) && expected >= 0 ? expected : actualVersion;
+    if (expectedVersion !== actualVersion) {
+      return res.status(409).json({
+        error: "Blob version conflict — another writer updated this resource. Re-read and retry.",
+        kind,
+        expectedVersion,
+        actualVersion,
+      });
+    }
     await writeJson(comparisonRegistryPath(), {
       schemaVersion: typeof comparisonRegistry.schemaVersion === "string"
         ? comparisonRegistry.schemaVersion
         : COMPARISON_REGISTRY_SCHEMA_VERSION,
       storedAt: new Date().toISOString(),
       companies: comparisonRegistry.companies,
+      version: actualVersion + 1,
     });
-    return res.json({ ok: true, kind });
+    return res.json({ ok: true, kind, version: actualVersion + 1 });
   }
 
   const companyId = requireCompanyId(req, res);

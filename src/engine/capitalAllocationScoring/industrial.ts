@@ -205,8 +205,9 @@ function scoreReinvestmentROIC(
     if (prevNOA != null && currNOA != null && prevCOI != null && currCOI != null) {
       const dNOA     = currNOA - prevNOA;
       const dCoreOI  = currCOI - prevCOI;
-      const taxRate  = curr.is.taxRate ?? 0.25;
-      const dNOPAT   = dCoreOI * (1 - taxRate);
+      // CoreOI is already after tax, so ΔCoreOI is ΔNOPAT; re-applying
+      // (1 − t) understated incremental ROIC by the tax rate.
+      const dNOPAT   = dCoreOI;
 
       // Use *signed* dNOA — same fix applied to moatScoring in commit 8a796f1.
       // When NOA shrinks (divestment), Math.abs would flip the sign of iROIC

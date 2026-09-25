@@ -17,8 +17,8 @@ export function ProfitabilityDiagnosticsSection(props: {
 }) {
   const { latest, roce5, rnoa5, spread5, pm5, ato5, steadyRnoa, steadyAto, salesCagr, cniCagr } = props;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">3) Profitability and Growth Diagnostics</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">3) Profitability and Growth Diagnostics</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -51,8 +51,8 @@ export function ProfitabilityDiagnosticsSection(props: {
 export function VersionChangeLogSection({ v3Bundle }: { v3Bundle: V3Bundle | null }) {
   if (!v3Bundle?.versionChangeLog.length) return null;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">2.6A) Methodology Changes from Prior Version</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">2.6A) Methodology Changes from Prior Version</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>

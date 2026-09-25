@@ -83,7 +83,7 @@ export function MetricSearchPanel({
   const sourceUnit = periods.shown[0]?.currency_unit;
 
   return (
-    <Card title="🔎 Metric Key Search">
+    <Card title="Metric Key Search">
       <p className="text-xs text-slate-500 mb-3">
         Search any metric name to see its parsed values across all periods.
         Useful for reconciling specific line items.

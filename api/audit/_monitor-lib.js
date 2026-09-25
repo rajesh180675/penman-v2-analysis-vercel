@@ -6,12 +6,13 @@ import {
   getAuditGovernanceConfig,
   getAuditReadToken,
   isAuditConfigured,
+  safeTokenEqual,
   sanitizePathSegment,
 } from "./_lib.js";
 
 function authHeaderMatches(request, expected) {
   const header = request.headers.authorization || request.headers.Authorization;
-  return Boolean(expected) && header === `Bearer ${expected}`;
+  return Boolean(expected) && safeTokenEqual(header, `Bearer ${expected}`);
 }
 
 export function isMonitorEnabled() {
@@ -31,7 +32,7 @@ export function requireMonitorAuth(request, response) {
   const cronSecret = process.env.CRON_SECRET;
   const auditToken = getAuditReadToken(request);
 
-  if (adminToken && auditToken === adminToken) return true;
+  if (adminToken && safeTokenEqual(auditToken, adminToken)) return true;
   if (authHeaderMatches(request, cronSecret)) return true;
   if (!adminToken && !cronSecret) {
     response.status(503).json({ error: "Monitor auth is not configured." });

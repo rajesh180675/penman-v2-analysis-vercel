@@ -30,8 +30,8 @@ export default function ScenarioValuationSection({
   chartScen: ChartScenRow[];
 }) {
   return (
-    <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-      <h2 className="text-lg font-bold text-slate-800 mb-4">Scenario Valuation — §4.3.3</h2>
+    <div className="wb-panel rounded-2xl p-6">
+      <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">Scenario Valuation — §4.3.3</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         {scenarioCards.map((card)=>(
           <div key={card.key} className="border rounded-xl p-4" style={{borderColor:`${scenarioColor(card.key)}44`}}>

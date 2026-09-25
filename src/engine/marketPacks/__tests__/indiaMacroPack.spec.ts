@@ -16,7 +16,7 @@ import { INDIA_MACRO_PACK, INDIA_ERP_BASIS } from "../indiaMacroPack";
 import { MACRO_STALENESS_DAYS, resolveMacroPack, resolveMacroObservation } from "../macroPack";
 
 /** The pack's own assembly date — the reference point for "fresh" below. */
-const PACK_DATE = "2026-07-26";
+const PACK_DATE = "2026-09-25";
 
 describe("INDIA_MACRO_PACK — shape and units", () => {
   it("states values as decimal fractions, not percentages", () => {
@@ -31,8 +31,8 @@ describe("INDIA_MACRO_PACK — shape and units", () => {
 
   it("carries the exact published figures", () => {
     // Pinned so a refresh is a visible, deliberate edit rather than drift.
-    expect(INDIA_MACRO_PACK.riskFreeRate!.value).toBe(0.0682);
-    expect(INDIA_MACRO_PACK.riskFreeRate!.asOf).toBe("2026-07-24");
+    expect(INDIA_MACRO_PACK.riskFreeRate!.value).toBe(0.0711);
+    expect(INDIA_MACRO_PACK.riskFreeRate!.asOf).toBe("2026-09-24");
     expect(INDIA_MACRO_PACK.equityRiskPremium!.value).toBe(0.0708);
     expect(INDIA_MACRO_PACK.equityRiskPremium!.asOf).toBe("2026-01-05");
   });
@@ -90,9 +90,9 @@ describe("INDIA_MACRO_PACK — resolution against a fixed analysis date", () => 
   });
 
   it("demotes the risk-free rate once it passes its 30-day window", () => {
-    // 2026-07-24 + 31 days. The ERP's window is a year, so it survives —
+    // 2026-09-24 + 31 days. The ERP's window is a year, so it survives —
     // which is the point of per-key windows rather than one shared limit.
-    const later = "2026-08-24";
+    const later = "2026-10-25";
     const resolution = resolveMacroPack(INDIA_MACRO_PACK, later);
     expect(resolution.riskFreeRate.status).toBe("unusable");
     if (resolution.riskFreeRate.status === "unusable") {

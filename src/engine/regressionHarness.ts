@@ -1,4 +1,5 @@
 import { computeRatios, computeValuation } from "./PenmanNissimEngine";
+import { buildAnchoredValuationPeriods } from "./anchoredValuationPeriods";
 import { runIdentityAssertions } from "./identityTests";
 import { CapitalineMappingSpec as M } from "./mappingSpec";
 import { buildPhase0BaselineSnapshot, Phase0BaselineSnapshot } from "./baselineGuardrails";
@@ -205,8 +206,14 @@ export function runRegressionHarness(rawData: RawPeriodData[], afterPeriods: Rec
   const kwAfter = deriveKw(afterSorted, cfg);
   const kwBefore = cfg.risk_free_rate;
   const g = 0.05;
-  const vAfter = computeValuation(afterSorted, ke, kwAfter, g, cfg);
-  const vBefore = computeValuation(beforePeriods, ke, kwBefore, g, cfg);
+  // Each side is valued from its own latest balance sheet over a forecast
+  // built from its own history. The raw series used to be passed in, which
+  // dated both valuations at the oldest period — so recast differences there
+  // dominated the "impact" of every fix.
+  const afterForecast = buildAnchoredValuationPeriods({ history: afterSorted, config: cfg, ke, kw: kwAfter, g });
+  const beforeForecast = buildAnchoredValuationPeriods({ history: beforePeriods, config: cfg, ke, kw: kwBefore, g });
+  const vAfter = computeValuation(afterForecast, ke, kwAfter, g, cfg);
+  const vBefore = computeValuation(beforeForecast, ke, kwBefore, g, cfg);
 
   const ids = ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9"];
   const byAssertion: RegressionHarnessReport["identityPass"]["byAssertion"] = {};
@@ -221,7 +228,8 @@ export function runRegressionHarness(rawData: RawPeriodData[], afterPeriods: Rec
     };
   }
 
-  const waccBeforeVal = computeValuation(afterSorted, ke, kwBefore, g, cfg).V_ReOI_CV03;
+  // Same forecast, only the discount rate differs: isolates the kw fix.
+  const waccBeforeVal = computeValuation(afterForecast, ke, kwBefore, g, cfg).V_ReOI_CV03;
   const bugImpactTable = [
     {
       bugClass: "WACC weighting (C1)",

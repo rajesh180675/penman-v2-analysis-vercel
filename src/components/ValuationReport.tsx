@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { RecastPeriod, EngineConfig } from "../engine/types";
 import { INRAbsolute } from "../engine/types/units";
 import { buildCyclicalNormalization } from "../engine/cyclicalNormalization";
+import { buildAnchoredValuationPeriods } from "../engine/anchoredValuationPeriods";
 import { detectDistress } from "../engine/distressDetector";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
@@ -30,15 +31,15 @@ import type { LossMakerValuationResult } from "../engine/lossMakerValuation";
 import type { SanityAssessment } from "../engine/ratioSanity";
 import type { AllSegmentData } from "../engine/segmentParser";
 import type { ITServicesSignal } from "../engine/itServicesDetector";
-import { EmptyState } from "./shared/Primitives";
+import { EmptyState } from "./shared/EmptyState";
 import { type CVMethod, fmt, makeCvSel } from "./valuation/ValuationReport.formatters";
 import {
   buildAlertAuditPayload,
   buildManifestAuditPayload,
   buildReSeriesBarData,
+  buildReSeriesRows,
   buildSignalAuditPayload,
   buildSparklineData,
-  deriveCyclicalTerminalREAnchor,
 } from "./valuation/ValuationReport.hooks";
 import ValuationCommandCenterHero from "./valuation/ValuationCommandCenterHero";
 import SensitivityGrid from "./valuation/SensitivityGrid";
@@ -54,10 +55,13 @@ import CyclicalRegimeSection from "./valuation/CyclicalRegimeSection";
 import ChecklistMarketSection from "./valuation/ChecklistMarketSection";
 import SotpSection from "./valuation/SotpSection";
 import BacktestSection from "./valuation/BacktestSection";
+import PvreSection from "./valuation/PvreSection";
 import ValuationInputsPanel from "./valuation/ValuationInputsPanel";
 import ValuationCardsSection from "./valuation/ValuationCardsSection";
 import TriangulationSection from "./valuation/TriangulationSection";
 import ReSeriesSection from "./valuation/ReSeriesSection";
+import SelfConsistentValuationSection from "./valuation/SelfConsistentValuationSection";
+import { computeSelfConsistentValuation } from "../engine/selfConsistentValuation";
 import ContinuingValueFormulae from "./valuation/ContinuingValueFormulae";
 
 interface Props {
@@ -86,7 +90,11 @@ interface Props {
    * company gets a confident moat width computed on inflated RNOA.
    */
   itServices: ITServicesSignal | null;
+  /** Pipeline-detected structural breaks; the fade model estimates persistence after the last one. */
+  structuralBreakPeriods?: readonly string[] | undefined;
 }
+
+const EMPTY_BREAKS: readonly string[] = [];
 
 export default function ValuationReport({
   data,
@@ -104,6 +112,7 @@ export default function ValuationReport({
   marketDataError = null,
   onMarketRefresh,
   itServices,
+  structuralBreakPeriods = EMPTY_BREAKS,
 }: Props) {
   const derivedValuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
   const valuationReadiness = publication?.valuationReadiness ?? derivedValuationReadiness;
@@ -176,13 +185,20 @@ export default function ValuationReport({
 
   const cyclicalNormalization = useMemo(() => buildCyclicalNormalization(data), [data]);
 
-  const cyclicalTerminalREAnchor = useMemo(() => {
-    return deriveCyclicalTerminalREAnchor(cyclicalNormalization, valuationData);
-  }, [cyclicalNormalization, valuationData]);
+  // Anchored at the latest period and valued over the same base persistence
+  // forecast the command center hero uses. Passing `valuationData` (history)
+  // straight in valued the company as of its OLDEST balance sheet and then
+  // compared that against today's price. Cyclical normalization now lives in
+  // the forecast's driver plan and terminal economics, so the old history-
+  // dated terminal RE anchor would normalize twice.
+  const anchoredValuationPeriods = useMemo(
+    () => buildAnchoredValuationPeriods({ history: valuationData, config: effectiveConfig, ke, kw: kwDerived, g: gRate }),
+    [valuationData, effectiveConfig, ke, kwDerived, gRate],
+  );
 
   const val = useMemo(() =>
-    computeValuation(valuationData, ke, kwDerived, gRate, valuationConfig, cyclicalTerminalREAnchor),
-    [valuationData, ke, kwDerived, gRate, valuationConfig, cyclicalTerminalREAnchor]
+    computeValuation(anchoredValuationPeriods, ke, kwDerived, gRate, valuationConfig),
+    [anchoredValuationPeriods, ke, kwDerived, gRate, valuationConfig]
   );
   // The fallback build, for legacy callers that pass no run-backed command
   // center. It needs the packs for the same reason the `keFromConfig` resolve
@@ -354,6 +370,18 @@ export default function ValuationReport({
 
   const cvSel = makeCvSel(cv);
   const distressResult = useMemo(() => detectDistress(data), [data]);
+  const selfConsistentValuation = useMemo(
+    () => computeSelfConsistentValuation({
+      history: valuationData,
+      ke,
+      g: gRate,
+      kdFallback: effectiveConfig.kd_pretax * (1 - (effectiveConfig.tax_rate_for_kd ?? effectiveConfig.statutory_tax_rate ?? 0.2517)),
+      shares: shareBasis.shares ?? null,
+      marketPrice: commandCenter.marketPrice ?? effectiveConfig.market_price ?? null,
+      structuralBreakPeriods,
+    }),
+    [valuationData, ke, gRate, effectiveConfig, shareBasis.shares, commandCenter.marketPrice, structuralBreakPeriods],
+  );
 
   if (insufficientData) {
     return <EmptyState
@@ -367,7 +395,8 @@ export default function ValuationReport({
   const V_ReOI = cvSel(val.V_ReOI_CV01, val.V_ReOI_CV02, val.V_ReOI_CV03);
 
   const sharesOut = shareBasis.shares ?? null;
-  const barData = buildReSeriesBarData(val, sharesOut);
+  const reSeriesRows = buildReSeriesRows(valuationData, val, ke, kwDerived);
+  const barData = buildReSeriesBarData(reSeriesRows, sharesOut);
   const sparklineData = buildSparklineData(liveMarketData);
 
   return (
@@ -435,6 +464,8 @@ export default function ValuationReport({
 
       <BacktestSection commandCenter={commandCenter} />
 
+      <PvreSection commandCenter={commandCenter} data={data} config={effectiveConfig} />
+
       <ValuationInputsPanel
         keOverride={keOverride}
         setKeOverride={setKeOverride}
@@ -457,16 +488,11 @@ export default function ValuationReport({
 
       <ValuationCardsSection val={val} V_RE={V_RE} V_ReOI={V_ReOI} cv={cv} sharesOut={sharesOut} />
 
-      <TriangulationSection val={val} sharesOut={sharesOut} />
+      <TriangulationSection val={val} />
 
-      <ReSeriesSection
-        val={val}
-        data={data}
-        sharesOut={sharesOut}
-        ke={ke}
-        kwDerived={kwDerived}
-        barData={barData}
-      />
+      <SelfConsistentValuationSection result={selfConsistentValuation} />
+
+      <ReSeriesSection rows={reSeriesRows} sharesOut={sharesOut} barData={barData} />
 
       <SensitivityGrid ke={ke} gRate={gRate} val={val} sharesOut={sharesOut} fmt={fmt} />
 

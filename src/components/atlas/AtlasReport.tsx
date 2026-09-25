@@ -23,6 +23,8 @@
  */
 import { useState, useMemo } from "react";
 import type { RawPeriodData } from "../../engine/types";
+import { EmptyState as SharedEmptyState } from "../shared/EmptyState";
+import { Icon, type IconName } from "../shared/Icon";
 import type { PipelineResult } from "../../engine/pipeline";
 import CoverageHeatmap from "./CoverageHeatmap";
 import TimeTrailScatter from "./TimeTrailScatter";
@@ -36,29 +38,29 @@ interface Props {
 
 type AtlasView = "coverage" | "scatter" | "patternBreak" | "inventory";
 
-const VIEWS: { id: AtlasView; label: string; icon: string; tagline: string }[] = [
+const VIEWS: { id: AtlasView; label: string; icon: IconName; tagline: string }[] = [
   {
     id: "coverage",
     label: "Coverage Heatmap",
-    icon: "🗺️",
+    icon: "satellite",
     tagline: "Every metric × every period — see what data you actually have",
   },
   {
     id: "scatter",
     label: "Time-Trail Scatter",
-    icon: "🌀",
+    icon: "refresh",
     tagline: "Two metrics across years — regime changes line charts hide",
   },
   {
     id: "patternBreak",
     label: "Pattern-Break Map",
-    icon: "⚡",
+    icon: "zap",
     tagline: "σ-deviations from trend — anomalies across all metrics at once",
   },
   {
     id: "inventory",
     label: "Metric Inventory",
-    icon: "🧮",
+    icon: "calculator",
     tagline: "What the engine knows vs what your data carries",
   },
 ];
@@ -81,9 +83,7 @@ export default function AtlasReport({ rawData, pipelineResult }: Props) {
 
   if (!rawData || rawData.length === 0) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center dark:border-slate-700 dark:bg-slate-900/60">
-        <p className="text-sm text-slate-500">Atlas needs raw period data. Load a company first.</p>
-      </div>
+      <SharedEmptyState icon="satellite" title="Atlas needs raw period data. Load a company first." />
     );
   }
 
@@ -92,7 +92,7 @@ export default function AtlasReport({ rawData, pipelineResult }: Props) {
       {/* Header banner */}
       <div className="rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 p-5 dark:border-emerald-900/40 dark:from-emerald-950/30 dark:to-teal-950/30">
         <div className="flex items-start gap-3">
-          <div className="text-3xl leading-none">🛰️</div>
+          <div className="wb-text-3 leading-none"><Icon name="satellite" size={28} /></div>
           <div className="flex-1">
             <h2 className="text-base font-semibold text-emerald-900 dark:text-emerald-200">
               Atlas — Fundamental Data, Visualized
@@ -129,7 +129,7 @@ export default function AtlasReport({ rawData, pipelineResult }: Props) {
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="text-base">{v.icon}</span>
+                <span className="wb-text-3 flex-shrink-0"><Icon name={v.icon} size={16} /></span>
                 <span
                   className={`text-sm font-semibold ${
                     active

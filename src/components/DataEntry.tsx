@@ -607,7 +607,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
 
       {/* Company library grid — primary way to load data on first run */}
       {mode === "capitaline" && !(currentData && currentData.length > 0) && (
-        <div className="card-base p-6">
+        <div className="wb-panel p-6">
           <CompanyLibraryGrid
             disabled={isProcessing || isResolvingDeepLink}
             onPickCompany={(folder, ticker, type, scope, hasStandalone, blobUrl, standaloneBlobUrl, qualityIndicatorsBlobUrl) => {
@@ -673,7 +673,7 @@ export default function DataEntry({ onDataSubmit, currentData, config, onConfigC
         </div>
       </details>
 
-      <div className="card-base overflow-hidden">
+      <div className="wb-panel overflow-hidden">
         <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start gap-3 flex-wrap">
           <div>
             <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Upload Capitaline Data</h2>

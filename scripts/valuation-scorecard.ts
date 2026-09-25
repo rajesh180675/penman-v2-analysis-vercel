@@ -104,6 +104,7 @@ function toScorecardRow(result: Awaited<ReturnType<typeof auditCompanyRun>>): Va
     periods: result.periods,
     latestPeriod: result.latestPeriod,
     models: result.models,
+    sectorNativeResults: result.sectorNativeResults,
     valuationEvidence: result.valuationEvidence,
     sourceEvidence: result.sourceEvidence,
     marketEvidence: result.marketEvidence,

@@ -13,7 +13,7 @@ export function AccrualsSection({ rows }: { rows: AccrualTableRow[] }) {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-base font-bold text-slate-800 mb-1">§5A Accrual Regime Classification (S-15.3)</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">§5A Accrual Regime Classification (S-15.3)</h3>
         <p className="text-xs text-slate-500">Balance sheet accrual ratios with regime context. Distinguishes growth accruals from quality concerns.</p>
       </div>
       <div className="overflow-x-auto">

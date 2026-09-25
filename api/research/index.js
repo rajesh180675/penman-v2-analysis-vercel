@@ -27,6 +27,12 @@ async function readVersion(pathname) {
   return { existing, version: 0 };
 }
 
+/** The version the client last read, when it sent one. */
+export function resolveExpectedVersion(body) {
+  const value = body?.expectedVersion;
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
+}
+
 function respondVersionConflict(response, error, kind) {
   response.status(409).json({
     error: "Blob version conflict — another writer updated this resource. Re-read and retry.",
@@ -97,13 +103,19 @@ export default async function handler(request, response) {
         return;
       }
       const pathname = researchPath("comparison-registry", "latest.json");
-      const { version } = await readVersion(pathname);
+      // The registry is replaced wholesale, so a writer that never saw the
+      // latest version would silently drop another tab's companies. The check
+      // is only meaningful against the version the CLIENT last read: re-reading
+      // it here (as this did) compared the server's copy with itself and could
+      // not detect a stale writer. Clients without a version keep the old
+      // last-writer-wins behaviour.
+      const ifVersion = resolveExpectedVersion(body) ?? (await readVersion(pathname)).version;
       try {
         await writeJsonBlob(pathname, {
           schemaVersion: comparisonRegistry.schemaVersion ?? COMPARISON_REGISTRY_SCHEMA_VERSION,
           storedAt: new Date().toISOString(),
           companies: comparisonRegistry.companies,
-        }, { ifVersion: version });
+        }, { ifVersion });
       } catch (error) {
         if (error instanceof BlobVersionMismatchError) {
           respondVersionConflict(response, error, kind);
@@ -111,7 +123,7 @@ export default async function handler(request, response) {
         }
         throw error;
       }
-      response.status(200).json({ ok: true, kind });
+      response.status(200).json({ ok: true, kind, version: ifVersion + 1 });
       return;
     }
 

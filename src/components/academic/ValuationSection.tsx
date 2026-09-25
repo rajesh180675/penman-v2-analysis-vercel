@@ -33,8 +33,8 @@ export function ValuationSynthesisSection(props: {
     eq16Tier, v3TerminalAnchor, data, g, gInput, bindingGCap, tvContaminated, latest,
   } = props;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">6) Valuation Synthesis (Residual Income Framework)</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">6) Valuation Synthesis (Residual Income Framework)</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4">
           <MiniBox label="ke assumption" value={pct(ke, 2)} />
           <MiniBox label="kw (derived, latest)" value={pct(kw, 2)} />
@@ -70,7 +70,7 @@ export function ValuationSynthesisSection(props: {
           </table>
         </div>
         <p className="text-xs text-slate-500 mt-3">
-          Interpretation: when separation confidence is low, the RE line should be treated as primary and ReOI as corroborative only. Identity check (CV3): |RE−ReOI| = ₹{num(reoiIdentityGap)} Cr ({pct(reoiIdentityGapPct)}). Gap decomposition — Dirty surplus PV: ₹{num(v3Bundle?.reReoiGapDecomposition.dirty_surplus)} Cr, NFO timing: ₹{num(v3Bundle?.reReoiGapDecomposition.nfo_timing)} Cr, TV divergence: ₹{num(v3Bundle?.reReoiGapDecomposition.tv_divergence)} Cr, Explicit-period discounting: ₹{num(v3Bundle?.reReoiGapDecomposition.explicit_period_discounting)} Cr, Residual: ₹{num(v3Bundle?.reReoiGapDecomposition.residual)} Cr. Primary driver: {v3Bundle?.reReoiGapDecomposition.dominant_driver ?? "—"}. Legacy rf-based ReOI CV3 was ₹{num(valuationLegacyKw.V_ReOI_CV03)} Cr.
+          Interpretation: when separation confidence is low, the RE line should be treated as primary and ReOI as corroborative only. Identity check (CV3): |RE−ReOI| = ₹{num(reoiIdentityGap)} Cr ({pct(reoiIdentityGapPct)}). Gap decomposition — Anchor book identity: ₹{num(v3Bundle?.reReoiGapDecomposition.anchor_book_identity)} Cr, TV divergence: ₹{num(v3Bundle?.reReoiGapDecomposition.tv_divergence)} Cr, Explicit-period discounting: ₹{num(v3Bundle?.reReoiGapDecomposition.explicit_period_discounting)} Cr, Residual: ₹{num(v3Bundle?.reReoiGapDecomposition.residual)} Cr. Primary driver: {v3Bundle?.reReoiGapDecomposition.dominant_driver ?? "—"}. Legacy rf-based ReOI CV3 was ₹{num(valuationLegacyKw.V_ReOI_CV03)} Cr.
         </p>
         <p className="text-xs text-slate-500 mt-1">
           Explicit residual-income horizon used in valuation: <b>{explicitHorizonYears}</b> yearly steps. Terminal-value share of guarded RE CV3: <b>{pct(tvShare, 1)}</b> ({tvGrade}). Eq.16 residual (latest): <b>{eq16ResidualPp != null ? `${eq16ResidualPp.toFixed(2)}pp` : "—"}</b> [{eq16Tier}].
@@ -100,8 +100,8 @@ export function SensitivityMatrixSection(props: {
 }) {
   const { sensitivityG, sensitivityMatrix, v3TerminalAnchor } = props;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">6A) RE sensitivity matrix (ke × g)</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">6A) RE sensitivity matrix (ke × g)</h2>
         <p className="text-xs text-slate-500 mb-3">Rows vary cost of equity; columns vary terminal growth. Values are V(RE, CV3) in ₹ Cr using derived kw for ReOI consistency checks.</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -141,8 +141,8 @@ export function ResidualIncomeStreamSection(props: {
 }) {
   const { valuation, periodDiagnostics } = props;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">6A.1) Explicit residual-income stream</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">6A.1) Explicit residual-income stream</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -179,8 +179,8 @@ export function TerminalSensitivitySection(props: {
   const { tvContaminated, anchorTable, v3TerminalAnchor, primaryValuation, valuation } = props;
   if (!tvContaminated) return null;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">6A.2) Terminal sensitivity (alternate RE anchors)</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">6A.2) Terminal sensitivity (alternate RE anchors)</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>

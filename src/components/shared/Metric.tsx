@@ -9,8 +9,10 @@ import { Icon } from "./Icon";
 
 export type MetricFormat = "pct" | "mult" | "currency" | "days" | "number" | "ratio";
 
-export function formatMetricValue(value: number | null | undefined, format: MetricFormat): string {
-  if (value == null || !Number.isFinite(value)) return "—";
+export function formatMetricValue(value: string | number | null | undefined, format: MetricFormat): string {
+  if (value == null) return "—";
+  if (typeof value === "string") return value;
+  if (!Number.isFinite(value)) return "—";
   switch (format) {
     case "pct": return `${(value * 100).toFixed(1)}%`;
     case "mult": return `${value.toFixed(2)}×`;
@@ -54,7 +56,7 @@ interface SparklinePoint {
 
 interface MetricProps {
   label: string;
-  value: number | null | undefined;
+  value: string | number | null | undefined;
   format?: MetricFormat | undefined;
   subtitle?: string | undefined;
   context?: ReactNode;
@@ -70,21 +72,21 @@ export function Metric({ label, value, format = "number", subtitle, context, tre
   return (
     <div
       onClick={onClick}
-      className={`wb-surface rounded-xl border p-4 transition-all ${
+      className={`wb-metric transition-all ${
         onClick ? "cursor-pointer hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-600" : ""
       }`}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-medium wb-text-3 uppercase tracking-wide">{label}</div>
+          <div className="wb-metric-label">{label}</div>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-bold wb-text-1 truncate font-financial">
+            <span className="wb-metric-value truncate">
               {formatMetricValue(value, format)}
             </span>
             <MetricTrend value={trend} format={format} />
           </div>
           {subtitle && <div className="text-xs wb-text-3 mt-0.5">{subtitle}</div>}
-          {context != null && <div className="text-xs wb-text-3 mt-1">{context}</div>}
+          {context != null && <div className="wb-metric-context">{context}</div>}
         </div>
         {hasSparkline && (
           <div className="w-20 h-10 flex-shrink-0 ml-2">

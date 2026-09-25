@@ -420,7 +420,7 @@ auto-deploys.
 2. **Upload the data to Vercel Blob storage** (the production version
    reads from Blob, not from your laptop):
    ```
-   set BLOB_READ_WRITE_TOKEN=vercel_blob_rw_zVbQlDg4jAMF3lhR_...
+   set BLOB_READ_WRITE_TOKEN=<your-blob-read-write-token>
    node scripts/upload-to-blob.mjs
    ```
    The token is in the project's Vercel settings. Don't email it or

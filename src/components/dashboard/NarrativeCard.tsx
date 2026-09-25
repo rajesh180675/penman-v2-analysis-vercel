@@ -2,6 +2,7 @@ import { decisiveMoat, type MoatScoreResult } from "../../engine/moatScoring";
 import { decisiveCapAlloc, type CapAllocScoreResult } from "../../engine/capitalAllocationScoring";
 import type { DistressAssessment } from "../../engine/distressDetector";
 import type { RecastPeriod } from "../../engine/types";
+import { Icon } from "../shared/Icon";
 
 interface Props {
   data: RecastPeriod[];
@@ -171,7 +172,7 @@ export default function NarrativeCard(props: Props) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white dark:from-slate-900/40 dark:to-slate-900/20 dark:border-slate-700 p-6 shadow-sm">
       <div className="flex items-center gap-2 mb-4">
-        <span className="text-xl">📖</span>
+        <span className="wb-text-3"><Icon name="book" size={18} /></span>
         <div>
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Narrative Summary</h3>
           <p className="text-xs text-slate-500">Plain-English synthesis of the financial signals</p>

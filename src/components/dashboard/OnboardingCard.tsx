@@ -1,3 +1,4 @@
+import { Icon } from "../shared/Icon";
 interface Props {
   /** True if the user has data loaded — show a more compact "data loaded" version */
   hasData: boolean;
@@ -15,7 +16,7 @@ export default function OnboardingCard({ hasData }: Props) {
   return (
     <div className="rounded-2xl border-2 border-indigo-200 dark:border-indigo-800 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/20 p-6 shadow-sm">
       <div className="flex items-start gap-4">
-        <div className="text-4xl">👋</div>
+        <div className="wb-text-3"><Icon name="info" size={32} /></div>
         <div className="flex-1">
           <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Welcome to Penman V2 Analysis</h2>
           <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">

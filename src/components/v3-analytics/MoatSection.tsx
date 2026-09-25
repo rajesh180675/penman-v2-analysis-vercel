@@ -22,7 +22,7 @@ export function MoatSection({ moat }: { moat: MoatScoreResult | null }) {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-bold text-slate-800 mb-1">Economic Moat Score</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">Economic Moat Score</h3>
         <p className="text-xs text-slate-500">Buffett/Munger moat analysis operationalized through Penman-Nissim ratios. No qualitative inputs — the numbers speak for themselves.</p>
       </div>
 

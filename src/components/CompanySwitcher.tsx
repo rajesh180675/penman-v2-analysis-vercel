@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import type { CompanyRegistry } from "../engine/types";
+import { Icon } from "./shared/Icon";
 
 interface Props {
   registry: CompanyRegistry;
@@ -46,7 +47,7 @@ export default function CompanySwitcher({ registry, activeCompanyId, onSwitchCom
         className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors"
         title="Switch active company"
       >
-        <span className="text-base">🏢</span>
+        <span className="wb-text-3"><Icon name="building" size={16} /></span>
         <span className="max-w-[140px] truncate">{activeLabel}</span>
         <span className="text-xs text-slate-400">{companies.length}</span>
         <svg className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 12 12" fill="currentColor">

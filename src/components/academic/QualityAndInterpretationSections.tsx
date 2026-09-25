@@ -8,11 +8,11 @@ export function QualityScoreSection(props: {
 }) {
   const { latest, dilutionRecent } = props;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">6C) Quality Score Decomposition</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">6C) Quality Score Decomposition</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
-            <h3 className="font-semibold text-slate-700 mb-2">Piotroski components</h3>
+            <h3 className="font-semibold text-slate-700 dark:text-slate-200 mb-2">Piotroski components</h3>
             <ul className="space-y-1 text-slate-700">
               <li>ROA positive: <b>{latest.quality?.piotroski_roa ?? "—"}</b></li>
               <li>ΔROA positive: <b>{latest.quality?.piotroski_delta_roa ?? "—"}</b></li>
@@ -26,7 +26,7 @@ export function QualityScoreSection(props: {
             </ul>
           </div>
           <div>
-            <h3 className="font-semibold text-slate-700 mb-2">Altman Z' components</h3>
+            <h3 className="font-semibold text-slate-700 dark:text-slate-200 mb-2">Altman Z' components</h3>
             <ul className="space-y-1 text-slate-700">
               <li>WC / TA: <b>{num(latest.quality?.altman_wc_ta, 3)}</b></li>
               <li>RE / TA: <b>{num(latest.quality?.altman_re_ta, 3)}</b></li>
@@ -51,8 +51,8 @@ export function InvestmentInterpretationSection(props: {
 }) {
   const { companyId, latest, v3Bundle, dividendCashGap, faRunwayYears, latestRe } = props;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">7) Investment Interpretation and Monitoring Triggers</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">7) Investment Interpretation and Monitoring Triggers</h2>
         <div className="text-sm text-slate-700 space-y-2">
           <p>
             <b>Base thesis support</b>: Persistent positive spread and stable/expanding PM with non-collapsing ATO indicate

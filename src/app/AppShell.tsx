@@ -27,7 +27,6 @@ import {
   rememberAuditRun,
 } from "../lib/audit";
 import { readPersistedCompanyRegistry } from "../lib/companyRegistryStore";
-import { resolveNseSymbol, resolveFolderFromSymbol } from "../engine/nseSymbolRegistry";
 import { SourceParserDiagnostics } from "../engine/parserDiagnostics";
 import type { CanonicalFactIngestionBundle } from "../engine/facts";
 import { TABS, type TabId } from "./tabs";
@@ -43,6 +42,7 @@ import { AnalysisBanners } from "./components/AnalysisBanners";
 import { TabRouter } from "./components/TabRouter";
 import { AnalysisRunStatusBar } from "./components/AnalysisRunStatusBar";
 import { resolvePostIngestionDeepLinkTab } from "./deepLinkRouting";
+import { configForSubmittedCompany } from "./companyScopedConfig";
 
 export function AppShell() {
   const auditGovernance = getAuditClientGovernance();
@@ -236,6 +236,10 @@ export function AppShell() {
     }
   }, [rawData, recastData, engineError, scopeGate]);
 
+  // The issuer whose data is currently loaded, read synchronously inside
+  // handleDataSubmit to decide whether issuer-scoped config is now stale.
+  const loadedCompanyIdRef = useRef<string | null>(null);
+
   const handleDataSubmit = useCallback(
     (
       data: RawPeriodData[],
@@ -259,21 +263,10 @@ export function AppShell() {
       };
       rememberAuditRun(nextMeta);
       setAuditMeta(nextMeta);
-  setConfig((prev) => {
-    const companyId = nextMeta.companyId || data[0]?.company_id || prev.ticker;
-    const isDifferentCompany = companyId !== prev.ticker;
-    // Resolve NSE symbol and quality-data folder if not already set.
-    // This ensures manual uploads (which skip the library grid) also get
-    // proper symbol/folder wiring so the sidecar fetch and live price work.
-    const resolvedSymbol = (isDifferentCompany ? null : prev.market_data_symbol) ?? resolveNseSymbol(companyId) ?? null;
-    const resolvedFolder = (isDifferentCompany ? null : prev.quality_data_folder) ?? resolveFolderFromSymbol(companyId) ?? companyId;
-    return {
-      ...prev,
-      ticker: companyId,
-      market_data_symbol: resolvedSymbol ?? undefined,
-      quality_data_folder: resolvedFolder,
-    };
-  });
+      const nextCompanyId = nextMeta.companyId || data[0]?.company_id || null;
+      const loadedCompanyId = loadedCompanyIdRef.current;
+      loadedCompanyIdRef.current = nextCompanyId;
+      setConfig((current) => configForSubmittedCompany(current, { companyId: nextCompanyId, loadedCompanyId }));
       setWorkspaceCompanyId(nextMeta.companyId || data[0]?.company_id || null);
       setRawData(data);
       // Phase A — store standalone (or clear it). Always set so a fresh upload
@@ -380,12 +373,6 @@ export function AppShell() {
     <ErrorBoundary>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <AppHeader
-          visibleTabs={visibleTabs}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          valuationBlocked={valuationBlocked}
-          financialFallbackAvailable={financialFallbackAvailable}
-          scopeBlocked={scopeBlocked}
           auditMeta={auditMeta}
           rawData={rawData}
           analysisStatus={analysisStatus}

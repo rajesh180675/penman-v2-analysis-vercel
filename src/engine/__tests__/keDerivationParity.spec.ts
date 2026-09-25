@@ -154,7 +154,7 @@ describe("ke derivation: pinned pack", () => {
     const withPack = resolveCostOfCapitalFromConfig({
       config,
       macroPack: INDIA_MACRO_PACK,
-      analysisAsOf: "2026-07-27",
+      analysisAsOf: INDIA_MACRO_PACK.asOf,
     });
 
     // A pack reaches the resolver only as an argument, so any caller that

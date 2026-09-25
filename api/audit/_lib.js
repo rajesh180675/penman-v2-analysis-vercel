@@ -35,13 +35,25 @@ export function getAuditGovernanceConfig() {
   };
 }
 
+/**
+ * Retention a caller may request for its own run. Callers may shorten the
+ * governed window but never extend it: the prune job reads this value back
+ * from the latest event, so an unbounded client value would exempt a run from
+ * retention entirely.
+ */
+export function resolveRetentionDays(requested, governanceDays) {
+  const days = Number(requested);
+  if (!Number.isFinite(days) || days <= 0) return governanceDays;
+  return Math.min(Math.max(Math.round(days), 1), governanceDays);
+}
+
 export function getAuditReadToken(request) {
   const headerToken = request.headers["x-audit-token"] || request.headers["X-Audit-Token"];
   if (Array.isArray(headerToken)) return headerToken[0] ?? null;
   return headerToken ?? null;
 }
 
-function safeTokenEqual(left, right) {
+export function safeTokenEqual(left, right) {
   if (!left || !right) return false;
   const leftBuffer = Buffer.from(String(left));
   const rightBuffer = Buffer.from(String(right));
@@ -68,6 +80,18 @@ export function requireAuditReadAuth(request, response) {
 }
 
 /**
+ * The rotation grace token for writes. When a distinct write token is
+ * configured, the read-side previous token must not keep write access — that
+ * would undo the scoping the separate token exists for — so only
+ * AUDIT_ADMIN_WRITE_TOKEN_PREVIOUS applies. Single-token deployments keep
+ * rotating through AUDIT_ADMIN_TOKEN_PREVIOUS as before.
+ */
+function previousWriteToken() {
+  if (process.env.AUDIT_ADMIN_WRITE_TOKEN) return process.env.AUDIT_ADMIN_WRITE_TOKEN_PREVIOUS;
+  return process.env.AUDIT_ADMIN_TOKEN_PREVIOUS;
+}
+
+/**
  * Gates audit write paths (and any caller that wants to enforce a distinct
  * write-only token). Reads from AUDIT_ADMIN_WRITE_TOKEN when set, otherwise
  * falls back to AUDIT_ADMIN_TOKEN — so single-token deployments continue to
@@ -80,7 +104,7 @@ export function requireAuditReadAuth(request, response) {
  */
 export function requireAuditWriteAuth(request, response) {
   const configuredWriteToken = process.env.AUDIT_ADMIN_WRITE_TOKEN || process.env.AUDIT_ADMIN_TOKEN;
-  const previousToken = process.env.AUDIT_ADMIN_TOKEN_PREVIOUS;
+  const previousToken = previousWriteToken();
   const presented = getAuditReadToken(request);
 
   if (!configuredWriteToken && !previousToken) {
@@ -107,7 +131,7 @@ export function isAuditReadAuthorized(request) {
 
 export function isAuditWriteAuthorized(request) {
   const configuredToken = process.env.AUDIT_ADMIN_WRITE_TOKEN || process.env.AUDIT_ADMIN_TOKEN;
-  const previousToken = process.env.AUDIT_ADMIN_TOKEN_PREVIOUS;
+  const previousToken = previousWriteToken();
   const presented = getAuditReadToken(request);
 
   if (!configuredToken && !previousToken) return !isAuditAdminAuthRequired();

@@ -70,10 +70,20 @@ This is a real improvement in clarity, but it is still only a partial reconcilia
 - `CNI = OI - NFE - MII`
 - `Core OI + UOI = OI`
 - `Core NFE + UFE = NFE`
-- `d_t = FCF - NFE + ΔNFO`
 - `Share Capital ÷ Face Value = End-Period Shares`
-- `Δ Gross Borrowings = Debt Proceeds + Debt Repayment` when traced borrowing lines exist
-- `Δ Cash and Bank = CFO - Capex - Distributions + Equity/Financing/Investment Flows` when traced cash balances and core cash-flow lines exist
+- `Recast CSE + MI = Raw Total Equity` (external-equity-bridge)
+- `Recast TA = Raw Current + Non-Current Assets` (recast-ta-vs-raw)
+- `CSE + MI + FO + OL = Raw Total Equity and Liabilities` (recast-equity-side-vs-raw)
+- `Explicit OL components ÷ OL ∈ [0.7, 1.3]` (ol-coverage-bridge)
+- `Bridge Core OI (tax-adjusted) = Core OI − Other Items` (operating-cost-bridge)
+
+Reconstruction bridges are **diagnostic-only** (`role: "diagnostic"` in `src/engine/types/reconciliation.ts`) and do not drive the structural verdict, because the current Capitaline CF mapping does not carry the lines needed to close them (`netCashChange`, `openingCash`, `closingCash`, and full debt/investment flow detail exist in the spec but are not yet read by the recast). They failed 82–100% of corpus periods with median ratios of 28–92% — evidence of mapping incompleteness, not misstatement — so gating on them made `structurally-reconciled` unreachable for every industrial company in the corpus (0/33 cleared).
+
+- `d_t = FCF - NFE + ΔNFO` (diagnostic; 267/308 periods failed pre-demote)
+- `Δ Bridge Debt = Bridge Debt Proceeds + Bridge Debt Repayment` (diagnostic; 253/308)
+- `Δ Cash and Bank = CFO - Capex - Distributions + Equity/Financing/Investment Flows` (diagnostic; 308/308)
+
+They remain computed, surfaced in the Debug/reconciliation panels, counted in `warningCount`/`errorCount` per-check detail, and re-enter the gating set once the CF mapping contract carries the closing-cash and full debt-flow lines.
 
 Capitaline runs also still have richer parser-fidelity evidence than other modes because they use parse-debug signals such as file presence, header detection, period consistency, and parser noise. Other source modes still rely on lighter post-parse density heuristics rather than rich source-native diagnostics.
 

@@ -23,7 +23,7 @@ export default function SignalEngineSection({
       <div className="xl:col-span-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-slate-800">Signal Engine</h2>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Signal Engine</h2>
             <p className="mt-1 text-sm text-slate-500">
               The tab leads with the stressed case and only elevates a buy state when both valuation and historical context are unusually strong.
             </p>

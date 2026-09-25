@@ -27,7 +27,7 @@ export function DashboardSkeleton() {
 
 export function TableSkeleton({ rows = 8, cols = 6 }: { rows?: number | undefined; cols?: number }) {
   return (
-    <div className="animate-pulse card-base overflow-hidden">
+    <div className="animate-pulse wb-panel overflow-hidden">
       {/* Header */}
       <div className="h-12 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700" />
       {/* Rows */}
@@ -44,7 +44,7 @@ export function TableSkeleton({ rows = 8, cols = 6 }: { rows?: number | undefine
 
 export function ChartSkeleton({ height = "h-64" }: { height?: string }) {
   return (
-    <div className={`animate-pulse card-base ${height} flex items-end gap-2 p-6`}>
+    <div className={`animate-pulse wb-panel ${height} flex items-end gap-2 p-6`}>
       {[40, 65, 45, 80, 55, 70, 50, 75, 60, 85].map((h, i) => (
         <div
           key={i}
@@ -58,7 +58,7 @@ export function ChartSkeleton({ height = "h-64" }: { height?: string }) {
 
 export function ProcessingOverlay({ step, fileName }: { step: string; fileName?: string }) {
   return (
-    <div className="card-base p-8 text-center">
+    <div className="wb-panel p-8 text-center">
       <div className="inline-flex items-center gap-3 mb-4">
         <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
         <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{step}</span>

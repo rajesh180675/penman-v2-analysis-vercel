@@ -7,7 +7,7 @@ export default function ContinuingValueFormulae({
 }) {
   return (
     <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-sm">
-      <h3 className="font-semibold text-slate-800 mb-3">Continuing Value Formulae (§6.1–6.2)</h3>
+      <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Continuing Value Formulae (§6.1–6.2)</h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs mb-3">
         {[
           { t: "CV1 / CV01 — Zero", f: "CV = 0", d: "Conservative. No terminal value." },

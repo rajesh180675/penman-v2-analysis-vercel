@@ -15,6 +15,15 @@ function isSafeSegment(s: string): boolean {
   return !/[/\\]/.test(s) && !s.includes("..") && s.length > 0 && s.length < 128;
 }
 
+const LOCAL_RETENTION_DAYS = 45;
+
+/** Callers may shorten the local retention window, never extend it. */
+function resolveRetentionDays(requested: unknown): number {
+  const days = Number(requested);
+  if (!Number.isFinite(days) || days <= 0) return LOCAL_RETENTION_DAYS;
+  return Math.min(Math.max(Math.round(days), 1), LOCAL_RETENTION_DAYS);
+}
+
 function requestHeader(req: Request, name: string): string {
   const value = req.headers[name];
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
@@ -83,7 +92,7 @@ router.post("/events", async (req: Request, res: Response) => {
     createdAt,
     runAccessHash: accessHash,
     contentClass: contentClass ?? null,
-    retentionDays: Number(retentionDays) || 45,
+    retentionDays: resolveRetentionDays(retentionDays),
   };
 
   // Events are append-only by eventId, so no version check is needed for them.
@@ -105,7 +114,7 @@ router.post("/events", async (req: Request, res: Response) => {
       version: 0,
       runAccessHash: accessHash,
       contentClass: contentClass ?? null,
-      retentionDays: Number(retentionDays) || 45,
+      retentionDays: resolveRetentionDays(retentionDays),
     };
     const expectedVersion = typeof runMeta.version === "number" ? runMeta.version : 0;
 
@@ -117,7 +126,7 @@ router.post("/events", async (req: Request, res: Response) => {
       version: expectedVersion + 1,
       runAccessHash: runMeta.runAccessHash ?? accessHash,
       contentClass: runMeta.contentClass ?? contentClass ?? null,
-      retentionDays: runMeta.retentionDays ?? (Number(retentionDays) || 45),
+      retentionDays: runMeta.retentionDays ?? resolveRetentionDays(retentionDays),
     };
 
     // Re-read just before writing as a cheap mismatch check; fs has no atomic
@@ -232,7 +241,7 @@ router.post(
       contentType: header("x-audit-content-type") || "application/octet-stream",
       contentEncoding: header("x-audit-content-encoding") || null,
       contentClass: header("x-audit-content-class") || null,
-      retentionDays: Number(header("x-audit-retention-days")) || 45,
+      retentionDays: resolveRetentionDays(header("x-audit-retention-days")),
       size: req.body.length,
       uploadedAt: new Date().toISOString(),
     });

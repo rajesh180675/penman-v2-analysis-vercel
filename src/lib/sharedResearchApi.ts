@@ -1,5 +1,5 @@
 import { CompanyRegistry } from "../engine/types";
-import { buildCompanyRegistrySnapshot, readCompanyRegistrySnapshot } from "./companyRegistrySnapshot";
+import { buildCompanyRegistrySnapshot, mergeCompanyRegistries, readCompanyRegistrySnapshot } from "./companyRegistrySnapshot";
 import { AfesBlackboardSnapshot, readAfesBlackboardSnapshot } from "./afesBlackboardSnapshot";
 import {
   WorkspaceAnalysisSnapshot,
@@ -260,18 +260,54 @@ export async function fetchSharedResearchBundleWithStatus(companyId: string) {
   return getJsonWithStatus<SharedResearchBundle>(`/api/research?companyId=${encodeURIComponent(companyId)}`);
 }
 
-export async function fetchSharedComparisonRegistryWithStatus() {
+/**
+ * Version of the shared comparison registry this tab last read or wrote.
+ *
+ * The registry is replaced wholesale on every sync, so a tab writing over a
+ * version it never saw drops the companies another tab added. Sending the
+ * version back lets the server refuse the stale write (409); the tab then
+ * re-reads, merges per company, and retries once.
+ */
+let sharedRegistryVersion: number | null = null;
+
+function readRegistryVersion(value: unknown): number | null {
+  if (value == null || typeof value !== "object") return null;
+  const version = (value as { version?: unknown }).version;
+  return typeof version === "number" && Number.isInteger(version) && version >= 0 ? version : null;
+}
+
+export function resetSharedRegistryVersionForTests() {
+  sharedRegistryVersion = null;
+}
+
+export async function fetchSharedComparisonRegistryWithStatus(): Promise<SharedApiResult<CompanyRegistry>> {
   const result = await getJsonWithStatus<unknown>("/api/research?kind=comparison-registry");
-  if (!result.ok || !result.data) return failureSharedApiResult("Shared comparison registry unavailable.", result.status);
+  if (!result.ok || !result.data) return failureSharedApiResult<CompanyRegistry>("Shared comparison registry unavailable.", result.status);
+  // An empty store has no version field: that is version 0, not "unknown".
+  sharedRegistryVersion = readRegistryVersion(result.data) ?? 0;
   return successSharedApiResult(readCompanyRegistrySnapshot(result.data), result.status);
+}
+
+async function postSharedRegistry(registry: CompanyRegistry) {
+  const result = await postJsonWithStatus<Record<string, unknown>>("/api/research", {
+    kind: "comparison-registry",
+    comparisonRegistry: buildCompanyRegistrySnapshot(registry),
+    ...(sharedRegistryVersion != null ? { expectedVersion: sharedRegistryVersion } : {}),
+  });
+  if (result.ok) sharedRegistryVersion = readRegistryVersion(result.data) ?? sharedRegistryVersion;
+  return result;
 }
 
 export async function syncSharedComparisonRegistryWithStatus(registry: CompanyRegistry) {
   if (!Object.keys(registry.companies).length) return failureSharedApiResult("No comparison companies to sync.");
-  return postJsonWithStatus<Record<string, unknown>>("/api/research", {
-    kind: "comparison-registry",
-    comparisonRegistry: buildCompanyRegistrySnapshot(registry),
-  });
+  const first = await postSharedRegistry(registry);
+  if (first.status !== 409) return first;
+  // Another writer won. Re-read, fold their companies into ours
+  // (mergeCompanyRegistries: union of companies, richer data and newer
+  // traceability per company), and retry once against the version just read.
+  const latest = await fetchSharedComparisonRegistryWithStatus();
+  if (!latest.ok || !latest.data) return first;
+  return postSharedRegistry(mergeCompanyRegistries(latest.data, registry));
 }
 
 export async function syncWorkspaceAnalysis(companyId: string, analysis: WorkspaceAnalysisSnapshot | null) {

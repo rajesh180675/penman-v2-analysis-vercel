@@ -29,10 +29,10 @@ export default function CalibrationDashboardPanel({ calibration, alerts }: Props
   const shownAlerts = capped(alerts, ALERTS_SHOWN);
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 p-6 shadow-sm">
+    <div className="wb-panel rounded-2xl p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-bold text-slate-800">Calibration And Alerts</h3>
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Calibration And Alerts</h3>
           <p className="mt-1 text-sm text-slate-500">
             This panel turns the replay engine into an investor workflow. It shows whether the signal ladder is statistically thin or robust, and what alerts have already fired.
           </p>
@@ -67,7 +67,7 @@ export default function CalibrationDashboardPanel({ calibration, alerts }: Props
         <div><strong>Recommendation:</strong> {calibration.recommendation}</div>
       </div>
 
-      <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60">
+      <div className="wb-panel mt-4 rounded-xl">
         <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-800">
           Persisted alerts ({alerts.length}){alerts.length ? " · newest first" : ""}
         </div>

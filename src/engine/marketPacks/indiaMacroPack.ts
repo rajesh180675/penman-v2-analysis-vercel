@@ -60,13 +60,14 @@ export const INDIA_ERP_BASIS = "ratings-based" as const;
  * double-counts the country risk already inside the 2.85%.
  */
 export const INDIA_MACRO_PACK: MacroPack = {
-  asOf: "2026-07-26",
+  asOf: "2026-09-25",
   riskFreeRate: {
-    // India 10-year benchmark G-Sec. Cross-checked against two other reports
-    // of the same series in the same window (6.76% at 2026-06-30, 6.72% at
-    // 2026-07-10), so this is the series level, not a stray print.
-    value: 0.0682,
-    asOf: "2026-07-24",
+    // India 10-year benchmark G-Sec. Cross-checked against a second report of
+    // the same series in the same window (7.04% at 2026-09-22, India Macro
+    // Indicators), consistent with the reported +0.08pp session move to 7.11%.
+    // Previous pin: 6.82% at 2026-07-24 (expired past the 30-day window).
+    value: 0.0711,
+    asOf: "2026-09-24",
     source: "India 10Y benchmark G-Sec yield, per Trading Economics (tradingeconomics.com/india/government-bond-yield)",
   },
   equityRiskPremium: {

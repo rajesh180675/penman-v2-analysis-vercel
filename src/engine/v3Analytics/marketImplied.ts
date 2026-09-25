@@ -3,7 +3,6 @@
    Extracted verbatim from v3Analytics.ts (Plan 2 PR-2.2). Imports DOWN
    from ../types and ./shared only — no back-edge to v3Analytics.ts.
 ══════════════════════════════════════════════════════════════════ */
-import { RecastPeriod } from "../types";
 import { CanonicalOutputRegistry } from "./shared";
 
 export interface MarketImpliedResult {
@@ -28,7 +27,16 @@ export interface MarketImpliedResult {
 
 export function computeMarketImplied(
   registry: CanonicalOutputRegistry,
-  valuation: { V_primary: number; ke: number; g_effective: number; CSE0: number; pvRE: number; explicit_periods: number; RE_anchor: number; periods: RecastPeriod[] },
+  /**
+   * Latest-anchored: `bookT` is today's common equity and `RE_anchor` the
+   * terminal RE selected at T, so V(g, ke) = B_T + RE_(T+1)/(ke − g). The
+   * shape used to carry the OLDEST book plus realized RE discounted back to
+   * it, and solved for the g/ke that equated a first-year value to today's
+   * market cap. `bookPrev` (B_(T−1)) re-prices the anchor's capital charge
+   * when the solver varies ke: RE = CNI − ke·B, so holding RE fixed while ke
+   * moves understated the implied ke's effect.
+   */
+  valuation: { V_primary: number; ke: number; g_effective: number; bookT: number; bookPrev: number; RE_anchor: number },
   marketPrice?: number | undefined,
   sharesOverride?: number | undefined,
   marketCapSharesOverride?: number | undefined,
@@ -61,8 +69,7 @@ export function computeMarketImplied(
     : "Market embeds expectations above current RE model trajectory.";
   const vAtG = (g: number) => {
     if (g >= valuation.ke - 0.001) return Number.POSITIVE_INFINITY;
-    const cv = valuation.RE_anchor * (1 + g) / (valuation.ke - g);
-    return valuation.CSE0 + valuation.pvRE + cv / Math.pow(1 + valuation.ke, valuation.explicit_periods);
+    return valuation.bookT + valuation.RE_anchor * (1 + g) / (valuation.ke - g);
   };
   let implied_g: number | null = null;
   // No placeholder: every branch below assigns, so the compiler now enforces
@@ -89,9 +96,8 @@ export function computeMarketImplied(
   const vAtKe = (keTry: number) => {
     const g = valuation.g_effective;
     if (keTry <= g + 0.001) return Number.POSITIVE_INFINITY;
-    const pvRE = valuation.periods.slice(1).reduce((acc, p, idx) => acc + (p.ri?.RE ?? 0) / Math.pow(1 + keTry, idx + 1), 0);
-    const cv = valuation.RE_anchor * (1 + g) / (keTry - g);
-    return valuation.CSE0 + pvRE + cv / Math.pow(1 + keTry, valuation.explicit_periods);
+    const anchorAtKe = valuation.RE_anchor + (valuation.ke - keTry) * valuation.bookPrev;
+    return valuation.bookT + anchorAtKe * (1 + g) / (keTry - g);
   };
   let implied_ke: number | null = null;
   let keNote: string;

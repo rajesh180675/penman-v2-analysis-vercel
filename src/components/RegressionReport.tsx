@@ -6,6 +6,7 @@ import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import { SectionHeader } from "./shared/DesignSystem";
+import { EmptyState } from "./shared/EmptyState";
 
 interface Props {
   rawData: RawPeriodData[] | null;
@@ -34,11 +35,11 @@ export default function RegressionReport({ rawData, recastData, config, registry
 
   if (!report) {
 return (
-      <div className="card-base p-12 text-center">
-        <div className="text-5xl mb-3">🧪</div>
-        <p className="font-semibold text-slate-600 dark:text-slate-300">Need uploaded raw data + 2+ recast periods</p>
-        <p className="text-sm text-slate-500 mt-1">Run analysis first, then open this tab for before/after regression deltas.</p>
-      </div>
+      <EmptyState
+        icon="flask"
+        title="Need uploaded raw data + 2+ recast periods"
+        body="Run analysis first, then open this tab for before/after regression deltas."
+      />
     );
   }
 
@@ -47,7 +48,7 @@ return (
       <SectionHeader
         title="Regression"
         subtitle="Before/after regression deltas — did the latest data change the engine outputs?"
-        icon="🧪"
+        icon="flask"
       />
 
       {traceabilitySummary && (
@@ -61,16 +62,16 @@ return (
           cautionHeading="Read regression deltas in the context of these unresolved gates"
         />
       )}
-      <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-        <h2 className="text-lg font-bold text-slate-800">Post-Fix Regression Harness</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Post-Fix Regression Harness</h2>
         <p className="text-xs text-slate-500 mt-1">
           Company run-through on {report.latestPeriod.slice(0, 10)} with legacy-emulation (before) vs fixed engine (after).
         </p>
       </section>
       {snapshot && (
         <>
-          <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-            <h3 className="font-semibold text-slate-800 mb-3">Phase 0 Baseline Universe (Frozen)</h3>
+          <section className="wb-panel rounded-2xl p-6">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Phase 0 Baseline Universe (Frozen)</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -101,8 +102,8 @@ return (
               </table>
             </div>
           </section>
-          <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-            <h3 className="font-semibold text-slate-800 mb-3">Phase 0 Guardrails KPI Dashboard</h3>
+          <section className="wb-panel rounded-2xl p-6">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Phase 0 Guardrails KPI Dashboard</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Box label="RE↔ReOI identity gap" value={pct(snapshot.guardrails.identityGapPct)} />
               <Box label="% Other OA" value={pct(snapshot.guardrails.otherOAPct)} />
@@ -113,8 +114,8 @@ return (
               />
             </div>
           </section>
-          <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-            <h3 className="font-semibold text-slate-800 mb-3">Reproducible Baseline Snapshot</h3>
+          <section className="wb-panel rounded-2xl p-6">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Reproducible Baseline Snapshot</h3>
             <p className="text-xs text-slate-500 mb-3">
               Deterministic snapshot ID for regression harness baselining and CI comparisons.
             </p>
@@ -130,8 +131,8 @@ return (
         </>
       )}
 
-      <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-        <h3 className="font-semibold text-slate-800 mb-3">1) Before vs After Ratio Deltas (latest period)</h3>
+      <section className="wb-panel rounded-2xl p-6">
+        <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-3">1) Before vs After Ratio Deltas (latest period)</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -162,8 +163,8 @@ return (
         </div>
       </section>
 
-      <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-        <h3 className="font-semibold text-slate-800 mb-3">2) Identity Pass Rate A1–A9 (before vs after)</h3>
+      <section className="wb-panel rounded-2xl p-6">
+        <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-3">2) Identity Pass Rate A1–A9 (before vs after)</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div className="rounded-lg border border-red-200 bg-red-50 p-3">
             <div className="text-xs uppercase text-red-700 font-semibold">Before (legacy emulation)</div>
@@ -202,8 +203,8 @@ return (
         </div>
       </section>
 
-      <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-        <h3 className="font-semibold text-slate-800 mb-3">3) Valuation Delta (RE/ReOI CV outputs)</h3>
+      <section className="wb-panel rounded-2xl p-6">
+        <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-3">3) Valuation Delta (RE/ReOI CV outputs)</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <Box label="ke" value={pct(report.valuationDelta.ke)} />
           <Box label="kw before (legacy)" value={pct(report.valuationDelta.kw_before)} />
@@ -245,8 +246,8 @@ return (
         </div>
       </section>
 
-      <section className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-        <h3 className="font-semibold text-slate-800 mb-3">4) Fixed-Bugs Impact Table (quantitative attribution)</h3>
+      <section className="wb-panel rounded-2xl p-6">
+        <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-3">4) Fixed-Bugs Impact Table (quantitative attribution)</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

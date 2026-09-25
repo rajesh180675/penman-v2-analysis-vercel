@@ -23,8 +23,8 @@ export function CashFlowQualitySection(props: {
     accrualDeltaOtherOL, accrualOtherProxy, accrualTotalProxy, cumulativeDirtySurplus, v3Bundle,
   } = props;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">5) Cash-Flow Quality and Clean-Surplus Diagnostics</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">5) Cash-Flow Quality and Clean-Surplus Diagnostics</h2>
         <ul className="list-disc pl-5 text-sm text-slate-700 space-y-1.5">
           <li>
             Latest accounting FCF (Eq.14) = <b>₹{num(latest.cf.FCF_accounting)} Cr</b>; cash FCF proxy (CFO-Capex) =
@@ -65,8 +65,8 @@ export function AccrualTimeSeriesSection(props: {
 }) {
   const { accrualSeries, data } = props;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">5A) Accrual-ratio time series</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">5A) Accrual-ratio time series</h2>
         <p className="text-xs text-slate-500 mb-3">This series helps separate transition-year accrual spikes from current-period earnings quality.</p>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -106,8 +106,8 @@ export function AccrualTimeSeriesSection(props: {
 
 export function OperatingTrajectorySection({ ratioTimeline }: { ratioTimeline: RatioTimeline }) {
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">5B) Operating trajectory timeline (full sample)</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">5B) Operating trajectory timeline (full sample)</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>

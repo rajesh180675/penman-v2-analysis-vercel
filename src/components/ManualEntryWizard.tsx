@@ -220,7 +220,7 @@ export default function ManualEntryWizard({ onSubmit }: { onSubmit: (rows: RawPe
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h4 className="font-semibold text-slate-700">Manual Entry Wizard — Step {state.step}/5</h4>
+          <h4 className="font-semibold text-slate-700 dark:text-slate-200">Manual Entry Wizard — Step {state.step}/5</h4>
           <p className="text-xs text-slate-500">Direct entry using canonical N&P structure — no CSV required</p>
         </div>
         <div className="flex gap-1.5">

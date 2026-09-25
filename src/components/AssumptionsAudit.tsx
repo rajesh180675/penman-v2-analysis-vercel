@@ -220,10 +220,10 @@ export default function AssumptionsAudit({ config, costOfCapital, terminalGrowth
   const warningCount = assumptions.filter(a => a.flag === "warning").length;
 
   return (
-    <div className="card-base p-5">
+    <div className="wb-panel p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-lg">🔎</span>
+          
           <div>
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Assumptions Audit</h3>
             <p className="text-[10px] text-slate-400">Every valuation input — visible, sourced, and sanity-checked</p>

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "penman-v2-analysis": {
+      "type": "sse",
+      "url": "http://127.0.0.1:38458/sse"
+    }
+  }
+}

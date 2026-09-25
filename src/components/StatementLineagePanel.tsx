@@ -39,7 +39,7 @@ export default function StatementLineagePanel({ lineage }: Props) {
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-bold text-slate-800">Filing Lineage And Segment Hints</h3>
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Filing Lineage And Segment Hints</h3>
           <p className="mt-1 text-sm text-slate-500">
             This helps the investor judge whether the loaded statements are clean year-on-year filings, amended history, or disclosures that need segment-aware follow-up.
           </p>

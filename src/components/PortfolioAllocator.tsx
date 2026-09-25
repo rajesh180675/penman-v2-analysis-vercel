@@ -36,7 +36,7 @@ function TextField({ label, value, onChange }: FieldProps) {
 export default function PortfolioAllocator({ plan, latestValuation, onChange }: Props) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-base font-bold text-slate-800">Portfolio Allocator</h3>
+      <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Portfolio Allocator</h3>
       <p className="mt-1 text-sm text-slate-500">
         The tool should help you decide what to do next, not just what a spreadsheet says. Translate the signal into position discipline here.
       </p>

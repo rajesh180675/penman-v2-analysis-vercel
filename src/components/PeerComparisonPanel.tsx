@@ -13,7 +13,7 @@ export default function PeerComparisonPanel({ snapshot }: Props) {
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-bold text-slate-800">Peer Snapshot</h3>
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Peer Snapshot</h3>
           <p className="mt-1 text-sm text-slate-500">A valuation conclusion is more useful when the investor can see it against peer opportunity and expected-return context.</p>
         </div>
         <div className="text-xs text-slate-500">{snapshot.peers.length} peers</div>

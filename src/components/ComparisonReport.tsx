@@ -1,7 +1,7 @@
 import { CompanyRegistry, EngineConfig, NP_BENCHMARKS } from "../engine/types";
 import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
-import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
+import { valuePeer, withPeerMarketInput } from "./comparison/peerValuation";
 import { useCallback, useMemo, useState } from "react";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
@@ -12,7 +12,7 @@ import PercentileBar from "./charts/PercentileBar";
 import SectorHeatmap from "./charts/SectorHeatmap";
 import { computePeerRelativeValuation } from "../engine/peerRelativeValuation";
 import RunBackedPortfolioComparison from "./RunBackedPortfolioComparison";
-import { EmptyState } from "./shared/Primitives";
+import { EmptyState } from "./shared/EmptyState";
 import type { ReturnTypeOfPortfolioComparison } from "../engine/portfolioRunComparison.types";
 import { priceToBook } from "./valuationScaleMath";
 
@@ -83,7 +83,7 @@ function ComparisonReportBody({ registry, config, weakestTraceabilitySummary: pr
   const weakestCompany = comparisonPublication.weakestCompanyId
     ? companies.find((company) => company.id === comparisonPublication.weakestCompanyId) ?? null
     : null;
-  const latestByCo = companies.map((c) => ({ company: c.label || c.id, id: c.id, latest: c.recastData[c.recastData.length - 1], series: c.recastData }));
+  const latestByCo = companies.map((c) => ({ company: c.label || c.id, id: c.id, companyType: c.companyType ?? null, latest: c.recastData[c.recastData.length - 1], series: c.recastData }));
   // `priceAsOf` is present only for prices fetched from the market-data snapshot.
   // A hand-typed price has no provenance, so it stays undated and is therefore
   // not eligible to back a peer median.
@@ -181,31 +181,11 @@ function ComparisonReportBody({ registry, config, weakestTraceabilitySummary: pr
       analysisAsOf: analysisAsOfToday(),
     }).ke;
     const g = 0.05;
-    return latestByCo.map((c) => {
-      const n = c.series.length;
-      const kw = n >= 2
-        ? deriveKwFromStructure(c.series[n - 1]!, c.series[n - 2]!, ke, config.risk_free_rate, config)
-        : config.risk_free_rate;
-      const localCfg: EngineConfig = { ...config };
-      const v = computeValuation(c.series, ke, kw, g, localCfg);
-      const re = v.V_RE_CV3;
-      const reoi = v.V_ReOI_CV03;
-      const fcff = v.fcf?.EV_FCFF != null ? v.fcf.EV_FCFF - v.NFO_latest : null;
-      const fcfe = v.fcf?.V_FCFE ?? null;
-      const ddmPerShare = v.perShare?.intrinsic_ddm_per_share ?? null;
-      const aeg = v.aeg?.V_AEG ?? null;
-      const intrinsicPerShare = v.perShare?.intrinsic_re_per_share ?? null;
-      return { id: c.id, company: c.company, re, reoi, fcff, fcfe, ddmPerShare, aeg, intrinsicPerShare };
-    });
+    return latestByCo.map((c) => valuePeer(c, config, ke, g));
   }, [latestByCo, config]);
 
   const valuationRows = useMemo(() => {
-    return baseValuationRows.map((base) => {
-      const inp = marketInputs[base.id] ?? { price: 0, shares: 0 };
-      const ddm = base.ddmPerShare != null && inp.shares > 0 ? base.ddmPerShare * inp.shares : null;
-      const upside = base.intrinsicPerShare != null && inp.price > 0 ? (base.intrinsicPerShare / inp.price - 1) : null;
-      return { ...base, ddm, price: inp.price, shares: inp.shares, upside };
-    }).sort((a, b) => {
+    return baseValuationRows.map((base) => withPeerMarketInput(base, marketInputs[base.id])).sort((a, b) => {
       if (!sortByUpside) return a.company.localeCompare(b.company);
       const av = a.upside ?? -Infinity;
       const bv = b.upside ?? -Infinity;

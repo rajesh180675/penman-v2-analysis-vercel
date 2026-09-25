@@ -44,8 +44,8 @@ export function ExecutiveFindingsSection(props: {
     v3ConfidenceClass, v3TerminalAnchor, v3Bundle,
   } = props;
   return (
-      <section className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 shadow-sm">
-        <h2 className="font-bold text-lg text-slate-800 mb-3">1) Executive Findings</h2>
+      <section className="wb-panel rounded-2xl p-6">
+        <h2 className="font-bold text-lg text-slate-800 dark:text-slate-100 mb-3">1) Executive Findings</h2>
         <ul className="list-disc pl-5 text-sm text-slate-700 space-y-1.5">
           <li>
             Over the sample ({first.period_end.slice(0, 4)} to {latest.period_end.slice(0, 4)}), Sales CAGR = <b>{pct(salesCagr)}</b>,

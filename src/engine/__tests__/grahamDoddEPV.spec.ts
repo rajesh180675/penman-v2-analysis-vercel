@@ -132,9 +132,12 @@ describe("Graham-Dodd EPV", () => {
     // Growth capex = 130 - 110 = 20
     expect(result!.growthCapex).toBeCloseTo(20, 0);
 
-    // EBITDA = 1000 + 110 = 1110
-    // Adjusted earnings = (1110 - 110) × (1 - 0.252) = 1000 × 0.748 = 748
-    expect(result!.adjustedEarningsPower).toBeCloseTo(748, 0);
+    // CoreOI is already after tax (recast OI = CNI + after-tax NFE + MII), so
+    // NOPAT = CoreOI = 1000. Maintenance capex = depreciation here, so there is
+    // no gap to tax-effect: earnings power = 1000. (This used to read 748 —
+    // (1110 − 110) × (1 − 0.252) — taxing operating income a second time.)
+    expect(result!.normalizedNOPAT).toBe(1000);
+    expect(result!.adjustedEarningsPower).toBeCloseTo(1000, 6);
 
     // Default policy is CAPM: rf 7% + sector-neutral beta 1.0 × ERP 5.5%.
     expect(result!.ke).toBeCloseTo(0.125, 4);
@@ -143,24 +146,26 @@ describe("Graham-Dodd EPV", () => {
     // an explicit FO series is unavailable in this minimal fixture.
     expect(result!.kw).toBeCloseTo(0.1147, 3);
 
-    // EPV operations = 748 / kw ≈ 6523 (uses kw, not ke — enterprise value)
-    expect(result!.epvOperations).toBeCloseTo(6523, 0);
+    // EPV operations = 1000 / kw ≈ 8721 (uses kw, not ke — enterprise value)
+    expect(result!.epvOperations).toBeCloseTo(1000 / result!.kw, 6);
+    expect(result!.epvOperations).toBeCloseTo(8721, -1);
 
-    // EPV equity = 6523 - 1050 (latest NFO) ≈ 5473
-    expect(result!.epvEquity).toBeCloseTo(5473, 0);
+    // EPV equity = EPV operations − 1050 (latest NFO) − 0 (MI)
+    expect(result!.epvEquity).toBeCloseTo(result!.epvOperations - 1050, 6);
 
-    // EPV per share = 5473 / 100 ≈ 54.7
-    expect(result!.epvPerShare).toBeCloseTo(54.7, 0);
+    // EPV per share = equity / 100 Cr shares ≈ 76.7
+    expect(result!.epvPerShare).toBeCloseTo(result!.epvEquity / 100, 6);
 
     // Reproduction value = latest NOA = 5100
     expect(result!.reproductionValue).toBe(5100);
 
-    // Franchise value = 6523 - 5100 ≈ 1423 (positive → moat)
-    expect(result!.franchiseValue).toBeCloseTo(1423, 0);
+    // Franchise value = EPV operations − 5100 ≈ 3621 (positive → moat)
+    expect(result!.franchiseValue).toBeCloseTo(result!.epvOperations - 5100, 6);
     expect(result!.moatSignal).toBe("moat");
 
-    // Margin of safety ≈ -0.891 (overvalued vs EPV)
-    expect(result!.marginOfSafety).toBeCloseTo(-0.891, 2);
+    // Margin of safety vs ₹500 ≈ −0.85 (overvalued vs EPV)
+    expect(result!.marginOfSafety).toBeCloseTo((result!.epvPerShare! - 500) / 500, 6);
+    expect(result!.marginOfSafety).toBeCloseTo(-0.847, 2);
   });
 
   it("identifies no-moat when EPV < reproduction value", () => {
@@ -192,9 +197,23 @@ describe("Graham-Dodd EPV", () => {
     expect(result!.maintenanceCapex).toBeCloseTo(80, 0);
     expect(result!.avgDepreciation).toBeCloseTo(200, 0);
 
-    // EBITDA = 500 + 200 = 700
-    // Adjusted = (700 - 80) × 0.748 = 620 × 0.748 = 463.76
-    expect(result!.adjustedEarningsPower).toBeCloseTo(463.76, 0);
+    // NOPAT = CoreOI = 500 (already after tax). Only the pre-tax
+    // depreciation − maintenance gap is tax-effected:
+    // 500 + (200 − 80) × (1 − 0.252) = 500 + 89.76 = 589.76
+    expect(result!.adjustedEarningsPower).toBeCloseTo(589.76, 2);
+  });
+
+  it("bridges operating EPV to common equity through minority interest too", () => {
+    const withMI = [
+      makePeriod({ CoreOI: 1000, depreciation: 100, Capex: -120, NOA: 5000, NFO: 1000 }),
+      makePeriod({ CoreOI: 1000, depreciation: 100, Capex: -120, NOA: 5000, NFO: 1000 }),
+      makePeriod({ CoreOI: 1000, depreciation: 100, Capex: -120, NOA: 5000, NFO: 1000 }),
+    ];
+    withMI[2] = { ...withMI[2]!, bs: { ...withMI[2]!.bs, MI: 300 } };
+    const result = computeEPV(withMI, baseConfig)!;
+    // MI also moves structural kw, so compare within the run: common equity is
+    // operating value less BOTH the net debt and the minority claim.
+    expect(result.epvEquity).toBeCloseTo(result.epvOperations - 1000 - 300, 6);
   });
 
   it("returns null when ke is nonsensical", () => {

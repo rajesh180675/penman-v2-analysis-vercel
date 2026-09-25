@@ -1,10 +1,11 @@
+import { Icon } from "../shared/Icon";
 import type { LossMakerValuationResult } from "../../engine/lossMakerValuation";
 
 export default function LossMakerPanel({ lossMaker }: { lossMaker: LossMakerValuationResult }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/40 p-5 space-y-4">
       <div className="flex items-center gap-2">
-        <span className="text-lg">📉</span>
+        <span className="wb-text-2"><Icon name="trend-down" size={18} /></span>
         <h3 className="font-semibold text-slate-800 dark:text-slate-200">Loss-Maker Valuation Anchors</h3>
         <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-medium ${lossMaker.profitabilityPath.signal === "green" ? "bg-emerald-100 text-emerald-800" :
             lossMaker.profitabilityPath.signal === "amber" ? "bg-amber-100 text-amber-800" :
@@ -36,7 +37,7 @@ export default function LossMakerPanel({ lossMaker }: { lossMaker: LossMakerValu
             block reads the same as a block that was never wired, so a reviewer
             cannot tell "not applicable here" from "we forgot to compute it". */}
         {lossMaker.revenueMultiple.skipReason ? (
-          <div className="text-xs text-amber-700 dark:text-amber-400">⚠️ {lossMaker.revenueMultiple.skipReason}</div>
+          <div className="text-xs text-amber-700 dark:text-amber-400">{lossMaker.revenueMultiple.skipReason}</div>
         ) : (
           <div className="flex flex-wrap gap-4 text-sm">
             <span>Multiple: <strong>{lossMaker.revenueMultiple.multiple.toFixed(1)}x</strong> <span className="text-xs text-slate-400">({lossMaker.revenueMultiple.source})</span></span>

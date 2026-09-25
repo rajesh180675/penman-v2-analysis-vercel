@@ -22,7 +22,7 @@ export function CapitalAllocSection({ ca }: { ca: CapAllocScoreResult | null }) 
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-bold text-slate-800 mb-1">Capital Allocation Quality</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">Capital Allocation Quality</h3>
         <p className="text-xs text-slate-500">Scores how well management deploys retained earnings — reinvestment returns, payout discipline, buyback timing, and dilution avoidance.</p>
       </div>
 

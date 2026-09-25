@@ -3,15 +3,13 @@ import { fmt } from "./ValuationReport.formatters";
 
 export default function TriangulationSection({
   val,
-  sharesOut,
 }: {
   val: ReturnType<typeof computeValuation>;
-  sharesOut: number | null;
 }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-        <h2 className="text-lg font-bold text-slate-800">Valuation Triangulation (v3)</h2>
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Valuation Triangulation (v3)</h2>
         <p className="text-xs text-slate-500 mt-0.5">Per-share value is primary. Company totals remain as context in ₹ Cr.</p>
       </div>
       <div className="p-6 overflow-x-auto">
@@ -27,9 +25,9 @@ export default function TriangulationSection({
             {[
               ["RE (CV3)", val.V_RE_CV3, val.perShare?.intrinsic_re_per_share ?? null],
               ["ReOI (CV03)", val.V_ReOI_CV03, val.perShare?.intrinsic_reoi_per_share ?? null],
-              ["FCFF", val.fcf?.EV_FCFF != null ? (val.fcf.EV_FCFF - val.NFO_latest) : null, val.perShare?.intrinsic_fcff_per_share ?? null],
+              ["FCFF", val.fcf?.V_FCFF_equity ?? null, val.perShare?.intrinsic_fcff_per_share ?? null],
               ["FCFE", val.fcf?.V_FCFE ?? null, val.perShare?.intrinsic_fcfe_per_share ?? null],
-              ["DDM", val.perShare?.intrinsic_ddm_per_share != null && sharesOut ? val.perShare.intrinsic_ddm_per_share * sharesOut : null, val.perShare?.intrinsic_ddm_per_share ?? null],
+              ["DDM", val.ddm?.V_DDM ?? null, val.perShare?.intrinsic_ddm_per_share ?? null],
               ["AEG", val.aeg?.V_AEG ?? null, val.perShare?.intrinsic_aeg_per_share ?? null],
             ].map(([name, v, ps]) => (
               <tr key={name as string}>

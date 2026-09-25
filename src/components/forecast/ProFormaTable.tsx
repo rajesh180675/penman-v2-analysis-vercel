@@ -10,9 +10,9 @@ export default function ProFormaTable({
   sharesOut: number | null;
 }) {
   return (
-    <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+    <div className="wb-panel rounded-2xl overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-        <h2 className="text-lg font-bold text-slate-800">Pro Forma Statement (Base Case)</h2>
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Pro Forma Statement (Base Case)</h2>
         <p className="text-xs text-slate-500">Derived from accounting identities Eq.2,3,12,14 {sharesOut ? `· displayed as ₹ per share on the current ${sharesOut.toLocaleString("en-IN", { maximumFractionDigits: 2 })} Cr share base` : ""}</p>
       </div>
       <div className="p-6 overflow-x-auto">

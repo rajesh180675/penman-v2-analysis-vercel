@@ -9,9 +9,11 @@ import { RecastPeriod, EngineConfig } from "../engine/types";
 import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
+import { buildAnchoredValuationPeriods } from "../engine/anchoredValuationPeriods";
 import { detectDistress } from "../engine/distressDetector";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
+import { Icon, type IconName } from "./shared/Icon";
 import { SectionHeader } from "./shared/DesignSystem";
 import {
   computeV3Analytics,
@@ -84,9 +86,10 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
     const prev = data[data.length - 2]!;
     const kw_derived = deriveKwFromStructure(cur, prev, ke, config.risk_free_rate, config);
     const g = config.g_terminal_override ?? 0.04;
-    // First pass: compute without anchor to get RE series for terminal anchor computation
-    const val0 = computeValuation(data, ke, kw_derived, g, config);
-    return { valuation: val0, kw: kw_derived };
+    // Latest-anchored forecast valuation. Passing `data` (history) straight in
+    // valued the company as of its oldest balance sheet.
+    const anchoredPeriods = buildAnchoredValuationPeriods({ history: data, config, ke, kw: kw_derived, g });
+    return { valuation: computeValuation(anchoredPeriods, ke, kw_derived, g, config), kw: kw_derived };
   }, [data, config, ke]);
 
   const bundle: V3AnalyticsBundle | null = useMemo(() => {
@@ -106,46 +109,43 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
       // Same packs this surface resolved `ke` from above, so the bundle scores
       // at the rate the header prints.
       { ...ACTIVE_MARKET_PACKS, analysisAsOf: analysisAsOfToday() },
+      {
+        pvRE: valuation.pvRE,
+        pvReOI: valuation.pvReOI,
+        CV_RE: valuation.CV_RE,
+        CV_ReOI: valuation.CV_ReOI,
+        horizon: valuation.reSeries.length,
+      },
     );
   }, [data, config, valuation, kw, itServices]);
 
-  // Second pass: recompute with §11 terminal anchor once we have the bundle
-  const valuationWithAnchor = useMemo(() => {
-    if (!valuation || !bundle) return valuation;
-    const g = bundle.anchorResult.g_terminal;
-    return computeValuation(
-      data, ke, kw, g, config,
-      bundle.anchorResult.selected_RE_anchor,
-      bundle.anchorResult.selected_ReOI_anchor
-    );
-  }, [valuation, bundle, data, ke, kw, config]);
-
-  // Effective valuation uses anchor-adjusted result when available
-  const effectiveValuation = valuationWithAnchor ?? valuation;
+  // The §11 terminal-anchor views price V3's selected RE anchor from TODAY's
+  // book — V = B_T + anchor(1+g)/(ke−g), no explicit years — the same basis
+  // as bundle.anchorResult.V_total. (A second computeValuation pass used to
+  // splice the anchor into a history-dated valuation.)
+  const effectiveValuation = valuation;
+  const bookT = data.length ? data[data.length - 1]!.bs.CSE : 0;
+  const bookPrev = data.length >= 2 ? data[data.length - 2]!.bs.CSE : bookT;
 
   const sensMatrix = useMemo(() => {
     if (!valuation || !bundle) return [];
-    const T = valuation.reSeries.length;
     return computeSensitivityMatrix(
-      valuation.CSE0,
-      valuation.pvRE,
-      valuation.reSeries,
+      bookT,
+      0,
+      [],
       bundle.anchorResult.selected_RE_anchor,
       ke,
       bundle.anchorResult.g_terminal,
-      T,
-      config.g_terminal_floor ?? 0.02
+      0,
+      config.g_terminal_floor ?? 0.02,
+      bookPrev,
     );
-  }, [valuation, bundle, ke, config]);
+  }, [valuation, bundle, ke, config, bookT, bookPrev]);
 
   const anchorTable = useMemo(() => {
-    if (!effectiveValuation || !bundle) return [];
-    const T = effectiveValuation.reSeries.length;
-    return computeAnchorTable(
-      effectiveValuation.CSE0, effectiveValuation.pvRE,
-      bundle.anchorResult, ke, T
-    );
-  }, [effectiveValuation, bundle, ke]);
+    if (!bundle) return [];
+    return computeAnchorTable(bookT, 0, bundle.anchorResult, ke, 0);
+  }, [bundle, ke, bookT]);
 
   const tvClassification = useMemo(() => {
     if (!valuation) return null;
@@ -163,22 +163,22 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
     );
   }
 
-  const tabs: Array<{ id: typeof activeSection; label: string; icon: string }> = [
-    { id: "overview", label: "Overview", icon: "📊" },
-    { id: "dirty", label: "Dirty Surplus §6", icon: "🧮" },
-    { id: "events", label: "Event Flags §13", icon: "🚩" },
-    { id: "terminal", label: "Terminal Anchor §11", icon: "⚓" },
-    { id: "sensitivity", label: "Sensitivity §12", icon: "📉" },
-    { id: "confidence", label: "Confidence §14", icon: "🎯" },
-    { id: "triggers", label: "Triggers §15", icon: "🔔" },
-    { id: "accruals", label: "Accruals §5A", icon: "📋" },
-    { id: "oa_decomp", label: "OA Decomp §3B", icon: "🏗" },
-    { id: "gap_decomp", label: "RE/ReOI Gap §6", icon: "🔍" },
-    { id: "section6b", label: "§6B Per-Share", icon: "💹" },
-    { id: "moat", label: "Moat Score", icon: "🏰" },
-    { id: "capital_alloc", label: "Capital Allocation", icon: "🏦" },
-    { id: "epv", label: "EPV (Graham-Dodd)", icon: "📐" },
-    { id: "relative_val", label: "Relative Valuation", icon: "⚖️" },
+  const tabs: Array<{ id: typeof activeSection; label: string; icon: IconName }> = [
+    { id: "overview", label: "Overview", icon: "chart" },
+    { id: "dirty", label: "Dirty Surplus §6", icon: "calculator" },
+    { id: "events", label: "Event Flags §13", icon: "flag" },
+    { id: "terminal", label: "Terminal Anchor §11", icon: "anchor" },
+    { id: "sensitivity", label: "Sensitivity §12", icon: "trend-down" },
+    { id: "confidence", label: "Confidence §14", icon: "target" },
+    { id: "triggers", label: "Triggers §15", icon: "bell" },
+    { id: "accruals", label: "Accruals §5A", icon: "table" },
+    { id: "oa_decomp", label: "OA Decomp §3B", icon: "building" },
+    { id: "gap_decomp", label: "RE/ReOI Gap §6", icon: "search" },
+    { id: "section6b", label: "§6B Per-Share", icon: "trending-up" },
+    { id: "moat", label: "Moat Score", icon: "shield" },
+    { id: "capital_alloc", label: "Capital Allocation", icon: "bank" },
+    { id: "epv", label: "EPV (Graham-Dodd)", icon: "calculator" },
+    { id: "relative_val", label: "Relative Valuation", icon: "scale" },
   ];
 
   return (
@@ -186,7 +186,7 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
       <SectionHeader
         title="V3 Analytics"
         subtitle="Dirty surplus, terminal anchoring, accruals, event flags, and confidence scoring"
-        icon="🔬"
+        icon="microscope"
       />
 
       {traceabilitySummary && (
@@ -210,13 +210,13 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
         if (distress.severity === "critical") {
           banners.push({
             tone: "danger",
-            title: "🚨 Critical distress — going-concern stress",
+            title: "Critical distress — going-concern stress",
             body: distress.reasons.join(" "),
           });
         } else if (distress.severity === "severe") {
           banners.push({
             tone: "warn",
-            title: "⚠️ Negative net worth — equity-side valuation skipped",
+            title: " Negative net worth — equity-side valuation skipped",
             body: `${distress.reasons.join(" ")} Anchor on enterprise-side V_ReOI or FCFF.`,
           });
         } else if (distress.severity === "warning") {
@@ -231,19 +231,19 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
         if (bundle.cyclicality?.classification === "cyclical-peak") {
           banners.push({
             tone: "warn",
-            title: "🌡️ Latest period is at peak-cycle",
+            title: "Latest period is at peak-cycle",
             body: `${bundle.cyclicality.reason}. Latest ${bundle.cyclicality.metricUsed === "core-pm" ? "operating margin" : "RNOA"}: ${((bundle.cyclicality.latestValue ?? 0) * 100).toFixed(1)}%; cycle median: ${((bundle.cyclicality.medianValue ?? 0) * 100).toFixed(1)}%. Naïve valuation extrapolation will be optimistic; consider median-of-cycle as a sanity anchor.`,
           });
         } else if (bundle.cyclicality?.classification === "cyclical-trough") {
           banners.push({
             tone: "warn",
-            title: "🌡️ Latest period is at trough-cycle",
+            title: "Latest period is at trough-cycle",
             body: `${bundle.cyclicality.reason}. Latest ${bundle.cyclicality.metricUsed === "core-pm" ? "operating margin" : "RNOA"}: ${((bundle.cyclicality.latestValue ?? 0) * 100).toFixed(1)}%; cycle median: ${((bundle.cyclicality.medianValue ?? 0) * 100).toFixed(1)}%. Naïve valuation extrapolation will be pessimistic; consider median-of-cycle as a sanity anchor.`,
           });
         } else if (bundle.cyclicality?.classification === "cyclical-midcycle") {
           banners.push({
             tone: "info",
-            title: "🌡️ Cyclical business, latest near mid-cycle",
+            title: "️ Cyclical business, latest near mid-cycle",
             body: bundle.cyclicality.reason,
           });
         }
@@ -252,7 +252,7 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
         if (bundle.moatScore && !bundle.moatScore.dataSufficient && bundle.moatScore.skipReason) {
           banners.push({
             tone: "warn",
-            title: "🏰 Moat score is low-confidence",
+            title: "Moat score is low-confidence",
             body: bundle.moatScore.skipReason,
           });
         }
@@ -261,7 +261,7 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
         if (bundle.capitalAllocation && !bundle.capitalAllocation.dataSufficient && bundle.capitalAllocation.skipReason) {
           banners.push({
             tone: "warn",
-            title: "💼 Capital allocation score is low-confidence",
+            title: "Capital allocation score is low-confidence",
             body: bundle.capitalAllocation.skipReason,
           });
         }
@@ -304,7 +304,7 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
             .join(" ");
           banners.push({
             tone: pathSignal === "red" ? "warn" : "info",
-            title: `📉 Loss-maker — earnings-based models skipped, alternative anchors below`,
+            title: ` Loss-maker — earnings-based models skipped, alternative anchors below`,
             body: lmvBody,
           });
         }
@@ -342,7 +342,7 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
                   : "border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50"
                 }`}
             >
-              <span>{t.icon}</span>
+              <Icon name={t.icon} size={13} />
               <span>{t.label}</span>
             </button>
           ))}

@@ -342,24 +342,23 @@ describe("V3 analytics sub-sections", () => {
     const html = renderToStaticMarkup(
       <GapDecompSection
         gap={{
-          dirty_surplus: 60,
-          nfo_timing: 20,
-          tv_divergence: 10,
-          explicit_period_discounting: 10,
+          anchor_book_identity: 20,
+          tv_divergence: 60,
+          explicit_period_discounting: 20,
           residual: 0,
           total: 100,
-          dominant_driver: "nfo_timing",
+          dominant_driver: "tv_divergence",
         }}
       />,
     );
     expect(html).toContain("§6 RE ↔ ReOI Gap Decomposition (S-15.2)");
-    expect(html).toContain("Dirty surplus (PV)");
-    expect(html).toContain("NFO timing");
+    expect(html).toContain("Anchor book identity");
     expect(html).toContain("TV divergence (ke vs kw)");
     expect(html).toContain("Total gap");
-    // dominant_driver "nfo_timing" matches the "NFO timing" row → starred
-    expect(html).toContain("★");
-    // dirty_surplus 60 / total 100 = 60.0% of total
+    // dominant_driver "tv_divergence" stars the TV row — the old label-derived
+    // key ("tv_divergence_(ke_vs_kw)") could never match it.
+    expect(html).toContain("TV divergence (ke vs kw) ★");
+    // tv_divergence 60 / total 100 = 60.0% of total
     expect(html).toContain("60.0%");
     expect(html).toContain("Primary driver:");
   });

@@ -5,6 +5,7 @@ import {
   getAuditGovernanceConfig,
   isAuditConfigured,
   logAudit,
+  resolveRetentionDays,
 } from "../audit/_lib.js";
 import { requireCronAuth } from "../audit/_monitor-lib.js";
 
@@ -30,8 +31,9 @@ async function retentionForRun(eventBlobs, fallback) {
     const blob = await get(latest.pathname, { access: "private" });
     if (!blob || blob.statusCode !== 200 || !blob.stream) return fallback;
     const event = JSON.parse(await new Response(blob.stream).text());
-    const days = Number(event?.retentionDays);
-    return Number.isFinite(days) && days > 0 ? days : fallback;
+    // Events written before retention was clamped at ingest can carry any
+    // value; never let a stored event extend the governed window.
+    return resolveRetentionDays(event?.retentionDays, fallback);
   } catch {
     return fallback;
   }

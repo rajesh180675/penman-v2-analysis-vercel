@@ -120,6 +120,8 @@ const valuation: ValuationResult = {
   V_ReOI_CV03: 520,
   CSE0: 600,
   NOA0: 600,
+  NFO0: 50,
+  MI0: 0,
   NFO_latest: 50,
   ke: 0.12,
   kw: 0.1,
@@ -559,6 +561,18 @@ describe("generateValuationWorkbook", () => {
     expect(valueByLabel(wb, "Valuation", "Audit Run ID")).toBe("run-val");
     expect(valueByLabel(wb, "Valuation", "Anchor Period")).toBe("2024-03-31");
     expect(valueByLabel(wb, "Valuation", "Valuation Status")).toBe("production-ready");
+  });
+
+  it("fails closed: a workbook exported without a valuation status is not labelled production-ready", async () => {
+    const workbookBuf = await generateValuationWorkbook(
+      [mkBalancedPeriod("2025-03-31")],
+      [],
+      valuation,
+      DEFAULT_CONFIG,
+      { companyLabel: "ITC", auditRunId: "run-unassessed" },
+    );
+    const wb = await loadWorkbook(workbookBuf);
+    expect(valueByLabel(wb, "Valuation", "Valuation Status")).toBe("not assessed");
   });
 
   it("regression: deliberate sheet rename causes the manifest test to fail (contract enforcement)", () => {

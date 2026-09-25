@@ -19,7 +19,7 @@ import {
   GREEN_FILL,
   AMBER_FILL,
 } from "./xlsx";
-import type { WorkbookExportMetadata } from "./sheetsCore";
+import { UNASSESSED_VALUATION_STATUS, type WorkbookExportMetadata } from "./sheetsCore";
 
 // ── Sheet 3: Ratios ─────────────────────────────────────────────────────────────
 export function buildRatioSheet(recastData: RecastPeriod[]): WorkSheet {
@@ -203,7 +203,7 @@ export function buildValuationSheet(valuation: ValuationResult, config: EngineCo
   setCell(ws, row, 1, cell(metadata?.auditRunId ?? "—", LABEL));
   row++;
   setCell(ws, row, 0, cell("Valuation Status", LABEL_BOLD));
-  setCell(ws, row, 1, cell(metadata?.valuationStatus ?? "production-ready", LABEL));
+  setCell(ws, row, 1, cell(metadata?.valuationStatus ?? UNASSESSED_VALUATION_STATUS, LABEL));
   row++;
   setCell(ws, row, 0, cell("Anchor Period", LABEL_BOLD));
   setCell(ws, row, 1, cell(metadata?.valuationAnchorPeriod ?? "—", LABEL));
@@ -261,7 +261,7 @@ export function buildValuationSheet(valuation: ValuationResult, config: EngineCo
     : [
         ["RE (CV3 — Gordon Growth)", valuation.V_RE_CV3, valuation.perShare?.intrinsic_re_per_share, "N&P Eq.(1a) — Clean surplus accounting"],
         ["ReOI (CV03 — Gordon Growth)", valuation.V_ReOI_CV03, valuation.perShare?.intrinsic_reoi_per_share, "N&P Eq.(9) — Operating focus; EV − NFO"],
-        ["FCFF", valuation.fcf?.EV_FCFF != null ? valuation.fcf.EV_FCFF - valuation.NFO_latest : null, valuation.perShare?.intrinsic_fcff_per_share, "FCFF = NOPAT − ΔNOA; EV at WACC; less NFO"],
+        ["FCFF", valuation.fcf?.V_FCFF_equity ?? null, valuation.perShare?.intrinsic_fcff_per_share, "FCFF = NOPAT − ΔNOA; EV at WACC; less NFO₀ and MI₀"],
         ["FCFE", valuation.fcf?.V_FCFE, valuation.perShare?.intrinsic_fcfe_per_share, "FCFE = CNI − ΔCSE; discounted at ke"],
         ["DDM", valuation.perShare?.intrinsic_ddm_per_share != null && config.shares_outstanding ? valuation.perShare.intrinsic_ddm_per_share * config.shares_outstanding : null, valuation.perShare?.intrinsic_ddm_per_share, "Gordon DDM; requires stable dividend payout"],
         ["AEG (Ohlson-Juettner)", valuation.aeg?.V_AEG, valuation.perShare?.intrinsic_aeg_per_share, "OJ (2005) abnormal earnings growth model"],

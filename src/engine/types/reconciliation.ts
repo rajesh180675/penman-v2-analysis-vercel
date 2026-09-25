@@ -28,6 +28,17 @@ export interface ReconciliationResidualCheck {
   warningThreshold: number;
   criticalThreshold: number;
   status: ReconciliationResidualStatus;
+  /**
+   * `diagnostic` checks are surfaced and counted, but excluded from the
+   * overall status/max-ratio verdict that gates the structural rigor level.
+   * Used for evidence-limited reconstructions (cash/debt/distribution
+   * bridges) that systematically cannot clear on the current Capitaline CF
+   * decomposition — the missing lines (netCashChange, opening/closing cash)
+   * are not yet read by the recast, so these compare two incomplete slices.
+   * They become gating again once the CF mapping contract carries the full
+   * decomposition. See docs/analysis-rigor-ladder.md.
+   */
+  role?: "gating" | "diagnostic";
   detail: string;
 }
 

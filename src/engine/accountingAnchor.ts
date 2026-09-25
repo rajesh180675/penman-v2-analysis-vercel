@@ -94,11 +94,13 @@ export function computeAccountingAnchor(
   // ── Layer 1: Earnings Power Value ──
   // EPV = normalized NOPAT / WACC (no growth, no fade)
   // Use core operating income normalized over last 3-5 years
-  const normalizedOI = computeNormalizedOI(data);
-  const taxRate = latest.is?.taxRate ?? 0.25;
-  const normalizedNOPAT = normalizedOI * (1 - taxRate);
+  // CoreOI/OI are already after tax (recast OI = CNI + after-tax NFE + MII):
+  // they ARE NOPAT. Multiplying by (1 − t) again taxed operating income twice.
+  const normalizedNOPAT = computeNormalizedOI(data);
   const epvFirm = r > 0 ? normalizedNOPAT / r : 0;
-  const epvEquity = epvFirm - nfo;
+  // Common equity sits behind both net debt and the minority claim in NOA.
+  const minorityInterest = Number.isFinite(latest.bs?.MI) ? latest.bs.MI : 0;
+  const epvEquity = epvFirm - nfo - minorityInterest;
   const epv = Math.max(0, epvEquity / sharesOutstanding);
 
   // ─ Layer 2: Growth Value ──

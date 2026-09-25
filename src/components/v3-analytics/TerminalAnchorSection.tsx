@@ -12,7 +12,7 @@ export function TerminalAnchorSection({ anchor, anchorTable, valuation, ke }: {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-bold text-slate-800 mb-1">§11 Terminal Value Anchoring</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">§11 Terminal Value Anchoring</h3>
         <p className="text-xs text-slate-500">Anchor selection: three candidate RE values derived from the explicit series; selection driven by terminal period event flags.</p>
       </div>
 

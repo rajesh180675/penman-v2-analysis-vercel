@@ -1,4 +1,10 @@
-import { LineChart, Line, ResponsiveContainer } from "recharts";
+/**
+ * KPITile — dashboard/ratio KPI tile on the Workbench primitives.
+ * Uses wb-metric tokens (dark-safe by construction), the pure-SVG Sparkline
+ * (no per-tile Recharts instance), and the SVG Icon trend indicator.
+ */
+import { Sparkline, trendTone } from "../charts/Sparkline";
+import { Icon } from "../shared/Icon";
 
 interface SparklinePoint {
   period: string;
@@ -12,6 +18,8 @@ interface Props {
   subtitle?: string | undefined;
   history?: SparklinePoint[] | undefined;
   trend?: number | null | undefined;
+  /** False for metrics where down is good (e.g. debt ratios) — flips spark tone */
+  higherIsBetter?: boolean | undefined;
   onClick?: () => void;
 }
 
@@ -25,55 +33,46 @@ function formatValue(value: number | null, format: Props["format"]): string {
   }
 }
 
-function TrendArrow({ trend, format }: { trend: number | null; format: Props["format"] }) {
+function TrendBadge({ trend, format }: { trend: number | null; format: Props["format"] }) {
   if (trend == null || !Number.isFinite(trend)) return null;
   const isUp = trend > 0;
-  const color = isUp ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400";
-  const arrow = isUp ? "↗" : "↘";
+  const color = isUp ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400";
   const display = format === "pct" ? `${(Math.abs(trend) * 100).toFixed(1)}pp` : Math.abs(trend).toFixed(2);
-  return <span className={`text-xs font-medium ${color}`}>{arrow} {display}</span>;
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${color}`}>
+      <Icon name={isUp ? "trend-up" : "trend-down"} size={12} />
+      {display}
+    </span>
+  );
 }
 
-export default function KPITile({ label, value, format, subtitle, history, trend, onClick }: Props) {
-  const sparkData = history?.filter(p => p.value != null) ?? [];
-  const hasSparkline = sparkData.length >= 3;
+export default function KPITile({ label, value, format, subtitle, history, trend, higherIsBetter = true, onClick }: Props) {
+  const sparkValues = history?.map((p) => p.value) ?? [];
+  const hasSparkline = sparkValues.filter((v) => v != null).length >= 3;
+  const tone = trendTone(trend, higherIsBetter);
 
   return (
     <div
       onClick={onClick}
-      className={`rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/60 transition-all ${
-        onClick ? "cursor-pointer hover:border-indigo-300 hover:shadow-sm dark:hover:border-indigo-600" : ""
+      className={`wb-metric transition-all ${
+        onClick ? "cursor-pointer hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-600" : ""
       }`}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">{label}</div>
+          <div className="wb-metric-label">{label}</div>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white truncate">
+            <span className="wb-metric-value truncate" style={{ fontSize: "1.375rem" }}>
               {formatValue(value, format)}
             </span>
-            <TrendArrow trend={trend ?? null} format={format} />
+            <TrendBadge trend={trend ?? null} format={format} />
           </div>
-          {subtitle && (
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</div>
-          )}
+          {subtitle && <div className="text-xs wb-text-3 mt-0.5">{subtitle}</div>}
         </div>
 
-        {/* Sparkline */}
         {hasSparkline && (
-          <div className="w-20 h-10 flex-shrink-0 ml-2">
-            <ResponsiveContainer debounce={50} width="100%" height="100%">
-              <LineChart data={sparkData}>
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#6366f1"
-                  strokeWidth={1.5}
-                  dot={false}
-                  isAnimationActive={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="flex-shrink-0 ml-2 self-center">
+            <Sparkline values={sparkValues} width={80} height={36} tone={tone} />
           </div>
         )}
       </div>

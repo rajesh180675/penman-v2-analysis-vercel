@@ -7,6 +7,7 @@ import { computeEPV } from "../engine/grahamDoddEPV";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
 import type { ITServicesSignal } from "../engine/itServicesDetector";
 import { SectionHeader } from "./shared/DesignSystem";
+import { Icon } from "./shared/Icon";
 
 interface Props {
   data: RecastPeriod[];
@@ -150,13 +151,13 @@ export default function InvestmentThesis({ data, config, itServices }: Props) {
       <SectionHeader
         title="Investment Thesis"
         subtitle="One-page summary for IC memo or pitch deck — auto-generated from fundamental analysis"
-        icon="📋"
+        icon="doc"
       />
 
       {/* Thesis Statement */}
       <div className={`rounded-2xl border-2 p-6 ${thesisColors[thesisVerdict]}`}>
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-2xl">{thesisVerdict === "buy" ? "✅" : thesisVerdict === "hold" ? "⏸️" : thesisVerdict === "watch" ? "👀" : "🛑"}</span>
+          <span className="text-2xl">{thesisVerdict === "buy" ? "✅" : thesisVerdict === "hold" ? "⏸️" : thesisVerdict === "watch" ? "" : "🛑"}</span>
           <div>
             <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
               {ticker} — {thesisVerdict === "buy" ? "Buy" : thesisVerdict === "hold" ? "Hold / Accumulate" : thesisVerdict === "watch" ? "Watchlist" : "Avoid"}
@@ -187,7 +188,7 @@ export default function InvestmentThesis({ data, config, itServices }: Props) {
           { label: "FCF", value: crFmt(fcf), sub: "Free cash flow" },
           { label: "EPV/Share", value: epv?.epvPerShare != null ? `₹${epv.epvPerShare.toFixed(0)}` : "—", sub: "Earnings power" },
         ].map(({ label, value, sub }) => (
-          <div key={label} className="card-base p-3">
+          <div key={label} className="wb-metric">
             <div className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</div>
             <div className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-0.5">{value}</div>
             <div className="text-[10px] text-slate-400">{sub}</div>
@@ -197,9 +198,9 @@ export default function InvestmentThesis({ data, config, itServices }: Props) {
 
       {/* Strengths & Risks two-column */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="card-base p-5">
+        <div className="wb-panel p-5">
           <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-3 flex items-center gap-2">
-            <span>💪</span> Strengths
+            <span className="wb-text-2"><Icon name="shield-check" size={16} /></span> Strengths
           </h4>
           {strengths.length === 0 ? (
             <p className="text-xs text-slate-400">No standout strengths identified from quantitative analysis</p>
@@ -213,9 +214,9 @@ export default function InvestmentThesis({ data, config, itServices }: Props) {
             </ul>
           )}
         </div>
-        <div className="card-base p-5">
+        <div className="wb-panel p-5">
           <h4 className="text-sm font-semibold text-red-700 dark:text-red-400 mb-3 flex items-center gap-2">
-            <span>⚠️</span> Risks
+            <span className="wb-text-2"><Icon name="alert-triangle" size={16} /></span> Risks
           </h4>
           {risks.length === 0 ? (
             <p className="text-xs text-slate-400">No material risks flagged from quantitative analysis</p>
@@ -232,9 +233,9 @@ export default function InvestmentThesis({ data, config, itServices }: Props) {
       </div>
 
       {/* What to Watch */}
-      <div className="card-base p-5">
+      <div className="wb-panel p-5">
         <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-          <span>🔭</span> What to Watch Next
+          <span className="wb-text-2"><Icon name="search" size={16} /></span> What to Watch Next
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-600 dark:text-slate-400">
           <div className="flex items-start gap-2">

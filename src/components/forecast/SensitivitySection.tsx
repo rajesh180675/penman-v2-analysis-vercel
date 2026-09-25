@@ -9,8 +9,8 @@ export default function SensitivitySection({
   sharesOut: number | null;
 }) {
   return (
-    <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-      <h2 className="text-lg font-bold text-slate-800 mb-2">Sensitivity Analysis — §4.3.4</h2>
+    <div className="wb-panel rounded-2xl p-6">
+      <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">Sensitivity Analysis — §4.3.4</h2>
       <p className="text-xs text-slate-500 mb-4">Each parameter varied ±20% from base. Impact = V_high − V_low {sharesOut ? "(₹ / share)" : "(₹ Cr)"}. Sorted by magnitude.</p>
       {sensResults.map(r=>{
         const maxImpact = Math.max(...sensResults.map(x=>x.impact),1);

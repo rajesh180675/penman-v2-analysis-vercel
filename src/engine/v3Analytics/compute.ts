@@ -47,7 +47,7 @@ import {
 import { deriveShareCount, type ShareCountResult } from "./shareCount";
 import { computeMarketImplied, type MarketImpliedResult } from "./marketImplied";
 import { buildSection6B, type Section6BResult } from "./section6B";
-import { decomposeReReOIGap, type ReReOIGapDecomposition } from "./reReoiGap";
+import { decomposeReReOIGap, type GapValuationParts, type ReReOIGapDecomposition } from "./reReoiGap";
 import { compareWithPriorRegistry, renderVersionChangeLog, type VersionChangeEntry } from "./versionChange";
 import { runCrossSectionAssertions } from "./crossSection";
 
@@ -103,7 +103,7 @@ export interface V3AnalyticsBundle {
   relativeValuation: RelativeValuationResult | null;
   /**
    * Ohlson (1995) reversion CV alternative to Gordon Growth (review C11).
-   * V_RE_ohlson_reversion = CSE0 + PV(RE explicit) + CV_ohlson / (1+ke)^T
+   * V_RE_ohlson_reversion = B_T + CV_ohlson (dated at the latest balance sheet)
    * where CV_ohlson = phi * RE_T / (1 + ke - phi).
    * Null when phi or RE_T is unavailable.
    */
@@ -127,6 +127,9 @@ export function computeV3Analytics(
   // packs and pass the same ones here — without this the panel would print one
   // discount rate in its header and score the bundle below it at another.
   packs?: SuppliedMarketPacks,
+  // PV/CV pieces of the latest-anchored run that produced V_RE_CV3 and
+  // V_ReOI_CV03, so their gap can be decomposed exactly (S-15.2).
+  gapParts?: GapValuationParts | null,
 ): V3AnalyticsBundle {
   const capitalCost = resolveCostOfCapitalFromConfig({
     config: cfg,
@@ -149,13 +152,15 @@ export function computeV3Analytics(
   // Do NOT register it here to avoid double-registration ConsistencyViolation (S-13.1)
   const periodFlags = detectPeriodEventFlags(periods, dirtySurplus);
   const anchorResult = selectTerminalAnchor(periods, periodFlags, ke, kw, gTerminalOverride);
-  const pvREExplicit = periods.slice(1).reduce((acc, p, idx) => acc + (p.ri?.RE ?? 0) / Math.pow(1 + ke, idx + 1), 0);
-  const cse0 = periods[0]?.bs.CSE ?? 0;
-  const explicitPeriods = Math.max(1, periods.length - 1);
+  // Every value below is dated at the LATEST balance sheet (see
+  // selectTerminalAnchor): today's book plus capitalized terminal RE. Realized
+  // RE discounted back to the oldest book is history, not future value.
+  const bookT = periods.at(-1)?.bs.CSE ?? 0;
+  const bookPrev = periods.at(-2)?.bs.CSE ?? bookT;
   const conservativeV = (() => {
     if (anchorResult.RE_anchor_3 == null || ke <= anchorResult.g_applied) return anchorResult.V_total;
     const cv = (anchorResult.RE_anchor_3 * (1 + anchorResult.g_applied)) / (ke - anchorResult.g_applied);
-    return cse0 + pvREExplicit + cv / Math.pow(1 + ke, explicitPeriods);
+    return bookT + cv;
   })();
   registry.register("V_primary", anchorResult.V_total, "S-14.1");
   registry.register("V_RE_CV3_guarded", anchorResult.V_total, "S-14.1");
@@ -183,9 +188,9 @@ export function computeV3Analytics(
     periods, dirtySurplus, anchorResult, V_RE_CV3, V_ReOI_CV03, eq16_residual_latest, registry
   );
   const reReoiGapDecomposition = decomposeReReOIGap(
-    periods,
-    { V_RE_CV3, V_ReOI_CV03, CSE0: periods[0]?.bs.CSE ?? 0, pvRE: 0, CV_RE: 0, CV_ReOI: 0, ke, kw },
-    anchorResult.g_applied,
+    periods[periods.length - 1]!,
+    { V_RE_CV3, V_ReOI_CV03, ke, kw },
+    gapParts ?? null,
     registry,
   );
   const selectedOaPeriods = selectOADecompositionPeriods(periods, periodFlags);
@@ -248,9 +253,8 @@ export function computeV3Analytics(
   const CV_ohlson = (denominator_ohlson > 0.01 && RE_T != null && Number.isFinite(RE_T))
     ? (phi_effective * RE_T) / denominator_ohlson
     : null;
-  const V_ohlson = CV_ohlson != null
-    ? cse0 + pvREExplicit + CV_ohlson / Math.pow(1 + ke, explicitPeriods)
-    : null;
+  // CV_ohlson = φ·RE_T/(1 + ke − φ) is the value AT T of RE_(T+1) = φ·RE_T onward.
+  const V_ohlson = CV_ohlson != null ? bookT + CV_ohlson : null;
   registry.register("V_RE_ohlson_reversion", V_ohlson ?? 0, "S-9.1b");
   registry.register("phi_effective", phi_effective, "S-9.1b");
   registry.register("phi_source", phi_source, "S-9.1b");
@@ -268,11 +272,9 @@ export function computeV3Analytics(
       V_primary: anchorResult.V_total,
       ke,
       g_effective: anchorResult.g_applied,
-      CSE0: cse0,
-      pvRE: pvREExplicit,
-      explicit_periods: explicitPeriods,
+      bookT,
+      bookPrev,
       RE_anchor: anchorResult.selected_RE_anchor,
-      periods,
     },
     cfg.market_price,
     sharesForPerShare,

@@ -58,7 +58,7 @@ export function RelativeValSection({ rv }: { rv: RelativeValuationResult | null 
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-bold text-slate-800 mb-1">Relative Valuation</h3>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">Relative Valuation</h3>
         <p className="text-xs text-slate-500">Historical multiple bands + sector comparison. Current multiple vs own history and sector peers.</p>
       </div>
 

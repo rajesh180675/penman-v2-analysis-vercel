@@ -466,7 +466,11 @@ async function fetchNseSnapshot({ rawSymbol, fallbackPrice, warnings, fetchedAt 
 
     const priceInfo = quotePayload?.priceInfo ?? {};
     const info = quotePayload?.info ?? {};
-    const price = toNumber(priceInfo.lastPrice) ?? toNumber(priceInfo.close) ?? fallbackPrice ?? null;
+    // `livePrice` is what NSE actually quoted; `price` may be the caller's
+    // config fallback. Freshness keys on the former — a config value echoed
+    // back must never be labelled "live".
+    const livePrice = toNumber(priceInfo.lastPrice) ?? toNumber(priceInfo.close) ?? null;
+    const price = livePrice ?? fallbackPrice ?? null;
     const previousClose = toNumber(priceInfo.previousClose) ?? null;
     const changePct = price != null && previousClose != null && previousClose > 0
       ? (price - previousClose) / previousClose
@@ -501,8 +505,8 @@ async function fetchNseSnapshot({ rawSymbol, fallbackPrice, warnings, fetchedAt 
       priceAsOf: price != null ? fetchedAt : null,
       // Null, not fetchedAt: fetchedAt dates the HTTP request, not an observation.
       rateAsOf: null,
-      freshness: price != null ? "live" : (fallbackPrice != null ? "fallback" : "missing"),
-      sourceSummary: price != null
+      freshness: livePrice != null ? "live" : (price != null ? "fallback" : "missing"),
+      sourceSummary: livePrice != null
         ? `NSE India live quote for ${symbol}.`
         : "NSE did not return a live quote; using fallback config where available.",
       warnings,
@@ -513,7 +517,8 @@ async function fetchNseSnapshot({ rawSymbol, fallbackPrice, warnings, fetchedAt 
     // NSE often blocks serverless/Vercel — fall back to Yahoo Finance.
     try {
       const yahoo = await fetchYahooSnapshot(symbol);
-      const price = yahoo.price ?? fallbackPrice ?? null;
+      const livePrice = yahoo.price ?? null;
+      const price = livePrice ?? fallbackPrice ?? null;
       const previousClose = yahoo.previousClose ?? null;
       const changePct = price != null && previousClose != null && previousClose > 0
         ? (price - previousClose) / previousClose
@@ -536,8 +541,10 @@ async function fetchNseSnapshot({ rawSymbol, fallbackPrice, warnings, fetchedAt 
         // Conditioned on the resolved price — see the NSE path above.
         priceAsOf: price != null ? fetchedAt : null,
         rateAsOf: null,
-        freshness: price != null ? "live" : (fallbackPrice != null ? "fallback" : "missing"),
-        sourceSummary: `NSE blocked, used Yahoo Finance for ${yahoo.rawSymbol}.`,
+        freshness: livePrice != null ? "live" : (price != null ? "fallback" : "missing"),
+        sourceSummary: livePrice != null
+          ? `NSE blocked, used Yahoo Finance for ${yahoo.rawSymbol}.`
+          : "NSE blocked and Yahoo Finance returned no price; using fallback config where available.",
         warnings,
         history: null,
       };
@@ -660,7 +667,8 @@ export default async function handler(request, response) {
     const yahooSymbol = resolveSymbolWithParity(symbol, warnings);
     try {
       const yahoo = await fetchYahooSnapshot(yahooSymbol ?? symbol);
-      const price = yahoo.price ?? fallbackPrice ?? null;
+      const livePrice = yahoo.price ?? null;
+      const price = livePrice ?? fallbackPrice ?? null;
       const previousClose = yahoo.previousClose ?? null;
       const changePct = price != null && previousClose != null && previousClose > 0
         ? (price - previousClose) / previousClose
@@ -683,8 +691,8 @@ export default async function handler(request, response) {
         // Conditioned on the resolved price — see the NSE path above.
         priceAsOf: price != null ? fetchedAt : null,
         rateAsOf: null,
-        freshness: price != null ? "live" : (fallbackPrice != null ? "fallback" : "missing"),
-        sourceSummary: price != null
+        freshness: livePrice != null ? "live" : (price != null ? "fallback" : "missing"),
+        sourceSummary: livePrice != null
           ? `Yahoo Finance quote for ${yahoo.rawSymbol}.`
           : "Yahoo Finance did not return a price; using fallback config where available.",
         warnings,

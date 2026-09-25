@@ -23,7 +23,7 @@ export function Card({ title, children }: { title: string; children: React.React
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="px-5 py-3 bg-slate-50 border-b border-slate-200">
-        <h3 className="font-semibold text-slate-700 text-sm">{title}</h3>
+        <h3 className="font-semibold text-slate-700 dark:text-slate-200 text-sm">{title}</h3>
       </div>
       <div className="p-5">{children}</div>
     </div>

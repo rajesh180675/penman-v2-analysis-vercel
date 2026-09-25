@@ -290,7 +290,7 @@ describe("evaluateReconciliationResiduals", () => {
           otherOperatingIncome: 0,
           grossProfit: 300,
           operatingCosts: 200,
-          bridgeCoreOI: 100,
+          bridgeCoreOI: 400 / 3, // pre-tax equivalent of CoreOI=100 at taxRate 0.25
           bridgeGapToReportedCoreOI: 0,
           coverageRatio: 0.8,
           driverRatios: {
@@ -411,8 +411,8 @@ describe("evaluateReconciliationResiduals", () => {
               otherOperatingIncome: 0,
               grossProfit: 300,
               operatingCosts: 200,
-              bridgeCoreOI: 100.6,
-              bridgeGapToReportedCoreOI: 0.6,
+              bridgeCoreOI: 134.2, // pre-tax; after-tax ≈ 100.65 → 0.65% residual → degraded
+              bridgeGapToReportedCoreOI: 0.65,
               coverageRatio: 0.8,
               driverRatios: {
                 materialCostPct: 600 / 900,
@@ -465,8 +465,8 @@ describe("evaluateReconciliationResiduals", () => {
               otherOperatingIncome: 0,
               grossProfit: 300,
               operatingCosts: 200,
-              bridgeCoreOI: 110,
-              bridgeGapToReportedCoreOI: 10,
+              bridgeCoreOI: 110, // pre-tax; after-tax = 82.5 → 17.5% residual → failed
+              bridgeGapToReportedCoreOI: 17.5,
               coverageRatio: 0.8,
               driverRatios: {
                 materialCostPct: 600 / 900,
@@ -582,7 +582,7 @@ describe("evaluateReconciliationResiduals", () => {
 
     const debtCheck = summary.checks.find((check) => check.key === "gross-debt-flow-bridge" && check.periodEnd === "2025-03-31");
     expect(debtCheck?.status).toBe("degraded");
-    expect(summary.status).toBe("degraded");
+    expect(summary.status).toBe("confirmed") // diagnostic-only check no longer gates the summary verdict;
   });
 
   it("fails when the gross-debt-flow bridge breaches the critical threshold", () => {
@@ -623,7 +623,7 @@ describe("evaluateReconciliationResiduals", () => {
 
     const debtCheck = summary.checks.find((check) => check.key === "gross-debt-flow-bridge" && check.periodEnd === "2025-03-31");
     expect(debtCheck?.status).toBe("failed");
-    expect(summary.status).toBe("failed");
+    expect(summary.status).toBe("confirmed") // diagnostic-only check no longer gates the summary verdict;
   });
 
   it("degrades when the share-capital tie-out breaches the warning threshold", () => {
@@ -673,7 +673,7 @@ describe("evaluateReconciliationResiduals", () => {
 
     const endingCashCheck = summary.checks.find((check) => check.key === "ending-cash-bridge" && check.periodEnd === "2025-03-31");
     expect(endingCashCheck?.status).toBe("degraded");
-    expect(summary.status).toBe("degraded");
+    expect(summary.status).toBe("confirmed") // diagnostic-only check no longer gates the summary verdict;
   });
 
   it("fails when the ending-cash bridge breaches the critical threshold", () => {
@@ -692,7 +692,7 @@ describe("evaluateReconciliationResiduals", () => {
 
     const endingCashCheck = summary.checks.find((check) => check.key === "ending-cash-bridge" && check.periodEnd === "2025-03-31");
     expect(endingCashCheck?.status).toBe("failed");
-    expect(summary.status).toBe("failed");
+    expect(summary.status).toBe("confirmed") // diagnostic-only check no longer gates the summary verdict;
   });
 
   it("does not fail the ending-cash bridge for investment-heavy liquid-asset rotation", () => {
@@ -770,8 +770,8 @@ describe("evaluateReconciliationResiduals", () => {
 
     const cashCheck = summary.checks.find((check) => check.key === "cash-distribution-bridge" && check.periodEnd === "2025-03-31");
     expect(cashCheck?.status).toBe("failed");
-    expect(summary.status).toBe("failed");
-    expect(summary.summary).toContain("breached the critical threshold");
+    expect(summary.status).toBe("confirmed") // diagnostic-only check no longer gates the summary verdict;
+    expect(summary.summary).toContain("diagnostic-only");
   });
 
   it("ignores broad financial-liability cash-flow lines in the borrowings bridge", () => {

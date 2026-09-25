@@ -11,7 +11,11 @@ export type IconName =
   | "gear" | "search" | "moon" | "sun" | "link" | "chevron-right"
   | "chevron-down" | "alert-triangle" | "info" | "download" | "printer"
   | "filter" | "x" | "folder" | "gauge" | "compass" | "satellite"
-  | "layers" | "scale" | "target" | "microscope" | "wrench";
+  | "layers" | "scale" | "target" | "microscope" | "wrench"
+  | "database" | "calculator" | "trending-up" | "currency" | "mirror"
+  | "building" | "keyboard" | "command" | "upload" | "document"
+  | "refresh" | "zap" | "download" | "droplet" | "anchor" | "flag" | "bell"
+  | "check";
 
 interface IconProps {
   name: IconName;
@@ -59,6 +63,23 @@ const PATHS: Record<IconName, string> = {
   "target": "M12 22a10 10 0 100-20 10 10 0 000 20zM12 18a6 6 0 100-12 6 6 0 000 12zM12 14a2 2 0 100-4 2 2 0 000 4z",
   "microscope": "M6 18h8M3 22h18M14 22a7 7 0 100-14 7 7 0 000 14zM9 2h2M10 2v6",
   "wrench": "M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z",
+  "database": "M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7M4 7c0-2 1-3 3-3h10c2 0 3 1 3 3M4 7h16M4 12h16M4 17h16",
+  "calculator": "M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2zM8 7h8M8 11h2m4 0h2m-8 4h2m4 0h2m-8 4h2m4 0h2",
+  "trending-up": "M23 6l-9.5 9.5-5-5L1 18M17 6h6v6",
+  "currency": "M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6",
+  "mirror": "M8 3H5a2 2 0 00-2 2v14a2 2 0 002 2h3m8-18h3a2 2 0 012 2v14a2 2 0 01-2 2h-3M12 2v20",
+  "building": "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m4 0v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4",
+  "keyboard": "M2 6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM6 10h2m4 0h2m4 0h2M6 14h2m4 0h6",
+  "command": "M18 3a3 3 0 00-3 3v12a3 3 0 003 3 3 3 0 003-3 3 3 0 00-3-3H6a3 3 0 00-3 3 3 3 0 003 3 3 3 0 003-3V6a3 3 0 00-3-3 3 3 0 00-3 3h12a3 3 0 003-3 3 3 0 00-3-3z",
+  "upload": "M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12",
+  "document": "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zM14 2v6h6M16 13H8m8 4H8m2-8H8",
+  "refresh": "M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15",
+  "zap": "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
+  "droplet": "M12 2.7l5.66 5.66a8 8 0 11-11.31 0z",
+  "anchor": "M12 8a3 3 0 100-6 3 3 0 000 6zM12 22V8M5 12H2a10 10 0 0020 0h-3",
+  "flag": "M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7",
+  "bell": "M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0",
+  "check": "M20 6L9 17l-5-5",
 };
 
 export function Icon({ name, size = 16, className, strokeWidth = 2, title }: IconProps) {

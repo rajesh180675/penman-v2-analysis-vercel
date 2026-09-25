@@ -45,7 +45,7 @@ export default function ValuationInputsPanel({
 }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-      <h2 className="text-lg font-bold text-slate-800 mb-5">Valuation Inputs (§6)</h2>
+      <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-5">Valuation Inputs (§6)</h2>
       <div className="flex flex-wrap gap-6 items-end">
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">Cost of Equity ke (%)</label>

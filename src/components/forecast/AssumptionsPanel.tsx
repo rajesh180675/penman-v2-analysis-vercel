@@ -41,8 +41,8 @@ export default function AssumptionsPanel({
   operatingBridge: OperatingCostBridge | undefined;
 }) {
   return (
-    <div className="bg-white dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-      <h2 className="text-lg font-bold text-slate-800 mb-4">Forecast Assumptions — §4.3</h2>
+    <div className="wb-panel rounded-2xl p-6">
+      <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4">Forecast Assumptions — §4.3</h2>
       <div className="flex flex-wrap gap-4 items-end">
         {[
           {label:"ke % (Cost of Equity)",val:ke_inp,set:setKe},

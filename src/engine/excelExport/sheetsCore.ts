@@ -21,6 +21,13 @@ import {
   GREEN_FILL,
 } from "./xlsx";
 
+/**
+ * What the workbook prints when no valuation status was supplied. It used to
+ * default to "production-ready" — the highest rung — so a caller that forgot
+ * the field exported an unassessed valuation as release-grade. Fail closed.
+ */
+export const UNASSESSED_VALUATION_STATUS = "not assessed";
+
 export interface WorkbookExportMetadata {
   companyLabel?: string | undefined;
   auditRunId?: string | null | undefined;
@@ -55,7 +62,7 @@ export function buildCoverSheet(config: EngineConfig, periodCount: number, metad
     [cell("Audit Run ID", LABEL_BOLD), cell(metadata?.auditRunId ?? "—", LABEL)],
     [cell("Analysis Run ID", LABEL_BOLD), cell(metadata?.analysisRunId ?? "—", LABEL)],
     [cell("Reproducibility Hash", LABEL_BOLD), cell(metadata?.reproducibilityHash ?? "—", LABEL)],
-    [cell("Valuation Status", LABEL_BOLD), cell(metadata?.valuationStatus ?? "production-ready", LABEL)],
+    [cell("Valuation Status", LABEL_BOLD), cell(metadata?.valuationStatus ?? UNASSESSED_VALUATION_STATUS, LABEL)],
     [cell("Valuation Anchor Period", LABEL_BOLD), cell(metadata?.valuationAnchorPeriod ?? "—", LABEL)],
     [cell("Latest Source Period", LABEL_BOLD), cell(metadata?.valuationSourcePeriod ?? "—", LABEL)],
     [cell("Valuation Note", LABEL_BOLD), cell(valuationReason, { font: { sz: 8 }, alignment: { wrapText: true } })],
