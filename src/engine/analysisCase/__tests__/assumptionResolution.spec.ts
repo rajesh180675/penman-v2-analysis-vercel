@@ -45,7 +45,12 @@ function ref<TKind extends ContentRef["kind"]>(kind: TKind, seed: string): Conte
  * `sourced` to `prior` 31 days after it was published, turning a calendar event
  * into a red test that looks like a code regression.
  */
-const PACK_AS_OF = "2026-07-26";
+// Derived from the pack so a refresh does not strand this spec on an analysis
+// date that predates the new observation (the look-ahead guard would demote
+// it). indiaMacroPack.spec pins the exact figures deliberately; this one tests
+// wiring.
+const PACK_AS_OF = INDIA_MACRO_PACK.asOf;
+const PACK_RF = INDIA_MACRO_PACK.riskFreeRate!;
 
 const FACT_REF = ref("fact-set", "a");
 const POLICY_REF = ref("policy-bundle", "b");
@@ -178,13 +183,13 @@ describe("macro pack wiring — both routes, same answer", () => {
     const erp = monolith.costOfCapital.assumptions?.equityRiskPremium;
 
     expect(rf?.tier).toBe("sourced");
-    expect(rf?.value).toBeCloseTo(0.0682, 6);
-    expect(rf?.asOf).toBe("2026-07-24");
+    expect(rf?.value).toBeCloseTo(PACK_RF.value, 6);
+    expect(rf?.asOf).toBe(PACK_RF.asOf);
     expect(erp?.tier).toBe("sourced");
     expect(erp?.value).toBeCloseTo(0.0708, 6);
     // The reported rate must be the resolved one. If these diverged, the rate on
     // screen would not be the rate inside ke.
-    expect(monolith.riskFreeRate).toBeCloseTo(0.0682, 6);
+    expect(monolith.riskFreeRate).toBeCloseTo(PACK_RF.value, 6);
 
     // Beta is still a sector prior — no peer beta source exists — so a pack alone
     // does not buy full defensibility. Asserted so nobody reads two sourced
@@ -233,15 +238,15 @@ describe("macro pack wiring — both routes, same answer", () => {
   it("prefers a dated market rate over the pack, and the pack over an undated one", async () => {
     const { periods, config } = await setup(netCashCompounder);
     const base = {
-      symbol: "TEST", provider: "test", fetchedAt: "2026-07-25T00:00:00.000Z",
+      symbol: "TEST", provider: "test", fetchedAt: `${PACK_AS_OF}T00:00:00.000Z`,
       price: 1234, previousClose: null, changePct: null, marketCap: null,
-      enterpriseValue: null, sharesOutstanding: null, priceAsOf: "2026-07-25",
+      enterpriseValue: null, sharesOutstanding: null, priceAsOf: PACK_AS_OF,
       freshness: "live" as const, sourceSummary: "test", warnings: [], history: null,
     };
 
     const dated = buildValuationCommandCenter({
       data: periods, config, macroPack: INDIA_MACRO_PACK, analysisAsOf: PACK_AS_OF,
-      marketData: { ...base, riskFreeRate: 0.0691, rateAsOf: "2026-07-25" },
+      marketData: { ...base, riskFreeRate: 0.0691, rateAsOf: PACK_AS_OF },
     });
     expect(dated.riskFreeRate).toBeCloseTo(0.0691, 6);
     expect(dated.costOfCapital.assumptions?.riskFreeRate.tier).toBe("sourced");
@@ -254,7 +259,7 @@ describe("macro pack wiring — both routes, same answer", () => {
       data: periods, config, macroPack: INDIA_MACRO_PACK, analysisAsOf: PACK_AS_OF,
       marketData: { ...base, riskFreeRate: 0.0719, rateAsOf: null },
     });
-    expect(undated.riskFreeRate).toBeCloseTo(0.0682, 6);
+    expect(undated.riskFreeRate).toBeCloseTo(PACK_RF.value, 6);
     expect(undated.costOfCapital.assumptions?.riskFreeRate.method).toBe("Pinned macro pack");
   });
 

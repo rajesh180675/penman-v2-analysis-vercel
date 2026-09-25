@@ -30,7 +30,7 @@ const RUN_G = 0.04;
 function render(config: EngineConfig, opts?: { pack?: boolean; terminalGrowth?: number | null }) {
   const costOfCapital = resolveCostOfCapitalFromConfig({
     config,
-    ...(opts?.pack ? { macroPack: INDIA_MACRO_PACK, analysisAsOf: "2026-07-27" } : {}),
+    ...(opts?.pack ? { macroPack: INDIA_MACRO_PACK, analysisAsOf: INDIA_MACRO_PACK.asOf } : {}),
   });
   const terminalGrowth = opts && "terminalGrowth" in opts ? opts.terminalGrowth ?? null : RUN_G;
   return {
