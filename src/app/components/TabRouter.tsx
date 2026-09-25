@@ -202,6 +202,7 @@ export function TabRouter(props: TabRouterProps) {
           marketDataError={liveMarketDataError}
           onMarketRefresh={refreshLiveMarketData}
           itServices={itServicesSignal}
+          structuralBreakPeriods={pipelineResult?.structuralBreakPeriods ?? undefined}
         />
       )}
       {activeTab === "valuation" && !hasRecast && bankResult && rawData && rawData.length > 0 && (

@@ -60,6 +60,8 @@ import ValuationInputsPanel from "./valuation/ValuationInputsPanel";
 import ValuationCardsSection from "./valuation/ValuationCardsSection";
 import TriangulationSection from "./valuation/TriangulationSection";
 import ReSeriesSection from "./valuation/ReSeriesSection";
+import SelfConsistentValuationSection from "./valuation/SelfConsistentValuationSection";
+import { computeSelfConsistentValuation } from "../engine/selfConsistentValuation";
 import ContinuingValueFormulae from "./valuation/ContinuingValueFormulae";
 
 interface Props {
@@ -88,7 +90,11 @@ interface Props {
    * company gets a confident moat width computed on inflated RNOA.
    */
   itServices: ITServicesSignal | null;
+  /** Pipeline-detected structural breaks; the fade model estimates persistence after the last one. */
+  structuralBreakPeriods?: readonly string[] | undefined;
 }
+
+const EMPTY_BREAKS: readonly string[] = [];
 
 export default function ValuationReport({
   data,
@@ -106,6 +112,7 @@ export default function ValuationReport({
   marketDataError = null,
   onMarketRefresh,
   itServices,
+  structuralBreakPeriods = EMPTY_BREAKS,
 }: Props) {
   const derivedValuationReadiness = useMemo(() => resolveValuationReadiness(data), [data]);
   const valuationReadiness = publication?.valuationReadiness ?? derivedValuationReadiness;
@@ -363,6 +370,18 @@ export default function ValuationReport({
 
   const cvSel = makeCvSel(cv);
   const distressResult = useMemo(() => detectDistress(data), [data]);
+  const selfConsistentValuation = useMemo(
+    () => computeSelfConsistentValuation({
+      history: valuationData,
+      ke,
+      g: gRate,
+      kdFallback: effectiveConfig.kd_pretax * (1 - (effectiveConfig.tax_rate_for_kd ?? effectiveConfig.statutory_tax_rate ?? 0.2517)),
+      shares: shareBasis.shares ?? null,
+      marketPrice: commandCenter.marketPrice ?? effectiveConfig.market_price ?? null,
+      structuralBreakPeriods,
+    }),
+    [valuationData, ke, gRate, effectiveConfig, shareBasis.shares, commandCenter.marketPrice, structuralBreakPeriods],
+  );
 
   if (insufficientData) {
     return <EmptyState
@@ -470,6 +489,8 @@ export default function ValuationReport({
       <ValuationCardsSection val={val} V_RE={V_RE} V_ReOI={V_ReOI} cv={cv} sharesOut={sharesOut} />
 
       <TriangulationSection val={val} />
+
+      <SelfConsistentValuationSection result={selfConsistentValuation} />
 
       <ReSeriesSection rows={reSeriesRows} sharesOut={sharesOut} barData={barData} />
 

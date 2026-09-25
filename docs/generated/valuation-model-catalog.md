@@ -2,7 +2,7 @@
 
 - Schema: `2026-07-model-catalog-v1`
 - Catalog: `2026-07-10-current-models-v2`
-- Entries: 44
+- Entries: 45
 - Production intrinsic/relative definitions: 21
 - Independent production evidence groups: 11
 
@@ -46,6 +46,7 @@
 | `industrial.reverse-dcf-monte-carlo` | production | market-implied | industrial, telecom, utility | market-price | wired | `src/engine/valuation/reverseDcfMonteCarlo.ts#runReverseDcfMonteCarlo` |
 | `industrial.scenario-headline` | production | aggregator | industrial, telecom, utility | aggregation | wired | `src/engine/valuationCommandCenter/helpers.ts#computeScenarioIntrinsicPerShare` |
 | `industrial.segment-sotp` | production | intrinsic | industrial, telecom, utility | segment-sotp | wired | `src/engine/sotpValuation.ts#buildSOTPValuation` |
+| `industrial.self-consistent-reoi-fade` | experimental | intrinsic | industrial, telecom, utility | operating-fade | wired | `src/engine/selfConsistentValuation/model.ts#computeSelfConsistentValuation` |
 | `industrial.working-capital-gate` | production | diagnostic | industrial, telecom, utility | operational-driver | wired | `src/engine/valuation/workingCapitalGate.ts#evaluateWorkingCapitalGate` |
 | `sector.cyclical.mid-cycle-fcff` | production | intrinsic | industrial | operational-driver | partially-wired | `src/engine/sectorCases/calculators.ts#executeSectorCase:cyclical-mid-cycle` |
 | `sector.nbfc.funding-justified-pb` | production | intrinsic | nbfc | fi-book-residual-income | partially-wired | `src/engine/sectorCases/calculators.ts#executeSectorCase:nbfc-funding` |
