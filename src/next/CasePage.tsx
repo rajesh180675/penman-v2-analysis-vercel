@@ -1,6 +1,7 @@
 import { EmptyState } from "../components/shared/EmptyState";
 import type { LibraryCompany } from "../components/data-entry/companyRegistry";
 import type { CompanyRunState } from "./companyRun";
+import type { TrackRecordFile } from "./hooks";
 import { CASE_SECTIONS, formatRoute, LIBRARY, type CaseRoute, type CaseSection } from "./route";
 import { VerdictSection } from "./sections/VerdictSection";
 
@@ -19,10 +20,12 @@ export function CasePage({
   route,
   company,
   run,
+  trackRecords = null,
 }: {
   route: CaseRoute;
   company: LibraryCompany | null;
   run: CompanyRunState | null;
+  trackRecords?: TrackRecordFile | null;
 }) {
   if (!company) {
     return (
@@ -66,7 +69,9 @@ export function CasePage({
 
       <section aria-label={section.label}>
         {route.section === "verdict"
-          ? run?.status === "ready" ? <VerdictSection result={run.result} /> : null
+          ? run?.status === "ready"
+            ? <VerdictSection result={run.result} trackRecord={trackRecords?.companies.find((c) => c.ticker === company.ticker) ?? null} />
+            : null
           : <NotYetBuilt section={route.section} label={section.label} ticker={company.ticker} />}
       </section>
     </article>

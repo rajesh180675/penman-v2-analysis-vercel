@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { parseLibraryCompanyRegistry, type LibraryCompany } from "../components/data-entry/companyRegistry";
+import type { CompanyTrackRecord } from "../engine/accountability";
 import { CompanyRunCache, type CompanyRunState } from "./companyRun";
 import { formatRoute, parseRoute, type Route } from "./route";
 
@@ -63,4 +64,26 @@ export function useCompanyRun(company: LibraryCompany | null, cache: CompanyRunC
     return () => { cancelled = true; };
   }, [company, cache]);
   return state;
+}
+
+export interface TrackRecordFile {
+  readonly madeAt: string;
+  readonly basis: string;
+  readonly companies: readonly CompanyTrackRecord[];
+}
+
+let trackRecordRequest: Promise<TrackRecordFile | null> | null = null;
+
+/** The backtest's per-company record (fetched once per session; null if unavailable). */
+export function useTrackRecord(): TrackRecordFile | null {
+  const [file, setFile] = useState<TrackRecordFile | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    trackRecordRequest ??= fetch("/data/accountability/track-record.json")
+      .then((response) => (response.ok ? (response.json() as Promise<TrackRecordFile>) : null))
+      .catch(() => null);
+    void trackRecordRequest.then((value) => { if (!cancelled) setFile(value); });
+    return () => { cancelled = true; };
+  }, []);
+  return file;
 }

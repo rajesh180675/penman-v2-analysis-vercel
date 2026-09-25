@@ -1,0 +1,472 @@
+{
+ "madeAt": "2026-09-25",
+ "basis": "Walk-forward backtest of the base forecast (scripts/accountability/run-all.ts); one year ahead, against a random walk. Capitaline serves restated figures, so the record sees restatements of its own history.",
+ "companies": [
+  {
+   "ticker": "ASIANPAINT",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 6
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 8
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 8
+    }
+   }
+  },
+  {
+   "ticker": "DMART",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 9,
+     "beatRandomWalk": 8
+    },
+    "core-oi-margin-error": {
+     "scored": 9,
+     "beatRandomWalk": 7
+    },
+    "core-rnoa-error": {
+     "scored": 8,
+     "beatRandomWalk": 4
+    },
+    "cni-roe-point-error": {
+     "scored": 9,
+     "beatRandomWalk": 7
+    }
+   }
+  },
+  {
+   "ticker": "BHARTIARTL",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 6
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 6
+    },
+    "core-rnoa-error": {
+     "scored": 9,
+     "beatRandomWalk": 5
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    }
+   }
+  },
+  {
+   "ticker": "BRITANNIA",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 8
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 3
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 4
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 2
+    }
+   }
+  },
+  {
+   "ticker": "DABUR",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 4
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 6
+    }
+   }
+  },
+  {
+   "ticker": "GRASIM",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 8
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 9
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 8
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 6
+    }
+   }
+  },
+  {
+   "ticker": "HINDUNILVR",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 3
+    },
+    "core-rnoa-error": {
+     "scored": 4,
+     "beatRandomWalk": 2
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 6
+    }
+   }
+  },
+  {
+   "ticker": "ITC",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 8
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 8
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    }
+   }
+  },
+  {
+   "ticker": "INFY",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 8
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 6
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 6
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    }
+   }
+  },
+  {
+   "ticker": "LT",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 9
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 8
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 7
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 7
+    }
+   }
+  },
+  {
+   "ticker": "M&M",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 8
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 3
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 3
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 6
+    }
+   }
+  },
+  {
+   "ticker": "MARUTI",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 8
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    },
+    "core-rnoa-error": {
+     "scored": 9,
+     "beatRandomWalk": 5
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 6
+    }
+   }
+  },
+  {
+   "ticker": "NTPC",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 7
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 7
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 7
+    }
+   }
+  },
+  {
+   "ticker": "NESTLEIND",
+   "oneYearAhead": {}
+  },
+  {
+   "ticker": "PAYTM",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 9,
+     "beatRandomWalk": 5
+    },
+    "core-oi-margin-error": {
+     "scored": 9,
+     "beatRandomWalk": 5
+    },
+    "core-rnoa-error": {
+     "scored": 4,
+     "beatRandomWalk": 2
+    },
+    "cni-roe-point-error": {
+     "scored": 9,
+     "beatRandomWalk": 2
+    }
+   }
+  },
+  {
+   "ticker": "POWERGRID",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 7
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 0
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 0
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 0
+    }
+   }
+  },
+  {
+   "ticker": "RELIANCE",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 6
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 3
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 3
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 4
+    }
+   }
+  },
+  {
+   "ticker": "SUNPHARMA",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 7
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 6
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 7
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 4
+    }
+   }
+  },
+  {
+   "ticker": "TCS",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 4
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 3
+    }
+   }
+  },
+  {
+   "ticker": "TATASTEEL",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 4
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 6
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 6
+    }
+   }
+  },
+  {
+   "ticker": "TITAN",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 7
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 6
+    }
+   }
+  },
+  {
+   "ticker": "ULTRACEMCO",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 7
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 7
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 7
+    },
+    "cni-roe-point-error": {
+     "scored": 10,
+     "beatRandomWalk": 5
+    }
+   }
+  },
+  {
+   "ticker": "IDEA",
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 10,
+     "beatRandomWalk": 4
+    },
+    "core-oi-margin-error": {
+     "scored": 10,
+     "beatRandomWalk": 2
+    },
+    "core-rnoa-error": {
+     "scored": 10,
+     "beatRandomWalk": 3
+    },
+    "cni-roe-point-error": {
+     "scored": 6,
+     "beatRandomWalk": 2
+    }
+   }
+  }
+ ]
+}

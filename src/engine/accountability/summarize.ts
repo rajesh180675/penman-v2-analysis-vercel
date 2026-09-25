@@ -2,6 +2,7 @@ import {
   ACCOUNTABILITY_METRICS,
   ACCOUNTABILITY_SCHEMA_VERSION,
   NAIVE_BENCHMARKS,
+  type AccountabilityMetric,
   type AccountabilitySummary,
   type CompanyWalkForward,
   type MetricHorizonSummary,
@@ -60,4 +61,30 @@ export function summarizeWalkForward(results: readonly CompanyWalkForward[]): Ac
     origins: results.reduce((sum, r) => sum + r.origins.length, 0),
     rows,
   };
+}
+
+/** One company's one-year-ahead record against "nothing changes". */
+export interface CompanyTrackRecord {
+  readonly ticker: string;
+  /** Per metric: forecast years scored, and in how many the model beat a random walk. */
+  readonly oneYearAhead: Readonly<Partial<Record<AccountabilityMetric, { readonly scored: number; readonly beatRandomWalk: number }>>>;
+}
+
+/**
+ * Count, per metric, the one-year-ahead forecasts that were closer to the
+ * outcome than a random walk. A count, not a skill ratio: it is what a reader
+ * can check against the years listed, and one bad year cannot dominate it.
+ */
+export function companyTrackRecord(result: CompanyWalkForward): CompanyTrackRecord {
+  const oneYear = result.origins.flatMap((origin) => origin.observations).filter((o) => o.horizon === 1);
+  const oneYearAhead: Partial<Record<AccountabilityMetric, { scored: number; beatRandomWalk: number }>> = {};
+  for (const metric of ACCOUNTABILITY_METRICS) {
+    const slice = oneYear.filter((o) => o.metric === metric);
+    if (!slice.length) continue;
+    oneYearAhead[metric] = {
+      scored: slice.length,
+      beatRandomWalk: slice.filter((o) => Math.abs(o.model) < Math.abs(o.naive["random-walk"])).length,
+    };
+  }
+  return { ticker: result.ticker, oneYearAhead };
 }

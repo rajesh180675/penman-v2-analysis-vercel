@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
+import type { CompanyTrackRecord } from "../../engine/accountability";
 import { VerdictSection } from "../sections/VerdictSection";
 
 function card(key: "stress" | "base" | "bull", value: number | null, upside: number | null) {
@@ -22,9 +23,9 @@ function commandCenter(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function render(cc: unknown, run: Record<string, unknown> = { family: "industrial" }, status = "completed") {
+function render(cc: unknown, run: Record<string, unknown> = { family: "industrial" }, status = "completed", trackRecord: CompanyTrackRecord | null = null) {
   const result = { status, run, materialization: { commandCenter: cc }, reasonCode: "SCOPE_BLOCKED", message: "boom" } as unknown as LegacyAnalysisRunExecutionResult;
-  return renderToStaticMarkup(<VerdictSection result={result} />);
+  return renderToStaticMarkup(<VerdictSection result={result} trackRecord={trackRecord} />);
 }
 
 describe("VerdictSection", () => {
@@ -42,6 +43,29 @@ describe("VerdictSection", () => {
     expect(html).toContain("No market price: the live market overlay is missing.");
     expect(html).not.toContain("Upside");
     expect(html).not.toContain("Price ₹");
+  });
+
+  it("states the forecast's track record as counts a reader can check", () => {
+    const html = render(commandCenter(), undefined, undefined, {
+      ticker: "TCS",
+      oneYearAhead: {
+        "sales-log-error": { scored: 10, beatRandomWalk: 5 },
+        "core-oi-margin-error": { scored: 10, beatRandomWalk: 4 },
+        "cni-roe-point-error": { scored: 10, beatRandomWalk: 3 },
+      },
+    });
+    expect(html).toContain("sales in 5 of 10 years; operating margin in 4 of 10 years; earnings in 3 of 10 years");
+  });
+
+  it("withholds the track record when there is none", () => {
+    expect(render(commandCenter())).toContain("No backtest record for this company.");
+  });
+
+  it("withholds the break-evens rather than showing a bare dash when the run has no base forecast", () => {
+    const html = render(commandCenter());
+    expect(html).toContain("What would change our mind");
+    expect(html).toContain("The run has no base-case forecast.");
+    expect(html).not.toMatch(/>—</);
   });
 
   it("withholds a per-share value when no share count resolved", () => {

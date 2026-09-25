@@ -11,7 +11,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { parseCapitalineZip } from "../../engine/capitalineParser";
 import { processCompanyDataFull } from "../../engine/pipeline";
 import { ACTIVE_MARKET_PACKS } from "../../engine/marketPacks";
-import { buildValuationCommandCenter } from "../../engine/valuationCommandCenter";
+import { buildValuationCommandCenter, formatPct } from "../../engine/valuationCommandCenter";
+import { solveBreakEvens } from "../../engine/valuationCommandCenter/breakEven";
 import { DEFAULT_CONFIG, type CompanyType } from "../../engine/types";
 import { INRAbsolute } from "../../engine/types/units";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
@@ -63,6 +64,12 @@ describe("Verdict ↔ Valuation hero parity", () => {
         // A number must be the same string; the hero's bare "—" must be an
         // explicit Withheld (with its reason) in the Verdict, never a number.
         expect(figure(verdict, label), label).toBe(fromHero === "—" ? "Withheld" : fromHero);
+      }
+
+      // What would change our mind: every solved break-even is shown as solved.
+      expect(verdict).toContain("What would change our mind");
+      for (const r of solveBreakEvens(cc)) {
+        if (r.breakEven != null) expect(verdict).toContain(formatPct(r.breakEven, 1));
       }
     }, 120_000);
   }
