@@ -1,6 +1,6 @@
 # UI revamp: from module tabs to a research case
 
-**Status:** Phase 5 next (2026-09-26) — shell, hash router, Library, Case skeleton, run store, Verdict, Business & economics, Evidence & trust, Forecast, Valuation, Peers, Record and Lab live behind `?ui=next`; see "Progress" below. Plan written 2026-09-25. Supersedes the *layout* of `docs/greenfield-ui-redesign.md`, which was a visual reskin (tokens, `wb-panel`, SVG icons) and is kept as the design-token foundation.
+**Status:** Phase 6 next (2026-09-26) — shell, hash router, Library, Case skeleton, run store, Verdict, Business & economics, Evidence & trust, Forecast, Valuation, Peers, Record and Lab live behind `?ui=next`; see "Progress" below. Plan written 2026-09-25. Supersedes the *layout* of `docs/greenfield-ui-redesign.md`, which was a visual reskin (tokens, `wb-panel`, SVG icons) and is kept as the design-token foundation.
 **Premise:** today's UI is organised the way the engine is built — 22 tabs, one per module (Statements, Ratios, Quality, Scope, Atlas, Business Model, Forecast, Valuation, Bank, Comparison, Report, Thesis, Regression, V3 Analytics, Debug…). A reviewer who wants the one thing the app exists to answer — *what is this company worth, how sure are we, and what would change our mind* — has to open six tabs and assemble it themselves. The revamp organises the UI around that question, and around the two things this application now does that nothing else does: **every number is traceable**, and **every forecast is scored against what happened**.
 
 ## Decisions
@@ -132,6 +132,12 @@ Each phase ships as its own PR(s) through the normal CI/merge workflow; the old 
 - `ToolsPage.tsx` (Record and Lab) and the Library's "Your data and lists" open those tools **in the classic interface** for the chosen company (`/?ui=classic&tab=…&company=…`, the deep link the current shell already reads); a tool that needs a company is withheld until one is chosen.
 - **Decision, a change to the plan:** hosting the classic tabs inside the new shell would mean re-creating the classic shell's whole state (registry, workspace, uploads, sidecars, market data) — i.e. the classic shell itself. The Record and Lab therefore launch the classic interface rather than embed it, and Phase 6 keeps it available at `?ui=classic` instead of deleting the tabs: the Lab tools and own-data upload still live there. Tabs are deleted one by one as each is rebuilt.
 - Exit test `phase4.spec.tsx`: all 22 tabs mapped exactly once; Case homes are real sections; classic links carry the deep link; peers chosen, measured and gated as specified.
+
+**Phase 5 — As-of time machine (2026-09-26):**
+- The run store is keyed by company and as-of date. A dated run keeps only periods ending on or before the date, fetches no live price (today's price is not point-in-time; the Verdict withholds it with that reason), and sets the run's analysis date to the date — so the executor itself refuses any later period (`RAW_PERIOD_AFTER_AS_OF`, blocking) and the market packs refuse later-dated observations as look-ahead.
+- The Case header offers the run's reported years ("Latest" returns to today); the URL carries the date (`#/case/TCS/verdict?asOf=2023-03-31`), and a banner states the limits.
+- **Exit test** `asOf.spec.tsx`, through the real executor on real TCS data: an FY23 Case contains only years to FY23, is anchored no later, and records the date; a later year slipped into the run makes the executor block it.
+- **Honest limit:** Capitaline serves restated figures, so an as-of view can include later restatements of the years it shows; the plan's "only data filed by then" needs the as-filed ledger (`data/filings/`) wired into the run, which is next-phase Track A work.
 
 **Decision:** `Value`, `Withheld`, `ChartFrame` and `LineageDrawer` are built with the first section that uses them (Phase 1–2), not in Phase 0 — a component with no consumer has no contract to test against. Interactive driver edits move with the Forecast section (Phase 3).
 

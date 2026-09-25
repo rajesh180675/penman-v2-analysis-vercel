@@ -52,6 +52,11 @@ test.describe("Next UI (?ui=next)", () => {
     // Phase 4: Peers offers the comparison; the Lab opens tools in the classic interface.
     await page.getByRole("link", { name: "Peers" }).click();
     await expect(page.getByRole("button", { name: /^Analyse \d+ peers?$/ })).toBeVisible();
+    // Phase 5: the Case as of an earlier year — no live price, stated limits.
+    await page.goto("/?ui=next#/case/TCS/verdict?asOf=2023-03-31");
+    await expect(page.getByRole("note")).toContainText("as of 2023-03-31");
+    await expect(page.getByText(/Rigor: /)).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByText("No price as of 2023-03-31: the live price is today's, not point-in-time.").first()).toBeVisible();
     await page.goto("/?ui=next#/lab");
     await expect(page.getByRole("heading", { name: "Lab" })).toBeVisible();
     await expect(page.locator('a[href="/?ui=classic&tab=debug"]')).toBeVisible();

@@ -65,11 +65,18 @@ export function configForCompany(company: Pick<LibraryCompany, "ticker" | "type"
 /**
  * Load and analyse one company. `onStep` reports progress; the promise
  * settles to the final state and never rejects.
+ *
+ * With `asOf`, the run is the company as of that date: only periods ending on
+ * or before it, no live market overlay (today's price is not point-in-time),
+ * and the run's analysis date set to it — so the executor refuses any later
+ * period (RAW_PERIOD_AFTER_AS_OF) and the market packs refuse later-dated
+ * observations as look-ahead.
  */
 export async function loadCompanyRun(
   company: LibraryCompany,
   onStep: (step: "fetching" | "parsing" | "analysing") => void = () => {},
   deps: CompanyRunDependencies = defaultDependencies,
+  asOf: string | null = null,
 ): Promise<Exclude<CompanyRunState, { status: "loading" }>> {
   try {
     onStep("fetching");
@@ -77,11 +84,18 @@ export async function loadCompanyRun(
     onStep("parsing");
     const issuerId = company.ticker.toUpperCase();
     const config = configForCompany(company);
-    const [rawData, marketSnapshot] = await Promise.all([deps.parse(bytes, issuerId), deps.fetchMarketSnapshot(config)]);
-    if (rawData.length === 0) return { status: "error", message: "The company's data parsed to zero periods." };
+    const [parsed, marketSnapshot] = await Promise.all([
+      deps.parse(bytes, issuerId),
+      asOf ? Promise.resolve(null) : deps.fetchMarketSnapshot(config),
+    ]);
+    if (parsed.length === 0) return { status: "error", message: "The company's data parsed to zero periods." };
+    const rawData = asOf ? parsed.filter((p) => p.period_end <= asOf) : parsed;
+    if (asOf && rawData.length < 2) {
+      return { status: "error", message: `Fewer than two reported years end on or before ${asOf}; the analysis needs at least two.` };
+    }
     onStep("analysing");
     const now = deps.now().toISOString();
-    const runId = `next-${issuerId}-${now}`;
+    const runId = `next-${issuerId}${asOf ? `-asof-${asOf}` : ""}-${now}`;
     const input: LegacyAnalysisRunInputV1 = {
       rawData,
       config,
@@ -90,7 +104,7 @@ export async function loadCompanyRun(
       metadata: {
         runId,
         issuerId,
-        asOf: now.slice(0, 10),
+        asOf: asOf ?? now.slice(0, 10),
         createdAt: now,
         generatedAt: now,
         sourceMode: "manual",
@@ -106,20 +120,21 @@ export async function loadCompanyRun(
   }
 }
 
-/** One in-flight or settled run per company folder for the session. */
+/** One in-flight or settled run per company and as-of date for the session. */
 export class CompanyRunCache {
   private readonly runs = new Map<string, Promise<Exclude<CompanyRunState, { status: "loading" }>>>();
 
   constructor(private readonly deps: CompanyRunDependencies = defaultDependencies) {}
 
-  get(company: LibraryCompany, onStep?: (step: "fetching" | "parsing" | "analysing") => void) {
-    let run = this.runs.get(company.folder);
+  get(company: LibraryCompany, onStep?: (step: "fetching" | "parsing" | "analysing") => void, asOf: string | null = null) {
+    const key = `${company.folder}|${asOf ?? "latest"}`;
+    let run = this.runs.get(key);
     if (!run) {
-      run = loadCompanyRun(company, onStep, this.deps);
-      this.runs.set(company.folder, run);
+      run = loadCompanyRun(company, onStep, this.deps, asOf);
+      this.runs.set(key, run);
       // A failure is not cached: revisiting the company retries.
       void run.then((state) => {
-        if (state.status === "error") this.runs.delete(company.folder);
+        if (state.status === "error") this.runs.delete(key);
       });
     }
     return run;

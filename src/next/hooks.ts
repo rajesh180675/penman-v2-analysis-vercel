@@ -47,7 +47,7 @@ export function useRegistry(): RegistryState {
 const sessionRuns = new CompanyRunCache();
 
 /** The shared analysis run for one company (null while no company is selected). */
-export function useCompanyRun(company: LibraryCompany | null, cache: CompanyRunCache = sessionRuns): CompanyRunState | null {
+export function useCompanyRun(company: LibraryCompany | null, asOf: string | null = null, cache: CompanyRunCache = sessionRuns): CompanyRunState | null {
   const [state, setState] = useState<CompanyRunState | null>(null);
   useEffect(() => {
     if (!company) {
@@ -58,11 +58,11 @@ export function useCompanyRun(company: LibraryCompany | null, cache: CompanyRunC
     setState({ status: "loading", step: "fetching" });
     void cache.get(company, (step) => {
       if (!cancelled) setState({ status: "loading", step });
-    }).then((settled) => {
+    }, asOf).then((settled) => {
       if (!cancelled) setState(settled);
     });
     return () => { cancelled = true; };
-  }, [company, cache]);
+  }, [company, asOf, cache]);
   return state;
 }
 
