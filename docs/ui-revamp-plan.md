@@ -1,6 +1,6 @@
 # UI revamp: from module tabs to a research case
 
-**Status:** Phase 3 next (2026-09-26) — shell, hash router, Library, Case skeleton, run store, Verdict, Business & economics and Evidence & trust live behind `?ui=next`; see "Progress" below. Plan written 2026-09-25. Supersedes the *layout* of `docs/greenfield-ui-redesign.md`, which was a visual reskin (tokens, `wb-panel`, SVG icons) and is kept as the design-token foundation.
+**Status:** Phase 4 next (2026-09-26) — shell, hash router, Library, Case skeleton, run store, Verdict, Business & economics, Evidence & trust, Forecast and Valuation live behind `?ui=next`; see "Progress" below. Plan written 2026-09-25. Supersedes the *layout* of `docs/greenfield-ui-redesign.md`, which was a visual reskin (tokens, `wb-panel`, SVG icons) and is kept as the design-token foundation.
 **Premise:** today's UI is organised the way the engine is built — 22 tabs, one per module (Statements, Ratios, Quality, Scope, Atlas, Business Model, Forecast, Valuation, Bank, Comparison, Report, Thesis, Regression, V3 Analytics, Debug…). A reviewer who wants the one thing the app exists to answer — *what is this company worth, how sure are we, and what would change our mind* — has to open six tabs and assemble it themselves. The revamp organises the UI around that question, and around the two things this application now does that nothing else does: **every number is traceable**, and **every forecast is scored against what happened**.
 
 ## Decisions
@@ -117,6 +117,14 @@ Each phase ships as its own PR(s) through the normal CI/merge workflow; the old 
 - `sections/EvidenceSection.tsx`: rigor ladder (achieved / not, with detail), reconciliation checks and parser-fidelity checks — failures first, totals stated, diagnostic checks marked.
 - **Exit tests** `economics.spec.tsx` on real TCS and M&M data: all 15 statement lines the section shares with the Statements tab are the same strings for the same years; every displayed number (100+ per company) resolves to source rows or components; NOA = OA − OL and OI = CNI + NFE + MII add up in the drawer. Mutation-checked (formatting, a wrong field, a lost trace each fail).
 - Not yet in §3: the Capitaline-vs-as-filed tie-out (it lives in `data/filings/`, not served to the browser).
+
+**Phase 3 — Forecast + Valuation (2026-09-26):**
+- Engine: `revalueBase(cc, shifts)` (in `breakEven.ts`) re-values the base case with any combination of shifts — sales-growth path, core-margin path, ke (kw follows structurally), terminal growth — along the base card's own path, returning the value and the forecast years. The break-even solver now uses it.
+- `sections/ForecastSection.tsx`: editable shifts with the value recomputed live and withheld (with the reason) when terminal growth reaches the discount rates; the forecast year by year (sales, growth, core margin, turnover, OI, NOA, CNI, CSE); the walk-forward track record for sales, margin, RNOA and earnings.
+- `sections/ValuationSection.tsx`: every catalogued model's result from the run (`materialization.modelResults` joined to the model catalog) — computed values, or withheld with the model's own reason code — covering financial institutions too; cost of capital with each input's source, date and provenance tier, kw marked derived; a ke × terminal-growth sensitivity grid centred on the base card.
+- **Exit tests** `forecastValuation.spec.tsx` (real TCS and ITC data): the edited value and every forecast row are the engine's; the model table shows every computed value and every withheld reason; the grid's centre is the base card.
+- **Measured, and a plan change:** a re-valuation takes 0.05 ms (median; p95 0.10 ms) on ITC, the largest bundled company, and the 25-cell grid 1.7 ms — three orders of magnitude inside the 150 ms budget. Driver edits therefore stay on the main thread; routing them through the worker would add latency, not remove it.
+- Not done: the fade chart (the year-by-year table carries it) and frozen snapshots as ghost lines (`accountability/snapshots/` is not served to the browser).
 
 **Decision:** `Value`, `Withheld`, `ChartFrame` and `LineageDrawer` are built with the first section that uses them (Phase 1–2), not in Phase 0 — a component with no consumer has no contract to test against. Interactive driver edits move with the Forecast section (Phase 3).
 

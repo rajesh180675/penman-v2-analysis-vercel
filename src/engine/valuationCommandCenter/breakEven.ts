@@ -14,7 +14,7 @@
 import { buildScenario, buildValuationPeriodsFromForecast } from "../forecastingEngine";
 import { computeValuation } from "../PenmanNissimEngine";
 import { structuralKwForKe } from "../pvre/pvreEngine";
-import type { ForecastScenario } from "../types";
+import type { ForecastPeriod, ForecastScenario } from "../types";
 import { primaryValuationPerShare } from "./helpers";
 import type { ValuationCommandCenterOutput } from "./types";
 
@@ -39,22 +39,49 @@ const SEARCH = {
 
 type CommandCenterLike = Pick<ValuationCommandCenterOutput, "scenarios" | "anchorPeriod" | "shareBasis" | "marketPrice">;
 
-/** Base-case intrinsic value per share with one driver shifted by `delta`. */
-export function baseValueWithShift(cc: CommandCenterLike, driver: BreakEvenDriver, delta: number): number | null {
+/**
+ * Shifts to the base case, each optional: a parallel shift of the whole
+ * sales-growth or core-margin path, a change in ke (kw follows structurally,
+ * S-9.4C), and a change in terminal growth.
+ */
+export interface BaseCaseShifts {
+  readonly sales_growth?: number | undefined;
+  readonly core_sales_pm?: number | undefined;
+  readonly ke?: number | undefined;
+  readonly g?: number | undefined;
+}
+
+export interface BaseCaseRevaluation {
+  /** Intrinsic value per share, as the base card displays it; null when not computable. */
+  readonly value: number | null;
+  /** The forecast years behind it; null when the scenario could not be built. */
+  readonly forecast: readonly ForecastPeriod[] | null;
+  readonly ke: number;
+  readonly kw: number;
+  readonly g: number;
+}
+
+/**
+ * Re-value the base case with the given shifts, along exactly the path behind
+ * the base card's displayed value. With no shifts it reproduces the card.
+ */
+export function revalueBase(cc: CommandCenterLike, shifts: BaseCaseShifts = {}): BaseCaseRevaluation | null {
   const card = cc.scenarios.find((s) => s.key === "base");
   if (!card?.scenario?.drivers) return null;
   const latest = cc.anchorPeriod;
   const d = card.scenario.drivers;
-  const g = card.assumptions.g;
-  const ke = driver === "ke" ? d.ke + delta : d.ke;
-  const kw = driver === "ke" ? structuralKwForKe(ke, { ke: d.ke, kw: d.kw }, latest) : d.kw;
-  if (!(ke - g > 0.005) || !(kw - g > 0.005)) return null;
+  const g = card.assumptions.g + (shifts.g ?? 0);
+  const ke = d.ke + (shifts.ke ?? 0);
+  const kw = shifts.ke ? structuralKwForKe(ke, { ke: d.ke, kw: d.kw }, latest) : d.kw;
+  const none = { value: null, forecast: null, ke, kw, g };
+  if (!(ke - g > 0.005) || !(kw - g > 0.005)) return none;
   const scenario: ForecastScenario = {
     ...card.scenario,
     drivers: {
       ...d,
-      sales_growth: driver === "sales_growth" ? d.sales_growth.map((v) => v + delta) : d.sales_growth,
-      core_sales_pm: driver === "core_sales_pm" ? d.core_sales_pm.map((v) => v + delta) : d.core_sales_pm,
+      sales_growth: shifts.sales_growth ? d.sales_growth.map((v) => v + shifts.sales_growth!) : d.sales_growth,
+      core_sales_pm: shifts.core_sales_pm ? d.core_sales_pm.map((v) => v + shifts.core_sales_pm!) : d.core_sales_pm,
+      g_terminal: g,
       ke,
       kw,
     },
@@ -64,10 +91,15 @@ export function baseValueWithShift(cc: CommandCenterLike, driver: BreakEvenDrive
     // Anchored at `latest`: the valuation date is the anchor period, as in buildScenarioCards.
     const valuation = computeValuation(buildValuationPeriodsFromForecast(latest, periods), ke, kw, g, cc.shareBasis.valuationConfig);
     const value = primaryValuationPerShare(valuation);
-    return value != null && Number.isFinite(value) ? value : null;
+    return { value: value != null && Number.isFinite(value) ? value : null, forecast: periods, ke, kw, g };
   } catch {
-    return null;
+    return none;
   }
+}
+
+/** Base-case intrinsic value per share with one driver shifted by `delta`. */
+export function baseValueWithShift(cc: CommandCenterLike, driver: BreakEvenDriver, delta: number): number | null {
+  return revalueBase(cc, { [driver]: delta })?.value ?? null;
 }
 
 function baseDriverValue(cc: CommandCenterLike, driver: BreakEvenDriver): number | null {

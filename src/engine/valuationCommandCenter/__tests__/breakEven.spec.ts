@@ -7,7 +7,7 @@ import { ACTIVE_MARKET_PACKS } from "../../marketPacks";
 import { DEFAULT_CONFIG } from "../../types";
 import { INRAbsolute } from "../../types/units";
 import { buildValuationCommandCenter } from "../core";
-import { baseValueWithShift, solveBreakEven, solveBreakEvens } from "../breakEven";
+import { baseValueWithShift, revalueBase, solveBreakEven, solveBreakEvens } from "../breakEven";
 
 const FOLDER = "Tata Consultancy Services Ltd";
 let cc: ReturnType<typeof buildValuationCommandCenter>;
@@ -44,6 +44,24 @@ describe("break-even drivers", () => {
       const value = baseValueWithShift(cc, result.driver, result.breakEven - result.base)!;
       expect(value).toBeCloseTo(cc.marketPrice!, 2);
     }
+  });
+
+  it("re-values with several shifts at once and returns the forecast behind the value", () => {
+    const base = revalueBase(cc)!;
+    const shifted = revalueBase(cc, { sales_growth: 0.02, core_sales_pm: -0.01 })!;
+    const card = cc.scenarios.find((s) => s.key === "base")!;
+    expect(base.value).toBeCloseTo(card.intrinsicPerShare!, 9);
+    expect(base.forecast).toHaveLength(card.scenario.horizonT);
+    // Year-1 sales follow the shifted growth from the anchor's sales.
+    const g1 = card.scenario.drivers.sales_growth[0]!;
+    expect(shifted.forecast![0]!.Sales_f).toBeCloseTo(cc.anchorPeriod.is.Sales * (1 + g1 + 0.02), 6);
+    expect(shifted.forecast![0]!.core_sales_pm_assumption).toBeCloseTo(card.scenario.drivers.core_sales_pm[0]! - 0.01, 12);
+  });
+
+  it("moves value with terminal growth, and refuses a terminal growth at or above the discount rate", () => {
+    expect(revalueBase(cc, { g: 0.01 })!.value!).toBeGreaterThan(revalueBase(cc)!.value!);
+    const card = cc.scenarios.find((s) => s.key === "base")!;
+    expect(revalueBase(cc, { g: card.assumptions.ke - card.assumptions.g })!.value).toBeNull();
   });
 
   it("refuses to solve without a price", () => {
