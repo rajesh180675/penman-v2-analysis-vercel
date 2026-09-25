@@ -403,6 +403,45 @@ describe("validateTerminalREAnchor", () => {
     expect(v.flags.every(f => f.spec_id === "S-10.1")).toBe(true);
   });
 
+  it("does not flag a ratio jump that is immaterial against equity (RE near zero)", () => {
+    // L&T FY26-shaped: owners' ROE ≈ ke, so the median RE is ₹487 Cr and an
+    // ordinary ₹2,989 Cr year is "6.1× the median" — a 2.6-ROE-point move on
+    // ₹97,656 Cr of opening equity.
+    const re = [
+      { period: "2023-03-31", RE: 300, ReOI: 0 },
+      { period: "2024-03-31", RE: 487, ReOI: 0 },
+      { period: "2025-03-31", RE: 900, ReOI: 0 },
+      { period: "2026-03-31", RE: 2989, ReOI: 0, openingCSE: 97656 },
+    ];
+    const v = validateTerminalREAnchor(re, makeConfig());
+    expect(v.anchor_vs_median).toBeGreaterThan(2.5);
+    expect(v.terminal_anomaly).toBe(false);
+    expect(v.flags).toHaveLength(0);
+  });
+
+  it("still flags a ratio jump that is material against equity", () => {
+    // Grasim FY25-shaped: RE −₹1,191 → −₹8,246 Cr on ₹88,652 Cr — 8 ROE points.
+    const re = [
+      { period: "2023-03-31", RE: -900, ReOI: 0 },
+      { period: "2024-03-31", RE: -1191, ReOI: 0 },
+      { period: "2025-03-31", RE: -8246, ReOI: 0, openingCSE: 88652 },
+    ];
+    const v = validateTerminalREAnchor(re, makeConfig());
+    expect(v.terminal_anomaly).toBe(true);
+    expect(v.flags.some((f) => f.label === "TERMINAL_RE_ANOMALY")).toBe(true);
+  });
+
+  it("keeps the ratio tests alone when no equity basis is supplied", () => {
+    // Callers without an equity basis get the previous behaviour.
+    const re = [
+      { period: "2023-03-31", RE: 300, ReOI: 0 },
+      { period: "2024-03-31", RE: 487, ReOI: 0 },
+      { period: "2025-03-31", RE: 900, ReOI: 0 },
+      { period: "2026-03-31", RE: 2989, ReOI: 0 },
+    ];
+    expect(validateTerminalREAnchor(re, makeConfig()).terminal_anomaly).toBe(true);
+  });
+
   it("returns an empty validation for an empty series", () => {
     const v = validateTerminalREAnchor([], makeConfig());
     expect(v.RE_T).toBe(0);

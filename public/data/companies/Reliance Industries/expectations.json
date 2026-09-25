@@ -23,16 +23,14 @@
   },
   "expectedAnomalyFlags": [
     "S-5.3",
-    "S-5.4",
-    "S-10.1",
-    "S-10.1"
+    "S-5.4"
   ],
   "expectedUnusualItemCount": {
     "min": 1,
     "max": 10
   },
   "expectedRunsCleanWorkbook": true,
-  "notes": "Conglomerate with confirmed demerger events in 5y window (Jio Financial Services in 2023). Tests Gap 2 anchor walk-back when latest period is contaminated, and Gap 3 demerger-scheme-effect classification.",
+  "notes": "S-10.1 no longer expected: FY25 RE moves 4.9 ROE points against opening equity, below the 5-point materiality test (RE_ANCHOR_MATERIALITY). Conglomerate with confirmed demerger events in 5y window (Jio Financial Services in 2023). Tests Gap 2 anchor walk-back when latest period is contaminated, and Gap 3 demerger-scheme-effect classification.",
   "capturedAt": "2026-07-27T09:42:16Z",
   "targetState": {
     "expectedRigorLevel": "economically-plausible",

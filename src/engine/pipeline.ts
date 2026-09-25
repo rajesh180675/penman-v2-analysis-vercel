@@ -319,11 +319,7 @@ export function processCompanyDataFull(
   });
 
   // Run anomaly detection over all periods (S-5.x)
-  const reSeries = results
-    .filter(p => p.ri?.RE != null)
-    .map(p => ({ period: p.period_end, RE: p.ri!.RE!, ReOI: p.ri!.ReOI! }));
-
-  const anomalies = runAnomalyDetection(results, config, reSeries);
+  const anomalies = runAnomalyDetection(results, config, buildAnomalyReSeries(results));
 
   // Phase I9 — extract structural break periods from S-5.1 STRUCTURAL_EVENT flags.
   // These are surfaced in PipelineResult so App.tsx can offer the confirmation flow.
@@ -418,4 +414,14 @@ export function processCompanyDataFull(
     trace("pipeline", "processCompanyDataFull:error", { error: String(err), stack: (err as Error)?.stack }, null, { level: "error" });
     throw err;
   }
+}
+
+/**
+ * Residual-earnings series for the S-10.1 terminal-RE check, each point
+ * carrying its opening CSE so the check can test materiality against equity.
+ */
+export function buildAnomalyReSeries(periods: readonly RecastPeriod[]) {
+  return periods.flatMap((p, i) => p.ri?.RE != null
+    ? [{ period: p.period_end, RE: p.ri.RE, ReOI: p.ri.ReOI!, openingCSE: periods[i - 1]?.bs.CSE }]
+    : []);
 }
