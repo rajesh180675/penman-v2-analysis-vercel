@@ -43,6 +43,7 @@ import { AnalysisBanners } from "./components/AnalysisBanners";
 import { TabRouter } from "./components/TabRouter";
 import { AnalysisRunStatusBar } from "./components/AnalysisRunStatusBar";
 import { resolvePostIngestionDeepLinkTab } from "./deepLinkRouting";
+import { replacesLoadedCompany, withCompanyScopedFieldsReset } from "./companyScopedConfig";
 
 export function AppShell() {
   const auditGovernance = getAuditClientGovernance();
@@ -236,6 +237,10 @@ export function AppShell() {
     }
   }, [rawData, recastData, engineError, scopeGate]);
 
+  // The issuer whose data is currently loaded, read synchronously inside
+  // handleDataSubmit to decide whether issuer-scoped config is now stale.
+  const loadedCompanyIdRef = useRef<string | null>(null);
+
   const handleDataSubmit = useCallback(
     (
       data: RawPeriodData[],
@@ -259,7 +264,13 @@ export function AppShell() {
       };
       rememberAuditRun(nextMeta);
       setAuditMeta(nextMeta);
-  setConfig((prev) => {
+      const nextCompanyId = nextMeta.companyId || data[0]?.company_id || null;
+      const replacingCompany = replacesLoadedCompany(loadedCompanyIdRef.current, nextCompanyId);
+      loadedCompanyIdRef.current = nextCompanyId;
+  setConfig((current) => {
+    // Issuer-scoped values (share count, price, excluded periods, cost-of-
+    // capital overrides) belong to the company being replaced.
+    const prev = replacingCompany ? withCompanyScopedFieldsReset(current) : current;
     const companyId = nextMeta.companyId || data[0]?.company_id || prev.ticker;
     const isDifferentCompany = companyId !== prev.ticker;
     // Resolve NSE symbol and quality-data folder if not already set.
