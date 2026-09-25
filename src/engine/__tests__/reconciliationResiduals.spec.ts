@@ -523,6 +523,29 @@ describe("evaluateReconciliationResiduals", () => {
     expect(summary.status).toBe("degraded");
   });
 
+  it("bridges owners' TCI to group PAT + OCI through the minority's share", () => {
+    // Capitaline: TCI is the owners' share; the NCI line is a signed
+    // deduction. Group PAT 90 with a 20 minority share leaves owners' TCI 70 —
+    // a clean bridge, not a 22% residual.
+    const summary = evaluateReconciliationResiduals({
+      recastData: [
+        mkPeriod("2024-03-31"),
+        mkPeriod("2025-03-31", {
+          is: {
+            ...mkPeriod("2025-03-31").is,
+            TCI: 70,
+            TCI_NCI: -20,
+          },
+        }),
+      ],
+      config: DEFAULT_CONFIG,
+    });
+
+    const check = summary.checks.find((item) => item.key === "comprehensive-income-bridge" && item.periodEnd === "2025-03-31");
+    expect(check?.residual).toBeCloseTo(0, 9);
+    expect(check?.status).toBe("confirmed");
+  });
+
   it("no longer surfaces the (tautological) CNI operating/financing bridge as a residual check", () => {
     // Phase 1.1 — CNI ≡ OI - NFE - MII by algebraic construction in
     // PenmanNissimEngine. Forcing CNI to a non-identity value via test

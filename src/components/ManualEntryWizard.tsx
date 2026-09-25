@@ -145,8 +145,11 @@ function buildRawFromPeriod(pd: PeriodData, periodEnd: string, companyId: string
       "Tax Expenses__ProfitLoss": tax,
       "Finance Cost__ProfitLoss": finCost,
       ...(finInc > 0 ? { "Interest Income__ProfitLoss": finInc } : {}),
-      "Total Comprehensive Income for the Year__ProfitLoss": tci || pat,
-      "Non-Controlling Interests__ProfitLoss": nci,
+      // The wizard asks for group TCI and the minority's share; the recast
+      // reads Capitaline's convention — TCI as the owners' share, NCI as a
+      // signed deduction from group income.
+      "Total Comprehensive Income for the Year__ProfitLoss": (tci || pat) - nci,
+      "Non-Controlling Interests__ProfitLoss": -nci,
       ...(cogs > 0 ? { "Cost of Materials Consumed__ProfitLoss": cogs } : {}),
       ...(da > 0 ? { "Depreciation, Depletion and Amortization Expense__ProfitLoss": da } : {}),
       "Net Cash from Operating Activities__CashFlow": cfo,

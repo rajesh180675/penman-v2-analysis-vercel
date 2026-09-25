@@ -66,7 +66,7 @@ This is a real improvement in clarity, but it is still only a partial reconcilia
 - `OA + FA = TA`
 - `CSE + MI + FO + OL = TA`
 - `NOA - NFO - CSE - MI = 0`
-- `PAT + OCI = TCI` when traced comprehensive-income evidence exists
+- `PAT + OCI − NCI share = TCI (owners)` when traced comprehensive-income evidence exists (Capitaline reports TCI as the owners' share and the NCI line as a signed deduction)
 - `CNI = OI - NFE - MII`
 - `Core OI + UOI = OI`
 - `Core NFE + UFE = NFE`

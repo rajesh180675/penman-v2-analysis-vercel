@@ -533,11 +533,17 @@ export function evaluateReconciliationResiduals(params: {
       )
       && hasTraceEvidence(period, "CF.CFO")
       && hasTraceEvidence(period, "CF.Capex");
+    // Capitaline's TCI line is the owners' share and PAT is the group's, so
+    // the bridge deducts the minority's share (TCI_NCI, a signed deduction).
+    // Comparing owners' TCI with group PAT + OCI left the whole minority share
+    // as a residual (Grasim: ~100%) on every firm with partly-owned
+    // subsidiaries.
+    const ownersPatPlusOci = period.is.PAT + period.is.OCI + period.is.TCI_NCI;
     const comprehensiveIncomeResidual = hasTraceEvidence(period, "IS.TCI")
-      ? period.is.TCI - (period.is.PAT + period.is.OCI)
+      ? period.is.TCI - ownersPatPlusOci
       : null;
     const comprehensiveIncomeBasis = comprehensiveIncomeResidual != null
-      ? Math.max(Math.abs(period.is.TCI), Math.abs(period.is.PAT + period.is.OCI), 1)
+      ? Math.max(Math.abs(period.is.TCI), Math.abs(ownersPatPlusOci), 1)
       : null;
     const operatingCostBridge = period.is.operatingCostBridge;
     const hasOperatingCostBridgeInputs = (operatingCostBridge?.coverageRatio ?? 0) >= MIN_OPERATING_COST_BRIDGE_COVERAGE;
@@ -691,7 +697,7 @@ export function evaluateReconciliationResiduals(params: {
       }),
       buildOptionalCheck({
         key: "comprehensive-income-bridge",
-        label: "PAT + OCI = TCI",
+        label: "PAT + OCI − NCI share = TCI (owners)",
         periodEnd: period.period_end,
         residual: comprehensiveIncomeResidual,
         denominator: comprehensiveIncomeBasis,
