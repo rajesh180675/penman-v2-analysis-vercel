@@ -117,7 +117,12 @@ export function buildDriverForecastModel(args: {
     },
     base: {
       growthStart: clamp(blendedSalesGrowth, 0.01, Math.max(0.18, template.normalizedGrowth + 0.03)),
-      marginStart: clamp(blendedMargin, 0.04, 0.3),
+      // The margin starts from the evidence, losses included. A +4% floor
+      // forecast every loss-maker as profitable in year 1 — the largest single
+      // source of the base forecast's CNI optimism in the walk-forward backtest
+      // (Paytm, Vodafone Idea); removing it took one-year CNI skill vs a random
+      // walk from −15% to +6% (mean), with no profitable company's error changing.
+      marginStart: clamp(blendedMargin, -0.5, 0.3),
       atoStart: clamp(blendedAto, 0.4, 2.5),
     },
     bull: {
