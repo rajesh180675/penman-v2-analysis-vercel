@@ -188,6 +188,8 @@ jobs:
       # setup per eleven seconds of testing. Running it first also means a
       # boot-level break is reported before the three-minute pipeline suite.
       - run: npm run test:e2e:smoke
+      # The next UI (?ui=next): Library → Case with a real worker run.
+      - run: npm run test:e2e:next
       - run: npm run test:e2e:pipeline
       - name: Upload Playwright diagnostics
         if: failure()

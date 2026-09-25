@@ -1,6 +1,6 @@
 # UI revamp: from module tabs to a research case
 
-**Status:** Plan (2026-09-25). Supersedes the *layout* of `docs/greenfield-ui-redesign.md`, which was a visual reskin (tokens, `wb-panel`, SVG icons) and is kept as the design-token foundation.
+**Status:** Phase 0 in progress (2026-09-26) — shell, hash router, Library, Case skeleton and run store live behind `?ui=next`; see "Progress" below. Plan written 2026-09-25. Supersedes the *layout* of `docs/greenfield-ui-redesign.md`, which was a visual reskin (tokens, `wb-panel`, SVG icons) and is kept as the design-token foundation.
 **Premise:** today's UI is organised the way the engine is built — 22 tabs, one per module (Statements, Ratios, Quality, Scope, Atlas, Business Model, Forecast, Valuation, Bank, Comparison, Report, Thesis, Regression, V3 Analytics, Debug…). A reviewer who wants the one thing the app exists to answer — *what is this company worth, how sure are we, and what would change our mind* — has to open six tabs and assemble it themselves. The revamp organises the UI around that question, and around the two things this application now does that nothing else does: **every number is traceable**, and **every forecast is scored against what happened**.
 
 ## Decisions
@@ -83,7 +83,7 @@ Where today's 22 tabs go:
 
 | # | Phase | Delivers | Exit criteria |
 |---|---|---|---|
-| 0 | Foundations | Router, run store, driver edits on the existing run worker, `Value`/`Withheld`/`ChartFrame`/`LineageDrawer`, `?ui=next` flag | Old UI untouched; new shell renders Library + an empty Case for all 33 companies |
+| 0 | Foundations | Router, run store on the existing run worker, `?ui=next` flag, Library, Case skeleton | Old UI untouched; new shell renders Library + an empty Case for all 33 companies |
 | 1 | Verdict | Case §1 end to end, incl. withheld states and track-record chip | Verdict numbers identical to today's Valuation hero for all 33 companies (parity test) |
 | 2 | Economics + Evidence | §2 and §3, lineage drawer on every number in both | Every ratio/statement number from today's tabs present (parity inventory); drawer resolves for 100% of them |
 | 3 | Forecast + Valuation | §4 with inline driver editing in the worker, §5 incl. financial-institution variant | Edited-driver value matches engine; edit→repaint ≤ 150 ms on the largest company |
@@ -92,6 +92,17 @@ Where today's 22 tabs go:
 | 6 | Cutover | `ui=next` becomes default; old tabs deleted | e2e suite passes on the new UI; axe: zero serious violations; old tab components removed |
 
 Each phase ships as its own PR(s) through the normal CI/merge workflow; the old UI keeps working until phase 6.
+
+## Progress
+
+**Phase 0 (2026-09-26)** — `src/next/`:
+- `?ui=next` mounts `NextApp` as a lazily-loaded chunk (4 kB gzipped); without the flag `App` renders the current `AppShell` exactly as before.
+- Hash router (`route.ts`): `#/library`, `#/case/:company/:section?asOf=&scenario=`, `#/record`, `#/lab`. Hash, not path, because the deployment has no SPA rewrites — a path route would 404 on refresh.
+- Run store (`companyRun.ts`): fetch the bundled zip → parse → run in the existing analysis-run worker with the same inputs and market packs as the current shell; one run per company per session, failures not cached.
+- Library lists every company with its total; the Case header shows the run's confidence headline and rigor level; each section says which phase builds it and links to today's equivalent tab.
+- Tests: route round-trip and fallbacks, run-store inputs (packs, config, URL encoding for `M&M`), page rendering, and a browser e2e (`e2e/next-ui.spec.ts`, in the CI pipeline-e2e job) that opens TCS and waits for the worker run to settle.
+
+**Decision:** `Value`, `Withheld`, `ChartFrame` and `LineageDrawer` are built with the first section that uses them (Phase 1–2), not in Phase 0 — a component with no consumer has no contract to test against. Interactive driver edits move with the Forecast section (Phase 3).
 
 ## Measures of success
 
