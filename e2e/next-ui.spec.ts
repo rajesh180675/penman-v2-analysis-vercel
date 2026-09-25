@@ -40,9 +40,15 @@ test.describe("Next UI (?ui=next)", () => {
     await page.getByRole("link", { name: "Evidence & trust" }).click();
     await expect(page.getByRole("heading", { name: "Rigor ladder" })).toBeVisible();
 
+    // Phase 3: Forecast — an edit re-values live.
+    await page.getByRole("link", { name: "Forecast" }).click();
+    await page.getByLabel(/Sales growth/).fill("2");
+    await expect(page.getByText(/With your changes ₹/)).toBeVisible();
+    // Valuation: every catalogued model, and the sensitivity grid.
     await page.getByRole("link", { name: "Valuation" }).click();
     await expect(page).toHaveURL(/#\/case\/TCS\/valuation$/);
-    await expect(page.getByText("Valuation arrives in Phase 3")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Models" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sensitivity" })).toBeVisible();
 
     expect(errors).toEqual([]);
   });

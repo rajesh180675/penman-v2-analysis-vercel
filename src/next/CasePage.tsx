@@ -6,15 +6,15 @@ import { CASE_SECTIONS, formatRoute, LIBRARY, type CaseRoute, type CaseSection }
 import type { RecastPeriod } from "../engine/types";
 import { EconomicsSection } from "./sections/EconomicsSection";
 import { EvidenceSection } from "./sections/EvidenceSection";
+import { ForecastSection } from "./sections/ForecastSection";
+import { ValuationSection } from "./sections/ValuationSection";
 import { VerdictSection } from "./sections/VerdictSection";
 
-type BuiltSection = "verdict" | "economics" | "evidence";
+type BuiltSection = "verdict" | "economics" | "evidence" | "forecast" | "valuation";
 type UnbuiltSection = Exclude<CaseSection, BuiltSection>;
 
 /** Sections not yet built: the phase that builds each, and today's tab that covers it meanwhile. */
 const SECTION_STATUS: Record<UnbuiltSection, { phase: number; currentTab: string }> = {
-  forecast: { phase: 3, currentTab: "forecast" },
-  valuation: { phase: 3, currentTab: "valuation" },
   peers: { phase: 4, currentTab: "comparison" },
 };
 
@@ -81,7 +81,7 @@ export function CasePage({
 }
 
 const isBuilt = (section: CaseSection): section is BuiltSection =>
-  section === "verdict" || section === "economics" || section === "evidence";
+  section !== "peers";
 
 function renderBuilt(
   section: BuiltSection,
@@ -97,6 +97,10 @@ function renderBuilt(
       return <EconomicsSection periods={(result.materialization.pipelineResult?.periods ?? []) as unknown as readonly RecastPeriod[]} />;
     case "evidence":
       return <EvidenceSection result={result} />;
+    case "forecast":
+      return <ForecastSection result={result} trackRecord={trackRecords?.companies.find((c) => c.ticker === ticker) ?? null} />;
+    case "valuation":
+      return <ValuationSection result={result} />;
   }
 }
 

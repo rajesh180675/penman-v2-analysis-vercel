@@ -65,9 +65,9 @@ describe("CasePage", () => {
   });
 
   it("marks the active section and says which phase builds it", () => {
-    const html = renderToStaticMarkup(<CasePage route={caseRoute("ITC", "valuation")} company={itc} run={null} />);
-    expect(html).toMatch(/aria-current="page"[^>]*>Valuation</);
-    expect(html).toContain("Valuation arrives in Phase 3");
+    const html = renderToStaticMarkup(<CasePage route={caseRoute("ITC", "peers")} company={itc} run={null} />);
+    expect(html).toMatch(/aria-current="page"[^>]*>Peers</);
+    expect(html).toContain("Peers arrives in Phase 4");
     expect(html).toContain('href="#/case/ITC/forecast"');
   });
 
