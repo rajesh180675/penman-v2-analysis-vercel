@@ -30,10 +30,29 @@ describe("SelfConsistentValuationSection", () => {
     expect(html).toContain("No persistence up to ω = 0.98 reconciles this model to the market price");
   });
 
+  it("shows the panel-persistence value as a labelled comparison, not the headline", () => {
+    const history = Array.from({ length: 6 }, (_, i) => period(`${2020 + i}-03-31`, 1000, 300, 700, 200, 15));
+    const result = computeSelfConsistentValuation({
+      history, ke: 0.12, g: 0.04, kdFallback: 0.06, shares: 100,
+      panelPrior: { group: "consumer", phi: 0.84, companies: 6, asOf: "2026-09-25" },
+    });
+    const html = renderToStaticMarkup(<SelfConsistentValuationSection result={result} />);
+    expect(html).toContain("measured across the Indian panel for <b>consumer</b>");
+    expect(html).toContain("not adopted");
+  });
+
   it("says why it did not compute instead of rendering a number", () => {
     const html = renderToStaticMarkup(
       <SelfConsistentValuationSection result={{ status: "skipped", modelVersion: "2026-09-scv-v1", reason: "Net operating assets are not positive." }} />,
     );
     expect(html).toContain("Not computed: Net operating assets are not positive.");
+  });
+});
+
+describe("ValuationReport wiring", () => {
+  it("hands the model the panel prior for the company's type", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync(new URL("../../ValuationReport.tsx", import.meta.url), "utf8");
+    expect(source).toContain("panelPrior: panelPersistencePriorFor(effectiveConfig.company_type),");
   });
 });

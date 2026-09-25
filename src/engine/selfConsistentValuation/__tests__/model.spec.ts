@@ -152,3 +152,35 @@ describe("structural breaks", () => {
     expect(withBreak.fade.observations).toBeLessThan(post.length);
   });
 });
+
+describe("panel persistence comparison", () => {
+  const history = flatHistory(6, { NOA: 1000, NFO: 300, CSE: 700, CoreOI: 200, NFE: 15 });
+
+  it("re-solves the valuation at the panel's persistence, without replacing the company estimate", () => {
+    const base = ok(computeSelfConsistentValuation({ history, ke: 0.12, g: 0.04, kdFallback: 0.06, shares: 100 }));
+    const withPanel = ok(computeSelfConsistentValuation({
+      history, ke: 0.12, g: 0.04, kdFallback: 0.06, shares: 100,
+      panelPrior: { group: "consumer", phi: 0.84, companies: 6, asOf: "2026-09-25" },
+    }));
+    // The headline value is unchanged: the panel is reported, not adopted.
+    expect(withPanel.equityValue).toBeCloseTo(base.equityValue, 10);
+    expect(withPanel.panelComparison!.omegaUsed).toBe(0.84);
+    // More persistence than this firm's own estimate → more value.
+    expect(withPanel.panelComparison!.perShare!).toBeGreaterThan(base.perShare!);
+  });
+
+  it("bounds a near-permanent panel φ so the continuing value stays finite", () => {
+    const result = ok(computeSelfConsistentValuation({
+      history, ke: 0.12, g: 0.04, kdFallback: 0.06,
+      panelPrior: { group: "all", phi: 0.99, companies: 21, asOf: "2026-09-25" },
+    }));
+    expect(result.panelComparison!.omegaUsed).toBe(0.95);
+    expect(Number.isFinite(result.panelComparison!.equityValue!)).toBe(true);
+  });
+
+  it("falls back to the pooled prior for a company type without its own", async () => {
+    const { panelPersistencePriorFor } = await import("..");
+    expect(panelPersistencePriorFor("telecom")!.group).toBe("all");
+    expect(panelPersistencePriorFor(undefined)!.group).toBe("all");
+  });
+});

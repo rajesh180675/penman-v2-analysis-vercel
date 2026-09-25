@@ -25,6 +25,20 @@ export interface SelfConsistentValuationInput {
   readonly structuralBreakPeriods?: readonly string[] | undefined;
   /** Explicit forecast years. Default 10. */
   readonly horizon?: number | undefined;
+  /**
+   * Panel persistence estimated from Indian company history
+   * (persistencePriors.generated.ts). Reported beside the result as a
+   * comparison, not adopted: the panel is today's large caps, so it is
+   * survivorship-biased toward persistence.
+   */
+  readonly panelPrior?: PanelPriorInput | null | undefined;
+}
+
+export interface PanelPriorInput {
+  readonly group: string;
+  readonly phi: number;
+  readonly companies: number;
+  readonly asOf: string;
 }
 
 export interface SelfConsistentForecastYear {
@@ -93,6 +107,17 @@ export interface SelfConsistentValuation {
   readonly sensitivity: readonly SelfConsistentSensitivityCell[];
   /** The ω that makes the model's equity value equal market cap (kw at market weights). */
   readonly marketImpliedOmega: number | null;
+  /** The same valuation at the panel's persistence, when a panel prior was supplied. */
+  readonly panelComparison: {
+    readonly group: string;
+    readonly phi: number;
+    /** ω actually used: the panel φ, bounded so the continuing value stays finite. */
+    readonly omegaUsed: number;
+    readonly companies: number;
+    readonly asOf: string;
+    readonly equityValue: number | null;
+    readonly perShare: number | null;
+  } | null;
   readonly warnings: readonly string[];
 }
 

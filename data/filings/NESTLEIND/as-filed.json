@@ -1,0 +1,27 @@
+{
+ "symbol": "NESTLEIND",
+ "source": "NSE corporates-financial-results (Annual, Consolidated)",
+ "records": [
+  {
+   "fiscalYearEnd": "2024-03-31",
+   "filingDate": "2024-04-26T16:23",
+   "consolidated": false,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_104781_1109108_26042024042321.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 24393.89,
+    "profitBeforeTax": 5288.87,
+    "profitAfterTax": 3932.84,
+    "profitFromContinuingOperations": 3932.84,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": null,
+    "financeCosts": 145.49,
+    "totalAssets": 10523.06,
+    "totalEquity": 3340.89,
+    "equityAttributableToOwners": 3340.89,
+    "cashFlowFromOperations": 4174.79
+   }
+  }
+ ]
+}

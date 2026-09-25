@@ -55,6 +55,17 @@ export default function SelfConsistentValuationSection({ result }: { result: Sel
                 : ""}
           </p>
 
+          {result.panelComparison && (
+            <p className="text-xs text-slate-600">
+              At the persistence measured across the Indian panel for <b>{result.panelComparison.group}</b>
+              {" "}(φ = {result.panelComparison.phi.toFixed(2)}, {result.panelComparison.companies} companies, estimated {result.panelComparison.asOf})
+              {" "}the value would be{" "}
+              <b>{result.panelComparison.perShare != null ? `₹${result.panelComparison.perShare.toFixed(2)}/share` : rupees(result.panelComparison.equityValue)}</b>.
+              {" "}Shown for comparison, not adopted: the panel is today's large caps, which survived because their
+              returns persisted, so it overstates persistence for the average firm.
+            </p>
+          )}
+
           <div className="grid gap-6 md:grid-cols-2">
             <table className="w-full text-sm">
               <caption className="text-left text-xs font-semibold uppercase text-slate-500 pb-2">Value build (₹ Cr)</caption>
