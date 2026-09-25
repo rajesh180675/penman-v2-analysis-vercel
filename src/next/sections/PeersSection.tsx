@@ -117,7 +117,7 @@ function PeerCells({ state }: { state: CompanyRunState | null }) {
   if (state.status === "error") return <td colSpan={8} className="py-1 text-left"><Withheld reason={state.message} /></td>;
   const m = peerMetrics(state.result);
   const cell = (text: string | null, reason: string) => (
-    <td className="py-1">{text ?? <span className="text-xs text-slate-400" title={reason}>n/a</span>}</td>
+    <td className="py-1">{text ?? <span className="text-xs text-slate-500 dark:text-slate-400" title={reason}>n/a</span>}</td>
   );
   return (
     <>

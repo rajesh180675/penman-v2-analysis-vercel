@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
 import type { LibraryCompany } from "../../components/data-entry/companyRegistry";
-import { isNextUiRequested } from "../../App";
+import { selectInterface } from "../../App";
 import { CasePage } from "../CasePage";
 import { LibraryPage } from "../LibraryPage";
 import { caseRoute } from "../route";
@@ -26,12 +26,20 @@ function readyRun(): LegacyAnalysisRunExecutionResult {
   } as unknown as LegacyAnalysisRunExecutionResult;
 }
 
-describe("?ui=next switch", () => {
-  it("mounts the next UI only when asked", () => {
-    expect(isNextUiRequested("?ui=next")).toBe(true);
-    expect(isNextUiRequested("?company=ITC&ui=next")).toBe(true);
-    expect(isNextUiRequested("")).toBe(false);
-    expect(isNextUiRequested("?ui=legacy")).toBe(false);
+describe("interface selection (Phase 6 cutover)", () => {
+  it("defaults to the next UI and opens the classic interface on request", () => {
+    expect(selectInterface("")).toBe("next");
+    expect(selectInterface("?dark=1")).toBe("next");
+    expect(selectInterface("?ui=next")).toBe("next");
+    expect(selectInterface("?ui=classic")).toBe("classic");
+  });
+
+  it("keeps classic deep links landing in the classic interface", () => {
+    expect(selectInterface("?company=TCS&tab=valuation")).toBe("classic");
+    expect(selectInterface("?rf=7.00&erp=6.00&tab=upload&dark=0&company=TCS")).toBe("classic");
+    expect(selectInterface("?tab=debug")).toBe("classic");
+    // An explicit flag wins.
+    expect(selectInterface("?ui=next&company=TCS")).toBe("next");
   });
 });
 

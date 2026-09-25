@@ -1,19 +1,19 @@
 /**
- * The next UI (?ui=next, docs/ui-revamp-plan.md) end to end: Library → Case,
+ * The next UI (the default at /, docs/ui-revamp-plan.md) end to end: Library → Case,
  * with the company's analysis run completing in the real worker. Unit tests
  * cover the pieces; only a browser proves the worker, the lazy chunk and the
  * hash routing work together.
  */
 import { test, expect } from "@playwright/test";
 
-test.describe("Next UI (?ui=next)", () => {
+test.describe("Next UI", () => {
   test("opens a company's Case from the Library and completes its analysis run", async ({ page }) => {
     // Parsing and the worker run take tens of seconds on a CI runner.
     test.setTimeout(240_000);
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
 
-    await page.goto("/?ui=next", { waitUntil: "domcontentloaded" });
+    await page.goto("/", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "Library" })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText(/^\d+ companies$/)).toBeVisible();
 
@@ -53,19 +53,22 @@ test.describe("Next UI (?ui=next)", () => {
     await page.getByRole("link", { name: "Peers" }).click();
     await expect(page.getByRole("button", { name: /^Analyse \d+ peers?$/ })).toBeVisible();
     // Phase 5: the Case as of an earlier year — no live price, stated limits.
-    await page.goto("/?ui=next#/case/TCS/verdict?asOf=2023-03-31");
+    await page.goto("/#/case/TCS/verdict?asOf=2023-03-31");
     await expect(page.getByRole("note")).toContainText("as of 2023-03-31");
     await expect(page.getByText(/Rigor: /)).toBeVisible({ timeout: 120_000 });
     await expect(page.getByText("No price as of 2023-03-31: the live price is today's, not point-in-time.").first()).toBeVisible();
-    await page.goto("/?ui=next#/lab");
+    await page.goto("/#/lab");
     await expect(page.getByRole("heading", { name: "Lab" })).toBeVisible();
     await expect(page.locator('a[href="/?ui=classic&tab=debug"]')).toBeVisible();
 
     expect(errors).toEqual([]);
   });
 
-  test("leaves the current interface untouched without the flag", async ({ page }) => {
-    await page.goto("/", { waitUntil: "domcontentloaded" });
+  test("keeps the classic interface at ?ui=classic, linked from the new UI", async ({ page }) => {
+    await page.goto("/?ui=classic", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: /Company Library/i })).toBeVisible({ timeout: 60_000 });
+    // The new UI links to it.
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("link", { name: "Classic interface" })).toHaveAttribute("href", "/?ui=classic");
   });
 });
