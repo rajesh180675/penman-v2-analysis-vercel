@@ -18,7 +18,7 @@
  */
 import { buildBusinessModelProfile, buildScenario, buildValuationPeriodsFromForecast, derivePersistenceForecastScenario } from "./forecastingEngine";
 import type { LegacyValuationPeriodInput } from "./forecastState/legacyAdapter";
-import type { EngineConfig, RecastPeriod } from "./types";
+import type { EngineConfig, ForecastPeriod, ForecastScenario, RecastPeriod } from "./types";
 import { resolveValuationSectorTemplate } from "./valuationSectorTemplates";
 
 export const ANCHORED_VALUATION_HORIZON = 5;
@@ -35,16 +35,24 @@ export interface AnchoredValuationPeriodsParams {
   readonly horizon?: number | undefined;
 }
 
-export function buildAnchoredValuationPeriods(
-  params: AnchoredValuationPeriodsParams,
-): readonly LegacyValuationPeriodInput[] {
+/**
+ * The command center's base persistence scenario, anchored at the last
+ * history period, with the caller's ke/kw/g — and the forecast periods it
+ * produces. The forecast-accountability backtest scores exactly this output,
+ * so what is measured is what the app shows.
+ */
+export function buildAnchoredForecast(params: AnchoredValuationPeriodsParams): {
+  latest: RecastPeriod;
+  scenario: ForecastScenario;
+  periods: ForecastPeriod[];
+} {
   const history = [...params.history];
   if (history.length === 0) {
     throw new Error("buildAnchoredValuationPeriods requires at least one historical period.");
   }
   const latest = history[history.length - 1]!;
   const { template } = resolveValuationSectorTemplate(history, params.config.sector_template, params.config.company_type);
-  const scenario = derivePersistenceForecastScenario({
+  const derived = derivePersistenceForecastScenario({
     scenarioKey: "base",
     periods: history,
     latest,
@@ -57,9 +65,16 @@ export function buildAnchoredValuationPeriods(
       riskFreeRate: params.riskFreeRate ?? params.config.risk_free_rate,
     },
   });
-  const anchored = {
-    ...scenario,
-    drivers: { ...scenario.drivers, ke: params.ke, kw: params.kw, g_terminal: params.g },
+  const scenario: ForecastScenario = {
+    ...derived,
+    drivers: { ...derived.drivers, ke: params.ke, kw: params.kw, g_terminal: params.g },
   };
-  return buildValuationPeriodsFromForecast(latest, buildScenario(anchored, latest));
+  return { latest, scenario, periods: buildScenario(scenario, latest) };
+}
+
+export function buildAnchoredValuationPeriods(
+  params: AnchoredValuationPeriodsParams,
+): readonly LegacyValuationPeriodInput[] {
+  const { latest, periods } = buildAnchoredForecast(params);
+  return buildValuationPeriodsFromForecast(latest, periods);
 }

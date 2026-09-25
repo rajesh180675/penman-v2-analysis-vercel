@@ -56,6 +56,9 @@ const SUPPLIES_PACKS = [
   "src/components/V3AnalyticsPanel.tsx",
   "src/components/AcademicReport.tsx",
   "src/components/InvestmentThesis.tsx",
+  // Freezes today's forecast snapshots: the packs, dated to the snapshot day
+  // (analysisAsOf = madeAt), are what the app would have shown that day.
+  "scripts/accountability/company-run.ts",
 ];
 
 /**
@@ -138,6 +141,11 @@ const KNOWN_UNPINNED: ReadonlyArray<readonly [string, string]> = [
   // Closing it means a pack vintage matched to the harness's own as-of, not
   // today's pack and not today's clock.
   ["scripts/lib/auditCompanyRun.ts", "pinned as-of predates two of three observations"],
+  // Walk-forward backtest. Each forecast is re-made at a HISTORICAL cutoff;
+  // today's dated packs would hand a 2019 forecast a 2026 risk-free rate — a
+  // look-ahead the backtest exists to exclude. Config defaults are the
+  // point-in-time-neutral choice until packs carry dated history.
+  ["src/engine/accountability/walkForward.ts", "historical cutoffs; today's packs would be look-ahead"],
 ];
 
 /* ── The census machinery ─────────────────────────────────────────
