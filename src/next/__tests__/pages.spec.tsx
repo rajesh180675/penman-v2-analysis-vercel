@@ -59,6 +59,11 @@ describe("CasePage", () => {
     expect(html).toContain("Rigor: Syntactically valid");
   });
 
+  it("names each section region once — the section is the landmark, not its cards", () => {
+    const html = renderToStaticMarkup(<CasePage route={caseRoute("ITC")} company={itc} run={{ status: "ready", result: readyRun() }} />);
+    expect(html.match(/aria-label="Verdict"/g)).toHaveLength(1);
+  });
+
   it("marks the active section and says which phase builds it", () => {
     const html = renderToStaticMarkup(<CasePage route={caseRoute("ITC", "valuation")} company={itc} run={null} />);
     expect(html).toMatch(/aria-current="page"[^>]*>Valuation</);

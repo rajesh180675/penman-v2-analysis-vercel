@@ -14,7 +14,7 @@ export function VerdictSection({ result }: { result: LegacyAnalysisRunExecutionR
   const cc = result.materialization.commandCenter;
   if (!cc) {
     return (
-      <Panel title="Verdict">
+      <Panel>
         <Withheld reason={noCommandCenterReason(result)} />
       </Panel>
     );
@@ -29,7 +29,7 @@ export function VerdictSection({ result }: { result: LegacyAnalysisRunExecutionR
 
   return (
     <div className="space-y-4">
-      <Panel title="Verdict">
+      <Panel>
         <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">{cc.signal.label}</p>
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{cc.signal.summary}</p>
       </Panel>
@@ -128,12 +128,9 @@ function ValueRange({ cc }: { cc: CommandCenter }) {
   );
 }
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="wb-surface rounded-xl border p-5 shadow-sm" aria-label={title}>
-      {children}
-    </section>
-  );
+/** A card. Not a landmark: the Case page's section is the "Verdict" region. */
+function Panel({ children }: { children: ReactNode }) {
+  return <div className="wb-surface rounded-xl border p-5 shadow-sm">{children}</div>;
 }
 
 function Figure({ label, sub, children }: { label: string; sub?: string; children: ReactNode }) {
