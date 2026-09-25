@@ -449,3 +449,43 @@ describe("buildScenario validation", () => {
     expect(fp!.OI_f).toBeCloseTo(316.8, 6);
   });
 });
+
+describe("persistence forecast — a net-cash issuer's financing drivers", () => {
+  // ITC-shaped balance sheet: net cash worth 70% of equity, earning ~5%.
+  function netCashLatest(): RecastPeriod {
+    const latest = mkLatest("2025-03-31");
+    return {
+      ...latest,
+      bs: { ...latest.bs, CSE: 1000, NOA: 300, NFO: -700 },
+      is: { ...latest.is, NFE: -35 },
+    };
+  }
+
+  function deriveBase(latest: RecastPeriod) {
+    return derivePersistenceForecastScenario({
+      scenarioKey: "base",
+      latest,
+      businessModel: buildBusinessModelProfile([latest]),
+      horizon: 5,
+      template: {
+        normalizedGrowth: 0.09, terminalGrowthFloor: 0.03, terminalGrowthCap: 0.05,
+        growthFadeAlpha: 0.8, marginFadeAlpha: 0.9, atoFadeAlpha: 0.95, companyEvidenceMaxWeight: 0.8,
+        growthGuardrailBand: 0.035, marginGuardrailBand: 0.04, atoGuardrailBand: 0.4,
+      },
+      riskInputs: { ke: 0.12, kw: 0.1, riskFreeRate: 0.07 },
+    });
+  }
+
+  it("holds leverage at the anchor instead of paying the cash out in year 1", () => {
+    // kw is derived from the anchor's weights, so the forecast must keep them.
+    // The old −0.2 floor forced NFO/CSE from −0.7 to −0.2 in year 1.
+    const scenario = deriveBase(netCashLatest());
+    expect(scenario.drivers.flev[0]).toBeCloseTo(-0.7, 10);
+  });
+
+  it("earns the reported yield on the cash rather than a 1% floor", () => {
+    // NFE/NFO = −35/−700 = 5%. Dividing by |NFO| made it −5%, floored to 1%.
+    const scenario = deriveBase(netCashLatest());
+    expect(scenario.drivers.nbc[0]).toBeCloseTo(0.05, 10);
+  });
+});

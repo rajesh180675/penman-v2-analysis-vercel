@@ -27,7 +27,6 @@ import {
   rememberAuditRun,
 } from "../lib/audit";
 import { readPersistedCompanyRegistry } from "../lib/companyRegistryStore";
-import { resolveNseSymbol, resolveFolderFromSymbol } from "../engine/nseSymbolRegistry";
 import { SourceParserDiagnostics } from "../engine/parserDiagnostics";
 import type { CanonicalFactIngestionBundle } from "../engine/facts";
 import { TABS, type TabId } from "./tabs";
@@ -43,7 +42,7 @@ import { AnalysisBanners } from "./components/AnalysisBanners";
 import { TabRouter } from "./components/TabRouter";
 import { AnalysisRunStatusBar } from "./components/AnalysisRunStatusBar";
 import { resolvePostIngestionDeepLinkTab } from "./deepLinkRouting";
-import { replacesLoadedCompany, withCompanyScopedFieldsReset } from "./companyScopedConfig";
+import { configForSubmittedCompany } from "./companyScopedConfig";
 
 export function AppShell() {
   const auditGovernance = getAuditClientGovernance();
@@ -265,26 +264,9 @@ export function AppShell() {
       rememberAuditRun(nextMeta);
       setAuditMeta(nextMeta);
       const nextCompanyId = nextMeta.companyId || data[0]?.company_id || null;
-      const replacingCompany = replacesLoadedCompany(loadedCompanyIdRef.current, nextCompanyId);
+      const loadedCompanyId = loadedCompanyIdRef.current;
       loadedCompanyIdRef.current = nextCompanyId;
-  setConfig((current) => {
-    // Issuer-scoped values (share count, price, excluded periods, cost-of-
-    // capital overrides) belong to the company being replaced.
-    const prev = replacingCompany ? withCompanyScopedFieldsReset(current) : current;
-    const companyId = nextMeta.companyId || data[0]?.company_id || prev.ticker;
-    const isDifferentCompany = companyId !== prev.ticker;
-    // Resolve NSE symbol and quality-data folder if not already set.
-    // This ensures manual uploads (which skip the library grid) also get
-    // proper symbol/folder wiring so the sidecar fetch and live price work.
-    const resolvedSymbol = (isDifferentCompany ? null : prev.market_data_symbol) ?? resolveNseSymbol(companyId) ?? null;
-    const resolvedFolder = (isDifferentCompany ? null : prev.quality_data_folder) ?? resolveFolderFromSymbol(companyId) ?? companyId;
-    return {
-      ...prev,
-      ticker: companyId,
-      market_data_symbol: resolvedSymbol ?? undefined,
-      quality_data_folder: resolvedFolder,
-    };
-  });
+      setConfig((current) => configForSubmittedCompany(current, { companyId: nextCompanyId, loadedCompanyId }));
       setWorkspaceCompanyId(nextMeta.companyId || data[0]?.company_id || null);
       setRawData(data);
       // Phase A — store standalone (or clear it). Always set so a fresh upload

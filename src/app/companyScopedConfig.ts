@@ -1,4 +1,5 @@
 import { DEFAULT_CONFIG, type EngineConfig } from "../engine/types";
+import { resolveFolderFromSymbol, resolveNseSymbol } from "../engine/nseSymbolRegistry";
 
 /**
  * Config fields whose values describe ONE issuer.
@@ -64,4 +65,32 @@ export function replacesLoadedCompany(
   nextCompanyId: string | null | undefined,
 ): boolean {
   return Boolean(loadedCompanyId) && Boolean(nextCompanyId) && loadedCompanyId !== nextCompanyId;
+}
+
+/**
+ * The config after a dataset for `companyId` is submitted — the whole
+ * transition handleDataSubmit applies, kept pure so it is testable.
+ *
+ * Issuer-scoped values belong to the company being replaced, so they reset
+ * when a DIFFERENT loaded issuer is replaced. The NSE symbol and quality-data
+ * folder are re-resolved for a new ticker so manual uploads (which skip the
+ * library grid) still get sidecar and live-price wiring.
+ */
+export function configForSubmittedCompany(
+  current: EngineConfig,
+  params: { companyId: string | null; loadedCompanyId: string | null },
+): EngineConfig {
+  const prev = replacesLoadedCompany(params.loadedCompanyId, params.companyId)
+    ? withCompanyScopedFieldsReset(current)
+    : current;
+  const companyId = params.companyId || prev.ticker;
+  const isDifferentCompany = companyId !== prev.ticker;
+  const resolvedSymbol = (isDifferentCompany ? null : prev.market_data_symbol) ?? resolveNseSymbol(companyId) ?? null;
+  const resolvedFolder = (isDifferentCompany ? null : prev.quality_data_folder) ?? resolveFolderFromSymbol(companyId) ?? companyId;
+  return {
+    ...prev,
+    ticker: companyId,
+    market_data_symbol: resolvedSymbol ?? undefined,
+    quality_data_folder: resolvedFolder,
+  };
 }

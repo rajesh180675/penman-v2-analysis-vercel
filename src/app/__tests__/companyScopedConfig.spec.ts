@@ -4,6 +4,7 @@ import { CroreShares, INRAbsolute, PercentFraction } from "../../engine/types/un
 import { resolveShareBasis } from "../../engine/shareCountTools";
 import {
   COMPANY_SCOPED_CONFIG_KEYS,
+  configForSubmittedCompany,
   replacesLoadedCompany,
   withCompanyScopedFieldsReset,
 } from "../companyScopedConfig";
@@ -61,5 +62,39 @@ describe("replacesLoadedCompany", () => {
     // First load: whatever is in the scoped fields was typed for this company.
     expect(replacesLoadedCompany(null, "TCS")).toBe(false);
     expect(replacesLoadedCompany("TCS", null)).toBe(false);
+  });
+});
+
+describe("configForSubmittedCompany — the whole handleDataSubmit transition", () => {
+  it("resets company A's scoped fields when company B replaces it", () => {
+    const next = configForSubmittedCompany(COMPANY_A_CONFIG, { companyId: "INFY", loadedCompanyId: "TCS" });
+    expect(next.ticker).toBe("INFY");
+    expect(next.shares_outstanding).toBe(DEFAULT_CONFIG.shares_outstanding);
+    expect(next.market_price).toBe(DEFAULT_CONFIG.market_price);
+    expect(next.excluded_periods).toEqual(DEFAULT_CONFIG.excluded_periods);
+    expect(next.ke).toBe(DEFAULT_CONFIG.ke);
+    expect(next.risk_free_rate).toBe(0.0685);
+  });
+
+  it("keeps values typed before the first load", () => {
+    const typed = { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(361.8) };
+    const next = configForSubmittedCompany(typed, { companyId: "TCS", loadedCompanyId: null });
+    expect(next.shares_outstanding).toBe(361.8);
+  });
+
+  it("keeps the current issuer's values on a reload of the same company", () => {
+    const next = configForSubmittedCompany(COMPANY_A_CONFIG, { companyId: "TCS", loadedCompanyId: "TCS" });
+    expect(next.shares_outstanding).toBe(361.8);
+    expect(next.excluded_periods).toEqual(["2019-03-31"]);
+  });
+});
+
+describe("AppShell wiring", () => {
+  it("routes every data submission's config through configForSubmittedCompany", async () => {
+    // The transition is only as good as its one call site: dropping it left
+    // the whole suite green before this check existed.
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync(new URL("../AppShell.tsx", import.meta.url), "utf8");
+    expect(source).toMatch(/setConfig\(\(current\) => configForSubmittedCompany\(current, \{ companyId: nextCompanyId, loadedCompanyId \}\)\)/);
   });
 });

@@ -1,8 +1,7 @@
 import { CompanyRegistry, EngineConfig, NP_BENCHMARKS } from "../engine/types";
 import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
-import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
-import { buildAnchoredValuationPeriods } from "../engine/anchoredValuationPeriods";
+import { valuePeer, withPeerMarketInput } from "./comparison/peerValuation";
 import { useCallback, useMemo, useState } from "react";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
@@ -182,44 +181,11 @@ function ComparisonReportBody({ registry, config, weakestTraceabilitySummary: pr
       analysisAsOf: analysisAsOfToday(),
     }).ke;
     const g = 0.05;
-    return latestByCo.map((c) => {
-      const n = c.series.length;
-      const kw = n >= 2
-        ? deriveKwFromStructure(c.series[n - 1]!, c.series[n - 2]!, ke, config.risk_free_rate, config)
-        : config.risk_free_rate;
-      // Each peer is valued under ITS OWN scope. The workspace config carries
-      // the workspace issuer's share count and price, so spreading it here
-      // divided every peer's equity by someone else's shares (Upside and its
-      // sort were wrong for every peer). Per-share figures are taken below
-      // from the peer's own entered share count instead.
-      const peerCfg: EngineConfig = {
-        ...config,
-        shares_outstanding: undefined,
-        market_price: undefined,
-        company_type: c.companyType ?? config.company_type,
-      };
-      // Latest-anchored: the peer's history passed straight in was valued as of
-      // its OLDEST balance sheet, and series of different lengths put every
-      // peer at a different valuation date.
-      const periods = n >= 1 ? buildAnchoredValuationPeriods({ history: c.series, config: peerCfg, ke, kw, g }) : c.series;
-      const v = computeValuation(periods, ke, kw, g, peerCfg);
-      const re = v.V_RE_CV3;
-      const reoi = v.V_ReOI_CV03;
-      const fcff = v.fcf?.V_FCFF_equity ?? null;
-      const fcfe = v.fcf?.V_FCFE ?? null;
-      const ddm = v.ddm.V_DDM;
-      const aeg = v.aeg?.V_AEG ?? null;
-      return { id: c.id, company: c.company, re, reoi, fcff, fcfe, ddm, aeg };
-    });
+    return latestByCo.map((c) => valuePeer(c, config, ke, g));
   }, [latestByCo, config]);
 
   const valuationRows = useMemo(() => {
-    return baseValuationRows.map((base) => {
-      const inp = marketInputs[base.id] ?? { price: 0, shares: 0 };
-      const intrinsicPerShare = base.re != null && inp.shares > 0 ? base.re / inp.shares : null;
-      const upside = intrinsicPerShare != null && inp.price > 0 ? (intrinsicPerShare / inp.price - 1) : null;
-      return { ...base, intrinsicPerShare, price: inp.price, shares: inp.shares, upside };
-    }).sort((a, b) => {
+    return baseValuationRows.map((base) => withPeerMarketInput(base, marketInputs[base.id])).sort((a, b) => {
       if (!sortByUpside) return a.company.localeCompare(b.company);
       const av = a.upside ?? -Infinity;
       const bv = b.upside ?? -Infinity;
