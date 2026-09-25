@@ -113,23 +113,37 @@ export async function writeJsonBlob(pathname, payload, options = {}) {
   });
 }
 
+const LIST_PAGE_SIZE = 1000;
+const LIST_MAX_BLOBS = 5000;
+
+/**
+ * The `limit` NEWEST JSON blobs under `prefix`, newest first.
+ *
+ * `list()` pages in pathname order. Taking its first page of `limit` and only
+ * then sorting by upload time returned an arbitrary slice once a company had
+ * more records than the limit — ids are run-scoped, not time-ordered — so the
+ * newest valuations could silently fall off the end. Page through the listing
+ * (bounded), pick the newest by `uploadedAt`, and download only those.
+ */
 export async function listJsonBlobs(prefix, limit = 100) {
-  const result = await list({
-    prefix,
-    limit,
-    mode: "expanded",
-  });
-  const items = await Promise.all(
-    result.blobs.map(async (blob) => {
-      const parsed = await readJsonBlob(blob.pathname).catch(() => null);
-      return {
-        pathname: blob.pathname,
-        uploadedAt: blob.uploadedAt,
-        payload: parsed,
-      };
-    })
+  const listed = [];
+  let cursor;
+  do {
+    const page = await list({ prefix, limit: LIST_PAGE_SIZE, mode: "expanded", ...(cursor ? { cursor } : {}) });
+    listed.push(...page.blobs);
+    cursor = page.hasMore ? page.cursor : undefined;
+  } while (cursor && listed.length < LIST_MAX_BLOBS);
+
+  const newest = listed
+    .sort((left, right) => new Date(right.uploadedAt).getTime() - new Date(left.uploadedAt).getTime())
+    .slice(0, limit);
+  return Promise.all(
+    newest.map(async (blob) => ({
+      pathname: blob.pathname,
+      uploadedAt: blob.uploadedAt,
+      payload: await readJsonBlob(blob.pathname).catch(() => null),
+    }))
   );
-  return items.sort((left, right) => new Date(right.uploadedAt).getTime() - new Date(left.uploadedAt).getTime());
 }
 
 export function buildTimestampedPath(companyId, kind, id = Date.now().toString()) {
