@@ -11,6 +11,7 @@ import {
   nowStamp,
   readJsonBody,
   requireAuditReadAuth,
+  resolveRetentionDays,
   respondJsonBodyError,
   sanitizePathSegment,
 } from "./_lib.js";
@@ -78,7 +79,7 @@ export default async function handler(request, response) {
       idempotencyKey,
       runAccessHash: hashAuditToken(getRunAccessToken(request) ?? body.runAccessToken ?? null),
       contentClass: body.contentClass ?? governance.contentClass,
-      retentionDays: Number(body.retentionDays) || governance.retentionDays,
+      retentionDays: resolveRetentionDays(body.retentionDays, governance.retentionDays),
       payload: body.payload ?? {},
     };
 

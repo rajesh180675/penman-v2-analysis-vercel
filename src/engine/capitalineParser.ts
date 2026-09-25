@@ -73,6 +73,57 @@ export { UNIT_TO_CR_MULTIPLIER, detectCurrencyUnit } from "./capitalineParser/ce
 const MAX_ZIP_BYTES = 25 * 1024 * 1024; // 25 MB archive upload cap
 const MAX_ZIP_ENTRIES = 64;
 const MAX_ENTRY_UNCOMPRESSED_BYTES = 20 * 1024 * 1024; // 20 MB per file
+const MAX_TOTAL_UNCOMPRESSED_BYTES = 200 * 1024 * 1024; // across the archive
+
+type BoundedEntryStream = JSZip.JSZipStreamHelper<Uint8Array>;
+
+/**
+ * Inflate one entry while COUNTING what actually comes out, aborting past
+ * `limit`. The size in the ZIP header is written by whoever built the archive,
+ * so checking it alone let a crafted file declare a few bytes and inflate to
+ * hundreds of megabytes (a zip bomb) — `entry.async` would materialise all of
+ * it before any check ran. JSZip streams inflation in chunks, so stopping at
+ * the limit bounds memory to the limit.
+ */
+export function readZipEntryBounded(entry: JSZip.JSZipObject, limit: number, fileName: string): Promise<ArrayBuffer> {
+  // `internalStream` is public JSZip API (docs: JSZipObject#internalStream)
+  // that its bundled typings omit.
+  const stream = (entry as unknown as { internalStream(type: "uint8array"): BoundedEntryStream }).internalStream("uint8array");
+  return new Promise((resolve, reject) => {
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    let settled = false;
+    stream
+      .on("data", (chunk) => {
+        if (settled) return;
+        total += chunk.length;
+        if (total > limit) {
+          settled = true;
+          stream.pause();
+          reject(new Error(`File ${fileName} inflates past the ${Math.round(limit / (1024 * 1024))} MB limit.`));
+          return;
+        }
+        chunks.push(chunk);
+      })
+      .on("error", (error) => {
+        if (settled) return;
+        settled = true;
+        reject(error);
+      })
+      .on("end", () => {
+        if (settled) return;
+        settled = true;
+        const out = new Uint8Array(total);
+        let offset = 0;
+        for (const chunk of chunks) {
+          out.set(chunk, offset);
+          offset += chunk.length;
+        }
+        resolve(out.buffer);
+      })
+      .resume();
+  });
+}
 
 /* ══════════════════════════════════════════════════════════════════
    Constants
@@ -170,6 +221,7 @@ export async function parseCapitalineZip(
     Map<AccountingStandard, number>
   >();
 
+  let totalUncompressedBytes = 0;
   for (const entry of fileEntries) {
     const fileName = entry.name.split("/").pop() || entry.name;
     const stmtGuess = stmtFromFilename(fileName);
@@ -192,10 +244,15 @@ export async function parseCapitalineZip(
 
     let buffer: ArrayBuffer;
     try {
-      buffer = await entry.async("arraybuffer");
+      buffer = await readZipEntryBounded(
+        entry,
+        Math.min(MAX_ENTRY_UNCOMPRESSED_BYTES, MAX_TOTAL_UNCOMPRESSED_BYTES - totalUncompressedBytes),
+        fileName,
+      );
     } catch (e) {
       throw new Error(`Could not read '${fileName}': ${e instanceof Error ? e.message : String(e)}`, { cause: e });
     }
+    totalUncompressedBytes += buffer.byteLength;
 
     // Source-lineage: SHA-256 of uncompressed file bytes.
     try {

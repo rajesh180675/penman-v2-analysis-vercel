@@ -311,6 +311,16 @@ export async function persistAuditEvent(input: AuditEventInput) {
   }
 }
 
+/** Client twin of `sanitizePathSegment` in api/audit/_lib.js. */
+export function sanitizeAuditPathSegment(value: string, fallback = "unknown"): string {
+  const normalized = String(value || fallback)
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return normalized || fallback;
+}
+
 export async function persistAuditBlob(input: AuditBlobInput) {
   if (!AUDIT_ENABLED) return null;
 
@@ -338,7 +348,10 @@ export async function persistAuditBlob(input: AuditBlobInput) {
   }
 
   try {
-    const pathname = `audit-runs/${input.runId}/${input.kind}/${input.filename}`;
+    // Must match the server's `buildAuditPath(sanitize(runId), kind,
+    // sanitize(filename))` exactly — api/audit/uploads.js refuses a token for
+    // any other pathname.
+    const pathname = `audit-runs/${sanitizeAuditPathSegment(input.runId)}/${input.kind}/${sanitizeAuditPathSegment(input.filename)}`;
 
     if (import.meta.env.DEV) {
       const headers: Record<string, string> = {
