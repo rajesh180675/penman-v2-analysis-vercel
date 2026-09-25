@@ -149,3 +149,35 @@ describe("PVRE snapshot persistence", () => {
     expect(loaded[0]!.takenAt).toBe("2026-08-29");
   });
 });
+
+describe("scorePvreCalibration — same-date runs", () => {
+  it("scores each run against its OWN distribution, not the first run on that date", () => {
+    // Two seeds on each of two dates. Narrow runs sit on the price; wide runs
+    // don't. Scoring every same-date row against the first (narrow) run would
+    // understate the pinball loss.
+    const narrow = fakePvre(95, 100, 105);
+    const wide = fakePvre(40, 100, 160);
+    const rows = [
+      { asOfDate: "2026-01-31", marketPrice: 100, pvre: narrow },
+      { asOfDate: "2026-01-31", marketPrice: 100, pvre: wide },
+      { asOfDate: "2026-02-28", marketPrice: 100, pvre: narrow },
+      { asOfDate: "2026-02-28", marketPrice: 100, pvre: wide },
+    ];
+    const score = scorePvreCalibration(rows);
+    const loss = (lo: number, hi: number) => (0.05 * (100 - lo) + 0.05 * (hi - 100)) / 2;
+    expect(score.meanPinballLoss80).toBeCloseTo((loss(95, 105) + loss(40, 160)) / 2, 10);
+  });
+
+  it("does not crash when the first run on a date has no distribution", () => {
+    const missing = { ...fakePvre(95, 100, 105), intrinsic: null };
+    const rows = [
+      { asOfDate: "2026-01-31", marketPrice: 100, pvre: missing },
+      { asOfDate: "2026-01-31", marketPrice: 100, pvre: fakePvre(90, 100, 110) },
+      { asOfDate: "2026-02-28", marketPrice: 100, pvre: fakePvre(90, 100, 110) },
+      { asOfDate: "2026-03-31", marketPrice: 100, pvre: fakePvre(90, 100, 110) },
+      { asOfDate: "2026-04-30", marketPrice: 100, pvre: fakePvre(90, 100, 110) },
+    ];
+    expect(() => scorePvreCalibration(rows)).not.toThrow();
+    expect(scorePvreCalibration(rows).coverage80).toBe(1);
+  });
+});

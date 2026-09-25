@@ -40,6 +40,8 @@ export const COMPANY_SCOPED_CONFIG_KEYS = [
   "insurance_ev_multiple",
   "sotp_preset",
   "ev_ebitda_peers",
+  // An explicitly chosen sector template is a judgment about ONE issuer.
+  "sector_template",
 ] as const satisfies readonly (keyof EngineConfig)[];
 
 function resetKey<K extends keyof EngineConfig>(config: EngineConfig, key: K): void {
@@ -92,5 +94,11 @@ export function configForSubmittedCompany(
     ticker: companyId,
     market_data_symbol: resolvedSymbol ?? undefined,
     quality_data_folder: resolvedFolder,
+    // The bank quality sidecar's blob URL belongs to a ticker, like the symbol
+    // and folder above: useBankSidecars prefers it over the folder, so a manual
+    // upload after a blob-backed bank would otherwise read the previous bank's
+    // indicators. Not in COMPANY_SCOPED_CONFIG_KEYS, because the library loader
+    // sets the INCOMING company's URL (and ticker) just before submission.
+    quality_indicators_blob_url: isDifferentCompany ? null : prev.quality_indicators_blob_url,
   };
 }

@@ -56,6 +56,11 @@ export function scorePvreCalibration(
   }[],
 ): PvreCalibrationScore {
   const scored: PvreVintageCalibrationRow[] = [];
+  // Each scored row keeps ITS OWN distribution. Looking the quantiles up again
+  // by asOfDate paired every same-date run (distinct seeds/iterations are a
+  // permitted snapshot shape) with the FIRST run's quantiles, mis-scoring the
+  // pinball losses — and crashed when that first run had no distribution.
+  const available: Array<{ row: PvreVintageCalibrationRow; q: QuantileSummary }> = [];
   for (const row of rows) {
     const q = row.pvre.intrinsic;
     if (q == null || !Number.isFinite(row.marketPrice)) {
@@ -68,15 +73,16 @@ export function scorePvreCalibration(
       });
       continue;
     }
-    scored.push({
+    const scoredRow: PvreVintageCalibrationRow = {
       asOfDate: row.asOfDate,
       marketPrice: row.marketPrice,
       priceQuantile: quantileOfPrice(q, row.marketPrice),
       in80Ci: row.marketPrice >= q.q05 && row.marketPrice <= q.q95,
       in50Ci: row.marketPrice >= q.q25 && row.marketPrice <= q.q75,
-    });
+    };
+    scored.push(scoredRow);
+    available.push({ row: scoredRow, q });
   }
-  const available = scored.filter((r) => r.in80Ci != null);
   if (available.length < MIN_ROWS) {
     return {
       coverage80: null,
@@ -88,23 +94,17 @@ export function scorePvreCalibration(
       reason: `Need ≥${MIN_ROWS} dated vintage rows with market price + PVRE distribution; have ${available.length}.`,
     };
   }
-  const cov80 = fractionTrue(available.map((r) => r.in80Ci));
-  const cov50 = fractionTrue(available.map((r) => r.in50Ci));
+  const cov80 = fractionTrue(available.map(({ row }) => row.in80Ci));
+  const cov50 = fractionTrue(available.map(({ row }) => row.in50Ci));
   const mpb80 = meanOrNull(
-    available.map((r) => {
-      const q = rows.find((x) => x.asOfDate === r.asOfDate)!.pvre.intrinsic!;
-      return (
-        pinballLoss(0.05, r.marketPrice, q.q05) + pinballLoss(0.95, r.marketPrice, q.q95)
-      ) / 2;
-    }),
+    available.map(({ row, q }) => (
+      pinballLoss(0.05, row.marketPrice, q.q05) + pinballLoss(0.95, row.marketPrice, q.q95)
+    ) / 2),
   );
   const mpb50 = meanOrNull(
-    available.map((r) => {
-      const q = rows.find((x) => x.asOfDate === r.asOfDate)!.pvre.intrinsic!;
-      return (
-        pinballLoss(0.25, r.marketPrice, q.q25) + pinballLoss(0.75, r.marketPrice, q.q75)
-      ) / 2;
-    }),
+    available.map(({ row, q }) => (
+      pinballLoss(0.25, row.marketPrice, q.q25) + pinballLoss(0.75, row.marketPrice, q.q75)
+    ) / 2),
   );
   const label: PvreCalibrationScore["label"] =
     cov80 == null ? "insufficient-data"

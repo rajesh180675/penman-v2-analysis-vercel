@@ -98,3 +98,25 @@ describe("AppShell wiring", () => {
     expect(source).toMatch(/setConfig\(\(current\) => configForSubmittedCompany\(current, \{ companyId: nextCompanyId, loadedCompanyId \}\)\)/);
   });
 });
+
+describe("sidecar and sector settings on a company switch", () => {
+  const blobBank: EngineConfig = {
+    ...DEFAULT_CONFIG,
+    ticker: "HDFCBANK",
+    quality_indicators_blob_url: "https://blob.example/companies/HDFCBANK/quality_indicators.json",
+    sector_template: "bank" as EngineConfig["sector_template"],
+  };
+
+  it("drops the previous bank's quality blob on a manual upload of another issuer", () => {
+    const next = configForSubmittedCompany(blobBank, { companyId: "ICICIBANK", loadedCompanyId: "HDFCBANK" });
+    expect(next.quality_indicators_blob_url).toBeNull();
+    expect(next.sector_template).toBe(DEFAULT_CONFIG.sector_template);
+  });
+
+  it("keeps the incoming company's blob that the library loader just set", () => {
+    // The loader sets ticker and blob URL for the NEW company before submitting.
+    const loaderSet = { ...blobBank, ticker: "ICICIBANK", quality_indicators_blob_url: "https://blob.example/companies/ICICIBANK/quality_indicators.json" };
+    const next = configForSubmittedCompany(loaderSet, { companyId: "ICICIBANK", loadedCompanyId: "HDFCBANK" });
+    expect(next.quality_indicators_blob_url).toBe(loaderSet.quality_indicators_blob_url);
+  });
+});
