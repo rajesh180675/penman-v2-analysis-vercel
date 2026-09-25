@@ -45,10 +45,8 @@ function expectAsOfPairing(snapshot: Snapshot) {
 }
 
 describe("local market-data snapshot as-of pinning", () => {
-  it("pins rateAsOf whenever a risk-free rate is returned", async () => {
+  it("pins priceAsOf for a fallback price and reports no rate", async () => {
     const snapshot = await getSnapshot("symbol=ASIANPAINT&provider=manual&fallbackPrice=3450&fallbackRiskFreeRate=0.07");
-    expect(snapshot.riskFreeRate).toBe(0.07);
-    expect(snapshot.rateAsOf).toBeTruthy();
     expect(snapshot.price).toBe(3450);
     expect(snapshot.priceAsOf).toBeTruthy();
     expectAsOfPairing(snapshot);
@@ -62,29 +60,27 @@ describe("local market-data snapshot as-of pinning", () => {
     expect(snapshot.rateAsOf).toBeNull();
   });
 
-  it("pins a date for a value present without its counterpart", async () => {
-    const rateOnly = await getSnapshot("symbol=ASIANPAINT&provider=manual&fallbackRiskFreeRate=0.07");
-    expect(rateOnly.rateAsOf).toBeTruthy();
-    expect(rateOnly.priceAsOf).toBeNull();
-    expectAsOfPairing(rateOnly);
-
-    const priceOnly = await getSnapshot("symbol=ASIANPAINT&provider=manual&fallbackPrice=3450");
-    expect(priceOnly.priceAsOf).toBeTruthy();
-    expect(priceOnly.rateAsOf).toBeNull();
-    expectAsOfPairing(priceOnly);
+  /**
+   * A caller's config rate echoed back here would be dated with `fetchedAt` by
+   * pinAsOfDates, and the client tiers a dated rate as a sourced observation —
+   * laundering an engine default into market data. Vendors quote prices, not
+   * yields, so no branch reports a rate (matches api/market-data/snapshot.js).
+   */
+  it.each([
+    ["manual", "symbol=ASIANPAINT&provider=manual&fallbackRiskFreeRate=0.07"],
+    ["an unsupported provider", "symbol=ASIANPAINT&provider=alphavantage&fallbackRiskFreeRate=0.07"],
+    ["a live provider with no symbol", "provider=nse&fallbackRiskFreeRate=0.07"],
+  ])("never reports a dated risk-free rate for %s", async (_label, query) => {
+    const snapshot = await getSnapshot(query);
+    expect(snapshot.riskFreeRate).toBeNull();
+    expect(snapshot.rateAsOf).toBeNull();
+    expectAsOfPairing(snapshot);
   });
 
-  it("holds the invariant for an unsupported provider", async () => {
-    const snapshot = await getSnapshot("symbol=ASIANPAINT&provider=alphavantage&fallbackRiskFreeRate=0.07");
-    expectAsOfPairing(snapshot);
-    expect(snapshot.rateAsOf).toBeTruthy();
-  });
-
-  it("holds the invariant when no symbol is configured for a live provider", async () => {
-    // This branch defaults riskFreeRate to 0.07 without a caller-supplied rate.
-    const snapshot = await getSnapshot("provider=nse");
-    expect(snapshot.riskFreeRate).toBe(0.07);
-    expectAsOfPairing(snapshot);
+  it("labels a config fallback price as fallback, never live", async () => {
+    const snapshot = await getSnapshot("provider=nse&fallbackPrice=3450") as Snapshot & { freshness: string };
+    expect(snapshot.price).toBe(3450);
+    expect(snapshot.freshness).toBe("fallback");
   });
 });
 

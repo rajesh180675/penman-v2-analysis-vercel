@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildFallbackSnapshot, parseAlphaVantageHistory, parseNseHistoryRows } from "./snapshot.js";
+import handler, { buildFallbackSnapshot, parseAlphaVantageHistory, parseNseHistoryRows } from "./snapshot.js";
 
 describe("market snapshot point-in-time fallbacks", () => {
   it("pins a fallback price to the instant it became known", () => {
@@ -219,5 +219,44 @@ describe("AlphaVantage history parsing (deployed handler)", () => {
     for (const payload of [undefined, null, {}, "", { "Time Series (Daily)": null }]) {
       expect(parseAlphaVantageHistory(payload)).toEqual([]);
     }
+  });
+});
+
+describe("vendor path freshness (deployed handler)", () => {
+  function mockResponse() {
+    return {
+      statusCode: 200,
+      body: null,
+      headers: {},
+      setHeader(name, value) { this.headers[name] = value; },
+      status(code) { this.statusCode = code; return this; },
+      json(payload) { this.body = payload; return this; },
+    };
+  }
+
+  async function yahooSnapshot(meta, query) {
+    const original = globalThis.fetch;
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ chart: { result: [{ meta }] } }) });
+    try {
+      const response = mockResponse();
+      await handler({ method: "GET", query, headers: {}, socket: { remoteAddress: `10.0.0.${Math.floor(Math.random() * 250)}` } }, response);
+      return response.body.snapshot;
+    } finally {
+      globalThis.fetch = original;
+    }
+  }
+
+  it("labels a config fallback as fallback when the vendor returns no price", async () => {
+    // The regression: `price = vendor ?? fallback` then `freshness: price != null
+    // ? "live"` made the fallback branch unreachable, so a config price was
+    // scored as a live quote downstream.
+    const snapshot = await yahooSnapshot({ chartPreviousClose: 100 }, { provider: "yahoo", symbol: "TCS", fallbackPrice: "3450" });
+    expect(snapshot).toMatchObject({ price: 3450, freshness: "fallback" });
+    expect(snapshot.sourceSummary).not.toMatch(/^Yahoo Finance quote/);
+  });
+
+  it("still labels a real vendor quote as live", async () => {
+    const snapshot = await yahooSnapshot({ regularMarketPrice: 3500, chartPreviousClose: 3450 }, { provider: "yahoo", symbol: "TCS", fallbackPrice: "3450" });
+    expect(snapshot).toMatchObject({ price: 3500, freshness: "live" });
   });
 });
