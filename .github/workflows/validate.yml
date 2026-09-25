@@ -32,6 +32,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      # `npm run validate` checks scripts/ too; CI did not, so a type error in
+      # an audit or refresh script could land green.
+      - run: npm run typecheck:scripts
       - run: npm run lint
       - run: npm run lint:any
       - run: npm run lint:doc-schema

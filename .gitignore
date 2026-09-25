@@ -196,3 +196,8 @@ proto_dump.jsonl
 test-results/
 playwright-report/
 .quadcodeai/
+
+# Root-level local run logs and one-off debug scripts
+/cp_*.log
+/debug-*.ts
+/nul
