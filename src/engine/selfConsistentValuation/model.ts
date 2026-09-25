@@ -56,6 +56,8 @@ const FIXED_POINT_TOLERANCE = 1e-7;
 const FIXED_POINT_MAX_ITERATIONS = 200;
 const FIXED_POINT_DAMPING = 0.5;
 const MIN_TERMINAL_DENOMINATOR = 0.01;
+/** A panel φ near 1 would make the spread effectively permanent; bound it for the comparison. */
+const PANEL_OMEGA_MAX = 0.95;
 
 const clamp = (x: number, lo: number, hi: number) => Math.min(Math.max(x, lo), hi);
 
@@ -315,6 +317,22 @@ export function computeSelfConsistentValuation(input: SelfConsistentValuationInp
     }
   }
 
+  let panelComparison = null;
+  if (input.panelPrior) {
+    const omegaUsed = clamp(input.panelPrior.phi, 0, PANEL_OMEGA_MAX);
+    const atPanel = solveValueWeightedKw(anchor, input.ke, kd, input.g, omegaUsed, horizon);
+    const equityValue = "failure" in atPanel ? null : atPanel.equityValue;
+    panelComparison = {
+      group: input.panelPrior.group,
+      phi: input.panelPrior.phi,
+      omegaUsed,
+      companies: input.panelPrior.companies,
+      asOf: input.panelPrior.asOf,
+      equityValue,
+      perShare: equityValue != null && shares != null ? equityValue / shares : null,
+    };
+  }
+
   const { value } = solution;
   return {
     status: "ok",
@@ -353,6 +371,7 @@ export function computeSelfConsistentValuation(input: SelfConsistentValuationInp
     forecast: value.forecast,
     sensitivity,
     marketImpliedOmega,
+    panelComparison,
     warnings,
   };
 }

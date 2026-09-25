@@ -61,7 +61,7 @@ import ValuationCardsSection from "./valuation/ValuationCardsSection";
 import TriangulationSection from "./valuation/TriangulationSection";
 import ReSeriesSection from "./valuation/ReSeriesSection";
 import SelfConsistentValuationSection from "./valuation/SelfConsistentValuationSection";
-import { computeSelfConsistentValuation } from "../engine/selfConsistentValuation";
+import { computeSelfConsistentValuation, panelPersistencePriorFor } from "../engine/selfConsistentValuation";
 import ContinuingValueFormulae from "./valuation/ContinuingValueFormulae";
 
 interface Props {
@@ -379,6 +379,7 @@ export default function ValuationReport({
       shares: shareBasis.shares ?? null,
       marketPrice: commandCenter.marketPrice ?? effectiveConfig.market_price ?? null,
       structuralBreakPeriods,
+      panelPrior: panelPersistencePriorFor(effectiveConfig.company_type),
     }),
     [valuationData, ke, gRate, effectiveConfig, shareBasis.shares, commandCenter.marketPrice, structuralBreakPeriods],
   );
