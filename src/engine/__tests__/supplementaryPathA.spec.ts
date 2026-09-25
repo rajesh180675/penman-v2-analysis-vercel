@@ -104,28 +104,42 @@ describe("Supplementary Path A controls", () => {
       V_primary: 90000,
       ke: 0.13,
       g_effective: 0.04,
-      CSE0: 50000,
-      pvRE: 20000,
-      explicit_periods: 1,
+      bookT: 50000,
+      bookPrev: 48000,
       RE_anchor: 85,
-      periods,
     }, 70, share.shares!);
     expect(market.status).toBe("full");
     expect(market.margin_of_safety).not.toBeUndefined();
   });
 
+  it("S-16.2: implied g and ke reconcile TODAY's book plus capitalized RE to market cap", () => {
+    // Anchored at the latest book: V(g) = B_T + RE_anchor(1+g)/(ke−g).
+    const r = new CanonicalOutputRegistry();
+    const bookT = 5000;
+    const anchor = 400;
+    const market = computeMarketImplied(r, {
+      V_primary: 10000, ke: 0.12, g_effective: 0.04, bookT, bookPrev: 4800, RE_anchor: anchor,
+    }, 120, 100);
+    expect(market.status).toBe("full");
+    const g = market.implied_g!;
+    // The bisection stops at 0.1% of market cap.
+    const within = (v: number) => Math.abs(v - 12000) / 12000;
+    expect(within(bookT + anchor * (1 + g) / (0.12 - g))).toBeLessThan(0.002);
+    // At the implied ke the anchor's capital charge is re-priced: RE = CNI − ke·B.
+    const k = market.implied_ke!;
+    const anchorAtK = anchor + (0.12 - k) * 4800;
+    expect(within(bookT + anchorAtK * 1.04 / (k - 0.04))).toBeLessThan(0.002);
+  });
+
   it("S-16.2: market-implied analytics split per-share and market-cap share bases", () => {
-    const periods = [mkPeriod(2024, 0.25, 80, 100), mkPeriod(2025, 0.27, 85, 110)];
     const r = new CanonicalOutputRegistry();
     const market = computeMarketImplied(r, {
       V_primary: 10700,
       ke: 0.13,
       g_effective: 0.04,
-      CSE0: 5000,
-      pvRE: 2000,
-      explicit_periods: 1,
+      bookT: 5000,
+      bookPrev: 4800,
       RE_anchor: 85,
-      periods,
     }, 70, 107, 110);
 
     expect(market.status).toBe("full");
@@ -137,41 +151,42 @@ describe("Supplementary Path A controls", () => {
     expect(market.market_cap).toBeCloseTo(7700, 6);
   });
 
-  it("decomposes RE-ReOI valuation gap and returns dominant driver", () => {
-    const periods = [mkPeriod(2023, 0.24, 70, 500), mkPeriod(2024, 0.25, 75, 560), mkPeriod(2025, 0.26, 80, 620)];
-    const out = decomposeReReOIGap(periods, {
-      V_RE_CV3: 1000,
-      V_ReOI_CV03: 800,
-      CSE0: 500,
-      pvRE: 200,
-      CV_RE: 300,
-      CV_ReOI: 220,
-      ke: 0.13,
-      kw: 0.10,
-    }, 0.04);
-    expect(out.total).toBeCloseTo(200, 8);
-    expect(out.dominant_driver.length).toBeGreaterThan(0);
-    expect(Number.isFinite(out.nfo_timing)).toBe(true);
+  it("decomposes an anchored RE-ReOI gap exactly into identity, explicit and terminal terms", () => {
+    // One latest-anchored run: V_RE = B + pvRE + CV_RE/ρE^T and
+    // V_ReOI = (NOA + pvReOI + CV_ReOI/ρW^T) − NFO − MI.
+    const anchor = mkPeriod(2025, 0.26, 80, 620);
+    anchor.bs.CSE = 620;
+    anchor.bs.NOA = 900;
+    anchor.bs.NFO = 280;
+    anchor.bs.MI = 0;
+    const ke = 0.13;
+    const kw = 0.10;
+    const T = 5;
+    const parts = { pvRE: 210, pvReOI: 260, CV_RE: 900, CV_ReOI: 1100, horizon: T };
+    const vRE = anchor.bs.CSE + parts.pvRE + parts.CV_RE / (1 + ke) ** T;
+    const vReOI = anchor.bs.NOA + parts.pvReOI + parts.CV_ReOI / (1 + kw) ** T - anchor.bs.NFO - anchor.bs.MI;
+
+    const out = decomposeReReOIGap(anchor, { V_RE_CV3: vRE, V_ReOI_CV03: vReOI, ke, kw }, parts);
+
+    expect(out.total).toBeCloseTo(vRE - vReOI, 8);
+    expect(out.anchor_book_identity).toBeCloseTo(0, 8);
+    expect(out.explicit_period_discounting).toBeCloseTo(-50, 8);
+    expect(out.residual).toBeCloseTo(0, 8);
+    expect(out.dominant_driver).toBe("tv_divergence");
   });
 
-  it("uses period-by-period NFO movement in RE-ReOI gap decomposition", () => {
-    const periods = [mkPeriod(2023, 0.24, 70, 500), mkPeriod(2024, 0.25, 75, 560), mkPeriod(2025, 0.26, 80, 620)];
-    periods[0]!.bs.NFO = 0;
-    periods[1]!.bs.NFO = 100;
-    periods[2]!.bs.NFO = 0;
-
-    const out = decomposeReReOIGap(periods, {
-      V_RE_CV3: 950,
-      V_ReOI_CV03: 900,
-      CSE0: 500,
-      pvRE: 200,
-      CV_RE: 250,
-      CV_ReOI: 240,
-      ke: 0.13,
-      kw: 0.10,
-    }, 0.04);
-
-    expect(Math.abs(out.nfo_timing)).toBeGreaterThan(0);
+  it("surfaces a balance-sheet identity miss at the anchor as its own term", () => {
+    const anchor = mkPeriod(2025, 0.26, 80, 620);
+    anchor.bs.CSE = 650; // 30 more than NOA − NFO − MI
+    anchor.bs.NOA = 900;
+    anchor.bs.NFO = 280;
+    anchor.bs.MI = 0;
+    const out = decomposeReReOIGap(anchor, { V_RE_CV3: 1030, V_ReOI_CV03: 1000, ke: 0.13, kw: 0.10 }, null);
+    expect(out.anchor_book_identity).toBeCloseTo(30, 8);
+    // Without the run's parts nothing else is guessed: the rest is residual.
+    expect(out.explicit_period_discounting).toBe(0);
+    expect(out.tv_divergence).toBe(0);
+    expect(out.residual).toBeCloseTo(0, 8);
   });
 
   it("flags cross-section inconsistency", () => {

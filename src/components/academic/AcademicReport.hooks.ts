@@ -1,20 +1,26 @@
 import { RecastPeriod } from "../../engine/types";
 import { median, madSigma } from "./AcademicReport.formatters";
 
+/**
+ * Market-implied g and ke on the same latest-anchored basis as V3's primary
+ * value: V = B_T + RE_anchor(1+g)/(ke−g). This used to rebuild the value from
+ * the OLDEST book plus realized RE discounted back to it — a first-year value
+ * solved against today's market cap.
+ */
 export function computeSection6BLocal(params: {
   primaryValue: number;
   ke: number;
   g: number;
-  cse0: number;
-  pvRE: number;
+  /** B_T — common equity at the latest balance sheet. */
+  bookT: number;
+  /** B_(T−1) — re-prices the anchor's capital charge as the ke solver moves. */
+  bookPrev: number;
   reAnchor: number;
-  explicitPeriods: number;
-  periods: RecastPeriod[];
   shares: number | null;
   marketPrice: number | null | undefined;
   sharesSource: string;
 }) {
-  const { primaryValue, ke, g, cse0, pvRE, reAnchor, explicitPeriods, periods, shares, marketPrice, sharesSource } = params;
+  const { primaryValue, ke, g, bookT, bookPrev, reAnchor, shares, marketPrice, sharesSource } = params;
   if (!shares || shares <= 0) return { status: "shares_unavailable" as const };
 
   const intrinsic = primaryValue / shares;
@@ -33,8 +39,7 @@ export function computeSection6BLocal(params: {
 
   const vAtG = (gt: number) => {
     if (gt >= ke - 0.001) return Number.POSITIVE_INFINITY;
-    const cv = reAnchor * (1 + gt) / (ke - gt);
-    return cse0 + pvRE + cv / Math.pow(1 + ke, explicitPeriods);
+    return bookT + reAnchor * (1 + gt) / (ke - gt);
   };
 
   let impliedG: number | null = null;
@@ -53,9 +58,8 @@ export function computeSection6BLocal(params: {
 
   const vAtKe = (ket: number) => {
     if (ket <= g + 0.001) return Number.POSITIVE_INFINITY;
-    const pv = periods.slice(1).reduce((acc, p, idx) => acc + (p.ri?.RE ?? 0) / Math.pow(1 + ket, idx + 1), 0);
-    const cv = reAnchor * (1 + g) / (ket - g);
-    return cse0 + pv + cv / Math.pow(1 + ket, explicitPeriods);
+    const anchorAtKe = reAnchor + (ke - ket) * bookPrev;
+    return bookT + anchorAtKe * (1 + g) / (ket - g);
   };
 
   let impliedKe: number | null = null;

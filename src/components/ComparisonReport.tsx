@@ -2,6 +2,7 @@ import { CompanyRegistry, EngineConfig, NP_BENCHMARKS } from "../engine/types";
 import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
+import { buildAnchoredValuationPeriods } from "../engine/anchoredValuationPeriods";
 import { useCallback, useMemo, useState } from "react";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
@@ -83,7 +84,7 @@ function ComparisonReportBody({ registry, config, weakestTraceabilitySummary: pr
   const weakestCompany = comparisonPublication.weakestCompanyId
     ? companies.find((company) => company.id === comparisonPublication.weakestCompanyId) ?? null
     : null;
-  const latestByCo = companies.map((c) => ({ company: c.label || c.id, id: c.id, latest: c.recastData[c.recastData.length - 1], series: c.recastData }));
+  const latestByCo = companies.map((c) => ({ company: c.label || c.id, id: c.id, companyType: c.companyType ?? null, latest: c.recastData[c.recastData.length - 1], series: c.recastData }));
   // `priceAsOf` is present only for prices fetched from the market-data snapshot.
   // A hand-typed price has no provenance, so it stays undated and is therefore
   // not eligible to back a peer median.
@@ -186,25 +187,38 @@ function ComparisonReportBody({ registry, config, weakestTraceabilitySummary: pr
       const kw = n >= 2
         ? deriveKwFromStructure(c.series[n - 1]!, c.series[n - 2]!, ke, config.risk_free_rate, config)
         : config.risk_free_rate;
-      const localCfg: EngineConfig = { ...config };
-      const v = computeValuation(c.series, ke, kw, g, localCfg);
+      // Each peer is valued under ITS OWN scope. The workspace config carries
+      // the workspace issuer's share count and price, so spreading it here
+      // divided every peer's equity by someone else's shares (Upside and its
+      // sort were wrong for every peer). Per-share figures are taken below
+      // from the peer's own entered share count instead.
+      const peerCfg: EngineConfig = {
+        ...config,
+        shares_outstanding: undefined,
+        market_price: undefined,
+        company_type: c.companyType ?? config.company_type,
+      };
+      // Latest-anchored: the peer's history passed straight in was valued as of
+      // its OLDEST balance sheet, and series of different lengths put every
+      // peer at a different valuation date.
+      const periods = n >= 1 ? buildAnchoredValuationPeriods({ history: c.series, config: peerCfg, ke, kw, g }) : c.series;
+      const v = computeValuation(periods, ke, kw, g, peerCfg);
       const re = v.V_RE_CV3;
       const reoi = v.V_ReOI_CV03;
-      const fcff = v.fcf?.EV_FCFF != null ? v.fcf.EV_FCFF - v.NFO_latest : null;
+      const fcff = v.fcf?.V_FCFF_equity ?? null;
       const fcfe = v.fcf?.V_FCFE ?? null;
-      const ddmPerShare = v.perShare?.intrinsic_ddm_per_share ?? null;
+      const ddm = v.ddm.V_DDM;
       const aeg = v.aeg?.V_AEG ?? null;
-      const intrinsicPerShare = v.perShare?.intrinsic_re_per_share ?? null;
-      return { id: c.id, company: c.company, re, reoi, fcff, fcfe, ddmPerShare, aeg, intrinsicPerShare };
+      return { id: c.id, company: c.company, re, reoi, fcff, fcfe, ddm, aeg };
     });
   }, [latestByCo, config]);
 
   const valuationRows = useMemo(() => {
     return baseValuationRows.map((base) => {
       const inp = marketInputs[base.id] ?? { price: 0, shares: 0 };
-      const ddm = base.ddmPerShare != null && inp.shares > 0 ? base.ddmPerShare * inp.shares : null;
-      const upside = base.intrinsicPerShare != null && inp.price > 0 ? (base.intrinsicPerShare / inp.price - 1) : null;
-      return { ...base, ddm, price: inp.price, shares: inp.shares, upside };
+      const intrinsicPerShare = base.re != null && inp.shares > 0 ? base.re / inp.shares : null;
+      const upside = intrinsicPerShare != null && inp.price > 0 ? (intrinsicPerShare / inp.price - 1) : null;
+      return { ...base, intrinsicPerShare, price: inp.price, shares: inp.shares, upside };
     }).sort((a, b) => {
       if (!sortByUpside) return a.company.localeCompare(b.company);
       const av = a.upside ?? -Infinity;

@@ -7,13 +7,13 @@
  * grows again but maintains current normalized earnings power indefinitely?
  *
  * Formula:
- *   Normalized NOPAT = median(CoreOI) × (1 - statutory tax rate)
+ *   Normalized NOPAT = median(CoreOI)   [recast CoreOI is already after tax]
  *   Maintenance Capex = min(avg Capex, avg Depreciation)  [Greenwald simplification]
- *   Adjusted Earnings = Normalized NOPAT - (Maintenance Capex - Depreciation)
+ *   Adjusted Earnings = NOPAT + (Depreciation − Maintenance Capex) × (1 − t)
  *     → If capex ≈ depreciation, adjustment is ~0 (steady-state)
  *     → If capex >> depreciation, excess is growth capex (excluded from EPV)
- *   EPV_operations = Adjusted Earnings / Ke
- *   EPV_equity = EPV_operations - NFO
+ *   EPV_operations = Adjusted Earnings / kw
+ *   EPV_equity = EPV_operations − NFO − MI
  *   EPV_per_share = EPV_equity / diluted shares
  *
  * Interpretation:
@@ -46,7 +46,8 @@ export interface EPVResult {
   normalizedCoreOI: number;
   /** Statutory tax rate used. */
   taxRate: number;
-  /** Normalized NOPAT = normalizedCoreOI × (1 - taxRate). */
+  /** Normalized NOPAT = normalizedCoreOI. The recast's CoreOI is already after
+   *  tax (OI = CNI + after-tax NFE + MII), so it is NOPAT as it stands. */
   normalizedNOPAT: number;
   /** Average depreciation across periods (₹ Cr). */
   avgDepreciation: number;
@@ -56,8 +57,8 @@ export interface EPVResult {
   maintenanceCapex: number;
   /** Growth capex estimate = avgCapex - maintenanceCapex. */
   growthCapex: number;
-  /** Adjusted earnings power = normalizedNOPAT (no capex adjustment needed when
-   *  maintenance ≈ depreciation, which is already deducted from OI). */
+  /** Adjusted earnings power = NOPAT + (depreciation − maintenance capex) × (1 − t).
+   *  Only the pre-tax capex/depreciation gap is tax-effected. */
   adjustedEarningsPower: number;
   /** Cost of equity used as discount rate. */
   ke: number;
@@ -269,10 +270,15 @@ export function computeEPV(
   // When maintenance = depreciation: EP = CoreOI × (1 - tax) [standard case]
   // When maintenance < depreciation: EP > CoreOI × (1 - tax) [under-investing]
 
-  const ebitda = normalizedCoreOI + avgDepreciation;
-  const earningsBeforeTax = ebitda - maintenanceCapex;
-  const normalizedNOPAT = normalizedCoreOI * (1 - taxRate);
-  const adjustedEarningsPower = earningsBeforeTax * (1 - taxRate);
+  // CoreOI is ALREADY after tax: the recast builds OI = CNI + after-tax NFE +
+  // MII (recast.ts), and CoreOI = OI − UOI. It used to be multiplied by
+  // (1 − t) again here — taxing operating income twice, understating EPV by
+  // the tax rate (~25%) and biasing the moat test toward "no-moat". Only the
+  // depreciation/maintenance-capex gap is a pre-tax quantity, so only it takes
+  // a tax effect.
+  const normalizedNOPAT = normalizedCoreOI;
+  const capexAdjustmentAfterTax = (avgDepreciation - maintenanceCapex) * (1 - taxRate);
+  const adjustedEarningsPower = normalizedNOPAT + capexAdjustmentAfterTax;
 
   // ── Cost of Capital ────────────────────────────────────────────────────────
   // EPV of operations is an enterprise (pre-financing) value — discount at
@@ -315,7 +321,11 @@ export function computeEPV(
   // Latest period's NFO and NOA
   const latest = data[data.length - 1]!;
   const nfo = latest.bs.NFO;
-  const epvEquity = epvOperations - nfo;
+  // NOA carries the minority claim (NOA = CSE + NFO + MI), so the operating
+  // value accrues to common only after BOTH net debt and minorities — the same
+  // bridge computeValuation uses for V_ReOI.
+  const minorityInterest = Number.isFinite(latest.bs.MI) ? latest.bs.MI : 0;
+  const epvEquity = epvOperations - nfo - minorityInterest;
 
   // ── Shares ─────────────────────────────────────────────────────────────────
   const shares = config.shares_outstanding ?? null;
@@ -341,7 +351,7 @@ export function computeEPV(
   // with linear spread fade.
   const reinvestmentHorizonYears = 5;
   const reinvest = computeReinvestmentValue(
-    latest.cu.CoreOI * (1 - taxRate),
+    latest.cu.CoreOI, // already after tax
     latest.bs.NOA,
     growthCapex,
     kw,
@@ -352,7 +362,7 @@ export function computeEPV(
   // capital is value-destruction, not a compounder signal — only periods
   // where the spread is positive should count.
   const rnoaSeries = data
-    .map(p => (p.bs.NOA > 0 ? (p.cu.CoreOI * (1 - taxRate)) / p.bs.NOA : null))
+    .map(p => (p.bs.NOA > 0 ? p.cu.CoreOI / p.bs.NOA : null))
     .filter((v): v is number => v != null && Number.isFinite(v));
   const rnoaStickiness = rnoaSeries.length > 0
     ? rnoaSeries.filter(r => r > kw).length / rnoaSeries.length
@@ -457,12 +467,13 @@ export function computeEPV(
   const explanation: string[] = [
     `Graham-Dodd EPV (no-growth floor) using ${coreOIs.length} periods of CoreOI.`,
     `Normalized CoreOI (median): ₹${normalizedCoreOI.toFixed(0)} Cr`,
-    `EBITDA (normalized): ₹${ebitda.toFixed(0)} Cr (CoreOI + avg depreciation ₹${avgDepreciation.toFixed(0)} Cr)`,
+    `Normalized NOPAT: ₹${normalizedNOPAT.toFixed(0)} Cr (CoreOI is already after tax)`,
     `Maintenance capex: ₹${maintenanceCapex.toFixed(0)} Cr (min of avg capex ₹${avgCapex.toFixed(0)}, avg depreciation ₹${avgDepreciation.toFixed(0)})`,
     `Growth capex excluded: ₹${growthCapex.toFixed(0)} Cr`,
-    `Adjusted earnings power (after-tax): ₹${adjustedEarningsPower.toFixed(0)} Cr at ${(taxRate * 100).toFixed(1)}% tax`,
+    `Adjusted earnings power (after-tax): ₹${adjustedEarningsPower.toFixed(0)} Cr (depreciation − maintenance capex gap tax-effected at ${(taxRate * 100).toFixed(1)}%)`,
     `EPV of operations: ₹${epvOperations.toFixed(0)} Cr (÷ kw=${(kw * 100).toFixed(1)}%)`,
     `Less NFO: ₹${nfo.toFixed(0)} Cr`,
+    ...(minorityInterest !== 0 ? [`Less minority interest: ₹${minorityInterest.toFixed(0)} Cr`] : []),
     `EPV of equity: ₹${epvEquity.toFixed(0)} Cr`,
     ...(epvPerShare != null ? [`EPV per share: ₹${epvPerShare.toFixed(1)}`] : []),
     `Reproduction value (book NOA): ₹${reproductionValue.toFixed(0)} Cr`,

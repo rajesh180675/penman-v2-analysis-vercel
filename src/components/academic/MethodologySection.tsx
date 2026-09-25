@@ -78,11 +78,12 @@ export function MethodologySection(props: {
             <h3 className="font-semibold text-slate-800 dark:text-slate-100 mb-1">2.4 Valuation Models</h3>
             <p>
               <b>RE model (Eq. 1a):</b> V = CSE₀ + Σ PV(RE_t) + PV(CV_RE), where RE_t = CNI_t − k_e × CSE_(t-1).
+              Date 0 is the latest reported balance sheet; RE_t are forecast years from the base persistence scenario.
               Three continuing values: CV1 (zero), CV2 (perpetuity), CV3 (Gordon growth at rate g).
             </p>
             <p className="mt-1">
               <b>ReOI model (Eq. 9):</b> EV = NOA₀ + Σ PV(ReOI_t) + PV(CV_ReOI), where ReOI_t = OI_t − k_w × NOA_(t-1).
-              Equity value = EV − NFO_latest. Preferred when FA/FO separation is reliable.
+              Equity value = EV − NFO₀ − MI₀. Preferred when FA/FO separation is reliable.
             </p>
             <p className="mt-1">
               <b>FCFF/FCFE:</b> FCFF_t = NOPAT_t − ΔNOA_t; FCFE_t = CNI_t − ΔCSE_t. Discounted at k_w and k_e

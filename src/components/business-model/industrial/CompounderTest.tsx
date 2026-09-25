@@ -9,7 +9,8 @@
  *
  * Compounder grade = ROIC × Reinvestment Rate × Consistency
  *
- *   ROIC = NOPAT / Invested Capital ≈ OI × (1-tax) / NOA
+ *   ROIC = NOPAT / Invested Capital = OI / NOA (the recast OI is already
+ *   after tax — OI = CNI + after-tax NFE + MII — so it is NOPAT as it stands)
  *   Reinvestment Rate = Δ NOA / NOPAT
  *
  * The product is the sustainable growth rate of intrinsic value.
@@ -25,9 +26,9 @@ export default function CompounderTest({ recastData }: Props) {
   const rows = useMemo(() => {
     return recastData.map((p, i) => {
       const prev = recastData[i - 1];
-      const oi = p.is?.OI ?? 0;
-      const taxRate = p.is?.taxRate ?? 0.25;
-      const nopat = oi * (1 - taxRate);
+      // Recast OI is already after tax; re-applying (1 − t) understated ROIC
+      // by the tax rate and pushed companies below the 15% compounder bar.
+      const nopat = p.is?.OI ?? 0;
       const noa = p.bs?.NOA ?? null;
       const prevNoa = prev?.bs?.NOA ?? null;
       const avgNoa = noa != null && prevNoa != null ? (noa + prevNoa) / 2 : noa;

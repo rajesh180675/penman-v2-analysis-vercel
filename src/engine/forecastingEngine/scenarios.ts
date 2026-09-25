@@ -147,8 +147,24 @@ export function derivePersistenceForecastScenario(params: {
     terminalGrowthFloor: template.terminalGrowthFloor,
     terminalGrowthCap: template.terminalGrowthCap,
   });
-  const flevBase = Math.max(latest.bs.NFO / Math.max(latest.bs.CSE, 1), -0.2);
-  const nbcBase = Math.max(latest.is.NFE / Math.max(Math.abs(latest.bs.NFO), 1), 0.01);
+  // Capital structure held at the anchor. kw is derived from the anchor's
+  // weights (deriveKwFromStructure) and ke prices equity at that structure, so
+  // the forecast must keep it. The old −0.2 floor forced a net-cash issuer to
+  // pay out most of its cash in year 1 (ITC: NFO/CSE −0.68 → −0.2) while ke
+  // stayed at the cash-heavy level — RE jumped once the cash was gone and V_RE
+  // disagreed with V_ReOI by 62% on the same forecast. The floor now only
+  // keeps 1 + flev > 0 (CSE_f = NOA_f / (1 + flev)).
+  const flevBase = Math.max(latest.bs.NFO / Math.max(latest.bs.CSE, 1), -0.95);
+  // NBC = NFE / NFO with BOTH signs kept. For a net-cash issuer NFE < 0 (net
+  // financial income) and NFO < 0, so the ratio is the positive yield on its
+  // financial assets and NFE_f = nbc × NFO_f comes out as income. Dividing by
+  // |NFO| (as this did) made that yield negative, and the 0.01 floor then set
+  // it to 1% — so a net-cash forecast earned ~1% on its cash pile, CNI and the
+  // RE valuation fell, and V_RE disagreed with V_ReOI on the same forecast
+  // (62% on ITC). Bounded to a plausible after-tax rate band.
+  const nbcBase = Math.abs(latest.bs.NFO) > 1
+    ? Math.min(Math.max(latest.is.NFE / latest.bs.NFO, 0), 0.2)
+    : 0;
   const terminalAnchorSource = driverPlan.companyEvidenceWeight >= 0.65
     ? "company-evidence"
     : driverPlan.companyEvidenceWeight >= 0.45

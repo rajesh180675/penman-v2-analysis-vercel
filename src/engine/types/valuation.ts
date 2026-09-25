@@ -46,7 +46,12 @@ export interface ValuationResult {
    *  anchor on NOA/NFO, not CSE, and stay economically meaningful. */
   V_RE_CV1: number | null; V_RE_CV2: number | null; V_RE_CV3: number | null;
   V_ReOI_CV01: number; V_ReOI_CV02: number; V_ReOI_CV03: number | null;
-  CSE0: number; NOA0: number; NFO_latest: number;
+  CSE0: number; NOA0: number;
+  /** Net financial obligations and minority interest at the anchor (period 0) —
+   *  the enterprise→equity bridge for every anchor-dated value. */
+  NFO0: number; MI0: number;
+  /** NFO of the LAST period (year T on a forecast); not an equity bridge. */
+  NFO_latest: number;
   ke: number; kw: number; g: number;
   separationScore: number; lowConfidence: boolean;
   continuingValueGuards?: ContinuingValueGuard[] | undefined;
@@ -100,6 +105,8 @@ export interface FCFValuation {
   fcff_series: Array<{ period: string; NOPAT: number; dNOA: number; FCFF: number; PV_FCFF: number }>;
   fcfe_series: Array<{ period: string; CNI: number; dCSE: number; FCFE: number; PV_FCFE: number }>;
   EV_FCFF: number | null; V_FCFE: number | null; CV_FCFF: number | null; CV_FCFE: number | null;
+  /** EV_FCFF − NFO0 − MI0. */
+  V_FCFF_equity?: number | null | undefined;
 }
 
 export interface AEGValuation {

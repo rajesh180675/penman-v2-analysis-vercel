@@ -9,6 +9,7 @@ import { RecastPeriod, EngineConfig } from "../engine/types";
 import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
+import { buildAnchoredValuationPeriods } from "../engine/anchoredValuationPeriods";
 import { detectDistress } from "../engine/distressDetector";
 import { buildValuationTraceabilitySurfaceSummary } from "../engine/valuationTraceabilitySummary";
 import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
@@ -85,9 +86,10 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
     const prev = data[data.length - 2]!;
     const kw_derived = deriveKwFromStructure(cur, prev, ke, config.risk_free_rate, config);
     const g = config.g_terminal_override ?? 0.04;
-    // First pass: compute without anchor to get RE series for terminal anchor computation
-    const val0 = computeValuation(data, ke, kw_derived, g, config);
-    return { valuation: val0, kw: kw_derived };
+    // Latest-anchored forecast valuation. Passing `data` (history) straight in
+    // valued the company as of its oldest balance sheet.
+    const anchoredPeriods = buildAnchoredValuationPeriods({ history: data, config, ke, kw: kw_derived, g });
+    return { valuation: computeValuation(anchoredPeriods, ke, kw_derived, g, config), kw: kw_derived };
   }, [data, config, ke]);
 
   const bundle: V3AnalyticsBundle | null = useMemo(() => {
@@ -107,46 +109,43 @@ export default function V3AnalyticsPanel({ data, config, traceability = null, tr
       // Same packs this surface resolved `ke` from above, so the bundle scores
       // at the rate the header prints.
       { ...ACTIVE_MARKET_PACKS, analysisAsOf: analysisAsOfToday() },
+      {
+        pvRE: valuation.pvRE,
+        pvReOI: valuation.pvReOI,
+        CV_RE: valuation.CV_RE,
+        CV_ReOI: valuation.CV_ReOI,
+        horizon: valuation.reSeries.length,
+      },
     );
   }, [data, config, valuation, kw, itServices]);
 
-  // Second pass: recompute with §11 terminal anchor once we have the bundle
-  const valuationWithAnchor = useMemo(() => {
-    if (!valuation || !bundle) return valuation;
-    const g = bundle.anchorResult.g_terminal;
-    return computeValuation(
-      data, ke, kw, g, config,
-      bundle.anchorResult.selected_RE_anchor,
-      bundle.anchorResult.selected_ReOI_anchor
-    );
-  }, [valuation, bundle, data, ke, kw, config]);
-
-  // Effective valuation uses anchor-adjusted result when available
-  const effectiveValuation = valuationWithAnchor ?? valuation;
+  // The §11 terminal-anchor views price V3's selected RE anchor from TODAY's
+  // book — V = B_T + anchor(1+g)/(ke−g), no explicit years — the same basis
+  // as bundle.anchorResult.V_total. (A second computeValuation pass used to
+  // splice the anchor into a history-dated valuation.)
+  const effectiveValuation = valuation;
+  const bookT = data.length ? data[data.length - 1]!.bs.CSE : 0;
+  const bookPrev = data.length >= 2 ? data[data.length - 2]!.bs.CSE : bookT;
 
   const sensMatrix = useMemo(() => {
     if (!valuation || !bundle) return [];
-    const T = valuation.reSeries.length;
     return computeSensitivityMatrix(
-      valuation.CSE0,
-      valuation.pvRE,
-      valuation.reSeries,
+      bookT,
+      0,
+      [],
       bundle.anchorResult.selected_RE_anchor,
       ke,
       bundle.anchorResult.g_terminal,
-      T,
-      config.g_terminal_floor ?? 0.02
+      0,
+      config.g_terminal_floor ?? 0.02,
+      bookPrev,
     );
-  }, [valuation, bundle, ke, config]);
+  }, [valuation, bundle, ke, config, bookT, bookPrev]);
 
   const anchorTable = useMemo(() => {
-    if (!effectiveValuation || !bundle) return [];
-    const T = effectiveValuation.reSeries.length;
-    return computeAnchorTable(
-      effectiveValuation.CSE0, effectiveValuation.pvRE,
-      bundle.anchorResult, ke, T
-    );
-  }, [effectiveValuation, bundle, ke]);
+    if (!bundle) return [];
+    return computeAnchorTable(bookT, 0, bundle.anchorResult, ke, 0);
+  }, [bundle, ke, bookT]);
 
   const tvClassification = useMemo(() => {
     if (!valuation) return null;

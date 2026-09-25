@@ -145,19 +145,22 @@ export function selectTerminalAnchor(
     method = "RE_T";
     label = "RE_T (as reported)";
   }
-  const T = Math.max(1, n - 1);
-  const CSE0 = periods[0]?.bs.CSE ?? 0;
-  const sumPVRE = periods.slice(1).reduce((acc, p, idx) => {
-    const re = p.ri?.RE ?? 0;
-    return acc + re / Math.pow(1 + ke, idx + 1);
-  }, 0);
+  // Anchored at the LATEST balance sheet. This used to be
+  //   V = CSE_0 + Σ realized RE_t/(1+ke)^t + CV/(1+ke)^T
+  // with CSE_0 the OLDEST book — a value dated at the first historical year,
+  // which margin-of-safety and implied-g/ke then compared with today's price.
+  // Realized RE is history, not a claim on future value. The terminal anchor
+  // selected above is capitalized from today's book instead:
+  //   V_T = B_T + RE_(T+1)/(ke − g),  RE_(T+1) = anchor × (1 + g)
+  const bookT = periods[n - 1]?.bs.CSE ?? 0;
   const cvFromAnchor = (anchor: number) => (ke - g_terminal > 0 ? (anchor * (1 + g_terminal)) / (ke - g_terminal) : 0);
   const CV3_value = cvFromAnchor(selected_RE_anchor);
   const referenceCV3 = cvFromAnchor(RE_anchor_1);
-  const V_total = CSE0 + sumPVRE + CV3_value / Math.pow(1 + ke, T);
-  const V_as_reported = CSE0 + sumPVRE + referenceCV3 / Math.pow(1 + ke, T);
-  const tvGuarded = classifyTVShare(V_total, CSE0 + sumPVRE);
-  const tvRaw = classifyTVShare(V_as_reported, CSE0 + sumPVRE);
+  const V_total = bookT + CV3_value;
+  const V_as_reported = bookT + referenceCV3;
+  // Terminal share = the capitalized-RE premium over today's book.
+  const tvGuarded = classifyTVShare(V_total, bookT);
+  const tvRaw = classifyTVShare(V_as_reported, bookT);
   return {
     method,
     label,

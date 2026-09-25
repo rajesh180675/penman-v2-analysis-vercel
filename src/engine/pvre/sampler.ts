@@ -60,14 +60,16 @@ export function sampleDistribution(spec: DistributionSpec, rng: Rng): number {
   }
 }
 
+/** Independently sampled drivers; kw is derived from ke by the caller. */
+export type SampledDrivers = Omit<PvreDriverDraws, "kw">;
+
 export function sampleDrivers(
   dists: PvreDriverDistributions,
   rng: Rng,
-  clamp?: (draws: PvreDriverDraws) => PvreDriverDraws,
-): PvreDriverDraws {
-  const draws: PvreDriverDraws = {
+  clamp?: (draws: SampledDrivers) => SampledDrivers,
+): SampledDrivers {
+  const draws: SampledDrivers = {
     ke: sampleDistribution(dists.ke, rng),
-    kw: sampleDistribution(dists.kw, rng),
     gTerminal: sampleDistribution(dists.gTerminal, rng),
     salesGrowthYear1: sampleDistribution(dists.salesGrowthYear1, rng),
     corePmYear1: sampleDistribution(dists.corePmYear1, rng),

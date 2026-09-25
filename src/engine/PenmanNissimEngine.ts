@@ -94,6 +94,16 @@ export function deriveKwFromStructure(cur: RecastPeriod, prev: RecastPeriod, ke:
   return Math.max(riskFreeRate, kwSpec);
 }
 
+/**
+ * Residual-income / ReOI / FCF / AEG / DDM valuation over an explicit horizon.
+ *
+ * CONTRACT: `periods[0]` is the valuation date. Every value is discounted to
+ * it and anchored on its CSE / NOA / NFO / MI; periods[1..T] are the explicit
+ * forecast years. Pass `buildValuationPeriodsFromForecast(latest, forecast)`
+ * or `buildAnchoredValuationPeriods(...)` — never raw history, which dates the
+ * whole valuation at the oldest balance sheet while per-share value and margin
+ * of safety are still compared with today's price.
+ */
 export function computeValuation(
   periods: readonly LegacyValuationPeriodInput[], ke: number, kw: number, g: number, cfg: EngineConfig,
   /** §11 terminal RE anchor — if provided, overrides the as-reported lastRE in CV3 computation */
@@ -299,6 +309,17 @@ export function computeValuation(
     impliedGrowthRE = (lo + hi) / 2;
   }
 
+  // DDM: PV of every horizon dividend plus the Gordon value at T discounted
+  // back to the anchor. `D_T(1+g)/(ke−g)` alone is a value AT year T; it used
+  // to be divided straight by shares, which overstated DDM by (1+g)^T in steady
+  // state (+21.7% at g=4%, T=5) and ignored every dividend paid before T.
+  const ddmCv = gordonCv("DDM", "equity", periods[periods.length - 1]!.cf.DividendPaid, ke, "cost of equity");
+  let pvDividends = 0;
+  for (let i = 1; i < periods.length; i++) {
+    pvDividends += periods[i]!.cf.DividendPaid / Math.pow(rhoE, i);
+  }
+  const V_DDM = equityModelsBlocked || ddmCv == null ? null : pvDividends + ddmCv / discE;
+
   const perShare = (() => {
     if (!cfg.shares_outstanding || cfg.shares_outstanding <= 0) return undefined;
     const sh = cfg.shares_outstanding;
@@ -314,8 +335,7 @@ export function computeValuation(
     const reoiPer = CV_W_3 == null ? null : ((NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - MI0) / sh;
     const fcffPer = EV_FCFF == null ? null : (EV_FCFF - NFO0 - MI0) / sh;
     const fcfePer = equityModelsBlocked || V_FCFE == null ? null : V_FCFE / sh;
-    const ddmCv = gordonCv("DDM", "equity", periods[periods.length - 1]!.cf.DividendPaid, ke, "cost of equity");
-    const ddmPer = equityModelsBlocked || ddmCv == null ? null : ddmCv / sh;
+    const ddmPer = V_DDM == null ? null : V_DDM / sh;
     const aegPer = equityModelsBlocked ? null : V_AEG / sh;
 
     const latestCSE_T = periods[periods.length - 1]!.bs.CSE;
@@ -379,6 +399,12 @@ export function computeValuation(
     V_ReOI_CV03: CV_W_3 == null ? null : (NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - MI0,
     CSE0,
     NOA0,
+    // The enterprise→equity bridge is taken at the ANCHOR (period 0), the date
+    // every value here is discounted to. NFO_latest is the LAST period's NFO —
+    // on a latest-anchored forecast that is year T, so subtracting it from an
+    // anchor-dated EV mixes dates. Consumers bridge with NFO0 + MI0.
+    NFO0,
+    MI0,
     NFO_latest,
     ke,
     kw,
@@ -407,9 +433,16 @@ export function computeValuation(
       fcff_series,
       fcfe_series,
       EV_FCFF,
+      /** Common-equity value from FCFF: EV_FCFF − NFO0 − MI0 (matches intrinsic_fcff_per_share). */
+      V_FCFF_equity: EV_FCFF == null ? null : EV_FCFF - NFO0 - MI0,
       V_FCFE,
       CV_FCFF,
       CV_FCFE,
+    },
+    ddm: {
+      V_DDM,
+      pvDividends,
+      CV_DDM: ddmCv,
     },
     aeg: {
       aeg_series,

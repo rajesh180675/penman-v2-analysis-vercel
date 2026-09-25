@@ -1,26 +1,26 @@
-import type { RecastPeriod } from "../../engine/types";
-import { computeValuation } from "../../engine/PenmanNissimEngine";
 import { toPerShare } from "../../engine/shareCountTools";
 import { fmt, fmtPerShare } from "./ValuationReport.formatters";
+import type { ReSeriesRow } from "./ValuationReport.hooks";
 import {
   Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 
 export default function ReSeriesSection({
-  val,
-  data,
+  rows,
   sharesOut,
-  ke,
-  kwDerived,
   barData,
 }: {
-  val: ReturnType<typeof computeValuation>;
-  data: RecastPeriod[];
+  rows: ReSeriesRow[];
   sharesOut: number | null;
-  ke: number;
-  kwDerived: number;
-  barData: Array<{ period: string; RE: number; ReOI: number }>;
+  barData: Array<{ period: string; phase: ReSeriesRow["phase"]; RE: number; ReOI: number }>;
 }) {
+  const money = (value: number) => (Number.isFinite(value)
+    ? (sharesOut ? fmtPerShare(toPerShare(value, sharesOut) ?? value) : value.toLocaleString("en-IN", { maximumFractionDigits: 0 }))
+    : "—");
+  const residual = (value: number) => (sharesOut ? fmtPerShare(toPerShare(value, sharesOut) ?? value) : fmt(value));
+  const realizedCount = rows.filter((r) => r.phase === "realized").length;
+  const forecastCount = rows.length - realizedCount;
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
@@ -28,6 +28,10 @@ export default function ReSeriesSection({
         <p className="text-xs text-slate-500 mt-0.5">
           RE = CNI − ke×CSE₍t−1₎  |  ReOI = OI − kw×NOA₍t−1₎  |  §6.1–6.2
           {sharesOut ? ` · Rendered on a per-share basis using ${sharesOut.toLocaleString("en-IN", { maximumFractionDigits: 2 })} Cr shares.` : " · Rendered in ₹ Cr until a share basis is available."}
+        </p>
+        <p className="text-xs text-slate-500 mt-1">
+          {realizedCount} realized {realizedCount === 1 ? "year" : "years"} for context, then the {forecastCount}-year forecast
+          (marked F) that the valuation discounts from the latest balance sheet.
         </p>
       </div>
       <div className="p-6">
@@ -42,28 +46,20 @@ export default function ReSeriesSection({
               <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500 uppercase">{sharesOut ? "kw×NOA₋₁ / share" : "kw×NOA₋₁"}</th>
               <th className="px-4 py-2 text-right text-xs font-semibold text-emerald-500 uppercase">{sharesOut ? "ReOI / share" : "ReOI"}</th></tr></thead>
             <tbody className="divide-y divide-slate-100">
-              {val.reSeries.map((r, i) => {
-                const cur = data[i + 1];
-                const prev = data[i];
-                if (!cur || !prev) return null;
-                const cni = toPerShare(cur.is.CNI, sharesOut) ?? cur.is.CNI;
-                const equityCharge = toPerShare(ke * prev.bs.CSE, sharesOut) ?? (ke * prev.bs.CSE);
-                const re = toPerShare(r.RE, sharesOut) ?? r.RE;
-                const oi = toPerShare(cur.is.OI, sharesOut) ?? cur.is.OI;
-                const noaCharge = toPerShare(kwDerived * prev.bs.NOA, sharesOut) ?? (kwDerived * prev.bs.NOA);
-                const reoi = toPerShare(r.ReOI, sharesOut) ?? r.ReOI;
-                return (
-                  <tr key={i} className="hover:bg-slate-50">
-                    <td className="px-4 py-2 font-mono text-slate-600 text-sm">{r.period.slice(0, 7)}</td>
-                    <td className="px-4 py-2 text-right font-mono text-sm">{sharesOut ? fmtPerShare(cni) : cur.is.CNI.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
-                    <td className="px-4 py-2 text-right font-mono text-sm text-slate-400">{sharesOut ? fmtPerShare(equityCharge) : (ke * prev.bs.CSE).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
-                    <td className="px-4 py-2 text-right font-mono font-bold text-indigo-700 text-sm">{sharesOut ? fmtPerShare(re) : fmt(r.RE)}</td>
-                    <td className="px-4 py-2 text-right font-mono text-sm">{sharesOut ? fmtPerShare(oi) : cur.is.OI.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
-                    <td className="px-4 py-2 text-right font-mono text-sm text-slate-400">{sharesOut ? fmtPerShare(noaCharge) : (kwDerived * prev.bs.NOA).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
-                    <td className="px-4 py-2 text-right font-mono font-bold text-emerald-700 text-sm">{sharesOut ? fmtPerShare(reoi) : fmt(r.ReOI)}</td>
-                  </tr>
-                );
-              })}
+              {rows.map((r) => (
+                <tr key={`${r.phase}-${r.period}`} className={r.phase === "forecast" ? "bg-indigo-50/40" : "hover:bg-slate-50"}>
+                  <td className="px-4 py-2 font-mono text-slate-600 text-sm">
+                    {r.period.slice(0, 7)}
+                    {r.phase === "forecast" ? <span className="ml-1 text-[10px] font-semibold text-indigo-500">F</span> : null}
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono text-sm">{money(r.CNI)}</td>
+                  <td className="px-4 py-2 text-right font-mono text-sm text-slate-400">{money(r.equityCharge)}</td>
+                  <td className="px-4 py-2 text-right font-mono font-bold text-indigo-700 text-sm">{residual(r.RE)}</td>
+                  <td className="px-4 py-2 text-right font-mono text-sm">{money(r.OI)}</td>
+                  <td className="px-4 py-2 text-right font-mono text-sm text-slate-400">{money(r.operatingCharge)}</td>
+                  <td className="px-4 py-2 text-right font-mono font-bold text-emerald-700 text-sm">{residual(r.ReOI)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -83,7 +79,11 @@ export default function ReSeriesSection({
                   <ReferenceLine y={0} stroke="#94a3b8" />
                   <Bar dataKey={key}>
                     {barData.map((entry, i) => (
-                      <Cell key={i} fill={entry[key] >= 0 ? color : "#ef4444"} />
+                      <Cell
+                        key={i}
+                        fill={entry[key] >= 0 ? color : "#ef4444"}
+                        fillOpacity={entry.phase === "forecast" ? 0.45 : 1}
+                      />
                     ))}
                   </Bar>
                 </BarChart>

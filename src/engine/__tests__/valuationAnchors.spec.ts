@@ -184,6 +184,25 @@ describe("valuation anchor and kw guardrails", () => {
     expect(out.aeg?.normalised_pe).toBeCloseTo(10, 6);
   });
 
+  it("dates DDM at the anchor: PV of horizon dividends plus the discounted Gordon value", () => {
+    // Dividends grow 4%/yr, ke = 10%, g = 4%: the anchor-date value is
+    // D1/(ke − g). The old form D_T(1+g)/(ke − g) is the value AT year T and
+    // overstated this case by 1.04^3 ≈ 12.5%.
+    const D1 = 60;
+    const periods: RecastPeriod[] = [0, 1, 2, 3].map((t) =>
+      mkPeriod(`${2023 + t}-03-31`, {
+        CSE: 1000, NOA: 1000, NFO: 0, FO: 0, CNI: 100, OI: 100,
+        DividendPaid: t === 0 ? D1 / 1.04 : D1 * 1.04 ** (t - 1),
+      }),
+    );
+    const cfg = { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(1) };
+
+    const out = computeValuation(periods, 0.10, 0.10, 0.04, cfg);
+
+    expect(out.ddm.V_DDM).toBeCloseTo(D1 / (0.10 - 0.04), 6);
+    expect(out.perShare?.intrinsic_ddm_per_share).toBeCloseTo(D1 / (0.10 - 0.04), 6);
+  });
+
   it("fails closed instead of silently zeroing equity-side Gordon CV when terminal growth is not below ke", () => {
     const periods: RecastPeriod[] = [
       mkPeriod("2023-03-31", { CSE: 500, NOA: 620, NFO: 120, FO: 220, CNI: 100, OI: 110 }),

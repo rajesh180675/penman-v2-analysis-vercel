@@ -3,7 +3,7 @@
  *
  * Milestone D. Runs the PVRE sampler on demand (button-triggered; each run
  * re-runs the engine up to `iterations` times) and renders the resulting
- * value distribution, cross-model dispersion gate, and the P the stock is
+ * value distribution, RE-vs-ReOI disagreement gate, and the P the stock is
  * undervalued at the live/reference market price.
  */
 import { useState } from "react";
@@ -191,15 +191,20 @@ export default function PvreSection({
           {result.disagreement ? (
             <div className="mt-3 text-xs wb-text-2">
               <div className="flex items-center gap-2">
-                <span>Cross-model dispersion gate:</span>
+                <span>RE vs ReOI disagreement gate:</span>
                 {gateBadge(result.disagreement.gate)}
                 <span className="wb-text-3">
-                  (dispersion ratio {result.disagreement.dispersionRatio != null
-                    ? result.disagreement.dispersionRatio.toFixed(2)
-                    : "?"})
+                  (median gap {result.disagreement.disagreementRatio != null
+                    ? formatPct(result.disagreement.disagreementRatio, 1)
+                    : "?"} on identical assumptions)
                 </span>
               </div>
               <div className="mt-1 wb-text-3">{result.disagreement.reason}</div>
+              <div className="mt-1 wb-text-3">
+                Input uncertainty (5–95% width ÷ median):{" "}
+                {result.uncertaintyWidthRatio != null ? formatPct(result.uncertaintyWidthRatio, 0) : "—"}
+                {" "}· kw moves with each ke draw by the equity weight (S-9.4C), not independently.
+              </div>
             </div>
           ) : null}
 

@@ -91,7 +91,8 @@ export default function ValuationCardsSection({
         subtitle="Eq.(9) · Ops-only · EV−NFO" value={V_ReOI}
         items={V_ReOI == null ? [] : [
           ...(val.EV_ReOI != null ? [{ l: "EV (NOA₀ + PV ReOI + CV)", v: val.EV_ReOI }] : []),
-          { l: "Less: NFO (latest)", v: -val.NFO_latest },
+          { l: "Less: NFO₀", v: -val.NFO0 },
+          ...(val.MI0 !== 0 ? [{ l: "Less: minority interest₀", v: -val.MI0 }] : []),
           { l: "PV ReOI", v: val.pvReOI },
         ]} fmt={fmt}
         perShare={V_ReOI == null ? null : toPerShare(V_ReOI, sharesOut)}

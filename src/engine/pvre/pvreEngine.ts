@@ -45,8 +45,8 @@ export interface PvreRunInput {
   readonly bounds: {
     readonly keMin: number;
     readonly keMax: number;
+    /** Floor only: kw is derived from the clamped ke, so ke's band bounds it. */
     readonly kwMin: number;
-    readonly kwMax: number;
     readonly gTerminalMin: number;
     readonly gTerminalMax: number;
     readonly salesGrowthMin: number;
@@ -58,7 +58,6 @@ export interface PvreRunInput {
 
 const DEFAULT_SIGMA = {
   keSd: 0.015, // ~150bps around ke
-  kwSd: 0.012,
   gSd: 0.005, // terminal growth is a policy band, keep tight
   salesGrowthSdRel: 0.5, // 50% of point estimate as sd, floored
   corePmSdRel: 0.25,
@@ -68,7 +67,6 @@ export const PVRE_DEFAULT_BOUNDS: PvreRunInput["bounds"] = {
   keMin: 0.05,
   keMax: 0.25,
   kwMin: 0.03,
-  kwMax: 0.20,
   gTerminalMin: -0.02,
   gTerminalMax: 0.08,
   salesGrowthMin: -0.3,
@@ -90,7 +88,6 @@ export function buildDefaultDriverDistributions(
   });
   return {
     ke: normal(a.ke, DEFAULT_SIGMA.keSd),
-    kw: normal(a.kw, DEFAULT_SIGMA.kwSd),
     gTerminal: normal(a.g, DEFAULT_SIGMA.gSd),
     salesGrowthYear1: normal(
       a.salesGrowthYear1,
@@ -166,11 +163,37 @@ function evaluateOneDraw(
   };
 }
 
-function disagreementGate(dispersionRatio: number | null): PvreCrossModelDisagreement["gate"] {
-  if (dispersionRatio == null) return "guarded";
-  // >80% CI-width vs median = material unexplained disagreement
-  if (dispersionRatio > 0.8) return "blocked";
-  if (dispersionRatio > 0.4) return "guarded";
+/**
+ * kw for a draw: the base kw moved by the equity weight times the ke shock.
+ * From kw = ke·(CSE+MI)/NOA + kd·NFO/NOA (deriveKwFromStructure), dkw/dke is
+ * the equity weight; kd is held at its base. Net-cash firms have a weight
+ * above 1, so their kw moves MORE than ke — as the structural formula says.
+ */
+export function structuralKwForKe(ke: number, base: { ke: number; kw: number }, latest: RecastPeriod): number {
+  const noa = Math.abs(latest.bs.NOA);
+  const equityWeight = noa > 0 ? (latest.bs.CSE + (latest.bs.MI ?? 0)) / noa : 1;
+  const weight = Number.isFinite(equityWeight) ? clamp(equityWeight, 0, 3) : 1;
+  return base.kw + weight * (ke - base.ke);
+}
+
+function relativeGap(a: number, b: number): number | null {
+  const scale = (Math.abs(a) + Math.abs(b)) / 2;
+  return scale > 0 ? Math.abs(a - b) / scale : null;
+}
+
+function median(values: readonly number[]): number | null {
+  if (!values.length) return null;
+  const sorted = [...values].sort((x, y) => x - y);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+}
+
+function disagreementGate(disagreementRatio: number | null): PvreCrossModelDisagreement["gate"] {
+  if (disagreementRatio == null) return "guarded";
+  // RE and ReOI value the same forecast; beyond a few percent the gap is a
+  // recast or discount-rate inconsistency, not a matter of opinion.
+  if (disagreementRatio > 0.25) return "blocked";
+  if (disagreementRatio > 0.10) return "guarded";
   return "pass";
 }
 
@@ -188,11 +211,17 @@ export function runPvre(input: PvreRunInput): PvreResult {
   const rng = mulberry32(input.seed);
   const dists = buildDefaultDriverDistributions(input.baseScenario);
   const samples: PvreSample[] = [];
+  const baseRates = { ke: input.baseScenario.assumptions.ke, kw: input.baseScenario.assumptions.kw };
   for (let i = 0; i < input.iterations; i++) {
     const draws = sampleDrivers(dists, rng);
+    const ke = clamp(draws.ke, input.bounds.keMin, input.bounds.keMax);
     const safe = {
-      ke: clamp(draws.ke, input.bounds.keMin, input.bounds.keMax),
-      kw: clamp(draws.kw, input.bounds.kwMin, input.bounds.kwMax),
+      ke,
+      // kw is affine in the (already clamped) ke, so the ke band bounds it.
+      // Only the floor applies: a fixed 0.20 kw ceiling used to clamp
+      // EVERY draw below a base case whose structural kw is higher (ITC's is
+      // ~0.30), so PVRE never valued the scenario the base card valued.
+      kw: Math.max(structuralKwForKe(ke, baseRates, input.latest), input.bounds.kwMin),
       gTerminal: clamp(draws.gTerminal, input.bounds.gTerminalMin, input.bounds.gTerminalMax),
       salesGrowthYear1: clamp(draws.salesGrowthYear1, input.bounds.salesGrowthMin, input.bounds.salesGrowthMax),
       corePmYear1: clamp(draws.corePmYear1, input.bounds.corePmMin, input.bounds.corePmMax),
@@ -221,31 +250,27 @@ export function runPvre(input: PvreRunInput): PvreResult {
   });
   const contributing = perModel.filter((m) => m.finiteShare > 0.5).map((m) => m.model);
 
-  const summaries = perModel.map((m) => m.summary).filter((s): s is NonNullable<typeof s> => s != null);
-  const disagreement: PvreCrossModelDisagreement =
-    summaries.length >= 2 && intrinsic && intrinsic.q50 !== 0
-      ? (() => {
-          const width = summaries.reduce(
-            (acc, s) => Math.max(acc, Math.abs(s.q95 - s.q05)),
-            0,
-          );
-          const dispersionRatio = width / Math.abs(intrinsic!.q50);
-          return {
-            dispersionRatio,
-            contributingModels: contributing,
-            gate: disagreementGate(dispersionRatio),
-            reason:
-              contributing.length < 2
-                ? "fewer than two models computed on a majority of draws"
-                : "dispersion measured across per-model 90% CI widths",
-          };
-        })()
-      : {
-          dispersionRatio: null,
-          contributingModels: contributing,
-          gate: "guarded",
-          reason: "insufficient models or degenerate median to measure dispersion",
-        };
+  // Disagreement is measured WITHIN each draw — both models on the same
+  // assumptions — then summarized across draws.
+  const perDrawGaps = samples
+    .map((sample) => {
+      const re = sample.modelValues["residual-income"];
+      const reoi = sample.modelValues["residual-operating-income"];
+      return re != null && reoi != null && Number.isFinite(re) && Number.isFinite(reoi) ? relativeGap(re, reoi) : null;
+    })
+    .filter((gap): gap is number => gap != null);
+  const disagreementRatio = contributing.length >= 2 ? median(perDrawGaps) : null;
+  const disagreement: PvreCrossModelDisagreement = {
+    disagreementRatio,
+    contributingModels: contributing,
+    gate: disagreementGate(disagreementRatio),
+    reason: contributing.length < 2
+      ? "fewer than two models computed on a majority of draws"
+      : `median |V_RE − V_ReOI| / mean across ${perDrawGaps.length} draws on identical assumptions`,
+  };
+  const uncertaintyWidthRatio = intrinsic && intrinsic.q50 !== 0
+    ? (intrinsic.q95 - intrinsic.q05) / Math.abs(intrinsic.q50)
+    : null;
 
   const p = input.marketPrice;
   const probabilityUndervalued =
@@ -261,9 +286,11 @@ export function runPvre(input: PvreRunInput): PvreResult {
     perModel,
     disagreement,
     probabilityUndervalued,
+    uncertaintyWidthRatio,
     referencePrice: p ?? null,
     meta: {
-      sampledKeys: ["ke", "kw", "gTerminal", "salesGrowthYear1", "corePmYear1"],
+      // kw is derived per draw from ke (structuralKwForKe), not sampled.
+      sampledKeys: ["ke", "gTerminal", "salesGrowthYear1", "corePmYear1"],
       constrainedTo: "configured-ranges-and-bands",
       companiesType: input.config.company_type ?? null,
     },
@@ -277,7 +304,8 @@ export function runPvre(input: PvreRunInput): PvreResult {
       intrinsicQ05: output.intrinsic?.q05 ?? null,
       intrinsicQ95: output.intrinsic?.q95 ?? null,
       disagreementGate: output.disagreement?.gate ?? null,
-      dispersionRatio: output.disagreement?.dispersionRatio ?? null,
+      disagreementRatio: output.disagreement?.disagreementRatio ?? null,
+      uncertaintyWidthRatio: output.uncertaintyWidthRatio,
       probabilityUndervalued: output.probabilityUndervalued,
     },
     { duration_ms: Math.round(performance.now() - t0) },

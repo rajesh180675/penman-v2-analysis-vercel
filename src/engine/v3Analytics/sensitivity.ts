@@ -24,7 +24,11 @@ export function computeSensitivityMatrix(
   base_ke: number,
   base_g: number,
   T: number, // number of explicit years
-  gFloor = 0.02
+  gFloor = 0.02,
+  // B_(T−1). When supplied, the anchor's capital charge is re-priced at each
+  // grid ke (RE = CNI − ke·B): holding RE fixed while ke moves overstated how
+  // little value falls as ke rises.
+  anchorBookPrev?: number | null | undefined,
 ): SensMatrixEntry[] {
   // ke grid: [ke-4%, ke-3%, ke-2%, ke, ke+2%] — no values below 5%
   const ke_grid = Array.from(
@@ -49,7 +53,10 @@ export function computeSensitivityMatrix(
     const sum_pv = RE_stream.reduce((s, r, idx) => s + r.RE / Math.pow(1 + ke_i, idx + 1), 0);
     for (const g_j of g_grid) {
       if (ke_i - g_j <= 0) continue; // Gordon formula undefined
-      const CV3 = (selected_RE_anchor * (1 + g_j)) / (ke_i - g_j);
+      const anchorAtKe = anchorBookPrev != null && Number.isFinite(anchorBookPrev)
+        ? selected_RE_anchor + (base_ke - ke_i) * anchorBookPrev
+        : selected_RE_anchor;
+      const CV3 = (anchorAtKe * (1 + g_j)) / (ke_i - g_j);
       const PV_CV3 = CV3 / Math.pow(1 + ke_i, T);
       const V = CSE0 + sum_pv + PV_CV3;
       results.push({ ke: ke_i, g: g_j, V_RE_CV3: V });

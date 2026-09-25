@@ -18,6 +18,7 @@ function fakePvre(q05: number, q50: number, q95: number): PvreOutput {
     perModel: [],
     disagreement: null,
     probabilityUndervalued: null,
+    uncertaintyWidthRatio: null,
     referencePrice: null,
     meta: { sampledKeys: [], constrainedTo: "configured-ranges-and-bands", companiesType: null },
   };

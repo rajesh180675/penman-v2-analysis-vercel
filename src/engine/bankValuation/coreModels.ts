@@ -60,7 +60,9 @@ export function justifiedPBGordon(
   const value = fairPB * bv;
   let reason: string;
   if (floored) {
-    reason = `ROE ≤ ke → floored at 0.7x P/B for insurance business`;
+    reason = isInsurance
+      ? `ROE ≤ ke → floored at ${pbFloor}x P/B for insurance business`
+      : `ROE ≤ ke → floored at ${pbFloor}x P/B (liquidation/franchise floor for a lender)`;
   } else {
     reason = roe > ke
       ? `ROE > ke → business earning above cost of equity, fair P/B = ${fairPB.toFixed(2)}`

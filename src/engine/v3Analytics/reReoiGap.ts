@@ -1,54 +1,70 @@
 /* ══════════════════════════════════════════════════════════════════
    S-15.2 — RE / ReOI identity-gap decomposition
-   Extracted verbatim from v3Analytics.ts (Plan 2 PR-2.2). Imports DOWN
-   from ../types and ./shared only — no back-edge to v3Analytics.ts.
+   Imports DOWN from ../types and ./shared only — no back-edge to
+   v3Analytics.ts.
 ══════════════════════════════════════════════════════════════════ */
 import { RecastPeriod } from "../types";
 import { CanonicalOutputRegistry } from "./shared";
 
 export interface ReReOIGapDecomposition {
-  dirty_surplus: number;
-  nfo_timing: number;
-  tv_divergence: number;
+  /** B_0 − (NOA_0 − NFO_0 − MI_0) at the valuation anchor. ~0 when the recast closes. */
+  anchor_book_identity: number;
+  /** Σ RE_t/(1+ke)^t − Σ ReOI_t/(1+kw)^t over the explicit forecast. */
   explicit_period_discounting: number;
+  /** CV_RE/(1+ke)^T − CV_ReOI/(1+kw)^T. */
+  tv_divergence: number;
+  /** Whatever the three terms above do not explain (0 when both values come from one anchored run). */
   residual: number;
   total: number;
   dominant_driver: string;
 }
 
+/** The pieces of ONE latest-anchored computeValuation run. */
+export interface GapValuationParts {
+  pvRE: number;
+  pvReOI: number;
+  CV_RE: number | null;
+  CV_ReOI: number | null;
+  /** Number of explicit forecast years (T). */
+  horizon: number;
+}
+
+/**
+ * Both valuations are dated at the latest balance sheet, so their gap is
+ * exactly three terms:
+ *
+ *   V_RE − V_ReOI = [B − (NOA − NFO − MI)]_anchor
+ *                 + [Σ RE_t/ρE^t − Σ ReOI_t/ρW^t]
+ *                 + [CV_RE/ρE^T − CV_ReOI/ρW^T]
+ *
+ * This used to be decomposed with HISTORICAL components (realized dirty
+ * surplus, realized ΔNFO, realized RE discounted to the oldest book) — terms
+ * of a valuation dated at the first historical year, which no longer exists.
+ * Without the run's parts only the anchor identity can be measured and the
+ * rest is reported as residual rather than guessed.
+ */
 export function decomposeReReOIGap(
-  periods: RecastPeriod[],
-  valuation: { V_RE_CV3: number; V_ReOI_CV03: number; CSE0: number; pvRE: number; CV_RE: number; CV_ReOI: number; ke: number; kw: number },
-  gEffective: number,
+  anchor: RecastPeriod,
+  valuation: { V_RE_CV3: number; V_ReOI_CV03: number; ke: number; kw: number },
+  parts: GapValuationParts | null | undefined,
   registry?: CanonicalOutputRegistry | undefined,
 ): ReReOIGapDecomposition {
-  const T = Math.max(1, periods.length - 1);
-  const ke = valuation.ke;
-  const kw = valuation.kw;
-  const dirty_surplus = periods.slice(1).reduce((acc, p, idx) => {
-    const prev = periods[idx]!;
-    const ds = (p.bs.CSE - prev.bs.CSE) - p.is.CNI + p.cf.DividendPaid;
-    return acc + ds / Math.pow(1 + ke, idx + 1);
-  }, 0);
-  const nfo_timing = periods.slice(1).reduce((acc, period, idx) => {
-    const prev = periods[idx]!;
-    const deltaNfo = (period.bs.NFO ?? 0) - (prev.bs.NFO ?? 0);
-    return acc + deltaNfo / Math.pow(1 + ke, idx + 1);
-  }, 0);
-  const reT = periods[periods.length - 1]?.ri?.RE ?? 0;
-  const reoiT = periods[periods.length - 1]?.ri?.ReOI ?? 0;
-  const pvReTV = (ke > gEffective) ? (reT * (1 + gEffective) / (ke - gEffective)) / Math.pow(1 + ke, T) : 0;
-  const pvReOITV = (kw > gEffective) ? (reoiT * (1 + gEffective) / (kw - gEffective)) / Math.pow(1 + kw, T) : 0;
-  const tv_divergence = pvReTV - pvReOITV;
-  const explicit_period_discounting = periods.slice(1).reduce((acc, p, idx) => {
-    const t = idx + 1;
-    return acc + (p.ri?.RE ?? 0) / Math.pow(1 + ke, t) - (p.ri?.ReOI ?? 0) / Math.pow(1 + kw, t);
-  }, 0);
+  const bs = anchor.bs;
+  const anchor_book_identity = bs.CSE - (bs.NOA - bs.NFO - (Number.isFinite(bs.MI) ? bs.MI : 0));
+  let explicit_period_discounting = 0;
+  let tv_divergence = 0;
+  if (parts) {
+    explicit_period_discounting = parts.pvRE - parts.pvReOI;
+    const T = Math.max(0, parts.horizon);
+    const tvRE = parts.CV_RE != null ? parts.CV_RE / Math.pow(1 + valuation.ke, T) : 0;
+    const tvReOI = parts.CV_ReOI != null ? parts.CV_ReOI / Math.pow(1 + valuation.kw, T) : 0;
+    tv_divergence = tvRE - tvReOI;
+  }
   const total = valuation.V_RE_CV3 - valuation.V_ReOI_CV03;
-  const residual = total - dirty_surplus - nfo_timing - tv_divergence - explicit_period_discounting;
-  const dominant_driver = Object.entries({ dirty_surplus, nfo_timing, tv_divergence, explicit_period_discounting })
+  const residual = total - anchor_book_identity - explicit_period_discounting - tv_divergence;
+  const dominant_driver = Object.entries({ anchor_book_identity, explicit_period_discounting, tv_divergence, residual })
     .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0]?.[0] ?? "none";
-  const out: ReReOIGapDecomposition = { dirty_surplus, nfo_timing, tv_divergence, explicit_period_discounting, residual, total, dominant_driver };
+  const out: ReReOIGapDecomposition = { anchor_book_identity, explicit_period_discounting, tv_divergence, residual, total, dominant_driver };
   registry?.register("re_reoi_gap", Math.abs(total), "S-15.2");
   registry?.register("re_reoi_gap_pct", valuation.V_RE_CV3 !== 0 ? Math.abs(total) / Math.abs(valuation.V_RE_CV3) : 0, "S-15.2");
   registry?.register("re_reoi_gap_decomposition", out, "S-15.2");

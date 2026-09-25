@@ -5,6 +5,7 @@ import { EngineConfig, RawPeriodData, RecastPeriod } from "../engine/types";
 import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
 import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
+import { buildAnchoredValuationPeriods } from "../engine/anchoredValuationPeriods";
 import { AnalysisTraceabilityEnvelope } from "../engine/analysisTraceability";
 import { buildAnalysisPublicationSnapshot } from "../lib/publication/analysisPublicationSnapshot";
 import { deriveCompanyLabel } from "../engine/valuationPolicy";
@@ -281,8 +282,12 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   ];
   const bindingGCap = gCapCandidates.reduce((a, b) => (a.value < b.value ? a : b));
   const g = Math.max(0, Math.min(gInput, bindingGCap.value));
-  const valuation = computeValuation(valuationData, ke, kw, g, config);
-  const valuationLegacyKw = computeValuation(valuationData, ke, config.risk_free_rate, g, config);
+  // Latest-anchored: history passed straight in valued the company as of its
+  // oldest balance sheet. The same forecast is reused below for the legacy-kw
+  // comparison and the sensitivity matrix, so they differ only by rates.
+  const anchoredPeriods = buildAnchoredValuationPeriods({ history: valuationData, config, ke, kw, g });
+  const valuation = computeValuation(anchoredPeriods, ke, kw, g, config);
+  const valuationLegacyKw = computeValuation(anchoredPeriods, ke, config.risk_free_rate, g, config);
   // Phase J2: V_RE_CV3 may be null on negative-equity companies. Fall back
   // to V_ReOI_CV03 for the identity-gap so the report stays renderable.
   const reoiCv03 = valuation.V_ReOI_CV03;
@@ -311,6 +316,13 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
         // Same packs `ke` above was resolved from — an exported report must not
         // discount its bundle at a different rate than it prints.
         { ...ACTIVE_MARKET_PACKS, analysisAsOf: analysisAsOfToday() },
+        {
+          pvRE: valuation.pvRE,
+          pvReOI: valuation.pvReOI,
+          CV_RE: valuation.CV_RE,
+          CV_ReOI: valuation.CV_ReOI,
+          horizon: valuation.reSeries.length,
+        },
       );
     } catch { return null; }
   })();
@@ -324,13 +336,16 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   const sensitivityG = [Math.max(0.01, gBase - 0.02), Math.max(0.01, gBase - 0.01), gBase]
     .filter((gv, i, arr) => gv < ke - 0.005 && arr.indexOf(gv) === i)
     .sort((a, b) => a - b);
-  const matrixREAnchor = v3TerminalAnchor?.RE_value;
+  // Same anchored forecast as the headline, re-discounted per cell: the grid
+  // isolates the rates. (A history-derived terminal RE anchor was applied here
+  // when the valuation was dated at the oldest period; on a forecast it would
+  // replace the year-T RE with a level from today.)
   const sensitivityMatrix = sensitivityKe.map((keCase) => ({
     ke: keCase,
     // Phase J2: V_RE_CV3 may be null when latest CSE ≤ 0; coerce to NaN
     // so downstream rendering shows "—" rather than crashing on null.
     values: sensitivityG.map((gCase) =>
-      computeValuation(valuationData, keCase, kw, gCase, config, matrixREAnchor).V_RE_CV3 ?? Number.NaN,
+      computeValuation(anchoredPeriods, keCase, kw, gCase, config).V_RE_CV3 ?? Number.NaN,
     ),
   }));
 
@@ -385,7 +400,9 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
   const tvShare = v3TerminalAnchor?.TV_share ?? terminalWeightRE;
   const tvGrade = v3TerminalAnchor?.TV_grade ?? (tvShare == null ? "N/A" : tvShare < 0.25 ? "GRADE_A" : tvShare < 0.4 ? "GRADE_B" : tvShare < 0.6 ? "GRADE_C" : "GRADE_D");
   const anchorTable = v3TerminalAnchor
-    ? computeAnchorTable(valuation.CSE0, valuation.pvRE, v3TerminalAnchor, ke, explicitHorizonYears)
+    // V3's anchors are priced from today's book with no explicit years —
+    // the basis of v3TerminalAnchor.V_total (see selectTerminalAnchor).
+    ? computeAnchorTable(valuationLatest.bs.CSE, 0, v3TerminalAnchor, ke, 0)
     : [];
 
   const sharesFromConfig = config.shares_outstanding ?? null;
@@ -398,11 +415,9 @@ export default function AcademicReport({ data, config, rawData, auditMeta, trace
     primaryValue: primaryValuation ?? valuation.V_ReOI_CV03 ?? 0,
     ke,
     g: gBase,
-    cse0: valuation.CSE0,
-    pvRE: valuation.pvRE,
+    bookT: valuationLatest.bs.CSE,
+    bookPrev: valuationData.length >= 2 ? valuationData[valuationData.length - 2]!.bs.CSE : valuationLatest.bs.CSE,
     reAnchor: v3TerminalAnchor?.RE_value ?? (latestRe ?? 0),
-    explicitPeriods: Math.max(explicitHorizonYears, 1),
-    periods: valuationData,
     shares: sharesToUse,
     marketPrice: config.market_price,
     sharesSource: sharesFromConfig != null ? "user input" : (derivedShareCount?.source ?? "unavailable"),

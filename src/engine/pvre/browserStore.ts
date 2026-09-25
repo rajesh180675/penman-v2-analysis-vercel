@@ -12,7 +12,10 @@
 import type { PvreOutput } from "./types";
 
 export interface PvreBrowserSnapshot {
-  readonly schemaVersion: "2026-08-pvre-snapshot-v1";
+  // v2: kw is derived from ke per draw and `disagreementRatio` measures the
+  // RE/ReOI gap within a draw. v1 snapshots measured different quantities and
+  // are dropped on read rather than mixed into the calibration corpus.
+  readonly schemaVersion: "2026-09-pvre-snapshot-v2";
   readonly takenAt: string; // ISO date
   readonly ticker: string;
   readonly seed: number;
@@ -22,7 +25,8 @@ export interface PvreBrowserSnapshot {
   readonly intrinsicQ50: number | null;
   readonly intrinsicQ95: number | null;
   readonly disagreementGate: "pass" | "guarded" | "blocked" | null;
-  readonly dispersionRatio: number | null;
+  readonly disagreementRatio: number | null;
+  readonly uncertaintyWidthRatio: number | null;
   readonly probabilityUndervalued: number | null;
 }
 
@@ -38,7 +42,7 @@ function safeParse(raw: string | null): PvreBrowserSnapshot[] {
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item) => item && typeof item === "object" && item.schemaVersion === "2026-08-pvre-snapshot-v1");
+    return parsed.filter((item) => item && typeof item === "object" && item.schemaVersion === "2026-09-pvre-snapshot-v2");
   } catch {
     return [];
   }
@@ -49,7 +53,7 @@ export function buildBrowserSnapshot(
   meta: { ticker: string; asOf?: string },
 ): PvreBrowserSnapshot {
   return {
-    schemaVersion: "2026-08-pvre-snapshot-v1",
+    schemaVersion: "2026-09-pvre-snapshot-v2",
     takenAt: meta.asOf ?? new Date().toISOString().slice(0, 10),
     ticker: meta.ticker,
     seed: output.seed,
@@ -59,7 +63,8 @@ export function buildBrowserSnapshot(
     intrinsicQ50: output.intrinsic?.q50 ?? null,
     intrinsicQ95: output.intrinsic?.q95 ?? null,
     disagreementGate: output.disagreement?.gate ?? null,
-    dispersionRatio: output.disagreement?.dispersionRatio ?? null,
+    disagreementRatio: output.disagreement?.disagreementRatio ?? null,
+    uncertaintyWidthRatio: output.uncertaintyWidthRatio,
     probabilityUndervalued: output.probabilityUndervalued,
   };
 }

@@ -20,7 +20,7 @@ import { buildValuationCommandCenter } from "../valuationCommandCenter/core";
 import { resolveShareBasis } from "../shareCountTools";
 import { DEFAULT_CONFIG, RecastPeriod, EngineConfig } from "../types";
 import { INRAbsolute } from "../types/units";
-import { runPvre, buildDefaultDriverDistributions, PVRE_DEFAULT_BOUNDS } from "../pvre/pvreEngine";
+import { runPvre, buildDefaultDriverDistributions, PVRE_DEFAULT_BOUNDS, structuralKwForKe } from "../pvre/pvreEngine";
 import type { ValuationScenarioCard } from "../valuationCommandCenter/types";
 
 const COMPANIES_DIR = resolve(__dirname, "../../../public/data/companies");
@@ -145,6 +145,17 @@ describe("PVRE Milestone A — industrial (ITC)", () => {
     if (res.status === "ok") {
       expect(res.disagreement).not.toBeNull();
       expect(["pass", "guarded", "blocked"]).toContain(res.disagreement!.gate);
+      // RE and ReOI value the SAME forecast in every draw, so the ratio tracks
+      // the base case's own RE/ReOI gap — not the spread of the inputs, which
+      // is reported separately. (ITC's gap is large and real: book-weighted kw
+      // on a cash-rich, high-P/B balance sheet is ~30%. The old input-spread
+      // metric could not see it.)
+      const v = baseCard.valuation;
+      const baseGap = Math.abs(v.V_RE_CV3! - v.V_ReOI_CV03!) / ((Math.abs(v.V_RE_CV3!) + Math.abs(v.V_ReOI_CV03!)) / 2);
+      expect(res.disagreement!.disagreementRatio).not.toBeNull();
+      expect(res.disagreement!.disagreementRatio!).toBeGreaterThan(baseGap * 0.75);
+      expect(res.disagreement!.disagreementRatio!).toBeLessThan(baseGap * 1.25);
+      expect(res.uncertaintyWidthRatio).not.toBeNull();
     }
   });
 
@@ -181,6 +192,17 @@ describe("PVRE Milestone A — industrial (ITC)", () => {
     expect(res.status).toBe("skipped");
   });
 
+  it("moves kw with ke by the equity weight (S-9.4C), not independently", () => {
+    const latest = { bs: { NOA: 1000, CSE: 800, MI: 0 } } as unknown as RecastPeriod;
+    const base = { ke: 0.12, kw: 0.106 };
+    expect(structuralKwForKe(0.12, base, latest)).toBeCloseTo(0.106, 10);
+    // +100bp on ke moves kw by 0.8 × 100bp for an 80%-equity-funded issuer.
+    expect(structuralKwForKe(0.13, base, latest)).toBeCloseTo(0.114, 10);
+    // A net-cash issuer (equity weight > 1) moves kw MORE than ke.
+    const netCash = { bs: { NOA: 1000, CSE: 1250, MI: 0 } } as unknown as RecastPeriod;
+    expect(structuralKwForKe(0.13, base, netCash) - base.kw).toBeCloseTo(0.0125, 10);
+  });
+
   it("distributions builder produces sane defaults", () => {
     const fakeCard = {
       assumptions: {
@@ -190,7 +212,8 @@ describe("PVRE Milestone A — industrial (ITC)", () => {
     } as unknown as ValuationScenarioCard;
     const d = buildDefaultDriverDistributions(fakeCard);
     expect(d.ke.parameters.mean).toBeCloseTo(0.12, 6);
-    expect(d.kw.parameters.mean).toBeCloseTo(0.10, 6);
+    // kw is derived from each ke draw, never sampled on its own.
+    expect("kw" in d).toBe(false);
     expect(d.gTerminal.parameters.mean).toBeCloseTo(0.05, 6);
     expect(d.ke.parameters.sd).toBeGreaterThan(0);
   });
