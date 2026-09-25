@@ -2,10 +2,10 @@ import { EmptyState } from "../components/shared/EmptyState";
 import type { LibraryCompany } from "../components/data-entry/companyRegistry";
 import type { CompanyRunState } from "./companyRun";
 import { CASE_SECTIONS, formatRoute, LIBRARY, type CaseRoute, type CaseSection } from "./route";
+import { VerdictSection } from "./sections/VerdictSection";
 
-/** Phase that builds each section, and today's tab that covers it meanwhile. */
-const SECTION_STATUS: Record<CaseSection, { phase: number; currentTab: string }> = {
-  verdict: { phase: 1, currentTab: "dashboard" },
+/** Sections not yet built: the phase that builds each, and today's tab that covers it meanwhile. */
+const SECTION_STATUS: Record<Exclude<CaseSection, "verdict">, { phase: number; currentTab: string }> = {
   economics: { phase: 2, currentTab: "statements" },
   evidence: { phase: 2, currentTab: "quality" },
   forecast: { phase: 3, currentTab: "forecast" },
@@ -34,8 +34,6 @@ export function CasePage({
     );
   }
   const section = CASE_SECTIONS.find((s) => s.id === route.section)!;
-  const status = SECTION_STATUS[route.section];
-  const currentUiHref = `?company=${encodeURIComponent(company.ticker)}&tab=${status.currentTab}`;
 
   return (
     <article aria-labelledby="case-heading" className="space-y-5">
@@ -67,14 +65,24 @@ export function CasePage({
       </nav>
 
       <section aria-label={section.label}>
-        <EmptyState
-          icon="layers"
-          title={`${section.label} arrives in Phase ${status.phase}`}
-          body="Until then, the current interface covers it."
-          action={{ label: "Open in the current interface", onClick: () => window.location.assign(currentUiHref) }}
-        />
+        {route.section === "verdict"
+          ? run?.status === "ready" ? <VerdictSection result={run.result} /> : null
+          : <NotYetBuilt section={route.section} label={section.label} ticker={company.ticker} />}
       </section>
     </article>
+  );
+}
+
+function NotYetBuilt({ section, label, ticker }: { section: Exclude<CaseSection, "verdict">; label: string; ticker: string }) {
+  const status = SECTION_STATUS[section];
+  const currentUiHref = `?company=${encodeURIComponent(ticker)}&tab=${status.currentTab}`;
+  return (
+    <EmptyState
+      icon="layers"
+      title={`${label} arrives in Phase ${status.phase}`}
+      body="Until then, the current interface covers it."
+      action={{ label: "Open in the current interface", onClick: () => window.location.assign(currentUiHref) }}
+    />
   );
 }
 

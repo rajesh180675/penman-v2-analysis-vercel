@@ -15,7 +15,9 @@ const tcs: LibraryCompany = { ...itc, folder: "TCS", name: "Tata Consultancy Ser
 function readyRun(): LegacyAnalysisRunExecutionResult {
   return {
     status: "completed",
+    materialization: { commandCenter: null },
     run: {
+      family: "industrial",
       trustEnvelope: {
         confidence: { status: "guarded", headline: "Guarded: reconciliation residuals exceed tolerance", tone: "amber" },
         rigor: { currentLabel: "Syntactically valid" },

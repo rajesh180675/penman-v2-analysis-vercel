@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { LegacyAnalysisRunExecutionResult, LegacyAnalysisRunInputV1 } from "../../engine/analysisRun";
+import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 import { ACTIVE_MARKET_PACKS } from "../../engine/marketPacks";
 import type { RawPeriodData } from "../../engine/types";
 import type { LibraryCompany } from "../../components/data-entry/companyRegistry";
@@ -10,12 +11,14 @@ const company: LibraryCompany = {
   type: "cyclical", description: "", emoji: "",
 };
 const period = { company_id: "M&M", period_end: "2025-03-31", raw_metric_values: {} } as RawPeriodData;
+const snapshot = { lastPrice: 1450 } as unknown as LiveMarketDataSnapshot;
 const result = { status: "completed", run: {} } as unknown as LegacyAnalysisRunExecutionResult;
 
 function deps(overrides: Partial<CompanyRunDependencies> = {}) {
   return {
     fetchZip: vi.fn(async () => new Uint8Array([1])),
     parse: vi.fn(async () => [period]),
+    fetchMarketSnapshot: vi.fn(async () => snapshot),
     run: vi.fn(async () => result),
     now: () => new Date("2026-09-26T10:00:00Z"),
     ...overrides,
@@ -41,6 +44,15 @@ describe("loadCompanyRun", () => {
     expect(input.macroPack).toBe(ACTIVE_MARKET_PACKS.macroPack);
     expect(input.betaPack).toBe(ACTIVE_MARKET_PACKS.betaPack);
     expect(input.metadata?.asOf).toBe("2026-09-26");
+    // The live overlay reaches the run, as in the current shell.
+    expect(input.marketSnapshot).toBe(snapshot);
+  });
+
+  it("runs without a market overlay when the snapshot is unavailable", async () => {
+    const run = vi.fn(async (_input: LegacyAnalysisRunInputV1, _requestId: string) => result);
+    const state = await loadCompanyRun(company, undefined, deps({ run, fetchMarketSnapshot: async () => null }));
+    expect(state.status).toBe("ready");
+    expect(run.mock.calls[0]![0].marketSnapshot).toBeNull();
   });
 
   it("settles to an error, never a rejection, when the data is missing or empty", async () => {
