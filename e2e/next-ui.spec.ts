@@ -29,6 +29,17 @@ test.describe("Next UI (?ui=next)", () => {
     // The backtest record is served to the browser and shown as counts.
     await expect(page.getByText(/beat .nothing changes. on sales in \d+ of \d+ years/)).toBeVisible();
 
+    // Phase 2: Economics — select a number, the lineage drawer shows its source rows.
+    await page.getByRole("link", { name: "Business & economics" }).click();
+    await expect(page).toHaveURL(/#\/case\/TCS\/economics$/);
+    await page.getByRole("button", { name: /^Sales, .* show where it comes from$/ }).last().click();
+    const drawer = page.getByRole("complementary", { name: "Lineage" });
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByText("Revenue From Operations(Net)")).toBeVisible();
+    // Evidence: the rigor ladder from the run's trust envelope.
+    await page.getByRole("link", { name: "Evidence & trust" }).click();
+    await expect(page.getByRole("heading", { name: "Rigor ladder" })).toBeVisible();
+
     await page.getByRole("link", { name: "Valuation" }).click();
     await expect(page).toHaveURL(/#\/case\/TCS\/valuation$/);
     await expect(page.getByText("Valuation arrives in Phase 3")).toBeVisible();
