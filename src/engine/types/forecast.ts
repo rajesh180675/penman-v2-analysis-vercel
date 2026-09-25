@@ -71,6 +71,8 @@ export interface ForecastPeriod {
   Sales_f: number; NOA_f: number; OI_f: number;
   NFE_f: number; CNI_f: number; CSE_f: number; NFO_f: number;
   ΔNOA_f: number; FCF_f: number; RE_f: number; ReOI_f: number;
+  /** Minority interest (balance sheet) and its share of income. */
+  MI_f?: number | undefined; MII_f?: number | undefined;
   source: 'user'|'fade'|'mean_reversion'|'flat';
   bridge_mode?: 'margin'|'cost_bridge' | undefined;
   material_cost_ratio_assumption?: number | null | undefined;
@@ -150,6 +152,16 @@ export interface ForecastScenario {
   drivers: {
     sales_growth: number[]; core_sales_pm: number[];
     ato: number[]; flev: number[]; nbc: number[];
+    /** Minority interest / CSE, held from the anchor. Absent → 0. */
+    mi_ratio?: number[] | undefined;
+    /** Minority's share of group income after financing (MII / (CNI + MII)). Absent → 0. */
+    mii_share?: number[] | undefined;
+    /**
+     * Net financial obligations held at this ₹ level instead of at flev × CSE.
+     * Set when the anchor's NOA is too small against equity for a held
+     * leverage ratio to be well-conditioned (net cash ≈ equity).
+     */
+    nfo_level?: number[] | undefined;
     material_cost_ratio?: number[] | undefined;
     employee_cost_ratio?: number[] | undefined;
     depreciation_ratio?: number[] | undefined;

@@ -154,7 +154,7 @@ export default function RecastStatements({ data, traceability = null, traceabili
               <TR label="Profit After Tax (PAT)"        vals={data.map((d) => f(d.is.PAT))} />
               <TRGrowth label="  ↳ PAT YoY %"            vals={data.map((d, i) => i === 0 ? null : (data[i - 1]!.is.PAT !== 0 ? (d.is.PAT - data[i - 1]!.is.PAT) / Math.abs(data[i - 1]!.is.PAT) : null))} />
               <TR label="OCI (after-tax)"               vals={data.map((d) => f(d.is.OCI))} />
-              <TR label="TCI (group)"                   vals={data.map((d) => f(d.is.TCI))} />
+              <TR label="TCI (owners)"                  vals={data.map((d) => f(d.is.TCI))} />
               <TR label="NCI Income Share (MII)"        vals={data.map((d) => f(d.is.MII))} />
               <TR label="CNI (to common)"               vals={data.map((d) => f(d.is.CNI))} bold accent="green" />
               <TR label="Finance Cost (PL)"             vals={data.map((d) => f(d.is.FinanceCost))} />

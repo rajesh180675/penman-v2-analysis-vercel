@@ -489,3 +489,87 @@ describe("persistence forecast — a net-cash issuer's financing drivers", () =>
     expect(scenario.drivers.nbc[0]).toBeCloseTo(0.05, 10);
   });
 });
+
+describe("persistence forecast — minority interest and an ill-conditioned balance sheet", () => {
+  const template = {
+    normalizedGrowth: 0.09, terminalGrowthFloor: 0.03, terminalGrowthCap: 0.05,
+    growthFadeAlpha: 0.8, marginFadeAlpha: 0.9, atoFadeAlpha: 0.95, companyEvidenceMaxWeight: 0.8,
+    growthGuardrailBand: 0.035, marginGuardrailBand: 0.04, atoGuardrailBand: 0.4,
+  };
+  function deriveBase(periods: RecastPeriod[]) {
+    const latest = periods[periods.length - 1]!;
+    return derivePersistenceForecastScenario({
+      scenarioKey: "base",
+      periods,
+      latest,
+      businessModel: buildBusinessModelProfile(periods),
+      horizon: 5,
+      template,
+      riskInputs: { ke: 0.12, kw: 0.1, riskFreeRate: 0.07 },
+    });
+  }
+
+  // Grasim-shaped: a large listed subsidiary. Minorities hold 20% of book per
+  // ₹ of CSE (MI 200 / CSE 1000) but take 60 of every 160 of group income.
+  function withMinority(year: number): RecastPeriod {
+    const base = mkLatest(`${year}-03-31`);
+    return {
+      ...base,
+      bs: { ...base.bs, CSE: 1000, MI: 200, NOA: 1300, NFO: 100 },
+      is: { ...base.is, CNI: 100, MII: 60, NFE: 6, OI: 166 },
+    };
+  }
+
+  it("takes the minority's income share out of forecast common earnings", () => {
+    const history = [withMinority(2023), withMinority(2024), withMinority(2025)];
+    const scenario = deriveBase(history);
+    expect(scenario.drivers.mi_ratio![0]).toBeCloseTo(0.2, 10);
+    expect(scenario.drivers.mii_share![0]).toBeCloseTo(60 / 160, 10);
+
+    for (const f of buildScenario(scenario, history[2]!)) {
+      expect(f.MII_f!).toBeCloseTo((60 / 160) * (f.OI_f - f.NFE_f), 8);
+      expect(f.CNI_f).toBeCloseTo(f.OI_f - f.NFE_f - f.MII_f!, 8);
+      // NOA = CSE + NFO + MI, with MI held at 20% of CSE.
+      expect(f.CSE_f + f.NFO_f + f.MI_f!).toBeCloseTo(f.NOA_f, 8);
+      expect(f.MI_f!).toBeCloseTo(0.2 * f.CSE_f, 8);
+    }
+  });
+
+  it("carries forecast MI into the valuation periods so NFO excludes it", () => {
+    const history = [withMinority(2023), withMinority(2024), withMinority(2025)];
+    const forecast = buildScenario(deriveBase(history), history[2]!);
+    const periods = buildValuationPeriodsFromForecast(history[2]!, forecast);
+    const first = periods[1]!;
+    expect(first.bs.MI).toBeCloseTo(forecast[0]!.MI_f!, 8);
+    expect(first.bs.NFO).toBeCloseTo(forecast[0]!.NFO_f, 8);
+  });
+
+  // HUL before FY21: net cash exceeds equity, operating assets ≈ 0.
+  function netCashExceedsEquity(): RecastPeriod {
+    const latest = mkLatest("2019-03-31");
+    return {
+      ...latest,
+      bs: { ...latest.bs, CSE: 7867, MI: 0, NOA: -1356, NFO: -9223 },
+      is: { ...latest.is, Sales: 39310, NFE: -245, CNI: 6056, OI: 5811, MII: 0 },
+    };
+  }
+
+  it("holds NFO in rupees when NOA is too small against equity for held leverage", () => {
+    const latest = netCashExceedsEquity();
+    const scenario = deriveBase([latest]);
+    expect(scenario.drivers.nfo_level?.[0]).toBe(-9223);
+
+    const forecast = buildScenario(scenario, latest);
+    for (const f of forecast) expect(f.NFO_f).toBeCloseTo(-9223, 6);
+    // Equity is the business plus the held cash...
+    expect(forecast[0]!.CSE_f).toBeCloseTo(forecast[0]!.NOA_f + 9223, 6);
+    // ...where held leverage divided NOA_f by 1 + flev (floored at 0.05):
+    // equity — and the cash earning interest on it — 20× the business.
+    const ratioOnly = buildScenario({ ...scenario, drivers: { ...scenario.drivers, nfo_level: undefined } }, latest);
+    expect(ratioOnly[0]!.CSE_f).toBeCloseTo(20 * ratioOnly[0]!.NOA_f, 6);
+  });
+
+  it("keeps held leverage when operating assets are material", () => {
+    expect(deriveBase([mkLatest("2025-03-31")]).drivers.nfo_level).toBeUndefined();
+  });
+});

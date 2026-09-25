@@ -94,6 +94,9 @@ function buildScenarioWeighting(args: {
   };
 }
 
+/** Below this NOA / CSE, forecast NFO is held in ₹ rather than as a ratio to CSE. */
+export const MIN_NOA_TO_CSE_FOR_HELD_LEVERAGE = 0.25;
+
 export function buildPersistenceForecastScenarioSet(params: {
   periods?: RecastPeriod[] | undefined;
   latest: RecastPeriod;
@@ -165,6 +168,28 @@ export function derivePersistenceForecastScenario(params: {
   const nbcBase = Math.abs(latest.bs.NFO) > 1
     ? Math.min(Math.max(latest.is.NFE / latest.bs.NFO, 0), 0.2)
     : 0;
+  // Minority interest: the minority holds MI0/CSE0 of the group's equity and
+  // takes its share of group income after financing. The share is measured on
+  // income over the last three years (UltraTech is most of Grasim's profit but
+  // not of its book), falling back to the book share when group income over
+  // that window is not positive.
+  const miRatio = latest.bs.CSE > 0 ? clamp(Math.max(latest.bs.MI, 0) / latest.bs.CSE, 0, 5) : 0;
+  const recent = history.slice(-3);
+  const groupIncome = recent.reduce((sum, p) => sum + p.is.CNI + p.is.MII, 0);
+  const minorityIncome = recent.reduce((sum, p) => sum + p.is.MII, 0);
+  const miiShare = miRatio === 0
+    ? 0
+    : groupIncome > 0
+      ? clamp(minorityIncome / groupIncome, 0, 0.95)
+      : miRatio / (1 + miRatio);
+  // Held leverage (NFO = flev × CSE) is ill-conditioned when operating assets
+  // are small against equity — net cash ≈ equity, NOA ≈ 0 (HUL before FY21:
+  // NOA −1,356 against CSE 7,867). CSE_f = NOA_f / (1 + flev + mi) then divides
+  // by ~0 and forecast equity, cash and its interest explode (+229 ROE points
+  // at one walk-forward origin). There, hold net financial obligations at the
+  // anchor's ₹ level instead.
+  const noaToEquity = latest.bs.CSE > 0 ? latest.bs.NOA / latest.bs.CSE : null;
+  const holdNfo = noaToEquity != null && noaToEquity < MIN_NOA_TO_CSE_FOR_HELD_LEVERAGE;
   const terminalAnchorSource = driverPlan.companyEvidenceWeight >= 0.65
     ? "company-evidence"
     : driverPlan.companyEvidenceWeight >= 0.45
@@ -245,6 +270,9 @@ export function derivePersistenceForecastScenario(params: {
       ato: makeFadeArray(driverPlan.year1.ato, driverPlan.fade.atoAlpha, driverPlan.targets.ato, horizon),
       flev: Array(horizon).fill(flevBase),
       nbc: Array(horizon).fill(nbcBase),
+      mi_ratio: Array(horizon).fill(miRatio),
+      mii_share: Array(horizon).fill(miiShare),
+      ...(holdNfo ? { nfo_level: Array(horizon).fill(latest.bs.NFO) } : {}),
       g_terminal: preset.terminalGrowth,
       ke: preset.ke,
       kw: preset.kw,
@@ -263,6 +291,9 @@ export function buildForecastPeriod(
     ato: number;
     flev: number;
     nbc: number;
+    mi_ratio?: number | null | undefined;
+    mii_share?: number | null | undefined;
+    nfo_level?: number | null | undefined;
     material_cost_ratio?: number | null | undefined;
     employee_cost_ratio?: number | null | undefined;
     depreciation_ratio?: number | null | undefined;
@@ -305,10 +336,21 @@ export function buildForecastPeriod(
   const effectiveCorePm = CoreOI_bridge_f != null && Sales_f !== 0 ? CoreOI_bridge_f / Sales_f : drivers.core_sales_pm;
   const OI_f    = effectiveCorePm * Sales_f;
   const FCF_f   = OI_f - ΔNOA_f;
-  const CSE_f   = drivers.flev > -1 ? NOA_f / (1 + drivers.flev) : NOA_f;
-  const NFO_f   = NOA_f - CSE_f;
+  // NOA = CSE + NFO + MI, with MI = mi_ratio × CSE. NFO is either held as a
+  // ratio to CSE (flev) or, where that is ill-conditioned, at a ₹ level.
+  const miRatio = drivers.mi_ratio ?? 0;
+  const equityFromLevel = drivers.nfo_level != null ? (NOA_f - drivers.nfo_level) / (1 + miRatio) : null;
+  const leverageDenominator = 1 + drivers.flev + miRatio;
+  const CSE_f   = equityFromLevel != null && equityFromLevel > 0
+    ? equityFromLevel
+    : leverageDenominator > 0 ? NOA_f / leverageDenominator : NOA_f;
+  const MI_f    = miRatio * CSE_f;
+  const NFO_f   = NOA_f - CSE_f - MI_f;
   const NFE_f   = drivers.nbc * (prevForecast.NFO_f + NFO_f) / 2;
-  const CNI_f   = OI_f - NFE_f;
+  // OI is the group's (NOA carries every subsidiary in full); the minority's
+  // share of income after financing comes out before common earnings.
+  const MII_f   = (drivers.mii_share ?? 0) * (OI_f - NFE_f);
+  const CNI_f   = OI_f - NFE_f - MII_f;
   const RE_f    = CNI_f - ke * prevForecast.CSE_f;
   const ReOI_f  = OI_f - kw * prevForecast.NOA_f;
 
@@ -321,6 +363,7 @@ export function buildForecastPeriod(
     flev_assumption: drivers.flev,
     nbc_assumption: drivers.nbc,
     Sales_f, NOA_f, OI_f, NFE_f, CNI_f, CSE_f, NFO_f, ΔNOA_f, FCF_f, RE_f, ReOI_f,
+    MI_f, MII_f,
     source,
     bridge_mode: hasCostBridge ? "cost_bridge" : "margin",
     material_cost_ratio_assumption: drivers.material_cost_ratio ?? null,
@@ -393,6 +436,9 @@ export function buildScenario(
         ato: pickDriverValue("ato", d.ato, idx),
         flev: pickDriverValue("flev", d.flev, idx),
         nbc: pickDriverValue("nbc", d.nbc, idx),
+        mi_ratio: pickOptionalDriverValue(d.mi_ratio, idx),
+        mii_share: pickOptionalDriverValue(d.mii_share, idx),
+        nfo_level: pickOptionalDriverValue(d.nfo_level, idx),
         material_cost_ratio: pickOptionalDriverValue(d.material_cost_ratio, idx),
         employee_cost_ratio: pickOptionalDriverValue(d.employee_cost_ratio, idx),
         depreciation_ratio: pickOptionalDriverValue(d.depreciation_ratio, idx),
@@ -439,8 +485,8 @@ export function buildValuationPeriodsFromForecast(
       bs: Object.freeze({
         CSE: forecast.CSE_f,
         NOA: forecast.NOA_f,
-        NFO: forecast.NOA_f - forecast.CSE_f - latestPeriod.bs.MI,
-        MI: latestPeriod.bs.MI,
+        NFO: forecast.NOA_f - forecast.CSE_f - (forecast.MI_f ?? latestPeriod.bs.MI),
+        MI: forecast.MI_f ?? latestPeriod.bs.MI,
         separationScore: latestPeriod.bs.separationScore,
       }),
       is: Object.freeze({ CNI: forecast.CNI_f, OI: forecast.OI_f }),

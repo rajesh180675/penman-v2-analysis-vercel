@@ -8,19 +8,20 @@ import { DEFAULT_CONFIG, RecastPeriod } from "../../types";
  * The clean-surplus identity is ΔCommonEquity = CI − Dividends + NetIssuance.
  * `commonEquity` is recast CSE, which EXCLUDES minority interest
  * (CSE = totalSE − MI). The comprehensive-income basis must therefore be
- * parent-attributable too. Group TCI includes the NCI share, so the basis is
- * `TCI − TCI_NCI`. Feeding raw group TCI makes every period's residual absorb
- * the minority's CI and flags a phantom dirty-surplus for any firm with
- * non-wholly-owned subsidiaries.
+ * parent-attributable too: recast CNI. Capitaline's TCI line is already the
+ * owners' share and its NCI line is a signed deduction (negative when the
+ * minority shares a profit), so `TCI − TCI_NCI` is GROUP income. Feeding group
+ * income makes every period's residual absorb the minority's CI and flags a
+ * phantom dirty-surplus for any firm with non-wholly-owned subsidiaries.
  *
  * Triangulated so it proves the fix is LIVE rather than merely green:
  *   - Run A: no minority (TCI_NCI = 0).
- *   - Run B: identical parent economics, but group TCI inflated by a large NCI
- *     share with TCI_NCI set to match.
+ *   - Run B: identical parent economics, plus a large minority share recorded
+ *     the way Capitaline records it (TCI_NCI = −share).
  * Under the parent basis both runs see the same parent CI, so the verdict and
- * residual must be identical and clean. If the basis were raw TCI, Run B's
- * inflated income would force a material-dirty verdict — the equivalence below
- * can only hold if NCI is stripped.
+ * residual must be identical and clean. If the basis were group income
+ * (TCI − TCI_NCI), Run B's inflated income would force a material-dirty
+ * verdict — the equivalence below can only hold on the parent basis.
  */
 
 function mkCleanSurplusPeriod(args: {
@@ -28,7 +29,7 @@ function mkCleanSurplusPeriod(args: {
   cse: number;
   parentCI: number;
   dividends: number; // positive magnitude paid
-  nciShare: number; // minority's share folded into group TCI
+  nciShare: number; // minority's share of group comprehensive income
 }): RecastPeriod {
   const { year, cse, parentCI, dividends, nciShare } = args;
   return {
@@ -42,10 +43,12 @@ function mkCleanSurplusPeriod(args: {
     is: {
       Sales: 1000,
       COGS: 580,
-      // Group TCI carries the minority's share; TCI_NCI records it so the
-      // parent basis (TCI − TCI_NCI) recovers parentCI exactly.
-      TCI: parentCI + nciShare,
-      TCI_NCI: nciShare,
+      // Capitaline convention: TCI is the owners' share; the minority's share
+      // is a signed deduction from group income. Recast CNI = TCI.
+      TCI: parentCI,
+      TCI_NCI: -nciShare,
+      CNI: parentCI,
+      PreferredDividend: 0,
     },
     cf: {
       DividendPaid: -dividends, // builder takes Math.abs
@@ -78,7 +81,7 @@ describe("clean-surplus charges comprehensive income on the parent (ex-NCI) basi
     // Parent series reconciles exactly → clean in both runs.
     expect(withoutNci.cleanSurplusResult!.overall).toBe("clean");
     // The load-bearing assertion: a huge minority share does NOT corrupt the
-    // verdict. Raw group TCI would make this material-dirty.
+    // verdict. Group income (TCI − TCI_NCI) would make this material-dirty.
     expect(withNci.cleanSurplusResult!.overall).toBe("clean");
 
     // Equivalence: stripping NCI makes the two runs numerically identical.

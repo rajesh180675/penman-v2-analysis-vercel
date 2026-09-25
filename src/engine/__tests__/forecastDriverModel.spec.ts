@@ -128,3 +128,26 @@ describe("buildDriverForecastModel", () => {
     expect(plan.narrative.some((item) => item.toLowerCase().includes("working-capital"))).toBe(true);
   });
 });
+
+describe("buildDriverForecastModel — loss-makers", () => {
+  it("starts a loss-maker's base margin from its losses, not a +4% floor", () => {
+    // Paytm-shaped: core margin −25% for four years. The old floor forecast a
+    // 4% profit in year 1 (+29pp of sales above the evidence).
+    const data = ["2021", "2022", "2023", "2024"].map((y) =>
+      mkPeriod(`${y}-03-31`, { CoreSalesPM: -0.25, PM: -0.25, Sales_growth: 0.2 }));
+    const plan = buildDriverForecastModel({
+      data,
+      latest: data[data.length - 1],
+      businessModel: buildBusinessModelProfile(data),
+      normalized: buildCyclicalNormalization(data),
+      scenarioKey: "base",
+      template: {
+        normalizedGrowth: 0.09, terminalGrowthFloor: 0.03, terminalGrowthCap: 0.05,
+        growthFadeAlpha: 0.8, marginFadeAlpha: 0.9, atoFadeAlpha: 0.95, companyEvidenceMaxWeight: 0.8,
+        growthGuardrailBand: 0.035, marginGuardrailBand: 0.04, atoGuardrailBand: 0.4,
+      },
+    } as never);
+    expect(plan.year1.coreMargin).toBeLessThan(0);
+  });
+});
+

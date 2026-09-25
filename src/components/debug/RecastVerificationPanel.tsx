@@ -77,22 +77,16 @@ export function RecastVerificationPanel({
         const nfo_check = Math.abs(bs.NFO - (bs.FO - bs.FA));
         const equity_diff = Math.abs((bs.CSE + bs.MI) - (bs.NOA - bs.NFO));
 
-        // OI identity: OI = CNI + NFE + MII
-        // MII = TCI_NCI (shown implicitly as TCI_group - TCI_owners)
-        // OI_computed = CNI + NFE (MII already included in CNI computation for standalone)
-        const MII_est = is.TCI > 0
-          ? Math.max(0, is.TCI - is.CNI - (is.FinanceCost > 0 ? 0 : 0)) // rough
-          : 0;
+        // OI identity: OI = CNI + NFE + MII, MII = the minority's share of
+        // comprehensive income (recast: −TCI_NCI, Capitaline's signed deduction).
+        const MII_est = is.MII;
         const oi_from_cni_nfe = is.CNI + is.NFE;
         const oi_from_cni_nfe_mii = oi_from_cni_nfe + MII_est;
         const oi_diff_no_mii = Math.abs(oi_from_cni_nfe - is.OI);
         const oi_diff_with_mii = Math.abs(oi_from_cni_nfe_mii - is.OI);
         const oi_ok = oi_diff_no_mii < 5 || oi_diff_with_mii < 5;
 
-        // Compute MII as TCI - CNI - OI (approximate from stored values)
-        const mii_approx = is.TCI !== 0
-          ? is.TCI - (is.CNI + (is.PreferredDividend ?? 0)) - is.NFE - is.OI
-          : 0;
+        const mii_approx = MII_est;
 
         return (
           <div className="font-mono text-xs bg-slate-900 text-slate-100 p-4 rounded-lg space-y-2">
@@ -145,14 +139,14 @@ export function RecastVerificationPanel({
                 <span className="text-slate-400">
                   For consolidated companies, MII = NCI's comprehensive income share.
                   The diff equals the NCI P&L line in the Capitaline P&L export.
-                  CNI is correctly computed as TCI_group − TCI_NCI.
+                  CNI is the owners' TCI (Capitaline's TCI line); MII = −TCI_NCI.
                 </span>
               </div>
             )}
 
             <div className="text-slate-400 pt-2 border-t border-slate-700 space-y-0.5">
               <div>Eff. Tax Rate ≈ {PBTStr(is)} | Finance Income (est.): {is.FinanceIncome.toLocaleString("en-IN", { maximumFractionDigits: 2 })} | Finance Cost: {is.FinanceCost.toLocaleString("en-IN", { maximumFractionDigits: 2 })} | NFE: {is.NFE.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</div>
-              <div>OI: {is.OI.toLocaleString("en-IN", { maximumFractionDigits: 2 })} | CNI: {is.CNI.toLocaleString("en-IN", { maximumFractionDigits: 2 })} | TCI group: {is.TCI.toLocaleString("en-IN", { maximumFractionDigits: 2 })} | OCI: {is.OCI.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</div>
+              <div>OI: {is.OI.toLocaleString("en-IN", { maximumFractionDigits: 2 })} | CNI: {is.CNI.toLocaleString("en-IN", { maximumFractionDigits: 2 })} | TCI (owners): {is.TCI.toLocaleString("en-IN", { maximumFractionDigits: 2 })} | OCI: {is.OCI.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</div>
             </div>
           </div>
         );

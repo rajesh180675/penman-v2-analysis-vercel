@@ -202,8 +202,16 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   const TCI = pl("IS.TCI", M.profitLoss.tciGroup);
   const TCI_NCI = pl("IS.TCI_NCI", M.profitLoss.tciNci);
   const PreferredDividend = pl("IS.PreferredDividend", M.profitLoss.preferredDividend);
-  const CNI = (TCI !== 0 ? (TCI - TCI_NCI) : (PAT + OCI)) - PreferredDividend;
-  pushTrace(trace, "IS.CNI", { statement: "Derived", key: "TCI-TCI_NCI-PrefDiv or PAT+OCI-PrefDiv", value: CNI, matchType: "derived" });
+  // Capitaline convention, verified against as-filed XBRL (L&T FY23: owners'
+  // TCI ₹9,716 Cr, NCI share ₹1,856 Cr): "Total Comprehensive Income for the
+  // Year" is ALREADY the owners' share, and "Non-Controlling Interests" is the
+  // minority's share as a SIGNED DEDUCTION from group income — negative when
+  // minorities share a profit, positive when they absorb a loss (group TCI =
+  // TCI − TCI_NCI). Treating TCI as group and TCI_NCI as a positive share
+  // added the minority's income back into CNI (Grasim FY25: ₹8,181 Cr against
+  // ₹3,811 Cr owners') and took it out of OI.
+  const CNI = (TCI !== 0 ? TCI : (PAT + OCI + TCI_NCI)) - PreferredDividend;
+  pushTrace(trace, "IS.CNI", { statement: "Derived", key: "TCI(owners)-PrefDiv or PAT+OCI+TCI_NCI-PrefDiv", value: CNI, matchType: "derived" });
 
   const financeCostTop = pl("IS.FinanceCost.Top", M.profitLoss.financeCostTop);
   const FinanceCost = financeCostTop || sumPLWithTrace(data, M.profitLoss.financeCostGranular, "IS.FinanceCost.Granular", trace);
@@ -233,7 +241,10 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   const UFE = -valCF(data, M.cashFlow.plSaleInvest) * (1 - taxRate);
   const CoreNFE = (FinanceCost - FinanceIncome) * (1 - taxRate) + PreferredDividend;
   const NFE = CoreNFE + UFE;
-  const MII = TCI_NCI;
+  // Minority interest in income: the minority's share, positive when it
+  // shares a profit (the sign flip of Capitaline's deduction line). OI is then
+  // the whole group's, matching NOA, which carries every subsidiary in full.
+  const MII = -TCI_NCI;
   const OI = CNI + NFE + MII;
   pushTrace(trace, "IS.OI", { statement: "Derived", key: "(TCI or PAT+OCI)-PrefDiv+NFE", value: OI, matchType: "derived" });
 
