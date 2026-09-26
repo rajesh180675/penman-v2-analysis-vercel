@@ -20,8 +20,7 @@ import {
   clamp,
   annualizedReturn,
   marginOfSafety,
-  computeScenarioIntrinsicPerShare,
-  normalizeScenarioCards,
+  primaryValuationPerShare,
 } from "./helpers";
 
 export function buildSotpAssessment(
@@ -205,7 +204,11 @@ export function buildScenarioCards(args: {
       shareBasis.valuationConfig,
     );
     const ownerDcf = computeOwnerEarningsDcf(diagnostics.ownerEarningsPerShare, scenarioWithTerminal.drivers.sales_growth, scenarioWithTerminal.drivers.ke, terminalGrowth);
-    const intrinsicPerShare = computeScenarioIntrinsicPerShare(valuation, ownerDcf);
+    // The headline is the RE/ReOI median (AFES round-one, eec49c26): the
+    // owner-earnings DCF is reported beside it as a cross-check, not blended
+    // in. It used to be blended here and then overwritten by a normalization
+    // pass, so a value was computed that no reader ever saw.
+    const intrinsicPerShare = primaryValuationPerShare(valuation);
     const marginOfSafetyPct = marginOfSafety(intrinsicPerShare, marketPrice);
     return {
       key,
@@ -273,12 +276,12 @@ export function buildScenarioCards(args: {
     }),
   };
 
-  const scenarios: ValuationScenarioCard[] = normalizeScenarioCards([
+  const scenarios: ValuationScenarioCard[] = [
     makeScenario("stress", derivedScenarios.stress, 1.15),
     makeScenario("base", derivedScenarios.base, 1),
     makeScenario("bull", derivedScenarios.bull, 0.9),
     makeScenario("historical-panic", derivedScenarios.historicalPanic, 1.2),
-  ], marketPrice);
+  ];
 
   return { scenarios, derivedScenarios };
 }

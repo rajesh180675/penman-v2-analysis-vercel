@@ -50,17 +50,6 @@ export function scoreFromRange(value: number, min: number, max: number) {
 
 
 
-export function computeScenarioIntrinsicPerShare(valuation: ValuationResult, ownerEarningsDcf: number | null) {
-  const accrualFamilyValue = median([
-    valuation.perShare?.intrinsic_re_per_share ?? null,
-    valuation.perShare?.intrinsic_reoi_per_share ?? null,
-  ]);
-  return median([
-    accrualFamilyValue,
-    ownerEarningsDcf,
-  ]);
-}
-
 export function computeCrossCheckSpread(valuation: ValuationResult) {
   const primaryValues = [
     valuation.perShare?.intrinsic_re_per_share ?? null,
@@ -145,21 +134,6 @@ export function crossCheckGuardSummary() {
 export function deriveBaseGrowthPath(card: ValuationScenarioCard | null, fallback: number) {
   if (card?.scenario.drivers.sales_growth?.length) return card.scenario.drivers.sales_growth;
   return Array.from({ length: 5 }, () => fallback);
-}
-
-export function applyPrimaryScenarioMetrics(card: ValuationScenarioCard, marketPrice: number | null) {
-  const primaryValue = primaryValuationPerShare(card.valuation);
-  return {
-    ...card,
-    intrinsicPerShare: primaryValue,
-    upsidePct: primaryValue != null && marketPrice != null && marketPrice > 0 ? (primaryValue - marketPrice) / marketPrice : null,
-    marginOfSafetyPct: marginOfSafety(primaryValue, marketPrice),
-    expectedCagr: annualizedReturn(marketPrice, primaryValue, 3),
-  } satisfies ValuationScenarioCard;
-}
-
-export function normalizeScenarioCards(cards: ValuationScenarioCard[], marketPrice: number | null) {
-  return cards.map((card) => applyPrimaryScenarioMetrics(card, marketPrice));
 }
 
 export function buildReverseDcfExpectation(args: {
