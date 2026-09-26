@@ -44,7 +44,7 @@
 | `industrial.penman.residual-operating-income` | production | intrinsic | industrial, telecom, utility | accrual-residual-income | wired | `src/engine/PenmanNissimEngine.ts#computeValuation:V_ReOI_CV03` |
 | `industrial.reverse-dcf` | production | market-implied | industrial, telecom, utility | market-price | wired | `src/engine/reverseDCF.ts#computeReverseDCF` |
 | `industrial.reverse-dcf-monte-carlo` | production | market-implied | industrial, telecom, utility | market-price | wired | `src/engine/valuation/reverseDcfMonteCarlo.ts#runReverseDcfMonteCarlo` |
-| `industrial.scenario-headline` | production | aggregator | industrial, telecom, utility | aggregation | wired | `src/engine/valuationCommandCenter/helpers.ts#computeScenarioIntrinsicPerShare` |
+| `industrial.scenario-headline` | production | aggregator | industrial, telecom, utility | aggregation | wired | `src/engine/valuationCommandCenter/helpers.ts#primaryValuationPerShare` |
 | `industrial.segment-sotp` | production | intrinsic | industrial, telecom, utility | segment-sotp | wired | `src/engine/sotpValuation.ts#buildSOTPValuation` |
 | `industrial.self-consistent-reoi-fade` | experimental | intrinsic | industrial, telecom, utility | operating-fade | wired | `src/engine/selfConsistentValuation/model.ts#computeSelfConsistentValuation` |
 | `industrial.working-capital-gate` | production | diagnostic | industrial, telecom, utility | operational-driver | wired | `src/engine/valuation/workingCapitalGate.ts#evaluateWorkingCapitalGate` |

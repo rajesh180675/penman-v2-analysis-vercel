@@ -6,8 +6,8 @@
  * the whole sales-growth or core-margin path, or a different cost of equity
  * (with kw following structurally, S-9.4C). The base card is re-valued along
  * EXACTLY the path behind the value it displays — buildScenarioCards' forecast
- * and valuation, then normalizeScenarioCards' primary per-share value (the
- * RE/ReOI median; the owner-earnings DCF is not part of the displayed value) —
+ * and valuation, then primaryValuationPerShare (the RE/ReOI median; the
+ * owner-earnings DCF is not part of the displayed value) —
  * so with no shift this reproduces the card's intrinsic value, which the tests
  * pin.
  */

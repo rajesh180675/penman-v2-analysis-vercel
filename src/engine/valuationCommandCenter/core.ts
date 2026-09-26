@@ -562,6 +562,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     marketPrice,
     asOf: marketData?.priceAsOf ?? marketData?.fetchedAt ?? null,
     reverseDcf,
+    operatingCapitalCharge: kwBase,
   });
   const evEbitdaPerShare = evEbitdaWithMarket.equityFromMedian != null && shares != null && shares > 0
     ? evEbitdaWithMarket.equityFromMedian / shares

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ValuationResult } from "../../types";
-import { computeScenarioIntrinsicPerShare } from "../helpers";
+import { primaryValuationPerShare } from "../helpers";
 
 function valuationWithAccrualValues(re: number | null, reoi: number | null): ValuationResult {
   return {
@@ -11,34 +11,27 @@ function valuationWithAccrualValues(re: number | null, reoi: number | null): Val
   } as ValuationResult;
 }
 
-describe("computeScenarioIntrinsicPerShare", () => {
-  it("collapses correlated RE/ReOI values before combining independent evidence", () => {
-    const value = computeScenarioIntrinsicPerShare(
-      valuationWithAccrualValues(80, 120),
-      300,
-    );
-
-    // Accrual family center = 100; equal family vote with owner DCF = 200.
-    // A flat median of [80, 120, 300] would incorrectly return 120.
-    expect(value).toBe(200);
+/**
+ * The scenario headline (the "industrial.scenario-headline" catalog model) is
+ * the RE/ReOI median. The owner-earnings and cash-flow DCFs are cross-checks
+ * reported beside it, not blended in (AFES round-one, eec49c26) — so the
+ * function takes no owner-earnings argument at all.
+ */
+describe("primaryValuationPerShare", () => {
+  it("is the median of the RE and ReOI per-share values", () => {
+    expect(primaryValuationPerShare(valuationWithAccrualValues(80, 120))).toBe(100);
   });
 
-  it("does not change the accrual family's vote when RE/ReOI disperse symmetrically", () => {
-    const agreed = computeScenarioIntrinsicPerShare(
-      valuationWithAccrualValues(100, 100),
-      300,
-    );
-    const dispersed = computeScenarioIntrinsicPerShare(
-      valuationWithAccrualValues(60, 140),
-      300,
-    );
-
-    expect(agreed).toBe(200);
-    expect(dispersed).toBe(agreed);
+  it("uses the one available accrual value", () => {
+    expect(primaryValuationPerShare(valuationWithAccrualValues(90, null))).toBe(90);
+    expect(primaryValuationPerShare(valuationWithAccrualValues(null, 110))).toBe(110);
   });
 
-  it("uses the available family without manufacturing a second vote", () => {
-    expect(computeScenarioIntrinsicPerShare(valuationWithAccrualValues(90, 110), null)).toBe(100);
-    expect(computeScenarioIntrinsicPerShare(valuationWithAccrualValues(null, null), 250)).toBe(250);
+  it("is null when neither accrual value exists, rather than borrowing another family's", () => {
+    expect(primaryValuationPerShare(valuationWithAccrualValues(null, null))).toBeNull();
+  });
+
+  it("takes only the valuation — no owner-earnings value can enter the headline", () => {
+    expect(primaryValuationPerShare.length).toBe(1);
   });
 });

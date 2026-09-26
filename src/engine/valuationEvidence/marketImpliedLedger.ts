@@ -49,6 +49,13 @@ export function buildMarketImpliedExpectationLedger(args: {
   marketPrice: number | null;
   asOf: string | null;
   reverseDcf: ReverseDcfDiagnostics | null | undefined;
+  /**
+   * kw, the operating capital charge — what an implied terminal ROIC is judged
+   * against. It used to be compared with the normalized GROWTH anchor, so an
+   * ordinary 20% terminal return against 8% growth read as "optimistic" for
+   * nearly every company. Null leaves the row without an anchor.
+   */
+  operatingCapitalCharge?: number | null | undefined;
 }): MarketImpliedExpectationLedger {
   const reverseDcf = args.reverseDcf ?? null;
   const rows: MarketImpliedExpectationRow[] = reverseDcf
@@ -63,7 +70,7 @@ export function buildMarketImpliedExpectationLedger(args: {
         key: "implied_terminal_roic",
         value: reverseDcf.impliedTerminalROIC,
         cap: IMPLIED_TERMINAL_ROIC_CAP,
-        comparisonAnchor: reverseDcf.normalizedGrowthAnchor,
+        comparisonAnchor: finiteOrNull(args.operatingCapitalCharge),
       }),
       row({
         key: "implied_ke",

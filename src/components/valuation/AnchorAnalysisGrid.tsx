@@ -105,7 +105,7 @@ export default function AnchorAnalysisGrid({
         if (!baseValue || !shares || shares <= 0) return null;
 
         // `baseValue` is `intrinsicPerShare`, a median of bare equity/shares
-        // quotients (computeScenarioIntrinsicPerShare in
+        // quotients (primaryValuationPerShare in
         // valuationCommandCenter/helpers.ts, over the per-share values built at
         // PenmanNissimEngine.ts:313). The drivers are differenced against it in
         // ForecastTornado (:42-43), so they have to be on that same ₹/share
