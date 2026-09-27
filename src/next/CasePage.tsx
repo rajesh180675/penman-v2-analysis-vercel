@@ -1,7 +1,7 @@
 import { EmptyState } from "../components/shared/EmptyState";
 import type { LibraryCompany } from "../components/data-entry/companyRegistry";
 import type { CompanyRunState } from "./companyRun";
-import type { TieOutCompany, TrackRecordFile } from "./hooks";
+import { latestSnapshotFor, type FrozenSnapshot, type TieOutCompany, type TrackRecordFile } from "./hooks";
 import { CASE_SECTIONS, formatRoute, LIBRARY, type CaseRoute, type CaseSection } from "./route";
 import type { RecastPeriod } from "../engine/types";
 import { EconomicsSection } from "./sections/EconomicsSection";
@@ -18,6 +18,7 @@ export function CasePage({
   company,
   run,
   trackRecords = null,
+  snapshots = null,
   tieOut = null,
   peers = [],
   peerRuns = null,
@@ -27,6 +28,8 @@ export function CasePage({
   company: LibraryCompany | null;
   run: CompanyRunState | null;
   trackRecords?: TrackRecordFile | null;
+  /** Frozen forecast snapshots; null when not loaded or unavailable. */
+  snapshots?: readonly FrozenSnapshot[] | null;
   /** The as-filed tie-out ledger; null when not loaded or unavailable. */
   tieOut?: readonly TieOutCompany[] | null;
   peers?: readonly LibraryCompany[];
@@ -76,7 +79,7 @@ export function CasePage({
 
       <section aria-label={section.label}>
         {run?.status === "ready"
-          ? renderSection(route.section, run.result, { asOf: route.asOf, trackRecords, tieOut, company, peers, peerRuns, onLoadPeers })
+          ? renderSection(route.section, run.result, { asOf: route.asOf, trackRecords, snapshots, tieOut, company, peers, peerRuns, onLoadPeers })
           : null}
       </section>
     </article>
@@ -89,6 +92,7 @@ function renderSection(
   context: {
     asOf: string | null;
     trackRecords: TrackRecordFile | null;
+    snapshots: readonly FrozenSnapshot[] | null;
     tieOut: readonly TieOutCompany[] | null;
     company: LibraryCompany;
     peers: readonly LibraryCompany[];
@@ -106,7 +110,7 @@ function renderSection(
     case "evidence":
       return <EvidenceSection result={result} tieOut={context.tieOut} ticker={context.company.ticker} />;
     case "forecast":
-      return <ForecastSection result={result} trackRecord={trackRecord} />;
+      return <ForecastSection result={result} trackRecord={trackRecord} frozen={latestSnapshotFor(context.snapshots, context.company.ticker)} />;
     case "valuation":
       return <ValuationSection result={result} />;
     case "peers":

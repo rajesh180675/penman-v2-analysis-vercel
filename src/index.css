@@ -134,6 +134,14 @@
 
 /* ═══ INSTITUTIONAL ENHANCEMENTS (plain CSS — appended after Tailwind layers) ═══ */
 
+/* Categorical chart series (dataviz reference palette, slots 1–3 — validated
+   all-pairs in both modes; slot 3 is below 3:1 on the light surface, so charts
+   using it ship a legend and a table view). Dark values are their own steps. */
+.viz-series { --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --viz-grid: #e2e8f0; --viz-ink: #52514e; --viz-surface: var(--color-surface-1); }
+.dark .viz-series { --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --viz-grid: #334155; --viz-ink: #c3c2b7; --viz-surface: var(--color-surface-1-dark); }
+/* Solid hairline grid for these charts (the global recharts rule below dashes it). */
+.viz-series .recharts-cartesian-grid-horizontal line { stroke: var(--viz-grid); stroke-dasharray: none; }
+
 /* Body gradient background */
 html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 body { background: linear-gradient(160deg, #f8fafc 0%, #eef2f7 100%); min-height: 100vh; }
