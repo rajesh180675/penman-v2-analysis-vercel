@@ -48,6 +48,11 @@ export function useRegistry(): RegistryState {
 
 const sessionRuns = new CompanyRunCache();
 
+/** Make an uploaded company's zip the source of its runs for this session. */
+export function registerUploadedCompany(company: LibraryCompany, bytes: Uint8Array, cache: CompanyRunCache = sessionRuns) {
+  cache.registerUpload(company, bytes);
+}
+
 /** The shared analysis run for one company (null while no company is selected). */
 export function useCompanyRun(company: LibraryCompany | null, asOf: string | null = null, cache: CompanyRunCache = sessionRuns): CompanyRunState | null {
   const [state, setState] = useState<CompanyRunState | null>(null);

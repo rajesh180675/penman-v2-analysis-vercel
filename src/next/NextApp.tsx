@@ -5,9 +5,10 @@
 import { useMemo, useState } from "react";
 import { findLibraryCompany } from "../components/data-entry/companyRegistry";
 import { CasePage } from "./CasePage";
-import { useCompanyRun, usePeerRuns, useRegistry, useRoute, useSnapshots, useTieOut, useTrackRecord } from "./hooks";
+import { registerUploadedCompany, useCompanyRun, usePeerRuns, useRegistry, useRoute, useSnapshots, useTieOut, useTrackRecord } from "./hooks";
 import { choosePeers } from "./sections/PeersSection";
 import { ToolsPage } from "./ToolsPage";
+import type { UploadedCompany } from "./UploadPanel";
 import { LibraryPage } from "./LibraryPage";
 import { formatRoute, LIBRARY, type Route } from "./route";
 
@@ -19,19 +20,30 @@ const SPACES: { space: Route["space"]; label: string; href: string }[] = [
 ];
 
 export function NextApp() {
-  const [route] = useRoute();
+  const [route, navigate] = useRoute();
   const registry = useRegistry();
-  const company = useMemo(
-    () => route.space === "case" && registry.status === "ready" ? findLibraryCompany(registry.companies, route.company) : null,
-    [route, registry],
+  const [uploaded, setUploaded] = useState<readonly UploadedCompany[]>([]);
+  // Library companies and this session's uploads, one list for lookup and peers.
+  const companies = useMemo(
+    () => (registry.status === "ready" ? [...registry.companies, ...uploaded.map((u) => u.company)] : []),
+    [registry, uploaded],
   );
+  const company = useMemo(
+    () => (route.space === "case" && registry.status === "ready" ? findLibraryCompany(companies, route.company) : null),
+    [route, registry, companies],
+  );
+  const onUpload = (upload: UploadedCompany) => {
+    registerUploadedCompany(upload.company, upload.bytes);
+    setUploaded((prev) => [...prev.filter((u) => u.company.folder !== upload.company.folder), upload]);
+    navigate({ space: "case", company: upload.company.ticker, section: "verdict", asOf: null, scenario: "base" });
+  };
   const run = useCompanyRun(company, route.space === "case" ? route.asOf : null);
   const trackRecords = useTrackRecord();
   const snapshots = useSnapshots();
   const tieOut = useTieOut();
   const peers = useMemo(
-    () => (company && registry.status === "ready" ? choosePeers(company, registry.companies) : []),
-    [company, registry],
+    () => (company && registry.status === "ready" ? choosePeers(company, companies) : []),
+    [company, registry, companies],
   );
   const [peersRequestedFor, setPeersRequestedFor] = useState<string | null>(null);
   const peerRuns = usePeerRuns(peers, company != null && peersRequestedFor === company.folder);
@@ -69,7 +81,7 @@ export function NextApp() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-6">
-        {route.space === "library" && <LibraryPage registry={registry} />}
+        {route.space === "library" && <LibraryPage registry={registry} uploaded={uploaded} onUpload={onUpload} />}
         {route.space === "case" && (
           registry.status === "ready"
             ? (
