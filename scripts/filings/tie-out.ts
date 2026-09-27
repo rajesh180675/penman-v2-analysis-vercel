@@ -5,9 +5,11 @@
  *
  *   npx tsx scripts/filings/tie-out.ts
  *
- * Writes data/filings/tie-out.json and docs/generated/source-tieout.md.
+ * Writes data/filings/tie-out.json, its browser copy
+ * public/data/filings/tie-out.json (read by the Case's Evidence section), and
+ * docs/generated/source-tieout.md.
  */
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseCapitalineZip } from "../../src/engine/capitalineParser";
@@ -33,6 +35,9 @@ for (const symbol of readdirSync(FILINGS).filter((d) => existsSync(join(FILINGS,
 }
 
 writeFileSync(join(FILINGS, "tie-out.json"), JSON.stringify(results, null, 1) + "\n");
+// The browser copy, read by the Case's Evidence section.
+mkdirSync(join(ROOT, "public", "data", "filings"), { recursive: true });
+writeFileSync(join(ROOT, "public", "data", "filings", "tie-out.json"), JSON.stringify(results, null, 1) + "\n");
 
 const all = results.flatMap((r) => r.rows.map((row) => ({ ...row, symbol: r.symbol })));
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
