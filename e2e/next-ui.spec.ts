@@ -64,6 +64,23 @@ test.describe("Next UI", () => {
     expect(errors).toEqual([]);
   });
 
+  test("uploads a Capitaline export and analyses it in its own Case", async ({ page }) => {
+    test.setTimeout(240_000);
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "Upload a Capitaline export" })).toBeVisible({ timeout: 60_000 });
+    await page.getByLabel("Capitaline export (.zip)").setInputFiles("public/data/companies/Tata Consultancy Services Ltd/Tata Consultancy Services Ltd.zip");
+    await page.getByLabel("Company name").fill("TCS (my upload)");
+    await page.getByLabel("Ticker").fill("MYTCS");
+    await page.getByLabel("Company type").selectOption("it-services");
+    await page.getByRole("button", { name: "Analyse" }).click();
+    await expect(page).toHaveURL(/#\/case\/MYTCS\/verdict$/);
+    await expect(page.getByRole("heading", { name: /TCS \(my upload\)/ })).toBeVisible();
+    await expect(page.getByText(/Rigor: /)).toBeVisible({ timeout: 180_000 });
+    expect(errors).toEqual([]);
+  });
+
   test("keeps the classic interface at ?ui=classic, linked from the new UI", async ({ page }) => {
     await page.goto("/?ui=classic", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: /Company Library/i })).toBeVisible({ timeout: 60_000 });

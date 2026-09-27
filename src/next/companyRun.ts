@@ -77,10 +77,12 @@ export async function loadCompanyRun(
   onStep: (step: "fetching" | "parsing" | "analysing") => void = () => {},
   deps: CompanyRunDependencies = defaultDependencies,
   asOf: string | null = null,
+  /** The company's zip, when the reader uploaded it; otherwise it is fetched from the library. */
+  uploaded: Uint8Array | null = null,
 ): Promise<Exclude<CompanyRunState, { status: "loading" }>> {
   try {
     onStep("fetching");
-    const bytes = await deps.fetchZip(buildLocalLibraryCompanyUrls(company).consolidated);
+    const bytes = uploaded ?? await deps.fetchZip(buildLocalLibraryCompanyUrls(company).consolidated);
     onStep("parsing");
     const issuerId = company.ticker.toUpperCase();
     const config = configForCompany(company);
@@ -123,14 +125,24 @@ export async function loadCompanyRun(
 /** One in-flight or settled run per company and as-of date for the session. */
 export class CompanyRunCache {
   private readonly runs = new Map<string, Promise<Exclude<CompanyRunState, { status: "loading" }>>>();
+  private readonly uploads = new Map<string, Uint8Array>();
 
   constructor(private readonly deps: CompanyRunDependencies = defaultDependencies) {}
+
+  /**
+   * Hold a reader-uploaded zip for a company. Runs of that company then read
+   * these bytes instead of the library, and any earlier run of it is dropped.
+   */
+  registerUpload(company: LibraryCompany, bytes: Uint8Array) {
+    this.uploads.set(company.folder, bytes);
+    for (const key of [...this.runs.keys()]) if (key.startsWith(`${company.folder}|`)) this.runs.delete(key);
+  }
 
   get(company: LibraryCompany, onStep?: (step: "fetching" | "parsing" | "analysing") => void, asOf: string | null = null) {
     const key = `${company.folder}|${asOf ?? "latest"}`;
     let run = this.runs.get(key);
     if (!run) {
-      run = loadCompanyRun(company, onStep, this.deps, asOf);
+      run = loadCompanyRun(company, onStep, this.deps, asOf, this.uploads.get(company.folder) ?? null);
       this.runs.set(key, run);
       // A failure is not cached: revisiting the company retries.
       void run.then((state) => {

@@ -1,10 +1,16 @@
 import { EmptyState } from "../components/shared/EmptyState";
+import { UploadPanel, type UploadedCompany } from "./UploadPanel";
 import type { LibraryCompany } from "../components/data-entry/companyRegistry";
 import type { RegistryState } from "./hooks";
 import { classicHref, toolsIn } from "./legacyTools";
 import { caseRoute, formatRoute } from "./route";
 
-export function LibraryPage({ registry }: { registry: RegistryState }) {
+export function LibraryPage({ registry, uploaded = [], onUpload }: {
+  registry: RegistryState;
+  /** Companies the reader uploaded this session. */
+  uploaded?: readonly UploadedCompany[];
+  onUpload?: ((upload: UploadedCompany) => void) | undefined;
+}) {
   if (registry.status === "loading") {
     return <p className="text-sm text-slate-500" role="status">Loading the company library…</p>;
   }
@@ -21,6 +27,15 @@ export function LibraryPage({ registry }: { registry: RegistryState }) {
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {companies.map((company) => <LibraryCard key={company.folder} company={company} />)}
       </ul>
+      {uploaded.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Uploaded this session</h2>
+          <ul className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {uploaded.map((u) => <LibraryCard key={u.company.folder} company={u.company} />)}
+          </ul>
+        </div>
+      )}
+      {onUpload && <UploadPanel existing={[...registry.companies, ...uploaded.map((u) => u.company)]} onUpload={onUpload} />}
       <div className="border-t border-slate-200 pt-4 dark:border-slate-700">
         <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Your data and lists</h2>
         <p className="text-xs text-slate-500">These open in the classic interface until they are rebuilt here.</p>
