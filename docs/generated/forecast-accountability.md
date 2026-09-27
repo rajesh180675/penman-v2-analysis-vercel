@@ -18,15 +18,15 @@ The app's **base forecast** (the command center's persistence scenario — what 
 | Sales (log error) | t+1 | 218 | 9.9 | 7.2 | -0.1 | +24% / +29% | +23% / +11% | 66% |
 | Sales (log error) | t+2 | 195 | 16.3 | 12.5 | -1.3 | +31% / +37% | +25% / +13% | 72% |
 | Sales (log error) | t+3 | 172 | 19.5 | 14.3 | -3.8 | +43% / +51% | +27% / +26% | 81% |
-| Core OI margin (pp of sales) | t+1 | 218 | 4.2 | 1.9 | -0.0 | -24% / -6% | +14% / -9% | 52% |
-| Core OI margin (pp of sales) | t+2 | 195 | 5.2 | 2.5 | -0.1 | -4% / +21% | +50% / -3% | 57% |
-| Core OI margin (pp of sales) | t+3 | 172 | 6.2 | 3.1 | -0.1 | +1% / +24% | +61% / -2% | 66% |
-| Core RNOA (pp) | t+1 | 204 | 4.6 | 3.1 | -0.5 | +75% / -14% | +80% / +4% | 51% |
-| Core RNOA (pp) | t+2 | 181 | 8.9 | 3.7 | -5.8 | +49% / -6% | +65% / +0% | 49% |
-| Core RNOA (pp) | t+3 | 159 | 9.4 | 4.3 | -6.1 | +52% / +10% | +62% / -5% | 48% |
-| CNI (ROE pp) | t+1 | 214 | 8.1 | 4.1 | +1.4 | +6% / -26% | +18% / -30% | 50% |
-| CNI (ROE pp) | t+2 | 191 | 11.3 | 5.8 | +3.3 | +1% / -12% | +18% / -29% | 57% |
-| CNI (ROE pp) | t+3 | 168 | 13.2 | 6.2 | +3.6 | +11% / +20% | +37% / -11% | 65% |
+| Core OI margin (pp of sales) | t+1 | 218 | 3.6 | 1.8 | +0.9 | -4% / -4% | +27% / -6% | 54% |
+| Core OI margin (pp of sales) | t+2 | 195 | 4.6 | 2.5 | +1.0 | +8% / +21% | +56% / -3% | 60% |
+| Core OI margin (pp of sales) | t+3 | 172 | 5.6 | 3.1 | +1.1 | +11% / +23% | +65% / -3% | 69% |
+| Core RNOA (pp) | t+1 | 204 | 4.6 | 2.6 | -0.2 | +75% / +6% | +81% / +21% | 53% |
+| Core RNOA (pp) | t+2 | 181 | 9.0 | 3.5 | -5.7 | +49% / -3% | +65% / +4% | 48% |
+| Core RNOA (pp) | t+3 | 159 | 9.5 | 4.2 | -5.9 | +52% / +12% | +62% / -2% | 45% |
+| CNI (ROE pp) | t+1 | 214 | 7.8 | 3.5 | +1.8 | +10% / -9% | +21% / -12% | 54% |
+| CNI (ROE pp) | t+2 | 191 | 11.2 | 5.2 | +3.7 | +3% / -0% | +19% / -16% | 61% |
+| CNI (ROE pp) | t+3 | 168 | 13.1 | 5.6 | +4.1 | +12% / +27% | +38% / -1% | 68% |
 
 ## By company type
 
@@ -37,15 +37,15 @@ The app's **base forecast** (the command center's persistence scenario — what 
 | Sales (log error) | t+1 | 30 | 10.3 | 7.5 | +0.1 | +23% / +30% | +25% / +29% | 67% |
 | Sales (log error) | t+2 | 27 | 16.0 | 14.4 | -1.3 | +29% / +27% | +28% / +11% | 67% |
 | Sales (log error) | t+3 | 24 | 17.1 | 13.8 | -4.9 | +45% / +47% | +29% / +1% | 88% |
-| Core OI margin (pp of sales) | t+1 | 30 | 1.9 | 2.0 | -0.7 | +13% / -30% | +14% / -40% | 63% |
-| Core OI margin (pp of sales) | t+2 | 27 | 2.6 | 2.1 | -1.0 | +15% / +6% | +18% / +2% | 59% |
-| Core OI margin (pp of sales) | t+3 | 24 | 2.9 | 2.9 | -1.7 | +27% / +23% | +10% / -11% | 71% |
-| Core RNOA (pp) | t+1 | 30 | 2.8 | 1.9 | -0.7 | +41% / -1% | +34% / +3% | 60% |
-| Core RNOA (pp) | t+2 | 27 | 4.4 | 2.3 | -1.4 | +6% / -29% | -2% / +13% | 59% |
-| Core RNOA (pp) | t+3 | 24 | 4.8 | 2.2 | -2.7 | -0% / +25% | -8% / -37% | 50% |
-| CNI (ROE pp) | t+1 | 30 | 4.0 | 2.7 | -3.3 | +2% / +4% | -3% / -12% | 53% |
-| CNI (ROE pp) | t+2 | 27 | 4.8 | 3.3 | -4.0 | +11% / +19% | +4% / +2% | 56% |
-| CNI (ROE pp) | t+3 | 24 | 5.5 | 3.3 | -5.1 | +17% / +33% | +16% / +23% | 67% |
+| Core OI margin (pp of sales) | t+1 | 30 | 2.0 | 1.9 | -0.5 | +12% / -20% | +13% / -29% | 63% |
+| Core OI margin (pp of sales) | t+2 | 27 | 2.7 | 2.1 | -0.6 | +10% / +6% | +14% / +2% | 59% |
+| Core OI margin (pp of sales) | t+3 | 24 | 2.9 | 2.5 | -1.2 | +26% / +34% | +9% / +4% | 67% |
+| Core RNOA (pp) | t+1 | 30 | 2.8 | 2.0 | -0.3 | +40% / -10% | +33% / -5% | 57% |
+| Core RNOA (pp) | t+2 | 27 | 4.5 | 1.6 | -0.6 | +4% / +6% | -3% / +37% | 59% |
+| Core RNOA (pp) | t+3 | 24 | 4.4 | 1.8 | -1.6 | +8% / +38% | +1% / -13% | 50% |
+| CNI (ROE pp) | t+1 | 30 | 3.9 | 2.5 | -3.1 | +4% / +9% | -1% / -7% | 57% |
+| CNI (ROE pp) | t+2 | 27 | 4.7 | 3.3 | -3.7 | +13% / +19% | +6% / +2% | 56% |
+| CNI (ROE pp) | t+3 | 24 | 5.4 | 3.5 | -4.6 | +18% / +31% | +18% / +20% | 63% |
 
 ### consumer (6 companies, 59 origins)
 
@@ -88,15 +88,15 @@ The app's **base forecast** (the command center's persistence scenario — what 
 | Sales (log error) | t+1 | 30 | 9.6 | 7.2 | +0.0 | +31% / +42% | +27% / +21% | 77% |
 | Sales (log error) | t+2 | 27 | 17.9 | 14.6 | -1.4 | +29% / +36% | +31% / +4% | 74% |
 | Sales (log error) | t+3 | 24 | 25.2 | 25.0 | -3.2 | +28% / +26% | +36% / +16% | 75% |
-| Core OI margin (pp of sales) | t+1 | 30 | 3.0 | 1.7 | +1.1 | +1% / +37% | +9% / +26% | 67% |
-| Core OI margin (pp of sales) | t+2 | 27 | 4.6 | 3.2 | +1.3 | +8% / +31% | +29% / +13% | 63% |
-| Core OI margin (pp of sales) | t+3 | 24 | 6.0 | 3.3 | +1.9 | +4% / +50% | +43% / +50% | 67% |
-| Core RNOA (pp) | t+1 | 29 | 7.4 | 2.9 | +0.3 | +35% / +17% | +46% / +53% | 69% |
-| Core RNOA (pp) | t+2 | 26 | 17.4 | 5.6 | -12.4 | -6% / +14% | -14% / +7% | 42% |
-| Core RNOA (pp) | t+3 | 23 | 17.3 | 6.0 | -11.0 | -4% / +14% | -15% / +33% | 48% |
-| CNI (ROE pp) | t+1 | 30 | 5.3 | 4.7 | +1.7 | -10% / -5% | +4% / +13% | 53% |
-| CNI (ROE pp) | t+2 | 27 | 6.9 | 7.1 | +1.8 | -0% / -16% | +24% / +6% | 48% |
-| CNI (ROE pp) | t+3 | 24 | 7.8 | 7.4 | +2.3 | -6% / -12% | +32% / +30% | 50% |
+| Core OI margin (pp of sales) | t+1 | 30 | 3.4 | 1.7 | +1.5 | -14% / +37% | -4% / +26% | 60% |
+| Core OI margin (pp of sales) | t+2 | 27 | 5.5 | 3.2 | +2.3 | -10% / +31% | +15% / +13% | 59% |
+| Core OI margin (pp of sales) | t+3 | 24 | 7.5 | 3.7 | +3.5 | -20% / +44% | +29% / +45% | 67% |
+| Core RNOA (pp) | t+1 | 29 | 7.8 | 3.4 | +0.7 | +31% / +4% | +43% / +46% | 66% |
+| Core RNOA (pp) | t+2 | 26 | 17.8 | 5.4 | -11.5 | -8% / +16% | -16% / +10% | 42% |
+| Core RNOA (pp) | t+3 | 23 | 18.4 | 8.0 | -9.8 | -10% / -15% | -22% / +10% | 39% |
+| CNI (ROE pp) | t+1 | 30 | 5.7 | 4.7 | +2.0 | -17% / -5% | -2% / +13% | 53% |
+| CNI (ROE pp) | t+2 | 27 | 7.5 | 7.3 | +2.5 | -8% / -19% | +18% / +4% | 48% |
+| CNI (ROE pp) | t+3 | 24 | 8.7 | 7.9 | +3.5 | -19% / -20% | +23% / +24% | 50% |
 
 ### it-services (2 companies, 20 origins)
 
@@ -105,15 +105,15 @@ The app's **base forecast** (the command center's persistence scenario — what 
 | Sales (log error) | t+1 | 20 | 6.0 | 6.3 | +2.5 | +39% / +28% | -1% / -0% | 65% |
 | Sales (log error) | t+2 | 18 | 9.9 | 6.8 | +5.0 | +51% / +65% | -1% / +28% | 67% |
 | Sales (log error) | t+3 | 16 | 11.2 | 9.6 | +6.6 | +65% / +67% | -1% / -11% | 88% |
-| Core OI margin (pp of sales) | t+1 | 20 | 1.5 | 1.5 | +1.3 | -1% / -4% | -25% / -40% | 50% |
-| Core OI margin (pp of sales) | t+2 | 18 | 2.2 | 1.9 | +2.2 | +18% / +35% | -16% / -15% | 61% |
-| Core OI margin (pp of sales) | t+3 | 16 | 3.0 | 3.3 | +2.9 | +26% / +14% | -26% / -99% | 56% |
-| Core RNOA (pp) | t+1 | 20 | 5.3 | 5.2 | +4.4 | +21% / -14% | +30% / -12% | 55% |
-| Core RNOA (pp) | t+2 | 18 | 15.7 | 7.5 | -14.2 | -70% / -21% | -77% / -4% | 33% |
-| Core RNOA (pp) | t+3 | 16 | 16.0 | 8.9 | -15.5 | -70% / -25% | -62% / -4% | 38% |
-| CNI (ROE pp) | t+1 | 20 | 3.2 | 3.4 | +2.6 | -9% / -12% | -24% / -24% | 40% |
-| CNI (ROE pp) | t+2 | 18 | 5.1 | 3.9 | +4.9 | +6% / +37% | -33% / -39% | 56% |
-| CNI (ROE pp) | t+3 | 16 | 6.8 | 6.1 | +6.8 | +19% / +29% | -45% / -73% | 63% |
+| Core OI margin (pp of sales) | t+1 | 20 | 1.5 | 1.6 | +1.3 | -2% / -5% | -27% / -41% | 50% |
+| Core OI margin (pp of sales) | t+2 | 18 | 2.3 | 2.0 | +2.2 | +16% / +32% | -19% / -20% | 61% |
+| Core OI margin (pp of sales) | t+3 | 16 | 3.1 | 3.5 | +3.0 | +23% / +9% | -31% / -111% | 56% |
+| Core RNOA (pp) | t+1 | 20 | 5.4 | 5.2 | +4.5 | +20% / -15% | +30% / -13% | 55% |
+| Core RNOA (pp) | t+2 | 18 | 15.5 | 7.1 | -14.0 | -67% / -16% | -74% / +1% | 33% |
+| Core RNOA (pp) | t+3 | 16 | 15.6 | 8.9 | -15.1 | -66% / -25% | -58% / -4% | 38% |
+| CNI (ROE pp) | t+1 | 20 | 3.3 | 3.3 | +2.7 | -10% / -10% | -25% / -22% | 40% |
+| CNI (ROE pp) | t+2 | 18 | 5.2 | 4.1 | +5.1 | +5% / +34% | -35% / -47% | 56% |
+| CNI (ROE pp) | t+3 | 16 | 7.1 | 6.8 | +7.1 | +15% / +21% | -52% / -92% | 63% |
 
 ### loss-maker (1 companies, 9 origins)
 
@@ -143,7 +143,7 @@ The app's **base forecast** (the command center's persistence scenario — what 
 | Core OI margin (pp of sales) | t+2 | 18 | 15.8 | 11.0 | +10.2 | -10% / -74% | -0% / -45% | 33% |
 | Core OI margin (pp of sales) | t+3 | 16 | 20.3 | 14.4 | +13.4 | -8% / -20% | +8% / -6% | 44% |
 | Core RNOA (pp) | t+1 | 19 | 4.1 | 3.2 | +1.6 | -13% / -15% | +13% / +3% | 42% |
-| Core RNOA (pp) | t+2 | 17 | 6.2 | 5.0 | +3.1 | -17% / -46% | +4% / -30% | 41% |
+| Core RNOA (pp) | t+2 | 17 | 6.2 | 5.1 | +3.1 | -18% / -48% | +4% / -31% | 41% |
 | Core RNOA (pp) | t+3 | 15 | 7.7 | 6.3 | +4.3 | -3% / +1% | +6% / -16% | 53% |
 | CNI (ROE pp) | t+1 | 16 | 42.3 | 15.7 | +34.6 | +18% / -11% | +27% / -4% | 44% |
 | CNI (ROE pp) | t+2 | 14 | 75.7 | 18.8 | +66.3 | -15% / +37% | -14% / +42% | 36% |
@@ -156,15 +156,15 @@ The app's **base forecast** (the command center's persistence scenario — what 
 | Sales (log error) | t+1 | 20 | 6.3 | 5.6 | +0.7 | +36% / +38% | +18% / +24% | 70% |
 | Sales (log error) | t+2 | 18 | 10.2 | 9.2 | +0.1 | +47% / +51% | +16% / +23% | 78% |
 | Sales (log error) | t+3 | 16 | 11.6 | 11.4 | -2.0 | +62% / +60% | +27% / +19% | 81% |
-| Core OI margin (pp of sales) | t+1 | 20 | 10.6 | 7.6 | -10.5 | -191% / -286% | -257% / -197% | 35% |
-| Core OI margin (pp of sales) | t+2 | 18 | 11.6 | 9.5 | -11.6 | -79% / -134% | -244% / -474% | 44% |
-| Core OI margin (pp of sales) | t+3 | 16 | 12.8 | 12.1 | -12.7 | -43% / -107% | -188% / -186% | 50% |
-| Core RNOA (pp) | t+1 | 20 | 2.2 | 1.7 | -2.1 | -221% / -271% | -150% / -126% | 25% |
-| Core RNOA (pp) | t+2 | 18 | 1.3 | 0.8 | +1.0 | -29% / -1% | -13% / +26% | 56% |
-| Core RNOA (pp) | t+3 | 16 | 1.2 | 1.0 | +0.5 | -2% / -1% | +14% / +24% | 56% |
-| CNI (ROE pp) | t+1 | 20 | 5.0 | 4.2 | -4.5 | -161% / -148% | -252% / -307% | 35% |
-| CNI (ROE pp) | t+2 | 18 | 4.2 | 3.1 | -3.8 | -37% / -2% | -173% / -208% | 33% |
-| CNI (ROE pp) | t+3 | 16 | 5.0 | 3.9 | -4.5 | -15% / +2% | -196% / -183% | 44% |
+| Core OI margin (pp of sales) | t+1 | 20 | 2.8 | 1.7 | -1.5 | +23% / +15% | +6% / +35% | 65% |
+| Core OI margin (pp of sales) | t+2 | 18 | 3.7 | 2.2 | -2.1 | +44% / +46% | -8% / -32% | 83% |
+| Core OI margin (pp of sales) | t+3 | 16 | 4.0 | 3.8 | -3.0 | +56% / +35% | +11% / +10% | 94% |
+| Core RNOA (pp) | t+1 | 20 | 0.6 | 0.6 | -0.4 | +5% / -28% | +26% / +22% | 55% |
+| Core RNOA (pp) | t+2 | 18 | 1.1 | 0.9 | -0.6 | -12% / -16% | +2% / +15% | 44% |
+| Core RNOA (pp) | t+3 | 16 | 1.6 | 1.5 | -1.0 | -30% / -46% | -11% / -10% | 38% |
+| CNI (ROE pp) | t+1 | 20 | 1.3 | 1.0 | -0.8 | +30% / +43% | +5% / +6% | 70% |
+| CNI (ROE pp) | t+2 | 18 | 1.8 | 1.2 | -1.3 | +41% / +60% | -18% / -20% | 72% |
+| CNI (ROE pp) | t+3 | 16 | 2.6 | 2.2 | -1.8 | +41% / +45% | -51% / -58% | 81% |
 
 ## Persistence of abnormal operating profitability (panel estimate)
 
@@ -182,7 +182,7 @@ Groups with fewer than 3 companies or 20 year-pairs fall back to the pooled "all
 
 ## Valuation anchor lag
 
-The valuation readiness policy walks back from the latest period when that period fails economic sanity. 12 of 23 companies are valued from a period older than their latest report:
+The valuation readiness policy walks back from the latest period when that period fails economic sanity. 9 of 23 companies are valued from a period older than their latest report:
 
 | Company | Valued from | Latest reported | Years behind |
 |---|---|---|---|
@@ -192,11 +192,8 @@ The valuation readiness policy walks back from the latest period when that perio
 | GRASIM | 2024-03-31 | 2025-03-31 | 1 |
 | HINDUNILVR | 2024-03-31 | 2025-03-31 | 1 |
 | INFY | 2025-03-31 | 2026-03-31 | 1 |
-| LT | 2025-03-31 | 2026-03-31 | 1 |
-| NTPC | 2024-03-31 | 2025-03-31 | 1 |
 | PAYTM | 2024-03-31 | 2025-03-31 | 1 |
 | RELIANCE | 2024-03-31 | 2025-03-31 | 1 |
-| ULTRACEMCO | 2024-03-31 | 2025-03-31 | 1 |
 | IDEA | 2024-03-31 | 2025-03-31 | 1 |
 
 ## Frozen forecast snapshots

@@ -97,15 +97,22 @@ export function buildDriverForecastModel(args: {
     Math.max(template.normalizedGrowth - growthGuardrailBand, -0.02),
     template.normalizedGrowth + growthGuardrailBand,
   );
+  // The target stays within the guardrail band around the company's own
+  // history. It used to be capped at 20% outright (and the base start at 30%),
+  // so a 46%-margin utility (Powergrid) was forecast at about half its margin:
+  // 20pp low, and CNI 9 ROE points low, one year ahead in the walk-forward.
+  // 0.6 is only an outer bound.
   const marginTarget = clamp(
     (businessModel.historicalAnchors.corePm ?? normalized.normalizedMargin ?? 0.1) * (0.85 + persistence * 0.2),
     Math.max((businessModel.historicalAnchors.corePm ?? normalized.normalizedMargin ?? 0.1) - marginGuardrailBand, 0.03),
-    Math.min((businessModel.historicalAnchors.corePm ?? normalized.normalizedMargin ?? 0.1) + marginGuardrailBand, 0.2),
+    Math.min((businessModel.historicalAnchors.corePm ?? normalized.normalizedMargin ?? 0.1) + marginGuardrailBand, 0.6),
   );
   const atoAnchor = businessModel.historicalAnchors.ato ?? normalized.normalizedAto ?? 1;
+  // Floor 0.1x, not 0.35x: an asset-heavy utility turns its NOA ~0.2x a year,
+  // and the old floor halved its forecast NOA, doubling RNOA.
   const atoTarget = clamp(
     atoAnchor * (0.95 + persistence * 0.1),
-    Math.max(atoAnchor - atoGuardrailBand, 0.35),
+    Math.max(atoAnchor - atoGuardrailBand, 0.1),
     Math.min(atoAnchor + atoGuardrailBand, 2.2),
   );
 
@@ -122,8 +129,8 @@ export function buildDriverForecastModel(args: {
       // source of the base forecast's CNI optimism in the walk-forward backtest
       // (Paytm, Vodafone Idea); removing it took one-year CNI skill vs a random
       // walk from −15% to +6% (mean), with no profitable company's error changing.
-      marginStart: clamp(blendedMargin, -0.5, 0.3),
-      atoStart: clamp(blendedAto, 0.4, 2.5),
+      marginStart: clamp(blendedMargin, -0.5, 0.6),
+      atoStart: clamp(blendedAto, 0.1, 2.5),
     },
     bull: {
       growthStart: clamp(blendedSalesGrowth * (1.08 + persistence * 0.12), 0.03, Math.max(0.24, template.normalizedGrowth + 0.08)),
