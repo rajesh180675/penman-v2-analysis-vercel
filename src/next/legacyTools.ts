@@ -25,7 +25,7 @@ export const TAB_HOMES: Readonly<Record<TabId, TabHome>> = {
   bank: { kind: "case", section: "valuation" },
   comparison: { kind: "case", section: "peers" },
 
-  upload: { kind: "library", label: "Upload your own data", description: "Load a Capitaline, Screener, XBRL or manual dataset that is not in the library." },
+  upload: { kind: "library", label: "Other data formats", description: "Screener, XBRL, JSON or manual entry. (A Capitaline export uploads right here, above.)" },
   watchlist: { kind: "library", label: "Watchlist", description: "Companies you track, with their latest signals." },
   workspace: { kind: "library", label: "Workspace", description: "Your saved companies and shared research state." },
 
