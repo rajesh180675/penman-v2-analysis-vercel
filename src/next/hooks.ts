@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { parseLibraryCompanyRegistry, type LibraryCompany } from "../components/data-entry/companyRegistry";
 import type { CompanyTrackRecord } from "../engine/accountability";
+import type { TieOutRow } from "../engine/filings";
 import { CompanyRunCache, type CompanyRunState } from "./companyRun";
 import { formatRoute, parseRoute, type Route } from "./route";
 
@@ -120,3 +121,25 @@ export function usePeerRuns(
   return runs;
 }
 
+/** One company's Capitaline-vs-as-filed comparisons (scripts/filings/tie-out.ts). */
+export interface TieOutCompany {
+  readonly symbol: string;
+  readonly firstFiling: string | null;
+  readonly rows: readonly TieOutRow[];
+}
+
+let tieOutRequest: Promise<readonly TieOutCompany[] | null> | null = null;
+
+/** The as-filed tie-out for every company in the ledger (once per session; null if unavailable). */
+export function useTieOut(): readonly TieOutCompany[] | null {
+  const [file, setFile] = useState<readonly TieOutCompany[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    tieOutRequest ??= fetch("/data/filings/tie-out.json")
+      .then((response) => (response.ok ? (response.json() as Promise<readonly TieOutCompany[]>) : null))
+      .catch(() => null);
+    void tieOutRequest.then((value) => { if (!cancelled) setFile(value); });
+    return () => { cancelled = true; };
+  }, []);
+  return file;
+}

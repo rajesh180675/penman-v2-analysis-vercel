@@ -1,7 +1,7 @@
 import { EmptyState } from "../components/shared/EmptyState";
 import type { LibraryCompany } from "../components/data-entry/companyRegistry";
 import type { CompanyRunState } from "./companyRun";
-import type { TrackRecordFile } from "./hooks";
+import type { TieOutCompany, TrackRecordFile } from "./hooks";
 import { CASE_SECTIONS, formatRoute, LIBRARY, type CaseRoute, type CaseSection } from "./route";
 import type { RecastPeriod } from "../engine/types";
 import { EconomicsSection } from "./sections/EconomicsSection";
@@ -18,6 +18,7 @@ export function CasePage({
   company,
   run,
   trackRecords = null,
+  tieOut = null,
   peers = [],
   peerRuns = null,
   onLoadPeers = () => {},
@@ -26,6 +27,8 @@ export function CasePage({
   company: LibraryCompany | null;
   run: CompanyRunState | null;
   trackRecords?: TrackRecordFile | null;
+  /** The as-filed tie-out ledger; null when not loaded or unavailable. */
+  tieOut?: readonly TieOutCompany[] | null;
   peers?: readonly LibraryCompany[];
   peerRuns?: ReadonlyMap<string, CompanyRunState> | null;
   onLoadPeers?: () => void;
@@ -73,7 +76,7 @@ export function CasePage({
 
       <section aria-label={section.label}>
         {run?.status === "ready"
-          ? renderSection(route.section, run.result, { asOf: route.asOf, trackRecords, company, peers, peerRuns, onLoadPeers })
+          ? renderSection(route.section, run.result, { asOf: route.asOf, trackRecords, tieOut, company, peers, peerRuns, onLoadPeers })
           : null}
       </section>
     </article>
@@ -86,6 +89,7 @@ function renderSection(
   context: {
     asOf: string | null;
     trackRecords: TrackRecordFile | null;
+    tieOut: readonly TieOutCompany[] | null;
     company: LibraryCompany;
     peers: readonly LibraryCompany[];
     peerRuns: ReadonlyMap<string, CompanyRunState> | null;
@@ -100,7 +104,7 @@ function renderSection(
       // The run's periods are deeply readonly; the section only reads them.
       return <EconomicsSection periods={(result.materialization.pipelineResult?.periods ?? []) as unknown as readonly RecastPeriod[]} />;
     case "evidence":
-      return <EvidenceSection result={result} />;
+      return <EvidenceSection result={result} tieOut={context.tieOut} ticker={context.company.ticker} />;
     case "forecast":
       return <ForecastSection result={result} trackRecord={trackRecord} />;
     case "valuation":
