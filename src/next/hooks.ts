@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { parseLibraryCompanyRegistry, type LibraryCompany } from "../components/data-entry/companyRegistry";
 import type { CompanyTrackRecord } from "../engine/accountability";
 import { CompanyRunCache, type CompanyRunState } from "./companyRun";
+import type { FrozenForecast } from "./ui/MarginFadeChart";
 import { formatRoute, parseRoute, type Route } from "./route";
 
 /** The current route, following the URL hash. */
@@ -120,3 +121,29 @@ export function usePeerRuns(
   return runs;
 }
 
+/** A forecast frozen on the day it was made (accountability/snapshots/, published for the browser). */
+export interface FrozenSnapshot extends FrozenForecast {
+  readonly ticker: string;
+}
+
+let snapshotsRequest: Promise<readonly FrozenSnapshot[] | null> | null = null;
+
+/** Every frozen forecast snapshot (once per session; null if unavailable). */
+export function useSnapshots(): readonly FrozenSnapshot[] | null {
+  const [file, setFile] = useState<readonly FrozenSnapshot[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    snapshotsRequest ??= fetch("/data/accountability/snapshots.json")
+      .then((response) => (response.ok ? (response.json() as Promise<readonly FrozenSnapshot[]>) : null))
+      .catch(() => null);
+    void snapshotsRequest.then((value) => { if (!cancelled) setFile(value); });
+    return () => { cancelled = true; };
+  }, []);
+  return file;
+}
+
+/** The company's most recently frozen forecast, if any. */
+export function latestSnapshotFor(snapshots: readonly FrozenSnapshot[] | null, ticker: string): FrozenSnapshot | null {
+  const own = (snapshots ?? []).filter((s) => s.ticker === ticker);
+  return own.length ? [...own].sort((a, b) => b.madeAt.localeCompare(a.madeAt))[0]! : null;
+}

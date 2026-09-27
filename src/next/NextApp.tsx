@@ -5,7 +5,7 @@
 import { useMemo, useState } from "react";
 import { findLibraryCompany } from "../components/data-entry/companyRegistry";
 import { CasePage } from "./CasePage";
-import { useCompanyRun, usePeerRuns, useRegistry, useRoute, useTrackRecord } from "./hooks";
+import { useCompanyRun, usePeerRuns, useRegistry, useRoute, useSnapshots, useTrackRecord } from "./hooks";
 import { choosePeers } from "./sections/PeersSection";
 import { ToolsPage } from "./ToolsPage";
 import { LibraryPage } from "./LibraryPage";
@@ -27,6 +27,7 @@ export function NextApp() {
   );
   const run = useCompanyRun(company, route.space === "case" ? route.asOf : null);
   const trackRecords = useTrackRecord();
+  const snapshots = useSnapshots();
   const peers = useMemo(
     () => (company && registry.status === "ready" ? choosePeers(company, registry.companies) : []),
     [company, registry],
@@ -76,6 +77,7 @@ export function NextApp() {
                 company={company}
                 run={run}
                 trackRecords={trackRecords}
+                snapshots={snapshots}
                 peers={peers}
                 peerRuns={peerRuns}
                 onLoadPeers={() => setPeersRequestedFor(company?.folder ?? null)}

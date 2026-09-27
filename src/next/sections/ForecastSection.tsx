@@ -9,6 +9,8 @@ import type { CompanyTrackRecord } from "../../engine/accountability";
 import { formatPerShare } from "../../engine/valuationCommandCenter";
 import { revalueBase, type BaseCaseShifts } from "../../engine/valuationCommandCenter/breakEven";
 import { crore, percent } from "../format";
+import type { RecastPeriod } from "../../engine/types";
+import { MARGIN_HISTORY_YEARS, MarginFadeChart, marginFadeRows, type FrozenForecast } from "../ui/MarginFadeChart";
 import { Withheld } from "../ui/Withheld";
 
 type RevalueInput = Parameters<typeof revalueBase>[0];
@@ -23,10 +25,13 @@ const SHIFTS: { key: keyof BaseCaseShifts; label: string; help: string }[] = [
 export function ForecastSection({
   result,
   trackRecord = null,
+  frozen = null,
   initialShifts = {},
 }: {
   result: LegacyAnalysisRunExecutionResult;
   trackRecord?: CompanyTrackRecord | null;
+  /** The company's most recently frozen forecast, drawn beside the current one. */
+  frozen?: FrozenForecast | null;
   /** Shifts in fractions (0.01 = 1pp); for deep links and tests. */
   initialShifts?: BaseCaseShifts;
 }) {
@@ -90,6 +95,8 @@ export function ForecastSection({
         <p className="mt-2 text-xs text-slate-500">ke {percent(edited.ke)} · kw {percent(edited.kw)} (derived, read-only) · terminal growth {percent(edited.g)}</p>
       </div>
 
+      <FadePanel result={result} anchorPeriod={cc.anchorPeriod.period_end} forecast={edited.forecast ?? []} frozen={frozen} />
+
       <div className="wb-surface overflow-x-auto rounded-xl border p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{changed ? "Your case" : "Base case"}, year by year</h2>
         <p className="mt-1 text-xs text-slate-500">From {cc.anchorPeriod.period_end}. ₹ crore unless a percentage.</p>
@@ -133,6 +140,32 @@ export function ForecastSection({
       </div>
 
       <TrackRecord record={trackRecord} />
+    </div>
+  );
+}
+
+/** The margin fade against history, with the frozen forecast beside it. */
+function FadePanel({ result, anchorPeriod, forecast, frozen }: {
+  result: LegacyAnalysisRunExecutionResult;
+  anchorPeriod: string;
+  forecast: Parameters<typeof marginFadeRows>[2];
+  frozen: FrozenForecast | null;
+}) {
+  // The run's periods are deeply readonly; the chart only reads them.
+  const history = (result.materialization.pipelineResult?.periods ?? []) as unknown as readonly RecastPeriod[];
+  const rows = marginFadeRows(history, anchorPeriod, forecast, frozen);
+  return (
+    <div className="wb-surface rounded-xl border p-4 shadow-sm">
+      <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Margin fade</h2>
+      <MarginFadeChart
+        rows={rows}
+        frozenMadeAt={frozen?.madeAt ?? null}
+        historyShown={Math.min(MARGIN_HISTORY_YEARS, history.length)}
+        historyTotal={history.length}
+      />
+      {!frozen && (
+        <p className="mt-1 text-xs text-slate-500">No forecast has been frozen for this company yet, so there is no earlier forecast to compare.</p>
+      )}
     </div>
   );
 }
