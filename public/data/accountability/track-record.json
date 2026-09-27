@@ -162,11 +162,11 @@
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 8
+     "beatRandomWalk": 7
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 6
     }
    }
   },
@@ -309,15 +309,15 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 0
+     "beatRandomWalk": 6
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 0
+     "beatRandomWalk": 6
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 0
+     "beatRandomWalk": 7
     }
    }
   },
@@ -351,11 +351,11 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 4
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 6
     },
     "cni-roe-point-error": {
      "scored": 10,

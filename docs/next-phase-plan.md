@@ -95,9 +95,25 @@ Operating-margin bias fell from +1.3pp to 0.0pp. Per company: the NFO hold only 
 
 The frozen 2026-09-25 snapshots predate the recast fix; for companies with minority interests their OI forecasts are on the old (owners-only) basis and should be read with that in mind when scored.
 
+## Slice 3: the hard margin cap and the turnover floor (2026-09-27)
+
+The base forecast capped the core-margin target at 20% (and its start at 30%) and floored asset turnover at 0.35–0.4×, whatever the company's history. Lifting the margin caps alone fixed Powergrid's margin (46–48%) but exposed the turnover floor: a utility turns its NOA ~0.2× a year, so the floor halved its forecast NOA and doubled RNOA (the two wrong clamps had been cancelling: 20% × 0.4 ≈ 8% against a true 48% × 0.2 ≈ 9.6%). Both now stay within the guardrail band around the company's own history (outer bounds 60% margin, 0.1× turnover).
+
+Walk-forward, median skill vs a random walk (t+1 / t+2 / t+3):
+
+| Metric | Before | After |
+|---|---|---|
+| CNI | −26% / −12% / +20% | **−9% / −0.3% / +27%** |
+| Core RNOA | −14% / −7% / +10% | **+6% / −3% / +12%** |
+| Core margin | −6% / +21% / +24% | −4% / +21% / +23% |
+
+Median CNI error at t+1 fell from 4.1 to 3.5 ROE points. The price: forecasts are slightly more optimistic (margin bias 0.0 → +0.9pp; CNI bias +1.4 → +1.8 ROE points at t+1). Only four companies move: Powergrid (margin error 20.1 → 4.5pp, CNI 9.0 → 1.6 ROE points) and ITC improve; **Sun Pharma worsens** (margin bias +5.0 → +6.3pp — its 2010s margins, well above today's, now pull the anchor up where the cap had hidden it; that is the fade problem below, not a reason for an arbitrary cap) and TCS slightly (CNI t+3 8.5 → 9.1). At today's anchors only Powergrid (₹126 → ₹150), ITC (₹123 → ₹134) and Vodafone Idea (−₹42 → −₹45) change value.
+
+**Tried and rejected — a recent-window anchor.** The forecast anchors are medians over *all* history before the latest year (10–15 years of Capitaline), so Sun Pharma's early-2010s margins still pull its anchor up. Anchoring on the five years before the latest instead removed the optimism above (margin bias +0.9 → +0.1pp) and improved seven of nine median skills — but it traded bias for variance: Sun Pharma's own margin error got *worse* (6.3 → 6.9pp), Paytm's jumped (13.1 → 19.9pp) as its recent losses dominated, and CNI error rose at t+2 for 8 of 12 companies that moved. Not adopted; searching window lengths until one looks good on 23 companies would be fitting noise.
+
 ## Next steps, in order
 
-1. **Slow the RNOA fade for durable franchises, and fix the one-year CNI median**, gated on backtest skill. Start from the margin target's hard 20% cap (after-tax core margin: Powergrid ~48%, ITC 24–27%, TCS ~19%; Powergrid's CNI is forecast 8 ROE points low) and the turnover clamp that imposes NOA ≥ 40% of sales.
+1. **Slow the RNOA fade for durable franchises and revisit the 2.5× turnover cap** (which still forces NOA ≥ 40% of sales), gated on backtest skill. For Sun Pharma, the fix is likely in how fast the forecast fades from the latest margin toward the anchor, not in which years form the anchor (a shorter window was tried and rejected above).
 2. **Loss-maker trajectories.** Vodafone Idea is still forecast to fade toward a +3% margin target and loses to a random walk.
 3. **Integrated filings.** NSE moved results to "Integrated Filing" in 2025; FY2025+ filings need that endpoint before the as-filed ledger reaches the current year.
 4. **Revenue definition.** Resolve the ITC-style net/gross revenue gap in the Capitaline mapping, verified by the tie-out.

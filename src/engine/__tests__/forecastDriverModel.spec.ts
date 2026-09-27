@@ -151,3 +151,31 @@ describe("buildDriverForecastModel — loss-makers", () => {
   });
 });
 
+describe("buildDriverForecastModel — high-margin, asset-heavy businesses", () => {
+  it("keeps a utility's own margin and turnover instead of capping them at 20–30% and 0.4×", () => {
+    // Powergrid-shaped: after-tax core margin ~46%, asset turnover ~0.2×. The
+    // old clamps forced the margin target to ≤ 20% (start ≤ 30%) and turnover
+    // to ≥ 0.4×; the walk-forward had Powergrid's margin 20pp low and its CNI
+    // 9 ROE points low one year ahead. The band around the company's own
+    // history still bounds both.
+    const data = ["2021", "2022", "2023", "2024"].map((y) =>
+      mkPeriod(`${y}-03-31`, { CoreSalesPM: 0.46, PM: 0.46, ATO: 0.2, Sales_growth: 0.05 }));
+    const plan = buildDriverForecastModel({
+      data,
+      latest: data[data.length - 1],
+      businessModel: buildBusinessModelProfile(data),
+      normalized: buildCyclicalNormalization(data),
+      scenarioKey: "base",
+      template: {
+        normalizedGrowth: 0.09, terminalGrowthFloor: 0.03, terminalGrowthCap: 0.05,
+        growthFadeAlpha: 0.8, marginFadeAlpha: 0.9, atoFadeAlpha: 0.95, companyEvidenceMaxWeight: 0.8,
+        growthGuardrailBand: 0.035, marginGuardrailBand: 0.04, atoGuardrailBand: 0.4,
+      },
+    } as never);
+    expect(plan.year1.coreMargin).toBeGreaterThan(0.4);
+    expect(plan.targets.coreMargin).toBeGreaterThan(0.4);
+    expect(plan.year1.ato).toBeLessThan(0.3);
+    expect(plan.targets.ato).toBeLessThan(0.35);
+  });
+});
+
