@@ -1,7 +1,7 @@
 import { EmptyState } from "../components/shared/EmptyState";
 import type { LibraryCompany } from "../components/data-entry/companyRegistry";
 import type { CompanyRunState } from "./companyRun";
-import { latestSnapshotFor, type FrozenSnapshot, type TrackRecordFile } from "./hooks";
+import { latestSnapshotFor, type FrozenSnapshot, type TieOutCompany, type TrackRecordFile } from "./hooks";
 import { CASE_SECTIONS, formatRoute, LIBRARY, type CaseRoute, type CaseSection } from "./route";
 import type { RecastPeriod } from "../engine/types";
 import { EconomicsSection } from "./sections/EconomicsSection";
@@ -19,6 +19,7 @@ export function CasePage({
   run,
   trackRecords = null,
   snapshots = null,
+  tieOut = null,
   peers = [],
   peerRuns = null,
   onLoadPeers = () => {},
@@ -29,6 +30,8 @@ export function CasePage({
   trackRecords?: TrackRecordFile | null;
   /** Frozen forecast snapshots; null when not loaded or unavailable. */
   snapshots?: readonly FrozenSnapshot[] | null;
+  /** The as-filed tie-out ledger; null when not loaded or unavailable. */
+  tieOut?: readonly TieOutCompany[] | null;
   peers?: readonly LibraryCompany[];
   peerRuns?: ReadonlyMap<string, CompanyRunState> | null;
   onLoadPeers?: () => void;
@@ -76,7 +79,7 @@ export function CasePage({
 
       <section aria-label={section.label}>
         {run?.status === "ready"
-          ? renderSection(route.section, run.result, { asOf: route.asOf, trackRecords, snapshots, company, peers, peerRuns, onLoadPeers })
+          ? renderSection(route.section, run.result, { asOf: route.asOf, trackRecords, snapshots, tieOut, company, peers, peerRuns, onLoadPeers })
           : null}
       </section>
     </article>
@@ -90,6 +93,7 @@ function renderSection(
     asOf: string | null;
     trackRecords: TrackRecordFile | null;
     snapshots: readonly FrozenSnapshot[] | null;
+    tieOut: readonly TieOutCompany[] | null;
     company: LibraryCompany;
     peers: readonly LibraryCompany[];
     peerRuns: ReadonlyMap<string, CompanyRunState> | null;
@@ -104,7 +108,7 @@ function renderSection(
       // The run's periods are deeply readonly; the section only reads them.
       return <EconomicsSection periods={(result.materialization.pipelineResult?.periods ?? []) as unknown as readonly RecastPeriod[]} />;
     case "evidence":
-      return <EvidenceSection result={result} />;
+      return <EvidenceSection result={result} tieOut={context.tieOut} ticker={context.company.ticker} />;
     case "forecast":
       return <ForecastSection result={result} trackRecord={trackRecord} frozen={latestSnapshotFor(context.snapshots, context.company.ticker)} />;
     case "valuation":

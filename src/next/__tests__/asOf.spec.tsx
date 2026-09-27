@@ -66,24 +66,32 @@ describe("as-of Case (Phase 5 exit)", () => {
     }
   }, 240_000);
 
+  // The next two tests are about the run store's bookkeeping, not the data:
+  // a stub parse keeps them fast (real parsing is covered above).
+  const stubPeriods = (["2021-03-31", "2022-03-31", "2023-03-31", "2024-03-31"] as const)
+    .map((period_end) => ({ company_id: "TCS", period_end, raw_metric_values: {} }) as RawPeriodData);
+  const stubbed = (overrides: Partial<CompanyRunDependencies>) =>
+    deps({ fetchZip: async () => new Uint8Array([1]), parse: async () => stubPeriods, ...overrides });
+
   it("fetches no live price for a dated view, and refuses a date with fewer than two years", async () => {
     const fetchMarketSnapshot = vi.fn(async () => null);
-    const run = vi.fn(async () => ({ status: "completed" }) as never);
-    const d = deps({ fetchMarketSnapshot, run });
+    const run = vi.fn(async (_input: LegacyAnalysisRunInputV1) => ({ status: "completed" }) as never);
+    const d = stubbed({ fetchMarketSnapshot, run });
     await loadCompanyRun(tcs, undefined, d, "2023-03-31");
     expect(fetchMarketSnapshot).not.toHaveBeenCalled();
-    const early = await loadCompanyRun(tcs, undefined, d, "1990-03-31");
-    expect(early).toEqual({ status: "error", message: "Fewer than two reported years end on or before 1990-03-31; the analysis needs at least two." });
-  }, 240_000);
+    expect(run.mock.calls[0]![0].rawData.map((p) => p.period_end)).toEqual(["2021-03-31", "2022-03-31", "2023-03-31"]);
+    const early = await loadCompanyRun(tcs, undefined, d, "2021-03-31");
+    expect(early).toEqual({ status: "error", message: "Fewer than two reported years end on or before 2021-03-31; the analysis needs at least two." });
+  });
 
   it("keeps one run per company and date", async () => {
     const run = vi.fn(async () => ({ status: "completed" }) as never);
-    const cache = new CompanyRunCache(deps({ run }));
+    const cache = new CompanyRunCache(stubbed({ run }));
     await cache.get(tcs);
     await cache.get(tcs, undefined, "2023-03-31");
     await cache.get(tcs, undefined, "2023-03-31");
     expect(run).toHaveBeenCalledTimes(2);
-  }, 240_000);
+  });
 
   it("says what an as-of view does and does not guarantee", () => {
     const html = renderToStaticMarkup(

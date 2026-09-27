@@ -1,0 +1,2240 @@
+[
+ {
+  "symbol": "ASIANPAINT",
+  "rows": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 2097.52,
+    "capitaline": 2027.52,
+    "relativeDifference": -0.033372744955947976,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "revenue",
+    "asFiled": 17262.23,
+    "capitaline": 16824.55,
+    "relativeDifference": -0.02535477745343448,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 2211.91,
+    "capitaline": 2213.84,
+    "relativeDifference": 0.0008725490639313043,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "revenue",
+    "asFiled": 19349.84,
+    "capitaline": 19240.13,
+    "relativeDifference": -0.005669814324046045,
+    "status": "minor"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 2774.19,
+    "capitaline": 2779.14,
+    "relativeDifference": 0.0017843046078314096,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "revenue",
+    "asFiled": 20211.25,
+    "capitaline": 20211.25,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 3206.75,
+    "capitaline": 3206.75,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "revenue",
+    "asFiled": 21712.79,
+    "capitaline": 21712.79,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 986.49,
+    "capitaline": 986.49,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 9167.37,
+    "capitaline": 3084.81,
+    "relativeDifference": -0.6635010913708076,
+    "status": "filing-inconsistent"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "revenue",
+    "asFiled": 29101.28,
+    "capitaline": 29101.28,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 4193.429,
+    "capitaline": 4193.43,
+    "relativeDifference": 2.384683275199668e-7,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 15992.23,
+    "capitaline": 15992.23,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 4195.33,
+    "capitaline": 4195.33,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "revenue",
+    "asFiled": 34488.59,
+    "capitaline": 34488.59,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalAssets",
+    "asFiled": 25798,
+    "capitaline": 25798,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalEquity",
+    "asFiled": 16445.89,
+    "capitaline": 16445.89,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 6103.6,
+    "capitaline": 6103.6,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 18728.3,
+    "capitaline": 18728.3,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 5557.69,
+    "capitaline": 5557.69,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "revenue",
+    "asFiled": 35494.73,
+    "capitaline": 35494.73,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalAssets",
+    "asFiled": 29924.09,
+    "capitaline": 29924.09,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalEquity",
+    "asFiled": 19423.68,
+    "capitaline": 19423.68,
+    "relativeDifference": 0,
+    "status": "match"
+   }
+  ],
+  "firstFiling": "2018-06-15T15:43"
+ },
+ {
+  "symbol": "BRITANNIA",
+  "rows": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 1003.96,
+    "capitaline": 1003.96,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "revenue",
+    "asFiled": 9990.1,
+    "capitaline": 9913.99,
+    "relativeDifference": -0.007618542356933422,
+    "status": "minor"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 1155.46,
+    "capitaline": 1155.46,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "revenue",
+    "asFiled": 11054.67,
+    "capitaline": 11054.67,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 1393.6,
+    "capitaline": 1393.6,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "revenue",
+    "asFiled": 11599.55,
+    "capitaline": 11599.55,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 1299.52,
+    "capitaline": 1299.52,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 1515.98,
+    "capitaline": 1515.98,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "revenue",
+    "asFiled": 14136.26,
+    "capitaline": 14136.26,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 2526.214,
+    "capitaline": 2526.21,
+    "relativeDifference": -0.0000015833971310052959,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 3534.27,
+    "capitaline": 3534.27,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 2316.32,
+    "capitaline": 2316.32,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "revenue",
+    "asFiled": 16300.55,
+    "capitaline": 16300.55,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalAssets",
+    "asFiled": 9352.72,
+    "capitaline": 9352.72,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalEquity",
+    "asFiled": 3564.5,
+    "capitaline": 3564.5,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 2572.98,
+    "capitaline": 2572.98,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 3941.52,
+    "capitaline": 3941.52,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 2134.22,
+    "capitaline": 2134.22,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "revenue",
+    "asFiled": 16769.27,
+    "capitaline": 16769.27,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalAssets",
+    "asFiled": 9073.56,
+    "capitaline": 9073.56,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalEquity",
+    "asFiled": 3966.02,
+    "capitaline": 3966.02,
+    "relativeDifference": 0,
+    "status": "match"
+   }
+  ],
+  "firstFiling": "2018-05-25T18:03"
+ },
+ {
+  "symbol": "DABUR",
+  "rows": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 1357.74,
+    "capitaline": 1357.74,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "revenue",
+    "asFiled": 7748.34,
+    "capitaline": 7721.85,
+    "relativeDifference": -0.0034187968003468847,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 1596.93,
+    "capitaline": 1446.25,
+    "relativeDifference": -0.09435604566261518,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "revenue",
+    "asFiled": 8533.05,
+    "capitaline": 8514.99,
+    "relativeDifference": -0.002116476523634514,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 1447.92,
+    "capitaline": 1447.92,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "revenue",
+    "asFiled": 8703.59,
+    "capitaline": 8684.64,
+    "relativeDifference": -0.0021772624859397933,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 1694.95,
+    "capitaline": 1694.95,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "revenue",
+    "asFiled": 9561.65,
+    "capitaline": 9561.65,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 1802.33,
+    "capitaline": 1802.33,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 1742.3,
+    "capitaline": 1742.3,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "revenue",
+    "asFiled": 10888.68,
+    "capitaline": 10888.68,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 1488.43,
+    "capitaline": 1488.43,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 8973.26,
+    "capitaline": 8973.26,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 1701.33,
+    "capitaline": 1701.33,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "revenue",
+    "asFiled": 11529.89,
+    "capitaline": 11529.89,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalAssets",
+    "asFiled": 13654.37,
+    "capitaline": 13654.37,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalEquity",
+    "asFiled": 9441.43,
+    "capitaline": 9441.43,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 2013.47,
+    "capitaline": 2013.47,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 9866.3,
+    "capitaline": 9866.3,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 1811.31,
+    "capitaline": 1811.31,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "revenue",
+    "asFiled": 12404.01,
+    "capitaline": 12404.01,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalAssets",
+    "asFiled": 15122.68,
+    "capitaline": 15122.68,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalEquity",
+    "asFiled": 10303.08,
+    "capitaline": 10303.08,
+    "relativeDifference": 0,
+    "status": "match"
+   }
+  ],
+  "firstFiling": "2018-06-21T16:18"
+ },
+ {
+  "symbol": "HINDUNILVR",
+  "rows": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 5227,
+    "capitaline": 5225,
+    "relativeDifference": -0.0003826286588865506,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "revenue",
+    "asFiled": 36238,
+    "capitaline": 35545,
+    "relativeDifference": -0.01912357194105635,
+    "status": "minor"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 6060,
+    "capitaline": 6060,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "revenue",
+    "asFiled": 39310,
+    "capitaline": 39310,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 6756,
+    "capitaline": 6764,
+    "relativeDifference": 0.0011841326228537595,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "revenue",
+    "asFiled": 39783,
+    "capitaline": 39783,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 7999,
+    "capitaline": 8000,
+    "relativeDifference": 0.00012501562695336918,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "revenue",
+    "asFiled": 47028,
+    "capitaline": 47028,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 9048,
+    "capitaline": 9048,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 8892,
+    "capitaline": 8887,
+    "relativeDifference": -0.0005623031938821412,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "revenue",
+    "asFiled": 52446,
+    "capitaline": 52446,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 9991,
+    "capitaline": 9991,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 50304,
+    "capitaline": 50304,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 10143,
+    "capitaline": 10143,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "revenue",
+    "asFiled": 60580,
+    "capitaline": 60580,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalAssets",
+    "asFiled": 73087,
+    "capitaline": 73087,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalEquity",
+    "asFiled": 50522,
+    "capitaline": 50522,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 15469,
+    "capitaline": 15469,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 51218,
+    "capitaline": 51218,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 10282,
+    "capitaline": 10282,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "revenue",
+    "asFiled": 61896,
+    "capitaline": 61896,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalAssets",
+    "asFiled": 78499,
+    "capitaline": 78499,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalEquity",
+    "asFiled": 51423,
+    "capitaline": 51423,
+    "relativeDifference": 0,
+    "status": "match"
+   }
+  ],
+  "firstFiling": "2018-05-26T17:10"
+ },
+ {
+  "symbol": "INFY",
+  "rows": [
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 15410,
+    "capitaline": 15410,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "revenue",
+    "asFiled": 82675,
+    "capitaline": 82675,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 16639,
+    "capitaline": 16639,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "revenue",
+    "asFiled": 90791,
+    "capitaline": 90791,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 19423,
+    "capitaline": 19423,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "revenue",
+    "asFiled": 100472,
+    "capitaline": 100472,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 23885,
+    "capitaline": 23885,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 22146,
+    "capitaline": 22146,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "revenue",
+    "asFiled": 121641,
+    "capitaline": 121641,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 22467,
+    "capitaline": 22467,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 75407,
+    "capitaline": 75407,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 24108,
+    "capitaline": 24108,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "revenue",
+    "asFiled": 146767,
+    "capitaline": 146767,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalAssets",
+    "asFiled": 125816,
+    "capitaline": 125816,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalEquity",
+    "asFiled": 75795,
+    "capitaline": 75795,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 25210,
+    "capitaline": 25210,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 88116,
+    "capitaline": 88116,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 26248,
+    "capitaline": 26248,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "revenue",
+    "asFiled": 153670,
+    "capitaline": 153670,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalAssets",
+    "asFiled": 137814,
+    "capitaline": 137814,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalEquity",
+    "asFiled": 88461,
+    "capitaline": 88461,
+    "relativeDifference": 0,
+    "status": "match"
+   }
+  ],
+  "firstFiling": "2019-10-18T18:40"
+ },
+ {
+  "symbol": "ITC",
+  "rows": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 11492.68,
+    "capitaline": 11492.68,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "revenue",
+    "asFiled": 47688.55,
+    "capitaline": 43448.94,
+    "relativeDifference": -0.0889020530085314,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 12835.9,
+    "capitaline": 12835.9,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "revenue",
+    "asFiled": 49862.11,
+    "capitaline": 48352.68,
+    "relativeDifference": -0.030272084354232107,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 15592.78,
+    "capitaline": 15592.78,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "revenue",
+    "asFiled": 51393.47,
+    "capitaline": 49404.05,
+    "relativeDifference": -0.038709587035084383,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 13382.88,
+    "capitaline": 13382.88,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "revenue",
+    "asFiled": 53155.12,
+    "capitaline": 49272.78,
+    "relativeDifference": -0.0730379312472628,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 15775.51,
+    "capitaline": 15775.51,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 15503.13,
+    "capitaline": 15503.13,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "revenue",
+    "asFiled": 65204.96,
+    "capitaline": 60668.09,
+    "relativeDifference": -0.06957860260937208,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 18877.55,
+    "capitaline": 18877.55,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 69155.26,
+    "capitaline": 69155.26,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 19476.72,
+    "capitaline": 19476.72,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "revenue",
+    "asFiled": 76518.21,
+    "capitaline": 70936.85,
+    "relativeDifference": -0.07294159128918463,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalAssets",
+    "asFiled": 85882.98,
+    "capitaline": 85882.98,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalEquity",
+    "asFiled": 69538.79,
+    "capitaline": 69538.79,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 17178.86,
+    "capitaline": 17178.86,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 74507,
+    "capitaline": 74507,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 20751.36,
+    "capitaline": 20190.82,
+    "relativeDifference": -0.02701220546508763,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "revenue",
+    "asFiled": 76840.49,
+    "capitaline": 67931.94,
+    "relativeDifference": -0.11593562196180689,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalAssets",
+    "asFiled": 91826.16,
+    "capitaline": 91826.16,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalEquity",
+    "asFiled": 74889.97,
+    "capitaline": 74889.97,
+    "relativeDifference": 0,
+    "status": "match"
+   }
+  ],
+  "firstFiling": "2018-06-08T15:27"
+ },
+ {
+  "symbol": "LT",
+  "rows": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 8004.43,
+    "capitaline": 8440.29,
+    "relativeDifference": 0.05445234701284171,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "revenue",
+    "asFiled": 119862.1,
+    "capitaline": 119683.16,
+    "relativeDifference": -0.0014928822371709015,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 10216.58,
+    "capitaline": 9668.25,
+    "relativeDifference": -0.053670602099724164,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "revenue",
+    "asFiled": 141007.09,
+    "capitaline": 135220.29,
+    "relativeDifference": -0.041039071155925484,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 10894.28,
+    "capitaline": 10167.75,
+    "relativeDifference": -0.0666891249352872,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "revenue",
+    "asFiled": 145452.36,
+    "capitaline": 145452.36,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 12921.28,
+    "capitaline": 8224.98,
+    "relativeDifference": -0.3634547041779143,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "revenue",
+    "asFiled": 135979.03,
+    "capitaline": 135979.03,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 19163.58,
+    "capitaline": 19163.58,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 10419.24,
+    "capitaline": 10291.05,
+    "relativeDifference": -0.012303200617319546,
+    "status": "minor"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "revenue",
+    "asFiled": 156521.23,
+    "capitaline": 156521.23,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 22776.96,
+    "capitaline": 22776.96,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 89325.95,
+    "capitaline": 89325.95,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 12530.62,
+    "capitaline": 12624.87,
+    "relativeDifference": 0.00752157514951375,
+    "status": "minor"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "revenue",
+    "asFiled": 183340.7,
+    "capitaline": 183340.7,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalAssets",
+    "asFiled": 330352.31,
+    "capitaline": 330352.31,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalEquity",
+    "asFiled": 103567.22,
+    "capitaline": 103567.22,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 18266.28,
+    "capitaline": 18266.28,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 86359.24,
+    "capitaline": 86359.24,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 15547.1,
+    "capitaline": 15569.72,
+    "relativeDifference": 0.0014549337175421128,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "revenue",
+    "asFiled": 221112.91,
+    "capitaline": 221112.91,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalAssets",
+    "asFiled": 339627.24,
+    "capitaline": 340135.97,
+    "relativeDifference": 0.0014979069405621922,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalEquity",
+    "asFiled": 102549.66,
+    "capitaline": 102549.66,
+    "relativeDifference": 0,
+    "status": "match"
+   }
+  ],
+  "firstFiling": "2018-06-22T19:52"
+ },
+ {
+  "symbol": "MARUTI",
+  "rows": [
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 7650.6,
+    "capitaline": 7650.6,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "revenue",
+    "asFiled": 86068.5,
+    "capitaline": 86068.5,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 5677.6,
+    "capitaline": 5677.6,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "revenue",
+    "asFiled": 75660,
+    "capitaline": 75660,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 4389.1,
+    "capitaline": 4389.1,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "revenue",
+    "asFiled": 70372,
+    "capitaline": 70372,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 1840.5,
+    "capitaline": 1840.5,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 3879.5,
+    "capitaline": 3879.5,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "revenue",
+    "asFiled": 88329.8,
+    "capitaline": 88329.8,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 9251.4,
+    "capitaline": 9251.4,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 61791.3,
+    "capitaline": 61791.3,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 8211,
+    "capitaline": 8211,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "revenue",
+    "asFiled": 117571.3,
+    "capitaline": 117571.3,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalAssets",
+    "asFiled": 84596.9,
+    "capitaline": 84596.9,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalEquity",
+    "asFiled": 61791.3,
+    "capitaline": 61791.3,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 16801.1,
+    "capitaline": 16801.1,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 85636,
+    "capitaline": 85636,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 13488.2,
+    "capitaline": 13488.2,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "revenue",
+    "asFiled": 141858.2,
+    "capitaline": 141858.2,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalAssets",
+    "asFiled": 115353,
+    "capitaline": 115350.8,
+    "relativeDifference": -0.000019071892365149494,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalEquity",
+    "asFiled": 85636,
+    "capitaline": 85636,
+    "relativeDifference": 0,
+    "status": "match"
+   }
+  ],
+  "firstFiling": "2019-05-24T18:34"
+ },
+ {
+  "symbol": "NESTLEIND",
+  "rows": [
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 4174.79,
+    "capitaline": 4174.79,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 3340.89,
+    "capitaline": 3340.89,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 3932.84,
+    "capitaline": 3932.84,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "revenue",
+    "asFiled": 24393.89,
+    "capitaline": 24393.89,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalAssets",
+    "asFiled": 10523.06,
+    "capitaline": 10523.06,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalEquity",
+    "asFiled": 3340.89,
+    "capitaline": 3340.89,
+    "relativeDifference": 0,
+    "status": "match"
+   }
+  ],
+  "firstFiling": "2024-04-26T16:23"
+ },
+ {
+  "symbol": "SUNPHARMA",
+  "rows": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 2608.35,
+    "capitaline": 2567.94,
+    "relativeDifference": -0.015492552763241074,
+    "status": "minor"
+   },
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "revenue",
+    "asFiled": 26489.46,
+    "capitaline": 26489.46,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 3207.86,
+    "capitaline": 3209.32,
+    "relativeDifference": 0.0004551320818240311,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "revenue",
+    "asFiled": 29065.91,
+    "capitaline": 29065.91,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 4171.96,
+    "capitaline": 4186.79,
+    "relativeDifference": 0.0035546841292821425,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "revenue",
+    "asFiled": 32837.5,
+    "capitaline": 32837.5,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 8984.54,
+    "capitaline": 8984.54,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 3389.28,
+    "capitaline": 3405.82,
+    "relativeDifference": 0.004880092527026378,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "revenue",
+    "asFiled": 38654.49,
+    "capitaline": 38654.49,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 4959.33,
+    "capitaline": 4959.33,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 55995.38,
+    "capitaline": 55995.38,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 8512.94,
+    "capitaline": 8560.84,
+    "relativeDifference": 0.005626728251344381,
+    "status": "minor"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "revenue",
+    "asFiled": 43885.68,
+    "capitaline": 43885.68,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalAssets",
+    "asFiled": 80743.59,
+    "capitaline": 80743.59,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalEquity",
+    "asFiled": 59315.47,
+    "capitaline": 59315.47,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 12134.98,
+    "capitaline": 12134.98,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 63666.75,
+    "capitaline": 63666.75,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 9610.03,
+    "capitaline": 9648.44,
+    "relativeDifference": 0.003996865774612551,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "revenue",
+    "asFiled": 48496.85,
+    "capitaline": 48496.85,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalAssets",
+    "asFiled": 85462.88,
+    "capitaline": 85499.65,
+    "relativeDifference": 0.00043024527139723726,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalEquity",
+    "asFiled": 67105.97,
+    "capitaline": 67125.94,
+    "relativeDifference": 0.00029758902225839463,
+    "status": "match"
+   }
+  ],
+  "firstFiling": "2018-06-19T19:05"
+ },
+ {
+  "symbol": "TCS",
+  "rows": [
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 31562,
+    "capitaline": 31562,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "revenue",
+    "asFiled": 146463,
+    "capitaline": 146463,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 32447,
+    "capitaline": 32447,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "revenue",
+    "asFiled": 156949,
+    "capitaline": 156949,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 32562,
+    "capitaline": 32562,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "revenue",
+    "asFiled": 164177,
+    "capitaline": 164177,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 39949,
+    "capitaline": 39949,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 38449,
+    "capitaline": 38449,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "revenue",
+    "asFiled": 191754,
+    "capitaline": 191754,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 41965,
+    "capitaline": 41965,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 90424,
+    "capitaline": 90424,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 42303,
+    "capitaline": 42303,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "revenue",
+    "asFiled": 225458,
+    "capitaline": 225458,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalAssets",
+    "asFiled": 143651,
+    "capitaline": 143651,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalEquity",
+    "asFiled": 91206,
+    "capitaline": 91206,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 44338,
+    "capitaline": 44338,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 90489,
+    "capitaline": 90489,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 46099,
+    "capitaline": 46099,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "revenue",
+    "asFiled": 240893,
+    "capitaline": 240893,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalAssets",
+    "asFiled": 146449,
+    "capitaline": 146449,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalEquity",
+    "asFiled": 91319,
+    "capitaline": 91319,
+    "relativeDifference": 0,
+    "status": "match"
+   }
+  ],
+  "firstFiling": "2019-04-23T18:26"
+ },
+ {
+  "symbol": "TITAN",
+  "rows": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 1101.91,
+    "capitaline": 1101.91,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "field": "revenue",
+    "asFiled": 16155.95,
+    "capitaline": 16119.77,
+    "relativeDifference": -0.002239422627576855,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 1388.65,
+    "capitaline": 1388.65,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "revenue",
+    "asFiled": 19778.52,
+    "capitaline": 19778.52,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 1492.66,
+    "capitaline": 1493,
+    "relativeDifference": 0.0002277812763790268,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "revenue",
+    "asFiled": 21051.54,
+    "capitaline": 21052,
+    "relativeDifference": 0.000021851132981203602,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 979.103,
+    "capitaline": 974,
+    "relativeDifference": -0.005211913353344798,
+    "status": "minor"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "revenue",
+    "asFiled": 21643.824,
+    "capitaline": 21644,
+    "relativeDifference": 0.00000813164993392462,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": -724.001,
+    "capitaline": -724,
+    "relativeDifference": 0.0000013812135618270599,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 2196.95,
+    "capitaline": 2198,
+    "relativeDifference": 0.00047793531942018797,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "revenue",
+    "asFiled": 28798.706,
+    "capitaline": 28799,
+    "relativeDifference": 0.00001020879202008896,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 1370,
+    "capitaline": 1370,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 11851,
+    "capitaline": 11851,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 3274,
+    "capitaline": 3274,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "revenue",
+    "asFiled": 40575,
+    "capitaline": 40575,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalAssets",
+    "asFiled": 27023,
+    "capitaline": 27023,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalEquity",
+    "asFiled": 11904,
+    "capitaline": 11904,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 1759.02,
+    "capitaline": 1695,
+    "relativeDifference": -0.036395265545587877,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 9393,
+    "capitaline": 9393,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 3496.28,
+    "capitaline": 3496,
+    "relativeDifference": -0.00008008511904086632,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "revenue",
+    "asFiled": 51084,
+    "capitaline": 51084,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalAssets",
+    "asFiled": 31550.005,
+    "capitaline": 31550,
+    "relativeDifference": -1.5847858030509453e-7,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalEquity",
+    "asFiled": 9393.005,
+    "capitaline": 9393,
+    "relativeDifference": -5.323110122053214e-7,
+    "status": "match"
+   }
+  ],
+  "firstFiling": "2018-06-18T18:27"
+ },
+ {
+  "symbol": "ULTRACEMCO",
+  "rows": [
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 2431.59,
+    "capitaline": 2400.38,
+    "relativeDifference": -0.012835223043358475,
+    "status": "minor"
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "field": "revenue",
+    "asFiled": 37379.2,
+    "capitaline": 41608.81,
+    "relativeDifference": 0.11315410709699514,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 5810.46,
+    "capitaline": 5750.88,
+    "relativeDifference": -0.010253921376276565,
+    "status": "minor"
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "field": "revenue",
+    "asFiled": 42124.83,
+    "capitaline": 42429.89,
+    "relativeDifference": 0.007241809640537366,
+    "status": "minor"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 5461.85,
+    "capitaline": 5318.94,
+    "relativeDifference": -0.026165127200490815,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "field": "revenue",
+    "asFiled": 44725.8,
+    "capitaline": 44725.8,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 9283.24,
+    "capitaline": 9283.24,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 7334.26,
+    "capitaline": 7174.34,
+    "relativeDifference": -0.021804517429161233,
+    "status": "mismatch"
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "field": "revenue",
+    "asFiled": 52598.83,
+    "capitaline": 52598.83,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 9068.51,
+    "capitaline": 9068.51,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 54380.17,
+    "capitaline": 54324.54,
+    "relativeDifference": -0.0010229831940576388,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 5073.4,
+    "capitaline": 5073.4,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "revenue",
+    "asFiled": 63239.98,
+    "capitaline": 63239.98,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalAssets",
+    "asFiled": 91386.96,
+    "capitaline": 91386.96,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "field": "totalEquity",
+    "asFiled": 54380.17,
+    "capitaline": 54380.17,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "cashFlowFromOperations",
+    "asFiled": 10897.54,
+    "capitaline": 10897.54,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "equityAttributableToOwners",
+    "asFiled": 60227.48,
+    "capitaline": 60227.48,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "profitAfterTax",
+    "asFiled": 7003.96,
+    "capitaline": 7003.96,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "revenue",
+    "asFiled": 70908.14,
+    "capitaline": 70908.14,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalAssets",
+    "asFiled": 100802.01,
+    "capitaline": 100802.01,
+    "relativeDifference": 0,
+    "status": "match"
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "field": "totalEquity",
+    "asFiled": 60283.42,
+    "capitaline": 60283.420000000006,
+    "relativeDifference": 1.20695833351582e-16,
+    "status": "match"
+   }
+  ],
+  "firstFiling": "2019-06-26T14:34"
+ }
+]
