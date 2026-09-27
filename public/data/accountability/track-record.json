@@ -103,7 +103,7 @@
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 5
     }
    }
   },
@@ -145,7 +145,7 @@
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 5
     }
    }
   },

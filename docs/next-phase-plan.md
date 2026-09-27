@@ -111,9 +111,23 @@ Median CNI error at t+1 fell from 4.1 to 3.5 ROE points. The price: forecasts ar
 
 **Tried and rejected — a recent-window anchor.** The forecast anchors are medians over *all* history before the latest year (10–15 years of Capitaline), so Sun Pharma's early-2010s margins still pull its anchor up. Anchoring on the five years before the latest instead removed the optimism above (margin bias +0.9 → +0.1pp) and improved seven of nine median skills — but it traded bias for variance: Sun Pharma's own margin error got *worse* (6.3 → 6.9pp), Paytm's jumped (13.1 → 19.9pp) as its recent losses dominated, and CNI error rose at t+2 for 8 of 12 companies that moved. Not adopted; searching window lengths until one looks good on 23 companies would be fitting noise.
 
+## Slice 4: the 2.5× turnover cap (2026-09-28)
+
+The "RNOA fades too fast for durable franchises" finding was not a fade at all: the base forecast capped asset turnover at 2.5× (target 2.2×), forcing forecast NOA to ≥ 40% of sales. High-turnover franchises turn NOA ~5× (Maruti, Britannia) or ~4× (TCS, Nestlé), so their forecast NOA doubled — and for net-cash companies, whose forecast equity tracks NOA through held leverage, so did forecast equity and its capital charge. The ceiling is now 8×; a negative turnover (negative NOA) is treated as unknown instead of being floored into a forecast NOA of 10× sales (a latent effect of slice 3's lower floor, which no scored metric caught because the NFO hold keeps earnings independent of NOA and RNOA is not scored on so small a base).
+
+| RNOA, walk-forward | Before | After |
+|---|---|---|
+| t+2 mean error / bias | 9.0 / −5.7pp | **5.9 / −0.1pp** |
+| t+3 mean error / bias | 9.5 / −5.9pp | **6.7 / −0.3pp** |
+| median skill t+2 / t+3 | −3% / +12% | **+4% / +30%** |
+
+Margin is untouched and CNI essentially unchanged (t+1 median skill −9.1 → −9.8%). Per company at t+3: Britannia 33.7 → 8.2pp, TCS 27.4 → 10.6, HUL 13.3 → 1.9, Maruti 44.3 → 30.7, Dabur better; Asian Paints worse (4.0 → 5.8pp, now over-forecast).
+
+**Values move a lot, and the old ones were the broken ones.** Maruti's base value was ₹467 — 1.0× its own EPS (₹462), with its residual-earnings value at −₹1,784/share, below its ₹3,061 book, for a company earning 50% on NOA. Now ₹4,609 (10× EPS, 1.5× book). DMart ₹220 → ₹402 (it was valued below book), Britannia ₹695 → ₹1,081 (7.7× → 11.9× EPS), TCS ₹1,509 → ₹1,732, Nestlé ₹478 → ₹542, Dabur +12%, Titan +9%; measured variant on vs off in one code state.
+
 ## Next steps, in order
 
-1. **Slow the RNOA fade for durable franchises and revisit the 2.5× turnover cap** (which still forces NOA ≥ 40% of sales), gated on backtest skill. For Sun Pharma, the fix is likely in how fast the forecast fades from the latest margin toward the anchor, not in which years form the anchor (a shorter window was tried and rejected above).
+1. **Sun Pharma and Asian Paints**, gated on backtest skill: how fast the forecast fades from the latest margin toward the anchor (a shorter anchor window was tried and rejected above), and why Asian Paints' RNOA now over-forecasts.
 2. **Loss-maker trajectories.** Vodafone Idea is still forecast to fade toward a +3% margin target and loses to a random walk.
 3. **Integrated filings.** NSE moved results to "Integrated Filing" in 2025; FY2025+ filings need that endpoint before the as-filed ledger reaches the current year.
 4. **Revenue definition.** Resolve the ITC-style net/gross revenue gap in the Capitaline mapping, verified by the tie-out.

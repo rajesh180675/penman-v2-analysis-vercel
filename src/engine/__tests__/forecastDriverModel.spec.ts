@@ -179,3 +179,42 @@ describe("buildDriverForecastModel — high-margin, asset-heavy businesses", () 
   });
 });
 
+describe("buildDriverForecastModel — asset turnover", () => {
+  const template = {
+    normalizedGrowth: 0.09, terminalGrowthFloor: 0.03, terminalGrowthCap: 0.05,
+    growthFadeAlpha: 0.8, marginFadeAlpha: 0.9, atoFadeAlpha: 0.95, companyEvidenceMaxWeight: 0.8,
+    growthGuardrailBand: 0.035, marginGuardrailBand: 0.04, atoGuardrailBand: 0.4,
+  };
+  const planFor = (ato: number, latestAto = ato) => {
+    const data = ["2021", "2022", "2023", "2024"].map((y, i) =>
+      mkPeriod(`${y}-03-31`, { CoreSalesPM: 0.1, PM: 0.1, ATO: i === 3 ? latestAto : ato, Sales_growth: 0.1 }));
+    return buildDriverForecastModel({
+      data,
+      latest: data[data.length - 1],
+      businessModel: buildBusinessModelProfile(data),
+      normalized: buildCyclicalNormalization(data),
+      scenarioKey: "base",
+      template,
+    } as never);
+  };
+
+  it("keeps a high-turnover franchise's own turnover instead of capping it at 2.5x", () => {
+    // Maruti-shaped: turnover ~5x (NOA ~20% of sales). The 2.5x cap doubled
+    // forecast NOA; with leverage held, forecast equity doubled too, and the
+    // capital charge drove Maruti's residual-earnings value to −₹1,784/share
+    // (below its book) while it earned 50% on NOA. The walk-forward RNOA bias
+    // for such firms was −44pp (Maruti), −34pp (Britannia), −27pp (TCS) at t+3.
+    const plan = planFor(5);
+    expect(plan.year1.ato).toBeGreaterThan(4);
+    expect(plan.targets.ato).toBeGreaterThan(4);
+  });
+
+  it("treats a negative turnover (negative NOA) as unknown rather than flooring it", () => {
+    // Net operating liabilities (HUL before FY21) give a negative ratio; the
+    // floor would turn it into a forecast NOA of 10x sales.
+    const plan = planFor(1.5, -8);
+    expect(plan.year1.ato).toBeGreaterThan(1);
+    expect(plan.year1.ato).toBeLessThan(2);
+  });
+});
+
