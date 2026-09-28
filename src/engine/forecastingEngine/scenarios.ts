@@ -221,8 +221,12 @@ export function derivePersistenceForecastScenario(params: {
     },
     bull: {
       name: "bull" as const,
-      ke: Math.max(riskInputs.ke - (0.01 - spreadRiskAddOn * 0.5), riskInputs.riskFreeRate + 0.04),
-      kw: Math.max(riskInputs.kw - (0.008 - spreadRiskAddOn * 0.4), riskInputs.riskFreeRate + 0.03),
+      // The floors keep bull's rates above the risk-free rate, but never above
+      // base's own: a debt-weighted utility's base kw (NTPC 7.6%) sits below
+      // rf + 3% (10.1%), so the floor alone discounted bull harder than base
+      // and valued it below base (NTPC 80 against 154).
+      ke: Math.min(riskInputs.ke, Math.max(riskInputs.ke - (0.01 - spreadRiskAddOn * 0.5), riskInputs.riskFreeRate + 0.04)),
+      kw: Math.min(riskInputs.kw, Math.max(riskInputs.kw - (0.008 - spreadRiskAddOn * 0.4), riskInputs.riskFreeRate + 0.03)),
       terminalGrowth: clamp(terminalEconomics.terminalGrowth * (scenarioWeighting.spread === "contained" ? 1.06 : 1.1), template.terminalGrowthFloor, template.terminalGrowthCap),
     },
     "historical-panic": {
