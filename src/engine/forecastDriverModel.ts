@@ -128,10 +128,17 @@ export function buildDriverForecastModel(args: {
   // turnover, and stress's 0.35x floor above a 0.2x utility's, each inverting
   // the scenario's capital charge against base.
   const baseAtoStart = clamp(blendedAto, 0.1, 8);
+  // Margin likewise, scaled by its magnitude so a loss-maker's stress case
+  // loses more, not less: 0.62 × a −20% margin is −12%, above base. Bull's
+  // old 34% ceiling sat below a 46% utility's base, and stress's +2% floor
+  // above a loss-maker's — each failing the run's scenario-ordering gate.
+  const baseMarginStart = clamp(blendedMargin, -0.5, 0.6);
+  const scaleMargin = (factor: number) =>
+    clamp(baseMarginStart + (factor - 1) * Math.abs(baseMarginStart), -0.5, 0.6);
   const scenarioPresets = {
     stress: {
       growthStart: clamp(blendedSalesGrowth * (0.35 + persistence * 0.05) - 0.01, -0.04, 0.08),
-      marginStart: clamp(blendedMargin * (0.62 + persistence * 0.08), 0.02, 0.2),
+      marginStart: scaleMargin(0.62 + persistence * 0.08),
       atoStart: baseAtoStart * (0.86 + persistence * 0.04),
     },
     base: {
@@ -141,17 +148,17 @@ export function buildDriverForecastModel(args: {
       // source of the base forecast's CNI optimism in the walk-forward backtest
       // (Paytm, Vodafone Idea); removing it took one-year CNI skill vs a random
       // walk from −15% to +6% (mean), with no profitable company's error changing.
-      marginStart: clamp(blendedMargin, -0.5, 0.6),
+      marginStart: baseMarginStart,
       atoStart: baseAtoStart,
     },
     bull: {
       growthStart: clamp(blendedSalesGrowth * (1.08 + persistence * 0.12), 0.03, Math.max(0.24, template.normalizedGrowth + 0.08)),
-      marginStart: clamp(blendedMargin * (1.03 + persistence * 0.07), 0.05, 0.34),
+      marginStart: scaleMargin(1.03 + persistence * 0.07),
       atoStart: baseAtoStart * (0.99 + persistence * 0.04),
     },
     "historical-panic": {
       growthStart: clamp(blendedSalesGrowth * 0.12 - 0.02, -0.08, 0.04),
-      marginStart: clamp(blendedMargin * 0.5, 0.01, 0.16),
+      marginStart: scaleMargin(0.5),
       atoStart: baseAtoStart * 0.82,
     },
   } as const;
