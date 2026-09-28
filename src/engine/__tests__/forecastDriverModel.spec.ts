@@ -185,7 +185,7 @@ describe("buildDriverForecastModel — asset turnover", () => {
     growthFadeAlpha: 0.8, marginFadeAlpha: 0.9, atoFadeAlpha: 0.95, companyEvidenceMaxWeight: 0.8,
     growthGuardrailBand: 0.035, marginGuardrailBand: 0.04, atoGuardrailBand: 0.4,
   };
-  const planFor = (ato: number, latestAto = ato) => {
+  const planFor = (ato: number, latestAto = ato, scenarioKey = "base") => {
     const data = ["2021", "2022", "2023", "2024"].map((y, i) =>
       mkPeriod(`${y}-03-31`, { CoreSalesPM: 0.1, PM: 0.1, ATO: i === 3 ? latestAto : ato, Sales_growth: 0.1 }));
     return buildDriverForecastModel({
@@ -193,7 +193,7 @@ describe("buildDriverForecastModel — asset turnover", () => {
       latest: data[data.length - 1],
       businessModel: buildBusinessModelProfile(data),
       normalized: buildCyclicalNormalization(data),
-      scenarioKey: "base",
+      scenarioKey,
       template,
     } as never);
   };
@@ -215,6 +215,18 @@ describe("buildDriverForecastModel — asset turnover", () => {
     const plan = planFor(1.5, -8);
     expect(plan.year1.ato).toBeGreaterThan(1);
     expect(plan.year1.ato).toBeLessThan(2);
+  });
+
+  it.each([5, 0.2])("keeps the named scenarios' turnover ordered around base at %sx", (ato) => {
+    // Lower turnover means more NOA per rupee of sales, so a heavier capital
+    // charge. When only base was uncapped, bull kept a 2.8x ceiling — half a
+    // 5x firm's turnover, doubling its NOA below base — and stress kept a 0.35x
+    // floor, giving a 0.2x utility less NOA under stress than under base.
+    const [stress, base, bull, panic] = (["stress", "base", "bull", "historical-panic"] as const)
+      .map((key) => planFor(ato, ato, key).year1.ato);
+    expect(stress).toBeLessThanOrEqual(base!);
+    expect(panic).toBeLessThanOrEqual(base!);
+    expect(bull).toBeGreaterThanOrEqual(base! * 0.99);
   });
 });
 
