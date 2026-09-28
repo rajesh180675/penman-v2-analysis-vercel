@@ -5,6 +5,8 @@ import {
   classifyRunUnusualItems,
   MAX_UNUSUAL_ITEM_CLASSIFICATIONS,
   summarizeUnusualItemManifest,
+  terminalBlockingClassifications,
+  terminalPeriodOf,
   UNUSUAL_ITEM_POLICY_VERSION,
   type UnusualItemCategory,
 } from "../unusualItemPolicy";
@@ -121,6 +123,36 @@ describe("unusualItemPolicy / classifyRunUnusualItems", () => {
     const manifest = summarizeUnusualItemManifest(recast, []);
     expect(manifest.terminalEligibilityBlocked).toBe(true);
     expect(manifest.classifications.find((c) => c.category === "capital-return")).toBeTruthy();
+  });
+
+  it("blocks terminal eligibility only for an item in the terminal period, listing the rest", () => {
+    // TCS-shaped: buybacks in earlier years. Each rule's rationale is that
+    // "the period is not a valid terminal anchor"; counting the whole
+    // history blocked every company's valuation on a years-old item.
+    const history = [
+      mkRaw("2018-03-31", { "Buyback of Shares": 160 }),
+      mkRaw("2022-03-31", { "Profit From Discontinued Operations": 40 }),
+      mkRaw("2025-03-31", { "Impairment Loss": 10 }),
+    ];
+    const old = summarizeUnusualItemManifest([], history);
+    expect(old.terminalEligibilityBlocked).toBe(false);
+    // Nothing is hidden: the earlier items stay in the manifest for review.
+    expect(old.classifications.map((c) => c.category)).toEqual(expect.arrayContaining(["buyback", "discontinued-operations"]));
+
+    const terminal = summarizeUnusualItemManifest([], [...history.slice(0, 2), mkRaw("2025-03-31", { "Buyback of Shares": 90 })]);
+    expect(terminal.terminalEligibilityBlocked).toBe(true);
+    expect(terminalBlockingClassifications(terminal, terminalPeriodOf([], history)).map((c) => c.period)).toEqual(["2025-03-31"]);
+  });
+
+  it("blocks on a recast spec_flag only in the terminal period", () => {
+    const flagged = (period_end: string): RecastPeriod => ({
+      ...EXISTING_TEST_PERIOD,
+      period_end,
+      spec_flags: [{ label: "CAPITAL_TRANSACTION", severity: "warning" as never, affects_terminal: true, message: "Buyback." } as never],
+    });
+    const clean = (period_end: string): RecastPeriod => ({ ...EXISTING_TEST_PERIOD, period_end, spec_flags: [] });
+    expect(summarizeUnusualItemManifest([flagged("2023-03-31"), clean("2025-03-31")], []).terminalEligibilityBlocked).toBe(false);
+    expect(summarizeUnusualItemManifest([clean("2023-03-31"), flagged("2025-03-31")], []).terminalEligibilityBlocked).toBe(true);
   });
 
   it("truncates classifications at MAX_UNUSUAL_ITEM_CLASSIFICATIONS", () => {

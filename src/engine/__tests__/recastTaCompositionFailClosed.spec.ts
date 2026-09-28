@@ -70,6 +70,64 @@ function reconcile(corruption: Record<string, number> = {}) {
   return { summary, check, cur };
 }
 
+describe("ol-coverage-bridge — reads the labels Capitaline actually uses (real recast)", () => {
+  // Capitaline's own labels and the "Sundry Creditors" alias, as in the
+  // bundled exports. They sum to OL = TA − CSE − FO = 1000 − 600 − 0 = 400.
+  function capitalinePeriod(period_end: string, overrides: Record<string, number> = {}): RawPeriodData {
+    return {
+      company_id: "OL-COV",
+      period_end,
+      raw_metric_values: {
+        "Total Assets__BalanceSheet": 1000,
+        "Total Current Assets__BalanceSheet": 400,
+        "Total Non-Current and Other Assets__BalanceSheet": 600,
+        "Total Stockholders' Equity__BalanceSheet": 600,
+        "Total Equity__BalanceSheet": 600,
+        "Total Equity and Liabilities__BalanceSheet": 1000,
+        "Minority Interest__BalanceSheet": 0,
+        "Net Property, plant and equipment__BalanceSheet": 320,
+        "Cash and Cash Equivalents__BalanceSheet": 100,
+        "Sundry Creditors__BalanceSheet": 150,
+        "Other Current Liabilities__BalanceSheet": 50,
+        "Provisions__BalanceSheet": 40,
+        "Long-term Provisions__BalanceSheet": 30,
+        "Current Tax Liabilities - Short-term__BalanceSheet": 30,
+        "Non Current Tax Liabilities - Long-term__BalanceSheet": 20,
+        "Deferred Tax Liabilities (Net)__BalanceSheet": 30,
+        "Other Non-Current Liabilities__BalanceSheet": 50,
+        "Revenue From Operations(Net)__ProfitLoss": 900,
+        "Profit Before Tax__ProfitLoss": 140,
+        "Tax Expenses__ProfitLoss": 35,
+        "Profit After Tax__ProfitLoss": 105,
+        "Total Comprehensive Income for the Year__ProfitLoss": 105,
+        "Finance Cost__ProfitLoss": 10,
+        ...overrides,
+      },
+    };
+  }
+  const olCheck = (overrides: Record<string, number> = {}) => {
+    const prev = computeRecastPeriod(capitalinePeriod("2024-03-31"), DEFAULT_CONFIG);
+    const cur = computeRecastPeriod(capitalinePeriod("2025-03-31", overrides), DEFAULT_CONFIG, prev);
+    const summary = evaluateReconciliationResiduals({ recastData: [prev, cur], config: DEFAULT_CONFIG });
+    return { cur, check: summary.checks.find((c) => c.key === "ol-coverage-bridge" && c.periodEnd === "2025-03-31") };
+  };
+
+  it("confirms when the reported OL components sum to OL", () => {
+    // The old hard-coded list read "Trade Payables", "Provisions - Current",
+    // "Current Tax Liabilities"… — none present here — and found 130 of 400.
+    const { cur, check } = olCheck();
+    expect(cur.bs.OL).toBe(400);
+    expect(cur.recastDebug?.explicitOL).toBe(400);
+    expect(check?.status).toBe("confirmed");
+  });
+
+  it("still fails closed when a component is genuinely missing from the source", () => {
+    // Drop 150 of trade payables: 250 / 400 = 0.63, below the 0.7 floor.
+    const { check } = olCheck({ "Sundry Creditors__BalanceSheet": 0 });
+    expect(check?.status).toBe("failed");
+  });
+});
+
 describe("recast-ta-vs-raw — end-to-end fail-closed on real corrupt input", () => {
   it("confirms when reported asset subtotals reconcile to recast TA (real recast)", () => {
     const { check, cur } = reconcile();
