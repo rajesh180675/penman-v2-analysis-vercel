@@ -121,10 +121,58 @@ describe("ol-coverage-bridge — reads the labels Capitaline actually uses (real
     expect(check?.status).toBe("confirmed");
   });
 
+  it("reads past a label exported at zero to the one that carries the balance", () => {
+    // ITC-shaped: the unused labels are explicit zeros and the payables sit
+    // under "Other Trade Payables". The first finite key used to win, so the
+    // zero was read and trade payables counted as nothing.
+    const { cur, check } = olCheck({
+      "Trade Payables__BalanceSheet": 0,
+      "Sundry Creditors__BalanceSheet": 0,
+      "Other Trade Payables__BalanceSheet": 150,
+    });
+    expect(cur.bs.OL_TradePayables).toBe(150);
+    expect(cur.recastDebug?.explicitOL).toBe(400);
+    expect(check?.status).toBe("confirmed");
+  });
+
   it("still fails closed when a component is genuinely missing from the source", () => {
     // Drop 150 of trade payables: 250 / 400 = 0.63, below the 0.7 floor.
     const { check } = olCheck({ "Sundry Creditors__BalanceSheet": 0 });
     expect(check?.status).toBe("failed");
+  });
+});
+
+describe("operating-cost bridge — finance income is not operating income (real recast)", () => {
+  // TCS-shaped: Other Income (60) includes a directly reported Interest
+  // Income line (45). Core OI excludes it (it sits in NFE), so the bridge must.
+  const withIncome = (overrides: Record<string, number> = {}): RawPeriodData => ({
+    ...makePeriod("2025-03-31"),
+    raw_metric_values: {
+      ...makePeriod("2025-03-31").raw_metric_values,
+      "Other Income__ProfitLoss": 60,
+      "Interest Income__ProfitLoss": 45,
+      "Cost of Material Consumed__ProfitLoss": 400,
+      "Employee Benefits / Salaries & other Staff Cost__ProfitLoss": 150,
+      "Depreciation and Amortization__ProfitLoss": 40,
+      "Other Expenses__ProfitLoss": 170,
+      ...overrides,
+    },
+  });
+
+  it("nets directly reported finance income out of the bridge's other operating income", () => {
+    const period = computeRecastPeriod(withIncome(), DEFAULT_CONFIG);
+    expect(period.is.FinanceIncome).toBe(45);
+    // Only the non-finance remainder of Other Income is operating.
+    expect(period.is.operatingCostBridge?.otherOperatingIncome).toBe(15);
+  });
+
+  it("still nets the proxy estimate when finance income has no line of its own (unchanged)", () => {
+    // No interest line and no cash-flow interest: finance income falls to the
+    // Other-Income proxy (rung 4), which was already netted before this fix.
+    const period = computeRecastPeriod(withIncome({ "Interest Income__ProfitLoss": 0 }), DEFAULT_CONFIG);
+    expect(period.is.FinanceIncomeRung).toBe(4);
+    expect(period.is.FinanceIncome).toBeGreaterThan(0);
+    expect(period.is.operatingCostBridge?.otherOperatingIncome).toBeCloseTo(60 - period.is.FinanceIncome, 10);
   });
 });
 

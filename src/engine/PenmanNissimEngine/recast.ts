@@ -26,6 +26,7 @@ import {
   pushTrace,
   sumWithDistinctSource,
   valBS,
+  valBSFirstNonZero,
   valPL,
   valCF,
   sumPLWithTrace,
@@ -34,6 +35,9 @@ import {
 export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace?: TraceMap): CanonicalBalanceSheet {
   const bs = (line: string, keys: readonly string[]) => valBS(data, keys, line, trace);
   const sumBs = (line: string, keys: readonly string[]) => sumWithDistinctSource(data, keys, "BalanceSheet", line, trace);
+  // OL components: each key list holds one line's alternative labels, and the
+  // unused one is often exported as 0, so a zero must not end the search.
+  const olBs = (line: string, keys: readonly string[]) => valBSFirstNonZero(data, keys, line, trace);
 
   const TA = bs("BS.TA", M.balanceSheet.totalAssets);
   const totalSE = bs("BS.TotalStockholdersEquity", M.balanceSheet.totalStockholdersEquity);
@@ -111,14 +115,14 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   const PPE = bs("BS.PPE", M.balanceSheet.ppe);
 
   const explicitOL =
-    bs("BS.OLComp.TradePayables", M.balanceSheet.olComponents.tradePayables)
-    + bs("BS.OLComp.OtherCurrentLiabilities", M.balanceSheet.olComponents.otherCurrentLiabilities)
-    + bs("BS.OLComp.ProvisionsCurrent", M.balanceSheet.olComponents.provisionsCurrent)
-    + bs("BS.OLComp.ProvisionsLongTerm", M.balanceSheet.olComponents.provisionsLongTerm)
-    + bs("BS.OLComp.CurrentTaxLiabilities", M.balanceSheet.olComponents.currentTaxLiabilities)
-    + bs("BS.OLComp.NonCurrentTaxLiabilities", M.balanceSheet.olComponents.nonCurrentTaxLiabilities)
-    + bs("BS.OLComp.DeferredTaxLiabilitiesNet", M.balanceSheet.olComponents.deferredTaxLiabilitiesNet)
-    + bs("BS.OLComp.OtherNonCurrentLiabilities", M.balanceSheet.olComponents.otherNonCurrentLiabilities);
+    olBs("BS.OLComp.TradePayables", M.balanceSheet.olComponents.tradePayables)
+    + olBs("BS.OLComp.OtherCurrentLiabilities", M.balanceSheet.olComponents.otherCurrentLiabilities)
+    + olBs("BS.OLComp.ProvisionsCurrent", M.balanceSheet.olComponents.provisionsCurrent)
+    + olBs("BS.OLComp.ProvisionsLongTerm", M.balanceSheet.olComponents.provisionsLongTerm)
+    + olBs("BS.OLComp.CurrentTaxLiabilities", M.balanceSheet.olComponents.currentTaxLiabilities)
+    + olBs("BS.OLComp.NonCurrentTaxLiabilities", M.balanceSheet.olComponents.nonCurrentTaxLiabilities)
+    + olBs("BS.OLComp.DeferredTaxLiabilitiesNet", M.balanceSheet.olComponents.deferredTaxLiabilitiesNet)
+    + olBs("BS.OLComp.OtherNonCurrentLiabilities", M.balanceSheet.olComponents.otherNonCurrentLiabilities);
   const olRatio = OL > 0 ? explicitOL / OL : 1;
   const olConsistent = OL === 0 ? true : olRatio >= 0.7 && olRatio <= 1.3;
 
@@ -164,14 +168,14 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
     BridgeDebtTotal: bridgeDebtTotal,
     FO_LeaseLiabilities: leaseLiab,
     FO_FinancialDebtExLease: financialDebtExLease,
-    OL_TradePayables: bs("BS.OLComp.TradePayablesOut", M.balanceSheet.olComponents.tradePayables),
-    OL_OtherCurrentLiabilities: bs("BS.OLComp.OtherCurrentLiabilitiesOut", M.balanceSheet.olComponents.otherCurrentLiabilities),
-    OL_ProvisionsCurrent: bs("BS.OLComp.ProvisionsCurrentOut", M.balanceSheet.olComponents.provisionsCurrent),
-    OL_ProvisionsLongTerm: bs("BS.OLComp.ProvisionsLongTermOut", M.balanceSheet.olComponents.provisionsLongTerm),
-    OL_CurrentTaxLiabilities: bs("BS.OLComp.CurrentTaxLiabilitiesOut", M.balanceSheet.olComponents.currentTaxLiabilities),
-    OL_NonCurrentTaxLiabilities: bs("BS.OLComp.NonCurrentTaxLiabilitiesOut", M.balanceSheet.olComponents.nonCurrentTaxLiabilities),
-    OL_DeferredTaxLiabilitiesNet: bs("BS.OLComp.DeferredTaxLiabilitiesNetOut", M.balanceSheet.olComponents.deferredTaxLiabilitiesNet),
-    OL_OtherNonCurrentLiabilities: bs("BS.OLComp.OtherNonCurrentLiabilitiesOut", M.balanceSheet.olComponents.otherNonCurrentLiabilities),
+    OL_TradePayables: olBs("BS.OLComp.TradePayablesOut", M.balanceSheet.olComponents.tradePayables),
+    OL_OtherCurrentLiabilities: olBs("BS.OLComp.OtherCurrentLiabilitiesOut", M.balanceSheet.olComponents.otherCurrentLiabilities),
+    OL_ProvisionsCurrent: olBs("BS.OLComp.ProvisionsCurrentOut", M.balanceSheet.olComponents.provisionsCurrent),
+    OL_ProvisionsLongTerm: olBs("BS.OLComp.ProvisionsLongTermOut", M.balanceSheet.olComponents.provisionsLongTerm),
+    OL_CurrentTaxLiabilities: olBs("BS.OLComp.CurrentTaxLiabilitiesOut", M.balanceSheet.olComponents.currentTaxLiabilities),
+    OL_NonCurrentTaxLiabilities: olBs("BS.OLComp.NonCurrentTaxLiabilitiesOut", M.balanceSheet.olComponents.nonCurrentTaxLiabilities),
+    OL_DeferredTaxLiabilitiesNet: olBs("BS.OLComp.DeferredTaxLiabilitiesNetOut", M.balanceSheet.olComponents.deferredTaxLiabilitiesNet),
+    OL_OtherNonCurrentLiabilities: olBs("BS.OLComp.OtherNonCurrentLiabilitiesOut", M.balanceSheet.olComponents.otherNonCurrentLiabilities),
     DTL, PensionObl, OL_ex_DTL,
     Goodwill, CurrentAssets, CurrentLiabilities, Inventory, TradeReceivables, TradePayables,
     PPE, LIFO_reserve: 0,
@@ -289,7 +293,12 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
     : 0;
   const sgaTotal = sgaDetailed;
   const otherOperatingExpense = Math.max(0, otherExpenses - sgaDetailed - sectorSpecificOperatingExpense);
-  const otherOperatingIncome = Math.max(0, OtherIncome - (FinanceIncomeRung === 4 ? Math.min(OtherIncome, FinanceIncome) : 0));
+  // Finance income is inside Other Income on every rung (Capitaline lists
+  // Interest Income as a sub-line of it), and OI = CNI + NFE excludes it, so
+  // the bridge must too. Netting it only on the proxy rung counted a cash-rich
+  // company's interest as operating income — TCS and Infosys missed the
+  // reported core OI by a steady ~5%.
+  const otherOperatingIncome = Math.max(0, OtherIncome - Math.min(OtherIncome, FinanceIncome));
   const grossProfit = Sales - COGS;
   const operatingCosts = employeeCost + depreciation + sgaTotal + sectorSpecificOperatingExpense + otherOperatingExpense;
   const OCITotal = cfg.oci_treated_as_unusual ? OCI : 0;

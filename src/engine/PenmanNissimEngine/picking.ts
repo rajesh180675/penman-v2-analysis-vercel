@@ -148,6 +148,24 @@ export function sumWithDistinctSource(
   return total;
 }
 
+/**
+ * Like valBS, but a key present at zero does not end the search. For lines
+ * Capitaline files under alternative labels in different years, the unused
+ * label is often exported as an explicit 0 — ITC carries "Trade Payables: 0"
+ * beside "Sundry Creditors: 2,020" — and valBS would stop at the zero.
+ * Returns 0 only when every key is absent or zero.
+ */
+export const valBSFirstNonZero = (d: RawPeriodData, k: readonly string[], line?: string | undefined, trace?: TraceMap) => {
+  for (const key of k) {
+    const picked = pickOneWithSource(d, key, "BalanceSheet");
+    if (picked && picked.value !== 0) {
+      pushTrace(trace, line, { statement: picked.statement, key: picked.key, value: picked.value, matchType: picked.matchType });
+      return picked.value;
+    }
+  }
+  return valBS(d, k, line, trace);
+};
+
 export const valBS = (d: RawPeriodData, k: readonly string[], line?: string | undefined, trace?: TraceMap) => {
   const r = pickWithSource(d, k, "BalanceSheet");
   pushTrace(trace, line, { statement: r.statement, key: r.key, value: r.value, matchType: r.matchType, note: r.note });
