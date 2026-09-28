@@ -15,7 +15,7 @@ import { detectDistress } from "./distressDetector";
 import { summarizeConceptIdentity } from "./conceptOntology";
 import { detectCorporateActions } from "./corporateActions";
 import { evaluateEconomicSanity } from "./economicSanityGates";
-import { summarizeUnusualItemManifest } from "./unusualItemPolicy";
+import { summarizeUnusualItemManifest, terminalBlockingClassifications, terminalPeriodOf } from "./unusualItemPolicy";
 import { buildLineageMap, buildLineageRef } from "./lineageBuilder";
 import { appendRunResidualSummary, RESIDUAL_SCORE_PRODUCTION_THRESHOLD } from "../lib/residualsStore";
 import { isEnabled } from "../lib/featureFlags";
@@ -375,6 +375,12 @@ export function buildAnalysisTraceability(params: {
   const terminalEligibilityBlockEnabled = isEnabled("rigor.terminalEligibilityBlock");
   const terminalEligibilityBlocksValuation =
     terminalEligibilityBlockEnabled && unusualItemManifest.terminalEligibilityBlocked;
+  // The items that block are the terminal period's; the message and the
+  // residual score count those, not every year's.
+  const terminalBlockers = terminalBlockingClassifications(
+    unusualItemManifest,
+    terminalPeriodOf(params.recastData ?? [], params.rawData ?? []),
+  );
   // Phase 0 — sector fail-safe. A detected-but-unmodelled industrial subsector
   // (telecom/utility) runs the full recast and produces sector-correct ratios,
   // but the engine has no sector-native valuation model, so the industrial
@@ -479,7 +485,7 @@ export function buildAnalysisTraceability(params: {
           : conceptIdentityBlocksValuation
             ? `Concept identity layer reports ${conceptIdentity.unresolvedCriticalCount} unresolved critical conflict(s). Resolve before treating the run as valuation-eligible.`
             : terminalEligibilityBlocksValuation
-              ? `Unusual-item manifest flags ${unusualItemManifest.classifications.filter((c) => c.affectsTerminalEligibility).length} terminal-eligibility-blocking classification(s) (${unusualItemManifest.classifications.filter((c) => c.affectsTerminalEligibility).map((c) => c.category).slice(0, 3).join(", ")}).`
+              ? `Unusual-item manifest flags ${terminalBlockers.length} terminal-eligibility-blocking classification(s) in the terminal period ${terminalBlockers[0]?.period ?? ""} (${[...new Set(terminalBlockers.map((c) => c.category))].join(", ")}).`
               : valuationStatus === "guarded"
                 ? "Valuation still depends on a guarded fallback anchor."
                 : valuationStatus === "warning" || valuationStatus === "production-ready"
@@ -522,7 +528,7 @@ export function buildAnalysisTraceability(params: {
   const mappingPenalty = Math.min(40, blockingCount * 10 + conceptIdentity.conflictCount);
   const reconPenalty = Math.min(30, (reconciliation.maxResidualRatio ?? 0) * 100);
   const sanityPenalty = Math.min(20, economicSanity.failedChecks.length * 5);
-  const unusualPenalty = Math.min(30, unusualItemManifest.classifications.filter((c) => c.affectsTerminalEligibility).length * 10);
+  const unusualPenalty = Math.min(30, terminalBlockers.length * 10);
   const overallResidualScore = Math.round(
     parserGap * 0.25 + mappingPenalty * 0.25 + reconPenalty * 0.20 + sanityPenalty * 0.15 + unusualPenalty * 0.15,
   );

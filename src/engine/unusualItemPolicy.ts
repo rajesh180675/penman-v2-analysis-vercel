@@ -214,6 +214,20 @@ function findRule(label: string): { rule: ClassificationRule; pattern: RegExp } 
   return null;
 }
 
+/** The period a terminal-eligibility item disqualifies: the latest one. */
+export function terminalPeriodOf(recastData: RecastPeriod[], rawMetrics: RawPeriodData[]): string | null {
+  const ends = [...recastData, ...rawMetrics].map((p) => p.period_end);
+  return ends.length ? ends.reduce((a, b) => (b > a ? b : a)) : null;
+}
+
+/** Classifications that disqualify the terminal period as an anchor. */
+export function terminalBlockingClassifications(
+  manifest: Pick<UnusualItemManifest, "classifications">,
+  terminalPeriod: string | null,
+): UnusualItemClassification[] {
+  return manifest.classifications.filter((c) => c.affectsTerminalEligibility && c.period === terminalPeriod);
+}
+
 /**
  * Aggregate classifications into the envelope manifest. Capped at
  * MAX_UNUSUAL_ITEM_CLASSIFICATIONS.
@@ -228,7 +242,13 @@ export function summarizeUnusualItemManifest(
   const totalImpact = capped
     .filter((c) => c.affectsCoreOI)
     .reduce((sum, c) => sum + Math.abs(c.value), 0);
-  const terminalEligibilityBlocked = capped.some((c) => c.affectsTerminalEligibility);
+  // Every classification is listed, but only one in the terminal period
+  // blocks: each rule's own rationale is that "the period is not a valid
+  // terminal anchor", and economic-sanity Check A applies it per period.
+  // Counting the whole history let a 2014 buyback block a 2025 valuation
+  // (TCS listed 35, Sun Pharma 42), so no company could reach valuation-eligible.
+  const terminalEligibilityBlocked =
+    terminalBlockingClassifications({ classifications: capped }, terminalPeriodOf(recastData, rawMetrics)).length > 0;
   const unclassifiedCount = capped.filter((c) => c.category === "unclassified").length;
   return {
     totalUnusualImpactOnCoreOI: totalImpact,
