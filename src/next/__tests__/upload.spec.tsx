@@ -14,7 +14,7 @@ const result = { status: "completed" } as unknown as LegacyAnalysisRunExecutionR
 function deps(overrides: Partial<CompanyRunDependencies> = {}): CompanyRunDependencies {
   return {
     fetchZip: vi.fn(async () => new Uint8Array([9])),
-    parse: vi.fn(async () => periods),
+    parse: vi.fn(async () => ({ periods, debug: null })),
     fetchMarketSnapshot: async () => null,
     run: vi.fn(async () => result),
     now: () => new Date("2026-09-27T10:00:00Z"),

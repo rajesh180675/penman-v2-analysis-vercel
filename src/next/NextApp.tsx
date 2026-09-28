@@ -5,7 +5,7 @@
 import { useMemo, useState } from "react";
 import { findLibraryCompany } from "../components/data-entry/companyRegistry";
 import { CasePage } from "./CasePage";
-import { registerUploadedCompany, useCompanyRun, usePeerRuns, useRegistry, useRoute, useSnapshots, useTieOut, useTrackRecord } from "./hooks";
+import { registerUploadedCompany, sessionRegistry, useCompanyRun, usePeerRuns, useRegistry, useRoute, useSnapshots, useTieOut, useTrackRecord } from "./hooks";
 import { choosePeers } from "./sections/PeersSection";
 import { ToolsPage } from "./ToolsPage";
 import type { UploadedCompany } from "./UploadPanel";
@@ -15,8 +15,8 @@ import { formatRoute, LIBRARY, type Route } from "./route";
 const SPACES: { space: Route["space"]; label: string; href: string }[] = [
   { space: "library", label: "Library", href: formatRoute(LIBRARY) },
   { space: "case", label: "Case", href: formatRoute(LIBRARY) },
-  { space: "record", label: "Record", href: formatRoute({ space: "record", company: null }) },
-  { space: "lab", label: "Lab", href: formatRoute({ space: "lab", tool: null }) },
+  { space: "record", label: "Record", href: formatRoute({ space: "record", company: null, tool: null }) },
+  { space: "lab", label: "Lab", href: formatRoute({ space: "lab", tool: null, company: null }) },
 ];
 
 export function NextApp() {
@@ -28,8 +28,9 @@ export function NextApp() {
     () => (registry.status === "ready" ? [...registry.companies, ...uploaded.map((u) => u.company)] : []),
     [registry, uploaded],
   );
+  // The company a route names — a Case, or the Record/Lab tool's subject.
   const company = useMemo(
-    () => (route.space === "case" && registry.status === "ready" ? findLibraryCompany(companies, route.company) : null),
+    () => (route.space !== "library" && route.company && registry.status === "ready" ? findLibraryCompany(companies, route.company) : null),
     [route, registry, companies],
   );
   const onUpload = (upload: UploadedCompany) => {
@@ -46,11 +47,7 @@ export function NextApp() {
     [company, registry, companies],
   );
   const [peersRequestedFor, setPeersRequestedFor] = useState<string | null>(null);
-  const peerRuns = usePeerRuns(peers, company != null && peersRequestedFor === company.folder);
-  const recordCompany = useMemo(
-    () => (route.space === "record" && route.company && registry.status === "ready" ? findLibraryCompany(registry.companies, route.company) : null),
-    [route, registry],
-  );
+  const peerRuns = usePeerRuns(peers, route.space === "case" && company != null && peersRequestedFor === company.folder);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -101,7 +98,8 @@ export function NextApp() {
         )}
         {(route.space === "record" || route.space === "lab") && (
           registry.status === "ready"
-            ? <ToolsPage kind={route.space} companies={registry.companies} company={recordCompany} />
+            // A company's tools read the same run as its Case (one per session).
+            ? <ToolsPage route={route} companies={companies} company={company} run={run} sessionRegistry={sessionRegistry()} />
             : <LibraryPage registry={registry} />
         )}
       </main>

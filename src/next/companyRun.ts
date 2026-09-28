@@ -11,17 +11,27 @@ import { startBrowserAnalysisRun } from "../engine/analysisRun/browserClient";
 import type { LegacyAnalysisRunExecutionResult, LegacyAnalysisRunInputV1 } from "../engine/analysisRun";
 import type { LiveMarketDataSnapshot } from "../engine/marketData";
 import { ACTIVE_MARKET_PACKS } from "../engine/marketPacks";
-import { DEFAULT_CONFIG, type EngineConfig, type RawPeriodData } from "../engine/types";
+import type { CapitalineParseDebug } from "../engine/capitalineParser/types";
+import { DEFAULT_CONFIG, type CompanyRegistry, type EngineConfig, type RawPeriodData, type RecastPeriod } from "../engine/types";
 import { buildLocalLibraryCompanyUrls, type LibraryCompany } from "../components/data-entry/companyRegistry";
 
 export type CompanyRunState =
   | { readonly status: "loading"; readonly step: "fetching" | "parsing" | "analysing" }
-  | { readonly status: "ready"; readonly result: LegacyAnalysisRunExecutionResult }
+  | {
+      readonly status: "ready";
+      readonly result: LegacyAnalysisRunExecutionResult;
+      /**
+       * The parser's diagnostics, for the Lab's Debug tool. Held beside the run,
+       * not passed into it: the run's inputs (and so its reproducibility hash
+       * and trust envelope) stay what the Case sections were built on.
+       */
+      readonly debug?: CapitalineParseDebug | null;
+    }
   | { readonly status: "error"; readonly message: string };
 
 export interface CompanyRunDependencies {
   readonly fetchZip: (url: string) => Promise<Uint8Array>;
-  readonly parse: (bytes: Uint8Array, companyId: string) => Promise<RawPeriodData[]>;
+  readonly parse: (bytes: Uint8Array, companyId: string) => Promise<{ readonly periods: RawPeriodData[]; readonly debug: CapitalineParseDebug | null }>;
   /** The live market overlay; null when unavailable (the run proceeds, price withheld). */
   readonly fetchMarketSnapshot: (config: EngineConfig) => Promise<LiveMarketDataSnapshot | null>;
   readonly run: (input: LegacyAnalysisRunInputV1, requestId: string) => Promise<LegacyAnalysisRunExecutionResult>;
@@ -36,7 +46,8 @@ const defaultDependencies: CompanyRunDependencies = {
   },
   parse: async (bytes, companyId) => {
     const { parseCapitalineZip } = await import("../engine/capitalineParser");
-    return (await parseCapitalineZip(bytes, { companyId })).periods;
+    const { periods, debug } = await parseCapitalineZip(bytes, { companyId });
+    return { periods, debug };
   },
   // Same request the current shell's useLiveMarketData makes.
   fetchMarketSnapshot: async (config) => {
@@ -90,8 +101,8 @@ export async function loadCompanyRun(
       deps.parse(bytes, issuerId),
       asOf ? Promise.resolve(null) : deps.fetchMarketSnapshot(config),
     ]);
-    if (parsed.length === 0) return { status: "error", message: "The company's data parsed to zero periods." };
-    const rawData = asOf ? parsed.filter((p) => p.period_end <= asOf) : parsed;
+    if (parsed.periods.length === 0) return { status: "error", message: "The company's data parsed to zero periods." };
+    const rawData = asOf ? parsed.periods.filter((p) => p.period_end <= asOf) : parsed.periods;
     if (asOf && rawData.length < 2) {
       return { status: "error", message: `Fewer than two reported years end on or before ${asOf}; the analysis needs at least two.` };
     }
@@ -116,7 +127,7 @@ export async function loadCompanyRun(
         runInspectorEnabled: false,
       },
     };
-    return { status: "ready", result: await deps.run(input, runId) };
+    return { status: "ready", result: await deps.run(input, runId), debug: parsed.debug };
   } catch (error) {
     return { status: "error", message: error instanceof Error ? error.message : String(error) };
   }
@@ -126,6 +137,8 @@ export async function loadCompanyRun(
 export class CompanyRunCache {
   private readonly runs = new Map<string, Promise<Exclude<CompanyRunState, { status: "loading" }>>>();
   private readonly uploads = new Map<string, Uint8Array>();
+  /** Latest (not as-of) runs that have settled ready, by folder. */
+  private readonly ready = new Map<string, { company: LibraryCompany; result: LegacyAnalysisRunExecutionResult }>();
 
   constructor(private readonly deps: CompanyRunDependencies = defaultDependencies) {}
 
@@ -135,7 +148,28 @@ export class CompanyRunCache {
    */
   registerUpload(company: LibraryCompany, bytes: Uint8Array) {
     this.uploads.set(company.folder, bytes);
+    this.ready.delete(company.folder);
     for (const key of [...this.runs.keys()]) if (key.startsWith(`${company.folder}|`)) this.runs.delete(key);
+  }
+
+  /**
+   * The companies analysed this session, in the classic registry's shape, for
+   * the Lab's Regression tool ("loaded in session"). Keyed by the run's issuer
+   * id; the periods are the runs' own and must only be read.
+   */
+  registry(): CompanyRegistry {
+    return {
+      companies: Object.fromEntries([...this.ready.values()].map(({ company, result }) => {
+        const id = company.ticker.toUpperCase();
+        return [id, {
+          id,
+          label: company.name,
+          rawData: result.materialization.rawData as unknown as RawPeriodData[],
+          recastData: (result.materialization.pipelineResult?.periods ?? []) as unknown as RecastPeriod[],
+          companyType: company.type,
+        }];
+      })),
+    };
   }
 
   get(company: LibraryCompany, onStep?: (step: "fetching" | "parsing" | "analysing") => void, asOf: string | null = null) {
@@ -147,6 +181,7 @@ export class CompanyRunCache {
       // A failure is not cached: revisiting the company retries.
       void run.then((state) => {
         if (state.status === "error") this.runs.delete(key);
+        else if (!asOf && this.runs.get(key) === run) this.ready.set(company.folder, { company, result: state.result });
       });
     }
     return run;

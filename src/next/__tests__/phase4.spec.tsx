@@ -34,19 +34,46 @@ describe("every current tab has a home in the next UI (Phase 4 exit)", () => {
 describe("ToolsPage", () => {
   const companies = [co("TCS", "it-services", "TCS"), co("ITC", "consumer", "ITC Ltd")];
 
-  it("withholds company tools until a company is chosen, and links them once one is", () => {
-    const none = renderToStaticMarkup(<ToolsPage kind="record" companies={companies} company={null} />);
-    expect(none).toContain("Choose a company first");
-    expect(none).not.toContain("tab=report");
-    const withCompany = renderToStaticMarkup(<ToolsPage kind="record" companies={companies} company={companies[0]!} />);
-    expect(withCompany).toContain('href="/?ui=classic&amp;tab=report&amp;company=TCS"');
-    expect(withCompany).toContain('href="/?ui=classic&amp;tab=thesis&amp;company=TCS"');
+  it("links each tool inside the next UI, under the chosen company — never to the classic interface", () => {
+    const html = renderToStaticMarkup(
+      <ToolsPage route={{ space: "record", company: "TCS", tool: null }} companies={companies} company={companies[0]!} />,
+    );
+    expect(html).toContain('href="#/record/TCS/report"');
+    expect(html).toContain('href="#/record/TCS/thesis"');
+    expect(html).not.toContain("ui=classic");
+    const lab = renderToStaticMarkup(
+      <ToolsPage route={{ space: "lab", tool: null, company: null }} companies={companies} company={null} />,
+    );
+    expect(lab).toContain('href="#/lab/debug"');
+    expect(lab).toContain('href="#/lab/v3analytics"');
+    expect(lab).not.toContain("ui=classic");
   });
 
-  it("links tools that need no company straight away", () => {
-    const html = renderToStaticMarkup(<ToolsPage kind="lab" companies={companies} company={null} />);
-    expect(html).toContain('href="/?ui=classic&amp;tab=debug"');
-    expect(html).toContain('href="/?ui=classic&amp;tab=charts"');
+  it("withholds a company tool until a company is chosen", () => {
+    const html = renderToStaticMarkup(
+      <ToolsPage route={{ space: "lab", tool: "v3analytics", company: null }} companies={companies} company={null} />,
+    );
+    expect(html).toContain("Choose a company first");
+  });
+
+  it("shows the run's progress, or why it could not run, in place of the tool", () => {
+    const loading = renderToStaticMarkup(
+      <ToolsPage route={{ space: "record", company: "TCS", tool: "thesis" }} companies={companies} company={companies[0]!}
+        run={{ status: "loading", step: "parsing" }} />,
+    );
+    expect(loading).toContain("Reading statements…");
+    const failed = renderToStaticMarkup(
+      <ToolsPage route={{ space: "record", company: "TCS", tool: "thesis" }} companies={companies} company={companies[0]!}
+        run={{ status: "error", message: "Company data not found (404)." }} />,
+    );
+    expect(failed).toContain("Analysis could not run: Company data not found (404).");
+  });
+
+  it("says when the route names a company the library does not have", () => {
+    const html = renderToStaticMarkup(
+      <ToolsPage route={{ space: "record", company: "NOPE", tool: null }} companies={companies} company={null} />,
+    );
+    expect(html).toContain("No company &quot;NOPE&quot; in the library.");
   });
 });
 

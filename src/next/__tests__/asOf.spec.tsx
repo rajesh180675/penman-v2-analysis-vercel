@@ -24,7 +24,10 @@ function deps(overrides: Partial<CompanyRunDependencies> = {}): CompanyRunDepend
       const buf = readFileSync(join(process.cwd(), "public", "data", "companies", FOLDER, `${FOLDER}.zip`));
       return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
     },
-    parse: async (bytes, id) => (await parseCapitalineZip(bytes, { companyId: id })).periods,
+    parse: async (bytes, id) => {
+      const { periods, debug } = await parseCapitalineZip(bytes, { companyId: id });
+      return { periods, debug };
+    },
     fetchMarketSnapshot: async () => null,
     run: (input) => executeLegacyAnalysisRun(input),
     now: () => new Date("2026-09-26T10:00:00Z"),
@@ -71,7 +74,7 @@ describe("as-of Case (Phase 5 exit)", () => {
   const stubPeriods = (["2021-03-31", "2022-03-31", "2023-03-31", "2024-03-31"] as const)
     .map((period_end) => ({ company_id: "TCS", period_end, raw_metric_values: {} }) as RawPeriodData);
   const stubbed = (overrides: Partial<CompanyRunDependencies>) =>
-    deps({ fetchZip: async () => new Uint8Array([1]), parse: async () => stubPeriods, ...overrides });
+    deps({ fetchZip: async () => new Uint8Array([1]), parse: async () => ({ periods: stubPeriods, debug: null }), ...overrides });
 
   it("fetches no live price for a dated view, and refuses a date with fewer than two years", async () => {
     const fetchMarketSnapshot = vi.fn(async () => null);
