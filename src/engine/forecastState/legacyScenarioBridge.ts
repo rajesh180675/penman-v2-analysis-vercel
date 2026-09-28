@@ -4,6 +4,11 @@ import { buildIndustrialForecast } from "./engine";
 
 export const LEGACY_FORECAST_STATE_BRIDGE_VERSION = "2026-07-legacy-forecast-state-bridge-v1" as const;
 
+/** Revolver passes: a few per year cover each draw's own interest. */
+const MAX_REVOLVER_PASSES = 40;
+/** A draw overshoots its shortfall slightly so its own interest does not reopen it. */
+const REVOLVER_HEADROOM = 0.01;
+
 function clamp(value: number, low: number, high: number): number {
   return Math.min(Math.max(value, low), high);
 }
@@ -77,27 +82,46 @@ function yearDrivers(
   latest: RecastPeriod,
   anchor: IndustrialForecastAnchor,
 ): IndustrialForecastYearDrivers[] {
+  const bs = anchor.balanceSheet;
   const taxRate = clamp(latest.is.taxRate, 0, 1);
   const afterTaxDenominator = Math.max(1 - taxRate, 1e-6);
   const depreciation = latest.is.operatingCostBridge?.depreciation ?? 0;
-  const debtBase = Math.max(anchor.balanceSheet.debt + anchor.balanceSheet.leaseLiabilities, 0);
-  const debtCost = debtBase > 0 ? clamp(latest.is.FinanceCost / debtBase, 0, 1) : 0;
-  const financialAssetYield = anchor.balanceSheet.cash > 0
-    ? clamp(latest.is.FinanceIncome / anchor.balanceSheet.cash, 0, 1)
+  const debtBase = Math.max(bs.debt + bs.leaseLiabilities, 0);
+  const financialAssetYield = bs.cash > 0
+    ? clamp(latest.is.FinanceIncome / bs.cash, 0, 1)
     : 0;
   const payout = latest.is.CNI > 0 ? clamp(latest.cf.DividendPaid / latest.is.CNI, 0, 1) : 0;
-  return Array.from({ length: scenario.horizonT }, (_, index): IndustrialForecastYearDrivers => ({
+  // The scenario's one turnover driver sets NOA, so each operating balance
+  // keeps its anchor share of NOA and a rising turnover shrinks them all in
+  // proportion. Holding each at its anchor share of revenue instead put the
+  // whole change on PPE, the plug: Titan's inventory alone (48% of sales)
+  // exceeded the NOA a 2.6x turnover allows, and PPE went negative. With no
+  // positive NOA there are no shares to keep, so the balances hold their
+  // share of revenue.
+  const noa = bs.workingCapitalAssets + bs.ppe + bs.rightOfUseAssets + bs.intangibles + bs.goodwill
+    + bs.otherOperatingAssets - bs.operatingLiabilities;
+  const pctOfRevenue = (balance: number, assetTurnover: number) =>
+    noa > 0 && assetTurnover > 0 ? balance / noa / assetTurnover : balance / anchor.revenue;
+  return Array.from({ length: scenario.horizonT }, (_, index): IndustrialForecastYearDrivers => {
+    const assetTurnover = seriesValue(scenario.drivers.ato, index);
+    // New borrowing is priced at the opening debt's cost; with no opening
+    // debt, at the scenario's own financing rate (after tax, on NFO).
+    const nbc = seriesValue(scenario.drivers.nbc, index);
+    const debtCost = debtBase > 0
+      ? clamp(latest.is.FinanceCost / debtBase, 0, 1)
+      : Number.isFinite(nbc) ? clamp(nbc / afterTaxDenominator, 0, 1) : 0;
+    return {
     yearOffset: index + 1,
     revenueGrowth: seriesValue(scenario.drivers.sales_growth, index),
     // Legacy core margin represents after-tax operating income. Convert it
     // explicitly to the ForecastState pre-tax margin contract.
     operatingMargin: seriesValue(scenario.drivers.core_sales_pm, index) / afterTaxDenominator,
-    assetTurnover: seriesValue(scenario.drivers.ato, index),
+    assetTurnover,
     taxRate,
-    workingCapitalAssetPctRevenue: anchor.balanceSheet.workingCapitalAssets / anchor.revenue,
-    operatingLiabilityPctRevenue: anchor.balanceSheet.operatingLiabilities / anchor.revenue,
-    otherOperatingAssetPctRevenue: anchor.balanceSheet.otherOperatingAssets / anchor.revenue,
-    depreciationRate: anchor.balanceSheet.ppe > 0 ? clamp(depreciation / anchor.balanceSheet.ppe, 0, 1) : 0,
+    workingCapitalAssetPctRevenue: pctOfRevenue(bs.workingCapitalAssets, assetTurnover),
+    operatingLiabilityPctRevenue: pctOfRevenue(bs.operatingLiabilities, assetTurnover),
+    otherOperatingAssetPctRevenue: pctOfRevenue(bs.otherOperatingAssets, assetTurnover),
+    depreciationRate: bs.ppe > 0 ? clamp(depreciation / bs.ppe, 0, 1) : 0,
     amortizationRate: 0,
     intangibleInvestmentPctRevenue: 0,
     rightOfUseAssetAdditions: 0,
@@ -123,7 +147,15 @@ function yearDrivers(
     minorityIncomeShare: 0,
     minorityContributions: 0,
     minorityDistributions: 0,
-  }));
+    };
+  });
+}
+
+/** Years whose projected cash is negative, earliest first, with the shortfall. */
+function cashShortfalls(result: IndustrialForecastResult): { index: number; shortfall: number }[] {
+  const projected = result.status === "computed" ? result.forecastCase.projected : result.projected;
+  return projected.flatMap((state, index) =>
+    state.balanceSheet.financialAssets.cash < 0 ? [{ index, shortfall: -state.balanceSheet.financialAssets.cash }] : []);
 }
 
 /** Convert a legacy named scenario into the balanced ForecastState contract. */
@@ -140,13 +172,12 @@ export function buildIndustrialForecastFromLegacyScenario(args: {
   readonly probabilityRationale: string | null;
 }): IndustrialForecastResult {
   const anchor = buildAnchor(args.latest, args.config, args.evidenceRefs);
-  const drivers = yearDrivers(args.scenario, args.latest, anchor);
   const lastIndex = Math.max(args.scenario.horizonT - 1, 0);
   const terminalAfterTaxMargin = seriesValue(args.scenario.drivers.core_sales_pm, lastIndex);
   const terminalAssetTurnover = seriesValue(args.scenario.drivers.ato, lastIndex);
   const terminalRoic = terminalAfterTaxMargin * terminalAssetTurnover;
   const terminalGrowth = args.scenario.drivers.g_terminal;
-  const request: IndustrialForecastRequest = {
+  const requestFor = (drivers: IndustrialForecastYearDrivers[]): IndustrialForecastRequest => ({
     caseId: args.caseId,
     label: args.label,
     scenarioKey: scenarioKey(args.scenario.name),
@@ -166,6 +197,23 @@ export function buildIndustrialForecastFromLegacyScenario(args: {
     probabilityStatus: args.probabilityStatus,
     probabilityEvidenceRefs: [],
     probabilityRationale: args.probabilityRationale,
-  };
-  return buildIndustrialForecast(request);
+  });
+
+  // Debt is held at the anchor and cash absorbs every other flow, so a year
+  // whose investment outruns its cash from operations closes with negative
+  // cash (NTPC, L&T, Tata Steel) — a balance sheet that cannot exist. A
+  // revolving draw funds the shortfall, as a model with a minimum-cash rule
+  // would: recorded as that year's debt issuance, so the debt roll-forward
+  // and the financing cost both see it. Earliest year first, since a draw
+  // lifts cash in every later year too; each pass re-prices the interest.
+  let drivers = yearDrivers(args.scenario, args.latest, anchor);
+  let result = buildIndustrialForecast(requestFor(drivers));
+  for (let pass = 0; pass < MAX_REVOLVER_PASSES; pass += 1) {
+    const first = cashShortfalls(result)[0];
+    if (!first) break;
+    drivers = drivers.map((driver, index) =>
+      index === first.index ? { ...driver, debtIssuance: driver.debtIssuance + first.shortfall * (1 + REVOLVER_HEADROOM) } : driver);
+    result = buildIndustrialForecast(requestFor(drivers));
+  }
+  return result;
 }
