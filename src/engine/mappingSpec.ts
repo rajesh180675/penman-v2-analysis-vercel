@@ -127,7 +127,8 @@ export const CapitalineMappingSpec = {
       ],
     },
     olComponents: {
-      tradePayables: ["Trade Payables", "Sundry Creditors"],
+      // Alternatives across years, not addends: read the first non-zero.
+      tradePayables: ["Trade Payables", "Sundry Creditors", "Other Trade Payables"],
       otherCurrentLiabilities: ["Other Current Liabilities"],
       provisionsCurrent: ["Provisions"],
       provisionsLongTerm: ["Long-term Provisions"],
