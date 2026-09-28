@@ -501,26 +501,17 @@ export function extractRecastDebug(data: RawPeriodData, bs: CanonicalBalanceShee
   const rawCurrentAssets = readRaw("Total Current Assets");
   const rawNonCurrentAssets =
     readRaw("Total Non-Current and Other Assets") ?? readRaw("Total Reported Non-current Assets");
-  // The OL coverage check needs the explicit-OL sum too. Mirror the
-  // calculation in recastBalanceSheet: read each component once, sum.
-  const olCompKeys: readonly string[] = [
-    "Trade Payables",
-    "Other Current Liabilities",
-    "Provisions - Current",
-    "Provisions - Long-term",
-    "Current Tax Liabilities",
-    "Non-Current Tax Liabilities",
-    "Deferred Tax Liabilities (Net)",
-    "Other Non-Current Liabilities",
-  ];
-  let explicitOL = 0;
-  for (const key of olCompKeys) {
-    const value = readRaw(key);
-    if (value != null) explicitOL += value;
-  }
-  // bs is unused for now but accepted so future debug fields can reference
-  // recast-side derived numbers if needed without re-plumbing the helper.
-  void bs;
+  // The OL coverage check needs the explicit-OL sum: the recast's own
+  // component reads (mapping-spec labels and aliases, same pick helper), so
+  // the check compares OL with what the recast actually found. This used to
+  // re-read a hard-coded label list, four of whose labels Capitaline does not
+  // use ("Provisions - Current" for "Provisions", "Current Tax Liabilities"
+  // for "Current Tax Liabilities - Short-term", …) and without the "Sundry
+  // Creditors" alias, so it under-counted OL and failed the 0.7 floor for
+  // every library company.
+  const explicitOL = bs.OL_TradePayables + bs.OL_OtherCurrentLiabilities + bs.OL_ProvisionsCurrent
+    + bs.OL_ProvisionsLongTerm + bs.OL_CurrentTaxLiabilities + bs.OL_NonCurrentTaxLiabilities
+    + bs.OL_DeferredTaxLiabilitiesNet + bs.OL_OtherNonCurrentLiabilities;
   return {
     rawTotalAssets,
     rawTotalLiabilitiesAndEquity,
