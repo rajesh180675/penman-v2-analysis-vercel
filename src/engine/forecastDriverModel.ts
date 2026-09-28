@@ -80,12 +80,16 @@ export function buildDriverForecastModel(args: {
     companyEvidenceWeight,
     0.4,
   ) ?? normalized.normalizedMargin ?? 0.1;
+  // Turnover is only meaningful on positive NOA: a negative NOA (net operating
+  // liabilities, e.g. HUL before FY21) gives a negative ratio, which the floor
+  // below would turn into a forecast NOA of 10x sales. Treat it as unknown.
+  const positive = (v: number | null | undefined) => (v != null && Number.isFinite(v) && v > 0 ? v : null);
   const blendedAto = blendAnchor(
-    latestRatios?.ATO ?? null,
-    businessModel.historicalAnchors.ato ?? normalized.normalizedAto ?? 1,
+    positive(latestRatios?.ATO),
+    positive(businessModel.historicalAnchors.ato) ?? positive(normalized.normalizedAto) ?? 1,
     companyEvidenceWeight,
     0.35,
-  ) ?? normalized.normalizedAto ?? 1;
+  ) ?? positive(normalized.normalizedAto) ?? 1;
 
   const growthGuardrailBand = template.growthGuardrailBand ?? 0.04;
   const marginGuardrailBand = template.marginGuardrailBand ?? 0.05;
@@ -107,20 +111,28 @@ export function buildDriverForecastModel(args: {
     Math.max((businessModel.historicalAnchors.corePm ?? normalized.normalizedMargin ?? 0.1) - marginGuardrailBand, 0.03),
     Math.min((businessModel.historicalAnchors.corePm ?? normalized.normalizedMargin ?? 0.1) + marginGuardrailBand, 0.6),
   );
-  const atoAnchor = businessModel.historicalAnchors.ato ?? normalized.normalizedAto ?? 1;
+  const atoAnchor = positive(businessModel.historicalAnchors.ato) ?? positive(normalized.normalizedAto) ?? 1;
   // Floor 0.1x, not 0.35x: an asset-heavy utility turns its NOA ~0.2x a year,
-  // and the old floor halved its forecast NOA, doubling RNOA.
+  // and the old floor halved its forecast NOA, doubling RNOA. Ceiling 8x, not
+  // 2.2x (2.5x at the start): a Maruti or Britannia turns NOA ~5x, and the cap
+  // doubled forecast NOA — and, with leverage held, forecast equity — so RNOA
+  // was forecast 27–44pp low at t+3 and Maruti's RE value went below its book.
   const atoTarget = clamp(
     atoAnchor * (0.95 + persistence * 0.1),
     Math.max(atoAnchor - atoGuardrailBand, 0.1),
-    Math.min(atoAnchor + atoGuardrailBand, 2.2),
+    Math.min(atoAnchor + atoGuardrailBand, 8),
   );
 
+  // The named scenarios scale base's turnover rather than clamping to fixed
+  // bounds of their own: bull's old 2.8x ceiling sat at half a 5x firm's base
+  // turnover, and stress's 0.35x floor above a 0.2x utility's, each inverting
+  // the scenario's capital charge against base.
+  const baseAtoStart = clamp(blendedAto, 0.1, 8);
   const scenarioPresets = {
     stress: {
       growthStart: clamp(blendedSalesGrowth * (0.35 + persistence * 0.05) - 0.01, -0.04, 0.08),
       marginStart: clamp(blendedMargin * (0.62 + persistence * 0.08), 0.02, 0.2),
-      atoStart: clamp(blendedAto * (0.86 + persistence * 0.04), 0.35, 2),
+      atoStart: baseAtoStart * (0.86 + persistence * 0.04),
     },
     base: {
       growthStart: clamp(blendedSalesGrowth, 0.01, Math.max(0.18, template.normalizedGrowth + 0.03)),
@@ -130,17 +142,17 @@ export function buildDriverForecastModel(args: {
       // (Paytm, Vodafone Idea); removing it took one-year CNI skill vs a random
       // walk from −15% to +6% (mean), with no profitable company's error changing.
       marginStart: clamp(blendedMargin, -0.5, 0.6),
-      atoStart: clamp(blendedAto, 0.1, 2.5),
+      atoStart: baseAtoStart,
     },
     bull: {
       growthStart: clamp(blendedSalesGrowth * (1.08 + persistence * 0.12), 0.03, Math.max(0.24, template.normalizedGrowth + 0.08)),
       marginStart: clamp(blendedMargin * (1.03 + persistence * 0.07), 0.05, 0.34),
-      atoStart: clamp(blendedAto * (0.99 + persistence * 0.04), 0.45, 2.8),
+      atoStart: baseAtoStart * (0.99 + persistence * 0.04),
     },
     "historical-panic": {
       growthStart: clamp(blendedSalesGrowth * 0.12 - 0.02, -0.08, 0.04),
       marginStart: clamp(blendedMargin * 0.5, 0.01, 0.16),
-      atoStart: clamp(blendedAto * 0.82, 0.3, 1.8),
+      atoStart: baseAtoStart * 0.82,
     },
   } as const;
 
