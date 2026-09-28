@@ -490,6 +490,41 @@ describe("persistence forecast — a net-cash issuer's financing drivers", () =>
   });
 });
 
+describe("persistence forecast — bull's discount rates never exceed base's", () => {
+  const template = {
+    normalizedGrowth: 0.09, terminalGrowthFloor: 0.03, terminalGrowthCap: 0.05,
+    growthFadeAlpha: 0.8, marginFadeAlpha: 0.9, atoFadeAlpha: 0.95, companyEvidenceMaxWeight: 0.8,
+    growthGuardrailBand: 0.035, marginGuardrailBand: 0.04, atoGuardrailBand: 0.4,
+  };
+  const rates = (scenarioKey: "stress" | "base" | "bull", riskInputs: { ke: number; kw: number; riskFreeRate: number }) => {
+    const latest = mkLatest("2025-03-31");
+    const { drivers } = derivePersistenceForecastScenario({
+      scenarioKey, latest, businessModel: buildBusinessModelProfile([latest]), horizon: 5, template, riskInputs,
+    });
+    return { ke: drivers.ke, kw: drivers.kw };
+  };
+
+  it.each([
+    // NTPC-shaped: a debt-weighted kw below rf + 3%, and a ke below rf + 4%.
+    { label: "kw and ke below the floors", ke: 0.105, kw: 0.0755, riskFreeRate: 0.0711 },
+    // TCS-shaped: rates well above the floors, where bull's cut applies as before.
+    { label: "rates above the floors", ke: 0.1342, kw: 0.1853, riskFreeRate: 0.0711 },
+  ])("keeps stress ≥ base ≥ bull on ke and kw ($label)", (riskInputs) => {
+    const [stress, base, bull] = (["stress", "base", "bull"] as const).map((key) => rates(key, riskInputs));
+    expect(stress!.kw).toBeGreaterThanOrEqual(base!.kw);
+    expect(bull!.kw).toBeLessThanOrEqual(base!.kw);
+    expect(stress!.ke).toBeGreaterThanOrEqual(base!.ke);
+    expect(bull!.ke).toBeLessThanOrEqual(base!.ke);
+  });
+
+  it("still cuts bull's rates below base where the floors allow", () => {
+    const base = rates("base", { ke: 0.1342, kw: 0.1853, riskFreeRate: 0.0711 });
+    const bull = rates("bull", { ke: 0.1342, kw: 0.1853, riskFreeRate: 0.0711 });
+    expect(bull.kw).toBeLessThan(base.kw);
+    expect(bull.ke).toBeLessThan(base.ke);
+  });
+});
+
 describe("persistence forecast — minority interest and an ill-conditioned balance sheet", () => {
   const template = {
     normalizedGrowth: 0.09, terminalGrowthFloor: 0.03, terminalGrowthCap: 0.05,
