@@ -230,3 +230,35 @@ describe("buildDriverForecastModel — asset turnover", () => {
   });
 });
 
+describe("buildDriverForecastModel — scenario margin ordering", () => {
+  const template = {
+    normalizedGrowth: 0.09, terminalGrowthFloor: 0.03, terminalGrowthCap: 0.05,
+    growthFadeAlpha: 0.8, marginFadeAlpha: 0.9, atoFadeAlpha: 0.95, companyEvidenceMaxWeight: 0.8,
+    growthGuardrailBand: 0.035, marginGuardrailBand: 0.04, atoGuardrailBand: 0.4,
+  };
+  const startMargin = (pm: number, scenarioKey: string) => {
+    const data = ["2021", "2022", "2023", "2024"].map((y) =>
+      mkPeriod(`${y}-03-31`, { CoreSalesPM: pm, PM: pm, ATO: 1.2, Sales_growth: 0.1 }));
+    return buildDriverForecastModel({
+      data,
+      latest: data[data.length - 1],
+      businessModel: buildBusinessModelProfile(data),
+      normalized: buildCyclicalNormalization(data),
+      scenarioKey,
+      template,
+    } as never).year1.coreMargin;
+  };
+
+  it.each([0.46, 0.14, -0.2])("keeps stress ≤ base ≤ bull on year-1 margin at %s", (pm) => {
+    // #344 let base reach a 46% utility margin (Powergrid) and a loss-maker's
+    // own losses, but bull kept a 34% ceiling and stress a +2% floor — so bull
+    // earned less than base on a utility and stress more than base on a
+    // loss-maker, which the run's scenario-ordering gate blocks on.
+    const [stress, base, bull, panic] = (["stress", "base", "bull", "historical-panic"] as const)
+      .map((key) => startMargin(pm, key));
+    expect(stress).toBeLessThanOrEqual(base!);
+    expect(panic).toBeLessThanOrEqual(base!);
+    expect(bull).toBeGreaterThanOrEqual(base!);
+  });
+});
+
