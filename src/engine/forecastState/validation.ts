@@ -183,11 +183,15 @@ function driverChecks(drivers: readonly IndustrialForecastYearDrivers[]): Foreca
     checks.push(booleanCheck(`driver.operating-margin-bound.${index + 1}`, driver.operatingMargin >= -1 && driver.operatingMargin <= 1, "Operating margin must be between -100% and 100%.", stateId));
     checks.push(booleanCheck(`driver.asset-turnover-positive.${index + 1}`, driver.assetTurnover > 0, "Asset turnover must be positive.", stateId));
     checks.push(booleanCheck(`driver.tax-rate-bound.${index + 1}`, driver.taxRate >= 0 && driver.taxRate <= 1, "Tax rate must be between zero and one.", stateId));
-    for (const field of ["workingCapitalAssetPctRevenue", "operatingLiabilityPctRevenue", "otherOperatingAssetPctRevenue", "depreciationRate", "amortizationRate", "intangibleInvestmentPctRevenue", "rightOfUseDepreciationRate", "costOfDebtPretax", "financialAssetYieldPretax", "dividendPayoutRatio", "minorityIncomeShare"] as const) {
+    for (const field of ["depreciationRate", "amortizationRate", "intangibleInvestmentPctRevenue", "rightOfUseDepreciationRate", "costOfDebtPretax", "financialAssetYieldPretax", "dividendPayoutRatio", "minorityIncomeShare"] as const) {
       const value = driver[field];
       checks.push(booleanCheck(`driver.ratio-bound.${index + 1}.${field}`, value >= 0 && value <= 1, `${field} must be between zero and one.`, stateId));
     }
-    for (const field of ["rightOfUseAssetAdditions", "debtIssuance", "debtRepayment", "leaseLiabilityAdditions", "leasePrincipalRepayment", "buybacks", "shareIssueProceeds", "sharesIssued", "sharesRepurchased", "dilutionOverhangShares", "financialAssetPurchases", "financialAssetSales", "minorityContributions", "minorityDistributions"] as const) {
+    // Balances as a share of revenue are a stock over a flow, not a rate, so
+    // they have no ceiling of one: Power Grid carries ₹4.4 of operating assets
+    // per ₹1 of sales. Capping them at one blocked every forecast of an
+    // asset-heavy company. They must still be non-negative.
+    for (const field of ["workingCapitalAssetPctRevenue", "operatingLiabilityPctRevenue", "otherOperatingAssetPctRevenue", "rightOfUseAssetAdditions", "debtIssuance", "debtRepayment", "leaseLiabilityAdditions", "leasePrincipalRepayment", "buybacks", "shareIssueProceeds", "sharesIssued", "sharesRepurchased", "dilutionOverhangShares", "financialAssetPurchases", "financialAssetSales", "minorityContributions", "minorityDistributions"] as const) {
       checks.push(booleanCheck(`driver.nonnegative.${index + 1}.${field}`, driver[field] >= 0, `${field} must be non-negative.`, stateId));
     }
   });
