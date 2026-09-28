@@ -17,7 +17,7 @@ const result = { status: "completed", run: {} } as unknown as LegacyAnalysisRunE
 function deps(overrides: Partial<CompanyRunDependencies> = {}) {
   return {
     fetchZip: vi.fn(async () => new Uint8Array([1])),
-    parse: vi.fn(async () => [period]),
+    parse: vi.fn(async () => ({ periods: [period], debug: null })),
     fetchMarketSnapshot: vi.fn(async () => snapshot),
     run: vi.fn(async () => result),
     now: () => new Date("2026-09-26T10:00:00Z"),
@@ -32,7 +32,7 @@ describe("loadCompanyRun", () => {
     const steps: string[] = [];
     const state = await loadCompanyRun(company, (s) => steps.push(s), d);
 
-    expect(state).toEqual({ status: "ready", result });
+    expect(state).toEqual({ status: "ready", result, debug: null });
     expect(steps).toEqual(["fetching", "parsing", "analysing"]);
     expect(d.fetchZip).toHaveBeenCalledWith("/data/companies/Mahindra%20&%20Mahindra/Mahindra%20&%20Mahindra.zip");
     expect(d.parse).toHaveBeenCalledWith(expect.any(Uint8Array), "M&M");
@@ -59,8 +59,17 @@ describe("loadCompanyRun", () => {
     const missing = await loadCompanyRun(company, undefined, deps({ fetchZip: async () => { throw new Error("Company data not found (404)."); } }));
     expect(missing).toEqual({ status: "error", message: "Company data not found (404)." });
 
-    const empty = await loadCompanyRun(company, undefined, deps({ parse: async () => [] }));
+    const empty = await loadCompanyRun(company, undefined, deps({ parse: async () => ({ periods: [], debug: null }) }));
     expect(empty.status).toBe("error");
+  });
+
+  it("keeps the parser's diagnostics beside the run without passing them into it", async () => {
+    const debug = { files: [] } as never;
+    const run = vi.fn(async (_input: LegacyAnalysisRunInputV1, _requestId: string) => result);
+    const state = await loadCompanyRun(company, undefined, deps({ run, parse: async () => ({ periods: [period], debug }) }));
+    expect(state).toEqual({ status: "ready", result, debug });
+    // The run's inputs, and so its hash and trust envelope, are unchanged.
+    expect(run.mock.calls[0]![0].debugInfo).toBeUndefined();
   });
 });
 
@@ -71,6 +80,20 @@ describe("CompanyRunCache", () => {
     await cache.get(company);
     await cache.get(company);
     expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it("lists the companies analysed this session, latest runs only, for the Lab's Regression tool", async () => {
+    const cache = new CompanyRunCache(deps({ run: vi.fn(async () => ({ ...result, materialization: { rawData: [period], pipelineResult: { periods: [] } } }) as never) }));
+    expect(cache.registry().companies).toEqual({});
+    await cache.get(company, undefined, "2025-03-31");
+    await Promise.resolve();
+    expect(Object.keys(cache.registry().companies)).toEqual([]);
+    await cache.get(company);
+    await Promise.resolve();
+    expect(cache.registry().companies["M&M"]).toMatchObject({ id: "M&M", label: "Mahindra & Mahindra Ltd", companyType: "cyclical", rawData: [period] });
+    // A new upload of the company drops it until it is analysed again.
+    cache.registerUpload(company, new Uint8Array([2]));
+    expect(cache.registry().companies).toEqual({});
   });
 
   it("retries a company whose load failed", async () => {

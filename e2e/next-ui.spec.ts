@@ -57,9 +57,12 @@ test.describe("Next UI", () => {
     await expect(page.getByRole("note")).toContainText("as of 2023-03-31");
     await expect(page.getByText(/Rigor: /)).toBeVisible({ timeout: 120_000 });
     await expect(page.getByText("No price as of 2023-03-31: the live price is today's, not point-in-time.").first()).toBeVisible();
+    // The Record and Lab render their tools here, on the company's shared run.
     await page.goto("/#/lab");
     await expect(page.getByRole("heading", { name: "Lab" })).toBeVisible();
-    await expect(page.locator('a[href="/?ui=classic&tab=debug"]')).toBeVisible();
+    await expect(page.locator('a[href="#/lab/debug"]')).toBeVisible();
+    await page.goto("/#/record/TCS/thesis");
+    await expect(page.getByRole("heading", { name: "Investment Thesis" })).toBeVisible({ timeout: 120_000 });
 
     expect(errors).toEqual([]);
   });

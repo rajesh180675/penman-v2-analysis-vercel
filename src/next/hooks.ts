@@ -48,6 +48,11 @@ export function useRegistry(): RegistryState {
 
 const sessionRuns = new CompanyRunCache();
 
+/** The companies analysed this session, in the classic registry's shape (the Lab's Regression tool). */
+export function sessionRegistry(cache: CompanyRunCache = sessionRuns) {
+  return cache.registry();
+}
+
 /** Make an uploaded company's zip the source of its runs for this session. */
 export function registerUploadedCompany(company: LibraryCompany, bytes: Uint8Array, cache: CompanyRunCache = sessionRuns) {
   cache.registerUpload(company, bytes);

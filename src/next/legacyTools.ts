@@ -1,9 +1,9 @@
 /**
  * Where every tab of the current interface lives in the next UI
  * (docs/ui-revamp-plan.md, "Where today's 22 tabs go"). A tab is either
- * rebuilt as a Case section, or reached from the Library, Record or Lab, which
- * open it in the classic interface for the chosen company until it is rebuilt.
- * Keyed by TabId, so a new tab without a home fails to compile.
+ * rebuilt as a Case section, a Record or Lab tool rendered in the next UI on
+ * the company's shared run, or a Library tool that still opens in the classic
+ * interface. Keyed by TabId, so a new tab without a home fails to compile.
  */
 import type { TabId } from "../app/tabs";
 import type { CaseSection } from "./route";
@@ -40,7 +40,7 @@ export const TAB_HOMES: Readonly<Record<TabId, TabHome>> = {
   charts: { kind: "lab", label: "Charts", description: "The chart gallery." },
 };
 
-/** The classic interface at a tab, for a company when one is given. */
+/** The classic interface at a tab, for a company when one is given (the Library's tools). */
 export function classicHref(tab: TabId, companyTicker: string | null = null): string {
   const params = new URLSearchParams({ ui: "classic", tab });
   if (companyTicker) params.set("company", companyTicker);

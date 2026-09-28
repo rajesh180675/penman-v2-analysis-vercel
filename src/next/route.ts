@@ -26,8 +26,8 @@ export type Route =
       readonly asOf: string | null;
       readonly scenario: Scenario;
     }
-  | { readonly space: "record"; readonly company: string | null }
-  | { readonly space: "lab"; readonly tool: string | null };
+  | { readonly space: "record"; readonly company: string | null; readonly tool: string | null }
+  | { readonly space: "lab"; readonly tool: string | null; readonly company: string | null };
 
 const SECTION_IDS = new Set<string>(CASE_SECTIONS.map((s) => s.id));
 const SCENARIOS = new Set<string>(["bear", "base", "bull"]);
@@ -58,10 +58,12 @@ export function parseRoute(hash: string): Route {
         scenario: scenario && SCENARIOS.has(scenario) ? (scenario as Scenario) : "base",
       };
     }
+    // A Record tool always belongs to a company (#/record/TCS/report); a Lab
+    // tool may not, so its company is a parameter (#/lab/v3analytics?company=TCS).
     case "record":
-      return { space: "record", company: parts[1] ?? null };
+      return { space: "record", company: parts[1] ?? null, tool: parts[1] ? parts[2] ?? null : null };
     case "lab":
-      return { space: "lab", tool: parts[1] ?? null };
+      return { space: "lab", tool: parts[1] ?? null, company: params.get("company") || null };
     default:
       return LIBRARY;
   }
@@ -79,9 +81,12 @@ export function formatRoute(route: Route): string {
       return `#/case/${encodeURIComponent(route.company)}/${route.section}${query ? `?${query}` : ""}`;
     }
     case "record":
-      return route.company ? `#/record/${encodeURIComponent(route.company)}` : "#/record";
-    case "lab":
-      return route.tool ? `#/lab/${encodeURIComponent(route.tool)}` : "#/lab";
+      if (!route.company) return "#/record";
+      return `#/record/${encodeURIComponent(route.company)}${route.tool ? `/${encodeURIComponent(route.tool)}` : ""}`;
+    case "lab": {
+      const query = route.company ? `?${new URLSearchParams({ company: route.company }).toString()}` : "";
+      return `${route.tool ? `#/lab/${encodeURIComponent(route.tool)}` : "#/lab"}${query}`;
+    }
   }
 }
 
