@@ -985,4 +985,52 @@ describe("evaluateReconciliationResiduals", () => {
     );
     expect(check).toBeUndefined();
   });
+
+  // An export that itemizes nothing beyond trade payables and deferred tax
+  // (Capitaline's older layouts) cannot reach the coverage floor; there the
+  // check reports without gating. Any itemized component keeps it gating.
+  const olCase = (itemizedOther: number) => {
+    const base = mkPeriod("2025-03-31");
+    const cur = mkPeriod("2025-03-31", {
+      bs: {
+        ...base.bs,
+        OL_OtherCurrentLiabilities: itemizedOther,
+        OL_ProvisionsCurrent: 0,
+        OL_ProvisionsLongTerm: 0,
+        OL_CurrentTaxLiabilities: 0,
+        OL_NonCurrentTaxLiabilities: 0,
+        OL_OtherNonCurrentLiabilities: 0,
+      },
+      recastDebug: {
+        rawTotalAssets: 1000,
+        rawTotalLiabilitiesAndEquity: 1000,
+        rawTotalEquity: 600,
+        rawCurrentAssets: 400,
+        rawNonCurrentAssets: 600,
+        explicitOL: 85 + itemizedOther, // trade payables 80 + deferred tax 5 (+ the itemized line), of OL 250
+      },
+      trace: {
+        ...base.trace,
+        "BS.FA.CashBank": [
+          { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 160, matchType: "exact_base" },
+        ],
+      },
+    });
+    const summary = evaluateReconciliationResiduals({ recastData: [mkPeriod("2024-03-31"), cur], config: DEFAULT_CONFIG });
+    return { summary, check: summary.checks.find((c) => c.key === "ol-coverage-bridge" && c.periodEnd === "2025-03-31") };
+  };
+
+  it("reports OL coverage without gating when the export itemizes no operating liability beyond trade payables", () => {
+    const { summary, check } = olCase(0);
+    expect(check?.status).toBe("failed"); // 85 / 250: still shown as a breach
+    expect(check?.role).toBe("diagnostic");
+    expect(summary.status).toBe("confirmed");
+  });
+
+  it("keeps OL coverage gating when any other operating liability is itemized", () => {
+    const { summary, check } = olCase(20); // 105 / 250
+    expect(check?.status).toBe("failed");
+    expect(check?.role).not.toBe("diagnostic");
+    expect(summary.status).toBe("failed");
+  });
 });

@@ -634,6 +634,24 @@ export function evaluateReconciliationResiduals(params: {
       return "confirmed";
     })();
 
+    // A year whose export itemizes no operating liability beyond trade
+    // payables and deferred tax (Capitaline's older layouts, 2011-15 for 18
+    // library companies) measures the export's layout, not a misstatement:
+    // 81 of the 83 such library years fail the 0.7 floor, and the only other
+    // liability data are the current/non-current totals, from which deriving
+    // components would make the check tautological. There it reports without
+    // gating (the #327 precedent for evidence-limited checks). Any itemized
+    // component keeps it gating, so a shortfall in an itemized year still
+    // fails closed.
+    const olItemized = [
+      period.bs.OL_OtherCurrentLiabilities,
+      period.bs.OL_ProvisionsCurrent,
+      period.bs.OL_ProvisionsLongTerm,
+      period.bs.OL_CurrentTaxLiabilities,
+      period.bs.OL_NonCurrentTaxLiabilities,
+      period.bs.OL_OtherNonCurrentLiabilities,
+    ].some((value) => value != null && Number.isFinite(value) && value !== 0);
+
     const olCoverageCheck = (() => {
       if (olCoverageResidual == null || olCoverageBasis == null) return null;
       const built = buildCheck({
@@ -645,10 +663,13 @@ export function evaluateReconciliationResiduals(params: {
         warningThreshold: 0.10,
         criticalThreshold: 0.30,
       });
-      if (olCoverageStatusOverride != null) {
-        return { ...built, status: olCoverageStatusOverride };
-      }
-      return built;
+      const withStatus = olCoverageStatusOverride != null ? { ...built, status: olCoverageStatusOverride } : built;
+      if (olItemized) return withStatus;
+      return {
+        ...withStatus,
+        role: "diagnostic" as const,
+        detail: "Diagnostic only: this year's export itemizes no operating liability beyond trade payables and deferred tax, so OL coverage cannot be measured.",
+      };
     })();
 
     const kwConsistencyCheck = buildKwConsistencyCheck(period);
