@@ -142,6 +142,36 @@ describe("ol-coverage-bridge — reads the labels Capitaline actually uses (real
   });
 });
 
+describe("COGS — the inventory-change line is added, as Capitaline signs it (real recast)", () => {
+  // Asian Paints FY11 as filed: the cost lines tie to Total Expenses 5,288.65
+  // only with the change ADDED (3,681.92 + 105.56 − 140.61 + 300.45 + 15.35
+  // + 94.48 + 1,231.50). Inventory built, so the line is negative.
+  const filed = (overrides: Record<string, number> = {}): RawPeriodData => ({
+    ...makePeriod("2025-03-31"),
+    raw_metric_values: {
+      ...makePeriod("2025-03-31").raw_metric_values,
+      "Cost of Material Consumed__ProfitLoss": 3681.92,
+      "Purchases of Stock-in-Trade__ProfitLoss": 105.56,
+      "Changes in Inventories of Finished Goods, Work-in-Progress and Stock-in-Trade__ProfitLoss": -140.61,
+      ...overrides,
+    },
+  });
+
+  it("lowers COGS when inventory builds", () => {
+    const period = computeRecastPeriod(filed(), DEFAULT_CONFIG);
+    // Subtracting it gave 3,928.09 — COGS overstated by twice the change.
+    expect(period.is.COGS).toBeCloseTo(3646.87, 6);
+  });
+
+  it("raises COGS when inventory runs down", () => {
+    const period = computeRecastPeriod(
+      filed({ "Changes in Inventories of Finished Goods, Work-in-Progress and Stock-in-Trade__ProfitLoss": 140.61 }),
+      DEFAULT_CONFIG,
+    );
+    expect(period.is.COGS).toBeCloseTo(3928.09, 6);
+  });
+});
+
 describe("operating-cost bridge — finance income is not operating income (real recast)", () => {
   // TCS-shaped: Other Income (60) includes a directly reported Interest
   // Income line (45). Core OI excludes it (it sits in NFE), so the bridge must.

@@ -266,9 +266,14 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
       : discontinuedRaw;
   const exceptionalOperatingAfterTax = exceptionalPretax * (1 - taxRate);
   const ExceptionalItemsAfterTax = exceptionalOperatingAfterTax + discontinuedAfterTax;
+  // Capitaline's "Changes in Inventories…" line is already signed as an
+  // expense (negative when inventory builds), so it is ADDED: the filed cost
+  // lines tie to the filed Total Expenses within 0.5% in all 229 library
+  // company-years with a non-zero change when added, and in 47 when
+  // subtracted. Subtracting it misstated COGS by twice the change.
   const COGS = pl("IS.COGS.Material", M.profitLoss.cogsMaterial)
     + pl("IS.COGS.Purchases", M.profitLoss.cogsPurchases)
-    - pl("IS.COGS.InventoryChange", M.profitLoss.cogsInventoryChange);
+    + pl("IS.COGS.InventoryChange", M.profitLoss.cogsInventoryChange);
   const employeeCost = pl("IS.EmployeeCost", M.profitLoss.employeeExpense);
   const depreciation = pl("IS.Depreciation", M.profitLoss.depreciationAmortization) || Math.abs(cf("IS.Depreciation.CF", M.cashFlow.depreciation));
   const sgaAdvertising = pl("IS.SGA.Advertising", M.profitLoss.sgaAds);

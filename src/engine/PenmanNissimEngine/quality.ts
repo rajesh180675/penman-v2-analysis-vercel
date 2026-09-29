@@ -23,7 +23,8 @@ export function computeQuality(cur: RecastPeriod, prev: RecastPeriod, data: RawP
   const safe = (n: number, d: number, fb = 1) => (d !== 0 && Number.isFinite(n / d) ? n / d : fb);
 
   const cogs = (d: RawPeriodData) => {
-    const direct = valPL(d, M.profitLoss.cogsMaterial) + valPL(d, M.profitLoss.cogsPurchases) - valPL(d, M.profitLoss.cogsInventoryChange);
+    // Inventory change is signed as an expense; added, as in recast.ts.
+    const direct = valPL(d, M.profitLoss.cogsMaterial) + valPL(d, M.profitLoss.cogsPurchases) + valPL(d, M.profitLoss.cogsInventoryChange);
     if (direct !== 0) return direct;
     return valPL(d, M.profitLoss.totalExpenses) - valPL(d, M.profitLoss.employeeExpense) - valPL(d, M.profitLoss.otherExpenses) - valPL(d, M.profitLoss.depreciationAmortization);
   };
