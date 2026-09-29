@@ -39,6 +39,10 @@ export function buildValuationTriangulationEvidence(params: {
 
   return {
     periodEnd: params.periodEnd ?? null,
+    accrualPair: {
+      re: base?.valuation.perShare?.intrinsic_re_per_share ?? null,
+      reoi: base?.valuation.perShare?.intrinsic_reoi_per_share ?? null,
+    },
     methods: [
       {
         key: "accrual-riv",

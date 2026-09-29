@@ -89,6 +89,8 @@ export interface ValuationTriangulationMethod {
 export interface ValuationTriangulationEvidence {
   periodEnd?: string | null | undefined;
   methods: ValuationTriangulationMethod[];
+  /** The base card's RE and ReOI per share, kept apart for the rigor ladder's consistency gate. */
+  accrualPair?: { re: number | null; reoi: number | null } | null | undefined;
 }
 
 function classifyResidual(

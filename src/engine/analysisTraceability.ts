@@ -16,6 +16,7 @@ import { summarizeConceptIdentity } from "./conceptOntology";
 import { detectCorporateActions } from "./corporateActions";
 import { evaluateEconomicSanity } from "./economicSanityGates";
 import { summarizeUnusualItemManifest, terminalBlockingClassifications, terminalPeriodOf } from "./unusualItemPolicy";
+import { RE_REOI_BLOCK_GAP, RE_REOI_GUARD_GAP, reReoiGap } from "./reReoiConsistency";
 import { buildLineageMap, buildLineageRef } from "./lineageBuilder";
 import { appendRunResidualSummary, RESIDUAL_SCORE_PRODUCTION_THRESHOLD } from "../lib/residualsStore";
 import { isEnabled } from "../lib/featureFlags";
@@ -649,6 +650,38 @@ export function buildAnalysisTraceability(params: {
         achieved: false,
         detail: `Measured earnings quality is unreliable for valuation; production-ready requires earnings the reformulation can be trusted to describe. ${earningsQuality!.summary}`,
       };
+    }
+  }
+
+  // RE/ReOI consistency gate.
+  //
+  // V_RE (residual earnings at ke) and V_ReOI (residual operating income at kw)
+  // value the base card's one forecast, and the reformulation makes them equal
+  // when the recast closes and kw is consistent with ke. A material gap says one
+  // of those failed — typically the book-weighted kw on a cash-rich, high-P/B
+  // name — whatever the gates above say. Same measure and thresholds as PVRE's
+  // per-draw disagreement gate: above the block level the run is not
+  // valuation-eligible; between guard and block it keeps valuation-eligible but
+  // not production-ready. It only withdraws a checkpoint that was achieved, so it
+  // never displaces a lower-rung reason, and it is silent without both values:
+  // no pair is not evidence of disagreement.
+  const accrualPair = params.valuationTriangulation?.accrualPair ?? null;
+  const pairRe = accrualPair?.re;
+  const pairReoi = accrualPair?.reoi;
+  const reReoiGapValue = pairRe != null && pairReoi != null && Number.isFinite(pairRe) && Number.isFinite(pairReoi)
+    ? reReoiGap(pairRe, pairReoi)
+    : null;
+  if (reReoiGapValue != null && isEnabled("rigor.reReoiConsistencyBlock")) {
+    const gapText = `RE ₹${pairRe!.toFixed(2)} and ReOI ₹${pairReoi!.toFixed(2)} per share on the same forecast differ by ${(reReoiGapValue * 100).toFixed(1)}%`;
+    const withdraw = (level: AnalysisRigorLevel, detail: string) => {
+      const idx = checkpoints.findIndex((c) => c.level === level);
+      if (idx >= 0 && checkpoints[idx]!.achieved) checkpoints[idx] = { ...checkpoints[idx]!, achieved: false, detail };
+    };
+    if (reReoiGapValue > RE_REOI_BLOCK_GAP) {
+      withdraw("valuation-eligible", `${gapText}, above the ${RE_REOI_BLOCK_GAP * 100}% they must agree within: the recast or kw is inconsistent, so the run is not valuation-eligible.`);
+      withdraw("production-ready", "Valuation eligibility blockers remain, so production-ready status is denied.");
+    } else if (reReoiGapValue > RE_REOI_GUARD_GAP) {
+      withdraw("production-ready", `${gapText}, above the ${RE_REOI_GUARD_GAP * 100}% guard; production-ready requires the two valuations of one forecast to agree.`);
     }
   }
 

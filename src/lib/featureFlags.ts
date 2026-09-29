@@ -18,7 +18,8 @@ export type FlagName =
   | "rigor.terminalEligibilityBlock"
   | "rigor.residualScoreDowngrade"
   | "rigor.assumptionProvenanceBlock"
-  | "rigor.earningsQualityBlock";
+  | "rigor.earningsQualityBlock"
+  | "rigor.reReoiConsistencyBlock";
 
 const FLAG_TO_ENV_KEY: Record<FlagName, string> = {
   "rigor.conceptIdentityBlock": "VITE_RIGOR_CONCEPT_IDENTITY_BLOCK",
@@ -27,6 +28,7 @@ const FLAG_TO_ENV_KEY: Record<FlagName, string> = {
   "rigor.residualScoreDowngrade": "VITE_RIGOR_RESIDUAL_SCORE_DOWNGRADE",
   "rigor.assumptionProvenanceBlock": "VITE_RIGOR_ASSUMPTION_PROVENANCE_BLOCK",
   "rigor.earningsQualityBlock": "VITE_RIGOR_EARNINGS_QUALITY_BLOCK",
+  "rigor.reReoiConsistencyBlock": "VITE_RIGOR_RE_REOI_CONSISTENCY_BLOCK",
 };
 
 /**
@@ -52,6 +54,7 @@ export function snapshotFlags(): Record<FlagName, boolean> {
     "rigor.residualScoreDowngrade": isEnabled("rigor.residualScoreDowngrade"),
     "rigor.assumptionProvenanceBlock": isEnabled("rigor.assumptionProvenanceBlock"),
     "rigor.earningsQualityBlock": isEnabled("rigor.earningsQualityBlock"),
+    "rigor.reReoiConsistencyBlock": isEnabled("rigor.reReoiConsistencyBlock"),
   };
 }
 
