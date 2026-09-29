@@ -245,6 +245,7 @@ function dependencies(options: {
       "rigor.residualScoreDowngrade": true,
       "rigor.assumptionProvenanceBlock": true,
       "rigor.earningsQualityBlock": true,
+      "rigor.reReoiConsistencyBlock": true,
     })),
     validateConfig: vi.fn(() => options.configWarnings ?? []),
     resolveAssumptions: vi.fn(() => assumptionResolution()) as unknown as LegacyAnalysisRunExecutorDependencies["resolveAssumptions"],

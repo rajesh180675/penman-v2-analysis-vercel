@@ -13,6 +13,7 @@
  */
 import { buildScenario, buildValuationPeriodsFromForecast } from "../forecastingEngine/scenarios";
 import { computeValuation } from "../PenmanNissimEngine";
+import { RE_REOI_BLOCK_GAP, RE_REOI_GUARD_GAP, reReoiGap } from "../reReoiConsistency";
 import type { ForecastScenario } from "../types/forecast";
 import type { RecastPeriod } from "../types";
 import type { EngineConfig } from "../types";
@@ -176,11 +177,6 @@ export function structuralKwForKe(ke: number, base: { ke: number; kw: number }, 
   return base.kw + weight * (ke - base.ke);
 }
 
-function relativeGap(a: number, b: number): number | null {
-  const scale = (Math.abs(a) + Math.abs(b)) / 2;
-  return scale > 0 ? Math.abs(a - b) / scale : null;
-}
-
 function median(values: readonly number[]): number | null {
   if (!values.length) return null;
   const sorted = [...values].sort((x, y) => x - y);
@@ -192,8 +188,8 @@ function disagreementGate(disagreementRatio: number | null): PvreCrossModelDisag
   if (disagreementRatio == null) return "guarded";
   // RE and ReOI value the same forecast; beyond a few percent the gap is a
   // recast or discount-rate inconsistency, not a matter of opinion.
-  if (disagreementRatio > 0.25) return "blocked";
-  if (disagreementRatio > 0.10) return "guarded";
+  if (disagreementRatio > RE_REOI_BLOCK_GAP) return "blocked";
+  if (disagreementRatio > RE_REOI_GUARD_GAP) return "guarded";
   return "pass";
 }
 
@@ -256,7 +252,7 @@ export function runPvre(input: PvreRunInput): PvreResult {
     .map((sample) => {
       const re = sample.modelValues["residual-income"];
       const reoi = sample.modelValues["residual-operating-income"];
-      return re != null && reoi != null && Number.isFinite(re) && Number.isFinite(reoi) ? relativeGap(re, reoi) : null;
+      return re != null && reoi != null && Number.isFinite(re) && Number.isFinite(reoi) ? reReoiGap(re, reoi) : null;
     })
     .filter((gap): gap is number => gap != null);
   const disagreementRatio = contributing.length >= 2 ? median(perDrawGaps) : null;
