@@ -540,7 +540,11 @@ export function evaluateReconciliationResiduals(params: {
     // Comparing owners' TCI with group PAT + OCI left the whole minority share
     // as a residual (Grasim: ~100%) on every firm with partly-owned
     // subsidiaries.
-    const ownersPatPlusOci = period.is.PAT + period.is.OCI + period.is.TCI_NCI;
+    // Profit on TCI's basis (discontinued operations, extraordinary items and
+    // associates included) when the recast found it; PAT otherwise.
+    const fullPeriodProfit = period.recastDebug?.fullPeriodProfit;
+    const periodProfit = fullPeriodProfit != null && Number.isFinite(fullPeriodProfit) ? fullPeriodProfit : period.is.PAT;
+    const ownersPatPlusOci = periodProfit + period.is.OCI + period.is.TCI_NCI;
     const comprehensiveIncomeResidual = hasTraceEvidence(period, "IS.TCI")
       ? period.is.TCI - ownersPatPlusOci
       : null;

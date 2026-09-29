@@ -142,6 +142,53 @@ describe("ol-coverage-bridge — reads the labels Capitaline actually uses (real
   });
 });
 
+describe("owners' income identity — profit on TCI's basis (real recast)", () => {
+  // Capitaline's "Profit After Tax" stops before discontinued operations; the
+  // filed TCI includes them. "Profit Attributable to Shareholders" less
+  // "Minority Interest After Net Profit" is the group's full profit.
+  const tciCheck = (overrides: Record<string, number>) => {
+    const prev = computeRecastPeriod(makePeriod("2024-03-31"), DEFAULT_CONFIG);
+    const cur = computeRecastPeriod(makePeriod("2025-03-31", overrides), DEFAULT_CONFIG, prev);
+    const summary = evaluateReconciliationResiduals({ recastData: [prev, cur], config: DEFAULT_CONFIG });
+    return { cur, check: summary.checks.find((c) => c.key === "comprehensive-income-bridge" && c.periodEnd === "2025-03-31") };
+  };
+
+  it("includes discontinued operations, as the filed TCI does", () => {
+    // PAT 105 from continuing operations, a −40 discontinued loss: TCI 65.
+    // Against PAT alone that was a 38% breach.
+    const { cur, check } = tciCheck({
+      "Discontinued Operations__ProfitLoss": -40,
+      "Profit Attributable to Shareholders__ProfitLoss": 65,
+      "Total Comprehensive Income for the Year__ProfitLoss": 65,
+    });
+    expect(cur.recastDebug?.fullPeriodProfit).toBe(65);
+    expect(check?.residual).toBeCloseTo(0, 9);
+    expect(check?.status).toBe("confirmed");
+  });
+
+  it("adds back the minority's signed share to reach the group's full profit", () => {
+    // Group full profit 65; the minority shares 10, so owners get 55. Capitaline
+    // signs both minority lines negative when the minority shares a profit.
+    const { cur, check } = tciCheck({
+      "Discontinued Operations__ProfitLoss": -40,
+      "Profit Attributable to Shareholders__ProfitLoss": 55,
+      "Minority Interest After Net Profit__ProfitLoss": -10,
+      "Non-Controlling Interests__ProfitLoss": -10,
+      "Total Comprehensive Income for the Year__ProfitLoss": 55,
+    });
+    expect(cur.recastDebug?.fullPeriodProfit).toBe(65);
+    expect(check?.status).toBe("confirmed");
+  });
+
+  it("falls back to PAT when a minority exists but its after-profit line is absent", () => {
+    const { cur } = tciCheck({
+      "Profit Attributable to Shareholders__ProfitLoss": 95,
+      "Non-Controlling Interests__ProfitLoss": -10,
+    });
+    expect(cur.recastDebug?.fullPeriodProfit).toBeNull();
+  });
+});
+
 describe("COGS — the inventory-change line is added, as Capitaline signs it (real recast)", () => {
   // Asian Paints FY11 as filed: the cost lines tie to Total Expenses 5,288.65
   // only with the change ADDED (3,681.92 + 105.56 − 140.61 + 300.45 + 15.35
