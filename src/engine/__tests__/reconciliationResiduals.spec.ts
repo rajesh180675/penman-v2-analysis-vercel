@@ -290,7 +290,7 @@ describe("evaluateReconciliationResiduals", () => {
           otherOperatingIncome: 0,
           grossProfit: 300,
           operatingCosts: 200,
-          bridgeCoreOI: 400 / 3, // pre-tax equivalent of CoreOI=100 at taxRate 0.25
+          bridgeCoreOI: 132.5, // pre-tax; less operating tax 30 + 0.25 × (12 − 2) = 32.5 → CoreOI 100
           bridgeGapToReportedCoreOI: 0,
           coverageRatio: 0.8,
           driverRatios: {
@@ -332,6 +332,42 @@ describe("evaluateReconciliationResiduals", () => {
     expect(summary.checks.some((check) => check.key === "cni-operating-financing-bridge")).toBe(false);
     expect(summary.checks.some((check) => check.key === "core-oi-unusual-bridge")).toBe(false);
     expect(summary.checks.some((check) => check.key === "core-nfe-unusual-bridge")).toBe(false);
+  });
+
+  it("taxes the cost bridge with the tax Core OI carries, not the rate alone", () => {
+    // NTPC-shaped year: a deferred-tax credit makes the filed charge negative
+    // while the recast rate stays statutory. Operating tax =
+    //   −20 + 0.25 × (12 − 2) + (0.25 / 0.75) × (UFE −7.5 − exceptional 15) = −25,
+    // so a pre-tax bridge of 75 is Core OI 100. Rate alone gives 56.25 → fails.
+    const base = mkPeriod("2025-03-31");
+    const current = mkPeriod("2025-03-31", {
+      is: {
+        ...base.is,
+        TaxExpense: -20,
+        operatingCostBridge: {
+          materialCost: 600, employeeCost: 100, depreciation: 20,
+          sgaAdvertising: 5, sgaLegalProfessional: 5, sgaRent: 5, sgaFreight: 5, sgaRepairs: 5, sgaPowerFuel: 5,
+          sgaDetailed: 30, sgaResidual: 0, sgaTotal: 30,
+          otherOperatingExpense: 50, otherOperatingIncome: 0,
+          grossProfit: 300, operatingCosts: 200,
+          bridgeCoreOI: 75,
+          bridgeGapToReportedCoreOI: 0,
+          coverageRatio: 0.8,
+          driverRatios: {
+            materialCostPct: null, employeeCostPct: null, depreciationPct: null, sgaPct: null,
+            otherOperatingExpensePct: null, otherOperatingIncomePct: null, bridgeCoreSalesPm: null,
+          },
+        },
+      },
+      cu: { ...base.cu, UFE: -7.5, ExceptionalOperatingItemsAfterTax: 15 },
+    });
+    const summary = evaluateReconciliationResiduals({
+      recastData: [mkPeriod("2024-03-31"), current],
+      config: DEFAULT_CONFIG,
+    });
+
+    const bridgeCheck = summary.checks.find((check) => check.key === "operating-cost-bridge" && check.periodEnd === "2025-03-31");
+    expect(bridgeCheck?.status).toBe("confirmed");
   });
 
   it("skips the operating-cost bridge when coverage is below the structural threshold", () => {
@@ -411,7 +447,7 @@ describe("evaluateReconciliationResiduals", () => {
               otherOperatingIncome: 0,
               grossProfit: 300,
               operatingCosts: 200,
-              bridgeCoreOI: 134.2, // pre-tax; after-tax ≈ 100.65 → 0.65% residual → degraded
+              bridgeCoreOI: 133.15, // pre-tax; less operating tax 32.5 = 100.65 → 0.65% residual → degraded
               bridgeGapToReportedCoreOI: 0.65,
               coverageRatio: 0.8,
               driverRatios: {
@@ -465,7 +501,7 @@ describe("evaluateReconciliationResiduals", () => {
               otherOperatingIncome: 0,
               grossProfit: 300,
               operatingCosts: 200,
-              bridgeCoreOI: 110, // pre-tax; after-tax = 82.5 → 17.5% residual → failed
+              bridgeCoreOI: 110, // pre-tax; less operating tax 32.5 = 77.5 → 22.5% residual → failed
               bridgeGapToReportedCoreOI: 17.5,
               coverageRatio: 0.8,
               driverRatios: {
