@@ -25,6 +25,15 @@ export function gridToPeriods(
   let cellsKeptCanonical = 0;
   let cellsKeptOriginalOnly = 0;
   const droppedLabels: string[] = [];
+  // The balance sheet repeats line labels across sections — "Trade
+  // Payables", "Lease Liabilities", "Provisions" appear under non-current
+  // liabilities (often at 0) and again under current liabilities. Keys are
+  // per label and the first row wins, so the current rows were lost (TCS's
+  // 13,909 Cr of trade payables; current lease liabilities in 124 library
+  // company-years). A repeat inside the current-liabilities block is kept
+  // under "<label> - Current" instead; every existing key is unchanged.
+  const seenMetrics = new Set<string>();
+  let inCurrentLiabilities = false;
 
   for (let r = header.rowIndex + 1; r < grid.length; r++) {
     rowsSeen++;
@@ -55,6 +64,8 @@ export function gridToPeriods(
     }
 
     rowsKept++;
+    if (stmt === "BalanceSheet" && metric === "Total Current Liabilities") inCurrentLiabilities = false;
+    const rowKeyLabel = inCurrentLiabilities && seenMetrics.has(metric) ? `${metric} - Current` : metric;
 
     // Phase A: when parsing a non-Ind-AS file, emit BOTH the original label
     // (preserves traceability) AND the canonical Ind-AS label (so existing
@@ -71,7 +82,7 @@ export function gridToPeriods(
       const target = out.get(pc.period_end)!;
 
       // Original label — always written for traceability
-      const originalKey = `${metric}__${stmt}`;
+      const originalKey = `${rowKeyLabel}__${stmt}`;
       const scaledValue = value != null && multiplier !== 1 ? value * multiplier : value;
       const origin = source ? {
         fileName: source.fileName,
@@ -98,6 +109,8 @@ export function gridToPeriods(
         }
       }
     }
+    seenMetrics.add(metric);
+    if (stmt === "BalanceSheet" && metric === "Total Reported Non-current Liabilities") inCurrentLiabilities = true;
   }
 
   // Emit per-grid summary so silent drops are auditable. This is the lever

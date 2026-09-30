@@ -17,8 +17,8 @@
       "max": 0.2106
     },
     "NFO_to_CSE": {
-      "min": -0.1155,
-      "max": -0.1045
+      "min": -0.0999,
+      "max": -0.0889
     }
   },
   "expectedAnomalyFlags": [
@@ -29,7 +29,7 @@
     "max": 3
   },
   "expectedRunsCleanWorkbook": true,
-  "notes": "Clean Ind-AS profile, decorative paints leader, low leverage. Used as the happy-path baseline for Penman-Nissim industrial valuation.",
+  "notes": "NFO_to_CSE re-centred on -0.0944 (was -0.110) once current lease liabilities count as FO (#364: the parser used to drop the current row). Clean Ind-AS profile, decorative paints leader, low leverage. Used as the happy-path baseline for Penman-Nissim industrial valuation.",
   "capturedAt": "2026-07-27T09:39:41Z",
   "targetState": {
     "expectedRigorLevel": "valuation-eligible",

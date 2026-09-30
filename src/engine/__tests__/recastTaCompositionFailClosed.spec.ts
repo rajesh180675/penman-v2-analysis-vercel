@@ -152,6 +152,38 @@ describe("ol-coverage-bridge — reads the labels Capitaline actually uses (real
     expect(check?.status).toBe("confirmed");
   });
 
+  it("reads the current trade-payables total the parser keeps under its own key", () => {
+    // TCS FY21-shaped: the non-current "Trade Payables" row is 0 and the
+    // current one (13,909) used to be dropped as a duplicate label.
+    const { cur, check } = olCheck({
+      "Sundry Creditors__BalanceSheet": 0,
+      "Trade Payables__BalanceSheet": 0,
+      "Trade Payables - Current__BalanceSheet": 150,
+    });
+    expect(cur.bs.TradePayables).toBe(150);
+    expect(cur.bs.OL_TradePayables).toBe(150);
+    expect(check?.status).toBe("confirmed");
+  });
+
+  it("does not add the itemized lines to the current total they sit under", () => {
+    // HUL FY25-shaped: 11,315 current total ⊇ Sundry Creditors 263 + Other Trade Payables 10,898.
+    const { cur } = olCheck({
+      "Sundry Creditors__BalanceSheet": 30,
+      "Other Trade Payables__BalanceSheet": 110,
+      "Trade Payables - Current__BalanceSheet": 150,
+    });
+    expect(cur.bs.TradePayables).toBe(150);
+  });
+
+  it("reads current provisions kept under their own key", () => {
+    const { cur, check } = olCheck({
+      "Provisions__BalanceSheet": 0,
+      "Provisions - Current__BalanceSheet": 40,
+    });
+    expect(cur.bs.OL_ProvisionsCurrent).toBe(40);
+    expect(check?.status).toBe("confirmed");
+  });
+
   it("reads trade payables filed only as Other Trade Payables", () => {
     // Sun Pharma FY25-shaped: the days-payable read found none of its labels
     // and reported 0, overstating operating working capital.
@@ -278,6 +310,19 @@ describe("profit bridge — PAT ties to full-period profit through the filed lin
 
   it("is not run without the filed subtotal", () => {
     expect(bridge({})).toBeUndefined();
+  });
+});
+
+describe("lease liabilities — current portion counts as a financial obligation (real recast)", () => {
+  it("adds the current lease liabilities to FO", () => {
+    const base = computeRecastPeriod(makePeriod("2025-03-31", { "Lease Liabilities__BalanceSheet": 60 }), DEFAULT_CONFIG);
+    const withCurrent = computeRecastPeriod(makePeriod("2025-03-31", {
+      "Lease Liabilities__BalanceSheet": 60,
+      "Lease Liabilities - Current__BalanceSheet": 15,
+    }), DEFAULT_CONFIG);
+    expect(withCurrent.bs.FO - base.bs.FO).toBe(15);
+    expect(withCurrent.bs.FO_LeaseLiabilities).toBe(75);
+    expect(base.bs.OL - withCurrent.bs.OL).toBe(15);
   });
 });
 

@@ -138,7 +138,9 @@ export const CapitalineMappingSpec = {
       // customer advances, "Other Current Liabilities" is only the residual
       // line (ITC FY25: 32.72 of 6,148.27; 20 of 42 years that file a total).
       otherCurrentLiabilities: ["Total Other Current Liabilities", "Other Current Liabilities"],
-      provisionsCurrent: ["Provisions"],
+      // The current row shares its label with an earlier one (often an asset-
+      // side 0), so the parser keeps it as "Provisions - Current".
+      provisionsCurrent: ["Provisions - Current", "Provisions"],
       provisionsLongTerm: ["Long-term Provisions"],
       currentTaxLiabilities: ["Current Tax Liabilities - Short-term"],
       nonCurrentTaxLiabilities: ["Non Current Tax Liabilities - Long-term"],
@@ -146,7 +148,7 @@ export const CapitalineMappingSpec = {
       // Summed: a consolidated insurer's policy liabilities (Grasim, via
       // Aditya Birla Capital: 81,353 in FY25) sit beside the other line and
       // are operating liabilities already inside OL.
-      otherNonCurrentLiabilities: ["Other Non-Current Liabilities", "Insurance Related Liabilities"],
+      otherNonCurrentLiabilities: ["Other Non-Current Liabilities", "Insurance Related Liabilities", "Insurance Related Liabilities - Current"],
     },
     shareCapital: {
       authorisedShares: ["Number of Equity Shares - Authorised", "Amount of Equity Shares - Authorised"],
