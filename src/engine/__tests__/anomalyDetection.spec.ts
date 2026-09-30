@@ -310,14 +310,29 @@ describe("detectReclassification", () => {
   it("flags an OA↔FA reclassification when components move in opposite directions", () => {
     const periods = makeCleanSeries(3);
     // Move 300 from OA into FA in terminal period (opposite directions, both big).
+    // No cash moves, so NOA falls by 300 that the cash-flow statement never sees.
     periods[2]!.bs.OA = periods[1]!.bs.OA - 300;
     periods[2]!.bs.FA = periods[1]!.bs.FA + 300;
+    periods[2]!.cf.FCF_accounting += 300;
     const flags = detectReclassification(periods, makeConfig());
 
     const reclass = flags.find(f => f.label === "POTENTIAL_RECLASSIFICATION");
     expect(reclass).toBeDefined();
     expect(reclass!.spec_id).toBe("S-5.5");
     expect(reclass!.severity).toBe(Severity.CRITICAL);
+  });
+
+  it("does not flag cash spent on operating assets", () => {
+    // DMart-shaped: 300 of cash (FA) spent on stores (OA). Capex lowers free
+    // cash flow on both measures alike, so nothing is left unexplained.
+    const periods = makeCleanSeries(3);
+    periods[2]!.bs.OA = periods[1]!.bs.OA + 300;
+    periods[1]!.bs.FA = 1000;
+    periods[2]!.bs.FA = 700;
+    periods[2]!.cf.Capex += 300;
+    periods[2]!.cf.FCF_cash -= 300;
+    periods[2]!.cf.FCF_accounting -= 300;
+    expect(detectReclassification(periods, makeConfig()).find(f => f.label === "POTENTIAL_RECLASSIFICATION")).toBeUndefined();
   });
 });
 
