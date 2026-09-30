@@ -247,7 +247,20 @@ describe("detectMetricStepChanges", () => {
     const pmFlag = terminal.flags.find(f => f.label.startsWith("PM_OUTLIER"));
     expect(pmFlag).toBeDefined();
     expect(pmFlag!.spec_id).toBe("S-5.3");
+    expect(pmFlag!.severity).toBe(Severity.CRITICAL);
     expect(terminal.pm_zscore).not.toBeNull();
+  });
+
+  it("leaves the terminal period eligible when profitability alone moves", () => {
+    // A level far from history is often the business changing, not a
+    // contaminated anchor: the flag is kept for review but does not block.
+    const periods = makeCleanSeries(8);
+    periods[7]!.ratios!.PM = 0.95;
+    periods[7]!.ratios!.RNOA = 0.95;
+    const pmFlag = detectMetricStepChanges(periods, makeConfig())[7]!.flags.find(f => f.label === "PM_OUTLIER_CRITICAL");
+    expect(pmFlag?.affects_terminal).toBe(false);
+    // Still listed among the terminal period's flags, but it scores nothing.
+    expect(runAnomalyDetection(periods, makeConfig()).contamination.tier).toBe("CLEAN");
   });
 
   it("flags an incremental-margin anomaly on a revenue jump with one-time income", () => {

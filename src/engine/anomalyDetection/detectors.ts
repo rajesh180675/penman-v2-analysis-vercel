@@ -152,10 +152,16 @@ export function detectMetricStepChanges(
         const σ = madStddev(prior);
         const z = (val - μ) / σ;
         if (Math.abs(z) > z_crit) {
+          // Not terminal-affecting: a profitability level far from its own
+          // history is often the business changing (Asian Paints FY25 RNOA
+          // 22% vs 35%), which the valuation should anchor on. One-time items
+          // are caught by the incremental-margin, unusual-item and dirty-surplus
+          // checks instead. The MAD scale also made the test knife-edge: TCS
+          // FY23 moved from z 2.94 to 5.4 when earlier years' Core OI was fixed.
           flags.push(flag(specId, Severity.CRITICAL, `${label}_OUTLIER_CRITICAL`,
             `${label} = ${(val * 100).toFixed(1)}% vs median ${(μ * 100).toFixed(1)}% (z = ${z.toFixed(1)}). ` +
-            `Exceeds 3σ of historical variability.`,
-            true, cur.period_end));
+            `Exceeds 3σ of historical variability; review it, though a change in profitability alone does not disqualify the period as a terminal anchor.`,
+            false, cur.period_end));
         } else if (Math.abs(z) > z_warn) {
           flags.push(flag(specId, Severity.WARNING, `${label}_OUTLIER_WARNING`,
             `${label} = ${(val * 100).toFixed(1)}% vs median ${(μ * 100).toFixed(1)}% (z = ${z.toFixed(1)}).`,
