@@ -38,6 +38,16 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   // OL components: each key list holds one line's alternative labels, and the
   // unused one is often exported as 0, so a zero must not end the search.
   const olBs = (line: string, keys: readonly string[]) => valBSFirstNonZero(data, keys, line, trace);
+  // The current-liabilities "Trade Payables" row is the total that "Sundry
+  // Creditors" and "Other Trade Payables" sit under (HUL FY25: 11,315 ⊇ 263 +
+  // 10,898); the same label under non-current liabilities is the long-term
+  // part. Without the current row, the itemized lines are summed as before.
+  const tradePayablesTotal = (line: string) => {
+    const currentTotal = bs(`${line}.CurrentTotal`, ["Trade Payables - Current"]);
+    return currentTotal !== 0
+      ? currentTotal + bs(`${line}.NonCurrent`, ["Trade Payables"])
+      : sumBs(line, M.balanceSheet.olComponents.tradePayables);
+  };
 
   const TA = bs("BS.TA", M.balanceSheet.totalAssets);
   const totalSE = bs("BS.TotalStockholdersEquity", M.balanceSheet.totalStockholdersEquity);
@@ -65,7 +75,10 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
 
   const longBorrow = bs("BS.FO.LongBorrow", ["Long Term Borrowings"]);
   const shortBorrow = bs("BS.FO.ShortBorrow", ["Short Term Borrowings"]);
-  const leaseLiab = bs("BS.FO.LeaseLiabilities", ["Lease Liabilities"]);
+  // Non-current plus current: the parser keeps the current row under
+  // "Lease Liabilities - Current" (it shares the label with the non-current one).
+  const leaseLiab = bs("BS.FO.LeaseLiabilities", ["Lease Liabilities"])
+    + bs("BS.FO.LeaseLiabilitiesCurrent", ["Lease Liabilities - Current"]);
   const otherFinLiab = bs("BS.FO.OtherFinLiabLT", ["Others Financial Liabilities - Long-term"]) + bs("BS.FO.OtherFinLiabST", ["Others Financial Liabilities - Short-term"]);
   const hybrid = cfg.hybrid_perpetual_as_debt ? bs("BS.FO.Hybrid", ["Hybrid Perpetual Securities"]) : 0;
   const financialDebtExLease = longBorrow + shortBorrow + otherFinLiab + hybrid;
@@ -111,11 +124,11 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   const invTransit = bs("BS.InventoryTransit", ["Goods in Transit"]);
   const Inventory = invTop || (invRaw + invWip + invFinished + invStockTrade + invStores + invPack + invTransit);
   const TradeReceivables = bs("BS.TradeReceivables", M.balanceSheet.tradeReceivables);
-  const TradePayables = sumBs("BS.TradePayables", M.balanceSheet.tradePayables);
+  const TradePayables = tradePayablesTotal("BS.TradePayables");
   const PPE = bs("BS.PPE", M.balanceSheet.ppe);
 
   const explicitOL =
-    sumBs("BS.OLComp.TradePayables", M.balanceSheet.olComponents.tradePayables)
+    tradePayablesTotal("BS.OLComp.TradePayables")
     + olBs("BS.OLComp.OtherCurrentLiabilities", M.balanceSheet.olComponents.otherCurrentLiabilities)
     + olBs("BS.OLComp.ProvisionsCurrent", M.balanceSheet.olComponents.provisionsCurrent)
     + olBs("BS.OLComp.ProvisionsLongTerm", M.balanceSheet.olComponents.provisionsLongTerm)
@@ -168,7 +181,7 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
     BridgeDebtTotal: bridgeDebtTotal,
     FO_LeaseLiabilities: leaseLiab,
     FO_FinancialDebtExLease: financialDebtExLease,
-    OL_TradePayables: sumBs("BS.OLComp.TradePayablesOut", M.balanceSheet.olComponents.tradePayables),
+    OL_TradePayables: tradePayablesTotal("BS.OLComp.TradePayablesOut"),
     OL_OtherCurrentLiabilities: olBs("BS.OLComp.OtherCurrentLiabilitiesOut", M.balanceSheet.olComponents.otherCurrentLiabilities),
     OL_ProvisionsCurrent: olBs("BS.OLComp.ProvisionsCurrentOut", M.balanceSheet.olComponents.provisionsCurrent),
     OL_ProvisionsLongTerm: olBs("BS.OLComp.ProvisionsLongTermOut", M.balanceSheet.olComponents.provisionsLongTerm),
