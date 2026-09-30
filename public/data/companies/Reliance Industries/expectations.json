@@ -17,8 +17,8 @@
       "max": 0.0871
     },
     "NFO_to_CSE": {
-      "min": 0.0773,
-      "max": 0.0873
+      "min": 0.0831,
+      "max": 0.0931
     }
   },
   "expectedAnomalyFlags": [
@@ -30,7 +30,7 @@
     "max": 10
   },
   "expectedRunsCleanWorkbook": true,
-  "notes": "Reconciliation degraded, not failed, since investment gains are booked as financial income and netted out of the cost bridge (#358): the operating-cost bridge failed 2011-15, 2018, 2020, 2021 and 2024 only because treasury gains were counted in Core OI. S-10.1 no longer expected: FY25 RE moves 4.9 ROE points against opening equity, below the 5-point materiality test (RE_ANCHOR_MATERIALITY). Conglomerate with confirmed demerger events in 5y window (Jio Financial Services in 2023). Tests Gap 2 anchor walk-back when latest period is contaminated, and Gap 3 demerger-scheme-effect classification.",
+  "notes": "NFO_to_CSE re-centred on 0.0881 (was 0.0823) once current lease liabilities count as FO (#364). Reconciliation degraded, not failed, since investment gains are booked as financial income and netted out of the cost bridge (#358): the operating-cost bridge failed 2011-15, 2018, 2020, 2021 and 2024 only because treasury gains were counted in Core OI. S-10.1 no longer expected: FY25 RE moves 4.9 ROE points against opening equity, below the 5-point materiality test (RE_ANCHOR_MATERIALITY). Conglomerate with confirmed demerger events in 5y window (Jio Financial Services in 2023). Tests Gap 2 anchor walk-back when latest period is contaminated, and Gap 3 demerger-scheme-effect classification.",
   "capturedAt": "2026-07-27T09:42:16Z",
   "targetState": {
     "expectedRigorLevel": "economically-plausible",
