@@ -247,7 +247,20 @@ describe("detectMetricStepChanges", () => {
     const pmFlag = terminal.flags.find(f => f.label.startsWith("PM_OUTLIER"));
     expect(pmFlag).toBeDefined();
     expect(pmFlag!.spec_id).toBe("S-5.3");
+    expect(pmFlag!.severity).toBe(Severity.CRITICAL);
     expect(terminal.pm_zscore).not.toBeNull();
+  });
+
+  it("leaves the terminal period eligible when profitability alone moves", () => {
+    // A level far from history is often the business changing, not a
+    // contaminated anchor: the flag is kept for review but does not block.
+    const periods = makeCleanSeries(8);
+    periods[7]!.ratios!.PM = 0.95;
+    periods[7]!.ratios!.RNOA = 0.95;
+    const pmFlag = detectMetricStepChanges(periods, makeConfig())[7]!.flags.find(f => f.label === "PM_OUTLIER_CRITICAL");
+    expect(pmFlag?.affects_terminal).toBe(false);
+    // Still listed among the terminal period's flags, but it scores nothing.
+    expect(runAnomalyDetection(periods, makeConfig()).contamination.tier).toBe("CLEAN");
   });
 
   it("flags an incremental-margin anomaly on a revenue jump with one-time income", () => {
@@ -297,14 +310,49 @@ describe("detectReclassification", () => {
   it("flags an OA↔FA reclassification when components move in opposite directions", () => {
     const periods = makeCleanSeries(3);
     // Move 300 from OA into FA in terminal period (opposite directions, both big).
+    // No cash moves, so NOA falls by 300 that the cash-flow statement never sees.
     periods[2]!.bs.OA = periods[1]!.bs.OA - 300;
     periods[2]!.bs.FA = periods[1]!.bs.FA + 300;
+    periods[2]!.cf.FCF_accounting += 300;
     const flags = detectReclassification(periods, makeConfig());
 
     const reclass = flags.find(f => f.label === "POTENTIAL_RECLASSIFICATION");
     expect(reclass).toBeDefined();
     expect(reclass!.spec_id).toBe("S-5.5");
     expect(reclass!.severity).toBe(Severity.CRITICAL);
+  });
+
+  it("does not flag cash spent on operating assets", () => {
+    // DMart-shaped: 300 of cash (FA) spent on stores (OA). Capex lowers free
+    // cash flow on both measures alike, so nothing is left unexplained.
+    const periods = makeCleanSeries(3);
+    periods[2]!.bs.OA = periods[1]!.bs.OA + 300;
+    periods[1]!.bs.FA = 1000;
+    periods[2]!.bs.FA = 700;
+    periods[2]!.cf.Capex += 300;
+    periods[2]!.cf.FCF_cash -= 300;
+    periods[2]!.cf.FCF_accounting -= 300;
+    expect(detectReclassification(periods, makeConfig()).find(f => f.label === "POTENTIAL_RECLASSIFICATION")).toBeUndefined();
+  });
+
+  it("accepts a reported CFO of zero as cash-flow evidence", () => {
+    // OI and CFO both 0, capex 300 paid from cash: both free-cash-flow
+    // measures are −300, so nothing is unexplained.
+    const periods = makeCleanSeries(3);
+    periods[2]!.bs.OA = periods[1]!.bs.OA + 300;
+    periods[1]!.bs.FA = 1000;
+    periods[2]!.bs.FA = 700;
+    Object.assign(periods[2]!.cf, { CFO: 0, Capex: 300, FCF_cash: -300, FCF_accounting: -300 });
+    expect(detectReclassification(periods, makeConfig()).find(f => f.label === "POTENTIAL_RECLASSIFICATION")).toBeUndefined();
+  });
+
+  it("keeps the flag when the period has no cash-flow lines at all", () => {
+    const periods = makeCleanSeries(3);
+    periods[2]!.bs.OA = periods[1]!.bs.OA + 300;
+    periods[1]!.bs.FA = 1000;
+    periods[2]!.bs.FA = 700;
+    Object.assign(periods[2]!.cf, { CFO: 0, Capex: 0, FCF_cash: 0, FCF_accounting: 400 });
+    expect(detectReclassification(periods, makeConfig()).find(f => f.label === "POTENTIAL_RECLASSIFICATION")).toBeDefined();
   });
 });
 

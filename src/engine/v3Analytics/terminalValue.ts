@@ -11,7 +11,7 @@
 
 import type { RecastPeriod } from "../types/recast";
 import {
-  hasCriticalTerminalFlag,
+  blocksTerminalAnchor,
   type EventFlag,
   type PeriodEventFlags,
 } from "./eventFraming";
@@ -108,15 +108,16 @@ export function selectTerminalAnchor(
     : lastFlags.includes("PM_OUTLIER_WARNING")
     ? "WARNING"
     : "OK";
-  // Anchor selection logic (S-14.1) — deterministic, based on hasCriticalTerminalFlag
+  // Anchor selection logic (S-14.1) — deterministic, based on blocksTerminalAnchor
   let selected_RE_anchor: number;
   let selected_ReOI_anchor: number;
   let anchor_method: string;
   let method: TerminalAnchorResult["method"];
   let label: string;
-  // S-14.1: ANY CRITICAL flag that affects terminal triggers fallback
-  const isCriticallyContaminated = hasCriticalTerminalFlag(lastFlags);
-  const prevIsCriticallyContaminated = hasCriticalTerminalFlag(prevFlags);
+  // S-14.1: a critical structural event triggers fallback; profitability
+  // outliers anchor as reported, with warnings (as S-5.3 in the pipeline).
+  const isCriticallyContaminated = blocksTerminalAnchor(lastFlags);
+  const prevIsCriticallyContaminated = blocksTerminalAnchor(prevFlags);
   if (lastFlags.length === 0) {
     selected_RE_anchor = RE_anchor_1;
     selected_ReOI_anchor = ReOI_anchor_1;

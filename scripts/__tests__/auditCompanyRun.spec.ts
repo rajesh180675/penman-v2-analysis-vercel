@@ -186,9 +186,11 @@ describe.sequential("auditCompanyRun", () => {
   // lower gate is blocked for this fixture.
   expect(result.rigor.currentLevel).toBe("syntactically-valid");
   expect(result.rigor.reconciliationStatus).toBe("failed");
-  // readinessStatus may be "guarded" or "warning" depending on the
-  // valuation readiness computed from the pipeline periods.
-  expect(["guarded", "warning"]).toContain(result.valuationEvidence.readinessStatus);
+  // The terminal anchor itself is clean — its only flag, an RNOA outlier, no
+  // longer disqualifies it — so readiness is at its best while the ladder still
+  // refuses to promote past the failed reconciliation. That is the case this
+  // test exists for.
+  expect(result.valuationEvidence.readinessStatus).toBe("production-ready");
   }, 240_000);
 
   it("carries financial-institution valuation readiness evidence and bank-shape triangulation when bank gates clear", async () => {

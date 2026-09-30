@@ -22,11 +22,10 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
       valuationBlocked: true,
       valuationStatus: "guarded",
       minPeriods: 15,
+      // The demerger year stays blocked by STRUCTURAL_EVENT; its PM/ROCE/RNOA
+      // outliers are still flagged but no longer block a terminal anchor alone.
       requiredTerminalFlags: [
         "STRUCTURAL_EVENT",
-        "PM_OUTLIER_CRITICAL",
-        "ROCE_OUTLIER_CRITICAL",
-        "RNOA_OUTLIER_CRITICAL",
       ],
  ratioRanges: {
  ROCE: [0.45, 0.50], // actual 0.4764 ± 5%

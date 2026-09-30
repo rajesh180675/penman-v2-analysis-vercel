@@ -152,10 +152,16 @@ export function detectMetricStepChanges(
         const σ = madStddev(prior);
         const z = (val - μ) / σ;
         if (Math.abs(z) > z_crit) {
+          // Not terminal-affecting: a profitability level far from its own
+          // history is often the business changing (Asian Paints FY25 RNOA
+          // 22% vs 35%), which the valuation should anchor on. One-time items
+          // are caught by the incremental-margin, unusual-item and dirty-surplus
+          // checks instead. The MAD scale also made the test knife-edge: TCS
+          // FY23 moved from z 2.94 to 5.4 when earlier years' Core OI was fixed.
           flags.push(flag(specId, Severity.CRITICAL, `${label}_OUTLIER_CRITICAL`,
             `${label} = ${(val * 100).toFixed(1)}% vs median ${(μ * 100).toFixed(1)}% (z = ${z.toFixed(1)}). ` +
-            `Exceeds 3σ of historical variability.`,
-            true, cur.period_end));
+            `Exceeds 3σ of historical variability; review it, though a change in profitability alone does not disqualify the period as a terminal anchor.`,
+            false, cur.period_end));
         } else if (Math.abs(z) > z_warn) {
           flags.push(flag(specId, Severity.WARNING, `${label}_OUTLIER_WARNING`,
             `${label} = ${(val * 100).toFixed(1)}% vs median ${(μ * 100).toFixed(1)}% (z = ${z.toFixed(1)}).`,
@@ -279,8 +285,21 @@ export function detectReclassification(
     const oppDirection = Math.sign(ΔOA) !== Math.sign(ΔFA) && ΔOA !== 0 && ΔFA !== 0;
     const bigOA = Math.abs(ΔOA) > reclassif_pct * Math.max(prev.bs.OA, 1);
     const bigFA = Math.abs(ΔFA) > reclassif_pct * Math.max(prev.bs.FA, 1);
+    // A reclassification moves an amount between OA and FA without cash, so
+    // free cash flow from the balance sheet (OI − ΔNOA) and from the cash-flow
+    // statement (CFO − capex) part by about that amount; capex paid from cash
+    // moves both alike. Across the library the FY2016 Ind AS transition leaves
+    // ~90–110% of the swap unexplained while DMart's store build-outs leave
+    // 3–36%, so a swap cash explains at least half of is not flagged.
+    // Acquisitions paid in cash count as unexplained, which keeps them flagged.
+    // A period with no cash-flow lines at all keeps the flag: FCF_cash is then
+    // 0 by absence, not by report.
+    const swap = Math.min(Math.abs(ΔOA), Math.abs(ΔFA));
+    const unexplainedByCash = (cur.cf.FCF_cash - cur.cf.FCF_accounting) * Math.sign(ΔOA);
+    const hasCashFlow = cur.cf.CFO !== 0 || cur.cf.Capex !== 0;
+    const cashExplained = hasCashFlow && unexplainedByCash < 0.5 * swap;
 
-    if (oppDirection && bigOA && bigFA) {
+    if (oppDirection && bigOA && bigFA && !cashExplained) {
       const dateStr = cur.period_end.slice(0, 10);
       const indASWindow = dateStr >= "2016-03-31" && dateStr <= "2018-03-31";
       flags.push(flag(
