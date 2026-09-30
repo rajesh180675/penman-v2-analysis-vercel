@@ -77,16 +77,21 @@ describe("economicSanityGates / evaluateEconomicSanity", () => {
     expect(summary.skippedPeriods).toEqual([]);
   });
 
-  it("Check A (terminal-period-contamination): blocks when latest-period buyback >= 5% CSE", () => {
+  it("Check A (terminal-period-contamination): notes a large buyback without disqualifying the anchor", () => {
+    // A buyback changes financing, not the operating earnings the anchor
+    // capitalizes (#360, #367): it is recorded, and the latest period anchors.
     const periods = [
       mkRecastPeriod("2024-03-31", { rnoa: 0.10 }),
       mkRecastPeriod("2025-03-31", { rnoa: 0.10, buyback: -100, cse: 1000 }),
     ];
     const summary = evaluateEconomicSanity(periods, periods.map((p) => mkRaw(p.period_end)));
-    // Latest is contaminated; falls back to 2024-03-31
-    expect(summary.anchorPeriod).toBe("2024-03-31");
-    expect(summary.skippedPeriods.find((s) => s.period === "2025-03-31")).toBeTruthy();
+    expect(summary.anchorPeriod).toBe("2025-03-31");
+    expect(summary.skippedPeriods).toEqual([]);
   });
+
+  // A terminal-blocking unusual item in each listed period.
+  const discontinuedIn = (...periods: string[]): UnusualItemManifestLike[] =>
+    periods.map((period) => ({ period, affectsTerminalEligibility: true, category: "discontinued-operations" }));
 
   it("Check A: passes when buyback is small (< 5% CSE)", () => {
     const periods = [
@@ -139,14 +144,9 @@ describe("economicSanityGates / evaluateEconomicSanity", () => {
   it("Check E (anchor selection): walks back at most MAX_ANCHOR_LOOKBACK_PERIODS", () => {
     // All recent periods contaminated; only oldest is clean. With lookback=3,
     // we walk back at most 3 periods from latest.
-    const periods = [
-      mkRecastPeriod("2021-03-31", { rnoa: 0.10 }),
-      mkRecastPeriod("2022-03-31", { rnoa: 0.10, buyback: -100, cse: 1000 }),
-      mkRecastPeriod("2023-03-31", { rnoa: 0.10, buyback: -100, cse: 1000 }),
-      mkRecastPeriod("2024-03-31", { rnoa: 0.10, buyback: -100, cse: 1000 }),
-      mkRecastPeriod("2025-03-31", { rnoa: 0.10, buyback: -100, cse: 1000 }),
-    ];
-    const summary = evaluateEconomicSanity(periods, periods.map((p) => mkRaw(p.period_end)));
+    const periods = ["2021", "2022", "2023", "2024", "2025"].map((y) => mkRecastPeriod(`${y}-03-31`, { rnoa: 0.10 }));
+    const manifest = discontinuedIn("2022-03-31", "2023-03-31", "2024-03-31", "2025-03-31");
+    const summary = evaluateEconomicSanity(periods, periods.map((p) => mkRaw(p.period_end)), [], manifest);
     expect(summary.status).toBe("blocked");
     expect(summary.anchorPeriod).toBeNull();
     // Should have attempted MAX_ANCHOR_LOOKBACK_PERIODS + 1 periods.
@@ -154,12 +154,8 @@ describe("economicSanityGates / evaluateEconomicSanity", () => {
   });
 
   it("Check E: returns first clean period when latest is contaminated", () => {
-    const periods = [
-      mkRecastPeriod("2023-03-31", { rnoa: 0.10 }),
-      mkRecastPeriod("2024-03-31", { rnoa: 0.10 }),
-      mkRecastPeriod("2025-03-31", { rnoa: 0.10, buyback: -100, cse: 1000 }),
-    ];
-    const summary = evaluateEconomicSanity(periods, periods.map((p) => mkRaw(p.period_end)));
+    const periods = ["2023", "2024", "2025"].map((y) => mkRecastPeriod(`${y}-03-31`, { rnoa: 0.10 }));
+    const summary = evaluateEconomicSanity(periods, periods.map((p) => mkRaw(p.period_end)), [], discontinuedIn("2025-03-31"));
     expect(summary.anchorPeriod).toBe("2024-03-31");
     expect(summary.skippedPeriods).toHaveLength(1);
     expect(summary.skippedPeriods[0]!.period).toBe("2025-03-31");
@@ -170,11 +166,8 @@ describe("economicSanityGates / evaluateEconomicSanity", () => {
   });
 
   it("emits anchorReason describing the walk-back path", () => {
-    const periods = [
-      mkRecastPeriod("2024-03-31", { rnoa: 0.10 }),
-      mkRecastPeriod("2025-03-31", { rnoa: 0.10, buyback: -100, cse: 1000 }),
-    ];
-    const summary = evaluateEconomicSanity(periods, periods.map((p) => mkRaw(p.period_end)));
+    const periods = ["2024", "2025"].map((y) => mkRecastPeriod(`${y}-03-31`, { rnoa: 0.10 }));
+    const summary = evaluateEconomicSanity(periods, periods.map((p) => mkRaw(p.period_end)), [], discontinuedIn("2025-03-31"));
     expect(summary.anchorReason).toContain("Walked back");
     expect(summary.anchorReason).toContain("2024-03-31");
   });

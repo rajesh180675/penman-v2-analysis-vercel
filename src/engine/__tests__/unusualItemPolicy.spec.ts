@@ -115,6 +115,12 @@ describe("unusualItemPolicy / classifyRunUnusualItems", () => {
     expect(manifest.terminalEligibilityBlocked).toBe(false);
   });
 
+  it("lists a terminal-period rights or bonus issue for review without blocking the anchor", () => {
+    const manifest = summarizeUnusualItemManifest([], [mkRaw("2025-03-31", { "Rights Issue Proceeds": 4000 })]);
+    expect(manifest.classifications.map((c) => c.category)).toContain("capital-return");
+    expect(manifest.terminalEligibilityBlocked).toBe(false);
+  });
+
   it("aggregates terminalEligibilityBlocked from spec_flags", () => {
     const recast: RecastPeriod[] = [
       {
