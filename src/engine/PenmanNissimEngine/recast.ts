@@ -258,12 +258,12 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   const exceptionalPretax = pl("IS.ExceptionalPreTax", M.profitLoss.exceptionalItems) + pl("IS.ExtraordinaryPreTax", M.profitLoss.extraordinaryItems);
   const discontinuedRaw = pl("IS.DiscontinuedRaw", M.profitLoss.discontinuedItems);
   const discontinuedTax = pl("IS.DiscontinuedTax", ["Tax Expense of Discontinuing Operations"]);
-  // If a dedicated discontinued tax line is present and smaller than the discontinued line,
-  // treat discontinuedRaw as pre-tax and tax-adjust it once. Otherwise, assume already after-tax.
-  const discontinuedAfterTax =
-    discontinuedTax !== 0 && Math.abs(discontinuedTax) <= Math.abs(discontinuedRaw)
-      ? (discontinuedRaw - discontinuedTax)
-      : discontinuedRaw;
+  // Capitaline signs the discontinued tax line as an adjustment (negative =
+  // expense), so it is ADDED: pre-tax + tax equals the filed after-tax
+  // "Discontinued Operations" line in all 331 library company-years. The old
+  // subtraction overstated the result by twice the tax (L&T FY21 13,343.08 vs
+  // 8,237.92 filed; ITC FY25 16,293.29 vs 15,016.01), which Core OI absorbed.
+  const discontinuedAfterTax = discontinuedRaw + discontinuedTax;
   const exceptionalOperatingAfterTax = exceptionalPretax * (1 - taxRate);
   const ExceptionalItemsAfterTax = exceptionalOperatingAfterTax + discontinuedAfterTax;
   // Capitaline's "Changes in Inventories…" line is already signed as an
