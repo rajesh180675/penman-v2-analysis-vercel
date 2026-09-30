@@ -242,7 +242,12 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
     FinanceIncomeRung = 4;
   }
 
-  const UFE = -valCF(data, M.cashFlow.plSaleInvest) * (1 - taxRate);
+  // "P/L on Sales of Invest" is the operating-cash-flow adjustment, so a gain
+  // is already negative — the sign of a financial expense. The filed
+  // adjustments tie to their filed total with it as signed in every library
+  // company-year. Negating it booked gains as expenses and lifted Core OI by
+  // twice the after-tax gain.
+  const UFE = valCF(data, M.cashFlow.plSaleInvest) * (1 - taxRate);
   const CoreNFE = (FinanceCost - FinanceIncome) * (1 - taxRate) + PreferredDividend;
   const NFE = CoreNFE + UFE;
   // Minority interest in income: the minority's share, positive when it

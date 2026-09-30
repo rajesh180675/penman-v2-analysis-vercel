@@ -296,6 +296,31 @@ describe("discontinued operations — the tax line is added, as Capitaline signs
   });
 });
 
+describe("gains on sale of investments — financial income, as the cash-flow adjustment signs them (real recast)", () => {
+  // "P/L on Sales of Invest" is the operating-cash-flow adjustment: a gain is
+  // subtracted from PBT, so it is negative (Asian Paints FY11: −0.45 inside
+  // the filed Total Adjustments of 71.14). A 40 gain taxed at 25% adds 30 to
+  // TCI and must leave Core OI where it was.
+  const base = computeRecastPeriod(makePeriod("2025-03-31"), DEFAULT_CONFIG);
+  const withGain = computeRecastPeriod(makePeriod("2025-03-31", {
+    "Profit Before Tax__ProfitLoss": 180,
+    "Tax Expenses__ProfitLoss": 45,
+    "Profit After Tax__ProfitLoss": 135,
+    "Total Comprehensive Income for the Year__ProfitLoss": 135,
+    "P/L on Sales of Invest__CashFlow": -40,
+  }), DEFAULT_CONFIG);
+
+  it("books the after-tax gain as unusual financial income", () => {
+    expect(withGain.is.taxRate).toBe(0.25);
+    expect(withGain.cu.UFE).toBeCloseTo(-30, 9);
+  });
+
+  it("keeps the gain out of Core OI", () => {
+    // Negating the adjustment booked the gain as an expense: Core OI rose by 60.
+    expect(withGain.cu.CoreOI).toBeCloseTo(base.cu.CoreOI, 9);
+  });
+});
+
 describe("operating-cost bridge — finance income is not operating income (real recast)", () => {
   // TCS-shaped: Other Income (60) includes a directly reported Interest
   // Income line (45). Core OI excludes it (it sits in NFE), so the bridge must.
