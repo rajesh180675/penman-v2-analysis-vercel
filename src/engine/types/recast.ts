@@ -210,6 +210,12 @@ export interface RecastDebug {
    * falls back to PAT.
    */
   fullPeriodProfit?: number | null | undefined;
+  /**
+   * The filed lines other than discontinued operations that sit between PAT
+   * and full-period profit: "Extraordinary Items After Tax" plus "Share of
+   * Profits / Loss of Associated Companies". Null when full-period profit is.
+   */
+  otherProfitBelowPat?: number | null | undefined;
 }
 
 /* ── Period ─────────────────────────────────────────────────────── */

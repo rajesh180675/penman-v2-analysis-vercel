@@ -67,6 +67,7 @@ This is a real improvement in clarity, but it is still only a partial reconcilia
 - `CSE + MI + FO + OL = TA`
 - `NOA - NFO - CSE - MI = 0`
 - `Profit + OCI − NCI share = TCI (owners)` when traced comprehensive-income evidence exists (Capitaline reports TCI as the owners' share and the NCI line as a signed deduction). Profit is taken on TCI's basis — "Profit Attributable to Shareholders" less "Minority Interest After Net Profit", which includes discontinued operations, extraordinary items and associates — and falls back to PAT when that subtotal is absent
+- `PAT + discontinued + extraordinary + associates = full-period profit` where that subtotal is filed, so PAT itself stays checked; the discontinued term is the recast's own after-tax result, so a misread of it fails here too
 - `CNI = OI - NFE - MII`
 - `Core OI + UOI = OI`
 - `Core NFE + UFE = NFE`

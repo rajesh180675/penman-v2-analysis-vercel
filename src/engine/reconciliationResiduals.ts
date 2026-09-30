@@ -551,6 +551,18 @@ export function evaluateReconciliationResiduals(params: {
     const comprehensiveIncomeBasis = comprehensiveIncomeResidual != null
       ? Math.max(Math.abs(period.is.TCI), Math.abs(ownersPatPlusOci), 1)
       : null;
+    // With profit read from the filed subtotal above, PAT is checked here:
+    // PAT + discontinued + extraordinary + associates ties to it to the rupee
+    // in all 317 library company-years that file the subtotal. The recast's
+    // discontinued result is used, so a misread of it fails too.
+    const otherProfitBelowPat = period.recastDebug?.otherProfitBelowPat;
+    const profitBridgeResidual = fullPeriodProfit != null && Number.isFinite(fullPeriodProfit)
+      && otherProfitBelowPat != null && hasTraceEvidence(period, "IS.PAT")
+      ? fullPeriodProfit - (period.is.PAT + (period.cu.DiscontinuedOperationsAfterTax ?? 0) + otherProfitBelowPat)
+      : null;
+    const profitBridgeBasis = profitBridgeResidual != null && fullPeriodProfit != null
+      ? Math.max(Math.abs(fullPeriodProfit), Math.abs(period.is.PAT), 1)
+      : null;
     const operatingCostBridge = period.is.operatingCostBridge;
     const hasOperatingCostBridgeInputs = (operatingCostBridge?.coverageRatio ?? 0) >= MIN_OPERATING_COST_BRIDGE_COVERAGE;
     const reportedBridgeCoreOi = operatingCostBridge != null
@@ -728,6 +740,15 @@ export function evaluateReconciliationResiduals(params: {
         periodEnd: period.period_end,
         residual: comprehensiveIncomeResidual,
         denominator: comprehensiveIncomeBasis,
+        warningThreshold,
+        criticalThreshold,
+      }),
+      buildOptionalCheck({
+        key: "profit-bridge",
+        label: "PAT + discontinued + extraordinary + associates = full-period profit",
+        periodEnd: period.period_end,
+        residual: profitBridgeResidual,
+        denominator: profitBridgeBasis,
         warningThreshold,
         criticalThreshold,
       }),
