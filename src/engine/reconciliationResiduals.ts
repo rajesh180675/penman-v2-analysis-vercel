@@ -724,7 +724,7 @@ export function evaluateReconciliationResiduals(params: {
       }),
       buildOptionalCheck({
         key: "comprehensive-income-bridge",
-        label: "PAT + OCI − NCI share = TCI (owners)",
+        label: "Profit + OCI − NCI share = TCI (owners)",
         periodEnd: period.period_end,
         residual: comprehensiveIncomeResidual,
         denominator: comprehensiveIncomeBasis,

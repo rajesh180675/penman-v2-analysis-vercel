@@ -66,7 +66,7 @@ This is a real improvement in clarity, but it is still only a partial reconcilia
 - `OA + FA = TA`
 - `CSE + MI + FO + OL = TA`
 - `NOA - NFO - CSE - MI = 0`
-- `PAT + OCI − NCI share = TCI (owners)` when traced comprehensive-income evidence exists (Capitaline reports TCI as the owners' share and the NCI line as a signed deduction)
+- `Profit + OCI − NCI share = TCI (owners)` when traced comprehensive-income evidence exists (Capitaline reports TCI as the owners' share and the NCI line as a signed deduction). Profit is taken on TCI's basis — "Profit Attributable to Shareholders" less "Minority Interest After Net Profit", which includes discontinued operations, extraordinary items and associates — and falls back to PAT when that subtotal is absent
 - `CNI = OI - NFE - MII`
 - `Core OI + UOI = OI`
 - `Core NFE + UFE = NFE`
