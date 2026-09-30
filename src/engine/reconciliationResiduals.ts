@@ -578,9 +578,23 @@ export function evaluateReconciliationResiduals(params: {
     // cost lines; they join after the tax adjustment (NTPC FY25: the gap was
     // the 3,701.92 regulatory-deferral movement to the rupee).
     const extraordinaryAfterTax = operatingCostBridge?.extraordinaryAfterTax ?? 0;
-    const bridgeCoreOiComparable = operatingCostBridge != null && Number.isFinite(taxRate) && taxRate > 0 && taxRate < 0.55
-      ? operatingCostBridge.bridgeCoreOI * (1 - taxRate) + extraordinaryAfterTax
-      : operatingCostBridge != null ? operatingCostBridge.bridgeCoreOI + extraordinaryAfterTax : null;
+    // Tax the bridge the way Core OI is taxed: the filed tax charge, plus the
+    // shield the recast gives net financial items (finance cost less income,
+    // investment P/L via UFE) and less the tax it strips with exceptional
+    // items, each at the recast's rate. Applying that rate to the bridge alone
+    // broke wherever the effective rate is odd — NTPC's deferred tax
+    // recoverable, loss-makers (Paytm, Vodafone Idea, Tata Steel): 255 → 282
+    // of 304 library company-years tie, and 22 still fail on their cost lines.
+    const operatingTax = Number.isFinite(taxRate) && taxRate > 0 && taxRate < 1
+      ? period.is.TaxExpense
+        + taxRate * (period.is.FinanceCost - period.is.FinanceIncome)
+        + (taxRate / (1 - taxRate)) * ((period.cu.UFE ?? 0) - (period.cu.ExceptionalOperatingItemsAfterTax ?? 0))
+      : null;
+    const bridgeCoreOiComparable = operatingCostBridge != null
+      ? (operatingTax != null
+        ? operatingCostBridge.bridgeCoreOI - operatingTax + extraordinaryAfterTax
+        : operatingCostBridge.bridgeCoreOI + extraordinaryAfterTax)
+      : null;
     const operatingCostBridgeResidual = hasOperatingCostBridgeInputs && bridgeCoreOiComparable != null && reportedBridgeCoreOi != null
       ? bridgeCoreOiComparable - reportedBridgeCoreOi
       : null;
