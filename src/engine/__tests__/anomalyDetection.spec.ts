@@ -216,6 +216,42 @@ describe("detectDirtySurplusPerPeriod", () => {
     const ds = detectDirtySurplusPerPeriod(periods, makeConfig());
     expect(ds.every(r => r.flags.length === 0)).toBe(true);
   });
+
+  // TCS-shaped: equity falls 1000 more than earnings less dividends, and the
+  // export itemizes no buyback. Only the share count says what happened.
+  const buybackYear = (sharesAfter: number) => {
+    const periods = makeCleanSeries(3);
+    periods[2]!.bs.CSE = periods[1]!.bs.CSE + 60 - 1000;
+    periods[1]!.shareCountInput = { endPeriodShares: 366, faceValue: 1 } as RecastPeriod["shareCountInput"];
+    periods[2]!.shareCountInput = { endPeriodShares: sharesAfter, faceValue: 1 } as RecastPeriod["shareCountInput"];
+    return periods;
+  };
+
+  it("reads a shortfall with cancelled shares as a buyback, not a structural event", () => {
+    const last = detectDirtySurplusPerPeriod(buybackYear(362), makeConfig()).at(-1)!;
+    expect(last.DS_t).toBeCloseTo(-1000, 6);
+    expect(last.flags.map(f => f.label)).toEqual(["BUYBACK_LIKELY"]);
+    expect(last.flags[0]!.severity).toBe(Severity.WARNING);
+    expect(last.flags[0]!.affects_terminal).toBe(false);
+  });
+
+  it("keeps the same shortfall structural when no shares were cancelled", () => {
+    const last = detectDirtySurplusPerPeriod(buybackYear(366), makeConfig()).at(-1)!;
+    expect(last.flags[0]!.label).toBe("STRUCTURAL_EVENT");
+    expect(last.flags[0]!.affects_terminal).toBe(true);
+  });
+
+  it("nets share issues out of dirty surplus", () => {
+    // DMart-shaped IPO: equity rises by 1000 of proceeds the cash-flow
+    // statement itemizes, so payout d_t = dividends − issue.
+    const periods = makeCleanSeries(3);
+    periods[2]!.bs.CSE = periods[1]!.bs.CSE + 60 + 1000;
+    periods[2]!.cf.EquityIssued = 1000;
+    periods[2]!.cf.d_t = 40 - 1000;
+    const last = detectDirtySurplusPerPeriod(periods, makeConfig()).at(-1)!;
+    expect(last.DS_t).toBeCloseTo(0, 6);
+    expect(last.flags).toHaveLength(0);
+  });
 });
 
 // ─── detectDividendDiscrepancy ──────────────────────────────────────────────
@@ -231,6 +267,16 @@ describe("detectDividendDiscrepancy", () => {
     expect(flags[0]!.spec_id).toBe("S-5.2");
     expect(flags[0]!.label).toBe("CAPITAL_TRANSACTION_LIKELY");
     expect(flags[0]!.severity).toBe(Severity.WARNING);
+  });
+
+  it("stops an identified buyback from affecting the terminal period", () => {
+    const periods = makeCleanSeries(3);
+    periods[2]!.bs.CSE = periods[1]!.bs.CSE + 60 - 1000;
+    periods[1]!.shareCountInput = { endPeriodShares: 366, faceValue: 1 } as RecastPeriod["shareCountInput"];
+    periods[2]!.shareCountInput = { endPeriodShares: 362, faceValue: 1 } as RecastPeriod["shareCountInput"];
+    const flags = detectDividendDiscrepancy(periods, detectDirtySurplusPerPeriod(periods, makeConfig()), makeConfig());
+    expect(flags[0]!.label).toBe("CAPITAL_TRANSACTION_LIKELY");
+    expect(flags[0]!.affects_terminal).toBe(false);
   });
 });
 
