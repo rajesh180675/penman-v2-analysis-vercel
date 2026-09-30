@@ -491,6 +491,37 @@ describe("operating-cost bridge — finance income is not operating income (real
   });
 });
 
+describe("operating-cost bridge — extraordinary items filed after tax (real recast)", () => {
+  // NTPC FY25-shaped: a regulatory-deferral movement filed as "Extraordinary
+  // Items After Tax" sits in TCI and so in Core OI, outside every cost line.
+  const bridgeResidual = (overrides: Record<string, number>) => {
+    const raw = (end: string) => ({
+      ...makePeriod(end),
+      raw_metric_values: {
+        ...makePeriod(end).raw_metric_values,
+        "Cost of Material Consumed__ProfitLoss": 400,
+        "Employee Benefits / Salaries & other Staff Cost__ProfitLoss": 150,
+        "Depreciation and Amortization__ProfitLoss": 40,
+        "Other Expenses__ProfitLoss": 170,
+        ...(end === "2025-03-31" ? overrides : {}),
+      },
+    });
+    const prev = computeRecastPeriod(raw("2024-03-31"), DEFAULT_CONFIG);
+    const cur = computeRecastPeriod(raw("2025-03-31"), DEFAULT_CONFIG, prev);
+    const summary = evaluateReconciliationResiduals({ recastData: [prev, cur], config: DEFAULT_CONFIG });
+    return summary.checks.find((c) => c.key === "operating-cost-bridge" && c.periodEnd === "2025-03-31")!.residual!;
+  };
+
+  it("compares the after-tax extraordinary line on the bridge's after-tax side", () => {
+    const without = bridgeResidual({});
+    const withMovement = bridgeResidual({
+      "Extraordinary Items After Tax__ProfitLoss": 50,
+      "Total Comprehensive Income for the Year__ProfitLoss": 155,
+    });
+    expect(withMovement).toBeCloseTo(without, 9);
+  });
+});
+
 describe("recast-ta-vs-raw — end-to-end fail-closed on real corrupt input", () => {
   it("confirms when reported asset subtotals reconcile to recast TA (real recast)", () => {
     const { check, cur } = reconcile();

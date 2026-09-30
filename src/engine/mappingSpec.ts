@@ -243,6 +243,10 @@ export const CapitalineMappingSpec = {
     cogsInternalComponents: ["Internally Manufactured Intermediates or Components Consumed"],
     // The pre-tax share of associates' profit inside PBT, hence inside OI.
     associatesShareBeforeTax: ["Share of Profits / Loss of Associated Companies Before Tax"],
+    // Below PAT and inside TCI, so inside Core OI (only the pre-tax
+    // extraordinary line feeds UOI) — NTPC and Power Grid's yearly
+    // regulatory-deferral movement.
+    extraordinaryAfterTax: ["Extraordinary Items After Tax"],
     totalExpenses: ["Total Expenses"],
     employeeExpense: ["Employee Benefits / Salaries & other Staff Cost", "Employee Benefit Expenses", "Employee Benefits Expense", "Employee Cost", "Salaries and Incentives"],
     otherExpenses: ["Other Expenses", "Other Operating Expenses", "Operating and Other Expenses"],

@@ -574,9 +574,13 @@ export function evaluateReconciliationResiduals(params: {
     // was compared against the after-tax CoreOI, breaking the check on 299
     // of 306 corpus periods (median 28%, all false positives).
     const taxRate = period.is.taxRate;
+    // Extraordinary items filed after tax sit inside Core OI but outside the
+    // cost lines; they join after the tax adjustment (NTPC FY25: the gap was
+    // the 3,701.92 regulatory-deferral movement to the rupee).
+    const extraordinaryAfterTax = operatingCostBridge?.extraordinaryAfterTax ?? 0;
     const bridgeCoreOiComparable = operatingCostBridge != null && Number.isFinite(taxRate) && taxRate > 0 && taxRate < 0.55
-      ? operatingCostBridge.bridgeCoreOI * (1 - taxRate)
-      : operatingCostBridge?.bridgeCoreOI ?? null;
+      ? operatingCostBridge.bridgeCoreOI * (1 - taxRate) + extraordinaryAfterTax
+      : operatingCostBridge != null ? operatingCostBridge.bridgeCoreOI + extraordinaryAfterTax : null;
     const operatingCostBridgeResidual = hasOperatingCostBridgeInputs && bridgeCoreOiComparable != null && reportedBridgeCoreOi != null
       ? bridgeCoreOiComparable - reportedBridgeCoreOi
       : null;
