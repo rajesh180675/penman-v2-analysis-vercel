@@ -348,6 +348,30 @@ describe("detectComponentDisappearance", () => {
     const flags = detectComponentDisappearance(periods, makeConfig());
     expect(flags).toHaveLength(0);
   });
+
+  it("lists a financial-asset decline for review without blocking the anchor", () => {
+    // DMart-shaped: cash (FA) falls 50% as it is spent on stores.
+    const periods = makeCleanSeries(3);
+    periods[1]!.bs.FA = 400;
+    periods[2]!.bs.FA = 200;
+    const faFlag = detectComponentDisappearance(periods, makeConfig()).find(f => f.label === "LARGE_FA_DECLINE");
+    expect(faFlag).toBeDefined();
+    expect(faFlag!.affects_terminal).toBe(false);
+  });
+
+  it("does not block on a sub-line falling while total operating assets hold", () => {
+    // Reliance-shaped: other operating assets move into PPE; OA is unchanged.
+    const periods = makeCleanSeries(3);
+    periods[1]!.bs.OA_Other = 300;
+    periods[2]!.bs.OA_Other = 0;
+    periods[2]!.bs.OA_PPE = periods[1]!.bs.OA_PPE + 300;
+    periods[2]!.bs.OA = periods[1]!.bs.OA;
+    const flags = detectComponentDisappearance(periods, makeConfig());
+    const sub = flags.find(f => f.label === "LARGE_OtherOA_DECLINE");
+    expect(sub).toBeDefined();
+    expect(sub!.affects_terminal).toBe(false);
+    expect(flags.some(f => f.affects_terminal)).toBe(false);
+  });
 });
 
 // ─── detectReclassification ─────────────────────────────────────────────────

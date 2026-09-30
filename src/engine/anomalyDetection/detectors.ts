@@ -256,7 +256,12 @@ export function detectComponentDisappearance(
         ΔC < -(decline_pct * Math.max(prev_val, 1)) &&
         Math.abs(ΔC) > decline_abs * TA_prev
       ) {
-        const affects = C === "OA" || C === "FA";
+        // Only a fall in total operating assets shrinks what the anchor is
+        // earned on. A fall in financial assets is cash being spent — capex,
+        // dividends, buybacks (DMart, Nestlé, HUL FY25) — and the real
+        // removals (a demerger, Reliance FY23) also move equity against
+        // earnings, which S-5.1 flags. So FA declines are listed for review.
+        const affects = C === "OA";
         flags.push(flag(
           "S-5.4", Severity.WARNING, `LARGE_${C}_DECLINE`,
           `Δ${C} = ₹${ΔC.toFixed(0)} Cr (${((ΔC / Math.max(prev_val, 1)) * 100).toFixed(0)}% of prior). ` +
@@ -286,7 +291,11 @@ export function detectComponentDisappearance(
         flags.push(flag(
           "S-5.4", Severity.WARNING, `LARGE_${label}_DECLINE`,
           `Δ${label} = ₹${Δsub.toFixed(0)} Cr. May indicate asset disposal or demerger of a business segment.`,
-          true, cur.period_end
+          // A sub-line can fall while total OA grows — 36 of 78 library cases,
+          // e.g. Reliance and Airtel FY25 moving other operating assets into
+          // PPE — which leaves NOA intact; a real shrinkage trips
+          // LARGE_OA_DECLINE above.
+          false, cur.period_end
         ));
       }
     }
