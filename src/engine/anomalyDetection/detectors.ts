@@ -292,9 +292,12 @@ export function detectReclassification(
     // ~90–110% of the swap unexplained while DMart's store build-outs leave
     // 3–36%, so a swap cash explains at least half of is not flagged.
     // Acquisitions paid in cash count as unexplained, which keeps them flagged.
+    // A period with no cash-flow lines at all keeps the flag: FCF_cash is then
+    // 0 by absence, not by report.
     const swap = Math.min(Math.abs(ΔOA), Math.abs(ΔFA));
     const unexplainedByCash = (cur.cf.FCF_cash - cur.cf.FCF_accounting) * Math.sign(ΔOA);
-    const cashExplained = cur.cf.CFO !== 0 && unexplainedByCash < 0.5 * swap;
+    const hasCashFlow = cur.cf.CFO !== 0 || cur.cf.Capex !== 0;
+    const cashExplained = hasCashFlow && unexplainedByCash < 0.5 * swap;
 
     if (oppDirection && bigOA && bigFA && !cashExplained) {
       const dateStr = cur.period_end.slice(0, 10);

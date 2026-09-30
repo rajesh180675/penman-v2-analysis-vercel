@@ -231,6 +231,18 @@ describe("Supplementary Path A controls", () => {
     expect(anchor.label).toContain("T-1");
   });
 
+  it("S-14.1: a PM/ROCE outlier alone anchors as reported, with warnings", () => {
+    // The pipeline's S-5.3 no longer lets a profitability outlier disqualify the
+    // terminal period; V3 must not fall back to T-1 on the same period.
+    const allPeriods = [2021, 2022, 2023, 2024, 2025].map((y, i) => mkPeriod(y, 0.25, 80 + i * 2, 500 + i * 20));
+    const flags = detectPeriodEventFlags(allPeriods, computeDirtySurplus(allPeriods, 0.13));
+    flags[flags.length - 1]!.flags = ["PM_OUTLIER_CRITICAL", "ROCE_OUTLIER_CRITICAL"];
+
+    const anchor = selectTerminalAnchor(allPeriods, flags, 0.13, 0.10);
+    expect(anchor.method).toBe("RE_T");
+    expect(anchor.anchor_method).toBe("RE_T (as reported, with warnings)");
+  });
+
   // FIX VERIFICATION: S-14.1 — 3Y median uses T-1, T-2, T-3 (excludes T)
   it("S-14.1: 3Y median anchor excludes terminal period RE", () => {
     // Make both T and T-1 critically contaminated → should fall to 3Y median

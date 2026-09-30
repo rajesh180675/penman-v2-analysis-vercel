@@ -220,6 +220,16 @@ function trailingStats(
   return { median: med, stdev };
 }
 
+/**
+ * Whether a period's flags disqualify it as the terminal anchor. A PM or ROCE
+ * outlier is a review flag, not contamination — the pipeline's S-5.3 makes the
+ * same call — so only a critical structural event does. hasCriticalTerminalFlag
+ * still screens outliers out of the trailing baselines.
+ */
+export function blocksTerminalAnchor(flags: EventFlag[]): boolean {
+  return flags.includes("STRUCTURAL_EVENT_CRITICAL");
+}
+
 export function hasCriticalTerminalFlag(flags: EventFlag[]): boolean {
   return flags.some((f) => [
     "STRUCTURAL_EVENT_CRITICAL",

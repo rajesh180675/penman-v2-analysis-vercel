@@ -334,6 +334,26 @@ describe("detectReclassification", () => {
     periods[2]!.cf.FCF_accounting -= 300;
     expect(detectReclassification(periods, makeConfig()).find(f => f.label === "POTENTIAL_RECLASSIFICATION")).toBeUndefined();
   });
+
+  it("accepts a reported CFO of zero as cash-flow evidence", () => {
+    // OI and CFO both 0, capex 300 paid from cash: both free-cash-flow
+    // measures are −300, so nothing is unexplained.
+    const periods = makeCleanSeries(3);
+    periods[2]!.bs.OA = periods[1]!.bs.OA + 300;
+    periods[1]!.bs.FA = 1000;
+    periods[2]!.bs.FA = 700;
+    Object.assign(periods[2]!.cf, { CFO: 0, Capex: 300, FCF_cash: -300, FCF_accounting: -300 });
+    expect(detectReclassification(periods, makeConfig()).find(f => f.label === "POTENTIAL_RECLASSIFICATION")).toBeUndefined();
+  });
+
+  it("keeps the flag when the period has no cash-flow lines at all", () => {
+    const periods = makeCleanSeries(3);
+    periods[2]!.bs.OA = periods[1]!.bs.OA + 300;
+    periods[1]!.bs.FA = 1000;
+    periods[2]!.bs.FA = 700;
+    Object.assign(periods[2]!.cf, { CFO: 0, Capex: 0, FCF_cash: 0, FCF_accounting: 400 });
+    expect(detectReclassification(periods, makeConfig()).find(f => f.label === "POTENTIAL_RECLASSIFICATION")).toBeDefined();
+  });
 });
 
 // ─── detectPayoutAnomaly ────────────────────────────────────────────────────
