@@ -299,10 +299,13 @@ describe("discontinued operations — the tax line is added, as Capitaline signs
 describe("gains on sale of investments — financial income, as the cash-flow adjustment signs them (real recast)", () => {
   // "P/L on Sales of Invest" is the operating-cash-flow adjustment: a gain is
   // subtracted from PBT, so it is negative (Asian Paints FY11: −0.45 inside
-  // the filed Total Adjustments of 71.14). A 40 gain taxed at 25% adds 30 to
-  // TCI and must leave Core OI where it was.
-  const base = computeRecastPeriod(makePeriod("2025-03-31"), DEFAULT_CONFIG);
+  // the filed Total Adjustments of 71.14). A 40 gain, reported inside Other
+  // Income and taxed at 25%, adds 30 to TCI and must leave Core OI — and the
+  // cost bridge's other operating income — where they were.
+  const base = computeRecastPeriod(makePeriod("2025-03-31", { "Interest Income__ProfitLoss": 3 }), DEFAULT_CONFIG);
   const withGain = computeRecastPeriod(makePeriod("2025-03-31", {
+    "Interest Income__ProfitLoss": 3,
+    "Other Income__ProfitLoss": 45,
     "Profit Before Tax__ProfitLoss": 180,
     "Tax Expenses__ProfitLoss": 45,
     "Profit After Tax__ProfitLoss": 135,
@@ -318,6 +321,12 @@ describe("gains on sale of investments — financial income, as the cash-flow ad
   it("keeps the gain out of Core OI", () => {
     // Negating the adjustment booked the gain as an expense: Core OI rose by 60.
     expect(withGain.cu.CoreOI).toBeCloseTo(base.cu.CoreOI, 9);
+  });
+
+  it("nets the gain out of the cost bridge's other operating income", () => {
+    // Other Income 45 = interest 3 + the gain 40 + 2 of operating income.
+    expect(base.is.operatingCostBridge?.otherOperatingIncome).toBe(2);
+    expect(withGain.is.operatingCostBridge?.otherOperatingIncome).toBe(2);
   });
 });
 

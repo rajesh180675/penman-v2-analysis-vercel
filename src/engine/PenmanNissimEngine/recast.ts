@@ -247,7 +247,8 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   // adjustments tie to their filed total with it as signed in every library
   // company-year. Negating it booked gains as expenses and lifted Core OI by
   // twice the after-tax gain.
-  const UFE = valCF(data, M.cashFlow.plSaleInvest) * (1 - taxRate);
+  const investmentPl = valCF(data, M.cashFlow.plSaleInvest);
+  const UFE = investmentPl * (1 - taxRate);
   const CoreNFE = (FinanceCost - FinanceIncome) * (1 - taxRate) + PreferredDividend;
   const NFE = CoreNFE + UFE;
   // Minority interest in income: the minority's share, positive when it
@@ -307,8 +308,10 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   // Interest Income as a sub-line of it), and OI = CNI + NFE excludes it, so
   // the bridge must too. Netting it only on the proxy rung counted a cash-rich
   // company's interest as operating income — TCS and Infosys missed the
-  // reported core OI by a steady ~5%.
-  const otherOperatingIncome = Math.max(0, OtherIncome - Math.min(OtherIncome, FinanceIncome));
+  // reported core OI by a steady ~5%. Gains on sale of investments sit in
+  // Other Income as well and are financial (UFE), so they are netted too.
+  const investmentGain = Math.max(0, -investmentPl);
+  const otherOperatingIncome = Math.max(0, OtherIncome - Math.min(OtherIncome, FinanceIncome + investmentGain));
   const grossProfit = Sales - COGS;
   const operatingCosts = employeeCost + depreciation + sgaTotal + sectorSpecificOperatingExpense + otherOperatingExpense;
   const OCITotal = cfg.oci_treated_as_unusual ? OCI : 0;
