@@ -111,18 +111,18 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   const invTransit = bs("BS.InventoryTransit", ["Goods in Transit"]);
   const Inventory = invTop || (invRaw + invWip + invFinished + invStockTrade + invStores + invPack + invTransit);
   const TradeReceivables = bs("BS.TradeReceivables", M.balanceSheet.tradeReceivables);
-  const TradePayables = bs("BS.TradePayables", M.balanceSheet.tradePayables);
+  const TradePayables = sumBs("BS.TradePayables", M.balanceSheet.tradePayables);
   const PPE = bs("BS.PPE", M.balanceSheet.ppe);
 
   const explicitOL =
-    olBs("BS.OLComp.TradePayables", M.balanceSheet.olComponents.tradePayables)
+    sumBs("BS.OLComp.TradePayables", M.balanceSheet.olComponents.tradePayables)
     + olBs("BS.OLComp.OtherCurrentLiabilities", M.balanceSheet.olComponents.otherCurrentLiabilities)
     + olBs("BS.OLComp.ProvisionsCurrent", M.balanceSheet.olComponents.provisionsCurrent)
     + olBs("BS.OLComp.ProvisionsLongTerm", M.balanceSheet.olComponents.provisionsLongTerm)
     + olBs("BS.OLComp.CurrentTaxLiabilities", M.balanceSheet.olComponents.currentTaxLiabilities)
     + olBs("BS.OLComp.NonCurrentTaxLiabilities", M.balanceSheet.olComponents.nonCurrentTaxLiabilities)
     + olBs("BS.OLComp.DeferredTaxLiabilitiesNet", M.balanceSheet.olComponents.deferredTaxLiabilitiesNet)
-    + olBs("BS.OLComp.OtherNonCurrentLiabilities", M.balanceSheet.olComponents.otherNonCurrentLiabilities);
+    + sumBs("BS.OLComp.OtherNonCurrentLiabilities", M.balanceSheet.olComponents.otherNonCurrentLiabilities);
   const olRatio = OL > 0 ? explicitOL / OL : 1;
   const olConsistent = OL === 0 ? true : olRatio >= 0.7 && olRatio <= 1.3;
 
@@ -168,14 +168,14 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
     BridgeDebtTotal: bridgeDebtTotal,
     FO_LeaseLiabilities: leaseLiab,
     FO_FinancialDebtExLease: financialDebtExLease,
-    OL_TradePayables: olBs("BS.OLComp.TradePayablesOut", M.balanceSheet.olComponents.tradePayables),
+    OL_TradePayables: sumBs("BS.OLComp.TradePayablesOut", M.balanceSheet.olComponents.tradePayables),
     OL_OtherCurrentLiabilities: olBs("BS.OLComp.OtherCurrentLiabilitiesOut", M.balanceSheet.olComponents.otherCurrentLiabilities),
     OL_ProvisionsCurrent: olBs("BS.OLComp.ProvisionsCurrentOut", M.balanceSheet.olComponents.provisionsCurrent),
     OL_ProvisionsLongTerm: olBs("BS.OLComp.ProvisionsLongTermOut", M.balanceSheet.olComponents.provisionsLongTerm),
     OL_CurrentTaxLiabilities: olBs("BS.OLComp.CurrentTaxLiabilitiesOut", M.balanceSheet.olComponents.currentTaxLiabilities),
     OL_NonCurrentTaxLiabilities: olBs("BS.OLComp.NonCurrentTaxLiabilitiesOut", M.balanceSheet.olComponents.nonCurrentTaxLiabilities),
     OL_DeferredTaxLiabilitiesNet: olBs("BS.OLComp.DeferredTaxLiabilitiesNetOut", M.balanceSheet.olComponents.deferredTaxLiabilitiesNet),
-    OL_OtherNonCurrentLiabilities: olBs("BS.OLComp.OtherNonCurrentLiabilitiesOut", M.balanceSheet.olComponents.otherNonCurrentLiabilities),
+    OL_OtherNonCurrentLiabilities: sumBs("BS.OLComp.OtherNonCurrentLiabilitiesOut", M.balanceSheet.olComponents.otherNonCurrentLiabilities),
     DTL, PensionObl, OL_ex_DTL,
     Goodwill, CurrentAssets, CurrentLiabilities, Inventory, TradeReceivables, TradePayables,
     PPE, LIFO_reserve: 0,
