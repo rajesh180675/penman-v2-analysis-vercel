@@ -267,6 +267,8 @@ describe("detectDividendDiscrepancy", () => {
     expect(flags[0]!.spec_id).toBe("S-5.2");
     expect(flags[0]!.label).toBe("CAPITAL_TRANSACTION_LIKELY");
     expect(flags[0]!.severity).toBe(Severity.WARNING);
+    // A capital transaction is listed, never a terminal disqualifier (#367).
+    expect(flags[0]!.affects_terminal).toBe(false);
   });
 
   it("stops an identified buyback from affecting the terminal period", () => {

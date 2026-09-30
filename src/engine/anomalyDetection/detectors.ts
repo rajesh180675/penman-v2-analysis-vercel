@@ -126,7 +126,10 @@ export function detectDividendDiscrepancy(
           ? `Shares outstanding fell: a buyback not itemized in the cash-flow statement.`
           : `Indicates a capital transaction (demerger, buyback, bonus issue, or equity adjustment) ` +
             `not captured in reported payout.`),
-        !buyback, cur.period_end
+        // Never terminal-affecting: a capital transaction with owners changes
+        // financing, not the anchor's earnings (#367). An equity movement big
+        // enough to matter trips S-5.1's critical STRUCTURAL_EVENT instead.
+        false, cur.period_end
       ));
     }
   }
