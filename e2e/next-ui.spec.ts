@@ -53,7 +53,9 @@ test.describe("Next UI", () => {
     await page.getByRole("link", { name: "Peers" }).click();
     await expect(page.getByRole("button", { name: /^Analyse \d+ peers?$/ })).toBeVisible();
     // Phase 5: the Case as of an earlier year — no live price, stated limits.
-    await page.goto("/#/case/TCS/verdict?asOf=2023-03-31");
+    // Dabur, because a critical anomaly flag withholds every earlier TCS year's
+    // verdict (buyback years; FY23's RNOA is a 5.4σ outlier on its history).
+    await page.goto("/#/case/DABUR/verdict?asOf=2023-03-31");
     await expect(page.getByRole("note")).toContainText("as of 2023-03-31");
     await expect(page.getByText(/Rigor: /)).toBeVisible({ timeout: 120_000 });
     await expect(page.getByText("No price as of 2023-03-31: the live price is today's, not point-in-time.").first()).toBeVisible();
