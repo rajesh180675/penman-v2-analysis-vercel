@@ -78,6 +78,18 @@ export interface TerminalREValidation {
  */
 export const RE_ANCHOR_MATERIALITY = 0.05;
 
+/**
+ * With an equity basis, the terminal RE test compares residual ROE (RE ÷
+ * opening CSE), which is scale-free: RE grows with book, so absolute RE against
+ * its whole-history median read steady growth as "non-recurring" (Infosys 2.5×,
+ * Titan 3.6×). It flags when the magnitude of terminal residual ROE exceeds
+ * both the prior years' median and the prior year by this many ROE points —
+ * 15 of 231 library company-years, all extreme (Airtel's AGR year, ITC's
+ * demerger gain, Vodafone Idea's collapse), against 55 for the ratio tests.
+ */
+export const RE_ANCHOR_ROE_SWING = 0.10;
+const MIN_PRIOR_RESIDUAL_ROE_YEARS = 3;
+
 export function validateTerminalREAnchor(
   reSeries: Array<{period:string; RE:number; ReOI:number; openingCSE?: number | undefined}>,
   cfg: EngineConfig
@@ -101,6 +113,26 @@ export function validateTerminalREAnchor(
   const flags: SpecFlag[] = [];
   let terminal_anomaly = false;
   const latest_period  = reSeries[n - 1]!.period;
+
+  const withBasis = reSeries.filter((r) => Number.isFinite(r.RE) && r.openingCSE != null && r.openingCSE > 0);
+  const terminalHasBasis = withBasis.at(-1)?.period === latest_period;
+  if (terminalHasBasis && withBasis.length > MIN_PRIOR_RESIDUAL_ROE_YEARS) {
+    const residualRoe = (r: (typeof withBasis)[number]) => r.RE / r.openingCSE!;
+    const rT = residualRoe(withBasis.at(-1)!);
+    const rPrev = residualRoe(withBasis.at(-2)!);
+    const rMedian = medianOf(withBasis.slice(0, -1).map(residualRoe))!;
+    if (Math.abs(rT) - Math.abs(rMedian) > RE_ANCHOR_ROE_SWING && Math.abs(rT) - Math.abs(rPrev) > RE_ANCHOR_ROE_SWING) {
+      terminal_anomaly = true;
+      flags.push(flag(
+        "S-10.1", Severity.CRITICAL, "TERMINAL_RE_ANOMALY",
+        `Residual ROE ${(rT * 100).toFixed(1)}% (RE_T ₹${RE_T.toFixed(0)} Cr) vs ${(rMedian * 100).toFixed(1)}% ` +
+        `for prior years and ${(rPrev * 100).toFixed(1)}% last year. Terminal period earnings appear non-recurring.`,
+        true, latest_period
+      ));
+    }
+    return { RE_T, RE_prev, RE_median, anchor_jump, anchor_vs_median, terminal_anomaly, flags };
+  }
+
   // Without an equity basis (callers that don't supply one) the ratio tests
   // stand alone, as before.
   const equityBasis = reSeries[n - 1]!.openingCSE;
