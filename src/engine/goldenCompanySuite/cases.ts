@@ -100,7 +100,10 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
     expectation: {
       qualityGateTier: "Tier 1",
       valuationBlocked: false,
-      valuationStatus: "warning",
+      // Was "warning" only because its latest year carries an S-5.2
+      // capital-transaction warning, which no longer disqualifies the anchor
+      // (#367); no other flag touches the terminal period.
+      valuationStatus: "production-ready",
       persistenceStatus: "durable",
       minPeriods: 3,
       forbiddenTerminalFlags: ["STRUCTURAL_EVENT"],
