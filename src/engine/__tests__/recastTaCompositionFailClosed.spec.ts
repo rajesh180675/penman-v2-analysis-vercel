@@ -140,6 +140,49 @@ describe("ol-coverage-bridge — reads the labels Capitaline actually uses (real
     const { check } = olCheck({ "Sundry Creditors__BalanceSheet": 0 });
     expect(check?.status).toBe("failed");
   });
+  it("adds Other Trade Payables to Sundry Creditors, which is only the MSME + others subtotal", () => {
+    // HUL FY25-shaped: "Sundry Creditors" 263 (all MSME) beside "Other Trade
+    // Payables" 10,898. Reading the first non-zero line found 263.
+    const { cur, check } = olCheck({
+      "Sundry Creditors__BalanceSheet": 50,
+      "Other Trade Payables__BalanceSheet": 100,
+    });
+    expect(cur.bs.OL_TradePayables).toBe(150);
+    expect(cur.bs.TradePayables).toBe(150);
+    expect(check?.status).toBe("confirmed");
+  });
+
+  it("reads trade payables filed only as Other Trade Payables", () => {
+    // Sun Pharma FY25-shaped: the days-payable read found none of its labels
+    // and reported 0, overstating operating working capital.
+    const { cur } = olCheck({
+      "Sundry Creditors__BalanceSheet": 0,
+      "Other Trade Payables__BalanceSheet": 150,
+    });
+    expect(cur.bs.TradePayables).toBe(150);
+    expect(cur.bs.OL_TradePayables).toBe(150);
+  });
+
+  it("reads the other-current-liabilities total, not its residual line", () => {
+    // ITC FY25-shaped: statutory dues and customer advances are itemized, so
+    // "Other Current Liabilities" is 32.72 of a 6,148.27 total.
+    const { cur, check } = olCheck({
+      "Other Current Liabilities__BalanceSheet": 5,
+      "Total Other Current Liabilities__BalanceSheet": 50,
+    });
+    expect(cur.bs.OL_OtherCurrentLiabilities).toBe(50);
+    expect(check?.status).toBe("confirmed");
+  });
+
+  it("counts a consolidated insurer's policy liabilities as operating liabilities", () => {
+    // Grasim FY25-shaped: 81,353 of insurance liabilities sit inside OL.
+    const { cur, check } = olCheck({
+      "Other Non-Current Liabilities__BalanceSheet": 10,
+      "Insurance Related Liabilities__BalanceSheet": 40,
+    });
+    expect(cur.bs.OL_OtherNonCurrentLiabilities).toBe(50);
+    expect(check?.status).toBe("confirmed");
+  });
 });
 
 describe("owners' income identity — profit on TCI's basis (real recast)", () => {

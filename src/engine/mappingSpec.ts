@@ -76,7 +76,11 @@ export const CapitalineMappingSpec = {
       "Closing Stock of Raw Materials",
     ],
     tradeReceivables: ["Trade Receivables", "Total Trade Receivables", "Total Trade Debtors", "Debtor Less than 6 Month - Gross"],
-    tradePayables: ["Trade Payables", "Sundry Creditors", "Sundry Creditors due to Others"],
+    // Summed, not alternatives: the Ind AS layout files "Sundry Creditors"
+    // (MSME + others — equal in 33/33 split years) beside "Other Trade
+    // Payables" (HUL FY25: 263 + 10,898); "Trade Payables" is the other
+    // layouts' single line and never shares a year with them (316 years).
+    tradePayables: ["Trade Payables", "Sundry Creditors", "Other Trade Payables"],
     ppe: [
       "Net Property, plant and equipment",
       "Total Net Property, plant and equipment (not under Lease)",
@@ -127,15 +131,22 @@ export const CapitalineMappingSpec = {
       ],
     },
     olComponents: {
-      // Alternatives across years, not addends: read the first non-zero.
+      // Alternatives across years, not addends: read the first non-zero —
+      // except tradePayables and otherNonCurrentLiabilities, which are summed.
       tradePayables: ["Trade Payables", "Sundry Creditors", "Other Trade Payables"],
-      otherCurrentLiabilities: ["Other Current Liabilities"],
+      // The total first: where the export itemizes statutory dues and
+      // customer advances, "Other Current Liabilities" is only the residual
+      // line (ITC FY25: 32.72 of 6,148.27; 20 of 42 years that file a total).
+      otherCurrentLiabilities: ["Total Other Current Liabilities", "Other Current Liabilities"],
       provisionsCurrent: ["Provisions"],
       provisionsLongTerm: ["Long-term Provisions"],
       currentTaxLiabilities: ["Current Tax Liabilities - Short-term"],
       nonCurrentTaxLiabilities: ["Non Current Tax Liabilities - Long-term"],
       deferredTaxLiabilitiesNet: ["Deferred Tax Liabilities (Net)"],
-      otherNonCurrentLiabilities: ["Other Non-Current Liabilities"],
+      // Summed: a consolidated insurer's policy liabilities (Grasim, via
+      // Aditya Birla Capital: 81,353 in FY25) sit beside the other line and
+      // are operating liabilities already inside OL.
+      otherNonCurrentLiabilities: ["Other Non-Current Liabilities", "Insurance Related Liabilities"],
     },
     shareCapital: {
       authorisedShares: ["Number of Equity Shares - Authorised", "Amount of Equity Shares - Authorised"],
