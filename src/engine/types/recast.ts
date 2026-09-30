@@ -202,6 +202,14 @@ export interface RecastDebug {
   rawNonCurrentAssets: number | null;
   /** Sum of explicit OL components (trade payables, provisions, current/non-current liabilities, taxes). */
   explicitOL: number;
+  /**
+   * Profit for the period on the basis TCI is filed on: PAT plus discontinued
+   * operations, extraordinary items and associates, from Capitaline's
+   * "Profit Attributable to Shareholders" less "Minority Interest After Net
+   * Profit". Null when the subtotal is absent; the owners'-income residual then
+   * falls back to PAT.
+   */
+  fullPeriodProfit?: number | null | undefined;
 }
 
 /* ── Period ─────────────────────────────────────────────────────── */

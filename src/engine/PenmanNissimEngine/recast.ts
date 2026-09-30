@@ -526,6 +526,22 @@ export function extractRecastDebug(data: RawPeriodData, bs: CanonicalBalanceShee
   const explicitOL = bs.OL_TradePayables + bs.OL_OtherCurrentLiabilities + bs.OL_ProvisionsCurrent
     + bs.OL_ProvisionsLongTerm + bs.OL_CurrentTaxLiabilities + bs.OL_NonCurrentTaxLiabilities
     + bs.OL_DeferredTaxLiabilitiesNet + bs.OL_OtherNonCurrentLiabilities;
+  // Capitaline's "Profit After Tax" stops before discontinued operations,
+  // extraordinary items and associates, but the filed TCI includes them, so the
+  // owners'-income identity broke by exactly those lines (M&M FY20: discontinued
+  // −3,033.82; NTPC FY20: extraordinary +4,872.01). "Profit Attributable to
+  // Shareholders" less "Minority Interest After Net Profit" is PAT on TCI's
+  // basis: M&M FY20 127.04 − 448.04 = −321.00 = PAT 2,712.82 − 3,033.82.
+  // Without the minority line it is only usable when there is no minority.
+  const readPl = (key: string): number | null => {
+    const value = data.raw_metric_values[`${key}__ProfitLoss`];
+    return value != null && Number.isFinite(value) ? value : null;
+  };
+  const profitAttributable = readPl("Profit Attributable to Shareholders");
+  const minorityAfterProfit = readPl("Minority Interest After Net Profit");
+  const fullPeriodProfit = profitAttributable != null && (minorityAfterProfit != null || !readPl("Non-Controlling Interests"))
+    ? profitAttributable - (minorityAfterProfit ?? 0)
+    : null;
   return {
     rawTotalAssets,
     rawTotalLiabilitiesAndEquity,
@@ -533,5 +549,6 @@ export function extractRecastDebug(data: RawPeriodData, bs: CanonicalBalanceShee
     rawCurrentAssets,
     rawNonCurrentAssets,
     explicitOL,
+    fullPeriodProfit,
   };
 }
