@@ -54,6 +54,20 @@ describe("greenfield L2 detectors", () => {
     expect(d4!.suppresses).toContainEqual({ detectorId: "D2_DIRTY_SURPLUS", period: "2024-03-31", reason: "OCI/FX translation explains same-period dirty-surplus residual." });
   });
 
+  it("reads a D2 shortfall with cancelled shares as a buyback that blocks nothing", () => {
+    // TCS FY24-shaped: the export has no buyback row, so the seed is short by
+    // the buyback; shares outstanding fell from 365.9 Cr to 361.8 Cr.
+    const recast = (shares: number) => ({ shareCountInput: { endPeriodShares: shares } }) as NormalizedPeriod["asReportedRecast"];
+    const signals = runAllDetectors([
+      period("2023-03-31", { asReportedRecast: recast(365.9) }),
+      period("2024-03-31", { asReportedRecast: recast(361.8), derived: { dirtySurplusSeed: -5_000_000_000 } }),
+    ], { asOf: "2026-06-02" });
+    const d2 = signals.find((signal) => signal.detectorId === "D2_DIRTY_SURPLUS");
+    expect(d2?.label).toBe("BUYBACK_LIKELY");
+    expect(d2?.severity).toBe("WARNING");
+    expect(d2?.blocksValuation).toBe(false);
+  });
+
   it("classifies DMART-shaped recovered negative equity as artifact warning, not valuation block", () => {
     const signals = runAllDetectors([
       period("2020-03-31", { values: { cse: -1_000_000_000, leaseLiabilities: 8_000_000_000, rightOfUseAssets: 7_000_000_000 } }),

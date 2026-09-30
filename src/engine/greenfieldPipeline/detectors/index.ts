@@ -1,4 +1,5 @@
 import { maxSeverity } from "../adapters";
+import { sharesOutstandingFell } from "../../buybackEvidence";
 import type { AnomalySignal, GreenfieldRunContext, NormalizedPeriod, SeverityLevel } from "../types";
 
 type DetectorFn = (periods: readonly NormalizedPeriod[], context: GreenfieldRunContext) => AnomalySignal[];
@@ -70,10 +71,28 @@ function detectStandardAdoption(periods: readonly NormalizedPeriod[]): AnomalySi
 }
 
 function detectDirtySurplus(periods: readonly NormalizedPeriod[]): AnomalySignal[] {
-  return periods.flatMap((period) => {
+  return periods.flatMap((period, index) => {
     const ratio = absRatio(period.derived.dirtySurplusSeed, period.values.cse);
     if (ratio == null || ratio < 0.05) return [];
     const adoptionArtifact = period.periodEnd <= "2020-03-31" || period.standardAdoptions.indAS116;
+    // The export itemizes no buyback, so its cash shows up here as a negative
+    // residual; cancelled shares identify it (see buybackEvidence).
+    const previousShares = periods[index - 1]?.asReportedRecast?.shareCountInput?.endPeriodShares;
+    const shares = period.asReportedRecast?.shareCountInput?.endPeriodShares;
+    if ((period.derived.dirtySurplusSeed ?? 0) < 0 && sharesOutstandingFell(previousShares, shares)) {
+      return [signal({
+        detectorId: "D2_DIRTY_SURPLUS",
+        period: period.periodEnd,
+        severity: "WARNING",
+        p_artifact: 0.9,
+        label: "BUYBACK_LIKELY",
+        message: `Equity fell ${(ratio * 100).toFixed(1)}% of CSE short of earnings less payout while shares outstanding fell: a buyback the cash-flow statement does not itemize.`,
+        affectedFields: ["derived.dirtySurplusSeed", "values.cse", "values.buybacks"],
+        evidence: { dirtySurplusSeed: period.derived.dirtySurplusSeed, ratioToCse: ratio, previousShares: previousShares ?? null, shares: shares ?? null },
+        suggestedAdjusters: [],
+        blocksValuation: false,
+      })];
+    }
     return [signal({
       detectorId: "D2_DIRTY_SURPLUS",
       period: period.periodEnd,

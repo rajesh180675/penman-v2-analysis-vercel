@@ -1,5 +1,6 @@
 import { RecastPeriod, SpecFlag, Severity, EngineConfig } from "../types";
 import { medianOf, madStddev, flag } from "./shared";
+import { sharesOutstandingFell } from "../buybackEvidence";
 
 /* ── S-5.1 Dirty Surplus Spike ──────────────────────────────────── */
 
@@ -9,6 +10,8 @@ export interface DirtySurplusResult {
   ΔCSE              : number;
   CNI_t             : number;
   DividendsPaid     : number;
+  /** Dividends + itemized buybacks − share issues: the payout DS nets. */
+  NetPayout         : number;
   DS_pct_CSE        : number;
   flags             : SpecFlag[];
 }
@@ -29,9 +32,13 @@ export function detectDirtySurplusPerPeriod(
     const CSE_t1 = prev.bs.CSE;
     const CNI_t  = cur.is.CNI;
     const div    = cur.cf.DividendPaid;
+    // Net payout (d_t), not dividends alone: share issues are itemized, so an
+    // IPO or rights issue (DMart FY17, Tata Steel FY18) is no longer read as
+    // dirty surplus.
+    const payout = cur.cf.d_t;
 
     const ΔCSE   = CSE_t - CSE_t1;
-    const DS_t   = ΔCSE - CNI_t + div;
+    const DS_t   = ΔCSE - CNI_t + payout;
     const abs_DS = Math.abs(DS_t);
     const DS_pct = Math.max(Math.abs(CSE_t1), 1) > 0 ? abs_DS / Math.max(Math.abs(CSE_t1), 1) : 0;
 
@@ -45,8 +52,22 @@ export function detectDirtySurplusPerPeriod(
     );
 
     const flags: SpecFlag[] = [];
+    const buyback = DS_t < 0 && sharesOutstandingFell(
+      prev.shareCountInput?.endPeriodShares, cur.shareCountInput?.endPeriodShares,
+    );
 
-    if (abs_DS > threshold_crit) {
+    if (abs_DS > threshold_crit && buyback) {
+      // Equity fell short of earnings less payout while shares were cancelled:
+      // a buyback the export does not itemize — a capital transaction with
+      // owners, not dirty surplus, and no reason to distrust the anchor.
+      flags.push(flag(
+        "S-5.1", Severity.WARNING, "BUYBACK_LIKELY",
+        `Equity fell ₹${(-DS_t).toFixed(0)} Cr (${(DS_pct * 100).toFixed(1)}% of CSE) more than ` +
+        `earnings less payout while shares outstanding fell: a buyback the cash-flow ` +
+        `statement does not itemize.`,
+        false, cur.period_end
+      ));
+    } else if (abs_DS > threshold_crit) {
       flags.push(flag(
         "S-5.1", Severity.CRITICAL, "STRUCTURAL_EVENT",
         `Dirty surplus = ₹${DS_t.toFixed(0)} Cr (${(DS_pct * 100).toFixed(1)}% of CSE). ` +
@@ -63,7 +84,7 @@ export function detectDirtySurplusPerPeriod(
       ));
     }
 
-    results.push({ period_end: cur.period_end, DS_t, ΔCSE, CNI_t, DividendsPaid: div, DS_pct_CSE: DS_pct, flags });
+    results.push({ period_end: cur.period_end, DS_t, ΔCSE, CNI_t, DividendsPaid: div, NetPayout: payout, DS_pct_CSE: DS_pct, flags });
   }
   return results;
 }
@@ -92,13 +113,20 @@ export function detectDividendDiscrepancy(
     );
 
     if (abs_d > threshold) {
+      // Identified as a buyback (shares cancelled, equity short): still a
+      // capital transaction worth showing, but not one that taints the anchor.
+      const buyback = ds.DS_t < 0 && sharesOutstandingFell(
+        prev.shareCountInput?.endPeriodShares, cur.shareCountInput?.endPeriodShares,
+      );
       flags.push(flag(
         "S-5.2", Severity.WARNING, "CAPITAL_TRANSACTION_LIKELY",
         `Dividend discrepancy = ₹${disc.toFixed(0)} Cr ` +
         `(${cur.is.CNI !== 0 ? (disc / cur.is.CNI * 100).toFixed(0) : "∞"}% of CNI). ` +
-        `Indicates a capital transaction (demerger, buyback, bonus issue, or equity adjustment) ` +
-        `not captured in reported dividends.`,
-        true, cur.period_end
+        (buyback
+          ? `Shares outstanding fell: a buyback not itemized in the cash-flow statement.`
+          : `Indicates a capital transaction (demerger, buyback, bonus issue, or equity adjustment) ` +
+            `not captured in reported payout.`),
+        !buyback, cur.period_end
       ));
     }
   }
