@@ -219,6 +219,34 @@ describe("COGS — the inventory-change line is added, as Capitaline signs it (r
   });
 });
 
+describe("discontinued operations — the tax line is added, as Capitaline signs it (real recast)", () => {
+  // Capitaline files the discontinued result pre-tax, signs its tax line as an
+  // adjustment (negative = expense) and files the after-tax result as
+  // "Discontinued Operations": pre-tax + tax = after-tax in every library year.
+  const discontinued = (pre: number, tax: number) => computeRecastPeriod(makePeriod("2025-03-31", {
+    "Profit / (Loss) from Discontinuing Operations__ProfitLoss": pre,
+    "Tax Expense of Discontinuing Operations__ProfitLoss": tax,
+    "Discontinued Operations__ProfitLoss": pre + tax,
+  }), DEFAULT_CONFIG).cu;
+
+  it("nets a tax expense out of the pre-tax result", () => {
+    // L&T FY21 as filed: 10,790.50 − 2,552.58 = 8,237.92. Subtracting the
+    // signed line gave 13,343.08 — overstated by twice the tax.
+    expect(discontinued(10790.5, -2552.58).DiscontinuedOperationsAfterTax).toBeCloseTo(8237.92, 6);
+  });
+
+  it("keeps the tax when the pre-tax line is zero", () => {
+    // Asian Paints FY20: pre-tax 0, tax −4.95, filed after-tax −4.95. The
+    // |tax| ≤ |pre-tax| guard dropped the tax and reported nothing.
+    expect(discontinued(0, -4.95).DiscontinuedOperationsAfterTax).toBeCloseTo(-4.95, 6);
+  });
+
+  it("adds a tax credit", () => {
+    // HUL FY22: 3 + 2 = 5 as filed (the old formula gave 1).
+    expect(discontinued(3, 2).DiscontinuedOperationsAfterTax).toBeCloseTo(5, 6);
+  });
+});
+
 describe("operating-cost bridge — finance income is not operating income (real recast)", () => {
   // TCS-shaped: Other Income (60) includes a directly reported Interest
   // Income line (45). Core OI excludes it (it sits in NFE), so the bridge must.
