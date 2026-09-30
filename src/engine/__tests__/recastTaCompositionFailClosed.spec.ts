@@ -323,6 +323,24 @@ describe("gains on sale of investments — financial income, as the cash-flow ad
     expect(withGain.cu.CoreOI).toBeCloseTo(base.cu.CoreOI, 9);
   });
 
+  it("keeps the gain out of the rung-4 finance-income proxy", () => {
+    // No interest line anywhere, so finance income is Other Income × FA/TA
+    // (clamped to 20% here). Proxying the gain too counted 8 of it as finance
+    // income while UFE took the whole 40 again: Core OI fell by 6.
+    const proxyBase = computeRecastPeriod(makePeriod("2025-03-31", { "Other Income__ProfitLoss": 2 }), DEFAULT_CONFIG);
+    const proxyGain = computeRecastPeriod(makePeriod("2025-03-31", {
+      "Other Income__ProfitLoss": 42,
+      "Profit Before Tax__ProfitLoss": 180,
+      "Tax Expenses__ProfitLoss": 45,
+      "Profit After Tax__ProfitLoss": 135,
+      "Total Comprehensive Income for the Year__ProfitLoss": 135,
+      "P/L on Sales of Invest__CashFlow": -40,
+    }), DEFAULT_CONFIG);
+    expect(proxyGain.is.FinanceIncomeRung).toBe(4);
+    expect(proxyGain.is.FinanceIncome).toBeCloseTo(proxyBase.is.FinanceIncome, 9);
+    expect(proxyGain.cu.CoreOI).toBeCloseTo(proxyBase.cu.CoreOI, 9);
+  });
+
   it("nets the gain out of the cost bridge's other operating income", () => {
     // Other Income 45 = interest 3 + the gain 40 + 2 of operating income.
     expect(base.is.operatingCostBridge?.otherOperatingIncome).toBe(2);

@@ -223,6 +223,14 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
     pushTrace(trace, "IS.FinanceCost", { statement: "Derived", key: "sum(financeCostGranular)", value: FinanceCost, matchType: "derived" });
   }
   const OtherIncome = pl("IS.OtherIncome", M.profitLoss.otherIncome);
+  // "P/L on Sales of Invest" is the operating-cash-flow adjustment, so a gain
+  // is already negative — the sign of a financial expense. The filed
+  // adjustments tie to their filed total with it as signed in all 331 library
+  // company-years. Negating it booked gains as expenses and lifted Core OI by
+  // twice the after-tax gain. The gain sits in Other Income, so it is kept out
+  // of the rung-4 proxy (UFE books it once) and out of the bridge below.
+  const investmentPl = valCF(data, M.cashFlow.plSaleInvest);
+  const investmentGain = Math.max(0, -investmentPl);
   let FinanceIncome = pl("IS.FinanceIncome.Direct", M.profitLoss.financeIncomeDirect);
   let FinanceIncomeRung: 1 | 2 | 3 | 4 = 1;
   if (!FinanceIncome) {
@@ -238,16 +246,10 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   }
   if (!FinanceIncome) {
     const faRatio = bs.TA > 0 ? Math.max(0.2, Math.min(0.85, bs.FA / bs.TA)) : 0.2;
-    FinanceIncome = OtherIncome * faRatio;
+    FinanceIncome = Math.max(0, OtherIncome - investmentGain) * faRatio;
     FinanceIncomeRung = 4;
   }
 
-  // "P/L on Sales of Invest" is the operating-cash-flow adjustment, so a gain
-  // is already negative — the sign of a financial expense. The filed
-  // adjustments tie to their filed total with it as signed in every library
-  // company-year. Negating it booked gains as expenses and lifted Core OI by
-  // twice the after-tax gain.
-  const investmentPl = valCF(data, M.cashFlow.plSaleInvest);
   const UFE = investmentPl * (1 - taxRate);
   const CoreNFE = (FinanceCost - FinanceIncome) * (1 - taxRate) + PreferredDividend;
   const NFE = CoreNFE + UFE;
@@ -310,7 +312,6 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   // company's interest as operating income — TCS and Infosys missed the
   // reported core OI by a steady ~5%. Gains on sale of investments sit in
   // Other Income as well and are financial (UFE), so they are netted too.
-  const investmentGain = Math.max(0, -investmentPl);
   const otherOperatingIncome = Math.max(0, OtherIncome - Math.min(OtherIncome, FinanceIncome + investmentGain));
   const grossProfit = Sales - COGS;
   const operatingCosts = employeeCost + depreciation + sgaTotal + sectorSpecificOperatingExpense + otherOperatingExpense;
