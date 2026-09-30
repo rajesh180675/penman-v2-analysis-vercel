@@ -83,9 +83,12 @@ function checksForPeriod(
   const checks: GateCheckResult[] = [];
 
   // ─── Check A: terminal-period-contamination ─────────────────────────────
-  // Major capital transaction (buyback ≥5% CSE OR rights ≥10% CSE) in this
-  // period contaminates it as an anchor. Also fires on Gap-3 unusual items
-  // marked affectsTerminalEligibility.
+  // Fires on Gap-3 unusual items marked affectsTerminalEligibility. A major
+  // capital transaction with owners (buyback ≥5% CSE, equity issuance ≥10%,
+  // a detected capital action) is noted in the reason but does not fail the
+  // check: it changes the balance sheet's financing, not the operating
+  // earnings the anchor capitalizes — the policy S-5.1/S-5.2 and the
+  // unusual-item classifier apply to buybacks and capital returns (#360, #367).
   const cse = current.bs.CSE;
   const buyback = -1 * (current.cf.ShareBuybacks ?? 0); // outflow stored negative
   const rights = current.cf.EquityIssued ?? 0;
@@ -97,26 +100,28 @@ function checksForPeriod(
   const unusualBlocking = (context.unusualManifest ?? []).filter(
     (u) => u.period === current.period_end && u.affectsTerminalEligibility,
   );
-  const aIssues: string[] = [];
+  const capitalNotes: string[] = [];
   if (buybackRatio >= BUYBACK_PCT_OF_CSE) {
-    aIssues.push(`buyback ≈ ${(buybackRatio * 100).toFixed(1)}% of CSE`);
+    capitalNotes.push(`buyback ≈ ${(buybackRatio * 100).toFixed(1)}% of CSE`);
   }
   if (rightsRatio >= RIGHTS_PCT_OF_CSE) {
-    aIssues.push(`equity issuance ≈ ${(rightsRatio * 100).toFixed(1)}% of CSE`);
+    capitalNotes.push(`equity issuance ≈ ${(rightsRatio * 100).toFixed(1)}% of CSE`);
   }
-  if (knownAction && aIssues.length === 0) {
-    aIssues.push(`detected ${knownAction.kind} (${knownAction.detail})`);
+  if (knownAction && capitalNotes.length === 0) {
+    capitalNotes.push(`detected ${knownAction.kind} (${knownAction.detail})`);
   }
+  const aIssues: string[] = [];
   if (unusualBlocking.length > 0) {
     aIssues.push(`unusual items affecting terminal: ${unusualBlocking.map((u) => u.category).join(", ")}`);
   }
+  const capitalNote = capitalNotes.length > 0 ? ` Capital transaction noted, not disqualifying: ${capitalNotes.join("; ")}.` : "";
   checks.push({
     checkId: "terminal-period-contamination",
     passed: aIssues.length === 0,
     reason:
       aIssues.length === 0
-        ? "No major capital transaction or terminal-blocking unusual items in this period."
-        : `Major capital event(s) in this period: ${aIssues.join("; ")}`,
+        ? `No terminal-blocking unusual items in this period.${capitalNote}`
+        : `Terminal-blocking event(s) in this period: ${aIssues.join("; ")}.${capitalNote}`,
     severity: "block",
     affectedPeriods: [current.period_end],
   });

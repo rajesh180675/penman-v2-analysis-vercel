@@ -280,14 +280,14 @@ describe("analysis traceability confidence gates", () => {
   });
 
   it("does not clear valuation or production when the economic gate is blocked", () => {
-    const rawData = denseRawData();
-    const recastData = rawData.map((period) => ({
-      ...mkTraceabilityRecastPeriod(period.period_end),
-      cf: {
-        ...mkTraceabilityRecastPeriod(period.period_end).cf,
-        EquityIssued: 100,
-      },
+    // A discontinued-operations result in every period leaves no clean anchor
+    // within the walk-back. (A large equity issuance used to serve here; a
+    // capital transaction with owners no longer disqualifies a period, #367.)
+    const rawData = denseRawData().map((period) => ({
+      ...period,
+      raw_metric_values: { ...period.raw_metric_values, "Profit From Discontinued Operations__ProfitLoss": 50 },
     }));
+    const recastData = rawData.map((period) => mkTraceabilityRecastPeriod(period.period_end));
 
     const traceability = buildAnalysisTraceability({
       sourceMode: "manual",

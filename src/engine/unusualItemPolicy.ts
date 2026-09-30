@@ -103,8 +103,12 @@ export const CLASSIFICATION_RULES: ClassificationRule[] = [
   {
     category: "capital-return",
     patterns: [/\bcapital reduction\b/i, /\breturn of capital\b/i, /\brights issue\b/i, /\bbonus issue\b/i],
-    rationaleTemplate: "Capital structure change — period flagged for terminal eligibility.",
-    affectsCoreOI: false, affectsTerminalEligibility: true, affectsCleanSurplus: false,
+    // Like a buyback (#360): a capital transaction with owners changes the
+    // financing, not the operating earnings the anchor capitalizes. A bonus
+    // issue changes nothing economic; rights proceeds are netted in dirty
+    // surplus. Listed for review, not a terminal-anchor disqualifier.
+    rationaleTemplate: "Capital structure change — listed for review, not a terminal-anchor disqualifier.",
+    affectsCoreOI: false, affectsTerminalEligibility: false, affectsCleanSurplus: false,
   },
 ];
 
