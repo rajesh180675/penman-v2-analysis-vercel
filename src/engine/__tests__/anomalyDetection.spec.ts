@@ -497,6 +497,39 @@ describe("classifyAccrualRegime", () => {
 // ─── validateTerminalREAnchor ───────────────────────────────────────────────
 
 describe("validateTerminalREAnchor", () => {
+  // With opening equity for every year, residual ROE (RE ÷ opening CSE) decides.
+  const series = (points: Array<[number, number]>) =>
+    points.map(([RE, openingCSE], i) => ({ period: `${2019 + i}-03-31`, RE, ReOI: 0, openingCSE }));
+
+  it("does not read steady growth as a non-recurring terminal year", () => {
+    // Infosys-shaped: equity and RE both compound, so RE_T is 2.5× the
+    // whole-history median while residual ROE moves 16% → 22%.
+    const v = validateTerminalREAnchor(series([
+      [5000, 40000], [6000, 42000], [7500, 46000], [8449, 52000], [11000, 70000], [15500, 83000], [21156, 95700],
+    ]), makeConfig());
+    expect(v.anchor_vs_median).toBeGreaterThanOrEqual(2.5);
+    expect(v.terminal_anomaly).toBe(false);
+  });
+
+  it("flags a terminal residual ROE that swells past its history and last year", () => {
+    // ITC FY25-shaped: a demerger gain lifts residual ROE to 32% against a
+    // 16% median and 20% last year.
+    const v = validateTerminalREAnchor(series([
+      [9000, 60000], [9500, 62000], [10200, 65000], [11000, 70000], [15000, 74000], [23989, 74500],
+    ]), makeConfig());
+    expect(v.terminal_anomaly).toBe(true);
+    expect(v.flags[0]!.message).toMatch(/Residual ROE 32\.2%/);
+  });
+
+  it("does not flag a fall in residual ROE", () => {
+    // Asian Paints FY25-shaped: 23% → 9% is a weaker business, not a one-off
+    // that inflates the anchor.
+    const v = validateTerminalREAnchor(series([
+      [3000, 15000], [3500, 17000], [3900, 18000], [4300, 18600], [1723, 18700],
+    ]), makeConfig());
+    expect(v.terminal_anomaly).toBe(false);
+  });
+
   it("returns a benign result for a stable RE series", () => {
     const re = [
       { period: "2018-03-31", RE: 100, ReOI: 0 },
