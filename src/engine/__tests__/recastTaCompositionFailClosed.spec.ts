@@ -457,6 +457,39 @@ describe("gains on sale of investments — financial income, as the cash-flow ad
   });
 });
 
+describe("investment P/L the exceptional items already carry — booked once (real recast)", () => {
+  // Asian Paints FY25: the 83.71 loss on divesting the Indonesia subsidiaries
+  // is one of the −363.10 exceptional items, and also the cash-flow "P/L on
+  // Sales of Invest". UOI removed it with the exceptional items and UFE again.
+  const base = computeRecastPeriod(makePeriod("2025-03-31", { "Interest Income__ProfitLoss": 3 }), DEFAULT_CONFIG);
+  const withLoss = (exceptional: number, pl: number) => computeRecastPeriod(makePeriod("2025-03-31", {
+    "Interest Income__ProfitLoss": 3,
+    "Exceptional Items Before Tax__ProfitLoss": exceptional,
+    "Profit Before Tax__ProfitLoss": 140 + exceptional,
+    "Tax Expenses__ProfitLoss": 35 + exceptional * 0.25,
+    "Profit After Tax__ProfitLoss": (140 + exceptional) * 0.75,
+    "Total Comprehensive Income for the Year__ProfitLoss": (140 + exceptional) * 0.75,
+    "P/L on Sales of Invest__CashFlow": pl,
+  }), DEFAULT_CONFIG);
+
+  it("leaves a loss inside larger exceptional losses to UOI", () => {
+    const period = withLoss(-50, 20);
+    expect(period.cu.UFE).toBe(0);
+    expect(period.cu.CoreOI).toBeCloseTo(base.cu.CoreOI, 9);
+  });
+
+  it("leaves a gain that is the exceptional gain to UOI", () => {
+    // Britannia FY23: a 375.6 gain filed as both.
+    const period = withLoss(40, -40);
+    expect(period.cu.UFE).toBe(0);
+    expect(period.cu.CoreOI).toBeCloseTo(base.cu.CoreOI, 9);
+  });
+
+  it("still books a loss the exceptional items cannot contain", () => {
+    expect(withLoss(-10, 20).cu.UFE).toBeCloseTo(15, 9);
+  });
+});
+
 describe("operating-cost bridge — finance income is not operating income (real recast)", () => {
   // TCS-shaped: Other Income (60) includes a directly reported Interest
   // Income line (45). Core OI excludes it (it sits in NFE), so the bridge must.
