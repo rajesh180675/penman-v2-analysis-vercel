@@ -294,7 +294,8 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   // subtracted. Subtracting it misstated COGS by twice the change.
   const COGS = pl("IS.COGS.Material", M.profitLoss.cogsMaterial)
     + pl("IS.COGS.Purchases", M.profitLoss.cogsPurchases)
-    + pl("IS.COGS.InventoryChange", M.profitLoss.cogsInventoryChange);
+    + pl("IS.COGS.InventoryChange", M.profitLoss.cogsInventoryChange)
+    + pl("IS.COGS.InternalComponents", M.profitLoss.cogsInternalComponents);
   const employeeCost = pl("IS.EmployeeCost", M.profitLoss.employeeExpense);
   const depreciation = pl("IS.Depreciation", M.profitLoss.depreciationAmortization) || Math.abs(cf("IS.Depreciation.CF", M.cashFlow.depreciation));
   const sgaAdvertising = pl("IS.SGA.Advertising", M.profitLoss.sgaAds);
@@ -331,7 +332,10 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   const OCITotal = cfg.oci_treated_as_unusual ? OCI : 0;
   const UOI = ExceptionalItemsAfterTax + OCITotal;
   const CoreOI = OI - UOI;
-  const bridgeCoreOI = grossProfit - employeeCost - depreciation - sgaTotal - sectorSpecificOperatingExpense - otherOperatingExpense + otherOperatingIncome;
+  // Core OI carries the associates' share (it is inside PBT), so the bridge
+  // must too: Maruti FY24's whole gap was it plus the internal-components line.
+  const associatesShare = pl("IS.AssociatesShareBeforeTax", M.profitLoss.associatesShareBeforeTax);
+  const bridgeCoreOI = grossProfit - employeeCost - depreciation - sgaTotal - sectorSpecificOperatingExpense - otherOperatingExpense + otherOperatingIncome + associatesShare;
   const bridgeCoverageDenominator = Math.abs(OI_from_sales) > 1 ? Math.abs(OI_from_sales) : Math.abs(Sales);
   const coverageNumerator = Math.abs(COGS) + Math.abs(employeeCost) + Math.abs(depreciation) + Math.abs(sgaTotal) + Math.abs(sectorSpecificOperatingExpense) + Math.abs(otherOperatingExpense) + Math.abs(otherOperatingIncome);
   const bridgeCoverageRatio = bridgeCoverageDenominator > 0
@@ -368,6 +372,7 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
         sectorSpecificOperatingExpense,
         otherOperatingExpense,
         otherOperatingIncome,
+        associatesShare,
         grossProfit,
         operatingCosts,
         bridgeCoreOI,

@@ -347,6 +347,27 @@ describe("COGS — the inventory-change line is added, as Capitaline signs it (r
     expect(period.is.COGS).toBeCloseTo(3646.87, 6);
   });
 
+  it("adds the internally-manufactured-components line as signed", () => {
+    // Maruti FY24: a −260.7 credit that Total Expenses includes; without it
+    // the cost lines miss the filed total by exactly that.
+    const period = computeRecastPeriod(
+      filed({ "Internally Manufactured Intermediates or Components Consumed__ProfitLoss": -260.7 }),
+      DEFAULT_CONFIG,
+    );
+    expect(period.is.COGS).toBeCloseTo(3646.87 - 260.7, 6);
+  });
+
+  it("carries the associates' share into the cost bridge, as Core OI does", () => {
+    // Maruti FY24: 254.1 of associates' profit sits inside PBT and OI.
+    const without = computeRecastPeriod(filed(), DEFAULT_CONFIG);
+    const withShare = computeRecastPeriod(
+      filed({ "Share of Profits / Loss of Associated Companies Before Tax__ProfitLoss": 254.1 }),
+      DEFAULT_CONFIG,
+    );
+    expect(withShare.is.operatingCostBridge?.associatesShare).toBe(254.1);
+    expect(withShare.is.operatingCostBridge!.bridgeCoreOI - without.is.operatingCostBridge!.bridgeCoreOI).toBeCloseTo(254.1, 6);
+  });
+
   it("raises COGS when inventory runs down", () => {
     const period = computeRecastPeriod(
       filed({ "Changes in Inventories of Finished Goods, Work-in-Progress and Stock-in-Trade__ProfitLoss": 140.61 }),

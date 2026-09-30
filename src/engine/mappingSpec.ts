@@ -237,6 +237,12 @@ export const CapitalineMappingSpec = {
       "Changes in Inventories",
       "Change in Inventory of Finished Goods, Work-in-Progress and Stock-in-Trade",
     ],
+    // Signed as filed (a credit when components are made in-house): the cost
+    // lines tie to Total Expenses with it in all 28 library years that file
+    // it (Maruti, UltraTech, Grasim, NTPC) and miss by exactly it without.
+    cogsInternalComponents: ["Internally Manufactured Intermediates or Components Consumed"],
+    // The pre-tax share of associates' profit inside PBT, hence inside OI.
+    associatesShareBeforeTax: ["Share of Profits / Loss of Associated Companies Before Tax"],
     totalExpenses: ["Total Expenses"],
     employeeExpense: ["Employee Benefits / Salaries & other Staff Cost", "Employee Benefit Expenses", "Employee Benefits Expense", "Employee Cost", "Salaries and Incentives"],
     otherExpenses: ["Other Expenses", "Other Operating Expenses", "Operating and Other Expenses"],
