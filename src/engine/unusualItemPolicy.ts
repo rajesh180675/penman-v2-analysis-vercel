@@ -88,8 +88,11 @@ export const CLASSIFICATION_RULES: ClassificationRule[] = [
   {
     category: "buyback",
     patterns: [/\bbuy[- ]?back\b/i, /\bshare repurchase\b/i, /\bpurchase of own shares\b/i],
-    rationaleTemplate: "Share buyback — capital transaction; period flagged for terminal eligibility.",
-    affectsCoreOI: false, affectsTerminalEligibility: true, affectsCleanSurplus: false,
+    // A buyback is a capital transaction with owners, not a distortion of the
+    // period's economics, so it is listed for review without disqualifying the
+    // terminal anchor — as S-5.1/S-5.2 now treat a buyback they identify.
+    rationaleTemplate: "Share buyback — capital transaction with owners; listed for review, not a terminal-anchor disqualifier.",
+    affectsCoreOI: false, affectsTerminalEligibility: false, affectsCleanSurplus: false,
   },
   {
     category: "special-dividend",

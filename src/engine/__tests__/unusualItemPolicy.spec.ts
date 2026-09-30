@@ -106,6 +106,15 @@ describe("unusualItemPolicy / classifyRunUnusualItems", () => {
     });
   }
 
+  it("lists a terminal-period buyback for review without blocking the anchor", () => {
+    // Sun Pharma FY25 carries its buyback as an equity line; a buyback is a
+    // capital transaction with owners, not a distortion of the period.
+    const raw = mkRaw("2025-03-31", { "Less : Share Buy Back": 1600 });
+    const manifest = summarizeUnusualItemManifest([], [raw]);
+    expect(manifest.classifications.map((c) => c.category)).toContain("buyback");
+    expect(manifest.terminalEligibilityBlocked).toBe(false);
+  });
+
   it("aggregates terminalEligibilityBlocked from spec_flags", () => {
     const recast: RecastPeriod[] = [
       {
@@ -139,7 +148,9 @@ describe("unusualItemPolicy / classifyRunUnusualItems", () => {
     // Nothing is hidden: the earlier items stay in the manifest for review.
     expect(old.classifications.map((c) => c.category)).toEqual(expect.arrayContaining(["buyback", "discontinued-operations"]));
 
-    const terminal = summarizeUnusualItemManifest([], [...history.slice(0, 2), mkRaw("2025-03-31", { "Buyback of Shares": 90 })]);
+    // A buyback no longer disqualifies a period, so the terminal blocker here
+    // is a discontinued-operations result.
+    const terminal = summarizeUnusualItemManifest([], [...history.slice(0, 2), mkRaw("2025-03-31", { "Profit From Discontinued Operations": 90 })]);
     expect(terminal.terminalEligibilityBlocked).toBe(true);
     expect(terminalBlockingClassifications(terminal, terminalPeriodOf([], history)).map((c) => c.period)).toEqual(["2025-03-31"]);
   });
