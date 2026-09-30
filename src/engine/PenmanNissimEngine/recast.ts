@@ -542,6 +542,9 @@ export function extractRecastDebug(data: RawPeriodData, bs: CanonicalBalanceShee
   const fullPeriodProfit = profitAttributable != null && (minorityAfterProfit != null || !readPl("Non-Controlling Interests"))
     ? profitAttributable - (minorityAfterProfit ?? 0)
     : null;
+  const otherProfitBelowPat = fullPeriodProfit != null
+    ? (readPl("Extraordinary Items After Tax") ?? 0) + (readPl("Share of Profits / Loss of Associated Companies") ?? 0)
+    : null;
   return {
     rawTotalAssets,
     rawTotalLiabilitiesAndEquity,
@@ -550,5 +553,6 @@ export function extractRecastDebug(data: RawPeriodData, bs: CanonicalBalanceShee
     rawNonCurrentAssets,
     explicitOL,
     fullPeriodProfit,
+    otherProfitBelowPat,
   };
 }

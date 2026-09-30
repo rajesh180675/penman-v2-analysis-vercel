@@ -189,6 +189,55 @@ describe("owners' income identity — profit on TCI's basis (real recast)", () =
   });
 });
 
+describe("profit bridge — PAT ties to full-period profit through the filed lines (real recast)", () => {
+  // The owners'-income identity reads profit from the filed subtotal, so PAT
+  // is checked here: PAT + discontinued + extraordinary + associates = full.
+  const bridge = (overrides: Record<string, number>) => {
+    const prev = computeRecastPeriod(makePeriod("2024-03-31"), DEFAULT_CONFIG);
+    const cur = computeRecastPeriod(makePeriod("2025-03-31", overrides), DEFAULT_CONFIG, prev);
+    const summary = evaluateReconciliationResiduals({ recastData: [prev, cur], config: DEFAULT_CONFIG });
+    return summary.checks.find((c) => c.key === "profit-bridge" && c.periodEnd === "2025-03-31");
+  };
+  // L&T FY21 as filed, scaled to PAT 105: discontinued 150 − 50 tax, an
+  // extraordinary loss of 40 and 5 from associates: 105 + 100 − 40 + 5 = 170.
+  const filed = {
+    "Profit / (Loss) from Discontinuing Operations__ProfitLoss": 150,
+    "Tax Expense of Discontinuing Operations__ProfitLoss": -50,
+    "Discontinued Operations__ProfitLoss": 100,
+    "Extraordinary Items After Tax__ProfitLoss": -40,
+    "Share of Profits / Loss of Associated Companies__ProfitLoss": 5,
+    "Profit Attributable to Shareholders__ProfitLoss": 170,
+    "Total Comprehensive Income for the Year__ProfitLoss": 170,
+  };
+
+  it("confirms when PAT and the lines below it sum to the filed subtotal", () => {
+    const check = bridge(filed);
+    expect(check?.residual).toBeCloseTo(0, 9);
+    expect(check?.status).toBe("confirmed");
+  });
+
+  it("fails when PAT is mis-picked", () => {
+    // "Profit After Tax" missing: the recast falls through to "Profit
+    // Attributable to Shareholders" (170) and counts the lines below it twice.
+    const { ["Profit After Tax__ProfitLoss"]: _pat, ...withoutPat } = makePeriod("2025-03-31", filed).raw_metric_values;
+    const prev = computeRecastPeriod(makePeriod("2024-03-31"), DEFAULT_CONFIG);
+    const cur = computeRecastPeriod({ company_id: "TA-COMP", period_end: "2025-03-31", raw_metric_values: withoutPat }, DEFAULT_CONFIG, prev);
+    const summary = evaluateReconciliationResiduals({ recastData: [prev, cur], config: DEFAULT_CONFIG });
+    const check = summary.checks.find((c) => c.key === "profit-bridge" && c.periodEnd === "2025-03-31");
+    expect(cur.is.PAT).toBe(170);
+    expect(check?.status).toBe("failed");
+  });
+
+  it("fails when the discontinued result is misstated", () => {
+    // The pre-#356 subtraction: 150 − (−50) = 200 instead of 100.
+    expect(bridge({ ...filed, "Tax Expense of Discontinuing Operations__ProfitLoss": 50 })?.status).toBe("failed");
+  });
+
+  it("is not run without the filed subtotal", () => {
+    expect(bridge({})).toBeUndefined();
+  });
+});
+
 describe("COGS — the inventory-change line is added, as Capitaline signs it (real recast)", () => {
   // Asian Paints FY11 as filed: the cost lines tie to Total Expenses 5,288.65
   // only with the change ADDED (3,681.92 + 105.56 − 140.61 + 300.45 + 15.35
