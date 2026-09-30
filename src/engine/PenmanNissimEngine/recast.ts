@@ -335,6 +335,7 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   // Core OI carries the associates' share (it is inside PBT), so the bridge
   // must too: Maruti FY24's whole gap was it plus the internal-components line.
   const associatesShare = pl("IS.AssociatesShareBeforeTax", M.profitLoss.associatesShareBeforeTax);
+  const extraordinaryAfterTax = pl("IS.ExtraordinaryAfterTax", M.profitLoss.extraordinaryAfterTax);
   const bridgeCoreOI = grossProfit - employeeCost - depreciation - sgaTotal - sectorSpecificOperatingExpense - otherOperatingExpense + otherOperatingIncome + associatesShare;
   const bridgeCoverageDenominator = Math.abs(OI_from_sales) > 1 ? Math.abs(OI_from_sales) : Math.abs(Sales);
   const coverageNumerator = Math.abs(COGS) + Math.abs(employeeCost) + Math.abs(depreciation) + Math.abs(sgaTotal) + Math.abs(sectorSpecificOperatingExpense) + Math.abs(otherOperatingExpense) + Math.abs(otherOperatingIncome);
@@ -373,6 +374,7 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
         otherOperatingExpense,
         otherOperatingIncome,
         associatesShare,
+        extraordinaryAfterTax,
         grossProfit,
         operatingCosts,
         bridgeCoreOI,

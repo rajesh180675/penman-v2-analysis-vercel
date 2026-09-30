@@ -98,6 +98,8 @@ export interface OperatingCostBridge {
   otherOperatingIncome: number;
   /** Pre-tax share of associates' profit, inside PBT and so inside Core OI. */
   associatesShare?: number | undefined;
+  /** Filed after tax, inside Core OI: compared on the bridge's after-tax side. */
+  extraordinaryAfterTax?: number | undefined;
   grossProfit: number;
   operatingCosts: number;
   bridgeCoreOI: number;
