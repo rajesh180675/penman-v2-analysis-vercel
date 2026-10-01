@@ -249,6 +249,18 @@ describe("ol-coverage-bridge — reads the labels Capitaline actually uses (real
     expect(check?.status).toBe("confirmed");
   });
 
+  it("reads the netted layout's other current liabilities from its subtotal", () => {
+    // Only trade payables are itemized inside "Current Liabilities" (200 here:
+    // 150 + 50 unitemized); Paytm FY15 left 165 of 313 unread this way.
+    const { cur, check } = olCheck({
+      ...netted,
+      "Other Current Liabilities__BalanceSheet": 0,
+      "Current Liabilities__BalanceSheet": 200,
+    });
+    expect(cur.bs.OL_OtherCurrentLiabilities).toBe(50);
+    expect(check?.status).toBe("confirmed");
+  });
+
   it("leaves a filed Net Current Assets line alone when it is not the netting", () => {
     // ITC files the line (FY11: 1,100.83, not 13,872.30 − 8,711.10) beside a
     // gross TA; even without "Total Equity and Liabilities" it is not netting.
