@@ -277,12 +277,18 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   // booking it in UFE too moved it out of Core OI twice. A loss is there when
   // the exceptional losses can contain it (Asian Paints FY25: the 83.71
   // Indonesia divestment inside −363.10; Paytm FY20, TCS FY26 — each bridge
-  // gap was the loss to the rupee); a gain only when it IS the exceptional
-  // gain (Britannia FY23 375.6, Tata Steel FY12 3,361.9), since gains sit in
-  // Other Income in every other library year.
+  // gap was the loss to the rupee); a gain when it IS the exceptional gain
+  // (Britannia FY23 375.6, Tata Steel FY12 3,361.9), or when it is larger than
+  // all of Other Income and so cannot sit there — netted inside exceptional
+  // items instead (Airtel FY21: 9,449.6 against 642.8 of Other Income, beside
+  // the AGR charges; Idea FY21, Tata Steel FY13, L&T FY15). Otherwise gains
+  // sit in Other Income, as in every other library year.
   const investmentPlInExceptional = filedInvestmentPl > 0
     ? exceptionalPretax <= -filedInvestmentPl + 0.5
-    : filedInvestmentPl < 0 && Math.abs(exceptionalPretax + filedInvestmentPl) <= 0.5;
+    : filedInvestmentPl < 0 && (
+      Math.abs(exceptionalPretax + filedInvestmentPl) <= 0.5
+      || (exceptionalPretax !== 0 && -filedInvestmentPl > OtherIncome + 0.5)
+    );
   const investmentPl = investmentPlInExceptional ? 0 : filedInvestmentPl;
   const investmentGain = Math.max(0, -investmentPl);
   let FinanceIncome = pl("IS.FinanceIncome.Direct", M.profitLoss.financeIncomeDirect);
