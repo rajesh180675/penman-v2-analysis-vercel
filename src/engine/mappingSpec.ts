@@ -230,6 +230,7 @@ export const CapitalineMappingSpec = {
     ],
     exceptionalItems: ["Exceptional Items Before Tax"],
     extraordinaryItems: ["Extraordinary Items Before Tax"],
+    priorPeriodItems: ["Prior Year Adjustments"],
     discontinuedItems: [
       "Profit / (Loss) from Discontinuing Operations",
       "Discontinued Operations",
