@@ -1,6 +1,6 @@
 import { RecastPeriod, EngineConfig, ForecastScenario, BusinessModelProfile } from "../types";
 import { resolveShareBasis } from "../shareCountTools";
-import { computeValuation } from "../PenmanNissimEngine";
+import { computeConsistentValuation } from "../valueConsistentKw";
 import { buildScenario, buildValuationPeriodsFromForecast, derivePersistenceForecastScenario } from "../forecastingEngine";
 import { ValuationSectorTemplateDefinition } from "../valuationSectorTemplates";
 import { buildSOTPValuation, SOTP_PRESETS, SOTPResult } from "../sotpValuation";
@@ -194,16 +194,23 @@ export function buildScenarioCards(args: {
         g_terminal: terminalGrowth,
       },
     } satisfies ForecastScenario;
-    const periods = buildScenario(scenarioWithTerminal, latest);
-    const valuationPeriods = buildValuationPeriodsFromForecast(latest, periods);
-    const valuation = computeValuation(
-      valuationPeriods,
+    // RE and ReOI value one forecast alike only at a value-consistent kw; the
+    // structural kw seeds the solve (see valueConsistentKw.ts). The scenario
+    // then carries the solved kw, so its forecast ReOI and anything seeded
+    // from this card (PVRE, break-even) agree with the value.
+    const { valuation, kwConsistency } = computeConsistentValuation(
+      buildValuationPeriodsFromForecast(latest, buildScenario(scenarioWithTerminal, latest)),
       scenarioWithTerminal.drivers.ke,
       scenarioWithTerminal.drivers.kw,
       terminalGrowth,
       shareBasis.valuationConfig,
+      scenarioWithTerminal.drivers.nbc[0],
     );
-    const ownerDcf = computeOwnerEarningsDcf(diagnostics.ownerEarningsPerShare, scenarioWithTerminal.drivers.sales_growth, scenarioWithTerminal.drivers.ke, terminalGrowth);
+    const scenarioAtKw = {
+      ...scenarioWithTerminal,
+      drivers: { ...scenarioWithTerminal.drivers, kw: kwConsistency.kw },
+    } satisfies ForecastScenario;
+    const ownerDcf = computeOwnerEarningsDcf(diagnostics.ownerEarningsPerShare, scenarioAtKw.drivers.sales_growth, scenarioAtKw.drivers.ke, terminalGrowth);
     // The headline is the RE/ReOI median (AFES round-one, eec49c26): the
     // owner-earnings DCF is reported beside it as a cross-check, not blended
     // in. It used to be blended here and then overwritten by a normalization
@@ -213,20 +220,21 @@ export function buildScenarioCards(args: {
     return {
       key,
       label: key === "stress" ? "Stress case" : key === "base" ? "Base case" : key === "bull" ? "Bull case" : "Historical panic",
-      scenario: scenarioWithTerminal,
+      scenario: scenarioAtKw,
       intrinsicPerShare,
       ownerEarningsDcfPerShare: ownerDcf,
       upsidePct: intrinsicPerShare != null && marketPrice != null && marketPrice > 0 ? (intrinsicPerShare - marketPrice) / marketPrice : null,
       marginOfSafetyPct,
       expectedCagr: annualizedReturn(marketPrice, intrinsicPerShare, 3),
       valuation,
-      forecastPolicy: scenarioWithTerminal.forecastPolicy,
+      kwConsistency,
+      forecastPolicy: scenarioAtKw.forecastPolicy,
       assumptions: {
-        ke: scenarioWithTerminal.drivers.ke,
-        kw: scenarioWithTerminal.drivers.kw,
+        ke: scenarioAtKw.drivers.ke,
+        kw: scenarioAtKw.drivers.kw,
         g: terminalGrowth,
-        salesGrowthYear1: scenarioWithTerminal.drivers.sales_growth[0] ?? 0,
-        corePmYear1: scenarioWithTerminal.drivers.core_sales_pm[0] ?? 0,
+        salesGrowthYear1: scenarioAtKw.drivers.sales_growth[0] ?? 0,
+        corePmYear1: scenarioAtKw.drivers.core_sales_pm[0] ?? 0,
         reinvestmentRateYear1: diagnostics.reinvestmentRate != null
           ? clamp(diagnostics.reinvestmentRate * reinvestmentLift, 0, 1.2)
           : null,

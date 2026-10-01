@@ -43,8 +43,12 @@ const EXPECTED_CENSUS = [
   "src/engine/regressionHarness.ts :: afterForecast",
   "src/engine/regressionHarness.ts :: beforeForecast",
   // Re-values the base card along buildScenarioCards' own anchored path.
-  "src/engine/valuationCommandCenter/breakEven.ts :: buildValuationPeriodsFromForecast(latest, periods)",
-  "src/engine/valuationCommandCenter/builders.ts :: valuationPeriods",
+  "src/engine/valuationCommandCenter/breakEven.ts :: buildValuationPeriodsFromForecast(latest, buildScenario(scenario, latest))",
+  "src/engine/valuationCommandCenter/builders.ts :: buildValuationPeriodsFromForecast(latest, buildScenario(scenarioWithTerminal, latest))",
+  // The value-consistent kw solve: values whatever its caller passes, which
+  // the three entries above and pvre's (all forecast periods) supply.
+  "src/engine/valueConsistentKw.ts :: periods",
+  "src/engine/valueConsistentKw.ts :: periods",
 ];
 
 function productionSources(dir: string, out: string[] = []): string[] {
@@ -60,11 +64,13 @@ function productionSources(dir: string, out: string[] = []): string[] {
 }
 
 function callSitesInSource(file: string, text: string): string[] {
-  if (!text.includes("computeValuation")) return [];
+  if (!text.includes("computeValuation") && !text.includes("computeConsistentValuation")) return [];
   const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const found: string[] = [];
   const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "computeValuation") {
+    // computeConsistentValuation has the same contract: periods[0] is the valuation date.
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)
+      && (node.expression.text === "computeValuation" || node.expression.text === "computeConsistentValuation")) {
       found.push(`${file} :: ${node.arguments[0]?.getText(sf) ?? "<none>"}`);
     }
     ts.forEachChild(node, visit);

@@ -12,7 +12,7 @@
  * the base valuation except via its sampled inputs.
  */
 import { buildScenario, buildValuationPeriodsFromForecast } from "../forecastingEngine/scenarios";
-import { computeValuation } from "../PenmanNissimEngine";
+import { computeConsistentValuation } from "../valueConsistentKw";
 import { RE_REOI_BLOCK_GAP, RE_REOI_GUARD_GAP, reReoiGap } from "../reReoiConsistency";
 import type { ForecastScenario } from "../types/forecast";
 import type { RecastPeriod } from "../types";
@@ -140,7 +140,7 @@ function evaluateOneDraw(
   const sampled = scenarioDraws(base.scenario, draws);
   const periods = buildScenario(sampled, input.latest);
   const valuationPeriods = buildValuationPeriodsFromForecast(input.latest, periods);
-  const valuation = computeValuation(
+  const { valuation } = computeConsistentValuation(
     valuationPeriods,
     draws.ke,
     draws.kw,
@@ -150,6 +150,7 @@ function evaluateOneDraw(
     // own config (which for the base scenario does resolve share basis) via a
     // scenarioConfig passthrough the caller wires in.
     input.scenarioConfig ?? input.config,
+    sampled.drivers.nbc[0],
   );
   const re = valuation.perShare?.intrinsic_re_per_share ?? null;
   const reoi = valuation.perShare?.intrinsic_reoi_per_share ?? null;
@@ -207,7 +208,12 @@ export function runPvre(input: PvreRunInput): PvreResult {
   const rng = mulberry32(input.seed);
   const dists = buildDefaultDriverDistributions(input.baseScenario);
   const samples: PvreSample[] = [];
-  const baseRates = { ke: input.baseScenario.assumptions.ke, kw: input.baseScenario.assumptions.kw };
+  // The base card's kw is value-consistent; the structural kw it was solved
+  // from is what moves with ke, and each draw solves again from there.
+  const baseRates = {
+    ke: input.baseScenario.assumptions.ke,
+    kw: input.baseScenario.kwConsistency?.kwStructural ?? input.baseScenario.assumptions.kw,
+  };
   for (let i = 0; i < input.iterations; i++) {
     const draws = sampleDrivers(dists, rng);
     const ke = clamp(draws.ke, input.bounds.keMin, input.bounds.keMax);
