@@ -570,6 +570,32 @@ describe("investment P/L the exceptional items already carry — booked once (re
     expect(period.cu.CoreOI).toBeCloseTo(base.cu.CoreOI, 9);
   });
 
+  it("leaves a gain larger than all of Other Income to UOI", () => {
+    // Airtel FY21-shaped: a 60 gain netted inside −20 of exceptional items
+    // (an 80 charge beside it), with only 5 of Other Income to hold it.
+    const period = computeRecastPeriod(makePeriod("2025-03-31", {
+      "Interest Income__ProfitLoss": 3,
+      "Other Income__ProfitLoss": 5,
+      "Exceptional Items Before Tax__ProfitLoss": -20,
+      "Profit Before Tax__ProfitLoss": 120,
+      "Tax Expenses__ProfitLoss": 30,
+      "Profit After Tax__ProfitLoss": 90,
+      "Total Comprehensive Income for the Year__ProfitLoss": 90,
+      "P/L on Sales of Invest__CashFlow": -60,
+    }), DEFAULT_CONFIG);
+    expect(period.cu.UFE).toBe(0);
+  });
+
+  it("still books a gain that Other Income can hold", () => {
+    const period = computeRecastPeriod(makePeriod("2025-03-31", {
+      "Interest Income__ProfitLoss": 3,
+      "Other Income__ProfitLoss": 80,
+      "Exceptional Items Before Tax__ProfitLoss": -20,
+      "P/L on Sales of Invest__CashFlow": -60,
+    }), DEFAULT_CONFIG);
+    expect(period.cu.UFE).toBeLessThan(0);
+  });
+
   it("still books a loss the exceptional items cannot contain", () => {
     expect(withLoss(-10, 20).cu.UFE).toBeCloseTo(15, 9);
   });
