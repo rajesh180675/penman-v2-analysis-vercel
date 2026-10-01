@@ -1006,7 +1006,10 @@ export function createLegacyAnalysisRunExecutor(
       if (!terminal && analysisStatus?.status === "blocked") {
         terminal = {
           kind: "blocked",
-          stage: "structural-reconciliation",
+          // A terminal period unsafe to anchor on blocks the valuation, not the
+          // accounts: ITC (FY25 demerger) and Idea (negative equity) reconcile,
+          // and recording this at structural reconciliation hid that.
+          stage: qualityGate?.blockedOnlyByTerminalAnchor ? "model-execution" : "structural-reconciliation",
           code: "LEGACY_VALUATION_POLICY_BLOCKED",
           message: analysisStatus.reasons[0] ?? analysisStatus.summary,
         };
