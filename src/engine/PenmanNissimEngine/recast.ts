@@ -621,6 +621,7 @@ export function extractRecastDebug(data: RawPeriodData, bs: CanonicalBalanceShee
     rawCurrentAssets,
     rawNonCurrentAssets,
     explicitOL,
+    olOutsideSections: readRaw("Other Liabilities Excluding Equity, Non-Current and Current Liabilities") ?? 0,
     fullPeriodProfit,
     otherProfitBelowPat,
   };
