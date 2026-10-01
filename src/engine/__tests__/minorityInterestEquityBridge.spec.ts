@@ -113,7 +113,7 @@ describe("minority-interest equity bridge", () => {
   const cfg = { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(1000), market_price: INRAbsolute(50) };
   const MI0 = 4000;
 
-  function run(mi: number) {
+  function run(mi: number, withMinorityIncome = true) {
     // MI lives ONLY at the anchor (period 0); later periods keep MI=0 so the
     // ReOI series (NOA/OI-driven) is identical across both runs.
     const periods: RecastPeriod[] = [
@@ -122,10 +122,25 @@ describe("minority-interest equity bridge", () => {
       healthyPeriod("2024-03-31", { CSE: 14000, MI: 0, NOA: 22000, NFO: 8000, CNI: 1600, OI: 2200 }),
       healthyPeriod("2025-03-31", { CSE: 15000, MI: 0, NOA: 23000, NFO: 8000, CNI: 1700, OI: 2300 }),
     ];
-    return computeValuation(periods, 0.12, 0.10, 0.04, cfg);
+    // Without minority income the claim stays at book (the historical-input case).
+    const inputs = withMinorityIncome
+      ? periods
+      : periods.map((p) => ({ ...p, is: { ...p.is, MII: undefined } })) as unknown as RecastPeriod[];
+    return computeValuation(inputs, 0.12, 0.10, 0.04, cfg);
   }
 
-  it("drops common per-share value by exactly MI0/shares when minorities are present", () => {
+  it("drops common per-share value by exactly MI0/shares when the minority claim is at book", () => {
+    const sh = 1000;
+    const noMi = run(0, false);
+    const withMi = run(MI0, false);
+    expect(withMi.minorityClaimBasis).toBe("book");
+    const reoiDrop = noMi.perShare!.intrinsic_reoi_per_share! - withMi.perShare!.intrinsic_reoi_per_share!;
+    const fcffDrop = noMi.perShare!.intrinsic_fcff_per_share! - withMi.perShare!.intrinsic_fcff_per_share!;
+    expect(reoiDrop).toBeCloseTo(MI0 / sh, 6);
+    expect(fcffDrop).toBeCloseTo(MI0 / sh, 6);
+  });
+
+  it("drops common per-share value by exactly the minority claim subtracted", () => {
     const sh = 1000;
     const noMi = run(0);
     const withMi = run(MI0);
@@ -136,8 +151,11 @@ describe("minority-interest equity bridge", () => {
     const reoiDrop = noMi.perShare!.intrinsic_reoi_per_share! - withMi.perShare!.intrinsic_reoi_per_share!;
     const fcffDrop = noMi.perShare!.intrinsic_fcff_per_share! - withMi.perShare!.intrinsic_fcff_per_share!;
 
-    expect(reoiDrop).toBeCloseTo(MI0 / sh, 6);
-    expect(fcffDrop).toBeCloseTo(MI0 / sh, 6);
+    // The minority earns nothing here (MII 0), so its claim is worth less than book.
+    expect(withMi.minorityClaimBasis).toBe("residual-income");
+    expect(withMi.minorityClaim).toBeLessThan(MI0);
+    expect(reoiDrop).toBeCloseTo(withMi.minorityClaim / sh, 6);
+    expect(fcffDrop).toBeCloseTo(withMi.minorityClaim / sh, 6);
   });
 
   it("keeps the V_ReOI_CV03 aggregate consistent with the per-share number", () => {

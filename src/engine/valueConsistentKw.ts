@@ -48,13 +48,14 @@ export function solveValueConsistentKw(
   const keep = (reason: string): KwConsistency => ({ kwStructural, kw: kwStructural, kd: kd ?? null, method: "structural", reason });
   if (kd == null || !Number.isFinite(kd)) return keep("The forecast carries no net borrowing cost.");
   if (periods.length < 2) return keep("No forecast years to value.");
-  const anchor = periods[0]!.bs;
-  const MI = anchor.MI ?? 0;
-  const NFO = anchor.NFO;
+  const NFO = periods[0]!.bs.NFO;
 
   let kw = kwStructural;
   for (let i = 0; i < MAX_ITERATIONS; i += 1) {
-    const equity = computeValuation(periods, ke, kw, g, cfg).V_ReOI_CV03;
+    const valuation = computeValuation(periods, ke, kw, g, cfg);
+    const equity = valuation.V_ReOI_CV03;
+    // Weighted at the same minority claim the equity bridge subtracts.
+    const MI = valuation.minorityClaim;
     if (equity == null || !Number.isFinite(equity)) return keep("The ReOI continuing value is undefined at this kw.");
     const operatingValue = equity + MI + NFO;
     if (!(operatingValue > 0)) return keep("The operating value is not positive, so it cannot weight the costs.");

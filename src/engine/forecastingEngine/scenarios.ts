@@ -493,7 +493,7 @@ export function buildValuationPeriodsFromForecast(
         MI: forecast.MI_f ?? latestPeriod.bs.MI,
         separationScore: latestPeriod.bs.separationScore,
       }),
-      is: Object.freeze({ CNI: forecast.CNI_f, OI: forecast.OI_f }),
+      is: Object.freeze({ CNI: forecast.CNI_f, OI: forecast.OI_f, MII: forecast.MII_f }),
       cf: Object.freeze({
         DividendPaid: Math.max(0, ownerDistribution),
         d_t: ownerDistribution,

@@ -18,6 +18,8 @@ export interface LegacyValuationPeriodInput {
     readonly CNI: number;
     /** After-tax operating income, matching the legacy residual-income basis. */
     readonly OI: number;
+    /** The minority's share of income, when the forecast carries it: values the minority claim. */
+    readonly MII?: number | undefined;
   };
   readonly cf: {
     readonly DividendPaid: number;
