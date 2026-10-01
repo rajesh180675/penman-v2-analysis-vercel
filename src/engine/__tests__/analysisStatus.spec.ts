@@ -134,6 +134,17 @@ describe("analysis status confidence gating", () => {
     expect(status.effectiveBlockingCount).toBeGreaterThan(0);
   });
 
+  it("does not call a block terminal-anchor-only when a core line is also missing", () => {
+    const raw = [guardedRawPeriod("2024-03-31"), guardedRawPeriod("2025-03-31")].map((p) => {
+      const { ["Purchased of Fixed Assets__CashFlow"]: _capex, ...rest } = p.raw_metric_values;
+      return { ...p, raw_metric_values: rest };
+    });
+    const recast = [guardedRecastPeriod("2024-03-31"), guardedRecastPeriod("2025-03-31", true)];
+    const qualityGate = evaluateQualityGate(raw, null, recast);
+    expect(qualityGate.missingCore.length).toBeGreaterThan(0);
+    expect(qualityGate.blockedOnlyByTerminalAnchor).toBe(false);
+  });
+
   it("floors blocked display counters for valuation blocks even when mapping blockers are zero", () => {
     const status = deriveAnalysisStatus(
       {

@@ -45,6 +45,12 @@ export interface MappingAuditReport {
 export interface QualityGateReport {
   tier: "Tier 1" | "Tier 2" | "Tier 3";
   valuationBlocked: boolean;
+  /**
+   * The block's only cause is a terminal period unsafe to anchor on — no
+   * mapping gap, missing core line or scope issue. That is a valuation
+   * finding, not a structural one: the accounts can still reconcile.
+   */
+  blockedOnlyByTerminalAnchor?: boolean | undefined;
   missingMinimum: string[];
   missingCore: string[];
   blockingReasons: string[];
@@ -294,9 +300,16 @@ export function evaluateQualityGate(
     reviewBacklog: audit.backlogSummary?.totalsByAction?.review ?? 0,
   });
 
+  const mappingBlocked =
+    missingMinimum.length > 0 ||
+    missingCore.length > 0 ||
+    unresolvedCriticalCount > 0 ||
+    valuationCriticalGaps.length > 0 ||
+    scopeAssessment.blocked;
   return {
     tier,
     valuationBlocked: valuationBlocked || scopeAssessment.blocked,
+    blockedOnlyByTerminalAnchor: !mappingBlocked && valuationReadiness?.status === "guarded",
     missingMinimum,
     missingCore,
     blockingReasons,

@@ -513,6 +513,45 @@ describe("legacy-backed AnalysisRun executor", () => {
     expect(result.artifacts.some((artifact) => artifact.ref.kind === "evidence" && artifact.ref.schemaVersion === "transformation-dag-v1")).toBe(true);
   });
 
+  describe("a valuation-policy block", () => {
+    // ITC FY25-shaped: the accounts reconcile, but the terminal period is
+    // structurally compromised (demerger), so valuation is blocked.
+    const policyBlocked = (onlyTerminalAnchor: boolean) => {
+      const gate = {
+        scopeAssessment: { blocked: false, reasons: [] },
+        valuationBlocked: true,
+        blockedOnlyByTerminalAnchor: onlyTerminalAnchor,
+        blockingReasons: ["Terminal period structurally compromised."],
+      } as unknown as QualityGateReport;
+      const deps: LegacyAnalysisRunExecutorDependencies = {
+        ...dependencies(),
+        evaluateQualityGate: vi.fn(() => gate) as unknown as LegacyAnalysisRunExecutorDependencies["evaluateQualityGate"],
+        deriveAnalysisStatus: vi.fn(() => ({ ...status(true), scopeBlocked: false, reasons: ["Terminal period structurally compromised."] })) as unknown as LegacyAnalysisRunExecutorDependencies["deriveAnalysisStatus"],
+      };
+      return createLegacyAnalysisRunExecutor(deps)(input());
+    };
+    const stage = (result: Awaited<ReturnType<typeof policyBlocked>>, id: string) =>
+      result.run?.stageResults.find((s) => s.stageId === id)?.status;
+    const rung = (result: Awaited<ReturnType<typeof policyBlocked>>, level: string) =>
+      result.run?.trustEnvelope?.rigor.checkpoints.find((c) => c.level === level)?.achieved;
+
+    it("blocks the valuation, not the accounts, when the terminal anchor is its only cause", async () => {
+      const result = await policyBlocked(true);
+      expect(result.status).toBe("blocked");
+      expect(result.status === "blocked" && result.reasonCode).toBe("LEGACY_VALUATION_POLICY_BLOCKED");
+      expect(stage(result, "model-execution")).toBe("blocked");
+      expect(stage(result, "structural-reconciliation")).not.toBe("blocked");
+      expect(rung(result, "structurally-reconciled")).toBe(true);
+      expect(rung(result, "valuation-eligible")).toBe(false);
+    });
+
+    it("still blocks structural reconciliation when a mapping gap is among its causes", async () => {
+      const result = await policyBlocked(false);
+      expect(stage(result, "structural-reconciliation")).toBe("blocked");
+      expect(rung(result, "structurally-reconciled")).toBe(false);
+    });
+  });
+
   it("fails closed on a domain scope blocker without invoking downstream engines", async () => {
     const deps = dependencies({ scopeBlocked: true });
     const result = await createLegacyAnalysisRunExecutor(deps)(input());
