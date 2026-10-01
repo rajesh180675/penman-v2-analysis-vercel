@@ -44,12 +44,41 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   // part. Without the current row, the itemized lines are summed as before.
   const tradePayablesTotal = (line: string) => {
     const currentTotal = bs(`${line}.CurrentTotal`, ["Trade Payables - Current"]);
-    return currentTotal !== 0
-      ? currentTotal + bs(`${line}.NonCurrent`, ["Trade Payables"])
-      : sumBs(line, M.balanceSheet.olComponents.tradePayables);
+    if (currentTotal !== 0) return currentTotal + bs(`${line}.NonCurrent`, ["Trade Payables"]);
+    // The netted layout files one figure under three labels (Paytm FY10:
+    // Trade Payables = Sundry Creditors = Creditors for Others = 20.82).
+    const filedTotal = nettedCurrentLiabilities > 0 ? bs(`${line}.NettedTotal`, ["Trade Payables"]) : 0;
+    return filedTotal !== 0 ? filedTotal : sumBs(line, M.balanceSheet.olComponents.tradePayables);
   };
 
-  const TA = bs("BS.TA", M.balanceSheet.totalAssets);
+  // The pre-2012 Schedule VI layout deducts current liabilities and provisions
+  // from current assets: "Total Assets" is capital employed, with "Net Current
+  // Assets" = Total Current Assets − Total Current Liabilities and no "Total
+  // Equity and Liabilities". Read as filed, OL came out ≈ 0 while the itemized
+  // liabilities were real (Paytm FY10: 0.2 against 56.8). Grossing up by the
+  // netted liabilities adds them to OA and OL alike, so NOA is unchanged.
+  // Paytm FY09–16 and FY19 are the library's only such years (to 0.01).
+  const filedTotalCurrentLiabilities = bs("BS.Netted.TotalCurrentLiabilities", ["Total Current Liabilities"]);
+  const filedNetCurrentAssets = bs("BS.Netted.NetCurrentAssets", ["Net Current Assets"]);
+  const nettedCurrentLiabilities =
+    bs("BS.Netted.TotalEquityAndLiabilities", ["Total Equity and Liabilities"]) === 0
+    && filedTotalCurrentLiabilities > 0
+    && filedNetCurrentAssets !== 0
+    && Math.abs(filedNetCurrentAssets - (bs("BS.Netted.TotalCurrentAssets", ["Total Current Assets"]) - filedTotalCurrentLiabilities)) <= 0.5
+      ? filedTotalCurrentLiabilities
+      : 0;
+  const TA = bs("BS.TA", M.balanceSheet.totalAssets) + nettedCurrentLiabilities;
+  // That layout itemizes only trade payables inside its "Current Liabilities"
+  // subtotal (customer advances, deposits and the rest have no line of their
+  // own), so the other current liabilities are the subtotal less them.
+  const otherCurrentLiabilities = (line: string) => {
+    const filed = olBs(line, M.balanceSheet.olComponents.otherCurrentLiabilities);
+    if (filed !== 0 || nettedCurrentLiabilities === 0) return filed;
+    return Math.max(0, bs(`${line}.NettedSubtotal`, ["Current Liabilities"]) - tradePayablesTotal(`${line}.NettedTradePayables`));
+  };
+  if (nettedCurrentLiabilities > 0) {
+    pushTrace(trace, "BS.TA", { statement: "Derived", key: "Total Assets + netted Total Current Liabilities", value: TA, matchType: "derived" });
+  }
   const totalSE = bs("BS.TotalStockholdersEquity", M.balanceSheet.totalStockholdersEquity);
   const totalEq = bs("BS.TotalEquity", M.balanceSheet.totalEquity);
   const MI = bs("BS.MI", M.balanceSheet.minorityInterest);
@@ -129,7 +158,7 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
 
   const explicitOL =
     tradePayablesTotal("BS.OLComp.TradePayables")
-    + olBs("BS.OLComp.OtherCurrentLiabilities", M.balanceSheet.olComponents.otherCurrentLiabilities)
+    + otherCurrentLiabilities("BS.OLComp.OtherCurrentLiabilities")
     + olBs("BS.OLComp.ProvisionsCurrent", M.balanceSheet.olComponents.provisionsCurrent)
     + olBs("BS.OLComp.ProvisionsLongTerm", M.balanceSheet.olComponents.provisionsLongTerm)
     + olBs("BS.OLComp.CurrentTaxLiabilities", M.balanceSheet.olComponents.currentTaxLiabilities)
@@ -182,7 +211,7 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
     FO_LeaseLiabilities: leaseLiab,
     FO_FinancialDebtExLease: financialDebtExLease,
     OL_TradePayables: tradePayablesTotal("BS.OLComp.TradePayablesOut"),
-    OL_OtherCurrentLiabilities: olBs("BS.OLComp.OtherCurrentLiabilitiesOut", M.balanceSheet.olComponents.otherCurrentLiabilities),
+    OL_OtherCurrentLiabilities: otherCurrentLiabilities("BS.OLComp.OtherCurrentLiabilitiesOut"),
     OL_ProvisionsCurrent: olBs("BS.OLComp.ProvisionsCurrentOut", M.balanceSheet.olComponents.provisionsCurrent),
     OL_ProvisionsLongTerm: olBs("BS.OLComp.ProvisionsLongTermOut", M.balanceSheet.olComponents.provisionsLongTerm),
     OL_CurrentTaxLiabilities: olBs("BS.OLComp.CurrentTaxLiabilitiesOut", M.balanceSheet.olComponents.currentTaxLiabilities),
