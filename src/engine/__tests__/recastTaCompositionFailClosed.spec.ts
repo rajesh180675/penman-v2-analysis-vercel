@@ -215,6 +215,24 @@ describe("ol-coverage-bridge — reads the labels Capitaline actually uses (real
     expect(cur.bs.OL_OtherNonCurrentLiabilities).toBe(50);
     expect(check?.status).toBe("confirmed");
   });
+
+  it("counts regulatory-deferral credit balances filed outside both sections", () => {
+    // Power Grid FY16-shaped: 5,698.14 sat outside the current and non-current
+    // blocks and was the whole coverage gap.
+    const { cur, check } = olCheck({
+      "Other Non-Current Liabilities__BalanceSheet": 10,
+      "Other Liabilities Excluding Equity, Non-Current and Current Liabilities__BalanceSheet": 40,
+    });
+    expect(cur.bs.OL_OtherNonCurrentLiabilities).toBe(50);
+    expect(check?.status).toBe("confirmed");
+  });
+
+  it("reads current provisions filed as Short-Term Provisions", () => {
+    // TCS FY13-shaped: 4,233.46 of current provisions under the older label.
+    const { cur, check } = olCheck({ "Provisions__BalanceSheet": 0, "Short-Term Provisions__BalanceSheet": 40 });
+    expect(cur.bs.OL_ProvisionsCurrent).toBe(40);
+    expect(check?.status).toBe("confirmed");
+  });
 });
 
 describe("owners' income identity — profit on TCI's basis (real recast)", () => {

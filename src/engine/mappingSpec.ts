@@ -139,16 +139,20 @@ export const CapitalineMappingSpec = {
       // line (ITC FY25: 32.72 of 6,148.27; 20 of 42 years that file a total).
       otherCurrentLiabilities: ["Total Other Current Liabilities", "Other Current Liabilities"],
       // The current row shares its label with an earlier one (often an asset-
-      // side 0), so the parser keeps it as "Provisions - Current".
-      provisionsCurrent: ["Provisions - Current", "Provisions"],
+      // side 0), so the parser keeps it as "Provisions - Current". Older
+      // Schedule III exports file it as "Short-Term Provisions" (TCS FY13-15:
+      // 4,233.46 / 6,385.96 / 7,655.16, which OL coverage was missing).
+      provisionsCurrent: ["Provisions - Current", "Provisions", "Short-Term Provisions"],
       provisionsLongTerm: ["Long-term Provisions"],
       currentTaxLiabilities: ["Current Tax Liabilities - Short-term"],
       nonCurrentTaxLiabilities: ["Non Current Tax Liabilities - Long-term"],
       deferredTaxLiabilitiesNet: ["Deferred Tax Liabilities (Net)"],
       // Summed: a consolidated insurer's policy liabilities (Grasim, via
       // Aditya Birla Capital: 81,353 in FY25) sit beside the other line and
-      // are operating liabilities already inside OL.
-      otherNonCurrentLiabilities: ["Other Non-Current Liabilities", "Insurance Related Liabilities", "Insurance Related Liabilities - Current"],
+      // are operating liabilities already inside OL. So are regulatory-deferral
+      // credit balances, which Capitaline files outside both sections (Power
+      // Grid FY16: 5,698.14, exactly the coverage gap).
+      otherNonCurrentLiabilities: ["Other Non-Current Liabilities", "Insurance Related Liabilities", "Insurance Related Liabilities - Current", "Other Liabilities Excluding Equity, Non-Current and Current Liabilities"],
     },
     shareCapital: {
       authorisedShares: ["Number of Equity Shares - Authorised", "Amount of Equity Shares - Authorised"],
