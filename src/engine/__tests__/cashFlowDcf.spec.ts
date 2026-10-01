@@ -57,6 +57,16 @@ describe("computeCashFlowDcf — independent cash lens", () => {
     expect(r!.baseFcf).toBe(110); // median of [100,110,120]
   });
 
+  it("subtracts the minority claim the accrual bridge settled on, not its book", () => {
+    const periods = [
+      mkPeriod("2022-03-31", { fcf: 100, NFO: 200, MI: 50 }),
+      mkPeriod("2023-03-31", { fcf: 110, NFO: 200, MI: 50 }),
+      mkPeriod("2024-03-31", { fcf: 120, NFO: 200, MI: 50 }),
+    ];
+    const r = computeCashFlowDcf(periods, CONFIG, 100, { minorityClaim: 20 })!;
+    expect(r.equityValue).toBeCloseTo(r.enterpriseValue - 200 - 20, 6);
+  });
+
   it("is INDEPENDENT of the accrual recast: NOA/OI changes do not move the value", () => {
     const accrualA = [
       mkPeriod("2022-03-31", { fcf: 100, NOA: 500, OI: 80 }),
