@@ -234,9 +234,17 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   const cf = (line: string, keys: readonly string[]) => valCF(data, keys, line, trace);
 
   const Sales = pl("IS.Sales", M.profitLoss.sales);
-  const TaxExpense = pl("IS.TaxExpense", M.profitLoss.taxExpense);
+  const TaxExpenseFiled = pl("IS.TaxExpense", M.profitLoss.taxExpense);
   const PBT = pl("IS.PBT", M.profitLoss.pbt);
   const PAT = pl("IS.PAT", M.profitLoss.pat);
+  const TCI = pl("IS.TCI", M.profitLoss.tciGroup);
+  // A year filed only in Capitaline's older "standard" P&L layout (Paytm
+  // FY09-16) has no Ind AS tax or comprehensive-income line; its profit is
+  // "Net Profit". Its tax lines do not always tie (FY09: "Total Tax" 2.6 against
+  // PBT 2.37 and Net Profit 2.03), so tax is PBT − Net Profit, consistent with
+  // the profit Core OI is built on. Read as filed, CNI and tax were both 0.
+  const standardLayout = TCI === 0 && TaxExpenseFiled === 0 && PBT !== 0 && PAT !== 0;
+  const TaxExpense = standardLayout ? PBT - PAT : TaxExpenseFiled;
 
   let taxRate = cfg.statutory_tax_rate;
   if (cfg.tax_rate_mode === "effective" && PBT > 0) {
@@ -245,8 +253,13 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   }
 
   const OCI = pl("IS.OCI.NotReclass", M.profitLoss.ociNotReclass) + pl("IS.OCI.Reclass", M.profitLoss.ociReclass) + pl("IS.OCI.Unspecified", M.profitLoss.ociUnspecified);
-  const TCI = pl("IS.TCI", M.profitLoss.tciGroup);
-  const TCI_NCI = pl("IS.TCI_NCI", M.profitLoss.tciNci);
+  // The standard layout's minority line is signed opposite to Ind AS.
+  const TCI_NCI = standardLayout
+    ? -pl("IS.MinorityAfterTaxStandard", M.profitLoss.minorityAfterTaxStandard)
+    : pl("IS.TCI_NCI", M.profitLoss.tciNci);
+  // ...and a minority share it deducts above PBT is outside Net Profit but
+  // inside the group's operating income (Paytm FY14: 6.41).
+  const minorityBeforeTax = standardLayout ? pl("IS.MinorityBeforeTaxStandard", M.profitLoss.minorityBeforeTaxStandard) : 0;
   const PreferredDividend = pl("IS.PreferredDividend", M.profitLoss.preferredDividend);
   // Capitaline convention, verified against as-filed XBRL (L&T FY23: owners'
   // TCI ₹9,716 Cr, NCI share ₹1,856 Cr): "Total Comprehensive Income for the
@@ -330,7 +343,7 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   // Minority interest in income: the minority's share, positive when it
   // shares a profit (the sign flip of Capitaline's deduction line). OI is then
   // the whole group's, matching NOA, which carries every subsidiary in full.
-  const MII = -TCI_NCI;
+  const MII = -TCI_NCI + minorityBeforeTax;
   const OI = CNI + NFE + MII;
   pushTrace(trace, "IS.OI", { statement: "Derived", key: "(TCI or PAT+OCI)-PrefDiv+NFE", value: OI, matchType: "derived" });
 
@@ -379,7 +392,15 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
     ? otherExpenses - sgaDetailed - sectorSpecificOperatingExpense
     : 0;
   const sgaTotal = sgaDetailed;
-  const otherOperatingExpense = Math.max(0, otherExpenses - sgaDetailed - sectorSpecificOperatingExpense);
+  // The standard layout itemizes costs under labels the mapping does not read
+  // ("Selling and Administration Expenses", "Miscellaneous Expenses"), but
+  // files their total: "Total Expenditure", every operating cost except
+  // interest and depreciation (Paytm FY14: 181.4, of which the mapped lines
+  // reached 113.56). The rest of it is the other operating expense.
+  const totalExpenditureStandard = standardLayout ? pl("IS.TotalExpenditureStandard", M.profitLoss.totalExpenditureStandard) : 0;
+  const otherOperatingExpense = totalExpenditureStandard > 0
+    ? Math.max(0, totalExpenditureStandard - COGS - employeeCost - sgaDetailed - sectorSpecificOperatingExpense)
+    : Math.max(0, otherExpenses - sgaDetailed - sectorSpecificOperatingExpense);
   // Finance income is inside Other Income on every rung (Capitaline lists
   // Interest Income as a sub-line of it), and OI = CNI + NFE excludes it, so
   // the bridge must too. Netting it only on the proxy rung counted a cash-rich

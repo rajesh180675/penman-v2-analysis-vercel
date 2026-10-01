@@ -190,6 +190,9 @@ export const CapitalineMappingSpec = {
       "Net Profit / Loss For The Year",
       "Profit Attributable to Ordinary Shareholders",
       "Profit After Pre-acquisition Profit",
+      // Capitaline's older "standard" P&L layout (Paytm FY09-16): last, so it
+      // is read only where no Ind AS profit line is filed.
+      "Net Profit",
     ],
     patOwners: ["a) Owners of the Company"],
     ociNotReclass: ["Other Comprehensive Income That Will Not Be Reclassified to Profit Or Loss"],
@@ -198,6 +201,13 @@ export const CapitalineMappingSpec = {
     ociEquityInstruments: ["Change in Equity Instruments"],
     tciGroup: ["Total Comprehensive Income for the Year"],
     tciNci: ["Non-Controlling Interests"],
+    // The standard layout's minority lines. "after tax" is signed opposite to
+    // Ind AS ("Minority Interest After Net Profit" = −it in all 22 years that
+    // file both, ITC FY11-25 and Paytm FY19-25); "before tax" is deducted
+    // above PBT, so Net Profit is already the owners' share.
+    minorityAfterTaxStandard: ["Minority Interest (after tax)"],
+    minorityBeforeTaxStandard: ["Minority Interest (before tax)"],
+    totalExpenditureStandard: ["Total Expenditure"],
     preferredDividend: ["Preference Dividend"],
     financeCostTop: ["Finance Cost", "Total Interest Expenses", "Finance Costs", "Interest and Finance Charges"],
     financeIncomeDirect: [
