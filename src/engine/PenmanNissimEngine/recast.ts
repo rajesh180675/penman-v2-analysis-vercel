@@ -420,7 +420,10 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   const bridgeCoreOI = grossProfit - employeeCost - depreciation - sgaTotal - sectorSpecificOperatingExpense - otherOperatingExpense + otherOperatingIncome + associatesShare;
   const bridgeCoverageDenominator = Math.abs(OI_from_sales) > 1 ? Math.abs(OI_from_sales) : Math.abs(Sales);
   const coverageNumerator = Math.abs(COGS) + Math.abs(employeeCost) + Math.abs(depreciation) + Math.abs(sgaTotal) + Math.abs(sectorSpecificOperatingExpense) + Math.abs(otherOperatingExpense) + Math.abs(otherOperatingIncome);
-  const bridgeCoverageRatio = bridgeCoverageDenominator > 0
+  // A year with no revenue has nothing to bridge: DMart FY15 files a balance
+  // sheet and cash flow but no P&L, and depreciation alone (from the cash-flow
+  // add-back) read as full coverage against max(|Sales|, 1).
+  const bridgeCoverageRatio = Sales > 0 && bridgeCoverageDenominator > 0
     ? Math.min(1, coverageNumerator / Math.max(Math.abs(Sales), 1))
     : null;
   pushTrace(trace, "IS.Bridge.CoreOIFromBridge", {

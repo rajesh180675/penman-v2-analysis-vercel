@@ -640,6 +640,18 @@ describe("Capitaline's older standard P&L layout (real recast)", () => {
     expect(period.is.MII).toBeCloseTo(6.41, 9);
   });
 
+  it("has no bridge coverage in a year that files no revenue", () => {
+    // DMart FY15-shaped: balance sheet and cash flow, no P&L.
+    const period = computeRecastPeriod({
+      company_id: "NOPL", period_end: "2015-03-31",
+      // The cash-flow investment gain gives it a small OI (DMart: UFE −2.58),
+      // so the coverage denominator is not zero on its own.
+      raw_metric_values: { "Total Assets__BalanceSheet": 1000, "Depreciation__CashFlow": 81.54, "P/L on Sales of Invest__CashFlow": -10 },
+    }, DEFAULT_CONFIG);
+    expect(Math.abs(period.is.OI_from_sales)).toBeGreaterThan(1);
+    expect(period.is.operatingCostBridge?.coverageRatio ?? null).toBeNull();
+  });
+
   it("bridges costs with the layout's Total Expenditure", () => {
     const period = computeRecastPeriod(standardYear(), DEFAULT_CONFIG);
     const bridge = period.is.operatingCostBridge!;
