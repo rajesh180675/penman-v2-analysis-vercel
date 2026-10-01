@@ -34,6 +34,7 @@ describe("PVRE Milestone A — industrial (ITC)", () => {
   let baseCard: ValuationScenarioCard | null = null;
   let config: EngineConfig = DEFAULT_CONFIG;
   let scenarioConfig: EngineConfig | undefined = undefined;
+  let anchor: RecastPeriod | null = null;
   const PRICE = 440;
 
   beforeAll(async () => {
@@ -46,6 +47,9 @@ describe("PVRE Milestone A — industrial (ITC)", () => {
     periods = pipeline.periods;
     const cc = buildValuationCommandCenter({ data: periods, config });
     baseCard = cc.scenarios.find((s) => s.key === "base") ?? null;
+    // PVRE perturbs the base card, so it starts from the card's own anchor —
+    // not the last period, which ITC's guarded FY25 (demerger) is not.
+    anchor = cc.anchorPeriod;
     scenarioConfig = resolveShareBasis(periods, config).valuationConfig;
   }, 120_000);
 
@@ -57,7 +61,7 @@ describe("PVRE Milestone A — industrial (ITC)", () => {
   itIfData("same seed → identical outputs (reproducibility)", () => {
     if (!baseCard) throw new Error("no base card");
     const input = {
-      latest: periods[periods.length - 1]!,
+      latest: anchor!,
       baseScenario: baseCard,
       config,scenarioConfig,
       seed: 42,
@@ -78,7 +82,7 @@ describe("PVRE Milestone A — industrial (ITC)", () => {
   itIfData("different seed → different draws, same shape", () => {
     if (!baseCard) throw new Error("no base card");
     const a = runPvre({
-      latest: periods[periods.length - 1]!,
+      latest: anchor!,
       baseScenario: baseCard,
       config,scenarioConfig,
       seed: 1,
@@ -87,7 +91,7 @@ describe("PVRE Milestone A — industrial (ITC)", () => {
       bounds: PVRE_DEFAULT_BOUNDS,
     });
     const b = runPvre({
-      latest: periods[periods.length - 1]!,
+      latest: anchor!,
       baseScenario: baseCard,
       config,scenarioConfig,
       seed: 999,
@@ -110,7 +114,7 @@ describe("PVRE Milestone A — industrial (ITC)", () => {
     const base = baseCard.intrinsicPerShare;
     expect(base).not.toBeNull();
     const res = runPvre({
-      latest: periods[periods.length - 1]!,
+      latest: anchor!,
       baseScenario: baseCard,
       config,scenarioConfig,
       seed: 7,
@@ -133,7 +137,7 @@ describe("PVRE Milestone A — industrial (ITC)", () => {
   itIfData("disagreement gate is a valid state", () => {
     if (!baseCard) throw new Error("no base card");
     const res = runPvre({
-      latest: periods[periods.length - 1]!,
+      latest: anchor!,
       baseScenario: baseCard,
       config,scenarioConfig,
       seed: 42,
@@ -162,7 +166,7 @@ describe("PVRE Milestone A — industrial (ITC)", () => {
   itIfData("probabilityUndervalued ∈ [0,1] when price is set", () => {
     if (!baseCard) throw new Error("no base card");
     const res = runPvre({
-      latest: periods[periods.length - 1]!,
+      latest: anchor!,
       baseScenario: baseCard,
       config,scenarioConfig,
       seed: 42,
@@ -181,7 +185,7 @@ describe("PVRE Milestone A — industrial (ITC)", () => {
   itIfData("skip-with-reason on too-few iterations", () => {
     if (!baseCard) throw new Error("no base card");
     const res = runPvre({
-      latest: periods[periods.length - 1]!,
+      latest: anchor!,
       baseScenario: baseCard,
       config,scenarioConfig,
       seed: 1,

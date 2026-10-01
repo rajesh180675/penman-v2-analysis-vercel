@@ -1,3 +1,4 @@
+import type { KwConsistency } from "../valueConsistentKw";
 import { LiveMarketDataFreshness } from "../marketData";
 import { AnalysisStatusSummary } from "../analysisStatus";
 import { ForecastScenario, ForecastPolicySurface, RecastPeriod, ValuationResult, BusinessModelProfile } from "../types";
@@ -42,8 +43,11 @@ export interface ValuationScenarioCard {
   expectedCagr: number | null;
   valuation: ValuationResult;
   forecastPolicy?: ForecastPolicySurface | undefined;
+  /** How the kw behind this card's ReOI value was set (structural seed vs value-consistent solve). */
+  kwConsistency?: KwConsistency | undefined;
   assumptions: {
     ke: number;
+    /** The kw the valuation used: value-consistent when it solved, else structural. */
     kw: number;
     g: number;
     salesGrowthYear1: number;

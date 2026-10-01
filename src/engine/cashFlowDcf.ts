@@ -79,6 +79,8 @@ export function computeCashFlowDcf(
     horizon?: number;
     fadeAlpha?: number;
     window?: number;
+    /** The run's operating capital cost, when the valuation has settled one (S-9.4C). */
+    kw?: number | null;
   },
 ): CashFlowDcfResult | null {
   if (!periods || periods.length < 2) return null;
@@ -90,7 +92,7 @@ export function computeCashFlowDcf(
   const window = opts?.window ?? 5;
 
   const latest = periods[periods.length - 1]!;
-  const { kw } = resolveKw(latest.kwStructural, config);
+  const { kw } = resolveKw(latest.kwStructural, config, { override: opts?.kw ?? null });
   if (!Number.isFinite(kw) || kw <= 0) return null;
   // A zero terminal value is not a valid substitute for invalid Gordon
   // economics. Fail closed so this lens is excluded from synthesis and model

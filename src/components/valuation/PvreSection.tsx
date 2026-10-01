@@ -58,7 +58,10 @@ export default function PvreSection({
         try {
           const scenarioConfig = resolveShareBasis(data, config).valuationConfig;
           const out = runPvre({
-            latest: data[data.length - 1]!,
+            // The base card's own anchor: when the last period is guarded
+            // (ITC FY25, a demerger) the card was built on an earlier one,
+            // and perturbing it from the last period valued another company.
+            latest: commandCenter.anchorPeriod ?? data[data.length - 1]!,
             baseScenario: base,
             config,
             scenarioConfig,

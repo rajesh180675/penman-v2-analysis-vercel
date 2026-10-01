@@ -12,7 +12,7 @@
  * pin.
  */
 import { buildScenario, buildValuationPeriodsFromForecast } from "../forecastingEngine";
-import { computeValuation } from "../PenmanNissimEngine";
+import { computeConsistentValuation } from "../valueConsistentKw";
 import { structuralKwForKe } from "../pvre/pvreEngine";
 import type { ForecastPeriod, ForecastScenario } from "../types";
 import { primaryValuationPerShare } from "./helpers";
@@ -72,9 +72,12 @@ export function revalueBase(cc: CommandCenterLike, shifts: BaseCaseShifts = {}):
   const d = card.scenario.drivers;
   const g = card.assumptions.g + (shifts.g ?? 0);
   const ke = d.ke + (shifts.ke ?? 0);
-  const kw = shifts.ke ? structuralKwForKe(ke, { ke: d.ke, kw: d.kw }, latest) : d.kw;
-  const none = { value: null, forecast: null, ke, kw, g };
-  if (!(ke - g > 0.005) || !(kw - g > 0.005)) return none;
+  // The card's kw is value-consistent; the structural kw it was solved from
+  // is what moves with ke (S-9.4C), and each re-valuation solves again from it.
+  const kwStructuralBase = card.kwConsistency?.kwStructural ?? d.kw;
+  const kwSeed = shifts.ke ? structuralKwForKe(ke, { ke: d.ke, kw: kwStructuralBase }, latest) : kwStructuralBase;
+  const none = { value: null, forecast: null, ke, kw: kwSeed, g };
+  if (!(ke - g > 0.005) || !(kwSeed - g > 0.005)) return none;
   const scenario: ForecastScenario = {
     ...card.scenario,
     drivers: {
@@ -83,13 +86,17 @@ export function revalueBase(cc: CommandCenterLike, shifts: BaseCaseShifts = {}):
       core_sales_pm: shifts.core_sales_pm ? d.core_sales_pm.map((v) => v + shifts.core_sales_pm!) : d.core_sales_pm,
       g_terminal: g,
       ke,
-      kw,
+      kw: kwSeed,
     },
   };
   try {
-    const periods = buildScenario(scenario, latest);
     // Anchored at `latest`: the valuation date is the anchor period, as in buildScenarioCards.
-    const valuation = computeValuation(buildValuationPeriodsFromForecast(latest, periods), ke, kw, g, cc.shareBasis.valuationConfig);
+    const { valuation, kwConsistency } = computeConsistentValuation(
+      buildValuationPeriodsFromForecast(latest, buildScenario(scenario, latest)),
+      ke, kwSeed, g, cc.shareBasis.valuationConfig, d.nbc[0],
+    );
+    const kw = kwConsistency.kw;
+    const periods = buildScenario({ ...scenario, drivers: { ...scenario.drivers, kw } }, latest);
     const value = primaryValuationPerShare(valuation);
     return { value: value != null && Number.isFinite(value) ? value : null, forecast: periods, ke, kw, g };
   } catch {
