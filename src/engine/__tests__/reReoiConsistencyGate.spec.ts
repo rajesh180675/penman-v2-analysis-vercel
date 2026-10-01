@@ -132,11 +132,11 @@ describe("valuation-triangulation gate", () => {
     expect(envelope(undefined, paradigms(100, 105)).rigor.achievedLevels).toContain("production-ready");
   });
 
-  it("denies production-ready but keeps valuation-eligible between the warning and critical bands", () => {
+  it("keeps production-ready in the warning band, where only the residual score weighs it (Maruti)", () => {
     const env = envelope(undefined, paradigms(100, 120)); // 18% of the 110 median
     expect(env.reconciliation.status).not.toBe("failed");
     expect(env.rigor.achievedLevels).toContain("valuation-eligible");
-    expect(env.rigor.achievedLevels).not.toContain("production-ready");
+    expect(env.rigor.achievedLevels).toContain("production-ready");
   });
 
   it("denies valuation-eligible above the critical band, with the accounts still reconciled (Infosys: 32%)", () => {
