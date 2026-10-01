@@ -157,8 +157,10 @@ describe("PVRE Milestone A — industrial (ITC)", () => {
       const v = baseCard.valuation;
       const baseGap = Math.abs(v.V_RE_CV3! - v.V_ReOI_CV03!) / ((Math.abs(v.V_RE_CV3!) + Math.abs(v.V_ReOI_CV03!)) / 2);
       expect(res.disagreement!.disagreementRatio).not.toBeNull();
-      expect(res.disagreement!.disagreementRatio!).toBeGreaterThan(baseGap * 0.75);
-      expect(res.disagreement!.disagreementRatio!).toBeLessThan(baseGap * 1.25);
+      // Within a quarter of the base gap, or a point where the gap is near zero
+      // (the value-consistent kw leaves ITC's at ~0.2%).
+      const tolerance = Math.max(baseGap * 0.25, 0.01);
+      expect(Math.abs(res.disagreement!.disagreementRatio! - baseGap)).toBeLessThan(tolerance);
       expect(res.uncertaintyWidthRatio).not.toBeNull();
     }
   });

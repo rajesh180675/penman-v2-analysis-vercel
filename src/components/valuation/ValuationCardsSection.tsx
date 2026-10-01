@@ -92,7 +92,7 @@ export default function ValuationCardsSection({
         items={V_ReOI == null ? [] : [
           ...(val.EV_ReOI != null ? [{ l: "EV (NOA₀ + PV ReOI + CV)", v: val.EV_ReOI }] : []),
           { l: "Less: NFO₀", v: -val.NFO0 },
-          ...(val.MI0 !== 0 ? [{ l: "Less: minority interest₀", v: -val.MI0 }] : []),
+          ...(val.minorityClaim !== 0 ? [{ l: val.minorityClaimBasis === "residual-income" ? "Less: minority claim₀ (at value)" : "Less: minority interest₀", v: -val.minorityClaim }] : []),
           { l: "PV ReOI", v: val.pvReOI },
         ]} fmt={fmt}
         perShare={V_ReOI == null ? null : toPerShare(V_ReOI, sharesOut)}

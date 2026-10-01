@@ -180,6 +180,27 @@ export function computeValuation(
   // the minority claim (MI). Omitting MI overstates per-common-share value by
   // the minority interest for any firm with non-wholly-owned subsidiaries.
   const MI0 = periods[0]!.bs.MI;
+  // The minority claim at its value, not its book: the minority's residual
+  // income at ke, as the RE side implicitly prices it (CNI is after MII). At
+  // book, a minority earning well below ke (Reliance ~7% on 166k, Grasim on
+  // 60k) was over-subtracted, and ReOI fell 43–72% below RE on one forecast.
+  // Limited liability floors it at zero. Book when the forecast carries no
+  // minority income (historical inputs) or the Gordon spread is undefined.
+  const minorityValue = ((): number | null => {
+    if (!(MI0 > 0) || periods.length < 2) return null;
+    let pv = 0;
+    let lastRi = 0;
+    for (let i = 1; i < periods.length; i++) {
+      const mii = periods[i]!.is.MII;
+      if (mii == null || !Number.isFinite(mii)) return null;
+      lastRi = mii - ke * periods[i - 1]!.bs.MI;
+      pv += lastRi / Math.pow(rhoE, i);
+    }
+    if (!(ke - g > MIN_GORDON_SPREAD)) return null;
+    const cv = (lastRi * (1 + g)) / (ke - g) / discE;
+    return Math.max(0, MI0 + pv + cv);
+  })();
+  const minorityClaim = minorityValue ?? MI0;
   const RNOA_T = periods[periods.length - 1]!.ratios?.RNOA ?? (NOA_T !== 0 ? periods[periods.length - 1]!.is.OI / NOA_T : 0);
 
   // Phase J2: equity-side fail-closed gate.
@@ -332,8 +353,8 @@ export function computeValuation(
     const rePer = equityModelsBlocked || CV_RE_3 == null
       ? null
       : ((CSE0 + pvRE + CV_RE_3 / discE) / sh);
-    const reoiPer = CV_W_3 == null ? null : ((NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - MI0) / sh;
-    const fcffPer = EV_FCFF == null ? null : (EV_FCFF - NFO0 - MI0) / sh;
+    const reoiPer = CV_W_3 == null ? null : ((NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - minorityClaim) / sh;
+    const fcffPer = EV_FCFF == null ? null : (EV_FCFF - NFO0 - minorityClaim) / sh;
     const fcfePer = equityModelsBlocked || V_FCFE == null ? null : V_FCFE / sh;
     const ddmPer = V_DDM == null ? null : V_DDM / sh;
     const aegPer = equityModelsBlocked ? null : V_AEG / sh;
@@ -394,9 +415,9 @@ export function computeValuation(
     // interest (MI0). Keeps V_ReOI_CV03/sh === intrinsic_reoi_per_share and
     // makes the RE-vs-ReOI identity a common-vs-common comparison (V_RE_* is
     // CSE-anchored common equity). EV_ReOI above stays operating-entity value.
-    V_ReOI_CV01: (NOA0 + pvReOI + CV_W_1 / discW) - NFO0 - MI0,
-    V_ReOI_CV02: (NOA0 + pvReOI + CV_W_2 / discW) - NFO0 - MI0,
-    V_ReOI_CV03: CV_W_3 == null ? null : (NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - MI0,
+    V_ReOI_CV01: (NOA0 + pvReOI + CV_W_1 / discW) - NFO0 - minorityClaim,
+    V_ReOI_CV02: (NOA0 + pvReOI + CV_W_2 / discW) - NFO0 - minorityClaim,
+    V_ReOI_CV03: CV_W_3 == null ? null : (NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - minorityClaim,
     CSE0,
     NOA0,
     // The enterprise→equity bridge is taken at the ANCHOR (period 0), the date
@@ -405,6 +426,9 @@ export function computeValuation(
     // anchor-dated EV mixes dates. Consumers bridge with NFO0 + MI0.
     NFO0,
     MI0,
+    /** The minority claim the enterprise→common bridges subtract: its residual-income value, or MI0 at book. */
+    minorityClaim,
+    minorityClaimBasis: minorityValue != null ? "residual-income" as const : "book" as const,
     NFO_latest,
     ke,
     kw,
@@ -434,7 +458,7 @@ export function computeValuation(
       fcfe_series,
       EV_FCFF,
       /** Common-equity value from FCFF: EV_FCFF − NFO0 − MI0 (matches intrinsic_fcff_per_share). */
-      V_FCFF_equity: EV_FCFF == null ? null : EV_FCFF - NFO0 - MI0,
+      V_FCFF_equity: EV_FCFF == null ? null : EV_FCFF - NFO0 - minorityClaim,
       V_FCFE,
       CV_FCFF,
       CV_FCFE,
