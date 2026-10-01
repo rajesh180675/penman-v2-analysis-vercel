@@ -196,7 +196,7 @@ describe("evaluateReconciliationResiduals", () => {
     expect(summary.summary).toContain("no independent residual checks");
   });
 
-  it("adds a valuation-triangulation residual and fails closed when independent paradigms diverge materially", () => {
+  it("adds a valuation-triangulation residual that flags divergence without failing structural reconciliation", () => {
     const summary = evaluateReconciliationResiduals({
       recastData: [mkPeriod("2024-03-31"), mkPeriod("2025-03-31")],
       config: DEFAULT_CONFIG,
@@ -214,7 +214,9 @@ describe("evaluateReconciliationResiduals", () => {
     expect(check?.status).toBe("failed");
     expect(check?.detail).toContain("Accrual RIV");
     expect(check?.detail).toContain("Cash-statement FCFF DCF");
-    expect(summary.status).toBe("failed");
+    // Model disagreement gates the valuation rungs (analysisTraceability), not this verdict.
+    expect(check?.role).toBe("diagnostic");
+    expect(summary.status).not.toBe("failed");
   });
 
   it("skips valuation-triangulation honestly when fewer than two finite methods exist", () => {

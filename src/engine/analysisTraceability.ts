@@ -685,6 +685,27 @@ export function buildAnalysisTraceability(params: {
     }
   }
 
+  // Valuation-triangulation gate.
+  //
+  // The accrual, cash-flow and relative valuations are independent paradigms;
+  // when they disagree beyond the check's critical band the value is not
+  // defensible (not valuation-eligible), beyond its warning band not
+  // production-ready. It gated structural reconciliation until 2026-10, which
+  // reported model disagreement as unreconciled accounts.
+  const triangulationCheck = reconciliation.checks.find((check) => check.key === "valuation-triangulation");
+  if (triangulationCheck != null && triangulationCheck.status !== "confirmed") {
+    const withdraw = (level: AnalysisRigorLevel, detail: string) => {
+      const idx = checkpoints.findIndex((c) => c.level === level);
+      if (idx >= 0 && checkpoints[idx]!.achieved) checkpoints[idx] = { ...checkpoints[idx]!, achieved: false, detail };
+    };
+    if (triangulationCheck.status === "failed") {
+      withdraw("valuation-eligible", `${triangulationCheck.detail} Above the ${(triangulationCheck.criticalThreshold * 100).toFixed(0)}% they must agree within, so the run is not valuation-eligible.`);
+      withdraw("production-ready", "Valuation eligibility blockers remain, so production-ready status is denied.");
+    } else if (triangulationCheck.status === "degraded") {
+      withdraw("production-ready", `${triangulationCheck.detail} Above the ${(triangulationCheck.warningThreshold * 100).toFixed(0)}% guard; production-ready requires the paradigms to agree.`);
+    }
+  }
+
   // Recompute achieved/pending after downgrade.
   const achievedLevelsFinal = checkpoints.filter((c) => c.achieved).map((c) => c.level);
   const pendingLevelsFinal = checkpoints.filter((c) => !c.achieved).map((c) => c.level);

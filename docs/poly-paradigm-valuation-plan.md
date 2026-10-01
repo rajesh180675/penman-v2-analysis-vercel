@@ -63,6 +63,7 @@ The grounding gave the exact, faithful-to-#238 hook:
 4. **Merge it into the `reconciliation` summary** (`reconciliationResiduals.ts:577-585`) so it rides BOTH fail-closed seams:
    - HARD gate: `structuralAchieved` requires `reconciliation.status !== "failed"` (`analysisTraceability.ts:307`) → caps the whole ladder.
    - SOFT downgrade: `reconPenalty = min(30, maxResidualRatio*100)` at 20% weight (`:403-408`) → downgrades production-ready.
+   - **Moved 2026-10-01:** the check is now `diagnostic` in the reconciliation verdict and gates the valuation rungs instead (`analysisTraceability.ts`, beside the RE/ReOI gate): critical → not valuation-eligible, warning → not production-ready. Measured on the library it was the only failure keeping Infosys and UltraTech at the first rung, and in all 7 failing companies the gap was accrual RIV vs the cash DCF — model disagreement, not unreconciled accounts.
 5. **Thresholds:** ~15% warn / 30% crit (clone the `ol-coverage-bridge` classifier band at `reconciliationResiduals.ts:439-454` — value triangulation is noisier than the 1%/5% balance-sheet bridges).
 6. **Honesty rule (critical):** null-skip (return null, like `buildOptionalCheck`) whenever fewer than two methods produced a finite value. Absence of evidence is not divergence — this is the same skip-don't-fail discipline as the kw-consistency check.
 
