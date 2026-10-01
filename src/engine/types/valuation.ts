@@ -50,6 +50,9 @@ export interface ValuationResult {
   /** Net financial obligations and minority interest at the anchor (period 0) —
    *  the enterprise→equity bridge for every anchor-dated value. */
   NFO0: number; MI0: number;
+  /** The minority claim the enterprise→common bridges subtract: its residual-income value, or MI0 at book. */
+  minorityClaim: number;
+  minorityClaimBasis: "residual-income" | "book";
   /** NFO of the LAST period (year T on a forecast); not an equity bridge. */
   NFO_latest: number;
   ke: number; kw: number; g: number;

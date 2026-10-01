@@ -122,6 +122,8 @@ const valuation: ValuationResult = {
   NOA0: 600,
   NFO0: 50,
   MI0: 0,
+  minorityClaim: 0,
+  minorityClaimBasis: "book",
   NFO_latest: 50,
   ke: 0.12,
   kw: 0.1,

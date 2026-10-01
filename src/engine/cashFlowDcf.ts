@@ -81,6 +81,8 @@ export function computeCashFlowDcf(
     window?: number;
     /** The run's operating capital cost, when the valuation has settled one (S-9.4C). */
     kw?: number | null;
+    /** The minority claim the accrual bridge subtracts (its value, not its book), when there is one. */
+    minorityClaim?: number | null;
   },
 ): CashFlowDcfResult | null {
   if (!periods || periods.length < 2) return null;
@@ -137,8 +139,11 @@ export function computeCashFlowDcf(
   const pvTerminal = terminalValue / Math.pow(1 + kw, horizon);
 
   const enterpriseValue = pvExplicit + pvTerminal;
-  // Enterprise → common equity: subtract net debt (NFO) and minority (MI).
-  const equityValue = enterpriseValue - latest.bs.NFO - latest.bs.MI;
+  // Enterprise → common equity: subtract net debt (NFO) and the minority claim
+  // — at the value the accrual bridge uses when it settled one, so the two
+  // lenses differ in their flows, not in how they split the enterprise.
+  const minorityClaim = opts?.minorityClaim != null && Number.isFinite(opts.minorityClaim) ? opts.minorityClaim : latest.bs.MI;
+  const equityValue = enterpriseValue - latest.bs.NFO - minorityClaim;
   const perShare = shares != null && shares > 0 ? equityValue / shares : null;
 
   return {
