@@ -56,6 +56,11 @@ export function CasePage({
         </h1>
         <RunStatus run={run} />
         <AsOfControl route={route} run={run} />
+        {run?.status === "ready" && run.basis === "standalone" && (
+          <p role="note" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+            <strong>Standalone accounts.</strong> The consolidated export covers too few years to value, so this case uses the standalone history.
+          </p>
+        )}
       </header>
 
       <nav aria-label="Case sections">
