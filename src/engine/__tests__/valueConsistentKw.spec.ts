@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeValuation } from "../PenmanNissimEngine";
-import { computeConsistentValuation, solveValueConsistentKw } from "../valueConsistentKw";
+import { computeConsistentValuation, heldAtBaseKw, solveValueConsistentKw } from "../valueConsistentKw";
 import type { LegacyValuationPeriodInput } from "../forecastState/legacyAdapter";
 import { DEFAULT_CONFIG } from "../types";
 
@@ -77,5 +77,15 @@ describe("value-consistent kw", () => {
   it("keeps the structural kw when there is nothing to forecast", () => {
     const result = solveValueConsistentKw(forecast().slice(0, 1), KE, KW_BOOK, G, DEFAULT_CONFIG, KD);
     expect(result.method).toBe("structural");
+  });
+
+  it("values another scenario at the base case's kw, moved by its structural tilt", () => {
+    const periods = forecast();
+    const base = solveValueConsistentKw(periods, KE, KW_BOOK, G, DEFAULT_CONFIG, KD);
+    // A scenario whose structural kw sits 1 point above the base's.
+    const held = heldAtBaseKw(periods, { drivers: { ke: KE, kw: KW_BOOK + 0.01 } }, G, DEFAULT_CONFIG, base);
+    expect(held.kwConsistency.kw).toBeCloseTo(base.kw + 0.01, 12);
+    expect(held.kwConsistency.kwStructural).toBeCloseTo(KW_BOOK + 0.01, 12);
+    expect(held.valuation.kw).toBeCloseTo(base.kw + 0.01, 12);
   });
 });

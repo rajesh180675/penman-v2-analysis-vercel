@@ -543,6 +543,9 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     terminalGrowth: baseCard?.assumptions.g ?? sectorTemplate.normalizedGrowth,
     nearTermGrowth: baseCard?.assumptions.salesGrowthYear1 ?? sectorTemplate.normalizedGrowth,
     horizon,
+    // Discount at the kw the base card's valuation settled on, so the cash and
+    // accrual lenses differ in their flows, not in their capital cost (S-9.4C).
+    kw: baseCard?.assumptions.kw ?? null,
   });
   const valuationTriangulation = buildValuationTriangulationEvidence({
     scenarios,

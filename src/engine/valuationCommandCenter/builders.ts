@@ -1,6 +1,6 @@
 import { RecastPeriod, EngineConfig, ForecastScenario, BusinessModelProfile } from "../types";
 import { resolveShareBasis } from "../shareCountTools";
-import { computeConsistentValuation } from "../valueConsistentKw";
+import { computeConsistentValuation, heldAtBaseKw, type KwConsistency } from "../valueConsistentKw";
 import { buildScenario, buildValuationPeriodsFromForecast, derivePersistenceForecastScenario } from "../forecastingEngine";
 import { ValuationSectorTemplateDefinition } from "../valuationSectorTemplates";
 import { buildSOTPValuation, SOTP_PRESETS, SOTPResult } from "../sotpValuation";
@@ -181,6 +181,8 @@ export function buildScenarioCards(args: {
     key: ValuationScenarioCard["key"],
     scenario: ForecastScenario,
     reinvestmentLift: number,
+    /** The base case's solve: the other scenarios are valued at its kw, so they differ in their forecasts, not their discount rate. */
+    baseKw?: KwConsistency,
   ) => {
     const terminalGrowth = clamp(
       config.g_terminal_override ?? scenario.drivers.g_terminal,
@@ -198,14 +200,17 @@ export function buildScenarioCards(args: {
     // structural kw seeds the solve (see valueConsistentKw.ts). The scenario
     // then carries the solved kw, so its forecast ReOI and anything seeded
     // from this card (PVRE, break-even) agree with the value.
-    const { valuation, kwConsistency } = computeConsistentValuation(
-      buildValuationPeriodsFromForecast(latest, buildScenario(scenarioWithTerminal, latest)),
-      scenarioWithTerminal.drivers.ke,
-      scenarioWithTerminal.drivers.kw,
-      terminalGrowth,
-      shareBasis.valuationConfig,
-      scenarioWithTerminal.drivers.nbc[0],
-    );
+    const forecastPeriods = buildValuationPeriodsFromForecast(latest, buildScenario(scenarioWithTerminal, latest));
+    const { valuation, kwConsistency } = baseKw
+      ? heldAtBaseKw(forecastPeriods, scenarioWithTerminal, terminalGrowth, shareBasis.valuationConfig, baseKw)
+      : computeConsistentValuation(
+        forecastPeriods,
+        scenarioWithTerminal.drivers.ke,
+        scenarioWithTerminal.drivers.kw,
+        terminalGrowth,
+        shareBasis.valuationConfig,
+        scenarioWithTerminal.drivers.nbc[0],
+      );
     const scenarioAtKw = {
       ...scenarioWithTerminal,
       drivers: { ...scenarioWithTerminal.drivers, kw: kwConsistency.kw },
@@ -284,11 +289,17 @@ export function buildScenarioCards(args: {
     }),
   };
 
+  // The base case settles the run's kw; the other scenarios are valued at it
+  // (shifted by any scenario-specific structural tilt). Solving each one on
+  // its own let a bull case's higher value raise its own kw and fall below
+  // the base (M&M, Power Grid).
+  const base = makeScenario("base", derivedScenarios.base, 1);
+  const baseKw = base.kwConsistency;
   const scenarios: ValuationScenarioCard[] = [
-    makeScenario("stress", derivedScenarios.stress, 1.15),
-    makeScenario("base", derivedScenarios.base, 1),
-    makeScenario("bull", derivedScenarios.bull, 0.9),
-    makeScenario("historical-panic", derivedScenarios.historicalPanic, 1.2),
+    makeScenario("stress", derivedScenarios.stress, 1.15, baseKw),
+    base,
+    makeScenario("bull", derivedScenarios.bull, 0.9, baseKw),
+    makeScenario("historical-panic", derivedScenarios.historicalPanic, 1.2, baseKw),
   ];
 
   return { scenarios, derivedScenarios };

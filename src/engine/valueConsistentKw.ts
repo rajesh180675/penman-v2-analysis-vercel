@@ -87,3 +87,26 @@ export function computeConsistentValuation(
   const kwConsistency = solveValueConsistentKw(periods, ke, kwStructural, g, cfg, kd);
   return { valuation: computeValuation(periods, ke, kwConsistency.kw, g, cfg), kwConsistency };
 }
+
+/**
+ * Value a non-base scenario at the base case's kw: its structural kw moved by
+ * the same amount the base case's solve moved the base's. One discount rate
+ * across scenarios keeps them ordered by their forecasts alone.
+ */
+export function heldAtBaseKw(
+  periods: readonly LegacyValuationPeriodInput[],
+  scenario: { readonly drivers: { readonly ke: number; readonly kw: number } },
+  g: number,
+  cfg: EngineConfig,
+  base: KwConsistency,
+): { readonly valuation: ReturnType<typeof computeValuation>; readonly kwConsistency: KwConsistency } {
+  const kw = scenario.drivers.kw + (base.kw - base.kwStructural);
+  const kwConsistency: KwConsistency = {
+    kwStructural: scenario.drivers.kw,
+    kw,
+    kd: base.kd,
+    method: base.method,
+    reason: base.method === "value-consistent" ? "Held at the base case's value-consistent kw." : base.reason,
+  };
+  return { valuation: computeValuation(periods, scenario.drivers.ke, kw, g, cfg), kwConsistency };
+}
