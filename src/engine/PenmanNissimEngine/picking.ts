@@ -199,7 +199,12 @@ export function extractShareCountInput(data: RawPeriodData): ShareCountInputSnap
     return null;
   };
 
-  const shareCapitalPick = firstValid(["Share Capital", "Equity Share Capital"], "BalanceSheet");
+  // The ordinary-equity line first: "Share Capital" can include preference
+  // capital (TCS FY12-13: 295.72 = 195.72 equity + 100 preference, so
+  // capital ÷ face value missed the share count by 34%) and is filed rounded
+  // to the crore (HUL 216 vs 216.39). Where both are filed (83 library
+  // years) the ordinary line equals subscribed shares × face value exactly.
+  const shareCapitalPick = firstValid(["Total Equity Capital(Ordinary)", "Equity Paid up", "Share Capital", "Equity Share Capital"], "BalanceSheet");
   const faceValuePick = firstValid([
     "Face Value of Subscribed Shares Fully Paid up",
     "Face Value of Ordinary Shares A - Subscribed Fully Paid up",
