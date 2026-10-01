@@ -601,6 +601,42 @@ describe("investment P/L the exceptional items already carry — booked once (re
   });
 });
 
+describe("finance income and prior-period items — as the P&L reports them (real recast)", () => {
+  it("caps cash-flow finance income at the Other Income that holds it", () => {
+    // Titan FY13-shaped: 123.24 of interest and dividends received against
+    // 100.89 of Other Income — finance income cannot exceed the line it sits in.
+    const period = computeRecastPeriod(makePeriod("2025-03-31", {
+      "Other Income__ProfitLoss": 100.89,
+      "Interest Received__CashFlow": 123.24,
+    }), DEFAULT_CONFIG);
+    expect(period.is.FinanceIncomeRung).toBe(2);
+    expect(period.is.FinanceIncome).toBeCloseTo(100.89, 9);
+  });
+
+  it("leaves cash-flow finance income below Other Income alone", () => {
+    const period = computeRecastPeriod(makePeriod("2025-03-31", {
+      "Other Income__ProfitLoss": 100,
+      "Interest Received__CashFlow": 60,
+    }), DEFAULT_CONFIG);
+    expect(period.is.FinanceIncome).toBeCloseTo(60, 9);
+  });
+
+  it("books prior-year adjustments as unusual, outside Core OI", () => {
+    // NTPC FY12-shaped: 40 between profit before exceptional items and PBT.
+    const base = computeRecastPeriod(makePeriod("2025-03-31", { "Interest Income__ProfitLoss": 3 }), DEFAULT_CONFIG);
+    const withPya = computeRecastPeriod(makePeriod("2025-03-31", {
+      "Interest Income__ProfitLoss": 3,
+      "Prior Year Adjustments__ProfitLoss": 40,
+      "Profit Before Tax__ProfitLoss": 180,
+      "Tax Expenses__ProfitLoss": 45,
+      "Profit After Tax__ProfitLoss": 135,
+      "Total Comprehensive Income for the Year__ProfitLoss": 135,
+    }), DEFAULT_CONFIG);
+    expect(withPya.cu.ExceptionalOperatingItemsAfterTax).toBeCloseTo(30, 9);
+    expect(withPya.cu.CoreOI).toBeCloseTo(base.cu.CoreOI, 9);
+  });
+});
+
 describe("operating-cost bridge — finance income is not operating income (real recast)", () => {
   // TCS-shaped: Other Income (60) includes a directly reported Interest
   // Income line (45). Core OI excludes it (it sits in NFE), so the bridge must.

@@ -271,7 +271,11 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   // company-years. Negating it booked gains as expenses and lifted Core OI by
   // twice the after-tax gain. The gain sits in Other Income, so it is kept out
   // of the rung-4 proxy (UFE books it once) and out of the bridge below.
-  const exceptionalPretax = pl("IS.ExceptionalPreTax", M.profitLoss.exceptionalItems) + pl("IS.ExtraordinaryPreTax", M.profitLoss.extraordinaryItems);
+  // Prior-period adjustments sit between profit before exceptional items and
+  // PBT (NTPC FY12: 316.06) and recur no more than exceptional items do.
+  const exceptionalPretax = pl("IS.ExceptionalPreTax", M.profitLoss.exceptionalItems)
+    + pl("IS.ExtraordinaryPreTax", M.profitLoss.extraordinaryItems)
+    + pl("IS.PriorPeriodPreTax", M.profitLoss.priorPeriodItems);
   const filedInvestmentPl = valCF(data, M.cashFlow.plSaleInvest);
   // Unless the exceptional items already carry it: UOI then removes it, and
   // booking it in UFE too moved it out of Core OI twice. A loss is there when
@@ -303,6 +307,16 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
       FinanceIncome = Math.max(0, FinanceCost - intNet);
       FinanceIncomeRung = 3;
     }
+  }
+  // Cash-flow-derived finance income can exceed what the P&L reports: the
+  // cash received is not the income booked (Titan FY13: 123.24 received
+  // against 100.89 of Other Income). It is part of Other Income, so it is
+  // capped there, less any investment gain sharing the line; removing more
+  // took income out of operations that the P&L never put in (Titan, DMart
+  // FY24, Airtel FY13). A directly reported interest line (rung 1) is not
+  // capped: the P&L itself states it.
+  if ((FinanceIncomeRung === 2 || FinanceIncomeRung === 3) && OtherIncome > 0) {
+    FinanceIncome = Math.min(FinanceIncome, Math.max(0, OtherIncome - investmentGain));
   }
   if (!FinanceIncome) {
     const faRatio = bs.TA > 0 ? Math.max(0.2, Math.min(0.85, bs.FA / bs.TA)) : 0.2;
