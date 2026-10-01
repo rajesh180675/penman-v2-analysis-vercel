@@ -44,12 +44,33 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   // part. Without the current row, the itemized lines are summed as before.
   const tradePayablesTotal = (line: string) => {
     const currentTotal = bs(`${line}.CurrentTotal`, ["Trade Payables - Current"]);
-    return currentTotal !== 0
-      ? currentTotal + bs(`${line}.NonCurrent`, ["Trade Payables"])
-      : sumBs(line, M.balanceSheet.olComponents.tradePayables);
+    if (currentTotal !== 0) return currentTotal + bs(`${line}.NonCurrent`, ["Trade Payables"]);
+    // The netted layout files one figure under three labels (Paytm FY10:
+    // Trade Payables = Sundry Creditors = Creditors for Others = 20.82).
+    const filedTotal = nettedCurrentLiabilities > 0 ? bs(`${line}.NettedTotal`, ["Trade Payables"]) : 0;
+    return filedTotal !== 0 ? filedTotal : sumBs(line, M.balanceSheet.olComponents.tradePayables);
   };
 
-  const TA = bs("BS.TA", M.balanceSheet.totalAssets);
+  // The pre-2012 Schedule VI layout deducts current liabilities and provisions
+  // from current assets: "Total Assets" is capital employed, with "Net Current
+  // Assets" = Total Current Assets − Total Current Liabilities and no "Total
+  // Equity and Liabilities". Read as filed, OL came out ≈ 0 while the itemized
+  // liabilities were real (Paytm FY10: 0.2 against 56.8). Grossing up by the
+  // netted liabilities adds them to OA and OL alike, so NOA is unchanged.
+  // Paytm FY09–16 and FY19 are the library's only such years (to 0.01).
+  const filedTotalCurrentLiabilities = bs("BS.Netted.TotalCurrentLiabilities", ["Total Current Liabilities"]);
+  const filedNetCurrentAssets = bs("BS.Netted.NetCurrentAssets", ["Net Current Assets"]);
+  const nettedCurrentLiabilities =
+    bs("BS.Netted.TotalEquityAndLiabilities", ["Total Equity and Liabilities"]) === 0
+    && filedTotalCurrentLiabilities > 0
+    && filedNetCurrentAssets !== 0
+    && Math.abs(filedNetCurrentAssets - (bs("BS.Netted.TotalCurrentAssets", ["Total Current Assets"]) - filedTotalCurrentLiabilities)) <= 0.5
+      ? filedTotalCurrentLiabilities
+      : 0;
+  const TA = bs("BS.TA", M.balanceSheet.totalAssets) + nettedCurrentLiabilities;
+  if (nettedCurrentLiabilities > 0) {
+    pushTrace(trace, "BS.TA", { statement: "Derived", key: "Total Assets + netted Total Current Liabilities", value: TA, matchType: "derived" });
+  }
   const totalSE = bs("BS.TotalStockholdersEquity", M.balanceSheet.totalStockholdersEquity);
   const totalEq = bs("BS.TotalEquity", M.balanceSheet.totalEquity);
   const MI = bs("BS.MI", M.balanceSheet.minorityInterest);

@@ -227,6 +227,39 @@ describe("ol-coverage-bridge — reads the labels Capitaline actually uses (real
     expect(check?.status).toBe("confirmed");
   });
 
+  // Paytm FY10-shaped old Schedule VI: the 270 of current liabilities and
+  // provisions are deducted from the 400 of current assets, so "Total Assets"
+  // is 730 and no "Total Equity and Liabilities" is filed. Trade payables
+  // appear under both labels.
+  const netted = {
+    "Total Assets__BalanceSheet": 730,
+    "Total Equity and Liabilities__BalanceSheet": 0,
+    "Total Current Liabilities__BalanceSheet": 270,
+    "Net Current Assets__BalanceSheet": 130,
+    "Trade Payables__BalanceSheet": 150,
+  };
+
+  it("grosses up a netted Schedule VI balance sheet, leaving NOA unchanged", () => {
+    const { cur, check } = olCheck(netted);
+    const gross = olCheck().cur;
+    expect(cur.bs.TA).toBe(1000);
+    expect(cur.bs.OL).toBe(400);
+    expect(cur.bs.NOA).toBe(gross.bs.NOA);
+    expect(cur.bs.OL_TradePayables).toBe(150);
+    expect(check?.status).toBe("confirmed");
+  });
+
+  it("leaves a filed Net Current Assets line alone when it is not the netting", () => {
+    // ITC files the line (FY11: 1,100.83, not 13,872.30 − 8,711.10) beside a
+    // gross TA; even without "Total Equity and Liabilities" it is not netting.
+    const { cur } = olCheck({
+      "Total Equity and Liabilities__BalanceSheet": 0,
+      "Total Current Liabilities__BalanceSheet": 270,
+      "Net Current Assets__BalanceSheet": 55,
+    });
+    expect(cur.bs.TA).toBe(1000);
+  });
+
   it("reads current provisions filed as Short-Term Provisions", () => {
     // TCS FY13-shaped: 4,233.46 of current provisions under the older label.
     const { cur, check } = olCheck({ "Provisions__BalanceSheet": 0, "Short-Term Provisions__BalanceSheet": 40 });
