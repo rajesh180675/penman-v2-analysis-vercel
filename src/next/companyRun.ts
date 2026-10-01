@@ -26,6 +26,8 @@ export type CompanyRunState =
        * and trust envelope) stay what the Case sections were built on.
        */
       readonly debug?: CapitalineParseDebug | null;
+      /** Which accounts the run analysed; standalone only when consolidated history is too short. */
+      readonly basis?: "consolidated" | "standalone";
     }
   | { readonly status: "error"; readonly message: string };
 
@@ -69,6 +71,9 @@ const defaultDependencies: CompanyRunDependencies = {
   now: () => new Date(),
 };
 
+/** Below this many consolidated years, a library company with standalone accounts is analysed on those. */
+const MIN_CONSOLIDATED_YEARS = 3;
+
 export function configForCompany(company: Pick<LibraryCompany, "ticker" | "type">): EngineConfig {
   return { ...DEFAULT_CONFIG, company_type: company.type, ticker: company.ticker };
 }
@@ -97,10 +102,23 @@ export async function loadCompanyRun(
     onStep("parsing");
     const issuerId = company.ticker.toUpperCase();
     const config = configForCompany(company);
-    const [parsed, marketSnapshot] = await Promise.all([
+    const [consolidated, marketSnapshot] = await Promise.all([
       deps.parse(bytes, issuerId),
       asOf ? Promise.resolve(null) : deps.fetchMarketSnapshot(config),
     ]);
+    // A company that has only just begun consolidating (Nestlé India: two
+    // consolidated years, FY24-25, beside a standalone history back to Dec 2011)
+    // cannot be valued on its consolidated accounts — valuation needs two
+    // years with ratio context. Use the standalone history instead, and say so.
+    let parsed = consolidated;
+    let basis: "consolidated" | "standalone" = "consolidated";
+    if (!uploaded && company.hasStandalone === true && consolidated.periods.length < MIN_CONSOLIDATED_YEARS) {
+      const standalone = await deps.parse(await deps.fetchZip(buildLocalLibraryCompanyUrls(company).standalone), issuerId);
+      if (standalone.periods.length > consolidated.periods.length) {
+        parsed = standalone;
+        basis = "standalone";
+      }
+    }
     if (parsed.periods.length === 0) return { status: "error", message: "The company's data parsed to zero periods." };
     const rawData = asOf ? parsed.periods.filter((p) => p.period_end <= asOf) : parsed.periods;
     if (asOf && rawData.length < 2) {
@@ -127,7 +145,7 @@ export async function loadCompanyRun(
         runInspectorEnabled: false,
       },
     };
-    return { status: "ready", result: await deps.run(input, runId), debug: parsed.debug };
+    return { status: "ready", result: await deps.run(input, runId), debug: parsed.debug, basis };
   } catch (error) {
     return { status: "error", message: error instanceof Error ? error.message : String(error) };
   }
