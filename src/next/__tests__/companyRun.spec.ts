@@ -26,13 +26,44 @@ function deps(overrides: Partial<CompanyRunDependencies> = {}) {
 }
 
 describe("loadCompanyRun", () => {
+  // Nestlé India-shaped: consolidated accounts only from FY24, standalone back to Dec 2011.
+  const nestle: LibraryCompany = { ...company, folder: "Nestlé India", ticker: "NESTLEIND", hasStandalone: true };
+  const years = (n: number) => Array.from({ length: n }, (_, i) => ({ ...period, period_end: `${2025 - i}-03-31` }));
+  const byZip = (consolidated: number, standalone: number) => vi.fn(async (bytes: Uint8Array) => ({
+    periods: years(bytes[0] === 2 ? standalone : consolidated),
+    debug: null,
+  }));
+  const fetchByUrl = vi.fn(async (url: string) => new Uint8Array([url.endsWith("/standalone.zip") ? 2 : 1]));
+
+  it("analyses the standalone history when consolidated accounts cover too few years", async () => {
+    const run = vi.fn(async (_input: LegacyAnalysisRunInputV1, _requestId: string) => result);
+    const state = await loadCompanyRun(nestle, undefined, deps({ run, fetchZip: fetchByUrl, parse: byZip(2, 14) }));
+    expect(state.status === "ready" && state.basis).toBe("standalone");
+    expect(fetchByUrl).toHaveBeenCalledWith("/data/companies/Nestl%C3%A9%20India/standalone.zip");
+    expect(run.mock.calls[0]![0].rawData).toHaveLength(14);
+  });
+
+  it("keeps consolidated accounts once they cover enough years", async () => {
+    const fetchZip = vi.fn(async (url: string) => new Uint8Array([url.endsWith("/standalone.zip") ? 2 : 1]));
+    const state = await loadCompanyRun(nestle, undefined, deps({ fetchZip, parse: byZip(3, 14) }));
+    expect(state.status === "ready" && state.basis).toBe("consolidated");
+    expect(fetchZip).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps short consolidated accounts when there is no standalone export", async () => {
+    const run = vi.fn(async (_input: LegacyAnalysisRunInputV1, _requestId: string) => result);
+    const state = await loadCompanyRun({ ...nestle, hasStandalone: false }, undefined, deps({ run, parse: byZip(2, 14) }));
+    expect(state.status === "ready" && state.basis).toBe("consolidated");
+    expect(run.mock.calls[0]![0].rawData).toHaveLength(2);
+  });
+
   it("fetches the bundled zip, parses it and runs the analysis with the company's config and the active packs", async () => {
     const run = vi.fn(async (_input: LegacyAnalysisRunInputV1, _requestId: string) => result);
     const d = deps({ run });
     const steps: string[] = [];
     const state = await loadCompanyRun(company, (s) => steps.push(s), d);
 
-    expect(state).toEqual({ status: "ready", result, debug: null });
+    expect(state).toEqual({ status: "ready", result, debug: null, basis: "consolidated" });
     expect(steps).toEqual(["fetching", "parsing", "analysing"]);
     expect(d.fetchZip).toHaveBeenCalledWith("/data/companies/Mahindra%20&%20Mahindra/Mahindra%20&%20Mahindra.zip");
     expect(d.parse).toHaveBeenCalledWith(expect.any(Uint8Array), "M&M");
@@ -67,7 +98,7 @@ describe("loadCompanyRun", () => {
     const debug = { files: [] } as never;
     const run = vi.fn(async (_input: LegacyAnalysisRunInputV1, _requestId: string) => result);
     const state = await loadCompanyRun(company, undefined, deps({ run, parse: async () => ({ periods: [period], debug }) }));
-    expect(state).toEqual({ status: "ready", result, debug });
+    expect(state).toEqual({ status: "ready", result, debug, basis: "consolidated" });
     // The run's inputs, and so its hash and trust envelope, are unchanged.
     expect(run.mock.calls[0]![0].debugInfo).toBeUndefined();
   });
