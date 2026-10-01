@@ -682,15 +682,17 @@ export function evaluateReconciliationResiduals(params: {
     // components would make the check tautological. There it reports without
     // gating (the #327 precedent for evidence-limited checks). Any itemized
     // component keeps it gating, so a shortfall in an itemized year still
-    // fails closed.
+    // fails closed. The line filed outside both blocks (regulatory-deferral
+    // credits) does not itemize them: counting it made NTPC FY12-15, Power
+    // Grid FY14-15, Tata Steel FY12/15 and Idea FY15 gate on bare totals.
     const olItemized = [
       period.bs.OL_OtherCurrentLiabilities,
       period.bs.OL_ProvisionsCurrent,
       period.bs.OL_ProvisionsLongTerm,
       period.bs.OL_CurrentTaxLiabilities,
       period.bs.OL_NonCurrentTaxLiabilities,
-      period.bs.OL_OtherNonCurrentLiabilities,
-    ].some((value) => value != null && Number.isFinite(value) && value !== 0);
+      period.bs.OL_OtherNonCurrentLiabilities - (debug?.olOutsideSections ?? 0),
+    ].some((value) => value != null && Number.isFinite(value) && Math.abs(value) > 1e-9);
 
     const olCoverageCheck = (() => {
       if (olCoverageResidual == null || olCoverageBasis == null) return null;

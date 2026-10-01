@@ -272,6 +272,28 @@ describe("ol-coverage-bridge — reads the labels Capitaline actually uses (real
     expect(cur.bs.TA).toBe(1000);
   });
 
+  // NTPC FY12-shaped: the export files only totals, trade payables, deferred
+  // tax and the regulatory-deferral line outside both blocks.
+  const bareTotals = {
+    "Other Current Liabilities__BalanceSheet": 0,
+    "Provisions__BalanceSheet": 0,
+    "Long-term Provisions__BalanceSheet": 0,
+    "Current Tax Liabilities - Short-term__BalanceSheet": 0,
+    "Non Current Tax Liabilities - Long-term__BalanceSheet": 0,
+    "Other Non-Current Liabilities__BalanceSheet": 0,
+    "Other Liabilities Excluding Equity, Non-Current and Current Liabilities__BalanceSheet": 40,
+  };
+
+  it("keeps a bare-totals year diagnostic despite the line filed outside both blocks", () => {
+    const { check } = olCheck(bareTotals);
+    expect(check?.role).toBe("diagnostic");
+  });
+
+  it("gates once a block is itemized beside that line", () => {
+    const { check } = olCheck({ ...bareTotals, "Other Non-Current Liabilities__BalanceSheet": 10 });
+    expect(check?.role).not.toBe("diagnostic");
+  });
+
   it("reads current provisions filed as Short-Term Provisions", () => {
     // TCS FY13-shaped: 4,233.46 of current provisions under the older label.
     const { cur, check } = olCheck({ "Provisions__BalanceSheet": 0, "Short-Term Provisions__BalanceSheet": 40 });

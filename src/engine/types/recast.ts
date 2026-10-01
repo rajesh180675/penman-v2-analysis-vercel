@@ -207,6 +207,12 @@ export interface RecastDebug {
   /** Sum of explicit OL components (trade payables, provisions, current/non-current liabilities, taxes). */
   explicitOL: number;
   /**
+   * The liability Capitaline files outside both the current and non-current
+   * blocks (regulatory-deferral credit balances). Inside explicitOL, but not
+   * evidence that those blocks are itemized.
+   */
+  olOutsideSections?: number | undefined;
+  /**
    * Profit for the period on the basis TCI is filed on: PAT plus discontinued
    * operations, extraordinary items and associates, from Capitaline's
    * "Profit Attributable to Shareholders" less "Minority Interest After Net
