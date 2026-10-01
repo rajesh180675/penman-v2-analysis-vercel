@@ -247,12 +247,12 @@ describe("analysis traceability confidence gates", () => {
       },
     });
 
-    expect(traceability.reconciliation.status).toBe("failed");
-    // The share-capital hard tie-out is independently ready, but readiness
-    // must never soften the failed overall reconciliation verdict.
+    // Paradigm disagreement is not an accounting residual: it withholds the
+    // valuation rungs, and leaves structural reconciliation to the accounts.
+    expect(traceability.reconciliation.status).not.toBe("failed");
     expect(traceability.reconciliation.readiness?.hardTieoutReady).toBe(true);
     expect(traceability.reconciliation.checks.some((check) => check.key === "valuation-triangulation")).toBe(true);
-    expect(traceability.rigor.achievedLevels).not.toContain("structurally-reconciled");
+    expect(traceability.rigor.achievedLevels).toContain("structurally-reconciled");
     expect(traceability.rigor.achievedLevels).not.toContain("valuation-eligible");
     expect(traceability.rigor.achievedLevels).not.toContain("production-ready");
   });

@@ -527,7 +527,10 @@ export function buildAnalysisTraceability(params: {
   // production-ready is downgraded to valuation-eligible.
   const parserGap = Math.max(0, 100 - parserFidelity.score);
   const mappingPenalty = Math.min(40, blockingCount * 10 + conceptIdentity.conflictCount);
-  const reconPenalty = Math.min(30, (reconciliation.maxResidualRatio ?? 0) * 100);
+  // The triangulation check is diagnostic in the reconciliation verdict but
+  // still counts here, as it did when it gated structural reconciliation.
+  const triangulationRatio = reconciliation.checks.find((check) => check.key === "valuation-triangulation")?.ratio ?? 0;
+  const reconPenalty = Math.min(30, Math.max(reconciliation.maxResidualRatio ?? 0, triangulationRatio) * 100);
   const sanityPenalty = Math.min(20, economicSanity.failedChecks.length * 5);
   const unusualPenalty = Math.min(30, terminalBlockers.length * 10);
   const overallResidualScore = Math.round(
@@ -683,6 +686,24 @@ export function buildAnalysisTraceability(params: {
     } else if (reReoiGapValue > RE_REOI_GUARD_GAP) {
       withdraw("production-ready", `${gapText}, above the ${RE_REOI_GUARD_GAP * 100}% guard; production-ready requires the two valuations of one forecast to agree.`);
     }
+  }
+
+  // Valuation-triangulation gate.
+  //
+  // The accrual, cash-flow and relative valuations are independent paradigms;
+  // when they disagree beyond the check's critical band the value is not
+  // defensible, so the run is not valuation-eligible. It gated structural
+  // reconciliation until 2026-10, which reported model disagreement as
+  // unreconciled accounts. The warning band still weighs on the residual score
+  // above, as before.
+  const triangulationCheck = reconciliation.checks.find((check) => check.key === "valuation-triangulation");
+  if (triangulationCheck?.status === "failed") {
+    const withdraw = (level: AnalysisRigorLevel, detail: string) => {
+      const idx = checkpoints.findIndex((c) => c.level === level);
+      if (idx >= 0 && checkpoints[idx]!.achieved) checkpoints[idx] = { ...checkpoints[idx]!, achieved: false, detail };
+    };
+    withdraw("valuation-eligible", `${triangulationCheck.detail} Above the ${(triangulationCheck.criticalThreshold * 100).toFixed(0)}% they must agree within, so the run is not valuation-eligible.`);
+    withdraw("production-ready", "Valuation eligibility blockers remain, so production-ready status is denied.");
   }
 
   // Recompute achieved/pending after downgrade.

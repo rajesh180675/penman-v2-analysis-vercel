@@ -36,7 +36,9 @@ export interface ReconciliationResidualCheck {
    * decomposition — the missing lines (netCashChange, opening/closing cash)
    * are not yet read by the recast, so these compare two incomplete slices.
    * They become gating again once the CF mapping contract carries the full
-   * decomposition. See docs/analysis-rigor-ladder.md.
+   * decomposition. See docs/analysis-rigor-ladder.md. The
+   * valuation-triangulation check is diagnostic here too: it gates the
+   * valuation rungs in analysisTraceability instead.
    */
   role?: "gating" | "diagnostic";
   detail: string;

@@ -178,17 +178,17 @@ describe.sequential("auditCompanyRun", () => {
     expect(result.rigor.assumptionProvenanceStatus).toMatch(/^(defensible|mixed|prior-dependent)$/);
   }, 240_000);
 
-  it("does not let hard-tieout readiness skip a blocked lower rigor gate", async () => {
+  it("does not let valuation readiness skip a blocked rigor gate", async () => {
   const result = await runAudit("ASIANPAINT");
 
-  // Hard-tieout readiness cannot downgrade an overall reconciliation failure,
-  // and the monotonic ladder cannot promote structural/economic levels when a
-  // lower gate is blocked for this fixture.
-  expect(result.rigor.currentLevel).toBe("syntactically-valid");
-  expect(result.rigor.reconciliationStatus).toBe("failed");
+  // The accounts reconcile (degraded, not failed), but here the accrual and
+  // cash-DCF paradigms disagree past the critical band, so the ladder stops at
+  // economically-plausible: valuation-eligible is withheld.
+  expect(result.rigor.currentLevel).toBe("economically-plausible");
+  expect(result.rigor.reconciliationStatus).toBe("degraded");
   // The terminal anchor itself is clean — its only flag, an RNOA outlier, no
   // longer disqualifies it — so readiness is at its best while the ladder still
-  // refuses to promote past the failed reconciliation. That is the case this
+  // refuses to promote past the blocked valuation gate. That is the case this
   // test exists for.
   expect(result.valuationEvidence.readinessStatus).toBe("production-ready");
   }, 240_000);

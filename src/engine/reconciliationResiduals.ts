@@ -231,8 +231,12 @@ function buildValuationTriangulationCheck(
   const methodSummary = finiteMethods
     .map((method) => `${method.label}: ₹${method.perShare.toFixed(2)}/share`)
     .join("; ");
+  // Diagnostic here: model disagreement is not an accounting residual, so it
+  // gates the valuation rungs (analysisTraceability), not structural
+  // reconciliation. Infosys (32%) reconciles; its models still disagree.
   return {
     ...built,
+    role: "diagnostic",
     detail: `Independent valuation paradigms diverge by max ₹${maxPairwiseDelta.toFixed(2)}/share (${formatPct(built.ratio)} of median ₹${basis.toFixed(2)}). Worst pair: ${worstLeft.label} vs ${worstRight.label}. Methods: ${methodSummary}.`,
   };
 }
@@ -882,7 +886,7 @@ export function evaluateReconciliationResiduals(params: {
   const maxResidualRatio = gatePool.reduce((max, check) => Math.max(max, check.ratio), 0);
   const worstCheck = [...gatePool].sort((left, right) => right.ratio - left.ratio)[0]!;
   const diagnosticSummary = diagnosticChecks.length > 0
-    ? ` ${diagnosticChecks.length} evidence-limited reconstruction check(s) are diagnostic-only (not gating).`
+    ? ` ${diagnosticChecks.length} check(s) are diagnostic-only here (not gating structural reconciliation).`
     : "";
   const status: ReconciliationResidualStatus = errorCount > 0
     ? "failed"

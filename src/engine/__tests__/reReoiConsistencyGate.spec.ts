@@ -50,7 +50,10 @@ const productionReadyStatus = {
   optionalCount: 0,
 };
 
-function envelope(accrualPair?: { re: number | null; reoi: number | null }) {
+function envelope(
+  accrualPair?: { re: number | null; reoi: number | null },
+  methods: Array<{ key: string; label: string; perShare: number | null }> = [],
+) {
   const rawData = Array.from({ length: 2 }, (_, i) => ({
     company_id: "REREOI",
     period_end: `202${4 + i}-03-31`,
@@ -75,7 +78,9 @@ function envelope(accrualPair?: { re: number | null; reoi: number | null }) {
     analysisStatus: productionReadyStatus,
     // No triangulation methods, so the structural triangulation residual stays
     // out and only the RE/ReOI pair is under test.
-    ...(accrualPair !== undefined ? { valuationTriangulation: { methods: [], accrualPair } } : {}),
+    ...(accrualPair !== undefined || methods.length > 0
+      ? { valuationTriangulation: { methods, ...(accrualPair !== undefined ? { accrualPair } : {}) } }
+      : {}),
   });
 }
 
@@ -114,5 +119,32 @@ describe("RE/ReOI consistency gate", () => {
 
   it("is silent when either value is missing — no pair is not evidence of disagreement", () => {
     expect(envelope({ re: 2080, reoi: null }).rigor.achievedLevels).toContain("production-ready");
+  });
+});
+
+describe("valuation-triangulation gate", () => {
+  const paradigms = (riv: number, dcf: number) => [
+    { key: "accrual-riv", label: "Accrual RIV/ReOI", perShare: riv },
+    { key: "cash-fcff-dcf", label: "Cash-statement FCFF DCF", perShare: dcf },
+  ];
+
+  it("keeps production-ready when the paradigms agree", () => {
+    expect(envelope(undefined, paradigms(100, 105)).rigor.achievedLevels).toContain("production-ready");
+  });
+
+  it("keeps production-ready in the warning band, where only the residual score weighs it (Maruti)", () => {
+    const env = envelope(undefined, paradigms(100, 120)); // 18% of the 110 median
+    expect(env.reconciliation.status).not.toBe("failed");
+    expect(env.rigor.achievedLevels).toContain("valuation-eligible");
+    expect(env.rigor.achievedLevels).toContain("production-ready");
+  });
+
+  it("denies valuation-eligible above the critical band, with the accounts still reconciled (Infosys: 32%)", () => {
+    const env = envelope(undefined, paradigms(858.45, 621.77));
+    expect(env.rigor.achievedLevels).toContain("structurally-reconciled");
+    expect(env.rigor.achievedLevels).toContain("economically-plausible");
+    expect(env.rigor.achievedLevels).not.toContain("valuation-eligible");
+    const checkpoint = env.rigor.checkpoints.find((c) => c.level === "valuation-eligible");
+    expect(checkpoint?.detail).toMatch(/Cash-statement FCFF DCF.*not valuation-eligible/);
   });
 });
