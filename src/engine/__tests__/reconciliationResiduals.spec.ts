@@ -425,6 +425,27 @@ describe("evaluateReconciliationResiduals", () => {
     expect(summary.status).toBe("confirmed");
   });
 
+  it("compares the associates' share filed after tax on the bridge's after-tax side", () => {
+    // 132.5 pre-tax less operating tax 32.5 is 100, but the associates' share
+    // (−30, below PAT, inside Core OI) is outside the cost lines: it only ties with it.
+    const build = (associatesShareAfterTax: number) => {
+      const base = mkPeriod("2025-03-31");
+      const bridge = {
+        ...(base.is.operatingCostBridge ?? {}),
+        materialCost: 600, employeeCost: 100, depreciation: 20, sgaAdvertising: 5, sgaLegalProfessional: 5, sgaRent: 5, sgaFreight: 5, sgaRepairs: 5,
+        sgaPowerFuel: 5, sgaDetailed: 30, sgaResidual: 0, sgaTotal: 30, otherOperatingExpense: 50, otherOperatingIncome: 0,
+        grossProfit: 300, operatingCosts: 200, bridgeCoreOI: 132.5 + 30, bridgeGapToReportedCoreOI: 0, coverageRatio: 0.8,
+        associatesShareAfterTax,
+        driverRatios: { materialCostPct: null, employeeCostPct: null, depreciationPct: null, sgaPct: null, otherOperatingExpensePct: null, otherOperatingIncomePct: null, bridgeCoreSalesPm: null },
+      };
+      const current = mkPeriod("2025-03-31", { is: { ...base.is, operatingCostBridge: bridge as never } });
+      const summary = evaluateReconciliationResiduals({ recastData: [mkPeriod("2024-03-31"), current], config: DEFAULT_CONFIG });
+      return summary.checks.find((c) => c.key === "operating-cost-bridge" && c.periodEnd === "2025-03-31");
+    };
+    expect(build(-30)?.status).toBe("confirmed");
+    expect(build(0)?.status).toBe("failed");
+  });
+
   it("degrades when a high-coverage operating-cost bridge breaches the warning threshold", () => {
     const summary = evaluateReconciliationResiduals({
       recastData: [

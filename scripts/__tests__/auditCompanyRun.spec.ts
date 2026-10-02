@@ -181,11 +181,11 @@ describe.sequential("auditCompanyRun", () => {
   it("does not let valuation readiness skip a blocked rigor gate", async () => {
   const result = await runAudit("ASIANPAINT");
 
-  // The accounts reconcile (degraded, not failed), but here the accrual and
-  // cash-DCF paradigms disagree past the critical band, so the ladder stops at
+  // The accounts reconcile (confirmed), but here the accrual and cash-DCF
+  // paradigms disagree past the critical band, so the ladder stops at
   // economically-plausible: valuation-eligible is withheld.
   expect(result.rigor.currentLevel).toBe("economically-plausible");
-  expect(result.rigor.reconciliationStatus).toBe("degraded");
+  expect(result.rigor.reconciliationStatus).toBe("confirmed");
   // The terminal anchor itself is clean — its only flag, an RNOA outlier, no
   // longer disqualifies it — so readiness is at its best while the ladder still
   // refuses to promote past the blocked valuation gate. That is the case this

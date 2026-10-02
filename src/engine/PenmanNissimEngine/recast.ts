@@ -417,7 +417,18 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   // must too: Maruti FY24's whole gap was it plus the internal-components line.
   const associatesShare = pl("IS.AssociatesShareBeforeTax", M.profitLoss.associatesShareBeforeTax);
   const extraordinaryAfterTax = pl("IS.ExtraordinaryAfterTax", M.profitLoss.extraordinaryAfterTax);
-  const bridgeCoreOI = grossProfit - employeeCost - depreciation - sgaTotal - sectorSpecificOperatingExpense - otherOperatingExpense + otherOperatingIncome + associatesShare;
+  // The associates' share filed after tax, below PAT — distinct from the
+  // pre-tax line inside PBT above. It is in Core OI only where profit comes
+  // from TCI (L&T FY16/17's whole gap: −990.16, −395.27; FY19-26 tie to the
+  // rupee with it). A year with no TCI line builds profit from PAT, which
+  // excludes it, and tied without it (L&T FY12-15).
+  const associatesShareAfterTax = TCI !== 0 ? pl("IS.AssociatesShareAfterTax", M.profitLoss.associatesShareAfterTax) : 0;
+  // An investment loss that is not inside the exceptional items sits in an
+  // operating cost line. Core OI takes it out as financial (UFE), so the
+  // bridge adds it back — as it nets investment gains out of other income.
+  // L&T FY18: the whole residual was this loss, 2,217.72 to the paisa.
+  const investmentLoss = Math.max(0, investmentPl);
+  const bridgeCoreOI = grossProfit - employeeCost - depreciation - sgaTotal - sectorSpecificOperatingExpense - otherOperatingExpense + otherOperatingIncome + associatesShare + investmentLoss;
   const bridgeCoverageDenominator = Math.abs(OI_from_sales) > 1 ? Math.abs(OI_from_sales) : Math.abs(Sales);
   const coverageNumerator = Math.abs(COGS) + Math.abs(employeeCost) + Math.abs(depreciation) + Math.abs(sgaTotal) + Math.abs(sectorSpecificOperatingExpense) + Math.abs(otherOperatingExpense) + Math.abs(otherOperatingIncome);
   // A year with no revenue has nothing to bridge: DMart FY15 files a balance
@@ -459,6 +470,7 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
         otherOperatingIncome,
         associatesShare,
         extraordinaryAfterTax,
+        associatesShareAfterTax,
         grossProfit,
         operatingCosts,
         bridgeCoreOI,

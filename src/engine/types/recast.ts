@@ -100,6 +100,8 @@ export interface OperatingCostBridge {
   associatesShare?: number | undefined;
   /** Filed after tax, inside Core OI: compared on the bridge's after-tax side. */
   extraordinaryAfterTax?: number | undefined;
+  /** The associates' share filed after tax, below PAT: inside Core OI, compared on the after-tax side. */
+  associatesShareAfterTax?: number | undefined;
   grossProfit: number;
   operatingCosts: number;
   bridgeCoreOI: number;
