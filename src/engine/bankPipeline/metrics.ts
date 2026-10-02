@@ -24,6 +24,8 @@ export interface BankPeriodMetrics {
   provisions: number | null;     // Credit cost
   pat: number | null;
   pbt: number | null;
+  /** The filed tax charge, when there is one: lets PBT − tax = PAT be tested exactly. */
+  taxExpense?: number | null | undefined;
   /** Dividend paid (Cr, absolute value). Sourced from CF statement. */
   dividendPaid: number | null;
 
@@ -235,6 +237,7 @@ export function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   const provisions         = pickValue(raw, pl.provisions,          "ProfitLoss");
   const pat                = pickValue(raw, pl.profitAfterTax,      "ProfitLoss");
   const pbt                = pickValue(raw, pl.profitBeforeTax,     "ProfitLoss");
+  const taxExpense         = pickValue(raw, pl.taxExpense,          "ProfitLoss");
 
   // Phase D2 — NBFC operating-expenses fallback. Bajaj/Cholamandalam/Muthoot
   // report separate IndAS line items (Employee Benefits + Other Expenses +
@@ -317,6 +320,7 @@ export function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
     provisions,
     pat,
     pbt,
+    taxExpense,
     dividendPaid,
     nim: null,
     roa: null,

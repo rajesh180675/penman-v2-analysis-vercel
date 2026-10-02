@@ -70,6 +70,9 @@ const NII_CRITICAL_THRESHOLD = 0.05;
 
 const PROFIT_CHAIN_WARNING = 0.40;
 const PROFIT_CHAIN_CRITICAL = 0.70;
+/** PBT − tax = PAT is exact as filed; anything beyond rounding is a mis-read. */
+const PROFIT_CHAIN_IDENTITY_WARNING = 0.01;
+const PROFIT_CHAIN_IDENTITY_CRITICAL = 0.05;
 
 const NBFC_DEBT_MIX_WARNING_OVERAGE = 0.05;
 const NBFC_DEBT_MIX_CRITICAL_OVERAGE = 0.20;
@@ -189,7 +192,7 @@ function buildNiiSignCheck(metric: BankPeriodMetrics): ReconciliationResidualChe
   };
 }
 
-function buildProfitChainCheck(metric: BankPeriodMetrics): ReconciliationResidualCheck | null {
+function buildProfitChainCheck(metric: BankPeriodMetrics, subtype: FinancialInstitutionSubtype): ReconciliationResidualCheck | null {
   const pat = metric.pat;
   const pbt = metric.pbt;
   if (
@@ -200,6 +203,31 @@ function buildProfitChainCheck(metric: BankPeriodMetrics): ReconciliationResidua
     Math.abs(pbt) < 1
   ) {
     return null;
+  }
+  // With the tax charge filed, the chain is an identity, not a band: PBT − tax
+  // = PAT in every bank and NBFC year in the library (112/112). A small PBT
+  // makes the effective rate meaningless (SBI FY17: 944.83 − 1,335.50 =
+  // −390.67 exactly, a real loss, read as a 141% rate and failed). Insurers
+  // are excluded: their PBT and PAT are the shareholders' account, with tax
+  // charged elsewhere, so the identity does not hold for them (HDFC Life, LIC).
+  const tax = metric.taxExpense;
+  if (subtype !== "insurance" && tax != null && Number.isFinite(tax)) {
+    const gap = pbt - tax - pat;
+    const ratio = Math.abs(gap) / Math.max(Math.abs(pbt), 1);
+    const effectiveTax = (pbt - pat) / pbt;
+    return {
+      key: "profit-chain-sanity",
+      label: "PBT − tax = PAT",
+      periodEnd: metric.period_end,
+      residual: gap,
+      ratio,
+      warningThreshold: PROFIT_CHAIN_IDENTITY_WARNING,
+      criticalThreshold: PROFIT_CHAIN_IDENTITY_CRITICAL,
+      status: classify(ratio, PROFIT_CHAIN_IDENTITY_WARNING, PROFIT_CHAIN_IDENTITY_CRITICAL),
+      detail: ratio <= PROFIT_CHAIN_IDENTITY_WARNING
+        ? `PBT ${pbt.toFixed(2)} − tax ${tax.toFixed(2)} = PAT ${pat.toFixed(2)} as filed; the ${formatPct(effectiveTax)} effective rate is the period's, not a parse error.`
+        : `PBT ${pbt.toFixed(2)} − tax ${tax.toFixed(2)} misses PAT ${pat.toFixed(2)} by ${gap.toFixed(2)} (${formatPct(ratio)} of PBT): a label swap or a mis-read profit line.`,
+    };
   }
   // Effective tax rate = (pbt - pat) / pbt. Plausibility band [0%, 60%].
   const effectiveTax = (pbt - pat) / pbt;
@@ -491,7 +519,7 @@ export function evaluateBankReconciliationResiduals(params: {
     }
 
     // Profit chain — universal.
-    const profitCheck = buildProfitChainCheck(metric);
+    const profitCheck = buildProfitChainCheck(metric, subtype);
     if (profitCheck) checks.push(profitCheck);
 
     // CASA subset — banks only.

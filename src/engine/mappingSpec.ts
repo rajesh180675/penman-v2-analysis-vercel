@@ -589,6 +589,7 @@ export const CapitalineMappingSpec = {
       "Profit Before Exceptional Items and Tax",
     ],
     profitAfterTax: ["Profit After Tax", "Net Profit"],
+    taxExpense: ["Tax Expenses"],
     profitAttributableToShareholders: [
       "Profit Attributable to Shareholders",
       "Profit Attributable to Ordinary Shareholders",
