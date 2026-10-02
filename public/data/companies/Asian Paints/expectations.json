@@ -4,7 +4,7 @@
   "profile": "clean-industrial",
   "expectedRigorLevel": "economically-plausible",
   "expectedParserFidelityStatus": "degraded",
-  "expectedReconciliationStatus": "degraded",
+  "expectedReconciliationStatus": "confirmed",
   "expectedEconomicSanityStatus": "blocked",
   "expectedConceptIdentityStatus": "valuation-blocked",
   "keyMetricTolerances": {
@@ -29,7 +29,7 @@
     "max": 3
   },
   "expectedRunsCleanWorkbook": true,
-  "notes": "NFO_to_CSE re-centred on -0.0944 (was -0.110) once current lease liabilities count as FO (#364: the parser used to drop the current row). Valuation triangulation (RIV vs cash DCF, ~35% apart here) gates the valuation rungs, not structural reconciliation (2026-10-01): rigor economically-plausible, reconciliation degraded. Clean Ind-AS profile, decorative paints leader, low leverage. Used as the happy-path baseline for Penman-Nissim industrial valuation.",
+  "notes": "Reconciliation confirmed (was degraded) once the cost bridge carries the associates' share after tax and adds back investment losses (2026-10-02). NFO_to_CSE re-centred on -0.0944 (was -0.110) once current lease liabilities count as FO (#364: the parser used to drop the current row). Valuation triangulation (RIV vs cash DCF, ~35% apart here) gates the valuation rungs, not structural reconciliation (2026-10-01): rigor economically-plausible, reconciliation degraded. Clean Ind-AS profile, decorative paints leader, low leverage. Used as the happy-path baseline for Penman-Nissim industrial valuation.",
   "capturedAt": "2026-07-27T09:39:41Z",
   "targetState": {
     "expectedRigorLevel": "valuation-eligible",
