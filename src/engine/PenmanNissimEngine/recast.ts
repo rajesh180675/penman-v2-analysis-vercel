@@ -289,7 +289,7 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   const exceptionalPretax = pl("IS.ExceptionalPreTax", M.profitLoss.exceptionalItems)
     + pl("IS.ExtraordinaryPreTax", M.profitLoss.extraordinaryItems)
     + pl("IS.PriorPeriodPreTax", M.profitLoss.priorPeriodItems);
-  const filedInvestmentPl = valCF(data, M.cashFlow.plSaleInvest);
+  const filedInvestmentPl = cf("IS.InvestmentPL", M.cashFlow.plSaleInvest);
   // Unless the exceptional items already carry it: UOI then removes it, and
   // booking it in UFE too moved it out of Core OI twice. A loss is there when
   // the exceptional losses can contain it (Asian Paints FY25: the 83.71
