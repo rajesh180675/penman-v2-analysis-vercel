@@ -601,6 +601,40 @@ describe("investment P/L the exceptional items already carry — booked once (re
   });
 });
 
+describe("associates and investment losses on the cost bridge (real recast)", () => {
+  const withTci = { "Total Comprehensive Income for the Year__ProfitLoss": 105 };
+
+  it("carries the associates' share filed after tax when profit comes from TCI", () => {
+    // L&T FY16-shaped: −990.16 below PAT, inside TCI and so inside Core OI.
+    const period = computeRecastPeriod(makePeriod("2025-03-31", { ...withTci, "Share of Profits / Loss of Associated Companies__ProfitLoss": -20 }), DEFAULT_CONFIG);
+    expect(period.is.operatingCostBridge?.associatesShareAfterTax).toBe(-20);
+  });
+
+  it("leaves it out when there is no TCI line: profit then comes from PAT, which excludes it", () => {
+    // L&T FY12-15: no TCI, and the bridge tied without the associates' share.
+    const raw = makePeriod("2025-03-31", { "Share of Profits / Loss of Associated Companies__ProfitLoss": 5 });
+    delete (raw.raw_metric_values as Record<string, number>)["Total Comprehensive Income for the Year__ProfitLoss"];
+    const period = computeRecastPeriod(raw, DEFAULT_CONFIG);
+    expect(period.is.operatingCostBridge?.associatesShareAfterTax).toBe(0);
+  });
+
+  it("adds back an investment loss the cost lines carry, as it nets gains out of other income", () => {
+    // L&T FY18-shaped: a +20 loss in the cash-flow adjustment, outside the
+    // exceptional items. UFE takes it out of Core OI; the bridge must too.
+    const base = computeRecastPeriod(makePeriod("2025-03-31", { "Interest Income__ProfitLoss": 3 }), DEFAULT_CONFIG);
+    const withLoss = computeRecastPeriod(makePeriod("2025-03-31", { "Interest Income__ProfitLoss": 3, "P/L on Sales of Invest__CashFlow": 20 }), DEFAULT_CONFIG);
+    expect(withLoss.cu.UFE).toBeGreaterThan(0);
+    expect(withLoss.is.operatingCostBridge!.bridgeCoreOI - base.is.operatingCostBridge!.bridgeCoreOI).toBeCloseTo(20, 9);
+  });
+
+  it("does not add back a loss the exceptional items already carry", () => {
+    // Asian Paints FY25: the loss is inside the exceptional items, which UOI removes.
+    const base = computeRecastPeriod(makePeriod("2025-03-31", { "Interest Income__ProfitLoss": 3, "Exceptional Items Before Tax__ProfitLoss": -50 }), DEFAULT_CONFIG);
+    const withLoss = computeRecastPeriod(makePeriod("2025-03-31", { "Interest Income__ProfitLoss": 3, "Exceptional Items Before Tax__ProfitLoss": -50, "P/L on Sales of Invest__CashFlow": 20 }), DEFAULT_CONFIG);
+    expect(withLoss.is.operatingCostBridge!.bridgeCoreOI).toBeCloseTo(base.is.operatingCostBridge!.bridgeCoreOI, 9);
+  });
+});
+
 describe("Capitaline's older standard P&L layout (real recast)", () => {
   // Paytm FY09 as filed: no Ind AS profit, tax or comprehensive-income line.
   const standardYear = (extra: Record<string, number> = {}): RawPeriodData => ({

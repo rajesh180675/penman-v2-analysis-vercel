@@ -578,10 +578,12 @@ export function evaluateReconciliationResiduals(params: {
     // was compared against the after-tax CoreOI, breaking the check on 299
     // of 306 corpus periods (median 28%, all false positives).
     const taxRate = period.is.taxRate;
-    // Extraordinary items filed after tax sit inside Core OI but outside the
-    // cost lines; they join after the tax adjustment (NTPC FY25: the gap was
-    // the 3,701.92 regulatory-deferral movement to the rupee).
-    const extraordinaryAfterTax = operatingCostBridge?.extraordinaryAfterTax ?? 0;
+    // Items filed after tax sit inside Core OI but outside the cost lines; they
+    // join after the tax adjustment: extraordinary items (NTPC FY25: the
+    // 3,701.92 regulatory-deferral movement to the rupee) and the associates'
+    // share filed below PAT (L&T FY16: −990.16).
+    const extraordinaryAfterTax = (operatingCostBridge?.extraordinaryAfterTax ?? 0)
+      + (operatingCostBridge?.associatesShareAfterTax ?? 0);
     // Tax the bridge the way Core OI is taxed: the filed tax charge, plus the
     // shield the recast gives net financial items (finance cost less income,
     // investment P/L via UFE) and less the tax it strips with exceptional

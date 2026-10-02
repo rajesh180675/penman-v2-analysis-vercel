@@ -262,6 +262,8 @@ export const CapitalineMappingSpec = {
     // extraordinary line feeds UOI) — NTPC and Power Grid's yearly
     // regulatory-deferral movement.
     extraordinaryAfterTax: ["Extraordinary Items After Tax"],
+    // Filed below PAT, after tax (L&T FY16: −990.16), so inside TCI and Core OI.
+    associatesShareAfterTax: ["Share of Profits / Loss of Associated Companies"],
     totalExpenses: ["Total Expenses"],
     employeeExpense: ["Employee Benefits / Salaries & other Staff Cost", "Employee Benefit Expenses", "Employee Benefits Expense", "Employee Cost", "Salaries and Incentives"],
     otherExpenses: ["Other Expenses", "Other Operating Expenses", "Operating and Other Expenses"],
