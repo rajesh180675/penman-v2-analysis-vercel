@@ -491,6 +491,10 @@ export const CapitalineMappingSpec = {
       "Savings Account Deposits",
     ],
     borrowings: ["Borrowings", "Total Borrowings"],
+    // The components behind a total the export files as an explicit 0
+    // (Cholamandalam FY19-25, Shriram Finance FY18-25).
+    longTermBorrowings: ["Long Term Borrowings"],
+    shortTermBorrowings: ["Short Term Borrowings"],
     nonConvertibleDebentures: ["Non Convertible Debentures"],
     termLoansFromBanks: ["Term Loans - Banks"],
     termLoansFromInstitutions: ["Term Loans - Institutions"],

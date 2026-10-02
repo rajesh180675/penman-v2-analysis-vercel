@@ -265,3 +265,43 @@ describe("NBFC pipeline — Phase K", () => {
     expect(result.nonConvertibleDebentures).toBe(125000);
   });
 });
+
+describe("NBFC borrowings — a filed total of 0 beside real components", () => {
+  // Cholamandalam FY19 as filed: "Borrowings" is an explicit 0 next to
+  // 40,214.82 of long-term and 10,351.92 of short-term borrowings.
+  const year = (lines: Record<string, number>) => extractBankMetrics({
+    company_id: "CHOLAFIN",
+    period_end: "2019-03-31",
+    raw_metric_values: { "Total Assets__BalanceSheet": 57490.12, "Total Equity__BalanceSheet": 6208.71, ...lines },
+  });
+
+  it("reads the long- and short-term components when the filed total is exactly 0", () => {
+    const m = year({
+      "Borrowings__BalanceSheet": 0,
+      "Long Term Borrowings__BalanceSheet": 40214.82,
+      "Short Term Borrowings__BalanceSheet": 10351.92,
+    });
+    expect(m.borrowings).toBeCloseTo(50566.74, 6);
+  });
+
+  it("keeps a filed non-zero total over its components", () => {
+    const m = year({
+      "Borrowings__BalanceSheet": 50000,
+      "Long Term Borrowings__BalanceSheet": 40214.82,
+      "Short Term Borrowings__BalanceSheet": 10351.92,
+    });
+    expect(m.borrowings).toBe(50000);
+  });
+
+  it("keeps a real zero when there are no components", () => {
+    expect(year({ "Borrowings__BalanceSheet": 0 }).borrowings).toBe(0);
+  });
+
+  it("leaves an absent total absent, so the NBFC fallback still applies", () => {
+    const m = year({
+      "Long Term Borrowings__BalanceSheet": 40214.82,
+      "Short Term Borrowings__BalanceSheet": 10351.92,
+    });
+    expect(m.borrowings).toBeNull();
+  });
+});

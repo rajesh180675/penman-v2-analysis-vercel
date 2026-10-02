@@ -126,11 +126,26 @@ async function main(): Promise<void> {
   }
   if (open.length > MAX_CHECKS_SHOWN) console.log(`   ... and ${open.length - MAX_CHECKS_SHOWN} more`);
 
-  const latest = recast.at(-1);
-  const flags = (latest?.spec_flags ?? []).filter((f) => f.affects_terminal);
-  const blocked = env.unusualItemManifest?.terminalEligibilityBlocked;
-  console.log(`\nTerminal year ${latest?.period_end ?? "?"}: ${blocked || flags.length ? "BLOCKED" : "clean"}${flags.length ? ` - ${flags.map((f) => f.label).join(", ")}` : ""}${blocked && !flags.length ? " - by unusual items" : ""}`);
+  if (recast.length > 0) {
+    const latest = recast.at(-1);
+    const flags = (latest?.spec_flags ?? []).filter((f) => f.affects_terminal);
+    const blocked = env.unusualItemManifest?.terminalEligibilityBlocked;
+    console.log(`
+Terminal year ${latest?.period_end ?? "?"}: ${blocked || flags.length ? "BLOCKED" : "clean"}${flags.length ? ` - ${flags.map((f) => f.label).join(", ")}` : ""}${blocked && !flags.length ? " - by unusual items" : ""}`);
+  }
 
+  // Banks, NBFCs and insurers are valued by the financial-institution pipeline,
+  // not the industrial command center, which refuses their family by design.
+  const bank = m.pipelineResult?.bankResult;
+  if (bank) {
+    const card = (bank.valuation?.scenarios?.cards ?? []).find((c) => c.key === "base");
+    const finite = (v: number | null | undefined): v is number => typeof v === "number" && Number.isFinite(v);
+    const shown = finite(card?.intrinsicPerShare)
+      ? `base INR ${Math.round(card.intrinsicPerShare)}/share`
+      : finite(card?.intrinsicValue) ? `base equity value INR ${Math.round(card.intrinsicValue)} Cr (no per-share figure)` : "none";
+    console.log(`Financial-institution valuation (${bank.subtype}): ${shown}`);
+    return;
+  }
   const base = m.commandCenter?.scenarios.find((s) => s.key === "base");
   if (base) {
     const kc = base.kwConsistency;
