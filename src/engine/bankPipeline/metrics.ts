@@ -183,7 +183,20 @@ export function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   const advances           = pickValue(raw, bs.advances,            "BalanceSheet");
   const deposits           = pickValue(raw, bs.deposits,            "BalanceSheet");
   const investments        = pickValue(raw, bs.investments,         "BalanceSheet");
-  const borrowings         = pickValue(raw, bs.borrowings,          "BalanceSheet");
+  // A filed total of exactly 0 beside non-zero long- and short-term
+  // borrowings is an export artifact, not zero borrowings: Capitaline's NBFC
+  // exports carry an explicit "Borrowings = 0" next to the real lines
+  // (Cholamandalam FY19-25, Shriram Finance FY18-25). Read as filed it zeroed
+  // the funding side, defeated the NBFC fallback below, and failed
+  // bank-liability-coverage at 80-89%. An absent total stays absent.
+  const borrowingsFiled    = pickValue(raw, bs.borrowings,          "BalanceSheet");
+  const borrowingComponents = sumLenient(
+    pickValue(raw, bs.longTermBorrowings, "BalanceSheet"),
+    pickValue(raw, bs.shortTermBorrowings, "BalanceSheet"),
+  );
+  const borrowings = borrowingsFiled === 0 && borrowingComponents != null && borrowingComponents > 0
+    ? borrowingComponents
+    : borrowingsFiled;
   const cashAndBalanceWithRBI = pickValue(raw, bs.cashAndBalanceWithRBI, "BalanceSheet");
 
   // CASA sub-components — demand (current) + savings deposits.
