@@ -432,6 +432,16 @@ Reliance Industries/
 
 The exact filenames matter — see [Section 8](#8-capitaline-file-naming--strict-rules).
 
+Two scripts take the manual work out of this step. The downloader runs in your
+own logged-in Capitaline browser session; check that your Capitaline
+subscription allows automated exports before using it at scale:
+
+- `scripts/capitaline-download-all.js` — paste into the browser console on a
+  company's Balance Sheet page; it downloads the consolidated, standalone and
+  segment files for that company.
+- `node scripts/organize-capitaline-downloads.cjs "Reliance Industries"` — moves
+  those downloads from your Downloads folder into the company folder above.
+
 ### Step 3: Register the company in `BASELINE_METADATA`
 
 Edit `sync-companies.cjs` and add an entry. The **key must match the
@@ -488,6 +498,36 @@ Verify:
 ```bash
 npx tsx scripts/validate-registry.ts      # exit 0 = OK
 ```
+
+### Step 5a: See how it lands
+
+```bash
+npm run diagnose -- RELIANCE              # ticker or folder name
+```
+
+Runs the company through the same loader the app uses and prints the rung it
+reached, why the next one is withheld, every reconciliation check that did not
+confirm, the terminal-year flags and the base case. It writes nothing and
+fetches no price.
+
+For each failing check it lists the raw Capitaline lines whose size equals the
+residual, as filed or after tax. Nearly every failure found in the library was
+exactly one such line:
+
+- **"was not traced as read"** — the line is unmapped, or read without a trace.
+  Add its label to `src/engine/mappingSpec.ts` (L&T's associates' share filed
+  below PAT, NTPC's prior-year adjustments, Power Grid's regulatory-deferral
+  liabilities, TCS's "Short-Term Provisions").
+- **"was read"** — the recast uses it, so look at its sign, its scale or a
+  double count (L&T FY18's investment loss: read as a financial item, still
+  deducted in the cost bridge).
+- **No line matches** — the gap is a combination of lines; fix the largest
+  match first and run it again.
+
+After a mapping change, re-run the diagnosis, then
+`npx tsx scripts/refresh-expectations.ts --folder="Reliance Industries"` to
+capture the audit baseline and `npm run test:audit` to check the rest of the
+library did not move.
 
 ### Step 6: Upload to Vercel Blob (production-only)
 

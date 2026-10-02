@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Test all: `npm test`
 - Test single file: `npm test -- <path-to-test>` (e.g., `npm test -- src/lib/__tests__/companyRegistryStore.spec.ts`)
 - Golden tests only: `npm run test:golden`
+- Why a library company lands where it does: `npm run diagnose -- <ticker>` (rung, failing checks with the raw lines behind each residual, terminal flags)
 - Full Validation: `npm run validate` (typecheck, test, build)
 - Release Validation: `npm run validate:release` (typecheck, golden tests, all tests, build)
 
