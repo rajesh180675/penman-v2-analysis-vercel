@@ -1,4 +1,5 @@
 import { CURRENT_MODEL_REGISTRY } from "../modelCatalog/definitions";
+import type { FinancialInstitutionSubtype } from "../analysisFamily";
 import type { BankValuationBundle, BankValuationModelResult } from "./types";
 
 /**
@@ -9,7 +10,9 @@ import type { BankValuationBundle, BankValuationModelResult } from "./types";
  * bank's justified P/B, equity residual income and DDM are one group (one
  * algebra on book, ROE, ke and g), so a bank has a single lens however many of
  * them compute. An insurer's embedded value and an NBFC's P/AUM are separate
- * groups.
+ * groups. Only models the catalog applies to the subtype count: an insurer's
+ * book models are sanity brackets beside its embedded value (computeBankValuation
+ * values it on embedded value alone), not a second lens.
  */
 export interface FinancialLensGroup {
   readonly group: string;
@@ -46,13 +49,20 @@ function median(values: readonly number[]): number {
   return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
 }
 
-export function summarizeFinancialValuationEvidence(bundle: BankValuationBundle | null | undefined): FinancialValuationEvidence {
+export function summarizeFinancialValuationEvidence(
+  bundle: BankValuationBundle | null | undefined,
+  subtype?: FinancialInstitutionSubtype | null | undefined,
+): FinancialValuationEvidence {
+  // A generic financial runs the bank models.
+  const family = subtype === "generic-financial" ? "bank" : subtype;
   const byGroup = new Map<string, Array<{ label: string; value: number }>>();
   for (const [field, modelId, label] of BUNDLE_MODELS) {
     const model = bundle?.[field] as BankValuationModelResult | undefined;
     const value = model?.status === "computed" ? model.intrinsicValue : null;
     if (value == null || !Number.isFinite(value) || value <= 0) continue;
-    const group = CURRENT_MODEL_REGISTRY.require(modelId).independenceGroup;
+    const definition = CURRENT_MODEL_REGISTRY.require(modelId);
+    if (family && !(definition.families as readonly string[]).includes(family)) continue;
+    const group = definition.independenceGroup;
     byGroup.set(group, [...(byGroup.get(group) ?? []), { label, value }]);
   }
   const groups = [...byGroup.entries()].map(([group, models]) => ({

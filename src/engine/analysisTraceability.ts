@@ -429,7 +429,7 @@ export function buildAnalysisTraceability(params: {
   // Undefined means the caller did not supply the valuation, which is not
   // evidence that none computed; only a supplied bundle (or null) is described.
   const financialValuationEvidence = financialValuationCapsAtPlausible && params.bankValuation !== undefined
-    ? describeFinancialValuationEvidence(summarizeFinancialValuationEvidence(params.bankValuation))
+    ? describeFinancialValuationEvidence(summarizeFinancialValuationEvidence(params.bankValuation, bankSubtype))
     : "";
   if (unusualItemManifest.classifications.length > 0) {
     trace("config", "unusualItemManifest:built", {

@@ -1052,7 +1052,7 @@ export function createLegacyAnalysisRunExecutor(
         // what the financial-institution valuation rests on.
         const bankValuation = pipelineResult?.bankResult?.valuation;
         const evidence = bankValuation !== undefined
-          ? ` ${describeFinancialValuationEvidence(summarizeFinancialValuationEvidence(bankValuation))}`
+          ? ` ${describeFinancialValuationEvidence(summarizeFinancialValuationEvidence(bankValuation, pipelineResult?.bankResult?.subtype))}`
           : "";
         terminal = {
           kind: "blocked",

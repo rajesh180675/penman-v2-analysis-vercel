@@ -37,12 +37,26 @@ describe("summarizeFinancialValuationEvidence", () => {
     expect(describeFinancialValuationEvidence(evidence)).toMatch(/^One independent lens, book residual income .*one algebra/);
   });
 
-  it("separates an insurer's embedded value from its book models and measures the gap", () => {
-    const evidence = summarizeFinancialValuationEvidence(insurer);
-    expect(evidence.groups.map((g) => g.label)).toEqual(["book residual income", "embedded value"]);
-    // Book lens = median(12,421, 16,000) = 14,210.5; gap to 80,000 over the median of the two lenses.
-    expect(evidence.maxGapRatio).toBeCloseTo((80_000 - 14_210.5) / ((80_000 + 14_210.5) / 2), 9);
-    expect(describeFinancialValuationEvidence(evidence)).toMatch(/^2 independent lenses: book residual income ₹14,211 Cr vs embedded value ₹80,000 Cr, 140% apart\.$/);
+  it("counts an insurer's embedded value as its one lens: its book models are sanity brackets", () => {
+    // HDFC Life FY25: book models ₹13-16k Cr beside embedded value + VNB ₹1.03 L Cr.
+    // The catalog applies the book models to banks and NBFCs only.
+    const evidence = summarizeFinancialValuationEvidence(insurer, "insurance");
+    expect(evidence.groups.map((g) => g.label)).toEqual(["embedded value"]);
+    expect(describeFinancialValuationEvidence(evidence)).toBe("One independent lens, embedded value (embedded value + VNB ₹80,000 Cr), so nothing independent cross-checks it.");
+  });
+
+  it("separates an NBFC's P/AUM from its book models and measures the gap", () => {
+    // Muthoot FY25 with its AUM sidecar: book lens ₹38,406 Cr, P/AUM ₹48,892 Cr.
+    const nbfc = { justifiedPB: computed(52_674), equityResidualIncome: computed(34_109), sustainableDDM: computed(51_399), roaLeverageRI: computed(35_990), pAum: computed(48_892) } as unknown as BankValuationBundle;
+    const evidence = summarizeFinancialValuationEvidence(nbfc, "nbfc");
+    expect(evidence.groups.map((g) => g.label)).toEqual(["book residual income", "asset multiple"]);
+    // Book lens = median(52,674, 34,109, 51,399, 35,990) = 43,694.5.
+    expect(evidence.maxGapRatio).toBeCloseTo((48_892 - 43_694.5) / ((48_892 + 43_694.5) / 2), 9);
+    expect(describeFinancialValuationEvidence(evidence)).toMatch(/^2 independent lenses: book residual income ₹43,695 Cr vs asset multiple ₹48,892 Cr, 11% apart\.$/);
+  });
+
+  it("keeps a bank's book models for a generic financial", () => {
+    expect(summarizeFinancialValuationEvidence(bank, "generic-financial").groups.map((g) => g.group)).toEqual(["fi-book-residual-income"]);
   });
 
   it("says when nothing computed, and leaves skipped models out", () => {
