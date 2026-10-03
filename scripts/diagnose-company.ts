@@ -80,7 +80,11 @@ async function main(): Promise<void> {
       if (c.type !== "bank" && c.type !== "nbfc" && c.type !== "insurance") return null;
       const file = join(COMPANIES_DIR, c.folder, "quality_indicators.json");
       return fetchBankQualityIndicators(c.folder, async () =>
-        existsSync(file) ? new Response(readFileSync(file)) : new Response(null, { status: 404 }));
+        // The loader rejects a non-JSON content type (Vite's SPA fallback serves
+        // HTML for a missing file), so a disk read must declare it.
+        existsSync(file)
+          ? new Response(readFileSync(file), { headers: { "content-type": "application/json" } })
+          : new Response(null, { status: 404 }));
     },
   };
 
