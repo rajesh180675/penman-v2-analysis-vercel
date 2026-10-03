@@ -230,6 +230,7 @@ export function useAuditAnalysis(inputs: AuditAnalysisInputs) {
       runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
       bankMetrics: bankResult?.bankMetrics ?? null,
       bankSubtype: bankResult?.subtype ?? null,
+      bankValuation: bankResult?.valuation ?? null,
       valuationTriangulation,
       assumptionProvenance,
       earningsQuality,

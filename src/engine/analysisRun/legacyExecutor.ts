@@ -9,6 +9,7 @@ import { auditMappingCoverage, evaluateQualityGate, type MappingAuditReport, typ
 import type { LiveMarketDataSnapshot } from "../marketData";
 import type { SourceParserDiagnostics } from "../parserDiagnostics";
 import { processCompanyDataFull, type PipelineResult } from "../pipeline";
+import { describeFinancialValuationEvidence, summarizeFinancialValuationEvidence } from "../bankValuation/evidence";
 import { getAnalysisPolicyVersions } from "../policyVersions";
 import type { SegmentData } from "../segmentParser";
 import type { AnalysisTraceabilityEnvelope, EngineConfig, RawPeriodData, RecastPeriod } from "../types";
@@ -1046,11 +1047,18 @@ export function createLegacyAnalysisRunExecutor(
       }
 
       if (!terminal && pipelineResult?.analysisFamily !== "industrial") {
+        // This message replaces the envelope's own valuation-rung detail (see
+        // applyTerminalOutcomeToEnvelope), so it carries the same statement of
+        // what the financial-institution valuation rests on.
+        const bankValuation = pipelineResult?.bankResult?.valuation;
+        const evidence = bankValuation !== undefined
+          ? ` ${describeFinancialValuationEvidence(summarizeFinancialValuationEvidence(bankValuation))}`
+          : "";
         terminal = {
           kind: "blocked",
           stage: "model-execution",
           code: "LEGACY_COMMAND_CENTER_UNSUPPORTED_FAMILY",
-          message: "The legacy valuation command center requires an industrial recast; financial-institution output remains available as diagnostic family analysis only.",
+          message: `The legacy valuation command center requires an industrial recast; financial-institution output remains available as diagnostic family analysis only.${evidence}`,
         };
         diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message: terminal.message });
       }
@@ -1335,6 +1343,7 @@ export function createLegacyAnalysisRunExecutor(
           runInspectorEnabled: input.metadata.runInspectorEnabled ?? false,
           bankMetrics: pipelineResult?.bankResult?.bankMetrics ?? null,
           bankSubtype: pipelineResult?.bankResult?.subtype ?? null,
+          bankValuation: pipelineResult?.bankResult?.valuation ?? null,
           valuationTriangulation: commandCenter?.valuationTriangulation ?? null,
           // Null when no valuation ran: the ladder must not read "no tiers
           // reported" as evidence that the inputs were sourced.

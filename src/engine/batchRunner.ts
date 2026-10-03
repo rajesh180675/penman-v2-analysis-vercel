@@ -145,6 +145,7 @@ function buildTraceability(
     debugInfo: debug,
     bankMetrics: bankResult?.bankMetrics ?? null,
     bankSubtype: bankResult?.subtype ?? null,
+    bankValuation: bankResult?.valuation ?? null,
   });
 }
 

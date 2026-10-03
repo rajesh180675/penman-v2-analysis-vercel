@@ -97,7 +97,7 @@ async function main(): Promise<void> {
   console.log(`\nRung: ${env.rigor.currentLevel}`);
   const held = env.rigor.checkpoints.find((c) => !c.achieved);
   console.log("   " + env.rigor.checkpoints.map((c) => `${c.achieved ? "[x]" : "[ ]"} ${c.level}`).join("  "));
-  if (held) console.log(`   held at ${held.level}: ${clip(held.detail, 360)}`);
+  if (held) console.log(`   held at ${held.level}: ${clip(held.detail, 600)}`);
 
   const gating = env.reconciliation.checks.filter((c) => c.role !== "diagnostic");
   const open = gating.filter((c) => c.status !== "confirmed").sort((a, b) => b.ratio - a.ratio);

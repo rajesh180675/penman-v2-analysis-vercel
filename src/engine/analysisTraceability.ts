@@ -15,6 +15,8 @@ import { detectDistress } from "./distressDetector";
 import { summarizeConceptIdentity } from "./conceptOntology";
 import { detectCorporateActions } from "./corporateActions";
 import { evaluateEconomicSanity, evaluateFinancialEconomicSanity } from "./economicSanityGates";
+import { describeFinancialValuationEvidence, summarizeFinancialValuationEvidence } from "./bankValuation/evidence";
+import type { BankValuationBundle } from "./bankValuation/types";
 import { summarizeUnusualItemManifest, terminalBlockingClassifications, terminalPeriodOf } from "./unusualItemPolicy";
 import { RE_REOI_BLOCK_GAP, RE_REOI_GUARD_GAP, reReoiGap } from "./reReoiConsistency";
 import { buildLineageMap, buildLineageRef } from "./lineageBuilder";
@@ -243,6 +245,12 @@ export function buildAnalysisTraceability(params: {
   bankMetrics?: BankPeriodMetrics[] | null | undefined;
   bankSubtype?: FinancialInstitutionSubtype | null | undefined;
   /**
+   * The financial-institution valuation, read only to say what the family's
+   * valuation cap rests on: which independent lenses computed and how far
+   * apart they are. It does not lift the cap.
+   */
+  bankValuation?: BankValuationBundle | null | undefined;
+  /**
    * Poly-paradigm Phase 1.2 — independent valuation methods to reconcile
    * (accrual RIV/ReOI, cash-statement FCFF DCF, relative EV/EBITDA). When
    * supplied for industrial runs, material disagreement becomes a first-class
@@ -418,6 +426,11 @@ export function buildAnalysisTraceability(params: {
   // filed read as production-ready. Capped at economically-plausible, as for
   // an unmodelled sector, until that evidence is wired.
   const financialValuationCapsAtPlausible = hasBankMetrics && bankSubtype != null;
+  // Undefined means the caller did not supply the valuation, which is not
+  // evidence that none computed; only a supplied bundle (or null) is described.
+  const financialValuationEvidence = financialValuationCapsAtPlausible && params.bankValuation !== undefined
+    ? describeFinancialValuationEvidence(summarizeFinancialValuationEvidence(params.bankValuation))
+    : "";
   if (unusualItemManifest.classifications.length > 0) {
     trace("config", "unusualItemManifest:built", {
       companyId: params.companyId ?? null,
@@ -497,7 +510,7 @@ export function buildAnalysisTraceability(params: {
       detail: sectorUnmodelledCapsAtPlausible
         ? `${sectorCapLabel} sector detected — ${sectorCapReason}, so the industrial intrinsic value is produced but not blessed. The run is capped at economically-plausible; ratios are sector-correct.`
         : financialValuationCapsAtPlausible
-        ? "Financial institution — the bank metrics reconcile, but the financial-institution valuation has no readiness evidence yet (no evidence-weighted synthesis, no cost-of-capital provenance), so its value is produced but not blessed. The run is capped at economically-plausible."
+        ? `Financial institution — the bank metrics reconcile, but the valuation is produced, not blessed: the app runs financial-institution valuations as diagnostics only, and valuation-eligible needs at least two independent lenses that agree.${financialValuationEvidence ? ` ${financialValuationEvidence}` : ""} The run is capped at economically-plausible.`
         : screeningOnly
         ? "Single-period upload — valuation eligibility requires ≥2 periods for time-series anchoring."
         : distressBlocksValuation

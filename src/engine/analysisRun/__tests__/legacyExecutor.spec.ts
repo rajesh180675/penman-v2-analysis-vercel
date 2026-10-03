@@ -653,3 +653,48 @@ describe("legacy-backed AnalysisRun executor", () => {
       .toContain("UNIFIED_ANALYSIS_WINDOW_BLOCKED");
   });
 });
+
+describe("financial-institution valuation inputs", () => {
+  const pack = {
+    asOf: "2026-07-01",
+    riskFreeRate: { value: 0.0685, asOf: "2026-07-01", source: "RBI 10Y G-Sec close" },
+    equityRiskPremium: { value: 0.0708, asOf: "2026-01-05", source: "Damodaran India ERP" },
+    longRunNominalGrowth: null,
+  };
+
+  it("forwards the run's packs to the pipeline against its own asOf", async () => {
+    // The pipeline resolves the financial-institution valuation's ke from what
+    // it is handed; dated by the run, not the clock, like the other two routes.
+    const deps = dependencies();
+    await createLegacyAnalysisRunExecutor(deps)({ ...input(), macroPack: pack });
+    expect(deps.processPipeline).toHaveBeenCalledWith(
+      RAW,
+      expect.anything(),
+      null,
+      expect.objectContaining({ macroPack: pack, analysisAsOf: "2026-07-10" }),
+    );
+  });
+
+  it("names what the valuation rests on when it blocks the family's valuation rung", async () => {
+    // The block message replaces the envelope's own valuation-rung detail, so it
+    // has to carry the evidence: HDFC Bank's three models are one lens.
+    const computed = (intrinsicValue: number) => ({ status: "computed", intrinsicValue, premiumOverMarket: null, reason: "", diagnostics: {} });
+    const deps: LegacyAnalysisRunExecutorDependencies = {
+      ...dependencies(),
+      processPipeline: vi.fn(() => ({
+        periods: [],
+        analysisFamily: "financial-institution",
+        pipelineStrategyId: "bank-v1",
+        bankResult: {
+          subtype: "bank",
+          bankMetrics: [],
+          valuation: { justifiedPB: computed(668_446), equityResidualIncome: computed(550_000), sustainableDDM: computed(627_000) },
+        },
+      })) as unknown as LegacyAnalysisRunExecutorDependencies["processPipeline"],
+    };
+    const result = await createLegacyAnalysisRunExecutor(deps)(input());
+    expect(result.status === "blocked" && result.reasonCode).toBe("LEGACY_COMMAND_CENTER_UNSUPPORTED_FAMILY");
+    const detail = result.run?.trustEnvelope?.rigor.checkpoints.find((c) => c.level === "valuation-eligible")?.detail;
+    expect(detail).toMatch(/diagnostic family analysis only\. One independent lens, book residual income \(justified P\/B ₹6,68,446 Cr/);
+  });
+});
