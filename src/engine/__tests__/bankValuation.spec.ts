@@ -162,28 +162,31 @@ describe("computeBankValuation — Phase B4", () => {
   });
 
   describe("Sustainable DDM", () => {
-    it("flags g exceeding sustainable g (payout × ROE)", () => {
-      // High growth but high payout → unsustainable.
-      // ROE 15%, payout 60% → sustainable g = (1-0.6) × 0.15 = 6%.
-      // Set terminal_growth = 8% > 6%.
-      const periods = buildHistory([0.15, 0.15, 0.15, 0.15, 0.15]);
-      const result = computeBankValuation(
-        periods,
-        cfg({ terminal_growth_rate: 0.08 } as never),
-        null,
-        0.60, // payout ratio
-      );
+    it("skips when sustainable ROE does not exceed g: no steady-state dividend", () => {
+      // ROE 6% cannot fund 8% growth however much is retained.
+      const periods = buildHistory([0.06, 0.06, 0.06, 0.06, 0.06]);
+      const result = computeBankValuation(periods, cfg({ terminal_growth_rate: 0.08 } as never), null, 0.30);
       expect(result.sustainableDDM.status).toBe("skipped");
-      expect(result.sustainableDDM.reason).toMatch(/sustainable g/);
+      expect(result.sustainableDDM.reason).toMatch(/does not exceed g/);
     });
 
-    it("computes value when payout × ROE supports g", () => {
-      // ROE 15%, payout 30% → sustainable g = 10.5%. terminal_growth = 5% is fine.
-      const periods = buildHistory([0.15, 0.16, 0.15, 0.16, 0.15]);
+    it("pays out 1 − g/ROE, not the filed payout, so growth and retention agree", () => {
+      // ROE 15%, g 5% → a steady state retains a third and pays out two thirds.
+      // Holding a filed 10% payout grew book at 13.5% while dividends grew at
+      // 5%, treating the excess retention as earning nothing.
+      const periods = buildHistory([0.15, 0.15, 0.15, 0.15, 0.15]);
+      const low = computeBankValuation(periods, cfg(), null, 0.10).sustainableDDM;
+      const high = computeBankValuation(periods, cfg(), null, 0.60).sustainableDDM;
+      expect(low.status).toBe("computed");
+      expect(low.diagnostics.payoutRatio).toBeCloseTo(1 - 0.05 / 0.15, 9);
+      expect(low.diagnostics.filedPayoutRatio).toBe(0.10);
+      expect(low.intrinsicValue).toBeCloseTo(high.intrinsicValue!, 6);
+    });
+
+    it("is justified P/B on the latest earnings: equal to P/B × (1 + g) when PAT = ROE × book", () => {
+      const periods = buildHistory([0.15, 0.15, 0.15, 0.15, 0.15]);
       const result = computeBankValuation(periods, cfg(), null, 0.30);
-      expect(result.sustainableDDM.status).toBe("computed");
-      expect(result.sustainableDDM.intrinsicValue).toBeGreaterThan(0);
-      expect(result.sustainableDDM.diagnostics.payoutRatio).toBe(0.30);
+      expect(result.sustainableDDM.intrinsicValue).toBeCloseTo(result.justifiedPB.intrinsicValue! * 1.05, 6);
     });
 
     it("skips when latest earnings are non-positive", () => {

@@ -129,6 +129,17 @@ export function equityResidualIncome(
 }
 
 // ─── Model 3: Sustainable DDM ───────────────────────────────────────────────
+//
+// Stable-growth dividends at the payout that growth implies. A bank earning a
+// steady ROE and growing at g must retain g/ROE of its earnings, so it pays out
+// 1 − g/ROE. Holding the filed payout instead contradicts the model's own
+// steady state: HDFC Bank FY25 retains 84% at a 16.6% ROE, so its book and
+// earnings compound at ~14% a year while the formula grew dividends at 5%
+// forever, treating the excess retention as earning nothing. That valued every
+// library bank and NBFC at a fifth to a tenth of its book-based value. With the
+// consistent payout the model is Gordon P/B anchored on the latest earnings
+// rather than on book, so it is not an independent lens; the filed payout is
+// kept in the diagnostics.
 
 export function sustainableDDM(
   bv: number | null,
@@ -141,25 +152,23 @@ export function sustainableDDM(
 ): BankValuationModelResult {
   if (bv == null || bv <= 0) return skipped("no positive latest book value");
   if (pat == null || pat <= 0) return skipped("non-positive latest earnings; DDM requires going-concern profit");
-  if (roe == null) return skipped("sustainable ROE unavailable; DDM needs ROE for growth-payout consistency check");
+  if (roe == null) return skipped("sustainable ROE unavailable; the steady-state payout 1 − g/ROE needs it");
   if (ke - g < MIN_KE_MINUS_G) return skipped(`ke − g below ${MIN_KE_MINUS_G} guardrail`);
-
-  // Default payout 30% if not derivable.
-  const effectivePayout = payoutRatio ?? 0.30;
-
-  // Sustainability: g must be ≤ retention × ROE = (1 − payout) × ROE.
-  const sustainableG = (1 - effectivePayout) * roe;
-  if (g > sustainableG + 0.005) {
-    return skipped(`g (${(g * 100).toFixed(1)}%) exceeds sustainable g (${(sustainableG * 100).toFixed(1)}%) at payout ${(effectivePayout * 100).toFixed(0)}%`);
+  if (roe <= g) {
+    return skipped(`sustainable ROE (${(roe * 100).toFixed(1)}%) does not exceed g (${(g * 100).toFixed(1)}%): growth would need all earnings retained, so there is no steady-state dividend`);
   }
 
-  const expectedDividend = pat * effectivePayout * (1 + g);
+  const steadyStatePayout = 1 - g / roe;
+  const expectedDividend = pat * steadyStatePayout * (1 + g);
   const value = expectedDividend / (ke - g);
-  const reason = `dividend (${expectedDividend.toFixed(0)}) / (ke − g) at payout ${(effectivePayout * 100).toFixed(0)}%`;
+  const filed = payoutRatio != null && Number.isFinite(payoutRatio)
+    ? `; filed payout ${(payoutRatio * 100).toFixed(0)}%`
+    : "";
+  const reason = `dividend (${expectedDividend.toFixed(0)}) / (ke − g) at the steady-state payout ${(steadyStatePayout * 100).toFixed(0)}% = 1 − g/ROE${filed}`;
   return computed(value, reason, {
     expectedDividend,
-    payoutRatio: effectivePayout,
-    sustainableG,
+    payoutRatio: steadyStatePayout,
+    filedPayoutRatio: payoutRatio,
     pat,
     roe,
   }, marketCap);

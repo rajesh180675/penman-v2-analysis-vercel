@@ -208,8 +208,9 @@ describe("independenceGroupsForModelIds", () => {
   });
 
   it("keeps genuinely independent bank lenses apart", () => {
-    // Dividend discount and embedded value rest on different evidence than book
-    // residual income, so a bank reaching all three has real triangulation.
+    // Embedded value and the asset multiple rest on different evidence than
+    // book residual income. The DDM does not: at the steady-state payout
+    // 1 − g/ROE it is justified P/B on latest earnings, the same algebra.
     expect(independenceGroupsForModelIds(
       [
         "fi.bank.justified-pb-gordon",
@@ -223,7 +224,6 @@ describe("independenceGroupsForModelIds", () => {
       "actuarial-embedded-value",
       "fi-asset-market-multiple",
       "fi-book-residual-income",
-      "fi-distribution",
     ]);
   });
 
