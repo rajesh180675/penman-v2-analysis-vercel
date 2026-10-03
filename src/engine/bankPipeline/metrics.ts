@@ -19,6 +19,13 @@ export interface BankPeriodMetrics {
 
   // P&L
   interestEarned: number | null;
+  /**
+   * What `interestEarned` was read from. "revenue-total" means the export
+   * files no interest-income line (Capitaline's condensed consolidated NBFC
+   * exports), so it is revenue from operations: NII, NIM, yield and spread
+   * then include fee and other operating income.
+   */
+  interestIncomeBasis?: "interest-line" | "revenue-total" | null | undefined;
   interestExpended: number | null;
   nii: number | null;            // Net Interest Income (derived)
   otherIncome: number | null;    // Fee, commission, trading
@@ -259,6 +266,10 @@ export function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
 
   // P&L
   const interestEarned     = pickValue(raw, pl.interestIncome,      "ProfitLoss");
+  const interestAlias = pl.interestIncome.find((key) => isValidValue(raw[`${key}__ProfitLoss`]) || isValidValue(raw[key]));
+  const interestIncomeBasis = interestAlias == null
+    ? null
+    : (pl.revenueTotalAliases as readonly string[]).includes(interestAlias) ? "revenue-total" as const : "interest-line" as const;
   const interestExpended   = pickValue(raw, pl.interestExpended,    "ProfitLoss");
   const otherIncome        = pickValue(raw, pl.otherIncome,         "ProfitLoss");
   let   operatingExpenses  = pickValue(raw, pl.operatingExpenses,   "ProfitLoss");
@@ -342,6 +353,7 @@ export function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
     borrowings,
     cashAndBalanceWithRBI,
     interestEarned,
+    interestIncomeBasis,
     interestExpended,
     nii,
     otherIncome,

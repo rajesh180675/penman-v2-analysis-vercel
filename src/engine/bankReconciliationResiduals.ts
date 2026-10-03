@@ -353,11 +353,13 @@ function buildNimPlausibilityCheck(metric: BankPeriodMetrics): ReconciliationRes
   } else if (nim > NIM_HIGH) {
     ratio = nim - NIM_HIGH;
     status = nim > NIM_HIGH * 2 ? "failed" : "degraded";
-    detail = `NIM ${formatPct(nim)} above plausibility ceiling ${formatPct(NIM_HIGH)} — earning-assets denominator may be missing investments, or Other Income leaked into NII.`;
+    detail = metric.interestIncomeBasis === "revenue-total"
+      ? `NIM ${formatPct(nim)} above plausibility ceiling ${formatPct(NIM_HIGH)} — the export files no interest-income line, so NII is revenue from operations less finance cost and includes fee income.`
+      : `NIM ${formatPct(nim)} above plausibility ceiling ${formatPct(NIM_HIGH)} — earning-assets denominator may be missing investments, or Other Income leaked into NII.`;
   } else {
     ratio = 0;
     status = "confirmed";
-    detail = `NIM ${formatPct(nim)} within plausible band [${formatPct(NIM_LOW)}, ${formatPct(NIM_HIGH)}].`;
+    detail = `NIM ${formatPct(nim)} within plausible band [${formatPct(NIM_LOW)}, ${formatPct(NIM_HIGH)}].${metric.interestIncomeBasis === "revenue-total" ? " NII is revenue from operations less finance cost (no interest-income line filed), so it includes fee income." : ""}`;
   }
   return {
     key: "nim-plausibility",

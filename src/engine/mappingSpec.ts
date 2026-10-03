@@ -541,6 +541,10 @@ export const CapitalineMappingSpec = {
       "Revenue From Operations(Net)",
       "Revenue From Operations",
     ],
+    // The interestIncome aliases that are revenue totals, not interest lines:
+    // read only when the export files no interest line (Bajaj, Muthoot and
+    // Shriram consolidated, every year), so fee income is inside them.
+    revenueTotalAliases: ["Total Revenue from Operations", "Revenue From Operations(Net)", "Revenue From Operations"],
     otherInterestIncome: ["Other Interest Income"],
     feeAndCommissionIncome: ["Fee and Commission Income"],
 
