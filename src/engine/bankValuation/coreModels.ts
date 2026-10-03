@@ -92,19 +92,28 @@ export function equityResidualIncome(
   const latestROE = latest.roe;
   if (latestROE == null) return skipped("latest ROE unavailable for residual-income forecast");
 
-  // 5-year explicit forecast with linear fade from latest ROE to LONG_RUN_BANK_ROE.
+  // The long-run ROE the forecast fades to: the industry anchor, but never
+  // below ke. With the anchor (13%) under ke (13.6% for banks, 14.8% for
+  // NBFCs on the default priors), the terminal priced every lender as growing
+  // at g forever while destroying value. A mature bank's stable-growth ROE
+  // converges to its cost of equity, so residual income goes to zero (Penman's
+  // continuing value for a competitive firm). Where the anchor sits above ke,
+  // its spread persists as before.
+  const longRunROE = Math.max(LONG_RUN_BANK_ROE, ke);
+
+  // 5-year explicit forecast with linear fade from latest ROE to longRunROE.
   const forecastYears = 5;
   let pvResidualIncome = 0;
   let bvForecast = bv0;
   for (let t = 1; t <= forecastYears; t++) {
     const fadeWeight = (t - 1) / (forecastYears - 1);
-    const roeT = latestROE * (1 - fadeWeight) + LONG_RUN_BANK_ROE * fadeWeight;
+    const roeT = latestROE * (1 - fadeWeight) + longRunROE * fadeWeight;
     const ri = (roeT - ke) * bvForecast;
     pvResidualIncome += ri / Math.pow(1 + ke, t);
     bvForecast = bvForecast * (1 + roeT * (1 - (payoutRatio ?? 0.30))); // use actual payout if available
   }
 
-  // Terminal value: LONG_RUN_BANK_ROE − ke spread, growing at g.
+  // Terminal value: longRunROE − ke spread, growing at g.
   // After the 5y loop bvForecast = BV₅, so terminalRI = (ROE − ke)·BV₅ is the
   // residual income of YEAR 6 on its opening book — i.e. RI₆, the FIRST flow of
   // the terminal perpetuity. The continuing value at the end of the explicit
@@ -112,16 +121,17 @@ export function equityResidualIncome(
   // the first flow to RI₇ and overstate the terminal value by one year's growth
   // (it would only be correct if terminalRI were RI₅, computed on BV₄).
   if (ke - g < MIN_KE_MINUS_G) return skipped(`ke − g below ${MIN_KE_MINUS_G} guardrail for terminal value`);
-  const terminalRI = (LONG_RUN_BANK_ROE - ke) * bvForecast;
+  const terminalRI = (longRunROE - ke) * bvForecast;
   const tvUndiscounted = terminalRI / (ke - g);
   const tv = tvUndiscounted / Math.pow(1 + ke, forecastYears);
 
   const value = bv0 + pvResidualIncome + tv;
   trace("valuation", "equityResidualIncome", { bv0, pvResidualIncome, tv, intrinsicValue: value });
-  const reason = `bv₀ + 5y forecast PV (${pvResidualIncome.toFixed(0)}) + terminal (${tv.toFixed(0)})`;
+  const reason = `bv₀ + 5y forecast PV (${pvResidualIncome.toFixed(0)}) + terminal (${tv.toFixed(0)}) at long-run ROE ${(longRunROE * 100).toFixed(1)}%${longRunROE > LONG_RUN_BANK_ROE ? " (= ke: the 13% anchor sits below it)" : ""}`;
   return computed(value, reason, {
     bv0,
     latestROE,
+    longRunROE,
     pvResidualIncome,
     terminalValue: tv,
     forecastYears,
