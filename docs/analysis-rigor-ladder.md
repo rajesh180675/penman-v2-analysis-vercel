@@ -164,6 +164,8 @@ Envelope `2026-06-traceability-v10` adds an `economicSanity` field that walks pe
 
 `status === "blocked"` + `VITE_RIGOR_ECONOMIC_SANITY_BLOCK` on (default) caps rigor at `structurally-reconciled`. See [`docs/adr/002-economic-sanity-gates.md`](adr/002-economic-sanity-gates.md).
 
+Banks, NBFCs and insurers produce no recast, so they run `evaluateFinancialEconomicSanity` on their bank metrics, as reconciliation does. `terminal-period-contamination` (its unusual-item part) and `demerger-discontinued-contamination` apply unchanged, because both read the raw statements. `implausible-roe-jump` (warn, |ΔROE| ≥ 30pp without a known cause) stands in for the RNOA check. `financial-anchor-metrics` (block) skips a period without filed profit or positive equity. Dirty surplus is not evaluated, because bank metrics carry no equity-issuance line. Before this change, every financial was blocked at "No recast periods available".
+
 ## Branded Primitives (Schema v13, ADR-005)
 
 Envelope `2026-06-traceability-v13` was a type-safety bump only; the envelope shape did not change. PR-1.4 introduced branded numeric primitives (`INRCrore`, `CroreShares`, `PercentFraction`, `BasisPoints`) at the engine boundaries to prevent unit-confusion bugs at compile time. The migration from v12 to v13 is a no-op metadata bump so persisted envelopes can be walked forward. Follow-on PRs (1.4a/b/c) push the brands through parsers, `EngineConfig`, and ratio/quality field types. See [`docs/adr/005-branded-primitives.md`](adr/005-branded-primitives.md).

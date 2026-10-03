@@ -2,7 +2,7 @@
   "companyId": "bajaj-finance",
   "companyName": "Bajaj Finance Ltd",
   "profile": "nbfc",
-  "expectedRigorLevel": "structurally-reconciled",
+  "expectedRigorLevel": "economically-plausible",
   "expectedParserFidelityStatus": "confirmed",
   "expectedReconciliationStatus": "degraded",
   "expectedEconomicSanityStatus": "passed",

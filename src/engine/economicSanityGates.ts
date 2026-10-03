@@ -15,6 +15,9 @@
  *   D) demerger-discontinued-contamination — manifest flags discontinued ops
  *   E) anchor-period-selection         — walks back until a passing period
  *
+ * Banks, NBFCs and insurers run `evaluateFinancialEconomicSanity` on their
+ * bank-shape metrics instead (A and D unchanged, an ROE jump for C, no B).
+ *
  * When `status === "blocked"` and `isEnabled("rigor.economicSanityBlock")`,
  * the run cannot reach `economically-plausible`.
  */
@@ -27,6 +30,7 @@ import {
 import { computeFCFEDirtySurplus } from "./fcfeDirtySurplus";
 import { RawPeriodData, RecastPeriod } from "./types";
 import { periodMetricValue } from "./rawMetricTools";
+import type { BankPeriodMetrics } from "./bankPipeline/metrics";
 
 // Types relocated to ./types/economicSanity (pure leaf, weakness #1 cycle break).
 // Imported back for internal use; re-exported so existing "./economicSanityGates" paths stay valid.
@@ -71,6 +75,77 @@ interface EvaluateInput {
   unusualManifest?: UnusualItemManifestLike[] | undefined;
 }
 
+interface ContextLike {
+  rawData: RawPeriodData[];
+  corporateActions?: CorporateActionEvent[] | undefined;
+  unusualManifest?: UnusualItemManifestLike[] | undefined;
+}
+
+function knownCapitalAction(periodEnd: string, context: ContextLike): CorporateActionEvent | undefined {
+  return (context.corporateActions ?? []).find(
+    (a) => a.periodEnd === periodEnd && (a.kind === "buyback" || a.kind === "capital-raise" || a.kind === "dilution"),
+  );
+}
+
+function terminalUnusualItems(periodEnd: string, context: ContextLike): UnusualItemManifestLike[] {
+  return (context.unusualManifest ?? []).filter((u) => u.period === periodEnd && u.affectsTerminalEligibility);
+}
+
+/** Check A's verdict from the period's terminal-blocking unusual items and its capital-transaction notes. */
+function terminalContaminationCheck(
+  periodEnd: string,
+  unusualBlocking: readonly UnusualItemManifestLike[],
+  capitalNotes: readonly string[],
+): GateCheckResult {
+  const aIssues: string[] = [];
+  if (unusualBlocking.length > 0) {
+    aIssues.push(`unusual items affecting terminal: ${unusualBlocking.map((u) => u.category).join(", ")}`);
+  }
+  const capitalNote = capitalNotes.length > 0 ? ` Capital transaction noted, not disqualifying: ${capitalNotes.join("; ")}.` : "";
+  return {
+    checkId: "terminal-period-contamination",
+    passed: aIssues.length === 0,
+    reason:
+      aIssues.length === 0
+        ? `No terminal-blocking unusual items in this period.${capitalNote}`
+        : `Terminal-blocking event(s) in this period: ${aIssues.join("; ")}.${capitalNote}`,
+    severity: "block",
+    affectedPeriods: [periodEnd],
+  };
+}
+
+/**
+ * Check D. We look in raw_metric_values for discontinued-operations / demerger
+ * flags surfaced by the parser. Gap 3 (PR-C) will replace this with an explicit
+ * manifest; for now we use a label heuristic + the unusual-manifest input.
+ */
+function demergerDiscontinuedCheck(periodEnd: string, context: ContextLike): GateCheckResult {
+  const raw = context.rawData.find((r) => r.period_end === periodEnd);
+  const discontinuedSignal = raw
+    ? periodMetricValue(raw, [
+        "Profit / (Loss) From Discontinued Operations",
+        "Profit Loss from Discontinued Operations",
+        "Demerger Adjustment",
+        "Net Profit/(Loss) for the Period from Discontinued Operations",
+      ])
+    : null;
+  const manifestDemerger = (context.unusualManifest ?? []).some(
+    (u) => u.period === periodEnd && (u.category === "demerger-scheme-effect" || u.category === "discontinued-operations"),
+  );
+  const dPassed = (discontinuedSignal == null || Math.abs(discontinuedSignal) < 1) && !manifestDemerger;
+  return {
+    checkId: "demerger-discontinued-contamination",
+    passed: dPassed,
+    reason: dPassed
+      ? "No demerger or discontinued-operations signal detected for this period."
+      : `Demerger / discontinued-operations signal detected${
+          discontinuedSignal != null ? ` (₹${discontinuedSignal.toFixed(0)})` : ""
+        }.`,
+    severity: "block",
+    affectedPeriods: [periodEnd],
+  };
+}
+
 /**
  * Run the five checks for a single period and return per-check verdicts.
  * The caller (`evaluateEconomicSanity`) walks periods latest → oldest.
@@ -94,12 +169,8 @@ function checksForPeriod(
   const rights = current.cf.EquityIssued ?? 0;
   const buybackRatio = cse > 0 ? Math.abs(buyback) / cse : 0;
   const rightsRatio = cse > 0 ? Math.abs(rights) / cse : 0;
-  const knownAction = (context.corporateActions ?? []).find(
-    (a) => a.periodEnd === current.period_end && (a.kind === "buyback" || a.kind === "capital-raise" || a.kind === "dilution"),
-  );
-  const unusualBlocking = (context.unusualManifest ?? []).filter(
-    (u) => u.period === current.period_end && u.affectsTerminalEligibility,
-  );
+  const knownAction = knownCapitalAction(current.period_end, context);
+  const unusualBlocking = terminalUnusualItems(current.period_end, context);
   const capitalNotes: string[] = [];
   if (buybackRatio >= BUYBACK_PCT_OF_CSE) {
     capitalNotes.push(`buyback ≈ ${(buybackRatio * 100).toFixed(1)}% of CSE`);
@@ -110,21 +181,7 @@ function checksForPeriod(
   if (knownAction && capitalNotes.length === 0) {
     capitalNotes.push(`detected ${knownAction.kind} (${knownAction.detail})`);
   }
-  const aIssues: string[] = [];
-  if (unusualBlocking.length > 0) {
-    aIssues.push(`unusual items affecting terminal: ${unusualBlocking.map((u) => u.category).join(", ")}`);
-  }
-  const capitalNote = capitalNotes.length > 0 ? ` Capital transaction noted, not disqualifying: ${capitalNotes.join("; ")}.` : "";
-  checks.push({
-    checkId: "terminal-period-contamination",
-    passed: aIssues.length === 0,
-    reason:
-      aIssues.length === 0
-        ? `No terminal-blocking unusual items in this period.${capitalNote}`
-        : `Terminal-blocking event(s) in this period: ${aIssues.join("; ")}.${capitalNote}`,
-    severity: "block",
-    affectedPeriods: [current.period_end],
-  });
+  checks.push(terminalContaminationCheck(current.period_end, unusualBlocking, capitalNotes));
 
   // ─── Check B: dirty-surplus-integrity ───────────────────────────────────
   // Reuse fcfeDirtySurplus residual computation. We flag when the ratio of
@@ -174,35 +231,64 @@ function checksForPeriod(
   });
 
   // ─── Check D: demerger-discontinued-contamination ───────────────────────
-  // We look in raw_metric_values for discontinued-operations / demerger flags
-  // surfaced by the parser. Gap 3 (PR-C) will replace this with an explicit
-  // manifest; for now we use a label heuristic + the unusual-manifest input.
-  const raw = context.rawData.find((r) => r.period_end === current.period_end);
-  const discontinuedSignal = raw
-    ? periodMetricValue(raw, [
-        "Profit / (Loss) From Discontinued Operations",
-        "Profit Loss from Discontinued Operations",
-        "Demerger Adjustment",
-        "Net Profit/(Loss) for the Period from Discontinued Operations",
-      ])
-    : null;
-  const manifestDemerger = (context.unusualManifest ?? []).some(
-    (u) => u.period === current.period_end && (u.category === "demerger-scheme-effect" || u.category === "discontinued-operations"),
-  );
-  const dPassed = (discontinuedSignal == null || Math.abs(discontinuedSignal) < 1) && !manifestDemerger;
-  checks.push({
-    checkId: "demerger-discontinued-contamination",
-    passed: dPassed,
-    reason: dPassed
-      ? "No demerger or discontinued-operations signal detected for this period."
-      : `Demerger / discontinued-operations signal detected${
-          discontinuedSignal != null ? ` (₹${discontinuedSignal.toFixed(0)})` : ""
-        }.`,
-    severity: "block",
-    affectedPeriods: [current.period_end],
-  });
+  checks.push(demergerDiscontinuedCheck(current.period_end, context));
 
   return checks;
+}
+
+type AnchorWalk<P> =
+  | { anchor: P; anchorReason: string; skipped: { period: string; reason: string }[]; failedChecks: GateCheckResult[] }
+  | { anchor: null; blocked: EconomicSanitySummary };
+
+/**
+ * Walks `ordered` (ascending by period_end) latest → oldest until a period
+ * passes ALL block-severity checks within `MAX_ANCHOR_LOOKBACK_PERIODS`.
+ * Warn-severity failures do not disqualify a candidate but are carried forward.
+ */
+function walkForAnchor<P extends { period_end: string }>(
+  ordered: readonly P[],
+  checksFor: (current: P, prev: P | null) => GateCheckResult[],
+): AnchorWalk<P> {
+  const skipped: { period: string; reason: string }[] = [];
+  const failedChecks: GateCheckResult[] = [];
+  const lookbackLimit = Math.min(ordered.length, MAX_ANCHOR_LOOKBACK_PERIODS + 1);
+
+  for (let lookbackIdx = 0; lookbackIdx < lookbackLimit; lookbackIdx++) {
+    const idx = ordered.length - 1 - lookbackIdx;
+    if (idx < 0) break;
+    const current = ordered[idx]!;
+    const prev = idx > 0 ? ordered[idx - 1]! : null;
+    const checks = checksFor(current, prev);
+    const blocking = checks.filter((c) => c.severity === "block" && !c.passed);
+    const warnings = checks.filter((c) => c.severity === "warn" && !c.passed);
+    // Warnings are carried from the anchor and from skipped periods; a skipped
+    // period's blocking checks are captured in skipped[].reason.
+    failedChecks.push(...warnings);
+    if (blocking.length === 0) {
+      const anchorReason =
+        lookbackIdx === 0
+          ? `Latest period ${current.period_end} cleared all block-severity checks.`
+          : `Walked back ${lookbackIdx} period(s); ${current.period_end} cleared all block-severity checks.`;
+      return { anchor: current, anchorReason, skipped, failedChecks };
+    }
+    skipped.push({
+      period: current.period_end,
+      reason: blocking.map((c) => c.checkId).join(","),
+    });
+  }
+
+  return {
+    anchor: null,
+    blocked: {
+      status: "blocked",
+      anchorPeriod: null,
+      anchorReason: `No clean period found within ${MAX_ANCHOR_LOOKBACK_PERIODS}-period lookback. Skipped: ${skipped
+        .map((s) => `${s.period} (${s.reason})`)
+        .join("; ")}`,
+      skippedPeriods: skipped,
+      failedChecks,
+    },
+  };
 }
 
 /**
@@ -232,52 +318,9 @@ export function evaluateEconomicSanity(
     a.period_end.localeCompare(b.period_end),
   );
 
-  const skipped: { period: string; reason: string }[] = [];
-  const allFailedChecks: GateCheckResult[] = [];
-  let anchor: RecastPeriod | null = null;
-  let anchorReason = "";
-  const lookbackLimit = Math.min(ordered.length, MAX_ANCHOR_LOOKBACK_PERIODS + 1);
-
-  for (let lookbackIdx = 0; lookbackIdx < lookbackLimit; lookbackIdx++) {
-    const idx = ordered.length - 1 - lookbackIdx;
-    if (idx < 0) break;
-    const current = ordered[idx]!;
-    const prev = idx > 0 ? ordered[idx - 1]! : null;
-    const checks = checksForPeriod(current, prev, ctx);
-    const blocking = checks.filter((c) => c.severity === "block" && !c.passed);
-    const warnings = checks.filter((c) => c.severity === "warn" && !c.passed);
-    if (blocking.length === 0) {
-      anchor = current;
-      anchorReason =
-        lookbackIdx === 0
-          ? `Latest period ${current.period_end} cleared all block-severity checks.`
-          : `Walked back ${lookbackIdx} period(s); ${current.period_end} cleared all block-severity checks.`;
-      // Carry warnings from the anchor period only — older warnings are
-      // logged via skippedPeriods.
-      allFailedChecks.push(...warnings);
-      break;
-    } else {
-      skipped.push({
-        period: current.period_end,
-        reason: blocking.map((c) => c.checkId).join(","),
-      });
-      // Carry forward only warning-severity checks from skipped periods;
-      // blocking checks are already captured in skippedPeriods[].reason.
-      allFailedChecks.push(...warnings);
-    }
-  }
-
-  if (!anchor) {
-    return {
-      status: "blocked",
-      anchorPeriod: null,
-      anchorReason: `No clean period found within ${MAX_ANCHOR_LOOKBACK_PERIODS}-period lookback. Skipped: ${skipped
-        .map((s) => `${s.period} (${s.reason})`)
-        .join("; ")}`,
-      skippedPeriods: skipped,
-      failedChecks: allFailedChecks,
-    };
-  }
+  const walk = walkForAnchor(ordered, (current, prev) => checksForPeriod(current, prev, ctx));
+  if (walk.anchor === null) return walk.blocked;
+  const { anchor, anchorReason, skipped, failedChecks: allFailedChecks } = walk;
 
   // Sustained dirty-surplus block: if the anchor period's prior period also
   // breached the dirty-surplus threshold, escalate to block.
@@ -306,7 +349,7 @@ export function evaluateEconomicSanity(
     }
   }
 
-  const anchorWarnings = allFailedChecks.filter((c) => c.affectedPeriods.includes(anchor!.period_end));
+  const anchorWarnings = allFailedChecks.filter((c) => c.affectedPeriods.includes(anchor.period_end));
   const status: EconomicSanitySummary["status"] = anchorWarnings.length > 0 ? "warned" : "passed";
 
   return {
@@ -316,4 +359,104 @@ export function evaluateEconomicSanity(
     skippedPeriods: skipped,
     failedChecks: allFailedChecks,
   };
+}
+
+/** ROE-jump threshold for financial institutions (absolute), Check C's analogue. */
+export const ROE_JUMP_THRESHOLD = RNOA_JUMP_THRESHOLD;
+
+/**
+ * Economic sanity for banks, NBFCs and insurers, on their bank-shape metrics.
+ *
+ * They never produce a Penman-Nissim recast, so `evaluateEconomicSanity`
+ * blocked every one of them at "No recast periods available": the shape
+ * mismatch #217 fixed for structural reconciliation, one rung up. Checks A and
+ * D apply unchanged, since the unusual-item manifest and the demerger signal
+ * are read from the raw statements. Check C's analogue is a jump in ROE. A
+ * period without profit or positive equity cannot anchor a valuation that
+ * capitalizes earnings on book equity, so it is skipped. Check B (dirty
+ * surplus) is not evaluated: bank metrics carry no equity-issuance line, so
+ * every capital raise would read as a residual.
+ */
+export function evaluateFinancialEconomicSanity(
+  metrics: readonly BankPeriodMetrics[],
+  rawData: RawPeriodData[],
+  corporateActions?: CorporateActionEvent[] | undefined,
+  unusualManifest?: UnusualItemManifestLike[] | undefined,
+): EconomicSanitySummary {
+  if (!metrics.length) {
+    return {
+      status: "blocked",
+      anchorPeriod: null,
+      anchorReason: "No financial-institution periods available — anchor cannot be selected.",
+      skippedPeriods: [],
+      failedChecks: [],
+    };
+  }
+  const ctx: ContextLike = { rawData, corporateActions, unusualManifest };
+  const ordered = [...metrics].sort((a, b) => a.period_end.localeCompare(b.period_end));
+  const walk = walkForAnchor(ordered, (current, prev) => financialChecksForPeriod(current, prev, ctx));
+  if (walk.anchor === null) return walk.blocked;
+  const anchorPeriod = walk.anchor.period_end;
+  const anchorWarnings = walk.failedChecks.filter((c) => c.affectedPeriods.includes(anchorPeriod));
+  return {
+    status: anchorWarnings.length > 0 ? "warned" : "passed",
+    anchorPeriod,
+    anchorReason: walk.anchorReason,
+    skippedPeriods: walk.skipped,
+    failedChecks: walk.failedChecks,
+  };
+}
+
+function financialChecksForPeriod(
+  current: BankPeriodMetrics,
+  prev: BankPeriodMetrics | null,
+  context: ContextLike,
+): GateCheckResult[] {
+  const periodEnd = current.period_end;
+  const checks: GateCheckResult[] = [];
+
+  const { pat, totalEquity: equity } = current;
+  const anchorable = pat != null && Number.isFinite(pat) && equity != null && Number.isFinite(equity) && equity > 0;
+  checks.push({
+    checkId: "financial-anchor-metrics",
+    passed: anchorable,
+    reason: anchorable
+      ? "Profit and positive equity are filed for this period."
+      : equity != null && Number.isFinite(equity) && equity <= 0
+        ? `Equity is ${equity.toFixed(0)}: a period without positive equity cannot anchor a valuation on book equity.`
+        : "Profit or equity is missing for this period.",
+    severity: "block",
+    affectedPeriods: [periodEnd],
+  });
+
+  const knownAction = knownCapitalAction(periodEnd, context);
+  const unusualBlocking = terminalUnusualItems(periodEnd, context);
+  const capitalNotes = knownAction ? [`detected ${knownAction.kind} (${knownAction.detail})`] : [];
+  checks.push(terminalContaminationCheck(periodEnd, unusualBlocking, capitalNotes));
+
+  const roeCur = current.roe ?? null;
+  const roePrev = prev?.roe ?? null;
+  let roeReason = "ROE stayed within plausible bounds period-on-period.";
+  let roePassed = true;
+  if (roeCur != null && roePrev != null) {
+    const jump = Math.abs(roeCur - roePrev);
+    if (jump >= ROE_JUMP_THRESHOLD) {
+      if (!knownAction && unusualBlocking.length === 0) {
+        roePassed = false;
+        roeReason = `ROE jumped ${(jump * 100).toFixed(1)}pp from ${(roePrev * 100).toFixed(1)}% to ${(roeCur * 100).toFixed(1)}% with no known capital event or unusual item.`;
+      } else {
+        roeReason = `ROE jumped ${(jump * 100).toFixed(1)}pp; suppressed because a capital event or unusual item explains it.`;
+      }
+    }
+  }
+  checks.push({
+    checkId: "implausible-roe-jump",
+    passed: roePassed,
+    reason: roeReason,
+    severity: "warn",
+    affectedPeriods: [periodEnd],
+  });
+
+  checks.push(demergerDiscontinuedCheck(periodEnd, context));
+  return checks;
 }

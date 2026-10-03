@@ -14,7 +14,7 @@ import { SourceParserDiagnostics } from "./parserDiagnostics";
 import { detectDistress } from "./distressDetector";
 import { summarizeConceptIdentity } from "./conceptOntology";
 import { detectCorporateActions } from "./corporateActions";
-import { evaluateEconomicSanity } from "./economicSanityGates";
+import { evaluateEconomicSanity, evaluateFinancialEconomicSanity } from "./economicSanityGates";
 import { summarizeUnusualItemManifest, terminalBlockingClassifications, terminalPeriodOf } from "./unusualItemPolicy";
 import { RE_REOI_BLOCK_GAP, RE_REOI_GUARD_GAP, reReoiGap } from "./reReoiConsistency";
 import { buildLineageMap, buildLineageRef } from "./lineageBuilder";
@@ -364,12 +364,21 @@ export function buildAnalysisTraceability(params: {
     params.rawData ?? [],
   );
   const corporateActions = detectCorporateActions(params.rawData ?? null);
-  const economicSanity = evaluateEconomicSanity(
-    params.recastData ?? [],
-    params.rawData ?? [],
-    corporateActions,
-    unusualItemManifest.classifications,
-  );
+  // Financial institutions never produce a recast; their bank-shape metrics
+  // are the structural representation (as for reconciliation above).
+  const economicSanity = hasBankMetrics && bankSubtype != null
+    ? evaluateFinancialEconomicSanity(
+      bankMetrics ?? [],
+      params.rawData ?? [],
+      corporateActions,
+      unusualItemManifest.classifications,
+    )
+    : evaluateEconomicSanity(
+      params.recastData ?? [],
+      params.rawData ?? [],
+      corporateActions,
+      unusualItemManifest.classifications,
+    );
   const economicSanityBlockEnabled = isEnabled("rigor.economicSanityBlock");
   const economicSanityBlocksPlausible =
     economicSanityBlockEnabled && economicSanity.status === "blocked";
