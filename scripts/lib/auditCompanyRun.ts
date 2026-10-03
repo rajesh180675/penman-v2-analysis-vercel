@@ -1140,6 +1140,7 @@ function buildTrace(args: {
     rawMetricKeyCount: parsed.debug?.rawMetricKeys?.length ?? 0,
     bankMetrics: pipeline.bankResult?.bankMetrics ?? null,
     bankSubtype: pipeline.bankResult?.subtype ?? null,
+    bankValuation: pipeline.bankResult?.valuation ?? null,
     valuationTriangulation: valuation?.valuationTriangulation ?? null,
     assumptionProvenance,
   });
