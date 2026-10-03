@@ -215,11 +215,13 @@ describe.sequential("auditCompanyRun", () => {
   expect.arrayContaining(["fi-book-residual-income", "fi-distribution"]),
   );
   expect(result.valuationEvidence.independentLensGroups).not.toContain("book-value");
-  // Rigor is capped below production-ready when analysisStatus is "guarded"
-  // (diagnostic mapping gaps → deriveAnalysisStatus returns guarded, which
-  // blocks the production-ready checkpoint in analysisTraceability).
-  expect(result.rigor.currentLevel).toBe("structurally-reconciled");
-  expect(result.outcome).toBe("POLICY_WARNING");
+  // The readiness status above counts only history depth, so it cannot carry
+  // the ladder: the financial-institution valuation has no synthesis and no
+  // cost-of-capital provenance, and analysisTraceability caps the family at
+  // economically-plausible. (Until economic sanity ran on bank metrics, every
+  // financial was held one rung lower, at "No recast periods available".)
+  expect(result.rigor.currentLevel).toBe("economically-plausible");
+  expect(result.outcome).toBe("ECONOMICALLY_PLAUSIBLE_CAPPED");
   }, 240_000);
 
   it("does not fabricate sector-native models or evidence from routing strategy ids", async () => {

@@ -2,7 +2,7 @@
   "companyId": "hdfc-bank",
   "companyName": "HDFC Bank Ltd",
   "profile": "bfsi",
-  "expectedRigorLevel": "structurally-reconciled",
+  "expectedRigorLevel": "economically-plausible",
   "expectedParserFidelityStatus": "degraded",
   "expectedReconciliationStatus": "confirmed",
   "expectedEconomicSanityStatus": "passed",

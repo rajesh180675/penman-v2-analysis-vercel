@@ -9,6 +9,8 @@ export type GateCheckId =
   | "terminal-period-contamination"
   | "dirty-surplus-integrity"
   | "implausible-rnoa-jump"
+  | "implausible-roe-jump"
+  | "financial-anchor-metrics"
   | "demerger-discontinued-contamination"
   | "anchor-period-selection";
 
