@@ -89,7 +89,8 @@ export function pAumLens(
 
 /**
  * NBFC residual income decomposed into ROA × leverage. ROA reverts toward
- * LONG_RUN_NBFC_ROA over the explicit forecast; leverage reverts toward
+ * LONG_RUN_NBFC_ROA (or the ROA that earns ke at the sustainable leverage,
+ * whichever is higher) over the explicit forecast; leverage reverts toward
  * LONG_RUN_NBFC_LEVERAGE on a slower schedule (NBFCs cannot de-lever in 5y
  * without shrinking the book, which they don't do absent regulatory force).
  *
@@ -122,6 +123,13 @@ export function roaLeverageRI(
   if (ke - g < MIN_KE_MINUS_G) return skipped(`ke − g below ${MIN_KE_MINUS_G} guardrail`);
 
   const sustainableLev = computeSustainableLeverage(metrics) ?? LONG_RUN_NBFC_LEVERAGE;
+  // The ROA the forecast fades to: the industry anchor, but never one whose
+  // ROE at the sustainable leverage sits below ke. 2.5% × (1 + leverage) is
+  // ~11-12.5% for the library NBFCs against a ke of 14.8%, so the terminal
+  // priced every NBFC as growing forever while destroying value. Stable-growth
+  // ROE converges to ke at worst (residual income to zero), as in the bank
+  // equity residual-income model.
+  const longRunROA = Math.max(LONG_RUN_NBFC_ROA, ke / (1 + sustainableLev));
 
   const forecastYears = 7;
   let pvResidualIncome = 0;
@@ -129,7 +137,7 @@ export function roaLeverageRI(
   for (let t = 1; t <= forecastYears; t++) {
     // ROA fade: half-fade by Y3, full by Y7
     const roaFadeWeight = Math.min(t / forecastYears, 1);
-    const roaT = latestROA * (1 - roaFadeWeight) + LONG_RUN_NBFC_ROA * roaFadeWeight;
+    const roaT = latestROA * (1 - roaFadeWeight) + longRunROA * roaFadeWeight;
 
     // Leverage fade: linear from latest to sustainableLev over Y1-Y7
     const levFadeWeight = Math.min(t / forecastYears, 1);
@@ -150,19 +158,20 @@ export function roaLeverageRI(
   // the terminal perpetuity. The continuing value is RI₈/(ke − g); no extra
   // (1+g) (that would push the first flow to RI₉ and overstate TV by one year's
   // growth — it would only be correct if terminalRI were RI₇, on BV₆).
-  const terminalROE = LONG_RUN_NBFC_ROA * (1 + sustainableLev);
+  const terminalROE = longRunROA * (1 + sustainableLev);
   const terminalRI = (terminalROE - ke) * bvForecast;
   const tvUndiscounted = terminalRI / (ke - g);
   const tv = tvUndiscounted / Math.pow(1 + ke, forecastYears);
 
   const value = bv0 + pvResidualIncome + tv;
   const reason = `bv₀ (${bv0.toFixed(0)}) + 7y PV (${pvResidualIncome.toFixed(0)}) + ` +
-    `terminal (${tv.toFixed(0)}) at ROA ${(LONG_RUN_NBFC_ROA * 100).toFixed(2)}% × leverage ${sustainableLev.toFixed(1)}x`;
+    `terminal (${tv.toFixed(0)}) at ROA ${(longRunROA * 100).toFixed(2)}% × leverage ${sustainableLev.toFixed(1)}x${longRunROA > LONG_RUN_NBFC_ROA ? " (ROE = ke: the 2.5% ROA anchor sits below it)" : ""}`;
   return computed(value, reason, {
     bv0,
     latestROA,
     latestLeverage,
     sustainableLeverage: sustainableLev,
+    longRunROA,
     pvResidualIncome,
     terminalValue: tv,
     forecastYears,
