@@ -137,3 +137,48 @@ describe("CompanyRunCache", () => {
     expect((await cache.get(company)).status).toBe("ready");
   });
 });
+
+describe("loadCompanyRun — a financial institution's quality sidecar", () => {
+  // HDFC Life is valued on embedded value alone, which only the sidecar carries.
+  const insurer: LibraryCompany = {
+    folder: "HDFC Life Insurance Company Ltd", name: "HDFC Life", ticker: "HDFCLIFE", sector: "Insurance",
+    type: "insurance", description: "", emoji: "",
+  };
+  const sidecar = { periods: [{ period_end: "2025-03-31", embedded_value: 61_000 }] } as unknown as import("../../engine/bankQualityIndicators").BankQualityIndicators;
+  const runOf = () => vi.fn(async (_input: LegacyAnalysisRunInputV1, _requestId: string) => result);
+
+  it("hands the sidecar to the run", async () => {
+    const run = runOf();
+    const fetchBankQuality = vi.fn(async () => sidecar);
+    await loadCompanyRun(insurer, undefined, deps({ run, fetchBankQuality }));
+    expect(fetchBankQuality).toHaveBeenCalledWith(insurer);
+    expect(run.mock.calls[0]![0].bankQuality).toBe(sidecar);
+  });
+
+  it("gives an uploaded zip no sidecar: it may be another vintage of the accounts", async () => {
+    const run = runOf();
+    const fetchBankQuality = vi.fn(async () => sidecar);
+    await loadCompanyRun(insurer, undefined, deps({ run, fetchBankQuality }), null, new Uint8Array([9]));
+    expect(fetchBankQuality).not.toHaveBeenCalled();
+    expect(run.mock.calls[0]![0].bankQuality).toBeNull();
+  });
+
+  it("does not give a standalone-basis run the consolidated sidecar", async () => {
+    const run = runOf();
+    const years = (n: number) => Array.from({ length: n }, (_, i) => ({ ...period, period_end: `${2025 - i}-03-31` }));
+    await loadCompanyRun({ ...insurer, hasStandalone: true }, undefined, deps({
+      run,
+      fetchBankQuality: vi.fn(async () => sidecar),
+      fetchZip: vi.fn(async (url: string) => new Uint8Array([url.endsWith("/standalone.zip") ? 2 : 1])),
+      parse: vi.fn(async (bytes: Uint8Array) => ({ periods: years(bytes[0] === 2 ? 14 : 2), debug: null })),
+    }));
+    expect(run.mock.calls[0]![0].rawData).toHaveLength(14);
+    expect(run.mock.calls[0]![0].bankQuality).toBeNull();
+  });
+
+  it("runs without a sidecar when no loader is supplied", async () => {
+    const run = runOf();
+    await loadCompanyRun(insurer, undefined, deps({ run }));
+    expect(run.mock.calls[0]![0].bankQuality).toBeNull();
+  });
+});

@@ -10,6 +10,7 @@
 import { startBrowserAnalysisRun } from "../engine/analysisRun/browserClient";
 import type { LegacyAnalysisRunExecutionResult, LegacyAnalysisRunInputV1 } from "../engine/analysisRun";
 import type { LiveMarketDataSnapshot } from "../engine/marketData";
+import type { BankQualityIndicators } from "../engine/bankQualityIndicators";
 import { ACTIVE_MARKET_PACKS } from "../engine/marketPacks";
 import type { CapitalineParseDebug } from "../engine/capitalineParser/types";
 import { DEFAULT_CONFIG, type CompanyRegistry, type EngineConfig, type RawPeriodData, type RecastPeriod } from "../engine/types";
@@ -38,6 +39,14 @@ export interface CompanyRunDependencies {
   readonly fetchMarketSnapshot: (config: EngineConfig) => Promise<LiveMarketDataSnapshot | null>;
   readonly run: (input: LegacyAnalysisRunInputV1, requestId: string) => Promise<LegacyAnalysisRunExecutionResult>;
   readonly now: () => Date;
+  /**
+   * A financial institution's quality sidecar (quality_indicators.json): asset
+   * quality and capital ratios, an insurer's embedded value and VNB, an NBFC's
+   * AUM. Without it an insurer has no headline value at all (it is valued on
+   * embedded value alone) and the NBFC P/AUM lens never computes. Optional:
+   * absent, the run has no sidecar.
+   */
+  readonly fetchBankQuality?: (company: LibraryCompany) => Promise<BankQualityIndicators | null>;
 }
 
 const defaultDependencies: CompanyRunDependencies = {
@@ -69,6 +78,16 @@ const defaultDependencies: CompanyRunDependencies = {
   },
   run: (input, requestId) => startBrowserAnalysisRun({ requestId, input }).result,
   now: () => new Date(),
+  // Same library path the classic shell's batch loader reads.
+  fetchBankQuality: async (company) => {
+    if (company.type !== "bank" && company.type !== "nbfc" && company.type !== "insurance") return null;
+    const { fetchBankQualityIndicators } = await import("../engine/bankQualityIndicators");
+    try {
+      return await fetchBankQualityIndicators(company.folder);
+    } catch {
+      return null;
+    }
+  },
 };
 
 /** Below this many consolidated years, a library company with standalone accounts is analysed on those. */
@@ -102,9 +121,12 @@ export async function loadCompanyRun(
     onStep("parsing");
     const issuerId = company.ticker.toUpperCase();
     const config = configForCompany(company);
-    const [consolidated, marketSnapshot] = await Promise.all([
+    const [consolidated, marketSnapshot, bankQuality] = await Promise.all([
       deps.parse(bytes, issuerId),
       asOf ? Promise.resolve(null) : deps.fetchMarketSnapshot(config),
+      // The library's sidecar describes the library's accounts; an uploaded zip
+      // may be another vintage, so it gets none.
+      uploaded || !deps.fetchBankQuality ? Promise.resolve(null) : deps.fetchBankQuality(company),
     ]);
     // A company that has only just begun consolidating (Nestlé India: two
     // consolidated years, FY24-25, beside a standalone history back to Dec 2011)
@@ -131,6 +153,10 @@ export async function loadCompanyRun(
       rawData,
       config,
       marketSnapshot,
+      // The sidecar is joined to the metrics by period, so an as-of run never
+      // reads a later year's row. It describes the consolidated entity, so a
+      // standalone-basis run does not get it.
+      bankQuality: basis === "consolidated" ? bankQuality : null,
       ...ACTIVE_MARKET_PACKS,
       metadata: {
         runId,

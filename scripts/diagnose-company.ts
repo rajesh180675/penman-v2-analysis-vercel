@@ -15,11 +15,12 @@
  * Reads the library on disk and writes nothing. No market price is fetched.
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { executeLegacyAnalysisRun } from "../src/engine/analysisRun";
 import { parseCapitalineZip } from "../src/engine/capitalineParser";
+import { fetchBankQualityIndicators } from "../src/engine/bankQualityIndicators";
 import type { RecastPeriod } from "../src/engine/types";
 import type { LibraryCompany } from "../src/components/data-entry/companyRegistry";
 import { loadCompanyRun, type CompanyRunDependencies } from "../src/next/companyRun";
@@ -74,6 +75,13 @@ async function main(): Promise<void> {
     fetchMarketSnapshot: async () => null,
     run: (input) => executeLegacyAnalysisRun(input),
     now: () => new Date(),
+    // The sidecar the app loads, read from disk through the same parser.
+    fetchBankQuality: async (c) => {
+      if (c.type !== "bank" && c.type !== "nbfc" && c.type !== "insurance") return null;
+      const file = join(COMPANIES_DIR, c.folder, "quality_indicators.json");
+      return fetchBankQualityIndicators(c.folder, async () =>
+        existsSync(file) ? new Response(readFileSync(file)) : new Response(null, { status: 404 }));
+    },
   };
 
   const state = await loadCompanyRun(company, undefined, deps);
