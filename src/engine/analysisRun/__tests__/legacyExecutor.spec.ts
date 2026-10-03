@@ -675,26 +675,39 @@ describe("financial-institution valuation inputs", () => {
     );
   });
 
-  it("names what the valuation rests on when it blocks the family's valuation rung", async () => {
-    // The block message replaces the envelope's own valuation-rung detail, so it
-    // has to carry the evidence: HDFC Bank's three models are one lens.
-    const computed = (intrinsicValue: number) => ({ status: "computed", intrinsicValue, premiumOverMarket: null, reason: "", diagnostics: {} });
-    const deps: LegacyAnalysisRunExecutorDependencies = {
-      ...dependencies(),
-      processPipeline: vi.fn(() => ({
-        periods: [],
-        analysisFamily: "financial-institution",
-        pipelineStrategyId: "bank-v1",
-        bankResult: {
-          subtype: "bank",
-          bankMetrics: [],
-          valuation: { justifiedPB: computed(668_446), equityResidualIncome: computed(550_000), sustainableDDM: computed(627_000) },
-        },
-      })) as unknown as LegacyAnalysisRunExecutorDependencies["processPipeline"],
-    };
+  const computed = (intrinsicValue: number) => ({ status: "computed", intrinsicValue, premiumOverMarket: null, reason: "fixture", diagnostics: {} });
+  const fiDeps = (): LegacyAnalysisRunExecutorDependencies => ({
+    ...dependencies(),
+    processPipeline: vi.fn(() => ({
+      periods: [],
+      analysisFamily: "financial-institution",
+      pipelineStrategyId: "bank-v1",
+      bankResult: {
+        subtype: "bank",
+        bankMetrics: ["2023-03-31", "2024-03-31", "2025-03-31"].map((period_end) => ({ period_end, totalEquity: 500_000, pat: 70_000, roe: 0.15 })),
+        // HDFC Bank-shaped: three models, one algebra.
+        valuation: { justifiedPB: computed(668_446), equityResidualIncome: computed(540_456), sustainableDDM: computed(575_549) },
+      },
+    })) as unknown as LegacyAnalysisRunExecutorDependencies["processPipeline"],
+  });
+
+  it("runs a financial institution past the industrial-only steps and lists its catalog models", async () => {
+    const deps = fiDeps();
     const result = await createLegacyAnalysisRunExecutor(deps)(input());
-    expect(result.status === "blocked" && result.reasonCode).toBe("LEGACY_COMMAND_CENTER_UNSUPPORTED_FAMILY");
-    const detail = result.run?.trustEnvelope?.rigor.checkpoints.find((c) => c.level === "valuation-eligible")?.detail;
-    expect(detail).toMatch(/diagnostic family analysis only\. One independent lens, book residual income \(justified P\/B ₹6,68,446 Cr/);
+    // No recast: the unified window and the command center are industrial.
+    expect(deps.selectAnalysisWindow).not.toHaveBeenCalled();
+    expect(deps.buildCommandCenter).not.toHaveBeenCalled();
+    expect(result.status === "blocked" && result.reasonCode).not.toBe("LEGACY_COMMAND_CENTER_UNSUPPORTED_FAMILY");
+    const pb = result.materialization?.modelResults.find((m) => m.modelId === "fi.bank.justified-pb-gordon");
+    expect(pb?.status === "computed" && pb.equityValue).toBe(668_446);
+  });
+
+  it("decides a financial institution's status from its own valuation evidence", async () => {
+    const deps = fiDeps();
+    await createLegacyAnalysisRunExecutor(deps)(input());
+    const readiness = vi.mocked(deps.deriveAnalysisStatus).mock.calls[0]![1];
+    // A bank's three models are one lens: not valuation-eligible.
+    expect(readiness?.status).toBe("guarded");
+    expect(readiness?.reasons[0]).toMatch(/^One independent lens, book residual income/);
   });
 });

@@ -18,6 +18,7 @@ import {
 } from "../../src/engine/modelCatalog";
 import { deriveAnalysisStatus } from "../../src/engine/analysisStatus";
 import { resolveValuationReadiness } from "../../src/engine/valuationPolicy";
+import { resolveFinancialValuationReadiness } from "../../src/engine/bankValuation/readiness";
 import { getAnalysisPolicyVersions } from "../../src/engine/policyVersions";
 import { DEFAULT_CONFIG, type EngineConfig, type RawPeriodData, type RecastPeriod } from "../../src/engine/types";
 import {
@@ -1065,29 +1066,16 @@ export function buildAuditAnalysisContext(args: {
   const isFinancial = args.pipeline.analysisFamily === "financial-institution" && args.pipeline.bankResult != null;
   let valuationReadiness = resolveValuationReadiness(args.pipeline.periods);
   if (isFinancial) {
-    const bankMetrics = args.pipeline.bankResult!.bankMetrics ?? [];
-    const latestPeriod = bankMetrics.at(-1)?.period_end ?? null;
-    const hasSufficientHistory = bankMetrics.length >= 3;
-    const hasContaminatedAnchor = bankMetrics.length > 0 && (bankMetrics.at(-1)?.roa == null || bankMetrics.at(-1)?.roe == null);
-    const bankReadinessStatus = hasSufficientHistory && !hasContaminatedAnchor
-      ? "production-ready"
-      : hasSufficientHistory
-        ? "guarded"
-        : "warning";
-    valuationReadiness = {
-      ...valuationReadiness,
-      status: bankReadinessStatus,
-      latestPeriod,
-      anchorPeriod: latestPeriod,
-      anchorIndex: bankMetrics.length - 1,
-      reasons: valuationReadiness.reasons.length > 0
-        ? valuationReadiness.reasons
-        : hasSufficientHistory && !hasContaminatedAnchor
-          ? ["Bank metrics present with sufficient history — production-ready for financial-institution analysis."]
-          : hasSufficientHistory
-            ? ["Bank metrics present but latest period has missing key ratios — guarded."]
-            : [`Insufficient bank history (${bankMetrics.length} periods, need ≥3) — warning.`],
-    };
+    // The rule the app's run applies (resolveFinancialValuationReadiness), so
+    // the two cannot disagree. It replaced a history-depth rule here that
+    // called every financial with three periods and a latest ROA/ROE
+    // "production-ready", whatever its valuation rested on.
+    const bankResult = args.pipeline.bankResult!;
+    valuationReadiness = resolveFinancialValuationReadiness({
+      bankMetrics: bankResult.bankMetrics ?? [],
+      valuation: bankResult.valuation,
+      subtype: bankResult.subtype,
+    });
   }
   const analysisStatus = deriveAnalysisStatus(null, valuationReadiness, null);
   return { valuationReadiness, analysisStatus };

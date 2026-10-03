@@ -4,7 +4,7 @@
  * at "No recast periods available" and no financial could reach
  * economically-plausible, however clean its accounts.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { evaluateFinancialEconomicSanity, type UnusualItemManifestLike } from "../economicSanityGates";
 import { buildAnalysisTraceability } from "../analysisTraceability";
 import type { BankPeriodMetrics } from "../bankPipeline";
@@ -102,23 +102,26 @@ describe("analysis traceability — economic sanity for a financial institution"
     expect(env.economicSanity?.anchorPeriod).toBe("2025-03-31");
   });
 
-  it("states the financial-institution cap on the valuation rungs", () => {
-    // The audit harness marks a financial production-ready from history depth
-    // alone; with no valuation evidence behind it, the ladder must not follow.
-    // This fixture does not clear the lower rungs, so it pins the reason; the
-    // cap itself is pinned on real data by auditCompanyRun.spec (HDFC Bank
-    // reaches production-ready without it) and the Bajaj / HDFC Bank audits.
-    const env = buildAnalysisTraceability({
-      rawData: RAW,
-      recastData: [],
-      bankMetrics: YEARS.map((y) => year(y)),
-      bankSubtype: "bank",
-      analysisStatus: { status: "production-ready", valuationStatus: "production-ready" },
-    } as never);
-    const byLevel = Object.fromEntries(env.rigor.checkpoints.map((c) => [c.level, c]));
-    expect(byLevel["valuation-eligible"]?.achieved).toBe(false);
-    expect(byLevel["valuation-eligible"]?.detail).toMatch(/Financial institution/);
-    expect(byLevel["production-ready"]?.achieved).toBe(false);
+  it("gives a financial's valuation rung its readiness reason and keeps production-ready capped", () => {
+    // Concept identity on this bare fixture would pre-empt the reason under test.
+    vi.stubEnv("VITE_RIGOR_CONCEPT_IDENTITY_BLOCK", "false");
+    try {
+      const reason = "One independent lens, book residual income (justified P/B ₹6,68,446 Cr): one algebra.";
+      const env = buildAnalysisTraceability({
+        rawData: RAW,
+        recastData: [],
+        bankMetrics: YEARS.map((y) => year(y)),
+        bankSubtype: "bank",
+        analysisStatus: { status: "production-ready", valuationStatus: "guarded", reasons: [reason] },
+      } as never);
+      const byLevel = Object.fromEntries(env.rigor.checkpoints.map((c) => [c.level, c]));
+      expect(byLevel["valuation-eligible"]?.achieved).toBe(false);
+      expect(byLevel["valuation-eligible"]?.detail).toBe(`Financial institution — ${reason}`);
+      expect(byLevel["production-ready"]?.achieved).toBe(false);
+      expect(byLevel["production-ready"]?.detail).toMatch(/^Financial institution — production-ready needs the release checks/);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("keeps the industrial evaluator when there are no bank metrics", () => {

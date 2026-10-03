@@ -418,19 +418,25 @@ export function buildAnalysisTraceability(params: {
   const sectorCapReason = scopeClassification === "detected-telecom-unmodelled"
     ? "no sector-native valuation model is blessed until sector-native reconciliation confirms trace-backed spectrum/licence assets plus network opex coverage"
     : "no utility-native regulated-asset-base valuation model is blessed until sector-native reconciliation confirms trace-backed PPE/rate-base, CWIP, and regulatory-deferral balances";
-  // Financial institutions: the bank metrics reconcile and anchor economic
-  // sanity, but the valuation side has no readiness evidence yet: no
-  // evidence-weighted synthesis and no cost-of-capital provenance (the audit
-  // harness reports both absent for the family). Its readiness status counts
-  // only history depth, so without this cap three periods with ROA and ROE
-  // filed read as production-ready. Capped at economically-plausible, as for
-  // an unmodelled sector, until that evidence is wired.
-  const financialValuationCapsAtPlausible = hasBankMetrics && bankSubtype != null;
+  // Financial institutions: valuation-eligible is decided by their own
+  // readiness (resolveFinancialValuationReadiness — the evidence the valuation
+  // rests on: an insurer's filed embedded value and VNB, or two independent
+  // lenses that agree), reaching the envelope as analysisStatus.valuationStatus
+  // like any run's. Production-ready stays capped: it needs the release checks
+  // the industrial path runs (evidence-weighted synthesis, cost-of-capital
+  // provenance), which the financial-institution path does not yet.
+  const isFinancialInstitution = hasBankMetrics && bankSubtype != null;
   // Undefined means the caller did not supply the valuation, which is not
   // evidence that none computed; only a supplied bundle (or null) is described.
-  const financialValuationEvidence = financialValuationCapsAtPlausible && params.bankValuation !== undefined
+  const financialValuationEvidence = isFinancialInstitution && params.bankValuation !== undefined
     ? describeFinancialValuationEvidence(summarizeFinancialValuationEvidence(params.bankValuation, bankSubtype))
     : "";
+  // The readiness reason, or — where a caller assessed none — the evidence.
+  const financialReadinessReason = !isFinancialInstitution
+    ? null
+    : valuationStatus === "unknown"
+      ? `Financial-institution valuation readiness was not assessed for this run.${financialValuationEvidence ? ` ${financialValuationEvidence}` : ""}`
+      : analysisStatus?.reasons?.[0] ?? analysisStatus?.summary ?? null;
   if (unusualItemManifest.classifications.length > 0) {
     trace("config", "unusualItemManifest:built", {
       companyId: params.companyId ?? null,
@@ -506,11 +512,9 @@ export function buildAnalysisTraceability(params: {
     {
       level: "valuation-eligible",
       label: "Valuation eligible",
-      achieved: !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && !sectorUnmodelledCapsAtPlausible && !financialValuationCapsAtPlausible && valuationStatus !== "guarded" && valuationStatus !== "unknown",
+      achieved: !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && !sectorUnmodelledCapsAtPlausible && valuationStatus !== "guarded" && valuationStatus !== "unknown",
       detail: sectorUnmodelledCapsAtPlausible
         ? `${sectorCapLabel} sector detected — ${sectorCapReason}, so the industrial intrinsic value is produced but not blessed. The run is capped at economically-plausible; ratios are sector-correct.`
-        : financialValuationCapsAtPlausible
-        ? `Financial institution — the bank metrics reconcile, but the valuation is produced, not blessed: the app runs financial-institution valuations as diagnostics only, and valuation-eligible needs at least two independent lenses that agree.${financialValuationEvidence ? ` ${financialValuationEvidence}` : ""} The run is capped at economically-plausible.`
         : screeningOnly
         ? "Single-period upload — valuation eligibility requires ≥2 periods for time-series anchoring."
         : distressBlocksValuation
@@ -519,6 +523,8 @@ export function buildAnalysisTraceability(params: {
             ? `Concept identity layer reports ${conceptIdentity.unresolvedCriticalCount} unresolved critical conflict(s). Resolve before treating the run as valuation-eligible.`
             : terminalEligibilityBlocksValuation
               ? `Unusual-item manifest flags ${terminalBlockers.length} terminal-eligibility-blocking classification(s) in the terminal period ${terminalBlockers[0]?.period ?? ""} (${[...new Set(terminalBlockers.map((c) => c.category))].join(", ")}).`
+              : financialReadinessReason
+                ? `Financial institution — ${financialReadinessReason}`
               : valuationStatus === "guarded"
                 ? "Valuation still depends on a guarded fallback anchor."
                 : valuationStatus === "warning" || valuationStatus === "production-ready"
@@ -528,11 +534,11 @@ export function buildAnalysisTraceability(params: {
     {
       level: "production-ready",
       label: "Production-ready",
-      achieved: !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && !sectorUnmodelledCapsAtPlausible && !financialValuationCapsAtPlausible && analysisStatus?.status === "production-ready",
+      achieved: !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && !sectorUnmodelledCapsAtPlausible && !isFinancialInstitution && analysisStatus?.status === "production-ready",
       detail: sectorUnmodelledCapsAtPlausible
         ? `${sectorCapLabel} sector detected — production-ready requires sector-native reconciliation and valuation readiness; ${sectorCapReason}.`
-        : financialValuationCapsAtPlausible
-        ? "Financial institution — production-ready requires valuation readiness evidence the financial-institution path does not yet produce."
+        : isFinancialInstitution
+        ? "Financial institution — production-ready needs the release checks the industrial path runs (evidence-weighted synthesis, cost-of-capital provenance), which the financial-institution path does not yet."
         : screeningOnly
         ? "Single-period upload — production-ready status requires ≥2 periods."
         : !structuralCriteriaCleared

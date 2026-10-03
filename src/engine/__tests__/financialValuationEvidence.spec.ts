@@ -3,7 +3,7 @@
  * three models are one algebra (one independent lens); an insurer's embedded
  * value is a second lens beside its book models.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { describeFinancialValuationEvidence, summarizeFinancialValuationEvidence } from "../bankValuation/evidence";
 import { buildAnalysisTraceability } from "../analysisTraceability";
 import type { BankValuationBundle, BankValuationModelResult } from "../bankValuation/types";
@@ -66,27 +66,30 @@ describe("summarizeFinancialValuationEvidence", () => {
   });
 });
 
-describe("the financial-institution cap names its evidence", () => {
+describe("a financial's valuation rung where no readiness was assessed", () => {
   const metrics = ["2023-03-31", "2024-03-31", "2025-03-31"].map((period_end) =>
     ({ period_end, pat: 60_000, totalEquity: 500_000, roe: 0.16 }) as unknown as BankPeriodMetrics);
-  const capDetail = (bankValuation: BankValuationBundle | null | undefined) => {
-    const env = buildAnalysisTraceability({
-      rawData: metrics.map((m) => ({ company_id: "HDFCBANK", period_end: m.period_end, raw_metric_values: {} })),
-      recastData: [],
-      bankMetrics: metrics,
-      bankSubtype: "bank",
-      ...(bankValuation === undefined ? {} : { bankValuation }),
-    } as never);
-    return env.rigor.checkpoints.find((c) => c.level === "valuation-eligible")!.detail;
+  const rungDetail = (bankValuation: BankValuationBundle | null | undefined) => {
+    vi.stubEnv("VITE_RIGOR_CONCEPT_IDENTITY_BLOCK", "false");
+    try {
+      const env = buildAnalysisTraceability({
+        rawData: metrics.map((m) => ({ company_id: "HDFCBANK", period_end: m.period_end, raw_metric_values: {} })),
+        recastData: [],
+        bankMetrics: metrics,
+        bankSubtype: "bank",
+        ...(bankValuation === undefined ? {} : { bankValuation }),
+      } as never);
+      return env.rigor.checkpoints.find((c) => c.level === "valuation-eligible")!.detail;
+    } finally {
+      vi.unstubAllEnvs();
+    }
   };
 
-  it("lists the lenses that computed", () => {
-    expect(capDetail(bank)).toMatch(/One independent lens, book residual income \(justified P\/B ₹6,68,446 Cr/);
+  it("says so, and lists the lenses that computed", () => {
+    expect(rungDetail(bank)).toMatch(/^Financial institution — Financial-institution valuation readiness was not assessed for this run\. One independent lens, book residual income \(justified P\/B ₹6,68,446 Cr/);
   });
 
   it("says nothing about evidence a caller did not supply", () => {
-    const detail = capDetail(undefined);
-    expect(detail).toMatch(/^Financial institution/);
-    expect(detail).not.toMatch(/lens,|No financial-institution valuation model computed/);
+    expect(rungDetail(undefined)).toBe("Financial institution — Financial-institution valuation readiness was not assessed for this run.");
   });
 });
