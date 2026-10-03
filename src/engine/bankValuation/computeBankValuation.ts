@@ -1,6 +1,7 @@
 import type { BankPeriodMetrics } from "../bankPipeline";
 import { EngineConfig } from "../types";
 import { resolveCostOfCapitalFromConfig } from "../costOfCapital";
+import type { SuppliedMarketPacks } from "../marketPacks/activePacks";
 import { trace } from "../../lib/traceLogger";
 import type {
   BankValuationModelResult,
@@ -38,7 +39,9 @@ import { buildBankScenarioBundle } from "./scenarios";
  * the standard EngineConfig. marketCap is optional — when provided each
  * model's premium-over-market is computed; otherwise null.
  *
- * Per S-9.4C: ke comes from the shared CostOfCapitalResult.
+ * Per S-9.4C: ke comes from the shared CostOfCapitalResult, resolved with
+ * the market packs the caller supplies (dated rf and ERP, the company's
+ * regressed beta). Without them it is the undated sector prior.
  * Terminal growth uses cfg.terminal_growth_rate when present else
  * DEFAULT_TERMINAL_GROWTH.
  *
@@ -55,12 +58,13 @@ export function computeBankValuation(
   payoutRatio: number | null = null,
   isInsurance: boolean = false,
   isNbfc: boolean = false,
+  packs?: SuppliedMarketPacks,
 ): BankValuationBundle {
   if (metrics.length === 0) {
     const skip = skipped("no bank metrics provided");
     return {
       sustainableROE: null,
-      ke: resolveCostOfCapitalFromConfig({ config: cfg }).ke,
+      ke: resolveCostOfCapitalFromConfig({ config: cfg, ...packs }).ke,
       terminalGrowth: DEFAULT_TERMINAL_GROWTH,
       latestBookValue: null,
       usableHistory: 0,
@@ -74,7 +78,7 @@ export function computeBankValuation(
     };
   }
 
-  const ke = resolveCostOfCapitalFromConfig({ config: cfg }).ke;
+  const ke = resolveCostOfCapitalFromConfig({ config: cfg, ...packs }).ke;
   const originalG = cfg.terminal_growth_rate ?? DEFAULT_TERMINAL_GROWTH;
 
   // Phase D2 — apply CRAR-buffer governor for NBFCs so all downstream

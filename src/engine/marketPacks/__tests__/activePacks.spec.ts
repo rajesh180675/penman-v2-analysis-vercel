@@ -81,6 +81,10 @@ const PASSES_PACKS_THROUGH = [
   "src/engine/analysisCase/assumptionResolution.ts",
   "src/engine/grahamDoddEPV.ts",
   "src/engine/v3Analytics/compute.ts",
+  // The financial-institution valuation. Its ke is the family's discount rate
+  // (bank, NBFC and insurer values), reached through pipeline.ts → bankPipeline.ts;
+  // the chain test below asserts each hop forwards what it was given.
+  "src/engine/bankValuation/computeBankValuation.ts",
   // The run executor. It builds the command center through an injected
   // `dependencies.buildCommandCenter`, so the callee is spelled differently
   // from every other site — which is why `buildCommandCenter` is a matched
@@ -102,16 +106,15 @@ const KNOWN_UNPINNED: ReadonlyArray<readonly [string, string]> = [
   // captured baselines for all 33 companies. Separate change, with a
   // baseline re-capture.
   ["src/engine/pipeline.ts", "recast RI; shared with the baseline harness"],
-  // Bank/NBFC family, reached only through `pipeline.ts` above. Pinning
-  // these without it would fork the same recast two ways.
-  ["src/engine/bankValuation/computeBankValuation.ts", "downstream of pipeline.ts"],
+  // Bank/NBFC helpers with no production caller (tests only): the family's
+  // live discount rate is computeBankValuation's, which forwards the packs.
   ["src/engine/financialInstitutionFramework.ts", "downstream of pipeline.ts"],
   ["src/engine/moatScoring/bank.ts", "downstream of pipeline.ts"],
   ["src/engine/capitalAllocationScoring/bank.ts", "downstream of pipeline.ts"],
-  // Workbook cover sheets. They print a ke for the reader, so these are a
-  // real gap — but both are export-time renderers with no pack in scope,
-  // and threading them means changing the export entry signatures.
-  ["src/engine/bankExcelExport.ts", "export renderer; no pack in scope"],
+  // Workbook cover sheet. It prints a ke for the reader, so this is a real
+  // gap — but it is an export-time renderer with no pack in scope, and
+  // threading it means changing the export entry signature. (The bank
+  // workbook no longer resolves one: its cover prints the valuation's ke.)
   ["src/engine/excelExport/sheetsCore.ts", "export renderer; no pack in scope"],
   // Regression and guardrail harnesses. These compare the engine against
   // itself, so an undated rate on both sides of the comparison is the
@@ -146,6 +149,15 @@ const KNOWN_UNPINNED: ReadonlyArray<readonly [string, string]> = [
   // look-ahead the backtest exists to exclude. Config defaults are the
   // point-in-time-neutral choice until packs carry dated history.
   ["src/engine/accountability/walkForward.ts", "historical cutoffs; today's packs would be look-ahead"],
+  // Pipeline runs whose output reads no ke-dependent value: the packs reach
+  // only the financial-institution valuation, and these read recast periods,
+  // bank metrics or the consolidated − standalone snapshots.
+  ["src/engine/batchRunner.ts", "reads recast and bank metrics only"],
+  ["src/engine/scopeAwareLoader.ts", "overlay reads PAT/book snapshots only"],
+  ["scripts/filings/tie-out.ts", "reads recast periods only"],
+  ["scripts/recon-sweep.ts", "reads reconciliation only"],
+  // Captures audit expectations; reproducible like the audit harness above.
+  ["scripts/refresh-expectations.ts", "baseline capture; undated like the audit harness"],
 ];
 
 /* ── The census machinery ─────────────────────────────────────────
@@ -167,7 +179,23 @@ const RESOLVER_NAMES = new Set([
   "buildCommandCenter",
   "computeEPV",
   "computeV3Analytics",
+  // The pipeline entry: it resolves the financial-institution valuation's ke
+  // (from the packs it is handed). `processPipeline` is the run executor's
+  // injected alias, matched like `buildCommandCenter`.
+  "processCompanyDataFull",
+  "processPipeline",
 ]);
+
+/**
+ * The hops between the pipeline entry and the financial-institution resolver.
+ * Not resolvers themselves, so outside the census; asserted on their own below,
+ * because a hop that drops the packs is as invisible as a call site that never
+ * had them.
+ */
+const FI_CHAIN: ReadonlyArray<readonly [string, string]> = [
+  ["src/engine/pipeline.ts", "processBankData"],
+  ["src/engine/bankPipeline.ts", "computeBankValuation"],
+];
 
 /** Names that count as handing packs down from a parameter. */
 const FORWARDED_NAMES = new Set(["packs", "macroPack", "betaPack"]);
@@ -288,17 +316,17 @@ function callSitesIn(file: string): CallSite[] {
  * the repo writes `analysisAsOf: undefined` today, which is the point — the
  * check exists so the first one that does fails.
  */
-function callSitesInSource(file: string, text: string): CallSite[] {
+function callSitesInSource(file: string, text: string, names: ReadonlySet<string> = RESOLVER_NAMES): CallSite[] {
   // Cheap skip for the tree walk: a call needs its callee's identifier text to
   // appear somewhere in the file, so a file naming none of them has none.
-  if (![...RESOLVER_NAMES].some((name) => text.includes(name))) return [];
+  if (![...names].some((name) => text.includes(name))) return [];
 
   const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const found: CallSite[] = [];
   const visit = (node: ts.Node): void => {
     if (ts.isCallExpression(node)) {
       const callee = calleeName(node.expression);
-      if (callee && RESOLVER_NAMES.has(callee)) {
+      if (callee && names.has(callee)) {
         const names = suppliedNames(node, sf);
         found.push({
           file,
@@ -470,6 +498,12 @@ describe("pack activation — the call-site census", () => {
     expect(calls.filter((call) => call.mode !== "forwarded").map(describeCall)).toEqual([]);
     // ...and does not reach for the production set itself.
     expect(source(path)).not.toContain("ACTIVE_MARKET_PACKS");
+  });
+
+  it.each(FI_CHAIN)("%s forwards the packs to %s", (path, callee) => {
+    const calls = callSitesInSource(path, source(path), new Set([callee]));
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.filter((call) => call.mode !== "forwarded").map(describeCall)).toEqual([]);
   });
 
   it.each(KNOWN_UNPINNED)("%s is a recorded exemption (%s)", (path) => {

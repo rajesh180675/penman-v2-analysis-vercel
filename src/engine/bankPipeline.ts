@@ -18,6 +18,7 @@
  */
 
 import { RawPeriodData, EngineConfig } from "./types";
+import type { SuppliedMarketPacks } from "./marketPacks/activePacks";
 import {
   FinancialInstitutionAnalysisResult,
   FinancialInstitutionPeriodSnapshot,
@@ -58,6 +59,7 @@ export function processBankData(
   cfg?: EngineConfig | undefined,
   marketCap: number | null = null,
   quality: BankQualityIndicators | null = null,
+  packs?: SuppliedMarketPacks,
 ): FinancialInstitutionAnalysisResult {
   if (!dataArray || dataArray.length === 0) {
     return {
@@ -261,6 +263,7 @@ export function processBankData(
         derivedPayoutRatio,
         subtype === "insurance",
         subtype === "nbfc",
+        packs,
       )
     : null;
 
