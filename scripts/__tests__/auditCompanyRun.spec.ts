@@ -208,12 +208,11 @@ describe.sequential("auditCompanyRun", () => {
   expect(result.valuationEvidence.triangulationMethods.map((method) => method.key)).toEqual(
   expect.arrayContaining(["bank-pb", "bank-eri", "bank-ddm"]),
   );
-  // Registry vocabulary, and PB + ERI collapse into ONE group: justified P/B
-  // under Gordon growth is the closed form of equity residual income, so they
-  // are one piece of algebra, not two independent confirmations.
-  expect(result.valuationEvidence.independentLensGroups).toEqual(
-  expect.arrayContaining(["fi-book-residual-income", "fi-distribution"]),
-  );
+  // Registry vocabulary, and PB + ERI + DDM collapse into ONE group: justified
+  // P/B under Gordon growth is the closed form of equity residual income, and
+  // the DDM at its steady-state payout is justified P/B on latest earnings, so
+  // a bank's three lenses are one piece of algebra, not three confirmations.
+  expect(result.valuationEvidence.independentLensGroups).toEqual(["fi-book-residual-income"]);
   expect(result.valuationEvidence.independentLensGroups).not.toContain("book-value");
   // The readiness status above counts only history depth, so it cannot carry
   // the ladder: the financial-institution valuation has no synthesis and no
