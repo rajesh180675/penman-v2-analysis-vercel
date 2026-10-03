@@ -16,6 +16,9 @@ import { fmtPct, fmtMultiple } from "./financialInstitutionFormatters";
  */
 export function NbfcMetricsSection({ metrics }: { metrics: BankPeriodMetrics[] }) {
   const latest = metrics[metrics.length - 1]!;
+  // Condensed exports file no interest-income line; the pipeline then reads
+  // revenue from operations, so yield, spread and NIM include fee income.
+  const revenueBasisYears = metrics.filter((m) => m.interestIncomeBasis === "revenue-total").length;
 
   return (
     <section className="space-y-4">
@@ -37,7 +40,11 @@ export function NbfcMetricsSection({ metrics }: { metrics: BankPeriodMetrics[] }
         <div className="rounded border border-slate-200 dark:border-slate-800 p-3">
           <div className="text-xs text-slate-500 dark:text-slate-400">Yield on Advances</div>
           <div className="font-semibold text-lg">{fmtPct(latest.yieldOnAdvances)}</div>
-          <div className="text-xs text-slate-500 mt-0.5">Interest earned / loan book</div>
+          <div className="text-xs text-slate-500 mt-0.5">
+            {latest.interestIncomeBasis === "revenue-total"
+              ? "Revenue from operations / loan book (fees included)"
+              : "Interest earned / loan book"}
+          </div>
         </div>
         <div className="rounded border border-slate-200 dark:border-slate-800 p-3">
           <div className="text-xs text-slate-500 dark:text-slate-400">Cost of Borrowings</div>
@@ -88,6 +95,13 @@ export function NbfcMetricsSection({ metrics }: { metrics: BankPeriodMetrics[] }
         <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
           * NBFC NIM uses advances-only as the denominator (not advances + investments,
           which is the bank framing). SLR investments don't apply to NBFCs.
+          {revenueBasisYears > 0 && (
+            <>
+              {" "}In {revenueBasisYears} of {metrics.length} years the export files no
+              interest-income line, so yield, spread and NIM are computed on revenue from
+              operations and include fee income.
+            </>
+          )}
         </div>
       </div>
 
