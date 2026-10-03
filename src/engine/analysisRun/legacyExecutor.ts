@@ -992,7 +992,13 @@ export function createLegacyAnalysisRunExecutor(
 
       if (!terminal) {
         try {
-          pipelineResult = dependencies.processPipeline(rawData, config, bankQuality);
+          // The packs reach only the financial-institution valuation's ke; the
+          // recast's own ke stays unpinned (pipeline.ts exemption).
+          pipelineResult = dependencies.processPipeline(rawData, config, bankQuality, {
+            macroPack: input.macroPack,
+            betaPack: input.betaPack,
+            analysisAsOf: input.metadata.asOf,
+          });
           recastData = pipelineResult.periods;
           qualityGate = dependencies.evaluateQualityGate(rawData, config, recastData.length > 0 ? recastData : null);
           valuationReadiness = recastData.length > 0 ? dependencies.resolveValuationReadiness(recastData) : null;

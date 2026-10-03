@@ -21,7 +21,6 @@ import type { BankPeriodMetrics } from "./bankPipeline";
 import type { BankValuationBundle, BankValuationModelResult } from "./bankValuation";
 import type { FinancialInstitutionAnalysisResult, FinancialInstitutionSubtype } from "./analysisFamily";
 import type { EngineConfig } from "./types";
-import { resolveCostOfCapitalFromConfig } from "./costOfCapital";
 
 // ─── Style + workbook helpers ─────────────────────────────────────────────────
 
@@ -90,7 +89,10 @@ function buildCoverSheet(
   metadata: BankWorkbookMetadata,
 ): SheetSpec {
   const v = bankResult.valuation;
-  const ke = resolveCostOfCapitalFromConfig({ config }).ke;
+  // The rate the valuation used, so the cover and the valuation sheet cannot
+  // print two discount rates for one run (S-9.4C). Re-resolving from config
+  // here returned the undated prior even when the valuation used the packs.
+  const ke = v?.ke ?? null;
   const subtypeLabel = subtypeDisplayLabel(bankResult.subtype);
 
   const rows: CellValue[][] = [

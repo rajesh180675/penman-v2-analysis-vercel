@@ -70,7 +70,7 @@ export function useAuditAnalysis(inputs: AuditAnalysisInputs) {
     if (!valuationRawData || valuationRawData.length === 0) return null;
     if (scopeGate?.scopeAssessment.blocked) return null;
     try {
-      return processCompanyDataFull(valuationRawData, config, bankQuality);
+      return processCompanyDataFull(valuationRawData, config, bankQuality, { ...ACTIVE_MARKET_PACKS, analysisAsOf: analysisAsOfToday() });
     } catch (err) {
       trace("pipeline", "processCompanyDataFull:error", { error: String(err), stack: (err as Error)?.stack }, null, { level: "error" });
       console.error("[App] engine error:", err);

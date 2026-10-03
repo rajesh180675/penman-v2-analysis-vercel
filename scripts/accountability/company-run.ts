@@ -40,7 +40,7 @@ const parsed = await parseCapitalineZip(new Uint8Array(buf.buffer, buf.byteOffse
   filename: `${company.folder}.zip`,
 });
 const config = { ...DEFAULT_CONFIG, company_type: company.type as typeof DEFAULT_CONFIG.company_type, ticker: company.ticker };
-const pipeline = processCompanyDataFull(parsed.periods, config);
+const pipeline = processCompanyDataFull(parsed.periods, config, null, { ...ACTIVE_MARKET_PACKS, analysisAsOf: madeAt });
 const periods: RecastPeriod[] = [...pipeline.periods].sort((a, b) => a.period_end.localeCompare(b.period_end));
 
 const outDir = join(ROOT, "accountability", "runs");

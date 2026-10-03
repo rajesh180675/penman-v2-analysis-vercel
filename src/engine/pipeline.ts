@@ -5,6 +5,7 @@
  * Routes to bank pipeline when financial institution detected.
  */
 import { RawPeriodData, RecastPeriod, EngineConfig, CompanyType } from "./types";
+import type { SuppliedMarketPacks } from "./marketPacks/activePacks";
 import {
   computeRecastPeriod, computeRatios,
   computeResidualIncome, computeQuality,
@@ -153,6 +154,11 @@ export function processCompanyDataFull(
   dataArray: RawPeriodData[],
   config: EngineConfig,
   quality: BankQualityIndicators | null = null,
+  /**
+   * Market packs for the financial-institution valuation's cost of equity.
+   * The recast's own ke stays unpinned (it feeds ri.RE, not a discount rate).
+   */
+  packs?: SuppliedMarketPacks,
 ): PipelineResult {
   trace("pipeline", "processCompanyDataFull:enter", {
     periods: dataArray?.length ?? 0,
@@ -198,7 +204,7 @@ export function processCompanyDataFull(
     const marketCapCr = config.market_price != null && config.shares_outstanding != null
       ? config.market_price * config.shares_outstanding
       : null;
-    const bankResult = processBankData(filteredData, scope, config, marketCapCr, quality);
+    const bankResult = processBankData(filteredData, scope, config, marketCapCr, quality, packs);
     const emptyAnomalies = runAnomalyDetection([], config);
     const distress = detectDistress([]);
  // Phase 9 — sanity check bank/NBFC metrics
