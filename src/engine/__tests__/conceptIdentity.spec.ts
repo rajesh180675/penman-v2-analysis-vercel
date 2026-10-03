@@ -165,3 +165,23 @@ describe("conceptOntology / concept identity", () => {
     }
   });
 });
+
+describe("required revenue for a financial institution", () => {
+  // ICICI Bank FY25: no "Revenue From Operations" value; a bank's revenue is its interest income.
+  const bankPeriod = {
+    company_id: "ICICIBANK",
+    period_end: "2025-03-31",
+    raw_metric_values: { "Interest Income__ProfitLoss": 186_331.46, "Other Income__ProfitLoss": 108_255.47 },
+  };
+  const unresolvedRevenue = (financialInstitution: boolean) =>
+    summarizeConceptIdentity([bankPeriod], undefined, { financialInstitution }).conflicts
+      .filter((c) => c.conceptId === "revenue" && c.conflictClass === "unresolved");
+
+  it("resolves from interest income for a financial institution", () => {
+    expect(unresolvedRevenue(true)).toEqual([]);
+  });
+
+  it("still flags an industrial company whose only income line is interest", () => {
+    expect(unresolvedRevenue(false)).toHaveLength(1);
+  });
+});

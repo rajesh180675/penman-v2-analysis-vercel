@@ -41,6 +41,14 @@ export interface ConceptDefinition {
   aliases: string[];
   valuationRelevance: "core" | "supporting" | "optional";
   sectorRelevance?: string[] | undefined;
+  /**
+   * Labels that carry this concept in a financial institution's filings, which
+   * name it differently: a bank's revenue is its interest income (ICICI Bank
+   * never files a "Revenue From Operations" value). Read only by the
+   * required-concept check, and only for a financial institution's data, so
+   * an industrial company missing its revenue line is still flagged.
+   */
+  financialInstitutionAliases?: string[] | undefined;
   /** Empty / absent = applicable to every provider. */
   providerRelevance?: DataProvider[] | undefined;
 }
@@ -84,7 +92,7 @@ const DERIVED_NONE = { signConvention: "flow" as const, aggregationBehavior: "no
 
 export const CONCEPT_ONTOLOGY: ConceptDefinition[] = [
   // ─── Income statement ──────────────────────────────────────────────────
-  { id: "revenue", label: "Revenue", statement: "ProfitLoss", statementOwner: "IS", ...INCOME_SUM, aliases: ["Revenue From Operations", "Total Revenue from Operations", "Revenue From Operations(Net)", "Net Sale of Products"], valuationRelevance: "core" },
+  { id: "revenue", label: "Revenue", statement: "ProfitLoss", statementOwner: "IS", ...INCOME_SUM, aliases: ["Revenue From Operations", "Total Revenue from Operations", "Revenue From Operations(Net)", "Net Sale of Products"], financialInstitutionAliases: ["Interest Earned", "Interest Income", "Interests Income (Operating)"], valuationRelevance: "core" },
   { id: "pat", label: "Profit after tax", statement: "ProfitLoss", statementOwner: "IS", ...INCOME_SUM, aliases: ["Profit After Tax", "Profit Attributable to Ordinary Shareholders", "Profit Attributable to Shareholders"], valuationRelevance: "core" },
   { id: "nii", label: "Net interest income", statement: "ProfitLoss", statementOwner: "IS", ...INCOME_SUM, aliases: ["Interest Income", "Interest / Discount on Advances / Bills"], valuationRelevance: "supporting", sectorRelevance: ["financials"] },
 
@@ -232,6 +240,7 @@ export function summarizeUnmappedLabels(
 export function detectConflicts(
   rawData: RawPeriodData[],
   registry: ConceptDefinition[] = CONCEPT_ONTOLOGY,
+  options: { readonly financialInstitution?: boolean | undefined } = {},
 ): ConceptConflict[] {
   const conflicts: ConceptConflict[] = [];
 
@@ -303,7 +312,10 @@ export function detectConflicts(
       if (concept.statement === "Derived") continue;
       if (concept.aliases.length === 0) continue;
       if (concept.sectorRelevance && concept.sectorRelevance.length > 0) continue;
-      const match = findRawMetric(latest, concept.aliases);
+      const aliases = options.financialInstitution && concept.financialInstitutionAliases
+        ? [...concept.aliases, ...concept.financialInstitutionAliases]
+        : concept.aliases;
+      const match = findRawMetric(latest, aliases);
       if (!match) {
         conflicts.push({
           conceptId: concept.id,
@@ -339,8 +351,9 @@ export function detectConflicts(
 export function summarizeConceptIdentity(
   rawData: RawPeriodData[] | null | undefined,
   registry: ConceptDefinition[] = CONCEPT_ONTOLOGY,
+  options: { readonly financialInstitution?: boolean | undefined } = {},
 ): ConceptIdentitySummary {
-  const conflicts = detectConflicts(rawData ?? [], registry);
+  const conflicts = detectConflicts(rawData ?? [], registry, options);
   const unresolvedCritical = conflicts.filter(
     (c) => c.conflictClass === "unresolved" || c.conflictClass === "cross-statement-conflict",
   );
