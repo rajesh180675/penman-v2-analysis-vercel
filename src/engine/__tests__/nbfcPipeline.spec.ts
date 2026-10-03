@@ -305,3 +305,36 @@ describe("NBFC borrowings — a filed total of 0 beside real components", () => 
     expect(m.borrowings).toBeNull();
   });
 });
+
+describe("NBFC loan book — filed in both asset blocks", () => {
+  // Bajaj Finance FY16 as filed: "Total Loans Given" of 24,778.55 under
+  // non-current assets and 18,493.68 under current assets. The parser keeps
+  // the second row as "Total Loans Given - Current Assets".
+  const year = (lines: Record<string, number | null>) => extractBankMetrics({
+    company_id: "BAJFINANCE",
+    period_end: "2016-03-31",
+    raw_metric_values: { "Total Assets__BalanceSheet": 46973.07, "Total Equity__BalanceSheet": 7426.76, ...lines } as Record<string, number>,
+  });
+
+  it("adds the current loans to the non-current ones", () => {
+    const m = year({
+      "Total Loans Given__BalanceSheet": 24778.55,
+      "Total Loans Given - Current Assets__BalanceSheet": 18493.68,
+    });
+    expect(m.advances).toBeCloseTo(43272.23, 6);
+  });
+
+  it("adds only the twin of the alias it read", () => {
+    // "Advances" outranks "Total Loans Given"; a "Total Loans Given" current
+    // row belongs to a different line and is not added to it.
+    const m = year({
+      "Advances__BalanceSheet": 50000,
+      "Total Loans Given - Current Assets__BalanceSheet": 18493.68,
+    });
+    expect(m.advances).toBe(50000);
+  });
+
+  it("leaves a single-block book as filed", () => {
+    expect(year({ "Total Loans Given__BalanceSheet": 79102.5 }).advances).toBe(79102.5);
+  });
+});

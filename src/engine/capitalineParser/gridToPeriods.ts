@@ -32,8 +32,19 @@ export function gridToPeriods(
   // 13,909 Cr of trade payables; current lease liabilities in 124 library
   // company-years). A repeat inside the current-liabilities block is kept
   // under "<label> - Current" instead; every existing key is unchanged.
+  //
+  // Assets repeat the same way: a pre-Ind AS NBFC files "Total Loans Given"
+  // under non-current and again under current assets (Bajaj Finance FY16:
+  // 24,778.55 and 18,493.68), so half the loan book was lost. Plain keys
+  // there have readers that rely on a null first row being filled by the
+  // current row, so that fill is kept; the current row gets its own
+  // "<label> - Current Assets" key only where the plain key already holds
+  // an earlier row. Plain key + twin is then the rows' sum, never a double
+  // count. (A distinct suffix: labels such as "Total Provisions" repeat in
+  // both current blocks, and "- Current" belongs to the liability row.)
   const seenMetrics = new Set<string>();
   let inCurrentLiabilities = false;
+  let inCurrentAssets = false;
 
   for (let r = header.rowIndex + 1; r < grid.length; r++) {
     rowsSeen++;
@@ -65,7 +76,9 @@ export function gridToPeriods(
 
     rowsKept++;
     if (stmt === "BalanceSheet" && metric === "Total Current Liabilities") inCurrentLiabilities = false;
+    if (stmt === "BalanceSheet" && metric === "Total Current Assets") inCurrentAssets = false;
     const rowKeyLabel = inCurrentLiabilities && seenMetrics.has(metric) ? `${metric} - Current` : metric;
+    const currentAssetRepeat = inCurrentAssets && seenMetrics.has(metric);
 
     // Phase A: when parsing a non-Ind-AS file, emit BOTH the original label
     // (preserves traceability) AND the canonical Ind-AS label (so existing
@@ -82,7 +95,9 @@ export function gridToPeriods(
       const target = out.get(pc.period_end)!;
 
       // Original label — always written for traceability
-      const originalKey = `${rowKeyLabel}__${stmt}`;
+      const originalKey = currentAssetRepeat && target.get(`${metric}__${stmt}`)?.value != null
+        ? `${metric} - Current Assets__${stmt}`
+        : `${rowKeyLabel}__${stmt}`;
       const scaledValue = value != null && multiplier !== 1 ? value * multiplier : value;
       const origin = source ? {
         fileName: source.fileName,
@@ -111,6 +126,7 @@ export function gridToPeriods(
     }
     seenMetrics.add(metric);
     if (stmt === "BalanceSheet" && metric === "Total Reported Non-current Liabilities") inCurrentLiabilities = true;
+    if (stmt === "BalanceSheet" && metric === "Total Reported Non-current Assets") inCurrentAssets = true;
   }
 
   // Emit per-grid summary so silent drops are auditable. This is the lever

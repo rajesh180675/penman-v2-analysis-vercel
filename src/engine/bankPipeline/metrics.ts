@@ -136,6 +136,28 @@ function pickValue(
   return null;
 }
 
+/**
+ * pickValue for a line filed in both asset blocks. Pre-Ind AS NBFC balance
+ * sheets file the loan book twice, non-current then current "Total Loans
+ * Given" (Bajaj Finance FY16: 24,778.55 + 18,493.68); the parser keeps the
+ * current row as "<label> - Current Assets" wherever the plain key already
+ * holds the non-current one. Reading only the plain key halved the book and
+ * doubled NIM. The book is the alias read plus its own current twin.
+ */
+function pickWithCurrentTwin(
+  raw: Record<string, number | null | undefined>,
+  keys: readonly string[],
+  statement: string,
+): number | null {
+  for (const key of keys) {
+    const filed = [raw[`${key}__${statement}`], raw[key]].find(isValidValue);
+    if (filed === undefined) continue;
+    const current = [raw[`${key} - Current Assets__${statement}`], raw[`${key} - Current Assets`]].find(isValidValue);
+    return filed + (current ?? 0);
+  }
+  return null;
+}
+
 export function avg(a: number | null, b: number | null): number | null {
   // M5: when one value is null, return the non-null value as a point estimate
   // rather than silently degrading to null. This preserves ratio computation
@@ -182,7 +204,7 @@ export function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   // Balance Sheet
   const totalAssets        = pickValue(raw, bs.totalAssets,         "BalanceSheet");
   const totalEquity        = pickValue(raw, bs.totalEquity,         "BalanceSheet");
-  const advances           = pickValue(raw, bs.advances,            "BalanceSheet");
+  const advances           = pickWithCurrentTwin(raw, bs.advances,  "BalanceSheet");
   const deposits           = pickValue(raw, bs.deposits,            "BalanceSheet");
   const investments        = pickValue(raw, bs.investments,         "BalanceSheet");
   // A filed total of exactly 0 beside non-zero long- and short-term
