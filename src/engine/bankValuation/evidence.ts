@@ -1,6 +1,7 @@
 import { CURRENT_MODEL_REGISTRY } from "../modelCatalog/definitions";
 import type { FinancialInstitutionSubtype } from "../analysisFamily";
 import type { BankValuationBundle, BankValuationModelResult } from "./types";
+import type { ValuationModelResult } from "../modelCatalog/types";
 
 /**
  * What a financial institution's valuation rests on, as independent lenses.
@@ -91,4 +92,44 @@ export function describeFinancialValuationEvidence(evidence: FinancialValuationE
   }
   const lenses = groups.map((g) => `${g.label} ${crore(g.value)}`).join(" vs ");
   return `${groups.length} independent lenses: ${lenses}, ${((maxGapRatio ?? 0) * 100).toFixed(0)}% apart.`;
+}
+
+/**
+ * The bundle's models as catalog results, for the run's model table: each
+ * model the catalog applies to the subtype, computed with its equity value in
+ * ₹ Cr or skipped with its reason in the diagnostics.
+ */
+export function adaptBankValuationModelResults(
+  bundle: BankValuationBundle | null | undefined,
+  subtype: FinancialInstitutionSubtype | null | undefined,
+): ValuationModelResult[] {
+  if (!bundle) return [];
+  const family = subtype === "generic-financial" ? "bank" : subtype;
+  const results: ValuationModelResult[] = [];
+  for (const [field, modelId] of BUNDLE_MODELS) {
+    const definition = CURRENT_MODEL_REGISTRY.require(modelId);
+    if (family && !(definition.families as readonly string[]).includes(family)) continue;
+    const model = bundle[field] as BankValuationModelResult | undefined;
+    if (!model) continue;
+    const value = model.status === "computed" ? model.intrinsicValue : null;
+    if (value != null && Number.isFinite(value)) {
+      results.push({
+        modelId,
+        modelVersion: definition.modelVersion,
+        caseId: null,
+        status: "computed",
+        enterpriseValue: null,
+        equityValue: value,
+        perShare: null,
+        unit: "INR_CRORE",
+        evidenceRefs: [],
+        transformationRefs: [],
+        diagnostics: { ...model.diagnostics, reason: model.reason },
+        guardResults: [],
+      });
+    } else {
+      results.push({ modelId, modelVersion: definition.modelVersion, caseId: null, status: "skipped", reasonCode: "FI_MODEL_SKIPPED", missingRequirementIds: [] });
+    }
+  }
+  return results;
 }

@@ -198,10 +198,10 @@ describe.sequential("auditCompanyRun", () => {
 
   expect(result.analysisFamily).toBe("financial-institution");
   expect(result.pipelineStrategyId).toBe("bank-v1");
-  // Readiness is now COMPUTED from bank history depth and anchor contamination
-  // rather than hardcoded "production-ready" for every financial institution.
-  // HDFC Bank has sufficient history with a clean anchor, so it earns the status.
-  expect(result.valuationEvidence.readinessStatus).toBe("production-ready");
+  // Readiness comes from the evidence the valuation rests on, the rule the app's
+  // run applies (resolveFinancialValuationReadiness). HDFC Bank's justified P/B,
+  // residual income and DDM are one algebra, so it has one lens: guarded.
+  expect(result.valuationEvidence.readinessStatus).toBe("guarded");
   // Null, not "confirmed": defensibility is a property of the evidence-weighted
   // synthesis and the FI path runs no synthesis, so there is nothing to confirm.
   expect(result.valuationEvidence.defensibilityStatus).toBeNull();

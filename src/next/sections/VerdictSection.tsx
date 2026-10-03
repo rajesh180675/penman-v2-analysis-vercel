@@ -154,7 +154,7 @@ function noCommandCenterReason(result: LegacyAnalysisRunExecutionResult): string
   if (result.status === "failed") return `The analysis failed: ${result.message}`;
   if (result.status === "blocked") return `The analysis was blocked (${result.reasonCode}).`;
   if (result.run.family === "bank" || result.run.family === "nbfc" || result.run.family === "insurance") {
-    return "Banks, NBFCs and insurers are valued by the financial-institution models, which arrive in the Valuation section (Phase 3).";
+    return "Banks, NBFCs and insurers are valued by the financial-institution models listed in the Valuation section.";
   }
   return "This run produced no valuation.";
 }

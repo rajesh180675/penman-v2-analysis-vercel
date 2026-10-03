@@ -9,7 +9,8 @@ import { auditMappingCoverage, evaluateQualityGate, type MappingAuditReport, typ
 import type { LiveMarketDataSnapshot } from "../marketData";
 import type { SourceParserDiagnostics } from "../parserDiagnostics";
 import { processCompanyDataFull, type PipelineResult } from "../pipeline";
-import { describeFinancialValuationEvidence, summarizeFinancialValuationEvidence } from "../bankValuation/evidence";
+import { adaptBankValuationModelResults } from "../bankValuation/evidence";
+import { resolveFinancialValuationReadiness } from "../bankValuation/readiness";
 import { getAnalysisPolicyVersions } from "../policyVersions";
 import type { SegmentData } from "../segmentParser";
 import type { AnalysisTraceabilityEnvelope, EngineConfig, RawPeriodData, RecastPeriod } from "../types";
@@ -1002,7 +1003,14 @@ export function createLegacyAnalysisRunExecutor(
           });
           recastData = pipelineResult.periods;
           qualityGate = dependencies.evaluateQualityGate(rawData, config, recastData.length > 0 ? recastData : null);
-          valuationReadiness = recastData.length > 0 ? dependencies.resolveValuationReadiness(recastData) : null;
+          // A financial institution has no recast; its readiness is the evidence
+          // its own valuation rests on, the same rule the audit harness applies.
+          const bankResult = pipelineResult.analysisFamily === "financial-institution" ? pipelineResult.bankResult : null;
+          valuationReadiness = recastData.length > 0
+            ? dependencies.resolveValuationReadiness(recastData)
+            : bankResult
+              ? resolveFinancialValuationReadiness({ bankMetrics: bankResult.bankMetrics ?? [], valuation: bankResult.valuation, subtype: bankResult.subtype })
+              : null;
           analysisStatus = dependencies.deriveAnalysisStatus(qualityGate, valuationReadiness, mappingAudit);
         } catch (error) {
           terminal = { kind: "failed", stage: "recast", code: "LEGACY_PIPELINE_FAILED", message: errorMessage(error) };
@@ -1046,24 +1054,12 @@ export function createLegacyAnalysisRunExecutor(
         }
       }
 
-      if (!terminal && pipelineResult?.analysisFamily !== "industrial") {
-        // This message replaces the envelope's own valuation-rung detail (see
-        // applyTerminalOutcomeToEnvelope), so it carries the same statement of
-        // what the financial-institution valuation rests on.
-        const bankValuation = pipelineResult?.bankResult?.valuation;
-        const evidence = bankValuation !== undefined
-          ? ` ${describeFinancialValuationEvidence(summarizeFinancialValuationEvidence(bankValuation, pipelineResult?.bankResult?.subtype))}`
-          : "";
-        terminal = {
-          kind: "blocked",
-          stage: "model-execution",
-          code: "LEGACY_COMMAND_CENTER_UNSUPPORTED_FAMILY",
-          message: `The legacy valuation command center requires an industrial recast; financial-institution output remains available as diagnostic family analysis only.${evidence}`,
-        };
-        diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message: terminal.message });
-      }
+      // The recast-only steps below (the unified window, the command center and
+      // everything built on it) are industrial. A financial institution goes on
+      // to the envelope, whose valuation rung its own readiness decides.
+      const isIndustrial = pipelineResult?.analysisFamily === "industrial";
 
-      if (!terminal) {
+      if (!terminal && isIndustrial) {
         try {
           analysisWindow = await dependencies.selectAnalysisWindow({
             periods: recastData,
@@ -1089,7 +1085,7 @@ export function createLegacyAnalysisRunExecutor(
         }
       }
 
-      if (!terminal && windowedRecastData.length < 2) {
+      if (!terminal && isIndustrial && windowedRecastData.length < 2) {
         terminal = {
           kind: "blocked",
           stage: "window-selection",
@@ -1099,7 +1095,7 @@ export function createLegacyAnalysisRunExecutor(
         diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message: terminal.message });
       }
 
-      if (!terminal) {
+      if (!terminal && isIndustrial) {
         try {
           // Publication vintage for the holdout's no-look-ahead claim. Only
           // periods traceable to an artifact can be stamped; a
@@ -1472,7 +1468,9 @@ export function createLegacyAnalysisRunExecutor(
 
       const unlinkedModelResults: CatalogValuationModelResult[] = commandCenter
         ? [...adaptLegacyCommandCenterModelResults(commandCenter)]
-        : [];
+        : pipelineResult?.analysisFamily === "financial-institution" && pipelineResult.bankResult
+          ? adaptBankValuationModelResults(pipelineResult.bankResult.valuation, pipelineResult.bankResult.subtype)
+          : [];
       if (sectorCaseExecution?.modelResult) unlinkedModelResults.push(clonePlain(sectorCaseExecution.modelResult));
       let modelResults: CatalogValuationModelResult[] = unlinkedModelResults.map((modelResult, index) =>
         modelResult.status === "computed"
