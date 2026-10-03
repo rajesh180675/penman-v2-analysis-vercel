@@ -495,6 +495,11 @@ export const CapitalineMappingSpec = {
     // (Cholamandalam FY19-25, Shriram Finance FY18-25).
     longTermBorrowings: ["Long Term Borrowings"],
     shortTermBorrowings: ["Short Term Borrowings"],
+    // The Ind AS template's loan lines. Where a lender files both, "Loans -
+    // Long - Term" equals "Total Loans Given" (Bajaj, Cholamandalam, Shriram
+    // FY18-25); Muthoot Finance's condensed export files only these.
+    loansLongTerm: ["Loans - Long - Term"],
+    loansShortTerm: ["Loans - Short-term"],
     nonConvertibleDebentures: ["Non Convertible Debentures"],
     termLoansFromBanks: ["Term Loans - Banks"],
     termLoansFromInstitutions: ["Term Loans - Institutions"],

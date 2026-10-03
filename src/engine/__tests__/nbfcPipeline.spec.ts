@@ -338,3 +338,96 @@ describe("NBFC loan book — filed in both asset blocks", () => {
     expect(year({ "Total Loans Given__BalanceSheet": 79102.5 }).advances).toBe(79102.5);
   });
 });
+
+describe("NBFC loan book — where no loan-book line carries it", () => {
+  const metrics = (period_end: string, lines: Record<string, number | null>) => extractBankMetrics({
+    company_id: "LENDER",
+    period_end,
+    raw_metric_values: lines as Record<string, number>,
+  });
+
+  it("reads the Ind AS loan lines of a condensed export", () => {
+    // Muthoot Finance FY25 files its book only as "Loans - Long - Term".
+    const m = computeBankRatios(metrics("2025-03-31", {
+      "Total Assets__BalanceSheet": 132859.59,
+      "Loans - Long - Term__BalanceSheet": 120577.88,
+      "Loans - Short-term__BalanceSheet": 0,
+    }), null, "nbfc");
+    expect(m.advances).toBeCloseTo(120577.88, 6);
+  });
+
+  it("averages the loan-line book of both years", () => {
+    // Muthoot Finance FY18 and FY19: 32,252.30 and 38,726.33.
+    const fy18 = computeBankRatios(metrics("2018-03-31", {
+      "Total Assets__BalanceSheet": 33671.8,
+      "Loans - Long - Term__BalanceSheet": 32252.3,
+    }), null, "nbfc");
+    const fy19 = computeBankRatios({
+      ...metrics("2019-03-31", { "Total Assets__BalanceSheet": 41000, "Loans - Long - Term__BalanceSheet": 38726.33 }),
+      nii: 4000,
+    }, fy18, "nbfc");
+    expect(fy19.nim).toBeCloseTo(4000 / ((32252.3 + 38726.33) / 2), 6);
+  });
+
+  it("treats a filed 0 book beside real assets as absent, so the next year's average stands on its own book", () => {
+    // Shriram Finance FY14 files "Total Loans Given" of 0 against 52,332 of
+    // assets; FY15 files 31,827.82 + 20,382.19 and NII of 4,502.35.
+    const fy14 = computeBankRatios(metrics("2014-03-31", {
+      "Total Assets__BalanceSheet": 52332.27,
+      "Total Loans Given__BalanceSheet": 0,
+    }), null, "nbfc");
+    expect(fy14.advances).toBeNull();
+    const fy15 = computeBankRatios({
+      ...metrics("2015-03-31", {
+        "Total Assets__BalanceSheet": 62153.61,
+        "Total Loans Given__BalanceSheet": 31827.82,
+        "Total Loans Given - Current Assets__BalanceSheet": 20382.19,
+      }),
+      nii: 4502.35,
+    }, fy14, "nbfc");
+    expect(fy15.nim).toBeCloseTo(4502.35 / 52210.01, 6);
+  });
+
+  it("keeps a filed book over the loan lines", () => {
+    const m = computeBankRatios(metrics("2022-03-31", {
+      "Total Assets__BalanceSheet": 150000,
+      "Total Loans Given__BalanceSheet": 125699.03,
+      "Loans - Long - Term__BalanceSheet": 116665.15,
+    }), null, "nbfc");
+    expect(m.advances).toBe(125699.03);
+  });
+
+  it("counts the loan-line book in a bank's earning assets", () => {
+    const fy24 = computeBankRatios(metrics("2024-03-31", {
+      "Total Assets__BalanceSheet": 2000,
+      "Loans - Long - Term__BalanceSheet": 1000,
+      "Investments__BalanceSheet": 500,
+    }), null, "bank");
+    const fy25 = computeBankRatios({
+      ...metrics("2025-03-31", {
+        "Total Assets__BalanceSheet": 2400,
+        "Loans - Long - Term__BalanceSheet": 1200,
+        "Investments__BalanceSheet": 600,
+      }),
+      nii: 66,
+    }, fy24, "bank");
+    expect(fy25.nim).toBeCloseTo(66 / ((1500 + 1800) / 2), 9);
+  });
+
+  it("leaves an insurer's loan book as filed", () => {
+    // LIC FY25 files 1,28,961.49 of loans, mostly policy loans.
+    const m = computeBankRatios(metrics("2025-03-31", {
+      "Total Assets__BalanceSheet": 5600000,
+      "Loans - Long - Term__BalanceSheet": 128961.49,
+    }), null, "insurance");
+    expect(m.advances).toBeNull();
+  });
+
+  it("keeps a 0 book where there are no assets to hold one", () => {
+    const m = computeBankRatios(metrics("2015-03-31", {
+      "Total Assets__BalanceSheet": 0,
+      "Total Loans Given__BalanceSheet": 0,
+    }), null, "nbfc");
+    expect(m.advances).toBe(0);
+  });
+});
