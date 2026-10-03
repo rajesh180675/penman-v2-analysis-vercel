@@ -236,9 +236,13 @@ function checksForPeriod(
   return checks;
 }
 
-type AnchorWalk<P> =
-  | { anchor: P; anchorReason: string; skipped: { period: string; reason: string }[]; failedChecks: GateCheckResult[] }
-  | { anchor: null; blocked: EconomicSanitySummary };
+interface AnchorWalk<P> {
+  /** The first period within the lookback that cleared every block check, or null. */
+  anchor: P | null;
+  anchorReason: string;
+  skipped: { period: string; reason: string }[];
+  failedChecks: GateCheckResult[];
+}
 
 /**
  * Walks `ordered` (ascending by period_end) latest → oldest until a period
@@ -277,17 +281,19 @@ function walkForAnchor<P extends { period_end: string }>(
     });
   }
 
+  return { anchor: null, anchorReason: "", skipped, failedChecks };
+}
+
+/** The summary when no period within the lookback cleared the block checks. */
+function noCleanAnchor(walk: AnchorWalk<unknown>): EconomicSanitySummary {
   return {
-    anchor: null,
-    blocked: {
-      status: "blocked",
-      anchorPeriod: null,
-      anchorReason: `No clean period found within ${MAX_ANCHOR_LOOKBACK_PERIODS}-period lookback. Skipped: ${skipped
-        .map((s) => `${s.period} (${s.reason})`)
-        .join("; ")}`,
-      skippedPeriods: skipped,
-      failedChecks,
-    },
+    status: "blocked",
+    anchorPeriod: null,
+    anchorReason: `No clean period found within ${MAX_ANCHOR_LOOKBACK_PERIODS}-period lookback. Skipped: ${walk.skipped
+      .map((s) => `${s.period} (${s.reason})`)
+      .join("; ")}`,
+    skippedPeriods: walk.skipped,
+    failedChecks: walk.failedChecks,
   };
 }
 
@@ -319,8 +325,9 @@ export function evaluateEconomicSanity(
   );
 
   const walk = walkForAnchor(ordered, (current, prev) => checksForPeriod(current, prev, ctx));
-  if (walk.anchor === null) return walk.blocked;
-  const { anchor, anchorReason, skipped, failedChecks: allFailedChecks } = walk;
+  const anchor = walk.anchor;
+  if (!anchor) return noCleanAnchor(walk);
+  const { anchorReason, skipped, failedChecks: allFailedChecks } = walk;
 
   // Sustained dirty-surplus block: if the anchor period's prior period also
   // breached the dirty-surplus threshold, escalate to block.
@@ -395,7 +402,7 @@ export function evaluateFinancialEconomicSanity(
   const ctx: ContextLike = { rawData, corporateActions, unusualManifest };
   const ordered = [...metrics].sort((a, b) => a.period_end.localeCompare(b.period_end));
   const walk = walkForAnchor(ordered, (current, prev) => financialChecksForPeriod(current, prev, ctx));
-  if (walk.anchor === null) return walk.blocked;
+  if (!walk.anchor) return noCleanAnchor(walk);
   const anchorPeriod = walk.anchor.period_end;
   const anchorWarnings = walk.failedChecks.filter((c) => c.affectedPeriods.includes(anchorPeriod));
   return {

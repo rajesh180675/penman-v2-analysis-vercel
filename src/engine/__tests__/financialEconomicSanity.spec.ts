@@ -102,6 +102,25 @@ describe("analysis traceability — economic sanity for a financial institution"
     expect(env.economicSanity?.anchorPeriod).toBe("2025-03-31");
   });
 
+  it("states the financial-institution cap on the valuation rungs", () => {
+    // The audit harness marks a financial production-ready from history depth
+    // alone; with no valuation evidence behind it, the ladder must not follow.
+    // This fixture does not clear the lower rungs, so it pins the reason; the
+    // cap itself is pinned on real data by auditCompanyRun.spec (HDFC Bank
+    // reaches production-ready without it) and the Bajaj / HDFC Bank audits.
+    const env = buildAnalysisTraceability({
+      rawData: RAW,
+      recastData: [],
+      bankMetrics: YEARS.map((y) => year(y)),
+      bankSubtype: "bank",
+      analysisStatus: { status: "production-ready", valuationStatus: "production-ready" },
+    } as never);
+    const byLevel = Object.fromEntries(env.rigor.checkpoints.map((c) => [c.level, c]));
+    expect(byLevel["valuation-eligible"]?.achieved).toBe(false);
+    expect(byLevel["valuation-eligible"]?.detail).toMatch(/Financial institution/);
+    expect(byLevel["production-ready"]?.achieved).toBe(false);
+  });
+
   it("keeps the industrial evaluator when there are no bank metrics", () => {
     const env = buildAnalysisTraceability({ rawData: RAW, recastData: [] } as never);
     expect(env.economicSanity?.status).toBe("blocked");
