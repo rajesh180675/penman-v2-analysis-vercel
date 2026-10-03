@@ -10,6 +10,8 @@ export interface BankPeriodMetrics {
   totalAssets: number | null;
   totalEquity: number | null;
   advances: number | null;       // Loan book
+  /** "Loans - Long - Term" + "Loans - Short-term" as filed: the loan book where no loan-book line carries it. */
+  loanLines?: number | null | undefined;
   deposits: number | null;       // Core funding
   investments: number | null;    // SLR + treasury
   borrowings: number | null;     // Non-deposit funding
@@ -213,6 +215,10 @@ export function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   // (Cholamandalam FY19-25, Shriram Finance FY18-25). Read as filed it zeroed
   // the funding side, defeated the NBFC fallback below, and failed
   // bank-liability-coverage at 80-89%. An absent total stays absent.
+  const loanLines = sumLenient(
+    pickValue(raw, bs.loansLongTerm, "BalanceSheet"),
+    pickValue(raw, bs.loansShortTerm, "BalanceSheet"),
+  );
   const borrowingsFiled    = pickValue(raw, bs.borrowings,          "BalanceSheet");
   const borrowingComponents = sumLenient(
     pickValue(raw, bs.longTermBorrowings, "BalanceSheet"),
@@ -330,6 +336,7 @@ export function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
     totalAssets,
     totalEquity,
     advances,
+    loanLines,
     deposits,
     investments,
     borrowings,

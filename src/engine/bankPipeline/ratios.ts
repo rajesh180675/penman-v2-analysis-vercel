@@ -23,10 +23,24 @@ export function computeBankRatios(
     result.borrowings = result.totalAssets - result.totalEquity;
   }
 
+  // The loan book where no loan-book line carries it. Muthoot Finance's
+  // condensed export files it only as "Loans - Long - Term" (FY18-25:
+  // 32,252 to 1,20,578). A book of exactly 0 beside non-zero total assets is
+  // an export gap, not an empty book: Shriram Finance FY11-14 file theirs only
+  // inside the block totals (FY14: 24,675.54 of non-current assets, every
+  // loan line 0), and read as 0 it halved FY15's average book and doubled its
+  // NIM. Lenders only: an insurer's loans are policy loans, and its asset
+  // coverage has not been tied with them.
+  if (subtype !== "insurance" && (result.advances == null || result.advances === 0)) {
+    const loanLines = current.loanLines ?? null;
+    if (loanLines != null && loanLines > 0) result.advances = loanLines;
+    else if (result.advances === 0 && result.totalAssets != null && result.totalAssets > 0) result.advances = null;
+  }
+
   if (prev) {
     const avgAssets   = avg(current.totalAssets,  prev.totalAssets);
     const avgEquity   = avg(current.totalEquity,  prev.totalEquity);
-    const avgAdvances = avg(current.advances,     prev.advances);
+    const avgAdvances = avg(result.advances,      prev.advances);
 
     // M4: apply the same NBFC borrowings fallback to prev so avgBorrowings
     // is consistent — using result.borrowings (fallback-applied) vs raw
@@ -40,7 +54,7 @@ export function computeBankRatios(
     const earningAssets = isNbfcFraming
       ? avgAdvances
       : avg(
-          sumStrict(current.advances, current.investments),
+          sumStrict(result.advances,  current.investments),
           sumStrict(prev.advances,    prev.investments),
         );
 
