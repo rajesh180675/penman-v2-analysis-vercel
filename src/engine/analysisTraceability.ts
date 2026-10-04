@@ -347,7 +347,9 @@ export function buildAnalysisTraceability(params: {
   // critical conflicts, we block valuation-eligible (unless the kill
   // switch is off, in which case we still surface the gate but don't
   // gate rigor on it).
-  const conceptIdentity = summarizeConceptIdentity(params.rawData ?? null);
+  const conceptIdentity = summarizeConceptIdentity(params.rawData ?? null, undefined, {
+    financialInstitution: hasBankMetrics && bankSubtype != null,
+  });
   const conceptIdentityBlockEnabled = isEnabled("rigor.conceptIdentityBlock");
   const conceptIdentityBlocksValuation =
     conceptIdentityBlockEnabled && conceptIdentity.status === "valuation-blocked";
