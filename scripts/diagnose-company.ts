@@ -21,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import { executeLegacyAnalysisRun } from "../src/engine/analysisRun";
 import { parseCapitalineZip } from "../src/engine/capitalineParser";
 import { fetchBankQualityIndicators } from "../src/engine/bankQualityIndicators";
+import { buildFinancialVerdict } from "../src/engine/bankValuation/verdict";
 import type { RecastPeriod } from "../src/engine/types";
 import type { LibraryCompany } from "../src/components/data-entry/companyRegistry";
 import { loadCompanyRun, type CompanyRunDependencies } from "../src/next/companyRun";
@@ -150,12 +151,16 @@ Terminal year ${latest?.period_end ?? "?"}: ${blocked || flags.length ? "BLOCKED
   // not the industrial command center, which refuses their family by design.
   const bank = m.pipelineResult?.bankResult;
   if (bank) {
-    const card = (bank.valuation?.scenarios?.cards ?? []).find((c) => c.key === "base");
-    const finite = (v: number | null | undefined): v is number => typeof v === "number" && Number.isFinite(v);
-    const shown = finite(card?.intrinsicPerShare)
-      ? `base INR ${Math.round(card.intrinsicPerShare)}/share`
-      : finite(card?.intrinsicValue) ? `base equity value INR ${Math.round(card.intrinsicValue)} Cr (no per-share figure)` : "none";
-    console.log(`Financial-institution valuation (${bank.subtype}): ${shown}`);
+    // The figures the Verdict section shows for a financial institution.
+    const v = buildFinancialVerdict({
+      valuation: bank.valuation as never,
+      subtype: bank.subtype,
+      latestRaw: (raw.at(-1) ?? null) as never,
+      marketPrice: null,
+    });
+    const value = v.equityValueCr != null ? `INR ${Math.round(v.equityValueCr).toLocaleString("en-IN")} Cr` : "none";
+    const perShare = v.perShare != null ? `, INR ${Math.round(v.perShare)}/share on ${v.shares!.toFixed(2)} crore shares` : ", no share count";
+    console.log(`Financial-institution valuation (${bank.subtype}): ${v.headlineLabel} ${value}${perShare}; ke ${v.ke != null ? (v.ke * 100).toFixed(1) + "%" : "n/a"}`);
     return;
   }
   const base = m.commandCenter?.scenarios.find((s) => s.key === "base");

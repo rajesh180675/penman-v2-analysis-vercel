@@ -9,6 +9,8 @@ import { solveBreakEvens, type BreakEvenResult } from "../../engine/valuationCom
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
 import type { CompanyTrackRecord } from "../../engine/accountability";
 import { Withheld } from "../ui/Withheld";
+import { buildFinancialVerdict } from "../../engine/bankValuation/verdict";
+import { crore, percent } from "../format";
 
 type CommandCenter = NonNullable<LegacyAnalysisRunExecutionResult["materialization"]["commandCenter"]>;
 
@@ -19,8 +21,11 @@ export function VerdictSection({ result, trackRecord = null, asOf = null }: {
   /** Set when the Case is viewed as of an earlier date. */
   asOf?: string | null;
 }) {
-  const cc = result.materialization.commandCenter;
+  const cc = result.materialization?.commandCenter;
   if (!cc) {
+    if (result.status !== "failed" && result.materialization?.pipelineResult?.bankResult?.valuation) {
+      return <FinancialVerdict result={result} asOf={asOf} />;
+    }
     return (
       <Panel>
         <Withheld reason={noCommandCenterReason(result)} />
@@ -69,6 +74,94 @@ export function VerdictSection({ result, trackRecord = null, asOf = null }: {
         {cc.valuationReadiness.status !== "production-ready" && cc.valuationReadiness.reasons[0]
           ? <> · {cc.valuationReadiness.reasons[0]}</>
           : null}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * A bank's, NBFC's or insurer's verdict. The run has no command center, so the
+ * figures come from its financial-institution valuation (buildFinancialVerdict),
+ * and the status from the run's own valuation rung, reason included.
+ */
+function FinancialVerdict({ result, asOf }: { result: LegacyAnalysisRunExecutionResult; asOf: string | null }) {
+  const m = result.materialization;
+  const bank = m.pipelineResult!.bankResult!;
+  const verdict = useMemo(() => buildFinancialVerdict({
+    // The run's materialization is deeply readonly; the builder only reads it.
+    valuation: bank.valuation as unknown as Parameters<typeof buildFinancialVerdict>[0]["valuation"],
+    subtype: bank.subtype,
+    latestRaw: (m.rawData.at(-1) ?? null) as unknown as Parameters<typeof buildFinancialVerdict>[0]["latestRaw"],
+    marketPrice: asOf ? null : m.marketSnapshot?.price ?? null,
+  }), [asOf, bank.subtype, bank.valuation, m.marketSnapshot, m.rawData]);
+  const rung = result.run?.trustEnvelope?.rigor.checkpoints.find((c) => c.level === "valuation-eligible");
+  const eligible = rung?.achieved === true;
+  // The executor prefixes its gate code; the reason is what follows "Financial institution — ".
+  const reason = rung?.detail ? rung.detail.replace(/^[\s\S]*?Financial institution — /, "") : null;
+  const noPrice = asOf
+    ? `No price as of ${asOf}: the live price is today's, not point-in-time.`
+    : "No market price: the live market overlay is unavailable.";
+  const noShares = "No share count resolved from the statements, so no per-share value.";
+  return (
+    <div className="space-y-4">
+      <Panel>
+        <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          {eligible ? "Valuation-eligible" : "Not valuation-eligible"}
+        </p>
+        {reason && <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{reason}</p>}
+      </Panel>
+
+      <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <Figure label="Current price">
+          {verdict.marketPrice != null ? `₹${verdict.marketPrice.toFixed(2)}` : <Withheld reason={noPrice} />}
+        </Figure>
+        <Figure label={verdict.headlineLabel}>
+          {verdict.equityValueCr != null ? `₹${crore(verdict.equityValueCr)} Cr` : <Withheld reason="The valuation computed no headline value." />}
+        </Figure>
+        <Figure label="Value per share">
+          {verdict.perShare != null
+            ? formatPerShare(verdict.perShare)
+            : <Withheld reason={verdict.shares == null ? noShares : "The valuation computed no headline value."} />}
+        </Figure>
+        <Figure label="Upside to value">
+          {verdict.upside != null
+            ? formatPct(verdict.upside, 1)
+            : <Withheld reason={verdict.marketPrice == null ? noPrice : verdict.shares == null ? noShares : "No per-share value."} />}
+        </Figure>
+        <Figure label="Cost of equity">
+          {verdict.ke != null ? percent(verdict.ke) : <Withheld reason="No cost of equity resolved." />}
+        </Figure>
+      </dl>
+
+      {verdict.scenarios.length > 0 && (
+        <div className="wb-surface rounded-xl border p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Scenarios</h2>
+          <p className="mt-1 text-xs text-slate-500">Justified P/B on each scenario's sustainable ROE.</p>
+          <table className="mt-3 w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-slate-500">
+                <th className="py-1 font-medium">Scenario</th>
+                <th className="py-1 font-medium">ROE</th>
+                <th className="py-1 font-medium">Fair P/B</th>
+                <th className="py-1 font-medium">Value per share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {verdict.scenarios.map((s) => (
+                <tr key={s.key} className="border-t border-slate-100 dark:border-slate-800">
+                  <td className="py-2 text-slate-700 dark:text-slate-300">{s.label}</td>
+                  <td className="py-2 font-medium">{percent(s.roe)}</td>
+                  <td className="py-2 font-medium">{`${s.fairPB.toFixed(2)}×`}</td>
+                  <td className="py-2 font-medium">{s.perShare != null ? formatPerShare(s.perShare) : <Withheld reason={noShares} />}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <p className="text-xs text-slate-500">
+        Shares: {verdict.shares != null ? <>{verdict.shares.toFixed(2)} crore ({verdict.sharesSource})</> : "not resolved"}.
       </p>
     </div>
   );

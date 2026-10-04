@@ -89,3 +89,47 @@ describe("VerdictSection", () => {
     expect(render(null, { family: "industrial" }, "failed")).toContain("The analysis failed: boom");
   });
 });
+
+describe("VerdictSection — a financial institution", () => {
+  const fiResult = (achieved: boolean, detail: string, price: number | null) => ({
+    status: achieved ? "completed" : "blocked",
+    reasonCode: achieved ? undefined : "LEGACY_VALUATION_GATE_NOT_CLEARED",
+    run: {
+      family: "insurance",
+      trustEnvelope: { rigor: { checkpoints: [{ level: "valuation-eligible", achieved, detail }] } },
+    },
+    materialization: {
+      commandCenter: null,
+      marketSnapshot: price == null ? null : { price },
+      rawData: [{ company_id: "HDFCLIFE", period_end: "2025-03-31", raw_metric_values: {
+        "Number of Equity Shares - Paid Up__BalanceSheet": 215.3,
+        "Total Equity Capital(Ordinary)__BalanceSheet": 2153,
+        "Face Value of Equity Shares__BalanceSheet": 10,
+      } }],
+      pipelineResult: {
+        bankResult: {
+          subtype: "insurance",
+          valuation: { ke: 0.1296, evBased: { status: "computed", intrinsicValue: 102_967, premiumOverMarket: null, reason: "", diagnostics: {} } },
+        },
+      },
+    },
+  }) as unknown as LegacyAnalysisRunExecutionResult;
+
+  it("shows the headline value per share against the price, with the rung's reason", () => {
+    const html = renderToStaticMarkup(<VerdictSection result={fiResult(true, "Financial institution — Valuation-eligible on the filed embedded value and value of new business.", 700)} />);
+    expect(html).toContain("Valuation-eligible");
+    expect(html).toContain("Valuation-eligible on the filed embedded value and value of new business.");
+    expect(html).toContain("Embedded value + value of new business");
+    expect(html).toContain("₹1,02,967 Cr");
+    expect(html).toContain("₹700.00");
+    expect(html).toContain("215.30 crore");
+  });
+
+  it("says why it is not valuation-eligible and withholds the price-dependent figures", () => {
+    const html = renderToStaticMarkup(<VerdictSection result={fiResult(false, "Valuation eligible was not achieved because LEGACY_VALUATION_GATE_NOT_CLEARED: Financial institution — One independent lens, book residual income.", null)} />);
+    expect(html).toContain("Not valuation-eligible");
+    expect(html).toContain("One independent lens, book residual income.");
+    expect(html).not.toContain("LEGACY_VALUATION_GATE_NOT_CLEARED");
+    expect(html).toContain("No market price");
+  });
+});
