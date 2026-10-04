@@ -107,11 +107,12 @@ describe.sequential("auditCompanyRun", () => {
     expect(result.statusClass).not.toBe("calc-error");
     expect(result.error ?? "").not.toContain("shareCountInput");
     expect(result.flags.join(",")).not.toContain("shareCountInput");
-    // The bank route builds no command center and resolves no ke, so reporting
-    // nothing about the discount rate is honest here rather than a bypass. This
-    // is the control for the industrial assertion: it pins that `null` means "no
-    // rate was resolved", not "the wiring is missing".
-    expect(result.rigor.assumptionProvenanceStatus).toBeNull();
+    // The bank route builds no command center, but its valuation does resolve a
+    // ke, and that rate is now graded: reporting nothing (`absent`) let the
+    // provenance gate stay silent on a financial's production-ready. The harness
+    // resolves it without packs (its recorded as-of exemption), so it reads as
+    // resting on priors.
+    expect(result.rigor.assumptionProvenanceStatus).toBe("prior-dependent");
   }, 240_000);
 
   it("exposes computed industrial valuation lenses instead of collapsing them to one VCC bucket", async () => {

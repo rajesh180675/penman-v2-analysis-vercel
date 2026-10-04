@@ -1103,12 +1103,21 @@ function buildTrace(args: {
   //
   // Null on the financial-institution route, where no command center is built
   // and no ke is resolved — `absent` is honest there rather than a bypass.
+  // A financial institution has no command center; its valuation's ke is the
+  // one to grade. Without this the gate saw `absent` and never fired, so a
+  // financial's production-ready would rest on an ungraded discount rate.
+  const bankCostOfCapital = pipeline.bankResult?.valuation?.costOfCapital ?? null;
   const assumptionProvenance = valuation
     ? buildAssumptionProvenance(valuation.costOfCapital.assumptions, {
       equityMode: valuation.costOfCapital.equityMode,
       ke: valuation.costOfCapital.ke,
     })
-    : null;
+    : bankCostOfCapital
+      ? buildAssumptionProvenance(bankCostOfCapital.assumptions, {
+        equityMode: bankCostOfCapital.equityMode,
+        ke: bankCostOfCapital.ke,
+      })
+      : null;
   return buildAnalysisTraceability({
     generatedAt,
     runId: `audit-${company.folder}`,

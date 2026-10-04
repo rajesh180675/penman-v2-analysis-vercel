@@ -102,7 +102,7 @@ describe("analysis traceability — economic sanity for a financial institution"
     expect(env.economicSanity?.anchorPeriod).toBe("2025-03-31");
   });
 
-  it("gives a financial's valuation rung its readiness reason and keeps production-ready capped", () => {
+  it("gives a financial's valuation rung its readiness reason", () => {
     // Concept identity on this bare fixture would pre-empt the reason under test.
     vi.stubEnv("VITE_RIGOR_CONCEPT_IDENTITY_BLOCK", "false");
     try {
@@ -118,7 +118,6 @@ describe("analysis traceability — economic sanity for a financial institution"
       expect(byLevel["valuation-eligible"]?.achieved).toBe(false);
       expect(byLevel["valuation-eligible"]?.detail).toBe(`Financial institution — ${reason}`);
       expect(byLevel["production-ready"]?.achieved).toBe(false);
-      expect(byLevel["production-ready"]?.detail).toMatch(/^Financial institution — production-ready needs the release checks/);
     } finally {
       vi.unstubAllEnvs();
     }

@@ -1345,12 +1345,18 @@ export function createLegacyAnalysisRunExecutor(
           // reported" as evidence that the inputs were sourced.
           // equityMode is what lets a manual ke report as an undated prior
           // rather than as `absent`, which does not fire the gate.
+          // A financial institution's ke is its valuation's (no command center).
           assumptionProvenance: commandCenter
             ? buildAssumptionProvenance(commandCenter.costOfCapital.assumptions, {
                 equityMode: commandCenter.costOfCapital.equityMode,
                 ke: commandCenter.costOfCapital.ke,
               })
-            : null,
+            : pipelineResult?.bankResult?.valuation?.costOfCapital
+              ? buildAssumptionProvenance(pipelineResult.bankResult.valuation.costOfCapital.assumptions, {
+                  equityMode: pipelineResult.bankResult.valuation.costOfCapital.equityMode,
+                  ke: pipelineResult.bankResult.valuation.costOfCapital.ke,
+                })
+              : null,
           // Null when no valuation ran: silence about earnings quality must not
           // read as a clean bill of health.
           earningsQuality: commandCenter

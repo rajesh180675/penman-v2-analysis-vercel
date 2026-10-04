@@ -1,3 +1,4 @@
+import type { CostOfCapitalResult } from "../costOfCapital";
 import type { SOTPResult } from "../sotpValuation";
 
 /** Lightweight three-scenario bundle for bank/NBFC valuation.
@@ -183,6 +184,12 @@ export interface BankValuationBundle {
   sustainableROE: number | null;
   /** Cost of equity from config. */
   ke: number;
+  /**
+   * The cost-of-capital resolution ke came from, so a run can report its
+   * provenance (sourced packs or undated priors) to the rigor ladder's
+   * assumption-provenance gate, as the industrial command center does.
+   */
+  costOfCapital?: CostOfCapitalResult | undefined;
   /** Terminal growth used (post-CRAR-governor when NBFC). */
   terminalGrowth: number;
   /** Latest book value (Cr). */

@@ -424,9 +424,8 @@ export function buildAnalysisTraceability(params: {
   // readiness (resolveFinancialValuationReadiness — the evidence the valuation
   // rests on: an insurer's filed embedded value and VNB, or two independent
   // lenses that agree), reaching the envelope as analysisStatus.valuationStatus
-  // like any run's. Production-ready stays capped: it needs the release checks
-  // the industrial path runs (evidence-weighted synthesis, cost-of-capital
-  // provenance), which the financial-institution path does not yet.
+  // like any run's; so is production-ready, with the same gates after it
+  // (the cost of equity's provenance among them).
   const isFinancialInstitution = hasBankMetrics && bankSubtype != null;
   // Undefined means the caller did not supply the valuation, which is not
   // evidence that none computed; only a supplied bundle (or null) is described.
@@ -536,11 +535,9 @@ export function buildAnalysisTraceability(params: {
     {
       level: "production-ready",
       label: "Production-ready",
-      achieved: !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && !sectorUnmodelledCapsAtPlausible && !isFinancialInstitution && analysisStatus?.status === "production-ready",
+      achieved: !valuationBlocked && !distressBlocksValuation && !conceptIdentityBlocksValuation && !terminalEligibilityBlocksValuation && !screeningOnly && !sectorUnmodelledCapsAtPlausible && analysisStatus?.status === "production-ready",
       detail: sectorUnmodelledCapsAtPlausible
         ? `${sectorCapLabel} sector detected — production-ready requires sector-native reconciliation and valuation readiness; ${sectorCapReason}.`
-        : isFinancialInstitution
-        ? "Financial institution — production-ready needs the release checks the industrial path runs (evidence-weighted synthesis, cost-of-capital provenance), which the financial-institution path does not yet."
         : screeningOnly
         ? "Single-period upload — production-ready status requires ≥2 periods."
         : !structuralCriteriaCleared
@@ -551,7 +548,9 @@ export function buildAnalysisTraceability(params: {
               ? "Valuation eligibility blockers remain, so production-ready status is denied."
               : analysisStatus?.status === "production-ready"
                 ? "All currently wired release checks passed."
-                : analysisStatus?.headline ?? "Production-ready status was not reached.",
+                : isFinancialInstitution && valuationStatus === "warning" && financialReadinessReason
+                  ? `Financial institution — ${financialReadinessReason}`
+                  : analysisStatus?.headline ?? "Production-ready status was not reached.",
     },
   ]);
   // achievedLevels/pendingLevels are recomputed below after the

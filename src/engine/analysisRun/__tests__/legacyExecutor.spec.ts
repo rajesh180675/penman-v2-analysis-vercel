@@ -702,6 +702,23 @@ describe("financial-institution valuation inputs", () => {
     expect(pb?.status === "computed" && pb.equityValue).toBe(668_446);
   });
 
+  it("grades a financial institution's cost of equity, so its production-ready rests on a graded rate", async () => {
+    // No command center: the provenance must come from the bank valuation's own
+    // resolution, or the envelope's gate sees "absent" and never fires.
+    const deps = fiDeps();
+    const base = vi.mocked(deps.processPipeline).getMockImplementation()!;
+    vi.mocked(deps.processPipeline).mockImplementation((...args) => {
+      const result = base(...args) as unknown as { bankResult: { valuation: Record<string, unknown> } };
+      result.bankResult.valuation.costOfCapital = resolveCostOfCapitalFromConfig({ config: DEFAULT_CONFIG });
+      return result as never;
+    });
+    await createLegacyAnalysisRunExecutor(deps)(input());
+    const provenance = vi.mocked(deps.buildTraceability).mock.calls[0]![0].assumptionProvenance;
+    expect(provenance).not.toBeNull();
+    // Packless here, so the CAPM terms are undated priors and the gate would fire.
+    expect(provenance!.priorTierKeys).toEqual(expect.arrayContaining(["risk-free-rate", "equity-risk-premium"]));
+  });
+
   it("decides a financial institution's status from its own valuation evidence", async () => {
     const deps = fiDeps();
     await createLegacyAnalysisRunExecutor(deps)(input());
