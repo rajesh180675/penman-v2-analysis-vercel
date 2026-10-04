@@ -78,7 +78,8 @@ export function computeBankValuation(
     };
   }
 
-  const ke = resolveCostOfCapitalFromConfig({ config: cfg, ...packs }).ke;
+  const costOfCapital = resolveCostOfCapitalFromConfig({ config: cfg, ...packs });
+  const ke = costOfCapital.ke;
   const originalG = cfg.terminal_growth_rate ?? DEFAULT_TERMINAL_GROWTH;
 
   // Phase D2 — apply CRAR-buffer governor for NBFCs so all downstream
@@ -208,6 +209,7 @@ export function computeBankValuation(
   return {
     sustainableROE,
     ke,
+    costOfCapital,
     terminalGrowth: g,
     latestBookValue: latestBV,
     usableHistory: obsCount,

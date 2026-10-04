@@ -7,6 +7,9 @@ import { describeFinancialValuationEvidence, summarizeFinancialValuationEvidence
 /** The band within which two independent lenses must agree: the industrial triangulation's critical threshold. */
 export const FI_LENS_AGREEMENT = 0.30;
 
+/** Agreement for production-ready: the industrial triangulation's warning threshold. */
+export const FI_LENS_PRODUCTION_AGREEMENT = 0.15;
+
 /** Usable years of book and profit a financial-institution valuation needs. */
 export const FI_MIN_USABLE_PERIODS = 3;
 
@@ -24,9 +27,16 @@ export const FI_MIN_USABLE_PERIODS = 3;
  *   FI_LENS_AGREEMENT. A bank's justified P/B, residual income and DDM are one
  *   algebra, so a bank with only those is not ready, however close they sit.
  *
- * Ready resolves "warning" (valuation-eligible), never "production-ready":
- * production-ready needs the release checks the industrial path runs, which
- * the financial-institution path does not yet.
+ * Ready resolves "warning" (valuation-eligible). It resolves "production-ready"
+ * only for a bank or NBFC
+ * whose two lenses agree within FI_LENS_PRODUCTION_AGREEMENT — the industrial
+ * triangulation's warning band. The rest of production-ready is the envelope's
+ * as for any run: a cost of equity on undated priors withdraws it there.
+ *
+ * An insurer stops at valuation-eligible: its value of new business is scaled
+ * by a multiple (12× by default) that nothing in the engine sources or dates —
+ * a config value is not provenance, as a typed ke is not — and on HDFC Life
+ * that multiple carries nearly half the headline value.
  */
 export function resolveFinancialValuationReadiness(input: {
   readonly bankMetrics: readonly BankPeriodMetrics[];
@@ -61,7 +71,7 @@ export function resolveFinancialValuationReadiness(input: {
     const ev = valuation?.evBased;
     const vnb = ev?.status === "computed" ? ev.diagnostics.vnb : null;
     if (ev?.status === "computed" && vnb != null && vnb > 0) {
-      return { ...base, status: "warning", reasons: [`Valuation-eligible on the filed embedded value and value of new business. ${stated}`] };
+      return { ...base, status: "warning", reasons: [`Valuation-eligible on the filed embedded value and value of new business. The VNB multiple (${ev.diagnostics.vnb_multiple ?? 12}×) is an assumption nothing in the engine sources, so production-ready waits for a sourced multiple. ${stated}`] };
     }
     return guarded(ev?.status === "computed"
       ? `Embedded value is filed without value of new business, so it is scaled by an assumed multiple; valuation-eligible needs both. ${stated}`
@@ -69,8 +79,11 @@ export function resolveFinancialValuationReadiness(input: {
   }
 
   const { groups, maxGapRatio } = evidence;
+  if (groups.length >= 2 && maxGapRatio != null && maxGapRatio <= FI_LENS_PRODUCTION_AGREEMENT) {
+    return { ...base, status: "production-ready", reasons: [`Ready: two independent lenses agree within ${FI_LENS_PRODUCTION_AGREEMENT * 100}%. ${stated}`] };
+  }
   if (groups.length >= 2 && maxGapRatio != null && maxGapRatio <= FI_LENS_AGREEMENT) {
-    return { ...base, status: "warning", reasons: [`Valuation-eligible: two independent lenses agree within ${FI_LENS_AGREEMENT * 100}%. ${stated}`] };
+    return { ...base, status: "warning", reasons: [`Valuation-eligible: two independent lenses agree within ${FI_LENS_AGREEMENT * 100}%, not the ${FI_LENS_PRODUCTION_AGREEMENT * 100}% production-ready needs. ${stated}`] };
   }
   return guarded(groups.length >= 2
     ? `${stated} Valuation-eligible needs them within ${FI_LENS_AGREEMENT * 100}%.`
