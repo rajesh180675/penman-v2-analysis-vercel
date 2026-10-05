@@ -732,19 +732,27 @@ export function buildAnalysisTraceability(params: {
   // Valuation-triangulation gate.
   //
   // The accrual, cash-flow and relative valuations are independent paradigms;
-  // when they disagree beyond the check's critical band the value is not
-  // defensible, so the run is not valuation-eligible. It gated structural
-  // reconciliation until 2026-10, which reported model disagreement as
-  // unreconciled accounts. The warning band still weighs on the residual score
-  // above, as before.
+  // beyond the check's critical band the accrual value is not corroborated, so
+  // the run is not production-ready. It does not withhold valuation
+  // eligibility: the cash lens grows trailing free cash flow at the accrual
+  // forecast's rate, so its base carries history's reinvestment, not the
+  // forecast's. On the library every critical gap (9 of 9, 2026-10-05) traced to
+  // that reinvestment difference, low for heavy investors and high where
+  // investment paused, not to the accounts or the accrual model. Eligibility
+  // rests on the gates that test the valuation itself: RE/ReOI consistency
+  // above, forecast-state validation and economic sanity. It gated structural
+  // reconciliation until 2026-10-01 and valuation eligibility until 2026-10-05.
+  // The warning band still weighs on the residual score above, as before.
   const triangulationCheck = reconciliation.checks.find((check) => check.key === "valuation-triangulation");
   if (triangulationCheck?.status === "failed") {
-    const withdraw = (level: AnalysisRigorLevel, detail: string) => {
-      const idx = checkpoints.findIndex((c) => c.level === level);
-      if (idx >= 0 && checkpoints[idx]!.achieved) checkpoints[idx] = { ...checkpoints[idx]!, achieved: false, detail };
-    };
-    withdraw("valuation-eligible", `${triangulationCheck.detail} Above the ${(triangulationCheck.criticalThreshold * 100).toFixed(0)}% they must agree within, so the run is not valuation-eligible.`);
-    withdraw("production-ready", "Valuation eligibility blockers remain, so production-ready status is denied.");
+    const idx = checkpoints.findIndex((c) => c.level === "production-ready");
+    if (idx >= 0 && checkpoints[idx]!.achieved) {
+      checkpoints[idx] = {
+        ...checkpoints[idx]!,
+        achieved: false,
+        detail: `${triangulationCheck.detail} Above the ${(triangulationCheck.criticalThreshold * 100).toFixed(0)}% they must agree within, the value is not corroborated, so the run is not production-ready.`,
+      };
+    }
   }
 
   // Recompute achieved/pending after downgrade.

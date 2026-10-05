@@ -180,29 +180,20 @@ describe.sequential("auditCompanyRun", () => {
   }, 240_000);
 
   it("does not let valuation readiness skip a blocked rigor gate", async () => {
-  // UltraTech, not Asian Paints: once the forecast held year-end turnover
-  // instead of releasing NOA in year 1, Asian Paints' paradigms agreed within
-  // the band and it became valuation-eligible.
-  const result = await runAudit("ULTRACEMCO");
+  // Hindustan Unilever. (Asian Paints and then UltraTech held this case while
+  // the accrual/cash-DCF disagreement withheld valuation eligibility; since
+  // 2026-10-05 that disagreement withholds production-ready instead.)
+  const result = await runAudit("HINDUNILVR");
 
-  // The accounts reconcile (confirmed), but here the accrual and cash-DCF
-  // paradigms disagree past the critical band, so the ladder stops at
-  // economically-plausible: valuation-eligible is withheld.
-  const perShare = result.valuationEvidence.triangulationMethods
-    .map((method) => method.perShare)
-    .filter((value): value is number => value != null && Number.isFinite(value) && value > 0)
-    .sort((a, b) => a - b);
-  const median = perShare.length % 2 === 0
-    ? (perShare[perShare.length / 2 - 1]! + perShare[perShare.length / 2]!) / 2
-    : perShare[(perShare.length - 1) / 2]!;
-  expect((perShare.at(-1)! - perShare[0]!) / median).toBeGreaterThan(0.3);
-  expect(result.rigor.currentLevel).toBe("economically-plausible");
+  // The accounts reconcile (confirmed), and readiness finds the terminal
+  // period usable — flagged for review, not guarded — so readiness alone would
+  // value it. The rigor ladder still stops at economically-plausible: the
+  // terminal period carries a capital-return item that blocks terminal
+  // eligibility. That is the case this test exists for.
   expect(result.rigor.reconciliationStatus).toBe("confirmed");
-  // The terminal anchor itself is clean — its only flag, an RNOA outlier, no
-  // longer disqualifies it — so readiness is at its best while the ladder still
-  // refuses to promote past the blocked valuation gate. That is the case this
-  // test exists for.
-  expect(result.valuationEvidence.readinessStatus).toBe("production-ready");
+  expect(result.valuationEvidence.readinessStatus).toBe("warning");
+  expect(result.rigor.currentLevel).toBe("economically-plausible");
+  expect(result.outcome).toBe("ECONOMICALLY_PLAUSIBLE_CAPPED");
   }, 240_000);
 
   it("carries financial-institution valuation readiness evidence and bank-shape triangulation when bank gates clear", async () => {
