@@ -4,9 +4,9 @@ import { buildIndustrialForecast } from "./engine";
 
 export const LEGACY_FORECAST_STATE_BRIDGE_VERSION = "2026-07-legacy-forecast-state-bridge-v1" as const;
 
-/** Revolver passes: a few per year cover each draw's own interest. */
+/** Revolver passes: one per year that runs short, with room to spare. */
 const MAX_REVOLVER_PASSES = 40;
-/** A draw overshoots its shortfall slightly so its own interest does not reopen it. */
+/** A draw overshoots its shortfall slightly, on top of funding its own interest. */
 const REVOLVER_HEADROOM = 0.01;
 
 function clamp(value: number, low: number, high: number): number {
@@ -211,8 +211,19 @@ export function buildIndustrialForecastFromLegacyScenario(args: {
   for (let pass = 0; pass < MAX_REVOLVER_PASSES; pass += 1) {
     const first = cashShortfalls(result)[0];
     if (!first) break;
-    drivers = drivers.map((driver, index) =>
-      index === first.index ? { ...driver, debtIssuance: driver.debtIssuance + first.shortfall * (1 + REVOLVER_HEADROOM) } : driver);
+    // A draw pays interest in its own year (finance cost is on average
+    // obligations), so drawing the bare shortfall leaves the year short by
+    // that interest. Grossing up by 1% covered it only below a ~3% cost of
+    // debt; above, each pass shrank the gap ~500× until it fell under
+    // floating-point resolution (₹7e-13 against ₹1 lakh Cr flows), stuck there
+    // for the remaining passes and left later years unfunded (Grasim's
+    // historical-panic case: −₹13,525 Cr and −₹31,086 Cr cash). Funding the
+    // draw's own after-tax half-year interest closes the year in one pass.
+    drivers = drivers.map((driver, index) => {
+      if (index !== first.index) return driver;
+      const ownInterest = (driver.costOfDebtPretax / 2) * (1 - driver.taxRate);
+      return { ...driver, debtIssuance: driver.debtIssuance + (first.shortfall * (1 + REVOLVER_HEADROOM)) / (1 - ownInterest) };
+    });
     result = buildIndustrialForecast(requestFor(drivers));
   }
   return result;

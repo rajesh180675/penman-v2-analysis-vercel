@@ -111,6 +111,26 @@ describe("legacy scenario to ForecastState bridge", () => {
     expect(lastDebt).toBeCloseTo(205 + issued, 6);
   });
 
+  it("funds every short year of a long forecast, each draw covering its own interest", () => {
+    // Grasim-shaped: investment outruns cash from operations year after year.
+    // A draw grossed up by only 1% left each year short by its own interest at
+    // a ~10% cost of debt; each pass shrank the gap until it fell under
+    // floating-point resolution and stuck, the 40 passes ran out, and later
+    // years published negative cash.
+    const latest = { ...LATEST, bs: { ...LATEST.bs, FA: 5, FO: 305, FO_FinancialDebtExLease: 205, NFO: 300 } } as unknown as RecastPeriod;
+    const years = 12;
+    const result = bridge(latest, {
+      ...SCENARIO,
+      horizonT: years,
+      drivers: { ...SCENARIO.drivers, sales_growth: Array(years).fill(0.12), ato: Array.from({ length: years }, (_, i) => 1.4 - i * 0.03) },
+    });
+    expect(result.status, reasons(result)).toBe("computed");
+    if (result.status !== "computed") return;
+    // Half the years run short: far more passes than 40 at the old sizing.
+    expect(result.forecastCase.projected.filter((s) => s.assumptions.debtIssuance > 0).length).toBeGreaterThanOrEqual(6);
+    for (const state of result.forecastCase.projected) expect(state.balanceSheet.financialAssets.cash).toBeGreaterThanOrEqual(0);
+  });
+
   it("draws nothing when the forecast funds itself", () => {
     const result = bridge(LATEST);
     expect(result.status, reasons(result)).toBe("computed");
