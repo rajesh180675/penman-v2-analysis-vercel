@@ -121,8 +121,25 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   const financialDebtExLease = longBorrow + shortBorrow + otherFinLiab + hybrid;
   const bridgeDebtLongTerm = sumBs("BS.BridgeDebt.LongTerm", M.balanceSheet.bridgeDebt.longTermBorrowings);
   const bridgeDebtShortTerm = sumBs("BS.BridgeDebt.ShortTerm", M.balanceSheet.bridgeDebt.shortTermBorrowings);
-  const bridgeDebtDebentures = sumBs("BS.BridgeDebt.Debentures", M.balanceSheet.bridgeDebt.debentures);
-  const bridgeDebtCurrentMaturities = sumBs("BS.BridgeDebt.CurrentMaturities", M.balanceSheet.bridgeDebt.currentMaturities);
+  // A filed total summed beside its own parts counts them twice: the
+  // duplicate-source guard compares keys, not values. Read the total where it
+  // is filed, else sum the parts; the list's other labels still add. Library
+  // sweep: the current-maturities total equals its secured/unsecured/
+  // unspecified parts in 21 ITC and Idea years; Idea's "Total Debentures"
+  // equals its non-convertible line.
+  const totalElseParts = (line: string, keys: readonly string[], total: string, parts: readonly string[]) => {
+    const filed = bs(line, [total]);
+    const others = sumBs(line, keys.filter((key) => key !== total && !parts.includes(key)));
+    return others + (filed !== 0 ? filed : sumBs(line, parts));
+  };
+  const bridgeDebtDebentures = totalElseParts("BS.BridgeDebt.Debentures", M.balanceSheet.bridgeDebt.debentures,
+    "Total Debentures", ["Non Convertible Debentures", "Convertible Debentures"]);
+  const bridgeDebtCurrentMaturities = totalElseParts("BS.BridgeDebt.CurrentMaturities", M.balanceSheet.bridgeDebt.currentMaturities,
+    "Total Current Maturities of Long-term Borrowings", [
+      "Total Current Maturities of Secured Long-term Debt",
+      "Total Current Maturities of Unsecured Long-term Debt",
+      "Unspecified Current Maturities of Long-term Debt",
+    ]);
   const bridgeDebtTotal = bridgeDebtLongTerm + bridgeDebtShortTerm + bridgeDebtDebentures + bridgeDebtCurrentMaturities;
   pushTrace(trace, "BS.BridgeDebt.Total", {
     statement: "Derived",
@@ -383,7 +400,13 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   const sgaLegalProfessional = pl("IS.SGA.Legal", M.profitLoss.sgaLegal);
   const sgaRent = pl("IS.SGA.Rent", M.profitLoss.sgaRent);
   const sgaFreight = pl("IS.SGA.Freight", M.profitLoss.sgaFreight);
-  const sgaRepairs = sumPLWithTrace(data, M.profitLoss.sgaRepairs, "IS.SGA.Repairs", trace);
+  // "Repairs and Maintenance" is the total of the three "Repairs to …" lines
+  // (84 library company-years across 8 companies); summed beside them it
+  // moved cost from other expenses into SGA. Read the total where filed.
+  const repairParts = ["Repairs to Building", "Repairs to Machinery", "Repairs to Other Assets"];
+  const repairsTotal = pl("IS.SGA.Repairs", ["Repairs and Maintenance"]);
+  const sgaRepairs = sumPLWithTrace(data, M.profitLoss.sgaRepairs.filter((key) => key !== "Repairs and Maintenance" && !repairParts.includes(key)), "IS.SGA.Repairs", trace)
+    + (repairsTotal !== 0 ? repairsTotal : sumPLWithTrace(data, repairParts, "IS.SGA.Repairs", trace));
   const sgaPowerFuel = pl("IS.SGA.Power", M.profitLoss.sgaPower);
   const sgaDetailed =
     sgaAdvertising
