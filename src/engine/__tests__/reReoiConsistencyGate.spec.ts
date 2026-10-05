@@ -139,12 +139,22 @@ describe("valuation-triangulation gate", () => {
     expect(env.rigor.achievedLevels).toContain("production-ready");
   });
 
-  it("denies valuation-eligible above the critical band, with the accounts still reconciled (Infosys: 32%)", () => {
+  it("withholds production-ready above the critical band, not valuation eligibility (Infosys: 32%)", () => {
+    // The cash lens grows trailing free cash flow at the accrual forecast's
+    // rate, so its gap tracks reinvestment (9 of 9 critical gaps on the
+    // library), not the accounts or the accrual model: an uncorroborated value,
+    // not an ineligible one.
     const env = envelope(undefined, paradigms(858.45, 621.77));
-    expect(env.rigor.achievedLevels).toContain("structurally-reconciled");
     expect(env.rigor.achievedLevels).toContain("economically-plausible");
-    expect(env.rigor.achievedLevels).not.toContain("valuation-eligible");
-    const checkpoint = env.rigor.checkpoints.find((c) => c.level === "valuation-eligible");
-    expect(checkpoint?.detail).toMatch(/Cash-statement FCFF DCF.*not valuation-eligible/);
+    expect(env.rigor.achievedLevels).toContain("valuation-eligible");
+    expect(env.rigor.achievedLevels).not.toContain("production-ready");
+    const checkpoint = env.rigor.checkpoints.find((c) => c.level === "production-ready");
+    expect(checkpoint?.detail).toMatch(/Cash-statement FCFF DCF.*not corroborated, so the run is not production-ready/);
+  });
+
+  it("withholds production-ready when one paradigm values the equity below zero (Reliance)", () => {
+    const env = envelope(undefined, paradigms(235.03, -20.64));
+    expect(env.rigor.achievedLevels).toContain("valuation-eligible");
+    expect(env.rigor.achievedLevels).not.toContain("production-ready");
   });
 });
