@@ -219,6 +219,43 @@ describe("evaluateReconciliationResiduals", () => {
     expect(summary.status).not.toBe("failed");
   });
 
+  it("counts a method valuing the equity below zero as the widest disagreement, not an absence", () => {
+    // Reliance-shaped: the cash DCF's enterprise value sits below net debt and
+    // the minority claim, so its equity is ₹−28 against the accrual ₹268. The
+    // check kept only positive values, so this pair passed while a 32% gap
+    // blocked. Limited liability floors it at zero for the comparison.
+    const summary = evaluateReconciliationResiduals({
+      recastData: [mkPeriod("2024-03-31"), mkPeriod("2025-03-31")],
+      config: DEFAULT_CONFIG,
+      valuationTriangulation: {
+        methods: [
+          { key: "accrual-riv", label: "Accrual RIV", perShare: 268 },
+          { key: "cash-fcff-dcf", label: "Cash-statement FCFF DCF", perShare: -28 },
+        ],
+      },
+    });
+
+    const check = summary.checks.find((entry) => entry.key === "valuation-triangulation");
+    expect(check?.status).toBe("failed");
+    expect(check?.ratio).toBeCloseTo(268 / 134, 9);
+    expect(check?.detail).toContain("₹-28.00/share (equity below zero, compared as ₹0)");
+  });
+
+  it("skips valuation-triangulation when no method values the equity above zero", () => {
+    const summary = evaluateReconciliationResiduals({
+      recastData: [mkPeriod("2024-03-31"), mkPeriod("2025-03-31")],
+      config: DEFAULT_CONFIG,
+      valuationTriangulation: {
+        methods: [
+          { key: "accrual-riv", label: "Accrual RIV", perShare: -5 },
+          { key: "cash-fcff-dcf", label: "Cash-statement FCFF DCF", perShare: -40 },
+        ],
+      },
+    });
+
+    expect(summary.checks.some((entry) => entry.key === "valuation-triangulation")).toBe(false);
+  });
+
   it("skips valuation-triangulation honestly when fewer than two finite methods exist", () => {
     const summary = evaluateReconciliationResiduals({
       recastData: [mkPeriod("2024-03-31"), mkPeriod("2025-03-31")],
