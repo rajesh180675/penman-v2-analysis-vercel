@@ -195,12 +195,18 @@ function buildValuationTriangulationCheck(
 ): ReconciliationResidualCheck | null {
   const finiteMethods = (evidence?.methods ?? [])
     .filter((method): method is ValuationTriangulationMethod & { perShare: number } =>
-      method.perShare != null && Number.isFinite(method.perShare) && method.perShare > 0,
+      method.perShare != null && Number.isFinite(method.perShare),
     );
   // Honest skip: absence of at least two finite paradigms is not divergence.
   if (finiteMethods.length < 2) return null;
 
-  const basis = median(finiteMethods.map((method) => method.perShare));
+  // A method whose equity comes out below zero is evidence, not an absence.
+  // Limited liability floors it at zero, so against a positive value it is the
+  // widest disagreement there is. Keeping only perShare > 0 skipped exactly
+  // those: Reliance's cash DCF at ₹−28 against RIV ₹268 passed while a 32% gap
+  // blocked. Only when no method values the equity above zero is there no basis.
+  const compared = (method: { perShare: number }) => Math.max(0, method.perShare);
+  const basis = median(finiteMethods.map(compared));
   if (!Number.isFinite(basis) || basis <= 0) return null;
 
   let worstLeft = finiteMethods[0]!;
@@ -210,7 +216,7 @@ function buildValuationTriangulationCheck(
     for (let j = i + 1; j < finiteMethods.length; j += 1) {
       const left = finiteMethods[i]!;
       const right = finiteMethods[j]!;
-      const delta = Math.abs(left.perShare - right.perShare);
+      const delta = Math.abs(compared(left) - compared(right));
       if (delta > maxPairwiseDelta) {
         maxPairwiseDelta = delta;
         worstLeft = left;
@@ -229,7 +235,7 @@ function buildValuationTriangulationCheck(
     criticalThreshold: VALUATION_TRIANGULATION_CRITICAL_THRESHOLD,
   });
   const methodSummary = finiteMethods
-    .map((method) => `${method.label}: ₹${method.perShare.toFixed(2)}/share`)
+    .map((method) => `${method.label}: ₹${method.perShare.toFixed(2)}/share${method.perShare < 0 ? " (equity below zero, compared as ₹0)" : ""}`)
     .join("; ");
   // Diagnostic here: model disagreement is not an accounting residual, so it
   // gates the valuation rungs (analysisTraceability), not structural
