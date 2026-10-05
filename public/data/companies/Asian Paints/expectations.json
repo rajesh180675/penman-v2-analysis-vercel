@@ -2,7 +2,7 @@
   "companyId": "asian-paints",
   "companyName": "Asian Paints Ltd",
   "profile": "clean-industrial",
-  "expectedRigorLevel": "economically-plausible",
+  "expectedRigorLevel": "valuation-eligible",
   "expectedParserFidelityStatus": "degraded",
   "expectedReconciliationStatus": "confirmed",
   "expectedEconomicSanityStatus": "blocked",
@@ -29,7 +29,7 @@
     "max": 3
   },
   "expectedRunsCleanWorkbook": true,
-  "notes": "Reconciliation confirmed (was degraded) once the cost bridge carries the associates' share after tax and adds back investment losses (2026-10-02). NFO_to_CSE re-centred on -0.0944 (was -0.110) once current lease liabilities count as FO (#364: the parser used to drop the current row). Valuation triangulation (RIV vs cash DCF, ~35% apart here) gates the valuation rungs, not structural reconciliation (2026-10-01): rigor economically-plausible, reconciliation degraded. Clean Ind-AS profile, decorative paints leader, low leverage. Used as the happy-path baseline for Penman-Nissim industrial valuation.",
+  "notes": "Reconciliation confirmed (was degraded) once the cost bridge carries the associates' share after tax and adds back investment losses (2026-10-02). NFO_to_CSE re-centred on -0.0944 (was -0.110) once current lease liabilities count as FO (#364: the parser used to drop the current row). Valuation triangulation (RIV vs cash DCF) gates the valuation rungs, not structural reconciliation (2026-10-01); the models were ~35% apart until the forecast held year-end turnover instead of releasing NOA in year 1 (2026-10-05), and now agree within the 30% band: rigor valuation-eligible. Clean Ind-AS profile, decorative paints leader, low leverage. Used as the happy-path baseline for Penman-Nissim industrial valuation.",
   "capturedAt": "2026-07-27T09:39:41Z",
   "targetState": {
     "expectedRigorLevel": "valuation-eligible",

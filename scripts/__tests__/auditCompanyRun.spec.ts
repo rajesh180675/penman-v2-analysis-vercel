@@ -180,11 +180,22 @@ describe.sequential("auditCompanyRun", () => {
   }, 240_000);
 
   it("does not let valuation readiness skip a blocked rigor gate", async () => {
-  const result = await runAudit("ASIANPAINT");
+  // UltraTech, not Asian Paints: once the forecast held year-end turnover
+  // instead of releasing NOA in year 1, Asian Paints' paradigms agreed within
+  // the band and it became valuation-eligible.
+  const result = await runAudit("ULTRACEMCO");
 
   // The accounts reconcile (confirmed), but here the accrual and cash-DCF
   // paradigms disagree past the critical band, so the ladder stops at
   // economically-plausible: valuation-eligible is withheld.
+  const perShare = result.valuationEvidence.triangulationMethods
+    .map((method) => method.perShare)
+    .filter((value): value is number => value != null && Number.isFinite(value) && value > 0)
+    .sort((a, b) => a - b);
+  const median = perShare.length % 2 === 0
+    ? (perShare[perShare.length / 2 - 1]! + perShare[perShare.length / 2]!) / 2
+    : perShare[(perShare.length - 1) / 2]!;
+  expect((perShare.at(-1)! - perShare[0]!) / median).toBeGreaterThan(0.3);
   expect(result.rigor.currentLevel).toBe("economically-plausible");
   expect(result.rigor.reconciliationStatus).toBe("confirmed");
   // The terminal anchor itself is clean — its only flag, an RNOA outlier, no

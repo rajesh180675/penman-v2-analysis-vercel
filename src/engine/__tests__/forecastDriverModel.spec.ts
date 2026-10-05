@@ -63,9 +63,12 @@ function mkLatest(period_end = "2024-03-31"): RecastPeriod {
 
 function mkPeriod(period_end: string, overrides: Partial<Ratios>, separationScore = 90, bridgeCoverage = 0.8): RecastPeriod {
   const base = mkLatest(period_end);
+  // The forecast reads turnover off the balance sheet (sales over year-end
+  // NOA), so a fixture's NOA carries the turnover it states.
+  const NOA = overrides.ATO != null ? base.is.Sales / overrides.ATO : base.bs.NOA;
   return {
     ...base,
-    bs: { ...base.bs, separationScore },
+    bs: { ...base.bs, NOA, separationScore },
     is: {
       ...base.is,
       operatingCostBridge: {
@@ -207,6 +210,55 @@ describe("buildDriverForecastModel — asset turnover", () => {
     const plan = planFor(5);
     expect(plan.year1.ato).toBeGreaterThan(4);
     expect(plan.targets.ato).toBeGreaterThan(4);
+  });
+
+  it("starts from the latest year-end turnover, not a blend with the long-run median", () => {
+    // L&T-shaped: turnover 0.7x for years (a lending arm's loan book in NOA),
+    // 1.7x now. Blending the start with the median put forecast NOA up 42% in
+    // one year (₹71k Cr, 15x capex); walk-forward over 204 origins, turnover
+    // held at the cutoff predicts NOA a year ahead far better (|log error|
+    // 0.142 vs 0.241).
+    const plan = planFor(0.7, 1.7);
+    expect(plan.year1.ato).toBeCloseTo(1.7, 9);
+    expect(plan.targets.ato).toBeLessThan(plan.year1.ato);
+  });
+
+  it("measures turnover on year-end NOA, the basis the forecast applies it on", () => {
+    // Nestlé-shaped: NOA jumped in the latest year, so turnover on AVERAGE NOA
+    // (ratios.ATO, 4.99x) reads above turnover on year-end NOA (3.93x).
+    // NOA_f = Sales_f / ato is a year-end figure; the average-basis ratio
+    // forecast year-1 NOA 23% below the NOA the company holds.
+    const data = ["2021", "2022", "2023", "2024"].map((y, i) => {
+      const period = mkPeriod(`${y}-03-31`, { CoreSalesPM: 0.15, PM: 0.15, ATO: 3.93, Sales_growth: 0.1 });
+      return i === 3 ? { ...period, ratios: { ...period.ratios!, ATO: 4.99 } } : period;
+    });
+    const plan = buildDriverForecastModel({
+      data,
+      latest: data[data.length - 1],
+      businessModel: buildBusinessModelProfile(data),
+      normalized: buildCyclicalNormalization(data),
+      scenarioKey: "base",
+      template,
+    } as never);
+    expect(plan.year1.ato).toBeCloseTo(3.93, 9);
+  });
+
+  it("leaves near-zero-NOA years out of the long-run turnover", () => {
+    // HUL-shaped: NOA a few % of sales for years (sales 40x NOA), then a normal
+    // 1.6x after an acquisition. Counting those years put the median at the
+    // 8x ceiling, and the fade toward it drove forecast PPE below zero.
+    const data = ["2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024"].map((y, i) =>
+      mkPeriod(`${y}-03-31`, { CoreSalesPM: 0.17, PM: 0.17, ATO: i < 4 ? 40 : i === 7 ? 1.7 : 1.6, Sales_growth: 0.08 }));
+    const plan = buildDriverForecastModel({
+      data,
+      latest: data[data.length - 1],
+      businessModel: buildBusinessModelProfile(data),
+      normalized: buildCyclicalNormalization(data),
+      scenarioKey: "base",
+      template,
+    } as never);
+    expect(plan.year1.ato).toBeCloseTo(1.7, 9);
+    expect(plan.targets.ato).toBeLessThan(2.1);
   });
 
   it("treats a negative turnover (negative NOA) as unknown rather than flooring it", () => {

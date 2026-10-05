@@ -1,5 +1,8 @@
 import { CyclicalNormalizationOutput } from "./cyclicalNormalization";
+import { median } from "./forecastingEngine/helpers";
 import { BusinessModelProfile, DriverForecastPlan, PersistenceScenarioTemplate, RecastPeriod } from "./types";
+
+const MIN_NOA_TO_SALES_FOR_TURNOVER = 0.1;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -84,12 +87,22 @@ export function buildDriverForecastModel(args: {
   // liabilities, e.g. HUL before FY21) gives a negative ratio, which the floor
   // below would turn into a forecast NOA of 10x sales. Treat it as unknown.
   const positive = (v: number | null | undefined) => (v != null && Number.isFinite(v) && v > 0 ? v : null);
-  const blendedAto = blendAnchor(
-    positive(latestRatios?.ATO),
-    positive(businessModel.historicalAnchors.ato) ?? positive(normalized.normalizedAto) ?? 1,
-    companyEvidenceWeight,
-    0.35,
-  ) ?? positive(normalized.normalizedAto) ?? 1;
+  // Turnover on YEAR-END NOA, the basis the forecast applies it on
+  // (NOA_f = Sales_f / ato). ratios.ATO is sales over AVERAGE NOA, which after a
+  // year of NOA growth reads above year-end turnover (Nestlé 4.99× vs 3.93×,
+  // UltraTech 0.95× vs 0.81×), so applying it shrank forecast NOA in year 1.
+  // Sales over a near-zero NOA is not a turnover (the walk-forward's 10%
+  // floor): HUL's NOA sat near zero before FY21, and those years' ratios put
+  // its long-run median at the 8× ceiling, so forecast PPE went negative.
+  const yearEndAto = (period: RecastPeriod) =>
+    positive(period.bs.NOA >= MIN_NOA_TO_SALES_FOR_TURNOVER * period.is.Sales ? period.is.Sales / period.bs.NOA : null);
+  const historicalYearEndAto = positive(median(args.data.filter((period) => period.period_end !== latest.period_end).map(yearEndAto)));
+  // The start holds the latest year-end turnover rather than blending it with
+  // the long-run median: the blend moved NOA by −23% to +42% in one year (L&T
+  // +₹71k Cr, 15× its capex). Walk-forward, 204 origins: turnover held at the
+  // cutoff predicts NOA one year ahead with mean |log error| 0.142 against the
+  // blend's 0.241 (bias +1% vs −10%), and still wins at three years ahead.
+  const startAto = yearEndAto(latest) ?? historicalYearEndAto ?? positive(normalized.normalizedAto) ?? 1;
 
   const growthGuardrailBand = template.growthGuardrailBand ?? 0.04;
   const marginGuardrailBand = template.marginGuardrailBand ?? 0.05;
@@ -111,7 +124,7 @@ export function buildDriverForecastModel(args: {
     Math.max((businessModel.historicalAnchors.corePm ?? normalized.normalizedMargin ?? 0.1) - marginGuardrailBand, 0.03),
     Math.min((businessModel.historicalAnchors.corePm ?? normalized.normalizedMargin ?? 0.1) + marginGuardrailBand, 0.6),
   );
-  const atoAnchor = positive(businessModel.historicalAnchors.ato) ?? positive(normalized.normalizedAto) ?? 1;
+  const atoAnchor = historicalYearEndAto ?? positive(normalized.normalizedAto) ?? 1;
   // Floor 0.1x, not 0.35x: an asset-heavy utility turns its NOA ~0.2x a year,
   // and the old floor halved its forecast NOA, doubling RNOA. Ceiling 8x, not
   // 2.2x (2.5x at the start): a Maruti or Britannia turns NOA ~5x, and the cap
@@ -127,7 +140,7 @@ export function buildDriverForecastModel(args: {
   // bounds of their own: bull's old 2.8x ceiling sat at half a 5x firm's base
   // turnover, and stress's 0.35x floor above a 0.2x utility's, each inverting
   // the scenario's capital charge against base.
-  const baseAtoStart = clamp(blendedAto, 0.1, 8);
+  const baseAtoStart = clamp(startAto, 0.1, 8);
   // Margin likewise, scaled by its magnitude so a loss-maker's stress case
   // loses more, not less: 0.62 × a −20% margin is −12%, above base. Bull's
   // old 34% ceiling sat below a 46% utility's base, and stress's +2% floor
@@ -193,7 +206,7 @@ export function buildDriverForecastModel(args: {
       atoAlpha,
     },
     capitalIntensityNarrative: [
-      `ATO anchor ${atoTarget.toFixed(2)}x versus latest ${(latest.ratios?.ATO ?? 0).toFixed(2)}x.`,
+      `ATO anchor ${atoTarget.toFixed(2)}x versus latest ${(yearEndAto(latest) ?? 0).toFixed(2)}x (year-end NOA).`,
       workingCapitalPressure === "high"
         ? "Working-capital drag is elevated and reduces persistence confidence."
         : "Working-capital drag is contained enough to avoid extra fade pressure.",
