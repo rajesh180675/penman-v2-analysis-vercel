@@ -298,7 +298,10 @@ describe("analysis status confidence gating", () => {
     expect(status.summary.toLowerCase()).toContain("terminal period is clean");
   });
 
-  it("downgrades to guarded when actionable backlog review remains high", () => {
+  it("keeps production-ready when only the unmapped-label backlog is dense, and discloses it", () => {
+    // The backlog's size follows the export template (13 library companies at
+    // 38–65 actionable labels, 10 at 193–709: schedules, notes, subtotals), not
+    // mapping risk, so it is disclosed rather than withholding production-ready.
     const status = deriveAnalysisStatus(
       {
         tier: "Tier 1",
@@ -379,8 +382,7 @@ describe("analysis status confidence gating", () => {
       },
     );
 
-    expect(status.status).toBe("guarded");
-    expect(status.headline).toBe("Coverage breadth still needs review");
-    expect(status.reasons.some((reason) => reason.includes("Backlog review volume remains high"))).toBe(true);
+    expect(status.status).toBe("production-ready");
+    expect(status.reasons.some((reason) => reason.includes("Backlog review volume remains high (228 actionable / 180 manual-review labels)"))).toBe(true);
   });
 });
