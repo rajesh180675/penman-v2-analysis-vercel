@@ -314,3 +314,53 @@ describe("buildDriverForecastModel — scenario margin ordering", () => {
   });
 });
 
+
+describe("buildDriverForecastModel — core margin", () => {
+  const template = {
+    normalizedGrowth: 0.09, terminalGrowthFloor: 0.03, terminalGrowthCap: 0.05,
+    growthFadeAlpha: 0.8, marginFadeAlpha: 0.9, atoFadeAlpha: 0.95, companyEvidenceMaxWeight: 0.8,
+    growthGuardrailBand: 0.035, marginGuardrailBand: 0.04, atoGuardrailBand: 0.4,
+  };
+  const planFor = (history: number, latest: number) => {
+    const data = ["2021", "2022", "2023", "2024"].map((y, i) =>
+      mkPeriod(`${y}-03-31`, { CoreSalesPM: i === 3 ? latest : history, PM: i === 3 ? latest : history, ATO: 1.2, Sales_growth: 0.1 }));
+    return buildDriverForecastModel({
+      data,
+      latest: data[data.length - 1],
+      businessModel: buildBusinessModelProfile(data),
+      normalized: buildCyclicalNormalization(data),
+      scenarioKey: "base",
+      template,
+    } as never);
+  };
+
+  it("starts the margin at the latest year's, not a blend with the median", () => {
+    // The fade toward the median already reverts it; blending the start too
+    // reverted it twice, and on the walk-forward the latest start cut one-year
+    // core-OI margin error 2.44 → 1.99 points of sales (trimmed).
+    expect(planFor(0.12, 0.15).year1.coreMargin).toBeCloseTo(0.15, 9);
+  });
+
+  it("targets the company's own median margin, without a persistence haircut", () => {
+    // 0.85 + 0.2 × persistence put the target below the company's history for
+    // any persistence under 75, and the fade carried it into every later year:
+    // the forecast margin ran a median 1.4 points of sales low three years out.
+    // Fragile fixture (as above): median core margin 12.5% before the spike.
+    const data = [
+      mkPeriod("2021-03-31", { Sales_growth: 0.05, CoreSalesPM: 0.12, PM: 0.12, ATO: 1.32, cash_conversion_ratio: 0.83, NOA_growth: 0.07, FLEV: 0.2 }),
+      mkPeriod("2022-03-31", { Sales_growth: 0.06, CoreSalesPM: 0.125, PM: 0.125, ATO: 1.31, cash_conversion_ratio: 0.81, NOA_growth: 0.08, FLEV: 0.22 }),
+      mkPeriod("2023-03-31", { Sales_growth: 0.06, CoreSalesPM: 0.13, PM: 0.13, ATO: 1.29, cash_conversion_ratio: 0.78, NOA_growth: 0.09, FLEV: 0.25 }),
+      mkPeriod("2024-03-31", { Sales_growth: 0.24, CoreSalesPM: 0.24, PM: 0.24, ATO: 1.18, cash_conversion_ratio: 0.48, NOA_growth: 0.28, FLEV: 0.78 }, 61, 0.61),
+    ];
+    const plan = buildDriverForecastModel({
+      data,
+      latest: data[data.length - 1],
+      businessModel: buildBusinessModelProfile(data),
+      normalized: buildCyclicalNormalization(data),
+      scenarioKey: "base",
+      template,
+    } as never);
+    expect(plan.persistenceBand).toBe("fragile");
+    expect(plan.targets.coreMargin).toBeCloseTo(0.125, 9);
+  });
+});

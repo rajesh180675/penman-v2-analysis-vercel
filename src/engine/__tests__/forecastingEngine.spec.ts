@@ -221,7 +221,13 @@ describe("derivePersistenceForecastScenario", () => {
     expect(scenario.forecastPolicy?.reinvestmentBurden).toBe("heavy");
     expect(scenario.forecastPolicy?.balanceSheetFlexibility).toBe("tight");
     expect(scenario.drivers.sales_growth[0]).toBeLessThan(0.2);
-    expect(scenario.drivers.core_sales_pm[0]).toBeLessThan(0.2);
+    // The margin starts at the latest year's and fades toward the median, faster
+    // under weak persistence, so year 1 already sits below the 24% spike and
+    // every later year lower still. (Blending the start with the median as well
+    // held year 1 under 20%, but on the walk-forward that double reversion lost
+    // to the latest start everywhere except spikes 2pp+ above it, 7 origins.)
+    expect(scenario.drivers.core_sales_pm[0]).toBeLessThan(0.24);
+    expect(scenario.drivers.core_sales_pm[4]).toBeLessThan(scenario.drivers.core_sales_pm[0]!);
     expect(scenario.drivers.sales_growth[0]).toBeGreaterThan(scenario.drivers.sales_growth[4]!);
     expect((scenario.forecastPolicy?.narrative ?? []).some((item) => item.toLowerCase().includes("working-capital"))).toBe(true);
   });
