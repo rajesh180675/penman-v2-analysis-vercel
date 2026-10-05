@@ -85,7 +85,15 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   const CSE = totalSE > 0 ? totalSE : totalEq - MI;
   pushTrace(trace, "BS.CSE", { statement: "Derived", key: "TotalSE or TotalEq-MI", value: CSE, matchType: "derived" });
 
-  const cashBank = sumBs("BS.FA.CashBank", M.balanceSheet.financialAssets.cashAndBank);
+  // "Total Other Bank Balances" is the detailed layout's subtotal of the
+  // "Bank Balances Other Than Cash and Cash Equivalents" line, not a second
+  // balance: in all 76 library company-years carrying both they are equal, and
+  // the total never appears alone. Summed as two lines, cash was counted twice
+  // and NOA understated by the same amount (Paytm FY25 ₹9,480 Cr, 44% of total
+  // assets; HUL, ITC, Sun, TCS, Power Grid, Idea, Nestlé FY16–25). Read it once.
+  const otherBankBalances = ["Bank Balances Other Than Cash and Cash Equivalents", "Total Other Bank Balances"];
+  const cashBank = sumBs("BS.FA.CashBank", M.balanceSheet.financialAssets.cashAndBank.filter((key) => !otherBankBalances.includes(key)))
+    + valBSFirstNonZero(data, otherBankBalances, "BS.FA.OtherBankBalances", trace);
   const curInvTop = bs("BS.FA.CurrentInvestmentsTop", [M.balanceSheet.financialAssets.currentInvestments[0]]);
   const curInvAlt = sumBs("BS.FA.CurrentInvestmentsAlt", M.balanceSheet.financialAssets.currentInvestments.slice(1));
   const curInv = curInvTop > 0 ? curInvTop : curInvAlt;
