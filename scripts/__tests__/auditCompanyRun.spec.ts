@@ -180,20 +180,19 @@ describe.sequential("auditCompanyRun", () => {
   }, 240_000);
 
   it("does not let valuation readiness skip a blocked rigor gate", async () => {
-  // Hindustan Unilever. (Asian Paints and then UltraTech held this case while
-  // the accrual/cash-DCF disagreement withheld valuation eligibility; since
-  // 2026-10-05 that disagreement withholds production-ready instead.)
-  const result = await runAudit("HINDUNILVR");
+  // Reliance. (Asian Paints, UltraTech and Hindustan Unilever held this case in
+  // turn; each cleared once a defect upstream was fixed: the forecast's
+  // turnover, the paradigm gate's consequence, and cash counted twice.)
+  const result = await runAudit("RELIANCE");
 
-  // The accounts reconcile (confirmed), and readiness finds the terminal
-  // period usable — flagged for review, not guarded — so readiness alone would
-  // value it. The rigor ladder still stops at economically-plausible: the
-  // terminal period carries a capital-return item that blocks terminal
-  // eligibility. That is the case this test exists for.
+  // The accounts reconcile (confirmed) and readiness is at its best: the
+  // terminal period is clean, so readiness alone would value it. The ladder
+  // still stops at its first rung on a gate readiness does not touch (concept
+  // identity is valuation-blocked here, as expectations.json pins). That is the
+  // case this test exists for.
   expect(result.rigor.reconciliationStatus).toBe("confirmed");
-  expect(result.valuationEvidence.readinessStatus).toBe("warning");
-  expect(result.rigor.currentLevel).toBe("economically-plausible");
-  expect(result.outcome).toBe("ECONOMICALLY_PLAUSIBLE_CAPPED");
+  expect(result.valuationEvidence.readinessStatus).toBe("production-ready");
+  expect(result.rigor.currentLevel).toBe("syntactically-valid");
   }, 240_000);
 
   it("carries financial-institution valuation readiness evidence and bank-shape triangulation when bank gates clear", async () => {
