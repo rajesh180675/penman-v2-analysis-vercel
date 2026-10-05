@@ -77,12 +77,13 @@ export function buildDriverForecastModel(args: {
     companyEvidenceWeight,
     0.35,
   ) ?? template.normalizedGrowth;
-  const blendedMargin = blendAnchor(
-    latestRatios?.CoreSalesPM ?? latestRatios?.PM ?? null,
-    businessModel.historicalAnchors.corePm ?? normalized.normalizedMargin ?? 0.1,
-    companyEvidenceWeight,
-    0.4,
-  ) ?? normalized.normalizedMargin ?? 0.1;
+  const marginAnchor = businessModel.historicalAnchors.corePm ?? normalized.normalizedMargin ?? 0.1;
+  // The margin starts at the latest year's and fades toward the company's
+  // median (marginTarget). Blending the start with the median as well reverted
+  // it twice. Walk-forward, 205 origins: one-year core-OI margin |error|
+  // (trimmed) 2.44 → 1.99 points of sales, bias −0.55 → −0.05, and RNOA and CNI
+  // errors fall at every horizon, with the target change below.
+  const latestMargin = latestRatios?.CoreSalesPM ?? latestRatios?.PM ?? null;
   // Turnover is only meaningful on positive NOA: a negative NOA (net operating
   // liabilities, e.g. HUL before FY21) gives a negative ratio, which the floor
   // below would turn into a forecast NOA of 10x sales. Treat it as unknown.
@@ -119,10 +120,15 @@ export function buildDriverForecastModel(args: {
   // so a 46%-margin utility (Powergrid) was forecast at about half its margin:
   // 20pp low, and CNI 9 ROE points low, one year ahead in the walk-forward.
   // 0.6 is only an outer bound.
+  // The target is the company's own median margin. It was scaled by
+  // 0.85 + 0.2 × persistence, a haircut below the company's history for any
+  // persistence under 75, and the fade carried it into every later year: the
+  // walk-forward's core-OI margin ran low by a median 0.4 / 0.9 / 1.4 points
+  // of sales at one / two / three years ahead.
   const marginTarget = clamp(
-    (businessModel.historicalAnchors.corePm ?? normalized.normalizedMargin ?? 0.1) * (0.85 + persistence * 0.2),
-    Math.max((businessModel.historicalAnchors.corePm ?? normalized.normalizedMargin ?? 0.1) - marginGuardrailBand, 0.03),
-    Math.min((businessModel.historicalAnchors.corePm ?? normalized.normalizedMargin ?? 0.1) + marginGuardrailBand, 0.6),
+    marginAnchor,
+    Math.max(marginAnchor - marginGuardrailBand, 0.03),
+    Math.min(marginAnchor + marginGuardrailBand, 0.6),
   );
   const atoAnchor = historicalYearEndAto ?? positive(normalized.normalizedAto) ?? 1;
   // Floor 0.1x, not 0.35x: an asset-heavy utility turns its NOA ~0.2x a year,
@@ -145,7 +151,7 @@ export function buildDriverForecastModel(args: {
   // loses more, not less: 0.62 × a −20% margin is −12%, above base. Bull's
   // old 34% ceiling sat below a 46% utility's base, and stress's +2% floor
   // above a loss-maker's — each failing the run's scenario-ordering gate.
-  const baseMarginStart = clamp(blendedMargin, -0.5, 0.6);
+  const baseMarginStart = clamp(latestMargin ?? marginAnchor, -0.5, 0.6);
   const scaleMargin = (factor: number) =>
     clamp(baseMarginStart + (factor - 1) * Math.abs(baseMarginStart), -0.5, 0.6);
   const scenarioPresets = {
