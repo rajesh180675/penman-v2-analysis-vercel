@@ -40,3 +40,4 @@ export type {
   ScenarioOrderingReport,
   TerminalEconomicsDiagnostic,
 } from "./contracts";
+export { buildScenarioForecastResults, evaluateScenarioForecastGates, type ScenarioForecastGateOutcome } from "./scenarioGates";

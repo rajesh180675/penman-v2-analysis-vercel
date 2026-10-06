@@ -42,11 +42,12 @@ import {
   type UnifiedAnalysisWindow,
 } from "../analysisCase";
 import {
-  buildIndustrialForecastFromLegacyScenario,
-  validateIndustrialScenarioOrdering,
+  buildScenarioForecastResults,
+  evaluateScenarioForecastGates,
   type IndustrialForecastResult,
   type ScenarioOrderingReport,
 } from "../forecastState";
+import { applyTerminalOutcomeToEnvelope, checkpointStage, type TerminalOutcome } from "./terminalOutcome";
 import {
   applyScenarioCalibration,
   calibrateScenarioProbabilities,
@@ -262,12 +263,6 @@ const DEFAULT_DEPENDENCIES: LegacyAnalysisRunExecutorDependencies = {
   resolveAssumptions: resolveAnalysisAssumptions,
 };
 
-interface TerminalOutcome {
-  readonly kind: "blocked" | "failed";
-  readonly stage: AnalysisStageId;
-  readonly code: string;
-  readonly message: string;
-}
 
 function clonePlain<T>(value: T): T {
   if (Array.isArray(value)) {
@@ -578,86 +573,16 @@ function buildRunForecastResults(params: {
   readonly assumptions: SourcedAssumptionSet;
   readonly factRef: ContentRef<"fact-set">;
 }): IndustrialForecastResult[] {
-  return params.commandCenter.scenarios.map((card) => buildIndustrialForecastFromLegacyScenario({
-    caseId: card.key,
-    label: card.label,
-    scenario: card.scenario,
+  return buildScenarioForecastResults({
+    commandCenter: params.commandCenter,
     latest: params.latest,
     config: params.config,
     analysisWindowId: params.window.windowId,
     assumptionIds: params.assumptions.intrinsicEligibleAssumptionIds,
     evidenceRefs: [params.factRef.contentHash],
-    // Legacy scenario weights are policy weights, not calibrated empirical
-    // likelihoods. Keep the native probability field null until calibration
-    // evidence exists instead of relabeling a heuristic as probability.
-    probabilityStatus: "not-assigned",
-    probabilityRationale: card.forecastPolicy?.scenarioWeightRationale?.join(" ")
-      || "Legacy scenario weights are not calibrated likelihoods and are intentionally excluded from ForecastState probability.",
-  }));
-}
-
-function checkpointStage(level: AnalysisTraceabilityEnvelope["rigor"]["checkpoints"][number]["level"]): AnalysisStageId {
-  switch (level) {
-    case "syntactically-valid": return "fact-extraction";
-    case "structurally-reconciled": return "structural-reconciliation";
-    case "economically-plausible": return "economic-validation";
-    case "valuation-eligible": return "model-execution";
-    case "production-ready": return "release-trust";
-  }
-}
-
-/**
- * The structural envelope is assembled by the legacy traceability builder,
- * while several native gates now run later in the AnalysisRun executor. Keep
- * the shared trust signal monotonic: a downstream fail-closed result may
- * demote trust, but it can never leave an earlier production-ready verdict in
- * place or manufacture an earlier rigor achievement.
- */
-function applyTerminalOutcomeToEnvelope(
-  envelope: AnalysisTraceabilityEnvelope,
-  terminal: TerminalOutcome | null,
-): AnalysisTraceabilityEnvelope {
-  if (!terminal) return envelope;
-
-  const terminalStageIndex = ANALYSIS_STAGE_ORDER.indexOf(terminal.stage);
-  let prefixCleared = true;
-  const checkpoints = envelope.rigor.checkpoints.map((checkpoint) => {
-    const checkpointIndex = ANALYSIS_STAGE_ORDER.indexOf(checkpointStage(checkpoint.level));
-    const invalidatedByTerminal = checkpointIndex >= terminalStageIndex;
-    const achieved = prefixCleared && checkpoint.achieved && !invalidatedByTerminal;
-    if (!achieved) prefixCleared = false;
-    return {
-      ...checkpoint,
-      achieved,
-      detail: invalidatedByTerminal
-        ? `${checkpoint.label} was not achieved because ${terminal.code}: ${terminal.message}`
-        : checkpoint.detail,
-    };
   });
-  const achievedLevels = checkpoints.filter((checkpoint) => checkpoint.achieved).map((checkpoint) => checkpoint.level);
-  const pendingLevels = checkpoints.filter((checkpoint) => !checkpoint.achieved).map((checkpoint) => checkpoint.level);
-  const currentCheckpoint = [...checkpoints].reverse().find((checkpoint) => checkpoint.achieved) ?? checkpoints[0]!;
-  const disposition = terminal.kind === "failed" ? "failed" : "blocked";
-
-  return {
-    ...envelope,
-    confidence: {
-      ...envelope.confidence,
-      status: "blocked",
-      tone: "red",
-      headline: `Analysis run ${disposition} at ${terminal.stage}: ${terminal.message}`,
-      blockingCount: Math.max(1, envelope.confidence.blockingCount + 1),
-    },
-    rigor: {
-      currentLevel: currentCheckpoint.level,
-      currentLabel: currentCheckpoint.label,
-      summary: terminal.message,
-      achievedLevels,
-      pendingLevels,
-      checkpoints,
-    },
-  };
 }
+
 
 function buildGateResults(params: {
   envelope: AnalysisTraceabilityEnvelope;
@@ -1209,25 +1134,11 @@ export function createLegacyAnalysisRunExecutor(
               diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message });
             }
           }
-          const blockedForecasts = forecastResults.filter((forecast) => forecast.status === "blocked");
-          if (blockedForecasts.length > 0) {
-            const message = blockedForecasts.map((forecast) =>
-              forecast.status === "blocked" ? `${forecast.caseId}: ${forecast.reasonCodes.join(", ")}` : "").join("; ");
-            terminal = { kind: "blocked", stage: "forecast", code: "FORECAST_STATE_VALIDATION_BLOCKED", message };
-            diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message });
-          } else {
-            scenarioOrdering = validateIndustrialScenarioOrdering(
-              forecastResults.flatMap((forecast) => forecast.status === "computed" ? [forecast.forecastCase] : []),
-            );
-            if (scenarioOrdering.status === "failed") {
-              terminal = {
-                kind: "blocked",
-                stage: "forecast",
-                code: "FORECAST_SCENARIO_ORDERING_BLOCKED",
-                message: scenarioOrdering.summary,
-              };
-              diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message: terminal.message });
-            }
+          const gate = evaluateScenarioForecastGates(forecastResults);
+          scenarioOrdering = gate.scenarioOrdering;
+          if (gate.blocked) {
+            terminal = { kind: "blocked", stage: "forecast", code: gate.blocked.code, message: gate.blocked.message };
+            diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message: terminal.message });
           }
         }
       }
