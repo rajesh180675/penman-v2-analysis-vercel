@@ -296,7 +296,11 @@ export function validateIndustrialProjectedStates(
     const cf = state.cashFlow;
     const d = state.assumptions;
     checks.push(booleanCheck(`state.finite.${id}`, stateFiniteValues(state).every(Number.isFinite), "Every projected statement value must be finite.", id));
-    checks.push(booleanCheck(`state.nonnegative-balances.${id}`, [bs.financialAssets.cash, bs.financialAssets.other, bs.operatingAssets.workingCapital, bs.operatingAssets.ppe, bs.operatingAssets.rightOfUse, bs.operatingAssets.intangibles, bs.operatingAssets.goodwill, bs.operatingAssets.other, bs.operatingLiabilities, bs.financialObligations.debt, bs.financialObligations.leaseLiabilities, bs.financialObligations.other, bs.minorityInterest, state.shares.endPeriod, state.shares.diluted].every((value) => value >= 0), "Projected asset, liability, minority, and share balances must be non-negative.", id));
+    // Minority interest is an equity claim, not an asset or a liability: Ind AS
+    // 110 (B94) attributes losses to it even into a deficit, and the library
+    // files one (DMart FY24–25, Paytm FY20–25, Titan FY18, UltraTech FY22).
+    // Its roll-forward is checked below.
+    checks.push(booleanCheck(`state.nonnegative-balances.${id}`, [bs.financialAssets.cash, bs.financialAssets.other, bs.operatingAssets.workingCapital, bs.operatingAssets.ppe, bs.operatingAssets.rightOfUse, bs.operatingAssets.intangibles, bs.operatingAssets.goodwill, bs.operatingAssets.other, bs.operatingLiabilities, bs.financialObligations.debt, bs.financialObligations.leaseLiabilities, bs.financialObligations.other, state.shares.endPeriod, state.shares.diluted].every((value) => value >= 0), "Projected asset, liability, and share balances must be non-negative.", id));
     checks.push(residualCheck(`state.balance-sheet.${id}`, id, bs.totalAssets - bs.totalLiabilitiesAndEquity, [bs.totalAssets, bs.totalLiabilitiesAndEquity], "Projected assets equal liabilities plus equity."));
     checks.push(residualCheck(`state.cash-roll-forward.${id}`, id, cf.endingCash - cf.openingCash - cf.netCashMovement, [cf.endingCash, cf.openingCash, cf.netCashMovement], "Ending cash equals opening cash plus net cash movement."));
     checks.push(residualCheck(`state.cash-flow-sum.${id}`, id, cf.netCashMovement - cf.cashFromOperations - cf.cashFromInvesting - cf.cashFromFinancing, [cf.netCashMovement], "Net cash movement equals CFO plus CFI plus CFF."));
