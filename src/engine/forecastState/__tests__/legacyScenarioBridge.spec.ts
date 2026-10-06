@@ -131,6 +131,18 @@ describe("legacy scenario to ForecastState bridge", () => {
     for (const state of result.forecastCase.projected) expect(state.balanceSheet.financialAssets.cash).toBeGreaterThanOrEqual(0);
   });
 
+  it("carries a filed negative minority interest into the forecast instead of blocking it", () => {
+    // DMart FY25 files minority interest of −1.05: Ind AS 110 attributes a
+    // loss-making subsidiary's losses to its minority even into a deficit.
+    // An equity claim, not an asset or a liability, so not a balance that
+    // must be non-negative.
+    const latest = { ...LATEST, bs: { ...LATEST.bs, MI: -1, CSE: 801 } } as unknown as RecastPeriod;
+    const result = bridge(latest);
+    expect(result.status, reasons(result)).toBe("computed");
+    if (result.status !== "computed") return;
+    for (const state of result.forecastCase.projected) expect(state.balanceSheet.minorityInterest).toBe(-1);
+  });
+
   it("draws nothing when the forecast funds itself", () => {
     const result = bridge(LATEST);
     expect(result.status, reasons(result)).toBe("computed");
