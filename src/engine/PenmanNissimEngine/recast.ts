@@ -165,7 +165,7 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   const PensionObl = 0;
   const OL_ex_DTL = Math.max(0, OL - DTL - PensionObl);
 
-  const Goodwill = bs("BS.Goodwill", M.balanceSheet.goodwill);
+  const Goodwill = valBSFirstNonZero(data, M.balanceSheet.goodwill, "BS.Goodwill", trace);
   const CurrentAssets = bs("BS.CurrentAssets", M.balanceSheet.currentAssets);
   const CurrentLiabilities = bs("BS.CurrentLiabilities", M.balanceSheet.currentLiabilities);
   const invTop = bs("BS.InventoryTop", M.balanceSheet.inventoryTop);
@@ -208,7 +208,17 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   const OA_ROU   = bs("BS.OA.ROU", ["Right of Use Assets", "Right-of-Use Assets"]);
   const OA_Goodwill = Goodwill;
   const OA_TelecomSpectrumLicenses = sumBs("BS.OA.TelecomSpectrumLicenses", M.balanceSheet.telecomSpectrumLicenseAssets);
-  const genericOtherIntangibles = bs("BS.OA.OtherIntangibles", M.balanceSheet.intangibleAssets);
+  // The detailed export's intangible schedule carries goodwill as a row
+  // ("Goodwill - Net", or "Goodwill on Consolidation - Net"), so its net total
+  // includes it: HUL FY25 45,710 = goodwill 17,466 + brands 28,161 + software.
+  // Goodwill is its own component above, so take it out of the schedule total.
+  // It was counted twice in 56 library company-years (HUL, ITC, Paytm,
+  // Reliance, Sun, TCS), sending OA_Other to −19.5% of total assets at HUL.
+  const scheduleGoodwill = valBSFirstNonZero(data, ["Goodwill - Net", "Goodwill on Consolidation - Net"], "BS.OA.ScheduleGoodwill", trace);
+  const scheduleIntangibles = bs("BS.OA.ScheduleIntangibles", ["Net Intangible Assets"]);
+  const genericOtherIntangibles = scheduleGoodwill > 0 && scheduleIntangibles >= scheduleGoodwill
+    ? scheduleIntangibles - scheduleGoodwill
+    : bs("BS.OA.OtherIntangibles", M.balanceSheet.intangibleAssets);
   // Capitaline sometimes exposes telecom spectrum/licence rights as a detailed
   // line rather than a generic intangible subtotal. Treat those rights as
   // operating intangibles (spectrum is productive operating capacity), but avoid
@@ -221,7 +231,10 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   ]);
   const OA_Inventory = Inventory;
   const OA_TradeReceivables = TradeReceivables;
-  const OA_DTA   = bs("BS.OA.DTA", ["Deferred Tax Assets", "Net Deferred Tax Assets"]);
+  // The balance sheet carries deferred tax assets net of the liabilities they
+  // offset; "Deferred Tax Assets" alone is the gross figure from the tax note
+  // (Tata Steel FY25 21,660 against 3,936 net). Read net first.
+  const OA_DTA   = valBSFirstNonZero(data, ["Deferred Tax Assets (Net)", "Net Deferred Tax Assets", "Deferred Tax Assets"], "BS.OA.DTA", trace);
   const OA_CWIP  = bs("BS.OA.CWIP", ["Capital Work in Progress", "Capital Work-in-Progress"]);
   const OA_Other = OA - OA_PPE - OA_ROU - OA_Goodwill - OA_OtherIntangibles
                   - OA_UtilityRegulatoryDeferrals - OA_Inventory - OA_TradeReceivables - OA_DTA - OA_CWIP;
