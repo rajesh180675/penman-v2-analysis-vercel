@@ -44,7 +44,7 @@ export const CapitalineMappingSpec = {
       ],
     },
     dtl: ["Deferred Tax Liabilities (Net)", "Deferred Tax Liability", "Net Deferred Tax Liability"],
-    goodwill: ["Goodwill", "Goodwill - Net"],
+    goodwill: ["Goodwill", "Goodwill - Net", "Goodwill on Consolidation - Net"],
     intangibleAssets: [
       "Intangible Assets",
       "Net Intangible Assets",
