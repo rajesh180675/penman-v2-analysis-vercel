@@ -32,6 +32,32 @@ import {
   sumPLWithTrace,
 } from "./picking";
 
+/**
+ * The liabilities of a disposal group held for sale, read as financial
+ * obligations. The buyer takes them over against the price, and they carry the
+ * group's borrowings, whose interest stays in finance cost until the sale:
+ * read as operating, L&T's FY26 Hyderabad Metro group moved ₹21k Cr of
+ * liabilities, its debt among them, from FO into OL in one year, and the
+ * industrial NOA fell 37% while its finance cost stayed.
+ *
+ * Capitaline files them two ways. The older layout has their own line. The
+ * newer one files the group outside the current and non-current blocks, on
+ * catch-all lines that also carry regulatory-deferral balances (NTPC, Power
+ * Grid); the liabilities there are the group's only when everything filed
+ * outside the asset blocks is the held-for-sale line (L&T FY26, Reliance FY19,
+ * UltraTech FY19–21). The group's assets stay operating: they earn in OI
+ * until the sale.
+ */
+function heldForSaleLiabilitiesOf(data: RawPeriodData, trace?: TraceMap): { total: number; outsideSections: number } {
+  const direct = valBS(data, ["Liabilities Directly Associated with Assets Classified as Held for Sale"], "BS.FO.HeldForSaleLiabilities", trace);
+  const heldForSaleAssets = valBS(data, ["Non-Current Assets Classified as Held for Sale"]);
+  const assetsOutside = valBS(data, ["Other Assets Excluding Non-Current and Current Assets"]);
+  const outsideSections = heldForSaleAssets > 0 && Math.abs(assetsOutside - heldForSaleAssets) < 0.5
+    ? valBS(data, ["Other Liabilities Excluding Equity, Non-Current and Current Liabilities"], "BS.FO.HeldForSaleLiabilitiesOutsideSections", trace)
+    : 0;
+  return { total: direct + outsideSections, outsideSections };
+}
+
 export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace?: TraceMap): CanonicalBalanceSheet {
   const bs = (line: string, keys: readonly string[]) => valBS(data, keys, line, trace);
   const sumBs = (line: string, keys: readonly string[]) => sumWithDistinctSource(data, keys, "BalanceSheet", line, trace);
@@ -128,7 +154,8 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
     + bs("BS.FO.LeaseLiabilitiesCurrent", ["Lease Liabilities - Current"]);
   const otherFinLiab = bs("BS.FO.OtherFinLiabLT", ["Others Financial Liabilities - Long-term"]) + bs("BS.FO.OtherFinLiabST", ["Others Financial Liabilities - Short-term"]);
   const hybrid = cfg.hybrid_perpetual_as_debt ? bs("BS.FO.Hybrid", ["Hybrid Perpetual Securities"]) : 0;
-  const financialDebtExLease = longBorrow + shortBorrow + otherFinLiab + hybrid;
+  const heldForSaleLiabilities = heldForSaleLiabilitiesOf(data, trace);
+  const financialDebtExLease = longBorrow + shortBorrow + otherFinLiab + hybrid + heldForSaleLiabilities.total;
   const bridgeDebtLongTerm = sumBs("BS.BridgeDebt.LongTerm", M.balanceSheet.bridgeDebt.longTermBorrowings);
   const bridgeDebtShortTerm = sumBs("BS.BridgeDebt.ShortTerm", M.balanceSheet.bridgeDebt.shortTermBorrowings);
   // A filed total summed beside its own parts counts them twice: the
@@ -157,7 +184,7 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
     value: bridgeDebtTotal,
     matchType: "derived",
   });
-  const FO_uncapped = longBorrow + shortBorrow + otherFinLiab + hybrid + leaseLiab;
+  const FO_uncapped = longBorrow + shortBorrow + otherFinLiab + hybrid + leaseLiab + heldForSaleLiabilities.total;
 
   const OA = TA - FA;
   const TotalLiabilities = TA - (CSE + MI);
@@ -199,7 +226,8 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
     + olBs("BS.OLComp.CurrentTaxLiabilities", M.balanceSheet.olComponents.currentTaxLiabilities)
     + olBs("BS.OLComp.NonCurrentTaxLiabilities", M.balanceSheet.olComponents.nonCurrentTaxLiabilities)
     + olBs("BS.OLComp.DeferredTaxLiabilitiesNet", M.balanceSheet.olComponents.deferredTaxLiabilitiesNet)
-    + sumBs("BS.OLComp.OtherNonCurrentLiabilities", M.balanceSheet.olComponents.otherNonCurrentLiabilities);
+    + sumBs("BS.OLComp.OtherNonCurrentLiabilities", M.balanceSheet.olComponents.otherNonCurrentLiabilities)
+    - heldForSaleLiabilities.outsideSections;
   const olRatio = OL > 0 ? explicitOL / OL : 1;
   const olConsistent = OL === 0 ? true : olRatio >= 0.7 && olRatio <= 1.3;
 
@@ -265,7 +293,8 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
     OL_CurrentTaxLiabilities: olBs("BS.OLComp.CurrentTaxLiabilitiesOut", M.balanceSheet.olComponents.currentTaxLiabilities),
     OL_NonCurrentTaxLiabilities: olBs("BS.OLComp.NonCurrentTaxLiabilitiesOut", M.balanceSheet.olComponents.nonCurrentTaxLiabilities),
     OL_DeferredTaxLiabilitiesNet: olBs("BS.OLComp.DeferredTaxLiabilitiesNetOut", M.balanceSheet.olComponents.deferredTaxLiabilitiesNet),
-    OL_OtherNonCurrentLiabilities: sumBs("BS.OLComp.OtherNonCurrentLiabilitiesOut", M.balanceSheet.olComponents.otherNonCurrentLiabilities),
+    OL_OtherNonCurrentLiabilities: sumBs("BS.OLComp.OtherNonCurrentLiabilitiesOut", M.balanceSheet.olComponents.otherNonCurrentLiabilities)
+      - heldForSaleLiabilities.outsideSections,
     DTL, PensionObl, OL_ex_DTL,
     Goodwill, CurrentAssets, CurrentLiabilities, Inventory, TradeReceivables, TradePayables,
     PPE, LIFO_reserve: 0,
@@ -731,7 +760,10 @@ export function extractRecastDebug(data: RawPeriodData, bs: CanonicalBalanceShee
     rawCurrentAssets,
     rawNonCurrentAssets,
     explicitOL,
-    olOutsideSections: readRaw("Other Liabilities Excluding Equity, Non-Current and Current Liabilities") ?? 0,
+    // A disposal group's liabilities on this line are FO (heldForSaleLiabilitiesOf),
+    // so only the rest of it is operating.
+    olOutsideSections: (readRaw("Other Liabilities Excluding Equity, Non-Current and Current Liabilities") ?? 0)
+      - heldForSaleLiabilitiesOf(data).outsideSections,
     fullPeriodProfit,
     otherProfitBelowPat,
   };
