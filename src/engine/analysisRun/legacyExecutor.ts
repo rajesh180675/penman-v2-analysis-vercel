@@ -16,6 +16,7 @@ import type { SegmentData } from "../segmentParser";
 import type { AnalysisTraceabilityEnvelope, EngineConfig, RawPeriodData, RecastPeriod } from "../types";
 import { validateEngineConfig } from "../types";
 import { buildValuationCommandCenter, type ValuationCommandCenterOutput } from "../valuationCommandCenter";
+import { valuationPeriodsWithArmCarvedOut } from "../lendingArm";
 import type { EquityBetaPack, MacroPack } from "../marketPacks";
 import {
   adaptLegacyCommandCenterModelResults,
@@ -896,6 +897,10 @@ export function createLegacyAnalysisRunExecutor(
         compositionPolicy: ApprovedRealOptionsCompositionPolicy | null; compositionCandidate: RealOptionsCompositionCandidate | null;
       }> = [];
       let windowedRecastData: RecastPeriod[] = [];
+      // The window the valuation runs on: windowedRecastData with any linked
+      // lending arm carved out (src/engine/lendingArm). The statements, ratios
+      // and reconciliation stay on the consolidated periods as filed.
+      let valuationRecastData: RecastPeriod[] = [];
 
       if (!terminal) {
         try {
@@ -1037,8 +1042,20 @@ export function createLegacyAnalysisRunExecutor(
                 periodArtifacts,
               })
             : null;
+          const valuationBasis = valuationPeriodsWithArmCarvedOut({
+            ticker: config.ticker,
+            periods: recastData,
+            rawData,
+            segmentData,
+            config,
+            packs: { macroPack: input.macroPack, betaPack: input.betaPack, analysisAsOf: input.metadata.asOf },
+            asOf: input.metadata.asOf,
+            includedPeriods: analysisWindow?.includedPeriods ?? null,
+          });
+          valuationRecastData = valuationBasis.periods;
           commandCenter = dependencies.buildCommandCenter({
-            data: windowedRecastData,
+            data: valuationRecastData,
+            lendingArm: valuationBasis.lendingArm,
             config,
             marketData: marketSnapshot,
             analysisStatus,
@@ -1074,7 +1091,7 @@ export function createLegacyAnalysisRunExecutor(
         // built from on line 1073 — a different period set here would resolve a
         // different cost of capital than the one the models actually used.
         const resolution = dependencies.resolveAssumptions({
-          periods: windowedRecastData,
+          periods: valuationRecastData,
           window: analysisWindow,
           config,
           marketSnapshot,
@@ -1109,7 +1126,7 @@ export function createLegacyAnalysisRunExecutor(
       }
 
       if (!terminal && commandCenter && analysisWindow && sourcedAssumptionSet) {
-        const latest = windowedRecastData.at(-1);
+        const latest = valuationRecastData.at(-1);
         if (latest) {
           forecastResults = buildRunForecastResults({
             commandCenter,

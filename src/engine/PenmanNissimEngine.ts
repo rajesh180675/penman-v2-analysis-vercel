@@ -180,6 +180,12 @@ export function computeValuation(
   // the minority claim (MI). Omitting MI overstates per-common-share value by
   // the minority interest for any firm with non-wholly-owned subsidiaries.
   const MI0 = periods[0]!.bs.MI;
+  // The parent's stake in a lending arm carved out of the anchor (src/engine/
+  // lendingArm), at the arm's own value. The forecast is the industrial
+  // business alone, so every equity value — RE, ReOI, FCFF, FCFE, DDM, AEG —
+  // values the industrial claim and adds the stake once. Zero when nothing was
+  // carved.
+  const carvedArmStake = periods[0]!.bs.CarvedArmStakeValue ?? 0;
   // The minority claim at its value, not its book: the minority's residual
   // income at ke, as the RE side implicitly prices it (CNI is after MII). At
   // book, a minority earning well below ke (Reliance ~7% on 166k, Grasim on
@@ -246,9 +252,9 @@ export function computeValuation(
   // No-growth value: value from existing assets at current profitability
   // V_no_growth = CSE0 + (RNOA_T - kw) * NOA_T / kw
   // Phase J2: gated on equity-side health since CSE0 is the anchor.
-  const V_no_growth = equityModelsBlocked ? null : CSE0 + (RNOA_T - kw) * NOA_T / kw;
+  const V_no_growth = equityModelsBlocked ? null : CSE0 + (RNOA_T - kw) * NOA_T / kw + carvedArmStake;
   // Use primary valuation (RE CV3) as total value
-  const V_total = equityModelsBlocked || CV_RE_3 == null ? null : CSE0 + pvRE + CV_RE_3 / discE;
+  const V_total = equityModelsBlocked || CV_RE_3 == null ? null : CSE0 + pvRE + CV_RE_3 / discE + carvedArmStake;
   const growthValue =
     equityModelsBlocked || V_total == null || V_no_growth == null
       ? null
@@ -283,7 +289,7 @@ export function computeValuation(
   const CV_FCFF = gordonCv("FCFF_CV", "operating", lastFCFF, kw, "operating capital cost");
   const CV_FCFE = gordonCv("FCFE_CV", "equity", lastFCFE, ke, "cost of equity");
   const EV_FCFF = CV_FCFF == null ? null : pvFCFF + (CV_FCFF / discW);
-  const V_FCFE = CV_FCFE == null ? null : pvFCFE + (CV_FCFE / discE);
+  const V_FCFE = CV_FCFE == null ? null : pvFCFE + (CV_FCFE / discE) + carvedArmStake;
 
   // AEG valuation (Ohlson-Juettner style short-form proxy).
   // OJ/Penman AEG is an earnings-capitalization model:
@@ -304,7 +310,7 @@ export function computeValuation(
   }
   const cni1 = periods.length > 1 ? periods[1]!.is.CNI : periods[0]!.is.CNI;
   const aegCapitalizationRate = Math.max(ke, MIN_GORDON_SPREAD);
-  const V_AEG = (cni1 + pvAEG) / aegCapitalizationRate;
+  const V_AEG = (cni1 + pvAEG) / aegCapitalizationRate + carvedArmStake;
 
   // Reverse DCF / implied growth for RE CV3
   let impliedGrowthRE: number | undefined;
@@ -323,7 +329,7 @@ export function computeValuation(
     for (let i = 0; i < 60; i++) {
       const mid = (lo + hi) / 2;
       const cvMid = rhoE - 1 - mid > 0 ? (lastRE * (1 + mid)) / (rhoE - 1 - mid) : 0;
-      const vMid = CSE0 + pvRE + cvMid / discE;
+      const vMid = CSE0 + pvRE + cvMid / discE + carvedArmStake;
       if (vMid > marketCap) hi = mid;
       else lo = mid;
     }
@@ -339,7 +345,7 @@ export function computeValuation(
   for (let i = 1; i < periods.length; i++) {
     pvDividends += periods[i]!.cf.DividendPaid / Math.pow(rhoE, i);
   }
-  const V_DDM = equityModelsBlocked || ddmCv == null ? null : pvDividends + ddmCv / discE;
+  const V_DDM = equityModelsBlocked || ddmCv == null ? null : pvDividends + ddmCv / discE + carvedArmStake;
 
   const perShare = (() => {
     if (!cfg.shares_outstanding || cfg.shares_outstanding <= 0) return undefined;
@@ -352,9 +358,9 @@ export function computeValuation(
     // distress signal is the user's cue).
     const rePer = equityModelsBlocked || CV_RE_3 == null
       ? null
-      : ((CSE0 + pvRE + CV_RE_3 / discE) / sh);
-    const reoiPer = CV_W_3 == null ? null : ((NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - minorityClaim) / sh;
-    const fcffPer = EV_FCFF == null ? null : (EV_FCFF - NFO0 - minorityClaim) / sh;
+      : ((CSE0 + pvRE + CV_RE_3 / discE + carvedArmStake) / sh);
+    const reoiPer = CV_W_3 == null ? null : ((NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - minorityClaim + carvedArmStake) / sh;
+    const fcffPer = EV_FCFF == null ? null : (EV_FCFF - NFO0 - minorityClaim + carvedArmStake) / sh;
     const fcfePer = equityModelsBlocked || V_FCFE == null ? null : V_FCFE / sh;
     const ddmPer = V_DDM == null ? null : V_DDM / sh;
     const aegPer = equityModelsBlocked ? null : V_AEG / sh;
@@ -367,11 +373,12 @@ export function computeValuation(
       intrinsic_fcfe_per_share: fcfePer,
       intrinsic_ddm_per_share: ddmPer,
       intrinsic_aeg_per_share: aegPer,
+      // On the industrial claim: its value over its own book and earnings.
       implied_pb_re: !equityModelsBlocked && rePer != null && latestCSE_T > 0
-        ? (rePer * sh) / latestCSE_T
+        ? (rePer * sh - carvedArmStake) / latestCSE_T
         : null,
       implied_pe_re: !equityModelsBlocked && rePer != null && periods[periods.length - 1]!.is.CNI !== 0
-        ? (rePer * sh) / periods[periods.length - 1]!.is.CNI
+        ? (rePer * sh - carvedArmStake) / periods[periods.length - 1]!.is.CNI
         : null,
       margin_of_safety_re: !equityModelsBlocked && rePer != null && cfg.market_price
         ? (rePer - cfg.market_price) / cfg.market_price
@@ -408,16 +415,16 @@ export function computeValuation(
     CV_ReOI: CV_W_3,
     EV_ReOI: CV_W_3 == null ? null : NOA0 + pvReOI + CV_W_3 / discW,
     // Phase J2: equity-side values nulled when latest CSE ≤ 0.
-    V_RE_CV1: equityModelsBlocked ? null : CSE0 + pvRE + CV_RE_1 / discE,
-    V_RE_CV2: equityModelsBlocked ? null : CSE0 + pvRE + CV_RE_2 / discE,
-    V_RE_CV3: equityModelsBlocked || CV_RE_3 == null ? null : CSE0 + pvRE + CV_RE_3 / discE,
+    V_RE_CV1: equityModelsBlocked ? null : CSE0 + pvRE + CV_RE_1 / discE + carvedArmStake,
+    V_RE_CV2: equityModelsBlocked ? null : CSE0 + pvRE + CV_RE_2 / discE + carvedArmStake,
+    V_RE_CV3: equityModelsBlocked || CV_RE_3 == null ? null : CSE0 + pvRE + CV_RE_3 / discE + carvedArmStake,
     // Enterprise→common-equity bridge: subtract net debt (NFO) AND minority
     // interest (MI0). Keeps V_ReOI_CV03/sh === intrinsic_reoi_per_share and
     // makes the RE-vs-ReOI identity a common-vs-common comparison (V_RE_* is
     // CSE-anchored common equity). EV_ReOI above stays operating-entity value.
-    V_ReOI_CV01: (NOA0 + pvReOI + CV_W_1 / discW) - NFO0 - minorityClaim,
-    V_ReOI_CV02: (NOA0 + pvReOI + CV_W_2 / discW) - NFO0 - minorityClaim,
-    V_ReOI_CV03: CV_W_3 == null ? null : (NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - minorityClaim,
+    V_ReOI_CV01: (NOA0 + pvReOI + CV_W_1 / discW) - NFO0 - minorityClaim + carvedArmStake,
+    V_ReOI_CV02: (NOA0 + pvReOI + CV_W_2 / discW) - NFO0 - minorityClaim + carvedArmStake,
+    V_ReOI_CV03: CV_W_3 == null ? null : (NOA0 + pvReOI + CV_W_3 / discW) - NFO0 - minorityClaim + carvedArmStake,
     CSE0,
     NOA0,
     // The enterprise→equity bridge is taken at the ANCHOR (period 0), the date
@@ -429,6 +436,8 @@ export function computeValuation(
     /** The minority claim the enterprise→common bridges subtract: its residual-income value, or MI0 at book. */
     minorityClaim,
     minorityClaimBasis: minorityValue != null ? "residual-income" as const : "book" as const,
+    /** The carved lending-arm stake every equity value above adds (0 when nothing was carved). */
+    carvedArmStake,
     NFO_latest,
     ke,
     kw,
@@ -457,8 +466,8 @@ export function computeValuation(
       fcff_series,
       fcfe_series,
       EV_FCFF,
-      /** Common-equity value from FCFF: EV_FCFF − NFO0 − MI0 (matches intrinsic_fcff_per_share). */
-      V_FCFF_equity: EV_FCFF == null ? null : EV_FCFF - NFO0 - minorityClaim,
+      /** Common-equity value from FCFF: EV_FCFF − NFO0 − MI0 + any carved stake (matches intrinsic_fcff_per_share). */
+      V_FCFF_equity: EV_FCFF == null ? null : EV_FCFF - NFO0 - minorityClaim + carvedArmStake,
       V_FCFE,
       CV_FCFF,
       CV_FCFE,

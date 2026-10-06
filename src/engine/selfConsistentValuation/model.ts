@@ -274,9 +274,13 @@ export function computeSelfConsistentValuation(input: SelfConsistentValuationInp
   const bookKw = valueWeightedKw(anchor, input.ke, kd, anchor.cse);
   const shares = input.shares != null && input.shares > 0 ? input.shares : null;
   const price = input.marketPrice != null && input.marketPrice > 0 ? input.marketPrice : null;
-  const marketCap = shares != null && price != null ? shares * price : null;
+  // A carved lending-arm stake sits outside NOA at its own value: the solves
+  // weigh and value the industrial claim, the market's included less the
+  // stake, and every published equity value adds it back.
+  const stake = latest.bs.CarvedArmStakeValue ?? 0;
+  const marketCap = shares != null && price != null ? shares * price - stake : null;
   const marketKw = marketCap != null ? valueWeightedKw(anchor, input.ke, kd, marketCap) : null;
-  const perShare = shares != null ? solution.equityValue / shares : null;
+  const perShare = shares != null ? (solution.equityValue + stake) / shares : null;
 
   const sensitivity: SelfConsistentSensitivityCell[] = [];
   for (const ke of [input.ke - 0.01, input.ke, input.ke + 0.01]) {
@@ -287,8 +291,8 @@ export function computeSelfConsistentValuation(input: SelfConsistentValuationInp
         ke,
         omega,
         kw: ok ? cell.kw : null,
-        equityValue: ok ? cell.equityValue : null,
-        perShare: ok && shares != null ? cell.equityValue / shares : null,
+        equityValue: ok ? cell.equityValue + stake : null,
+        perShare: ok && shares != null ? (cell.equityValue + stake) / shares : null,
       });
     }
   }
@@ -321,7 +325,7 @@ export function computeSelfConsistentValuation(input: SelfConsistentValuationInp
   if (input.panelPrior) {
     const omegaUsed = clamp(input.panelPrior.phi, 0, PANEL_OMEGA_MAX);
     const atPanel = solveValueWeightedKw(anchor, input.ke, kd, input.g, omegaUsed, horizon);
-    const equityValue = "failure" in atPanel ? null : atPanel.equityValue;
+    const equityValue = "failure" in atPanel ? null : atPanel.equityValue + stake;
     panelComparison = {
       group: input.panelPrior.group,
       phi: input.panelPrior.phi,
@@ -338,7 +342,7 @@ export function computeSelfConsistentValuation(input: SelfConsistentValuationInp
     status: "ok",
     modelVersion: SELF_CONSISTENT_VALUATION_MODEL_VERSION,
     anchorPeriod: latest.period_end,
-    equityValue: solution.equityValue,
+    equityValue: solution.equityValue + stake,
     operatingValue: value.operatingValue,
     perShare,
     marginOfSafety: perShare != null && price != null ? (perShare - price) / price : null,
@@ -365,6 +369,7 @@ export function computeSelfConsistentValuation(input: SelfConsistentValuationInp
       pvTerminalReOI: value.pvTerminal,
       nfo: anchor.nfo,
       minorityInterest: anchor.mi,
+      carvedArmStake: stake,
       franchiseValue: value.operatingValue - anchor.noa,
       terminalShare: value.operatingValue !== 0 ? value.pvTerminal / value.operatingValue : 0,
     },

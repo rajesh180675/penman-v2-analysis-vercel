@@ -53,7 +53,9 @@ export function solveValueConsistentKw(
   let kw = kwStructural;
   for (let i = 0; i < MAX_ITERATIONS; i += 1) {
     const valuation = computeValuation(periods, ke, kw, g, cfg);
-    const equity = valuation.V_ReOI_CV03;
+    // The claims on NOA alone: a carved lending-arm stake is added to the
+    // equity value outside NOA, so it is no part of what kw discounts.
+    const equity = valuation.V_ReOI_CV03 == null ? null : valuation.V_ReOI_CV03 - valuation.carvedArmStake;
     // Weighted at the same minority claim the equity bridge subtracts.
     const MI = valuation.minorityClaim;
     if (equity == null || !Number.isFinite(equity)) return keep("The ReOI continuing value is undefined at this kw.");

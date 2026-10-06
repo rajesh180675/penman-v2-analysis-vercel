@@ -299,7 +299,7 @@ export function buildValuationSheet(valuation: ValuationResult, config: EngineCo
           const cv = (valuation.reSeries.length ? valuation.reSeries[valuation.reSeries.length - 1]!.RE : 0) * (1 + g) / (ke - g);
           const T = valuation.reSeries.length;
           const disc = Math.pow(1 + ke, T);
-          const v = valuation.CSE0 + valuation.pvRE + cv / disc;
+          const v = valuation.CSE0 + valuation.pvRE + cv / disc + (valuation.carvedArmStake ?? 0);
           const isBase = Math.abs(ke - valuation.ke) < 0.001 && Math.abs(g - valuation.g) < 0.001;
           setCell(ws, row, c + 1, cell(v, isBase ? { ...GREEN_FILL, font: { bold: true, sz: 9 } } : NUM_INR));
         } else {

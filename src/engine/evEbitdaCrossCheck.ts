@@ -81,10 +81,12 @@ export function computeEvEbitdaCrossCheck(
   const multiple = evEbitdaCompany ?? evEbitdaMedian;
   const enterpriseValue = multiple != null ? ebitda * multiple : null;
 
-  // Implied equity value from median multiple minus nfo
-  const equityFromMedian = evFromMedian != null ? evFromMedian - nfo : null;
-  const equityFromP25 = evFromP25 != null ? evFromP25 - nfo : null;
-  const equityFromP75 = evFromP75 != null ? evFromP75 - nfo : null;
+  // Implied equity value from median multiple minus nfo, plus any carved
+  // lending-arm stake: the multiple prices the industrial EBITDA only.
+  const stake = latest.bs.CarvedArmStakeValue ?? 0;
+  const equityFromMedian = evFromMedian != null ? evFromMedian - nfo + stake : null;
+  const equityFromP25 = evFromP25 != null ? evFromP25 - nfo + stake : null;
+  const equityFromP75 = evFromP75 != null ? evFromP75 - nfo + stake : null;
 
   const label = buildLabel({
     ebitda,

@@ -18,7 +18,7 @@ export default function SensitivityGrid({
     if (keV - gv <= 0.001) return null;
     const cv3 = lastRE * (1 + gv) / (keV - gv);
     const disc = Math.pow(1 + keV, T);
-    return val.CSE0 + val.pvRE + cv3 / disc;
+    return val.CSE0 + val.pvRE + cv3 / disc + val.carvedArmStake;
   };
 
   return (

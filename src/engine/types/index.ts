@@ -37,6 +37,7 @@ export type {
   RecastPeriod,
   RecastDebug,
   ShareCountInputSnapshot,
+  LendingArmPeriod,
 } from "./recast";
 
 export {

@@ -325,7 +325,8 @@ export function computeEPV(
   // value accrues to common only after BOTH net debt and minorities — the same
   // bridge computeValuation uses for V_ReOI.
   const minorityInterest = Number.isFinite(latest.bs.MI) ? latest.bs.MI : 0;
-  const epvEquity = epvOperations - nfo - minorityInterest;
+  // Plus a carved lending-arm stake at value: the earnings power is the industrial business's.
+  const epvEquity = epvOperations - nfo - minorityInterest + (latest.bs.CarvedArmStakeValue ?? 0);
 
   // ── Shares ─────────────────────────────────────────────────────────────────
   const shares = config.shares_outstanding ?? null;
