@@ -11,6 +11,8 @@ import {
   type ValuationCommandCenterOutput,
 } from "../../src/engine/valuationCommandCenter";
 import { buildAnalysisTraceability } from "../../src/engine/analysisTraceability";
+import { applyTerminalOutcomeToEnvelope } from "../../src/engine/analysisRun/terminalOutcome";
+import { buildScenarioForecastResults, evaluateScenarioForecastGates } from "../../src/engine/forecastState";
 import { buildAssumptionProvenance } from "../../src/engine/assumptionProvenance";
 import {
   CURRENT_MODEL_REGISTRY,
@@ -1432,7 +1434,7 @@ export async function auditCompanyRun(
         analysisStatus: analysisContext.analysisStatus,
         segmentData: selectBusinessSegmentData(parsed.segmentData),
       });
-    const trace = buildTrace({
+    const structuralTrace = buildTrace({
       company,
       config,
       pipeline,
@@ -1441,6 +1443,29 @@ export async function auditCompanyRun(
       analysisContext,
       valuation: industrialValuation,
     });
+    // The forecast gates the app's run applies after its valuation: every
+    // scenario must validate as a balanced statement set, then stress ≤ base ≤
+    // bull. The harness built the scenarios but never checked them, so a
+    // forecast block (DMart's −₹1 Cr minority until #408) could not show here
+    // and CI's expectations could not catch one. Same rule, same demotion.
+    const forecastGate = industrialValuation
+      ? evaluateScenarioForecastGates(buildScenarioForecastResults({
+        commandCenter: industrialValuation,
+        latest: industrialValuation.anchorPeriod,
+        config,
+        analysisWindowId: `audit-${company.folder}`,
+        assumptionIds: [],
+        evidenceRefs: [],
+      }))
+      : null;
+    const trace = forecastGate?.blocked
+      ? applyTerminalOutcomeToEnvelope(structuralTrace, {
+        kind: "blocked",
+        stage: "forecast",
+        code: forecastGate.blocked.code,
+        message: forecastGate.blocked.message,
+      })
+      : structuralTrace;
 
     // Measured on the raw parse, before recasting, so it reflects what came out
     // of the parser rather than what survived the pipeline. Same value on both
