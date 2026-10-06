@@ -100,7 +100,17 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   const ltInvDirect = bs("BS.FA.LongTermInvestmentsDirect", M.balanceSheet.financialAssets.longTermInvestments);
   const totalInvestmentsFallback = bs("BS.FA.TotalInvestmentsFallback", ["Total Investments"]);
   const ltInv = ltInvDirect > 0 ? ltInvDirect : Math.max(0, totalInvestmentsFallback - curInv);
-  const depAndRestricted = sumBs("BS.FA.DepositsRestricted", M.balanceSheet.financialAssets.depositsAndRestricted);
+  // "Investment in Certificate of Deposits…" and "Investment in Fixed
+  // Deposits" are lines of the current-investment schedule, so a filed
+  // "Current Investments" total already holds them: in 13 library company-years
+  // it ties exactly with them included (ITC FY23 17,232.86 = mutual funds
+  // 9,425.09 + CDs 4,827.80 + bonds 2,979.97) and in none without. Added again
+  // here they overstated FA and sent ITC FY23's OA_Other to −3.7% of total
+  // assets. Count them only when no current investments are read; restricted
+  // cash and deposits still add.
+  const investmentDeposits = ["Investment in Fixed Deposits", "Investment in Certificate of Deposits", "Investment in Certificate of Deposits with Scheduled Banks"];
+  const depAndRestricted = sumBs("BS.FA.DepositsRestricted", M.balanceSheet.financialAssets.depositsAndRestricted
+    .filter((key) => curInv === 0 || !investmentDeposits.includes(key)));
   const otherFA_base = bs("BS.FA.OtherFA_LT", ["Others Financial Assets - Long-term"]) + bs("BS.FA.OtherFA_ST", ["Others Financial Assets - Short-term"]);
   const interestRec = bs("BS.FA.TotalInterestReceivable", ["Total Interest Receivable"]) || bs("BS.FA.InterestReceivable", ["Interest Receivable"]);
   const divRec = bs("BS.FA.DividendReceivable", ["Dividend Receivable"]);
