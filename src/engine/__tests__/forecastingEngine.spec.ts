@@ -614,3 +614,18 @@ describe("persistence forecast — minority interest and an ill-conditioned bala
     expect(deriveBase([mkLatest("2025-03-31")]).drivers.nfo_level).toBeUndefined();
   });
 });
+
+describe("buildBusinessModelProfile — demand stability", () => {
+  it("is not zeroed by a single shock year in otherwise steady growth", () => {
+    // Steady 8–10% growth with one COVID-shaped year (−25%, then +30%). The
+    // range of the series (55 points) put demand stability at 0 for every
+    // library company; a robust spread reads the steady years.
+    const growth = [0.08, 0.09, 0.1, 0.08, -0.25, 0.3, 0.09, 0.1];
+    const data = growth.map((g, i) => ({
+      ...mkLatest(`${2017 + i}-03-31`),
+      ratios: { ...(mkLatest(`${2017 + i}-03-31`).ratios ?? {} as Ratios), Sales_growth: g, CoreSalesPM: 0.14, PM: 0.14, ATO: 1.3, cash_conversion_ratio: 0.9 } as Ratios,
+    }));
+    const profile = buildBusinessModelProfile(data);
+    expect(profile.demandStabilityScore).toBeGreaterThan(50);
+  });
+});

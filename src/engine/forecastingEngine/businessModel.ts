@@ -1,5 +1,5 @@
 import { RecastPeriod, BusinessModelProfile } from "../types";
-import { clamp, median, latestFinite, spreadValues } from "./helpers";
+import { clamp, median, latestFinite, robustSpread, spreadValues } from "./helpers";
 
 export function buildBusinessModelProfile(data: RecastPeriod[]): BusinessModelProfile {
   const salesGrowthSeries = data.map((period) => period.ratios?.Sales_growth ?? null);
@@ -25,8 +25,12 @@ export function buildBusinessModelProfile(data: RecastPeriod[]): BusinessModelPr
   const latestSeparation = latestFinite(separationSeries) ?? 70;
   const latestLeverage = latestFinite(leverageSeries) ?? 0.3;
 
+  // Spread of sales growth as a robust σ. The range (max − min) over the
+  // history exceeded 12 points for every library company — one shock year
+  // (COVID) is enough — so this component scored 0 for all 23 and the score
+  // ran on 80 of its 100 points.
   const demandStabilityScore = clamp(
-    ((0.12 - (spreadValues(salesGrowthSeries) ?? 0.12)) / 0.12) * 100,
+    ((0.12 - (robustSpread(salesGrowthSeries) ?? 0.12)) / 0.12) * 100,
     0,
     100,
   );
