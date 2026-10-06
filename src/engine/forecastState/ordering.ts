@@ -4,6 +4,21 @@ import type {
   ScenarioOrderingReport,
 } from "./contracts";
 
+/**
+ * Relative tolerance for "not above": rounding, not a scenario difference.
+ * Values built from equal drivers by different arithmetic need not agree to
+ * the last bit: Titan's bull case holds the base case's kw as
+ * `structural + (base − base structural)`, and came out 0.11343525089042414
+ * against the base's 0.11343525089042412 — failing "non-increasing" by 2e-17
+ * and withholding valuation-eligible.
+ */
+const ORDERING_TOLERANCE = 1e-9;
+
+/** a ≤ b, up to rounding. */
+function notAbove(a: number, b: number): boolean {
+  return a <= b + ORDERING_TOLERANCE * Math.max(1, Math.abs(a), Math.abs(b));
+}
+
 function orderingCheck(
   checkId: string,
   condition: boolean,
@@ -16,7 +31,7 @@ function orderingCheck(
     status: condition ? "passed" : "failed",
     observed,
     expected: "stress <= base <= bull",
-    tolerance: null,
+    tolerance: ORDERING_TOLERANCE,
     summary,
   };
 }
@@ -66,13 +81,13 @@ export function validateIndustrialScenarioOrdering(
       ];
       checks.push(orderingCheck(
         `scenario-ordering.revenue.${index + 1}`,
-        revenue[0]! <= revenue[1]! && revenue[1]! <= revenue[2]!,
+        notAbove(revenue[0]!, revenue[1]!) && notAbove(revenue[1]!, revenue[2]!),
         revenue.join("/"),
         `Year ${index + 1} revenue must be monotonic from stress to bull.`,
       ));
       checks.push(orderingCheck(
         `scenario-ordering.operating-income.${index + 1}`,
-        operatingIncome[0]! <= operatingIncome[1]! && operatingIncome[1]! <= operatingIncome[2]!,
+        notAbove(operatingIncome[0]!, operatingIncome[1]!) && notAbove(operatingIncome[1]!, operatingIncome[2]!),
         operatingIncome.join("/"),
         `Year ${index + 1} after-tax operating income must be monotonic from stress to bull.`,
       ));
@@ -81,15 +96,15 @@ export function validateIndustrialScenarioOrdering(
 
   checks.push(orderingCheck(
     "scenario-ordering.terminal-growth",
-    stress.terminal.growth <= base.terminal.growth && base.terminal.growth <= bull.terminal.growth,
+    notAbove(stress.terminal.growth, base.terminal.growth) && notAbove(base.terminal.growth, bull.terminal.growth),
     `${stress.terminal.growth}/${base.terminal.growth}/${bull.terminal.growth}`,
     "Terminal growth must be monotonic from stress to bull.",
   ));
   checks.push({
     ...orderingCheck(
       "scenario-ordering.kw",
-      stress.terminal.kwSpread + stress.terminal.growth >= base.terminal.kwSpread + base.terminal.growth
-        && base.terminal.kwSpread + base.terminal.growth >= bull.terminal.kwSpread + bull.terminal.growth,
+      notAbove(base.terminal.kwSpread + base.terminal.growth, stress.terminal.kwSpread + stress.terminal.growth)
+        && notAbove(bull.terminal.kwSpread + bull.terminal.growth, base.terminal.kwSpread + base.terminal.growth),
       `${stress.terminal.kwSpread + stress.terminal.growth}/${base.terminal.kwSpread + base.terminal.growth}/${bull.terminal.kwSpread + bull.terminal.growth}`,
       "Operating capital cost must be non-increasing from stress to bull.",
     ),

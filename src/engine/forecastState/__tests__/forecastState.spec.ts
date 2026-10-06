@@ -276,6 +276,15 @@ describe("Industrial ForecastState", () => {
     }
     expect(validateIndustrialScenarioOrdering([bull, stress, base]).status).toBe("passed");
 
+    // Equal up to rounding is ordered: Titan's bull case held the base case's
+    // kw by arithmetic that landed 2e-17 above it. A real reversal still fails.
+    const asCase = (key: "stress" | "bull", kwShift: number): IndustrialForecastCase =>
+      ({ ...base, scenarioKey: key, terminal: { ...base.terminal, kwSpread: base.terminal.kwSpread + kwShift } });
+    expect(validateIndustrialScenarioOrdering([asCase("stress", 0), base, asCase("bull", 1e-15)]).status).toBe("passed");
+    const reversed = validateIndustrialScenarioOrdering([asCase("stress", 0), base, asCase("bull", 1e-4)]);
+    expect(reversed.status).toBe("failed");
+    expect(reversed.checks.find((check) => check.status === "failed")?.checkId).toBe("scenario-ordering.kw");
+
     const repeated = requireComputed(makeRequest({ caseId: "base-repeat" }));
     expect(repeated.projected.map((state) => state.incomeStatement.revenue))
       .toEqual(base.projected.map((state) => state.incomeStatement.revenue));
