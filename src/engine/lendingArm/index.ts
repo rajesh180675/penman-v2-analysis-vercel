@@ -22,13 +22,20 @@ export type LendingArmReport =
   }
   | { readonly status: "not-applied"; readonly link: Pick<LendingArmLink, "parentTicker" | "segmentName" | "arm" | "stake">; readonly reason: string };
 
+/** The periods a valuation runs on, and what was done with a linked lending arm. */
+export interface ValuationBasis {
+  readonly periods: RecastPeriod[];
+  readonly lendingArm: LendingArmReport | null;
+}
+
 /**
- * The periods a valuation runs on: the run's window of the parent's periods,
- * with a linked lending arm carved out of the whole history first, so the
- * window's first year keeps a carved predecessor for its ratios. Falls back to
- * the consolidated window, with the reason in the report, when the carve does
- * not apply or leaves fewer than two periods in the window. One rule for the
- * app's run, the audit harness and the accountability snapshots.
+ * The periods a valuation runs on: the parent's periods with a linked lending
+ * arm carved out of the whole history, so the window's first year keeps a
+ * carved predecessor for its ratios, then cut to the run's window. Falls back
+ * to the consolidated periods, with the reason in the report, when the carve
+ * does not apply or leaves fewer than two periods in the window. One rule for
+ * the app's run and the audit harness. Readiness — persistence above all — is
+ * rated on these periods too: it describes the business being valued.
  */
 export function valuationPeriodsWithArmCarvedOut(params: {
   readonly ticker: string | null | undefined;
@@ -40,20 +47,32 @@ export function valuationPeriodsWithArmCarvedOut(params: {
   readonly asOf?: string | null | undefined;
   /** The run's analysis window; absent, the whole history. */
   readonly includedPeriods?: readonly string[] | null | undefined;
-}): { readonly periods: RecastPeriod[]; readonly lendingArm: LendingArmReport | null } {
-  const inWindow = (period: RecastPeriod) => !params.includedPeriods || params.includedPeriods.includes(period.period_end);
-  const consolidated = params.periods.filter(inWindow);
+}): ValuationBasis {
   const carve = applyLendingArmCarveOut(params);
-  if (!carve) return { periods: consolidated, lendingArm: null };
-  if (carve.report.status !== "applied") return { periods: consolidated, lendingArm: carve.report };
-  const carved = carve.periods.filter(inWindow);
+  const basis: ValuationBasis = !carve
+    ? { periods: [...params.periods], lendingArm: null }
+    : carve.report.status === "applied"
+      ? { periods: carve.periods, lendingArm: carve.report }
+      : { periods: [...params.periods], lendingArm: carve.report };
+  return params.includedPeriods ? windowValuationBasis(basis, params.periods, params.includedPeriods) : basis;
+}
+
+/**
+ * A valuation basis cut to the run's window. A carved basis with fewer than two
+ * periods left in the window falls back to the consolidated window, and says so.
+ */
+export function windowValuationBasis(basis: ValuationBasis, consolidated: readonly RecastPeriod[], includedPeriods: readonly string[]): ValuationBasis {
+  const inWindow = (period: RecastPeriod) => includedPeriods.includes(period.period_end);
+  const consolidatedWindow = consolidated.filter(inWindow);
+  if (basis.lendingArm?.status !== "applied") return { periods: consolidatedWindow, lendingArm: basis.lendingArm };
+  const carved = basis.periods.filter(inWindow);
   if (carved.length < 2) {
     return {
-      periods: consolidated,
-      lendingArm: { status: "not-applied", link: carve.report.link, reason: `Only ${carved.length} carved period${carved.length === 1 ? "" : "s"} fall in the analysis window.` },
+      periods: consolidatedWindow,
+      lendingArm: { status: "not-applied", link: basis.lendingArm.link, reason: `Only ${carved.length} carved period${carved.length === 1 ? " falls" : "s fall"} in the analysis window.` },
     };
   }
-  return { periods: carved, lendingArm: carve.report };
+  return { periods: carved, lendingArm: basis.lendingArm };
 }
 
 /** The segment set without one segment: what a SOTP sums once that segment is carved out. */

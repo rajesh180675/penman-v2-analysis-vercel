@@ -1065,9 +1065,12 @@ function industrialMetricsSnapshot(periods: RecastPeriod[]): SectorMetrics {
  */
 export function buildAuditAnalysisContext(args: {
   pipeline: PipelineResult;
+  /** The periods the valuation runs on (a lending arm carved out), when they differ from the recast. */
+  valuationPeriods?: RecastPeriod[] | null;
 }) {
   const isFinancial = args.pipeline.analysisFamily === "financial-institution" && args.pipeline.bankResult != null;
-  let valuationReadiness = resolveValuationReadiness(args.pipeline.periods);
+  // Rated on the business being valued, as the app's run rates it.
+  let valuationReadiness = resolveValuationReadiness(args.valuationPeriods ?? args.pipeline.periods);
   if (isFinancial) {
     // The rule the app's run applies (resolveFinancialValuationReadiness), so
     // the two cannot disagree. It replaced a history-depth rule here that
@@ -1425,7 +1428,6 @@ export async function auditCompanyRun(
     const config: EngineConfig = { ...DEFAULT_CONFIG, company_type: company.type as EngineConfig["company_type"] };
     const { quality, flags: sidecarFlags } = loadQualitySidecar(projectRoot, company.folder);
     const pipeline = processCompanyDataFull(parsed.periods, config, quality);
-    const analysisContext = buildAuditAnalysisContext({ pipeline });
     // The app's run values the industrial business with any linked lending
     // arm carved out (src/engine/lendingArm); the harness follows the same rule.
     const valuationBasis = pipeline.analysisFamily === "financial-institution"
@@ -1437,6 +1439,7 @@ export async function auditCompanyRun(
         segmentData: selectBusinessSegmentData(parsed.segmentData),
         config,
       });
+    const analysisContext = buildAuditAnalysisContext({ pipeline, valuationPeriods: valuationBasis?.periods ?? null });
     const industrialValuation = !valuationBasis
       ? null
       : buildValuationCommandCenter({
