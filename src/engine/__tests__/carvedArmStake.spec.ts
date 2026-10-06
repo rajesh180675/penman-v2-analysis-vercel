@@ -9,12 +9,13 @@ import { computeValuation } from "../PenmanNissimEngine";
 import { computeConsistentValuation } from "../valueConsistentKw";
 import type { LegacyValuationPeriodInput } from "../forecastState/legacyAdapter";
 import { DEFAULT_CONFIG } from "../types";
+import { CroreShares } from "../types/units";
 
 const KE = 0.13;
 const KD = 0.06;
 const G = 0.04;
 const STAKE = 900;
-const config = { ...DEFAULT_CONFIG, shares_outstanding: 100 };
+const config = { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(100) };
 
 function forecast(stake: number | undefined): LegacyValuationPeriodInput[] {
   const periods: LegacyValuationPeriodInput[] = [{
