@@ -466,7 +466,7 @@ export function computeValuation(
       fcff_series,
       fcfe_series,
       EV_FCFF,
-      /** Common-equity value from FCFF: EV_FCFF − NFO0 − MI0 + any carved stake (matches intrinsic_fcff_per_share). */
+      /** Common-equity value from FCFF: EV_FCFF − NFO0 − MI0, plus a carved stake when there is one (matches intrinsic_fcff_per_share). */
       V_FCFF_equity: EV_FCFF == null ? null : EV_FCFF - NFO0 - minorityClaim + carvedArmStake,
       V_FCFE,
       CV_FCFF,
