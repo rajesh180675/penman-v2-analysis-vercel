@@ -10,6 +10,11 @@
  * data/filings/<SYMBOL>/as-filed.json keyed by FILING DATE — the first
  * point-in-time record in this repo: what was reported, and when.
  *
+ * Results for March 2025 onward are filed as "Integrated Filing - Financials",
+ * a quarterly listing on its own endpoint; its March-quarter filings carry the
+ * full year in the same `FourD` context. A lender's filing (Division III)
+ * also yields its closing balance-sheet subtotals.
+ *
  * curl with a browser user agent is used because that is what was verified
  * to work against NSE (2026-09-25); api/market-data/snapshot.js notes NSE
  * blocks some server-side clients, so Node's fetch was not relied on.
@@ -18,7 +23,14 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { extractAnnualHeadline, parseXbrlInstance, type AnnualContextMethod, type AnnualHeadline } from "../../src/engine/filings/xbrlInstance";
+import {
+  extractAnnualHeadline,
+  extractLenderBalanceSheet,
+  parseXbrlInstance,
+  type AnnualContextMethod,
+  type AnnualHeadline,
+  type LenderBalanceSheet,
+} from "../../src/engine/filings/xbrlInstance";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "../..");
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
@@ -57,14 +69,27 @@ export interface AsFiledRecord {
   extraction: AnnualContextMethod;
   /** ₹ crore, as reported in that filing. */
   headline: AnnualHeadline;
+  /** A lender's closing balance-sheet subtotals (₹ crore), when the filing is in that format. */
+  lenderBalanceSheet?: LenderBalanceSheet;
 }
 
-const MONTHS: Record<string, string> = { Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12" };
-/** "31-Mar-2024" → "2024-03-31"; "23-May-2024 17:03" → "2024-05-23T17:03". */
+/** A row of the integrated-filing listing (March 2025 onward). */
+interface NseIntegratedRow {
+  consolidated: string;
+  audited: string;
+  qe_Date: string;
+  broadcast_Date: string | null;
+  revised_Date: string | null;
+  creation_Date: string;
+  xbrl: string | null;
+}
+
+const MONTHS: Record<string, string> = { JAN: "01", FEB: "02", MAR: "03", APR: "04", MAY: "05", JUN: "06", JUL: "07", AUG: "08", SEP: "09", OCT: "10", NOV: "11", DEC: "12" };
+/** "31-Mar-2024" → "2024-03-31"; "23-May-2024 17:03" → "2024-05-23T17:03"; the integrated listing's "31-MAR-2025" too. */
 function isoDate(nse: string): string {
   const m = /^(\d{2})-([A-Za-z]{3})-(\d{4})(?:\s+(\d{2}:\d{2}))?/.exec(nse.trim());
   if (!m) return nse;
-  return `${m[3]}-${MONTHS[m[2]!]}-${m[1]}${m[4] ? `T${m[4]}` : ""}`;
+  return `${m[3]}-${MONTHS[m[2]!.toUpperCase()]}-${m[1]}${m[4] ? `T${m[4]}` : ""}`;
 }
 
 for (const symbol of symbols) {
@@ -80,42 +105,71 @@ for (const symbol of symbols) {
     console.log(`${symbol}: listing failed — ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`);
     continue;
   }
-  const withXbrl = rows.filter((r) => r.xbrl && /\.xml$/i.test(r.xbrl));
+  // The integrated listing is quarterly: its March-quarter filings are the
+  // annual results. A failed listing loses only FY2025 onward, so it is
+  // reported and the annual listing still stands.
+  const integratedUrl = `https://www.nseindia.com/api/integrated-filing-results?index=equities&symbol=${encodeURIComponent(symbol)}&type=Integrated%20Filing-%20Financials`;
+  let integrated: NseIntegratedRow[] = [];
+  try {
+    sleep(delayMs);
+    integrated = (JSON.parse(curl(integratedUrl, "https://www.nseindia.com/companies-listing/corporate-integrated-filing")) as { data?: NseIntegratedRow[] }).data ?? [];
+  } catch (error) {
+    console.log(`${symbol}: integrated listing failed — ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`);
+  }
+  const filings = [
+    ...rows.map((r) => ({
+      fiscalYearEnd: isoDate(r.toDate),
+      filingDate: isoDate(r.broadCastDate ?? r.filingDate),
+      consolidated: r.consolidated === "Consolidated",
+      audited: r.audited === "Audited",
+      xbrl: r.xbrl,
+    })),
+    ...integrated.filter((r) => /-MAR-/i.test(r.qe_Date)).map((r) => ({
+      fiscalYearEnd: isoDate(r.qe_Date),
+      // A revision carries no broadcast date; it was filed when it was revised.
+      filingDate: isoDate(r.broadcast_Date ?? r.revised_Date ?? r.creation_Date),
+      consolidated: r.consolidated === "Consolidated",
+      audited: r.audited === "Audited",
+      xbrl: r.xbrl,
+    })),
+  ].filter((f) => f.xbrl && /\.xml$/i.test(f.xbrl));
   // A company without subsidiaries (e.g. Nestlé India) files standalone only;
   // its standalone results ARE its group results.
-  const hasConsolidated = withXbrl.some((r) => r.consolidated === "Consolidated");
-  const consolidated = withXbrl.filter((r) => (hasConsolidated ? r.consolidated === "Consolidated" : true));
+  const hasConsolidated = filings.some((f) => f.consolidated);
+  const consolidated = filings.filter((f) => (hasConsolidated ? f.consolidated : true));
   const records: AsFiledRecord[] = [];
-  for (const row of consolidated) {
-    const file = join(rawDir, row.xbrl!.split("/").pop()!);
+  for (const filing of consolidated) {
+    const file = join(rawDir, filing.xbrl!.split("/").pop()!);
     if (!existsSync(file)) {
       sleep(delayMs);
       try {
-        writeFileSync(file, curl(row.xbrl!, referer));
+        writeFileSync(file, curl(filing.xbrl!, referer));
       } catch (error) {
-        console.log(`${symbol} ${row.toDate}: download failed — ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`);
+        console.log(`${symbol} ${filing.fiscalYearEnd}: download failed — ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`);
         continue;
       }
     }
     const xml = readFileSync(file, "utf8");
     if (!xml.includes("<xbrli:xbrl") && !xml.includes(":xbrl ")) {
-      console.log(`${symbol} ${row.toDate}: not an XBRL instance (blocked or moved); skipped`);
+      console.log(`${symbol} ${filing.fiscalYearEnd}: not an XBRL instance (blocked or moved); skipped`);
       continue;
     }
-    const fiscalYearEnd = isoDate(row.toDate);
-    const { headline, method } = extractAnnualHeadline(parseXbrlInstance(xml), fiscalYearEnd);
+    const instance = parseXbrlInstance(xml);
+    const { headline, method } = extractAnnualHeadline(instance, filing.fiscalYearEnd);
+    const lenderBalanceSheet = extractLenderBalanceSheet(instance, filing.fiscalYearEnd);
     records.push({
-      fiscalYearEnd,
-      filingDate: isoDate(row.broadCastDate ?? row.filingDate),
-      consolidated: row.consolidated === "Consolidated",
-      audited: row.audited === "Audited",
-      xbrlUrl: row.xbrl!,
+      fiscalYearEnd: filing.fiscalYearEnd,
+      filingDate: filing.filingDate,
+      consolidated: filing.consolidated,
+      audited: filing.audited,
+      xbrlUrl: filing.xbrl!,
       extraction: method,
       headline,
+      ...(lenderBalanceSheet ? { lenderBalanceSheet } : {}),
     });
   }
   records.sort((a, b) => a.fiscalYearEnd.localeCompare(b.fiscalYearEnd) || a.filingDate.localeCompare(b.filingDate));
-  writeFileSync(join(dir, "as-filed.json"), JSON.stringify({ symbol, source: "NSE corporates-financial-results (Annual, Consolidated)", records }, null, 1) + "\n");
+  writeFileSync(join(dir, "as-filed.json"), JSON.stringify({ symbol, source: "NSE corporates-financial-results (Annual) and integrated-filing-results (March quarter), Consolidated", records }, null, 1) + "\n");
   console.log(`${symbol}: ${records.length} consolidated annual filings (${records.filter((r) => r.extraction === "none").length} without a full-year context)`);
   sleep(delayMs);
 }
