@@ -1,0 +1,223 @@
+{
+ "symbol": "LTF",
+ "source": "NSE corporates-financial-results (Annual) and integrated-filing-results (March quarter), Consolidated",
+ "records": [
+  {
+   "fiscalYearEnd": "2020-03-31",
+   "filingDate": "2020-05-20T13:22",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/NBFC_INDAS_55152_258930_16052020121126_WEB.xml",
+   "extraction": "id-convention-undeclared",
+   "headline": {
+    "revenue": 14175.5,
+    "profitBeforeTax": 2680.08,
+    "profitAfterTax": 1700.26,
+    "profitFromContinuingOperations": 1700.26,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 1700.17,
+    "financeCosts": 7513.6,
+    "totalAssets": null,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": null
+   },
+   "lenderBalanceSheet": {
+    "financialAssets": 105577.25,
+    "nonFinancialAssets": 3951.77,
+    "loans": 91462.5,
+    "receivables": 84.05,
+    "financialLiabilities": 94443.78,
+    "nonFinancialLiabilities": 172.61,
+    "payables": 64.84,
+    "ownersEquity": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2021-03-31",
+   "filingDate": "2021-04-30T16:09",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/NBFC_INDAS_69563_445092_30042021040921_WEB.xml",
+   "extraction": "id-convention-undeclared",
+   "headline": {
+    "revenue": 13678.07,
+    "profitBeforeTax": 1495.2,
+    "profitAfterTax": 948.88,
+    "profitFromContinuingOperations": 948.88,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 1013.87,
+    "financeCosts": 7199.92,
+    "totalAssets": null,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": null
+   },
+   "lenderBalanceSheet": {
+    "financialAssets": 104554.91,
+    "nonFinancialAssets": 4416.74,
+    "loans": 87030.25,
+    "receivables": 113.35,
+    "financialLiabilities": 89566.42,
+    "nonFinancialLiabilities": 434.88,
+    "payables": 19.25,
+    "ownersEquity": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2022-03-31",
+   "filingDate": "2022-05-02T17:51",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/NBFC_INDAS_83843_650390_02052022055148_WEB.xml",
+   "extraction": "id-convention-undeclared",
+   "headline": {
+    "revenue": 11929.7,
+    "profitBeforeTax": 1222.85,
+    "profitAfterTax": 1049.24,
+    "profitFromContinuingOperations": 849.23,
+    "profitFromDiscontinuedOperations": 200.01,
+    "profitAttributableToOwners": 1070.11,
+    "financeCosts": 5753.79,
+    "totalAssets": null,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": 6078.06
+   },
+   "lenderBalanceSheet": {
+    "financialAssets": 102720.91,
+    "nonFinancialAssets": 4181.27,
+    "loans": 82469.44,
+    "receivables": 63.68,
+    "financialLiabilities": 86348.14,
+    "nonFinancialLiabilities": 426.51,
+    "payables": 432.62,
+    "ownersEquity": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2023-03-31",
+   "filingDate": "2023-04-28T19:04",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/NBFC_INDAS_90995_834833_28042023070400.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 12774.95,
+    "profitBeforeTax": -556.52,
+    "profitAfterTax": 1536.48,
+    "profitFromContinuingOperations": -728.89,
+    "profitFromDiscontinuedOperations": 2265.37,
+    "profitAttributableToOwners": 1623.25,
+    "financeCosts": 5797.24,
+    "totalAssets": 106362.14,
+    "totalEquity": 21617.81,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": 7490.47
+   },
+   "lenderBalanceSheet": {
+    "financialAssets": 102677.38,
+    "nonFinancialAssets": 3684.76,
+    "loans": 75154.55,
+    "receivables": 142.97,
+    "financialLiabilities": 84455.53,
+    "nonFinancialLiabilities": 288.8,
+    "payables": 806.39,
+    "ownersEquity": 21528.37
+   }
+  },
+  {
+   "fiscalYearEnd": "2024-03-31",
+   "filingDate": "2024-04-27T20:32",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/NBFC_INDAS_104882_1110235_27042024083201.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 13580.58,
+    "profitBeforeTax": 3029.03,
+    "profitAfterTax": 2317.13,
+    "profitFromContinuingOperations": 2317.13,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 2326.33,
+    "financeCosts": 5377.19,
+    "totalAssets": 102717.55,
+    "totalEquity": 23527.99,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": 673.47
+   },
+   "lenderBalanceSheet": {
+    "financialAssets": 99488.45,
+    "nonFinancialAssets": 3229.1,
+    "loans": 81359.39,
+    "receivables": 250.5,
+    "financialLiabilities": 78878.73,
+    "nonFinancialLiabilities": 310.83,
+    "payables": 1221.85,
+    "ownersEquity": 23438.44
+   }
+  },
+  {
+   "fiscalYearEnd": "2025-03-31",
+   "filingDate": "2025-04-25T20:06",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_NBFC_INDAS_1425313_25042025080634_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 15924.24,
+    "profitBeforeTax": 3491.26,
+    "profitAfterTax": 2643.42,
+    "profitFromContinuingOperations": 2643.42,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 2643.66,
+    "financeCosts": 5996.76,
+    "totalAssets": 120409.36,
+    "totalEquity": 25631.12,
+    "equityAttributableToOwners": 25564.06,
+    "cashFlowFromOperations": -16586.5
+   },
+   "lenderBalanceSheet": {
+    "financialAssets": 116992.92,
+    "nonFinancialAssets": 3416.44,
+    "loans": 93773.06,
+    "receivables": 122.51,
+    "financialLiabilities": 94365.59,
+    "nonFinancialLiabilities": 412.65,
+    "payables": 1371.7,
+    "ownersEquity": 25564.06
+   }
+  },
+  {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-24T20:19",
+   "consolidated": true,
+   "audited": false,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_NBFC_INDAS_1658717_24042026082053_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 17913.67,
+    "profitBeforeTax": 3998.17,
+    "profitAfterTax": 2982.87,
+    "profitFromContinuingOperations": 2982.87,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 2991.57,
+    "financeCosts": 6720.08,
+    "totalAssets": 142205.31,
+    "totalEquity": 28034.03,
+    "equityAttributableToOwners": 27983.53,
+    "cashFlowFromOperations": -14189.24
+   },
+   "lenderBalanceSheet": {
+    "financialAssets": 138099.25,
+    "nonFinancialAssets": 4106.06,
+    "loans": 117821.03,
+    "receivables": 107.44,
+    "financialLiabilities": 113554.88,
+    "nonFinancialLiabilities": 616.4,
+    "payables": 1770.01,
+    "ownersEquity": 27983.53
+   }
+  }
+ ]
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractAnnualHeadline, parseXbrlInstance, selectAnnualContexts } from "../xbrlInstance";
+import { extractAnnualHeadline, extractLenderBalanceSheet, parseXbrlInstance, selectAnnualContexts } from "../xbrlInstance";
 
 /**
  * Shaped on ITC's FY24 consolidated results filing (NSE archive
@@ -73,6 +73,48 @@ describe("extractAnnualHeadline", () => {
     const { headline, method } = extractAnnualHeadline(parseXbrlInstance(quarterOnly), "2024-03-31");
     expect(method).toBe("none");
     expect(headline.revenue).toBeNull();
+  });
+});
+
+/**
+ * Shaped on Mahindra & Mahindra Financial's FY22 consolidated results filing
+ * (NSE archive NBFC_INDAS_83874_650627_03052022034538_WEB.xml), ₹ crore × 1e7:
+ * the Division III subtotals, with no `Assets`, `Equity` or cash line, and the
+ * taxonomy's own spelling of `FinanicalAssets`.
+ */
+const NBFC_FILING = `<?xml version="1.0" encoding="UTF-8"?>
+<xbrli:xbrl xmlns:in-bse-fin="http://www.bseindia.com/xbrl/fin/2020-03-31/in-bse-fin" xmlns:xbrli="http://www.xbrl.org/2003/instance">
+  <xbrli:context id="OneI"><xbrli:entity><xbrli:identifier scheme="x">532720</xbrli:identifier></xbrli:entity>
+    <xbrli:period><xbrli:instant>2022-03-31</xbrli:instant></xbrli:period></xbrli:context>
+  <xbrli:unit id="INR"><xbrli:measure>iso4217:INR</xbrli:measure></xbrli:unit>
+  <in-bse-fin:FinanicalAssets contextRef="OneI" unitRef="INR" decimals="-5">815040000000</in-bse-fin:FinanicalAssets>
+  <in-bse-fin:NonFinancialAssets contextRef="OneI" unitRef="INR" decimals="-5">23050000000</in-bse-fin:NonFinancialAssets>
+  <in-bse-fin:Loans contextRef="OneI" unitRef="INR" decimals="-5">676600000000</in-bse-fin:Loans>
+  <in-bse-fin:TradeReceivables contextRef="OneI" unitRef="INR" decimals="-5">650000000</in-bse-fin:TradeReceivables>
+  <in-bse-fin:FinancialLiabilities contextRef="OneI" unitRef="INR" decimals="-5">663470000000</in-bse-fin:FinancialLiabilities>
+  <in-bse-fin:NonFinancialLiabilities contextRef="OneI" unitRef="INR" decimals="-5">4240000000</in-bse-fin:NonFinancialLiabilities>
+  <in-bse-fin:TotalOutstandingDuesOfCreditorsOtherThanMicroEnterpriseAndSmallEnterprise contextRef="OneI" unitRef="INR" decimals="-5">11130000000</in-bse-fin:TotalOutstandingDuesOfCreditorsOtherThanMicroEnterpriseAndSmallEnterprise>
+  <in-bse-fin:TotalOutstandingDuesOfCreditorsOtherThanMicroEnterpriseAndSmallEnterpriseOtherPayables contextRef="OneI" unitRef="INR" decimals="-5">470000000</in-bse-fin:TotalOutstandingDuesOfCreditorsOtherThanMicroEnterpriseAndSmallEnterpriseOtherPayables>
+  <in-bse-fin:EquityShareCapital contextRef="OneI" unitRef="INR" decimals="-5">2470000000</in-bse-fin:EquityShareCapital>
+</xbrli:xbrl>`;
+
+describe("extractLenderBalanceSheet", () => {
+  it("reads the Division III subtotals, the taxonomy's misspelt financial assets among them", () => {
+    const bs = extractLenderBalanceSheet(parseXbrlInstance(NBFC_FILING), "2022-03-31")!;
+    expect(bs.financialAssets).toBeCloseTo(81504, 2);
+    expect(bs.nonFinancialAssets).toBeCloseTo(2305, 2);
+    expect(bs.loans).toBeCloseTo(67660, 2);
+    expect(bs.receivables).toBeCloseTo(65, 2);
+    expect(bs.financialLiabilities).toBeCloseTo(66347, 2);
+    expect(bs.nonFinancialLiabilities).toBeCloseTo(424, 2);
+    // Both payables lines, trade and other.
+    expect(bs.payables).toBeCloseTo(1160, 2);
+    // Share capital alone is not the owners' equity: other equity is untagged.
+    expect(bs.ownersEquity).toBeNull();
+  });
+
+  it("is null for a filing that is not in the lender format", () => {
+    expect(extractLenderBalanceSheet(parseXbrlInstance(FILING), "2024-03-31")).toBeNull();
   });
 });
 

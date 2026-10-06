@@ -170,3 +170,64 @@ export function extractAnnualHeadline(instance: XbrlInstance, fiscalYearEnd: str
   }
   return { headline, method };
 }
+
+/**
+ * A lender's closing balance sheet in the Division III (NBFC) format, ₹ crore.
+ * Totals are read rather than assets and equity because the FY20–FY22 utility
+ * output tags no `Assets` or `Equity`, and no cash line, while every year
+ * tags the financial and non-financial subtotals.
+ */
+export interface LenderBalanceSheet {
+  readonly financialAssets: number;
+  readonly nonFinancialAssets: number;
+  readonly loans: number;
+  /** Trade and other receivables: operating claims inside financial assets. */
+  readonly receivables: number;
+  readonly financialLiabilities: number;
+  readonly nonFinancialLiabilities: number;
+  /** Trade and other payables: operating obligations inside financial liabilities. */
+  readonly payables: number;
+  /** Share capital plus other equity: the owners' part of equity, or null where not tagged. */
+  readonly ownersEquity: number | null;
+}
+
+const PAYABLES_CONCEPTS = [
+  "TotalOutstandingDuesOfMicroEnterpriseAndSmallEnterprise",
+  "TotalOutstandingDuesOfCreditorsOtherThanMicroEnterpriseAndSmallEnterprise",
+  "TotalOutstandingDuesOfMicroEnterpriseAndSmallEnterpriseOtherPayables",
+  "TotalOutstandingDuesOfCreditorsOtherThanMicroEnterpriseAndSmallEnterpriseOtherPayables",
+] as const;
+
+/**
+ * The Division III subtotals, or null when the filing is not in that format.
+ * `FinanicalAssets` is the taxonomy's own spelling, used by every NBFC filing
+ * from FY20 to the FY25 integrated filings; the correct spelling is accepted
+ * too in case a later taxonomy fixes it.
+ */
+export function extractLenderBalanceSheet(instance: XbrlInstance, fiscalYearEnd: string): LenderBalanceSheet | null {
+  const { instant } = selectAnnualContexts(instance, fiscalYearEnd);
+  if (!instant) return null;
+  const read = (concepts: readonly string[]): number | null => {
+    const values = concepts.map((concept) => instance.facts.find((f) =>
+      f.concept === concept && f.contextRef === instant.id && f.value != null && f.unitRef?.toUpperCase() === "INR")?.value ?? null);
+    return values.some((value) => value != null) ? values.reduce<number>((sum, value) => sum + (value ?? 0), 0) / RUPEES_PER_CRORE : null;
+  };
+  const financialAssets = read(["FinanicalAssets"]) ?? read(["FinancialAssets"]);
+  const nonFinancialAssets = read(["NonFinancialAssets"]);
+  const financialLiabilities = read(["FinancialLiabilities"]);
+  const nonFinancialLiabilities = read(["NonFinancialLiabilities"]);
+  if (financialAssets == null || nonFinancialAssets == null || financialLiabilities == null || nonFinancialLiabilities == null) return null;
+  return {
+    financialAssets,
+    nonFinancialAssets,
+    loans: read(["Loans"]) ?? 0,
+    receivables: read(["TradeReceivables", "OtherReceivables"]) ?? 0,
+    financialLiabilities,
+    nonFinancialLiabilities,
+    payables: read(PAYABLES_CONCEPTS) ?? 0,
+    // ABCL's FY24 filing tags share capital and other equity but no
+    // non-controlling interest, so the owners' part is read, not the NCI.
+    ownersEquity: read(["EquityAttributableToOwnersOfParent"])
+      ?? (read(["EquityShareCapital"]) != null && read(["OtherEquity"]) != null ? read(["EquityShareCapital", "OtherEquity"]) : null),
+  };
+}
