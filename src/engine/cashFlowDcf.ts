@@ -143,7 +143,8 @@ export function computeCashFlowDcf(
   // — at the value the accrual bridge uses when it settled one, so the two
   // lenses differ in their flows, not in how they split the enterprise.
   const minorityClaim = opts?.minorityClaim != null && Number.isFinite(opts.minorityClaim) ? opts.minorityClaim : latest.bs.MI;
-  const equityValue = enterpriseValue - latest.bs.NFO - minorityClaim;
+  // Plus a carved lending-arm stake at value, as the accrual bridge adds it.
+  const equityValue = enterpriseValue - latest.bs.NFO - minorityClaim + (latest.bs.CarvedArmStakeValue ?? 0);
   const perShare = shares != null && shares > 0 ? equityValue / shares : null;
 
   return {

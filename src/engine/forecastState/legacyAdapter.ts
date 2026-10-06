@@ -13,6 +13,8 @@ export interface LegacyValuationPeriodInput {
     readonly NFO: number;
     readonly MI: number;
     readonly separationScore: number;
+    /** On the anchor only: the parent's stake in a carved-out lending arm, at value, which every equity value adds. */
+    readonly CarvedArmStakeValue?: number | undefined;
   };
   readonly is: {
     readonly CNI: number;

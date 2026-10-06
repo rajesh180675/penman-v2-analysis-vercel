@@ -70,8 +70,8 @@ async function main(): Promise<void> {
       return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
     },
     parse: async (bytes, id) => {
-      const { periods, debug } = await parseCapitalineZip(bytes, { companyId: id });
-      return { periods, debug };
+      const { periods, debug, segmentData } = await parseCapitalineZip(bytes, { companyId: id });
+      return { periods, debug, segmentData: segmentData?.business ?? segmentData?.mixed ?? null };
     },
     fetchMarketSnapshot: async () => null,
     run: (input) => executeLegacyAnalysisRun(input),

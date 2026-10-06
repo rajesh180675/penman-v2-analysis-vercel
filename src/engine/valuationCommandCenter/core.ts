@@ -7,6 +7,7 @@ import { resolveShareBasis } from "../shareCountTools";
 import { resolveValuationReadiness } from "../valuationPolicy";
 import { resolveValuationSectorTemplate } from "../valuationSectorTemplates";
 import type { SegmentData } from "../segmentParser";
+import { withoutSegment, type LendingArmReport } from "../lendingArm";
 import type { EquityBetaPack, MacroPack } from "../marketPacks";
 import { computeEvEbitdaCrossCheck, updateEvEbitdaWithMarketPrice } from "../evEbitdaCrossCheck";
 import { computeIndiaQualitySignals } from "../indiaQualitySignals";
@@ -94,6 +95,13 @@ export type CoreBuildContext = {
    * them — which is the property the pack exists to provide.
    */
   analysisAsOf?: string | null | undefined;
+  /**
+   * The lending arm carved out of `data`, when one was (src/engine/lendingArm).
+   * The periods are then the industrial business alone and the anchor carries
+   * the stake at value in `bs.CarvedArmStakeValue`; this report says where
+   * the arm's figures and the stake's value came from.
+   */
+  lendingArm?: LendingArmReport | null | undefined;
 };
 
 type CoreBuildResult = Omit<ValuationCommandCenterOutput, "backtest">;
@@ -117,6 +125,12 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
   const shares = shareBasis.sharesForPerShare ?? shareBasis.shares ?? null;
   const marketCapShares = shareBasis.sharesForMarketCap ?? shareBasis.shares ?? null;
   const marketPrice = marketData?.price ?? config.market_price ?? null;
+  // A carved lending arm's stake is valued on its own, so what the price says
+  // about the forecast business is the price less the stake: the reverse DCF
+  // and the market's EV are solved on that. Values compared with the price
+  // (upside, margin of safety) include the stake and use the price itself.
+  const carvedStake = latest.bs.CarvedArmStakeValue ?? 0;
+  const industrialMarketPrice = marketPrice != null && shares != null && shares > 0 ? marketPrice - carvedStake / shares : marketPrice;
   // Only a rate that genuinely came from the market snapshot. This used to read
   // `marketData?.riskFreeRate ?? config.risk_free_rate` and hand the result to
   // the resolver, which labelled it "Pinned market snapshot" — so on the primary
@@ -257,7 +271,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
         : null;
 
   const reverseDcf = buildReverseDcfExpectation({
-    marketPrice,
+    marketPrice: industrialMarketPrice,
     diagnostics,
     baseCard,
     keBase,
@@ -271,13 +285,16 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
 
   // ── SOTP Valuation (Phase 2.2 + C5) ──────────────────────────
   // Priority: parsed segment data > preset > null
-  const { segmentData } = context;
+  // A carved arm is not one of the segments the SOTP sums: it enters at its
+  // own valuation, through the bridge below.
+  const carvedSegment = context.lendingArm?.status === "applied" ? context.lendingArm.link.segmentName : null;
+  const segmentData = context.segmentData && carvedSegment ? withoutSegment(context.segmentData, carvedSegment) : context.segmentData;
   const { sotpResult, conglomerateAssessment } = buildSotpAssessment(segmentData, config, latest, keBase);
 
   // ── EV/EBITDA Cross-Check (Phase 2.4) ────────────────────────
   const evEbitda = computeEvEbitdaCrossCheck(latest, config.ev_ebitda_peers ?? []);
   const evEbitdaWithMarket = marketPrice != null && shares != null && shares > 0
-    ? updateEvEbitdaWithMarketPrice(evEbitda, marketPrice * shares, latest.bs.NFO)
+    ? updateEvEbitdaWithMarketPrice(evEbitda, marketPrice * shares - carvedStake, latest.bs.NFO)
     : evEbitda;
 
   // ── India Quality Signals (Phase 2.3) ────────────────────────
@@ -374,7 +391,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
   const marketContext: ValuationMarketContext = {
     expectedReturnSpreadVsRf: opportunity.expectedCagrStress != null ? opportunity.expectedCagrStress - riskFreeRate : null,
     marketCapFromPrice: marketPrice != null && marketCapShares != null ? marketPrice * marketCapShares : null,
-    enterpriseValueFromPrice: marketPrice != null && marketCapShares != null ? marketPrice * marketCapShares + latest.bs.NFO : null,
+    enterpriseValueFromPrice: marketPrice != null && marketCapShares != null ? marketPrice * marketCapShares + latest.bs.NFO - carvedStake : null,
     priceToStressValueRatio: marketPrice != null && (stressCard?.intrinsicPerShare ?? null) != null && (stressCard?.intrinsicPerShare ?? 0) > 0
       ? marketPrice / (stressCard?.intrinsicPerShare ?? 1)
       : null,
@@ -536,7 +553,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
 
   // ── Wire Class-A valuation models ──────────────────────────────────
   const { workingCapitalGateResult, cleanSurplusResult, damodaranCapmResult, reverseDcfMonteCarloResult } =
-    buildClassAModels(data, config, latest, shares, marketPrice, keBase);
+    buildClassAModels(data, config, latest, shares, industrialMarketPrice, keBase);
 
   // ── Poly-paradigm Phase 1.1: independent cash-statement FCFF DCF ────
   const cashFlowDcf = computeCashFlowDcf(valuationData, config, shares, {
@@ -563,7 +580,8 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
   });
   const forecastHoldout = evaluateForecastHoldout(data, context.holdoutVintage);
   const marketImpliedExpectations = buildMarketImpliedExpectationLedger({
-    marketPrice,
+    // The price the reverse DCF above was solved on.
+    marketPrice: industrialMarketPrice,
     asOf: marketData?.priceAsOf ?? marketData?.fetchedAt ?? null,
     reverseDcf,
     operatingCapitalCharge: kwBase,
@@ -603,10 +621,12 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     diagnostics,
     reverseDcf,
     sotp: sotpResult,
+    lendingArm: context.lendingArm ?? null,
     // `latest` is the anchor period (:107), which is the period sotpResult was
     // built from — so these are the NFO and MI that sum is allowed to be
     // bridged with. Both come from one period, or the bridge mixes vintages.
-    sotpPerShare: sotpResult ? sotpEquityPerShare(sotpResult, shareBasis, latest.bs.NFO, latest.bs.MI) : null,
+    // A carved stake bridges as a financial asset at value: NFO less the stake.
+    sotpPerShare: sotpResult ? sotpEquityPerShare(sotpResult, shareBasis, latest.bs.NFO - carvedStake, latest.bs.MI) : null,
     conglomerate: conglomerateAssessment,
     evEbitda: evEbitdaWithMarket,
     indiaQuality,
@@ -657,7 +677,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
       killSwitches,
     },
     range: conglomerateAssessment?.sotpPreferred && sotpResult
-      ? sotpValueRange(sotpResult, shareBasis, latest.bs.NFO, latest.bs.MI)
+      ? sotpValueRange(sotpResult, shareBasis, latest.bs.NFO - carvedStake, latest.bs.MI)
       : primaryValueRange(scenarios),
   };
 

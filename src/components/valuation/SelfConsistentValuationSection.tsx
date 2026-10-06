@@ -76,6 +76,9 @@ export default function SelfConsistentValuationSection({ result }: { result: Sel
                 <tr className="font-semibold"><td className="py-1.5">= Operating value</td><td className="py-1.5 text-right font-mono">{rupees(result.operatingValue)}</td></tr>
                 <tr><td className="py-1.5 text-slate-600">− Net financial obligations</td><td className="py-1.5 text-right font-mono">{rupees(result.decomposition.nfo)}</td></tr>
                 <tr><td className="py-1.5 text-slate-600">− Minority interest</td><td className="py-1.5 text-right font-mono">{rupees(result.decomposition.minorityInterest)}</td></tr>
+                {result.decomposition.carvedArmStake !== 0 && (
+                  <tr><td className="py-1.5 text-slate-600">+ Stake in the lending arm (at its own value)</td><td className="py-1.5 text-right font-mono">{rupees(result.decomposition.carvedArmStake)}</td></tr>
+                )}
                 <tr className="font-semibold"><td className="py-1.5">= Common equity value</td><td className="py-1.5 text-right font-mono">{rupees(result.equityValue)}</td></tr>
                 <tr><td className="py-1.5 text-slate-500 text-xs">Post-horizon share of operating value</td><td className="py-1.5 text-right font-mono text-xs">{pct(result.decomposition.terminalShare)}</td></tr>
               </tbody>

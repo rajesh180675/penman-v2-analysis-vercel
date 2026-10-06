@@ -6,6 +6,7 @@ import { parseCapitalineZip } from "../../src/engine/capitalineParser";
 import { resolveNseSymbol } from "../../src/engine/nseSymbolRegistry";
 import { marketCachePath, readJson, writeJson, listFiles } from "../../server/store/fsStore";
 import { processCompanyDataFull, type PipelineResult } from "../../src/engine/pipeline";
+import { valuationPeriodsWithArmCarvedOut } from "../../src/engine/lendingArm";
 import {
   buildValuationCommandCenter,
   type ValuationCommandCenterOutput,
@@ -1425,14 +1426,26 @@ export async function auditCompanyRun(
     const { quality, flags: sidecarFlags } = loadQualitySidecar(projectRoot, company.folder);
     const pipeline = processCompanyDataFull(parsed.periods, config, quality);
     const analysisContext = buildAuditAnalysisContext({ pipeline });
-    const industrialValuation = pipeline.analysisFamily === "financial-institution"
+    // The app's run values the industrial business with any linked lending
+    // arm carved out (src/engine/lendingArm); the harness follows the same rule.
+    const valuationBasis = pipeline.analysisFamily === "financial-institution"
+      ? null
+      : valuationPeriodsWithArmCarvedOut({
+        ticker: company.ticker,
+        periods: pipeline.periods,
+        rawData: parsed.periods,
+        segmentData: selectBusinessSegmentData(parsed.segmentData),
+        config,
+      });
+    const industrialValuation = !valuationBasis
       ? null
       : buildValuationCommandCenter({
-        data: pipeline.periods,
+        data: valuationBasis.periods,
         config,
         marketData: null,
         analysisStatus: analysisContext.analysisStatus,
         segmentData: selectBusinessSegmentData(parsed.segmentData),
+        lendingArm: valuationBasis.lendingArm,
       });
     const structuralTrace = buildTrace({
       company,

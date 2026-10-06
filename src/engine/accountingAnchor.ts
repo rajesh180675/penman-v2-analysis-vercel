@@ -100,7 +100,8 @@ export function computeAccountingAnchor(
   const epvFirm = r > 0 ? normalizedNOPAT / r : 0;
   // Common equity sits behind both net debt and the minority claim in NOA.
   const minorityInterest = Number.isFinite(latest.bs?.MI) ? latest.bs.MI : 0;
-  const epvEquity = epvFirm - nfo - minorityInterest;
+  // Plus a carved lending-arm stake at value: the earnings power is the industrial business's.
+  const epvEquity = epvFirm - nfo - minorityInterest + (latest.bs?.CarvedArmStakeValue ?? 0);
   const epv = Math.max(0, epvEquity / sharesOutstanding);
 
   // ─ Layer 2: Growth Value ──

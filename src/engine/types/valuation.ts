@@ -53,6 +53,8 @@ export interface ValuationResult {
   /** The minority claim the enterprise→common bridges subtract: its residual-income value, or MI0 at book. */
   minorityClaim: number;
   minorityClaimBasis: "residual-income" | "book";
+  /** The parent's stake in a carved-out lending arm, at the arm's own value, which every equity value adds; 0 when nothing was carved. */
+  carvedArmStake?: number | undefined;
   /** NFO of the LAST period (year T on a forecast); not an equity bridge. */
   NFO_latest: number;
   ke: number; kw: number; g: number;

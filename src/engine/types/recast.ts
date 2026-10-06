@@ -48,6 +48,14 @@ export interface CanonicalBalanceSheet {
   /* India-specific fields (Phase 2.3) */
   promoterHolding?: number | null | undefined;
   pledgedPromoterShares?: number | null | undefined;
+  /**
+   * The parent's stake in a lending arm carved out of this balance sheet
+   * (src/engine/lendingArm), at the arm's own valuation. It sits outside NOA
+   * and NFO, so NOA − NFO = CSE + MI still holds for the industrial business,
+   * and every enterprise-to-equity bridge adds it. Absent when nothing was
+   * carved.
+   */
+  CarvedArmStakeValue?: number | undefined;
 }
 
 /* ── Income ─────────────────────────────────────────────────────── */
@@ -260,6 +268,45 @@ export interface RecastPeriod {
    * residual. Null when no valuation path has stamped a value yet.
    */
   kwUsed?: number | null | undefined;
+  /** The lending arm's part of this period, as carved out of the parent's recast (src/engine/lendingArm). */
+  lendingArm?: LendingArmPeriod | undefined;
+}
+
+/** A consolidated lending arm's part of one parent period, ₹ crore, as removed from the parent's recast. */
+export interface LendingArmPeriod {
+  readonly periodEnd: string;
+  /** Where the arm's totals came from: the parent's segment note, or, where the parent files none for the year, the arm's own results. */
+  readonly source: "parent-segment" | "arm-filing";
+  readonly assets: number;
+  readonly liabilities: number;
+  readonly revenue: number;
+  /** A financial-services segment's result: after interest, so the arm's profit before tax. */
+  readonly profitBeforeTax: number;
+  readonly depreciation: number;
+  readonly capex: number;
+  /** The arm's assets the recast held in FA: cash, bank balances, investments outside an insurer's, other financial assets. */
+  readonly financialAssets: number;
+  readonly operatingAssets: number;
+  /**
+   * The parent's segment assets above the arm's own balance sheet: its
+   * consolidation adjustment on the arm, held with goodwill and intangibles
+   * (Grasim FY25: 295,458 against Aditya Birla Capital's 279,061). Zero where
+   * the segment is the smaller.
+   */
+  readonly consolidationExcess: number;
+  /** The arm's liabilities the recast held in FO: borrowings, debt securities, deposits, other financial liabilities. */
+  readonly financialObligations: number;
+  readonly operatingLiabilities: number;
+  /** Estimated: the composition filing's finance-cost rate on these financial obligations. */
+  readonly financeCost: number;
+  readonly taxRate: number;
+  readonly profitAfterTax: number;
+  /** The parent's share of the arm's equity and profit: its stake in the arm's owners' part. */
+  readonly parentShare: number;
+  /** The arm's filing whose composition split the totals. */
+  readonly composition: { readonly fiscalYearEnd: string; readonly filingDate: string };
+  /** From the arm's balance sheets: profit + depreciation − growth in its net operating assets. */
+  readonly cashFromOperations: number;
 }
 
 export interface ShareCountInputSnapshot {

@@ -1,4 +1,5 @@
 import type { KwConsistency } from "../valueConsistentKw";
+import type { LendingArmReport } from "../lendingArm";
 import { LiveMarketDataFreshness } from "../marketData";
 import { AnalysisStatusSummary } from "../analysisStatus";
 import { ForecastScenario, ForecastPolicySurface, RecastPeriod, ValuationResult, BusinessModelProfile } from "../types";
@@ -210,6 +211,12 @@ export interface ValuationCommandCenterOutput {
   diagnostics: DcfCashFlowDiagnostics;
   reverseDcf: ReverseDcfDiagnostics;
   sotp: SOTPResult | null;
+  /**
+   * The lending arm carved out of the run's periods, when one was: the arm's
+   * figures per period and the stake's value. Every equity value above already
+   * includes the stake; this says how it was reached.
+   */
+  lendingArm: LendingArmReport | null;
   /**
    * SOTP value per share, bridged to common equity (−NFO −MI) at the anchor
    * period. Reported here rather than derived by the surfaces:

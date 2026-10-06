@@ -14,6 +14,7 @@ import type { BankQualityIndicators } from "../engine/bankQualityIndicators";
 import { ACTIVE_MARKET_PACKS } from "../engine/marketPacks";
 import type { CapitalineParseDebug } from "../engine/capitalineParser/types";
 import { DEFAULT_CONFIG, type CompanyRegistry, type EngineConfig, type RawPeriodData, type RecastPeriod } from "../engine/types";
+import type { SegmentData } from "../engine/segmentParser";
 import { buildLocalLibraryCompanyUrls, type LibraryCompany } from "../components/data-entry/companyRegistry";
 
 export type CompanyRunState =
@@ -34,7 +35,12 @@ export type CompanyRunState =
 
 export interface CompanyRunDependencies {
   readonly fetchZip: (url: string) => Promise<Uint8Array>;
-  readonly parse: (bytes: Uint8Array, companyId: string) => Promise<{ readonly periods: RawPeriodData[]; readonly debug: CapitalineParseDebug | null }>;
+  readonly parse: (bytes: Uint8Array, companyId: string) => Promise<{
+    readonly periods: RawPeriodData[];
+    readonly debug: CapitalineParseDebug | null;
+    /** The business segments (else the mixed ones): the segment SOTP's input and a lending arm's carve-out. */
+    readonly segmentData?: SegmentData | null | undefined;
+  }>;
   /** The live market overlay; null when unavailable (the run proceeds, price withheld). */
   readonly fetchMarketSnapshot: (config: EngineConfig) => Promise<LiveMarketDataSnapshot | null>;
   readonly run: (input: LegacyAnalysisRunInputV1, requestId: string) => Promise<LegacyAnalysisRunExecutionResult>;
@@ -57,8 +63,8 @@ const defaultDependencies: CompanyRunDependencies = {
   },
   parse: async (bytes, companyId) => {
     const { parseCapitalineZip } = await import("../engine/capitalineParser");
-    const { periods, debug } = await parseCapitalineZip(bytes, { companyId });
-    return { periods, debug };
+    const { periods, debug, segmentData } = await parseCapitalineZip(bytes, { companyId });
+    return { periods, debug, segmentData: segmentData?.business ?? segmentData?.mixed ?? null };
   },
   // Same request the current shell's useLiveMarketData makes.
   fetchMarketSnapshot: async (config) => {
@@ -157,6 +163,10 @@ export async function loadCompanyRun(
       // reads a later year's row. It describes the consolidated entity, so a
       // standalone-basis run does not get it.
       bankQuality: basis === "consolidated" ? bankQuality : null,
+      // The segments the analysed accounts report, as the audit harness reads
+      // them: without them the run had no segment SOTP and could not carve a
+      // lending arm out of the parent's segment note.
+      ...(parsed.segmentData ? { segmentData: parsed.segmentData } : {}),
       ...ACTIVE_MARKET_PACKS,
       metadata: {
         runId,

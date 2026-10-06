@@ -98,6 +98,8 @@ export interface SelfConsistentValuation {
     readonly pvTerminalReOI: number;
     readonly nfo: number;
     readonly minorityInterest: number;
+    /** The parent's stake in a carved-out lending arm, at the arm's own value; 0 when nothing was carved. */
+    readonly carvedArmStake: number;
     /** V_op − NOA: value of abnormal operating profitability. */
     readonly franchiseValue: number;
     /** PV of the post-horizon ReOI as a share of operating value. */

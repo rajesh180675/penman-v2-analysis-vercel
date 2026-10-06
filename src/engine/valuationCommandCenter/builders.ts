@@ -215,7 +215,12 @@ export function buildScenarioCards(args: {
       ...scenarioWithTerminal,
       drivers: { ...scenarioWithTerminal.drivers, kw: kwConsistency.kw },
     } satisfies ForecastScenario;
-    const ownerDcf = computeOwnerEarningsDcf(diagnostics.ownerEarningsPerShare, scenarioAtKw.drivers.sales_growth, scenarioAtKw.drivers.ke, terminalGrowth);
+    // Owner earnings are the industrial business's; a carved lending-arm stake
+    // is added at its value per share, as every accrual value adds it.
+    const perShareBasis = shareBasis.sharesForPerShare ?? shareBasis.shares ?? null;
+    const stakePerShare = perShareBasis != null && perShareBasis > 0 ? (latest.bs.CarvedArmStakeValue ?? 0) / perShareBasis : 0;
+    const industrialOwnerDcf = computeOwnerEarningsDcf(diagnostics.ownerEarningsPerShare, scenarioAtKw.drivers.sales_growth, scenarioAtKw.drivers.ke, terminalGrowth);
+    const ownerDcf = industrialOwnerDcf != null ? industrialOwnerDcf + stakePerShare : null;
     // The headline is the RE/ReOI median (AFES round-one, eec49c26): the
     // owner-earnings DCF is reported beside it as a cross-check, not blended
     // in. It used to be blended here and then overwritten by a normalization

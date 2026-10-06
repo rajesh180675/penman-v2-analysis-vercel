@@ -82,7 +82,8 @@ export default function ValuationCardsSection({
         items={V_RE == null ? [] : [
           { l: "CSE₀ (base book value)", v: val.CSE0 },
           { l: "PV of RE series", v: val.pvRE },
-          { l: `CV PV (${cv})`, v: V_RE - val.CSE0 - val.pvRE },
+          { l: `CV PV (${cv})`, v: V_RE - val.CSE0 - val.pvRE - val.carvedArmStake },
+          ...(val.carvedArmStake !== 0 ? [{ l: "Stake in the lending arm (at its own value)", v: val.carvedArmStake }] : []),
         ]} fmt={fmt}
         perShare={V_RE == null ? null : toPerShare(V_RE, sharesOut)}
         skipReason={V_RE == null ? reCardSkipReason(val, cv) : null}
@@ -93,6 +94,7 @@ export default function ValuationCardsSection({
           ...(val.EV_ReOI != null ? [{ l: "EV (NOA₀ + PV ReOI + CV)", v: val.EV_ReOI }] : []),
           { l: "Less: NFO₀", v: -val.NFO0 },
           ...(val.minorityClaim !== 0 ? [{ l: val.minorityClaimBasis === "residual-income" ? "Less: minority claim₀ (at value)" : "Less: minority interest₀", v: -val.minorityClaim }] : []),
+          ...(val.carvedArmStake !== 0 ? [{ l: "Plus: stake in the lending arm (at its own value)", v: val.carvedArmStake }] : []),
           { l: "PV ReOI", v: val.pvReOI },
         ]} fmt={fmt}
         perShare={V_ReOI == null ? null : toPerShare(V_ReOI, sharesOut)}
