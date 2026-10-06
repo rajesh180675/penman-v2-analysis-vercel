@@ -49,6 +49,18 @@ export function spreadValues(values: Array<number | null | undefined>) {
   return Math.max(...filtered) - Math.min(...filtered);
 }
 
+/**
+ * Robust standard deviation: 1.4826 × the median absolute deviation, which
+ * equals σ for normal data but ignores a single shock year. The range above is
+ * set by its two most extreme years.
+ */
+export function robustSpread(values: Array<number | null | undefined>) {
+  const filtered = values.filter((value): value is number => value != null && Number.isFinite(value));
+  if (filtered.length < 2) return null;
+  const center = median(filtered)!;
+  return 1.4826 * median(filtered.map((value) => Math.abs(value - center)))!;
+}
+
 export function makeFadeArray(base: number, alpha: number, target: number, horizon: number) {
   const values: number[] = [];
   let previous = base;
