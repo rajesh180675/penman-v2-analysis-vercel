@@ -8,7 +8,7 @@ import { DEFAULT_CONFIG, type RecastPeriod } from "../../types";
 import type { SegmentData } from "../../segmentParser";
 import { carveOutLendingArm, type ArmInsuranceLines } from "../carveOut";
 import { valueArmStake } from "../armValuation";
-import { applyLendingArmCarveOut, valuationPeriodsWithArmCarvedOut, withoutSegment } from "..";
+import { applyLendingArmCarveOut, valuationPeriodsWithArmCarvedOut, windowValuationBasis, withoutSegment } from "..";
 import type { ArmFiling, LendingArmLink } from "../links";
 
 const T = 0.25;
@@ -258,5 +258,33 @@ describe("applyLendingArmCarveOut", () => {
     const set = withoutSegment(segments({ FY2025: ARM_FY25 }), "FINANCIAL SERVICES");
     expect(set.segments).toEqual(["ENGINEERING"]);
     expect(Object.keys(set.data)).toEqual(["ENGINEERING"]);
+  });
+});
+
+describe("windowValuationBasis", () => {
+  const fy24 = consolidated("2024-03-31", industrial(1), ARM_FY24);
+  const fy25 = consolidated("2025-03-31", industrial(1.1), ARM_FY25, fy24);
+  const carve = carveOutLendingArm({
+    periods: [fy24, fy25], segmentData: segments({ FY2024: ARM_FY24, FY2025: ARM_FY25 }),
+    link: link([filing("2024-03-31", ARM_FY24), filing("2025-03-31", ARM_FY25)]), insuranceLines: noInsurance, config,
+  });
+  if (carve.status !== "applied") throw new Error("not applied");
+  const report = { status: "applied" as const, link: link([]), arm: carve.arm, stake: [], droppedPeriods: [], notes: [] };
+
+  it("cuts the carved periods to the window", () => {
+    const basis = windowValuationBasis({ periods: carve.periods, lendingArm: report }, [fy24, fy25], ["2024-03-31", "2025-03-31"]);
+    expect(basis.periods.map((p) => p.lendingArm != null)).toEqual([true, true]);
+    expect(basis.lendingArm?.status).toBe("applied");
+  });
+
+  it("falls back to the consolidated window, and says why, when fewer than two carved periods remain", () => {
+    const basis = windowValuationBasis({ periods: carve.periods, lendingArm: report }, [fy24, fy25], ["2025-03-31"]);
+    expect(basis.periods).toEqual([fy25]);
+    expect(basis.lendingArm).toMatchObject({ status: "not-applied", reason: "Only 1 carved period falls in the analysis window." });
+  });
+
+  it("windows the consolidated periods when nothing was carved", () => {
+    const basis = windowValuationBasis({ periods: [fy24, fy25], lendingArm: null }, [fy24, fy25], ["2025-03-31"]);
+    expect(basis).toEqual({ periods: [fy25], lendingArm: null });
   });
 });

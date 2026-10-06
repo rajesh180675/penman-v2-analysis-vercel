@@ -16,7 +16,7 @@ import type { SegmentData } from "../segmentParser";
 import type { AnalysisTraceabilityEnvelope, EngineConfig, RawPeriodData, RecastPeriod } from "../types";
 import { validateEngineConfig } from "../types";
 import { buildValuationCommandCenter, type ValuationCommandCenterOutput } from "../valuationCommandCenter";
-import { valuationPeriodsWithArmCarvedOut } from "../lendingArm";
+import { valuationPeriodsWithArmCarvedOut, windowValuationBasis, type ValuationBasis } from "../lendingArm";
 import type { EquityBetaPack, MacroPack } from "../marketPacks";
 import {
   adaptLegacyCommandCenterModelResults,
@@ -897,9 +897,11 @@ export function createLegacyAnalysisRunExecutor(
         compositionPolicy: ApprovedRealOptionsCompositionPolicy | null; compositionCandidate: RealOptionsCompositionCandidate | null;
       }> = [];
       let windowedRecastData: RecastPeriod[] = [];
-      // The window the valuation runs on: windowedRecastData with any linked
-      // lending arm carved out (src/engine/lendingArm). The statements, ratios
-      // and reconciliation stay on the consolidated periods as filed.
+      // The business the valuation values: the recast with any linked lending
+      // arm carved out (src/engine/lendingArm), and its cut to the window. The
+      // statements, ratios and reconciliation stay on the consolidated periods
+      // as filed.
+      let valuationBasis: ValuationBasis | null = null;
       let valuationRecastData: RecastPeriod[] = [];
 
       if (!terminal) {
@@ -932,12 +934,27 @@ export function createLegacyAnalysisRunExecutor(
             analysisAsOf: input.metadata.asOf,
           });
           recastData = pipelineResult.periods;
+          valuationBasis = recastData.length > 0
+            ? valuationPeriodsWithArmCarvedOut({
+              ticker: config.ticker,
+              periods: recastData,
+              rawData,
+              segmentData,
+              config,
+              packs: { macroPack: input.macroPack, betaPack: input.betaPack, analysisAsOf: input.metadata.asOf },
+              asOf: input.metadata.asOf,
+            })
+            : null;
           qualityGate = dependencies.evaluateQualityGate(rawData, config, recastData.length > 0 ? recastData : null);
           // A financial institution has no recast; its readiness is the evidence
           // its own valuation rests on, the same rule the audit harness applies.
           const bankResult = pipelineResult.analysisFamily === "financial-institution" ? pipelineResult.bankResult : null;
+          // Readiness — persistence above all — describes the business being
+          // valued: with a lending arm carved out, the industrial one (M&M's
+          // consolidated persistence scored 0/100 on the lender's loan growth;
+          // its industrial business scores 70).
           valuationReadiness = recastData.length > 0
-            ? dependencies.resolveValuationReadiness(recastData)
+            ? dependencies.resolveValuationReadiness(valuationBasis?.periods ?? recastData)
             : bankResult
               ? resolveFinancialValuationReadiness({ bankMetrics: bankResult.bankMetrics ?? [], valuation: bankResult.valuation, subtype: bankResult.subtype })
               : null;
@@ -1042,20 +1059,13 @@ export function createLegacyAnalysisRunExecutor(
                 periodArtifacts,
               })
             : null;
-          const valuationBasis = valuationPeriodsWithArmCarvedOut({
-            ticker: config.ticker,
-            periods: recastData,
-            rawData,
-            segmentData,
-            config,
-            packs: { macroPack: input.macroPack, betaPack: input.betaPack, analysisAsOf: input.metadata.asOf },
-            asOf: input.metadata.asOf,
-            includedPeriods: analysisWindow?.includedPeriods ?? null,
-          });
-          valuationRecastData = valuationBasis.periods;
+          const windowedBasis = valuationBasis && analysisWindow
+            ? windowValuationBasis(valuationBasis, recastData, analysisWindow.includedPeriods)
+            : { periods: windowedRecastData, lendingArm: null };
+          valuationRecastData = windowedBasis.periods;
           commandCenter = dependencies.buildCommandCenter({
             data: valuationRecastData,
-            lendingArm: valuationBasis.lendingArm,
+            lendingArm: windowedBasis.lendingArm,
             config,
             marketData: marketSnapshot,
             analysisStatus,
