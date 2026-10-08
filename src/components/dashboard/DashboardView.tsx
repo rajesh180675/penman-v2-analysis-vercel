@@ -5,7 +5,7 @@ import { computeEPV } from "../../engine/grahamDoddEPV";
 import { computeMoatScore, decisiveMoat } from "../../engine/moatScoring";
 import { scoreCapitalAllocation, decisiveCapAlloc } from "../../engine/capitalAllocationScoring";
 import { detectDistress } from "../../engine/distressDetector";
-import { buildValuationCommandCenter } from "../../engine/valuationCommandCenter";
+import { buildValuationCommandCenter, type ValuationCommandCenterOutput } from "../../engine/valuationCommandCenter";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../../engine/marketPacks";
 import { resolveShareBasis } from "../../engine/shareCountTools";
 import { generateDashboardNarrative } from "../../engine/narrativeEngine";
@@ -57,9 +57,15 @@ interface Props {
    * forgetting it silent, and this surface turns the moat score into a verdict.
    */
   itServices: ITServicesSignal | null;
+  /**
+   * The run's command center, when there is one: the valuation the Valuation
+   * tab shows. It is built on the run's valuation basis (a lending arm carved
+   * out, a transition year restated), which the recast `data` here is not.
+   */
+  commandCenter?: ValuationCommandCenterOutput | null | undefined;
 }
 
-export default function DashboardView({ data, config, traceability = null, ratioSanity = null, segmentData = null, marketData = null, peerCount = 0, onNavigate, itServices }: Props) {
+export default function DashboardView({ data, config, traceability = null, ratioSanity = null, segmentData = null, marketData = null, peerCount = 0, onNavigate, itServices, commandCenter: runCommandCenter = null }: Props) {
   const insufficientData = !data || data.length < 2;
 
   const latest = !insufficientData ? data[data.length - 1] : null;
@@ -125,9 +131,12 @@ export default function DashboardView({ data, config, traceability = null, ratio
   // Distress detector
   const distress = useMemo(() => detectDistress(data), [data]);
 
-  // Authoritative valuation — use the same command center as the Valuation tab
+  // Authoritative valuation — the same command center as the Valuation tab:
+  // the run's when there is one (ValuationReport takes it the same way). The
+  // build below is the fallback for a caller without a run; on the recast as
+  // filed it would show M&M, L&T, Grasim and Nestlé on another basis.
   const commandCenter = useMemo(
-    () => buildValuationCommandCenter({
+    () => runCommandCenter ?? buildValuationCommandCenter({
       data,
       config,
       marketData,
@@ -140,7 +149,7 @@ export default function DashboardView({ data, config, traceability = null, ratio
       ...ACTIVE_MARKET_PACKS,
       analysisAsOf: analysisAsOfToday(),
     }),
-    [data, config, marketData, segmentData],
+    [data, config, marketData, runCommandCenter, segmentData],
   );
 
   // Intrinsic value range — from authoritative command center
