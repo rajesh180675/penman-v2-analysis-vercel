@@ -126,6 +126,7 @@ export function TabRouter(props: TabRouterProps) {
           peerCount={readyCompanyCount}
           onNavigate={(tab) => setActiveTab(tab as TabId)}
           itServices={itServicesSignal}
+          commandCenter={commandCenter}
         />
       )}
       {/* Bank/NBFC dashboard: show FinancialInstitutionReport when no industrial recast */}
