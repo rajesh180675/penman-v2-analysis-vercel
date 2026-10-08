@@ -13,13 +13,20 @@ const years = (n: number) => Array.from({ length: n }, (_, i) =>
   ({ period_end: `${2025 - n + 1 + i}-03-31`, totalEquity: 20_000, pat: 3_000, roe: 0.15 }) as unknown as BankPeriodMetrics);
 
 describe("resolveFinancialValuationReadiness", () => {
-  it("makes an insurer valuation-eligible on its filed embedded value and VNB, not production-ready", () => {
-    // HDFC Life FY25: EV + VNB × 12 = ₹1,02,967 Cr; the multiple carries nearly half of it
-    // and nothing sources it.
-    const valuation = { evBased: computed(102_967, { embedded_value: 55_000, vnb: 3_996, vnb_multiple: 12 }) } as unknown as BankValuationBundle;
+  it("readies an insurer on its filed embedded value and VNB valued at its own ke and growth", () => {
+    // HDFC Life FY25: the multiple is (1 + g) / (ke − g) = 1.05 / 0.08 = 13.1, no assumption of its own.
+    const valuation = { evBased: computed(107_670, { embedded_value: 55_423, vnb: 3_962, vnb_multiple: 13.125, vnb_multiple_derived: 1 }) } as unknown as BankValuationBundle;
+    const r = resolveFinancialValuationReadiness({ bankMetrics: years(5), valuation, subtype: "insurance" });
+    expect(r.status).toBe("production-ready");
+    expect(r.reasons[0]).toMatch(/^Ready: the filed embedded value plus the value of new business, growing at g and discounted at ke \(× 13\.1\)/);
+  });
+
+  it("keeps an insurer with a configured VNB multiple valuation-eligible, not production-ready", () => {
+    // A multiple typed into the company's configuration: nothing sources it.
+    const valuation = { evBased: computed(102_967, { embedded_value: 55_423, vnb: 3_962, vnb_multiple: 12, vnb_multiple_derived: 0 }) } as unknown as BankValuationBundle;
     const r = resolveFinancialValuationReadiness({ bankMetrics: years(5), valuation, subtype: "insurance" });
     expect(r.status).toBe("warning");
-    expect(r.reasons[0]).toMatch(/^Valuation-eligible on the filed embedded value and value of new business\. The VNB multiple \(12×\) is an assumption nothing in the engine sources/);
+    expect(r.reasons[0]).toMatch(/^Valuation-eligible on the filed embedded value and value of new business\. The VNB multiple \(12×\) is configured for the company, an assumption nothing in the engine sources/);
   });
 
   it("does not clear an insurer whose embedded value is scaled without VNB", () => {

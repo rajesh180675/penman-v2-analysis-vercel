@@ -100,10 +100,12 @@ describe("insurance valuation accuracy — LIC EV/VNB bridge", () => {
     expect(bundle.evBased).toBeDefined();
     expect(bundle.evBased!.status).toBe("computed");
 
-    // Default VNB multiple is 12x (private-insurer convention). With VNB present
-    // the bridge is EV + VNB × 12.
-    const expected = LIC_EV_FY24 + LIC_VNB_FY24 * 12; // 727,344 + 114,996 = 842,340
-    expect(bundle.evBased!.intrinsicValue).toBeCloseTo(expected, 0);
+    // With no multiple configured, future new business is valued from the
+    // bundle's own ke and terminal growth: VNB × (1 + g) / (ke − g).
+    const multiple = (1 + bundle.terminalGrowth) / (bundle.ke - bundle.terminalGrowth);
+    expect(bundle.evBased!.diagnostics.vnb_multiple).toBeCloseTo(multiple, 9);
+    expect(bundle.evBased!.diagnostics.vnb_multiple_derived).toBe(1);
+    expect(bundle.evBased!.intrinsicValue).toBeCloseTo(LIC_EV_FY24 + LIC_VNB_FY24 * multiple, 0);
   });
 
   it("uses the latest period's EV (not an earlier one) for the appraisal", () => {
@@ -111,8 +113,19 @@ describe("insurance valuation accuracy — LIC EV/VNB bridge", () => {
     const bundle = computeBankValuation(licMetrics(), cfg, null, null, true);
     // FY24 EV (727,344) must dominate — an earlier-period EV (541,492 or
     // 582,243) would produce a materially lower number.
-    const fy24 = LIC_EV_FY24 + LIC_VNB_FY24 * 12;
+    const fy24 = LIC_EV_FY24 + LIC_VNB_FY24 * bundle.evBased!.diagnostics.vnb_multiple!;
     expect(bundle.evBased!.intrinsicValue).toBeCloseTo(fy24, 0);
+  });
+
+  it("skips the appraisal, rather than inventing a multiple, when ke barely exceeds growth", () => {
+    const first = computeBankValuation(licMetrics(), { ...DEFAULT_CONFIG, company_type: "insurance" as const }, null, null, true);
+    const thin = computeBankValuation(
+      licMetrics(),
+      { ...DEFAULT_CONFIG, company_type: "insurance" as const, terminal_growth_rate: first.ke - 0.005 },
+      null, null, true,
+    );
+    expect(thin.evBased!.status).toBe("skipped");
+    expect(thin.evBased!.reason).toMatch(/the value of future new business is undefined/);
   });
 
   it("honours an explicit vnb_multiple override (PSU insurers trade nearer 1x)", () => {
@@ -126,6 +139,8 @@ describe("insurance valuation accuracy — LIC EV/VNB bridge", () => {
     const bundle = computeBankValuation(licMetrics(), cfg, null, null, true);
     const expected = LIC_EV_FY24 + LIC_VNB_FY24 * 5; // 727,344 + 47,915 = 775,259
     expect(bundle.evBased!.intrinsicValue).toBeCloseTo(expected, 0);
+    // A configured multiple is said to be one.
+    expect(bundle.evBased!.diagnostics.vnb_multiple_derived).toBe(0);
   });
 
   it("falls back to EV × ev_multiple when VNB is absent", () => {

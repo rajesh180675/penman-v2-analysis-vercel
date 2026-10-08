@@ -150,8 +150,8 @@ describe("insurancePipeline", () => {
     expect(val.justifiedPB.status).toBe("computed");
     
     // Check EV Based valuation
-    // EV + VNB * 12 = 95000 + 9500 * 12 = 95000 + 114000 = 209000
+    // EV + VNB × (1 + g) / (ke − g) = 95000 + 9500 × 1.05 / 0.09 ≈ 205,833
     expect(val.evBased?.status).toBe("computed");
-    expect(val.evBased?.intrinsicValue).toBe(209000);
+    expect(val.evBased?.intrinsicValue).toBeCloseTo(95000 + 9500 * 1.05 / 0.09, 6);
   });
 });

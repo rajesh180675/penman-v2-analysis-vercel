@@ -71,7 +71,13 @@ export function resolveFinancialValuationReadiness(input: {
     const ev = valuation?.evBased;
     const vnb = ev?.status === "computed" ? ev.diagnostics.vnb : null;
     if (ev?.status === "computed" && vnb != null && vnb > 0) {
-      return { ...base, status: "warning", reasons: [`Valuation-eligible on the filed embedded value and value of new business. The VNB multiple (${ev.diagnostics.vnb_multiple ?? 12}×) is an assumption nothing in the engine sources, so production-ready waits for a sourced multiple. ${stated}`] };
+      const multiple = ev.diagnostics.vnb_multiple ?? null;
+      if (ev.diagnostics.vnb_multiple_derived === 1 && multiple != null) {
+        // Derived from the run's ke and terminal growth: no assumption of its
+        // own. The envelope's ke-provenance gate still demotes an undated ke.
+        return { ...base, status: "production-ready", reasons: [`Ready: the filed embedded value plus the value of new business, growing at g and discounted at ke (× ${multiple.toFixed(1)}). ${stated}`] };
+      }
+      return { ...base, status: "warning", reasons: [`Valuation-eligible on the filed embedded value and value of new business. The VNB multiple (${multiple ?? "?"}×) is configured for the company, an assumption nothing in the engine sources, so production-ready waits for the derived one. ${stated}`] };
     }
     return guarded(ev?.status === "computed"
       ? `Embedded value is filed without value of new business, so it is scaled by an assumed multiple; valuation-eligible needs both. ${stated}`
