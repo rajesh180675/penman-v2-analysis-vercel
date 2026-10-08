@@ -6,7 +6,7 @@ import { parseCapitalineZip } from "../../src/engine/capitalineParser";
 import { resolveNseSymbol } from "../../src/engine/nseSymbolRegistry";
 import { marketCachePath, readJson, writeJson, listFiles } from "../../server/store/fsStore";
 import { processCompanyDataFull, type PipelineResult } from "../../src/engine/pipeline";
-import { valuationPeriodsWithArmCarvedOut } from "../../src/engine/lendingArm";
+import { buildValuationBasis } from "../../src/engine/valuationBasis";
 import {
   buildValuationCommandCenter,
   type ValuationCommandCenterOutput,
@@ -1432,7 +1432,7 @@ export async function auditCompanyRun(
     // arm carved out (src/engine/lendingArm); the harness follows the same rule.
     const valuationBasis = pipeline.analysisFamily === "financial-institution"
       ? null
-      : valuationPeriodsWithArmCarvedOut({
+      : buildValuationBasis({
         ticker: company.ticker,
         periods: pipeline.periods,
         rawData: parsed.periods,
@@ -1449,6 +1449,7 @@ export async function auditCompanyRun(
         analysisStatus: analysisContext.analysisStatus,
         segmentData: selectBusinessSegmentData(parsed.segmentData),
         lendingArm: valuationBasis.lendingArm,
+        annualizedPeriods: valuationBasis.annualizedPeriods,
       });
     const structuralTrace = buildTrace({
       company,

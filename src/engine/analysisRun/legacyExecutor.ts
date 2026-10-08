@@ -16,7 +16,7 @@ import type { SegmentData } from "../segmentParser";
 import type { AnalysisTraceabilityEnvelope, EngineConfig, RawPeriodData, RecastPeriod } from "../types";
 import { validateEngineConfig } from "../types";
 import { buildValuationCommandCenter, type ValuationCommandCenterOutput } from "../valuationCommandCenter";
-import { valuationPeriodsWithArmCarvedOut, windowValuationBasis, type ValuationBasis } from "../lendingArm";
+import { buildValuationBasis, windowValuationBasis, type ValuationBasis } from "../valuationBasis";
 import type { EquityBetaPack, MacroPack } from "../marketPacks";
 import {
   adaptLegacyCommandCenterModelResults,
@@ -935,7 +935,7 @@ export function createLegacyAnalysisRunExecutor(
           });
           recastData = pipelineResult.periods;
           valuationBasis = recastData.length > 0
-            ? valuationPeriodsWithArmCarvedOut({
+            ? buildValuationBasis({
               ticker: config.ticker,
               periods: recastData,
               rawData,
@@ -1060,12 +1060,13 @@ export function createLegacyAnalysisRunExecutor(
               })
             : null;
           const windowedBasis = valuationBasis && analysisWindow
-            ? windowValuationBasis(valuationBasis, recastData, analysisWindow.includedPeriods)
-            : { periods: windowedRecastData, lendingArm: null };
+            ? windowValuationBasis(valuationBasis, analysisWindow.includedPeriods)
+            : { periods: windowedRecastData, lendingArm: null, annualizedPeriods: [] };
           valuationRecastData = windowedBasis.periods;
           commandCenter = dependencies.buildCommandCenter({
             data: valuationRecastData,
             lendingArm: windowedBasis.lendingArm,
+            annualizedPeriods: windowedBasis.annualizedPeriods,
             config,
             marketData: marketSnapshot,
             analysisStatus,
