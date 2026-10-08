@@ -123,7 +123,9 @@ export interface EngineConfig {
   g_terminal_floor    ?: number | undefined;
   g_terminal_cap      ?: number | undefined;
   /** Insurance EV-based valuation multiples.
-   * vnb_multiple: VNB × multiple added to EV. Default 12x (private insurer).
+   * vnb_multiple: VNB × multiple added to EV, when configured for the company.
+   * Unset (the default), the multiple is derived: future new business growing
+   * at g and discounted at ke, (1 + g) / (ke − g) (bankValuation/coreModels.ts).
    * ev_multiple: EV × multiple when VNB unavailable. Default 2.0x.
    * PSU insurers (LIC) trade at ~1.0x EV; private (HDFC Life) at ~3.5x. */
   insurance_vnb_multiple ?: number | undefined;
@@ -205,7 +207,6 @@ export const DEFAULT_CONFIG: EngineConfig = {
   g_terminal_override: null,
   g_terminal_floor: 0.02,
   g_terminal_cap: 0.06,
-  insurance_vnb_multiple: 12,
   insurance_ev_multiple: 2.0,
   g_ke_floor_spread: 0.02,
   np_PM_median: 0.055,

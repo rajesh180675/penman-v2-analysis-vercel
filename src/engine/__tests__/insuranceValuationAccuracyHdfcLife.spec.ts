@@ -88,7 +88,7 @@ function hdfcLifeMetrics(): BankPeriodMetrics[] {
 }
 
 describe("insurance valuation accuracy — HDFC Life (private insurer)", () => {
-  it("applies the 12x VNB default appraisal to a private insurer's FY25 figures", () => {
+  it("values a private insurer's FY25 new business at its ke and terminal growth", () => {
     const cfg = { ...DEFAULT_CONFIG, company_type: "insurance" as const };
     const bundle = computeBankValuation(
       hdfcLifeMetrics(),
@@ -101,18 +101,19 @@ describe("insurance valuation accuracy — HDFC Life (private insurer)", () => {
     expect(bundle.evBased).toBeDefined();
     expect(bundle.evBased!.status).toBe("computed");
 
-    // Private-insurer franchise fits the 12x default: EV + VoNB × 12.
-    const expected = HDFC_EV_FY25 + HDFC_VNB_FY25 * 12; // 55,423 + 47,544 = 102,967
-    expect(bundle.evBased!.intrinsicValue).toBeCloseTo(expected, 0);
+    // EV + VoNB × (1 + g) / (ke − g), on the bundle's own ke and g.
+    const multiple = (1 + bundle.terminalGrowth) / (bundle.ke - bundle.terminalGrowth);
+    expect(bundle.evBased!.intrinsicValue).toBeCloseTo(HDFC_EV_FY25 + HDFC_VNB_FY25 * multiple, 0);
   });
 
   it("selects the latest-period (FY25) EV, not an earlier year", () => {
     const cfg = { ...DEFAULT_CONFIG, company_type: "insurance" as const };
     const bundle = computeBankValuation(hdfcLifeMetrics(), cfg, null, null, true);
-    const fy25 = HDFC_EV_FY25 + HDFC_VNB_FY25 * 12;
+    const multiple = bundle.evBased!.diagnostics.vnb_multiple!;
+    const fy25 = HDFC_EV_FY25 + HDFC_VNB_FY25 * multiple;
     // FY23 (39,527) or FY24 (47,468) would yield a materially lower number.
     expect(bundle.evBased!.intrinsicValue).toBeCloseTo(fy25, 0);
-    expect(bundle.evBased!.intrinsicValue).toBeGreaterThan(47_468 + 3_501 * 12);
+    expect(bundle.evBased!.intrinsicValue).toBeGreaterThan(47_468 + 3_501 * multiple);
   });
 
   it("yields a higher appraisal than LIC at the same multiple per unit of EV+VNB", () => {

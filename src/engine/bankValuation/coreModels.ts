@@ -186,10 +186,21 @@ export function sustainableDDM(
 
 // ─── Model 4: EV-Based Valuation ─────────────────────────────────────────────
 
+/**
+ * An insurer's appraisal value: its filed embedded value (the in-force book)
+ * plus the value of the new business it will write. A year's new business is
+ * worth its filed VNB, so future new business, growing at g and discounted at
+ * ke, is worth VNB × (1 + g) / (ke − g) — the same Gordon algebra as justified
+ * P/B, on the run's own ke and terminal growth. It used to be VNB × 12, a
+ * default nothing sourced; a multiple configured for the company still
+ * overrides the derivation, and says so.
+ */
 export function evBasedValuation(
   metrics: BankPeriodMetrics[],
   marketCap: number | null,
   cfg: EngineConfig,
+  ke: number,
+  g: number,
 ): BankValuationModelResult {
   const eligible = metrics.filter(m => m.quality && m.quality.embedded_value != null);
   if (eligible.length === 0) {
@@ -204,10 +215,20 @@ export function evBasedValuation(
   const diagnostics: Record<string, number | null> = { embedded_value: ev, vnb };
 
   if (vnb != null && vnb > 0) {
-    const multiple = cfg.insurance_vnb_multiple ?? 12;
+    const configured = cfg.insurance_vnb_multiple ?? null;
+    if (configured == null && ke - g < MIN_KE_MINUS_G) {
+      return skipped(`ke (${ke.toFixed(3)}) − g (${g.toFixed(3)}) below ${MIN_KE_MINUS_G}: the value of future new business is undefined`);
+    }
+    const multiple = configured ?? (1 + g) / (ke - g);
     fairValue = ev + vnb * multiple;
-    reason = `EV (${ev.toFixed(0)} Cr) + VNB (${vnb.toFixed(0)} Cr) × ${multiple}x multiple`;
+    reason = configured != null
+      ? `EV (${ev.toFixed(0)} Cr) + VNB (${vnb.toFixed(0)} Cr) × ${multiple}x configured multiple`
+      : `EV (${ev.toFixed(0)} Cr) + VNB (${vnb.toFixed(0)} Cr) growing at ${(g * 100).toFixed(1)}%, discounted at ke ${(ke * 100).toFixed(1)}% (× ${multiple.toFixed(1)})`;
     diagnostics.vnb_multiple = multiple;
+    // 1 when the multiple is derived from ke and g, 0 when configured.
+    diagnostics.vnb_multiple_derived = configured != null ? 0 : 1;
+    diagnostics.ke = ke;
+    diagnostics.g = g;
   } else {
     const multiple = cfg.insurance_ev_multiple ?? 2.0;
     fairValue = ev * multiple;

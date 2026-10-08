@@ -100,7 +100,7 @@ export function computeBankValuation(
   let justifiedPB = justifiedPBGordon(latestBV, sustainableROE, ke, g, marketCap, isInsurance);
   const eri = equityResidualIncome(metrics, ke, g, marketCap, payoutRatio);
   const ddm = sustainableDDM(latestBV, latest.pat, sustainableROE, ke, g, payoutRatio, marketCap);
-  const evBased = evBasedValuation(metrics, marketCap, cfg);
+  const evBased = evBasedValuation(metrics, marketCap, cfg, ke, g);
 
   // Phase D3 — ECL Stress Governor: fade justified P/B when uncovered Stage 3
   // + restructured exceeds healthy thresholds. Only for NBFCs with IndAS 109 data.
