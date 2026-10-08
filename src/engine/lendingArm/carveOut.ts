@@ -1,5 +1,4 @@
-import { computeRatios, computeResidualIncome } from "../PenmanNissimEngine";
-import { resolveCostOfCapitalFromConfig } from "../costOfCapital";
+import { restampDerived } from "../valuationBasis/restamp";
 import type { SegmentData } from "../segmentParser";
 import type { CanonicalBalanceSheet, EngineConfig, LendingArmPeriod, RecastPeriod } from "../types";
 import type { ArmFiling, LendingArmLink } from "./links";
@@ -246,7 +245,6 @@ export function carveOutLendingArm(params: {
   const notes: string[] = [];
   const arm: LendingArmPeriod[] = [];
   const carved: RecastPeriod[] = [];
-  const ke = resolveCostOfCapitalFromConfig({ config }).ke;
   const netOperating = (a: ArmAmounts) => a.operatingAssets - a.operatingLiabilities;
   for (let i = first; i < periods.length; i += 1) {
     const period = periods[i]!;
@@ -261,12 +259,8 @@ export function carveOutLendingArm(params: {
     };
     const next = removeArm(period, amount) as RecastPeriod;
     const prev = carved.at(-1);
+    restampDerived(next, prev ?? null, config);
     if (prev) {
-      const capitalCost = resolveCostOfCapitalFromConfig({ config, current: next, previous: prev });
-      next.kwStructural = capitalCost.kw;
-      next.kwUsed = capitalCost.kw;
-      next.ratios = computeRatios(next, prev, config);
-      next.ri = computeResidualIncome(next, prev, ke, capitalCost.kw);
       const dNOA = next.bs.NOA - prev.bs.NOA;
       const fcfAccounting = next.is.OI - dNOA;
       const dtFormula = fcfAccounting - next.is.NFE + (next.bs.NFO - prev.bs.NFO);
@@ -274,10 +268,6 @@ export function carveOutLendingArm(params: {
     } else {
       // The first carved period has no carved predecessor: like the pipeline's
       // first period, it carries no ratios and no flows measured on a change.
-      next.ratios = undefined;
-      next.ri = undefined;
-      next.kwStructural = null;
-      next.kwUsed = null;
       next.cf = { ...next.cf, FCF_accounting: 0, d_t_formula: 0, d_t_discrepancy: 0 };
     }
     arm.push(amount);

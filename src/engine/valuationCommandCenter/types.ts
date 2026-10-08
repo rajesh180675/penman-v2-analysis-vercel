@@ -217,6 +217,8 @@ export interface ValuationCommandCenterOutput {
    * includes the stake; this says how it was reached.
    */
   lendingArm: LendingArmReport | null;
+  /** Periods the valuation restated from a transition year's length to a twelve-month rate (Nestlé India's 15-month FY2024). */
+  annualizedPeriods: readonly { readonly periodEnd: string; readonly months: number }[];
   /**
    * SOTP value per share, bridged to common equity (−NFO −MI) at the anchor
    * period. Reported here rather than derived by the surfaces:

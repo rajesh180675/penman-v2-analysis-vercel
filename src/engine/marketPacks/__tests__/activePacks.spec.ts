@@ -106,12 +106,13 @@ const KNOWN_UNPINNED: ReadonlyArray<readonly [string, string]> = [
   // captured baselines for all 33 companies. Separate change, with a
   // baseline re-capture.
   ["src/engine/pipeline.ts", "recast RI; shared with the baseline harness"],
-  // The lending-arm carve-out re-stamps the same recast fields on the carved
-  // periods (ri, kwStructural, kwUsed), on pipeline.ts's own basis so carved
-  // and consolidated periods agree on it. The carved valuation's discount
-  // rates come from the command center, and the stake's from
-  // computeBankValuation, both with the run's packs.
-  ["src/engine/lendingArm/carveOut.ts", "re-stamps pipeline.ts's recast RI on carved periods"],
+  // The valuation basis (a lending arm carved out, transition years restated
+  // to twelve months) re-stamps the same recast fields on the periods it
+  // changes (ri, kwStructural, kwUsed), on pipeline.ts's own basis so changed
+  // and unchanged periods agree on it. The valuation's discount rates come
+  // from the command center, and a carved stake's from computeBankValuation,
+  // both with the run's packs.
+  ["src/engine/valuationBasis/restamp.ts", "re-stamps pipeline.ts's recast RI on valuation-basis periods"],
   // Bank/NBFC helpers with no production caller (tests only): the family's
   // live discount rate is computeBankValuation's, which forwards the packs.
   ["src/engine/financialInstitutionFramework.ts", "downstream of pipeline.ts"],

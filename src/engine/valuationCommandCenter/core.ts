@@ -102,6 +102,8 @@ export type CoreBuildContext = {
    * the arm's figures and the stake's value came from.
    */
   lendingArm?: LendingArmReport | null | undefined;
+  /** Periods of `data` that covered other than twelve months, restated to a twelve-month rate (valuationBasis/periodLength.ts). */
+  annualizedPeriods?: readonly { readonly periodEnd: string; readonly months: number }[] | undefined;
 };
 
 type CoreBuildResult = Omit<ValuationCommandCenterOutput, "backtest">;
@@ -622,6 +624,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     reverseDcf,
     sotp: sotpResult,
     lendingArm: context.lendingArm ?? null,
+    annualizedPeriods: context.annualizedPeriods ?? [],
     // `latest` is the anchor period (:107), which is the period sotpResult was
     // built from — so these are the NFO and MI that sum is allowed to be
     // bridged with. Both come from one period, or the bridge mixes vintages.
