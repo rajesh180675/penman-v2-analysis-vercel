@@ -1,5 +1,5 @@
 {
- "madeAt": "2026-09-25",
+ "madeAt": "2026-10-08",
  "basis": "Walk-forward backtest of the base forecast (scripts/accountability/run-all.ts); one year ahead, against a random walk. Capitaline serves restated figures, so the record sees restatements of its own history.",
  "companies": [
   {
@@ -11,7 +11,7 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 8
+     "beatRandomWalk": 7
     },
     "core-rnoa-error": {
      "scored": 10,
@@ -19,7 +19,7 @@
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 8
+     "beatRandomWalk": 7
     }
    }
   },
@@ -32,7 +32,7 @@
     },
     "core-oi-margin-error": {
      "scored": 9,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 6
     },
     "core-rnoa-error": {
      "scored": 8,
@@ -40,7 +40,7 @@
     },
     "cni-roe-point-error": {
      "scored": 9,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 6
     }
    }
   },
@@ -74,15 +74,15 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 3
+     "beatRandomWalk": 9
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 4
+     "beatRandomWalk": 5
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 2
+     "beatRandomWalk": 8
     }
    }
   },
@@ -95,15 +95,15 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 4
+     "beatRandomWalk": 5
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 6
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 6
     }
    }
   },
@@ -120,7 +120,7 @@
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 8
+     "beatRandomWalk": 9
     },
     "cni-roe-point-error": {
      "scored": 10,
@@ -133,19 +133,19 @@
    "oneYearAhead": {
     "sales-log-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 6
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 3
+     "beatRandomWalk": 8
     },
     "core-rnoa-error": {
      "scored": 4,
-     "beatRandomWalk": 2
+     "beatRandomWalk": 3
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 8
     }
    }
   },
@@ -158,7 +158,7 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 8
+     "beatRandomWalk": 6
     },
     "core-rnoa-error": {
      "scored": 10,
@@ -187,7 +187,7 @@
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 6
     }
    }
   },
@@ -200,15 +200,15 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 8
+     "beatRandomWalk": 9
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 9
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 8
     }
    }
   },
@@ -221,11 +221,11 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 3
+     "beatRandomWalk": 6
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 3
+     "beatRandomWalk": 5
     },
     "cni-roe-point-error": {
      "scored": 10,
@@ -242,11 +242,11 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 6
     },
     "core-rnoa-error": {
      "scored": 9,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 4
     },
     "cni-roe-point-error": {
      "scored": 10,
@@ -263,7 +263,7 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 8
     },
     "core-rnoa-error": {
      "scored": 10,
@@ -271,13 +271,30 @@
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 6
     }
    }
   },
   {
    "ticker": "NESTLEIND",
-   "oneYearAhead": {}
+   "oneYearAhead": {
+    "sales-log-error": {
+     "scored": 9,
+     "beatRandomWalk": 7
+    },
+    "core-oi-margin-error": {
+     "scored": 9,
+     "beatRandomWalk": 6
+    },
+    "core-rnoa-error": {
+     "scored": 4,
+     "beatRandomWalk": 3
+    },
+    "cni-roe-point-error": {
+     "scored": 9,
+     "beatRandomWalk": 6
+    }
+   }
   },
   {
    "ticker": "PAYTM",
@@ -288,15 +305,15 @@
     },
     "core-oi-margin-error": {
      "scored": 9,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 3
     },
     "core-rnoa-error": {
-     "scored": 4,
-     "beatRandomWalk": 2
+     "scored": 9,
+     "beatRandomWalk": 4
     },
     "cni-roe-point-error": {
      "scored": 9,
-     "beatRandomWalk": 2
+     "beatRandomWalk": 1
     }
    }
   },
@@ -309,15 +326,15 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 7
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 4
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 8
     }
    }
   },
@@ -330,11 +347,11 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 3
+     "beatRandomWalk": 6
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 3
+     "beatRandomWalk": 5
     },
     "cni-roe-point-error": {
      "scored": 10,
@@ -351,15 +368,15 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 4
+     "beatRandomWalk": 7
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 8
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 4
+     "beatRandomWalk": 5
     }
    }
   },
@@ -372,7 +389,7 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 4
+     "beatRandomWalk": 5
     },
     "core-rnoa-error": {
      "scored": 10,
@@ -380,7 +397,7 @@
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 3
+     "beatRandomWalk": 6
     }
    }
   },
@@ -397,7 +414,7 @@
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 7
     },
     "cni-roe-point-error": {
      "scored": 10,
@@ -414,15 +431,15 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 7
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 6
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 5
     }
    }
   },
@@ -435,7 +452,7 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 8
     },
     "core-rnoa-error": {
      "scored": 10,
@@ -443,7 +460,7 @@
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 6
     }
    }
   },
@@ -456,15 +473,15 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 2
+     "beatRandomWalk": 3
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 3
+     "beatRandomWalk": 6
     },
     "cni-roe-point-error": {
      "scored": 6,
-     "beatRandomWalk": 2
+     "beatRandomWalk": 1
     }
    }
   }

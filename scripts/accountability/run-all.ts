@@ -13,6 +13,7 @@
  *    never overwriting an existing snapshot: a frozen forecast is a record.
  * 5. Writes public/data/accountability/track-record.json — each company's
  *    one-year-ahead record against a random walk, for the Case Verdict.
+ * 6. Publishes the frozen snapshots for the browser (publish-snapshots.ts).
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -105,6 +106,10 @@ writeFileSync(join(publicDir, "track-record.json"), JSON.stringify({
 writeFileSync(join(ROOT, "accountability", "summary.json"), JSON.stringify({ madeAt, overall, byGroup, priors, anchorLags }, null, 1) + "\n");
 writeFileSync(join(ROOT, "src", "engine", "selfConsistentValuation", "persistencePriors.generated.ts"), renderPriors(priors, madeAt, series.length));
 writeFileSync(join(ROOT, "docs", "generated", "forecast-accountability.md"), renderReport(overall, byGroup, priors, anchorLags, runs));
+// The browser reads the frozen snapshots from one published file, which a test
+// keeps equal to accountability/snapshots: publish it with the new ones.
+const published = spawnSync("npx", ["tsx", "scripts/accountability/publish-snapshots.ts"], { cwd: ROOT, shell: true, encoding: "utf8" });
+console.log(published.status === 0 ? published.stdout.trim() : `publish-snapshots FAILED (${published.status}) ${published.stderr ?? ""}`);
 console.log(`\n${industrial.length} industrial companies, ${overall.origins} forecast origins; snapshots written ${written}, kept ${kept}.`);
 
 // ── Renderers ─────────────────────────────────────────────────────────────

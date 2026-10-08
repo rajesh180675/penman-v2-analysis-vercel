@@ -10,7 +10,7 @@
  *   - the core-RNOA series feeding the panel persistence estimate,
  *   - today's frozen forecast snapshot (written separately by run-all).
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseCapitalineZip } from "../../src/engine/capitalineParser";
@@ -20,6 +20,7 @@ import { buildValuationCommandCenter } from "../../src/engine/valuationCommandCe
 import { buildScenario } from "../../src/engine/forecastingEngine";
 import { ACTIVE_MARKET_PACKS } from "../../src/engine/marketPacks";
 import { buildForecastSnapshot, walkForwardCompany } from "../../src/engine/accountability";
+import { annualizePeriods, periodMonths } from "../../src/engine/valuationBasis";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "../..");
 const COMPANIES = join(ROOT, "public", "data", "companies");
@@ -34,14 +35,28 @@ const registry: { folder: string; ticker: string; type: string }[] =
 const company = registry.find((c) => c.ticker === ticker);
 if (!company) throw new Error(`Unknown ticker ${ticker}`);
 
-const buf = readFileSync(join(COMPANIES, company.folder, `${company.folder}.zip`));
-const parsed = await parseCapitalineZip(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength), {
-  companyId: company.folder,
-  filename: `${company.folder}.zip`,
-});
+const parse = async (file: string) => {
+  const buf = readFileSync(join(COMPANIES, company.folder, file));
+  return parseCapitalineZip(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength), { companyId: company.folder, filename: file });
+};
+// The accounts the app analyses (loadCompanyRun): consolidated, unless they
+// hold fewer than three years and the standalone history is longer. Nestle
+// India's consolidated export starts at its 15-month FY2024, so a walk-forward
+// on it had one origin, anchored on a year whose length nothing could infer.
+const MIN_CONSOLIDATED_YEARS = 3;
+let parsed = await parse(`${company.folder}.zip`);
+if (parsed.periods.length < MIN_CONSOLIDATED_YEARS && existsSync(join(COMPANIES, company.folder, "standalone.zip"))) {
+  const standalone = await parse("standalone.zip");
+  if (standalone.periods.length > parsed.periods.length) parsed = standalone;
+}
 const config = { ...DEFAULT_CONFIG, company_type: company.type as typeof DEFAULT_CONFIG.company_type, ticker: company.ticker };
 const pipeline = processCompanyDataFull(parsed.periods, config, null, { ...ACTIVE_MARKET_PACKS, analysisAsOf: madeAt });
-const periods: RecastPeriod[] = [...pipeline.periods].sort((a, b) => a.period_end.localeCompare(b.period_end));
+// Every year on a twelve-month rate (valuationBasis/periodLength.ts): a
+// transition year's actuals are scored, and forecasts are made, as a year. No
+// lending arm is carved: forecasts are scored against the consolidated
+// statements as later reported.
+const filed: RecastPeriod[] = [...pipeline.periods].sort((a, b) => a.period_end.localeCompare(b.period_end));
+const periods: RecastPeriod[] = annualizePeriods(filed, periodMonths(filed), config).periods;
 
 const outDir = join(ROOT, "accountability", "runs");
 mkdirSync(outDir, { recursive: true });
