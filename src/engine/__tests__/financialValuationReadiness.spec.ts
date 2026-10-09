@@ -11,6 +11,8 @@ const computed = (intrinsicValue: number, diagnostics: Record<string, number | n
   ({ status: "computed", intrinsicValue, premiumOverMarket: null, reason: "", diagnostics });
 const years = (n: number) => Array.from({ length: n }, (_, i) =>
   ({ period_end: `${2025 - n + 1 + i}-03-31`, totalEquity: 20_000, pat: 3_000, roe: 0.15 }) as unknown as BankPeriodMetrics);
+// A P/AUM lens counts only on a sourced multiple (evidence.ts).
+const SOURCED = { multipleSourced: 1 };
 
 describe("resolveFinancialValuationReadiness", () => {
   it("readies an insurer on its filed embedded value and VNB valued at its own ke and growth", () => {
@@ -43,23 +45,31 @@ describe("resolveFinancialValuationReadiness", () => {
 
   it("makes an NBFC whose lenses agree within 30% valuation-eligible, not production-ready", () => {
     // Muthoot FY25 with its sidecar: book lens ₹38,406 Cr, P/AUM ₹48,892 Cr, 24% apart.
-    const valuation = { justifiedPB: computed(38_406), pAum: computed(48_892) } as unknown as BankValuationBundle;
+    const valuation = { justifiedPB: computed(38_406), pAum: computed(48_892, SOURCED) } as unknown as BankValuationBundle;
     const r = resolveFinancialValuationReadiness({ bankMetrics: years(5), valuation, subtype: "nbfc" });
     expect(r.status).toBe("warning");
     expect(r.reasons[0]).toMatch(/not the 15% production-ready needs/);
   });
 
   it("readies an NBFC whose lenses agree within 15%", () => {
-    const valuation = { justifiedPB: computed(40_000), pAum: computed(44_000) } as unknown as BankValuationBundle;
+    const valuation = { justifiedPB: computed(40_000), pAum: computed(44_000, SOURCED) } as unknown as BankValuationBundle;
     expect(resolveFinancialValuationReadiness({ bankMetrics: years(5), valuation, subtype: "nbfc" }).status).toBe("production-ready");
   });
 
   it("does not clear an NBFC whose lenses sit further apart", () => {
     // Bajaj FY25: ₹1,09,948 Cr against ₹1,87,497 Cr, 52% apart.
-    const valuation = { justifiedPB: computed(109_948), pAum: computed(187_497) } as unknown as BankValuationBundle;
+    const valuation = { justifiedPB: computed(109_948), pAum: computed(187_497, SOURCED) } as unknown as BankValuationBundle;
     const r = resolveFinancialValuationReadiness({ bankMetrics: years(5), valuation, subtype: "nbfc" });
     expect(r.status).toBe("guarded");
     expect(r.reasons[0]).toMatch(/Valuation-eligible needs them within 30%\.$/);
+  });
+
+  it("does not count a P/AUM lens whose multiple nothing sources", () => {
+    // Muthoot FY25 as the engine values it: P/AUM applies the assumed 12× P/E.
+    const valuation = { justifiedPB: computed(38_406), pAum: computed(48_892, { multipleSourced: 0, peMultiple: 12 }) } as unknown as BankValuationBundle;
+    const r = resolveFinancialValuationReadiness({ bankMetrics: years(5), valuation, subtype: "nbfc" });
+    expect(r.status).toBe("guarded");
+    expect(r.reasons[0]).toMatch(/P\/AUM ₹48,892 Cr applies an assumed 12× multiple nothing sources, so it is shown, not counted\./);
   });
 
   it("needs three usable years first", () => {

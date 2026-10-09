@@ -9,8 +9,8 @@ import { buildAnalysisTraceability } from "../analysisTraceability";
 import type { BankValuationBundle, BankValuationModelResult } from "../bankValuation/types";
 import type { BankPeriodMetrics } from "../bankPipeline";
 
-const computed = (intrinsicValue: number): BankValuationModelResult =>
-  ({ status: "computed", intrinsicValue, premiumOverMarket: null, reason: "", diagnostics: {} });
+const computed = (intrinsicValue: number, diagnostics: Record<string, number | null> = {}): BankValuationModelResult =>
+  ({ status: "computed", intrinsicValue, premiumOverMarket: null, reason: "", diagnostics });
 const skipped: BankValuationModelResult = { status: "skipped", intrinsicValue: null, premiumOverMarket: null, reason: "skipped", diagnostics: {} };
 
 // HDFC Bank FY25 after #390-#392, ₹ Cr.
@@ -45,14 +45,31 @@ describe("summarizeFinancialValuationEvidence", () => {
     expect(describeFinancialValuationEvidence(evidence)).toBe("One independent lens, embedded value (embedded value + VNB ₹80,000 Cr), so nothing independent cross-checks it.");
   });
 
-  it("separates an NBFC's P/AUM from its book models and measures the gap", () => {
-    // Muthoot FY25 with its AUM sidecar: book lens ₹38,406 Cr, P/AUM ₹48,892 Cr.
-    const nbfc = { justifiedPB: computed(52_674), equityResidualIncome: computed(34_109), sustainableDDM: computed(51_399), roaLeverageRI: computed(35_990), pAum: computed(48_892) } as unknown as BankValuationBundle;
+  it("separates an NBFC's P/AUM on a sourced multiple from its book models and measures the gap", () => {
+    // Muthoot FY25 with its AUM sidecar, were the P/AUM multiple sourced.
+    const nbfc = { justifiedPB: computed(52_674), equityResidualIncome: computed(34_109), sustainableDDM: computed(51_399), roaLeverageRI: computed(35_990), pAum: computed(48_892, { multipleSourced: 1 }) } as unknown as BankValuationBundle;
     const evidence = summarizeFinancialValuationEvidence(nbfc, "nbfc");
     expect(evidence.groups.map((g) => g.label)).toEqual(["book residual income", "asset multiple"]);
     // Book lens = median(52,674, 34,109, 51,399, 35,990) = 43,694.5.
     expect(evidence.maxGapRatio).toBeCloseTo((48_892 - 43_694.5) / ((48_892 + 43_694.5) / 2), 9);
     expect(describeFinancialValuationEvidence(evidence)).toMatch(/^2 independent lenses: book residual income ₹43,695 Cr vs asset multiple ₹48,892 Cr, 11% apart\.$/);
+  });
+
+  it("shows a P/AUM on an assumed multiple but does not count it as a lens", () => {
+    // Muthoot FY25 as the engine values it: P/AUM applies the 12× P/E constant.
+    const nbfc = { justifiedPB: computed(52_674), equityResidualIncome: computed(34_109), sustainableDDM: computed(51_399), roaLeverageRI: computed(35_990), pAum: computed(48_892, { multipleSourced: 0, peMultiple: 12 }) } as unknown as BankValuationBundle;
+    const evidence = summarizeFinancialValuationEvidence(nbfc, "nbfc");
+    expect(evidence.groups.map((g) => g.label)).toEqual(["book residual income"]);
+    expect(evidence.maxGapRatio).toBeNull();
+    expect(evidence.assumedMultipleLenses).toEqual([{ label: "P/AUM", value: 48_892, multiple: 12 }]);
+    expect(describeFinancialValuationEvidence(evidence)).toMatch(/nothing independent cross-checks it\. P\/AUM ₹48,892 Cr applies an assumed 12× multiple nothing sources, so it is shown, not counted\.$/);
+  });
+
+  it("treats a P/AUM with no sourcing flag as assumed", () => {
+    const nbfc = { justifiedPB: computed(40_000), pAum: computed(44_000) } as unknown as BankValuationBundle;
+    const evidence = summarizeFinancialValuationEvidence(nbfc, "nbfc");
+    expect(evidence.groups).toHaveLength(1);
+    expect(describeFinancialValuationEvidence(evidence)).toMatch(/P\/AUM ₹44,000 Cr applies an assumed multiple nothing sources/);
   });
 
   it("keeps a bank's book models for a generic financial", () => {

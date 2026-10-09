@@ -82,6 +82,9 @@ export function pAumLens(
     roaSustainable,
     impliedPaum,
     peMultiple: NBFC_PAUM_PE_MULTIPLIER,
+    // The P/E is a constant nothing sources, not a market observation: the
+    // lens is shown, but it does not corroborate the book lens (evidence.ts).
+    multipleSourced: 0,
   }, marketCap);
 }
 

@@ -27,7 +27,19 @@ export interface FinancialValuationEvidence {
   readonly groups: readonly FinancialLensGroup[];
   /** Largest gap between two groups' values as a share of their median; null below two groups. */
   readonly maxGapRatio: number | null;
+  /** Market-multiple lenses computed on a multiple nothing sources: shown, not counted. */
+  readonly assumedMultipleLenses: ReadonlyArray<{ readonly label: string; readonly value: number; readonly multiple: number | null }>;
 }
+
+/**
+ * Groups whose value is a market multiple applied to the company's own
+ * figures. Such a lens is independent of the book algebra only through its
+ * multiple, so it corroborates nothing unless the multiple is a market
+ * observation (`diagnostics.multipleSourced === 1`). P/AUM applies a 12× P/E
+ * constant: counted, it made Muthoot "two lenses within 30%" on a number
+ * nothing sources — the ground #398 held insurers back on for VNB × 12.
+ */
+const MARKET_MULTIPLE_GROUPS = new Set(["fi-asset-market-multiple"]);
 
 const BUNDLE_MODELS: ReadonlyArray<readonly [keyof BankValuationBundle, string, string]> = [
   ["justifiedPB", "fi.bank.justified-pb-gordon", "justified P/B"],
@@ -57,6 +69,7 @@ export function summarizeFinancialValuationEvidence(
   // A generic financial runs the bank models.
   const family = subtype === "generic-financial" ? "bank" : subtype;
   const byGroup = new Map<string, Array<{ label: string; value: number }>>();
+  const assumedMultipleLenses: Array<{ label: string; value: number; multiple: number | null }> = [];
   for (const [field, modelId, label] of BUNDLE_MODELS) {
     const model = bundle?.[field] as BankValuationModelResult | undefined;
     const value = model?.status === "computed" ? model.intrinsicValue : null;
@@ -64,6 +77,10 @@ export function summarizeFinancialValuationEvidence(
     const definition = CURRENT_MODEL_REGISTRY.require(modelId);
     if (family && !(definition.families as readonly string[]).includes(family)) continue;
     const group = definition.independenceGroup;
+    if (MARKET_MULTIPLE_GROUPS.has(group) && model?.diagnostics?.multipleSourced !== 1) {
+      assumedMultipleLenses.push({ label, value, multiple: model?.diagnostics?.peMultiple ?? null });
+      continue;
+    }
     byGroup.set(group, [...(byGroup.get(group) ?? []), { label, value }]);
   }
   const groups = [...byGroup.entries()].map(([group, models]) => ({
@@ -72,9 +89,9 @@ export function summarizeFinancialValuationEvidence(
     value: median(models.map((m) => m.value)),
     models,
   }));
-  if (groups.length < 2) return { groups, maxGapRatio: null };
+  if (groups.length < 2) return { groups, maxGapRatio: null, assumedMultipleLenses };
   const values = groups.map((g) => g.value);
-  return { groups, maxGapRatio: (Math.max(...values) - Math.min(...values)) / median(values) };
+  return { groups, maxGapRatio: (Math.max(...values) - Math.min(...values)) / median(values), assumedMultipleLenses };
 }
 
 const crore = (value: number) => `₹${Math.round(value).toLocaleString("en-IN")} Cr`;
@@ -82,16 +99,18 @@ const crore = (value: number) => `₹${Math.round(value).toLocaleString("en-IN")
 /** One sentence on what the valuation rests on, for the rigor checkpoint that caps it. */
 export function describeFinancialValuationEvidence(evidence: FinancialValuationEvidence): string {
   const { groups, maxGapRatio } = evidence;
-  if (groups.length === 0) return "No financial-institution valuation model computed.";
+  const assumed = (evidence.assumedMultipleLenses ?? []).map((l) =>
+    ` ${l.label} ${crore(l.value)} applies an assumed ${l.multiple != null ? `${l.multiple}× ` : ""}multiple nothing sources, so it is shown, not counted.`).join("");
+  if (groups.length === 0) return `No financial-institution valuation model computed.${assumed}`;
   if (groups.length === 1) {
     const [only] = groups;
     const models = only!.models.map((m) => `${m.label} ${crore(m.value)}`).join(", ");
-    return only!.models.length > 1
+    return (only!.models.length > 1
       ? `One independent lens, ${only!.label} (${models}): one algebra on the same book, ROE, ke and growth, so nothing independent cross-checks it.`
-      : `One independent lens, ${only!.label} (${models}), so nothing independent cross-checks it.`;
+      : `One independent lens, ${only!.label} (${models}), so nothing independent cross-checks it.`) + assumed;
   }
   const lenses = groups.map((g) => `${g.label} ${crore(g.value)}`).join(" vs ");
-  return `${groups.length} independent lenses: ${lenses}, ${((maxGapRatio ?? 0) * 100).toFixed(0)}% apart.`;
+  return `${groups.length} independent lenses: ${lenses}, ${((maxGapRatio ?? 0) * 100).toFixed(0)}% apart.${assumed}`;
 }
 
 /**
