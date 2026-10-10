@@ -6,7 +6,8 @@
    The independence test is therefore load-bearing — it proves the lens can
    genuinely DISAGREE with the accrual models (which is what the Phase 1.2
    reconciliation gate needs). The skip tests prove it never emits a
-   misleading number (negative FCF, too-few periods) — honest-null, not zero.
+   misleading number (too-few periods, no Gordon spread) — honest-null, not
+   zero. Negative free cash flow is evidence, not a skip: it is valued.
 
    Fixtures are deliberately minimal: computeCashFlowDcf reads exactly four
    fields (kwStructural, cf.FCF_cash, bs.NFO, bs.MI). NOA/OI are populated
@@ -16,6 +17,8 @@
 
 import { describe, expect, it } from "vitest";
 import { computeCashFlowDcf } from "../cashFlowDcf";
+import { evaluateReconciliationResiduals } from "../reconciliationResiduals";
+import { buildValuationTriangulationEvidence } from "../valuationTriangulation";
 import { DEFAULT_CONFIG, EngineConfig, RecastPeriod } from "../types";
 
 interface PeriodOpts {
@@ -100,15 +103,40 @@ describe("computeCashFlowDcf — independent cash lens", () => {
     expect(computeCashFlowDcf([], CONFIG, 100)).toBeNull();
   });
 
-  it("skips honestly (null) when normalized base FCF is non-positive — NOT a misleading zero", () => {
-    // A DCF on negative free cash flow is meaningless; those firms belong to
-    // the optionality lens, not this one. Median of [-10,-5,-8] < 0 → skip.
+  it("values a non-positive base instead of skipping it: the equity comes out below the bridge", () => {
+    // DMart-shaped: the business consumed cash over the window. Median of
+    // [-10,-5,-8] = -8, so the enterprise value is negative and so, with no
+    // net cash to offset it, is the equity.
     const periods = [
       mkPeriod("2022-03-31", { fcf: -10 }),
       mkPeriod("2023-03-31", { fcf: -5 }),
       mkPeriod("2024-03-31", { fcf: -8 }),
     ];
-    expect(computeCashFlowDcf(periods, CONFIG, 100)).toBeNull();
+    const r = computeCashFlowDcf(periods, CONFIG, 100);
+    expect(r).not.toBeNull();
+    expect(r!.baseFcf).toBe(-8);
+    expect(r!.enterpriseValue).toBeLessThan(0);
+    expect(r!.perShare).toBeLessThan(0);
+  });
+
+  it("lets a cash-consuming business fail the triangulation it used to skip", () => {
+    // The skip left one paradigm, so the check was absent and production-ready
+    // went uncorroborated, while a small positive flow (NTPC) failed it.
+    const periods = [
+      mkPeriod("2022-03-31", { fcf: -10 }),
+      mkPeriod("2023-03-31", { fcf: -5 }),
+      mkPeriod("2024-03-31", { fcf: -8 }),
+    ];
+    const evidence = buildValuationTriangulationEvidence({
+      scenarios: [{ key: "base", valuation: { perShare: { intrinsic_re_per_share: 369, intrinsic_reoi_per_share: 368 } } } as never],
+      cashFlowDcf: computeCashFlowDcf(periods, CONFIG, 100),
+    });
+    const check = evaluateReconciliationResiduals({
+      config: CONFIG,
+      valuationTriangulation: evidence,
+    }).checks.find((entry) => entry.key === "valuation-triangulation");
+    expect(check?.status).toBe("failed");
+    expect(check?.detail).toContain("compared as ₹0");
   });
 
   it("returns null per-share (but a finite equity value) when shares are unavailable", () => {

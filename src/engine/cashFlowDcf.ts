@@ -53,10 +53,13 @@ function median(values: number[]): number {
  * Forward FCFF DCF from the cash-flow statement, independent of the recast's
  * NOA/OI accrual reformulation.
  *
+ * A non-positive normalized base is valued, not skipped: the cash statement
+ * says the business consumed cash over the window, and the equity comes out
+ * at or below the bridge. That is the lens's evidence, and the triangulation
+ * compares a value below zero as ₹0 (#401).
+ *
  * Returns null (honest skip, never a misleading zero) when:
  *  - fewer than 2 periods (no defensible normalized base), or
- *  - the normalized base FCF is <= 0 (a DCF on negative free cash flow is
- *    meaningless — those firms belong to the optionality lens, Phase 3), or
  *  - kw is non-finite/non-positive, or
  *  - terminal economics fail the minimum positive kw minus growth spread.
  *
@@ -108,10 +111,12 @@ export function computeCashFlowDcf(
     .map((p) => p.cf.FCF_cash)
     .filter((v): v is number => Number.isFinite(v));
   if (windowFcf.length < 2) return null;
+  // A non-positive base is not skipped. The skip was for a gate that read a
+  // value below zero as absent; since #401 it compares it as ₹0, the widest
+  // disagreement. Skipping it let a company whose trailing cash flow is
+  // negative (DMart: median −₹654 Cr over FY21–FY25) clear the cross-check
+  // that one with a small positive flow (NTPC, Reliance) fails.
   const baseFcf = median(windowFcf);
-  // A DCF on non-positive normalized free cash flow is not meaningful — skip
-  // honestly rather than emit a negative/zero "value" the gate would misread.
-  if (baseFcf <= 0) return null;
 
   // Growth path: near-term growth fading geometrically toward terminal.
   const growthPath: number[] = [];
