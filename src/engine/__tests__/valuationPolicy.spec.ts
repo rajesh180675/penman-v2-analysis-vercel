@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Severity, RecastPeriod } from "../types";
-import { deriveCompanyLabel, resolveValuationReadiness } from "../valuationPolicy";
+import { deriveCompanyLabel, readinessWithinLadder, resolveValuationReadiness, type ValuationReadiness } from "../valuationPolicy";
+import type { AnalysisRigorCheckpoint } from "../types/traceabilityEnvelope";
 
 function mkPeriod(period_end: string, spec_flags: RecastPeriod["spec_flags"] = []): RecastPeriod {
   return {
@@ -139,5 +140,69 @@ describe("deriveCompanyLabel", () => {
     expect(
       deriveCompanyLabel([{ company_id: "RAW", period_end: "2025-03-31", raw_metric_values: {} }], "", ""),
     ).toBe("RAW");
+  });
+});
+
+const LEVELS = ["syntactically-valid", "structurally-reconciled", "economically-plausible", "valuation-eligible", "production-ready"] as const;
+const LABELS = ["Syntactically valid", "Structurally reconciled", "Economically plausible", "Valuation eligible", "Production-ready"];
+
+/** A ladder whose first `reached` rungs are achieved. */
+function ladder(reached: number, withheldDetail = "withheld here"): AnalysisRigorCheckpoint[] {
+  return LEVELS.map((level, i) => ({
+    level,
+    label: LABELS[i]!,
+    achieved: i < reached,
+    detail: i === reached ? withheldDetail : `detail ${i}`,
+  }));
+}
+
+function readiness(status: ValuationReadiness["status"]): ValuationReadiness {
+  return {
+    status,
+    latestPeriod: "2025-03-31",
+    anchorPeriod: "2025-03-31",
+    anchorIndex: 4,
+    fallbackUsed: false,
+    contaminationTier: "CLEAN",
+    persistenceStatus: "durable",
+    persistenceScore: 80,
+    terminalFlags: [],
+    terminalFlagLabels: [],
+    reasons: ["Terminal period clean."],
+  };
+}
+
+describe("readinessWithinLadder", () => {
+  it("leaves a production-ready run's readiness as the anchor assessed it", () => {
+    const anchor = readiness("production-ready");
+    expect(readinessWithinLadder(anchor, ladder(5))).toBe(anchor);
+  });
+
+  it("caps a clean anchor at warning when the run is held at valuation-eligible, naming why (DMart)", () => {
+    const capped = readinessWithinLadder(readiness("production-ready"), ladder(4, "Independent valuation paradigms diverge by 200%."));
+    expect(capped.status).toBe("warning");
+    expect(capped.reasons).toEqual([
+      "Production-ready withheld: Independent valuation paradigms diverge by 200%.",
+      "Terminal period clean.",
+    ]);
+    expect(capped.anchorPeriod).toBe("2025-03-31");
+  });
+
+  it("guards a clean anchor when the valuation itself is not eligible (Grasim)", () => {
+    const capped = readinessWithinLadder(readiness("production-ready"), ladder(3, "RE and ReOI differ by 46.3%."));
+    expect(capped.status).toBe("guarded");
+    expect(capped.reasons[0]).toBe("Valuation eligible withheld: RE and ReOI differ by 46.3%.");
+  });
+
+  it("does not name the rung twice when the executor's detail already does", () => {
+    const detail = "Valuation eligible was not achieved because LEGACY_VALUATION_GATE_NOT_CLEARED: RE and ReOI differ by 46.3%.";
+    expect(readinessWithinLadder(readiness("production-ready"), ladder(3, detail)).reasons[0]).toBe(detail);
+  });
+
+  it("never raises a readiness the anchor already lowered", () => {
+    const warning = readiness("warning");
+    expect(readinessWithinLadder(warning, ladder(4))).toBe(warning);
+    const guarded = readiness("guarded");
+    expect(readinessWithinLadder(guarded, ladder(3))).toBe(guarded);
   });
 });

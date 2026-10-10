@@ -4,7 +4,7 @@ import { buildValuationTraceabilitySurfaceSummary } from "../../engine/valuation
 import { auditMappingCoverage, evaluateGranularityChecklist, evaluateQualityGate, MappingAuditReport, QualityGateReport } from "../../engine/mappingAudit";
 import { getAnalysisPolicyVersions } from "../../engine/policyVersions";
 import { buildProvenanceAuditRows } from "../../engine/provenanceAudit";
-import { resolveValuationReadiness } from "../../engine/valuationPolicy";
+import { readinessWithinLadder, resolveValuationReadiness } from "../../engine/valuationPolicy";
 import { EngineConfig, RawPeriodData, RecastPeriod } from "../../engine/types";
 import { assessAnalysisScope } from "../../engine/scopePolicy";
 import type { AnalysisFamily } from "../../engine/analysisFamily";
@@ -67,12 +67,12 @@ export function buildAnalysisPublicationSnapshot(params: {
     family: precomputedFamily = null,
     analysisRun = null,
   } = params;
-  const valuationReadiness = resolveValuationReadiness(data);
+  const terminalReadiness = resolveValuationReadiness(data);
   const policyVersions = precomputedPolicyVersions ?? getAnalysisPolicyVersions();
   const qualityGate = precomputedQualityGate ?? (rawData?.length ? evaluateQualityGate(rawData, config, data) : null);
   const mappingAudit = precomputedMappingAudit ?? (rawData?.length ? auditMappingCoverage(rawData) : null);
   const family: AnalysisFamily = precomputedFamily ?? assessAnalysisScope(rawData, config).analysisFamily;
-  const analysisStatus = precomputedAnalysisStatus ?? deriveAnalysisStatus(qualityGate, valuationReadiness, mappingAudit);
+  const analysisStatus = precomputedAnalysisStatus ?? deriveAnalysisStatus(qualityGate, terminalReadiness, mappingAudit);
   const latestRawPeriod = rawData?.[rawData.length - 1]?.period_end ?? null;
   const traceability = sharedTraceability ?? buildAnalysisTraceability({
     generatedAt: new Date().toISOString(),
@@ -99,6 +99,10 @@ export function buildAnalysisPublicationSnapshot(params: {
     retentionDays: auditMeta?.retentionDays ?? null,
     runInspectorEnabled: Boolean(auditMeta?.runAccessToken),
   });
+
+  // Publications print the readiness as the valuation's status, so it does not
+  // claim more than the ladder the same run reached.
+  const valuationReadiness = readinessWithinLadder(terminalReadiness, traceability.rigor.checkpoints);
 
   return {
     runIdentity: analysisRun

@@ -54,6 +54,8 @@ The ladder is intentionally conservative, and it now uses explicit parser-fideli
 
 The envelope's `confidence` (the status every tab's trust panel, the case header and the stored run show) never claims more than the ladder. `analysisStatus` is assessed before the valuation-level gates run, so when it reads `production-ready` and a rung is withheld, `confidence.status` is `guarded`. Its headline then names the first rung withheld and why, for example `Production-ready withheld: Independent valuation paradigms diverge…`.
 
+The same holds for what a publication prints as the valuation's status. The workbook cover, the PDF trust line, the IC manifest, the memo and the valuation tab read `valuationReadiness.status`, which on its own is the terminal anchor's verdict. The publication snapshot (`readinessWithinLadder`) caps it: a valuation-eligible run is at most `warning`, a run below that is `guarded`, and the first reason names the rung withheld. The anchor period is unchanged.
+
 The traceability envelope now includes:
 
 - `parserFidelity.status`
