@@ -32,6 +32,20 @@ const registry = JSON.parse(readFileSync(REGISTRY_PATH, "utf-8")) as AuditRegist
  */
 const MODEL_GAP_ALLOWLIST: Record<string, string> = {};
 
+/**
+ * Industrial companies whose run the app stops before its valuation, keyed by
+ * ticker, valued by the run's own reason. The harness runs the app's run, so it
+ * audits no value the app does not show; these report `POLICY:VALUATION_BLOCKED`
+ * at the rung the run reached, instead of the stress and base values every other
+ * industrial must carry. Listed, not inferred, so a company that newly stops
+ * before its valuation fails here rather than passing as "blocked".
+ */
+const VALUATION_BLOCKED_ALLOWLIST: Record<string, string> = {
+  BHARTIARTL: "terminal period has 2 anchor flags (score 4); held at structurally-reconciled",
+  IDEA: "terminal period structurally compromised (4 flags, score 8); held at structurally-reconciled",
+  PAYTM: "terminal period has 2 anchor flags (score 3); held at structurally-reconciled",
+};
+
 interface ExpectationsContract {
   companyId: string;
   companyName: string;
@@ -153,7 +167,11 @@ export function createAuditTests({ start, size }: { start: number; size: number 
 
       // Scenario gates apply only to the industrial path. Bank/NBFC/insurance
       // valuations live under bankResult.valuation, not industrial scenarios.
-      if (result.analysisFamily === "industrial") {
+      if (result.analysisFamily === "industrial" && company.ticker in VALUATION_BLOCKED_ALLOWLIST) {
+        expect(result.flags, `${company.ticker}: ${VALUATION_BLOCKED_ALLOWLIST[company.ticker]}`).toContain("POLICY:VALUATION_BLOCKED");
+        expect(result.modelApplicability.industrialCommandCenter.status).toBe("skipped");
+        expect(["syntactically-valid", "structurally-reconciled", "economically-plausible"]).toContain(result.rigorLevel);
+      } else if (result.analysisFamily === "industrial") {
         expect(result.stress).not.toBeNull();
         expect(result.base).not.toBeNull();
         expect(result.modelApplicability.industrialCommandCenter.status).not.toBe("skipped");

@@ -35,8 +35,8 @@ moment the generator runs again, so the pointer is the durable form.
 Run these after valuation-modeling or source-contract PRs:
 
 ```bash
-npx tsx scripts/valuation-scorecard.ts --format json
-npx tsx scripts/valuation-scorecard.ts --format md
+npm run scorecard -- --format json
+npm run scorecard -- --format md
 npm run test:audit
 ```
 

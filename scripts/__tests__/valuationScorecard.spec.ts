@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   SCORECARD_SCHEMA_VERSION,
@@ -19,6 +20,9 @@ import { diffValuationMaturityScorecards } from "../lib/valuationScorecardDiff";
 
 const projectRoot = process.cwd();
 const scorecardScript = resolve(projectRoot, "scripts/valuation-scorecard.ts");
+// The scorecard runs the audit harness, which runs the app's executor; that
+// reads the mapping spec as `?raw`.
+const rawLoader = resolve(projectRoot, "scripts/lib/register-raw-loader.mjs");
 const scorecardDiffScript = resolve(projectRoot, "scripts/valuation-scorecard-diff.ts");
 
 const baseRow = {
@@ -444,7 +448,7 @@ describe("valuation maturity scorecard", () => {
 
 describe("valuation-scorecard CLI", () => {
   it("prints parseable JSON for a bounded audit sample", () => {
-    const output = execFileSync(process.execPath, ["--import", "tsx/esm", scorecardScript, "--format", "json", "--limit", "1"], {
+    const output = execFileSync(process.execPath, ["--import", "tsx/esm", "--import", pathToFileURL(rawLoader).href, scorecardScript, "--format", "json", "--limit", "1"], {
       cwd: projectRoot,
       encoding: "utf8",
       maxBuffer: 1024 * 1024 * 5,

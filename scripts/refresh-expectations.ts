@@ -12,10 +12,10 @@
  * `targetState` block so the gap stays visible.
  *
  * Usage:
- *   npx tsx scripts/refresh-expectations.ts                    # all 33 companies
- *   npx tsx scripts/refresh-expectations.ts --folder=ITC       # one
- *   npx tsx scripts/refresh-expectations.ts --type=bank        # all banks
- *   npx tsx scripts/refresh-expectations.ts --pct=0.10         # ±10% bands
+ *   npm run refresh:expectations                       # all 33 companies
+ *   npm run refresh:expectations -- --folder=ITC        # one
+ *   npm run refresh:expectations -- --type=bank         # all banks
+ *   npm run refresh:expectations -- --pct=0.10          # ±10% bands
  */
 
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
@@ -23,13 +23,11 @@ import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseCapitalineZip } from "../src/engine/capitalineParser";
 import { processCompanyDataFull } from "../src/engine/pipeline";
-import { buildAnalysisTraceability } from "../src/engine/analysisTraceability";
-import { getAnalysisPolicyVersions } from "../src/engine/policyVersions";
 import { DEFAULT_CONFIG, EngineConfig } from "../src/engine/types";
 // Reuse the audit gate's own input assembly. Anything this generator does
 // differently from `auditCompanyRun` produces a baseline the gate cannot satisfy.
 import {
-  buildAuditAnalysisContext,
+  auditCompanyRun,
   loadQualitySidecar,
   measureParseCoverage,
   measureSegmentCoverage,
@@ -168,29 +166,15 @@ async function refreshOne(company: RegistryEntry) {
     return;
   }
 
-  const { analysisStatus } = buildAuditAnalysisContext({ pipeline });
-
-  const trace = buildAnalysisTraceability({
-    generatedAt: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
-    runId: `refresh-${company.folder}`,
-    companyId: company.folder,
-    sourceMode: "capitaline",
-    recastData: pipeline.periods,
-    config,
-    rawData: parsed.periods,
-    periodCount: parsed.periods.length,
-    recastPeriodCount: pipeline.periods.length,
-    latestPeriod: parsed.periods[parsed.periods.length - 1]?.period_end ?? null,
-    analysisStatus,
-    policyVersions: getAnalysisPolicyVersions(),
-    debugInfo: parsed.debug,
-    hasDebugInfo: Boolean(parsed.debug),
-    debugFiles: parsed.debug?.files?.length ?? 0,
-    rawMetricKeyCount: parsed.debug?.rawMetricKeys?.length ?? 0,
-    bankMetrics: pipeline.bankResult?.bankMetrics ?? null,
-    bankSubtype: pipeline.bankResult?.subtype ?? null,
-    bankValuation: pipeline.bankResult?.valuation ?? null,
-  });
+  // The three fields the gate compares, from the gate itself: the harness runs
+  // the app's own run (window, gates, terminal outcomes), which a trace built
+  // here from the recast alone could not reproduce.
+  const audit = await auditCompanyRun(company, { projectRoot: PROJECT_ROOT });
+  const { currentLevel, parserFidelityStatus, reconciliationStatus } = audit.rigor;
+  if (!currentLevel || !parserFidelityStatus || !reconciliationStatus) {
+    console.log(`  ${company.folder}: SKIP (audit produced no rung: ${audit.error ?? audit.flags.join(", ")})`);
+    return;
+  }
 
   const coverage = measureParseCoverage(parsed.periods);
   const segmentCoverage = measureSegmentCoverage(parsed.segmentData);
@@ -280,9 +264,9 @@ async function refreshOne(company: RegistryEntry) {
 
   const next: ExpectationsContract = {
     ...existing,
-    expectedRigorLevel: trace.rigor.currentLevel,
-    expectedParserFidelityStatus: trace.parserFidelity.status,
-    expectedReconciliationStatus: trace.reconciliation.status,
+    expectedRigorLevel: currentLevel,
+    expectedParserFidelityStatus: parserFidelityStatus,
+    expectedReconciliationStatus: reconciliationStatus,
     expectedAnomalyFlags: observedAnomalyFlags,
     keyMetricTolerances: metricTolerances,
     // Measured on the raw parse, before recasting — same call the audit gate

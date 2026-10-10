@@ -7,8 +7,8 @@
  * so post-phase changes show up in diffs.
  *
  * Usage:
- *   npx tsx scripts/audit-baseline.ts --label=phase1
- *   npx tsx scripts/audit-baseline.ts --label=phase2 --ticker=ITC   # spot-check
+ *   npm run audit:baseline -- --label=phase1
+ *   npm run audit:baseline -- --label=phase2 --ticker=ITC   # spot-check
  *
  * Output: audit-baselines/<label>.json
  */
