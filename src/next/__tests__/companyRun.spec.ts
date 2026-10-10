@@ -94,13 +94,16 @@ describe("loadCompanyRun", () => {
     expect(empty.status).toBe("error");
   });
 
-  it("keeps the parser's diagnostics beside the run without passing them into it", async () => {
+  it("runs the Capitaline parse through parser fidelity, and keeps the diagnostics beside the run for the Debug tool", async () => {
     const debug = { files: [] } as never;
     const run = vi.fn(async (_input: LegacyAnalysisRunInputV1, _requestId: string) => result);
     const state = await loadCompanyRun(company, undefined, deps({ run, parse: async () => ({ periods: [period], debug }) }));
     expect(state).toEqual({ status: "ready", result, debug, basis: "consolidated" });
-    // The run's inputs, and so its hash and trust envelope, are unchanged.
-    expect(run.mock.calls[0]![0].debugInfo).toBeUndefined();
+    // Labelled "manual" without the parse trail, a library zip skipped the
+    // Capitaline checks (files, headers, periods, warnings) the classic upload runs.
+    const input = run.mock.calls[0]![0];
+    expect(input.debugInfo).toBe(debug);
+    expect(input.metadata.sourceMode).toBe("capitaline");
   });
 });
 

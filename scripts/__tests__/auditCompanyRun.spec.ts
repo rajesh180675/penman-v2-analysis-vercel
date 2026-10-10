@@ -180,19 +180,21 @@ describe.sequential("auditCompanyRun", () => {
   }, 240_000);
 
   it("does not let valuation readiness skip a blocked rigor gate", async () => {
-  // Reliance. (Asian Paints, UltraTech and Hindustan Unilever held this case in
-  // turn; each cleared once a defect upstream was fixed: the forecast's
-  // turnover, the paradigm gate's consequence, and cash counted twice.)
-  const result = await runAudit("RELIANCE");
+  // Grasim. (Asian Paints, UltraTech, Hindustan Unilever and Reliance held this
+  // case in turn; each cleared once a defect upstream was fixed: the forecast's
+  // turnover, the paradigm gate's consequence, cash counted twice, and a
+  // "From Current Investments" line read as a currency row, which failed
+  // Reliance's parser fidelity.)
+  const result = await runAudit("GRASIM");
 
   // The accounts reconcile (confirmed) and readiness is at its best: the
   // terminal period is clean, so readiness alone would value it. The ladder
-  // still stops at its first rung on a gate readiness does not touch (concept
-  // identity is valuation-blocked here, as expectations.json pins). That is the
-  // case this test exists for.
+  // still stops below valuation-eligible on a gate readiness does not touch: RE
+  // and ReOI on the same forecast disagree beyond 25%. That is the case this
+  // test exists for.
   expect(result.rigor.reconciliationStatus).toBe("confirmed");
   expect(result.valuationEvidence.readinessStatus).toBe("production-ready");
-  expect(result.rigor.currentLevel).toBe("syntactically-valid");
+  expect(result.rigor.currentLevel).toBe("economically-plausible");
   }, 240_000);
 
   it("carries financial-institution valuation readiness evidence and bank-shape triangulation when bank gates clear", async () => {

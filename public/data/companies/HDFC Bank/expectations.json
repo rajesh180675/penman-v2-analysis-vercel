@@ -3,7 +3,7 @@
   "companyName": "HDFC Bank Ltd",
   "profile": "bfsi",
   "expectedRigorLevel": "economically-plausible",
-  "expectedParserFidelityStatus": "degraded",
+  "expectedParserFidelityStatus": "confirmed",
   "expectedReconciliationStatus": "confirmed",
   "expectedEconomicSanityStatus": "passed",
   "expectedConceptIdentityStatus": "clean",
@@ -35,7 +35,7 @@
     "max": 5
   },
   "expectedRunsCleanWorkbook": true,
-  "notes": "Largest private-sector Indian bank. Tests bank-pipeline path and ensures BFSI subtype routing is preserved across rigor v9-v12. NIM and CRAR dominate; Penman-Nissim ratios less informative for banks.",
+  "notes": "Parser fidelity confirmed (was degraded) once the Capitaline check counts the statement grids the parser read, not every file in the archive (2026-10-11). Largest private-sector Indian bank. Tests bank-pipeline path and ensures BFSI subtype routing is preserved across rigor v9-v12. NIM and CRAR dominate; Penman-Nissim ratios less informative for banks.",
   "capturedAt": "2026-07-27T09:41:17Z",
   "targetState": {
     "expectedRigorLevel": "valuation-eligible",

@@ -65,7 +65,11 @@ export function evaluateParserFidelity(params: {
   const checks: ParserFidelityCheck[] = [];
 
   if (sourceMode === "capitaline") {
-    const fileCount = debugInfo?.files.length ?? 0;
+    // The statement grids the parser read. The archive's file list also holds
+    // the segment and notes files, which the parser reads separately and which
+    // have no statement header, so a header check over every file failed
+    // Asian Paints and NTPC (3 of 6) on a clean parse.
+    const gridCount = debugInfo?.rawGrids.length ?? 0;
     const detectedPeriods = debugInfo?.detectedPeriods.length ?? periodCount;
     const headerDetectedCount = debugInfo?.rawGrids.filter((grid) => grid.headerDetected).length ?? 0;
     const parserErrorCount = debugInfo?.rawGrids.reduce((sum, grid) => sum + grid.errors.length, 0) ?? 0;
@@ -75,17 +79,17 @@ export function evaluateParserFidelity(params: {
       {
         id: "files-present",
         label: "Statement files present",
-        passed: fileCount >= 3,
-        detail: fileCount >= 3
-          ? `Parsed ${fileCount} Capitaline statement files.`
-          : `Expected 3 statement files, but parsed ${fileCount}.`,
+        passed: gridCount >= 3,
+        detail: gridCount >= 3
+          ? `Parsed ${gridCount} Capitaline statement files.`
+          : `Expected 3 statement files, but parsed ${gridCount}.`,
       },
       {
         id: "headers-detected",
         label: "Headers detected",
-        passed: fileCount > 0 && headerDetectedCount === fileCount,
-        detail: fileCount > 0
-          ? `Detected headers in ${headerDetectedCount}/${fileCount} files.`
+        passed: gridCount > 0 && headerDetectedCount === gridCount,
+        detail: gridCount > 0
+          ? `Detected headers in ${headerDetectedCount}/${gridCount} statement files.`
           : "No Capitaline grids were available for header detection.",
       },
       {
@@ -112,7 +116,7 @@ export function evaluateParserFidelity(params: {
 
     const passRate = checks.filter((check) => check.passed).length / checks.length;
     const score = clampScore((passRate * 100) - (warningCount * 5) - (parserErrorCount * 8));
-    const status: ParserFidelityStatus = periodCount === 0 || fileCount === 0 || score < 70
+    const status: ParserFidelityStatus = periodCount === 0 || gridCount === 0 || score < 70
       ? "failed"
       : score < 85 || warningCount > 0 || parserErrorCount > 0
         ? "degraded"
