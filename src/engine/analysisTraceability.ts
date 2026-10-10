@@ -528,8 +528,12 @@ export function buildAnalysisTraceability(params: {
                 ? `Financial institution — ${financialReadinessReason}`
               : valuationStatus === "guarded"
                 ? "Valuation still depends on a guarded fallback anchor."
-                : valuationStatus === "warning" || valuationStatus === "production-ready"
-                  ? `Valuation status is ${valuationStatus}, so the run remains eligible for valuation use.`
+                // The readiness is the terminal anchor's verdict; "production-ready"
+                // there means a clean anchor, not a release-ready valuation.
+                : valuationStatus === "production-ready"
+                  ? "The terminal anchor is clean, so the run is eligible for valuation use."
+                  : valuationStatus === "warning"
+                  ? "The terminal anchor has review flags but is usable, so the run is eligible for valuation use."
                   : "Valuation readiness has not been established yet.",
     },
     {

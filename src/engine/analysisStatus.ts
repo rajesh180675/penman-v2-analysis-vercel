@@ -1,5 +1,6 @@
 import { MappingAuditReport, QualityGateReport } from "./mappingAudit";
-import { ValuationReadiness } from "./valuationPolicy";
+import { lowerReadiness, readinessWithinLadderCap, ValuationReadiness } from "./valuationPolicy";
+import type { AnalysisTraceabilityEnvelope } from "./types/traceabilityEnvelope";
 
 export type AnalysisBadgeTone = "emerald" | "amber" | "red";
 export type AnalysisBadgeStatus = "production-ready" | "guarded" | "blocked";
@@ -193,5 +194,40 @@ export function deriveAnalysisStatus(
     diagnosticCount,
     optionalCount,
     ...effectiveCounts,
+  };
+}
+
+const STATUS_RANK: Record<AnalysisBadgeStatus, number> = { blocked: 0, guarded: 1, "production-ready": 2 };
+
+/**
+ * The status a badge shows. `deriveAnalysisStatus` runs before the ladder's
+ * valuation-level gates and feeds them and the command center, so it stays as
+ * it is. A surface that displays it, though, would claim more than the run
+ * earned: a run held at valuation-eligible (DMart) showed "Production-ready ·
+ * Analysis cleared current release checks · Valuation: production-ready". The
+ * displayed status follows the envelope's confidence, which follows the ladder
+ * (#426), and the valuation status follows the ladder as publications do (#427).
+ */
+export function statusWithinLadder(
+  status: AnalysisStatusSummary,
+  envelope: Pick<AnalysisTraceabilityEnvelope, "confidence" | "rigor"> | null | undefined,
+): AnalysisStatusSummary {
+  if (!envelope) return status;
+  const valuationStatus = status.valuationStatus === "unknown"
+    ? status.valuationStatus
+    : lowerReadiness(status.valuationStatus, readinessWithinLadderCap(envelope.rigor.checkpoints));
+  const confidence = envelope.confidence;
+  if (STATUS_RANK[confidence.status] >= STATUS_RANK[status.status]) {
+    return valuationStatus === status.valuationStatus ? status : { ...status, valuationStatus };
+  }
+  return {
+    ...status,
+    status: confidence.status,
+    label: confidence.status === "blocked" ? "Blocked" : "Guarded",
+    headline: `Held at ${envelope.rigor.currentLabel}`,
+    summary: confidence.headline,
+    reasons: [confidence.headline, ...status.reasons],
+    tone: confidence.tone,
+    valuationStatus,
   };
 }

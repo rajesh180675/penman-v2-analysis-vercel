@@ -54,6 +54,8 @@ interface TabRouterProps {
   onBatchSubmit?: (registry: CompanyRegistry) => void;
   auditMeta: AuditSubmissionMeta | null;
   analysisStatus: AnalysisStatusSummary;
+  /** The status as displayed, capped by the ladder (`statusWithinLadder`). */
+  displayStatus: AnalysisStatusSummary;
   traceability: AnyResult;
   publication: AnyResult;
   ratioSanity: AnyResult;
@@ -96,7 +98,7 @@ interface TabRouterProps {
 export function TabRouter(props: TabRouterProps) {
   const {
     activeTab, setActiveTab, config, setConfig, forecastConfig, rawData, recastData, hasRecast,
-    handleDataSubmit, onBatchSubmit, auditMeta, analysisStatus, traceability, publication, ratioSanity, segmentData,
+    handleDataSubmit, onBatchSubmit, auditMeta, analysisStatus, displayStatus, traceability, publication, ratioSanity, segmentData,
     liveMarketData, liveMarketDataLoading, liveMarketDataError, refreshLiveMarketData, commandCenter,
     analysisWindow, sourcedAssumptionSet, forecastResults, scenarioOrdering, scenarioGovernance,
     readyCompanyCount, bankResult, nbfcSidecar, lossMakerResult, itServicesSignal, registry,
@@ -111,7 +113,7 @@ export function TabRouter(props: TabRouterProps) {
 
   return (
     <Suspense fallback={<TabSkeleton />}>
-      {activeTab === "inspector" && <RunInspector auditMeta={auditMeta} analysisStatus={analysisStatus} />}
+      {activeTab === "inspector" && <RunInspector auditMeta={auditMeta} analysisStatus={displayStatus} />}
       {activeTab === "upload" && (
         <DataEntry onDataSubmit={handleDataSubmit} onBatchSubmit={onBatchSubmit} currentData={rawData} config={config} onConfigChange={setConfig} />
       )}
@@ -155,7 +157,7 @@ export function TabRouter(props: TabRouterProps) {
           rawData={rawData}
           recastData={recastData}
           config={config}
-          analysisStatus={analysisStatus}
+          analysisStatus={displayStatus}
           auditMeta={auditMeta}
           registry={registry}
           selectedCompanyId={workspaceCompanyId}

@@ -190,6 +190,20 @@ export function resolveValuationReadiness(periods: RecastPeriod[]): ValuationRea
 const READINESS_RANK: Record<ValuationReadinessStatus, number> = { guarded: 0, warning: 1, "production-ready": 2 };
 
 /**
+ * The highest readiness a run's ladder supports: none below production-ready
+ * when it is reached, `warning` at valuation-eligible, `guarded` below it.
+ */
+export function readinessWithinLadderCap(checkpoints: readonly AnalysisRigorCheckpoint[]): ValuationReadinessStatus {
+  if (checkpoints.every((checkpoint) => checkpoint.achieved)) return "production-ready";
+  return checkpoints.some((checkpoint) => checkpoint.level === "valuation-eligible" && checkpoint.achieved) ? "warning" : "guarded";
+}
+
+/** The lower of two readiness statuses. */
+export function lowerReadiness(a: ValuationReadinessStatus, b: ValuationReadinessStatus): ValuationReadinessStatus {
+  return READINESS_RANK[a] <= READINESS_RANK[b] ? a : b;
+}
+
+/**
  * The readiness a publication prints. Its status is the terminal anchor's
  * verdict, and "production-ready" there means only that the anchor is clean:
  * the ladder's valuation-level gates run later. The workbook cover, the PDF's
@@ -205,8 +219,7 @@ export function readinessWithinLadder(
 ): ValuationReadiness {
   const withheld = checkpoints.find((checkpoint) => !checkpoint.achieved);
   if (!withheld) return readiness;
-  const eligible = checkpoints.some((checkpoint) => checkpoint.level === "valuation-eligible" && checkpoint.achieved);
-  const cap: ValuationReadinessStatus = eligible ? "warning" : "guarded";
+  const cap = readinessWithinLadderCap(checkpoints);
   if (READINESS_RANK[readiness.status] <= READINESS_RANK[cap]) return readiness;
   // The executor's terminal details already name the rung ("Valuation eligible
   // was not achieved because …").
