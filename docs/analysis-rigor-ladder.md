@@ -56,6 +56,8 @@ The envelope's `confidence` (the status every tab's trust panel, the case header
 
 The same holds for what a publication prints as the valuation's status. The workbook cover, the PDF trust line, the IC manifest, the memo and the valuation tab read `valuationReadiness.status`, which on its own is the terminal anchor's verdict. The publication snapshot (`readinessWithinLadder`) caps it: a valuation-eligible run is at most `warning`, a run below that is `guarded`, and the first reason names the rung withheld. The anchor period is unchanged.
 
+The badges do the same (`statusWithinLadder`): the classic header, the run inspector and the workspace tab and history. `analysisStatus` itself is unchanged because the gates and the command center compute from it. What these surfaces display, though, is no higher than the envelope's confidence, and its valuation status is no higher than the ladder allows.
+
 The traceability envelope now includes:
 
 - `parserFidelity.status`

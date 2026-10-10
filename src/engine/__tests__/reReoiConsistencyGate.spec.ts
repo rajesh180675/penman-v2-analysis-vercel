@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAnalysisTraceability } from "../analysisTraceability";
+import { statusWithinLadder } from "../analysisStatus";
 import { reReoiGap } from "../reReoiConsistency";
 import { DEFAULT_CONFIG } from "../types";
 import { workbookMetadataFromPublicationSnapshot } from "../excelExport";
@@ -242,5 +243,56 @@ describe("the shared confidence follows the ladder", () => {
     const cover = workbookMetadataFromPublicationSnapshot(held);
     expect(cover.valuationStatus).toBe("warning");
     expect(cover.valuationReasons?.[0]).toMatch(/^Production-ready withheld: /);
+  });
+});
+
+// The badge surfaces display the status the gates above were computed from.
+describe("the displayed status follows the ladder", () => {
+  const DMART = [
+    { key: "accrual-riv", label: "Accrual RIV/ReOI", perShare: 368.51 },
+    { key: "cash-fcff-dcf", label: "Cash-statement FCFF DCF", perShare: -148.13 },
+  ];
+
+  it("is the status itself when the run reaches production-ready", () => {
+    expect(statusWithinLadder(productionReadyStatus, envelope())).toBe(productionReadyStatus);
+  });
+
+  it("is guarded at the rung the run reached, with the withheld reason and a capped valuation status (DMart)", () => {
+    const env = envelope(undefined, DMART);
+    const shown = statusWithinLadder(productionReadyStatus, env);
+    expect(shown.status).toBe("guarded");
+    expect(shown.label).toBe("Guarded");
+    expect(shown.tone).toBe("amber");
+    expect(shown.headline).toBe("Held at Valuation eligible");
+    expect(shown.summary).toBe(env.confidence.headline);
+    expect(shown.summary).toMatch(/^Production-ready withheld: /);
+    expect(shown.valuationStatus).toBe("warning");
+    // The counts are the status's own.
+    expect(shown.blockingCount).toBe(productionReadyStatus.blockingCount);
+    // The rung's own sentence says what the readiness measured, not "Valuation
+    // status is production-ready".
+    expect(env.rigor.summary).toBe("The terminal anchor is clean, so the run is eligible for valuation use.");
+  });
+
+  it("caps the valuation status alone when the status already says guarded (Power Grid)", () => {
+    const guarded = { ...productionReadyStatus, status: "guarded" as const, label: "Guarded", tone: "amber" as const, headline: "Review diagnostics before relying on output" };
+    const shown = statusWithinLadder(guarded, envelope(undefined, DMART));
+    expect(shown.status).toBe("guarded");
+    expect(shown.headline).toBe("Review diagnostics before relying on output");
+    expect(shown.valuationStatus).toBe("warning");
+  });
+
+  it("is blocked when the envelope is, with no valuation status above guarded below valuation-eligible", () => {
+    const env = envelope({ re: 2080.15, reoi: 1383.38 });
+    const blockedEnvelope = { ...env, confidence: { ...env.confidence, status: "blocked" as const, tone: "red" as const, headline: "Analysis run blocked at model-execution." } };
+    const shown = statusWithinLadder(productionReadyStatus, blockedEnvelope);
+    expect(shown.status).toBe("blocked");
+    expect(shown.label).toBe("Blocked");
+    expect(shown.headline).toBe("Held at Economically plausible");
+    expect(shown.valuationStatus).toBe("guarded");
+  });
+
+  it("is the status itself without an envelope", () => {
+    expect(statusWithinLadder(productionReadyStatus, null)).toBe(productionReadyStatus);
   });
 });

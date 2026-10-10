@@ -7,6 +7,7 @@ import { lazy, useMemo } from "react";
 import type { TabId } from "../app/tabs";
 import type { CompanyRegistry } from "../engine/types";
 import type { CompanyRunState } from "./companyRun";
+import { statusWithinLadder } from "../engine/analysisStatus";
 import { buildToolInputs, type ToolInputs } from "./toolInputs";
 import { Withheld } from "./ui/Withheld";
 
@@ -38,7 +39,7 @@ export function ToolPanel({ tab, run, sessionRegistry }: {
     case "charts":
       return import.meta.env.DEV ? <ChartGallery /> : <Withheld reason="The chart gallery is in development builds only." />;
     case "inspector":
-      return <RunInspector auditMeta={null} analysisStatus={inputs?.analysisStatus ?? null} />;
+      return <RunInspector auditMeta={null} analysisStatus={inputs ? statusWithinLadder(inputs.analysisStatus, inputs.traceability) : null} />;
     default:
       break;
   }

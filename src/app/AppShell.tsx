@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useServerStatus } from "../hooks/useServerStatus";
 import { useBankSidecars } from "../hooks/useBankSidecars";
 import { useAuditPersistence } from "../hooks/useAuditPersistence";
@@ -10,6 +10,7 @@ import { trace } from "../lib/traceLogger";
 import { CapitalineParseDebug } from "../engine/capitalineParser";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { AnalysisStatusBadge } from "../components/AnalysisStatusBadge";
+import { statusWithinLadder } from "../engine/analysisStatus";
 import GlossaryModal from "../components/GlossaryModal";
 import KeyboardShortcutsModal from "../components/KeyboardShortcutsModal";
 import CommandPalette from "../components/CommandPalette";
@@ -156,6 +157,9 @@ export function AppShell() {
     sectorSidecar: platformGovernance.sectorSidecar,
     advancedModels: platformGovernance.advancedModels,
   });
+  // What the shell displays follows the ladder. `analysisStatus` itself keeps
+  // feeding the valuation surfaces, which compute from it.
+  const displayStatus = useMemo(() => statusWithinLadder(analysisStatus, traceability), [analysisStatus, traceability]);
 
   // Record dual-scope availability so QA can verify the second ZIP loaded.
   // Goes through the trace logger rather than the console: the Debug panel
@@ -365,7 +369,7 @@ export function AppShell() {
     rawData,
     recastData,
     config,
-    analysisStatus,
+    analysisStatus: displayStatus,
     auditMeta,
   });
 
@@ -375,7 +379,7 @@ export function AppShell() {
         <AppHeader
           auditMeta={auditMeta}
           rawData={rawData}
-          analysisStatus={analysisStatus}
+          analysisStatus={displayStatus}
           registry={registry}
           activeCompanyId={config.ticker ?? null}
           onSwitchCompany={(companyId) => {
@@ -417,7 +421,7 @@ export function AppShell() {
             ) : null}
             {qualityGate && (
               <div className="mb-5">
-                <AnalysisStatusBadge status={analysisStatus} />
+                <AnalysisStatusBadge status={displayStatus} />
               </div>
             )}
             {platformGovernance.advancedModelResolutionRequired && (platformGovernance.advancedModelsLoading || platformGovernance.error) && (
@@ -470,6 +474,7 @@ export function AppShell() {
               onBatchSubmit={handleBatchSubmit}
               auditMeta={auditMeta}
               analysisStatus={analysisStatus}
+              displayStatus={displayStatus}
               traceability={traceability}
               publication={publication}
               ratioSanity={ratioSanity}
