@@ -50,7 +50,10 @@ export function detectCurrencyUnit(
     if (!row || row.length < 2) continue;
 
     const label = norm(row[0]!).toLowerCase();
-    if (!label.includes("curr") && !label.includes("unit") && !label.includes("denomination")) {
+    // "Curr. in", "Currency", "Units", "Denomination" — not a line item that
+    // merely contains the letters: Reliance's P&L opens with "From Current
+    // Investments", read as a currency row whose unit "0.00" is Unknown.
+    if (!/\bcurr(?:ency|\.|\b)|\bunits?\b|denomination/.test(label)) {
       continue;
     }
 

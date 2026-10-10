@@ -4,6 +4,7 @@ import { parseScreenerTabDelimitedDetailed } from "../screenerParser";
 import { parseRawPeriodsJsonDetailed } from "../jsonIngestion";
 import { diagnoseManualRawPeriods } from "../manualEntryParser";
 import { RawPeriodData } from "../types";
+import type { CapitalineParseDebug } from "../capitalineParser";
 
 describe("parser fidelity diagnostics", () => {
   it("fails screener fidelity when source rows contain native parse anomalies", () => {
@@ -136,5 +137,49 @@ describe("parser fidelity diagnostics", () => {
     // But if score drops below 70 due to check failures, "failed" is also acceptable
     expect(["degraded", "failed"]).toContain(fidelity.status);
     expect(fidelity.checks.some((check) => check.id === "manual-operating-core" && !check.passed)).toBe(true);
+  });
+});
+
+describe("Capitaline parser fidelity", () => {
+  const periods: RawPeriodData[] = ["2024-03-31", "2025-03-31"].map((period_end) => ({
+    company_id: "CO",
+    period_end,
+    raw_metric_values: Object.fromEntries(Array.from({ length: 8 }, (_, i) => [`metric_${i}__BalanceSheet`, 100 + i])),
+  }));
+  const grid = (file: string, headerDetected = true) => ({
+    file, methods: ["xlsx"], bestMethod: "xlsx", rowCount: 40, colCount: 3, firstRows: [], headerDetected, errors: [],
+  });
+  /** Three statement grids, as Asian Paints parses: the archive also holds three segment files. */
+  const debug = (grids = [grid("BalanceSheetINDAS_.xls"), grid("ProfitLossINDAS_.xls"), grid("CashFlow_.xls")]) => ({
+    files: [
+      { name: "BalanceSheetINDAS_.xls" }, { name: "CashFlow_.xls" }, { name: "ProfitLossINDAS_.xls" },
+      { name: "SegmentFinance_.xls" }, { name: "SegmentFinance_ (1).xls" }, { name: "SegmentFinance_ (2).xls" },
+    ],
+    detectedPeriods: ["2024-03-31", "2025-03-31"],
+    rawGrids: grids,
+    warnings: [],
+    rawMetricKeys: Array.from({ length: 8 }, (_, i) => `metric_${i}__BalanceSheet`),
+  }) as unknown as CapitalineParseDebug;
+  const evaluate = (debugInfo: CapitalineParseDebug) =>
+    evaluateParserFidelity({ sourceMode: "capitaline", rawData: periods, debugInfo, periodCount: 2, rawMetricKeyCount: 8 });
+
+  it("checks headers over the statement grids, not the segment files beside them", () => {
+    const fidelity = evaluate(debug());
+    expect(fidelity.status).toBe("confirmed");
+    expect(fidelity.score).toBe(100);
+    expect(fidelity.checks.find((c) => c.id === "headers-detected")?.detail).toBe("Detected headers in 3/3 statement files.");
+    expect(fidelity.checks.find((c) => c.id === "files-present")?.detail).toBe("Parsed 3 Capitaline statement files.");
+  });
+
+  it("still fails the header check when a statement grid has no header", () => {
+    const fidelity = evaluate(debug([grid("BalanceSheetINDAS_.xls"), grid("ProfitLossINDAS_.xls", false), grid("CashFlow_.xls")]));
+    const check = fidelity.checks.find((c) => c.id === "headers-detected")!;
+    expect(check.passed).toBe(false);
+    expect(check.detail).toBe("Detected headers in 2/3 statement files.");
+    expect(fidelity.status).not.toBe("confirmed");
+  });
+
+  it("fails when the archive held no statement grid at all", () => {
+    expect(evaluate(debug([])).status).toBe("failed");
   });
 });

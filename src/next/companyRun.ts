@@ -167,6 +167,10 @@ export async function loadCompanyRun(
       // them: without them the run had no segment SOTP and could not carve a
       // lending arm out of the parent's segment note.
       ...(parsed.segmentData ? { segmentData: parsed.segmentData } : {}),
+      // The parse trail, so parser fidelity runs its Capitaline checks (files,
+      // headers, periods, warnings) as it does for the classic shell's upload.
+      // Labelled "manual" without it, the library's zips were never checked.
+      debugInfo: parsed.debug,
       ...ACTIVE_MARKET_PACKS,
       metadata: {
         runId,
@@ -174,7 +178,7 @@ export async function loadCompanyRun(
         asOf: asOf ?? now.slice(0, 10),
         createdAt: now,
         generatedAt: now,
-        sourceMode: "manual",
+        sourceMode: "capitaline",
         relation: { kind: "root", parentRunId: null, parentReproducibilityHash: null },
         contentClass: null,
         retentionDays: null,

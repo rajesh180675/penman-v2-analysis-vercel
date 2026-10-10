@@ -3,7 +3,7 @@
   "companyName": "NTPC Ltd",
   "profile": "capital-intensive-regulated",
   "expectedRigorLevel": "valuation-eligible",
-  "expectedParserFidelityStatus": "degraded",
+  "expectedParserFidelityStatus": "confirmed",
   "expectedReconciliationStatus": "confirmed",
   "expectedEconomicSanityStatus": "passed",
   "expectedConceptIdentityStatus": "valuation-blocked",
@@ -27,7 +27,7 @@
     "max": 5
   },
   "expectedRunsCleanWorkbook": true,
-  "notes": "Prior Year Adjustments (FY12 316.06, FY15 318.22) now count as unusual items, clearing the FY12/FY15 cost-bridge failures: reconciliation confirmed, rigor economically-plausible (2026-10-02). Valuation-eligible since the accrual/cash-DCF disagreement (RIV ~₹180 vs cash DCF, >100% apart: the DCF's trailing base carries NTPC's heavy capex) withholds production-ready rather than valuation eligibility (2026-10-05). S-10.1 no longer expected: FY25 residual earnings move 2.3 ROE points against opening equity, below the 5-point materiality test (RE_ANCHOR_MATERIALITY); the valuation anchor returns to FY25. State-owned thermal+renewables generator. Capital-intensive with regulated returns; high NFO_to_CSE is structural (debt-financed PPE), not distress. Tests that NFO/CSE ranges are sector-aware.",
+  "notes": "Parser fidelity confirmed (was degraded: headers in 3 of 6 files, the other 3 being segment files) once the Capitaline check counts the statement grids the parser read, not every file in the archive (2026-10-11). Prior Year Adjustments (FY12 316.06, FY15 318.22) now count as unusual items, clearing the FY12/FY15 cost-bridge failures: reconciliation confirmed, rigor economically-plausible (2026-10-02). Valuation-eligible since the accrual/cash-DCF disagreement (RIV ~₹180 vs cash DCF, >100% apart: the DCF's trailing base carries NTPC's heavy capex) withholds production-ready rather than valuation eligibility (2026-10-05). S-10.1 no longer expected: FY25 residual earnings move 2.3 ROE points against opening equity, below the 5-point materiality test (RE_ANCHOR_MATERIALITY); the valuation anchor returns to FY25. State-owned thermal+renewables generator. Capital-intensive with regulated returns; high NFO_to_CSE is structural (debt-financed PPE), not distress. Tests that NFO/CSE ranges are sector-aware.",
   "capturedAt": "2026-07-27T09:43:56Z",
   "targetState": {
     "expectedRigorLevel": "valuation-eligible",

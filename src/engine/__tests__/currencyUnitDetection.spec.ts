@@ -89,6 +89,19 @@ describe("detectCurrencyUnit", () => {
     expect(detectCurrencyUnit(makeGrid(["Curr. in", "USD"]))).toBe("Unknown");
   });
 
+  it("does not read a line item that merely contains 'curr' as a currency row (Reliance's P&L)", () => {
+    const grid = [
+      ["Finance >>Profit & Loss IND (Consolidated)>>Reliance Industries Ltd(Curr. in )"],
+      ["From Current Investments", "0.00", "0.00", "0.00"],
+      ["Current tax", "100", "90", "80"],
+    ];
+    expect(detectCurrencyUnit(grid)).toBeNull();
+  });
+
+  it("still reads a label written 'Curr in' without the dot", () => {
+    expect(detectCurrencyUnit(makeGrid(["Curr in", "Rs. Cr."]))).toBe("Crores");
+  });
+
   it("is case-insensitive", () => {
     expect(detectCurrencyUnit(makeGrid(["CURR. IN", "RS. CR."]))).toBe("Crores");
     expect(detectCurrencyUnit(makeGrid(["curr. in", "rs. lakh"]))).toBe("Lakhs");
