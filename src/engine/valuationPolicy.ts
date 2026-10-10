@@ -1,6 +1,7 @@
 import { computeContaminationTier } from "./anomalyDetection";
 import { buildBusinessModelProfile } from "./forecastingEngine";
 import { RawPeriodData, RecastPeriod, SpecFlag } from "./types";
+import type { AnalysisRigorCheckpoint } from "./types/traceabilityEnvelope";
 
 export type ValuationReadinessStatus = "production-ready" | "warning" | "guarded";
 
@@ -184,6 +185,33 @@ export function resolveValuationReadiness(periods: RecastPeriod[]): ValuationRea
     terminalFlagLabels,
     reasons,
   };
+}
+
+const READINESS_RANK: Record<ValuationReadinessStatus, number> = { guarded: 0, warning: 1, "production-ready": 2 };
+
+/**
+ * The readiness a publication prints. Its status is the terminal anchor's
+ * verdict, and "production-ready" there means only that the anchor is clean:
+ * the ladder's valuation-level gates run later. The workbook cover, the PDF's
+ * trust line, the IC manifest and the memo printed it as the valuation's
+ * status, so a run held at valuation-eligible (DMart, NTPC) or below it
+ * (Grasim) exported as "Valuation: production-ready". Capped by the ladder: a
+ * valuation-eligible run is at most `warning`, a run below it `guarded`, and
+ * the first reason names the rung withheld. The anchor is unchanged.
+ */
+export function readinessWithinLadder(
+  readiness: ValuationReadiness,
+  checkpoints: readonly AnalysisRigorCheckpoint[],
+): ValuationReadiness {
+  const withheld = checkpoints.find((checkpoint) => !checkpoint.achieved);
+  if (!withheld) return readiness;
+  const eligible = checkpoints.some((checkpoint) => checkpoint.level === "valuation-eligible" && checkpoint.achieved);
+  const cap: ValuationReadinessStatus = eligible ? "warning" : "guarded";
+  if (READINESS_RANK[readiness.status] <= READINESS_RANK[cap]) return readiness;
+  // The executor's terminal details already name the rung ("Valuation eligible
+  // was not achieved because …").
+  const reason = withheld.detail.startsWith(withheld.label) ? withheld.detail : `${withheld.label} withheld: ${withheld.detail}`;
+  return { ...readiness, status: cap, reasons: [reason, ...readiness.reasons] };
 }
 
 export function deriveCompanyLabel(

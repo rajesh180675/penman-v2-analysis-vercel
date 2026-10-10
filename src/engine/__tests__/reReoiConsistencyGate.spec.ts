@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { buildAnalysisTraceability } from "../analysisTraceability";
 import { reReoiGap } from "../reReoiConsistency";
+import { DEFAULT_CONFIG } from "../types";
+import { workbookMetadataFromPublicationSnapshot } from "../excelExport";
+import { buildAnalysisPublicationSnapshot } from "../../lib/publication/analysisPublicationSnapshot";
 import type { RecastPeriod } from "../types";
 
 // Same fixture as the earnings-quality gate spec: real Capitaline labels, so
@@ -219,5 +222,25 @@ describe("the shared confidence follows the ladder", () => {
     expect(env.rigor.currentLevel).toBe("economically-plausible");
     expect(env.confidence.status).toBe("guarded");
     expect(env.confidence.headline).toMatch(/^Valuation eligible withheld: RE ₹2080\.15 and ReOI ₹1383\.38/);
+  });
+
+  it("and so does the readiness every publication prints as the valuation's status", () => {
+    // A clean anchor with ratio context, so the anchor alone reads production-ready.
+    const data = ["2024-03-31", "2025-03-31"].map((end) => ({ ...recastPeriod(end), ratios: {} }) as RecastPeriod);
+    const publish = (sharedTraceability: ReturnType<typeof envelope>) =>
+      buildAnalysisPublicationSnapshot({ data, config: DEFAULT_CONFIG, sharedTraceability, analysisStatus: productionReadyStatus });
+
+    const ready = publish(envelope());
+    expect(ready.valuationReadiness.status).toBe("production-ready");
+
+    const held = publish(envelope(undefined, [
+      { key: "accrual-riv", label: "Accrual RIV/ReOI", perShare: 368.51 },
+      { key: "cash-fcff-dcf", label: "Cash-statement FCFF DCF", perShare: -148.13 },
+    ]));
+    expect(held.valuationReadiness.status).toBe("warning");
+    expect(held.valuationReadiness.reasons[0]).toBe(held.traceability.confidence.headline);
+    const cover = workbookMetadataFromPublicationSnapshot(held);
+    expect(cover.valuationStatus).toBe("warning");
+    expect(cover.valuationReasons?.[0]).toMatch(/^Production-ready withheld: /);
   });
 });
