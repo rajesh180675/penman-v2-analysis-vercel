@@ -1,6 +1,7 @@
 import { RecastPeriod, SpecFlag, Severity, EngineConfig } from "../types";
-import { medianOf, madStddev, flag } from "./shared";
+import { medianOf, madStddev, flag, coreTaxComparable } from "./shared";
 import { sharesOutstandingFell } from "../buybackEvidence";
+import { immaterialDemerger } from "../demergerEvidence";
 
 /* ── S-5.1 Dirty Surplus Spike ──────────────────────────────────── */
 
@@ -56,6 +57,13 @@ export function detectDirtySurplusPerPeriod(
       prev.shareCountInput?.endPeriodShares, cur.shareCountInput?.endPeriodShares,
     );
 
+    const demerger = immaterialDemerger({
+      dirtySurplus: DS_t,
+      discontinuedAfterTax: cur.cu?.DiscontinuedOperationsAfterTax,
+      previousDiscontinuedAfterTax: prev.cu?.DiscontinuedOperationsAfterTax,
+      previousOI: prev.is.OI,
+    });
+
     if (abs_DS > threshold_crit && buyback) {
       // Equity fell short of earnings less payout while shares were cancelled:
       // a buyback the export does not itemize — a capital transaction with
@@ -65,6 +73,18 @@ export function detectDirtySurplusPerPeriod(
         `Equity fell ₹${(-DS_t).toFixed(0)} Cr (${(DS_pct * 100).toFixed(1)}% of CSE) more than ` +
         `earnings less payout while shares outstanding fell: a buyback the cash-flow ` +
         `statement does not itemize.`,
+        false, cur.period_end
+      ));
+    } else if (abs_DS > threshold_crit && demerger) {
+      // A distribution of a business to owners: a capital transaction with
+      // them (#367), and the business that left was a small part of the
+      // history (demergerEvidence), so the post-demerger book can anchor.
+      flags.push(flag(
+        "S-5.1", Severity.WARNING, "DEMERGER_LIKELY",
+        `Equity fell ₹${(-DS_t).toFixed(0)} Cr (${(DS_pct * 100).toFixed(1)}% of CSE) more than ` +
+        `earnings less payout in a year that files a discontinued operation: a demerger's ` +
+        `distribution to owners. The business that left earned ${(demerger.priorShareOfOI * 100).toFixed(1)}% ` +
+        `of operating income the year before, so the history is the continuing business's.`,
         false, cur.period_end
       ));
     } else if (abs_DS > threshold_crit) {
@@ -215,7 +235,23 @@ export function detectMetricStepChanges(
       if (ΔRev > 0) {
         const ΔOI = cur.is.OI - prev.is.OI;
         incr_margin = ΔOI / ΔRev;
-        if (incr_margin > im_upper || incr_margin < im_lower) {
+        const outOfBand = (m: number) => m > im_upper || m < im_lower;
+        // Core OI is OI less the filed exceptional, discontinued and OCI items,
+        // and it is what the forecast and earnings-power lenses anchor on. When
+        // the core margin is in band, the one-off is already itemized and
+        // stripped — provided both years' core is taxed like its history.
+        const coreComparable = coreTaxComparable(periods, i, cfg) && coreTaxComparable(periods, i - 1, cfg);
+        const ΔCoreOI = coreComparable && cur.cu && prev.cu ? (cur.is.OI - cur.cu.UOI) - (prev.is.OI - prev.cu.UOI) : null;
+        const coreIncrMargin = ΔCoreOI != null && Number.isFinite(ΔCoreOI) ? ΔCoreOI / ΔRev : null;
+        if (outOfBand(incr_margin) && coreIncrMargin != null && !outOfBand(coreIncrMargin)) {
+          flags.push(flag(
+            "S-5.3", Severity.WARNING, "INCREMENTAL_MARGIN_ITEMIZED",
+            `Incremental margin = ${(incr_margin * 100).toFixed(0)}% on OI ` +
+            `(ΔOI ₹${ΔOI.toFixed(0)} / ΔRev ₹${ΔRev.toFixed(0)}) but ${(coreIncrMargin * 100).toFixed(0)}% on core OI: ` +
+            `the one-time item is filed as exceptional, discontinued or OCI, and the core forecast excludes it.`,
+            false, cur.period_end
+          ));
+        } else if (outOfBand(incr_margin)) {
           flags.push(flag(
             "S-5.3", Severity.CRITICAL, "INCREMENTAL_MARGIN_ANOMALY",
             `Incremental margin = ${(incr_margin * 100).toFixed(0)}% ` +

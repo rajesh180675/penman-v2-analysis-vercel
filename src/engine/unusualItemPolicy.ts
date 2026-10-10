@@ -132,6 +132,7 @@ export function classifyRunUnusualItems(
   rawMetrics: RawPeriodData[],
 ): UnusualItemClassification[] {
   const out: UnusualItemClassification[] = [];
+  const demerged = demergedPeriods(recastData);
 
   for (const period of rawMetrics) {
     for (const [compositeKey, value] of Object.entries(period.raw_metric_values ?? {})) {
@@ -142,16 +143,17 @@ export function classifyRunUnusualItems(
       const matched = findRule(baseKey);
       if (matched) {
         const { rule, pattern } = matched;
+        const demergedAway = rule.category === "discontinued-operations" && demerged.has(period.period_end);
         out.push({
           period: period.period_end,
           rawLabel: baseKey,
           value,
           category: rule.category,
           affectsCoreOI: rule.affectsCoreOI,
-          affectsTerminalEligibility: rule.affectsTerminalEligibility,
+          affectsTerminalEligibility: rule.affectsTerminalEligibility && !demergedAway,
           affectsCleanSurplus: rule.affectsCleanSurplus,
           classificationSource: "rule-based",
-          rationale: `${rule.rationaleTemplate} (matched /${pattern.source}/)`,
+          rationale: `${demergedAway ? DEMERGED_RATIONALE : rule.rationaleTemplate} (matched /${pattern.source}/)`,
           matchedPattern: pattern.source,
         });
       } else {
@@ -192,6 +194,22 @@ export function classifyRunUnusualItems(
   }
 
   return out;
+}
+
+/**
+ * A discontinued operation disqualifies the anchor while the business is still
+ * on the balance sheet the forecast starts from. One demerged to owners within
+ * the year (S-5.1 or D2 DEMERGER_LIKELY: equity left with it, and it was a
+ * small part of the history) has left the closing balance sheet, and its
+ * result stays in UOI, outside the core the forecast reads. A business sold or
+ * still held for sale keeps blocking.
+ */
+const DEMERGED_RATIONALE = "Discontinued operation demerged to owners within the year: its result is in UOI and its assets left the closing balance sheet; listed for review, not a terminal-anchor disqualifier.";
+
+function demergedPeriods(recastData: readonly RecastPeriod[]): Set<string> {
+  return new Set(recastData
+    .filter((p) => (p.spec_flags ?? []).some((f) => f.label === "DEMERGER_LIKELY"))
+    .map((p) => p.period_end));
 }
 
 const CANDIDATE_KEYWORDS = [
@@ -315,6 +333,7 @@ export function buildUnusualItemPolicy(period: RecastPeriod): UnusualItemPolicyS
   }
 
   if (discontinued !== 0) {
+    const demergedAway = demergedPeriods([period]).size > 0;
     operatingBuckets.push(
       makeBucket(
         "discontinued_operations",
@@ -323,8 +342,8 @@ export function buildUnusualItemPolicy(period: RecastPeriod): UnusualItemPolicyS
         false,
         true,
         false,
-        true,
-        "Discontinued operations are not valid terminal anchors and stay in UOI only.",
+        !demergedAway,
+        demergedAway ? DEMERGED_RATIONALE : "Discontinued operations are not valid terminal anchors and stay in UOI only.",
       ),
     );
   }

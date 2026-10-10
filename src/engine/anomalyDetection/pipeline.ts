@@ -38,7 +38,7 @@ export interface AnomalyBundle {
 export function runAnomalyDetection(
   periods: RecastPeriod[],
   cfg: EngineConfig,
-  reSeries?: Array<{period:string;RE:number;ReOI:number;openingCSE?: number | undefined}>
+  reSeries?: Array<{period:string;RE:number;ReOI:number;openingCSE?: number | undefined;coreRE?: number | undefined;coreTaxComparable?: boolean | undefined}>
 ): AnomalyBundle {
   if (periods.length < 2) {
     const empty: ContaminationResult = {

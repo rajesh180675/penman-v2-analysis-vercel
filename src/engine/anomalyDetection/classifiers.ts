@@ -91,7 +91,7 @@ export const RE_ANCHOR_ROE_SWING = 0.10;
 const MIN_PRIOR_RESIDUAL_ROE_YEARS = 3;
 
 export function validateTerminalREAnchor(
-  reSeries: Array<{period:string; RE:number; ReOI:number; openingCSE?: number | undefined}>,
+  reSeries: Array<{period:string; RE:number; ReOI:number; openingCSE?: number | undefined; coreRE?: number | undefined; coreTaxComparable?: boolean | undefined}>,
   cfg: EngineConfig
 ): TerminalREValidation {
   const jump_thresh   = cfg.re_anchor_jump   ?? 2.0;
@@ -117,11 +117,30 @@ export function validateTerminalREAnchor(
   const withBasis = reSeries.filter((r) => Number.isFinite(r.RE) && r.openingCSE != null && r.openingCSE > 0);
   const terminalHasBasis = withBasis.at(-1)?.period === latest_period;
   if (terminalHasBasis && withBasis.length > MIN_PRIOR_RESIDUAL_ROE_YEARS) {
-    const residualRoe = (r: (typeof withBasis)[number]) => r.RE / r.openingCSE!;
-    const rT = residualRoe(withBasis.at(-1)!);
-    const rPrev = residualRoe(withBasis.at(-2)!);
-    const rMedian = medianOf(withBasis.slice(0, -1).map(residualRoe))!;
-    if (Math.abs(rT) - Math.abs(rMedian) > RE_ANCHOR_ROE_SWING && Math.abs(rT) - Math.abs(rPrev) > RE_ANCHOR_ROE_SWING) {
+    const swells = (residualRoe: (r: (typeof withBasis)[number]) => number) => {
+      const rT = residualRoe(withBasis.at(-1)!);
+      const rPrev = residualRoe(withBasis.at(-2)!);
+      const rMedian = medianOf(withBasis.slice(0, -1).map(residualRoe))!;
+      return { rT, rPrev, rMedian, swelled: Math.abs(rT) - Math.abs(rMedian) > RE_ANCHOR_ROE_SWING && Math.abs(rT) - Math.abs(rPrev) > RE_ANCHOR_ROE_SWING };
+    };
+    const { rT, rPrev, rMedian, swelled } = swells((r) => r.RE / r.openingCSE!);
+    // Core residual earnings leave out the filed exceptional, discontinued and
+    // OCI items, which the core forecast already strips. When the core series
+    // does not swell, the non-recurring part is itemized, not hidden in core —
+    // unless the terminal year's core carries an unusual tax rate.
+    const core = swelled && withBasis.at(-1)!.coreTaxComparable === true
+      && withBasis.every((r) => r.coreRE != null && Number.isFinite(r.coreRE))
+      ? swells((r) => r.coreRE! / r.openingCSE!)
+      : null;
+    if (swelled && core && !core.swelled) {
+      flags.push(flag(
+        "S-10.1", Severity.WARNING, "TERMINAL_RE_ITEMIZED",
+        `Residual ROE ${(rT * 100).toFixed(1)}% (RE_T ₹${RE_T.toFixed(0)} Cr) vs ${(rMedian * 100).toFixed(1)}% ` +
+        `for prior years, but ${(core.rT * 100).toFixed(1)}% on core earnings vs ${(core.rMedian * 100).toFixed(1)}%: ` +
+        `the non-recurring part is filed as exceptional, discontinued or OCI, and the core forecast excludes it.`,
+        false, latest_period
+      ));
+    } else if (swelled) {
       terminal_anomaly = true;
       flags.push(flag(
         "S-10.1", Severity.CRITICAL, "TERMINAL_RE_ANOMALY",

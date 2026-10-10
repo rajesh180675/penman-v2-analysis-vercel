@@ -12,6 +12,7 @@ import {
 } from "./PenmanNissimEngine";
 import { resolveCostOfCapitalFromConfig } from "./costOfCapital";
 import { runAnomalyDetection, AnomalyBundle } from "./anomalyDetection";
+import { coreTaxComparable } from "./anomalyDetection/shared";
 import { buildUnusualItemPolicy } from "./unusualItemPolicy";
 import { assessAnalysisScope, analysisFamilyFromScope } from "./scopePolicy";
 import { processBankData } from "./bankPipeline";
@@ -325,12 +326,13 @@ export function processCompanyDataFull(
   });
 
   // Run anomaly detection over all periods (S-5.x)
-  const anomalies = runAnomalyDetection(results, config, buildAnomalyReSeries(results));
+  const anomalies = runAnomalyDetection(results, config, buildAnomalyReSeries(results, config));
 
   // Phase I9 — extract structural break periods from S-5.1 STRUCTURAL_EVENT flags.
   // These are surfaced in PipelineResult so App.tsx can offer the confirmation flow.
+  // A demerger no longer blocks the anchor, but it is still a break to offer.
   const structuralBreakPeriods = anomalies.dsSeries
-    .filter(ds => ds.flags.some(f => f.label === "STRUCTURAL_EVENT"))
+    .filter(ds => ds.flags.some(f => f.label === "STRUCTURAL_EVENT" || f.label === "DEMERGER_LIKELY"))
     .map(ds => ds.period_end);
 
   // Attach per-period flags back to each RecastPeriod (S-5.7)
@@ -424,10 +426,17 @@ export function processCompanyDataFull(
 
 /**
  * Residual-earnings series for the S-10.1 terminal-RE check, each point
- * carrying its opening CSE so the check can test materiality against equity.
+ * carrying its opening CSE so the check can test materiality against equity,
+ * and its core residual earnings (CNI − UOI + UFE is core CNI, since
+ * NFE = CoreNFE + UFE) so it can tell an itemized one-off from a hidden one —
+ * with whether that year's core is taxed like its history.
  */
-export function buildAnomalyReSeries(periods: readonly RecastPeriod[]) {
+export function buildAnomalyReSeries(periods: readonly RecastPeriod[], config: EngineConfig) {
   return periods.flatMap((p, i) => p.ri?.RE != null
-    ? [{ period: p.period_end, RE: p.ri.RE, ReOI: p.ri.ReOI!, openingCSE: periods[i - 1]?.bs.CSE }]
+    ? [{
+        period: p.period_end, RE: p.ri.RE, ReOI: p.ri.ReOI!, openingCSE: periods[i - 1]?.bs.CSE,
+        coreRE: p.cu ? p.ri.RE - p.cu.UOI + p.cu.UFE : undefined,
+        coreTaxComparable: coreTaxComparable(periods, i, config),
+      }]
     : []);
 }

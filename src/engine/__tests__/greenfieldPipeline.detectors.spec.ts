@@ -68,6 +68,25 @@ describe("greenfield L2 detectors", () => {
     expect(d2?.blocksValuation).toBe(false);
   });
 
+  it("reads a D2 shortfall beside an immaterial demerged business as a demerger that blocks nothing", () => {
+    // ITC FY25-shaped: the year files ₹15,016 Cr discontinued; the FY24
+    // comparative files ₹561 Cr of ₹22,439 Cr OI (2.5%).
+    const recast = (discontinued: number, oi: number) =>
+      ({ cu: { DiscontinuedOperationsAfterTax: discontinued, UOI: 0 }, is: { OI: oi } }) as unknown as NormalizedPeriod["asReportedRecast"];
+    const run = (previousDiscontinued: number) => runAllDetectors([
+      period("2024-03-31", { asReportedRecast: recast(previousDiscontinued, 22_439) }),
+      period("2025-03-31", { asReportedRecast: recast(15_016, 33_353), derived: { dirtySurplusSeed: -6_000_000_000 } }),
+    ], { asOf: "2026-06-02" }).find((signal) => signal.detectorId === "D2_DIRTY_SURPLUS");
+    const d2 = run(561);
+    expect(d2?.label).toBe("DEMERGER_LIKELY");
+    expect(d2?.severity).toBe("WARNING");
+    expect(d2?.blocksValuation).toBe(false);
+    // Without the comparative, nothing shows how much left: still critical,
+    // which makes it terminal-affecting (adapters.anomalySignalToSpecFlag).
+    expect(run(0)?.label).toBe("DIRTY_SURPLUS_SPIKE");
+    expect(run(0)?.severity).toBe("CRITICAL");
+  });
+
   it("classifies DMART-shaped recovered negative equity as artifact warning, not valuation block", () => {
     const signals = runAllDetectors([
       period("2020-03-31", { values: { cse: -1_000_000_000, leaseLiabilities: 8_000_000_000, rightOfUseAssets: 7_000_000_000 } }),
