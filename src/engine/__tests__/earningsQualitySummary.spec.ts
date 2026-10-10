@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAnalysisTraceability } from "../analysisTraceability";
-import { buildEarningsQualityCard } from "../earningsQuality";
+import { buildEarningsQualityCard, capitalTransactionWithOwners } from "../earningsQuality";
 import { buildEarningsQualitySummary } from "../earningsQualitySummary";
 import type { RecastPeriod } from "../types";
 
@@ -37,6 +37,45 @@ function cleanCard() {
     0.01,
   );
 }
+
+describe("completeness in a year with a capital transaction with owners", () => {
+  // ITC FY25: the Hotels demerger moved 29% of CSE outside earnings and
+  // payout; accrual R² 0.01, no REM, CFO 53% of OI.
+  const itcCard = (capitalTransaction: "demerger" | null) => buildEarningsQualityCard(
+    { n: 10, rSquared: 0.01, residualStdDev: 50, avgAbsAq: 0.8, label: "Very low" },
+    { abnormalCFO: 0, abnormalDiscExp: 0, abnormalProdCost: 0, remScore: 0, remFlag: false, label: "No REM" },
+    0.29,
+    0.53,
+    null,
+    capitalTransaction,
+  );
+
+  it("does not score the transaction as dirty surplus", () => {
+    const before = itcCard(null);
+    const after = itcCard("demerger");
+    expect(before.totalScore).toBe(31);
+    expect(after.totalScore).toBe(43);
+    const completeness = after.dimensions.find((d) => d.key === "completeness")!;
+    expect(completeness).toMatchObject({ score: 15, measured: false, flagged: false });
+    expect(completeness.detail).toMatch(/29\.0% of CSE outside earnings and payout in a demerger/);
+    expect(after.flags.some((f) => /dirty surplus/i.test(f))).toBe(false);
+  });
+
+  it("lifts the year out of the unreliable band only by what the transaction cost it", () => {
+    expect(buildEarningsQualitySummary(itcCard(null)).status).toBe("unreliable");
+    const summary = buildEarningsQualitySummary(itcCard("demerger"));
+    expect(summary.status).not.toBe("unreliable");
+    expect(summary.measuredCount).toBe(3);
+  });
+
+  it("reads the transaction from the period's recast flags", () => {
+    const flagged = (label: string) => ({ spec_flags: [{ label }] }) as unknown as RecastPeriod;
+    expect(capitalTransactionWithOwners(flagged("DEMERGER_LIKELY"))).toBe("demerger");
+    expect(capitalTransactionWithOwners(flagged("BUYBACK_LIKELY"))).toBe("buyback");
+    expect(capitalTransactionWithOwners(flagged("STRUCTURAL_EVENT"))).toBeNull();
+    expect(capitalTransactionWithOwners(undefined)).toBeNull();
+  });
+});
 
 describe("buildEarningsQualitySummary", () => {
   it("reports absent — not a clean bill — when no valuation ran", () => {

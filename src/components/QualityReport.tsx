@@ -6,7 +6,7 @@ import TraceabilityTrustPanel from "./TraceabilityTrustPanel";
 import { InsightBlock, SectionHeader } from "./shared/DesignSystem";
 import { EmptyState } from "./shared/EmptyState";
 import { computeIndiaQualitySignals } from "../engine/indiaQualitySignals";
-import { buildDechowDichevAndRem, buildEarningsQualityCard } from "../engine/earningsQuality";
+import { buildDechowDichevAndRem, buildEarningsQualityCard, capitalTransactionWithOwners } from "../engine/earningsQuality";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Cell, Legend } from "recharts";
 import QualityScoreDashboard from "./charts/QualityScoreDashboard";
 
@@ -79,6 +79,7 @@ export default function QualityReport({data, traceability = null, traceabilitySu
         latestPeriod.ratios?.dirty_surplus_pct_cse ?? null,
         latestPeriod.ratios?.cash_conversion_ratio ?? null,
         latestPeriod.ratios?.accrual_ratio_bs ?? null,
+        capitalTransactionWithOwners(latestPeriod),
       )
     : null;
 
