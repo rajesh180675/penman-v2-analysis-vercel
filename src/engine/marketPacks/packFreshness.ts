@@ -176,3 +176,28 @@ export function checkPackFreshness(input: {
   const rank: Record<PackFreshnessSeverity, number> = { "look-ahead": 0, expired: 1, expiring: 2 };
   return [...findings].sort((a, b) => rank[a.severity] - rank[b.severity] || a.asOf.localeCompare(b.asOf));
 }
+
+/**
+ * The packs' vintage: the latest date the resolver measures across both packs
+ * (an observation's `asOf`, a beta constituent's `windowEnd`). Dated at its
+ * vintage, a pack is never look-ahead, and its staleness is a property of the
+ * pack rather than of the wall clock — which is what a reproducible run that
+ * cannot pin "today" (the audit harness) needs. Null when neither pack carries a
+ * dated observation.
+ */
+export function packVintage(input: {
+  readonly macroPack?: MacroPack | null | undefined;
+  readonly betaPack?: EquityBetaPack | null | undefined;
+}): string | null {
+  const dates: string[] = [];
+  const macro = input.macroPack;
+  if (macro) {
+    const keys: readonly MacroObservationKey[] = ["riskFreeRate", "equityRiskPremium", "longRunNominalGrowth"];
+    for (const key of keys) {
+      const observation = macro[key];
+      if (observation) dates.push(observation.asOf);
+    }
+  }
+  for (const constituent of input.betaPack?.constituents ?? []) dates.push(constituent.windowEnd);
+  return dates.length ? dates.reduce((latest, date) => (date > latest ? date : latest)) : null;
+}

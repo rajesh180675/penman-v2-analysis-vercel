@@ -110,9 +110,10 @@ describe.sequential("auditCompanyRun", () => {
     // The bank route builds no command center, but its valuation does resolve a
     // ke, and that rate is now graded: reporting nothing (`absent`) let the
     // provenance gate stay silent on a financial's production-ready. The harness
-    // resolves it without packs (its recorded as-of exemption), so it reads as
-    // resting on priors.
-    expect(result.rigor.assumptionProvenanceStatus).toBe("prior-dependent");
+    // resolves it against the pinned packs dated at their vintage, as the app
+    // resolves it against them on its run date: sourced observations beside the
+    // long-run growth ceiling, which is a stated prior by design.
+    expect(result.rigor.assumptionProvenanceStatus).toBe("mixed");
   }, 240_000);
 
   it("exposes computed industrial valuation lenses instead of collapsing them to one VCC bucket", async () => {

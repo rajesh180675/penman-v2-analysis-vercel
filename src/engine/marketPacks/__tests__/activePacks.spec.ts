@@ -59,10 +59,16 @@ const SUPPLIES_PACKS = [
   // Freezes today's forecast snapshots: the packs, dated to the snapshot day
   // (analysisAsOf = madeAt), are what the app would have shown that day.
   "scripts/accountability/company-run.ts",
+  // The CLI audit harness (CI's company-audit shards). It pins its output for
+  // reproducibility, so it dates the packs at their own vintage (packVintage):
+  // never look-ahead, and moving only when the packs are refreshed. Exempt
+  // until 2026-10-11, when it scored the provenance gate on undated priors and
+  // so could not certify the production-ready the app shows.
+  "scripts/lib/auditCompanyRun.ts",
 ];
 
 /**
- * The tenth supply site, and the one the census cannot classify: it resolves
+ * The eleventh supply site, and the one the census cannot classify: it resolves
  * no capital cost of its own. It assembles the run input, and the executor is
  * what reaches a resolver — so what has to be asserted here is the spread onto
  * that input, not a call.
@@ -128,29 +134,6 @@ const KNOWN_UNPINNED: ReadonlyArray<readonly [string, string]> = [
   // point; a pinned rate that lapses would move the benchmark.
   ["src/engine/baselineGuardrails.ts", "self-comparison; undated on both sides"],
   ["src/engine/regressionHarness.ts", "self-comparison; undated on both sides"],
-  // The CLI audit harness, and the exemption worth understanding rather than
-  // scanning past. It pins `generatedAt` to 2026-06-04 so 33 company audits
-  // reproduce byte-for-byte, and it passes no `analysisAsOf` at all. Both facts
-  // matter, and neither makes activation here a one-line change:
-  //
-  //   - Handing it the packs *without* an as-of date is the worse option, not
-  //     the easy one: `resolveMacroObservation` skips staleness AND look-ahead
-  //     entirely when the date is falsy, so the harness would honour these
-  //     observations forever, including long after they lapse.
-  //   - Handing it the packs *with* its own pinned date splits them. The
-  //     risk-free rate (2026-07-24) and every beta window (ending 2026-07-19)
-  //     postdate 2026-06-04, so they resolve as look-ahead and `unusable` — a
-  //     pinned run cannot consume observations from its own future. The ERP
-  //     (2026-01-05) predates it and would resolve `sourced`. That leaves ke
-  //     part-sourced and part-prior, which `CoreBuildContext.betaPack` warns
-  //     against by name: pass both or neither.
-  //
-  // The consequence today is real and not hidden: the harness scores the
-  // assumption-provenance gate on undated priors while the app scores it on
-  // sourced observations, so the two disagree about production-readiness.
-  // Closing it means a pack vintage matched to the harness's own as-of, not
-  // today's pack and not today's clock.
-  ["scripts/lib/auditCompanyRun.ts", "pinned as-of predates two of three observations"],
   // Walk-forward backtest. Each forecast is re-made at a HISTORICAL cutoff;
   // today's dated packs would hand a 2019 forecast a 2026 risk-free rate — a
   // look-ahead the backtest exists to exclude. Config defaults are the
@@ -479,16 +462,16 @@ describe("pack activation — the call-site census", () => {
 
   it("reports an undated call as undated", () => {
     // Non-vacuity for the assertion above: if `dated` were true for everything,
-    // it would pass on all eight files while checking nothing. These two resolve
+    // it would pass on every supply site while checking nothing. These two resolve
     // capital costs with no date at all — `pipeline.ts` by exemption, and the
-    // audit harness for the reason KNOWN_UNPINNED records — so the checker has
-    // to be able to say so.
+    // walk-forward backtest for the reason KNOWN_UNPINNED records — so the
+    // checker has to be able to say so.
     const pipeline = callSitesIn("src/engine/pipeline.ts");
     expect(pipeline.length).toBeGreaterThan(0);
     expect(pipeline.every((call) => !call.dated)).toBe(true);
-    const harness = callSitesIn("scripts/lib/auditCompanyRun.ts");
-    expect(harness.length).toBeGreaterThan(0);
-    expect(harness.every((call) => !call.dated)).toBe(true);
+    const walkForward = callSitesIn("src/engine/accountability/walkForward.ts");
+    expect(walkForward.length).toBeGreaterThan(0);
+    expect(walkForward.every((call) => !call.dated)).toBe(true);
   });
 
   it(`${RUN_INPUT_SITE} spreads the packs onto the run input`, () => {
