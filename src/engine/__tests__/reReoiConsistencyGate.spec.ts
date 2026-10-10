@@ -50,9 +50,17 @@ const productionReadyStatus = {
   optionalCount: 0,
 };
 
+// Two paradigms in agreement, so the triangulation passes and whatever a test
+// varies is the only thing under test.
+const AGREEING = [
+  { key: "accrual-riv", label: "Accrual RIV/ReOI", perShare: 100 },
+  { key: "cash-fcff-dcf", label: "Cash-statement FCFF DCF", perShare: 100 },
+];
+
+/** `methods: null` passes no triangulation evidence: no industrial valuation ran. */
 function envelope(
   accrualPair?: { re: number | null; reoi: number | null },
-  methods: Array<{ key: string; label: string; perShare: number | null }> = [],
+  methods: Array<{ key: string; label: string; perShare: number | null }> | null = AGREEING,
 ) {
   const rawData = Array.from({ length: 2 }, (_, i) => ({
     company_id: "REREOI",
@@ -76,9 +84,7 @@ function envelope(
     rawData,
     recastData: rawData.map((period) => recastPeriod(period.period_end)),
     analysisStatus: productionReadyStatus,
-    // No triangulation methods, so the structural triangulation residual stays
-    // out and only the RE/ReOI pair is under test.
-    ...(accrualPair !== undefined || methods.length > 0
+    ...(methods !== null
       ? { valuationTriangulation: { methods, ...(accrualPair !== undefined ? { accrualPair } : {}) } }
       : {}),
   });
@@ -156,5 +162,32 @@ describe("valuation-triangulation gate", () => {
     const env = envelope(undefined, paradigms(235.03, -20.64));
     expect(env.rigor.achievedLevels).toContain("valuation-eligible");
     expect(env.rigor.achievedLevels).not.toContain("production-ready");
+  });
+
+  it("withholds production-ready when only one paradigm values the equity: absence is not agreement", () => {
+    // DMart before #424: its cash DCF was skipped, so the check was never
+    // built and the accrual value reached production-ready uncorroborated.
+    const env = envelope(undefined, [
+      { key: "accrual-riv", label: "Accrual RIV/ReOI", perShare: 368.51 },
+      { key: "cash-fcff-dcf", label: "Cash-statement FCFF DCF", perShare: null },
+    ]);
+    expect(env.reconciliation.checks.some((c) => c.key === "valuation-triangulation")).toBe(false);
+    expect(env.rigor.achievedLevels).toContain("valuation-eligible");
+    expect(env.rigor.achievedLevels).not.toContain("production-ready");
+    const checkpoint = env.rigor.checkpoints.find((c) => c.level === "production-ready");
+    expect(checkpoint?.detail).toBe(
+      "Only Accrual RIV/ReOI values the equity (₹368.51/share); no independent paradigm corroborates it, so the run is not production-ready.",
+    );
+  });
+
+  it("withholds production-ready when no paradigm values the equity above zero", () => {
+    const env = envelope(undefined, paradigms(-5, -40));
+    expect(env.rigor.achievedLevels).not.toContain("production-ready");
+    const checkpoint = env.rigor.checkpoints.find((c) => c.level === "production-ready");
+    expect(checkpoint?.detail).toMatch(/^No valuation paradigm values the equity above zero/);
+  });
+
+  it("is silent without triangulation evidence: no industrial valuation ran (a financial institution)", () => {
+    expect(envelope(undefined, null).rigor.achievedLevels).toContain("production-ready");
   });
 });

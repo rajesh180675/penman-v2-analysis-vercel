@@ -757,6 +757,25 @@ export function buildAnalysisTraceability(params: {
         detail: `${triangulationCheck.detail} Above the ${(triangulationCheck.criticalThreshold * 100).toFixed(0)}% they must agree within, the value is not corroborated, so the run is not production-ready.`,
       };
     }
+  } else if (!triangulationCheck && params.valuationTriangulation != null) {
+    // The evidence exists only for an industrial valuation (the command
+    // center). Without the check, fewer than two paradigms valued the equity,
+    // and that absence is not agreement: nothing independent corroborates the
+    // value. DMart reached production-ready this way until its cash DCF was
+    // valued (#424).
+    const idx = checkpoints.findIndex((c) => c.level === "production-ready");
+    if (idx >= 0 && checkpoints[idx]!.achieved) {
+      // Without the check at most one paradigm values the equity above zero.
+      const valued = params.valuationTriangulation.methods
+        .find((method) => method.perShare != null && Number.isFinite(method.perShare) && method.perShare > 0);
+      checkpoints[idx] = {
+        ...checkpoints[idx]!,
+        achieved: false,
+        detail: valued
+          ? `Only ${valued.label} values the equity (₹${valued.perShare!.toFixed(2)}/share); no independent paradigm corroborates it, so the run is not production-ready.`
+          : "No valuation paradigm values the equity above zero, so nothing corroborates a value, and the run is not production-ready.",
+      };
+    }
   }
 
   // Recompute achieved/pending after downgrade.
