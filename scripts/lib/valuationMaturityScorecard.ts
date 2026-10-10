@@ -850,8 +850,8 @@ export function renderScorecardMarkdown(scorecard: ValuationMaturityScorecard): 
   lines.push(`- Current rating: \`${scorecard.rating}\`.`);
   lines.push("- Target score: **10.0/10**.");
   lines.push("- Target state: no supported company type is silently routed through the wrong valuation family; unsupported source or sidecar gaps are explicit expected skips, not crashes or green badges.");
-  lines.push("- Baseline artifact source: `npx tsx scripts/valuation-scorecard.ts --format md` over the audited company registry.");
-  lines.push("- Machine-readable source: `npx tsx scripts/valuation-scorecard.ts --format json`.");
+  lines.push("- Baseline artifact source: `npm run scorecard -- --format md` over the audited company registry.");
+  lines.push("- Machine-readable source: `npm run scorecard -- --format json`.");
   lines.push("");
   lines.push("This score is intentionally conservative. It measures the current end-to-end corpus after the company-type-aware audit harness and skip/error taxonomy landed, not the aspirational 10/10 roadmap. A low family score is a work queue, not a reason to route companies through weaker generic models.");
   lines.push("");

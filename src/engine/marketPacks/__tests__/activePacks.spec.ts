@@ -59,21 +59,20 @@ const SUPPLIES_PACKS = [
   // Freezes today's forecast snapshots: the packs, dated to the snapshot day
   // (analysisAsOf = madeAt), are what the app would have shown that day.
   "scripts/accountability/company-run.ts",
-  // The CLI audit harness (CI's company-audit shards). It pins its output for
-  // reproducibility, so it dates the packs at their own vintage (packVintage):
-  // never look-ahead, and moving only when the packs are refreshed. Exempt
-  // until 2026-10-11, when it scored the provenance gate on undated priors and
-  // so could not certify the production-ready the app shows.
-  "scripts/lib/auditCompanyRun.ts",
 ];
 
 /**
- * The eleventh supply site, and the one the census cannot classify: it resolves
- * no capital cost of its own. It assembles the run input, and the executor is
- * what reaches a resolver — so what has to be asserted here is the spread onto
- * that input, not a call.
+ * The supply sites the census cannot classify: they resolve no capital cost of
+ * their own. Each assembles a run input, and the executor is what reaches a
+ * resolver — so what has to be asserted here is the spread onto that input, not
+ * a call. The default UI's company run is also the audit harness's: CI's
+ * company-audit shards run the app's run (scripts/lib/auditCompanyRun.ts), dated
+ * at the packs' vintage, so its packs arrive here too.
  */
-const RUN_INPUT_SITE = "src/app/analysisRun/useAnalysisRunExecution.ts";
+const RUN_INPUT_SITES = [
+  "src/app/analysisRun/useAnalysisRunExecution.ts",
+  "src/next/companyRun.ts",
+];
 
 /**
  * Takes the packs from its caller. Every capital-cost call in these must
@@ -474,12 +473,12 @@ describe("pack activation — the call-site census", () => {
     expect(walkForward.every((call) => !call.dated)).toBe(true);
   });
 
-  it(`${RUN_INPUT_SITE} spreads the packs onto the run input`, () => {
+  it.each(RUN_INPUT_SITES)("%s spreads the packs onto the run input", (site) => {
     // No call to classify: this hands the packs to the executor, which is what
     // reaches a resolver. Asserting zero calls too, so that adding one here
     // fails rather than going unchecked — it would belong in SUPPLIES_PACKS.
-    expect(source(RUN_INPUT_SITE)).toContain("...ACTIVE_MARKET_PACKS");
-    expect(callSitesIn(RUN_INPUT_SITE)).toEqual([]);
+    expect(source(site)).toContain("...ACTIVE_MARKET_PACKS");
+    expect(callSitesIn(site)).toEqual([]);
   });
 
   it.each(PASSES_PACKS_THROUGH)("%s forwards the packs it was given", (path) => {

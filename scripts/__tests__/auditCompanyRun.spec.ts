@@ -180,6 +180,32 @@ describe.sequential("auditCompanyRun", () => {
     expect(result.rigor.assumptionProvenanceStatus).toMatch(/^(defensible|mixed|prior-dependent)$/);
   }, 240_000);
 
+  // The harness runs the app's own run (loadCompanyRun → the executor), so CI
+  // certifies the rung the app shows. These three were split while it
+  // reimplemented the run: each pins the step it had missed.
+  it("reconciles the run's analysis window, not the whole history (TCS)", async () => {
+    // TCS's FY2012 has no ratios, so the window excludes it, and its operating
+    // cost bridge (3.6%) failed the harness's whole-history reconciliation.
+    const result = await runAudit("TCS");
+    expect(result.rigor.reconciliationStatus).toBe("confirmed");
+    expect(result.rigor.currentLevel).toBe("production-ready");
+  }, 240_000);
+
+  it("analyses the standalone accounts when the consolidated history is too short (Nestlé)", async () => {
+    // Two consolidated years (FY24-25) beside a standalone history from 2011.
+    const result = await runAudit("NESTLEIND");
+    expect(result.periods).toBeGreaterThan(2);
+    expect(result.rigor.currentLevel).toBe("valuation-eligible");
+  }, 240_000);
+
+  it("reports a run blocked before its valuation at the app's rung, as a policy warning (Airtel)", async () => {
+    const result = await runAudit("BHARTIARTL");
+    expect(result.rigor.currentLevel).toBe("structurally-reconciled");
+    expect(result.flags).toEqual(["POLICY:VALUATION_BLOCKED"]);
+    expect(result.statusClass).toBe("policy-warning");
+    expect(result.modelApplicability.industrialCommandCenter.status).toBe("skipped");
+  }, 240_000);
+
   it("does not let valuation readiness skip a blocked rigor gate", async () => {
   // Grasim. (Asian Paints, UltraTech, Hindustan Unilever and Reliance held this
   // case in turn; each cleared once a defect upstream was fixed: the forecast's

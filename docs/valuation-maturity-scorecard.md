@@ -11,8 +11,8 @@ Audited corpus: 33 companies; total weight 100
 - Current rating: `guarded`.
 - Target score: **10.0/10**.
 - Target state: no supported company type is silently routed through the wrong valuation family; unsupported source or sidecar gaps are explicit expected skips, not crashes or green badges.
-- Baseline artifact source: `npx tsx scripts/valuation-scorecard.ts --format md` over the audited company registry.
-- Machine-readable source: `npx tsx scripts/valuation-scorecard.ts --format json`.
+- Baseline artifact source: `npm run scorecard -- --format md` over the audited company registry.
+- Machine-readable source: `npm run scorecard -- --format json`.
 
 This score is intentionally conservative. It measures the current end-to-end corpus after the company-type-aware audit harness and skip/error taxonomy landed, not the aspirational 10/10 roadmap. A low family score is a work queue, not a reason to route companies through weaker generic models.
 

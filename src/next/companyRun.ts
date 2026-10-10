@@ -23,9 +23,8 @@ export type CompanyRunState =
       readonly status: "ready";
       readonly result: LegacyAnalysisRunExecutionResult;
       /**
-       * The parser's diagnostics, for the Lab's Debug tool. Held beside the run,
-       * not passed into it: the run's inputs (and so its reproducibility hash
-       * and trust envelope) stay what the Case sections were built on.
+       * The parser's diagnostics, for the Lab's Debug tool. The run receives
+       * them too, so parser fidelity checks the Capitaline parse.
        */
       readonly debug?: CapitalineParseDebug | null;
       /** Which accounts the run analysed; standalone only when consolidated history is too short. */

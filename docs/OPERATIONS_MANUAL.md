@@ -525,7 +525,7 @@ exactly one such line:
   match first and run it again.
 
 After a mapping change, re-run the diagnosis, then
-`npx tsx scripts/refresh-expectations.ts --folder="Reliance Industries"` to
+`npm run refresh:expectations -- --folder="Reliance Industries"` to
 capture the audit baseline and `npm run test:audit` to check the rest of the
 library did not move.
 

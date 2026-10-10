@@ -122,7 +122,7 @@ describe("Plan 0 PR-0.4 valuation maturity documentation", () => {
 
     expect(handoff).toContain("## Valuation maturity baseline");
     expect(handoff).toContain("docs/valuation-maturity-scorecard.md");
-    expect(handoff).toContain("npx tsx scripts/valuation-scorecard.ts --format json");
+    expect(handoff).toContain("npm run scorecard -- --format json");
 
     expect(adr).toContain("# ADR-008: Valuation maturity scorecard");
     expect(adr).toContain("- **Status:** Accepted");

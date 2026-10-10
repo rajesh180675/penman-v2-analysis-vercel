@@ -9,9 +9,9 @@
  * through the industrial command center.
  *
  * Usage:
- *   npx tsx scripts/audit-all-companies.ts              # full audit
- *   npx tsx scripts/audit-all-companies.ts --limit=3    # only first 3
- *   npx tsx scripts/audit-all-companies.ts --ticker=ITC # single company
+ *   npm run audit:all                       # full audit
+ *   npm run audit:all -- --limit=3          # only first 3
+ *   npm run audit:all -- --ticker=ITC       # single company
  */
 
 import { readFileSync } from "node:fs";
@@ -49,7 +49,7 @@ for (const arg of process.argv.slice(2)) {
   else if (arg.startsWith("--limit=")) args.limit = parseInt(arg.split("=")[1] ?? "", 10);
   else if (arg.startsWith("--ticker=")) args.ticker = arg.split("=")[1] ?? null;
   else if (arg === "--help") {
-    console.log("Usage: npx tsx scripts/audit-all-companies.ts [--limit=N] [--ticker=TICKER] [--verbose]");
+    console.log("Usage: npm run audit:all -- [--limit=N] [--ticker=TICKER] [--verbose]");
     process.exit(0);
   }
 }

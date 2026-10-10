@@ -5,17 +5,12 @@ import { fileURLToPath } from "node:url";
 import { parseCapitalineZip } from "../../src/engine/capitalineParser";
 import { resolveNseSymbol } from "../../src/engine/nseSymbolRegistry";
 import { marketCachePath, readJson, writeJson, listFiles } from "../../server/store/fsStore";
-import { processCompanyDataFull, type PipelineResult } from "../../src/engine/pipeline";
-import { buildValuationBasis } from "../../src/engine/valuationBasis";
-import {
-  buildValuationCommandCenter,
-  type ValuationCommandCenterOutput,
-} from "../../src/engine/valuationCommandCenter";
+import type { PipelineResult } from "../../src/engine/pipeline";
+import { executeLegacyAnalysisRun } from "../../src/engine/analysisRun";
+import { loadCompanyRun } from "../../src/next/companyRun";
+import type { LibraryCompany } from "../../src/components/data-entry/companyRegistry";
+import type { ValuationCommandCenterOutput } from "../../src/engine/valuationCommandCenter";
 import { buildAnalysisTraceability } from "../../src/engine/analysisTraceability";
-import { applyTerminalOutcomeToEnvelope } from "../../src/engine/analysisRun/terminalOutcome";
-import { buildScenarioForecastResults, evaluateScenarioForecastGates } from "../../src/engine/forecastState";
-import { buildAssumptionProvenance } from "../../src/engine/assumptionProvenance";
-import { buildEarningsQualitySummary } from "../../src/engine/earningsQualitySummary";
 import { ACTIVE_MARKET_PACKS, packVintage } from "../../src/engine/marketPacks";
 import {
   CURRENT_MODEL_REGISTRY,
@@ -23,9 +18,7 @@ import {
 } from "../../src/engine/modelCatalog";
 import { deriveAnalysisStatus } from "../../src/engine/analysisStatus";
 import { resolveValuationReadiness } from "../../src/engine/valuationPolicy";
-import { resolveFinancialValuationReadiness } from "../../src/engine/bankValuation/readiness";
-import { getAnalysisPolicyVersions } from "../../src/engine/policyVersions";
-import { DEFAULT_CONFIG, type EngineConfig, type RawPeriodData, type RecastPeriod } from "../../src/engine/types";
+import { type EngineConfig, type RawPeriodData, type RecastPeriod } from "../../src/engine/types";
 import {
   validateBankQualityIndicators,
   type BankQualityIndicators,
@@ -291,25 +284,25 @@ export interface AuditSegmentCoverage {
 
 export interface AuditCompanyRunOptions {
   projectRoot?: string;
-  generatedAt?: string;
   verbose?: boolean;
 }
 
 /**
- * The analysis date the harness resolves the pinned packs against. The app's
- * run uses its own date; the harness pins its output for reproducibility, so it
- * dates the packs at their vintage instead: never look-ahead, and a capital
- * cost that moves only when the packs are refreshed. Without the packs its ke
- * rested on undated priors, the provenance gate withheld production-ready from
- * every industrial company, and CI could not certify the rung the app shows.
- * When a pack nears its window, the pack-freshness lint turns CI red. Packs
- * with no date would resolve undated, never stale, so that fails here instead.
+ * The harness's clock: the date its run is made as of. The app's run uses
+ * today; the harness pins its output for reproducibility, so it uses the pinned
+ * packs' vintage — never look-ahead for them, and moving only when they are
+ * refreshed. When a pack nears its window, the pack-freshness lint turns CI
+ * red. Packs with no date would resolve undated, never stale, so that fails
+ * here instead.
  */
 const HARNESS_PACKS_AS_OF = (() => {
   const vintage = packVintage(ACTIVE_MARKET_PACKS);
   if (!vintage) throw new Error("The pinned market packs carry no dated observation to resolve against.");
   return vintage;
 })();
+
+/** The library types whose quality sidecar the app's run reads (companyRun's fetchBankQuality). */
+const FINANCIAL_LIBRARY_TYPES = new Set<string>(["bank", "nbfc", "insurance"]);
 
 function companiesDir(projectRoot: string): string {
   return join(projectRoot, "public", "data", "companies");
@@ -1081,94 +1074,11 @@ function industrialMetricsSnapshot(periods: RecastPeriod[]): SectorMetrics {
  * it changes the resulting rigor level, so the baseline generator has to derive
  * it the same way.
  */
-export function buildAuditAnalysisContext(args: {
-  pipeline: PipelineResult;
-  /** The periods the valuation runs on (a lending arm carved out), when they differ from the recast. */
-  valuationPeriods?: RecastPeriod[] | null;
-}) {
-  const isFinancial = args.pipeline.analysisFamily === "financial-institution" && args.pipeline.bankResult != null;
-  // Rated on the business being valued, as the app's run rates it.
-  let valuationReadiness = resolveValuationReadiness(args.valuationPeriods ?? args.pipeline.periods);
-  if (isFinancial) {
-    // The rule the app's run applies (resolveFinancialValuationReadiness), so
-    // the two cannot disagree. It replaced a history-depth rule here that
-    // called every financial with three periods and a latest ROA/ROE
-    // "production-ready", whatever its valuation rested on.
-    const bankResult = args.pipeline.bankResult!;
-    valuationReadiness = resolveFinancialValuationReadiness({
-      bankMetrics: bankResult.bankMetrics ?? [],
-      valuation: bankResult.valuation,
-      subtype: bankResult.subtype,
-    });
-  }
-  const analysisStatus = deriveAnalysisStatus(null, valuationReadiness, null);
-  return { valuationReadiness, analysisStatus };
-}
-
-type AuditAnalysisContext = ReturnType<typeof buildAuditAnalysisContext>;
-
-function buildTrace(args: {
-  company: AuditRegistryEntry;
-  config: EngineConfig;
-  pipeline: PipelineResult;
-  parsed: Awaited<ReturnType<typeof parseCapitalineZip>>;
-  generatedAt: string;
-  analysisContext: AuditAnalysisContext;
-  valuation?: ValuationCommandCenterOutput | null;
-}) {
-  const { company, config, pipeline, parsed, generatedAt, analysisContext, valuation } = args;
-  // The audit harness is the only non-app caller that actually resolves a
-  // capital cost, and it was passing `valuationTriangulation` from the command
-  // center while dropping the provenance from the same object. That made the
-  // provenance gate unreachable here: `absent` does not fire it, so the CLI that
-  // decides whether a company is production-ready graded a discount rate the app
-  // would have withheld the claim for. Reading both off one command center is
-  // what keeps the two answers the same.
-  //
-  // Null on the financial-institution route, where no command center is built
-  // and no ke is resolved — `absent` is honest there rather than a bypass.
-  // A financial institution has no command center; its valuation's ke is the
-  // one to grade. Without this the gate saw `absent` and never fired, so a
-  // financial's production-ready would rest on an ungraded discount rate.
-  const bankCostOfCapital = pipeline.bankResult?.valuation?.costOfCapital ?? null;
-  const assumptionProvenance = valuation
-    ? buildAssumptionProvenance(valuation.costOfCapital.assumptions, {
-      equityMode: valuation.costOfCapital.equityMode,
-      ke: valuation.costOfCapital.ke,
-    })
-    : bankCostOfCapital
-      ? buildAssumptionProvenance(bankCostOfCapital.assumptions, {
-        equityMode: bankCostOfCapital.equityMode,
-        ke: bankCostOfCapital.ke,
-      })
-      : null;
-  return buildAnalysisTraceability({
-    generatedAt,
-    runId: `audit-${company.folder}`,
-    companyId: company.folder,
-    sourceMode: "capitaline",
-    recastData: pipeline.periods,
-    config,
-    rawData: parsed.periods,
-    periodCount: parsed.periods.length,
-    recastPeriodCount: pipeline.periods.length,
-    latestPeriod: parsed.periods[parsed.periods.length - 1]?.period_end ?? null,
-    analysisStatus: analysisContext.analysisStatus,
-    policyVersions: getAnalysisPolicyVersions(),
-    debugInfo: parsed.debug,
-    hasDebugInfo: Boolean(parsed.debug),
-    debugFiles: parsed.debug?.files?.length ?? 0,
-    rawMetricKeyCount: parsed.debug?.rawMetricKeys?.length ?? 0,
-    bankMetrics: pipeline.bankResult?.bankMetrics ?? null,
-    bankSubtype: pipeline.bankResult?.subtype ?? null,
-    bankValuation: pipeline.bankResult?.valuation ?? null,
-    valuationTriangulation: valuation?.valuationTriangulation ?? null,
-    assumptionProvenance,
-    // As the app's run passes it: without it the earnings-quality gate was
-    // silent here.
-    earningsQuality: valuation ? buildEarningsQualitySummary(valuation.earningsQuality) : null,
-  });
-}
+/** The run's readiness and analysis status, as the app's run computed them. */
+type AuditAnalysisContext = {
+  valuationReadiness: ReturnType<typeof resolveValuationReadiness>;
+  analysisStatus: ReturnType<typeof deriveAnalysisStatus>;
+};
 
 function financialResult(args: {
   company: AuditRegistryEntry;
@@ -1259,9 +1169,8 @@ function financialResult(args: {
     result.valuationEvidence = {
       // Was hardcoded "production-ready" for every financial institution, which
       // made the valuation-readiness checkpoint pass by construction for the
-      // whole family. The real status is already computed from bank history
-      // depth and anchor contamination in buildAuditAnalysisContext — it was
-      // just never passed in.
+      // whole family. The real status is the run's own readiness
+      // (resolveFinancialValuationReadiness, in the app's run).
       readinessStatus: analysisContext.valuationReadiness.status,
       readinessAnchorPeriod: analysisContext.valuationReadiness.anchorPeriod ?? result.latestPeriod,
       // Null, not "confirmed". Defensibility is a property of the
@@ -1306,7 +1215,8 @@ function financialResult(args: {
 function industrialResult(args: {
   company: AuditRegistryEntry;
   pipeline: PipelineResult;
-  valuation: ValuationCommandCenterOutput;
+  /** Null when the run was blocked before its valuation (the app shows none). */
+  valuation: ValuationCommandCenterOutput | null;
   sidecarFlags: string[];
   trace: ReturnType<typeof buildAnalysisTraceability>;
   config: EngineConfig;
@@ -1327,43 +1237,56 @@ function industrialResult(args: {
   result.anomalyFlagKeys = anomalyFlagKeys(pipeline);
   result.metrics = industrialMetricsSnapshot(pipeline.periods);
 
-  const scenarios = valuation.scenarios || [];
-  result.stress = finiteOrNull(scenarios.find((s) => s.key === "stress")?.intrinsicPerShare);
-  result.base = finiteOrNull(scenarios.find((s) => s.key === "base")?.intrinsicPerShare);
-  result.bull = finiteOrNull(scenarios.find((s) => s.key === "bull")?.intrinsicPerShare);
-  result.triangulatedValue = result.base;
-  result.sotp = finiteOrNull(valuation.sotp?.totalEnterpriseValue);
-  result.revDcf = finiteOrNull(valuation.reverseDcf?.impliedOwnerEarningsGrowth);
-  result.epv = finiteOrNull(valuation.epv?.epvPerShare);
-  result.evEbitda = finiteOrNull(valuation.evEbitda?.enterpriseValue);
-  result.valuation = {
-    stress: result.stress,
-    base: result.base,
-    bull: result.bull,
-    revDcfGrowth: result.revDcf,
-    sotpTotal: result.sotp,
-    epvPerShare: result.epv,
-    evEbitdaEv: result.evEbitda,
-  };
-  result.valuationEvidence = industrialValuationEvidenceSnapshot(valuation);
-  result.models = computedIndustrialModelNames(valuation);
+  if (valuation) {
+    const scenarios = valuation.scenarios || [];
+    result.stress = finiteOrNull(scenarios.find((s) => s.key === "stress")?.intrinsicPerShare);
+    result.base = finiteOrNull(scenarios.find((s) => s.key === "base")?.intrinsicPerShare);
+    result.bull = finiteOrNull(scenarios.find((s) => s.key === "bull")?.intrinsicPerShare);
+    result.triangulatedValue = result.base;
+    result.sotp = finiteOrNull(valuation.sotp?.totalEnterpriseValue);
+    result.revDcf = finiteOrNull(valuation.reverseDcf?.impliedOwnerEarningsGrowth);
+    result.epv = finiteOrNull(valuation.epv?.epvPerShare);
+    result.evEbitda = finiteOrNull(valuation.evEbitda?.enterpriseValue);
+    result.valuation = {
+      stress: result.stress,
+      base: result.base,
+      bull: result.bull,
+      revDcfGrowth: result.revDcf,
+      sotpTotal: result.sotp,
+      epvPerShare: result.epv,
+      evEbitdaEv: result.evEbitda,
+    };
+    result.valuationEvidence = industrialValuationEvidenceSnapshot(valuation);
+    result.models = computedIndustrialModelNames(valuation);
 
-  if (scenarios.length === 0) flags.push("NO_SCENARIOS");
-  if (result.stress === null && scenarios.some((s) => s.key === "stress")) flags.push("STRESS_INVALID");
-  if (result.base === null && scenarios.some((s) => s.key === "base")) flags.push("BASE_INVALID");
-  if (result.bull === null && scenarios.some((s) => s.key === "bull")) flags.push("BULL_INVALID");
-  if (result.revDcf !== null && !Number.isFinite(result.revDcf)) flags.push("REVDCF_INVALID");
-  if (company.type === "conglomerate" && result.sotp === null) flags.push("MODEL_GAP:CONGLO_NO_SOTP");
-  if (result.epv !== null && !Number.isFinite(result.epv)) flags.push("EPV_INVALID");
-  if (result.evEbitda !== null && !Number.isFinite(result.evEbitda)) flags.push("EVEBITDA_INVALID");
+    if (scenarios.length === 0) flags.push("NO_SCENARIOS");
+    if (result.stress === null && scenarios.some((s) => s.key === "stress")) flags.push("STRESS_INVALID");
+    if (result.base === null && scenarios.some((s) => s.key === "base")) flags.push("BASE_INVALID");
+    if (result.bull === null && scenarios.some((s) => s.key === "bull")) flags.push("BULL_INVALID");
+    if (result.revDcf !== null && !Number.isFinite(result.revDcf)) flags.push("REVDCF_INVALID");
+    if (company.type === "conglomerate" && result.sotp === null) flags.push("MODEL_GAP:CONGLO_NO_SOTP");
+    if (result.epv !== null && !Number.isFinite(result.epv)) flags.push("EPV_INVALID");
+    if (result.evEbitda !== null && !Number.isFinite(result.evEbitda)) flags.push("EVEBITDA_INVALID");
 
-  result.modelApplicability.industrialCommandCenter = {
-    status: result.models.length > 0 || result.base != null ? "computed" : "model-gap",
-    reason: result.models.length > 0 || result.base != null
-      ? "industrial command center produced scenario valuation"
-      : "industrial command center produced no scenarios",
-    models: result.models,
-  };
+    result.modelApplicability.industrialCommandCenter = {
+      status: result.models.length > 0 || result.base != null ? "computed" : "model-gap",
+      reason: result.models.length > 0 || result.base != null
+        ? "industrial command center produced scenario valuation"
+        : "industrial command center produced no scenarios",
+      models: result.models,
+    };
+  } else {
+    // The app's run stopped before its valuation (Airtel, Idea and Paytm: a
+    // terminal period unsafe to anchor on), so there is no value to audit. A
+    // policy decision, not a missing model: flagged so, it is a policy warning.
+    flags.push("POLICY:VALUATION_BLOCKED");
+    result.modelApplicability.industrialCommandCenter = {
+      status: "skipped",
+      reason: `the run was blocked before its valuation: ${trace.confidence.headline}`,
+      models: [],
+    };
+  }
+
   result.modelApplicability.financialInstitutionValuation = {
     status: "skipped",
     reason: "non-financial company routed through industrial command center",
@@ -1443,72 +1366,55 @@ export async function auditCompanyRun(
   }
 
   try {
-    const buf = readFileSync(zipPath);
-    const u8 = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
-    const parsed = await parseCapitalineZip(u8, { companyId: company.folder, filename: `${company.folder}.zip` });
-    // The app's config for a library company (configForCompany): the ticker is
-    // what the beta pack is keyed on.
-    const config: EngineConfig = { ...DEFAULT_CONFIG, company_type: company.type as EngineConfig["company_type"], ticker: company.ticker };
+    // The app's own run (src/next/companyRun.ts): the same accounts rule
+    // (standalone when the consolidated history is too short), the same config,
+    // the same run input — parse trail, segments, sidecar and pinned packs —
+    // through the same executor, so the window, the analysis status, the gates
+    // and their terminal outcomes are the app's by construction. CI certifies
+    // what the app shows. The harness reimplemented these steps and drifted from
+    // them one at a time (#429 parser fidelity, #430 packs), and still analysed
+    // the whole history (TCS failed reconciliation on its 2012 year, outside the
+    // window), only the consolidated accounts (Nestlé) and a status without the
+    // quality gate (Airtel, Idea). Its clock is the packs' vintage, and it has no
+    // live market price.
     const { quality, flags: sidecarFlags } = loadQualitySidecar(projectRoot, company.folder);
-    const pipeline = processCompanyDataFull(parsed.periods, config, quality, { ...ACTIVE_MARKET_PACKS, analysisAsOf: HARNESS_PACKS_AS_OF });
-    // The app's run values the industrial business with any linked lending
-    // arm carved out (src/engine/lendingArm); the harness follows the same rule.
-    const valuationBasis = pipeline.analysisFamily === "financial-institution"
-      ? null
-      : buildValuationBasis({
-        ticker: company.ticker,
-        periods: pipeline.periods,
-        rawData: parsed.periods,
-        segmentData: selectBusinessSegmentData(parsed.segmentData),
-        config,
-        packs: { ...ACTIVE_MARKET_PACKS, analysisAsOf: HARNESS_PACKS_AS_OF },
-      });
-    const analysisContext = buildAuditAnalysisContext({ pipeline, valuationPeriods: valuationBasis?.periods ?? null });
-    const industrialValuation = !valuationBasis
-      ? null
-      : buildValuationCommandCenter({
-        data: valuationBasis.periods,
-        config,
-        marketData: null,
-        analysisStatus: analysisContext.analysisStatus,
-        segmentData: selectBusinessSegmentData(parsed.segmentData),
-        lendingArm: valuationBasis.lendingArm,
-        annualizedPeriods: valuationBasis.annualizedPeriods,
-        ...ACTIVE_MARKET_PACKS,
-        analysisAsOf: HARNESS_PACKS_AS_OF,
-      });
-    const structuralTrace = buildTrace({
-      company,
-      config,
-      pipeline,
-      parsed,
-      generatedAt: options.generatedAt ?? "2026-06-04T00:00:00.000Z",
-      analysisContext,
-      valuation: industrialValuation,
+    const parses = new Map<string, Awaited<ReturnType<typeof parseCapitalineZip>>>();
+    const state = await loadCompanyRun(company as LibraryCompany, undefined, {
+      fetchZip: async (url) => {
+        const buf = readFileSync(join(projectRoot, "public", decodeURIComponent(url)));
+        return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+      },
+      parse: async (bytes, companyId) => {
+        const result = await parseCapitalineZip(bytes, { companyId });
+        parses.set(parses.size === 0 ? "consolidated" : "standalone", result);
+        return { periods: result.periods, debug: result.debug, segmentData: selectBusinessSegmentData(result.segmentData) };
+      },
+      fetchMarketSnapshot: async () => null,
+      run: (input) => executeLegacyAnalysisRun(input),
+      now: () => new Date(`${HARNESS_PACKS_AS_OF}T00:00:00.000Z`),
+      fetchBankQuality: async (library) => (FINANCIAL_LIBRARY_TYPES.has(library.type) ? quality : null),
     });
-    // The forecast gates the app's run applies after its valuation: every
-    // scenario must validate as a balanced statement set, then stress ≤ base ≤
-    // bull. The harness built the scenarios but never checked them, so a
-    // forecast block (DMart's −₹1 Cr minority until #408) could not show here
-    // and CI's expectations could not catch one. Same rule, same demotion.
-    const forecastGate = industrialValuation
-      ? evaluateScenarioForecastGates(buildScenarioForecastResults({
-        commandCenter: industrialValuation,
-        latest: industrialValuation.anchorPeriod,
-        config,
-        analysisWindowId: `audit-${company.folder}`,
-        assumptionIds: [],
-        evidenceRefs: [],
-      }))
-      : null;
-    const trace = forecastGate?.blocked
-      ? applyTerminalOutcomeToEnvelope(structuralTrace, {
-        kind: "blocked",
-        stage: "forecast",
-        code: forecastGate.blocked.code,
-        message: forecastGate.blocked.message,
-      })
-      : structuralTrace;
+    if (state.status !== "ready") throw new Error(state.message);
+    const execution = state.result;
+    if (!execution.run) throw new Error(execution.status === "failed" ? execution.message : `Analysis run ${execution.status}`);
+    const parsed = parses.get(state.basis ?? "consolidated")!;
+    // The result builders read these; a copy, so nothing they do reaches the run.
+    const materialization = structuredClone(execution.materialization) as unknown as {
+      config: EngineConfig;
+      pipelineResult: PipelineResult | null;
+      commandCenter: ValuationCommandCenterOutput | null;
+      analysisStatus: AuditAnalysisContext["analysisStatus"] | null;
+      valuationReadiness: AuditAnalysisContext["valuationReadiness"] | null;
+    };
+    const pipeline = materialization.pipelineResult;
+    if (!pipeline) throw new Error("The analysis run produced no pipeline result");
+    const config = materialization.config;
+    const industrialValuation = materialization.commandCenter;
+    const analysisContext: AuditAnalysisContext = {
+      valuationReadiness: materialization.valuationReadiness ?? resolveValuationReadiness(pipeline.periods),
+      analysisStatus: materialization.analysisStatus ?? deriveAnalysisStatus(null, resolveValuationReadiness(pipeline.periods), null),
+    };
+    const trace = structuredClone(execution.run.trustEnvelope) as ReturnType<typeof buildAnalysisTraceability>;
 
     // Measured on the raw parse, before recasting, so it reflects what came out
     // of the parser rather than what survived the pipeline. Same value on both
@@ -1525,10 +1431,6 @@ export async function auditCompanyRun(
       result.segmentCoverage = segmentCoverage;
       return withSourceEvidence(result, sourceEvidence, trace.lineageRef);
     }
-    if (!industrialValuation) {
-      throw new Error("Industrial valuation was not computed for non-financial audit route");
-    }
-
     const result = industrialResult({
       company,
       pipeline,
