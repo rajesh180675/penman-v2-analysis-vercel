@@ -129,156 +129,170 @@ function mkRecastPeriod(period_end: string): RecastPeriod {
   };
 }
 
+function persistedRunArgs(analysisStatus: AnalysisStatusSummary): Parameters<typeof buildAnalysisSnapshot>[0] {
+  const rawData = [mkRawPeriod("2025-03-31")];
+  const recastData = [mkRecastPeriod("2025-03-31")];
+  const auditMeta: AuditSubmissionMeta = {
+    runId: "run-asian-paints",
+    sourceMode: "capitaline",
+    companyId: "ASIAN PAINTS",
+    fileName: "asian paints.zip",
+    runAccessToken: "token",
+    contentClass: "confidential-financial-statements",
+    retentionDays: 45,
+  };
+
+  const mappingAudit: MappingAuditReport = {
+    mappingSpecVersion: traceabilityVersions.mappingSpecVersion,
+    policyVersion: traceabilityVersions.mappingPolicyVersion,
+    usedKeysNotInYaml: [],
+    yamlKeysNotInDataset: [],
+    unresolvedCriticalByStatement: { BalanceSheet: [], ProfitLoss: [], CashFlow: [] },
+    datasetKeyCounts: { BalanceSheet: 2, ProfitLoss: 4, CashFlow: 2, Unknown: 0 },
+    coverageSummary: {
+      policyVersion: traceabilityVersions.mappingPolicyVersion,
+      issues: [],
+      unresolvedBySeverity: { critical: [], warning: [], info: [] },
+      unresolvedByTier: { "Tier A": [], "Tier B": [], "Tier C": [], "Tier D": [] },
+      totalsByTier: {
+        "Tier A": { total: 0, resolved: 0, unresolved: 0 },
+        "Tier B": { total: 0, resolved: 0, unresolved: 0 },
+        "Tier C": { total: 0, resolved: 0, unresolved: 0 },
+        "Tier D": { total: 0, resolved: 0, unresolved: 0 },
+      },
+    },
+    outOfSpecLabels: [],
+    clusterSuggestions: { clusters: [], unclustered: [], stats: { totalUnknown: 0, clusteredCount: 0, aliasRecommendation: 0, reviewCount: 0 } },
+    correlationSuggestions: [],
+    promotionCandidates: [],
+    backlogSummary: {
+      policyVersion: traceabilityVersions.mappingPolicyVersion,
+      totalsByAction: { "add-to-spec": 0, "group-to-existing": 1, "ignore-non-core": 0, review: 0 },
+      totalsByPriority: { blocking: 0, diagnostic: 1, optional: 0 },
+      actionableCount: 1,
+      ignoredCount: 0,
+      topActionable: [
+        {
+          statement: "ProfitLoss",
+          key: "Selling and Distribution Expenses",
+          periodsObserved: 1,
+          nonZeroPeriods: 1,
+          latestValue: 100,
+          maxAbsValue: 100,
+          triage: {
+            policyVersion: traceabilityVersions.mappingPolicyVersion,
+            action: "group-to-existing",
+            priority: "diagnostic",
+            rationale: "Belongs in SGA bridge.",
+            targetLine: "IS.OpBridge.SGA",
+            targetGroupId: "is-sga-detail",
+            targetGroupTitle: "Detailed SG&A buckets",
+            suggestedSpecPath: null,
+          },
+        },
+      ],
+    },
+  };
+
+  const qualityGate: QualityGateReport = {
+    tier: "Tier 1" as const,
+    valuationBlocked: false,
+    missingMinimum: [],
+    missingCore: [],
+    blockingReasons: [],
+    policyVersion: traceabilityVersions.mappingPolicyVersion,
+    coverageSummary: mappingAudit.coverageSummary,
+    valuationCriticalGaps: [],
+    ratioCriticalGaps: [],
+    scopeAssessment: {
+      policyVersion: traceabilityVersions.scopePolicyVersion,
+      classification: "supported-industrial" as const,
+      analysisFamily: "industrial" as const,
+      blocked: false,
+      label: "Supported industrial/company scope",
+      reasons: [],
+      recommendedAction: "Proceed",
+      signals: [],
+    },
+  };
+
+  const debugInfo: CapitalineParseDebug = {
+    companyId: "ASIAN PAINTS",
+    files: [
+      { name: "BalanceSheetINDAS_.xls", statementGuess: "BalanceSheet" },
+      { name: "ProfitLossINDAS_.xls", statementGuess: "ProfitLoss" },
+      { name: "CashFlowINDAS_.xls", statementGuess: "CashFlow" },
+    ],
+    detectedPeriods: ["2025-03-31"],
+    sourceArtifactHashes: [],
+    rawGrids: [
+      {
+        file: "BalanceSheetINDAS_.xls",
+        methods: ["xlsx"],
+        bestMethod: "xlsx",
+        rowCount: 20,
+        colCount: 4,
+        firstRows: [],
+        headerDetected: true,
+        errors: [],
+      },
+      {
+        file: "ProfitLossINDAS_.xls",
+        methods: ["xlsx"],
+        bestMethod: "xlsx",
+        rowCount: 20,
+        colCount: 4,
+        firstRows: [],
+        headerDetected: true,
+        errors: [],
+      },
+      {
+        file: "CashFlowINDAS_.xls",
+        methods: ["xlsx"],
+        bestMethod: "xlsx",
+        rowCount: 20,
+        colCount: 4,
+        firstRows: [],
+        headerDetected: true,
+        errors: [],
+      },
+    ],
+    metrics: {
+      totalCompositeKeys: 8,
+      totalBaseKeys: 8,
+      baseKeyCollisions: [],
+      byStatement: {
+        BalanceSheet: 2,
+        ProfitLoss: 4,
+        CashFlow: 2,
+        Unknown: 0,
+        Segment: 0,
+      },
+    },
+    warnings: [],
+    sample: {
+      firstRows: [],
+    },
+    rawMetricKeys: ["Revenue From Operations(Net)", "Profit Before Tax"],
+  };
+
+  recastData[0]!.bs.FO = 120;
+
+  return {
+    rawData,
+    recastData,
+    config: DEFAULT_CONFIG,
+    debugInfo,
+    qualityGate,
+    mappingAudit,
+    engineError: null,
+    analysisStatus,
+    auditMeta,
+  };
+}
+
 describe("traceability snapshot", () => {
   it("persists full run provenance and richer analysis context", () => {
-    const rawData = [mkRawPeriod("2025-03-31")];
-    const recastData = [mkRecastPeriod("2025-03-31")];
-    const auditMeta: AuditSubmissionMeta = {
-      runId: "run-asian-paints",
-      sourceMode: "capitaline",
-      companyId: "ASIAN PAINTS",
-      fileName: "asian paints.zip",
-      runAccessToken: "token",
-      contentClass: "confidential-financial-statements",
-      retentionDays: 45,
-    };
-
-    const mappingAudit: MappingAuditReport = {
-      mappingSpecVersion: traceabilityVersions.mappingSpecVersion,
-      policyVersion: traceabilityVersions.mappingPolicyVersion,
-      usedKeysNotInYaml: [],
-      yamlKeysNotInDataset: [],
-      unresolvedCriticalByStatement: { BalanceSheet: [], ProfitLoss: [], CashFlow: [] },
-      datasetKeyCounts: { BalanceSheet: 2, ProfitLoss: 4, CashFlow: 2, Unknown: 0 },
-      coverageSummary: {
-        policyVersion: traceabilityVersions.mappingPolicyVersion,
-        issues: [],
-        unresolvedBySeverity: { critical: [], warning: [], info: [] },
-        unresolvedByTier: { "Tier A": [], "Tier B": [], "Tier C": [], "Tier D": [] },
-        totalsByTier: {
-          "Tier A": { total: 0, resolved: 0, unresolved: 0 },
-          "Tier B": { total: 0, resolved: 0, unresolved: 0 },
-          "Tier C": { total: 0, resolved: 0, unresolved: 0 },
-          "Tier D": { total: 0, resolved: 0, unresolved: 0 },
-        },
-      },
-      outOfSpecLabels: [],
-      clusterSuggestions: { clusters: [], unclustered: [], stats: { totalUnknown: 0, clusteredCount: 0, aliasRecommendation: 0, reviewCount: 0 } },
-      correlationSuggestions: [],
-      promotionCandidates: [],
-      backlogSummary: {
-        policyVersion: traceabilityVersions.mappingPolicyVersion,
-        totalsByAction: { "add-to-spec": 0, "group-to-existing": 1, "ignore-non-core": 0, review: 0 },
-        totalsByPriority: { blocking: 0, diagnostic: 1, optional: 0 },
-        actionableCount: 1,
-        ignoredCount: 0,
-        topActionable: [
-          {
-            statement: "ProfitLoss",
-            key: "Selling and Distribution Expenses",
-            periodsObserved: 1,
-            nonZeroPeriods: 1,
-            latestValue: 100,
-            maxAbsValue: 100,
-            triage: {
-              policyVersion: traceabilityVersions.mappingPolicyVersion,
-              action: "group-to-existing",
-              priority: "diagnostic",
-              rationale: "Belongs in SGA bridge.",
-              targetLine: "IS.OpBridge.SGA",
-              targetGroupId: "is-sga-detail",
-              targetGroupTitle: "Detailed SG&A buckets",
-              suggestedSpecPath: null,
-            },
-          },
-        ],
-      },
-    };
-
-    const qualityGate: QualityGateReport = {
-      tier: "Tier 1" as const,
-      valuationBlocked: false,
-      missingMinimum: [],
-      missingCore: [],
-      blockingReasons: [],
-      policyVersion: traceabilityVersions.mappingPolicyVersion,
-      coverageSummary: mappingAudit.coverageSummary,
-      valuationCriticalGaps: [],
-      ratioCriticalGaps: [],
-      scopeAssessment: {
-        policyVersion: traceabilityVersions.scopePolicyVersion,
-        classification: "supported-industrial" as const,
-        analysisFamily: "industrial" as const,
-        blocked: false,
-        label: "Supported industrial/company scope",
-        reasons: [],
-        recommendedAction: "Proceed",
-        signals: [],
-      },
-    };
-
-    const debugInfo: CapitalineParseDebug = {
-      companyId: "ASIAN PAINTS",
-      files: [
-        { name: "BalanceSheetINDAS_.xls", statementGuess: "BalanceSheet" },
-        { name: "ProfitLossINDAS_.xls", statementGuess: "ProfitLoss" },
-        { name: "CashFlowINDAS_.xls", statementGuess: "CashFlow" },
-      ],
-      detectedPeriods: ["2025-03-31"],
-      sourceArtifactHashes: [],
-      rawGrids: [
-        {
-          file: "BalanceSheetINDAS_.xls",
-          methods: ["xlsx"],
-          bestMethod: "xlsx",
-          rowCount: 20,
-          colCount: 4,
-          firstRows: [],
-          headerDetected: true,
-          errors: [],
-        },
-        {
-          file: "ProfitLossINDAS_.xls",
-          methods: ["xlsx"],
-          bestMethod: "xlsx",
-          rowCount: 20,
-          colCount: 4,
-          firstRows: [],
-          headerDetected: true,
-          errors: [],
-        },
-        {
-          file: "CashFlowINDAS_.xls",
-          methods: ["xlsx"],
-          bestMethod: "xlsx",
-          rowCount: 20,
-          colCount: 4,
-          firstRows: [],
-          headerDetected: true,
-          errors: [],
-        },
-      ],
-      metrics: {
-        totalCompositeKeys: 8,
-        totalBaseKeys: 8,
-        baseKeyCollisions: [],
-        byStatement: {
-          BalanceSheet: 2,
-          ProfitLoss: 4,
-          CashFlow: 2,
-          Unknown: 0,
-          Segment: 0,
-        },
-      },
-      warnings: [],
-      sample: {
-        firstRows: [],
-      },
-      rawMetricKeys: ["Revenue From Operations(Net)", "Profit Before Tax"],
-    };
-
-    recastData[0]!.bs.FO = 120;
-
     const analysisStatus: AnalysisStatusSummary = {
       status: "production-ready",
       label: "Production-ready",
@@ -295,17 +309,7 @@ describe("traceability snapshot", () => {
       optionalCount: 0,
     };
 
-    const snapshot = buildAnalysisSnapshot({
-      rawData,
-      recastData,
-      config: DEFAULT_CONFIG,
-      debugInfo,
-      qualityGate,
-      mappingAudit,
-      engineError: null,
-      analysisStatus,
-      auditMeta,
-    });
+    const snapshot = buildAnalysisSnapshot(persistedRunArgs(analysisStatus));
 
     expect(snapshot.family).toBe("industrial");
     expect(snapshot.traceability.generatedAt).toBeTruthy();
@@ -324,6 +328,29 @@ describe("traceability snapshot", () => {
     expect(snapshot.traceability.rigor.pendingLevels).toHaveLength(0);
     expect(snapshot.traceability.backlogPreview).toHaveLength(1);
     expect(snapshot.traceability.backlogPreview[0]?.key).toBe("Selling and Distribution Expenses");
+  });
+
+  it("names why production-ready is withheld when the status is guarded", () => {
+    // Power Grid-shaped: every gate clears but business-model persistence is
+    // fragile. The checkpoint showed only the headline, which names nothing.
+    const snapshot = buildAnalysisSnapshot(persistedRunArgs({
+      status: "guarded",
+      label: "Guarded",
+      headline: "Review diagnostics before relying on output",
+      summary: "Business-model persistence is fragile (43/100).",
+      reasons: ["Business-model persistence is fragile (43/100)."],
+      tone: "amber",
+      qualityTier: "Tier 1",
+      valuationStatus: "production-ready",
+      scopeBlocked: false,
+      valuationBlocked: false,
+      blockingCount: 0,
+      diagnosticCount: 0,
+      optionalCount: 0,
+    }));
+    const held = snapshot.traceability.rigor.checkpoints.find((c) => c.level === "production-ready")!;
+    expect(held.achieved).toBe(false);
+    expect(held.detail).toBe("Review diagnostics before relying on output. Business-model persistence is fragile (43/100).");
   });
 
   it("blocks structural reconciliation when residual thresholds are breached", () => {

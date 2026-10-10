@@ -550,7 +550,11 @@ export function buildAnalysisTraceability(params: {
                 ? "All currently wired release checks passed."
                 : isFinancialInstitution && valuationStatus === "warning" && financialReadinessReason
                   ? `Financial institution — ${financialReadinessReason}`
-                  : analysisStatus?.headline ?? "Production-ready status was not reached.",
+                  // The headline alone ("Review diagnostics…") names no
+                  // diagnostic; the status already carries the reasons.
+                  : analysisStatus
+                    ? [`${analysisStatus.headline}.`, ...(analysisStatus.reasons ?? [])].join(" ")
+                    : "Production-ready status was not reached.",
     },
   ]);
   // achievedLevels/pendingLevels are recomputed below after the
