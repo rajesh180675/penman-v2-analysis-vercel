@@ -1,5 +1,6 @@
 import { maxSeverity } from "../adapters";
 import { sharesOutstandingFell } from "../../buybackEvidence";
+import { immaterialDemerger } from "../../demergerEvidence";
 import type { AnomalySignal, GreenfieldRunContext, NormalizedPeriod, SeverityLevel } from "../types";
 
 type DetectorFn = (periods: readonly NormalizedPeriod[], context: GreenfieldRunContext) => AnomalySignal[];
@@ -89,6 +90,29 @@ function detectDirtySurplus(periods: readonly NormalizedPeriod[]): AnomalySignal
         message: `Equity fell ${(ratio * 100).toFixed(1)}% of CSE short of earnings less payout while shares outstanding fell: a buyback the cash-flow statement does not itemize.`,
         affectedFields: ["derived.dirtySurplusSeed", "values.cse", "values.buybacks"],
         evidence: { dirtySurplusSeed: period.derived.dirtySurplusSeed, ratioToCse: ratio, previousShares: previousShares ?? null, shares: shares ?? null },
+        suggestedAdjusters: [],
+        blocksValuation: false,
+      })];
+    }
+    // A demerger's distribution to owners, when the business that left was a
+    // small part of the history (see demergerEvidence).
+    const previousRecast = periods[index - 1]?.asReportedRecast;
+    const demerger = immaterialDemerger({
+      dirtySurplus: period.derived.dirtySurplusSeed ?? 0,
+      discontinuedAfterTax: period.asReportedRecast?.cu?.DiscontinuedOperationsAfterTax,
+      previousDiscontinuedAfterTax: previousRecast?.cu?.DiscontinuedOperationsAfterTax,
+      previousOI: previousRecast?.is.OI,
+    });
+    if (demerger) {
+      return [signal({
+        detectorId: "D2_DIRTY_SURPLUS",
+        period: period.periodEnd,
+        severity: "WARNING",
+        p_artifact: 0.9,
+        label: "DEMERGER_LIKELY",
+        message: `Equity fell ${(ratio * 100).toFixed(1)}% of CSE short of earnings less payout in a year that files a discontinued operation: a demerger's distribution to owners. The business that left earned ${(demerger.priorShareOfOI * 100).toFixed(1)}% of operating income the year before.`,
+        affectedFields: ["derived.dirtySurplusSeed", "values.cse"],
+        evidence: { dirtySurplusSeed: period.derived.dirtySurplusSeed, ratioToCse: ratio, priorShareOfOI: demerger.priorShareOfOI },
         suggestedAdjusters: [],
         blocksValuation: false,
       })];

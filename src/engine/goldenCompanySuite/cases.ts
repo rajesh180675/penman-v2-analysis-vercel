@@ -19,13 +19,25 @@ export const GOLDEN_COMPANY_CASES: GoldenCompanyCase[] = [
     config: { ...DEFAULT_CONFIG, company_type: "industrial" as const },
     expectation: {
       qualityGateTier: "Tier 1",
-      valuationBlocked: true,
-      valuationStatus: "guarded",
+      valuationBlocked: false,
+      valuationStatus: "production-ready",
       minPeriods: 15,
-      // The demerger year stays blocked by STRUCTURAL_EVENT; its PM/ROCE/RNOA
-      // outliers are still flagged but no longer block a terminal anchor alone.
+      // FY25 is the ITC Hotels demerger. The equity that left is a distribution
+      // to owners, and the business earned 2.5% of FY24 OI (the comparative
+      // files it as discontinued), so the post-demerger book anchors. The
+      // demerger gain is filed as discontinued, so core OI and core residual
+      // earnings hold: the one-off checks say so without blocking. PM/ROCE/RNOA
+      // outliers are still flagged but never block a terminal anchor alone.
       requiredTerminalFlags: [
+        "DEMERGER_LIKELY",
+        "INCREMENTAL_MARGIN_ITEMIZED",
+        "TERMINAL_RE_ITEMIZED",
+      ],
+      forbiddenTerminalFlags: [
         "STRUCTURAL_EVENT",
+        "DIRTY_SURPLUS_SPIKE",
+        "INCREMENTAL_MARGIN_ANOMALY",
+        "TERMINAL_RE_ANOMALY",
       ],
  ratioRanges: {
  ROCE: [0.45, 0.50], // actual 0.4764 ± 5%

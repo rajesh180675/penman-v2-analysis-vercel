@@ -241,6 +241,36 @@ describe("detectDirtySurplusPerPeriod", () => {
     expect(last.flags[0]!.affects_terminal).toBe(true);
   });
 
+  // ITC FY25-shaped: equity falls 1000 short of earnings less payout in a year
+  // that files a discontinued operation (the ITC Hotels demerger). The restated
+  // prior year files the same business as its comparative: 3 of 120 OI, 2.5%.
+  const demergerYear = (previousDiscontinued: number) => {
+    const periods = makeCleanSeries(3);
+    periods[2]!.bs.CSE = periods[1]!.bs.CSE + 60 - 1000;
+    periods[2]!.cu.DiscontinuedOperationsAfterTax = 600;
+    periods[1]!.cu.DiscontinuedOperationsAfterTax = previousDiscontinued;
+    return periods;
+  };
+
+  it("reads a shortfall beside a demerged business that was a small part of the history as a demerger", () => {
+    const last = detectDirtySurplusPerPeriod(demergerYear(3), makeConfig()).at(-1)!;
+    expect(last.flags.map(f => f.label)).toEqual(["DEMERGER_LIKELY"]);
+    expect(last.flags[0]!.severity).toBe(Severity.WARNING);
+    expect(last.flags[0]!.affects_terminal).toBe(false);
+    expect(last.flags[0]!.message).toMatch(/earned 2\.5% of operating income the year before/);
+  });
+
+  it("keeps the shortfall structural when no comparative shows what left", () => {
+    expect(detectDirtySurplusPerPeriod(demergerYear(0), makeConfig()).at(-1)!.flags[0]!.label).toBe("STRUCTURAL_EVENT");
+  });
+
+  it("keeps the shortfall structural when the business that left was material", () => {
+    // 30 of 120 OI: a quarter of the history left with it.
+    const flag = detectDirtySurplusPerPeriod(demergerYear(30), makeConfig()).at(-1)!.flags[0]!;
+    expect(flag.label).toBe("STRUCTURAL_EVENT");
+    expect(flag.affects_terminal).toBe(true);
+  });
+
   it("nets share issues out of dirty surplus", () => {
     // DMart-shaped IPO: equity rises by 1000 of proceeds the cash-flow
     // statement itemizes, so payout d_t = dividends − issue.
@@ -321,6 +351,43 @@ describe("detectMetricStepChanges", () => {
     expect(flag).toBeDefined();
     expect(flag!.severity).toBe(Severity.CRITICAL);
     expect(results[2]!.incr_margin).toBeCloseTo(2.0, 6);
+  });
+
+  it("keeps an incremental-margin jump that filed one-off items explain out of the terminal test", () => {
+    // ITC FY25-shaped: OI +200 on sales +100, of which 195 is a discontinued
+    // gain filed as such (UOI), so core OI rose 5.
+    const periods = makeCleanSeries(3);
+    periods[2]!.is.Sales = periods[1]!.is.Sales + 100;
+    periods[2]!.is.OI = periods[1]!.is.OI + 200;
+    periods[2]!.cu.UOI = 195;
+    const flags = detectMetricStepChanges(periods, makeConfig())[2]!.flags.filter(f => f.label.startsWith("INCREMENTAL"));
+    expect(flags.map(f => f.label)).toEqual(["INCREMENTAL_MARGIN_ITEMIZED"]);
+    expect(flags[0]!.severity).toBe(Severity.WARNING);
+    expect(flags[0]!.affects_terminal).toBe(false);
+    expect(flags[0]!.message).toMatch(/200% on OI .* but 5% on core OI/);
+  });
+
+  it("keeps the anomaly when the year's core carries an unusual tax rate", () => {
+    // Airtel FY25-shaped: the filed one-off explains the OI jump, but the year
+    // is taxed at 2.4% against 25% — a tax credit inside core OI.
+    const periods = makeCleanSeries(4);
+    periods[3]!.is.Sales = periods[2]!.is.Sales + 100;
+    periods[3]!.is.OI = periods[2]!.is.OI + 200;
+    periods[3]!.cu.UOI = 195;
+    periods[3]!.is.taxRate = 0.024;
+    const flag = detectMetricStepChanges(periods, makeConfig())[3]!.flags.find(f => f.label.startsWith("INCREMENTAL"));
+    expect(flag?.label).toBe("INCREMENTAL_MARGIN_ANOMALY");
+    expect(flag?.affects_terminal).toBe(true);
+  });
+
+  it("keeps the anomaly when the core margin is out of band too", () => {
+    const periods = makeCleanSeries(3);
+    periods[2]!.is.Sales = periods[1]!.is.Sales + 100;
+    periods[2]!.is.OI = periods[1]!.is.OI + 200;
+    periods[2]!.cu.UOI = 50; // core OI +150 on +100 sales
+    const flag = detectMetricStepChanges(periods, makeConfig())[2]!.flags.find(f => f.label.startsWith("INCREMENTAL"));
+    expect(flag?.label).toBe("INCREMENTAL_MARGIN_ANOMALY");
+    expect(flag?.affects_terminal).toBe(true);
   });
 
   it("produces no metric flags for a flat series", () => {
@@ -521,6 +588,37 @@ describe("validateTerminalREAnchor", () => {
     ]), makeConfig());
     expect(v.terminal_anomaly).toBe(true);
     expect(v.flags[0]!.message).toMatch(/Residual ROE 32\.2%/);
+  });
+
+  it("does not flag a swell carried by filed one-off items when core residual ROE holds", () => {
+    // ITC FY25: core earnings exclude the demerger gain filed as discontinued,
+    // so core residual ROE is 12.9% against a 15.7% history.
+    const points = series([
+      [9000, 60000], [9500, 62000], [10200, 65000], [11000, 70000], [15000, 74000], [23989, 74500],
+    ]).map((p, i, all) => ({ ...p, coreRE: i === all.length - 1 ? 9598 : p.RE, coreTaxComparable: true }));
+    const v = validateTerminalREAnchor(points, makeConfig());
+    expect(v.terminal_anomaly).toBe(false);
+    expect(v.flags.map(f => f.label)).toEqual(["TERMINAL_RE_ITEMIZED"]);
+    expect(v.flags[0]!.affects_terminal).toBe(false);
+    expect(v.flags[0]!.message).toMatch(/but 12\.9% on core earnings vs 15\.7%/);
+  });
+
+  it("still flags the swell when the terminal year's core carries an unusual tax rate", () => {
+    const points = series([
+      [9000, 60000], [9500, 62000], [10200, 65000], [11000, 70000], [15000, 74000], [23989, 74500],
+    ]).map((p, i, all) => ({ ...p, coreRE: i === all.length - 1 ? 9598 : p.RE, coreTaxComparable: i !== all.length - 1 }));
+    const v = validateTerminalREAnchor(points, makeConfig());
+    expect(v.terminal_anomaly).toBe(true);
+    expect(v.flags.map(f => f.label)).toEqual(["TERMINAL_RE_ANOMALY"]);
+  });
+
+  it("still flags the swell when core residual ROE swells too", () => {
+    const points = series([
+      [9000, 60000], [9500, 62000], [10200, 65000], [11000, 70000], [15000, 74000], [23989, 74500],
+    ]).map((p) => ({ ...p, coreRE: p.RE }));
+    const v = validateTerminalREAnchor(points, makeConfig());
+    expect(v.terminal_anomaly).toBe(true);
+    expect(v.flags.map(f => f.label)).toEqual(["TERMINAL_RE_ANOMALY"]);
   });
 
   it("does not flag a fall in residual ROE", () => {

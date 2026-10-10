@@ -161,6 +161,28 @@ describe("unusualItemPolicy / classifyRunUnusualItems", () => {
     expect(terminalBlockingClassifications(terminal, terminalPeriodOf([], history)).map((c) => c.period)).toEqual(["2025-03-31"]);
   });
 
+  it("lists a discontinued operation demerged to owners within the year without blocking the anchor", () => {
+    // ITC FY25: the Hotels business was distributed to shareholders, so S-5.1
+    // marks the year DEMERGER_LIKELY; its result stays in UOI.
+    const demerged: RecastPeriod = {
+      ...EXISTING_TEST_PERIOD,
+      cu: { ...EXISTING_TEST_PERIOD.cu, DiscontinuedOperationsAfterTax: 15_016 },
+      spec_flags: [{ spec_id: "S-5.1", label: "DEMERGER_LIKELY", severity: "warning" as never, affects_terminal: false, message: "Demerger.", period: "2025-03-31" }],
+    };
+    const raw = mkRaw("2025-03-31", { "Discontinued Operations": 15_016 });
+    const manifest = summarizeUnusualItemManifest([demerged], [raw]);
+    const item = manifest.classifications.find((c) => c.category === "discontinued-operations");
+    expect(item?.affectsTerminalEligibility).toBe(false);
+    expect(item?.rationale).toMatch(/demerged to owners within the year/);
+    expect(manifest.terminalEligibilityBlocked).toBe(false);
+    expect(buildUnusualItemPolicy(demerged).terminalBlocker).toBe(false);
+
+    // Without the demerger evidence (a sale, or still held for sale) it blocks.
+    const sold: RecastPeriod = { ...demerged, spec_flags: [] };
+    expect(summarizeUnusualItemManifest([sold], [raw]).terminalEligibilityBlocked).toBe(true);
+    expect(buildUnusualItemPolicy(sold).terminalBlocker).toBe(true);
+  });
+
   it("blocks on a recast spec_flag only in the terminal period", () => {
     const flagged = (period_end: string): RecastPeriod => ({
       ...EXISTING_TEST_PERIOD,
