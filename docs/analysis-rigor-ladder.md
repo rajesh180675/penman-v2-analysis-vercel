@@ -47,6 +47,10 @@ The ladder is intentionally conservative, and it now uses explicit parser-fideli
   - the run is not guarded and valuation status is `warning` or `production-ready`
 - `production-ready`
   - `analysisStatus.status === "production-ready"`
+  - and, on the valuation the run produced (`analysisTraceability.ts`):
+    - RE and ReOI on the base forecast agree within 10% (above 25% the run is not valuation-eligible either)
+    - earnings quality is not unreliable (score below 40)
+    - an independent paradigm corroborates the value: the `valuation-triangulation` check exists and agrees within 30%. A value below zero is compared as ₹0, and on an industrial valuation a missing check, with fewer than two paradigms valuing the equity, is not agreement
 
 The traceability envelope now includes:
 
