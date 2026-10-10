@@ -893,6 +893,24 @@ export function buildAnalysisTraceability(params: {
         optionalCount: statusOptionalCount,
       };
     }
+    // The status is assessed before the valuation-level gates run (RE/ReOI,
+    // triangulation, provenance, earnings quality, residual score), so it can
+    // read production-ready for a run the ladder holds lower. Every tab's trust
+    // panel, the case header and the stored run read this field, so it does not
+    // claim more than the ladder: the run is guarded, and the headline names
+    // the first rung withheld and why. DMart, NTPC, Nestlé, Reliance and
+    // UltraTech read "cleared current release checks" at valuation-eligible.
+    const withheld = checkpoints.find((checkpoint) => !checkpoint.achieved);
+    if (analysisStatus?.status === "production-ready" && withheld) {
+      return {
+        status: "guarded" as const,
+        headline: `${withheld.label} withheld: ${withheld.detail}`,
+        tone: "amber" as const,
+        blockingCount: Math.max(statusBlockingCount, valuationGateFailures),
+        diagnosticCount: statusDiagnosticCount,
+        optionalCount: statusOptionalCount,
+      };
+    }
     return {
       status: analysisStatus?.status ?? "guarded",
       headline: analysisStatus?.headline ?? "Traceability confidence status unavailable.",

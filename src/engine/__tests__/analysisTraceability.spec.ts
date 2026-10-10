@@ -140,7 +140,7 @@ describe("analysis traceability confidence gates", () => {
     expect(traceability.confidence.headline).toContain("Parser fidelity failed");
   });
 
-  it("passes confidence through when parser fidelity is confirmed", () => {
+  it("does not block confidence when parser fidelity is confirmed", () => {
     const rawData = Array.from({ length: 3 }, (_, i) => ({
       company_id: "FIXCO",
       period_end: `202${3 + i}-03-31`,
@@ -157,8 +157,12 @@ describe("analysis traceability confidence gates", () => {
     });
 
     expect(traceability.parserFidelity.status).not.toBe("failed");
-    expect(traceability.confidence.status).toBe("production-ready");
-    expect(traceability.confidence.tone).toBe("emerald");
+    expect(traceability.confidence.status).not.toBe("blocked");
+    // No recast, so the ladder stops short of production-ready and the
+    // confidence does not claim it.
+    expect(traceability.rigor.achievedLevels).not.toContain("production-ready");
+    expect(traceability.confidence.status).toBe("guarded");
+    expect(traceability.confidence.tone).toBe("amber");
   });
 
   it("passes confidence through when parser fidelity is degraded (not failed)", () => {

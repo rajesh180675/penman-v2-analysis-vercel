@@ -52,6 +52,8 @@ The ladder is intentionally conservative, and it now uses explicit parser-fideli
     - earnings quality is not unreliable (score below 40)
     - an independent paradigm corroborates the value: the `valuation-triangulation` check exists and agrees within 30%. A value below zero is compared as ₹0, and on an industrial valuation a missing check, with fewer than two paradigms valuing the equity, is not agreement
 
+The envelope's `confidence` (the status every tab's trust panel, the case header and the stored run show) never claims more than the ladder. `analysisStatus` is assessed before the valuation-level gates run, so when it reads `production-ready` and a rung is withheld, `confidence.status` is `guarded`. Its headline then names the first rung withheld and why, for example `Production-ready withheld: Independent valuation paradigms diverge…`.
+
 The traceability envelope now includes:
 
 - `parserFidelity.status`
