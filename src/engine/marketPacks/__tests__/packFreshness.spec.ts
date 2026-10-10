@@ -13,6 +13,7 @@ import { describe, expect, it } from "vitest";
 import {
   PACK_FRESHNESS_LEAD_DAYS,
   checkPackFreshness,
+  packVintage,
 } from "../packFreshness";
 import { MACRO_STALENESS_DAYS, resolveMacroObservation, type MacroPack } from "../macroPack";
 import { BETA_STALENESS_DAYS, resolveEquityBeta, type EquityBetaPack } from "../equityBetaPack";
@@ -223,5 +224,24 @@ describe("pack freshness — the shipped packs", () => {
       analysisAsOf: plusDays(rfAsOf, MACRO_STALENESS_DAYS.riskFreeRate + 1),
     });
     expect(findings.map((f) => f.label)).toContain("macro riskFreeRate");
+  });
+});
+
+describe("pack vintage — the date a reproducible run resolves the packs against", () => {
+  it("is the latest date the resolver measures across both packs", () => {
+    expect(packVintage({ macroPack: macroPack(), betaPack: betaPack("2026-07-19") })).toBe("2026-07-19");
+    const laterRiskFree = macroPack({ riskFreeRate: { value: 0.068, asOf: "2026-08-02", source: "test G-Sec series" } });
+    expect(packVintage({ macroPack: laterRiskFree, betaPack: betaPack("2026-07-19") })).toBe("2026-08-02");
+  });
+
+  it("is null when no pack carries a dated observation", () => {
+    expect(packVintage({})).toBeNull();
+  });
+
+  it("dates the shipped packs where nothing is look-ahead and nothing has lapsed (the audit harness's as-of)", () => {
+    const analysisAsOf = packVintage({ macroPack: INDIA_MACRO_PACK, betaPack: INDIA_EQUITY_BETA_PACK })!;
+    expect(analysisAsOf).toBeTruthy();
+    const findings = checkPackFreshness({ macroPack: INDIA_MACRO_PACK, betaPack: INDIA_EQUITY_BETA_PACK, analysisAsOf, leadDays: 0 });
+    expect(findings.filter((f) => f.severity !== "expiring").map((f) => f.detail)).toEqual([]);
   });
 });

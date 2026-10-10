@@ -52,5 +52,6 @@ export { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "./activePacks";
 export {
   PACK_FRESHNESS_LEAD_DAYS,
   checkPackFreshness,
+  packVintage,
 } from "./packFreshness";
 export type { PackFreshnessFinding, PackFreshnessSeverity } from "./packFreshness";

@@ -15,6 +15,8 @@ import { buildAnalysisTraceability } from "../../src/engine/analysisTraceability
 import { applyTerminalOutcomeToEnvelope } from "../../src/engine/analysisRun/terminalOutcome";
 import { buildScenarioForecastResults, evaluateScenarioForecastGates } from "../../src/engine/forecastState";
 import { buildAssumptionProvenance } from "../../src/engine/assumptionProvenance";
+import { buildEarningsQualitySummary } from "../../src/engine/earningsQualitySummary";
+import { ACTIVE_MARKET_PACKS, packVintage } from "../../src/engine/marketPacks";
 import {
   CURRENT_MODEL_REGISTRY,
   independenceGroupsForModelIds,
@@ -292,6 +294,22 @@ export interface AuditCompanyRunOptions {
   generatedAt?: string;
   verbose?: boolean;
 }
+
+/**
+ * The analysis date the harness resolves the pinned packs against. The app's
+ * run uses its own date; the harness pins its output for reproducibility, so it
+ * dates the packs at their vintage instead: never look-ahead, and a capital
+ * cost that moves only when the packs are refreshed. Without the packs its ke
+ * rested on undated priors, the provenance gate withheld production-ready from
+ * every industrial company, and CI could not certify the rung the app shows.
+ * When a pack nears its window, the pack-freshness lint turns CI red. Packs
+ * with no date would resolve undated, never stale, so that fails here instead.
+ */
+const HARNESS_PACKS_AS_OF = (() => {
+  const vintage = packVintage(ACTIVE_MARKET_PACKS);
+  if (!vintage) throw new Error("The pinned market packs carry no dated observation to resolve against.");
+  return vintage;
+})();
 
 function companiesDir(projectRoot: string): string {
   return join(projectRoot, "public", "data", "companies");
@@ -1146,6 +1164,9 @@ function buildTrace(args: {
     bankValuation: pipeline.bankResult?.valuation ?? null,
     valuationTriangulation: valuation?.valuationTriangulation ?? null,
     assumptionProvenance,
+    // As the app's run passes it: without it the earnings-quality gate was
+    // silent here.
+    earningsQuality: valuation ? buildEarningsQualitySummary(valuation.earningsQuality) : null,
   });
 }
 
@@ -1425,9 +1446,11 @@ export async function auditCompanyRun(
     const buf = readFileSync(zipPath);
     const u8 = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
     const parsed = await parseCapitalineZip(u8, { companyId: company.folder, filename: `${company.folder}.zip` });
-    const config: EngineConfig = { ...DEFAULT_CONFIG, company_type: company.type as EngineConfig["company_type"] };
+    // The app's config for a library company (configForCompany): the ticker is
+    // what the beta pack is keyed on.
+    const config: EngineConfig = { ...DEFAULT_CONFIG, company_type: company.type as EngineConfig["company_type"], ticker: company.ticker };
     const { quality, flags: sidecarFlags } = loadQualitySidecar(projectRoot, company.folder);
-    const pipeline = processCompanyDataFull(parsed.periods, config, quality);
+    const pipeline = processCompanyDataFull(parsed.periods, config, quality, { ...ACTIVE_MARKET_PACKS, analysisAsOf: HARNESS_PACKS_AS_OF });
     // The app's run values the industrial business with any linked lending
     // arm carved out (src/engine/lendingArm); the harness follows the same rule.
     const valuationBasis = pipeline.analysisFamily === "financial-institution"
@@ -1438,6 +1461,7 @@ export async function auditCompanyRun(
         rawData: parsed.periods,
         segmentData: selectBusinessSegmentData(parsed.segmentData),
         config,
+        packs: { ...ACTIVE_MARKET_PACKS, analysisAsOf: HARNESS_PACKS_AS_OF },
       });
     const analysisContext = buildAuditAnalysisContext({ pipeline, valuationPeriods: valuationBasis?.periods ?? null });
     const industrialValuation = !valuationBasis
@@ -1450,6 +1474,8 @@ export async function auditCompanyRun(
         segmentData: selectBusinessSegmentData(parsed.segmentData),
         lendingArm: valuationBasis.lendingArm,
         annualizedPeriods: valuationBasis.annualizedPeriods,
+        ...ACTIVE_MARKET_PACKS,
+        analysisAsOf: HARNESS_PACKS_AS_OF,
       });
     const structuralTrace = buildTrace({
       company,
