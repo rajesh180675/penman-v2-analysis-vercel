@@ -191,3 +191,33 @@ describe("valuation-triangulation gate", () => {
     expect(envelope(undefined, null).rigor.achievedLevels).toContain("production-ready");
   });
 });
+
+// The status is assessed before the gates above run, so it reads
+// production-ready for every run in this file. The shared confidence must not.
+describe("the shared confidence follows the ladder", () => {
+  it("stays production-ready when the run reaches production-ready", () => {
+    const env = envelope();
+    expect(env.confidence.status).toBe("production-ready");
+    expect(env.confidence.tone).toBe("emerald");
+    expect(env.confidence.headline).toBe("Analysis cleared current release checks");
+  });
+
+  it("is guarded, naming why, when a valuation-level gate withholds production-ready (DMart)", () => {
+    const env = envelope(undefined, [
+      { key: "accrual-riv", label: "Accrual RIV/ReOI", perShare: 368.51 },
+      { key: "cash-fcff-dcf", label: "Cash-statement FCFF DCF", perShare: -148.13 },
+    ]);
+    expect(env.rigor.currentLevel).toBe("valuation-eligible");
+    expect(env.confidence.status).toBe("guarded");
+    expect(env.confidence.tone).toBe("amber");
+    const checkpoint = env.rigor.checkpoints.find((c) => c.level === "production-ready")!;
+    expect(env.confidence.headline).toBe(`Production-ready withheld: ${checkpoint.detail}`);
+  });
+
+  it("names the lowest rung withheld when the valuation itself is not eligible (TCS: 40%)", () => {
+    const env = envelope({ re: 2080.15, reoi: 1383.38 });
+    expect(env.rigor.currentLevel).toBe("economically-plausible");
+    expect(env.confidence.status).toBe("guarded");
+    expect(env.confidence.headline).toMatch(/^Valuation eligible withheld: RE ₹2080\.15 and ReOI ₹1383\.38/);
+  });
+});
