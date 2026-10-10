@@ -11,7 +11,7 @@ import { withoutSegment, type LendingArmReport } from "../lendingArm";
 import type { EquityBetaPack, MacroPack } from "../marketPacks";
 import { computeEvEbitdaCrossCheck, updateEvEbitdaWithMarketPrice } from "../evEbitdaCrossCheck";
 import { computeIndiaQualitySignals } from "../indiaQualitySignals";
-import { buildEarningsQualityCard, buildDechowDichevAndRem } from "../earningsQuality";
+import { buildEarningsQualityCard, buildDechowDichevAndRem, capitalTransactionWithOwners } from "../earningsQuality";
 import { computeEPV } from "../grahamDoddEPV";
 import { computeCashFlowDcf } from "../cashFlowDcf";
 import { buildValuationTriangulationEvidence } from "../valuationTriangulation";
@@ -310,6 +310,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     latest.ratios?.dirty_surplus_pct_cse ?? null,
     latest.ratios?.cash_conversion_ratio ?? null,
     latest.ratios?.accrual_ratio_bs ?? null,
+    capitalTransactionWithOwners(latest),
   );
 
   const historicalCheapnessScore = historicalPercentile != null ? (1 - clamp(historicalPercentile, 0, 1)) * 100 : null;

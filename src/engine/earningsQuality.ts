@@ -222,12 +222,28 @@ export interface EarningsQualityCard {
   dimensions: EarningsQualityCheck[];
 }
 
+/**
+ * A capital transaction with owners the recast identified in the period: a
+ * buyback (shares cancelled, #360) or a demerger (#421). Capitaline itemizes
+ * neither in the cash-flow statement, so the equity it moves shows up as
+ * dirty surplus, though no income bypassed the income statement.
+ */
+export type CapitalTransactionWithOwners = "buyback" | "demerger";
+
+export function capitalTransactionWithOwners(period: Pick<RecastPeriod, "spec_flags"> | null | undefined): CapitalTransactionWithOwners | null {
+  const labels = new Set((period?.spec_flags ?? []).map((f) => f.label));
+  if (labels.has("DEMERGER_LIKELY")) return "demerger";
+  if (labels.has("BUYBACK_LIKELY")) return "buyback";
+  return null;
+}
+
 export function buildEarningsQualityCard(
   ddResult: DechowDichevResult | null,
   remResult: RoychowdhuryResult | null,
   dirtySurplusPctCSE: number | null,
   cashConversionRatio: number | null,
   _accrualRatio: number | null,
+  capitalTransaction: CapitalTransactionWithOwners | null = null,
 ): EarningsQualityCard {
   const flags: string[] = [];
 
@@ -256,7 +272,16 @@ export function buildEarningsQualityCard(
   // Completeness (dirty surplus ratio)
   let completeness = 15;
   let completenessDetail = "Dirty-surplus ratio unavailable; score is a neutral placeholder.";
-  if (dirtySurplusPctCSE != null) {
+  // The residual of a year with an identified capital transaction is that
+  // transaction, not income outside the statement: completeness is not
+  // measured, rather than scored on a number that measures something else.
+  const completenessMeasured = dirtySurplusPctCSE != null && capitalTransaction == null;
+  if (dirtySurplusPctCSE != null && capitalTransaction != null) {
+    completenessDetail = `Equity moved ${(Math.abs(dirtySurplusPctCSE) * 100).toFixed(1)}% of CSE outside earnings and payout ` +
+      `in a ${capitalTransaction}, a capital transaction with owners rather than income that bypassed the income statement, ` +
+      `so completeness is not measured this year; score is a neutral placeholder.`;
+  }
+  if (completenessMeasured && dirtySurplusPctCSE != null) {
     const absDS = Math.abs(dirtySurplusPctCSE);
     completenessDetail = `Dirty surplus is ${(absDS * 100).toFixed(1)}% of CSE.`;
     if (absDS < 0.02) {
@@ -305,7 +330,7 @@ export function buildEarningsQualityCard(
 
   if (ddResult) flags.unshift(`Accrual quality R²: ${ddResult.rSquared.toFixed(2)} (${ddResult.label})`);
 
-  const absDirtySurplus = dirtySurplusPctCSE != null ? Math.abs(dirtySurplusPctCSE) : null;
+  const absDirtySurplus = completenessMeasured && dirtySurplusPctCSE != null ? Math.abs(dirtySurplusPctCSE) : null;
   // `flagged` repeats the exact condition each `flags.push` above fires on, so a
   // consumer reading these booleans learns nothing the scorecard did not already
   // say in prose.
