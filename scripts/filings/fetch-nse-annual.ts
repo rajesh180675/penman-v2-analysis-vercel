@@ -140,17 +140,23 @@ for (const symbol of symbols) {
   const records: AsFiledRecord[] = [];
   for (const filing of consolidated) {
     const file = join(rawDir, filing.xbrl!.split("/").pop()!);
-    if (!existsSync(file)) {
+    const isXbrl = (text: string) => text.includes("<xbrli:xbrl") || text.includes(":xbrl ");
+    let xml: string;
+    if (existsSync(file)) {
+      xml = readFileSync(file, "utf8");
+    } else {
       sleep(delayMs);
       try {
-        writeFileSync(file, curl(filing.xbrl!, referer));
+        xml = curl(filing.xbrl!, referer);
       } catch (error) {
         console.log(`${symbol} ${filing.fiscalYearEnd}: download failed — ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`);
         continue;
       }
+      // Cached only once it is an instance: an archive's HTML error page,
+      // cached, was never fetched again (L&T's July 2025 revision).
+      if (isXbrl(xml)) writeFileSync(file, xml);
     }
-    const xml = readFileSync(file, "utf8");
-    if (!xml.includes("<xbrli:xbrl") && !xml.includes(":xbrl ")) {
+    if (!isXbrl(xml)) {
       console.log(`${symbol} ${filing.fiscalYearEnd}: not an XBRL instance (blocked or moved); skipped`);
       continue;
     }

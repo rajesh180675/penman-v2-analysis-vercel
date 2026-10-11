@@ -1,6 +1,6 @@
 {
  "symbol": "BRITANNIA",
- "source": "NSE corporates-financial-results (Annual, Consolidated)",
+ "source": "NSE corporates-financial-results (Annual) and integrated-filing-results (March quarter), Consolidated",
  "records": [
   {
    "fiscalYearEnd": "2018-03-31",
@@ -131,6 +131,50 @@
     "totalEquity": 3966.02,
     "equityAttributableToOwners": 3941.52,
     "cashFlowFromOperations": 2572.98,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2025-03-31",
+   "filingDate": "2025-05-08T23:48",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1434507_08052025114803_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 17942.67,
+    "profitBeforeTax": 2937.31,
+    "profitAfterTax": 2177.86,
+    "profitFromContinuingOperations": 2188.6,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 2178.73,
+    "financeCosts": 138.8,
+    "totalAssets": 8838.55,
+    "totalEquity": 4381.32,
+    "equityAttributableToOwners": 4355.72,
+    "cashFlowFromOperations": 2480.65,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-07T23:38",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1664749_07052026113812_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 19151.59,
+    "profitBeforeTax": 3318.87,
+    "profitAfterTax": 2537.01,
+    "profitFromContinuingOperations": 2567.1,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 2533.49,
+    "financeCosts": 112.76,
+    "totalAssets": 9731.94,
+    "totalEquity": 5135.88,
+    "equityAttributableToOwners": 5106.56,
+    "cashFlowFromOperations": 2611.6,
     "exciseDuty": null
    }
   }

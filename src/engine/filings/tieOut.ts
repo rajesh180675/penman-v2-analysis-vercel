@@ -84,7 +84,14 @@ export interface AsFiledHeadlineRecord {
 function capitalineValue(period: RecastPeriod, field: TieOutField): number | null {
   switch (field) {
     case "revenue": return period.is.Sales;
-    case "profitAfterTax": return period.is.PAT;
+    // The filing's profit for the period. Capitaline files two of its lines
+    // below its own PAT, both inside TCI: extraordinary items after tax (NTPC's
+    // regulatory-deferral movement, ₹3,701.92 Cr in FY25, which the filing
+    // includes) and the associates' share after tax.
+    case "profitAfterTax": {
+      const bridge = period.is.operatingCostBridge;
+      return period.is.PAT + (bridge?.extraordinaryAfterTax ?? 0) + (bridge?.associatesShareAfterTax ?? 0);
+    }
     case "totalAssets": return period.bs.TA;
     // Ind AS "Equity" is total equity, including non-controlling interests.
     case "totalEquity": return period.bs.CSE + (Number.isFinite(period.bs.MI) ? period.bs.MI : 0);

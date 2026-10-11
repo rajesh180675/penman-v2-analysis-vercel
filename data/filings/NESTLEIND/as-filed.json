@@ -1,26 +1,48 @@
 {
  "symbol": "NESTLEIND",
- "source": "NSE corporates-financial-results (Annual, Consolidated)",
+ "source": "NSE corporates-financial-results (Annual) and integrated-filing-results (March quarter), Consolidated",
  "records": [
   {
-   "fiscalYearEnd": "2024-03-31",
-   "filingDate": "2024-04-26T16:23",
-   "consolidated": false,
+   "fiscalYearEnd": "2025-03-31",
+   "filingDate": "2025-04-24T18:52",
+   "consolidated": true,
    "audited": true,
-   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_104781_1109108_26042024042321.xml",
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1424188_24042025065235_WEB.xml",
    "extraction": "id-convention",
    "headline": {
-    "revenue": 24393.89,
-    "profitBeforeTax": 5288.87,
-    "profitAfterTax": 3932.84,
-    "profitFromContinuingOperations": 3932.84,
+    "revenue": 20201.56,
+    "profitBeforeTax": 4340.07,
+    "profitAfterTax": 3207.59,
+    "profitFromContinuingOperations": 3231.54,
     "profitFromDiscontinuedOperations": 0,
-    "profitAttributableToOwners": null,
-    "financeCosts": 145.49,
-    "totalAssets": 10523.06,
-    "totalEquity": 3340.89,
-    "equityAttributableToOwners": 3340.89,
-    "cashFlowFromOperations": 4174.79,
+    "profitAttributableToOwners": 0,
+    "financeCosts": 136,
+    "totalAssets": 12193.32,
+    "totalEquity": 4010.21,
+    "equityAttributableToOwners": 4010.21,
+    "cashFlowFromOperations": 2936.35,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-21T19:32",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1656726_21042026073243_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 23154.6,
+    "profitBeforeTax": 4609.647,
+    "profitAfterTax": 3499.077,
+    "profitFromContinuingOperations": 3544.597,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 0,
+    "financeCosts": 158.31,
+    "totalAssets": 13182.49,
+    "totalEquity": 5156.97,
+    "equityAttributableToOwners": 5156.97,
+    "cashFlowFromOperations": 5047.557,
     "exciseDuty": null
    }
   }

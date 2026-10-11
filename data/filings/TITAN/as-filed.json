@@ -1,6 +1,6 @@
 {
  "symbol": "TITAN",
- "source": "NSE corporates-financial-results (Annual, Consolidated)",
+ "source": "NSE corporates-financial-results (Annual) and integrated-filing-results (March quarter), Consolidated",
  "records": [
   {
    "fiscalYearEnd": "2018-03-31",
@@ -153,6 +153,50 @@
     "totalEquity": 9393.005,
     "equityAttributableToOwners": 9393,
     "cashFlowFromOperations": 1759.02,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2025-03-31",
+   "filingDate": "2025-05-08T22:54",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1434467_08052025105413_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 60456,
+    "profitBeforeTax": 4534,
+    "profitAfterTax": 3337,
+    "profitFromContinuingOperations": 3336,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 3337,
+    "financeCosts": 953,
+    "totalAssets": 40647,
+    "totalEquity": 11624,
+    "equityAttributableToOwners": 11624,
+    "cashFlowFromOperations": -548,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-08T19:47",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1665068_08052026074730_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 87584,
+    "profitBeforeTax": 6800,
+    "profitAfterTax": 5073,
+    "profitFromContinuingOperations": 5072,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 5073,
+    "financeCosts": 1180,
+    "totalAssets": 60561,
+    "totalEquity": 15703,
+    "equityAttributableToOwners": 15703,
+    "cashFlowFromOperations": 5590,
     "exciseDuty": null
    }
   }
