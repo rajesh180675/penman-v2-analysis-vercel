@@ -117,6 +117,16 @@ export default function AssumptionsAudit({ config, costOfCapital, terminalGrowth
   const rfr = costOfCapital.riskFreeRate;
   const erp = costOfCapital.equityRiskPremium;
   const price = config.market_price;
+  // Netted from the risk-free rate in ke alone (the ERP's country premium
+  // prices the sovereign's default risk), so the rows add up to ke only with it.
+  const sovereignSpread = costOfCapital.sovereignDefaultSpread;
+  const sovereignSpreadRow: AssumptionRow[] = sovereignSpread != null ? [{
+    label: "Less Sovereign Default Spread",
+    value: `${(sovereignSpread * 100).toFixed(2)}%`,
+    source: tiers?.sovereignDefaultSpread?.tier ?? "computed",
+    flag: "ok",
+    note: "Netted from the risk-free rate in ke: ke = rf − spread + β × ERP. The debt cost keeps the full rate.",
+  }] : [];
 
   const assumptions: AssumptionRow[] = [
     {
@@ -163,6 +173,7 @@ export default function AssumptionsAudit({ config, costOfCapital, terminalGrowth
       note: rfr < 0.04 ? "Below India 10Y Gsec historical range" :
             rfr > 0.10 ? "High — check if using current market yield" : undefined,
     },
+    ...sovereignSpreadRow,
     {
       label: "Equity Risk Premium",
       // Null in manual-ke mode, where no ERP entered the discount rate. Saying

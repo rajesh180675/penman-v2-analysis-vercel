@@ -92,12 +92,20 @@ function Models({ results }: { results: readonly ModelResult[] }) {
 function CostOfCapital({ cc }: { cc: CommandCenter }) {
   const c = cc.costOfCapital;
   return (
-    <Card title="Cost of capital" note={`Status: ${c.status}. kw is derived from the capital structure and is not an input (S-9.4C).`}>
+    <Card
+      title="Cost of capital"
+      note={`Status: ${c.status}. kw is derived from the capital structure and is not an input (S-9.4C).${c.sovereignDefaultSpread != null
+        ? " ke = risk-free rate − sovereign default spread + beta × equity risk premium: the premium's country component already prices the sovereign's default risk."
+        : ""}`}
+    >
       <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-3 lg:grid-cols-6">
         {[
           ["Cost of equity (ke)", percent(c.ke)],
           ["Operating capital charge (kw)", percent(c.kw)],
           ["Risk-free rate", percent(c.riskFreeRate)],
+          // Netted from the risk-free rate in ke alone; without it the inputs
+          // listed here do not add up to the ke above.
+          ...(c.sovereignDefaultSpread != null ? [["Less sovereign default spread", percent(c.sovereignDefaultSpread)]] : []),
           ["Equity risk premium", percent(c.equityRiskPremium)],
           ["Beta", c.beta != null ? c.beta.toFixed(2) : null],
           ["Equity weight", percent(c.weights.equityWeight)],

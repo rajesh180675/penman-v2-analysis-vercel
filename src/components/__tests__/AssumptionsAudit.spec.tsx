@@ -67,6 +67,16 @@ describe("AssumptionsAudit — ke agreement", () => {
     expect(html.match(/>Prior</g)?.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("lists the sovereign default spread ke nets, so the rows add up to ke", () => {
+    // The pinned ERP carries India's country premium; ke = rf − spread + β × ERP.
+    const { html, costOfCapital } = render({ ...DEFAULT_CONFIG, company_type: "consumer" }, { pack: true });
+    expect(costOfCapital.sovereignDefaultSpread).toBeCloseTo(0.0187, 10);
+    expect(html).toContain("Less Sovereign Default Spread");
+    expect(html).toContain("1.87%");
+    // Without a pack nothing is netted, and no row claims otherwise.
+    expect(render({ ...DEFAULT_CONFIG, company_type: "consumer" }).html).not.toContain("Sovereign Default Spread");
+  });
+
   it("reports manual ke as the reviewer's, with no invented tier", () => {
     const config: EngineConfig = {
       ...DEFAULT_CONFIG,

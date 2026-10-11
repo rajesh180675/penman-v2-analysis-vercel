@@ -101,6 +101,13 @@ export interface CostOfCapitalResult {
   readonly debtMode: CostOfDebtPolicy["mode"];
   readonly beta: number | null;
   readonly riskFreeRate: number;
+  /**
+   * The sovereign default spread ke netted from the risk-free rate, so that
+   * ke = riskFreeRate − sovereignDefaultSpread + beta × equityRiskPremium.
+   * Null when nothing was netted. A surface that lists ke's inputs shows it,
+   * or the inputs it lists do not add up to ke.
+   */
+  readonly sovereignDefaultSpread?: number | null | undefined;
   readonly equityRiskPremium: number | null;
   /**
    * Provenance tiers for the capital-cost inputs, when the policy was built from
