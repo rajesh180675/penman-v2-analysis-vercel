@@ -51,10 +51,31 @@ export function headlineInconsistencies(headline: AnnualHeadline): Map<TieOutFie
   if (pbt != null && continuingPat != null && pbt > 0 && continuingPat > 1.5 * pbt) {
     issues.set("profitAfterTax", `continuing PAT ${continuingPat.toFixed(0)} exceeds 1.5× PBT ${pbt.toFixed(0)}`);
   }
-  if (pat != null && owners != null && pat > 0 && owners > 0 && (pat > 2 * owners || owners > 2 * pat)) {
+  // Owners' + minority = total, where the filing states the minority's share.
+  // Without it, a ratio stands in, and that misread a large minority as a
+  // contradiction: Grasim FY25 PAT 7,756 = owners 3,706 + minority 4,051;
+  // Bharti FY19 1,688 = 410 + 1,278. Asian Paints FY22 fails the identity
+  // (3,031 + 54 = 3,085 against a filed 9,167), and Capitaline's 3,085 is right.
+  const minorityProfit = headline.profitAttributableToNonControllingInterests ?? null;
+  const near = (a: number, b: number) => Math.abs(a - b) <= Math.max(1, 0.01 * Math.abs(b));
+  // A split filed as 0 and 0 is a blank, not a statement (Vodafone Idea FY19–25,
+  // Nestlé FY25): the identity applies only to a split the filing states.
+  const splitStated = owners != null && minorityProfit != null && (owners !== 0 || minorityProfit !== 0);
+  if (pat != null && owners != null && minorityProfit != null && splitStated) {
+    if (!near(owners + minorityProfit, pat)) {
+      issues.set("profitAfterTax", `owners' profit ${owners.toFixed(0)} + minority ${minorityProfit.toFixed(0)} = ${(owners + minorityProfit).toFixed(0)}, not PAT ${pat.toFixed(0)}`);
+    }
+  } else if (pat != null && owners != null && pat > 0 && owners > 0 && (pat > 2 * owners || owners > 2 * pat)) {
     issues.set("profitAfterTax", `PAT ${pat.toFixed(0)} and owners' profit ${owners.toFixed(0)} differ by more than 2×`);
   }
-  if (totalEquity != null && equityAttributableToOwners != null && equityAttributableToOwners > totalEquity * 1.001 && totalEquity > 0) {
+  // A negative minority puts owners' equity above total equity (Paytm FY25:
+  // 15,027 − 30 = 14,997), which the ratio test read as a contradiction.
+  const minorityEquity = headline.nonControllingInterest ?? null;
+  if (totalEquity != null && equityAttributableToOwners != null && minorityEquity != null) {
+    if (!near(equityAttributableToOwners + minorityEquity, totalEquity)) {
+      issues.set("equityAttributableToOwners", `owners' equity ${equityAttributableToOwners.toFixed(0)} + minority ${minorityEquity.toFixed(0)} is not total equity ${totalEquity.toFixed(0)}`);
+    }
+  } else if (totalEquity != null && equityAttributableToOwners != null && equityAttributableToOwners > totalEquity * 1.001 && totalEquity > 0) {
     issues.set("equityAttributableToOwners", `owners' equity exceeds total equity`);
   }
   return issues;
@@ -84,13 +105,15 @@ export interface AsFiledHeadlineRecord {
 function capitalineValue(period: RecastPeriod, field: TieOutField): number | null {
   switch (field) {
     case "revenue": return period.is.Sales;
-    // The filing's profit for the period. Capitaline files two of its lines
-    // below its own PAT, both inside TCI: extraordinary items after tax (NTPC's
-    // regulatory-deferral movement, ₹3,701.92 Cr in FY25, which the filing
-    // includes) and the associates' share after tax.
+    // The filing's profit for the period. Capitaline files three of its lines
+    // below its own PAT, all inside TCI: extraordinary items after tax (NTPC's
+    // regulatory-deferral movement, ₹3,701.92 Cr in FY25), the associates'
+    // share after tax, and discontinued operations after tax (ITC FY25:
+    // ₹20,036 Cr PAT + ₹15,016 Cr from the demerged hotels = ₹35,052 Cr filed).
     case "profitAfterTax": {
       const bridge = period.is.operatingCostBridge;
-      return period.is.PAT + (bridge?.extraordinaryAfterTax ?? 0) + (bridge?.associatesShareAfterTax ?? 0);
+      return period.is.PAT + (bridge?.extraordinaryAfterTax ?? 0) + (bridge?.associatesShareAfterTax ?? 0)
+        + (period.cu?.DiscontinuedOperationsAfterTax ?? 0);
     }
     case "totalAssets": return period.bs.TA;
     // Ind AS "Equity" is total equity, including non-controlling interests.

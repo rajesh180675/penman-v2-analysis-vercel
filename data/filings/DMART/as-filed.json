@@ -21,7 +21,9 @@
     "totalEquity": null,
     "equityAttributableToOwners": null,
     "cashFlowFromOperations": null,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": 0.0233,
+    "nonControllingInterest": null
    }
   },
   {
@@ -43,7 +45,9 @@
     "totalEquity": null,
     "equityAttributableToOwners": null,
     "cashFlowFromOperations": null,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": -0.08,
+    "nonControllingInterest": null
    }
   },
   {
@@ -65,7 +69,9 @@
     "totalEquity": null,
     "equityAttributableToOwners": null,
     "cashFlowFromOperations": null,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": -0.1,
+    "nonControllingInterest": null
    }
   },
   {
@@ -87,7 +93,9 @@
     "totalEquity": null,
     "equityAttributableToOwners": null,
     "cashFlowFromOperations": null,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": -0.06,
+    "nonControllingInterest": null
    }
   },
   {
@@ -109,7 +117,9 @@
     "totalEquity": null,
     "equityAttributableToOwners": null,
     "cashFlowFromOperations": 1372.35,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": -0.15,
+    "nonControllingInterest": null
    }
   },
   {
@@ -131,7 +141,9 @@
     "totalEquity": 16078.78,
     "equityAttributableToOwners": 16078.7,
     "cashFlowFromOperations": 2630.27,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": -0.17,
+    "nonControllingInterest": 0.08
    }
   },
   {
@@ -153,7 +165,9 @@
     "totalEquity": 18697.34,
     "equityAttributableToOwners": 18697.82,
     "cashFlowFromOperations": 2745.84,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": -0.56,
+    "nonControllingInterest": -0.48
    }
   },
   {
@@ -175,7 +189,9 @@
     "totalEquity": 21426.7,
     "equityAttributableToOwners": 21427.75,
     "cashFlowFromOperations": 2462.97,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": -0.57,
+    "nonControllingInterest": -1.05
    }
   },
   {
@@ -197,7 +213,9 @@
     "totalEquity": 24462.36,
     "equityAttributableToOwners": 24464.04,
     "cashFlowFromOperations": 3466.74,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": -0.631,
+    "nonControllingInterest": -1.68
    }
   }
  ]

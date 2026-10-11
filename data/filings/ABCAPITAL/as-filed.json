@@ -21,7 +21,9 @@
     "totalEquity": null,
     "equityAttributableToOwners": null,
     "cashFlowFromOperations": null,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": null,
+    "nonControllingInterest": null
    }
   },
   {
@@ -43,7 +45,9 @@
     "totalEquity": null,
     "equityAttributableToOwners": null,
     "cashFlowFromOperations": null,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": 53.67,
+    "nonControllingInterest": null
    }
   },
   {
@@ -65,7 +69,9 @@
     "totalEquity": null,
     "equityAttributableToOwners": null,
     "cashFlowFromOperations": null,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": -20.89,
+    "nonControllingInterest": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 121109.92,
@@ -97,7 +103,9 @@
     "totalEquity": null,
     "equityAttributableToOwners": null,
     "cashFlowFromOperations": -5069.51,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": -45.9,
+    "nonControllingInterest": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 137494.73,
@@ -129,7 +137,9 @@
     "totalEquity": 21820.07,
     "equityAttributableToOwners": null,
     "cashFlowFromOperations": -24053.4,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": 28.3,
+    "nonControllingInterest": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 174024.63,
@@ -161,7 +171,9 @@
     "totalEquity": 28637.78,
     "equityAttributableToOwners": null,
     "cashFlowFromOperations": -24100.5,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": 103.91,
+    "nonControllingInterest": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 224734.09,
@@ -193,7 +205,9 @@
     "totalEquity": 32347.05,
     "equityAttributableToOwners": 30388.72,
     "cashFlowFromOperations": -27934.63,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": 77.57,
+    "nonControllingInterest": 1958.33
    },
    "lenderBalanceSheet": {
     "financialAssets": 270860.05,
@@ -225,7 +239,9 @@
     "totalEquity": 36767.4,
     "equityAttributableToOwners": 34423.11,
     "cashFlowFromOperations": -36544.12,
-    "exciseDuty": null
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": 99.31,
+    "nonControllingInterest": 2344.29
    },
    "lenderBalanceSheet": {
     "financialAssets": 326728.85,
