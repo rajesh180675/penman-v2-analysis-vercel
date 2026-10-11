@@ -157,6 +157,14 @@ export type AnnualHeadline = { -readonly [K in keyof typeof ANNUAL_HEADLINE_CONC
    * Null when not itemized. Absent on records extracted before it was read.
    */
   exciseDuty?: number | null;
+  /**
+   * The minority's share of the year's profit and of closing equity, where
+   * filed: with them, owners' + minority = total is an identity a filing can
+   * be checked against (tieOut.ts headlineInconsistencies). Absent on records
+   * extracted before they were read.
+   */
+  profitAttributableToNonControllingInterests?: number | null;
+  nonControllingInterest?: number | null;
 };
 
 const INSTANT_FIELDS = new Set<keyof AnnualHeadline>(["totalAssets", "totalEquity", "equityAttributableToOwners"]);
@@ -176,6 +184,14 @@ export function extractAnnualHeadline(instance: XbrlInstance, fiscalYearEnd: str
     headline[field] = fact?.value != null ? fact.value / RUPEES_PER_CRORE : null;
   }
   headline.exciseDuty = duration ? itemizedExcise(instance, duration, method) : null;
+  const read = (concept: string, context: XbrlContext | null): number | null => {
+    const fact = context
+      ? instance.facts.find((f) => f.concept === concept && f.contextRef === context.id && f.value != null && f.unitRef?.toUpperCase() === "INR")
+      : undefined;
+    return fact?.value != null ? fact.value / RUPEES_PER_CRORE : null;
+  };
+  headline.profitAttributableToNonControllingInterests = read("ProfitOrLossAttributableToNonControllingInterests", duration);
+  headline.nonControllingInterest = read("NonControllingInterest", instant);
   return { headline, method };
 }
 

@@ -9,24 +9,18 @@ Each company's consolidated annual results as **first filed** on NSE (XBRL, fetc
 | Field | Compared | Match | Minor | Mismatch | Filing inconsistent | Median |difference| |
 |---|---|---|---|---|---|---|
 | revenue | 165 | 156 | 2 | 7 | 0 | 0.0% |
-| profitAfterTax | 164 | 137 | 7 | 17 | 3 | 0.0% |
+| profitAfterTax | 164 | 156 | 4 | 2 | 2 | 0.0% |
 | totalAssets | 70 | 67 | 1 | 2 | 0 | 0.0% |
 | totalEquity | 69 | 68 | 0 | 1 | 0 | 0.0% |
-| equityAttributableToOwners | 69 | 65 | 0 | 1 | 3 | 0.0% |
+| equityAttributableToOwners | 69 | 68 | 0 | 1 | 0 | 0.0% |
 | cashFlowFromOperations | 91 | 86 | 2 | 3 | 0 | 0.0% |
 
 ## Largest mismatches
 
-Showing 25 of 31 mismatches, largest first.
+Showing 16 of 16 mismatches, largest first.
 
 | Company | Year-end | Field | As filed (₹ Cr) | Capitaline (₹ Cr) | Difference |
 |---|---|---|---|---|---|
-| M&M | 2020-03-31 | profitAfterTax | -321 | 2713 | 945.1% |
-| M&M | 2021-03-31 | profitAfterTax | 1512 | 3702 | 144.8% |
-| TATASTEEL | 2020-03-31 | profitAfterTax | 1172 | 2337 | 99.3% |
-| BHARTIARTL | 2021-03-31 | profitAfterTax | -12364 | -23421 | -89.4% |
-| LT | 2021-03-31 | profitAfterTax | 12921 | 4683 | -63.8% |
-| ITC | 2025-03-31 | profitAfterTax | 35052 | 20036 | -42.8% |
 | M&M | 2020-03-31 | revenue | 95179 | 75382 | -20.8% |
 | NTPC | 2023-03-31 | cashFlowFromOperations | 40052 | 47152 | 17.7% |
 | RELIANCE | 2023-03-31 | equityAttributableToOwners | 821153 | 715872 | -12.8% |
@@ -34,15 +28,12 @@ Showing 25 of 31 mismatches, largest first.
 | ULTRACEMCO | 2019-03-31 | revenue | 37379 | 41609 | 11.3% |
 | RELIANCE | 2023-03-31 | totalEquity | 934162 | 828881 | -11.3% |
 | NTPC | 2019-03-31 | profitAfterTax | 12633 | 14034 | 11.1% |
-| DABUR | 2019-03-31 | profitAfterTax | 1597 | 1446 | -9.4% |
 | PAYTM | 2024-03-31 | totalAssets | 17139 | 18693 | 9.1% |
 | TATASTEEL | 2018-03-31 | revenue (net of excise duty 1316) | 131700 | 123249 | -6.4% |
 | RELIANCE | 2023-03-31 | totalAssets | 1713506 | 1607431 | -6.2% |
-| LT | 2020-03-31 | profitAfterTax | 10894 | 10240 | -6.0% |
 | POWERGRID | 2023-03-31 | cashFlowFromOperations | 38005 | 40203 | 5.8% |
-| LT | 2019-03-31 | profitAfterTax | 10217 | 9647 | -5.6% |
 | NTPC | 2019-03-31 | revenue | 95742 | 100287 | 4.7% |
-| GRASIM | 2022-03-31 | profitAfterTax | 11206 | 10691 | -4.6% |
 | ITC | 2024-03-31 | revenue (net of excise duty 5959) | 70881 | 67932 | -4.2% |
 | LT | 2019-03-31 | revenue | 141007 | 135220 | -4.1% |
 | TITAN | 2024-03-31 | cashFlowFromOperations | 1759 | 1695 | -3.6% |
+| SUNPHARMA | 2018-03-31 | profitAfterTax | 2608 | 2543 | -2.5% |
