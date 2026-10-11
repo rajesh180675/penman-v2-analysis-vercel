@@ -56,8 +56,12 @@ function resolveEquity(policy: CostOfEquityPolicy): {
   // has no date, which is the exact confusion the tiers exist to remove.
   const tiers = policy.assumptions;
   const priorKeys = tiers?.priorTierKeys ?? [];
+  // A country-premium ERP prices the sovereign's default risk, so it pairs with
+  // the default-free rate: the yield less the sovereign's default spread.
+  const sovereignSpread = policy.sovereignDefaultSpread ?? 0;
+  const spreadTier = tiers?.sovereignDefaultSpread ?? null;
   return {
-    ke: policy.riskFreeRate + policy.beta * policy.equityRiskPremium,
+    ke: policy.riskFreeRate - sovereignSpread + policy.beta * policy.equityRiskPremium,
     beta: policy.beta,
     erp: policy.equityRiskPremium,
     riskFree: policy.riskFreeRate,
@@ -71,6 +75,16 @@ function resolveEquity(policy: CostOfEquityPolicy): {
         tier: tiers?.riskFreeRate.tier,
         fallbackReason: tiers?.riskFreeRate.fallbackReason,
       },
+      ...(sovereignSpread !== 0
+        ? [{
+          component: "sovereign-default-spread" as const,
+          source: spreadTier?.source ?? "Sovereign default spread",
+          asOf: spreadTier?.asOf ?? policy.asOf,
+          value: sovereignSpread,
+          evidenceRefs: policy.evidenceRefs,
+          tier: spreadTier?.tier,
+        }]
+        : []),
       {
         component: "beta",
         source: policy.betaSource,
@@ -313,6 +327,7 @@ export function costPoliciesFromConfig(
     : {
         mode: "capm",
         riskFreeRate: assumptions.riskFreeRate.value,
+        sovereignDefaultSpread: assumptions.sovereignDefaultSpread?.value,
         beta: assumptions.beta.value,
         equityRiskPremium: assumptions.equityRiskPremium.value,
         riskFreeSource: assumptions.riskFreeRate.source,

@@ -4,7 +4,7 @@ import type { AssumptionTier, CapitalCostAssumptionSet } from "../assumptions/ca
 export const COST_OF_CAPITAL_POLICY_VERSION = "2026-07-cost-of-capital-v1" as const;
 
 export interface CostEvidence {
-  readonly component: "risk-free" | "beta" | "erp" | "debt-cost" | "tax" | "capital-structure";
+  readonly component: "risk-free" | "sovereign-default-spread" | "beta" | "erp" | "debt-cost" | "tax" | "capital-structure";
   readonly source: string;
   readonly asOf: string | null;
   readonly value: number;
@@ -23,6 +23,13 @@ export type CostOfEquityPolicy =
   | {
       readonly mode: "capm";
       readonly riskFreeRate: number;
+      /**
+       * Netted from the risk-free rate in ke alone, when the ERP prices the
+       * sovereign's default risk through a country premium (capitalCostAssumptions
+       * resolveSovereignDefaultSpread). Absent or zero, nothing is netted. The
+       * debt cost keeps the gross rate: a rupee borrower pays the sovereign's risk.
+       */
+      readonly sovereignDefaultSpread?: number | undefined;
       readonly beta: number;
       readonly equityRiskPremium: number;
       readonly riskFreeSource: string;

@@ -62,10 +62,13 @@ describe("useAuditAnalysis — assumption provenance reaches the envelope", () =
     expect(provenance).not.toBeUndefined();
     expect(provenance).not.toBeNull();
     const block = provenance as AssumptionProvenanceSummary;
+    // The sovereign default spread is reported because the pack's ERP is a
+    // country-premium figure: the CAPM nets it from the risk-free rate.
     expect(block.checks.map((check) => check.key).sort()).toEqual([
       "beta",
       "equity-risk-premium",
       "risk-free-rate",
+      "sovereign-default-spread",
       "terminal-growth-ceiling",
     ]);
   });

@@ -23,6 +23,8 @@
 export const MACRO_STALENESS_DAYS = {
   riskFreeRate: 30,
   equityRiskPremium: 365,
+  // Published with the ERP it belongs to, in the same annual table.
+  sovereignDefaultSpread: 365,
   longRunNominalGrowth: 1095,
 } as const;
 
@@ -42,6 +44,15 @@ export interface MacroPack {
   readonly asOf: string;
   readonly riskFreeRate: MacroObservation | null;
   readonly equityRiskPremium: MacroObservation | null;
+  /**
+   * The government's default spread, when the ERP is built on a country risk
+   * premium (Damodaran's ratings-based mature-market premium plus CRP). Such an
+   * ERP pairs with a default-free local rate: the government yield less this
+   * spread (Damodaran, "riskfree rate in local currency"). Paired with the
+   * gross yield, it counts the sovereign's default risk twice. Absent when the
+   * ERP is measured over the local government yield itself.
+   */
+  readonly sovereignDefaultSpread?: MacroObservation | null | undefined;
   readonly longRunNominalGrowth: MacroObservation | null;
 }
 
@@ -57,6 +68,7 @@ export type MacroObservationStatus =
 const PLAUSIBLE_RANGE: Record<MacroObservationKey, { readonly min: number; readonly max: number }> = {
   riskFreeRate: { min: 0, max: 0.20 },
   equityRiskPremium: { min: 0.01, max: 0.15 },
+  sovereignDefaultSpread: { min: 0, max: 0.10 },
   longRunNominalGrowth: { min: 0, max: 0.15 },
 };
 
@@ -120,6 +132,7 @@ export function resolveMacroObservation(
 export interface MacroPackResolution {
   readonly riskFreeRate: MacroObservationStatus;
   readonly equityRiskPremium: MacroObservationStatus;
+  readonly sovereignDefaultSpread: MacroObservationStatus;
   readonly longRunNominalGrowth: MacroObservationStatus;
   /** True only when all three are usable — the precondition for a fully sourced capital cost. */
   readonly complete: boolean;
@@ -131,10 +144,12 @@ export function resolveMacroPack(
 ): MacroPackResolution {
   const riskFreeRate = resolveMacroObservation("riskFreeRate", pack?.riskFreeRate, analysisAsOf);
   const equityRiskPremium = resolveMacroObservation("equityRiskPremium", pack?.equityRiskPremium, analysisAsOf);
+  const sovereignDefaultSpread = resolveMacroObservation("sovereignDefaultSpread", pack?.sovereignDefaultSpread, analysisAsOf);
   const longRunNominalGrowth = resolveMacroObservation("longRunNominalGrowth", pack?.longRunNominalGrowth, analysisAsOf);
   return {
     riskFreeRate,
     equityRiskPremium,
+    sovereignDefaultSpread,
     longRunNominalGrowth,
     complete: [riskFreeRate, equityRiskPremium, longRunNominalGrowth].every((item) => item.status === "usable"),
   };
