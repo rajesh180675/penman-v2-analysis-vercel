@@ -141,11 +141,14 @@ describe("forecast snapshot ledger", () => {
       companyType: "consumer",
       madeAt: "2026-09-25",
       cutoff: history[4]!,
+      basis: { accounts: "consolidated", lendingArm: "X Finance" },
       forecast: [forecastYear({ Sales_f: 1500, OI_f: 292.82, NOA_f: 1600, CNI_f: 220 })],
       assumptions: { ke: 0.12, kw: 0.1, g: 0.04 },
       intrinsicPerShare: null,
     });
     expect(snapshot.years[0]!.periodEnd).toBe("2024-03-31");
+    // The record says what it forecasts, so it is scored against the same business.
+    expect(snapshot.basis).toEqual({ accounts: "consolidated", lendingArm: "X Finance" });
 
     // Nothing reported yet: nothing to score.
     expect(scoreSnapshot(snapshot, history).observations).toEqual([]);

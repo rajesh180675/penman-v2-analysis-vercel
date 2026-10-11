@@ -10,7 +10,25 @@ import type { ForecastPeriod, RecastPeriod } from "../types";
 import { scoreForecast } from "./walkForward";
 import type { ScoredObservation } from "./types";
 
-export const FORECAST_SNAPSHOT_SCHEMA_VERSION = "2026-09-forecast-snapshot-v1" as const;
+/**
+ * v2 (2026-10-11): the forecast is the app's own run's, and `basis` records the
+ * business it forecasts. v1 snapshots were made by the accountability runner's
+ * own copy of the run: always the consolidated statements, with no lending arm
+ * carved out (the standalone accounts where consolidated history is short).
+ */
+export const FORECAST_SNAPSHOT_SCHEMA_VERSION = "2026-10-forecast-snapshot-v2" as const;
+
+/** What a frozen forecast is a forecast of, so it is scored against the same thing. */
+export interface ForecastSnapshotBasis {
+  /** The accounts the run analysed: standalone only when the consolidated history is too short. */
+  readonly accounts: "consolidated" | "standalone";
+  /**
+   * The lending arm the valuation carved out of the accounts, when it carved
+   * one (valuationBasis): the forecast is then of the business without it, and
+   * its actuals must be carved the same way. Null when nothing was carved.
+   */
+  readonly lendingArm: string | null;
+}
 
 export interface ForecastSnapshot {
   readonly schemaVersion: typeof FORECAST_SNAPSHOT_SCHEMA_VERSION;
@@ -21,6 +39,7 @@ export interface ForecastSnapshot {
   /** Last reported period the forecast was allowed to see. */
   readonly cutoffPeriod: string;
   readonly model: "command-center-base";
+  readonly basis: ForecastSnapshotBasis;
   readonly assumptions: { readonly ke: number; readonly kw: number; readonly g: number };
   readonly years: readonly {
     readonly periodEnd: string;
@@ -39,6 +58,7 @@ export function buildForecastSnapshot(input: {
   companyType: string;
   madeAt: string;
   cutoff: RecastPeriod;
+  basis: ForecastSnapshotBasis;
   forecast: readonly ForecastPeriod[];
   assumptions: { ke: number; kw: number; g: number };
   intrinsicPerShare: number | null;
@@ -52,6 +72,7 @@ export function buildForecastSnapshot(input: {
     madeAt: input.madeAt,
     cutoffPeriod: input.cutoff.period_end,
     model: "command-center-base",
+    basis: input.basis,
     assumptions: input.assumptions,
     years: input.forecast.map((f, i) => ({
       periodEnd: `${baseYear + i + 1}${suffix}`,

@@ -2,7 +2,7 @@
 /**
  * run-all.ts — forecast accountability over the whole registry.
  *
- *   npx tsx scripts/accountability/run-all.ts [--made-at=YYYY-MM-DD] [--skip-runs]
+ *   npm run accountability -- [--made-at=YYYY-MM-DD] [--skip-runs]
  *
  * 1. Runs company-run.ts once per company, each in its own process.
  * 2. Aggregates the walk-forward backtest into accountability/summary.json and
@@ -18,7 +18,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   companyTrackRecord,
   estimatePanelPersistence,
@@ -30,6 +30,7 @@ import {
 } from "../../src/engine/accountability";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "../..");
+const RAW_LOADER = join(ROOT, "scripts", "lib", "register-raw-loader.mjs");
 const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split("=")[1] ?? null;
 const madeAt = arg("made-at") ?? new Date().toISOString().slice(0, 10);
 const skipRuns = process.argv.includes("--skip-runs");
@@ -40,10 +41,10 @@ const registry: { folder: string; ticker: string; type: string }[] =
 if (!skipRuns) {
   for (const company of registry) {
     const started = Date.now();
-    // Quoted: with shell: true, cmd.exe splits an unquoted "M&M" at the "&".
-    const result = spawnSync("npx", ["tsx", "scripts/accountability/company-run.ts", `"--ticker=${company.ticker}"`, `--made-at=${madeAt}`], {
+    // The raw loader: the snapshot is the app's run, whose executor reads the
+    // mapping spec as `?raw`. No shell, so "M&M" needs no quoting.
+    const result = spawnSync(process.execPath, ["--import", "tsx/esm", "--import", pathToFileURL(RAW_LOADER).href, "scripts/accountability/company-run.ts", `--ticker=${company.ticker}`, `--made-at=${madeAt}`], {
       cwd: ROOT,
-      shell: true,
       encoding: "utf8",
       timeout: 300_000,
     });
@@ -58,7 +59,7 @@ interface RunFile {
   skipped?: string;
   walkForward?: CompanyWalkForward;
   rnoaPoints?: { year: number; rnoa: number }[];
-  snapshot?: (Record<string, unknown> & { cutoffPeriod?: string; latestReportedPeriod?: string; error?: string }) | null;
+  snapshot?: (Record<string, unknown> & { cutoffPeriod?: string; latestReportedPeriod?: string; error?: string; skipped?: string }) | null;
 }
 
 const runs: RunFile[] = registry.flatMap((c) => {
@@ -83,8 +84,11 @@ mkdirSync(snapshotDir, { recursive: true });
 let written = 0;
 let kept = 0;
 const anchorLags: { ticker: string; cutoff: string; latest: string; lagYears: number }[] = [];
+// The app's run stopped before its valuation (appSnapshot.ts): nothing to freeze.
+const notValued: { ticker: string; reason: string }[] = [];
 for (const r of industrial) {
   const s = r.snapshot;
+  if (s?.skipped) notValued.push({ ticker: r.ticker, reason: s.skipped });
   if (!s || s.error || !s.cutoffPeriod) continue;
   const lagYears = Number(String(s.latestReportedPeriod).slice(0, 4)) - Number(s.cutoffPeriod.slice(0, 4));
   anchorLags.push({ ticker: r.ticker, cutoff: s.cutoffPeriod, latest: String(s.latestReportedPeriod), lagYears });
@@ -103,9 +107,9 @@ writeFileSync(join(publicDir, "track-record.json"), JSON.stringify({
   companies: walkForwards.map(companyTrackRecord),
 }, null, 1) + "\n");
 
-writeFileSync(join(ROOT, "accountability", "summary.json"), JSON.stringify({ madeAt, overall, byGroup, priors, anchorLags }, null, 1) + "\n");
+writeFileSync(join(ROOT, "accountability", "summary.json"), JSON.stringify({ madeAt, overall, byGroup, priors, anchorLags, notValued }, null, 1) + "\n");
 writeFileSync(join(ROOT, "src", "engine", "selfConsistentValuation", "persistencePriors.generated.ts"), renderPriors(priors, madeAt, series.length));
-writeFileSync(join(ROOT, "docs", "generated", "forecast-accountability.md"), renderReport(overall, byGroup, priors, anchorLags, runs));
+writeFileSync(join(ROOT, "docs", "generated", "forecast-accountability.md"), renderReport(overall, byGroup, priors, anchorLags, notValued, runs));
 // The browser reads the frozen snapshots from one published file, which a test
 // keeps equal to accountability/snapshots: publish it with the new ones.
 const published = spawnSync("npx", ["tsx", "scripts/accountability/publish-snapshots.ts"], { cwd: ROOT, shell: true, encoding: "utf8" });
@@ -139,6 +143,7 @@ function renderReport(
   groupsSummary: Record<string, AccountabilitySummary>,
   estimates: PersistenceEstimate[],
   lags: typeof anchorLags,
+  unvalued: typeof notValued,
   allRuns: RunFile[],
 ) {
   const skippedRuns = allRuns.filter((r) => r.skipped);
@@ -176,13 +181,17 @@ Groups with fewer than 3 companies or 20 year-pairs fall back to the pooled "all
 
 ## Valuation anchor lag
 
-The valuation readiness policy walks back from the latest period when that period fails economic sanity. ${lagged.length} of ${lags.length} companies are valued from a period older than their latest report:
+The valuation readiness policy walks back from the latest period when that period fails economic sanity. ${lagged.length} of the ${lags.length} companies the app values are valued from a period older than their latest report:
 
 ${lagged.length ? `| Company | Valued from | Latest reported | Years behind |\n|---|---|---|---|\n${lagged.sort((a, b) => b.lagYears - a.lagYears).map((l) => `| ${l.ticker} | ${l.cutoff} | ${l.latest} | ${l.lagYears} |`).join("\n")}` : "None."}
+
+${unvalued.length} ${unvalued.length === 1 ? "company is" : "companies are"} not valued at all: the app's run stops before its valuation, so there is no forecast to freeze.${unvalued.length ? `\n\n| Company | Why |\n|---|---|\n${unvalued.map((u) => `| ${u.ticker} | ${u.reason.split("|").join("\\|")} |`).join("\n")}` : ""}
 
 ## Frozen forecast snapshots
 
 Today's base forecasts are frozen in \`accountability/snapshots/${madeAt}/\` and are never regenerated. As each company reports FY${Number(madeAt.slice(0, 4)) + 1}, \`scoreSnapshot\` scores them with no look-ahead.
+
+Each is taken from the app's own run of the company (\`scripts/accountability/appSnapshot.ts\`): the forecast the Case's Forecast section draws and the value its base card shows. Its \`basis\` records what it forecasts. Where the valuation carved a lending arm out of the accounts, the forecast is of the business without it, and must be scored against actuals carved the same way. Snapshots before schema v2 (frozen up to 2026-10-08) were made by this runner's own copy of the run: the consolidated statements with nothing carved and no quality gate. For some companies they differ from what the app showed that day.
 
 ## Not covered
 

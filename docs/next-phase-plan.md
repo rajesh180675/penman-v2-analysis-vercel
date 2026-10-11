@@ -28,7 +28,7 @@
 - `walkForwardCompany` re-runs the app's own base forecast (`buildAnchoredForecast` — exactly what the Valuation tab shows) at every historical cutoff with ≥5 years of history and scores t+1…t+3 against later actuals, beside a **random walk** and a **trailing trend** benchmark built from the same truncated history. Actuals are matched by fiscal year, never by array position; ke uses config defaults, never today's dated packs.
 - Metrics are scale-free so companies pool: sales log error, operating-margin error (OI error ÷ sales), core RNOA error (only on an NOA base ≥ 10% of sales) and CNI error in ROE points. Means *and* medians are reported.
 - **Forecast ledger:** today's forecasts for all 23 industrial companies are frozen in `accountability/snapshots/2026-09-25/` and are never regenerated; `scoreSnapshot` scores them look-ahead-free as FY27 results arrive.
-- Report: `docs/generated/forecast-accountability.md` (`npx tsx scripts/accountability/run-all.ts`).
+- Report: `docs/generated/forecast-accountability.md` (`npm run accountability`).
 
 **What the backtest says** (218 forecast origins, 22 companies; medians):
 
