@@ -14,13 +14,14 @@ import { parseCapitalineZip } from "../../engine/capitalineParser";
 import { processCompanyDataFull } from "../../engine/pipeline";
 import { ACTIVE_MARKET_PACKS } from "../../engine/marketPacks";
 import { adaptLegacyCommandCenterModelResults } from "../../engine/modelCatalog";
-import { buildValuationCommandCenter, formatPerShare } from "../../engine/valuationCommandCenter";
-import { revalueBase } from "../../engine/valuationCommandCenter/breakEven";
+import { buildValuationCommandCenter, formatPct, formatPerShare } from "../../engine/valuationCommandCenter";
+import { revalueBase, solveBreakEvens } from "../../engine/valuationCommandCenter/breakEven";
 import { DEFAULT_CONFIG, type CompanyType } from "../../engine/types";
 import { INRAbsolute } from "../../engine/types/units";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
 import { crore, percent } from "../format";
 import { ForecastSection } from "../sections/ForecastSection";
+import { VerdictSection } from "../sections/VerdictSection";
 import { CasePage } from "../CasePage";
 import { caseRoute } from "../route";
 import type { LibraryCompany } from "../../components/data-entry/companyRegistry";
@@ -187,6 +188,29 @@ describe("Forecast section", () => {
     }
     times.sort((a, b) => a - b);
     expect(times[5]).toBeLessThan(150);
+  });
+});
+
+describe("Verdict — what would change our mind", () => {
+  it("says a growth or margin break-even moves every forecast year, and sets terminal growth against the riskless rate", () => {
+    const cc = built.TCS!;
+    const results = solveBreakEvens(cc);
+    const at = (driver: string) => results.find((r) => r.driver === driver)!;
+    const html = text(renderToStaticMarkup(<VerdictSection result={resultFor(cc)} />));
+    const growth = at("sales_growth");
+    expect(growth.breakEven).not.toBeNull();
+    const shift = growth.breakEven! - growth.base;
+    expect(html).toContain(
+      `Sales growth ${formatPct(growth.base, 1)} in year 1 ${formatPct(growth.breakEven, 1)} in year 1 (${shift >= 0 ? "+" : "−"}${Math.abs(shift * 100).toFixed(1)} points in every forecast year)`,
+    );
+    // TCS at ₹3,100: the price needs more terminal growth than the riskless
+    // rate ke starts from (7.11% G-Sec less the 1.87% default spread).
+    const g = at("g");
+    expect(g.breakEven).toBeGreaterThan(0.0711 - 0.0187);
+    expect(html).toContain(`Terminal growth ${formatPct(g.base, 1)} ${formatPct(g.breakEven, 1)}, above the 5.24% riskless rate the cost of equity is built on`);
+    // A manual ke is built on no riskless rate, so none is claimed.
+    const manual = { ...cc, costOfCapital: { ...cc.costOfCapital, equityMode: "manual" } } as unknown as CC;
+    expect(text(renderToStaticMarkup(<VerdictSection result={resultFor(manual)} />))).not.toContain("riskless rate");
   });
 });
 

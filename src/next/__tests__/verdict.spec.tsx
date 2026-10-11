@@ -19,6 +19,7 @@ function commandCenter(overrides: Record<string, unknown> = {}) {
     range: { floorPerShare: 750, ceilingPerShare: 1450 },
     anchorPeriod: { period_end: "2025-03-31" },
     valuationReadiness: { status: "production-ready", reasons: [] },
+    costOfCapital: { equityMode: "capm", riskFreeRate: 0.0711, sovereignDefaultSpread: 0.0187 },
     ...overrides,
   };
 }

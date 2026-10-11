@@ -3,8 +3,12 @@
  * at which the base-case intrinsic value equals the market price.
  *
  * Each driver is moved on its own, everything else held: a parallel shift of
- * the whole sales-growth or core-margin path, or a different cost of equity
- * (with kw following structurally, S-9.4C). The base card is re-valued along
+ * the whole sales-growth or core-margin path, a different cost of equity
+ * (with kw following structurally, S-9.4C), or a different terminal growth.
+ * Terminal growth is the driver the price leans on most, and the one its own
+ * rule bounds: below the discount rates, where a continuing value exists at
+ * all (2026-10: HUL's price needs 8.2% where the base case holds 5.0%; Titan's
+ * is reached by no growth below them). The base card is re-valued along
  * EXACTLY the path behind the value it displays — buildScenarioCards' forecast
  * and valuation, then primaryValuationPerShare (the RE/ReOI median; the
  * owner-earnings DCF is not part of the displayed value) —
@@ -18,11 +22,11 @@ import type { ForecastPeriod, ForecastScenario } from "../types";
 import { primaryValuationPerShare } from "./helpers";
 import type { ValuationCommandCenterOutput } from "./types";
 
-export type BreakEvenDriver = "sales_growth" | "core_sales_pm" | "ke";
+export type BreakEvenDriver = "sales_growth" | "core_sales_pm" | "ke" | "g";
 
 export interface BreakEvenResult {
   readonly driver: BreakEvenDriver;
-  /** The base case's value: year-1 sales growth / core margin, or ke. */
+  /** The base case's value: year-1 sales growth / core margin, ke, or terminal growth. */
   readonly base: number;
   /** The driver value at which base-case value = price, in the same terms as `base`. */
   readonly breakEven: number | null;
@@ -35,6 +39,8 @@ const SEARCH = {
   sales_growth: { lo: -0.25, hi: 0.25 },
   core_sales_pm: { lo: -0.25, hi: 0.25 },
   ke: { lo: -0.06, hi: 0.15 },
+  // Up to the discount rates: the pull-in stops at the last terminal growth that values.
+  g: { lo: -0.05, hi: 0.15 },
 } as const;
 
 type CommandCenterLike = Pick<ValuationCommandCenterOutput, "scenarios" | "anchorPeriod" | "shareBasis" | "marketPrice">;
@@ -110,8 +116,11 @@ export function baseValueWithShift(cc: CommandCenterLike, driver: BreakEvenDrive
 }
 
 function baseDriverValue(cc: CommandCenterLike, driver: BreakEvenDriver): number | null {
-  const d = cc.scenarios.find((s) => s.key === "base")?.scenario?.drivers;
-  if (!d) return null;
+  const card = cc.scenarios.find((s) => s.key === "base");
+  const d = card?.scenario?.drivers;
+  if (!card || !d) return null;
+  // revalueBase shifts the card's terminal growth, so that is the base it is read against.
+  if (driver === "g") return card.assumptions.g;
   return driver === "ke" ? d.ke : driver === "sales_growth" ? d.sales_growth[0] ?? null : d.core_sales_pm[0] ?? null;
 }
 
@@ -130,9 +139,20 @@ export function solveBreakEven(cc: CommandCenterLike, driver: BreakEvenDriver): 
   let hi: number = SEARCH[driver].hi;
   let gLo = gap(lo);
   let gHi = gap(hi);
-  // Pull an invalid end (e.g. ke at or below terminal growth) in towards zero.
-  for (let i = 0; i < 20 && gLo == null; i++) { lo /= 2; gLo = gap(lo); }
-  for (let i = 0; i < 20 && gHi == null; i++) { hi /= 2; gHi = gap(hi); }
+  // Pull an invalid end (e.g. ke at or below terminal growth) in to the edge of
+  // the shifts that value; zero values (checked above). Halving the end could
+  // jump past the edge, and the break-even with it: the shifts beside the
+  // discount rates, where the continuing value climbs steepest, were never tried.
+  const edge = (invalid: number) => {
+    let valid = 0;
+    for (let i = 0; i < 30; i++) {
+      const mid = (valid + invalid) / 2;
+      if (gap(mid) == null) invalid = mid; else valid = mid;
+    }
+    return valid;
+  };
+  if (gLo == null) { lo = edge(lo); gLo = gap(lo); }
+  if (gHi == null) { hi = edge(hi); gHi = gap(hi); }
   if (gLo == null || gHi == null || Math.sign(gLo) === Math.sign(gHi)) {
     return { driver, base, breakEven: null, reason: "beyond-range" };
   }
@@ -146,5 +166,5 @@ export function solveBreakEven(cc: CommandCenterLike, driver: BreakEvenDriver): 
 }
 
 export function solveBreakEvens(cc: CommandCenterLike): BreakEvenResult[] {
-  return (["sales_growth", "core_sales_pm", "ke"] as const).map((driver) => solveBreakEven(cc, driver));
+  return (["sales_growth", "core_sales_pm", "ke", "g"] as const).map((driver) => solveBreakEven(cc, driver));
 }
