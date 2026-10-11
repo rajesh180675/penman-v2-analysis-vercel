@@ -231,7 +231,8 @@ describe.sequential("auditCompanyRun", () => {
   expect(result.pipelineStrategyId).toBe("bank-v1");
   // Readiness comes from the evidence the valuation rests on, the rule the app's
   // run applies (resolveFinancialValuationReadiness). HDFC Bank's justified P/B,
-  // residual income and DDM are one algebra, so it has one lens: guarded.
+  // residual income and DDM are one algebra, one lens; its book at Nifty Private
+  // Bank's sourced P/B is a second, 71% apart on the FY2025 anchor: guarded.
   expect(result.valuationEvidence.readinessStatus).toBe("guarded");
   // Null, not "confirmed": defensibility is a property of the evidence-weighted
   // synthesis and the FI path runs no synthesis, so there is nothing to confirm.
@@ -243,7 +244,8 @@ describe.sequential("auditCompanyRun", () => {
   // P/B under Gordon growth is the closed form of equity residual income, and
   // the DDM at its steady-state payout is justified P/B on latest earnings, so
   // a bank's three lenses are one piece of algebra, not three confirmations.
-  expect(result.valuationEvidence.independentLensGroups).toEqual(["fi-book-residual-income"]);
+  // The sector index P/B (sectorMultiples.ts) is the one independent of it.
+  expect(result.valuationEvidence.independentLensGroups).toEqual(["fi-book-residual-income", "fi-sector-market-multiple"]);
   expect(result.valuationEvidence.independentLensGroups).not.toContain("book-value");
   // The readiness status above counts only history depth, so it cannot carry
   // the ladder: the financial-institution valuation has no synthesis and no
