@@ -161,3 +161,50 @@ describe("forecast snapshot ledger", () => {
     expect(scored.observations.map((o) => o.model)).toEqual(direct.map((o) => o.model));
   });
 });
+
+describe("frozen forecasts scored against filings", () => {
+  const snapshot = (over: Record<string, unknown> = {}) => ({
+    schemaVersion: "2026-10-forecast-snapshot-v2",
+    ticker: "X", companyType: "consumer", madeAt: "2026-10-11", cutoffPeriod: "2025-03-31", model: "command-center-base",
+    basis: { accounts: "consolidated", lendingArm: null },
+    assumptions: { ke: 0.12, kw: 0.1, g: 0.04 },
+    years: [
+      { periodEnd: "2026-03-31", sales: 1100, operatingIncome: 110, noa: 900, cni: 105, cse: 1050 },
+      { periodEnd: "2027-03-31", sales: 1200, operatingIncome: 120, noa: 950, cni: 110, cse: 1100 },
+    ],
+    intrinsicPerShare: null,
+    latestReportedPeriod: "2025-03-31",
+    ...over,
+  });
+  const filings = [
+    { fiscalYearEnd: "2025-03-31", revenue: 1040, exciseDuty: 40, profitAttributableToOwners: 100, equityAttributableToOwners: 1000 },
+    { fiscalYearEnd: "2026-03-31", revenue: 1100, exciseDuty: 0, profitAttributableToOwners: 120, equityAttributableToOwners: 1080 },
+  ];
+
+  it("scores the years the forecast's data never reached, against first filings, on one basis", async () => {
+    const { scoreSnapshotAgainstFilings } = await import("..");
+    const { scores, skipped } = scoreSnapshotAgainstFilings(snapshot() as never, filings);
+    expect(skipped).toBeNull();
+    // FY2027 is not filed yet: only FY2026 is scored.
+    expect(scores.map((s) => `${s.metric}@${s.periodEnd}`)).toEqual(["sales-log-error@2026-03-31", "cni-roe-point-error@2026-03-31"]);
+    const sales = scores.find((s) => s.metric === "sales-log-error")!;
+    expect(sales.model).toBeCloseTo(0, 12); // 1,100 against 1,100
+    // The cutoff year's revenue net of its 40 excise: 1,000.
+    expect(sales.randomWalk).toBeCloseTo(Math.log(1000 / 1100), 12);
+    const cni = scores.find((s) => s.metric === "cni-roe-point-error")!;
+    expect(cni.model).toBeCloseTo((105 - 120) / 1000, 12);
+    expect(cni.randomWalk).toBeCloseTo((100 - 120) / 1000, 12);
+  });
+
+  it("does not score a year the forecast's data covered: an anchor that walked back saw it", async () => {
+    const { scoreSnapshotAgainstFilings } = await import("..");
+    const walkedBack = snapshot({ cutoffPeriod: "2025-03-31", latestReportedPeriod: "2026-03-31" });
+    expect(scoreSnapshotAgainstFilings(walkedBack as never, filings).scores).toEqual([]);
+  });
+
+  it("does not score a forecast of a business the consolidated filings do not describe", async () => {
+    const { scoreSnapshotAgainstFilings } = await import("..");
+    expect(scoreSnapshotAgainstFilings(snapshot({ basis: { accounts: "consolidated", lendingArm: "X Finance" } }) as never, filings).skipped).toMatch(/without X Finance/);
+    expect(scoreSnapshotAgainstFilings(snapshot({ basis: { accounts: "standalone", lendingArm: null } }) as never, filings).skipped).toMatch(/standalone/);
+  });
+});

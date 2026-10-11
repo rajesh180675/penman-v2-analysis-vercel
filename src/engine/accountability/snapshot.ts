@@ -113,3 +113,76 @@ export function scoreSnapshot(snapshot: ForecastSnapshot, periods: readonly Reca
     reportedYears: future.length,
   };
 }
+
+/** One fiscal year as first filed (data/filings ledger): what a frozen forecast is scored against. */
+export interface FiledYear {
+  readonly fiscalYearEnd: string;
+  /** Revenue from operations as filed: gross of any excise duty it itemizes. */
+  readonly revenue: number | null;
+  readonly exciseDuty?: number | null | undefined;
+  readonly profitAttributableToOwners: number | null;
+  readonly equityAttributableToOwners: number | null;
+}
+
+export interface FiledScore {
+  readonly metric: "sales-log-error" | "cni-roe-point-error";
+  readonly periodEnd: string;
+  /** Years after the snapshot's cutoff. */
+  readonly horizon: number;
+  readonly model: number;
+  /** The same error for "the cutoff year again", from the same filings. */
+  readonly randomWalk: number;
+}
+
+/**
+ * Score a frozen forecast against results the company later filed, before any
+ * of them reached the library: the out-of-sample test the walk-forward can only
+ * approximate (Capitaline serves restated history). Model, benchmark and
+ * actuals all come from first filings, so they share one basis.
+ *
+ * Only years after the snapshot's `latestReportedPeriod` are scored: a forecast
+ * from an anchor that walked back was built on data that included the years
+ * between, so scoring those would be look-ahead. A snapshot of a business the
+ * filings do not describe (a lending arm carved out; standalone accounts beside
+ * a consolidated ledger) is not scored.
+ *
+ * Sales are compared net of itemized excise, as Capitaline's are. Forecast CNI
+ * is compared with owners' profit (OCI aside), in points of the opening year's
+ * filed owners' equity.
+ */
+export function scoreSnapshotAgainstFilings(
+  snapshot: ForecastSnapshot & { readonly latestReportedPeriod?: string | undefined },
+  filings: readonly FiledYear[],
+): { readonly scores: FiledScore[]; readonly skipped: string | null } {
+  const basis = (snapshot as Partial<ForecastSnapshot>).basis;
+  if (basis?.lendingArm) {
+    return { scores: [], skipped: `a forecast of the business without ${basis.lendingArm}; the consolidated filings describe another business` };
+  }
+  if (basis?.accounts === "standalone") {
+    return { scores: [], skipped: "a forecast on standalone accounts; the ledger is consolidated" };
+  }
+  const filed = (end: string) => filings.find((f) => f.fiscalYearEnd === end) ?? null;
+  const netRevenue = (f: FiledYear | null) => (f?.revenue != null ? f.revenue - (f.exciseDuty ?? 0) : null);
+  const cutoff = filed(snapshot.cutoffPeriod);
+  if (!cutoff) return { scores: [], skipped: `no filing for the cutoff year ${snapshot.cutoffPeriod}` };
+  const seenThrough = snapshot.latestReportedPeriod ?? snapshot.cutoffPeriod;
+  const scores: FiledScore[] = [];
+  snapshot.years.forEach((year, i) => {
+    if (year.periodEnd <= seenThrough) return;
+    const actual = filed(year.periodEnd);
+    const opening = filed(i === 0 ? snapshot.cutoffPeriod : snapshot.years[i - 1]!.periodEnd);
+    if (!actual) return;
+    const sales = netRevenue(actual);
+    const cutoffSales = netRevenue(cutoff);
+    if (sales != null && sales > 0 && cutoffSales != null && cutoffSales > 0 && year.sales > 0) {
+      scores.push({ metric: "sales-log-error", periodEnd: year.periodEnd, horizon: i + 1, model: Math.log(year.sales / sales), randomWalk: Math.log(cutoffSales / sales) });
+    }
+    const profit = actual.profitAttributableToOwners;
+    const scale = opening?.equityAttributableToOwners ?? null;
+    const cutoffProfit = cutoff.profitAttributableToOwners;
+    if (profit != null && cutoffProfit != null && scale != null && scale > 0) {
+      scores.push({ metric: "cni-roe-point-error", periodEnd: year.periodEnd, horizon: i + 1, model: (year.cni - profit) / scale, randomWalk: (cutoffProfit - profit) / scale });
+    }
+  });
+  return { scores, skipped: null };
+}

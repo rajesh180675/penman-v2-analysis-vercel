@@ -1,0 +1,1230 @@
+[
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "ASIANPAINT",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.011351241579903188,
+    "randomWalk": -0.04830238902923753
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.009414817095563188,
+    "randomWalk": -0.033924249773580266
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "BHARTIARTL",
+  "cutoff": "2024-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": -0.20307316756837812,
+    "randomWalk": -0.3412112613350294
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": -0.2100608299753461,
+    "randomWalk": -0.1691552617665404
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "BRITANNIA",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.023166348185095484,
+    "randomWalk": -0.06520406591250118
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.09356746139717524,
+    "randomWalk": -0.08144692496303706
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "DABUR",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.005465658171967254,
+    "randomWalk": -0.04889064243811556
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.00733073658172199,
+    "randomWalk": -0.011795542692179839
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "DMART",
+  "cutoff": "2024-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": -0.011061439037832155,
+    "randomWalk": -0.3038287044825912
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": 0.021096267366083502,
+    "randomWalk": -0.020269090315128743
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "GRASIM",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.05973253814447901,
+    "randomWalk": -0.16680826287007428
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.002300725593275145,
+    "randomWalk": -0.012930058005790834
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "HINDUNILVR",
+  "cutoff": "2024-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": 0.08949099448022782,
+    "randomWalk": -0.040713419413318304
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": -0.09138503167992984,
+    "randomWalk": -0.09641310068418282
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "IDEA",
+  "cutoff": "2024-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": 0.10935473705921352,
+    "randomWalk": -0.05304127054408974
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "INFY",
+  "cutoff": "2025-03-31",
+  "scores": [],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "ITC",
+  "cutoff": "2023-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 3,
+    "model": 0.2411019929219002,
+    "randomWalk": -0.10599059601849475
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 3,
+    "model": 0.0633183929561549,
+    "randomWalk": -0.021388104106737055
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "LT",
+  "cutoff": "2026-03-31",
+  "scores": [],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "M&M",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.12033631857698207,
+    "randomWalk": -0.22125760561083413
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.08229018886183859,
+    "randomWalk": -0.05412528170847801
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "MARUTI",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.07699215767655493,
+    "randomWalk": -0.18134230742260443
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.006358365035897613,
+    "randomWalk": -0.0018630526424071438
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "NESTLEIND",
+  "cutoff": "2025-03-31",
+  "scores": [],
+  "skipped": "a forecast on standalone accounts; the ledger is consolidated"
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "NTPC",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.07538743136512353,
+    "randomWalk": 0.004012705655496255
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.01679156818107646,
+    "randomWalk": -0.019720960089565368
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "PAYTM",
+  "cutoff": "2024-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": 0.43148375211360673,
+    "randomWalk": 0.16773582995745676
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": 0.3074984911904859,
+    "randomWalk": -0.13109997537716198
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "POWERGRID",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.04704178461544364,
+    "randomWalk": -0.020331380005424206
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.08184087816077393,
+    "randomWalk": -0.004386981141625213
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "RELIANCE",
+  "cutoff": "2024-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": -0.008668442039562395,
+    "randomWalk": -0.159820867298022
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": -0.005830134772360089,
+    "randomWalk": -0.013228178368121441
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "SUNPHARMA",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.005481897539405369,
+    "randomWalk": -0.10607150494350423
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.00810331829225688,
+    "randomWalk": -0.007621089584012399
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "TATASTEEL",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.022486177659385057,
+    "randomWalk": -0.060359830087466516
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.055277698726018606,
+    "randomWalk": -0.08087517740282592
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "TCS",
+  "cutoff": "2026-03-31",
+  "scores": [],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "TITAN",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.22677412014037474,
+    "randomWalk": -0.3706825051398498
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.09423442972823673,
+    "randomWalk": -0.14934618031658636
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-09-25",
+  "ticker": "ULTRACEMCO",
+  "cutoff": "2024-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": -0.0368536753076175,
+    "randomWalk": -0.22174758947479525
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": 0.013437522567236002,
+    "randomWalk": -0.016414835524236226
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "ASIANPAINT",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.011351241579903188,
+    "randomWalk": -0.04830238902923753
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.011553552047509474,
+    "randomWalk": -0.033924249773580266
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "BHARTIARTL",
+  "cutoff": "2024-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": -0.20087570849620462,
+    "randomWalk": -0.3412112613350294
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": -0.1832519032892127,
+    "randomWalk": -0.1691552617665404
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "BRITANNIA",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.02329721357678521,
+    "randomWalk": -0.06520406591250118
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.0468547773491146,
+    "randomWalk": -0.08144692496303706
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "DABUR",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.0044292734004982666,
+    "randomWalk": -0.04889064243811556
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.002959975854872915,
+    "randomWalk": -0.011795542692179839
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "DMART",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.0037301445246690377,
+    "randomWalk": -0.1479174050844707
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.0076509625509223675,
+    "randomWalk": -0.012249116216121618
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "GRASIM",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.05973253814447901,
+    "randomWalk": -0.16680826287007428
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.009174108262452152,
+    "randomWalk": -0.012930058005790834
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "HINDUNILVR",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.03457831493562962,
+    "randomWalk": -0.021115457409312564
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.08483794366035083,
+    "randomWalk": -0.08888304117242217
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "IDEA",
+  "cutoff": "2024-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": 0.10935473705921352,
+    "randomWalk": -0.05304127054408974
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "INFY",
+  "cutoff": "2026-03-31",
+  "scores": [],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "ITC",
+  "cutoff": "2024-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": -0.05929066247939745,
+    "randomWalk": -0.10677822610719334
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": 0.0027189337598327403,
+    "randomWalk": -0.0032941572939045784
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "LT",
+  "cutoff": "2026-03-31",
+  "scores": [],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "M&M",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.12033631857698207,
+    "randomWalk": -0.22125760561083413
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.05490205672584542,
+    "randomWalk": -0.05412528170847801
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "MARUTI",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.07723251245996748,
+    "randomWalk": -0.18134230742260443
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.006084784322405587,
+    "randomWalk": -0.0018630526424071438
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "NESTLEIND",
+  "cutoff": "2025-03-31",
+  "scores": [],
+  "skipped": "a forecast on standalone accounts; the ledger is consolidated"
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "NTPC",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.07612879612162063,
+    "randomWalk": 0.004012705655496255
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.010477077284456581,
+    "randomWalk": -0.019720960089565368
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "PAYTM",
+  "cutoff": "2024-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": 0.45610098405583965,
+    "randomWalk": 0.16773582995745676
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 2,
+    "model": -0.22181303554418394,
+    "randomWalk": -0.13109997537716198
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "POWERGRID",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.04704178461544364,
+    "randomWalk": -0.020331380005424206
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.006926872317658373,
+    "randomWalk": -0.004386981141625213
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "RELIANCE",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.005391056203106482,
+    "randomWalk": -0.09158723856177683
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.004123687050501185,
+    "randomWalk": -0.013196157495256168
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "SUNPHARMA",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.004752698102583809,
+    "randomWalk": -0.10607150494350423
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.01351137251146724,
+    "randomWalk": -0.007621089584012399
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "TATASTEEL",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.022486177659385057,
+    "randomWalk": -0.060359830087466516
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.06585912220553339,
+    "randomWalk": -0.08087517740282592
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "TCS",
+  "cutoff": "2026-03-31",
+  "scores": [],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "TITAN",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.22677412014037474,
+    "randomWalk": -0.3706825051398498
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.09389160795487549,
+    "randomWalk": -0.14934618031658636
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-08",
+  "ticker": "ULTRACEMCO",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.07292329146589466,
+    "randomWalk": -0.15299005481584463
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.016022885245254723,
+    "randomWalk": -0.030075337906115645
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "ASIANPAINT",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.011351241579903188,
+    "randomWalk": -0.04830238902923753
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.011553552047509474,
+    "randomWalk": -0.033924249773580266
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "BRITANNIA",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.02329721357678521,
+    "randomWalk": -0.06520406591250118
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.04685179029230684,
+    "randomWalk": -0.08144692496303706
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "DABUR",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.0044292734004982666,
+    "randomWalk": -0.04889064243811556
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.0029801437861142117,
+    "randomWalk": -0.011795542692179839
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "DMART",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.0037301445246690377,
+    "randomWalk": -0.1479174050844707
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.0076509625509223675,
+    "randomWalk": -0.012249116216121618
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "GRASIM",
+  "cutoff": "2025-03-31",
+  "scores": [],
+  "skipped": "a forecast of the business without Aditya Birla Capital; the consolidated filings describe another business"
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "HINDUNILVR",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.03457831493562962,
+    "randomWalk": -0.021115457409312564
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.08483794366035083,
+    "randomWalk": -0.08888304117242217
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "INFY",
+  "cutoff": "2026-03-31",
+  "scores": [],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "ITC",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.0435365905509629,
+    "randomWalk": -0.04599059371915703
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.010990652554039864,
+    "randomWalk": 0.20073040073511295
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "LT",
+  "cutoff": "2026-03-31",
+  "scores": [],
+  "skipped": "a forecast of the business without L&T Finance; the consolidated filings describe another business"
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "M&M",
+  "cutoff": "2025-03-31",
+  "scores": [],
+  "skipped": "a forecast of the business without Mahindra & Mahindra Financial Services; the consolidated filings describe another business"
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "MARUTI",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.07723251245996748,
+    "randomWalk": -0.18134230742260443
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.006075814824598887,
+    "randomWalk": -0.0018630526424071438
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "NESTLEIND",
+  "cutoff": "2025-03-31",
+  "scores": [],
+  "skipped": "a forecast on standalone accounts; the ledger is consolidated"
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "NTPC",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.07612879612162063,
+    "randomWalk": 0.004012705655496255
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.010692694165059132,
+    "randomWalk": -0.019720960089565368
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "POWERGRID",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.04704178461544364,
+    "randomWalk": -0.020331380005424206
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.007055542081666992,
+    "randomWalk": -0.004386981141625213
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "RELIANCE",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.005391056203106482,
+    "randomWalk": -0.09158723856177683
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.004131235023939451,
+    "randomWalk": -0.013196157495256168
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "SUNPHARMA",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.004752698102583809,
+    "randomWalk": -0.10607150494350423
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": 0.013509273410685207,
+    "randomWalk": -0.007621089584012399
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "TATASTEEL",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.022486177659385057,
+    "randomWalk": -0.060359830087466516
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.06589281703162657,
+    "randomWalk": -0.08087517740282592
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "TCS",
+  "cutoff": "2026-03-31",
+  "scores": [],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "TITAN",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.22677412014037474,
+    "randomWalk": -0.3706825051398498
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.09389160795487549,
+    "randomWalk": -0.14934618031658636
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-11",
+  "ticker": "ULTRACEMCO",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.07292329146589466,
+    "randomWalk": -0.15299005481584463
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "model": -0.016026169010517087,
+    "randomWalk": -0.030075337906115645
+   }
+  ],
+  "skipped": null
+ }
+]
