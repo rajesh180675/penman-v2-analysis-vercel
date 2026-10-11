@@ -609,6 +609,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     // not the newest reported period when that one is contaminated. Reported so
     // surfaces read it instead of re-deriving `data[data.length - 1]`.
     anchorPeriod: latest,
+    basisPeriods: data,
     marketPrice,
     riskFreeRate,
     costOfCapital,
