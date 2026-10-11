@@ -13,6 +13,18 @@ export interface FrozenForecast {
   readonly madeAt: string;
   readonly cutoffPeriod: string;
   readonly years: readonly { readonly periodEnd: string; readonly sales: number; readonly operatingIncome: number }[];
+  /** The business it forecasts (snapshot schema v2); absent on v1, which never carved a lending arm. */
+  readonly basis?: { readonly lendingArm: string | null };
+}
+
+/**
+ * Whether a frozen forecast is of the business the current one forecasts:
+ * with the same lending arm carved out, or none. A v1 snapshot carved nothing,
+ * so beside a carved run it forecast another business (M&M's included its
+ * lender) and is not drawn on the same axis.
+ */
+export function frozenOnSameBasis(frozen: FrozenForecast, lendingArm: string | null): boolean {
+  return (frozen.basis?.lendingArm ?? null) === lendingArm;
 }
 
 export interface MarginRow {

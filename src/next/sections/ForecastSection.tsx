@@ -10,7 +10,7 @@ import { formatPerShare } from "../../engine/valuationCommandCenter";
 import { revalueBase, type BaseCaseShifts } from "../../engine/valuationCommandCenter/breakEven";
 import { crore, percent } from "../format";
 import type { RecastPeriod } from "../../engine/types";
-import { MARGIN_HISTORY_YEARS, MarginFadeChart, marginFadeRows, type FrozenForecast } from "../ui/MarginFadeChart";
+import { MARGIN_HISTORY_YEARS, MarginFadeChart, frozenOnSameBasis, marginFadeRows, type FrozenForecast } from "../ui/MarginFadeChart";
 import { Withheld } from "../ui/Withheld";
 
 type RevalueInput = Parameters<typeof revalueBase>[0];
@@ -95,7 +95,14 @@ export function ForecastSection({
         <p className="mt-2 text-xs text-slate-500">ke {percent(edited.ke)} · kw {percent(edited.kw)} (derived, read-only) · terminal growth {percent(edited.g)}</p>
       </div>
 
-      <FadePanel result={result} anchorPeriod={cc.anchorPeriod.period_end} forecast={edited.forecast ?? []} frozen={frozen} />
+      <FadePanel
+        // The command center's periods are deeply readonly; the chart only reads them.
+        history={cc.basisPeriods as unknown as readonly RecastPeriod[]}
+        lendingArm={cc.lendingArm?.status === "applied" ? cc.lendingArm.link.arm.name : null}
+        anchorPeriod={cc.anchorPeriod.period_end}
+        forecast={edited.forecast ?? []}
+        frozen={frozen}
+      />
 
       <div className="wb-surface overflow-x-auto rounded-xl border p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{changed ? "Your case" : "Base case"}, year by year</h2>
@@ -144,28 +151,45 @@ export function ForecastSection({
   );
 }
 
-/** The margin fade against history, with the frozen forecast beside it. */
-function FadePanel({ result, anchorPeriod, forecast, frozen }: {
-  result: LegacyAnalysisRunExecutionResult;
+/**
+ * The margin fade against history, with the frozen forecast beside it, all of
+ * one business: the one the forecast is of. The history was the filed recast,
+ * so with a lending arm carved the forecast line fell from the consolidated
+ * margin to the carved one in its first year (M&M 12.0% → 7.3%, Grasim 10.9%
+ * → 6.7%), a fade that was only a change of basis.
+ */
+function FadePanel({ history, lendingArm, anchorPeriod, forecast, frozen }: {
+  /** The command center's basis periods (oldest first). */
+  history: readonly RecastPeriod[];
+  /** The lending arm the valuation carved out, if it carved one. */
+  lendingArm: string | null;
   anchorPeriod: string;
   forecast: Parameters<typeof marginFadeRows>[2];
   frozen: FrozenForecast | null;
 }) {
-  // The run's periods are deeply readonly; the chart only reads them.
-  const history = (result.materialization.pipelineResult?.periods ?? []) as unknown as readonly RecastPeriod[];
-  const rows = marginFadeRows(history, anchorPeriod, forecast, frozen);
+  const comparable = frozen && frozenOnSameBasis(frozen, lendingArm) ? frozen : null;
+  const rows = marginFadeRows(history, anchorPeriod, forecast, comparable);
   return (
     <div className="wb-surface rounded-xl border p-4 shadow-sm">
       <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Margin fade</h2>
       <MarginFadeChart
         rows={rows}
-        frozenMadeAt={frozen?.madeAt ?? null}
+        frozenMadeAt={comparable?.madeAt ?? null}
         historyShown={Math.min(MARGIN_HISTORY_YEARS, history.length)}
         historyTotal={history.length}
       />
-      {!frozen && (
-        <p className="mt-1 text-xs text-slate-500">No forecast has been frozen for this company yet, so there is no earlier forecast to compare.</p>
+      {lendingArm && (
+        <p className="mt-1 text-xs text-slate-500">
+          Without {lendingArm}: the valuation carves the lending arm out, so these margins, reported and forecast, are the rest of the business&rsquo;s, not the consolidated statements&rsquo;.
+        </p>
       )}
+      {!frozen ? (
+        <p className="mt-1 text-xs text-slate-500">No forecast has been frozen for this company yet, so there is no earlier forecast to compare.</p>
+      ) : !comparable ? (
+        <p className="mt-1 text-xs text-slate-500">
+          The forecast frozen on {frozen.madeAt} was of {frozen.basis?.lendingArm ? `the business without ${frozen.basis.lendingArm}` : "the consolidated statements, lending arm included"}, so it is not drawn beside this one.
+        </p>
+      ) : null}
     </div>
   );
 }

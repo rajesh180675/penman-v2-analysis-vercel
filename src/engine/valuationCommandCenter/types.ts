@@ -195,6 +195,15 @@ export interface ValuationCommandCenterOutput {
    * field over the date string wherever the two have to agree.
    */
   anchorPeriod: RecastPeriod;
+  /**
+   * The periods this output was built from, oldest first: the run's valuation
+   * basis (a lending arm carved out, a transition year at a twelve-month rate)
+   * within its analysis window. `anchorPeriod` is one of them. A surface that
+   * draws history beside the forecast reads these, not the filed recast: with
+   * an arm carved, the filed figures are another business's (M&M FY2025 core
+   * margin 12.0% filed, 7.6% valued).
+   */
+  basisPeriods: RecastPeriod[];
   marketPrice: number | null;
   riskFreeRate: number;
   /** One pinned capital-cost result consumed by all command-center models. */

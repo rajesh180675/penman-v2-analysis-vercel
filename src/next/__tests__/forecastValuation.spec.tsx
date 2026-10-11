@@ -66,6 +66,44 @@ describe("Forecast section", () => {
     expect(html).toContain("Terminal growth must stay below the discount rates.");
   });
 
+  // With a lending arm carved, the filed margins are another business's (M&M
+  // FY2025: 12.0% filed, 7.6% valued), and the chart drew them beside the
+  // carved forecast. Here the filed recast is marked at 98.7%.
+  it("draws reported margins from the periods the forecast is built on, not the filed recast", () => {
+    const cc = built.TCS!;
+    const filed = cc.basisPeriods.map((p) => ({ ...p, ratios: { ...p.ratios, CoreSalesPM: 0.987 } }));
+    const base = resultFor(cc);
+    const result = { ...base, materialization: { ...base.materialization, pipelineResult: { periods: filed } } } as unknown as LegacyAnalysisRunExecutionResult;
+    const html = text(renderToStaticMarkup(<ForecastSection result={result} />));
+    expect(html).not.toContain("98.7%");
+    expect(html).toContain(`${(cc.anchorPeriod.ratios!.CoreSalesPM! * 100).toFixed(1)}%`);
+  });
+
+  it("names a carved lending arm, and draws a frozen forecast only of the same business", () => {
+    const cc = built.TCS!;
+    const carved = { ...cc, lendingArm: { status: "applied", link: { arm: { name: "X Finance", nseSymbol: "XFIN" } } } } as unknown as CC;
+    const year = Number(cc.anchorPeriod.period_end.slice(0, 4));
+    const frozen = (basis?: { lendingArm: string | null }) => ({
+      madeAt: "2026-10-08",
+      cutoffPeriod: cc.anchorPeriod.period_end,
+      years: [{ periodEnd: `${year + 1}${cc.anchorPeriod.period_end.slice(4)}`, sales: 100, operatingIncome: 20 }],
+      ...(basis ? { basis } : {}),
+    });
+
+    const v1 = text(renderToStaticMarkup(<ForecastSection result={resultFor(carved)} frozen={frozen()} />));
+    expect(v1).toContain("Without X Finance: the valuation carves the lending arm out");
+    expect(v1).toContain("The forecast frozen on 2026-10-08 was of the consolidated statements, lending arm included, so it is not drawn beside this one.");
+    expect(v1).not.toContain("Forecast frozen 2026-10-08");
+
+    const same = text(renderToStaticMarkup(<ForecastSection result={resultFor(carved)} frozen={frozen({ lendingArm: "X Finance" })} />));
+    expect(same).toContain("Forecast frozen 2026-10-08");
+    expect(same).not.toContain("not drawn beside this one");
+
+    const uncarved = text(renderToStaticMarkup(<ForecastSection result={resultFor(cc)} frozen={frozen()} />));
+    expect(uncarved).toContain("Forecast frozen 2026-10-08");
+    expect(uncarved).not.toContain("Without ");
+  });
+
   it("re-values an edit within 150 ms on the largest bundled company", () => {
     const cc = built.ITC!;
     revalueBase(cc, { sales_growth: 0.01 }); // warm
