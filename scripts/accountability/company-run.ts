@@ -7,22 +7,25 @@
  *     scripts/accountability/company-run.ts --ticker=ITC [--made-at=YYYY-MM-DD]
  *
  * Writes accountability/runs/<ticker>.json:
- *   - the walk-forward backtest of the base forecast over every cutoff,
+ *   - the walk-forward backtest of the base forecast over every cutoff, on
+ *     the valuation basis of the app's own run,
  *   - the core-RNOA series feeding the panel persistence estimate,
- *   - today's forecast snapshot, from the app's own run (appSnapshot.ts);
- *     run-all freezes it.
+ *   - today's forecast snapshot, from the same run (appSnapshot.ts); run-all
+ *     freezes it.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseCapitalineZip } from "../../src/engine/capitalineParser";
-import { processCompanyDataFull } from "../../src/engine/pipeline";
-import { DEFAULT_CONFIG, type RecastPeriod } from "../../src/engine/types";
-import { ACTIVE_MARKET_PACKS } from "../../src/engine/marketPacks";
-import { walkForwardCompany } from "../../src/engine/accountability";
-import { annualizePeriods, periodMonths } from "../../src/engine/valuationBasis";
 import type { LibraryCompany } from "../../src/components/data-entry/companyRegistry";
-import { appForecastSnapshot, type AppForecastSnapshot } from "./appSnapshot";
+import { walkForwardCompany } from "../../src/engine/accountability";
+import { ACTIVE_MARKET_PACKS } from "../../src/engine/marketPacks";
+import type { PipelineResult } from "../../src/engine/pipeline";
+import type { SegmentData } from "../../src/engine/segmentParser";
+import type { EngineConfig, RawPeriodData, RecastPeriod } from "../../src/engine/types";
+import type { ValuationCommandCenterOutput } from "../../src/engine/valuationCommandCenter";
+import { buildValuationBasis, windowValuationBasis } from "../../src/engine/valuationBasis";
+import { runLibraryCompany } from "../lib/libraryCompanyRun";
+import { snapshotFromAppRun } from "./appSnapshot";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "../..");
 const COMPANIES = join(ROOT, "public", "data", "companies");
@@ -32,40 +35,63 @@ const ticker = arg("ticker");
 const madeAt = arg("made-at") ?? new Date().toISOString().slice(0, 10);
 if (!ticker) throw new Error("--ticker is required");
 
-const registry: { folder: string; ticker: string; type: string }[] =
-  JSON.parse(readFileSync(join(COMPANIES, "registry.json"), "utf-8"));
+const registry: LibraryCompany[] = JSON.parse(readFileSync(join(COMPANIES, "registry.json"), "utf-8"));
 const company = registry.find((c) => c.ticker === ticker);
 if (!company) throw new Error(`Unknown ticker ${ticker}`);
 
-const parse = async (file: string) => {
-  const buf = readFileSync(join(COMPANIES, company.folder, file));
-  return parseCapitalineZip(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength), { companyId: company.folder, filename: file });
+// The app's own run, dated at the freeze: its accounts (standalone where the
+// consolidated history is short), its recast, and the forecast it shows.
+const state = await runLibraryCompany(ROOT, company, { now: new Date(`${madeAt}T00:00:00.000Z`) });
+if (state.status !== "ready") throw new Error(state.message);
+const run = state.result.materialization as unknown as {
+  config: EngineConfig;
+  rawData: RawPeriodData[];
+  segmentData: SegmentData | null;
+  pipelineResult: PipelineResult | null;
+  analysisWindow: { includedPeriods: string[] } | null;
+  commandCenter: ValuationCommandCenterOutput | null;
 };
-// The accounts the app analyses (loadCompanyRun): consolidated, unless they
-// hold fewer than three years and the standalone history is longer. Nestle
-// India's consolidated export starts at its 15-month FY2024, so a walk-forward
-// on it had one origin, anchored on a year whose length nothing could infer.
-const MIN_CONSOLIDATED_YEARS = 3;
-let parsed = await parse(`${company.folder}.zip`);
-if (parsed.periods.length < MIN_CONSOLIDATED_YEARS && existsSync(join(COMPANIES, company.folder, "standalone.zip"))) {
-  const standalone = await parse("standalone.zip");
-  if (standalone.periods.length > parsed.periods.length) parsed = standalone;
-}
-const config = { ...DEFAULT_CONFIG, company_type: company.type as typeof DEFAULT_CONFIG.company_type, ticker: company.ticker };
-const pipeline = processCompanyDataFull(parsed.periods, config, null, { ...ACTIVE_MARKET_PACKS, analysisAsOf: madeAt });
-// Every year on a twelve-month rate (valuationBasis/periodLength.ts): a
-// transition year's actuals are scored, and forecasts are made, as a year. No
-// lending arm is carved: forecasts are scored against the consolidated
-// statements as later reported.
-const filed: RecastPeriod[] = [...pipeline.periods].sort((a, b) => a.period_end.localeCompare(b.period_end));
-const periods: RecastPeriod[] = annualizePeriods(filed, periodMonths(filed), config).periods;
+if (!run.pipelineResult) throw new Error("The app's run produced no recast");
+const config = run.config;
 
 const outDir = join(ROOT, "accountability", "runs");
 mkdirSync(outDir, { recursive: true });
 const outPath = join(outDir, `${ticker}.json`);
 
-if (pipeline.analysisFamily !== "industrial" || periods.length < 2) {
-  writeFileSync(outPath, JSON.stringify({ ticker, companyType: company.type, skipped: `analysis family ${pipeline.analysisFamily}: the base forecast engine is industrial-only` }, null, 1));
+if (run.pipelineResult.analysisFamily !== "industrial") {
+  writeFileSync(outPath, JSON.stringify({ ticker, companyType: company.type, skipped: `analysis family ${run.pipelineResult.analysisFamily}: the base forecast engine is industrial-only` }, null, 1));
+  process.exit(0);
+}
+
+// The business the app's valuation forecasts, over the whole history
+// (valuationBasis): every year at a twelve-month rate, and a lending arm
+// carved out where the valuation carves one. Its forecasts are scored against
+// that business's actuals. Scored on the consolidated statements instead, the
+// record measured a forecast the app does not make: Grasim's margin forecast
+// beat a random walk 9 times in 10 with its lender inside, and 0 in 3 on the
+// business the app values. The carve needs the arm's own figures, so a carved
+// history starts where they do.
+const filed: RecastPeriod[] = [...run.pipelineResult.periods].sort((a, b) => a.period_end.localeCompare(b.period_end));
+const basis = buildValuationBasis({
+  ticker: config.ticker,
+  periods: filed,
+  rawData: run.rawData,
+  segmentData: run.segmentData,
+  config,
+  packs: { ...ACTIVE_MARKET_PACKS, analysisAsOf: madeAt },
+  asOf: madeAt,
+});
+// The run built the same basis; windowed, it is what its command center valued.
+// A runner that builds it differently would score another business again.
+if (run.commandCenter && run.analysisWindow) {
+  const key = (periods: readonly RecastPeriod[]) => periods.map((p) => `${p.period_end}:${p.is.Sales}:${p.bs.NOA}`).join("|");
+  if (key(windowValuationBasis(basis, run.analysisWindow.includedPeriods).periods) !== key(run.commandCenter.basisPeriods)) {
+    throw new Error("The walk-forward's valuation basis differs from the one the app's run valued");
+  }
+}
+const periods = basis.periods;
+if (periods.length < 2) {
+  writeFileSync(outPath, JSON.stringify({ ticker, companyType: company.type, skipped: "fewer than two periods on the valuation basis" }, null, 1));
   process.exit(0);
 }
 
@@ -78,12 +104,8 @@ const rnoaPoints = periods.slice(1).flatMap((p, i) => {
   return opening > 0 && Number.isFinite(coreOI) ? [{ year: Number(p.period_end.slice(0, 4)), rnoa: coreOI / opening }] : [];
 });
 
-// Today's forecast, frozen from the app's own run (appSnapshot.ts).
-let snapshot: AppForecastSnapshot | { error: string };
-try {
-  snapshot = await appForecastSnapshot(ROOT, company as LibraryCompany, madeAt);
-} catch (error) {
-  snapshot = { error: error instanceof Error ? error.message : String(error) };
-}
+// Today's forecast, frozen from the same run (appSnapshot.ts).
+const snapshot = snapshotFromAppRun(state, company, madeAt);
 
-writeFileSync(outPath, JSON.stringify({ ticker, companyType: company.type, walkForward, rnoaPoints, snapshot }, null, 1));
+const carvedLendingArm = basis.lendingArm?.status === "applied" ? basis.lendingArm.link.arm.name : null;
+writeFileSync(outPath, JSON.stringify({ ticker, companyType: company.type, carvedLendingArm, walkForward, rnoaPoints, snapshot }, null, 1));

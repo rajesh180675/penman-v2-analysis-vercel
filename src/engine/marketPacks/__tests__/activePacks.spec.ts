@@ -56,10 +56,6 @@ const SUPPLIES_PACKS = [
   "src/components/V3AnalyticsPanel.tsx",
   "src/components/AcademicReport.tsx",
   "src/components/InvestmentThesis.tsx",
-  // The walk-forward's recast, on the packs dated to the run day (analysisAsOf
-  // = madeAt). The forecast it freezes is the app's own run (appSnapshot.ts),
-  // whose packs arrive through the company run below.
-  "scripts/accountability/company-run.ts",
 ];
 
 /**
@@ -68,9 +64,10 @@ const SUPPLIES_PACKS = [
  * resolver — so what has to be asserted here is the spread onto that input, not
  * a call. The default UI's company run is also the audit harness's and the
  * forecast ledger's: CI's company-audit shards run the app's run
- * (scripts/lib/auditCompanyRun.ts), dated at the packs' vintage, and the frozen
- * forecasts are taken from it (scripts/accountability/appSnapshot.ts), dated at
- * the freeze, so their packs arrive here too.
+ * (scripts/lib/auditCompanyRun.ts), dated at the packs' vintage, and the
+ * accountability runner takes its recast and frozen forecast from it
+ * (scripts/accountability/company-run.ts), dated at the freeze, so their packs
+ * arrive here too.
  */
 const RUN_INPUT_SITES = [
   "src/app/analysisRun/useAnalysisRunExecution.ts",

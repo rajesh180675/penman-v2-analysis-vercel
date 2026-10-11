@@ -14,9 +14,9 @@ export interface PanelPersistencePrior {
 export const PERSISTENCE_PRIORS_AS_OF = "2026-10-11";
 
 export const PANEL_PERSISTENCE_PRIORS: Readonly<Record<string, PanelPersistencePrior>> = {
-  "all": { phi: 0.9698, pairs: 257, companies: 23 },
-  "conglomerate": { phi: 0.9393, pairs: 39, companies: 3 },
-  "consumer": { phi: 0.8568, pairs: 67, companies: 7 },
-  "cyclical": { phi: 0.3081, pairs: 39, companies: 3 },
-  "industrial": { phi: 0.9372, pairs: 38, companies: 3 },
+  "all": { phi: 0.9618, pairs: 247, companies: 23 },
+  "conglomerate": { phi: 0.9331, pairs: 39, companies: 3 },
+  "consumer": { phi: 0.8562, pairs: 67, companies: 7 },
+  "cyclical": { phi: 0.5310, pairs: 34, companies: 3 },
+  "industrial": { phi: 0.7819, pairs: 32, companies: 3 },
 };
