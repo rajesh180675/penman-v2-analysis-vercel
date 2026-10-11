@@ -117,7 +117,7 @@ export function scoreSnapshot(snapshot: ForecastSnapshot, periods: readonly Reca
 /** One fiscal year as first filed (data/filings ledger): what a frozen forecast is scored against. */
 export interface FiledYear {
   readonly fiscalYearEnd: string;
-  /** Revenue from operations as filed: gross of any excise duty it itemizes. */
+  /** Revenue from operations as filed: gross of the excise duty it itemizes. */
   readonly revenue: number | null;
   readonly exciseDuty?: number | null | undefined;
   readonly profitAttributableToOwners: number | null;
@@ -135,8 +135,8 @@ export interface FiledScore {
 }
 
 /**
- * Score a frozen forecast against results the company later filed, before any
- * of them reached the library: the out-of-sample test the walk-forward can only
+ * Score a frozen forecast against results the company filed after its data
+ * ended, before they reached the library: the out-of-sample test the walk-forward can only
  * approximate (Capitaline serves restated history). Model, benchmark and
  * actuals all come from first filings, so they share one basis.
  *
