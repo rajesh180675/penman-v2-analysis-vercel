@@ -1,6 +1,6 @@
 import { EngineConfig, RawPeriodData, RecastPeriod } from "./types";
 import { evaluateMappingCoverageSummary, MappingCoverageSummary } from "./mappingPolicy";
-import { resolveValuationReadiness } from "./valuationPolicy";
+import { resolveValuationReadiness, type ValuationReadiness } from "./valuationPolicy";
 import {
   MappingBacklogEntry,
   MappingBacklogSummary,
@@ -189,6 +189,24 @@ function hasKey(byStmt: Record<Statement, Set<string>>, stmt: Statement, key: st
   return byStmt[stmt].has(key);
 }
 
+/**
+ * Why a guarded readiness blocks the run, in the block's own terms. The
+ * readiness's first reason is the contamination tier's message, which
+ * describes the fallback the V3 analytics take ("Primary valuation uses
+ * RE_T-1+growth anchor. As-reported shown for reference."). Once this gate
+ * blocks, the run values nothing, yet that message became the blocked run's
+ * headline (Airtel, Paytm, Idea).
+ */
+export function terminalAnchorBlockReason(readiness: ValuationReadiness): string {
+  const tier = readiness.contaminationTier;
+  if (tier !== "GUARDED" && tier !== "COMPROMISED") {
+    return readiness.reasons[0] ?? "Latest period is not safe for terminal valuation.";
+  }
+  const labels = readiness.terminalFlagLabels;
+  const flags = `${labels.length} terminal flag${labels.length === 1 ? "" : "s"}${labels.length ? `: ${labels.join(", ")}` : ""}`;
+  return `Latest period ${readiness.latestPeriod} is ${tier.toLowerCase()} as a valuation anchor (${flags}), so the run is not valued.`;
+}
+
 export function evaluateQualityGate(
   periods: RawPeriodData[],
   config?: Pick<EngineConfig, "financial_institution_mode"> | null,
@@ -287,7 +305,7 @@ export function evaluateQualityGate(
     blockingReasons.push(...scopeAssessment.reasons);
   }
   if (valuationReadiness?.status === "guarded") {
-    blockingReasons.push(valuationReadiness.reasons[0] ?? "Latest period is not safe for terminal valuation.");
+    blockingReasons.push(terminalAnchorBlockReason(valuationReadiness));
   }
 
   trace("mapping", "auditComplete", {

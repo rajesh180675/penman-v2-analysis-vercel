@@ -134,6 +134,21 @@ describe("analysis status confidence gating", () => {
     expect(status.effectiveBlockingCount).toBeGreaterThan(0);
   });
 
+  // The readiness's first reason is the contamination tier's message, which
+  // describes the V3 fallback ("Primary valuation uses RE_T-1+growth anchor").
+  // It was the blocked run's headline, though the run values nothing.
+  it("gives the block's own reason, not the fallback a blocked run never takes", () => {
+    const raw = [guardedRawPeriod("2024-03-31"), guardedRawPeriod("2025-03-31")];
+    const recast = [guardedRecastPeriod("2024-03-31"), guardedRecastPeriod("2025-03-31", true)];
+    const qualityGate = evaluateQualityGate(raw, null, recast);
+    const status = deriveAnalysisStatus(qualityGate, resolveValuationReadiness(recast), null);
+
+    const reason = "Latest period 2025-03-31 is guarded as a valuation anchor (2 terminal flags: STRUCTURAL_EVENT, RNOA_OUTLIER_CRITICAL), so the run is not valued.";
+    expect(qualityGate.blockingReasons).toContain(reason);
+    expect(status.reasons).toContain(reason);
+    expect([...qualityGate.blockingReasons, ...status.reasons].join(" ")).not.toContain("Primary valuation uses");
+  });
+
   it("does not call a block terminal-anchor-only when a core line is also missing", () => {
     const raw = [guardedRawPeriod("2024-03-31"), guardedRawPeriod("2025-03-31")].map((p) => {
       const { ["Purchased of Fixed Assets__CashFlow"]: _capex, ...rest } = p.raw_metric_values;
