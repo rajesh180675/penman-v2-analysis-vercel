@@ -40,6 +40,17 @@ describe("Evidence — Capitaline vs as filed", () => {
     expect(html).toContain("65,000");
   });
 
+  it("says when a filed revenue was netted of the excise duty its filing itemizes", () => {
+    const netted: TieOutCompany[] = [{
+      symbol: "ITC",
+      firstFiling: "2018-05-17T15:20",
+      rows: [{ fiscalYearEnd: "2018-03-31", field: "revenue", asFiled: 43448.94, capitaline: 43449, relativeDifference: 0, status: "match", netOf: { label: "excise duty", value: 4239.61 } }],
+    }];
+    const html = text(renderToStaticMarkup(<EvidenceSection result={result} tieOut={netted} ticker="ITC" />));
+    expect(html).toContain("net of excise duty 4,240");
+    expect(html).toContain("Revenue is compared net of the excise duty a filing itemizes");
+  });
+
   it("withholds the comparison, with the reason, for a company outside the ledger", () => {
     expect(text(renderToStaticMarkup(<EvidenceSection result={result} tieOut={ledger} ticker="TCS" />)))
       .toContain("The as-filed ledger covers 1 company; this company's filings have not been fetched yet.");

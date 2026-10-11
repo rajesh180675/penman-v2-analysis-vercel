@@ -13,10 +13,14 @@
    {
     "fiscalYearEnd": "2018-03-31",
     "field": "revenue",
-    "asFiled": 17262.23,
+    "asFiled": 16824.55,
     "capitaline": 16824.55,
-    "relativeDifference": -0.02535477745343448,
-    "status": "mismatch"
+    "relativeDifference": 0,
+    "status": "match",
+    "netOf": {
+     "label": "excise duty",
+     "value": 437.68
+    }
    },
    {
     "fiscalYearEnd": "2019-03-31",
@@ -29,10 +33,14 @@
    {
     "fiscalYearEnd": "2019-03-31",
     "field": "revenue",
-    "asFiled": 19349.84,
+    "asFiled": 19341.52,
     "capitaline": 19240.13,
-    "relativeDifference": -0.005669814324046045,
-    "status": "minor"
+    "relativeDifference": -0.0052420905906050514,
+    "status": "minor",
+    "netOf": {
+     "label": "excise duty",
+     "value": 8.32
+    }
    },
    {
     "fiscalYearEnd": "2020-03-31",
@@ -203,10 +211,14 @@
    {
     "fiscalYearEnd": "2018-03-31",
     "field": "revenue",
-    "asFiled": 9990.1,
+    "asFiled": 9913.99,
     "capitaline": 9913.99,
-    "relativeDifference": -0.007618542356933422,
-    "status": "minor"
+    "relativeDifference": 0,
+    "status": "match",
+    "netOf": {
+     "label": "excise duty",
+     "value": 76.11
+    }
    },
    {
     "fiscalYearEnd": "2019-03-31",
@@ -567,10 +579,14 @@
    {
     "fiscalYearEnd": "2018-03-31",
     "field": "revenue",
-    "asFiled": 36238,
+    "asFiled": 35545,
     "capitaline": 35545,
-    "relativeDifference": -0.01912357194105635,
-    "status": "minor"
+    "relativeDifference": 0,
+    "status": "match",
+    "netOf": {
+     "label": "excise duty",
+     "value": 693
+    }
    },
    {
     "fiscalYearEnd": "2019-03-31",
@@ -931,10 +947,14 @@
    {
     "fiscalYearEnd": "2018-03-31",
     "field": "revenue",
-    "asFiled": 47688.55,
+    "asFiled": 43448.94,
     "capitaline": 43448.94,
-    "relativeDifference": -0.0889020530085314,
-    "status": "mismatch"
+    "relativeDifference": 0,
+    "status": "match",
+    "netOf": {
+     "label": "excise duty",
+     "value": 4239.61
+    }
    },
    {
     "fiscalYearEnd": "2019-03-31",
@@ -947,10 +967,14 @@
    {
     "fiscalYearEnd": "2019-03-31",
     "field": "revenue",
-    "asFiled": 49862.11,
+    "asFiled": 48352.68,
     "capitaline": 48352.68,
-    "relativeDifference": -0.030272084354232107,
-    "status": "mismatch"
+    "relativeDifference": 0,
+    "status": "match",
+    "netOf": {
+     "label": "excise duty",
+     "value": 1509.43
+    }
    },
    {
     "fiscalYearEnd": "2020-03-31",
@@ -963,10 +987,14 @@
    {
     "fiscalYearEnd": "2020-03-31",
     "field": "revenue",
-    "asFiled": 51393.47,
+    "asFiled": 49404.05,
     "capitaline": 49404.05,
-    "relativeDifference": -0.038709587035084383,
-    "status": "mismatch"
+    "relativeDifference": 0,
+    "status": "match",
+    "netOf": {
+     "label": "excise duty",
+     "value": 1989.42
+    }
    },
    {
     "fiscalYearEnd": "2021-03-31",
@@ -979,10 +1007,14 @@
    {
     "fiscalYearEnd": "2021-03-31",
     "field": "revenue",
-    "asFiled": 53155.12,
+    "asFiled": 49272.78,
     "capitaline": 49272.78,
-    "relativeDifference": -0.0730379312472628,
-    "status": "mismatch"
+    "relativeDifference": 0,
+    "status": "match",
+    "netOf": {
+     "label": "excise duty",
+     "value": 3882.34
+    }
    },
    {
     "fiscalYearEnd": "2022-03-31",
@@ -1003,10 +1035,14 @@
    {
     "fiscalYearEnd": "2022-03-31",
     "field": "revenue",
-    "asFiled": 65204.96,
+    "asFiled": 60668.09,
     "capitaline": 60668.09,
-    "relativeDifference": -0.06957860260937208,
-    "status": "mismatch"
+    "relativeDifference": 0,
+    "status": "match",
+    "netOf": {
+     "label": "excise duty",
+     "value": 4536.87
+    }
    },
    {
     "fiscalYearEnd": "2023-03-31",
@@ -1035,10 +1071,14 @@
    {
     "fiscalYearEnd": "2023-03-31",
     "field": "revenue",
-    "asFiled": 76518.21,
+    "asFiled": 70936.85,
     "capitaline": 70936.85,
-    "relativeDifference": -0.07294159128918463,
-    "status": "mismatch"
+    "relativeDifference": 0,
+    "status": "match",
+    "netOf": {
+     "label": "excise duty",
+     "value": 5581.36
+    }
    },
    {
     "fiscalYearEnd": "2023-03-31",
@@ -1083,10 +1123,14 @@
    {
     "fiscalYearEnd": "2024-03-31",
     "field": "revenue",
-    "asFiled": 76840.49,
+    "asFiled": 70881,
     "capitaline": 67931.94,
-    "relativeDifference": -0.11593562196180689,
-    "status": "mismatch"
+    "relativeDifference": -0.0416057899860329,
+    "status": "mismatch",
+    "netOf": {
+     "label": "excise duty",
+     "value": 5959.49
+    }
    },
    {
     "fiscalYearEnd": "2024-03-31",
@@ -1887,10 +1931,14 @@
    {
     "fiscalYearEnd": "2018-03-31",
     "field": "revenue",
-    "asFiled": 16155.95,
+    "asFiled": 16119.77,
     "capitaline": 16119.77,
-    "relativeDifference": -0.002239422627576855,
-    "status": "match"
+    "relativeDifference": 0,
+    "status": "match",
+    "netOf": {
+     "label": "excise duty",
+     "value": 36.18
+    }
    },
    {
     "fiscalYearEnd": "2019-03-31",

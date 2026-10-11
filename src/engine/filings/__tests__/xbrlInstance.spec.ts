@@ -49,6 +49,28 @@ describe("extractAnnualHeadline", () => {
     expect(headline.cashFlowFromOperations).toBeNull();
   });
 
+  it("reads the year's itemized excise duty, not the quarter's, though both carry the quarter's dates", () => {
+    // ITC FY24: other expenses itemized per context, each labelled by a
+    // description in the same context; the year's item contexts are named after
+    // FourD, the quarter's after OneD, and the utility dates both as the quarter.
+    const item = (id: string) => `<xbrli:context id="${id}"><xbrli:entity><xbrli:identifier scheme="x">500875</xbrli:identifier>
+    <xbrli:segment><xbrldi:explicitMember dimension="in-bse-fin:OtherExpensesAxis">in-bse-fin:Item</xbrldi:explicitMember></xbrli:segment></xbrli:entity>
+    <xbrli:period><xbrli:startDate>2024-01-01</xbrli:startDate><xbrli:endDate>2024-03-31</xbrli:endDate></xbrli:period></xbrli:context>`;
+    const fact = (concept: string, context: string, body: string) => concept === "OtherExpenses"
+      ? `<in-bse-fin:OtherExpenses contextRef="${context}" unitRef="INR" decimals="-7">${body}</in-bse-fin:OtherExpenses>`
+      : `<in-bse-fin:DescriptionOfOtherExpenses contextRef="${context}">${body}</in-bse-fin:DescriptionOfOtherExpenses>`;
+    const withExcise = FILING.replace("</xbrli:xbrl>", [
+      item("OneOperatingExpenses01D"), item("FourOperatingExpenses01D"), item("FourOperatingExpenses02D"),
+      fact("OtherExpenses", "OneOperatingExpenses01D", "15237900000.00"), fact("Description", "OneOperatingExpenses01D", "Excise Duty"),
+      fact("OtherExpenses", "FourOperatingExpenses01D", "59594900000.00"), fact("Description", "FourOperatingExpenses01D", "Excise Duty"),
+      fact("OtherExpenses", "FourOperatingExpenses02D", "112450900000.00"), fact("Description", "FourOperatingExpenses02D", "Other Expenses"),
+      "</xbrli:xbrl>",
+    ].join("\n"));
+    expect(extractAnnualHeadline(parseXbrlInstance(withExcise), "2024-03-31").headline.exciseDuty).toBeCloseTo(5959.49, 2);
+    // Not itemized: null, not zero.
+    expect(extractAnnualHeadline(parseXbrlInstance(FILING), "2024-03-31").headline.exciseDuty).toBeNull();
+  });
+
   it("falls back to a genuine 12-month span when the ID convention is absent", () => {
     const renamed = FILING
       .replace(/id="FourD"/, 'id="Annual"')

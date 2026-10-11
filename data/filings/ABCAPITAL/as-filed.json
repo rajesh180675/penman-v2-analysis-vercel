@@ -20,7 +20,8 @@
     "totalAssets": null,
     "totalEquity": null,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": null
+    "cashFlowFromOperations": null,
+    "exciseDuty": null
    }
   },
   {
@@ -41,7 +42,8 @@
     "totalAssets": null,
     "totalEquity": null,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": null
+    "cashFlowFromOperations": null,
+    "exciseDuty": null
    }
   },
   {
@@ -62,7 +64,8 @@
     "totalAssets": null,
     "totalEquity": null,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": null
+    "cashFlowFromOperations": null,
+    "exciseDuty": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 121109.92,
@@ -93,7 +96,8 @@
     "totalAssets": null,
     "totalEquity": null,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": -5069.51
+    "cashFlowFromOperations": -5069.51,
+    "exciseDuty": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 137494.73,
@@ -124,7 +128,8 @@
     "totalAssets": 180754.05,
     "totalEquity": 21820.07,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": -24053.4
+    "cashFlowFromOperations": -24053.4,
+    "exciseDuty": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 174024.63,
@@ -155,7 +160,8 @@
     "totalAssets": 232101.83,
     "totalEquity": 28637.78,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": -24100.5
+    "cashFlowFromOperations": -24100.5,
+    "exciseDuty": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 224734.09,
@@ -186,7 +192,8 @@
     "totalAssets": 279061.38,
     "totalEquity": 32347.05,
     "equityAttributableToOwners": 30388.72,
-    "cashFlowFromOperations": -27934.63
+    "cashFlowFromOperations": -27934.63,
+    "exciseDuty": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 270860.05,
@@ -217,7 +224,8 @@
     "totalAssets": 335393.12,
     "totalEquity": 36767.4,
     "equityAttributableToOwners": 34423.11,
-    "cashFlowFromOperations": -36544.12
+    "cashFlowFromOperations": -36544.12,
+    "exciseDuty": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 326728.85,
