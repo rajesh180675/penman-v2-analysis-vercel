@@ -3,12 +3,14 @@
  * company-run.ts — forecast accountability for ONE company (one process per
  * company: loading the whole corpus in one process exhausts memory on Windows).
  *
- *   npx tsx scripts/accountability/company-run.ts --ticker=ITC [--made-at=YYYY-MM-DD]
+ *   node --import tsx/esm --import ./scripts/lib/register-raw-loader.mjs \
+ *     scripts/accountability/company-run.ts --ticker=ITC [--made-at=YYYY-MM-DD]
  *
  * Writes accountability/runs/<ticker>.json:
  *   - the walk-forward backtest of the base forecast over every cutoff,
  *   - the core-RNOA series feeding the panel persistence estimate,
- *   - today's frozen forecast snapshot (written separately by run-all).
+ *   - today's forecast snapshot, from the app's own run (appSnapshot.ts);
+ *     run-all freezes it.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -16,11 +18,11 @@ import { fileURLToPath } from "node:url";
 import { parseCapitalineZip } from "../../src/engine/capitalineParser";
 import { processCompanyDataFull } from "../../src/engine/pipeline";
 import { DEFAULT_CONFIG, type RecastPeriod } from "../../src/engine/types";
-import { buildValuationCommandCenter } from "../../src/engine/valuationCommandCenter/core";
-import { buildScenario } from "../../src/engine/forecastingEngine";
 import { ACTIVE_MARKET_PACKS } from "../../src/engine/marketPacks";
-import { buildForecastSnapshot, walkForwardCompany } from "../../src/engine/accountability";
+import { walkForwardCompany } from "../../src/engine/accountability";
 import { annualizePeriods, periodMonths } from "../../src/engine/valuationBasis";
+import type { LibraryCompany } from "../../src/components/data-entry/companyRegistry";
+import { appForecastSnapshot, type AppForecastSnapshot } from "./appSnapshot";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "../..");
 const COMPANIES = join(ROOT, "public", "data", "companies");
@@ -76,27 +78,10 @@ const rnoaPoints = periods.slice(1).flatMap((p, i) => {
   return opening > 0 && Number.isFinite(coreOI) ? [{ year: Number(p.period_end.slice(0, 4)), rnoa: coreOI / opening }] : [];
 });
 
-// Today's forecast, exactly as the Valuation tab's command center makes it.
-let snapshot = null;
+// Today's forecast, frozen from the app's own run (appSnapshot.ts).
+let snapshot: AppForecastSnapshot | { error: string };
 try {
-  const cc = buildValuationCommandCenter({ data: periods, config, ...ACTIVE_MARKET_PACKS, analysisAsOf: madeAt });
-  const base = cc.scenarios.find((s) => s.key === "base");
-  const anchorIndex = cc.valuationReadiness.anchorIndex;
-  const cutoff = periods[Math.max(1, anchorIndex)]!;
-  if (base) {
-    snapshot = {
-      ...buildForecastSnapshot({
-        ticker,
-        companyType: company.type,
-        madeAt,
-        cutoff,
-        forecast: buildScenario(base.scenario, cutoff),
-        assumptions: { ke: base.assumptions.ke, kw: base.assumptions.kw, g: base.assumptions.g },
-        intrinsicPerShare: base.intrinsicPerShare ?? null,
-      }),
-      latestReportedPeriod: periods[periods.length - 1]!.period_end,
-    };
-  }
+  snapshot = await appForecastSnapshot(ROOT, company as LibraryCompany, madeAt);
 } catch (error) {
   snapshot = { error: error instanceof Error ? error.message : String(error) };
 }

@@ -2,12 +2,11 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseCapitalineZip } from "../../src/engine/capitalineParser";
+import type { parseCapitalineZip } from "../../src/engine/capitalineParser";
 import { resolveNseSymbol } from "../../src/engine/nseSymbolRegistry";
 import { marketCachePath, readJson, writeJson, listFiles } from "../../server/store/fsStore";
 import type { PipelineResult } from "../../src/engine/pipeline";
-import { executeLegacyAnalysisRun } from "../../src/engine/analysisRun";
-import { loadCompanyRun } from "../../src/next/companyRun";
+import { runLibraryCompany } from "./libraryCompanyRun";
 import type { LibraryCompany } from "../../src/components/data-entry/companyRegistry";
 import type { ValuationCommandCenterOutput } from "../../src/engine/valuationCommandCenter";
 import { buildAnalysisTraceability } from "../../src/engine/analysisTraceability";
@@ -814,7 +813,7 @@ export function measureParseCoverage(rawData: readonly RawPeriodData[]): AuditPa
 
 /**
  * Count segments per slot. Reads the whole `segmentData` channel rather than
- * just the slot SOTP consumes — `selectBusinessSegmentData` falls back from
+ * just the slot SOTP consumes — the run's loader (libraryCompanyRun.ts) falls back from
  * business to mixed, so a change in either can move the valuation, and
  * geographic feeds the dashboard breakdown.
  *
@@ -1008,10 +1007,6 @@ export function loadQualitySidecar(projectRoot: string, folder: string): { quali
   } catch (error) {
     return { quality: null, flags: [`CALC_ERROR:QUALITY_SIDECAR_PARSE:${(error as Error).message}`] };
   }
-}
-
-function selectBusinessSegmentData(segmentData: AllSegmentData | null): SegmentData | null {
-  return segmentData?.business ?? segmentData?.mixed ?? null;
 }
 
 function traceSnapshot(trace: ReturnType<typeof buildAnalysisTraceability>): AuditRigorSnapshot {
@@ -1379,20 +1374,10 @@ export async function auditCompanyRun(
     // live market price.
     const { quality, flags: sidecarFlags } = loadQualitySidecar(projectRoot, company.folder);
     const parses = new Map<string, Awaited<ReturnType<typeof parseCapitalineZip>>>();
-    const state = await loadCompanyRun(company as LibraryCompany, undefined, {
-      fetchZip: async (url) => {
-        const buf = readFileSync(join(projectRoot, "public", decodeURIComponent(url)));
-        return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
-      },
-      parse: async (bytes, companyId) => {
-        const result = await parseCapitalineZip(bytes, { companyId });
-        parses.set(parses.size === 0 ? "consolidated" : "standalone", result);
-        return { periods: result.periods, debug: result.debug, segmentData: selectBusinessSegmentData(result.segmentData) };
-      },
-      fetchMarketSnapshot: async () => null,
-      run: (input) => executeLegacyAnalysisRun(input),
-      now: () => new Date(`${HARNESS_PACKS_AS_OF}T00:00:00.000Z`),
-      fetchBankQuality: async (library) => (FINANCIAL_LIBRARY_TYPES.has(library.type) ? quality : null),
+    const state = await runLibraryCompany(projectRoot, company as LibraryCompany, {
+      now: new Date(`${HARNESS_PACKS_AS_OF}T00:00:00.000Z`),
+      bankQuality: FINANCIAL_LIBRARY_TYPES.has(company.type) ? quality : null,
+      onParse: (result) => parses.set(parses.size === 0 ? "consolidated" : "standalone", result),
     });
     if (state.status !== "ready") throw new Error(state.message);
     const execution = state.result;

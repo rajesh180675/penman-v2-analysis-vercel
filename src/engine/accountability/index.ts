@@ -7,4 +7,5 @@ export {
   scoreSnapshot,
   FORECAST_SNAPSHOT_SCHEMA_VERSION,
   type ForecastSnapshot,
+  type ForecastSnapshotBasis,
 } from "./snapshot";
