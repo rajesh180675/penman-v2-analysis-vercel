@@ -890,6 +890,7 @@ export function computedBankModelNames(valuation: BankValuationBundle | null | u
   if (isFiniteComputedBankModel(valuation.evBased)) names.push("EV");
   if (isFiniteComputedBankModel(valuation.pAum)) names.push("P/AUM");
   if (isFiniteComputedBankModel(valuation.roaLeverageRI)) names.push("ROA×LevRI");
+  if (isFiniteComputedBankModel(valuation.sectorRelativePB)) names.push("SectorPB");
   return names;
 }
 
@@ -911,6 +912,7 @@ export const FI_AUDIT_MODEL_IDS: Record<string, string> = {
   EV: "fi.insurance.embedded-value-vnb",
   "P/AUM": "fi.nbfc.p-aum",
   "ROA×LevRI": "fi.nbfc.roa-leverage-residual-income",
+  SectorPB: "fi.bank.sector-relative-pb",
 };
 
 function bankModelEvidenceGroups(modelNames: string[]): string[] {

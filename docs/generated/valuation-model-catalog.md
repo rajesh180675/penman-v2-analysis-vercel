@@ -2,9 +2,9 @@
 
 - Schema: `2026-07-model-catalog-v1`
 - Catalog: `2026-07-10-current-models-v2`
-- Entries: 45
-- Production intrinsic/relative definitions: 21
-- Independent production evidence groups: 10
+- Entries: 46
+- Production intrinsic/relative definitions: 22
+- Independent production evidence groups: 11
 
 | Model ID | Lifecycle | Category | Families | Independence group | Integration | Implementation |
 |---|---|---|---|---|---|---|
@@ -19,6 +19,7 @@
 | `fi.bank.justified-pb-gordon` | production | intrinsic | bank, nbfc | fi-book-residual-income | wired | `src/engine/bankValuation/coreModels.ts#justifiedPBGordon` |
 | `fi.bank.relative-multiples` | experimental | relative | bank, nbfc | peer-market | not-wired | `src/engine/relativeValuation.ts#computeBankMultiples:impliedFairValueComposite` |
 | `fi.bank.scenario-bundle` | production | aggregator | bank, nbfc | aggregation | wired | `src/engine/bankValuation/scenarios.ts#buildBankScenarioBundle` |
+| `fi.bank.sector-relative-pb` | production | relative | bank | fi-sector-market-multiple | wired | `src/engine/bankValuation/sectorMultiples.ts#sectorRelativePB` |
 | `fi.bank.sustainable-ddm` | production | intrinsic | bank, nbfc | fi-book-residual-income | wired | `src/engine/bankValuation/coreModels.ts#sustainableDDM` |
 | `fi.insurance.embedded-value-vnb` | production | intrinsic | insurance | actuarial-embedded-value | wired | `src/engine/bankValuation/coreModels.ts#evBasedValuation` |
 | `fi.median-triangulation` | production | aggregator | bank, nbfc, insurance | aggregation | wired | `src/engine/bankValuation/computeBankValuation.ts#computeBankValuation:triangulatedValue` |
@@ -55,4 +56,3 @@
 | `sector.utility.rab-ddm` | production | intrinsic | utility | operational-driver | partially-wired | `src/engine/sectorCases/calculators.ts#executeSectorCase:utility-rab` |
 
 > Counts come from explicit finite computed results at runtime. Catalog presence, applicability, and strategy labels never count as computation.
-

@@ -43,6 +43,31 @@ describe("resolveFinancialValuationReadiness", () => {
     expect(r.reasons[0]).toMatch(/Valuation-eligible needs two independent lenses that agree within 30%\.$/);
   });
 
+  it("readies a bank whose book lens its sector index's sourced P/B corroborates within 15%", () => {
+    const valuation = {
+      justifiedPB: computed(592_325), equityResidualIncome: computed(528_625), sustainableDDM: computed(592_301),
+      sectorRelativePB: computed(610_000, SOURCED),
+    } as unknown as BankValuationBundle;
+    const r = resolveFinancialValuationReadiness({ bankMetrics: years(5), valuation, subtype: "bank" });
+    expect(r.status).toBe("production-ready");
+    expect(r.reasons[0]).toMatch(/2 independent lenses: book residual income ₹5,92,301 Cr vs sector market multiple ₹6,10,000 Cr/);
+  });
+
+  it("does not clear a bank whose sector index's P/B sits far from its book lens", () => {
+    const valuation = {
+      justifiedPB: computed(668_446), equityResidualIncome: computed(540_456), sustainableDDM: computed(575_549),
+      sectorRelativePB: computed(1_100_000, SOURCED),
+    } as unknown as BankValuationBundle;
+    const r = resolveFinancialValuationReadiness({ bankMetrics: years(5), valuation, subtype: "bank" });
+    expect(r.status).toBe("guarded");
+    expect(r.reasons[0]).toMatch(/Valuation-eligible needs them within 30%\.$/);
+  });
+
+  it("does not count a sector multiple nothing sources", () => {
+    const valuation = { justifiedPB: computed(592_325), sectorRelativePB: computed(610_000, { multipleSourced: 0 }) } as unknown as BankValuationBundle;
+    expect(resolveFinancialValuationReadiness({ bankMetrics: years(5), valuation, subtype: "bank" }).status).toBe("guarded");
+  });
+
   it("makes an NBFC whose lenses agree within 30% valuation-eligible, not production-ready", () => {
     // Muthoot FY25 with its sidecar: book lens ₹38,406 Cr, P/AUM ₹48,892 Cr, 24% apart.
     const valuation = { justifiedPB: computed(38_406), pAum: computed(48_892, SOURCED) } as unknown as BankValuationBundle;

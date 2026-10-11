@@ -43,7 +43,7 @@ describe("audit model-id maps", () => {
     });
   }
 
-  it("FI_AUDIT_MODEL_IDS covers exactly the six bank model display names", () => {
+  it("FI_AUDIT_MODEL_IDS covers exactly the seven bank model display names", () => {
     // Pinned against computedBankModelNames: a new bank model added there
     // without a mapping here would silently stop contributing to the
     // independence count.
@@ -54,6 +54,7 @@ describe("audit model-id maps", () => {
       "P/AUM",
       "PB",
       "ROA×LevRI",
+      "SectorPB",
     ]);
   });
 
