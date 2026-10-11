@@ -99,6 +99,8 @@ describe("CasePage", () => {
     expect(stale).toContain("filed its results for the year to 2026-03-31 on NSE");
     expect(stale).toContain("on 2026-05-21");
     expect(stale).toContain("runs on Capitaline data to 2025-03-31");
+    // ...and points to where the forecast is set against them.
+    expect(stale).toContain('href="#/case/ITC/forecast" class="underline">See the forecast beside them</a>');
     // Current data, an as-of view (older on purpose), or no ledger: no note.
     expect(renderToStaticMarkup(<CasePage route={caseRoute("ITC")} company={itc} run={run("2026-03-31")} tieOut={ledger} />)).not.toContain("Newer results");
     expect(renderToStaticMarkup(<CasePage route={{ ...caseRoute("ITC"), asOf: "2025-03-31" }} company={itc} run={run("2025-03-31")} tieOut={ledger} />)).not.toContain("Newer results");

@@ -129,10 +129,10 @@ Margin is untouched and CNI essentially unchanged (t+1 median skill −9.1 → �
 
 1. **Sun Pharma and Asian Paints**, gated on backtest skill: how fast the forecast fades from the latest margin toward the anchor (a shorter anchor window was tried and rejected above), and why Asian Paints' RNOA now over-forecasts.
 2. **Loss-maker trajectories.** Vodafone Idea is still forecast to fade toward a +3% margin target and loses to a random walk.
-3. **Integrated filings.** NSE moved results to "Integrated Filing" in 2025; FY2025+ filings need that endpoint before the as-filed ledger reaches the current year.
+3. **Integrated filings.** NSE moved results to "Integrated Filing" in 2025; FY2025+ filings need that endpoint before the as-filed ledger reaches the current year. *Resolved 2026-10-11 (#440): the fetcher reads both the annual and the integrated listings, and the ledger covers all 23 industrial companies through FY2026.*
 4. **Revenue definition.** Resolve the ITC-style net/gross revenue gap in the Capitaline mapping, verified by the tie-out. *Resolved 2026-10-11: the mapping is right. Capitaline's revenue is net of excise duty (a tax collected for the government, not sales) and on the latest restated basis. The tie-out now nets the excise a filing itemizes (ITC FY18: ₹47,689 Cr filed − ₹4,240 Cr excise = Capitaline's ₹43,449 Cr), and revenue mismatches fell from 10 to 3. The three left are later restatements (UltraTech FY19, a common-control merger pooled; ITC FY24, hotels discontinued; L&T FY19, E&A discontinued), which results filings cannot confirm because they carry no restated comparatives.*
 5. **Survivorship-free panel.** Add delisted and mid-cap companies (as-filed XBRL makes this cheap) before adopting panel priors.
 6. **Ledger-based reformulation** with an unclassified bucket, so structural reconciliation becomes a measured quantity rather than 26/33 failing bridge checks.
 7. **Pro-forma restatement** for demergers and mergers, removing the anchor lag.
 8. **Engine rewrite (Track E)** once the ledger defines the new inputs.
-9. **Research workflow (Track C)** on top: thesis assumptions monitored against newly filed data.
+9. **Research workflow (Track C)** on top: thesis assumptions monitored against newly filed data. *Started 2026-10-11: frozen forecasts are scored against the results filed since (#444, `docs/generated/frozen-forecast-scores.md`), and the Case's Forecast section sets its base case beside any of its years the company has filed.*

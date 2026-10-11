@@ -4,10 +4,13 @@ export { summarizeWalkForward, companyTrackRecord, type CompanyTrackRecord } fro
 export { estimatePanelPersistence, priorFor, type PersistenceEstimate, type RnoaSeries } from "./persistence";
 export {
   buildForecastSnapshot,
+  firstFiledYears,
+  forecastYears,
   scoreSnapshot,
   scoreSnapshotAgainstFilings,
   type FiledScore,
   type FiledYear,
+  type ForecastToScore,
   FORECAST_SNAPSHOT_SCHEMA_VERSION,
   type ForecastSnapshot,
   type ForecastSnapshotBasis,

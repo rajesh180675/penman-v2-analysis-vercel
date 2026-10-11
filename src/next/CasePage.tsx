@@ -65,7 +65,8 @@ export function CasePage({
           <p role="note" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
             <strong>Newer results are on file.</strong> {company.name} filed its results for the year to {newer.fiscalYearEnd} on NSE
             on {newer.filingDate.slice(0, 10)}. This case runs on Capitaline data to {analysedThrough} and does not reflect them;
-            the company&rsquo;s Capitaline export needs refreshing.
+            the company&rsquo;s Capitaline export needs refreshing.{" "}
+            <a href={formatRoute({ ...route, section: "forecast" })} className="underline">See the forecast beside them</a>.
           </p>
         )}
         {run?.status === "ready" && run.basis === "standalone" && (
@@ -96,7 +97,7 @@ export function CasePage({
 
       <section aria-label={section.label}>
         {run?.status === "ready"
-          ? renderSection(route.section, run.result, { asOf: route.asOf, trackRecords, snapshots, tieOut, company, peers, peerRuns, onLoadPeers })
+          ? renderSection(route.section, run.result, { asOf: route.asOf, accounts: run.basis ?? "consolidated", trackRecords, snapshots, tieOut, company, peers, peerRuns, onLoadPeers })
           : null}
       </section>
     </article>
@@ -108,6 +109,7 @@ function renderSection(
   result: Extract<CompanyRunState, { status: "ready" }>["result"],
   context: {
     asOf: string | null;
+    accounts: "consolidated" | "standalone";
     trackRecords: TrackRecordFile | null;
     snapshots: readonly FrozenSnapshot[] | null;
     tieOut: readonly TieOutCompany[] | null;
@@ -127,7 +129,16 @@ function renderSection(
     case "evidence":
       return <EvidenceSection result={result} tieOut={context.tieOut} ticker={context.company.ticker} />;
     case "forecast":
-      return <ForecastSection result={result} trackRecord={trackRecord} frozen={latestSnapshotFor(context.snapshots, context.company.ticker)} />;
+      return (
+        <ForecastSection
+          result={result}
+          trackRecord={trackRecord}
+          frozen={latestSnapshotFor(context.snapshots, context.company.ticker)}
+          filedYears={context.tieOut?.find((c) => c.symbol === context.company.ticker)?.filedYears ?? null}
+          accounts={context.accounts}
+          asOf={context.asOf}
+        />
+      );
     case "valuation":
       return <ValuationSection result={result} />;
     case "peers":

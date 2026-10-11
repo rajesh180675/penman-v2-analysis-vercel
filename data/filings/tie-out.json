@@ -247,7 +247,72 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-29T19:51"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 17262.23,
+    "exciseDuty": 437.68,
+    "profitAttributableToOwners": 2038.93,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 19349.84,
+    "exciseDuty": 8.32,
+    "profitAttributableToOwners": 2159.49,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 20211.25,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 2705.17,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 21712.79,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 3139.29,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 29101.28,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 3030.57,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 34488.59,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 4106.45,
+    "equityAttributableToOwners": 15992.23
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 35494.73,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 5460.23,
+    "equityAttributableToOwners": 18728.3
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 33905.62,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 3667.226,
+    "equityAttributableToOwners": 19399.81
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 35583.54,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 4325.35,
+    "equityAttributableToOwners": 21371.59
+   }
+  ]
  },
  {
   "symbol": "BHARTIARTL",
@@ -473,7 +538,65 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-13T21:45"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 80780.2,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 409.5,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 87539,
+    "exciseDuty": null,
+    "profitAttributableToOwners": -32183.2,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 100615.8,
+    "exciseDuty": null,
+    "profitAttributableToOwners": -15083.5,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 116546.9,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 4254.9,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 139144.8,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 8345.9,
+    "equityAttributableToOwners": 77562.9
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 149982.4,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 7467,
+    "equityAttributableToOwners": 82018.8
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 172985.2,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 33556.1,
+    "equityAttributableToOwners": 113671.9
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 210972.8,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 26695.2,
+    "equityAttributableToOwners": 149056.6
+   }
+  ]
  },
  {
   "symbol": "BRITANNIA",
@@ -703,7 +826,65 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-07T23:38"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 9990.1,
+    "exciseDuty": 76.11,
+    "profitAttributableToOwners": 1004.23,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 11054.67,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1159.12,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 11599.55,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1402.63,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 14136.26,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1524.82,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 16300.55,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 2321.77,
+    "equityAttributableToOwners": 3534.27
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 16769.27,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 2139.81,
+    "equityAttributableToOwners": 3941.52
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 17942.67,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 2178.73,
+    "equityAttributableToOwners": 4355.72
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 19151.59,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 2533.49,
+    "equityAttributableToOwners": 5106.56
+   }
+  ]
  },
  {
   "symbol": "DABUR",
@@ -945,7 +1126,72 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-07T17:38"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 7748.34,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1354.39,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 8533.05,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1442.33,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 8703.59,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1444.96,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 9561.65,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1693.3,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 10888.68,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1739.22,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 11529.89,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1707.15,
+    "equityAttributableToOwners": 8973.26
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 12404.01,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1842.68,
+    "equityAttributableToOwners": 9866.3
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 12563.09,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1767.63,
+    "equityAttributableToOwners": 10800.69
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 13192.57,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1895.03,
+    "equityAttributableToOwners": 11419.52
+   }
+  ]
  },
  {
   "symbol": "DMART",
@@ -1187,7 +1433,72 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-02T19:13"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 15033.199,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 806.2525,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 20004.52,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 902.54,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 24870.2,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1301.08,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 24143.06,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1099.49,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 30976.27,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1492.55,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 42839.56,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 2378.51,
+    "equityAttributableToOwners": 16078.7
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 50788.83,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 2536.17,
+    "equityAttributableToOwners": 18697.82
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 59358.05,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 2708.02,
+    "equityAttributableToOwners": 21427.75
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 68820.74,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 2970.491,
+    "equityAttributableToOwners": 24464.04
+   }
+  ]
  },
  {
   "symbol": "GRASIM",
@@ -1433,7 +1744,72 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-20T15:39"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 57338.2,
+    "exciseDuty": 1140.17,
+    "profitAttributableToOwners": 2678.58,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 72970.64,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1771.92,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 77625.1,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 4425.19,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 76397.81,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 4304.82,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 95701.13,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 7549.78,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 117627.08,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 6827.26,
+    "equityAttributableToOwners": 78741.99
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 130978.48,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 5624.49,
+    "equityAttributableToOwners": 88652.4
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 148477.89,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 3705.68,
+    "equityAttributableToOwners": 97509.23
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 175430.74,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 4966.48,
+    "equityAttributableToOwners": 103469.92
+   }
+  ]
  },
  {
   "symbol": "HINDUNILVR",
@@ -1679,7 +2055,72 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-04-30T21:06"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 36238,
+    "exciseDuty": 693,
+    "profitAttributableToOwners": 5214,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 39310,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 6054,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 39783,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 6748,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 47028,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 7995,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 52446,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 8879,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 60580,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 10120,
+    "equityAttributableToOwners": 50304
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 61896,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 10277,
+    "equityAttributableToOwners": 51218
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 63121,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 10649,
+    "equityAttributableToOwners": 49402
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 64468,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 15040,
+    "equityAttributableToOwners": 48739
+   }
+  ]
  },
  {
   "symbol": "IDEA",
@@ -1905,7 +2346,65 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-16T18:58"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 37092.5,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 44957.5,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 41952.2,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 38515.5,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 42177.2,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": -74359.1
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 42554.9,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": -104166.8
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 43571.3,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": -70320.2
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 44873,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": -35758
+   }
+  ]
  },
  {
   "symbol": "INFY",
@@ -2179,7 +2678,65 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-04-23T20:47"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 82675,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 15404,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 90791,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 16594,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 100472,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 19351,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 121641,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 22110,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 146767,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 24095,
+    "equityAttributableToOwners": 75407
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 153670,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 26233,
+    "equityAttributableToOwners": 88116
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 162990,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 26713,
+    "equityAttributableToOwners": 95818
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 178650,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 29440,
+    "equityAttributableToOwners": 92852
+   }
+  ]
  },
  {
   "symbol": "ITC",
@@ -2453,7 +3010,72 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-21T18:32"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 47688.55,
+    "exciseDuty": 4239.61,
+    "profitAttributableToOwners": 11271.2,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 49862.11,
+    "exciseDuty": 1509.43,
+    "profitAttributableToOwners": 12592.33,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 51393.47,
+    "exciseDuty": 1989.42,
+    "profitAttributableToOwners": 15306.23,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 53155.12,
+    "exciseDuty": 3882.34,
+    "profitAttributableToOwners": 13161.19,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 65204.96,
+    "exciseDuty": 4536.87,
+    "profitAttributableToOwners": 15242.66,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 76518.21,
+    "exciseDuty": 5581.36,
+    "profitAttributableToOwners": 19191.66,
+    "equityAttributableToOwners": 69155.26
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 76840.49,
+    "exciseDuty": 5959.49,
+    "profitAttributableToOwners": 20458.78,
+    "equityAttributableToOwners": 74507
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 81612.78,
+    "exciseDuty": 6289.44,
+    "profitAttributableToOwners": 34746.63,
+    "equityAttributableToOwners": 70030.05
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 89913.33,
+    "exciseDuty": 11044.93,
+    "profitAttributableToOwners": 20689.47,
+    "equityAttributableToOwners": 72507.3
+   }
+  ]
  },
  {
   "symbol": "LT",
@@ -2719,7 +3341,72 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-05T19:30"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 119862.1,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 7369.86,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 141007.09,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 8905.13,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 145452.36,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 9549.03,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 135979.03,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 11582.93,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 156521.23,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 8669.33,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 183340.7,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 10470.72,
+    "equityAttributableToOwners": 89325.95
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 221112.91,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 13059.11,
+    "equityAttributableToOwners": 86359.24
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 255734.45,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 285874.36,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 16083.99,
+    "equityAttributableToOwners": 109289.8
+   }
+  ]
  },
  {
   "symbol": "M&M",
@@ -2965,7 +3652,72 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-05T16:28"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 93264.77,
+    "exciseDuty": 1170.82,
+    "profitAttributableToOwners": 7510.39,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 104720.68,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 5315.46,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 95179.09,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 127.04,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 74277.78,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1812.49,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 90170.57,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 6577.32,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 121268.55,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 10281.5,
+    "equityAttributableToOwners": 56365.79
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 139078.27,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 11268.64,
+    "equityAttributableToOwners": 66190.55
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 159210.82,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 12929.1,
+    "equityAttributableToOwners": 77038.86
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 198638.55,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 17098.85,
+    "equityAttributableToOwners": 93096.35
+   }
+  ]
  },
  {
   "symbol": "MARUTI",
@@ -3191,7 +3943,65 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-04-28T19:47"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 86068.5,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 7649.1,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 75660,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 5676,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 70372,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 4389.1,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 88329.8,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 3879.5,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 117571.3,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 8211,
+    "equityAttributableToOwners": 61791.3
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 141858.2,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 13488.2,
+    "equityAttributableToOwners": 85636
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 152913,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 14500.2,
+    "equityAttributableToOwners": 96239.9
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 183316,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 14679.5,
+    "equityAttributableToOwners": 107156.3
+   }
+  ]
  },
  {
   "symbol": "NESTLEIND",
@@ -3249,7 +4059,23 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-04-21T19:32"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 20201.56,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": 4010.21
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 23154.6,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": 5156.97
+   }
+  ]
  },
  {
   "symbol": "NTPC",
@@ -3475,7 +4301,79 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-23T16:07"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2017-03-31",
+    "revenue": 0,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 0,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 95742.03,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 12640.02,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 109464.04,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 11600.23,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 111531.15,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 14634.63,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 132669.28,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 16675.9,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 176206.93,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 16912.55,
+    "equityAttributableToOwners": 147023.17
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 178500.88,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 20811.89,
+    "equityAttributableToOwners": 160709.27
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 188138.06,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 23422.46,
+    "equityAttributableToOwners": 184071.16
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 187384.63,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 27052.52,
+    "equityAttributableToOwners": 203175.67
+   }
+  ]
  },
  {
   "symbol": "PAYTM",
@@ -3653,7 +4551,44 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-06T21:25"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 4974.2,
+    "exciseDuty": null,
+    "profitAttributableToOwners": -2392.9,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 7990.3,
+    "exciseDuty": null,
+    "profitAttributableToOwners": -1775.9,
+    "equityAttributableToOwners": 13015.6
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 9977.8,
+    "exciseDuty": null,
+    "profitAttributableToOwners": -1417,
+    "equityAttributableToOwners": 13326.6
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 6900.4,
+    "exciseDuty": null,
+    "profitAttributableToOwners": -658.7,
+    "equityAttributableToOwners": 15026.7
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 8437,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 553,
+    "equityAttributableToOwners": 16026
+   }
+  ]
  },
  {
   "symbol": "POWERGRID",
@@ -3895,7 +4830,72 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-15T21:35"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 29941.49,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 8198.31,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 35059.12,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 10033.52,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 37743.54,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 11059.4,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 39639.79,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 12036.46,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 41616.34,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 45581.28,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 15417.12,
+    "equityAttributableToOwners": 83014.51
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 45843.1,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 15573.16,
+    "equityAttributableToOwners": 87145.11
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 45792.32,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 15521.44,
+    "equityAttributableToOwners": 92662.81
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 46732.87,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 15927.95,
+    "equityAttributableToOwners": 100494.02
+   }
+  ]
  },
  {
   "symbol": "RELIANCE",
@@ -4121,7 +5121,58 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-04-24T22:57"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 581020,
+    "exciseDuty": 13885,
+    "profitAttributableToOwners": 39588,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 611645,
+    "exciseDuty": 14902,
+    "profitAttributableToOwners": 39354,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 486326,
+    "exciseDuty": 19402,
+    "profitAttributableToOwners": 49128,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 892944,
+    "exciseDuty": 13476,
+    "profitAttributableToOwners": 66702,
+    "equityAttributableToOwners": 821153
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 914472,
+    "exciseDuty": 13408,
+    "profitAttributableToOwners": 69621,
+    "equityAttributableToOwners": 793481
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 980136,
+    "exciseDuty": 15443,
+    "profitAttributableToOwners": 69648,
+    "equityAttributableToOwners": 843200
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 1075675,
+    "exciseDuty": 18456,
+    "profitAttributableToOwners": 80775,
+    "equityAttributableToOwners": 904030
+   }
+  ]
  },
  {
   "symbol": "SUNPHARMA",
@@ -4347,7 +5398,65 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-22T18:39"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 26489.46,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 2161.55,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 29065.91,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 2665.42,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 32837.5,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 3764.93,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 38654.49,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 3272.73,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 43885.68,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 8473.58,
+    "equityAttributableToOwners": 55995.38
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 48496.85,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 9576.38,
+    "equityAttributableToOwners": 63666.75
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 52578.44,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 10929.04,
+    "equityAttributableToOwners": 72218.02
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 58462.04,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 11479.42,
+    "equityAttributableToOwners": 83570.09
+   }
+  ]
  },
  {
   "symbol": "TATASTEEL",
@@ -4593,7 +5702,72 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-15T20:02"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 133016.37,
+    "exciseDuty": 1316.04,
+    "profitAttributableToOwners": 13434.33,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 157668.99,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 10218.33,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 139816.65,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1556.54,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 156294.18,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 7490.22,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 243959.17,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 40153.93,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 243352.69,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 8760.4,
+    "equityAttributableToOwners": 103082.1
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 229170.78,
+    "exciseDuty": null,
+    "profitAttributableToOwners": -4437.44,
+    "equityAttributableToOwners": 92035.76
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 218542.51,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 3420.51,
+    "equityAttributableToOwners": 91169.63
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 232139.94,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 10793.87,
+    "equityAttributableToOwners": 102167.65
+   }
+  ]
  },
  {
   "symbol": "TCS",
@@ -4867,7 +6041,65 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-04-09T23:42"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 146463,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 31472,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 156949,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 32340,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 164177,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 32430,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 191754,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 38327,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 225458,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 42147,
+    "equityAttributableToOwners": 90424
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 240893,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 45908,
+    "equityAttributableToOwners": 90489
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 255324,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 48553,
+    "equityAttributableToOwners": 94756
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 267021,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 49210,
+    "equityAttributableToOwners": 107240
+   }
+  ]
  },
  {
   "symbol": "TITAN",
@@ -5113,7 +6345,72 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-05-08T19:47"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 16155.95,
+    "exciseDuty": 36.18,
+    "profitAttributableToOwners": 1130.09,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 19778.52,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1404.1503,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 21051.54,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1501.39,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 21643.824,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 973.25,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 28798.706,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 2173.117,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 40575,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 3250,
+    "equityAttributableToOwners": 11851
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 51084,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 3496,
+    "equityAttributableToOwners": 9393
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 60456,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 3337,
+    "equityAttributableToOwners": 11624
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 87584,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 5073,
+    "equityAttributableToOwners": 15703
+   }
+  ]
  },
  {
   "symbol": "ULTRACEMCO",
@@ -5339,6 +6636,64 @@
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
    "filingDate": "2026-04-27T20:18"
-  }
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 37379.2,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 2434.72,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 42124.83,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 5814.84,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 44725.8,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 5463.1,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 52598.83,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 7344.31,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 63239.98,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": 54380.17
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 70908.14,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 7005,
+    "equityAttributableToOwners": 60227.48
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 75955.13,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 6039.11,
+    "equityAttributableToOwners": 70706.77
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 88511.53,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 8165.64,
+    "equityAttributableToOwners": 76623.54
+   }
+  ]
  }
 ]

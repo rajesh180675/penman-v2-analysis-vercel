@@ -13,34 +13,19 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { scoreSnapshotAgainstFilings, type FiledScore, type FiledYear, type ForecastSnapshot } from "../../src/engine/accountability";
+import { firstFiledYears, scoreSnapshotAgainstFilings, type FiledScore, type FiledYear, type ForecastSnapshot } from "../../src/engine/accountability";
+import type { AsFiledHeadlineRecord } from "../../src/engine/filings";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "../..");
 const SNAPSHOTS = join(ROOT, "accountability", "snapshots");
 
 type Snapshot = ForecastSnapshot & { latestReportedPeriod?: string };
-interface LedgerRecord {
-  fiscalYearEnd: string;
-  filingDate: string;
-  headline: { revenue: number | null; exciseDuty?: number | null; profitAttributableToOwners: number | null; equityAttributableToOwners: number | null };
-}
 
 /** Each fiscal year as first filed. */
 function filedYears(ticker: string): FiledYear[] | null {
   const path = join(ROOT, "data", "filings", ticker, "as-filed.json");
   if (!existsSync(path)) return null;
-  const { records } = JSON.parse(readFileSync(path, "utf8")) as { records: LedgerRecord[] };
-  const first = new Map<string, LedgerRecord>();
-  for (const r of [...records].sort((a, b) => a.filingDate.localeCompare(b.filingDate))) {
-    if (!first.has(r.fiscalYearEnd)) first.set(r.fiscalYearEnd, r);
-  }
-  return [...first.values()].map((r) => ({
-    fiscalYearEnd: r.fiscalYearEnd,
-    revenue: r.headline.revenue,
-    exciseDuty: r.headline.exciseDuty ?? null,
-    profitAttributableToOwners: r.headline.profitAttributableToOwners,
-    equityAttributableToOwners: r.headline.equityAttributableToOwners,
-  }));
+  return firstFiledYears((JSON.parse(readFileSync(path, "utf8")) as { records: AsFiledHeadlineRecord[] }).records);
 }
 
 const sets = readdirSync(SNAPSHOTS).sort();
