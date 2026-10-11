@@ -22,7 +22,13 @@ const FILINGS = join(ROOT, "data", "filings");
 const registry: { folder: string; ticker: string; type: string }[] =
   JSON.parse(readFileSync(join(ROOT, "public", "data", "companies", "registry.json"), "utf-8"));
 
-const results: { symbol: string; rows: TieOutRow[]; firstFiling: string | null }[] = [];
+const results: {
+  symbol: string;
+  rows: TieOutRow[];
+  firstFiling: string | null;
+  /** The latest fiscal year on file, by its first filing: what the Case compares its own data's end with. */
+  latestFiling: { fiscalYearEnd: string; filingDate: string } | null;
+}[] = [];
 for (const symbol of readdirSync(FILINGS).filter((d) => existsSync(join(FILINGS, d, "as-filed.json"))).sort()) {
   const company = registry.find((c) => c.ticker === symbol);
   if (!company) continue;
@@ -30,7 +36,16 @@ for (const symbol of readdirSync(FILINGS).filter((d) => existsSync(join(FILINGS,
   const buf = readFileSync(join(ROOT, "public", "data", "companies", company.folder, `${company.folder}.zip`));
   const parsed = await parseCapitalineZip(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength), { companyId: company.folder });
   const periods = processCompanyDataFull(parsed.periods, { ...DEFAULT_CONFIG, company_type: company.type as typeof DEFAULT_CONFIG.company_type }).periods;
-  results.push({ symbol, rows: tieOutAsFiled(records, periods), firstFiling: records[0]?.filingDate ?? null });
+  const latestYear = records.reduce<string | null>((max, r) => (max == null || r.fiscalYearEnd > max ? r.fiscalYearEnd : max), null);
+  const latestFirst = latestYear == null ? null : records
+    .filter((r) => r.fiscalYearEnd === latestYear)
+    .reduce((first, r) => (r.filingDate < first.filingDate ? r : first));
+  results.push({
+    symbol,
+    rows: tieOutAsFiled(records, periods),
+    firstFiling: records[0]?.filingDate ?? null,
+    latestFiling: latestFirst ? { fiscalYearEnd: latestFirst.fiscalYearEnd, filingDate: latestFirst.filingDate } : null,
+  });
   console.log(`${symbol}: ${results.at(-1)!.rows.length} comparisons`);
 }
 

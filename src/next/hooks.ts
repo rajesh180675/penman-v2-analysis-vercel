@@ -164,6 +164,24 @@ export interface TieOutCompany {
   readonly symbol: string;
   readonly firstFiling: string | null;
   readonly rows: readonly TieOutRow[];
+  /** The latest fiscal year the company has filed results for on NSE, and when it first filed them. */
+  readonly latestFiling?: { readonly fiscalYearEnd: string; readonly filingDate: string } | null;
+}
+
+/**
+ * The company's newer filed results, when it has filed a fiscal year the run's
+ * data does not reach: the library's Capitaline exports are refreshed by hand,
+ * so a case can be valued a year behind what the company has published
+ * (20 of 23 on 2026-10-11, valued to FY2025 with FY2026 filed in April-May).
+ */
+export function newerResultsFiled(
+  ledger: readonly TieOutCompany[] | null,
+  ticker: string,
+  analysedThrough: string | null,
+): { readonly fiscalYearEnd: string; readonly filingDate: string } | null {
+  const latest = ledger?.find((c) => c.symbol === ticker)?.latestFiling ?? null;
+  if (!latest || !analysedThrough) return null;
+  return latest.fiscalYearEnd > analysedThrough ? latest : null;
 }
 
 let tieOutRequest: Promise<readonly TieOutCompany[] | null> | null = null;

@@ -1,7 +1,7 @@
 import { EmptyState } from "../components/shared/EmptyState";
 import type { LibraryCompany } from "../components/data-entry/companyRegistry";
 import type { CompanyRunState } from "./companyRun";
-import { latestSnapshotFor, type FrozenSnapshot, type TieOutCompany, type TrackRecordFile } from "./hooks";
+import { latestSnapshotFor, newerResultsFiled, type FrozenSnapshot, type TieOutCompany, type TrackRecordFile } from "./hooks";
 import { CASE_SECTIONS, formatRoute, LIBRARY, type CaseRoute, type CaseSection } from "./route";
 import type { RecastPeriod } from "../engine/types";
 import { EconomicsSection } from "./sections/EconomicsSection";
@@ -46,6 +46,11 @@ export function CasePage({
     );
   }
   const section = CASE_SECTIONS.find((s) => s.id === route.section)!;
+  // Not in an as-of view, which is older on purpose.
+  const analysedThrough = run?.status === "ready" && !route.asOf
+    ? (run.result.materialization.rawData ?? []).reduce<string | null>((max, p) => (max == null || p.period_end > max ? p.period_end : max), null)
+    : null;
+  const newer = newerResultsFiled(tieOut, company.ticker, analysedThrough);
 
   return (
     <article aria-labelledby="case-heading" className="space-y-5">
@@ -56,6 +61,13 @@ export function CasePage({
         </h1>
         <RunStatus run={run} />
         <AsOfControl route={route} run={run} />
+        {newer && analysedThrough && (
+          <p role="note" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+            <strong>Newer results are on file.</strong> {company.name} filed its results for the year to {newer.fiscalYearEnd} on NSE
+            on {newer.filingDate.slice(0, 10)}. This case runs on Capitaline data to {analysedThrough} and does not reflect them;
+            the company&rsquo;s Capitaline export needs refreshing.
+          </p>
+        )}
         {run?.status === "ready" && run.basis === "standalone" && (
           <p role="note" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
             <strong>Standalone accounts.</strong> The consolidated export covers too few years to value, so this case uses the standalone history.
