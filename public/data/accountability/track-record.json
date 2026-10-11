@@ -111,20 +111,20 @@
    "ticker": "GRASIM",
    "oneYearAhead": {
     "sales-log-error": {
-     "scored": 10,
-     "beatRandomWalk": 8
+     "scored": 3,
+     "beatRandomWalk": 3
     },
     "core-oi-margin-error": {
-     "scored": 10,
-     "beatRandomWalk": 9
+     "scored": 3,
+     "beatRandomWalk": 0
     },
     "core-rnoa-error": {
-     "scored": 10,
-     "beatRandomWalk": 9
+     "scored": 3,
+     "beatRandomWalk": 0
     },
     "cni-roe-point-error": {
-     "scored": 10,
-     "beatRandomWalk": 6
+     "scored": 3,
+     "beatRandomWalk": 3
     }
    }
   },
@@ -200,15 +200,15 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 9
+     "beatRandomWalk": 8
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 9
+     "beatRandomWalk": 10
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 8
+     "beatRandomWalk": 6
     }
    }
   },
@@ -216,20 +216,20 @@
    "ticker": "M&M",
    "oneYearAhead": {
     "sales-log-error": {
-     "scored": 10,
-     "beatRandomWalk": 8
+     "scored": 5,
+     "beatRandomWalk": 4
     },
     "core-oi-margin-error": {
-     "scored": 10,
-     "beatRandomWalk": 6
+     "scored": 5,
+     "beatRandomWalk": 4
     },
     "core-rnoa-error": {
-     "scored": 10,
-     "beatRandomWalk": 5
+     "scored": 5,
+     "beatRandomWalk": 2
     },
     "cni-roe-point-error": {
-     "scored": 10,
-     "beatRandomWalk": 6
+     "scored": 5,
+     "beatRandomWalk": 3
     }
    }
   },

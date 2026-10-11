@@ -3,34 +3,22 @@ import { buildForecastSnapshot, type ForecastSnapshot } from "../../src/engine/a
 import type { ValuationCommandCenterOutput } from "../../src/engine/valuationCommandCenter";
 import { revalueBase } from "../../src/engine/valuationCommandCenter/breakEven";
 import type { CompanyRunState } from "../../src/next/companyRun";
-import { runLibraryCompany } from "../lib/libraryCompanyRun";
 
 export type AppForecastSnapshot =
   | (ForecastSnapshot & { readonly latestReportedPeriod: string })
   | { readonly skipped: string };
 
 /**
- * Today's forecast, frozen from the app's own run of the company: the forecast
- * the Case's Forecast section draws and the value its base card shows, on the
- * run's accounts, window and valuation basis (a lending arm carved out, a
- * transition year at a twelve-month rate). The runner used to rebuild the
- * command center itself, on the whole consolidated history with nothing
- * carved and no quality gate, so it froze values the app never showed (2026-10:
- * Grasim ₹720 against the app's ₹370) and values for runs the app stops before
- * their valuation (Airtel, Paytm, Idea). A run with no base case freezes
- * nothing, and says why.
+ * Today's forecast, frozen from the app's own run of the company (dated at the
+ * freeze, runLibraryCompany): the forecast the Case's Forecast section draws
+ * and the value its base card shows, on the run's accounts, window and
+ * valuation basis (a lending arm carved out, a transition year at a
+ * twelve-month rate). The runner used to rebuild the command center itself,
+ * on the whole consolidated history with nothing carved and no quality gate,
+ * so it froze values the app never showed (2026-10: Grasim ₹720 against the
+ * app's ₹370) and values for runs the app stops before their valuation
+ * (Airtel, Paytm, Idea). A run with no base case freezes nothing, and says why.
  */
-export async function appForecastSnapshot(
-  projectRoot: string,
-  company: LibraryCompany,
-  madeAt: string,
-): Promise<AppForecastSnapshot> {
-  // Dated at the freeze: the packs resolve as of it, as the runner's did.
-  const state = await runLibraryCompany(projectRoot, company, { now: new Date(`${madeAt}T00:00:00.000Z`) });
-  return snapshotFromAppRun(state, company, madeAt);
-}
-
-/** The snapshot of one settled app run (appForecastSnapshot, split out for the tests). */
 export function snapshotFromAppRun(
   state: Exclude<CompanyRunState, { status: "loading" }>,
   company: Pick<LibraryCompany, "ticker" | "type">,
