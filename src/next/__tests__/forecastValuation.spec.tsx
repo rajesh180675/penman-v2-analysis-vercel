@@ -21,6 +21,7 @@ import { INRAbsolute } from "../../engine/types/units";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
 import { crore, percent } from "../format";
 import { ForecastSection } from "../sections/ForecastSection";
+import { MARGIN_HISTORY_YEARS } from "../ui/MarginFadeChart";
 import { SENSITIVITY_G, SENSITIVITY_KE, ValuationSection } from "../sections/ValuationSection";
 
 type CC = ReturnType<typeof buildValuationCommandCenter>;
@@ -76,7 +77,10 @@ describe("Forecast section", () => {
     const result = { ...base, materialization: { ...base.materialization, pipelineResult: { periods: filed } } } as unknown as LegacyAnalysisRunExecutionResult;
     const html = text(renderToStaticMarkup(<ForecastSection result={result} />));
     expect(html).not.toContain("98.7%");
-    expect(html).toContain(`${(cc.anchorPeriod.ratios!.CoreSalesPM! * 100).toFixed(1)}%`);
+    // The chart's table: each reported year beside its margin on the basis.
+    for (const p of cc.basisPeriods.slice(-MARGIN_HISTORY_YEARS)) {
+      expect(html).toContain(`${p.period_end.slice(0, 4)} ${(p.ratios!.CoreSalesPM! * 100).toFixed(1)}%`);
+    }
   });
 
   it("names a carved lending arm, and draws a frozen forecast only of the same business", () => {
