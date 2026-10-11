@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "LT",
+ "companyType": "conglomerate",
+ "madeAt": "2026-10-11",
+ "cutoffPeriod": "2026-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": "L&T Finance"
+ },
+ "assumptions": {
+  "ke": 0.15748308,
+  "kw": 0.2058202093330395,
+  "g": 0.05
+ },
+ "years": [
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 299104.94097256125,
+   "operatingIncome": 19700.374151728964,
+   "noa": 80964.02555869454,
+   "cni": 17532.18926391955,
+   "cse": 105782.37259049295
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 334047.38868354744,
+   "operatingIncome": 22288.169648681647,
+   "noa": 94297.42036611584,
+   "cni": 19835.17701833798,
+   "cse": 123202.9260731294
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 373213.3889043745,
+   "operatingIncome": 25166.90640831169,
+   "noa": 109721.59114225897,
+   "cni": 22397.08560556179,
+   "cse": 143355.15255498263
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 417083.6896749759,
+   "operatingIncome": 28371.499622718326,
+   "noa": 127531.28620541886,
+   "cni": 25248.987519511917,
+   "cse": 166624.1511737393
+  },
+  {
+   "periodEnd": "2031-03-31",
+   "sales": 466199.8692949652,
+   "operatingIncome": 31941.044957408787,
+   "noa": 148059.73137768186,
+   "cni": 28425.67563273955,
+   "cse": 193445.2932912539
+  }
+ ],
+ "intrinsicPerShare": 895.9004511208816,
+ "latestReportedPeriod": "2026-03-31"
+}

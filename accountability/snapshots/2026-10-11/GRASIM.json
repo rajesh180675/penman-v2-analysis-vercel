@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "GRASIM",
+ "companyType": "industrial",
+ "madeAt": "2026-10-11",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": "Aditya Birla Capital"
+ },
+ "assumptions": {
+  "ke": 0.1530156,
+  "kw": 0.10204460968285985,
+  "g": 0.0315
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 120736.7368346675,
+   "operatingIncome": 8124.43179159413,
+   "noa": 158088.64386324966,
+   "cni": 4091.928679773795,
+   "cse": 83280.57845082678
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 134459.7927622767,
+   "operatingIncome": 10305.141849725482,
+   "noa": 178416.72389477293,
+   "cni": 5308.6255411163165,
+   "cse": 93989.34425746111
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 149276.80321266758,
+   "operatingIncome": 12501.561881699676,
+   "noa": 200322.11076050843,
+   "cni": 6526.591853303221,
+   "cse": 105529.03012474992
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 165416.3056197147,
+   "operatingIncome": 14746.602770749774,
+   "noa": 224103.44752319303,
+   "cni": 7764.132817475247,
+   "cse": 118056.96023744976
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 183094.47387844752,
+   "operatingIncome": 17074.129123016286,
+   "noa": 250052.75810751307,
+   "cni": 9040.20458445788,
+   "cse": 131726.97184012827
+  }
+ ],
+ "intrinsicPerShare": 369.7905710981282,
+ "latestReportedPeriod": "2025-03-31"
+}
