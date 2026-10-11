@@ -210,6 +210,12 @@ export interface BankValuationBundle {
   /** Phase D2 — NBFC ROA × Leverage three-stage residual income lens.
    *  Only computed when subtype="nbfc". */
   roaLeverageRI?: BankValuationModelResult | undefined;
+  /**
+   * A bank's book at its sector index's published P/B on the anchor's
+   * month-end (sectorMultiples.ts). Banks only. A corroborating lens: it is
+   * not part of the triangulated value.
+   */
+  sectorRelativePB?: BankValuationModelResult | undefined;
   /** Phase D2 — Through-cycle credit-cost diagnostic (NBFC-only). */
   creditCostCycle?: CreditCostCycleCheck | undefined;
   /** Phase D2 — CRAR-buffer growth governor (NBFC-only). */

@@ -26,6 +26,8 @@ export const FI_MIN_USABLE_PERIODS = 3;
  * - A bank or NBFC is ready when two independent lenses agree within
  *   FI_LENS_AGREEMENT. A bank's justified P/B, residual income and DDM are one
  *   algebra, so a bank with only those is not ready, however close they sit.
+ *   Its book at its sector index's published P/B (sectorMultiples.ts) is a
+ *   second, market lens.
  *
  * Ready resolves "warning" (valuation-eligible). It resolves "production-ready"
  * only for a bank or NBFC

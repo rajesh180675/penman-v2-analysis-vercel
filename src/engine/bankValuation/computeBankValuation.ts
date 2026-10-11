@@ -28,6 +28,7 @@ import {
   eclStressGovernor,
 } from "./nbfcLenses";
 import { buildBankScenarioBundle } from "./scenarios";
+import { sectorRelativePB } from "./sectorMultiples";
 
 // ─── Public entry ───────────────────────────────────────────────────────────
 
@@ -145,6 +146,21 @@ export function computeBankValuation(
     spreadCompressionResult = spreadCompressionCheck(metrics);
   }
 
+  // A bank's book at its sector index's P/B on the anchor's month-end: the
+  // market lens that can corroborate the book algebra above (sectorMultiples.ts).
+  // It does not join the triangulated value below. A market multiple
+  // corroborates an intrinsic value; averaged into it, it would pull every
+  // bank's headline toward its sector's price.
+  const sectorPB = !isInsurance && !isNbfc
+    ? sectorRelativePB({
+      symbol: cfg.market_data_symbol ?? cfg.ticker,
+      latestBookValue: latestBV,
+      anchorPeriod: latest.period_end,
+      analysisAsOf: packs?.analysisAsOf ?? null,
+      marketCap,
+    })
+    : undefined;
+
   const computedValues: Array<[string, number]> = [];
   if (justifiedPB.status === "computed" && justifiedPB.intrinsicValue != null) {
     computedValues.push(["Justified P/B Gordon", justifiedPB.intrinsicValue]);
@@ -220,6 +236,7 @@ export function computeBankValuation(
     evBased,
     pAum,
     roaLeverageRI: roaLevRI,
+    sectorRelativePB: sectorPB,
     creditCostCycle: creditCostCycleResult,
     crarGovernor: crarGovernorResult,
     eclStressGovernor: eclStressResult,

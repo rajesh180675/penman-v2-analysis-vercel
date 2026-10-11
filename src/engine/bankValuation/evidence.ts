@@ -37,9 +37,11 @@ export interface FinancialValuationEvidence {
  * multiple, so it corroborates nothing unless the multiple is a market
  * observation (`diagnostics.multipleSourced === 1`). P/AUM applies a 12× P/E
  * constant: counted, it made Muthoot "two lenses within 30%" on a number
- * nothing sources — the ground #398 held insurers back on for VNB × 12.
+ * nothing sources — the ground #398 held insurers back on for VNB × 12. A
+ * bank's sector index P/B is a published market observation
+ * (sectorMultiples.ts), so it counts.
  */
-const MARKET_MULTIPLE_GROUPS = new Set(["fi-asset-market-multiple"]);
+const MARKET_MULTIPLE_GROUPS = new Set(["fi-asset-market-multiple", "fi-sector-market-multiple"]);
 
 const BUNDLE_MODELS: ReadonlyArray<readonly [keyof BankValuationBundle, string, string]> = [
   ["justifiedPB", "fi.bank.justified-pb-gordon", "justified P/B"],
@@ -48,12 +50,14 @@ const BUNDLE_MODELS: ReadonlyArray<readonly [keyof BankValuationBundle, string, 
   ["roaLeverageRI", "fi.nbfc.roa-leverage-residual-income", "ROA × leverage RI"],
   ["evBased", "fi.insurance.embedded-value-vnb", "embedded value + VNB"],
   ["pAum", "fi.nbfc.p-aum", "P/AUM"],
+  ["sectorRelativePB", "fi.bank.sector-relative-pb", "sector index P/B"],
 ];
 
 const GROUP_LABELS: Readonly<Record<string, string>> = {
   "fi-book-residual-income": "book residual income",
   "actuarial-embedded-value": "embedded value",
   "fi-asset-market-multiple": "asset multiple",
+  "fi-sector-market-multiple": "sector market multiple",
 };
 
 function median(values: readonly number[]): number {
