@@ -5,8 +5,9 @@
  * Capitaline serves LATEST figures (restated where the company later
  * restated); an exchange XBRL filing is the figure AS FIRST REPORTED. A
  * difference is therefore one of three things — a parser/mapping error, a
- * genuine restatement, or a definitional mismatch (e.g. gross vs net revenue)
- * — and each is worth knowing before a number reaches a valuation.
+ * genuine restatement, or a definitional mismatch — and each is worth knowing
+ * before a number reaches a valuation. The one definitional mismatch a filing
+ * itemizes, revenue gross of excise duty, is netted before comparing.
  */
 import type { RecastPeriod } from "../types";
 import type { AnnualHeadline } from "./xbrlInstance";
@@ -67,6 +68,11 @@ export interface TieOutRow {
   /** (capitaline − asFiled) / |asFiled|. */
   readonly relativeDifference: number;
   readonly status: TieOutStatus;
+  /**
+   * What `asFiled` was netted of to compare like with like: revenue from
+   * operations is filed gross of excise duty, Capitaline's revenue is net.
+   */
+  readonly netOf?: { readonly label: string; readonly value: number } | undefined;
 }
 
 export interface AsFiledHeadlineRecord {
@@ -102,7 +108,12 @@ export function tieOutAsFiled(records: readonly AsFiledHeadlineRecord[], periods
     if (!period) continue;
     const inconsistencies = headlineInconsistencies(record.headline);
     for (const field of TIE_OUT_FIELDS) {
-      const asFiled = record.headline[field];
+      // Gross revenue less the excise the filing itemizes: Capitaline's revenue
+      // is net of it (ITC FY18 ₹47,689 Cr filed − ₹4,240 Cr excise = ₹43,449 Cr).
+      const excise = field === "revenue" ? record.headline.exciseDuty ?? null : null;
+      const netOf = excise != null && excise > 0 ? { label: "excise duty", value: excise } : undefined;
+      const reported = record.headline[field];
+      const asFiled = reported != null && netOf ? reported - netOf.value : reported;
       const capitaline = capitalineValue(period, field);
       if (asFiled == null || capitaline == null || !Number.isFinite(capitaline) || asFiled === 0) continue;
       const relativeDifference = (capitaline - asFiled) / Math.abs(asFiled);
@@ -117,6 +128,7 @@ export function tieOutAsFiled(records: readonly AsFiledHeadlineRecord[], periods
           : magnitude <= MATCH_TOLERANCE ? "match"
           : magnitude <= MINOR_TOLERANCE ? "minor"
           : "mismatch",
+        ...(netOf ? { netOf } : {}),
       });
     }
   }

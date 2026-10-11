@@ -20,7 +20,8 @@
     "totalAssets": null,
     "totalEquity": null,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": null
+    "cashFlowFromOperations": null,
+    "exciseDuty": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 105577.25,
@@ -51,7 +52,8 @@
     "totalAssets": null,
     "totalEquity": null,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": null
+    "cashFlowFromOperations": null,
+    "exciseDuty": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 104554.91,
@@ -82,7 +84,8 @@
     "totalAssets": null,
     "totalEquity": null,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": 6078.06
+    "cashFlowFromOperations": 6078.06,
+    "exciseDuty": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 102720.91,
@@ -113,7 +116,8 @@
     "totalAssets": 106362.14,
     "totalEquity": 21617.81,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": 7490.47
+    "cashFlowFromOperations": 7490.47,
+    "exciseDuty": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 102677.38,
@@ -144,7 +148,8 @@
     "totalAssets": 102717.55,
     "totalEquity": 23527.99,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": 673.47
+    "cashFlowFromOperations": 673.47,
+    "exciseDuty": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 99488.45,
@@ -175,7 +180,8 @@
     "totalAssets": 120409.36,
     "totalEquity": 25631.12,
     "equityAttributableToOwners": 25564.06,
-    "cashFlowFromOperations": -16586.5
+    "cashFlowFromOperations": -16586.5,
+    "exciseDuty": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 116992.92,
@@ -206,7 +212,8 @@
     "totalAssets": 142205.31,
     "totalEquity": 28034.03,
     "equityAttributableToOwners": 27983.53,
-    "cashFlowFromOperations": -14189.24
+    "cashFlowFromOperations": -14189.24,
+    "exciseDuty": null
    },
    "lenderBalanceSheet": {
     "financialAssets": 138099.25,

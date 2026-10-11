@@ -20,7 +20,8 @@
     "totalAssets": null,
     "totalEquity": null,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": null
+    "cashFlowFromOperations": null,
+    "exciseDuty": null
    }
   },
   {
@@ -41,7 +42,8 @@
     "totalAssets": null,
     "totalEquity": null,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": null
+    "cashFlowFromOperations": null,
+    "exciseDuty": null
    }
   },
   {
@@ -62,7 +64,8 @@
     "totalAssets": null,
     "totalEquity": null,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": null
+    "cashFlowFromOperations": null,
+    "exciseDuty": null
    }
   },
   {
@@ -83,7 +86,8 @@
     "totalAssets": null,
     "totalEquity": null,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": null
+    "cashFlowFromOperations": null,
+    "exciseDuty": null
    }
   },
   {
@@ -104,7 +108,8 @@
     "totalAssets": null,
     "totalEquity": null,
     "equityAttributableToOwners": null,
-    "cashFlowFromOperations": 19163.58
+    "cashFlowFromOperations": 19163.58,
+    "exciseDuty": null
    }
   },
   {
@@ -125,7 +130,8 @@
     "totalAssets": 330352.31,
     "totalEquity": 103567.22,
     "equityAttributableToOwners": 89325.95,
-    "cashFlowFromOperations": 22776.96
+    "cashFlowFromOperations": 22776.96,
+    "exciseDuty": null
    }
   },
   {
@@ -146,7 +152,8 @@
     "totalAssets": 339627.24,
     "totalEquity": 102549.66,
     "equityAttributableToOwners": 86359.24,
-    "cashFlowFromOperations": 18266.28
+    "cashFlowFromOperations": 18266.28,
+    "exciseDuty": null
    }
   }
  ]

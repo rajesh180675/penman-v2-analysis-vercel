@@ -79,7 +79,8 @@ function AsFiled({ ledger, ticker }: { ledger: readonly TieOutCompany[] | null; 
       <p className="mt-1 text-xs text-slate-500">
         Each year as first filed on NSE against the Capitaline figure analysed. Match within 0.5%, minor within 2%.
         &ldquo;Filing inconsistent&rdquo; means the filing contradicts itself, so it cannot arbitrate. Capitaline serves
-        restated figures, so a difference can be a restatement, a mapping error or a definition gap.
+        restated figures, so a difference can be a restatement, a mapping error or a definition gap. Revenue is
+        compared net of the excise duty a filing itemizes, as Capitaline reports it.
       </p>
       <p className="mt-1 text-sm">
         {rows.length} comparisons: {count("match")} match, {count("minor")} minor, {count("mismatch")} mismatch, {count("filing-inconsistent")} filing inconsistent.
@@ -101,7 +102,10 @@ function AsFiled({ ledger, ticker }: { ledger: readonly TieOutCompany[] | null; 
             {rows.map((r) => (
               <tr key={`${r.fiscalYearEnd}-${r.field}`} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="py-1 pr-2">{r.fiscalYearEnd}</td>
-                <td className="py-1 pr-2">{FIELD_LABEL[r.field]}</td>
+                <td className="py-1 pr-2">
+                  {FIELD_LABEL[r.field]}
+                  {r.netOf ? <span className="block text-slate-500">net of {r.netOf.label} {crore(r.netOf.value)}</span> : null}
+                </td>
                 <td className="py-1 pr-2 text-right tabular-nums">{crore(r.asFiled)}</td>
                 <td className="py-1 pr-2 text-right tabular-nums">{crore(r.capitaline)}</td>
                 <td className="py-1 pr-2 text-right tabular-nums">{(r.relativeDifference * 100).toFixed(1)}%</td>

@@ -150,7 +150,14 @@ export const ANNUAL_HEADLINE_CONCEPTS = {
   cashFlowFromOperations: "CashFlowsFromUsedInOperatingActivities",
 } as const;
 
-export type AnnualHeadline = { -readonly [K in keyof typeof ANNUAL_HEADLINE_CONCEPTS]: number | null };
+export type AnnualHeadline = { -readonly [K in keyof typeof ANNUAL_HEADLINE_CONCEPTS]: number | null } & {
+  /**
+   * Excise duty for the year, where the filing itemizes it among other
+   * expenses ("Excise Duty"): revenue from operations is gross of it.
+   * Null when not itemized. Absent on records extracted before it was read.
+   */
+  exciseDuty?: number | null;
+};
 
 const INSTANT_FIELDS = new Set<keyof AnnualHeadline>(["totalAssets", "totalEquity", "equityAttributableToOwners"]);
 const RUPEES_PER_CRORE = 1e7;
@@ -168,7 +175,38 @@ export function extractAnnualHeadline(instance: XbrlInstance, fiscalYearEnd: str
       : undefined;
     headline[field] = fact?.value != null ? fact.value / RUPEES_PER_CRORE : null;
   }
+  headline.exciseDuty = duration ? itemizedExcise(instance, duration, method) : null;
   return { headline, method };
+}
+
+/**
+ * The year's excise duty, where the filing itemizes it among other expenses:
+ * each item is an `OtherExpenses` fact in its own context, labelled by a
+ * `DescriptionOfOtherExpenses` fact in the same context (ITC FY18: "Excise
+ * Duty" ₹4,239.61 Cr; Asian Paints FY18: "Excise" ₹437.68 Cr). Revenue from
+ * operations is gross of it, which Capitaline's net revenue is not.
+ *
+ * A year's item contexts are named after its YTD context (`FourD` →
+ * `FourOperatingExpenses01D`); the ID is authoritative there, because the
+ * utility stamps those contexts with the quarter's dates, which the quarter's
+ * own items (`OneOperatingExpenses01D`) share. Otherwise an item context
+ * belongs to the year when its dates are the year's.
+ */
+function itemizedExcise(instance: XbrlInstance, duration: XbrlContext, method: AnnualContextMethod): number | null {
+  const inYear = (contextRef: string): boolean => {
+    if (/^FourD$/i.test(duration.id) && method !== "date-span") return /^Four.+D$/i.test(contextRef);
+    const context = instance.contexts.get(contextRef);
+    return context != null && context.startDate === duration.startDate && context.endDate === duration.endDate;
+  };
+  const exciseContexts = new Set(instance.facts
+    .filter((f) => f.concept === "DescriptionOfOtherExpenses" && /excise/i.test(f.text) && inYear(f.contextRef))
+    .map((f) => f.contextRef));
+  if (exciseContexts.size === 0) return null;
+  let total = 0;
+  for (const fact of instance.facts) {
+    if (fact.concept === "OtherExpenses" && exciseContexts.has(fact.contextRef) && fact.value != null) total += fact.value;
+  }
+  return total / RUPEES_PER_CRORE;
 }
 
 /**
