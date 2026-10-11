@@ -1,6 +1,6 @@
 {
  "symbol": "DABUR",
- "source": "NSE corporates-financial-results (Annual, Consolidated)",
+ "source": "NSE corporates-financial-results (Annual) and integrated-filing-results (March quarter), Consolidated",
  "records": [
   {
    "fiscalYearEnd": "2018-03-31",
@@ -153,6 +153,50 @@
     "totalEquity": 10303.08,
     "equityAttributableToOwners": 9866.3,
     "cashFlowFromOperations": 2013.47,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2025-03-31",
+   "filingDate": "2025-05-07T23:04",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1433549_07052025110450_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 12563.09,
+    "profitBeforeTax": 2257.34,
+    "profitAfterTax": 1740.42,
+    "profitFromContinuingOperations": 1739.87,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 1767.63,
+    "financeCosts": 163.5,
+    "totalAssets": 16232.28,
+    "totalEquity": 11210.26,
+    "equityAttributableToOwners": 10800.69,
+    "cashFlowFromOperations": 1986.75,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-07T17:38",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1664481_07052026053844_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 13192.57,
+    "profitBeforeTax": 2422.23,
+    "profitAfterTax": 1868.69,
+    "profitFromContinuingOperations": 1870.49,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 1895.03,
+    "financeCosts": 145.4,
+    "totalAssets": 17479.91,
+    "totalEquity": 11802.75,
+    "equityAttributableToOwners": 11419.52,
+    "cashFlowFromOperations": 2578.62,
     "exciseDuty": null
    }
   }

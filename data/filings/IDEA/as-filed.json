@@ -1,0 +1,182 @@
+{
+ "symbol": "IDEA",
+ "source": "NSE corporates-financial-results (Annual) and integrated-filing-results (March quarter), Consolidated",
+ "records": [
+  {
+   "fiscalYearEnd": "2019-03-31",
+   "filingDate": "2019-05-21T20:10",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_44096_101661_13052019075740_WEB.xml",
+   "extraction": "id-convention-undeclared",
+   "headline": {
+    "revenue": 37092.5,
+    "profitBeforeTax": -18372.2,
+    "profitAfterTax": -14603.9,
+    "profitFromContinuingOperations": -14800.7,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 0,
+    "financeCosts": 9462.8,
+    "totalAssets": null,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": null,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2020-03-31",
+   "filingDate": "2020-07-01T17:38",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_57567_273111_01072020053841_WEB.xml",
+   "extraction": "id-convention-undeclared",
+   "headline": {
+    "revenue": 44957.5,
+    "profitBeforeTax": -62152.3,
+    "profitAfterTax": -73878.1,
+    "profitFromContinuingOperations": -74233.4,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 0,
+    "financeCosts": 15392,
+    "totalAssets": null,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": null,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2021-03-31",
+   "filingDate": "2021-06-30T22:36",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_72559_470120_30062021103609_WEB.xml",
+   "extraction": "id-convention-undeclared",
+   "headline": {
+    "revenue": 41952.2,
+    "profitBeforeTax": -44484.8,
+    "profitAfterTax": -44233.1,
+    "profitFromContinuingOperations": -44464.5,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 0,
+    "financeCosts": 17998.1,
+    "totalAssets": null,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": null,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2022-03-31",
+   "filingDate": "2022-05-10T20:56",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_84203_652787_10052022085642_WEB.xml",
+   "extraction": "id-convention-undeclared",
+   "headline": {
+    "revenue": 38515.5,
+    "profitBeforeTax": -28235.3,
+    "profitAfterTax": -28245.4,
+    "profitFromContinuingOperations": -28246.6,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 0,
+    "financeCosts": 20980.8,
+    "totalAssets": null,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": 17387,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2023-03-31",
+   "filingDate": "2023-05-25T21:34",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_92735_852612_25052023093400.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 42177.2,
+    "profitBeforeTax": -29298.1,
+    "profitAfterTax": -29301.1,
+    "profitFromContinuingOperations": -29301.6,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 0,
+    "financeCosts": 23354.3,
+    "totalAssets": 207242.7,
+    "totalEquity": -74359.1,
+    "equityAttributableToOwners": -74359.1,
+    "cashFlowFromOperations": 18868.7,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2024-03-31",
+   "filingDate": "2024-05-16T19:31",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INDAS_106147_1127302_16052024073122.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 42554.9,
+    "profitBeforeTax": -30404.3,
+    "profitAfterTax": -31238.4,
+    "profitFromContinuingOperations": -31232.9,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 0,
+    "financeCosts": 25765.5,
+    "totalAssets": 184997.7,
+    "totalEquity": -104166.8,
+    "equityAttributableToOwners": -104166.8,
+    "cashFlowFromOperations": 20826.1,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2025-03-31",
+   "filingDate": "2025-05-30T23:25",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1461057_30052025112518_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 43571.3,
+    "profitBeforeTax": -27369.4,
+    "profitAfterTax": -27383.4,
+    "profitFromContinuingOperations": -27385.2,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 0,
+    "financeCosts": 24543.4,
+    "totalAssets": 197866.6,
+    "totalEquity": -70320.2,
+    "equityAttributableToOwners": -70320.2,
+    "cashFlowFromOperations": 9290.634,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-16T18:58",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1668376_16052026065808_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 44873,
+    "profitBeforeTax": 34548,
+    "profitAfterTax": 34552,
+    "profitFromContinuingOperations": 34552,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": null,
+    "financeCosts": 21495,
+    "totalAssets": 191638,
+    "totalEquity": -35758,
+    "equityAttributableToOwners": -35758,
+    "cashFlowFromOperations": 19411,
+    "exciseDuty": null
+   }
+  }
+ ]
+}

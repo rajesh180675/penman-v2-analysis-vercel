@@ -1,6 +1,6 @@
 {
  "symbol": "SUNPHARMA",
- "source": "NSE corporates-financial-results (Annual, Consolidated)",
+ "source": "NSE corporates-financial-results (Annual) and integrated-filing-results (March quarter), Consolidated",
  "records": [
   {
    "fiscalYearEnd": "2018-03-31",
@@ -131,6 +131,50 @@
     "totalEquity": 67105.97,
     "equityAttributableToOwners": 63666.75,
     "cashFlowFromOperations": 12134.98,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2025-03-31",
+   "filingDate": "2025-05-22T20:01",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1447743_22052025080124_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 52578.44,
+    "profitBeforeTax": 13752.13,
+    "profitAfterTax": 10964.75,
+    "profitFromContinuingOperations": 10980.1,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 10929.04,
+    "financeCosts": 231.36,
+    "totalAssets": 92100.58,
+    "totalEquity": 72485.95,
+    "equityAttributableToOwners": 72218.02,
+    "cashFlowFromOperations": 14072.09,
+    "exciseDuty": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-22T18:39",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1671527_22052026063920_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": 58462.04,
+    "profitBeforeTax": 15118.88,
+    "profitAfterTax": 11508.65,
+    "profitFromContinuingOperations": 11564.52,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 11479.42,
+    "financeCosts": 338.91,
+    "totalAssets": 108785.22,
+    "totalEquity": 83879.74,
+    "equityAttributableToOwners": 83570.09,
+    "cashFlowFromOperations": 12419.18,
     "exciseDuty": null
    }
   }
