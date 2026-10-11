@@ -6,7 +6,7 @@
  *   npx tsx scripts/filings/tie-out.ts
  *
  * Writes data/filings/tie-out.json, its browser copy
- * public/data/filings/tie-out.json (read by the Case's Evidence section), and
+ * public/data/filings/tie-out.json (read by the Case's Evidence and Forecast sections), and
  * docs/generated/source-tieout.md.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -16,6 +16,7 @@ import { parseCapitalineZip } from "../../src/engine/capitalineParser";
 import { processCompanyDataFull } from "../../src/engine/pipeline";
 import { DEFAULT_CONFIG } from "../../src/engine/types";
 import { TIE_OUT_FIELDS, tieOutAsFiled, type AsFiledHeadlineRecord, type TieOutRow } from "../../src/engine/filings";
+import { firstFiledYears, type FiledYear } from "../../src/engine/accountability";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "../..");
 const FILINGS = join(ROOT, "data", "filings");
@@ -28,6 +29,8 @@ const results: {
   firstFiling: string | null;
   /** The latest fiscal year on file, by its first filing: what the Case compares its own data's end with. */
   latestFiling: { fiscalYearEnd: string; filingDate: string } | null;
+  /** Each fiscal year as first filed: what the Case's forecast is set against once its years are filed. */
+  filedYears: FiledYear[];
 }[] = [];
 for (const symbol of readdirSync(FILINGS).filter((d) => existsSync(join(FILINGS, d, "as-filed.json"))).sort()) {
   const company = registry.find((c) => c.ticker === symbol);
@@ -45,12 +48,13 @@ for (const symbol of readdirSync(FILINGS).filter((d) => existsSync(join(FILINGS,
     rows: tieOutAsFiled(records, periods),
     firstFiling: records[0]?.filingDate ?? null,
     latestFiling: latestFirst ? { fiscalYearEnd: latestFirst.fiscalYearEnd, filingDate: latestFirst.filingDate } : null,
+    filedYears: firstFiledYears(records),
   });
   console.log(`${symbol}: ${results.at(-1)!.rows.length} comparisons`);
 }
 
 writeFileSync(join(FILINGS, "tie-out.json"), JSON.stringify(results, null, 1) + "\n");
-// The browser copy, read by the Case's Evidence section.
+// The browser copy, read by the Case's Evidence and Forecast sections.
 mkdirSync(join(ROOT, "public", "data", "filings"), { recursive: true });
 writeFileSync(join(ROOT, "public", "data", "filings", "tie-out.json"), JSON.stringify(results, null, 1) + "\n");
 

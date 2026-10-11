@@ -1,11 +1,12 @@
 /**
  * Case §4 — Forecast: the base scenario year by year, driver shifts the reader
  * can edit with the value re-computed live along the base card's own path
- * (revalueBase), and the forecast's track record beside the drivers.
+ * (revalueBase), the forecast's track record beside the drivers, and the base
+ * case set against any of its years the company has filed since.
  */
 import { useMemo, useState } from "react";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
-import type { CompanyTrackRecord } from "../../engine/accountability";
+import { forecastYears, scoreSnapshotAgainstFilings, type CompanyTrackRecord, type FiledScore, type FiledYear, type ForecastToScore } from "../../engine/accountability";
 import { formatPerShare } from "../../engine/valuationCommandCenter";
 import { revalueBase, type BaseCaseShifts } from "../../engine/valuationCommandCenter/breakEven";
 import { crore, percent } from "../format";
@@ -26,12 +27,21 @@ export function ForecastSection({
   result,
   trackRecord = null,
   frozen = null,
+  filedYears = null,
+  accounts = "consolidated",
+  asOf = null,
   initialShifts = {},
 }: {
   result: LegacyAnalysisRunExecutionResult;
   trackRecord?: CompanyTrackRecord | null;
   /** The company's most recently frozen forecast, drawn beside the current one. */
   frozen?: FrozenForecast | null;
+  /** The company's years as first filed (the as-filed ledger); null when the ledger has none. */
+  filedYears?: readonly FiledYear[] | null;
+  /** The accounts the run analysed. */
+  accounts?: "consolidated" | "standalone";
+  /** The as-of date of the view, when it is one. */
+  asOf?: string | null;
   /** Shifts in fractions (0.01 = 1pp); for deep links and tests. */
   initialShifts?: BaseCaseShifts;
 }) {
@@ -147,6 +157,85 @@ export function ForecastSection({
       </div>
 
       <TrackRecord record={trackRecord} />
+
+      {filedYears && base.forecast && (
+        <AgainstFiled
+          forecast={{
+            cutoffPeriod: cc.anchorPeriod.period_end,
+            latestReportedPeriod: result.materialization.pipelineResult?.periods.at(-1)?.period_end ?? cc.anchorPeriod.period_end,
+            basis: { accounts, lendingArm: cc.lendingArm?.status === "applied" ? cc.lendingArm.link.arm.name : null },
+            years: forecastYears(cc.anchorPeriod.period_end, base.forecast),
+          }}
+          filedYears={filedYears}
+          asOf={asOf}
+        />
+      )}
+    </div>
+  );
+}
+
+const signed = (x: number, unit: string) => `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)}${unit}`;
+/** A score's error as the reader reads it: sales as forecast ÷ filed − 1, earnings in ROE points. */
+const shownError = (metric: FiledScore["metric"], error: number) =>
+  metric === "sales-log-error" ? signed(Math.expm1(error), "%") : signed(error, " pts");
+
+/**
+ * The base case beside what the company has since filed for the years its
+ * data did not reach: the library's Capitaline exports are refreshed by hand,
+ * so a case can run a year behind the company's published results (#443), and
+ * those results are the forecast's first test. Scored as the frozen-forecast
+ * report scores (scoreSnapshotAgainstFilings): first filings, consolidated,
+ * only years after the data, and not at all for a business the filings do not
+ * describe. The base case, not the reader's edits: a case changed after
+ * seeing the outcome would be scored against what it was fitted to.
+ */
+function AgainstFiled({ forecast, filedYears, asOf }: { forecast: ForecastToScore; filedYears: readonly FiledYear[]; asOf: string | null }) {
+  const { scores, skipped } = scoreSnapshotAgainstFilings(forecast, filedYears);
+  const years = [...new Set(scores.map((s) => s.periodEnd))];
+  return (
+    <div className="wb-surface overflow-x-auto rounded-xl border p-4 shadow-sm">
+      <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Against the results filed since</h2>
+      <p className="mt-1 text-xs text-slate-500">
+        The base case beside what the company has filed on NSE for the years its data did not reach: consolidated, as first
+        reported, ₹ crore. Sales are net of the excise duty a filing itemizes. Earnings set forecast CNI against the owners&rsquo;
+        profit filed, which includes one-offs the forecast does not model, with errors in points of the opening year&rsquo;s filed
+        owners&rsquo; equity. &ldquo;Nothing changes&rdquo; repeats {forecast.cutoffPeriod}&rsquo;s filed figures.
+        {asOf && " In an as-of view the forecast is made from Capitaline's history, which can include restatements filed after that date."}
+      </p>
+      {skipped ? (
+        <div className="mt-2"><Withheld reason={`Not compared: ${skipped}.`} /></div>
+      ) : !years.length ? (
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          Nothing has been filed yet for a year after this case&rsquo;s data, which runs to {forecast.latestReportedPeriod ?? forecast.cutoffPeriod}.
+        </p>
+      ) : (
+        <table className="mt-2 w-full text-sm">
+          <thead>
+            <tr className="text-right text-xs text-slate-500">
+              <th className="py-1 text-left font-medium">Year</th>
+              <th className="py-1 text-left font-medium">Measure</th>
+              <th className="py-1 font-medium">Forecast</th>
+              <th className="py-1 font-medium">Filed</th>
+              <th className="py-1 font-medium">Forecast error</th>
+              <th className="py-1 font-medium">&ldquo;Nothing changes&rdquo; error</th>
+              <th className="py-1 font-medium">Closer</th>
+            </tr>
+          </thead>
+          <tbody>
+            {years.flatMap((year) => scores.filter((s) => s.periodEnd === year).map((s) => (
+              <tr key={`${year}-${s.metric}`} className="border-t border-slate-100 text-right tabular-nums dark:border-slate-800">
+                <th scope="row" className="py-1 text-left font-normal">{year}</th>
+                <td className="py-1 text-left">{s.metric === "sales-log-error" ? "Sales" : "Earnings"}</td>
+                <td className="py-1">{crore(s.forecast)}</td>
+                <td className="py-1">{crore(s.actual)}</td>
+                <td className="py-1">{shownError(s.metric, s.model)}</td>
+                <td className="py-1">{shownError(s.metric, s.randomWalk)}</td>
+                <td className="py-1">{Math.abs(s.model) < Math.abs(s.randomWalk) ? "Forecast" : "Nothing changes"}</td>
+              </tr>
+            )))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

@@ -194,6 +194,22 @@ describe("frozen forecasts scored against filings", () => {
     const cni = scores.find((s) => s.metric === "cni-roe-point-error")!;
     expect(cni.model).toBeCloseTo((105 - 120) / 1000, 12);
     expect(cni.randomWalk).toBeCloseTo((100 - 120) / 1000, 12);
+    // The figures behind each error, for a reader to see: net sales, owners' profit.
+    expect([sales.forecast, sales.actual, cni.forecast, cni.actual]).toEqual([1100, 1100, 105, 120]);
+  });
+
+  it("reads each fiscal year as first filed, not as revised later", async () => {
+    const { firstFiledYears } = await import("..");
+    const record = (fiscalYearEnd: string, filingDate: string, revenue: number) => ({
+      fiscalYearEnd, filingDate,
+      headline: { revenue, exciseDuty: null, profitAttributableToOwners: 10, equityAttributableToOwners: 100 },
+    });
+    const years = firstFiledYears([
+      record("2026-03-31", "2026-07-30T10:00", 999), // a revision, filed after the first
+      record("2026-03-31", "2026-05-02T18:00", 1100),
+      record("2025-03-31", "2025-05-03T18:00", 1000),
+    ]);
+    expect(years.map((y) => `${y.fiscalYearEnd}:${y.revenue}`)).toEqual(["2025-03-31:1000", "2026-03-31:1100"]);
   });
 
   it("does not score a year the forecast's data covered: an anchor that walked back saw it", async () => {

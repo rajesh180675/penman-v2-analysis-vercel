@@ -63,8 +63,6 @@ export function buildForecastSnapshot(input: {
   assumptions: { ke: number; kw: number; g: number };
   intrinsicPerShare: number | null;
 }): ForecastSnapshot {
-  const baseYear = Number(input.cutoff.period_end.slice(0, 4));
-  const suffix = input.cutoff.period_end.slice(4);
   return {
     schemaVersion: FORECAST_SNAPSHOT_SCHEMA_VERSION,
     ticker: input.ticker,
@@ -74,16 +72,23 @@ export function buildForecastSnapshot(input: {
     model: "command-center-base",
     basis: input.basis,
     assumptions: input.assumptions,
-    years: input.forecast.map((f, i) => ({
-      periodEnd: `${baseYear + i + 1}${suffix}`,
-      sales: f.Sales_f,
-      operatingIncome: f.OI_f,
-      noa: f.NOA_f,
-      cni: f.CNI_f,
-      cse: f.CSE_f,
-    })),
+    years: forecastYears(input.cutoff.period_end, input.forecast),
     intrinsicPerShare: input.intrinsicPerShare,
   };
+}
+
+/** A forecast's years, each dated a fiscal year after the one before, from the cutoff. */
+export function forecastYears(cutoffPeriod: string, forecast: readonly ForecastPeriod[]): ForecastSnapshot["years"] {
+  const baseYear = Number(cutoffPeriod.slice(0, 4));
+  const suffix = cutoffPeriod.slice(4);
+  return forecast.map((f, i) => ({
+    periodEnd: `${baseYear + i + 1}${suffix}`,
+    sales: f.Sales_f,
+    operatingIncome: f.OI_f,
+    noa: f.NOA_f,
+    cni: f.CNI_f,
+    cse: f.CSE_f,
+  }));
 }
 
 /**
@@ -124,14 +129,56 @@ export interface FiledYear {
   readonly equityAttributableToOwners: number | null;
 }
 
+/**
+ * Each fiscal year as first filed: the figure as originally reported, before
+ * any revision filed later (data/filings/<SYMBOL>/as-filed.json records).
+ */
+export function firstFiledYears(records: readonly {
+  readonly fiscalYearEnd: string;
+  readonly filingDate: string;
+  readonly headline: {
+    readonly revenue: number | null;
+    readonly exciseDuty?: number | null | undefined;
+    readonly profitAttributableToOwners: number | null;
+    readonly equityAttributableToOwners: number | null;
+  };
+}[]): FiledYear[] {
+  const first = new Map<string, (typeof records)[number]>();
+  for (const r of [...records].sort((a, b) => a.filingDate.localeCompare(b.filingDate))) {
+    if (!first.has(r.fiscalYearEnd)) first.set(r.fiscalYearEnd, r);
+  }
+  return [...first.values()]
+    .sort((a, b) => a.fiscalYearEnd.localeCompare(b.fiscalYearEnd))
+    .map((r) => ({
+      fiscalYearEnd: r.fiscalYearEnd,
+      revenue: r.headline.revenue,
+      exciseDuty: r.headline.exciseDuty ?? null,
+      profitAttributableToOwners: r.headline.profitAttributableToOwners,
+      equityAttributableToOwners: r.headline.equityAttributableToOwners,
+    }));
+}
+
 export interface FiledScore {
   readonly metric: "sales-log-error" | "cni-roe-point-error";
   readonly periodEnd: string;
   /** Years after the snapshot's cutoff. */
   readonly horizon: number;
+  /** ₹ crore: forecast sales or CNI, beside the filed net revenue or owners' profit. */
+  readonly forecast: number;
+  readonly actual: number;
   readonly model: number;
   /** The same error for "the cutoff year again", from the same filings. */
   readonly randomWalk: number;
+}
+
+/** What scoreSnapshotAgainstFilings reads: a frozen snapshot, or a run's base forecast. */
+export interface ForecastToScore {
+  readonly cutoffPeriod: string;
+  /** The last period the forecast's data reached: later than the cutoff when the anchor walked back. */
+  readonly latestReportedPeriod?: string | undefined;
+  /** Absent on v1 snapshots. */
+  readonly basis?: ForecastSnapshotBasis | undefined;
+  readonly years: ForecastSnapshot["years"];
 }
 
 /**
@@ -151,10 +198,10 @@ export interface FiledScore {
  * filed owners' equity.
  */
 export function scoreSnapshotAgainstFilings(
-  snapshot: ForecastSnapshot & { readonly latestReportedPeriod?: string | undefined },
+  snapshot: ForecastToScore,
   filings: readonly FiledYear[],
 ): { readonly scores: FiledScore[]; readonly skipped: string | null } {
-  const basis = (snapshot as Partial<ForecastSnapshot>).basis;
+  const basis = snapshot.basis;
   if (basis?.lendingArm) {
     return { scores: [], skipped: `a forecast of the business without ${basis.lendingArm}; the consolidated filings describe another business` };
   }
@@ -175,13 +222,13 @@ export function scoreSnapshotAgainstFilings(
     const sales = netRevenue(actual);
     const cutoffSales = netRevenue(cutoff);
     if (sales != null && sales > 0 && cutoffSales != null && cutoffSales > 0 && year.sales > 0) {
-      scores.push({ metric: "sales-log-error", periodEnd: year.periodEnd, horizon: i + 1, model: Math.log(year.sales / sales), randomWalk: Math.log(cutoffSales / sales) });
+      scores.push({ metric: "sales-log-error", periodEnd: year.periodEnd, horizon: i + 1, forecast: year.sales, actual: sales, model: Math.log(year.sales / sales), randomWalk: Math.log(cutoffSales / sales) });
     }
     const profit = actual.profitAttributableToOwners;
     const scale = opening?.equityAttributableToOwners ?? null;
     const cutoffProfit = cutoff.profitAttributableToOwners;
     if (profit != null && cutoffProfit != null && scale != null && scale > 0) {
-      scores.push({ metric: "cni-roe-point-error", periodEnd: year.periodEnd, horizon: i + 1, model: (year.cni - profit) / scale, randomWalk: (cutoffProfit - profit) / scale });
+      scores.push({ metric: "cni-roe-point-error", periodEnd: year.periodEnd, horizon: i + 1, forecast: year.cni, actual: profit, model: (year.cni - profit) / scale, randomWalk: (cutoffProfit - profit) / scale });
     }
   });
   return { scores, skipped: null };

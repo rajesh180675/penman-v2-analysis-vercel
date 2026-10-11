@@ -21,6 +21,9 @@ import { INRAbsolute } from "../../engine/types/units";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
 import { crore, percent } from "../format";
 import { ForecastSection } from "../sections/ForecastSection";
+import { CasePage } from "../CasePage";
+import { caseRoute } from "../route";
+import type { LibraryCompany } from "../../components/data-entry/companyRegistry";
 import { MARGIN_HISTORY_YEARS } from "../ui/MarginFadeChart";
 import { SENSITIVITY_G, SENSITIVITY_KE, ValuationSection } from "../sections/ValuationSection";
 
@@ -106,6 +109,71 @@ describe("Forecast section", () => {
     const uncarved = text(renderToStaticMarkup(<ForecastSection result={resultFor(cc)} frozen={frozen()} />));
     expect(uncarved).toContain("Forecast frozen 2026-10-08");
     expect(uncarved).not.toContain("Without ");
+  });
+
+  // The library's exports run a year behind what 20 of 23 companies have filed
+  // (#443): the filed year is the base case's first test, scored as the frozen
+  // forecasts are (scoreSnapshotAgainstFilings).
+  describe("against the results filed since", () => {
+    const cc = () => built.TCS!;
+    const anchor = () => cc().anchorPeriod.period_end;
+    const nextYear = () => `${Number(anchor().slice(0, 4)) + 1}${anchor().slice(4)}`;
+    const OPENING_EQUITY = 100_000;
+    /** The anchor year and the one after, filed: sales 10% under the forecast, owners' profit 2 ROE points under it. */
+    const filedYears = () => {
+      const f = revalueBase(cc())!.forecast![0]!;
+      const sales = f.Sales_f / 1.1;
+      const profit = f.CNI_f - 0.02 * OPENING_EQUITY;
+      return [
+        { fiscalYearEnd: anchor(), revenue: sales / 1.05, exciseDuty: null, profitAttributableToOwners: profit - 0.05 * OPENING_EQUITY, equityAttributableToOwners: OPENING_EQUITY },
+        { fiscalYearEnd: nextYear(), revenue: sales, exciseDuty: null, profitAttributableToOwners: profit, equityAttributableToOwners: OPENING_EQUITY * 1.1 },
+      ];
+    };
+    const tcsCompany = { folder: "Tata Consultancy Services Ltd", name: "Tata Consultancy Services", ticker: "TCS", sector: "IT", type: "it-services", description: "", emoji: "" } as LibraryCompany;
+    const caseHtml = (basis: "consolidated" | "standalone", years: ReturnType<typeof filedYears> | null) => {
+      const result = { ...resultFor(cc()), run: { family: "industrial", trustEnvelope: { confidence: { status: "ready", headline: "Ready", tone: "emerald" }, rigor: { currentLabel: "Production ready" } } } } as unknown as LegacyAnalysisRunExecutionResult;
+      const ledger = years ? [{ symbol: "TCS", firstFiling: null, rows: [], latestFiling: null, filedYears: years }] : [];
+      return text(renderToStaticMarkup(
+        <CasePage route={{ ...caseRoute("TCS"), section: "forecast" }} company={tcsCompany} run={{ status: "ready", result, basis }} tieOut={ledger} />,
+      ));
+    };
+
+    it("sets the base case's first year beside what was filed, with the random walk", () => {
+      const f = revalueBase(cc())!.forecast![0]!;
+      const [cutoff, filed] = filedYears();
+      const html = caseHtml("consolidated", filedYears());
+      expect(html).toContain("Against the results filed since");
+      // Forecast 10% above filed sales; the anchor year again is 4.8% under them, so closer.
+      expect(html).toContain(`${nextYear()} Sales ${crore(f.Sales_f)} ${crore(filed!.revenue)} +10.0% -4.8% Nothing changes`);
+      // Earnings 2 points of the opening year's filed equity above; the anchor year again, 5 under.
+      expect(html).toContain(`${nextYear()} Earnings ${crore(f.CNI_f)} ${crore(filed!.profitAttributableToOwners)} +2.0 pts -5.0 pts Forecast`);
+      expect(html).toContain(`repeats ${cutoff!.fiscalYearEnd}’s filed figures`);
+    });
+
+    it("scores the base case, not the reader's edits", () => {
+      const edited = revalueBase(cc(), { sales_growth: 0.05 })!.forecast![0]!;
+      const f = revalueBase(cc())!.forecast![0]!;
+      const html = text(renderToStaticMarkup(<ForecastSection result={resultFor(cc())} filedYears={filedYears()} initialShifts={{ sales_growth: 0.05 }} />));
+      expect(html).toContain(`${nextYear()} Sales ${crore(f.Sales_f)} `);
+      expect(html).not.toContain(`${nextYear()} Sales ${crore(edited.Sales_f)} `);
+    });
+
+    it("scores no year the case's data reached, and says how far the data runs", () => {
+      const base = resultFor(cc());
+      const walkedBack = { ...base, materialization: { ...base.materialization, pipelineResult: { periods: [{ period_end: nextYear() }] } } } as unknown as LegacyAnalysisRunExecutionResult;
+      const html = text(renderToStaticMarkup(<ForecastSection result={walkedBack} filedYears={filedYears()} />));
+      expect(html).toContain(`Nothing has been filed yet for a year after this case’s data, which runs to ${nextYear()}.`);
+      expect(html).not.toContain(`${nextYear()} Sales`);
+    });
+
+    it("does not compare a business the consolidated filings do not describe", () => {
+      expect(caseHtml("standalone", filedYears())).toContain("Not compared: a forecast on standalone accounts; the ledger is consolidated.");
+      const carved = { ...cc(), lendingArm: { status: "applied", link: { arm: { name: "X Finance", nseSymbol: "XFIN" } } } } as unknown as CC;
+      expect(text(renderToStaticMarkup(<ForecastSection result={resultFor(carved)} filedYears={filedYears()} />)))
+        .toContain("Not compared: a forecast of the business without X Finance; the consolidated filings describe another business.");
+      // No ledger for the company: no panel.
+      expect(caseHtml("consolidated", null)).not.toContain("Against the results filed since");
+    });
   });
 
   it("re-values an edit within 150 ms on the largest bundled company", () => {
