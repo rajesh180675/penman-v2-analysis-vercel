@@ -193,10 +193,34 @@ function TrackRecordLine({ record }: { record: CompanyTrackRecord | null }) {
 }
 
 const DRIVER_LABEL: Record<BreakEvenResult["driver"], string> = {
-  sales_growth: "Sales growth (year 1)",
-  core_sales_pm: "Core operating margin (year 1)",
+  sales_growth: "Sales growth",
+  core_sales_pm: "Core operating margin",
   ke: "Cost of equity",
+  g: "Terminal growth",
 };
+
+/**
+ * The solver shifts the whole growth or margin path in parallel, so a row
+ * labelled with year 1 alone read as one year's growth carrying the price
+ * (Britannia: "28.2%" was 18.9 points more in every forecast year).
+ */
+const PATH_DRIVERS: ReadonlySet<BreakEvenResult["driver"]> = new Set(["sales_growth", "core_sales_pm"]);
+const signedPoints = (x: number) => `${x >= 0 ? "+" : "−"}${Math.abs(x * 100).toFixed(1)} points`;
+
+function priceRequires(r: BreakEvenResult & { breakEven: number }, riskless: number | null): string {
+  const value = formatPct(r.breakEven, 1);
+  if (PATH_DRIVERS.has(r.driver)) return `${value} in year 1 (${signedPoints(r.breakEven - r.base)} in every forecast year)`;
+  if (r.driver === "g" && riskless != null && r.breakEven > riskless) {
+    return `${value}, above the ${formatPct(riskless, 2)} riskless rate the cost of equity is built on`;
+  }
+  return value;
+}
+
+function beyondRange(driver: BreakEvenResult["driver"]): string {
+  return driver === "g"
+    ? "No terminal growth below the discount rates reaches the price."
+    : "No value within the searched range reaches the price.";
+}
 
 /**
  * What would change our mind: for each key base-case driver, the value at
@@ -207,10 +231,16 @@ function ChangeOurMind({ cc, noPrice }: { cc: CommandCenter; noPrice: string }) 
   // spreads new driver arrays and never mutates), so viewing it through the
   // engine's mutable type is safe — the same seam the current shell uses.
   const results = useMemo(() => solveBreakEvens(cc as unknown as Parameters<typeof solveBreakEvens>[0]), [cc]);
+  // The rate ke starts from: the risk-free rate less the sovereign default spread it nets.
+  const coc = cc.costOfCapital;
+  const riskless = coc.equityMode === "manual" ? null : coc.riskFreeRate - (coc.sovereignDefaultSpread ?? 0);
   return (
     <div className="wb-surface rounded-xl border p-4 shadow-sm">
       <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">What would change our mind</h2>
-      <p className="mt-1 text-xs text-slate-500">The value each base-case driver would need, on its own, for the base case to equal today's price.</p>
+      <p className="mt-1 text-xs text-slate-500">
+        The value each base-case driver would need, on its own, for the base case to equal today's price. Sales growth and
+        margin move by the same points in every forecast year.
+      </p>
       <table className="mt-3 w-full text-sm">
         <thead>
           <tr className="text-left text-xs text-slate-500">
@@ -224,14 +254,16 @@ function ChangeOurMind({ cc, noPrice }: { cc: CommandCenter; noPrice: string }) 
             <tr key={r.driver} className="border-t border-slate-100 dark:border-slate-800">
               <td className="py-2 text-slate-700 dark:text-slate-300">{DRIVER_LABEL[r.driver]}</td>
               <td className="py-2 font-medium">
-                {Number.isFinite(r.base) ? formatPct(r.base, 1) : <Withheld reason="The run has no base-case forecast." />}
+                {Number.isFinite(r.base)
+                  ? `${formatPct(r.base, 1)}${PATH_DRIVERS.has(r.driver) ? " in year 1" : ""}`
+                  : <Withheld reason="The run has no base-case forecast." />}
               </td>
               <td className="py-2 font-medium">
                 {r.breakEven != null
-                  ? formatPct(r.breakEven, 1)
+                  ? priceRequires({ ...r, breakEven: r.breakEven }, riskless)
                   : <Withheld reason={
                       r.reason === "no-price" ? noPrice
-                        : r.reason === "beyond-range" ? "No value within the searched range reaches the price."
+                        : r.reason === "beyond-range" ? beyondRange(r.driver)
                           : "The base case produced no value."
                     } />}
               </td>

@@ -23,9 +23,29 @@ describe("break-even drivers", () => {
   it("reproduces the base card's value exactly with no shift", () => {
     const base = cc.scenarios.find((s) => s.key === "base")!;
     expect(base.intrinsicPerShare).not.toBeNull();
-    for (const driver of ["sales_growth", "core_sales_pm", "ke"] as const) {
+    for (const driver of ["sales_growth", "core_sales_pm", "ke", "g"] as const) {
       expect(baseValueWithShift(cc, driver, 0)).toBeCloseTo(base.intrinsicPerShare!, 9);
     }
+  });
+
+  it("solves terminal growth up to the edge of the discount rates, where halving the range stepped past it", () => {
+    // The largest terminal-growth shift that still values: just under the
+    // discount rates. A price that needs a shift just short of it was out of
+    // reach when the invalid end was halved (0.15 → 0.075 → 0.0375 …).
+    let valid = 0, invalid = 0.15;
+    for (let i = 0; i < 40; i++) {
+      const mid = (valid + invalid) / 2;
+      if (baseValueWithShift(cc, "g", mid) == null) invalid = mid; else valid = mid;
+    }
+    const shift = valid * 0.98;
+    let halved = 0.15;
+    while (baseValueWithShift(cc, "g", halved) == null) halved /= 2;
+    expect(shift).toBeGreaterThan(halved);
+
+    const price = baseValueWithShift(cc, "g", shift)!;
+    const result = solveBreakEven({ ...cc, marketPrice: price }, "g");
+    expect(result.reason).toBeNull();
+    expect(result.breakEven! - result.base).toBeCloseTo(shift, 6);
   });
 
   it("moves value the economically right way", () => {
