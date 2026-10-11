@@ -1,5 +1,5 @@
 {
- "madeAt": "2026-10-08",
+ "madeAt": "2026-10-11",
  "basis": "Walk-forward backtest of the base forecast (scripts/accountability/run-all.ts); one year ahead, against a random walk. Capitaline serves restated figures, so the record sees restatements of its own history.",
  "companies": [
   {

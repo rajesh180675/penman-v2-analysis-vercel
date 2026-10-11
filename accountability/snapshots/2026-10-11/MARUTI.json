@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "MARUTI",
+ "companyType": "industrial",
+ "madeAt": "2026-10-11",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.13243404,
+  "kw": 0.26845309404373224,
+  "g": 0.05
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 169690.96455285014,
+   "operatingIncome": 14963.687458189326,
+   "noa": 34007.53012893326,
+   "cni": 15264.235811137914,
+   "cse": 105188.97416478994
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 189500.45222422743,
+   "operatingIncome": 15960.856157868437,
+   "noa": 37462.84572345975,
+   "cni": 16290.704132111865,
+   "cse": 115876.63955612673
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 212566.48526813748,
+   "operatingIncome": 17205.64987650058,
+   "noa": 41510.34454514387,
+   "cni": 17570.124618923073,
+   "cse": 128395.99181052414
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 239191.95280092928,
+   "operatingIncome": 18708.906495313113,
+   "noa": 46196.56577802611,
+   "cni": 19113.688845373737,
+   "cse": 142890.98166504325
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 269753.11326061195,
+   "operatingIncome": 20489.127681197308,
+   "noa": 51582.68058533561,
+   "cni": 20940.395579978394,
+   "cse": 159550.81815321703
+  }
+ ],
+ "intrinsicPerShare": 3887.0633254829545,
+ "latestReportedPeriod": "2025-03-31"
+}

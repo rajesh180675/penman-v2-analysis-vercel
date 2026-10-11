@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "BRITANNIA",
+ "companyType": "consumer",
+ "madeAt": "2026-10-11",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.10987008,
+  "kw": 0.11450817593938067,
+  "g": 0.05
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 19603.0066401074,
+   "operatingIncome": 2319.5307636963166,
+   "noa": 3096.7803219552793,
+   "cni": 2329.416719987993,
+   "cse": 4858.274619277581
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 21522.047017919536,
+   "operatingIncome": 2479.928737386239,
+   "noa": 3466.5471886717933,
+   "cni": 2490.976299939863,
+   "cse": 5438.370330582149
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 23715.463707184692,
+   "operatingIncome": 2668.753255528432,
+   "noa": 3889.872288920457,
+   "cni": 2681.1357709853874,
+   "cse": 6102.488988163479
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 26203.918376456793,
+   "operatingIncome": 2887.341734197843,
+   "noa": 4371.69295046629,
+   "cni": 2901.2478144026154,
+   "cse": 6858.37634460137
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 29012.73435554631,
+   "operatingIncome": 3137.6527402972342,
+   "noa": 4917.749397756809,
+   "cni": 3153.2889698262516,
+   "cse": 7715.037748626762
+  }
+ ],
+ "intrinsicPerShare": 1548.985482919919,
+ "latestReportedPeriod": "2025-03-31"
+}

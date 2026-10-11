@@ -1,5 +1,5 @@
 {
- "madeAt": "2026-10-08",
+ "madeAt": "2026-10-11",
  "overall": {
   "schemaVersion": "2026-09-forecast-accountability-v1",
   "companies": 23,
@@ -2816,12 +2816,6 @@
    "lagYears": 0
   },
   {
-   "ticker": "BHARTIARTL",
-   "cutoff": "2024-03-31",
-   "latest": "2025-03-31",
-   "lagYears": 1
-  },
-  {
    "ticker": "BRITANNIA",
    "cutoff": "2025-03-31",
    "latest": "2025-03-31",
@@ -2847,9 +2841,9 @@
   },
   {
    "ticker": "ITC",
-   "cutoff": "2024-03-31",
+   "cutoff": "2025-03-31",
    "latest": "2025-03-31",
-   "lagYears": 1
+   "lagYears": 0
   },
   {
    "ticker": "INFY",
@@ -2886,12 +2880,6 @@
    "cutoff": "2025-03-31",
    "latest": "2025-03-31",
    "lagYears": 0
-  },
-  {
-   "ticker": "PAYTM",
-   "cutoff": "2024-03-31",
-   "latest": "2025-03-31",
-   "lagYears": 1
   },
   {
    "ticker": "POWERGRID",
@@ -2934,12 +2922,20 @@
    "cutoff": "2025-03-31",
    "latest": "2025-03-31",
    "lagYears": 0
+  }
+ ],
+ "notValued": [
+  {
+   "ticker": "BHARTIARTL",
+   "reason": "the app's run has no base forecast (LEGACY_VALUATION_POLICY_BLOCKED): Analysis run blocked at model-execution: Terminal period has 2 flags (score 4). Primary valuation uses RE_T-1+growth anchor. As-reported shown for reference."
+  },
+  {
+   "ticker": "PAYTM",
+   "reason": "the app's run has no base forecast (LEGACY_VALUATION_POLICY_BLOCKED): Analysis run blocked at model-execution: Terminal period has 2 flags (score 3). Primary valuation uses RE_T-1+growth anchor. As-reported shown for reference."
   },
   {
    "ticker": "IDEA",
-   "cutoff": "2024-03-31",
-   "latest": "2025-03-31",
-   "lagYears": 1
+   "reason": "the app's run has no base forecast (LEGACY_VALUATION_POLICY_BLOCKED): Analysis run blocked at model-execution: Terminal period structurally compromised (4 flags, score 8). Primary valuation uses prior-period anchor. As-reported CV3 shown for reference only."
   }
  ]
 }

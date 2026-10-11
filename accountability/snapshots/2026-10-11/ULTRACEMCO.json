@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "ULTRACEMCO",
+ "companyType": "cyclical",
+ "madeAt": "2026-10-11",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.15205272,
+  "kw": 0.12100832014812721,
+  "g": 0.0315
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 82286.70360517327,
+   "operatingIncome": 7930.25284862553,
+   "noa": 98179.24381461204,
+   "cni": 7032.481353792241,
+   "cse": 73792.17070077469
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 88877.80522930111,
+   "operatingIncome": 8871.972378707365,
+   "noa": 102834.57256331944,
+   "cni": 7931.900752910807,
+   "cse": 77291.14665888563
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 95820.09774486822,
+   "operatingIncome": 9819.416601246794,
+   "noa": 108083.84272526467,
+   "cni": 8831.80118634789,
+   "cse": 81236.53292175166
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 103188.4163906535,
+   "operatingIncome": 10785.49697782481,
+   "noa": 113960.62504757666,
+   "cni": 9744.710030388103,
+   "cse": 85653.56148553043
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 111046.98082329013,
+   "operatingIncome": 11781.729806267233,
+   "noa": 120494.76784783576,
+   "cni": 10681.826094425083,
+   "cse": 90564.66654364656
+  }
+ ],
+ "intrinsicPerShare": 1723.4451557899997,
+ "latestReportedPeriod": "2025-03-31"
+}
