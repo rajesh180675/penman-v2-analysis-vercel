@@ -37,6 +37,7 @@ void _tierUnionsAgree;
 const LABELS: Record<string, string> = {
   "risk-free-rate": "Risk-free rate",
   "equity-risk-premium": "Equity risk premium",
+  "sovereign-default-spread": "Sovereign default spread",
   "beta": "Beta",
   "terminal-growth-ceiling": "Terminal growth ceiling",
 };
@@ -127,6 +128,7 @@ export function buildAssumptionProvenance(
   const checks = [
     assumptions.riskFreeRate,
     assumptions.equityRiskPremium,
+    ...(assumptions.sovereignDefaultSpread ? [assumptions.sovereignDefaultSpread] : []),
     assumptions.beta,
     assumptions.terminalGrowthCeiling,
   ].map(toCheck);

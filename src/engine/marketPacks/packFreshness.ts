@@ -146,7 +146,7 @@ export function checkPackFreshness(input: {
 
   const macro = input.macroPack;
   if (macro) {
-    const keys: readonly MacroObservationKey[] = ["riskFreeRate", "equityRiskPremium", "longRunNominalGrowth"];
+    const keys: readonly MacroObservationKey[] = ["riskFreeRate", "equityRiskPremium", "sovereignDefaultSpread", "longRunNominalGrowth"];
     for (const key of keys) {
       const observation = macro[key];
       if (!observation) continue;
@@ -192,7 +192,7 @@ export function packVintage(input: {
   const dates: string[] = [];
   const macro = input.macroPack;
   if (macro) {
-    const keys: readonly MacroObservationKey[] = ["riskFreeRate", "equityRiskPremium", "longRunNominalGrowth"];
+    const keys: readonly MacroObservationKey[] = ["riskFreeRate", "equityRiskPremium", "sovereignDefaultSpread", "longRunNominalGrowth"];
     for (const key of keys) {
       const observation = macro[key];
       if (observation) dates.push(observation.asOf);

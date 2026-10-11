@@ -52,12 +52,17 @@ export const INDIA_ERP_BASIS = "ratings-based" as const;
  * Currency-consistency note, because this is the classic way to get CAPM wrong.
  *
  * The risk-free rate below is a rupee nominal yield. The ERP is built from a
- * mature-market premium plus an India country premium, which is the
- * construction Damodaran intends to be paired with a local-currency risk-free
- * rate. So `rf(INR) + beta x (mature ERP + CRP)` is coherent as written. What
- * would NOT be coherent is pairing this ERP with a USD risk-free rate, or
- * adding a separate inflation-differential adjustment on top — that
- * double-counts the country risk already inside the 2.85%.
+ * mature-market premium plus an India country premium, which Damodaran pairs
+ * with a *default-free* local-currency rate: the government bond yield less
+ * the default spread for the sovereign's rating (his India examples: 7.33%
+ * less 1.95% = 5.38% in March 2018). The gross G-Sec yield already prices
+ * India's default risk, and the 2.85% country premium prices it again, so this
+ * pack used to count it twice and every cost of equity sat ~1.9 points high.
+ * The CAPM therefore runs on `rf(INR) − sovereign default spread + beta x
+ * (mature ERP + CRP)`. The gross yield is still the right base for a rupee
+ * borrowing cost, so only the cost of equity nets the spread. Also NOT
+ * coherent: pairing this ERP with a USD risk-free rate, or adding a separate
+ * inflation-differential adjustment on top.
  */
 export const INDIA_MACRO_PACK: MacroPack = {
   asOf: "2026-09-25",
@@ -75,6 +80,13 @@ export const INDIA_MACRO_PACK: MacroPack = {
     value: 0.0708,
     asOf: "2026-01-05",
     source: "Damodaran country risk premiums, January 2026 update: 4.23% mature-market ERP + 2.85% India CRP (Moody's Baa3), ratings-based basis (pages.stern.nyu.edu/~adamodar)",
+  },
+  sovereignDefaultSpread: {
+    // The rating-based default spread behind the 2.85% CRP (2.85 / 1.87 is the
+    // equity-to-bond volatility ratio Damodaran applies), from the same table.
+    value: 0.0187,
+    asOf: "2026-01-05",
+    source: "Damodaran country risk premiums, January 2026 update: India (Moody's Baa3) adjusted default spread 1.87% (pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/ctryprem.html)",
   },
   longRunNominalGrowth: null,
 };

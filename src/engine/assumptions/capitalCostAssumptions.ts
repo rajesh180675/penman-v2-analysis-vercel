@@ -37,6 +37,7 @@ export type CapitalCostAssumptionKey =
   | "risk-free-rate"
   | "equity-risk-premium"
   | "beta"
+  | "sovereign-default-spread"
   | "terminal-growth-ceiling";
 
 export interface TieredAssumption {
@@ -262,6 +263,33 @@ export function resolveEquityRiskPremium(
 }
 
 /**
+ * The sovereign default spread the CAPM nets from the risk-free rate, or null
+ * when it does not net one.
+ *
+ * Only a pack ERP built on a country risk premium carries one
+ * (`MacroPack.sovereignDefaultSpread`), and that ERP prices the sovereign's
+ * default risk already, so it pairs with the government yield less the spread.
+ * Both must resolve from the pack: the engine's default ERP carries no country
+ * premium, and netting under it would subtract a risk nothing added.
+ */
+export function resolveSovereignDefaultSpread(
+  resolution: MacroPackResolution,
+  equityRiskPremium: TieredAssumption,
+): TieredAssumption | null {
+  const observation = resolution.sovereignDefaultSpread;
+  if (equityRiskPremium.tier !== "sourced" || resolution.equityRiskPremium.status !== "usable") return null;
+  if (observation.status !== "usable") return null;
+  return {
+    key: "sovereign-default-spread",
+    value: observation.value,
+    tier: "sourced",
+    source: observation.source,
+    asOf: observation.asOf,
+    method: "Pinned macro pack",
+  };
+}
+
+/**
  * A risk-free rate taken from the app's live market snapshot.
  *
  * This is not a macro-pack observation: the snapshot is fetched at run time and
@@ -382,6 +410,11 @@ export function resolveTerminalGrowthCeiling(
 export interface CapitalCostAssumptionSet {
   readonly riskFreeRate: TieredAssumption;
   readonly equityRiskPremium: TieredAssumption;
+  /**
+   * Netted from the risk-free rate in the CAPM only (resolveSovereignDefaultSpread);
+   * null when the ERP carries no country premium to pair it with.
+   */
+  readonly sovereignDefaultSpread: TieredAssumption | null;
   readonly beta: TieredAssumption;
   readonly terminalGrowthCeiling: TieredAssumption;
   /** Assumptions resting on a sector default; empty when every input is defensible. */
@@ -412,6 +445,7 @@ export function resolveCapitalCostAssumptions(input: {
   const resolution = resolveMacroPack(input.macroPack, input.analysisAsOf ?? null);
   const riskFreeRate = resolveRiskFreeRate(resolution, input.config, input.liveRiskFreeRate);
   const equityRiskPremium = resolveEquityRiskPremium(resolution, input.config);
+  const sovereignDefaultSpread = resolveSovereignDefaultSpread(resolution, equityRiskPremium);
   const terminalGrowthCeiling = resolveTerminalGrowthCeiling(resolution, input.config);
   // Only consulted when a pack was supplied, so a run without one reports the
   // peer-count reason it always did rather than "no pack supplied", which would
@@ -438,12 +472,13 @@ export function resolveCapitalCostAssumptions(input: {
     explicitBetaSource: "Explicit beta from engine configuration",
   });
 
-  const all = [riskFreeRate, equityRiskPremium, beta, terminalGrowthCeiling];
+  const all = [riskFreeRate, equityRiskPremium, ...(sovereignDefaultSpread ? [sovereignDefaultSpread] : []), beta, terminalGrowthCeiling];
   const priorTierKeys = all.filter((item) => item.tier === "prior").map((item) => item.key);
 
   return {
     riskFreeRate,
     equityRiskPremium,
+    sovereignDefaultSpread,
     beta,
     terminalGrowthCeiling,
     priorTierKeys,

@@ -57,6 +57,17 @@ describe("INDIA_MACRO_PACK — shape and units", () => {
     expect(INDIA_ERP_BASIS).toBe("ratings-based");
   });
 
+  it("carries the sovereign default spread from the same Damodaran table as the ERP", () => {
+    // The CRP (2.85%) prices India's default risk; the gross G-Sec yield does
+    // too. Damodaran nets this spread from the yield; without it every ke
+    // counted India's default risk twice.
+    expect(INDIA_MACRO_PACK.sovereignDefaultSpread!.value).toBe(0.0187);
+    expect(INDIA_MACRO_PACK.sovereignDefaultSpread!.asOf).toBe(INDIA_MACRO_PACK.equityRiskPremium!.asOf);
+    expect(INDIA_MACRO_PACK.sovereignDefaultSpread!.source).toMatch(/Damodaran/);
+    expect(INDIA_MACRO_PACK.sovereignDefaultSpread!.source).toMatch(/Baa3/);
+    expect(resolveMacroPack(INDIA_MACRO_PACK, PACK_DATE).sovereignDefaultSpread.status).toBe("usable");
+  });
+
   it("leaves long-run nominal growth unsourced rather than guessing it", () => {
     // Deliberately null: a perpetual growth ceiling is a structural judgment,
     // not a published observation. See the file header.

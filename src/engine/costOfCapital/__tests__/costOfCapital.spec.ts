@@ -123,6 +123,47 @@ describe("cost-of-capital resolver", () => {
     expect(result.warnings.join(" ")).toMatch(/beta/);
   });
 
+  describe("a country-premium ERP pairs with the default-free rate", () => {
+    // Damodaran: the local risk-free rate is the government yield less the
+    // sovereign's default spread; his ERP's country premium prices that risk.
+    const pack = {
+      asOf: "2026-09-25",
+      riskFreeRate: { value: 0.0711, asOf: "2026-09-24", source: "India 10Y G-Sec" },
+      equityRiskPremium: { value: 0.0708, asOf: "2026-01-05", source: "Damodaran 4.23% + 2.85% CRP" },
+      sovereignDefaultSpread: { value: 0.0187, asOf: "2026-01-05", source: "Damodaran Baa3 default spread" },
+      longRunNominalGrowth: null,
+    };
+    const capm = (macroPack: typeof pack, analysisAsOf = "2026-09-25") => resolveCostOfCapitalFromConfig({
+      config: { ...DEFAULT_CONFIG, beta: 1.0, cost_of_debt_mode: "credit-spread", credit_spread: 0.02 },
+      analysisAsOf,
+      macroPack,
+    });
+
+    it("nets the spread from the risk-free rate in ke, and only there", () => {
+      const result = capm(pack);
+      expect(result.ke).toBeCloseTo(0.0711 - 0.0187 + 1.0 * 0.0708, 10);
+      // A rupee borrower pays the sovereign's risk: the debt cost keeps the gross yield.
+      expect(result.kdPretax).toBeCloseTo(0.0711 + 0.02, 10);
+      expect(result.riskFreeRate).toBeCloseTo(0.0711, 10);
+      const row = result.evidence.find((r) => r.component === "sovereign-default-spread");
+      expect(row).toMatchObject({ value: 0.0187, asOf: "2026-01-05", tier: "sourced" });
+    });
+
+    it("nets nothing when the ERP is the engine default, which carries no country premium", () => {
+      // The ERP lapses after a year; the spread is dated the same day, but the
+      // engine's ERP it would pair with prices no sovereign risk.
+      const lapsed = { ...pack, sovereignDefaultSpread: { ...pack.sovereignDefaultSpread, asOf: "2026-09-01" } };
+      const result = capm(lapsed, "2027-01-10");
+      expect(result.evidence.find((r) => r.component === "erp")?.tier).toBe("prior");
+      expect(result.evidence.some((r) => r.component === "sovereign-default-spread")).toBe(false);
+    });
+
+    it("nets nothing when the pack states no spread", () => {
+      const result = capm({ ...pack, sovereignDefaultSpread: null as unknown as typeof pack.sovereignDefaultSpread });
+      expect(result.ke).toBeCloseTo(0.0711 + 1.0 * 0.0708, 10);
+    });
+  });
+
   it("estimates beta bottom-up, relevered at the target's structural leverage", () => {
     // Structural weights give CSE 80 / NFO 20 → target D/E 0.25, not the peers' 0.5.
     const result = resolveCostOfCapitalFromConfig({
