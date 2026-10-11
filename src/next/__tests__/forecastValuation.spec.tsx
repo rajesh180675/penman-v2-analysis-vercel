@@ -147,4 +147,16 @@ describe("Valuation section", () => {
     expect(html).toContain("kw is derived from the capital structure and is not an input");
     expect(html).toContain(percent(built.TCS!.costOfCapital.ke)!);
   });
+
+  // The pinned ERP carries a country premium, so ke nets the sovereign default
+  // spread from the risk-free rate; listed without it, the card's inputs did
+  // not add up to its ke.
+  it("lists the sovereign default spread, so the card's inputs add up to its ke", () => {
+    const c = built.TCS!.costOfCapital;
+    expect(c.sovereignDefaultSpread).toBeCloseTo(0.0187, 10);
+    expect(c.riskFreeRate - c.sovereignDefaultSpread! + c.beta! * c.equityRiskPremium!).toBeCloseTo(c.ke, 10);
+    const html = text(renderToStaticMarkup(<ValuationSection result={resultFor(built.TCS!)} />));
+    expect(html).toContain(`Less sovereign default spread ${percent(c.sovereignDefaultSpread)}`);
+    expect(html).toContain("ke = risk-free rate − sovereign default spread + beta × equity risk premium");
+  });
 });

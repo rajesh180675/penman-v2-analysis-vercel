@@ -29,6 +29,7 @@ function resolveEquity(policy: CostOfEquityPolicy): {
   beta: number | null;
   erp: number | null;
   riskFree: number;
+  sovereignDefaultSpread: number | null;
   evidence: CostEvidence[];
   warnings: string[];
 } {
@@ -38,6 +39,7 @@ function resolveEquity(policy: CostOfEquityPolicy): {
       beta: null,
       erp: null,
       riskFree: 0,
+      sovereignDefaultSpread: null,
       evidence: [{
         component: "risk-free",
         source: `Manual cost of equity: ${policy.rationale || "rationale unavailable"}`,
@@ -65,6 +67,7 @@ function resolveEquity(policy: CostOfEquityPolicy): {
     beta: policy.beta,
     erp: policy.equityRiskPremium,
     riskFree: policy.riskFreeRate,
+    sovereignDefaultSpread: sovereignSpread !== 0 ? sovereignSpread : null,
     evidence: [
       {
         component: "risk-free",
@@ -266,6 +269,7 @@ export function resolveCostOfCapital(input: ResolveCostOfCapitalInput): CostOfCa
     debtMode: input.debtPolicy.mode,
     beta: equity.beta,
     riskFreeRate,
+    sovereignDefaultSpread: equity.sovereignDefaultSpread,
     equityRiskPremium: equity.erp,
     // Manual ke reports no tiers: the reviewer supplied the number directly, so
     // there is nothing to attribute. Absent is honest; "sourced" would not be.
