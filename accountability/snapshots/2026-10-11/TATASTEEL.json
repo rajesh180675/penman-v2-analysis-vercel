@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "TATASTEEL",
+ "companyType": "cyclical",
+ "madeAt": "2026-10-11",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.15572016,
+  "kw": 0.07891964025110887,
+  "g": 0.022500000000000003
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 226978.250886,
+   "operatingIncome": 9764.77897276946,
+   "noa": 190675.80229918147,
+   "cni": 4786.446251568907,
+   "cse": 93776.90079620206
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 239374.89503638976,
+   "operatingIncome": 10842.161400362684,
+   "noa": 199521.85198988838,
+   "cni": 5675.1152592982535,
+   "cse": 98127.50592952712
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 254595.5381622828,
+   "operatingIncome": 11948.197793854977,
+   "noa": 210866.82929475312,
+   "cni": 6512.686892843204,
+   "cse": 103707.11696787036
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 272062.72130336537,
+   "operatingIncome": 13088.49491419317,
+   "noa": 224177.3903057841,
+   "cni": 7325.579656118081,
+   "cse": 110253.42826915813
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 291493.5070941536,
+   "operatingIncome": 14270.565792497348,
+   "noa": 239186.47397259666,
+   "cni": 8131.845991360127,
+   "cse": 117635.09564956397
+  }
+ ],
+ "intrinsicPerShare": 24.236220821286274,
+ "latestReportedPeriod": "2025-03-31"
+}

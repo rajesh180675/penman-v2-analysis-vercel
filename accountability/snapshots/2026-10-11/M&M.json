@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "M&M",
+ "companyType": "cyclical",
+ "madeAt": "2026-10-11",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": "Mahindra & Mahindra Financial Services"
+ },
+ "assumptions": {
+  "ke": 0.16191516,
+  "kw": 0.22299301426985504,
+  "g": 0.04
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 156806.00394385567,
+   "operatingIncome": 11473.990098316362,
+   "noa": 57268.15452056764,
+   "cni": 12580.10433937189,
+   "cse": 77871.12195150109
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 172416.14211572928,
+   "operatingIncome": 12174.771114981917,
+   "noa": 64384.84380893772,
+   "cni": 13431.510065454519,
+   "cse": 87548.13326966004
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 188098.75517554526,
+   "operatingIncome": 12892.053549788163,
+   "noa": 71657.15408924512,
+   "cni": 14301.643080322912,
+   "cse": 97436.75226651608
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 204157.2435638798,
+   "operatingIncome": 13649.716890003541,
+   "noa": 79177.7329419345,
+   "cni": 15216.329620323406,
+   "cse": 107662.95770104474
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 220845.50982596443,
+   "operatingIncome": 14464.96494052713,
+   "noa": 87029.90652375441,
+   "cni": 16194.593760272108,
+   "cse": 118340.05340446312
+  }
+ ],
+ "intrinsicPerShare": 615.5230521615808,
+ "latestReportedPeriod": "2025-03-31"
+}

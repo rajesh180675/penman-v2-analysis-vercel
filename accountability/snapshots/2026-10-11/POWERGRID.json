@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "POWERGRID",
+ "companyType": "utility",
+ "madeAt": "2026-10-11",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.11372868,
+  "kw": 0.08708915021484714,
+  "g": 0.027
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 48983.796320789465,
+   "operatingIncome": 23351.662112748792,
+   "noa": 235032.67991706223,
+   "cni": 16581.736355360514,
+   "cse": 104196.82297288613
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 52775.663198779774,
+   "operatingIncome": 25102.83271450372,
+   "noa": 264552.47096366517,
+   "cni": 17486.200574270013,
+   "cse": 117283.80493201148
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 57113.537459509316,
+   "operatingIncome": 27119.68337537613,
+   "noa": 297417.93387488066,
+   "cni": 18551.931031641412,
+   "cse": 131854.0205381574
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 61977.36336936103,
+   "operatingIncome": 29390.891254430087,
+   "noa": 333578.4826674311,
+   "cni": 19770.77428711077,
+   "cse": 147885.04355363495
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 67369.36933442338,
+   "operatingIncome": 31916.228583412663,
+   "noa": 373067.3668946219,
+   "cni": 21142.766882141914,
+   "cse": 165391.61447249333
+  }
+ ],
+ "intrinsicPerShare": 152.16839628500912,
+ "latestReportedPeriod": "2025-03-31"
+}

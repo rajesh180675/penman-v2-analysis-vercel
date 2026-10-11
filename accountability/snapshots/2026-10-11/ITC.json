@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "ITC",
+ "companyType": "conglomerate",
+ "madeAt": "2026-10-11",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.12039804,
+  "kw": 0.13649077988878222,
+  "g": 0.0315
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 82377.90281310378,
+   "operatingIncome": 20566.529845194087,
+   "noa": 38553.291926928425,
+   "cni": 21459.14594789204,
+   "cse": 78497.55779133078
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 89493.77266377611,
+   "operatingIncome": 22199.520675492495,
+   "noa": 42791.07305783121,
+   "cni": 23203.22149410311,
+   "cse": 87126.01602676621
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 96827.09762370515,
+   "operatingIncome": 23898.998903512875,
+   "noa": 47167.19405847357,
+   "cni": 25016.385436817196,
+   "cse": 96036.14520071217
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 104499.17322783063,
+   "operatingIncome": 25693.241216470993,
+   "noa": 51731.48161184081,
+   "cni": 26928.27791973416,
+   "cse": 105329.39638859438
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 112606.55633731965,
+   "operatingIncome": 27604.13797409021,
+   "noa": 56526.484836794945,
+   "cni": 28961.9668340124,
+   "cse": 115092.40296852152
+  }
+ ],
+ "intrinsicPerShare": 185.52027622630374,
+ "latestReportedPeriod": "2025-03-31"
+}
