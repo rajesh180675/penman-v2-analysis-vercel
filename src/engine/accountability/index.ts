@@ -5,6 +5,9 @@ export { estimatePanelPersistence, priorFor, type PersistenceEstimate, type Rnoa
 export {
   buildForecastSnapshot,
   scoreSnapshot,
+  scoreSnapshotAgainstFilings,
+  type FiledScore,
+  type FiledYear,
   FORECAST_SNAPSHOT_SCHEMA_VERSION,
   type ForecastSnapshot,
   type ForecastSnapshotBasis,
