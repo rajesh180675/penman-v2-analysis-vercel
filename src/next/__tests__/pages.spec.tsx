@@ -86,6 +86,25 @@ describe("CasePage", () => {
       .toContain("Analysis could not run: Company data not found (404).");
   });
 
+  // The library's Capitaline exports are refreshed by hand, so a case can run
+  // a year behind what the company has filed (20 of 23 on 2026-10-11).
+  it("says when the company has filed results newer than the data the case runs on", () => {
+    const run = (through: string) => ({
+      status: "ready" as const,
+      result: { ...readyRun(), materialization: { commandCenter: null, rawData: [{ period_end: "2024-03-31" }, { period_end: through }] } } as unknown as LegacyAnalysisRunExecutionResult,
+    });
+    const ledger = [{ symbol: "ITC", firstFiling: "2018-06-08T15:27", rows: [], latestFiling: { fiscalYearEnd: "2026-03-31", filingDate: "2026-05-21T18:10" } }];
+    const stale = renderToStaticMarkup(<CasePage route={caseRoute("ITC")} company={itc} run={run("2025-03-31")} tieOut={ledger} />);
+    expect(stale).toContain("Newer results are on file.");
+    expect(stale).toContain("filed its results for the year to 2026-03-31 on NSE");
+    expect(stale).toContain("on 2026-05-21");
+    expect(stale).toContain("runs on Capitaline data to 2025-03-31");
+    // Current data, an as-of view (older on purpose), or no ledger: no note.
+    expect(renderToStaticMarkup(<CasePage route={caseRoute("ITC")} company={itc} run={run("2026-03-31")} tieOut={ledger} />)).not.toContain("Newer results");
+    expect(renderToStaticMarkup(<CasePage route={{ ...caseRoute("ITC"), asOf: "2025-03-31" }} company={itc} run={run("2025-03-31")} tieOut={ledger} />)).not.toContain("Newer results");
+    expect(renderToStaticMarkup(<CasePage route={caseRoute("ITC")} company={itc} run={run("2025-03-31")} tieOut={null} />)).not.toContain("Newer results");
+  });
+
   it("handles a ticker that is not in the library", () => {
     const html = renderToStaticMarkup(<CasePage route={caseRoute("NOPE")} company={null} run={null} />);
     expect(html).toContain("No company &quot;NOPE&quot; in the library");

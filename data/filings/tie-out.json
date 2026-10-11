@@ -243,7 +243,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2018-06-15T15:43"
+  "firstFiling": "2018-06-15T15:43",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-29T19:51"
+  }
  },
  {
   "symbol": "BHARTIARTL",
@@ -465,7 +469,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2019-05-09T18:12"
+  "firstFiling": "2019-05-09T18:12",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-13T21:45"
+  }
  },
  {
   "symbol": "BRITANNIA",
@@ -691,7 +699,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2018-05-25T18:03"
+  "firstFiling": "2018-05-25T18:03",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-07T23:38"
+  }
  },
  {
   "symbol": "DABUR",
@@ -929,7 +941,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2018-06-21T16:18"
+  "firstFiling": "2018-06-21T16:18",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-07T17:38"
+  }
  },
  {
   "symbol": "DMART",
@@ -1167,7 +1183,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2018-06-15T19:15"
+  "firstFiling": "2018-06-15T19:15",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-02T19:13"
+  }
  },
  {
   "symbol": "GRASIM",
@@ -1409,7 +1429,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2018-06-25T13:44"
+  "firstFiling": "2018-06-25T13:44",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-20T15:39"
+  }
  },
  {
   "symbol": "HINDUNILVR",
@@ -1651,7 +1675,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2018-05-26T17:10"
+  "firstFiling": "2018-05-26T17:10",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-30T21:06"
+  }
  },
  {
   "symbol": "IDEA",
@@ -1873,7 +1901,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2019-05-21T20:10"
+  "firstFiling": "2019-05-21T20:10",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-16T18:58"
+  }
  },
  {
   "symbol": "INFY",
@@ -2143,7 +2175,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2019-10-18T18:40"
+  "firstFiling": "2019-10-18T18:40",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-23T20:47"
+  }
  },
  {
   "symbol": "ITC",
@@ -2413,7 +2449,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2018-06-08T15:27"
+  "firstFiling": "2018-06-08T15:27",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-21T18:32"
+  }
  },
  {
   "symbol": "LT",
@@ -2675,7 +2715,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2018-06-22T19:52"
+  "firstFiling": "2018-06-22T19:52",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-05T19:30"
+  }
  },
  {
   "symbol": "M&M",
@@ -2917,7 +2961,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2018-06-22T20:24"
+  "firstFiling": "2018-06-22T20:24",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-05T16:28"
+  }
  },
  {
   "symbol": "MARUTI",
@@ -3139,7 +3187,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2019-05-24T18:34"
+  "firstFiling": "2019-05-24T18:34",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-28T19:47"
+  }
  },
  {
   "symbol": "NESTLEIND",
@@ -3193,7 +3245,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2025-04-24T18:52"
+  "firstFiling": "2025-04-24T18:52",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-21T19:32"
+  }
  },
  {
   "symbol": "NTPC",
@@ -3415,7 +3471,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2018-07-04T12:08"
+  "firstFiling": "2018-07-04T12:08",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-23T16:07"
+  }
  },
  {
   "symbol": "PAYTM",
@@ -3589,7 +3649,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2022-05-20T22:15"
+  "firstFiling": "2022-05-20T22:15",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-06T21:25"
+  }
  },
  {
   "symbol": "POWERGRID",
@@ -3827,7 +3891,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2018-06-22T19:28"
+  "firstFiling": "2018-06-22T19:28",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-15T21:35"
+  }
  },
  {
   "symbol": "RELIANCE",
@@ -4049,7 +4117,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2019-05-06T14:13"
+  "firstFiling": "2019-05-06T14:13",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-24T22:57"
+  }
  },
  {
   "symbol": "SUNPHARMA",
@@ -4271,7 +4343,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2018-06-19T19:05"
+  "firstFiling": "2018-06-19T19:05",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-22T18:39"
+  }
  },
  {
   "symbol": "TATASTEEL",
@@ -4513,7 +4589,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2018-06-19T18:02"
+  "firstFiling": "2018-06-19T18:02",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-15T20:02"
+  }
  },
  {
   "symbol": "TCS",
@@ -4783,7 +4863,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2019-04-23T18:26"
+  "firstFiling": "2019-04-23T18:26",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-09T23:42"
+  }
  },
  {
   "symbol": "TITAN",
@@ -5025,7 +5109,11 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2018-06-18T18:27"
+  "firstFiling": "2018-06-18T18:27",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-08T19:47"
+  }
  },
  {
   "symbol": "ULTRACEMCO",
@@ -5247,6 +5335,10 @@
     "status": "match"
    }
   ],
-  "firstFiling": "2019-06-26T14:34"
+  "firstFiling": "2019-06-26T14:34",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-27T20:18"
+  }
  }
 ]
