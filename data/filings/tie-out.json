@@ -2422,9 +2422,9 @@
     "fiscalYearEnd": "2018-03-31",
     "field": "profitAfterTax",
     "asFiled": 8004.43,
-    "capitaline": 8440.29,
-    "relativeDifference": 0.05445234701284171,
-    "status": "mismatch"
+    "capitaline": 8004.430000000001,
+    "relativeDifference": 1.1362391847675953e-16,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2018-03-31",
@@ -2438,8 +2438,8 @@
     "fiscalYearEnd": "2019-03-31",
     "field": "profitAfterTax",
     "asFiled": 10216.58,
-    "capitaline": 9668.25,
-    "relativeDifference": -0.053670602099724164,
+    "capitaline": 9647.25,
+    "relativeDifference": -0.055726084462706695,
     "status": "mismatch"
    },
    {
@@ -2454,8 +2454,8 @@
     "fiscalYearEnd": "2020-03-31",
     "field": "profitAfterTax",
     "asFiled": 10894.28,
-    "capitaline": 10167.75,
-    "relativeDifference": -0.0666891249352872,
+    "capitaline": 10239.71,
+    "relativeDifference": -0.06008382380478577,
     "status": "mismatch"
    },
    {
@@ -2470,8 +2470,8 @@
     "fiscalYearEnd": "2021-03-31",
     "field": "profitAfterTax",
     "asFiled": 12921.28,
-    "capitaline": 8224.98,
-    "relativeDifference": -0.3634547041779143,
+    "capitaline": 4683.359999999999,
+    "relativeDifference": -0.6375467445949629,
     "status": "mismatch"
    },
    {
@@ -2494,9 +2494,9 @@
     "fiscalYearEnd": "2022-03-31",
     "field": "profitAfterTax",
     "asFiled": 10419.24,
-    "capitaline": 10291.05,
-    "relativeDifference": -0.012303200617319546,
-    "status": "minor"
+    "capitaline": 10419.24,
+    "relativeDifference": 0,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2022-03-31",
@@ -2526,9 +2526,9 @@
     "fiscalYearEnd": "2023-03-31",
     "field": "profitAfterTax",
     "asFiled": 12530.62,
-    "capitaline": 12624.87,
-    "relativeDifference": 0.00752157514951375,
-    "status": "minor"
+    "capitaline": 12530.62,
+    "relativeDifference": 0,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2023-03-31",
@@ -2574,8 +2574,8 @@
     "fiscalYearEnd": "2024-03-31",
     "field": "profitAfterTax",
     "asFiled": 15547.1,
-    "capitaline": 15569.72,
-    "relativeDifference": 0.0014549337175421128,
+    "capitaline": 15547.099999999999,
+    "relativeDifference": -1.1699863019764822e-16,
     "status": "match"
    },
    {
@@ -2646,9 +2646,9 @@
     "fiscalYearEnd": "2026-03-31",
     "field": "profitAfterTax",
     "asFiled": 18953.88,
-    "capitaline": 19159.4,
-    "relativeDifference": 0.010843162455391742,
-    "status": "minor"
+    "capitaline": 18953.88,
+    "relativeDifference": 0,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2026-03-31",
@@ -3202,8 +3202,8 @@
     "fiscalYearEnd": "2019-03-31",
     "field": "profitAfterTax",
     "asFiled": 12633.45,
-    "capitaline": 18105.81,
-    "relativeDifference": 0.433164337532503,
+    "capitaline": 14034.490000000002,
+    "relativeDifference": 0.11089923971678368,
     "status": "mismatch"
    },
    {
@@ -3218,9 +3218,9 @@
     "fiscalYearEnd": "2020-03-31",
     "field": "profitAfterTax",
     "asFiled": 11901.98,
-    "capitaline": 7029.97,
-    "relativeDifference": -0.40934449562173686,
-    "status": "mismatch"
+    "capitaline": 11901.98,
+    "relativeDifference": 0,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2020-03-31",
@@ -3234,9 +3234,9 @@
     "fiscalYearEnd": "2021-03-31",
     "field": "profitAfterTax",
     "asFiled": 14969.4,
-    "capitaline": 13066.21,
-    "relativeDifference": -0.12713869627373178,
-    "status": "mismatch"
+    "capitaline": 14969.4,
+    "relativeDifference": 0,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2021-03-31",
@@ -3258,9 +3258,9 @@
     "fiscalYearEnd": "2022-03-31",
     "field": "profitAfterTax",
     "asFiled": 16960.29,
-    "capitaline": 15473.81,
-    "relativeDifference": -0.08764472777293321,
-    "status": "mismatch"
+    "capitaline": 16960.29,
+    "relativeDifference": 0,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2022-03-31",
@@ -3290,9 +3290,9 @@
     "fiscalYearEnd": "2023-03-31",
     "field": "profitAfterTax",
     "asFiled": 17121.35,
-    "capitaline": 17534.47,
-    "relativeDifference": 0.02412893843067297,
-    "status": "mismatch"
+    "capitaline": 17121.350000000002,
+    "relativeDifference": 2.1248200679804532e-16,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2023-03-31",
@@ -3338,9 +3338,9 @@
     "fiscalYearEnd": "2024-03-31",
     "field": "profitAfterTax",
     "asFiled": 21332.45,
-    "capitaline": 20332.25,
-    "relativeDifference": -0.04688631638653791,
-    "status": "mismatch"
+    "capitaline": 21332.45,
+    "relativeDifference": 0,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2024-03-31",
@@ -3386,9 +3386,9 @@
     "fiscalYearEnd": "2025-03-31",
     "field": "profitAfterTax",
     "asFiled": 23953.15,
-    "capitaline": 20251.23,
-    "relativeDifference": -0.15454835794039623,
-    "status": "mismatch"
+    "capitaline": 23953.15,
+    "relativeDifference": 0,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2025-03-31",
@@ -3598,9 +3598,9 @@
     "fiscalYearEnd": "2018-03-31",
     "field": "profitAfterTax",
     "asFiled": 8198.31,
-    "capitaline": 4919.81,
-    "relativeDifference": -0.39989949148056114,
-    "status": "mismatch"
+    "capitaline": 8204,
+    "relativeDifference": 0.0006940454801051082,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2018-03-31",
@@ -3614,9 +3614,9 @@
     "fiscalYearEnd": "2019-03-31",
     "field": "profitAfterTax",
     "asFiled": 10033.52,
-    "capitaline": 12560.39,
-    "relativeDifference": 0.2518428228577806,
-    "status": "mismatch"
+    "capitaline": 10033.52,
+    "relativeDifference": 0,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2019-03-31",
@@ -3630,9 +3630,9 @@
     "fiscalYearEnd": "2020-03-31",
     "field": "profitAfterTax",
     "asFiled": 11059.4,
-    "capitaline": 9376,
-    "relativeDifference": -0.15221440584480167,
-    "status": "mismatch"
+    "capitaline": 11059.4,
+    "relativeDifference": 0,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2020-03-31",
@@ -3646,9 +3646,9 @@
     "fiscalYearEnd": "2021-03-31",
     "field": "profitAfterTax",
     "asFiled": 12036.46,
-    "capitaline": 11674.78,
-    "relativeDifference": -0.030048702027007816,
-    "status": "mismatch"
+    "capitaline": 12036.460000000001,
+    "relativeDifference": 1.5112328737401667e-16,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2021-03-31",
@@ -3670,9 +3670,9 @@
     "fiscalYearEnd": "2022-03-31",
     "field": "profitAfterTax",
     "asFiled": 16824.07,
-    "capitaline": 17353.81,
-    "relativeDifference": 0.031487030189484566,
-    "status": "mismatch"
+    "capitaline": 16824.07,
+    "relativeDifference": 0,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2022-03-31",
@@ -3702,9 +3702,9 @@
     "fiscalYearEnd": "2023-03-31",
     "field": "profitAfterTax",
     "asFiled": 15417.12,
-    "capitaline": 15171.17,
-    "relativeDifference": -0.0159530444077753,
-    "status": "minor"
+    "capitaline": 15419.74,
+    "relativeDifference": 0.0001699409487633865,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2023-03-31",
@@ -3750,9 +3750,9 @@
     "fiscalYearEnd": "2024-03-31",
     "field": "profitAfterTax",
     "asFiled": 15573.16,
-    "capitaline": 16144.55,
-    "relativeDifference": 0.03669069090666245,
-    "status": "mismatch"
+    "capitaline": 15573.16,
+    "relativeDifference": 0,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2024-03-31",
@@ -3798,9 +3798,9 @@
     "fiscalYearEnd": "2025-03-31",
     "field": "profitAfterTax",
     "asFiled": 15521.44,
-    "capitaline": 15245.13,
-    "relativeDifference": -0.01780182766547442,
-    "status": "minor"
+    "capitaline": 15521.439999999999,
+    "relativeDifference": -1.1719205199684155e-16,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2025-03-31",
@@ -3964,8 +3964,8 @@
     "fiscalYearEnd": "2024-03-31",
     "field": "profitAfterTax",
     "asFiled": 79020,
-    "capitaline": 78633,
-    "relativeDifference": -0.00489749430523918,
+    "capitaline": 79020,
+    "relativeDifference": 0,
     "status": "match"
    },
    {
@@ -4016,9 +4016,9 @@
     "fiscalYearEnd": "2025-03-31",
     "field": "profitAfterTax",
     "asFiled": 81309,
-    "capitaline": 80787,
-    "relativeDifference": -0.0064199535106814745,
-    "status": "minor"
+    "capitaline": 81309,
+    "relativeDifference": 0,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2025-03-31",
@@ -4058,9 +4058,9 @@
     "fiscalYearEnd": "2018-03-31",
     "field": "profitAfterTax",
     "asFiled": 2608.35,
-    "capitaline": 2567.94,
-    "relativeDifference": -0.015492552763241074,
-    "status": "minor"
+    "capitaline": 2542.5,
+    "relativeDifference": -0.025245845074472334,
+    "status": "mismatch"
    },
    {
     "fiscalYearEnd": "2018-03-31",
@@ -4074,8 +4074,8 @@
     "fiscalYearEnd": "2019-03-31",
     "field": "profitAfterTax",
     "asFiled": 3207.86,
-    "capitaline": 3209.32,
-    "relativeDifference": 0.0004551320818240311,
+    "capitaline": 3207.86,
+    "relativeDifference": 0,
     "status": "match"
    },
    {
@@ -4090,8 +4090,8 @@
     "fiscalYearEnd": "2020-03-31",
     "field": "profitAfterTax",
     "asFiled": 4171.96,
-    "capitaline": 4186.79,
-    "relativeDifference": 0.0035546841292821425,
+    "capitaline": 4171.96,
+    "relativeDifference": 0,
     "status": "match"
    },
    {
@@ -4114,8 +4114,8 @@
     "fiscalYearEnd": "2022-03-31",
     "field": "profitAfterTax",
     "asFiled": 3389.28,
-    "capitaline": 3405.82,
-    "relativeDifference": 0.004880092527026378,
+    "capitaline": 3389.28,
+    "relativeDifference": 0,
     "status": "match"
    },
    {
@@ -4146,9 +4146,9 @@
     "fiscalYearEnd": "2023-03-31",
     "field": "profitAfterTax",
     "asFiled": 8512.94,
-    "capitaline": 8560.84,
-    "relativeDifference": 0.005626728251344381,
-    "status": "minor"
+    "capitaline": 8512.94,
+    "relativeDifference": 0,
+    "status": "match"
    },
    {
     "fiscalYearEnd": "2023-03-31",
@@ -4194,8 +4194,8 @@
     "fiscalYearEnd": "2024-03-31",
     "field": "profitAfterTax",
     "asFiled": 9610.03,
-    "capitaline": 9648.44,
-    "relativeDifference": 0.003996865774612551,
+    "capitaline": 9610.03,
+    "relativeDifference": 0,
     "status": "match"
    },
    {
@@ -4242,8 +4242,8 @@
     "fiscalYearEnd": "2025-03-31",
     "field": "profitAfterTax",
     "asFiled": 10964.75,
-    "capitaline": 10980.1,
-    "relativeDifference": 0.0013999407191226762,
+    "capitaline": 10964.75,
+    "relativeDifference": 0,
     "status": "match"
    },
    {

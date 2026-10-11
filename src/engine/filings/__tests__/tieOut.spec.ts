@@ -13,6 +13,22 @@ const period = (sales: number) => ({ period_end: "2018-03-31", is: { Sales: sale
 const record = (fields: Partial<AnnualHeadline>): AsFiledHeadlineRecord =>
   ({ fiscalYearEnd: "2018-03-31", filingDate: "2018-06-08T15:27", headline: headline(fields) });
 
+describe("tieOutAsFiled, profit after tax", () => {
+  // NTPC FY25: Capitaline's PAT ₹20,251 Cr sits above its extraordinary item
+  // after tax, the ₹3,701.92 Cr regulatory-deferral movement, which the
+  // filing's profit for the period (₹23,953 Cr) includes; so does TCI.
+  it("compares the filing's profit for the period with Capitaline's PAT and the lines it files below it", () => {
+    const ntpc = {
+      period_end: "2018-03-31",
+      is: { Sales: 1, PAT: 20251.23, operatingCostBridge: { extraordinaryAfterTax: 3701.92, associatesShareAfterTax: 0 } },
+      bs: {}, cf: {},
+    } as unknown as RecastPeriod;
+    const [row] = tieOutAsFiled([record({ profitAfterTax: 23953.15 })], [ntpc]);
+    expect(row!.capitaline).toBeCloseTo(23953.15, 2);
+    expect(row!.status).toBe("match");
+  });
+});
+
 describe("tieOutAsFiled, revenue", () => {
   // ITC FY18: filed gross ₹47,688.55 Cr with ₹4,239.61 Cr excise itemized;
   // Capitaline's net revenue is ₹43,449 Cr.
