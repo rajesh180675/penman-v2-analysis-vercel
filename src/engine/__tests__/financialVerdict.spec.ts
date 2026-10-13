@@ -68,4 +68,36 @@ describe("buildFinancialVerdict", () => {
     expect([noShares.shares, noShares.perShare, noShares.upside]).toEqual([null, null, null]);
     expect(noShares.equityValueCr).toBe(627_000);
   });
+
+  // The value is the latest balance sheet's, the price today's: set beside it,
+  // the value is carried to the price's date, as an industrial case's is.
+  describe("carried to the price's date", () => {
+    // Gordon on book, the bank models' steady state: V = B(ROE − g)/(ke − g).
+    const book = 500_000;
+    const roe = 0.16;
+    const g = 0.06;
+    const ke = 0.12;
+    const value = (book * (roe - g)) / (ke - g);
+    const steady = { ...bank, ke, terminalGrowth: g, sustainableROE: roe, latestBookValue: book, triangulatedValue: value } as unknown as BankValuationBundle;
+
+    it("grows as the model does: a year on it is V(1 + g), then accrues at ke", () => {
+      // 2023-03-31 → 2024-03-31 is 366 days, a little over a year.
+      const v = buildFinancialVerdict({ valuation: steady, subtype: "bank", latestRaw: { ...latestRaw, period_end: "2023-03-31" }, marketPrice: 1_000, priceDate: "2024-03-31T15:30:00Z" });
+      const years = 366 / 365.25;
+      expect(v.valuationDate).toBe("2023-03-31");
+      expect(v.priceDate).toBe("2024-03-31");
+      expect(v.yearsToPriceDate).toBeCloseTo(years, 12);
+      // Carried a year, less (ROE − g) × book paid out, Gordon on book is V(1 + g).
+      expect(v.perShareAtPriceDate).toBeCloseTo((value * (1 + g) * Math.pow(1 + ke, years - 1)) / 765, 9);
+      expect(v.perShare).toBeCloseTo(value / 765, 9);
+      expect(v.upside).toBeCloseTo(v.perShareAtPriceDate! / 1_000 - 1, 12);
+    });
+
+    it("is not carried without a sustainable ROE to forecast distributions, nor without a price date", () => {
+      const noRoe = buildFinancialVerdict({ valuation: { ...steady, sustainableROE: null } as unknown as BankValuationBundle, subtype: "bank", latestRaw, marketPrice: 1_000, priceDate: "2026-10-13" });
+      expect([noRoe.yearsToPriceDate, noRoe.perShareAtPriceDate]).toEqual([0, noRoe.perShare]);
+      const undated = buildFinancialVerdict({ valuation: steady, subtype: "bank", latestRaw, marketPrice: 1_000 });
+      expect([undated.yearsToPriceDate, undated.perShareAtPriceDate]).toEqual([0, undated.perShare]);
+    });
+  });
 });
