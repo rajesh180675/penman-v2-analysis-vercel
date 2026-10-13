@@ -216,7 +216,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
   const stressCard = scenarios.find((card) => card.key === "stress") ?? null;
   const baseCard = scenarios.find((card) => card.key === "base") ?? null;
   const panicCard = scenarios.find((card) => card.key === "historical-panic") ?? null;
-  const scenarioPenalty = scenarioOrderingPenalty({ stress: stressCard, base: baseCard, panic: panicCard });
+  const scenarioPenalty = scenarioOrderingPenalty({ stress: stressCard, base: baseCard, panic: panicCard, marketPrice });
   const stressUpsidePct = opportunityMetrics(stressCard, marketPrice).upsidePct;
   const baseUpsidePct = opportunityMetrics(baseCard, marketPrice).upsidePct;
   const historicalPercentile = historySummary?.currentPricePercentile ?? null;
@@ -429,7 +429,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
       : "Live market overlay is current enough to support signal evaluation.");
 
   const checklist = buildChecklist({
-    opportunity,
+    baseReratingCagr: opportunityMetrics(baseCard, marketPrice).reratingCagr,
     diagnostics,
     reverseDcf,
     marketContext,
@@ -466,8 +466,8 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     ...(historicalPercentile != null && historicalPercentile <= sectorTemplate.historicalExtremePercentile
       ? ["Current price sits in a historically dislocated range for this company."]
       : []),
-    ...(baseCard?.expectedCagr != null && baseCard.expectedCagr > 0.18
-      ? ["Base-case rerating implies an attractive three-year expected CAGR."]
+    ...((opportunityMetrics(baseCard, marketPrice).reratingCagr ?? 0) > 0.18
+      ? ["Base-case rerating alone implies more than 18% a year over three years."]
       : []),
     ...appendCrossCheckWarning([], scenarios),
     ...(stressCard?.marginOfSafetyPct != null && stressCard.marginOfSafetyPct >= requiredMarginOfSafetyPct

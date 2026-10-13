@@ -57,7 +57,10 @@ export function VerdictSection({ result, trackRecord = null, asOf = null }: {
         <ScenarioFigure label="Stress value" card={stress} priced={cc.marketPrice != null} noValue={noValue} noPrice={noPrice} />
         <ScenarioFigure label="Base value" card={base} priced={cc.marketPrice != null} noValue={noValue} noPrice={noPrice} />
         <ScenarioFigure label="Bull value" card={bull} priced={cc.marketPrice != null} noValue={noValue} noPrice={noPrice} />
-        <Figure label="Expected CAGR (stress)">
+        <Figure
+          label="Expected CAGR (stress)"
+          sub={cc.opportunity.expectedCagrStress != null ? "If the price reaches the stress value in 3 years, with that value accruing at its cost of equity." : undefined}
+        >
           {cc.opportunity.expectedCagrStress != null
             ? formatPct(cc.opportunity.expectedCagrStress, 1)
             : <Withheld reason={cc.marketPrice == null ? noPrice : "Not computable for this run."} />}
@@ -347,7 +350,7 @@ function Panel({ children }: { children: ReactNode }) {
   return <div className="wb-surface rounded-xl border p-5 shadow-sm">{children}</div>;
 }
 
-function Figure({ label, sub, children }: { label: string; sub?: string; children: ReactNode }) {
+function Figure({ label, sub, children }: { label: string; sub?: string | undefined; children: ReactNode }) {
   return (
     <div className="wb-surface rounded-xl border p-4 shadow-sm">
       <dt className="text-xs font-medium text-slate-500">{label}</dt>

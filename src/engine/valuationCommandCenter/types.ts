@@ -41,6 +41,11 @@ export interface ValuationScenarioCard {
   ownerEarningsDcfPerShare?: number | null | undefined;
   upsidePct: number | null;
   marginOfSafetyPct: number | null;
+  /**
+   * Annual return over three years if the price reaches this card's value,
+   * which accrues at the card's ke meanwhile (expectedReturnToValue): a price
+   * at value earns ke, not 0%.
+   */
   expectedCagr: number | null;
   valuation: ValuationResult;
   forecastPolicy?: ForecastPolicySurface | undefined;
@@ -95,6 +100,7 @@ export interface ValuationOpportunityAssessment {
   requiredMarginOfSafetyPct: number;
   baseMarginOfSafetyPct: number | null;
   stressMarginOfSafetyPct: number | null;
+  /** The base and stress cards' expected returns (ValuationScenarioCard.expectedCagr). */
   expectedCagrBase: number | null;
   expectedCagrStress: number | null;
   historicalCheapnessScore: number | null;

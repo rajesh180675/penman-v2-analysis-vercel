@@ -14,7 +14,6 @@ import {
   DcfCashFlowDiagnostics,
   NarrativeBandEntry,
   ReverseDcfDiagnostics,
-  ValuationOpportunityAssessment,
   ValuationChecklist,
   ValuationMarketContext,
   ValuationBacktestPoint,
@@ -36,6 +35,19 @@ export function clamp(value: number, min: number, max: number) {
 export function annualizedReturn(from: number | null, to: number | null, years = 3) {
   if (from == null || to == null || from <= 0 || to <= 0) return null;
   return Math.pow(to / from, 1 / years) - 1;
+}
+
+/**
+ * The annual return from buying at `price` if the price reaches the value in
+ * `years`, while the value itself accrues at the cost of equity it was
+ * discounted at (with dividends, V₀(1 + ke) = E[V₁ + d₁]). A price at value
+ * earns ke. The rerating alone (annualizedReturn) is what was reported as the
+ * "expected CAGR": a fairly priced stock read 0%, and TCS's stress case
+ * −24.5% a year where its own discount rate puts it nearer −16%.
+ */
+export function expectedReturnToValue(price: number | null, value: number | null, ke: number, years = 3) {
+  const rerating = annualizedReturn(price, value, years);
+  return rerating == null ? null : (1 + ke) * (1 + rerating) - 1;
 }
 
 export function marginOfSafety(intrinsicPerShare: number | null, marketPrice: number | null) {
@@ -281,7 +293,9 @@ export function opportunityMetrics(card: ValuationScenarioCard | null, marketPri
   return {
     upsidePct: primaryValue != null && marketPrice != null && marketPrice > 0 ? (primaryValue - marketPrice) / marketPrice : null,
     marginOfSafetyPct: marginOfSafety(primaryValue, marketPrice),
-    expectedCagr: annualizedReturn(marketPrice, primaryValue, 3),
+    expectedCagr: card ? expectedReturnToValue(marketPrice, primaryValue, card.assumptions.ke, 3) : null,
+    /** The rerating alone: the price reaching today's value, nothing accruing. */
+    reratingCagr: annualizedReturn(marketPrice, primaryValue, 3),
   };
 }
 export function computeCashFlowDiagnostics(latest: RecastPeriod, prev: RecastPeriod | null, shares: number | null, maintenanceCapexShare: number, maintenanceDepFloor: number): DcfCashFlowDiagnostics {
@@ -429,12 +443,17 @@ export function scenarioOrderingPenalty(args: {
   stress: ValuationScenarioCard | null;
   base: ValuationScenarioCard | null;
   panic: ValuationScenarioCard | null;
+  marketPrice: number | null;
 }) {
-  const { stress, base, panic } = args;
+  const { stress, base, panic, marketPrice } = args;
+  // The rerating, not the expected return: the stress card discounts at a
+  // higher ke, so its expected return can top the base case's while its value
+  // sits correctly below it.
+  const rerating = (card: ValuationScenarioCard | null) => annualizedReturn(marketPrice, card?.intrinsicPerShare ?? null, 3);
   let penalty = 0;
   if ((stress?.intrinsicPerShare ?? Number.POSITIVE_INFINITY) > (base?.intrinsicPerShare ?? Number.POSITIVE_INFINITY)) penalty += 10;
   if ((panic?.intrinsicPerShare ?? Number.POSITIVE_INFINITY) > (stress?.intrinsicPerShare ?? Number.POSITIVE_INFINITY)) penalty += 8;
-  if ((stress?.expectedCagr ?? Number.POSITIVE_INFINITY) > (base?.expectedCagr ?? Number.POSITIVE_INFINITY)) penalty += 5;
+  if ((rerating(stress) ?? Number.POSITIVE_INFINITY) > (rerating(base) ?? Number.POSITIVE_INFINITY)) penalty += 5;
   return penalty;
 }
 
@@ -497,14 +516,15 @@ export function summarizeReturns(points: ValuationBacktestPoint[], key: "realize
 }
 
 export function buildChecklist(args: {
-  opportunity: ValuationOpportunityAssessment;
+  /** The base case's rerating alone (opportunityMetrics), which the hurdle below was set on. */
+  baseReratingCagr: number | null;
   diagnostics: DcfCashFlowDiagnostics;
   reverseDcf: ReverseDcfDiagnostics;
   marketContext: ValuationMarketContext;
   stressCard: ValuationScenarioCard | null;
   analysisStatus?: AnalysisStatusSummary | null | undefined;
 }) {
-  const { opportunity, diagnostics, reverseDcf, marketContext, stressCard, analysisStatus } = args;
+  const { baseReratingCagr, diagnostics, reverseDcf, marketContext, stressCard, analysisStatus } = args;
   const stressForecastPolicy = stressCard?.forecastPolicy;
   const whatMustGoRight = [
     `Reinvestment must stay disciplined enough to preserve a stress-case margin of safety near ${formatPct(stressCard?.marginOfSafetyPct, 1)}.`,
@@ -522,7 +542,7 @@ export function buildChecklist(args: {
       ? "Balance-sheet flexibility is tight, so the business cannot be valued as if financing is frictionless."
       : "Balance-sheet flexibility is adequate enough that execution, not financing, remains the main forecast variable.",
   ];
-  if ((opportunity.expectedCagrBase ?? 0) > 0.15) {
+  if ((baseReratingCagr ?? 0) > 0.15) {
     whatMustGoRight.push("The company needs to compound closer to the base case than the panic case over the next three years.");
   }
 

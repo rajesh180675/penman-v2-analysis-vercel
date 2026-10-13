@@ -288,6 +288,16 @@ describe("valuation command center", () => {
     expect(out.opportunity.qualityScore).toBeGreaterThan(60);
     expect(out.opportunity.requiredMarginOfSafetyPct).toBeGreaterThan(0.15);
     expect(out.scenarios.find((scenario) => scenario.key === "stress")?.expectedCagr).not.toBeNull();
+    // Each card's expected return: the price reaching its value in three years,
+    // the value accruing at the card's own ke meanwhile. The opportunity's stress
+    // figure, and its spread over the risk-free rate, are the stress card's.
+    for (const card of out.scenarios) {
+      if (card.intrinsicPerShare == null || card.intrinsicPerShare <= 0) continue;
+      expect(card.expectedCagr).toBeCloseTo((1 + card.assumptions.ke) * Math.cbrt(card.intrinsicPerShare / out.marketPrice!) - 1, 12);
+    }
+    const stressCard = out.scenarios.find((scenario) => scenario.key === "stress")!;
+    expect(out.opportunity.expectedCagrStress).toBeCloseTo(stressCard.expectedCagr!, 12);
+    expect(out.marketContext.expectedReturnSpreadVsRf).toBeCloseTo(out.opportunity.expectedCagrStress! - out.riskFreeRate, 12);
     // Poly-paradigm Phase 1.1: the command center must expose the independent
     // cash-statement FCFF DCF separately, not fold it into the old median blend.
     expect(out.cashFlowDcf).not.toBeNull();

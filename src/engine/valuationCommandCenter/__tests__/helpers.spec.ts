@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ValuationResult } from "../../types";
-import { primaryValuationPerShare } from "../helpers";
+import type { ValuationScenarioCard } from "../types";
+import { annualizedReturn, expectedReturnToValue, primaryValuationPerShare, scenarioOrderingPenalty } from "../helpers";
 
 function valuationWithAccrualValues(re: number | null, reoi: number | null): ValuationResult {
   return {
@@ -33,5 +34,44 @@ describe("primaryValuationPerShare", () => {
 
   it("takes only the valuation — no owner-earnings value can enter the headline", () => {
     expect(primaryValuationPerShare.length).toBe(1);
+  });
+});
+
+/**
+ * "Expected CAGR" was the rerating alone: a stock priced at value read 0%,
+ * though the model's own value accrues at ke. The return now counts both.
+ */
+describe("expectedReturnToValue", () => {
+  it("earns the cost of equity at a price equal to value", () => {
+    expect(expectedReturnToValue(100, 100, 0.11)).toBeCloseTo(0.11, 12);
+  });
+
+  it("adds the rerating to the accrual over the horizon", () => {
+    // 0.729 = 0.9³: the rerating is −10% a year, the accrual +10%.
+    expect(expectedReturnToValue(1000, 729, 0.1)).toBeCloseTo(1.1 * 0.9 - 1, 12);
+    expect(annualizedReturn(1000, 729)).toBeCloseTo(-0.1, 12);
+  });
+
+  it("has no return without a positive price and value", () => {
+    expect(expectedReturnToValue(null, 100, 0.1)).toBeNull();
+    expect(expectedReturnToValue(100, -5, 0.1)).toBeNull();
+  });
+});
+
+describe("scenarioOrderingPenalty", () => {
+  const card = (key: string, intrinsicPerShare: number, ke: number) =>
+    ({ key, intrinsicPerShare, expectedCagr: expectedReturnToValue(100, intrinsicPerShare, ke), assumptions: { ke } }) as unknown as ValuationScenarioCard;
+
+  it("does not read a stress case discounted at a higher ke as out of order", () => {
+    // Stress sits correctly below base, but its higher ke gives it the higher
+    // expected return (1.13 × 0.98^⅓ > 1.11): no ordering fault.
+    const stress = card("stress", 98, 0.13);
+    const base = card("base", 100, 0.11);
+    expect(stress.expectedCagr!).toBeGreaterThan(base.expectedCagr!);
+    expect(scenarioOrderingPenalty({ stress, base, panic: card("historical-panic", 90, 0.14), marketPrice: 100 })).toBe(0);
+  });
+
+  it("still penalises a stress value above the base value, on both counts", () => {
+    expect(scenarioOrderingPenalty({ stress: card("stress", 105, 0.13), base: card("base", 100, 0.11), panic: card("historical-panic", 90, 0.14), marketPrice: 100 })).toBe(15);
   });
 });
