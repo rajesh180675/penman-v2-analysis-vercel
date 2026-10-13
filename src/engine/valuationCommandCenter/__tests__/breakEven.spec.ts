@@ -38,7 +38,7 @@ describe("break-even drivers", () => {
     const { ke, kw, g } = base.assumptions;
     const forecast = buildScenario(base.scenario, cc.anchorPeriod);
     const periods = buildValuationPeriodsFromForecast(cc.anchorPeriod, forecast);
-    const reValue = (from: typeof periods) => computeValuation(from, ke, kw, g, cc.shareBasis.valuationConfig).perShare.intrinsic_re_per_share!;
+    const reValue = (from: typeof periods) => computeValuation(from, ke, kw, g, cc.shareBasis.valuationConfig).perShare!.intrinsic_re_per_share!;
     const dividends = forecastDividendsPerShare(forecast, cc.anchorPeriod.bs.CSE, cc.shareBasis.sharesForPerShare ?? cc.shareBasis.shares ?? null);
     expect(dividends[0]).toBeGreaterThan(0);
     // Valued at the end of forecast year 1 on the rest of the same forecast.
