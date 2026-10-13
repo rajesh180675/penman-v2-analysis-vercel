@@ -93,6 +93,18 @@ describe("buildFinancialVerdict", () => {
       expect(v.upside).toBeCloseTo(v.perShareAtPriceDate! / 1_000 - 1, 12);
     });
 
+    it("spreads the value over the quote's share count when it has changed since the statements", () => {
+      // 765 crore in the statements; a 1:1 bonus since, 1,530 crore today.
+      const v = buildFinancialVerdict({ valuation: steady, subtype: "bank", latestRaw, marketPrice: 1_000, priceDate: "2025-03-31", quotedShares: 1_530 * 1e7 });
+      expect(v.shareCountChange).toBeCloseTo(2, 12);
+      expect(v.sharesAtPriceDate).toBeCloseTo(1_530, 9);
+      expect(v.perShareAtPriceDate).toBeCloseTo(value / 1_530, 9);
+      expect(v.upside).toBeCloseTo(value / 1_530 / 1_000 - 1, 12);
+      expect(v.marketCapCr).toBeCloseTo(1_000 * 1_530, 6);
+      // An implausible count (a count in crore, not absolute) is ignored.
+      expect(buildFinancialVerdict({ valuation: steady, subtype: "bank", latestRaw, marketPrice: 1_000, quotedShares: 1_530 }).shareCountChange).toBeNull();
+    });
+
     it("is not carried without a sustainable ROE to forecast distributions, nor without a price date", () => {
       const noRoe = buildFinancialVerdict({ valuation: { ...steady, sustainableROE: null } as unknown as BankValuationBundle, subtype: "bank", latestRaw, marketPrice: 1_000, priceDate: "2026-10-13" });
       expect([noRoe.yearsToPriceDate, noRoe.perShareAtPriceDate]).toEqual([0, noRoe.perShare]);

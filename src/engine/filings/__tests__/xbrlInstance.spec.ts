@@ -71,6 +71,20 @@ describe("extractAnnualHeadline", () => {
     expect(extractAnnualHeadline(parseXbrlInstance(FILING), "2024-03-31").headline.exciseDuty).toBeNull();
   });
 
+  it("reads shares in issue as paid-up capital over face value, the face value in its own unit", () => {
+    // HDFC Bank FY26: ₹1,539.34 Cr paid up at ₹1 a share, after a 1:1 bonus.
+    const withShares = FILING.replace("</xbrli:xbrl>", [
+      `<in-capmkt:PaidUpValueOfEquityShareCapital contextRef="FourD" unitRef="INR" decimals="-5">15393400000</in-capmkt:PaidUpValueOfEquityShareCapital>`,
+      `<in-capmkt:FaceValueOfEquityShareCapital contextRef="FourD" unitRef="INRPerShare" decimals="INF">1</in-capmkt:FaceValueOfEquityShareCapital>`,
+      "</xbrli:xbrl>",
+    ].join("\n"));
+    expect(extractAnnualHeadline(parseXbrlInstance(withShares), "2024-03-31").headline.sharesOutstandingCr).toBeCloseTo(1539.34, 6);
+    // At ₹10 a share the same capital is a tenth of the shares.
+    expect(extractAnnualHeadline(parseXbrlInstance(withShares.replace(">1</in-capmkt:FaceValue", ">10</in-capmkt:FaceValue")), "2024-03-31").headline.sharesOutstandingCr)
+      .toBeCloseTo(153.934, 6);
+    expect(extractAnnualHeadline(parseXbrlInstance(FILING), "2024-03-31").headline.sharesOutstandingCr).toBeNull();
+  });
+
   it("falls back to a genuine 12-month span when the ID convention is absent", () => {
     const renamed = FILING
       .replace(/id="FourD"/, 'id="Annual"')

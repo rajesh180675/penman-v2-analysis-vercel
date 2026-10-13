@@ -1,0 +1,81 @@
+{
+ "symbol": "HDFCLIFE",
+ "source": "NSE corporates-financial-results (Annual) and integrated-filing-results (March quarter), Consolidated",
+ "records": [
+  {
+   "fiscalYearEnd": "2025-03-31",
+   "filingDate": "2025-04-17T18:23",
+   "consolidated": true,
+   "audited": false,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_LI_1417727_17042025062333_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": null,
+    "profitBeforeTax": null,
+    "profitAfterTax": null,
+    "profitFromContinuingOperations": null,
+    "profitFromDiscontinuedOperations": null,
+    "profitAttributableToOwners": null,
+    "financeCosts": null,
+    "totalAssets": 339706.15,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": 15597.07,
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": null,
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-16T19:29",
+   "consolidated": true,
+   "audited": false,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_LI_1652667_16042026072910_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": null,
+    "profitBeforeTax": null,
+    "profitAfterTax": null,
+    "profitFromContinuingOperations": null,
+    "profitFromDiscontinuedOperations": null,
+    "profitAttributableToOwners": null,
+    "financeCosts": null,
+    "totalAssets": 379344.58,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": 22625.06,
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": null,
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-07-24T16:48",
+   "consolidated": true,
+   "audited": false,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_LI_1700856_24072026044854_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": null,
+    "profitBeforeTax": null,
+    "profitAfterTax": null,
+    "profitFromContinuingOperations": null,
+    "profitFromDiscontinuedOperations": null,
+    "profitAttributableToOwners": null,
+    "financeCosts": null,
+    "totalAssets": 379344.58,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": 22625.06,
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": null,
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": null
+   }
+  }
+ ]
+}

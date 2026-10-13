@@ -62,11 +62,23 @@ function AsFiled({ ledger, ticker }: { ledger: readonly TieOutCompany[] | null; 
   if (!ledger) {
     return <Card title={title}><div className="mt-2"><Withheld reason="The as-filed ledger is not available." /></div></Card>;
   }
+  // A bank's, NBFC's or insurer's filings are on file for its share count, not
+  // compared: the comparison is with the industrial recast.
+  const compared = ledger.filter((c) => c.rows.length > 0).length;
   if (!entry) {
     return (
       <Card title={title}>
         <div className="mt-2">
-          <Withheld reason={`The as-filed ledger covers ${ledger.length} ${ledger.length === 1 ? "company" : "companies"}; this company's filings have not been fetched yet.`} />
+          <Withheld reason={`The as-filed ledger compares ${compared} ${compared === 1 ? "company" : "companies"}; this company's filings have not been fetched yet.`} />
+        </div>
+      </Card>
+    );
+  }
+  if (entry.rows.length === 0) {
+    return (
+      <Card title={title}>
+        <div className="mt-2">
+          <Withheld reason="This company's filings are on file for its share count. They are not compared: the comparison is with the industrial recast, which does not describe a bank, NBFC or insurer." />
         </div>
       </Card>
     );

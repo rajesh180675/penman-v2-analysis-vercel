@@ -23,7 +23,8 @@
     "cashFlowFromOperations": null,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 90,
-    "nonControllingInterest": null
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 375
    }
   },
   {
@@ -47,7 +48,8 @@
     "cashFlowFromOperations": null,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 107,
-    "nonControllingInterest": null
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 375
    }
   },
   {
@@ -71,7 +73,8 @@
     "cashFlowFromOperations": null,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 132,
-    "nonControllingInterest": null
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 370
    }
   },
   {
@@ -95,7 +98,8 @@
     "cashFlowFromOperations": 39949,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 122,
-    "nonControllingInterest": null
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 366
    }
   },
   {
@@ -119,7 +123,8 @@
     "cashFlowFromOperations": 41965,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 156,
-    "nonControllingInterest": 782
+    "nonControllingInterest": 782,
+    "sharesOutstandingCr": 366
    }
   },
   {
@@ -143,7 +148,8 @@
     "cashFlowFromOperations": 44338,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 191,
-    "nonControllingInterest": 830
+    "nonControllingInterest": 830,
+    "sharesOutstandingCr": 362
    }
   },
   {
@@ -167,7 +173,8 @@
     "cashFlowFromOperations": 48908,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 244,
-    "nonControllingInterest": 1015
+    "nonControllingInterest": 1015,
+    "sharesOutstandingCr": 362
    }
   },
   {
@@ -191,7 +198,8 @@
     "cashFlowFromOperations": 52094,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 244,
-    "nonControllingInterest": 1238
+    "nonControllingInterest": 1238,
+    "sharesOutstandingCr": 362
    }
   }
  ]

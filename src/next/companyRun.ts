@@ -52,7 +52,17 @@ export interface CompanyRunDependencies {
    * absent, the run has no sidecar.
    */
   readonly fetchBankQuality?: (company: LibraryCompany) => Promise<BankQualityIndicators | null>;
+  /**
+   * The shares in issue at the company's latest annual filing (the as-filed
+   * ledger, tie-out.json): the count values are set against the price on when
+   * the quote reports none. NSE's quote API refuses the request (403), so
+   * without it a bonus or split since the data's year (HDFC Bank 1:1, Bajaj
+   * Finance ×10, Kotak ×5, Nestlé 1:1, all in 2025) went unseen. Optional.
+   */
+  readonly fetchFiledShares?: (company: LibraryCompany) => Promise<{ readonly fiscalYearEnd: string; readonly sharesOutstandingCr: number } | null>;
 }
+
+let filedSharesLedger: Promise<readonly { symbol: string; latestFiling?: { fiscalYearEnd: string; sharesOutstandingCr?: number | null } | null }[] | null> | null = null;
 
 const defaultDependencies: CompanyRunDependencies = {
   fetchZip: async (url) => {
@@ -84,6 +94,15 @@ const defaultDependencies: CompanyRunDependencies = {
   run: (input, requestId) => startBrowserAnalysisRun({ requestId, input }).result,
   now: () => new Date(),
   // Same library path the classic shell's batch loader reads.
+  fetchFiledShares: async (company) => {
+    filedSharesLedger ??= fetch("/data/filings/tie-out.json")
+      .then((response) => (response.ok ? response.json() : null))
+      .catch(() => null);
+    const latest = (await filedSharesLedger)?.find((c) => c.symbol === company.ticker)?.latestFiling;
+    return latest?.sharesOutstandingCr != null && latest.sharesOutstandingCr > 0
+      ? { fiscalYearEnd: latest.fiscalYearEnd, sharesOutstandingCr: latest.sharesOutstandingCr }
+      : null;
+  },
   fetchBankQuality: async (company) => {
     if (company.type !== "bank" && company.type !== "nbfc" && company.type !== "insurance") return null;
     const { fetchBankQualityIndicators } = await import("../engine/bankQualityIndicators");
@@ -126,13 +145,23 @@ export async function loadCompanyRun(
     onStep("parsing");
     const issuerId = company.ticker.toUpperCase();
     const config = configForCompany(company);
-    const [consolidated, marketSnapshot, bankQuality] = await Promise.all([
+    const [consolidated, quotedSnapshot, bankQuality, filedShares] = await Promise.all([
       deps.parse(bytes, issuerId),
       asOf ? Promise.resolve(null) : deps.fetchMarketSnapshot(config),
       // The library's sidecar describes the library's accounts; an uploaded zip
       // may be another vintage, so it gets none.
       uploaded || !deps.fetchBankQuality ? Promise.resolve(null) : deps.fetchBankQuality(company),
+      asOf || !deps.fetchFiledShares ? Promise.resolve(null) : deps.fetchFiledShares(company),
     ]);
+    // The price is per share of today's count. When the quote does not say
+    // what that is, the latest annual filing does, and says so.
+    const marketSnapshot = quotedSnapshot && quotedSnapshot.sharesOutstanding == null && filedShares
+      ? {
+          ...quotedSnapshot,
+          sharesOutstanding: filedShares.sharesOutstandingCr * 1e7,
+          sharesOutstandingSource: `the latest annual filing (${filedShares.fiscalYearEnd})`,
+        }
+      : quotedSnapshot;
     // A company that has only just begun consolidating (Nestlé India: two
     // consolidated years, FY24-25, beside a standalone history back to Dec 2011)
     // cannot be valued on its consolidated accounts — valuation needs two

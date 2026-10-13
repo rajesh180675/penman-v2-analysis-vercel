@@ -23,7 +23,8 @@
     "cashFlowFromOperations": null,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": null,
-    "nonControllingInterest": null
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 220.104
    }
   },
   {
@@ -47,7 +48,8 @@
     "cashFlowFromOperations": null,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 53.67,
-    "nonControllingInterest": null
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 241.376
    }
   },
   {
@@ -71,7 +73,8 @@
     "cashFlowFromOperations": null,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": -20.89,
-    "nonControllingInterest": null
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 241.528
    },
    "lenderBalanceSheet": {
     "financialAssets": 121109.92,
@@ -105,7 +108,8 @@
     "cashFlowFromOperations": -5069.51,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": -45.9,
-    "nonControllingInterest": null
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 241.631
    },
    "lenderBalanceSheet": {
     "financialAssets": 137494.73,
@@ -139,7 +143,8 @@
     "cashFlowFromOperations": -24053.4,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 28.3,
-    "nonControllingInterest": null
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 241.799
    },
    "lenderBalanceSheet": {
     "financialAssets": 174024.63,
@@ -173,7 +178,8 @@
     "cashFlowFromOperations": -24100.5,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 103.91,
-    "nonControllingInterest": null
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 260.002
    },
    "lenderBalanceSheet": {
     "financialAssets": 224734.09,
@@ -207,7 +213,8 @@
     "cashFlowFromOperations": -27934.63,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 77.57,
-    "nonControllingInterest": 1958.33
+    "nonControllingInterest": 1958.33,
+    "sharesOutstandingCr": 260.701
    },
    "lenderBalanceSheet": {
     "financialAssets": 270860.05,
@@ -241,7 +248,8 @@
     "cashFlowFromOperations": -36544.12,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 99.31,
-    "nonControllingInterest": 2344.29
+    "nonControllingInterest": 2344.29,
+    "sharesOutstandingCr": 261.961
    },
    "lenderBalanceSheet": {
     "financialAssets": 326728.85,

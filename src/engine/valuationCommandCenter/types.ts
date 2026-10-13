@@ -42,8 +42,9 @@ export interface ValuationScenarioCard {
   /**
    * The value carried from the valuation date to the price's date
    * (carryValueToPriceDate): what upside, margin of safety and expected
-   * return set against the price. `intrinsicPerShare` is dated at the anchor
-   * year-end; this equals it when the price is undated.
+   * return set against the price, per share of today's count (shareCountChange).
+   * `intrinsicPerShare` is dated at the anchor year-end, per share of its count;
+   * this equals it when the price is undated and the count unchanged.
    */
   valueAtPriceDate: number | null;
   /** Forecast distributions to owners per share, year by year (forecastDividendsPerShare). */
@@ -145,6 +146,19 @@ export interface ValuationMarketContext {
   priceDate: string | null;
   /** Years from the valuation anchor to `priceDate`; 0 when there is none. */
   yearsToPriceDate: number;
+  /** The share count per-share values are computed on: the anchor's, in crore. */
+  sharesAtValuationDate: number | null;
+  /** Today's count, in crore: the quote's, else the latest annual filing's; null without one (or an implausible one). */
+  sharesAtPriceDate: number | null;
+  /** Where sharesAtPriceDate came from ("the price's quote", "the latest annual filing (2026-03-31)"). */
+  sharesAtPriceDateSource: string | null;
+  /**
+   * sharesAtPriceDate / sharesAtValuationDate, null without both. Values set
+   * beside the price are spread over today's count (valueAtPriceDate): a bonus
+   * or split changes nothing else; shares issued for cash also brought cash
+   * the anchor's value does not include.
+   */
+  shareCountChange: number | null;
 }
 
 export interface ValuationBacktestPoint {

@@ -310,6 +310,44 @@ describe("valuation command center", () => {
     expect(out.cashFlowDcf?.perShare).toBeGreaterThan(0);
   });
 
+  // The price is per share of today's count, every value per share of the
+  // anchor's. A 1:1 bonus since doubles the count: Nestlé's of 2025 (96.42 →
+  // 192.83 crore) set a value per old share against a price per new one.
+  it("sets values against the price on the quote's share count when it has changed", () => {
+    const data = [
+      mkPeriod(2023, 1000, 180, 130, 520, 760),
+      mkPeriod(2024, 1100, 205, 150, 590, 820),
+      mkPeriod(2025, 1210, 232, 172, 665, 885),
+    ];
+    const build = (sharesOutstanding: number | null) => buildValuationCommandCenter({
+      data,
+      config: { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(620), market_price: INRAbsolute(1) },
+      marketData: {
+        symbol: "X", provider: "NSE India", fetchedAt: "2026-03-30T16:00:00.000Z", price: 1, previousClose: 1, changePct: 0,
+        marketCap: null, enterpriseValue: null, sharesOutstanding, riskFreeRate: 0.07, priceAsOf: "2026-03-30T15:59:00.000Z",
+        rateAsOf: "2026-03-29", freshness: "live", sourceSummary: "NSE", warnings: [], history: null,
+      },
+      analysisStatus: productionReadyStatus,
+    });
+    const same = build(null);
+    const doubled = build(2 * 620 * 1e7); // the quote's count is absolute: 1,240 crore
+    expect(doubled.marketContext.shareCountChange).toBeCloseTo(2, 12);
+    expect(doubled.marketContext.sharesAtValuationDate).toBe(620);
+    expect(doubled.marketContext.sharesAtPriceDate).toBeCloseTo(1240, 9);
+    for (const key of ["stress", "base", "bull"] as const) {
+      const before = same.scenarios.find((s) => s.key === key)!;
+      const after = doubled.scenarios.find((s) => s.key === key)!;
+      // The value itself is the same; beside the price it is per today's share.
+      expect(after.intrinsicPerShare).toBeCloseTo(before.intrinsicPerShare!, 9);
+      expect(after.valueAtPriceDate).toBeCloseTo(before.valueAtPriceDate! / 2, 9);
+      expect(after.upsidePct).toBeCloseTo(after.valueAtPriceDate! / 1 - 1, 12);
+    }
+    // Market cap is today's price on today's count.
+    expect(doubled.marketContext.marketCapFromPrice).toBeCloseTo(1240, 9);
+    // A count that is not plausibly a share count is ignored, not applied.
+    expect(build(620).marketContext.shareCountChange).toBeNull();
+  });
+
   it("uses persistence-led scenario weighting in the command center", () => {
     const data = [
       mkPeriod(2023, 1000, 180, 130, 520, 760),

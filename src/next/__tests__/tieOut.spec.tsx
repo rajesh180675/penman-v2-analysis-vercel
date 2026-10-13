@@ -52,8 +52,12 @@ describe("Evidence — Capitaline vs as filed", () => {
   });
 
   it("withholds the comparison, with the reason, for a company outside the ledger", () => {
-    expect(text(renderToStaticMarkup(<EvidenceSection result={result} tieOut={ledger} ticker="TCS" />)))
-      .toContain("The as-filed ledger covers 1 company; this company's filings have not been fetched yet.");
+    // A financial's filings are on file for its share count, not compared: it is not counted.
+    const withBank = [...ledger, { symbol: "HDFCBANK", firstFiling: "2019-04-20T10:00", rows: [] }];
+    expect(text(renderToStaticMarkup(<EvidenceSection result={result} tieOut={withBank} ticker="TCS" />)))
+      .toContain("The as-filed ledger compares 1 company; this company's filings have not been fetched yet.");
+    expect(text(renderToStaticMarkup(<EvidenceSection result={result} tieOut={withBank} ticker="HDFCBANK" />)))
+      .toContain("This company's filings are on file for its share count. They are not compared: the comparison is with the industrial recast, which does not describe a bank, NBFC or insurer.");
     expect(text(renderToStaticMarkup(<EvidenceSection result={result} tieOut={null} ticker="ITC" />)))
       .toContain("The as-filed ledger is not available.");
   });
