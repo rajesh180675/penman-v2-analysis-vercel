@@ -76,6 +76,12 @@ export function forecastDividendsPerShare(
  * paid (V₁ = V₀(1 + ke) − d₁, distributions at each forecast year-end), so a
  * value as of 31 March 2025 set beside an October 2026 price is ~18 months
  * short of it: at 11% about 17%, less the year's distributions.
+ *
+ * Per share, only what is paid out comes off. A year the forecast raises
+ * equity (clean surplus's negative distribution) is shares issued, at a fair
+ * price neither a gain nor a loss to a share already held; added back, it made
+ * NTPC's stress case, worth −₹1.95 a share, ₹17.57 by the price's date. And a
+ * share is worth no less than nothing: below zero, the value is zero.
  */
 export function carryValueToPriceDate(
   value: number | null,
@@ -87,9 +93,9 @@ export function carryValueToPriceDate(
   let carried = value;
   let remaining = years;
   for (let year = 0; remaining >= 1; year += 1, remaining -= 1) {
-    carried = carried * (1 + ke) - (dividendsPerShare[year] ?? 0);
+    carried = carried * (1 + ke) - Math.max(dividendsPerShare[year] ?? 0, 0);
   }
-  return carried * Math.pow(1 + ke, remaining);
+  return Math.max(carried * Math.pow(1 + ke, remaining), 0);
 }
 
 export function marginOfSafety(intrinsicPerShare: number | null, marketPrice: number | null) {

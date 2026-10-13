@@ -86,6 +86,15 @@ describe("carrying a value to the price's date", () => {
     expect(carryValueToPriceDate(null, 0.1, 1, [8])).toBeNull();
   });
 
+  it("takes off only what is paid out, and never goes below zero", () => {
+    // A year that raises equity (a negative distribution) is shares issued: at a
+    // fair price no gain to a share already held, so nothing is added back.
+    expect(carryValueToPriceDate(100, 0.1, 1, [-30])).toBeCloseTo(110, 12);
+    // NTPC's stress case, −₹1.95 a share, raising ₹18.63 a share: still worth nothing.
+    expect(carryValueToPriceDate(-1.95, 0.1344, 1.54, [-18.63, 4.69])).toBe(0);
+    expect(carryValueToPriceDate(-5, 0.1, 0, [])).toBe(0);
+  });
+
   it("reads distributions by clean surplus, per share", () => {
     const year = (CNI_f: number, CSE_f: number) => ({ CNI_f, CSE_f }) as unknown as ForecastPeriod;
     // 1,000 opening equity; earns 150 and closes at 1,100: 50 paid out, then 60.
