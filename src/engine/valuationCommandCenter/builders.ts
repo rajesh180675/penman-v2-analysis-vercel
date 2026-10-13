@@ -18,7 +18,7 @@ import {
 } from "./types";
 import {
   clamp,
-  annualizedReturn,
+  expectedReturnToValue,
   marginOfSafety,
   primaryValuationPerShare,
 } from "./helpers";
@@ -235,7 +235,7 @@ export function buildScenarioCards(args: {
       ownerEarningsDcfPerShare: ownerDcf,
       upsidePct: intrinsicPerShare != null && marketPrice != null && marketPrice > 0 ? (intrinsicPerShare - marketPrice) / marketPrice : null,
       marginOfSafetyPct,
-      expectedCagr: annualizedReturn(marketPrice, intrinsicPerShare, 3),
+      expectedCagr: expectedReturnToValue(marketPrice, intrinsicPerShare, scenarioAtKw.drivers.ke, 3),
       valuation,
       kwConsistency,
       forecastPolicy: scenarioAtKw.forecastPolicy,

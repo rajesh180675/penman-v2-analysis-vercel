@@ -37,6 +37,8 @@ describe("VerdictSection", () => {
     expect(html).toContain("Upside 10.0%");
     expect(html).toContain("Price ₹1000.00");
     expect(html).toContain("5.2%");
+    // The CAGR says what it is: not the rerating alone.
+    expect(html).toContain("If the price reaches the stress value in 3 years, with that value accruing at its cost of equity.");
   });
 
   it("withholds price, upside and CAGR — with the reason — when there is no market price", () => {
@@ -44,6 +46,7 @@ describe("VerdictSection", () => {
     expect(html).toContain("No market price: the live market overlay is missing.");
     expect(html).not.toContain("Upside");
     expect(html).not.toContain("Price ₹");
+    expect(html).not.toContain("If the price reaches the stress value");
   });
 
   it("states the forecast's track record as counts a reader can check", () => {
