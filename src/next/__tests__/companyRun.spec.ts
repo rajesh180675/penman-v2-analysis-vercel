@@ -185,3 +185,33 @@ describe("loadCompanyRun — a financial institution's quality sidecar", () => {
     expect(run.mock.calls[0]![0].bankQuality).toBeNull();
   });
 });
+
+// NSE's quote API refuses the request (403), so the quote reports no share
+// count; without one, a bonus or split since the data's year went unseen.
+describe("loadCompanyRun — today's share count", () => {
+  const filed = { fiscalYearEnd: "2026-03-31", sharesOutstandingCr: 192.83 };
+  const runOf = () => vi.fn(async (_input: LegacyAnalysisRunInputV1, _requestId: string) => result);
+
+  it("takes the latest annual filing's count when the quote reports none, and says so", async () => {
+    const run = runOf();
+    await loadCompanyRun(company, undefined, deps({ run, fetchFiledShares: async () => filed }));
+    const input = run.mock.calls[0]![0];
+    expect(input.marketSnapshot).toMatchObject({ lastPrice: 1450, sharesOutstanding: 192.83 * 1e7, sharesOutstandingSource: "the latest annual filing (2026-03-31)" });
+  });
+
+  it("keeps the quote's own count, and invents no snapshot where there is none", async () => {
+    const quoted = { lastPrice: 1450, sharesOutstanding: 1_928_300_000 } as unknown as LiveMarketDataSnapshot;
+    const withCount = runOf();
+    await loadCompanyRun(company, undefined, deps({ run: withCount, fetchMarketSnapshot: async () => quoted, fetchFiledShares: async () => ({ ...filed, sharesOutstandingCr: 96.42 }) }));
+    expect(withCount.mock.calls[0]![0].marketSnapshot).toBe(quoted);
+    const none = runOf();
+    await loadCompanyRun(company, undefined, deps({ run: none, fetchMarketSnapshot: async () => null, fetchFiledShares: async () => filed }));
+    expect(none.mock.calls[0]![0].marketSnapshot).toBeNull();
+  });
+
+  it("does not look up today's count for an as-of view, which has no price", async () => {
+    const fetchFiledShares = vi.fn(async () => filed);
+    await loadCompanyRun(company, undefined, deps({ run: runOf(), fetchFiledShares }), "2024-03-31");
+    expect(fetchFiledShares).not.toHaveBeenCalled();
+  });
+});

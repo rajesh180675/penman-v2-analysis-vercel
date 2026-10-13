@@ -84,6 +84,7 @@ export function VerdictSection({ result, trackRecord = null, asOf = null }: {
           change={cc.marketPrice != null ? cc.marketContext.shareCountChange : null}
           atValuation={cc.marketContext.sharesAtValuationDate}
           today={cc.marketContext.sharesAtPriceDate}
+          source={cc.marketContext.sharesAtPriceDateSource}
         />
         {" · "}latest reported <strong>{cc.marketContext.latestReportedPeriod ?? "—"}</strong>
         {cc.valuationReadiness.status !== "production-ready" && cc.valuationReadiness.reasons[0]
@@ -110,6 +111,7 @@ function FinancialVerdict({ result, asOf }: { result: LegacyAnalysisRunExecution
     marketPrice: asOf ? null : m.marketSnapshot?.price ?? null,
     priceDate: m.marketSnapshot?.priceAsOf ?? m.marketSnapshot?.fetchedAt ?? null,
     quotedShares: m.marketSnapshot?.sharesOutstanding ?? null,
+    quotedSharesSource: m.marketSnapshot?.sharesOutstandingSource ?? null,
   }), [asOf, bank.subtype, bank.valuation, m.marketSnapshot, m.rawData]);
   const carried = verdict.yearsToPriceDate > 0;
   const rung = result.run?.trustEnvelope?.rigor.checkpoints.find((c) => c.level === "valuation-eligible");
@@ -189,7 +191,7 @@ function FinancialVerdict({ result, asOf }: { result: LegacyAnalysisRunExecution
           </>
         )}
         Shares: {verdict.shares != null ? <>{verdict.shares.toFixed(2)} crore ({verdict.sharesSource})</> : "not resolved"}
-        <ShareCountChange change={verdict.shareCountChange} atValuation={verdict.shares} today={verdict.sharesAtPriceDate} />.
+        <ShareCountChange change={verdict.shareCountChange} atValuation={verdict.shares} today={verdict.sharesAtPriceDate} source={verdict.sharesAtPriceDateSource} />.
       </p>
     </div>
   );
@@ -401,13 +403,19 @@ function Panel({ children }: { children: ReactNode }) {
  * over today's, and the reader is told why they differ from the figure under
  * them.
  */
-function ShareCountChange({ change, atValuation, today }: { change: number | null | undefined; atValuation: number | null | undefined; today: number | null | undefined }) {
+function ShareCountChange({ change, atValuation, today, source }: {
+  change: number | null | undefined;
+  atValuation: number | null | undefined;
+  today: number | null | undefined;
+  /** Where today's count came from: the quote, or the latest annual filing. */
+  source: string | null | undefined;
+}) {
   if (change == null || atValuation == null || today == null || Math.abs(change - 1) < 0.01) return null;
   return (
     <>
       {" · "}shares outstanding <strong>{atValuation.toFixed(2)}</strong> crore at the valuation date, <strong>{today.toFixed(2)}</strong> crore
-      today (×{change.toFixed(2)}): values beside the price are per today&rsquo;s share. A bonus or split changes nothing else;
-      shares issued for cash also brought in cash the value does not include
+      by {source ?? "the price's quote"} (×{change.toFixed(2)}): values beside the price are per today&rsquo;s share. A bonus or split
+      changes nothing else; shares issued for cash also brought in cash the value does not include
     </>
   );
 }

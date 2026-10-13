@@ -429,6 +429,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     yearsToPriceDate,
     sharesAtValuationDate: shares,
     sharesAtPriceDate: shareCountChange != null ? quotedSharesCr : null,
+    sharesAtPriceDateSource: shareCountChange != null ? marketData?.sharesOutstandingSource ?? "the price's quote" : null,
     shareCountChange,
   };
 

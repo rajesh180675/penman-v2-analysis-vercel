@@ -51,6 +51,8 @@ export interface FinancialVerdict {
   readonly yearsToPriceDate: number;
   /** Today's count from the price's quote, in crore; null when it reports none (or an implausible one). */
   readonly sharesAtPriceDate: number | null;
+  /** Where sharesAtPriceDate came from ("the price's quote", "the latest annual filing (2026-03-31)"). */
+  readonly sharesAtPriceDateSource: string | null;
   /** sharesAtPriceDate / shares; the value beside the price is spread over today's count. */
   readonly shareCountChange: number | null;
   readonly ke: number | null;
@@ -66,8 +68,9 @@ export function buildFinancialVerdict(input: {
   readonly marketPrice: number | null | undefined;
   /** The price's date (the snapshot's priceAsOf, else when it was fetched). */
   readonly priceDate?: string | null | undefined;
-  /** The quote's share count, absolute (the snapshot's sharesOutstanding). */
+  /** Today's share count, absolute (the snapshot's sharesOutstanding), and where it came from when not the quote. */
   readonly quotedShares?: number | null | undefined;
+  readonly quotedSharesSource?: string | null | undefined;
 }): FinancialVerdict {
   const { valuation, subtype, latestRaw } = input;
   const insurer = subtype === "insurance";
@@ -131,6 +134,7 @@ export function buildFinancialVerdict(input: {
     priceDate,
     yearsToPriceDate: carriedPerShare !== perShare ? years : 0,
     sharesAtPriceDate: shareCountChange != null ? quotedCr : null,
+    sharesAtPriceDateSource: shareCountChange != null ? input.quotedSharesSource ?? "the price's quote" : null,
     shareCountChange,
     ke: finite(valuation?.ke) ? valuation!.ke : null,
     scenarios,

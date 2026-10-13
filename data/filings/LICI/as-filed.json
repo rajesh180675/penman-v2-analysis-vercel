@@ -1,0 +1,56 @@
+{
+ "symbol": "LICI",
+ "source": "NSE corporates-financial-results (Annual) and integrated-filing-results (March quarter), Consolidated",
+ "records": [
+  {
+   "fiscalYearEnd": "2025-03-31",
+   "filingDate": "2025-05-28T17:02",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_LI_1454725_28052025050202_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": null,
+    "profitBeforeTax": null,
+    "profitAfterTax": null,
+    "profitFromContinuingOperations": null,
+    "profitFromDiscontinuedOperations": null,
+    "profitAttributableToOwners": null,
+    "financeCosts": null,
+    "totalAssets": 5611589.25,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": -9144.77,
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": null,
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": null
+   }
+  },
+  {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-21T20:23",
+   "consolidated": true,
+   "audited": true,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_LI_1670942_21052026082347_WEB.xml",
+   "extraction": "id-convention",
+   "headline": {
+    "revenue": null,
+    "profitBeforeTax": null,
+    "profitAfterTax": null,
+    "profitFromContinuingOperations": null,
+    "profitFromDiscontinuedOperations": null,
+    "profitAttributableToOwners": null,
+    "financeCosts": null,
+    "totalAssets": 5909531.25,
+    "totalEquity": null,
+    "equityAttributableToOwners": null,
+    "cashFlowFromOperations": -26211.48,
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": null,
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": null
+   }
+  }
+ ]
+}

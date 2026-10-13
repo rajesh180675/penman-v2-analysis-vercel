@@ -148,8 +148,10 @@ export interface ValuationMarketContext {
   yearsToPriceDate: number;
   /** The share count per-share values are computed on: the anchor's, in crore. */
   sharesAtValuationDate: number | null;
-  /** Today's count from the price's quote, in crore; null when it reports none (or an implausible one). */
+  /** Today's count, in crore: the quote's, else the latest annual filing's; null without one (or an implausible one). */
   sharesAtPriceDate: number | null;
+  /** Where sharesAtPriceDate came from ("the price's quote", "the latest annual filing (2026-03-31)"). */
+  sharesAtPriceDateSource: string | null;
   /**
    * sharesAtPriceDate / sharesAtValuationDate, null without both. Values set
    * beside the price are spread over today's count (valueAtPriceDate): a bonus

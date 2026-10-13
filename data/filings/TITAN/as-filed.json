@@ -23,7 +23,8 @@
     "cashFlowFromOperations": null,
     "exciseDuty": 36.18,
     "profitAttributableToNonControllingInterests": -28.18,
-    "nonControllingInterest": null
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 88.78
    }
   },
   {
@@ -47,7 +48,8 @@
     "cashFlowFromOperations": null,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": -15.5003,
-    "nonControllingInterest": null
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 88.78
    }
   },
   {
@@ -71,7 +73,8 @@
     "cashFlowFromOperations": null,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": -8.73,
-    "nonControllingInterest": null
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 88.78
    }
   },
   {
@@ -95,7 +98,8 @@
     "cashFlowFromOperations": null,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 0.559,
-    "nonControllingInterest": null
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 88.779
    }
   },
   {
@@ -119,7 +123,8 @@
     "cashFlowFromOperations": -724.001,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 25,
-    "nonControllingInterest": null
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 88.78
    }
   },
   {
@@ -143,7 +148,8 @@
     "cashFlowFromOperations": 1370,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 24,
-    "nonControllingInterest": 53
+    "nonControllingInterest": 53,
+    "sharesOutstandingCr": 88.78
    }
   },
   {
@@ -167,7 +173,8 @@
     "cashFlowFromOperations": 1759.02,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 0,
-    "nonControllingInterest": 0.005
+    "nonControllingInterest": 0.005,
+    "sharesOutstandingCr": 88.78
    }
   },
   {
@@ -191,7 +198,8 @@
     "cashFlowFromOperations": -548,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 0,
-    "nonControllingInterest": 0
+    "nonControllingInterest": 0,
+    "sharesOutstandingCr": 88.78
    }
   },
   {
@@ -215,7 +223,8 @@
     "cashFlowFromOperations": 5590,
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 0,
-    "nonControllingInterest": 0
+    "nonControllingInterest": 0,
+    "sharesOutstandingCr": 89
    }
   }
  ]

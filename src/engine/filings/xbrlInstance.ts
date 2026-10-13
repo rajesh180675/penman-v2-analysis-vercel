@@ -165,6 +165,13 @@ export type AnnualHeadline = { -readonly [K in keyof typeof ANNUAL_HEADLINE_CONC
    */
   profitAttributableToNonControllingInterests?: number | null;
   nonControllingInterest?: number | null;
+  /**
+   * Equity shares in issue, in crore: paid-up equity capital over face value.
+   * A bonus or split after the period a valuation is drawn from changes it,
+   * and the price with it (HDFC Bank: 765.22 crore filed for FY2025, 1,539.34
+   * for FY2026). Absent on records extracted before it was read.
+   */
+  sharesOutstandingCr?: number | null;
 };
 
 const INSTANT_FIELDS = new Set<keyof AnnualHeadline>(["totalAssets", "totalEquity", "equityAttributableToOwners"]);
@@ -192,7 +199,28 @@ export function extractAnnualHeadline(instance: XbrlInstance, fiscalYearEnd: str
   };
   headline.profitAttributableToNonControllingInterests = read("ProfitOrLossAttributableToNonControllingInterests", duration);
   headline.nonControllingInterest = read("NonControllingInterest", instant);
+  headline.sharesOutstandingCr = sharesInIssue(instance, duration, instant);
   return { headline, method };
+}
+
+/**
+ * Paid-up equity capital over face value, in crore shares. Results filings tag
+ * both in the period's duration contexts (`FourD`), some in the instant; the
+ * face value carries its own unit (INRPerShare).
+ */
+function sharesInIssue(instance: XbrlInstance, duration: XbrlContext | null, instant: XbrlContext | null): number | null {
+  const value = (concept: string, unit: string): number | null => {
+    for (const context of [duration, instant]) {
+      const fact = context
+        ? instance.facts.find((f) => f.concept === concept && f.contextRef === context.id && f.value != null && f.unitRef?.toUpperCase() === unit)
+        : undefined;
+      if (fact?.value != null) return fact.value;
+    }
+    return null;
+  };
+  const paidUp = value("PaidUpValueOfEquityShareCapital", "INR");
+  const face = value("FaceValueOfEquityShareCapital", "INRPERSHARE");
+  return paidUp != null && paidUp > 0 && face != null && face > 0 ? paidUp / face / 1e7 : null;
 }
 
 /**

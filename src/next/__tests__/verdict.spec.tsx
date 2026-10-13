@@ -57,9 +57,9 @@ describe("VerdictSection", () => {
 
   it("says when the share count has changed since the valuation date", () => {
     const text = render(commandCenter({
-      marketContext: { freshness: "live", latestReportedPeriod: "2025-03-31", priceDate: "2026-10-13", yearsToPriceDate: 0, sharesAtValuationDate: 96.42, sharesAtPriceDate: 192.83, shareCountChange: 192.83 / 96.42 },
+      marketContext: { freshness: "live", latestReportedPeriod: "2025-03-31", priceDate: "2026-10-13", yearsToPriceDate: 0, sharesAtValuationDate: 96.42, sharesAtPriceDate: 192.83, sharesAtPriceDateSource: "the latest annual filing (2026-03-31)", shareCountChange: 192.83 / 96.42 },
     })).replace(/<[^>]+>/g, "");
-    expect(text).toContain("shares outstanding 96.42 crore at the valuation date, 192.83 crore today (×2.00): values beside the price are per today’s share.");
+    expect(text).toContain("shares outstanding 96.42 crore at the valuation date, 192.83 crore by the latest annual filing (2026-03-31) (×2.00): values beside the price are per today’s share.");
   });
 
   it("withholds price, upside and CAGR — with the reason — when there is no market price", () => {

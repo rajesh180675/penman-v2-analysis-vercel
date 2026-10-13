@@ -246,7 +246,8 @@
   "firstFiling": "2018-06-15T15:43",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-29T19:51"
+   "filingDate": "2026-05-29T19:51",
+   "sharesOutstandingCr": 95.92
   },
   "filedYears": [
    {
@@ -311,6 +312,67 @@
     "exciseDuty": null,
     "profitAttributableToOwners": 4325.35,
     "equityAttributableToOwners": 21371.59
+   }
+  ]
+ },
+ {
+  "symbol": "BAJFINANCE",
+  "rows": [],
+  "firstFiling": "2018-06-21T18:01",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-29T22:45",
+   "sharesOutstandingCr": 621.79
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 13442.04,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 26373.81,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 31632.42,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 7028.23,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 41397.38,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": 54371.98
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 54969.49,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 14451.17,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 69683.51,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 16637.82,
+    "equityAttributableToOwners": 96692.87
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 81982.38,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 19017.39,
+    "equityAttributableToOwners": 113999.02
    }
   ]
  },
@@ -537,7 +599,8 @@
   "firstFiling": "2019-05-09T18:12",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-13T21:45"
+   "filingDate": "2026-05-13T21:45",
+   "sharesOutstandingCr": 609.36
   },
   "filedYears": [
    {
@@ -825,7 +888,8 @@
   "firstFiling": "2018-05-25T18:03",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-07T23:38"
+   "filingDate": "2026-05-07T23:38",
+   "sharesOutstandingCr": 24.09
   },
   "filedYears": [
    {
@@ -883,6 +947,81 @@
     "exciseDuty": null,
     "profitAttributableToOwners": 2533.49,
     "equityAttributableToOwners": 5106.56
+   }
+  ]
+ },
+ {
+  "symbol": "CHOLAFIN",
+  "rows": [],
+  "firstFiling": "2018-08-16T16:10",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-30T22:41",
+   "sharesOutstandingCr": 85.24
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 5500.64,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 7087.62,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 1195.12,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 8712.01,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 9579.4,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 10140.75,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 12884.1,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 19139.62,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 3420.06,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 25845.98,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 4262.7,
+    "equityAttributableToOwners": 23668.69
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 31073.1,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 5232.61,
+    "equityAttributableToOwners": 30458.4
    }
   ]
  },
@@ -1125,7 +1264,8 @@
   "firstFiling": "2018-06-21T16:18",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-07T17:38"
+   "filingDate": "2026-05-07T17:38",
+   "sharesOutstandingCr": 177.37
   },
   "filedYears": [
    {
@@ -1432,7 +1572,8 @@
   "firstFiling": "2018-06-15T19:15",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-02T19:13"
+   "filingDate": "2026-05-02T19:13",
+   "sharesOutstandingCr": 65.196
   },
   "filedYears": [
    {
@@ -1743,7 +1884,8 @@
   "firstFiling": "2018-06-25T13:44",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-20T15:39"
+   "filingDate": "2026-05-20T15:39",
+   "sharesOutstandingCr": 68.055
   },
   "filedYears": [
    {
@@ -1808,6 +1950,93 @@
     "exciseDuty": null,
     "profitAttributableToOwners": 4966.48,
     "equityAttributableToOwners": 103469.92
+   }
+  ]
+ },
+ {
+  "symbol": "HDFCBANK",
+  "rows": [],
+  "firstFiling": "2019-04-23T18:11",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-18T19:30",
+   "sharesOutstandingCr": 1539.34
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   }
+  ]
+ },
+ {
+  "symbol": "HDFCLIFE",
+  "rows": [],
+  "firstFiling": "2025-04-17T18:23",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-16T19:29",
+   "sharesOutstandingCr": null
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
    }
   ]
  },
@@ -2054,7 +2283,8 @@
   "firstFiling": "2018-05-26T17:10",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-04-30T21:06"
+   "filingDate": "2026-04-30T21:06",
+   "sharesOutstandingCr": 235
   },
   "filedYears": [
    {
@@ -2119,6 +2349,74 @@
     "exciseDuty": null,
     "profitAttributableToOwners": 15040,
     "equityAttributableToOwners": 48739
+   }
+  ]
+ },
+ {
+  "symbol": "ICICIBANK",
+  "rows": [],
+  "firstFiling": "2018-07-19T14:53",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-18T18:08",
+   "sharesOutstandingCr": 716.115
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
    }
   ]
  },
@@ -2345,7 +2643,8 @@
   "firstFiling": "2019-05-21T20:10",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-16T18:58"
+   "filingDate": "2026-05-16T18:58",
+   "sharesOutstandingCr": 10834.3
   },
   "filedYears": [
    {
@@ -2677,7 +2976,8 @@
   "firstFiling": "2019-10-18T18:40",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-04-23T20:47"
+   "filingDate": "2026-04-23T20:47",
+   "sharesOutstandingCr": 404.8
   },
   "filedYears": [
    {
@@ -3009,7 +3309,8 @@
   "firstFiling": "2018-06-08T15:27",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-21T18:32"
+   "filingDate": "2026-05-21T18:32",
+   "sharesOutstandingCr": 1252.95
   },
   "filedYears": [
    {
@@ -3074,6 +3375,100 @@
     "exciseDuty": 11044.93,
     "profitAttributableToOwners": 20689.47,
     "equityAttributableToOwners": 72507.3
+   }
+  ]
+ },
+ {
+  "symbol": "KOTAKBANK",
+  "rows": [],
+  "firstFiling": "2019-05-07T15:24",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-02T18:51",
+   "sharesOutstandingCr": 994.65
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   }
+  ]
+ },
+ {
+  "symbol": "LICI",
+  "rows": [],
+  "firstFiling": "2025-05-28T17:02",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-21T20:23",
+   "sharesOutstandingCr": null
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
    }
   ]
  },
@@ -3340,7 +3735,8 @@
   "firstFiling": "2018-06-22T19:52",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-05T19:30"
+   "filingDate": "2026-05-05T19:30",
+   "sharesOutstandingCr": 137.565
   },
   "filedYears": [
    {
@@ -3651,7 +4047,8 @@
   "firstFiling": "2018-06-22T20:24",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-05T16:28"
+   "filingDate": "2026-05-05T16:28",
+   "sharesOutstandingCr": 111.756
   },
   "filedYears": [
    {
@@ -3942,7 +4339,8 @@
   "firstFiling": "2019-05-24T18:34",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-04-28T19:47"
+   "filingDate": "2026-04-28T19:47",
+   "sharesOutstandingCr": 31.44
   },
   "filedYears": [
    {
@@ -4004,6 +4402,81 @@
   ]
  },
  {
+  "symbol": "MUTHOOTFIN",
+  "rows": [],
+  "firstFiling": "2018-05-25T15:25",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-14T20:00",
+   "sharesOutstandingCr": 40.1468
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2018-03-31",
+    "revenue": 6607.5324,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": 7594.432,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 2078.013,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 9683.98,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 3138.245,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 11530.786,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 3804.397,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 12184.908,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 4016.62,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 11897.663,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 3612.298,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 15061.657,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 4324.288,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 20214.165,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 5332.9,
+    "equityAttributableToOwners": 29366.627
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 31209.232,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 10590.337,
+    "equityAttributableToOwners": 39130.315
+   }
+  ]
+ },
+ {
   "symbol": "NESTLEIND",
   "rows": [
    {
@@ -4058,7 +4531,8 @@
   "firstFiling": "2025-04-24T18:52",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-04-21T19:32"
+   "filingDate": "2026-04-21T19:32",
+   "sharesOutstandingCr": 192.83
   },
   "filedYears": [
    {
@@ -4300,7 +4774,8 @@
   "firstFiling": "2018-07-04T12:08",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-23T16:07"
+   "filingDate": "2026-05-23T16:07",
+   "sharesOutstandingCr": 969.667
   },
   "filedYears": [
    {
@@ -4550,7 +5025,8 @@
   "firstFiling": "2022-05-20T22:15",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-06T21:25"
+   "filingDate": "2026-05-06T21:25",
+   "sharesOutstandingCr": 64
   },
   "filedYears": [
    {
@@ -4829,7 +5305,8 @@
   "firstFiling": "2018-06-22T19:28",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-15T21:35"
+   "filingDate": "2026-05-15T21:35",
+   "sharesOutstandingCr": 930.06
   },
   "filedYears": [
    {
@@ -5120,7 +5597,8 @@
   "firstFiling": "2019-05-06T14:13",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-04-24T22:57"
+   "filingDate": "2026-04-24T22:57",
+   "sharesOutstandingCr": 1353.2
   },
   "filedYears": [
    {
@@ -5171,6 +5649,135 @@
     "exciseDuty": 18456,
     "profitAttributableToOwners": 80775,
     "equityAttributableToOwners": 904030
+   }
+  ]
+ },
+ {
+  "symbol": "SBIN",
+  "rows": [],
+  "firstFiling": "2019-05-24T18:25",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-05-08T16:42",
+   "sharesOutstandingCr": 923.06
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2019-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": null,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   }
+  ]
+ },
+ {
+  "symbol": "SHRIRAMFIN",
+  "rows": [],
+  "firstFiling": "2020-07-16T15:55",
+  "latestFiling": {
+   "fiscalYearEnd": "2026-03-31",
+   "filingDate": "2026-04-24T18:00",
+   "sharesOutstandingCr": 188.155
+  },
+  "filedYears": [
+   {
+    "fiscalYearEnd": "2020-03-31",
+    "revenue": 16562.36,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2021-03-31",
+    "revenue": 17420.45,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 0,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2022-03-31",
+    "revenue": 19255.17,
+    "exciseDuty": null,
+    "profitAttributableToOwners": null,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2023-03-31",
+    "revenue": 30476.78,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 6011.04,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2024-03-31",
+    "revenue": 36379.52,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 7366.38,
+    "equityAttributableToOwners": null
+   },
+   {
+    "fiscalYearEnd": "2025-03-31",
+    "revenue": 41834.42,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 9553.82,
+    "equityAttributableToOwners": 56469.82
+   },
+   {
+    "fiscalYearEnd": "2026-03-31",
+    "revenue": 48132.95,
+    "exciseDuty": null,
+    "profitAttributableToOwners": 10024.16,
+    "equityAttributableToOwners": 65918.59
    }
   ]
  },
@@ -5397,7 +6004,8 @@
   "firstFiling": "2018-06-19T19:05",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-22T18:39"
+   "filingDate": "2026-05-22T18:39",
+   "sharesOutstandingCr": 239.93
   },
   "filedYears": [
    {
@@ -5701,7 +6309,8 @@
   "firstFiling": "2018-06-19T18:02",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-15T20:02"
+   "filingDate": "2026-05-15T20:02",
+   "sharesOutstandingCr": 1247.44
   },
   "filedYears": [
    {
@@ -6040,7 +6649,8 @@
   "firstFiling": "2019-04-23T18:26",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-04-09T23:42"
+   "filingDate": "2026-04-09T23:42",
+   "sharesOutstandingCr": 362
   },
   "filedYears": [
    {
@@ -6344,7 +6954,8 @@
   "firstFiling": "2018-06-18T18:27",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-05-08T19:47"
+   "filingDate": "2026-05-08T19:47",
+   "sharesOutstandingCr": 89
   },
   "filedYears": [
    {
@@ -6635,7 +7246,8 @@
   "firstFiling": "2019-06-26T14:34",
   "latestFiling": {
    "fiscalYearEnd": "2026-03-31",
-   "filingDate": "2026-04-27T20:18"
+   "filingDate": "2026-04-27T20:18",
+   "sharesOutstandingCr": 29.468
   },
   "filedYears": [
    {
