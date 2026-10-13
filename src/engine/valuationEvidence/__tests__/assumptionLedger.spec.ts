@@ -7,6 +7,8 @@ function scenario(key: ValuationScenarioCard["key"], overrides: Partial<Valuatio
     key,
     label: `${key} case`,
     intrinsicPerShare: key === "base" ? 100 : 80,
+    valueAtPriceDate: key === "base" ? 100 : 80,
+    dividendsPerShare: [],
     upsidePct: null,
     marginOfSafetyPct: null,
     expectedCagr: null,

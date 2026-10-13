@@ -95,8 +95,9 @@ export default function ValuationCommandCenterHero({
 
       <div className="mt-6 grid gap-4 lg:grid-cols-5">
         <HeroMetric label="Current price" value={commandCenter.marketPrice != null ? `₹${commandCenter.marketPrice.toFixed(2)}` : "—"} sublabel={`${commandCenter.marketContext.freshness}${marketSymbol ? ` · ${marketSymbol}` : ""}`} />
-        <HeroMetric label="Stress value" value={formatPerShare(stress?.intrinsicPerShare)} sublabel={`Upside ${formatPct(stress?.upsidePct)}`} />
-        <HeroMetric label="Base value" value={formatPerShare(base?.intrinsicPerShare)} sublabel={`Upside ${formatPct(base?.upsidePct)}`} />
+        {/* Beside the price, values carried to its date: the ones the upside is measured on. */}
+        <HeroMetric label="Stress value" value={formatPerShare(commandCenter.marketPrice != null ? stress?.valueAtPriceDate : stress?.intrinsicPerShare)} sublabel={`Upside ${formatPct(stress?.upsidePct)}`} />
+        <HeroMetric label="Base value" value={formatPerShare(commandCenter.marketPrice != null ? base?.valueAtPriceDate : base?.intrinsicPerShare)} sublabel={`Upside ${formatPct(base?.upsidePct)}`} />
         <HeroMetric label="Expected CAGR (stress)" value={formatPct(commandCenter.opportunity.expectedCagrStress, 1)} sublabel={commandCenter.opportunity.convictionBucket} />
         <HeroMetric label="Valuation range" value={`${formatPerShare(commandCenter.range.floorPerShare)} to ${formatPerShare(commandCenter.range.ceilingPerShare)}`} sublabel={`Anchor ${commandCenter.valuationReadiness.anchorPeriod?.slice(0, 10) ?? "—"} · As of ${commandCenter.asOf ? new Date(commandCenter.asOf).toLocaleString("en-IN") : "—"}`} />
       </div>

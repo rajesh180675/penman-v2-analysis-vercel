@@ -19,7 +19,7 @@ import { buildScenario, buildValuationPeriodsFromForecast } from "../forecasting
 import { computeConsistentValuation } from "../valueConsistentKw";
 import { structuralKwForKe } from "../pvre/pvreEngine";
 import type { ForecastPeriod, ForecastScenario } from "../types";
-import { primaryValuationPerShare } from "./helpers";
+import { carryValueToPriceDate, forecastDividendsPerShare, primaryValuationPerShare } from "./helpers";
 import type { ValuationCommandCenterOutput } from "./types";
 
 export type BreakEvenDriver = "sales_growth" | "core_sales_pm" | "ke" | "g";
@@ -43,7 +43,7 @@ const SEARCH = {
   g: { lo: -0.05, hi: 0.15 },
 } as const;
 
-type CommandCenterLike = Pick<ValuationCommandCenterOutput, "scenarios" | "anchorPeriod" | "shareBasis" | "marketPrice">;
+type CommandCenterLike = Pick<ValuationCommandCenterOutput, "scenarios" | "anchorPeriod" | "shareBasis" | "marketPrice" | "marketContext">;
 
 /**
  * Shifts to the base case, each optional: a parallel shift of the whole
@@ -58,8 +58,10 @@ export interface BaseCaseShifts {
 }
 
 export interface BaseCaseRevaluation {
-  /** Intrinsic value per share, as the base card displays it; null when not computable. */
+  /** Intrinsic value per share at the valuation date, as the base card's `intrinsicPerShare`; null when not computable. */
   readonly value: number | null;
+  /** The same value carried to the price's date, as the base card's `valueAtPriceDate`: what meets the price. */
+  readonly valueAtPriceDate: number | null;
   /** The forecast years behind it; null when the scenario could not be built. */
   readonly forecast: readonly ForecastPeriod[] | null;
   readonly ke: number;
@@ -82,7 +84,7 @@ export function revalueBase(cc: CommandCenterLike, shifts: BaseCaseShifts = {}):
   // is what moves with ke (S-9.4C), and each re-valuation solves again from it.
   const kwStructuralBase = card.kwConsistency?.kwStructural ?? d.kw;
   const kwSeed = shifts.ke ? structuralKwForKe(ke, { ke: d.ke, kw: kwStructuralBase }, latest) : kwStructuralBase;
-  const none = { value: null, forecast: null, ke, kw: kwSeed, g };
+  const none = { value: null, valueAtPriceDate: null, forecast: null, ke, kw: kwSeed, g };
   if (!(ke - g > 0.005) || !(kwSeed - g > 0.005)) return none;
   const scenario: ForecastScenario = {
     ...card.scenario,
@@ -104,15 +106,18 @@ export function revalueBase(cc: CommandCenterLike, shifts: BaseCaseShifts = {}):
     const kw = kwConsistency.kw;
     const periods = buildScenario({ ...scenario, drivers: { ...scenario.drivers, kw } }, latest);
     const value = primaryValuationPerShare(valuation);
-    return { value: value != null && Number.isFinite(value) ? value : null, forecast: periods, ke, kw, g };
+    const finite = value != null && Number.isFinite(value) ? value : null;
+    const shares = cc.shareBasis.sharesForPerShare ?? cc.shareBasis.shares ?? null;
+    const valueAtPriceDate = carryValueToPriceDate(finite, ke, cc.marketContext.yearsToPriceDate, forecastDividendsPerShare(periods, latest.bs.CSE, shares));
+    return { value: finite, valueAtPriceDate, forecast: periods, ke, kw, g };
   } catch {
     return none;
   }
 }
 
-/** Base-case intrinsic value per share with one driver shifted by `delta`. */
+/** Base-case value per share at the price's date with one driver shifted by `delta`: what the price is solved against. */
 export function baseValueWithShift(cc: CommandCenterLike, driver: BreakEvenDriver, delta: number): number | null {
-  return revalueBase(cc, { [driver]: delta })?.value ?? null;
+  return revalueBase(cc, { [driver]: delta })?.valueAtPriceDate ?? null;
 }
 
 function baseDriverValue(cc: CommandCenterLike, driver: BreakEvenDriver): number | null {

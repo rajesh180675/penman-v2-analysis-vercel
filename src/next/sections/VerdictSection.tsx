@@ -6,6 +6,7 @@
 import { useMemo, type ReactNode } from "react";
 import { formatPct, formatPerShare } from "../../engine/valuationCommandCenter";
 import { solveBreakEvens, type BreakEvenResult } from "../../engine/valuationCommandCenter/breakEven";
+import { carryValueToPriceDate } from "../../engine/valuationCommandCenter/helpers";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
 import type { CompanyTrackRecord } from "../../engine/accountability";
 import { Withheld } from "../ui/Withheld";
@@ -73,6 +74,12 @@ export function VerdictSection({ result, trackRecord = null, asOf = null }: {
 
       <p className="text-xs text-slate-500">
         Valued from <strong>{cc.anchorPeriod.period_end}</strong>
+        {cc.marketPrice != null && cc.marketContext.priceDate && cc.marketContext.yearsToPriceDate > 0 && (
+          <>
+            {" "}and carried to the price&rsquo;s date, <strong>{cc.marketContext.priceDate}</strong>: {cc.marketContext.yearsToPriceDate.toFixed(1)} years
+            at each case&rsquo;s cost of equity, less the distributions it forecasts
+          </>
+        )}
         {" · "}latest reported <strong>{cc.marketContext.latestReportedPeriod ?? "—"}</strong>
         {cc.valuationReadiness.status !== "production-ready" && cc.valuationReadiness.reasons[0]
           ? <> · {cc.valuationReadiness.reasons[0]}</>
@@ -297,9 +304,17 @@ function ScenarioFigure({ label, card, priced, noValue, noPrice }: {
   if (!card || card.intrinsicPerShare == null) {
     return <Figure label={label}><Withheld reason={noValue} /></Figure>;
   }
+  // Beside a price, the value carried to the price's date (the one the upside
+  // is measured on), with the anchor-dated value it was carried from.
+  const carried = priced && card.valueAtPriceDate != null && card.valueAtPriceDate !== card.intrinsicPerShare;
   return (
-    <Figure label={label} sub={priced ? `Upside ${formatPct(card.upsidePct)}` : noPrice}>
-      {formatPerShare(card.intrinsicPerShare)}
+    <Figure
+      label={label}
+      sub={priced
+        ? `Upside ${formatPct(card.upsidePct)}${carried ? ` · ${formatPerShare(card.intrinsicPerShare)} at the valuation date` : ""}`
+        : noPrice}
+    >
+      {formatPerShare(priced ? card.valueAtPriceDate : card.intrinsicPerShare)}
     </Figure>
   );
 }
@@ -309,14 +324,22 @@ function ScenarioFigure({ label, card, priced, noValue, noPrice }: {
  * throughout, so no two quantities of different scale share the axis.
  */
 function ValueRange({ cc }: { cc: CommandCenter }) {
+  const price = cc.marketPrice;
+  // With a price, every point is carried to its date, so value and price share
+  // a date as well as a unit: scenarios on their own ke and distributions, the
+  // model floor and ceiling on the base case's.
+  const years = price != null ? cc.marketContext.yearsToPriceDate : 0;
+  const base = cc.scenarios.find((s) => s.key === "base");
+  const carry = (value: number | null) => (years > 0 && base
+    ? carryValueToPriceDate(value, base.assumptions.ke, years, base.dividendsPerShare)
+    : value);
   const points = [
-    { key: "floor", label: "Floor", value: cc.range.floorPerShare },
+    { key: "floor", label: "Floor", value: carry(cc.range.floorPerShare) },
     ...cc.scenarios
       .filter((s) => s.key === "stress" || s.key === "base" || s.key === "bull")
-      .map((s) => ({ key: s.key, label: s.label, value: s.intrinsicPerShare })),
-    { key: "ceiling", label: "Ceiling", value: cc.range.ceilingPerShare },
+      .map((s) => ({ key: s.key, label: s.label, value: price != null ? s.valueAtPriceDate : s.intrinsicPerShare })),
+    { key: "ceiling", label: "Ceiling", value: carry(cc.range.ceilingPerShare) },
   ].filter((p): p is { key: string; label: string; value: number } => p.value != null && Number.isFinite(p.value));
-  const price = cc.marketPrice;
   const values = [...points.map((p) => p.value), ...(price != null ? [price] : [])];
   if (points.length < 2) return null;
   const lo = Math.min(...values);
@@ -325,7 +348,9 @@ function ValueRange({ cc }: { cc: CommandCenter }) {
 
   return (
     <figure className="wb-surface rounded-xl border p-4 shadow-sm" aria-label="Valuation range, ₹ per share">
-      <figcaption className="mb-6 text-xs font-medium text-slate-500">Valuation range, ₹ per share</figcaption>
+      <figcaption className="mb-6 text-xs font-medium text-slate-500">
+        Valuation range, ₹ per share{years > 0 && cc.marketContext.priceDate ? `, carried to ${cc.marketContext.priceDate}` : ""}
+      </figcaption>
       <div className="relative mx-4 h-10">
         <div className="absolute top-4 h-1 w-full rounded bg-slate-200 dark:bg-slate-700" />
         {points.map((p) => (

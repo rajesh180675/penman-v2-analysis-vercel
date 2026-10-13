@@ -1,6 +1,6 @@
 import { LiveMarketDataFreshness, MarketHistoryPoint } from "../marketData";
 import { AnalysisStatusSummary } from "../analysisStatus";
-import { RecastPeriod, ValuationResult } from "../types";
+import { ForecastPeriod, RecastPeriod, ValuationResult } from "../types";
 import { resolveShareBasis, toPerShare } from "../shareCountTools";
 import { SOTPResult } from "../sotpValuation";
 import {
@@ -48,6 +48,48 @@ export function annualizedReturn(from: number | null, to: number | null, years =
 export function expectedReturnToValue(price: number | null, value: number | null, ke: number, years = 3) {
   const rerating = annualizedReturn(price, value, years);
   return rerating == null ? null : (1 + ke) * (1 + rerating) - 1;
+}
+
+/** Years from one ISO date to a later one (actual / 365.25); 0 when `to` is not after `from`. */
+export function yearsBetween(from: string, to: string): number {
+  const days = (Date.parse(to.slice(0, 10)) - Date.parse(from.slice(0, 10))) / 86_400_000;
+  return Number.isFinite(days) && days > 0 ? days / 365.25 : 0;
+}
+
+/**
+ * Each forecast year's distributions to owners per share, by clean surplus:
+ * d = CNI − ΔCSE (dividends and buybacks, less shares issued).
+ */
+export function forecastDividendsPerShare(
+  forecast: readonly ForecastPeriod[],
+  openingCse: number,
+  shares: number | null,
+): number[] {
+  if (shares == null || !(shares > 0)) return [];
+  return forecast.map((f, i) => (f.CNI_f - (f.CSE_f - (i === 0 ? openingCse : forecast[i - 1]!.CSE_f))) / shares);
+}
+
+/**
+ * A value per share carried from its valuation date (the anchor year-end) to
+ * the date of the price it is compared with. Under the model's own discounting
+ * the value accrues at ke and falls by each year's distributions as they are
+ * paid (V₁ = V₀(1 + ke) − d₁, distributions at each forecast year-end), so a
+ * value as of 31 March 2025 set beside an October 2026 price is ~18 months
+ * short of it: at 11% about 17%, less the year's distributions.
+ */
+export function carryValueToPriceDate(
+  value: number | null,
+  ke: number,
+  years: number,
+  dividendsPerShare: readonly number[],
+): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  let carried = value;
+  let remaining = years;
+  for (let year = 0; remaining >= 1; year += 1, remaining -= 1) {
+    carried = carried * (1 + ke) - (dividendsPerShare[year] ?? 0);
+  }
+  return carried * Math.pow(1 + ke, remaining);
 }
 
 export function marginOfSafety(intrinsicPerShare: number | null, marketPrice: number | null) {
@@ -289,7 +331,8 @@ export function summaryWithCrossCheckWarning(summary: string, cards: ValuationSc
 }
 
 export function opportunityMetrics(card: ValuationScenarioCard | null, marketPrice: number | null) {
-  const primaryValue = card ? primaryValuationPerShare(card.valuation) : null;
+  // The card's value carried to the price's date: the one to set beside it.
+  const primaryValue = card?.valueAtPriceDate ?? null;
   return {
     upsidePct: primaryValue != null && marketPrice != null && marketPrice > 0 ? (primaryValue - marketPrice) / marketPrice : null,
     marginOfSafetyPct: marginOfSafety(primaryValue, marketPrice),
