@@ -142,6 +142,27 @@ describe("VerdictSection — a financial institution", () => {
     expect(html).toContain("215.30 crore");
   });
 
+  it("sets the value carried to the price's date beside the price, and says from where", () => {
+    const base = fiResult(true, "Financial institution — Valuation-eligible.", 700);
+    const m = base.materialization as unknown as Record<string, unknown>;
+    const dated = {
+      ...base,
+      materialization: {
+        ...m,
+        marketSnapshot: { price: 700, priceAsOf: "2026-10-13T10:00:00Z" },
+        pipelineResult: { bankResult: { subtype: "insurance", valuation: {
+          ke: 0.12, sustainableROE: 0.16, terminalGrowth: 0.06, latestBookValue: 16_000,
+          evBased: { status: "computed", intrinsicValue: 102_967, premiumOverMarket: null, reason: "", diagnostics: {} },
+        } } },
+      },
+    } as unknown as LegacyAnalysisRunExecutionResult;
+    const text = renderToStaticMarkup(<VerdictSection result={dated} />).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    // ₹1,02,967 Cr over 215.3 crore shares is ₹478.25 at the valuation date.
+    expect(text).toContain("₹478.25 at the valuation date");
+    expect(text).toContain("Valued at 2025-03-31 and carried to the price’s date, 2026-10-13 : 1.5 years at the cost of equity");
+    expect(text).not.toContain("Value per share ₹478.25");
+  });
+
   it("says why it is not valuation-eligible and withholds the price-dependent figures", () => {
     const html = renderToStaticMarkup(<VerdictSection result={fiResult(false, "Valuation eligible was not achieved because LEGACY_VALUATION_GATE_NOT_CLEARED: Financial institution — One independent lens, book residual income.", null)} />);
     expect(html).toContain("Not valuation-eligible");

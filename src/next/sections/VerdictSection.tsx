@@ -103,7 +103,9 @@ function FinancialVerdict({ result, asOf }: { result: LegacyAnalysisRunExecution
     subtype: bank.subtype,
     latestRaw: (m.rawData.at(-1) ?? null) as unknown as Parameters<typeof buildFinancialVerdict>[0]["latestRaw"],
     marketPrice: asOf ? null : m.marketSnapshot?.price ?? null,
+    priceDate: m.marketSnapshot?.priceAsOf ?? m.marketSnapshot?.fetchedAt ?? null,
   }), [asOf, bank.subtype, bank.valuation, m.marketSnapshot, m.rawData]);
+  const carried = verdict.yearsToPriceDate > 0;
   const rung = result.run?.trustEnvelope?.rigor.checkpoints.find((c) => c.level === "valuation-eligible");
   const eligible = rung?.achieved === true;
   // The executor prefixes its gate code; the reason is what follows "Financial institution — ".
@@ -125,12 +127,13 @@ function FinancialVerdict({ result, asOf }: { result: LegacyAnalysisRunExecution
         <Figure label="Current price">
           {verdict.marketPrice != null ? `₹${verdict.marketPrice.toFixed(2)}` : <Withheld reason={noPrice} />}
         </Figure>
-        <Figure label={verdict.headlineLabel}>
+        <Figure label={verdict.headlineLabel} sub={carried && verdict.valuationDate ? `At the valuation date, ${verdict.valuationDate}.` : undefined}>
           {verdict.equityValueCr != null ? `₹${crore(verdict.equityValueCr)} Cr` : <Withheld reason="The valuation computed no headline value." />}
         </Figure>
-        <Figure label="Value per share">
-          {verdict.perShare != null
-            ? formatPerShare(verdict.perShare)
+        {/* Beside the price, the value carried to its date: the one the upside is measured on. */}
+        <Figure label="Value per share" sub={carried ? `${formatPerShare(verdict.perShare)} at the valuation date` : undefined}>
+          {verdict.perShareAtPriceDate != null
+            ? formatPerShare(verdict.perShareAtPriceDate)
             : <Withheld reason={verdict.shares == null ? noShares : "The valuation computed no headline value."} />}
         </Figure>
         <Figure label="Upside to value">
@@ -146,7 +149,9 @@ function FinancialVerdict({ result, asOf }: { result: LegacyAnalysisRunExecution
       {verdict.scenarios.length > 0 && (
         <div className="wb-surface rounded-xl border p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Scenarios</h2>
-          <p className="mt-1 text-xs text-slate-500">Justified P/B on each scenario's sustainable ROE.</p>
+          <p className="mt-1 text-xs text-slate-500">
+            Justified P/B on each scenario's sustainable ROE{verdict.valuationDate ? `, on the book at ${verdict.valuationDate}` : ""}.
+          </p>
           <table className="mt-3 w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-slate-500">
@@ -171,6 +176,12 @@ function FinancialVerdict({ result, asOf }: { result: LegacyAnalysisRunExecution
       )}
 
       <p className="text-xs text-slate-500">
+        {carried && (
+          <>
+            Valued at <strong>{verdict.valuationDate}</strong> and carried to the price&rsquo;s date, <strong>{verdict.priceDate}</strong>:
+            {" "}{verdict.yearsToPriceDate.toFixed(1)} years at the cost of equity, less the distributions the models&rsquo; steady state pays.{" "}
+          </>
+        )}
         Shares: {verdict.shares != null ? <>{verdict.shares.toFixed(2)} crore ({verdict.sharesSource})</> : "not resolved"}.
       </p>
     </div>

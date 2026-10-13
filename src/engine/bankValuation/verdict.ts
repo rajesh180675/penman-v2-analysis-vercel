@@ -2,6 +2,7 @@ import type { RawPeriodData } from "../types";
 import type { FinancialInstitutionSubtype } from "../analysisFamily";
 import { extractShareCountInput } from "../PenmanNissimEngine/picking";
 import type { BankValuationBundle } from "./types";
+import { carryValueToPriceDate, yearsBetween } from "../valuationCommandCenter/helpers";
 
 /**
  * A financial institution's verdict figures: the headline equity value, per
@@ -22,6 +23,7 @@ export interface FinancialVerdictScenario {
   readonly roe: number;
   readonly fairPB: number;
   readonly equityValueCr: number | null;
+  /** Per share at the valuation date: beside its fair P/B on that date's book, not the price. */
   readonly perShare: number | null;
 }
 
@@ -30,11 +32,23 @@ export interface FinancialVerdict {
   readonly equityValueCr: number | null;
   readonly shares: number | null;
   readonly sharesSource: string;
+  /** Per share at the valuation date: the latest balance sheet's. */
   readonly perShare: number | null;
+  /**
+   * Per share carried to the price's date, the one set beside the price: at
+   * ke, less the distributions the models' steady state pays, (ROE − g) × book
+   * growing at g (Gordon on book: carried a year it is V₀(1 + g), the model's
+   * own value a year on). Equals `perShare` when not carried.
+   */
+  readonly perShareAtPriceDate: number | null;
   readonly marketPrice: number | null;
   readonly marketCapCr: number | null;
-  /** Per-share value over the price, less one; null without both. */
+  /** The value carried to the price's date over the price, less one; null without both. */
   readonly upside: number | null;
+  readonly valuationDate: string | null;
+  readonly priceDate: string | null;
+  /** Years from the valuation date to the price's; 0 when the value was not carried. */
+  readonly yearsToPriceDate: number;
   readonly ke: number | null;
   readonly scenarios: readonly FinancialVerdictScenario[];
 }
@@ -46,6 +60,8 @@ export function buildFinancialVerdict(input: {
   readonly subtype: FinancialInstitutionSubtype | null | undefined;
   readonly latestRaw: RawPeriodData | null | undefined;
   readonly marketPrice: number | null | undefined;
+  /** The price's date (the snapshot's priceAsOf, else when it was fetched). */
+  readonly priceDate?: string | null | undefined;
 }): FinancialVerdict {
   const { valuation, subtype, latestRaw } = input;
   const insurer = subtype === "insurance";
@@ -59,6 +75,22 @@ export function buildFinancialVerdict(input: {
   const perShareOf = (value: number | null) => (value != null && shares != null ? value / shares : null);
   const perShare = perShareOf(equityValueCr);
   const marketPrice = finite(input.marketPrice) && input.marketPrice > 0 ? input.marketPrice : null;
+
+  // The value is the latest balance sheet's; the price is today's. Set beside
+  // it, the value is carried to the price's date first, as an industrial
+  // case's is: at ke, less the distributions the models' steady state pays.
+  const valuationDate = latestRaw?.period_end ?? null;
+  const priceDate = marketPrice != null ? input.priceDate?.slice(0, 10) ?? null : null;
+  const book = valuation?.latestBookValue;
+  const canCarry = valuationDate != null && priceDate != null && shares != null && finite(book) && finite(valuation?.ke);
+  const years = canCarry ? yearsBetween(valuationDate, priceDate) : 0;
+  const roe = valuation?.sustainableROE;
+  const perShareAtPriceDate = years > 0 && perShare != null && finite(roe)
+    ? carryValueToPriceDate(perShare, valuation!.ke, years, Array.from(
+        { length: Math.ceil(years) },
+        (_, k) => ((roe - valuation!.terminalGrowth) * book! * Math.pow(1 + valuation!.terminalGrowth, k)) / shares!,
+      ))
+    : perShare;
 
   const scenarios = insurer
     ? []
@@ -77,9 +109,13 @@ export function buildFinancialVerdict(input: {
     shares,
     sharesSource: shares != null ? shareInput!.endPeriodSharesSource : "",
     perShare,
+    perShareAtPriceDate,
     marketPrice,
     marketCapCr: marketPrice != null && shares != null ? marketPrice * shares : null,
-    upside: perShare != null && marketPrice != null ? perShare / marketPrice - 1 : null,
+    upside: perShareAtPriceDate != null && marketPrice != null ? perShareAtPriceDate / marketPrice - 1 : null,
+    valuationDate,
+    priceDate,
+    yearsToPriceDate: perShareAtPriceDate !== perShare ? years : 0,
     ke: finite(valuation?.ke) ? valuation!.ke : null,
     scenarios,
   };
