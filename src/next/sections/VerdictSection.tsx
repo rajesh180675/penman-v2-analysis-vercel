@@ -64,7 +64,9 @@ export function VerdictSection({ result, trackRecord = null, asOf = null }: {
         >
           {cc.opportunity.expectedCagrStress != null
             ? formatPct(cc.opportunity.expectedCagrStress, 1)
-            : <Withheld reason={cc.marketPrice == null ? noPrice : "Not computable for this run."} />}
+            : <Withheld reason={cc.marketPrice == null
+              ? noPrice
+              : stress?.valueAtPriceDate === 0 ? "The stress case values the equity at nothing." : "Not computable for this run."} />}
         </Figure>
       </dl>
 
@@ -327,11 +329,16 @@ function ScenarioFigure({ label, card, priced, noValue, noPrice }: {
   // Beside a price, the value carried to the price's date (the one the upside
   // is measured on), with the anchor-dated value it was carried from.
   const carried = priced && card.valueAtPriceDate != null && card.valueAtPriceDate !== card.intrinsicPerShare;
+  // A case can value the equity below zero (its residual earnings destroy more
+  // than its book); a share is worth no less than nothing, so beside the price it is zero.
+  const belowZero = card.intrinsicPerShare < 0;
   return (
     <Figure
       label={label}
       sub={priced
-        ? `Upside ${formatPct(card.upsidePct)}${carried ? ` · ${formatPerShare(card.intrinsicPerShare)} at the valuation date` : ""}`
+        ? `Upside ${formatPct(card.upsidePct)}${belowZero
+          ? ` · the case values the equity below zero (${formatPerShare(card.intrinsicPerShare)} at the valuation date), and a share is worth no less than nothing`
+          : carried ? ` · ${formatPerShare(card.intrinsicPerShare)} at the valuation date` : ""}`
         : noPrice}
     >
       {formatPerShare(priced ? card.valueAtPriceDate : card.intrinsicPerShare)}

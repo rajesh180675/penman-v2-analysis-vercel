@@ -55,6 +55,15 @@ describe("VerdictSection", () => {
     expect(html).toContain(`Floor ₹${((750 * 1.1 - 30) * Math.pow(1.1, 0.54)).toFixed(2)}`);
   });
 
+  it("says when a case values the equity below zero, beside the price at nothing", () => {
+    const html = render(commandCenter({
+      scenarios: [{ ...card("stress", -7.45, -1), valueAtPriceDate: 0 }, card("base", 1100, 0.1), card("bull", 1400, 0.4)],
+      opportunity: { expectedCagrStress: null },
+    }));
+    expect(html).toContain("Upside -100.0% · the case values the equity below zero (₹-7.45 at the valuation date), and a share is worth no less than nothing");
+    expect(html).toContain("The stress case values the equity at nothing.");
+  });
+
   it("says when the share count has changed since the valuation date", () => {
     const text = render(commandCenter({
       marketContext: { freshness: "live", latestReportedPeriod: "2025-03-31", priceDate: "2026-10-13", yearsToPriceDate: 0, sharesAtValuationDate: 96.42, sharesAtPriceDate: 192.83, sharesAtPriceDateSource: "the latest annual filing (2026-03-31)", shareCountChange: 192.83 / 96.42 },
