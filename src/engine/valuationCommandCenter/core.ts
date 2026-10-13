@@ -429,7 +429,6 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
       : "Live market overlay is current enough to support signal evaluation.");
 
   const checklist = buildChecklist({
-    opportunity,
     baseReratingCagr: opportunityMetrics(baseCard, marketPrice).reratingCagr,
     diagnostics,
     reverseDcf,

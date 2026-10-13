@@ -14,7 +14,6 @@ import {
   DcfCashFlowDiagnostics,
   NarrativeBandEntry,
   ReverseDcfDiagnostics,
-  ValuationOpportunityAssessment,
   ValuationChecklist,
   ValuationMarketContext,
   ValuationBacktestPoint,
@@ -517,7 +516,6 @@ export function summarizeReturns(points: ValuationBacktestPoint[], key: "realize
 }
 
 export function buildChecklist(args: {
-  opportunity: ValuationOpportunityAssessment;
   /** The base case's rerating alone (opportunityMetrics), which the hurdle below was set on. */
   baseReratingCagr: number | null;
   diagnostics: DcfCashFlowDiagnostics;
@@ -526,7 +524,7 @@ export function buildChecklist(args: {
   stressCard: ValuationScenarioCard | null;
   analysisStatus?: AnalysisStatusSummary | null | undefined;
 }) {
-  const { opportunity, baseReratingCagr, diagnostics, reverseDcf, marketContext, stressCard, analysisStatus } = args;
+  const { baseReratingCagr, diagnostics, reverseDcf, marketContext, stressCard, analysisStatus } = args;
   const stressForecastPolicy = stressCard?.forecastPolicy;
   const whatMustGoRight = [
     `Reinvestment must stay disciplined enough to preserve a stress-case margin of safety near ${formatPct(stressCard?.marginOfSafetyPct, 1)}.`,
