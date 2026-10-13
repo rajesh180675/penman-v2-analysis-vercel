@@ -39,7 +39,8 @@ const finite = (v: number | null | undefined) => (v != null && Number.isFinite(v
 export function peerMetrics(result: LegacyAnalysisRunExecutionResult): PeerMetrics {
   const periods = result.materialization.pipelineResult?.periods ?? [];
   const last = periods[periods.length - 1];
-  const base = result.materialization.commandCenter?.scenarios.find((s) => s.key === "base") ?? null;
+  const cc = result.materialization.commandCenter;
+  const base = cc?.scenarios.find((s) => s.key === "base") ?? null;
   return {
     latestPeriod: last?.period_end ?? null,
     rnoa: finite(last?.ratios?.RNOA),
@@ -47,7 +48,8 @@ export function peerMetrics(result: LegacyAnalysisRunExecutionResult): PeerMetri
     ato: finite(last?.ratios?.ATO),
     roce: finite(last?.ratios?.ROCE),
     salesGrowth: finite(last?.ratios?.Sales_growth),
-    baseValue: finite(base?.intrinsicPerShare),
+    // Beside its upside, each peer's value carried to its own price's date.
+    baseValue: finite(cc?.marketPrice != null ? base?.valueAtPriceDate : base?.intrinsicPerShare),
     upside: finite(base?.upsidePct),
   };
 }

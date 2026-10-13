@@ -13,6 +13,8 @@ function scenario(): ValuationScenarioCard {
     label: "Base",
     scenario: {} as ValuationScenarioCard["scenario"],
     intrinsicPerShare: 120,
+    valueAtPriceDate: 120,
+    dividendsPerShare: [],
     ownerEarningsDcfPerShare: 100,
     upsidePct: null,
     marginOfSafetyPct: null,

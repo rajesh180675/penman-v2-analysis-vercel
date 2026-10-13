@@ -25,6 +25,8 @@ function scenario(v: ValuationScenarioCard["valuation"]): ValuationScenarioCard 
     key: "base",
     label: "Base",
     intrinsicPerShare: 100,
+    valueAtPriceDate: 100,
+    dividendsPerShare: [],
     upsidePct: null,
     marginOfSafetyPct: null,
     expectedCagr: null,

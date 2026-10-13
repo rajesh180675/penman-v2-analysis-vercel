@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildValuationCommandCenter } from "../valuationCommandCenter";
+import { carryValueToPriceDate, yearsBetween } from "../valuationCommandCenter/helpers";
 import { DEFAULT_CONFIG, RecastPeriod, Severity } from "../types";
 import { CroreShares, INRAbsolute } from "../types/units";
 import { AnalysisStatusSummary } from "../analysisStatus";
@@ -291,9 +292,14 @@ describe("valuation command center", () => {
     // Each card's expected return: the price reaching its value in three years,
     // the value accruing at the card's own ke meanwhile. The opportunity's stress
     // figure, and its spread over the risk-free rate, are the stress card's.
+    // Each value meets the price at the price's date: carried from the anchor.
+    expect(out.marketContext.priceDate).not.toBeNull();
+    expect(out.marketContext.yearsToPriceDate).toBeCloseTo(yearsBetween(out.anchorPeriod.period_end, out.marketContext.priceDate!), 12);
     for (const card of out.scenarios) {
       if (card.intrinsicPerShare == null || card.intrinsicPerShare <= 0) continue;
-      expect(card.expectedCagr).toBeCloseTo((1 + card.assumptions.ke) * Math.cbrt(card.intrinsicPerShare / out.marketPrice!) - 1, 12);
+      expect(card.valueAtPriceDate).toBeCloseTo(carryValueToPriceDate(card.intrinsicPerShare, card.assumptions.ke, out.marketContext.yearsToPriceDate, card.dividendsPerShare)!, 9);
+      expect(card.upsidePct).toBeCloseTo(card.valueAtPriceDate! / out.marketPrice! - 1, 12);
+      expect(card.expectedCagr).toBeCloseTo((1 + card.assumptions.ke) * Math.cbrt(card.valueAtPriceDate! / out.marketPrice!) - 1, 12);
     }
     const stressCard = out.scenarios.find((scenario) => scenario.key === "stress")!;
     expect(out.opportunity.expectedCagrStress).toBeCloseTo(stressCard.expectedCagr!, 12);

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { ValuationResult } from "../../types";
 import type { ValuationScenarioCard } from "../types";
-import { annualizedReturn, expectedReturnToValue, primaryValuationPerShare, scenarioOrderingPenalty } from "../helpers";
+import { annualizedReturn, carryValueToPriceDate, expectedReturnToValue, forecastDividendsPerShare, primaryValuationPerShare, scenarioOrderingPenalty, yearsBetween } from "../helpers";
+import type { ForecastPeriod } from "../../types";
 
 function valuationWithAccrualValues(re: number | null, reoi: number | null): ValuationResult {
   return {
@@ -73,5 +74,27 @@ describe("scenarioOrderingPenalty", () => {
 
   it("still penalises a stress value above the base value, on both counts", () => {
     expect(scenarioOrderingPenalty({ stress: card("stress", 105, 0.13), base: card("base", 100, 0.11), panic: card("historical-panic", 90, 0.14), marketPrice: 100 })).toBe(15);
+  });
+});
+
+describe("carrying a value to the price's date", () => {
+  it("accrues at ke within a year, and pays each year's distributions at its end", () => {
+    expect(carryValueToPriceDate(100, 0.1, 0.5, [8])).toBeCloseTo(100 * Math.sqrt(1.1), 12);
+    // 1.5 years: a year's accrual less its distribution, then half a year more.
+    expect(carryValueToPriceDate(100, 0.1, 1.5, [8, 9])).toBeCloseTo((110 - 8) * Math.sqrt(1.1), 12);
+    expect(carryValueToPriceDate(100, 0.1, 0, [8])).toBe(100);
+    expect(carryValueToPriceDate(null, 0.1, 1, [8])).toBeNull();
+  });
+
+  it("reads distributions by clean surplus, per share", () => {
+    const year = (CNI_f: number, CSE_f: number) => ({ CNI_f, CSE_f }) as unknown as ForecastPeriod;
+    // 1,000 opening equity; earns 150 and closes at 1,100: 50 paid out, then 60.
+    expect(forecastDividendsPerShare([year(150, 1100), year(160, 1200)], 1000, 10)).toEqual([5, 6]);
+    expect(forecastDividendsPerShare([year(150, 1100)], 1000, null)).toEqual([]);
+  });
+
+  it("counts years from the anchor to the price's date, never back", () => {
+    expect(yearsBetween("2025-03-31", "2026-10-13")).toBeCloseTo(561 / 365.25, 12);
+    expect(yearsBetween("2026-03-31", "2025-03-31")).toBe(0);
   });
 });

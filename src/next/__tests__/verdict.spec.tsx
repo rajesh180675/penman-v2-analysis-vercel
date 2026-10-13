@@ -5,7 +5,7 @@ import type { CompanyTrackRecord } from "../../engine/accountability";
 import { VerdictSection } from "../sections/VerdictSection";
 
 function card(key: "stress" | "base" | "bull", value: number | null, upside: number | null) {
-  return { key, label: key[0]!.toUpperCase() + key.slice(1), intrinsicPerShare: value, upsidePct: upside };
+  return { key, label: key[0]!.toUpperCase() + key.slice(1), intrinsicPerShare: value, valueAtPriceDate: value, upsidePct: upside };
 }
 
 function commandCenter(overrides: Record<string, unknown> = {}) {
@@ -39,6 +39,19 @@ describe("VerdictSection", () => {
     expect(html).toContain("5.2%");
     // The CAGR says what it is: not the rerating alone.
     expect(html).toContain("If the price reaches the stress value in 3 years, with that value accruing at its cost of equity.");
+  });
+
+  it("sets the value carried to the price's date beside the price, and says from where", () => {
+    const html = render(commandCenter({
+      scenarios: [card("stress", 800, -0.12), { ...card("base", 1100, 0.21), valueAtPriceDate: 1210, assumptions: { ke: 0.1 }, dividendsPerShare: [30, 33] }, card("bull", 1400, 0.4)],
+      marketContext: { freshness: "live", latestReportedPeriod: "2025-03-31", priceDate: "2026-10-13", yearsToPriceDate: 1.54 },
+    }));
+    expect(html).toContain("₹1210.00");
+    expect(html).toContain("Upside 21.0% · ₹1100.00 at the valuation date");
+    expect(html.replace(/<[^>]+>/g, "")).toContain("and carried to the price’s date, 2026-10-13: 1.5 years");
+    // The range shares the date: the model floor carried on the base case's ke and distributions.
+    expect(html).toContain("Valuation range, ₹ per share, carried to 2026-10-13");
+    expect(html).toContain(`Floor ₹${((750 * 1.1 - 30) * Math.pow(1.1, 0.54)).toFixed(2)}`);
   });
 
   it("withholds price, upside and CAGR — with the reason — when there is no market price", () => {

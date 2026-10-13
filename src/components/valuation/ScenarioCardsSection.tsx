@@ -12,7 +12,7 @@ export default function ScenarioCardsSection({
         <ScenarioCard
           key={scenario.key}
           label={scenario.label}
-          intrinsicPerShare={scenario.intrinsicPerShare}
+          intrinsicPerShare={commandCenter.marketPrice != null ? scenario.valueAtPriceDate : scenario.intrinsicPerShare}
           upsidePct={scenario.upsidePct}
           marginOfSafetyPct={scenario.marginOfSafetyPct}
           expectedCagr={scenario.expectedCagr}

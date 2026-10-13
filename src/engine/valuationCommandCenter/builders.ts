@@ -17,8 +17,10 @@ import {
   ConglomerateAssessment,
 } from "./types";
 import {
+  carryValueToPriceDate,
   clamp,
   expectedReturnToValue,
+  forecastDividendsPerShare,
   marginOfSafety,
   primaryValuationPerShare,
 } from "./helpers";
@@ -167,6 +169,8 @@ export function buildScenarioCards(args: {
   riskFreeRate: number;
   valuationData: RecastPeriod[];
   horizon: number;
+  /** Years from the anchor to the price's date (yearsBetween); 0 when undated. */
+  yearsToPriceDate: number;
 }): {
   scenarios: ValuationScenarioCard[];
   derivedScenarios: {
@@ -176,7 +180,7 @@ export function buildScenarioCards(args: {
     historicalPanic: ForecastScenario;
   };
 } {
-  const { config, sectorTemplate, latest, shareBasis, diagnostics, marketPrice, businessModel, keBase, kwBase, riskFreeRate, valuationData, horizon } = args;
+  const { config, sectorTemplate, latest, shareBasis, diagnostics, marketPrice, businessModel, keBase, kwBase, riskFreeRate, valuationData, horizon, yearsToPriceDate } = args;
   const makeScenario = (
     key: ValuationScenarioCard["key"],
     scenario: ForecastScenario,
@@ -200,7 +204,8 @@ export function buildScenarioCards(args: {
     // structural kw seeds the solve (see valueConsistentKw.ts). The scenario
     // then carries the solved kw, so its forecast ReOI and anything seeded
     // from this card (PVRE, break-even) agree with the value.
-    const forecastPeriods = buildValuationPeriodsFromForecast(latest, buildScenario(scenarioWithTerminal, latest));
+    const forecast = buildScenario(scenarioWithTerminal, latest);
+    const forecastPeriods = buildValuationPeriodsFromForecast(latest, forecast);
     const { valuation, kwConsistency } = baseKw
       ? heldAtBaseKw(forecastPeriods, scenarioWithTerminal, terminalGrowth, shareBasis.valuationConfig, baseKw)
       : computeConsistentValuation(
@@ -226,16 +231,22 @@ export function buildScenarioCards(args: {
     // in. It used to be blended here and then overwritten by a normalization
     // pass, so a value was computed that no reader ever saw.
     const intrinsicPerShare = primaryValuationPerShare(valuation);
-    const marginOfSafetyPct = marginOfSafety(intrinsicPerShare, marketPrice);
+    // Dated at the anchor year-end; the price is today's. Set beside it, the
+    // value is carried to the price's date first.
+    const dividendsPerShare = forecastDividendsPerShare(forecast, latest.bs.CSE, perShareBasis);
+    const valueAtPriceDate = carryValueToPriceDate(intrinsicPerShare, scenarioAtKw.drivers.ke, yearsToPriceDate, dividendsPerShare);
+    const marginOfSafetyPct = marginOfSafety(valueAtPriceDate, marketPrice);
     return {
       key,
       label: key === "stress" ? "Stress case" : key === "base" ? "Base case" : key === "bull" ? "Bull case" : "Historical panic",
       scenario: scenarioAtKw,
       intrinsicPerShare,
       ownerEarningsDcfPerShare: ownerDcf,
-      upsidePct: intrinsicPerShare != null && marketPrice != null && marketPrice > 0 ? (intrinsicPerShare - marketPrice) / marketPrice : null,
+      valueAtPriceDate,
+      dividendsPerShare,
+      upsidePct: valueAtPriceDate != null && marketPrice != null && marketPrice > 0 ? (valueAtPriceDate - marketPrice) / marketPrice : null,
       marginOfSafetyPct,
-      expectedCagr: expectedReturnToValue(marketPrice, intrinsicPerShare, scenarioAtKw.drivers.ke, 3),
+      expectedCagr: expectedReturnToValue(marketPrice, valueAtPriceDate, scenarioAtKw.drivers.ke, 3),
       valuation,
       kwConsistency,
       forecastPolicy: scenarioAtKw.forecastPolicy,

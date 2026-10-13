@@ -8,6 +8,9 @@ import { DEFAULT_CONFIG } from "../../types";
 import { INRAbsolute } from "../../types/units";
 import { buildValuationCommandCenter } from "../core";
 import { baseValueWithShift, revalueBase, solveBreakEven, solveBreakEvens } from "../breakEven";
+import { carryValueToPriceDate, forecastDividendsPerShare } from "../helpers";
+import { buildScenario, buildValuationPeriodsFromForecast } from "../../forecastingEngine";
+import { computeValuation } from "../../PenmanNissimEngine";
 
 const FOLDER = "Tata Consultancy Services Ltd";
 let cc: ReturnType<typeof buildValuationCommandCenter>;
@@ -20,12 +23,26 @@ beforeAll(async () => {
 }, 120_000);
 
 describe("break-even drivers", () => {
-  it("reproduces the base card's value exactly with no shift", () => {
+  it("reproduces the base card's value exactly with no shift, at both of its dates", () => {
     const base = cc.scenarios.find((s) => s.key === "base")!;
     expect(base.intrinsicPerShare).not.toBeNull();
+    // The price is solved against the value carried to its date.
     for (const driver of ["sales_growth", "core_sales_pm", "ke", "g"] as const) {
-      expect(baseValueWithShift(cc, driver, 0)).toBeCloseTo(base.intrinsicPerShare!, 9);
+      expect(baseValueWithShift(cc, driver, 0)).toBeCloseTo(base.valueAtPriceDate!, 9);
     }
+    expect(revalueBase(cc)!.value).toBeCloseTo(base.intrinsicPerShare!, 9);
+  });
+
+  it("carries a value as the model does: the same forecast valued a year on is V₀(1 + ke) − d₁", () => {
+    const base = cc.scenarios.find((s) => s.key === "base")!;
+    const { ke, kw, g } = base.assumptions;
+    const forecast = buildScenario(base.scenario, cc.anchorPeriod);
+    const periods = buildValuationPeriodsFromForecast(cc.anchorPeriod, forecast);
+    const reValue = (from: typeof periods) => computeValuation(from, ke, kw, g, cc.shareBasis.valuationConfig).perShare!.intrinsic_re_per_share!;
+    const dividends = forecastDividendsPerShare(forecast, cc.anchorPeriod.bs.CSE, cc.shareBasis.sharesForPerShare ?? cc.shareBasis.shares ?? null);
+    expect(dividends[0]).toBeGreaterThan(0);
+    // Valued at the end of forecast year 1 on the rest of the same forecast.
+    expect(carryValueToPriceDate(reValue(periods), ke, 1, dividends)).toBeCloseTo(reValue(periods.slice(1)), 6);
   });
 
   it("solves terminal growth up to the edge of the discount rates, where halving the range stepped past it", () => {

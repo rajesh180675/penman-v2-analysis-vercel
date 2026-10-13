@@ -47,6 +47,7 @@ import {
   scoreFreshness,
   scenarioOrderingPenalty,
   buildChecklist,
+  yearsBetween,
 } from "./helpers";
 import {
   buildSotpAssessment,
@@ -198,6 +199,11 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     ?? config.risk_free_rate;
   const keBase = costOfCapital.ke;
   const kwBase = costOfCapital.kw;
+  // Values are dated at the anchor year-end and the price is the market's
+  // today: the price's own date, else the run's (a manual price is entered for
+  // the run). Values set beside the price are carried to that date first.
+  const priceDate = marketPrice == null ? null : (marketData?.priceAsOf ?? analysisAsOf ?? null)?.slice(0, 10) ?? null;
+  const yearsToPriceDate = priceDate != null ? yearsBetween(latest.period_end, priceDate) : 0;
   const { scenarios, derivedScenarios } = buildScenarioCards({
     config,
     sectorTemplate,
@@ -211,6 +217,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     riskFreeRate,
     valuationData,
     horizon,
+    yearsToPriceDate,
   });
 
   const stressCard = scenarios.find((card) => card.key === "stress") ?? null;
@@ -395,8 +402,8 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     expectedReturnSpreadVsRf: opportunity.expectedCagrStress != null ? opportunity.expectedCagrStress - riskFreeRate : null,
     marketCapFromPrice: marketPrice != null && marketCapShares != null ? marketPrice * marketCapShares : null,
     enterpriseValueFromPrice: marketPrice != null && marketCapShares != null ? marketPrice * marketCapShares + latest.bs.NFO - carvedStake : null,
-    priceToStressValueRatio: marketPrice != null && (stressCard?.intrinsicPerShare ?? null) != null && (stressCard?.intrinsicPerShare ?? 0) > 0
-      ? marketPrice / (stressCard?.intrinsicPerShare ?? 1)
+    priceToStressValueRatio: marketPrice != null && (stressCard?.valueAtPriceDate ?? null) != null && (stressCard?.valueAtPriceDate ?? 0) > 0
+      ? marketPrice / (stressCard?.valueAtPriceDate ?? 1)
       : null,
     freshness: marketFreshness,
     sourceSummary: marketData?.sourceSummary ?? "Using manual/config market inputs.",
@@ -405,6 +412,8 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     warningCount: marketWarnings.length,
     valuationAnchorPeriod: valuationReadiness.anchorPeriod,
     latestReportedPeriod: latestReported.period_end,
+    priceDate,
+    yearsToPriceDate,
   };
 
   const replaySummary = orderedHistory.length >= 260

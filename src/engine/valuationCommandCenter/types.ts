@@ -39,6 +39,15 @@ export interface ValuationScenarioCard {
   intrinsicPerShare: number | null;
   /** Independent owner-earnings DCF value retained before scenario synthesis. */
   ownerEarningsDcfPerShare?: number | null | undefined;
+  /**
+   * The value carried from the valuation date to the price's date
+   * (carryValueToPriceDate): what upside, margin of safety and expected
+   * return set against the price. `intrinsicPerShare` is dated at the anchor
+   * year-end; this equals it when the price is undated.
+   */
+  valueAtPriceDate: number | null;
+  /** Forecast distributions to owners per share, year by year (forecastDividendsPerShare). */
+  dividendsPerShare: number[];
   upsidePct: number | null;
   marginOfSafetyPct: number | null;
   /**
@@ -129,6 +138,13 @@ export interface ValuationMarketContext {
   warningCount: number;
   valuationAnchorPeriod: string | null;
   latestReportedPeriod: string | null;
+  /**
+   * The date values are carried to before they meet the price: the price's
+   * own date, else the run's. Null with no price, or no date to give it.
+   */
+  priceDate: string | null;
+  /** Years from the valuation anchor to `priceDate`; 0 when there is none. */
+  yearsToPriceDate: number;
 }
 
 export interface ValuationBacktestPoint {

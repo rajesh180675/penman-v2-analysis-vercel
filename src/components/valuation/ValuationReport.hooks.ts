@@ -87,6 +87,8 @@ export function buildSignalAuditPayload(commandCenter: CommandCenter) {
       key: scenario.key,
       label: scenario.label,
       intrinsicPerShare: scenario.intrinsicPerShare,
+      // The value the upside is measured on: carried to the price's date.
+      valueAtPriceDate: scenario.valueAtPriceDate,
       upsidePct: scenario.upsidePct,
       marginOfSafetyPct: scenario.marginOfSafetyPct,
       expectedCagr: scenario.expectedCagr,
