@@ -171,6 +171,8 @@ export function buildScenarioCards(args: {
   horizon: number;
   /** Years from the anchor to the price's date (yearsBetween); 0 when undated. */
   yearsToPriceDate: number;
+  /** Today's share count over the anchor's (marketContext.shareCountChange); null when unknown. */
+  shareCountChange: number | null;
 }): {
   scenarios: ValuationScenarioCard[];
   derivedScenarios: {
@@ -180,7 +182,7 @@ export function buildScenarioCards(args: {
     historicalPanic: ForecastScenario;
   };
 } {
-  const { config, sectorTemplate, latest, shareBasis, diagnostics, marketPrice, businessModel, keBase, kwBase, riskFreeRate, valuationData, horizon, yearsToPriceDate } = args;
+  const { config, sectorTemplate, latest, shareBasis, diagnostics, marketPrice, businessModel, keBase, kwBase, riskFreeRate, valuationData, horizon, yearsToPriceDate, shareCountChange } = args;
   const makeScenario = (
     key: ValuationScenarioCard["key"],
     scenario: ForecastScenario,
@@ -234,7 +236,9 @@ export function buildScenarioCards(args: {
     // Dated at the anchor year-end; the price is today's. Set beside it, the
     // value is carried to the price's date first.
     const dividendsPerShare = forecastDividendsPerShare(forecast, latest.bs.CSE, perShareBasis);
-    const valueAtPriceDate = carryValueToPriceDate(intrinsicPerShare, scenarioAtKw.drivers.ke, yearsToPriceDate, dividendsPerShare);
+    // …and spread over the price's share count.
+    const carried = carryValueToPriceDate(intrinsicPerShare, scenarioAtKw.drivers.ke, yearsToPriceDate, dividendsPerShare);
+    const valueAtPriceDate = carried != null && shareCountChange != null ? carried / shareCountChange : carried;
     const marginOfSafetyPct = marginOfSafety(valueAtPriceDate, marketPrice);
     return {
       key,

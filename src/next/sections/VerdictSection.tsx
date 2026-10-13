@@ -80,6 +80,11 @@ export function VerdictSection({ result, trackRecord = null, asOf = null }: {
             at each case&rsquo;s cost of equity, less the distributions it forecasts
           </>
         )}
+        <ShareCountChange
+          change={cc.marketPrice != null ? cc.marketContext.shareCountChange : null}
+          atValuation={cc.marketContext.sharesAtValuationDate}
+          today={cc.marketContext.sharesAtPriceDate}
+        />
         {" · "}latest reported <strong>{cc.marketContext.latestReportedPeriod ?? "—"}</strong>
         {cc.valuationReadiness.status !== "production-ready" && cc.valuationReadiness.reasons[0]
           ? <> · {cc.valuationReadiness.reasons[0]}</>
@@ -104,6 +109,7 @@ function FinancialVerdict({ result, asOf }: { result: LegacyAnalysisRunExecution
     latestRaw: (m.rawData.at(-1) ?? null) as unknown as Parameters<typeof buildFinancialVerdict>[0]["latestRaw"],
     marketPrice: asOf ? null : m.marketSnapshot?.price ?? null,
     priceDate: m.marketSnapshot?.priceAsOf ?? m.marketSnapshot?.fetchedAt ?? null,
+    quotedShares: m.marketSnapshot?.sharesOutstanding ?? null,
   }), [asOf, bank.subtype, bank.valuation, m.marketSnapshot, m.rawData]);
   const carried = verdict.yearsToPriceDate > 0;
   const rung = result.run?.trustEnvelope?.rigor.checkpoints.find((c) => c.level === "valuation-eligible");
@@ -131,7 +137,7 @@ function FinancialVerdict({ result, asOf }: { result: LegacyAnalysisRunExecution
           {verdict.equityValueCr != null ? `₹${crore(verdict.equityValueCr)} Cr` : <Withheld reason="The valuation computed no headline value." />}
         </Figure>
         {/* Beside the price, the value carried to its date: the one the upside is measured on. */}
-        <Figure label="Value per share" sub={carried ? `${formatPerShare(verdict.perShare)} at the valuation date` : undefined}>
+        <Figure label="Value per share" sub={carried || verdict.shareCountChange != null ? `${formatPerShare(verdict.perShare)} at the valuation date` : undefined}>
           {verdict.perShareAtPriceDate != null
             ? formatPerShare(verdict.perShareAtPriceDate)
             : <Withheld reason={verdict.shares == null ? noShares : "The valuation computed no headline value."} />}
@@ -182,7 +188,8 @@ function FinancialVerdict({ result, asOf }: { result: LegacyAnalysisRunExecution
             {" "}{verdict.yearsToPriceDate.toFixed(1)} years at the cost of equity, less the distributions the models&rsquo; steady state pays.{" "}
           </>
         )}
-        Shares: {verdict.shares != null ? <>{verdict.shares.toFixed(2)} crore ({verdict.sharesSource})</> : "not resolved"}.
+        Shares: {verdict.shares != null ? <>{verdict.shares.toFixed(2)} crore ({verdict.sharesSource})</> : "not resolved"}
+        <ShareCountChange change={verdict.shareCountChange} atValuation={verdict.shares} today={verdict.sharesAtPriceDate} />.
       </p>
     </div>
   );
@@ -341,9 +348,11 @@ function ValueRange({ cc }: { cc: CommandCenter }) {
   // model floor and ceiling on the base case's.
   const years = price != null ? cc.marketContext.yearsToPriceDate : 0;
   const base = cc.scenarios.find((s) => s.key === "base");
-  const carry = (value: number | null) => (years > 0 && base
-    ? carryValueToPriceDate(value, base.assumptions.ke, years, base.dividendsPerShare)
-    : value);
+  const change = price != null ? cc.marketContext.shareCountChange : null;
+  const carry = (value: number | null) => {
+    const carried = years > 0 && base ? carryValueToPriceDate(value, base.assumptions.ke, years, base.dividendsPerShare) : value;
+    return carried != null && change != null ? carried / change : carried;
+  };
   const points = [
     { key: "floor", label: "Floor", value: carry(cc.range.floorPerShare) },
     ...cc.scenarios
@@ -384,6 +393,23 @@ function ValueRange({ cc }: { cc: CommandCenter }) {
 /** A card. Not a landmark: the Case page's section is the "Verdict" region. */
 function Panel({ children }: { children: ReactNode }) {
   return <div className="wb-surface rounded-xl border p-5 shadow-sm">{children}</div>;
+}
+
+/**
+ * Values are per share of the valuation date's count, the price per share of
+ * today's: when the quote's count differs, values beside the price are spread
+ * over today's, and the reader is told why they differ from the figure under
+ * them.
+ */
+function ShareCountChange({ change, atValuation, today }: { change: number | null | undefined; atValuation: number | null | undefined; today: number | null | undefined }) {
+  if (change == null || atValuation == null || today == null || Math.abs(change - 1) < 0.01) return null;
+  return (
+    <>
+      {" · "}shares outstanding <strong>{atValuation.toFixed(2)}</strong> crore at the valuation date, <strong>{today.toFixed(2)}</strong> crore
+      today (×{change.toFixed(2)}): values beside the price are per today&rsquo;s share. A bonus or split changes nothing else;
+      shares issued for cash also brought in cash the value does not include
+    </>
+  );
 }
 
 function Figure({ label, sub, children }: { label: string; sub?: string | undefined; children: ReactNode }) {

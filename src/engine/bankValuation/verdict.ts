@@ -49,6 +49,10 @@ export interface FinancialVerdict {
   readonly priceDate: string | null;
   /** Years from the valuation date to the price's; 0 when the value was not carried. */
   readonly yearsToPriceDate: number;
+  /** Today's count from the price's quote, in crore; null when it reports none (or an implausible one). */
+  readonly sharesAtPriceDate: number | null;
+  /** sharesAtPriceDate / shares; the value beside the price is spread over today's count. */
+  readonly shareCountChange: number | null;
   readonly ke: number | null;
   readonly scenarios: readonly FinancialVerdictScenario[];
 }
@@ -62,6 +66,8 @@ export function buildFinancialVerdict(input: {
   readonly marketPrice: number | null | undefined;
   /** The price's date (the snapshot's priceAsOf, else when it was fetched). */
   readonly priceDate?: string | null | undefined;
+  /** The quote's share count, absolute (the snapshot's sharesOutstanding). */
+  readonly quotedShares?: number | null | undefined;
 }): FinancialVerdict {
   const { valuation, subtype, latestRaw } = input;
   const insurer = subtype === "insurance";
@@ -85,12 +91,20 @@ export function buildFinancialVerdict(input: {
   const canCarry = valuationDate != null && priceDate != null && shares != null && finite(book) && finite(valuation?.ke);
   const years = canCarry ? yearsBetween(valuationDate, priceDate) : 0;
   const roe = valuation?.sustainableROE;
-  const perShareAtPriceDate = years > 0 && perShare != null && finite(roe)
+  const carriedPerShare = years > 0 && perShare != null && finite(roe)
     ? carryValueToPriceDate(perShare, valuation!.ke, years, Array.from(
         { length: Math.ceil(years) },
         (_, k) => ((roe - valuation!.terminalGrowth) * book! * Math.pow(1 + valuation!.terminalGrowth, k)) / shares!,
       ))
     : perShare;
+  // The price is per share of today's count, the value per share of the
+  // statements': a bonus or split since would set a value per old share
+  // against a price per new one. The quote's own count spreads the value over
+  // today's shares; a count outside 0.05–50× the statements' is not one.
+  const quotedCr = marketPrice != null && finite(input.quotedShares) && input.quotedShares > 0 ? input.quotedShares / 1e7 : null;
+  const rawChange = quotedCr != null && shares != null ? quotedCr / shares : null;
+  const shareCountChange = rawChange != null && rawChange >= 0.05 && rawChange <= 50 ? rawChange : null;
+  const perShareAtPriceDate = carriedPerShare != null && shareCountChange != null ? carriedPerShare / shareCountChange : carriedPerShare;
 
   const scenarios = insurer
     ? []
@@ -111,11 +125,13 @@ export function buildFinancialVerdict(input: {
     perShare,
     perShareAtPriceDate,
     marketPrice,
-    marketCapCr: marketPrice != null && shares != null ? marketPrice * shares : null,
+    marketCapCr: marketPrice != null && shares != null ? marketPrice * (shareCountChange != null ? quotedCr! : shares) : null,
     upside: perShareAtPriceDate != null && marketPrice != null ? perShareAtPriceDate / marketPrice - 1 : null,
     valuationDate,
     priceDate,
-    yearsToPriceDate: perShareAtPriceDate !== perShare ? years : 0,
+    yearsToPriceDate: carriedPerShare !== perShare ? years : 0,
+    sharesAtPriceDate: shareCountChange != null ? quotedCr : null,
+    shareCountChange,
     ke: finite(valuation?.ke) ? valuation!.ke : null,
     scenarios,
   };

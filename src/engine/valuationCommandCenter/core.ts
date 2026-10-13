@@ -133,7 +133,18 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
   // and the market's EV are solved on that. Values compared with the price
   // (upside, margin of safety) include the stake and use the price itself.
   const carvedStake = latest.bs.CarvedArmStakeValue ?? 0;
-  const industrialMarketPrice = marketPrice != null && shares != null && shares > 0 ? marketPrice - carvedStake / shares : marketPrice;
+  // The price is per share of today's count; every value is per share of the
+  // anchor's. A bonus or split since puts them on different counts (Nestlé's
+  // 1:1 of 2025, 96.42 → 192.83 crore, halves the per-share value the price
+  // should meet). The quote's own count, where it reports one, sets the two
+  // on one basis; a count outside 0.05–50× the anchor's is not a share count.
+  const quotedSharesCr = marketData?.sharesOutstanding != null && marketData.sharesOutstanding > 0 ? marketData.sharesOutstanding / 1e7 : null;
+  const rawShareCountChange = quotedSharesCr != null && shares != null && shares > 0 ? quotedSharesCr / shares : null;
+  const shareCountChange = rawShareCountChange != null && rawShareCountChange >= 0.05 && rawShareCountChange <= 50 ? rawShareCountChange : null;
+  // The price restated on the anchor's count: the one per-share values on that
+  // count (reverse DCF, EV from price) are set against.
+  const priceOnValuationShares = marketPrice != null ? marketPrice * (shareCountChange ?? 1) : null;
+  const industrialMarketPrice = priceOnValuationShares != null && shares != null && shares > 0 ? priceOnValuationShares - carvedStake / shares : priceOnValuationShares;
   // Only a rate that genuinely came from the market snapshot. This used to read
   // `marketData?.riskFreeRate ?? config.risk_free_rate` and hand the result to
   // the resolver, which labelled it "Pinned market snapshot" — so on the primary
@@ -218,6 +229,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     valuationData,
     horizon,
     yearsToPriceDate,
+    shareCountChange,
   });
 
   const stressCard = scenarios.find((card) => card.key === "stress") ?? null;
@@ -303,7 +315,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
   // ── EV/EBITDA Cross-Check (Phase 2.4) ────────────────────────
   const evEbitda = computeEvEbitdaCrossCheck(latest, config.ev_ebitda_peers ?? []);
   const evEbitdaWithMarket = marketPrice != null && shares != null && shares > 0
-    ? updateEvEbitdaWithMarketPrice(evEbitda, marketPrice * shares - carvedStake, latest.bs.NFO)
+    ? updateEvEbitdaWithMarketPrice(evEbitda, priceOnValuationShares! * shares - carvedStake, latest.bs.NFO)
     : evEbitda;
 
   // ── India Quality Signals (Phase 2.3) ────────────────────────
@@ -400,8 +412,9 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
 
   const marketContext: ValuationMarketContext = {
     expectedReturnSpreadVsRf: opportunity.expectedCagrStress != null ? opportunity.expectedCagrStress - riskFreeRate : null,
-    marketCapFromPrice: marketPrice != null && marketCapShares != null ? marketPrice * marketCapShares : null,
-    enterpriseValueFromPrice: marketPrice != null && marketCapShares != null ? marketPrice * marketCapShares + latest.bs.NFO - carvedStake : null,
+    // Today's price on today's count, where the quote reports it.
+    marketCapFromPrice: marketPrice != null && (quotedSharesCr ?? marketCapShares) != null ? marketPrice * (shareCountChange != null ? quotedSharesCr! : marketCapShares!) : null,
+    enterpriseValueFromPrice: marketPrice != null && (quotedSharesCr ?? marketCapShares) != null ? marketPrice * (shareCountChange != null ? quotedSharesCr! : marketCapShares!) + latest.bs.NFO - carvedStake : null,
     priceToStressValueRatio: marketPrice != null && (stressCard?.valueAtPriceDate ?? null) != null && (stressCard?.valueAtPriceDate ?? 0) > 0
       ? marketPrice / (stressCard?.valueAtPriceDate ?? 1)
       : null,
@@ -414,6 +427,9 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     latestReportedPeriod: latestReported.period_end,
     priceDate,
     yearsToPriceDate,
+    sharesAtValuationDate: shares,
+    sharesAtPriceDate: shareCountChange != null ? quotedSharesCr : null,
+    shareCountChange,
   };
 
   const replaySummary = orderedHistory.length >= 260
@@ -608,7 +624,8 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     reverseDcf,
     evidenceLedger,
     forecastHoldout,
-    marketPrice,
+    // Its per-share lenses are on the anchor's count.
+    marketPrice: priceOnValuationShares,
   });
 
   return {

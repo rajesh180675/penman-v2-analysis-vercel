@@ -108,7 +108,9 @@ export function revalueBase(cc: CommandCenterLike, shifts: BaseCaseShifts = {}):
     const value = primaryValuationPerShare(valuation);
     const finite = value != null && Number.isFinite(value) ? value : null;
     const shares = cc.shareBasis.sharesForPerShare ?? cc.shareBasis.shares ?? null;
-    const valueAtPriceDate = carryValueToPriceDate(finite, ke, cc.marketContext.yearsToPriceDate, forecastDividendsPerShare(periods, latest.bs.CSE, shares));
+    const carried = carryValueToPriceDate(finite, ke, cc.marketContext.yearsToPriceDate, forecastDividendsPerShare(periods, latest.bs.CSE, shares));
+    const change = cc.marketContext.shareCountChange;
+    const valueAtPriceDate = carried != null && change != null ? carried / change : carried;
     return { value: finite, valueAtPriceDate, forecast: periods, ke, kw, g };
   } catch {
     return none;

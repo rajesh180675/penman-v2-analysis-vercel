@@ -49,9 +49,17 @@ describe("VerdictSection", () => {
     expect(html).toContain("₹1210.00");
     expect(html).toContain("Upside 21.0% · ₹1100.00 at the valuation date");
     expect(html.replace(/<[^>]+>/g, "")).toContain("and carried to the price’s date, 2026-10-13: 1.5 years");
+    expect(html).not.toContain("shares outstanding");
     // The range shares the date: the model floor carried on the base case's ke and distributions.
     expect(html).toContain("Valuation range, ₹ per share, carried to 2026-10-13");
     expect(html).toContain(`Floor ₹${((750 * 1.1 - 30) * Math.pow(1.1, 0.54)).toFixed(2)}`);
+  });
+
+  it("says when the share count has changed since the valuation date", () => {
+    const text = render(commandCenter({
+      marketContext: { freshness: "live", latestReportedPeriod: "2025-03-31", priceDate: "2026-10-13", yearsToPriceDate: 0, sharesAtValuationDate: 96.42, sharesAtPriceDate: 192.83, shareCountChange: 192.83 / 96.42 },
+    })).replace(/<[^>]+>/g, "");
+    expect(text).toContain("shares outstanding 96.42 crore at the valuation date, 192.83 crore today (×2.00): values beside the price are per today’s share.");
   });
 
   it("withholds price, upside and CAGR — with the reason — when there is no market price", () => {
