@@ -618,6 +618,16 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
   const evEbitdaPerShare = evEbitdaWithMarket.equityFromMedian != null && shares != null && shares > 0
     ? evEbitdaWithMarket.equityFromMedian / shares
     : null;
+  // EPV's own margin read config.market_price: the classic shell's live
+  // overlay, absent from the next UI's run, set against a value per share of
+  // the anchor's count. Against this build's price, EPV is spread over today's
+  // count and not carried: a no-growth value that pays out all it earns
+  // (d = ke·V) is, by its own assumptions, the same at the price's date.
+  const epvResult = computeEPV(data, shareBasis.valuationConfig, { macroPack, betaPack, analysisAsOf });
+  const epvAtPrice = epvResult?.epvPerShare != null ? epvResult.epvPerShare / (shareCountChange ?? 1) : null;
+  const epv = epvResult
+    ? { ...epvResult, marginOfSafety: marketPrice != null && marketPrice > 0 && epvAtPrice != null ? (epvAtPrice - marketPrice) / marketPrice : null }
+    : epvResult;
   const evidenceWeightedSynthesis = buildEvidenceWeightedSynthesis({
     scenarios,
     cashFlowDcf,
@@ -666,7 +676,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     // Packs handed down, not re-derived: EPV is the no-growth floor for the
     // same issuer this build is valuing, so it has to discount at the rate the
     // rest of this object was built with.
-    epv: computeEPV(data, shareBasis.valuationConfig, { macroPack, betaPack, analysisAsOf }),
+    epv,
     workingCapitalGate: workingCapitalGateResult,
     cleanSurplus: cleanSurplusResult,
     damodaranCapm: damodaranCapmResult,

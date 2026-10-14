@@ -58,6 +58,33 @@ describe("PVRE Milestone A — industrial (ITC)", () => {
     expect(periods.length).toBeGreaterThanOrEqual(5);
   });
 
+  // Set against the price, each draw is on the price's basis: carried to its
+  // date at the draw's own ke, less the base case's payouts, and spread over
+  // today's count. Unpriced, the basis does nothing; disagreement is unmoved.
+  itIfData("reports the distribution on the price's basis when it has one", () => {
+    if (!baseCard) throw new Error("no base card");
+    const input = { latest: anchor!, baseScenario: baseCard, config, scenarioConfig, seed: 42, iterations: 64, marketPrice: PRICE, bounds: PVRE_DEFAULT_BOUNDS };
+    const ok = (r: ReturnType<typeof runPvre>) => {
+      if (r.status !== "ok") throw new Error("PVRE did not run");
+      return r;
+    };
+    const anchorBasis = ok(runPvre(input));
+    // A 1:1 bonus, nothing carried: every draw halves, so every quantile does,
+    // and a draw beats the price exactly when it beat twice the price before.
+    const halved = ok(runPvre({ ...input, priceBasis: { yearsToPriceDate: 0, shareCountChange: 2, dividendsPerShare: [] } }));
+    for (const q of ["q05", "q50", "q95"] as const) expect(halved.intrinsic![q]).toBeCloseTo(anchorBasis.intrinsic![q] / 2, 9);
+    expect(halved.probabilityUndervalued).toBe(ok(runPvre({ ...input, marketPrice: 2 * PRICE })).probabilityUndervalued);
+    expect(halved.disagreement).toEqual(anchorBasis.disagreement);
+    // Carried 1.5 years with nothing paid out, each draw grows at its own ke,
+    // which the bounds hold within 5–25%.
+    const carried = ok(runPvre({ ...input, priceBasis: { yearsToPriceDate: 1.5, shareCountChange: null, dividendsPerShare: [] } }));
+    expect(carried.intrinsic!.q50).toBeGreaterThan(anchorBasis.intrinsic!.q50 * 1.05 ** 1.5);
+    expect(carried.intrinsic!.q50).toBeLessThan(anchorBasis.intrinsic!.q50 * 1.25 ** 1.5);
+    // Unpriced, the basis does nothing.
+    const unpriced = ok(runPvre({ ...input, marketPrice: null, priceBasis: { yearsToPriceDate: 1.5, shareCountChange: 2, dividendsPerShare: [] } }));
+    expect(unpriced.intrinsic).toEqual(anchorBasis.intrinsic);
+  });
+
   itIfData("same seed → identical outputs (reproducibility)", () => {
     if (!baseCard) throw new Error("no base card");
     const input = {

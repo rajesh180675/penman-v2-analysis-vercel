@@ -18,6 +18,7 @@ import type { ForecastScenario } from "../types/forecast";
 import type { RecastPeriod } from "../types";
 import type { EngineConfig } from "../types";
 import type { ValuationScenarioCard } from "../valuationCommandCenter/types";
+import { carryValueToPriceDate } from "../valuationCommandCenter/helpers";
 import { mulberry32, quantileSummary, sampleDrivers } from "./sampler";
 import { trace } from "../../lib/traceLogger";
 import type {
@@ -42,6 +43,17 @@ export interface PvreRunInput {
   readonly seed: number;
   readonly iterations: number;
   readonly marketPrice: number | null;
+  /**
+   * Where the price stands from the values: years from the anchor to the
+   * price's date, today's share count over the anchor's, and the base case's
+   * payouts per share (the command center's marketContext and base card).
+   * With a price, the distribution is reported on the price's basis.
+   */
+  readonly priceBasis?: {
+    readonly yearsToPriceDate: number;
+    readonly shareCountChange: number | null;
+    readonly dividendsPerShare: readonly number[];
+  } | undefined;
   /** Safety guardrails: clamp sampled drivers to keep every run economically sane. */
   readonly bounds: {
     readonly keMin: number;
@@ -234,15 +246,25 @@ export function runPvre(input: PvreRunInput): PvreResult {
     samples.push({ index: i, draws: { ...safe, gTerminal }, ...evald });
   }
 
+  // With a price, each draw's value is carried to the price's date at its own
+  // ke (less the base case's payouts) and spread over today's count, as the
+  // scenario cards' valueAtPriceDate is: the distribution set against the
+  // price is then on its basis. The models' disagreement stays on their own.
+  const basis = input.marketPrice != null ? input.priceBasis : undefined;
+  const onPriceBasis = (value: number | null, ke: number) => {
+    if (value == null || !basis) return value;
+    const carried = basis.yearsToPriceDate > 0 ? carryValueToPriceDate(value, ke, basis.yearsToPriceDate, basis.dividendsPerShare) : value;
+    return carried != null && basis.shareCountChange != null ? carried / basis.shareCountChange : carried;
+  };
   const intrinsicVals = samples
-    .map((s) => s.intrinsicPerShare)
+    .map((s) => onPriceBasis(s.intrinsicPerShare, s.draws.ke))
     .filter((v): v is number => v != null && Number.isFinite(v));
   const intrinsic = quantileSummary(intrinsicVals);
 
   const modelNames = ["residual-income", "residual-operating-income"] as const;
   const perModel: PvreModelDistribution[] = modelNames.map((name) => {
     const vals = samples
-      .map((s) => s.modelValues[name] ?? null)
+      .map((s) => onPriceBasis(s.modelValues[name] ?? null, s.draws.ke))
       .filter((v): v is number => v != null && Number.isFinite(v));
     return {
       model: name,

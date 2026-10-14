@@ -348,6 +348,12 @@ describe("valuation command center", () => {
     const base = doubled.scenarios.find((s) => s.key === "base")!;
     expect(doubled.marketContext.yearsToPriceDate).toBeGreaterThan(0);
     expect(valueOnPriceBasis(doubled, base.intrinsicPerShare)).toBeCloseTo(base.valueAtPriceDate!, 9);
+    // EPV's margin is against this build's price: EPV spread over today's
+    // count and not carried, since a no-growth value paying out all it earns
+    // does not grow by the price's date.
+    expect(doubled.epv?.epvPerShare).toBeCloseTo(same.epv!.epvPerShare!, 9);
+    expect(doubled.epv!.marginOfSafety).toBeCloseTo(doubled.epv!.epvPerShare! / 2 - 1, 12);
+    expect(same.epv!.marginOfSafety).toBeCloseTo(same.epv!.epvPerShare! - 1, 12);
     // Market cap is today's price on today's count.
     expect(doubled.marketContext.marketCapFromPrice).toBeCloseTo(1240, 9);
     // A count that is not plausibly a share count is ignored, not applied.
