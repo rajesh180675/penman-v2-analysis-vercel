@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ValuationReport from "../ValuationReport";
 import ValuationCommandCenterHero from "../valuation/ValuationCommandCenterHero";
 import { buildValuationCommandCenter } from "../../engine/valuationCommandCenter";
+import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 import type { AnalysisTraceabilityEnvelope, EngineConfig, RecastPeriod } from "../../engine/types";
 import { DEFAULT_CONFIG } from "../../engine/types";
 import { CroreShares, INRAbsolute } from "../../engine/types/units";
@@ -153,6 +154,33 @@ describe("ValuationReport", () => {
     );
     expect(html).toContain("₹20.00 to ₹45.00");
     expect(html).not.toContain("₹40.00 to ₹90.00");
+  });
+
+  // The self-consistent model's values are per share of the statements'
+  // count, so after a 1:1 bonus it meets the price restated on that count:
+  // twice the quote. Its margin of safety is (value − 2 × price) / (2 × price).
+  it("sets the self-consistent model's margin against the price on the statements' count", () => {
+    const config: EngineConfig = { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(100), market_price: INRAbsolute(50) };
+    const quote = (sharesOutstanding: number | null): LiveMarketDataSnapshot => ({
+      symbol: "X", provider: "NSE India", fetchedAt: "2026-10-13T10:00:00.000Z", price: 50, previousClose: 50, changePct: 0,
+      marketCap: null, enterpriseValue: null, sharesOutstanding, riskFreeRate: null, priceAsOf: "2026-10-13",
+      rateAsOf: null, freshness: "live", sourceSummary: "NSE", warnings: [], history: null,
+    });
+    const margin = (sharesOutstanding: number | null) => {
+      const html = renderToStaticMarkup(
+        <ValuationReport data={[mkPeriod("2024-03-31"), mkPeriod("2025-03-31")]} config={config} analysisStatus={null} traceability={null} itServices={null} marketData={quote(sharesOutstanding)} />,
+      );
+      const section = html.slice(html.indexOf("Self-consistent ReOI fade valuation"));
+      const perShare = Number(/Equity value \/ share<\/div><div[^>]*>₹([\d.]+)</.exec(section)?.[1]);
+      const mos = Number(/Margin of safety<\/div><div[^>]*>(-?[\d.]+)%</.exec(section)?.[1]) / 100;
+      return { perShare, mos };
+    };
+    const same = margin(null);
+    const doubled = margin(200 * 1e7);
+    expect(same.perShare).toBeGreaterThan(0);
+    expect(doubled.perShare).toBeCloseTo(same.perShare, 2);
+    expect(same.mos).toBeCloseTo((same.perShare - 50) / 50, 2);
+    expect(doubled.mos).toBeCloseTo((doubled.perShare - 100) / 100, 2);
   });
 
   it("renders the signal engine and historical dislocation section", () => {
