@@ -157,11 +157,14 @@ export default function DashboardView({ data, config, traceability = null, ratio
     [data, config, marketData, runCommandCenter, segmentData],
   );
 
-  // Values at the valuation date, per share of its count; beside a price they
-  // are carried to its date and spread over today's count, as the cards are.
-  const epvPerShare = epv && shares != null && shares > 0 ? valueOnPriceBasis(commandCenter, epv.epvEquity / shares) : null;
+  // EPV is a no-growth value that pays out all it earns (d = ke·V), so by its
+  // own assumptions it is the same at the price's date as at the anchor's:
+  // beside the price it is only spread over today's count. Carried on the
+  // base case's ke and far smaller payouts, it would grow as a growth case does.
+  const epvPerShare = epv && sharesAtPrice != null && sharesAtPrice > 0 ? epv.epvEquity / sharesAtPrice : null;
 
-  // Intrinsic value range — from authoritative command center
+  // Intrinsic value range — from authoritative command center. Beside the
+  // price it is carried to the price's date and spread over today's count.
   const intrinsicRange = useMemo(() => {
     const floor = valueOnPriceBasis(commandCenter, commandCenter.range?.floorPerShare ?? null);
     const ceiling = valueOnPriceBasis(commandCenter, commandCenter.range?.ceilingPerShare ?? null);

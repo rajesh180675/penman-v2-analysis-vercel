@@ -23,6 +23,7 @@ import { DEFAULT_CONFIG, type EngineConfig, type RecastPeriod } from "../../engi
 import { CroreShares, INRAbsolute } from "../../engine/types/units";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 import { valueOnPriceBasis } from "../../engine/valuationCommandCenter/helpers";
+import { computeEPV } from "../../engine/grahamDoddEPV";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -57,13 +58,13 @@ const config: EngineConfig = { ...DEFAULT_CONFIG, shares_outstanding: CroreShare
 const data = [mkPeriod("2024-03-31", 850), mkPeriod("2025-03-31", 900)];
 const roots: Root[] = [];
 
-async function renderDashboard(commandCenter: ReturnType<typeof buildValuationCommandCenter> | null, marketData: LiveMarketDataSnapshot | null = null): Promise<HTMLElement> {
+async function renderDashboard(commandCenter: ReturnType<typeof buildValuationCommandCenter> | null, marketData: LiveMarketDataSnapshot | null = null, withConfig: EngineConfig = config): Promise<HTMLElement> {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
   roots.push(root);
   await act(async () => {
-    root.render(<DashboardView data={data} config={config} itServices={null} commandCenter={commandCenter} marketData={marketData} />);
+    root.render(<DashboardView data={data} config={withConfig} itServices={null} commandCenter={commandCenter} marketData={marketData} />);
   });
   return container;
 }
@@ -120,6 +121,23 @@ describe("DashboardView — today's share count", () => {
       marketContext: { ...built.marketContext, yearsToPriceDate: 0, shareCountChange: 2 },
     };
     expect(await intrinsicTile(run)).toContain("₹2160–4383");
+  });
+
+  // EPV pays out all it earns, so it is not carried: only spread over today's count.
+  it("spreads EPV, the gauge's floor, over today's count without carrying it", async () => {
+    // One crore shares, so per-share figures are large enough to tell apart.
+    const oneCrore: EngineConfig = { ...config, shares_outstanding: CroreShares(1) };
+    const built = buildValuationCommandCenter({ data, config: oneCrore });
+    // A run 1.5 years from its anchor, after a 1:1 bonus: the cards are carried.
+    const run = { ...built, marketContext: { ...built.marketContext, yearsToPriceDate: 1.5, shareCountChange: 2 } };
+    const epv = computeEPV(data, oneCrore, { ...ACTIVE_MARKET_PACKS, analysisAsOf: analysisAsOfToday() })!;
+    expect(epv.epvEquity).toBeGreaterThan(0);
+    // Carried, it would read differently from spread alone.
+    const carried = valueOnPriceBasis(run, epv.epvEquity)!;
+    expect(Math.abs(carried - epv.epvEquity / 2)).toBeGreaterThan(5);
+    const text = (await renderDashboard(run, quote(2 * 1e7), oneCrore)).textContent ?? "";
+    expect(text).toContain(`₹${(epv.epvEquity / 2).toFixed(0)}`);
+    expect(text).not.toContain(`₹${carried.toFixed(0)}`);
   });
 
   it("sets market cap on today's count", async () => {
