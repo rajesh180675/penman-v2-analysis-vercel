@@ -277,13 +277,16 @@ describe("Industrial ForecastState", () => {
     expect(validateIndustrialScenarioOrdering([bull, stress, base]).status).toBe("passed");
 
     // Equal up to rounding is ordered: Titan's bull case held the base case's
-    // kw by arithmetic that landed 2e-17 above it. A real reversal still fails.
-    const asCase = (key: "stress" | "bull", kwShift: number): IndustrialForecastCase =>
-      ({ ...base, scenarioKey: key, terminal: { ...base.terminal, kwSpread: base.terminal.kwSpread + kwShift } });
+    // ke by arithmetic that landed 2e-17 above it. A real reversal still fails.
+    const asCase = (key: "stress" | "bull", keShift: number, kwShift = 0): IndustrialForecastCase =>
+      ({ ...base, scenarioKey: key, terminal: { ...base.terminal, keSpread: base.terminal.keSpread + keShift, kwSpread: base.terminal.kwSpread + kwShift } });
     expect(validateIndustrialScenarioOrdering([asCase("stress", 0), base, asCase("bull", 1e-15)]).status).toBe("passed");
     const reversed = validateIndustrialScenarioOrdering([asCase("stress", 0), base, asCase("bull", 1e-4)]);
     expect(reversed.status).toBe("failed");
-    expect(reversed.checks.find((check) => check.status === "failed")?.checkId).toBe("scenario-ordering.kw");
+    expect(reversed.checks.find((check) => check.status === "failed")?.checkId).toBe("scenario-ordering.ke");
+    // Each case's kw follows its own value weights: a bull case's above the
+    // base's (NTPC 7.28% against 7.14%), at a lower ke, is in order.
+    expect(validateIndustrialScenarioOrdering([asCase("stress", 0.02), base, asCase("bull", -0.01, 0.0014)]).status).toBe("passed");
 
     const repeated = requireComputed(makeRequest({ caseId: "base-repeat" }));
     expect(repeated.projected.map((state) => state.incomeStatement.revenue))

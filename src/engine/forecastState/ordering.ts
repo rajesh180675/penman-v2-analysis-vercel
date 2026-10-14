@@ -100,13 +100,18 @@ export function validateIndustrialScenarioOrdering(
     `${stress.terminal.growth}/${base.terminal.growth}/${bull.terminal.growth}`,
     "Terminal growth must be monotonic from stress to bull.",
   ));
+  // The cost of equity is what each case sets (stress above base, bull at or
+  // below it). Its operating capital cost is not: each case solves the kw
+  // consistent with its own value weights, so a levered firm's bull case, its
+  // equity worth more, weighs ke more and sits a little above the base (NTPC
+  // 7.28% against 7.14%) without being discounted harder.
   checks.push({
     ...orderingCheck(
-      "scenario-ordering.kw",
-      notAbove(base.terminal.kwSpread + base.terminal.growth, stress.terminal.kwSpread + stress.terminal.growth)
-        && notAbove(bull.terminal.kwSpread + bull.terminal.growth, base.terminal.kwSpread + base.terminal.growth),
-      `${stress.terminal.kwSpread + stress.terminal.growth}/${base.terminal.kwSpread + base.terminal.growth}/${bull.terminal.kwSpread + bull.terminal.growth}`,
-      "Operating capital cost must be non-increasing from stress to bull.",
+      "scenario-ordering.ke",
+      notAbove(base.terminal.keSpread + base.terminal.growth, stress.terminal.keSpread + stress.terminal.growth)
+        && notAbove(bull.terminal.keSpread + bull.terminal.growth, base.terminal.keSpread + base.terminal.growth),
+      `${stress.terminal.keSpread + stress.terminal.growth}/${base.terminal.keSpread + base.terminal.growth}/${bull.terminal.keSpread + bull.terminal.growth}`,
+      "Cost of equity must be non-increasing from stress to bull.",
     ),
     expected: "stress >= base >= bull",
   });

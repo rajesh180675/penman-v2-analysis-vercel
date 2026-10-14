@@ -81,9 +81,12 @@ export function ScenarioCard({
   reinvestmentRate,
   incrementalRoic,
   forecastPolicy,
+  valueNote,
 }: {
   label: string;
   intrinsicPerShare: number | null;
+  /** Why the value is not the RE/ReOI median, when it is not (the card's valueBasis reason). */
+  valueNote?: string | null | undefined;
   upsidePct: number | null;
   marginOfSafetyPct: number | null;
   expectedCagr: number | null;
@@ -108,6 +111,7 @@ export function ScenarioCard({
       <div className={`mt-1 text-sm font-semibold ${upsidePct != null && upsidePct >= 0 ? "text-emerald-700" : "text-red-700"}`}>
         {formatPct(upsidePct)} vs market
       </div>
+      {valueNote ? <div className="mt-2 text-xs text-amber-700">{valueNote}</div> : null}
       <div className="mt-4 grid gap-2 text-xs text-slate-500">
         <div>ke <strong className="text-slate-700">{formatPct(ke, 2)}</strong></div>
         <div>kw <strong className="text-slate-700">{formatPct(kw, 2)}</strong></div>

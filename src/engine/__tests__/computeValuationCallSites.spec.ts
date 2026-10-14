@@ -45,10 +45,8 @@ const EXPECTED_CENSUS = [
   // Re-values the base card along buildScenarioCards' own anchored path.
   "src/engine/valuationCommandCenter/breakEven.ts :: buildValuationPeriodsFromForecast(latest, buildScenario(scenario, latest))",
   "src/engine/valuationCommandCenter/builders.ts :: forecastPeriods",
-  "src/engine/valuationCommandCenter/builders.ts :: forecastPeriods",
   // The value-consistent kw solve: values whatever its caller passes, which
-  // the three entries above and pvre's (all forecast periods) supply.
-  "src/engine/valueConsistentKw.ts :: periods",
+  // the two entries above and pvre's (all forecast periods) supply.
   "src/engine/valueConsistentKw.ts :: periods",
   "src/engine/valueConsistentKw.ts :: periods",
 ];
@@ -66,7 +64,7 @@ function productionSources(dir: string, out: string[] = []): string[] {
 }
 
 /** computeValuation and the value-consistent wrappers share its contract: periods[0] is the valuation date. */
-const VALUING = ["computeValuation", "computeConsistentValuation", "heldAtBaseKw"];
+const VALUING = ["computeValuation", "computeConsistentValuation"];
 
 function callSitesInSource(file: string, text: string): string[] {
   if (!VALUING.some((name) => text.includes(name))) return [];

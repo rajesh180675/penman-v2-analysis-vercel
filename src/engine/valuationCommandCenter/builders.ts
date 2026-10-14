@@ -1,6 +1,7 @@
-import { RecastPeriod, EngineConfig, ForecastScenario, BusinessModelProfile } from "../types";
+import { RecastPeriod, EngineConfig, ForecastScenario, BusinessModelProfile, type ValuationResult } from "../types";
 import { resolveShareBasis } from "../shareCountTools";
-import { computeConsistentValuation, heldAtBaseKw, type KwConsistency } from "../valueConsistentKw";
+import { computeConsistentValuation, type KwConsistency } from "../valueConsistentKw";
+import { RE_REOI_BLOCK_GAP, reReoiGap } from "../reReoiConsistency";
 import { buildScenario, buildValuationPeriodsFromForecast, derivePersistenceForecastScenario } from "../forecastingEngine";
 import { ValuationSectorTemplateDefinition } from "../valuationSectorTemplates";
 import { buildSOTPValuation, SOTP_PRESETS, SOTPResult } from "../sotpValuation";
@@ -24,6 +25,36 @@ import {
   marginOfSafety,
   primaryValuationPerShare,
 } from "./helpers";
+
+/**
+ * Whether a card's RE and ReOI value its forecast alike, so their median is
+ * its value, or no kw consistent with its ke and forecast exists and RE alone
+ * (which needs no kw) is. NTPC's deep stress, Tata Steel's and the net-cash
+ * historical panics have none: the solve leaves the structural kw, or the two
+ * stay beyond the block gap at the kw it settles on.
+ *
+ * Not the base: its pair is gated on the rigor ladder (RE_REOI_BLOCK_GAP
+ * withholds valuation-eligible), and break-even and PVRE re-value it as the
+ * median, which must stay the value they start from.
+ */
+export function scenarioValueBasis(
+  key: ValuationScenarioCard["key"],
+  valuation: ValuationResult,
+  kwConsistency: KwConsistency,
+): NonNullable<ValuationScenarioCard["valueBasis"]> {
+  if (key === "base") return { model: "re-reoi", reason: null };
+  const re = valuation.perShare?.intrinsic_re_per_share;
+  const reoi = valuation.perShare?.intrinsic_reoi_per_share;
+  if (re == null || !Number.isFinite(re) || reoi == null || !Number.isFinite(reoi)) return { model: "re-reoi", reason: null };
+  const gap = reReoiGap(re, reoi);
+  if (kwConsistency.method !== "value-consistent") {
+    return { model: "re", reason: `${kwConsistency.reason ?? "The value-weighted kw did not settle."} No kw reconciles residual operating income with residual earnings on this forecast, so the case is valued on residual earnings, which need none.` };
+  }
+  if (gap != null && gap > RE_REOI_BLOCK_GAP) {
+    return { model: "re", reason: `At the kw that settles, residual operating income and residual earnings still differ by ${(gap * 100).toFixed(0)}%; valued on residual earnings, which need no kw.` };
+  }
+  return { model: "re-reoi", reason: null };
+}
 
 export function buildSotpAssessment(
   segmentData: SegmentData | null | undefined,
@@ -187,8 +218,6 @@ export function buildScenarioCards(args: {
     key: ValuationScenarioCard["key"],
     scenario: ForecastScenario,
     reinvestmentLift: number,
-    /** The base case's solve: the other scenarios are valued at its kw, so they differ in their forecasts, not their discount rate. */
-    baseKw?: KwConsistency,
   ) => {
     const terminalGrowth = clamp(
       config.g_terminal_override ?? scenario.drivers.g_terminal,
@@ -206,18 +235,24 @@ export function buildScenarioCards(args: {
     // structural kw seeds the solve (see valueConsistentKw.ts). The scenario
     // then carries the solved kw, so its forecast ReOI and anything seeded
     // from this card (PVRE, break-even) agree with the value.
+    //
+    // Every scenario solves its own. Held at the base case's kw, a scenario
+    // far from the base was valued at a kw its own forecast contradicts: NTPC's
+    // stress, at 8.89% while its equity weight collapsed and its forecast still
+    // borrowed at 3.48%, put RE at ₹88.7 and ReOI at −₹92.6 a share, and their
+    // median, −₹1.95, read as equity worth nothing. Over the 20 industrial
+    // companies (2026-10-14) every scenario stayed in order but Grasim's bull,
+    // set against a base whose own RE and ReOI already disagree by 30%.
     const forecast = buildScenario(scenarioWithTerminal, latest);
     const forecastPeriods = buildValuationPeriodsFromForecast(latest, forecast);
-    const { valuation, kwConsistency } = baseKw
-      ? heldAtBaseKw(forecastPeriods, scenarioWithTerminal, terminalGrowth, shareBasis.valuationConfig, baseKw)
-      : computeConsistentValuation(
-        forecastPeriods,
-        scenarioWithTerminal.drivers.ke,
-        scenarioWithTerminal.drivers.kw,
-        terminalGrowth,
-        shareBasis.valuationConfig,
-        scenarioWithTerminal.drivers.nbc[0],
-      );
+    const { valuation, kwConsistency } = computeConsistentValuation(
+      forecastPeriods,
+      scenarioWithTerminal.drivers.ke,
+      scenarioWithTerminal.drivers.kw,
+      terminalGrowth,
+      shareBasis.valuationConfig,
+      scenarioWithTerminal.drivers.nbc[0],
+    );
     const scenarioAtKw = {
       ...scenarioWithTerminal,
       drivers: { ...scenarioWithTerminal.drivers, kw: kwConsistency.kw },
@@ -232,7 +267,14 @@ export function buildScenarioCards(args: {
     // owner-earnings DCF is reported beside it as a cross-check, not blended
     // in. It used to be blended here and then overwritten by a normalization
     // pass, so a value was computed that no reader ever saw.
-    const intrinsicPerShare = primaryValuationPerShare(valuation);
+    //
+    // Where no kw reconciles the two (the solve did not settle, or settled with
+    // them still beyond the block gap) the median would average a value with
+    // one at a kw the forecast contradicts. RE needs no kw, so the card is RE.
+    const valueBasis = scenarioValueBasis(key, valuation, kwConsistency);
+    const intrinsicPerShare = valueBasis.model === "re"
+      ? valuation.perShare?.intrinsic_re_per_share ?? null
+      : primaryValuationPerShare(valuation);
     // Dated at the anchor year-end; the price is today's. Set beside it, the
     // value is carried to the price's date first.
     const dividendsPerShare = forecastDividendsPerShare(forecast, latest.bs.CSE, perShareBasis);
@@ -253,6 +295,7 @@ export function buildScenarioCards(args: {
       expectedCagr: expectedReturnToValue(marketPrice, valueAtPriceDate, scenarioAtKw.drivers.ke, 3),
       valuation,
       kwConsistency,
+      valueBasis,
       forecastPolicy: scenarioAtKw.forecastPolicy,
       assumptions: {
         ke: scenarioAtKw.drivers.ke,
@@ -309,17 +352,11 @@ export function buildScenarioCards(args: {
     }),
   };
 
-  // The base case settles the run's kw; the other scenarios are valued at it
-  // (shifted by any scenario-specific structural tilt). Solving each one on
-  // its own let a bull case's higher value raise its own kw and fall below
-  // the base (M&M, Power Grid).
-  const base = makeScenario("base", derivedScenarios.base, 1);
-  const baseKw = base.kwConsistency;
   const scenarios: ValuationScenarioCard[] = [
-    makeScenario("stress", derivedScenarios.stress, 1.15, baseKw),
-    base,
-    makeScenario("bull", derivedScenarios.bull, 0.9, baseKw),
-    makeScenario("historical-panic", derivedScenarios.historicalPanic, 1.2, baseKw),
+    makeScenario("stress", derivedScenarios.stress, 1.15),
+    makeScenario("base", derivedScenarios.base, 1),
+    makeScenario("bull", derivedScenarios.bull, 0.9),
+    makeScenario("historical-panic", derivedScenarios.historicalPanic, 1.2),
   ];
 
   return { scenarios, derivedScenarios };

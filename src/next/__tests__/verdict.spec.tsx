@@ -64,6 +64,15 @@ describe("VerdictSection", () => {
     expect(html).toContain("The stress case values the equity at nothing.");
   });
 
+  it("says when a case is valued on residual earnings alone", () => {
+    const reOnly = { model: "re", reason: "No kw reconciles them." };
+    const html = render(commandCenter({
+      scenarios: [{ ...card("stress", 800, -0.2), valueBasis: reOnly }, card("base", 1100, 0.1), card("bull", 1400, 0.4)],
+    }));
+    expect(html).toContain("Upside -20.0% · on residual earnings alone: no operating cost of capital reconciles this case&#x27;s two models");
+    expect(html.match(/on residual earnings alone/g)).toHaveLength(1);
+  });
+
   it("says when the share count has changed since the valuation date", () => {
     const text = render(commandCenter({
       marketContext: { freshness: "live", latestReportedPeriod: "2025-03-31", priceDate: "2026-10-13", yearsToPriceDate: 0, sharesAtValuationDate: 96.42, sharesAtPriceDate: 192.83, sharesAtPriceDateSource: "the latest annual filing (2026-03-31)", shareCountChange: 192.83 / 96.42 },

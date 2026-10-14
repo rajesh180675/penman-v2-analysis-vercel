@@ -332,14 +332,17 @@ function ScenarioFigure({ label, card, priced, noValue, noPrice }: {
   // A case can value the equity below zero (its residual earnings destroy more
   // than its book); a share is worth no less than nothing, so beside the price it is zero.
   const belowZero = card.intrinsicPerShare < 0;
+  // Where no operating cost of capital reconciles the case's two models, its
+  // value is residual earnings alone (valueBasis), and it says so.
+  const reOnly = card.valueBasis?.model === "re" ? " · on residual earnings alone: no operating cost of capital reconciles this case's two models" : "";
   return (
     <Figure
       label={label}
-      sub={priced
+      sub={`${priced
         ? `Upside ${formatPct(card.upsidePct)}${belowZero
           ? ` · the case values the equity below zero (${formatPerShare(card.intrinsicPerShare)} at the valuation date), and a share is worth no less than nothing`
           : carried ? ` · ${formatPerShare(card.intrinsicPerShare)} at the valuation date` : ""}`
-        : noPrice}
+        : noPrice}${reOnly}`}
     >
       {formatPerShare(priced ? card.valueAtPriceDate : card.intrinsicPerShare)}
     </Figure>

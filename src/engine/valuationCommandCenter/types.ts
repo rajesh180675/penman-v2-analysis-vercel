@@ -61,6 +61,13 @@ export interface ValuationScenarioCard {
   forecastPolicy?: ForecastPolicySurface | undefined;
   /** How the kw behind this card's ReOI value was set (structural seed vs value-consistent solve). */
   kwConsistency?: KwConsistency | undefined;
+  /**
+   * What `intrinsicPerShare` is: the median of RE and ReOI on this card's
+   * forecast ("re-reoi"), or RE alone ("re") when no kw consistent with the
+   * card's ke and forecast exists — the solve did not settle, or settled with
+   * the two still beyond the RE/ReOI block gap. RE needs no kw. Absent: re-reoi.
+   */
+  valueBasis?: { readonly model: "re-reoi" | "re"; readonly reason: string | null } | undefined;
   assumptions: {
     ke: number;
     /** The kw the valuation used: value-consistent when it solved, else structural. */
