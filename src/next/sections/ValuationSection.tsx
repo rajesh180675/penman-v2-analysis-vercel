@@ -12,6 +12,7 @@ import { formatPerShare } from "../../engine/valuationCommandCenter";
 import { revalueBase } from "../../engine/valuationCommandCenter/breakEven";
 import { crore, percent } from "../format";
 import { Withheld } from "../ui/Withheld";
+import { valuationDateNote } from "../ui/valuationBasis";
 
 type ModelResult = LegacyAnalysisRunExecutionResult["materialization"]["modelResults"][number];
 type CommandCenter = NonNullable<LegacyAnalysisRunExecutionResult["materialization"]["commandCenter"]>;
@@ -24,7 +25,7 @@ export function ValuationSection({ result }: { result: LegacyAnalysisRunExecutio
   const cc = result.materialization.commandCenter;
   return (
     <div className="space-y-4">
-      <Models results={result.materialization.modelResults} />
+      <Models results={result.materialization.modelResults} basisNote={cc ? valuationDateNote(cc) : null} />
       {cc ? (
         <>
           <CostOfCapital cc={cc} />
@@ -49,14 +50,14 @@ function Card({ title, note, children }: { title: string; note?: string; childre
   );
 }
 
-function Models({ results }: { results: readonly ModelResult[] }) {
+function Models({ results, basisNote }: { results: readonly ModelResult[]; basisNote: string | null }) {
   const rows = results.map((r) => {
     const definition = CURRENT_MODEL_REGISTRY.get(r.modelId);
     return { result: r, label: definition?.label ?? r.modelId, category: definition?.category ?? "unknown", lifecycle: definition?.lifecycle ?? "unknown" };
   });
   const computed = rows.filter((r) => r.result.status === "computed").length;
   return (
-    <Card title="Models" note={`${computed} of ${rows.length} catalogued models computed a value for this run.`}>
+    <Card title="Models" note={`${computed} of ${rows.length} catalogued models computed a value for this run.${basisNote ? ` ${basisNote}` : ""}`}>
       {rows.length === 0 ? (
         <div className="mt-2"><Withheld reason="The run recorded no model results." /></div>
       ) : (
@@ -155,8 +156,9 @@ function Sensitivity({ cc }: { cc: CommandCenter }) {
     [input],
   );
   const base = grid[2]![2]!;
+  const basisNote = valuationDateNote(cc);
   return (
-    <Card title="Sensitivity" note="Base-case value per share as the cost of equity (rows) and terminal growth (columns) move; kw follows ke structurally.">
+    <Card title="Sensitivity" note={`Base-case value per share as the cost of equity (rows) and terminal growth (columns) move; kw follows ke structurally.${basisNote ? ` ${basisNote}` : ""}`}>
       <table className="mt-2 text-sm">
         <thead>
           <tr className="text-right text-xs text-slate-500">

@@ -13,6 +13,7 @@ import { crore, percent } from "../format";
 import type { RecastPeriod } from "../../engine/types";
 import { MARGIN_HISTORY_YEARS, MarginFadeChart, frozenOnSameBasis, marginFadeRows, type FrozenForecast } from "../ui/MarginFadeChart";
 import { Withheld } from "../ui/Withheld";
+import { valuationDateNote } from "../ui/valuationBasis";
 
 type RevalueInput = Parameters<typeof revalueBase>[0];
 
@@ -63,6 +64,7 @@ export function ForecastSection({
   const changed = SHIFTS.some(({ key }) => (shifts[key] ?? 0) !== 0);
   const difference = edited.value != null && base.value != null && base.value !== 0 ? (edited.value - base.value) / Math.abs(base.value) : null;
   const card = cc.scenarios.find((s) => s.key === "base")!;
+  const basisNote = valuationDateNote(cc);
 
   return (
     <div className="space-y-4">
@@ -103,6 +105,7 @@ export function ForecastSection({
           )}
         </div>
         <p className="mt-2 text-xs text-slate-500">ke {percent(edited.ke)} · kw {percent(edited.kw)} (derived, read-only) · terminal growth {percent(edited.g)}</p>
+        {basisNote && <p className="mt-1 text-xs text-slate-500">{basisNote}</p>}
       </div>
 
       <FadePanel

@@ -214,6 +214,20 @@ describe("Verdict — what would change our mind", () => {
   });
 });
 
+describe("Forecast and Valuation sections — their per-share basis", () => {
+  it("say their values are at the valuation date, where the Verdict's beside the price are carried", () => {
+    const cc = built.TCS!;
+    // TCS at ₹3,100 as of the run's date: values carried there in the Verdict.
+    const note = `Per share at the valuation date, ${cc.anchorPeriod.period_end}, on that date's ${cc.marketContext.sharesAtValuationDate!.toFixed(2)} crore shares. Beside the price the Verdict carries values to the price's date, ${cc.marketContext.priceDate}, so its figures differ from these.`
+      .replace(/'/g, "&#x27;");
+    expect(text(renderToStaticMarkup(<ValuationSection result={resultFor(cc)} />))).toContain(note);
+    expect(text(renderToStaticMarkup(<ForecastSection result={resultFor(cc)} />))).toContain(note);
+    // Without a price nothing is carried, and nothing is said.
+    const unpriced = { ...cc, marketPrice: null } as unknown as CC;
+    expect(text(renderToStaticMarkup(<ValuationSection result={resultFor(unpriced)} />))).not.toContain("Per share at the valuation date");
+  });
+});
+
 describe("Valuation section", () => {
   it("shows every catalogued model's result: computed values and withheld reasons", () => {
     const cc = built.TCS!;
