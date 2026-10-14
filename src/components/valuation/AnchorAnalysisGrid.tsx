@@ -6,6 +6,7 @@ import FrameworkRadar from "../charts/FrameworkRadar";
 import ForecastTornado from "../charts/ForecastTornado";
 import MoatPanel from "../dashboard/MoatPanel";
 import { rePerpetuityPerShare } from "../valuationScaleMath";
+import { carryValueToPriceDate } from "../../engine/valuationCommandCenter/helpers";
 
 export default function AnchorAnalysisGrid({
   commandCenter,
@@ -25,6 +26,22 @@ export default function AnchorAnalysisGrid({
   // newest-period drivers and the bars mixed driver sensitivity with the
   // inter-period delta in CSE/NOA/RNOA.
   const latest = commandCenter.anchorPeriod;
+  // Every figure below is a value at the anchor, per share of its count; each
+  // is set against the price, so with one it is carried to the price's date
+  // (at the ke it was discounted at, less the base case's payouts) and spread
+  // over today's count, as the scenario cards are. EPV is only spread: a
+  // no-growth value that pays out all it earns does not grow by its date.
+  const priced = commandCenter.marketPrice != null;
+  const base = commandCenter.scenarios.find((s) => s.key === "base");
+  const stress = commandCenter.scenarios.find((s) => s.key === "stress");
+  const shareCountChange = priced ? commandCenter.marketContext.shareCountChange : null;
+  const onPriceBasis = (value: number | null, keValue: number = base?.assumptions.ke ?? ke) => {
+    if (!priced || value == null) return value;
+    const years = commandCenter.marketContext.yearsToPriceDate;
+    const carried = years > 0 && base ? carryValueToPriceDate(value, keValue, years, base.dividendsPerShare) : value;
+    return carried != null && shareCountChange != null ? carried / shareCountChange : carried;
+  };
+  const epvPerShare = commandCenter.epv?.epvPerShare != null ? commandCenter.epv.epvPerShare / (shareCountChange ?? 1) : null;
 
   return (
     <section className="grid gap-4 xl:grid-cols-3">
@@ -52,9 +69,9 @@ export default function AnchorAnalysisGrid({
       <div className="grid gap-4 lg:grid-cols-2">
         <FrameworkRadar
           anchors={[
-            { name: "Residual Earnings (base)", shortName: "V_RE", value: commandCenter.scenarios.find(s => s.key === "base")?.intrinsicPerShare ?? null },
-            { name: "Residual Earnings (stress)", shortName: "V_Stress", value: commandCenter.scenarios.find(s => s.key === "stress")?.intrinsicPerShare ?? null },
-            { name: "EPV (no-growth floor)", shortName: "EPV", value: commandCenter.epv?.epvPerShare ?? null },
+            { name: "Residual Earnings (base)", shortName: "V_RE", value: (priced ? base?.valueAtPriceDate : base?.intrinsicPerShare) ?? null },
+            { name: "Residual Earnings (stress)", shortName: "V_Stress", value: (priced ? stress?.valueAtPriceDate : stress?.intrinsicPerShare) ?? null },
+            { name: "EPV (no-growth floor)", shortName: "EPV", value: epvPerShare },
             // Every spoke has to be ₹/share: FrameworkRadar divides each by
             // marketPrice. This slot used to hold reverseDcf's implied owner-
             // earnings growth — a fraction, which the radar's `value > 0`
@@ -64,7 +81,7 @@ export default function AnchorAnalysisGrid({
             // (cashFlowDcf.ts:1-16); the implied growth is a market-expectation
             // diagnostic, already surfaced as a percent by the
             // ExpectationBridgePanel in this same grid.
-            { name: "Cash-lens FCFF DCF", shortName: "FCFF", value: commandCenter.cashFlowDcf?.perShare ?? null },
+            { name: "Cash-lens FCFF DCF", shortName: "FCFF", value: onPriceBasis(commandCenter.cashFlowDcf?.perShare ?? null) },
             // Read, not derived. `sotp.discountedSum` is a whole-entity figure
             // that has to be bridged to common equity (−NFO −MI) before it can
             // sit beside four equity anchors, and the NFO and MI it pairs with
@@ -74,21 +91,21 @@ export default function AnchorAnalysisGrid({
             // (valuationPolicy.ts:145-166). Dividing `discountedSum` here by
             // `shareBasis.shares` (and, before, scaling it by 1e7) produced a
             // spoke that was both unbridged and mis-scaled.
-            { name: "SOTP (segment-weighted)", shortName: "SOTP", value: commandCenter.sotpPerShare },
+            { name: "SOTP (segment-weighted)", shortName: "SOTP", value: onPriceBasis(commandCenter.sotpPerShare) },
           ]}
           marketPrice={commandCenter.marketPrice}
         />
         <SensitivityHeatmap
           ke={ke}
           g={commandCenter.scenarios.find(s => s.key === "base")?.assumptions.g ?? 0.05}
-          computeValue={(keVal, gVal) => rePerpetuityPerShare({
+          computeValue={(keVal, gVal) => onPriceBasis(rePerpetuityPerShare({
             cse: latest.bs.CSE,
             noa: latest.bs.NOA,
             rnoa: latest.ratios?.RNOA ?? 0,
             ke: keVal,
             g: gVal,
             shares: commandCenter.shareBasis.shares,
-          })}
+          }), keVal)}
           marketPrice={commandCenter.marketPrice}
         />
       </div>
@@ -96,7 +113,9 @@ export default function AnchorAnalysisGrid({
       {/* Sensitivity Tornado — which drivers move intrinsic value the most */}
       {(() => {
         const baseScenario = commandCenter.scenarios.find(s => s.key === "base");
-        const baseValue = baseScenario?.intrinsicPerShare ?? null;
+        // Beside the price, the base card's value at the price's date, and
+        // each driver's value carried at its own ke.
+        const baseValue = (priced ? baseScenario?.valueAtPriceDate : baseScenario?.intrinsicPerShare) ?? null;
         const baseG = baseScenario?.assumptions.g ?? 0.05;
         const rnoaBase = latest.ratios?.RNOA ?? 0;
         const noa = latest.bs.NOA;
@@ -112,7 +131,7 @@ export default function AnchorAnalysisGrid({
         // scale; the ×1e7 that used to be here made every bar 1e7× the base.
         // A non-convergent perpetuity falls back to the base, i.e. no impact.
         const computeIV = (keV: number, gV: number, rnoaV: number, noaV: number) =>
-          rePerpetuityPerShare({ cse: latest.bs.CSE, noa: noaV, rnoa: rnoaV, ke: keV, g: gV, shares }) ?? baseValue;
+          onPriceBasis(rePerpetuityPerShare({ cse: latest.bs.CSE, noa: noaV, rnoa: rnoaV, ke: keV, g: gV, shares }), keV) ?? baseValue;
 
         const drivers = [
           {
@@ -173,8 +192,8 @@ export default function AnchorAnalysisGrid({
               <div className="text-lg font-bold text-slate-900">₹{commandCenter.epv.normalizedNOPAT.toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr</div>
             </div>
             <div className="rounded-xl bg-slate-50 p-3">
-              <div className="text-xs text-slate-500">EPV per Share</div>
-              <div className="text-lg font-bold text-slate-900">{commandCenter.epv.epvPerShare != null ? `₹${commandCenter.epv.epvPerShare.toFixed(0)}` : "—"}</div>
+              <div className="text-xs text-slate-500">EPV per Share{shareCountChange != null ? " (today's count)" : ""}</div>
+              <div className="text-lg font-bold text-slate-900">{epvPerShare != null ? `₹${epvPerShare.toFixed(0)}` : "—"}</div>
             </div>
             <div className="rounded-xl bg-slate-50 p-3">
               <div className="text-xs text-slate-500">Franchise Value</div>

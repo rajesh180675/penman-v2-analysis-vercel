@@ -68,6 +68,13 @@ export default function PvreSection({
             seed,
             iterations,
             marketPrice: commandCenter.marketPrice ?? null,
+            // Set against the price, the draws are carried to its date and
+            // spread over today's count, as the scenario cards are.
+            priceBasis: {
+              yearsToPriceDate: commandCenter.marketContext.yearsToPriceDate,
+              shareCountChange: commandCenter.marketContext.shareCountChange,
+              dividendsPerShare: base.dividendsPerShare,
+            },
             bounds: PVRE_DEFAULT_BOUNDS,
           });
           setResult(out);
@@ -99,6 +106,7 @@ export default function PvreSection({
             Monte-Carlo distribution of intrinsic value across sampled cost-of-capital, terminal growth,
             and first-year growth/margin inputs. Uses the existing base-scenario engine; adds uncertainty,
             not new math.
+            {commandCenter.marketPrice != null && " Set against the price, each draw is carried to the price's date at its own cost of equity and spread over today's share count, as the scenario cards are."}
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">

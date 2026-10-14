@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import ValuationReport from "../ValuationReport";
 import ValuationCommandCenterHero from "../valuation/ValuationCommandCenterHero";
+import AnchorAnalysisGrid from "../valuation/AnchorAnalysisGrid";
+import { computeMoatScore } from "../../engine/moatScoring";
 import { buildValuationCommandCenter } from "../../engine/valuationCommandCenter";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 import type { AnalysisTraceabilityEnvelope, EngineConfig, RecastPeriod } from "../../engine/types";
@@ -181,6 +183,26 @@ describe("ValuationReport", () => {
     expect(doubled.perShare).toBeCloseTo(same.perShare, 2);
     expect(same.mos).toBeCloseTo((same.perShare - 50) / 50, 2);
     expect(doubled.mos).toBeCloseTo((doubled.perShare - 100) / 100, 2);
+  });
+
+  // After a 1:1 bonus the anchor grid's figures beside the price are per
+  // today's share: the tornado's base is the base card's value beside the
+  // price, and EPV is spread over twice the shares (and not carried).
+  it("sets the anchor grid's values against the price on today's share count", () => {
+    const config: EngineConfig = { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(100), market_price: INRAbsolute(50) };
+    const data = [mkPeriod("2024-03-31"), mkPeriod("2025-03-31")];
+    const quote: LiveMarketDataSnapshot = {
+      symbol: "X", provider: "NSE India", fetchedAt: "2026-10-13T10:00:00.000Z", price: 50, previousClose: 50, changePct: 0,
+      marketCap: null, enterpriseValue: null, sharesOutstanding: 200 * 1e7, riskFreeRate: null, priceAsOf: "2026-10-13",
+      rateAsOf: null, freshness: "live", sourceSummary: "NSE", warnings: [], history: null,
+    };
+    const cc = buildValuationCommandCenter({ data, config, marketData: quote });
+    const base = cc.scenarios.find((s) => s.key === "base")!;
+    expect(cc.marketContext.shareCountChange).toBeCloseTo(2, 12);
+    const html = renderToStaticMarkup(<AnchorAnalysisGrid commandCenter={cc} moatScore={computeMoatScore(data, config, null, null)} ke={base.assumptions.ke} />);
+    expect(html).toMatch(new RegExp(`Base intrinsic value: <strong[^>]*>₹${base.valueAtPriceDate!.toFixed(0)}<`));
+    expect(html).toContain("EPV per Share (today&#x27;s count)");
+    expect(html).toContain(`₹${(cc.epv!.epvPerShare! / 2).toFixed(0)}<`);
   });
 
   it("renders the signal engine and historical dislocation section", () => {
