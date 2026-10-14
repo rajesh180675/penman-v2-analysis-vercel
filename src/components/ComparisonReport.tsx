@@ -11,6 +11,7 @@ import PeerScatterPlot from "./charts/PeerScatterPlot";
 import PercentileBar from "./charts/PercentileBar";
 import SectorHeatmap from "./charts/SectorHeatmap";
 import { computePeerRelativeValuation } from "../engine/peerRelativeValuation";
+import { fetchFiledShareCount, withFiledShareCount } from "../lib/filedShareCount";
 import RunBackedPortfolioComparison from "./RunBackedPortfolioComparison";
 import { EmptyState } from "./shared/EmptyState";
 import type { ReturnTypeOfPortfolioComparison } from "../engine/portfolioRunComparison.types";
@@ -140,7 +141,10 @@ function ComparisonReportBody({ registry, config, weakestTraceabilitySummary: pr
         });
         if (!res.ok) continue;
         const payload = await res.json();
-        const snapshot = payload?.snapshot;
+        const quoted = payload?.snapshot ?? null;
+        // The quote's price is per share of today's count; when it does not
+        // report that count, the latest annual filing does.
+        const snapshot = withFiledShareCount(quoted, quoted?.price != null && quoted.sharesOutstanding == null ? await fetchFiledShareCount(symbol) : null);
         if (snapshot?.price != null) {
           const shares = snapshot.sharesOutstanding != null
             ? snapshot.sharesOutstanding / 1e7  // NSE returns absolute count, we need Cr

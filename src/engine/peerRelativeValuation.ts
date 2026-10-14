@@ -167,8 +167,12 @@ function extractLatestRatios(data: RecastPeriod[]): {
   };
 }
 
-/** Extract per-share fundamentals for multiple-implied valuation. */
-function extractFundamentals(data: RecastPeriod[], config: EngineConfig): {
+/**
+ * Extract per-share fundamentals for multiple-implied valuation, on the count
+ * the price is per share of: the two must come together, as a peer's pack
+ * quote does.
+ */
+function extractFundamentals(data: RecastPeriod[], quote: { price: number | null; shares: number | null }): {
   eps: number | null;
   bvps: number | null;
   salesPerShare: number | null;
@@ -178,8 +182,7 @@ function extractFundamentals(data: RecastPeriod[], config: EngineConfig): {
   ps: number | null;
 } {
   const latest = data.length > 0 ? data[data.length - 1] : null;
-  const shares = config.shares_outstanding ?? null;
-  const price = config.market_price ?? null;
+  const { shares, price } = quote;
 
   if (!latest || !shares || shares <= 0) {
     return { eps: null, bvps: null, salesPerShare: null, marketPrice: price, pe: null, pb: null, ps: null };
@@ -276,8 +279,6 @@ export function computePeerRelativeValuation(
   });
 
   // ── Multiple-Implied Fair Values ────────────────────────────────────────
-  const targetFundamentals = extractFundamentals(target.recastData, config);
-
   // A peer multiple needs that peer's own price and share count. `EngineConfig`
   // carries exactly one of each — the target's — so the previous implementation
   // blanked them for peers and every peer PE/PB came back null. `allPEs` could
@@ -287,6 +288,18 @@ export function computePeerRelativeValuation(
   const packEligibility = resolvePeerPackEligibility(options?.peerPack, {
     analysisAsOf: options?.analysisAsOf ?? null,
   });
+
+  // The target's own quote, where the pack has one, sets its price and count
+  // together. The config's count is the statements' (the anchor year's), its
+  // price today's: after a bonus or split (Kotak ×5 in 2025) the target's EPS
+  // and the value implied from it were per old share against a price per new.
+  const ownQuote = packEligibility.status === "eligible" ? usablePeerConstituents(options!.peerPack!).get(targetId) : undefined;
+  const targetFundamentals = extractFundamentals(
+    target.recastData,
+    ownQuote?.price && ownQuote.shares
+      ? { price: ownQuote.price, shares: ownQuote.shares }
+      : { price: config.market_price ?? null, shares: config.shares_outstanding ?? null },
+  );
 
   const multipleImplied: PeerMultipleImplied[] = [];
   let multipleLens: PeerMultipleLensStatus;

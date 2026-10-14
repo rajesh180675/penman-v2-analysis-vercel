@@ -6,7 +6,7 @@
 import { useMemo, type ReactNode } from "react";
 import { formatPct, formatPerShare } from "../../engine/valuationCommandCenter";
 import { solveBreakEvens, type BreakEvenResult } from "../../engine/valuationCommandCenter/breakEven";
-import { carryValueToPriceDate } from "../../engine/valuationCommandCenter/helpers";
+import { valueOnPriceBasis } from "../../engine/valuationCommandCenter/helpers";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
 import type { CompanyTrackRecord } from "../../engine/accountability";
 import { Withheld } from "../ui/Withheld";
@@ -356,18 +356,12 @@ function ValueRange({ cc }: { cc: CommandCenter }) {
   // a date as well as a unit: scenarios on their own ke and distributions, the
   // model floor and ceiling on the base case's.
   const years = price != null ? cc.marketContext.yearsToPriceDate : 0;
-  const base = cc.scenarios.find((s) => s.key === "base");
-  const change = price != null ? cc.marketContext.shareCountChange : null;
-  const carry = (value: number | null) => {
-    const carried = years > 0 && base ? carryValueToPriceDate(value, base.assumptions.ke, years, base.dividendsPerShare) : value;
-    return carried != null && change != null ? carried / change : carried;
-  };
   const points = [
-    { key: "floor", label: "Floor", value: carry(cc.range.floorPerShare) },
+    { key: "floor", label: "Floor", value: valueOnPriceBasis(cc, cc.range.floorPerShare) },
     ...cc.scenarios
       .filter((s) => s.key === "stress" || s.key === "base" || s.key === "bull")
       .map((s) => ({ key: s.key, label: s.label, value: price != null ? s.valueAtPriceDate : s.intrinsicPerShare })),
-    { key: "ceiling", label: "Ceiling", value: carry(cc.range.ceilingPerShare) },
+    { key: "ceiling", label: "Ceiling", value: valueOnPriceBasis(cc, cc.range.ceilingPerShare) },
   ].filter((p): p is { key: string; label: string; value: number } => p.value != null && Number.isFinite(p.value));
   const values = [...points.map((p) => p.value), ...(price != null ? [price] : [])];
   if (points.length < 2) return null;

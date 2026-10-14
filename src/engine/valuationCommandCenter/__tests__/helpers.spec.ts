@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ValuationResult } from "../../types";
 import type { ValuationScenarioCard } from "../types";
-import { annualizedReturn, carryValueToPriceDate, expectedReturnToValue, forecastDividendsPerShare, primaryValuationPerShare, scenarioOrderingPenalty, yearsBetween } from "../helpers";
+import { annualizedReturn, carryValueToPriceDate, expectedReturnToValue, forecastDividendsPerShare, primaryValuationPerShare, resolveShareCountChange, scenarioOrderingPenalty, valueOnPriceBasis, yearsBetween } from "../helpers";
 import type { ForecastPeriod } from "../../types";
 
 function valuationWithAccrualValues(re: number | null, reoi: number | null): ValuationResult {
@@ -105,5 +105,35 @@ describe("carrying a value to the price's date", () => {
   it("counts years from the anchor to the price's date, never back", () => {
     expect(yearsBetween("2025-03-31", "2026-10-13")).toBeCloseTo(561 / 365.25, 12);
     expect(yearsBetween("2026-03-31", "2025-03-31")).toBe(0);
+  });
+});
+
+describe("setting a value on the price's basis", () => {
+  it("reads the change in share count from the quote's absolute count against the anchor's crore", () => {
+    // Nestlé's 1:1 bonus of 2025: 96.42 crore at the anchor, 192.83 filed since.
+    expect(resolveShareCountChange(192.83 * 1e7, 96.42)).toBeCloseTo(192.83 / 96.42, 12);
+    // Kotak's ×5 and the bounds: a count outside 0.05–50× is not one of the same shares.
+    expect(resolveShareCountChange(994.65 * 1e7, 198.82)).toBeCloseTo(5.0028, 4);
+    expect(resolveShareCountChange(51 * 1e7, 1)).toBeNull();
+    expect(resolveShareCountChange(0.04 * 1e7, 1)).toBeNull();
+    expect(resolveShareCountChange(null, 96.42)).toBeNull();
+    expect(resolveShareCountChange(192.83 * 1e7, null)).toBeNull();
+  });
+
+  const cc = (marketPrice: number | null, yearsToPriceDate: number, shareCountChange: number | null) => ({
+    marketPrice,
+    marketContext: { yearsToPriceDate, shareCountChange },
+    scenarios: [{ key: "base", assumptions: { ke: 0.1 }, dividendsPerShare: [8, 9] }],
+  });
+
+  it("carries a value on the base case's ke and payouts, and spreads it over today's count", () => {
+    expect(valueOnPriceBasis(cc(500, 1.5, 2), 100)).toBeCloseTo(((110 - 8) * Math.sqrt(1.1)) / 2, 12);
+    expect(valueOnPriceBasis(cc(500, 0, 2), 100)).toBe(50);
+    expect(valueOnPriceBasis(cc(500, 1.5, null), 100)).toBeCloseTo((110 - 8) * Math.sqrt(1.1), 12);
+  });
+
+  it("leaves a value unpriced as it is, and a missing value missing", () => {
+    expect(valueOnPriceBasis(cc(null, 1.5, 2), 100)).toBe(100);
+    expect(valueOnPriceBasis(cc(500, 1.5, 2), null)).toBeNull();
   });
 });

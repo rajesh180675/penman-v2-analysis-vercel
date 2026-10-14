@@ -6,6 +6,7 @@ import { computeMoatScore, decisiveMoat } from "../../engine/moatScoring";
 import { scoreCapitalAllocation, decisiveCapAlloc } from "../../engine/capitalAllocationScoring";
 import { detectDistress } from "../../engine/distressDetector";
 import { buildValuationCommandCenter, type ValuationCommandCenterOutput } from "../../engine/valuationCommandCenter";
+import { resolveShareCountChange, valueOnPriceBasis } from "../../engine/valuationCommandCenter/helpers";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../../engine/marketPacks";
 import { resolveShareBasis } from "../../engine/shareCountTools";
 import { generateDashboardNarrative } from "../../engine/narrativeEngine";
@@ -73,10 +74,15 @@ export default function DashboardView({ data, config, traceability = null, ratio
   const shareBasis = !insufficientData ? resolveShareBasis(data, config) : { shares: null, source: "N/A", confidence: "LOW" as const, dilution_note: "", valuationConfig: config };
   const shares = shareBasis.shares;
   const price = marketData?.price ?? config.market_price ?? null;
-  const marketCap = price != null && shares != null && shares > 0 ? (price * shares) : null; // ₹ Cr (shares in Cr)
+  // The price is per share of today's count, `shares` the statements': after a
+  // bonus or split (Nestlé 1:1 in 2025) market cap and every per-share figure
+  // set beside the price are on today's count.
+  const shareCountChange = price != null ? resolveShareCountChange(marketData?.sharesOutstanding, shares) : null;
+  const sharesAtPrice = shares != null && shareCountChange != null ? shares * shareCountChange : shares;
+  const marketCap = price != null && sharesAtPrice != null && sharesAtPrice > 0 ? (price * sharesAtPrice) : null; // ₹ Cr (shares in Cr)
 
   // ── Advanced Models ────────────────────────────────────────────────────────
-  const advanced = useAdvancedModels({ data, config, segmentData, marketData, shares });
+  const advanced = useAdvancedModels({ data, config, segmentData, marketData, shares: sharesAtPrice });
 
   // ── KPI computations ──────────────────────────────────────────────────────
   const roce = latest?.ratios?.ROCE ?? null;
@@ -117,7 +123,6 @@ export default function DashboardView({ data, config, traceability = null, ratio
       : computeEPV(data, config, { ...ACTIVE_MARKET_PACKS, analysisAsOf: analysisAsOfToday() }),
     [data, config, insufficientData],
   );
-  const epvPerShare = epv && shares != null && shares > 0 ? epv.epvEquity / shares : null;
 
   // Moat scorer (5-dimension Buffett/Munger framework)
   // Phase E3: `null` kw override keeps the existing resolution order (period
@@ -152,15 +157,19 @@ export default function DashboardView({ data, config, traceability = null, ratio
     [data, config, marketData, runCommandCenter, segmentData],
   );
 
+  // Values at the valuation date, per share of its count; beside a price they
+  // are carried to its date and spread over today's count, as the cards are.
+  const epvPerShare = epv && shares != null && shares > 0 ? valueOnPriceBasis(commandCenter, epv.epvEquity / shares) : null;
+
   // Intrinsic value range — from authoritative command center
   const intrinsicRange = useMemo(() => {
-    const floor = commandCenter.range?.floorPerShare ?? null;
-    const ceiling = commandCenter.range?.ceilingPerShare ?? null;
+    const floor = valueOnPriceBasis(commandCenter, commandCenter.range?.floorPerShare ?? null);
+    const ceiling = valueOnPriceBasis(commandCenter, commandCenter.range?.ceilingPerShare ?? null);
     if (floor == null && ceiling == null) return null;
     const f = floor ?? ceiling ?? 0;
     const c = ceiling ?? floor ?? 0;
     return { floor: f, ceiling: c, mid: (f + c) / 2 };
-  }, [commandCenter.range]);
+  }, [commandCenter]);
 
   // ── Verdict computation ───────────────────────────────────────────────────
   const marginOfSafety = price != null && intrinsicRange?.mid != null && price > 0

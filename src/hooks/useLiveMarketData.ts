@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trace } from "../lib/traceLogger";
 import { LiveMarketDataSnapshot } from "../engine/marketData";
+import { fetchFiledShareCount, withFiledShareCount } from "../lib/filedShareCount";
 
 interface Params {
   provider?: "manual" | "upstox-readonly" | "alphavantage" | "nse" | "yahoo" | "disabled" | undefined;
@@ -56,7 +57,11 @@ export function useLiveMarketData({
       });
       if (!response.ok) throw new Error(`Market snapshot failed with ${response.status}`);
       const payload = await response.json();
-      setSnapshot(payload.snapshot ?? null);
+      const quoted: LiveMarketDataSnapshot | null = payload.snapshot ?? null;
+      // The price is per share of today's count; when the quote does not say
+      // what that is, the latest annual filing does (as the next UI's run).
+      const filed = quoted && quoted.sharesOutstanding == null && symbol ? await fetchFiledShareCount(symbol) : null;
+      setSnapshot(withFiledShareCount(quoted, filed));
       trace("fetch", "marketData:success", {
         provider, symbol,
         price: payload.snapshot?.lastPrice ?? null,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildValuationCommandCenter } from "../valuationCommandCenter";
-import { carryValueToPriceDate, yearsBetween } from "../valuationCommandCenter/helpers";
+import { carryValueToPriceDate, valueOnPriceBasis, yearsBetween } from "../valuationCommandCenter/helpers";
 import { DEFAULT_CONFIG, RecastPeriod, Severity } from "../types";
 import { CroreShares, INRAbsolute } from "../types/units";
 import { AnalysisStatusSummary } from "../analysisStatus";
@@ -342,6 +342,12 @@ describe("valuation command center", () => {
       expect(after.valueAtPriceDate).toBeCloseTo(before.valueAtPriceDate! / 2, 9);
       expect(after.upsidePct).toBeCloseTo(after.valueAtPriceDate! / 1 - 1, 12);
     }
+    // Points that are not a card (the range's floor and ceiling) go on the
+    // base card's basis: given the base card's own value, the helper returns
+    // the card's value beside the price.
+    const base = doubled.scenarios.find((s) => s.key === "base")!;
+    expect(doubled.marketContext.yearsToPriceDate).toBeGreaterThan(0);
+    expect(valueOnPriceBasis(doubled, base.intrinsicPerShare)).toBeCloseTo(base.valueAtPriceDate!, 9);
     // Market cap is today's price on today's count.
     expect(doubled.marketContext.marketCapFromPrice).toBeCloseTo(1240, 9);
     // A count that is not plausibly a share count is ignored, not applied.

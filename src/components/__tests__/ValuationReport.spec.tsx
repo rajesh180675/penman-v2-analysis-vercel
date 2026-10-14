@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import ValuationReport from "../ValuationReport";
+import ValuationCommandCenterHero from "../valuation/ValuationCommandCenterHero";
+import { buildValuationCommandCenter } from "../../engine/valuationCommandCenter";
 import type { AnalysisTraceabilityEnvelope, EngineConfig, RecastPeriod } from "../../engine/types";
 import { DEFAULT_CONFIG } from "../../engine/types";
 import { CroreShares, INRAbsolute } from "../../engine/types/units";
@@ -134,6 +136,23 @@ describe("ValuationReport", () => {
     expect(html).toContain("₹50.00");
     // Decision protocol footer
     expect(html).toContain("Decision protocol");
+  });
+
+  // After a 1:1 bonus the range beside the price is per today's share, as the
+  // scenario cards are; the narrative's margin of safety reads the same range.
+  it("sets the hero's valuation range on today's share count", () => {
+    const config: EngineConfig = { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(100), market_price: INRAbsolute(50) };
+    const built = buildValuationCommandCenter({ data: [mkPeriod("2024-03-31"), mkPeriod("2025-03-31")], config });
+    const cc = {
+      ...built,
+      range: { floorPerShare: 40, ceilingPerShare: 90 },
+      marketContext: { ...built.marketContext, yearsToPriceDate: 0, shareCountChange: 2 },
+    };
+    const html = renderToStaticMarkup(
+      <ValuationCommandCenterHero marketSymbol="X" commandCenter={cc} liveMarketData={null} marketDataLoading={false} marketDataError={null} onRefresh={async () => {}} config={config} />,
+    );
+    expect(html).toContain("₹20.00 to ₹45.00");
+    expect(html).not.toContain("₹40.00 to ₹90.00");
   });
 
   it("renders the signal engine and historical dislocation section", () => {

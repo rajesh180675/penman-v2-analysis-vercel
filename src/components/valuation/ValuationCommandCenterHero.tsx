@@ -5,6 +5,7 @@ import {
   formatPct,
   formatPerShare,
 } from "../../engine/valuationCommandCenter";
+import { valueOnPriceBasis } from "../../engine/valuationCommandCenter/helpers";
 import { useLiveMarketData } from "../../hooks/useLiveMarketData";
 import { InsightBlock, SectionHeader } from "../shared/DesignSystem";
 import AssumptionsAudit from "../AssumptionsAudit";
@@ -29,6 +30,10 @@ export default function ValuationCommandCenterHero({
 }) {
   const stress = commandCenter.scenarios.find((scenario) => scenario.key === "stress");
   const base = commandCenter.scenarios.find((scenario) => scenario.key === "base");
+  // Set against the price, the range is carried to its date and spread over
+  // today's share count, as the scenario cards are.
+  const floor = valueOnPriceBasis(commandCenter, commandCenter.range.floorPerShare);
+  const ceiling = valueOnPriceBasis(commandCenter, commandCenter.range.ceilingPerShare);
 
   return (
     <section className="rounded-3xl border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(15,23,42,0.06),_transparent_35%),linear-gradient(135deg,_#ffffff,_#f8fafc)] p-6 shadow-sm">
@@ -41,8 +46,6 @@ export default function ValuationCommandCenterHero({
       {/* Narrative insight — plain English valuation summary */}
       {(() => {
         const price = commandCenter.marketPrice;
-        const floor = commandCenter.range.floorPerShare;
-        const ceiling = commandCenter.range.ceilingPerShare;
         const mid = floor != null && ceiling != null ? (floor + ceiling) / 2 : null;
         const mos = price != null && mid != null && price > 0 ? (mid - price) / price : null;
         const narrative = generateValuationNarrative({
@@ -99,7 +102,7 @@ export default function ValuationCommandCenterHero({
         <HeroMetric label="Stress value" value={formatPerShare(commandCenter.marketPrice != null ? stress?.valueAtPriceDate : stress?.intrinsicPerShare)} sublabel={`Upside ${formatPct(stress?.upsidePct)}`} />
         <HeroMetric label="Base value" value={formatPerShare(commandCenter.marketPrice != null ? base?.valueAtPriceDate : base?.intrinsicPerShare)} sublabel={`Upside ${formatPct(base?.upsidePct)}`} />
         <HeroMetric label="Expected CAGR (stress)" value={formatPct(commandCenter.opportunity.expectedCagrStress, 1)} sublabel={commandCenter.opportunity.convictionBucket} />
-        <HeroMetric label="Valuation range" value={`${formatPerShare(commandCenter.range.floorPerShare)} to ${formatPerShare(commandCenter.range.ceilingPerShare)}`} sublabel={`Anchor ${commandCenter.valuationReadiness.anchorPeriod?.slice(0, 10) ?? "—"} · As of ${commandCenter.asOf ? new Date(commandCenter.asOf).toLocaleString("en-IN") : "—"}`} />
+        <HeroMetric label="Valuation range" value={`${formatPerShare(floor)} to ${formatPerShare(ceiling)}`} sublabel={`Anchor ${commandCenter.valuationReadiness.anchorPeriod?.slice(0, 10) ?? "—"}${commandCenter.marketPrice != null && commandCenter.marketContext.yearsToPriceDate > 0 && commandCenter.marketContext.priceDate ? ` · carried to ${commandCenter.marketContext.priceDate}` : ""} · As of ${commandCenter.asOf ? new Date(commandCenter.asOf).toLocaleString("en-IN") : "—"}`} />
       </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-3">

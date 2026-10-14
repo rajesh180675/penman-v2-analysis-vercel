@@ -2,7 +2,7 @@ import type { RawPeriodData } from "../types";
 import type { FinancialInstitutionSubtype } from "../analysisFamily";
 import { extractShareCountInput } from "../PenmanNissimEngine/picking";
 import type { BankValuationBundle } from "./types";
-import { carryValueToPriceDate, yearsBetween } from "../valuationCommandCenter/helpers";
+import { carryValueToPriceDate, resolveShareCountChange, yearsBetween } from "../valuationCommandCenter/helpers";
 
 /**
  * A financial institution's verdict figures: the headline equity value, per
@@ -105,8 +105,7 @@ export function buildFinancialVerdict(input: {
   // against a price per new one. The quote's own count spreads the value over
   // today's shares; a count outside 0.05–50× the statements' is not one.
   const quotedCr = marketPrice != null && finite(input.quotedShares) && input.quotedShares > 0 ? input.quotedShares / 1e7 : null;
-  const rawChange = quotedCr != null && shares != null ? quotedCr / shares : null;
-  const shareCountChange = rawChange != null && rawChange >= 0.05 && rawChange <= 50 ? rawChange : null;
+  const shareCountChange = quotedCr != null ? resolveShareCountChange(input.quotedShares, shares) : null;
   const perShareAtPriceDate = carriedPerShare != null && shareCountChange != null ? carriedPerShare / shareCountChange : carriedPerShare;
 
   const scenarios = insurer
