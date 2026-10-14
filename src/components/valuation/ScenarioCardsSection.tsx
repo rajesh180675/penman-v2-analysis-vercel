@@ -24,6 +24,7 @@ export default function ScenarioCardsSection({
           reinvestmentRate={scenario.assumptions.reinvestmentRateYear1}
           incrementalRoic={scenario.assumptions.incrementalRoicYear1}
           forecastPolicy={scenario.forecastPolicy}
+          valueNote={scenario.valueBasis?.model === "re" ? scenario.valueBasis.reason : null}
         />
       ))}
     </section>
