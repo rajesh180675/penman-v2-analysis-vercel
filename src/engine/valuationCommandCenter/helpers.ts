@@ -98,6 +98,42 @@ export function carryValueToPriceDate(
   return Math.max(carried * Math.pow(1 + ke, remaining), 0);
 }
 
+/**
+ * Today's share count over the count values are per share of: the quote's
+ * count (absolute) against the anchor's (crore). The price is per share of
+ * today's count, so a bonus or split since (Nestlé's 1:1 of 2025, 96.42 →
+ * 192.83 crore) sets a value per old share against a price per new one. Null
+ * without both, or outside 0.05–50×, which is not a count of the same shares.
+ */
+export function resolveShareCountChange(quotedSharesAbsolute: number | null | undefined, anchorSharesCr: number | null | undefined): number | null {
+  if (quotedSharesAbsolute == null || !(quotedSharesAbsolute > 0) || anchorSharesCr == null || !(anchorSharesCr > 0)) return null;
+  const change = quotedSharesAbsolute / 1e7 / anchorSharesCr;
+  return change >= 0.05 && change <= 50 ? change : null;
+}
+
+/**
+ * A value per share at the valuation date, on the anchor's count, put on the
+ * price's basis: carried to the price's date at the base case's ke less its
+ * payouts, and spread over today's count. The scenario cards carry their own
+ * (valueAtPriceDate); this is for the points that are not a card, such as the
+ * range's floor and ceiling. Unchanged without a price.
+ */
+export function valueOnPriceBasis(
+  cc: {
+    readonly marketPrice: number | null;
+    readonly marketContext: { readonly yearsToPriceDate: number; readonly shareCountChange: number | null };
+    readonly scenarios: readonly { readonly key: string; readonly assumptions: { readonly ke: number }; readonly dividendsPerShare: readonly number[] }[];
+  },
+  value: number | null,
+): number | null {
+  if (cc.marketPrice == null) return value;
+  const years = cc.marketContext.yearsToPriceDate;
+  const base = cc.scenarios.find((s) => s.key === "base");
+  const carried = years > 0 && base ? carryValueToPriceDate(value, base.assumptions.ke, years, base.dividendsPerShare) : value;
+  const change = cc.marketContext.shareCountChange;
+  return carried != null && change != null ? carried / change : carried;
+}
+
 export function marginOfSafety(intrinsicPerShare: number | null, marketPrice: number | null) {
   if (intrinsicPerShare == null || marketPrice == null || intrinsicPerShare <= 0) return null;
   return 1 - marketPrice / intrinsicPerShare;

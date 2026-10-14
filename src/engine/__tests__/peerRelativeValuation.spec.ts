@@ -274,6 +274,30 @@ describe("Peer Relative Valuation", () => {
       expect(pe!.peerCount).toBe(5);
     });
 
+    // A 1:1 bonus halves the price and doubles the count. The target's own
+    // quote sets both, so its EPS is per today's share and the margin against
+    // the peer-implied value does not move. The config's count is the
+    // statements' (the anchor year's); against a post-bonus price it halved
+    // the multiples' read of the target.
+    it("sets the target's EPS and book on its own quote's share count", () => {
+      const withTarget = (price: number, shares: number) => {
+        const pack = peerPack();
+        return computePeerRelativeValuation("itc", fmcgRegistry(), { ...fmcgConfig, market_price: INRAbsolute(price) }, {
+          peerPack: { ...pack, constituents: [...pack.constituents, { companyId: "itc", label: "ITC", price, priceAsOf: "2026-07-20", shares }] },
+          analysisAsOf: "2026-07-26",
+        })!;
+      };
+      const before = withTarget(500, 100);
+      const after = withTarget(250, 200);
+      expect(after.multipleImplied.find((m) => m.metric === "PE")!.targetFundamental).toBeCloseTo(14600 / 200, 9);
+      expect(after.multipleImplied.find((m) => m.metric === "PB")!.targetFundamental).toBeCloseTo(55000 / 200, 9);
+      expect(after.compositeMarginOfSafety).toBeCloseTo(before.compositeMarginOfSafety!, 12);
+      for (const metric of ["PE", "PB"]) {
+        expect(after.multipleImplied.find((m) => m.metric === metric)!.premiumDiscount)
+          .toBeCloseTo(before.multipleImplied.find((m) => m.metric === metric)!.premiumDiscount!, 12);
+      }
+    });
+
     it("skips with a reason when no pack is supplied instead of returning a silent empty array", () => {
       const result = computePeerRelativeValuation("itc", fmcgRegistry(), fmcgConfig, { analysisAsOf: "2026-07-26" });
 

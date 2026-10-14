@@ -16,6 +16,7 @@ import type { CapitalineParseDebug } from "../engine/capitalineParser/types";
 import { DEFAULT_CONFIG, type CompanyRegistry, type EngineConfig, type RawPeriodData, type RecastPeriod } from "../engine/types";
 import type { SegmentData } from "../engine/segmentParser";
 import { buildLocalLibraryCompanyUrls, type LibraryCompany } from "../components/data-entry/companyRegistry";
+import { fetchFiledShareCount, withFiledShareCount, type FiledShareCount } from "../lib/filedShareCount";
 
 export type CompanyRunState =
   | { readonly status: "loading"; readonly step: "fetching" | "parsing" | "analysing" }
@@ -59,10 +60,8 @@ export interface CompanyRunDependencies {
    * without it a bonus or split since the data's year (HDFC Bank 1:1, Bajaj
    * Finance ×10, Kotak ×5, Nestlé 1:1, all in 2025) went unseen. Optional.
    */
-  readonly fetchFiledShares?: (company: LibraryCompany) => Promise<{ readonly fiscalYearEnd: string; readonly sharesOutstandingCr: number } | null>;
+  readonly fetchFiledShares?: (company: LibraryCompany) => Promise<FiledShareCount | null>;
 }
-
-let filedSharesLedger: Promise<readonly { symbol: string; latestFiling?: { fiscalYearEnd: string; sharesOutstandingCr?: number | null } | null }[] | null> | null = null;
 
 const defaultDependencies: CompanyRunDependencies = {
   fetchZip: async (url) => {
@@ -93,16 +92,7 @@ const defaultDependencies: CompanyRunDependencies = {
   },
   run: (input, requestId) => startBrowserAnalysisRun({ requestId, input }).result,
   now: () => new Date(),
-  // Same library path the classic shell's batch loader reads.
-  fetchFiledShares: async (company) => {
-    filedSharesLedger ??= fetch("/data/filings/tie-out.json")
-      .then((response) => (response.ok ? response.json() : null))
-      .catch(() => null);
-    const latest = (await filedSharesLedger)?.find((c) => c.symbol === company.ticker)?.latestFiling;
-    return latest?.sharesOutstandingCr != null && latest.sharesOutstandingCr > 0
-      ? { fiscalYearEnd: latest.fiscalYearEnd, sharesOutstandingCr: latest.sharesOutstandingCr }
-      : null;
-  },
+  fetchFiledShares: (company) => fetchFiledShareCount(company.ticker),
   fetchBankQuality: async (company) => {
     if (company.type !== "bank" && company.type !== "nbfc" && company.type !== "insurance") return null;
     const { fetchBankQualityIndicators } = await import("../engine/bankQualityIndicators");
@@ -155,13 +145,7 @@ export async function loadCompanyRun(
     ]);
     // The price is per share of today's count. When the quote does not say
     // what that is, the latest annual filing does, and says so.
-    const marketSnapshot = quotedSnapshot && quotedSnapshot.sharesOutstanding == null && filedShares
-      ? {
-          ...quotedSnapshot,
-          sharesOutstanding: filedShares.sharesOutstandingCr * 1e7,
-          sharesOutstandingSource: `the latest annual filing (${filedShares.fiscalYearEnd})`,
-        }
-      : quotedSnapshot;
+    const marketSnapshot = withFiledShareCount(quotedSnapshot, filedShares);
     // A company that has only just begun consolidating (Nestlé India: two
     // consolidated years, FY24-25, beside a standalone history back to Dec 2011)
     // cannot be valued on its consolidated accounts — valuation needs two

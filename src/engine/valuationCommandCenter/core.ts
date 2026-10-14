@@ -48,6 +48,7 @@ import {
   scenarioOrderingPenalty,
   buildChecklist,
   yearsBetween,
+  resolveShareCountChange,
 } from "./helpers";
 import {
   buildSotpAssessment,
@@ -139,8 +140,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
   // should meet). The quote's own count, where it reports one, sets the two
   // on one basis; a count outside 0.05–50× the anchor's is not a share count.
   const quotedSharesCr = marketData?.sharesOutstanding != null && marketData.sharesOutstanding > 0 ? marketData.sharesOutstanding / 1e7 : null;
-  const rawShareCountChange = quotedSharesCr != null && shares != null && shares > 0 ? quotedSharesCr / shares : null;
-  const shareCountChange = rawShareCountChange != null && rawShareCountChange >= 0.05 && rawShareCountChange <= 50 ? rawShareCountChange : null;
+  const shareCountChange = resolveShareCountChange(marketData?.sharesOutstanding, shares);
   // The price restated on the anchor's count: the one per-share values on that
   // count (reverse DCF, EV from price) are set against.
   const priceOnValuationShares = marketPrice != null ? marketPrice * (shareCountChange ?? 1) : null;

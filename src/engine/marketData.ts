@@ -25,9 +25,9 @@ export interface LiveMarketDataSnapshot {
   enterpriseValue: number | null;
   sharesOutstanding: number | null;
   /**
-   * Where `sharesOutstanding` came from when the quote did not report it: the
-   * next UI fills it from the company's latest annual filing, so values can be
-   * set against the price on one share count. Absent: the quote's own.
+   * Where `sharesOutstanding` came from when the quote did not report it: both
+   * shells fill it from the company's latest annual filing (lib/filedShareCount),
+   * so values can be set against the price on one share count. Absent: the quote's own.
    */
   sharesOutstandingSource?: string | null | undefined;
   riskFreeRate: number | null;

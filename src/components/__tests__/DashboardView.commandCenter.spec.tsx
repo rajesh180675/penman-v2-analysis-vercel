@@ -21,6 +21,9 @@ import { buildValuationCommandCenter } from "../../engine/valuationCommandCenter
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../../engine/marketPacks";
 import { DEFAULT_CONFIG, type EngineConfig, type RecastPeriod } from "../../engine/types";
 import { CroreShares, INRAbsolute } from "../../engine/types/units";
+import type { LiveMarketDataSnapshot } from "../../engine/marketData";
+import { valueOnPriceBasis } from "../../engine/valuationCommandCenter/helpers";
+import { computeEPV } from "../../engine/grahamDoddEPV";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -55,14 +58,19 @@ const config: EngineConfig = { ...DEFAULT_CONFIG, shares_outstanding: CroreShare
 const data = [mkPeriod("2024-03-31", 850), mkPeriod("2025-03-31", 900)];
 const roots: Root[] = [];
 
-async function intrinsicTile(commandCenter: ReturnType<typeof buildValuationCommandCenter> | null): Promise<string> {
+async function renderDashboard(commandCenter: ReturnType<typeof buildValuationCommandCenter> | null, marketData: LiveMarketDataSnapshot | null = null, withConfig: EngineConfig = config): Promise<HTMLElement> {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
   roots.push(root);
   await act(async () => {
-    root.render(<DashboardView data={data} config={config} itServices={null} commandCenter={commandCenter} />);
+    root.render(<DashboardView data={data} config={withConfig} itServices={null} commandCenter={commandCenter} marketData={marketData} />);
   });
+  return container;
+}
+
+async function intrinsicTile(commandCenter: ReturnType<typeof buildValuationCommandCenter> | null): Promise<string> {
+  const container = await renderDashboard(commandCenter);
   const tile = [...container.querySelectorAll(".wb-metric")]
     .find((el) => el.querySelector(".wb-metric-label")?.textContent === "Intrinsic Value");
   expect(tile, "the Intrinsic Value tile should be rendered").toBeDefined();
@@ -88,6 +96,53 @@ describe("DashboardView — the Intrinsic Value tile", () => {
     expect(built.range.floorPerShare).not.toBeNull();
     const text = await intrinsicTile(null);
     expect(text).not.toContain("₹4321–8765");
-    expect(text).toContain(`₹${built.range.floorPerShare!.toFixed(0)}–${built.range.ceilingPerShare!.toFixed(0)}`);
+    // Beside the price, the range is carried to the price's date (today).
+    expect(built.marketContext.yearsToPriceDate).toBeGreaterThan(0);
+    expect(text).toContain(`₹${valueOnPriceBasis(built, built.range.floorPerShare)!.toFixed(0)}–${valueOnPriceBasis(built, built.range.ceilingPerShare)!.toFixed(0)}`);
+  });
+});
+
+// The price is per share of today's count, the statements' figures per share
+// of the anchor year's. After a 1:1 bonus (Nestlé's of 2025) the range set
+// beside the price is spread over twice the shares, and market cap is the
+// price on today's count, not half of it.
+describe("DashboardView — today's share count", () => {
+  const quote = (sharesOutstanding: number | null): LiveMarketDataSnapshot => ({
+    symbol: "X", provider: "NSE India", fetchedAt: "2026-10-13T10:00:00.000Z", price: 500, previousClose: 500, changePct: 0,
+    marketCap: null, enterpriseValue: null, sharesOutstanding, riskFreeRate: null, priceAsOf: "2026-10-13",
+    rateAsOf: null, freshness: "live", sourceSummary: "NSE", warnings: [], history: null,
+  });
+
+  it("spreads the range set beside the price over today's count", async () => {
+    const built = buildValuationCommandCenter({ data, config });
+    const run = {
+      ...built,
+      range: { floorPerShare: 4320, ceilingPerShare: 8766 },
+      marketContext: { ...built.marketContext, yearsToPriceDate: 0, shareCountChange: 2 },
+    };
+    expect(await intrinsicTile(run)).toContain("₹2160–4383");
+  });
+
+  // EPV pays out all it earns, so it is not carried: only spread over today's count.
+  it("spreads EPV, the gauge's floor, over today's count without carrying it", async () => {
+    // One crore shares, so per-share figures are large enough to tell apart.
+    const oneCrore: EngineConfig = { ...config, shares_outstanding: CroreShares(1) };
+    const built = buildValuationCommandCenter({ data, config: oneCrore });
+    // A run 1.5 years from its anchor, after a 1:1 bonus: the cards are carried.
+    const run = { ...built, marketContext: { ...built.marketContext, yearsToPriceDate: 1.5, shareCountChange: 2 } };
+    const epv = computeEPV(data, oneCrore, { ...ACTIVE_MARKET_PACKS, analysisAsOf: analysisAsOfToday() })!;
+    expect(epv.epvEquity).toBeGreaterThan(0);
+    // Carried, it would read differently from spread alone.
+    const carried = valueOnPriceBasis(run, epv.epvEquity)!;
+    expect(Math.abs(carried - epv.epvEquity / 2)).toBeGreaterThan(5);
+    const text = (await renderDashboard(run, quote(2 * 1e7), oneCrore)).textContent ?? "";
+    expect(text).toContain(`₹${(epv.epvEquity / 2).toFixed(0)}`);
+    expect(text).not.toContain(`₹${carried.toFixed(0)}`);
+  });
+
+  it("sets market cap on today's count", async () => {
+    const built = buildValuationCommandCenter({ data, config });
+    expect((await renderDashboard(built, quote(200 * 1e7))).textContent).toContain("₹100000 Cr MCap");
+    expect((await renderDashboard(built, quote(null))).textContent).toContain("₹50000 Cr MCap");
   });
 });

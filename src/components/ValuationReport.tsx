@@ -14,6 +14,7 @@ import { resolveValuationReadiness } from "../engine/valuationPolicy";
 import { resolveShareBasis } from "../engine/shareCountTools";
 import { AnalysisStatusSummary } from "../engine/analysisStatus";
 import { buildValuationCommandCenter, type ValuationCommandCenterOutput } from "../engine/valuationCommandCenter";
+import { resolveShareCountChange } from "../engine/valuationCommandCenter/helpers";
 import { summarizeAntiTautology } from "../engine/valuationEvidence";
 import { SignalPill } from "./valuation/atoms";
 import { resolveNseSymbol } from "../engine/nseSymbolRegistry";
@@ -377,11 +378,16 @@ export default function ValuationReport({
       g: gRate,
       kdFallback: effectiveConfig.kd_pretax * (1 - (effectiveConfig.tax_rate_for_kd ?? effectiveConfig.statutory_tax_rate ?? 0.2517)),
       shares: shareBasis.shares ?? null,
-      marketPrice: commandCenter.marketPrice ?? effectiveConfig.market_price ?? null,
+      // Its values are per share of the statements' count, so the price is
+      // restated on that count (as the command center's reverse DCF is): after a
+      // bonus or split its market cap was halved or worse.
+      marketPrice: commandCenter.marketPrice != null
+        ? commandCenter.marketPrice * (resolveShareCountChange(liveMarketData?.sharesOutstanding, shareBasis.shares) ?? 1)
+        : effectiveConfig.market_price ?? null,
       structuralBreakPeriods,
       panelPrior: panelPersistencePriorFor(effectiveConfig.company_type),
     }),
-    [valuationData, ke, gRate, effectiveConfig, shareBasis.shares, commandCenter.marketPrice, structuralBreakPeriods],
+    [valuationData, ke, gRate, effectiveConfig, shareBasis.shares, commandCenter.marketPrice, liveMarketData?.sharesOutstanding, structuralBreakPeriods],
   );
 
   if (insufficientData) {
