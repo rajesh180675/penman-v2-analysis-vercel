@@ -166,8 +166,8 @@ export type AnnualHeadline = { -readonly [K in keyof typeof ANNUAL_HEADLINE_CONC
   profitAttributableToNonControllingInterests?: number | null;
   nonControllingInterest?: number | null;
   /**
-   * Equity shares in issue, in crore: paid-up equity capital over face value.
-   * A bonus or split after the period a valuation is drawn from changes it,
+   * Equity shares in issue, in crore: paid-up equity capital over face value,
+   * or profit over EPS where no face value is filed (sharesInIssue). A bonus or split after the period a valuation is drawn from changes it,
    * and the price with it (HDFC Bank: 765.22 crore filed for FY2025, 1,539.34
    * for FY2026). Absent on records extracted before it was read.
    */
@@ -204,9 +204,33 @@ export function extractAnnualHeadline(instance: XbrlInstance, fiscalYearEnd: str
 }
 
 /**
+ * The year's profit and the basic EPS struck on it, by filing format: Ind AS
+ * (owners' profit where consolidated), banks, life insurers.
+ */
+const EPS_BASES = [
+  ["ProfitOrLossAttributableToOwnersOfParent", "BasicEarningsLossPerShareFromContinuingAndDiscontinuedOperations"],
+  ["ProfitLossForPeriod", "BasicEarningsLossPerShareFromContinuingAndDiscontinuedOperations"],
+  ["ProfitLossForThePeriod", "BasicEarningsPerShareAfterExtraordinaryItems"],
+  ["ProfitLossAfterTaxAndExtraordinaryItems", "BasicAndDilutedEPSAfterExtraordinaryItemsNetOfTaxExpenseForThePeriodNotToBeAnnualized"],
+] as const;
+
+/**
  * Paid-up equity capital over face value, in crore shares. Results filings tag
  * both in the period's duration contexts (`FourD`), some in the instant; the
  * face value carries its own unit (INRPerShare).
+ *
+ * The year's profit over its basic EPS is the weighted-average count, to EPS's
+ * two decimals. Across the 261 records on file (data/filings) that carry both,
+ * the two agree within 2% in 225; the widest gap with the capital tags right
+ * is 2× (Maruti FY2024, its EPS filed at twice its profit per share). Where
+ * they part by more than 3×, a tag is wrong and the filing gives no count:
+ * HUL FY2018 filed its face value as 216, ICICI Bank FY2023 its paid-up
+ * capital as ₹2 Cr, Sun Pharma FY2025 its face value as 719,780.9.
+ *
+ * A life insurer's filing tags paid-up capital (`PaidUpEquityShareCapital`)
+ * but no face value, so its count is the EPS one: HDFC Life FY2026 215.84
+ * crore against 215.78 in issue (₹2,157.82 Cr at ₹10), LIC 632.47 against
+ * 632.50.
  */
 function sharesInIssue(instance: XbrlInstance, duration: XbrlContext | null, instant: XbrlContext | null): number | null {
   const value = (concept: string, unit: string): number | null => {
@@ -220,7 +244,18 @@ function sharesInIssue(instance: XbrlInstance, duration: XbrlContext | null, ins
   };
   const paidUp = value("PaidUpValueOfEquityShareCapital", "INR");
   const face = value("FaceValueOfEquityShareCapital", "INRPERSHARE");
-  return paidUp != null && paidUp > 0 && face != null && face > 0 ? paidUp / face / 1e7 : null;
+  const byFaceValue = paidUp != null && paidUp > 0 && face != null && face > 0 ? paidUp / face / 1e7 : null;
+  let byEps: number | null = null;
+  for (const [profitConcept, epsConcept] of EPS_BASES) {
+    const profit = value(profitConcept, "INR");
+    const eps = value(epsConcept, "INRPERSHARE");
+    if (profit != null && eps != null && eps !== 0) {
+      byEps = profit / eps > 0 ? profit / eps / 1e7 : null;
+      break;
+    }
+  }
+  if (byFaceValue == null || byEps == null) return byFaceValue ?? byEps;
+  return Math.max(byFaceValue / byEps, byEps / byFaceValue) <= 3 ? byFaceValue : null;
 }
 
 /**
