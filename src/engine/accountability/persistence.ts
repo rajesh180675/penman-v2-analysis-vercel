@@ -92,6 +92,7 @@ function estimate(group: string, series: readonly RnoaSeries[], dev: Map<string,
   const within: [number, number][] = [];
   let lengths = 0;
   let companies = 0;
+  let withinCompanies = 0;
   for (const s of series) {
     const d = dev.get(s.companyId)!;
     const years = [...d.keys()].sort((a, b) => a - b);
@@ -100,10 +101,14 @@ function estimate(group: string, series: readonly RnoaSeries[], dev: Map<string,
       const x = d.get(year)!;
       if (d.has(year + 1) && inBand(x)) firmPairs.push([x, d.get(year + 1)!]);
     }
-    if (firmPairs.length < 2) continue;
+    if (firmPairs.length === 0) continue;
     companies++;
-    lengths += firmPairs.length + 1;
     pooled.push(...firmPairs);
+    // One pair still informs the pooled slope, and leaving it out would drop
+    // the firms that stopped filing a year in. Demeaning needs two.
+    if (firmPairs.length < 2) continue;
+    withinCompanies++;
+    lengths += firmPairs.length + 1;
     const mx = firmPairs.reduce((sum, [x]) => sum + x, 0) / firmPairs.length;
     const my = firmPairs.reduce((sum, [, y]) => sum + y, 0) / firmPairs.length;
     within.push(...firmPairs.map(([x, y]) => [x - mx, y - my] as [number, number]));
@@ -111,7 +116,7 @@ function estimate(group: string, series: readonly RnoaSeries[], dev: Map<string,
   const phi = ols(pooled);
   if (phi == null) return null;
   const rawWithin = ols(within);
-  const avgT = companies ? lengths / companies : 0;
+  const avgT = withinCompanies ? lengths / withinCompanies : 0;
   // Nickell (1981): the within estimator is biased down by ≈ (1 + φ)/(T − 1).
   const phiWithin = rawWithin != null && avgT > 2 ? rawWithin + (1 + rawWithin) / (avgT - 1) : rawWithin;
   return {

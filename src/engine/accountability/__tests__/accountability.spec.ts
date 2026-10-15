@@ -131,6 +131,20 @@ describe("estimatePanelPersistence", () => {
     expect(estimates.find((e) => e.group === "telecom")).toBeUndefined();
     expect(priorFor(estimates, "telecom")!.group).toBe("all");
   });
+
+  it("counts a firm that stopped filing after one year-pair in the pooled slope", () => {
+    const survivors = panel(0.6, "consumer", [-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3]);
+    // Three firms filed 2010 and 2011 only; symmetric, so no year's median moves.
+    const exits: RnoaSeries[] = [-0.05, 0, 0.05].map((s0, i) => ({
+      companyId: `exit-${i}`,
+      group: "consumer",
+      points: [{ year: 2010, rnoa: 0.12 + s0 }, { year: 2011, rnoa: 0.12 + s0 * 0.6 }],
+    }));
+    const without = priorFor(estimatePanelPersistence(survivors), "all")!;
+    const withExits = priorFor(estimatePanelPersistence([...survivors, ...exits]), "all")!;
+    expect(withExits.companies).toBe(without.companies + 3);
+    expect(withExits.pairs).toBe(without.pairs + 3);
+  });
 });
 
 describe("forecast snapshot ledger", () => {

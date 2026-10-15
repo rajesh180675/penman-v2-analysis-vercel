@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractAnnualHeadline, extractLenderBalanceSheet, parseXbrlInstance, selectAnnualContexts } from "../xbrlInstance";
+import { extractAnnualHeadline, extractLenderBalanceSheet, extractOperatingFigures, parseXbrlInstance, selectAnnualContexts } from "../xbrlInstance";
 
 /**
  * Shaped on ITC's FY24 consolidated results filing (NSE archive
@@ -151,6 +151,64 @@ describe("extractLenderBalanceSheet", () => {
 
   it("is null for a filing that is not in the lender format", () => {
     expect(extractLenderBalanceSheet(parseXbrlInstance(FILING), "2024-03-31")).toBeNull();
+  });
+});
+
+/**
+ * Shaped on ITC's FY23 consolidated results filing (NSE archive
+ * INDAS_91997_845894_18052023055947.xml): the first year a results filing
+ * carries a balance sheet, its lines split current and non-current.
+ */
+const BALANCE_SHEET_FILING = `<?xml version="1.0" encoding="UTF-8"?>
+<xbrli:xbrl xmlns:in-bse-fin="http://www.bseindia.com/xbrl/fin/2020-03-31/in-bse-fin" xmlns:xbrli="http://www.xbrl.org/2003/instance">
+  <xbrli:context id="OneD"><xbrli:entity><xbrli:identifier scheme="x">ITC</xbrli:identifier></xbrli:entity>
+    <xbrli:period><xbrli:startDate>2023-01-01</xbrli:startDate><xbrli:endDate>2023-03-31</xbrli:endDate></xbrli:period></xbrli:context>
+  <xbrli:context id="FourD"><xbrli:entity><xbrli:identifier scheme="x">ITC</xbrli:identifier></xbrli:entity>
+    <xbrli:period><xbrli:startDate>2023-01-01</xbrli:startDate><xbrli:endDate>2023-03-31</xbrli:endDate></xbrli:period></xbrli:context>
+  <xbrli:context id="OneI"><xbrli:entity><xbrli:identifier scheme="x">ITC</xbrli:identifier></xbrli:entity>
+    <xbrli:period><xbrli:instant>2023-03-31</xbrli:instant></xbrli:period></xbrli:context>
+  <xbrli:unit id="INR"><xbrli:measure>iso4217:INR</xbrli:measure></xbrli:unit>
+  <in-bse-fin:RevenueFromOperations contextRef="OneD" unitRef="INR" decimals="-7">190582900000.00</in-bse-fin:RevenueFromOperations>
+  <in-bse-fin:RevenueFromOperations contextRef="FourD" unitRef="INR" decimals="-7">765182100000.00</in-bse-fin:RevenueFromOperations>
+  <in-bse-fin:FinanceCosts contextRef="FourD" unitRef="INR" decimals="-7">432000000.00</in-bse-fin:FinanceCosts>
+  <in-bse-fin:Expenses contextRef="FourD" unitRef="INR" decimals="-7">527054900000.00</in-bse-fin:Expenses>
+  <in-bse-fin:ProfitBeforeTax contextRef="FourD" unitRef="INR" decimals="-7">258660800000.00</in-bse-fin:ProfitBeforeTax>
+  <in-bse-fin:TaxExpense contextRef="FourD" unitRef="INR" decimals="-7">64384000000.00</in-bse-fin:TaxExpense>
+  <in-bse-fin:NoncurrentInvestments contextRef="OneI" unitRef="INR" decimals="-7">118445700000.00</in-bse-fin:NoncurrentInvestments>
+  <in-bse-fin:CurrentInvestments contextRef="OneI" unitRef="INR" decimals="-7">172328600000.00</in-bse-fin:CurrentInvestments>
+  <in-bse-fin:CashAndCashEquivalents contextRef="OneI" unitRef="INR" decimals="-7">4633500000.00</in-bse-fin:CashAndCashEquivalents>
+  <in-bse-fin:BankBalanceOtherThanCashAndCashEquivalents contextRef="OneI" unitRef="INR" decimals="-7">44168400000.00</in-bse-fin:BankBalanceOtherThanCashAndCashEquivalents>
+  <in-bse-fin:LoansNoncurrent contextRef="OneI" unitRef="INR" decimals="-7">54800000.00</in-bse-fin:LoansNoncurrent>
+  <in-bse-fin:LoansCurrent contextRef="OneI" unitRef="INR" decimals="-7">71200000.00</in-bse-fin:LoansCurrent>
+  <in-bse-fin:Assets contextRef="OneI" unitRef="INR" decimals="-7">858829800000.00</in-bse-fin:Assets>
+  <in-bse-fin:Equity contextRef="OneI" unitRef="INR" decimals="-7">695387900000.00</in-bse-fin:Equity>
+  <in-bse-fin:BorrowingsNoncurrent contextRef="OneI" unitRef="INR" decimals="-7">34900000.00</in-bse-fin:BorrowingsNoncurrent>
+  <in-bse-fin:BorrowingsCurrent contextRef="OneI" unitRef="INR" decimals="-7">353200000.00</in-bse-fin:BorrowingsCurrent>
+</xbrli:xbrl>`;
+
+describe("extractOperatingFigures", () => {
+  it("reads the year's totals by the ID convention and sums each balance-sheet line's current and non-current parts", () => {
+    const f = extractOperatingFigures(parseXbrlInstance(BALANCE_SHEET_FILING), "2023-03-31");
+    // The full year's ₹76,518 Cr, not the quarter's ₹19,058 Cr.
+    expect(f.revenue).toBeCloseTo(76518.21, 2);
+    expect(f.expenses).toBeCloseTo(52705.49, 2);
+    expect(f.financeCosts).toBeCloseTo(43.2, 2);
+    expect(f.profitBeforeTax).toBeCloseTo(25866.08, 2);
+    expect(f.taxExpense).toBeCloseTo(6438.4, 2);
+    expect(f.assets).toBeCloseTo(85882.98, 2);
+    expect(f.equity).toBeCloseTo(69538.79, 2);
+    expect(f.borrowings).toBeCloseTo(3.49 + 35.32, 2);
+    expect(f.cash).toBeCloseTo(463.35 + 4416.84, 2);
+    expect(f.investments).toBeCloseTo(17232.86 + 11844.57, 2);
+    expect(f.loans).toBeCloseTo(5.48 + 7.12, 2);
+  });
+
+  it("leaves the balance sheet null for a results filing that carries none (before FY2023)", () => {
+    const f = extractOperatingFigures(parseXbrlInstance(FILING.replace(/<in-bse-fin:Assets .*<\/in-bse-fin:Assets>/, "")), "2024-03-31");
+    expect(f.revenue).toBeCloseTo(76840.49, 2);
+    expect(f.assets).toBeNull();
+    expect(f.equity).toBeNull();
+    expect(f.borrowings).toBeNull();
   });
 });
 

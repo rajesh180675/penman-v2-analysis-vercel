@@ -313,3 +313,56 @@ export function extractLenderBalanceSheet(instance: XbrlInstance, fiscalYearEnd:
       ?? (read(["EquityShareCapital"]) != null && read(["OtherEquity"]) != null ? read(["EquityShareCapital", "OtherEquity"]) : null),
   };
 }
+
+/**
+ * An industrial (Division II) filing's figures for operating profitability,
+ * ₹ crore: the year's income-statement totals and the closing balance sheet's
+ * financial lines, each summed over its current and non-current parts.
+ *
+ * Results filings carry a balance sheet only from FY2023 (the statement of
+ * assets and liabilities in the 2020-03-31 taxonomy): before that every
+ * balance-sheet field is null, and `assets` is the field that says whether a
+ * balance sheet was filed. Within a filed balance sheet a line left untagged
+ * (a company without borrowings) is null as well.
+ */
+export interface OperatingFigures {
+  readonly revenue: number | null;
+  /** Total expenses, finance costs included. */
+  readonly expenses: number | null;
+  readonly financeCosts: number | null;
+  readonly profitBeforeTax: number | null;
+  readonly taxExpense: number | null;
+  readonly assets: number | null;
+  /** Total equity, the minority's share included. */
+  readonly equity: number | null;
+  readonly borrowings: number | null;
+  /** Cash and cash equivalents plus other bank balances. */
+  readonly cash: number | null;
+  /** Current plus non-current investments. */
+  readonly investments: number | null;
+  /** Loans given, current plus non-current. */
+  readonly loans: number | null;
+}
+
+export function extractOperatingFigures(instance: XbrlInstance, fiscalYearEnd: string): OperatingFigures {
+  const { duration, instant } = selectAnnualContexts(instance, fiscalYearEnd);
+  const read = (context: XbrlContext | null, concepts: readonly string[]): number | null => {
+    if (!context) return null;
+    const values = concepts.map((concept) => instance.facts.find((f) =>
+      f.concept === concept && f.contextRef === context.id && f.value != null && f.unitRef?.toUpperCase() === "INR")?.value ?? null);
+    return values.some((value) => value != null) ? values.reduce<number>((sum, value) => sum + (value ?? 0), 0) / RUPEES_PER_CRORE : null;
+  };
+  return {
+    revenue: read(duration, ["RevenueFromOperations"]),
+    expenses: read(duration, ["Expenses"]),
+    financeCosts: read(duration, ["FinanceCosts"]),
+    profitBeforeTax: read(duration, ["ProfitBeforeTax"]),
+    taxExpense: read(duration, ["TaxExpense"]),
+    assets: read(instant, ["Assets"]),
+    equity: read(instant, ["Equity"]),
+    borrowings: read(instant, ["BorrowingsCurrent", "BorrowingsNoncurrent"]),
+    cash: read(instant, ["CashAndCashEquivalents", "BankBalanceOtherThanCashAndCashEquivalents"]),
+    investments: read(instant, ["CurrentInvestments", "NoncurrentInvestments"]),
+    loans: read(instant, ["LoansCurrent", "LoansNoncurrent"]),
+  };
+}
