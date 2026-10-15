@@ -1,6 +1,7 @@
 import { EngineConfig } from "../../engine/types";
 import { computeValuation } from "../../engine/PenmanNissimEngine";
 import { resolveValuationReadiness } from "../../engine/valuationPolicy";
+import type { KwConsistency } from "../../engine/valueConsistentKw";
 import { buildValuationCommandCenter } from "../../engine/valuationCommandCenter";
 import { useLiveMarketData } from "../../hooks/useLiveMarketData";
 import { NumInput } from "./atoms";
@@ -24,6 +25,7 @@ export default function ValuationInputsPanel({
   shareBasis,
   val,
   valuationReadiness,
+  kwConsistency,
 }: {
   keOverride: number | null;
   setKeOverride: (v: number | null) => void;
@@ -42,7 +44,12 @@ export default function ValuationInputsPanel({
   shareBasis: { source: string; confidence: string };
   val: ReturnType<typeof computeValuation>;
   valuationReadiness: ReturnType<typeof resolveValuationReadiness>;
+  /** The kw the cards below were valued at: solved from kwDerived on value weights, or kwDerived kept with a reason. */
+  kwConsistency: KwConsistency;
 }) {
+  const kwValued = kwConsistency.kw;
+  const kwValueConsistent = kwConsistency.method === "value-consistent";
+  const kwReason = kwConsistency.reason;
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
       <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-5">Valuation Inputs (§6)</h2>
@@ -69,9 +76,15 @@ export default function ValuationInputsPanel({
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">WACC kw — derived (S-9.4)</label>
           <div className="w-28 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 text-slate-700 font-mono font-semibold">
-            {(kwDerived * 100).toFixed(2)}%
+            {(kwValued * 100).toFixed(2)}%
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">NOA-weighted · kd_at=kd×(1−τ)</p>
+          {/* The cards below value at kwValued: solved on value weights from the
+              structural (book-weighted) kw, so RE and ReOI agree. */}
+          <p className="text-xs text-slate-400 mt-0.5">
+            {kwValueConsistent
+              ? `Value-weighted, so RE and ReOI agree; structural seed ${(kwDerived * 100).toFixed(2)}% (NOA-weighted · kd_at=kd×(1−τ))`
+              : `Structural: NOA-weighted · kd_at=kd×(1−τ)${kwReason ? `. ${kwReason}` : ""}`}
+          </p>
           {Math.abs(kwDerived - kwStructuralBaseline) > 1e-4 && (
             <p className="text-xs text-amber-600 mt-0.5 font-medium" title="Recomputed kw at your overridden ke vs the structural baseline at config ke. Sensitivity exploration only — does not affect the rigor ladder.">
               Δ {(kwDerived - kwStructuralBaseline) >= 0 ? "+" : ""}{((kwDerived - kwStructuralBaseline) * 100).toFixed(2)}pp vs structural ({(kwStructuralBaseline * 100).toFixed(2)}%)

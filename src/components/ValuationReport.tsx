@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { RecastPeriod, EngineConfig } from "../engine/types";
 import { INRAbsolute } from "../engine/types/units";
 import { buildCyclicalNormalization } from "../engine/cyclicalNormalization";
-import { buildAnchoredValuationPeriods } from "../engine/anchoredValuationPeriods";
+import { buildAnchoredForecast } from "../engine/anchoredValuationPeriods";
+import { buildValuationPeriodsFromForecast } from "../engine/forecastingEngine";
+import { computeConsistentValuation } from "../engine/valueConsistentKw";
 import { detectDistress } from "../engine/distressDetector";
-import { computeValuation, deriveKwFromStructure } from "../engine/PenmanNissimEngine";
+import { deriveKwFromStructure } from "../engine/PenmanNissimEngine";
 import { resolveCostOfCapitalFromConfig } from "../engine/costOfCapital";
 import { ACTIVE_MARKET_PACKS, analysisAsOfToday } from "../engine/marketPacks";
 import { buildRegimeContext } from "../engine/regimeModel";
@@ -192,14 +194,23 @@ export default function ValuationReport({
   // compared that against today's price. Cyclical normalization now lives in
   // the forecast's driver plan and terminal economics, so the old history-
   // dated terminal RE anchor would normalize twice.
-  const anchoredValuationPeriods = useMemo(
-    () => buildAnchoredValuationPeriods({ history: valuationData, config: effectiveConfig, ke, kw: kwDerived, g: gRate }),
+  const anchoredForecast = useMemo(
+    () => buildAnchoredForecast({ history: valuationData, config: effectiveConfig, ke, kw: kwDerived, g: gRate }),
     [valuationData, effectiveConfig, ke, kwDerived, gRate],
   );
+  const anchoredValuationPeriods = useMemo(
+    () => buildValuationPeriodsFromForecast(anchoredForecast.latest, anchoredForecast.periods),
+    [anchoredForecast],
+  );
 
-  const val = useMemo(() =>
-    computeValuation(anchoredValuationPeriods, ke, kwDerived, gRate, valuationConfig),
-    [anchoredValuationPeriods, ke, kwDerived, gRate, valuationConfig]
+  // RE and ReOI value one forecast alike only at a value-consistent kw (#376),
+  // which the command center solves; valued at the structural kw, this tab's
+  // RE and ReOI cards disagreed on the same forecast (TCS ~40%, Titan ~66%)
+  // beside a headline that agrees. The structural kw seeds the solve, and the
+  // forecast's own net borrowing cost is its kd.
+  const { valuation: val, kwConsistency } = useMemo(() =>
+    computeConsistentValuation(anchoredValuationPeriods, ke, kwDerived, gRate, valuationConfig, anchoredForecast.scenario.drivers.nbc[0]),
+    [anchoredValuationPeriods, ke, kwDerived, gRate, valuationConfig, anchoredForecast]
   );
   // The fallback build, for legacy callers that pass no run-backed command
   // center. It needs the packs for the same reason the `keFromConfig` resolve
@@ -491,6 +502,7 @@ export default function ValuationReport({
         shareBasis={shareBasis}
         val={val}
         valuationReadiness={valuationReadiness}
+        kwConsistency={kwConsistency}
       />
 
       <ValuationCardsSection val={val} V_RE={V_RE} V_ReOI={V_ReOI} cv={cv} sharesOut={sharesOut} />
