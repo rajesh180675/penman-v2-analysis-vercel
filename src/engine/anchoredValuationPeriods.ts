@@ -33,6 +33,8 @@ export interface AnchoredValuationPeriodsParams {
   readonly g: number;
   readonly riskFreeRate?: number | undefined;
   readonly horizon?: number | undefined;
+  /** Which persistence scenario; the base case unless given (the scenario bands backtest builds the others). */
+  readonly scenarioKey?: "stress" | "base" | "bull" | "historical-panic" | undefined;
 }
 
 /**
@@ -53,7 +55,7 @@ export function buildAnchoredForecast(params: AnchoredValuationPeriodsParams): {
   const latest = history[history.length - 1]!;
   const { template } = resolveValuationSectorTemplate(history, params.config.sector_template, params.config.company_type);
   const derived = derivePersistenceForecastScenario({
-    scenarioKey: "base",
+    scenarioKey: params.scenarioKey ?? "base",
     periods: history,
     latest,
     businessModel: buildBusinessModelProfile(history),

@@ -148,6 +148,18 @@ export function scoreForecast(
   return observations;
 }
 
+/**
+ * The capital costs a forecast at a cutoff is built with: point-in-time config
+ * defaults, not today's dated packs. Shared by every walk-forward backtest so
+ * each builds the forecast the same way.
+ */
+export function originCapitalCosts(history: readonly RecastPeriod[], config: EngineConfig): { ke: number; kw: number; g: number } {
+  const cutoff = history[history.length - 1]!;
+  const ke = resolveCostOfCapitalFromConfig({ config, current: cutoff, previous: history[history.length - 2] ?? null }).ke;
+  const kw = deriveKwFromStructure(cutoff, history[history.length - 2]!, ke, config.risk_free_rate, config);
+  return { ke, kw, g: Math.min(TERMINAL_GROWTH, ke - 0.01) };
+}
+
 export interface WalkForwardOptions {
   readonly ticker: string;
   readonly companyType: string;
@@ -173,15 +185,10 @@ export function walkForwardCompany(
     const future = sorted.slice(cut + 1);
     const cutoff = history[history.length - 1]!;
     try {
-      // Point-in-time capital costs: config defaults, not today's dated packs.
-      const ke = resolveCostOfCapitalFromConfig({ config, current: cutoff, previous: history[history.length - 2] ?? null }).ke;
-      const kw = deriveKwFromStructure(cutoff, history[history.length - 2]!, ke, config.risk_free_rate, config);
       const { periods: forecast } = buildAnchoredForecast({
         history,
         config,
-        ke,
-        kw,
-        g: Math.min(TERMINAL_GROWTH, ke - 0.01),
+        ...originCapitalCosts(history, config),
         horizon: Math.max(maxHorizon, 5),
       });
       const observations = scoreForecast(history, forecast, future, maxHorizon);
