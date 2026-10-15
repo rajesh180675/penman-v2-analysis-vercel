@@ -4,9 +4,10 @@ import { DEFAULT_CONFIG } from "../types";
 /**
  * Core RNOA from as-filed results, on the recast's definitions as far as a
  * results filing allows. Set against the app's Capitaline core RNOA for the
- * corpus companies (FY2024–FY2025, 45 company-years), the median gap is
- * 0.3 points and the interquartile range −0.8 to +2.0; the wide gaps are
- * bases the recast changes (a carved lending arm at M&M and L&T).
+ * corpus companies (FY2024 on, 46 company-years), the median gap is 0.2
+ * points and the interquartile range −1.1 to +2.0
+ * (docs/generated/persistence-panel.md); the wide gaps are bases the recast
+ * changes (TCS, Paytm, a carved lending arm at M&M and L&T).
  *
  * - Core operating income before tax is revenue less expenses other than
  *   finance costs: other income, exceptional items and associates' share

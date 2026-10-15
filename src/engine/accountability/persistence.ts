@@ -30,8 +30,10 @@ export interface RnoaSeries {
 
 export interface PersistenceEstimate {
   readonly group: string;
-  /** Pooled cross-sectional-deviation AR(1) — the prior. */
+  /** Pooled cross-sectional-deviation AR(1) — the prior, capped for use as a fade rate. */
   readonly phi: number;
+  /** The pooled slope before that cap: what a comparison of panels measures. */
+  readonly phiUncapped: number;
   /** Within-firm AR(1), Nickell-corrected — diagnostic only. */
   readonly phiWithin: number | null;
   readonly pairs: number;
@@ -122,6 +124,7 @@ function estimate(group: string, series: readonly RnoaSeries[], dev: Map<string,
   return {
     group,
     phi: Math.min(Math.max(phi, 0), 0.98),
+    phiUncapped: phi,
     phiWithin: phiWithin == null ? null : Math.min(Math.max(phiWithin, 0), 0.98),
     pairs: pooled.length,
     companies,

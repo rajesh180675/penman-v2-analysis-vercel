@@ -43,11 +43,17 @@ const followed = panel.companies.filter((c) => !c.followError);
 const latestYear = Math.max(...followed.flatMap((c) => Object.keys(c.years).map(Number)));
 const revenue = (c: PanelCompany, year: number) => c.years[String(year)]?.figures.revenue ?? null;
 const series = new Map(followed.map((c) => [c.symbol, asFiledRnoaPoints(new Map(Object.entries(c.years).map(([y, v]) => [Number(y), v.figures])))]));
-const measured = followed.filter((c) => (series.get(c.symbol)?.length ?? 0) >= 2);
+// Every company with a year of core RNOA is in that year's median, those that
+// stopped filing after it among them; only those with two consecutive years add a pair.
+const measured = followed.filter((c) => (series.get(c.symbol)?.length ?? 0) >= 1);
 const survived = (c: PanelCompany) => c.years[String(latestYear)] != null;
 
-/** Rank by a year's revenue, largest first; companies without it rank last. */
-const rankBy = (year: number) => new Map([...measured].sort((a, b) => (revenue(b, year) ?? -Infinity) - (revenue(a, year) ?? -Infinity)).map((c, i) => [c.symbol, i]));
+/**
+ * Rank by a year's revenue, largest first, among every company followed: a
+ * rank among the measured alone would already favour those that kept filing.
+ * Companies without that year rank last.
+ */
+const rankBy = (year: number) => new Map([...followed].sort((a, b) => (revenue(b, year) ?? -Infinity) - (revenue(a, year) ?? -Infinity)).map((c, i) => [c.symbol, i]));
 const rankT0 = rankBy(panel.t0);
 const rankLatest = rankBy(latestYear);
 
@@ -78,7 +84,7 @@ function bootstrap(label: Labeller, group: string, reps = 400): [number, number]
       return { companyId: `${c.symbol}#${i}`, group, points: series.get(c.symbol)! };
     });
     const est = estimatePanelPersistence([...sample, ...others]).find((e) => e.group === group);
-    if (est) draws.push(est.phi);
+    if (est) draws.push(est.phiUncapped);
   }
   draws.sort((a, b) => a - b);
   return draws.length ? [draws[Math.floor(draws.length * 0.05)]!, draws[Math.floor(draws.length * 0.95)]!] : null;
@@ -94,6 +100,11 @@ const rows: Row[] = [
   { label: `Filed FY${latestYear} (survivors)`, group: "survivors", labeller: (c) => (survived(c) ? "survivors" : null) },
   { label: "The app's companies, as filed", group: "corpus", labeller: (c) => (corpus.has(c.symbol) ? "corpus" : null) },
 ];
+/** The whole panel on one year-pair at a time: how much φ moves with the year, which the bootstrap cannot see. */
+function byYearPair(from: number) {
+  const all: RnoaSeries[] = measured.map((c) => ({ companyId: c.symbol, group: "panel", points: series.get(c.symbol)!.filter((p) => p.year === from || p.year === from + 1) }));
+  return estimatePanelPersistence(all).find((e) => e.group === "all");
+}
 const results = rows.map((row) => {
   const est = row.group === "all" ? estimateBy(row.labeller).find((e) => e.group === "all") : estimateBy(row.labeller).find((e) => e.group === row.group);
   return { ...row, est, ci: est ? bootstrap(row.group === "all" ? () => "panel" : row.labeller, row.group === "all" ? "panel" : row.group) : null };
@@ -133,22 +144,30 @@ The persistence prior the self-consistent model shows (\`persistencePriors.gener
 ## The panel
 
 - **Universe:** every company that filed annual results for March ${panel.t0} on NSE in the industrial format, with revenue from operations of at least ₹${panel.minRevenueCr.toLocaleString("en-IN")} Cr in that filing (consolidated where it files consolidated results). Left out at the start: ${Object.entries(panel.excludedAtT0).map(([k, v]) => `${v} ${k}`).join(", ")}.
-- **Followed:** ${panel.companies.length} companies; ${panel.companies.length - followed.length} whose later listings or filings could not be read are set aside (not counted as having stopped). ${measured.length} have at least two years of core RNOA.
-- **Stopped filing before FY${latestYear}:** ${exits.length} of the ${measured.length} measured (merged, delisted or late); they stay in for the years they filed.
+- **Followed:** ${panel.companies.length} companies; ${panel.companies.length - followed.length} whose later listings or filings could not be read are set aside (not counted as having stopped). ${measured.length} have core RNOA for at least one year, and each year's median is taken over all of them; ${results[0]!.est?.companies ?? 0} have two consecutive years and so add a year-pair.
+- **Stopped filing before FY${latestYear}:** ${exits.length} of the ${measured.length} (merged, delisted or late); they stay in for the years they filed.
 - **Measure:** core RNOA on opening NOA, from the filings as first reported (\`asFiledRnoa.ts\`). Results filings carry a balance sheet only from FY2023, so FY${panel.t0} is the earliest start and the panel's year-pairs are ${pairsPerYear}.
 
 ## Persistence (pooled AR(1) of the deviation from the panel's yearly median)
 
 | Companies | φ | 90% interval (firm bootstrap) | Year-pairs | Companies measured |
 |---|---|---|---|---|
-${results.map((r) => `| ${r.label} | ${phi(r.est?.phi)} | ${r.ci ? `${r.ci[0].toFixed(2)}–${r.ci[1].toFixed(2)}` : "—"} | ${r.est?.pairs ?? "—"} | ${r.est?.companies ?? "—"} |`).join("\n")}
+${results.map((r) => `| ${r.label} | ${phi(r.est?.phiUncapped)} | ${r.ci ? `${r.ci[0].toFixed(2)}–${r.ci[1].toFixed(2)}` : "—"} | ${r.est?.pairs ?? "—"} | ${r.est?.companies ?? "—"} |`).join("\n")}
 | *Reference: the shipped prior, the app's companies on Capitaline, all years* | *${PANEL_PERSISTENCE_PRIORS.all!.phi.toFixed(2)}* | | *${PANEL_PERSISTENCE_PRIORS.all!.pairs}* | *${PANEL_PERSISTENCE_PRIORS.all!.companies}* |
 
-The interval resamples companies, not years: ${years.length - 1} year-pairs share their economy, so it understates the uncertainty that matters most (\`docs/generated/scenario-band-coverage.md\`).
+One year-pair at a time, the whole panel:
+
+| Year-pair | φ | Companies |
+|---|---|---|
+${years.slice(0, -1).map((y) => { const e = byYearPair(y); return `| ${y}→${y + 1} | ${phi(e?.phiUncapped)} | ${e?.companies ?? "—"} |`; }).join("\n")}
+
+φ is the pooled slope before the 0.98 cap the shipped prior applies for use as a fade rate. The interval resamples companies, not years: ${years.length - 1} year-pairs share their economy, so it understates the uncertainty that matters most (\`docs/generated/scenario-band-coverage.md\`).
 
 ## The filed measure against the app's
 
-Where a company is in both, core RNOA from the filings less the app's Capitaline core RNOA, ${gaps.length} company-years: median ${pct(quantile(gapValues, 0.5))} points, interquartile range ${pct(quantile(gapValues, 0.25))} to ${pct(quantile(gapValues, 0.75))}.${gaps.length ? ` Widest: ${[...gaps].sort((a, b) => Math.abs(b.filed - b.capitaline) - Math.abs(a.filed - a.capitaline)).slice(0, 4).map((g) => `${g.symbol} FY${g.year} (${pct(g.filed)} vs ${pct(g.capitaline)})`).join(", ")}.` : ""}
+${gaps.length
+  ? `Where a company is in both, core RNOA from the filings less the app's Capitaline core RNOA, ${gaps.length} company-years: median ${pct(quantile(gapValues, 0.5))} points, interquartile range ${pct(quantile(gapValues, 0.25))} to ${pct(quantile(gapValues, 0.75))}. Widest: ${[...gaps].sort((a, b) => Math.abs(b.filed - b.capitaline) - Math.abs(a.filed - a.capitaline)).slice(0, 4).map((g) => `${g.symbol} FY${g.year} (${pct(g.filed)} vs ${pct(g.capitaline)})`).join(", ")}.`
+  : "Not compared: the app's core RNOA by year comes from `accountability/runs/` (`npm run accountability`), which is not on disk."}
 `;
 writeFileSync(join(ROOT, "docs", "generated", "persistence-panel.md"), doc);
 console.log(doc);

@@ -14,14 +14,14 @@
  * marked, so it is not mistaken for one that stopped. t0 defaults to FY2023, the first year results
  * filings carry a balance sheet.
  *
- * Out of the universe at t0: banks (NSE's bank flag), lenders filing in the
+ * Out of the universe at t0: banks and lenders by NSE's flag, lenders filing in the
  * Division III format (`NBFC_INDAS_`), other formats, and industrial-format
  * filers whose loans given exceed half their assets (lenders in all but format).
  *
  * Writes data/filings-panel/panel.json. Listings and XBRL instances are cached
  * under data/filings-panel/raw/ (git-ignored), so an interrupted run resumes.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractOperatingFigures, parseXbrlInstance, type OperatingFigures } from "../../src/engine/filings/xbrlInstance";
@@ -73,7 +73,10 @@ function cached(file: string, url: string, referer: string, valid: (text: string
     }
     if (!valid(text)) return null;
   }
-  writeFileSync(file, text);
+  // Written whole or not at all: a run stopped mid-write must not leave a
+  // truncated instance that every later run reads as cached.
+  writeFileSync(`${file}.part`, text);
+  renameSync(`${file}.part`, file);
   return text;
 }
 const isJson = (text: string) => /^\s*[[{]/.test(text);
@@ -100,7 +103,7 @@ for (let offset = 0; offset < 12; offset++) {
   rows.push(...(JSON.parse(text) as NseResultRow[]));
 }
 const ofYear = rows.filter((r) => isoDate(r.toDate) === fyEnd && r.xbrl && /\.xml$/i.test(r.xbrl));
-const excluded = { bank: 0, lenderFormat: 0, otherFormat: 0, noFiling: 0, noBalanceSheet: 0, belowFloor: 0, lenderByLoans: 0 };
+const excluded = { financialFlag: 0, lenderFormat: 0, otherFormat: 0, noFiling: 0, noBalanceSheet: 0, belowFloor: 0, lenderByLoans: 0 };
 const bySymbol = new Map<string, NseResultRow[]>();
 for (const row of ofYear) (bySymbol.get(row.symbol) ?? bySymbol.set(row.symbol, []).get(row.symbol)!).push(row);
 log(`${bySymbol.size} companies filed ${fyEnd} annual results with an XBRL instance`);
@@ -123,7 +126,8 @@ const universe: PanelCompany[] = [];
 for (const [symbol, filings] of [...bySymbol].sort(([a], [b]) => a.localeCompare(b))) {
   const sample = filings[0]!;
   const format = sample.xbrl!.split("/").pop()!;
-  if (sample.bank !== "N") { excluded.bank++; continue; }
+  // NSE's "bank" flag marks banks (B) and lenders (F) alike; "N" is everyone else.
+  if (sample.bank !== "N") { excluded.financialFlag++; continue; }
   if (/NBFC_INDAS/i.test(format)) { excluded.lenderFormat++; continue; }
   if (!/^INDAS_\d/i.test(format)) { excluded.otherFormat++; continue; }
   // The group's results where it files them; the original filing, not a revision.
