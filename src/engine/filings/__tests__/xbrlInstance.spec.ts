@@ -85,6 +85,32 @@ describe("extractAnnualHeadline", () => {
     expect(extractAnnualHeadline(parseXbrlInstance(FILING), "2024-03-31").headline.sharesOutstandingCr).toBeNull();
   });
 
+  it("checks the face-value count against profit over EPS, and refuses it when a tag is wrong", () => {
+    const filing = (paidUp: number, face: number, profit: number, eps: number) => FILING.replace("</xbrli:xbrl>", [
+      `<in-capmkt:PaidUpValueOfEquityShareCapital contextRef="FourD" unitRef="INR" decimals="-5">${paidUp}</in-capmkt:PaidUpValueOfEquityShareCapital>`,
+      `<in-capmkt:FaceValueOfEquityShareCapital contextRef="FourD" unitRef="INRPerShare" decimals="INF">${face}</in-capmkt:FaceValueOfEquityShareCapital>`,
+      `<in-capmkt:ProfitOrLossAttributableToOwnersOfParent contextRef="FourD" unitRef="INR" decimals="-5">${profit}</in-capmkt:ProfitOrLossAttributableToOwnersOfParent>`,
+      `<in-capmkt:BasicEarningsLossPerShareFromContinuingAndDiscontinuedOperations contextRef="FourD" unitRef="INRPerShare" decimals="INF">${eps}</in-capmkt:BasicEarningsLossPerShareFromContinuingAndDiscontinuedOperations>`,
+      "</xbrli:xbrl>",
+    ].join("\n"));
+    const shares = (xml: string) => extractAnnualHeadline(parseXbrlInstance(xml), "2024-03-31").headline.sharesOutstandingCr;
+    // Maruti FY24: EPS filed at twice its profit per share; the capital tags stand.
+    expect(shares(filing(1572000000, 5, 134882000000, 858.02))).toBeCloseTo(31.44, 6);
+    // Sun Pharma FY25: face value filed as 719,780.9 against ₹45.6 EPS on ₹10,929 Cr.
+    expect(shares(filing(2399300000, 719780.9, 109290000000, 45.6))).toBeNull();
+  });
+
+  it("counts a life insurer's shares as profit over EPS, its filing tagging no face value", () => {
+    // HDFC Life FY26: ₹1,912.32 Cr at ₹8.86 a share; ₹2,157.82 Cr paid up, at ₹10.
+    const insurer = FILING.replace("</xbrli:xbrl>", [
+      `<in-capmkt:PaidUpEquityShareCapital contextRef="OneI" unitRef="INR" decimals="-5">21578200000</in-capmkt:PaidUpEquityShareCapital>`,
+      `<in-capmkt:ProfitLossAfterTaxAndExtraordinaryItems contextRef="FourD" unitRef="INR" decimals="-5">19123200000</in-capmkt:ProfitLossAfterTaxAndExtraordinaryItems>`,
+      `<in-capmkt:BasicAndDilutedEPSAfterExtraordinaryItemsNetOfTaxExpenseForThePeriodNotToBeAnnualized contextRef="FourD" unitRef="INRPerShare" decimals="INF">8.86</in-capmkt:BasicAndDilutedEPSAfterExtraordinaryItemsNetOfTaxExpenseForThePeriodNotToBeAnnualized>`,
+      "</xbrli:xbrl>",
+    ].join("\n"));
+    expect(extractAnnualHeadline(parseXbrlInstance(insurer), "2024-03-31").headline.sharesOutstandingCr).toBeCloseTo(1912.32 / 8.86, 6);
+  });
+
   it("falls back to a genuine 12-month span when the ID convention is absent", () => {
     const renamed = FILING
       .replace(/id="FourD"/, 'id="Annual"')

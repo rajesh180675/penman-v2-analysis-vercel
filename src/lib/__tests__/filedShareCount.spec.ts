@@ -39,8 +39,7 @@ describe("fetchFiledShareCount", () => {
     }));
     vi.stubGlobal("fetch", fetchMock);
     expect(await fetchFiledShareCount("NESTLEIND")).toEqual(filed);
-    // A filing without a count (LIC's taxonomy tags no paid-up capital) and an
-    // unknown symbol give none.
+    // A filing without a count and an unknown symbol give none.
     expect(await fetchFiledShareCount("LICI")).toBeNull();
     expect(await fetchFiledShareCount("NOSUCH")).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(1);
