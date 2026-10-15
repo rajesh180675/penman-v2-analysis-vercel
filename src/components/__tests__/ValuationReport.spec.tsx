@@ -4,6 +4,7 @@ import ValuationReport from "../ValuationReport";
 import ValuationCommandCenterHero from "../valuation/ValuationCommandCenterHero";
 import AnchorAnalysisGrid from "../valuation/AnchorAnalysisGrid";
 import { computeMoatScore } from "../../engine/moatScoring";
+import { reReoiGap } from "../../engine/reReoiConsistency";
 import { buildValuationCommandCenter } from "../../engine/valuationCommandCenter";
 import type { LiveMarketDataSnapshot } from "../../engine/marketData";
 import type { AnalysisTraceabilityEnvelope, EngineConfig, RecastPeriod } from "../../engine/types";
@@ -203,6 +204,33 @@ describe("ValuationReport", () => {
     expect(html).toMatch(new RegExp(`Base intrinsic value: <strong[^>]*>₹${base.valueAtPriceDate!.toFixed(0)}<`));
     expect(html).toContain("EPV per Share (today&#x27;s count)");
     expect(html).toContain(`₹${(cc.epv!.epvPerShare! / 2).toFixed(0)}<`);
+  });
+
+  // RE and ReOI value one forecast alike only at a value-consistent kw. A
+  // net-cash firm's book-weighted kw (equity 600 on operating assets of 300
+  // and 300 of net cash) sits far above it, and at that kw this tab's two
+  // cards disagreed on the same forecast (TCS: ₹2,416 against ₹1,801).
+  it("values the RE and ReOI cards at a kw that makes them agree", () => {
+    const cashRich = (period_end: string): RecastPeriod => {
+      const p = mkPeriod(period_end);
+      return {
+        ...p,
+        bs: { ...p.bs, NOA: 300, NFO: -300, FA: 450, OA: 550, OL: 250, TA: 1000 },
+        is: { ...p.is, NFE: -15, FinanceIncome: 20, CNI: 115, PAT: 115, TCI: 115 },
+        cu: { ...p.cu, CoreNFE: -15 },
+        ratios: { ...p.ratios, RNOA: 100 / 300, FLEV: -0.5, NBC: 0.05 },
+      } as RecastPeriod;
+    };
+    const config: EngineConfig = { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(100), market_price: INRAbsolute(50) };
+    const html = renderToStaticMarkup(
+      <ValuationReport data={[cashRich("2024-03-31"), cashRich("2025-03-31")]} config={config} analysisStatus={null} traceability={null} itServices={null} />,
+    );
+    const perShare = (title: RegExp) => Number(new RegExp(`${title.source}[\\s\\S]*?₹(-?[\\d.,]+) / share`).exec(html)?.[1]?.replace(/,/g, ""));
+    const re = perShare(/V \(RE · CV3\)/);
+    const reoi = perShare(/V \(ReOI · CV03\)/);
+    expect(Number.isFinite(re) && Number.isFinite(reoi)).toBe(true);
+    expect(reReoiGap(re, reoi)!).toBeLessThan(0.05);
+    expect(html).toContain("Value-weighted, so RE and ReOI agree; structural seed");
   });
 
   it("renders the signal engine and historical dislocation section", () => {
