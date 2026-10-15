@@ -11,6 +11,8 @@ A stress or bull case that means what its name says leaves a minority of filed o
 
 > **Caveat — restated data.** As in the accountability report, Capitaline serves the latest restated figures, so a cutoff can see restatements of its own history.
 
+> **Caveat — common shocks.** Every company forecast from one fiscal year meets the same economy the year after (FY2021's trough and rebound reached all of them), so outcomes within a year are not independent: the cutoff years below, not the observation counts, are the draws. A share measured over a few years says less than its n suggests.
+
 ## All industrial companies (23 companies, 217 cutoffs)
 
 | Metric | Year ahead | n | Below stress | Between | Above bull | Below panic | Stress / base | Bull / base | Filed / base: p10 · p20 · p50 · p80 · p90 |
@@ -21,6 +23,24 @@ A stress or bull case that means what its name says leaves a minority of filed o
 | Sales | 1 | 215 | 35% | 40% | 25% | 27% | 0.95 | 1.07 | 0.88 · 0.92 · 0.99 · 1.08 · 1.17 |
 | Sales | 2 | 191 | 31% | 41% | 27% | 19% | 0.92 | 1.11 | 0.80 · 0.86 · 0.99 · 1.16 · 1.30 |
 | Sales | 3 | 169 | 24% | 47% | 30% | 16% | 0.90 | 1.15 | 0.78 · 0.86 · 0.99 · 1.23 · 1.45 |
+
+## By cutoff year, one year ahead
+
+| Cutoff | Companies | Sales: filed / base (median) | Above base | Above bull | Below stress | CNI: filed / base (median) | Above base | Above bull | Below stress |
+|---|---|---|---|---|---|---|---|---|---|
+| FY2013 | 1 | 0.85 | 0% | 0% | 100% | 0.11 | 0% | 0% | 100% |
+| FY2014 | 2 | 1.11 | 50% | 50% | 50% | -8.89 | 0% | 0% | 100% |
+| FY2015 | 17 | 0.90 | 24% | 6% | 65% | 1.01 | 47% | 18% | 12% |
+| FY2016 | 20 | 0.98 | 40% | 35% | 25% | 1.02 | 60% | 15% | 15% |
+| FY2017 | 20 | 1.00 | 50% | 20% | 35% | 1.02 | 60% | 20% | 15% |
+| FY2018 | 20 | 1.04 | 85% | 35% | 5% | 1.04 | 65% | 10% | 10% |
+| FY2019 | 21 | 0.93 | 14% | 10% | 57% | 0.95 | 38% | 19% | 19% |
+| FY2020 | 22 | 0.94 | 27% | 14% | 59% | 0.99 | 41% | 14% | 32% |
+| FY2021 | 22 | 1.11 | 82% | 59% | 5% | 1.05 | 64% | 36% | 14% |
+| FY2022 | 22 | 1.05 | 91% | 50% | 5% | 1.05 | 55% | 32% | 18% |
+| FY2023 | 22 | 0.93 | 27% | 18% | 55% | 0.98 | 45% | 23% | 9% |
+| FY2024 | 23 | 0.97 | 26% | 4% | 39% | 0.95 | 30% | 13% | 9% |
+| FY2025 | 3 | 0.99 | 0% | 0% | 33% | 0.96 | 33% | 0% | 0% |
 
 ## By company, one year ahead
 

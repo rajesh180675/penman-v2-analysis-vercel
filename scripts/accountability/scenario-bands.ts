@@ -77,6 +77,11 @@ const table = (rows: readonly ScenarioBandSummary[]) => [
   ...rows.map((r) => `| ${r.metric === "sales" ? "Sales" : "CNI"} | ${r.horizon} | ${r.n} | ${pct(r.below)} | ${pct(r.within)} | ${pct(r.above)} | ${pct(r.belowPanic)} | ${ratio(r.stressToBase)} | ${ratio(r.bullToBase)} | ${r.actualToBase ? [r.actualToBase.p10, r.actualToBase.p20, r.actualToBase.p50, r.actualToBase.p80, r.actualToBase.p90].map(ratio).join(" · ") : "—"} |`),
 ];
 const oneYear = (f: BandsFile, metric: "sales" | "cni") => summarizeScenarioBands(f.observations!.filter((o) => o.metric === metric && o.horizon === 1))[0];
+// One year ahead, by the cutoff's fiscal year: outcomes in one year share its
+// macro shocks, so the years, not the observations, are the independent draws.
+const cutoffYears = [...new Set(all.map((o) => o.cutoffPeriod.slice(0, 4)))].sort();
+const byYear = (year: string, metric: "sales" | "cni") =>
+  summarizeScenarioBands(all.filter((o) => o.metric === metric && o.horizon === 1 && o.cutoffPeriod.startsWith(year)))[0];
 
 const report = [
   "# Scenario band coverage",
@@ -92,9 +97,25 @@ const report = [
   "",
   "> **Caveat — restated data.** As in the accountability report, Capitaline serves the latest restated figures, so a cutoff can see restatements of its own history.",
   "",
+  "> **Caveat — common shocks.** Every company forecast from one fiscal year meets the same economy the year after (FY2021's trough and rebound reached all of them), so outcomes within a year are not independent: the cutoff years below, not the observation counts, are the draws. A share measured over a few years says less than its n suggests.",
+  "",
   `## All industrial companies (${scored.length} companies, ${cutoffs} cutoffs)`,
   "",
   ...table(summarizeScenarioBands(all)),
+  "",
+  "## By cutoff year, one year ahead",
+  "",
+  "| Cutoff | Companies | Sales: filed / base (median) | Above base | Above bull | Below stress | CNI: filed / base (median) | Above base | Above bull | Below stress |",
+  "|---|---|---|---|---|---|---|---|---|---|",
+  ...cutoffYears.map((year) => {
+    const sales = byYear(year, "sales");
+    const cni = byYear(year, "cni");
+    const aboveBase = (metric: "sales" | "cni") => {
+      const s = all.filter((o) => o.metric === metric && o.horizon === 1 && o.cutoffPeriod.startsWith(year));
+      return s.length ? s.filter((o) => o.actual > o.base).length / s.length : null;
+    };
+    return `| FY${year} | ${sales?.n ?? 0} | ${ratio(sales?.actualToBase?.p50)} | ${pct(aboveBase("sales"))} | ${pct(sales?.above)} | ${pct(sales?.below)} | ${ratio(cni?.actualToBase?.p50)} | ${pct(aboveBase("cni"))} | ${pct(cni?.above)} | ${pct(cni?.below)} |`;
+  }),
   "",
   "## By company, one year ahead",
   "",
