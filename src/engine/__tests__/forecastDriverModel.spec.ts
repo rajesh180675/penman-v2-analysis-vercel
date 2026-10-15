@@ -312,6 +312,31 @@ describe("buildDriverForecastModel — scenario margin ordering", () => {
     expect(panic).toBeLessThanOrEqual(base!);
     expect(bull).toBeGreaterThanOrEqual(base!);
   });
+
+  // Calibrated on filed outcomes (scenario-band-coverage.md): at 1.03–1.10×
+  // base's margin and 1.08–1.20× its growth the bull sat a sales point or two
+  // above base and was beaten ~40% of the time; it now starts 12 points of
+  // growth and 14% of margin above base, whatever the persistence.
+  it("starts the bull 12 points of growth and 14% of margin above base", () => {
+    const plan = (scenarioKey: string, growth: number) => {
+      const data = ["2021", "2022", "2023", "2024"].map((y) =>
+        mkPeriod(`${y}-03-31`, { CoreSalesPM: 0.14, PM: 0.14, ATO: 1.2, Sales_growth: growth }));
+      return buildDriverForecastModel({
+        data,
+        latest: data[data.length - 1],
+        businessModel: buildBusinessModelProfile(data),
+        normalized: buildCyclicalNormalization(data),
+        scenarioKey,
+        template,
+      } as never).year1;
+    };
+    const base = plan("base", 0.06);
+    const bull = plan("bull", 0.06);
+    expect(bull.salesGrowth).toBeCloseTo(base.salesGrowth + 0.12, 12);
+    expect(bull.coreMargin).toBeCloseTo(base.coreMargin * 1.14, 12);
+    // The bull's growth ceiling still binds: max(24%, normalized growth + 8pp).
+    expect(plan("bull", 0.2).salesGrowth).toBeCloseTo(0.24, 12);
+  });
 });
 
 

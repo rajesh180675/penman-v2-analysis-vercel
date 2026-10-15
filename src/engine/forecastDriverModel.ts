@@ -154,6 +154,7 @@ export function buildDriverForecastModel(args: {
   const baseMarginStart = clamp(latestMargin ?? marginAnchor, -0.5, 0.6);
   const scaleMargin = (factor: number) =>
     clamp(baseMarginStart + (factor - 1) * Math.abs(baseMarginStart), -0.5, 0.6);
+  const baseGrowthStart = clamp(blendedSalesGrowth, 0.01, Math.max(0.18, template.normalizedGrowth + 0.03));
   const scenarioPresets = {
     stress: {
       growthStart: clamp(blendedSalesGrowth * (0.35 + persistence * 0.05) - 0.01, -0.04, 0.08),
@@ -161,7 +162,7 @@ export function buildDriverForecastModel(args: {
       atoStart: baseAtoStart * (0.86 + persistence * 0.04),
     },
     base: {
-      growthStart: clamp(blendedSalesGrowth, 0.01, Math.max(0.18, template.normalizedGrowth + 0.03)),
+      growthStart: baseGrowthStart,
       // The margin starts from the evidence, losses included. A +4% floor
       // forecast every loss-maker as profitable in year 1 — the largest single
       // source of the base forecast's CNI optimism in the walk-forward backtest
@@ -170,9 +171,16 @@ export function buildDriverForecastModel(args: {
       marginStart: baseMarginStart,
       atoStart: baseAtoStart,
     },
+    // Calibrated on filed outcomes (docs/generated/scenario-band-coverage.md).
+    // Growth 1.08–1.20× base's and margin 1.03–1.10× put the bull a sales
+    // point or two above base: filed sales beat it 41% of the time a year out
+    // and earnings 33%, where an upside case should be beaten about one time in
+    // five. Fitted to that on cutoffs to FY2019 (12 points of start growth
+    // above base, 14% more margin) and tested on FY2020 onward, the share
+    // beating it a year out fell from 41% to 28% (sales) and 38% to 23% (CNI).
     bull: {
-      growthStart: clamp(blendedSalesGrowth * (1.08 + persistence * 0.12), 0.03, Math.max(0.24, template.normalizedGrowth + 0.08)),
-      marginStart: scaleMargin(1.03 + persistence * 0.07),
+      growthStart: clamp(baseGrowthStart + 0.12, 0.03, Math.max(0.24, template.normalizedGrowth + 0.08)),
+      marginStart: scaleMargin(1.14),
       atoStart: baseAtoStart * (0.99 + persistence * 0.04),
     },
     "historical-panic": {
