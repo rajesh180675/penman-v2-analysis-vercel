@@ -156,8 +156,14 @@ export function buildDriverForecastModel(args: {
     clamp(baseMarginStart + (factor - 1) * Math.abs(baseMarginStart), -0.5, 0.6);
   const baseGrowthStart = clamp(blendedSalesGrowth, 0.01, Math.max(0.18, template.normalizedGrowth + 0.03));
   const scenarioPresets = {
+    // Calibrated on filed outcomes as the bull is (below). Stress growth started
+    // at a third of the blended growth and faded to base's target, which put
+    // stress sales only 5% below base a year out: filed sales fell below it 35%
+    // of the time (CNI 16%). Fitted to 20% on cutoffs to FY2019 (growth starting
+    // 18 points below base's, margin unchanged) and tested on FY2020 onward,
+    // the share below it a year out fell from 32% to 18% (sales), CNI 15% → 14%.
     stress: {
-      growthStart: clamp(blendedSalesGrowth * (0.35 + persistence * 0.05) - 0.01, -0.04, 0.08),
+      growthStart: clamp(baseGrowthStart - 0.18, -0.04, 0.08),
       marginStart: scaleMargin(0.62 + persistence * 0.08),
       atoStart: baseAtoStart * (0.86 + persistence * 0.04),
     },
@@ -183,8 +189,13 @@ export function buildDriverForecastModel(args: {
       marginStart: scaleMargin(1.14),
       atoStart: baseAtoStart * (0.99 + persistence * 0.04),
     },
+    // Below the stress on sales too: from a blended-growth start it sat above
+    // the recalibrated stress in 572 of 575 walk-forward observations. 24
+    // points below base's start reaches the −8% floor for nearly every company
+    // (gaps beyond it change nothing); filed sales fall below it 13% of the
+    // time a year out (to FY2019) and 12% (FY2020 onward).
     "historical-panic": {
-      growthStart: clamp(blendedSalesGrowth * 0.12 - 0.02, -0.08, 0.04),
+      growthStart: clamp(baseGrowthStart - 0.24, -0.08, 0.04),
       marginStart: scaleMargin(0.5),
       atoStart: baseAtoStart * 0.82,
     },

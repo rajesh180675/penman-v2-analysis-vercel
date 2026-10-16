@@ -337,6 +337,32 @@ describe("buildDriverForecastModel — scenario margin ordering", () => {
     // The bull's growth ceiling still binds: max(24%, normalized growth + 8pp).
     expect(plan("bull", 0.2).salesGrowth).toBeCloseTo(0.24, 12);
   });
+
+  // Calibrated likewise: from a third of the blended growth, faded to base's
+  // target, stress sales sat 5% below base a year out and filed sales fell
+  // below them 35% of the time. The stress now starts 18 points of growth
+  // below base and the panic 24, each inside its floor and cap.
+  it.each([0.06, 0.2])("starts the stress 18 and the panic 24 points of growth below base, panic lowest (growth %s)", (growth) => {
+    const plan = (scenarioKey: string) => {
+      const data = ["2021", "2022", "2023", "2024"].map((y) =>
+        mkPeriod(`${y}-03-31`, { CoreSalesPM: 0.14, PM: 0.14, ATO: 1.2, Sales_growth: growth }));
+      return buildDriverForecastModel({
+        data,
+        latest: data[data.length - 1],
+        businessModel: buildBusinessModelProfile(data),
+        normalized: buildCyclicalNormalization(data),
+        scenarioKey,
+        template,
+      } as never).year1;
+    };
+    const base = plan("base").salesGrowth;
+    const stress = plan("stress").salesGrowth;
+    const panic = plan("historical-panic").salesGrowth;
+    expect(stress).toBeCloseTo(Math.min(Math.max(base - 0.18, -0.04), 0.08), 12);
+    expect(panic).toBeCloseTo(Math.min(Math.max(base - 0.24, -0.08), 0.04), 12);
+    expect(panic).toBeLessThan(stress);
+    expect(stress).toBeLessThan(base);
+  });
 });
 
 
