@@ -64,6 +64,21 @@ describe("cash and bank balances", () => {
   });
 });
 
+describe("loans given", () => {
+  // TCS FY21: inter-corporate deposits under "Loans", whose interest is finance income.
+  const loans = { "Loans - Long - Term__BalanceSheet": 29, "Loans - Short-term__BalanceSheet": 11_472 };
+
+  it("counts the Ind AS loans lines as financial assets", () => {
+    const bs = recastBalanceSheet(period({ "Cash and Cash Equivalents__BalanceSheet": 1_000, ...loans }), DEFAULT_CONFIG);
+    expect(bs.FA).toBeCloseTo(1_000 + 29 + 11_472, 6);
+  });
+
+  it("leaves them operating where they carry a consolidated lending arm's loan book", () => {
+    const bs = recastBalanceSheet(period({ "Cash and Cash Equivalents__BalanceSheet": 1_000, ...loans }), { ...DEFAULT_CONFIG, ticker: "M&M" });
+    expect(bs.FA).toBeCloseTo(1_000, 6);
+  });
+});
+
 describe("deposits held as investments", () => {
   it("does not add certificates of deposit again beside the Current Investments total that holds them", () => {
     // ITC FY23: Current Investments 17,232.86 = mutual funds 9,425.09 + CDs
