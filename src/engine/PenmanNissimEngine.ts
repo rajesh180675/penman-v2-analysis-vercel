@@ -30,10 +30,14 @@ import { extractShareCountInput } from "./PenmanNissimEngine/picking";
 import { computeQuality } from "./PenmanNissimEngine/quality";
 export { computeQuality };
 
-export function computeRecastPeriod(data: RawPeriodData, cfg: EngineConfig, prevPeriod?: RecastPeriod): RecastPeriod {
+export function computeRecastPeriod(
+  data: RawPeriodData, cfg: EngineConfig, prevPeriod?: RecastPeriod,
+  /** The year's normal tax rate over the years before it (PenmanNissimEngine/unusualTax). */
+  normalTaxRate: number | null = null,
+): RecastPeriod {
   const trace: TraceMap = {};
   const bs = recastBalanceSheet(data, cfg, trace);
-  const { is_, cu } = recastIncome(data, bs, cfg, trace);
+  const { is_, cu } = recastIncome(data, bs, cfg, trace, normalTaxRate);
   const cf = recastCashFlow(data, is_, bs, prevPeriod?.bs, trace);
   const spec_flags = buildMissingRequiredLineFlags(trace, data.period_end);
   const recastDebug = extractRecastDebug(data, bs);

@@ -248,7 +248,7 @@ export function detectMetricStepChanges(
             "S-5.3", Severity.WARNING, "INCREMENTAL_MARGIN_ITEMIZED",
             `Incremental margin = ${(incr_margin * 100).toFixed(0)}% on OI ` +
             `(ΔOI ₹${ΔOI.toFixed(0)} / ΔRev ₹${ΔRev.toFixed(0)}) but ${(coreIncrMargin * 100).toFixed(0)}% on core OI: ` +
-            `the one-time item is filed as exceptional, discontinued or OCI, and the core forecast excludes it.`,
+            `the one-time item is filed as exceptional, discontinued or OCI, or is unusual tax, and the core forecast excludes it.`,
             false, cur.period_end
           ));
         } else if (outOfBand(incr_margin)) {

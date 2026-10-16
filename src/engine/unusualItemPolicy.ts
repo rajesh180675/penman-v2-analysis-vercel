@@ -363,6 +363,22 @@ export function buildUnusualItemPolicy(period: RecastPeriod): UnusualItemPolicyS
     );
   }
 
+  const unusualTax = period.cu.UnusualTaxBenefit ?? 0;
+  if (unusualTax !== 0) {
+    operatingBuckets.push(
+      makeBucket(
+        "unusual_tax",
+        "Unusual tax",
+        unusualTax,
+        false,
+        true,
+        false,
+        false,
+        `Filed tax rate ${((period.is.filedTaxRate ?? 0) * 100).toFixed(1)}% against a normal ${(period.is.taxRate * 100).toFixed(1)}%: the difference is excluded from Core OI.`,
+      ),
+    );
+  }
+
   if (ufe !== 0) {
     financialBuckets.push(
       makeBucket(

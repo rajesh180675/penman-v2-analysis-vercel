@@ -246,6 +246,7 @@ export function buildRecastSheet(recastData: RecastPeriod[]): WorkSheet {
     ["  — Exceptional Items (after tax)", p => p.cu.ExceptionalOperatingItemsAfterTax ?? p.cu.ExceptionalItemsAfterTax],
     ["  — Discontinued Operations (after tax)", p => p.cu.DiscontinuedOperationsAfterTax ?? null],
     ["  — OCI treated as unusual", p => p.cu.OCITotal],
+    ["  — Unusual tax", p => p.cu.UnusualTaxBenefit ?? null],
     ["Net Financial Expense (NFE)", p => p.is.NFE],
     ["  — Core NFE", p => p.cu.CoreNFE],
     ["  — Unusual financing items", p => p.cu.UFE],
@@ -258,7 +259,8 @@ export function buildRecastSheet(recastData: RecastPeriod[]): WorkSheet {
     ["Bridge Core OI", p => p.is.operatingCostBridge?.bridgeCoreOI ?? null],
     ["Minority Interest Income (MII)", p => p.is.MII],
     ["COMPREHENSIVE NET INCOME (CNI)", p => p.is.CNI],
-    ["Tax Rate (effective)", p => p.is.taxRate],
+    ["Tax Rate (effective)", p => p.is.filedTaxRate ?? p.is.taxRate],
+    ["Tax Rate (applied)", p => p.is.taxRate],
   ];
 
   for (const [label, fn] of isRows) {

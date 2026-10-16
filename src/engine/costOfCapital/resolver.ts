@@ -247,7 +247,7 @@ export function resolveCostOfCapital(input: ResolveCostOfCapitalInput): CostOfCa
       : "confirmed";
   const evidence: CostEvidence[] = [...equity.evidence, ...debt.evidence, {
     component: "tax",
-    source: input.current?.is.taxRate != null ? "Selected-period effective tax rate" : "Configuration tax rate",
+    source: input.current?.is.taxRate != null ? "Selected-period tax rate (its normal rate where the filed one is unusual)" : "Configuration tax rate",
     asOf: input.current?.period_end ?? null,
     value: taxRate,
     evidenceRefs: [],

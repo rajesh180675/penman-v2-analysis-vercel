@@ -52,7 +52,7 @@ describe("frozen forecast snapshots", () => {
   }, 120_000);
 
   it("freezes nothing for a run the app stops before its valuation, and says why", async () => {
-    const { company, state } = await appRun("BHARTIARTL");
+    const { company, state } = await appRun("PAYTM");
     expect(state.result.materialization.commandCenter).toBeNull();
 
     const snapshot = snapshotFromAppRun(state, company, MADE_AT);

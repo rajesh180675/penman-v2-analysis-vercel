@@ -68,6 +68,7 @@ describe("annualizePeriods", () => {
     expect(at("2024-03-31").cf.CFO).toBeCloseTo(filedAt("2024-03-31").cf.CFO * 12 / 15, 6);
     // A rate is not a flow.
     expect(at("2024-03-31").is.taxRate).toBe(filedAt("2024-03-31").is.taxRate);
+    expect(at("2024-03-31").is.filedTaxRate).toBe(filedAt("2024-03-31").is.filedTaxRate);
     expect(at("2024-03-31").bs).toEqual(filedAt("2024-03-31").bs);
   });
 

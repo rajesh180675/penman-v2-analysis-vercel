@@ -23,6 +23,7 @@ import {
 } from "../types";
 import { CapitalineMappingSpec as M } from "../mappingSpec";
 import { findLendingArmLink } from "../lendingArm/links";
+import { isUnusualTaxRate } from "./unusualTax";
 import {
   pushTrace,
   sumWithDistinctSource,
@@ -340,7 +341,11 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   };
 }
 
-export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg: EngineConfig, trace?: TraceMap): { is_: CanonicalIncome; cu: CoreUnusual } {
+export function recastIncome(
+  data: RawPeriodData, bs: CanonicalBalanceSheet, cfg: EngineConfig, trace?: TraceMap,
+  /** The year's normal tax rate (normalTaxRate over the years before it); null leaves the filed rate. */
+  normalRate: number | null = null,
+): { is_: CanonicalIncome; cu: CoreUnusual } {
   const pl = (line: string, keys: readonly string[]) => valPL(data, keys, line, trace);
   const cf = (line: string, keys: readonly string[]) => valCF(data, keys, line, trace);
 
@@ -358,10 +363,18 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   const TaxExpense = standardLayout ? PBT - PAT : TaxExpenseFiled;
 
   let taxRate = cfg.statutory_tax_rate;
+  let filedTaxRate: number | null = cfg.tax_rate_mode === "effective" ? null : taxRate;
   if (cfg.tax_rate_mode === "effective" && PBT > 0) {
     const eff = TaxExpense / PBT;
-    if (Number.isFinite(eff) && eff > 0.01 && eff < 0.55) taxRate = eff;
+    if (Number.isFinite(eff) && eff > 0.01 && eff < 0.55) taxRate = filedTaxRate = eff;
   }
+  // A year filed far from its normal rate is taxed at the normal rate
+  // throughout (the NFE shield, exceptional items, UFE), and the rest of its
+  // tax is an unusual operating item (./unusualTax): OI = CNI + NFE then
+  // exceeds the year's OI taxed at the normal rate by exactly that item.
+  const unusualTax = isUnusualTaxRate(filedTaxRate, normalRate);
+  if (unusualTax) taxRate = normalRate;
+  const UnusualTaxBenefit = unusualTax ? taxRate * PBT - TaxExpense : 0;
 
   const OCI = pl("IS.OCI.NotReclass", M.profitLoss.ociNotReclass) + pl("IS.OCI.Reclass", M.profitLoss.ociReclass) + pl("IS.OCI.Unspecified", M.profitLoss.ociUnspecified);
   // The standard layout's minority line is signed opposite to Ind AS.
@@ -528,7 +541,7 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
   const grossProfit = Sales - COGS;
   const operatingCosts = employeeCost + depreciation + sgaTotal + sectorSpecificOperatingExpense + otherOperatingExpense;
   const OCITotal = cfg.oci_treated_as_unusual ? OCI : 0;
-  const UOI = ExceptionalItemsAfterTax + OCITotal;
+  const UOI = ExceptionalItemsAfterTax + OCITotal + UnusualTaxBenefit;
   const CoreOI = OI - UOI;
   // Core OI carries the associates' share (it is inside PBT), so the bridge
   // must too: Maruti FY24's whole gap was it plus the internal-components line.
@@ -563,7 +576,7 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
 
   return {
     is_: {
-      Sales, TaxExpense, taxRate, PAT, OCI, TCI, TCI_NCI,
+      Sales, TaxExpense, taxRate, filedTaxRate, PAT, OCI, TCI, TCI_NCI,
       CNI, FinanceCost, FinanceIncome, FinanceIncomeRung,
       PreferredDividend, NFE, OI, OtherItems, OI_from_sales, MII,
       COGS,
@@ -613,6 +626,7 @@ export function recastIncome(data: RawPeriodData, bs: CanonicalBalanceSheet, cfg
       OCITotal,
       ExceptionalOperatingItemsAfterTax: exceptionalOperatingAfterTax,
       DiscontinuedOperationsAfterTax: discontinuedAfterTax,
+      UnusualTaxBenefit,
     },
   };
 }

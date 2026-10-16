@@ -41,7 +41,6 @@ const MODEL_GAP_ALLOWLIST: Record<string, string> = {};
  * before its valuation fails here rather than passing as "blocked".
  */
 const VALUATION_BLOCKED_ALLOWLIST: Record<string, string> = {
-  BHARTIARTL: "terminal period has 2 anchor flags (score 4); held at structurally-reconciled",
   IDEA: "terminal period structurally compromised (4 flags, score 8); held at structurally-reconciled",
   PAYTM: "terminal period has 2 anchor flags (score 3); held at structurally-reconciled",
 };

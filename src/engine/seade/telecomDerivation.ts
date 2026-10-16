@@ -112,7 +112,7 @@ function deriveCashTaxRate(periods: readonly RecastPeriod[], config: EngineConfi
   if (taxRate != null && taxRate > 0.01 && taxRate < 0.55) {
     return {
       value: clamp(taxRate, 0, 0.5),
-      prov: prov(["is.taxRate"], "Latest-period effective tax rate", "high"),
+      prov: prov(["is.taxRate"], "Latest-period tax rate (its normal rate where the filed one is unusual)", "high"),
     };
   }
   return {
