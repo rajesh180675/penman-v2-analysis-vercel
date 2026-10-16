@@ -162,6 +162,13 @@ export interface ForecastScenario {
      * leverage ratio to be well-conditioned (net cash ≈ equity).
      */
     nfo_level?: number[] | undefined;
+    /**
+     * Net payout to owners (₹). When set, equity rolls forward on clean
+     * surplus (CSE_f = CSE_prev + CNI_f − payout) and NFO funds the rest of
+     * NOA. Set to 0 from an anchor with negative equity, where no leverage
+     * ratio can be held.
+     */
+    owner_payout?: number[] | undefined;
     material_cost_ratio?: number[] | undefined;
     employee_cost_ratio?: number[] | undefined;
     depreciation_ratio?: number[] | undefined;

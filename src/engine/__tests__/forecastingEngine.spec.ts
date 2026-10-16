@@ -612,6 +612,38 @@ describe("persistence forecast — minority interest and an ill-conditioned bala
 
   it("keeps held leverage when operating assets are material", () => {
     expect(deriveBase([mkLatest("2025-03-31")]).drivers.nfo_level).toBeUndefined();
+    expect(deriveBase([mkLatest("2025-03-31")]).drivers.owner_payout).toBeUndefined();
+  });
+
+  // Vodafone Idea FY2025: net debt above the business, equity negative, losing money.
+  function negativeEquity(): RecastPeriod {
+    const latest = mkLatest("2025-03-31");
+    return {
+      ...latest,
+      bs: { ...latest.bs, CSE: -70320, MI: 0, NOA: 159631, NFO: 229952 },
+      is: { ...latest.is, Sales: 43571, NFE: 17625, CNI: -27401, OI: -9775, MII: 0 },
+    };
+  }
+
+  it("rolls negative equity forward on clean surplus, so debt funds the losses", () => {
+    const latest = negativeEquity();
+    const scenario = deriveBase([latest]);
+    expect(scenario.drivers.owner_payout?.[0]).toBe(0);
+
+    const forecast = buildScenario(scenario, latest);
+    let previous = { CSE: latest.bs.CSE, NFO: latest.bs.NFO };
+    for (const f of forecast) {
+      // Nothing paid out or raised, and NFO funds the rest of NOA.
+      expect(f.CSE_f).toBeCloseTo(previous.CSE + f.CNI_f, 6);
+      expect(f.CSE_f + f.NFO_f + f.MI_f!).toBeCloseTo(f.NOA_f, 6);
+      expect(f.NFE_f).toBeCloseTo(f.nbc_assumption * (previous.NFO + f.NFO_f) / 2, 6);
+      previous = { CSE: f.CSE_f, NFO: f.NFO_f };
+    }
+    expect(forecast[0]!.CNI_f).toBeLessThan(0);
+    expect(forecast[0]!.CSE_f).toBeLessThan(latest.bs.CSE);
+    // Held leverage divided NFO by the ₹1 Cr floor: equity ~₹1 Cr in year 1.
+    const ratioOnly = buildScenario({ ...scenario, drivers: { ...scenario.drivers, owner_payout: undefined } }, latest);
+    expect(Math.abs(ratioOnly[0]!.CSE_f)).toBeLessThan(1);
   });
 });
 

@@ -190,6 +190,13 @@ export function derivePersistenceForecastScenario(params: {
   // anchor's ₹ level instead.
   const noaToEquity = latest.bs.CSE > 0 ? latest.bs.NOA / latest.bs.CSE : null;
   const holdNfo = noaToEquity != null && noaToEquity < MIN_NOA_TO_CSE_FOR_HELD_LEVERAGE;
+  // With negative equity no leverage ratio can be held: flev divided NFO by
+  // the ₹1 Cr floor (Vodafone Idea FY2021: flev 211,345), so forecast equity was
+  // ~₹1 Cr from year 1. That erased the −₹38,228 Cr deficit and funded every
+  // forecast loss with new equity, not debt: forecast NFO a year out was
+  // ₹145,425 Cr against ₹222,232 Cr filed. Equity instead rolls forward on
+  // clean surplus, with nothing paid out or raised.
+  const equityDeficit = latest.bs.CSE <= 0;
   const terminalAnchorSource = driverPlan.companyEvidenceWeight >= 0.65
     ? "company-evidence"
     : driverPlan.companyEvidenceWeight >= 0.45
@@ -277,6 +284,7 @@ export function derivePersistenceForecastScenario(params: {
       mi_ratio: Array(horizon).fill(miRatio),
       mii_share: Array(horizon).fill(miiShare),
       ...(holdNfo ? { nfo_level: Array(horizon).fill(latest.bs.NFO) } : {}),
+      ...(equityDeficit ? { owner_payout: Array(horizon).fill(0) } : {}),
       g_terminal: preset.terminalGrowth,
       ke: preset.ke,
       kw: preset.kw,
@@ -298,6 +306,7 @@ export function buildForecastPeriod(
     mi_ratio?: number | null | undefined;
     mii_share?: number | null | undefined;
     nfo_level?: number | null | undefined;
+    owner_payout?: number | null | undefined;
     material_cost_ratio?: number | null | undefined;
     employee_cost_ratio?: number | null | undefined;
     depreciation_ratio?: number | null | undefined;
@@ -341,19 +350,26 @@ export function buildForecastPeriod(
   const OI_f    = effectiveCorePm * Sales_f;
   const FCF_f   = OI_f - ΔNOA_f;
   // NOA = CSE + NFO + MI, with MI = mi_ratio × CSE. NFO is either held as a
-  // ratio to CSE (flev) or, where that is ill-conditioned, at a ₹ level.
+  // ratio to CSE (flev) or, where that is ill-conditioned, at a ₹ level. With
+  // an owner payout, equity rolls forward on clean surplus instead, solved
+  // with the NFE its own NFO incurs: CSE_f = CSE_prev + CNI_f − payout.
   const miRatio = drivers.mi_ratio ?? 0;
+  const miiShare = drivers.mii_share ?? 0;
+  const halfNbc = drivers.nbc / 2;
   const equityFromLevel = drivers.nfo_level != null ? (NOA_f - drivers.nfo_level) / (1 + miRatio) : null;
   const leverageDenominator = 1 + drivers.flev + miRatio;
-  const CSE_f   = equityFromLevel != null && equityFromLevel > 0
-    ? equityFromLevel
-    : leverageDenominator > 0 ? NOA_f / leverageDenominator : NOA_f;
+  const CSE_f   = drivers.owner_payout != null
+    ? (prevForecast.CSE_f - drivers.owner_payout + (1 - miiShare) * (OI_f - halfNbc * (prevForecast.NFO_f + NOA_f)))
+      / (1 - (1 - miiShare) * halfNbc * (1 + miRatio))
+    : equityFromLevel != null && equityFromLevel > 0
+      ? equityFromLevel
+      : leverageDenominator > 0 ? NOA_f / leverageDenominator : NOA_f;
   const MI_f    = miRatio * CSE_f;
   const NFO_f   = NOA_f - CSE_f - MI_f;
   const NFE_f   = drivers.nbc * (prevForecast.NFO_f + NFO_f) / 2;
   // OI is the group's (NOA carries every subsidiary in full); the minority's
   // share of income after financing comes out before common earnings.
-  const MII_f   = (drivers.mii_share ?? 0) * (OI_f - NFE_f);
+  const MII_f   = miiShare * (OI_f - NFE_f);
   const CNI_f   = OI_f - NFE_f - MII_f;
   const RE_f    = CNI_f - ke * prevForecast.CSE_f;
   const ReOI_f  = OI_f - kw * prevForecast.NOA_f;
@@ -443,6 +459,7 @@ export function buildScenario(
         mi_ratio: pickOptionalDriverValue(d.mi_ratio, idx),
         mii_share: pickOptionalDriverValue(d.mii_share, idx),
         nfo_level: pickOptionalDriverValue(d.nfo_level, idx),
+        owner_payout: pickOptionalDriverValue(d.owner_payout, idx),
         material_cost_ratio: pickOptionalDriverValue(d.material_cost_ratio, idx),
         employee_cost_ratio: pickOptionalDriverValue(d.employee_cost_ratio, idx),
         depreciation_ratio: pickOptionalDriverValue(d.depreciation_ratio, idx),
