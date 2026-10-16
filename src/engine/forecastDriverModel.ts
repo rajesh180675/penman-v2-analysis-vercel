@@ -103,7 +103,15 @@ export function buildDriverForecastModel(args: {
   // +₹71k Cr, 15× its capex). Walk-forward, 204 origins: turnover held at the
   // cutoff predicts NOA one year ahead with mean |log error| 0.142 against the
   // blend's 0.241 (bias +1% vs −10%), and still wins at three years ahead.
-  const startAto = yearEndAto(latest) ?? historicalYearEndAto ?? positive(normalized.normalizedAto) ?? 1;
+  // It holds it however small NOA is: a near-zero NOA is no base for the
+  // long-run median, but it is what the company holds. Skipping it sent the
+  // start to the median of older years (Maruti FY2018, NOA 9.8% of sales:
+  // forecast NOA rose 3.8× in a year) or, with no year counted, to 1× (HUL
+  // before FY21: forecast NOA = sales, 20–140× what it held). At the 14
+  // walk-forward cutoffs this moves, one-year NOA error fell from 31% to 9%
+  // of sales.
+  const latestYearEndAto = positive(latest.is.Sales / latest.bs.NOA);
+  const startAto = latestYearEndAto ?? historicalYearEndAto ?? positive(normalized.normalizedAto) ?? 1;
 
   const growthGuardrailBand = template.growthGuardrailBand ?? 0.04;
   const marginGuardrailBand = template.marginGuardrailBand ?? 0.05;
@@ -145,8 +153,10 @@ export function buildDriverForecastModel(args: {
   // The named scenarios scale base's turnover rather than clamping to fixed
   // bounds of their own: bull's old 2.8x ceiling sat at half a 5x firm's base
   // turnover, and stress's 0.35x floor above a 0.2x utility's, each inverting
-  // the scenario's capital charge against base.
-  const baseAtoStart = clamp(startAto, 0.1, 8);
+  // the scenario's capital charge against base. The 8x ceiling bounds the
+  // long-run target, not the start: capped, HUL's 23–30x start still put
+  // forecast NOA at 3–4x what it held.
+  const baseAtoStart = Math.max(startAto, 0.1);
   // Margin likewise, scaled by its magnitude so a loss-maker's stress case
   // loses more, not less: 0.62 × a −20% margin is −12%, above base. Bull's
   // old 34% ceiling sat below a 46% utility's base, and stress's +2% floor
@@ -231,7 +241,7 @@ export function buildDriverForecastModel(args: {
       atoAlpha,
     },
     capitalIntensityNarrative: [
-      `ATO anchor ${atoTarget.toFixed(2)}x versus latest ${(yearEndAto(latest) ?? 0).toFixed(2)}x (year-end NOA).`,
+      `ATO anchor ${atoTarget.toFixed(2)}x versus latest ${(latestYearEndAto ?? 0).toFixed(2)}x (year-end NOA).`,
       workingCapitalPressure === "high"
         ? "Working-capital drag is elevated and reduces persistence confidence."
         : "Working-capital drag is contained enough to avoid extra fade pressure.",
