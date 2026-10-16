@@ -22,6 +22,7 @@ import {
   SpecFlag,
 } from "../types";
 import { CapitalineMappingSpec as M } from "../mappingSpec";
+import { findLendingArmLink } from "../lendingArm/links";
 import {
   pushTrace,
   sumWithDistinctSource,
@@ -164,9 +165,20 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   const divRec = bs("BS.FA.DividendReceivable", ["Dividend Receivable"]);
   const derivRec = bs("BS.FA.DerivativeReceivable", ["Derivative Receivables / Forward Contract Receivable"]) || bs("BS.FA.ForwardContractReceivable", ["Forward Contract Receivable"]);
   const otherFA = otherFA_base > 0 ? otherFA_base : (interestRec + divRec + derivRec);
-  let FA = cashBank + curInv + ltInv + depAndRestricted + otherFA;
+  // Loans given are a financial-asset line of the Ind AS balance sheet, like
+  // "Others Financial Assets" above, and the interest they earn is already
+  // finance income: left in operating assets, they sat in RNOA's denominator
+  // but not its numerator. TCS's inter-corporate deposits reached ₹11,229 Cr in
+  // FY21 (22% of NOA); Britannia's loans were 30–44% of NOA in FY16–20. Where
+  // the group lends as a business (a consolidated lending arm: M&M, L&T,
+  // Grasim), these lines carry the arm's loan book, which is its operating
+  // asset and which the carve-out takes out of the unitemized operating assets.
+  const loansGiven = findLendingArmLink(cfg.ticker)
+    ? 0
+    : bs("BS.FA.LoansGivenLT", ["Loans - Long - Term"]) + bs("BS.FA.LoansGivenST", ["Loans - Short-term"]);
+  let FA = cashBank + curInv + ltInv + depAndRestricted + otherFA + loansGiven;
   if (cfg.financial_institution_mode) FA = 0;
-  pushTrace(trace, "BS.FA", { statement: "Derived", key: "cash+curInv+ltInv+deposits+otherFA", value: FA, matchType: "derived" });
+  pushTrace(trace, "BS.FA", { statement: "Derived", key: "cash+curInv+ltInv+deposits+otherFA+loansGiven", value: FA, matchType: "derived" });
 
   const longBorrow = bs("BS.FO.LongBorrow", ["Long Term Borrowings"]);
   const shortBorrow = bs("BS.FO.ShortBorrow", ["Short Term Borrowings"]);
