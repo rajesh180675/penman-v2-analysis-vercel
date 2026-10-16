@@ -137,7 +137,7 @@ export function validateTerminalREAnchor(
         "S-10.1", Severity.WARNING, "TERMINAL_RE_ITEMIZED",
         `Residual ROE ${(rT * 100).toFixed(1)}% (RE_T ₹${RE_T.toFixed(0)} Cr) vs ${(rMedian * 100).toFixed(1)}% ` +
         `for prior years, but ${(core.rT * 100).toFixed(1)}% on core earnings vs ${(core.rMedian * 100).toFixed(1)}%: ` +
-        `the non-recurring part is filed as exceptional, discontinued or OCI, and the core forecast excludes it.`,
+        `the non-recurring part is filed as exceptional, discontinued or OCI, or is unusual tax, and the core forecast excludes it.`,
         false, latest_period
       ));
     } else if (swelled) {

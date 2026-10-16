@@ -8,6 +8,7 @@ export type UnusualBucketType =
   | "operating_exceptional"
   | "discontinued_operations"
   | "oci_reclassified"
+  | "unusual_tax"
   | "financial_unusual"
   | "capital_transaction_signal"
   | "material_operating_noise";

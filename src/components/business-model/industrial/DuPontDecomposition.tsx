@@ -38,8 +38,10 @@ export default function DuPontDecomposition({ recastData }: Props) {
       const prev = recastData[i - 1];
       const sales = p.is?.Sales ?? null;
       const pat = p.is?.PAT ?? null;
-      const pbt = pat != null && p.is?.taxRate != null && p.is.taxRate < 1
-        ? pat / (1 - p.is.taxRate)
+      // PAT is filed, so it grosses up at the filed rate, not a normalized one.
+      const taxRate = p.is?.filedTaxRate ?? p.is?.taxRate;
+      const pbt = pat != null && taxRate != null && taxRate < 1
+        ? pat / (1 - taxRate)
         : null;
       const ebit = (p.is?.OI ?? null);
       const avgAssets = prev ? ((p.bs?.TA ?? 0) + (prev.bs?.TA ?? 0)) / 2 : p.bs?.TA ?? null;

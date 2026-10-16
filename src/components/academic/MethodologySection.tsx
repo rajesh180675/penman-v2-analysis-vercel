@@ -40,11 +40,13 @@ export function MethodologySection(props: {
             <p className="mt-1">
               (c) <b>Exceptional Items:</b> Ind AS does not permit "exceptional items below the line" (unlike old
               Indian GAAP). The engine classifies pre-tax exceptional items tagged in Capitaline as UOI
-              (Unusual OI), taxed at the effective rate, and excludes them from Core OI.
+              (Unusual OI), taxed at the year's rate, and excludes them from Core OI.
             </p>
             <p className="mt-1">
               (c.1) <b>Formal unusual-item policy:</b> unusual items are now bucketed into exceptional operating items,
-              discontinued operations, OCI reclassifications, unusual financing items, and capital-transaction signals.
+              discontinued operations, OCI reclassifications, unusual tax, unusual financing items, and capital-transaction
+              signals. A year whose tax was filed more than 10 points from the median rate of the three years before
+              it is taxed at that median, and the rest of its tax (a deferred-tax asset recognized, say) is unusual tax.
               That policy determines whether an item is excluded from Core OI, excluded from Core NFE, or treated as
               a terminal-valuation blocker.
             </p>

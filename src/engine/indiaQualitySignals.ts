@@ -71,7 +71,8 @@ export function computeIndiaQualitySignals(input: IndiaQualityInput): IndiaQuali
 
   // --- Tax avoidance intensity ---
   const statutoryRate = 0.2518; // Indian corporate tax rate (incl. surcharge/cess ~25.17%)
-  const effectiveRate = current.is.taxRate;
+  // The rate as filed: the recast taxes an unusual year at its normal rate.
+  const effectiveRate = current.is.filedTaxRate ?? current.is.taxRate;
   const taxAvoidanceIntensity =
     Number.isFinite(effectiveRate) ? statutoryRate - effectiveRate : null;
   if (taxAvoidanceIntensity != null && taxAvoidanceIntensity > 0.08) {

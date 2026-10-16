@@ -597,8 +597,10 @@ export function evaluateReconciliationResiduals(params: {
     // broke wherever the effective rate is odd — NTPC's deferred tax
     // recoverable, loss-makers (Paytm, Vodafone Idea, Tata Steel): 255 → 282
     // of 304 library company-years tie, and 22 still fail on their cost lines.
+    // A year filed at an unusual rate is taxed at its normal rate: the filed
+    // charge plus the benefit Core OI moves to UOI.
     const operatingTax = Number.isFinite(taxRate) && taxRate > 0 && taxRate < 1
-      ? period.is.TaxExpense
+      ? period.is.TaxExpense + (period.cu.UnusualTaxBenefit ?? 0)
         + taxRate * (period.is.FinanceCost - period.is.FinanceIncome)
         + (taxRate / (1 - taxRate)) * ((period.cu.UFE ?? 0) - (period.cu.ExceptionalOperatingItemsAfterTax ?? 0))
       : null;

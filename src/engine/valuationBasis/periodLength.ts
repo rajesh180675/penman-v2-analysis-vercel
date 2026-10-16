@@ -28,7 +28,7 @@ export function periodMonths(periods: readonly { readonly period_end: string }[]
 }
 
 /** The rates and counts in a flow statement that are not themselves flows. */
-const NOT_FLOWS = new Set(["taxRate", "FinanceIncomeRung", "coverageRatio", "driverRatios"]);
+const NOT_FLOWS = new Set(["taxRate", "filedTaxRate", "FinanceIncomeRung", "coverageRatio", "driverRatios"]);
 
 function scaleFlows<T extends object>(statement: T, factor: number): T {
   const scaled: Record<string, unknown> = {};

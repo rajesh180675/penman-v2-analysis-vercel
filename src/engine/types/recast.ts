@@ -61,7 +61,11 @@ export interface CanonicalBalanceSheet {
 /* ── Income ─────────────────────────────────────────────────────── */
 
 export interface CanonicalIncome {
-  Sales: number; TaxExpense: number; taxRate: number;
+  Sales: number; TaxExpense: number;
+  /** The rate the recast applies: the year's normal rate when its filed rate is unusual (PenmanNissimEngine/unusualTax). */
+  taxRate: number;
+  /** The rate read from the year's filing (effective, or statutory in statutory mode); null where effective mode fell back to statutory. */
+  filedTaxRate?: number | null | undefined;
   PAT: number; OCI: number; TCI: number; TCI_NCI: number;
   CNI: number;
   FinanceCost: number; FinanceIncome: number;
@@ -83,6 +87,8 @@ export interface CoreUnusual {
   ExceptionalItemsAfterTax: number; OCITotal: number;
   ExceptionalOperatingItemsAfterTax?: number | undefined;
   DiscontinuedOperationsAfterTax?: number | undefined;
+  /** Normal-rate tax less the filed tax, in UOI: positive when the year's tax was unusually low. */
+  UnusualTaxBenefit?: number | undefined;
   policy?: UnusualItemPolicySummary | undefined;
 }
 

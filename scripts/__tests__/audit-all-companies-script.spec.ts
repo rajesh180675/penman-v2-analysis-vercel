@@ -37,12 +37,12 @@ describe("audit-all-companies CLI routing", () => {
     expect(row).not.toContain("CALC_ERROR");
   }, 120_000);
 
-  // Routed through the industrial valuation, not capped by sector scope. NTPC and
-  // Power Grid are valued (VCC); Airtel and Idea are routed the same way, but the
-  // app's run withholds their valuation on a terminal period unsafe to anchor
-  // on, a policy block the row names, as the app does.
+  // Routed through the industrial valuation, not capped by sector scope. NTPC,
+  // Power Grid and Airtel are valued (VCC); Idea is routed the same way, but the
+  // app's run withholds its valuation on a terminal period unsafe to anchor on,
+  // a policy block the row names, as the app does.
   it.each([
-    ["BHARTIARTL", "Bharti Airtel", "POLICY:VALUATION_BLOCKED"],
+    ["BHARTIARTL", "Bharti Airtel", "VCC"],
     ["NTPC", "NTPC", "VCC"],
     ["POWERGRID", "Power Grid Corporation of India Ltd", "VCC"],
     ["IDEA", "Vodafone Idea Ltd", "POLICY:VALUATION_BLOCKED"],

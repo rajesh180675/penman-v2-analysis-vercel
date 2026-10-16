@@ -198,12 +198,23 @@ describe.sequential("auditCompanyRun", () => {
     expect(result.rigor.currentLevel).toBe("valuation-eligible");
   }, 240_000);
 
-  it("reports a run blocked before its valuation at the app's rung, as a policy warning (Airtel)", async () => {
-    const result = await runAudit("BHARTIARTL");
+  it("reports a run blocked before its valuation at the app's rung, as a policy warning (Paytm)", async () => {
+    const result = await runAudit("PAYTM");
     expect(result.rigor.currentLevel).toBe("structurally-reconciled");
     expect(result.flags).toEqual(["POLICY:VALUATION_BLOCKED"]);
     expect(result.statusClass).toBe("policy-warning");
     expect(result.modelApplicability.industrialCommandCenter.status).toBe("skipped");
+  }, 240_000);
+
+  it("values Airtel once its FY25 deferred-tax credit is unusual tax, capped by the telecom gate", async () => {
+    // Filed at 2.4% against 32.5%: taxed at the normal rate, the credit is UOI
+    // and the terminal year is clean. The export still lacks spectrum and
+    // network-opex lines, so the telecom gate holds it below valuation-eligible.
+    const result = await runAudit("BHARTIARTL");
+    expect(result.rigor.currentLevel).toBe("economically-plausible");
+    expect(result.flags).toEqual([]);
+    expect(result.statusClass).toBe("economically-plausible-capped");
+    expect(result.base).toBeGreaterThan(0);
   }, 240_000);
 
   it("does not let valuation readiness skip a blocked rigor gate", async () => {

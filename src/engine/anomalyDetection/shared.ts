@@ -1,4 +1,5 @@
 import { SpecFlag, Severity, type EngineConfig, type RecastPeriod } from "../types";
+import { CORE_TAX_RATE_BAND, filedTaxRate, normalTaxRate } from "../PenmanNissimEngine/unusualTax";
 
 /* ── Helpers ────────────────────────────────────────────────────── */
 
@@ -24,31 +25,16 @@ export function flag(
 }
 
 /**
- * Core OI is OI less the filed one-off lines, but it carries the year's
- * effective tax. A one-time tax benefit (a deferred-tax asset recognized) is
- * filed in the tax line, not as an exceptional item, so core OI inherits it:
- * Airtel FY25 taxed at 2.4% against 32.5% the year before, and its core OI
- * rose ₹22,616 Cr on ₹23,003 Cr of sales. Core is comparable with its history
- * only when the year's rate is within this many points of the median of the
- * three years before it (a trailing window follows a statutory rate change).
+ * Core OI is OI less the unusual items, and it carries the tax the recast
+ * applies. It is comparable with its history only when that rate is within
+ * CORE_TAX_RATE_BAND of the normal rate (the median filed rate of the three
+ * years before): a year filed at an unusual rate is, once the recast has taxed
+ * it at the normal rate and moved the rest to UOI. A year with no filed rate
+ * (effective mode fell back to statutory) or no history is not.
  */
-export const CORE_TAX_RATE_BAND = 0.10;
-const CORE_TAX_WINDOW = 3;
-
-/** The year's effective tax rate, or null where the recast fell back to the statutory rate. */
-function effectiveTaxRate(period: RecastPeriod, cfg: EngineConfig): number | null {
-  const rate = period.is?.taxRate;
-  if (rate == null || !Number.isFinite(rate)) return null;
-  if (cfg.tax_rate_mode === "effective" && rate === cfg.statutory_tax_rate) return null;
-  return rate;
-}
-
 export function coreTaxComparable(periods: readonly RecastPeriod[], index: number, cfg: EngineConfig): boolean {
-  const rate = periods[index] ? effectiveTaxRate(periods[index]!, cfg) : null;
-  if (rate == null) return false;
-  const prior = periods.slice(Math.max(0, index - CORE_TAX_WINDOW), index)
-    .map((p) => effectiveTaxRate(p, cfg))
-    .filter((r): r is number => r != null);
-  const reference = medianOf(prior);
-  return reference != null && Math.abs(rate - reference) <= CORE_TAX_RATE_BAND;
+  const period = periods[index];
+  if (!period || filedTaxRate(period, cfg) == null) return false;
+  const reference = normalTaxRate(periods.slice(0, index), cfg);
+  return reference != null && Math.abs(period.is.taxRate - reference) <= CORE_TAX_RATE_BAND;
 }

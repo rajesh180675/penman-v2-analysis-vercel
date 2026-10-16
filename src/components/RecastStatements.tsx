@@ -175,10 +175,12 @@ export default function RecastStatements({ data, traceability = null, traceabili
               <TR label="  ↳ Exceptional (after-tax)"  vals={data.map((d) => f(d.cu.ExceptionalOperatingItemsAfterTax ?? d.cu.ExceptionalItemsAfterTax))} />
               <TR label="  ↳ Discontinued (after-tax)" vals={data.map((d) => f(d.cu.DiscontinuedOperationsAfterTax))} />
               <TR label="  ↳ OCI (treated unusual)"    vals={data.map((d) => f(d.cu.OCITotal))} />
+              <TR label="  ↳ Unusual tax"              vals={data.map((d) => f(d.cu.UnusualTaxBenefit))} />
               <TR label="Core NFE"                      vals={data.map((d) => f(d.cu.CoreNFE))} />
               <TR label="UFE (unusual fin. expense)"    vals={data.map((d) => f(d.cu.UFE))} accent="amber" />
               <TR label="Unusual Policy"                vals={data.map((d) => d.cu.policy?.terminalBlocker ? "terminal blocker" : d.cu.policy ? "diagnostic only" : "—")} />
-              <TR label="Effective Tax Rate"            vals={data.map((d) => fp(d.is.taxRate))} />
+              <TR label="Effective Tax Rate"            vals={data.map((d) => fp(d.is.filedTaxRate ?? d.is.taxRate))} />
+              <TR label="Tax Rate Applied"              vals={data.map((d) => fp(d.is.taxRate))} />
             </tbody>
           </table>
         </div>
