@@ -42,7 +42,11 @@ async function loadCompany(folder: string, type: Exclude<CompanyType, "auto">): 
     new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength),
     { companyId: folder, filename: `${folder}.zip` },
   );
-  const config: EngineConfig = { ...DEFAULT_CONFIG, company_type: type };
+  // The ticker the app's run carries (configForCompany): the recast reads a
+  // lending arm's loan book as operating only under its parent's ticker (M&M).
+  const registry: { folder: string; ticker: string }[] = JSON.parse(readFileSync(resolve(COMPANIES_DIR, "registry.json"), "utf8"));
+  const ticker = registry.find((c) => c.folder === folder)?.ticker;
+  const config: EngineConfig = { ...DEFAULT_CONFIG, company_type: type, ticker };
   const pipeline = processCompanyDataFull(parsed.periods, config);
   const shares = resolveShareBasis(pipeline.periods, config).sharesForPerShare ?? null;
   return { periods: pipeline.periods, config, shares };
