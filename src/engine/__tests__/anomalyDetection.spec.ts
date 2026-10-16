@@ -485,6 +485,21 @@ describe("detectReclassification", () => {
     expect(detectReclassification(periods, makeConfig()).find(f => f.label === "POTENTIAL_RECLASSIFICATION")).toBeUndefined();
   });
 
+  it("does not flag a swap that is immaterial to NOA, however much OA grew", () => {
+    // Titan FY25-shaped: OA grows on its own while a small FA falls 12%; the
+    // 60 moved is 6% of NOA, and the cash-flow gap has other causes.
+    const periods = makeCleanSeries(3);
+    periods[2]!.bs.OA = periods[1]!.bs.OA + 400;
+    periods[1]!.bs.FA = 500;
+    periods[2]!.bs.FA = 440;
+    Object.assign(periods[2]!.cf, { CFO: 100, Capex: 100, FCF_cash: 0, FCF_accounting: -400 });
+    expect(detectReclassification(periods, makeConfig()).find(f => f.label === "POTENTIAL_RECLASSIFICATION")).toBeUndefined();
+    // The same shape moving 300 (28% of NOA) is flagged.
+    periods[1]!.bs.FA = 1000;
+    periods[2]!.bs.FA = 700;
+    expect(detectReclassification(periods, makeConfig()).find(f => f.label === "POTENTIAL_RECLASSIFICATION")).toBeDefined();
+  });
+
   it("keeps the flag when the period has no cash-flow lines at all", () => {
     const periods = makeCleanSeries(3);
     periods[2]!.bs.OA = periods[1]!.bs.OA + 300;
