@@ -60,7 +60,8 @@ export function RecastVerificationPanel({
               <div key={k} className="p-2 bg-slate-50 rounded border border-slate-100">
                 <div className="text-xs text-slate-400 font-mono">{k}</div>
                 <div className="font-mono font-bold text-sm text-slate-800">
-                  {(v as number).toLocaleString("en-IN", { maximumFractionDigits: 1 })}
+                  {/* filedTaxRate is null in a year with no filed rate (DMart FY15: no P&L). */}
+                  {v == null ? "—" : (v as number).toLocaleString("en-IN", { maximumFractionDigits: 1 })}
                 </div>
               </div>
             ))}

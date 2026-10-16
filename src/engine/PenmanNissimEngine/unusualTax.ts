@@ -14,7 +14,7 @@ import type { EngineConfig, RecastPeriod } from "../types";
 export const CORE_TAX_RATE_BAND = 0.10;
 const NORMAL_TAX_WINDOW = 3;
 
-/** The rate the year's filing gives, before any normalization; null where effective mode fell back to statutory. */
+/** The rate the year's filing gives, before normalization; null where effective mode fell back to statutory. */
 export function filedTaxRate(period: RecastPeriod, cfg: EngineConfig): number | null {
   const filed = period.is?.filedTaxRate;
   if (filed !== undefined) return filed;
