@@ -118,10 +118,32 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   // and NOA understated by the same amount (Paytm FY25 ₹9,480 Cr, 44% of total
   // assets; HUL, ITC, Sun, TCS, Power Grid, Idea, Nestlé FY16–25). Read it once.
   const otherBankBalances = ["Bank Balances Other Than Cash and Cash Equivalents", "Total Other Bank Balances"];
-  const cashBank = sumBs("BS.FA.CashBank", M.balanceSheet.financialAssets.cashAndBank.filter((key) => !otherBankBalances.includes(key)))
+  // "Balances with Bank / Margin Money Balances" is a line of the long-term
+  // "Others Financial Assets" schedule (ITC FY25 1,557.57 = margin money
+  // 1,276.54 + security deposits 30.52 + other deposits 250.51), which FA reads
+  // as a total below: in all 61 library company-years filing both it is no more
+  // than that total, and FA exceeded the face statement's financial lines by
+  // exactly it (TCS FY24 ₹2,461 Cr, ITC FY23 ₹2,144 Cr, Paytm FY20 ₹1,352 Cr).
+  // Read alone it is cash only where that total is not filed (pre-Ind AS TCS,
+  // Tata Steel, HUL).
+  const otherFA_LT = bs("BS.FA.OtherFA_LT", ["Others Financial Assets - Long-term"]);
+  const marginMoneyInOtherFA = otherFA_LT > 0;
+  const cashBank = sumBs("BS.FA.CashBank", M.balanceSheet.financialAssets.cashAndBank
+    .filter((key) => !otherBankBalances.includes(key) && !(marginMoneyInOtherFA && key === "Balances with Bank / Margin Money Balances")))
     + valBSFirstNonZero(data, otherBankBalances, "BS.FA.OtherBankBalances", trace);
   const curInvTop = bs("BS.FA.CurrentInvestmentsTop", [M.balanceSheet.financialAssets.currentInvestments[0]]);
-  const curInvAlt = sumBs("BS.FA.CurrentInvestmentsAlt", M.balanceSheet.financialAssets.currentInvestments.slice(1));
+  // Unsuffixed, the measurement-category lines (FVTPL, FVTOCI, amortized cost)
+  // are the long-term investment schedule's; the current schedule's carry
+  // " - Current Assets". In all 8 library company-years where the fallback
+  // read anything, they summed to the long-term investments to the rupee
+  // (Power Grid FY22 ₹1,926.43 Cr), so it counted them twice.
+  const measurementCategories = [
+    "Investments Carried at Fair Value Through Profit Or Loss (FVTPL)",
+    "Investments Carried at Fair Value Through Other Comprehensive Income(FVTOCI)",
+    "Investments Carried at Amortized Cost",
+  ];
+  const curInvAlt = sumBs("BS.FA.CurrentInvestmentsAlt", M.balanceSheet.financialAssets.currentInvestments.slice(1)
+    .filter((key) => !measurementCategories.includes(key)));
   const curInv = curInvTop > 0 ? curInvTop : curInvAlt;
   const ltInvDirect = bs("BS.FA.LongTermInvestmentsDirect", M.balanceSheet.financialAssets.longTermInvestments);
   const totalInvestmentsFallback = bs("BS.FA.TotalInvestmentsFallback", ["Total Investments"]);
@@ -137,7 +159,7 @@ export function recastBalanceSheet(data: RawPeriodData, cfg: EngineConfig, trace
   const investmentDeposits = ["Investment in Fixed Deposits", "Investment in Certificate of Deposits", "Investment in Certificate of Deposits with Scheduled Banks"];
   const depAndRestricted = sumBs("BS.FA.DepositsRestricted", M.balanceSheet.financialAssets.depositsAndRestricted
     .filter((key) => curInv === 0 || !investmentDeposits.includes(key)));
-  const otherFA_base = bs("BS.FA.OtherFA_LT", ["Others Financial Assets - Long-term"]) + bs("BS.FA.OtherFA_ST", ["Others Financial Assets - Short-term"]);
+  const otherFA_base = otherFA_LT + bs("BS.FA.OtherFA_ST", ["Others Financial Assets - Short-term"]);
   const interestRec = bs("BS.FA.TotalInterestReceivable", ["Total Interest Receivable"]) || bs("BS.FA.InterestReceivable", ["Interest Receivable"]);
   const divRec = bs("BS.FA.DividendReceivable", ["Dividend Receivable"]);
   const derivRec = bs("BS.FA.DerivativeReceivable", ["Derivative Receivables / Forward Contract Receivable"]) || bs("BS.FA.ForwardContractReceivable", ["Forward Contract Receivable"]);

@@ -50,6 +50,18 @@ describe("cash and bank balances", () => {
     }), DEFAULT_CONFIG);
     expect(bs.FA).toBeCloseTo(256.8 + 10_311.7 + 78.3, 6);
   });
+
+  it("does not add margin money again beside the long-term other financial assets that hold it", () => {
+    // ITC FY25: Others Financial Assets - Long-term 1,557.57 = margin money
+    // 1,276.54 + security deposits 30.52 + other deposits 250.51.
+    const bs = recastBalanceSheet(period({
+      "Cash and Cash Equivalents__BalanceSheet": 620,
+      "Bank Balances Other Than Cash and Cash Equivalents__BalanceSheet": 3_392.36,
+      "Others Financial Assets - Long-term__BalanceSheet": 1_557.57,
+      "Balances with Bank / Margin Money Balances__BalanceSheet": 1_276.54,
+    }), DEFAULT_CONFIG);
+    expect(bs.FA).toBeCloseTo(620 + 3_392.36 + 1_557.57, 6);
+  });
 });
 
 describe("deposits held as investments", () => {
@@ -69,6 +81,16 @@ describe("deposits held as investments", () => {
       "Investment in Certificate of Deposits__BalanceSheet": 500,
     }), DEFAULT_CONFIG);
     expect(bs.FA).toBeCloseTo(500, 6);
+  });
+
+  it("does not read the long-term schedule's measurement categories as current investments", () => {
+    // Power Grid FY22: no current investments; the FVTOCI line is the long-term
+    // investments' own breakdown (1,926.43 both).
+    const bs = recastBalanceSheet(period({
+      "Investments - Long-term__BalanceSheet": 1_926.43,
+      "Investments Carried at Fair Value Through Other Comprehensive Income(FVTOCI)__BalanceSheet": 1_926.43,
+    }), DEFAULT_CONFIG);
+    expect(bs.FA).toBeCloseTo(1_926.43, 6);
   });
 
   it("still adds restricted cash beside current investments", () => {
