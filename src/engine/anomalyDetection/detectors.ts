@@ -374,8 +374,14 @@ export function detectReclassification(
     const unexplainedByCash = (cur.cf.FCF_cash - cur.cf.FCF_accounting) * Math.sign(ΔOA);
     const hasCashFlow = cur.cf.CFO !== 0 || cur.cf.Capex !== 0;
     const cashExplained = hasCashFlow && unexplainedByCash < 0.5 * swap;
+    // The amount moved must matter to the NOA the flag warns about. bigOA
+    // tests the whole change in OA, which organic growth clears on its own, so
+    // 14 of the library's 32 flags moved 0.2–10% of NOA (NTPC FY12 ₹190 Cr,
+    // Sun Pharma FY12–13, Idea FY14). The other 18 move 11–67% of it, the FY16
+    // Ind AS transitions, Reliance's FY23 demerger and Paytm FY20 and FY25 among them.
+    const materialToNoa = swap > reclassif_pct * Math.max(Math.abs(prev.bs.NOA), 1);
 
-    if (oppDirection && bigOA && bigFA && !cashExplained) {
+    if (oppDirection && bigOA && bigFA && materialToNoa && !cashExplained) {
       const dateStr = cur.period_end.slice(0, 10);
       const indASWindow = dateStr >= "2016-03-31" && dateStr <= "2018-03-31";
       flags.push(flag(
