@@ -3840,5 +3840,1286 @@
   ],
   "intrinsicPerShare": 1723.4451557899997,
   "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "ASIANPAINT",
+  "companyType": "consumer",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.12199892000000001,
+   "kw": 0.12669902731784105,
+   "g": 0.05
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 35181.90647333938,
+    "operatingIncome": 4152.572150661883,
+    "noa": 18425.188087519462,
+    "cni": 4101.213285453206,
+    "cse": 19609.76063709633
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 37186.632935111134,
+    "operatingIncome": 4380.444269301379,
+    "noa": 19023.220054853235,
+    "cni": 4326.267089804253,
+    "cse": 20246.24063811682
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 39844.96808899906,
+    "operatingIncome": 4685.4305929705515,
+    "noa": 19957.565833875047,
+    "cni": 4627.481353429793,
+    "cse": 21240.656379864926
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 43126.78821428868,
+    "operatingIncome": 5063.665169560055,
+    "noa": 21194.70955364192,
+    "cni": 5001.037938179173,
+    "cse": 22557.337224754006
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 47030.77814617347,
+    "operatingIncome": 5514.759993390331,
+    "noa": 22720.255683200303,
+    "cni": 5446.55363721333,
+    "cse": 24180.96213970141
+   }
+  ],
+  "intrinsicPerShare": 511.7932657185022,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "BHARTIARTL",
+  "companyType": "telecom",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.11628536,
+   "kw": 0.07848255979135849,
+   "g": 0.025
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 190234.41082486874,
+    "operatingIncome": 33642.89660061774,
+    "noa": 395910.77045632695,
+    "cni": 15791.33702656363,
+    "cse": 126893.98681668141
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 206086.86839879127,
+    "operatingIncome": 32325.279204412866,
+    "noa": 434252.3080983541,
+    "cni": 13275.157660310935,
+    "cse": 139182.8936490743
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 221301.9712233215,
+    "operatingIncome": 31525.53821734119,
+    "noa": 471107.57432714,
+    "cni": 11279.804153144962,
+    "cse": 150995.4332816043
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 236420.6775149991,
+    "operatingIncome": 31228.42899371159,
+    "noa": 507551.04204148764,
+    "cni": 9748.674371632116,
+    "cse": 162675.98672138172
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 251816.4907249478,
+    "operatingIncome": 31382.51903784485,
+    "noa": 544361.7123025816,
+    "cni": 8605.375508795309,
+    "cse": 174474.23282981824
+   }
+  ],
+  "intrinsicPerShare": 58.68634779358161,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "BRITANNIA",
+  "companyType": "consumer",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.09387008,
+   "kw": 0.09679952096892462,
+   "g": 0.05
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 19603.0066401074,
+    "operatingIncome": 2319.5307636963166,
+    "noa": 2950.462642122638,
+    "cni": 2329.308313389787,
+    "cse": 4757.236562554199
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 21522.047017919536,
+    "operatingIncome": 2479.928737386239,
+    "noa": 3238.3339469060516,
+    "cni": 2490.635090631079,
+    "cse": 5221.391531634101
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 23715.463707184692,
+    "operatingIncome": 2668.753255528432,
+    "noa": 3567.3918395157757,
+    "cni": 2680.5268698828154,
+    "cse": 5751.954506935432
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 26203.918376456793,
+    "operatingIncome": 2887.341734197843,
+    "noa": 3940.7258732472733,
+    "cni": 2900.330456525409,
+    "cse": 6353.906990575623
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 29012.73435554631,
+    "operatingIncome": 3137.6527402972342,
+    "noa": 4362.12706916195,
+    "cni": 3152.0163205607996,
+    "cse": 7033.361510042824
+   }
+  ],
+  "intrinsicPerShare": 2161.666744950454,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "DABUR",
+  "companyType": "consumer",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.11144972,
+   "kw": 0.1441144459775438,
+   "g": 0.05
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 13251.133099631801,
+    "operatingIncome": 1676.40828098447,
+    "noa": 4654.726616264935,
+    "cni": 1862.842390810754,
+    "cse": 11358.23164063099
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 14137.315238959256,
+    "operatingIncome": 1818.5625394236572,
+    "noa": 4952.4405486778105,
+    "cni": 2015.799654593793,
+    "cse": 12084.698324017436
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 15211.152409619819,
+    "operatingIncome": 1984.8188810665276,
+    "noa": 5315.263144204126,
+    "cni": 2195.6169468268267,
+    "cse": 12970.039918525443
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 16470.16298535162,
+    "operatingIncome": 2175.5919399585478,
+    "noa": 5741.978233130606,
+    "cni": 2402.5993765485573,
+    "cse": 14011.288787501671
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 17917.517542436024,
+    "operatingIncome": 2391.850439819003,
+    "noa": 6233.40603989541,
+    "cni": 2637.7075386404476,
+    "cse": 15210.44640169488
+   }
+  ],
+  "intrinsicPerShare": 138.21673595161428,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "DMART",
+  "companyType": "consumer",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.12598496,
+   "kw": 0.1250880116450512,
+   "g": 0.05
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 69077.9306875,
+    "operatingIncome": 3114.9059575349957,
+    "noa": 24927.11420368025,
+    "cni": 3114.9059575349957,
+    "cse": 24684.2660222265
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 79547.55455732423,
+    "operatingIncome": 3598.2052548163438,
+    "noa": 28441.95104179981,
+    "cni": 3598.2052548163438,
+    "cse": 28164.860158713236
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 90876.86642904313,
+    "operatingIncome": 4121.796537844155,
+    "noa": 32221.220026966323,
+    "cni": 4121.796537844155,
+    "cse": 31907.310256913013
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 103196.71662208978,
+    "operatingIncome": 4691.567651221941,
+    "noa": 36310.52321237538,
+    "cni": 4691.567651221941,
+    "cse": 35956.77409975417
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 116656.12823191713,
+    "operatingIncome": 5314.2766803277245,
+    "noa": 40760.87555481915,
+    "cni": 5314.2766803277245,
+    "cse": 40363.76963946658
+   }
+  ],
+  "intrinsicPerShare": 450.86425906869044,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "GRASIM",
+  "companyType": "industrial",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": "Aditya Birla Capital"
+  },
+  "assumptions": {
+   "ke": 0.13701560000000002,
+   "kw": 0.09726095512244551,
+   "g": 0.0315
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 120736.7368346675,
+    "operatingIncome": 8082.243671152679,
+    "noa": 158088.64386324966,
+    "cni": 4066.1549805679347,
+    "cse": 83280.57845082678
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 134459.7927622767,
+    "operatingIncome": 10222.451305808716,
+    "noa": 178416.72389477293,
+    "cni": 5258.107973996031,
+    "cse": 93989.34425746111
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 149276.80321266758,
+    "operatingIncome": 12379.631125332695,
+    "noa": 200322.11076050843,
+    "cni": 6452.101532197142,
+    "cse": 105529.03012474992
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 165416.3056197147,
+    "operatingIncome": 14586.116226395096,
+    "noa": 224103.44752319303,
+    "cni": 7666.087873128275,
+    "cse": 118056.96023744976
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 183094.47387844752,
+    "operatingIncome": 16875.147034824022,
+    "noa": 250052.75810751307,
+    "cni": 8918.641821415646,
+    "cse": 131726.97184012827
+   }
+  ],
+  "intrinsicPerShare": 444.11011244439976,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "HINDUNILVR",
+  "companyType": "consumer",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.0981464,
+   "kw": 0.10261775321878772,
+   "g": 0.05
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 66728.49404333763,
+    "operatingIncome": 10589.087932872311,
+    "noa": 42286.21980199267,
+    "cni": 10847.614871081558,
+    "cse": 52928.21785852294
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 71117.78296729017,
+    "operatingIncome": 11126.724518763485,
+    "noa": 45632.06378559476,
+    "cni": 11405.159659740568,
+    "cse": 57116.096560235936
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 76255.90386402963,
+    "operatingIncome": 11782.381632575234,
+    "noa": 49498.49471950176,
+    "cni": 12084.071559766171,
+    "cse": 61955.57617707127
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 82135.2595038653,
+    "operatingIncome": 12551.907035832177,
+    "noa": 53891.40217357412,
+    "cni": 12880.197774550234,
+    "cse": 67454.02848257894
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 88766.82332630726,
+    "operatingIncome": 13434.742397596174,
+    "noa": 58827.20877001908,
+    "cni": 13793.056077015004,
+    "cse": 73632.0091123789
+   }
+  ],
+  "intrinsicPerShare": 734.1399645043041,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "INFY",
+  "companyType": "it-services",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2026-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.11455076,
+   "kw": 0.11804979159289147,
+   "g": 0.05
+  },
+  "years": [
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 196849.13800372332,
+    "operatingIncome": 32117.343818647052,
+    "noa": 70451.01768665468,
+    "cni": 33847.990593590905,
+    "cse": 103733.17730834051
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 217257.24230391177,
+    "operatingIncome": 35872.522962914874,
+    "noa": 78783.37081413643,
+    "cni": 37807.00698788955,
+    "cse": 116001.86401792227
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 240074.99749543332,
+    "operatingIncome": 40049.10358803267,
+    "noa": 88152.53500353933,
+    "cni": 42213.153247072776,
+    "cse": 129797.16750683679
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 265532.7663909909,
+    "operatingIncome": 44689.52564515201,
+    "noa": 98665.42439593982,
+    "cni": 47111.48792956845,
+    "cse": 145276.50982400856
+   },
+   {
+    "periodEnd": "2031-03-31",
+    "sales": 293892.12894837325,
+    "operatingIncome": 49841.42908998934,
+    "noa": 110442.32834489032,
+    "cni": 52552.605569516294,
+    "cse": 162617.00688983296
+   }
+  ],
+  "intrinsicPerShare": 1307.0734873965844,
+  "latestReportedPeriod": "2026-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "ITC",
+  "companyType": "conglomerate",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.10439804,
+   "kw": 0.11422176594723984,
+   "g": 0.0315
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 82377.90281310378,
+    "operatingIncome": 20566.529845194087,
+    "noa": 39944.89328228633,
+    "cni": 21458.846437882286,
+    "cse": 78458.05963941698
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 89493.77266377611,
+    "operatingIncome": 22199.520675492495,
+    "noa": 44315.76885923384,
+    "cni": 23202.29360112011,
+    "cse": 87043.14745700522
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 96827.09762370515,
+    "operatingIncome": 23898.998903512875,
+    "noa": 48828.431838448974,
+    "cni": 25014.775698307767,
+    "cse": 95906.72805675254
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 104499.17322783063,
+    "operatingIncome": 25693.241216470993,
+    "noa": 53534.75679602392,
+    "cni": 26925.94146356339,
+    "cse": 105150.69127363854
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 112606.55633731965,
+    "operatingIncome": 27604.13797409021,
+    "noa": 58478.98184551484,
+    "cni": 28958.864065747093,
+    "cse": 114861.92772787837
+   }
+  ],
+  "intrinsicPerShare": 229.67140153877477,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "LT",
+  "companyType": "conglomerate",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2026-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": "L&T Finance"
+  },
+  "assumptions": {
+   "ke": 0.14148308,
+   "kw": 0.17451759947259957,
+   "g": 0.05
+  },
+  "years": [
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 299104.94097256125,
+    "operatingIncome": 19700.374151728964,
+    "noa": 80964.02555869454,
+    "cni": 17532.18926391955,
+    "cse": 105782.37259049295
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 334047.38868354744,
+    "operatingIncome": 22288.169648681647,
+    "noa": 94297.42036611584,
+    "cni": 19835.17701833798,
+    "cse": 123202.9260731294
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 373213.3889043745,
+    "operatingIncome": 25166.90640831169,
+    "noa": 109721.59114225897,
+    "cni": 22397.08560556179,
+    "cse": 143355.15255498263
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 417083.6896749759,
+    "operatingIncome": 28371.499622718326,
+    "noa": 127531.28620541886,
+    "cni": 25248.987519511917,
+    "cse": 166624.1511737393
+   },
+   {
+    "periodEnd": "2031-03-31",
+    "sales": 466199.8692949652,
+    "operatingIncome": 31941.044957408787,
+    "noa": 148059.73137768186,
+    "cni": 28425.67563273955,
+    "cse": 193445.2932912539
+   }
+  ],
+  "intrinsicPerShare": 1103.0700456720285,
+  "latestReportedPeriod": "2026-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "M&M",
+  "companyType": "cyclical",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": "Mahindra & Mahindra Financial Services"
+  },
+  "assumptions": {
+   "ke": 0.14591516,
+   "kw": 0.19161850187364415,
+   "g": 0.04
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 156779.34279072238,
+    "operatingIncome": 11275.6344565788,
+    "noa": 57269.86804037081,
+    "cni": 12321.043659817204,
+    "cse": 77873.45193245956
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 172367.54607736514,
+    "operatingIncome": 11780.501200201254,
+    "noa": 64391.43178206188,
+    "cni": 12974.465226257926,
+    "cse": 87557.09135226038
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 188031.96037911522,
+    "operatingIncome": 12306.569963843993,
+    "noa": 71671.34393605408,
+    "cni": 13651.234340465258,
+    "cse": 97456.04709626194
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 204074.97634335852,
+    "operatingIncome": 12877.882662059443,
+    "noa": 79201.83846514048,
+    "cni": 14377.199661597026,
+    "cse": 107695.73550142946
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 220749.62558842075,
+    "operatingIncome": 13510.691986852784,
+    "noa": 87065.89867429793,
+    "cni": 15170.341132377232,
+    "cse": 118388.99420180041
+   }
+  ],
+  "intrinsicPerShare": 671.505312865713,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "MARUTI",
+  "companyType": "industrial",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.11643404,
+   "kw": 0.19117075695954885,
+   "g": 0.05
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 169691.06897493862,
+    "operatingIncome": 14963.696666337208,
+    "noa": 33960.48384544588,
+    "cni": 15264.246313612506,
+    "cse": 105189.84162844221
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 189500.76699050533,
+    "operatingIncome": 15960.882669358125,
+    "noa": 37411.311144099986,
+    "cni": 16290.734712416113,
+    "cse": 115878.49903051299
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 212567.12486863986,
+    "operatingIncome": 17205.70164732556,
+    "noa": 41453.54658223148,
+    "cni": 17570.183645435856,
+    "cse": 128398.99513112873
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 239193.04586658202,
+    "operatingIncome": 18708.99199176419,
+    "noa": 46133.673930763696,
+    "cni": 19113.785280712767,
+    "cse": 142895.30963693818
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 269754.8076093865,
+    "operatingIncome": 20489.256375646684,
+    "noa": 51512.78947749375,
+    "cni": 20940.539483453045,
+    "cse": 159556.68333928913
+   }
+  ],
+  "intrinsicPerShare": 4982.067159241392,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "NESTLEIND",
+  "companyType": "consumer",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "standalone",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.09684368000000002,
+   "kw": 0.0952555819890925,
+   "g": 0.05
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 21576.871655334133,
+    "operatingIncome": 3293.413719421342,
+    "noa": 6171.315737713517,
+    "cni": 3234.320657997655,
+    "cse": 4346.906328777496
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 23212.534563981484,
+    "operatingIncome": 3470.4065602924593,
+    "noa": 6569.753938139607,
+    "cni": 3407.750028619731,
+    "cse": 4627.555319798103
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 25106.710462312683,
+    "operatingIncome": 3685.2159412493306,
+    "noa": 7038.2557473816205,
+    "cni": 3618.2960741145043,
+    "cse": 4957.555204132712
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 27264.57611750836,
+    "operatingIncome": 3937.347632627972,
+    "noa": 7576.935697137257,
+    "cni": 3865.474765675365,
+    "cse": 5336.9866547824695
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 29696.781345231353,
+    "operatingIncome": 4227.368857126305,
+    "noa": 8187.642000980525,
+    "cni": 4149.84367384273,
+    "cse": 5767.151502932692
+   }
+  ],
+  "intrinsicPerShare": 699.8481897516253,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "NTPC",
+  "companyType": "utility",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.11463572,
+   "kw": 0.07200869293747988,
+   "g": 0.036714979221169244
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 202131.79255065072,
+    "operatingIncome": 34791.263467759934,
+    "noa": 482686.3667379962,
+    "cni": 25071.68216850763,
+    "cse": 200580.55570909064
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 218035.96018779447,
+    "operatingIncome": 37175.77404142943,
+    "noa": 527208.8668991638,
+    "cni": 26587.392776915316,
+    "cse": 219081.90242048944
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 235819.96214656017,
+    "operatingIncome": 39898.79834501621,
+    "noa": 576521.4081557322,
+    "cni": 28341.426523759194,
+    "cse": 239573.75305118872
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 255509.9203603578,
+    "operatingIncome": 42958.81327902879,
+    "noa": 630738.8554289333,
+    "cni": 30331.206597485787,
+    "cse": 262103.8397753699
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 277174.50890729646,
+    "operatingIncome": 46362.83257163938,
+    "noa": 690069.5400740752,
+    "cni": 32560.457218312597,
+    "cse": 286758.7347895957
+   }
+  ],
+  "intrinsicPerShare": 222.9857666239117,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "POWERGRID",
+  "companyType": "utility",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.09772868000000001,
+   "kw": 0.08058590044642078,
+   "g": 0.027
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 48983.796320789465,
+    "operatingIncome": 23322.32872586295,
+    "noa": 235749.53391991128,
+    "cni": 16553.30889209601,
+    "cse": 104170.48002645076
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 52775.663198779774,
+    "operatingIncome": 25047.20949313341,
+    "noa": 265297.78064469615,
+    "cni": 17433.43873836178,
+    "cse": 117226.94293469352
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 57113.537459509316,
+    "operatingIncome": 27039.733272238824,
+    "noa": 298193.04766604025,
+    "cni": 18477.088858302708,
+    "cse": 131762.35133713734
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 61977.36336936103,
+    "operatingIncome": 29287.84020193562,
+    "noa": 334384.6511166768,
+    "cni": 19675.371592463503,
+    "cse": 147754.30958915464
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 67369.36933442338,
+    "operatingIncome": 31790.752701805864,
+    "noa": 373906.1705375808,
+    "cni": 21027.769272844707,
+    "cse": 165217.65545879648
+   }
+  ],
+  "intrinsicPerShare": 192.50312557965657,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "RELIANCE",
+  "companyType": "conglomerate",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.13203836,
+   "kw": 0.12944199905884363,
+   "g": 0.042705854408506126
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 1051412.6516986426,
+    "operatingIncome": 96100.10383965245,
+    "noa": 1173195.5622533604,
+    "cni": 76344.86595181322,
+    "cse": 917239.7629029651
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 1150265.419371274,
+    "operatingIncome": 104183.55155528586,
+    "noa": 1281362.7018276877,
+    "cni": 82724.03698758889,
+    "cse": 1001808.1031262139
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 1261496.7330000743,
+    "operatingIncome": 113412.66015031951,
+    "noa": 1403237.6179697274,
+    "cni": 90012.31068459834,
+    "cse": 1097093.5975336686
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 1385682.9849607898,
+    "operatingIncome": 123825.13407366264,
+    "noa": 1539436.9962243068,
+    "cni": 98239.72139080653,
+    "cse": 1203578.389530165
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 1523664.4989120283,
+    "operatingIncome": 135485.19398846806,
+    "noa": 1690874.837334595,
+    "cni": 107457.20593546548,
+    "cse": 1321977.0725321213
+   }
+  ],
+  "intrinsicPerShare": 279.1221278502586,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "SUNPHARMA",
+  "companyType": "industrial",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.09817472000000001,
+   "kw": 0.10984487146105058,
+   "g": 0.05229409759965953
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 58188.88253041372,
+    "operatingIncome": 12075.643007729479,
+    "noa": 51968.11717907875,
+    "cni": 12455.889789236347,
+    "cse": 82301.40338283623
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 64677.70628136267,
+    "operatingIncome": 13334.19496045003,
+    "noa": 59353.89877699235,
+    "cni": 13773.866349383658,
+    "cse": 93998.1940995899
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 72117.07903765011,
+    "operatingIncome": 14784.481347686842,
+    "noa": 67864.7260825769,
+    "cni": 15292.899026706378,
+    "cse": 107476.70879706983
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 80596.88269352932,
+    "operatingIncome": 16443.63195308,
+    "noa": 77623.95219708254,
+    "cni": 17031.160867718718,
+    "cse": 122932.30058590586
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 90224.4900789426,
+    "operatingIncome": 18332.46293082092,
+    "noa": 88772.99161208306,
+    "cni": 19010.656906003685,
+    "cse": 140588.92622549122
+   }
+  ],
+  "intrinsicPerShare": 834.212759991424,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "TATASTEEL",
+  "companyType": "cyclical",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.13972016,
+   "kw": 0.0767152456755996,
+   "g": 0.022500000000000003
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 226978.250886,
+    "operatingIncome": 9764.77897276946,
+    "noa": 191190.55258389076,
+    "cni": 4779.831385461307,
+    "cse": 94023.61521872773
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 239374.89503638976,
+    "operatingIncome": 10842.161400362684,
+    "noa": 200483.40990891602,
+    "cni": 5656.002136409383,
+    "cse": 98593.65296171363
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 254595.5381622828,
+    "operatingIncome": 11948.197793854977,
+    "noa": 212244.0359560464,
+    "cni": 6482.220093745442,
+    "cse": 104377.2890422754
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 272062.72130336537,
+    "operatingIncome": 13088.49491419317,
+    "noa": 225952.05560997198,
+    "cni": 7284.41390873172,
+    "cse": 111118.61358960584
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 291493.5070941536,
+    "operatingIncome": 14270.565792497348,
+    "noa": 241348.46771236163,
+    "cni": 8080.358025999319,
+    "cse": 118690.25511529711
+   }
+  ],
+  "intrinsicPerShare": 27.3401324814741,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "TCS",
+  "companyType": "it-services",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2026-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.11817572000000001,
+   "kw": 0.12004888897822025,
+   "g": 0.05
+  },
+  "years": [
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 292362.5643659298,
+    "operatingIncome": 55850.969783384986,
+    "noa": 84255.20218207539,
+    "cni": 57659.45531831049,
+    "cse": 116815.05749273766
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 323039.7505326007,
+    "operatingIncome": 61839.54518549096,
+    "noa": 92649.54970942641,
+    "cni": 63816.06420100612,
+    "cse": 128453.34407476359
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 359364.41672396875,
+    "operatingIncome": 68917.26930124227,
+    "noa": 102605.64179199464,
+    "cni": 71095.79269379306,
+    "cse": 142256.9008749112
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 401799.89966503525,
+    "operatingIncome": 77176.05744426162,
+    "noa": 114240.94399807081,
+    "cni": 79592.5763541665,
+    "cse": 158388.5872390479
+   },
+   {
+    "periodEnd": "2031-03-31",
+    "sales": 450945.4983003784,
+    "operatingIncome": 86733.5977291169,
+    "noa": 127711.5069762677,
+    "cni": 89427.05864632361,
+    "cse": 177064.75853773093
+   }
+  ],
+  "intrinsicPerShare": 2575.3448239374975,
+  "latestReportedPeriod": "2026-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "TITAN",
+  "companyType": "consumer",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.13632884,
+   "kw": 0.10658739648024287,
+   "g": 0.0345
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 69813.27742854279,
+    "operatingIncome": 4500.454552651063,
+    "noa": 32224.165172518762,
+    "cni": 3983.3233788727216,
+    "cse": 12944.902404111077
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 79674.66003773133,
+    "operatingIncome": 5209.059971169403,
+    "noa": 35687.561298382534,
+    "cni": 4634.8419205126165,
+    "cse": 14336.197557796468
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 90217.80313653556,
+    "operatingIncome": 5962.747576027517,
+    "noa": 39411.57691592142,
+    "cni": 5327.757376361491,
+    "cse": 15832.187243249606
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 101624.59073316409,
+    "operatingIncome": 6773.225060104255,
+    "noa": 43475.14272542934,
+    "cni": 6072.388061089284,
+    "cse": 17464.579037890195
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 114078.46370602562,
+    "operatingIncome": 7652.80185561212,
+    "noa": 47952.76920567571,
+    "cni": 6879.746006602089,
+    "cse": 19263.304853703845
+   }
+  ],
+  "intrinsicPerShare": 522.3266012390486,
+  "latestReportedPeriod": "2025-03-31"
+ },
+ {
+  "schemaVersion": "2026-10-forecast-snapshot-v2",
+  "ticker": "ULTRACEMCO",
+  "companyType": "cyclical",
+  "madeAt": "2026-10-17",
+  "cutoffPeriod": "2025-03-31",
+  "model": "command-center-base",
+  "basis": {
+   "accounts": "consolidated",
+   "lendingArm": null
+  },
+  "assumptions": {
+   "ke": 0.13605272000000002,
+   "kw": 0.11251412619514409,
+   "g": 0.0315
+  },
+  "years": [
+   {
+    "periodEnd": "2026-03-31",
+    "sales": 82286.70360517327,
+    "operatingIncome": 7930.25284862553,
+    "noa": 98016.48489466765,
+    "cni": 7033.10044118521,
+    "cse": 73690.37088795696
+   },
+   {
+    "periodEnd": "2027-03-31",
+    "sales": 88877.80522930111,
+    "operatingIncome": 8871.972378707365,
+    "noa": 102551.62496076028,
+    "cni": 7933.682513363182,
+    "cse": 77099.96218128216
+   },
+   {
+    "periodEnd": "2028-03-31",
+    "sales": 95820.09774486822,
+    "operatingIncome": 9819.416601246794,
+    "noa": 107691.53396458676,
+    "cni": 8834.61985692477,
+    "cse": 80964.22849555933
+   },
+   {
+    "periodEnd": "2029-03-31",
+    "sales": 103188.4163906535,
+    "operatingIncome": 10785.49697782481,
+    "noa": 113465.82279452801,
+    "cni": 9748.483150815971,
+    "cse": 85305.43177325111
+   },
+   {
+    "periodEnd": "2030-03-31",
+    "sales": 111046.98082329013,
+    "operatingIncome": 11781.729806267233,
+    "noa": 119901.43478323231,
+    "cni": 10686.502510460294,
+    "cse": 90143.82844548683
+   }
+  ],
+  "intrinsicPerShare": 2027.0807784338294,
+  "latestReportedPeriod": "2025-03-31"
  }
 ]

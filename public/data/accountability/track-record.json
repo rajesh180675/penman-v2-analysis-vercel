@@ -1,5 +1,5 @@
 {
- "madeAt": "2026-10-11",
+ "madeAt": "2026-10-17",
  "basis": "Walk-forward backtest of the base forecast (scripts/accountability/run-all.ts); one year ahead, against a random walk. Capitaline serves restated figures, so the record sees restatements of its own history.",
  "companies": [
   {
@@ -32,7 +32,7 @@
     },
     "core-oi-margin-error": {
      "scored": 9,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 7
     },
     "core-rnoa-error": {
      "scored": 8,
@@ -53,7 +53,7 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 4
     },
     "core-rnoa-error": {
      "scored": 9,
@@ -77,7 +77,7 @@
      "beatRandomWalk": 9
     },
     "core-rnoa-error": {
-     "scored": 10,
+     "scored": 9,
      "beatRandomWalk": 5
     },
     "cni-roe-point-error": {
@@ -145,7 +145,7 @@
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 8
+     "beatRandomWalk": 9
     }
    }
   },
@@ -158,15 +158,15 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 5
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 4
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 7
     }
    }
   },
@@ -229,7 +229,7 @@
     },
     "cni-roe-point-error": {
      "scored": 5,
-     "beatRandomWalk": 3
+     "beatRandomWalk": 2
     }
    }
   },
@@ -246,7 +246,7 @@
     },
     "core-rnoa-error": {
      "scored": 9,
-     "beatRandomWalk": 4
+     "beatRandomWalk": 5
     },
     "cni-roe-point-error": {
      "scored": 10,
@@ -267,11 +267,11 @@
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 6
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 5
     }
    }
   },
@@ -287,8 +287,8 @@
      "beatRandomWalk": 6
     },
     "core-rnoa-error": {
-     "scored": 4,
-     "beatRandomWalk": 3
+     "scored": 3,
+     "beatRandomWalk": 2
     },
     "cni-roe-point-error": {
      "scored": 9,
@@ -309,7 +309,7 @@
     },
     "core-rnoa-error": {
      "scored": 9,
-     "beatRandomWalk": 4
+     "beatRandomWalk": 3
     },
     "cni-roe-point-error": {
      "scored": 9,
@@ -326,7 +326,7 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 6
     },
     "core-rnoa-error": {
      "scored": 10,
@@ -334,7 +334,7 @@
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 8
+     "beatRandomWalk": 6
     }
    }
   },
@@ -347,7 +347,7 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 7
     },
     "core-rnoa-error": {
      "scored": 10,
@@ -368,11 +368,11 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 6
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 8
+     "beatRandomWalk": 7
     },
     "cni-roe-point-error": {
      "scored": 10,
@@ -393,7 +393,7 @@
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 4
     },
     "cni-roe-point-error": {
      "scored": 10,
@@ -414,7 +414,7 @@
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 6
     },
     "cni-roe-point-error": {
      "scored": 10,
@@ -452,15 +452,15 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 8
+     "beatRandomWalk": 7
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 5
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 7
     }
    }
   },

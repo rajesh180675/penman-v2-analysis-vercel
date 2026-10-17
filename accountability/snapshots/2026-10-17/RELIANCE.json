@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "RELIANCE",
+ "companyType": "conglomerate",
+ "madeAt": "2026-10-17",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.13203836,
+  "kw": 0.12944199905884363,
+  "g": 0.042705854408506126
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 1051412.6516986426,
+   "operatingIncome": 96100.10383965245,
+   "noa": 1173195.5622533604,
+   "cni": 76344.86595181322,
+   "cse": 917239.7629029651
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 1150265.419371274,
+   "operatingIncome": 104183.55155528586,
+   "noa": 1281362.7018276877,
+   "cni": 82724.03698758889,
+   "cse": 1001808.1031262139
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 1261496.7330000743,
+   "operatingIncome": 113412.66015031951,
+   "noa": 1403237.6179697274,
+   "cni": 90012.31068459834,
+   "cse": 1097093.5975336686
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 1385682.9849607898,
+   "operatingIncome": 123825.13407366264,
+   "noa": 1539436.9962243068,
+   "cni": 98239.72139080653,
+   "cse": 1203578.389530165
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 1523664.4989120283,
+   "operatingIncome": 135485.19398846806,
+   "noa": 1690874.837334595,
+   "cni": 107457.20593546548,
+   "cse": 1321977.0725321213
+  }
+ ],
+ "intrinsicPerShare": 279.1221278502586,
+ "latestReportedPeriod": "2025-03-31"
+}
