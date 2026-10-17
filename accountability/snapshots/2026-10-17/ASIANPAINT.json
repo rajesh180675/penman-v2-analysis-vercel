@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "ASIANPAINT",
+ "companyType": "consumer",
+ "madeAt": "2026-10-17",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.12199892000000001,
+  "kw": 0.12669902731784105,
+  "g": 0.05
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 35181.90647333938,
+   "operatingIncome": 4152.572150661883,
+   "noa": 18425.188087519462,
+   "cni": 4101.213285453206,
+   "cse": 19609.76063709633
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 37186.632935111134,
+   "operatingIncome": 4380.444269301379,
+   "noa": 19023.220054853235,
+   "cni": 4326.267089804253,
+   "cse": 20246.24063811682
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 39844.96808899906,
+   "operatingIncome": 4685.4305929705515,
+   "noa": 19957.565833875047,
+   "cni": 4627.481353429793,
+   "cse": 21240.656379864926
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 43126.78821428868,
+   "operatingIncome": 5063.665169560055,
+   "noa": 21194.70955364192,
+   "cni": 5001.037938179173,
+   "cse": 22557.337224754006
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 47030.77814617347,
+   "operatingIncome": 5514.759993390331,
+   "noa": 22720.255683200303,
+   "cni": 5446.55363721333,
+   "cse": 24180.96213970141
+  }
+ ],
+ "intrinsicPerShare": 511.7932657185022,
+ "latestReportedPeriod": "2025-03-31"
+}

@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "SUNPHARMA",
+ "companyType": "industrial",
+ "madeAt": "2026-10-17",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.09817472000000001,
+  "kw": 0.10984487146105058,
+  "g": 0.05229409759965953
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 58188.88253041372,
+   "operatingIncome": 12075.643007729479,
+   "noa": 51968.11717907875,
+   "cni": 12455.889789236347,
+   "cse": 82301.40338283623
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 64677.70628136267,
+   "operatingIncome": 13334.19496045003,
+   "noa": 59353.89877699235,
+   "cni": 13773.866349383658,
+   "cse": 93998.1940995899
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 72117.07903765011,
+   "operatingIncome": 14784.481347686842,
+   "noa": 67864.7260825769,
+   "cni": 15292.899026706378,
+   "cse": 107476.70879706983
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 80596.88269352932,
+   "operatingIncome": 16443.63195308,
+   "noa": 77623.95219708254,
+   "cni": 17031.160867718718,
+   "cse": 122932.30058590586
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 90224.4900789426,
+   "operatingIncome": 18332.46293082092,
+   "noa": 88772.99161208306,
+   "cni": 19010.656906003685,
+   "cse": 140588.92622549122
+  }
+ ],
+ "intrinsicPerShare": 834.212759991424,
+ "latestReportedPeriod": "2025-03-31"
+}

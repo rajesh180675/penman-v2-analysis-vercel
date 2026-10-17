@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "NESTLEIND",
+ "companyType": "consumer",
+ "madeAt": "2026-10-17",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "standalone",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.09684368000000002,
+  "kw": 0.0952555819890925,
+  "g": 0.05
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 21576.871655334133,
+   "operatingIncome": 3293.413719421342,
+   "noa": 6171.315737713517,
+   "cni": 3234.320657997655,
+   "cse": 4346.906328777496
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 23212.534563981484,
+   "operatingIncome": 3470.4065602924593,
+   "noa": 6569.753938139607,
+   "cni": 3407.750028619731,
+   "cse": 4627.555319798103
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 25106.710462312683,
+   "operatingIncome": 3685.2159412493306,
+   "noa": 7038.2557473816205,
+   "cni": 3618.2960741145043,
+   "cse": 4957.555204132712
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 27264.57611750836,
+   "operatingIncome": 3937.347632627972,
+   "noa": 7576.935697137257,
+   "cni": 3865.474765675365,
+   "cse": 5336.9866547824695
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 29696.781345231353,
+   "operatingIncome": 4227.368857126305,
+   "noa": 8187.642000980525,
+   "cni": 4149.84367384273,
+   "cse": 5767.151502932692
+  }
+ ],
+ "intrinsicPerShare": 699.8481897516253,
+ "latestReportedPeriod": "2025-03-31"
+}

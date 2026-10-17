@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "BHARTIARTL",
+ "companyType": "telecom",
+ "madeAt": "2026-10-17",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.11628536,
+  "kw": 0.07848255979135849,
+  "g": 0.025
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 190234.41082486874,
+   "operatingIncome": 33642.89660061774,
+   "noa": 395910.77045632695,
+   "cni": 15791.33702656363,
+   "cse": 126893.98681668141
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 206086.86839879127,
+   "operatingIncome": 32325.279204412866,
+   "noa": 434252.3080983541,
+   "cni": 13275.157660310935,
+   "cse": 139182.8936490743
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 221301.9712233215,
+   "operatingIncome": 31525.53821734119,
+   "noa": 471107.57432714,
+   "cni": 11279.804153144962,
+   "cse": 150995.4332816043
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 236420.6775149991,
+   "operatingIncome": 31228.42899371159,
+   "noa": 507551.04204148764,
+   "cni": 9748.674371632116,
+   "cse": 162675.98672138172
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 251816.4907249478,
+   "operatingIncome": 31382.51903784485,
+   "noa": 544361.7123025816,
+   "cni": 8605.375508795309,
+   "cse": 174474.23282981824
+  }
+ ],
+ "intrinsicPerShare": 58.68634779358161,
+ "latestReportedPeriod": "2025-03-31"
+}
