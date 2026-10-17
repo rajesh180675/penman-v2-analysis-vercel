@@ -82,6 +82,14 @@ describe("unusual tax", () => {
     expect(fy23.cu.UnusualTaxBenefit).toBe(0);
   });
 
+  it("leaves a year filed far above its normal rate as filed", () => {
+    // A rate that high comes from losses the group cannot relieve or charges
+    // the tax code disallows, which recur: it stays in core.
+    const high = run([0.25, 0.25, 0.25, 0.45]).at(-1)!;
+    expect(high.is.taxRate).toBeCloseTo(0.45, 10);
+    expect(high.cu.UnusualTaxBenefit).toBe(0);
+  });
+
   it("takes a lasting change in the rate as normal after two years", () => {
     const changed = run([0.40, 0.40, 0.40, 0.25, 0.25, 0.25]);
     expect(changed.map((p) => p.cu.UnusualTaxBenefit !== 0)).toEqual([false, false, false, true, true, false]);
