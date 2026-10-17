@@ -261,6 +261,17 @@ describe("buildDriverForecastModel — asset turnover", () => {
     expect(plan.targets.ato).toBeLessThan(2.1);
   });
 
+  it("starts from the latest turnover however small NOA is", () => {
+    // HUL before FY21: NOA 1–5% of sales every year, so no year counted, and
+    // the start fell back to 1× (forecast NOA = sales) or the 8× cap (3–4× what
+    // it held). Maruti FY2018: NOA 9.8% of sales, so the start took the 3.1×
+    // median of older years and forecast NOA rose 3.8× in a year.
+    const nearZero = planFor(25);
+    expect(nearZero.year1.ato).toBeCloseTo(25, 9);
+    expect(nearZero.targets.ato).toBeLessThanOrEqual(8);
+    expect(planFor(3.1, 10.2).year1.ato).toBeCloseTo(10.2, 9);
+  });
+
   it("treats a negative turnover (negative NOA) as unknown rather than flooring it", () => {
     // Net operating liabilities (HUL before FY21) give a negative ratio; the
     // floor would turn it into a forecast NOA of 10x sales.
