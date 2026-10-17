@@ -35,7 +35,7 @@ async function commandCenter(folder: string, type: CompanyType, price: number): 
   const buf = readFileSync(join(process.cwd(), "public", "data", "companies", folder, `${folder}.zip`));
   const parsed = await parseCapitalineZip(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength), { companyId: folder });
   const config = { ...DEFAULT_CONFIG, company_type: type, market_price: INRAbsolute(price) };
-  return buildValuationCommandCenter({ data: processCompanyDataFull(parsed.periods, config).periods, config, ...ACTIVE_MARKET_PACKS, analysisAsOf: "2026-09-26" });
+  return buildValuationCommandCenter({ data: processCompanyDataFull(parsed.periods, config).periods, config, ...ACTIVE_MARKET_PACKS, analysisAsOf: "2026-10-17" });
 }
 
 beforeAll(async () => {
@@ -204,10 +204,10 @@ describe("Verdict — what would change our mind", () => {
       `Sales growth ${formatPct(growth.base, 1)} in year 1 ${formatPct(growth.breakEven, 1)} in year 1 (${shift >= 0 ? "+" : "−"}${Math.abs(shift * 100).toFixed(1)} points in every forecast year)`,
     );
     // TCS at ₹3,100: the price needs more terminal growth than the riskless
-    // rate ke starts from (7.11% G-Sec less the 1.87% default spread).
+    // rate ke starts from (7.38% G-Sec less the 1.87% default spread).
     const g = at("g");
-    expect(g.breakEven).toBeGreaterThan(0.0711 - 0.0187);
-    expect(html).toContain(`Terminal growth ${formatPct(g.base, 1)} ${formatPct(g.breakEven, 1)}, above the 5.24% riskless rate the cost of equity is built on`);
+    expect(g.breakEven).toBeGreaterThan(0.0738 - 0.0187);
+    expect(html).toContain(`Terminal growth ${formatPct(g.base, 1)} ${formatPct(g.breakEven, 1)}, above the 5.51% riskless rate the cost of equity is built on`);
     // A manual ke is built on no riskless rate, so none is claimed.
     const manual = { ...cc, costOfCapital: { ...cc.costOfCapital, equityMode: "manual" } } as unknown as CC;
     expect(text(renderToStaticMarkup(<VerdictSection result={resultFor(manual)} />))).not.toContain("riskless rate");
