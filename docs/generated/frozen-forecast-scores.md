@@ -35,16 +35,24 @@ Not scored:
 | Sales (log error, %) | 14 | 2.9 | 6.3 | +54% | -1.3 | 11 of 14 |
 | Earnings (ROE points) | 14 | 1.1 | 2.5 | +55% | -2.1 | 11 of 14 |
 
-## Frozen 2026-10-11, by company
+### Frozen 2026-10-17 (15 of 21 forecasts scored)
+
+| Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
+|---|---|---|---|---|---|---|
+| Sales (log error, %) | 15 | 3.4 | 6.5 | +47% | -1.9 | 12 of 15 |
+| Earnings (ROE points) | 15 | 1.2 | 3.0 | +62% | -2.6 | 11 of 15 |
+
+## Frozen 2026-10-17, by company
 
 | Company | Cutoff | Year | Sales error | Random walk | Earnings error (ROE pts) | Random walk |
 |---|---|---|---|---|---|---|
 | ASIANPAINT | 2025-03-31 | 2026-03-31 | -1.1 | -4.8 | -1.2 | -3.4 |
+| BHARTIARTL | 2025-03-31 | 2026-03-31 | -10.3 | -19.9 | -9.6 | +6.0 |
 | BRITANNIA | 2025-03-31 | 2026-03-31 | +2.3 | -6.5 | -4.7 | -8.1 |
 | DABUR | 2025-03-31 | 2026-03-31 | +0.4 | -4.9 | -0.3 | -1.2 |
-| DMART | 2025-03-31 | 2026-03-31 | +0.4 | -14.8 | +0.8 | -1.2 |
+| DMART | 2025-03-31 | 2026-03-31 | +0.4 | -14.8 | +0.7 | -1.2 |
 | GRASIM | 2025-03-31 | — | not scored: a forecast of the business without Aditya Birla Capital; the consolidated filings describe another business | | | |
-| HINDUNILVR | 2025-03-31 | 2026-03-31 | +3.5 | -2.1 | -8.5 | -8.9 |
+| HINDUNILVR | 2025-03-31 | 2026-03-31 | +3.4 | -2.1 | -8.5 | -8.9 |
 | INFY | 2026-03-31 | — | no filed year after its data yet | | | |
 | ITC | 2025-03-31 | 2026-03-31 | +4.4 | -4.6 | +1.1 | +20.1 |
 | LT | 2026-03-31 | — | not scored: a forecast of the business without L&T Finance; the consolidated filings describe another business | | | |
@@ -53,7 +61,7 @@ Not scored:
 | NESTLEIND | 2025-03-31 | — | not scored: a forecast on standalone accounts; the ledger is consolidated | | | |
 | NTPC | 2025-03-31 | 2026-03-31 | +7.6 | +0.4 | -1.1 | -2.0 |
 | POWERGRID | 2025-03-31 | 2026-03-31 | +4.7 | -2.0 | +0.7 | -0.4 |
-| RELIANCE | 2025-03-31 | 2026-03-31 | -0.5 | -9.2 | -0.4 | -1.3 |
+| RELIANCE | 2025-03-31 | 2026-03-31 | -0.6 | -9.2 | -0.5 | -1.3 |
 | SUNPHARMA | 2025-03-31 | 2026-03-31 | -0.5 | -10.6 | +1.4 | -0.8 |
 | TATASTEEL | 2025-03-31 | 2026-03-31 | -2.2 | -6.0 | -6.6 | -8.1 |
 | TCS | 2026-03-31 | — | no filed year after its data yet | | | |
