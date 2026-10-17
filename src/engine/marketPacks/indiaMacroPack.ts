@@ -65,15 +65,16 @@ export const INDIA_ERP_BASIS = "ratings-based" as const;
  * inflation-differential adjustment on top.
  */
 export const INDIA_MACRO_PACK: MacroPack = {
-  asOf: "2026-09-25",
+  asOf: "2026-10-17",
   riskFreeRate: {
-    // India 10-year benchmark G-Sec. Cross-checked against a second report of
-    // the same series in the same window (7.04% at 2026-09-22, India Macro
-    // Indicators), consistent with the reported +0.08pp session move to 7.11%.
-    // Previous pin: 6.82% at 2026-07-24 (expired past the 30-day window).
-    value: 0.0711,
-    asOf: "2026-09-24",
-    source: "India 10Y benchmark G-Sec yield, per Trading Economics (tradingeconomics.com/india/government-bond-yield)",
+    // India 10-year benchmark G-Sec, the 2026-10-16 close (7.382%; 7.389% and
+    // 7.399% the two sessions before). Cross-checked against a second report
+    // of the same series in the same window: "around 7.38%" in SBI Research's
+    // Ecowrap of 2026-10-15 (Business Today, 2026-10-16). Previous pin: 7.11%
+    // at 2026-09-24 (inside a week of its 30-day window).
+    value: 0.0738,
+    asOf: "2026-10-16",
+    source: "India 10Y benchmark G-Sec yield, per Investing.com historical data (investing.com/rates-bonds/india-10-year-bond-yield-historical-data)",
   },
   equityRiskPremium: {
     // 4.23% mature-market ERP + 2.85% India country risk premium.
