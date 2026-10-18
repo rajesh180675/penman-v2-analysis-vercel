@@ -42,12 +42,19 @@ Not scored:
 | Sales (log error, %) | 15 | 3.4 | 6.5 | +47% | -1.9 | 12 of 15 |
 | Earnings (ROE points) | 15 | 1.2 | 3.0 | +62% | -2.6 | 11 of 15 |
 
-## Frozen 2026-10-17, by company
+### Frozen 2026-10-18 (15 of 21 forecasts scored)
+
+| Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
+|---|---|---|---|---|---|---|
+| Sales (log error, %) | 15 | 3.4 | 6.5 | +47% | -1.9 | 12 of 15 |
+| Earnings (ROE points) | 15 | 1.2 | 3.0 | +62% | -2.6 | 11 of 15 |
+
+## Frozen 2026-10-18, by company
 
 | Company | Cutoff | Year | Sales error | Random walk | Earnings error (ROE pts) | Random walk |
 |---|---|---|---|---|---|---|
 | ASIANPAINT | 2025-03-31 | 2026-03-31 | -1.1 | -4.8 | -1.2 | -3.4 |
-| BHARTIARTL | 2025-03-31 | 2026-03-31 | -10.3 | -19.9 | -9.6 | +6.0 |
+| BHARTIARTL | 2025-03-31 | 2026-03-31 | -10.4 | -19.9 | -9.8 | +6.0 |
 | BRITANNIA | 2025-03-31 | 2026-03-31 | +2.3 | -6.5 | -4.7 | -8.1 |
 | DABUR | 2025-03-31 | 2026-03-31 | +0.4 | -4.9 | -0.3 | -1.2 |
 | DMART | 2025-03-31 | 2026-03-31 | +0.4 | -14.8 | +0.7 | -1.2 |

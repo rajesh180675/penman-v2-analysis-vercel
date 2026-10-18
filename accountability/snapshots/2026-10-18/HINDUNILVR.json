@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "HINDUNILVR",
+ "companyType": "consumer",
+ "madeAt": "2026-10-18",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.0981464,
+  "kw": 0.10261775321878772,
+  "g": 0.05
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 66728.49404333763,
+   "operatingIncome": 10589.087932872311,
+   "noa": 42286.21980199267,
+   "cni": 10847.614871081558,
+   "cse": 52928.21785852294
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 71117.78296729017,
+   "operatingIncome": 11126.724518763485,
+   "noa": 45632.06378559476,
+   "cni": 11405.159659740568,
+   "cse": 57116.096560235936
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 76255.90386402963,
+   "operatingIncome": 11782.381632575234,
+   "noa": 49498.49471950176,
+   "cni": 12084.071559766171,
+   "cse": 61955.57617707127
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 82135.2595038653,
+   "operatingIncome": 12551.907035832177,
+   "noa": 53891.40217357412,
+   "cni": 12880.197774550234,
+   "cse": 67454.02848257894
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 88766.82332630726,
+   "operatingIncome": 13434.742397596174,
+   "noa": 58827.20877001908,
+   "cni": 13793.056077015004,
+   "cse": 73632.0091123789
+  }
+ ],
+ "intrinsicPerShare": 734.1399645043041,
+ "latestReportedPeriod": "2025-03-31"
+}

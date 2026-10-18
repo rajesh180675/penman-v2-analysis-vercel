@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "NTPC",
+ "companyType": "utility",
+ "madeAt": "2026-10-18",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.11463572,
+  "kw": 0.07211683646290203,
+  "g": 0.03722535912302272
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 202207.23831712035,
+   "operatingIncome": 34804.24931974121,
+   "noa": 482659.24468014477,
+   "cni": 25084.66865069288,
+   "cse": 200569.28512468902
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 218252.75862764937,
+   "operatingIncome": 37212.73881460555,
+   "noa": 527304.0549384761,
+   "cni": 26622.944741452247,
+   "cse": 219121.45785676816
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 236239.89432467215,
+   "operatingIncome": 39969.847416267694,
+   "noa": 576881.0560605325,
+   "cni": 28406.604963788122,
+   "cse": 239723.2049138795
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 256194.14237808174,
+   "operatingIncome": 43073.85134040562,
+   "noa": 631505.3909082133,
+   "cni": 30432.94410062413,
+   "cse": 262422.3739685848
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 278186.037751688,
+   "operatingIncome": 46532.03046302842,
+   "noa": 691391.1137830983,
+   "cni": 32705.888684891142,
+   "cse": 287307.91539056815
+  }
+ ],
+ "intrinsicPerShare": 224.22138951874825,
+ "latestReportedPeriod": "2025-03-31"
+}
