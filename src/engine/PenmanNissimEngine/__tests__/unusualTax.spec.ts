@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { coreTaxComparable } from "../../anomalyDetection/shared";
 import { processCompanyDataFull } from "../../pipeline";
 import { evaluateReconciliationResiduals } from "../../reconciliationResiduals";
-import { DEFAULT_CONFIG, type RawPeriodData, type RecastPeriod } from "../../types";
+import { DEFAULT_CONFIG, type EngineConfig, type RawPeriodData, type RecastPeriod } from "../../types";
 import { normalTaxRate } from "../unusualTax";
 
 const config = { ...DEFAULT_CONFIG, company_type: "consumer" as const };
@@ -48,7 +48,7 @@ const year = (periodEnd: string, rate: number): RawPeriodData => ({
 });
 
 const ENDS = ["2022-03-31", "2023-03-31", "2024-03-31", "2025-03-31"];
-const run = (rates: readonly number[], cfg = config) =>
+const run = (rates: readonly number[], cfg: EngineConfig = config) =>
   processCompanyDataFull(rates.map((rate, i) => year(ENDS[i] ?? `${2022 + i}-03-31`, rate)), cfg).periods;
 
 // Airtel-shaped: 33.5%, 25.8%, 32.5%, then 2.4%.
@@ -107,6 +107,12 @@ describe("unusual tax", () => {
     const bridge = (ps: RecastPeriod[]) => evaluateReconciliationResiduals({ recastData: ps, config })
       .checks.find((c) => c.key === "operating-cost-bridge" && c.periodEnd === "2025-03-31")!.residual!;
     expect(bridge(periods)).toBeCloseTo(bridge(run([0.335, 0.258, 0.325, 0.325])), 9);
+  });
+
+  it("keeps a regulated utility's filed rate: its tariff passes the tax through", () => {
+    const utility = run(AIRTEL, { ...config, company_type: "utility" }).at(-1)!;
+    expect(utility.is.taxRate).toBeCloseTo(0.024, 10);
+    expect(utility.cu.UnusualTaxBenefit).toBe(0);
   });
 
   it("changes nothing in statutory mode", () => {
