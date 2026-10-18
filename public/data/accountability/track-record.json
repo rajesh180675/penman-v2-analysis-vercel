@@ -1,5 +1,5 @@
 {
- "madeAt": "2026-10-17",
+ "madeAt": "2026-10-18",
  "basis": "Walk-forward backtest of the base forecast (scripts/accountability/run-all.ts); one year ahead, against a random walk. Capitaline serves restated figures, so the record sees restatements of its own history.",
  "companies": [
   {
@@ -53,11 +53,11 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 4
+     "beatRandomWalk": 6
     },
     "core-rnoa-error": {
      "scored": 9,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 4
     },
     "cni-roe-point-error": {
      "scored": 10,
@@ -267,11 +267,11 @@
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 5
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 6
     }
    }
   },
@@ -326,7 +326,7 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 7
     },
     "core-rnoa-error": {
      "scored": 10,
@@ -334,7 +334,7 @@
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 8
     }
    }
   },
@@ -368,11 +368,11 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 7
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 8
     },
     "cni-roe-point-error": {
      "scored": 10,
@@ -414,7 +414,7 @@
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 7
     },
     "cni-roe-point-error": {
      "scored": 10,

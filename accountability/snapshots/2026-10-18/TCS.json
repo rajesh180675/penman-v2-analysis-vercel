@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "TCS",
+ "companyType": "it-services",
+ "madeAt": "2026-10-18",
+ "cutoffPeriod": "2026-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.11817572000000001,
+  "kw": 0.12004888897822025,
+  "g": 0.05
+ },
+ "years": [
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 292362.5643659298,
+   "operatingIncome": 55850.969783384986,
+   "noa": 84255.20218207539,
+   "cni": 57659.45531831049,
+   "cse": 116815.05749273766
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 323039.7505326007,
+   "operatingIncome": 61839.54518549096,
+   "noa": 92649.54970942641,
+   "cni": 63816.06420100612,
+   "cse": 128453.34407476359
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 359364.41672396875,
+   "operatingIncome": 68917.26930124227,
+   "noa": 102605.64179199464,
+   "cni": 71095.79269379306,
+   "cse": 142256.9008749112
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 401799.89966503525,
+   "operatingIncome": 77176.05744426162,
+   "noa": 114240.94399807081,
+   "cni": 79592.5763541665,
+   "cse": 158388.5872390479
+  },
+  {
+   "periodEnd": "2031-03-31",
+   "sales": 450945.4983003784,
+   "operatingIncome": 86733.5977291169,
+   "noa": 127711.5069762677,
+   "cni": 89427.05864632361,
+   "cse": 177064.75853773093
+  }
+ ],
+ "intrinsicPerShare": 2575.3448239374975,
+ "latestReportedPeriod": "2026-03-31"
+}

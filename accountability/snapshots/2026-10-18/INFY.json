@@ -1,0 +1,61 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v2",
+ "ticker": "INFY",
+ "companyType": "it-services",
+ "madeAt": "2026-10-18",
+ "cutoffPeriod": "2026-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.11455076,
+  "kw": 0.11804979159289147,
+  "g": 0.05
+ },
+ "years": [
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 196849.13800372332,
+   "operatingIncome": 32117.343818647052,
+   "noa": 70451.01768665468,
+   "cni": 33847.990593590905,
+   "cse": 103733.17730834051
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 217257.24230391177,
+   "operatingIncome": 35872.522962914874,
+   "noa": 78783.37081413643,
+   "cni": 37807.00698788955,
+   "cse": 116001.86401792227
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 240074.99749543332,
+   "operatingIncome": 40049.10358803267,
+   "noa": 88152.53500353933,
+   "cni": 42213.153247072776,
+   "cse": 129797.16750683679
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 265532.7663909909,
+   "operatingIncome": 44689.52564515201,
+   "noa": 98665.42439593982,
+   "cni": 47111.48792956845,
+   "cse": 145276.50982400856
+  },
+  {
+   "periodEnd": "2031-03-31",
+   "sales": 293892.12894837325,
+   "operatingIncome": 49841.42908998934,
+   "noa": 110442.32834489032,
+   "cni": 52552.605569516294,
+   "cse": 162617.00688983296
+  }
+ ],
+ "intrinsicPerShare": 1307.0734873965844,
+ "latestReportedPeriod": "2026-03-31"
+}
