@@ -14,6 +14,8 @@
  * 5. Writes public/data/accountability/track-record.json — each company's
  *    one-year-ahead record against a random walk, for the Case Verdict.
  * 6. Publishes the frozen snapshots for the browser (publish-snapshots.ts).
+ * 7. Lists what moved in each company's frozen forecast from set to set
+ *    (snapshot-changes.ts → docs/generated/frozen-forecast-changes.md).
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -116,6 +118,8 @@ writeFileSync(join(ROOT, "docs", "generated", "forecast-accountability.md"), ren
 // keeps equal to accountability/snapshots: publish it with the new ones.
 const published = spawnSync("npx", ["tsx", "scripts/accountability/publish-snapshots.ts"], { cwd: ROOT, shell: true, encoding: "utf8" });
 console.log(published.status === 0 ? published.stdout.trim() : `publish-snapshots FAILED (${published.status}) ${published.stderr ?? ""}`);
+const changes = spawnSync("npx", ["tsx", "scripts/accountability/snapshot-changes.ts"], { cwd: ROOT, shell: true, encoding: "utf8" });
+console.log(changes.status === 0 ? changes.stdout.trim() : `snapshot-changes FAILED (${changes.status}) ${changes.stderr ?? ""}`);
 console.log(`\n${industrial.length} industrial companies, ${overall.origins} forecast origins; snapshots written ${written}, kept ${kept}.`);
 
 // ── Renderers ─────────────────────────────────────────────────────────────
