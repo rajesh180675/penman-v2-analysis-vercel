@@ -13,7 +13,7 @@ import {
 import { resolveCostOfCapitalFromConfig } from "./costOfCapital";
 import { runAnomalyDetection, AnomalyBundle } from "./anomalyDetection";
 import { coreTaxComparable } from "./anomalyDetection/shared";
-import { normalTaxRate } from "./PenmanNissimEngine/unusualTax";
+import { recastNormalTaxRate } from "./PenmanNissimEngine/unusualTax";
 import { buildUnusualItemPolicy } from "./unusualItemPolicy";
 import { assessAnalysisScope, analysisFamilyFromScope } from "./scopePolicy";
 import { processBankData } from "./bankPipeline";
@@ -283,7 +283,7 @@ export function processCompanyDataFull(
     let recast: RecastPeriod;
     try {
       const prev = results.length > 0 ? results[results.length - 1] : undefined;
-      recast = computeRecastPeriod(raw, config, prev, normalTaxRate(results, config));
+      recast = computeRecastPeriod(raw, config, prev, recastNormalTaxRate(results, config));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       trace("pipeline", "recast:error", { period_end: raw.period_end, error: msg }, null, { level: "error" });

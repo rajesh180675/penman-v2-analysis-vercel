@@ -45,6 +45,20 @@ export function normalTaxRate(prior: readonly RecastPeriod[], cfg: EngineConfig)
   return rates.length % 2 === 0 ? (rates[m - 1]! + rates[m]!) / 2 : rates[m]!;
 }
 
+/**
+ * The normal rate the recast taxes a year at, or null where it keeps the filed
+ * rate. A regulated utility's tax is passed through its tariff: the deferred
+ * tax it recovers from beneficiaries is filed below PAT (Ind AS 114 regulatory
+ * deferral, Capitaline's "Extraordinary Items After Tax"), and core OI carries
+ * both, so its rate swings cancel there (Power Grid FY2018: deferred tax
+ * ₹3,069 Cr, recovered ₹3,284 Cr). Normalizing the tax side alone broke that:
+ * Power Grid's one-year margin forecast error rose from 4.1 to 5.7 points of
+ * sales, NTPC's from 1.1 to 1.4.
+ */
+export function recastNormalTaxRate(prior: readonly RecastPeriod[], cfg: EngineConfig): number | null {
+  return cfg.company_type === "utility" ? null : normalTaxRate(prior, cfg);
+}
+
 export function isUnusualTaxRate(filed: number | null, normal: number | null): normal is number {
   return filed != null && normal != null && filed < normal - CORE_TAX_RATE_BAND;
 }
