@@ -10,6 +10,7 @@ export {
   type ScenarioBandSummary,
 } from "./scenarioBands";
 export { estimatePanelPersistence, priorFor, type PersistenceEstimate, type RnoaSeries } from "./persistence";
+export { compareSnapshots, type SnapshotChange } from "./snapshotChanges";
 export {
   buildForecastSnapshot,
   firstFiledYears,
