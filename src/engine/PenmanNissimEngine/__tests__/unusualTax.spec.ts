@@ -135,3 +135,48 @@ describe("normalTaxRate", () => {
     expect(normalTaxRate([filed(null)], config)).toBeNull();
   });
 });
+
+describe("a loss year that books no tax", () => {
+  /** Sales of 900 at an operating loss: PBT −60 after other income of 15 and finance costs of 25, its tax filed at `tax`. */
+  const lossYear = (periodEnd: string, tax: number): RawPeriodData => {
+    const base = year(periodEnd, 0);
+    return {
+      ...base,
+      raw_metric_values: {
+        ...base.raw_metric_values,
+        "Other Expenses__ProfitLoss": 360,
+        "Profit Before Tax__ProfitLoss": -60,
+        "Tax Expenses__ProfitLoss": tax,
+        "Profit After Tax__ProfitLoss": -60 - tax,
+        "Total Comprehensive Income for the Year__ProfitLoss": -60 - tax,
+      },
+    };
+  };
+  const latest = (tax: number, cfg: EngineConfig = config) =>
+    processCompanyDataFull([year(ENDS[0]!, 0.25), year(ENDS[1]!, 0.25), lossYear(ENDS[2]!, tax)], cfg).periods.at(-1)!;
+
+  it("gives its financing no tax shield: the marginal rate is nil", () => {
+    // Vodafone Idea FY2025-shaped: ₹16 Cr of tax on a ₹27,368 Cr loss; here 1 on 60.
+    const untaxed = latest(1);
+    // Airtel FY2020-shaped: a deferred-tax credit of 28% of the loss.
+    const credited = latest(-0.28 * 60);
+    expect(untaxed.is.taxRate).toBe(0);
+    expect(credited.is.taxRate).toBeCloseTo(DEFAULT_CONFIG.statutory_tax_rate, 10);
+    // The same financing, untaxed: NFE is the credited year's grossed up by the shield it no longer has.
+    expect(untaxed.is.NFE).toBeGreaterThan(0);
+    expect(untaxed.is.NFE).toBeCloseTo(credited.is.NFE / (1 - DEFAULT_CONFIG.statutory_tax_rate), 9);
+  });
+
+  it("keeps the operating-cost bridge tied at a nil rate: the filed charge is the only tax left", () => {
+    // Vodafone Idea FY2024-shaped: a ₹828.6 Cr charge (2.7%) on a ₹30,410 Cr loss; here 5 on 60.
+    const bridge = (tax: number) => evaluateReconciliationResiduals({ recastData: processCompanyDataFull([year(ENDS[0]!, 0.25), year(ENDS[1]!, 0.25), lossYear(ENDS[2]!, tax)], config).periods, config })
+      .checks.find((c) => c.key === "operating-cost-bridge" && c.periodEnd === ENDS[2])!.residual!;
+    expect(bridge(5)).toBeCloseTo(bridge(-0.28 * 60), 9);
+  });
+
+  it("keeps the statutory rate for a loss that books a charge, and in statutory mode", () => {
+    // Tata Steel FY2024-shaped: a charge despite the loss (profitable subsidiaries paid tax).
+    expect(latest(0.5 * 60).is.taxRate).toBeCloseTo(DEFAULT_CONFIG.statutory_tax_rate, 10);
+    expect(latest(1, { ...config, tax_rate_mode: "statutory" }).is.taxRate).toBeCloseTo(DEFAULT_CONFIG.statutory_tax_rate, 10);
+  });
+});

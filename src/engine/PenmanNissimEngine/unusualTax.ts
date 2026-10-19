@@ -59,6 +59,22 @@ export function recastNormalTaxRate(prior: readonly RecastPeriod[], cfg: EngineC
   return cfg.company_type === "utility" ? null : normalTaxRate(prior, cfg);
 }
 
+/**
+ * A loss year that books no tax has no tax shield to give, so its financing
+ * and unusual items are taxed at its marginal rate, nil (Penman), not the
+ * statutory rate. Across the library, every loss year either books a tax
+ * within 2.8% of the loss (Paytm's nine, Vodafone Idea FY2021–25) or a credit
+ * or charge of 19.5% or more (Airtel, Tata Steel, Idea FY2017–20: a deferred-
+ * tax asset recognized or written off), so the band leaves room on both sides.
+ * At 25.17%, Idea's ₹17,900–25,700 Cr of yearly net financing cost carried a
+ * shield of ₹4,500–6,500 Cr it never received, and core OI absorbed it: FY2025
+ * core margin −22.4% where nil gives −8.8%. Paytm's net financial income was
+ * taxed the same way, up to ₹135 Cr a year.
+ */
+export function isUntaxedLoss(profitBeforeTax: number | null | undefined, taxExpense: number | null | undefined): boolean {
+  return profitBeforeTax != null && taxExpense != null && profitBeforeTax < 0 && Math.abs(taxExpense) <= CORE_TAX_RATE_BAND * -profitBeforeTax;
+}
+
 export function isUnusualTaxRate(filed: number | null, normal: number | null): normal is number {
   return filed != null && normal != null && filed < normal - CORE_TAX_RATE_BAND;
 }

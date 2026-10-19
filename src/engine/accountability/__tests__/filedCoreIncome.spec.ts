@@ -19,9 +19,11 @@ describe("filedCoreOperatingIncome", () => {
     const t = DEFAULT_CONFIG.statutory_tax_rate;
     // A ₹1.2 Cr charge on ₹240 Cr of profit (0.5%): core OI is the profit after it less the 40 left out, after tax at t.
     expect(filedCoreOperatingIncome([year(0.005)])[0]).toBeCloseTo(240 - 1.2 - 40 * (1 - t), 9);
-    // A loss year (Vodafone Idea-shaped): no rate, no tax, and the finance costs' shield is credited to financing.
-    const loss = { revenue: 1000, expenses: 1100, financeCosts: 300, profitBeforeTax: -100, taxExpense: 0 };
-    expect(filedCoreOperatingIncome([loss])[0]).toBeCloseTo(200 - (200 + 100) * t, 9);
+    // A loss that books a credit (Airtel FY2020-shaped): the finance costs' shield is credited to financing.
+    const credited = { revenue: 1000, expenses: 1100, financeCosts: 300, profitBeforeTax: -100, taxExpense: -28 };
+    expect(filedCoreOperatingIncome([credited])[0]).toBeCloseTo(200 * (1 - t) - 100 * t + 28, 9);
+    // A loss that books no tax (Vodafone Idea FY2021–25): no shield, so core OI is the pretax figure (isUntaxedLoss).
+    expect(filedCoreOperatingIncome([{ ...credited, taxExpense: 1 }])[0]).toBeCloseTo(200 - 1, 9);
     // Power Grid FY2026-shaped: a tax credit beside a regulatory reversal; both stay in core OI.
     const credit = year(0, { taxExpense: -14, regulatoryDeferralMovement: -28 });
     expect(filedCoreOperatingIncome([credit])[0]).toBeCloseTo(200 * (1 - t) + 240 * t + 14 - 28, 9);

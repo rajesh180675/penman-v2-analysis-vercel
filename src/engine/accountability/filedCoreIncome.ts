@@ -1,4 +1,4 @@
-import { isUnusualTaxRate, NORMAL_TAX_WINDOW } from "../PenmanNissimEngine/unusualTax";
+import { isUnusualTaxRate, isUntaxedLoss, NORMAL_TAX_WINDOW } from "../PenmanNissimEngine/unusualTax";
 import { DEFAULT_CONFIG } from "../types";
 
 /** The lines of one year's results filing a core operating income is built from (₹ crore). */
@@ -36,7 +36,8 @@ const median = (xs: readonly number[]) => {
  * - Taxed as the recast's top-down OI (CNI + NFE + MII) is: the items left
  *   out carry tax at the effective rate, or at the statutory rate where the
  *   recast would not take the effective one (a loss, a tax credit, a rate
- *   outside 1%–55%), and core operating income keeps the rest of the year's
+ *   outside 1%–55%), or at nil in a loss year that books no tax
+ *   (isUntaxedLoss), and core operating income keeps the rest of the year's
  *   tax charge. A benefit more than 10 points below the median of the three
  *   filed rates before it is unusual, as the recast takes it (unusualTax.ts):
  *   that year is taxed at the median throughout.
@@ -70,7 +71,7 @@ export function filedCoreOperatingIncome(years: readonly FiledIncomeLines[]): (n
       ? median(rates.slice(Math.max(0, i - NORMAL_TAX_WINDOW), i).filter((r): r is number => r != null))
       : null;
     if (isUnusualTaxRate(filed, normal)) return pretax * (1 - normal) + regulatory;
-    const rate = filed ?? DEFAULT_CONFIG.statutory_tax_rate;
+    const rate = isUntaxedLoss(year.profitBeforeTax, year.taxExpense) ? 0 : filed ?? DEFAULT_CONFIG.statutory_tax_rate;
     // Nil at the effective rate; at the statutory rate, the part of the tax charge it does not explain.
     const rest = year.profitBeforeTax != null && year.taxExpense != null ? year.profitBeforeTax * rate - year.taxExpense : 0;
     return pretax * (1 - rate) + rest + regulatory;

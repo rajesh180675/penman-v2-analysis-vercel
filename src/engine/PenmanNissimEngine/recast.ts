@@ -23,7 +23,7 @@ import {
 } from "../types";
 import { CapitalineMappingSpec as M } from "../mappingSpec";
 import { findLendingArmLink } from "../lendingArm/links";
-import { isUnusualTaxRate } from "./unusualTax";
+import { isUnusualTaxRate, isUntaxedLoss } from "./unusualTax";
 import {
   pushTrace,
   sumWithDistinctSource,
@@ -368,6 +368,7 @@ export function recastIncome(
     const eff = TaxExpense / PBT;
     if (Number.isFinite(eff) && eff > 0.01 && eff < 0.55) taxRate = filedTaxRate = eff;
   }
+  if (cfg.tax_rate_mode === "effective" && isUntaxedLoss(PBT, TaxExpense)) taxRate = 0;
   // A year filed far from its normal rate is taxed at the normal rate
   // throughout (the NFE shield, exceptional items, UFE), and the rest of its
   // tax is an unusual operating item (./unusualTax): OI = CNI + NFE then
