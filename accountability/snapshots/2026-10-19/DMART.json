@@ -1,0 +1,69 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v3",
+ "ticker": "DMART",
+ "companyType": "consumer",
+ "madeAt": "2026-10-19",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.12598496,
+  "kw": 0.1250880116450512,
+  "g": 0.05
+ },
+ "anchor": {
+  "periodEnd": "2025-03-31",
+  "sales": 59358.05,
+  "operatingIncome": 2667.0078402088943,
+  "noa": 21637.510000000002,
+  "cni": 2699.21,
+  "cse": 21427.75
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 69077.9306875,
+   "operatingIncome": 3114.9059575349957,
+   "noa": 24927.11420368025,
+   "cni": 3114.9059575349957,
+   "cse": 24684.2660222265
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 79547.55455732423,
+   "operatingIncome": 3598.2052548163438,
+   "noa": 28441.95104179981,
+   "cni": 3598.2052548163438,
+   "cse": 28164.860158713236
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 90876.86642904313,
+   "operatingIncome": 4121.796537844155,
+   "noa": 32221.220026966323,
+   "cni": 4121.796537844155,
+   "cse": 31907.310256913013
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 103196.71662208978,
+   "operatingIncome": 4691.567651221941,
+   "noa": 36310.52321237538,
+   "cni": 4691.567651221941,
+   "cse": 35956.77409975417
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 116656.12823191713,
+   "operatingIncome": 5314.2766803277245,
+   "noa": 40760.87555481915,
+   "cni": 5314.2766803277245,
+   "cse": 40363.76963946658
+  }
+ ],
+ "intrinsicPerShare": 450.86425906869044,
+ "latestReportedPeriod": "2025-03-31"
+}

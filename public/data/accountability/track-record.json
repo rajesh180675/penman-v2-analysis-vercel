@@ -1,5 +1,5 @@
 {
- "madeAt": "2026-10-18",
+ "madeAt": "2026-10-19",
  "basis": "Walk-forward backtest of the base forecast (scripts/accountability/run-all.ts); one year ahead, against a random walk. Capitaline serves restated figures, so the record sees restatements of its own history.",
  "companies": [
   {
@@ -477,7 +477,7 @@
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 5
     },
     "cni-roe-point-error": {
      "scored": 6,
