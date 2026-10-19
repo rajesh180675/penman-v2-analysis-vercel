@@ -7,16 +7,21 @@
  * the honest counterpart: written once, never regenerated, scored later.
  */
 import type { ForecastPeriod, RecastPeriod } from "../types";
+import { headlineInconsistencies } from "../filings/tieOut";
+import type { AnnualHeadline } from "../filings/xbrlInstance";
+import { filedCoreOperatingIncome } from "./filedCoreIncome";
 import { scoreForecast } from "./walkForward";
 import type { ScoredObservation } from "./types";
 
 /**
+ * v3 (2026-10-19): `anchor` records the cutoff year as the forecast saw it, so
+ * its margin can be scored as a move from there (scoreSnapshotAgainstFilings).
  * v2 (2026-10-11): the forecast is the app's own run's, and `basis` records the
  * business it forecasts. v1 snapshots were made by the accountability runner's
  * own copy of the run: always the consolidated statements, with no lending arm
  * carved out (the standalone accounts where consolidated history is short).
  */
-export const FORECAST_SNAPSHOT_SCHEMA_VERSION = "2026-10-forecast-snapshot-v2" as const;
+export const FORECAST_SNAPSHOT_SCHEMA_VERSION = "2026-10-forecast-snapshot-v3" as const;
 
 /** What a frozen forecast is a forecast of, so it is scored against the same thing. */
 export interface ForecastSnapshotBasis {
@@ -41,16 +46,21 @@ export interface ForecastSnapshot {
   readonly model: "command-center-base";
   readonly basis: ForecastSnapshotBasis;
   readonly assumptions: { readonly ke: number; readonly kw: number; readonly g: number };
-  readonly years: readonly {
-    readonly periodEnd: string;
-    readonly sales: number;
-    readonly operatingIncome: number;
-    readonly noa: number;
-    readonly cni: number;
-    readonly cse: number;
-  }[];
+  /** The cutoff year's recast, on the basis the forecast was made from. */
+  readonly anchor: SnapshotYear;
+  readonly years: readonly SnapshotYear[];
   /** Equity value per share at freeze, when a share basis resolved. */
   readonly intrinsicPerShare: number | null;
+}
+
+/** One year of a frozen forecast, or its anchor: operating income is core, after tax. */
+export interface SnapshotYear {
+  readonly periodEnd: string;
+  readonly sales: number;
+  readonly operatingIncome: number;
+  readonly noa: number;
+  readonly cni: number;
+  readonly cse: number;
 }
 
 export function buildForecastSnapshot(input: {
@@ -72,8 +82,26 @@ export function buildForecastSnapshot(input: {
     model: "command-center-base",
     basis: input.basis,
     assumptions: input.assumptions,
+    anchor: anchorYear(input.cutoff),
     years: forecastYears(input.cutoff.period_end, input.forecast),
     intrinsicPerShare: input.intrinsicPerShare,
+  };
+}
+
+/** The year a forecast starts from, on the fields each forecast year records. */
+export function anchorYear(cutoff: {
+  readonly period_end: string;
+  readonly is: Pick<RecastPeriod["is"], "Sales" | "OI" | "CNI">;
+  readonly bs: Pick<RecastPeriod["bs"], "NOA" | "CSE">;
+  readonly cu?: Pick<RecastPeriod["cu"], "CoreOI"> | undefined;
+}): SnapshotYear {
+  return {
+    periodEnd: cutoff.period_end,
+    sales: cutoff.is.Sales,
+    operatingIncome: cutoff.cu?.CoreOI ?? cutoff.is.OI,
+    noa: cutoff.bs.NOA,
+    cni: cutoff.is.CNI,
+    cse: cutoff.bs.CSE,
   };
 }
 
@@ -127,6 +155,8 @@ export interface FiledYear {
   readonly exciseDuty?: number | null | undefined;
   readonly profitAttributableToOwners: number | null;
   readonly equityAttributableToOwners: number | null;
+  /** Core operating income after tax, from the filed lines (filedCoreIncome.ts); null where they are not on record. */
+  readonly coreOperatingIncome?: number | null | undefined;
 }
 
 /**
@@ -136,34 +166,39 @@ export interface FiledYear {
 export function firstFiledYears(records: readonly {
   readonly fiscalYearEnd: string;
   readonly filingDate: string;
-  readonly headline: {
-    readonly revenue: number | null;
-    readonly exciseDuty?: number | null | undefined;
-    readonly profitAttributableToOwners: number | null;
-    readonly equityAttributableToOwners: number | null;
-  };
+  /** Fields a record was extracted before are absent. */
+  readonly headline: Partial<AnnualHeadline> & Pick<AnnualHeadline, "revenue" | "profitAttributableToOwners" | "equityAttributableToOwners">;
 }[]): FiledYear[] {
   const first = new Map<string, (typeof records)[number]>();
   for (const r of [...records].sort((a, b) => a.filingDate.localeCompare(b.filingDate))) {
     if (!first.has(r.fiscalYearEnd)) first.set(r.fiscalYearEnd, r);
   }
-  return [...first.values()]
-    .sort((a, b) => a.fiscalYearEnd.localeCompare(b.fiscalYearEnd))
-    .map((r) => ({
-      fiscalYearEnd: r.fiscalYearEnd,
-      revenue: r.headline.revenue,
-      exciseDuty: r.headline.exciseDuty ?? null,
-      profitAttributableToOwners: r.headline.profitAttributableToOwners,
-      equityAttributableToOwners: r.headline.equityAttributableToOwners,
-    }));
+  const years = [...first.values()].sort((a, b) => a.fiscalYearEnd.localeCompare(b.fiscalYearEnd));
+  // A filing that contradicts itself on profit has a tax line that cannot be
+  // trusted either (Asian Paints FY2022: a ₹4,980 Cr credit its accounts do not have).
+  const coreOperatingIncome = filedCoreOperatingIncome(years.map((r) =>
+    headlineInconsistencies(r.headline).has("profitAfterTax") ? { ...r.headline, expenses: null, taxExpense: null } : r.headline));
+  return years.map((r, i) => ({
+    fiscalYearEnd: r.fiscalYearEnd,
+    revenue: r.headline.revenue,
+    exciseDuty: r.headline.exciseDuty ?? null,
+    profitAttributableToOwners: r.headline.profitAttributableToOwners,
+    equityAttributableToOwners: r.headline.equityAttributableToOwners,
+    coreOperatingIncome: coreOperatingIncome[i]!,
+  }));
 }
 
 export interface FiledScore {
-  readonly metric: "sales-log-error" | "cni-roe-point-error";
+  readonly metric: "sales-log-error" | "core-margin-point-error" | "cni-roe-point-error";
   readonly periodEnd: string;
   /** Years after the snapshot's cutoff. */
   readonly horizon: number;
-  /** ₹ crore: forecast sales or CNI, beside the filed net revenue or owners' profit. */
+  /**
+   * Sales and CNI in ₹ crore, beside the filed net revenue or owners' profit.
+   * The core margin as a fraction of sales: the forecast's restated on the
+   * filed basis (the cutoff year's filed margin, moved as the forecast moved
+   * its own), beside the filed margin.
+   */
   readonly forecast: number;
   readonly actual: number;
   readonly model: number;
@@ -178,6 +213,8 @@ export interface ForecastToScore {
   readonly latestReportedPeriod?: string | undefined;
   /** Absent on v1 snapshots. */
   readonly basis?: ForecastSnapshotBasis | undefined;
+  /** The cutoff year the forecast started from; absent on v1 and v2 snapshots, whose margin is not scored. */
+  readonly anchor?: Pick<SnapshotYear, "sales" | "operatingIncome"> | undefined;
   readonly years: ForecastSnapshot["years"];
 }
 
@@ -196,6 +233,14 @@ export interface ForecastToScore {
  * Sales are compared net of itemized excise, as Capitaline's are. Forecast CNI
  * is compared with owners' profit (OCI aside), in points of the opening year's
  * filed owners' equity.
+ *
+ * The core margin is scored as a move from the cutoff year: the forecast's
+ * margin less its anchor's, against the filed margin less the cutoff year's
+ * filed margin. The recast and the filings measure the margin's level a few
+ * tenths of a point apart (filedCoreIncome.ts), and that gap cancels in a
+ * move; a level comparison would charge it to the forecast and not to the
+ * random walk, which is all filed. Only a forecast that records its anchor
+ * (v3 snapshots, the app's own run) is scored on it.
  */
 export function scoreSnapshotAgainstFilings(
   snapshot: ForecastToScore,
@@ -210,8 +255,15 @@ export function scoreSnapshotAgainstFilings(
   }
   const filed = (end: string) => filings.find((f) => f.fiscalYearEnd === end) ?? null;
   const netRevenue = (f: FiledYear | null) => (f?.revenue != null ? f.revenue - (f.exciseDuty ?? 0) : null);
+  const filedMargin = (f: FiledYear | null) => {
+    const sales = netRevenue(f);
+    return f?.coreOperatingIncome != null && sales != null && sales > 0 ? f.coreOperatingIncome / sales : null;
+  };
   const cutoff = filed(snapshot.cutoffPeriod);
   if (!cutoff) return { scores: [], skipped: `no filing for the cutoff year ${snapshot.cutoffPeriod}` };
+  const anchor = snapshot.anchor;
+  const anchorMargin = anchor && anchor.sales > 0 ? anchor.operatingIncome / anchor.sales : null;
+  const cutoffMargin = filedMargin(cutoff);
   const seenThrough = snapshot.latestReportedPeriod ?? snapshot.cutoffPeriod;
   const scores: FiledScore[] = [];
   snapshot.years.forEach((year, i) => {
@@ -223,6 +275,11 @@ export function scoreSnapshotAgainstFilings(
     const cutoffSales = netRevenue(cutoff);
     if (sales != null && sales > 0 && cutoffSales != null && cutoffSales > 0 && year.sales > 0) {
       scores.push({ metric: "sales-log-error", periodEnd: year.periodEnd, horizon: i + 1, forecast: year.sales, actual: sales, model: Math.log(year.sales / sales), randomWalk: Math.log(cutoffSales / sales) });
+    }
+    const margin = filedMargin(actual);
+    if (margin != null && cutoffMargin != null && anchorMargin != null && year.sales > 0) {
+      const forecast = cutoffMargin + (year.operatingIncome / year.sales - anchorMargin);
+      scores.push({ metric: "core-margin-point-error", periodEnd: year.periodEnd, horizon: i + 1, forecast, actual: margin, model: forecast - margin, randomWalk: cutoffMargin - margin });
     }
     const profit = actual.profitAttributableToOwners;
     const scale = opening?.equityAttributableToOwners ?? null;

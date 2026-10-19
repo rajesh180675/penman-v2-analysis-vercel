@@ -12,6 +12,7 @@ export {
 export { estimatePanelPersistence, priorFor, type PersistenceEstimate, type RnoaSeries } from "./persistence";
 export { compareSnapshots, type SnapshotChange } from "./snapshotChanges";
 export {
+  anchorYear,
   buildForecastSnapshot,
   firstFiledYears,
   forecastYears,

@@ -19,6 +19,7 @@ import { revalueBase, solveBreakEvens } from "../../engine/valuationCommandCente
 import { DEFAULT_CONFIG, type CompanyType } from "../../engine/types";
 import { INRAbsolute } from "../../engine/types/units";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
+import type { FiledYear } from "../../engine/accountability";
 import { crore, percent } from "../format";
 import { ForecastSection } from "../sections/ForecastSection";
 import { VerdictSection } from "../sections/VerdictSection";
@@ -131,7 +132,7 @@ describe("Forecast section", () => {
       ];
     };
     const tcsCompany = { folder: "Tata Consultancy Services Ltd", name: "Tata Consultancy Services", ticker: "TCS", sector: "IT", type: "it-services", description: "", emoji: "" } as LibraryCompany;
-    const caseHtml = (basis: "consolidated" | "standalone", years: ReturnType<typeof filedYears> | null) => {
+    const caseHtml = (basis: "consolidated" | "standalone", years: readonly FiledYear[] | null) => {
       const result = { ...resultFor(cc()), run: { family: "industrial", trustEnvelope: { confidence: { status: "ready", headline: "Ready", tone: "emerald" }, rigor: { currentLabel: "Production ready" } } } } as unknown as LegacyAnalysisRunExecutionResult;
       const ledger = years ? [{ symbol: "TCS", firstFiling: null, rows: [], latestFiling: null, filedYears: years }] : [];
       return text(renderToStaticMarkup(
@@ -149,6 +150,25 @@ describe("Forecast section", () => {
       // Earnings 2 points of the opening year's filed equity above; the anchor year again, 5 under.
       expect(html).toContain(`${nextYear()} Earnings ${crore(f.CNI_f)} ${crore(filed!.profitAttributableToOwners)} +2.0 pts -5.0 pts Forecast`);
       expect(html).toContain(`repeats ${cutoff!.fiscalYearEnd}’s filed figures`);
+    });
+
+    it("sets the base case's margin beside the filed one as a move from the anchor, so a gap in how the level is measured is not its error", () => {
+      const f = revalueBase(cc())!.forecast![0]!;
+      const a = cc().anchorPeriod;
+      const anchorMargin = (a.cu?.CoreOI ?? a.is.OI) / a.is.Sales;
+      const forecastMargin = f.OI_f / f.Sales_f;
+      const [cutoff, filed] = filedYears();
+      // The filings measure the level a point below the recast, and the margin then fell half a point more than forecast.
+      const cutoffMargin = anchorMargin - 0.01;
+      const filedMargin = forecastMargin - 0.01 - 0.005;
+      const html = caseHtml("consolidated", [
+        { ...cutoff!, coreOperatingIncome: cutoffMargin * cutoff!.revenue },
+        { ...filed!, coreOperatingIncome: filedMargin * filed!.revenue },
+      ]);
+      const rw = cutoffMargin - filedMargin;
+      const pts = (x: number) => `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)} pts`;
+      expect(html).toContain(`${nextYear()} Core margin ${percent(forecastMargin - 0.01)} ${percent(filedMargin)} +0.5 pts ${pts(rw)} ${Math.abs(rw) > 0.005 ? "Forecast" : "Nothing changes"}`);
+      expect(html).toContain("so a gap between how Capitaline and the filings measure the level is not counted against it");
     });
 
     it("scores the base case, not the reader's edits", () => {

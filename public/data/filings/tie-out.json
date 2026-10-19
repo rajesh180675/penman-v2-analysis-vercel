@@ -255,63 +255,72 @@
     "revenue": 17262.23,
     "exciseDuty": 437.68,
     "profitAttributableToOwners": 2038.93,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 1860.0800784069818
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 19349.84,
     "exciseDuty": 8.32,
     "profitAttributableToOwners": 2159.49,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 2054.199812043757
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 20211.25,
     "exciseDuty": null,
     "profitAttributableToOwners": 2705.17,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 2230.925055130275
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 21712.79,
     "exciseDuty": null,
     "profitAttributableToOwners": 3139.29,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 3021.0022544582835
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 29101.28,
     "exciseDuty": null,
     "profitAttributableToOwners": 3030.57,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 34488.59,
     "exciseDuty": null,
     "profitAttributableToOwners": 4106.45,
-    "equityAttributableToOwners": 15992.23
+    "equityAttributableToOwners": 15992.23,
+    "coreOperatingIncome": 3959.8813031681943
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 35494.73,
     "exciseDuty": null,
     "profitAttributableToOwners": 5460.23,
-    "equityAttributableToOwners": 18728.3
+    "equityAttributableToOwners": 18728.3,
+    "coreOperatingIncome": 5061.686593779153
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 33905.62,
     "exciseDuty": null,
     "profitAttributableToOwners": 3667.226,
-    "equityAttributableToOwners": 19399.81
+    "equityAttributableToOwners": 19399.81,
+    "coreOperatingIncome": 3581.5934414270646
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 35583.54,
     "exciseDuty": null,
     "profitAttributableToOwners": 4325.35,
-    "equityAttributableToOwners": 21371.59
+    "equityAttributableToOwners": 21371.59,
+    "coreOperatingIncome": 3960.4967131735143
    }
   ]
  },
@@ -330,49 +339,56 @@
     "revenue": 13442.04,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 26373.81,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 31632.42,
     "exciseDuty": null,
     "profitAttributableToOwners": 7028.23,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 41397.38,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": 54371.98
+    "equityAttributableToOwners": 54371.98,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 54969.49,
     "exciseDuty": null,
     "profitAttributableToOwners": 14451.17,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 69683.51,
     "exciseDuty": null,
     "profitAttributableToOwners": 16637.82,
-    "equityAttributableToOwners": 96692.87
+    "equityAttributableToOwners": 96692.87,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 81982.38,
     "exciseDuty": null,
     "profitAttributableToOwners": 19017.39,
-    "equityAttributableToOwners": 113999.02
+    "equityAttributableToOwners": 113999.02,
+    "coreOperatingIncome": null
    }
   ]
  },
@@ -608,56 +624,64 @@
     "revenue": 80780.2,
     "exciseDuty": null,
     "profitAttributableToOwners": 409.5,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 6239.850039999996
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 87539,
     "exciseDuty": null,
     "profitAttributableToOwners": -32183.2,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 7813.204279999997
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 100615.8,
     "exciseDuty": null,
     "profitAttributableToOwners": -15083.5,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": -607.4915899999978
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 116546.9,
     "exciseDuty": null,
     "profitAttributableToOwners": 4254.9,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 14291.881867612996
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 139144.8,
     "exciseDuty": null,
     "profitAttributableToOwners": 8345.9,
-    "equityAttributableToOwners": 77562.9
+    "equityAttributableToOwners": 77562.9,
+    "coreOperatingIncome": 20371.860495631157
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 149982.4,
     "exciseDuty": null,
     "profitAttributableToOwners": 7467,
-    "equityAttributableToOwners": 82018.8
+    "equityAttributableToOwners": 82018.8,
+    "coreOperatingIncome": 22734.895494302677
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 172985.2,
     "exciseDuty": null,
     "profitAttributableToOwners": 33556.1,
-    "equityAttributableToOwners": 113671.9
+    "equityAttributableToOwners": 113671.9,
+    "coreOperatingIncome": 27917.71390426897
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 210972.8,
     "exciseDuty": null,
     "profitAttributableToOwners": 26695.2,
-    "equityAttributableToOwners": 149056.6
+    "equityAttributableToOwners": 149056.6,
+    "coreOperatingIncome": 50001.82028534954
    }
   ]
  },
@@ -897,56 +921,64 @@
     "revenue": 9990.1,
     "exciseDuty": 76.11,
     "profitAttributableToOwners": 1004.23,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 899.1337108459126
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 11054.67,
     "exciseDuty": null,
     "profitAttributableToOwners": 1159.12,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 1027.4046029736
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 11599.55,
     "exciseDuty": null,
     "profitAttributableToOwners": 1402.63,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 1253.009853893462
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 14136.26,
     "exciseDuty": null,
     "profitAttributableToOwners": 1524.82,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 1459.6039963820592
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 16300.55,
     "exciseDuty": null,
     "profitAttributableToOwners": 2321.77,
-    "equityAttributableToOwners": 3534.27
+    "equityAttributableToOwners": 3534.27,
+    "coreOperatingIncome": 1988.505017573067
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 16769.27,
     "exciseDuty": null,
     "profitAttributableToOwners": 2139.81,
-    "equityAttributableToOwners": 3941.52
+    "equityAttributableToOwners": 3941.52,
+    "coreOperatingIncome": 2102.7618940157586
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 17942.67,
     "exciseDuty": null,
     "profitAttributableToOwners": 2178.73,
-    "equityAttributableToOwners": 4355.72
+    "equityAttributableToOwners": 4355.72,
+    "coreOperatingIncome": 2141.2859269195264
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 19151.59,
     "exciseDuty": null,
     "profitAttributableToOwners": 2533.49,
-    "equityAttributableToOwners": 5106.56
+    "equityAttributableToOwners": 5106.56,
+    "coreOperatingIncome": 2481.034195373727
    }
   ]
  },
@@ -965,63 +997,72 @@
     "revenue": 5500.64,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 7087.62,
     "exciseDuty": null,
     "profitAttributableToOwners": 1195.12,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 8712.01,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 9579.4,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 10140.75,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 12884.1,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 19139.62,
     "exciseDuty": null,
     "profitAttributableToOwners": 3420.06,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 25845.98,
     "exciseDuty": null,
     "profitAttributableToOwners": 4262.7,
-    "equityAttributableToOwners": 23668.69
+    "equityAttributableToOwners": 23668.69,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 31073.1,
     "exciseDuty": null,
     "profitAttributableToOwners": 5232.61,
-    "equityAttributableToOwners": 30458.4
+    "equityAttributableToOwners": 30458.4,
+    "coreOperatingIncome": null
    }
   ]
  },
@@ -1273,63 +1314,72 @@
     "revenue": 7748.34,
     "exciseDuty": null,
     "profitAttributableToOwners": 1354.39,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 1166.9760758484215
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 8533.05,
     "exciseDuty": null,
     "profitAttributableToOwners": 1442.33,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 8703.59,
     "exciseDuty": null,
     "profitAttributableToOwners": 1444.96,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 1317.3971388880855
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 9561.65,
     "exciseDuty": null,
     "profitAttributableToOwners": 1693.3,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 1453.1700062711775
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 10888.68,
     "exciseDuty": null,
     "profitAttributableToOwners": 1739.22,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 1537.0338307318277
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 11529.89,
     "exciseDuty": null,
     "profitAttributableToOwners": 1707.15,
-    "equityAttributableToOwners": 8973.26
+    "equityAttributableToOwners": 8973.26,
+    "coreOperatingIncome": 1421.3588884435055
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 12404.01,
     "exciseDuty": null,
     "profitAttributableToOwners": 1842.68,
-    "equityAttributableToOwners": 9866.3
+    "equityAttributableToOwners": 9866.3,
+    "coreOperatingIncome": 1536.7121146126951
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 12563.09,
     "exciseDuty": null,
     "profitAttributableToOwners": 1767.63,
-    "equityAttributableToOwners": 10800.69
+    "equityAttributableToOwners": 10800.69,
+    "coreOperatingIncome": 1441.893735015549
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 13192.57,
     "exciseDuty": null,
     "profitAttributableToOwners": 1895.03,
-    "equityAttributableToOwners": 11419.52
+    "equityAttributableToOwners": 11419.52,
+    "coreOperatingIncome": 1531.239116805588
    }
   ]
  },
@@ -1581,63 +1631,72 @@
     "revenue": 15033.199,
     "exciseDuty": null,
     "profitAttributableToOwners": 806.2525,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 781.4017217939199
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 20004.52,
     "exciseDuty": null,
     "profitAttributableToOwners": 902.54,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 901.7364783324188
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 24870.2,
     "exciseDuty": null,
     "profitAttributableToOwners": 1301.08,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 1130.5707972578643
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 24143.06,
     "exciseDuty": null,
     "profitAttributableToOwners": 1099.49,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 984.8808741110274
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 30976.27,
     "exciseDuty": null,
     "profitAttributableToOwners": 1492.55,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 1446.343627308491
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 42839.56,
     "exciseDuty": null,
     "profitAttributableToOwners": 2378.51,
-    "equityAttributableToOwners": 16078.7
+    "equityAttributableToOwners": 16078.7,
+    "coreOperatingIncome": 2330.2072339048877
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 50788.83,
     "exciseDuty": null,
     "profitAttributableToOwners": 2536.17,
-    "equityAttributableToOwners": 18697.82
+    "equityAttributableToOwners": 18697.82,
+    "coreOperatingIncome": 2470.9108597273316
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 59358.05,
     "exciseDuty": null,
     "profitAttributableToOwners": 2708.02,
-    "equityAttributableToOwners": 21427.75
+    "equityAttributableToOwners": 21427.75,
+    "coreOperatingIncome": 2667.007840208893
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 68820.74,
     "exciseDuty": null,
     "profitAttributableToOwners": 2970.491,
-    "equityAttributableToOwners": 24464.04
+    "equityAttributableToOwners": 24464.04,
+    "coreOperatingIncome": 3019.301640084089
    }
   ]
  },
@@ -1893,63 +1952,72 @@
     "revenue": 57338.2,
     "exciseDuty": 1140.17,
     "profitAttributableToOwners": 2678.58,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 4971.437586770568
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 72970.64,
     "exciseDuty": null,
     "profitAttributableToOwners": 1771.92,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 4622.556380084237
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 77625.1,
     "exciseDuty": null,
     "profitAttributableToOwners": 4425.19,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 8176.070717000004
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 76397.81,
     "exciseDuty": null,
     "profitAttributableToOwners": 4304.82,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 7312.160265450246
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 95701.13,
     "exciseDuty": null,
     "profitAttributableToOwners": 7549.78,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 7753.385371990658
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 117627.08,
     "exciseDuty": null,
     "profitAttributableToOwners": 6827.26,
-    "equityAttributableToOwners": 78741.99
+    "equityAttributableToOwners": 78741.99,
+    "coreOperatingIncome": 9219.322647104407
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 130978.48,
     "exciseDuty": null,
     "profitAttributableToOwners": 5624.49,
-    "equityAttributableToOwners": 88652.4
+    "equityAttributableToOwners": 88652.4,
+    "coreOperatingIncome": 10530.762099597901
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 148477.89,
     "exciseDuty": null,
     "profitAttributableToOwners": 3705.68,
-    "equityAttributableToOwners": 97509.23
+    "equityAttributableToOwners": 97509.23,
+    "coreOperatingIncome": 8580.489941310407
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 175430.74,
     "exciseDuty": null,
     "profitAttributableToOwners": 4966.48,
-    "equityAttributableToOwners": 103469.92
+    "equityAttributableToOwners": 103469.92,
+    "coreOperatingIncome": 12009.890174301334
    }
   ]
  },
@@ -1968,49 +2036,56 @@
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    }
   ]
  },
@@ -2029,14 +2104,16 @@
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    }
   ]
  },
@@ -2292,63 +2369,72 @@
     "revenue": 36238,
     "exciseDuty": 693,
     "profitAttributableToOwners": 5214,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 4992.507530120482
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 39310,
     "exciseDuty": null,
     "profitAttributableToOwners": 6054,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 5856.450488145048
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 39783,
     "exciseDuty": null,
     "profitAttributableToOwners": 6748,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 6532.4622260983315
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 47028,
     "exciseDuty": null,
     "profitAttributableToOwners": 7995,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 7959.26833867622
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 52446,
     "exciseDuty": null,
     "profitAttributableToOwners": 8879,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 8806.168266801415
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 60580,
     "exciseDuty": null,
     "profitAttributableToOwners": 10120,
-    "equityAttributableToOwners": 50304
+    "equityAttributableToOwners": 50304,
+    "coreOperatingIncome": 9891.108946500824
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 61896,
     "exciseDuty": null,
     "profitAttributableToOwners": 10277,
-    "equityAttributableToOwners": 51218
+    "equityAttributableToOwners": 51218,
+    "coreOperatingIncome": 9929.349748743718
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 63121,
     "exciseDuty": null,
     "profitAttributableToOwners": 10649,
-    "equityAttributableToOwners": 49402
+    "equityAttributableToOwners": 49402,
+    "coreOperatingIncome": 9992.635651390141
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 64468,
     "exciseDuty": null,
     "profitAttributableToOwners": 15040,
-    "equityAttributableToOwners": 48739
+    "equityAttributableToOwners": 48739,
+    "coreOperatingIncome": 10585.225066898098
    }
   ]
  },
@@ -2367,56 +2453,64 @@
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    }
   ]
  },
@@ -2652,56 +2746,64 @@
     "revenue": 37092.5,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": -8904.395320000003
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 44957.5,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": -34791.70428
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 41952.2,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": -16184.746400000007
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 38515.5,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": -12766.443069999998
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 42177.2,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": -74359.1
+    "equityAttributableToOwners": -74359.1,
+    "coreOperatingIncome": -12041.761179999998
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 42554.9,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": -104166.8
+    "equityAttributableToOwners": -104166.8,
+    "coreOperatingIncome": -12675.059999999994
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 43571.3,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": -70320.2
+    "equityAttributableToOwners": -70320.2,
+    "coreOperatingIncome": -9783.088759999999
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 44873,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": -35758
+    "equityAttributableToOwners": -35758,
+    "coreOperatingIncome": 6376.2600999999995
    }
   ]
  },
@@ -2985,56 +3087,64 @@
     "revenue": 82675,
     "exciseDuty": null,
     "profitAttributableToOwners": 15404,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 13299.281878237725
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 90791,
     "exciseDuty": null,
     "profitAttributableToOwners": 16594,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 14648.247648475486
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 100472,
     "exciseDuty": null,
     "profitAttributableToOwners": 19351,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 17959.783160582843
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 121641,
     "exciseDuty": null,
     "profitAttributableToOwners": 22110,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 20605.120890069742
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 146767,
     "exciseDuty": null,
     "profitAttributableToOwners": 24095,
-    "equityAttributableToOwners": 75407
+    "equityAttributableToOwners": 75407,
+    "coreOperatingIncome": 22359.334373687052
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 153670,
     "exciseDuty": null,
     "profitAttributableToOwners": 26233,
-    "equityAttributableToOwners": 88116
+    "equityAttributableToOwners": 88116,
+    "coreOperatingIncome": 23154.80871401578
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 162990,
     "exciseDuty": null,
     "profitAttributableToOwners": 26713,
-    "equityAttributableToOwners": 95818
+    "equityAttributableToOwners": 95818,
+    "coreOperatingIncome": 24485.26909168262
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 178650,
     "exciseDuty": null,
     "profitAttributableToOwners": 29440,
-    "equityAttributableToOwners": 92852
+    "equityAttributableToOwners": 92852,
+    "coreOperatingIncome": 27545.422477809727
    }
   ]
  },
@@ -3318,63 +3428,72 @@
     "revenue": 47688.55,
     "exciseDuty": 4239.61,
     "profitAttributableToOwners": 11271.2,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 10062.8878304379
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 49862.11,
     "exciseDuty": 1509.43,
     "profitAttributableToOwners": 12592.33,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 11398.007534177861
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 51393.47,
     "exciseDuty": 1989.42,
     "profitAttributableToOwners": 15306.23,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 11714.95067455882
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 53155.12,
     "exciseDuty": 3882.34,
     "profitAttributableToOwners": 13161.19,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 11458.768469703977
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 65204.96,
     "exciseDuty": 4536.87,
     "profitAttributableToOwners": 15242.66,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 14142.814907501283
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 76518.21,
     "exciseDuty": 5581.36,
     "profitAttributableToOwners": 19191.66,
-    "equityAttributableToOwners": 69155.26
+    "equityAttributableToOwners": 69155.26,
+    "coreOperatingIncome": 17917.874678559725
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 76840.49,
     "exciseDuty": 5959.49,
     "profitAttributableToOwners": 20458.78,
-    "equityAttributableToOwners": 74507
+    "equityAttributableToOwners": 74507,
+    "coreOperatingIncome": 18679.59317128371
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 81612.78,
     "exciseDuty": 6289.44,
     "profitAttributableToOwners": 34746.63,
-    "equityAttributableToOwners": 70030.05
+    "equityAttributableToOwners": 70030.05,
+    "coreOperatingIncome": 18079.84245287979
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 89913.33,
     "exciseDuty": 11044.93,
     "profitAttributableToOwners": 20689.47,
-    "equityAttributableToOwners": 72507.3
+    "equityAttributableToOwners": 72507.3,
+    "coreOperatingIncome": 19111.867168707613
    }
   ]
  },
@@ -3393,56 +3512,64 @@
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    }
   ]
  },
@@ -3461,14 +3588,16 @@
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    }
   ]
  },
@@ -3744,63 +3873,72 @@
     "revenue": 119862.1,
     "exciseDuty": null,
     "profitAttributableToOwners": 7369.86,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 8442.82081941481
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 141007.09,
     "exciseDuty": null,
     "profitAttributableToOwners": 8905.13,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 9998.690120678251
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 145452.36,
     "exciseDuty": null,
     "profitAttributableToOwners": 9549.03,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 10497.637218700087
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 135979.03,
     "exciseDuty": null,
     "profitAttributableToOwners": 11582.93,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 6952.530855043656
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 156521.23,
     "exciseDuty": null,
     "profitAttributableToOwners": 8669.33,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 10814.383629218157
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 183340.7,
     "exciseDuty": null,
     "profitAttributableToOwners": 10470.72,
-    "equityAttributableToOwners": 89325.95
+    "equityAttributableToOwners": 89325.95,
+    "coreOperatingIncome": 12729.652769099146
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 221112.91,
     "exciseDuty": null,
     "profitAttributableToOwners": 13059.11,
-    "equityAttributableToOwners": 86359.24
+    "equityAttributableToOwners": 86359.24,
+    "coreOperatingIncome": 15034.120557446935
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 255734.45,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 16738.290557250817
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 285874.36,
     "exciseDuty": null,
     "profitAttributableToOwners": 16083.99,
-    "equityAttributableToOwners": 109289.8
+    "equityAttributableToOwners": 109289.8,
+    "coreOperatingIncome": 18282.100175740437
    }
   ]
  },
@@ -4056,63 +4194,72 @@
     "revenue": 93264.77,
     "exciseDuty": 1170.82,
     "profitAttributableToOwners": 7510.39,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 7391.497038052732
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 104720.68,
     "exciseDuty": null,
     "profitAttributableToOwners": 5315.46,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 6950.248949165284
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 95179.09,
     "exciseDuty": null,
     "profitAttributableToOwners": 127.04,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 3856.523384999997
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 74277.78,
     "exciseDuty": null,
     "profitAttributableToOwners": 1812.49,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 6135.0933770237325
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 90170.57,
     "exciseDuty": null,
     "profitAttributableToOwners": 6577.32,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 6791.357538263499
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 121268.55,
     "exciseDuty": null,
     "profitAttributableToOwners": 10281.5,
-    "equityAttributableToOwners": 56365.79
+    "equityAttributableToOwners": 56365.79,
+    "coreOperatingIncome": 10471.27417412584
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 139078.27,
     "exciseDuty": null,
     "profitAttributableToOwners": 11268.64,
-    "equityAttributableToOwners": 66190.55
+    "equityAttributableToOwners": 66190.55,
+    "coreOperatingIncome": 15134.420664180185
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 159210.82,
     "exciseDuty": null,
     "profitAttributableToOwners": 12929.1,
-    "equityAttributableToOwners": 77038.86
+    "equityAttributableToOwners": 77038.86,
+    "coreOperatingIncome": 17468.19910302013
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 198638.55,
     "exciseDuty": null,
     "profitAttributableToOwners": 17098.85,
-    "equityAttributableToOwners": 93096.35
+    "equityAttributableToOwners": 93096.35,
+    "coreOperatingIncome": 21275.110557561748
    }
   ]
  },
@@ -4348,56 +4495,64 @@
     "revenue": 86068.5,
     "exciseDuty": null,
     "profitAttributableToOwners": 7649.1,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 5715.200443251399
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 75660,
     "exciseDuty": null,
     "profitAttributableToOwners": 5676,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 3012.016012828587
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 70372,
     "exciseDuty": null,
     "profitAttributableToOwners": 4389.1,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 1898.3077930900618
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 88329.8,
     "exciseDuty": null,
     "profitAttributableToOwners": 3879.5,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 2409.3667291152274
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 117571.3,
     "exciseDuty": null,
     "profitAttributableToOwners": 8211,
-    "equityAttributableToOwners": 61791.3
+    "equityAttributableToOwners": 61791.3,
+    "coreOperatingIncome": 6515.9217676860635
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 141858.2,
     "exciseDuty": null,
     "profitAttributableToOwners": 13488.2,
-    "equityAttributableToOwners": 85636
+    "equityAttributableToOwners": 85636,
+    "coreOperatingIncome": 10228.248849764723
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 152913,
     "exciseDuty": null,
     "profitAttributableToOwners": 14500.2,
-    "equityAttributableToOwners": 96239.9
+    "equityAttributableToOwners": 96239.9,
+    "coreOperatingIncome": 10704.015670336139
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 183316,
     "exciseDuty": null,
     "profitAttributableToOwners": 14679.5,
-    "equityAttributableToOwners": 107156.3
+    "equityAttributableToOwners": 107156.3,
+    "coreOperatingIncome": 11246.243986619233
    }
   ]
  },
@@ -4416,63 +4571,72 @@
     "revenue": 6607.5324,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 7594.432,
     "exciseDuty": null,
     "profitAttributableToOwners": 2078.013,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 9683.98,
     "exciseDuty": null,
     "profitAttributableToOwners": 3138.245,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 11530.786,
     "exciseDuty": null,
     "profitAttributableToOwners": 3804.397,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 12184.908,
     "exciseDuty": null,
     "profitAttributableToOwners": 4016.62,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 11897.663,
     "exciseDuty": null,
     "profitAttributableToOwners": 3612.298,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 15061.657,
     "exciseDuty": null,
     "profitAttributableToOwners": 4324.288,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 20214.165,
     "exciseDuty": null,
     "profitAttributableToOwners": 5332.9,
-    "equityAttributableToOwners": 29366.627
+    "equityAttributableToOwners": 29366.627,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 31209.232,
     "exciseDuty": null,
     "profitAttributableToOwners": 10590.337,
-    "equityAttributableToOwners": 39130.315
+    "equityAttributableToOwners": 39130.315,
+    "coreOperatingIncome": null
    }
   ]
  },
@@ -4540,14 +4704,16 @@
     "revenue": 20201.56,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": 4010.21
+    "equityAttributableToOwners": 4010.21,
+    "coreOperatingIncome": 3152.4057760819533
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 23154.6,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": 5156.97
+    "equityAttributableToOwners": 5156.97,
+    "coreOperatingIncome": 3542.430862387075
    }
   ]
  },
@@ -4783,70 +4949,80 @@
     "revenue": 0,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2018-03-31",
     "revenue": 0,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 95742.03,
     "exciseDuty": null,
     "profitAttributableToOwners": 12640.02,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 14554.643582000002
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 109464.04,
     "exciseDuty": null,
     "profitAttributableToOwners": 11600.23,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 15393.958372999996
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 111531.15,
     "exciseDuty": null,
     "profitAttributableToOwners": 14634.63,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 19907.23533964021
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 132669.28,
     "exciseDuty": null,
     "profitAttributableToOwners": 16675.9,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 21121.74525946141
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 176206.93,
     "exciseDuty": null,
     "profitAttributableToOwners": 16912.55,
-    "equityAttributableToOwners": 147023.17
+    "equityAttributableToOwners": 147023.17,
+    "coreOperatingIncome": 23018.910061288727
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 178500.88,
     "exciseDuty": null,
     "profitAttributableToOwners": 20811.89,
-    "equityAttributableToOwners": 160709.27
+    "equityAttributableToOwners": 160709.27,
+    "coreOperatingIncome": 26575.07468882628
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 188138.06,
     "exciseDuty": null,
     "profitAttributableToOwners": 23422.46,
-    "equityAttributableToOwners": 184071.16
+    "equityAttributableToOwners": 184071.16,
+    "coreOperatingIncome": 28906.819564260906
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 187384.63,
     "exciseDuty": null,
     "profitAttributableToOwners": 27052.52,
-    "equityAttributableToOwners": 203175.67
+    "equityAttributableToOwners": 203175.67,
+    "coreOperatingIncome": 33202.52216799998
    }
   ]
  },
@@ -5034,35 +5210,40 @@
     "revenue": 4974.2,
     "exciseDuty": null,
     "profitAttributableToOwners": -2392.9,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": -2536.3028900000004
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 7990.3,
     "exciseDuty": null,
     "profitAttributableToOwners": -1775.9,
-    "equityAttributableToOwners": 13015.6
+    "equityAttributableToOwners": 13015.6,
+    "coreOperatingIncome": -2053.14312
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 9977.8,
     "exciseDuty": null,
     "profitAttributableToOwners": -1417,
-    "equityAttributableToOwners": 13326.6
+    "equityAttributableToOwners": 13326.6,
+    "coreOperatingIncome": -1601.5573400000014
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 6900.4,
     "exciseDuty": null,
     "profitAttributableToOwners": -658.7,
-    "equityAttributableToOwners": 15026.7
+    "equityAttributableToOwners": 15026.7,
+    "coreOperatingIncome": -1811.6466200000002
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 8437,
     "exciseDuty": null,
     "profitAttributableToOwners": 553,
-    "equityAttributableToOwners": 16026
+    "equityAttributableToOwners": 16026,
+    "coreOperatingIncome": -62.609589041095894
    }
   ]
  },
@@ -5314,63 +5495,72 @@
     "revenue": 29941.49,
     "exciseDuty": null,
     "profitAttributableToOwners": 8198.31,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 13390.602799189532
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 35059.12,
     "exciseDuty": null,
     "profitAttributableToOwners": 10033.52,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 15991.649071000003
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 37743.54,
     "exciseDuty": null,
     "profitAttributableToOwners": 11059.4,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 17109.727312451283
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 39639.79,
     "exciseDuty": null,
     "profitAttributableToOwners": 12036.46,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 17987.513756932472
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 41616.34,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 19875.28287192355
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 45581.28,
     "exciseDuty": null,
     "profitAttributableToOwners": 15417.12,
-    "equityAttributableToOwners": 83014.51
+    "equityAttributableToOwners": 83014.51,
+    "coreOperatingIncome": 22987.155054065628
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 45843.1,
     "exciseDuty": null,
     "profitAttributableToOwners": 15573.16,
-    "equityAttributableToOwners": 87145.11
+    "equityAttributableToOwners": 87145.11,
+    "coreOperatingIncome": 22109.769139989814
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 45792.32,
     "exciseDuty": null,
     "profitAttributableToOwners": 15521.44,
-    "equityAttributableToOwners": 92662.81
+    "equityAttributableToOwners": 92662.81,
+    "coreOperatingIncome": 21277.59532951697
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 46732.87,
     "exciseDuty": null,
     "profitAttributableToOwners": 15927.95,
-    "equityAttributableToOwners": 100494.02
+    "equityAttributableToOwners": 100494.02,
+    "coreOperatingIncome": 21669.561766
    }
   ]
  },
@@ -5606,49 +5796,56 @@
     "revenue": 581020,
     "exciseDuty": 13885,
     "profitAttributableToOwners": 39588,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 45399.57651839489
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 611645,
     "exciseDuty": 14902,
     "profitAttributableToOwners": 39354,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 49077.08222583599
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 486326,
     "exciseDuty": 19402,
     "profitAttributableToOwners": 49128,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 39655.4346740148
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 892944,
     "exciseDuty": 13476,
     "profitAttributableToOwners": 66702,
-    "equityAttributableToOwners": 821153
+    "equityAttributableToOwners": 821153,
+    "coreOperatingIncome": 80184.56791151786
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 914472,
     "exciseDuty": 13408,
     "profitAttributableToOwners": 69621,
-    "equityAttributableToOwners": 793481
+    "equityAttributableToOwners": 793481,
+    "coreOperatingIncome": 83954.33039102932
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 980136,
     "exciseDuty": 15443,
     "profitAttributableToOwners": 69648,
-    "equityAttributableToOwners": 843200
+    "equityAttributableToOwners": 843200,
+    "coreOperatingIncome": 85580.8634086986
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 1075675,
     "exciseDuty": 18456,
     "profitAttributableToOwners": 80775,
-    "equityAttributableToOwners": 904030
+    "equityAttributableToOwners": 904030,
+    "coreOperatingIncome": 94134.26389633166
    }
   ]
  },
@@ -5667,56 +5864,64 @@
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": null,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    }
   ]
  },
@@ -5735,49 +5940,56 @@
     "revenue": 16562.36,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 17420.45,
     "exciseDuty": null,
     "profitAttributableToOwners": 0,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 19255.17,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 30476.78,
     "exciseDuty": null,
     "profitAttributableToOwners": 6011.04,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 36379.52,
     "exciseDuty": null,
     "profitAttributableToOwners": 7366.38,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 41834.42,
     "exciseDuty": null,
     "profitAttributableToOwners": 9553.82,
-    "equityAttributableToOwners": 56469.82
+    "equityAttributableToOwners": 56469.82,
+    "coreOperatingIncome": null
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 48132.95,
     "exciseDuty": null,
     "profitAttributableToOwners": 10024.16,
-    "equityAttributableToOwners": 65918.59
+    "equityAttributableToOwners": 65918.59,
+    "coreOperatingIncome": null
    }
   ]
  },
@@ -6013,56 +6225,64 @@
     "revenue": 26489.46,
     "exciseDuty": null,
     "profitAttributableToOwners": 2161.55,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 3110.2142349481724
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 29065.91,
     "exciseDuty": null,
     "profitAttributableToOwners": 2665.42,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 3836.1068838381193
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 32837.5,
     "exciseDuty": null,
     "profitAttributableToOwners": 3764.93,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 4126.10582786216
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 38654.49,
     "exciseDuty": null,
     "profitAttributableToOwners": 3272.73,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 6273.055743307773
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 43885.68,
     "exciseDuty": null,
     "profitAttributableToOwners": 8473.58,
-    "equityAttributableToOwners": 55995.38
+    "equityAttributableToOwners": 55995.38,
+    "coreOperatingIncome": 8295.992018051897
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 48496.85,
     "exciseDuty": null,
     "profitAttributableToOwners": 9576.38,
-    "equityAttributableToOwners": 63666.75
+    "equityAttributableToOwners": 63666.75,
+    "coreOperatingIncome": 9107.711275598871
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 52578.44,
     "exciseDuty": null,
     "profitAttributableToOwners": 10929.04,
-    "equityAttributableToOwners": 72218.02
+    "equityAttributableToOwners": 72218.02,
+    "coreOperatingIncome": 10137.094663154001
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 58462.04,
     "exciseDuty": null,
     "profitAttributableToOwners": 11479.42,
-    "equityAttributableToOwners": 83570.09
+    "equityAttributableToOwners": 83570.09,
+    "coreOperatingIncome": 11315.673174600237
    }
   ]
  },
@@ -6318,63 +6538,72 @@
     "revenue": 133016.37,
     "exciseDuty": 1316.04,
     "profitAttributableToOwners": 13434.33,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 13337.882158242037
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 157668.99,
     "exciseDuty": null,
     "profitAttributableToOwners": 10218.33,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 12597.969845768966
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 139816.65,
     "exciseDuty": null,
     "profitAttributableToOwners": 1556.54,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 9214.183566000002
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 156294.18,
     "exciseDuty": null,
     "profitAttributableToOwners": 7490.22,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 12373.102665956412
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 243959.17,
     "exciseDuty": null,
     "profitAttributableToOwners": 40153.93,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 31362.26019467843
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 243352.69,
     "exciseDuty": null,
     "profitAttributableToOwners": 8760.4,
-    "equityAttributableToOwners": 103082.1
+    "equityAttributableToOwners": 103082.1,
+    "coreOperatingIncome": 11509.448468000013
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 229170.78,
     "exciseDuty": null,
     "profitAttributableToOwners": -4437.44,
-    "equityAttributableToOwners": 92035.76
+    "equityAttributableToOwners": 92035.76,
+    "coreOperatingIncome": 5259.998240000014
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 218542.51,
     "exciseDuty": null,
     "profitAttributableToOwners": 3420.51,
-    "equityAttributableToOwners": 91169.63
+    "equityAttributableToOwners": 91169.63,
+    "coreOperatingIncome": 7962.951398000017
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 232139.94,
     "exciseDuty": null,
     "profitAttributableToOwners": 10793.87,
-    "equityAttributableToOwners": 102167.65
+    "equityAttributableToOwners": 102167.65,
+    "coreOperatingIncome": 15100.213340196493
    }
   ]
  },
@@ -6658,56 +6887,64 @@
     "revenue": 146463,
     "exciseDuty": null,
     "profitAttributableToOwners": 31472,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 28438.681038423594
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 156949,
     "exciseDuty": null,
     "profitAttributableToOwners": 32340,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 29629.929464116645
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 164177,
     "exciseDuty": null,
     "profitAttributableToOwners": 32430,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 31610.29072212066
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 191754,
     "exciseDuty": null,
     "profitAttributableToOwners": 38327,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 36043.28742236926
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 225458,
     "exciseDuty": null,
     "profitAttributableToOwners": 42147,
-    "equityAttributableToOwners": 90424
+    "equityAttributableToOwners": 90424,
+    "coreOperatingIncome": 40318.20006326111
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 240893,
     "exciseDuty": null,
     "profitAttributableToOwners": 45908,
-    "equityAttributableToOwners": 90489
+    "equityAttributableToOwners": 90489,
+    "coreOperatingIncome": 44101.77571495395
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 255324,
     "exciseDuty": null,
     "profitAttributableToOwners": 48553,
-    "equityAttributableToOwners": 94756
+    "equityAttributableToOwners": 94756,
+    "coreOperatingIncome": 46432.252759027106
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 267021,
     "exciseDuty": null,
     "profitAttributableToOwners": 49210,
-    "equityAttributableToOwners": 107240
+    "equityAttributableToOwners": 107240,
+    "coreOperatingIncome": 50474.238429001176
    }
   ]
  },
@@ -6963,63 +7200,72 @@
     "revenue": 16155.95,
     "exciseDuty": 36.18,
     "profitAttributableToOwners": 1130.09,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 1090.7755419399043
    },
    {
     "fiscalYearEnd": "2019-03-31",
     "revenue": 19778.52,
     "exciseDuty": null,
     "profitAttributableToOwners": 1404.1503,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 1298.2346109354032
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 21051.54,
     "exciseDuty": null,
     "profitAttributableToOwners": 1501.39,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 1505.8875839633745
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 21643.824,
     "exciseDuty": null,
     "profitAttributableToOwners": 973.25,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 991.520597747498
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 28798.706,
     "exciseDuty": null,
     "profitAttributableToOwners": 2173.117,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 2225.980011300805
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 40575,
     "exciseDuty": null,
     "profitAttributableToOwners": 3250,
-    "equityAttributableToOwners": 11851
+    "equityAttributableToOwners": 11851,
+    "coreOperatingIncome": 3267.110661268556
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 51084,
     "exciseDuty": null,
     "profitAttributableToOwners": 3496,
-    "equityAttributableToOwners": 9393
+    "equityAttributableToOwners": 9393,
+    "coreOperatingIncome": 3560.030289917784
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 60456,
     "exciseDuty": null,
     "profitAttributableToOwners": 3337,
-    "equityAttributableToOwners": 11624
+    "equityAttributableToOwners": 11624,
+    "coreOperatingIncome": 3679.606528451698
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 87584,
     "exciseDuty": null,
     "profitAttributableToOwners": 5073,
-    "equityAttributableToOwners": 15703
+    "equityAttributableToOwners": 15703,
+    "coreOperatingIncome": 5615.748235294118
    }
   ]
  },
@@ -7255,56 +7501,64 @@
     "revenue": 37379.2,
     "exciseDuty": null,
     "profitAttributableToOwners": 2434.72,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 3194.1395280440233
    },
    {
     "fiscalYearEnd": "2020-03-31",
     "revenue": 42124.83,
     "exciseDuty": null,
     "profitAttributableToOwners": 5814.84,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 6812.825604000002
    },
    {
     "fiscalYearEnd": "2021-03-31",
     "revenue": 44725.8,
     "exciseDuty": null,
     "profitAttributableToOwners": 5463.1,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 6001.854292021096
    },
    {
     "fiscalYearEnd": "2022-03-31",
     "revenue": 52598.83,
     "exciseDuty": null,
     "profitAttributableToOwners": 7344.31,
-    "equityAttributableToOwners": null
+    "equityAttributableToOwners": null,
+    "coreOperatingIncome": 6001.248096724813
    },
    {
     "fiscalYearEnd": "2023-03-31",
     "revenue": 63239.98,
     "exciseDuty": null,
     "profitAttributableToOwners": null,
-    "equityAttributableToOwners": 54380.17
+    "equityAttributableToOwners": 54380.17,
+    "coreOperatingIncome": 5287.978382751732
    },
    {
     "fiscalYearEnd": "2024-03-31",
     "revenue": 70908.14,
     "exciseDuty": null,
     "profitAttributableToOwners": 7005,
-    "equityAttributableToOwners": 60227.48
+    "equityAttributableToOwners": 60227.48,
+    "coreOperatingIncome": 7296.167868271029
    },
    {
     "fiscalYearEnd": "2025-03-31",
     "revenue": 75955.13,
     "exciseDuty": null,
     "profitAttributableToOwners": 6039.11,
-    "equityAttributableToOwners": 70706.77
+    "equityAttributableToOwners": 70706.77,
+    "coreOperatingIncome": 6855.813193919376
    },
    {
     "fiscalYearEnd": "2026-03-31",
     "revenue": 88511.53,
     "exciseDuty": null,
     "profitAttributableToOwners": 8165.64,
-    "equityAttributableToOwners": 76623.54
+    "equityAttributableToOwners": 76623.54,
+    "coreOperatingIncome": 9278.33858647796
    }
   ]
  }
