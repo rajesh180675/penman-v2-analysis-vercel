@@ -64,7 +64,23 @@ Not scored:
 | Core margin (points of sales) | 15 | 0.4 | 0.6 | +23% | -1.3 | 6 of 15 |
 | Earnings (ROE points) | 15 | 1.2 | 3.0 | +62% | -2.6 | 11 of 15 |
 
-## Frozen 2026-10-19, by company
+### Frozen 2026-10-20 (15 of 21 forecasts scored)
+
+| Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
+|---|---|---|---|---|---|---|
+| Sales (log error, %) | 15 | 3.4 | 6.5 | +47% | -1.9 | 12 of 15 |
+| Core margin (points of sales) | 15 | 0.4 | 0.6 | +23% | -1.3 | 6 of 15 |
+| Earnings (ROE points) | 15 | 1.2 | 3.0 | +62% | -2.6 | 11 of 15 |
+
+Against the frozen scenario cases:
+
+| Measure | n | Below stress | Between | Above bull | Below panic |
+|---|---|---|---|---|---|
+| Sales | 15 | 7% | 67% | 27% | 0% |
+| Core margin | 15 | 0% | 73% | 27% | 0% |
+| Earnings | 15 | 0% | 73% | 27% | 0% |
+
+## Frozen 2026-10-20, by company
 
 | Company | Cutoff | Year | Sales error | Random walk | Margin error (pts) | Random walk | Earnings error (ROE pts) | Random walk |
 |---|---|---|---|---|---|---|---|---|
