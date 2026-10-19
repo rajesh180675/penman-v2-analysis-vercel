@@ -40,6 +40,7 @@ const skipRuns = process.argv.includes("--skip-runs");
 const registry: { folder: string; ticker: string; type: string }[] =
   JSON.parse(readFileSync(join(ROOT, "public", "data", "companies", "registry.json"), "utf-8"));
 
+const failedRuns: string[] = [];
 if (!skipRuns) {
   for (const company of registry) {
     const started = Date.now();
@@ -51,6 +52,7 @@ if (!skipRuns) {
       timeout: 300_000,
     });
     const status = result.status === 0 ? "ok" : `FAILED (${result.status}) ${(result.stderr ?? "").split("\n").slice(-3).join(" ")}`;
+    if (result.status !== 0) failedRuns.push(company.ticker);
     console.log(`${company.ticker.padEnd(12)} ${status} ${((Date.now() - started) / 1000).toFixed(0)}s`);
   }
 }
@@ -58,6 +60,8 @@ if (!skipRuns) {
 interface RunFile {
   ticker: string;
   companyType: string;
+  /** The date the run was made for: the set it may be frozen into. */
+  madeAt?: string;
   skipped?: string;
   walkForward?: CompanyWalkForward;
   rnoaPoints?: { year: number; rnoa: number }[];
@@ -70,6 +74,16 @@ const runs: RunFile[] = registry.flatMap((c) => {
   const path = join(ROOT, "accountability", "runs", `${c.ticker}.json`);
   return existsSync(path) ? [JSON.parse(readFileSync(path, "utf8")) as RunFile] : [];
 });
+// A frozen set is one day's forecasts, and everything below is computed from
+// the run files. A failed run leaves the company's last file in place: on
+// 2026-10-19, 24 of 33 runs failed to start for want of memory, and the set
+// written that day held 15 forecasts made on 2026-10-18. So nothing is
+// aggregated or frozen unless every company's run file was made for this date.
+const notThisDate = registry.filter((c) => runs.find((r) => r.ticker === c.ticker)?.madeAt !== madeAt).map((c) => c.ticker);
+if (failedRuns.length || notThisDate.length) {
+  console.error(`\nNothing aggregated or frozen for ${madeAt}: ${failedRuns.length ? `${failedRuns.length} run(s) failed (${failedRuns.join(", ")}); ` : ""}${notThisDate.length} run file(s) not made for this date (${notThisDate.join(", ")}). Re-run those companies, or the whole registry.`);
+  process.exit(1);
+}
 const industrial = runs.filter((r) => r.walkForward);
 const walkForwards = industrial.map((r) => r.walkForward!);
 

@@ -41,7 +41,7 @@ const outPath = join(outDir, `${ticker}.json`);
 // forecasts over the whole history (scripts/lib/walkForwardBasis.ts).
 const loaded = await loadWalkForwardBasis(ROOT, company, madeAt);
 if (loaded.status === "skipped") {
-  writeFileSync(outPath, JSON.stringify({ ticker, companyType: company.type, skipped: loaded.reason }, null, 1));
+  writeFileSync(outPath, JSON.stringify({ ticker, companyType: company.type, madeAt, skipped: loaded.reason }, null, 1));
   process.exit(0);
 }
 const { state, config, periods, carvedLendingArm } = loaded;
@@ -58,4 +58,4 @@ const rnoaPoints = periods.slice(1).flatMap((p, i) => {
 // Today's forecast, frozen from the same run (appSnapshot.ts).
 const snapshot = snapshotFromAppRun(state, company, madeAt);
 
-writeFileSync(outPath, JSON.stringify({ ticker, companyType: company.type, carvedLendingArm, walkForward, rnoaPoints, snapshot }, null, 1));
+writeFileSync(outPath, JSON.stringify({ ticker, companyType: company.type, madeAt, carvedLendingArm, walkForward, rnoaPoints, snapshot }, null, 1));
