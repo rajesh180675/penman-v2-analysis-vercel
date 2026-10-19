@@ -72,7 +72,21 @@ function summary(scores: FiledScore[]) {
   }).join("\n");
 }
 
-const header = "| Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |\n|---|---|---|---|---|---|---|";
+const MEASURE = { "sales-log-error": "Sales", "core-margin-point-error": "Core margin", "cni-roe-point-error": "Earnings" } as const;
+
+/** Where the filed figures fell against the frozen stress and bull cases, for forecasts that record them. */
+function bands(scores: FiledScore[]) {
+  const banded = scores.filter((s) => s.band);
+  if (!banded.length) return "";
+  const rows = (["sales-log-error", "core-margin-point-error", "cni-roe-point-error"] as const).map((metric) => {
+    const xs = banded.filter((s) => s.metric === metric);
+    const share = (test: (s: FiledScore) => boolean) => (xs.length ? `${Math.round((xs.filter(test).length / xs.length) * 100)}%` : "—");
+    return `| ${MEASURE[metric]} | ${xs.length} | ${share((s) => s.band!.position === "below")} | ${share((s) => s.band!.position === "within")} | ${share((s) => s.band!.position === "above")} | ${share((s) => s.actual < s.band!.historicalPanic)} |`;
+  });
+  return `\n\nAgainst the frozen scenario cases:\n\n| Measure | n | Below stress | Between | Above bull | Below panic |\n|---|---|---|---|---|---|\n${rows.join("\n")}`;
+}
+
+const header ="| Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |\n|---|---|---|---|---|---|---|";
 const latest = sets.at(-1)!;
 const latestRows = results.filter((r) => r.madeAt === latest);
 const report = `# Frozen forecasts, scored against results filed since
@@ -84,6 +98,7 @@ Each forecast frozen in \`accountability/snapshots/\` is scored against the resu
 - **Core margin** is operating income after tax over sales, built from the filed lines on the recast's tax rules (\`src/engine/accountability/filedCoreIncome.ts\`). It is scored as a move from the cutoff year: the forecast's margin less the one it started from, against the filed margin less the cutoff year's. The recast and the filings measure the level a median 0.5 points apart, which a move cancels; their moves differ by a median 0.20 points (into FY2023–FY2026, 6% of them by more than a point). Only forecasts that record the year they started from are scored on it: snapshots of schema v3, frozen from 2026-10-19 on.
 - **Earnings** compare forecast CNI with the owners' profit filed (OCI aside), in points of the opening year's filed owners' equity.
 - **Random walk** is "the cutoff year again". **Skill** = 1 − median error / random-walk median error.
+- **Scenario bands.** Snapshots of schema v4 also record the stress, bull and historical-panic cases, and each filed figure is placed below stress, between stress and bull, or above bull, on the basis its base case is scored on (the margin moved from the cutoff year's filed margin). The bands were calibrated on the walk-forward (\`docs/generated/scenario-band-coverage.md\`), so this tests them on years the calibration never saw. Sets frozen before v4 have no band table.
 - **One-offs.** Filed profit includes them on both sides. ITC's FY2025 owners' profit carries the hotels demerger gain, so its random walk for FY2026 misses by 20 ROE points. The forecast models neither.
 
 Not scored:
@@ -95,7 +110,7 @@ Not scored:
 ${sets.map((madeAt) => {
     const rows = results.filter((r) => r.madeAt === madeAt);
     const scored = rows.filter((r) => r.scores.length > 0);
-    return `### Frozen ${madeAt} (${scored.length} of ${rows.length} forecasts scored)\n\n${header}\n${summary(rows.flatMap((r) => r.scores))}`;
+    return `### Frozen ${madeAt} (${scored.length} of ${rows.length} forecasts scored)\n\n${header}\n${summary(rows.flatMap((r) => r.scores))}${bands(rows.flatMap((r) => r.scores))}`;
   }).join("\n\n")}
 
 ## Frozen ${latest}, by company

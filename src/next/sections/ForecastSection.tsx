@@ -6,7 +6,8 @@
  */
 import { useMemo, useState } from "react";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
-import { anchorYear, forecastYears, scoreSnapshotAgainstFilings, type CompanyTrackRecord, type FiledScore, type FiledYear, type ForecastToScore } from "../../engine/accountability";
+import { anchorYear, forecastYears, scoreSnapshotAgainstFilings, type CompanyTrackRecord, type FiledScore, type FiledYear, type ForecastToScore, type SnapshotScenarios } from "../../engine/accountability";
+import { buildScenario } from "../../engine/forecastingEngine";
 import { formatPerShare } from "../../engine/valuationCommandCenter";
 import { revalueBase, type BaseCaseShifts } from "../../engine/valuationCommandCenter/breakEven";
 import { crore, percent } from "../format";
@@ -52,6 +53,16 @@ export function ForecastSection({
   const input = cc as unknown as RevalueInput | null;
   const base = useMemo(() => (input ? revalueBase(input) : null), [input]);
   const edited = useMemo(() => (input ? revalueBase(input, shifts) : null), [input, shifts]);
+  // The other cases as their cards forecast them, for the band a filed year falls in.
+  const scenarios = useMemo((): SnapshotScenarios | undefined => {
+    if (!input) return undefined;
+    const path = (key: "stress" | "bull" | "historical-panic") => {
+      const scenario = input.scenarios.find((s) => s.key === key)?.scenario;
+      return scenario ? forecastYears(input.anchorPeriod.period_end, buildScenario(scenario, input.anchorPeriod)) : null;
+    };
+    const [stress, bull, historicalPanic] = [path("stress"), path("bull"), path("historical-panic")];
+    return stress && bull && historicalPanic ? { stress, bull, historicalPanic } : undefined;
+  }, [input]);
 
   if (!cc || !base || !edited) {
     return (
@@ -169,6 +180,7 @@ export function ForecastSection({
             basis: { accounts, lendingArm: cc.lendingArm?.status === "applied" ? cc.lendingArm.link.arm.name : null },
             anchor: anchorYear(cc.anchorPeriod),
             years: forecastYears(cc.anchorPeriod.period_end, base.forecast),
+            scenarios,
           }}
           filedYears={filedYears}
           asOf={asOf}
@@ -184,6 +196,7 @@ const shownError = (metric: FiledScore["metric"], error: number) =>
   metric === "sales-log-error" ? signed(Math.expm1(error), "%") : signed(error, " pts");
 const MEASURE: Record<FiledScore["metric"], string> = { "sales-log-error": "Sales", "core-margin-point-error": "Core margin", "cni-roe-point-error": "Earnings" };
 const shownFigure = (metric: FiledScore["metric"], x: number) => (metric === "core-margin-point-error" ? percent(x) : crore(x));
+const BAND: Record<NonNullable<FiledScore["band"]>["position"], string> = { below: "Below stress", within: "Between", above: "Above bull" };
 
 /**
  * The base case beside what the company has since filed for the years its
@@ -208,7 +221,8 @@ function AgainstFiled({ forecast, filedYears, asOf }: { forecast: ForecastToScor
         margin moved as the forecast moves its own, so a gap between how Capitaline and the filings measure the level is not
         counted against it. Earnings set forecast CNI against the owners&rsquo;
         profit filed, which includes one-offs the forecast does not model, with errors in points of the opening year&rsquo;s filed
-        owners&rsquo; equity. &ldquo;Nothing changes&rdquo; repeats {forecast.cutoffPeriod}&rsquo;s filed figures.
+        owners&rsquo; equity. &ldquo;Nothing changes&rdquo; repeats {forecast.cutoffPeriod}&rsquo;s filed figures. The last
+        column places the filed figure against the stress and bull cases, compared as the base case is.
         {asOf && " In an as-of view the forecast is made from Capitaline's history, which can include restatements filed after that date."}
       </p>
       {skipped ? (
@@ -228,6 +242,7 @@ function AgainstFiled({ forecast, filedYears, asOf }: { forecast: ForecastToScor
               <th className="py-1 font-medium">Forecast error</th>
               <th className="py-1 font-medium">&ldquo;Nothing changes&rdquo; error</th>
               <th className="py-1 font-medium">Closer</th>
+              <th className="py-1 font-medium">Stress to bull</th>
             </tr>
           </thead>
           <tbody>
@@ -240,6 +255,7 @@ function AgainstFiled({ forecast, filedYears, asOf }: { forecast: ForecastToScor
                 <td className="py-1">{shownError(s.metric, s.model)}</td>
                 <td className="py-1">{shownError(s.metric, s.randomWalk)}</td>
                 <td className="py-1">{Math.abs(s.model) < Math.abs(s.randomWalk) ? "Forecast" : "Nothing changes"}</td>
+                <td className="py-1">{s.band ? BAND[s.band.position] : "—"}</td>
               </tr>
             )))}
           </tbody>

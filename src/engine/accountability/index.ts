@@ -24,4 +24,5 @@ export {
   FORECAST_SNAPSHOT_SCHEMA_VERSION,
   type ForecastSnapshot,
   type ForecastSnapshotBasis,
+  type SnapshotScenarios,
 } from "./snapshot";

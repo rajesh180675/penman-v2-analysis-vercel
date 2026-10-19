@@ -10,10 +10,14 @@ import type { ForecastPeriod, RecastPeriod } from "../types";
 import { headlineInconsistencies } from "../filings/tieOut";
 import type { AnnualHeadline } from "../filings/xbrlInstance";
 import { filedCoreOperatingIncome } from "./filedCoreIncome";
+import { placeInBand, type BandPosition } from "./scenarioBands";
 import { scoreForecast } from "./walkForward";
 import type { ScoredObservation } from "./types";
 
 /**
+ * v4 (2026-10-19): `scenarios` records the stress, bull and historical-panic
+ * paths beside the base, so the bands, calibrated on the walk-forward
+ * (scenarioBands.ts), can be tested against results filed after the freeze.
  * v3 (2026-10-19): `anchor` records the cutoff year as the forecast saw it, so
  * its margin can be scored as a move from there (scoreSnapshotAgainstFilings).
  * v2 (2026-10-11): the forecast is the app's own run's, and `basis` records the
@@ -21,7 +25,7 @@ import type { ScoredObservation } from "./types";
  * own copy of the run: always the consolidated statements, with no lending arm
  * carved out (the standalone accounts where consolidated history is short).
  */
-export const FORECAST_SNAPSHOT_SCHEMA_VERSION = "2026-10-forecast-snapshot-v3" as const;
+export const FORECAST_SNAPSHOT_SCHEMA_VERSION = "2026-10-forecast-snapshot-v4" as const;
 
 /** What a frozen forecast is a forecast of, so it is scored against the same thing. */
 export interface ForecastSnapshotBasis {
@@ -49,6 +53,8 @@ export interface ForecastSnapshot {
   /** The cutoff year's recast, on the basis the forecast was made from. */
   readonly anchor: SnapshotYear;
   readonly years: readonly SnapshotYear[];
+  /** The run's other scenario cases, year by year as `years`. */
+  readonly scenarios: SnapshotScenarios;
   /** Equity value per share at freeze, when a share basis resolved. */
   readonly intrinsicPerShare: number | null;
 }
@@ -63,6 +69,12 @@ export interface SnapshotYear {
   readonly cse: number;
 }
 
+export interface SnapshotScenarios {
+  readonly stress: readonly SnapshotYear[];
+  readonly bull: readonly SnapshotYear[];
+  readonly historicalPanic: readonly SnapshotYear[];
+}
+
 export function buildForecastSnapshot(input: {
   ticker: string;
   companyType: string;
@@ -70,6 +82,7 @@ export function buildForecastSnapshot(input: {
   cutoff: RecastPeriod;
   basis: ForecastSnapshotBasis;
   forecast: readonly ForecastPeriod[];
+  scenarios: { readonly [K in keyof SnapshotScenarios]: readonly ForecastPeriod[] };
   assumptions: { ke: number; kw: number; g: number };
   intrinsicPerShare: number | null;
 }): ForecastSnapshot {
@@ -84,6 +97,11 @@ export function buildForecastSnapshot(input: {
     assumptions: input.assumptions,
     anchor: anchorYear(input.cutoff),
     years: forecastYears(input.cutoff.period_end, input.forecast),
+    scenarios: {
+      stress: forecastYears(input.cutoff.period_end, input.scenarios.stress),
+      bull: forecastYears(input.cutoff.period_end, input.scenarios.bull),
+      historicalPanic: forecastYears(input.cutoff.period_end, input.scenarios.historicalPanic),
+    },
     intrinsicPerShare: input.intrinsicPerShare,
   };
 }
@@ -204,6 +222,17 @@ export interface FiledScore {
   readonly model: number;
   /** The same error for "the cutoff year again", from the same filings. */
   readonly randomWalk: number;
+  /**
+   * The stress, bull and historical-panic cases on the basis of `forecast`,
+   * and where the filed figure fell against stress and bull. Absent where the
+   * forecast records no scenarios (snapshots before v4).
+   */
+  readonly band?: {
+    readonly stress: number;
+    readonly bull: number;
+    readonly historicalPanic: number;
+    readonly position: BandPosition;
+  } | undefined;
 }
 
 /** What scoreSnapshotAgainstFilings reads: a frozen snapshot, or a run's base forecast. */
@@ -216,6 +245,8 @@ export interface ForecastToScore {
   /** The cutoff year the forecast started from; absent on v1 and v2 snapshots, whose margin is not scored. */
   readonly anchor?: Pick<SnapshotYear, "sales" | "operatingIncome"> | undefined;
   readonly years: ForecastSnapshot["years"];
+  /** Absent before v4 snapshots, whose filed years are not placed in a band. */
+  readonly scenarios?: SnapshotScenarios | undefined;
 }
 
 /**
@@ -240,7 +271,11 @@ export interface ForecastToScore {
  * tenths of a point apart (filedCoreIncome.ts), and that gap cancels in a
  * move; a level comparison would charge it to the forecast and not to the
  * random walk, which is all filed. Only a forecast that records its anchor
- * (v3 snapshots, the app's own run) is scored on it.
+ * (snapshots from v3, the app's own run) is scored on it.
+ *
+ * Where the forecast records its other scenarios (v4), each filed figure is
+ * also placed against the stress and bull cases on the same basis, matched by
+ * fiscal year, as the walk-forward band report places Capitaline's.
  */
 export function scoreSnapshotAgainstFilings(
   snapshot: ForecastToScore,
@@ -271,21 +306,31 @@ export function scoreSnapshotAgainstFilings(
     const actual = filed(year.periodEnd);
     const opening = filed(i === 0 ? snapshot.cutoffPeriod : snapshot.years[i - 1]!.periodEnd);
     if (!actual) return;
+    const band = (filedValue: number, value: (scenario: SnapshotYear) => number | null): Pick<FiledScore, "band"> => {
+      const [stress, bull, historicalPanic] = (["stress", "bull", "historicalPanic"] as const).map((key) => {
+        const scenario = snapshot.scenarios?.[key].find((y) => y.periodEnd === year.periodEnd);
+        return scenario ? value(scenario) : null;
+      });
+      return stress != null && bull != null && historicalPanic != null && [stress, bull, historicalPanic].every(Number.isFinite)
+        ? { band: { stress, bull, historicalPanic, position: placeInBand(filedValue, stress, bull) } }
+        : {};
+    };
     const sales = netRevenue(actual);
     const cutoffSales = netRevenue(cutoff);
     if (sales != null && sales > 0 && cutoffSales != null && cutoffSales > 0 && year.sales > 0) {
-      scores.push({ metric: "sales-log-error", periodEnd: year.periodEnd, horizon: i + 1, forecast: year.sales, actual: sales, model: Math.log(year.sales / sales), randomWalk: Math.log(cutoffSales / sales) });
+      scores.push({ metric: "sales-log-error", periodEnd: year.periodEnd, horizon: i + 1, forecast: year.sales, actual: sales, model: Math.log(year.sales / sales), randomWalk: Math.log(cutoffSales / sales), ...band(sales, (y) => y.sales) });
     }
     const margin = filedMargin(actual);
     if (margin != null && cutoffMargin != null && anchorMargin != null && year.sales > 0) {
-      const forecast = cutoffMargin + (year.operatingIncome / year.sales - anchorMargin);
-      scores.push({ metric: "core-margin-point-error", periodEnd: year.periodEnd, horizon: i + 1, forecast, actual: margin, model: forecast - margin, randomWalk: cutoffMargin - margin });
+      const onFiledBasis = (y: SnapshotYear) => (y.sales > 0 ? cutoffMargin + (y.operatingIncome / y.sales - anchorMargin) : null);
+      const forecast = onFiledBasis(year)!;
+      scores.push({ metric: "core-margin-point-error", periodEnd: year.periodEnd, horizon: i + 1, forecast, actual: margin, model: forecast - margin, randomWalk: cutoffMargin - margin, ...band(margin, onFiledBasis) });
     }
     const profit = actual.profitAttributableToOwners;
     const scale = opening?.equityAttributableToOwners ?? null;
     const cutoffProfit = cutoff.profitAttributableToOwners;
     if (profit != null && cutoffProfit != null && scale != null && scale > 0) {
-      scores.push({ metric: "cni-roe-point-error", periodEnd: year.periodEnd, horizon: i + 1, forecast: year.cni, actual: profit, model: (year.cni - profit) / scale, randomWalk: (cutoffProfit - profit) / scale });
+      scores.push({ metric: "cni-roe-point-error", periodEnd: year.periodEnd, horizon: i + 1, forecast: year.cni, actual: profit, model: (year.cni - profit) / scale, randomWalk: (cutoffProfit - profit) / scale, ...band(profit, (y) => y.cni) });
     }
   });
   return { scores, skipped: null };
