@@ -20,7 +20,7 @@ import type { EngineConfig, RecastPeriod } from "../types";
  * RNOA and CNI errors lower than either at every horizon.
  */
 export const CORE_TAX_RATE_BAND = 0.10;
-const NORMAL_TAX_WINDOW = 3;
+export const NORMAL_TAX_WINDOW = 3;
 
 /** The rate the year's filing gives, before normalization; null where effective mode fell back to statutory. */
 export function filedTaxRate(period: RecastPeriod, cfg: EngineConfig): number | null {

@@ -172,6 +172,16 @@ export type AnnualHeadline = { -readonly [K in keyof typeof ANNUAL_HEADLINE_CONC
    * for FY2026). Absent on records extracted before it was read.
    */
   sharesOutstandingCr?: number | null;
+  /**
+   * Total expenses (finance costs included), the tax charge, and a rate-
+   * regulated entity's net movement in regulatory deferral balances, which is
+   * filed below profit before tax (NTPC and Power Grid, every year): what a
+   * core operating income is built from (filedCoreIncome.ts). Absent on records
+   * extracted before they were read.
+   */
+  expenses?: number | null;
+  taxExpense?: number | null;
+  regulatoryDeferralMovement?: number | null;
 };
 
 const INSTANT_FIELDS = new Set<keyof AnnualHeadline>(["totalAssets", "totalEquity", "equityAttributableToOwners"]);
@@ -200,6 +210,9 @@ export function extractAnnualHeadline(instance: XbrlInstance, fiscalYearEnd: str
   headline.profitAttributableToNonControllingInterests = read("ProfitOrLossAttributableToNonControllingInterests", duration);
   headline.nonControllingInterest = read("NonControllingInterest", instant);
   headline.sharesOutstandingCr = sharesInIssue(instance, duration, instant);
+  headline.expenses = read("Expenses", duration);
+  headline.taxExpense = read("TaxExpense", duration);
+  headline.regulatoryDeferralMovement = read("NetMovementInRegulatoryDeferralAccountBalancesRelatedToProfitOrLossAndTheRelatedDeferredTaxMovement", duration);
   return { headline, method };
 }
 

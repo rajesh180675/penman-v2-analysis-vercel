@@ -36,7 +36,7 @@ export const MINOR_TOLERANCE = 0.02;
 export type TieOutStatus = "match" | "minor" | "mismatch" | "filing-inconsistent";
 
 /** Internal-consistency failures of one filing's headline, by the fields they discredit. */
-export function headlineInconsistencies(headline: AnnualHeadline): Map<TieOutField, string> {
+export function headlineInconsistencies(headline: Partial<AnnualHeadline>): Map<TieOutField, string> {
   const issues = new Map<TieOutField, string>();
   const { profitBeforeTax: pbt, profitAfterTax: pat, profitAttributableToOwners: owners, totalEquity, equityAttributableToOwners } = headline;
   // PBT is CONTINUING operations only, so compare it with continuing PAT: a

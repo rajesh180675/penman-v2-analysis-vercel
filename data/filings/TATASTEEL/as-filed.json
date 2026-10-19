@@ -24,7 +24,10 @@
     "exciseDuty": 1316.04,
     "profitAttributableToNonControllingInterests": 4328.48,
     "nonControllingInterest": null,
-    "sharesOutstandingCr": 114.495
+    "sharesOutstandingCr": 114.495,
+    "expenses": 122589.29,
+    "taxExpense": 3405.39,
+    "regulatoryDeferralMovement": 0
    }
   },
   {
@@ -49,7 +52,10 @@
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": -1120,
     "nonControllingInterest": null,
-    "sharesOutstandingCr": 114.494
+    "sharesOutstandingCr": 114.494,
+    "expenses": 143287.58,
+    "taxExpense": 6718.43,
+    "regulatoryDeferralMovement": 0
    }
   },
   {
@@ -74,7 +80,10 @@
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": -384.08,
     "nonControllingInterest": null,
-    "sharesOutstandingCr": 114.495
+    "sharesOutstandingCr": 114.495,
+    "expenses": 138327.78,
+    "taxExpense": -2568.41,
+    "regulatoryDeferralMovement": 0
    }
   },
   {
@@ -99,7 +108,10 @@
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 699.57,
     "nonControllingInterest": null,
-    "sharesOutstandingCr": 119.761
+    "sharesOutstandingCr": 119.761,
+    "expenses": 142630.27,
+    "taxExpense": 5653.9,
+    "regulatoryDeferralMovement": 0
    }
   },
   {
@@ -124,7 +136,10 @@
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 1595.39,
     "nonControllingInterest": null,
-    "sharesOutstandingCr": 122.121
+    "sharesOutstandingCr": 122.121,
+    "expenses": 195032.29,
+    "taxExpense": 8477.55,
+    "regulatoryDeferralMovement": 0
    }
   },
   {
@@ -149,7 +164,10 @@
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": -685.05,
     "nonControllingInterest": 2093.11,
-    "sharesOutstandingCr": 1221.24
+    "sharesOutstandingCr": 1221.24,
+    "expenses": 226686.43,
+    "taxExpense": 10159.77,
+    "regulatoryDeferralMovement": 0
    }
   },
   {
@@ -174,7 +192,10 @@
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": -472.17,
     "nonControllingInterest": 396.98,
-    "sharesOutstandingCr": 1247.44
+    "sharesOutstandingCr": 1247.44,
+    "expenses": 224254.61,
+    "taxExpense": 3762.57,
+    "regulatoryDeferralMovement": 0
    }
   },
   {
@@ -199,7 +220,10 @@
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": -246.73,
     "nonControllingInterest": 183.15,
-    "sharesOutstandingCr": 1247.44
+    "sharesOutstandingCr": 1247.44,
+    "expenses": 211006.34,
+    "taxExpense": 5239.09,
+    "regulatoryDeferralMovement": 0
    }
   },
   {
@@ -224,7 +248,10 @@
     "exciseDuty": null,
     "profitAttributableToNonControllingInterests": 91.95,
     "nonControllingInterest": 1612.8,
-    "sharesOutstandingCr": 1247.44
+    "sharesOutstandingCr": 1247.44,
+    "expenses": 216909.07,
+    "taxExpense": 5082.87,
+    "regulatoryDeferralMovement": 0
    }
   }
  ]

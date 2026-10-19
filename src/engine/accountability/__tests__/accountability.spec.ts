@@ -163,6 +163,11 @@ describe("forecast snapshot ledger", () => {
     expect(snapshot.years[0]!.periodEnd).toBe("2024-03-31");
     // The record says what it forecasts, so it is scored against the same business.
     expect(snapshot.basis).toEqual({ accounts: "consolidated", lendingArm: "X Finance" });
+    // And the year it started from, so its margin can be scored as a move from there.
+    expect(snapshot.anchor).toEqual({
+      periodEnd: history[4]!.period_end, sales: history[4]!.is.Sales, operatingIncome: history[4]!.cu.CoreOI,
+      noa: history[4]!.bs.NOA, cni: history[4]!.is.CNI, cse: history[4]!.bs.CSE,
+    });
 
     // Nothing reported yet: nothing to score.
     expect(scoreSnapshot(snapshot, history).observations).toEqual([]);
@@ -226,10 +231,41 @@ describe("frozen forecasts scored against filings", () => {
     expect(years.map((y) => `${y.fiscalYearEnd}:${y.revenue}`)).toEqual(["2025-03-31:1000", "2026-03-31:1100"]);
   });
 
+  it("does not measure core operating income from a filing that contradicts itself on profit", async () => {
+    const { firstFiledYears } = await import("..");
+    const headline = { revenue: 1000, expenses: 850, financeCosts: 50, profitBeforeTax: 240, taxExpense: 60, profitAttributableToOwners: 180, equityAttributableToOwners: 900 };
+    const [sound, contradicted] = firstFiledYears([
+      { fiscalYearEnd: "2021-03-31", filingDate: "2021-05-01", headline: { ...headline, profitAfterTax: 180, profitAttributableToNonControllingInterests: 0 } },
+      // Asian Paints FY2022-shaped: owners' 180 + minority 0 against a filed PAT of 540.
+      { fiscalYearEnd: "2022-03-31", filingDate: "2022-05-01", headline: { ...headline, profitAfterTax: 540, profitAttributableToNonControllingInterests: 0 } },
+    ]);
+    expect(sound!.coreOperatingIncome).toBeCloseTo(150, 9);
+    expect(contradicted!.coreOperatingIncome).toBeNull();
+  });
+
   it("does not score a year the forecast's data covered: an anchor that walked back saw it", async () => {
     const { scoreSnapshotAgainstFilings } = await import("..");
     const walkedBack = snapshot({ cutoffPeriod: "2025-03-31", latestReportedPeriod: "2026-03-31" });
     expect(scoreSnapshotAgainstFilings(walkedBack as never, filings).scores).toEqual([]);
+  });
+
+  it("scores the core margin as a move from the cutoff year, so a gap in how the level is measured cancels", async () => {
+    const { scoreSnapshotAgainstFilings } = await import("..");
+    // The forecast starts from a 12% margin (120 / 1,000) and assumes 10% (110 / 1,100) a year out.
+    const withAnchor = snapshot({ schemaVersion: "2026-10-forecast-snapshot-v3", anchor: { sales: 1000, operatingIncome: 120 } });
+    // Filed at 11% in the cutoff year (110 on net revenue of 1,000) and 9% (99 / 1,100) since.
+    const filed = [{ ...filings[0]!, coreOperatingIncome: 110 }, { ...filings[1]!, coreOperatingIncome: 99 }];
+    const margin = scoreSnapshotAgainstFilings(withAnchor as never, filed).scores.find((s) => s.metric === "core-margin-point-error")!;
+    // The forecast moved 2 points down and the filings did too: no error, though its 10% sits a point above the filed 9%.
+    expect(margin.forecast).toBeCloseTo(0.09, 12);
+    expect(margin.actual).toBeCloseTo(0.09, 12);
+    expect(margin.model).toBeCloseTo(0, 12);
+    expect(margin.randomWalk).toBeCloseTo(0.02, 12);
+    expect(scoreSnapshotAgainstFilings(withAnchor as never, filed).scores.map((s) => s.metric)).toEqual(["sales-log-error", "core-margin-point-error", "cni-roe-point-error"]);
+    // A v2 snapshot does not record where it started: its margin is not scored.
+    expect(scoreSnapshotAgainstFilings(snapshot() as never, filed).scores.some((s) => s.metric === "core-margin-point-error")).toBe(false);
+    // Nor is a year whose filing lacks the lines core operating income is built from.
+    expect(scoreSnapshotAgainstFilings(withAnchor as never, filings).scores.some((s) => s.metric === "core-margin-point-error")).toBe(false);
   });
 
   it("does not score a forecast of a business the consolidated filings do not describe", async () => {

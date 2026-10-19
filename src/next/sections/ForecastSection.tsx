@@ -6,7 +6,7 @@
  */
 import { useMemo, useState } from "react";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
-import { forecastYears, scoreSnapshotAgainstFilings, type CompanyTrackRecord, type FiledScore, type FiledYear, type ForecastToScore } from "../../engine/accountability";
+import { anchorYear, forecastYears, scoreSnapshotAgainstFilings, type CompanyTrackRecord, type FiledScore, type FiledYear, type ForecastToScore } from "../../engine/accountability";
 import { formatPerShare } from "../../engine/valuationCommandCenter";
 import { revalueBase, type BaseCaseShifts } from "../../engine/valuationCommandCenter/breakEven";
 import { crore, percent } from "../format";
@@ -167,6 +167,7 @@ export function ForecastSection({
             cutoffPeriod: cc.anchorPeriod.period_end,
             latestReportedPeriod: result.materialization.pipelineResult?.periods.at(-1)?.period_end ?? cc.anchorPeriod.period_end,
             basis: { accounts, lendingArm: cc.lendingArm?.status === "applied" ? cc.lendingArm.link.arm.name : null },
+            anchor: anchorYear(cc.anchorPeriod),
             years: forecastYears(cc.anchorPeriod.period_end, base.forecast),
           }}
           filedYears={filedYears}
@@ -178,9 +179,11 @@ export function ForecastSection({
 }
 
 const signed = (x: number, unit: string) => `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)}${unit}`;
-/** A score's error as the reader reads it: sales as forecast ÷ filed − 1, earnings in ROE points. */
+/** A score's error as the reader reads it: sales as forecast ÷ filed − 1, margin in points of sales, earnings in ROE points. */
 const shownError = (metric: FiledScore["metric"], error: number) =>
   metric === "sales-log-error" ? signed(Math.expm1(error), "%") : signed(error, " pts");
+const MEASURE: Record<FiledScore["metric"], string> = { "sales-log-error": "Sales", "core-margin-point-error": "Core margin", "cni-roe-point-error": "Earnings" };
+const shownFigure = (metric: FiledScore["metric"], x: number) => (metric === "core-margin-point-error" ? percent(x) : crore(x));
 
 /**
  * The base case beside what the company has since filed for the years its
@@ -200,7 +203,10 @@ function AgainstFiled({ forecast, filedYears, asOf }: { forecast: ForecastToScor
       <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Against the results filed since</h2>
       <p className="mt-1 text-xs text-slate-500">
         The base case beside what the company has filed on NSE for the years its data did not reach: consolidated, as first
-        reported, ₹ crore. Sales are net of the excise duty a filing itemizes. Earnings set forecast CNI against the owners&rsquo;
+        reported, ₹ crore. Sales are net of the excise duty a filing itemizes. The core margin is operating income after tax over
+        sales, built from the filed lines on the recast&rsquo;s tax rules; the forecast&rsquo;s is {forecast.cutoffPeriod}&rsquo;s filed
+        margin moved as the forecast moves its own, so a gap between how Capitaline and the filings measure the level is not
+        counted against it. Earnings set forecast CNI against the owners&rsquo;
         profit filed, which includes one-offs the forecast does not model, with errors in points of the opening year&rsquo;s filed
         owners&rsquo; equity. &ldquo;Nothing changes&rdquo; repeats {forecast.cutoffPeriod}&rsquo;s filed figures.
         {asOf && " In an as-of view the forecast is made from Capitaline's history, which can include restatements filed after that date."}
@@ -228,9 +234,9 @@ function AgainstFiled({ forecast, filedYears, asOf }: { forecast: ForecastToScor
             {years.flatMap((year) => scores.filter((s) => s.periodEnd === year).map((s) => (
               <tr key={`${year}-${s.metric}`} className="border-t border-slate-100 text-right tabular-nums dark:border-slate-800">
                 <th scope="row" className="py-1 text-left font-normal">{year}</th>
-                <td className="py-1 text-left">{s.metric === "sales-log-error" ? "Sales" : "Earnings"}</td>
-                <td className="py-1">{crore(s.forecast)}</td>
-                <td className="py-1">{crore(s.actual)}</td>
+                <td className="py-1 text-left">{MEASURE[s.metric]}</td>
+                <td className="py-1">{shownFigure(s.metric, s.forecast)}</td>
+                <td className="py-1">{shownFigure(s.metric, s.actual)}</td>
                 <td className="py-1">{shownError(s.metric, s.model)}</td>
                 <td className="py-1">{shownError(s.metric, s.randomWalk)}</td>
                 <td className="py-1">{Math.abs(s.model) < Math.abs(s.randomWalk) ? "Forecast" : "Nothing changes"}</td>

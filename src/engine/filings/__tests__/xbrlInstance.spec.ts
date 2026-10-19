@@ -49,6 +49,23 @@ describe("extractAnnualHeadline", () => {
     expect(headline.cashFlowFromOperations).toBeNull();
   });
 
+  it("reads the year's expenses, tax and regulatory deferral movement, which core operating income is built from", () => {
+    const fact = (concept: string, context: string, rupees: string) =>
+      `<in-bse-fin:${concept} contextRef="${context}" unitRef="INR" decimals="-7">${rupees}</in-bse-fin:${concept}>`;
+    const lines = [
+      fact("Expenses", "OneD", "140000000000.00"), fact("Expenses", "FourD", "530000000000.00"),
+      fact("TaxExpense", "OneD", "18000000000.00"), fact("TaxExpense", "FourD", "70000000000.00"),
+    ];
+    const filing = FILING.replace("</xbrli:xbrl>", [...lines, "</xbrli:xbrl>"].join("\n"));
+    const { headline } = extractAnnualHeadline(parseXbrlInstance(filing), "2024-03-31");
+    expect([headline.expenses, headline.taxExpense]).toEqual([53000, 7000]);
+    // Filed only by a rate-regulated entity: null elsewhere, not zero.
+    expect(headline.regulatoryDeferralMovement).toBeNull();
+    // NTPC FY2026-shaped: the movement is filed below profit before tax, with its sign.
+    const regulated = filing.replace("</xbrli:xbrl>", `${fact("NetMovementInRegulatoryDeferralAccountBalancesRelatedToProfitOrLossAndTheRelatedDeferredTaxMovement", "FourD", "-24640000000.00")}\n</xbrli:xbrl>`);
+    expect(extractAnnualHeadline(parseXbrlInstance(regulated), "2024-03-31").headline.regulatoryDeferralMovement).toBe(-2464);
+  });
+
   it("reads the year's itemized excise duty, not the quarter's, though both carry the quarter's dates", () => {
     // ITC FY24: other expenses itemized per context, each labelled by a
     // description in the same context; the year's item contexts are named after
