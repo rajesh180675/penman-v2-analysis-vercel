@@ -55,28 +55,36 @@ Not scored:
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 | Earnings (ROE points) | 15 | 1.2 | 3.0 | +62% | -2.6 | 11 of 15 |
 
-## Frozen 2026-10-18, by company
+### Frozen 2026-10-19 (15 of 21 forecasts scored)
+
+| Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
+|---|---|---|---|---|---|---|
+| Sales (log error, %) | 15 | 3.4 | 6.5 | +47% | -1.9 | 12 of 15 |
+| Core margin (points of sales) | 15 | 0.4 | 0.6 | +23% | -1.3 | 6 of 15 |
+| Earnings (ROE points) | 15 | 1.2 | 3.0 | +62% | -2.6 | 11 of 15 |
+
+## Frozen 2026-10-19, by company
 
 | Company | Cutoff | Year | Sales error | Random walk | Margin error (pts) | Random walk | Earnings error (ROE pts) | Random walk |
 |---|---|---|---|---|---|---|---|---|
-| ASIANPAINT | 2025-03-31 | 2026-03-31 | -1.1 | -4.8 | — | — | -1.2 | -3.4 |
-| BHARTIARTL | 2025-03-31 | 2026-03-31 | -10.4 | -19.9 | — | — | -9.8 | +6.0 |
-| BRITANNIA | 2025-03-31 | 2026-03-31 | +2.3 | -6.5 | — | — | -4.7 | -8.1 |
-| DABUR | 2025-03-31 | 2026-03-31 | +0.4 | -4.9 | — | — | -0.3 | -1.2 |
-| DMART | 2025-03-31 | 2026-03-31 | +0.4 | -14.8 | — | — | +0.7 | -1.2 |
+| ASIANPAINT | 2025-03-31 | 2026-03-31 | -1.1 | -4.8 | -0.6 | -0.6 | -1.2 | -3.4 |
+| BHARTIARTL | 2025-03-31 | 2026-03-31 | -10.4 | -19.9 | -10.5 | -7.6 | -9.8 | +6.0 |
+| BRITANNIA | 2025-03-31 | 2026-03-31 | +2.3 | -6.5 | -1.4 | -1.0 | -4.7 | -8.1 |
+| DABUR | 2025-03-31 | 2026-03-31 | +0.4 | -4.9 | +0.1 | -0.1 | -0.3 | -1.2 |
+| DMART | 2025-03-31 | 2026-03-31 | +0.4 | -14.8 | +0.1 | +0.1 | +0.7 | -1.2 |
 | GRASIM | 2025-03-31 | — | not scored: a forecast of the business without Aditya Birla Capital; the consolidated filings describe another business | | | | | |
-| HINDUNILVR | 2025-03-31 | 2026-03-31 | +3.4 | -2.1 | — | — | -8.5 | -8.9 |
+| HINDUNILVR | 2025-03-31 | 2026-03-31 | +3.4 | -2.1 | -0.8 | -0.6 | -8.5 | -8.9 |
 | INFY | 2026-03-31 | — | no filed year after its data yet | | | | | |
-| ITC | 2025-03-31 | 2026-03-31 | +4.4 | -4.6 | — | — | +1.1 | +20.1 |
+| ITC | 2025-03-31 | 2026-03-31 | +4.4 | -4.6 | -0.4 | -0.2 | +1.1 | +20.1 |
 | LT | 2026-03-31 | — | not scored: a forecast of the business without L&T Finance; the consolidated filings describe another business | | | | | |
 | M&M | 2025-03-31 | — | not scored: a forecast of the business without Mahindra & Mahindra Financial Services; the consolidated filings describe another business | | | | | |
-| MARUTI | 2025-03-31 | 2026-03-31 | -7.7 | -18.1 | — | — | +0.6 | -0.2 |
+| MARUTI | 2025-03-31 | 2026-03-31 | -7.7 | -18.1 | +0.4 | +0.9 | +0.6 | -0.2 |
 | NESTLEIND | 2025-03-31 | — | not scored: a forecast on standalone accounts; the ledger is consolidated | | | | | |
-| NTPC | 2025-03-31 | 2026-03-31 | +7.6 | +0.4 | — | — | -1.1 | -2.0 |
-| POWERGRID | 2025-03-31 | 2026-03-31 | +4.7 | -2.0 | — | — | +0.7 | -0.4 |
-| RELIANCE | 2025-03-31 | 2026-03-31 | -0.6 | -9.2 | — | — | -0.5 | -1.3 |
-| SUNPHARMA | 2025-03-31 | 2026-03-31 | -0.5 | -10.6 | — | — | +1.4 | -0.8 |
-| TATASTEEL | 2025-03-31 | 2026-03-31 | -2.2 | -6.0 | — | — | -6.6 | -8.1 |
+| NTPC | 2025-03-31 | 2026-03-31 | +7.6 | +0.4 | -2.6 | -2.4 | -1.1 | -2.0 |
+| POWERGRID | 2025-03-31 | 2026-03-31 | +4.7 | -2.0 | -0.0 | +0.1 | +0.7 | -0.4 |
+| RELIANCE | 2025-03-31 | 2026-03-31 | -0.6 | -9.2 | -0.1 | -0.0 | -0.5 | -1.3 |
+| SUNPHARMA | 2025-03-31 | 2026-03-31 | -0.5 | -10.6 | -0.2 | -0.1 | +1.4 | -0.8 |
+| TATASTEEL | 2025-03-31 | 2026-03-31 | -2.2 | -6.0 | -2.5 | -2.9 | -6.6 | -8.1 |
 | TCS | 2026-03-31 | — | no filed year after its data yet | | | | | |
-| TITAN | 2025-03-31 | 2026-03-31 | -22.7 | -37.1 | — | — | -9.4 | -14.9 |
-| ULTRACEMCO | 2025-03-31 | 2026-03-31 | -7.3 | -15.3 | — | — | -1.6 | -3.0 |
+| TITAN | 2025-03-31 | 2026-03-31 | -22.7 | -37.1 | -0.2 | -0.3 | -9.4 | -14.9 |
+| ULTRACEMCO | 2025-03-31 | 2026-03-31 | -7.3 | -15.3 | -1.0 | -1.5 | -1.6 | -3.0 |

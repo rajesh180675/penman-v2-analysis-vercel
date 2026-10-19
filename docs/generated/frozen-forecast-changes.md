@@ -92,3 +92,7 @@ Frozen only in 2026-10-17: BHARTIARTL.
 | GRASIM | ₹444 → ₹335 | −24.5% | — | −0.76 | — | 6.7% → 6.3% | 0.76× | same |
 | POWERGRID | ₹193 → ₹194 | +0.8% | — | +0.01 | — | 47.6% → 47.7% | 0.21× | same |
 | NTPC | ₹223 → ₹224 | +0.6% | — | +0.01 | +0.05 | 17.2% | 0.42× | same |
+
+## 2026-10-18 → 2026-10-19
+
+21 companies frozen in both sets. 0 listed below; 21 moved by less than 0.5% with the same anchor and basis.

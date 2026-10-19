@@ -1,0 +1,69 @@
+{
+ "schemaVersion": "2026-10-forecast-snapshot-v3",
+ "ticker": "TITAN",
+ "companyType": "consumer",
+ "madeAt": "2026-10-19",
+ "cutoffPeriod": "2025-03-31",
+ "model": "command-center-base",
+ "basis": {
+  "accounts": "consolidated",
+  "lendingArm": null
+ },
+ "assumptions": {
+  "ke": 0.13632884,
+  "kw": 0.10658739648024287,
+  "g": 0.0345
+ },
+ "anchor": {
+  "periodEnd": "2025-03-31",
+  "sales": 60456,
+  "operatingIncome": 3826.3285556780593,
+  "noa": 28936,
+  "cni": 3201,
+  "cse": 11624
+ },
+ "years": [
+  {
+   "periodEnd": "2026-03-31",
+   "sales": 69813.27742854279,
+   "operatingIncome": 4500.454552651063,
+   "noa": 32224.165172518762,
+   "cni": 3983.3233788727216,
+   "cse": 12944.902404111077
+  },
+  {
+   "periodEnd": "2027-03-31",
+   "sales": 79674.66003773133,
+   "operatingIncome": 5209.059971169403,
+   "noa": 35687.561298382534,
+   "cni": 4634.8419205126165,
+   "cse": 14336.197557796468
+  },
+  {
+   "periodEnd": "2028-03-31",
+   "sales": 90217.80313653556,
+   "operatingIncome": 5962.747576027517,
+   "noa": 39411.57691592142,
+   "cni": 5327.757376361491,
+   "cse": 15832.187243249606
+  },
+  {
+   "periodEnd": "2029-03-31",
+   "sales": 101624.59073316409,
+   "operatingIncome": 6773.225060104255,
+   "noa": 43475.14272542934,
+   "cni": 6072.388061089284,
+   "cse": 17464.579037890195
+  },
+  {
+   "periodEnd": "2030-03-31",
+   "sales": 114078.46370602562,
+   "operatingIncome": 7652.80185561212,
+   "noa": 47952.76920567571,
+   "cni": 6879.746006602089,
+   "cse": 19263.304853703845
+  }
+ ],
+ "intrinsicPerShare": 522.3266012390486,
+ "latestReportedPeriod": "2025-03-31"
+}
