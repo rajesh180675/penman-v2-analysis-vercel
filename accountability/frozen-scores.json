@@ -2861,5 +2861,842 @@
    }
   ],
   "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "ASIANPAINT",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 35181.90647333938,
+    "actual": 35583.54,
+    "model": -0.011351241579903188,
+    "randomWalk": -0.04830238902923753,
+    "band": {
+     "stress": 33863.237975000004,
+     "bull": 38233.41227333939,
+     "historicalPanic": 32846.069375,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 0.10536379279074395,
+    "actual": 0.11130136892432609,
+    "model": -0.005937576133582131,
+    "randomWalk": -0.005667157208773782,
+    "band": {
+     "stress": 0.07226943186748326,
+     "bull": 0.11977296290406059,
+     "historicalPanic": 0.05390247095747025,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 4101.213285453206,
+    "actual": 4325.35,
+    "model": -0.011553552047509474,
+    "randomWalk": -0.033924249773580266,
+    "band": {
+     "stress": 2840.6722462962516,
+     "bull": 5001.030470602098,
+     "historicalPanic": 2159.5243243557097,
+     "position": "within"
+    }
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "BHARTIARTL",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 190225.5192708282,
+    "actual": 210972.8,
+    "model": -0.10351890338326263,
+    "randomWalk": -0.19852317350856252,
+    "band": {
+     "stress": 173373.570041698,
+     "bull": 201466.366521698,
+     "historicalPanic": 169360.313401698,
+     "position": "above"
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 0.13207453428389596,
+    "actual": 0.2370060040220803,
+    "model": -0.10493146973818435,
+    "randomWalk": -0.07561812861846792,
+    "band": {
+     "stress": 0.07608959815427249,
+     "bull": 0.15270056338428353,
+     "historicalPanic": 0.05841014463965456,
+     "position": "above"
+    }
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 15538.51550668343,
+    "actual": 26695.2,
+    "model": -0.09814813065776652,
+    "randomWalk": 0.06035704514484229,
+    "band": {
+     "stress": 4464.246110482043,
+     "bull": 20325.33199105359,
+     "historicalPanic": 1379.0724353560597,
+     "position": "above"
+    }
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "BRITANNIA",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 19603.0066401074,
+    "actual": 19151.59,
+    "model": 0.02329721357678521,
+    "randomWalk": -0.06520406591250118,
+    "band": {
+     "stress": 17915.638799932745,
+     "bull": 21217.846940107403,
+     "historicalPanic": 17377.358699932745,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 0.11577963358961897,
+    "actual": 0.12954716529404228,
+    "model": -0.013767531704423311,
+    "randomWalk": -0.010206736755841078,
+    "band": {
+     "stress": 0.08131528444962814,
+     "bull": 0.1306253544996941,
+     "historicalPanic": 0.06275920176792217,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 2329.308313389787,
+    "actual": 2533.49,
+    "model": -0.04687667862264164,
+    "randomWalk": -0.08144692496303706,
+    "band": {
+     "stress": 1512.2976288289822,
+     "bull": 2835.7120143821817,
+     "historicalPanic": 1144.9198572484245,
+     "position": "within"
+    }
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "DABUR",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 13251.133099631801,
+    "actual": 13192.57,
+    "model": 0.0044292734004982666,
+    "randomWalk": -0.04889064243811556,
+    "band": {
+     "stress": 12510.333577391593,
+     "bull": 14381.811199631802,
+     "historicalPanic": 12133.440877391593,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 0.1172148356978176,
+    "actual": 0.1160682957760003,
+    "model": 0.001146539921817305,
+    "randomWalk": -0.0012960753258125512,
+    "band": {
+     "stress": 0.0829079782878437,
+     "bull": 0.1323263114781797,
+     "historicalPanic": 0.06324527933938141,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 1862.842390810754,
+    "actual": 1895.03,
+    "model": -0.0029801437861142117,
+    "randomWalk": -0.011795542692179839,
+    "band": {
+     "stress": 1344.592635972858,
+     "bull": 2229.404039635687,
+     "historicalPanic": 1075.8273188069506,
+     "position": "within"
+    }
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "DMART",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 69077.9306875,
+    "actual": 68820.74,
+    "model": 0.0037301445246690377,
+    "randomWalk": -0.1479174050844707,
+    "band": {
+     "stress": 61064.59393750001,
+     "bull": 71749.04293750001,
+     "historicalPanic": 58393.4816875,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 0.04509263561507716,
+    "actual": 0.04387197289776437,
+    "model": 0.0012206627173127899,
+    "randomWalk": 0.0010588804609442254,
+    "band": {
+     "stress": 0.03238093281702733,
+     "bull": 0.05056521355416786,
+     "historicalPanic": 0.025547714404038913,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 3114.9059575349957,
+    "actual": 2970.491,
+    "model": 0.00673962303718289,
+    "randomWalk": -0.012249116216121618,
+    "band": {
+     "stress": 1977.3285137892433,
+     "bull": 3628.005678441849,
+     "historicalPanic": 1491.8199932097275,
+     "position": "within"
+    }
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "GRASIM",
+  "cutoff": "2025-03-31",
+  "scores": [],
+  "skipped": "a forecast of the business without Aditya Birla Capital; the consolidated filings describe another business"
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "HINDUNILVR",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 66728.49404333763,
+    "actual": 64468,
+    "model": 0.03446308208996371,
+    "randomWalk": -0.021115457409312564,
+    "band": {
+     "stress": 62673.74345658442,
+     "bull": 72409.38404333762,
+     "historicalPanic": 60780.113456584426,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 0.15574108999074102,
+    "actual": 0.16419347687066604,
+    "model": -0.008452386879925028,
+    "randomWalk": -0.0058842667600825516,
+    "band": {
+     "stress": 0.10975572065499904,
+     "bull": 0.1753822253678649,
+     "historicalPanic": 0.08559417792958421,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 10847.614871081558,
+    "actual": 15040,
+    "model": -0.08486265999187163,
+    "randomWalk": -0.08888304117242217,
+    "band": {
+     "stress": 7334.991151846205,
+     "bull": 13177.42206232583,
+     "historicalPanic": 5661.955407305385,
+     "position": "above"
+    }
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "INFY",
+  "cutoff": "2026-03-31",
+  "scores": [],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "ITC",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 82377.90281310378,
+    "actual": 78868.4,
+    "model": 0.0435365905509629,
+    "randomWalk": -0.04599059371915703,
+    "band": {
+     "stress": 75688.658199,
+     "bull": 87891.57130110377,
+     "historicalPanic": 73850.768703,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 0.23794642051728027,
+    "actual": 0.24232604146537287,
+    "model": -0.004379620948092605,
+    "randomWalk": -0.0022962916842320935,
+    "band": {
+     "stress": 0.172625306606869,
+     "bull": 0.2650844333682798,
+     "historicalPanic": 0.1410249460494246,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 21458.846437882286,
+    "actual": 20689.47,
+    "model": 0.010986375675617614,
+    "randomWalk": 0.20073040073511295,
+    "band": {
+     "stress": 14934.537189123928,
+     "bull": 25211.373294943987,
+     "historicalPanic": 12315.420638274616,
+     "position": "within"
+    }
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "LT",
+  "cutoff": "2026-03-31",
+  "scores": [],
+  "skipped": "a forecast of the business without L&T Finance; the consolidated filings describe another business"
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "M&M",
+  "cutoff": "2025-03-31",
+  "scores": [],
+  "skipped": "a forecast of the business without Mahindra & Mahindra Financial Services; the consolidated filings describe another business"
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "MARUTI",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 169691.06897493862,
+    "actual": 183316,
+    "model": -0.07723189709393066,
+    "randomWalk": -0.18134230742260443,
+    "band": {
+     "stress": 154508.87176680422,
+     "bull": 182719.25657493866,
+     "historicalPanic": 150166.14256680425,
+     "position": "above"
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 0.06523437756924967,
+    "actual": 0.06134894928221886,
+    "model": 0.003885428287030812,
+    "randomWalk": 0.008651741766522184,
+    "band": {
+     "stress": 0.03949694680494387,
+     "bull": 0.0760349707888956,
+     "historicalPanic": 0.02666083035622848,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 15264.246313612506,
+    "actual": 14679.5,
+    "model": 0.006075923952669383,
+    "randomWalk": -0.0018630526424071438,
+    "band": {
+     "stress": 9951.477702922424,
+     "bull": 18396.647241392588,
+     "historicalPanic": 7758.752662957304,
+     "position": "within"
+    }
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "NESTLEIND",
+  "cutoff": "2025-03-31",
+  "scores": [],
+  "skipped": "a forecast on standalone accounts; the ledger is consolidated"
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "NTPC",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 202207.23831712035,
+    "actual": 187384.63,
+    "model": 0.07612975439037599,
+    "randomWalk": 0.004012705655496255,
+    "band": {
+     "stress": 188598.7153727355,
+     "bull": 217333.53834112035,
+     "historicalPanic": 183556.61536473548,
+     "position": "below"
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 0.15164841345373278,
+    "actual": 0.1771891438908302,
+    "model": -0.025540730437097425,
+    "randomWalk": -0.023542297717010274,
+    "band": {
+     "stress": 0.10421923526280082,
+     "bull": 0.17139363409735528,
+     "historicalPanic": 0.08112976829793819,
+     "position": "above"
+    }
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 25084.66865069288,
+    "actual": 27052.52,
+    "model": -0.010690709773910909,
+    "randomWalk": -0.019720960089565368,
+    "band": {
+     "stress": 13831.993242552811,
+     "bull": 31540.386874041473,
+     "historicalPanic": 8885.297641748715,
+     "position": "within"
+    }
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "POWERGRID",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 48983.796320789465,
+    "actual": 46732.87,
+    "model": 0.04704178461544364,
+    "randomWalk": -0.020331380005424206,
+    "band": {
+     "stress": 46222.767808000004,
+     "bull": 52390.74492878947,
+     "historicalPanic": 45087.118272,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 0.46324567815803513,
+    "actual": 0.4636899417048428,
+    "model": -0.000444263546807655,
+    "randomWalk": 0.0009642913525120256,
+    "band": {
+     "stress": 0.33752386246898625,
+     "bull": 0.5141187882340834,
+     "historicalPanic": 0.28155599931500547,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 16582.88294849475,
+    "actual": 15927.95,
+    "model": 0.007067915903853428,
+    "randomWalk": -0.004386981141625213,
+    "band": {
+     "stress": 9247.862030225697,
+     "bull": 20646.635275244946,
+     "historicalPanic": 6199.006116591331,
+     "position": "within"
+    }
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "RELIANCE",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 1051412.6516986426,
+    "actual": 1057219,
+    "model": -0.005507233064657934,
+    "randomWalk": -0.09158723856177683,
+    "band": {
+     "stress": 973942.6810057542,
+     "bull": 1126658.7056986426,
+     "historicalPanic": 948860.6630057542,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 0.08769151099973363,
+    "actual": 0.08903951205599943,
+    "model": -0.001348001056265799,
+    "randomWalk": -0.00032645680557406853,
+    "band": {
+     "stress": 0.06258611267734085,
+     "bull": 0.09817222062170834,
+     "historicalPanic": 0.0502604052069668,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 76344.86595181322,
+    "actual": 80775,
+    "model": -0.005253954041967245,
+    "randomWalk": -0.013196157495256168,
+    "band": {
+     "stress": 48841.32275506362,
+     "bull": 92350.00419334506,
+     "historicalPanic": 37098.930042825355,
+     "position": "within"
+    }
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "SUNPHARMA",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 58188.88253041372,
+    "actual": 58462.04,
+    "model": -0.004683340053205129,
+    "randomWalk": -0.10607150494350423,
+    "band": {
+     "stress": 52810.7123132129,
+     "bull": 62794.75387441372,
+     "historicalPanic": 51275.4218652129,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 0.1911980200905779,
+    "actual": 0.1935559069543286,
+    "model": -0.0023578868637506856,
+    "randomWalk": -0.0007564503109971921,
+    "band": {
+     "stress": 0.132163850609944,
+     "bull": 0.2160840561434829,
+     "historicalPanic": 0.10231931990163146,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 12455.889789236347,
+    "actual": 11479.42,
+    "model": 0.01352113765008162,
+    "randomWalk": -0.007621089584012399,
+    "band": {
+     "stress": 8282.673319107244,
+     "bull": 14960.110762302907,
+     "historicalPanic": 6559.206347642427,
+     "position": "within"
+    }
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "TATASTEEL",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 226978.250886,
+    "actual": 232139.94,
+    "model": -0.022486177659385057,
+    "randomWalk": -0.060359830087466516,
+    "band": {
+     "stress": 220859.06060599998,
+     "bull": 241664.307558,
+     "historicalPanic": 215963.708382,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 0.039593395701558766,
+    "actual": 0.06504789025187348,
+    "model": -0.02545449455031471,
+    "randomWalk": -0.028611265642775607,
+    "band": {
+     "stress": 0.029142612810108215,
+     "bull": 0.04361168672322589,
+     "historicalPanic": 0.02524235633846185,
+     "position": "above"
+    }
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 4779.831385461307,
+    "actual": 10793.87,
+    "model": -0.06596537261957401,
+    "randomWalk": -0.08087517740282592,
+    "band": {
+     "stress": 1987.6263016725059,
+     "bull": 6211.910054064229,
+     "historicalPanic": 926.6028708725942,
+     "position": "above"
+    }
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "TCS",
+  "cutoff": "2026-03-31",
+  "scores": [],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "TITAN",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 69813.27742854279,
+    "actual": 87584,
+    "model": -0.22677412014037474,
+    "randomWalk": -0.3706825051398498,
+    "band": {
+     "stress": 62631.104628542795,
+     "bull": 72396.06,
+     "historicalPanic": 60237.04702854279,
+     "position": "above"
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 0.062037241306139475,
+    "actual": 0.06411842614283565,
+    "model": -0.0020811848366961774,
+    "randomWalk": -0.0032542186456195263,
+    "band": {
+     "stress": 0.043277750372187895,
+     "bull": 0.06894863270285848,
+     "historicalPanic": 0.037353700603571606,
+     "position": "within"
+    }
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 3983.3233788727216,
+    "actual": 5073,
+    "model": -0.09374368729587736,
+    "randomWalk": -0.14934618031658636,
+    "band": {
+     "stress": 2341.4924971272576,
+     "bull": 4637.745887054505,
+     "historicalPanic": 1875.4810817413872,
+     "position": "above"
+    }
+   }
+  ],
+  "skipped": null
+ },
+ {
+  "madeAt": "2026-10-20",
+  "ticker": "ULTRACEMCO",
+  "cutoff": "2025-03-31",
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 82286.70360517327,
+    "actual": 88511.53,
+    "model": -0.07292329146589466,
+    "randomWalk": -0.15299005481584463,
+    "band": {
+     "stress": 76323.5123805,
+     "bull": 87846.61912117327,
+     "historicalPanic": 74470.20720850001,
+     "position": "above"
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 0.0947401819438404,
+    "actual": 0.1048263269935336,
+    "model": -0.010086145049693199,
+    "randomWalk": -0.014564968821684302,
+    "band": {
+     "stress": 0.07049355784126608,
+     "bull": 0.10464642177750244,
+     "historicalPanic": 0.05936075396647601,
+     "position": "above"
+    }
+   },
+   {
+    "metric": "cni-roe-point-error",
+    "periodEnd": "2026-03-31",
+    "horizon": 1,
+    "forecast": 7033.10044118521,
+    "actual": 8165.64,
+    "model": -0.016017413308722635,
+    "randomWalk": -0.030075337906115645,
+    "band": {
+     "stress": 4600.268382697767,
+     "bull": 8408.878153325142,
+     "historicalPanic": 3625.6824764331377,
+     "position": "within"
+    }
+   }
+  ],
+  "skipped": null
  }
 ]

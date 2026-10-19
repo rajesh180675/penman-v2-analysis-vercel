@@ -96,3 +96,7 @@ Frozen only in 2026-10-17: BHARTIARTL.
 ## 2026-10-18 → 2026-10-19
 
 21 companies frozen in both sets. 0 listed below; 21 moved by less than 0.5% with the same anchor and basis.
+
+## 2026-10-19 → 2026-10-20
+
+21 companies frozen in both sets. 0 listed below; 21 moved by less than 0.5% with the same anchor and basis.
