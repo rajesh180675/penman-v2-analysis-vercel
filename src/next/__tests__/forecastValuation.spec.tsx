@@ -20,6 +20,7 @@ import { DEFAULT_CONFIG, type CompanyType } from "../../engine/types";
 import { INRAbsolute } from "../../engine/types/units";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
 import type { FiledYear } from "../../engine/accountability";
+import { buildScenario } from "../../engine/forecastingEngine";
 import { crore, percent } from "../format";
 import { ForecastSection } from "../sections/ForecastSection";
 import { VerdictSection } from "../sections/VerdictSection";
@@ -169,6 +170,19 @@ describe("Forecast section", () => {
       const pts = (x: number) => `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)} pts`;
       expect(html).toContain(`${nextYear()} Core margin ${percent(forecastMargin - 0.01)} ${percent(filedMargin)} +0.5 pts ${pts(rw)} ${Math.abs(rw) > 0.005 ? "Forecast" : "Nothing changes"}`);
       expect(html).toContain("so a gap between how Capitaline and the filings measure the level is not counted against it");
+    });
+
+    it("places the filed year against the run's own stress and bull cases", () => {
+      const yearOne = (key: "stress" | "bull") => buildScenario(cc().scenarios.find((s) => s.key === key)!.scenario, cc().anchorPeriod)[0]!.Sales_f;
+      const [stress, bull] = [yearOne("stress"), yearOne("bull")];
+      expect(stress).toBeLessThan(bull);
+      const [cutoff, filed] = filedYears();
+      const placed = (revenue: number) => caseHtml("consolidated", [cutoff!, { ...filed!, revenue }]);
+      const row = (revenue: number, band: string) => new RegExp(`${nextYear()} Sales [0-9,]+ ${crore(revenue)} \\S+ \\S+ (Forecast|Nothing changes) ${band}`);
+      expect(placed(stress * 0.99)).toMatch(row(stress * 0.99, "Below stress"));
+      expect(placed((stress + bull) / 2)).toMatch(row((stress + bull) / 2, "Between"));
+      expect(placed(bull * 1.01)).toMatch(row(bull * 1.01, "Above bull"));
+      expect(placed(bull * 1.01)).toContain("The last column places the filed figure against the stress and bull cases, compared as the base case is.");
     });
 
     it("scores the base case, not the reader's edits", () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { compareSnapshots, type ForecastSnapshot } from "..";
 
 const snapshot = (over: Partial<ForecastSnapshot> & { ticker: string; madeAt: string }): ForecastSnapshot => ({
-  schemaVersion: "2026-10-forecast-snapshot-v3",
+  schemaVersion: "2026-10-forecast-snapshot-v4",
   companyType: "consumer",
   cutoffPeriod: "2025-03-31",
   model: "command-center-base",
@@ -10,6 +10,7 @@ const snapshot = (over: Partial<ForecastSnapshot> & { ticker: string; madeAt: st
   assumptions: { ke: 0.12, kw: 0.1, g: 0.04 },
   anchor: { periodEnd: "2025-03-31", sales: 950, operatingIncome: 140, noa: 390, cni: 110, cse: 700 },
   years: [{ periodEnd: "2026-03-31", sales: 1000, operatingIncome: 150, noa: 400, cni: 120, cse: 800 }],
+  scenarios: { stress: [], bull: [], historicalPanic: [] },
   intrinsicPerShare: 500,
   ...over,
 });

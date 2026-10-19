@@ -157,6 +157,11 @@ describe("forecast snapshot ledger", () => {
       cutoff: history[4]!,
       basis: { accounts: "consolidated", lendingArm: "X Finance" },
       forecast: [forecastYear({ Sales_f: 1500, OI_f: 292.82, NOA_f: 1600, CNI_f: 220 })],
+      scenarios: {
+        stress: [forecastYear({ Sales_f: 1300, OI_f: 200, NOA_f: 1550, CNI_f: 150 })],
+        bull: [forecastYear({ Sales_f: 1700, OI_f: 380, NOA_f: 1650, CNI_f: 290 })],
+        historicalPanic: [forecastYear({ Sales_f: 1200, OI_f: 150, NOA_f: 1500, CNI_f: 100 })],
+      },
       assumptions: { ke: 0.12, kw: 0.1, g: 0.04 },
       intrinsicPerShare: null,
     });
@@ -168,6 +173,10 @@ describe("forecast snapshot ledger", () => {
       periodEnd: history[4]!.period_end, sales: history[4]!.is.Sales, operatingIncome: history[4]!.cu.CoreOI,
       noa: history[4]!.bs.NOA, cni: history[4]!.is.CNI, cse: history[4]!.bs.CSE,
     });
+    // And the other cases, dated as the base is, so the band a filed year lands in can be scored.
+    expect(snapshot.scenarios.stress.map((y) => [y.periodEnd, y.sales, y.cni])).toEqual([["2024-03-31", 1300, 150]]);
+    expect(snapshot.scenarios.bull[0]!.operatingIncome).toBe(380);
+    expect(snapshot.scenarios.historicalPanic[0]!.sales).toBe(1200);
 
     // Nothing reported yet: nothing to score.
     expect(scoreSnapshot(snapshot, history).observations).toEqual([]);
@@ -266,6 +275,33 @@ describe("frozen forecasts scored against filings", () => {
     expect(scoreSnapshotAgainstFilings(snapshot() as never, filed).scores.some((s) => s.metric === "core-margin-point-error")).toBe(false);
     // Nor is a year whose filing lacks the lines core operating income is built from.
     expect(scoreSnapshotAgainstFilings(withAnchor as never, filings).scores.some((s) => s.metric === "core-margin-point-error")).toBe(false);
+  });
+
+  it("places each filed figure against the frozen stress and bull cases, compared as the base case is", async () => {
+    const { scoreSnapshotAgainstFilings } = await import("..");
+    const year = (periodEnd: string, sales: number, operatingIncome: number, cni: number) => ({ periodEnd, sales, operatingIncome, noa: 900, cni, cse: 1000 });
+    const withScenarios = snapshot({
+      schemaVersion: "2026-10-forecast-snapshot-v4",
+      anchor: { sales: 1000, operatingIncome: 120 },
+      scenarios: {
+        // Matched by fiscal year, never by position.
+        stress: [year("2027-03-31", 1000, 80, 85), year("2026-03-31", 950, 76, 80)],
+        bull: [year("2026-03-31", 1050, 136.5, 125)],
+        historicalPanic: [year("2026-03-31", 900, 63, 60)],
+      },
+    });
+    // Filed: net sales 1,100, a 9% core margin (11% in the cutoff year), owners' profit 70.
+    const filed = [{ ...filings[0]!, coreOperatingIncome: 110 }, { ...filings[1]!, coreOperatingIncome: 99, profitAttributableToOwners: 70 }];
+    const scores = scoreSnapshotAgainstFilings(withScenarios as never, filed).scores;
+    const at = (metric: string) => scores.find((s) => s.metric === metric)!.band!;
+    expect(at("sales-log-error")).toEqual({ stress: 950, bull: 1050, historicalPanic: 900, position: "above" });
+    // The cases' margins move from the cutoff year's filed 11% as the base's does: 8% → 7%, 13% → 12%, 7% → 6%.
+    const margin = at("core-margin-point-error");
+    expect([margin.stress, margin.bull, margin.historicalPanic].map((x) => x.toFixed(12))).toEqual([0.07, 0.12, 0.06].map((x) => x.toFixed(12)));
+    expect(margin.position).toBe("within");
+    expect(at("cni-roe-point-error")).toEqual({ stress: 80, bull: 125, historicalPanic: 60, position: "below" });
+    // A snapshot that records no other cases places nothing.
+    expect(scoreSnapshotAgainstFilings(snapshot({ anchor: { sales: 1000, operatingIncome: 120 } }) as never, filed).scores.every((s) => !("band" in s))).toBe(true);
   });
 
   it("does not score a forecast of a business the consolidated filings do not describe", async () => {

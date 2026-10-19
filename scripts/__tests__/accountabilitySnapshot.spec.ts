@@ -49,6 +49,15 @@ describe("frozen forecast snapshots", () => {
     expect(snapshot.years.map((y) => y.sales)).toEqual(shown.forecast!.map((f) => f.Sales_f));
     expect(snapshot.years.map((y) => y.operatingIncome)).toEqual(shown.forecast!.map((f) => f.OI_f));
     expect(snapshot.intrinsicPerShare).toBe(card.intrinsicPerShare);
+    // The other cases as their cards forecast them, on the same carved basis.
+    for (const [key, years] of [["stress", snapshot.scenarios.stress], ["bull", snapshot.scenarios.bull], ["historical-panic", snapshot.scenarios.historicalPanic]] as const) {
+      const { assumptions } = cc.scenarios.find((s) => s.key === key)!;
+      expect(years.map((y) => y.periodEnd)).toEqual(snapshot.years.map((y) => y.periodEnd));
+      expect(years[0]!.sales / cc.anchorPeriod.is.Sales - 1).toBeCloseTo(assumptions.salesGrowthYear1, 9);
+      expect(years[0]!.operatingIncome / years[0]!.sales).toBeCloseTo(assumptions.corePmYear1, 9);
+    }
+    expect(snapshot.scenarios.stress[0]!.sales).toBeLessThan(snapshot.years[0]!.sales);
+    expect(snapshot.scenarios.bull[0]!.sales).toBeGreaterThan(snapshot.years[0]!.sales);
   }, 120_000);
 
   it("freezes nothing for a run the app stops before its valuation, and says why", async () => {
