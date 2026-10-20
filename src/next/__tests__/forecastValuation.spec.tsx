@@ -185,6 +185,22 @@ describe("Forecast section", () => {
       expect(placed(bull * 1.01)).toContain("The last column places the filed figure against the stress and bull cases, compared as the base case is.");
     });
 
+    it("projects a year still in progress from the months filed so far, and says so", () => {
+      const f = revalueBase(cc())!.forecast![0]!;
+      const [cutoff] = filedYears();
+      const halfYear = (fiscalYearEnd: string, revenue: number) =>
+        ({ fiscalYearEnd, periodEnd: `${Number(fiscalYearEnd.slice(0, 4)) - 1}-09-30`, months: 6, revenue, exciseDuty: null });
+      // Six months filed, 10% up on the same six months a year before; the year itself not filed yet.
+      const html = text(renderToStaticMarkup(
+        <ForecastSection result={resultFor(cc())} filedYears={[cutoff!]} filedYearsToDate={[halfYear(anchor(), 1000), halfYear(nextYear(), 1100)]} />,
+      ));
+      const through = `${Number(nextYear().slice(0, 4)) - 1}-09-30`;
+      expect(html).toContain(`${nextYear()} projected from 6 months to ${through} Sales ${crore(f.Sales_f)} ${crore(cutoff!.revenue! * 1.1)} `);
+      // A part year's earnings are not projected.
+      expect(html).not.toContain(`${nextYear()} Earnings`);
+      expect(html).toContain("A year still in progress is projected from the months filed so far");
+    });
+
     it("scores the base case, not the reader's edits", () => {
       const edited = revalueBase(cc(), { sales_growth: 0.05 })!.forecast![0]!;
       const f = revalueBase(cc())!.forecast![0]!;

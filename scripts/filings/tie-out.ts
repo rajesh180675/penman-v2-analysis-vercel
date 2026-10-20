@@ -16,7 +16,8 @@ import { parseCapitalineZip } from "../../src/engine/capitalineParser";
 import { processCompanyDataFull } from "../../src/engine/pipeline";
 import { DEFAULT_CONFIG, type RecastPeriod } from "../../src/engine/types";
 import { TIE_OUT_FIELDS, tieOutAsFiled, type AsFiledHeadlineRecord, type TieOutRow } from "../../src/engine/filings";
-import { firstFiledYears, type FiledYear } from "../../src/engine/accountability";
+import { firstFiledYears, firstFiledYearsToDate, type FiledYear, type FiledYearToDate } from "../../src/engine/accountability";
+import type { AsFiledYearToDateRecord } from "./fetch-nse-year-to-date";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "../..");
 const FILINGS = join(ROOT, "data", "filings");
@@ -35,6 +36,8 @@ const results: {
   latestFiling: { fiscalYearEnd: string; filingDate: string; sharesOutstandingCr: number | null } | null;
   /** Each fiscal year as first filed: what the Case's forecast is set against once its years are filed. */
   filedYears: FiledYear[];
+  /** The year in progress as first filed, quarter by quarter (fetch-nse-year-to-date.ts). */
+  filedYearsToDate: FiledYearToDate[];
 }[] = [];
 for (const symbol of readdirSync(FILINGS).filter((d) => existsSync(join(FILINGS, d, "as-filed.json"))).sort()) {
   const company = registry.find((c) => c.ticker === symbol);
@@ -49,6 +52,10 @@ for (const symbol of readdirSync(FILINGS).filter((d) => existsSync(join(FILINGS,
     const parsed = await parseCapitalineZip(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength), { companyId: company.folder });
     periods = processCompanyDataFull(parsed.periods, { ...DEFAULT_CONFIG, company_type: company.type as typeof DEFAULT_CONFIG.company_type }).periods;
   }
+  const yearToDatePath = join(FILINGS, symbol, "year-to-date.json");
+  const yearToDate = existsSync(yearToDatePath)
+    ? (JSON.parse(readFileSync(yearToDatePath, "utf8")) as { records: AsFiledYearToDateRecord[] }).records
+    : [];
   const latestYear = records.reduce<string | null>((max, r) => (max == null || r.fiscalYearEnd > max ? r.fiscalYearEnd : max), null);
   const latestFirst = latestYear == null ? null : records
     .filter((r) => r.fiscalYearEnd === latestYear)
@@ -61,6 +68,7 @@ for (const symbol of readdirSync(FILINGS).filter((d) => existsSync(join(FILINGS,
       ? { fiscalYearEnd: latestFirst.fiscalYearEnd, filingDate: latestFirst.filingDate, sharesOutstandingCr: latestFirst.headline.sharesOutstandingCr ?? null }
       : null,
     filedYears: firstFiledYears(records),
+    filedYearsToDate: firstFiledYearsToDate(yearToDate, records),
   });
   console.log(`${symbol}: ${results.at(-1)!.rows.length} comparisons`);
 }

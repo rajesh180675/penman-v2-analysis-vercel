@@ -6,26 +6,37 @@
  *
  * Every snapshot in accountability/snapshots/<made-at>/ is scored against the
  * as-filed ledger (data/filings/<SYMBOL>/as-filed.json, first filings) for the
- * years it forecast that its data never reached (scoreSnapshotAgainstFilings).
+ * years it forecast that its data never reached (scoreSnapshotAgainstFilings),
+ * and the year in progress provisionally, on the months filed so far
+ * (data/filings/<SYMBOL>/year-to-date.json).
  * Writes accountability/frozen-scores.json and
  * docs/generated/frozen-forecast-scores.md.
  */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { firstFiledYears, scoreSnapshotAgainstFilings, type FiledScore, type FiledYear, type ForecastSnapshot } from "../../src/engine/accountability";
+import { firstFiledYears, firstFiledYearsToDate, scoreSnapshotAgainstFilings, type FiledScore, type FiledYear, type FiledYearToDate, type ForecastSnapshot } from "../../src/engine/accountability";
 import type { AsFiledHeadlineRecord } from "../../src/engine/filings";
+import type { AsFiledYearToDateRecord } from "../filings/fetch-nse-year-to-date";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "../..");
 const SNAPSHOTS = join(ROOT, "accountability", "snapshots");
 
 type Snapshot = ForecastSnapshot & { latestReportedPeriod?: string };
 
+const annualRecords = (ticker: string) =>
+  (JSON.parse(readFileSync(join(ROOT, "data", "filings", ticker, "as-filed.json"), "utf8")) as { records: AsFiledHeadlineRecord[] }).records;
+
 /** Each fiscal year as first filed. */
 function filedYears(ticker: string): FiledYear[] | null {
-  const path = join(ROOT, "data", "filings", ticker, "as-filed.json");
-  if (!existsSync(path)) return null;
-  return firstFiledYears((JSON.parse(readFileSync(path, "utf8")) as { records: AsFiledHeadlineRecord[] }).records);
+  return existsSync(join(ROOT, "data", "filings", ticker, "as-filed.json")) ? firstFiledYears(annualRecords(ticker)) : null;
+}
+
+/** Each year to date as first filed. */
+function filedYearsToDate(ticker: string): FiledYearToDate[] {
+  const path = join(ROOT, "data", "filings", ticker, "year-to-date.json");
+  if (!existsSync(path)) return [];
+  return firstFiledYearsToDate((JSON.parse(readFileSync(path, "utf8")) as { records: AsFiledYearToDateRecord[] }).records, annualRecords(ticker));
 }
 
 const sets = readdirSync(SNAPSHOTS).sort();
@@ -46,7 +57,7 @@ for (const madeAt of sets) {
     let outcome: { scores: FiledScore[]; skipped: string | null };
     if (!filings) outcome = { scores: [], skipped: "no as-filed ledger" };
     else if (!snapshot.basis && accountsByTicker.get(snapshot.ticker) === "standalone") outcome = { scores: [], skipped: "a forecast on standalone accounts; the ledger is consolidated" };
-    else outcome = scoreSnapshotAgainstFilings(snapshot, filings);
+    else outcome = scoreSnapshotAgainstFilings(snapshot, filings, filedYearsToDate(snapshot.ticker));
     results.push({ madeAt, ticker: snapshot.ticker, cutoff: snapshot.cutoffPeriod, ...outcome });
   }
 }
@@ -60,8 +71,10 @@ const pct = (x: number, d = 1) => (Number.isFinite(x) ? `${(x * 100).toFixed(d)}
 const signed = (x: number, d = 1) => (Number.isFinite(x) ? `${x >= 0 ? "+" : ""}${(x * 100).toFixed(d)}` : "—");
 const LABEL = { "sales-log-error": "Sales (log error, %)", "core-margin-point-error": "Core margin (points of sales)", "cni-roe-point-error": "Earnings (ROE points)" } as const;
 
-function summary(scores: FiledScore[]) {
-  return (["sales-log-error", "core-margin-point-error", "cni-roe-point-error"] as const).map((metric) => {
+const METRICS = ["sales-log-error", "core-margin-point-error", "cni-roe-point-error"] as const;
+
+function summary(scores: FiledScore[], metrics: readonly FiledScore["metric"][] = METRICS) {
+  return metrics.map((metric) => {
     const xs = scores.filter((s) => s.metric === metric);
     const model = median(xs.map((s) => Math.abs(s.model)));
     const rw = median(xs.map((s) => Math.abs(s.randomWalk)));
@@ -75,10 +88,10 @@ function summary(scores: FiledScore[]) {
 const MEASURE = { "sales-log-error": "Sales", "core-margin-point-error": "Core margin", "cni-roe-point-error": "Earnings" } as const;
 
 /** Where the filed figures fell against the frozen stress and bull cases, for forecasts that record them. */
-function bands(scores: FiledScore[]) {
+function bands(scores: FiledScore[], metrics: readonly FiledScore["metric"][] = METRICS) {
   const banded = scores.filter((s) => s.band);
   if (!banded.length) return "";
-  const rows = (["sales-log-error", "core-margin-point-error", "cni-roe-point-error"] as const).map((metric) => {
+  const rows = metrics.map((metric) => {
     const xs = banded.filter((s) => s.metric === metric);
     const share = (test: (s: FiledScore) => boolean) => (xs.length ? `${Math.round((xs.filter(test).length / xs.length) * 100)}%` : "—");
     return `| ${MEASURE[metric]} | ${xs.length} | ${share((s) => s.band!.position === "below")} | ${share((s) => s.band!.position === "within")} | ${share((s) => s.band!.position === "above")} | ${share((s) => s.actual < s.band!.historicalPanic)} |`;
@@ -99,6 +112,7 @@ Each forecast frozen in \`accountability/snapshots/\` is scored against the resu
 - **Earnings** compare forecast CNI with the owners' profit filed (OCI aside), in points of the opening year's filed owners' equity.
 - **Random walk** is "the cutoff year again". **Skill** = 1 − median error / random-walk median error.
 - **Scenario bands.** Snapshots of schema v4 also record the stress, bull and historical-panic cases, and each filed figure is placed below stress, between stress and bull, or above bull, on the basis its base case is scored on (the margin moved from the cutoff year's filed margin). The bands were calibrated on the walk-forward (\`docs/generated/scenario-band-coverage.md\`), so this tests them on years the calibration never saw. Sets frozen before v4 have no band table.
+- **The year in progress** is scored provisionally, apart from the filed years, on the months filed so far (\`data/filings/<SYMBOL>/year-to-date.json\`, \`scripts/filings/fetch-nse-year-to-date.ts\`). They are set against the same months a year before, so seasonality cancels: the last full year's sales grown as those months grew, and its core margin moved as theirs moved. Earnings are not projected, since one quarter's one-offs weigh too much in part of a year. A provisional score is replaced when the year is filed.
 - **One-offs.** Filed profit includes them on both sides. ITC's FY2025 owners' profit carries the hotels demerger gain, so its random walk for FY2026 misses by 20 ROE points. The forecast models neither.
 
 Not scored:
@@ -109,8 +123,13 @@ Not scored:
 
 ${sets.map((madeAt) => {
     const rows = results.filter((r) => r.madeAt === madeAt);
-    const scored = rows.filter((r) => r.scores.length > 0);
-    return `### Frozen ${madeAt} (${scored.length} of ${rows.length} forecasts scored)\n\n${header}\n${summary(rows.flatMap((r) => r.scores))}${bands(rows.flatMap((r) => r.scores))}`;
+    const final = rows.flatMap((r) => r.scores.filter((s) => !s.provisional));
+    const provisional = rows.flatMap((r) => r.scores.filter((s) => s.provisional));
+    const scored = rows.filter((r) => r.scores.some((s) => !s.provisional));
+    const inProgress = provisional.length
+      ? `\n\nThe year in progress, projected from the months filed so far (provisional; ${new Set(provisional.map((s) => `${s.periodEnd}:${s.provisional!.months}`)).size > 1 ? "months filed differ by company" : `${provisional[0]!.provisional!.months} months`}):\n\n${header}\n${summary(provisional, ["sales-log-error", "core-margin-point-error"])}${bands(provisional, ["sales-log-error", "core-margin-point-error"])}`
+      : "";
+    return `### Frozen ${madeAt} (${scored.length} of ${rows.length} forecasts scored)\n\n${header}\n${summary(final)}${bands(final)}${inProgress}`;
   }).join("\n\n")}
 
 ## Frozen ${latest}, by company
@@ -126,7 +145,8 @@ ${latestRows.flatMap((r) => {
         const x = r.scores.find((s) => s.periodEnd === y && s.metric === metric);
         return x ? `${signed(x.model)} | ${signed(x.randomWalk)}` : "— | —";
       };
-      return `| ${r.ticker} | ${r.cutoff} | ${y} | ${cell("sales-log-error")} | ${cell("core-margin-point-error")} | ${cell("cni-roe-point-error")} |`;
+      const months = r.scores.find((s) => s.periodEnd === y)?.provisional?.months;
+      return `| ${r.ticker} | ${r.cutoff} | ${y}${months ? ` (${months} months filed)` : ""} | ${cell("sales-log-error")} | ${cell("core-margin-point-error")} | ${cell("cni-roe-point-error")} |`;
     });
   }).join("\n")}
 `;
