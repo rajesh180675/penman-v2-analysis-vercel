@@ -134,6 +134,8 @@ function renderSection(
           result={result}
           trackRecord={trackRecord}
           frozen={latestSnapshotFor(context.snapshots, context.company.ticker)}
+          frozenSets={(context.snapshots ?? []).filter((s) => s.ticker === context.company.ticker)}
+          setsMade={new Set((context.snapshots ?? []).map((s) => s.madeAt)).size}
           filedYears={context.tieOut?.find((c) => c.symbol === context.company.ticker)?.filedYears ?? null}
           filedYearsToDate={context.tieOut?.find((c) => c.symbol === context.company.ticker)?.filedYearsToDate ?? []}
           accounts={context.accounts}

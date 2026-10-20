@@ -6,7 +6,7 @@
  */
 import { useMemo, useState } from "react";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
-import { anchorYear, forecastYears, scoreSnapshotAgainstFilings, type CompanyTrackRecord, type FiledScore, type FiledYear, type FiledYearToDate, type ForecastToScore, type SnapshotScenarios } from "../../engine/accountability";
+import { anchorYear, compareSnapshots, forecastYears, scoreSnapshotAgainstFilings, yearOneDrivers, type CompanyTrackRecord, type ComparedSnapshot, type FiledScore, type FiledYear, type FiledYearToDate, type ForecastToScore, type SnapshotScenarios } from "../../engine/accountability";
 import { buildScenario } from "../../engine/forecastingEngine";
 import { formatPerShare } from "../../engine/valuationCommandCenter";
 import { revalueBase, type BaseCaseShifts } from "../../engine/valuationCommandCenter/breakEven";
@@ -29,6 +29,8 @@ export function ForecastSection({
   result,
   trackRecord = null,
   frozen = null,
+  frozenSets = [],
+  setsMade = 0,
   filedYears = null,
   filedYearsToDate = [],
   accounts = "consolidated",
@@ -39,6 +41,10 @@ export function ForecastSection({
   trackRecord?: CompanyTrackRecord | null;
   /** The company's most recently frozen forecast, drawn beside the current one. */
   frozen?: FrozenForecast | null;
+  /** Every forecast frozen for the company, in any order. */
+  frozenSets?: readonly ComparedSnapshot[];
+  /** How many snapshot sets have been made, for every company. */
+  setsMade?: number;
   /** The company's years as first filed (the as-filed ledger); null when the ledger has none. */
   filedYears?: readonly FiledYear[] | null;
   /** The year in progress as first filed, quarter by quarter. */
@@ -79,6 +85,7 @@ export function ForecastSection({
   const difference = edited.value != null && base.value != null && base.value !== 0 ? (edited.value - base.value) / Math.abs(base.value) : null;
   const card = cc.scenarios.find((s) => s.key === "base")!;
   const basisNote = valuationDateNote(cc);
+  const lendingArm = cc.lendingArm?.status === "applied" ? cc.lendingArm.link.arm.name : null;
 
   return (
     <div className="space-y-4">
@@ -125,7 +132,7 @@ export function ForecastSection({
       <FadePanel
         // The command center's periods are deeply readonly; the chart only reads them.
         history={cc.basisPeriods as unknown as readonly RecastPeriod[]}
-        lendingArm={cc.lendingArm?.status === "applied" ? cc.lendingArm.link.arm.name : null}
+        lendingArm={lendingArm}
         anchorPeriod={cc.anchorPeriod.period_end}
         forecast={edited.forecast ?? []}
         frozen={frozen}
@@ -175,12 +182,29 @@ export function ForecastSection({
 
       <TrackRecord record={trackRecord} />
 
+      {frozenSets.length > 0 && (
+        <FrozenValues
+          sets={frozenSets}
+          setsMade={setsMade}
+          // Today's run only: an as-of view's run is not the one the latest set froze.
+          current={!asOf && base.forecast ? {
+            ticker: frozenSets[0]!.ticker,
+            madeAt: "",
+            cutoffPeriod: cc.anchorPeriod.period_end,
+            assumptions: card.assumptions,
+            intrinsicPerShare: card.intrinsicPerShare ?? null,
+            years: forecastYears(cc.anchorPeriod.period_end, base.forecast),
+            basis: { accounts, lendingArm },
+          } : null}
+        />
+      )}
+
       {filedYears && base.forecast && (
         <AgainstFiled
           forecast={{
             cutoffPeriod: cc.anchorPeriod.period_end,
             latestReportedPeriod: result.materialization.pipelineResult?.periods.at(-1)?.period_end ?? cc.anchorPeriod.period_end,
-            basis: { accounts, lendingArm: cc.lendingArm?.status === "applied" ? cc.lendingArm.link.arm.name : null },
+            basis: { accounts, lendingArm },
             anchor: anchorYear(cc.anchorPeriod),
             years: forecastYears(cc.anchorPeriod.period_end, base.forecast),
             scenarios,
@@ -275,6 +299,65 @@ function AgainstFiled({ forecast, filedYears, filedYearsToDate, asOf }: {
           </tbody>
         </table>
       )}
+    </div>
+  );
+}
+
+/**
+ * Every forecast frozen for the company, set by set, and this run's base case
+ * after the latest (compareSnapshots): the value beside what it was built on.
+ * A record of change, not an attribution. Between two sets the value moves with
+ * the engine merged in between, the pinned market inputs and, where the anchor
+ * moved, the data, all at once, and nothing here re-values one in isolation.
+ */
+function FrozenValues({ sets, setsMade, current }: { sets: readonly ComparedSnapshot[]; setsMade: number; current: ComparedSnapshot | null }) {
+  const ordered = [...sets].sort((a, b) => a.madeAt.localeCompare(b.madeAt));
+  const rows = [...ordered, ...(current ? [current] : [])].map((s, i, all) => ({
+    s,
+    drivers: yearOneDrivers(s),
+    change: i > 0 ? compareSnapshots([all[i - 1]!], [s])[0] ?? null : null,
+  }));
+  return (
+    <div className="wb-surface overflow-x-auto rounded-xl border p-4 shadow-sm">
+      <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Frozen values, set by set</h2>
+      <p className="mt-1 text-xs text-slate-500">
+        Frozen in {ordered.length} of the {setsMade} sets made{current && <>, with this run&rsquo;s base case after the latest</>}.
+        Each change is from the row above. Between two rows the value moves with the engine changed in between, the pinned
+        market inputs and, where the anchor moved, the data, all at once: this records what moved beside it, not why.
+        Margin and turnover are the forecast&rsquo;s first year.
+      </p>
+      <table className="mt-2 w-full text-sm">
+        <thead>
+          <tr className="text-right text-xs text-slate-500">
+            <th className="py-1 text-left font-medium">Frozen</th>
+            <th className="py-1 text-left font-medium">Anchor</th>
+            <th className="py-1 font-medium">Value per share</th>
+            <th className="py-1 font-medium">Change</th>
+            <th className="py-1 font-medium">ke</th>
+            <th className="py-1 font-medium">kw</th>
+            <th className="py-1 font-medium">g</th>
+            <th className="py-1 font-medium">Margin</th>
+            <th className="py-1 font-medium">Turnover</th>
+            <th className="py-1 text-left font-medium">Anchor or basis</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ s, drivers, change }) => (
+            <tr key={s.madeAt || "current"} className="border-t border-slate-100 text-right tabular-nums dark:border-slate-800">
+              <th scope="row" className="py-1 text-left font-normal">{s === current ? "This run" : s.madeAt}</th>
+              <td className="py-1 text-left">{s.cutoffPeriod}</td>
+              <td className="py-1">{formatPerShare(s.intrinsicPerShare)}</td>
+              <td className="py-1">{change?.valueChange != null ? signed(change.valueChange, "%") : "—"}</td>
+              <td className="py-1">{percent(s.assumptions.ke)}</td>
+              <td className="py-1">{percent(s.assumptions.kw)}</td>
+              <td className="py-1">{percent(s.assumptions.g)}</td>
+              <td className="py-1">{drivers.margin != null ? percent(drivers.margin) : "—"}</td>
+              <td className="py-1">{drivers.turnover != null ? `${drivers.turnover.toFixed(2)}×` : "—"}</td>
+              <td className="py-1 text-left">{change ? change.basisChange ?? "same" : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
