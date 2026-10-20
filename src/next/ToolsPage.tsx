@@ -9,6 +9,8 @@ import { TABS, type TabId } from "../app/tabs";
 import type { LibraryCompany } from "../components/data-entry/companyRegistry";
 import type { CompanyRegistry } from "../engine/types";
 import type { CompanyRunState } from "./companyRun";
+import type { FrozenSnapshot, TieOutCompany } from "./hooks";
+import { RecordScores } from "./RecordScores";
 import { toolsIn } from "./legacyTools";
 import { formatRoute, type Route } from "./route";
 import { Withheld } from "./ui/Withheld";
@@ -19,7 +21,7 @@ const ToolPanel = lazy(() => import("./ToolPanel").then((m) => ({ default: m.Too
 const NEEDS_DATA = new Set<TabId>(TABS.filter((t) => t.needsData).map((t) => t.id));
 
 const SPACE = {
-  record: { title: "Record", intro: "Thesis, reports and exports for a company." },
+  record: { title: "Record", intro: "Frozen forecasts scored against what was filed since, and a company's thesis, reports and exports." },
   lab: { title: "Lab", intro: "Diagnostic and research tools." },
 } as const;
 
@@ -33,6 +35,8 @@ export function ToolsPage({
   company,
   run = null,
   sessionRegistry = { companies: {} },
+  snapshots = null,
+  tieOut = null,
 }: {
   route: ToolsRoute;
   companies: readonly LibraryCompany[];
@@ -41,6 +45,9 @@ export function ToolsPage({
   /** That company's shared run. */
   run?: CompanyRunState | null;
   sessionRegistry?: CompanyRegistry;
+  /** Frozen forecast snapshots and the tie-out ledger, for the Record's scores; null when not loaded. */
+  snapshots?: readonly FrozenSnapshot[] | null;
+  tieOut?: readonly TieOutCompany[] | null;
 }) {
   const kind = route.space;
   const tools = toolsIn(kind);
@@ -92,6 +99,8 @@ export function ToolsPage({
           })}
         </ul>
       </nav>
+
+      {kind === "record" && !tool && <RecordScores snapshots={snapshots} tieOut={tieOut} />}
 
       {tool && (
         <section aria-label={tool.label} className="border-t border-slate-200 pt-4 dark:border-slate-700">
