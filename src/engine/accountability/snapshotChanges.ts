@@ -1,4 +1,10 @@
-import type { ForecastSnapshot } from "./snapshot";
+import type { ForecastSnapshot, ForecastSnapshotBasis, SnapshotYear } from "./snapshot";
+
+/** What a comparison reads of a snapshot, so the browser's copy of one compares as the file does. */
+export type ComparedSnapshot = Pick<ForecastSnapshot, "ticker" | "madeAt" | "cutoffPeriod" | "assumptions" | "intrinsicPerShare"> & {
+  readonly years: readonly Pick<SnapshotYear, "sales" | "operatingIncome" | "noa">[];
+  readonly basis?: Partial<ForecastSnapshotBasis> | undefined;
+};
 
 /**
  * What moved in one company's frozen base case between two snapshot sets: the
@@ -28,7 +34,13 @@ export interface SnapshotChange {
 const ratio = (num: number | undefined, den: number | undefined) =>
   num != null && den != null && Number.isFinite(num) && Number.isFinite(den) && den !== 0 ? num / den : null;
 
-function basisChange(a: ForecastSnapshot, b: ForecastSnapshot): string | null {
+/** The year-one core operating margin (operating income / sales) and turnover (sales / year-end NOA) a forecast starts from. */
+export function yearOneDrivers(s: ComparedSnapshot): { readonly margin: number | null; readonly turnover: number | null } {
+  const y = s.years[0];
+  return { margin: ratio(y?.operatingIncome, y?.sales), turnover: ratio(y?.sales, y?.noa) };
+}
+
+function basisChange(a: ComparedSnapshot, b: ComparedSnapshot): string | null {
   const notes: string[] = [];
   if (a.cutoffPeriod !== b.cutoffPeriod) notes.push(`anchor ${a.cutoffPeriod.slice(0, 7)} → ${b.cutoffPeriod.slice(0, 7)}`);
   // Snapshots before v2 record no basis; only a recorded change is reported.
@@ -40,13 +52,12 @@ function basisChange(a: ForecastSnapshot, b: ForecastSnapshot): string | null {
 }
 
 /** The companies frozen in both sets, compared. */
-export function compareSnapshots(earlier: readonly ForecastSnapshot[], later: readonly ForecastSnapshot[]): SnapshotChange[] {
+export function compareSnapshots(earlier: readonly ComparedSnapshot[], later: readonly ComparedSnapshot[]): SnapshotChange[] {
   const before = new Map(earlier.map((s) => [s.ticker, s]));
   return later.flatMap((b): SnapshotChange[] => {
     const a = before.get(b.ticker);
     if (!a) return [];
-    const ya = a.years[0];
-    const yb = b.years[0];
+    const [da, db] = [yearOneDrivers(a), yearOneDrivers(b)];
     const valueChange = a.intrinsicPerShare != null && b.intrinsicPerShare != null && a.intrinsicPerShare !== 0
       ? (b.intrinsicPerShare - a.intrinsicPerShare) / Math.abs(a.intrinsicPerShare)
       : null;
@@ -59,8 +70,8 @@ export function compareSnapshots(earlier: readonly ForecastSnapshot[], later: re
       ke: b.assumptions.ke - a.assumptions.ke,
       kw: b.assumptions.kw - a.assumptions.kw,
       g: b.assumptions.g - a.assumptions.g,
-      margin: { from: ratio(ya?.operatingIncome, ya?.sales), to: ratio(yb?.operatingIncome, yb?.sales) },
-      turnover: { from: ratio(ya?.sales, ya?.noa), to: ratio(yb?.sales, yb?.noa) },
+      margin: { from: da.margin, to: db.margin },
+      turnover: { from: da.turnover, to: db.turnover },
       basisChange: basisChange(a, b),
     }];
   });

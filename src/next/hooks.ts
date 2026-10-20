@@ -135,6 +135,10 @@ export function usePeerRuns(
 /** A forecast frozen on the day it was made (accountability/snapshots/, published for the browser). */
 export interface FrozenSnapshot extends FrozenForecast {
   readonly ticker: string;
+  readonly assumptions: { readonly ke: number; readonly kw: number; readonly g: number };
+  readonly intrinsicPerShare: number | null;
+  readonly years: readonly (FrozenForecast["years"][number] & { readonly noa: number })[];
+  readonly basis?: { readonly accounts?: "consolidated" | "standalone"; readonly lendingArm: string | null };
 }
 
 let snapshotsRequest: Promise<readonly FrozenSnapshot[] | null> | null = null;

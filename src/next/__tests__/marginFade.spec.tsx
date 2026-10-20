@@ -58,7 +58,8 @@ describe("MarginFadeChart", () => {
 });
 
 describe("frozen snapshots", () => {
-  const snap = (ticker: string, madeAt: string) => ({ ticker, madeAt, cutoffPeriod: "2025-03-31", years: [] }) as FrozenSnapshot;
+  const snap = (ticker: string, madeAt: string): FrozenSnapshot =>
+    ({ ticker, madeAt, cutoffPeriod: "2025-03-31", years: [], assumptions: { ke: 0.12, kw: 0.11, g: 0.05 }, intrinsicPerShare: null });
 
   it("draws a frozen forecast only beside one of the same business", () => {
     const v1 = snap("M&M", "2026-10-08"); // no basis: v1 carved nothing
