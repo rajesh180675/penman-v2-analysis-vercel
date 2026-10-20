@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { parseLibraryCompanyRegistry, type LibraryCompany } from "../components/data-entry/companyRegistry";
-import type { CompanyTrackRecord, FiledYear } from "../engine/accountability";
+import type { CompanyTrackRecord, FiledYear, FiledYearToDate } from "../engine/accountability";
 import type { TieOutRow } from "../engine/filings";
 import { CompanyRunCache, type CompanyRunState } from "./companyRun";
 import type { FrozenForecast } from "./ui/MarginFadeChart";
@@ -168,6 +168,8 @@ export interface TieOutCompany {
   readonly latestFiling?: { readonly fiscalYearEnd: string; readonly filingDate: string; readonly sharesOutstandingCr?: number | null } | null;
   /** Each fiscal year as first filed (headline figures): what the Case's forecast is set against. */
   readonly filedYears?: readonly FiledYear[];
+  /** The year in progress as first filed, quarter by quarter: what a year not yet filed is projected from. */
+  readonly filedYearsToDate?: readonly FiledYearToDate[];
 }
 
 /**

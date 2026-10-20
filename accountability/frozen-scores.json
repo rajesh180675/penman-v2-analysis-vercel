@@ -21,6 +21,19 @@
     "actual": 4325.35,
     "model": -0.009414817095563188,
     "randomWalk": -0.033924249773580266
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 37186.632935111134,
+    "actual": 41966.48714473825,
+    "model": -0.1209220076429914,
+    "randomWalk": -0.2132905922893422,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -47,6 +60,19 @@
     "actual": 26695.2,
     "model": -0.2100608299753461,
     "randomWalk": -0.1691552617665404
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 3,
+    "forecast": 183811.94223855028,
+    "actual": 249686.7903523066,
+    "model": -0.30629411190784267,
+    "randomWalk": -0.5096893399342737,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -73,6 +99,19 @@
     "actual": 2533.49,
     "model": -0.09356746139717524,
     "randomWalk": -0.08144692496303706
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 21503.78208335492,
+    "actual": 20716.7498414831,
+    "model": 0.03728628636179769,
+    "randomWalk": -0.14376086916694977,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -99,6 +138,19 @@
     "actual": 1895.03,
     "model": 0.00733073658172199,
     "randomWalk": -0.011795542692179839
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 14158.198902888225,
+    "actual": 14586.81499107085,
+    "model": -0.02982415383422963,
+    "randomWalk": -0.14935488799538285,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -125,6 +177,19 @@
     "actual": 2970.491,
     "model": 0.021096267366083502,
     "randomWalk": -0.020269090315128743
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 3,
+    "forecast": 77757.4350908997,
+    "actual": 80075.33500785811,
+    "model": -0.029373704496465442,
+    "randomWalk": -0.455291430645395,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
    }
   ],
   "skipped": null
@@ -151,6 +216,19 @@
     "actual": 4966.48,
     "model": 0.002300725593275145,
     "randomWalk": -0.012930058005790834
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 182386.3797818249,
+    "actual": 213029.11345677555,
+    "model": -0.1553014366614763,
+    "randomWalk": -0.3609927809960145,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -177,6 +255,19 @@
     "actual": 15040,
     "model": -0.09138503167992984,
     "randomWalk": -0.09641310068418282
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 3,
+    "forecast": 76061.57045426182,
+    "actual": 67696.4749909168,
+    "model": 0.11650903937646033,
+    "randomWalk": -0.08957855323449382,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -194,6 +285,19 @@
     "actual": 44873,
     "model": 0.10935473705921352,
     "randomWalk": -0.05304127054408974
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 3,
+    "forecast": 54853.49246997885,
+    "actual": 47586.34583805852,
+    "model": 0.14211998985648358,
+    "randomWalk": -0.11175086091976742,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -202,7 +306,21 @@
   "madeAt": "2026-09-25",
   "ticker": "INFY",
   "cutoff": "2025-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 198255.46392818206,
+    "actual": 203715.6779961683,
+    "model": -0.027168865445810087,
+    "randomWalk": -0.22303643714732613,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -227,6 +345,19 @@
     "actual": 20689.47,
     "model": 0.0633183929561549,
     "randomWalk": -0.021388104106737055
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 4,
+    "forecast": 111362.8051210832,
+    "actual": 70134.19432839307,
+    "model": 0.4623829172681372,
+    "randomWalk": 0.011379575972529036,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -235,7 +366,21 @@
   "madeAt": "2026-09-25",
   "ticker": "LT",
   "cutoff": "2026-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 319794.5633646996,
+    "actual": 305011.4769500865,
+    "model": 0.04732939490097615,
+    "randomWalk": -0.0647969916442606,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -260,6 +405,19 @@
     "actual": 17098.85,
     "model": -0.08229018886183859,
     "randomWalk": -0.05412528170847801
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 192402.2424489713,
+    "actual": 253865.58673289596,
+    "model": -0.2772167475553304,
+    "randomWalk": -0.4665757049343002,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -286,6 +444,19 @@
     "actual": 14679.5,
     "model": 0.006358365035897613,
     "randomWalk": -0.0018630526424071438
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 189623.42955222586,
+    "actual": 249151.7685907598,
+    "model": -0.2730220674261278,
+    "randomWalk": -0.4881930909885978,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -319,6 +490,19 @@
     "actual": 27052.52,
     "model": -0.01679156818107646,
     "randomWalk": -0.019720960089565368
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 217821.68680960138,
+    "actual": 202018.55495091932,
+    "model": 0.07531722829509638,
+    "randomWalk": -0.07118349435489292,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -345,6 +529,19 @@
     "actual": 553,
     "model": 0.3074984911904859,
     "randomWalk": -0.13109997537716198
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 3,
+    "forecast": 14563.378964848,
+    "actual": 10771.199999999999,
+    "model": 0.30163418203129766,
+    "randomWalk": -0.07651328043334851,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -371,6 +568,19 @@
     "actual": 15927.95,
     "model": -0.08184087816077393,
     "randomWalk": -0.004386981141625213
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 52775.663198779774,
+    "actual": 47987.15291289382,
+    "model": 0.09511683275261787,
+    "randomWalk": -0.046816935966002185,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -397,6 +607,19 @@
     "actual": 80775,
     "model": -0.005830134772360089,
     "randomWalk": -0.013228178368121441
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 3,
+    "forecast": 1143665.5329118732,
+    "actual": 1342908.3597064423,
+    "model": -0.1605991958257892,
+    "randomWalk": -0.39901667141025676,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -423,6 +646,19 @@
     "actual": 11479.42,
     "model": 0.00810331829225688,
     "randomWalk": -0.007621089584012399
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 64537.21841730342,
+    "actual": 64575.580559019305,
+    "model": -0.0005942422927691714,
+    "randomWalk": -0.20553017961658857,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -449,6 +685,19 @@
     "actual": 10793.87,
     "model": -0.055277698726018606,
     "randomWalk": -0.08087517740282592
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 239374.89503638976,
+    "actual": 265387.02069465036,
+    "model": -0.10315829456534739,
+    "randomWalk": -0.19420866662162678,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -457,7 +706,21 @@
   "madeAt": "2026-09-25",
   "ticker": "TCS",
   "cutoff": "2026-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 292362.5643659298,
+    "actual": 300548.4208966542,
+    "model": -0.027614184591023636,
+    "randomWalk": -0.11828156843320452,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -482,6 +745,19 @@
     "actual": 5073,
     "model": -0.09423442972823673,
     "randomWalk": -0.14934618031658636
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 79674.66003773133,
+    "actual": 113202.43926647703,
+    "model": -0.3512261203955447,
+    "randomWalk": -0.6272618861089357,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -508,6 +784,19 @@
     "actual": 8165.64,
     "model": 0.013437522567236002,
     "randomWalk": -0.016414835524236226
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 3,
+    "forecast": 92569.40885736205,
+    "actual": 103798.56018419427,
+    "model": -0.11449337041764475,
+    "randomWalk": -0.3810668630387873,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
    }
   ],
   "skipped": null
@@ -534,6 +823,19 @@
     "actual": 4325.35,
     "model": -0.011553552047509474,
     "randomWalk": -0.033924249773580266
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 37186.632935111134,
+    "actual": 41966.48714473825,
+    "model": -0.1209220076429914,
+    "randomWalk": -0.2132905922893422,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -560,6 +862,19 @@
     "actual": 26695.2,
     "model": -0.1832519032892127,
     "randomWalk": -0.1691552617665404
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 3,
+    "forecast": 184518.19575111684,
+    "actual": 249686.7903523066,
+    "model": -0.3024592132380728,
+    "randomWalk": -0.5096893399342737,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -586,6 +901,19 @@
     "actual": 2533.49,
     "model": -0.0468547773491146,
     "randomWalk": -0.08144692496303706
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 21522.047017919536,
+    "actual": 20716.7498414831,
+    "model": 0.038135308265305715,
+    "randomWalk": -0.14376086916694977,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -612,6 +940,19 @@
     "actual": 1895.03,
     "model": -0.002959975854872915,
     "randomWalk": -0.011795542692179839
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 14137.315238959256,
+    "actual": 14586.81499107085,
+    "model": -0.031300265391435336,
+    "randomWalk": -0.14935488799538285,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -638,6 +979,19 @@
     "actual": 2970.491,
     "model": 0.0076509625509223675,
     "randomWalk": -0.012249116216121618
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 79547.55455732423,
+    "actual": 80075.33500785811,
+    "model": -0.006612865802515516,
+    "randomWalk": -0.2993801312472745,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
    }
   ],
   "skipped": null
@@ -664,6 +1018,19 @@
     "actual": 4966.48,
     "model": 0.009174108262452152,
     "randomWalk": -0.012930058005790834
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 182386.3797818249,
+    "actual": 213029.11345677555,
+    "model": -0.1553014366614763,
+    "randomWalk": -0.3609927809960145,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -690,6 +1057,19 @@
     "actual": 15040,
     "model": -0.08483794366035083,
     "randomWalk": -0.08888304117242217
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 71140.20635801942,
+    "actual": 67696.4749909168,
+    "model": 0.04961855676568088,
+    "randomWalk": -0.06998059123048807,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -707,6 +1087,19 @@
     "actual": 44873,
     "model": 0.10935473705921352,
     "randomWalk": -0.05304127054408974
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 3,
+    "forecast": 54853.49246997885,
+    "actual": 47586.34583805852,
+    "model": 0.14211998985648358,
+    "randomWalk": -0.11175086091976742,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -715,7 +1108,21 @@
   "madeAt": "2026-10-08",
   "ticker": "INFY",
   "cutoff": "2026-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 196848.35760075162,
+    "actual": 203715.6779961683,
+    "model": -0.03429161242879594,
+    "randomWalk": -0.13129670190944873,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -740,6 +1147,19 @@
     "actual": 20689.47,
     "model": 0.0027189337598327403,
     "randomWalk": -0.0032941572939045784
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 3,
+    "forecast": 79451.31569258527,
+    "actual": 70134.19432839307,
+    "model": 0.12473398418735844,
+    "randomWalk": 0.01059194588383053,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -748,7 +1168,21 @@
   "madeAt": "2026-10-08",
   "ticker": "LT",
   "cutoff": "2026-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 320511.39215039776,
+    "actual": 305011.4769500865,
+    "model": 0.049568415416065374,
+    "randomWalk": -0.0647969916442606,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -773,6 +1207,19 @@
     "actual": 17098.85,
     "model": -0.05490205672584542,
     "randomWalk": -0.05412528170847801
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 192402.2424489713,
+    "actual": 253865.58673289596,
+    "model": -0.2772167475553304,
+    "randomWalk": -0.4665757049343002,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -799,6 +1246,19 @@
     "actual": 14679.5,
     "model": 0.006084784322405587,
     "randomWalk": -0.0018630526424071438
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 189500.45222422743,
+    "actual": 249151.7685907598,
+    "model": -0.2736708122729854,
+    "randomWalk": -0.4881930909885978,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -832,6 +1292,19 @@
     "actual": 27052.52,
     "model": -0.010477077284456581,
     "randomWalk": -0.019720960089565368
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 218252.20169069315,
+    "actual": 202018.55495091932,
+    "model": 0.07729173322334142,
+    "randomWalk": -0.07118349435489292,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -858,6 +1331,19 @@
     "actual": 553,
     "model": -0.22181303554418394,
     "randomWalk": -0.13109997537716198
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 3,
+    "forecast": 15202.132026082174,
+    "actual": 10771.199999999999,
+    "model": 0.3445597773155653,
+    "randomWalk": -0.07651328043334851,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -884,6 +1370,19 @@
     "actual": 15927.95,
     "model": 0.006926872317658373,
     "randomWalk": -0.004386981141625213
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 52775.663198779774,
+    "actual": 47987.15291289382,
+    "model": 0.09511683275261787,
+    "randomWalk": -0.046816935966002185,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -910,6 +1409,19 @@
     "actual": 80775,
     "model": -0.004123687050501185,
     "randomWalk": -0.013196157495256168
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 1150618.7646387022,
+    "actual": 1342908.3597064423,
+    "model": -0.15453782581786404,
+    "randomWalk": -0.33078304267401165,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -936,6 +1448,19 @@
     "actual": 11479.42,
     "model": 0.01351137251146724,
     "randomWalk": -0.007621089584012399
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 64665.49424297194,
+    "actual": 64575.580559019305,
+    "model": 0.0013914105650488324,
+    "randomWalk": -0.20553017961658857,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -962,6 +1487,19 @@
     "actual": 10793.87,
     "model": -0.06585912220553339,
     "randomWalk": -0.08087517740282592
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 239374.89503638976,
+    "actual": 265387.02069465036,
+    "model": -0.10315829456534739,
+    "randomWalk": -0.19420866662162678,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -970,7 +1508,21 @@
   "madeAt": "2026-10-08",
   "ticker": "TCS",
   "cutoff": "2026-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 292362.5643659298,
+    "actual": 300548.4208966542,
+    "model": -0.027614184591023636,
+    "randomWalk": -0.11828156843320452,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -995,6 +1547,19 @@
     "actual": 5073,
     "model": -0.09389160795487549,
     "randomWalk": -0.14934618031658636
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 79674.66003773133,
+    "actual": 113202.43926647703,
+    "model": -0.3512261203955447,
+    "randomWalk": -0.6272618861089357,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1021,6 +1586,19 @@
     "actual": 8165.64,
     "model": -0.016022885245254723,
     "randomWalk": -0.030075337906115645
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 88877.80522930111,
+    "actual": 103798.56018419427,
+    "model": -0.15518964819097036,
+    "randomWalk": -0.3123093283798368,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
    }
   ],
   "skipped": null
@@ -1047,6 +1625,19 @@
     "actual": 4325.35,
     "model": -0.011553552047509474,
     "randomWalk": -0.033924249773580266
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 37186.632935111134,
+    "actual": 41966.48714473825,
+    "model": -0.1209220076429914,
+    "randomWalk": -0.2132905922893422,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1073,6 +1664,19 @@
     "actual": 2533.49,
     "model": -0.04685179029230684,
     "randomWalk": -0.08144692496303706
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 21522.047017919536,
+    "actual": 20716.7498414831,
+    "model": 0.038135308265305715,
+    "randomWalk": -0.14376086916694977,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1099,6 +1703,19 @@
     "actual": 1895.03,
     "model": -0.0029801437861142117,
     "randomWalk": -0.011795542692179839
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 14137.315238959256,
+    "actual": 14586.81499107085,
+    "model": -0.031300265391435336,
+    "randomWalk": -0.14935488799538285,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1125,6 +1742,19 @@
     "actual": 2970.491,
     "model": 0.0076509625509223675,
     "randomWalk": -0.012249116216121618
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 79547.55455732423,
+    "actual": 80075.33500785811,
+    "model": -0.006612865802515516,
+    "randomWalk": -0.2993801312472745,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
    }
   ],
   "skipped": null
@@ -1158,6 +1788,19 @@
     "actual": 15040,
     "model": -0.08483794366035083,
     "randomWalk": -0.08888304117242217
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 71140.20635801942,
+    "actual": 67696.4749909168,
+    "model": 0.04961855676568088,
+    "randomWalk": -0.06998059123048807,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1166,7 +1809,21 @@
   "madeAt": "2026-10-11",
   "ticker": "INFY",
   "cutoff": "2026-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 196848.35760075162,
+    "actual": 203715.6779961683,
+    "model": -0.03429161242879594,
+    "randomWalk": -0.13129670190944873,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -1191,6 +1848,19 @@
     "actual": 20689.47,
     "model": 0.010990652554039864,
     "randomWalk": 0.20073040073511295
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 89493.77266377611,
+    "actual": 70134.19432839307,
+    "model": 0.2437585750187631,
+    "randomWalk": 0.07137957827186692,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1231,6 +1901,19 @@
     "actual": 14679.5,
     "model": 0.006075814824598887,
     "randomWalk": -0.0018630526424071438
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 189500.45222422743,
+    "actual": 249151.7685907598,
+    "model": -0.2736708122729854,
+    "randomWalk": -0.4881930909885978,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1264,6 +1947,19 @@
     "actual": 27052.52,
     "model": -0.010692694165059132,
     "randomWalk": -0.019720960089565368
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 218252.20169069315,
+    "actual": 202018.55495091932,
+    "model": 0.07729173322334142,
+    "randomWalk": -0.07118349435489292,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1290,6 +1986,19 @@
     "actual": 15927.95,
     "model": 0.007055542081666992,
     "randomWalk": -0.004386981141625213
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 52775.663198779774,
+    "actual": 47987.15291289382,
+    "model": 0.09511683275261787,
+    "randomWalk": -0.046816935966002185,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1316,6 +2025,19 @@
     "actual": 80775,
     "model": -0.004131235023939451,
     "randomWalk": -0.013196157495256168
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 1150618.7646387022,
+    "actual": 1342908.3597064423,
+    "model": -0.15453782581786404,
+    "randomWalk": -0.33078304267401165,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1342,6 +2064,19 @@
     "actual": 11479.42,
     "model": 0.013509273410685207,
     "randomWalk": -0.007621089584012399
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 64665.49424297194,
+    "actual": 64575.580559019305,
+    "model": 0.0013914105650488324,
+    "randomWalk": -0.20553017961658857,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1368,6 +2103,19 @@
     "actual": 10793.87,
     "model": -0.06589281703162657,
     "randomWalk": -0.08087517740282592
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 239374.89503638976,
+    "actual": 265387.02069465036,
+    "model": -0.10315829456534739,
+    "randomWalk": -0.19420866662162678,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1376,7 +2124,21 @@
   "madeAt": "2026-10-11",
   "ticker": "TCS",
   "cutoff": "2026-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 292362.5643659298,
+    "actual": 300548.4208966542,
+    "model": -0.027614184591023636,
+    "randomWalk": -0.11828156843320452,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -1401,6 +2163,19 @@
     "actual": 5073,
     "model": -0.09389160795487549,
     "randomWalk": -0.14934618031658636
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 79674.66003773133,
+    "actual": 113202.43926647703,
+    "model": -0.3512261203955447,
+    "randomWalk": -0.6272618861089357,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1427,6 +2202,19 @@
     "actual": 8165.64,
     "model": -0.016026169010517087,
     "randomWalk": -0.030075337906115645
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 88877.80522930111,
+    "actual": 103798.56018419427,
+    "model": -0.15518964819097036,
+    "randomWalk": -0.3123093283798368,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
    }
   ],
   "skipped": null
@@ -1453,6 +2241,19 @@
     "actual": 4325.35,
     "model": -0.011553552047509474,
     "randomWalk": -0.033924249773580266
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 37186.632935111134,
+    "actual": 41966.48714473825,
+    "model": -0.1209220076429914,
+    "randomWalk": -0.2132905922893422,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1479,6 +2280,19 @@
     "actual": 26695.2,
     "model": -0.09592399681395641,
     "randomWalk": 0.06035704514484229
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 206086.86839879127,
+    "actual": 249686.7903523066,
+    "model": -0.1919095226540228,
+    "randomWalk": -0.36700125210780676,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1505,6 +2319,19 @@
     "actual": 2533.49,
     "model": -0.04687667862264164,
     "randomWalk": -0.08144692496303706
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 21522.047017919536,
+    "actual": 20716.7498414831,
+    "model": 0.038135308265305715,
+    "randomWalk": -0.14376086916694977,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1531,6 +2358,19 @@
     "actual": 1895.03,
     "model": -0.0029801437861142117,
     "randomWalk": -0.011795542692179839
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 14137.315238959256,
+    "actual": 14586.81499107085,
+    "model": -0.031300265391435336,
+    "randomWalk": -0.14935488799538285,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1557,6 +2397,19 @@
     "actual": 2970.491,
     "model": 0.00673962303718289,
     "randomWalk": -0.012249116216121618
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 79547.55455732423,
+    "actual": 80075.33500785811,
+    "model": -0.006612865802515516,
+    "randomWalk": -0.2993801312472745,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
    }
   ],
   "skipped": null
@@ -1590,6 +2443,19 @@
     "actual": 15040,
     "model": -0.08486265999187163,
     "randomWalk": -0.08888304117242217
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 71117.78296729017,
+    "actual": 67696.4749909168,
+    "model": 0.04930330711226879,
+    "randomWalk": -0.06998059123048807,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1598,7 +2464,21 @@
   "madeAt": "2026-10-17",
   "ticker": "INFY",
   "cutoff": "2026-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 196849.13800372332,
+    "actual": 203715.6779961683,
+    "model": -0.03428764794855202,
+    "randomWalk": -0.13129670190944873,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -1623,6 +2503,19 @@
     "actual": 20689.47,
     "model": 0.010986375675617614,
     "randomWalk": 0.20073040073511295
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 89493.77266377611,
+    "actual": 70134.19432839307,
+    "model": 0.2437585750187631,
+    "randomWalk": 0.07137957827186692,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1663,6 +2556,19 @@
     "actual": 14679.5,
     "model": 0.006075923952669383,
     "randomWalk": -0.0018630526424071438
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 189500.76699050533,
+    "actual": 249151.7685907598,
+    "model": -0.2736691512425614,
+    "randomWalk": -0.4881930909885978,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1696,6 +2602,19 @@
     "actual": 27052.52,
     "model": -0.010761261196443658,
     "randomWalk": -0.019720960089565368
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 218035.96018779447,
+    "actual": 202018.55495091932,
+    "model": 0.07630045480004047,
+    "randomWalk": -0.07118349435489292,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1722,6 +2641,19 @@
     "actual": 15927.95,
     "model": 0.006748758127408505,
     "randomWalk": -0.004386981141625213
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 52775.663198779774,
+    "actual": 47987.15291289382,
+    "model": 0.09511683275261787,
+    "randomWalk": -0.046816935966002185,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1748,6 +2680,19 @@
     "actual": 80775,
     "model": -0.005253954041967245,
     "randomWalk": -0.013196157495256168
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 1150265.419371274,
+    "actual": 1342908.3597064423,
+    "model": -0.15484496450190685,
+    "randomWalk": -0.33078304267401165,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1774,6 +2719,19 @@
     "actual": 11479.42,
     "model": 0.01352113765008162,
     "randomWalk": -0.007621089584012399
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 64677.70628136267,
+    "actual": 64575.580559019305,
+    "model": 0.00158024211363463,
+    "randomWalk": -0.20553017961658857,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1800,6 +2758,19 @@
     "actual": 10793.87,
     "model": -0.06596537261957401,
     "randomWalk": -0.08087517740282592
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 239374.89503638976,
+    "actual": 265387.02069465036,
+    "model": -0.10315829456534739,
+    "randomWalk": -0.19420866662162678,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1808,7 +2779,21 @@
   "madeAt": "2026-10-17",
   "ticker": "TCS",
   "cutoff": "2026-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 292362.5643659298,
+    "actual": 300548.4208966542,
+    "model": -0.027614184591023636,
+    "randomWalk": -0.11828156843320452,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -1833,6 +2818,19 @@
     "actual": 5073,
     "model": -0.09374368729587736,
     "randomWalk": -0.14934618031658636
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 79674.66003773133,
+    "actual": 113202.43926647703,
+    "model": -0.3512261203955447,
+    "randomWalk": -0.6272618861089357,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1859,6 +2857,19 @@
     "actual": 8165.64,
     "model": -0.016017413308722635,
     "randomWalk": -0.030075337906115645
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 88877.80522930111,
+    "actual": 103798.56018419427,
+    "model": -0.15518964819097036,
+    "randomWalk": -0.3123093283798368,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
    }
   ],
   "skipped": null
@@ -1885,6 +2896,19 @@
     "actual": 4325.35,
     "model": -0.011553552047509474,
     "randomWalk": -0.033924249773580266
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 37186.632935111134,
+    "actual": 41966.48714473825,
+    "model": -0.1209220076429914,
+    "randomWalk": -0.2132905922893422,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1911,6 +2935,19 @@
     "actual": 26695.2,
     "model": -0.09814813065776652,
     "randomWalk": 0.06035704514484229
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 206061.78710681337,
+    "actual": 249686.7903523066,
+    "model": -0.1920312325840386,
+    "randomWalk": -0.36700125210780676,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1937,6 +2974,19 @@
     "actual": 2533.49,
     "model": -0.04687667862264164,
     "randomWalk": -0.08144692496303706
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 21522.047017919536,
+    "actual": 20716.7498414831,
+    "model": 0.038135308265305715,
+    "randomWalk": -0.14376086916694977,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1963,6 +3013,19 @@
     "actual": 1895.03,
     "model": -0.0029801437861142117,
     "randomWalk": -0.011795542692179839
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 14137.315238959256,
+    "actual": 14586.81499107085,
+    "model": -0.031300265391435336,
+    "randomWalk": -0.14935488799538285,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -1989,6 +3052,19 @@
     "actual": 2970.491,
     "model": 0.00673962303718289,
     "randomWalk": -0.012249116216121618
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 79547.55455732423,
+    "actual": 80075.33500785811,
+    "model": -0.006612865802515516,
+    "randomWalk": -0.2993801312472745,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
    }
   ],
   "skipped": null
@@ -2022,6 +3098,19 @@
     "actual": 15040,
     "model": -0.08486265999187163,
     "randomWalk": -0.08888304117242217
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 71117.78296729017,
+    "actual": 67696.4749909168,
+    "model": 0.04930330711226879,
+    "randomWalk": -0.06998059123048807,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2030,7 +3119,21 @@
   "madeAt": "2026-10-18",
   "ticker": "INFY",
   "cutoff": "2026-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 196849.13800372332,
+    "actual": 203715.6779961683,
+    "model": -0.03428764794855202,
+    "randomWalk": -0.13129670190944873,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -2055,6 +3158,19 @@
     "actual": 20689.47,
     "model": 0.010986375675617614,
     "randomWalk": 0.20073040073511295
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 89493.77266377611,
+    "actual": 70134.19432839307,
+    "model": 0.2437585750187631,
+    "randomWalk": 0.07137957827186692,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2095,6 +3211,19 @@
     "actual": 14679.5,
     "model": 0.006075923952669383,
     "randomWalk": -0.0018630526424071438
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 189500.76699050533,
+    "actual": 249151.7685907598,
+    "model": -0.2736691512425614,
+    "randomWalk": -0.4881930909885978,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2128,6 +3257,19 @@
     "actual": 27052.52,
     "model": -0.010690709773910909,
     "randomWalk": -0.019720960089565368
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 218252.75862764937,
+    "actual": 202018.55495091932,
+    "model": 0.0772942850246122,
+    "randomWalk": -0.07118349435489292,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2154,6 +3296,19 @@
     "actual": 15927.95,
     "model": 0.007067915903853428,
     "randomWalk": -0.004386981141625213
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 52775.663198779774,
+    "actual": 47987.15291289382,
+    "model": 0.09511683275261787,
+    "randomWalk": -0.046816935966002185,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2180,6 +3335,19 @@
     "actual": 80775,
     "model": -0.005253954041967245,
     "randomWalk": -0.013196157495256168
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 1150265.419371274,
+    "actual": 1342908.3597064423,
+    "model": -0.15484496450190685,
+    "randomWalk": -0.33078304267401165,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2206,6 +3374,19 @@
     "actual": 11479.42,
     "model": 0.01352113765008162,
     "randomWalk": -0.007621089584012399
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 64677.70628136267,
+    "actual": 64575.580559019305,
+    "model": 0.00158024211363463,
+    "randomWalk": -0.20553017961658857,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2232,6 +3413,19 @@
     "actual": 10793.87,
     "model": -0.06596537261957401,
     "randomWalk": -0.08087517740282592
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 239374.89503638976,
+    "actual": 265387.02069465036,
+    "model": -0.10315829456534739,
+    "randomWalk": -0.19420866662162678,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2240,7 +3434,21 @@
   "madeAt": "2026-10-18",
   "ticker": "TCS",
   "cutoff": "2026-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 292362.5643659298,
+    "actual": 300548.4208966542,
+    "model": -0.027614184591023636,
+    "randomWalk": -0.11828156843320452,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -2265,6 +3473,19 @@
     "actual": 5073,
     "model": -0.09374368729587736,
     "randomWalk": -0.14934618031658636
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 79674.66003773133,
+    "actual": 113202.43926647703,
+    "model": -0.3512261203955447,
+    "randomWalk": -0.6272618861089357,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2291,6 +3512,19 @@
     "actual": 8165.64,
     "model": -0.016017413308722635,
     "randomWalk": -0.030075337906115645
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 88877.80522930111,
+    "actual": 103798.56018419427,
+    "model": -0.15518964819097036,
+    "randomWalk": -0.3123093283798368,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
    }
   ],
   "skipped": null
@@ -2326,6 +3560,32 @@
     "actual": 4325.35,
     "model": -0.011553552047509474,
     "randomWalk": -0.033924249773580266
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 37186.632935111134,
+    "actual": 41966.48714473825,
+    "model": -0.1209220076429914,
+    "randomWalk": -0.2132905922893422,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.10512852832616068,
+    "actual": 0.13334266456622684,
+    "model": -0.028214136240066162,
+    "randomWalk": -0.02770845285067454,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2361,6 +3621,32 @@
     "actual": 26695.2,
     "model": -0.09814813065776652,
     "randomWalk": 0.06035704514484229
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 206061.78710681337,
+    "actual": 249686.7903523066,
+    "model": -0.1920312325840386,
+    "randomWalk": -0.36700125210780676,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.11096892867770011,
+    "actual": 0.25419912407395906,
+    "model": -0.14323019539625895,
+    "randomWalk": -0.09281124867034668,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2396,6 +3682,32 @@
     "actual": 2533.49,
     "model": -0.04687667862264164,
     "randomWalk": -0.08144692496303706
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 21522.047017919536,
+    "actual": 20716.7498414831,
+    "model": 0.038135308265305715,
+    "randomWalk": -0.14376086916694977,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.11268174198435243,
+    "actual": 0.1342292565599454,
+    "model": -0.021547514575592952,
+    "randomWalk": -0.014888828021744183,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2431,6 +3743,32 @@
     "actual": 1895.03,
     "model": -0.0029801437861142117,
     "randomWalk": -0.011795542692179839
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 14137.315238959256,
+    "actual": 14586.81499107085,
+    "model": -0.031300265391435336,
+    "randomWalk": -0.14935488799538285,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.11933991096325555,
+    "actual": 0.11912402169447699,
+    "model": 0.00021588926877856573,
+    "randomWalk": -0.004351801244289244,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2466,6 +3804,32 @@
     "actual": 2970.491,
     "model": 0.00673962303718289,
     "randomWalk": -0.012249116216121618
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 79547.55455732423,
+    "actual": 80075.33500785811,
+    "model": -0.006612865802515516,
+    "randomWalk": -0.2993801312472745,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.04523338617811781,
+    "actual": 0.042395843507262394,
+    "model": 0.0028375426708554183,
+    "randomWalk": 0.002535009851446203,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
    }
   ],
   "skipped": null
@@ -2508,6 +3872,32 @@
     "actual": 15040,
     "model": -0.08486265999187163,
     "randomWalk": -0.08888304117242217
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 71117.78296729017,
+    "actual": 67696.4749909168,
+    "model": 0.04930330711226879,
+    "randomWalk": -0.06998059123048807,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.15350682548647807,
+    "actual": 0.1467579195203441,
+    "model": 0.006748905966133978,
+    "randomWalk": 0.011551290590239405,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2516,7 +3906,34 @@
   "madeAt": "2026-10-19",
   "ticker": "INFY",
   "cutoff": "2026-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 196849.13800372332,
+    "actual": 203715.6779961683,
+    "model": -0.03428764794855202,
+    "randomWalk": -0.13129670190944873,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 0.15643742327206336,
+    "actual": 0.15479282229382865,
+    "model": 0.0016446009782347115,
+    "randomWalk": -0.0006062984885684963,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -2550,6 +3967,32 @@
     "actual": 20689.47,
     "model": 0.010986375675617614,
     "randomWalk": 0.20073040073511295
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 89493.77266377611,
+    "actual": 70134.19432839307,
+    "model": 0.2437585750187631,
+    "randomWalk": 0.07137957827186692,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.23634225698410763,
+    "actual": 0.21052474357465484,
+    "model": 0.02581751340945279,
+    "randomWalk": 0.02950500620648594,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2599,6 +4042,32 @@
     "actual": 14679.5,
     "model": 0.006075923952669383,
     "randomWalk": -0.0018630526424071438
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 189500.76699050533,
+    "actual": 249151.7685907598,
+    "model": -0.2736691512425614,
+    "randomWalk": -0.4881930909885978,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.061278337381271836,
+    "actual": 0.03776869616833037,
+    "model": 0.023509641212941468,
+    "randomWalk": 0.032231994880410675,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2641,6 +4110,32 @@
     "actual": 27052.52,
     "model": -0.010690709773910909,
     "randomWalk": -0.019720960089565368
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 218252.75862764937,
+    "actual": 202018.55495091932,
+    "model": 0.0772942850246122,
+    "randomWalk": -0.07118349435489292,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.15002968295046218,
+    "actual": 0.1837338428715472,
+    "model": -0.033704159921085025,
+    "randomWalk": -0.03008699669772727,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2676,6 +4171,32 @@
     "actual": 15927.95,
     "model": 0.007067915903853428,
     "randomWalk": -0.004386981141625213
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 52775.663198779774,
+    "actual": 47987.15291289382,
+    "model": 0.09511683275261787,
+    "randomWalk": -0.046816935966002185,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.46217517643455214,
+    "actual": 0.4558786969079141,
+    "model": 0.0062964795266380325,
+    "randomWalk": 0.00877553614944071,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2711,6 +4232,32 @@
     "actual": 80775,
     "model": -0.005253954041967245,
     "randomWalk": -0.013196157495256168
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 1150265.419371274,
+    "actual": 1342908.3597064423,
+    "model": -0.15484496450190685,
+    "randomWalk": -0.33078304267401165,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.08686406015667333,
+    "actual": 0.06917114367573099,
+    "model": 0.017692916480942344,
+    "randomWalk": 0.01954191157469437,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2746,6 +4293,32 @@
     "actual": 11479.42,
     "model": 0.01352113765008162,
     "randomWalk": -0.007621089584012399
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 64677.70628136267,
+    "actual": 64575.580559019305,
+    "model": 0.00158024211363463,
+    "randomWalk": -0.20553017961658857,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.18983679902073744,
+    "actual": 0.17563736452706238,
+    "model": 0.014199434493675056,
+    "randomWalk": 0.017162092116269012,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2781,6 +4354,32 @@
     "actual": 10793.87,
     "model": -0.06596537261957401,
     "randomWalk": -0.08087517740282592
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 239374.89503638976,
+    "actual": 265387.02069465036,
+    "model": -0.10315829456534739,
+    "randomWalk": -0.19420866662162678,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.041866270888130594,
+    "actual": 0.06482784430292785,
+    "model": -0.02296157341479725,
+    "randomWalk": -0.028391219693829975,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2789,7 +4388,34 @@
   "madeAt": "2026-10-19",
   "ticker": "TCS",
   "cutoff": "2026-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 292362.5643659298,
+    "actual": 300548.4208966542,
+    "model": -0.027614184591023636,
+    "randomWalk": -0.11828156843320452,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 0.1894834256111327,
+    "actual": 0.18087190797260044,
+    "model": 0.008611517638532268,
+    "randomWalk": 0.008155316212018648,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -2823,6 +4449,32 @@
     "actual": 5073,
     "model": -0.09374368729587736,
     "randomWalk": -0.14934618031658636
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 79674.66003773133,
+    "actual": 113202.43926647703,
+    "model": -0.3512261203955447,
+    "randomWalk": -0.6272618861089357,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.06295220767709969,
+    "actual": 0.08088699823932106,
+    "model": -0.017934790562221373,
+    "randomWalk": -0.02002279074210494,
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -2858,6 +4510,32 @@
     "actual": 8165.64,
     "model": -0.016017413308722635,
     "randomWalk": -0.030075337906115645
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 88877.80522930111,
+    "actual": 103798.56018419427,
+    "model": -0.15518964819097036,
+    "randomWalk": -0.3123093283798368,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.09818887624827355,
+    "actual": 0.10725428953822728,
+    "model": -0.009065413289953736,
+    "randomWalk": -0.016992931366377986,
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
    }
   ],
   "skipped": null
@@ -2910,6 +4588,44 @@
      "bull": 5001.030470602098,
      "historicalPanic": 2159.5243243557097,
      "position": "within"
+    }
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 37186.632935111134,
+    "actual": 41966.48714473825,
+    "model": -0.1209220076429914,
+    "randomWalk": -0.2132905922893422,
+    "band": {
+     "stress": 34805.05928117969,
+     "bull": 42992.77419226196,
+     "historicalPanic": 33020.56411855469,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.10512852832616068,
+    "actual": 0.13334266456622684,
+    "model": -0.028214136240066162,
+    "randomWalk": -0.02770845285067454,
+    "band": {
+     "stress": 0.07633643432292389,
+     "bull": 0.11766450632474618,
+     "historicalPanic": 0.06035717833121257,
+     "position": "above"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
     }
    }
   ],
@@ -2964,6 +4680,44 @@
      "historicalPanic": 1379.0724353560597,
      "position": "above"
     }
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 206061.78710681337,
+    "actual": 249686.7903523066,
+    "model": -0.1920312325840386,
+    "randomWalk": -0.36700125210780676,
+    "band": {
+     "stress": 178010.8391847235,
+     "bull": 225831.56118421064,
+     "historicalPanic": 171611.32652129378,
+     "position": "above"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.11096892867770011,
+    "actual": 0.25419912407395906,
+    "model": -0.14323019539625895,
+    "randomWalk": -0.09281124867034668,
+    "band": {
+     "stress": 0.07065977466437123,
+     "bull": 0.12581966962997915,
+     "historicalPanic": 0.05793056813384634,
+     "position": "above"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -3016,6 +4770,44 @@
      "bull": 2835.7120143821817,
      "historicalPanic": 1144.9198572484245,
      "position": "within"
+    }
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 21522.047017919536,
+    "actual": 20716.7498414831,
+    "model": 0.038135308265305715,
+    "randomWalk": -0.14376086916694977,
+    "band": {
+     "stress": 18405.874629689843,
+     "bull": 24727.177110577988,
+     "historicalPanic": 17461.87469394489,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.11268174198435243,
+    "actual": 0.1342292565599454,
+    "model": -0.021547514575592952,
+    "randomWalk": -0.014888828021744183,
+    "band": {
+     "stress": 0.08269775823256041,
+     "bull": 0.12559751917611778,
+     "historicalPanic": 0.06655396629947623,
+     "position": "above"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
     }
    }
   ],
@@ -3070,6 +4862,44 @@
      "historicalPanic": 1075.8273188069506,
      "position": "within"
     }
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 14137.315238959256,
+    "actual": 14586.81499107085,
+    "model": -0.031300265391435336,
+    "randomWalk": -0.14935488799538285,
+    "band": {
+     "stress": 12793.707541982869,
+     "bull": 16314.380769124791,
+     "historicalPanic": 12135.275353428498,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.11933991096325555,
+    "actual": 0.11912402169447699,
+    "model": 0.00021588926877856573,
+    "randomWalk": -0.004351801244289244,
+    "band": {
+     "stress": 0.08949294501657827,
+     "bull": 0.13248689489217058,
+     "historicalPanic": 0.07238639693141607,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -3122,6 +4952,44 @@
      "bull": 3628.005678441849,
      "historicalPanic": 1491.8199932097275,
      "position": "within"
+    }
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 79547.55455732423,
+    "actual": 80075.33500785811,
+    "model": -0.006612865802515516,
+    "randomWalk": -0.2993801312472745,
+    "band": {
+     "stress": 64136.90631998048,
+     "bull": 85045.03745685548,
+     "historicalPanic": 59360.62372794923,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.04523338617811781,
+    "actual": 0.042395843507262394,
+    "model": 0.0028375426708554183,
+    "randomWalk": 0.002535009851446203,
+    "band": {
+     "stress": 0.03417420474381446,
+     "bull": 0.04999452898512672,
+     "historicalPanic": 0.028229304724514532,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
     }
    }
   ],
@@ -3183,6 +5051,44 @@
      "historicalPanic": 5661.955407305385,
      "position": "above"
     }
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 71117.78296729017,
+    "actual": 67696.4749909168,
+    "model": 0.04930330711226879,
+    "randomWalk": -0.06998059123048807,
+    "band": {
+     "stress": 63776.802780175705,
+     "bull": 82059.98584923334,
+     "historicalPanic": 60482.29229593188,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.15350682548647807,
+    "actual": 0.1467579195203441,
+    "model": 0.006748905966133978,
+    "randomWalk": 0.011551290590239405,
+    "band": {
+     "stress": 0.11349955416438254,
+     "bull": 0.17059461326457584,
+     "historicalPanic": 0.09247901199327165,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -3191,7 +5097,46 @@
   "madeAt": "2026-10-20",
   "ticker": "INFY",
   "cutoff": "2026-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 196849.13800372332,
+    "actual": 203715.6779961683,
+    "model": -0.03428764794855202,
+    "randomWalk": -0.13129670190944873,
+    "band": {
+     "stress": 178162.47643648164,
+     "bull": 212927.63800372332,
+     "historicalPanic": 172802.97643648164,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 0.15643742327206336,
+    "actual": 0.15479282229382865,
+    "model": 0.0016446009782347115,
+    "randomWalk": -0.0006062984885684963,
+    "band": {
+     "stress": 0.111977781661163,
+     "bull": 0.17603580426649706,
+     "historicalPanic": 0.08644320543480012,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -3242,6 +5187,44 @@
      "bull": 25211.373294943987,
      "historicalPanic": 12315.420638274616,
      "position": "within"
+    }
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 89493.77266377611,
+    "actual": 70134.19432839307,
+    "model": 0.2437585750187631,
+    "randomWalk": 0.07137957827186692,
+    "band": {
+     "stress": 78126.47634660249,
+     "bull": 99408.25073551768,
+     "historicalPanic": 75130.19634539512,
+     "position": "below"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.23634225698410763,
+    "actual": 0.21052474357465484,
+    "model": 0.02581751340945279,
+    "randomWalk": 0.02950500620648594,
+    "band": {
+     "stress": 0.18604499927309096,
+     "bull": 0.2572385268793773,
+     "historicalPanic": 0.16171272164385878,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
     }
    }
   ],
@@ -3310,6 +5293,44 @@
      "historicalPanic": 7758.752662957304,
      "position": "within"
     }
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 189500.76699050533,
+    "actual": 249151.7685907598,
+    "model": -0.2736691512425614,
+    "randomWalk": -0.4881930909885978,
+    "band": {
+     "stress": 161654.34495114634,
+     "bull": 215102.9156100403,
+     "historicalPanic": 154082.83022666624,
+     "position": "above"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.061278337381271836,
+    "actual": 0.03776869616833037,
+    "model": 0.023509641212941468,
+    "randomWalk": 0.032231994880410675,
+    "band": {
+     "stress": 0.039916269846898014,
+     "bull": 0.07024282975357796,
+     "historicalPanic": 0.029262293194464245,
+     "position": "below"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -3370,6 +5391,44 @@
      "historicalPanic": 8885.297641748715,
      "position": "within"
     }
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 218252.75862764937,
+    "actual": 202018.55495091932,
+    "model": 0.0772942850246122,
+    "randomWalk": -0.07118349435489292,
+    "band": {
+     "stress": 194424.3390319808,
+     "bull": 246286.6817252066,
+     "historicalPanic": 185930.5510664151,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.15002968295046218,
+    "actual": 0.1837338428715472,
+    "model": -0.033704159921085025,
+    "randomWalk": -0.03008699669772727,
+    "band": {
+     "stress": 0.11161204861580731,
+     "bull": 0.16602331167179638,
+     "historicalPanic": 0.09290958037426855,
+     "position": "above"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -3422,6 +5481,44 @@
      "bull": 20646.635275244946,
      "historicalPanic": 6199.006116591331,
      "position": "within"
+    }
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 52775.663198779774,
+    "actual": 47987.15291289382,
+    "model": 0.09511683275261787,
+    "randomWalk": -0.046816935966002185,
+    "band": {
+     "stress": 48072.97275781863,
+     "bull": 58863.02615097396,
+     "historicalPanic": 46198.60591164134,
+     "position": "below"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.46217517643455214,
+    "actual": 0.4558786969079141,
+    "model": 0.0062964795266380325,
+    "randomWalk": 0.00877553614944071,
+    "band": {
+     "stress": 0.366626596510875,
+     "bull": 0.5008387400923489,
+     "historicalPanic": 0.3240910205138496,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
     }
    }
   ],
@@ -3476,6 +5573,44 @@
      "historicalPanic": 37098.930042825355,
      "position": "within"
     }
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 1150265.419371274,
+    "actual": 1342908.3597064423,
+    "model": -0.15484496450190685,
+    "randomWalk": -0.33078304267401165,
+    "band": {
+     "stress": 1014673.499410492,
+     "bull": 1289707.6286137651,
+     "historicalPanic": 972506.792422548,
+     "position": "above"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.08686406015667333,
+    "actual": 0.06917114367573099,
+    "model": 0.017692916480942344,
+    "randomWalk": 0.01954191157469437,
+    "band": {
+     "stress": 0.06652868751553519,
+     "bull": 0.09535343495047285,
+     "historicalPanic": 0.056544864464532205,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -3528,6 +5663,44 @@
      "bull": 14960.110762302907,
      "historicalPanic": 6559.206347642427,
      "position": "within"
+    }
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 64677.70628136267,
+    "actual": 64575.580559019305,
+    "model": 0.00158024211363463,
+    "randomWalk": -0.20553017961658857,
+    "band": {
+     "stress": 54756.39135742366,
+     "bull": 73812.79162294081,
+     "historicalPanic": 52071.55006768891,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.18983679902073744,
+    "actual": 0.17563736452706238,
+    "model": 0.014199434493675056,
+    "randomWalk": 0.017162092116269012,
+    "band": {
+     "stress": 0.13965775496219862,
+     "bull": 0.21098992966570665,
+     "historicalPanic": 0.11428990386013294,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
     }
    }
   ],
@@ -3582,6 +5755,44 @@
      "historicalPanic": 926.6028708725942,
      "position": "above"
     }
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 239374.89503638976,
+    "actual": 265387.02069465036,
+    "model": -0.10315829456534739,
+    "randomWalk": -0.19420866662162678,
+    "band": {
+     "stress": 229458.42898975522,
+     "bull": 263957.35660161043,
+     "historicalPanic": 221663.42257361775,
+     "position": "above"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.041866270888130594,
+    "actual": 0.06482784430292785,
+    "model": -0.02296157341479725,
+    "randomWalk": -0.028391219693829975,
+    "band": {
+     "stress": 0.0343417072062862,
+     "bull": 0.04475944042373093,
+     "historicalPanic": 0.031533522546700825,
+     "position": "above"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
    }
   ],
   "skipped": null
@@ -3590,7 +5801,46 @@
   "madeAt": "2026-10-20",
   "ticker": "TCS",
   "cutoff": "2026-03-31",
-  "scores": [],
+  "scores": [
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 292362.5643659298,
+    "actual": 300548.4208966542,
+    "model": -0.027614184591023636,
+    "randomWalk": -0.11828156843320452,
+    "band": {
+     "stress": 268022.32875,
+     "bull": 316394.4543659298,
+     "historicalPanic": 260011.69875,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 1,
+    "forecast": 0.1894834256111327,
+    "actual": 0.18087190797260044,
+    "model": 0.008611517638532268,
+    "randomWalk": 0.008155316212018648,
+    "band": {
+     "stress": 0.13666967849530182,
+     "bull": 0.21269570968337603,
+     "historicalPanic": 0.10658241106740665,
+     "position": "within"
+    },
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
+   }
+  ],
   "skipped": null
  },
  {
@@ -3641,6 +5891,44 @@
      "bull": 4637.745887054505,
      "historicalPanic": 1875.4810817413872,
      "position": "above"
+    }
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 79674.66003773133,
+    "actual": 113202.43926647703,
+    "model": -0.3512261203955447,
+    "randomWalk": -0.6272618861089357,
+    "band": {
+     "stress": 66567.19922091937,
+     "bull": 84663.572367,
+     "historicalPanic": 62448.32997304978,
+     "position": "above"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.06295220767709969,
+    "actual": 0.08088699823932106,
+    "model": -0.017934790562221373,
+    "randomWalk": -0.02002279074210494,
+    "band": {
+     "stress": 0.048319804748617454,
+     "bull": 0.06834309296654051,
+     "historicalPanic": 0.04369904592909674,
+     "position": "above"
+    },
+    "provisional": {
+     "through": "2026-06-30",
+     "months": 3
     }
    }
   ],
@@ -3694,6 +5982,44 @@
      "bull": 8408.878153325142,
      "historicalPanic": 3625.6824764331377,
      "position": "within"
+    }
+   },
+   {
+    "metric": "sales-log-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 88877.80522930111,
+    "actual": 103798.56018419427,
+    "model": -0.15518964819097036,
+    "randomWalk": -0.3123093283798368,
+    "band": {
+     "stress": 78781.77822900735,
+     "bull": 98805.59293576094,
+     "historicalPanic": 75760.36631328367,
+     "position": "above"
+    },
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
+    }
+   },
+   {
+    "metric": "core-margin-point-error",
+    "periodEnd": "2027-03-31",
+    "horizon": 2,
+    "forecast": 0.09818887624827355,
+    "actual": 0.10725428953822728,
+    "model": -0.009065413289953736,
+    "randomWalk": -0.016992931366377986,
+    "band": {
+     "stress": 0.07951897568929134,
+     "bull": 0.10581668092019333,
+     "historicalPanic": 0.07094671670570299,
+     "position": "above"
+    },
+    "provisional": {
+     "through": "2026-09-30",
+     "months": 6
     }
    }
   ],

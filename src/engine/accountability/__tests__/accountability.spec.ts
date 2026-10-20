@@ -304,6 +304,62 @@ describe("frozen forecasts scored against filings", () => {
     expect(scoreSnapshotAgainstFilings(snapshot({ anchor: { sales: 1000, operatingIncome: 120 } }) as never, filed).scores.every((s) => !("band" in s))).toBe(true);
   });
 
+  it("projects the year in progress from the months filed so far, against the same months a year before", async () => {
+    const { scoreSnapshotAgainstFilings } = await import("..");
+    const withAnchor = snapshot({ schemaVersion: "2026-10-forecast-snapshot-v3", anchor: { sales: 1000, operatingIncome: 120 } });
+    // Filed at 11% in the cutoff year (110 on net revenue of 1,000) and 9% (99 / 1,100) in FY2026.
+    const filed = [{ ...filings[0]!, coreOperatingIncome: 110 }, { ...filings[1]!, coreOperatingIncome: 99 }];
+    const ytd = (fiscalYearEnd: string, periodEnd: string, months: number, revenue: number, coreOperatingIncome: number) =>
+      ({ fiscalYearEnd, periodEnd, months, revenue, exciseDuty: null, coreOperatingIncome });
+    const yearsToDate = [
+      ytd("2026-03-31", "2025-06-30", 3, 260, 26),
+      ytd("2026-03-31", "2025-09-30", 6, 520, 52), // 10%
+      ytd("2027-03-31", "2026-06-30", 3, 280, 28),
+      ytd("2027-03-31", "2026-09-30", 6, 572, 62.92), // 10% more sales, at 11%
+      ytd("2027-03-31", "2026-12-31", 9, 900, 99), // no nine months a year before: not used
+    ];
+    const scores = scoreSnapshotAgainstFilings(withAnchor as never, filed, yearsToDate).scores.filter((s) => s.periodEnd === "2027-03-31");
+    // FY2027 sales projected at FY2026's 1,100 grown as the half year grew: 1,210. No earnings for a part year.
+    expect(scores.map((s) => s.metric)).toEqual(["sales-log-error", "core-margin-point-error"]);
+    const [sales, margin] = scores as [typeof scores[number], typeof scores[number]];
+    expect(sales.provisional).toEqual({ through: "2026-09-30", months: 6 });
+    expect(sales.actual).toBeCloseTo(1210, 9);
+    expect(sales.model).toBeCloseTo(Math.log(1200 / 1210), 12);
+    expect(sales.randomWalk).toBeCloseTo(Math.log(1000 / 1210), 12);
+    // Its margin is FY2026's 9% moved a point, as the half year's moved: 10%. The forecast's, on the filed basis, is 9%.
+    expect(margin.actual).toBeCloseTo(0.1, 12);
+    expect(margin.model).toBeCloseTo(-0.01, 12);
+    expect(margin.randomWalk).toBeCloseTo(0.01, 12);
+    // Filed, the year is scored on its filing, and nothing is provisional.
+    const filedYear = { fiscalYearEnd: "2027-03-31", revenue: 1180, exciseDuty: 0, profitAttributableToOwners: 125, equityAttributableToOwners: 1150, coreOperatingIncome: 118 };
+    const final = scoreSnapshotAgainstFilings(withAnchor as never, [...filed, filedYear], yearsToDate).scores.filter((s) => s.periodEnd === "2027-03-31");
+    expect(final.map((s) => s.metric)).toEqual(["sales-log-error", "core-margin-point-error", "cni-roe-point-error"]);
+    expect(final.every((s) => !s.provisional)).toBe(true);
+    expect(final[0]!.actual).toBe(1180);
+  });
+
+  it("reads each year to date as first filed, its tax judged against the full years before it", async () => {
+    const { firstFiledYearsToDate } = await import("..");
+    const year = (fiscalYearEnd: string) => ({
+      fiscalYearEnd, filingDate: `${fiscalYearEnd.slice(0, 4)}-05-01`,
+      headline: { revenue: 1000, expenses: 850, financeCosts: 50, profitBeforeTax: 200, taxExpense: 50, profitAttributableToOwners: 150, equityAttributableToOwners: 900 },
+    });
+    const half = (filingDate: string, taxExpense: number) => ({
+      periodEnd: "2026-09-30", fiscalYearEnd: "2027-03-31", months: 6, filingDate,
+      headline: { revenue: 500, expenses: 425, financeCosts: 25, profitBeforeTax: 100, taxExpense, profitAttributableToOwners: 75, equityAttributableToOwners: 950 },
+    });
+    const annual = ["2024-03-31", "2025-03-31", "2026-03-31"].map(year);
+    // A revision filed later is not the half year as first filed.
+    const [first] = firstFiledYearsToDate([half("2026-12-01", 99), half("2026-10-20", 25)], annual);
+    expect(first).toMatchObject({ periodEnd: "2026-09-30", fiscalYearEnd: "2027-03-31", months: 6, revenue: 500 });
+    // Operating profit before tax 100 at the half year's 25%.
+    expect(first!.coreOperatingIncome).toBeCloseTo(75, 9);
+    // At 5%, more than 10 points under the three years before (25% each), it is taxed at their 25%.
+    expect(firstFiledYearsToDate([half("2026-10-20", 5)], annual)[0]!.coreOperatingIncome).toBeCloseTo(75, 9);
+    // Without those years there is no normal rate to judge it by.
+    expect(firstFiledYearsToDate([half("2026-10-20", 5)], [])[0]!.coreOperatingIncome).toBeCloseTo(95, 9);
+  });
+
   it("does not score a forecast of a business the consolidated filings do not describe", async () => {
     const { scoreSnapshotAgainstFilings } = await import("..");
     expect(scoreSnapshotAgainstFilings(snapshot({ basis: { accounts: "consolidated", lendingArm: "X Finance" } }) as never, filings).skipped).toMatch(/without X Finance/);

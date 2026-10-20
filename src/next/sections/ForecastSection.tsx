@@ -6,7 +6,7 @@
  */
 import { useMemo, useState } from "react";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
-import { anchorYear, forecastYears, scoreSnapshotAgainstFilings, type CompanyTrackRecord, type FiledScore, type FiledYear, type ForecastToScore, type SnapshotScenarios } from "../../engine/accountability";
+import { anchorYear, forecastYears, scoreSnapshotAgainstFilings, type CompanyTrackRecord, type FiledScore, type FiledYear, type FiledYearToDate, type ForecastToScore, type SnapshotScenarios } from "../../engine/accountability";
 import { buildScenario } from "../../engine/forecastingEngine";
 import { formatPerShare } from "../../engine/valuationCommandCenter";
 import { revalueBase, type BaseCaseShifts } from "../../engine/valuationCommandCenter/breakEven";
@@ -30,6 +30,7 @@ export function ForecastSection({
   trackRecord = null,
   frozen = null,
   filedYears = null,
+  filedYearsToDate = [],
   accounts = "consolidated",
   asOf = null,
   initialShifts = {},
@@ -40,6 +41,8 @@ export function ForecastSection({
   frozen?: FrozenForecast | null;
   /** The company's years as first filed (the as-filed ledger); null when the ledger has none. */
   filedYears?: readonly FiledYear[] | null;
+  /** The year in progress as first filed, quarter by quarter. */
+  filedYearsToDate?: readonly FiledYearToDate[];
   /** The accounts the run analysed. */
   accounts?: "consolidated" | "standalone";
   /** The as-of date of the view, when it is one. */
@@ -183,6 +186,7 @@ export function ForecastSection({
             scenarios,
           }}
           filedYears={filedYears}
+          filedYearsToDate={filedYearsToDate}
           asOf={asOf}
         />
       )}
@@ -208,8 +212,13 @@ const BAND: Record<NonNullable<FiledScore["band"]>["position"], string> = { belo
  * describe. The base case, not the reader's edits: a case changed after
  * seeing the outcome would be scored against what it was fitted to.
  */
-function AgainstFiled({ forecast, filedYears, asOf }: { forecast: ForecastToScore; filedYears: readonly FiledYear[]; asOf: string | null }) {
-  const { scores, skipped } = scoreSnapshotAgainstFilings(forecast, filedYears);
+function AgainstFiled({ forecast, filedYears, filedYearsToDate, asOf }: {
+  forecast: ForecastToScore;
+  filedYears: readonly FiledYear[];
+  filedYearsToDate: readonly FiledYearToDate[];
+  asOf: string | null;
+}) {
+  const { scores, skipped } = scoreSnapshotAgainstFilings(forecast, filedYears, filedYearsToDate);
   const years = [...new Set(scores.map((s) => s.periodEnd))];
   return (
     <div className="wb-surface overflow-x-auto rounded-xl border p-4 shadow-sm">
@@ -222,7 +231,10 @@ function AgainstFiled({ forecast, filedYears, asOf }: { forecast: ForecastToScor
         counted against it. Earnings set forecast CNI against the owners&rsquo;
         profit filed, which includes one-offs the forecast does not model, with errors in points of the opening year&rsquo;s filed
         owners&rsquo; equity. &ldquo;Nothing changes&rdquo; repeats {forecast.cutoffPeriod}&rsquo;s filed figures. The last
-        column places the filed figure against the stress and bull cases, compared as the base case is.
+        column places the filed figure against the stress and bull cases, compared as the base case is. A year still in
+        progress is projected from the months filed so far: the last full year&rsquo;s sales grown as those months grew on the
+        same months a year before, and its margin moved as theirs moved. Its earnings are not projected, as a quarter&rsquo;s
+        one-offs weigh too much in part of a year.
         {asOf && " In an as-of view the forecast is made from Capitaline's history, which can include restatements filed after that date."}
       </p>
       {skipped ? (
@@ -248,7 +260,9 @@ function AgainstFiled({ forecast, filedYears, asOf }: { forecast: ForecastToScor
           <tbody>
             {years.flatMap((year) => scores.filter((s) => s.periodEnd === year).map((s) => (
               <tr key={`${year}-${s.metric}`} className="border-t border-slate-100 text-right tabular-nums dark:border-slate-800">
-                <th scope="row" className="py-1 text-left font-normal">{year}</th>
+                <th scope="row" className="py-1 text-left font-normal">
+                  {year}{s.provisional && <span className="block text-xs text-slate-500">projected from {s.provisional.months} months to {s.provisional.through}</span>}
+                </th>
                 <td className="py-1 text-left">{MEASURE[s.metric]}</td>
                 <td className="py-1">{shownFigure(s.metric, s.forecast)}</td>
                 <td className="py-1">{shownFigure(s.metric, s.actual)}</td>

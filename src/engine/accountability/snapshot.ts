@@ -177,25 +177,31 @@ export interface FiledYear {
   readonly coreOperatingIncome?: number | null | undefined;
 }
 
+/** Fields a record was extracted before are absent. */
+type FiledHeadline = Partial<AnnualHeadline> & Pick<AnnualHeadline, "revenue" | "profitAttributableToOwners" | "equityAttributableToOwners">;
+interface AnnualRecord { readonly fiscalYearEnd: string; readonly filingDate: string; readonly headline: FiledHeadline }
+
+/** The first filing of each period, in period order. */
+function firstOfEach<R extends { readonly filingDate: string }>(records: readonly R[], period: (r: R) => string): R[] {
+  const first = new Map<string, R>();
+  for (const r of [...records].sort((a, b) => a.filingDate.localeCompare(b.filingDate))) {
+    if (!first.has(period(r))) first.set(period(r), r);
+  }
+  return [...first.values()].sort((a, b) => period(a).localeCompare(period(b)));
+}
+
+// A filing that contradicts itself on profit has a tax line that cannot be
+// trusted either (Asian Paints FY2022: a ₹4,980 Cr credit its accounts do not have).
+const coreIncomeLines = (headline: FiledHeadline) =>
+  headlineInconsistencies(headline).has("profitAfterTax") ? { ...headline, expenses: null, taxExpense: null } : headline;
+
 /**
  * Each fiscal year as first filed: the figure as originally reported, before
  * any revision filed later (data/filings/<SYMBOL>/as-filed.json records).
  */
-export function firstFiledYears(records: readonly {
-  readonly fiscalYearEnd: string;
-  readonly filingDate: string;
-  /** Fields a record was extracted before are absent. */
-  readonly headline: Partial<AnnualHeadline> & Pick<AnnualHeadline, "revenue" | "profitAttributableToOwners" | "equityAttributableToOwners">;
-}[]): FiledYear[] {
-  const first = new Map<string, (typeof records)[number]>();
-  for (const r of [...records].sort((a, b) => a.filingDate.localeCompare(b.filingDate))) {
-    if (!first.has(r.fiscalYearEnd)) first.set(r.fiscalYearEnd, r);
-  }
-  const years = [...first.values()].sort((a, b) => a.fiscalYearEnd.localeCompare(b.fiscalYearEnd));
-  // A filing that contradicts itself on profit has a tax line that cannot be
-  // trusted either (Asian Paints FY2022: a ₹4,980 Cr credit its accounts do not have).
-  const coreOperatingIncome = filedCoreOperatingIncome(years.map((r) =>
-    headlineInconsistencies(r.headline).has("profitAfterTax") ? { ...r.headline, expenses: null, taxExpense: null } : r.headline));
+export function firstFiledYears(records: readonly AnnualRecord[]): FiledYear[] {
+  const years = firstOfEach(records, (r) => r.fiscalYearEnd);
+  const coreOperatingIncome = filedCoreOperatingIncome(years.map((r) => coreIncomeLines(r.headline)));
   return years.map((r, i) => ({
     fiscalYearEnd: r.fiscalYearEnd,
     revenue: r.headline.revenue,
@@ -203,6 +209,38 @@ export function firstFiledYears(records: readonly {
     profitAttributableToOwners: r.headline.profitAttributableToOwners,
     equityAttributableToOwners: r.headline.equityAttributableToOwners,
     coreOperatingIncome: coreOperatingIncome[i]!,
+  }));
+}
+
+/** A fiscal year so far as first filed (data/filings/<SYMBOL>/year-to-date.json): the year in progress. */
+export interface FiledYearToDate {
+  /** The quarter the months filed so far end with. */
+  readonly periodEnd: string;
+  readonly fiscalYearEnd: string;
+  /** Months of the fiscal year filed: 3, 6 or 9. */
+  readonly months: number;
+  readonly revenue: number | null;
+  readonly exciseDuty?: number | null | undefined;
+  /** As a filed year's, its tax rate judged against the three fiscal years before it. */
+  readonly coreOperatingIncome?: number | null | undefined;
+}
+
+/** Each year to date as first filed, its core income on the filed years before it. */
+export function firstFiledYearsToDate(
+  records: readonly { readonly periodEnd: string; readonly fiscalYearEnd: string; readonly months: number; readonly filingDate: string; readonly headline: FiledHeadline }[],
+  annual: readonly AnnualRecord[],
+): FiledYearToDate[] {
+  const years = firstOfEach(annual, (r) => r.fiscalYearEnd);
+  return firstOfEach(records, (r) => r.periodEnd).map((r) => ({
+    periodEnd: r.periodEnd,
+    fiscalYearEnd: r.fiscalYearEnd,
+    months: r.months,
+    revenue: r.headline.revenue,
+    exciseDuty: r.headline.exciseDuty ?? null,
+    coreOperatingIncome: filedCoreOperatingIncome([
+      ...years.filter((y) => y.fiscalYearEnd < r.fiscalYearEnd).map((y) => coreIncomeLines(y.headline)),
+      coreIncomeLines(r.headline),
+    ]).at(-1) ?? null,
   }));
 }
 
@@ -233,6 +271,11 @@ export interface FiledScore {
     readonly historicalPanic: number;
     readonly position: BandPosition;
   } | undefined;
+  /**
+   * Set for a year still in progress: `actual` is then the year projected
+   * from the months filed so far, through `through`, until the year is filed.
+   */
+  readonly provisional?: { readonly through: string; readonly months: number } | undefined;
 }
 
 /** What scoreSnapshotAgainstFilings reads: a frozen snapshot, or a run's base forecast. */
@@ -276,10 +319,16 @@ export interface ForecastToScore {
  * Where the forecast records its other scenarios (v4), each filed figure is
  * also placed against the stress and bull cases on the same basis, matched by
  * fiscal year, as the walk-forward band report places Capitaline's.
+ *
+ * The first year not yet filed is scored provisionally on the months filed so
+ * far, set against the same months a year before: the last full year's sales
+ * grown as theirs grew, and its margin moved as theirs moved, so seasonality
+ * cancels. Earnings are not: a quarter's one-offs weigh too much in a part year.
  */
 export function scoreSnapshotAgainstFilings(
   snapshot: ForecastToScore,
   filings: readonly FiledYear[],
+  yearsToDate: readonly FiledYearToDate[] = [],
 ): { readonly scores: FiledScore[]; readonly skipped: string | null } {
   const basis = snapshot.basis;
   if (basis?.lendingArm) {
@@ -289,8 +338,9 @@ export function scoreSnapshotAgainstFilings(
     return { scores: [], skipped: "a forecast on standalone accounts; the ledger is consolidated" };
   }
   const filed = (end: string) => filings.find((f) => f.fiscalYearEnd === end) ?? null;
-  const netRevenue = (f: FiledYear | null) => (f?.revenue != null ? f.revenue - (f.exciseDuty ?? 0) : null);
-  const filedMargin = (f: FiledYear | null) => {
+  type Measured = Pick<FiledYear, "revenue" | "exciseDuty" | "coreOperatingIncome">;
+  const netRevenue = (f: Measured | null | undefined) => (f?.revenue != null ? f.revenue - (f.exciseDuty ?? 0) : null);
+  const filedMargin = (f: Measured | null | undefined) => {
     const sales = netRevenue(f);
     return f?.coreOperatingIncome != null && sales != null && sales > 0 ? f.coreOperatingIncome / sales : null;
   };
@@ -300,12 +350,34 @@ export function scoreSnapshotAgainstFilings(
   const anchorMargin = anchor && anchor.sales > 0 ? anchor.operatingIncome / anchor.sales : null;
   const cutoffMargin = filedMargin(cutoff);
   const seenThrough = snapshot.latestReportedPeriod ?? snapshot.cutoffPeriod;
+  const positive = (x: number | null): x is number => x != null && x > 0;
+  /** The year projected from its months filed so far, against the same months of the year before. */
+  const yearInProgress = (fiscalYearEnd: string, lastYear: FiledYear | null) => {
+    const pair = yearsToDate
+      .filter((y) => y.fiscalYearEnd === fiscalYearEnd)
+      .sort((a, b) => b.months - a.months)
+      .map((now) => ({ now, before: yearsToDate.find((y) => y.fiscalYearEnd === lastYear?.fiscalYearEnd && y.months === now.months) }))
+      .find((p) => p.before);
+    if (!lastYear || !pair?.before) return null;
+    const { now, before } = pair;
+    const [salesNow, salesBefore, salesLast] = [netRevenue(now), netRevenue(before), netRevenue(lastYear)];
+    const [marginNow, marginBefore, marginLast] = [filedMargin(now), filedMargin(before), filedMargin(lastYear)];
+    return {
+      sales: positive(salesNow) && positive(salesBefore) && positive(salesLast) ? salesLast * (salesNow / salesBefore) : null,
+      margin: marginNow != null && marginBefore != null && marginLast != null ? marginLast + (marginNow - marginBefore) : null,
+      profit: null,
+      tag: { provisional: { through: now.periodEnd, months: now.months } },
+    };
+  };
   const scores: FiledScore[] = [];
   snapshot.years.forEach((year, i) => {
     if (year.periodEnd <= seenThrough) return;
     const actual = filed(year.periodEnd);
     const opening = filed(i === 0 ? snapshot.cutoffPeriod : snapshot.years[i - 1]!.periodEnd);
-    if (!actual) return;
+    const outcome = actual
+      ? { sales: netRevenue(actual), margin: filedMargin(actual), profit: actual.profitAttributableToOwners, tag: {} }
+      : yearInProgress(year.periodEnd, opening);
+    if (!outcome) return;
     const band = (filedValue: number, value: (scenario: SnapshotYear) => number | null): Pick<FiledScore, "band"> => {
       const [stress, bull, historicalPanic] = (["stress", "bull", "historicalPanic"] as const).map((key) => {
         const scenario = snapshot.scenarios?.[key].find((y) => y.periodEnd === year.periodEnd);
@@ -315,18 +387,18 @@ export function scoreSnapshotAgainstFilings(
         ? { band: { stress, bull, historicalPanic, position: placeInBand(filedValue, stress, bull) } }
         : {};
     };
-    const sales = netRevenue(actual);
+    const sales = outcome.sales;
     const cutoffSales = netRevenue(cutoff);
     if (sales != null && sales > 0 && cutoffSales != null && cutoffSales > 0 && year.sales > 0) {
-      scores.push({ metric: "sales-log-error", periodEnd: year.periodEnd, horizon: i + 1, forecast: year.sales, actual: sales, model: Math.log(year.sales / sales), randomWalk: Math.log(cutoffSales / sales), ...band(sales, (y) => y.sales) });
+      scores.push({ metric: "sales-log-error", periodEnd: year.periodEnd, horizon: i + 1, forecast: year.sales, actual: sales, model: Math.log(year.sales / sales), randomWalk: Math.log(cutoffSales / sales), ...band(sales, (y) => y.sales), ...outcome.tag });
     }
-    const margin = filedMargin(actual);
+    const margin = outcome.margin;
     if (margin != null && cutoffMargin != null && anchorMargin != null && year.sales > 0) {
       const onFiledBasis = (y: SnapshotYear) => (y.sales > 0 ? cutoffMargin + (y.operatingIncome / y.sales - anchorMargin) : null);
       const forecast = onFiledBasis(year)!;
-      scores.push({ metric: "core-margin-point-error", periodEnd: year.periodEnd, horizon: i + 1, forecast, actual: margin, model: forecast - margin, randomWalk: cutoffMargin - margin, ...band(margin, onFiledBasis) });
+      scores.push({ metric: "core-margin-point-error", periodEnd: year.periodEnd, horizon: i + 1, forecast, actual: margin, model: forecast - margin, randomWalk: cutoffMargin - margin, ...band(margin, onFiledBasis), ...outcome.tag });
     }
-    const profit = actual.profitAttributableToOwners;
+    const profit = outcome.profit;
     const scale = opening?.equityAttributableToOwners ?? null;
     const cutoffProfit = cutoff.profitAttributableToOwners;
     if (profit != null && cutoffProfit != null && scale != null && scale > 0) {

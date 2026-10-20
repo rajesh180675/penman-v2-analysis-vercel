@@ -187,11 +187,16 @@ export type AnnualHeadline = { -readonly [K in keyof typeof ANNUAL_HEADLINE_CONC
 const INSTANT_FIELDS = new Set<keyof AnnualHeadline>(["totalAssets", "totalEquity", "equityAttributableToOwners"]);
 const RUPEES_PER_CRORE = 1e7;
 
-export function extractAnnualHeadline(instance: XbrlInstance, fiscalYearEnd: string): {
+/** The year's figures, or another period's where its contexts are given (a quarter's year to date). */
+export function extractAnnualHeadline(
+  instance: XbrlInstance,
+  fiscalYearEnd: string,
+  contexts: ReturnType<typeof selectAnnualContexts> = selectAnnualContexts(instance, fiscalYearEnd),
+): {
   headline: AnnualHeadline;
   method: AnnualContextMethod;
 } {
-  const { duration, instant, method } = selectAnnualContexts(instance, fiscalYearEnd);
+  const { duration, instant, method } = contexts;
   const headline = {} as AnnualHeadline;
   for (const [field, concept] of Object.entries(ANNUAL_HEADLINE_CONCEPTS) as [keyof AnnualHeadline, string][]) {
     const context = INSTANT_FIELDS.has(field) ? instant : duration;
