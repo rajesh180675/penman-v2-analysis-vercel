@@ -175,6 +175,8 @@ export interface FiledYear {
   readonly equityAttributableToOwners: number | null;
   /** Core operating income after tax, from the filed lines (filedCoreIncome.ts); null where they are not on record. */
   readonly coreOperatingIncome?: number | null | undefined;
+  /** Profit from discontinued operations, after tax: a business sold or demerged that year. */
+  readonly discontinuedOperations?: number | null | undefined;
 }
 
 /** Fields a record was extracted before are absent. */
@@ -209,6 +211,7 @@ export function firstFiledYears(records: readonly AnnualRecord[]): FiledYear[] {
     profitAttributableToOwners: r.headline.profitAttributableToOwners,
     equityAttributableToOwners: r.headline.equityAttributableToOwners,
     coreOperatingIncome: coreOperatingIncome[i]!,
+    discontinuedOperations: r.headline.profitFromDiscontinuedOperations ?? null,
   }));
 }
 
@@ -324,18 +327,28 @@ export interface ForecastToScore {
  * far, set against the same months a year before: the last full year's sales
  * grown as theirs grew, and its margin moved as theirs moved, so seasonality
  * cancels. Earnings are not: a quarter's one-offs weigh too much in a part year.
+ *
+ * A business sold or demerged after the cutoff ends the comparison: from the
+ * first later filing that reports discontinued operations of at least
+ * MATERIAL_DISCONTINUED_SHARE of revenue, no year is scored (businessChange).
+ * Its revenue and margin are of the continuing business alone and its profit
+ * carries the disposal, while the forecast holds the business whole, and the
+ * year in progress would be set against months first filed with it (Hindustan
+ * Unilever's ice cream, demerged in December 2025: FY2026's sales are filed
+ * without it, its profit with ₹4,407 Cr of discontinued operations, and the
+ * June 2025 quarter as first filed still with it).
  */
 export function scoreSnapshotAgainstFilings(
   snapshot: ForecastToScore,
   filings: readonly FiledYear[],
   yearsToDate: readonly FiledYearToDate[] = [],
-): { readonly scores: FiledScore[]; readonly skipped: string | null } {
+): { readonly scores: FiledScore[]; readonly skipped: string | null; readonly businessChange: BusinessChange | null } {
   const basis = snapshot.basis;
   if (basis?.lendingArm) {
-    return { scores: [], skipped: `a forecast of the business without ${basis.lendingArm}; the consolidated filings describe another business` };
+    return { scores: [], skipped: `a forecast of the business without ${basis.lendingArm}; the consolidated filings describe another business`, businessChange: null };
   }
   if (basis?.accounts === "standalone") {
-    return { scores: [], skipped: "a forecast on standalone accounts; the ledger is consolidated" };
+    return { scores: [], skipped: "a forecast on standalone accounts; the ledger is consolidated", businessChange: null };
   }
   const filed = (end: string) => filings.find((f) => f.fiscalYearEnd === end) ?? null;
   type Measured = Pick<FiledYear, "revenue" | "exciseDuty" | "coreOperatingIncome">;
@@ -345,7 +358,12 @@ export function scoreSnapshotAgainstFilings(
     return f?.coreOperatingIncome != null && sales != null && sales > 0 ? f.coreOperatingIncome / sales : null;
   };
   const cutoff = filed(snapshot.cutoffPeriod);
-  if (!cutoff) return { scores: [], skipped: `no filing for the cutoff year ${snapshot.cutoffPeriod}` };
+  if (!cutoff) return { scores: [], skipped: `no filing for the cutoff year ${snapshot.cutoffPeriod}`, businessChange: null };
+  const change = filings
+    .filter((f) => f.fiscalYearEnd > snapshot.cutoffPeriod && f.revenue != null && f.revenue > 0
+      && Math.abs(f.discontinuedOperations ?? 0) >= MATERIAL_DISCONTINUED_SHARE * f.revenue)
+    .sort((a, b) => a.fiscalYearEnd.localeCompare(b.fiscalYearEnd))[0];
+  const businessChange = change ? { fiscalYearEnd: change.fiscalYearEnd, discontinuedOperations: change.discontinuedOperations! } : null;
   const anchor = snapshot.anchor;
   const anchorMargin = anchor && anchor.sales > 0 ? anchor.operatingIncome / anchor.sales : null;
   const cutoffMargin = filedMargin(cutoff);
@@ -372,6 +390,7 @@ export function scoreSnapshotAgainstFilings(
   const scores: FiledScore[] = [];
   snapshot.years.forEach((year, i) => {
     if (year.periodEnd <= seenThrough) return;
+    if (businessChange && year.periodEnd >= businessChange.fiscalYearEnd) return;
     const actual = filed(year.periodEnd);
     const opening = filed(i === 0 ? snapshot.cutoffPeriod : snapshot.years[i - 1]!.periodEnd);
     const outcome = actual
@@ -405,5 +424,28 @@ export function scoreSnapshotAgainstFilings(
       scores.push({ metric: "cni-roe-point-error", periodEnd: year.periodEnd, horizon: i + 1, forecast: year.cni, actual: profit, model: (year.cni - profit) / scale, randomWalk: (cutoffProfit - profit) / scale, ...band(profit, (y) => y.cni) });
     }
   });
-  return { scores, skipped: null };
+  return { scores, skipped: scores.length === 0 && businessChange ? businessChangeNote(businessChange) : null, businessChange };
+}
+
+/**
+ * Discontinued operations, as a share of the year's revenue, that end a
+ * forecast's comparison: the tie-out's match tolerance. Of the filings for
+ * FY2024 on, the years the frozen forecasts are scored on, only two report
+ * any: Hindustan Unilever FY2026 (6.8% of revenue) and ITC FY2025 (18%, the
+ * hotels). Earlier ones run from under 0.02% (Hindustan Unilever FY2018–23)
+ * to 11% (Airtel FY2021).
+ */
+export const MATERIAL_DISCONTINUED_SHARE = 0.005;
+
+/** The first filing after a forecast's cutoff that reports a business sold or demerged. */
+export interface BusinessChange {
+  readonly fiscalYearEnd: string;
+  /** Profit from discontinued operations, after tax (₹ crore). */
+  readonly discontinuedOperations: number;
+}
+
+/** Why a business change ends the comparison, as the record says it. */
+export function businessChangeNote(change: BusinessChange): string {
+  const amount = `${change.discontinuedOperations < 0 ? "−" : ""}₹${Math.abs(change.discontinuedOperations).toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr`;
+  return `the ${change.fiscalYearEnd} filing reports ${amount} of discontinued operations, a business sold or demerged since, so it and later years describe another business`;
 }

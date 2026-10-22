@@ -8,10 +8,10 @@ const provisional = (months: number, periodEnd = "2027-03-31") => ({ periodEnd, 
 describe("frozen forecast scores", () => {
   it("counts a forecast as scored only on a filed year, and keeps the year in progress apart", () => {
     const results: FrozenScore[] = [
-      { madeAt: "2026-10-19", ticker: "A", cutoff: "2025-03-31", skipped: null, scores: [score("sales-log-error", 0.1, 0.2), score("sales-log-error", 0.05, 0.1, provisional(3))] },
-      { madeAt: "2026-10-19", ticker: "B", cutoff: "2026-03-31", skipped: null, scores: [score("sales-log-error", 0.02, 0.1, provisional(6))] },
-      { madeAt: "2026-10-20", ticker: "A", cutoff: "2025-03-31", skipped: null, scores: [score("sales-log-error", 0.05, 0.1, provisional(3))] },
-      { madeAt: "2026-10-20", ticker: "B", cutoff: "2026-03-31", skipped: "no as-filed ledger", scores: [] },
+      { madeAt: "2026-10-19", ticker: "A", cutoff: "2025-03-31", skipped: null, businessChange: null, scores: [score("sales-log-error", 0.1, 0.2), score("sales-log-error", 0.05, 0.1, provisional(3))] },
+      { madeAt: "2026-10-19", ticker: "B", cutoff: "2026-03-31", skipped: null, businessChange: null, scores: [score("sales-log-error", 0.02, 0.1, provisional(6))] },
+      { madeAt: "2026-10-20", ticker: "A", cutoff: "2025-03-31", skipped: null, businessChange: null, scores: [score("sales-log-error", 0.05, 0.1, provisional(3))] },
+      { madeAt: "2026-10-20", ticker: "B", cutoff: "2026-03-31", skipped: "no as-filed ledger", businessChange: null, scores: [] },
     ];
     const [first, second] = scoresBySet(results);
     expect(first).toMatchObject({ madeAt: "2026-10-19", forecasts: 2, scored: 1, provisionalMonths: null });

@@ -6,7 +6,7 @@
  */
 import { useMemo, useState } from "react";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
-import { anchorOrBasis, anchorYear, compareSnapshots, forecastYears, scoreSnapshotAgainstFilings, yearOneDrivers, type CompanyTrackRecord, type ComparedSnapshot, type FiledScore, type FiledYear, type FiledYearToDate, type ForecastToScore, type SnapshotScenarios } from "../../engine/accountability";
+import { anchorOrBasis, anchorYear, businessChangeNote, compareSnapshots, forecastYears, scoreSnapshotAgainstFilings, yearOneDrivers, type CompanyTrackRecord, type ComparedSnapshot, type FiledScore, type FiledYear, type FiledYearToDate, type ForecastToScore, type SnapshotScenarios } from "../../engine/accountability";
 import { buildScenario } from "../../engine/forecastingEngine";
 import { formatPerShare } from "../../engine/valuationCommandCenter";
 import { revalueBase, type BaseCaseShifts } from "../../engine/valuationCommandCenter/breakEven";
@@ -253,7 +253,7 @@ function AgainstFiled({ forecast, filedYears, filedYearsToDate, asOf }: {
   filedYearsToDate: readonly FiledYearToDate[];
   asOf: string | null;
 }) {
-  const { scores, skipped } = scoreSnapshotAgainstFilings(forecast, filedYears, filedYearsToDate);
+  const { scores, skipped, businessChange } = scoreSnapshotAgainstFilings(forecast, filedYears, filedYearsToDate);
   const years = [...new Set(scores.map((s) => s.periodEnd))];
   return (
     <div className="wb-surface overflow-x-auto rounded-xl border p-4 shadow-sm">
@@ -309,6 +309,11 @@ function AgainstFiled({ forecast, filedYears, filedYearsToDate, asOf }: {
             )))}
           </tbody>
         </table>
+      )}
+      {businessChange && !skipped && (
+        <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">
+          From {businessChange.fiscalYearEnd}, not compared: {businessChangeNote(businessChange)}.
+        </p>
       )}
     </div>
   );

@@ -52,6 +52,21 @@ describe("Record — frozen forecasts scored against what was filed since", () =
     expect(withoutLedger).toContain("TCS 2026-03-31 Not scored: no as-filed ledger.");
   });
 
+  it("stops scoring at a business sold or demerged since, and says so for every forecast it ends", () => {
+    const html = text(renderToStaticMarkup(<RecordScores snapshots={snapshots} tieOut={tieOut} />));
+    // Hindustan Unilever's ice cream, demerged in December 2025: its FY2026 filing ends the FY2025-cutoff forecasts' comparison.
+    expect(html).toContain("HINDUNILVR 2025-03-31 Not scored: the 2026-03-31 filing reports ₹4,407 Cr of discontinued operations, a business sold or demerged since, so it and later years describe another business.");
+    // A later year's: the years before it stay scored, and the row says where the record stops.
+    const sold = tieOut.map((c) => c.symbol !== "ASIANPAINT" ? c : {
+      ...c,
+      filedYears: [...(c.filedYears ?? []), { fiscalYearEnd: "2027-03-31", revenue: 40000, exciseDuty: null, profitAttributableToOwners: 4000, equityAttributableToOwners: 20000, coreOperatingIncome: 6000, discontinuedOperations: 1000 }],
+    });
+    const later = text(renderToStaticMarkup(<RecordScores snapshots={snapshots} tieOut={sold} />));
+    expect(later).toMatch(/ASIANPAINT 2025-03-31 2026-03-31 [+-][0-9.]+%/);
+    expect(later).toContain("ASIANPAINT 2025-03-31 2027-03-31 on Not scored: the 2027-03-31 filing reports ₹1,000 Cr of discontinued operations");
+    expect(later).not.toContain("ASIANPAINT 2025-03-31 2027-03-31 (");
+  });
+
   it("shows on the Record page itself, until a tool is opened", () => {
     const page = (tool: string | null) => text(renderToStaticMarkup(
       <ToolsPage route={{ space: "record", company: null, tool }} companies={[]} company={null} snapshots={snapshots} tieOut={tieOut} />,

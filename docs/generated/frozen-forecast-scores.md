@@ -9,133 +9,134 @@ Each forecast frozen in `accountability/snapshots/` is scored against the result
 - **Random walk** is "the cutoff year again". **Skill** = 1 − median error / random-walk median error.
 - **Scenario bands.** Snapshots of schema v4 also record the stress, bull and historical-panic cases, and each filed figure is placed below stress, between stress and bull, or above bull, on the basis its base case is scored on (the margin moved from the cutoff year's filed margin). The bands were calibrated on the walk-forward (`docs/generated/scenario-band-coverage.md`), so this tests them on years the calibration never saw. Sets frozen before v4 have no band table.
 - **The year in progress** is scored provisionally, apart from the filed years, on the months filed so far (`data/filings/<SYMBOL>/year-to-date.json`, `scripts/filings/fetch-nse-year-to-date.ts`). They are set against the same months a year before, so seasonality cancels: the last full year's sales grown as those months grew, and its core margin moved as theirs moved. Earnings are not projected, since one quarter's one-offs weigh too much in part of a year. A provisional score is replaced when the year is filed.
-- **One-offs.** Filed profit includes them on both sides. ITC's FY2025 owners' profit carries the hotels demerger gain, so its random walk for FY2026 misses by 20 ROE points. The forecast models neither.
+- **One-offs.** Filed profit includes them on both sides. ITC's FY2025 owners' profit carries the hotels demerger gain, so its random walk for FY2026, from a cutoff in FY2025, misses by 20 ROE points. The forecast models neither.
 
 Not scored:
 - years the forecast's data already covered: an anchor that walked back was built on later years too;
-- forecasts of a business the consolidated filings do not describe (a lending arm carved out, standalone accounts).
+- forecasts of a business the consolidated filings do not describe (a lending arm carved out, standalone accounts);
+- years from a filing that reports discontinued operations of at least 0.5% of revenue: a business sold or demerged after the forecast was made, whose later filings describe a smaller business than the forecast's (Hindustan Unilever's ice cream, FY2026; ITC's hotels, FY2025).
 
 ## By frozen set
 
-### Frozen 2026-09-25 (19 of 23 forecasts scored)
+### Frozen 2026-09-25 (17 of 23 forecasts scored)
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 19 | 6.0 | 10.6 | +44% | +1.3 | 13 of 19 |
+| Sales (log error, %) | 17 | 4.7 | 16.0 | +71% | -0.5 | 13 of 17 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
-| Earnings (ROE points) | 18 | 3.8 | 2.1 | -83% | -1.7 | 9 of 18 |
+| Earnings (ROE points) | 16 | 1.9 | 2.0 | +5% | -1.8 | 8 of 16 |
 
 The year in progress, projected from the months filed so far (provisional; months filed differ by company):
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 22 | 11.6 | 20.0 | +42% | -3.2 | 16 of 22 |
+| Sales (log error, %) | 20 | 10.9 | 20.9 | +48% | -6.4 | 16 of 20 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 
-### Frozen 2026-10-08 (19 of 23 forecasts scored)
+### Frozen 2026-10-08 (17 of 23 forecasts scored)
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 19 | 5.9 | 10.6 | +44% | -0.6 | 14 of 19 |
+| Sales (log error, %) | 17 | 6.0 | 10.6 | +44% | -0.5 | 13 of 17 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
-| Earnings (ROE points) | 18 | 1.3 | 2.5 | +50% | -4.2 | 12 of 18 |
+| Earnings (ROE points) | 16 | 1.3 | 2.5 | +50% | -4.2 | 10 of 16 |
 
 The year in progress, projected from the months filed so far (provisional; months filed differ by company):
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 22 | 11.2 | 17.2 | +35% | -4.9 | 17 of 22 |
+| Sales (log error, %) | 20 | 11.2 | 20.0 | +44% | -6.2 | 16 of 20 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 
-### Frozen 2026-10-11 (14 of 20 forecasts scored)
+### Frozen 2026-10-11 (13 of 20 forecasts scored)
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 14 | 2.9 | 6.3 | +54% | -1.3 | 11 of 14 |
+| Sales (log error, %) | 13 | 2.3 | 6.5 | +64% | -1.7 | 11 of 13 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
-| Earnings (ROE points) | 14 | 1.1 | 2.5 | +55% | -2.1 | 11 of 14 |
+| Earnings (ROE points) | 13 | 1.1 | 2.0 | +44% | -1.6 | 10 of 13 |
 
 The year in progress, projected from the months filed so far (provisional; months filed differ by company):
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 16 | 8.6 | 17.2 | +50% | -4.7 | 13 of 16 |
+| Sales (log error, %) | 15 | 9.5 | 19.4 | +51% | -5.4 | 12 of 15 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 
-### Frozen 2026-10-17 (15 of 21 forecasts scored)
+### Frozen 2026-10-17 (14 of 21 forecasts scored)
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 15 | 3.4 | 6.5 | +47% | -1.9 | 12 of 15 |
+| Sales (log error, %) | 14 | 3.3 | 7.8 | +57% | -2.3 | 12 of 14 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
-| Earnings (ROE points) | 15 | 1.2 | 3.0 | +62% | -2.6 | 11 of 15 |
+| Earnings (ROE points) | 14 | 1.1 | 2.5 | +55% | -2.2 | 10 of 14 |
 
 The year in progress, projected from the months filed so far (provisional; months filed differ by company):
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 17 | 9.5 | 19.4 | +51% | -5.6 | 14 of 17 |
+| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.2 | 13 of 16 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 
-### Frozen 2026-10-18 (15 of 21 forecasts scored)
+### Frozen 2026-10-18 (14 of 21 forecasts scored)
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 15 | 3.4 | 6.5 | +47% | -1.9 | 12 of 15 |
+| Sales (log error, %) | 14 | 3.3 | 7.8 | +57% | -2.3 | 12 of 14 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
-| Earnings (ROE points) | 15 | 1.2 | 3.0 | +62% | -2.6 | 11 of 15 |
+| Earnings (ROE points) | 14 | 1.1 | 2.5 | +55% | -2.2 | 10 of 14 |
 
 The year in progress, projected from the months filed so far (provisional; months filed differ by company):
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 17 | 9.5 | 19.4 | +51% | -5.6 | 14 of 17 |
+| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.2 | 13 of 16 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 
-### Frozen 2026-10-19 (15 of 21 forecasts scored)
+### Frozen 2026-10-19 (14 of 21 forecasts scored)
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 15 | 3.4 | 6.5 | +47% | -1.9 | 12 of 15 |
-| Core margin (points of sales) | 15 | 0.6 | 0.6 | -10% | -1.1 | 5 of 15 |
-| Earnings (ROE points) | 15 | 1.2 | 3.0 | +62% | -2.6 | 11 of 15 |
+| Sales (log error, %) | 14 | 3.3 | 7.8 | +57% | -2.3 | 12 of 14 |
+| Core margin (points of sales) | 14 | 0.5 | 0.6 | +12% | -1.1 | 5 of 14 |
+| Earnings (ROE points) | 14 | 1.1 | 2.5 | +55% | -2.2 | 10 of 14 |
 
 The year in progress, projected from the months filed so far (provisional; months filed differ by company):
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 17 | 9.5 | 19.4 | +51% | -5.6 | 14 of 17 |
-| Core margin (points of sales) | 17 | 1.8 | 1.8 | -1% | -0.9 | 10 of 17 |
+| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.2 | 13 of 16 |
+| Core margin (points of sales) | 16 | 1.8 | 1.9 | +4% | -1.0 | 9 of 16 |
 
-### Frozen 2026-10-20 (15 of 21 forecasts scored)
+### Frozen 2026-10-20 (14 of 21 forecasts scored)
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 15 | 3.4 | 6.5 | +47% | -1.9 | 12 of 15 |
-| Core margin (points of sales) | 15 | 0.6 | 0.6 | -10% | -1.1 | 5 of 15 |
-| Earnings (ROE points) | 15 | 1.2 | 3.0 | +62% | -2.6 | 11 of 15 |
+| Sales (log error, %) | 14 | 3.3 | 7.8 | +57% | -2.3 | 12 of 14 |
+| Core margin (points of sales) | 14 | 0.5 | 0.6 | +12% | -1.1 | 5 of 14 |
+| Earnings (ROE points) | 14 | 1.1 | 2.5 | +55% | -2.2 | 10 of 14 |
 
 Against the frozen scenario cases:
 
 | Measure | n | Below stress | Between | Above bull | Below panic |
 |---|---|---|---|---|---|
-| Sales | 15 | 7% | 67% | 27% | 0% |
-| Core margin | 15 | 0% | 73% | 27% | 0% |
-| Earnings | 15 | 0% | 73% | 27% | 0% |
+| Sales | 14 | 7% | 64% | 29% | 0% |
+| Core margin | 14 | 0% | 71% | 29% | 0% |
+| Earnings | 14 | 0% | 79% | 21% | 0% |
 
 The year in progress, projected from the months filed so far (provisional; months filed differ by company):
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 17 | 9.5 | 19.4 | +51% | -5.6 | 14 of 17 |
-| Core margin (points of sales) | 17 | 1.8 | 1.8 | -1% | -0.9 | 10 of 17 |
+| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.2 | 13 of 16 |
+| Core margin (points of sales) | 16 | 1.8 | 1.9 | +4% | -1.0 | 9 of 16 |
 
 Against the frozen scenario cases:
 
 | Measure | n | Below stress | Between | Above bull | Below panic |
 |---|---|---|---|---|---|
-| Sales | 17 | 12% | 53% | 35% | 6% |
-| Core margin | 17 | 6% | 53% | 41% | 0% |
+| Sales | 16 | 13% | 50% | 38% | 6% |
+| Core margin | 16 | 6% | 50% | 44% | 0% |
 
 ## Frozen 2026-10-20, by company
 
@@ -152,8 +153,7 @@ Against the frozen scenario cases:
 | DMART | 2025-03-31 | 2026-03-31 | +0.4 | -14.8 | +0.1 | +0.1 | +0.7 | -1.2 |
 | DMART | 2025-03-31 | 2027-03-31 (6 months filed) | -0.7 | -29.9 | +0.3 | +0.3 | — | — |
 | GRASIM | 2025-03-31 | — | not scored: a forecast of the business without Aditya Birla Capital; the consolidated filings describe another business | | | | | |
-| HINDUNILVR | 2025-03-31 | 2026-03-31 | +3.4 | -2.1 | -0.8 | -0.6 | -8.5 | -8.9 |
-| HINDUNILVR | 2025-03-31 | 2027-03-31 (3 months filed) | +4.9 | -7.0 | +0.7 | +1.2 | — | — |
+| HINDUNILVR | 2025-03-31 | — | not scored: the 2026-03-31 filing reports ₹4,407 Cr of discontinued operations, a business sold or demerged since, so it and later years describe another business | | | | | |
 | INFY | 2026-03-31 | 2027-03-31 (3 months filed) | -3.4 | -13.1 | +0.2 | -0.1 | — | — |
 | ITC | 2025-03-31 | 2026-03-31 | +4.4 | -4.6 | -0.8 | -0.6 | +1.1 | +20.1 |
 | ITC | 2025-03-31 | 2027-03-31 (3 months filed) | +24.4 | +7.1 | +2.1 | +2.5 | — | — |
