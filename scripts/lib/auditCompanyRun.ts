@@ -606,7 +606,17 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-export async function fetchMarketEvidence(ticker: string, folder?: string): Promise<AuditMarketEvidenceSnapshot> {
+/**
+ * How long the audit waits for Yahoo Finance. The request had no limit, and
+ * from CI runners Yahoo sometimes answers in a minute or more: 15 of 33
+ * companies took 17–96 s to audit on #494's run against 1–17 s locally, and
+ * Nestlé, at 123–126 s, failed the shard's two-minute limit on #493. Locally
+ * the request takes 0.5–1.7 s. A request that runs out falls back as a failed
+ * one does: the cached snapshot, or no market evidence.
+ */
+export const MARKET_FETCH_TIMEOUT_MS = 10_000;
+
+export async function fetchMarketEvidence(ticker: string, folder?: string, timeoutMs = MARKET_FETCH_TIMEOUT_MS): Promise<AuditMarketEvidenceSnapshot> {
   // Ticker parity: registry tickers can drift from the canonical NSE/Yahoo
   // symbol. Use resolveNseSymbol as the single source of truth.
   const candidates = [ticker, folder].filter((s): s is string => Boolean(s));
@@ -626,6 +636,7 @@ export async function fetchMarketEvidence(ticker: string, folder?: string): Prom
   try {
     const res = await fetch(yahooUrl, {
       headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) {
       const stale = await readCachedMarketEvidence(effectiveTicker);

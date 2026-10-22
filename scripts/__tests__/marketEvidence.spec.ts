@@ -117,4 +117,19 @@ describe("fetchMarketEvidence", () => {
     expect(result.inputs.length).toBe(0);
     expect(result.reason).toMatch(/Market data fetch failed/);
   });
+
+  it("gives up on a request Yahoo never answers, as on a failed one, within the timeout", async () => {
+    // A request that hangs until it is aborted, as from a CI runner Yahoo stalls.
+    vi.spyOn(globalThis, "fetch").mockImplementation((_input, init) => new Promise<Response>((_, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(init.signal!.reason));
+    }));
+    await deleteFile(marketCachePath("STALLED", today));
+
+    const started = Date.now();
+    const result = await fetchMarketEvidence("STALLED", undefined, 50);
+
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(result.status).toBe("source_unavailable");
+    expect(result.reason).toMatch(/Market data fetch failed: .*time/i);
+  });
 });
