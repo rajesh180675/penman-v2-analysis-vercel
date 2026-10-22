@@ -65,7 +65,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # 26 for the same reason as company-audit below. goldenCompanies.spec.ts
+          # parses every company's ZIP in one process, and on Node 22 V8 stalls
+          # once earlier ones have run: up to 50 s per ZIP and 600 s for the file
+          # in CI, and up to 203 s per ZIP and 1,771 s for the file locally. On
+          # 26 the file takes 40 s locally, with no ZIP over 3.4 s.
+          node-version: 26
           cache: npm
       - run: npm ci
       - run: mkdir -p test-results
@@ -114,8 +119,9 @@ jobs:
           # against the 120 s limit, and Sun Pharma ran past it on Node 22
           # locally. Node 26 does not stall, in three runs of three. The stall
           # goes with V8's --no-concurrent-recompilation, so it is V8's
-          # background compiler, not this code. The other jobs keep 22, the
-          # oldest version package.json supports.
+          # background compiler, not this code. Quality, golden and the browser
+          # jobs keep 22, the oldest maintained Node line package.json accepts
+          # (it also accepts 20.19, which reached end of life in April 2026).
           node-version: 26
           cache: npm
       - run: npm ci
