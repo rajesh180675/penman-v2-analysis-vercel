@@ -27,7 +27,8 @@
     "sharesOutstandingCr": 118.994,
     "expenses": 87305.66,
     "taxExpense": 2367.73,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 1107.26
    }
   },
   {
@@ -55,7 +56,8 @@
     "sharesOutstandingCr": 108.792,
     "expenses": 98526.29,
     "taxExpense": 2853.99,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 1366.52
    }
   },
   {
@@ -83,7 +85,8 @@
     "sharesOutstandingCr": 110.856,
     "expenses": 93655.76,
     "taxExpense": 1975.61,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 1042.58
    }
   },
   {
@@ -111,7 +114,8 @@
     "sharesOutstandingCr": 111.03,
     "expenses": 70081.56,
     "taxExpense": 1645.81,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 1276.66
    }
   },
   {
@@ -139,7 +143,8 @@
     "sharesOutstandingCr": 111.212,
     "expenses": 84013.27,
     "taxExpense": 2108.76,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 1855.79
    }
   },
   {
@@ -167,7 +172,8 @@
     "sharesOutstandingCr": 111.364,
     "expenses": 111169.77,
     "taxExpense": 2685.75,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 1505.44
    }
   },
   {
@@ -195,7 +201,8 @@
     "sharesOutstandingCr": 111.476,
     "expenses": 126398.33,
     "taxExpense": 3707.97,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 1121.43
    }
   },
   {
@@ -223,7 +230,8 @@
     "sharesOutstandingCr": 111.63,
     "expenses": 143849.67,
     "taxExpense": 5006.45,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 1537.42
    }
   },
   {
@@ -251,7 +259,8 @@
     "sharesOutstandingCr": 111.756,
     "expenses": 178571.55,
     "taxExpense": 6563.05,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 1964.91
    }
   }
  ]

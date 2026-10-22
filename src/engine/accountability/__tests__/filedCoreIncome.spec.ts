@@ -40,6 +40,19 @@ describe("filedCoreOperatingIncome", () => {
     expect(income[6]).toBeCloseTo(200 * 0.75, 9);
   });
 
+  it("counts the associates' share inside profit before tax, as Capitaline files it, in core OI and in its tax rate", () => {
+    // ₹60 Cr of associates' profit, filed after tax below a PBT of 240: the rate is 75 / 300, not 75 / 240.
+    expect(filedCoreOperatingIncome([year(0, { taxExpense: 75, associatesShare: 60 })])[0]).toBeCloseTo((200 + 60) * 0.75, 9);
+    // Airtel-shaped: 32% of profit with the share is 40% of PBT without it, so a benefit is taxed at 32%, the recast's median.
+    const prior = year(0, { taxExpense: 96, associatesShare: 60 });
+    const benefit = year(0, { taxExpense: 7.2, associatesShare: 60 });
+    expect(filedCoreOperatingIncome([prior, prior, prior, benefit])[3]).toBeCloseTo((200 + 60) * (1 - 0.32), 9);
+    // A loss before the share that the share makes a profit (−100 + 120) is taxed at its rate on that profit, 1 / 20,
+    // not taken for a loss that books no tax (isUntaxedLoss).
+    expect(filedCoreOperatingIncome([{ revenue: 1000, expenses: 1100, financeCosts: 300, profitBeforeTax: -100, taxExpense: 1, associatesShare: 120 }])[0])
+      .toBeCloseTo((200 + 120) * 0.95, 9);
+  });
+
   it("adds a rate-regulated entity's regulatory deferral movement and keeps its filed rate", () => {
     // NTPC-shaped: the tax recovered through the tariff is filed in the movement.
     const [, , , regulated] = filedCoreOperatingIncome([year(0.3), year(0.3), year(0.3), year(0.05, { regulatoryDeferralMovement: 30 })]);

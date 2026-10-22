@@ -66,6 +66,17 @@ describe("extractAnnualHeadline", () => {
     expect(extractAnnualHeadline(parseXbrlInstance(regulated), "2024-03-31").headline.regulatoryDeferralMovement).toBe(-2464);
   });
 
+  it("reads the year's share of associates' profit, filed after tax, and leaves it null where not filed", () => {
+    const fact = (context: string, rupees: string) =>
+      `<in-bse-fin:ShareOfProfitLossOfAssociatesAndJointVenturesAccountedForUsingEquityMethod contextRef="${context}" unitRef="INR" decimals="-6">${rupees}</in-bse-fin:ShareOfProfitLossOfAssociatesAndJointVenturesAccountedForUsingEquityMethod>`;
+    // Airtel FY2024: ₹830.3 Cr in the quarter, ₹2,709.4 Cr in the year.
+    const filing = FILING.replace("</xbrli:xbrl>", `${fact("OneD", "8303000000.00")}
+${fact("FourD", "27094000000.00")}
+</xbrli:xbrl>`);
+    expect(extractAnnualHeadline(parseXbrlInstance(filing), "2024-03-31").headline.associatesShare).toBeCloseTo(2709.4, 6);
+    expect(extractAnnualHeadline(parseXbrlInstance(FILING), "2024-03-31").headline.associatesShare).toBeNull();
+  });
+
   it("reads the year's itemized excise duty, not the quarter's, though both carry the quarter's dates", () => {
     // ITC FY24: other expenses itemized per context, each labelled by a
     // description in the same context; the year's item contexts are named after

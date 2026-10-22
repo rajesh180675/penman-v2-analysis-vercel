@@ -27,7 +27,8 @@
     "sharesOutstandingCr": 176.15,
     "expenses": 6346.13,
     "taxExpense": 335.35,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 0.24
    }
   },
   {
@@ -55,7 +56,8 @@
     "sharesOutstandingCr": 176.63,
     "expenses": 7029.97,
     "taxExpense": 278.62,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 0.96
    }
   },
   {
@@ -83,7 +85,8 @@
     "sharesOutstandingCr": 176.71,
     "expenses": 7181.23,
     "taxExpense": 279.72,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": -0.01
    }
   },
   {
@@ -111,7 +114,8 @@
     "sharesOutstandingCr": 176.74,
     "expenses": 7829.91,
     "taxExpense": 361.07,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": -1.01
    }
   },
   {
@@ -139,7 +143,8 @@
     "sharesOutstandingCr": 176.79,
     "expenses": 8926.36,
     "taxExpense": 526.38,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": -1.8
    }
   },
   {
@@ -167,7 +172,8 @@
     "sharesOutstandingCr": 177.18,
     "expenses": 9754.97,
     "taxExpense": 517.35,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": -1.63
    }
   },
   {
@@ -195,7 +201,8 @@
     "sharesOutstandingCr": 177.2,
     "expenses": 10527.17,
     "taxExpense": 547.43,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": -0.51
    }
   },
   {
@@ -223,7 +230,8 @@
     "sharesOutstandingCr": 177.23,
     "expenses": 10855.85,
     "taxExpense": 517.47,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 0.55
    }
   },
   {
@@ -251,7 +259,8 @@
     "sharesOutstandingCr": 177.37,
     "expenses": 11355.06,
     "taxExpense": 551.74,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": -1.8
    }
   }
  ]
