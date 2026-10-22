@@ -607,12 +607,15 @@ function errorMessage(error: unknown): string {
 }
 
 /**
- * How long the audit waits for Yahoo Finance. The request had no limit, and
- * from CI runners Yahoo sometimes answers in a minute or more: 15 of 33
- * companies took 17–96 s to audit on #494's run against 1–17 s locally, and
- * Nestlé, at 123–126 s, failed the shard's two-minute limit on #493. Locally
- * the request takes 0.5–1.7 s. A request that runs out falls back as a failed
+ * How long the audit waits for Yahoo Finance. The request had no limit, so one
+ * that stalled could hold a company's audit past the shard's two-minute limit;
+ * locally it takes 0.5–1.7 s. A request that runs out falls back as a failed
  * one does: the cached snapshot, or no market evidence.
+ *
+ * It was added for CI audits that took 17–96 s a company against 1–17 s
+ * locally, and it was not their cause: with it the same companies took the same
+ * time. That was V8 in Node 22 and 24 (see the company-audit job in
+ * .github/workflows/validate.yml).
  */
 export const MARKET_FETCH_TIMEOUT_MS = 10_000;
 
