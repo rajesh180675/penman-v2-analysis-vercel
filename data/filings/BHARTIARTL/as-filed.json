@@ -27,7 +27,8 @@
     "sharesOutstandingCr": 399.74,
     "expenses": 86087.6,
     "taxExpense": -3419.3,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 355.6
    }
   },
   {
@@ -55,7 +56,8 @@
     "sharesOutstandingCr": 545.56,
     "expenses": 91128.3,
     "taxExpense": -12182.3,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 652.4
    }
   },
   {
@@ -83,7 +85,8 @@
     "sharesOutstandingCr": 549.2,
     "expenses": 99739.5,
     "taxExpense": 8932.5,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": -92.8
    }
   },
   {
@@ -111,7 +114,8 @@
     "sharesOutstandingCr": 559,
     "expenses": 108719.9,
     "taxExpense": 4177.9,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 2423.2
    }
   },
   {
@@ -139,7 +143,8 @@
     "sharesOutstandingCr": 567.32,
     "expenses": 123603,
     "taxExpense": 4273.3,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 752.1
    }
   },
   {
@@ -167,7 +172,8 @@
     "sharesOutstandingCr": 575.32,
     "expenses": 133875.9,
     "taxExpense": 4121,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 2709.4
    }
   },
   {
@@ -195,7 +201,8 @@
     "sharesOutstandingCr": 580.02,
     "expenses": 147150.2,
     "taxExpense": 917.2,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 3703
    }
   },
   {
@@ -223,7 +230,8 @@
     "sharesOutstandingCr": 609.36,
     "expenses": 165564.4,
     "taxExpense": 11349.9,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 364.5
    }
   },
   {
@@ -251,7 +259,8 @@
     "sharesOutstandingCr": 609.36,
     "expenses": 165564.4,
     "taxExpense": 11349.9,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 364.5
    }
   }
  ]

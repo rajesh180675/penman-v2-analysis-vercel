@@ -28,7 +28,8 @@
     "sharesOutstandingCr": 1247.44,
     "expenses": 50347.31,
     "taxExpense": 1059.72,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 79.72
    }
   },
   {
@@ -57,7 +58,8 @@
     "sharesOutstandingCr": 1247.44,
     "expenses": 104808.02,
     "taxExpense": 2099.1,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 130.47
    }
   },
   {
@@ -86,7 +88,8 @@
     "sharesOutstandingCr": 1247.44,
     "expenses": 158406.82,
     "taxExpense": 3237.5,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 234.43
    }
   },
   {
@@ -115,7 +118,8 @@
     "sharesOutstandingCr": 1247.44,
     "expenses": 56940.11,
     "taxExpense": 1452.29,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 96.15
    }
   }
  ]

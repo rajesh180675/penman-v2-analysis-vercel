@@ -3547,10 +3547,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.10536379279074395,
-    "actual": 0.11130136892432609,
-    "model": -0.005937576133582131,
-    "randomWalk": -0.005667157208773782
+    "forecast": 0.10951784062142556,
+    "actual": 0.11587572293270193,
+    "model": -0.006357882311276375,
+    "randomWalk": -0.0060874633864680255
    },
    {
     "metric": "cni-roe-point-error",
@@ -3578,10 +3578,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.10512852832616068,
-    "actual": 0.13334266456622684,
-    "model": -0.028214136240066162,
-    "randomWalk": -0.02770845285067454,
+    "forecast": 0.10928257615684228,
+    "actual": 0.13749288672211757,
+    "model": -0.028210310565275287,
+    "randomWalk": -0.027704627175883664,
     "provisional": {
      "through": "2026-06-30",
      "months": 3
@@ -3608,10 +3608,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.13207453428389596,
-    "actual": 0.2370060040220803,
-    "model": -0.10493146973818435,
-    "randomWalk": -0.07561812861846792
+    "forecast": 0.17082353612753912,
+    "actual": 0.23894835511493837,
+    "model": -0.06812481898739925,
+    "randomWalk": -0.038811477867682825
    },
    {
     "metric": "cni-roe-point-error",
@@ -3639,10 +3639,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.11096892867770011,
-    "actual": 0.25419912407395906,
-    "model": -0.14323019539625895,
-    "randomWalk": -0.09281124867034668,
+    "forecast": 0.14971793052134327,
+    "actual": 0.2562819866834909,
+    "model": -0.10656405616214762,
+    "randomWalk": -0.05614510943623535,
     "provisional": {
      "through": "2026-06-30",
      "months": 3
@@ -3669,10 +3669,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.11577963358961897,
-    "actual": 0.12954716529404228,
-    "model": -0.013767531704423311,
-    "randomWalk": -0.010206736755841078
+    "forecast": 0.1151843709849252,
+    "actual": 0.12798805717182485,
+    "model": -0.012803686186899643,
+    "randomWalk": -0.00924289123831741
    },
    {
     "metric": "cni-roe-point-error",
@@ -3700,10 +3700,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.11268174198435243,
-    "actual": 0.1342292565599454,
-    "model": -0.021547514575592952,
-    "randomWalk": -0.014888828021744183,
+    "forecast": 0.11208647937965867,
+    "actual": 0.13335400514644435,
+    "model": -0.021267525766785686,
+    "randomWalk": -0.014608839212936917,
     "provisional": {
      "through": "2026-06-30",
      "months": 3
@@ -3730,10 +3730,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.1172148356978176,
-    "actual": 0.1160682957760003,
-    "model": 0.001146539921817305,
-    "randomWalk": -0.0012960753258125512
+    "forecast": 0.11725689637889386,
+    "actual": 0.11593749626926188,
+    "model": 0.0013194001096319824,
+    "randomWalk": -0.0011232151379978739
    },
    {
     "metric": "cni-roe-point-error",
@@ -3761,10 +3761,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.11933991096325555,
-    "actual": 0.11912402169447699,
-    "model": 0.00021588926877856573,
-    "randomWalk": -0.004351801244289244,
+    "forecast": 0.11938197164433181,
+    "actual": 0.11897873023129261,
+    "model": 0.0004032414130391987,
+    "randomWalk": -0.004164449100028611,
     "provisional": {
      "through": "2026-06-30",
      "months": 3
@@ -3859,10 +3859,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.15574108999074102,
-    "actual": 0.16419347687066604,
-    "model": -0.008452386879925028,
-    "randomWalk": -0.0058842667600825516
+    "forecast": 0.15561646502220694,
+    "actual": 0.16396121138573255,
+    "model": -0.008344746363525612,
+    "randomWalk": -0.005776626243683136
    },
    {
     "metric": "cni-roe-point-error",
@@ -3890,10 +3890,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.15350682548647807,
-    "actual": 0.1467579195203441,
-    "model": 0.006748905966133978,
-    "randomWalk": 0.011551290590239405,
+    "forecast": 0.153382200517944,
+    "actual": 0.14658636605252445,
+    "model": 0.006795834465419537,
+    "randomWalk": 0.011598219089524964,
     "provisional": {
      "through": "2026-06-30",
      "months": 3
@@ -3954,10 +3954,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.23794642051728027,
-    "actual": 0.24232604146537287,
-    "model": -0.004379620948092605,
-    "randomWalk": -0.0022962916842320935
+    "forecast": 0.2393776104315702,
+    "actual": 0.24701853042957844,
+    "model": -0.007640919998008255,
+    "randomWalk": -0.005557590734147744
    },
    {
     "metric": "cni-roe-point-error",
@@ -3985,10 +3985,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.23634225698410763,
-    "actual": 0.21052474357465484,
-    "model": 0.02581751340945279,
-    "randomWalk": 0.02950500620648594,
+    "forecast": 0.23777344689839755,
+    "actual": 0.21640491226728767,
+    "model": 0.02136853463110988,
+    "randomWalk": 0.02505602742814303,
     "provisional": {
      "through": "2026-06-30",
      "months": 3
@@ -4029,10 +4029,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.06523437756924967,
-    "actual": 0.06134894928221886,
-    "model": 0.003885428287030812,
-    "randomWalk": 0.008651741766522184
+    "forecast": 0.06672569179839938,
+    "actual": 0.06282729108220804,
+    "model": 0.0038984007161913387,
+    "randomWalk": 0.00866471419568271
    },
    {
     "metric": "cni-roe-point-error",
@@ -4060,10 +4060,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.061278337381271836,
-    "actual": 0.03776869616833037,
-    "model": 0.023509641212941468,
-    "randomWalk": 0.032231994880410675,
+    "forecast": 0.06276965161042154,
+    "actual": 0.04009606672359713,
+    "model": 0.02267358488682441,
+    "randomWalk": 0.031395938554293616,
     "provisional": {
      "through": "2026-06-30",
      "months": 3
@@ -4097,10 +4097,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.15164841345373278,
-    "actual": 0.1771891438908302,
-    "model": -0.025540730437097425,
-    "randomWalk": -0.023542297717010274
+    "forecast": 0.1647676384262373,
+    "actual": 0.19247374861001132,
+    "model": -0.02770611018377403,
+    "randomWalk": -0.02570767746368688
    },
    {
     "metric": "cni-roe-point-error",
@@ -4128,10 +4128,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.15002968295046218,
-    "actual": 0.1837338428715472,
-    "model": -0.033704159921085025,
-    "randomWalk": -0.03008699669772727,
+    "forecast": 0.16314890792296668,
+    "actual": 0.20098658632399594,
+    "model": -0.03783767840102925,
+    "randomWalk": -0.034220515177671496,
     "provisional": {
      "through": "2026-06-30",
      "months": 3
@@ -4158,10 +4158,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.46324567815803513,
-    "actual": 0.4636899417048428,
-    "model": -0.000444263546807655,
-    "randomWalk": 0.0009642913525120256
+    "forecast": 0.4606622226557581,
+    "actual": 0.460858101931253,
+    "model": -0.00019587927549485906,
+    "randomWalk": 0.0012126756238248215
    },
    {
     "metric": "cni-roe-point-error",
@@ -4189,10 +4189,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.46217517643455214,
-    "actual": 0.4558786969079141,
-    "model": 0.0062964795266380325,
-    "randomWalk": 0.00877553614944071,
+    "forecast": 0.4595917209322751,
+    "actual": 0.4575406838056002,
+    "model": 0.002051037126674926,
+    "randomWalk": 0.004530093749477604,
     "provisional": {
      "through": "2026-06-30",
      "months": 3
@@ -4219,10 +4219,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.08769151099973363,
-    "actual": 0.08903951205599943,
-    "model": -0.001348001056265799,
-    "randomWalk": -0.00032645680557406853
+    "forecast": 0.08824021964770835,
+    "actual": 0.08917524870621292,
+    "model": -0.0009350290585045662,
+    "randomWalk": 0.0000865151921871643
    },
    {
     "metric": "cni-roe-point-error",
@@ -4250,10 +4250,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.08686406015667333,
-    "actual": 0.06917114367573099,
-    "model": 0.017692916480942344,
-    "randomWalk": 0.01954191157469437,
+    "forecast": 0.08741276880464806,
+    "actual": 0.06954324022677019,
+    "model": 0.017869528577877866,
+    "randomWalk": 0.019718523671629892,
     "provisional": {
      "through": "2026-06-30",
      "months": 3
@@ -4280,10 +4280,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.1911980200905779,
-    "actual": 0.1935559069543286,
-    "model": -0.0023578868637506856,
-    "randomWalk": -0.0007564503109971921
+    "forecast": 0.1909105984471517,
+    "actual": 0.19260509652545266,
+    "model": -0.0016944980783009655,
+    "randomWalk": -0.00009306152554747205
    },
    {
     "metric": "cni-roe-point-error",
@@ -4311,10 +4311,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.18983679902073744,
-    "actual": 0.17563736452706238,
-    "model": 0.014199434493675056,
-    "randomWalk": 0.017162092116269012,
+    "forecast": 0.18954937737731123,
+    "actual": 0.17480971618825636,
+    "model": 0.01473966118905487,
+    "randomWalk": 0.017702318811648826,
     "provisional": {
      "through": "2026-06-30",
      "months": 3
@@ -4341,10 +4341,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.039593395701558766,
-    "actual": 0.06504789025187348,
-    "model": -0.02545449455031471,
-    "randomWalk": -0.028611265642775607
+    "forecast": 0.04046649814739413,
+    "actual": 0.06685546676969827,
+    "model": -0.026388968622304138,
+    "randomWalk": -0.029545739714765033
    },
    {
     "metric": "cni-roe-point-error",
@@ -4372,10 +4372,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.041866270888130594,
-    "actual": 0.06482784430292785,
-    "model": -0.02296157341479725,
-    "randomWalk": -0.028391219693829975,
+    "forecast": 0.042739373333965956,
+    "actual": 0.06672511540789017,
+    "model": -0.02398574207392421,
+    "randomWalk": -0.029415388352956935,
     "provisional": {
      "through": "2026-06-30",
      "months": 3
@@ -4436,10 +4436,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.062037241306139475,
-    "actual": 0.06411842614283565,
-    "model": -0.0020811848366961774,
-    "randomWalk": -0.0032542186456195263
+    "forecast": 0.06205423232679538,
+    "actual": 0.06413015475651912,
+    "model": -0.0020759224297237366,
+    "randomWalk": -0.0032489562386470855
    },
    {
     "metric": "cni-roe-point-error",
@@ -4467,10 +4467,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.06295220767709969,
-    "actual": 0.08088699823932106,
-    "model": -0.017934790562221373,
-    "randomWalk": -0.02002279074210494,
+    "forecast": 0.0629691986977556,
+    "actual": 0.08099452137873836,
+    "model": -0.018025322680982767,
+    "randomWalk": -0.020113322860866326,
     "provisional": {
      "through": "2026-06-30",
      "months": 3
@@ -4497,10 +4497,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.0947401819438404,
-    "actual": 0.1048263269935336,
-    "model": -0.010086145049693199,
-    "randomWalk": -0.014564968821684302
+    "forecast": 0.09459735707310737,
+    "actual": 0.10464161112480856,
+    "model": -0.010044254051701187,
+    "randomWalk": -0.01452307782369229
    },
    {
     "metric": "cni-roe-point-error",
@@ -4528,10 +4528,10 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.09818887624827355,
-    "actual": 0.10725428953822728,
-    "model": -0.009065413289953736,
-    "randomWalk": -0.016992931366377986,
+    "forecast": 0.09804605137754052,
+    "actual": 0.1073042079172003,
+    "model": -0.009258156539659779,
+    "randomWalk": -0.01718567461608403,
     "provisional": {
      "through": "2026-09-30",
      "months": 6
@@ -4564,14 +4564,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.10536379279074395,
-    "actual": 0.11130136892432609,
-    "model": -0.005937576133582131,
-    "randomWalk": -0.005667157208773782,
+    "forecast": 0.10951784062142556,
+    "actual": 0.11587572293270193,
+    "model": -0.006357882311276375,
+    "randomWalk": -0.0060874633864680255,
     "band": {
-     "stress": 0.07226943186748326,
-     "bull": 0.11977296290406059,
-     "historicalPanic": 0.05390247095747025,
+     "stress": 0.07642347969816486,
+     "bull": 0.12392701073474219,
+     "historicalPanic": 0.05805651878815185,
      "position": "within"
     }
    },
@@ -4613,14 +4613,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.10512852832616068,
-    "actual": 0.13334266456622684,
-    "model": -0.028214136240066162,
-    "randomWalk": -0.02770845285067454,
+    "forecast": 0.10928257615684228,
+    "actual": 0.13749288672211757,
+    "model": -0.028210310565275287,
+    "randomWalk": -0.027704627175883664,
     "band": {
-     "stress": 0.07633643432292389,
-     "bull": 0.11766450632474618,
-     "historicalPanic": 0.06035717833121257,
+     "stress": 0.08049048215360549,
+     "bull": 0.12181855415542778,
+     "historicalPanic": 0.06451122616189417,
      "position": "above"
     },
     "provisional": {
@@ -4655,14 +4655,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.13207453428389596,
-    "actual": 0.2370060040220803,
-    "model": -0.10493146973818435,
-    "randomWalk": -0.07561812861846792,
+    "forecast": 0.17082353612753912,
+    "actual": 0.23894835511493837,
+    "model": -0.06812481898739925,
+    "randomWalk": -0.038811477867682825,
     "band": {
-     "stress": 0.07608959815427249,
-     "bull": 0.15270056338428353,
-     "historicalPanic": 0.05841014463965456,
+     "stress": 0.11483859999791565,
+     "bull": 0.1914495652279267,
+     "historicalPanic": 0.09715914648329772,
      "position": "above"
     }
    },
@@ -4704,14 +4704,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.11096892867770011,
-    "actual": 0.25419912407395906,
-    "model": -0.14323019539625895,
-    "randomWalk": -0.09281124867034668,
+    "forecast": 0.14971793052134327,
+    "actual": 0.2562819866834909,
+    "model": -0.10656405616214762,
+    "randomWalk": -0.05614510943623535,
     "band": {
-     "stress": 0.07065977466437123,
-     "bull": 0.12581966962997915,
-     "historicalPanic": 0.05793056813384634,
+     "stress": 0.1094087765080144,
+     "bull": 0.1645686714736223,
+     "historicalPanic": 0.0966795699774895,
      "position": "above"
     },
     "provisional": {
@@ -4746,14 +4746,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.11577963358961897,
-    "actual": 0.12954716529404228,
-    "model": -0.013767531704423311,
-    "randomWalk": -0.010206736755841078,
+    "forecast": 0.1151843709849252,
+    "actual": 0.12798805717182485,
+    "model": -0.012803686186899643,
+    "randomWalk": -0.00924289123831741,
     "band": {
-     "stress": 0.08131528444962814,
-     "bull": 0.1306253544996941,
-     "historicalPanic": 0.06275920176792217,
+     "stress": 0.08072002184493438,
+     "bull": 0.1300300918950003,
+     "historicalPanic": 0.062163939163228404,
      "position": "within"
     }
    },
@@ -4795,14 +4795,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.11268174198435243,
-    "actual": 0.1342292565599454,
-    "model": -0.021547514575592952,
-    "randomWalk": -0.014888828021744183,
+    "forecast": 0.11208647937965867,
+    "actual": 0.13335400514644435,
+    "model": -0.021267525766785686,
+    "randomWalk": -0.014608839212936917,
     "band": {
-     "stress": 0.08269775823256041,
-     "bull": 0.12559751917611778,
-     "historicalPanic": 0.06655396629947623,
+     "stress": 0.08210249562786665,
+     "bull": 0.12500225657142403,
+     "historicalPanic": 0.06595870369478246,
      "position": "above"
     },
     "provisional": {
@@ -4837,14 +4837,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.1172148356978176,
-    "actual": 0.1160682957760003,
-    "model": 0.001146539921817305,
-    "randomWalk": -0.0012960753258125512,
+    "forecast": 0.11725689637889386,
+    "actual": 0.11593749626926188,
+    "model": 0.0013194001096319824,
+    "randomWalk": -0.0011232151379978739,
     "band": {
-     "stress": 0.0829079782878437,
-     "bull": 0.1323263114781797,
-     "historicalPanic": 0.06324527933938141,
+     "stress": 0.08295003896891996,
+     "bull": 0.13236837215925595,
+     "historicalPanic": 0.06328734002045767,
      "position": "within"
     }
    },
@@ -4886,14 +4886,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.11933991096325555,
-    "actual": 0.11912402169447699,
-    "model": 0.00021588926877856573,
-    "randomWalk": -0.004351801244289244,
+    "forecast": 0.11938197164433181,
+    "actual": 0.11897873023129261,
+    "model": 0.0004032414130391987,
+    "randomWalk": -0.004164449100028611,
     "band": {
-     "stress": 0.08949294501657827,
-     "bull": 0.13248689489217058,
-     "historicalPanic": 0.07238639693141607,
+     "stress": 0.08953500569765453,
+     "bull": 0.13252895557324684,
+     "historicalPanic": 0.07242845761249234,
      "position": "within"
     },
     "provisional": {
@@ -5026,14 +5026,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.15574108999074102,
-    "actual": 0.16419347687066604,
-    "model": -0.008452386879925028,
-    "randomWalk": -0.0058842667600825516,
+    "forecast": 0.15561646502220694,
+    "actual": 0.16396121138573255,
+    "model": -0.008344746363525612,
+    "randomWalk": -0.005776626243683136,
     "band": {
-     "stress": 0.10975572065499904,
-     "bull": 0.1753822253678649,
-     "historicalPanic": 0.08559417792958421,
+     "stress": 0.10963109568646497,
+     "bull": 0.17525760039933083,
+     "historicalPanic": 0.08546955296105013,
      "position": "within"
     }
    },
@@ -5075,14 +5075,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.15350682548647807,
-    "actual": 0.1467579195203441,
-    "model": 0.006748905966133978,
-    "randomWalk": 0.011551290590239405,
+    "forecast": 0.153382200517944,
+    "actual": 0.14658636605252445,
+    "model": 0.006795834465419537,
+    "randomWalk": 0.011598219089524964,
     "band": {
-     "stress": 0.11349955416438254,
-     "bull": 0.17059461326457584,
-     "historicalPanic": 0.09247901199327165,
+     "stress": 0.11337492919584846,
+     "bull": 0.17046998829604176,
+     "historicalPanic": 0.09235438702473757,
      "position": "within"
     },
     "provisional": {
@@ -5163,14 +5163,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.23794642051728027,
-    "actual": 0.24232604146537287,
-    "model": -0.004379620948092605,
-    "randomWalk": -0.0022962916842320935,
+    "forecast": 0.2393776104315702,
+    "actual": 0.24701853042957844,
+    "model": -0.007640919998008255,
+    "randomWalk": -0.005557590734147744,
     "band": {
-     "stress": 0.172625306606869,
-     "bull": 0.2650844333682798,
-     "historicalPanic": 0.1410249460494246,
+     "stress": 0.17405649652115893,
+     "bull": 0.2665156232825697,
+     "historicalPanic": 0.1424561359637145,
      "position": "within"
     }
    },
@@ -5212,14 +5212,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.23634225698410763,
-    "actual": 0.21052474357465484,
-    "model": 0.02581751340945279,
-    "randomWalk": 0.02950500620648594,
+    "forecast": 0.23777344689839755,
+    "actual": 0.21640491226728767,
+    "model": 0.02136853463110988,
+    "randomWalk": 0.02505602742814303,
     "band": {
-     "stress": 0.18604499927309096,
-     "bull": 0.2572385268793773,
-     "historicalPanic": 0.16171272164385878,
+     "stress": 0.18747618918738088,
+     "bull": 0.25866971679366724,
+     "historicalPanic": 0.1631439115581487,
      "position": "within"
     },
     "provisional": {
@@ -5268,14 +5268,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.06523437756924967,
-    "actual": 0.06134894928221886,
-    "model": 0.003885428287030812,
-    "randomWalk": 0.008651741766522184,
+    "forecast": 0.06672569179839938,
+    "actual": 0.06282729108220804,
+    "model": 0.0038984007161913387,
+    "randomWalk": 0.00866471419568271,
     "band": {
-     "stress": 0.03949694680494387,
-     "bull": 0.0760349707888956,
-     "historicalPanic": 0.02666083035622848,
+     "stress": 0.04098826103409357,
+     "bull": 0.0775262850180453,
+     "historicalPanic": 0.028152144585378187,
      "position": "within"
     }
    },
@@ -5317,14 +5317,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.061278337381271836,
-    "actual": 0.03776869616833037,
-    "model": 0.023509641212941468,
-    "randomWalk": 0.032231994880410675,
+    "forecast": 0.06276965161042154,
+    "actual": 0.04009606672359713,
+    "model": 0.02267358488682441,
+    "randomWalk": 0.031395938554293616,
     "band": {
-     "stress": 0.039916269846898014,
-     "bull": 0.07024282975357796,
-     "historicalPanic": 0.029262293194464245,
+     "stress": 0.04140758407604772,
+     "bull": 0.07173414398272766,
+     "historicalPanic": 0.03075360742361395,
      "position": "below"
     },
     "provisional": {
@@ -5366,14 +5366,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.15164841345373278,
-    "actual": 0.1771891438908302,
-    "model": -0.025540730437097425,
-    "randomWalk": -0.023542297717010274,
+    "forecast": 0.1647676384262373,
+    "actual": 0.19247374861001132,
+    "model": -0.02770611018377403,
+    "randomWalk": -0.02570767746368688,
     "band": {
-     "stress": 0.10421923526280082,
-     "bull": 0.17139363409735528,
-     "historicalPanic": 0.08112976829793819,
+     "stress": 0.11733846023530532,
+     "bull": 0.18451285906985979,
+     "historicalPanic": 0.0942489932704427,
      "position": "above"
     }
    },
@@ -5415,14 +5415,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.15002968295046218,
-    "actual": 0.1837338428715472,
-    "model": -0.033704159921085025,
-    "randomWalk": -0.03008699669772727,
+    "forecast": 0.16314890792296668,
+    "actual": 0.20098658632399594,
+    "model": -0.03783767840102925,
+    "randomWalk": -0.034220515177671496,
     "band": {
-     "stress": 0.11161204861580731,
-     "bull": 0.16602331167179638,
-     "historicalPanic": 0.09290958037426855,
+     "stress": 0.12473127358831182,
+     "bull": 0.17914253664430088,
+     "historicalPanic": 0.10602880534677306,
      "position": "above"
     },
     "provisional": {
@@ -5457,14 +5457,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.46324567815803513,
-    "actual": 0.4636899417048428,
-    "model": -0.000444263546807655,
-    "randomWalk": 0.0009642913525120256,
+    "forecast": 0.4606622226557581,
+    "actual": 0.460858101931253,
+    "model": -0.00019587927549485906,
+    "randomWalk": 0.0012126756238248215,
     "band": {
-     "stress": 0.33752386246898625,
-     "bull": 0.5141187882340834,
-     "historicalPanic": 0.28155599931500547,
+     "stress": 0.33494040696670924,
+     "bull": 0.5115353327318064,
+     "historicalPanic": 0.27897254381272846,
      "position": "within"
     }
    },
@@ -5506,14 +5506,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.46217517643455214,
-    "actual": 0.4558786969079141,
-    "model": 0.0062964795266380325,
-    "randomWalk": 0.00877553614944071,
+    "forecast": 0.4595917209322751,
+    "actual": 0.4575406838056002,
+    "model": 0.002051037126674926,
+    "randomWalk": 0.004530093749477604,
     "band": {
-     "stress": 0.366626596510875,
-     "bull": 0.5008387400923489,
-     "historicalPanic": 0.3240910205138496,
+     "stress": 0.36404314100859797,
+     "bull": 0.4982552845900718,
+     "historicalPanic": 0.32150756501157257,
      "position": "within"
     },
     "provisional": {
@@ -5548,14 +5548,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.08769151099973363,
-    "actual": 0.08903951205599943,
-    "model": -0.001348001056265799,
-    "randomWalk": -0.00032645680557406853,
+    "forecast": 0.08824021964770835,
+    "actual": 0.08917524870621292,
+    "model": -0.0009350290585045662,
+    "randomWalk": 0.0000865151921871643,
     "band": {
-     "stress": 0.06258611267734085,
-     "bull": 0.09817222062170834,
-     "historicalPanic": 0.0502604052069668,
+     "stress": 0.06313482132531557,
+     "bull": 0.09872092926968307,
+     "historicalPanic": 0.05080911385494152,
      "position": "within"
     }
    },
@@ -5597,14 +5597,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.08686406015667333,
-    "actual": 0.06917114367573099,
-    "model": 0.017692916480942344,
-    "randomWalk": 0.01954191157469437,
+    "forecast": 0.08741276880464806,
+    "actual": 0.06954324022677019,
+    "model": 0.017869528577877866,
+    "randomWalk": 0.019718523671629892,
     "band": {
-     "stress": 0.06652868751553519,
-     "bull": 0.09535343495047285,
-     "historicalPanic": 0.056544864464532205,
+     "stress": 0.06707739616350991,
+     "bull": 0.09590214359844758,
+     "historicalPanic": 0.05709357311250693,
      "position": "within"
     },
     "provisional": {
@@ -5639,14 +5639,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.1911980200905779,
-    "actual": 0.1935559069543286,
-    "model": -0.0023578868637506856,
-    "randomWalk": -0.0007564503109971921,
+    "forecast": 0.1909105984471517,
+    "actual": 0.19260509652545266,
+    "model": -0.0016944980783009655,
+    "randomWalk": -0.00009306152554747205,
     "band": {
-     "stress": 0.132163850609944,
-     "bull": 0.2160840561434829,
-     "historicalPanic": 0.10231931990163146,
+     "stress": 0.1318764289665178,
+     "bull": 0.21579663450005668,
+     "historicalPanic": 0.10203189825820524,
      "position": "within"
     }
    },
@@ -5688,14 +5688,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.18983679902073744,
-    "actual": 0.17563736452706238,
-    "model": 0.014199434493675056,
-    "randomWalk": 0.017162092116269012,
+    "forecast": 0.18954937737731123,
+    "actual": 0.17480971618825636,
+    "model": 0.01473966118905487,
+    "randomWalk": 0.017702318811648826,
     "band": {
-     "stress": 0.13965775496219862,
-     "bull": 0.21098992966570665,
-     "historicalPanic": 0.11428990386013294,
+     "stress": 0.1393703333187724,
+     "bull": 0.21070250802228044,
+     "historicalPanic": 0.11400248221670672,
      "position": "within"
     },
     "provisional": {
@@ -5730,14 +5730,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.039593395701558766,
-    "actual": 0.06504789025187348,
-    "model": -0.02545449455031471,
-    "randomWalk": -0.028611265642775607,
+    "forecast": 0.04046649814739413,
+    "actual": 0.06685546676969827,
+    "model": -0.026388968622304138,
+    "randomWalk": -0.029545739714765033,
     "band": {
-     "stress": 0.029142612810108215,
-     "bull": 0.04361168672322589,
-     "historicalPanic": 0.02524235633846185,
+     "stress": 0.030015715255943577,
+     "bull": 0.044484789169061255,
+     "historicalPanic": 0.02611545878429721,
      "position": "above"
     }
    },
@@ -5779,14 +5779,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.041866270888130594,
-    "actual": 0.06482784430292785,
-    "model": -0.02296157341479725,
-    "randomWalk": -0.028391219693829975,
+    "forecast": 0.042739373333965956,
+    "actual": 0.06672511540789017,
+    "model": -0.02398574207392421,
+    "randomWalk": -0.029415388352956935,
     "band": {
-     "stress": 0.0343417072062862,
-     "bull": 0.04475944042373093,
-     "historicalPanic": 0.031533522546700825,
+     "stress": 0.035214809652121565,
+     "bull": 0.04563254286956629,
+     "historicalPanic": 0.03240662499253619,
      "position": "above"
     },
     "provisional": {
@@ -5867,14 +5867,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.062037241306139475,
-    "actual": 0.06411842614283565,
-    "model": -0.0020811848366961774,
-    "randomWalk": -0.0032542186456195263,
+    "forecast": 0.06205423232679538,
+    "actual": 0.06413015475651912,
+    "model": -0.0020759224297237366,
+    "randomWalk": -0.0032489562386470855,
     "band": {
-     "stress": 0.043277750372187895,
-     "bull": 0.06894863270285848,
-     "historicalPanic": 0.037353700603571606,
+     "stress": 0.043294741392843804,
+     "bull": 0.06896562372351438,
+     "historicalPanic": 0.037370691624227514,
      "position": "within"
     }
    },
@@ -5916,14 +5916,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.06295220767709969,
-    "actual": 0.08088699823932106,
-    "model": -0.017934790562221373,
-    "randomWalk": -0.02002279074210494,
+    "forecast": 0.0629691986977556,
+    "actual": 0.08099452137873836,
+    "model": -0.018025322680982767,
+    "randomWalk": -0.020113322860866326,
     "band": {
-     "stress": 0.048319804748617454,
-     "bull": 0.06834309296654051,
-     "historicalPanic": 0.04369904592909674,
+     "stress": 0.04833679576927336,
+     "bull": 0.06836008398719641,
+     "historicalPanic": 0.04371603694975265,
      "position": "above"
     },
     "provisional": {
@@ -5958,14 +5958,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2026-03-31",
     "horizon": 1,
-    "forecast": 0.0947401819438404,
-    "actual": 0.1048263269935336,
-    "model": -0.010086145049693199,
-    "randomWalk": -0.014564968821684302,
+    "forecast": 0.09459735707310737,
+    "actual": 0.10464161112480856,
+    "model": -0.010044254051701187,
+    "randomWalk": -0.01452307782369229,
     "band": {
-     "stress": 0.07049355784126608,
-     "bull": 0.10464642177750244,
-     "historicalPanic": 0.05936075396647601,
+     "stress": 0.07035073297053306,
+     "bull": 0.10450359690676941,
+     "historicalPanic": 0.059217929095742985,
      "position": "above"
     }
    },
@@ -6007,14 +6007,14 @@
     "metric": "core-margin-point-error",
     "periodEnd": "2027-03-31",
     "horizon": 2,
-    "forecast": 0.09818887624827355,
-    "actual": 0.10725428953822728,
-    "model": -0.009065413289953736,
-    "randomWalk": -0.016992931366377986,
+    "forecast": 0.09804605137754052,
+    "actual": 0.1073042079172003,
+    "model": -0.009258156539659779,
+    "randomWalk": -0.01718567461608403,
     "band": {
-     "stress": 0.07951897568929134,
-     "bull": 0.10581668092019333,
-     "historicalPanic": 0.07094671670570299,
+     "stress": 0.07937615081855831,
+     "bull": 0.10567385604946031,
+     "historicalPanic": 0.07080389183496996,
      "position": "above"
     },
     "provisional": {

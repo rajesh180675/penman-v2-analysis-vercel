@@ -27,7 +27,8 @@
     "sharesOutstandingCr": 62.40845,
     "expenses": 13898.9277,
     "taxExpense": 415.7933,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 18.477
    }
   },
   {
@@ -55,7 +56,8 @@
     "sharesOutstandingCr": 62.408,
     "expenses": 18630.93,
     "taxExpense": 519.48,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 0
    }
   },
   {
@@ -83,7 +85,8 @@
     "sharesOutstandingCr": 64.777,
     "expenses": 23185.42,
     "taxExpense": 443.79,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 0
    }
   },
   {
@@ -111,7 +114,8 @@
     "sharesOutstandingCr": 64.777,
     "expenses": 22855.82,
     "taxExpense": 384.02,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 0
    }
   },
   {
@@ -139,7 +143,8 @@
     "sharesOutstandingCr": 64.7775,
     "expenses": 29029.64,
     "taxExpense": 571.72,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 0
    }
   },
   {
@@ -167,7 +172,8 @@
     "sharesOutstandingCr": 64.826,
     "expenses": 39908.81,
     "taxExpense": 681.75,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 0
    }
   },
   {
@@ -195,7 +201,8 @@
     "sharesOutstandingCr": 65.073,
     "expenses": 47473.95,
     "taxExpense": 925.72,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 0
    }
   },
   {
@@ -223,7 +230,8 @@
     "sharesOutstandingCr": 65.073,
     "expenses": 55809.69,
     "taxExpense": 965.22,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 0
    }
   },
   {
@@ -251,7 +259,8 @@
     "sharesOutstandingCr": 65.196,
     "expenses": 64813.22,
     "taxExpense": 1111.76,
-    "regulatoryDeferralMovement": 0
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 0
    }
   }
  ]

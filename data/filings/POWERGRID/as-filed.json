@@ -27,7 +27,8 @@
     "sharesOutstandingCr": 523.159,
     "expenses": 20391.92,
     "taxExpense": 2195.48,
-    "regulatoryDeferralMovement": 207.23
+    "regulatoryDeferralMovement": 207.23,
+    "associatesShare": 147.94
    }
   },
   {
@@ -55,7 +56,8 @@
     "sharesOutstandingCr": 523.159,
     "expenses": 24116.1,
     "taxExpense": -886.35,
-    "regulatoryDeferralMovement": -2526.87
+    "regulatoryDeferralMovement": -2526.87,
+    "associatesShare": 128.82
    }
   },
   {
@@ -83,7 +85,8 @@
     "sharesOutstandingCr": 523.159,
     "expenses": 25919.34,
     "taxExpense": 3530.75,
-    "regulatoryDeferralMovement": 1683.4
+    "regulatoryDeferralMovement": 1683.4,
+    "associatesShare": 155.13
    }
   },
   {
@@ -111,7 +114,8 @@
     "sharesOutstandingCr": 523.159,
     "expenses": 24820.56,
     "taxExpense": 3464.25,
-    "regulatoryDeferralMovement": 361.68
+    "regulatoryDeferralMovement": 361.68,
+    "associatesShare": 214.7
    }
   },
   {
@@ -139,7 +143,8 @@
     "sharesOutstandingCr": 697.545,
     "expenses": 25957.32,
     "taxExpense": 2785.57,
-    "regulatoryDeferralMovement": -529.74
+    "regulatoryDeferralMovement": -529.74,
+    "associatesShare": 78.47
    }
   },
   {
@@ -167,7 +172,8 @@
     "sharesOutstandingCr": 697.545,
     "expenses": 29070.47,
     "taxExpense": 2284.5,
-    "regulatoryDeferralMovement": 248.57
+    "regulatoryDeferralMovement": 248.57,
+    "associatesShare": -82.12
    }
   },
   {
@@ -195,7 +201,8 @@
     "sharesOutstandingCr": 930.06,
     "expenses": 27808.23,
     "taxExpense": 2940.79,
-    "regulatoryDeferralMovement": -571.39
+    "regulatoryDeferralMovement": -571.39,
+    "associatesShare": -19.55
    }
   },
   {
@@ -223,7 +230,8 @@
     "sharesOutstandingCr": 930.06,
     "expenses": 28331.23,
     "taxExpense": 3772.76,
-    "regulatoryDeferralMovement": 276.31
+    "regulatoryDeferralMovement": 276.31,
+    "associatesShare": -110.26
    }
   },
   {
@@ -251,7 +259,8 @@
     "sharesOutstandingCr": 930.06,
     "expenses": 30231.06,
     "taxExpense": -1381.31,
-    "regulatoryDeferralMovement": -2774.39
+    "regulatoryDeferralMovement": -2774.39,
+    "associatesShare": -132.34
    }
   }
  ]

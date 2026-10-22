@@ -182,6 +182,14 @@ export type AnnualHeadline = { -readonly [K in keyof typeof ANNUAL_HEADLINE_CONC
   expenses?: number | null;
   taxExpense?: number | null;
   regulatoryDeferralMovement?: number | null;
+  /**
+   * The share of associates' and joint ventures' profit, filed after tax,
+   * below profit before tax (Airtel FY2025: ₹3,703 Cr of Indus Towers before
+   * it became a subsidiary). Capitaline files it inside PBT, so core operating
+   * income counts it there too. Null where not filed; absent on records
+   * extracted before it was read.
+   */
+  associatesShare?: number | null;
 };
 
 const INSTANT_FIELDS = new Set<keyof AnnualHeadline>(["totalAssets", "totalEquity", "equityAttributableToOwners"]);
@@ -218,6 +226,7 @@ export function extractAnnualHeadline(
   headline.expenses = read("Expenses", duration);
   headline.taxExpense = read("TaxExpense", duration);
   headline.regulatoryDeferralMovement = read("NetMovementInRegulatoryDeferralAccountBalancesRelatedToProfitOrLossAndTheRelatedDeferredTaxMovement", duration);
+  headline.associatesShare = read("ShareOfProfitLossOfAssociatesAndJointVenturesAccountedForUsingEquityMethod", duration);
   return { headline, method };
 }
 
