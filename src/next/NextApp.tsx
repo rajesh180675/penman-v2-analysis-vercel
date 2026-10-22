@@ -99,7 +99,7 @@ export function NextApp() {
         {(route.space === "record" || route.space === "lab") && (
           registry.status === "ready"
             // A company's tools read the same run as its Case (one per session).
-            ? <ToolsPage route={route} companies={companies} company={company} run={run} sessionRegistry={sessionRegistry()} />
+            ? <ToolsPage route={route} companies={companies} company={company} run={run} sessionRegistry={sessionRegistry()} snapshots={snapshots} tieOut={tieOut} />
             : <LibraryPage registry={registry} />
         )}
       </main>

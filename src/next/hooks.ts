@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { parseLibraryCompanyRegistry, type LibraryCompany } from "../components/data-entry/companyRegistry";
-import type { CompanyTrackRecord, FiledYear, FiledYearToDate } from "../engine/accountability";
+import type { CompanyTrackRecord, FiledYear, FiledYearToDate, ForecastSnapshot, ForecastSnapshotBasis, FrozenToScore } from "../engine/accountability";
 import type { TieOutRow } from "../engine/filings";
 import { CompanyRunCache, type CompanyRunState } from "./companyRun";
 import type { FrozenForecast } from "./ui/MarginFadeChart";
@@ -133,12 +133,12 @@ export function usePeerRuns(
 }
 
 /** A forecast frozen on the day it was made (accountability/snapshots/, published for the browser). */
-export interface FrozenSnapshot extends FrozenForecast {
-  readonly ticker: string;
+export interface FrozenSnapshot extends FrozenForecast, FrozenToScore {
   readonly assumptions: { readonly ke: number; readonly kw: number; readonly g: number };
   readonly intrinsicPerShare: number | null;
-  readonly years: readonly (FrozenForecast["years"][number] & { readonly noa: number })[];
-  readonly basis?: { readonly accounts?: "consolidated" | "standalone"; readonly lendingArm: string | null };
+  readonly years: ForecastSnapshot["years"];
+  /** Absent on v1 snapshots. */
+  readonly basis?: ForecastSnapshotBasis;
 }
 
 let snapshotsRequest: Promise<readonly FrozenSnapshot[] | null> | null = null;

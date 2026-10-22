@@ -15,7 +15,18 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { firstFiledYears, firstFiledYearsToDate, scoreSnapshotAgainstFilings, type FiledScore, type FiledYear, type FiledYearToDate, type ForecastSnapshot } from "../../src/engine/accountability";
+import {
+  firstFiledYears,
+  firstFiledYearsToDate,
+  scoreFrozenForecasts,
+  scoresBySet,
+  summarizeBands,
+  summarizeScores,
+  type FiledScore,
+  type FiledYear,
+  type FiledYearToDate,
+  type ForecastSnapshot,
+} from "../../src/engine/accountability";
 import type { AsFiledHeadlineRecord } from "../../src/engine/filings";
 import type { AsFiledYearToDateRecord } from "../filings/fetch-nse-year-to-date";
 
@@ -42,60 +53,30 @@ function filedYearsToDate(ticker: string): FiledYearToDate[] {
 const sets = readdirSync(SNAPSHOTS).sort();
 const load = (madeAt: string) => readdirSync(join(SNAPSHOTS, madeAt)).filter((f) => f.endsWith(".json")).sort()
   .map((f) => JSON.parse(readFileSync(join(SNAPSHOTS, madeAt, f), "utf8")) as Snapshot);
-// v1 snapshots do not record their accounts; the rule that chose them is the
-// one v2 snapshots record (standalone where consolidated history is short).
-const accountsByTicker = new Map<string, string>();
-for (const madeAt of sets) {
-  for (const s of load(madeAt)) if (s.basis?.accounts) accountsByTicker.set(s.ticker, s.basis.accounts);
-}
 
-interface Scored { madeAt: string; ticker: string; cutoff: string; scores: FiledScore[]; skipped: string | null }
-const results: Scored[] = [];
-for (const madeAt of sets) {
-  for (const snapshot of load(madeAt)) {
-    const filings = filedYears(snapshot.ticker);
-    let outcome: { scores: FiledScore[]; skipped: string | null };
-    if (!filings) outcome = { scores: [], skipped: "no as-filed ledger" };
-    else if (!snapshot.basis && accountsByTicker.get(snapshot.ticker) === "standalone") outcome = { scores: [], skipped: "a forecast on standalone accounts; the ledger is consolidated" };
-    else outcome = scoreSnapshotAgainstFilings(snapshot, filings, filedYearsToDate(snapshot.ticker));
-    results.push({ madeAt, ticker: snapshot.ticker, cutoff: snapshot.cutoffPeriod, ...outcome });
-  }
-}
+const results = scoreFrozenForecasts(sets.flatMap(load), (ticker) => {
+  const years = filedYears(ticker);
+  return years ? { years, yearsToDate: filedYearsToDate(ticker) } : null;
+});
 writeFileSync(join(ROOT, "accountability", "frozen-scores.json"), JSON.stringify(results, null, 1) + "\n");
 
-const median = (xs: number[]) => {
-  const s = [...xs].sort((a, b) => a - b);
-  return s.length ? (s.length % 2 ? s[(s.length - 1) / 2]! : (s[s.length / 2 - 1]! + s[s.length / 2]!) / 2) : NaN;
-};
 const pct = (x: number, d = 1) => (Number.isFinite(x) ? `${(x * 100).toFixed(d)}` : "—");
 const signed = (x: number, d = 1) => (Number.isFinite(x) ? `${x >= 0 ? "+" : ""}${(x * 100).toFixed(d)}` : "—");
 const LABEL = { "sales-log-error": "Sales (log error, %)", "core-margin-point-error": "Core margin (points of sales)", "cni-roe-point-error": "Earnings (ROE points)" } as const;
 
-const METRICS = ["sales-log-error", "core-margin-point-error", "cni-roe-point-error"] as const;
-
-function summary(scores: FiledScore[], metrics: readonly FiledScore["metric"][] = METRICS) {
-  return metrics.map((metric) => {
-    const xs = scores.filter((s) => s.metric === metric);
-    const model = median(xs.map((s) => Math.abs(s.model)));
-    const rw = median(xs.map((s) => Math.abs(s.randomWalk)));
-    const bias = xs.length ? xs.reduce((a, s) => a + s.model, 0) / xs.length : NaN;
-    const wins = xs.filter((s) => Math.abs(s.model) < Math.abs(s.randomWalk)).length;
-    const skill = 1 - model / rw;
-    return `| ${LABEL[metric]} | ${xs.length} | ${pct(model)} | ${pct(rw)} | ${Number.isFinite(skill) ? `${signed(skill, 0)}%` : "—"} | ${signed(bias)} | ${wins} of ${xs.length} |`;
-  }).join("\n");
+function summary(scores: FiledScore[], metrics?: readonly FiledScore["metric"][]) {
+  return summarizeScores(scores, metrics).map((s) =>
+    `| ${LABEL[s.metric]} | ${s.n} | ${pct(s.model)} | ${pct(s.randomWalk)} | ${Number.isFinite(s.skill) ? `${signed(s.skill, 0)}%` : "—"} | ${signed(s.bias)} | ${s.closer} of ${s.n} |`).join("\n");
 }
 
 const MEASURE = { "sales-log-error": "Sales", "core-margin-point-error": "Core margin", "cni-roe-point-error": "Earnings" } as const;
 
 /** Where the filed figures fell against the frozen stress and bull cases, for forecasts that record them. */
-function bands(scores: FiledScore[], metrics: readonly FiledScore["metric"][] = METRICS) {
-  const banded = scores.filter((s) => s.band);
-  if (!banded.length) return "";
-  const rows = metrics.map((metric) => {
-    const xs = banded.filter((s) => s.metric === metric);
-    const share = (test: (s: FiledScore) => boolean) => (xs.length ? `${Math.round((xs.filter(test).length / xs.length) * 100)}%` : "—");
-    return `| ${MEASURE[metric]} | ${xs.length} | ${share((s) => s.band!.position === "below")} | ${share((s) => s.band!.position === "within")} | ${share((s) => s.band!.position === "above")} | ${share((s) => s.actual < s.band!.historicalPanic)} |`;
-  });
+function bands(scores: FiledScore[], metrics?: readonly FiledScore["metric"][]) {
+  const shares = summarizeBands(scores, metrics);
+  if (!shares) return "";
+  const share = (x: number) => (Number.isFinite(x) ? `${Math.round(x * 100)}%` : "—");
+  const rows = shares.map((b) => `| ${MEASURE[b.metric]} | ${b.n} | ${share(b.below)} | ${share(b.within)} | ${share(b.above)} | ${share(b.belowPanic)} |`);
   return `\n\nAgainst the frozen scenario cases:\n\n| Measure | n | Below stress | Between | Above bull | Below panic |\n|---|---|---|---|---|---|\n${rows.join("\n")}`;
 }
 
@@ -121,15 +102,11 @@ Not scored:
 
 ## By frozen set
 
-${sets.map((madeAt) => {
-    const rows = results.filter((r) => r.madeAt === madeAt);
-    const final = rows.flatMap((r) => r.scores.filter((s) => !s.provisional));
-    const provisional = rows.flatMap((r) => r.scores.filter((s) => s.provisional));
-    const scored = rows.filter((r) => r.scores.some((s) => !s.provisional));
+${scoresBySet(results).map(({ madeAt, forecasts, scored, final, provisional, provisionalMonths }) => {
     const inProgress = provisional.length
-      ? `\n\nThe year in progress, projected from the months filed so far (provisional; ${new Set(provisional.map((s) => `${s.periodEnd}:${s.provisional!.months}`)).size > 1 ? "months filed differ by company" : `${provisional[0]!.provisional!.months} months`}):\n\n${header}\n${summary(provisional, ["sales-log-error", "core-margin-point-error"])}${bands(provisional, ["sales-log-error", "core-margin-point-error"])}`
+      ? `\n\nThe year in progress, projected from the months filed so far (provisional; ${provisionalMonths == null ? "months filed differ by company" : `${provisionalMonths} months`}):\n\n${header}\n${summary(provisional, ["sales-log-error", "core-margin-point-error"])}${bands(provisional, ["sales-log-error", "core-margin-point-error"])}`
       : "";
-    return `### Frozen ${madeAt} (${scored.length} of ${rows.length} forecasts scored)\n\n${header}\n${summary(final)}${bands(final)}${inProgress}`;
+    return `### Frozen ${madeAt} (${scored} of ${forecasts} forecasts scored)\n\n${header}\n${summary(final)}${bands(final)}${inProgress}`;
   }).join("\n\n")}
 
 ## Frozen ${latest}, by company

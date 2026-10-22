@@ -12,6 +12,18 @@ export {
 export { estimatePanelPersistence, priorFor, type PersistenceEstimate, type RnoaSeries } from "./persistence";
 export { compareSnapshots, yearOneDrivers, type ComparedSnapshot, type SnapshotChange } from "./snapshotChanges";
 export {
+  SCORED_METRICS,
+  scoreFrozenForecasts,
+  scoresBySet,
+  summarizeBands,
+  summarizeScores,
+  type BandShares,
+  type FrozenScore,
+  type FrozenSetScores,
+  type FrozenToScore,
+  type ScoreSummary,
+} from "./frozenScores";
+export {
   anchorYear,
   buildForecastSnapshot,
   firstFiledYears,
