@@ -10,6 +10,7 @@ import type { LibraryCompany } from "../components/data-entry/companyRegistry";
 import type { CompanyRegistry } from "../engine/types";
 import type { CompanyRunState } from "./companyRun";
 import type { FrozenSnapshot, TieOutCompany } from "./hooks";
+import { RecordChanges } from "./RecordChanges";
 import { RecordScores } from "./RecordScores";
 import { toolsIn } from "./legacyTools";
 import { formatRoute, type Route } from "./route";
@@ -21,7 +22,7 @@ const ToolPanel = lazy(() => import("./ToolPanel").then((m) => ({ default: m.Too
 const NEEDS_DATA = new Set<TabId>(TABS.filter((t) => t.needsData).map((t) => t.id));
 
 const SPACE = {
-  record: { title: "Record", intro: "Frozen forecasts scored against what was filed since, and a company's thesis, reports and exports." },
+  record: { title: "Record", intro: "Frozen forecasts scored against what was filed since, what moved in them from set to set, and a company's thesis, reports and exports." },
   lab: { title: "Lab", intro: "Diagnostic and research tools." },
 } as const;
 
@@ -100,7 +101,12 @@ export function ToolsPage({
         </ul>
       </nav>
 
-      {kind === "record" && !tool && <RecordScores snapshots={snapshots} tieOut={tieOut} />}
+      {kind === "record" && !tool && (
+        <>
+          <RecordScores snapshots={snapshots} tieOut={tieOut} />
+          <RecordChanges snapshots={snapshots} />
+        </>
+      )}
 
       {tool && (
         <section aria-label={tool.label} className="border-t border-slate-200 pt-4 dark:border-slate-700">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareSnapshots, type ForecastSnapshot } from "..";
+import { anchorOrBasis, compareSnapshots, compareSnapshotSets, type ForecastSnapshot } from "..";
 
 const snapshot = (over: Partial<ForecastSnapshot> & { ticker: string; madeAt: string }): ForecastSnapshot => ({
   schemaVersion: "2026-10-forecast-snapshot-v4",
@@ -48,5 +48,34 @@ describe("compareSnapshots", () => {
     );
     expect(changes.map((c) => c.ticker)).toEqual(["GRASIM"]);
     expect(changes[0]!.valueChange).toBeCloseTo((721 + 708) / 708, 10);
+  });
+});
+
+describe("compareSnapshotSets", () => {
+  it("lists a move of 0.5% or more, an uncompared value or a change of anchor, largest first, and counts the rest", () => {
+    const set = (madeAt: string, values: Record<string, number | null>, cutoff: Record<string, string> = {}) =>
+      Object.entries(values).map(([ticker, intrinsicPerShare]) => snapshot({ ticker, madeAt, intrinsicPerShare, cutoffPeriod: cutoff[ticker] ?? "2025-03-31" }));
+    const [pair] = compareSnapshotSets([
+      ...set("2026-10-19", { A: 100, B: 100, C: 100, D: 100, E: 100, F: 100 }),
+      ...set("2026-10-20", { A: 100.4, B: 100.6, C: 90, D: null, E: 100, G: 50 }, { E: "2026-03-31" }),
+    ]);
+    expect(pair).toMatchObject({ from: "2026-10-19", to: "2026-10-20", compared: 5, added: ["G"], dropped: ["F"], unrecordedBasis: [] });
+    expect(pair!.listed.map((c) => c.ticker)).toEqual(["C", "B", "D", "E"]);
+    expect(anchorOrBasis(pair!.listed.find((c) => c.ticker === "E")!)).toBe("anchor 2025-03 → 2026-03");
+    expect(anchorOrBasis(pair!.listed.find((c) => c.ticker === "C")!)).toBe("same");
+  });
+
+  it("compares consecutive sets only, and where a set records no basis says the anchor is the same, not the basis", () => {
+    const v1 = (madeAt: string, ticker = "TCS") => {
+      const { basis: _basis, ...rest } = snapshot({ ticker, madeAt });
+      return rest as ForecastSnapshot;
+    };
+    // Set c is mixed: a snapshot in it without a basis is enough for a change of basis not to show.
+    const pairs = compareSnapshotSets([snapshot({ ticker: "TCS", madeAt: "c", intrinsicPerShare: 600 }), v1("a"), v1("b"), v1("c", "INFY")]);
+    expect(pairs.map((p) => `${p.from}→${p.to}`)).toEqual(["a→b", "b→c"]);
+    expect(pairs.map((p) => p.unrecordedBasis)).toEqual([["a", "b"], ["b", "c"]]);
+    expect(pairs[1]!.added).toEqual(["INFY"]);
+    expect(pairs[1]!.listed.map(anchorOrBasis)).toEqual(["same anchor"]);
+    expect(compareSnapshotSets([v1("a")])).toEqual([]);
   });
 });

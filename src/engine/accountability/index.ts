@@ -10,7 +10,18 @@ export {
   type ScenarioBandSummary,
 } from "./scenarioBands";
 export { estimatePanelPersistence, priorFor, type PersistenceEstimate, type RnoaSeries } from "./persistence";
-export { compareSnapshots, yearOneDrivers, type ComparedSnapshot, type SnapshotChange } from "./snapshotChanges";
+export {
+  anchorOrBasis,
+  compareSnapshots,
+  compareSnapshotSets,
+  LISTED_VALUE_CHANGE,
+  SNAPSHOT_CHANGE_COLUMNS,
+  snapshotChangeCells,
+  yearOneDrivers,
+  type ComparedSnapshot,
+  type SnapshotChange,
+  type SnapshotSetChanges,
+} from "./snapshotChanges";
 export {
   SCORED_METRICS,
   scoreFrozenForecasts,

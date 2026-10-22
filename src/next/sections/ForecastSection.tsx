@@ -6,7 +6,7 @@
  */
 import { useMemo, useState } from "react";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
-import { anchorYear, compareSnapshots, forecastYears, scoreSnapshotAgainstFilings, yearOneDrivers, type CompanyTrackRecord, type ComparedSnapshot, type FiledScore, type FiledYear, type FiledYearToDate, type ForecastToScore, type SnapshotScenarios } from "../../engine/accountability";
+import { anchorOrBasis, anchorYear, compareSnapshots, forecastYears, scoreSnapshotAgainstFilings, yearOneDrivers, type CompanyTrackRecord, type ComparedSnapshot, type FiledScore, type FiledYear, type FiledYearToDate, type ForecastToScore, type SnapshotScenarios } from "../../engine/accountability";
 import { buildScenario } from "../../engine/forecastingEngine";
 import { formatPerShare } from "../../engine/valuationCommandCenter";
 import { revalueBase, type BaseCaseShifts } from "../../engine/valuationCommandCenter/breakEven";
@@ -371,7 +371,7 @@ function FrozenValues({ sets, setsMade, current, atLatestRates }: {
               <td className="py-1">{percent(s.assumptions.g)}</td>
               <td className="py-1">{drivers.margin != null ? percent(drivers.margin) : "—"}</td>
               <td className="py-1">{drivers.turnover != null ? `${drivers.turnover.toFixed(2)}×` : "—"}</td>
-              <td className="py-1 text-left">{change ? change.basisChange ?? "same" : "—"}</td>
+              <td className="py-1 text-left">{change ? anchorOrBasis(change) : "—"}</td>
             </tr>
           ))}
         </tbody>

@@ -143,6 +143,9 @@ describe("Forecast section", () => {
       `${percent(first.OI_f / first.Sales_f)} ${(first.Sales_f / first.NOA_f).toFixed(2)}× same`,
     );
     expect(html.indexOf("2026-10-11 ")).toBeLessThan(html.indexOf("2026-10-19 "));
+    // A set before schema v2 records no basis: only its anchor is known to be the same.
+    const v1 = sets.map(({ basis: _basis, ...s }) => s);
+    expect(text(renderToStaticMarkup(<ForecastSection result={resultFor(cc)} frozenSets={v1} setsMade={3} />))).toMatch(/× same anchor/);
 
     // The move from the latest set, split by re-valuing this run at its ke and terminal growth.
     const shift = { ke: 0.12 - card.assumptions.ke, g: 0.045 - card.assumptions.g };
