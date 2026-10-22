@@ -122,4 +122,22 @@ describe("mapping coverage tiers", () => {
     expect(audit.clusterSuggestions.clusters.length + audit.clusterSuggestions.unclustered.length).toBeGreaterThan(0);
     expect(audit.correlationSuggestions).toEqual([]);
   });
+
+  it("follows an unmapped label period by period, by its first finite value, and matches it to the mapped line it tracks", () => {
+    const label = "Advertisement And Sales Promotion";
+    // 2% of total assets every year. In 2023 its first entry is blank and the next carries the year's value; in 2024
+    // it is filed twice, and the first entry is the year's.
+    const period = (period_end: string, totalAssets: number, entries: Record<string, number | null>): RawPeriodData =>
+      ({ company_id: "CORR", period_end, raw_metric_values: { "Total Assets__BalanceSheet": totalAssets, ...entries } });
+    const audit = auditMappingCoverage([
+      period("2022-03-31", 1000, { [`${label}__ProfitLoss`]: 20 }),
+      period("2023-03-31", 1100, { [`${label}__ProfitLoss`]: null, [`${label}__BalanceSheet`]: 22 }),
+      period("2024-03-31", 1250, { [`${label}__ProfitLoss`]: 25, [`${label}__BalanceSheet`]: 999 }),
+      period("2025-03-31", 1400, { [`${label}__ProfitLoss`]: 28 }),
+    ]);
+    expect(audit.correlationSuggestions.find((m) => m.unknownKey === label)).toMatchObject({
+      canonicalKey: "Total Assets",
+      recommendation: "strong-candidate",
+    });
+  });
 });

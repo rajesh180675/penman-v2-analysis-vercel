@@ -134,22 +134,31 @@ export function auditMappingCoverage(periods: RawPeriodData[]): MappingAuditRepo
       knownLabelValues.set(base, arr);
     }
   }
-  // Build multi-period arrays for unknown labels too.
+  // Build multi-period arrays for unknown labels too: each period's first
+  // finite value under the label. One pass over the periods, not one per
+  // label: label by label it was labels × periods × keys, 21 of Nestlé's 34
+  // seconds of audit, and past the CI shard's two-minute limit.
+  const firstValueByPeriod = new Map<string, number[]>();
+  for (const period of periods) {
+    const seen = new Set<string>();
+    for (const [compositeKey, value] of Object.entries(period.raw_metric_values)) {
+      if (value == null || !Number.isFinite(value)) continue;
+      const idx = compositeKey.lastIndexOf("__");
+      if (idx < 0) continue;
+      const base = compositeKey.slice(0, idx);
+      if (seen.has(base) || !outOfSpecKeys.has(base)) continue;
+      seen.add(base);
+      const arr = firstValueByPeriod.get(base) ?? [];
+      arr.push(value);
+      firstValueByPeriod.set(base, arr);
+    }
+  }
   const unknownMultiPeriod: UnmappedLabel[] = [];
   for (const entry of outOfSpecLabels) {
     if (entry.triage.action === "ignore-non-core") continue;
-    const values: number[] = [];
-    for (const period of periods) {
-      for (const [compositeKey, value] of Object.entries(period.raw_metric_values)) {
-        if (value == null || !Number.isFinite(value)) continue;
-        const idx = compositeKey.lastIndexOf("__");
-        if (idx < 0) continue;
-        const base = compositeKey.slice(0, idx);
-        if (base === entry.key) { values.push(value); break; }
-      }
-    }
+    const values = firstValueByPeriod.get(entry.key) ?? [];
     if (values.length >= 3) {
-      unknownMultiPeriod.push({ key: entry.key, statement: entry.statement === "Unknown" ? "Unknown" : entry.statement, values });
+      unknownMultiPeriod.push({ key: entry.key, statement: entry.statement === "Unknown" ? "Unknown" : entry.statement, values: [...values] });
     }
   }
   const correlationSuggestions = findCorrelationMatches(unknownMultiPeriod, knownLabelValues);
