@@ -1,4 +1,4 @@
-import { scoreSnapshotAgainstFilings, type FiledScore, type FiledYear, type FiledYearToDate, type ForecastToScore } from "./snapshot";
+import { scoreSnapshotAgainstFilings, type BusinessChange, type FiledScore, type FiledYear, type FiledYearToDate, type ForecastToScore } from "./snapshot";
 
 /** A frozen forecast as the scorer reads it: the snapshot file, or the browser's copy of it. */
 export type FrozenToScore = ForecastToScore & { readonly madeAt: string; readonly ticker: string };
@@ -9,6 +9,8 @@ export interface FrozenScore {
   readonly cutoff: string;
   readonly scores: FiledScore[];
   readonly skipped: string | null;
+  /** A business sold or demerged after the cutoff: no year from it on is scored. */
+  readonly businessChange: BusinessChange | null;
 }
 
 /**
@@ -28,9 +30,9 @@ export function scoreFrozenForecasts(
   for (const s of snapshots) if (s.basis?.accounts) accountsByTicker.set(s.ticker, s.basis.accounts);
   return snapshots.map((snapshot) => {
     const filings = filingsFor(snapshot.ticker);
-    let outcome: { scores: FiledScore[]; skipped: string | null };
-    if (!filings) outcome = { scores: [], skipped: "no as-filed ledger" };
-    else if (!snapshot.basis && accountsByTicker.get(snapshot.ticker) === "standalone") outcome = { scores: [], skipped: "a forecast on standalone accounts; the ledger is consolidated" };
+    let outcome: { scores: FiledScore[]; skipped: string | null; businessChange: BusinessChange | null };
+    if (!filings) outcome = { scores: [], skipped: "no as-filed ledger", businessChange: null };
+    else if (!snapshot.basis && accountsByTicker.get(snapshot.ticker) === "standalone") outcome = { scores: [], skipped: "a forecast on standalone accounts; the ledger is consolidated", businessChange: null };
     else outcome = scoreSnapshotAgainstFilings(snapshot, filings.years, filings.yearsToDate);
     return { madeAt: snapshot.madeAt, ticker: snapshot.ticker, cutoff: snapshot.cutoffPeriod, ...outcome };
   });
