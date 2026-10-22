@@ -2,7 +2,9 @@
 /**
  * fetch-nse-year-to-date.ts — as-filed results for the year so far, from NSE.
  *
- *   npx tsx scripts/filings/fetch-nse-year-to-date.ts --symbols=ITC,TCS [--delay-ms=1500]
+ *   npx tsx scripts/filings/fetch-nse-year-to-date.ts [--symbols=ITC,TCS] [--delay-ms=1500]
+ *
+ * With no --symbols, every company that already has a year-to-date.json.
  *
  * The June, September and December quarters' integrated filings (March 2025
  * onward) carry the fiscal year to date: three, six or nine months from
@@ -13,7 +15,7 @@
  * 1 April to its quarter's end is left out and reported. The March quarter is the full
  * year, which fetch-nse-annual.ts records.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractAnnualHeadline, parseXbrlInstance, selectAnnualContexts, type AnnualHeadline } from "../../src/engine/filings/xbrlInstance";
@@ -21,9 +23,12 @@ import { curl, INTEGRATED_REFERER, integratedListingUrl, isoDate, isXbrl, sleep,
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "../..");
 const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split("=")[1] ?? null;
-const symbols = (arg("symbols") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+const FILINGS = join(ROOT, "data", "filings");
+const symbols = arg("symbols")
+  ? arg("symbols")!.split(",").map((s) => s.trim()).filter(Boolean)
+  : readdirSync(FILINGS).filter((d) => existsSync(join(FILINGS, d, "year-to-date.json"))).sort();
 const delayMs = Number(arg("delay-ms") ?? 1500);
-if (!symbols.length) throw new Error("--symbols=ITC,TCS is required");
+if (!symbols.length) throw new Error("no symbols: pass --symbols=ITC,TCS");
 
 export interface AsFiledYearToDateRecord {
   /** The quarter the filing closes: the year to date ends here. */
@@ -43,7 +48,7 @@ export interface AsFiledYearToDateRecord {
 const MONTHS_TO: Record<string, number> = { "06": 3, "09": 6, "12": 9 };
 
 for (const symbol of symbols) {
-  const dir = join(ROOT, "data", "filings", symbol);
+  const dir = join(FILINGS, symbol);
   const rawDir = join(dir, "raw");
   mkdirSync(rawDir, { recursive: true });
   let listed: NseIntegratedRow[];

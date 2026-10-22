@@ -3,11 +3,16 @@
  * tie-out.ts — compare every as-filed record under data/filings/ with the
  * Capitaline dataset the app analyses.
  *
- *   npx tsx scripts/filings/tie-out.ts
+ *   npx tsx scripts/filings/tie-out.ts [--year-to-date-only]
  *
  * Writes data/filings/tie-out.json, its browser copy
  * public/data/filings/tie-out.json (read by the Case's Evidence and Forecast sections), and
  * docs/generated/source-tieout.md.
+ *
+ * --year-to-date-only refreshes the year in progress from year-to-date.json
+ * and keeps the last full run's comparison with Capitaline, which parses and
+ * recasts every company and takes minutes. It refuses a company whose annual
+ * ledger's first filings have changed since: that needs the full run.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -39,15 +44,20 @@ const results: {
   /** The year in progress as first filed, quarter by quarter (fetch-nse-year-to-date.ts). */
   filedYearsToDate: FiledYearToDate[];
 }[] = [];
+const previous = process.argv.includes("--year-to-date-only")
+  ? (JSON.parse(readFileSync(join(FILINGS, "tie-out.json"), "utf8")) as typeof results)
+  : null;
 for (const symbol of readdirSync(FILINGS).filter((d) => existsSync(join(FILINGS, d, "as-filed.json"))).sort()) {
   const company = registry.find((c) => c.ticker === symbol);
   if (!company) continue;
   const { records } = JSON.parse(readFileSync(join(FILINGS, symbol, "as-filed.json"), "utf8")) as { records: AsFiledHeadlineRecord[] };
+  const kept = previous?.find((r) => r.symbol === symbol);
+  if (previous && !kept) throw new Error(`${symbol} is not in the last tie-out: run it in full`);
   // A bank's, NBFC's or insurer's filings are on file for their share count;
   // the comparison is with the industrial recast, which does not describe them.
   const financial = company.type === "bank" || company.type === "nbfc" || company.type === "insurance";
   let periods: RecastPeriod[] = [];
-  if (!financial) {
+  if (!financial && !kept) {
     const buf = readFileSync(join(ROOT, "public", "data", "companies", company.folder, `${company.folder}.zip`));
     const parsed = await parseCapitalineZip(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength), { companyId: company.folder });
     periods = processCompanyDataFull(parsed.periods, { ...DEFAULT_CONFIG, company_type: company.type as typeof DEFAULT_CONFIG.company_type }).periods;
@@ -60,16 +70,19 @@ for (const symbol of readdirSync(FILINGS).filter((d) => existsSync(join(FILINGS,
   const latestFirst = latestYear == null ? null : records
     .filter((r) => r.fiscalYearEnd === latestYear)
     .reduce((first, r) => (r.filingDate < first.filingDate ? r : first));
-  results.push({
+  const result = {
     symbol,
-    rows: tieOutAsFiled(records, periods),
+    rows: kept ? kept.rows : tieOutAsFiled(records, periods),
     firstFiling: records[0]?.filingDate ?? null,
     latestFiling: latestFirst
       ? { fiscalYearEnd: latestFirst.fiscalYearEnd, filingDate: latestFirst.filingDate, sharesOutstandingCr: latestFirst.headline.sharesOutstandingCr ?? null }
       : null,
     filedYears: firstFiledYears(records),
     filedYearsToDate: firstFiledYearsToDate(yearToDate, records),
-  });
+  };
+  const annual = (r: typeof result) => JSON.stringify([r.firstFiling, r.latestFiling, r.filedYears]);
+  if (kept && annual(kept) !== annual(result)) throw new Error(`${symbol}'s annual filings changed since the last tie-out: run it in full`);
+  results.push(result);
   console.log(`${symbol}: ${results.at(-1)!.rows.length} comparisons`);
 }
 
