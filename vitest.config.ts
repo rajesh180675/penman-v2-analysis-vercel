@@ -63,6 +63,16 @@ export default defineConfig({
     ],
     pool: "forks",
     maxWorkers: 2,
+    // Node 26 defines its own `localStorage` on globalThis, and it is
+    // undefined unless `--localstorage-file` is given. Vitest's jsdom
+    // environment does not replace a global that already exists, so on Node 26
+    // the 27 jsdom tests that use storage saw undefined and failed. With Node's
+    // Web Storage off, jsdom supplies it, as on Node 22. Guarded because Node 20
+    // has no such flag. Vitest 4 reads `execArgv` here; it does not read the
+    // `forks.execArgv` below, so workers do not get those flags.
+    execArgv: process.allowedNodeEnvironmentFlags.has("--no-experimental-webstorage")
+      ? ["--no-experimental-webstorage"]
+      : [],
     // Audit shards run 10 heavy pipeline+valuation cycles per fork and
     // OOM the default Node heap (~2GB on Win32). 8GB cleared all shards
     // in local testing including the auditCompanyRun spec (6 tests, each

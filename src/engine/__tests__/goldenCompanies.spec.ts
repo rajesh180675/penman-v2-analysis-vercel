@@ -95,9 +95,11 @@ describe("Golden Companies — registry validation", () => {
       }
 
       // The node env has no DOMParser, so this takes the regex-scraper path
-      // rather than the DOM path the browser actually uses. Measured cost is
-      // 3s-195s per ZIP (worst: Shriram Finance at 195s), so the 5s default
-      // cannot hold. The budget still fails closed on a real hang or OOM.
+      // rather than the DOM path the browser actually uses. On Node 26 a ZIP
+      // takes 0.3–3.4 s. On Node 22 and 24, V8 stalls once earlier ZIPs have
+      // run in this process, and one ZIP took up to 203 s (HDFC Bank; the file
+      // took 1,771 s locally on Node 22), so the 5 s default cannot hold. The
+      // budget still fails closed on a real hang or OOM.
       it("can load the ZIP without OOMing the worker (leak test)", { timeout: 300_000 }, async () => {
         const zipPath = resolve(COMPANIES_DIR, entry.folder, `${entry.folder}.zip`);
         const buffer = readFileSync(zipPath);
