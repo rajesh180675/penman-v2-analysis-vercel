@@ -19,7 +19,7 @@ import { revalueBase, solveBreakEvens } from "../../engine/valuationCommandCente
 import { DEFAULT_CONFIG, type CompanyType } from "../../engine/types";
 import { INRAbsolute } from "../../engine/types/units";
 import type { LegacyAnalysisRunExecutionResult } from "../../engine/analysisRun";
-import type { FiledYear } from "../../engine/accountability";
+import { businessChangeNote, type FiledYear } from "../../engine/accountability";
 import { buildScenario } from "../../engine/forecastingEngine";
 import { crore, percent } from "../format";
 import { ForecastSection } from "../sections/ForecastSection";
@@ -225,6 +225,22 @@ describe("Forecast section", () => {
       const pts = (x: number) => `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)} pts`;
       expect(html).toContain(`${nextYear()} Core margin ${percent(forecastMargin - 0.01)} ${percent(filedMargin)} +0.5 pts ${pts(rw)} ${Math.abs(rw) > 0.005 ? "Forecast" : "Nothing changes"}`);
       expect(html).toContain("so a gap between how Capitaline and the filings measure the level is not counted against it");
+    });
+
+    it("stops comparing at a business sold or demerged since, and says so", () => {
+      const [cutoff, filed] = filedYears();
+      const sold = 0.02 * filed!.revenue!;
+      const note = (fiscalYearEnd: string) => businessChangeNote({ fiscalYearEnd, discontinuedOperations: sold });
+      // In the first year after the anchor: nothing is compared.
+      const first = caseHtml("consolidated", [cutoff!, { ...filed!, discontinuedOperations: sold }]);
+      expect(first).toContain(`Not compared: ${note(nextYear())}.`);
+      expect(first).not.toContain(`${nextYear()} Sales`);
+      // A year later: the first year is compared, and the panel says why the next is not.
+      const later = `${Number(nextYear().slice(0, 4)) + 1}${nextYear().slice(4)}`;
+      const partial = caseHtml("consolidated", [cutoff!, filed!, { ...filed!, fiscalYearEnd: later, discontinuedOperations: sold }]);
+      expect(partial).toContain(`${nextYear()} Sales`);
+      expect(partial).not.toContain(`${later} Sales`);
+      expect(partial).toContain(`From ${later}, not compared: ${note(later)}.`);
     });
 
     it("places the filed year against the run's own stress and bull cases", () => {

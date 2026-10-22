@@ -16,6 +16,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  businessChangeNote,
   firstFiledYears,
   firstFiledYearsToDate,
   scoreFrozenForecasts,
@@ -94,11 +95,12 @@ Each forecast frozen in \`accountability/snapshots/\` is scored against the resu
 - **Random walk** is "the cutoff year again". **Skill** = 1 − median error / random-walk median error.
 - **Scenario bands.** Snapshots of schema v4 also record the stress, bull and historical-panic cases, and each filed figure is placed below stress, between stress and bull, or above bull, on the basis its base case is scored on (the margin moved from the cutoff year's filed margin). The bands were calibrated on the walk-forward (\`docs/generated/scenario-band-coverage.md\`), so this tests them on years the calibration never saw. Sets frozen before v4 have no band table.
 - **The year in progress** is scored provisionally, apart from the filed years, on the months filed so far (\`data/filings/<SYMBOL>/year-to-date.json\`, \`scripts/filings/fetch-nse-year-to-date.ts\`). They are set against the same months a year before, so seasonality cancels: the last full year's sales grown as those months grew, and its core margin moved as theirs moved. Earnings are not projected, since one quarter's one-offs weigh too much in part of a year. A provisional score is replaced when the year is filed.
-- **One-offs.** Filed profit includes them on both sides. ITC's FY2025 owners' profit carries the hotels demerger gain, so its random walk for FY2026 misses by 20 ROE points. The forecast models neither.
+- **One-offs.** Filed profit includes them on both sides. ITC's FY2025 owners' profit carries the hotels demerger gain, so its random walk for FY2026, from a cutoff in FY2025, misses by 20 ROE points. The forecast models neither.
 
 Not scored:
 - years the forecast's data already covered: an anchor that walked back was built on later years too;
-- forecasts of a business the consolidated filings do not describe (a lending arm carved out, standalone accounts).
+- forecasts of a business the consolidated filings do not describe (a lending arm carved out, standalone accounts);
+- years from a filing that reports discontinued operations of at least 0.5% of revenue: a business sold or demerged after the forecast was made, whose later filings describe a smaller business than the forecast's (Hindustan Unilever's ice cream, FY2026; ITC's hotels, FY2025).
 
 ## By frozen set
 
@@ -124,7 +126,7 @@ ${latestRows.flatMap((r) => {
       };
       const months = r.scores.find((s) => s.periodEnd === y)?.provisional?.months;
       return `| ${r.ticker} | ${r.cutoff} | ${y}${months ? ` (${months} months filed)` : ""} | ${cell("sales-log-error")} | ${cell("core-margin-point-error")} | ${cell("cni-roe-point-error")} |`;
-    });
+    }).concat(r.businessChange ? [`| ${r.ticker} | ${r.cutoff} | ${r.businessChange.fiscalYearEnd} on | not scored: ${businessChangeNote(r.businessChange)} | | | | | |`] : []);
   }).join("\n")}
 `;
 writeFileSync(join(ROOT, "docs", "generated", "frozen-forecast-scores.md"), report);

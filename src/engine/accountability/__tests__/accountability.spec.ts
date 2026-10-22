@@ -365,4 +365,35 @@ describe("frozen forecasts scored against filings", () => {
     expect(scoreSnapshotAgainstFilings(snapshot({ basis: { accounts: "consolidated", lendingArm: "X Finance" } }) as never, filings).skipped).toMatch(/without X Finance/);
     expect(scoreSnapshotAgainstFilings(snapshot({ basis: { accounts: "standalone", lendingArm: null } }) as never, filings).skipped).toMatch(/standalone/);
   });
+
+  it("stops at a business sold or demerged after the cutoff: that year and later ones describe another business", async () => {
+    const { businessChangeNote, scoreSnapshotAgainstFilings } = await import("..");
+    const fy2027 = { fiscalYearEnd: "2027-03-31", revenue: 1180, exciseDuty: 0, profitAttributableToOwners: 125, equityAttributableToOwners: 1150 };
+    const years = (result: { scores: readonly { periodEnd: string }[] }) => [...new Set(result.scores.map((s) => s.periodEnd))];
+    // FY2027 files 30 of discontinued operations on 1,180 of revenue (2.5%): FY2026 is still scored, FY2027 is not.
+    const later = scoreSnapshotAgainstFilings(snapshot() as never, [...filings, { ...fy2027, discontinuedOperations: 30 }]);
+    expect(years(later)).toEqual(["2026-03-31"]);
+    expect(later.businessChange).toEqual({ fiscalYearEnd: "2027-03-31", discontinuedOperations: 30 });
+    expect(later.skipped).toBeNull();
+    // Two disposals: the comparison ends at the first.
+    const twice = scoreSnapshotAgainstFilings(snapshot() as never, [filings[0]!, { ...filings[1]!, discontinuedOperations: 20 }, { ...fy2027, discontinuedOperations: 30 }]);
+    expect([twice.scores, twice.businessChange]).toEqual([[], { fiscalYearEnd: "2026-03-31", discontinuedOperations: 20 }]);
+    // A loss on the business sold counts as a gain does.
+    expect(years(scoreSnapshotAgainstFilings(snapshot() as never, [...filings, { ...fy2027, discontinuedOperations: -30 }]))).toEqual(["2026-03-31"]);
+    // In the first forecast year, nothing is scored, the year in progress after it included (HUL FY2026-shaped):
+    // its months a year before were first filed with the business.
+    const ytd = (fiscalYearEnd: string, periodEnd: string, revenue: number) => ({ fiscalYearEnd, periodEnd, months: 3, revenue, exciseDuty: null, coreOperatingIncome: null });
+    const first = scoreSnapshotAgainstFilings(
+      snapshot() as never,
+      [filings[0]!, { ...filings[1]!, discontinuedOperations: 20 }],
+      [ytd("2026-03-31", "2025-06-30", 260), ytd("2027-03-31", "2026-06-30", 280)],
+    );
+    expect(first.scores).toEqual([]);
+    expect(first.skipped).toBe(businessChangeNote({ fiscalYearEnd: "2026-03-31", discontinuedOperations: 20 }));
+    expect(first.skipped).toBe("the 2026-03-31 filing reports ₹20 Cr of discontinued operations, a business sold or demerged since, so it and later years describe another business");
+    // Under 0.5% of revenue (4 on 1,100), or in the cutoff year the forecast was built on, it changes nothing.
+    expect(years(scoreSnapshotAgainstFilings(snapshot() as never, [filings[0]!, { ...filings[1]!, discontinuedOperations: 4 }, fy2027]))).toEqual(["2026-03-31", "2027-03-31"]);
+    const atCutoff = scoreSnapshotAgainstFilings(snapshot() as never, [{ ...filings[0]!, discontinuedOperations: 40 }, filings[1]!, fy2027]);
+    expect([years(atCutoff), atCutoff.businessChange]).toEqual([["2026-03-31", "2027-03-31"], null]);
+  });
 });

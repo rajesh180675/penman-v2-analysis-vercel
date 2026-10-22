@@ -8,6 +8,7 @@
  */
 import { useMemo } from "react";
 import {
+  businessChangeNote,
   scoreFrozenForecasts,
   scoresBySet,
   summarizeBands,
@@ -211,7 +212,14 @@ function ByCompany({ madeAt, rows }: { madeAt: string; rows: readonly FrozenScor
                   {cells("cni-roe-point-error")}
                 </tr>
               );
-            });
+            }).concat(r.businessChange ? [(
+              <tr key={`${r.ticker}-change`} className="border-t border-slate-100 dark:border-slate-800">
+                <th scope="row" className="py-1 text-left font-normal">{company}</th>
+                <td className="py-1">{r.cutoff}</td>
+                <td className="py-1">{r.businessChange.fiscalYearEnd} on</td>
+                <td colSpan={6} className="py-1 text-slate-600 dark:text-slate-300">Not scored: {businessChangeNote(r.businessChange)}.</td>
+              </tr>
+            )] : []);
           })}
         </tbody>
       </table>
