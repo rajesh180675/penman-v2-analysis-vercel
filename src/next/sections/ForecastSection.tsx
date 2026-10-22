@@ -72,6 +72,16 @@ export function ForecastSection({
     const [stress, bull, historicalPanic] = [path("stress"), path("bull"), path("historical-panic")];
     return stress && bull && historicalPanic ? { stress, bull, historicalPanic } : undefined;
   }, [input]);
+  // Today's base case re-valued at the latest set's ke and terminal growth
+  // (kw follows, S-9.4C), which splits the move since that set in two.
+  const atLatestRates = useMemo(() => {
+    const latest = [...frozenSets].sort((a, b) => a.madeAt.localeCompare(b.madeAt)).at(-1);
+    const card = input?.scenarios.find((s) => s.key === "base");
+    if (asOf || !input || !latest || !card) return null;
+    const shift = { ke: latest.assumptions.ke - card.assumptions.ke, g: latest.assumptions.g - card.assumptions.g };
+    const same = Math.abs(shift.ke) < 1e-9 && Math.abs(shift.g) < 1e-9;
+    return { same, value: same ? null : revalueBase(input, shift)?.value ?? null };
+  }, [input, frozenSets, asOf]);
 
   if (!cc || !base || !edited) {
     return (
@@ -196,6 +206,7 @@ export function ForecastSection({
             years: forecastYears(cc.anchorPeriod.period_end, base.forecast),
             basis: { accounts, lendingArm },
           } : null}
+          atLatestRates={atLatestRates}
         />
       )}
 
@@ -310,8 +321,15 @@ function AgainstFiled({ forecast, filedYears, filedYearsToDate, asOf }: {
  * the engine merged in between, the pinned market inputs and, where the anchor
  * moved, the data, all at once, and nothing here re-values one in isolation.
  */
-function FrozenValues({ sets, setsMade, current }: { sets: readonly ComparedSnapshot[]; setsMade: number; current: ComparedSnapshot | null }) {
+function FrozenValues({ sets, setsMade, current, atLatestRates }: {
+  sets: readonly ComparedSnapshot[];
+  setsMade: number;
+  current: ComparedSnapshot | null;
+  /** This run's base case at the latest set's ke and terminal growth; `same` when they are this run's. */
+  atLatestRates: { same: boolean; value: number | null } | null;
+}) {
   const ordered = [...sets].sort((a, b) => a.madeAt.localeCompare(b.madeAt));
+  const latest = ordered.at(-1)!;
   const rows = [...ordered, ...(current ? [current] : [])].map((s, i, all) => ({
     s,
     drivers: yearOneDrivers(s),
@@ -324,7 +342,7 @@ function FrozenValues({ sets, setsMade, current }: { sets: readonly ComparedSnap
         Frozen in {ordered.length} of the {setsMade} sets made{current && <>, with this run&rsquo;s base case after the latest</>}.
         Each change is from the row above. Between two rows the value moves with the engine changed in between, the pinned
         market inputs and, where the anchor moved, the data, all at once: this records what moved beside it, not why.
-        Margin and turnover are the forecast&rsquo;s first year.
+        Margin and turnover are the forecast&rsquo;s first year.{current && <> This run&rsquo;s move from the latest set is split below the table.</>}
       </p>
       <table className="mt-2 w-full text-sm">
         <thead>
@@ -358,9 +376,26 @@ function FrozenValues({ sets, setsMade, current }: { sets: readonly ComparedSnap
           ))}
         </tbody>
       </table>
+      {current && atLatestRates && latest.intrinsicPerShare != null && current.intrinsicPerShare != null && (
+        <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">
+          {atLatestRates.same
+            ? <>This run has the {latest.madeAt} set&rsquo;s ke and terminal growth, so its move from that set is all forecast, data and engine.</>
+            : atLatestRates.value == null
+              ? <>This run&rsquo;s base case could not be valued at the {latest.madeAt} set&rsquo;s ke and terminal growth.</>
+              : <>
+                  At the {latest.madeAt} set&rsquo;s ke ({percent(latest.assumptions.ke)}) and terminal growth ({percent(latest.assumptions.g)}),
+                  kw following them, this run&rsquo;s base case is worth {formatPerShare(atLatestRates.value)}. So of its move from that
+                  set, {signedRupees(atLatestRates.value - latest.intrinsicPerShare)} is the forecast, the data and the engine, and{" "}
+                  {signedRupees(current.intrinsicPerShare - atLatestRates.value)} is ke and terminal growth: the forecast first, then the
+                  rates on it.
+                </>}
+        </p>
+      )}
     </div>
   );
 }
+
+const signedRupees = (x: number) => `${x >= 0 ? "+" : "−"}${formatPerShare(Math.abs(x))}`;
 
 /**
  * The margin fade against history, with the frozen forecast beside it, all of

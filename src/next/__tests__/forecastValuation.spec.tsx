@@ -119,22 +119,22 @@ describe("Forecast section", () => {
     const card = cc.scenarios.find((s) => s.key === "base")!;
     const anchor = cc.anchorPeriod.period_end;
     const earlierAnchor = `${Number(anchor.slice(0, 4)) - 1}${anchor.slice(4)}`;
-    const set = (madeAt: string, cutoffPeriod: string, value: number) => ({
+    const set = (madeAt: string, cutoffPeriod: string, value: number, ke = 0.12) => ({
       ticker: "TCS",
       madeAt,
       cutoffPeriod,
-      assumptions: { ke: 0.12, kw: 0.11, g: 0.05 },
+      assumptions: { ke, kw: 0.11, g: 0.045 },
       intrinsicPerShare: value,
       years: [{ periodEnd: "", sales: 100, operatingIncome: 20, noa: 50 }],
       basis: { accounts: "consolidated" as const, lendingArm: null },
     });
     // Out of order, as the published file need not be.
-    const sets = [set("2026-10-19", anchor, 1100), set("2026-10-11", earlierAnchor, 1000)];
+    const sets = [set("2026-10-19", anchor, 1100), set("2026-10-11", earlierAnchor, 1000, 0.13)];
     const html = text(renderToStaticMarkup(<ForecastSection result={resultFor(cc)} frozenSets={sets} setsMade={3} />));
 
     expect(html).toContain("Frozen in 2 of the 3 sets made, with this run’s base case after the latest.");
-    expect(html).toContain(`2026-10-11 ${earlierAnchor} ₹1000.00 — 12.0% 11.0% 5.0% 20.0% 2.00× —`);
-    expect(html).toContain(`2026-10-19 ${anchor} ₹1100.00 +10.0% 12.0% 11.0% 5.0% 20.0% 2.00× anchor ${earlierAnchor.slice(0, 7)} → ${anchor.slice(0, 7)}`);
+    expect(html).toContain(`2026-10-11 ${earlierAnchor} ₹1000.00 — 13.0% 11.0% 4.5% 20.0% 2.00× —`);
+    expect(html).toContain(`2026-10-19 ${anchor} ₹1100.00 +10.0% 12.0% 11.0% 4.5% 20.0% 2.00× anchor ${earlierAnchor.slice(0, 7)} → ${anchor.slice(0, 7)}`);
     const first = revalueBase(cc)!.forecast![0]!;
     const change = (card.intrinsicPerShare! - 1100) / 1100;
     expect(html).toContain(
@@ -143,6 +143,22 @@ describe("Forecast section", () => {
       `${percent(first.OI_f / first.Sales_f)} ${(first.Sales_f / first.NOA_f).toFixed(2)}× same`,
     );
     expect(html.indexOf("2026-10-11 ")).toBeLessThan(html.indexOf("2026-10-19 "));
+
+    // The move from the latest set, split by re-valuing this run at its ke and terminal growth.
+    const shift = { ke: 0.12 - card.assumptions.ke, g: 0.045 - card.assumptions.g };
+    const atRates = revalueBase(cc, shift)!;
+    expect(atRates.ke).toBeCloseTo(0.12, 12);
+    expect(atRates.g).toBeCloseTo(0.045, 12);
+    const rupees = (x: number) => `${x >= 0 ? "+" : "−"}${formatPerShare(Math.abs(x))}`;
+    expect(html).toContain("This run’s move from the latest set is split below the table.");
+    expect(html).toContain(
+      `At the 2026-10-19 set’s ke (12.0%) and terminal growth (4.5%), kw following them, this run’s base case is worth ${formatPerShare(atRates.value)}. ` +
+      `So of its move from that set, ${rupees(atRates.value! - 1100)} is the forecast, the data and the engine, and ${rupees(card.intrinsicPerShare! - atRates.value!)} is ke and terminal growth`,
+    );
+    // At this run's own rates the whole move is the rest.
+    const same = [{ ...set("2026-10-19", anchor, 1100), assumptions: card.assumptions }];
+    const sameHtml = text(renderToStaticMarkup(<ForecastSection result={resultFor(cc)} frozenSets={same} setsMade={3} />));
+    expect(sameHtml).toContain("This run has the 2026-10-19 set’s ke and terminal growth, so its move from that set is all forecast, data and engine.");
 
     // An as-of view's run is not the one the latest set froze.
     const asOf = text(renderToStaticMarkup(<ForecastSection result={resultFor(cc)} frozenSets={sets} setsMade={3} asOf={earlierAnchor} />));
