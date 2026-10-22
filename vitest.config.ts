@@ -68,18 +68,16 @@ export default defineConfig({
     // environment does not replace a global that already exists, so on Node 26
     // the 27 jsdom tests that use storage saw undefined and failed. With Node's
     // Web Storage off, jsdom supplies it, as on Node 22. Guarded because Node 20
-    // has no such flag. Vitest 4 reads `execArgv` here; it does not read the
-    // `forks.execArgv` below, so workers do not get those flags.
+    // has no such flag.
+    //
+    // Workers run on Node's default heap (2 GB on an 8 GB machine). A
+    // `forks.execArgv` block that raised it to 8 GB with --expose-gc sat here
+    // from May to October 2026, but Vitest 4 never read it, and every suite
+    // passed without it. Two workers allowed 8 GB each on an 8 GB machine would
+    // turn one worker running out of heap into the whole machine running out.
     execArgv: process.allowedNodeEnvironmentFlags.has("--no-experimental-webstorage")
       ? ["--no-experimental-webstorage"]
       : [],
-    // Audit shards run 10 heavy pipeline+valuation cycles per fork and
-    // OOM the default Node heap (~2GB on Win32). 8GB cleared all shards
-    // in local testing including the auditCompanyRun spec (6 tests, each
-    // parsing full Capitaline ZIPs with pipeline + valuation).
-    forks: {
-    execArgv: ["--max-old-space-size=8192", "--expose-gc"],
-    },
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov", "json-summary"],

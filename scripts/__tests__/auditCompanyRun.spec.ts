@@ -49,8 +49,9 @@ function byTicker(ticker: string): AuditRegistryEntry {
  * inline values are the only budget.
  */
 describe.sequential("auditCompanyRun", () => {
- // Force GC after each heavy test to release pipeline objects before
- // the next company audit. Without this, 6+ audits accumulate past 4GB.
+ // Collects garbage between audits only when the worker was started with
+ // --expose-gc. vitest.config.ts does not pass it, and the file passes on the
+ // default heap without it.
  afterEach(() => {
  if (typeof globalThis.gc === "function") globalThis.gc();
  });
