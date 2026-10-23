@@ -94,6 +94,47 @@ describe("production canonical source adapters", () => {
     });
   });
 
+  it("records a file the export carries twice as one artifact", async () => {
+    // ITC's export has CashFlow_.xls at its root and again, byte for byte, in
+    // `revised schd/`. Two artifacts with one content id blocked the fact set.
+    const cashFlow = "c".repeat(64);
+    const debug = {
+      companyId: "ACME",
+      files: [],
+      detectedPeriods: RAW.map((period) => period.period_end),
+      sourceArtifactHashes: [
+        { fileName: "BalanceSheet.xls", sha256: "a".repeat(64), byteLength: 100 },
+        { fileName: "ProfitLoss.xls", sha256: "b".repeat(64), byteLength: 120 },
+        { fileName: "CashFlow.xls", sha256: cashFlow, byteLength: 90 },
+        { fileName: "CashFlow.xls", sha256: cashFlow, byteLength: 90 },
+        { fileName: "CashFlowCopy.xls", sha256: cashFlow, byteLength: 90 },
+      ],
+      factOrigins: Object.fromEntries(RAW.map((raw, periodIndex) => [raw.period_end, {
+        "Total Equity__BalanceSheet": { fileName: "BalanceSheet.xls", parserMethod: "xlsx", row: 7, column: periodIndex + 2 },
+        "Revenue From Operations__ProfitLoss": { fileName: "ProfitLoss.xls", parserMethod: "xlsx", row: 9, column: periodIndex + 2 },
+        "Net Cash From Operating Activities__CashFlow": {
+          fileName: periodIndex === 0 ? "CashFlow.xls" : "CashFlowCopy.xls",
+          parserMethod: "xlsx",
+          row: 11,
+          column: periodIndex + 2,
+        },
+      }])),
+      rawGrids: [],
+      metrics: { totalCompositeKeys: 6, totalBaseKeys: 3, baseKeyCollisions: [], byStatement: { BalanceSheet: 2, ProfitLoss: 2, CashFlow: 2, Segment: 0, Unknown: 0 } },
+      warnings: [],
+      sample: { firstRows: [] },
+      rawMetricKeys: [],
+    } satisfies CapitalineParseDebug;
+    const bundle = buildCapitalineCanonicalFactBundle({ rawData: RAW, debug, scope: "consolidated", contentClass: "confidential-financial-statements" });
+    expect(bundle!.sourceArtifacts.map((artifact) => artifact.fileName)).toEqual(["BalanceSheet.xls", "ProfitLoss.xls", "CashFlow.xls"]);
+
+    const result = await adaptLegacyRawPeriodsToFactSet({ rawData: RAW, ...bundle! });
+    expect(result.status).toBe("created");
+    // Either name resolves to the one artifact, so no origin is dropped.
+    const cfo = result.factSet?.facts.filter((fact) => fact.conceptId === "cfo");
+    expect(cfo?.map((fact) => (fact.origin.kind === "reported" ? fact.origin.artifactId : null))).toEqual([`sha256:${cashFlow}`, `sha256:${cashFlow}`]);
+  });
+
   it("fails closed when a mapped Capitaline value has no artifact coordinate", async () => {
     const debug = {
       companyId: "ACME",

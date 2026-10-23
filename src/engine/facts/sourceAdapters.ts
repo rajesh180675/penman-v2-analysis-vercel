@@ -147,15 +147,24 @@ export function buildCapitalineCanonicalFactBundle(args: {
   readonly acquiredAt?: string | null | undefined;
 }): CanonicalFactIngestionBundle | null {
   const issuerId = args.rawData[0]?.company_id ?? args.debug.companyId;
-  const sourceArtifacts = args.debug.sourceArtifactHashes.map((hash) => artifactFromCapitalineHash({
-    hash,
-    issuerId,
-    scope: args.scope,
-    contentClass: args.contentClass,
-    acquiredAt: args.acquiredAt ?? null,
-  }));
+  // Identical bytes are one artifact. An export can carry the same file twice
+  // (ITC's CashFlow_.xls sits both at the root and in `revised schd/`), and a
+  // fact set refuses two artifacts with one content id.
+  const artifactsById = new Map<string, SourceArtifact>();
+  const artifactByFile = new Map<string, SourceArtifact>();
+  for (const hash of args.debug.sourceArtifactHashes) {
+    const artifact = artifactsById.get(hash.sha256) ?? artifactFromCapitalineHash({
+      hash,
+      issuerId,
+      scope: args.scope,
+      contentClass: args.contentClass,
+      acquiredAt: args.acquiredAt ?? null,
+    });
+    artifactsById.set(hash.sha256, artifact);
+    artifactByFile.set(hash.fileName.toLocaleLowerCase(), artifact);
+  }
+  const sourceArtifacts = [...artifactsById.values()];
   if (!sourceArtifacts.length || !args.debug.factOrigins) return null;
-  const artifactByFile = new Map(sourceArtifacts.map((artifact) => [artifact.fileName.toLocaleLowerCase(), artifact]));
   const periodSources: Record<string, LegacyPeriodSource> = {};
   for (const raw of args.rawData) {
     const origins = args.debug.factOrigins[raw.period_end] ?? {};
