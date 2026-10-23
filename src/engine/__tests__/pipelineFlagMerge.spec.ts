@@ -91,3 +91,23 @@ describe("period quality-signal merge", () => {
     expect(new Set(latestFlags.map((entry) => `${entry.period}:${entry.spec_id}:${entry.label}`)).size).toBe(latestFlags.length);
   });
 });
+
+describe("stale-financials signal", () => {
+  const data = [rawPeriod("2024-03-31", 300), rawPeriod(PERIOD, 300)];
+  const staleSignal = (analysisAsOf: string) =>
+    processCompanyDataFull(data, DEFAULT_CONFIG, null, { analysisAsOf }).greenfield?.signals
+      .find((signal) => signal.label === "STALE_FINANCIALS");
+
+  it("measures staleness as of the run's date, not the clock", () => {
+    // Six months after the latest period: fresh, though the clock is later.
+    expect(staleSignal("2025-09-30")).toBeUndefined();
+
+    const signal = staleSignal("2026-10-16");
+    expect(signal?.evidence.asOf).toBe("2026-10-16");
+    expect(signal?.evidence.staleMonths).toBe((Date.UTC(2026, 9, 16) - Date.UTC(2025, 2, 31)) / (30.4375 * 86_400_000));
+  });
+
+  it("gives the same staleness on every run with the same date", () => {
+    expect(staleSignal("2026-10-16")).toEqual(staleSignal("2026-10-16"));
+  });
+});

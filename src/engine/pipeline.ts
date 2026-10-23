@@ -159,6 +159,7 @@ export function processCompanyDataFull(
   /**
    * Market packs for the financial-institution valuation's cost of equity.
    * The recast's own ke stays unpinned (it feeds ri.RE, not a discount rate).
+   * Their `analysisAsOf` also dates the greenfield staleness check.
    */
   packs?: SuppliedMarketPacks,
 ): PipelineResult {
@@ -384,7 +385,15 @@ export function processCompanyDataFull(
     : null;
 
   const frequencyWarning = detectFrequencyWarning(sorted);
-  const greenfield = runGreenfieldPipeline({ rawData: filteredData, config, recastData: results });
+  // Staleness is measured as of the run's own date. Without it the detectors
+  // read the clock: a run's content changed from one day to the next, and an
+  // as-of view of an earlier year was flagged stale against today.
+  const greenfield = runGreenfieldPipeline({
+    rawData: filteredData,
+    config,
+    recastData: results,
+    context: { asOf: packs?.analysisAsOf ?? undefined },
+  });
   // Wire greenfield sidecar anomaly signals into per-period spec_flags so
   // the UI and traceability envelope surface accounting-quality signals
   // (standard adoption, dirty surplus, lease, FX, structural break, etc.)
