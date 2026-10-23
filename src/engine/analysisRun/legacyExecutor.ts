@@ -800,6 +800,884 @@ function emptyMaterialization(input: LegacyAnalysisRunInputV1): LegacyAnalysisRu
   };
 }
 
+interface AdvancedModelExecution {
+  request: GovernedAdvancedModelInput; promotionDossierHash: string | null; promotionDossier: ModelPromotionDossier | null;
+  promotion: ModelPromotionDecision; result: GovernedAdvancedModelResult;
+  compositionPolicy: ApprovedRealOptionsCompositionPolicy | null; compositionCandidate: RealOptionsCompositionCandidate | null;
+}
+
+/**
+ * One run's working state. The stages below take it in ANALYSIS_STAGE_ORDER
+ * and fill it in. `terminal` is the first stage that blocked or failed the
+ * run: a stage that needs everything before it cleared checks it first, and
+ * the steps that record what the run produced either way do not.
+ */
+interface LegacyRunState {
+  readonly input: LegacyAnalysisRunInputV1;
+  readonly dependencies: LegacyAnalysisRunExecutorDependencies;
+  readonly artifacts: AnalysisContentArtifact[];
+  readonly diagnostics: LegacyAnalysisRunDiagnostic[];
+  terminal: TerminalOutcome | null;
+  readonly rawData: RawPeriodData[];
+  readonly config: EngineConfig;
+  readonly marketSnapshot: LiveMarketDataSnapshot | null;
+  readonly segmentData: SegmentData | null;
+  readonly bankQuality: BankQualityIndicators | null;
+  readonly debugInfo: CapitalineParseDebug | null;
+  readonly parserDiagnostics: SourceParserDiagnostics | null;
+  readonly sourceArtifactHashes: SourceArtifactHash[] | null;
+  readonly canonicalFacts: NonNullable<LegacyAnalysisRunInputV1["canonicalFacts"]> | null;
+  readonly policyVersions: ReturnType<typeof getAnalysisPolicyVersions>;
+  readonly factSet: FactSet | null;
+  readonly factArtifact: AnalysisContentArtifact<"fact-set">;
+  readonly policyArtifact: AnalysisContentArtifact<"policy-bundle">;
+  readonly catalogArtifact: AnalysisContentArtifact<"model-catalog">;
+  qualityGate: QualityGateReport | null;
+  mappingAudit: MappingAuditReport | null;
+  pipelineResult: PipelineResult | null;
+  recastData: RecastPeriod[];
+  valuationReadiness: ValuationReadiness | null;
+  analysisStatus: AnalysisStatusSummary | null;
+  analysisWindow: UnifiedAnalysisWindow | null;
+  windowedRecastData: RecastPeriod[];
+  // The business the valuation values: the recast with any linked lending
+  // arm carved out (src/engine/lendingArm), and its cut to the window. The
+  // statements, ratios and reconciliation stay on the consolidated periods
+  // as filed.
+  valuationBasis: ValuationBasis | null;
+  valuationRecastData: RecastPeriod[];
+  commandCenter: ValuationCommandCenterOutput | null;
+  marketArtifact: AnalysisContentArtifact<"market-snapshot"> | null;
+  sourcedAssumptionSet: SourcedAssumptionSet | null;
+  forecastResults: IndustrialForecastResult[];
+  scenarioOrdering: ScenarioOrderingReport | null;
+  scenarioGovernance: ScenarioGovernanceReport | null;
+  scenarioCalibration: ScenarioCalibrationReport | null;
+  sectorCaseExecution: SectorCaseCatalogExecutionResult | null;
+  readonly advancedModelExecutions: AdvancedModelExecution[];
+}
+
+/** End the run at `stage`: the first terminal outcome, and its diagnostic. */
+function stopRun(state: LegacyRunState, kind: TerminalOutcome["kind"], stage: AnalysisStageId, code: string, message: string): void {
+  state.terminal = { kind, stage, code, message };
+  state.diagnostics.push({ code, stage, severity: kind === "blocked" ? "blocker" : "error", message });
+}
+
+/** Run one step; if it throws, the run fails at `stage` with `code`. */
+async function failRunOnThrow(
+  state: LegacyRunState,
+  stage: AnalysisStageId,
+  code: string,
+  step: () => void | Promise<void>,
+): Promise<void> {
+  try {
+    await step();
+  } catch (error) {
+    stopRun(state, "failed", stage, code, errorMessage(error));
+  }
+}
+
+/**
+ * request-validation, then the run's inputs: the canonical facts when they are
+ * supplied, and the fact, policy and catalog artifacts every run records.
+ */
+async function openRun(
+  input: LegacyAnalysisRunInputV1,
+  dependencies: LegacyAnalysisRunExecutorDependencies,
+  artifacts: AnalysisContentArtifact[],
+  diagnostics: LegacyAnalysisRunDiagnostic[],
+): Promise<LegacyRunState> {
+  const rawData = sortedRawInput(input.rawData);
+  const config = clonePlain(input.config as EngineConfig);
+  const marketSnapshot = input.marketSnapshot ? clonePlain(input.marketSnapshot as LiveMarketDataSnapshot) : null;
+  const segmentData = input.segmentData ? clonePlain(input.segmentData as SegmentData) : null;
+  const bankQuality = input.bankQuality ? clonePlain(input.bankQuality as BankQualityIndicators) : null;
+  const debugInfo = input.debugInfo ? clonePlain(input.debugInfo as CapitalineParseDebug) : null;
+  const parserDiagnostics = input.parserDiagnostics ? clonePlain(input.parserDiagnostics as SourceParserDiagnostics) : null;
+  const sourceArtifactHashes = input.sourceArtifactHashes ? clonePlain(input.sourceArtifactHashes as SourceArtifactHash[]) : null;
+  const canonicalFacts = input.canonicalFacts ? clonePlain(input.canonicalFacts) : null;
+  const policyVersions = dependencies.getPolicyVersions();
+  const featureFlags = dependencies.snapshotFlags();
+  const configWarnings = dependencies.validateConfig(config);
+  diagnostics.push(...validateInput(input, configWarnings));
+  let terminal = terminalFromDiagnostics(diagnostics);
+
+  let factSet: FactSet | null = null;
+  if (canonicalFacts) {
+    const adapted = await adaptLegacyRawPeriodsToFactSet({
+      rawData,
+      sourceArtifacts: canonicalFacts.sourceArtifacts as SourceArtifact[],
+      periodSources: canonicalFacts.periodSources as Record<string, LegacyPeriodSource>,
+      conceptMappings: canonicalFacts.conceptMappings as LegacyConceptMapping[],
+    });
+    if (adapted.status === "created") {
+      factSet = adapted.factSet;
+    } else if (!terminal) {
+      const message = adapted.diagnostics.map((diagnostic) => diagnostic.message).join("; ");
+      terminal = { kind: "blocked", stage: "fact-extraction", code: "CANONICAL_FACT_ADAPTER_BLOCKED", message };
+      diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message });
+    }
+  }
+  const factArtifact = await createAnalysisContentArtifact({
+    kind: "fact-set",
+    schemaVersion: factSet?.schemaVersion ?? "legacy-raw-period-proxy-v1",
+    payload: factSet
+      ? { derivationMode: "native-fact-adapter", factSet }
+      : {
+          derivationMode: "legacy-derived",
+          payloadType: "raw-period-proxy",
+          factLevelLineageAvailable: false,
+          rawData,
+        },
+  });
+  const policyArtifact = await createAnalysisContentArtifact({
+    kind: "policy-bundle",
+    schemaVersion: "legacy-policy-bundle-v1",
+    payload: {
+      derivationMode: "legacy-derived",
+      policyVersions,
+      featureFlags,
+      caveat: "Legacy feature flags are captured at execution time; they are not a native policy artifact.",
+    },
+  });
+  const catalogArtifact = await createAnalysisContentArtifact({
+    kind: "model-catalog",
+    schemaVersion: "2026-07-model-catalog-v1",
+    payload: {
+      derivationMode: "legacy-derived",
+      catalog: generateModelCatalog(CURRENT_MODEL_REGISTRY),
+    },
+  });
+  artifacts.push(factArtifact, policyArtifact, catalogArtifact);
+
+  return {
+    input,
+    dependencies,
+    artifacts,
+    diagnostics,
+    terminal,
+    rawData,
+    config,
+    marketSnapshot,
+    segmentData,
+    bankQuality,
+    debugInfo,
+    parserDiagnostics,
+    sourceArtifactHashes,
+    canonicalFacts,
+    policyVersions,
+    factSet,
+    factArtifact,
+    policyArtifact,
+    catalogArtifact,
+    qualityGate: null,
+    mappingAudit: null,
+    pipelineResult: null,
+    recastData: [],
+    valuationReadiness: null,
+    analysisStatus: null,
+    analysisWindow: null,
+    windowedRecastData: [],
+    valuationBasis: null,
+    valuationRecastData: [],
+    commandCenter: null,
+    marketArtifact: null,
+    sourcedAssumptionSet: null,
+    forecastResults: [],
+    scenarioOrdering: null,
+    scenarioGovernance: null,
+    scenarioCalibration: null,
+    sectorCaseExecution: null,
+    advancedModelExecutions: [],
+  };
+}
+
+/** fact-extraction: the quality gate and the mapping audit, before an engine reads a period. */
+async function runPreflight(state: LegacyRunState): Promise<void> {
+  if (state.terminal) return;
+  await failRunOnThrow(state, "fact-extraction", "LEGACY_PREFLIGHT_FAILED", () => {
+    state.qualityGate = state.dependencies.evaluateQualityGate(state.rawData, state.config);
+    state.mappingAudit = state.dependencies.auditMappingCoverage(state.rawData);
+  });
+}
+
+/** family-classification: the scope policy can refuse the dataset outright. */
+function classifyScope(state: LegacyRunState): void {
+  if (state.terminal || !state.qualityGate?.scopeAssessment.blocked) return;
+  stopRun(
+    state,
+    "blocked",
+    "family-classification",
+    "LEGACY_SCOPE_BLOCKED",
+    state.qualityGate.scopeAssessment.reasons[0] ?? "The legacy scope policy blocked this dataset.",
+  );
+}
+
+/** recast: the pipeline, the valuation basis, and the readiness and status read from them. */
+async function runRecast(state: LegacyRunState): Promise<void> {
+  if (state.terminal) return;
+  const { input, dependencies, rawData, config } = state;
+  await failRunOnThrow(state, "recast", "LEGACY_PIPELINE_FAILED", () => {
+    // The packs reach only the financial-institution valuation's ke; the
+    // recast's own ke stays unpinned (pipeline.ts exemption).
+    const pipelineResult = dependencies.processPipeline(rawData, config, state.bankQuality, {
+      macroPack: input.macroPack,
+      betaPack: input.betaPack,
+      analysisAsOf: input.metadata.asOf,
+    });
+    state.pipelineResult = pipelineResult;
+    const recastData = pipelineResult.periods;
+    state.recastData = recastData;
+    state.valuationBasis = recastData.length > 0
+      ? buildValuationBasis({
+        ticker: config.ticker,
+        periods: recastData,
+        rawData,
+        segmentData: state.segmentData,
+        config,
+        packs: { macroPack: input.macroPack, betaPack: input.betaPack, analysisAsOf: input.metadata.asOf },
+        asOf: input.metadata.asOf,
+      })
+      : null;
+    state.qualityGate = dependencies.evaluateQualityGate(rawData, config, recastData.length > 0 ? recastData : null);
+    // A financial institution has no recast; its readiness is the evidence
+    // its own valuation rests on, the same rule the audit harness applies.
+    const bankResult = pipelineResult.analysisFamily === "financial-institution" ? pipelineResult.bankResult : null;
+    // Readiness — persistence above all — describes the business being
+    // valued: with a lending arm carved out, the industrial one (M&M's
+    // consolidated persistence scored 0/100 on the lender's loan growth;
+    // its industrial business scores 70).
+    state.valuationReadiness = recastData.length > 0
+      ? dependencies.resolveValuationReadiness(state.valuationBasis?.periods ?? recastData)
+      : bankResult
+        ? resolveFinancialValuationReadiness({ bankMetrics: bankResult.bankMetrics ?? [], valuation: bankResult.valuation, subtype: bankResult.subtype })
+        : null;
+    state.analysisStatus = dependencies.deriveAnalysisStatus(state.qualityGate, state.valuationReadiness, state.mappingAudit);
+  });
+}
+
+/** structural-reconciliation: a blocked analysis status ends the run. */
+function checkAnalysisStatus(state: LegacyRunState): void {
+  if (state.terminal || state.analysisStatus?.status !== "blocked") return;
+  stopRun(
+    state,
+    "blocked",
+    // A terminal period unsafe to anchor on blocks the valuation, not the
+    // accounts: ITC (FY25 demerger) and Idea (negative equity) reconcile,
+    // and recording this at structural reconciliation hid that.
+    state.qualityGate?.blockedOnlyByTerminalAnchor ? "model-execution" : "structural-reconciliation",
+    "LEGACY_VALUATION_POLICY_BLOCKED",
+    state.analysisStatus.reasons[0] ?? state.analysisStatus.summary,
+  );
+}
+
+/** window-selection: a financial institution's periods, or the industrial window the valuation reads. */
+async function selectWindow(state: LegacyRunState): Promise<void> {
+  const { dependencies, rawData, config, factArtifact } = state;
+  if (!state.terminal && state.pipelineResult?.analysisFamily === "financial-institution") {
+    await failRunOnThrow(state, "window-selection", "FAMILY_ANALYSIS_WINDOW_FAILED", async () => {
+      const analysisWindow = await selectFamilyPeriodAnalysisWindow({
+        rawData,
+        analystExclusions: (config.excluded_periods ?? []).map((period) => ({
+          period,
+          reasonCode: "ANALYST_CONFIRMED_CONFIG_EXCLUSION",
+          evidenceRefs: [factArtifact.ref],
+          confirmed: true as const,
+        })),
+        minimumPeriods: 2,
+      });
+      state.analysisWindow = analysisWindow;
+      if (analysisWindow.selectionStatus === "blocked") {
+        stopRun(state, "blocked", "window-selection", "FAMILY_ANALYSIS_WINDOW_BLOCKED", analysisWindow.rationale.join(" "));
+      }
+    });
+  }
+
+  // The recast-only steps from here (the unified window, the command center
+  // and everything built on it) are industrial. A financial institution goes
+  // on to the envelope, whose valuation rung its own readiness decides.
+  const isIndustrial = state.pipelineResult?.analysisFamily === "industrial";
+
+  if (!state.terminal && isIndustrial) {
+    await failRunOnThrow(state, "window-selection", "UNIFIED_ANALYSIS_WINDOW_FAILED", async () => {
+      const analysisWindow = await dependencies.selectAnalysisWindow({
+        periods: state.recastData,
+        rawData,
+        valuationReadiness: state.valuationReadiness ?? undefined,
+        analystExclusions: (config.excluded_periods ?? []).map((period) => ({
+          period,
+          reasonCode: "ANALYST_CONFIRMED_CONFIG_EXCLUSION",
+          evidenceRefs: [factArtifact.ref],
+          confirmed: true as const,
+        })),
+        minimumPeriods: 2,
+      });
+      state.analysisWindow = analysisWindow;
+      state.windowedRecastData = state.recastData.filter((period) => analysisWindow.includedPeriods.includes(period.period_end));
+      if (analysisWindow.selectionStatus === "blocked") {
+        stopRun(state, "blocked", "window-selection", "UNIFIED_ANALYSIS_WINDOW_BLOCKED", analysisWindow.rationale.join(" "));
+      }
+    });
+  }
+
+  if (!state.terminal && isIndustrial && state.windowedRecastData.length < 2) {
+    stopRun(
+      state,
+      "blocked",
+      "window-selection",
+      "LEGACY_VALUATION_WINDOW_TOO_SHORT",
+      "The legacy valuation command center requires at least two recast periods.",
+    );
+  }
+}
+
+/** model-execution: the industrial command center, on the valuation basis cut to the window. */
+async function runCommandCenter(state: LegacyRunState): Promise<void> {
+  if (state.terminal || state.pipelineResult?.analysisFamily !== "industrial") return;
+  const { input, dependencies, canonicalFacts, valuationBasis, analysisWindow } = state;
+  await failRunOnThrow(state, "model-execution", "LEGACY_COMMAND_CENTER_FAILED", () => {
+    // Publication vintage for the holdout's no-look-ahead claim. Only
+    // periods traceable to an artifact can be stamped; a
+    // "source-unavailable" period is simply omitted, which keeps the index
+    // incomplete and therefore withholds the claim rather than faking it.
+    const periodArtifacts: Record<string, string> = {};
+    for (const [periodEnd, source] of Object.entries(canonicalFacts?.periodSources ?? {})) {
+      if (source.kind === "source-unavailable") continue;
+      periodArtifacts[periodEnd] = source.artifactId;
+    }
+    const holdoutVintage = canonicalFacts
+      ? buildHoldoutVintageIndex({
+          artifacts: canonicalFacts.sourceArtifacts,
+          periodArtifacts,
+        })
+      : null;
+    const windowedBasis = valuationBasis && analysisWindow
+      ? windowValuationBasis(valuationBasis, analysisWindow.includedPeriods)
+      : { periods: state.windowedRecastData, lendingArm: null, annualizedPeriods: [] };
+    state.valuationRecastData = windowedBasis.periods;
+    state.commandCenter = dependencies.buildCommandCenter({
+      data: state.valuationRecastData,
+      lendingArm: windowedBasis.lendingArm,
+      annualizedPeriods: windowedBasis.annualizedPeriods,
+      config: state.config,
+      marketData: state.marketSnapshot,
+      analysisStatus: state.analysisStatus,
+      segmentData: state.segmentData,
+      holdoutVintage,
+      macroPack: input.macroPack,
+      betaPack: input.betaPack,
+      // The run's own cutoff, which is already validated (AS_OF_REQUIRED,
+      // AS_OF_INVALID) and already the look-ahead bound for raw periods,
+      // market history and calibration above. Using it here too means a
+      // pack observation's staleness is a property of the run rather than
+      // of the wall clock, so re-running identical inputs reproduces an
+      // identical provenance tier — which is the whole point of pinning.
+      analysisAsOf: input.metadata.asOf,
+    });
+  });
+}
+
+/** artifact-ingestion: the pinned market snapshot, recorded whether or not the run is still clear. */
+async function recordMarketSnapshot(state: LegacyRunState): Promise<void> {
+  if (!state.marketSnapshot) return;
+  const marketArtifact = await createAnalysisContentArtifact({
+    kind: "market-snapshot",
+    schemaVersion: "legacy-pinned-market-snapshot-v1",
+    payload: { derivationMode: "legacy-derived", marketSnapshot: state.marketSnapshot },
+  });
+  state.marketArtifact = marketArtifact;
+  state.artifacts.push(marketArtifact);
+}
+
+/** assumption-resolution: the sourced assumption set the forecast and models rest on. */
+async function resolveRunAssumptions(state: LegacyRunState): Promise<void> {
+  const { input, commandCenter, analysisWindow, factArtifact, policyArtifact } = state;
+  if (state.terminal || !commandCenter || !analysisWindow) return;
+  // P6 Stage 9. Same periods and market snapshot the command center was
+  // built from in runCommandCenter — a different period set here would
+  // resolve a different cost of capital than the one the models actually used.
+  const resolution = state.dependencies.resolveAssumptions({
+    periods: state.valuationRecastData,
+    window: analysisWindow,
+    config: state.config,
+    marketSnapshot: state.marketSnapshot,
+    // Same pack and same as-of date the command center was built with
+    // above. These two routes are asserted equal by the Stage 9 parity
+    // spec, so passing a pack to one and not the other would fork the
+    // valuation — the native stage would resolve a different discount rate
+    // than the models actually used.
+    macroPack: input.macroPack,
+    betaPack: input.betaPack,
+    analysisAsOf: input.metadata.asOf,
+    factRef: factArtifact.ref,
+    policyRef: policyArtifact.ref,
+    marketRef: state.marketArtifact?.ref ?? null,
+  });
+  const sourcedAssumptionSet = await resolveSourcedAssumptionSet({
+    window: analysisWindow,
+    candidates: buildRunAssumptionCandidates({
+      resolution,
+      window: analysisWindow,
+      commandCenter,
+      config: state.config,
+      factRef: factArtifact.ref,
+      policyRef: policyArtifact.ref,
+    }),
+  });
+  state.sourcedAssumptionSet = sourcedAssumptionSet;
+  if (sourcedAssumptionSet.status === "blocked") {
+    const message = sourcedAssumptionSet.issues.map((issue) => issue.message).join("; ");
+    stopRun(state, "blocked", "assumption-resolution", "SOURCED_ASSUMPTIONS_BLOCKED", message);
+  }
+}
+
+/** forecast: the scenario forecasts, their calibration and ordering gate, and their governance report. */
+function runForecast(state: LegacyRunState): void {
+  const { input, commandCenter, analysisWindow, sourcedAssumptionSet } = state;
+  if (!state.terminal && commandCenter && analysisWindow && sourcedAssumptionSet) {
+    const latest = state.valuationRecastData.at(-1);
+    if (latest) {
+      state.forecastResults = buildRunForecastResults({
+        commandCenter,
+        latest,
+        config: state.config,
+        window: analysisWindow,
+        assumptions: sourcedAssumptionSet,
+        factRef: state.factArtifact.ref,
+      });
+      if (input.scenarioCalibration) {
+        const scenarioCalibration = calibrateScenarioProbabilities({
+          observations: clonePlain(input.scenarioCalibration.observations as ScenarioCalibrationObservation[]),
+          policy: clonePlain(input.scenarioCalibration.policy as ScenarioCalibrationPolicy),
+        });
+        state.scenarioCalibration = scenarioCalibration;
+        const computedHorizons = new Set(state.forecastResults.flatMap((result) => result.status === "computed" ? [result.forecastCase.horizonYears] : []));
+        const calibrationBindingMatches = scenarioCalibration.family === "industrial" && computedHorizons.size === 1 && computedHorizons.has(scenarioCalibration.horizonYears) && dateOnlyTime(scenarioCalibration.calibrationAsOf) <= dateOnlyTime(input.metadata.asOf);
+        if (calibrationBindingMatches) {
+          state.forecastResults = applyScenarioCalibration(state.forecastResults, scenarioCalibration);
+        } else {
+          const message = "Scenario calibration evidence does not match the run family, forecast horizon, or point-in-time cutoff.";
+          stopRun(state, "blocked", "forecast", "SCENARIO_CALIBRATION_BINDING_MISMATCH", message);
+        }
+      }
+      const gate = evaluateScenarioForecastGates(state.forecastResults);
+      state.scenarioOrdering = gate.scenarioOrdering;
+      if (gate.blocked) stopRun(state, "blocked", "forecast", gate.blocked.code, gate.blocked.message);
+    }
+  }
+
+  if (state.commandCenter && state.forecastResults.length > 0) {
+    state.scenarioGovernance = buildScenarioGovernanceReport({
+      forecastResults: state.forecastResults,
+      scenarioOrdering: state.scenarioOrdering,
+      assumptions: state.sourcedAssumptionSet,
+      commandCenter: state.commandCenter,
+    });
+  }
+}
+
+/** model-execution: an approved, family-bound sector case. */
+function runSectorCase(state: LegacyRunState): void {
+  const { input } = state;
+  if (state.terminal || !input.sectorSidecar) return;
+  const sidecar = clonePlain(input.sectorSidecar as GovernedSectorSidecarApproval);
+  const definition = CURRENT_SECTOR_CASE_REGISTRY.require(sidecar.caseType);
+  if (sidecar.status !== "approved" || sidecar.issuerId !== input.metadata.issuerId || sidecar.caseInput.issuerId !== input.metadata.issuerId || sidecar.caseInput.asOf > input.metadata.asOf || sectorInputFamily(sidecar) !== resolveFamily(state.pipelineResult)) {
+    const message = "The governed sector sidecar is not approved or does not match the run issuer and point-in-time cutoff.";
+    stopRun(state, "blocked", "model-execution", "SECTOR_SIDECAR_BINDING_MISMATCH", message);
+    return;
+  }
+  const sectorCaseExecution = executeCatalogSectorCase({ modelId: definition.modelId, input: sidecar.caseInput });
+  state.sectorCaseExecution = sectorCaseExecution;
+  if (sectorCaseExecution.status !== "computed") {
+    const message = `Governed sector case blocked: ${sectorCaseExecution.reasonCodes.join(", ") || "unknown reason"}.`;
+    stopRun(state, "blocked", "model-execution", "SECTOR_CASE_EXECUTION_BLOCKED", message);
+  }
+}
+
+/** model-execution: governed advanced models, stopping at the first that is blocked. */
+function runAdvancedModels(state: LegacyRunState): void {
+  const { input } = state;
+  if (state.terminal || !input.advancedModels?.length) return;
+  for (const item of input.advancedModels) {
+    const request = clonePlain(item.request as GovernedAdvancedModelInput);
+    const dossier = item.dossier ? clonePlain(item.dossier as ModelPromotionDossier) : null;
+    const definition = CURRENT_MODEL_REGISTRY.require(request.modelId);
+    const promotion = evaluateModelPromotion(definition, dossier);
+    const result = executeGovernedAdvancedModel(request, promotion);
+    const compositionPolicy = item.compositionPolicy ? clonePlain(item.compositionPolicy as ApprovedRealOptionsCompositionPolicy) : null;
+    state.advancedModelExecutions.push({ request, promotionDossierHash: item.dossierHash ?? null, promotionDossier: dossier, promotion, result, compositionPolicy, compositionCandidate: null });
+    if (result.status === "blocked") {
+      const message = `Governed advanced model '${request.modelId}' blocked: ${result.reasonCodes.join(", ")}.`;
+      stopRun(state, "blocked", "model-execution", "ADVANCED_MODEL_EXECUTION_BLOCKED", message);
+      break;
+    }
+  }
+}
+
+function materialize(
+  state: LegacyRunState,
+  modelResults: CatalogValuationModelResult[],
+  transformationDag: TransformationDag | null,
+): LegacyAnalysisRunMaterializationV1 {
+  return {
+    rawData: state.rawData,
+    config: state.config,
+    marketSnapshot: state.marketSnapshot,
+    segmentData: state.segmentData,
+    bankQuality: state.bankQuality,
+    sourceArtifactHashes: state.sourceArtifactHashes,
+    debugInfo: state.debugInfo,
+    parserDiagnostics: state.parserDiagnostics,
+    factSet: state.factSet,
+    pipelineResult: state.pipelineResult,
+    commandCenter: state.commandCenter,
+    modelResults,
+    qualityGate: state.qualityGate,
+    mappingAudit: state.mappingAudit,
+    analysisStatus: state.analysisStatus,
+    valuationReadiness: state.valuationReadiness,
+    analysisWindow: state.analysisWindow,
+    transformationDag,
+    sourcedAssumptionSet: state.sourcedAssumptionSet,
+    forecastResults: state.forecastResults,
+    scenarioOrdering: state.scenarioOrdering,
+    scenarioGovernance: state.scenarioGovernance,
+    scenarioCalibration: state.scenarioCalibration,
+    sectorCaseExecution: state.sectorCaseExecution,
+    advancedModelExecutions: state.advancedModelExecutions,
+  };
+}
+
+/** release-trust: the traceability envelope, stamped with the run's identity. */
+function buildRunEnvelope(state: LegacyRunState): AnalysisTraceabilityEnvelope {
+  const { input, rawData, debugInfo, pipelineResult, commandCenter } = state;
+  const latestPeriod = rawData.at(-1)?.period_end ?? null;
+  const structuralEnvelope = state.dependencies.buildTraceability({
+    generatedAt: input.metadata.generatedAt,
+    // Suppress the legacy residual local-storage write. Instance identity
+    // is stamped immediately below without changing analytical content.
+    runId: null,
+    companyId: input.metadata.issuerId,
+    sourceMode: input.metadata.sourceMode,
+    periodCount: rawData.length,
+    latestPeriod,
+    qualityGate: state.qualityGate,
+    mappingAudit: state.mappingAudit,
+    policyVersions: state.policyVersions,
+    analysisStatus: state.analysisStatus,
+    recastPeriodCount: state.windowedRecastData.length || state.recastData.length,
+    hasDebugInfo: Boolean(debugInfo),
+    debugFiles: debugInfo?.files.length ?? 0,
+    rawMetricKeyCount: debugInfo?.rawMetricKeys.length ?? new Set(rawData.flatMap((period) => Object.keys(period.raw_metric_values))).size,
+    engineError: state.terminal?.kind === "failed" ? state.terminal.message : null,
+    rawData,
+    recastData: state.windowedRecastData.length ? state.windowedRecastData : state.recastData,
+    config: state.config,
+    debugInfo,
+    parserDiagnostics: state.parserDiagnostics,
+    sourceArtifactHashes: state.sourceArtifactHashes,
+    contentClass: input.metadata.contentClass ?? null,
+    retentionDays: input.metadata.retentionDays ?? null,
+    runInspectorEnabled: input.metadata.runInspectorEnabled ?? false,
+    bankMetrics: pipelineResult?.bankResult?.bankMetrics ?? null,
+    bankSubtype: pipelineResult?.bankResult?.subtype ?? null,
+    bankValuation: pipelineResult?.bankResult?.valuation ?? null,
+    valuationTriangulation: commandCenter?.valuationTriangulation ?? null,
+    // Null when no valuation ran: the ladder must not read "no tiers
+    // reported" as evidence that the inputs were sourced.
+    // equityMode is what lets a manual ke report as an undated prior
+    // rather than as `absent`, which does not fire the gate.
+    // A financial institution's ke is its valuation's (no command center).
+    assumptionProvenance: commandCenter
+      ? buildAssumptionProvenance(commandCenter.costOfCapital.assumptions, {
+          equityMode: commandCenter.costOfCapital.equityMode,
+          ke: commandCenter.costOfCapital.ke,
+        })
+      : pipelineResult?.bankResult?.valuation?.costOfCapital
+        ? buildAssumptionProvenance(pipelineResult.bankResult.valuation.costOfCapital.assumptions, {
+            equityMode: pipelineResult.bankResult.valuation.costOfCapital.equityMode,
+            ke: pipelineResult.bankResult.valuation.costOfCapital.ke,
+          })
+        : null,
+    // Null when no valuation ran: silence about earnings quality must not
+    // read as a clean bill of health.
+    earningsQuality: commandCenter
+      ? buildEarningsQualitySummary(commandCenter.earningsQuality)
+      : null,
+  });
+  return {
+    ...structuralEnvelope,
+    generatedAt: input.metadata.generatedAt,
+    runContext: { ...structuralEnvelope.runContext, runId: input.metadata.runId },
+  };
+}
+
+/** release-trust: analytical depth and anti-tautology, where a command center ran. */
+function enrichTrust(state: LegacyRunState, envelope: AnalysisTraceabilityEnvelope): AnalysisTraceabilityEnvelope {
+  const { commandCenter } = state;
+  if (!commandCenter) return envelope;
+  try {
+    const analyticalDepth = state.dependencies.evaluateAnalyticalDepth(commandCenter, { modelKe: commandCenter.costOfCapital.ke });
+    const antiTautology = state.dependencies.summarizeAntiTautology(commandCenter);
+    return { ...envelope, analyticalDepth, antiTautology };
+  } catch (error) {
+    stopRun(state, "failed", "release-trust", "LEGACY_TRUST_ENRICHMENT_FAILED", errorMessage(error));
+    return { ...envelope, analyticalDepth: null, antiTautology: null };
+  }
+}
+
+/** model-execution: the envelope's valuation-eligible checkpoint must have cleared. */
+function checkValuationGate(state: LegacyRunState, envelope: AnalysisTraceabilityEnvelope): void {
+  const valuationCheckpoint = envelope.rigor.checkpoints.find((checkpoint) => checkpoint.level === "valuation-eligible");
+  if (state.terminal || valuationCheckpoint?.achieved === true) return;
+  stopRun(
+    state,
+    "blocked",
+    "model-execution",
+    "LEGACY_VALUATION_GATE_NOT_CLEARED",
+    valuationCheckpoint?.detail ?? "The legacy traceability envelope did not establish valuation eligibility.",
+  );
+}
+
+/** The artifacts of the stages up to the forecast, in the order the run records them. */
+async function recordStageArtifacts(state: LegacyRunState) {
+  const { input, pipelineResult, analysisWindow, sourcedAssumptionSet, scenarioOrdering, scenarioCalibration } = state;
+  const familyArtifact = pipelineResult
+    ? await createAnalysisContentArtifact({
+        kind: "family-analysis",
+        schemaVersion: "legacy-pipeline-result-v1",
+        payload: { derivationMode: "legacy-derived", pipelineResult },
+      })
+    : null;
+  if (familyArtifact) state.artifacts.push(familyArtifact);
+
+  const windowArtifact = analysisWindow
+    ? await createAnalysisContentArtifact({
+        kind: "analysis-window",
+        schemaVersion: analysisWindow.policyVersion,
+        payload: { derivationMode: "unified-window", analysisWindow },
+      })
+    : null;
+  if (windowArtifact) state.artifacts.push(windowArtifact);
+
+  const assumptionArtifact = await createAnalysisContentArtifact({
+    kind: "assumption-set",
+    schemaVersion: sourcedAssumptionSet?.schemaVersion ?? "legacy-assumption-set-v1",
+    payload: sourcedAssumptionSet
+      ? { derivationMode: "sourced-assumption-set", sourcedAssumptionSet }
+      : {
+          derivationMode: "legacy-derived",
+          config: state.config,
+          evidenceLedger: state.commandCenter?.evidenceLedger ?? null,
+          caveat: "No unified analysis window was available; native sourced assumptions were not published.",
+        },
+  });
+  state.artifacts.push(assumptionArtifact);
+
+  const forecastArtifacts = await Promise.all(state.forecastResults.map((forecastResult) => createAnalysisContentArtifact({
+        kind: "forecast-case" as const,
+        schemaVersion: "2026-07-industrial-forecast-state-v1",
+        payload: { derivationMode: "forecast-state", forecastResult },
+      })));
+  state.artifacts.push(...forecastArtifacts);
+
+  const scenarioOrderingArtifact = scenarioOrdering
+    ? await createAnalysisContentArtifact({
+        kind: "evidence",
+        schemaVersion: "2026-07-scenario-ordering-v1",
+        payload: { evidenceType: "scenario-ordering", scenarioOrdering },
+      })
+    : null;
+  if (scenarioOrderingArtifact) state.artifacts.push(scenarioOrderingArtifact);
+
+  const scenarioCalibrationArtifact = scenarioCalibration
+    ? await createAnalysisContentArtifact({
+        kind: "evidence",
+        schemaVersion: scenarioCalibration.schemaVersion,
+        payload: { evidenceType: "scenario-calibration", scenarioCalibration },
+      })
+    : null;
+  if (scenarioCalibrationArtifact) state.artifacts.push(scenarioCalibrationArtifact);
+
+  const sectorSidecarArtifact = input.sectorSidecar
+    ? await createAnalysisContentArtifact({
+        kind: "evidence",
+        schemaVersion: input.sectorSidecar.schemaVersion,
+        payload: { evidenceType: "governed-sector-sidecar", sidecar: input.sectorSidecar, execution: state.sectorCaseExecution },
+      })
+    : null;
+  if (sectorSidecarArtifact) state.artifacts.push(sectorSidecarArtifact);
+
+  return { familyArtifact, windowArtifact, assumptionArtifact, forecastArtifacts, scenarioOrderingArtifact, scenarioCalibrationArtifact, sectorSidecarArtifact };
+}
+
+/**
+ * model-execution and synthesis: the catalog's model results, linked to their
+ * evidence, with any approved real-options composition substituted into the
+ * synthesis.
+ */
+function composeModelResults(
+  state: LegacyRunState,
+  assumptionArtifact: AnalysisContentArtifact<"assumption-set">,
+  envelope: AnalysisTraceabilityEnvelope,
+): { modelResults: CatalogValuationModelResult[]; envelope: AnalysisTraceabilityEnvelope } {
+  const { pipelineResult, sectorCaseExecution, advancedModelExecutions } = state;
+  const unlinkedModelResults: CatalogValuationModelResult[] = state.commandCenter
+    ? [...adaptLegacyCommandCenterModelResults(state.commandCenter)]
+    : pipelineResult?.analysisFamily === "financial-institution" && pipelineResult.bankResult
+      ? adaptBankValuationModelResults(pipelineResult.bankResult.valuation, pipelineResult.bankResult.subtype)
+      : [];
+  if (sectorCaseExecution?.modelResult) unlinkedModelResults.push(clonePlain(sectorCaseExecution.modelResult));
+  let modelResults: CatalogValuationModelResult[] = unlinkedModelResults.map((modelResult, index) =>
+    modelResult.status === "computed"
+      ? {
+          ...modelResult,
+          evidenceRefs: modelResult.evidenceRefs.length
+            ? modelResult.evidenceRefs
+            : [state.factArtifact.ref.contentHash, assumptionArtifact.ref.contentHash],
+          transformationRefs: [modelTransformationId(modelResult.modelId, modelResult.caseId, index)],
+        }
+      : modelResult);
+  for (const [index, execution] of advancedModelExecutions.entries()) {
+    if (!execution.compositionPolicy) continue;
+    if (execution.request.modelId !== "advanced.real-options-rd-pipeline") {
+      advancedModelExecutions[index] = { ...execution, compositionCandidate: { status: "blocked", blockerCodes: ["COMPOSITION_MODEL_MISMATCH"], eligibleForIntrinsicSynthesis: false } };
+      continue;
+    }
+    const dossier = execution.compositionPolicy.dossier;
+    const baseResult = modelResults.find((result) => result.modelId === dossier.baseModelId && result.caseId === dossier.baseCaseId) ?? null;
+    advancedModelExecutions[index] = { ...execution, compositionCandidate: evaluateRealOptionsCompositionCandidate({ request: execution.request, result: execution.result, policy: execution.compositionPolicy, baseResult }) };
+  }
+  let commandCenter = state.commandCenter;
+  if (commandCenter) {
+    for (const execution of advancedModelExecutions) {
+      if (!execution.compositionPolicy || !execution.compositionCandidate) continue;
+      const activation = applyRealOptionsCompositionCandidate({
+        synthesis: commandCenter.evidenceWeightedSynthesis,
+        policy: execution.compositionPolicy,
+        candidate: execution.compositionCandidate,
+      });
+      if (activation.status === "blocked") {
+        const message = `Governed real-options synthesis substitution blocked: ${activation.blockerCodes.join(", ")}.`;
+        stopRun(state, "blocked", "synthesis", "REAL_OPTIONS_COMPOSITION_SUBSTITUTION_BLOCKED", message);
+        break;
+      }
+      commandCenter = { ...commandCenter, evidenceWeightedSynthesis: activation.synthesis };
+      state.commandCenter = commandCenter;
+    }
+    const effectiveSynthesis = commandCenter.evidenceWeightedSynthesis;
+    modelResults = modelResults.map((modelResult) => modelResult.status === "computed" && modelResult.modelId === "industrial.evidence-weighted-synthesis"
+      ? {
+          ...modelResult,
+          perShare: effectiveSynthesis.intrinsicRange.midPerShare,
+          diagnostics: {
+            ...modelResult.diagnostics,
+            lowPerShare: effectiveSynthesis.intrinsicRange.lowPerShare,
+            highPerShare: effectiveSynthesis.intrinsicRange.highPerShare,
+            compositionAppliedCount: effectiveSynthesis.compositionDiagnostics?.appliedCount ?? 0,
+          },
+        }
+      : modelResult);
+    if (effectiveSynthesis.compositionDiagnostics?.appliedCount) {
+      if (state.forecastResults.length > 0) {
+        state.scenarioGovernance = buildScenarioGovernanceReport({ forecastResults: state.forecastResults, scenarioOrdering: state.scenarioOrdering, assumptions: state.sourcedAssumptionSet, commandCenter });
+      }
+      try {
+        envelope = { ...envelope, antiTautology: state.dependencies.summarizeAntiTautology(commandCenter) };
+      } catch (error) {
+        stopRun(state, "failed", "release-trust", "COMPOSED_TRUST_ENRICHMENT_FAILED", errorMessage(error));
+      }
+    }
+  }
+  return { modelResults, envelope };
+}
+
+/** The artifacts of model execution and synthesis, in the order the run records them. */
+async function recordModelArtifacts(state: LegacyRunState, modelResults: CatalogValuationModelResult[]) {
+  const { scenarioGovernance, commandCenter } = state;
+  const scenarioGovernanceArtifact = scenarioGovernance
+    ? await createAnalysisContentArtifact({
+        kind: "evidence",
+        schemaVersion: scenarioGovernance.schemaVersion,
+        payload: { evidenceType: "scenario-governance", scenarioGovernance },
+      })
+    : null;
+  if (scenarioGovernanceArtifact) state.artifacts.push(scenarioGovernanceArtifact);
+  const advancedModelArtifacts = await Promise.all(state.advancedModelExecutions.map((execution) => createAnalysisContentArtifact({
+    kind: "evidence" as const,
+    schemaVersion: "2026-07-governed-advanced-model-execution-v5",
+    payload: { evidenceType: "governed-advanced-model-execution", execution },
+  })));
+  state.artifacts.push(...advancedModelArtifacts);
+  const modelArtifacts = await Promise.all(modelResults.map((modelResult) =>
+    createAnalysisContentArtifact({
+      kind: "model-result" as const,
+      schemaVersion: "2026-07-model-result-v1",
+      payload: {
+        derivationMode: "legacy-derived",
+        modelResult,
+      },
+    })));
+  state.artifacts.push(...modelArtifacts);
+
+  const synthesisArtifact = commandCenter
+    ? await createAnalysisContentArtifact({
+        kind: "synthesis",
+        schemaVersion: "2026-07-evidence-weighted-synthesis-v2",
+        payload: {
+          derivationMode: "legacy-derived",
+          synthesis: commandCenter.evidenceWeightedSynthesis,
+          scenarioGovernance,
+        },
+      })
+    : null;
+  if (synthesisArtifact) state.artifacts.push(synthesisArtifact);
+
+  return { scenarioGovernanceArtifact, advancedModelArtifacts, modelArtifacts, synthesisArtifact };
+}
+
+/** release-trust: the transformation DAG, where the run has a canonical fact set. */
+async function recordTransformationDag(
+  state: LegacyRunState,
+  modelResults: CatalogValuationModelResult[],
+  hasSynthesis: boolean,
+): Promise<{ transformationDag: TransformationDag | null; transformationDagArtifact: AnalysisContentArtifact<"evidence"> | null }> {
+  let transformationDag: TransformationDag | null = null;
+  let transformationDagArtifact: AnalysisContentArtifact<"evidence"> | null = null;
+  if (state.factSet) {
+    try {
+      transformationDag = await buildLegacyTransformationDag({
+        factSet: state.factSet,
+        pipelineResult: state.pipelineResult,
+        modelResults,
+        hasSynthesis,
+        synthesis: state.commandCenter?.evidenceWeightedSynthesis ?? null,
+        policyRef: state.policyArtifact.ref,
+        sourceArtifactIds: normalizeSourceArtifactIds(state.input),
+      });
+      transformationDagArtifact = await createAnalysisContentArtifact({
+        kind: "evidence",
+        schemaVersion: transformationDag.schemaVersion,
+        payload: { evidenceType: "transformation-dag", transformationDag },
+      });
+      state.artifacts.push(transformationDagArtifact);
+    } catch (error) {
+      const message = errorMessage(error);
+      state.diagnostics.push({
+        code: "TRANSFORMATION_DAG_FAILED",
+        stage: "release-trust",
+        severity: "error",
+        message,
+      });
+      if (!state.terminal) {
+        state.terminal = { kind: "failed", stage: "release-trust", code: "TRANSFORMATION_DAG_FAILED", message };
+      }
+    }
+  }
+  return { transformationDag, transformationDagArtifact };
+}
+
 /**
  * Construct an executor around an explicit dependency set. Production callers
  * should use `executeLegacyAnalysisRun`; this factory exists for contract tests
@@ -814,499 +1692,27 @@ export function createLegacyAnalysisRunExecutor(
     const diagnostics: LegacyAnalysisRunDiagnostic[] = [];
 
     try {
-      const rawData = sortedRawInput(input.rawData);
-      const config = clonePlain(input.config as EngineConfig);
-      const marketSnapshot = input.marketSnapshot ? clonePlain(input.marketSnapshot as LiveMarketDataSnapshot) : null;
-      const segmentData = input.segmentData ? clonePlain(input.segmentData as SegmentData) : null;
-      const bankQuality = input.bankQuality ? clonePlain(input.bankQuality as BankQualityIndicators) : null;
-      const debugInfo = input.debugInfo ? clonePlain(input.debugInfo as CapitalineParseDebug) : null;
-      const parserDiagnostics = input.parserDiagnostics ? clonePlain(input.parserDiagnostics as SourceParserDiagnostics) : null;
-      const sourceArtifactHashes = input.sourceArtifactHashes ? clonePlain(input.sourceArtifactHashes as SourceArtifactHash[]) : null;
-      const canonicalFacts = input.canonicalFacts ? clonePlain(input.canonicalFacts) : null;
-      const policyVersions = dependencies.getPolicyVersions();
-      const featureFlags = dependencies.snapshotFlags();
-      const configWarnings = dependencies.validateConfig(config);
-      diagnostics.push(...validateInput(input, configWarnings));
-      let terminal = terminalFromDiagnostics(diagnostics);
-
-      let factSet: FactSet | null = null;
-      if (canonicalFacts) {
-        const adapted = await adaptLegacyRawPeriodsToFactSet({
-          rawData,
-          sourceArtifacts: canonicalFacts.sourceArtifacts as SourceArtifact[],
-          periodSources: canonicalFacts.periodSources as Record<string, LegacyPeriodSource>,
-          conceptMappings: canonicalFacts.conceptMappings as LegacyConceptMapping[],
-        });
-        if (adapted.status === "created") {
-          factSet = adapted.factSet;
-        } else if (!terminal) {
-          const message = adapted.diagnostics.map((diagnostic) => diagnostic.message).join("; ");
-          terminal = { kind: "blocked", stage: "fact-extraction", code: "CANONICAL_FACT_ADAPTER_BLOCKED", message };
-          diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message });
-        }
-      }
-      const factArtifact = await createAnalysisContentArtifact({
-        kind: "fact-set",
-        schemaVersion: factSet?.schemaVersion ?? "legacy-raw-period-proxy-v1",
-        payload: factSet
-          ? { derivationMode: "native-fact-adapter", factSet }
-          : {
-              derivationMode: "legacy-derived",
-              payloadType: "raw-period-proxy",
-              factLevelLineageAvailable: false,
-              rawData,
-            },
-      });
-      const policyArtifact = await createAnalysisContentArtifact({
-        kind: "policy-bundle",
-        schemaVersion: "legacy-policy-bundle-v1",
-        payload: {
-          derivationMode: "legacy-derived",
-          policyVersions,
-          featureFlags,
-          caveat: "Legacy feature flags are captured at execution time; they are not a native policy artifact.",
-        },
-      });
-      const catalogArtifact = await createAnalysisContentArtifact({
-        kind: "model-catalog",
-        schemaVersion: "2026-07-model-catalog-v1",
-        payload: {
-          derivationMode: "legacy-derived",
-          catalog: generateModelCatalog(CURRENT_MODEL_REGISTRY),
-        },
-      });
-      artifacts.push(factArtifact, policyArtifact, catalogArtifact);
-
-      let qualityGate: QualityGateReport | null = null;
-      let mappingAudit: MappingAuditReport | null = null;
-      let pipelineResult: PipelineResult | null = null;
-      let recastData: RecastPeriod[] = [];
-      let valuationReadiness: ValuationReadiness | null = null;
-      let analysisStatus: AnalysisStatusSummary | null = null;
-      let commandCenter: ValuationCommandCenterOutput | null = null;
-      let analysisWindow: UnifiedAnalysisWindow | null = null;
-      let sourcedAssumptionSet: SourcedAssumptionSet | null = null;
-      let forecastResults: IndustrialForecastResult[] = [];
-      let scenarioOrdering: ScenarioOrderingReport | null = null;
-      let scenarioGovernance: ScenarioGovernanceReport | null = null;
-      let scenarioCalibration: ScenarioCalibrationReport | null = null;
-      let sectorCaseExecution: SectorCaseCatalogExecutionResult | null = null;
-      const advancedModelExecutions: Array<{
-        request: GovernedAdvancedModelInput; promotionDossierHash: string | null; promotionDossier: ModelPromotionDossier | null;
-        promotion: ModelPromotionDecision; result: GovernedAdvancedModelResult;
-        compositionPolicy: ApprovedRealOptionsCompositionPolicy | null; compositionCandidate: RealOptionsCompositionCandidate | null;
-      }> = [];
-      let windowedRecastData: RecastPeriod[] = [];
-      // The business the valuation values: the recast with any linked lending
-      // arm carved out (src/engine/lendingArm), and its cut to the window. The
-      // statements, ratios and reconciliation stay on the consolidated periods
-      // as filed.
-      let valuationBasis: ValuationBasis | null = null;
-      let valuationRecastData: RecastPeriod[] = [];
-
-      if (!terminal) {
-        try {
-          qualityGate = dependencies.evaluateQualityGate(rawData, config);
-          mappingAudit = dependencies.auditMappingCoverage(rawData);
-        } catch (error) {
-          terminal = { kind: "failed", stage: "fact-extraction", code: "LEGACY_PREFLIGHT_FAILED", message: errorMessage(error) };
-          diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "error", message: terminal.message });
-        }
-      }
-
-      if (!terminal && qualityGate?.scopeAssessment.blocked) {
-        terminal = {
-          kind: "blocked",
-          stage: "family-classification",
-          code: "LEGACY_SCOPE_BLOCKED",
-          message: qualityGate.scopeAssessment.reasons[0] ?? "The legacy scope policy blocked this dataset.",
-        };
-        diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message: terminal.message });
-      }
-
-      if (!terminal) {
-        try {
-          // The packs reach only the financial-institution valuation's ke; the
-          // recast's own ke stays unpinned (pipeline.ts exemption).
-          pipelineResult = dependencies.processPipeline(rawData, config, bankQuality, {
-            macroPack: input.macroPack,
-            betaPack: input.betaPack,
-            analysisAsOf: input.metadata.asOf,
-          });
-          recastData = pipelineResult.periods;
-          valuationBasis = recastData.length > 0
-            ? buildValuationBasis({
-              ticker: config.ticker,
-              periods: recastData,
-              rawData,
-              segmentData,
-              config,
-              packs: { macroPack: input.macroPack, betaPack: input.betaPack, analysisAsOf: input.metadata.asOf },
-              asOf: input.metadata.asOf,
-            })
-            : null;
-          qualityGate = dependencies.evaluateQualityGate(rawData, config, recastData.length > 0 ? recastData : null);
-          // A financial institution has no recast; its readiness is the evidence
-          // its own valuation rests on, the same rule the audit harness applies.
-          const bankResult = pipelineResult.analysisFamily === "financial-institution" ? pipelineResult.bankResult : null;
-          // Readiness — persistence above all — describes the business being
-          // valued: with a lending arm carved out, the industrial one (M&M's
-          // consolidated persistence scored 0/100 on the lender's loan growth;
-          // its industrial business scores 70).
-          valuationReadiness = recastData.length > 0
-            ? dependencies.resolveValuationReadiness(valuationBasis?.periods ?? recastData)
-            : bankResult
-              ? resolveFinancialValuationReadiness({ bankMetrics: bankResult.bankMetrics ?? [], valuation: bankResult.valuation, subtype: bankResult.subtype })
-              : null;
-          analysisStatus = dependencies.deriveAnalysisStatus(qualityGate, valuationReadiness, mappingAudit);
-        } catch (error) {
-          terminal = { kind: "failed", stage: "recast", code: "LEGACY_PIPELINE_FAILED", message: errorMessage(error) };
-          diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "error", message: terminal.message });
-        }
-      }
-
-      if (!terminal && analysisStatus?.status === "blocked") {
-        terminal = {
-          kind: "blocked",
-          // A terminal period unsafe to anchor on blocks the valuation, not the
-          // accounts: ITC (FY25 demerger) and Idea (negative equity) reconcile,
-          // and recording this at structural reconciliation hid that.
-          stage: qualityGate?.blockedOnlyByTerminalAnchor ? "model-execution" : "structural-reconciliation",
-          code: "LEGACY_VALUATION_POLICY_BLOCKED",
-          message: analysisStatus.reasons[0] ?? analysisStatus.summary,
-        };
-        diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message: terminal.message });
-      }
-
-      if (!terminal && pipelineResult?.analysisFamily === "financial-institution") {
-        try {
-          analysisWindow = await selectFamilyPeriodAnalysisWindow({
-            rawData,
-            analystExclusions: (config.excluded_periods ?? []).map((period) => ({
-              period,
-              reasonCode: "ANALYST_CONFIRMED_CONFIG_EXCLUSION",
-              evidenceRefs: [factArtifact.ref],
-              confirmed: true as const,
-            })),
-            minimumPeriods: 2,
-          });
-          if (analysisWindow.selectionStatus === "blocked") {
-            const message = analysisWindow.rationale.join(" ");
-            terminal = { kind: "blocked", stage: "window-selection", code: "FAMILY_ANALYSIS_WINDOW_BLOCKED", message };
-            diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message });
-          }
-        } catch (error) {
-          terminal = { kind: "failed", stage: "window-selection", code: "FAMILY_ANALYSIS_WINDOW_FAILED", message: errorMessage(error) };
-          diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "error", message: terminal.message });
-        }
-      }
-
-      // The recast-only steps below (the unified window, the command center and
-      // everything built on it) are industrial. A financial institution goes on
-      // to the envelope, whose valuation rung its own readiness decides.
-      const isIndustrial = pipelineResult?.analysisFamily === "industrial";
-
-      if (!terminal && isIndustrial) {
-        try {
-          analysisWindow = await dependencies.selectAnalysisWindow({
-            periods: recastData,
-            rawData,
-            valuationReadiness: valuationReadiness ?? undefined,
-            analystExclusions: (config.excluded_periods ?? []).map((period) => ({
-              period,
-              reasonCode: "ANALYST_CONFIRMED_CONFIG_EXCLUSION",
-              evidenceRefs: [factArtifact.ref],
-              confirmed: true as const,
-            })),
-            minimumPeriods: 2,
-          });
-          windowedRecastData = recastData.filter((period) => analysisWindow!.includedPeriods.includes(period.period_end));
-          if (analysisWindow.selectionStatus === "blocked") {
-            const message = analysisWindow.rationale.join(" ");
-            terminal = { kind: "blocked", stage: "window-selection", code: "UNIFIED_ANALYSIS_WINDOW_BLOCKED", message };
-            diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message });
-          }
-        } catch (error) {
-          terminal = { kind: "failed", stage: "window-selection", code: "UNIFIED_ANALYSIS_WINDOW_FAILED", message: errorMessage(error) };
-          diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "error", message: terminal.message });
-        }
-      }
-
-      if (!terminal && isIndustrial && windowedRecastData.length < 2) {
-        terminal = {
-          kind: "blocked",
-          stage: "window-selection",
-          code: "LEGACY_VALUATION_WINDOW_TOO_SHORT",
-          message: "The legacy valuation command center requires at least two recast periods.",
-        };
-        diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message: terminal.message });
-      }
-
-      if (!terminal && isIndustrial) {
-        try {
-          // Publication vintage for the holdout's no-look-ahead claim. Only
-          // periods traceable to an artifact can be stamped; a
-          // "source-unavailable" period is simply omitted, which keeps the index
-          // incomplete and therefore withholds the claim rather than faking it.
-          const periodArtifacts: Record<string, string> = {};
-          for (const [periodEnd, source] of Object.entries(canonicalFacts?.periodSources ?? {})) {
-            if (source.kind === "source-unavailable") continue;
-            periodArtifacts[periodEnd] = source.artifactId;
-          }
-          const holdoutVintage = canonicalFacts
-            ? buildHoldoutVintageIndex({
-                artifacts: canonicalFacts.sourceArtifacts,
-                periodArtifacts,
-              })
-            : null;
-          const windowedBasis = valuationBasis && analysisWindow
-            ? windowValuationBasis(valuationBasis, analysisWindow.includedPeriods)
-            : { periods: windowedRecastData, lendingArm: null, annualizedPeriods: [] };
-          valuationRecastData = windowedBasis.periods;
-          commandCenter = dependencies.buildCommandCenter({
-            data: valuationRecastData,
-            lendingArm: windowedBasis.lendingArm,
-            annualizedPeriods: windowedBasis.annualizedPeriods,
-            config,
-            marketData: marketSnapshot,
-            analysisStatus,
-            segmentData,
-            holdoutVintage,
-            macroPack: input.macroPack,
-            betaPack: input.betaPack,
-            // The run's own cutoff, which is already validated (AS_OF_REQUIRED,
-            // AS_OF_INVALID) and already the look-ahead bound for raw periods,
-            // market history and calibration above. Using it here too means a
-            // pack observation's staleness is a property of the run rather than
-            // of the wall clock, so re-running identical inputs reproduces an
-            // identical provenance tier — which is the whole point of pinning.
-            analysisAsOf: input.metadata.asOf,
-          });
-        } catch (error) {
-          terminal = { kind: "failed", stage: "model-execution", code: "LEGACY_COMMAND_CENTER_FAILED", message: errorMessage(error) };
-          diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "error", message: terminal.message });
-        }
-      }
-
-      const marketArtifact = marketSnapshot
-        ? await createAnalysisContentArtifact({
-            kind: "market-snapshot",
-            schemaVersion: "legacy-pinned-market-snapshot-v1",
-            payload: { derivationMode: "legacy-derived", marketSnapshot },
-          })
-        : null;
-      if (marketArtifact) artifacts.push(marketArtifact);
-
-      if (!terminal && commandCenter && analysisWindow) {
-        // P6 Stage 9. Same periods and market snapshot the command center was
-        // built from on line 1073 — a different period set here would resolve a
-        // different cost of capital than the one the models actually used.
-        const resolution = dependencies.resolveAssumptions({
-          periods: valuationRecastData,
-          window: analysisWindow,
-          config,
-          marketSnapshot,
-          // Same pack and same as-of date the command center was built with
-          // above. These two routes are asserted equal by the Stage 9 parity
-          // spec, so passing a pack to one and not the other would fork the
-          // valuation — the native stage would resolve a different discount rate
-          // than the models actually used.
-          macroPack: input.macroPack,
-          betaPack: input.betaPack,
-          analysisAsOf: input.metadata.asOf,
-          factRef: factArtifact.ref,
-          policyRef: policyArtifact.ref,
-          marketRef: marketArtifact?.ref ?? null,
-        });
-        sourcedAssumptionSet = await resolveSourcedAssumptionSet({
-          window: analysisWindow,
-          candidates: buildRunAssumptionCandidates({
-            resolution,
-            window: analysisWindow,
-            commandCenter,
-            config,
-            factRef: factArtifact.ref,
-            policyRef: policyArtifact.ref,
-          }),
-        });
-        if (sourcedAssumptionSet.status === "blocked") {
-          const message = sourcedAssumptionSet.issues.map((issue) => issue.message).join("; ");
-          terminal = { kind: "blocked", stage: "assumption-resolution", code: "SOURCED_ASSUMPTIONS_BLOCKED", message };
-          diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message });
-        }
-      }
-
-      if (!terminal && commandCenter && analysisWindow && sourcedAssumptionSet) {
-        const latest = valuationRecastData.at(-1);
-        if (latest) {
-          forecastResults = buildRunForecastResults({
-            commandCenter,
-            latest,
-            config,
-            window: analysisWindow,
-            assumptions: sourcedAssumptionSet,
-            factRef: factArtifact.ref,
-          });
-          if (input.scenarioCalibration) {
-            scenarioCalibration = calibrateScenarioProbabilities({
-              observations: clonePlain(input.scenarioCalibration.observations as ScenarioCalibrationObservation[]),
-              policy: clonePlain(input.scenarioCalibration.policy as ScenarioCalibrationPolicy),
-            });
-            const computedHorizons = new Set(forecastResults.flatMap((result) => result.status === "computed" ? [result.forecastCase.horizonYears] : []));
-            const calibrationBindingMatches = scenarioCalibration.family === "industrial" && computedHorizons.size === 1 && computedHorizons.has(scenarioCalibration.horizonYears) && dateOnlyTime(scenarioCalibration.calibrationAsOf) <= dateOnlyTime(input.metadata.asOf);
-            if (calibrationBindingMatches) {
-              forecastResults = applyScenarioCalibration(forecastResults, scenarioCalibration);
-            } else {
-              const message = "Scenario calibration evidence does not match the run family, forecast horizon, or point-in-time cutoff.";
-              terminal = { kind: "blocked", stage: "forecast", code: "SCENARIO_CALIBRATION_BINDING_MISMATCH", message };
-              diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message });
-            }
-          }
-          const gate = evaluateScenarioForecastGates(forecastResults);
-          scenarioOrdering = gate.scenarioOrdering;
-          if (gate.blocked) {
-            terminal = { kind: "blocked", stage: "forecast", code: gate.blocked.code, message: gate.blocked.message };
-            diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message: terminal.message });
-          }
-        }
-      }
-
-      if (commandCenter && forecastResults.length > 0) {
-        scenarioGovernance = buildScenarioGovernanceReport({
-          forecastResults,
-          scenarioOrdering,
-          assumptions: sourcedAssumptionSet,
-          commandCenter,
-        });
-      }
-
-      if (!terminal && input.sectorSidecar) {
-        const sidecar = clonePlain(input.sectorSidecar as GovernedSectorSidecarApproval);
-        const definition = CURRENT_SECTOR_CASE_REGISTRY.require(sidecar.caseType);
-        if (sidecar.status !== "approved" || sidecar.issuerId !== input.metadata.issuerId || sidecar.caseInput.issuerId !== input.metadata.issuerId || sidecar.caseInput.asOf > input.metadata.asOf || sectorInputFamily(sidecar) !== resolveFamily(pipelineResult)) {
-          const message = "The governed sector sidecar is not approved or does not match the run issuer and point-in-time cutoff.";
-          terminal = { kind: "blocked", stage: "model-execution", code: "SECTOR_SIDECAR_BINDING_MISMATCH", message };
-          diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message });
-        } else {
-          sectorCaseExecution = executeCatalogSectorCase({ modelId: definition.modelId, input: sidecar.caseInput });
-          if (sectorCaseExecution.status !== "computed") {
-            const message = `Governed sector case blocked: ${sectorCaseExecution.reasonCodes.join(", ") || "unknown reason"}.`;
-            terminal = { kind: "blocked", stage: "model-execution", code: "SECTOR_CASE_EXECUTION_BLOCKED", message };
-            diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message });
-          }
-        }
-      }
-
-      if (!terminal && input.advancedModels?.length) {
-        for (const item of input.advancedModels) {
-          const request = clonePlain(item.request as GovernedAdvancedModelInput);
-          const dossier = item.dossier ? clonePlain(item.dossier as ModelPromotionDossier) : null;
-          const definition = CURRENT_MODEL_REGISTRY.require(request.modelId);
-          const promotion = evaluateModelPromotion(definition, dossier);
-          const result = executeGovernedAdvancedModel(request, promotion);
-          const compositionPolicy = item.compositionPolicy ? clonePlain(item.compositionPolicy as ApprovedRealOptionsCompositionPolicy) : null;
-          advancedModelExecutions.push({ request, promotionDossierHash: item.dossierHash ?? null, promotionDossier: dossier, promotion, result, compositionPolicy, compositionCandidate: null });
-          if (result.status === "blocked") {
-            const message = `Governed advanced model '${request.modelId}' blocked: ${result.reasonCodes.join(", ")}.`;
-            terminal = { kind: "blocked", stage: "model-execution", code: "ADVANCED_MODEL_EXECUTION_BLOCKED", message };
-            diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message });
-            break;
-          }
-        }
-      }
+      const state = await openRun(input, dependencies, artifacts, diagnostics);
+      await runPreflight(state);
+      classifyScope(state);
+      await runRecast(state);
+      checkAnalysisStatus(state);
+      await selectWindow(state);
+      await runCommandCenter(state);
+      await recordMarketSnapshot(state);
+      await resolveRunAssumptions(state);
+      runForecast(state);
+      runSectorCase(state);
+      runAdvancedModels(state);
 
       // Preserve completed legacy work even if traceability finalization is the
       // unexpected failing seam. The analysis window is attached later once its
       // content reference has been materialized.
-      materialization = {
-        rawData,
-        config,
-        marketSnapshot,
-        segmentData,
-        bankQuality,
-        sourceArtifactHashes,
-        debugInfo,
-        parserDiagnostics,
-        factSet,
-        pipelineResult,
-        commandCenter,
-        modelResults: [],
-        qualityGate,
-        mappingAudit,
-        analysisStatus,
-        valuationReadiness,
-        analysisWindow,
-        transformationDag: null,
-        sourcedAssumptionSet,
-        forecastResults,
-        scenarioOrdering,
-        scenarioGovernance,
-        scenarioCalibration,
-        sectorCaseExecution,
-        advancedModelExecutions,
-      };
+      materialization = materialize(state, [], null);
 
       let envelope: AnalysisTraceabilityEnvelope;
       try {
-        const latestPeriod = rawData.at(-1)?.period_end ?? null;
-        const structuralEnvelope = dependencies.buildTraceability({
-          generatedAt: input.metadata.generatedAt,
-          // Suppress the legacy residual local-storage write. Instance identity
-          // is stamped immediately below without changing analytical content.
-          runId: null,
-          companyId: input.metadata.issuerId,
-          sourceMode: input.metadata.sourceMode,
-          periodCount: rawData.length,
-          latestPeriod,
-          qualityGate,
-          mappingAudit,
-          policyVersions,
-          analysisStatus,
-          recastPeriodCount: windowedRecastData.length || recastData.length,
-          hasDebugInfo: Boolean(debugInfo),
-          debugFiles: debugInfo?.files.length ?? 0,
-          rawMetricKeyCount: debugInfo?.rawMetricKeys.length ?? new Set(rawData.flatMap((period) => Object.keys(period.raw_metric_values))).size,
-          engineError: terminal?.kind === "failed" ? terminal.message : null,
-          rawData,
-          recastData: windowedRecastData.length ? windowedRecastData : recastData,
-          config,
-          debugInfo,
-          parserDiagnostics,
-          sourceArtifactHashes,
-          contentClass: input.metadata.contentClass ?? null,
-          retentionDays: input.metadata.retentionDays ?? null,
-          runInspectorEnabled: input.metadata.runInspectorEnabled ?? false,
-          bankMetrics: pipelineResult?.bankResult?.bankMetrics ?? null,
-          bankSubtype: pipelineResult?.bankResult?.subtype ?? null,
-          bankValuation: pipelineResult?.bankResult?.valuation ?? null,
-          valuationTriangulation: commandCenter?.valuationTriangulation ?? null,
-          // Null when no valuation ran: the ladder must not read "no tiers
-          // reported" as evidence that the inputs were sourced.
-          // equityMode is what lets a manual ke report as an undated prior
-          // rather than as `absent`, which does not fire the gate.
-          // A financial institution's ke is its valuation's (no command center).
-          assumptionProvenance: commandCenter
-            ? buildAssumptionProvenance(commandCenter.costOfCapital.assumptions, {
-                equityMode: commandCenter.costOfCapital.equityMode,
-                ke: commandCenter.costOfCapital.ke,
-              })
-            : pipelineResult?.bankResult?.valuation?.costOfCapital
-              ? buildAssumptionProvenance(pipelineResult.bankResult.valuation.costOfCapital.assumptions, {
-                  equityMode: pipelineResult.bankResult.valuation.costOfCapital.equityMode,
-                  ke: pipelineResult.bankResult.valuation.costOfCapital.ke,
-                })
-              : null,
-          // Null when no valuation ran: silence about earnings quality must not
-          // read as a clean bill of health.
-          earningsQuality: commandCenter
-            ? buildEarningsQualitySummary(commandCenter.earningsQuality)
-            : null,
-        });
-        envelope = {
-          ...structuralEnvelope,
-          generatedAt: input.metadata.generatedAt,
-          runContext: { ...structuralEnvelope.runContext, runId: input.metadata.runId },
-        };
+        envelope = buildRunEnvelope(state);
       } catch (error) {
         const message = errorMessage(error);
         return {
@@ -1319,237 +1725,20 @@ export function createLegacyAnalysisRunExecutor(
           materialization,
         };
       }
+      envelope = enrichTrust(state, envelope);
+      checkValuationGate(state, envelope);
+      envelope = applyTerminalOutcomeToEnvelope(envelope, state.terminal);
 
-      if (commandCenter) {
-        try {
-          const analyticalDepth = dependencies.evaluateAnalyticalDepth(commandCenter, { modelKe: commandCenter.costOfCapital.ke });
-          const antiTautology = dependencies.summarizeAntiTautology(commandCenter);
-          envelope = { ...envelope, analyticalDepth, antiTautology };
-        } catch (error) {
-          terminal = { kind: "failed", stage: "release-trust", code: "LEGACY_TRUST_ENRICHMENT_FAILED", message: errorMessage(error) };
-          diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "error", message: terminal.message });
-          envelope = { ...envelope, analyticalDepth: null, antiTautology: null };
-        }
-      }
-
-      const valuationCheckpoint = envelope.rigor.checkpoints.find((checkpoint) => checkpoint.level === "valuation-eligible");
-      if (!terminal && valuationCheckpoint?.achieved !== true) {
-        terminal = {
-          kind: "blocked",
-          stage: "model-execution",
-          code: "LEGACY_VALUATION_GATE_NOT_CLEARED",
-          message: valuationCheckpoint?.detail ?? "The legacy traceability envelope did not establish valuation eligibility.",
-        };
-        diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message: terminal.message });
-      }
-
-      envelope = applyTerminalOutcomeToEnvelope(envelope, terminal);
-
-      const familyArtifact = pipelineResult
-        ? await createAnalysisContentArtifact({
-            kind: "family-analysis",
-            schemaVersion: "legacy-pipeline-result-v1",
-            payload: { derivationMode: "legacy-derived", pipelineResult },
-          })
-        : null;
-      if (familyArtifact) artifacts.push(familyArtifact);
-
-      const windowArtifact = analysisWindow
-        ? await createAnalysisContentArtifact({
-            kind: "analysis-window",
-            schemaVersion: analysisWindow.policyVersion,
-            payload: { derivationMode: "unified-window", analysisWindow },
-          })
-        : null;
-      if (windowArtifact) artifacts.push(windowArtifact);
-
-      const assumptionArtifact = await createAnalysisContentArtifact({
-        kind: "assumption-set",
-        schemaVersion: sourcedAssumptionSet?.schemaVersion ?? "legacy-assumption-set-v1",
-        payload: sourcedAssumptionSet
-          ? { derivationMode: "sourced-assumption-set", sourcedAssumptionSet }
-          : {
-              derivationMode: "legacy-derived",
-              config,
-              evidenceLedger: commandCenter?.evidenceLedger ?? null,
-              caveat: "No unified analysis window was available; native sourced assumptions were not published.",
-            },
-      });
-      artifacts.push(assumptionArtifact);
-
-      const forecastArtifacts = await Promise.all(forecastResults.map((forecastResult) => createAnalysisContentArtifact({
-            kind: "forecast-case" as const,
-            schemaVersion: "2026-07-industrial-forecast-state-v1",
-            payload: { derivationMode: "forecast-state", forecastResult },
-          })));
-      artifacts.push(...forecastArtifacts);
-
-      const scenarioOrderingArtifact = scenarioOrdering
-        ? await createAnalysisContentArtifact({
-            kind: "evidence",
-            schemaVersion: "2026-07-scenario-ordering-v1",
-            payload: { evidenceType: "scenario-ordering", scenarioOrdering },
-          })
-        : null;
-      if (scenarioOrderingArtifact) artifacts.push(scenarioOrderingArtifact);
-
-      const scenarioCalibrationArtifact = scenarioCalibration
-        ? await createAnalysisContentArtifact({
-            kind: "evidence",
-            schemaVersion: scenarioCalibration.schemaVersion,
-            payload: { evidenceType: "scenario-calibration", scenarioCalibration },
-          })
-        : null;
-      if (scenarioCalibrationArtifact) artifacts.push(scenarioCalibrationArtifact);
-
-      const sectorSidecarArtifact = input.sectorSidecar
-        ? await createAnalysisContentArtifact({
-            kind: "evidence",
-            schemaVersion: input.sectorSidecar.schemaVersion,
-            payload: { evidenceType: "governed-sector-sidecar", sidecar: input.sectorSidecar, execution: sectorCaseExecution },
-          })
-        : null;
-      if (sectorSidecarArtifact) artifacts.push(sectorSidecarArtifact);
-
-      const unlinkedModelResults: CatalogValuationModelResult[] = commandCenter
-        ? [...adaptLegacyCommandCenterModelResults(commandCenter)]
-        : pipelineResult?.analysisFamily === "financial-institution" && pipelineResult.bankResult
-          ? adaptBankValuationModelResults(pipelineResult.bankResult.valuation, pipelineResult.bankResult.subtype)
-          : [];
-      if (sectorCaseExecution?.modelResult) unlinkedModelResults.push(clonePlain(sectorCaseExecution.modelResult));
-      let modelResults: CatalogValuationModelResult[] = unlinkedModelResults.map((modelResult, index) =>
-        modelResult.status === "computed"
-          ? {
-              ...modelResult,
-              evidenceRefs: modelResult.evidenceRefs.length
-                ? modelResult.evidenceRefs
-                : [factArtifact.ref.contentHash, assumptionArtifact.ref.contentHash],
-              transformationRefs: [modelTransformationId(modelResult.modelId, modelResult.caseId, index)],
-            }
-          : modelResult);
-      for (const [index, execution] of advancedModelExecutions.entries()) {
-        if (!execution.compositionPolicy) continue;
-        if (execution.request.modelId !== "advanced.real-options-rd-pipeline") {
-          advancedModelExecutions[index] = { ...execution, compositionCandidate: { status: "blocked", blockerCodes: ["COMPOSITION_MODEL_MISMATCH"], eligibleForIntrinsicSynthesis: false } };
-          continue;
-        }
-        const dossier = execution.compositionPolicy.dossier;
-        const baseResult = modelResults.find((result) => result.modelId === dossier.baseModelId && result.caseId === dossier.baseCaseId) ?? null;
-        advancedModelExecutions[index] = { ...execution, compositionCandidate: evaluateRealOptionsCompositionCandidate({ request: execution.request, result: execution.result, policy: execution.compositionPolicy, baseResult }) };
-      }
-      if (commandCenter) {
-        for (const execution of advancedModelExecutions) {
-          if (!execution.compositionPolicy || !execution.compositionCandidate) continue;
-          const activation = applyRealOptionsCompositionCandidate({
-            synthesis: commandCenter.evidenceWeightedSynthesis,
-            policy: execution.compositionPolicy,
-            candidate: execution.compositionCandidate,
-          });
-          if (activation.status === "blocked") {
-            const message = `Governed real-options synthesis substitution blocked: ${activation.blockerCodes.join(", ")}.`;
-            terminal = { kind: "blocked", stage: "synthesis", code: "REAL_OPTIONS_COMPOSITION_SUBSTITUTION_BLOCKED", message };
-            diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message });
-            break;
-          }
-          commandCenter = { ...commandCenter, evidenceWeightedSynthesis: activation.synthesis };
-        }
-        const effectiveSynthesis = commandCenter.evidenceWeightedSynthesis;
-        modelResults = modelResults.map((modelResult) => modelResult.status === "computed" && modelResult.modelId === "industrial.evidence-weighted-synthesis"
-          ? {
-              ...modelResult,
-              perShare: effectiveSynthesis.intrinsicRange.midPerShare,
-              diagnostics: {
-                ...modelResult.diagnostics,
-                lowPerShare: effectiveSynthesis.intrinsicRange.lowPerShare,
-                highPerShare: effectiveSynthesis.intrinsicRange.highPerShare,
-                compositionAppliedCount: effectiveSynthesis.compositionDiagnostics?.appliedCount ?? 0,
-              },
-            }
-          : modelResult);
-        if (effectiveSynthesis.compositionDiagnostics?.appliedCount) {
-          if (forecastResults.length > 0) {
-            scenarioGovernance = buildScenarioGovernanceReport({ forecastResults, scenarioOrdering, assumptions: sourcedAssumptionSet, commandCenter });
-          }
-          try {
-            envelope = { ...envelope, antiTautology: dependencies.summarizeAntiTautology(commandCenter) };
-          } catch (error) {
-            const message = errorMessage(error);
-            terminal = { kind: "failed", stage: "release-trust", code: "COMPOSED_TRUST_ENRICHMENT_FAILED", message };
-            diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "error", message });
-          }
-        }
-      }
-      envelope = applyTerminalOutcomeToEnvelope(envelope, terminal);
-      const scenarioGovernanceArtifact = scenarioGovernance
-        ? await createAnalysisContentArtifact({
-            kind: "evidence",
-            schemaVersion: scenarioGovernance.schemaVersion,
-            payload: { evidenceType: "scenario-governance", scenarioGovernance },
-          })
-        : null;
-      if (scenarioGovernanceArtifact) artifacts.push(scenarioGovernanceArtifact);
-      const advancedModelArtifacts = await Promise.all(advancedModelExecutions.map((execution) => createAnalysisContentArtifact({
-        kind: "evidence" as const,
-        schemaVersion: "2026-07-governed-advanced-model-execution-v5",
-        payload: { evidenceType: "governed-advanced-model-execution", execution },
-      })));
-      artifacts.push(...advancedModelArtifacts);
-      const modelArtifacts = await Promise.all(modelResults.map((modelResult) =>
-        createAnalysisContentArtifact({
-          kind: "model-result" as const,
-          schemaVersion: "2026-07-model-result-v1",
-          payload: {
-            derivationMode: "legacy-derived",
-            modelResult,
-          },
-        })));
-      artifacts.push(...modelArtifacts);
-
-      const synthesisArtifact = commandCenter
-        ? await createAnalysisContentArtifact({
-            kind: "synthesis",
-            schemaVersion: "2026-07-evidence-weighted-synthesis-v2",
-            payload: {
-              derivationMode: "legacy-derived",
-              synthesis: commandCenter.evidenceWeightedSynthesis,
-              scenarioGovernance,
-            },
-          })
-        : null;
-      if (synthesisArtifact) artifacts.push(synthesisArtifact);
-
-      let transformationDag: TransformationDag | null = null;
-      let transformationDagArtifact: AnalysisContentArtifact<"evidence"> | null = null;
-      if (factSet) {
-        try {
-          transformationDag = await buildLegacyTransformationDag({
-            factSet,
-            pipelineResult,
-            modelResults,
-            hasSynthesis: synthesisArtifact != null,
-            synthesis: commandCenter?.evidenceWeightedSynthesis ?? null,
-            policyRef: policyArtifact.ref,
-            sourceArtifactIds: normalizeSourceArtifactIds(input),
-          });
-          transformationDagArtifact = await createAnalysisContentArtifact({
-            kind: "evidence",
-            schemaVersion: transformationDag.schemaVersion,
-            payload: { evidenceType: "transformation-dag", transformationDag },
-          });
-          artifacts.push(transformationDagArtifact);
-        } catch (error) {
-          const message = errorMessage(error);
-          diagnostics.push({
-            code: "TRANSFORMATION_DAG_FAILED",
-            stage: "release-trust",
-            severity: "error",
-            message,
-          });
-          if (!terminal) {
-            terminal = { kind: "failed", stage: "release-trust", code: "TRANSFORMATION_DAG_FAILED", message };
-          }
-        }
-      }
+      const stageArtifacts = await recordStageArtifacts(state);
+      const composed = composeModelResults(state, stageArtifacts.assumptionArtifact, envelope);
+      const { modelResults } = composed;
+      envelope = applyTerminalOutcomeToEnvelope(composed.envelope, state.terminal);
+      const modelArtifacts = await recordModelArtifacts(state, modelResults);
+      const { transformationDag, transformationDagArtifact } = await recordTransformationDag(
+        state,
+        modelResults,
+        modelArtifacts.synthesisArtifact != null,
+      );
 
       const diagnosticArtifacts = await Promise.all(diagnostics.map((diagnostic) => createAnalysisContentArtifact({
         kind: "diagnostic" as const,
@@ -1558,6 +1747,7 @@ export function createLegacyAnalysisRunExecutor(
       })));
       artifacts.push(...diagnosticArtifacts);
 
+      const { terminal, factArtifact, policyArtifact, catalogArtifact, pipelineResult } = state;
       const gateResults = buildGateResults({
         envelope,
         diagnostics,
@@ -1570,47 +1760,21 @@ export function createLegacyAnalysisRunExecutor(
         diagnosticRefs: diagnosticArtifacts.map((artifact) => artifact.ref),
         factRef: factArtifact.ref,
         policyRef: policyArtifact.ref,
-        familyRef: familyArtifact?.ref ?? null,
-        windowRef: windowArtifact?.ref ?? null,
-        assumptionRef: assumptionArtifact.ref,
-        forecastRefs: forecastArtifacts.map((artifact) => artifact.ref),
-        modelRefs: modelArtifacts.map((artifact) => artifact.ref),
-        synthesisRef: synthesisArtifact?.ref ?? null,
+        familyRef: stageArtifacts.familyArtifact?.ref ?? null,
+        windowRef: stageArtifacts.windowArtifact?.ref ?? null,
+        assumptionRef: stageArtifacts.assumptionArtifact.ref,
+        forecastRefs: stageArtifacts.forecastArtifacts.map((artifact) => artifact.ref),
+        modelRefs: modelArtifacts.modelArtifacts.map((artifact) => artifact.ref),
+        synthesisRef: modelArtifacts.synthesisArtifact?.ref ?? null,
         transformationDagRef: transformationDagArtifact?.ref ?? null,
-        scenarioOrderingRef: scenarioOrderingArtifact?.ref ?? null,
-        scenarioGovernanceRef: scenarioGovernanceArtifact?.ref ?? null,
-        scenarioCalibrationRef: scenarioCalibrationArtifact?.ref ?? null,
-        sectorSidecarRef: sectorSidecarArtifact?.ref ?? null,
-        advancedModelRefs: advancedModelArtifacts.map((artifact) => artifact.ref),
+        scenarioOrderingRef: stageArtifacts.scenarioOrderingArtifact?.ref ?? null,
+        scenarioGovernanceRef: modelArtifacts.scenarioGovernanceArtifact?.ref ?? null,
+        scenarioCalibrationRef: stageArtifacts.scenarioCalibrationArtifact?.ref ?? null,
+        sectorSidecarRef: stageArtifacts.sectorSidecarArtifact?.ref ?? null,
+        advancedModelRefs: modelArtifacts.advancedModelArtifacts.map((artifact) => artifact.ref),
       });
 
-      materialization = {
-        rawData,
-        config,
-        marketSnapshot,
-        segmentData,
-        bankQuality,
-        sourceArtifactHashes,
-        debugInfo,
-        parserDiagnostics,
-        factSet,
-        pipelineResult,
-        commandCenter,
-        modelResults,
-        qualityGate,
-        mappingAudit,
-        analysisStatus,
-        valuationReadiness,
-        analysisWindow,
-        transformationDag,
-        sourcedAssumptionSet,
-        forecastResults,
-        scenarioOrdering,
-        scenarioGovernance,
-        scenarioCalibration,
-        sectorCaseExecution,
-        advancedModelExecutions,
-      };
+      materialization = materialize(state, modelResults, transformationDag);
 
       const run = await createAnalysisRunV1({
         schemaVersion: ANALYSIS_RUN_SCHEMA_VERSION,
@@ -1624,13 +1788,13 @@ export function createLegacyAnalysisRunExecutor(
         factSetRef: factArtifact.ref,
         policyBundleRef: policyArtifact.ref,
         modelCatalogRef: catalogArtifact.ref,
-        familyAnalysisRef: familyArtifact?.ref ?? null,
-        analysisWindowRef: windowArtifact?.ref ?? null,
-        marketSnapshotRef: marketArtifact?.ref ?? null,
-        assumptionSetRef: assumptionArtifact.ref,
-        forecastCaseRefs: forecastArtifacts.map((artifact) => artifact.ref),
-        modelResultRefs: modelArtifacts.map((artifact) => artifact.ref),
-        synthesisRef: synthesisArtifact?.ref ?? null,
+        familyAnalysisRef: stageArtifacts.familyArtifact?.ref ?? null,
+        analysisWindowRef: stageArtifacts.windowArtifact?.ref ?? null,
+        marketSnapshotRef: state.marketArtifact?.ref ?? null,
+        assumptionSetRef: stageArtifacts.assumptionArtifact.ref,
+        forecastCaseRefs: stageArtifacts.forecastArtifacts.map((artifact) => artifact.ref),
+        modelResultRefs: modelArtifacts.modelArtifacts.map((artifact) => artifact.ref),
+        synthesisRef: modelArtifacts.synthesisArtifact?.ref ?? null,
         stageResults,
         gateResults,
         trustEnvelope: envelope,

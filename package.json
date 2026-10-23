@@ -50,6 +50,7 @@
     "diagnose": "node --import tsx/esm --import ./scripts/lib/register-raw-loader.mjs scripts/diagnose-company.ts",
     "audit:baseline": "node --import tsx/esm --import ./scripts/lib/register-raw-loader.mjs scripts/audit-baseline.ts",
     "audit:all": "node --import tsx/esm --import ./scripts/lib/register-raw-loader.mjs scripts/audit-all-companies.ts",
+    "parity": "node --import tsx/esm --import ./scripts/lib/register-raw-loader.mjs scripts/analysis-run-parity.ts",
     "scorecard": "node --import tsx/esm --import ./scripts/lib/register-raw-loader.mjs scripts/valuation-scorecard.ts",
     "refresh:expectations": "node --import tsx/esm --import ./scripts/lib/register-raw-loader.mjs scripts/refresh-expectations.ts",
     "accountability": "node --import tsx/esm --import ./scripts/lib/register-raw-loader.mjs scripts/accountability/run-all.ts",
