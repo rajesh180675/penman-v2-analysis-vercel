@@ -13,6 +13,7 @@ import type { LiveMarketDataSnapshot } from "../engine/marketData";
 import type { BankQualityIndicators } from "../engine/bankQualityIndicators";
 import { ACTIVE_MARKET_PACKS } from "../engine/marketPacks";
 import type { CapitalineParseDebug } from "../engine/capitalineParser/types";
+import { buildCapitalineCanonicalFactBundle } from "../engine/facts/sourceAdapters";
 import { DEFAULT_CONFIG, type CompanyRegistry, type EngineConfig, type RawPeriodData, type RecastPeriod } from "../engine/types";
 import type { SegmentData } from "../engine/segmentParser";
 import { buildLocalLibraryCompanyUrls, type LibraryCompany } from "../components/data-entry/companyRegistry";
@@ -107,6 +108,13 @@ const defaultDependencies: CompanyRunDependencies = {
 /** Below this many consolidated years, a library company with standalone accounts is analysed on those. */
 const MIN_CONSOLIDATED_YEARS = 3;
 
+/**
+ * The library's zips are the same Capitaline exports the classic shell
+ * uploads, so their facts carry the class its audit governance gives those
+ * by default (src/lib/audit.ts).
+ */
+const LIBRARY_CONTENT_CLASS = "confidential-financial-statements";
+
 export function configForCompany(company: Pick<LibraryCompany, "ticker" | "type">): EngineConfig {
   return { ...DEFAULT_CONFIG, company_type: company.type, ticker: company.ticker };
 }
@@ -165,6 +173,14 @@ export async function loadCompanyRun(
       return { status: "error", message: `Fewer than two reported years end on or before ${asOf}; the analysis needs at least two.` };
     }
     onStep("analysing");
+    // The facts the run is built from, each traced to its file and cell, as
+    // the classic shell's upload supplies them. Without them the run recorded
+    // a flat copy of the periods: no fact-level lineage and no transformation
+    // DAG. The library does not record when a zip was fetched, so its
+    // artifacts carry no acquisition time rather than an invented one.
+    const canonicalFacts = parsed.debug
+      ? buildCapitalineCanonicalFactBundle({ rawData, debug: parsed.debug, scope: basis, contentClass: LIBRARY_CONTENT_CLASS })
+      : null;
     const now = deps.now().toISOString();
     const runId = `next-${issuerId}${asOf ? `-asof-${asOf}` : ""}-${now}`;
     const input: LegacyAnalysisRunInputV1 = {
@@ -183,6 +199,7 @@ export async function loadCompanyRun(
       // headers, periods, warnings) as it does for the classic shell's upload.
       // Labelled "manual" without it, the library's zips were never checked.
       debugInfo: parsed.debug,
+      ...(canonicalFacts ? { canonicalFacts } : {}),
       ...ACTIVE_MARKET_PACKS,
       metadata: {
         runId,

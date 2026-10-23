@@ -95,7 +95,7 @@ describe("loadCompanyRun", () => {
   });
 
   it("runs the Capitaline parse through parser fidelity, and keeps the diagnostics beside the run for the Debug tool", async () => {
-    const debug = { files: [] } as never;
+    const debug = { files: [], sourceArtifactHashes: [] } as never;
     const run = vi.fn(async (_input: LegacyAnalysisRunInputV1, _requestId: string) => result);
     const state = await loadCompanyRun(company, undefined, deps({ run, parse: async () => ({ periods: [period], debug }) }));
     expect(state).toEqual({ status: "ready", result, debug, basis: "consolidated" });
@@ -104,6 +104,33 @@ describe("loadCompanyRun", () => {
     const input = run.mock.calls[0]![0];
     expect(input.debugInfo).toBe(debug);
     expect(input.metadata.sourceMode).toBe("capitaline");
+  });
+
+  it("hands the run its facts, each traced to the file and cell it came from, on the accounts analysed", async () => {
+    // Without them the run recorded a flat copy of the periods: no fact-level
+    // lineage and no transformation DAG, where the classic upload had both.
+    const debug = {
+      companyId: "NESTLEIND",
+      sourceArtifactHashes: [{ fileName: "ProfitLoss_.xls", sha256: "d".repeat(64), byteLength: 10 }],
+      factOrigins: {
+        "2025-03-31": { "Revenue From Operations__ProfitLoss": { fileName: "ProfitLoss_.xls", parserMethod: "xlsx", row: 9, column: 2 } },
+      },
+    } as never;
+    const run = vi.fn(async (_input: LegacyAnalysisRunInputV1, _requestId: string) => result);
+    const parse = vi.fn(async (bytes: Uint8Array) => ({ periods: years(bytes[0] === 2 ? 14 : 2), debug: bytes[0] === 2 ? debug : null }));
+    await loadCompanyRun(nestle, undefined, deps({ run, fetchZip: fetchByUrl, parse }));
+
+    const facts = run.mock.calls[0]![0].canonicalFacts;
+    expect(facts?.sourceArtifacts).toEqual([expect.objectContaining({
+      artifactId: `sha256:${"d".repeat(64)}`,
+      sourceMode: "capitaline",
+      // Nestlé's run is on its standalone accounts, and its facts say so.
+      scope: "standalone",
+      contentClass: "confidential-financial-statements",
+      // The library does not record when a zip was fetched.
+      acquiredAt: null,
+    })]);
+    expect(facts?.periodSources["2025-03-31"]).toMatchObject({ kind: "reported", scope: "standalone" });
   });
 });
 
