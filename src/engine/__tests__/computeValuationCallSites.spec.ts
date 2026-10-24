@@ -36,6 +36,9 @@ const EXPECTED_CENSUS = [
   "src/engine/baselineGuardrails.ts :: anchoredPeriods(periods, cfg)",
   "src/engine/baselineGuardrails.ts :: forecast",
   "src/engine/baselineGuardrails.ts :: forecast",
+  // A recorded forecast case, anchored at the run's latest period, valued as
+  // the command center values its scenario (the dual run at model-execution).
+  "src/engine/forecastState/caseValuationParity.ts :: adaptForecastCaseToLegacyValuation(anchor, result.forecastCase)",
   // Receives ForecastReport's buildValuationPeriodsFromForecast output.
   "src/engine/monteCarloWorker.ts :: basePeriods",
   "src/engine/pvre/pvreEngine.ts :: valuationPeriods",
