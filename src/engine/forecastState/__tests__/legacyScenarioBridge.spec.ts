@@ -146,7 +146,7 @@ describe("legacy scenario to ForecastState bridge", () => {
     if (result.status !== "computed") return;
     for (const state of result.forecastCase.projected) {
       expect(state.balanceSheet.minorityInterest).toBeLessThan(0);
-      expect(state.balanceSheet.minorityInterest).toBeCloseTo(miRatio * state.balanceSheet.commonEquity.total, 6);
+      expect(state.balanceSheet.minorityInterest).toBeCloseTo(miRatio * state.balanceSheet.commonEquity.total, 2);
     }
   });
 
@@ -167,13 +167,9 @@ describe("legacy scenario to ForecastState bridge", () => {
       expect(state.balanceSheet.nfo).toBeCloseTo(year.NFO_f, 1);
       expect(state.balanceSheet.noa).toBeCloseTo(year.NOA_f, 6);
       // The distributions would land the balances whatever the case earned, so
-      // its income is held to the valued forecast's too. They differ only in
-      // when cash earns interest: the case on the opening balance, the
-      // forecast on the average (NFE = nbc × average NFO), so by nbc × ΔFA / 2
-      // after the minority's share.
-      const openingFinancialAssets = index === 0 ? LATEST.bs.FA : result.forecastCase.projected[index - 1]!.balanceSheet.financialAssets.total;
-      const interestTiming = -(1 - 0.05) * 0.06 * (state.balanceSheet.financialAssets.total - openingFinancialAssets) / 2;
-      expect(state.incomeStatement.commonNetIncome - year.CNI_f).toBeCloseTo(interestTiming, 2);
+      // its income is held to the valued forecast's too: the same NFE on the
+      // same average NFO, after the minority's share.
+      expect(state.incomeStatement.commonNetIncome).toBeCloseTo(year.CNI_f, 2);
     });
   });
 

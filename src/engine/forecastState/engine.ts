@@ -170,32 +170,9 @@ function buildProjectedState(args: {
   const taxOnOperatingIncome = operatingProfitPretax * driver.taxRate;
   const operatingIncomeAfterTax = operatingProfitPretax - taxOnOperatingIncome;
   const financeExpensePretax = ((openingFinancialObligations + financialObligations) / 2) * driver.costOfDebtPretax;
-  const averageFinancialAssetsBeforeCashClose = (
-    previous.cash
-    + previous.otherFinancialAssets
-    + previous.cash
-    + otherFinancialAssets
-  ) / 2;
-  const financeIncomePretax = averageFinancialAssetsBeforeCashClose * driver.financialAssetYieldPretax;
-  const netFinancingExpensePretax = financeExpensePretax - financeIncomePretax;
-  const netFinancingExpenseAfterTax = netFinancingExpensePretax * (1 - driver.taxRate);
-  const netIncomeTotal = operatingIncomeAfterTax - netFinancingExpenseAfterTax;
-  const minorityNetIncome = netIncomeTotal * driver.minorityIncomeShare;
-  const commonNetIncome = netIncomeTotal - minorityNetIncome;
+  const openingFinancialAssets = previous.cash + previous.otherFinancialAssets;
 
-  const dividends = Math.max(0, commonNetIncome) * driver.dividendPayoutRatio;
-  const retainedEarnings = previous.retainedEarnings + commonNetIncome - dividends;
-  const contributedCapital = previous.contributedCapital + driver.shareIssueProceeds - driver.buybacks;
-  const accumulatedOci = previous.accumulatedOci + driver.ownerOci;
-  const commonEquity = contributedCapital + retainedEarnings + accumulatedOci;
-  const minorityInterest = previous.minorityInterest
-    + minorityNetIncome
-    + driver.minorityOci
-    + driver.minorityContributions
-    - driver.minorityDistributions;
-
-  const cashFromOperations = netIncomeTotal
-    + depreciation
+  const nonCashOperatingFlows = depreciation
     + amortization
     + rightOfUseDepreciation
     - (workingCapitalAssets - previous.workingCapitalAssets)
@@ -206,15 +183,59 @@ function buildProjectedState(args: {
     - otherOperatingAssetInvestment
     - driver.financialAssetPurchases
     + driver.financialAssetSales;
-  const cashFromFinancing = driver.debtIssuance
+  const financingFlowsBeforeDividends = driver.debtIssuance
     - driver.debtRepayment
     - driver.leasePrincipalRepayment
     + driver.otherFinancialObligationChange
-    - dividends
     - driver.buybacks
     + driver.shareIssueProceeds
     + driver.minorityContributions
     - driver.minorityDistributions;
+
+  // Financial assets earn on their average balance, as obligations cost on
+  // theirs. Income on cash then depends on the year's closing cash, which
+  // depends on that income, but both are linear in closing cash, so the year
+  // solves exactly: net income is (income before closing cash) + b × cash,
+  // and cash is (cash before income) plus net income less dividends. Earning
+  // on opening cash instead put the case's financing expense off a forecast
+  // that charges its rate on average NFO (forecastingEngine/scenarios.ts) by
+  // half a year's interest on the change in cash.
+  const afterTax = 1 - driver.taxRate;
+  const halfYield = driver.financialAssetYieldPretax / 2;
+  const incomeBeforeClosingCash = operatingIncomeAfterTax
+    - (financeExpensePretax - halfYield * (openingFinancialAssets + otherFinancialAssets)) * afterTax;
+  const incomePerClosingCash = halfYield * afterTax;
+  const cashBeforeIncome = previous.cash + nonCashOperatingFlows + cashFromInvesting + financingFlowsBeforeDividends;
+  const commonShare = 1 - driver.minorityIncomeShare;
+  const closingCash = (dividendShare: number) =>
+    (cashBeforeIncome + (1 - dividendShare) * incomeBeforeClosingCash) / (1 - (1 - dividendShare) * incomePerClosingCash);
+  // Dividends are a share of common income when it is positive. Where paying
+  // them would leave it non-positive, none are paid: at that boundary the
+  // income a nil dividend leaves in cash can lift common income just above
+  // zero, and the dividend stays nil.
+  const paidCash = closingCash(commonShare * driver.dividendPayoutRatio);
+  const paysDividend = (incomeBeforeClosingCash + incomePerClosingCash * paidCash) * commonShare > 0;
+  const solvedCash = paysDividend ? paidCash : closingCash(0);
+  const financeIncomePretax = halfYield * (openingFinancialAssets + otherFinancialAssets + solvedCash);
+  const netFinancingExpensePretax = financeExpensePretax - financeIncomePretax;
+  const netFinancingExpenseAfterTax = netFinancingExpensePretax * afterTax;
+  const netIncomeTotal = operatingIncomeAfterTax - netFinancingExpenseAfterTax;
+  const minorityNetIncome = netIncomeTotal * driver.minorityIncomeShare;
+  const commonNetIncome = netIncomeTotal - minorityNetIncome;
+
+  const dividends = paysDividend ? commonNetIncome * driver.dividendPayoutRatio : 0;
+  const retainedEarnings = previous.retainedEarnings + commonNetIncome - dividends;
+  const contributedCapital = previous.contributedCapital + driver.shareIssueProceeds - driver.buybacks;
+  const accumulatedOci = previous.accumulatedOci + driver.ownerOci;
+  const commonEquity = contributedCapital + retainedEarnings + accumulatedOci;
+  const minorityInterest = previous.minorityInterest
+    + minorityNetIncome
+    + driver.minorityOci
+    + driver.minorityContributions
+    - driver.minorityDistributions;
+
+  const cashFromOperations = netIncomeTotal + nonCashOperatingFlows;
+  const cashFromFinancing = financingFlowsBeforeDividends - dividends;
   const netCashMovement = cashFromOperations + cashFromInvesting + cashFromFinancing;
   const cash = previous.cash + netCashMovement;
 
