@@ -1,20 +1,20 @@
-import { buildScenario } from "../forecastingEngine/scenarios";
-import type { EngineConfig, ForecastPeriod, ForecastScenario, RecastPeriod } from "../types";
+import type { EngineConfig, ForecastScenario, RecastPeriod } from "../types";
 import type { IndustrialForecastAnchor, IndustrialForecastRequest, IndustrialForecastResult, IndustrialForecastYearDrivers, IndustrialProjectedState, IndustrialScenarioKey } from "./contracts";
 import { buildIndustrialForecast } from "./engine";
 
 export const LEGACY_FORECAST_STATE_BRIDGE_VERSION = "2026-07-legacy-forecast-state-bridge-v1" as const;
 
 /**
- * Passes that bring the case onto the valued forecast's financing and fund the
- * years that run short of cash. The distributions converge within a few, and
- * one draw pass funds every short year, so this leaves room to spare.
+ * Passes that bring the case onto its scenario's financing and fund the years
+ * that run short of cash. The distributions converge within a few, and one
+ * draw pass funds every short year, so this leaves room to spare.
  */
 const MAX_FINANCING_PASSES = 40;
 /**
- * ₹ Cr: a case's equity and minority balances count as on the valued path
- * within this. Tight enough that a case values as its forecast does to a few
- * parts in a billion; the passes converge geometrically, so it costs a few.
+ * ₹ Cr: a case's equity and minority balances count as on its financing path
+ * within this. Tight enough that a case values as the command center's
+ * forecast does to a few parts in a billion; the passes converge
+ * geometrically, so it costs a few.
  */
 const FINANCING_TOLERANCE = 1e-6;
 /** A draw overshoots its shortfall slightly, so the year closes with cash in hand. */
@@ -33,6 +33,11 @@ function scenarioKey(name: string): IndustrialScenarioKey {
 
 function seriesValue(values: readonly number[], index: number): number {
   return values[Math.min(index, values.length - 1)] ?? Number.NaN;
+}
+
+/** An optional driver's value for the year, or null where the scenario has none. */
+function optionalSeriesValue(values: readonly number[] | undefined, index: number): number | null {
+  return values?.length ? values[Math.min(index, values.length - 1)] ?? null : null;
 }
 
 function buildAnchor(
@@ -172,36 +177,65 @@ function cashShortfalls(result: IndustrialForecastResult): { index: number; shor
 }
 
 /**
- * The distributions that put each year's common equity and minority interest
- * on the valued forecast's, given this pass's income; null once every year is
- * there. What owners receive beyond the year's earnings is recorded as
- * buybacks, since a payout ratio cannot exceed one; the valued forecast does
- * not split a payout between the two.
+ * The common equity and minority interest the scenario's financing policy
+ * sets for a year, on the case's own NOA and income. The policy is the one
+ * the command center's forecast applies (forecastingEngine/scenarios.ts,
+ * buildForecastPeriod): where owners are paid a fixed amount, equity rolls
+ * forward on clean surplus; where net financial obligations are held at a ₹
+ * level, equity is NOA less that level; otherwise NFO is held as a ratio to
+ * equity, so equity is NOA over one plus the leverage. The minority holds a
+ * fixed share of equity.
  */
-function followValuedFinancing(
+function policyBalances(
+  scenario: ForecastScenario,
+  index: number,
+  state: IndustrialProjectedState,
+  openingEquity: number,
+): { readonly equity: number; readonly minority: number } {
+  const drivers = scenario.drivers;
+  const noa = state.balanceSheet.noa;
+  const miRatio = optionalSeriesValue(drivers.mi_ratio, index) ?? 0;
+  const payout = optionalSeriesValue(drivers.owner_payout, index);
+  const nfoLevel = optionalSeriesValue(drivers.nfo_level, index);
+  const equityFromLevel = nfoLevel != null ? (noa - nfoLevel) / (1 + miRatio) : null;
+  const leverageDenominator = 1 + seriesValue(drivers.flev, index) + miRatio;
+  const equity = payout != null
+    ? openingEquity + state.incomeStatement.commonNetIncome - payout
+    : equityFromLevel != null && equityFromLevel > 0
+      ? equityFromLevel
+      : leverageDenominator > 0 ? noa / leverageDenominator : noa;
+  return { equity, minority: miRatio * equity };
+}
+
+/**
+ * The distributions that put each year's common equity and minority interest
+ * where the scenario's financing policy sets them, given this pass's NOA and
+ * income; null once every year is there. What owners receive beyond the
+ * year's earnings is recorded as buybacks, since a payout ratio cannot exceed
+ * one; the policy does not split a payout between the two.
+ */
+function followFinancingPolicy(
   drivers: readonly IndustrialForecastYearDrivers[],
   result: IndustrialForecastResult,
   anchor: IndustrialForecastAnchor,
-  valued: readonly ForecastPeriod[],
+  scenario: ForecastScenario,
 ): IndustrialForecastYearDrivers[] | null {
   const states = projectedStates(result);
-  const onPath = states.every((state, index) => {
-    const target = valued[index];
-    return !target
-      || (Math.abs(state.balanceSheet.commonEquity.total - target.CSE_f) < FINANCING_TOLERANCE
-        && Math.abs(state.balanceSheet.minorityInterest - (target.MI_f ?? 0)) < FINANCING_TOLERANCE);
-  });
+  const openingEquity = (index: number) =>
+    states[index - 1]?.balanceSheet.commonEquity.total ?? anchor.balanceSheet.commonEquity;
+  const targets = states.map((state, index) => policyBalances(scenario, index, state, openingEquity(index)));
+  const onPath = states.every((state, index) =>
+    Math.abs(state.balanceSheet.commonEquity.total - targets[index]!.equity) < FINANCING_TOLERANCE
+    && Math.abs(state.balanceSheet.minorityInterest - targets[index]!.minority) < FINANCING_TOLERANCE);
   if (onPath) return null;
   return drivers.map((driver, index) => {
     const state = states[index];
-    const target = valued[index];
+    const target = targets[index];
     if (!state || !target) return driver;
-    const previous = states[index - 1]?.balanceSheet;
-    const openingEquity = previous ? previous.commonEquity.total : anchor.balanceSheet.commonEquity;
-    const openingMinority = previous ? previous.minorityInterest : anchor.balanceSheet.minorityInterest;
+    const openingMinority = states[index - 1]?.balanceSheet.minorityInterest ?? anchor.balanceSheet.minorityInterest;
     const income = state.incomeStatement.commonNetIncome;
-    const toOwners = income + openingEquity - target.CSE_f;
-    const toMinority = state.incomeStatement.minorityNetIncome + openingMinority - (target.MI_f ?? 0);
+    const toOwners = income + openingEquity(index) - target.equity;
+    const toMinority = state.incomeStatement.minorityNetIncome + openingMinority - target.minority;
     const dividends = toOwners > 0 ? Math.min(toOwners, Math.max(income, 0)) : 0;
     return {
       ...driver,
@@ -255,15 +289,17 @@ export function buildIndustrialForecastFromLegacyScenario(args: {
     probabilityRationale: args.probabilityRationale,
   });
 
-  // The case is the forecast the command center values (forecastingEngine/
-  // scenarios.ts), so it follows that forecast's financing. There, each
-  // year's equity is set by policy (held leverage, a ₹ NFO level, or an
-  // owner payout) and the minority's balance as a share of it. Each pass sets
-  // the year's distributions to owners and to the minority so both balances
-  // land on the valued ones, and with NOA already the same, so does NFO.
-  // Paying out the latest year's dividend ratio instead, with debt held, left
-  // the recorded NFO 1.6–59% of NOA from the one valued (HUL's bull 59%).
-  const valued = buildScenario(args.scenario, args.latest);
+  // The case applies its scenario's financing policy: each year's equity is
+  // set by held leverage, a ₹ NFO level, or an owner payout, and the
+  // minority's balance as a share of it (policyBalances). Each pass sets the
+  // year's distributions to owners and to the minority so both balances land
+  // where the policy puts them, and NFO is what NOA leaves. Paying out the
+  // latest year's dividend ratio instead, with debt held, left the recorded
+  // NFO 1.6–59% of NOA from the forecast the command center values (HUL's
+  // bull 59%). The policy is applied to the case's own NOA and income, not
+  // copied from that forecast, so the run's check that the two value alike
+  // (caseValuationParity.ts) compares two forecasts built apart.
+  //
   // Debt is held at the anchor and cash absorbs every other flow, so a year
   // whose investment outruns its cash from operations closes with negative
   // cash (NTPC, L&T, Tata Steel): a balance sheet that cannot exist. A
@@ -272,7 +308,7 @@ export function buildIndustrialForecastFromLegacyScenario(args: {
   // and the financing cost both see it.
   //
   // A pass corrects the distributions first and draws only once they hold.
-  // With equity and the minority on the valued path, NFO is too, so a year's
+  // With equity and the minority on the policy's path, NFO is too, so a year's
   // cash is its debt less the NFO it carries. A draw then lifts every later
   // year's cash by its own amount, and the interest it costs does not move
   // cash: the next pass's distributions absorb it. So one pass funds every
@@ -280,7 +316,7 @@ export function buildIndustrialForecastFromLegacyScenario(args: {
   let drivers = yearDrivers(args.scenario, args.latest, anchor);
   let result = buildIndustrialForecast(requestFor(drivers));
   for (let pass = 0; pass < MAX_FINANCING_PASSES; pass += 1) {
-    const followed = followValuedFinancing(drivers, result, anchor, valued);
+    const followed = followFinancingPolicy(drivers, result, anchor, args.scenario);
     if (followed) {
       drivers = followed;
       result = buildIndustrialForecast(requestFor(drivers));
