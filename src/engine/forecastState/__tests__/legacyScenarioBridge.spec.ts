@@ -173,6 +173,30 @@ describe("legacy scenario to ForecastState bridge", () => {
     });
   });
 
+  it.each([
+    ["held leverage with a minority", { mi_ratio: [0.06, 0.06, 0.06], mii_share: [0.05, 0.05, 0.05] }],
+    ["NFO held at a ₹ level", { nfo_level: [500, 500, 500], mi_ratio: [0.06, 0.06, 0.06], mii_share: [0.05, 0.05, 0.05] }],
+    // A level above NOA leaves no equity, so the leverage rule applies.
+    ["a ₹ level NOA cannot carry", { nfo_level: [2_000, 2_000, 2_000] }],
+    ["a fixed owner payout", { owner_payout: [100, 100, 100], mi_ratio: [0.06, 0.06, 0.06], mii_share: [0.05, 0.05, 0.05] }],
+  ])("applies the scenario's financing policy itself, as the command center's forecast does: %s", (_policy, financing) => {
+    // The case sets each year's equity and minority from the scenario's own
+    // policy on its own NOA and income; the forecast valued is built apart,
+    // so the two agree only if both apply the policy alike.
+    const scenario = { ...SCENARIO, drivers: { ...SCENARIO.drivers, ...financing } };
+    const valued = buildScenario(scenario, LATEST);
+    const result = bridge(LATEST, scenario);
+    expect(result.status, reasons(result)).toBe("computed");
+    if (result.status !== "computed") return;
+    result.forecastCase.projected.forEach((state, index) => {
+      const year = valued[index]!;
+      expect(state.balanceSheet.commonEquity.total).toBeCloseTo(year.CSE_f, 5);
+      expect(state.balanceSheet.minorityInterest).toBeCloseTo(year.MI_f!, 5);
+      expect(state.balanceSheet.nfo).toBeCloseTo(year.NFO_f, 5);
+      expect(state.incomeStatement.commonNetIncome).toBeCloseTo(year.CNI_f, 5);
+    });
+  });
+
   it("pays owners beyond the year's earnings as buybacks, since a payout ratio cannot exceed one", () => {
     const scenario = { ...SCENARIO, drivers: { ...SCENARIO.drivers, owner_payout: [400, 400, 400] } };
     const valued = buildScenario(scenario, LATEST);
