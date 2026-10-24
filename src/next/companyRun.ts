@@ -173,10 +173,11 @@ export async function loadCompanyRun(
       return { status: "error", message: `Fewer than two reported years end on or before ${asOf}; the analysis needs at least two.` };
     }
     onStep("analysing");
-    // The facts the run is built from, each traced to its file and cell, as
-    // the classic shell's upload supplies them. Without them the run recorded
-    // a flat copy of the periods: no fact-level lineage and no transformation
-    // DAG. The library does not record when a zip was fetched, so its
+    // The run's canonical facts, as the classic shell's upload supplies them:
+    // the values the concept ontology maps (about ten concepts), each traced
+    // to its file and cell. Without them the run recorded only a flat copy of
+    // the periods and no transformation DAG. The recast still reads the raw
+    // periods. The library does not record when a zip was fetched, so its
     // artifacts carry no acquisition time rather than an invented one.
     const canonicalFacts = parsed.debug
       ? buildCapitalineCanonicalFactBundle({ rawData, debug: parsed.debug, scope: basis, contentClass: LIBRARY_CONTENT_CLASS })
