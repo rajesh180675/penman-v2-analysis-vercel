@@ -11,8 +11,12 @@ export const LEGACY_FORECAST_STATE_BRIDGE_VERSION = "2026-07-legacy-forecast-sta
  * one draw pass funds every short year, so this leaves room to spare.
  */
 const MAX_FINANCING_PASSES = 40;
-/** ₹ Cr: a case's equity and minority balances count as on the valued path within this. */
-const FINANCING_TOLERANCE = 0.01;
+/**
+ * ₹ Cr: a case's equity and minority balances count as on the valued path
+ * within this. Tight enough that a case values as its forecast does to a few
+ * parts in a billion; the passes converge geometrically, so it costs a few.
+ */
+const FINANCING_TOLERANCE = 1e-6;
 /** A draw overshoots its shortfall slightly, so the year closes with cash in hand. */
 const REVOLVER_HEADROOM = 0.01;
 

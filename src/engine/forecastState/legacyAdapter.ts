@@ -48,6 +48,8 @@ export interface LegacyValuationAnchorInput {
   readonly netOwnerDistribution: number;
   readonly rnoa: number | null;
   readonly separationScore: number;
+  /** The parent's stake in a carved-out lending arm, at value, which every equity value adds (src/engine/lendingArm). */
+  readonly carvedArmStakeValue?: number | undefined;
 }
 
 function freezePeriod(period: LegacyValuationPeriodInput): LegacyValuationPeriodInput {
@@ -84,6 +86,7 @@ export function adaptForecastCaseToLegacyValuation(
       NFO: anchor.nfo,
       MI: anchor.minorityInterest,
       separationScore: anchor.separationScore,
+      ...(anchor.carvedArmStakeValue != null ? { CarvedArmStakeValue: anchor.carvedArmStakeValue } : {}),
     },
     is: {
       CNI: anchor.commonNetIncome,
@@ -96,8 +99,16 @@ export function adaptForecastCaseToLegacyValuation(
     ratios: { RNOA: anchor.rnoa },
   })];
 
+  // Each field is the one the valued forecast's periods carry
+  // (forecastingEngine/scenarios.ts, buildValuationPeriodsFromForecast), so a
+  // case values as the command center values its forecast: the minority's
+  // income values its claim, the dividend model discounts what owners receive
+  // net (dividends and buybacks, less issues, floored at nil), and RNOA is on
+  // the closing NOA the terminal year is valued on.
   for (const state of forecastCase.projected) {
     const cashFlow = state.cashFlow;
+    const ownerDistribution = cashFlow.dividends + cashFlow.buybacks - cashFlow.shareIssueProceeds;
+    const noa = state.balanceSheet.noa;
     periods.push(freezePeriod({
       period_end: state.periodEnd,
       bs: {
@@ -112,12 +123,13 @@ export function adaptForecastCaseToLegacyValuation(
       is: {
         CNI: state.incomeStatement.commonNetIncome,
         OI: state.incomeStatement.operatingIncomeAfterTax,
+        MII: state.incomeStatement.minorityNetIncome,
       },
       cf: {
-        DividendPaid: cashFlow.dividends,
-        d_t: cashFlow.dividends + cashFlow.buybacks - cashFlow.shareIssueProceeds,
+        DividendPaid: Math.max(0, ownerDistribution),
+        d_t: ownerDistribution,
       },
-      ratios: { RNOA: state.diagnostics.roic },
+      ratios: { RNOA: noa !== 0 ? state.incomeStatement.operatingIncomeAfterTax / noa : null },
     }));
   }
 
