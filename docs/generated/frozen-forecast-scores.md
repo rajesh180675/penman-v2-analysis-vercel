@@ -30,7 +30,7 @@ The year in progress, projected from the months filed so far (provisional; month
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 20 | 10.9 | 20.9 | +48% | -6.4 | 16 of 20 |
+| Sales (log error, %) | 20 | 10.9 | 20.7 | +47% | -6.3 | 16 of 20 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 
 ### Frozen 2026-10-08 (17 of 23 forecasts scored)
@@ -60,7 +60,7 @@ The year in progress, projected from the months filed so far (provisional; month
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 15 | 9.5 | 19.4 | +51% | -5.4 | 12 of 15 |
+| Sales (log error, %) | 15 | 9.5 | 19.4 | +51% | -5.3 | 12 of 15 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 
 ### Frozen 2026-10-17 (14 of 21 forecasts scored)
@@ -75,7 +75,7 @@ The year in progress, projected from the months filed so far (provisional; month
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.2 | 13 of 16 |
+| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.1 | 13 of 16 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 
 ### Frozen 2026-10-18 (14 of 21 forecasts scored)
@@ -90,7 +90,7 @@ The year in progress, projected from the months filed so far (provisional; month
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.2 | 13 of 16 |
+| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.1 | 13 of 16 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 
 ### Frozen 2026-10-19 (14 of 21 forecasts scored)
@@ -105,8 +105,8 @@ The year in progress, projected from the months filed so far (provisional; month
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.2 | 13 of 16 |
-| Core margin (points of sales) | 16 | 1.8 | 1.9 | +4% | -1.0 | 9 of 16 |
+| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.1 | 13 of 16 |
+| Core margin (points of sales) | 16 | 1.8 | 1.9 | +4% | -0.9 | 9 of 16 |
 
 ### Frozen 2026-10-20 (14 of 21 forecasts scored)
 
@@ -128,8 +128,8 @@ The year in progress, projected from the months filed so far (provisional; month
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.2 | 13 of 16 |
-| Core margin (points of sales) | 16 | 1.8 | 1.9 | +4% | -1.0 | 9 of 16 |
+| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.1 | 13 of 16 |
+| Core margin (points of sales) | 16 | 1.8 | 1.9 | +4% | -0.9 | 9 of 16 |
 
 Against the frozen scenario cases:
 
@@ -154,7 +154,7 @@ Against the frozen scenario cases:
 | DMART | 2025-03-31 | 2027-03-31 (6 months filed) | -0.7 | -29.9 | +0.3 | +0.3 | — | — |
 | GRASIM | 2025-03-31 | — | not scored: a forecast of the business without Aditya Birla Capital; the consolidated filings describe another business | | | | | |
 | HINDUNILVR | 2025-03-31 | — | not scored: the 2026-03-31 filing reports ₹4,407 Cr of discontinued operations, a business sold or demerged since, so it and later years describe another business | | | | | |
-| INFY | 2026-03-31 | 2027-03-31 (3 months filed) | -3.4 | -13.1 | +0.2 | -0.1 | — | — |
+| INFY | 2026-03-31 | 2027-03-31 (6 months filed) | -1.9 | -11.6 | +0.3 | +0.1 | — | — |
 | ITC | 2025-03-31 | 2026-03-31 | +4.4 | -4.6 | -0.8 | -0.6 | +1.1 | +20.1 |
 | ITC | 2025-03-31 | 2027-03-31 (3 months filed) | +24.4 | +7.1 | +2.1 | +2.5 | — | — |
 | LT | 2026-03-31 | — | not scored: a forecast of the business without L&T Finance; the consolidated filings describe another business | | | | | |
