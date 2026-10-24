@@ -151,6 +151,35 @@ describe("Industrial ForecastState", () => {
     expect(forecastCase.terminal.consistencyResidual).toBeCloseTo(0, 10);
   });
 
+  it("earns on the year's average financial assets, closing cash included, as obligations cost on theirs", () => {
+    // Income on cash moves the cash it is earned on, and the year solves for
+    // both. Earned on opening cash, a case's financing expense was off a
+    // forecast that charges its rate on average NFO by half a year's interest
+    // on the change in cash.
+    const forecastCase = requireComputed(makeRequest());
+    forecastCase.projected.forEach((state, index) => {
+      const opening = index === 0
+        ? ANCHOR.balanceSheet.cash + ANCHOR.balanceSheet.otherFinancialAssets
+        : forecastCase.projected[index - 1]!.balanceSheet.financialAssets.total;
+      expect(state.balanceSheet.financialAssets.total).not.toBeCloseTo(opening, 0);
+      expect(state.incomeStatement.financeIncomePretax).toBeCloseTo(
+        ((opening + state.balanceSheet.financialAssets.total) / 2) * state.assumptions.financialAssetYieldPretax,
+        8,
+      );
+      expect(state.cashFlow.dividends).toBeCloseTo(state.incomeStatement.commonNetIncome * state.assumptions.dividendPayoutRatio, 8);
+    });
+  });
+
+  it("pays no dividend in a year whose common income is not positive, and still closes its cash", () => {
+    // A thin margin with no growth: finance cost exceeds operating income, and cash holds.
+    const forecastCase = requireComputed(makeRequest({ operatingMargin: 0.005, revenueGrowth: 0 }));
+    for (const state of forecastCase.projected) {
+      expect(state.incomeStatement.commonNetIncome).toBeLessThan(0);
+      expect(state.cashFlow.dividends).toBe(0);
+      expect(state.cashFlow.endingCash).toBeCloseTo(state.cashFlow.openingCash + state.cashFlow.netCashMovement, 8);
+    }
+  });
+
   it("creates independent immutable statement objects and a safe narrow legacy adapter", () => {
     const forecastCase = requireComputed(makeRequest());
     const [first, second] = forecastCase.projected;
