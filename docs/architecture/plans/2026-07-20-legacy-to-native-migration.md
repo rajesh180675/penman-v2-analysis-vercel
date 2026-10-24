@@ -876,6 +876,7 @@ export interface FactExtractionStageOutput {
 2. **No native adapters for Screener, XBRL, JSON, Manual.** These need `build*CanonicalFactBundle` functions. The base `buildTextCanonicalFactBundle()` covers 4/5 of the work; only XBRL needs a custom concept bridge.
 3. **`RawPeriodData` projection utility does not exist.** A small `projectRawPeriodData(factSet)` module is needed to keep legacy recast running.
 4. **Parser diagnostics must propagate.** Today each parser emits `SourceParserDiagnostics`. The native adapter must preserve parser-level diagnostics (warning counts, error counts, checks) and map them into the fact-extraction stage output.
+5. **The fact set covers a fraction of what the recast reads** (measured 2026-10-24). Item 1 is closed: library runs build the Capitaline bundle (#501). But the adapter keeps only labels with an ontology mapping, 7–12 per company, so the fact set holds 0.6% of parsed values (4,133 of 698,582 across 33 companies). The pipeline reads 97–165 labels by name, and the rest through pattern scans. `projectRawPeriodData` (item 3) cannot replace the raw periods until the ontology covers those labels, or the fact set carries unmapped values in an explicit unclassified bucket. See `docs/next-phase-plan.md` item 8.
 
 ### 8.7 Strangler exit criterion for `adaptLegacyRawPeriodsToFactSet`
 
