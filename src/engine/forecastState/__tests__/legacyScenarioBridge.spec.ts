@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CONFIG, type ForecastScenario, type RecastPeriod } from "../../types";
 import { CroreShares } from "../../types/units";
+import { buildScenario } from "../../forecastingEngine/scenarios";
 import { buildIndustrialForecastFromLegacyScenario } from "..";
 
 const LATEST = {
@@ -136,11 +137,58 @@ describe("legacy scenario to ForecastState bridge", () => {
     // loss-making subsidiary's losses to its minority even into a deficit.
     // An equity claim, not an asset or a liability, so not a balance that
     // must be non-negative.
+    // The valued forecast holds it as a share of equity, as a run's scenario
+    // carries it (mi_ratio = MI / CSE at the anchor), and the case follows.
     const latest = { ...LATEST, bs: { ...LATEST.bs, MI: -1, CSE: 801 } } as unknown as RecastPeriod;
-    const result = bridge(latest);
+    const miRatio = -1 / 801;
+    const result = bridge(latest, { ...SCENARIO, drivers: { ...SCENARIO.drivers, mi_ratio: [miRatio, miRatio, miRatio] } });
     expect(result.status, reasons(result)).toBe("computed");
     if (result.status !== "computed") return;
-    for (const state of result.forecastCase.projected) expect(state.balanceSheet.minorityInterest).toBe(-1);
+    for (const state of result.forecastCase.projected) {
+      expect(state.balanceSheet.minorityInterest).toBeLessThan(0);
+      expect(state.balanceSheet.minorityInterest).toBeCloseTo(miRatio * state.balanceSheet.commonEquity.total, 6);
+    }
+  });
+
+  it("records the forecast the command center values: its equity, minority and NFO, year by year", () => {
+    // The scenario's financing (held leverage here, with a minority share)
+    // sets each year's equity in the forecast valued. Paying out the latest
+    // year's dividend ratio with debt held instead left the recorded NFO
+    // 1.6–59% of NOA from the valued one across the library.
+    const scenario = { ...SCENARIO, drivers: { ...SCENARIO.drivers, mi_ratio: [0.06, 0.06, 0.06], mii_share: [0.05, 0.05, 0.05] } };
+    const valued = buildScenario(scenario, LATEST);
+    const result = bridge(LATEST, scenario);
+    expect(result.status, reasons(result)).toBe("computed");
+    if (result.status !== "computed") return;
+    result.forecastCase.projected.forEach((state, index) => {
+      const year = valued[index]!;
+      expect(state.balanceSheet.commonEquity.total).toBeCloseTo(year.CSE_f, 1);
+      expect(state.balanceSheet.minorityInterest).toBeCloseTo(year.MI_f!, 1);
+      expect(state.balanceSheet.nfo).toBeCloseTo(year.NFO_f, 1);
+      expect(state.balanceSheet.noa).toBeCloseTo(year.NOA_f, 6);
+      // The distributions would land the balances whatever the case earned, so
+      // its income is held to the valued forecast's too. They differ only in
+      // when cash earns interest: the case on the opening balance, the
+      // forecast on the average (NFE = nbc × average NFO), so by nbc × ΔFA / 2
+      // after the minority's share.
+      const openingFinancialAssets = index === 0 ? LATEST.bs.FA : result.forecastCase.projected[index - 1]!.balanceSheet.financialAssets.total;
+      const interestTiming = -(1 - 0.05) * 0.06 * (state.balanceSheet.financialAssets.total - openingFinancialAssets) / 2;
+      expect(state.incomeStatement.commonNetIncome - year.CNI_f).toBeCloseTo(interestTiming, 2);
+    });
+  });
+
+  it("pays owners beyond the year's earnings as buybacks, since a payout ratio cannot exceed one", () => {
+    const scenario = { ...SCENARIO, drivers: { ...SCENARIO.drivers, owner_payout: [400, 400, 400] } };
+    const valued = buildScenario(scenario, LATEST);
+    const result = bridge(LATEST, scenario);
+    expect(result.status, reasons(result)).toBe("computed");
+    if (result.status !== "computed") return;
+    result.forecastCase.projected.forEach((state, index) => {
+      expect(state.assumptions.dividendPayoutRatio).toBeCloseTo(1, 6);
+      expect(state.cashFlow.dividends).toBeCloseTo(state.incomeStatement.commonNetIncome, 6);
+      expect(state.cashFlow.buybacks).toBeGreaterThan(0);
+      expect(state.balanceSheet.commonEquity.total).toBeCloseTo(valued[index]!.CSE_f, 1);
+    });
   });
 
   it("draws nothing when the forecast funds itself", () => {
