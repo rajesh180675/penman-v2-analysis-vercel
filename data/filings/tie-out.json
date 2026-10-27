@@ -6001,6 +6001,14 @@
     "revenue": 2448,
     "exciseDuty": null,
     "coreOperatingIncome": 64.12955465587044
+   },
+   {
+    "periodEnd": "2026-09-30",
+    "fiscalYearEnd": "2027-03-31",
+    "months": 6,
+    "revenue": 5096,
+    "exciseDuty": null,
+    "coreOperatingIncome": 159.3413729128015
    }
   ]
  },
