@@ -1,7 +1,7 @@
 # Native Forecast Generation — Design
 
 **Date:** 2026-10-27 (IST)
-**Status:** Design
+**Status:** Built 2026-10-27 (see §9)
 **Scope:** Plan §9.7 exit criterion 1. The run's forecast cases come from a forecast-generation stage of their own, not from the command center's scenario cards.
 **Builds on:** `2026-07-20-legacy-to-native-migration.md` §9 (forecast cutover); #504–#509 (native cases, valued and published)
 
@@ -131,7 +131,7 @@ Recording the seed is the more honest record: it is the kw the forecast was gene
 
 ## 6. Risks
 
-- **Executor ordering.** Recording the market snapshot and resolving assumptions move ahead of the command center. Both read state set before it (`state.marketSnapshot` at `openRun`, the window at `selectWindow`), so their outputs should not move. The artifact *order* in the run changes, which changes the run's reproducibility hash even with identical artifacts. The parity harness compares artifacts by position, so it will report every later artifact as moved: compare them as a set for this PR, and say so. The Stage 9 cost-of-capital equality (`assumptionResolution.spec.ts`, `legacyExecutor.spec.ts`) must still pass unchanged.
+- **Executor ordering.** Recording the market snapshot and resolving assumptions move ahead of the command center. Both read state set before it (`state.marketSnapshot` at `openRun`, the window at `selectWindow`), so their outputs should not move. The artifact *order* was expected to change, which would move the run's reproducibility hash even with identical artifacts. It did not (§9): the only artifact recorded in the moved stages, the market snapshot, comes before the first forecast-dependent artifact either way. The Stage 9 cost-of-capital equality (`assumptionResolution.spec.ts`, `legacyExecutor.spec.ts`) must still pass unchanged.
 - **Two cost-of-capital routes.** The stage takes ke and kw from the run's assumption resolution (`analysisCase/assumptionResolution.ts`); the command center computes its own (`valuationCommandCenter/core.ts`). Both call `resolveCostOfCapitalFromConfig` with the same inputs, and the Stage 9 spec asserts them equal. The stage must use the same packs and as-of date, and the equality must cover the new site.
 - **Classic shell.** It builds its own command center without a run. It keeps working through the generate-it-yourself fallback (§3.3), and must be checked by loading a company in `?ui=classic`.
 
@@ -144,3 +144,12 @@ Recording the seed is the more honest record: it is the kw the forecast was gene
 ## 8. Slicing
 
 One PR. The derivation, the stage, the command center parameter and the assumption-resolution move are coupled: splitting them leaves two derivation paths alive at once. The PR is proved by §5 and lands only with exact parity apart from §4.2.
+
+## 9. Outcome
+
+Built as one PR, as §8 planned. Two things differ from the design:
+
+- **The seam is two functions, not one.** `planForecastScenarios` runs inside assumption resolution, because the base scenario sources the assumptions the cases are then labelled with; `buildPlannedForecastCases` runs after. Both are executor dependencies, so the executor spec stubs them.
+- **The artifact order did not change**, so parity compared positions directly.
+
+Parity against main (2534a167): every materialized field but `forecastResults` is byte-identical across all 33 runs. On the recorded cases only `terminal.kwSpread` moves, on 72 of 84 (§4.2). The smallest spread after is 3.4 points (NTPC bull), against the 0.5-point minimum. Five mutants were killed, including a backtest that leaks the latest anchor's cases into earlier anchors.

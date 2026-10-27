@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildValuationCommandCenter } from "../valuationCommandCenter";
+import { forecastGenerationInput, generateIndustrialForecastCases } from "../forecastState";
 import { carryValueToPriceDate, valueOnPriceBasis, yearsBetween } from "../valuationCommandCenter/helpers";
 import { DEFAULT_CONFIG, RecastPeriod, Severity } from "../types";
 import { CroreShares, INRAbsolute } from "../types/units";
@@ -598,7 +599,7 @@ describe("valuation command center", () => {
       mkPeriod(2025, 1210, 232, 172, 665, 885),
     ];
     const history = buildHistorySeries("2026-03-30", 1.1, 300);
-    const out = buildValuationCommandCenter({
+    const params = {
       data,
       config: {
         ...DEFAULT_CONFIG,
@@ -632,10 +633,30 @@ describe("valuation command center", () => {
         },
       },
       analysisStatus: productionReadyStatus,
-    });
+    } satisfies Parameters<typeof buildValuationCommandCenter>[0];
+    const out = buildValuationCommandCenter(params);
 
     expect(out.backtest.available).toBe(true);
     expect(out.backtest.points.length).toBeGreaterThan(0);
+
+    // Each replayed anchor is valued on a forecast of its own. A run hands the
+    // command center its latest anchor's forecast cases (here, the cases it
+    // generated itself, with their stress scenario as the base); they must not
+    // reach the replay of any earlier anchor.
+    const ownCases = generateIndustrialForecastCases(forecastGenerationInput({
+      periods: params.data,
+      config: params.config,
+      costOfCapital: { ke: out.costOfCapital.ke, kw: out.costOfCapital.kw, riskFreeRate: out.costOfCapital.assumptions?.riskFreeRate.value ?? params.marketData.riskFreeRate },
+    }), { analysisWindowId: "spec", assumptionIds: [], evidenceRefs: [] });
+    const stress = ownCases.find((generated) => generated.key === "stress")!;
+    const handed = ownCases.map((generated) => generated.key === "base" ? { ...stress, key: "base" as const } : generated);
+    const replayed = buildValuationCommandCenter({ ...params, forecastCases: handed });
+    // The latest anchor's base card values the case handed to it…
+    expect(replayed.scenarios.find((card) => card.key === "base")!.intrinsicPerShare)
+      .toBe(out.scenarios.find((card) => card.key === "stress")!.intrinsicPerShare);
+    // …and the replay of every earlier anchor is unchanged.
+    expect(replayed.backtest.points.map((point) => point.baseIntrinsicPerShare))
+      .toEqual(out.backtest.points.map((point) => point.baseIntrinsicPerShare));
     expect(out.checklist.whatMustGoRight.length).toBeGreaterThan(0);
     expect(out.marketContext.expectedReturnSpreadVsRf).not.toBeNull();
   });
