@@ -1,7 +1,7 @@
 export { buildIndustrialForecast } from "./engine";
 export { validateIndustrialScenarioOrdering } from "./ordering";
-export { adaptForecastCaseToLegacyValuation } from "./legacyAdapter";
-export { CASE_VALUATION_TOLERANCE, compareCaseValuations, type CaseValuationDivergence } from "./caseValuationParity";
+export { adaptForecastCaseToLegacyValuation, legacyValuationAnchor } from "./legacyAdapter";
+export { CASE_VALUATION_TOLERANCE, compareCaseValuations, type CaseValuationDivergence, type CaseValuationSource } from "./caseValuationParity";
 export {
   LEGACY_FORECAST_STATE_BRIDGE_VERSION,
   buildIndustrialForecastFromLegacyScenario,

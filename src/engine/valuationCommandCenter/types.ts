@@ -58,6 +58,14 @@ export interface ValuationScenarioCard {
    */
   expectedCagr: number | null;
   valuation: ValuationResult;
+  /**
+   * The forecast `valuation` was computed on: the scenario's forecast case,
+   * the native engine's balanced statements (forecastState), or the
+   * closed-form forecast where that case did not validate, with the checks it
+   * failed. A run blocks at its forecast gate when its own case for the
+   * scenario does not validate.
+   */
+  forecastSource?: { readonly kind: "forecast-case" } | { readonly kind: "closed-form"; readonly caseBlockedBy: readonly string[] } | undefined;
   forecastPolicy?: ForecastPolicySurface | undefined;
   /** How the kw behind this card's ReOI value was set (structural seed vs value-consistent solve). */
   kwConsistency?: KwConsistency | undefined;

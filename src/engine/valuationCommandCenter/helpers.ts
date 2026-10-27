@@ -1,6 +1,7 @@
 import { LiveMarketDataFreshness, MarketHistoryPoint } from "../marketData";
 import { AnalysisStatusSummary } from "../analysisStatus";
 import { ForecastPeriod, RecastPeriod, ValuationResult } from "../types";
+import type { LegacyValuationPeriodInput } from "../forecastState/legacyAdapter";
 import { resolveShareBasis, toPerShare } from "../shareCountTools";
 import { SOTPResult } from "../sotpValuation";
 import {
@@ -67,6 +68,15 @@ export function forecastDividendsPerShare(
 ): number[] {
   if (shares == null || !(shares > 0)) return [];
   return forecast.map((f, i) => (f.CNI_f - (f.CSE_f - (i === 0 ? openingCse : forecast[i - 1]!.CSE_f))) / shares);
+}
+
+/** The same, from valuation periods whose first is the anchor (adaptForecastCaseToLegacyValuation). */
+export function valuationPeriodDividendsPerShare(
+  periods: readonly LegacyValuationPeriodInput[],
+  shares: number | null,
+): number[] {
+  if (shares == null || !(shares > 0)) return [];
+  return periods.slice(1).map((period, i) => (period.is.CNI - (period.bs.CSE - periods[i]!.bs.CSE)) / shares);
 }
 
 /**
