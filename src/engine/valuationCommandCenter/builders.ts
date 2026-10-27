@@ -1,11 +1,10 @@
-import { RecastPeriod, EngineConfig, ForecastScenario, BusinessModelProfile, type ValuationResult } from "../types";
+import { RecastPeriod, EngineConfig, ForecastScenario, type ValuationResult } from "../types";
 import { resolveShareBasis } from "../shareCountTools";
 import { computeConsistentValuation, type KwConsistency } from "../valueConsistentKw";
 import { RE_REOI_BLOCK_GAP, reReoiGap } from "../reReoiConsistency";
-import { buildScenario, buildValuationPeriodsFromForecast, derivePersistenceForecastScenario } from "../forecastingEngine";
+import { buildScenario, buildValuationPeriodsFromForecast } from "../forecastingEngine";
 import { adaptForecastCaseToLegacyValuation, legacyValuationAnchor } from "../forecastState/legacyAdapter";
-import { buildIndustrialForecastFromLegacyScenario } from "../forecastState/legacyScenarioBridge";
-import { ValuationSectorTemplateDefinition } from "../valuationSectorTemplates";
+import type { GeneratedForecastCase } from "../forecastState/generation";
 import { buildSOTPValuation, SOTP_PRESETS, SOTPResult } from "../sotpValuation";
 import { runSOTPFromSegmentData, segmentDataToDefinitions } from "../segmentSOTPBridge";
 import type { SegmentData } from "../segmentParser";
@@ -189,51 +188,39 @@ export function buildClassAModels(
   return { workingCapitalGateResult, cleanSurplusResult, damodaranCapmResult, reverseDcfMonteCarloResult };
 }
 
+/**
+ * Each scenario card's reinvestment lift: how far its year-1 reinvestment
+ * rate is set from the latest year's (and its incremental ROIC the other way).
+ */
+const REINVESTMENT_LIFT: Record<ValuationScenarioCard["key"], number> = {
+  stress: 1.15,
+  base: 1,
+  bull: 0.9,
+  "historical-panic": 1.2,
+};
+
 export function buildScenarioCards(args: {
-  config: EngineConfig;
-  sectorTemplate: ValuationSectorTemplateDefinition;
   latest: RecastPeriod;
   shareBasis: ReturnType<typeof resolveShareBasis>;
   diagnostics: DcfCashFlowDiagnostics;
   marketPrice: number | null;
-  businessModel: BusinessModelProfile;
-  keBase: number;
-  kwBase: number;
-  riskFreeRate: number;
-  valuationData: RecastPeriod[];
-  horizon: number;
+  /**
+   * The forecast each card values: one case per scenario, generated from the
+   * valuation basis (forecastState/generation.ts). A run generates them in a
+   * stage of its own and passes them; a command center built outside a run
+   * generates them itself, the same way.
+   */
+  forecastCases: readonly GeneratedForecastCase[];
   /** Years from the anchor to the price's date (yearsBetween); 0 when undated. */
   yearsToPriceDate: number;
   /** Today's share count over the anchor's (marketContext.shareCountChange); null when unknown. */
   shareCountChange: number | null;
-}): {
-  scenarios: ValuationScenarioCard[];
-  derivedScenarios: {
-    stress: ForecastScenario;
-    base: ForecastScenario;
-    bull: ForecastScenario;
-    historicalPanic: ForecastScenario;
-  };
-} {
-  const { config, sectorTemplate, latest, shareBasis, diagnostics, marketPrice, businessModel, keBase, kwBase, riskFreeRate, valuationData, horizon, yearsToPriceDate, shareCountChange } = args;
-  const makeScenario = (
-    key: ValuationScenarioCard["key"],
-    scenario: ForecastScenario,
-    reinvestmentLift: number,
-  ) => {
-    const label = key === "stress" ? "Stress case" : key === "base" ? "Base case" : key === "bull" ? "Bull case" : "Historical panic";
-    const terminalGrowth = clamp(
-      config.g_terminal_override ?? scenario.drivers.g_terminal,
-      sectorTemplate.terminalGrowthFloor,
-      sectorTemplate.terminalGrowthCap,
-    );
-    const scenarioWithTerminal = {
-      ...scenario,
-      drivers: {
-        ...scenario.drivers,
-        g_terminal: terminalGrowth,
-      },
-    } satisfies ForecastScenario;
+}): ValuationScenarioCard[] {
+  const { latest, shareBasis, diagnostics, marketPrice, forecastCases, yearsToPriceDate, shareCountChange } = args;
+  const makeScenario = (generated: GeneratedForecastCase) => {
+    const { key, label, scenario: scenarioWithTerminal, result: forecastCase } = generated;
+    const reinvestmentLift = REINVESTMENT_LIFT[key];
+    const terminalGrowth = scenarioWithTerminal.drivers.g_terminal;
     // RE and ReOI value one forecast alike only at a value-consistent kw; the
     // structural kw seeds the solve (see valueConsistentKw.ts). The scenario
     // then carries the solved kw, so its forecast ReOI and anything seeded
@@ -255,18 +242,6 @@ export function buildScenarioCards(args: {
     // break-even and PVRE re-value, being several hundred times cheaper to
     // build. Where the case does not validate, the card is valued on the
     // closed form and says so.
-    const forecastCase = buildIndustrialForecastFromLegacyScenario({
-      caseId: key,
-      label,
-      scenario: scenarioWithTerminal,
-      latest,
-      config,
-      analysisWindowId: "valuation-command-center",
-      assumptionIds: [],
-      evidenceRefs: [],
-      probabilityStatus: "not-assigned",
-      probabilityRationale: null,
-    });
     const forecastSource: NonNullable<ValuationScenarioCard["forecastSource"]> = forecastCase.status === "computed"
       ? { kind: "forecast-case" }
       : { kind: "closed-form", caseBlockedBy: forecastCase.reasonCodes };
@@ -342,51 +317,5 @@ export function buildScenarioCards(args: {
     } satisfies ValuationScenarioCard;
   };
 
-  const derivedScenarios = {
-    stress: derivePersistenceForecastScenario({
-      scenarioKey: "stress",
-      periods: valuationData,
-      latest,
-      businessModel,
-      horizon,
-      template: sectorTemplate,
-      riskInputs: { ke: keBase, kw: kwBase, riskFreeRate },
-    }),
-    base: derivePersistenceForecastScenario({
-      scenarioKey: "base",
-      periods: valuationData,
-      latest,
-      businessModel,
-      horizon,
-      template: sectorTemplate,
-      riskInputs: { ke: keBase, kw: kwBase, riskFreeRate },
-    }),
-    bull: derivePersistenceForecastScenario({
-      scenarioKey: "bull",
-      periods: valuationData,
-      latest,
-      businessModel,
-      horizon,
-      template: sectorTemplate,
-      riskInputs: { ke: keBase, kw: kwBase, riskFreeRate },
-    }),
-    historicalPanic: derivePersistenceForecastScenario({
-      scenarioKey: "historical-panic",
-      periods: valuationData,
-      latest,
-      businessModel,
-      horizon,
-      template: sectorTemplate,
-      riskInputs: { ke: keBase, kw: kwBase, riskFreeRate },
-    }),
-  };
-
-  const scenarios: ValuationScenarioCard[] = [
-    makeScenario("stress", derivedScenarios.stress, 1.15),
-    makeScenario("base", derivedScenarios.base, 1),
-    makeScenario("bull", derivedScenarios.bull, 0.9),
-    makeScenario("historical-panic", derivedScenarios.historicalPanic, 1.2),
-  ];
-
-  return { scenarios, derivedScenarios };
+  return forecastCases.map(makeScenario);
 }

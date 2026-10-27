@@ -54,6 +54,9 @@ export function buildBacktest(context: CoreBuildContext): ValuationBacktestSumma
     const core = buildCoreCommandCenter({
       ...context,
       data: subset,
+      // Each earlier anchor is valued on a forecast of its own; the run's
+      // cases are the latest anchor's.
+      forecastCases: null,
       marketData: historicalSnapshot,
       config: {
         ...context.config,

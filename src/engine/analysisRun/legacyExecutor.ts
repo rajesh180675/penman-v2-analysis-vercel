@@ -13,7 +13,7 @@ import { adaptBankValuationModelResults } from "../bankValuation/evidence";
 import { resolveFinancialValuationReadiness } from "../bankValuation/readiness";
 import { getAnalysisPolicyVersions } from "../policyVersions";
 import type { SegmentData } from "../segmentParser";
-import type { AnalysisTraceabilityEnvelope, EngineConfig, RawPeriodData, RecastPeriod } from "../types";
+import type { AnalysisTraceabilityEnvelope, EngineConfig, ForecastScenario, RawPeriodData, RecastPeriod } from "../types";
 import { validateEngineConfig } from "../types";
 import { buildValuationCommandCenter, type ValuationCommandCenterOutput } from "../valuationCommandCenter";
 import { buildValuationBasis, windowValuationBasis, type ValuationBasis } from "../valuationBasis";
@@ -43,9 +43,12 @@ import {
   type UnifiedAnalysisWindow,
 } from "../analysisCase";
 import {
-  buildScenarioForecastResults,
   compareCaseValuations,
   evaluateScenarioForecastGates,
+  buildPlannedForecastCases,
+  planRunForecastScenarios,
+  type GeneratedForecastCase,
+  type PlannedForecastScenario,
   type IndustrialForecastResult,
   type ScenarioOrderingReport,
 } from "../forecastState";
@@ -247,6 +250,10 @@ export interface LegacyAnalysisRunExecutorDependencies {
   readonly validateConfig: typeof validateEngineConfig;
   /** P6 Stage 9 — native assumption resolution. */
   readonly resolveAssumptions: typeof resolveAnalysisAssumptions;
+  /** forecast-generation: each scenario the run forecasts, derived from the valuation basis. */
+  readonly planForecastScenarios: typeof planRunForecastScenarios;
+  /** forecast-generation: each planned scenario built as a balanced forecast case. */
+  readonly buildForecastCases: typeof buildPlannedForecastCases;
 }
 
 const DEFAULT_DEPENDENCIES: LegacyAnalysisRunExecutorDependencies = {
@@ -264,6 +271,8 @@ const DEFAULT_DEPENDENCIES: LegacyAnalysisRunExecutorDependencies = {
   snapshotFlags,
   validateConfig: validateEngineConfig,
   resolveAssumptions: resolveAnalysisAssumptions,
+  planForecastScenarios: planRunForecastScenarios,
+  buildForecastCases: buildPlannedForecastCases,
 };
 
 
@@ -515,7 +524,8 @@ function pointDistribution(value: number) {
  */
 function buildRunAssumptionCandidates(params: {
   readonly resolution: AssumptionResolutionOutput;
-  readonly commandCenter: ValuationCommandCenterOutput;
+  /** The base scenario the forecast is generated from (forecastState/generation.ts). */
+  readonly baseScenario: ForecastScenario | null;
   readonly config: EngineConfig;
   readonly window: UnifiedAnalysisWindow;
   readonly factRef: ContentRef<"fact-set">;
@@ -525,10 +535,10 @@ function buildRunAssumptionCandidates(params: {
   const periodWindow = included.length
     ? { from: included[0]!, to: included[included.length - 1]!, observations: included.length }
     : null;
-  const base = params.commandCenter.scenarios.find((scenario) => scenario.key === "base");
+  const base = params.baseScenario;
   const candidates: AssumptionCandidate<unknown>[] = [...params.resolution.capitalCandidates];
   if (base) {
-    const g = base.assumptions.g;
+    const g = base.drivers.g_terminal;
     candidates.push({
       assumptionId: "terminal-growth",
       key: "g_terminal",
@@ -544,9 +554,9 @@ function buildRunAssumptionCandidates(params: {
       required: true,
     });
     for (const [key, value] of [
-      ["sales-growth-year-1", base.assumptions.salesGrowthYear1],
-      ["core-margin-year-1", base.assumptions.corePmYear1],
-      ["asset-turnover-year-1", base.scenario.drivers.ato[0] ?? Number.NaN],
+      ["sales-growth-year-1", base.drivers.sales_growth[0] ?? 0],
+      ["core-margin-year-1", base.drivers.core_sales_pm[0] ?? 0],
+      ["asset-turnover-year-1", base.drivers.ato[0] ?? Number.NaN],
     ] as const) {
       candidates.push({
         assumptionId: key,
@@ -567,25 +577,6 @@ function buildRunAssumptionCandidates(params: {
   candidates.push(...params.resolution.marketCandidates);
   return candidates;
 }
-
-function buildRunForecastResults(params: {
-  readonly commandCenter: ValuationCommandCenterOutput;
-  readonly latest: RecastPeriod;
-  readonly config: EngineConfig;
-  readonly window: UnifiedAnalysisWindow;
-  readonly assumptions: SourcedAssumptionSet;
-  readonly factRef: ContentRef<"fact-set">;
-}): IndustrialForecastResult[] {
-  return buildScenarioForecastResults({
-    commandCenter: params.commandCenter,
-    latest: params.latest,
-    config: params.config,
-    analysisWindowId: params.window.windowId,
-    assumptionIds: params.assumptions.intrinsicEligibleAssumptionIds,
-    evidenceRefs: [params.factRef.contentHash],
-  });
-}
-
 
 function buildGateResults(params: {
   envelope: AnalysisTraceabilityEnvelope;
@@ -848,9 +839,17 @@ interface LegacyRunState {
   // as filed.
   valuationBasis: ValuationBasis | null;
   valuationRecastData: RecastPeriod[];
+  /** The lending arm and annualized years of the valuation basis, cut to the window. */
+  windowedBasis: Pick<ValuationBasis, "lendingArm" | "annualizedPeriods">;
   commandCenter: ValuationCommandCenterOutput | null;
   marketArtifact: AnalysisContentArtifact<"market-snapshot"> | null;
   sourcedAssumptionSet: SourcedAssumptionSet | null;
+  /** The cost of capital and share basis the forecast is generated at (assumption-resolution). */
+  assumptionResolution: AssumptionResolutionOutput | null;
+  /** Each scenario the run forecasts, planned at the resolved cost of capital. */
+  plannedForecastScenarios: PlannedForecastScenario[];
+  /** Each scenario's forecast, generated ahead of the command center, which values these cases. */
+  generatedForecastCases: GeneratedForecastCase[];
   forecastResults: IndustrialForecastResult[];
   scenarioOrdering: ScenarioOrderingReport | null;
   scenarioGovernance: ScenarioGovernanceReport | null;
@@ -982,9 +981,13 @@ async function openRun(
     windowedRecastData: [],
     valuationBasis: null,
     valuationRecastData: [],
+    windowedBasis: { lendingArm: null, annualizedPeriods: [] },
     commandCenter: null,
     marketArtifact: null,
     sourcedAssumptionSet: null,
+    assumptionResolution: null,
+    plannedForecastScenarios: [],
+    generatedForecastCases: [],
     forecastResults: [],
     scenarioOrdering: null,
     scenarioGovernance: null,
@@ -1134,9 +1137,46 @@ async function selectWindow(state: LegacyRunState): Promise<void> {
 }
 
 /** model-execution: the industrial command center, on the valuation basis cut to the window. */
+/** model-execution: the valuation basis cut to the window, which the forecast and the command center both read. */
+function windowValuationPeriods(state: LegacyRunState): void {
+  if (state.terminal || state.pipelineResult?.analysisFamily !== "industrial") return;
+  const { valuationBasis, analysisWindow } = state;
+  const windowedBasis = valuationBasis && analysisWindow
+    ? windowValuationBasis(valuationBasis, analysisWindow.includedPeriods)
+    : { periods: state.windowedRecastData, lendingArm: null, annualizedPeriods: [] };
+  state.valuationRecastData = windowedBasis.periods;
+  state.windowedBasis = windowedBasis;
+}
+
+/**
+ * forecast-generation, second half: each scenario planned at assumption
+ * resolution built as a balanced forecast case, labelled with the window and
+ * the sourced assumptions it rests on. Generated ahead of the command center,
+ * which values these cases rather than deriving its own.
+ */
+function generateForecastCases(state: LegacyRunState): void {
+  const { analysisWindow, plannedForecastScenarios } = state;
+  const latest = state.assumptionResolution?.anchorPeriods.at(-1);
+  if (state.terminal || !analysisWindow || !latest || plannedForecastScenarios.length === 0) return;
+  try {
+    state.generatedForecastCases = state.dependencies.buildForecastCases({
+      planned: plannedForecastScenarios,
+      latest,
+      config: state.config,
+      labels: {
+        analysisWindowId: analysisWindow.windowId,
+        assumptionIds: state.sourcedAssumptionSet?.intrinsicEligibleAssumptionIds ?? [],
+        evidenceRefs: [state.factArtifact.ref.contentHash],
+      },
+    });
+  } catch (error) {
+    stopRun(state, "failed", "forecast", "FORECAST_GENERATION_FAILED", errorMessage(error));
+  }
+}
+
 async function runCommandCenter(state: LegacyRunState): Promise<void> {
   if (state.terminal || state.pipelineResult?.analysisFamily !== "industrial") return;
-  const { input, dependencies, canonicalFacts, valuationBasis, analysisWindow } = state;
+  const { input, dependencies, canonicalFacts } = state;
   await failRunOnThrow(state, "model-execution", "LEGACY_COMMAND_CENTER_FAILED", () => {
     // Publication vintage for the holdout's no-look-ahead claim. Only
     // periods traceable to an artifact can be stamped; a
@@ -1153,14 +1193,12 @@ async function runCommandCenter(state: LegacyRunState): Promise<void> {
           periodArtifacts,
         })
       : null;
-    const windowedBasis = valuationBasis && analysisWindow
-      ? windowValuationBasis(valuationBasis, analysisWindow.includedPeriods)
-      : { periods: state.windowedRecastData, lendingArm: null, annualizedPeriods: [] };
-    state.valuationRecastData = windowedBasis.periods;
     state.commandCenter = dependencies.buildCommandCenter({
       data: state.valuationRecastData,
-      lendingArm: windowedBasis.lendingArm,
-      annualizedPeriods: windowedBasis.annualizedPeriods,
+      lendingArm: state.windowedBasis.lendingArm,
+      annualizedPeriods: state.windowedBasis.annualizedPeriods,
+      // The cases the run generated: the cards value these.
+      forecastCases: state.generatedForecastCases.length ? state.generatedForecastCases : null,
       config: state.config,
       marketData: state.marketSnapshot,
       analysisStatus: state.analysisStatus,
@@ -1193,11 +1231,11 @@ async function recordMarketSnapshot(state: LegacyRunState): Promise<void> {
 
 /** assumption-resolution: the sourced assumption set the forecast and models rest on. */
 async function resolveRunAssumptions(state: LegacyRunState): Promise<void> {
-  const { input, commandCenter, analysisWindow, factArtifact, policyArtifact } = state;
-  if (state.terminal || !commandCenter || !analysisWindow) return;
-  // P6 Stage 9. Same periods and market snapshot the command center was
+  const { input, analysisWindow, factArtifact, policyArtifact } = state;
+  if (state.terminal || state.pipelineResult?.analysisFamily !== "industrial" || !analysisWindow) return;
+  // P6 Stage 9. Same periods and market snapshot the command center is
   // built from in runCommandCenter — a different period set here would
-  // resolve a different cost of capital than the one the models actually used.
+  // resolve a different cost of capital than the one the models actually use.
   const resolution = state.dependencies.resolveAssumptions({
     periods: state.valuationRecastData,
     window: analysisWindow,
@@ -1215,12 +1253,27 @@ async function resolveRunAssumptions(state: LegacyRunState): Promise<void> {
     policyRef: policyArtifact.ref,
     marketRef: state.marketArtifact?.ref ?? null,
   });
+  state.assumptionResolution = resolution;
+  // forecast-generation, first half: every scenario planned at this cost of
+  // capital, on the anchor-truncated periods it was measured on (as the
+  // command center derives its forecast). The base scenario's terminal growth
+  // and year-1 drivers are sourced assumptions; the cases, built after, are
+  // labelled with the ids they resolve to.
+  await failRunOnThrow(state, "forecast", "FORECAST_GENERATION_FAILED", () => {
+    state.plannedForecastScenarios = state.dependencies.planForecastScenarios({
+      periods: resolution.anchorPeriods,
+      config: state.config,
+      costOfCapital: { ke: resolution.costOfCapital.ke, kw: resolution.costOfCapital.kw, riskFreeRate: resolution.riskFreeRate },
+    });
+  });
+  if (state.terminal) return;
+  const baseScenario = state.plannedForecastScenarios.find((planned) => planned.key === "base")?.scenario ?? null;
   const sourcedAssumptionSet = await resolveSourcedAssumptionSet({
     window: analysisWindow,
     candidates: buildRunAssumptionCandidates({
       resolution,
       window: analysisWindow,
-      commandCenter,
+      baseScenario,
       config: state.config,
       factRef: factArtifact.ref,
       policyRef: policyArtifact.ref,
@@ -1235,18 +1288,10 @@ async function resolveRunAssumptions(state: LegacyRunState): Promise<void> {
 
 /** forecast: the scenario forecasts, their calibration and ordering gate, and their governance report. */
 function runForecast(state: LegacyRunState): void {
-  const { input, commandCenter, analysisWindow, sourcedAssumptionSet } = state;
-  if (!state.terminal && commandCenter && analysisWindow && sourcedAssumptionSet) {
-    const latest = state.valuationRecastData.at(-1);
-    if (latest) {
-      state.forecastResults = buildRunForecastResults({
-        commandCenter,
-        latest,
-        config: state.config,
-        window: analysisWindow,
-        assumptions: sourcedAssumptionSet,
-        factRef: state.factArtifact.ref,
-      });
+  const { input, commandCenter, generatedForecastCases } = state;
+  if (!state.terminal && commandCenter && generatedForecastCases.length > 0) {
+    {
+      state.forecastResults = generatedForecastCases.map((generated) => generated.result);
       if (input.scenarioCalibration) {
         const scenarioCalibration = calibrateScenarioProbabilities({
           observations: clonePlain(input.scenarioCalibration.observations as ScenarioCalibrationObservation[]),
@@ -1723,9 +1768,11 @@ export function createLegacyAnalysisRunExecutor(
       await runRecast(state);
       checkAnalysisStatus(state);
       await selectWindow(state);
-      await runCommandCenter(state);
+      windowValuationPeriods(state);
       await recordMarketSnapshot(state);
       await resolveRunAssumptions(state);
+      generateForecastCases(state);
+      await runCommandCenter(state);
       runForecast(state);
       checkCaseValuations(state);
       runSectorCase(state);

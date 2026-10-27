@@ -249,6 +249,16 @@ function dependencies(options: {
     })),
     validateConfig: vi.fn(() => options.configWarnings ?? []),
     resolveAssumptions: vi.fn(() => assumptionResolution()) as unknown as LegacyAnalysisRunExecutorDependencies["resolveAssumptions"],
+    // The fixture's periods are stubs no forecast can be derived from, and its
+    // command center has no scenarios: the run records no forecast cases.
+    planForecastScenarios: vi.fn(() => []) as unknown as LegacyAnalysisRunExecutorDependencies["planForecastScenarios"],
+    // One blocked stub case per planned scenario: the fixture's periods are
+    // stubs no balanced statement set can be built from, and the fixture
+    // plans none unless a test supplies scenarios.
+    buildForecastCases: vi.fn(({ planned }: { planned: readonly { key: string; label: string; scenario: unknown }[] }) => planned.map((p) => ({
+      ...p,
+      result: { status: "blocked", caseId: p.key, reasonCodes: ["FIXTURE_STUB_CASE"], projected: [], validation: { status: "failed", checks: [], blockingCheckIds: ["FIXTURE_STUB_CASE"] } },
+    }))) as unknown as LegacyAnalysisRunExecutorDependencies["buildForecastCases"],
   };
 }
 
@@ -596,6 +606,63 @@ describe("legacy-backed AnalysisRun executor", () => {
     expect(result.reasonCode).toBe("CONFIG_TERMINAL_GROWTH_RATE_ERROR");
     expect(result.run.stageResults.find((stage) => stage.stageId === "request-validation")?.status).toBe("blocked");
     expect(deps.processPipeline).not.toHaveBeenCalled();
+  });
+
+  it("generates the forecast ahead of the command center, sources the base scenario's drivers, and hands the cases over", async () => {
+    // Four planned scenarios with distinct drivers, so the base's year-1
+    // values identify which one the assumptions were sourced from.
+    const planned = (["stress", "base", "bull", "historical-panic"] as const).map((key, index) => ({
+      key,
+      label: key,
+      scenario: {
+        name: key === "base" ? "base" : key === "bull" ? "bull" : "bear",
+        probability: 0.25,
+        horizonT: 1,
+        drivers: {
+          sales_growth: [0.01 * (index + 1)],
+          core_sales_pm: [0.1 + 0.01 * index],
+          ato: [1 + index],
+          flev: [0],
+          nbc: [0.05],
+          g_terminal: 0.03 + 0.001 * index,
+          ke: 0.12,
+          kw: 0.1,
+        },
+      },
+    }));
+    const baseCommandCenter = commandCenter();
+    const deps: LegacyAnalysisRunExecutorDependencies = {
+      ...dependencies(),
+      planForecastScenarios: vi.fn(() => planned) as unknown as LegacyAnalysisRunExecutorDependencies["planForecastScenarios"],
+      // Scenario governance reads the synthesis's defensibility once the run has cases.
+      buildCommandCenter: vi.fn(() => ({
+        ...baseCommandCenter,
+        evidenceWeightedSynthesis: { ...baseCommandCenter.evidenceWeightedSynthesis, defensibility: { status: "guarded", checklist: [] } },
+      })) as unknown as LegacyAnalysisRunExecutorDependencies["buildCommandCenter"],
+    };
+    // The stub cases do not validate, so the run blocks at its forecast gate:
+    // what is under test is what reached the command center before it.
+    const result = await createLegacyAnalysisRunExecutor(deps)(input());
+    expect(result.status).toBe("blocked");
+    if (result.status !== "blocked") return;
+    expect(result.reasonCode).toBe("FORECAST_STATE_VALIDATION_BLOCKED");
+
+    // The base scenario's year-1 drivers and terminal growth are the sourced assumptions.
+    const sourced = (id: string) => result.materialization.sourcedAssumptionSet?.assumptions.find((a) => a.assumptionId === id)?.value;
+    expect(sourced("sales-growth-year-1")).toBe(0.02);
+    expect(sourced("core-margin-year-1")).toBe(0.11);
+    expect(sourced("asset-turnover-year-1")).toBe(2);
+    expect(sourced("terminal-growth")).toBe(0.031);
+
+    // Planned before the command center is built, from the resolved cost of capital.
+    const planOrder = (deps.planForecastScenarios as unknown as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]!;
+    const centerOrder = (deps.buildCommandCenter as unknown as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]!;
+    expect(planOrder).toBeLessThan(centerOrder);
+
+    // The cases built from those scenarios are the ones the command center values.
+    const handed = (deps.buildCommandCenter as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0].forecastCases;
+    expect(handed.map((generated: { key: string }) => generated.key)).toEqual(["stress", "base", "bull", "historical-panic"]);
+    expect(handed[1].scenario).toBe(planned[1]!.scenario);
   });
 
   it("lets the run proceed on a config validation warning", async () => {

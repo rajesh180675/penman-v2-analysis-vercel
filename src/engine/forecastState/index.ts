@@ -42,3 +42,18 @@ export type {
   TerminalEconomicsDiagnostic,
 } from "./contracts";
 export { buildScenarioForecastResults, evaluateScenarioForecastGates, type ScenarioForecastGateOutcome } from "./scenarioGates";
+export {
+  FORECAST_HORIZON_YEARS,
+  FORECAST_SCENARIO_KEYS,
+  buildPlannedForecastCases,
+  forecastGenerationInput,
+  generateIndustrialForecastCases,
+  planForecastScenario,
+  planForecastScenarios,
+  planRunForecastScenarios,
+  type ForecastCaseLabels,
+  type ForecastGenerationInput,
+  type ForecastScenarioKey,
+  type GeneratedForecastCase,
+  type PlannedForecastScenario,
+} from "./generation";
