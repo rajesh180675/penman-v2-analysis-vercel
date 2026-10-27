@@ -1,3 +1,4 @@
+import type { RecastPeriod } from "../types";
 import type { IndustrialForecastCase } from "./contracts";
 
 /**
@@ -50,6 +51,24 @@ export interface LegacyValuationAnchorInput {
   readonly separationScore: number;
   /** The parent's stake in a carved-out lending arm, at value, which every equity value adds (src/engine/lendingArm). */
   readonly carvedArmStakeValue?: number | undefined;
+}
+
+/** The valuation anchor of a recast period: the scalars the command center's periods start from (buildValuationPeriodsFromForecast). */
+export function legacyValuationAnchor(latest: RecastPeriod): LegacyValuationAnchorInput {
+  return {
+    periodEnd: latest.period_end,
+    commonEquity: latest.bs.CSE,
+    noa: latest.bs.NOA,
+    nfo: latest.bs.NFO,
+    minorityInterest: latest.bs.MI,
+    commonNetIncome: latest.is.CNI,
+    operatingIncomeAfterTax: latest.is.OI,
+    dividendPaid: latest.cf.DividendPaid,
+    netOwnerDistribution: latest.cf.d_t,
+    rnoa: latest.ratios?.RNOA ?? null,
+    separationScore: latest.bs.separationScore,
+    carvedArmStakeValue: latest.bs.CarvedArmStakeValue,
+  };
 }
 
 function freezePeriod(period: LegacyValuationPeriodInput): LegacyValuationPeriodInput {

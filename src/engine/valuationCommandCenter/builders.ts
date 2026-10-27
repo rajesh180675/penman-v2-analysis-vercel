@@ -3,6 +3,8 @@ import { resolveShareBasis } from "../shareCountTools";
 import { computeConsistentValuation, type KwConsistency } from "../valueConsistentKw";
 import { RE_REOI_BLOCK_GAP, reReoiGap } from "../reReoiConsistency";
 import { buildScenario, buildValuationPeriodsFromForecast, derivePersistenceForecastScenario } from "../forecastingEngine";
+import { adaptForecastCaseToLegacyValuation, legacyValuationAnchor } from "../forecastState/legacyAdapter";
+import { buildIndustrialForecastFromLegacyScenario } from "../forecastState/legacyScenarioBridge";
 import { ValuationSectorTemplateDefinition } from "../valuationSectorTemplates";
 import { buildSOTPValuation, SOTP_PRESETS, SOTPResult } from "../sotpValuation";
 import { runSOTPFromSegmentData, segmentDataToDefinitions } from "../segmentSOTPBridge";
@@ -21,9 +23,9 @@ import {
   carryValueToPriceDate,
   clamp,
   expectedReturnToValue,
-  forecastDividendsPerShare,
   marginOfSafety,
   primaryValuationPerShare,
+  valuationPeriodDividendsPerShare,
 } from "./helpers";
 
 /**
@@ -219,6 +221,7 @@ export function buildScenarioCards(args: {
     scenario: ForecastScenario,
     reinvestmentLift: number,
   ) => {
+    const label = key === "stress" ? "Stress case" : key === "base" ? "Base case" : key === "bull" ? "Bull case" : "Historical panic";
     const terminalGrowth = clamp(
       config.g_terminal_override ?? scenario.drivers.g_terminal,
       sectorTemplate.terminalGrowthFloor,
@@ -243,8 +246,33 @@ export function buildScenarioCards(args: {
     // median, −₹1.95, read as equity worth nothing. Over the 20 industrial
     // companies (2026-10-14) every scenario stayed in order but Grasim's bull,
     // set against a base whose own RE and ReOI already disagree by 30%.
-    const forecast = buildScenario(scenarioWithTerminal, latest);
-    const forecastPeriods = buildValuationPeriodsFromForecast(latest, forecast);
+    //
+    // The card values its scenario's forecast case: the native engine's
+    // balanced statements, on the scenario's own financing policy
+    // (forecastState/legacyScenarioBridge.ts), the forecast the run records.
+    // The closed-form forecast it was valued on before values alike (each run
+    // proves it, forecastState/caseValuationParity.ts) and is still what
+    // break-even and PVRE re-value, being several hundred times cheaper to
+    // build. Where the case does not validate, the card is valued on the
+    // closed form and says so.
+    const forecastCase = buildIndustrialForecastFromLegacyScenario({
+      caseId: key,
+      label,
+      scenario: scenarioWithTerminal,
+      latest,
+      config,
+      analysisWindowId: "valuation-command-center",
+      assumptionIds: [],
+      evidenceRefs: [],
+      probabilityStatus: "not-assigned",
+      probabilityRationale: null,
+    });
+    const forecastSource: NonNullable<ValuationScenarioCard["forecastSource"]> = forecastCase.status === "computed"
+      ? { kind: "forecast-case" }
+      : { kind: "closed-form", caseBlockedBy: forecastCase.reasonCodes };
+    const forecastPeriods = forecastCase.status === "computed"
+      ? adaptForecastCaseToLegacyValuation(legacyValuationAnchor(latest), forecastCase.forecastCase)
+      : buildValuationPeriodsFromForecast(latest, buildScenario(scenarioWithTerminal, latest));
     const { valuation, kwConsistency } = computeConsistentValuation(
       forecastPeriods,
       scenarioWithTerminal.drivers.ke,
@@ -277,14 +305,14 @@ export function buildScenarioCards(args: {
       : primaryValuationPerShare(valuation);
     // Dated at the anchor year-end; the price is today's. Set beside it, the
     // value is carried to the price's date first.
-    const dividendsPerShare = forecastDividendsPerShare(forecast, latest.bs.CSE, perShareBasis);
+    const dividendsPerShare = valuationPeriodDividendsPerShare(forecastPeriods, perShareBasis);
     // …and spread over the price's share count.
     const carried = carryValueToPriceDate(intrinsicPerShare, scenarioAtKw.drivers.ke, yearsToPriceDate, dividendsPerShare);
     const valueAtPriceDate = carried != null && shareCountChange != null ? carried / shareCountChange : carried;
     const marginOfSafetyPct = marginOfSafety(valueAtPriceDate, marketPrice);
     return {
       key,
-      label: key === "stress" ? "Stress case" : key === "base" ? "Base case" : key === "bull" ? "Bull case" : "Historical panic",
+      label,
       scenario: scenarioAtKw,
       intrinsicPerShare,
       ownerEarningsDcfPerShare: ownerDcf,
@@ -294,6 +322,7 @@ export function buildScenarioCards(args: {
       marginOfSafetyPct,
       expectedCagr: expectedReturnToValue(marketPrice, valueAtPriceDate, scenarioAtKw.drivers.ke, 3),
       valuation,
+      forecastSource,
       kwConsistency,
       valueBasis,
       forecastPolicy: scenarioAtKw.forecastPolicy,

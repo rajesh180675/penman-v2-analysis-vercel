@@ -3,7 +3,7 @@ import { buildScenario, buildValuationPeriodsFromForecast } from "../../forecast
 import { computeValuation } from "../../PenmanNissimEngine";
 import { DEFAULT_CONFIG, type ForecastScenario, type RecastPeriod } from "../../types";
 import { CroreShares } from "../../types/units";
-import { buildIndustrialForecastFromLegacyScenario, compareCaseValuations } from "..";
+import { adaptForecastCaseToLegacyValuation, buildIndustrialForecastFromLegacyScenario, compareCaseValuations, legacyValuationAnchor } from "..";
 
 const LATEST = {
   period_end: "2026-03-31",
@@ -62,10 +62,12 @@ function recordedCase(scenario: ForecastScenario) {
   });
 }
 
-/** The command center's valuation of a scenario (valuationCommandCenter/builders.ts). */
-function commandCenterValuation(scenario: ForecastScenario) {
+/** A card's valuation (valuationCommandCenter/builders.ts): its scenario's forecast case, valued. */
+function cardValuation(scenario: ForecastScenario) {
+  const result = recordedCase(scenario);
+  if (result.status !== "computed") throw new Error(result.reasonCodes.join(", "));
   return computeValuation(
-    buildValuationPeriodsFromForecast(LATEST, buildScenario(scenario, LATEST)),
+    adaptForecastCaseToLegacyValuation(legacyValuationAnchor(LATEST), result.forecastCase),
     scenario.drivers.ke,
     scenario.drivers.kw,
     scenario.drivers.g_terminal,
@@ -73,9 +75,17 @@ function commandCenterValuation(scenario: ForecastScenario) {
   );
 }
 
+const FASTER: ForecastScenario = { ...SCENARIO, drivers: { ...SCENARIO.drivers, sales_growth: [0.12, 0.11, 0.10, 0.09] } };
+// The payout is a fixed amount, so faster growth moves every value but the
+// distributions owners receive (the dividend and FCFE models).
+const MOVED_BY_GROWTH = [
+  "V_RE_CV1", "V_RE_CV2", "V_RE_CV3", "V_ReOI_CV01", "V_ReOI_CV02", "V_ReOI_CV03", "V_no_growth",
+  "intrinsic_re_per_share", "intrinsic_reoi_per_share", "intrinsic_fcff_per_share", "intrinsic_aeg_per_share",
+];
+
 describe("forecast case valuation parity", () => {
-  it("values a recorded forecast case as the command center valued its scenario, model by model", () => {
-    const valuation = commandCenterValuation(SCENARIO);
+  it("proves a card valued on its forecast case against the recorded case and the closed-form forecast, model by model", () => {
+    const valuation = cardValuation(SCENARIO);
     // The values compared are real: every model valued, owners paid beyond earnings.
     expect(valuation.V_RE_CV3).toBeGreaterThan(0);
     expect(valuation.perShare?.intrinsic_ddm_per_share).toBeGreaterThan(0);
@@ -84,36 +94,51 @@ describe("forecast case valuation parity", () => {
     expect(recorded.status).toBe("computed");
     if (recorded.status !== "computed") return;
     expect(recorded.forecastCase.projected.some((state) => state.cashFlow.buybacks > 0)).toBe(true);
+    // The closed form is built apart from the case, so this is a real comparison.
+    const closedForm = computeValuation(
+      buildValuationPeriodsFromForecast(LATEST, buildScenario(SCENARIO, LATEST)),
+      SCENARIO.drivers.ke, SCENARIO.drivers.kw, SCENARIO.drivers.g_terminal, CONFIG,
+    );
+    expect(closedForm.V_RE_CV3).toBeCloseTo(valuation.V_RE_CV3!, 6);
 
     expect(compareCaseValuations({
-      scenarios: [{ key: "base", valuation }],
+      scenarios: [{ key: "base", scenario: SCENARIO, valuation }],
       forecastResults: [recorded],
       anchor: LATEST,
       valuationConfig: CONFIG,
     })).toEqual([]);
   });
 
-  it("reports every value on which a case recorded from another forecast disagrees", () => {
-    const valuation = commandCenterValuation(SCENARIO);
-    const faster = recordedCase({ ...SCENARIO, drivers: { ...SCENARIO.drivers, sales_growth: [0.12, 0.11, 0.10, 0.09] } });
+  it("reports every value on which the recorded case disagrees with the card", () => {
     const divergences = compareCaseValuations({
-      scenarios: [{ key: "base", valuation }],
-      forecastResults: [faster],
+      scenarios: [{ key: "base", scenario: SCENARIO, valuation: cardValuation(SCENARIO) }],
+      forecastResults: [recordedCase(FASTER)],
       anchor: LATEST,
       valuationConfig: CONFIG,
     });
-    // The payout is a fixed amount, so faster growth moves every value but the
-    // distributions owners receive (the dividend and FCFE models).
-    expect(divergences.map((divergence) => divergence.field)).toEqual([
-      "V_RE_CV1", "V_RE_CV2", "V_RE_CV3", "V_ReOI_CV01", "V_ReOI_CV02", "V_ReOI_CV03", "V_no_growth",
-      "intrinsic_re_per_share", "intrinsic_reoi_per_share", "intrinsic_fcff_per_share", "intrinsic_aeg_per_share",
-    ]);
-    for (const divergence of divergences) expect(divergence.caseId).toBe("base");
+    expect(divergences.map((divergence) => divergence.field)).toEqual(MOVED_BY_GROWTH);
+    for (const divergence of divergences) {
+      expect(divergence.caseId).toBe("base");
+      expect(divergence.source).toBe("forecast-case");
+    }
   });
 
-  it("checks only the cases that computed", () => {
+  it("reports every value on which the closed-form forecast of the card's scenario disagrees with the card", () => {
+    // A card valued on one forecast but carrying another scenario: what
+    // break-even and PVRE re-value from it would not start from its value.
+    const divergences = compareCaseValuations({
+      scenarios: [{ key: "base", scenario: FASTER, valuation: cardValuation(SCENARIO) }],
+      forecastResults: [],
+      anchor: LATEST,
+      valuationConfig: CONFIG,
+    });
+    expect(divergences.map((divergence) => divergence.field)).toEqual(MOVED_BY_GROWTH);
+    for (const divergence of divergences) expect(divergence.source).toBe("closed-form");
+  });
+
+  it("checks the closed form where the run recorded no computed case", () => {
     expect(compareCaseValuations({
-      scenarios: [{ key: "base", valuation: commandCenterValuation(SCENARIO) }],
+      scenarios: [{ key: "base", scenario: SCENARIO, valuation: cardValuation(SCENARIO) }],
       forecastResults: [],
       anchor: LATEST,
       valuationConfig: CONFIG,
