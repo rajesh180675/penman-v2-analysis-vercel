@@ -1590,6 +1590,7 @@ async function recordStageArtifacts(state: LegacyRunState) {
 function composeModelResults(
   state: LegacyRunState,
   assumptionArtifact: AnalysisContentArtifact<"assumption-set">,
+  forecastArtifacts: readonly AnalysisContentArtifact<"forecast-case">[],
   envelope: AnalysisTraceabilityEnvelope,
 ): { modelResults: CatalogValuationModelResult[]; envelope: AnalysisTraceabilityEnvelope } {
   const { pipelineResult, sectorCaseExecution, advancedModelExecutions } = state;
@@ -1599,13 +1600,24 @@ function composeModelResults(
       ? adaptBankValuationModelResults(pipelineResult.bankResult.valuation, pipelineResult.bankResult.subtype)
       : [];
   if (sectorCaseExecution?.modelResult) unlinkedModelResults.push(clonePlain(sectorCaseExecution.modelResult));
+  // A scenario's results were valued on that scenario's forecast case, so
+  // they cite it beside the facts and assumptions: a reviewer can trace a
+  // stress value to the stress forecast it came from.
+  const forecastCaseHash = new Map(forecastArtifacts.flatMap((artifact, index) => {
+    const result = state.forecastResults[index];
+    return result?.status === "computed" ? [[result.forecastCase.caseId, artifact.ref.contentHash] as const] : [];
+  }));
   let modelResults: CatalogValuationModelResult[] = unlinkedModelResults.map((modelResult, index) =>
     modelResult.status === "computed"
       ? {
           ...modelResult,
           evidenceRefs: modelResult.evidenceRefs.length
             ? modelResult.evidenceRefs
-            : [state.factArtifact.ref.contentHash, assumptionArtifact.ref.contentHash],
+            : [
+                state.factArtifact.ref.contentHash,
+                assumptionArtifact.ref.contentHash,
+                ...(modelResult.caseId != null && forecastCaseHash.has(modelResult.caseId) ? [forecastCaseHash.get(modelResult.caseId)!] : []),
+              ],
           transformationRefs: [modelTransformationId(modelResult.modelId, modelResult.caseId, index)],
         }
       : modelResult);
@@ -1803,7 +1815,7 @@ export function createLegacyAnalysisRunExecutor(
       envelope = applyTerminalOutcomeToEnvelope(envelope, state.terminal);
 
       const stageArtifacts = await recordStageArtifacts(state);
-      const composed = composeModelResults(state, stageArtifacts.assumptionArtifact, envelope);
+      const composed = composeModelResults(state, stageArtifacts.assumptionArtifact, stageArtifacts.forecastArtifacts, envelope);
       const { modelResults } = composed;
       envelope = applyTerminalOutcomeToEnvelope(composed.envelope, state.terminal);
       const modelArtifacts = await recordModelArtifacts(state, modelResults);
