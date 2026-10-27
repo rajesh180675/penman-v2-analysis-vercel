@@ -36,9 +36,11 @@ const EXPECTED_CENSUS = [
   "src/engine/baselineGuardrails.ts :: anchoredPeriods(periods, cfg)",
   "src/engine/baselineGuardrails.ts :: forecast",
   "src/engine/baselineGuardrails.ts :: forecast",
-  // A recorded forecast case, anchored at the run's latest period, valued as
-  // the command center values its scenario (the dual run at model-execution).
-  "src/engine/forecastState/caseValuationParity.ts :: adaptForecastCaseToLegacyValuation(anchor, result.forecastCase)",
+  // The dual run at model-execution: the recorded forecast case (via
+  // adaptForecastCaseToLegacyValuation) and the closed-form forecast (via
+  // buildValuationPeriodsFromForecast), both anchored at the run's latest
+  // period, valued as the command center valued its card.
+  "src/engine/forecastState/caseValuationParity.ts :: periods",
   // Receives ForecastReport's buildValuationPeriodsFromForecast output.
   "src/engine/monteCarloWorker.ts :: basePeriods",
   "src/engine/pvre/pvreEngine.ts :: valuationPeriods",
@@ -47,6 +49,8 @@ const EXPECTED_CENSUS = [
   "src/engine/regressionHarness.ts :: beforeForecast",
   // Re-values the base card along buildScenarioCards' own anchored path.
   "src/engine/valuationCommandCenter/breakEven.ts :: buildValuationPeriodsFromForecast(latest, buildScenario(scenario, latest))",
+  // A card's forecast case (adaptForecastCaseToLegacyValuation on
+  // legacyValuationAnchor(latest)), or the closed form where it does not validate.
   "src/engine/valuationCommandCenter/builders.ts :: forecastPeriods",
   // The value-consistent kw solve: values whatever its caller passes, which
   // the two entries above and pvre's (all forecast periods) supply.

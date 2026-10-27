@@ -1,7 +1,8 @@
+import { buildScenario, buildValuationPeriodsFromForecast } from "../forecastingEngine/scenarios";
 import { computeValuation } from "../PenmanNissimEngine";
-import type { EngineConfig, RecastPeriod, ValuationResult } from "../types";
+import type { EngineConfig, ForecastScenario, RecastPeriod, ValuationResult } from "../types";
 import type { IndustrialForecastResult } from "./contracts";
-import { adaptForecastCaseToLegacyValuation, type LegacyValuationAnchorInput } from "./legacyAdapter";
+import { adaptForecastCaseToLegacyValuation, legacyValuationAnchor, type LegacyValuationPeriodInput } from "./legacyAdapter";
 
 /**
  * The values compared: residual earnings and residual operating income at each
@@ -26,67 +27,59 @@ const VALUES = {
   intrinsic_aeg_per_share: (valuation: ValuationResult) => valuation.perShare?.intrinsic_aeg_per_share ?? null,
 } as const;
 
-/** Relative gap within which a case's value is the command center's: the bridge lands its balances to ₹1e-6 Cr. */
+/** Relative gap within which a forecast values as the command center's card: the bridge lands its balances to ₹1e-6 Cr. */
 export const CASE_VALUATION_TOLERANCE = 1e-6;
+
+/**
+ * The forecasts a card is proved against: the forecast case the run records
+ * for its scenario, and the closed-form forecast (forecastingEngine/
+ * scenarios.ts) that break-even, PVRE and the forecast tab still value.
+ */
+export type CaseValuationSource = "forecast-case" | "closed-form";
 
 export interface CaseValuationDivergence {
   readonly caseId: string;
+  readonly source: CaseValuationSource;
   readonly field: keyof typeof VALUES;
   readonly commandCenterValue: number | null;
-  readonly forecastCaseValue: number | null;
-}
-
-function anchorInput(latest: RecastPeriod): LegacyValuationAnchorInput {
-  return {
-    periodEnd: latest.period_end,
-    commonEquity: latest.bs.CSE,
-    noa: latest.bs.NOA,
-    nfo: latest.bs.NFO,
-    minorityInterest: latest.bs.MI,
-    commonNetIncome: latest.is.CNI,
-    operatingIncomeAfterTax: latest.is.OI,
-    dividendPaid: latest.cf.DividendPaid,
-    netOwnerDistribution: latest.cf.d_t,
-    rnoa: latest.ratios?.RNOA ?? null,
-    separationScore: latest.bs.separationScore,
-    carvedArmStakeValue: latest.bs.CarvedArmStakeValue,
-  };
+  readonly forecastValue: number | null;
 }
 
 /**
- * The run values each scenario through the command center and records a
- * forecast case for it from the native engine. This values each computed case
- * as the command center valued its scenario (same ke, kw and terminal growth,
- * same valuation config) and returns every value that disagrees: a dual run,
- * so the native path is proved on every run before it is the one valued.
+ * The command center values each scenario card on its forecast case, the
+ * native engine's balanced statements (valuationCommandCenter/builders.ts).
+ * The run records a case for each scenario too, and the closed-form forecast
+ * the card was valued on before is still valued by break-even and PVRE. This
+ * values both as the card was valued (same ke, kw and terminal growth, same
+ * valuation config) and returns every value that disagrees with the card's:
+ * a dual run, so the published values are proved on every run against each
+ * forecast that is valued beside them.
  */
 export function compareCaseValuations(args: {
-  readonly scenarios: readonly { readonly key: string; readonly valuation: ValuationResult }[];
+  readonly scenarios: readonly { readonly key: string; readonly scenario: ForecastScenario; readonly valuation: ValuationResult }[];
   readonly forecastResults: readonly IndustrialForecastResult[];
   readonly anchor: RecastPeriod;
   /** The config the command center valued with, its share basis applied. */
   readonly valuationConfig: EngineConfig;
 }): CaseValuationDivergence[] {
-  const anchor = anchorInput(args.anchor);
-  return args.scenarios.flatMap((scenario) => {
-    const result = args.forecastResults.find((candidate) => candidate.status === "computed" && candidate.forecastCase.caseId === scenario.key);
-    if (result?.status !== "computed") return [];
-    const valued = scenario.valuation;
-    const fromCase = computeValuation(
-      adaptForecastCaseToLegacyValuation(anchor, result.forecastCase),
-      valued.ke,
-      valued.kw,
-      valued.g,
-      args.valuationConfig,
-    );
-    return (Object.keys(VALUES) as (keyof typeof VALUES)[]).flatMap((field) => {
-      const commandCenterValue = VALUES[field](valued);
-      const forecastCaseValue = VALUES[field](fromCase);
-      if (commandCenterValue == null || forecastCaseValue == null) {
-        return commandCenterValue === forecastCaseValue ? [] : [{ caseId: scenario.key, field, commandCenterValue, forecastCaseValue }];
-      }
-      const gap = Math.abs(forecastCaseValue - commandCenterValue) / Math.max(1, Math.abs(commandCenterValue));
-      return gap <= CASE_VALUATION_TOLERANCE ? [] : [{ caseId: scenario.key, field, commandCenterValue, forecastCaseValue }];
+  const anchor = legacyValuationAnchor(args.anchor);
+  return args.scenarios.flatMap((card) => {
+    const valued = card.valuation;
+    const result = args.forecastResults.find((candidate) => candidate.status === "computed" && candidate.forecastCase.caseId === card.key);
+    const forecasts: { readonly source: CaseValuationSource; readonly periods: readonly LegacyValuationPeriodInput[] }[] = [
+      ...(result?.status === "computed" ? [{ source: "forecast-case" as const, periods: adaptForecastCaseToLegacyValuation(anchor, result.forecastCase) }] : []),
+      { source: "closed-form", periods: buildValuationPeriodsFromForecast(args.anchor, buildScenario(card.scenario, args.anchor)) },
+    ];
+    return forecasts.flatMap(({ source, periods }) => {
+      const fromForecast = computeValuation(periods, valued.ke, valued.kw, valued.g, args.valuationConfig);
+      return (Object.keys(VALUES) as (keyof typeof VALUES)[]).flatMap((field) => {
+        const commandCenterValue = VALUES[field](valued);
+        const forecastValue = VALUES[field](fromForecast);
+        const divergence = { caseId: card.key, source, field, commandCenterValue, forecastValue };
+        if (commandCenterValue == null || forecastValue == null) return commandCenterValue === forecastValue ? [] : [divergence];
+        const gap = Math.abs(forecastValue - commandCenterValue) / Math.max(1, Math.abs(commandCenterValue));
+        return gap <= CASE_VALUATION_TOLERANCE ? [] : [divergence];
+      });
     });
   });
 }

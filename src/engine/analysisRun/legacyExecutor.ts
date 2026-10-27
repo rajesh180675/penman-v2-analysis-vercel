@@ -1279,10 +1279,10 @@ function runForecast(state: LegacyRunState): void {
 }
 
 /**
- * model-execution, dual run: each recorded forecast case is valued as the
- * command center valued its scenario, and a value that disagrees is reported.
- * The command center's values are the ones published; this proves on every
- * run that the native forecast path values the same, before it replaces them.
+ * model-execution, dual run: each scenario card is valued on its forecast
+ * case, and both the case the run records and the closed-form forecast that
+ * break-even and PVRE re-value are valued as the card was, so a value that
+ * disagrees with the published one is reported.
  */
 function checkCaseValuations(state: LegacyRunState): void {
   const { commandCenter, forecastResults } = state;
@@ -1296,7 +1296,7 @@ function checkCaseValuations(state: LegacyRunState): void {
       code: "FORECAST_CASE_VALUATION_DIVERGED",
       stage: "model-execution",
       severity: "warning",
-      message: `The ${divergence.caseId} forecast case values ${divergence.field} at ${divergence.forecastCaseValue?.toFixed(2) ?? "nothing"}, the command center at ${divergence.commandCenterValue?.toFixed(2) ?? "nothing"}.`,
+      message: `The ${divergence.caseId} ${divergence.source === "closed-form" ? "closed-form forecast" : "forecast case"} values ${divergence.field} at ${divergence.forecastValue?.toFixed(2) ?? "nothing"}, the command center at ${divergence.commandCenterValue?.toFixed(2) ?? "nothing"}.`,
     });
   }
 }
