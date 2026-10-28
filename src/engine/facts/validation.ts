@@ -29,7 +29,9 @@ import {
 type UnknownRecord = Record<string, unknown>;
 
 const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/;
-const DECIMAL_PATTERN = /^(?:0|-?[1-9][0-9]*)(?:\.[0-9]+)?$/;
+// The sign may precede a leading zero ("-0.45"), but no spelling of negative zero is canonical.
+const DECIMAL_PATTERN = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/;
+const NEGATIVE_ZERO_PATTERN = /^-0(?:\.0+)?$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const UTC_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
 const CURRENCY_PATTERN = /^[A-Z]{3}$/;
@@ -267,7 +269,7 @@ function validatePeriod(value: unknown, path: string, errors: ContractError[]): 
 function validateNumericValue(value: UnknownRecord, path: string, errors: ContractError[]): void {
   const fields = ["kind", "decimal", "currency", "sourceScale", "normalizedUnit"] as const;
   checkShape(value, path, fields, fields, errors);
-  if (typeof value.decimal !== "string" || !DECIMAL_PATTERN.test(value.decimal) || value.decimal === "-0") {
+  if (typeof value.decimal !== "string" || !DECIMAL_PATTERN.test(value.decimal) || NEGATIVE_ZERO_PATTERN.test(value.decimal)) {
     addError(errors, "invalid-decimal", `${path}.decimal`, "Expected a finite canonical decimal without exponent, separators, leading zeroes, or negative zero.");
   }
   const scaleValid = checkEnum<SourceNumericScale>(value.sourceScale, SOURCE_SCALES, `${path}.sourceScale`, errors);
