@@ -179,6 +179,18 @@ describe("canonical source and fact validation", () => {
     }
   });
 
+  it("accepts a negative fraction and rejects non-canonical decimals", () => {
+    // Capitaline files small negative lines (Asian Paints: "P/L on Sales of
+    // Invest" -0.45); 658 of the library's values lie strictly between -1 and 0.
+    const withDecimal = (decimal: string) => reportedFact({ value: { ...reportedFact().value, decimal } as CanonicalFactValue });
+    for (const decimal of ["-0.45", "-0.02", "0.18", "-12.5", "0"]) {
+      expect(validateCanonicalFact(withDecimal(decimal)).ok, decimal).toBe(true);
+    }
+    for (const decimal of ["-0", "-0.0", "-00.5", "00.5", "1e3", "-.5", "1,250", "+1", "1."]) {
+      expect(errorCodes(validateCanonicalFact(withDecimal(decimal))), decimal).toContain("invalid-decimal");
+    }
+  });
+
   it("fails closed when numeric source scale, unit, or currency disagree", () => {
     const wrongScale = reportedFact({
       value: {
