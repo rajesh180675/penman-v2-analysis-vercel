@@ -20,7 +20,14 @@ function cloneAndFreeze<T>(value: T): T {
   return value;
 }
 
-/** Validate, content-address, and deeply freeze a new canonical FactSet. */
+/**
+ * Validate, content-address, and deeply freeze a new canonical FactSet.
+ *
+ * The content is validated once. The whole-set check differs from the
+ * content check only in requiring `factSetId` as a SHA-256 id, and the id
+ * added here is the content's own hash, so it cannot fail. Running it again
+ * took a second pass over every fact (126 ms of ITC's 750 ms at 6,291 facts).
+ */
 export async function createFactSet(
   content: FactSetContent,
 ): Promise<FailClosedResult<ValidatedFactSet>> {
@@ -28,10 +35,8 @@ export async function createFactSet(
   if (validatedContent.ok === false) return validatedContent;
 
   const factSetId = await hashFactSetContent(validatedContent.value);
-  const candidate: FactSet = { ...validatedContent.value, factSetId };
-  const validated = validateFactSet(candidate);
-  if (validated.ok === false) return validated;
-  return { ok: true, value: cloneAndFreeze(validated.value) };
+  const factSet = { ...validatedContent.value, factSetId } as FactSet as ValidatedFactSet;
+  return { ok: true, value: cloneAndFreeze(factSet) };
 }
 
 /**

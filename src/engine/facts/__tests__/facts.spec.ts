@@ -7,6 +7,7 @@ import {
   hashFactSetContent,
   validateAndVerifyFactSet,
   validateCanonicalFact,
+  validateFactSet,
   validateFactSetContent,
   validateSourceArtifact,
 } from "../index";
@@ -450,6 +451,8 @@ describe("FactSet canonical serialization", () => {
       schemaVersion: FACT_SET_SCHEMA_VERSION,
     });
     expect((await validateAndVerifyFactSet(created.value)).ok).toBe(true);
+    // Created on one validation pass; the whole-set check still holds.
+    expect(validateFactSet(created.value).ok).toBe(true);
 
     const tampered = {
       ...created.value,
