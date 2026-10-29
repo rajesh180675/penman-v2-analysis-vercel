@@ -1,9 +1,10 @@
 /**
  * The recast line catalog lists every label the pipeline reads by name.
  *
- * The recast's modules, the scope check and the greenfield step name lines as
- * string elements of array literals (the key lists passed to valBS, valPL,
- * firstValid, the scope signal groups, the greenfield fallbacks). This test
+ * The recast's modules, the scope check, the greenfield step and the bank
+ * pipeline name lines as string elements of array literals (the key lists
+ * passed to valBS, valPL, firstValid, the scope signal groups, the greenfield
+ * fallbacks). This test
  * walks their syntax trees and fails when one names a label the catalog does
  * not hold, so a new inline list cannot drop out of the fact set. Trace line
  * ids ("BS.TA"), messages and the scope's own kinds ("bank") share the shape;
@@ -18,17 +19,31 @@ import { RECAST_INLINE_LINES, isRecastLine, normalizeRecastLabel } from "../reca
 
 const ENGINE_DIR = join(__dirname, "..", "..");
 const RECAST_DIR = join(ENGINE_DIR, "PenmanNissimEngine");
-/** The pipeline's other readers of lines by name, outside the recast's modules. */
-const OTHER_READERS = [join(ENGINE_DIR, "scopePolicy.ts"), join(ENGINE_DIR, "greenfieldPipeline", "l1Normalize.ts")];
+/**
+ * The pipeline's other readers of lines by name, outside the recast's modules.
+ * The bank pipeline reads "Investments" by its bare key, so a line it names and
+ * the catalog misses changes bank metrics silently (#520).
+ */
+const OTHER_READERS = [
+  join(ENGINE_DIR, "scopePolicy.ts"),
+  join(ENGINE_DIR, "greenfieldPipeline", "l1Normalize.ts"),
+  join(ENGINE_DIR, "pipeline.ts"),
+  join(ENGINE_DIR, "bankPipeline.ts"),
+  join(ENGINE_DIR, "bankPipeline", "metrics.ts"),
+  join(ENGINE_DIR, "bankPipeline", "ratios.ts"),
+];
 
 /**
- * A trace line id ("BS.FA.CashBank", "IS.FinanceCost.Top"), a message, or one
- * of the scope check's kinds, not a filed label. The library's 3,024 base
- * labels are at most 101 characters and none contains an em dash; the recast's
- * and the scope check's messages are longer or use one.
+ * A trace line id ("BS.FA.CashBank", "IS.FinanceCost.Top"), a statement
+ * suffix ("BalanceSheet"), a message, or one of the scope check's kinds, not a
+ * filed label. The library's 3,024 base labels are at most 101 characters and
+ * none contains an em dash; the recast's and the scope check's messages are
+ * longer or use one.
  */
+const STATEMENT_KEYS = new Set(["BalanceSheet", "ProfitLoss", "CashFlow"]);
+
 function isNotALabel(text: string): boolean {
-  return /^(?:BS|IS|CF)\.[A-Za-z.]+$/.test(text) || text.includes(" — ") || text.length > 120 || /^[a-z]+$/.test(text);
+  return /^(?:BS|IS|CF)\.[A-Za-z.]+$/.test(text) || STATEMENT_KEYS.has(text) || text.includes(" — ") || text.length > 120 || /^[a-z]+$/.test(text);
 }
 
 function arrayElementStrings(): Map<string, string[]> {
