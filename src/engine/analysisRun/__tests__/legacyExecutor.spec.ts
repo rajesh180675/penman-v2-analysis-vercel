@@ -532,6 +532,16 @@ describe("legacy-backed AnalysisRun executor", () => {
       { company_id: "issuer-1", period_end: "2025-03-31", raw_metric_values: { "Total Assets__BalanceSheet": 900, "Total Assets": 900, "Unread Line__BalanceSheet": 3 } },
       { company_id: "issuer-1", period_end: "2026-03-31", raw_metric_values: { "Total Assets__BalanceSheet": 1_000, "Total Assets": 1_000, "Unread Line__BalanceSheet": 4 } },
     ];
+    const ontology = (period: string) => ({
+      rawLabel: "Total Assets__BalanceSheet",
+      conceptId: "total-assets",
+      statement: "BS" as const,
+      periodKind: "instant" as const,
+      normalizedUnit: "INR_CRORE" as const,
+      storedScale: "crore" as const,
+      currency: "INR",
+      periodEnds: [period],
+    });
     const mapping = (period: string) => ({
       rawLabel: "Total Assets__BalanceSheet",
       conceptId: "capitaline-line:Total Assets__BalanceSheet",
@@ -542,7 +552,7 @@ describe("legacy-backed AnalysisRun executor", () => {
       currency: "INR",
       periodEnds: [period],
     });
-    await execute({
+    const result = await execute({
       ...base,
       rawData: parsed,
       canonicalFacts: {
@@ -554,7 +564,7 @@ describe("legacy-backed AnalysisRun executor", () => {
           "2025-03-31": { kind: "reported", artifactId: sourceId, filingVersion: "original", scope: "consolidated", accountingStandard: "ind-as", durationStart: "2024-04-01" },
           "2026-03-31": { kind: "reported", artifactId: sourceId, filingVersion: "original", scope: "consolidated", accountingStandard: "ind-as", durationStart: "2025-04-01" },
         },
-        conceptMappings: [mapping("2025-03-31"), mapping("2026-03-31")],
+        conceptMappings: [mapping("2025-03-31"), mapping("2026-03-31"), ontology("2025-03-31"), ontology("2026-03-31")],
       },
     });
     const pipelineInput = vi.mocked(deps.processPipeline).mock.calls[0]![0];
@@ -566,6 +576,14 @@ describe("legacy-backed AnalysisRun executor", () => {
     expect(vi.mocked(deps.auditMappingCoverage).mock.calls[0]![0]).toEqual(parsed);
     expect(vi.mocked(deps.evaluateQualityGate).mock.calls.every(([periods]) => periods === vi.mocked(deps.evaluateQualityGate).mock.calls[0]![0])).toBe(true);
     expect(vi.mocked(deps.evaluateQualityGate).mock.calls[0]![0]).toEqual(parsed);
+    // The recast's DAG node cites the line facts it read, not the ontology's beside them.
+    const dag = result.materialization.transformationDag!;
+    const lineFactIds = result.materialization.factSet!.facts
+      .filter((fact) => fact.conceptId.startsWith("capitaline-line:"))
+      .map((fact) => fact.factId);
+    expect(dag.rootFactIds).toHaveLength(4);
+    expect(lineFactIds).toHaveLength(2);
+    expect([...dag.nodes.find((node) => node.functionId === "processCompanyDataFull")!.inputFactIds].sort()).toEqual([...lineFactIds].sort());
   });
 
   it("feeds the pipeline the parse when the run has no canonical facts", async () => {
