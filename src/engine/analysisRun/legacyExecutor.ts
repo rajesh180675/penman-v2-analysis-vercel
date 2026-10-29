@@ -64,6 +64,7 @@ import {
 import { CURRENT_SECTOR_CASE_REGISTRY, executeCatalogSectorCase, type GovernedSectorSidecarApproval, type SectorCaseCatalogExecutionResult } from "../sectorCases";
 import { applyRealOptionsCompositionCandidate, evaluateModelPromotion, evaluateRealOptionsCompositionCandidate, executeGovernedAdvancedModel, type ApprovedRealOptionsCompositionPolicy, type GovernedAdvancedModelInput, type GovernedAdvancedModelResult, type ModelPromotionDecision, type ModelPromotionDossier, type RealOptionsCompositionCandidate } from "../advancedModelGovernance";
 import {
+  RECAST_LINE_CONCEPT_PREFIX,
   adaptLegacyRawPeriodsToFactSet,
   projectRecastPeriods,
   type FactSet,
@@ -457,7 +458,11 @@ async function buildLegacyTransformationDag(params: {
       transformationId: "legacy-pipeline:recast",
       functionId: "processCompanyDataFull",
       functionVersion: LEGACY_ANALYSIS_RUN_EXECUTOR_VERSION,
-      inputFactIds: params.factSet.facts.map((fact) => fact.factId),
+      // The recast reads the recast-line facts (projectRecastPeriods), not the
+      // ontology's facts beside them.
+      inputFactIds: params.factSet.facts
+        .filter((fact) => fact.conceptId.startsWith(RECAST_LINE_CONCEPT_PREFIX))
+        .map((fact) => fact.factId),
       outputFactIds: recastOutputs,
       policyRefs: [params.policyRef.contentHash],
       evidenceRefs: params.sourceArtifactIds,
