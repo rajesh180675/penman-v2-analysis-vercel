@@ -223,9 +223,13 @@ export async function adaptLegacyRawPeriodsToFactSet(input: {
       continue;
     }
     for (const [rawLabel, rawValue] of Object.entries(raw.raw_metric_values)) {
-      const mapping = mappings.get(rawLabel)?.find((candidate) =>
+      // Every mapping that applies records its own fact: one line can be both
+      // an ontology concept ("revenue") and a recast line, two concepts and so
+      // two identities. Only the first was kept before, so a line the ontology
+      // also mapped had no recast-line fact.
+      const applicable = (mappings.get(rawLabel) ?? []).filter((candidate) =>
         candidate.periodEnds == null || candidate.periodEnds.includes(raw.period_end));
-      if (!mapping || rawValue == null || !Number.isFinite(rawValue)) continue;
+      if (applicable.length === 0 || rawValue == null || !Number.isFinite(rawValue)) continue;
       const metricOrigin = source.metricOrigins?.[rawLabel];
       if (source.metricOrigins && !metricOrigin) {
         diagnostics.push({
@@ -247,7 +251,7 @@ export async function adaptLegacyRawPeriodsToFactSet(input: {
         });
         continue;
       }
-      if (mapping.periodKind === "duration" && !source.durationStart) {
+      if (applicable.some((mapping) => mapping.periodKind === "duration") && !source.durationStart) {
         diagnostics.push({
           code: "DURATION_START_MISSING",
           period: raw.period_end,
@@ -257,7 +261,7 @@ export async function adaptLegacyRawPeriodsToFactSet(input: {
         });
         continue;
       }
-      pendingFacts.push(buildFact({ raw, value: rawValue, mapping, source }));
+      for (const mapping of applicable) pendingFacts.push(buildFact({ raw, value: rawValue, mapping, source }));
     }
   }
   const facts = await Promise.all(pendingFacts);
