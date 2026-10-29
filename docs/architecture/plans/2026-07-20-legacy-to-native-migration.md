@@ -886,7 +886,7 @@ export interface FactExtractionStageOutput {
 Delete `adaptLegacyRawPeriodsToFactSet` and `buildLegacyTransformationDag` from `legacyRawAdapter.ts` when ALL of these hold:
 
 1. Every parser that feeds into an analysis run has a wired `build*CanonicalFactBundle` entry (Capitaline already done; Screener, XBRL, JSON, Manual need adapters — estimate: ~80 lines each for Screener/JSON/Manual, ~120 for XBRL)
-2. The fact-extraction stage is registered in the AnalysisRun stage sequence (index 2)
+2. The fact-extraction stage is registered in the AnalysisRun stage sequence (index 2) — *done 2026-10-30 as a stage function: `facts/extractionStage.ts` (`extractRunFacts`, `2026-10-fact-extraction-v1`) takes the parse, the parser's diagnostics and the source's fact bundle, and returns the fact set, the parse's fidelity verdict and the periods the recast reads. The executor calls it and reads nothing else for those three; it still records the stage result under the executor's version.*
 3. `RawPeriodData` is projected from `FactSet` via `projectRawPeriodData()` in the stage boundary
 4. `SourceParserDiagnostics` from each parser are carried into the stage output (not lost)
 5. The `TransformationRecorder` is wired as a live dependency, not built post-hoc — *done 2026-10-29: the run opens a recorder with the fact set's facts as roots, the recast stage records its node as it runs, and release records the model and synthesis nodes once composition settles which results the run reports, then finalizes. The DAG is unchanged on all 33 library runs.*

@@ -1,6 +1,6 @@
 import { deriveAnalysisStatus, type AnalysisStatusSummary } from "../analysisStatus";
 import { buildAnalysisTraceability } from "../analysisTraceability";
-import { evaluateParserFidelity, type ParserFidelitySummary } from "../parserFidelity";
+import type { ParserFidelitySummary } from "../parserFidelity";
 import { evaluateAnalyticalDepth } from "../analyticalDepth";
 import { buildAssumptionProvenance } from "../assumptionProvenance";
 import { buildEarningsQualitySummary } from "../earningsQualitySummary";
@@ -65,9 +65,8 @@ import { CURRENT_SECTOR_CASE_REGISTRY, executeCatalogSectorCase, type GovernedSe
 import { applyRealOptionsCompositionCandidate, evaluateModelPromotion, evaluateRealOptionsCompositionCandidate, executeGovernedAdvancedModel, type ApprovedRealOptionsCompositionPolicy, type GovernedAdvancedModelInput, type GovernedAdvancedModelResult, type ModelPromotionDecision, type ModelPromotionDossier, type RealOptionsCompositionCandidate } from "../advancedModelGovernance";
 import {
   RECAST_LINE_CONCEPT_PREFIX,
-  adaptLegacyRawPeriodsToFactSet,
-  canProjectRecastPeriods,
-  projectRecastPeriods,
+  extractRunFacts,
+  type FactExtractionOutput,
   type FactSet,
   type LegacyConceptMapping,
   type LegacyPeriodSource,
@@ -847,6 +846,8 @@ interface LegacyRunState {
   readonly policyArtifact: AnalysisContentArtifact<"policy-bundle">;
   readonly catalogArtifact: AnalysisContentArtifact<"model-catalog">;
   /** fact-extraction's output: the parse's fidelity verdict, recorded as evidence. */
+  /** fact-extraction's output (facts/extractionStage.ts). */
+  readonly extraction: FactExtractionOutput;
   parserFidelity: ParserFidelitySummary | null;
   parserFidelityArtifact: AnalysisContentArtifact<"evidence"> | null;
   /**
@@ -933,21 +934,26 @@ async function openRun(
   diagnostics.push(...validateInput(input, configWarnings));
   let terminal = terminalFromDiagnostics(diagnostics);
 
-  let factSet: FactSet | null = null;
-  if (canonicalFacts) {
-    const adapted = await adaptLegacyRawPeriodsToFactSet({
-      rawData,
-      sourceArtifacts: canonicalFacts.sourceArtifacts as SourceArtifact[],
-      periodSources: canonicalFacts.periodSources as Record<string, LegacyPeriodSource>,
-      conceptMappings: canonicalFacts.conceptMappings as LegacyConceptMapping[],
-    });
-    if (adapted.status === "created") {
-      factSet = adapted.factSet;
-    } else if (!terminal) {
-      const message = adapted.diagnostics.map((diagnostic) => diagnostic.message).join("; ");
-      terminal = { kind: "blocked", stage: "fact-extraction", code: "CANONICAL_FACT_ADAPTER_BLOCKED", message };
-      diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message });
-    }
+  // fact-extraction (facts/extractionStage.ts): the fact set, the parse's
+  // fidelity verdict and the periods the recast reads, from the run's input.
+  const extraction = await extractRunFacts({
+    rawData,
+    sourceMode: input.metadata.sourceMode,
+    debugInfo,
+    parserDiagnostics,
+    canonicalFacts: canonicalFacts
+      ? {
+          sourceArtifacts: canonicalFacts.sourceArtifacts as SourceArtifact[],
+          periodSources: canonicalFacts.periodSources as Record<string, LegacyPeriodSource>,
+          conceptMappings: canonicalFacts.conceptMappings as LegacyConceptMapping[],
+        }
+      : null,
+  });
+  const factSet = extraction.factSet;
+  if (extraction.blockers.length && !terminal) {
+    const message = extraction.blockers.map((diagnostic) => diagnostic.message).join("; ");
+    terminal = { kind: "blocked", stage: "fact-extraction", code: "CANONICAL_FACT_ADAPTER_BLOCKED", message };
+    diagnostics.push({ code: terminal.code, stage: terminal.stage, severity: "blocker", message });
   }
   const factArtifact = await createAnalysisContentArtifact({
     kind: "fact-set",
@@ -1003,6 +1009,7 @@ async function openRun(
     factArtifact,
     policyArtifact,
     catalogArtifact,
+    extraction,
     parserFidelity: null,
     parserFidelityArtifact: null,
     transformations,
@@ -1041,15 +1048,7 @@ async function openRun(
 async function runPreflight(state: LegacyRunState): Promise<void> {
   if (state.terminal) return;
   await failRunOnThrow(state, "fact-extraction", "LEGACY_PREFLIGHT_FAILED", async () => {
-    const { input, rawData, debugInfo } = state;
-    state.parserFidelity = evaluateParserFidelity({
-      sourceMode: input.metadata.sourceMode,
-      rawData,
-      debugInfo,
-      periodCount: rawData.length,
-      rawMetricKeyCount: debugInfo?.rawMetricKeys.length ?? new Set(rawData.flatMap((period) => Object.keys(period.raw_metric_values))).size,
-      parserDiagnostics: state.parserDiagnostics,
-    });
+    state.parserFidelity = state.extraction.parserFidelity;
     state.parserFidelityArtifact = await createAnalysisContentArtifact({
       kind: "evidence",
       schemaVersion: "parser-fidelity-v1",
@@ -1084,7 +1083,7 @@ async function runRecast(state: LegacyRunState): Promise<void> {
     // which list or count every label, keep the parse. A parse with lines
     // under bare labels only (a Screener or XBRL upload) has no fact for
     // them, so that run's recast keeps the parse too.
-    const pipelineInput = state.factSet && canProjectRecastPeriods(rawData) ? projectRecastPeriods(state.factSet, rawData) : rawData;
+    const pipelineInput = [...state.extraction.recastPeriods];
     // The packs reach only the financial-institution valuation's ke; the
     // recast's own ke stays unpinned (pipeline.ts exemption).
     const pipelineResult = dependencies.processPipeline(pipelineInput, config, state.bankQuality, {

@@ -82,6 +82,8 @@ export {
 export { RECAST_INLINE_LINES, isRecastLine, normalizeRecastLabel, recastLineUnit } from "./recastLineCatalog";
 export type { RecastLineUnit } from "./recastLineCatalog";
 export { canProjectRecastPeriods, projectRecastPeriods } from "./rawPeriodProjection";
+export { FACT_EXTRACTION_STAGE_VERSION, extractRunFacts } from "./extractionStage";
+export type { FactExtractionInput, FactExtractionOutput } from "./extractionStage";
 export type { CanonicalFactIngestionBundle } from "./sourceAdapters";
 
 export {
