@@ -1,12 +1,13 @@
 /**
- * The recast line catalog lists every label the recast reads by name.
+ * The recast line catalog lists every label the pipeline reads by name.
  *
- * The recast's modules name lines as string elements of array literals (the
- * key lists passed to valBS, valPL, firstValid and the rest). This test walks
- * their syntax trees and fails when one names a label the catalog does not
- * hold, so a new inline list cannot drop out of the fact set. Trace line ids
- * ("BS.TA") and messages share the shape; they are not Capitaline labels and
- * are recognized as such below.
+ * The recast's modules, the scope check and the greenfield step name lines as
+ * string elements of array literals (the key lists passed to valBS, valPL,
+ * firstValid, the scope signal groups, the greenfield fallbacks). This test
+ * walks their syntax trees and fails when one names a label the catalog does
+ * not hold, so a new inline list cannot drop out of the fact set. Trace line
+ * ids ("BS.TA"), messages and the scope's own kinds ("bank") share the shape;
+ * they are not Capitaline labels and are recognized as such below.
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -15,27 +16,34 @@ import { describe, expect, it } from "vitest";
 import { CapitalineMappingSpec } from "../../mappingSpec";
 import { RECAST_INLINE_LINES, isRecastLine, normalizeRecastLabel } from "../recastLineCatalog";
 
-const RECAST_DIR = join(__dirname, "..", "..", "PenmanNissimEngine");
+const ENGINE_DIR = join(__dirname, "..", "..");
+const RECAST_DIR = join(ENGINE_DIR, "PenmanNissimEngine");
+/** The pipeline's other readers of lines by name, outside the recast's modules. */
+const OTHER_READERS = [join(ENGINE_DIR, "scopePolicy.ts"), join(ENGINE_DIR, "greenfieldPipeline", "l1Normalize.ts")];
 
 /**
- * A trace line id ("BS.FA.CashBank", "IS.FinanceCost.Top") or a message, not a
- * filed label. The recast's messages explain themselves with an em dash, which
- * none of the library's 3,024 base labels contains.
+ * A trace line id ("BS.FA.CashBank", "IS.FinanceCost.Top"), a message, or one
+ * of the scope check's kinds, not a filed label. The library's 3,024 base
+ * labels are at most 101 characters and none contains an em dash; the recast's
+ * and the scope check's messages are longer or use one.
  */
 function isNotALabel(text: string): boolean {
-  return /^(?:BS|IS|CF)\.[A-Za-z.]+$/.test(text) || text.includes(" — ");
+  return /^(?:BS|IS|CF)\.[A-Za-z.]+$/.test(text) || text.includes(" — ") || text.length > 120 || /^[a-z]+$/.test(text);
 }
 
 function arrayElementStrings(): Map<string, string[]> {
   const found = new Map<string, string[]>();
-  for (const entry of readdirSync(RECAST_DIR)) {
-    if (!entry.endsWith(".ts")) continue;
-    const path = join(RECAST_DIR, entry);
+  const files = [
+    ...readdirSync(RECAST_DIR).filter((entry) => entry.endsWith(".ts")).map((entry) => join(RECAST_DIR, entry)),
+    ...OTHER_READERS,
+  ];
+  for (const path of files) {
     const text = readFileSync(path, "utf8");
     const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
+    const name = path.slice(ENGINE_DIR.length + 1).replace(/\\/g, "/");
     const visit = (node: ts.Node): void => {
       if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) && ts.isArrayLiteralExpression(node.parent)) {
-        const where = `${entry}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}`;
+        const where = `${name}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}`;
         found.set(node.text, [...(found.get(node.text) ?? []), where]);
       }
       ts.forEachChild(node, visit);
@@ -46,7 +54,7 @@ function arrayElementStrings(): Map<string, string[]> {
 }
 
 describe("recast line catalog", () => {
-  it("holds every label the recast modules name in a key list", () => {
+  it("holds every label the pipeline's readers name in a key list", () => {
     const missing = [...arrayElementStrings()]
       .filter(([text]) => !isNotALabel(text) && !isRecastLine(text))
       .map(([text, where]) => `${JSON.stringify(text)} (${where.join(", ")})`);
