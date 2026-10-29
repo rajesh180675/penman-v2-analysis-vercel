@@ -1,5 +1,6 @@
 import { deriveAnalysisStatus, type AnalysisStatusSummary } from "../analysisStatus";
 import { buildAnalysisTraceability } from "../analysisTraceability";
+import { evaluateParserFidelity, type ParserFidelitySummary } from "../parserFidelity";
 import { evaluateAnalyticalDepth } from "../analyticalDepth";
 import { buildAssumptionProvenance } from "../assumptionProvenance";
 import { buildEarningsQualitySummary } from "../earningsQualitySummary";
@@ -696,10 +697,14 @@ function stageRefs(params: {
   scenarioCalibrationRef: ContentRef<"evidence"> | null;
   sectorSidecarRef: ContentRef<"evidence"> | null;
   advancedModelRefs: readonly ContentRef<"evidence">[];
+  parserFidelityRef: ContentRef<"evidence"> | null;
 }): { inputRefs: ContentRef[]; outputRefs: ContentRef[] } {
   const { stage } = params;
   if (stage === "request-validation") return { inputRefs: [params.factRef, params.policyRef], outputRefs: [] };
-  if (stage === "artifact-ingestion" || stage === "fact-extraction") return { inputRefs: [params.factRef], outputRefs: [params.factRef] };
+  if (stage === "artifact-ingestion") return { inputRefs: [params.factRef], outputRefs: [params.factRef] };
+  if (stage === "fact-extraction") {
+    return { inputRefs: [params.factRef], outputRefs: [params.factRef, ...(params.parserFidelityRef ? [params.parserFidelityRef] : [])] };
+  }
   if (stage === "concept-normalization" || stage === "family-classification" || stage === "recast" || stage === "structural-reconciliation" || stage === "economic-validation") {
     return { inputRefs: [params.factRef, params.policyRef], outputRefs: params.familyRef ? [params.familyRef] : [] };
   }
@@ -740,6 +745,7 @@ function buildStageResults(params: {
   scenarioCalibrationRef: ContentRef<"evidence"> | null;
   sectorSidecarRef: ContentRef<"evidence"> | null;
   advancedModelRefs: readonly ContentRef<"evidence">[];
+  parserFidelityRef: ContentRef<"evidence"> | null;
 }): AnalysisStageResult[] {
   const blockerIndex = params.terminal ? ANALYSIS_STAGE_ORDER.indexOf(params.terminal.stage) : -1;
   const blockerGateIds = params.gateResults.filter((gate) => gate.blocksNext).map((gate) => gate.gateId);
@@ -831,6 +837,9 @@ interface LegacyRunState {
   readonly factArtifact: AnalysisContentArtifact<"fact-set">;
   readonly policyArtifact: AnalysisContentArtifact<"policy-bundle">;
   readonly catalogArtifact: AnalysisContentArtifact<"model-catalog">;
+  /** fact-extraction's output: the parse's fidelity verdict, recorded as evidence. */
+  parserFidelity: ParserFidelitySummary | null;
+  parserFidelityArtifact: AnalysisContentArtifact<"evidence"> | null;
   qualityGate: QualityGateReport | null;
   mappingAudit: MappingAuditReport | null;
   pipelineResult: PipelineResult | null;
@@ -977,6 +986,8 @@ async function openRun(
     factArtifact,
     policyArtifact,
     catalogArtifact,
+    parserFidelity: null,
+    parserFidelityArtifact: null,
     qualityGate: null,
     mappingAudit: null,
     pipelineResult: null,
@@ -1003,10 +1014,30 @@ async function openRun(
   };
 }
 
-/** fact-extraction: the quality gate and the mapping audit, before an engine reads a period. */
+/**
+ * fact-extraction: the parse's fidelity verdict, then the quality gate and the
+ * mapping audit, before an engine reads a period. The verdict carries the
+ * parser's own diagnostics (warning and error counts, its checks) as the
+ * stage's evidence; the trust envelope reports the verdict recorded here.
+ */
 async function runPreflight(state: LegacyRunState): Promise<void> {
   if (state.terminal) return;
-  await failRunOnThrow(state, "fact-extraction", "LEGACY_PREFLIGHT_FAILED", () => {
+  await failRunOnThrow(state, "fact-extraction", "LEGACY_PREFLIGHT_FAILED", async () => {
+    const { input, rawData, debugInfo } = state;
+    state.parserFidelity = evaluateParserFidelity({
+      sourceMode: input.metadata.sourceMode,
+      rawData,
+      debugInfo,
+      periodCount: rawData.length,
+      rawMetricKeyCount: debugInfo?.rawMetricKeys.length ?? new Set(rawData.flatMap((period) => Object.keys(period.raw_metric_values))).size,
+      parserDiagnostics: state.parserDiagnostics,
+    });
+    state.parserFidelityArtifact = await createAnalysisContentArtifact({
+      kind: "evidence",
+      schemaVersion: "parser-fidelity-v1",
+      payload: { evidenceType: "parser-fidelity", parserDiagnostics: state.parserDiagnostics, parserFidelity: state.parserFidelity },
+    });
+    state.artifacts.push(state.parserFidelityArtifact);
     state.qualityGate = state.dependencies.evaluateQualityGate(state.rawData, state.config);
     state.mappingAudit = state.dependencies.auditMappingCoverage(state.rawData);
   });
@@ -1457,6 +1488,7 @@ function buildRunEnvelope(state: LegacyRunState): AnalysisTraceabilityEnvelope {
     config: state.config,
     debugInfo,
     parserDiagnostics: state.parserDiagnostics,
+    parserFidelity: state.parserFidelity,
     sourceArtifactHashes: state.sourceArtifactHashes,
     contentClass: input.metadata.contentClass ?? null,
     retentionDays: input.metadata.retentionDays ?? null,
@@ -1868,6 +1900,7 @@ export function createLegacyAnalysisRunExecutor(
         scenarioCalibrationRef: stageArtifacts.scenarioCalibrationArtifact?.ref ?? null,
         sectorSidecarRef: stageArtifacts.sectorSidecarArtifact?.ref ?? null,
         advancedModelRefs: modelArtifacts.advancedModelArtifacts.map((artifact) => artifact.ref),
+        parserFidelityRef: state.parserFidelityArtifact?.ref ?? null,
       });
 
       materialization = materialize(state, modelResults, transformationDag);

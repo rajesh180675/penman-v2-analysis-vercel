@@ -586,6 +586,26 @@ describe("legacy-backed AnalysisRun executor", () => {
     expect([...dag.nodes.find((node) => node.functionId === "processCompanyDataFull")!.inputFactIds].sort()).toEqual([...lineFactIds].sort());
   });
 
+  it("records the parser's diagnostics as fact-extraction evidence, the verdict the envelope reports", async () => {
+    const deps = dependencies();
+    const parserDiagnostics = {
+      sourceMode: "json",
+      warningCount: 2,
+      errorCount: 0,
+      checks: [{ id: "json-shape", label: "JSON shape", passed: false, detail: "Two rows had no period." }],
+    };
+    const result = await createLegacyAnalysisRunExecutor(deps)({ ...input(), parserDiagnostics });
+    const artifact = result.artifacts.find((candidate) => candidate.ref.schemaVersion === "parser-fidelity-v1")!;
+    const payload = artifact.payload as { parserDiagnostics: unknown; parserFidelity: { warningCount: number; checks: { id: string }[] } };
+    expect(payload.parserDiagnostics).toEqual(parserDiagnostics);
+    expect(payload.parserFidelity.warningCount).toBe(2);
+    expect(payload.parserFidelity.checks.map((check) => check.id)).toContain("json-shape");
+    const stage = result.run!.stageResults.find((candidate) => candidate.stageId === "fact-extraction")!;
+    expect(stage.outputRefs).toContainEqual(artifact.ref);
+    const traceParams = vi.mocked(deps.buildTraceability).mock.calls[0]![0] as { parserFidelity?: unknown };
+    expect(traceParams.parserFidelity).toEqual(payload.parserFidelity);
+  });
+
   it("feeds the pipeline the parse when the run has no canonical facts", async () => {
     const deps = dependencies();
     await createLegacyAnalysisRunExecutor(deps)(input());

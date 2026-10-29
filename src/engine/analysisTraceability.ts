@@ -2,7 +2,7 @@ import { AnalysisPolicyVersions, getAnalysisPolicyVersions } from "./policyVersi
 import { AnalysisStatusSummary } from "./analysisStatus";
 import { MappingAuditReport, QualityGateReport } from "./mappingAudit";
 import { CapitalineParseDebug, SourceArtifactHash } from "./capitalineParser";
-import { evaluateParserFidelity } from "./parserFidelity";
+import { evaluateParserFidelity, type ParserFidelitySummary } from "./parserFidelity";
 import { EngineConfig, RawPeriodData, RecastPeriod } from "./types";
 import { evaluateReconciliationResiduals, type ValuationTriangulationEvidence } from "./reconciliationResiduals";
 import { evaluateBankReconciliationResiduals } from "./bankReconciliationResiduals";
@@ -230,6 +230,10 @@ export function buildAnalysisTraceability(params: {
   config?: EngineConfig | null | undefined;
   debugInfo?: CapitalineParseDebug | null | undefined;
   parserDiagnostics?: SourceParserDiagnostics | null | undefined;
+  /** The fact-extraction stage's parser-fidelity verdict. A run records it as
+   *  that stage's evidence and passes it here, so the envelope reports the
+   *  verdict the stage recorded; evaluated from the parse when absent. */
+  parserFidelity?: ParserFidelitySummary | null | undefined;
   /** Source-lineage — per-file SHA-256 hashes from the parser. When present,
    *  stamped onto the envelope so the production-ready checkpoint can verify
    *  source provenance without requiring the CLI audit harness. */
@@ -306,7 +310,7 @@ export function buildAnalysisTraceability(params: {
   const statusBlockingCount = analysisStatus?.effectiveBlockingCount ?? analysisStatus?.blockingCount ?? blockingCount;
   const statusDiagnosticCount = analysisStatus?.effectiveDiagnosticCount ?? analysisStatus?.diagnosticCount ?? diagnosticCount;
   const statusOptionalCount = analysisStatus?.effectiveOptionalCount ?? analysisStatus?.optionalCount ?? optionalCount;
-  const parserFidelity = evaluateParserFidelity({
+  const parserFidelity = params.parserFidelity ?? evaluateParserFidelity({
     sourceMode: params.sourceMode ?? null,
     rawData: params.rawData ?? null,
     debugInfo: params.debugInfo ?? null,
