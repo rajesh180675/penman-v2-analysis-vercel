@@ -1095,6 +1095,8 @@ Delete `buildIndustrialForecastFromLegacyScenario`, `adaptForecastCaseToLegacyVa
 6. `CommandCenterScenario` type is not referenced by any stage input (it becomes a legacy-only type in the soon-to-be-deleted `valuationCommandCenter`)
 7. `applyScenarioCalibration` no longer mutates in-place — calibration is a separate artifact stage
 
+*2026-10-30:* the forecast gates (calibration, the binding check, validation and ordering) are one stage function, `forecastStage.ts` (`runForecastGates`, `2026-10-forecast-gates-v1`), that the executor calls; it returns the calibration report, the ordering report and every block in the order raised. `applyScenarioCalibration` already returned new cases rather than mutating them, so item 7 holds. `buildScenarioForecastResults`, the last builder of cases from the scenario cards, had no caller left and is deleted. Still open: cases reach the models as `LegacyValuationPeriodInput[]` (item 5), and the forecast is not yet an artifact stage with `ContentRef` inputs (items 1–4).
+
 ---
 
 ## 10. Cutover #3-6: modelCatalog, sectorCases, synthesis, advancedGovernance — unified native stage contracts

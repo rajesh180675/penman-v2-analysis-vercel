@@ -44,7 +44,6 @@ import {
 } from "../analysisCase";
 import {
   compareCaseValuations,
-  evaluateScenarioForecastGates,
   buildPlannedForecastCases,
   planRunForecastScenarios,
   type GeneratedForecastCase,
@@ -53,10 +52,9 @@ import {
   type ScenarioOrderingReport,
 } from "../forecastState";
 import { resolveShareBasis } from "../shareCountTools";
+import { runForecastGates } from "../forecastStage";
 import { applyTerminalOutcomeToEnvelope, checkpointStage, type TerminalOutcome } from "./terminalOutcome";
 import {
-  applyScenarioCalibration,
-  calibrateScenarioProbabilities,
   type ScenarioCalibrationObservation,
   type ScenarioCalibrationPolicy,
   type ScenarioCalibrationReport,
@@ -1353,25 +1351,22 @@ function runForecast(state: LegacyRunState): void {
   const { input, commandCenter, generatedForecastCases } = state;
   if (!state.terminal && commandCenter && generatedForecastCases.length > 0) {
     {
-      state.forecastResults = generatedForecastCases.map((generated) => generated.result);
-      if (input.scenarioCalibration) {
-        const scenarioCalibration = calibrateScenarioProbabilities({
-          observations: clonePlain(input.scenarioCalibration.observations as ScenarioCalibrationObservation[]),
-          policy: clonePlain(input.scenarioCalibration.policy as ScenarioCalibrationPolicy),
-        });
-        state.scenarioCalibration = scenarioCalibration;
-        const computedHorizons = new Set(state.forecastResults.flatMap((result) => result.status === "computed" ? [result.forecastCase.horizonYears] : []));
-        const calibrationBindingMatches = scenarioCalibration.family === "industrial" && computedHorizons.size === 1 && computedHorizons.has(scenarioCalibration.horizonYears) && dateOnlyTime(scenarioCalibration.calibrationAsOf) <= dateOnlyTime(input.metadata.asOf);
-        if (calibrationBindingMatches) {
-          state.forecastResults = applyScenarioCalibration(state.forecastResults, scenarioCalibration);
-        } else {
-          const message = "Scenario calibration evidence does not match the run family, forecast horizon, or point-in-time cutoff.";
-          stopRun(state, "blocked", "forecast", "SCENARIO_CALIBRATION_BINDING_MISMATCH", message);
-        }
-      }
-      const gate = evaluateScenarioForecastGates(state.forecastResults);
-      state.scenarioOrdering = gate.scenarioOrdering;
-      if (gate.blocked) stopRun(state, "blocked", "forecast", gate.blocked.code, gate.blocked.message);
+      // The forecast gates (forecastStage.ts): calibration where the run's
+      // evidence binds, then validation and scenario ordering.
+      const gates = runForecastGates({
+        forecastResults: generatedForecastCases.map((generated) => generated.result),
+        scenarioCalibration: input.scenarioCalibration
+          ? {
+              observations: clonePlain(input.scenarioCalibration.observations as ScenarioCalibrationObservation[]),
+              policy: clonePlain(input.scenarioCalibration.policy as ScenarioCalibrationPolicy),
+            }
+          : null,
+        asOf: input.metadata.asOf,
+      });
+      state.forecastResults = [...gates.forecastResults];
+      if (gates.scenarioCalibration) state.scenarioCalibration = gates.scenarioCalibration;
+      state.scenarioOrdering = gates.scenarioOrdering;
+      for (const block of gates.blocks) stopRun(state, "blocked", "forecast", block.code, block.message);
     }
   }
 
