@@ -889,7 +889,7 @@ Delete `adaptLegacyRawPeriodsToFactSet` and `buildLegacyTransformationDag` from 
 2. The fact-extraction stage is registered in the AnalysisRun stage sequence (index 2)
 3. `RawPeriodData` is projected from `FactSet` via `projectRawPeriodData()` in the stage boundary
 4. `SourceParserDiagnostics` from each parser are carried into the stage output (not lost)
-5. The `TransformationRecorder` is wired as a live dependency, not built post-hoc
+5. The `TransformationRecorder` is wired as a live dependency, not built post-hoc — *done 2026-10-29: the run opens a recorder with the fact set's facts as roots, the recast stage records its node as it runs, and release records the model and synthesis nodes once composition settles which results the run reports, then finalizes. The DAG is unchanged on all 33 library runs.*
 6. No caller in the codebase imports `adaptLegacyRawPeriodsToFactSet` or `buildLegacyTransformationDag`
 
 ---
