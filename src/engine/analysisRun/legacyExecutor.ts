@@ -66,6 +66,7 @@ import { applyRealOptionsCompositionCandidate, evaluateModelPromotion, evaluateR
 import {
   RECAST_LINE_CONCEPT_PREFIX,
   adaptLegacyRawPeriodsToFactSet,
+  canProjectRecastPeriods,
   projectRecastPeriods,
   type FactSet,
   type LegacyConceptMapping,
@@ -1080,8 +1081,10 @@ async function runRecast(state: LegacyRunState): Promise<void> {
     // With canonical facts, the pipeline reads its periods from them rather
     // than from the parse: every line it reads by name is a fact
     // (facts/recastLineCatalog.ts). The quality gate and the mapping audit,
-    // which list or count every label, keep the parse.
-    const pipelineInput = state.factSet ? projectRecastPeriods(state.factSet, rawData) : rawData;
+    // which list or count every label, keep the parse. A parse with lines
+    // under bare labels only (a Screener or XBRL upload) has no fact for
+    // them, so that run's recast keeps the parse too.
+    const pipelineInput = state.factSet && canProjectRecastPeriods(rawData) ? projectRecastPeriods(state.factSet, rawData) : rawData;
     // The packs reach only the financial-institution valuation's ke; the
     // recast's own ke stays unpinned (pipeline.ts exemption).
     const pipelineResult = dependencies.processPipeline(pipelineInput, config, state.bankQuality, {

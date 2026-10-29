@@ -10,6 +10,7 @@ import type { ValuationReadiness } from "../../valuationPolicy";
 import { resolveCostOfCapitalFromConfig } from "../../costOfCapital";
 import type { AssumptionCandidate, AssumptionResolutionOutput } from "../../analysisCase";
 import { evaluateRealOptionsCompositionApproval } from "../../advancedModelGovernance";
+import { buildTextCanonicalFactBundle } from "../../facts";
 import {
   createLegacyAnalysisRunExecutor,
   type LegacyAnalysisRunExecutorDependencies,
@@ -610,6 +611,21 @@ describe("legacy-backed AnalysisRun executor", () => {
     const deps = dependencies();
     await createLegacyAnalysisRunExecutor(deps)(input());
     expect(vi.mocked(deps.processPipeline).mock.calls[0]![0]).toEqual(input().rawData);
+  });
+
+  it("feeds the pipeline the parse when its lines carry bare labels only, as a Screener or XBRL upload's do", async () => {
+    const deps = dependencies();
+    const parsed = [
+      { company_id: "issuer-1", period_end: "2025-03-31", raw_metric_values: { "Total Assets": 900, "Revenue From Operations(Net)": 500 } },
+      { company_id: "issuer-1", period_end: "2026-03-31", raw_metric_values: { "Total Assets": 1_000, "Revenue From Operations(Net)": 550 } },
+    ];
+    const canonicalFacts = await buildTextCanonicalFactBundle({
+      rawData: parsed, sourceText: "<xbrl/>", sourceMode: "xbrl", fileName: "filing.xml",
+      scope: "consolidated", contentClass: "financial-statements",
+    });
+    const result = await createLegacyAnalysisRunExecutor(deps)({ ...input(), rawData: parsed, canonicalFacts: canonicalFacts! });
+    expect(result.materialization.factSet?.facts.length).toBeGreaterThan(0);
+    expect(vi.mocked(deps.processPipeline).mock.calls[0]![0]).toEqual(parsed);
   });
 
   describe("a valuation-policy block", () => {

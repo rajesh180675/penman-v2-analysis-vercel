@@ -81,7 +81,7 @@ export {
 } from "./sourceAdapters";
 export { RECAST_INLINE_LINES, isRecastLine, normalizeRecastLabel, recastLineUnit } from "./recastLineCatalog";
 export type { RecastLineUnit } from "./recastLineCatalog";
-export { projectRecastPeriods } from "./rawPeriodProjection";
+export { canProjectRecastPeriods, projectRecastPeriods } from "./rawPeriodProjection";
 export type { CanonicalFactIngestionBundle } from "./sourceAdapters";
 
 export {
