@@ -523,6 +523,57 @@ describe("legacy-backed AnalysisRun executor", () => {
     expect(result.artifacts.some((artifact) => artifact.ref.kind === "evidence" && artifact.ref.schemaVersion === "transformation-dag-v1")).toBe(true);
   });
 
+  it("feeds the pipeline its periods from the recast-line facts, and the gate and audit the parse", async () => {
+    const deps = dependencies();
+    const execute = createLegacyAnalysisRunExecutor(deps);
+    const sourceId = `sha256:${"c".repeat(64)}` as const;
+    const base = input();
+    const parsed = [
+      { company_id: "issuer-1", period_end: "2025-03-31", raw_metric_values: { "Total Assets__BalanceSheet": 900, "Total Assets": 900, "Unread Line__BalanceSheet": 3 } },
+      { company_id: "issuer-1", period_end: "2026-03-31", raw_metric_values: { "Total Assets__BalanceSheet": 1_000, "Total Assets": 1_000, "Unread Line__BalanceSheet": 4 } },
+    ];
+    const mapping = (period: string) => ({
+      rawLabel: "Total Assets__BalanceSheet",
+      conceptId: "capitaline-line:Total Assets__BalanceSheet",
+      statement: "BS" as const,
+      periodKind: "instant" as const,
+      normalizedUnit: "INR_CRORE" as const,
+      storedScale: "crore" as const,
+      currency: "INR",
+      periodEnds: [period],
+    });
+    await execute({
+      ...base,
+      rawData: parsed,
+      canonicalFacts: {
+        sourceArtifacts: [{
+          artifactId: sourceId, fileName: "fixture.json", mediaType: "application/json", byteLength: 100, sourceMode: "json",
+          acquiredAt: null, filingAsOf: null, issuerId: "issuer-1", scope: "consolidated", parserVersion: "fixture-v1", contentClass: "financial-statements",
+        }],
+        periodSources: {
+          "2025-03-31": { kind: "reported", artifactId: sourceId, filingVersion: "original", scope: "consolidated", accountingStandard: "ind-as", durationStart: "2024-04-01" },
+          "2026-03-31": { kind: "reported", artifactId: sourceId, filingVersion: "original", scope: "consolidated", accountingStandard: "ind-as", durationStart: "2025-04-01" },
+        },
+        conceptMappings: [mapping("2025-03-31"), mapping("2026-03-31")],
+      },
+    });
+    const pipelineInput = vi.mocked(deps.processPipeline).mock.calls[0]![0];
+    expect(pipelineInput.map((period) => period.raw_metric_values)).toEqual([
+      { "Total Assets__BalanceSheet": 900, "Total Assets": 900 },
+      { "Total Assets__BalanceSheet": 1_000, "Total Assets": 1_000 },
+    ]);
+    // The gate and the audit count every label, so they read the parse.
+    expect(vi.mocked(deps.auditMappingCoverage).mock.calls[0]![0]).toEqual(parsed);
+    expect(vi.mocked(deps.evaluateQualityGate).mock.calls.every(([periods]) => periods === vi.mocked(deps.evaluateQualityGate).mock.calls[0]![0])).toBe(true);
+    expect(vi.mocked(deps.evaluateQualityGate).mock.calls[0]![0]).toEqual(parsed);
+  });
+
+  it("feeds the pipeline the parse when the run has no canonical facts", async () => {
+    const deps = dependencies();
+    await createLegacyAnalysisRunExecutor(deps)(input());
+    expect(vi.mocked(deps.processPipeline).mock.calls[0]![0]).toEqual(input().rawData);
+  });
+
   describe("a valuation-policy block", () => {
     // ITC FY25-shaped: the accounts reconcile, but the terminal period is
     // structurally compromised (demerger), so valuation is blocked.

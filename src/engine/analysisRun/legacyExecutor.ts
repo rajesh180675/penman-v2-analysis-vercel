@@ -65,6 +65,7 @@ import { CURRENT_SECTOR_CASE_REGISTRY, executeCatalogSectorCase, type GovernedSe
 import { applyRealOptionsCompositionCandidate, evaluateModelPromotion, evaluateRealOptionsCompositionCandidate, executeGovernedAdvancedModel, type ApprovedRealOptionsCompositionPolicy, type GovernedAdvancedModelInput, type GovernedAdvancedModelResult, type ModelPromotionDecision, type ModelPromotionDossier, type RealOptionsCompositionCandidate } from "../advancedModelGovernance";
 import {
   adaptLegacyRawPeriodsToFactSet,
+  projectRecastPeriods,
   type FactSet,
   type LegacyConceptMapping,
   type LegacyPeriodSource,
@@ -1023,9 +1024,14 @@ async function runRecast(state: LegacyRunState): Promise<void> {
   if (state.terminal) return;
   const { input, dependencies, rawData, config } = state;
   await failRunOnThrow(state, "recast", "LEGACY_PIPELINE_FAILED", () => {
+    // With canonical facts, the pipeline reads its periods from them rather
+    // than from the parse: every line it reads by name is a fact
+    // (facts/recastLineCatalog.ts). The quality gate and the mapping audit,
+    // which list or count every label, keep the parse.
+    const pipelineInput = state.factSet ? projectRecastPeriods(state.factSet, rawData) : rawData;
     // The packs reach only the financial-institution valuation's ke; the
     // recast's own ke stays unpinned (pipeline.ts exemption).
-    const pipelineResult = dependencies.processPipeline(rawData, config, state.bankQuality, {
+    const pipelineResult = dependencies.processPipeline(pipelineInput, config, state.bankQuality, {
       macroPack: input.macroPack,
       betaPack: input.betaPack,
       analysisAsOf: input.metadata.asOf,
