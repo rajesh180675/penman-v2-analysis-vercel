@@ -300,6 +300,9 @@ export async function buildTextCanonicalFactBundle(args: {
   return {
     sourceArtifacts: Object.freeze([artifact]),
     periodSources: Object.freeze(periodSources),
-    conceptMappings: buildOntologyConceptMappings(args.rawData),
+    // The recast reads its periods from the recast-line facts when a run has
+    // a fact set (rawPeriodProjection.ts), so an upload needs them as a
+    // library run does: with the ontology's alone its recast got no lines.
+    conceptMappings: Object.freeze([...buildOntologyConceptMappings(args.rawData), ...buildRecastLineMappings(args.rawData)]),
   };
 }

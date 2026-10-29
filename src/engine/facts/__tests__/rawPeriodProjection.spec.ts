@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RawPeriodData } from "../../types";
-import { RECAST_LINE_CONCEPT_PREFIX, adaptLegacyRawPeriodsToFactSet, buildRecastLineMappings, projectRecastPeriods, type FactSet } from "../index";
+import { RECAST_LINE_CONCEPT_PREFIX, adaptLegacyRawPeriodsToFactSet, buildRecastLineMappings, canProjectRecastPeriods, projectRecastPeriods, type FactSet } from "../index";
 
 const PERIODS: RawPeriodData[] = [
   {
@@ -88,5 +88,24 @@ describe("projectRecastPeriods", () => {
     };
     const [projected] = projectRecastPeriods(withOtherConcept, PERIODS);
     expect(projected!.raw_metric_values["Total Assets__BalanceSheet"]).toBeUndefined();
+  });
+});
+
+describe("canProjectRecastPeriods", () => {
+  it("accepts a parse whose every recast line has its statement-tagged key", () => {
+    expect(canProjectRecastPeriods(PERIODS)).toBe(true);
+  });
+
+  it("refuses a parse with a recast line under its bare label only, as Screener and XBRL write them", () => {
+    const bare: RawPeriodData = { company_id: "ACME", period_end: "2024-03-31", raw_metric_values: { "Total Assets": 1_000 } };
+    expect(canProjectRecastPeriods([...PERIODS, bare])).toBe(false);
+  });
+
+  it("ignores bare labels the recast does not read, and empty values", () => {
+    const period: RawPeriodData = {
+      company_id: "ACME", period_end: "2024-03-31",
+      raw_metric_values: { "Total Assets__BalanceSheet": 1, "Total Assets": 1, "Sales Growth %": 12, "Finance Cost": null },
+    };
+    expect(canProjectRecastPeriods([period])).toBe(true);
   });
 });

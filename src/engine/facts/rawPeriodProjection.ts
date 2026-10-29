@@ -22,10 +22,32 @@
  */
 import type { RawPeriodData } from "../types";
 import type { FactSet } from "./contracts";
+import { isRecastLine } from "./recastLineCatalog";
 import { RECAST_LINE_CONCEPT_PREFIX } from "./sourceAdapters";
 
 /** The parser's ranking of a label's statements for its bare key (capitalineParser.ts). */
 const STATEMENT_PRECEDENCE: Readonly<Record<string, number>> = { BalanceSheet: 3, ProfitLoss: 2, CashFlow: 1 };
+
+/**
+ * Whether periods rebuilt from facts can stand in for this parse. A
+ * recast-line fact is recorded from a statement-tagged key, so a line the
+ * parse carries only under its bare label ("Total Assets" with no
+ * "__BalanceSheet" twin) has no fact, and a projection would drop it. A
+ * Capitaline parse writes every bare key from its tagged ones; a Screener or
+ * XBRL upload writes bare labels only, and a JSON upload may mix the two.
+ */
+export function canProjectRecastPeriods(parsedPeriods: readonly RawPeriodData[]): boolean {
+  return parsedPeriods.every((period) => {
+    const values = period.raw_metric_values ?? {};
+    const tagged = new Set<string>();
+    for (const key of Object.keys(values)) {
+      const separator = key.indexOf("__");
+      if (separator >= 0) tagged.add(key.slice(0, separator));
+    }
+    return Object.entries(values).every(([key, value]) =>
+      key.includes("__") || value == null || !Number.isFinite(value) || !isRecastLine(key) || tagged.has(key));
+  });
+}
 
 /**
  * Each parsed period, its values rebuilt from the fact set's recast-line facts.

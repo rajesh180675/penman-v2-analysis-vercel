@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CapitalineParseDebug } from "../../capitalineParser";
 import type { RawPeriodData } from "../../types";
 import {
+  RECAST_LINE_CONCEPT_PREFIX,
   adaptLegacyRawPeriodsToFactSet,
   buildCapitalineCanonicalFactBundle,
   buildTextCanonicalFactBundle,
@@ -47,9 +48,14 @@ describe("production canonical source adapters", () => {
 
     const result = await adaptLegacyRawPeriodsToFactSet({ rawData: RAW, ...bundle! });
     expect(result.status).toBe("created");
-    expect(result.factSet?.facts.map((fact) => fact.conceptId)).toEqual([
+    expect(result.factSet?.facts.filter((fact) => !fact.conceptId.startsWith(RECAST_LINE_CONCEPT_PREFIX)).map((fact) => fact.conceptId)).toEqual([
       "equity", "revenue", "cfo", "equity", "revenue", "cfo",
     ]);
+    // Beside them, a fact for each line the recast reads, so an upload's recast
+    // can read its periods from the facts as a library run's does.
+    expect(new Set(result.factSet?.facts.filter((fact) => fact.conceptId.startsWith(RECAST_LINE_CONCEPT_PREFIX)).map((fact) => fact.rawLabel))).toEqual(new Set([
+      "Total Equity__BalanceSheet", "Revenue From Operations__ProfitLoss", "Net Cash From Operating Activities__CashFlow",
+    ]));
     const revenue = result.factSet?.facts.find((fact) => fact.conceptId === "revenue");
     expect(revenue?.period.start).toBe("2023-04-01");
     expect(revenue?.origin).toMatchObject({ row: null, column: null, cellRange: null });
