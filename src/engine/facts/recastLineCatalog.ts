@@ -1,15 +1,18 @@
 /**
- * The Capitaline lines the recast reads, as one list.
+ * The Capitaline lines the pipeline reads by name, as one list.
  *
- * The recast (src/engine/PenmanNissimEngine) reads its lines by name: through
- * the key lists in `CapitalineMappingSpec`, and through a few lists written in
- * place in its own modules. A label that names neither is never read there.
- * So a fact set holding a fact for each of these lines holds every value the
- * recast can read: rebuilt into periods from such a set alone, the recast of
- * every library company came out identical, field by field (measured
- * 2026-10-28 across the 33 library runs). Every other value is reached only by
- * scans that list or count the parse (mapping audit, quality gate, parser
- * fidelity, the unusual-item keyword screen), and those read the parse itself.
+ * `processCompanyDataFull` reads its lines by name: the recast
+ * (src/engine/PenmanNissimEngine) through the key lists in
+ * `CapitalineMappingSpec` and a few lists written in place in its own modules,
+ * the scope check (scopePolicy.ts) through its sector signals, and the
+ * greenfield step (greenfieldPipeline/l1Normalize.ts) through its fallbacks. A
+ * label none of them names is never read there. So a fact set holding a fact
+ * for each of these lines holds every value the pipeline can read: rebuilt
+ * into periods from such a set alone, every library company's pipeline came
+ * out identical, field by field (measured 2026-10-28 and 2026-10-29 across the
+ * 33 library runs). Every other value is reached only by scans that list or
+ * count the parse (mapping audit, quality gate, parser fidelity, the
+ * unusual-item keyword screen), and those read the parse itself.
  *
  * Labels are matched the way the recast's picker matches them
  * (PenmanNissimEngine/picking.ts): case, spacing and punctuation folded, plus
@@ -21,9 +24,9 @@
 import { CapitalineMappingSpec } from "../mappingSpec";
 
 /**
- * Lists the recast writes in place rather than in `CapitalineMappingSpec`.
- * `recastLineCatalog.spec.ts` parses the recast modules and fails when one
- * names a label that is in neither, so a new inline list cannot be missed.
+ * Lists the pipeline writes in place rather than in `CapitalineMappingSpec`.
+ * `recastLineCatalog.spec.ts` parses the modules that read them and fails when
+ * one names a label that is in neither, so a new inline list cannot be missed.
  */
 export const RECAST_INLINE_LINES: readonly string[] = [
   // recast.ts
@@ -58,6 +61,29 @@ export const RECAST_INLINE_LINES: readonly string[] = [
   "Total Number of Equity Shares - Subscribed",
   // quality.ts
   "Gross Property, plant and equipment",
+  // scopePolicy.ts: the financial-sector and utility signals the pipeline
+  // routes on. The scope check counts each label's periods, so without these
+  // HDFC Life and LIC read as having no insurance signal.
+  "Bills Purchased and Discounted",
+  "Money at Call and Short Notice",
+  "Borrowings from RBI",
+  "Assets Held to Cover Linked Liabilities (Insurance Business)",
+  "Assets Held to Cover Discontinued Funds (Insurance Business)",
+  "Investment - Insurance Operation (Insurance Business)",
+  "Reinsurance Expenses",
+  "Income from Financial Services",
+  "Assets on Hire Purchase",
+  "Loan to Customer",
+  "Finance Lease Receivables",
+  "Regulatory Deferral Account - Credit Balance",
+  // greenfieldPipeline/l1Normalize.ts: its fallbacks when the recast leaves a
+  // field empty (none fires on the library today).
+  "Total Income",
+  "Free Cash Flow",
+  "Net Financial Obligation",
+  "Payment for Acquisition of Property, Plant and Equipment",
+  "Proceeds from Issue of Share Capital",
+  "Share Buybacks",
 ];
 
 /** The suffixes the parser gives a balance-sheet row repeated inside a current block. */
