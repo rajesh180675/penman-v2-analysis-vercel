@@ -1,6 +1,7 @@
 import type { CapitalineParseDebug } from "../capitalineParser";
 import { CONCEPT_ONTOLOGY } from "../conceptOntology";
 import type { RawPeriodData } from "../types";
+import { isRecastLine, recastLineUnit } from "./recastLineCatalog";
 import type {
   AccountingStandard,
   FactScope,
@@ -92,6 +93,50 @@ export function buildOntologyConceptMappings(
     ...mapping,
     periodEnds: Object.freeze([...new Set(periods)].sort()),
   })));
+}
+
+/** The concept a recast line's fact is filed under: the line itself, by its filed label. */
+export const RECAST_LINE_CONCEPT_PREFIX = "capitaline-line:";
+
+/**
+ * One mapping per Capitaline line the recast reads (recastLineCatalog.ts), on
+ * its statement-tagged key, in the periods where it carries a finite value.
+ * Each line is its own concept, named by its label, so the set holds every
+ * value the recast can read. A line an ontology concept also maps keeps that
+ * fact too: the two differ in concept, which is part of a fact's identity.
+ * Bare keys are left out; the parser derives each from the statement-tagged
+ * keys of its label.
+ */
+export function buildRecastLineMappings(
+  rawData: readonly RawPeriodData[],
+): readonly LegacyConceptMapping[] {
+  const periodsByKey = new Map<string, string[]>();
+  for (const raw of rawData) {
+    for (const [rawLabel, value] of Object.entries(raw.raw_metric_values)) {
+      const separator = rawLabel.lastIndexOf("__");
+      if (separator < 0 || value == null || !Number.isFinite(value)) continue;
+      const statement = rawLabel.slice(separator + 2);
+      if (!(statement in STATEMENT_BY_ONTOLOGY) || !isRecastLine(rawLabel.slice(0, separator))) continue;
+      const periods = periodsByKey.get(rawLabel) ?? [];
+      periods.push(raw.period_end);
+      periodsByKey.set(rawLabel, periods);
+    }
+  }
+  return Object.freeze([...periodsByKey].sort(([a], [b]) => a.localeCompare(b)).map(([rawLabel, periods]) => {
+    const separator = rawLabel.lastIndexOf("__");
+    const statement = STATEMENT_BY_ONTOLOGY[rawLabel.slice(separator + 2) as keyof typeof STATEMENT_BY_ONTOLOGY];
+    const unit = recastLineUnit(rawLabel.slice(0, separator));
+    return Object.freeze({
+      rawLabel,
+      conceptId: `${RECAST_LINE_CONCEPT_PREFIX}${rawLabel}`,
+      statement,
+      periodKind: statement === "BS" ? "instant" as const : "duration" as const,
+      normalizedUnit: unit.normalizedUnit,
+      storedScale: unit.storedScale,
+      currency: unit.currency,
+      periodEnds: Object.freeze([...new Set(periods)].sort()),
+    });
+  }));
 }
 
 function mediaTypeForFile(fileName: string): string {
@@ -198,7 +243,7 @@ export function buildCapitalineCanonicalFactBundle(args: {
   return {
     sourceArtifacts: Object.freeze(sourceArtifacts),
     periodSources: Object.freeze(periodSources),
-    conceptMappings: buildOntologyConceptMappings(args.rawData),
+    conceptMappings: Object.freeze([...buildOntologyConceptMappings(args.rawData), ...buildRecastLineMappings(args.rawData)]),
   };
 }
 

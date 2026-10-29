@@ -73,10 +73,14 @@ export type {
 
 export {
   CANONICAL_SOURCE_ADAPTER_VERSION,
+  RECAST_LINE_CONCEPT_PREFIX,
   buildCapitalineCanonicalFactBundle,
   buildOntologyConceptMappings,
+  buildRecastLineMappings,
   buildTextCanonicalFactBundle,
 } from "./sourceAdapters";
+export { RECAST_INLINE_LINES, isRecastLine, normalizeRecastLabel, recastLineUnit } from "./recastLineCatalog";
+export type { RecastLineUnit } from "./recastLineCatalog";
 export type { CanonicalFactIngestionBundle } from "./sourceAdapters";
 
 export {
