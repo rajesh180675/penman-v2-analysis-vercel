@@ -29,7 +29,6 @@ import {
   buildHoldoutVintageIndex,
   buildScenarioGovernanceReport,
   summarizeAntiTautology,
-  type EvidenceWeightedValuationSynthesis,
   type ScenarioGovernanceReport,
 } from "../valuationEvidence";
 import { resolveValuationReadiness, type ValuationReadiness } from "../valuationPolicy";
@@ -436,67 +435,81 @@ function modelTransformationId(modelId: string, caseId: string | null, index: nu
   return `legacy-model:${index}:${modelId}:${caseId ?? "consolidated"}`;
 }
 
-async function buildLegacyTransformationDag(params: {
-  readonly factSet: FactSet;
-  readonly pipelineResult: PipelineResult | null;
-  readonly modelResults: readonly CatalogValuationModelResult[];
-  readonly hasSynthesis: boolean;
-  readonly synthesis: EvidenceWeightedValuationSynthesis | null;
-  readonly policyRef: ContentRef<"policy-bundle">;
-  readonly sourceArtifactIds: readonly Sha256ContentId[];
-}): Promise<TransformationDag> {
-  const recorder = new TransformationRecorder();
-  for (const fact of params.factSet.facts) recorder.addRootFact(fact.factId);
-  const recastOutputs = params.pipelineResult?.periods.flatMap((period) => [
+/** The recast's outputs, as the DAG names them: five per recast period. */
+function recastOutputIds(pipelineResult: PipelineResult | null): string[] {
+  return pipelineResult?.periods.flatMap((period) => [
     `derived:${period.period_end}:cse`,
     `derived:${period.period_end}:noa`,
     `derived:${period.period_end}:nfo`,
     `derived:${period.period_end}:cni`,
     `derived:${period.period_end}:core-oi`,
   ]) ?? [];
-  if (recastOutputs.length) {
-    await recorder.record({
-      transformationId: "legacy-pipeline:recast",
-      functionId: "processCompanyDataFull",
-      functionVersion: LEGACY_ANALYSIS_RUN_EXECUTOR_VERSION,
-      // The recast reads the recast-line facts (projectRecastPeriods), not the
-      // ontology's facts beside them.
-      inputFactIds: params.factSet.facts
-        .filter((fact) => fact.conceptId.startsWith(RECAST_LINE_CONCEPT_PREFIX))
-        .map((fact) => fact.factId),
-      outputFactIds: recastOutputs,
-      policyRefs: [params.policyRef.contentHash],
-      evidenceRefs: params.sourceArtifactIds,
-      parameters: { derivationMode: "legacy-derived", periodCount: params.pipelineResult?.periods.length ?? 0 },
-    });
-  }
+}
+
+/**
+ * recast: its DAG node, recorded as the stage runs. It reads the recast-line
+ * facts (projectRecastPeriods), not the ontology's facts beside them.
+ */
+async function recordRecastTransformation(state: LegacyRunState): Promise<void> {
+  const { transformations, factSet, pipelineResult } = state;
+  if (!transformations || !factSet) return;
+  const outputs = recastOutputIds(pipelineResult);
+  if (!outputs.length) return;
+  await transformations.record({
+    transformationId: "legacy-pipeline:recast",
+    functionId: "processCompanyDataFull",
+    functionVersion: LEGACY_ANALYSIS_RUN_EXECUTOR_VERSION,
+    inputFactIds: factSet.facts
+      .filter((fact) => fact.conceptId.startsWith(RECAST_LINE_CONCEPT_PREFIX))
+      .map((fact) => fact.factId),
+    outputFactIds: outputs,
+    policyRefs: [state.policyArtifact.ref.contentHash],
+    evidenceRefs: normalizeSourceArtifactIds(state.input),
+    parameters: { derivationMode: "legacy-derived", periodCount: pipelineResult?.periods.length ?? 0 },
+  });
+}
+
+/**
+ * model-execution and synthesis: a node for each computed model result, read
+ * from the recast's outputs, then the synthesis over them.
+ */
+async function recordModelTransformations(
+  state: LegacyRunState,
+  modelResults: readonly CatalogValuationModelResult[],
+  hasSynthesis: boolean,
+): Promise<void> {
+  const { transformations } = state;
+  if (!transformations) return;
+  const policyRefs = [state.policyArtifact.ref.contentHash];
+  const sourceArtifactIds = normalizeSourceArtifactIds(state.input);
+  const recastOutputs = recastOutputIds(state.pipelineResult);
   const modelOutputs: string[] = [];
-  for (const [index, modelResult] of params.modelResults.entries()) {
+  for (const [index, modelResult] of modelResults.entries()) {
     if (modelResult.status !== "computed") continue;
     const transformationId = modelTransformationId(modelResult.modelId, modelResult.caseId, index);
     const outputId = `valuation-output:${transformationId}`;
     modelOutputs.push(outputId);
-    await recorder.record({
+    await transformations.record({
       transformationId,
       functionId: modelResult.modelId,
       functionVersion: modelResult.modelVersion,
       inputFactIds: recastOutputs,
       outputFactIds: [outputId],
-      policyRefs: [params.policyRef.contentHash],
-      evidenceRefs: modelResult.evidenceRefs.length ? modelResult.evidenceRefs : params.sourceArtifactIds,
+      policyRefs,
+      evidenceRefs: modelResult.evidenceRefs.length ? modelResult.evidenceRefs : sourceArtifactIds,
       parameters: { caseId: modelResult.caseId, unit: modelResult.unit },
     });
   }
-  if (params.hasSynthesis && modelOutputs.length) {
-    const composition = params.synthesis?.compositionDiagnostics;
-    await recorder.record({
+  if (hasSynthesis && modelOutputs.length) {
+    const composition = state.commandCenter?.evidenceWeightedSynthesis?.compositionDiagnostics;
+    await transformations.record({
       transformationId: "legacy-synthesis:evidence-weighted",
       functionId: "buildEvidenceWeightedSynthesis",
       functionVersion: LEGACY_ANALYSIS_RUN_EXECUTOR_VERSION,
       inputFactIds: modelOutputs,
       outputFactIds: ["synthesis:legacy-headline"],
-      policyRefs: [params.policyRef.contentHash],
-      evidenceRefs: [...new Set([...params.sourceArtifactIds, ...(composition?.dossierHashes ?? [])])],
+      policyRefs,
+      evidenceRefs: [...new Set([...sourceArtifactIds, ...(composition?.dossierHashes ?? [])])],
       parameters: {
         computedModelCount: modelOutputs.length,
         compositionPolicyVersion: composition?.policyVersion ?? null,
@@ -505,11 +518,6 @@ async function buildLegacyTransformationDag(params: {
       },
     });
   }
-  const finalized = await recorder.finalize();
-  if (finalized.ok === false) {
-    throw new Error(finalized.errors.map((error) => `${error.code}: ${error.message}`).join("; "));
-  }
-  return finalized.value;
 }
 
 function pointDistribution(value: number) {
@@ -840,6 +848,12 @@ interface LegacyRunState {
   /** fact-extraction's output: the parse's fidelity verdict, recorded as evidence. */
   parserFidelity: ParserFidelitySummary | null;
   parserFidelityArtifact: AnalysisContentArtifact<"evidence"> | null;
+  /**
+   * The transformation DAG, recorded as the stages run: the fact set's facts
+   * are its roots, and each stage that derives from them adds its node. Null
+   * without a canonical fact set.
+   */
+  readonly transformations: TransformationRecorder | null;
   qualityGate: QualityGateReport | null;
   mappingAudit: MappingAuditReport | null;
   pipelineResult: PipelineResult | null;
@@ -965,6 +979,8 @@ async function openRun(
     },
   });
   artifacts.push(factArtifact, policyArtifact, catalogArtifact);
+  const transformations = factSet ? new TransformationRecorder() : null;
+  for (const fact of factSet?.facts ?? []) transformations!.addRootFact(fact.factId);
 
   return {
     input,
@@ -988,6 +1004,7 @@ async function openRun(
     catalogArtifact,
     parserFidelity: null,
     parserFidelityArtifact: null,
+    transformations,
     qualityGate: null,
     mappingAudit: null,
     pipelineResult: null,
@@ -1101,6 +1118,7 @@ async function runRecast(state: LegacyRunState): Promise<void> {
         : null;
     state.analysisStatus = dependencies.deriveAnalysisStatus(state.qualityGate, state.valuationReadiness, state.mappingAudit);
   });
+  await recordRecastTransformation(state);
 }
 
 /** structural-reconciliation: a blocked analysis status ends the run. */
@@ -1762,7 +1780,11 @@ async function recordModelArtifacts(state: LegacyRunState, modelResults: Catalog
   return { scenarioGovernanceArtifact, advancedModelArtifacts, modelArtifacts, synthesisArtifact };
 }
 
-/** release-trust: the transformation DAG, where the run has a canonical fact set. */
+/**
+ * release-trust: the transformation DAG the stages recorded, where the run has
+ * a canonical fact set. The model and synthesis nodes are recorded here, once
+ * composition has settled which model results the run reports.
+ */
 async function recordTransformationDag(
   state: LegacyRunState,
   modelResults: CatalogValuationModelResult[],
@@ -1770,17 +1792,14 @@ async function recordTransformationDag(
 ): Promise<{ transformationDag: TransformationDag | null; transformationDagArtifact: AnalysisContentArtifact<"evidence"> | null }> {
   let transformationDag: TransformationDag | null = null;
   let transformationDagArtifact: AnalysisContentArtifact<"evidence"> | null = null;
-  if (state.factSet) {
+  if (state.transformations) {
     try {
-      transformationDag = await buildLegacyTransformationDag({
-        factSet: state.factSet,
-        pipelineResult: state.pipelineResult,
-        modelResults,
-        hasSynthesis,
-        synthesis: state.commandCenter?.evidenceWeightedSynthesis ?? null,
-        policyRef: state.policyArtifact.ref,
-        sourceArtifactIds: normalizeSourceArtifactIds(state.input),
-      });
+      await recordModelTransformations(state, modelResults, hasSynthesis);
+      const finalized = await state.transformations.finalize();
+      if (finalized.ok === false) {
+        throw new Error(finalized.errors.map((error) => `${error.code}: ${error.message}`).join("; "));
+      }
+      transformationDag = finalized.value;
       transformationDagArtifact = await createAnalysisContentArtifact({
         kind: "evidence",
         schemaVersion: transformationDag.schemaVersion,
