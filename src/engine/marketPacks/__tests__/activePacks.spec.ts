@@ -83,6 +83,9 @@ const RUN_INPUT_SITES = [
  */
 const PASSES_PACKS_THROUGH = [
   "src/engine/valuationCommandCenter/core.ts",
+  // The command center's models stage: EPV's no-growth value discounts at the
+  // packs the command center hands it.
+  "src/engine/valuationCommandCenter/models.ts",
   "src/engine/analysisCase/assumptionResolution.ts",
   "src/engine/grahamDoddEPV.ts",
   "src/engine/v3Analytics/compute.ts",
