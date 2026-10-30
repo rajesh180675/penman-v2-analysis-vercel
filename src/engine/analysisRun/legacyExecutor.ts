@@ -1286,6 +1286,9 @@ async function runCommandCenter(state: LegacyRunState): Promise<void> {
       annualizedPeriods: state.windowedBasis.annualizedPeriods,
       // The cases the run generated: the cards value these.
       forecastCases: state.generatedForecastCases.length ? state.generatedForecastCases : null,
+      // The cost of capital assumption resolution resolved, on the same anchor
+      // slice, snapshot and packs, rather than a second resolve of its own.
+      costOfCapital: state.assumptionResolution?.costOfCapital ?? null,
       config: state.config,
       marketData: state.marketSnapshot,
       analysisStatus: state.analysisStatus,

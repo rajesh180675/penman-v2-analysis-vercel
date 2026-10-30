@@ -8,7 +8,7 @@ import {
 } from "../forecastState/generation";
 import { AnalysisStatusSummary } from "../analysisStatus";
 import { RecastPeriod, EngineConfig } from "../types";
-import { resolveCostOfCapitalFromConfig } from "../costOfCapital";
+import { resolveCostOfCapitalFromConfig, type CostOfCapitalResult } from "../costOfCapital";
 import { resolveShareBasis } from "../shareCountTools";
 import { resolveValuationReadiness } from "../valuationPolicy";
 import { resolveValuationSectorTemplate } from "../valuationSectorTemplates";
@@ -112,6 +112,15 @@ export type CoreBuildContext = {
    */
   forecastCases?: readonly GeneratedForecastCase[] | null | undefined;
   /**
+   * The cost of capital the run's assumption-resolution stage resolved
+   * (analysisCase/assumptionResolution.ts), from the same anchor slice, market
+   * snapshot, packs and as-of date as this command center is built from; its
+   * parity spec asserts the two resolve alike. Absent outside a run (the
+   * classic shell, the dashboard, the backtest's earlier anchors), where the
+   * command center resolves its own the same way.
+   */
+  costOfCapital?: CostOfCapitalResult | null | undefined;
+  /**
    * The run's as-of date, for the pack's staleness and look-ahead checks.
    *
    * Supplied by the caller rather than read off the clock in here. A pack
@@ -208,7 +217,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     0.6,
   );
 
-  const costOfCapital = resolveCostOfCapitalFromConfig({
+  const costOfCapital = context.costOfCapital ?? resolveCostOfCapitalFromConfig({
     config,
     current: latest,
     previous: prev,
