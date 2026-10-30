@@ -263,6 +263,58 @@ function dependencies(options: {
   };
 }
 
+/**
+ * Four planned scenarios with distinct drivers, so the base's year-1 values
+ * identify which one the assumptions were sourced from.
+ */
+const PLANNED = (["stress", "base", "bull", "historical-panic"] as const).map((key, index) => ({
+  key,
+  label: key,
+  scenario: {
+    name: key === "base" ? "base" : key === "bull" ? "bull" : "bear",
+    probability: 0.25,
+    horizonT: 1,
+    drivers: {
+      sales_growth: [0.01 * (index + 1)],
+      core_sales_pm: [0.1 + 0.01 * index],
+      ato: [1 + index],
+      flev: [0],
+      nbc: [0.05],
+      g_terminal: 0.03 + 0.001 * index,
+      ke: 0.12,
+      kw: 0.1,
+    },
+  },
+}));
+
+/**
+ * One validated stub case per planned scenario, a year of revenue and
+ * operating income at its level (stress 80, base 100, bull 120 unless set) and
+ * the base's terminal economics, so the gates pass unless the levels are out
+ * of order. The command center is a stub too: nothing values these cases.
+ */
+function computedCases(levels: Partial<Record<"stress" | "base" | "bull", number>> = {}): LegacyAnalysisRunExecutorDependencies["buildForecastCases"] {
+  const level = { stress: 80, base: 100, bull: 120, ...levels };
+  return vi.fn(({ planned }: { planned: readonly { key: string; label: string; scenario: unknown }[] }) => planned.map((p) => {
+    const scenarioKey = p.key === "historical-panic" ? "custom" : p.key;
+    const value = level[p.key as keyof typeof level] ?? 60;
+    return {
+      ...p,
+      result: {
+        status: "computed",
+        forecastCase: {
+          caseId: p.key, label: p.label, scenarioKey, family: "industrial", analysisWindowId: `sha256:${"c".repeat(64)}`,
+          assumptionIds: [], horizonYears: 1, probability: null, probabilityStatus: "not-assigned", probabilityEvidenceRefs: [], probabilityRationale: null,
+          projected: [{ incomeStatement: { revenue: value, operatingIncomeAfterTax: value / 10 } }],
+          terminal: { growth: 0.03, reinvestmentRate: 0, roic: 0, growthImpliedByReinvestment: 0, consistencyResidual: 0, keSpread: 0.09, kwSpread: 0.07, minimumRequiredSpread: 0 },
+          validation: { status: "passed", checks: [], blockingCheckIds: [], summary: "fixture" },
+          transformationRefs: [],
+        },
+      },
+    };
+  })) as unknown as LegacyAnalysisRunExecutorDependencies["buildForecastCases"];
+}
+
 function input(overrides: Partial<LegacyAnalysisRunInputV1["metadata"]> = {}): LegacyAnalysisRunInputV1 {
   return {
     rawData: RAW,
@@ -730,45 +782,30 @@ describe("legacy-backed AnalysisRun executor", () => {
   });
 
   it("generates the forecast ahead of the command center, sources the base scenario's drivers, and hands the cases over", async () => {
-    // Four planned scenarios with distinct drivers, so the base's year-1
-    // values identify which one the assumptions were sourced from.
-    const planned = (["stress", "base", "bull", "historical-panic"] as const).map((key, index) => ({
-      key,
-      label: key,
-      scenario: {
-        name: key === "base" ? "base" : key === "bull" ? "bull" : "bear",
-        probability: 0.25,
-        horizonT: 1,
-        drivers: {
-          sales_growth: [0.01 * (index + 1)],
-          core_sales_pm: [0.1 + 0.01 * index],
-          ato: [1 + index],
-          flev: [0],
-          nbc: [0.05],
-          g_terminal: 0.03 + 0.001 * index,
-          ke: 0.12,
-          kw: 0.1,
-        },
-      },
-    }));
-    const baseCommandCenter = commandCenter();
+    // A recast whose anchor carries a balance sheet and a share count: with
+    // validated cases the run reaches the model stage, whose dual run reads
+    // the anchor's share basis and valuation scalars.
+    const priced = RECAST.map((period) => ({
+      ...period,
+      bs: { CSE: 100, NOA: 100, NFO: 0, MI: 0, separationScore: 100 },
+      is: { CNI: 10, OI: 10 },
+      cf: { DividendPaid: 0, d_t: 0 },
+      shareCountInput: { endPeriodShares: 10, weightedAverageDilutedShares: 10 },
+    })) as unknown as RecastPeriod[];
     const deps: LegacyAnalysisRunExecutorDependencies = {
       ...dependencies(),
-      planForecastScenarios: vi.fn(() => planned) as unknown as LegacyAnalysisRunExecutorDependencies["planForecastScenarios"],
+      processPipeline: vi.fn(() => ({ ...pipeline(), periods: priced })) as unknown as LegacyAnalysisRunExecutorDependencies["processPipeline"],
+      planForecastScenarios: vi.fn(() => PLANNED) as unknown as LegacyAnalysisRunExecutorDependencies["planForecastScenarios"],
+      buildForecastCases: computedCases(),
       // Scenario governance reads the synthesis's defensibility once the run has cases.
       buildCommandCenter: vi.fn(() => ({
-        ...baseCommandCenter,
-        evidenceWeightedSynthesis: { ...baseCommandCenter.evidenceWeightedSynthesis, defensibility: { status: "guarded", checklist: [] } },
+        ...commandCenter(),
+        evidenceWeightedSynthesis: { ...commandCenter().evidenceWeightedSynthesis, defensibility: { status: "guarded", checklist: [] } },
       })) as unknown as LegacyAnalysisRunExecutorDependencies["buildCommandCenter"],
     };
-    // The stub cases do not validate, so the run blocks at its forecast gate:
-    // what is under test is what reached the command center before it.
     const result = await createLegacyAnalysisRunExecutor(deps)(input());
-    expect(result.status).toBe("blocked");
-    if (result.status !== "blocked") return;
-    expect(result.reasonCode).toBe("FORECAST_STATE_VALIDATION_BLOCKED");
-
-    // The base scenario's year-1 drivers and terminal growth are the sourced assumptions.
+    if (result.status === "failed") throw new Error(`${result.errorCode}: ${result.message}`);
+    expect(result.status).toBe("completed");
     const sourced = (id: string) => result.materialization.sourcedAssumptionSet?.assumptions.find((a) => a.assumptionId === id)?.value;
     expect(sourced("sales-growth-year-1")).toBe(0.02);
     expect(sourced("core-margin-year-1")).toBe(0.11);
@@ -783,7 +820,7 @@ describe("legacy-backed AnalysisRun executor", () => {
     // The cases built from those scenarios are the ones the command center values.
     const handed = (deps.buildCommandCenter as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0].forecastCases;
     expect(handed.map((generated: { key: string }) => generated.key)).toEqual(["stress", "base", "bull", "historical-panic"]);
-    expect(handed[1].scenario).toBe(planned[1]!.scenario);
+    expect(handed[1].scenario).toBe(PLANNED[1]!.scenario);
     // Each case the command center values is the payload of a forecast-case
     // artifact recorded before it ran, and the run publishes those artifacts.
     const recorded = result.artifacts.filter((artifact) => artifact.ref.kind === "forecast-case");
@@ -793,10 +830,48 @@ describe("legacy-backed AnalysisRun executor", () => {
       expect(Object.isFrozen(generated.result)).toBe(true);
     });
     expect(result.run?.forecastCaseRefs).toEqual(recorded.map((artifact) => artifact.ref));
+    expect(result.materialization.scenarioOrdering?.status).toBe("passed");
     // The command center takes the cost of capital assumption resolution
     // resolved, rather than resolving its own a second time.
     const resolved = (deps.resolveAssumptions as unknown as ReturnType<typeof vi.fn>).mock.results[0]!.value.costOfCapital;
     expect((deps.buildCommandCenter as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0].costOfCapital).toBe(resolved);
+  });
+
+  it("stops at the forecast gate before any model values a case that does not validate", async () => {
+    const deps: LegacyAnalysisRunExecutorDependencies = {
+      ...dependencies(),
+      planForecastScenarios: vi.fn(() => PLANNED) as unknown as LegacyAnalysisRunExecutorDependencies["planForecastScenarios"],
+    };
+    const result = await createLegacyAnalysisRunExecutor(deps)(input());
+    expect(result.status).toBe("blocked");
+    if (result.status !== "blocked") return;
+    expect(result.reasonCode).toBe("FORECAST_STATE_VALIDATION_BLOCKED");
+    expect(deps.buildCommandCenter).not.toHaveBeenCalled();
+    expect(result.materialization.commandCenter).toBeNull();
+    expect(result.materialization.modelResults).toEqual([]);
+    expect(result.artifacts.some((artifact) => artifact.ref.kind === "model-result" || artifact.ref.kind === "synthesis")).toBe(false);
+    // The cases are still recorded, as the run's evidence for the block.
+    expect(result.artifacts.filter((artifact) => artifact.ref.kind === "forecast-case")).toHaveLength(PLANNED.length);
+    const stages = Object.fromEntries(result.run.stageResults.map((stage) => [stage.stageId, stage.status]));
+    expect(stages.forecast).toBe("blocked");
+    expect(stages["model-execution"]).toBe("not-started");
+  });
+
+  it("stops at the forecast gate before any model values cases out of order", async () => {
+    const deps: LegacyAnalysisRunExecutorDependencies = {
+      ...dependencies(),
+      planForecastScenarios: vi.fn(() => PLANNED) as unknown as LegacyAnalysisRunExecutorDependencies["planForecastScenarios"],
+      // Bull below base on every line.
+      buildForecastCases: computedCases({ bull: 50 }),
+    };
+    const result = await createLegacyAnalysisRunExecutor(deps)(input());
+    expect(result.status).toBe("blocked");
+    if (result.status !== "blocked") return;
+    expect(result.reasonCode).toBe("FORECAST_SCENARIO_ORDERING_BLOCKED");
+    expect(deps.buildCommandCenter).not.toHaveBeenCalled();
+    expect(result.materialization.commandCenter).toBeNull();
+    expect(result.materialization.scenarioOrdering?.status).toBe("failed");
+    expect(result.artifacts.some((artifact) => artifact.ref.kind === "model-result" || artifact.ref.kind === "synthesis")).toBe(false);
   });
 
   it("lets the run proceed on a config validation warning", async () => {
