@@ -364,6 +364,14 @@
     "revenue": 10541.94,
     "exciseDuty": null,
     "coreOperatingIncome": 1415.8235946558511
+   },
+   {
+    "periodEnd": "2026-09-30",
+    "fiscalYearEnd": "2027-03-31",
+    "months": 6,
+    "revenue": 20518.45,
+    "exciseDuty": null,
+    "coreOperatingIncome": 2359.554775250244
    }
   ]
  },
@@ -2771,6 +2779,14 @@
     "revenue": 17341,
     "exciseDuty": null,
     "coreOperatingIncome": 2651.960352422908
+   },
+   {
+    "periodEnd": "2026-09-30",
+    "fiscalYearEnd": "2027-03-31",
+    "months": 6,
+    "revenue": 35567,
+    "exciseDuty": null,
+    "coreOperatingIncome": 5383.336019339243
    }
   ]
  },
@@ -4474,6 +4490,14 @@
     "revenue": 67941.74,
     "exciseDuty": null,
     "coreOperatingIncome": 3664.554311751531
+   },
+   {
+    "periodEnd": "2026-09-30",
+    "fiscalYearEnd": "2027-03-31",
+    "months": 6,
+    "revenue": 146691.68,
+    "exciseDuty": null,
+    "coreOperatingIncome": 8187.339636473187
    }
   ]
  },
@@ -5173,6 +5197,14 @@
     "revenue": 52469.8,
     "exciseDuty": null,
     "coreOperatingIncome": 2041.7364293434207
+   },
+   {
+    "periodEnd": "2026-09-30",
+    "fiscalYearEnd": "2027-03-31",
+    "months": 6,
+    "revenue": 105825.3,
+    "exciseDuty": null,
+    "coreOperatingIncome": 4326.124107410938
    }
   ]
  },
@@ -6695,6 +6727,14 @@
     "revenue": 311850,
     "exciseDuty": 2382,
     "coreOperatingIncome": 24540.72836982968
+   },
+   {
+    "periodEnd": "2026-09-30",
+    "fiscalYearEnd": "2027-03-31",
+    "months": 6,
+    "revenue": 644711,
+    "exciseDuty": 4642,
+    "coreOperatingIncome": 56130.64467005076
    }
   ]
  },
@@ -7191,6 +7231,14 @@
     "revenue": 15299.88,
     "exciseDuty": null,
     "coreOperatingIncome": 2603.3481374045045
+   },
+   {
+    "periodEnd": "2026-09-30",
+    "fiscalYearEnd": "2027-03-31",
+    "months": 6,
+    "revenue": 31498.59,
+    "exciseDuty": null,
+    "coreOperatingIncome": 5171.008249817042
    }
   ]
  },
