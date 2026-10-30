@@ -1,7 +1,7 @@
 import type { CapitalineParseDebug } from "../capitalineParser";
 import { CONCEPT_ONTOLOGY } from "../conceptOntology";
 import type { RawPeriodData } from "../types";
-import { isRecastLine, recastLineUnit } from "./recastLineCatalog";
+import { inferredRecastLineStatement, isRecastLine, recastLineUnit } from "./recastLineCatalog";
 import type {
   AccountingStandard,
   FactScope,
@@ -84,7 +84,7 @@ export function buildOntologyConceptMappings(
         currency: "INR",
       };
       const key = `${mapping.rawLabel}\u0000${mapping.conceptId}\u0000${mapping.statement}`;
-      const existing = grouped.get(key) ?? { mapping, periods: [] };
+      const existing = grouped.get(key) ?? { mapping, periods: [] as string[] };
       existing.periods.push(raw.period_end);
       grouped.set(key, existing);
     }
@@ -104,19 +104,34 @@ export const RECAST_LINE_CONCEPT_PREFIX = "capitaline-line:";
  * Each line is its own concept, named by its label, so the set holds every
  * value the recast can read. A line an ontology concept also maps keeps that
  * fact too: the two differ in concept, which is part of a fact's identity.
- * Bare keys are left out; the parser derives each from the statement-tagged
- * keys of its label.
+ * Bare keys are left out where the parse tags the label: the parser derives
+ * each from the statement-tagged keys of its label.
+ *
+ * A source whose labels carry no statement (a Screener table, an XBRL
+ * instance, a manual or JSON entry) writes a recast line under its bare label
+ * only. That line is mapped on its bare label, under the statement the
+ * pipeline reads it from (`inferredRecastLineStatement`), and marked inferred,
+ * since the source never said.
  */
 export function buildRecastLineMappings(
   rawData: readonly RawPeriodData[],
 ): readonly LegacyConceptMapping[] {
   const periodsByKey = new Map<string, string[]>();
   for (const raw of rawData) {
-    for (const [rawLabel, value] of Object.entries(raw.raw_metric_values)) {
+    const tagged = new Set<string>();
+    for (const rawLabel of Object.keys(raw.raw_metric_values)) {
       const separator = rawLabel.lastIndexOf("__");
-      if (separator < 0 || value == null || !Number.isFinite(value)) continue;
-      const statement = rawLabel.slice(separator + 2);
-      if (!(statement in STATEMENT_BY_ONTOLOGY) || !isRecastLine(rawLabel.slice(0, separator))) continue;
+      if (separator >= 0) tagged.add(rawLabel.slice(0, separator));
+    }
+    for (const [rawLabel, value] of Object.entries(raw.raw_metric_values)) {
+      if (value == null || !Number.isFinite(value)) continue;
+      const separator = rawLabel.lastIndexOf("__");
+      if (separator < 0) {
+        if (tagged.has(rawLabel) || inferredRecastLineStatement(rawLabel) == null) continue;
+      } else {
+        const statement = rawLabel.slice(separator + 2);
+        if (!(statement in STATEMENT_BY_ONTOLOGY) || !isRecastLine(rawLabel.slice(0, separator))) continue;
+      }
       const periods = periodsByKey.get(rawLabel) ?? [];
       periods.push(raw.period_end);
       periodsByKey.set(rawLabel, periods);
@@ -124,8 +139,10 @@ export function buildRecastLineMappings(
   }
   return Object.freeze([...periodsByKey].sort(([a], [b]) => a.localeCompare(b)).map(([rawLabel, periods]) => {
     const separator = rawLabel.lastIndexOf("__");
-    const statement = STATEMENT_BY_ONTOLOGY[rawLabel.slice(separator + 2) as keyof typeof STATEMENT_BY_ONTOLOGY];
-    const unit = recastLineUnit(rawLabel.slice(0, separator));
+    const baseLabel = separator < 0 ? rawLabel : rawLabel.slice(0, separator);
+    const filedStatement = separator < 0 ? inferredRecastLineStatement(rawLabel)! : rawLabel.slice(separator + 2) as keyof typeof STATEMENT_BY_ONTOLOGY;
+    const statement = STATEMENT_BY_ONTOLOGY[filedStatement];
+    const unit = recastLineUnit(baseLabel);
     return Object.freeze({
       rawLabel,
       conceptId: `${RECAST_LINE_CONCEPT_PREFIX}${rawLabel}`,
@@ -135,6 +152,7 @@ export function buildRecastLineMappings(
       storedScale: unit.storedScale,
       currency: unit.currency,
       periodEnds: Object.freeze([...new Set(periods)].sort()),
+      ...(separator < 0 ? { statementInferred: true } : {}),
     });
   }));
 }

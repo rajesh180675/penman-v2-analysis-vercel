@@ -681,19 +681,28 @@ describe("legacy-backed AnalysisRun executor", () => {
     expect(vi.mocked(deps.processPipeline).mock.calls[0]![0]).toEqual(input().rawData);
   });
 
-  it("feeds the pipeline the parse when its lines carry bare labels only, as a Screener or XBRL upload's do", async () => {
+  it("feeds the pipeline its periods from the facts when its lines carry bare labels only, as a Screener or XBRL upload's do", async () => {
     const deps = dependencies();
     const parsed = [
-      { company_id: "issuer-1", period_end: "2025-03-31", raw_metric_values: { "Total Assets": 900, "Revenue From Operations(Net)": 500 } },
-      { company_id: "issuer-1", period_end: "2026-03-31", raw_metric_values: { "Total Assets": 1_000, "Revenue From Operations(Net)": 550 } },
+      { company_id: "issuer-1", period_end: "2025-03-31", raw_metric_values: { "Total Assets": 900, "Revenue From Operations(Net)": 500, "Unread Line": 7 } },
+      { company_id: "issuer-1", period_end: "2026-03-31", raw_metric_values: { "Total Assets": 1_000, "Revenue From Operations(Net)": 550, "Unread Line": 8 } },
     ];
     const canonicalFacts = await buildTextCanonicalFactBundle({
       rawData: parsed, sourceText: "<xbrl/>", sourceMode: "xbrl", fileName: "filing.xml",
       scope: "consolidated", contentClass: "financial-statements",
     });
     const result = await createLegacyAnalysisRunExecutor(deps)({ ...input(), rawData: parsed, canonicalFacts: canonicalFacts! });
-    expect(result.materialization.factSet?.facts.length).toBeGreaterThan(0);
-    expect(vi.mocked(deps.processPipeline).mock.calls[0]![0]).toEqual(parsed);
+    // The line no reader names is not a fact, so the recast does not see it.
+    expect(vi.mocked(deps.processPipeline).mock.calls[0]![0].map((period) => period.raw_metric_values)).toEqual([
+      { "Total Assets": 900, "Revenue From Operations(Net)": 500 },
+      { "Total Assets": 1_000, "Revenue From Operations(Net)": 550 },
+    ]);
+    // The recast's DAG node cites the bare lines' facts, recorded as inferred.
+    const lineFacts = result.materialization.factSet!.facts.filter((fact) => fact.conceptId.startsWith("capitaline-line:"));
+    expect(lineFacts).toHaveLength(4);
+    expect(lineFacts.every((fact) => fact.confidence === "inferred")).toBe(true);
+    const recastNode = result.materialization.transformationDag!.nodes.find((node) => node.functionId === "processCompanyDataFull")!;
+    expect([...recastNode.inputFactIds].sort()).toEqual(lineFacts.map((fact) => fact.factId).sort());
   });
 
   describe("a valuation-policy block", () => {

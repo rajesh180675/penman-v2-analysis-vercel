@@ -69,7 +69,7 @@ export async function extractRunFacts(input: FactExtractionInput): Promise<FactE
       ?? new Set(rawData.flatMap((period) => Object.keys(period.raw_metric_values))).size,
     parserDiagnostics: input.parserDiagnostics,
   });
-  const recastReadsFacts = factSet != null && canProjectRecastPeriods(rawData);
+  const recastReadsFacts = factSet != null && canProjectRecastPeriods(factSet, rawData);
   return {
     stageVersion: FACT_EXTRACTION_STAGE_VERSION,
     factSet,

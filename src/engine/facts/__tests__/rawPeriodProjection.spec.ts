@@ -92,20 +92,56 @@ describe("projectRecastPeriods", () => {
 });
 
 describe("canProjectRecastPeriods", () => {
-  it("accepts a parse whose every recast line has its statement-tagged key", () => {
-    expect(canProjectRecastPeriods(PERIODS)).toBe(true);
+  it("accepts a parse whose every recast line has a fact", async () => {
+    expect(canProjectRecastPeriods(await factSetFor(PERIODS), PERIODS)).toBe(true);
   });
 
-  it("refuses a parse with a recast line under its bare label only, as Screener and XBRL write them", () => {
+  it("refuses a parse with a recast line the fact set holds no fact for", async () => {
     const bare: RawPeriodData = { company_id: "ACME", period_end: "2024-03-31", raw_metric_values: { "Total Assets": 1_000 } };
-    expect(canProjectRecastPeriods([...PERIODS, bare])).toBe(false);
+    // Facts built from the tagged parse only: the bare-label period has none.
+    expect(canProjectRecastPeriods(await factSetFor(PERIODS), [...PERIODS, bare])).toBe(false);
   });
 
-  it("ignores bare labels the recast does not read, and empty values", () => {
+  it("ignores bare labels the recast does not read, and empty values", async () => {
     const period: RawPeriodData = {
       company_id: "ACME", period_end: "2024-03-31",
       raw_metric_values: { "Total Assets__BalanceSheet": 1, "Total Assets": 1, "Sales Growth %": 12, "Finance Cost": null },
     };
-    expect(canProjectRecastPeriods([period])).toBe(true);
+    expect(canProjectRecastPeriods(await factSetFor([period]), [period])).toBe(true);
+  });
+});
+
+describe("a source whose labels carry no statement", () => {
+  // As a Screener table, an XBRL instance or a manual entry writes them.
+  const BARE: RawPeriodData[] = [
+    { company_id: "ACME", period_end: "2024-03-31", raw_metric_values: { "Total Assets": 1_000, "Inventories": 120, "Finance Cost": 40, "Sales Growth %": 12 } },
+    { company_id: "ACME", period_end: "2025-03-31", raw_metric_values: { "Total Assets": 1_100, "Inventories": 130, "Finance Cost": 44, "Sales Growth %": 9 } },
+  ];
+
+  it("records each recast line on its bare label, on the statement the pipeline reads it from, as inferred", async () => {
+    const facts = (await factSetFor(BARE)).facts.filter((fact) => fact.conceptId.startsWith(RECAST_LINE_CONCEPT_PREFIX));
+    const byLabel = Object.fromEntries(facts.filter((fact) => fact.period.end === "2024-03-31").map((fact) => [fact.rawLabel, fact]));
+    expect(Object.keys(byLabel).sort()).toEqual(["Finance Cost", "Inventories", "Total Assets"]);
+    expect(byLabel["Total Assets"]!.statement).toBe("BS");
+    expect(byLabel["Finance Cost"]!.statement).toBe("IS");
+    // Named on the balance sheet and as a cash-flow change: the parser's bare
+    // key ranks the balance sheet first.
+    expect(byLabel["Inventories"]!.statement).toBe("BS");
+    expect(facts.every((fact) => fact.factKind === "reported" && fact.confidence === "inferred")).toBe(true);
+  });
+
+  it("rebuilds the parse's recast lines from those facts", async () => {
+    const factSet = await factSetFor(BARE);
+    expect(canProjectRecastPeriods(factSet, BARE)).toBe(true);
+    expect(projectRecastPeriods(factSet, BARE).map((period) => period.raw_metric_values)).toEqual([
+      { "Total Assets": 1_000, "Inventories": 120, "Finance Cost": 40 },
+      { "Total Assets": 1_100, "Inventories": 130, "Finance Cost": 44 },
+    ]);
+  });
+
+  it("maps a bare label the parse also tags only on its tagged key", async () => {
+    const mappings = buildRecastLineMappings(PERIODS);
+    expect(mappings.map((mapping) => mapping.rawLabel)).not.toContain("Total Assets");
+    expect(mappings.every((mapping) => mapping.statementInferred !== true)).toBe(true);
   });
 });

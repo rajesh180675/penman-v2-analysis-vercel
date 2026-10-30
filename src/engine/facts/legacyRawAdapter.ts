@@ -14,6 +14,12 @@ export interface LegacyConceptMapping {
   readonly currency: string | null;
   /** Optional exact applicability used when source labels change by vintage. */
   readonly periodEnds?: readonly string[] | undefined;
+  /**
+   * Set when the source did not say which statement filed the line and the
+   * mapping infers it (a bare label from an upload): the fact is recorded at
+   * confidence "inferred" rather than "mapped".
+   */
+  readonly statementInferred?: boolean | undefined;
 }
 
 export interface LegacyMetricOrigin extends Partial<OriginLocator> {
@@ -155,7 +161,7 @@ async function buildFact(args: {
     ...common,
     factId,
     factKind: "reported",
-    confidence: "mapped",
+    confidence: args.mapping.statementInferred ? "inferred" : "mapped",
     origin: {
       kind: "reported",
       artifactId: metricOrigin?.artifactId ?? args.source.artifactId,
