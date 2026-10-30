@@ -599,6 +599,8 @@ The trickiest design problem is the **advanced model mutation pattern**:
 5. Stage 12 (synthesis) receives ALL model results — both intrinsic and optionality — and weights them according to independence group
 6. If composition produces a materially different valuation range, it manifests as divergence in the independence-group collapse, not as a silent replacement
 
+*2026-10-30, the lineage half:* where an approved composition replaces a vote, the run now records the synthesis stage's own output first, as a `2026-10-synthesis-before-composition-v1` evidence artifact, and the published synthesis cites it (`composedFrom`). The substitution is a recorded step on top of the stage's synthesis rather than a silent replacement. The native flow below, where optionality is a model result the synthesis weighs instead of a vote it substitutes, changes the composition's arithmetic and is not done.
+
 **This means:** `commandCenter.evidenceWeightedSynthesis` is never mutated post-hoc. The synthesis stage always produces the ground truth from the full set of model results it receives. Advanced models contribute to the evidence base rather than overriding it.
 
 ### 7.5 Hardest decoupling: the opportunity assessment and signal chain

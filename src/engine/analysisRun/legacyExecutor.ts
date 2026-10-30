@@ -29,6 +29,7 @@ import {
   buildHoldoutVintageIndex,
   buildScenarioGovernanceReport,
   summarizeAntiTautology,
+  type EvidenceWeightedValuationSynthesis,
   type ScenarioGovernanceReport,
 } from "../valuationEvidence";
 import { resolveValuationReadiness, type ValuationReadiness } from "../valuationPolicy";
@@ -890,6 +891,12 @@ interface LegacyRunState {
   scenarioGovernance: ScenarioGovernanceReport | null;
   scenarioCalibration: ScenarioCalibrationReport | null;
   sectorCaseExecution: SectorCaseCatalogExecutionResult | null;
+  /**
+   * The synthesis stage's own output, before an approved real-options
+   * composition replaced one vote of it. Null when no composition applied: the
+   * published synthesis is then the stage's output itself.
+   */
+  synthesisBeforeComposition: EvidenceWeightedValuationSynthesis | null;
   readonly advancedModelExecutions: AdvancedModelExecution[];
 }
 
@@ -1040,6 +1047,7 @@ async function openRun(
     scenarioGovernance: null,
     scenarioCalibration: null,
     sectorCaseExecution: null,
+    synthesisBeforeComposition: null,
     advancedModelExecutions: [],
   };
 }
@@ -1736,6 +1744,7 @@ function composeModelResults(
         stopRun(state, "blocked", "synthesis", "REAL_OPTIONS_COMPOSITION_SUBSTITUTION_BLOCKED", message);
         break;
       }
+      state.synthesisBeforeComposition ??= commandCenter.evidenceWeightedSynthesis;
       commandCenter = { ...commandCenter, evidenceWeightedSynthesis: activation.synthesis };
       state.commandCenter = commandCenter;
     }
@@ -1794,6 +1803,18 @@ async function recordModelArtifacts(state: LegacyRunState, modelResults: Catalog
     })));
   state.artifacts.push(...modelArtifacts);
 
+  // Where a governed composition replaced a vote, the synthesis stage's own
+  // output is recorded first, as evidence, and the published synthesis cites
+  // it: the composition is a step on top of the stage's synthesis, not a
+  // silent replacement of it (migration plan §7.4).
+  const synthesisBeforeCompositionArtifact = commandCenter && state.synthesisBeforeComposition
+    ? await createAnalysisContentArtifact({
+        kind: "evidence",
+        schemaVersion: "2026-10-synthesis-before-composition-v1",
+        payload: { evidenceType: "synthesis-before-composition", synthesis: state.synthesisBeforeComposition },
+      })
+    : null;
+  if (synthesisBeforeCompositionArtifact) state.artifacts.push(synthesisBeforeCompositionArtifact);
   const synthesisArtifact = commandCenter
     ? await createAnalysisContentArtifact({
         kind: "synthesis",
@@ -1802,6 +1823,7 @@ async function recordModelArtifacts(state: LegacyRunState, modelResults: Catalog
           derivationMode: "legacy-derived",
           synthesis: commandCenter.evidenceWeightedSynthesis,
           scenarioGovernance,
+          ...(synthesisBeforeCompositionArtifact ? { composedFrom: synthesisBeforeCompositionArtifact.ref } : {}),
         },
       })
     : null;
