@@ -30,7 +30,7 @@ The year in progress, projected from the months filed so far (provisional; month
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 20 | 10.9 | 20.7 | +47% | -6.3 | 16 of 20 |
+| Sales (log error, %) | 20 | 10.9 | 20.9 | +48% | -6.4 | 16 of 20 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 
 ### Frozen 2026-10-08 (17 of 23 forecasts scored)
@@ -45,7 +45,7 @@ The year in progress, projected from the months filed so far (provisional; month
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 20 | 11.2 | 20.0 | +44% | -6.2 | 16 of 20 |
+| Sales (log error, %) | 20 | 11.0 | 20.2 | +45% | -6.3 | 16 of 20 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 
 ### Frozen 2026-10-11 (13 of 20 forecasts scored)
@@ -60,7 +60,7 @@ The year in progress, projected from the months filed so far (provisional; month
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 15 | 9.5 | 19.4 | +51% | -5.3 | 12 of 15 |
+| Sales (log error, %) | 15 | 9.5 | 19.4 | +51% | -5.1 | 12 of 15 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 
 ### Frozen 2026-10-17 (14 of 21 forecasts scored)
@@ -75,7 +75,7 @@ The year in progress, projected from the months filed so far (provisional; month
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.1 | 13 of 16 |
+| Sales (log error, %) | 16 | 9.9 | 20.2 | +51% | -6.0 | 13 of 16 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 
 ### Frozen 2026-10-18 (14 of 21 forecasts scored)
@@ -90,7 +90,7 @@ The year in progress, projected from the months filed so far (provisional; month
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.1 | 13 of 16 |
+| Sales (log error, %) | 16 | 9.9 | 20.2 | +51% | -6.0 | 13 of 16 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 
 ### Frozen 2026-10-19 (14 of 21 forecasts scored)
@@ -105,8 +105,8 @@ The year in progress, projected from the months filed so far (provisional; month
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.1 | 13 of 16 |
-| Core margin (points of sales) | 16 | 1.8 | 1.9 | +4% | -0.9 | 9 of 16 |
+| Sales (log error, %) | 16 | 9.9 | 20.2 | +51% | -6.0 | 13 of 16 |
+| Core margin (points of sales) | 16 | 1.5 | 1.6 | +5% | -0.8 | 9 of 16 |
 
 ### Frozen 2026-10-20 (14 of 21 forecasts scored)
 
@@ -128,22 +128,22 @@ The year in progress, projected from the months filed so far (provisional; month
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 16 | 9.9 | 20.0 | +50% | -6.1 | 13 of 16 |
-| Core margin (points of sales) | 16 | 1.8 | 1.9 | +4% | -0.9 | 9 of 16 |
+| Sales (log error, %) | 16 | 9.9 | 20.2 | +51% | -6.0 | 13 of 16 |
+| Core margin (points of sales) | 16 | 1.5 | 1.6 | +5% | -0.8 | 9 of 16 |
 
 Against the frozen scenario cases:
 
 | Measure | n | Below stress | Between | Above bull | Below panic |
 |---|---|---|---|---|---|
 | Sales | 16 | 13% | 50% | 38% | 6% |
-| Core margin | 16 | 6% | 50% | 44% | 0% |
+| Core margin | 16 | 0% | 63% | 38% | 0% |
 
 ## Frozen 2026-10-20, by company
 
 | Company | Cutoff | Year | Sales error | Random walk | Margin error (pts) | Random walk | Earnings error (ROE pts) | Random walk |
 |---|---|---|---|---|---|---|---|---|
 | ASIANPAINT | 2025-03-31 | 2026-03-31 | -1.1 | -4.8 | -0.6 | -0.6 | -1.2 | -3.4 |
-| ASIANPAINT | 2025-03-31 | 2027-03-31 (3 months filed) | -12.1 | -21.3 | -2.8 | -2.8 | — | — |
+| ASIANPAINT | 2025-03-31 | 2027-03-31 (6 months filed) | -11.7 | -20.9 | -1.2 | -1.2 | — | — |
 | BHARTIARTL | 2025-03-31 | 2026-03-31 | -10.4 | -19.9 | -6.8 | -3.9 | -9.8 | +6.0 |
 | BHARTIARTL | 2025-03-31 | 2027-03-31 (3 months filed) | -19.2 | -36.7 | -10.7 | -5.6 | — | — |
 | BRITANNIA | 2025-03-31 | 2026-03-31 | +2.3 | -6.5 | -1.3 | -0.9 | -4.7 | -8.1 |
@@ -160,16 +160,16 @@ Against the frozen scenario cases:
 | LT | 2026-03-31 | — | not scored: a forecast of the business without L&T Finance; the consolidated filings describe another business | | | | | |
 | M&M | 2025-03-31 | — | not scored: a forecast of the business without Mahindra & Mahindra Financial Services; the consolidated filings describe another business | | | | | |
 | MARUTI | 2025-03-31 | 2026-03-31 | -7.7 | -18.1 | +0.4 | +0.9 | +0.6 | -0.2 |
-| MARUTI | 2025-03-31 | 2027-03-31 (3 months filed) | -27.4 | -48.8 | +2.3 | +3.1 | — | — |
+| MARUTI | 2025-03-31 | 2027-03-31 (6 months filed) | -23.5 | -44.9 | +2.1 | +3.0 | — | — |
 | NESTLEIND | 2025-03-31 | — | not scored: a forecast on standalone accounts; the ledger is consolidated | | | | | |
 | NTPC | 2025-03-31 | 2026-03-31 | +7.6 | +0.4 | -2.8 | -2.6 | -1.1 | -2.0 |
 | NTPC | 2025-03-31 | 2027-03-31 (3 months filed) | +7.7 | -7.1 | -3.8 | -3.4 | — | — |
 | POWERGRID | 2025-03-31 | 2026-03-31 | +4.7 | -2.0 | -0.0 | +0.1 | +0.7 | -0.4 |
 | POWERGRID | 2025-03-31 | 2027-03-31 (3 months filed) | +9.5 | -4.7 | +0.2 | +0.5 | — | — |
 | RELIANCE | 2025-03-31 | 2026-03-31 | -0.6 | -9.2 | -0.1 | +0.0 | -0.5 | -1.3 |
-| RELIANCE | 2025-03-31 | 2027-03-31 (3 months filed) | -15.5 | -33.1 | +1.8 | +2.0 | — | — |
+| RELIANCE | 2025-03-31 | 2027-03-31 (6 months filed) | -16.6 | -34.2 | +0.7 | +0.9 | — | — |
 | SUNPHARMA | 2025-03-31 | 2026-03-31 | -0.5 | -10.6 | -0.2 | -0.0 | +1.4 | -0.8 |
-| SUNPHARMA | 2025-03-31 | 2027-03-31 (3 months filed) | +0.2 | -20.6 | +1.5 | +1.8 | — | — |
+| SUNPHARMA | 2025-03-31 | 2027-03-31 (6 months filed) | -0.5 | -21.2 | +2.6 | +2.9 | — | — |
 | TATASTEEL | 2025-03-31 | 2026-03-31 | -2.2 | -6.0 | -2.6 | -3.0 | -6.6 | -8.1 |
 | TATASTEEL | 2025-03-31 | 2027-03-31 (3 months filed) | -10.3 | -19.4 | -2.4 | -2.9 | — | — |
 | TCS | 2026-03-31 | 2027-03-31 (6 months filed) | -2.8 | -11.8 | +0.9 | +0.8 | — | — |
