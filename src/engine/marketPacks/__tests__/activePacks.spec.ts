@@ -234,6 +234,11 @@ function calleeName(expression: ts.Expression): string | null {
  * names, and bare identifier arguments. Deliberately shallow — a pack has to
  * arrive as an argument of this call, so a name mentioned in a nested
  * expression is not the same thing as one supplied.
+ *
+ * A property set to a falsy literal (`macroPack: null`) names a pack and hands
+ * over none, so it is not supplied: the same hole `datesTheCall` closes for
+ * `analysisAsOf: undefined`. Both resolvers read an absent and a null pack
+ * alike, so counting the spelling would call an unpinned call forwarded.
  */
 function suppliedNames(call: ts.CallExpression, sf: ts.SourceFile): Set<string> {
   const names = new Set<string>();
@@ -247,6 +252,7 @@ function suppliedNames(call: ts.CallExpression, sf: ts.SourceFile): Set<string> 
       if (ts.isSpreadAssignment(property)) {
         names.add(property.expression.getText(sf));
       } else if (property.name && ts.isIdentifier(property.name)) {
+        if (ts.isPropertyAssignment(property) && isFalsyLiteral(property.initializer)) continue;
         names.add(property.name.text);
       }
     }
@@ -460,6 +466,26 @@ describe("pack activation — the call-site census", () => {
     expect(dated(call('"2026-07-24"'))).toBe(true);
     expect(dated(call("run.metadata.asOf"))).toBe(true);
     expect(dated("buildValuationCommandCenter({ ...ACTIVE_MARKET_PACKS, analysisAsOf });")).toBe(true);
+  });
+
+  it("does not accept a pack that is only nominally there", () => {
+    // `macroPack: null` names a pack and supplies none; the resolvers read it
+    // as absent. A name-only check would call the call forwarded.
+    const mode = (snippet: string) => {
+      const calls = callSitesInSource("fixture.ts", snippet);
+      expect(calls).toHaveLength(1);
+      return calls[0]!.mode;
+    };
+    const call = (args: string): string => `computeEPV(data, config, { ${args}, analysisAsOf });`;
+
+    expect(mode(call("macroPack: null, betaPack: null"))).toBe("none");
+    expect(mode(call("macroPack: undefined, betaPack: undefined"))).toBe("none");
+    // One real pack beside a null one still forwards: the census asks whether
+    // the call hands packs on, and that one does.
+    expect(mode(call("macroPack, betaPack: null"))).toBe("forwarded");
+    // Positive controls: shorthand and a computed value forward.
+    expect(mode(call("macroPack, betaPack"))).toBe("forwarded");
+    expect(mode(call("macroPack: input.macroPack, betaPack: input.betaPack"))).toBe("forwarded");
   });
 
   it("reports an undated call as undated", () => {
