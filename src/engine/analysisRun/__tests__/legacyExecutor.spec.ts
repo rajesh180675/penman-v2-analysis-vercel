@@ -768,6 +768,15 @@ describe("legacy-backed AnalysisRun executor", () => {
     const handed = (deps.buildCommandCenter as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0].forecastCases;
     expect(handed.map((generated: { key: string }) => generated.key)).toEqual(["stress", "base", "bull", "historical-panic"]);
     expect(handed[1].scenario).toBe(planned[1]!.scenario);
+    // Each case the command center values is the payload of a forecast-case
+    // artifact recorded before it ran, and the run publishes those artifacts.
+    const recorded = result.artifacts.filter((artifact) => artifact.ref.kind === "forecast-case");
+    expect(recorded).toHaveLength(handed.length);
+    handed.forEach((generated: { result: unknown }, index: number) => {
+      expect(generated.result).toBe((recorded[index]!.payload as { forecastResult: unknown }).forecastResult);
+      expect(Object.isFrozen(generated.result)).toBe(true);
+    });
+    expect(result.run?.forecastCaseRefs).toEqual(recorded.map((artifact) => artifact.ref));
   });
 
   it("lets the run proceed on a config validation warning", async () => {
