@@ -15,11 +15,8 @@ import { resolveValuationSectorTemplate } from "../valuationSectorTemplates";
 import type { SegmentData } from "../segmentParser";
 import { withoutSegment, type LendingArmReport } from "../lendingArm";
 import type { EquityBetaPack, MacroPack } from "../marketPacks";
-import { computeEvEbitdaCrossCheck, updateEvEbitdaWithMarketPrice } from "../evEbitdaCrossCheck";
 import { computeIndiaQualitySignals } from "../indiaQualitySignals";
 import { buildEarningsQualityCard, buildDechowDichevAndRem, capitalTransactionWithOwners } from "../earningsQuality";
-import { computeEPV } from "../grahamDoddEPV";
-import { computeCashFlowDcf } from "../cashFlowDcf";
 import { buildValuationTriangulationEvidence } from "../valuationTriangulation";
 import {
   buildAssumptionEvidenceLedger,
@@ -29,6 +26,7 @@ import {
   type HoldoutVintageIndex,
 } from "../valuationEvidence";
 import { buildBacktest } from "./backtest";
+import { runValuationModels } from "./models";
 import {
   ValuationSignalState,
   ValuationOpportunityAssessment,
@@ -38,7 +36,6 @@ import {
 import {
   clamp,
   scoreFromRange,
-  buildReverseDcfExpectation,
   primaryValueRange,
   sotpEquityPerShare,
   sotpValueRange,
@@ -56,11 +53,6 @@ import {
   yearsBetween,
   resolveShareCountChange,
 } from "./helpers";
-import {
-  buildSotpAssessment,
-  buildClassAModels,
-  buildScenarioCards,
-} from "./builders";
 
 /**
  * Labels for cases a command center generates itself, outside a run: no
@@ -256,15 +248,36 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     costOfCapital: { ke: keBase, kw: kwBase, riskFreeRate },
     horizon,
   }, COMMAND_CENTER_CASE_LABELS);
-  const scenarios = buildScenarioCards({
+  // The models (models.ts): the scenario cards on the forecast cases, then
+  // the reverse DCF, SOTP, EV/EBITDA, Class-A models, cash DCF and EPV, each
+  // as it was computed here.
+  const carvedSegment = context.lendingArm?.status === "applied" ? context.lendingArm.link.segmentName : null;
+  const segmentData = context.segmentData && carvedSegment ? withoutSegment(context.segmentData, carvedSegment) : context.segmentData;
+  const models = runValuationModels({
+    data,
+    valuationData,
     latest,
+    config,
     shareBasis,
+    shares,
     diagnostics,
-    marketPrice,
+    sectorTemplate,
+    costOfCapital,
     forecastCases,
+    horizon,
+    marketPrice,
+    priceOnValuationShares,
+    industrialMarketPrice,
+    carvedStake,
     yearsToPriceDate,
     shareCountChange,
+    segmentData,
+    macroPack,
+    betaPack,
+    analysisAsOf,
   });
+  const { scenarios, reverseDcf, sotpResult, conglomerateAssessment, cashFlowDcf, epv } = models;
+  const evEbitdaWithMarket = models.evEbitda;
 
   const stressCard = scenarios.find((card) => card.key === "stress") ?? null;
   const baseCard = scenarios.find((card) => card.key === "base") ?? null;
@@ -325,32 +338,6 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
         ? "Live market inputs are unavailable, so the command center cannot escalate beyond guarded research."
         : null;
 
-  const reverseDcf = buildReverseDcfExpectation({
-    marketPrice: industrialMarketPrice,
-    diagnostics,
-    baseCard,
-    keBase,
-    kwBase,
-    cse0: latest.bs.CSE,
-    noaT: latest.bs.NOA,
-    shares,
-    normalizedGrowth: sectorTemplate.normalizedGrowth,
-    terminalGrowth: baseCard?.assumptions.g ?? forecastCases.find((generated) => generated.key === "base")!.scenario.drivers.g_terminal,
-  });
-
-  // ── SOTP Valuation (Phase 2.2 + C5) ──────────────────────────
-  // Priority: parsed segment data > preset > null
-  // A carved arm is not one of the segments the SOTP sums: it enters at its
-  // own valuation, through the bridge below.
-  const carvedSegment = context.lendingArm?.status === "applied" ? context.lendingArm.link.segmentName : null;
-  const segmentData = context.segmentData && carvedSegment ? withoutSegment(context.segmentData, carvedSegment) : context.segmentData;
-  const { sotpResult, conglomerateAssessment } = buildSotpAssessment(segmentData, config, latest, keBase);
-
-  // ── EV/EBITDA Cross-Check (Phase 2.4) ────────────────────────
-  const evEbitda = computeEvEbitdaCrossCheck(latest, config.ev_ebitda_peers ?? []);
-  const evEbitdaWithMarket = marketPrice != null && shares != null && shares > 0
-    ? updateEvEbitdaWithMarketPrice(evEbitda, priceOnValuationShares! * shares - carvedStake, latest.bs.NFO)
-    : evEbitda;
 
   // ── India Quality Signals (Phase 2.3) ────────────────────────
   const indiaQuality = computeIndiaQualitySignals({ current: latest, previous: prev });
@@ -614,20 +601,6 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     summary = staleOrFallbackMessage;
   }
 
-  // ── Wire Class-A valuation models ──────────────────────────────────
-  const { workingCapitalGateResult, cleanSurplusResult, damodaranCapmResult, reverseDcfMonteCarloResult } =
-    buildClassAModels(data, config, latest, shares, industrialMarketPrice, keBase);
-
-  // ── Poly-paradigm Phase 1.1: independent cash-statement FCFF DCF ────
-  const cashFlowDcf = computeCashFlowDcf(valuationData, config, shares, {
-    terminalGrowth: baseCard?.assumptions.g ?? sectorTemplate.normalizedGrowth,
-    nearTermGrowth: baseCard?.assumptions.salesGrowthYear1 ?? sectorTemplate.normalizedGrowth,
-    horizon,
-    // Discount at the kw the base card's valuation settled on, so the cash and
-    // accrual lenses differ in their flows, not in their capital cost (S-9.4C).
-    kw: baseCard?.assumptions.kw ?? null,
-    minorityClaim: baseCard?.valuation.minorityClaim ?? null,
-  });
   const valuationTriangulation = buildValuationTriangulationEvidence({
     scenarios,
     cashFlowDcf,
@@ -652,16 +625,6 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
   const evEbitdaPerShare = evEbitdaWithMarket.equityFromMedian != null && shares != null && shares > 0
     ? evEbitdaWithMarket.equityFromMedian / shares
     : null;
-  // EPV's own margin read config.market_price: the classic shell's live
-  // overlay, absent from the next UI's run, set against a value per share of
-  // the anchor's count. Against this build's price, EPV is spread over today's
-  // count and not carried: a no-growth value that pays out all it earns
-  // (d = ke·V) is, by its own assumptions, the same at the price's date.
-  const epvResult = computeEPV(data, shareBasis.valuationConfig, { macroPack, betaPack, analysisAsOf });
-  const epvAtPrice = epvResult?.epvPerShare != null ? epvResult.epvPerShare / (shareCountChange ?? 1) : null;
-  const epv = epvResult
-    ? { ...epvResult, marginOfSafety: marketPrice != null && marketPrice > 0 && epvAtPrice != null ? (epvAtPrice - marketPrice) / marketPrice : null }
-    : epvResult;
   const evidenceWeightedSynthesis = buildEvidenceWeightedSynthesis({
     scenarios,
     cashFlowDcf,
@@ -711,10 +674,10 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     // same issuer this build is valuing, so it has to discount at the rate the
     // rest of this object was built with.
     epv,
-    workingCapitalGate: workingCapitalGateResult,
-    cleanSurplus: cleanSurplusResult,
-    damodaranCapm: damodaranCapmResult,
-    reverseDcfMonteCarlo: reverseDcfMonteCarloResult,
+    workingCapitalGate: models.workingCapitalGate,
+    cleanSurplus: models.cleanSurplus,
+    damodaranCapm: models.damodaranCapm,
+    reverseDcfMonteCarlo: models.reverseDcfMonteCarlo,
     cashFlowDcf,
     evidenceLedger,
     forecastHoldout,

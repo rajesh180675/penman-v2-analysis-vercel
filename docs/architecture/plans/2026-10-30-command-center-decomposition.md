@@ -59,7 +59,7 @@ Each step is one PR. Each leaves `ValuationCommandCenterOutput` field for field 
 
 **Step 1: the command center takes the run's cost of capital.** *Done 2026-10-30.* Parity holds on all 33 runs. The backtest passes `costOfCapital: null`, so each earlier anchor resolves its own; library runs carry no price history, so the backtest never runs there, and a unit test with a synthetic history covers that path instead. `buildCoreCommandCenter` accepts the resolved cost of capital (as it already accepts `forecastCases`) and uses it instead of calling `resolveCostOfCapitalFromConfig` again. The UI rebuilds pass nothing and keep resolving their own. This removes the duplication the Stage 9 parity spec exists to police.
 
-**Step 2: the models run as their own stage.** A `runValuationModels` stage function takes the anchor slice, share basis, price basis, cost of capital and the recorded cases, and returns the model results:
+**Step 2: the models run as their own stage.** *Done 2026-10-30, partly.* `valuationCommandCenter/models.ts` (`runValuationModels`) computes the cards, reverse DCF, SOTP, EV/EBITDA, Class-A models, cash DCF and EPV, and `buildCoreCommandCenter` calls it; parity holds on all 33 runs. The run's `adaptLegacyCommandCenterModelResults` still reads the command center's copies, which are now the stage's output; pointing it at the stage directly needs the stage's inputs available outside the command center, and is left for step 4. A `runValuationModels` stage function takes the anchor slice, share basis, price basis, cost of capital and the recorded cases, and returns the model results:
 - the scenario cards
 - reverse DCF
 - SOTP
