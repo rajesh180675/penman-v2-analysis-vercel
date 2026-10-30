@@ -465,6 +465,22 @@ describe("legacy-backed AnalysisRun executor", () => {
     expect(cashVote?.substitution?.basePerShare).toBe(100);
     expect(result.materialization.modelResults.find((item) => item.modelId === "industrial.evidence-weighted-synthesis" && item.status === "computed")).toMatchObject({ diagnostics: { compositionAppliedCount: 1 } });
     expect(result.artifacts.some((artifact) => artifact.ref.kind === "synthesis" && artifact.ref.schemaVersion === "2026-07-evidence-weighted-synthesis-v2")).toBe(true);
+    // The synthesis stage's own output is recorded before the composition
+    // replaced its cash vote, and the published synthesis cites it.
+    const before = result.artifacts.find((artifact) => artifact.ref.schemaVersion === "2026-10-synthesis-before-composition-v1")!;
+    const beforeCashVote = (before.payload as { synthesis: { contributions: { modelKey: string; perShare: number | null; substitution?: unknown }[] } })
+      .synthesis.contributions.find((item) => item.modelKey === "cash-fcff-dcf");
+    expect(beforeCashVote?.perShare).toBe(100);
+    expect(beforeCashVote?.substitution).toBeUndefined();
+    const published = result.artifacts.find((artifact) => artifact.ref.kind === "synthesis")!;
+    expect((published.payload as { composedFrom?: unknown }).composedFrom).toEqual(before.ref);
+  });
+
+  it("records no pre-composition synthesis when no composition applied", async () => {
+    const result = await createLegacyAnalysisRunExecutor(dependencies())(input());
+    expect(result.artifacts.some((artifact) => artifact.ref.schemaVersion === "2026-10-synthesis-before-composition-v1")).toBe(false);
+    const published = result.artifacts.find((artifact) => artifact.ref.kind === "synthesis");
+    expect(published && "composedFrom" in (published.payload as object)).toBe(false);
   });
 
   it("has stable analytical identity across volatile run instance metadata", async () => {
