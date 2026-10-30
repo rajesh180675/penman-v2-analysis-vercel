@@ -119,6 +119,74 @@ export function isRecastLine(baseLabel: string): boolean {
     baseLabel.endsWith(suffix) && NAMED.has(normalizeRecastLabel(baseLabel.slice(0, -suffix.length))));
 }
 
+type FiledStatement = "BalanceSheet" | "ProfitLoss" | "CashFlow";
+
+/** The statement each section of the mapping spec reads its lines from. */
+const SPEC_SECTION_STATEMENT: Readonly<Record<keyof typeof CapitalineMappingSpec, FiledStatement>> = {
+  balanceSheet: "BalanceSheet",
+  bankBalanceSheet: "BalanceSheet",
+  profitLoss: "ProfitLoss",
+  bankProfitLoss: "ProfitLoss",
+  cashFlow: "CashFlow",
+};
+
+/** The parser's ranking of a label's statements for its bare key (capitalineParser.ts). */
+const STATEMENT_RANK: Readonly<Record<FiledStatement, number>> = { BalanceSheet: 3, ProfitLoss: 2, CashFlow: 1 };
+
+/**
+ * The lines listed in place that are not balance-sheet lines. Across the 33
+ * library exports (2026-10-31), every other in-place line the library files at
+ * all is filed on the balance sheet. Of these, the library files the first,
+ * second and fourth in profit and loss; the rest it never files, and they take
+ * the statement their reader means.
+ */
+const INLINE_NON_BALANCE_SHEET = new Map<string, FiledStatement>([
+  ["Tax Expense of Discontinuing Operations", "ProfitLoss"],
+  ["Reinsurance Expenses", "ProfitLoss"],
+  ["Income from Financial Services", "ProfitLoss"],
+  ["Total Income", "ProfitLoss"],
+  ["Free Cash Flow", "CashFlow"],
+  ["Payment for Acquisition of Property, Plant and Equipment", "CashFlow"],
+  ["Proceeds from Issue of Share Capital", "CashFlow"],
+  ["Share Buybacks", "CashFlow"],
+].map(([label, statement]) => [normalizeRecastLabel(label as string), statement as FiledStatement]));
+
+const LINE_STATEMENT = (() => {
+  const statements = new Map<string, FiledStatement>();
+  const record = (label: string, statement: FiledStatement) => {
+    const key = normalizeRecastLabel(label);
+    const held = statements.get(key);
+    if (!held || STATEMENT_RANK[statement] > STATEMENT_RANK[held]) statements.set(key, statement);
+  };
+  for (const [section, value] of Object.entries(CapitalineMappingSpec) as [keyof typeof CapitalineMappingSpec, unknown][]) {
+    for (const label of specLabels(value, [])) record(label, SPEC_SECTION_STATEMENT[section]);
+  }
+  for (const label of RECAST_INLINE_LINES) record(label, INLINE_NON_BALANCE_SHEET.get(normalizeRecastLabel(label)) ?? "BalanceSheet");
+  return statements;
+})();
+
+/**
+ * The statement a recast line is taken to be filed under, for a source whose
+ * labels carry none (a Screener table, an XBRL instance, a manual or JSON
+ * entry): the statement the pipeline reads it from, the mapping spec section
+ * that names it. A label the spec names in two sections ("Inventories", a
+ * balance-sheet line and a cash-flow change) takes the higher of the parser's
+ * ranking for a bare key, balance sheet then profit and loss then cash flow,
+ * which is the statement a bare label stands for in a Capitaline parse. A
+ * current-block twin ("Trade Receivables - Current Assets") is a balance-sheet
+ * line. Null for a label the recast does not read.
+ *
+ * It is an inference: the source never said which statement filed the line,
+ * and the library files 30 of the spec's lines elsewhere in some year (a
+ * "Depreciation" row on the balance sheet's fixed-asset schedule). Facts
+ * recorded on it say so.
+ */
+export function inferredRecastLineStatement(baseLabel: string): FiledStatement | null {
+  const statement = LINE_STATEMENT.get(normalizeRecastLabel(baseLabel));
+  if (statement) return statement;
+  return isRecastLine(baseLabel) ? "BalanceSheet" : null;
+}
+
 /** A fact's unit and stored scale, from what the line counts. */
 export interface RecastLineUnit {
   readonly normalizedUnit: "INR_CRORE" | "INR_PER_SHARE" | "ABSOLUTE_SHARES" | "CRORE_SHARES" | "RATIO";

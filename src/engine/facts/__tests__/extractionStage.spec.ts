@@ -43,12 +43,29 @@ describe("fact-extraction stage", () => {
     expect(output.recastPeriods).toEqual(TAGGED);
   });
 
-  it("feeds the recast the parse when its recast lines carry bare labels only", async () => {
+  it("feeds the recast periods rebuilt from the facts of a parse whose labels carry no statement", async () => {
+    const bare: RawPeriodData[] = TAGGED.map((period) => ({
+      ...period,
+      raw_metric_values: { "Total Assets": period.raw_metric_values["Total Assets"]!, "Revenue From Operations(Net)": 500, "Unread Line": 7 },
+    }));
+    const output = await extractRunFacts({ rawData: bare, sourceMode: "xbrl", debugInfo: null, parserDiagnostics: null, canonicalFacts: await bundleFor(bare) });
+    expect(output.recastReadsFacts).toBe(true);
+    // The line no reader names is not a fact, so the recast does not see it.
+    expect(output.recastPeriods.map((period) => period.raw_metric_values)).toEqual([
+      { "Total Assets": 1_000, "Revenue From Operations(Net)": 500 },
+      { "Total Assets": 1_100, "Revenue From Operations(Net)": 500 },
+    ]);
+  });
+
+  it("feeds the recast the parse when the bundle holds no fact for a line it reads", async () => {
     const bare: RawPeriodData[] = TAGGED.map((period) => ({
       ...period,
       raw_metric_values: { "Total Assets": period.raw_metric_values["Total Assets"]!, "Revenue From Operations(Net)": 500 },
     }));
-    const output = await extractRunFacts({ rawData: bare, sourceMode: "xbrl", debugInfo: null, parserDiagnostics: null, canonicalFacts: await bundleFor(bare) });
+    // A caller's bundle that maps the ontology's concepts but no recast line.
+    const bundle = await bundleFor(bare);
+    const ontologyOnly = { ...bundle!, conceptMappings: bundle!.conceptMappings.filter((mapping) => !mapping.conceptId.startsWith(RECAST_LINE_CONCEPT_PREFIX)) };
+    const output = await extractRunFacts({ rawData: bare, sourceMode: "xbrl", debugInfo: null, parserDiagnostics: null, canonicalFacts: ontologyOnly });
     expect(output.factSet).not.toBeNull();
     expect(output.recastReadsFacts).toBe(false);
     expect(output.recastPeriods).toEqual(bare);

@@ -15,7 +15,7 @@ import { join } from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { CapitalineMappingSpec } from "../../mappingSpec";
-import { RECAST_INLINE_LINES, isRecastLine, normalizeRecastLabel } from "../recastLineCatalog";
+import { RECAST_INLINE_LINES, inferredRecastLineStatement, isRecastLine, normalizeRecastLabel } from "../recastLineCatalog";
 
 const ENGINE_DIR = join(__dirname, "..", "..");
 const RECAST_DIR = join(ENGINE_DIR, "PenmanNissimEngine");
@@ -95,5 +95,31 @@ describe("recast line catalog", () => {
     expect(isRecastLine("Trade Receivables - Current Assets")).toBe(true);
     expect(isRecastLine("Unrecognised Line Of The Export")).toBe(false);
     expect(isRecastLine("Unrecognised Line Of The Export - Current")).toBe(false);
+  });
+
+  it("infers a bare line's statement from the spec section that reads it", () => {
+    expect(inferredRecastLineStatement("Total Assets")).toBe("BalanceSheet");
+    expect(inferredRecastLineStatement("Finance Cost")).toBe("ProfitLoss");
+    expect(inferredRecastLineStatement("Net Cash from Operating Activities")).toBe("CashFlow");
+    // Named on the balance sheet and as a cash-flow change: the balance sheet,
+    // as the parser ranks a bare key.
+    expect(inferredRecastLineStatement("Inventories")).toBe("BalanceSheet");
+    // Lines the pipeline lists in place.
+    expect(inferredRecastLineStatement("Right of Use Assets")).toBe("BalanceSheet");
+    expect(inferredRecastLineStatement("Tax Expense of Discontinuing Operations")).toBe("ProfitLoss");
+    expect(inferredRecastLineStatement("Share Buybacks")).toBe("CashFlow");
+    expect(inferredRecastLineStatement("Trade Receivables - Current Assets")).toBe("BalanceSheet");
+    expect(inferredRecastLineStatement("Unrecognised Line Of The Export")).toBeNull();
+  });
+
+  it("infers a statement for every line it reads", () => {
+    const spec: string[] = [];
+    const collect = (value: unknown): void => {
+      if (typeof value === "string") spec.push(value);
+      else if (Array.isArray(value)) value.forEach(collect);
+      else if (value !== null && typeof value === "object") Object.values(value).forEach(collect);
+    };
+    collect(CapitalineMappingSpec);
+    expect([...spec, ...RECAST_INLINE_LINES].filter((label) => inferredRecastLineStatement(label) == null)).toEqual([]);
   });
 });
