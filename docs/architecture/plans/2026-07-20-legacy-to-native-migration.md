@@ -646,6 +646,8 @@ The single hardest piece to decouple is not any individual model — it's the **
 
 ### 7.7 Strangler exit criterion for the command center monolith
 
+*2026-10-30:* staged in `2026-10-30-command-center-decomposition.md`. Its first four steps keep `ValuationCommandCenterOutput` as the UI's read model and move the models and synthesis into stage functions behind it; this criterion's deletion waits for its step 5 (UI on stage artifacts).
+
 `buildValuationCommandCenter()` and `ValuationCommandCenterOutput` can be deleted when ALL of these hold:
 
 1. Stage 9 (assumption-resolution) produces a `SourcedAssumptionSet` artifact consumed by forecast and synthesis — no stage reads `commandCenter.costOfCapital` or `commandCenter.scenarios[].assumptions`
