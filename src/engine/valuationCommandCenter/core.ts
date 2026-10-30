@@ -17,16 +17,10 @@ import { withoutSegment, type LendingArmReport } from "../lendingArm";
 import type { EquityBetaPack, MacroPack } from "../marketPacks";
 import { computeIndiaQualitySignals } from "../indiaQualitySignals";
 import { buildEarningsQualityCard, buildDechowDichevAndRem, capitalTransactionWithOwners } from "../earningsQuality";
-import { buildValuationTriangulationEvidence } from "../valuationTriangulation";
-import {
-  buildAssumptionEvidenceLedger,
-  buildEvidenceWeightedSynthesis,
-  buildMarketImpliedExpectationLedger,
-  evaluateForecastHoldout,
-  type HoldoutVintageIndex,
-} from "../valuationEvidence";
+import type { HoldoutVintageIndex } from "../valuationEvidence";
 import { buildBacktest } from "./backtest";
 import { runValuationModels } from "./models";
+import { runValuationSynthesis } from "./synthesis";
 import {
   ValuationSignalState,
   ValuationOpportunityAssessment,
@@ -601,39 +595,18 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     summary = staleOrFallbackMessage;
   }
 
-  const valuationTriangulation = buildValuationTriangulationEvidence({
-    scenarios,
-    cashFlowDcf,
-    evEbitda: evEbitdaWithMarket,
+  // Evidence and synthesis (synthesis.ts), over the models' output.
+  const { valuationTriangulation, evidenceLedger, forecastHoldout, marketImpliedExpectations, evidenceWeightedSynthesis } = runValuationSynthesis({
+    models,
+    data,
+    latest,
+    config,
     shares,
-    periodEnd: latest.period_end,
-  });
-  const evidenceLedger = buildAssumptionEvidenceLedger({
-    scenarios,
-    reverseDcf,
-    periodEnd: latest.period_end,
-    companyId: config.ticker ?? null,
-  });
-  const forecastHoldout = evaluateForecastHoldout(data, context.holdoutVintage);
-  const marketImpliedExpectations = buildMarketImpliedExpectationLedger({
-    // The price the reverse DCF above was solved on.
-    marketPrice: industrialMarketPrice,
-    asOf: marketData?.priceAsOf ?? marketData?.fetchedAt ?? null,
-    reverseDcf,
-    operatingCapitalCharge: kwBase,
-  });
-  const evEbitdaPerShare = evEbitdaWithMarket.equityFromMedian != null && shares != null && shares > 0
-    ? evEbitdaWithMarket.equityFromMedian / shares
-    : null;
-  const evidenceWeightedSynthesis = buildEvidenceWeightedSynthesis({
-    scenarios,
-    cashFlowDcf,
-    evEbitdaPerShare,
-    reverseDcf,
-    evidenceLedger,
-    forecastHoldout,
-    // Its per-share lenses are on the anchor's count.
-    marketPrice: priceOnValuationShares,
+    kw: kwBase,
+    marketData,
+    industrialMarketPrice,
+    priceOnValuationShares,
+    holdoutVintage: context.holdoutVintage,
   });
 
   return {
