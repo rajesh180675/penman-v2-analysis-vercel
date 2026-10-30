@@ -1097,6 +1097,8 @@ Delete `buildIndustrialForecastFromLegacyScenario`, `adaptForecastCaseToLegacyVa
 
 *2026-10-30:* the forecast gates (calibration, the binding check, validation and ordering) are one stage function, `forecastStage.ts` (`runForecastGates`, `2026-10-forecast-gates-v1`), that the executor calls; it returns the calibration report, the ordering report and every block in the order raised. `applyScenarioCalibration` already returned new cases rather than mutating them, so item 7 holds. `buildScenarioForecastResults`, the last builder of cases from the scenario cards, had no caller left and is deleted. Still open: cases reach the models as `LegacyValuationPeriodInput[]` (item 5), and the forecast is not yet an artifact stage with `ContentRef` inputs (items 1–4).
 
+*2026-10-30, item 5:* the run records each forecast case as a `forecast-case` artifact when it is generated, before the command center runs, and the cards value that artifact's payload; the run publishes the same artifacts (a calibrated case is recorded anew). `LegacyValuationPeriodInput` is kept: it is the narrow, history-free boundary `computeValuation` reads, shared with break-even, PVRE and the closed form, so replacing it belongs to the command center's decomposition (§7), not this cutover. The forecast gates still run after the command center, so a case that fails validation or ordering is still valued before the run is blocked; moving them earlier changes what a blocked run materializes and is left as a separate decision.
+
 ---
 
 ## 10. Cutover #3-6: modelCatalog, sectorCases, synthesis, advancedGovernance — unified native stage contracts

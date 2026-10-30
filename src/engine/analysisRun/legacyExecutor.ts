@@ -879,6 +879,12 @@ interface LegacyRunState {
   plannedForecastScenarios: PlannedForecastScenario[];
   /** Each scenario's forecast, generated ahead of the command center, which values these cases. */
   generatedForecastCases: GeneratedForecastCase[];
+  /**
+   * Each generated case as a content-addressed artifact, recorded when it is
+   * built, before the command center values it. The cards value the payload
+   * these hold, so the model stage reads exactly what the run records.
+   */
+  generatedForecastArtifacts: AnalysisContentArtifact<"forecast-case">[];
   forecastResults: IndustrialForecastResult[];
   scenarioOrdering: ScenarioOrderingReport | null;
   scenarioGovernance: ScenarioGovernanceReport | null;
@@ -1028,6 +1034,7 @@ async function openRun(
     assumptionResolution: null,
     plannedForecastScenarios: [],
     generatedForecastCases: [],
+    generatedForecastArtifacts: [],
     forecastResults: [],
     scenarioOrdering: null,
     scenarioGovernance: null,
@@ -1214,12 +1221,13 @@ function windowValuationPeriods(state: LegacyRunState): void {
  * the sourced assumptions it rests on. Generated ahead of the command center,
  * which values these cases rather than deriving its own.
  */
-function generateForecastCases(state: LegacyRunState): void {
+async function generateForecastCases(state: LegacyRunState): Promise<void> {
   const { analysisWindow, plannedForecastScenarios } = state;
   const latest = state.assumptionResolution?.anchorPeriods.at(-1);
   if (state.terminal || !analysisWindow || !latest || plannedForecastScenarios.length === 0) return;
+  let generated: GeneratedForecastCase[];
   try {
-    state.generatedForecastCases = state.dependencies.buildForecastCases({
+    generated = state.dependencies.buildForecastCases({
       planned: plannedForecastScenarios,
       latest,
       config: state.config,
@@ -1231,7 +1239,26 @@ function generateForecastCases(state: LegacyRunState): void {
     });
   } catch (error) {
     stopRun(state, "failed", "forecast", "FORECAST_GENERATION_FAILED", errorMessage(error));
+    return;
   }
+  // Each case is recorded as it is built, and the cards value the recorded
+  // payload (frozen, the bytes behind its ref) rather than the object the
+  // generator returned.
+  const artifacts = await Promise.all(generated.map((forecast) => forecastCaseArtifact(forecast.result)));
+  state.generatedForecastArtifacts = artifacts;
+  state.generatedForecastCases = generated.map((forecast, index) => ({
+    ...forecast,
+    result: artifacts[index]!.payload.forecastResult as IndustrialForecastResult,
+  }));
+}
+
+/** A forecast case as the run records it. */
+function forecastCaseArtifact(forecastResult: IndustrialForecastResult): Promise<AnalysisContentArtifact<"forecast-case", { derivationMode: "forecast-state"; forecastResult: IndustrialForecastResult }>> {
+  return createAnalysisContentArtifact({
+    kind: "forecast-case" as const,
+    schemaVersion: "2026-07-industrial-forecast-state-v1",
+    payload: { derivationMode: "forecast-state" as const, forecastResult },
+  });
 }
 
 async function runCommandCenter(state: LegacyRunState): Promise<void> {
@@ -1603,11 +1630,14 @@ async function recordStageArtifacts(state: LegacyRunState) {
   });
   state.artifacts.push(assumptionArtifact);
 
-  const forecastArtifacts = await Promise.all(state.forecastResults.map((forecastResult) => createAnalysisContentArtifact({
-        kind: "forecast-case" as const,
-        schemaVersion: "2026-07-industrial-forecast-state-v1",
-        payload: { derivationMode: "forecast-state", forecastResult },
-      })));
+  // The released cases are the generated ones, calibrated where the run's
+  // evidence binds. A case calibration left alone is the artifact recorded at
+  // generation, the one the cards valued; a calibrated case is recorded anew.
+  const generatedByHash = new Map(state.generatedForecastArtifacts.map((artifact) => [artifact.ref.contentHash, artifact]));
+  const forecastArtifacts = await Promise.all(state.forecastResults.map(async (forecastResult) => {
+    const artifact = await forecastCaseArtifact(forecastResult);
+    return generatedByHash.get(artifact.ref.contentHash) ?? artifact;
+  }));
   state.artifacts.push(...forecastArtifacts);
 
   const scenarioOrderingArtifact = scenarioOrdering
@@ -1842,7 +1872,7 @@ export function createLegacyAnalysisRunExecutor(
       windowValuationPeriods(state);
       await recordMarketSnapshot(state);
       await resolveRunAssumptions(state);
-      generateForecastCases(state);
+      await generateForecastCases(state);
       await runCommandCenter(state);
       runForecast(state);
       checkCaseValuations(state);
