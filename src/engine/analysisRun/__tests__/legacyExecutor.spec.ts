@@ -777,6 +777,10 @@ describe("legacy-backed AnalysisRun executor", () => {
       expect(Object.isFrozen(generated.result)).toBe(true);
     });
     expect(result.run?.forecastCaseRefs).toEqual(recorded.map((artifact) => artifact.ref));
+    // The command center takes the cost of capital assumption resolution
+    // resolved, rather than resolving its own a second time.
+    const resolved = (deps.resolveAssumptions as unknown as ReturnType<typeof vi.fn>).mock.results[0]!.value.costOfCapital;
+    expect((deps.buildCommandCenter as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0].costOfCapital).toBe(resolved);
   });
 
   it("lets the run proceed on a config validation warning", async () => {

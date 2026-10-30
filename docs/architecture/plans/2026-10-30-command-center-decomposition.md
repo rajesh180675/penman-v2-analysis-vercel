@@ -57,7 +57,7 @@ So the object is not only the models' container. It is the UI's read model for t
 
 Each step is one PR. Each leaves `ValuationCommandCenterOutput` field for field identical, so `npm run parity` proves it on all 33 runs, and the UI is untouched until the last step.
 
-**Step 1: the command center takes the run's cost of capital.** `buildCoreCommandCenter` accepts the resolved cost of capital (as it already accepts `forecastCases`) and uses it instead of calling `resolveCostOfCapitalFromConfig` again. The UI rebuilds pass nothing and keep resolving their own. This removes the duplication the Stage 9 parity spec exists to police.
+**Step 1: the command center takes the run's cost of capital.** *Done 2026-10-30.* Parity holds on all 33 runs. The backtest passes `costOfCapital: null`, so each earlier anchor resolves its own; library runs carry no price history, so the backtest never runs there, and a unit test with a synthetic history covers that path instead. `buildCoreCommandCenter` accepts the resolved cost of capital (as it already accepts `forecastCases`) and uses it instead of calling `resolveCostOfCapitalFromConfig` again. The UI rebuilds pass nothing and keep resolving their own. This removes the duplication the Stage 9 parity spec exists to police.
 
 **Step 2: the models run as their own stage.** A `runValuationModels` stage function takes the anchor slice, share basis, price basis, cost of capital and the recorded cases, and returns the model results:
 - the scenario cards
