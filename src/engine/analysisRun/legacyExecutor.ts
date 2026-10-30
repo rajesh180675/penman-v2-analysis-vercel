@@ -1384,30 +1384,33 @@ async function resolveRunAssumptions(state: LegacyRunState): Promise<void> {
   }
 }
 
-/** forecast: the scenario forecasts, their calibration and ordering gate, and their governance report. */
-function runForecast(state: LegacyRunState): void {
-  const { input, commandCenter, generatedForecastCases } = state;
-  if (!state.terminal && commandCenter && generatedForecastCases.length > 0) {
-    {
-      // The forecast gates (forecastStage.ts): calibration where the run's
-      // evidence binds, then validation and scenario ordering.
-      const gates = runForecastGates({
-        forecastResults: generatedForecastCases.map((generated) => generated.result),
-        scenarioCalibration: input.scenarioCalibration
-          ? {
-              observations: clonePlain(input.scenarioCalibration.observations as ScenarioCalibrationObservation[]),
-              policy: clonePlain(input.scenarioCalibration.policy as ScenarioCalibrationPolicy),
-            }
-          : null,
-        asOf: input.metadata.asOf,
-      });
-      state.forecastResults = [...gates.forecastResults];
-      if (gates.scenarioCalibration) state.scenarioCalibration = gates.scenarioCalibration;
-      state.scenarioOrdering = gates.scenarioOrdering;
-      for (const block of gates.blocks) stopRun(state, "blocked", "forecast", block.code, block.message);
-    }
-  }
+/**
+ * forecast: the gates (forecastStage.ts), calibration where the run's evidence
+ * binds, then validation and scenario ordering. They run before any model
+ * values a case, so a case that fails them is never valued: the run stops
+ * here, with no command center, model results or synthesis.
+ */
+function gateForecastCases(state: LegacyRunState): void {
+  const { input, generatedForecastCases } = state;
+  if (state.terminal || generatedForecastCases.length === 0) return;
+  const gates = runForecastGates({
+    forecastResults: generatedForecastCases.map((generated) => generated.result),
+    scenarioCalibration: input.scenarioCalibration
+      ? {
+          observations: clonePlain(input.scenarioCalibration.observations as ScenarioCalibrationObservation[]),
+          policy: clonePlain(input.scenarioCalibration.policy as ScenarioCalibrationPolicy),
+        }
+      : null,
+    asOf: input.metadata.asOf,
+  });
+  state.forecastResults = [...gates.forecastResults];
+  if (gates.scenarioCalibration) state.scenarioCalibration = gates.scenarioCalibration;
+  state.scenarioOrdering = gates.scenarioOrdering;
+  for (const block of gates.blocks) stopRun(state, "blocked", "forecast", block.code, block.message);
+}
 
+/** forecast: the governance report over the gated cases and the cards valued on them. */
+function governForecast(state: LegacyRunState): void {
   if (state.commandCenter && state.forecastResults.length > 0) {
     state.scenarioGovernance = buildScenarioGovernanceReport({
       forecastResults: state.forecastResults,
@@ -1898,8 +1901,9 @@ export function createLegacyAnalysisRunExecutor(
       await recordMarketSnapshot(state);
       await resolveRunAssumptions(state);
       await generateForecastCases(state);
+      gateForecastCases(state);
       await runCommandCenter(state);
-      runForecast(state);
+      governForecast(state);
       checkCaseValuations(state);
       runSectorCase(state);
       runAdvancedModels(state);
