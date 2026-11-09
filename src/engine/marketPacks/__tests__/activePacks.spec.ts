@@ -168,6 +168,9 @@ const KNOWN_UNPINNED: ReadonlyArray<readonly [string, string]> = [
 const RESOLVER_NAMES = new Set([
   "resolveCostOfCapitalFromConfig",
   "buildValuationCommandCenter",
+  // The same builder, returning its stages' outputs beside the read model.
+  // The run executor is its one caller, through `buildCommandCenter`.
+  "buildValuationCommandCenterStages",
   "buildCommandCenter",
   "computeEPV",
   "computeV3Analytics",

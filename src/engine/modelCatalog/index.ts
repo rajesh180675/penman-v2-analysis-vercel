@@ -17,7 +17,7 @@ export {
   selectFiniteComputedModelResults,
 } from "./evidence";
 
-export { adaptLegacyCommandCenterModelResults } from "./legacyAdapters";
+export { adaptLegacyCommandCenterModelResults, adaptValuationStageModelResults, type ValuationStageModelSources } from "./legacyAdapters";
 
 export type {
   FiniteComputedModelSelection,

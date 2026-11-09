@@ -1,5 +1,7 @@
 import type { ContinuingValueGuard, ValuationResult } from "../types";
 import type { ValuationCommandCenterOutput, ValuationScenarioCard } from "../valuationCommandCenter";
+import type { ValuationModelsOutput } from "../valuationCommandCenter/models";
+import type { ValuationSynthesisOutput } from "../valuationCommandCenter/synthesis";
 import { CURRENT_MODEL_REGISTRY } from "./definitions";
 import type { ModelGuardResult, ValuationModelResult } from "./types";
 
@@ -147,46 +149,58 @@ function scenarioResults(card: ValuationScenarioCard): ValuationModelResult[] {
 }
 
 /**
- * Transitional adapter that turns the broad legacy command-center object into
- * explicit model-result states. Catalog metadata remains authoritative for
- * category, lifecycle, and independence; this adapter never infers a model
- * from a routing strategy identifier.
+ * What the catalog's model results are read from: the models stage's output,
+ * the synthesis stage's, and the share basis the peer-multiple equity value
+ * is spread over.
  */
-export function adaptLegacyCommandCenterModelResults(
-  output: ValuationCommandCenterOutput,
+export interface ValuationStageModelSources {
+  readonly shareBasis: Pick<ValuationCommandCenterOutput["shareBasis"], "sharesForPerShare" | "shares">;
+  readonly models: Pick<ValuationModelsOutput, "scenarios" | "cashFlowDcf" | "epv" | "sotpResult" | "evEbitda" | "reverseDcf">;
+  readonly synthesis: Pick<ValuationSynthesisOutput, "evidenceWeightedSynthesis">;
+}
+
+/**
+ * Turns the valuation stages' outputs into explicit model-result states.
+ * Catalog metadata remains authoritative for category, lifecycle, and
+ * independence; this adapter never infers a model from a routing strategy
+ * identifier.
+ */
+export function adaptValuationStageModelResults(
+  sources: ValuationStageModelSources,
 ): readonly ValuationModelResult[] {
-  const shares = output.shareBasis.sharesForPerShare ?? output.shareBasis.shares ?? null;
-  const results = output.scenarios.flatMap(scenarioResults);
+  const { models, synthesis } = sources;
+  const shares = sources.shareBasis.sharesForPerShare ?? sources.shareBasis.shares ?? null;
+  const results = models.scenarios.flatMap(scenarioResults);
   results.push(
     computedOrMissing({
       modelId: "industrial.cash-statement-fcff-dcf",
       caseId: "base",
-      enterpriseValue: output.cashFlowDcf?.enterpriseValue,
-      equityValue: output.cashFlowDcf?.equityValue,
-      perShare: output.cashFlowDcf?.perShare,
+      enterpriseValue: models.cashFlowDcf?.enterpriseValue,
+      equityValue: models.cashFlowDcf?.equityValue,
+      perShare: models.cashFlowDcf?.perShare,
       missingReason: "CASH_DCF_NOT_COMPUTED",
     }),
     computedOrMissing({
       modelId: "industrial.graham-dodd-epv",
       caseId: "base",
-      enterpriseValue: output.epv?.epvOperations,
-      equityValue: output.epv?.epvEquity,
-      perShare: output.epv?.epvPerShare,
+      enterpriseValue: models.epv?.epvOperations,
+      equityValue: models.epv?.epvEquity,
+      perShare: models.epv?.epvPerShare,
       missingReason: "EPV_NOT_COMPUTED",
     }),
     computedOrMissing({
       modelId: "industrial.segment-sotp",
       caseId: "base",
-      enterpriseValue: output.sotp?.totalEnterpriseValue,
+      enterpriseValue: models.sotpResult?.totalEnterpriseValue,
       missingReason: "SOTP_NOT_COMPUTED",
     }),
     computedOrMissing({
       modelId: "industrial.ev-ebitda-peer",
       caseId: "base",
-      enterpriseValue: output.evEbitda.evFromMedian,
-      equityValue: output.evEbitda.equityFromMedian,
-      perShare: shares && shares > 0 && output.evEbitda.equityFromMedian != null
-        ? output.evEbitda.equityFromMedian / shares
+      enterpriseValue: models.evEbitda.evFromMedian,
+      equityValue: models.evEbitda.equityFromMedian,
+      perShare: shares && shares > 0 && models.evEbitda.equityFromMedian != null
+        ? models.evEbitda.equityFromMedian / shares
         : null,
       missingReason: "PEER_MULTIPLE_NOT_COMPUTED",
     }),
@@ -194,22 +208,43 @@ export function adaptLegacyCommandCenterModelResults(
       modelId: "industrial.reverse-dcf",
       caseId: null,
       diagnostics: {
-        impliedOwnerEarningsGrowth: finite(output.reverseDcf.impliedOwnerEarningsGrowth),
-        impliedTerminalROIC: finite(output.reverseDcf.impliedTerminalROIC),
-        impliedKE: finite(output.reverseDcf.impliedKE),
+        impliedOwnerEarningsGrowth: finite(models.reverseDcf.impliedOwnerEarningsGrowth),
+        impliedTerminalROIC: finite(models.reverseDcf.impliedTerminalROIC),
+        impliedKE: finite(models.reverseDcf.impliedKE),
       },
       missingReason: "MARKET_IMPLIED_DIAGNOSTIC_HAS_NO_INTRINSIC_VALUE",
     }),
     computedOrMissing({
       modelId: "industrial.evidence-weighted-synthesis",
       caseId: null,
-      perShare: output.evidenceWeightedSynthesis.intrinsicRange.midPerShare,
+      perShare: synthesis.evidenceWeightedSynthesis.intrinsicRange.midPerShare,
       diagnostics: {
-        lowPerShare: finite(output.evidenceWeightedSynthesis.intrinsicRange.lowPerShare),
-        highPerShare: finite(output.evidenceWeightedSynthesis.intrinsicRange.highPerShare),
+        lowPerShare: finite(synthesis.evidenceWeightedSynthesis.intrinsicRange.lowPerShare),
+        highPerShare: finite(synthesis.evidenceWeightedSynthesis.intrinsicRange.highPerShare),
       },
       missingReason: "SYNTHESIS_NOT_COMPUTED",
     }),
   );
   return results;
+}
+
+/**
+ * The same results from a command center alone, for a caller with no run:
+ * the read model carries a copy of each stage output the adapter reads.
+ */
+export function adaptLegacyCommandCenterModelResults(
+  output: ValuationCommandCenterOutput,
+): readonly ValuationModelResult[] {
+  return adaptValuationStageModelResults({
+    shareBasis: output.shareBasis,
+    models: {
+      scenarios: output.scenarios,
+      cashFlowDcf: output.cashFlowDcf,
+      epv: output.epv,
+      sotpResult: output.sotp,
+      evEbitda: output.evEbitda,
+      reverseDcf: output.reverseDcf,
+    },
+    synthesis: { evidenceWeightedSynthesis: output.evidenceWeightedSynthesis },
+  });
 }

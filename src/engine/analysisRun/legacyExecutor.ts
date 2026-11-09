@@ -16,11 +16,11 @@ import { getAnalysisPolicyVersions } from "../policyVersions";
 import type { SegmentData } from "../segmentParser";
 import type { AnalysisTraceabilityEnvelope, EngineConfig, ForecastScenario, RawPeriodData, RecastPeriod } from "../types";
 import { validateEngineConfig } from "../types";
-import { buildValuationCommandCenter, type ValuationCommandCenterOutput } from "../valuationCommandCenter";
+import { buildValuationCommandCenterStages, type ValuationCommandCenterOutput, type ValuationCommandCenterStages } from "../valuationCommandCenter";
 import { buildValuationBasis, windowValuationBasis, type ValuationBasis } from "../valuationBasis";
 import type { EquityBetaPack, MacroPack } from "../marketPacks";
 import {
-  adaptLegacyCommandCenterModelResults,
+  adaptValuationStageModelResults,
   CURRENT_MODEL_REGISTRY,
   generateModelCatalog,
   type ValuationModelResult as CatalogValuationModelResult,
@@ -241,7 +241,7 @@ export interface LegacyAnalysisRunExecutorDependencies {
   readonly auditMappingCoverage: typeof auditMappingCoverage;
   readonly resolveValuationReadiness: typeof resolveValuationReadiness;
   readonly deriveAnalysisStatus: typeof deriveAnalysisStatus;
-  readonly buildCommandCenter: typeof buildValuationCommandCenter;
+  readonly buildCommandCenter: typeof buildValuationCommandCenterStages;
   readonly buildTraceability: typeof buildAnalysisTraceability;
   readonly selectAnalysisWindow: typeof selectUnifiedAnalysisWindow;
   readonly evaluateAnalyticalDepth: typeof evaluateAnalyticalDepth;
@@ -263,7 +263,7 @@ const DEFAULT_DEPENDENCIES: LegacyAnalysisRunExecutorDependencies = {
   auditMappingCoverage,
   resolveValuationReadiness,
   deriveAnalysisStatus,
-  buildCommandCenter: buildValuationCommandCenter,
+  buildCommandCenter: buildValuationCommandCenterStages,
   buildTraceability: buildAnalysisTraceability,
   selectAnalysisWindow: selectUnifiedAnalysisWindow,
   evaluateAnalyticalDepth,
@@ -872,6 +872,12 @@ interface LegacyRunState {
   /** The lending arm and annualized years of the valuation basis, cut to the window. */
   windowedBasis: Pick<ValuationBasis, "lendingArm" | "annualizedPeriods">;
   commandCenter: ValuationCommandCenterOutput | null;
+  /**
+   * The models and synthesis stages' outputs the command center was assembled
+   * from: what the run records its model results from. The command center
+   * keeps a copy of each for the page.
+   */
+  valuationStages: Pick<ValuationCommandCenterStages, "models" | "synthesis"> | null;
   marketArtifact: AnalysisContentArtifact<"market-snapshot"> | null;
   sourcedAssumptionSet: SourcedAssumptionSet | null;
   /** The cost of capital and share basis the forecast is generated at (assumption-resolution). */
@@ -1036,6 +1042,7 @@ async function openRun(
     valuationRecastData: [],
     windowedBasis: { lendingArm: null, annualizedPeriods: [] },
     commandCenter: null,
+    valuationStages: null,
     marketArtifact: null,
     sourcedAssumptionSet: null,
     assumptionResolution: null,
@@ -1288,7 +1295,7 @@ async function runCommandCenter(state: LegacyRunState): Promise<void> {
           periodArtifacts,
         })
       : null;
-    state.commandCenter = dependencies.buildCommandCenter({
+    const { commandCenter, models, synthesis } = dependencies.buildCommandCenter({
       data: state.valuationRecastData,
       lendingArm: state.windowedBasis.lendingArm,
       annualizedPeriods: state.windowedBasis.annualizedPeriods,
@@ -1312,6 +1319,8 @@ async function runCommandCenter(state: LegacyRunState): Promise<void> {
       // identical provenance tier — which is the whole point of pinning.
       analysisAsOf: input.metadata.asOf,
     });
+    state.commandCenter = commandCenter;
+    state.valuationStages = { models, synthesis };
   });
 }
 
@@ -1428,13 +1437,13 @@ function governForecast(state: LegacyRunState): void {
  * disagrees with the published one is reported.
  */
 function checkCaseValuations(state: LegacyRunState): void {
-  const { commandCenter, forecastResults } = state;
+  const { valuationStages, forecastResults } = state;
   const anchor = state.valuationRecastData.at(-1);
-  if (state.terminal || !commandCenter || !anchor || forecastResults.length === 0) return;
+  if (state.terminal || !valuationStages || !anchor || forecastResults.length === 0) return;
   // The command center's own share basis (valuationCommandCenter/core.ts), so
   // the case is valued on the same count and config.
   const valuationConfig = resolveShareBasis(state.valuationRecastData, state.config).valuationConfig;
-  for (const divergence of compareCaseValuations({ scenarios: commandCenter.scenarios, forecastResults, anchor, valuationConfig })) {
+  for (const divergence of compareCaseValuations({ scenarios: valuationStages.models.scenarios, forecastResults, anchor, valuationConfig })) {
     state.diagnostics.push({
       code: "FORECAST_CASE_VALUATION_DIVERGED",
       stage: "model-execution",
@@ -1638,7 +1647,7 @@ async function recordStageArtifacts(state: LegacyRunState) {
       : {
           derivationMode: "legacy-derived",
           config: state.config,
-          evidenceLedger: state.commandCenter?.evidenceLedger ?? null,
+          evidenceLedger: state.valuationStages?.synthesis.evidenceLedger ?? null,
           caveat: "No unified analysis window was available; native sourced assumptions were not published.",
         },
   });
@@ -1696,8 +1705,10 @@ function composeModelResults(
   envelope: AnalysisTraceabilityEnvelope,
 ): { modelResults: CatalogValuationModelResult[]; envelope: AnalysisTraceabilityEnvelope } {
   const { pipelineResult, sectorCaseExecution, advancedModelExecutions } = state;
-  const unlinkedModelResults: CatalogValuationModelResult[] = state.commandCenter
-    ? [...adaptLegacyCommandCenterModelResults(state.commandCenter)]
+  // The models stage's results and the synthesis stage's, as each computed
+  // them; the share basis is the command center's own (core.ts).
+  const unlinkedModelResults: CatalogValuationModelResult[] = state.commandCenter && state.valuationStages
+    ? [...adaptValuationStageModelResults({ shareBasis: state.commandCenter.shareBasis, ...state.valuationStages })]
     : pipelineResult?.analysisFamily === "financial-institution" && pipelineResult.bankResult
       ? adaptBankValuationModelResults(pipelineResult.bankResult.valuation, pipelineResult.bankResult.subtype)
       : [];

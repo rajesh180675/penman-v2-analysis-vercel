@@ -7,7 +7,8 @@ import { ACTIVE_MARKET_PACKS } from "../../marketPacks";
 import { DEFAULT_CONFIG, type RecastPeriod } from "../../types";
 import { INRAbsolute } from "../../types/units";
 import * as readModelModule from "../readModel";
-import { buildValuationCommandCenter } from "../core";
+import { buildValuationCommandCenter, buildValuationCommandCenterStages } from "../core";
+import { adaptLegacyCommandCenterModelResults, adaptValuationStageModelResults } from "../../modelCatalog";
 
 // Asian Paints with a market price, so the signal and opportunity are scored.
 const FOLDER = "Asian Paints";
@@ -44,6 +45,22 @@ describe("valuation read model", () => {
     expect(view.epv).toBe(input.models.epv);
     expect(view.evidenceWeightedSynthesis).toBe(input.synthesis.evidenceWeightedSynthesis);
     expect(view.costOfCapital).toBe(input.basis.costOfCapital);
+  });
+
+  it("hands a run the stages' outputs beside the same command center", () => {
+    const params = { data, config: CONFIG, ...ACTIVE_MARKET_PACKS, analysisAsOf: "2026-10-30" };
+    const { commandCenter, models, synthesis } = buildValuationCommandCenterStages(params);
+    expect(commandCenter).toEqual(buildValuationCommandCenter(params));
+    // The read model's fields are the stages' own objects, not recomputed.
+    expect(commandCenter.scenarios).toBe(models.scenarios);
+    expect(commandCenter.sotp).toBe(models.sotpResult);
+    expect(commandCenter.evEbitda).toBe(models.evEbitda);
+    expect(commandCenter.evidenceLedger).toBe(synthesis.evidenceLedger);
+    // So the model results a run records from the stages are the ones the
+    // command center's copies give.
+    const fromStages = adaptValuationStageModelResults({ shareBasis: commandCenter.shareBasis, models, synthesis });
+    expect(fromStages).toEqual(adaptLegacyCommandCenterModelResults(commandCenter));
+    expect(fromStages.filter((result) => result.status === "computed").length).toBeGreaterThan(10);
   });
 
   it("scores the signal against the price it is given", () => {
