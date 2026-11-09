@@ -121,6 +121,36 @@
     "regulatoryDeferralMovement": -106.16,
     "associatesShare": 2.26
    }
+  },
+  {
+   "periodEnd": "2026-09-30",
+   "fiscalYearEnd": "2027-03-31",
+   "months": 6,
+   "filingDate": "2026-11-01T21:09",
+   "consolidated": true,
+   "audited": false,
+   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1750897_01112026090929_WEB.xml",
+   "headline": {
+    "revenue": 23312.94,
+    "profitBeforeTax": 9157.08,
+    "profitAfterTax": 7464.58,
+    "profitFromContinuingOperations": 7465.9,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": 7464.58,
+    "financeCosts": 4214.28,
+    "totalAssets": 301345.51,
+    "totalEquity": 106748.38,
+    "equityAttributableToOwners": 106748.38,
+    "cashFlowFromOperations": 18668.09,
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": 0,
+    "nonControllingInterest": 0,
+    "sharesOutstandingCr": 930.06,
+    "expenses": 14594.75,
+    "taxExpense": 1679.16,
+    "regulatoryDeferralMovement": -12.02,
+    "associatesShare": -1.32
+   }
   }
  ]
 }
