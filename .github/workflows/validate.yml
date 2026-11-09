@@ -127,9 +127,15 @@ jobs:
       - run: npm ci
       - run: npx vitest run --pool=forks src/engine/__tests__/audit-all-companies-shard-${{ matrix.shard }}.spec.ts
 
+  # The three browser jobs pin the runner image. `ubuntu-latest` moved to
+  # Ubuntu 26.04 between the scheduled runs of 2026-11-04 and 2026-11-05, and
+  # Playwright 1.60.0 refuses to install Chromium there ("Playwright does not
+  # support chromium on ubuntu26.04-x64"), which failed every run from then
+  # on before a browser test started. Return them to
+  # `ubuntu-latest` with a Playwright release that supports the new image.
   tcs-acceptance:
     name: TCS deep-link audit acceptance
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
@@ -155,7 +161,7 @@ jobs:
   # layout engine.
   accessibility:
     name: Browser accessibility sweep
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
@@ -187,7 +193,7 @@ jobs:
   # pre-ingestion smoke spec — see the step comment below.
   pipeline-e2e:
     name: Pipeline and smoke e2e
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
