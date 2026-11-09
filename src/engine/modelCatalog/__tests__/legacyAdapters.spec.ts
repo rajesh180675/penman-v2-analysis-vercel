@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ValuationCommandCenterOutput, ValuationScenarioCard } from "../../valuationCommandCenter";
 import {
   adaptLegacyCommandCenterModelResults,
+  adaptValuationStageModelResults,
   countFiniteComputedModels,
   countIndependentModelEvidenceGroups,
   CURRENT_MODEL_REGISTRY,
@@ -65,6 +66,34 @@ describe("legacy command-center model adapter", () => {
       .map((result) => result.modelId);
     expect(countedIds).toContain("industrial.evidence-weighted-synthesis");
     expect(CURRENT_MODEL_REGISTRY.get("industrial.evidence-weighted-synthesis")?.category).toBe("aggregator");
+  });
+
+  it("reads each result from the stage that computed it", () => {
+    const center = output();
+    const results = adaptValuationStageModelResults({
+      shareBasis: center.shareBasis,
+      models: {
+        scenarios: center.scenarios,
+        cashFlowDcf: { enterpriseValue: 2_300, equityValue: 2_200, perShare: 220 },
+        epv: center.epv,
+        sotpResult: { totalEnterpriseValue: 5_000 },
+        evEbitda: { evFromMedian: 1_500, equityFromMedian: 1_400 },
+        reverseDcf: center.reverseDcf,
+      },
+      synthesis: { evidenceWeightedSynthesis: { intrinsicRange: { lowPerShare: 190, midPerShare: 205, highPerShare: 220 } } },
+    } as unknown as Parameters<typeof adaptValuationStageModelResults>[0]);
+    const byId = (modelId: string) => results.find((result) => result.modelId === modelId);
+    expect(byId("industrial.cash-statement-fcff-dcf")).toMatchObject({ status: "computed", perShare: 220, equityValue: 2_200 });
+    expect(byId("industrial.segment-sotp")).toMatchObject({ status: "computed", enterpriseValue: 5_000 });
+    // The peer value is spread over the share basis it is handed: 1,400 / 10.
+    expect(byId("industrial.ev-ebitda-peer")).toMatchObject({ status: "computed", perShare: 140 });
+    expect(byId("industrial.evidence-weighted-synthesis")).toMatchObject({ status: "computed", perShare: 205, diagnostics: { lowPerShare: 190, highPerShare: 220 } });
+    // The command-center adapter is this one, over the read model's copies.
+    expect(adaptLegacyCommandCenterModelResults(center)).toEqual(adaptValuationStageModelResults({
+      shareBasis: center.shareBasis,
+      models: { scenarios: center.scenarios, cashFlowDcf: center.cashFlowDcf, epv: center.epv, sotpResult: center.sotp, evEbitda: center.evEbitda, reverseDcf: center.reverseDcf },
+      synthesis: { evidenceWeightedSynthesis: center.evidenceWeightedSynthesis },
+    } as unknown as Parameters<typeof adaptValuationStageModelResults>[0]));
   });
 
   it("collapses correlated RE/ReOI evidence using catalog independence groups", () => {

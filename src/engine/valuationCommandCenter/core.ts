@@ -19,8 +19,8 @@ import { computeIndiaQualitySignals } from "../indiaQualitySignals";
 import { buildEarningsQualityCard, buildDechowDichevAndRem, capitalTransactionWithOwners } from "../earningsQuality";
 import type { HoldoutVintageIndex } from "../valuationEvidence";
 import { buildBacktest } from "./backtest";
-import { runValuationModels } from "./models";
-import { runValuationSynthesis } from "./synthesis";
+import { runValuationModels, type ValuationModelsOutput } from "./models";
+import { runValuationSynthesis, type ValuationSynthesisOutput } from "./synthesis";
 import { buildValuationReadModel } from "./readModel";
 import type { ValuationCommandCenterOutput } from "./types";
 import {
@@ -115,7 +115,24 @@ export type CoreBuildContext = {
 
 type CoreBuildResult = Omit<ValuationCommandCenterOutput, "backtest">;
 
+/**
+ * The stages' own outputs, beside the read model assembled from them. The
+ * read model copies what it shows out of the first two, so a reader that
+ * wants a model's result or the synthesis takes it from the stage that
+ * computed it, not from the page's copy.
+ */
+export interface ValuationStageOutputs {
+  readonly models: ValuationModelsOutput;
+  readonly synthesis: ValuationSynthesisOutput;
+  readonly readModel: CoreBuildResult;
+}
+
 export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResult {
+  return runValuationStages(context).readModel;
+}
+
+/** The basis, then the models and synthesis stages, then the read model of them. */
+export function runValuationStages(context: CoreBuildContext): ValuationStageOutputs {
   const { data, config, marketData, analysisStatus, macroPack, betaPack, analysisAsOf } = context;
   const shareBasis = resolveShareBasis(data, config);
   const valuationReadiness = resolveValuationReadiness(data);
@@ -287,7 +304,7 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
 
   // The read model (readModel.ts): what the valuation page reads, from the
   // basis above and the stages' outputs.
-  return buildValuationReadModel({
+  const readModel = buildValuationReadModel({
     context,
     basis: {
       shareBasis, valuationReadiness, weakShareBasis, data, latest, latestReported, shares, marketCapShares,
@@ -300,14 +317,39 @@ export function buildCoreCommandCenter(context: CoreBuildContext): CoreBuildResu
     synthesis,
     quality: { indiaQuality, earningsQuality },
   });
+  return { models, synthesis, readModel };
+}
 
+/** The command center, with the outputs of the stages it was assembled from. */
+export interface ValuationCommandCenterStages {
+  readonly commandCenter: ValuationCommandCenterOutput;
+  readonly models: ValuationModelsOutput;
+  readonly synthesis: ValuationSynthesisOutput;
+}
+
+/**
+ * The command center as a run builds it: the stages' outputs are returned
+ * beside the read model, so the run records its model results and synthesis
+ * from the stages (modelCatalog/legacyAdapters.ts) and the page reads the
+ * read model.
+ */
+export function buildValuationCommandCenterStages(params: CoreBuildContext): ValuationCommandCenterStages {
+  return withBacktest(params);
 }
 
 export function buildValuationCommandCenter(params: CoreBuildContext): ValuationCommandCenterOutput {
-  const core = buildCoreCommandCenter(params);
+  return withBacktest(params).commandCenter;
+}
+
+function withBacktest(params: CoreBuildContext): ValuationCommandCenterStages {
+  const { models, synthesis, readModel } = runValuationStages(params);
   const backtest = buildBacktest(params);
   return {
-    ...core,
-    backtest,
+    commandCenter: {
+      ...readModel,
+      backtest,
+    },
+    models,
+    synthesis,
   };
 }

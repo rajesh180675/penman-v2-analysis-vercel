@@ -14,6 +14,6 @@ export type {
   ConglomerateAssessment,
 } from "./valuationCommandCenter/types";
 
-export { buildValuationCommandCenter } from "./valuationCommandCenter/core";
+export { buildValuationCommandCenter, buildValuationCommandCenterStages, type ValuationCommandCenterStages } from "./valuationCommandCenter/core";
 
 export { formatPct, formatPerShare, formatHistoricalPercentile } from "./valuationCommandCenter/formatters";

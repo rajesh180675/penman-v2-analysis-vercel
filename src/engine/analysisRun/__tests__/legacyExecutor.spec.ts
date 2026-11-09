@@ -5,7 +5,7 @@ import type { MappingAuditReport, QualityGateReport } from "../../mappingAudit";
 import type { PipelineResult } from "../../pipeline";
 import type { ConfigValidationWarning, EngineConfig, RawPeriodData, RecastPeriod } from "../../types";
 import { DEFAULT_CONFIG } from "../../types";
-import type { ValuationCommandCenterOutput } from "../../valuationCommandCenter";
+import type { ValuationCommandCenterOutput, ValuationCommandCenterStages } from "../../valuationCommandCenter";
 import type { ValuationReadiness } from "../../valuationPolicy";
 import { resolveCostOfCapitalFromConfig } from "../../costOfCapital";
 import type { AssumptionCandidate, AssumptionResolutionOutput } from "../../analysisCase";
@@ -152,6 +152,28 @@ function commandCenter(): ValuationCommandCenterOutput {
   } as unknown as ValuationCommandCenterOutput;
 }
 
+/**
+ * A fixture command center as the run's builder returns it: beside the
+ * outputs of the stages it copies its model and synthesis fields from.
+ */
+function staged(center: ValuationCommandCenterOutput): ValuationCommandCenterStages {
+  return {
+    commandCenter: center,
+    models: {
+      scenarios: center.scenarios,
+      cashFlowDcf: center.cashFlowDcf,
+      epv: center.epv,
+      sotpResult: center.sotp,
+      evEbitda: center.evEbitda,
+      reverseDcf: center.reverseDcf,
+    },
+    synthesis: {
+      evidenceWeightedSynthesis: center.evidenceWeightedSynthesis,
+      evidenceLedger: center.evidenceLedger,
+    },
+  } as unknown as ValuationCommandCenterStages;
+}
+
 function envelope(params: {
   generatedAt: string;
   scopeBlocked?: boolean | undefined;
@@ -216,7 +238,7 @@ function dependencies(options: {
     auditMappingCoverage: vi.fn(() => ({} as MappingAuditReport)) as unknown as LegacyAnalysisRunExecutorDependencies["auditMappingCoverage"],
     resolveValuationReadiness: vi.fn(() => readiness()) as unknown as LegacyAnalysisRunExecutorDependencies["resolveValuationReadiness"],
     deriveAnalysisStatus: vi.fn(() => status(Boolean(options.scopeBlocked))) as unknown as LegacyAnalysisRunExecutorDependencies["deriveAnalysisStatus"],
-    buildCommandCenter: vi.fn(() => commandCenter()) as unknown as LegacyAnalysisRunExecutorDependencies["buildCommandCenter"],
+    buildCommandCenter: vi.fn(() => staged(commandCenter())) as unknown as LegacyAnalysisRunExecutorDependencies["buildCommandCenter"],
     buildTraceability: vi.fn((traceParams: { generatedAt?: string | null; runId?: string | null }) => envelope({
       generatedAt: traceParams.generatedAt ?? "2026-07-10T00:00:00.000Z",
       scopeBlocked: Boolean(options.scopeBlocked || options.processError),
@@ -374,6 +396,32 @@ describe("legacy-backed AnalysisRun executor", () => {
     expect(deps.summarizeAntiTautology).toHaveBeenCalledTimes(1);
   });
 
+  it("records its model results from the stages' outputs, not from the command center's copy", async () => {
+    // The two are the same objects in a real run. Set apart here, the result
+    // the run records can only have come from one of them.
+    const center = commandCenter();
+    const stages = staged(center);
+    const deps: LegacyAnalysisRunExecutorDependencies = {
+      ...dependencies(),
+      buildCommandCenter: vi.fn(() => ({
+        ...stages,
+        models: { ...stages.models, cashFlowDcf: { enterpriseValue: 1_100, equityValue: 1_000, perShare: 100 } },
+        synthesis: { ...stages.synthesis, evidenceWeightedSynthesis: { ...center.evidenceWeightedSynthesis, intrinsicRange: { lowPerShare: 90, midPerShare: 95, highPerShare: 100 } } },
+      })) as unknown as LegacyAnalysisRunExecutorDependencies["buildCommandCenter"],
+    };
+    const result = await createLegacyAnalysisRunExecutor(deps)(input());
+    if (result.status === "failed") throw new Error(`${result.errorCode}: ${result.message}`);
+    const recorded = (modelId: string) => result.materialization.modelResults.find((model) => model.modelId === modelId);
+    expect(center.cashFlowDcf).toBeNull();
+    expect(recorded("industrial.cash-statement-fcff-dcf")).toMatchObject({ status: "computed", perShare: 100, equityValue: 1_000 });
+    // The synthesis vote starts from the stage's range. The run then restates
+    // it from the command center's synthesis, which a composition may have
+    // replaced (composeModelResults), so its per-share value is the center's.
+    expect(recorded("industrial.evidence-weighted-synthesis")).toMatchObject({ status: "computed", diagnostics: { compositionAppliedCount: 0 } });
+    // The page still reads the command center the builder returned.
+    expect(result.materialization.commandCenter?.cashFlowDcf).toBeNull();
+  });
+
   it("dates pack staleness by the run's own asOf, not by the clock, on both capital-cost routes", async () => {
     // A pack observation's tier depends on how old it is. If that age were
     // measured against `new Date()`, this run would silently demote from
@@ -459,7 +507,7 @@ describe("legacy-backed AnalysisRun executor", () => {
   it("replaces one exact synthesis vote for an approved real-options composition", async () => {
     const baseDeps = dependencies();
     const baseCommandCenter = commandCenter();
-    const deps: LegacyAnalysisRunExecutorDependencies = { ...baseDeps, buildCommandCenter: vi.fn(() => ({
+    const deps: LegacyAnalysisRunExecutorDependencies = { ...baseDeps, buildCommandCenter: vi.fn(() => staged({
       ...baseCommandCenter,
       cashFlowDcf: { enterpriseValue: 1_100, equityValue: 1_000, perShare: 100, baseFcf: 80, kw: 0.09, terminalGrowth: 0.04, windowPeriods: 2 },
       evidenceWeightedSynthesis: {
@@ -477,7 +525,7 @@ describe("legacy-backed AnalysisRun executor", () => {
           { key: "range-widening", label: "Range", passed: true, detail: "fixture" },
         ], summary: "fixture" },
       },
-    })) as unknown as LegacyAnalysisRunExecutorDependencies["buildCommandCenter"] };
+    } as unknown as ValuationCommandCenterOutput)) as unknown as LegacyAnalysisRunExecutorDependencies["buildCommandCenter"] };
     const compositionDossier = {
       modelId: "advanced.real-options-rd-pipeline" as const, issuerId: "issuer-1", sidecarId: "options-1", effectiveAsOf: "2026-07-09",
       baseModelId: "industrial.cash-statement-fcff-dcf", baseCaseId: "base", baseExcludesOptionality: true,
@@ -807,10 +855,10 @@ describe("legacy-backed AnalysisRun executor", () => {
       planForecastScenarios: vi.fn(() => PLANNED) as unknown as LegacyAnalysisRunExecutorDependencies["planForecastScenarios"],
       buildForecastCases: computedCases(),
       // Scenario governance reads the synthesis's defensibility once the run has cases.
-      buildCommandCenter: vi.fn(() => ({
+      buildCommandCenter: vi.fn(() => staged({
         ...commandCenter(),
         evidenceWeightedSynthesis: { ...commandCenter().evidenceWeightedSynthesis, defensibility: { status: "guarded", checklist: [] } },
-      })) as unknown as LegacyAnalysisRunExecutorDependencies["buildCommandCenter"],
+      } as unknown as ValuationCommandCenterOutput)) as unknown as LegacyAnalysisRunExecutorDependencies["buildCommandCenter"],
     };
     const result = await createLegacyAnalysisRunExecutor(deps)(input());
     if (result.status === "failed") throw new Error(`${result.errorCode}: ${result.message}`);
