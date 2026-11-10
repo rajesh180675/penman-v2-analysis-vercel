@@ -1,7 +1,7 @@
 # Command Center Decomposition — Staging Design
 
 **Date:** 2026-10-30 (IST)
-**Status:** Design. Nothing built.
+**Status:** Steps 1–4 built (2026-10-30 and 2026-11-10). Step 5 measured on 2026-11-10 and not taken: see its note.
 **Scope:** How to carry out `2026-07-20-legacy-to-native-migration.md` §7 (split `buildValuationCommandCenter` into native stages) in safe, parity-proved steps.
 **Builds on:** §7.1–7.7 of the migration plan; #513 (forecast generated before the command center), #527 (forecast gates as a stage), #528 (cards value the recorded cases).
 
@@ -87,3 +87,9 @@ Each step is one PR. Each leaves `ValuationCommandCenterOutput` field for field 
 ## 6. Exit for this design
 
 Steps 1–4 are done when `buildCoreCommandCenter` holds no model or synthesis computation, the run's model and synthesis artifacts come from stage functions, and parity is identical on all 33 runs at each step. §7.7's full exit (no `ValuationCommandCenterOutput` at all) waits for step 5.
+
+*2026-11-10: steps 1–4 meet this. Step 5 was measured before starting it, and it is not taken.*
+
+- *The default UI (`src/next`) reads a field of the command center 55 times, in five files. Four of those reads are of a stage's output: the scenario cards, in the Verdict, Forecast and Peers sections. The other 51 are what the read model composes or carries from the valuation basis: `marketContext` 14, `marketPrice` 11, `anchorPeriod` 10, `valuationReadiness` 3, `opportunity` 3, `signal` 2, `range` 2, `lendingArm` 2, `costOfCapital` 2, `shareBasis` 1, `basisPeriods` 1. Three more callers hand the whole object to the engine's own re-valuation (`revalue` twice, `solveBreakEvens`).*
+- *So there is nothing to move. The read model is the page's contract, as step 4 says, and the cards it carries are the models stage's own objects (`readModel.spec` asserts the identity). Pointing four reads at a second copy of the same objects in the materialization would change no value and no dependency.*
+- *§7.7's criteria 6 and 7 (no reader of `signal` or `opportunity`; `buildCoreCommandCenter` imported by nothing) would need the signal chain spread over three stages and every reading file rewritten. §3 above gives the reasons that is a poor trade, and this count adds one: the page reads presentation fields, not model outputs. `ValuationCommandCenterOutput` stays, as the read model of the stages.*
