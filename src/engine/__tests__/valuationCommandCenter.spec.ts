@@ -957,7 +957,11 @@ describe("valuation command center", () => {
     expect(out.businessModel.persistenceScore).toBeLessThan(60);
     expect(out.businessModel.marginDurabilityScore).toBeLessThan(60);
     expect(base.assumptions.salesGrowthYear1).toBeLessThan(0.2);
-    expect(base.assumptions.corePmYear1).toBeLessThan(0.2);
+    // The spiked margin (22.5%) fades toward the earlier years' 12%. It was
+    // held under 20% in year 1 by a persistence penalty on the fade, which the
+    // panel does not support (docs/generated/margin-reversion-panel.md).
+    expect(base.assumptions.corePmYear1).toBeLessThan(320 / 1420);
+    expect(base.assumptions.corePmYear1).toBeGreaterThan(138 / 1120);
     expect(out.businessModel.evidence.some((item) => item.toLowerCase().includes("latest"))).toBe(true);
   });
 

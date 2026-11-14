@@ -52,11 +52,15 @@ const corpus = new Set(registry.map((c) => c.ticker));
 const BOUNDS = [-0.5, 0.6] as const;
 const WINDOW = 5;
 const HORIZONS = [1, 2, 3] as const;
-// The fade constants the forecast can take: a template's α less its persistence penalty.
+// The fade constants the forecast can take: a sector template's α (forecastDriverModel.ts).
 const templateAlphas = Object.values(VALUATION_SECTOR_TEMPLATES).map((t) => t.marginFadeAlpha);
-const ALPHA_SLOWEST = Math.max(...templateAlphas) - 0.03;
-const ALPHA_FASTEST = Math.min(...templateAlphas) - 0.12;
+const ALPHA_SLOWEST = Math.max(...templateAlphas);
+const ALPHA_FASTEST = Math.min(...templateAlphas);
 const ALPHA_MID = (ALPHA_SLOWEST + ALPHA_FASTEST) / 2;
+// Until November 2026 a persistence penalty of 0.03–0.12 came off the template's α.
+const PENALIZED_SLOWEST = ALPHA_SLOWEST - 0.03;
+const PENALIZED_FASTEST = ALPHA_FASTEST - 0.12;
+const PENALIZED_MID = (PENALIZED_SLOWEST + PENALIZED_FASTEST) / 2;
 
 const followed = panel.companies.filter((c) => !c.followError);
 const earlier = new Map(history.companies.map((c) => [c.symbol, c.years]));
@@ -164,6 +168,8 @@ const errorTables = main.map(({ horizon, observations }) => {
     errorRow(`Shipped fade, slowest (α ${ALPHA_SLOWEST.toFixed(2)})`, observations, shareClosedAt(ALPHA_SLOWEST, horizon), walk),
     errorRow(`Shipped fade, middle (α ${ALPHA_MID.toFixed(2)})`, observations, shareClosedAt(ALPHA_MID, horizon), walk),
     errorRow(`Shipped fade, fastest (α ${ALPHA_FASTEST.toFixed(2)})`, observations, shareClosedAt(ALPHA_FASTEST, horizon), walk),
+    errorRow(`With the persistence penalty, middle (α ${PENALIZED_MID.toFixed(2)})`, observations, shareClosedAt(PENALIZED_MID, horizon), walk),
+    errorRow(`With the persistence penalty, fastest (α ${PENALIZED_FASTEST.toFixed(2)})`, observations, shareClosedAt(PENALIZED_FASTEST, horizon), walk),
     errorRow("Fitted to these forecasts", observations, fitted, walk),
     errorRow("All the way to the median", observations, 1, walk),
   ].join("\n");
@@ -184,6 +190,7 @@ const outOfSample = HORIZONS.flatMap((horizon) => {
     test.length,
     `${median(0)} / ${average(0)}`,
     `${median(shareClosedAt(ALPHA_MID, horizon))} / ${average(shareClosedAt(ALPHA_MID, horizon))}`,
+    `${median(shareClosedAt(PENALIZED_MID, horizon))} / ${average(shareClosedAt(PENALIZED_MID, horizon))}`,
     `${median(fitted)} / ${average(fitted)}`,
   ])];
 });
@@ -247,9 +254,10 @@ const [steady, variable] = [quantile(spreads, 1 / 3), quantile(spreads, 2 / 3)];
 // The move every company shared that year, which no forecast at the cutoff knew.
 const sharedMove = new Map<string, number>(main.flatMap(({ horizon, observations }) => origins.map((origin) =>
   [`${origin}:${horizon}`, quantile(observations.filter((o) => o.origin === origin).map((o) => o.outcome - o.latest), 0.5)] as const)));
+const withoutSharedMove = pooled.map((o) => ({ ...o, outcome: o.outcome - sharedMove.get(`${o.origin}:${o.horizon}`)! }));
 const everyYear = HORIZONS.flatMap((horizon) => observe(afterTax, horizon, latestYear - history.from, origins, 3));
 const alphaRow = (label: string, observations: readonly MarginReversionObservation[]) => {
-  if (observations.length === 0) return row([label, 0, 0, "—", "—", "—", "—", "—"]);
+  if (observations.length === 0) return row([label, 0, 0, "—", "—", "—", "—", "—", "—"]);
   const alpha = fittedAlpha(observations);
   const per = (a: number) => points(summedError(observations, a) / observations.length);
   const ci = alphaInterval(observations);
@@ -261,6 +269,7 @@ const alphaRow = (label: string, observations: readonly MarginReversionObservati
     ci ? `${ci[0].toFixed(2)}–${ci[1].toFixed(2)}` : "—",
     per(alpha),
     per(ALPHA_MID),
+    per(PENALIZED_MID),
     per(1),
   ]);
 };
@@ -272,7 +281,13 @@ const alphaRows = [
   alphaRow("Middle third", pooled.filter((_, i) => spreads[i]! > steady && spreads[i]! <= variable)),
   alphaRow("Most variable third", pooled.filter((_, i) => spreads[i]! > variable)),
   ...origins.map((origin) => alphaRow(`From FY${origin} alone`, pooled.filter((o) => o.origin === origin))),
-  alphaRow("With each year's shared move taken out", pooled.map((o) => ({ ...o, outcome: o.outcome - sharedMove.get(`${o.origin}:${o.horizon}`)! }))),
+  alphaRow("With each year's shared move taken out", withoutSharedMove),
+  alphaRow("Above its median, shared move taken out", withoutSharedMove.filter((o) => o.latest > o.target)),
+  alphaRow("Below its median, shared move taken out", withoutSharedMove.filter((o) => o.latest < o.target)),
+  ...origins.flatMap((origin) => [
+    alphaRow(`Above its median, from FY${origin}`, pooled.filter((o) => o.origin === origin && o.latest > o.target)),
+    alphaRow(`Below its median, from FY${origin}`, pooled.filter((o) => o.origin === origin && o.latest < o.target)),
+  ]),
   alphaRow("Margin before tax", HORIZONS.flatMap((horizon) => observe(preTax, horizon, WINDOW))),
   alphaRow("Target: median of every year filed before (three or more)", everyYear),
   alphaRow("The app's companies", pooled.filter((o) => corpus.has(o.companyId))),
@@ -289,7 +304,7 @@ const doc = `# Reversion of the core operating margin, survivorship-free
 
 ## Why
 
-The forecast starts the core operating margin at the latest year's and fades it toward the median of the years before, closing a share 1 − α^h of the gap by year h. α is a sector template's constant (${Math.min(...templateAlphas).toFixed(2)}–${Math.max(...templateAlphas).toFixed(2)}) less a penalty for weak persistence (0.03–0.12), so ${ALPHA_FASTEST.toFixed(2)}–${ALPHA_SLOWEST.toFixed(2)}. It was set by hand. On the app's own companies the margin forecast barely beats "nothing changes" (\`docs/generated/frozen-forecast-scores.md\`), and that sample is too small to fit a fade on. This panel measures the share directly.
+The forecast starts the core operating margin at the latest year's and fades it toward the median of the years before, closing a share 1 − α^h of the gap by year h. α is a sector template's constant, ${ALPHA_FASTEST.toFixed(2)}–${ALPHA_SLOWEST.toFixed(2)}, set by hand. Until November 2026 a penalty for weak persistence (0.03–0.12) came off it, so the fade ran at ${PENALIZED_FASTEST.toFixed(2)}–${PENALIZED_SLOWEST.toFixed(2)}; this panel is why it no longer does. On the app's own companies the margin forecast barely beats "nothing changes" (\`docs/generated/frozen-forecast-scores.md\`), and that sample is too small to fit a fade on. This panel measures the share directly.
 
 ## The sample
 
@@ -318,8 +333,8 @@ ${errorTables.join("\n\n")}
 
 The share fitted on forecasts from FY${panel.t0} alone, applied to forecasts from later years. Errors are median / mean, in points of sales.
 
-| Years ahead | Fitted on | Share | Tested on | No change | Shipped fade, middle | Fitted share |
-|---|---|---|---|---|---|---|
+| Years ahead | Fitted on | Share | Tested on | No change | Shipped fade, middle | With the penalty, middle | Fitted share |
+|---|---|---|---|---|---|---|---|
 ${outOfSample.join("\n")}
 
 ## Which years the target is the median of
@@ -334,8 +349,8 @@ ${windowRows.join("\n")}
 
 The forecast fades with one α at every horizon. This is the α that leaves the least summed absolute error over the forecasts at one, two and three years together (a search over ${ALPHA_GRID[0]!.toFixed(2)}–${ALPHA_GRID.at(-1)!.toFixed(2)}; 1.00 is no fade at all). Errors are the mean, in points of sales.
 
-| Forecasts | Count | Companies | α | 90% interval | Error at that α | Error at the shipped middle (α ${ALPHA_MID.toFixed(2)}) | Error with no fade |
-|---|---|---|---|---|---|---|---|
+| Forecasts | Count | Companies | α | 90% interval | Error at that α | Error at the shipped middle (α ${ALPHA_MID.toFixed(2)}) | Error at the penalized middle (α ${PENALIZED_MID.toFixed(2)}) | Error with no fade |
+|---|---|---|---|---|---|---|---|---|
 ${alphaRows.join("\n")}
 `;
 writeFileSync(join(ROOT, "docs", "generated", "margin-reversion-panel.md"), doc);
