@@ -4,7 +4,7 @@
 
 ## Why
 
-The forecast starts the core operating margin at the latest year's and fades it toward the median of the years before, closing a share 1 − α^h of the gap by year h. α is a sector template's constant (0.84–0.92) less a penalty for weak persistence (0.03–0.12), so 0.72–0.89. It was set by hand. On the app's own companies the margin forecast barely beats "nothing changes" (`docs/generated/frozen-forecast-scores.md`), and that sample is too small to fit a fade on. This panel measures the share directly.
+The forecast starts the core operating margin at the latest year's and fades it toward the median of the years before, closing a share 1 − α^h of the gap by year h. α is a sector template's constant, 0.84–0.92, set by hand. Until November 2026 a penalty for weak persistence (0.03–0.12) came off it, so the fade ran at 0.72–0.89; this panel is why it no longer does. On the app's own companies the margin forecast barely beats "nothing changes" (`docs/generated/frozen-forecast-scores.md`), and that sample is too small to fit a fade on. This panel measures the share directly.
 
 ## The sample
 
@@ -21,9 +21,9 @@ The least-absolute-deviations slope of the margin's move on its gap to the targe
 
 | Years ahead | Origins | Forecasts | Companies | Share closed | 90% interval | As a fade constant α | Shipped fade closes |
 |---|---|---|---|---|---|---|---|
-| 1 | FY2023, FY2024, FY2025 | 1533 | 705 | 0.13 | 0.07–0.17 | 0.87 | 0.11–0.28 |
-| 2 | FY2023, FY2024 | 834 | 501 | 0.24 | 0.11–0.37 | 0.87 | 0.21–0.48 |
-| 3 | FY2023 | 338 | 338 | 0.17 | 0.14–0.36 | 0.94 | 0.30–0.63 |
+| 1 | FY2023, FY2024, FY2025 | 1533 | 705 | 0.13 | 0.07–0.17 | 0.87 | 0.08–0.16 |
+| 2 | FY2023, FY2024 | 834 | 501 | 0.24 | 0.11–0.37 | 0.87 | 0.15–0.29 |
+| 3 | FY2023 | 338 | 338 | 0.17 | 0.14–0.36 | 0.94 | 0.22–0.41 |
 
 ## The error each fade leaves
 
@@ -34,9 +34,11 @@ Absolute error in points of sales, on the same forecasts.
 | Forecast | Share of the gap closed | Median error | Mean error | Closer / further than no change |
 |---|---|---|---|---|
 | No change from the latest year | 0.00 | 1.38 | 2.81 | — |
-| Shipped fade, slowest (α 0.89) | 0.11 | 1.35 | 2.77 | 772 / 761 |
-| Shipped fade, middle (α 0.80) | 0.20 | 1.42 | 2.78 | 742 / 791 |
-| Shipped fade, fastest (α 0.72) | 0.28 | 1.41 | 2.82 | 715 / 818 |
+| Shipped fade, slowest (α 0.92) | 0.08 | 1.38 | 2.77 | 788 / 745 |
+| Shipped fade, middle (α 0.88) | 0.12 | 1.36 | 2.77 | 770 / 763 |
+| Shipped fade, fastest (α 0.84) | 0.16 | 1.37 | 2.77 | 754 / 779 |
+| With the persistence penalty, middle (α 0.80) | 0.20 | 1.42 | 2.78 | 742 / 791 |
+| With the persistence penalty, fastest (α 0.72) | 0.28 | 1.41 | 2.82 | 715 / 818 |
 | Fitted to these forecasts | 0.13 | 1.38 | 2.77 | 767 / 766 |
 | All the way to the median | 1.00 | 2.43 | 4.14 | 475 / 1058 |
 
@@ -45,9 +47,11 @@ Absolute error in points of sales, on the same forecasts.
 | Forecast | Share of the gap closed | Median error | Mean error | Closer / further than no change |
 |---|---|---|---|---|
 | No change from the latest year | 0.00 | 1.90 | 3.83 | — |
-| Shipped fade, slowest (α 0.89) | 0.21 | 1.93 | 3.74 | 422 / 412 |
-| Shipped fade, middle (α 0.80) | 0.35 | 1.91 | 3.75 | 405 / 429 |
-| Shipped fade, fastest (α 0.72) | 0.48 | 2.02 | 3.83 | 388 / 446 |
+| Shipped fade, slowest (α 0.92) | 0.15 | 1.92 | 3.75 | 435 / 399 |
+| Shipped fade, middle (α 0.88) | 0.23 | 1.94 | 3.74 | 417 / 417 |
+| Shipped fade, fastest (α 0.84) | 0.29 | 1.90 | 3.74 | 411 / 423 |
+| With the persistence penalty, middle (α 0.80) | 0.35 | 1.91 | 3.75 | 405 / 429 |
+| With the persistence penalty, fastest (α 0.72) | 0.48 | 2.02 | 3.83 | 388 / 446 |
 | Fitted to these forecasts | 0.24 | 1.94 | 3.74 | 416 / 418 |
 | All the way to the median | 1.00 | 2.66 | 4.62 | 311 / 523 |
 
@@ -56,9 +60,11 @@ Absolute error in points of sales, on the same forecasts.
 | Forecast | Share of the gap closed | Median error | Mean error | Closer / further than no change |
 |---|---|---|---|---|
 | No change from the latest year | 0.00 | 2.28 | 4.43 | — |
-| Shipped fade, slowest (α 0.89) | 0.30 | 2.21 | 4.31 | 182 / 156 |
-| Shipped fade, middle (α 0.80) | 0.48 | 2.28 | 4.45 | 167 / 171 |
-| Shipped fade, fastest (α 0.72) | 0.63 | 2.36 | 4.63 | 157 / 181 |
+| Shipped fade, slowest (α 0.92) | 0.22 | 2.29 | 4.28 | 187 / 151 |
+| Shipped fade, middle (α 0.88) | 0.32 | 2.26 | 4.32 | 182 / 156 |
+| Shipped fade, fastest (α 0.84) | 0.41 | 2.31 | 4.38 | 171 / 167 |
+| With the persistence penalty, middle (α 0.80) | 0.48 | 2.28 | 4.45 | 167 / 171 |
+| With the persistence penalty, fastest (α 0.72) | 0.63 | 2.36 | 4.63 | 157 / 181 |
 | Fitted to these forecasts | 0.17 | 2.26 | 4.28 | 190 / 148 |
 | All the way to the median | 1.00 | 2.87 | 5.25 | 137 / 201 |
 
@@ -66,10 +72,10 @@ Absolute error in points of sales, on the same forecasts.
 
 The share fitted on forecasts from FY2023 alone, applied to forecasts from later years. Errors are median / mean, in points of sales.
 
-| Years ahead | Fitted on | Share | Tested on | No change | Shipped fade, middle | Fitted share |
-|---|---|---|---|---|---|---|
-| 1 | 346 | 0.22 | 1187 | 1.27 / 2.67 | 1.30 / 2.64 | 1.30 / 2.65 |
-| 2 | 345 | 0.24 | 489 | 1.69 / 3.70 | 1.75 / 3.63 | 1.74 / 3.62 |
+| Years ahead | Fitted on | Share | Tested on | No change | Shipped fade, middle | With the penalty, middle | Fitted share |
+|---|---|---|---|---|---|---|---|
+| 1 | 346 | 0.22 | 1187 | 1.27 / 2.67 | 1.24 / 2.62 | 1.30 / 2.64 | 1.30 / 2.65 |
+| 2 | 345 | 0.24 | 489 | 1.69 / 3.70 | 1.74 / 3.62 | 1.75 / 3.63 | 1.74 / 3.62 |
 
 ## Which years the target is the median of
 
@@ -91,18 +97,26 @@ On the forecasts with all 5 earlier years, so the rows differ only in the target
 
 The forecast fades with one α at every horizon. This is the α that leaves the least summed absolute error over the forecasts at one, two and three years together (a search over 0.50–1.00; 1.00 is no fade at all). Errors are the mean, in points of sales.
 
-| Forecasts | Count | Companies | α | 90% interval | Error at that α | Error at the shipped middle (α 0.80) | Error with no fade |
-|---|---|---|---|---|---|---|---|
-| Every forecast | 2705 | 709 | 0.89 | 0.84–0.94 | 3.26 | 3.29 | 3.33 |
-| Latest margin above its median | 1382 | 462 | 0.94 | 0.93–0.97 | 3.05 | 3.15 | 3.09 |
-| Latest margin below its median | 1323 | 450 | 0.81 | 0.71–0.87 | 3.43 | 3.43 | 3.58 |
-| Steadiest third of margins | 902 | 259 | 0.95 | 0.88–1.00 | 1.38 | 1.40 | 1.38 |
-| Middle third | 904 | 293 | 0.86 | 0.83–0.92 | 2.48 | 2.49 | 2.54 |
-| Most variable third | 899 | 268 | 0.90 | 0.81–0.95 | 5.93 | 5.98 | 6.08 |
-| From FY2023 alone | 1029 | 349 | 0.91 | 0.83–0.95 | 3.82 | 3.87 | 3.92 |
-| From FY2024 alone | 987 | 502 | 0.87 | 0.79–0.95 | 3.13 | 3.15 | 3.19 |
-| From FY2025 alone | 689 | 689 | 0.88 | 0.82–0.95 | 2.60 | 2.62 | 2.64 |
-| With each year's shared move taken out | 2705 | 709 | 0.90 | 0.85–0.94 | 3.25 | 3.28 | 3.32 |
-| Margin before tax | 2696 | 708 | 0.94 | 0.91–0.96 | 3.61 | 3.70 | 3.65 |
-| Target: median of every year filed before (three or more) | 4796 | 919 | 0.87 | 0.83–0.90 | 3.16 | 3.17 | 3.25 |
-| The app's companies | 87 | 18 | 0.98 | 0.76–1.00 | 2.19 | 2.24 | 2.19 |
+| Forecasts | Count | Companies | α | 90% interval | Error at that α | Error at the shipped middle (α 0.88) | Error at the penalized middle (α 0.80) | Error with no fade |
+|---|---|---|---|---|---|---|---|---|
+| Every forecast | 2705 | 709 | 0.89 | 0.84–0.94 | 3.26 | 3.26 | 3.29 | 3.33 |
+| Latest margin above its median | 1382 | 462 | 0.94 | 0.93–0.97 | 3.05 | 3.08 | 3.15 | 3.09 |
+| Latest margin below its median | 1323 | 450 | 0.81 | 0.71–0.87 | 3.43 | 3.45 | 3.43 | 3.58 |
+| Steadiest third of margins | 902 | 259 | 0.95 | 0.88–1.00 | 1.38 | 1.39 | 1.40 | 1.38 |
+| Middle third | 904 | 293 | 0.86 | 0.83–0.92 | 2.48 | 2.48 | 2.49 | 2.54 |
+| Most variable third | 899 | 268 | 0.90 | 0.81–0.95 | 5.93 | 5.93 | 5.98 | 6.08 |
+| From FY2023 alone | 1029 | 349 | 0.91 | 0.83–0.95 | 3.82 | 3.83 | 3.87 | 3.92 |
+| From FY2024 alone | 987 | 502 | 0.87 | 0.79–0.95 | 3.13 | 3.13 | 3.15 | 3.19 |
+| From FY2025 alone | 689 | 689 | 0.88 | 0.82–0.95 | 2.60 | 2.60 | 2.62 | 2.64 |
+| With each year's shared move taken out | 2705 | 709 | 0.90 | 0.85–0.94 | 3.25 | 3.25 | 3.28 | 3.32 |
+| Above its median, shared move taken out | 1382 | 462 | 0.94 | 0.90–0.96 | 3.04 | 3.07 | 3.13 | 3.10 |
+| Below its median, shared move taken out | 1323 | 450 | 0.83 | 0.74–0.90 | 3.43 | 3.44 | 3.44 | 3.55 |
+| Above its median, from FY2023 | 502 | 169 | 0.94 | 0.89–0.98 | 3.62 | 3.67 | 3.77 | 3.69 |
+| Below its median, from FY2023 | 527 | 180 | 0.84 | 0.69–0.92 | 3.96 | 3.98 | 3.97 | 4.14 |
+| Above its median, from FY2024 | 539 | 274 | 0.95 | 0.88–1.00 | 2.75 | 2.78 | 2.84 | 2.77 |
+| Below its median, from FY2024 | 448 | 228 | 0.77 | 0.62–0.90 | 3.51 | 3.55 | 3.51 | 3.71 |
+| Above its median, from FY2025 | 341 | 341 | 0.94 | 0.86–0.96 | 2.68 | 2.69 | 2.74 | 2.71 |
+| Below its median, from FY2025 | 348 | 348 | 0.81 | 0.74–0.90 | 2.50 | 2.51 | 2.49 | 2.58 |
+| Margin before tax | 2696 | 708 | 0.94 | 0.91–0.96 | 3.61 | 3.63 | 3.70 | 3.65 |
+| Target: median of every year filed before (three or more) | 4796 | 919 | 0.87 | 0.83–0.90 | 3.16 | 3.16 | 3.17 | 3.25 |
+| The app's companies | 87 | 18 | 0.98 | 0.76–1.00 | 2.19 | 2.21 | 2.24 | 2.19 |

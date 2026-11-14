@@ -220,7 +220,15 @@ export function buildDriverForecastModel(args: {
   // (docs/generated/margin-reversion-panel.md), the fade that leaves the least
   // error is 0.89 (90% interval 0.84–0.94), and the most variable third of
   // margins fits 0.90, not a faster one. The templates' 0.84–0.92 sit inside
-  // that interval as they are.
+  // that interval as they are. Walk-forward, 215 origins: core-OI margin
+  // |error| 4.40 → 4.23 / 5.71 → 5.45 / 5.97 → 5.73 points of sales at one /
+  // two / three years (mean; the medians do not move), for 14 / 18 / 14
+  // companies against 9 / 5 / 9.
+  //
+  // One fade for both sides of the target. The panel fits 0.94 to a margin
+  // above its median and 0.83 to one below, in each of its three years, but
+  // on the walk-forward nearly all of the gain above comes from slowing the
+  // fade below the target, so the two samples disagree on the split.
   const marginAlpha = clamp(template.marginFadeAlpha, 0.5, 0.97);
   const atoAlpha = clamp(template.atoFadeAlpha - fadePenalty * 0.7, 0.6, 0.98);
 

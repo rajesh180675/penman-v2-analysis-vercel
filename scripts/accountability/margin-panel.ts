@@ -254,6 +254,7 @@ const [steady, variable] = [quantile(spreads, 1 / 3), quantile(spreads, 2 / 3)];
 // The move every company shared that year, which no forecast at the cutoff knew.
 const sharedMove = new Map<string, number>(main.flatMap(({ horizon, observations }) => origins.map((origin) =>
   [`${origin}:${horizon}`, quantile(observations.filter((o) => o.origin === origin).map((o) => o.outcome - o.latest), 0.5)] as const)));
+const withoutSharedMove = pooled.map((o) => ({ ...o, outcome: o.outcome - sharedMove.get(`${o.origin}:${o.horizon}`)! }));
 const everyYear = HORIZONS.flatMap((horizon) => observe(afterTax, horizon, latestYear - history.from, origins, 3));
 const alphaRow = (label: string, observations: readonly MarginReversionObservation[]) => {
   if (observations.length === 0) return row([label, 0, 0, "—", "—", "—", "—", "—", "—"]);
@@ -280,7 +281,13 @@ const alphaRows = [
   alphaRow("Middle third", pooled.filter((_, i) => spreads[i]! > steady && spreads[i]! <= variable)),
   alphaRow("Most variable third", pooled.filter((_, i) => spreads[i]! > variable)),
   ...origins.map((origin) => alphaRow(`From FY${origin} alone`, pooled.filter((o) => o.origin === origin))),
-  alphaRow("With each year's shared move taken out", pooled.map((o) => ({ ...o, outcome: o.outcome - sharedMove.get(`${o.origin}:${o.horizon}`)! }))),
+  alphaRow("With each year's shared move taken out", withoutSharedMove),
+  alphaRow("Above its median, shared move taken out", withoutSharedMove.filter((o) => o.latest > o.target)),
+  alphaRow("Below its median, shared move taken out", withoutSharedMove.filter((o) => o.latest < o.target)),
+  ...origins.flatMap((origin) => [
+    alphaRow(`Above its median, from FY${origin}`, pooled.filter((o) => o.origin === origin && o.latest > o.target)),
+    alphaRow(`Below its median, from FY${origin}`, pooled.filter((o) => o.origin === origin && o.latest < o.target)),
+  ]),
   alphaRow("Margin before tax", HORIZONS.flatMap((horizon) => observe(preTax, horizon, WINDOW))),
   alphaRow("Target: median of every year filed before (three or more)", everyYear),
   alphaRow("The app's companies", pooled.filter((o) => corpus.has(o.companyId))),
