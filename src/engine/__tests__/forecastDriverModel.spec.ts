@@ -425,4 +425,29 @@ describe("buildDriverForecastModel — core margin", () => {
     expect(plan.persistenceBand).toBe("fragile");
     expect(plan.targets.coreMargin).toBeCloseTo(0.125, 9);
   });
+
+  it("fades the margin at the template's constant whatever the persistence, the penalty kept for growth and turnover", () => {
+    // A fragile business took 0.12 off the margin fade (0.9 → 0.78). Measured
+    // on the survivorship-free panel the fade is 0.89 (0.84–0.94), and the
+    // most variable third of margins fits 0.90
+    // (docs/generated/margin-reversion-panel.md).
+    const data = [
+      mkPeriod("2021-03-31", { Sales_growth: 0.05, CoreSalesPM: 0.12, PM: 0.12, ATO: 1.32, cash_conversion_ratio: 0.83, NOA_growth: 0.07, FLEV: 0.2 }),
+      mkPeriod("2022-03-31", { Sales_growth: 0.06, CoreSalesPM: 0.125, PM: 0.125, ATO: 1.31, cash_conversion_ratio: 0.81, NOA_growth: 0.08, FLEV: 0.22 }),
+      mkPeriod("2023-03-31", { Sales_growth: 0.06, CoreSalesPM: 0.13, PM: 0.13, ATO: 1.29, cash_conversion_ratio: 0.78, NOA_growth: 0.09, FLEV: 0.25 }),
+      mkPeriod("2024-03-31", { Sales_growth: 0.24, CoreSalesPM: 0.24, PM: 0.24, ATO: 1.18, cash_conversion_ratio: 0.48, NOA_growth: 0.28, FLEV: 0.78 }, 61, 0.61),
+    ];
+    const plan = buildDriverForecastModel({
+      data,
+      latest: data[data.length - 1],
+      businessModel: buildBusinessModelProfile(data),
+      normalized: buildCyclicalNormalization(data),
+      scenarioKey: "base",
+      template,
+    } as never);
+    expect(plan.persistenceBand).toBe("fragile");
+    expect(plan.fade.marginAlpha).toBeCloseTo(0.9, 9);
+    expect(plan.fade.growthAlpha).toBeCloseTo(0.8 - 0.12, 9);
+    expect(plan.fade.atoAlpha).toBeCloseTo(0.95 - 0.12 * 0.7, 9);
+  });
 });

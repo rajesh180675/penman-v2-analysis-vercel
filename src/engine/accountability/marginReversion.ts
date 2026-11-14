@@ -5,8 +5,8 @@
  * The forecast starts the margin at the latest year's and fades it toward the
  * median of the years before (forecastDriverModel.ts, `marginTarget`), closing
  * a share 1 − α^h of the gap by year h (`makeFadeArray`). α is a sector
- * template's constant less a persistence penalty, 0.72–0.89, never fitted to
- * outcomes. This measures that share directly:
+ * template's constant, 0.84–0.92, set by hand (less a persistence penalty,
+ * so 0.72–0.89, until this was measured). This measures that share directly:
  *
  *   margin(t+h) − margin(t) = share(h) · (target(t) − margin(t)) + error
  *

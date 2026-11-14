@@ -214,7 +214,14 @@ export function buildDriverForecastModel(args: {
   const preset = scenarioPresets[scenarioKey];
   const operatingMode = bridgeCoverage != null && bridgeCoverage >= 0.72 ? "cost-bridge" : "margin";
   const growthAlpha = clamp(template.growthFadeAlpha - fadePenalty, 0.45, 0.96);
-  const marginAlpha = clamp(template.marginFadeAlpha - fadePenalty, 0.5, 0.97);
+  // The margin fade takes no persistence penalty. With it the fade ran at
+  // 0.72–0.89, and for 14 of the 23 industrial companies below 0.84. Measured
+  // on 2,705 forecasts of 709 companies chosen on their March 2023 filing
+  // (docs/generated/margin-reversion-panel.md), the fade that leaves the least
+  // error is 0.89 (90% interval 0.84–0.94), and the most variable third of
+  // margins fits 0.90, not a faster one. The templates' 0.84–0.92 sit inside
+  // that interval as they are.
+  const marginAlpha = clamp(template.marginFadeAlpha, 0.5, 0.97);
   const atoAlpha = clamp(template.atoFadeAlpha - fadePenalty * 0.7, 0.6, 0.98);
 
   return {
