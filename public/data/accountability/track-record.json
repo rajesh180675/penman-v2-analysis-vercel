@@ -1,5 +1,5 @@
 {
- "madeAt": "2026-10-20",
+ "madeAt": "2026-11-15",
  "basis": "Walk-forward backtest of the base forecast (scripts/accountability/run-all.ts); one year ahead, against a random walk. Capitaline serves restated figures, so the record sees restatements of its own history.",
  "companies": [
   {
@@ -57,7 +57,7 @@
     },
     "core-rnoa-error": {
      "scored": 9,
-     "beatRandomWalk": 4
+     "beatRandomWalk": 5
     },
     "cni-roe-point-error": {
      "scored": 10,
@@ -82,7 +82,7 @@
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 8
+     "beatRandomWalk": 7
     }
    }
   },
@@ -183,11 +183,11 @@
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 7
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 7
     }
    }
   },
@@ -229,7 +229,7 @@
     },
     "cni-roe-point-error": {
      "scored": 5,
-     "beatRandomWalk": 2
+     "beatRandomWalk": 4
     }
    }
   },
@@ -242,7 +242,7 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 7
     },
     "core-rnoa-error": {
      "scored": 9,
@@ -250,7 +250,7 @@
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 6
+     "beatRandomWalk": 7
     }
    }
   },
@@ -267,7 +267,7 @@
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 4
     },
     "cni-roe-point-error": {
      "scored": 10,
@@ -410,11 +410,11 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 4
+     "beatRandomWalk": 3
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 8
     },
     "cni-roe-point-error": {
      "scored": 10,
@@ -439,7 +439,7 @@
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 4
     }
    }
   },
@@ -452,7 +452,7 @@
     },
     "core-oi-margin-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 6
     },
     "core-rnoa-error": {
      "scored": 10,
@@ -460,7 +460,7 @@
     },
     "cni-roe-point-error": {
      "scored": 10,
-     "beatRandomWalk": 7
+     "beatRandomWalk": 6
     }
    }
   },
@@ -477,7 +477,7 @@
     },
     "core-rnoa-error": {
      "scored": 10,
-     "beatRandomWalk": 5
+     "beatRandomWalk": 6
     },
     "cni-roe-point-error": {
      "scored": 6,
