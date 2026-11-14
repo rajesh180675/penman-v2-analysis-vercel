@@ -260,6 +260,8 @@ Delete `buildLegacyUiProjection` and `LegacyUiRunProjection` type when:
 8. `buildValuationCommandCenter` no longer exists (its responsibilities are split across stages 8-12)
 9. `LEGACY_ANALYSIS_RUN_EXECUTOR_VERSION` is removed from the codebase
 
+*2026-11-10: the criteria were checked against the code, and the track stops short of this exit (`docs/next-phase-plan.md` item 8). Criterion 4 is met for production code: the run takes its model results from the stages' outputs, and only specs call the adapter. Criterion 8 is withdrawn: the command center stays as the read model of the models and synthesis stages (`2026-10-30-command-center-decomposition.md` §6). Criteria 1, 2 and 9 are names: the executor is twenty stage functions, fact extraction, the forecast gates, the models and the synthesis among them as functions of their own, and nothing reads `derivationMode`. Criteria 5–7 (sector cases, the UI projection's clone, advanced models through the catalog) are untouched.*
+
 ---
 
 ## 4. Risk register — top 3 gaps
