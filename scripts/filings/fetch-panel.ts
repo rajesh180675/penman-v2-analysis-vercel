@@ -21,20 +21,20 @@
  * Writes data/filings-panel/panel.json. Listings and XBRL instances are cached
  * under data/filings-panel/raw/ (git-ignored), so an interrupted run resumes.
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractOperatingFigures, parseXbrlInstance, type OperatingFigures } from "../../src/engine/filings/xbrlInstance";
 import {
   annualListingUrl,
-  curl,
+  cachedGet,
   INTEGRATED_REFERER,
   integratedListingUrl,
+  isJson,
   isoDate,
   isXbrl,
   listedFilings,
   RESULTS_REFERER,
-  sleep,
   type ListedFiling,
   type NseIntegratedRow,
   type NseResultRow,
@@ -53,33 +53,8 @@ mkdirSync(join(RAW, "xbrl"), { recursive: true });
 const log = (line: string) => console.log(`${new Date().toISOString().slice(11, 19)} ${line}`);
 
 /** A cached GET: JSON listings and XBRL instances are fetched once. */
-function cached(file: string, url: string, referer: string, valid: (text: string) => boolean): string | null {
-  if (existsSync(file)) return readFileSync(file, "utf8");
-  sleep(delayMs);
-  let text: string;
-  try {
-    text = curl(url, referer);
-  } catch (error) {
-    log(`fetch failed ${url} — ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`);
-    return null;
-  }
-  if (!valid(text)) {
-    // NSE answers a throttled client with an HTML page: wait and try once more.
-    sleep(30_000);
-    try {
-      text = curl(url, referer);
-    } catch {
-      return null;
-    }
-    if (!valid(text)) return null;
-  }
-  // Written whole or not at all: a run stopped mid-write must not leave a
-  // truncated instance that every later run reads as cached.
-  writeFileSync(`${file}.part`, text);
-  renameSync(`${file}.part`, file);
-  return text;
-}
-const isJson = (text: string) => /^\s*[[{]/.test(text);
+const cached = (file: string, url: string, referer: string, valid: (text: string) => boolean) =>
+  cachedGet(file, url, referer, valid, { delayMs, log });
 
 function figuresOf(filing: { xbrl: string | null; fiscalYearEnd: string }): OperatingFigures | null {
   const name = filing.xbrl!.split("/").pop()!;

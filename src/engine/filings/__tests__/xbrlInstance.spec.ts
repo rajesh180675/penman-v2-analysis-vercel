@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractAnnualHeadline, extractLenderBalanceSheet, extractOperatingFigures, parseXbrlInstance, selectAnnualContexts } from "../xbrlInstance";
+import { extractAnnualHeadline, extractLenderBalanceSheet, extractOperatingFigures, parseXbrlInstance, quarterShareOfYear, selectAnnualContexts } from "../xbrlInstance";
 
 /**
  * Shaped on ITC's FY24 consolidated results filing (NSE archive
@@ -263,6 +263,29 @@ describe("extractOperatingFigures", () => {
     expect(f.assets).toBeNull();
     expect(f.equity).toBeNull();
     expect(f.borrowings).toBeNull();
+  });
+});
+
+describe("quarterShareOfYear", () => {
+  it("sets the filing's own quarter against the year it reports", () => {
+    expect(quarterShareOfYear(parseXbrlInstance(FILING), "2024-03-31")).toBeCloseTo(19446.49 / 76840.49, 6);
+  });
+
+  it("exposes a year context that holds another quarter", () => {
+    // Shaped on AstraZeneca Pharma India's March 2018 filing: FourD below OneD.
+    const quarterInYear = FILING.replace(
+      /(<in-bse-fin:RevenueFromOperations contextRef="FourD"[^>]*>)[^<]*/,
+      "$11168814000.00",
+    ).replace(
+      /(<in-bse-fin:RevenueFromOperations contextRef="OneD"[^>]*>)[^<]*/,
+      "$11507266000.00",
+    );
+    expect(quarterShareOfYear(parseXbrlInstance(quarterInYear), "2024-03-31")).toBeCloseTo(150.7266 / 116.8814, 6);
+  });
+
+  it("is null where the filing reports no quarter beside the year", () => {
+    const yearOnly = FILING.replace(/<in-bse-fin:RevenueFromOperations contextRef="OneD"[^>]*>[^<]*<\/in-bse-fin:RevenueFromOperations>/, "");
+    expect(quarterShareOfYear(parseXbrlInstance(yearOnly), "2024-03-31")).toBeNull();
   });
 });
 
