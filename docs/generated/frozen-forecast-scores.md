@@ -138,42 +138,72 @@ Against the frozen scenario cases:
 | Sales | 16 | 13% | 56% | 31% | 0% |
 | Core margin | 16 | 0% | 63% | 38% | 0% |
 
-## Frozen 2026-10-20, by company
+### Frozen 2026-11-15 (14 of 21 forecasts scored)
+
+| Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
+|---|---|---|---|---|---|---|
+| Sales (log error, %) | 14 | 3.3 | 7.8 | +57% | -2.3 | 12 of 14 |
+| Core margin (points of sales) | 14 | 0.6 | 0.6 | -4% | -1.0 | 6 of 14 |
+| Earnings (ROE points) | 14 | 1.2 | 2.5 | +53% | -2.1 | 10 of 14 |
+
+Against the frozen scenario cases:
+
+| Measure | n | Below stress | Between | Above bull | Below panic |
+|---|---|---|---|---|---|
+| Sales | 14 | 7% | 64% | 29% | 0% |
+| Core margin | 14 | 0% | 71% | 29% | 0% |
+| Earnings | 14 | 0% | 79% | 21% | 0% |
+
+The year in progress, projected from the months filed so far (provisional; 6 months):
+
+| Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
+|---|---|---|---|---|---|---|
+| Sales (log error, %) | 16 | 9.2 | 19.5 | +53% | -6.4 | 14 of 16 |
+| Core margin (points of sales) | 16 | 1.3 | 1.4 | +13% | -0.7 | 7 of 16 |
+
+Against the frozen scenario cases:
+
+| Measure | n | Below stress | Between | Above bull | Below panic |
+|---|---|---|---|---|---|
+| Sales | 16 | 13% | 56% | 31% | 0% |
+| Core margin | 16 | 0% | 69% | 31% | 0% |
+
+## Frozen 2026-11-15, by company
 
 | Company | Cutoff | Year | Sales error | Random walk | Margin error (pts) | Random walk | Earnings error (ROE pts) | Random walk |
 |---|---|---|---|---|---|---|---|---|
-| ASIANPAINT | 2025-03-31 | 2026-03-31 | -1.1 | -4.8 | -0.6 | -0.6 | -1.2 | -3.4 |
+| ASIANPAINT | 2025-03-31 | 2026-03-31 | -1.1 | -4.8 | -0.6 | -0.6 | -1.1 | -3.4 |
 | ASIANPAINT | 2025-03-31 | 2027-03-31 (6 months filed) | -11.7 | -20.9 | -1.2 | -1.2 | — | — |
-| BHARTIARTL | 2025-03-31 | 2026-03-31 | -10.4 | -19.9 | -6.8 | -3.9 | -9.8 | +6.0 |
-| BHARTIARTL | 2025-03-31 | 2027-03-31 (6 months filed) | -18.5 | -36.0 | -10.3 | -5.3 | — | — |
-| BRITANNIA | 2025-03-31 | 2026-03-31 | +2.3 | -6.5 | -1.3 | -0.9 | -4.7 | -8.1 |
-| BRITANNIA | 2025-03-31 | 2027-03-31 (6 months filed) | +0.3 | -17.8 | -1.5 | -0.8 | — | — |
-| DABUR | 2025-03-31 | 2026-03-31 | +0.4 | -4.9 | +0.1 | -0.1 | -0.3 | -1.2 |
-| DABUR | 2025-03-31 | 2027-03-31 (6 months filed) | -3.6 | -15.4 | +0.4 | -0.1 | — | — |
+| BHARTIARTL | 2025-03-31 | 2026-03-31 | -10.4 | -19.9 | -5.6 | -3.9 | -8.0 | +6.0 |
+| BHARTIARTL | 2025-03-31 | 2027-03-31 (6 months filed) | -18.5 | -36.0 | -8.4 | -5.3 | — | — |
+| BRITANNIA | 2025-03-31 | 2026-03-31 | +2.3 | -6.5 | -1.2 | -0.9 | -4.3 | -8.1 |
+| BRITANNIA | 2025-03-31 | 2027-03-31 (6 months filed) | +0.3 | -17.8 | -1.3 | -0.8 | — | — |
+| DABUR | 2025-03-31 | 2026-03-31 | +0.4 | -4.9 | +0.1 | -0.1 | -0.4 | -1.2 |
+| DABUR | 2025-03-31 | 2027-03-31 (6 months filed) | -3.6 | -15.4 | +0.3 | -0.1 | — | — |
 | DMART | 2025-03-31 | 2026-03-31 | +0.4 | -14.8 | +0.1 | +0.1 | +0.7 | -1.2 |
 | DMART | 2025-03-31 | 2027-03-31 (6 months filed) | -0.7 | -29.9 | +0.3 | +0.3 | — | — |
 | GRASIM | 2025-03-31 | — | not scored: a forecast of the business without Aditya Birla Capital; the consolidated filings describe another business | | | | | |
 | HINDUNILVR | 2025-03-31 | — | not scored: the 2026-03-31 filing reports ₹4,407 Cr of discontinued operations, a business sold or demerged since, so it and later years describe another business | | | | | |
 | INFY | 2026-03-31 | 2027-03-31 (6 months filed) | -1.9 | -11.6 | +0.3 | +0.1 | — | — |
-| ITC | 2025-03-31 | 2026-03-31 | +4.4 | -4.6 | -0.8 | -0.6 | +1.1 | +20.1 |
-| ITC | 2025-03-31 | 2027-03-31 (6 months filed) | +16.7 | -0.6 | +3.0 | +3.4 | — | — |
+| ITC | 2025-03-31 | 2026-03-31 | +4.4 | -4.6 | -0.7 | -0.6 | +1.2 | +20.1 |
+| ITC | 2025-03-31 | 2027-03-31 (6 months filed) | +16.7 | -0.6 | +3.1 | +3.4 | — | — |
 | LT | 2026-03-31 | — | not scored: a forecast of the business without L&T Finance; the consolidated filings describe another business | | | | | |
 | M&M | 2025-03-31 | — | not scored: a forecast of the business without Mahindra & Mahindra Financial Services; the consolidated filings describe another business | | | | | |
-| MARUTI | 2025-03-31 | 2026-03-31 | -7.7 | -18.1 | +0.4 | +0.9 | +0.6 | -0.2 |
-| MARUTI | 2025-03-31 | 2027-03-31 (6 months filed) | -23.5 | -44.9 | +2.1 | +3.0 | — | — |
+| MARUTI | 2025-03-31 | 2026-03-31 | -7.7 | -18.1 | +0.6 | +0.9 | +1.0 | -0.2 |
+| MARUTI | 2025-03-31 | 2027-03-31 (6 months filed) | -23.5 | -44.9 | +2.5 | +3.0 | — | — |
 | NESTLEIND | 2025-03-31 | — | not scored: a forecast on standalone accounts; the ledger is consolidated | | | | | |
-| NTPC | 2025-03-31 | 2026-03-31 | +7.6 | +0.4 | -2.8 | -2.6 | -1.1 | -2.0 |
-| NTPC | 2025-03-31 | 2027-03-31 (6 months filed) | +1.9 | -13.0 | -4.7 | -4.3 | — | — |
-| POWERGRID | 2025-03-31 | 2026-03-31 | +4.7 | -2.0 | -0.0 | +0.1 | +0.7 | -0.4 |
-| POWERGRID | 2025-03-31 | 2027-03-31 (6 months filed) | +9.4 | -4.8 | -0.9 | -0.7 | — | — |
+| NTPC | 2025-03-31 | 2026-03-31 | +7.6 | +0.4 | -2.7 | -2.6 | -1.0 | -2.0 |
+| NTPC | 2025-03-31 | 2027-03-31 (6 months filed) | +1.9 | -13.0 | -4.6 | -4.3 | — | — |
+| POWERGRID | 2025-03-31 | 2026-03-31 | +4.7 | -2.0 | +0.1 | +0.1 | +0.7 | -0.4 |
+| POWERGRID | 2025-03-31 | 2027-03-31 (6 months filed) | +9.4 | -4.8 | -0.8 | -0.7 | — | — |
 | RELIANCE | 2025-03-31 | 2026-03-31 | -0.6 | -9.2 | -0.1 | +0.0 | -0.5 | -1.3 |
-| RELIANCE | 2025-03-31 | 2027-03-31 (6 months filed) | -16.6 | -34.2 | +0.7 | +0.9 | — | — |
-| SUNPHARMA | 2025-03-31 | 2026-03-31 | -0.5 | -10.6 | -0.2 | -0.0 | +1.4 | -0.8 |
-| SUNPHARMA | 2025-03-31 | 2027-03-31 (6 months filed) | -0.5 | -21.2 | +2.6 | +2.9 | — | — |
-| TATASTEEL | 2025-03-31 | 2026-03-31 | -2.2 | -6.0 | -2.6 | -3.0 | -6.6 | -8.1 |
-| TATASTEEL | 2025-03-31 | 2027-03-31 (6 months filed) | -9.0 | -18.1 | -2.1 | -2.6 | — | — |
+| RELIANCE | 2025-03-31 | 2027-03-31 (6 months filed) | -16.6 | -34.2 | +0.8 | +0.9 | — | — |
+| SUNPHARMA | 2025-03-31 | 2026-03-31 | -0.5 | -10.6 | -0.1 | -0.0 | +1.4 | -0.8 |
+| SUNPHARMA | 2025-03-31 | 2027-03-31 (6 months filed) | -0.5 | -21.2 | +2.7 | +2.9 | — | — |
+| TATASTEEL | 2025-03-31 | 2026-03-31 | -2.2 | -6.0 | -2.8 | -3.0 | -6.9 | -8.1 |
+| TATASTEEL | 2025-03-31 | 2027-03-31 (6 months filed) | -9.0 | -18.1 | -2.3 | -2.6 | — | — |
 | TCS | 2026-03-31 | 2027-03-31 (6 months filed) | -2.8 | -11.8 | +0.9 | +0.8 | — | — |
-| TITAN | 2025-03-31 | 2026-03-31 | -22.7 | -37.1 | -0.2 | -0.3 | -9.4 | -14.9 |
-| TITAN | 2025-03-31 | 2027-03-31 (6 months filed) | -26.9 | -54.5 | -3.0 | -3.2 | — | — |
-| ULTRACEMCO | 2025-03-31 | 2026-03-31 | -7.3 | -15.3 | -1.0 | -1.5 | -1.6 | -3.0 |
-| ULTRACEMCO | 2025-03-31 | 2027-03-31 (6 months filed) | -15.5 | -31.2 | -0.9 | -1.7 | — | — |
+| TITAN | 2025-03-31 | 2026-03-31 | -22.7 | -37.1 | -0.3 | -0.3 | -9.8 | -14.9 |
+| TITAN | 2025-03-31 | 2027-03-31 (6 months filed) | -26.9 | -54.5 | -3.1 | -3.2 | — | — |
+| ULTRACEMCO | 2025-03-31 | 2026-03-31 | -7.3 | -15.3 | -1.1 | -1.5 | -1.8 | -3.0 |
+| ULTRACEMCO | 2025-03-31 | 2027-03-31 (6 months filed) | -15.5 | -31.2 | -1.1 | -1.7 | — | — |
