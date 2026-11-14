@@ -428,3 +428,24 @@ export function extractOperatingFigures(instance: XbrlInstance, fiscalYearEnd: s
     loans: read(instant, ["LoansCurrent", "LoansNoncurrent"]),
   };
 }
+
+/**
+ * The filing's own latest quarter (`OneD`) as a share of the year it reports,
+ * by revenue from operations. Null where either is absent or not positive.
+ *
+ * A check on a year read by the ID convention from contexts the filing never
+ * declares, which is every results filing before FY2023. There `FourD` is the
+ * year only by convention, and some March 2018 filings hold another quarter in
+ * it: AstraZeneca Pharma India's reports ₹116.9 Cr in `FourD` beside ₹150.7 Cr
+ * in `OneD`, and its March 2019 filing ₹728 Cr for the year. A year is not
+ * smaller than one of its own quarters, so a share near or above one says the
+ * figure read as the year is not one.
+ */
+export function quarterShareOfYear(instance: XbrlInstance, fiscalYearEnd: string): number | null {
+  const { duration } = selectAnnualContexts(instance, fiscalYearEnd);
+  const revenue = (contextId: string) => instance.facts.find((f) =>
+    f.concept === "RevenueFromOperations" && f.contextRef === contextId && f.value != null && f.unitRef?.toUpperCase() === "INR")?.value ?? null;
+  const year = duration ? revenue(duration.id) : null;
+  const quarter = duration && !/^OneD$/i.test(duration.id) ? revenue("OneD") : null;
+  return year != null && quarter != null && year > 0 && quarter > 0 ? quarter / year : null;
+}

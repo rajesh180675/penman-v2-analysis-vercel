@@ -57,6 +57,7 @@
     "accountability": "node --import tsx/esm --import ./scripts/lib/register-raw-loader.mjs scripts/accountability/run-all.ts",
     "accountability:bands": "node --import tsx/esm --import ./scripts/lib/register-raw-loader.mjs scripts/accountability/scenario-bands.ts",
     "accountability:panel": "node --import tsx/esm --import ./scripts/lib/register-raw-loader.mjs scripts/accountability/persistence-panel.ts",
+    "accountability:margins": "tsx scripts/accountability/margin-panel.ts",
     "accountability:changes": "tsx scripts/accountability/snapshot-changes.ts",
     "filings:refresh": "tsx scripts/filings/fetch-nse-year-to-date.ts && tsx scripts/filings/tie-out.ts --year-to-date-only && tsx scripts/accountability/score-frozen.ts",
     "audit:diff": "node scripts/audit-diff.cjs",

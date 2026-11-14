@@ -6,6 +6,7 @@
  * blocks some server-side clients, so Node's fetch was not relied on.
  */
 import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 export const RESULTS_REFERER = "https://www.nseindia.com/companies-listing/corporate-filings-financial-results";
@@ -21,6 +22,46 @@ export function curl(url: string, referer: string): string {
 }
 
 export const isXbrl = (text: string) => text.includes("<xbrli:xbrl") || text.includes(":xbrl ");
+
+export const isJson = (text: string) => /^\s*[[{]/.test(text);
+
+/**
+ * A GET cached on disk: listings and XBRL instances are fetched once, so an
+ * interrupted run resumes. Null when the fetch fails or NSE's answer is not
+ * what was asked for.
+ */
+export function cachedGet(
+  file: string,
+  url: string,
+  referer: string,
+  valid: (text: string) => boolean,
+  options: { readonly delayMs: number; readonly log: (line: string) => void },
+): string | null {
+  if (existsSync(file)) return readFileSync(file, "utf8");
+  sleep(options.delayMs);
+  let text: string;
+  try {
+    text = curl(url, referer);
+  } catch (error) {
+    options.log(`fetch failed ${url} — ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`);
+    return null;
+  }
+  if (!valid(text)) {
+    // NSE answers a throttled client with an HTML page: wait and try once more.
+    sleep(30_000);
+    try {
+      text = curl(url, referer);
+    } catch {
+      return null;
+    }
+    if (!valid(text)) return null;
+  }
+  // Written whole or not at all: a run stopped mid-write must not leave a
+  // truncated instance that every later run reads as cached.
+  writeFileSync(`${file}.part`, text);
+  renameSync(`${file}.part`, file);
+  return text;
+}
 
 /** A row of the annual results listing. */
 export interface NseResultRow {
