@@ -51,7 +51,12 @@ export default function EarningPower({ bankResult }: Props) {
   const latest = rows[rows.length - 1];
   const isNBFC = subtype === "nbfc";
   const isInsurance = subtype === "insurance";
-  const spreadLabel = isNBFC ? "Spread" : "NIM";
+  // Condensed exports file no interest-income line (Bajaj, Muthoot and
+  // Shriram Finance consolidated): the yield behind the spread, and NII behind
+  // NIM, are then revenue from operations, fees included.
+  const shownYears = metrics.filter((m) => (isNBFC ? m.spread : m.nim) != null);
+  const feeIncludedYears = shownYears.filter((m) => m.interestIncomeBasis === "revenue-total").length;
+  const spreadLabel = `${isNBFC ? "Spread" : "NIM"}${feeIncludedYears > 0 ? "*" : ""}`;
   const spreadValue = isNBFC ? latest?.spread : latest?.nim;
 
   // 5y average for stability
@@ -68,7 +73,7 @@ export default function EarningPower({ bankResult }: Props) {
              subline={`5y avg ${avg5("roe")?.toFixed(1) ?? "—"}%`}
              accent={(latest?.roe ?? 0) >= 15 ? "emerald" : (latest?.roe ?? 0) >= 10 ? "blue" : "amber"} />
         <KPI label={spreadLabel} value={spreadValue != null ? `${spreadValue.toFixed(2)}%` : "—"}
-             subline="net spread on assets" accent="blue" />
+             subline={feeIncludedYears > 0 ? "on revenue, fees included" : "net spread on assets"} accent="blue" />
         <KPI label="Asset Leverage" value={latest?.leverage != null ? `${latest.leverage.toFixed(1)}x` : "—"}
              subline="assets / equity"
              accent={(latest?.leverage ?? 0) > 12 ? "rose" : (latest?.leverage ?? 0) > 8 ? "amber" : "emerald"} />
@@ -87,6 +92,12 @@ export default function EarningPower({ bankResult }: Props) {
           {spreadLabel} (left) drives spread income; ROE (right) is the equity return after leverage.
           ROE = {spreadLabel} × Leverage × Efficiency × Tax — banks compound spread through balance sheet leverage.
         </p>
+        {feeIncludedYears > 0 && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+            * In {feeIncludedYears} of {shownYears.length} years the export files no interest-income line, so the
+            {isNBFC ? " yield behind the spread is" : " NII behind NIM is"} revenue from operations and includes fee income.
+          </p>
+        )}
         <ResponsiveContainer width="100%" height={400}>
           <ComposedChart data={rows}>
             <CartesianGrid stroke="rgba(148,163,184,0.18)" />
