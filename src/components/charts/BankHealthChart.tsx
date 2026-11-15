@@ -33,6 +33,12 @@ export default function BankHealthChart({ metrics, ke }: Props) {
 
   const latest = data[data.length - 1]!;
   const keePct = ke != null ? +(ke * 100).toFixed(1) : null;
+  // Condensed exports file no interest-income line (Bajaj, Muthoot and
+  // Shriram Finance consolidated); NII is then revenue from operations less
+  // finance cost, so this "NIM" includes fee income.
+  const nimYears = metrics.filter((m) => m.nim != null);
+  const feeIncludedYears = nimYears.filter((m) => m.interestIncomeBasis === "revenue-total").length;
+  const nimLabel = feeIncludedYears > 0 ? "NIM*" : "NIM";
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900/60 space-y-5">
@@ -44,7 +50,7 @@ export default function BankHealthChart({ metrics, ke }: Props) {
       {/* Latest period summary tiles */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <div className="rounded-lg bg-blue-50 dark:bg-blue-900/30 p-2">
-          <div className="text-[10px] uppercase tracking-wide text-blue-700 dark:text-blue-300">NIM</div>
+          <div className="text-[10px] uppercase tracking-wide text-blue-700 dark:text-blue-300">{nimLabel}</div>
           <div className="text-base font-bold text-slate-900 dark:text-slate-100">{latest.NIM?.toFixed(2) ?? "—"}%</div>
         </div>
         <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/30 p-2">
@@ -82,12 +88,19 @@ export default function BankHealthChart({ metrics, ke }: Props) {
             {keePct != null && (
               <ReferenceLine y={keePct} stroke="#f59e0b" strokeDasharray="4 4" label={{ value: `ke ${keePct}%`, position: "right", fontSize: 9, fill: "#f59e0b" }} />
             )}
-            <Line type="monotone" dataKey="NIM" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
+            <Line type="monotone" dataKey="NIM" name={nimLabel} stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
             <Line type="monotone" dataKey="ROA" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
             <Line type="monotone" dataKey="ROE" stroke="#6366f1" strokeWidth={2.5} dot={{ r: 4 }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
+
+      {feeIncludedYears > 0 && (
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          * In {feeIncludedYears} of {nimYears.length} years the export files no interest-income line, so NIM is
+          revenue from operations less finance cost and includes fee income.
+        </p>
+      )}
 
       {/* Credit cost chart */}
       <div className="h-44">
