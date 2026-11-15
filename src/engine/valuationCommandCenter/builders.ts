@@ -36,18 +36,25 @@ import {
  *
  * Not the base: its pair is gated on the rigor ladder (RE_REOI_BLOCK_GAP
  * withholds valuation-eligible), and break-even and PVRE re-value it as the
- * median, which must stay the value they start from.
+ * median, which must stay the value they start from. Where its two differ
+ * beyond the block gap the median is the midpoint of values no kw reconciles
+ * (Grasim: RE ₹130 and ReOI −₹236 a share, shown as −₹53 between a stress and
+ * a bull case on RE alone), so the card says so.
  */
 export function scenarioValueBasis(
   key: ValuationScenarioCard["key"],
   valuation: ValuationResult,
   kwConsistency: KwConsistency,
 ): NonNullable<ValuationScenarioCard["valueBasis"]> {
-  if (key === "base") return { model: "re-reoi", reason: null };
   const re = valuation.perShare?.intrinsic_re_per_share;
   const reoi = valuation.perShare?.intrinsic_reoi_per_share;
   if (re == null || !Number.isFinite(re) || reoi == null || !Number.isFinite(reoi)) return { model: "re-reoi", reason: null };
   const gap = reReoiGap(re, reoi);
+  if (key === "base") {
+    return gap != null && gap > RE_REOI_BLOCK_GAP
+      ? { model: "re-reoi", reason: `Residual earnings and residual operating income differ by ${(gap * 100).toFixed(0)}% on this forecast, and no kw reconciles them. The value is their midpoint, which neither supports.` }
+      : { model: "re-reoi", reason: null };
+  }
   if (kwConsistency.method !== "value-consistent") {
     return { model: "re", reason: `${kwConsistency.reason ?? "The value-weighted kw did not settle."} No kw reconciles residual operating income with residual earnings on this forecast, so the case is valued on residual earnings, which need none.` };
   }

@@ -334,7 +334,13 @@ function ScenarioFigure({ label, card, priced, noValue, noPrice }: {
   const belowZero = card.intrinsicPerShare < 0;
   // Where no operating cost of capital reconciles the case's two models, its
   // value is residual earnings alone (valueBasis), and it says so.
-  const reOnly = card.valueBasis?.model === "re" ? " · on residual earnings alone: no operating cost of capital reconciles this case's two models" : "";
+  // The base case keeps the median of the two; where they disagree beyond what
+  // the rigor ladder allows, that is the midpoint of values nothing reconciles.
+  const reOnly = card.valueBasis?.model === "re"
+    ? " · on residual earnings alone: no operating cost of capital reconciles this case's two models"
+    : card.valueBasis?.reason
+      ? ` · the midpoint of residual earnings (${formatPerShare(card.valuation.perShare?.intrinsic_re_per_share ?? null)}) and residual operating income (${formatPerShare(card.valuation.perShare?.intrinsic_reoi_per_share ?? null)}), which no operating cost of capital reconciles: not a value either model supports`
+      : "";
   return (
     <Figure
       label={label}

@@ -73,6 +73,23 @@ describe("VerdictSection", () => {
     expect(html.match(/on residual earnings alone/g)).toHaveLength(1);
   });
 
+  it("says when the base value is the midpoint of two models nothing reconciles", () => {
+    // Grasim, 2026-11-15: −₹53 a share, between a stress and a bull case on residual earnings alone.
+    const midpoint = { model: "re-reoi", reason: "Residual earnings and residual operating income differ by 200% on this forecast, and no kw reconciles them." };
+    const html = render(commandCenter({
+      marketPrice: null,
+      scenarios: [
+        card("stress", 17.34, null),
+        { ...card("base", -53.03, null), valueBasis: midpoint, valuation: { perShare: { intrinsic_re_per_share: 129.54, intrinsic_reoi_per_share: -235.59 } } },
+        card("bull", 66.75, null),
+      ],
+    }));
+    expect(html).toContain("the midpoint of residual earnings (₹129.54) and residual operating income (₹-235.59), which no operating cost of capital reconciles: not a value either model supports");
+    expect(html.match(/the midpoint of residual earnings/g)).toHaveLength(1);
+    // A reconciled base case says nothing of the kind.
+    expect(render(commandCenter())).not.toContain("midpoint");
+  });
+
   it("says when the share count has changed since the valuation date", () => {
     const text = render(commandCenter({
       marketContext: { freshness: "live", latestReportedPeriod: "2025-03-31", priceDate: "2026-10-13", yearsToPriceDate: 0, sharesAtValuationDate: 96.42, sharesAtPriceDate: 192.83, sharesAtPriceDateSource: "the latest annual filing (2026-03-31)", shareCountChange: 192.83 / 96.42 },

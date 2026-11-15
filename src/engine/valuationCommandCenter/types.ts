@@ -74,6 +74,8 @@ export interface ValuationScenarioCard {
    * forecast ("re-reoi"), or RE alone ("re") when no kw consistent with the
    * card's ke and forecast exists — the solve did not settle, or settled with
    * the two still beyond the RE/ReOI block gap. RE needs no kw. Absent: re-reoi.
+   * The base case stays on the median; where its two differ beyond the block
+   * gap it carries the reason the median is not a value either supports.
    */
   valueBasis?: { readonly model: "re-reoi" | "re"; readonly reason: string | null } | undefined;
   assumptions: {

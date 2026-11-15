@@ -46,7 +46,18 @@ describe("scenarioValueBasis", () => {
   });
 
   it("keeps the base case on the median, which the rigor ladder gates and break-even re-values", () => {
-    expect(scenarioValueBasis("base", valuationOf(100, 140), kept)).toEqual({ model: "re-reoi", reason: null });
+    expect(scenarioValueBasis("base", valuationOf(100, 140), kept).model).toBe("re-reoi");
+    expect(scenarioValueBasis("base", valuationOf(100, 120), kept)).toEqual({ model: "re-reoi", reason: null });
+  });
+
+  it("says when the base case's median is the midpoint of two values nothing reconciles", () => {
+    // Grasim, 2026-11-15: shown as −₹53 a share between a stress and a bull case on residual earnings alone.
+    const basis = scenarioValueBasis("base", valuationOf(129.54, -235.59), kept);
+    expect(basis.model).toBe("re-reoi");
+    expect(basis.reason).toContain("differ by 200%");
+    expect(basis.reason).toContain("midpoint");
+    // Reconciled within the block gap: nothing to say, whichever kw it was valued at.
+    expect(scenarioValueBasis("base", valuationOf(100, 104), solved).reason).toBeNull();
   });
 
   it("keeps the median when either model is missing", () => {

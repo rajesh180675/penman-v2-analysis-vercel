@@ -85,7 +85,7 @@ export function ScenarioCard({
 }: {
   label: string;
   intrinsicPerShare: number | null;
-  /** Why the value is not the RE/ReOI median, when it is not (the card's valueBasis reason). */
+  /** Why the value is not the RE/ReOI median, or is a median the two do not support (the card's valueBasis reason). */
   valueNote?: string | null | undefined;
   upsidePct: number | null;
   marginOfSafetyPct: number | null;
