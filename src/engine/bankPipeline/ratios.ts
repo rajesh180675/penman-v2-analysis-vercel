@@ -54,8 +54,8 @@ export function computeBankRatios(
     const earningAssets = isNbfcFraming
       ? avgAdvances
       : avg(
-          sumStrict(result.advances,  current.investments),
-          sumStrict(prev.advances,    prev.investments),
+          sumStrict(result.advances,  current.investments ?? current.investmentScheduleTotal ?? null),
+          sumStrict(prev.advances,    prev.investments ?? prev.investmentScheduleTotal ?? null),
         );
 
     // NIM = NII / Average Earning Assets — skip for insurance (premium ≠ interest)

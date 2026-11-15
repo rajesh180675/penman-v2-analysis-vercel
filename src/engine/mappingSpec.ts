@@ -474,6 +474,8 @@ export const CapitalineMappingSpec = {
     investmentsGovernment: ["Investments in Government or Trust securities"],
     investmentsBonds: ["Investments in Debentures or Bonds"],
     investmentsOther: ["Other Current Investments"],
+    // The schedule's closing row in Capitaline's bank template (metrics.ts investmentScheduleTotal).
+    investmentScheduleTotal: ["Total"],
 
     // ── Funding sources ───────────────────────────────────────────
     deposits: ["Deposits", "Total Deposits", "Total Long-term Secured Deposits"],
