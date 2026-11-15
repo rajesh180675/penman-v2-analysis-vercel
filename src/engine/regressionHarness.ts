@@ -1,4 +1,5 @@
 import { computeRatios, computeValuation } from "./PenmanNissimEngine";
+import { valBS, valCF, valPL } from "./PenmanNissimEngine/picking";
 import { buildAnchoredValuationPeriods } from "./anchoredValuationPeriods";
 import { runIdentityAssertions } from "./identityTests";
 import { CapitalineMappingSpec as M } from "./mappingSpec";
@@ -6,33 +7,12 @@ import { buildPhase0BaselineSnapshot, Phase0BaselineSnapshot } from "./baselineG
 import { EngineConfig, RawPeriodData, RecastPeriod } from "./types";
 import { resolveCostOfCapitalFromConfig } from "./costOfCapital";
 
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
-
+// The recast's own picker (#555): asked for a statement, it reads only that
+// statement's lines and labels no statement files. This file carried a copy
+// of it from before that rule, which read the cash flow's working-capital
+// changes as balance-sheet lines where the balance sheet did not file them.
 function pick(data: RawPeriodData, keys: readonly string[], stmt: "BalanceSheet" | "ProfitLoss" | "CashFlow"): number {
-  const rv = data.raw_metric_values;
-  for (const key of keys) {
-    const composite = rv[`${key}__${stmt}`];
-    if (composite != null && Number.isFinite(composite)) return composite;
-    const base = rv[key];
-    if (base != null && Number.isFinite(base)) return base;
-    const nk = norm(key);
-    let best: number | null = null;
-    let pBest = -1;
-    for (const [k, v] of Object.entries(rv)) {
-      if (v == null || !Number.isFinite(v)) continue;
-      const i = k.lastIndexOf("__");
-      const baseKey = i >= 0 ? k.slice(0, i) : k;
-      const st = i >= 0 ? k.slice(i + 2) : "";
-      if (norm(baseKey) !== nk) continue;
-      const p = st === stmt ? 10 : st === "BalanceSheet" ? 3 : st === "ProfitLoss" ? 2 : st === "CashFlow" ? 1 : 0;
-      if (p > pBest) {
-        pBest = p;
-        best = v;
-      }
-    }
-    if (best != null) return best;
-  }
-  return 0;
+  return stmt === "BalanceSheet" ? valBS(data, keys) : stmt === "ProfitLoss" ? valPL(data, keys) : valCF(data, keys);
 }
 
 function deriveKw(periods: RecastPeriod[], cfg: EngineConfig): number {
