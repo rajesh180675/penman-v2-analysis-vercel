@@ -9,7 +9,7 @@
    "filingDate": "2025-08-14T19:04",
    "consolidated": true,
    "audited": false,
-   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1513399_14082025070430_WEB.xml",
+   "xbrlUrl": "https://nsearchives.nseindia.in/corporate/xbrl/INTEGRATED_FILING_INDAS_1513399_14082025070430_WEB.xml",
    "headline": {
     "revenue": 11022.5,
     "profitBeforeTax": -6611.1,
@@ -39,7 +39,7 @@
    "filingDate": "2025-11-10T19:20",
    "consolidated": true,
    "audited": false,
-   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1570250_10112025072028_WEB.xml",
+   "xbrlUrl": "https://nsearchives.nseindia.in/corporate/xbrl/INTEGRATED_FILING_INDAS_1570250_10112025072028_WEB.xml",
    "headline": {
     "revenue": 22217.2,
     "profitBeforeTax": -12138.4,
@@ -69,7 +69,7 @@
    "filingDate": "2026-01-27T20:50",
    "consolidated": true,
    "audited": false,
-   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1613360_29012026061000_WEB.xml",
+   "xbrlUrl": "https://nsearchives.nseindia.in/corporate/xbrl/INTEGRATED_FILING_INDAS_1613360_29012026061000_WEB.xml",
    "headline": {
     "revenue": 33541,
     "profitBeforeTax": -17428,
@@ -99,7 +99,7 @@
    "filingDate": "2026-01-28T18:34",
    "consolidated": true,
    "audited": false,
-   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1612057_28012026063450_WEB.xml",
+   "xbrlUrl": "https://nsearchives.nseindia.in/corporate/xbrl/INTEGRATED_FILING_INDAS_1612057_28012026063450_WEB.xml",
    "headline": {
     "revenue": 33541,
     "profitBeforeTax": -17428,
@@ -129,7 +129,7 @@
    "filingDate": "2026-08-10T19:54",
    "consolidated": true,
    "audited": false,
-   "xbrlUrl": "https://nsearchives.nseindia.com/corporate/xbrl/INTEGRATED_FILING_INDAS_1711364_10082026075416_WEB.xml",
+   "xbrlUrl": "https://nsearchives.nseindia.in/corporate/xbrl/INTEGRATED_FILING_INDAS_1711364_10082026075416_WEB.xml",
    "headline": {
     "revenue": 11689,
     "profitBeforeTax": -3747,
@@ -148,6 +148,36 @@
     "sharesOutstandingCr": 10834.3,
     "expenses": 17242,
     "taxExpense": 7,
+    "regulatoryDeferralMovement": 0,
+    "associatesShare": 0
+   }
+  },
+  {
+   "periodEnd": "2026-09-30",
+   "fiscalYearEnd": "2027-03-31",
+   "months": 6,
+   "filingDate": "2026-11-12T19:34",
+   "consolidated": true,
+   "audited": false,
+   "xbrlUrl": "https://nsearchives.nseindia.in/corporate/xbrl/INTEGRATED_FILING_INDAS_1756895_12112026073440_WEB.xml",
+   "headline": {
+    "revenue": 23573,
+    "profitBeforeTax": -9708,
+    "profitAfterTax": -9729,
+    "profitFromContinuingOperations": -9729,
+    "profitFromDiscontinuedOperations": 0,
+    "profitAttributableToOwners": null,
+    "financeCosts": 10471,
+    "totalAssets": 197409,
+    "totalEquity": -44298,
+    "equityAttributableToOwners": -44298,
+    "cashFlowFromOperations": 11554,
+    "exciseDuty": null,
+    "profitAttributableToNonControllingInterests": null,
+    "nonControllingInterest": null,
+    "sharesOutstandingCr": 10834.3,
+    "expenses": 35001,
+    "taxExpense": 21,
     "regulatoryDeferralMovement": 0,
     "associatesShare": 0
    }
