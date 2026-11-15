@@ -1091,6 +1091,22 @@ type AuditAnalysisContext = {
   analysisStatus: ReturnType<typeof deriveAnalysisStatus>;
 };
 
+/** The market and source evidence a run's production-ready checkpoints read. */
+interface AuditRunEvidence {
+  marketEvidence: AuditMarketEvidenceSnapshot;
+  sourceEvidence: AuditSourceEvidenceSnapshot;
+}
+
+/**
+ * Set before the outcome is derived: the outcome counts the production-ready
+ * checkpoints that fail, and two of them read this evidence. Attached after
+ * the outcome, both always failed there, so no company could be classed
+ * PRODUCTION_READY while its own checkpoint list, built later, passed.
+ */
+function withRunEvidence(result: AuditCompanyRunResult, evidence: AuditRunEvidence): AuditCompanyRunResult {
+  return { ...result, marketEvidence: evidence.marketEvidence, sourceEvidence: evidence.sourceEvidence };
+}
+
 function financialResult(args: {
   company: AuditRegistryEntry;
   pipeline: PipelineResult;
@@ -1098,9 +1114,10 @@ function financialResult(args: {
   trace: ReturnType<typeof buildAnalysisTraceability>;
   analysisContext: AuditAnalysisContext;
   verbose: boolean;
+  evidence: AuditRunEvidence;
 }): AuditCompanyRunResult {
   const { company, pipeline, sidecarFlags, trace, analysisContext, verbose } = args;
-  const result = emptyResult(company);
+  const result = withRunEvidence(emptyResult(company), args.evidence);
   const flags = [...sidecarFlags];
   const bankResult = pipeline.bankResult;
 
@@ -1231,9 +1248,10 @@ function industrialResult(args: {
   sidecarFlags: string[];
   trace: ReturnType<typeof buildAnalysisTraceability>;
   config: EngineConfig;
+  evidence: AuditRunEvidence;
 }): AuditCompanyRunResult {
   const { company, pipeline, valuation, sidecarFlags, trace, config } = args;
-  const result = emptyResult(company);
+  const result = withRunEvidence(emptyResult(company), args.evidence);
   const flags: string[] = [...sidecarFlags];
 
   result.analysisFamily = "industrial";
@@ -1424,10 +1442,13 @@ export async function auditCompanyRun(
     // Read from the parse, not from the slot SOTP selected, so a change in any
     // slot is visible even when the selected one is unchanged.
     const segmentCoverage = measureSegmentCoverage(parsed.segmentData);
+    const evidence: AuditRunEvidence = {
+      marketEvidence,
+      sourceEvidence: { ...sourceEvidence, lineageRef: trace.lineageRef ?? sourceEvidence.lineageRef },
+    };
 
     if (pipeline.analysisFamily === "financial-institution") {
-      const result = financialResult({ company, pipeline, sidecarFlags, trace, analysisContext, verbose: Boolean(options.verbose) });
-      result.marketEvidence = marketEvidence;
+      const result = financialResult({ company, pipeline, sidecarFlags, trace, analysisContext, verbose: Boolean(options.verbose), evidence });
       result.parseCoverage = parseCoverage;
       result.segmentCoverage = segmentCoverage;
       return withSourceEvidence(result, sourceEvidence, trace.lineageRef);
@@ -1439,8 +1460,8 @@ export async function auditCompanyRun(
       sidecarFlags,
       trace,
       config,
+      evidence,
     });
-    result.marketEvidence = marketEvidence;
     result.parseCoverage = parseCoverage;
     result.segmentCoverage = segmentCoverage;
     return withSourceEvidence(result, sourceEvidence, trace.lineageRef);
