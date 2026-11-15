@@ -183,3 +183,47 @@ describe("Capitaline parser fidelity", () => {
     expect(evaluate(debug([])).status).toBe("failed");
   });
 });
+
+// Mutation wave 6: each of these checks could be forced to pass with every
+// spec green. Each case breaks one and requires its own flag to say so.
+describe("parser fidelity names each check it fails", () => {
+  const period = (end: string, values: Record<string, number>): RawPeriodData => ({ company_id: "X", period_end: end, raw_metric_values: values });
+  const dense = (end: string) => period(end, Object.fromEntries(Array.from({ length: 8 }, (_, i) => [`metric_${i}__BalanceSheet`, 100 + i])));
+  const grid = (headerDetected = true) => ({ headerDetected, errors: [] as string[] });
+  const debug = (overrides: Partial<{ rawGrids: unknown[]; detectedPeriods: unknown[]; warnings: unknown[] }>) =>
+    ({ rawGrids: [grid(), grid(), grid()], detectedPeriods: ["2024-03-31", "2025-03-31"], warnings: [], ...overrides }) as unknown as CapitalineParseDebug;
+  const check = (summary: ReturnType<typeof evaluateParserFidelity>, id: string) => summary.checks.find((c) => c.id === id);
+
+  it("fails files-present when fewer than three statement grids were parsed", () => {
+    const s = evaluateParserFidelity({ sourceMode: "capitaline", rawData: [dense("2024-03-31"), dense("2025-03-31")], debugInfo: debug({ rawGrids: [grid(), grid()] }) });
+    expect(check(s, "files-present")?.passed).toBe(false);
+  });
+
+  it("fails period-consistency when detected and persisted periods differ", () => {
+    const s = evaluateParserFidelity({ sourceMode: "capitaline", rawData: [dense("2024-03-31"), dense("2025-03-31")], debugInfo: debug({ detectedPeriods: ["2023-03-31", "2024-03-31", "2025-03-31"] }) });
+    expect(check(s, "period-consistency")?.passed).toBe(false);
+  });
+
+  it("fails parser-noise when the parse raised a warning", () => {
+    const s = evaluateParserFidelity({ sourceMode: "capitaline", rawData: [dense("2024-03-31"), dense("2025-03-31")], debugInfo: debug({ warnings: ["duplicate row"] }) });
+    expect(check(s, "parser-noise")?.passed).toBe(false);
+  });
+
+  it("fails periods-present for a source that produced no periods", () => {
+    expect(check(evaluateParserFidelity({ sourceMode: "manual", rawData: [] }), "periods-present")?.passed).toBe(false);
+  });
+
+  it("fails metrics-present for periods that carry no metric", () => {
+    expect(check(evaluateParserFidelity({ sourceMode: "manual", rawData: [period("2025-03-31", {})] }), "metrics-present")?.passed).toBe(false);
+  });
+
+  it("fails xbrl-fact-coverage below four mapped facts", () => {
+    const s = evaluateParserFidelity({ sourceMode: "xbrl", rawData: [period("2025-03-31", { "Total Assets__BalanceSheet": 100, "Total Equity__BalanceSheet": 60 })] });
+    expect(check(s, "xbrl-fact-coverage")?.passed).toBe(false);
+  });
+
+  it("fails json-schema-density below three values a period", () => {
+    const s = evaluateParserFidelity({ sourceMode: "json", rawData: [period("2025-03-31", { "Total Assets__BalanceSheet": 100 })] });
+    expect(check(s, "json-schema-density")?.passed).toBe(false);
+  });
+});
