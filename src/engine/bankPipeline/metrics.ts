@@ -182,6 +182,29 @@ function pickValue(
 }
 
 /**
+ * The first alias with a non-zero value in the statement, else the first one
+ * filed at zero. For a line Capitaline files under alternative labels, the
+ * unused label is sometimes an explicit 0 beside the one in use: Shriram
+ * Finance files "Investments: 0" beside "Total Investments" (FY2025: 15,585.34)
+ * in every year from FY2018, and Cholamandalam in six. A field whose zero is
+ * real data (provisions in a clean year) keeps pickValue.
+ */
+function pickFirstNonZero(
+  raw: Record<string, number | null | undefined>,
+  keys: readonly string[],
+  statement: string,
+): number | null {
+  let zero: number | null = null;
+  for (const key of keys) {
+    const val = valueIn(raw, key, statement);
+    if (val == null) continue;
+    if (val !== 0) return val;
+    zero ??= val;
+  }
+  return zero;
+}
+
+/**
  * pickValue for a line filed in both asset blocks. Pre-Ind AS NBFC balance
  * sheets file the loan book twice, non-current then current "Total Loans
  * Given" (Bajaj Finance FY16: 24,778.55 + 18,493.68); the parser keeps the
@@ -251,7 +274,7 @@ export function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   const totalEquity        = pickValue(raw, bs.totalEquity,         "BalanceSheet");
   const advances           = pickWithCurrentTwin(raw, bs.advances,  "BalanceSheet");
   const deposits           = pickValue(raw, bs.deposits,            "BalanceSheet");
-  const investments        = pickValue(raw, bs.investments,         "BalanceSheet");
+  const investments        = pickFirstNonZero(raw, bs.investments,  "BalanceSheet");
   const investmentComponents = sumLenient(
     sumLenient(pickValue(raw, bs.investmentsGovernment, "BalanceSheet"), pickValue(raw, bs.investmentsBonds, "BalanceSheet")),
     pickValue(raw, bs.investmentsOther, "BalanceSheet"),
