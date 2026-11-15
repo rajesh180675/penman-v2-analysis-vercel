@@ -280,6 +280,10 @@ export const CapitalineMappingSpec = {
       "Depreciation for the current year",
       "Depreciation and Amortisation Expense",
       "Depreciation / Amortisation",
+      // Capitaline's older standard layout files the charge as plain
+      // "Depreciation", which the cash flow's add-back also uses: read here,
+      // it is the P&L's own line, not the cash flow's.
+      "Depreciation",
     ],
     sgaAds: [
       "Advertisement, Marketing and Business Development",
