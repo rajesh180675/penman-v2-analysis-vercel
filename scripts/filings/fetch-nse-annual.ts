@@ -78,6 +78,13 @@ for (const symbol of symbols) {
     continue;
   }
   const filings = listedFilings(rows, integrated);
+  // NSE answers a symbol it does not know (one it has renamed, say) with an
+  // empty listing, not an error: filings on record do not stop being filed.
+  if (!filings.length && held.size) {
+    console.log(`${symbol}: the listings name no filing and the ledger holds ${held.size}; as-filed.json left as it was`);
+    unlisted.push(symbol);
+    continue;
+  }
   // A company without subsidiaries (e.g. Nestlé India) files standalone only;
   // its standalone results ARE its group results.
   const hasConsolidated = filings.some((f) => f.consolidated);

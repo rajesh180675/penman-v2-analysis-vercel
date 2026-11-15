@@ -62,11 +62,18 @@ for (const symbol of symbols) {
     continue;
   }
   const quarters = listed.filter((r) => r.xbrl && /\.xml$/i.test(r.xbrl) && !/-MAR-/i.test(r.qe_Date));
+  const ledger = join(dir, "year-to-date.json");
+  const held = recordsByArchiveName(existsSync(ledger) ? (JSON.parse(readFileSync(ledger, "utf8")) as { records: AsFiledYearToDateRecord[] }).records : []);
+  // NSE answers a symbol it does not know (one it has renamed, say) with an
+  // empty listing, not an error: filings on record do not stop being filed.
+  if (!quarters.length && held.size) {
+    console.log(`${symbol}: the listing names no filing and the ledger holds ${held.size}; year-to-date.json left as it was`);
+    unlisted.push(symbol);
+    continue;
+  }
   // A company without subsidiaries (e.g. Nestlé India) files standalone only.
   const hasConsolidated = quarters.some((r) => r.consolidated === "Consolidated");
   const records: AsFiledYearToDateRecord[] = [];
-  const ledger = join(dir, "year-to-date.json");
-  const held = recordsByArchiveName(existsSync(ledger) ? (JSON.parse(readFileSync(ledger, "utf8")) as { records: AsFiledYearToDateRecord[] }).records : []);
   for (const row of quarters.filter((r) => (hasConsolidated ? r.consolidated === "Consolidated" : true))) {
     const periodEnd = isoDate(row.qe_Date);
     const months = MONTHS_TO[periodEnd.slice(5, 7)];
