@@ -70,6 +70,19 @@ export function cachedGet(
   return text;
 }
 
+/** The file a filing is under in NSE's archive: the same on either host. */
+export const archiveName = (url: string) => url.split("/").pop()!;
+
+/**
+ * The records a ledger already holds, by the archive name of the filing each
+ * came from. A fetcher rewrites its whole ledger from the listing, so a filing
+ * that cannot be read now (the archive throttles, or drops a file) took its
+ * year out of the record. It keeps the record it had instead.
+ */
+export function recordsByArchiveName<T extends { readonly xbrlUrl: string }>(records: readonly T[]): Map<string, T> {
+  return new Map(records.map((record) => [archiveName(record.xbrlUrl), record]));
+}
+
 /** A row of the annual results listing. */
 export interface NseResultRow {
   symbol: string;
