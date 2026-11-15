@@ -365,6 +365,31 @@ describe("Industrial ForecastState", () => {
     }
   });
 
+  it("names each scenario-ordering check it fails, one ordering broken at a time", () => {
+    // Mutation wave 6: only the ke ordering had a case.
+    const terminalAt = (growth: number, ke: number): IndustrialTerminalAssumptions =>
+      ({ ...BASE_TERMINAL, growth, ke, reinvestmentRate: growth / BASE_TERMINAL.roic });
+    const named = (overrides: Partial<Record<"stress" | "base" | "bull", Parameters<typeof makeRequest>[0]>> = {}) =>
+      (["stress", "base", "bull"] as const).map((scenarioKey, i) => requireComputed(makeRequest({
+        caseId: scenarioKey,
+        scenarioKey,
+        revenueGrowth: [0.02, 0.06, 0.10][i]!,
+        terminal: terminalAt([0.02, 0.03, 0.04][i]!, [0.13, 0.12, 0.11][i]!),
+        ...overrides[scenarioKey],
+      })));
+    const failedIds = (cases: IndustrialForecastCase[]) =>
+      validateIndustrialScenarioOrdering(cases).checks.filter((c) => c.status === "failed").map((c) => c.checkId);
+
+    expect(failedIds(named())).toEqual([]);
+    expect(failedIds(named({ stress: { horizon: 2 } }))).toContain("scenario-ordering.horizon");
+    expect(failedIds(named({ stress: { revenueGrowth: 0.12 } }))).toContain("scenario-ordering.revenue.1");
+    // Same revenue, a higher stress margin: only operating income is out of order.
+    const operating = failedIds(named({ stress: { revenueGrowth: 0.06, operatingMargin: 0.30 }, base: { operatingMargin: 0.20 } }));
+    expect(operating).toContain("scenario-ordering.operating-income.1");
+    expect(operating).not.toContain("scenario-ordering.revenue.1");
+    expect(failedIds(named({ stress: { terminal: terminalAt(0.035, 0.13) } }))).toContain("scenario-ordering.terminal-growth");
+  });
+
   it("blocks a missing required driver instead of inheriting a historical value", () => {
     const request = makeRequest();
     const missing = { ...request.drivers[0] } as unknown as Record<string, unknown>;
