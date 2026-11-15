@@ -141,6 +141,33 @@ describe("economicSanityGates / evaluateEconomicSanity", () => {
     expect(summary.skippedPeriods.find((s) => s.period === "2025-03-31")).toBeTruthy();
   });
 
+  // Check B is a warning in any one year and a block when the anchor year and
+  // the year before both breach it. Forcing it to pass left every spec, the
+  // golden suite and the audit harness green: none of them reached either case.
+  it("Check B (dirty surplus): blocks when the anchor year and the year before both carry OCI of at least 4% of CSE", () => {
+    const periods = [
+      mkRecastPeriod("2023-03-31", { rnoa: 0.10 }),
+      mkRecastPeriod("2024-03-31", { rnoa: 0.10, oci: 60 }),
+      mkRecastPeriod("2025-03-31", { rnoa: 0.10, oci: 60 }),
+    ];
+    const summary = evaluateEconomicSanity(periods, periods.map((p) => mkRaw(p.period_end)));
+    expect(summary.status).toBe("blocked");
+    expect(summary.anchorReason).toMatch(/sustained dirty-surplus residual/);
+    expect(summary.failedChecks.some((c) => c.checkId === "dirty-surplus-integrity" && c.severity === "block")).toBe(true);
+  });
+
+  it("Check B: warns, without blocking, when only the anchor year breaches it", () => {
+    const periods = [
+      mkRecastPeriod("2023-03-31", { rnoa: 0.10 }),
+      mkRecastPeriod("2024-03-31", { rnoa: 0.10 }),
+      mkRecastPeriod("2025-03-31", { rnoa: 0.10, oci: 60 }),
+    ];
+    const summary = evaluateEconomicSanity(periods, periods.map((p) => mkRaw(p.period_end)));
+    expect(summary.status).toBe("warned");
+    expect(summary.anchorPeriod).toBe("2025-03-31");
+    expect(summary.failedChecks.some((c) => c.checkId === "dirty-surplus-integrity" && c.severity === "warn")).toBe(true);
+  });
+
   it("Check E (anchor selection): walks back at most MAX_ANCHOR_LOOKBACK_PERIODS", () => {
     // All recent periods contaminated; only oldest is clean. With lookback=3,
     // we walk back at most 3 periods from latest.
