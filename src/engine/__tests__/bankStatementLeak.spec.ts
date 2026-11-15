@@ -69,3 +69,14 @@ describe("a field reads only its own statement", () => {
     expect(m.interestIncomeBasis).toBe("revenue-total");
   });
 });
+
+describe("an unused label filed at zero", () => {
+  it("does not hide the investments filed under the label in use (Shriram FY2025)", () => {
+    const m = extract({ "Investments__BalanceSheet": 0, "Total Investments__BalanceSheet": 15585.34 });
+    expect(m.investments).toBe(15585.34);
+  });
+
+  it("still reads investments of zero where no other label is filed", () => {
+    expect(extract({ "Investments__BalanceSheet": 0 }).investments).toBe(0);
+  });
+});
