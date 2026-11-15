@@ -114,12 +114,37 @@ function isValidValue(v: unknown): v is number {
 }
 
 /**
+ * One alias's value in a statement, or null.
+ *
+ * The bare key (no statement suffix) is a fallback for a line the parser could
+ * not place in a statement. The parser also keeps a placed line under its bare
+ * label, so a bare key whose label another statement files is that statement's
+ * line, not this one's: read as a fallback, the cash flow's "Investment Income"
+ * adjustment stood in for the P&L's at every financial in the library, and its
+ * "Investments" (purchases in the year) for the balance-sheet investments of
+ * SBI, Bajaj Finance and Muthoot Finance. (Its provisions add-back is now read
+ * from the cash flow on purpose: mappingSpec provisionsCashFlowAddBack.)
+ */
+function valueIn(
+  raw: Record<string, number | null | undefined>,
+  key: string,
+  statement: string,
+): number | null {
+  const val = raw[`${key}__${statement}`];
+  if (isValidValue(val)) return val;
+  const filedElsewhere = STATEMENT_KINDS.some((stmt) => stmt !== statement && raw[`${key}__${stmt}`] !== undefined);
+  const baseVal = raw[key];
+  return !filedElsewhere && isValidValue(baseVal) ? baseVal : null;
+}
+
+/**
  * Pick the first valid value from a list of label aliases.
  *
  * - When `statement` is supplied, only that statement is tried for each alias
- *   (then the bare key as a final fallback). This prevents cross-statement
- *   leakage, where a bank PL "Other Income" miss would silently fall back to
- *   a BalanceSheet value with the same string label (review C2).
+ *   (then the bare key, if no other statement files the label: valueIn). This
+ *   prevents cross-statement leakage, where a bank PL "Other Income" miss
+ *   would silently fall back to a BalanceSheet value with the same string
+ *   label (review C2).
  * - When `statement` is omitted, all statements are tried in BS → PL → CF order.
  */
 function pickValue(
@@ -129,13 +154,13 @@ function pickValue(
 ): number | null {
   for (const key of keys) {
     if (statement) {
-      const val = raw[`${key}__${statement}`];
+      const val = valueIn(raw, key, statement);
+      if (val != null) return val;
+      continue;
+    }
+    for (const stmt of STATEMENT_KINDS) {
+      const val = raw[`${key}__${stmt}`];
       if (isValidValue(val)) return val;
-    } else {
-      for (const stmt of STATEMENT_KINDS) {
-        const val = raw[`${key}__${stmt}`];
-        if (isValidValue(val)) return val;
-      }
     }
     // Bare key (no statement suffix) as final fallback. Mapping spec keys
     // sometimes appear without a statement when the parser cannot classify.
@@ -159,9 +184,9 @@ function pickWithCurrentTwin(
   statement: string,
 ): number | null {
   for (const key of keys) {
-    const filed = [raw[`${key}__${statement}`], raw[key]].find(isValidValue);
-    if (filed === undefined) continue;
-    const current = [raw[`${key} - Current Assets__${statement}`], raw[`${key} - Current Assets`]].find(isValidValue);
+    const filed = valueIn(raw, key, statement);
+    if (filed == null) continue;
+    const current = valueIn(raw, `${key} - Current Assets`, statement);
     return filed + (current ?? 0);
   }
   return null;
@@ -266,14 +291,16 @@ export function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
 
   // P&L
   const interestEarned     = pickValue(raw, pl.interestIncome,      "ProfitLoss");
-  const interestAlias = pl.interestIncome.find((key) => isValidValue(raw[`${key}__ProfitLoss`]) || isValidValue(raw[key]));
+  const interestAlias = pl.interestIncome.find((key) => valueIn(raw, key, "ProfitLoss") != null);
   const interestIncomeBasis = interestAlias == null
     ? null
     : (pl.revenueTotalAliases as readonly string[]).includes(interestAlias) ? "revenue-total" as const : "interest-line" as const;
   const interestExpended   = pickValue(raw, pl.interestExpended,    "ProfitLoss");
   const otherIncome        = pickValue(raw, pl.otherIncome,         "ProfitLoss");
   let   operatingExpenses  = pickValue(raw, pl.operatingExpenses,   "ProfitLoss");
-  const provisions         = pickValue(raw, pl.provisions,          "ProfitLoss");
+  const provisions         = pickValue(raw, pl.provisions,          "ProfitLoss")
+    ?? pickValue(raw, pl.provisionsCashFlowAddBack, "CashFlow")
+    ?? pickValue(raw, pl.provisionComponents, "ProfitLoss");
   const pat                = pickValue(raw, pl.profitAfterTax,      "ProfitLoss");
   const pbt                = pickValue(raw, pl.profitBeforeTax,     "ProfitLoss");
   const taxExpense         = pickValue(raw, pl.taxExpense,          "ProfitLoss");
