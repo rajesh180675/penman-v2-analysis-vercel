@@ -308,6 +308,42 @@ describe("evaluateReconciliationResiduals", () => {
     expect(summary.status).toBe("degraded");
   });
 
+  // The utility twin of the telecom readiness check above. It had no case: forced
+  // to confirm, it left every spec green.
+  const utilityYear = (evidence: { regulatoryDeferrals: boolean }) => {
+    const base = mkPeriod("2025-03-31");
+    const line = (key: string, value: number) => [{ statement: "BalanceSheet" as const, key, value, matchType: "exact_composite" as const }];
+    return mkPeriod("2025-03-31", {
+      bs: { ...base.bs, OA_PPE: 700, OA_CWIP: 120, OA_UtilityRegulatoryDeferrals: evidence.regulatoryDeferrals ? 80 : 0 },
+      trace: {
+        ...base.trace,
+        "BS.PPE": line("Property, Plant and Equipment", 700),
+        "BS.OA.CWIP": line("Capital Work-in-Progress", 120),
+        ...(evidence.regulatoryDeferrals ? { "BS.OA.UtilityRegulatoryDeferrals": line("Regulatory Deferral Account Debit Balances", 80) } : {}),
+      },
+    });
+  };
+
+  it("confirms utility sector-native readiness when rate base, CWIP and regulatory deferrals are trace-backed", () => {
+    const summary = evaluateReconciliationResiduals({
+      recastData: [mkPeriod("2024-03-31"), utilityYear({ regulatoryDeferrals: true })],
+      config: DEFAULT_CONFIG,
+      scopeClassification: "detected-utility-unmodelled",
+    });
+    expect(summary.checks.find((c) => c.key === "utility-sector-native-readiness")?.status).toBe("confirmed");
+  });
+
+  it("keeps utility sector-native readiness degraded when regulatory-deferral evidence is absent", () => {
+    const summary = evaluateReconciliationResiduals({
+      recastData: [mkPeriod("2024-03-31"), utilityYear({ regulatoryDeferrals: false })],
+      config: DEFAULT_CONFIG,
+      scopeClassification: "detected-utility-unmodelled",
+    });
+    const check = summary.checks.find((c) => c.key === "utility-sector-native-readiness");
+    expect(check?.status).toBe("degraded");
+    expect(check?.detail).toContain("missing regulatory-deferral evidence");
+  });
+
   it("includes cash-distribution and share-capital tie-out checks when data is available", () => {
     const current = mkPeriod("2025-03-31", {
       is: {
