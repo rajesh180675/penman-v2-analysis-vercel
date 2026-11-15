@@ -1056,15 +1056,15 @@ describe("evaluateReconciliationResiduals", () => {
     { key: "recast-equity-side-vs-raw", label: "CSE + MI + FO + OL against the filed total equity and liabilities", debug: { rawTotalLiabilitiesAndEquity: 1100 } },
   ]) {
     it(`fails ${key} when ${label} diverge`, () => {
-      const recastDebug = {
+      const tied = {
         rawTotalAssets: 1000,
         rawTotalLiabilitiesAndEquity: 1000,
         rawTotalEquity: 600,
         rawCurrentAssets: 400,
         rawNonCurrentAssets: 600,
         explicitOL: 250,
-        ...debug,
       };
+      const recastDebug = { ...tied, ...debug };
       const summary = evaluateReconciliationResiduals({
         recastData: [
           mkPeriod("2024-03-31"),
