@@ -256,6 +256,29 @@ describe("Industrial ForecastState", () => {
     }
   });
 
+  it("names each malformed input it fails closed on, one at a time", () => {
+    // None of these input checks had a case: each could be forced to pass with
+    // every spec green.
+    const request = makeRequest();
+    const cases: { readonly code: string; readonly input: IndustrialForecastRequest }[] = [
+      { code: "anchor.finite.revenue", input: { ...request, anchor: { ...ANCHOR, revenue: 0 } } },
+      { code: "anchor.shares.end-positive", input: { ...request, anchor: { ...ANCHOR, shares: { ...ANCHOR.shares, endPeriod: 0 } } } },
+      { code: "anchor.shares.diluted-positive", input: { ...request, anchor: { ...ANCHOR, shares: { ...ANCHOR.shares, diluted: 0 } } } },
+      { code: "drivers.non-empty", input: { ...request, drivers: [] } },
+      { code: "request.case-id", input: { ...request, caseId: " " } },
+      { code: "request.analysis-window-id", input: { ...request, analysisWindowId: "" } },
+      { code: "probability.status", input: { ...request, probabilityStatus: "guessed" as IndustrialForecastRequest["probabilityStatus"] } },
+      { code: "probability.unassigned-null", input: { ...request, probabilityStatus: "not-assigned", probability: 0.5 } },
+      { code: "probability.assigned-finite", input: { ...request, probabilityStatus: "heuristic", probability: 1.5, probabilityRationale: "base case most likely" } },
+      { code: "probability.calibrated-evidence", input: { ...request, probabilityStatus: "calibrated", probability: 0.5, probabilityEvidenceRefs: [] } },
+    ];
+    for (const { code, input } of cases) {
+      const result = buildIndustrialForecast(input);
+      expect(result.status, code).toBe("blocked");
+      if (result.status === "blocked") expect(result.reasonCodes, code).toContain(code);
+    }
+  });
+
   it("blocks a missing required driver instead of inheriting a historical value", () => {
     const request = makeRequest();
     const missing = { ...request.drivers[0] } as unknown as Record<string, unknown>;
