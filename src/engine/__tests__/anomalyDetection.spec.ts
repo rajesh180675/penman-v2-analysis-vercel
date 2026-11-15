@@ -782,3 +782,52 @@ describe("computeContaminationTier", () => {
     expect(r.primary_anchor).toBe("RE_T_MINUS_1_GROWN");
   });
 });
+
+// Mutation wave 7: every detector above is tested on its own, but only the
+// dirty-surplus detector's flags were checked through runAnomalyDetection. A
+// pipeline that dropped any other detector's array from the terminal set (and
+// with it from the contamination tier) left every spec green. Each case fires
+// one detector in the terminal period, on that detector's own fixture, and
+// requires its flag in the pipeline's terminal flags.
+describe("runAnomalyDetection carries every detector's terminal flags", () => {
+  const terminal = (bundle: ReturnType<typeof runAnomalyDetection>) => bundle.terminalFlags.map((f) => f.label);
+
+  it("dividend discrepancy", () => {
+    const periods = makeCleanSeries(3);
+    periods[2]!.bs.CSE = periods[1]!.bs.CSE + 1000;
+    expect(terminal(runAnomalyDetection(periods, makeConfig()))).toContain("CAPITAL_TRANSACTION_LIKELY");
+  });
+
+  it("metric step changes", () => {
+    const periods = makeCleanSeries(8);
+    periods[7]!.ratios!.PM = 0.95;
+    expect(terminal(runAnomalyDetection(periods, makeConfig()))).toContain("PM_OUTLIER_CRITICAL");
+  });
+
+  it("component decline", () => {
+    const periods = makeCleanSeries(3);
+    periods[2]!.bs.OA = periods[1]!.bs.OA * 0.5;
+    expect(terminal(runAnomalyDetection(periods, makeConfig()))).toContain("LARGE_OA_DECLINE");
+  });
+
+  it("reclassification", () => {
+    const periods = makeCleanSeries(3);
+    periods[2]!.bs.OA = periods[1]!.bs.OA - 300;
+    periods[2]!.bs.FA = periods[1]!.bs.FA + 300;
+    periods[2]!.cf.FCF_accounting += 300;
+    expect(terminal(runAnomalyDetection(periods, makeConfig()))).toContain("POTENTIAL_RECLASSIFICATION");
+  });
+
+  it("payout anomaly", () => {
+    const periods = makeCleanSeries(3);
+    periods[2]!.cf.DividendPaid = 1.3 * periods[2]!.is.CNI;
+    expect(terminal(runAnomalyDetection(periods, makeConfig()))).toContain("EXCESS_PAYOUT");
+  });
+
+  it("the terminal residual-income anchor", () => {
+    // ITC FY25-shaped residual earnings, as in validateTerminalREAnchor above.
+    const reSeries = [[9000, 60000], [9500, 62000], [10200, 65000], [11000, 70000], [15000, 74000], [23989, 74500]]
+      .map(([RE, openingCSE], i) => ({ period: `${2019 + i}-03-31`, RE: RE!, ReOI: 0, openingCSE: openingCSE! }));
+    expect(terminal(runAnomalyDetection(makeCleanSeries(6), makeConfig(), reSeries))).toContain("TERMINAL_RE_ANOMALY");
+  });
+});
