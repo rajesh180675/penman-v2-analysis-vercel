@@ -51,6 +51,21 @@ export function pushTrace(trace: TraceMap | undefined, line: string | undefined,
   trace[line].push(entry);
 }
 
+const STATEMENTS = ["BalanceSheet", "ProfitLoss", "CashFlow"] as const;
+
+/**
+ * Whether a statement other than `stmt` files `label`. The parser keeps every
+ * line it places in a statement under its bare label too, so a bare key whose
+ * label another statement files is that statement's line: read for the
+ * balance sheet, the cash flow's working-capital changes stood in for
+ * inventories and trade payables (DMart FY2012-15 inventories -72.81 to
+ * -161.28, Titan FY2011 -652.70), and for the P&L its "Investment Income"
+ * adjustment for DMart's FY2016-17 finance income.
+ */
+function filedInAnotherStatement(rv: RawPeriodData["raw_metric_values"], label: string, stmt: (typeof STATEMENTS)[number]): boolean {
+  return STATEMENTS.some((other) => other !== stmt && rv[`${label}__${other}`] !== undefined);
+}
+
 function pickOneWithSource(data: RawPeriodData, key: string, stmt?: "BalanceSheet" | "ProfitLoss" | "CashFlow"): PickResultWithSource | null {
   const rv = data.raw_metric_values;
   if (stmt) {
@@ -61,7 +76,7 @@ function pickOneWithSource(data: RawPeriodData, key: string, stmt?: "BalanceShee
     }
   }
   const base = rv[key];
-  if (base != null && Number.isFinite(base)) {
+  if (base != null && Number.isFinite(base) && !(stmt && filedInAnotherStatement(rv, key, stmt))) {
     return { value: base, key, statement: "Fallback", matchType: "exact_base", sourceId: key };
   }
 
@@ -77,6 +92,8 @@ function pickOneWithSource(data: RawPeriodData, key: string, stmt?: "BalanceShee
     const b = i >= 0 ? k.slice(0, i) : k;
     const st = i >= 0 ? (k.slice(i + 2) as "BalanceSheet" | "ProfitLoss" | "CashFlow") : undefined;
     if (norm(b) !== nk) continue;
+    // Asked for a statement, only its own lines and labels no statement files.
+    if (stmt && (st !== undefined ? st !== stmt : filedInAnotherStatement(rv, b, stmt))) continue;
     const p = stmt && st === stmt ? 10 : st === "BalanceSheet" ? 3 : st === "ProfitLoss" ? 2 : st === "CashFlow" ? 1 : 0;
     if (p > bestP) {
       bestP = p;

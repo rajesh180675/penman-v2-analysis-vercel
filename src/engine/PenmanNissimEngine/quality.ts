@@ -96,8 +96,10 @@ export function computeQuality(cur: RecastPeriod, prev: RecastPeriod, data: RawP
   const beneish_mscore = -4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi + 0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi;
 
   const wc = cur.bs.CurrentAssets - cur.bs.CurrentLiabilities;
-  const re1 = valBS(data, ["Unappropriated Profits Carried Forward"]);
-  const re2 = valBS(data, ["Unappropriated Profits Brought Forward"]);
+  // Retained earnings as Capitaline files them: the P&L appropriation
+  // account's closing and opening surplus, not a balance-sheet line.
+  const re1 = valPL(data, ["Unappropriated Profits Carried Forward"]);
+  const re2 = valPL(data, ["Unappropriated Profits Brought Forward"]);
   const re3 = valBS(data, ["Other Equity"]);
   const reProxy = re1 || re2 || re3;
   const reProxyLowConfidence = reProxy !== 0 && re1 === 0 && re2 === 0;
