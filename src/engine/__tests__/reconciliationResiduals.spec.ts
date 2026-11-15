@@ -1049,6 +1049,43 @@ describe("evaluateReconciliationResiduals", () => {
     expect(summary.status).toBe("failed");
   });
 
+  // The two other recast-vs-raw ties, each breached alone. Neither had a test,
+  // and switching either off left every spec green.
+  for (const { key, debug, label } of [
+    { key: "external-equity-bridge", label: "recast CSE + MI against the filed total equity", debug: { rawTotalEquity: 660 } },
+    { key: "recast-equity-side-vs-raw", label: "CSE + MI + FO + OL against the filed total equity and liabilities", debug: { rawTotalLiabilitiesAndEquity: 1100 } },
+  ]) {
+    it(`fails ${key} when ${label} diverge`, () => {
+      const tied = {
+        rawTotalAssets: 1000,
+        rawTotalLiabilitiesAndEquity: 1000,
+        rawTotalEquity: 600,
+        rawCurrentAssets: 400,
+        rawNonCurrentAssets: 600,
+        explicitOL: 250,
+      };
+      const recastDebug = { ...tied, ...debug };
+      const summary = evaluateReconciliationResiduals({
+        recastData: [
+          mkPeriod("2024-03-31"),
+          mkPeriod("2025-03-31", {
+            recastDebug,
+            trace: {
+              ...mkPeriod("2025-03-31").trace,
+              "BS.FA.CashBank": [
+                { statement: "BalanceSheet", key: "Cash and Cash Equivalents", value: 160, matchType: "exact_base" },
+              ],
+            },
+          }),
+        ],
+        config: DEFAULT_CONFIG,
+      });
+      const failedKeys = summary.checks.filter((c) => c.status === "failed").map((c) => c.key);
+      expect(failedKeys).toEqual([key]);
+      expect(summary.status).toBe("failed");
+    });
+  }
+
   it("skips recast-ta-vs-raw honestly when a reported asset subtotal is absent", () => {
     // When either subtotal is missing the check cannot run — it must be ABSENT,
     // not silently 'confirmed'. This is the honesty guard: a company that omits

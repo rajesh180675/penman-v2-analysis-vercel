@@ -238,6 +238,24 @@ describe("Industrial ForecastState", () => {
     }
   });
 
+  it("names each terminal condition it fails closed on, broken one at a time", () => {
+    // Each case keeps growth = reinvestment × ROIC and every other condition
+    // true, so the named check alone can block it. The case above breaks the
+    // kw spread together with other conditions, so it stayed green with the
+    // reinvestment, ROIC and ke checks switched off.
+    const cases: { readonly code: string; readonly terminal: IndustrialTerminalAssumptions }[] = [
+      { code: "terminal.reinvestment-bound", terminal: { ...BASE_TERMINAL, roic: 0.02, reinvestmentRate: 1.5 } },
+      { code: "terminal.roic-positive", terminal: { ...BASE_TERMINAL, growth: 0, roic: -0.05, reinvestmentRate: 0 } },
+      { code: "terminal.ke-growth-spread", terminal: { ...BASE_TERMINAL, ke: 0.031 } },
+      { code: "terminal.minimum-spread-positive", terminal: { ...BASE_TERMINAL, minimumDiscountGrowthSpread: 0 } },
+    ];
+    for (const { code, terminal } of cases) {
+      const result = buildIndustrialForecast(makeRequest({ terminal }));
+      expect(result.status, code).toBe("blocked");
+      if (result.status === "blocked") expect(result.reasonCodes, code).toContain(code);
+    }
+  });
+
   it("blocks a missing required driver instead of inheriting a historical value", () => {
     const request = makeRequest();
     const missing = { ...request.drivers[0] } as unknown as Record<string, unknown>;
