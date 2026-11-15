@@ -56,9 +56,15 @@ function candidateRawKey(
     const composite = exact.get(`${alias}__${statement}`.toLocaleLowerCase());
     if (composite && Number.isFinite(raw.raw_metric_values[composite])) return composite;
   }
+  // A bare label is a line the parser could not place, unless another
+  // statement files it: the parser keeps every placed line under its bare label
+  // too, and the cash flow's working-capital changes stood in for balance-sheet
+  // inventories and trade payables where the balance sheet filed none.
+  const otherStatements = (["BalanceSheet", "ProfitLoss", "CashFlow"] as const).filter((s) => s !== statement);
   for (const alias of aliases) {
     const base = exact.get(alias.toLocaleLowerCase());
-    if (base && Number.isFinite(raw.raw_metric_values[base])) return base;
+    const filedElsewhere = otherStatements.some((s) => exact.has(`${alias}__${s}`.toLocaleLowerCase()));
+    if (base && !filedElsewhere && Number.isFinite(raw.raw_metric_values[base])) return base;
   }
   return null;
 }
