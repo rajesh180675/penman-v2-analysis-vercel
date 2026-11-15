@@ -181,6 +181,20 @@ describe.sequential("auditCompanyRun", () => {
     expect(result.rigor.assumptionProvenanceStatus).toMatch(/^(defensible|mixed|prior-dependent)$/);
   }, 240_000);
 
+  it("classes a production-ready row by the checkpoints it ships with", async () => {
+    // The outcome was derived before the run's market and source evidence were
+    // attached, so the two checkpoints that read them always failed there:
+    // every production-ready row came out VALUATION_ELIGIBLE_GUARDED while the
+    // checkpoint list on the same row passed (12 of 33 in the 2026-11-15
+    // scorecard, beside "PRODUCTION_READY: 0"). Whatever the market fetch
+    // returns, the outcome must agree with the list.
+    const result = await runAudit("ASIANPAINT");
+
+    expect(result.rigor.currentLevel).toBe("production-ready");
+    expect(result.flags).toEqual([]);
+    expect(result.outcome).toBe(result.productionReady.status === "pass" ? "PRODUCTION_READY" : "VALUATION_ELIGIBLE_GUARDED");
+  }, 240_000);
+
   // The harness runs the app's own run (loadCompanyRun → the executor), so CI
   // certifies the rung the app shows. These three were split while it
   // reimplemented the run: each pins the step it had missed.
