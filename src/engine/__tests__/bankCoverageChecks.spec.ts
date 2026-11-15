@@ -1,8 +1,9 @@
 /**
- * The bank reconciliation's coverage and sign checks, each pinned on its own.
- * Switching any of them off (coverage gaps never breached, a non-positive
- * interest income confirmed) left every spec green: they were exercised only
- * through the library's exports, where none fires.
+ * The bank reconciliation's coverage, sign and subset checks, each pinned on
+ * its own. Switching any of them off (coverage gaps never breached, a
+ * non-positive interest income confirmed, a subset larger than its total
+ * confirmed) left every spec green: they were exercised only through the
+ * library's exports, where none fires.
  */
 import { describe, expect, it } from "vitest";
 import { evaluateBankReconciliationResiduals } from "../bankReconciliationResiduals";
@@ -53,5 +54,37 @@ describe("the NII sign bridge", () => {
 
   it("confirms interest paid within interest earned", () => {
     expect(check("nii-sign-bridge", metric({ interestEarned: 100, interestExpended: -60 }))?.status).toBe("confirmed");
+  });
+});
+
+describe("subsets that cannot exceed their total", () => {
+  it("fails CASA above 120% of deposits", () => {
+    expect(check("casa-deposits-sanity", metric({ casaRatio: 1.3, deposits: 1000 }))?.status).toBe("failed");
+  });
+
+  it("confirms CASA within deposits", () => {
+    expect(check("casa-deposits-sanity", metric({ casaRatio: 0.42, deposits: 1000 }))?.status).toBe("confirmed");
+  });
+
+  it("fails an NBFC debt mix whose components exceed total borrowings by over 20%", () => {
+    const m = metric({ borrowings: 1000, nonConvertibleDebentures: 700, termLoansFromBanks: 600 });
+    expect(check("debt-mix-coverage", m, "nbfc")?.status).toBe("failed");
+  });
+
+  it("confirms an NBFC debt mix within total borrowings", () => {
+    const m = metric({ borrowings: 1000, nonConvertibleDebentures: 500, termLoansFromBanks: 300 });
+    expect(check("debt-mix-coverage", m, "nbfc")?.status).toBe("confirmed");
+  });
+});
+
+describe("an insurer's combined ratio", () => {
+  const combined = (combinedRatio: number) =>
+    evaluateBankReconciliationResiduals({ bankMetrics: [metric({ combinedRatio })], subtype: "insurance" })
+      .checks.find((c) => c.key === "insurance-combined-ratio")?.status;
+
+  it("fails above 150%, degrades above 120%, and confirms below", () => {
+    expect(combined(1.6)).toBe("failed");
+    expect(combined(1.3)).toBe("degraded");
+    expect(combined(0.95)).toBe("confirmed");
   });
 });
