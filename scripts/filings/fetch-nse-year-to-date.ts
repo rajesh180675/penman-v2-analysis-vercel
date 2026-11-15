@@ -19,7 +19,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { extractAnnualHeadline, parseXbrlInstance, selectAnnualContexts, type AnnualHeadline } from "../../src/engine/filings/xbrlInstance";
-import { curl, INTEGRATED_REFERER, integratedListingUrl, isoDate, isXbrl, sleep, type NseIntegratedRow } from "./nse";
+import { archiveName, curl, INTEGRATED_REFERER, integratedListingUrl, isoDate, isXbrl, recordsByArchiveName, sleep, type NseIntegratedRow } from "./nse";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "../..");
 const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split("=")[1] ?? null;
@@ -62,6 +62,15 @@ for (const symbol of symbols) {
     continue;
   }
   const quarters = listed.filter((r) => r.xbrl && /\.xml$/i.test(r.xbrl) && !/-MAR-/i.test(r.qe_Date));
+  const ledger = join(dir, "year-to-date.json");
+  const held = recordsByArchiveName(existsSync(ledger) ? (JSON.parse(readFileSync(ledger, "utf8")) as { records: AsFiledYearToDateRecord[] }).records : []);
+  // NSE answers a symbol it does not know (one it has renamed, say) with an
+  // empty listing, not an error: filings on record do not stop being filed.
+  if (!quarters.length && held.size) {
+    console.log(`${symbol}: the listing names no filing and the ledger holds ${held.size}; year-to-date.json left as it was`);
+    unlisted.push(symbol);
+    continue;
+  }
   // A company without subsidiaries (e.g. Nestlé India) files standalone only.
   const hasConsolidated = quarters.some((r) => r.consolidated === "Consolidated");
   const records: AsFiledYearToDateRecord[] = [];
@@ -71,7 +80,13 @@ for (const symbol of symbols) {
     if (!months) continue;
     const endYear = Number(periodEnd.slice(0, 4)) + 1;
     const fiscalYearEnd = `${endYear}-03-31`;
-    const file = join(rawDir, row.xbrl!.split("/").pop()!);
+    const file = join(rawDir, archiveName(row.xbrl!));
+    // A filing that cannot be read now keeps the record the ledger already holds.
+    const keepHeld = () => {
+      const record = held.get(archiveName(row.xbrl!));
+      if (record) records.push(record);
+      return record ? "; kept the record already held" : "";
+    };
     let xml: string;
     if (existsSync(file)) {
       xml = readFileSync(file, "utf8");
@@ -80,13 +95,13 @@ for (const symbol of symbols) {
       try {
         xml = curl(row.xbrl!, INTEGRATED_REFERER);
       } catch (error) {
-        console.log(`${symbol} ${periodEnd}: download failed — ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`);
+        console.log(`${symbol} ${periodEnd}: download failed — ${error instanceof Error ? error.message.split("\n")[0] : String(error)}${keepHeld()}`);
         continue;
       }
       if (isXbrl(xml)) writeFileSync(file, xml);
     }
     if (!isXbrl(xml)) {
-      console.log(`${symbol} ${periodEnd}: not an XBRL instance (blocked or moved); skipped`);
+      console.log(`${symbol} ${periodEnd}: not an XBRL instance (blocked or moved); skipped${keepHeld()}`);
       continue;
     }
     const instance = parseXbrlInstance(xml);
@@ -112,7 +127,7 @@ for (const symbol of symbols) {
     });
   }
   records.sort((a, b) => a.periodEnd.localeCompare(b.periodEnd) || a.filingDate.localeCompare(b.filingDate));
-  writeFileSync(join(dir, "year-to-date.json"), JSON.stringify({ symbol, source: "NSE integrated-filing-results (June, September and December quarters), year to date", records }, null, 1) + "\n");
+  writeFileSync(ledger, JSON.stringify({ symbol, source: "NSE integrated-filing-results (June, September and December quarters), year to date", records }, null, 1) + "\n");
   console.log(`${symbol}: ${records.length} year-to-date filings (${[...new Set(records.map((r) => r.periodEnd))].join(", ")})`);
   sleep(delayMs);
 }
