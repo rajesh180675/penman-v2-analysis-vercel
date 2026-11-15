@@ -5,11 +5,13 @@ import { CroreShares } from "../../types/units";
 import {
   adaptForecastCaseToLegacyValuation,
   buildIndustrialForecast,
+  validateIndustrialProjectedStates,
   validateIndustrialScenarioOrdering,
   type IndustrialForecastAnchor,
   type IndustrialForecastCase,
   type IndustrialForecastRequest,
   type IndustrialForecastYearDrivers,
+  type IndustrialProjectedState,
   type IndustrialScenarioKey,
   type IndustrialTerminalAssumptions,
 } from "..";
@@ -276,6 +278,90 @@ describe("Industrial ForecastState", () => {
       const result = buildIndustrialForecast(input);
       expect(result.status, code).toBe("blocked");
       if (result.status === "blocked") expect(result.reasonCodes, code).toContain(code);
+    }
+  });
+
+  it("names each malformed driver, anchor and terminal input it fails closed on, one at a time", () => {
+    // Mutation wave 5: none of these input checks had a case.
+    const request = makeRequest();
+    const withDriver = (edit: Partial<IndustrialForecastYearDrivers>): IndustrialForecastRequest =>
+      ({ ...request, drivers: [{ ...request.drivers[0]!, ...edit }, ...request.drivers.slice(1)] });
+    const cases: { readonly code: string; readonly input: IndustrialForecastRequest }[] = [
+      { code: "driver.year-offset.1", input: withDriver({ yearOffset: 2 }) },
+      { code: "driver.revenue-growth-bound.1", input: withDriver({ revenueGrowth: 6 }) },
+      { code: "driver.operating-margin-bound.1", input: withDriver({ operatingMargin: 1.5 }) },
+      { code: "driver.asset-turnover-positive.1", input: withDriver({ assetTurnover: 0 }) },
+      { code: "driver.tax-rate-bound.1", input: withDriver({ taxRate: 1.5 }) },
+      { code: "driver.ratio-bound.1.depreciationRate", input: withDriver({ depreciationRate: 1.5 }) },
+      { code: "driver.nonnegative.1.debtIssuance", input: withDriver({ debtIssuance: -1 }) },
+      { code: "anchor.present", input: { ...request, anchor: null as unknown as IndustrialForecastAnchor } },
+      { code: "anchor.finite.cash", input: { ...request, anchor: { ...ANCHOR, balanceSheet: { ...ANCHOR.balanceSheet, cash: Number.NaN } } } },
+      { code: "terminal.finite", input: { ...request, terminal: { ...BASE_TERMINAL, growth: Number.NaN } } },
+    ];
+    for (const { code, input } of cases) {
+      const result = buildIndustrialForecast(input);
+      expect(result.status, code).toBe("blocked");
+      if (result.status === "blocked") expect(result.reasonCodes, code).toContain(code);
+    }
+  });
+
+  it("names each broken projected-statement identity, one at a time", () => {
+    // The engine builds states that satisfy every identity, so no end-to-end
+    // run can notice a validator check switched off; only a broken state can.
+    type Mutable<T> = { -readonly [K in keyof T]: Mutable<T[K]> };
+    const computed = requireComputed(makeRequest());
+    const { projected, terminal } = computed;
+    expect(validateIndustrialProjectedStates(ANCHOR, projected, terminal).status).toBe("passed");
+
+    const breakFirst = (edit: (state: Mutable<IndustrialProjectedState>) => void) => {
+      const states = structuredClone(projected) as Mutable<IndustrialProjectedState>[];
+      edit(states[0]!);
+      return validateIndustrialProjectedStates(ANCHOR, states, terminal);
+    };
+    const cases: readonly (readonly [string, (state: Mutable<IndustrialProjectedState>) => void])[] = [
+      ["state.finite.", (s) => { s.cashFlow.ownerEarnings = Number.NaN; }],
+      ["state.nonnegative-balances.", (s) => { s.balanceSheet.financialAssets.cash = -1; }],
+      ["state.balance-sheet.", (s) => { s.balanceSheet.totalAssets += 10; }],
+      ["state.cash-roll-forward.", (s) => { s.cashFlow.endingCash += 10; }],
+      ["state.cash-flow-sum.", (s) => { s.cashFlow.netCashMovement += 10; }],
+      ["state.debt-roll-forward.", (s) => { s.balanceSheet.financialObligations.debt += 10; }],
+      ["state.lease-roll-forward.", (s) => { s.balanceSheet.financialObligations.leaseLiabilities += 10; }],
+      ["state.other-financing-roll-forward.", (s) => { s.balanceSheet.financialObligations.other += 10; }],
+      ["state.retained-earnings.", (s) => { s.balanceSheet.commonEquity.retainedEarnings += 10; }],
+      ["state.contributed-capital.", (s) => { s.balanceSheet.commonEquity.contributedCapital += 10; }],
+      ["state.accumulated-oci.", (s) => { s.balanceSheet.commonEquity.accumulatedOci += 10; }],
+      ["state.common-equity-components.", (s) => { s.balanceSheet.commonEquity.total += 10; }],
+      ["state.common-equity-roll-forward.", (s) => { s.balanceSheet.commonEquity.total += 10; }],
+      ["state.minority-roll-forward.", (s) => { s.balanceSheet.minorityInterest += 10; }],
+      ["state.noa-definition.", (s) => { s.diagnostics.noaDefinitionResidual = 10; }],
+      ["state.nfo-definition.", (s) => { s.diagnostics.nfoDefinitionResidual = 10; }],
+      ["state.noa-financing-bridge.", (s) => { s.diagnostics.noaFinancingBridgeResidual = 10; }],
+      ["state.revenue-growth.", (s) => { s.incomeStatement.revenue += 10; }],
+      ["state.operating-margin.", (s) => { s.incomeStatement.operatingProfitPretax += 10; }],
+      ["state.asset-turnover.", (s) => { s.balanceSheet.noa += 10; }],
+      ["state.fcff-reinvestment.", (s) => { s.cashFlow.fcff += 10; }],
+      ["state.debt-repayment-capacity.", (s) => { s.assumptions.debtRepayment = 10_000; }],
+      ["state.lease-repayment-capacity.", (s) => { s.assumptions.leasePrincipalRepayment = 10_000; }],
+      ["state.share-repurchase-capacity.", (s) => { s.assumptions.sharesRepurchased = 10_000; }],
+      ["state.share-roll-forward.", (s) => { s.shares.endPeriod += 10; }],
+      ["state.oci-asset-bridge.", (s) => { s.assumptions.financialAssetFairValueChange += 10; }],
+    ];
+    for (const [prefix, edit] of cases) {
+      const report = breakFirst(edit);
+      expect(report.blockingCheckIds.some((id) => id.startsWith(prefix)), prefix).toBe(true);
+    }
+  });
+
+  it("names each terminal diagnostic it fails closed on, one at a time", () => {
+    const { projected, terminal } = requireComputed(makeRequest());
+    const cases = [
+      ["terminal.diagnostic-reinvestment-bound", { ...terminal, reinvestmentRate: 1.5 }],
+      ["terminal.diagnostic-ke-spread", { ...terminal, keSpread: terminal.minimumRequiredSpread - 0.01 }],
+      ["terminal.diagnostic-kw-spread", { ...terminal, kwSpread: terminal.minimumRequiredSpread - 0.01 }],
+      ["terminal.diagnostic-growth-identity", { ...terminal, consistencyResidual: 0.01 }],
+    ] as const;
+    for (const [code, diagnostic] of cases) {
+      expect(validateIndustrialProjectedStates(ANCHOR, projected, diagnostic).blockingCheckIds, code).toContain(code);
     }
   });
 
