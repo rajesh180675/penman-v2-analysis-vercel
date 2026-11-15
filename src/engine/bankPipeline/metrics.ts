@@ -14,6 +14,17 @@ export interface BankPeriodMetrics {
   loanLines?: number | null | undefined;
   deposits: number | null;       // Core funding
   investments: number | null;    // SLR + treasury
+  /**
+   * The investments schedule's own total where no investments line is filed:
+   * Capitaline's bank template closes the schedule on a row labelled only
+   * "Total" (HDFC Bank FY2025 1,186,472.89, SBI 2,205,601.11), and HDFC Bank,
+   * ICICI, Kotak and SBI file no "Investments" line. A generic "Total" is
+   * read as this only beside the schedule's component lines and where it is at
+   * least their sum. Used for a bank's NIM only (ratios.ts), not as
+   * `investments`: in NBFCs' pre-Ind AS years the same row is another
+   * schedule's total (Shriram FY2011: 3,254 against components of 0).
+   */
+  investmentScheduleTotal?: number | null | undefined;
   borrowings: number | null;     // Non-deposit funding
   cashAndBalanceWithRBI: number | null;
 
@@ -241,6 +252,15 @@ export function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
   const advances           = pickWithCurrentTwin(raw, bs.advances,  "BalanceSheet");
   const deposits           = pickValue(raw, bs.deposits,            "BalanceSheet");
   const investments        = pickValue(raw, bs.investments,         "BalanceSheet");
+  const investmentComponents = sumLenient(
+    sumLenient(pickValue(raw, bs.investmentsGovernment, "BalanceSheet"), pickValue(raw, bs.investmentsBonds, "BalanceSheet")),
+    pickValue(raw, bs.investmentsOther, "BalanceSheet"),
+  );
+  const scheduleTotal = pickValue(raw, bs.investmentScheduleTotal, "BalanceSheet");
+  const investmentScheduleTotal = investments == null && investmentComponents != null && investmentComponents > 0
+    && scheduleTotal != null && scheduleTotal >= investmentComponents
+    ? scheduleTotal
+    : null;
   // A filed total of exactly 0 beside non-zero long- and short-term
   // borrowings is an export artifact, not zero borrowings: Capitaline's NBFC
   // exports carry an explicit "Borrowings = 0" next to the real lines
@@ -377,6 +397,7 @@ export function extractBankMetrics(period: RawPeriodData): BankPeriodMetrics {
     loanLines,
     deposits,
     investments,
+    investmentScheduleTotal,
     borrowings,
     cashAndBalanceWithRBI,
     interestEarned,
