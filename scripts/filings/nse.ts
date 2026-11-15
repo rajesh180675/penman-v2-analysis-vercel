@@ -9,8 +9,15 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
-export const RESULTS_REFERER = "https://www.nseindia.com/companies-listing/corporate-filings-financial-results";
-export const INTEGRATED_REFERER = "https://www.nseindia.com/companies-listing/corporate-integrated-filing";
+/**
+ * NSE's site. It was www.nseindia.com until November 2026; on 2026-11-15 that
+ * host answered every request with an empty 301 to this one, which curl does
+ * not follow, so every listing read as empty. The listings here name the
+ * archive on nsearchives.nseindia.in.
+ */
+export const NSE_SITE = "https://www.nseindia.in";
+export const RESULTS_REFERER = `${NSE_SITE}/companies-listing/corporate-filings-financial-results`;
+export const INTEGRATED_REFERER = `${NSE_SITE}/companies-listing/corporate-integrated-filing`;
 
 export const sleep = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 
@@ -109,11 +116,11 @@ export interface ListedFiling {
 }
 
 export function annualListingUrl(symbol: string): string {
-  return `https://www.nseindia.com/api/corporates-financial-results?index=equities&symbol=${encodeURIComponent(symbol)}&period=Annual`;
+  return `${NSE_SITE}/api/corporates-financial-results?index=equities&symbol=${encodeURIComponent(symbol)}&period=Annual`;
 }
 
 export function integratedListingUrl(symbol: string): string {
-  return `https://www.nseindia.com/api/integrated-filing-results?index=equities&symbol=${encodeURIComponent(symbol)}&type=Integrated%20Filing-%20Financials`;
+  return `${NSE_SITE}/api/integrated-filing-results?index=equities&symbol=${encodeURIComponent(symbol)}&type=Integrated%20Filing-%20Financials`;
 }
 
 /**

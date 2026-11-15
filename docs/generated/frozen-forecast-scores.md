@@ -26,7 +26,7 @@ Not scored:
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 | Earnings (ROE points) | 16 | 1.9 | 2.0 | +5% | -1.8 | 8 of 16 |
 
-The year in progress, projected from the months filed so far (provisional; months filed differ by company):
+The year in progress, projected from the months filed so far (provisional; 6 months):
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
@@ -41,11 +41,11 @@ The year in progress, projected from the months filed so far (provisional; month
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 | Earnings (ROE points) | 16 | 1.3 | 2.5 | +50% | -4.2 | 10 of 16 |
 
-The year in progress, projected from the months filed so far (provisional; months filed differ by company):
+The year in progress, projected from the months filed so far (provisional; 6 months):
 
 | Metric | n | Model median error | Random-walk median error | Median skill | Mean bias | Beat the random walk |
 |---|---|---|---|---|---|---|
-| Sales (log error, %) | 20 | 10.5 | 19.5 | +46% | -6.2 | 17 of 20 |
+| Sales (log error, %) | 20 | 10.5 | 19.5 | +46% | -6.3 | 17 of 20 |
 | Core margin (points of sales) | 0 | — | — | — | — | 0 of 0 |
 
 ### Frozen 2026-10-11 (13 of 20 forecasts scored)

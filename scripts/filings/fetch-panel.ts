@@ -34,6 +34,7 @@ import {
   isoDate,
   isXbrl,
   listedFilings,
+  NSE_SITE,
   RESULTS_REFERER,
   type ListedFiling,
   type NseIntegratedRow,
@@ -72,7 +73,7 @@ for (let offset = 0; offset < 12; offset++) {
   const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
   const from = `01-${pad(month)}-${year}`;
   const to = `${last}-${pad(month)}-${year}`;
-  const url = `https://www.nseindia.com/api/corporates-financial-results?index=equities&period=Annual&from_date=${from}&to_date=${to}&fo_sec=false`;
+  const url = `${NSE_SITE}/api/corporates-financial-results?index=equities&period=Annual&from_date=${from}&to_date=${to}&fo_sec=false`;
   const text = cached(join(RAW, "listings", `annual-${year}-${pad(month)}.json`), url, RESULTS_REFERER, isJson);
   if (text == null) throw new Error(`The ${from}–${to} listing could not be read; the universe would be incomplete.`);
   rows.push(...(JSON.parse(text) as NseResultRow[]));

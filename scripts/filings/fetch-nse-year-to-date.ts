@@ -46,6 +46,8 @@ export interface AsFiledYearToDateRecord {
 }
 
 const MONTHS_TO: Record<string, number> = { "06": 3, "09": 6, "12": 9 };
+/** Symbols whose listing could not be read: their year-to-date.json is left as it was. */
+const unlisted: string[] = [];
 
 for (const symbol of symbols) {
   const dir = join(FILINGS, symbol);
@@ -56,6 +58,7 @@ for (const symbol of symbols) {
     listed = (JSON.parse(curl(integratedListingUrl(symbol), INTEGRATED_REFERER)) as { data?: NseIntegratedRow[] }).data ?? [];
   } catch (error) {
     console.log(`${symbol}: integrated listing failed — ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`);
+    unlisted.push(symbol);
     continue;
   }
   const quarters = listed.filter((r) => r.xbrl && /\.xml$/i.test(r.xbrl) && !/-MAR-/i.test(r.qe_Date));
@@ -112,4 +115,12 @@ for (const symbol of symbols) {
   writeFileSync(join(dir, "year-to-date.json"), JSON.stringify({ symbol, source: "NSE integrated-filing-results (June, September and December quarters), year to date", records }, null, 1) + "\n");
   console.log(`${symbol}: ${records.length} year-to-date filings (${[...new Set(records.map((r) => r.periodEnd))].join(", ")})`);
   sleep(delayMs);
+}
+
+// No listing read at all is not "nothing new filed": it is the source gone
+// (NSE's host moved in November 2026 and every listing came back empty, with
+// exit 0). Stop here so `filings:refresh` does not rescore on stale figures.
+if (unlisted.length === symbols.length) {
+  console.error(`No listing could be read for any of ${symbols.length} symbols: nothing was refreshed.`);
+  process.exit(1);
 }
