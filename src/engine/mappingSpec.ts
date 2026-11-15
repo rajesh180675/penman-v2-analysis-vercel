@@ -583,7 +583,16 @@ export const CapitalineMappingSpec = {
     provisions: [
       "Provisions and Contingencies",
       "Provision for NPA",
-      "Prov. & W/O (Net)",
+    ],
+    // Capitaline files a lender's loan-loss charge in full only in the cash
+    // flow's add-back: HDFC Bank FY2025's P&L files "Other Provisions and
+    // Write-offs" of -1,520.59 against an add-back of 16,347.73, and Muthoot and
+    // Shriram file no P&L provision line. Where both are filed they agree
+    // (Bajaj Finance FY2025: "Provision for Doubtful Loan / Deposit / Advances"
+    // 7,908.56, add-back 7,966.03; Cholamandalam 2,495.46 and 2,496.10). Read
+    // from the cash flow, after the P&L totals and before their components.
+    provisionsCashFlowAddBack: ["Prov. & W/O (Net)"],
+    provisionComponents: [
       "Other Provisions and Write-offs",
       "Provision for Doubtful Loan / Deposit / Advances",
       "Impairment on Financial Instruments",
