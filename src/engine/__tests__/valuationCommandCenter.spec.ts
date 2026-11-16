@@ -6,6 +6,8 @@ import { DEFAULT_CONFIG, RecastPeriod, Severity } from "../types";
 import { CroreShares, INRAbsolute } from "../types/units";
 import { AnalysisStatusSummary } from "../analysisStatus";
 import { SOTP_PRESETS } from "../sotpValuation";
+import { classifySegmentSector } from "../segmentSOTPBridge";
+import { VALUATION_SECTOR_TEMPLATES } from "../valuationSectorTemplates";
 
 function buildHistorySeries(startDate: string, startPrice: number, count: number) {
   const points: Array<{ date: string; close: number }> = [];
@@ -898,6 +900,45 @@ describe("valuation command center", () => {
     for (const segment of out.sotp!.segments) {
       const preset = presets.find((p) => p.name === segment.name)!;
       expect(segment.segmentKw).toBeCloseTo(base.assumptions.kw + (preset.keAdjustment ?? 0), 12);
+    }
+  });
+
+  it("discounts parsed segments at the base card's kw too", () => {
+    // The library's companies take the parsed-segment path, not a preset: the
+    // rate has to reach that path as well.
+    const data = [
+      mkPeriod(2023, 1000, 180, 130, 520, 760),
+      mkPeriod(2024, 1100, 205, 150, 590, 820),
+      mkPeriod(2025, 1210, 232, 172, 665, 885),
+    ];
+    const years = ["FY2025", "FY2024", "FY2023"];
+    const row = (revenue: number, result: number, assets: number) => ({
+      revenue, interSegmentRevenue: null, result, assets, liabilities: null, capex: null, depreciation: null, nonCashExpenditure: null,
+    });
+    const segmentData = {
+      segmentationType: "business" as const,
+      segments: ["CIGARETTES", "AGRI BUSINESS", "PAPERBOARDS"],
+      years,
+      data: {
+        CIGARETTES: Object.fromEntries(years.map((y) => [y, row(600, 150, 400)])),
+        "AGRI BUSINESS": Object.fromEntries(years.map((y) => [y, row(400, 40, 250)])),
+        PAPERBOARDS: Object.fromEntries(years.map((y) => [y, row(210, 20, 180)])),
+      },
+      unallocated: {},
+      totals: {},
+    };
+    const out = buildValuationCommandCenter({
+      data,
+      config: { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(620) },
+      marketData: null,
+      analysisStatus: productionReadyStatus,
+      segmentData,
+    });
+    const base = out.scenarios.find((card) => card.key === "base")!;
+    expect(out.sotp?.segments.length).toBe(3);
+    for (const segment of out.sotp!.segments) {
+      const template = VALUATION_SECTOR_TEMPLATES[classifySegmentSector(segment.name)];
+      expect(segment.segmentKw).toBeCloseTo(base.assumptions.kw + template.keAdjustment, 12);
     }
   });
 
