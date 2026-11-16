@@ -10,8 +10,9 @@
         *common* equity claim, so it needs the full enterprise→equity bridge:
         −NFO for net debt and −MI for the minorities' share of the consolidated
         subsidiaries (`NOA = CSE + NFO + MI`, identityTests.ts:180). The −NFO
-        leg was already applied by `sotpValueRange` to the identical quantity;
-        the −MI leg was missing from both.
+        leg was already applied by the SOTP value range to the identical
+        quantity; the −MI leg was missing from both. (That range is gone: the
+        published range is the forecast's.)
      2. ₹Cr ÷ Cr-shares is already ₹/share, so the ×1e7 put it 1e7× out.
 
    The bridge lives here, not in the component, because the NFO it must
@@ -23,7 +24,7 @@
 ================================================================ */
 
 import { describe, expect, it } from "vitest";
-import { sotpEquityPerShare, sotpValueRange } from "../valuationCommandCenter/helpers";
+import { sotpEquityPerShare } from "../valuationCommandCenter/helpers";
 import { DEFAULT_CONFIG } from "../types";
 import type { SOTPResult } from "../sotpValuation";
 import type { resolveShareBasis } from "../shareCountTools";
@@ -104,39 +105,9 @@ describe("sotpEquityPerShare", () => {
     expect(sotpEquityPerShare(sotp(), basis(120), 30_000, 0)).toBe(-25);
   });
 
-  it("is the same quantity sotpValueRange reports as its floor", () => {
-    // One definition, two consumers — the radar spoke and the value range
-    // must not be able to drift apart. Asserted with MI non-zero so the two
-    // cannot agree merely by both ignoring it.
-    const range = sotpValueRange(sotp(), basis(120), 6_000, 1_200);
-    expect(range.floorPerShare).toBe(sotpEquityPerShare(sotp(), basis(120), 6_000, 1_200));
-    expect(range.floorPerShare).toBe(165);
-  });
-
-  it("sits at or below the range ceiling, which drops the discount", () => {
-    // Ceiling uses operatingSum (no conglomerate discount) but the SAME bridge,
-    // so the bridged discounted value is the floor of the two.
-    const range = sotpValueRange(sotp(), basis(120), 6_000, 0);
-    expect(range.ceilingPerShare).toBe(200);
-    expect(range.floorPerShare!).toBeLessThan(range.ceilingPerShare!);
-  });
-
-  it("applies the minority bridge to the ceiling too", () => {
-    // A ceiling that skipped MI would widen the published range at its top end
-    // only — the asymmetry a reviewer reads as upside. (30,000 − 6,000 − 1,200)
-    // / 120 = ₹190, not ₹200.
-    const range = sotpValueRange(sotp(), basis(120), 6_000, 1_200);
-    expect(range.ceilingPerShare).toBe(190);
-  });
-
-  it("returns null, not NaN, for both legs when the numerators are non-finite", () => {
-    // The ceiling divides directly; the floor goes through `toPerShare`, which
-    // rejects non-finite numerators. Before `ceilingPerShare` was routed through
-    // the same helper, a NaN/Infinity from the segment sums or bridge legs
-    // produced a `NaN` ceiling beside a `null` floor — and `!= null` is the guard
-    // every range consumer uses, so the NaN passed through as a published point.
-    const range = sotpValueRange(sotp({ operatingSum: NaN, discountedSum: NaN }), basis(120), 6_000, 1_200);
-    expect(range.floorPerShare).toBeNull();
-    expect(range.ceilingPerShare).toBeNull();
+  it("returns null, not NaN, when the sum is non-finite", () => {
+    // `!= null` is the guard every consumer uses, so a NaN would pass through
+    // as a published point.
+    expect(sotpEquityPerShare(sotp({ discountedSum: NaN }), basis(120), 6_000, 1_200)).toBeNull();
   });
 });

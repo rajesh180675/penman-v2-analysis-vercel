@@ -3,7 +3,6 @@ import { computeValuation } from "./PenmanNissimEngine";
 import { convergenceByHalfMeans } from "./monteCarloMath";
 import { assertValidMonteCarloInput, MonteCarloInput, MonteCarloOutput } from "./monteCarloTypes";
 import { buildSOTPValuation, SegmentDefinition } from "./sotpValuation";
-import type { LegacyValuationPeriodInput } from "./forecastState";
 
 function mulberry32(seed: number): () => number {
   let t = seed >>> 0;
@@ -23,14 +22,6 @@ function randn(random: () => number) {
 
 function sample(d: { mean: number; std: number }, random: () => number) {
   return d.mean + d.std * randn(random);
-}
-
-function hasSotpAnchorInputs(
-  period: LegacyValuationPeriodInput,
-): period is LegacyValuationPeriodInput & {
-  readonly is: LegacyValuationPeriodInput["is"] & { readonly taxRate: number };
-} {
-  return Number.isFinite((period.is as { readonly taxRate?: number }).taxRate);
 }
 
 function quantile(sorted: number[], q: number) {
@@ -75,9 +66,6 @@ self.onmessage = (ev: MessageEvent<unknown>) => {
 
     // SOTP draw: perturb each segment's EBIT share, normalize to sum=1
     if (runSOTP && segmentDefinitions && segmentUncertainties) {
-      if (!hasSotpAnchorInputs(latestPeriod)) {
-        throw new Error("Segment Monte Carlo requires a consolidated anchor with a finite tax rate.");
-      }
       const perturbedShares: Record<string, number> = {};
       let totalShare = 0;
 
@@ -105,7 +93,8 @@ self.onmessage = (ev: MessageEvent<unknown>) => {
         operatingProfitShare: totalShare > 0 ? perturbedShares[seg.name]! / totalShare : seg.operatingProfitShare,
       }));
 
-      const sotpResult = buildSOTPValuation(latestPeriod, perturbedDefs, ke);
+      // Segment values are operating values: discounted at the draw's kw.
+      const sotpResult = buildSOTPValuation(latestPeriod, perturbedDefs, kw);
       sotpSamples[i] = sotpResult.totalEnterpriseValue;
     }
 

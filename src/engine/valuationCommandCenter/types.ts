@@ -336,6 +336,10 @@ export interface ConglomerateAssessment {
   dominantSegmentPct: number;
   dominantSegmentName: string;
   dataSource: "parsed" | "preset" | "none";
-  /** Advisory: for diversified conglomerates, SOTP is preferred over single-entity V_RE. */
+  /**
+   * At least three segments over two or more sector templates, the templates
+   * matched by segment name. The SOTP section says so. It no longer sets the
+   * valuation range: that is always the forecast's (readModel.ts).
+   */
   sotpPreferred: boolean;
 }

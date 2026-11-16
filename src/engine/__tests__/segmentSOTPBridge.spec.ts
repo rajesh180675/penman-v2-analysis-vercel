@@ -4,6 +4,7 @@ import { parseSegmentFinanceHTML } from "../segmentParser";
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 import { RecastPeriod } from "../types";
+import { VALUATION_SECTOR_TEMPLATES } from "../valuationSectorTemplates";
 
 // Raw .xls fixtures are gitignored — present locally, absent in CI.
 const fixturesDir = resolve(__dirname, "../../../public/data/companies/ITC");
@@ -125,6 +126,34 @@ describe("segmentSOTPBridge", () => {
   });
 
   describe("runSOTPFromSegmentData", () => {
+    // Synthetic, so it runs where the gitignored .xls fixtures do not (CI).
+    it("discounts every segment at the rate it is given, plus its template's adjustment", () => {
+      const years = ["FY2025", "FY2024", "FY2023"];
+      const row = (revenue: number, result: number, assets: number) => ({
+        revenue, interSegmentRevenue: null, result, assets, liabilities: null, capex: null, depreciation: null, nonCashExpenditure: null,
+      });
+      const segData = {
+        segmentationType: "business" as const,
+        segments: ["CIGARETTES", "AGRI BUSINESS", "PAPERBOARDS"],
+        years,
+        data: {
+          CIGARETTES: Object.fromEntries(years.map((y, i) => [y, row(30000 - i * 1000, 18000 - i * 500, 20000)])),
+          "AGRI BUSINESS": Object.fromEntries(years.map((y, i) => [y, row(15000 - i * 500, 1500 - i * 50, 8000)])),
+          PAPERBOARDS: Object.fromEntries(years.map((y, i) => [y, row(8000 - i * 300, 1200 - i * 40, 9000)])),
+        },
+        unallocated: {},
+        totals: {},
+      };
+      const result = runSOTPFromSegmentData(segData, mkPeriod(), 0.11);
+      expect(result.segments.map((s) => s.name).sort()).toEqual(["AGRI BUSINESS", "CIGARETTES", "PAPERBOARDS"]);
+      for (const seg of result.segments) {
+        const template = VALUATION_SECTOR_TEMPLATES[classifySegmentSector(seg.name)];
+        expect(seg.segmentKw).toBeCloseTo(0.11 + template.keAdjustment, 12);
+      }
+      // The adjustments differ, so a dropped one would show.
+      expect(new Set(result.segments.map((s) => s.segmentKw.toFixed(6))).size).toBeGreaterThan(1);
+    });
+
     it.skipIf(!fixturesAvailable)("produces enhanced SOTP result from parsed data", () => {
       const html = readFileSync(resolve(fixturesDir, "SegmentFinance_.xls"), "utf-8");
       const segData = parseSegmentFinanceHTML(html);

@@ -31,7 +31,6 @@ import {
   scenarioOrderingPenalty,
   scoreFromRange,
   sotpEquityPerShare,
-  sotpValueRange,
   summaryWithCrossCheckWarning,
   type computeCashFlowDiagnostics,
   type normalizeHistoricalSeries,
@@ -410,6 +409,7 @@ export function buildValuationReadModel(args: {
     summary = staleOrFallbackMessage;
   }
 
+  const baseMinorityClaim = baseCard?.valuation.minorityClaim ?? latest.bs.MI;
 
   return {
     shareBasis,
@@ -437,10 +437,15 @@ export function buildValuationReadModel(args: {
     lendingArm: context.lendingArm ?? null,
     annualizedPeriods: context.annualizedPeriods ?? [],
     // `latest` is the anchor period (:107), which is the period sotpResult was
-    // built from — so these are the NFO and MI that sum is allowed to be
-    // bridged with. Both come from one period, or the bridge mixes vintages.
-    // A carved stake bridges as a financial asset at value: NFO less the stake.
-    sotpPerShare: sotpResult ? sotpEquityPerShare(sotpResult, shareBasis, latest.bs.NFO - carvedStake, latest.bs.MI) : null,
+    // built from — so this is the NFO that sum is allowed to be bridged with.
+    // Both legs come from one period, or the bridge mixes vintages. A carved
+    // stake bridges as a financial asset at value: NFO less the stake. The
+    // minority comes out at the claim the base case's valuation settled on, at
+    // the same anchor (its book MI when it settled none), as the cash DCF takes
+    // it: the lenses then differ in their flows, not in how they split the
+    // enterprise. At book it over-subtracted a minority earning below ke:
+    // Reliance's ₹1.66L Cr book against a ₹31,498 Cr claim.
+    sotpPerShare: sotpResult ? sotpEquityPerShare(sotpResult, shareBasis, latest.bs.NFO - carvedStake, baseMinorityClaim) : null,
     conglomerate: conglomerateAssessment,
     evEbitda: evEbitdaWithMarket,
     indiaQuality,
@@ -490,8 +495,12 @@ export function buildValuationReadModel(args: {
       supportingFlags: appendCrossCheckWarning(supportingFlags, scenarios),
       killSwitches,
     },
-    range: conglomerateAssessment?.sotpPreferred && sotpResult
-      ? sotpValueRange(sotpResult, shareBasis, latest.bs.NFO - carvedStake, latest.bs.MI)
-      : primaryValueRange(scenarios),
+    // The forecast's own range, for every company. For a multi-template
+    // segment mix it was the SOTP after and before its conglomerate discount:
+    // one estimate either side of one assumption, which the Verdict plotted as
+    // Floor and Ceiling beside the cases. Its Ceiling sat below the base case
+    // at 8 of the 11 such companies (Reliance ₹47 against a base of ₹297), and
+    // ITC's Floor above its bull case. The SOTP is shown as its own lens.
+    range: primaryValueRange(scenarios),
   };
 }

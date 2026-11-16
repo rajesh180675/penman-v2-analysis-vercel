@@ -5,6 +5,9 @@ import { carryValueToPriceDate, valueOnPriceBasis, yearsBetween } from "../valua
 import { DEFAULT_CONFIG, RecastPeriod, Severity } from "../types";
 import { CroreShares, INRAbsolute } from "../types/units";
 import { AnalysisStatusSummary } from "../analysisStatus";
+import { SOTP_PRESETS } from "../sotpValuation";
+import { classifySegmentSector } from "../segmentSOTPBridge";
+import { VALUATION_SECTOR_TEMPLATES } from "../valuationSectorTemplates";
 
 function buildHistorySeries(startDate: string, startPrice: number, count: number) {
   const points: Array<{ date: string; close: number }> = [];
@@ -808,9 +811,16 @@ describe("valuation command center", () => {
     // (identityTests.ts:180), which is why NFO is overridden alongside MI: with
     // the identity held, NFO + MI ≡ NOA − CSE, so 2024 bridges by 230 and 2025 by
     // 220 — and ignoring MI entirely bridges by 190.
+    // Minority income in the history, so the minority's settled claim differs
+    // from both its book (40) and zero: with none the claim floors at zero,
+    // which an MI-less bridge would match.
     const data = [
-      mkPeriod(2023, 1000, 180, 130, 520, 760),
-      { ...mkPeriod(2024, 1100, 205, 150, 590, 820), bs: { ...mkPeriod(2024, 1100, 205, 150, 590, 820).bs, MI: 40, NFO: 190 } },
+      { ...mkPeriod(2023, 1000, 180, 130, 520, 760), is: { ...mkPeriod(2023, 1000, 180, 130, 520, 760).is, MII: 6 } },
+      {
+        ...mkPeriod(2024, 1100, 205, 150, 590, 820),
+        bs: { ...mkPeriod(2024, 1100, 205, 150, 590, 820).bs, MI: 40, NFO: 190 },
+        is: { ...mkPeriod(2024, 1100, 205, 150, 590, 820).is, MII: 6 },
+      },
       {
         ...mkPeriod(2025, 1210, 232, 172, 665, 885),
         bs: { ...mkPeriod(2025, 1210, 232, 172, 665, 885).bs, MI: 140, NFO: 80 },
@@ -854,19 +864,106 @@ describe("valuation command center", () => {
     expect(out.sotp!.discountedSum).toBeGreaterThan(0);
 
     // Written out rather than routed back through the helper, so the expectation
-    // does not inherit the bug it is checking for.
-    const expected = (out.sotp!.discountedSum - 190 - 40) / 620;
+    // does not inherit the bug it is checking for. The minority leg is the claim
+    // the base card's valuation settled on at the anchor, as the cash DCF takes
+    // it, not the anchor's book MI of 40.
+    const base = out.scenarios.find((card) => card.key === "base")!;
+    const claim = base.valuation.minorityClaim;
+    // Guard the guard: a claim equal to book would let the book bridge pass too.
+    expect(claim).not.toBeCloseTo(40, 6);
+    const expected = (out.sotp!.discountedSum - 190 - claim) / 620;
     expect(out.sotpPerShare).toBeCloseTo(expected, 10);
-    // Neither the newest period's bridge nor an MI-less one.
+    // Neither the newest period's bridge, a book-MI one, nor an MI-less one.
     expect(out.sotpPerShare).not.toBeCloseTo((out.sotp!.discountedSum - 80 - 140) / 620, 10);
+    expect(out.sotpPerShare).not.toBeCloseTo((out.sotp!.discountedSum - 190 - 40) / 620, 10);
     expect(out.sotpPerShare).not.toBeCloseTo((out.sotp!.discountedSum - 190) / 620, 10);
+  });
 
-    // ITC is 5 segments over 4 sector templates, so `sotpPreferred` fires and the
-    // published range comes from the SOTP path (core.ts:654) — the second call
-    // site, wired independently of the first.
+  it("discounts the SOTP's segments at the base card's kw, not ke", () => {
+    // Segment values are operating values, bridged to equity by NFO and the
+    // minority: the rate is the operating cost of capital the base card settled
+    // on (S-9.4C), plus each segment's sector adjustment.
+    const data = [
+      mkPeriod(2023, 1000, 180, 130, 520, 760),
+      mkPeriod(2024, 1100, 205, 150, 590, 820),
+      mkPeriod(2025, 1210, 232, 172, 665, 885),
+    ];
+    const out = buildValuationCommandCenter({
+      data,
+      config: { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(620), sotp_preset: "ITC" },
+      marketData: null,
+      analysisStatus: productionReadyStatus,
+    });
+    const base = out.scenarios.find((card) => card.key === "base")!;
+    expect(base.assumptions.kw).not.toBeCloseTo(base.assumptions.ke, 6);
+    const presets = SOTP_PRESETS.ITC!;
+    for (const segment of out.sotp!.segments) {
+      const preset = presets.find((p) => p.name === segment.name)!;
+      expect(segment.segmentKw).toBeCloseTo(base.assumptions.kw + (preset.keAdjustment ?? 0), 12);
+    }
+  });
+
+  it("discounts parsed segments at the base card's kw too", () => {
+    // The library's companies take the parsed-segment path, not a preset: the
+    // rate has to reach that path as well.
+    const data = [
+      mkPeriod(2023, 1000, 180, 130, 520, 760),
+      mkPeriod(2024, 1100, 205, 150, 590, 820),
+      mkPeriod(2025, 1210, 232, 172, 665, 885),
+    ];
+    const years = ["FY2025", "FY2024", "FY2023"];
+    const row = (revenue: number, result: number, assets: number) => ({
+      revenue, interSegmentRevenue: null, result, assets, liabilities: null, capex: null, depreciation: null, nonCashExpenditure: null,
+    });
+    const segmentData = {
+      segmentationType: "business" as const,
+      segments: ["CIGARETTES", "AGRI BUSINESS", "PAPERBOARDS"],
+      years,
+      data: {
+        CIGARETTES: Object.fromEntries(years.map((y) => [y, row(600, 150, 400)])),
+        "AGRI BUSINESS": Object.fromEntries(years.map((y) => [y, row(400, 40, 250)])),
+        PAPERBOARDS: Object.fromEntries(years.map((y) => [y, row(210, 20, 180)])),
+      },
+      unallocated: {},
+      totals: {},
+    };
+    const out = buildValuationCommandCenter({
+      data,
+      config: { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(620) },
+      marketData: null,
+      analysisStatus: productionReadyStatus,
+      segmentData,
+    });
+    const base = out.scenarios.find((card) => card.key === "base")!;
+    expect(out.sotp?.segments.length).toBe(3);
+    for (const segment of out.sotp!.segments) {
+      const template = VALUATION_SECTOR_TEMPLATES[classifySegmentSector(segment.name)];
+      expect(segment.segmentKw).toBeCloseTo(base.assumptions.kw + template.keAdjustment, 12);
+    }
+  });
+
+  it("publishes the forecast's range even when the segments span several templates", () => {
+    // The range was the SOTP after and before its conglomerate discount whenever
+    // `sotpPreferred` fired: one estimate either side of one assumption, plotted
+    // as Floor and Ceiling beside the cases, and below the base case at 8 of the
+    // 11 such library companies. It is the cases' floor and ceiling for every
+    // company.
+    const data = [
+      mkPeriod(2023, 1000, 180, 130, 520, 760),
+      mkPeriod(2024, 1100, 205, 150, 590, 820),
+      mkPeriod(2025, 1210, 232, 172, 665, 885),
+    ];
+    const out = buildValuationCommandCenter({
+      data,
+      config: { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(620), sotp_preset: "ITC" },
+      marketData: null,
+      analysisStatus: productionReadyStatus,
+    });
     expect(out.conglomerate?.sotpPreferred).toBe(true);
-    expect(out.range.floorPerShare).toBeCloseTo(expected, 10);
-    expect(out.range.ceilingPerShare).toBeCloseTo((out.sotp!.operatingSum - 190 - 40) / 620, 10);
+    const values = out.scenarios.map((card) => card.intrinsicPerShare).filter((v): v is number => v != null && Number.isFinite(v));
+    expect(values.length).toBeGreaterThan(1);
+    expect(out.range.floorPerShare).toBe(Math.min(...values));
+    expect(out.range.ceilingPerShare).toBe(Math.max(...values));
   });
 
   it("keeps conservative scenarios ordered below the base case", () => {

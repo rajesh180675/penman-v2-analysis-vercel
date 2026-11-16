@@ -1,10 +1,14 @@
 import { ValuationSectorTemplate } from "./types";
 import { VALUATION_SECTOR_TEMPLATES } from "./valuationSectorTemplates";
 
-/** Exact consolidated anchor required by the SOTP formula. */
+/**
+ * Exact consolidated anchor required by the SOTP formula. `is.OI` is the
+ * recast's operating income, which is already after tax (CNI + after-tax NFE
+ * + MII), so it is NOPAT as it stands.
+ */
 export interface SotpValuationAnchorInput {
   readonly bs: { readonly NOA: number };
-  readonly is: { readonly OI: number; readonly taxRate: number };
+  readonly is: { readonly OI: number };
 }
 
 /** Definition of a single business segment for SOTP valuation. */
@@ -22,7 +26,7 @@ export interface SegmentDefinition {
   growthFadeAlphaOverride?: number | undefined;
   /** Optional: actual segment assets (₹ Cr) for NOA allocation. */
   segmentAssets?: number | undefined;
-  /** Optional: sector-specific ke adjustment (additive basis points, e.g. 0.02 = +2%). */
+  /** Optional: sector risk adjustment, added to the operating cost of capital (e.g. 0.02 = +2%). */
   keAdjustment?: number | undefined;
 }
 
@@ -35,8 +39,8 @@ export interface SegmentValue {
   terminalGrowth: number;
   impliedMultiple: number | null;
   segmentValue: number;
-  /** Segment-specific ke used (may differ from consolidated ke). */
-  segmentKe: number;
+  /** The rate the segment is discounted at: the operating cost of capital plus its sector adjustment. */
+  segmentKw: number;
 }
 
 /** Full SOTP result. */
@@ -95,11 +99,18 @@ export function estimateConglomerateDiscount(
   return { discount, rationale };
 }
 
-/** Build a SOTP valuation from segment definitions and consolidated data. */
+/**
+ * Build a SOTP valuation from segment definitions and consolidated data.
+ *
+ * `kw` is the operating cost of capital. Each segment value is an operating
+ * (enterprise) value, bridged to common equity later by net debt and the
+ * minority's claim, so it is discounted at the rate operating flows carry, not
+ * at the cost of equity (S-9.4C).
+ */
 export function buildSOTPValuation(
   latest: SotpValuationAnchorInput,
   segments: SegmentDefinition[],
-  ke: number,
+  kw: number,
 ): SOTPResult {
   const totalOP = latest.is.OI;
   const totalNOA = latest.bs.NOA;
@@ -111,7 +122,11 @@ export function buildSOTPValuation(
     : 0;
 
   const segmentValues: SegmentValue[] = segments.map((seg) => {
-    const opProfit = totalOP * seg.operatingProfitShare;
+    // The segment's share of the recast's operating income, which is already
+    // after tax. It was multiplied by (1 − tax rate) again here, so every
+    // segment was valued on about three quarters of its NOPAT, and its RONIC
+    // read low enough that growth often fell to the no-growth branch below.
+    const nopat = totalOP * seg.operatingProfitShare;
 
     // Phase C5: use actual segment assets when available, else proportional allocation
     const allocatedNOA = hasSegmentAssets && totalSegmentAssets > 0
@@ -121,50 +136,49 @@ export function buildSOTPValuation(
     const template = VALUATION_SECTOR_TEMPLATES[seg.sectorTemplate];
     const g = seg.terminalGrowthOverride ?? template.terminalGrowthCap;
 
-    // Phase C5: per-segment ke (sector-specific risk adjustment)
-    const segmentKe = ke + (seg.keAdjustment ?? 0);
+    // Phase C5: the sector's risk adjustment, on the operating cost of capital.
+    const segmentKw = kw + (seg.keAdjustment ?? 0);
 
     // Value-driver Gordon growth (McKinsey form), consistent with
     // terminalEconomics.ts (reinvestmentRate = g / RONIC):
-    //   V = NOPAT0 · (1 − g/RONIC) · (1+g) / (ke − g)
+    //   V = NOPAT0 · (1 − g/RONIC) · (1+g) / (kw − g)
     // The prior `NOPAT0 / (ke − g)` granted growth for free — it discounted at
     // (ke − g) but charged no reinvestment, and used the CURRENT flow (CF0)
     // rather than next year's (CF1 = CF0·(1+g)). Sustaining growth g requires
     // reinvesting g/RONIC of NOPAT, so only (1 − g/RONIC) is distributable.
     // RONIC = the segment's steady-state after-tax return on its operating
     // assets (new capital earns what existing capital earns).
-    const opAfterTax = opProfit * (1 - latest.is.taxRate);
-    const ronic = allocatedNOA > 0 ? opAfterTax / allocatedNOA : null;
-    const denom = segmentKe - g;
+    const ronic = allocatedNOA > 0 ? nopat / allocatedNOA : null;
+    const denom = segmentKw - g;
     // Fail closed on growth that can't be self-funded: when RONIC ≤ g (or RONIC
     // is unavailable/non-positive), deny the growth credit and fall back to the
-    // no-growth perpetuity NOPAT/ke. Otherwise apply the reinvestment haircut on
+    // no-growth perpetuity NOPAT/kw. Otherwise apply the reinvestment haircut on
     // next year's flow.
     let segmentVal: number | null;
     if (denom <= 0.01) {
       segmentVal = null;
-    } else if (opAfterTax <= 0) {
+    } else if (nopat <= 0) {
       // No positive operating income to capitalise — preserve prior behaviour
       // (negative/zero value, null implied multiple).
-      segmentVal = opAfterTax / segmentKe;
+      segmentVal = nopat / segmentKw;
     } else if (ronic != null && ronic > g && g > 0) {
-      const distributable = opAfterTax * (1 - g / ronic); // FCF0
-      segmentVal = (distributable * (1 + g)) / denom;      // CF1 in the numerator
+      const distributable = nopat * (1 - g / ronic); // FCF0
+      segmentVal = (distributable * (1 + g)) / denom; // CF1 in the numerator
     } else {
       // Growth not self-fundable → no-growth perpetuity.
-      segmentVal = opAfterTax / segmentKe;
+      segmentVal = nopat / segmentKw;
     }
-    const impliedMultiple = segmentVal != null && opProfit > 0 ? segmentVal / opProfit : null;
+    const impliedMultiple = segmentVal != null && nopat > 0 ? segmentVal / nopat : null;
 
     return {
       name: seg.name,
-      operatingProfit: opProfit,
+      operatingProfit: nopat,
       allocatedNOA,
       sectorTemplateId: seg.sectorTemplate,
       terminalGrowth: g,
       impliedMultiple,
       segmentValue: segmentVal ?? 0,
-      segmentKe,
+      segmentKw,
     };
   });
 
