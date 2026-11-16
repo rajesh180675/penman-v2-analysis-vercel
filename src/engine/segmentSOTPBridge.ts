@@ -13,7 +13,7 @@
 
 import { SegmentData, SegmentPeriodData } from "./segmentParser";
 import { SegmentDefinition, SOTPResult, buildSOTPValuation } from "./sotpValuation";
-import { RecastPeriod, ValuationSectorTemplate } from "./types";
+import { CompanyType, RecastPeriod, ValuationSectorTemplate } from "./types";
 import { VALUATION_SECTOR_TEMPLATES } from "./valuationSectorTemplates";
 
 /** Segment-level time series for trend analysis */
@@ -43,40 +43,83 @@ export interface EnhancedSOTPResult extends SOTPResult {
   segmentLiabilities: Record<string, number>;
 }
 
-/** Sector template classification rules based on segment name patterns */
-const SECTOR_CLASSIFICATION_RULES: Array<{
-  pattern: RegExp;
-  template: Exclude<ValuationSectorTemplate, "auto">;
-}> = [
-  { pattern: /cigarette|tobacco/i, template: "consumer-staples" },
-  { pattern: /fmcg|consumer|food|beverage|personal care/i, template: "consumer-staples" },
-  { pattern: /hotel|hospitality|leisure/i, template: "services" },
-  { pattern: /agri|agriculture|plantation|farm/i, template: "commodities" },
-  { pattern: /paper|packaging|board/i, template: "industrials" },
-  { pattern: /cement|steel|metal|mining/i, template: "industrials" },
-  { pattern: /pharma|health|hospital/i, template: "consumer-staples" },
-  { pattern: /tech|software|digital|IT/i, template: "services" },
-  { pattern: /bank|financ|insurance|lending|treasury/i, template: "services" },
-  { pattern: /retail/i, template: "retail" },
-  { pattern: /power|energy|utility|electric/i, template: "industrials" },
-  { pattern: /oil|gas|petro|refin/i, template: "commodities" },
-  { pattern: /telecom|media/i, template: "services" },
-  { pattern: /real estate|property/i, template: "services" },
-  { pattern: /auto|vehicle|motor/i, template: "industrials" },
-  { pattern: /chemical/i, template: "industrials" },
-  { pattern: /paint/i, template: "paint" },
+type SegmentTemplate = Exclude<ValuationSectorTemplate, "auto">;
+
+/**
+ * Sector template classification rules on segment names, first match wins.
+ *
+ * Every keyword is a whole word. The rules were unanchored substrings, so "it"
+ * in "Limited", "Commodities", "Securities" and "Utility" classed those
+ * segments as IT services, "oil" in "Toiletries" as a commodity and "media" in
+ * "Intermediates" as media. Tata Steel's Neelachal Ispat Nigam Limited was an
+ * IT business. The telecom and utility templates were never reachable, and
+ * Home Care, Beauty & Wellbeing, Mobile Services and Transmission all fell to
+ * the default. Each rule's order matters where names share words: farm
+ * equipment is made, not farmed, and "Hi-Tech Manufacturing" is manufacturing.
+ */
+const SECTOR_CLASSIFICATION_RULES: ReadonlyArray<{ pattern: RegExp; template: SegmentTemplate }> = [
+  { pattern: /\b(?:cigarettes?|tobacco)\b/i, template: "consumer-staples" },
+  { pattern: /\b(?:fmcg|foods?|beverages?|refreshments?|personal (?:care|products)|home care|beauty|wellbeing|soaps?|detergents?|toiletries|consumer care)\b/i, template: "consumer-staples" },
+  { pattern: /\b(?:hotels?|hospitality|leisure)\b/i, template: "services" },
+  { pattern: /\b(?:farm equipment|tractors?)\b/i, template: "industrials" },
+  { pattern: /\b(?:agri\w*|plantations?)\b/i, template: "commodities" },
+  { pattern: /\b(?:paper\w*|packaging)\b/i, template: "industrials" },
+  // A cement or steel segment is valued as the engine values a cement or steel
+  // company: the cyclical company type takes the commodity template.
+  { pattern: /\b(?:cement|steel|ispat|metals?|mining)\b/i, template: "commodities" },
+  { pattern: /\b(?:pharma\w*|health\w*|hospitals?)\b/i, template: "consumer-staples" },
+  { pattern: /\b(?:telecom\w*|telemedia|mobile|broadband|towers?|passive infra\w*|homes services|digital tv|digital services)\b/i, template: "telecom" },
+  { pattern: /\b(?:manufactur\w*|industrial)\b/i, template: "industrials" },
+  { pattern: /\b(?:it|ites|software|technolog\w*|tech|digital)\b/i, template: "services" },
+  { pattern: /\b(?:bank\w*|financ\w*|insurance|lending|treasury|securities|broking)\b/i, template: "services" },
+  { pattern: /\bconsultan\w*/i, template: "services" },
+  { pattern: /\bretail\w*/i, template: "retail" },
+  { pattern: /\b(?:transmission|generation of (?:energy|power|electricity)|power generation|electricity|utilit(?:y|ies))\b/i, template: "utility" },
+  { pattern: /\b(?:oil|gas|petro\w*|refin\w*|o2c)\b/i, template: "commodities" },
+  { pattern: /\b(?:media|entertainment)\b/i, template: "services" },
+  { pattern: /\b(?:real estate|propert(?:y|ies)|realty)\b/i, template: "services" },
+  { pattern: /\b(?:automotive|automobiles?|auto|vehicles?|motors?|two wheelers)\b/i, template: "industrials" },
+  { pattern: /\bchemicals?\b/i, template: "industrials" },
+  { pattern: /\bpaints?\b/i, template: "paint" },
 ];
 
-/** Classify a segment name into a sector template */
+/**
+ * Classify a segment name into a sector template. A name no rule matches
+ * ("Others", "Airtel Business", "Fibre and Pulp") takes `fallback`: the
+ * company's declared template where it has one, so a segment of a telecom
+ * company is a telecom business unless its name says otherwise.
+ */
 export function classifySegmentSector(
-  segmentName: string
-): Exclude<ValuationSectorTemplate, "auto"> {
+  segmentName: string,
+  fallback: SegmentTemplate = "industrials",
+): SegmentTemplate {
   for (const rule of SECTOR_CLASSIFICATION_RULES) {
     if (rule.pattern.test(segmentName)) {
       return rule.template;
     }
   }
-  return "industrials"; // default fallback
+  return fallback;
+}
+
+/** What the company itself is, for classifying its segments. */
+export interface SegmentClassificationContext {
+  readonly companyType?: CompanyType | null | undefined;
+  /** The template the user or the company type declares (declaredSectorTemplate), never an inferred one. */
+  readonly declaredTemplate?: SegmentTemplate | null | undefined;
+}
+
+/**
+ * The template a company's segment is valued on. An IT services company
+ * reports by client industry, so "Retail", "Manufacturing" or "Life Sciences"
+ * is a vertical of one IT business, not a retailer or a manufacturer, and every
+ * segment takes the company's template.
+ */
+export function segmentTemplateFor(
+  segmentName: string,
+  context: SegmentClassificationContext = {},
+): SegmentTemplate {
+  if (context.companyType === "it-services") return context.declaredTemplate ?? "services";
+  return classifySegmentSector(segmentName, context.declaredTemplate ?? "industrials");
 }
 
 /** Extract time series for a single segment */
@@ -98,17 +141,18 @@ function buildSegmentTimeSeries(
     return r != null && e != null && r > 0 ? e / r : null;
   });
 
+  // Years run latest first, so a year's predecessor is the next element, and
+  // the oldest year has none. (Read the other way, each year's "growth" was
+  // the next-older year's change measured against the newer one.)
   const revenueGrowth = years.map((_, i) => {
-    if (i === 0) return null;
     const cur = revenue[i];
-    const prev = revenue[i - 1];
+    const prev = revenue[i + 1];
     return cur != null && prev != null && prev > 0 ? (cur - prev) / prev : null;
   });
 
   const ebitGrowth = years.map((_, i) => {
-    if (i === 0) return null;
     const cur = ebit[i];
-    const prev = ebit[i - 1];
+    const prev = ebit[i + 1];
     return cur != null && prev != null && prev > 0 ? (cur - prev) / prev : null;
   });
 
@@ -131,16 +175,20 @@ function buildSegmentTimeSeries(
 }
 
 /** Compute CAGR from a series (first non-null to last non-null) */
-function seriesCagr(series: (number | null)[]): number | null {
+export function seriesCagr(series: (number | null)[]): number | null {
+  // The series runs latest first, as SegmentData.years does (index 0 is the
+  // newest year). It was read oldest-last as if chronological, so every CAGR
+  // came out inverted: Reliance's Digital Services, ₹541 Cr to ₹50,318 Cr over
+  // eight years, read −43% a year, and a segment that shrank read as growing.
   const valid = series
     .map((v, i) => v != null && v > 0 ? { v, i } : null)
     .filter((x): x is { v: number; i: number } => x != null);
   if (valid.length < 2) return null;
-  const first = valid[0]!;
-  const last = valid[valid.length - 1]!;
-  const periods = last.i - first.i;
-  if (periods <= 0) return null;
-  return Math.pow(last.v / first.v, 1 / periods) - 1;
+  const latest = valid[0]!;
+  const oldest = valid[valid.length - 1]!;
+  const years = oldest.i - latest.i;
+  if (years <= 0) return null;
+  return Math.pow(latest.v / oldest.v, 1 / years) - 1;
 }
 
 /**
@@ -150,6 +198,7 @@ function seriesCagr(series: (number | null)[]): number | null {
 export function segmentDataToDefinitions(
   segmentData: SegmentData,
   yearIndex = 0, // 0 = latest year
+  context: SegmentClassificationContext = {},
 ): { definitions: SegmentDefinition[]; timeSeries: SegmentTimeSeries[] } {
   const year = segmentData.years[yearIndex];
   if (!year) return { definitions: [], timeSeries: [] };
@@ -184,25 +233,26 @@ export function segmentDataToDefinitions(
       const ts = timeSeries.find(t => t.name === seg);
       const revCagr = ts ? seriesCagr(ts.revenue) : null;
 
+      const sectorTemplate = segmentTemplateFor(seg, context);
+      const template = VALUATION_SECTOR_TEMPLATES[sectorTemplate];
       return {
         name: seg,
         operatingProfitShare: totalEbit > 0 ? ebit / totalEbit : 0,
         revenueShare: totalRevenue > 0 ? rev / totalRevenue : 0,
-        sectorTemplate: classifySegmentSector(seg),
+        sectorTemplate,
         // Phase C5: pass actual segment assets for NOA allocation
         segmentAssets: segmentData.data[seg]?.[year]?.assets ?? undefined,
         // Phase C5: the sector template's risk adjustment, added to the operating cost of capital
-        keAdjustment: VALUATION_SECTOR_TEMPLATES[classifySegmentSector(seg)].keAdjustment,
-        // Use segment-specific revenue CAGR as terminal growth hint, but
-        // refuse to publish a fabricated growth rate for a structurally
-        // declining segment (revCagr <= 0). The previous Math.max(0.02,…)
-        // floor silently inflated value for legacy/declining divisions
-        // (e.g. Paperboards in secular decline) — review W5. When the
-        // historical CAGR is non-positive we leave terminalGrowthOverride
-        // undefined so the SOTP module falls back to its sector-template
-        // default growth rate.
-        terminalGrowthOverride: (revCagr != null && revCagr > 0)
-          ? Math.max(0.02, Math.min(0.07, revCagr * 0.5)) // 50% of historical CAGR, capped
+        keAdjustment: template.keAdjustment,
+        // Half the segment's revenue CAGR, held inside its template's
+        // terminal-growth band, as the consolidated forecast's terminal growth
+        // is. The band was not applied (2–7%, above every template's cap),
+        // and with the CAGR inverted the 7% went to segments that had shrunk
+        // or been renamed: Tata Steel's Neelachal Ispat, HUL's Personal
+        // Products. A declining segment now takes its template's floor; one
+        // with no history, its cap, as before.
+        terminalGrowthOverride: revCagr != null
+          ? Math.min(Math.max(revCagr * 0.5, template.terminalGrowthFloor), template.terminalGrowthCap)
           : undefined,
       };
     });
@@ -213,21 +263,22 @@ export function segmentDataToDefinitions(
 /**
  * Run SOTP valuation using actual parsed segment data instead of presets.
  *
- * Note (review W6): segmentAssets and segmentLiabilities are captured here
- * for diagnostic display on the EnhancedSOTPResult, but the underlying
- * `buildSOTPValuation` allocates NOA proportionally to operatingProfitShare
- * — it does NOT yet consume per-segment assets directly. Threading actual
- * segment-asset disclosure through to NOA allocation is a future
- * enhancement; at present these fields are reportable context, not
- * valuation inputs.
+ * The consolidated NOA is allocated in proportion to each segment's filed
+ * assets (`buildSOTPValuation`), or to its profit share where no segment files
+ * assets (TCS and Infosys file none). Gross assets, not assets less segment
+ * liabilities: 3 of the library's 66 valued segments have more liabilities
+ * than assets (Airtel's DTH, Power Grid's consultancy, Tata Steel's trading
+ * arm), which would allocate them negative operating assets. The liabilities
+ * are reported here as context.
  */
 export function runSOTPFromSegmentData(
   segmentData: SegmentData,
   latestPeriod: RecastPeriod,
   /** The operating cost of capital: segment values are operating values. */
   kw: number,
+  context: SegmentClassificationContext = {},
 ): EnhancedSOTPResult {
-  const { definitions, timeSeries } = segmentDataToDefinitions(segmentData);
+  const { definitions, timeSeries } = segmentDataToDefinitions(segmentData, 0, context);
   const latestYear = segmentData.years[0] ?? "unknown";
 
   // Use actual segment assets for NOA allocation instead of proportional

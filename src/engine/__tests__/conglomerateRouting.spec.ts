@@ -39,7 +39,9 @@ describe.skipIf(!fixturesAvailable)("conglomerateRouting (Phase C5)", () => {
       // Based on known Reliance segment names
       expect(classifySegmentSector("OIL TO CHEMICALS")).toBe("commodities");
       expect(classifySegmentSector("OIL AND GAS")).toBe("commodities");
-      expect(classifySegmentSector("DIGITAL SERVICES")).toBe("services");
+      // Jio: a telecom business, on the telecom template the classifier never reached.
+      expect(classifySegmentSector("DIGITAL SERVICES")).toBe("telecom");
+      expect(classifySegmentSector("O2C")).toBe("commodities");
       expect(classifySegmentSector("RETAIL")).toBe("retail");
       expect(classifySegmentSector("FINANCIAL SERVICES")).toBe("services");
     });
