@@ -118,6 +118,26 @@ describe("segmentSOTPBridge", () => {
     });
   });
 
+  describe("every rule classifies on its own, with no company template to fall back on", () => {
+    // The table below runs each name with its company's declared template,
+    // which would hide a broken rule wherever the fallback gives the same
+    // answer (HUL's Home Care is consumer staples either way). Here the
+    // fallback is the industrial default, so each rule must match by itself.
+    const named: ReadonlyArray<readonly [string, SegmentTemplateId]> = [
+      ["HOME CARE", "consumer-staples"], ["BEAUTY & WELLBEING", "consumer-staples"], ["PERSONAL PRODUCTS", "consumer-staples"],
+      ["CONSUMER CARE BUSINESS", "consumer-staples"], ["PACKAGED FOODS", "consumer-staples"],
+      ["MOBILE SERVICES", "telecom"], ["PASSIVE INFRASTRUCTURE SERVICES%", "telecom"], ["HOMES SERVICES", "telecom"],
+      ["DIGITAL TV SERVICES", "telecom"], ["TELECOM SERVICES", "telecom"],
+      ["TRANSMISSION SERVICES", "utility"], ["GENERATION OF ENERGY", "utility"],
+      ["CONSULTANCY SERVICES", "services"], ["IT & TECHNOLOGY SERVICES", "services"],
+      ["FARM EQUIPMENT", "industrials"], ["HI-TECH MANUFACTURING", "industrials"], ["INDUSTRIAL BUSINESSES AND CONSUMER", "industrials"],
+      ["TATA STEEL INDIA", "commodities"], ["CEMENT", "commodities"],
+    ];
+    it.each(named)("%s → %s", (name, expected) => {
+      expect(classifySegmentSector(name)).toBe(expected);
+    });
+  });
+
   describe("segmentTemplateFor: every segment the library values", () => {
     // Each company's latest-year segments as its export names them (Capitaline
     // truncates names at 35 characters), with the company type the library
