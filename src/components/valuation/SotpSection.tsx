@@ -18,7 +18,7 @@ export default function SotpSection({
             businesses. Say only what the table does. */}
         {commandCenter.conglomerate?.sotpPreferred && (
           <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
-            {commandCenter.conglomerate.segmentCount} segments, matched by name to {commandCenter.conglomerate.distinctSectorTemplates} sector templates. Each is valued on its own template&apos;s growth and risk, beside the consolidated forecast; the valuation range stays the forecast&apos;s.
+            {commandCenter.conglomerate.segmentCount} segments, matched by name to {commandCenter.conglomerate.distinctSectorTemplates} sector templates. Each is valued on its own, as a steady stream at its own growth and its template&apos;s risk, beside the consolidated forecast; the valuation range stays the forecast&apos;s.
           </div>
         )}
         <div className="mt-2 text-sm text-slate-600">Sum-of-the-parts decomposes a conglomerate into separately valued business lines. The conglomerate discount reflects the diversification penalty the market typically applies to multi-segment firms.</div>
