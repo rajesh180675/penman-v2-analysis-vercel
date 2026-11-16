@@ -22,7 +22,7 @@
        and the NSE fetch divides its absolute count by 1e7.
 
    Every other per-share site in the engine omits the factor — including
-   `grahamDoddEPV.ts` and `sotpValueRange`, which divide by the *same*
+   `grahamDoddEPV.ts` and `sotpEquityPerShare`, which divide by the *same*
    `shareBasis.shares`. `marketCapCroreFromPrice` exists specifically to
    document that this conversion must not be applied twice
    (engine/types/units.ts).

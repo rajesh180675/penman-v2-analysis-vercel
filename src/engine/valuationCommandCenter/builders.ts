@@ -68,14 +68,15 @@ export function buildSotpAssessment(
   segmentData: SegmentData | null | undefined,
   config: EngineConfig,
   latest: RecastPeriod,
-  keBase: number,
+  /** The operating cost of capital the segment values are discounted at. */
+  kw: number,
 ): { sotpResult: SOTPResult | null; conglomerateAssessment: ConglomerateAssessment | null } {
   let sotpResult: SOTPResult | null = null;
   let conglomerateAssessment: ConglomerateAssessment | null = null;
 
   if (segmentData && segmentData.segmentationType === "business" && segmentData.segments.length >= 2) {
     // Phase C5: use actual parsed segment data
-    const enhanced = runSOTPFromSegmentData(segmentData, latest, keBase);
+    const enhanced = runSOTPFromSegmentData(segmentData, latest, kw);
     sotpResult = enhanced;
     const { definitions } = segmentDataToDefinitions(segmentData);
     const distinctTemplates = new Set(definitions.map(d => d.sectorTemplate));
@@ -96,7 +97,7 @@ export function buildSotpAssessment(
     const sotpPresetKey = config.sotp_preset ?? null;
     if (sotpPresetKey && sotpPresetKey in SOTP_PRESETS) {
       const presetDefs = SOTP_PRESETS[sotpPresetKey]!;
-      sotpResult = buildSOTPValuation(latest, presetDefs, keBase);
+      sotpResult = buildSOTPValuation(latest, presetDefs, kw);
       const distinctTemplates = new Set(presetDefs.map(d => d.sectorTemplate));
       const maxShare = Math.max(...presetDefs.map(d => d.operatingProfitShare));
       const dominantDef = presetDefs.reduce((a, b) => a && a.operatingProfitShare > b.operatingProfitShare ? a : b, presetDefs[0]);

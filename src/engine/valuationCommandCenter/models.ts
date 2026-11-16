@@ -94,7 +94,9 @@ export function runValuationModels(input: ValuationModelsInput) {
 
   // A carved arm is not one of the segments the SOTP sums: it enters at its
   // own valuation, through the bridge (the caller removed it from segmentData).
-  const { sotpResult, conglomerateAssessment } = buildSotpAssessment(segmentData ?? null, config, latest, keBase);
+  // Segment values are operating values, so they are discounted at the kw the
+  // base card's valuation settled on, as the cash DCF is (S-9.4C).
+  const { sotpResult, conglomerateAssessment } = buildSotpAssessment(segmentData ?? null, config, latest, baseCard?.assumptions.kw ?? kwBase);
 
   const evEbitda = computeEvEbitdaCrossCheck(latest, config.ev_ebitda_peers ?? []);
   const evEbitdaWithMarket = marketPrice != null && shares != null && shares > 0
