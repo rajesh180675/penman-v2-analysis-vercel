@@ -85,13 +85,19 @@ describe("SOTP applies the value-driver reinvestment haircut on next-year flow",
     expect(result.segments[0]!.segmentValue).toBeLessThan(600 - 1);
   });
 
-  it("returns null segmentValue/impliedMultiple when kw − g ≤ guardrail", () => {
-    // g override 0.13 with kw 0.13 → denom 0 → null (unchanged behaviour).
+  it("denies the growth credit when kw − g is within a point, rather than valuing the segment at nothing", () => {
+    // g override 0.13 with kw 0.13 → denom 0: the rate cannot carry the
+    // growth, so the segment takes its no-growth value NOPAT/kw = 100/0.13.
+    // It used to be null, which the sum read as ₹0.
     const period = mkPeriod(100, 500);
     const segs: SegmentDefinition[] = [
       { name: "Solo", operatingProfitShare: 1, sectorTemplate: "consumer-staples", terminalGrowthOverride: 0.13 },
     ];
     const result = buildSOTPValuation(period, segs, 0.13);
-    expect(result.segments[0]!.impliedMultiple).toBeNull();
+    expect(result.segments[0]!.segmentValue).toBeCloseTo(100 / 0.13, 9);
+    expect(result.operatingSum).toBeCloseTo(100 / 0.13, 9);
+    // At 0.125 the spread is half a point: still no growth credit.
+    const thin = buildSOTPValuation(period, [{ ...segs[0]!, terminalGrowthOverride: 0.125 }], 0.13);
+    expect(thin.segments[0]!.segmentValue).toBeCloseTo(100 / 0.13, 9);
   });
 });

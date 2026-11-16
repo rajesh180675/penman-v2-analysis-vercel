@@ -155,17 +155,22 @@ export function buildSOTPValuation(
     // no-growth perpetuity NOPAT/kw. Otherwise apply the reinvestment haircut on
     // next year's flow.
     let segmentVal: number | null;
-    if (denom <= 0.01) {
+    if (segmentKw <= 0.01) {
+      // No rate to capitalise at.
       segmentVal = null;
     } else if (nopat <= 0) {
       // No positive operating income to capitalise — preserve prior behaviour
       // (negative/zero value, null implied multiple).
       segmentVal = nopat / segmentKw;
-    } else if (ronic != null && ronic > g && g > 0) {
+    } else if (denom > 0.01 && ronic != null && ronic > g && g > 0) {
       const distributable = nopat * (1 - g / ronic); // FCF0
       segmentVal = (distributable * (1 + g)) / denom; // CF1 in the numerator
     } else {
-      // Growth not self-fundable → no-growth perpetuity.
+      // Growth the segment cannot fund, or that its rate cannot carry
+      // (kw − g within a point): no growth credit, the no-growth perpetuity.
+      // A thin spread used to null the segment, which the sum then read as ₹0:
+      // a profitable business valued at nothing (Tata Steel's Neelachal Ispat,
+      // at 5.9% against 7% growth).
       segmentVal = nopat / segmentKw;
     }
     const impliedMultiple = segmentVal != null && nopat > 0 ? segmentVal / nopat : null;

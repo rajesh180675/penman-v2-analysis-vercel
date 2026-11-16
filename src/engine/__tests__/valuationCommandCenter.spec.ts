@@ -942,6 +942,42 @@ describe("valuation command center", () => {
     }
   });
 
+  it("values an IT services company's client verticals as one business, not a conglomerate", () => {
+    // TCS reports by client industry. Classed by name, its "Retail" and
+    // "Manufacturing" verticals were a retailer and a manufacturer, and three
+    // templates made it a "diversified conglomerate".
+    const data = [
+      mkPeriod(2023, 1000, 180, 130, 520, 760),
+      mkPeriod(2024, 1100, 205, 150, 590, 820),
+      mkPeriod(2025, 1210, 232, 172, 665, 885),
+    ];
+    const years = ["FY2025", "FY2024", "FY2023"];
+    const row = (revenue: number, result: number) => ({
+      revenue, interSegmentRevenue: null, result, assets: null, liabilities: null, capex: null, depreciation: null, nonCashExpenditure: null,
+    });
+    const verticals = ["BANKING, FINANCIAL SERVICES & INSUR", "RETAIL AND CONSUMER PACKAGED GOODS", "MANUFACTURING", "LIFE SCIENCES AND HEALTHCARE"];
+    const segmentData = {
+      segmentationType: "business" as const,
+      segments: verticals,
+      years,
+      data: Object.fromEntries(verticals.map((name, i) => [name, Object.fromEntries(years.map((y) => [y, row(400 - i * 50, 100 - i * 10)]))])),
+      unallocated: {},
+      totals: {},
+    };
+    const build = (company_type: "it-services" | "auto") => buildValuationCommandCenter({
+      data,
+      config: { ...DEFAULT_CONFIG, shares_outstanding: CroreShares(620), company_type },
+      marketData: null,
+      analysisStatus: productionReadyStatus,
+      segmentData,
+    });
+    const it_ = build("it-services");
+    expect(it_.sotp!.segments.map((s) => s.sectorTemplateId)).toEqual(verticals.map(() => "services"));
+    expect(it_.conglomerate?.sotpPreferred).toBe(false);
+    // The same names with no company type still classify by name.
+    expect(build("auto").conglomerate?.sotpPreferred).toBe(true);
+  });
+
   it("publishes the forecast's range even when the segments span several templates", () => {
     // The range was the SOTP after and before its conglomerate discount whenever
     // `sotpPreferred` fired: one estimate either side of one assumption, plotted

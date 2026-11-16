@@ -260,6 +260,21 @@ function templateFromCompanyType(companyType: CompanyType | null | undefined): E
   }
 }
 
+/**
+ * The template the user or the company's type declares, or null when neither
+ * does. `resolveValuationSectorTemplate` then infers one from ratios, which can
+ * be far off (an engineering conglomerate read as retail), so a caller wanting
+ * the company's own business, such as a segment classifier's default, should
+ * take only a declared one.
+ */
+export function declaredSectorTemplate(
+  preferredTemplate: ValuationSectorTemplate | null | undefined,
+  companyType: CompanyType | null | undefined,
+): Exclude<ValuationSectorTemplate, "auto"> | null {
+  if (preferredTemplate && preferredTemplate !== "auto") return preferredTemplate;
+  return templateFromCompanyType(companyType);
+}
+
 export function resolveValuationSectorTemplate(
   data: RecastPeriod[],
   preferredTemplate: ValuationSectorTemplate | null | undefined,

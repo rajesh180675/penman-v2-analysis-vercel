@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { segmentDataToDefinitions, classifySegmentSector, runSOTPFromSegmentData } from "../segmentSOTPBridge";
-import { parseSegmentFinanceHTML } from "../segmentParser";
+import { segmentDataToDefinitions, classifySegmentSector, runSOTPFromSegmentData, segmentTemplateFor, seriesCagr } from "../segmentSOTPBridge";
+import { parseSegmentFinanceHTML, type SegmentData } from "../segmentParser";
+import { declaredSectorTemplate } from "../valuationSectorTemplates";
+import type { CompanyType, ValuationSectorTemplate } from "../types";
+
+type SegmentTemplateId = Exclude<ValuationSectorTemplate, "auto">;
 import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 import { RecastPeriod } from "../types";
@@ -90,12 +94,140 @@ describe("segmentSOTPBridge", () => {
 
     it("classifies other sector types", () => {
       expect(classifySegmentSector("Retail Banking")).toBe("services");
-      expect(classifySegmentSector("Cement Division")).toBe("industrials");
+      // As the engine values a cement or steel company (the cyclical type's template).
+      expect(classifySegmentSector("Cement Division")).toBe("commodities");
       expect(classifySegmentSector("Oil Refining")).toBe("commodities");
     });
 
-    it("defaults to industrials for unknown", () => {
+    it("defaults to industrials for unknown, or to the fallback it is given", () => {
       expect(classifySegmentSector("OTHERS")).toBe("industrials");
+      expect(classifySegmentSector("OTHERS", "telecom")).toBe("telecom");
+    });
+
+    it("matches whole words, not letters inside other words", () => {
+      // "it" in Limited / Commodities / Securities / Utilities, "oil" in
+      // Toiletries and "media" in Intermediates each classed a segment
+      // as something it is not.
+      expect(classifySegmentSector("NEELACHAL ISPAT NIGAM LIMITED")).toBe("commodities");
+      expect(classifySegmentSector("COMMODITIES TRADING")).toBe("industrials");
+      expect(classifySegmentSector("SECURITIES BROKING")).toBe("services");
+      expect(classifySegmentSector("POWER UTILITIES")).toBe("utility");
+      expect(classifySegmentSector("TOILETRIES")).toBe("consumer-staples");
+      expect(classifySegmentSector("DYE INTERMEDIATES")).toBe("industrials");
+      expect(classifySegmentSector("IT SERVICES")).toBe("services");
+    });
+  });
+
+  describe("segmentTemplateFor: every segment the library values", () => {
+    // Each company's latest-year segments as its export names them (Capitaline
+    // truncates names at 35 characters), with the company type the library
+    // gives it and the template that type declares.
+    type Case = readonly [string, CompanyType, SegmentTemplateId | null, ReadonlyArray<readonly [string, SegmentTemplateId]>];
+    const cases: readonly Case[] = [
+      ["Asian Paints", "consumer", "consumer-staples", [["PAINTS", "paint"], ["HOME IMPROVEMENT", "consumer-staples"]]],
+      ["Bharti Airtel", "telecom", "telecom", [
+        ["MOBILE SERVICES", "telecom"], ["AIRTEL BUSINESS", "telecom"], ["PASSIVE INFRASTRUCTURE SERVICES%", "telecom"],
+        ["HOMES SERVICES", "telecom"], ["DIGITAL TV SERVICES", "telecom"], ["OTHERS", "telecom"],
+      ]],
+      ["Dabur", "consumer", "consumer-staples", [
+        ["CONSUMER CARE BUSINESS", "consumer-staples"], ["FOODS", "consumer-staples"], ["RETAIL BUSINESS", "retail"], ["OTHERS", "consumer-staples"],
+      ]],
+      ["Grasim", "industrial", null, [["CEMENT", "commodities"], ["FIBRE AND PULP", "industrials"], ["CHEMICALS", "industrials"], ["OTHERS", "industrials"]]],
+      ["HUL", "consumer", "consumer-staples", [
+        ["HOME CARE", "consumer-staples"], ["BEAUTY & WELLBEING", "consumer-staples"], ["PERSONAL PRODUCTS", "consumer-staples"],
+        ["PACKAGED FOODS", "consumer-staples"], ["OTHERS", "consumer-staples"],
+      ]],
+      ["ITC", "conglomerate", null, [
+        ["FMCG - CIGARETTES", "consumer-staples"], ["FMCG - OTHERS", "consumer-staples"], ["AGRI BUSINESS", "commodities"],
+        ["PAPERBOARDS, PAPER AND PACKAGING", "industrials"], ["HOTELS", "services"], ["OTHERS", "industrials"],
+      ]],
+      ["Infosys", "it-services", "services", [
+        ["FINANCIAL SERVICES", "services"], ["MANUFACTURING", "services"], ["ENERGY & UTILITIES, COMMUNICATION &", "services"],
+        ["RETAIL, CONSUMER PACKAGED GOODS AND", "services"], ["TELECOM", "services"], ["HI-TECH", "services"],
+        ["LIFE SCIENCES, HEALTHCARE AND INSUR", "services"], ["ALL OTHER SEGMENTS", "services"],
+      ]],
+      ["L&T", "conglomerate", null, [
+        ["INFRASTRUCTURE", "industrials"], ["ENERGY PROJECTS", "industrials"], ["HI-TECH MANUFACTURING", "industrials"],
+        ["IT & TECHNOLOGY SERVICES", "services"], ["DEVELOPMENT PROJECTS", "industrials"], ["OTHERS", "industrials"],
+      ]],
+      ["M&M", "cyclical", "commodities", [
+        ["AUTOMOTIVE", "industrials"], ["FARM EQUIPMENT", "industrials"], ["INDUSTRIAL BUSINESSES AND CONSUMER", "industrials"],
+      ]],
+      ["NTPC", "utility", "utility", [["GENERATION OF ENERGY", "utility"], ["OTHERS", "utility"]]],
+      ["Power Grid", "utility", "utility", [
+        ["TRANSMISSION SERVICES", "utility"], ["CONSULTANCY SERVICES", "services"], ["TELECOM SERVICES", "telecom"],
+      ]],
+      ["Reliance", "conglomerate", null, [
+        ["O2C", "commodities"], ["RETAIL", "retail"], ["DIGITAL SERVICES", "telecom"], ["OIL AND GAS", "commodities"], ["OTHERS", "industrials"],
+      ]],
+      ["TCS", "it-services", "services", [
+        ["BANKING, FINANCIAL SERVICES & INSUR", "services"], ["MANUFACTURING", "services"], ["RETAIL AND CONSUMER PACKAGED GOODS", "services"],
+        ["TELECOM, MEDIA AND ENTERTAINMENT", "services"], ["LIFE SCIENCES AND HEALTHCARE", "services"], ["OTHERS", "services"],
+      ]],
+      ["Tata Steel", "cyclical", "commodities", [
+        ["TATA STEEL INDIA", "commodities"], ["NEELACHAL ISPAT NIGAM LIMITED", "commodities"], ["OTHER INDIAN OPERATIONS", "commodities"],
+        ["OTHER TRADE RELATED OPERATIONS", "commodities"], ["SOUTH-EAST ASIAN OPERATIONS", "commodities"], ["TATA STEEL EUROPE", "commodities"],
+      ]],
+      ["Titan", "consumer", "consumer-staples", [
+        ["JEWELLERY", "consumer-staples"], ["WATCHES", "consumer-staples"], ["EYECARE", "consumer-staples"], ["OTHERS", "consumer-staples"],
+      ]],
+    ];
+
+    for (const [company, companyType, declaredTemplate, segments] of cases) {
+      it(`${company}`, () => {
+        // The declared template is what the company type gives, as the command center passes it.
+        expect(declaredSectorTemplate(undefined, companyType)).toBe(declaredTemplate);
+        for (const [name, expected] of segments) {
+          expect([name, segmentTemplateFor(name, { companyType, declaredTemplate })]).toEqual([name, expected]);
+        }
+      });
+    }
+  });
+
+  describe("segment growth", () => {
+    const years = ["FY2025", "FY2024", "FY2023", "FY2022"];
+    const segData = (series: Record<string, readonly number[]>): SegmentData => ({
+      segmentationType: "business",
+      segments: Object.keys(series),
+      years,
+      data: Object.fromEntries(Object.entries(series).map(([name, revenue]) => [name, Object.fromEntries(years.map((y, i) => [y, {
+        revenue: revenue[i] ?? null, interSegmentRevenue: null, result: 100, assets: 1000, liabilities: null, capex: null, depreciation: null, nonCashExpenditure: null,
+      }]))])),
+      unallocated: {},
+      totals: {},
+    });
+
+    it("reads the series latest first: a growing segment has a positive CAGR", () => {
+      // FY2022 1,000 → FY2025 1,331: 10% a year.
+      expect(seriesCagr([1331, 1210, 1100, 1000])).toBeCloseTo(0.1, 12);
+      expect(seriesCagr([1000, 1100, 1210, 1331])).toBeCloseTo(1 / 1.1 - 1, 12);
+    });
+
+    it("grows a segment at half its CAGR, inside its template's band", () => {
+      const { definitions } = segmentDataToDefinitions(segData({
+        "PACKAGED FOODS": [1404.928, 1254.4, 1120, 1000], // CAGR 12% → 6%, held at the 5% cap
+        "HOME CARE": [1157.625, 1102.5, 1050, 1000], // CAGR 5% → 2.5%, raised to the 3% floor
+        "BEAUTY & WELLBEING": [1259.712, 1166.4, 1080, 1000], // CAGR 8% → 4%, inside the band
+        "PERSONAL PRODUCTS": [800, 900, 1000, 1100], // shrinking → the floor
+      }), 0, { companyType: "consumer", declaredTemplate: "consumer-staples" });
+      const g = Object.fromEntries(definitions.map((d) => [d.name, d.terminalGrowthOverride]));
+      const staples = VALUATION_SECTOR_TEMPLATES["consumer-staples"];
+      expect(g["PACKAGED FOODS"]).toBe(staples.terminalGrowthCap);
+      expect(g["HOME CARE"]).toBe(staples.terminalGrowthFloor);
+      expect(g["BEAUTY & WELLBEING"]).toBeCloseTo(0.04, 9);
+      expect(g["PERSONAL PRODUCTS"]).toBe(staples.terminalGrowthFloor);
+    });
+
+    it("leaves a segment with one year of revenue on its template's default", () => {
+      const { definitions } = segmentDataToDefinitions(segData({ "PAINTS": [500], "OTHERS": [1331, 1210, 1100, 1000] }));
+      expect(definitions.find((d) => d.name === "PAINTS")!.terminalGrowthOverride).toBeUndefined();
+    });
+
+    it("measures each year's growth against the year before it", () => {
+      const { timeSeries } = segmentDataToDefinitions(segData({ "PACKAGED FOODS": [1331, 1210, 1100, 1000] }));
+      const ts = timeSeries[0]!;
+      expect(ts.revenueGrowth[0]).toBeCloseTo(0.1, 12); // FY2025 on FY2024
+      expect(ts.revenueGrowth[3]).toBeNull(); // the oldest year has no predecessor
     });
   });
 

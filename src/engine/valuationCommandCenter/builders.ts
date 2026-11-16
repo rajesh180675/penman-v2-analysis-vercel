@@ -7,6 +7,7 @@ import { adaptForecastCaseToLegacyValuation, legacyValuationAnchor } from "../fo
 import type { GeneratedForecastCase } from "../forecastState/generation";
 import { buildSOTPValuation, SOTP_PRESETS, SOTPResult } from "../sotpValuation";
 import { runSOTPFromSegmentData, segmentDataToDefinitions } from "../segmentSOTPBridge";
+import { declaredSectorTemplate } from "../valuationSectorTemplates";
 import type { SegmentData } from "../segmentParser";
 import { evaluateWorkingCapitalGate, WorkingCapitalGateResult } from "../valuation/workingCapitalGate";
 import { checkCleanSurplus, CleanSurplusResult } from "../valuation/cleanSurplus";
@@ -75,10 +76,16 @@ export function buildSotpAssessment(
   let conglomerateAssessment: ConglomerateAssessment | null = null;
 
   if (segmentData && segmentData.segmentationType === "business" && segmentData.segments.length >= 2) {
-    // Phase C5: use actual parsed segment data
-    const enhanced = runSOTPFromSegmentData(segmentData, latest, kw);
+    // Phase C5: use actual parsed segment data. Segments are classified with
+    // what the company declares itself to be (its type or the user's
+    // template), the same way for the value and for the assessment below.
+    const context = {
+      companyType: config.company_type,
+      declaredTemplate: declaredSectorTemplate(config.sector_template, config.company_type),
+    };
+    const enhanced = runSOTPFromSegmentData(segmentData, latest, kw, context);
     sotpResult = enhanced;
-    const { definitions } = segmentDataToDefinitions(segmentData);
+    const { definitions } = segmentDataToDefinitions(segmentData, 0, context);
     const distinctTemplates = new Set(definitions.map(d => d.sectorTemplate));
     const maxShare = definitions.length > 0 ? Math.max(...definitions.map(d => d.operatingProfitShare)) : 0;
     const dominantDef = definitions.reduce((a, b) => a && a.operatingProfitShare > b.operatingProfitShare ? a : b, definitions[0]);
